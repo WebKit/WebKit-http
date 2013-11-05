@@ -123,7 +123,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/js/JSPluginElementFunctions.cpp
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSProcessingInstructionCustom.cpp
-    bindings/js/JSScriptProfileNodeCustom.cpp
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
@@ -280,13 +279,6 @@ ENDIF ()
 IF (ENABLE_WEB_INTENTS)
     LIST (APPEND WebCore_SOURCES
         bindings/js/JSIntentConstructor.cpp
-    )
-ENDIF ()
-
-IF (ENABLE_UNDO_MANAGER)
-    LIST (APPEND WebCore_SOURCES
-        bindings/js/DOMTransaction.cpp
-        bindings/js/JSUndoManagerCustom.cpp
     )
 ENDIF ()
 

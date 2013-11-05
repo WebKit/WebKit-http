@@ -31,12 +31,12 @@
 
 #include "CachedImage.h"
 #include "CheckedInt.h"
-#include "Console.h"
 #include "DOMWindow.h"
 #include "EXTTextureFilterAnisotropic.h"
 #include "ExceptionCode.h"
 #include "Extensions3D.h"
 #include "Frame.h"
+#include "FrameLoaderClient.h"
 #include "FrameView.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
@@ -397,12 +397,24 @@ private:
 
 PassOwnPtr<WebGLRenderingContext> WebGLRenderingContext::create(HTMLCanvasElement* canvas, WebGLContextAttributes* attrs)
 {
-    HostWindow* hostWindow = canvas->document()->view()->root()->hostWindow();
+    Document* document = canvas->document();
+    Frame* frame = document->frame();
+    if (!frame)
+        return nullptr;
+    Settings* settings = frame->settings();
+
+    // The FrameLoaderClient might creation of a new WebGL context despite the page settings; in
+    // particular, if WebGL contexts were lost one or more times via the GL_ARB_robustness extension.
+    if (!frame->loader()->client()->allowWebGL(settings && settings->webGLEnabled())) {
+        canvas->dispatchEvent(WebGLContextEvent::create(eventNames().webglcontextcreationerrorEvent, false, true, "Web page was not allowed to create a WebGL context."));
+        return nullptr;
+    }
+
+    HostWindow* hostWindow = document->view()->root()->hostWindow();
     GraphicsContext3D::Attributes attributes = attrs ? attrs->attributes() : GraphicsContext3D::Attributes();
 
     if (attributes.antialias) {
-        Page* p = canvas->document()->page();
-        if (p && !p->settings()->openGLMultisamplingEnabled())
+        if (settings && !settings->openGLMultisamplingEnabled())
             attributes.antialias = false;
     }
 
@@ -532,6 +544,7 @@ void WebGLRenderingContext::initializeNewContext()
 
     m_context->reshape(canvasSize.width(), canvasSize.height());
     m_context->viewport(0, 0, canvasSize.width(), canvasSize.height());
+    m_context->scissor(0, 0, canvasSize.width(), canvasSize.height());
 
     m_context->setContextLostCallback(adoptPtr(new WebGLRenderingContextLostCallback(this)));
     m_context->setErrorMessageCallback(adoptPtr(new WebGLRenderingContextErrorMessageCallback(this)));
@@ -3699,7 +3712,11 @@ void WebGLRenderingContext::texImage2D(GC3Denum target, GC3Dint level, GC3Denum 
     WebGLTexture* texture = validateTextureBinding("texImage2D", target, true);
     // If possible, copy from the canvas element directly to the texture
     // via the GPU, without a read-back to system memory.
-    if (GraphicsContext3D::TEXTURE_2D == target && texture && type == texture->getType(target, level)) {
+    //
+    // FIXME: restriction of (RGB || RGBA)/UNSIGNED_BYTE should be lifted when
+    // ImageBuffer::copyToPlatformTexture implementations are fully functional.
+    if (GraphicsContext3D::TEXTURE_2D == target && texture && type == texture->getType(target, level)
+        && (format == GraphicsContext3D::RGB || format == GraphicsContext3D::RGBA) && type == GraphicsContext3D::UNSIGNED_BYTE) {
         ImageBuffer* buffer = canvas->buffer();
         if (buffer && buffer->copyToPlatformTexture(*m_context.get(), texture->object(), internalformat, m_unpackPremultiplyAlpha, m_unpackFlipY)) {
             texture->setLevelInfo(target, level, internalformat, canvas->width(), canvas->height(), type);
@@ -4446,6 +4463,15 @@ void WebGLRenderingContext::loseContextImpl(WebGLRenderingContext::LostContextMo
 
     m_contextLost = true;
     m_contextLostMode = mode;
+
+    if (mode == RealLostContext) {
+        // Inform the embedder that a lost context was received. In response, the embedder might
+        // decide to take action such as asking the user for permission to use WebGL again.
+        if (Document* document = canvas()->document()) {
+            if (Frame* frame = document->frame())
+                frame->loader()->client()->didLoseWebGLContext(m_context->getExtensions()->getGraphicsResetStatusARB());
+        }
+    }
 
     detachAndRemoveAllObjects();
 
@@ -5202,20 +5228,10 @@ void WebGLRenderingContext::printWarningToConsole(const String& message)
 {
     if (!canvas())
         return;
-    // FIXME: This giant cascade of null checks seems a bit paranoid.
     Document* document = canvas()->document();
     if (!document)
         return;
-    Frame* frame = document->frame();
-    if (!frame)
-        return;
-    DOMWindow* window = document->domWindow();
-    if (!window)
-        return;
-    Console* console = window->console();
-    if (!console)
-        return;
-    console->addMessage(HTMLMessageSource, LogMessageType, WarningMessageLevel, message, document->url().string());
+    document->addConsoleMessage(HTMLMessageSource, LogMessageType, WarningMessageLevel, message, document->url().string());
 }
 
 bool WebGLRenderingContext::validateFramebufferFuncParameters(const char* functionName, GC3Denum target, GC3Denum attachment)
@@ -5591,7 +5607,14 @@ void WebGLRenderingContext::maybeRestoreContext(Timer<WebGLRenderingContext>*)
     Document* document = canvas()->document();
     if (!document)
         return;
-    FrameView* view = document->view();
+    Frame* frame = document->frame();
+    if (!frame)
+        return;
+
+    if (!frame->loader()->client()->allowWebGL(frame->settings() && frame->settings()->webGLEnabled()))
+        return;
+
+    FrameView* view = frame->view();
     if (!view)
         return;
     ScrollView* root = view->root();

@@ -7,6 +7,7 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/efl"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/efl"
+    "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/platform/network/soup"
     ${CAIRO_INCLUDE_DIRS}
     ${ECORE_INCLUDE_DIRS}
@@ -48,11 +49,9 @@ IF (ENABLE_VIDEO_TRACK)
   )
 ENDIF ()
 
-IF (WTF_USE_FREETYPE)
-  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/platform/graphics/freetype"
-  )
-ENDIF ()
+LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+  "${WEBCORE_DIR}/platform/graphics/freetype"
+)
 
 IF (ENABLE_NOTIFICATIONS)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
@@ -78,11 +77,17 @@ IF (ENABLE_NAVIGATOR_CONTENT_UTILS)
   )
 ENDIF ()
 
-IF (WTF_USE_TEXTURE_MAPPER_GL)
+IF (WTF_USE_3D_GRAPHICS)
   LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/surfaces"
     "${WEBCORE_DIR}/platform/graphics/texmap"
     "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
+  )
+ENDIF ()
+
+IF (ENABLE_GEOLOCATION)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/Modules/geolocation"
   )
 ENDIF ()
 
@@ -153,8 +158,8 @@ LIST(APPEND WebKit_LIBRARIES
     ${LIBXML2_LIBRARIES}
     ${SQLITE_LIBRARIES}
     ${FONTCONFIG_LIBRARIES}
-    ${PNG_LIBRARY}
-    ${JPEG_LIBRARY}
+    ${PNG_LIBRARIES}
+    ${JPEG_LIBRARIES}
     ${CMAKE_DL_LIBS}
     ${GLIB_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
@@ -226,13 +231,11 @@ SET(EWKUnitTests_INCLUDE_DIRECTORIES
     ${EDJE_INCLUDE_DIRS}
 )
 
-IF (ENABLE_GLIB_SUPPORT)
-    LIST(APPEND EWKUnitTests_INCLUDE_DIRECTORIES "${WTF_DIR}/wtf/gobject")
-    LIST(APPEND EWKUnitTests_LIBRARIES
-        ${GLIB_LIBRARIES}
-        ${GLIB_GTHREAD_LIBRARIES}
-    )
-ENDIF ()
+LIST(APPEND EWKUnitTests_INCLUDE_DIRECTORIES "${WTF_DIR}/wtf/gobject")
+LIST(APPEND EWKUnitTests_LIBRARIES
+    ${GLIB_LIBRARIES}
+    ${GLIB_GTHREAD_LIBRARIES}
+)
 
 SET(DEFAULT_TEST_PAGE_DIR ${CMAKE_SOURCE_DIR}/Source/WebKit/efl/tests/resources)
 
@@ -251,6 +254,7 @@ TARGET_LINK_LIBRARIES(ewkTestUtils ${EWKUnitTests_LIBRARIES})
 SET(WEBKIT_EFL_TEST_DIR "${WEBKIT_DIR}/efl/tests/")
 
 SET(EWKUnitTests_BINARIES
+    test_ewk_contextmenu
     test_ewk_frame
     test_ewk_view
 )

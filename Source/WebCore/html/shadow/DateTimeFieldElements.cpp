@@ -42,7 +42,7 @@ DateTimeAMPMFieldElement::DateTimeAMPMFieldElement(Document* document, FieldOwne
 
 PassRefPtr<DateTimeAMPMFieldElement> DateTimeAMPMFieldElement::create(Document* document, FieldOwner& fieldOwner, const Vector<String>& ampmLabels)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, ampmPsuedoId, ("-webkit-datetime-edit-ampm-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, ampmPsuedoId, ("-webkit-datetime-edit-ampm-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeAMPMFieldElement> field = adoptRef(new DateTimeAMPMFieldElement(document, fieldOwner, ampmLabels));
     field->initialize(ampmPsuedoId, AXAMPMFieldText());
     return field.release();
@@ -61,12 +61,12 @@ void DateTimeAMPMFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.hour() >= 12 ? 1 : 0);
 }
 
-void DateTimeAMPMFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeAMPMFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (dateTimeFieldsState.hasAMPM())
         setValueAsInteger(dateTimeFieldsState.ampm());
     else
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
 }
 
 // ----------------------------
@@ -78,7 +78,7 @@ DateTimeDayFieldElement::DateTimeDayFieldElement(Document* document, FieldOwner&
 
 PassRefPtr<DateTimeDayFieldElement> DateTimeDayFieldElement::create(Document* document, FieldOwner& fieldOwner, const String& placeholder)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, dayPsuedoId, ("-webkit-datetime-edit-day-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, dayPsuedoId, ("-webkit-datetime-edit-day-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeDayFieldElement> field = adoptRef(new DateTimeDayFieldElement(document, fieldOwner, placeholder.isEmpty() ? ASCIILiteral("--") : placeholder));
     field->initialize(dayPsuedoId, AXDayOfMonthFieldText());
     return field.release();
@@ -94,10 +94,10 @@ void DateTimeDayFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.monthDay());
 }
 
-void DateTimeDayFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeDayFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasDayOfMonth()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -107,7 +107,7 @@ void DateTimeDayFieldElement::setValueAsDateTimeFieldsState(const DateTimeFields
         return;
     }
 
-    setEmptyValue(dateForReadOnlyField);
+    setEmptyValue();
 }
 
 // ----------------------------
@@ -121,7 +121,7 @@ DateTimeHourFieldElement::DateTimeHourFieldElement(Document* document, FieldOwne
 
 PassRefPtr<DateTimeHourFieldElement> DateTimeHourFieldElement::create(Document* document, FieldOwner& fieldOwner, int minimum, int maximum)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, hourPsuedoId, ("-webkit-datetime-edit-hour-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, hourPsuedoId, ("-webkit-datetime-edit-hour-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeHourFieldElement> field = adoptRef(new DateTimeHourFieldElement(document, fieldOwner, minimum, maximum));
     field->initialize(hourPsuedoId, AXHourFieldText());
     return field.release();
@@ -166,17 +166,17 @@ void DateTimeHourFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.hour());
 }
 
-void DateTimeHourFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeHourFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasHour()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
     const int hour12 = dateTimeFieldsState.hour();
 
     if (hour12 < 1 || hour12 > 12) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -224,7 +224,7 @@ DateTimeMillisecondFieldElement::DateTimeMillisecondFieldElement(Document* docum
 
 PassRefPtr<DateTimeMillisecondFieldElement> DateTimeMillisecondFieldElement::create(Document* document, FieldOwner& fieldOwner)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, millisecondPsuedoId, ("-webkit-datetime-edit-millisecond-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, millisecondPsuedoId, ("-webkit-datetime-edit-millisecond-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeMillisecondFieldElement> field = adoptRef(new DateTimeMillisecondFieldElement(document, fieldOwner));
     field->initialize(millisecondPsuedoId, AXMillisecondFieldText());
     return field.release();
@@ -240,16 +240,16 @@ void DateTimeMillisecondFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.millisecond());
 }
 
-void DateTimeMillisecondFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeMillisecondFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasMillisecond()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
     const unsigned value = dateTimeFieldsState.millisecond();
     if (value > static_cast<unsigned>(maximum())) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -265,7 +265,7 @@ DateTimeMinuteFieldElement::DateTimeMinuteFieldElement(Document* document, Field
 
 PassRefPtr<DateTimeMinuteFieldElement> DateTimeMinuteFieldElement::create(Document* document, FieldOwner& fieldOwner)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, minutePsuedoId, ("-webkit-datetime-edit-minute-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, minutePsuedoId, ("-webkit-datetime-edit-minute-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeMinuteFieldElement> field = adoptRef(new DateTimeMinuteFieldElement(document, fieldOwner));
     field->initialize(minutePsuedoId, AXMinuteFieldText());
     return field.release();
@@ -281,16 +281,16 @@ void DateTimeMinuteFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.minute());
 }
 
-void DateTimeMinuteFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeMinuteFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasMinute()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
     const unsigned value = dateTimeFieldsState.minute();
     if (value > static_cast<unsigned>(maximum())) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -306,7 +306,7 @@ DateTimeMonthFieldElement::DateTimeMonthFieldElement(Document* document, FieldOw
 
 PassRefPtr<DateTimeMonthFieldElement> DateTimeMonthFieldElement::create(Document* document, FieldOwner& fieldOwner, const String& placeholder)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, monthPsuedoId, ("-webkit-datetime-edit-month-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, monthPsuedoId, ("-webkit-datetime-edit-month-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeMonthFieldElement> field = adoptRef(new DateTimeMonthFieldElement(document, fieldOwner, placeholder.isEmpty() ? ASCIILiteral("--") : placeholder));
     field->initialize(monthPsuedoId, AXMonthFieldText());
     return field.release();
@@ -322,10 +322,10 @@ void DateTimeMonthFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.month() + 1);
 }
 
-void DateTimeMonthFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeMonthFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasMonth()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -335,7 +335,7 @@ void DateTimeMonthFieldElement::setValueAsDateTimeFieldsState(const DateTimeFiel
         return;
     }
 
-    setEmptyValue(dateForReadOnlyField);
+    setEmptyValue();
 }
 
 // ----------------------------
@@ -347,7 +347,7 @@ DateTimeSecondFieldElement::DateTimeSecondFieldElement(Document* document, Field
 
 PassRefPtr<DateTimeSecondFieldElement> DateTimeSecondFieldElement::create(Document* document, FieldOwner& fieldOwner)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, secondPsuedoId, ("-webkit-datetime-edit-second-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, secondPsuedoId, ("-webkit-datetime-edit-second-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeSecondFieldElement> field = adoptRef(new DateTimeSecondFieldElement(document, fieldOwner));
     field->initialize(secondPsuedoId, AXSecondFieldText());
     return field.release();
@@ -363,16 +363,16 @@ void DateTimeSecondFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.second());
 }
 
-void DateTimeSecondFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeSecondFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasSecond()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
     const unsigned value = dateTimeFieldsState.second();
     if (value > static_cast<unsigned>(maximum())) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -388,7 +388,7 @@ DateTimeSymbolicMonthFieldElement::DateTimeSymbolicMonthFieldElement(Document* d
 
 PassRefPtr<DateTimeSymbolicMonthFieldElement> DateTimeSymbolicMonthFieldElement::create(Document* document, FieldOwner& fieldOwner, const Vector<String>& labels)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, monthPsuedoId, ("-webkit-datetime-edit-month-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, monthPsuedoId, ("-webkit-datetime-edit-month-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeSymbolicMonthFieldElement> field = adoptRef(new DateTimeSymbolicMonthFieldElement(document, fieldOwner, labels));
     field->initialize(monthPsuedoId, AXMonthFieldText());
     return field.release();
@@ -407,16 +407,16 @@ void DateTimeSymbolicMonthFieldElement::setValueAsDate(const DateComponents& dat
     setValueAsInteger(date.month());
 }
 
-void DateTimeSymbolicMonthFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeSymbolicMonthFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasMonth()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
     const unsigned value = dateTimeFieldsState.month() - 1;
     if (value >= symbolsSize()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -432,7 +432,7 @@ DateTimeWeekFieldElement::DateTimeWeekFieldElement(Document* document, FieldOwne
 
 PassRefPtr<DateTimeWeekFieldElement> DateTimeWeekFieldElement::create(Document* document, FieldOwner& fieldOwner)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, weekPsuedoId, ("-webkit-datetime-edit-week-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, weekPsuedoId, ("-webkit-datetime-edit-week-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeWeekFieldElement> field = adoptRef(new DateTimeWeekFieldElement(document, fieldOwner));
     field->initialize(weekPsuedoId, AXWeekOfYearFieldText());
     return field.release();
@@ -448,10 +448,10 @@ void DateTimeWeekFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.week());
 }
 
-void DateTimeWeekFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeWeekFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasWeekOfYear()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -461,7 +461,7 @@ void DateTimeWeekFieldElement::setValueAsDateTimeFieldsState(const DateTimeField
         return;
     }
 
-    setEmptyValue(dateForReadOnlyField);
+    setEmptyValue();
 }
 
 // ----------------------------
@@ -477,7 +477,7 @@ DateTimeYearFieldElement::DateTimeYearFieldElement(Document* document, FieldOwne
 
 PassRefPtr<DateTimeYearFieldElement> DateTimeYearFieldElement::create(Document* document, FieldOwner& fieldOwner, const DateTimeYearFieldElement::Parameters& parameters)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, yearPsuedoId, ("-webkit-datetime-edit-year-field"));
+    DEFINE_STATIC_LOCAL(AtomicString, yearPsuedoId, ("-webkit-datetime-edit-year-field", AtomicString::ConstructFromLiteral));
     RefPtr<DateTimeYearFieldElement> field = adoptRef(new DateTimeYearFieldElement(document, fieldOwner, parameters));
     field->initialize(yearPsuedoId, AXYearFieldText());
     return field.release();
@@ -521,10 +521,10 @@ void DateTimeYearFieldElement::setValueAsDate(const DateComponents& date)
     setValueAsInteger(date.fullYear());
 }
 
-void DateTimeYearFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState, const DateComponents& dateForReadOnlyField)
+void DateTimeYearFieldElement::setValueAsDateTimeFieldsState(const DateTimeFieldsState& dateTimeFieldsState)
 {
     if (!dateTimeFieldsState.hasYear()) {
-        setEmptyValue(dateForReadOnlyField);
+        setEmptyValue();
         return;
     }
 
@@ -534,7 +534,7 @@ void DateTimeYearFieldElement::setValueAsDateTimeFieldsState(const DateTimeField
         return;
     }
 
-    setEmptyValue(dateForReadOnlyField);
+    setEmptyValue();
 }
 
 } // namespace WebCore

@@ -30,7 +30,7 @@
 #define JSActivation_h
 
 #include "CodeBlock.h"
-#include "CopiedSpaceInlineMethods.h"
+#include "CopiedSpaceInlines.h"
 #include "JSVariableObject.h"
 #include "Nodes.h"
 #include "SymbolTable.h"
@@ -46,15 +46,16 @@ namespace JSC {
     public:
         typedef JSVariableObject Base;
 
-        static JSActivation* create(JSGlobalData& globalData, CallFrame* callFrame, FunctionExecutable* functionExecutable)
+        static JSActivation* create(JSGlobalData& globalData, CallFrame* callFrame, CodeBlock* codeBlock)
         {
+            SharedSymbolTable* symbolTable = codeBlock->symbolTable();
             JSActivation* activation = new (
                 NotNull,
                 allocateCell<JSActivation>(
                     globalData.heap,
-                    allocationSize(functionExecutable->symbolTable())
+                    allocationSize(symbolTable)
                 )
-            ) JSActivation(globalData, callFrame, functionExecutable->symbolTable());
+            ) JSActivation(globalData, callFrame, symbolTable);
             activation->finishCreation(globalData);
             return activation;
         }

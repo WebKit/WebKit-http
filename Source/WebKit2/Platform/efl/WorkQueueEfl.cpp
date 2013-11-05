@@ -68,18 +68,20 @@ void WorkQueue::platformInvalidate()
 
 void WorkQueue::performWork()
 {
-    m_workItemQueueLock.lock();
-
-    while (!m_workItemQueue.isEmpty()) {
+    while (true) {
         Vector<Function<void()> > workItemQueue;
-        m_workItemQueue.swap(workItemQueue);
 
-        m_workItemQueueLock.unlock();
+        {
+            MutexLocker locker(m_workItemQueueLock);
+            if (m_workItemQueue.isEmpty())
+                return;
+
+            m_workItemQueue.swap(workItemQueue);
+        }
+
         for (size_t i = 0; i < workItemQueue.size(); ++i)
             workItemQueue[i]();
-        m_workItemQueueLock.lock();
     }
-    m_workItemQueueLock.unlock();
 }
 
 void WorkQueue::performFileDescriptorWork()
@@ -125,6 +127,7 @@ void WorkQueue::insertTimerWorkItem(PassOwnPtr<TimerWorkItem> item)
 
     size_t position = 0;
 
+    MutexLocker locker(m_timerWorkItemsLock);
     // m_timerWorkItems should be ordered by expire time.
     for (; position < m_timerWorkItems.size(); ++position)
         if (item->expireTime() < m_timerWorkItems[position]->expireTime())
@@ -135,19 +138,19 @@ void WorkQueue::insertTimerWorkItem(PassOwnPtr<TimerWorkItem> item)
 
 void WorkQueue::performTimerWork()
 {
-    // Protects m_timerWorkItems.
-    m_timerWorkItemsLock.lock();
+    Vector<OwnPtr<TimerWorkItem> > timerWorkItems;
 
-    if (m_timerWorkItems.isEmpty()) {
-        m_timerWorkItemsLock.unlock();
-        return;
+    {
+        // Protects m_timerWorkItems.
+        MutexLocker locker(m_timerWorkItemsLock);
+        if (m_timerWorkItems.isEmpty())
+            return;
+
+        // Copies all the timer work items in m_timerWorkItems to local vector.
+        m_timerWorkItems.swap(timerWorkItems);
     }
 
     double current = currentTime();
-    Vector<OwnPtr<TimerWorkItem> > timerWorkItems;
-
-    // Copies all the timer work items in m_timerWorkItems to local vector.
-    m_timerWorkItems.swap(timerWorkItems);
 
     for (size_t i = 0; i < timerWorkItems.size(); ++i) {
         if (!timerWorkItems[i]->expired(current)) {
@@ -158,18 +161,13 @@ void WorkQueue::performTimerWork()
         }
 
         // If a timer work item expired, dispatch the function of the work item.
-        // Before dispatching, m_timerWorkItemsLock should unlock for preventing deadlock,
-        // because it can be accessed inside the function of the timer work item dispatched.
-        m_timerWorkItemsLock.unlock();
         timerWorkItems[i]->dispatch();
-        m_timerWorkItemsLock.lock();
     }
-
-    m_timerWorkItemsLock.unlock();
 }
 
 void WorkQueue::sendMessageToThread(const char* message)
 {
+    MutexLocker locker(m_writeToPipeDescriptorLock);
     if (write(m_writeToPipeDescriptor, message, threadMessageSize) == -1)
         LOG_ERROR("Failed to wake up WorkQueue Thread");
 }
@@ -212,8 +210,11 @@ void WorkQueue::unregisterSocketEventHandler(int fileDescriptor)
 
 void WorkQueue::dispatch(const Function<void()>& function)
 {
-    MutexLocker locker(m_workItemQueueLock);
-    m_workItemQueue.append(function);
+    {
+        MutexLocker locker(m_workItemQueueLock);
+        m_workItemQueue.append(function);
+    }
+
     sendMessageToThread(wakupThreadMessage);
 }
 
@@ -222,7 +223,6 @@ void WorkQueue::dispatchAfterDelay(const Function<void()>& function, double dela
     if (delay < 0)
         return;
 
-    MutexLocker locker(m_timerWorkItemsLock);
     OwnPtr<TimerWorkItem> timerWorkItem = TimerWorkItem::create(function, currentTime() + delay);
     if (!timerWorkItem)
         return;

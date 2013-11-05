@@ -32,6 +32,7 @@
 #include "WKBundleAPICast.h"
 #include "WKData.h"
 #include "WebFrame.h"
+#include "WebSecurityOrigin.h"
 #include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 
@@ -198,6 +199,11 @@ bool WKBundleFrameAllowsFollowingLink(WKBundleFrameRef frameRef, WKURLRef urlRef
     return toImpl(frameRef)->allowsFollowingLink(WebCore::KURL(WebCore::KURL(), toWTFString(urlRef)));
 }
 
+bool WKBundleFrameHandlesPageScaleGesture(WKBundleFrameRef frameRef)
+{
+    return toAPI(toImpl(frameRef)->handlesPageScaleGesture());
+}
+
 WKRect WKBundleFrameGetContentBounds(WKBundleFrameRef frameRef)
 {
     return toAPI(toImpl(frameRef)->contentBounds());
@@ -285,4 +291,13 @@ bool WKBundleFrameCallShouldCloseOnWebView(WKBundleFrameRef frameRef)
 WKBundleHitTestResultRef WKBundleFrameCreateHitTestResult(WKBundleFrameRef frameRef, WKPoint point)
 {
     return toAPI(toImpl(frameRef)->hitTest(toIntPoint(point)).leakRef());
+}
+
+WKSecurityOriginRef WKBundleFrameCopySecurityOrigin(WKBundleFrameRef frameRef)
+{
+    Frame* coreFrame = toImpl(frameRef)->coreFrame();
+    if (!coreFrame)
+        return 0;
+
+    return toCopiedAPI(coreFrame->document()->securityOrigin());
 }

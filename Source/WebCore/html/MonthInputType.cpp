@@ -45,7 +45,7 @@
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeFieldsState.h"
 #include "LocalizedStrings.h"
-#include "Localizer.h"
+#include "PlatformLocale.h"
 #include <wtf/text/WTFString.h>
 #endif
 
@@ -154,7 +154,7 @@ String MonthInputType::formatDateTimeFieldsState(const DateTimeFieldsState& date
 
 void MonthInputType::setupLayoutParameters(DateTimeEditElement::LayoutParameters& layoutParameters, const DateComponents& date) const
 {
-    layoutParameters.dateTimeFormat = layoutParameters.localizer.monthFormat();
+    layoutParameters.dateTimeFormat = layoutParameters.locale.monthFormat();
     layoutParameters.fallbackDateTimeFormat = "MM/yyyy";
     layoutParameters.minimumYear = fullYear(element()->fastGetAttribute(minAttr));
     layoutParameters.maximumYear = fullYear(element()->fastGetAttribute(maxAttr));

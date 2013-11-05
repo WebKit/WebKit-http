@@ -235,13 +235,16 @@ namespace WebCore {
     macro(webkitpointerlockchange) \
     macro(webkitpointerlockerror) \
     \
-    macro(webkitRegionLayoutUpdate) \
+    macro(webkitregionlayoutupdate) \
     \
     macro(webkitnetworkinfochange) \
     \
     macro(webkitresourcetimingbufferfull) \
     \
     macro(webkitdeviceproximity) \
+    \
+    macro(autocomplete) \
+    macro(autocompleteerror) \
     \
 
 // end of DOM_EVENT_NAMES_FOR_EACH

@@ -226,6 +226,11 @@ class ServerProcess(object):
         return output
 
     def _wait_for_data_and_update_buffers_using_select(self, deadline, stopping=False):
+        if self._proc.stdout.closed or self._proc.stderr.closed:
+            # If the process crashed and is using FIFOs, like Chromium Android, the
+            # stdout and stderr pipes will be closed.
+            return
+
         out_fd = self._proc.stdout.fileno()
         err_fd = self._proc.stderr.fileno()
         select_fds = (out_fd, err_fd)
@@ -335,19 +340,17 @@ class ServerProcess(object):
             self._proc.stdin.close()
             self._proc.stdin = None
         killed = False
-        if not timeout_secs:
-            self._kill()
-            killed = True
-        elif not self._host.platform.is_win():
-            # FIXME: Why aren't we calling this on win?
+        if timeout_secs:
             deadline = now + timeout_secs
             while self._proc.poll() is None and time.time() < deadline:
                 time.sleep(0.01)
             if self._proc.poll() is None:
-                _log.warning('stopping %s timed out, killing it' % self._name)
-                self._kill()
-                killed = True
-                _log.warning('killed')
+                _log.warning('stopping %s(pid %d) timed out, killing it' % (self._name, self._proc.pid))
+
+        if self._proc.poll() is None:
+            self._kill()
+            killed = True
+            _log.debug('killed pid %d' % self._proc.pid)
 
         # read any remaining data on the pipes and return it.
         if not killed:

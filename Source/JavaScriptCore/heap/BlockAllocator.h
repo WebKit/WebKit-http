@@ -37,8 +37,10 @@ namespace JSC {
 
 class BlockAllocator;
 class CopiedBlock;
+class MarkStackSegment;
 class MarkedBlock;
 class Region;
+class WeakBlock;
 
 // Simple allocator to reduce VM cost by holding onto blocks of memory for
 // short periods of time and then freeing them on a secondary thread.
@@ -184,6 +186,8 @@ private:
 
     RegionSet m_copiedRegionSet;
     RegionSet m_markedRegionSet;
+    // WeakBlocks and MarkStackSegments use the same RegionSet since they're the same size.
+    RegionSet m_weakAndMarkStackRegionSet;
 
     DoublyLinkedList<Region> m_emptyRegions;
     size_t m_numberOfEmptyRegions;
@@ -311,6 +315,18 @@ inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<MarkedBlock>()
 }
 
 template <>
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<WeakBlock>()
+{
+    return m_weakAndMarkStackRegionSet;
+}
+
+template <>
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<MarkStackSegment>()
+{
+    return m_weakAndMarkStackRegionSet;
+}
+
+template <>
 inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<CopiedBlock> >()
 {
     return m_copiedRegionSet;
@@ -320,6 +336,18 @@ template <>
 inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<MarkedBlock> >()
 {
     return m_markedRegionSet;
+}
+
+template <>
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<WeakBlock> >()
+{
+    return m_weakAndMarkStackRegionSet;
+}
+
+template <>
+inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<MarkStackSegment> >()
+{
+    return m_weakAndMarkStackRegionSet;
 }
 
 template <typename T>

@@ -50,6 +50,8 @@ WebInspector.Script = function(scriptId, sourceURL, startLine, startColumn, endL
     this._locations = [];
 }
 
+WebInspector.Script.snippetSourceURLPrefix = "snippets:///";
+
 WebInspector.Script.prototype = {
     /**
      * @return {string}
@@ -135,7 +137,7 @@ WebInspector.Script.prototype = {
         /**
          * @this {WebInspector.Script}
          * @param {?Protocol.Error} error
-         * @param {Array.<DebuggerAgent.CallFrame>|undefined} callFrames
+         * @param {Array.<DebuggerAgent.CallFrame>=} callFrames
          * @param {Object=} debugData
          */
         function didEditScriptSource(error, callFrames, debugData)
@@ -167,6 +169,14 @@ WebInspector.Script.prototype = {
     isAnonymousScript: function()
     {
         return !this.sourceURL;
+    },
+
+    /**
+     * @return {boolean}
+     */
+    isSnippet: function()
+    {
+        return this.sourceURL && this.sourceURL.startsWith(WebInspector.Script.snippetSourceURLPrefix);
     },
 
     /**
@@ -224,7 +234,7 @@ WebInspector.Script.Location.prototype = {
      */
     uiLocation: function()
     {
-        var debuggerModelLocation = /** @type {WebInspector.DebuggerModel.Location} */ this.rawLocation();
+        var debuggerModelLocation = /** @type {WebInspector.DebuggerModel.Location} */ (this.rawLocation());
         return this._script.rawLocationToUILocation(debuggerModelLocation.lineNumber, debuggerModelLocation.columnNumber);
     },
 

@@ -86,6 +86,7 @@ namespace JSC {
         // our scan to run faster. 
         static const unsigned s_timeCheckResolution = 16;
 
+        static bool isLive(const void*);
         static bool isMarked(const void*);
         static bool testAndSetMarked(const void*);
         static void setMarked(const void*);
@@ -187,6 +188,7 @@ namespace JSC {
         friend class SlotVisitor;
         friend class IncrementalSweeper;
         friend class HeapStatistics;
+        friend class WeakSet;
         template<typename T> friend void* allocateCell(Heap&);
         template<typename T> friend void* allocateCell(Heap&, size_t);
 
@@ -303,6 +305,11 @@ namespace JSC {
         if (!v.isCell())
             return 0;
         return heap(v.asCell());
+    }
+
+    inline bool Heap::isLive(const void* cell)
+    {
+        return MarkedBlock::blockFor(cell)->isLiveCell(cell);
     }
 
     inline bool Heap::isMarked(const void* cell)

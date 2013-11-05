@@ -86,7 +86,6 @@
             'tests/LinkHighlightTest.cpp',
             'tests/ListenerLeakTest.cpp',
             'tests/MemoryInfo.cpp',
-            'tests/MemoryInstrumentationTest.cpp',
             'tests/OpaqueRectTrackingContentLayerDelegateTest.cpp',
             'tests/OpenTypeVerticalDataTest.cpp',
             'tests/PODArenaTest.cpp',
@@ -146,8 +145,7 @@
             }],
             ['os_posix==1 and OS!="mac"', {
                 'webkit_unittest_files': [
-                    'tests/LocalizedDateICUTest.cpp',
-                    'tests/LocalizedNumberICUTest.cpp',
+                    'tests/LocaleICUTest.cpp',
                 ],
             }],
             ['toolkit_uses_gtk == 1', {

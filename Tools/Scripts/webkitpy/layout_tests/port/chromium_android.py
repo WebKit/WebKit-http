@@ -180,7 +180,9 @@ class ChromiumAndroidPort(chromium.ChromiumPort):
 
     def additional_drt_flag(self):
         # The Chromium port for Android always uses the hardware GPU path.
-        return ['--encode-binary', '--enable-hardware-gpu']
+        return ['--encode-binary', '--enable-hardware-gpu',
+                '--force-compositing-mode',
+                '--enable-accelerated-fixed-position']
 
     def default_timeout_ms(self):
         # Android platform has less computing power than desktop platforms.
@@ -232,20 +234,16 @@ class ChromiumAndroidPort(chromium.ChromiumPort):
         android_expectations_file = self.path_from_webkit_base('LayoutTests', 'platform', 'chromium-android', 'TestExpectations')
         return super(ChromiumAndroidPort, self).expectations_files() + [android_expectations_file]
 
+    def requires_http_server(self):
+        """Chromium Android runs tests on devices, and uses the HTTP server to
+        serve the actual layout tests to DumpRenderTree."""
+        return True
+
     def start_http_server(self, additional_dirs=None, number_of_servers=0):
-        # The http server runs during the whole testing period, so ignore this call.
-        pass
-
-    def stop_http_server(self):
-        # Same as start_http_server().
-        pass
-
-    def setup_test_run(self):
-        # Start the HTTP server so that the device can access the test cases.
-        super(ChromiumAndroidPort, self).start_http_server(additional_dirs={TEST_PATH_PREFIX: self.layout_tests_dir()})
-
-    def clean_up_test_run(self):
-        super(ChromiumAndroidPort, self).stop_http_server()
+        if not additional_dirs:
+            additional_dirs = {}
+        additional_dirs[TEST_PATH_PREFIX] = self.layout_tests_dir()
+        super(ChromiumAndroidPort, self).start_http_server(additional_dirs, number_of_servers)
 
     def create_driver(self, worker_number, no_timeout=False):
         # We don't want the default DriverProxy which is not compatible with our driver.
@@ -356,10 +354,11 @@ class ChromiumAndroidDriver(driver.Driver):
         if self._has_setup:
             return
 
+        self._run_adb_command(['root'])
         self._setup_md5sum_and_push_data_if_needed()
         self._has_setup = True
-        self._run_adb_command(['root'])
         self._setup_performance()
+
         # Required by webkit_support::GetWebKitRootDirFilePath().
         # Other directories will be created automatically by adb push.
         self._run_adb_command(['shell', 'mkdir', '-p', DEVICE_SOURCE_ROOT_DIR + 'chrome'])
@@ -489,10 +488,6 @@ class ChromiumAndroidDriver(driver.Driver):
         for file, original_content in self._original_governors.items():
             self._run_adb_command(['shell', 'echo', original_content, '>', file])
         self._original_governors = {}
-
-    def _command_wrapper(cls, wrapper_option):
-        # Ignore command wrapper which is not applicable on Android.
-        return []
 
     def _get_crash_log(self, stdout, stderr, newer_than):
         if not stdout:

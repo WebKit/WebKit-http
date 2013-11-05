@@ -26,15 +26,48 @@
 #ifndef WebResourceLoadScheduler_h
 #define WebResourceLoadScheduler_h
 
+#include "WebResourceLoader.h"
+#include <WebCore/ResourceLoadPriority.h>
 #include <WebCore/ResourceLoadScheduler.h>
+#include <WebCore/ResourceLoader.h>
 
 #if ENABLE(NETWORK_PROCESS)
 
 namespace WebKit {
 
+class NetworkProcessConnection;
+typedef uint64_t ResourceLoadIdentifier;
+
 class WebResourceLoadScheduler : public WebCore::ResourceLoadScheduler {
+    WTF_MAKE_NONCOPYABLE(WebResourceLoadScheduler); WTF_MAKE_FAST_ALLOCATED;
 public:
+    WebResourceLoadScheduler();
     virtual ~WebResourceLoadScheduler();
+    
+    virtual PassRefPtr<WebCore::SubresourceLoader> scheduleSubresourceLoad(WebCore::Frame*, WebCore::CachedResource*, const WebCore::ResourceRequest&, WebCore::ResourceLoadPriority, const WebCore::ResourceLoaderOptions&) OVERRIDE;
+    virtual PassRefPtr<WebCore::NetscapePlugInStreamLoader> schedulePluginStreamLoad(WebCore::Frame*, WebCore::NetscapePlugInStreamLoaderClient*, const WebCore::ResourceRequest&) OVERRIDE;
+    
+    virtual void addMainResourceLoad(WebCore::ResourceLoader*) OVERRIDE;
+    virtual void remove(WebCore::ResourceLoader*) OVERRIDE;
+    virtual void crossOriginRedirectReceived(WebCore::ResourceLoader*, const WebCore::KURL& redirectURL) OVERRIDE;
+    
+    virtual void servePendingRequests(WebCore::ResourceLoadPriority minimumPriority = WebCore::ResourceLoadPriorityVeryLow) OVERRIDE;
+
+    virtual void suspendPendingRequests() OVERRIDE;
+    virtual void resumePendingRequests() OVERRIDE;
+
+    virtual void setSerialLoadingEnabled(bool) OVERRIDE;
+
+    WebResourceLoader* webResourceLoaderForIdentifier(ResourceLoadIdentifier identifier) const { return m_webResourceLoaders.get(identifier).get(); }
+
+private:
+    void scheduleLoad(WebCore::ResourceLoader*, WebCore::ResourceLoadPriority);
+    
+    HashMap<unsigned long, RefPtr<WebCore::ResourceLoader> > m_coreResourceLoaders;
+    HashMap<unsigned long, RefPtr<WebResourceLoader> > m_webResourceLoaders;
+    
+    unsigned m_suspendPendingRequestsCount;
+
 };
 
 } // namespace WebKit

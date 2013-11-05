@@ -79,10 +79,6 @@
 #include "WebSoupRequestManagerProxy.h"
 #endif
 
-#if ENABLE(VIBRATION)
-#include "WebVibrationProxy.h"
-#endif
-
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
 #endif
@@ -100,6 +96,9 @@ PassRefPtr<WebContext> WebContext::create(const String& injectedBundlePath)
     JSC::initializeThreading();
     WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
+#if PLATFORM(MAC)
+    WebContext::initializeProcessSuppressionSupport();
+#endif
     return adoptRef(new WebContext(ProcessModelSharedSecondaryProcess, injectedBundlePath));
 }
 
@@ -161,9 +160,6 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
     m_resourceCacheManagerProxy = WebResourceCacheManagerProxy::create(this);
 #if USE(SOUP)
     m_soupRequestManagerProxy = WebSoupRequestManagerProxy::create(this);
-#endif
-#if ENABLE(VIBRATION)
-    m_vibrationProxy = WebVibrationProxy::create(this);
 #endif
     
 #if !LOG_DISABLED
@@ -239,11 +235,6 @@ WebContext::~WebContext()
 #if USE(SOUP)
     m_soupRequestManagerProxy->invalidate();
     m_soupRequestManagerProxy->clearContext();
-#endif
-
-#if ENABLE(VIBRATION)
-    m_vibrationProxy->invalidate();
-    m_vibrationProxy->clearContext();
 #endif
 
     invalidateCallbackMap(m_dictionaryCallbacks);
@@ -497,7 +488,7 @@ void WebContext::processDidFinishLaunching(WebProcessProxy* process)
     if (m_memorySamplerEnabled) {
         SandboxExtension::Handle sampleLogSandboxHandle;        
         double now = WTF::currentTime();
-        String sampleLogFilePath = String::format("WebProcess%llu", static_cast<unsigned long long>(now));
+        String sampleLogFilePath = String::format("WebProcess%llupid%d", static_cast<unsigned long long>(now), process->processIdentifier());
         sampleLogFilePath = SandboxExtension::createHandleForTemporaryFile(sampleLogFilePath, SandboxExtension::WriteOnly, sampleLogSandboxHandle);
         
         process->send(Messages::WebProcess::StartMemorySampler(sampleLogSandboxHandle, sampleLogFilePath, m_memorySamplerInterval), 0);
@@ -549,9 +540,6 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
     m_resourceCacheManagerProxy->invalidate();
 #if USE(SOUP)
     m_soupRequestManagerProxy->invalidate();
-#endif
-#if ENABLE(VIBRATION)
-    m_vibrationProxy->invalidate();
 #endif
 
     // When out of process plug-ins are enabled, we don't want to invalidate the plug-in site data

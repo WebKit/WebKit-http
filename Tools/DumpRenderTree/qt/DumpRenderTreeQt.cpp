@@ -36,9 +36,9 @@
 #include "DumpRenderTreeSupportQt.h"
 #include "EventSenderQt.h"
 #include "GCControllerQt.h"
+#include "QtTestSupport.h"
 #include "TestRunnerQt.h"
 #include "TextInputControllerQt.h"
-#include "QtInitializeTestFonts.h"
 #include "testplugin.h"
 #include "WorkQueue.h"
 
@@ -49,7 +49,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFocusEvent>
-#include <QFontDatabase>
 #include <QLabel>
 #include <QLocale>
 #include <QNetworkAccessManager>
@@ -389,7 +388,8 @@ WebViewGraphicsBased::WebViewGraphicsBased(QWidget* parent)
 }
 
 DumpRenderTree::DumpRenderTree()
-    : m_stdin(0)
+    : m_dumpPixelsForAllTests(false)
+    , m_stdin(0)
     , m_enableTextOutput(false)
     , m_standAloneMode(false)
     , m_graphicsBased(false)
@@ -623,9 +623,9 @@ void DumpRenderTree::open(const QUrl& url)
     QFocusEvent ev(QEvent::FocusIn);
     m_page->event(&ev);
 
-    QWebSettings::clearMemoryCaches();
-    QFontDatabase::removeAllApplicationFonts();
-    WebKit::initializeTestFonts();
+    WebKit::QtTestSupport::clearMemoryCaches();
+
+    WebKit::QtTestSupport::initializeTestFonts();
 
     DumpRenderTreeSupportQt::dumpFrameLoader(url.toString().contains("loading/"));
     setTextOutputEnabled(true);
@@ -692,7 +692,7 @@ void DumpRenderTree::processLine(const QString &input)
 {
     TestCommand command = parseInputLine(std::string(input.toLatin1().constData()));
     QString pathOrURL = QLatin1String(command.pathOrURL.c_str());
-    m_dumpPixelsForCurrentTest = command.shouldDumpPixels;
+    m_dumpPixelsForCurrentTest = command.shouldDumpPixels || m_dumpPixelsForAllTests;
     m_expectedHash = QLatin1String(command.expectedPixelHash.c_str());
 
     if (pathOrURL.startsWith(QLatin1String("http:"))
@@ -938,7 +938,7 @@ void DumpRenderTree::dump()
     fputs("#EOF\n", stdout);
     fputs("#EOF\n", stderr);
 
-    if (m_dumpPixelsForCurrentTest && !m_controller->shouldDumpAsText()) {
+    if (m_dumpPixelsForCurrentTest && m_controller->shouldDumpPixels()) {
         QImage image;
         if (!m_controller->isPrinting()) {
             image = QImage(m_page->viewportSize(), QImage::Format_ARGB32);

@@ -33,25 +33,14 @@
 #define TestRunner_h
 
 #include "CppBoundClass.h"
-#include "WebDeliveredIntentClient.h"
-#include "WebTextDirection.h"
-#include "platform/WebArrayBufferView.h"
-#include "platform/WebString.h"
-#include "platform/WebURL.h"
-#include <wtf/Deque.h>
-#include <wtf/OwnPtr.h>
 
-namespace WebKit {
-class WebGeolocationClientMock;
-}
-
-namespace webkit_support {
-class ScopedTempDirectory;
-}
+namespace WebTestRunner {
 
 class TestRunner : public CppBoundClass {
 public:
     TestRunner();
 };
+
+}
 
 #endif // TestRunner_h

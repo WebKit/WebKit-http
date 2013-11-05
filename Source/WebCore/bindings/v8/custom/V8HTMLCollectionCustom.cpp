@@ -84,11 +84,12 @@ v8::Handle<v8::Value> V8HTMLCollection::namedItemCallback(const v8::Arguments& a
     return result;
 }
 
-v8::Handle<v8::Value> toV8(HTMLCollection* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+v8::Handle<v8::Object> wrap(HTMLCollection* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
+    ASSERT(impl);
     if (impl->type() == DocAll)
-        return toV8(static_cast<HTMLAllCollection*>(impl), creationContext, isolate);
-    return V8HTMLCollection::wrap(impl, creationContext, isolate);
+        return wrap(static_cast<HTMLAllCollection*>(impl), creationContext, isolate);
+    return V8HTMLCollection::createWrapper(impl, creationContext, isolate);
 }
 
 } // namespace WebCore

@@ -46,10 +46,6 @@ public:
         AnchorEdgeBottom = 1 << 3
     };
     typedef unsigned AnchorEdges;
-    
-    ViewportConstraints()
-        : m_anchorEdges(0)
-    { }
 
     virtual ~ViewportConstraints() { }
     
@@ -58,13 +54,45 @@ public:
     AnchorEdges anchorEdges() const { return m_anchorEdges; }
     bool hasAnchorEdge(AnchorEdgeFlags flag) const { return m_anchorEdges & flag; }
     void addAnchorEdge(AnchorEdgeFlags edgeFlag) { m_anchorEdges |= edgeFlag; }
+    void setAnchorEdges(AnchorEdges edges) { m_anchorEdges = edges; }
     
     FloatSize alignmentOffset() const { return m_alignmentOffset; }
     void setAlignmentOffset(const FloatSize& offset) { m_alignmentOffset = offset; }
 
 protected:
+    ViewportConstraints()
+        : m_anchorEdges(0)
+    { }
+
     FloatSize m_alignmentOffset;
     AnchorEdges m_anchorEdges;
+};
+
+class FixedPositionViewportConstraints : public ViewportConstraints {
+public:
+    FloatPoint layerPositionForViewportRect(const FloatRect& viewportRect) const;
+
+    const FloatRect& viewportRectAtLastLayout() const { return m_viewportRectAtLastLayout; }
+    void setViewportRectAtLastLayout(const FloatRect& rect) { m_viewportRectAtLastLayout = rect; }
+
+    const FloatPoint& layerPositionAtLastLayout() const { return m_layerPositionAtLastLayout; }
+    void setLayerPositionAtLastLayout(const FloatPoint& point) { m_layerPositionAtLastLayout = point; }
+
+    bool operator==(const FixedPositionViewportConstraints& other) const
+    {
+        return m_alignmentOffset == other.m_alignmentOffset
+            && m_anchorEdges == other.m_anchorEdges
+            && m_viewportRectAtLastLayout == other.m_viewportRectAtLastLayout
+            && m_layerPositionAtLastLayout == other.m_layerPositionAtLastLayout;
+    }
+
+    bool operator!=(const FixedPositionViewportConstraints& other) const { return !(*this == other); }
+
+private:
+    virtual ConstraintType constraintType() const OVERRIDE { return FixedPositionConstaint; };
+
+    FloatRect m_viewportRectAtLastLayout;
+    FloatPoint m_layerPositionAtLastLayout;
 };
 
 class StickyPositionViewportConstraints : public ViewportConstraints {
@@ -76,7 +104,6 @@ public:
         , m_bottomOffset(0)
     { }
 
-    virtual ConstraintType constraintType() const OVERRIDE { return StickyPositionConstraint; };
     FloatSize computeStickyOffset(const FloatRect& viewportRect) const;
 
     const FloatSize stickyOffsetAtLastLayout() const { return m_stickyOffsetAtLastLayout; }
@@ -101,6 +128,8 @@ public:
     void setAbsoluteStickyBoxRect(const FloatRect& rect) { m_absoluteStickyBoxRect = rect; }
 
 private:
+    virtual ConstraintType constraintType() const OVERRIDE { return StickyPositionConstraint; };
+
     float m_leftOffset;
     float m_rightOffset;
     float m_topOffset;

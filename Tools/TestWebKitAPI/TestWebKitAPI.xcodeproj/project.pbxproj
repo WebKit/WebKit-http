@@ -32,6 +32,8 @@
 		26F1B44415CA434F00D1E4BF /* AtomicString.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F1B44215CA434F00D1E4BF /* AtomicString.cpp */; };
 		26F1B44515CA434F00D1E4BF /* StringImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 26F1B44315CA434F00D1E4BF /* StringImpl.cpp */; };
 		2943BE86161DFEB800999E3D /* UserContentTest.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2943BE84161DFEB800999E3D /* UserContentTest.mm */; };
+		29AB8AA1164C735800D49BEC /* CustomProtocolsTest.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29AB8A9F164C735800D49BEC /* CustomProtocolsTest.mm */; };
+		29AB8AA4164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 29AB8AA2164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.mm */; };
 		333B9CE21277F23100FEFCE3 /* PreventEmptyUserAgent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 333B9CE11277F23100FEFCE3 /* PreventEmptyUserAgent.cpp */; };
 		33BE5AF5137B5A6C00705813 /* MouseMoveAfterCrash.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33BE5AF4137B5A6C00705813 /* MouseMoveAfterCrash.cpp */; };
 		33BE5AF9137B5AAE00705813 /* MouseMoveAfterCrash_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33BE5AF8137B5AAE00705813 /* MouseMoveAfterCrash_Bundle.cpp */; };
@@ -183,6 +185,7 @@
 		F6F49C6B15545CA70007F39D /* DOMWindowExtensionNoCache_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F6F49C6615545C8D0007F39D /* DOMWindowExtensionNoCache_Bundle.cpp */; };
 		F6FDDDD314241AD4004F1729 /* PrivateBrowsingPushStateNoHistoryCallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F6FDDDD214241AD4004F1729 /* PrivateBrowsingPushStateNoHistoryCallback.cpp */; };
 		F6FDDDD614241C6F004F1729 /* push-state.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F6FDDDD514241C48004F1729 /* push-state.html */; };
+		FE217ECD1640A54A0052988B /* VMInspector.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE217ECC1640A54A0052988B /* VMInspector.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -273,6 +276,9 @@
 		26F1B44215CA434F00D1E4BF /* AtomicString.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AtomicString.cpp; path = WTF/AtomicString.cpp; sourceTree = "<group>"; };
 		26F1B44315CA434F00D1E4BF /* StringImpl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StringImpl.cpp; path = WTF/StringImpl.cpp; sourceTree = "<group>"; };
 		2943BE84161DFEB800999E3D /* UserContentTest.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = UserContentTest.mm; path = WebKit2ObjC/UserContentTest.mm; sourceTree = "<group>"; };
+		29AB8A9F164C735800D49BEC /* CustomProtocolsTest.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = CustomProtocolsTest.mm; path = WebKit2ObjC/CustomProtocolsTest.mm; sourceTree = "<group>"; };
+		29AB8AA2164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = TestBrowsingContextLoadDelegate.mm; sourceTree = "<group>"; };
+		29AB8AA3164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestBrowsingContextLoadDelegate.h; sourceTree = "<group>"; };
 		333B9CE11277F23100FEFCE3 /* PreventEmptyUserAgent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PreventEmptyUserAgent.cpp; sourceTree = "<group>"; };
 		33BE5AF4137B5A6C00705813 /* MouseMoveAfterCrash.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MouseMoveAfterCrash.cpp; sourceTree = "<group>"; };
 		33BE5AF8137B5AAE00705813 /* MouseMoveAfterCrash_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MouseMoveAfterCrash_Bundle.cpp; sourceTree = "<group>"; };
@@ -395,7 +401,6 @@
 		BCBD372E125ABBE600D2C29F /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
 		BCBD3760125ABCFE00D2C29F /* FrameMIMETypePNG.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FrameMIMETypePNG.cpp; sourceTree = "<group>"; };
 		BCC8B95A12611F4700DE46A4 /* FailedLoad.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FailedLoad.cpp; sourceTree = "<group>"; };
-		BCF0F9391381C25B008361AC /* CompilerVersion.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = CompilerVersion.xcconfig; sourceTree = "<group>"; };
 		C01363C713C3997300EF3964 /* StringOperators.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = StringOperators.cpp; path = WTF/StringOperators.cpp; sourceTree = "<group>"; };
 		C02B77F1126612140026BF0F /* SpacebarScrolling.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SpacebarScrolling.cpp; sourceTree = "<group>"; };
 		C02B7853126613AE0026BF0F /* Carbon.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; name = Carbon.framework; sourceTree = SDKROOT; };
@@ -439,6 +444,7 @@
 		F6F49C6715545C8D0007F39D /* DOMWindowExtensionNoCache.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DOMWindowExtensionNoCache.cpp; sourceTree = "<group>"; };
 		F6FDDDD214241AD4004F1729 /* PrivateBrowsingPushStateNoHistoryCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PrivateBrowsingPushStateNoHistoryCallback.cpp; sourceTree = "<group>"; };
 		F6FDDDD514241C48004F1729 /* push-state.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "push-state.html"; sourceTree = "<group>"; };
+		FE217ECC1640A54A0052988B /* VMInspector.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VMInspector.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -540,6 +546,7 @@
 		BC3C4C6F14575B1D0025FB62 /* WebKit2 Objective-C */ = {
 			isa = PBXGroup;
 			children = (
+				29AB8A9F164C735800D49BEC /* CustomProtocolsTest.mm */,
 				2943BE84161DFEB800999E3D /* UserContentTest.mm */,
 				BC3C4C7D14587AA60025FB62 /* WKBrowsingContextGroupTest.mm */,
 				BC3C4C7014575B6A0025FB62 /* WKBrowsingContextLoadDelegateTest.mm */,
@@ -563,7 +570,6 @@
 			isa = PBXGroup;
 			children = (
 				BC90957E12554CF900083756 /* Base.xcconfig */,
-				BCF0F9391381C25B008361AC /* CompilerVersion.xcconfig */,
 				BC90957F12554CF900083756 /* DebugRelease.xcconfig */,
 				BC575AE2126E88B1006F0F12 /* InjectedBundle.xcconfig */,
 				BC90958012554CF900083756 /* TestWebKitAPI.xcconfig */,
@@ -711,6 +717,8 @@
 				BC90955C125548AA00083756 /* PlatformWebViewMac.mm */,
 				C081224313FC19EC00DC39AE /* SyntheticBackingScaleFactorWindow.h */,
 				C081224413FC19EC00DC39AE /* SyntheticBackingScaleFactorWindow.m */,
+				29AB8AA3164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.h */,
+				29AB8AA2164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.mm */,
 				C08587BE13FE956C001EF4E5 /* WebKitAgnosticTest.h */,
 				C08587BD13FE956C001EF4E5 /* WebKitAgnosticTest.mm */,
 			);
@@ -720,6 +728,7 @@
 		BCB9EB66112366D800A137E0 /* Tests */ = {
 			isa = PBXGroup;
 			children = (
+				FE217ECB1640A54A0052988B /* JavaScriptCore */,
 				C08587F913FEC39B001EF4E5 /* TestWebKitAPI */,
 				C07E6CAD13FD67650038B22B /* mac */,
 				440A1D3614A01000008A66F2 /* WebCore */,
@@ -816,6 +825,14 @@
 				BCAA485714A044D40088FAC4 /* EditorCommands.mm */,
 			);
 			path = mac;
+			sourceTree = "<group>";
+		};
+		FE217ECB1640A54A0052988B /* JavaScriptCore */ = {
+			isa = PBXGroup;
+			children = (
+				FE217ECC1640A54A0052988B /* VMInspector.cpp */,
+			);
+			path = JavaScriptCore;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1006,6 +1023,9 @@
 				2943BE86161DFEB800999E3D /* UserContentTest.mm in Sources */,
 				4F4D2C0E1626FE2700320FE1 /* MemoryInstrumentationTest.cpp in Sources */,
 				378E64731632646D00B6C676 /* InjectedBundleFrameHitTest.cpp in Sources */,
+				FE217ECD1640A54A0052988B /* VMInspector.cpp in Sources */,
+				29AB8AA1164C735800D49BEC /* CustomProtocolsTest.mm in Sources */,
+				29AB8AA4164C7A9300D49BEC /* TestBrowsingContextLoadDelegate.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -488,7 +488,7 @@ void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
             }
         }
 
-        const CGFloat dottedLine[2] = { patWidth, patWidth };
+        const CGFloat dottedLine[2] = { static_cast<CGFloat>(patWidth), static_cast<CGFloat>(patWidth) };
         CGContextSetLineDash(context, patternOffset, dottedLine, 2);
     }
 
@@ -596,7 +596,7 @@ void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSp
             }
         }
 
-        const CGFloat dottedLine[2] = { patWidth, patWidth };
+        const CGFloat dottedLine[2] = { static_cast<CGFloat>(patWidth), static_cast<CGFloat>(patWidth) };
         CGContextSetLineDash(context, patternOffset, dottedLine, 2);
     }
 
@@ -1060,7 +1060,12 @@ void GraphicsContext::clipOut(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    CGRect rects[2] = { CGRectInfinite, rect };
+    // FIXME: Using CGRectInfinite is much faster than getting the clip bounding box. However, due
+    // to <rdar://problem/12584492>, CGRectInfinite can't be used with an accelerated context that
+    // has certain transforms that aren't just a translation or a scale.
+    const AffineTransform& ctm = getCTM();
+    bool canUseCGRectInfinite = !isAcceleratedContext() || (!ctm.b() && !ctm.c());
+    CGRect rects[2] = { canUseCGRectInfinite ? CGRectInfinite : CGContextGetClipBoundingBox(platformContext()), rect };
     CGContextBeginPath(platformContext());
     CGContextAddRects(platformContext(), rects, 2);
     CGContextEOClip(platformContext());

@@ -135,7 +135,7 @@ struct UCharBufferTranslator {
 
     static void translate(StringImpl*& location, const UCharBuffer& buf, unsigned hash)
     {
-        location = StringImpl::create(buf.s, buf.length).leakRef();
+        location = StringImpl::create8BitIfPossible(buf.s, buf.length).leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -220,12 +220,17 @@ struct HashAndUTF8CharactersTranslator {
     static void translate(StringImpl*& location, const HashAndUTF8Characters& buffer, unsigned hash)
     {
         UChar* target;
-        location = StringImpl::createUninitialized(buffer.utf16Length, target).leakRef();
+        RefPtr<StringImpl> newString = StringImpl::createUninitialized(buffer.utf16Length, target);
 
+        bool isAllASCII;
         const char* source = buffer.characters;
-        if (convertUTF8ToUTF16(&source, source + buffer.length, &target, target + buffer.utf16Length) != conversionOK)
+        if (convertUTF8ToUTF16(&source, source + buffer.length, &target, target + buffer.utf16Length, &isAllASCII) != conversionOK)
             ASSERT_NOT_REACHED();
 
+        if (isAllASCII)
+            newString = StringImpl::create(buffer.characters, buffer.length);
+
+        location = newString.release().leakRef();
         location->setHash(hash);
         location->setIsAtomic(true);
     }
@@ -260,9 +265,9 @@ PassRefPtr<StringImpl> AtomicString::add(const UChar* s)
     if (!s)
         return 0;
 
-    int length = 0;
+    unsigned length = 0;
     while (s[length] != UChar(0))
-        length++;
+        ++length;
 
     if (!length)
         return StringImpl::empty();

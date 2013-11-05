@@ -32,11 +32,13 @@
 #include <QStyle>
 #include <QtTest/QtTest>
 #include <QTextCharFormat>
+#include <private/qinputmethod_p.h>
 #include <qgraphicsscene.h>
 #include <qgraphicsview.h>
 #include <qgraphicswebview.h>
 #include <qnetworkcookiejar.h>
 #include <qnetworkrequest.h>
+#include <qpa/qplatforminputcontext.h>
 #include <qwebdatabase.h>
 #include <qwebelement.h>
 #include <qwebframe.h>
@@ -58,20 +60,36 @@ static void removeRecursive(const QString& dirname)
     QDir().rmdir(dirname);
 }
 
-class EventSpy : public QObject, public QList<QEvent::Type>
+class TestInputContext : public QPlatformInputContext
 {
-    Q_OBJECT
 public:
-    EventSpy(QObject* objectToSpy)
+    TestInputContext()
+    : m_visible(false)
     {
-        objectToSpy->installEventFilter(this);
+        QInputMethodPrivate* inputMethodPrivate = QInputMethodPrivate::get(qApp->inputMethod());
+        inputMethodPrivate->testContext = this;
     }
 
-    virtual bool eventFilter(QObject* receiver, QEvent* event)
+    ~TestInputContext()
     {
-        append(event->type());
-        return false;
+        QInputMethodPrivate* inputMethodPrivate = QInputMethodPrivate::get(qApp->inputMethod());
+        inputMethodPrivate->testContext = 0;
     }
+
+    virtual void showInputPanel()
+    {
+        m_visible = true;
+    }
+    virtual void hideInputPanel()
+    {
+        m_visible = false;
+    }
+    virtual bool isInputPanelVisible() const
+    {
+        return m_visible;
+    }
+
+    bool m_visible;
 };
 
 class tst_QWebPage : public QObject
@@ -544,15 +562,12 @@ void tst_QWebPage::viewModes()
     m_page->setProperty("_q_viewMode", "minimized");
 
     QVariant empty = m_page->mainFrame()->evaluateJavaScript("window.styleMedia.matchMedium(\"(-webkit-view-mode)\")");
-    QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=65531", Continue);
     QVERIFY(empty.type() == QVariant::Bool && empty.toBool());
 
     QVariant minimized = m_page->mainFrame()->evaluateJavaScript("window.styleMedia.matchMedium(\"(-webkit-view-mode: minimized)\")");
-    QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=65531", Continue);
     QVERIFY(minimized.type() == QVariant::Bool && minimized.toBool());
 
     QVariant maximized = m_page->mainFrame()->evaluateJavaScript("window.styleMedia.matchMedium(\"(-webkit-view-mode: maximized)\")");
-    QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=65531", Continue);
     QVERIFY(maximized.type() == QVariant::Bool && !maximized.toBool());
 }
 
@@ -1641,14 +1656,14 @@ void tst_QWebPage::inputMethods()
     } else
         QVERIFY2(false, "Unknown view type");
 
-    page->settings()->setFontFamily(QWebSettings::SerifFont, "FooSerifFont");
+    page->settings()->setFontFamily(QWebSettings::SerifFont, page->settings()->fontFamily(QWebSettings::FixedFont));
     page->mainFrame()->setHtml("<html><body>" \
                                             "<input type='text' id='input1' style='font-family: serif' value='' maxlength='20'/><br>" \
                                             "<input type='password'/>" \
                                             "</body></html>");
     page->mainFrame()->setFocus();
 
-    EventSpy viewEventSpy(container);
+    TestInputContext testContext;
 
     QWebElementCollection inputs = page->mainFrame()->documentElement().findAll("input");
     QPoint textInputCenter = inputs.at(0).geometry().center();
@@ -1673,22 +1688,23 @@ void tst_QWebPage::inputMethods()
     // and the RequestSoftwareInputPanel event is called. For these two situations
     // this part of the test can verified as the checks below.
     if (inputPanel)
-        QVERIFY(viewEventSpy.contains(QEvent::RequestSoftwareInputPanel));
+        QVERIFY(testContext.isInputPanelVisible());
     else
-        QVERIFY(!viewEventSpy.contains(QEvent::RequestSoftwareInputPanel));
-    viewEventSpy.clear();
+        QVERIFY(!testContext.isInputPanelVisible());
+    testContext.hideInputPanel();
 
     clickOnPage(page, textInputCenter);
-    QVERIFY(viewEventSpy.contains(QEvent::RequestSoftwareInputPanel));
+    QVERIFY(testContext.isInputPanelVisible());
 
     //ImMicroFocus
     QVariant variant = page->inputMethodQuery(Qt::ImMicroFocus);
     QVERIFY(inputs.at(0).geometry().contains(variant.toRect().topLeft()));
 
-    //ImFont
+    // We assigned the serif font famility to be the same as the fixef font family.
+    // Then test ImFont on a serif styled element, we should get our fixef font family.
     variant = page->inputMethodQuery(Qt::ImFont);
     QFont font = variant.value<QFont>();
-    QCOMPARE(page->settings()->fontFamily(QWebSettings::SerifFont), font.family());
+    QCOMPARE(page->settings()->fontFamily(QWebSettings::FixedFont), font.family());
 
     QList<QInputMethodEvent::Attribute> inputAttributes;
 
@@ -1884,12 +1900,12 @@ void tst_QWebPage::inputMethods()
     QVERIFY(!(inputMethodHints(view) & Qt::ImhHiddenText));
 
     page->mainFrame()->setHtml("<html><body><p>nothing to input here");
-    viewEventSpy.clear();
+    testContext.hideInputPanel();
 
     QWebElement para = page->mainFrame()->findFirstElement("p");
     clickOnPage(page, para.geometry().center());
 
-    QVERIFY(!viewEventSpy.contains(QEvent::RequestSoftwareInputPanel));
+    QVERIFY(!testContext.isInputPanelVisible());
 
     //START - Test for sending empty QInputMethodEvent
     page->mainFrame()->setHtml("<html><body>" \
@@ -2221,7 +2237,7 @@ void tst_QWebPage::inputMethods()
     QWebElement inputElement = page->mainFrame()->findFirstElement("div");
     clickOnPage(page, inputElement.geometry().center());
 
-    QVERIFY(!viewEventSpy.contains(QEvent::RequestSoftwareInputPanel));
+    QVERIFY(!testContext.isInputPanelVisible());
 
     // START - Newline test for textarea
     qApp->processEvents();
@@ -2472,7 +2488,7 @@ void tst_QWebPage::testLocalStorageVisibility()
     webPage.currentFrame()->setHtml(QString("<html><body>test</body></html>"), QUrl("file:///"));
 
     QCOMPARE(checkLocalStorageVisibility(webPage, false), false);
-    QCOMPARE(checkLocalStorageVisibility(webPage, true), false);
+    QCOMPARE(checkLocalStorageVisibility(webPage, true), true);
 
     webPage.currentFrame()->setHtml(QString("<html><body>test</body></html>"), QUrl("http://www.example.com"));
 
@@ -2899,9 +2915,9 @@ public:
 void tst_QWebPage::showModalDialog()
 {
     TestModalPage page;
+    page.settings()->setAttribute(QWebSettings::JavascriptCanOpenWindows, true);
     page.mainFrame()->setHtml(QString("<html></html>"));
     QString res = page.mainFrame()->evaluateJavaScript("window.showModalDialog('javascript:window.returnValue=dialogArguments; window.close();', 'This is a test');").toString();
-    QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=63244", Continue);
     QCOMPARE(res, QString("This is a test"));
 }
 
@@ -2942,12 +2958,10 @@ void tst_QWebPage::findText()
     QVERIFY(m_page->selectedText().isEmpty());
     QVERIFY(m_page->selectedHtml().isEmpty());
     QStringList words = (QStringList() << "foo" << "bar");
-    QRegExp regExp(" style=\".*\"");
-    regExp.setMinimal(true);
     foreach (QString subString, words) {
         m_page->findText(subString, QWebPage::FindWrapsAroundDocument);
         QCOMPARE(m_page->selectedText(), subString);
-        QCOMPARE(m_page->selectedHtml().trimmed().replace(regExp, ""), subString);
+        QVERIFY(m_page->selectedHtml().contains(subString));
         m_page->findText("");
         QVERIFY(m_page->selectedText().isEmpty());
         QVERIFY(m_page->selectedHtml().isEmpty());

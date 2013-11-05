@@ -128,6 +128,7 @@ public:
     void setAllowExternalPages(bool allowExternalPages) { m_allowExternalPages = allowExternalPages; }
 
     void setAcceleratedCompositingForVideoEnabled(bool enabled) { m_acceleratedCompositingForVideoEnabled = enabled; }
+    void setAcceleratedCompositingForFixedPositionEnabled(bool enabled) { m_acceleratedCompositingForFixedPositionEnabled = enabled; }
     bool softwareCompositingEnabled() { return m_softwareCompositingEnabled; }
     void setSoftwareCompositingEnabled(bool enabled) { m_softwareCompositingEnabled = enabled; }
     void setThreadedCompositingEnabled(bool enabled) { m_threadedCompositingEnabled = enabled; }
@@ -217,8 +218,9 @@ private:
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     OwnPtr<NotificationPresenter> m_notificationPresenter;
 #endif
-    OwnPtr<WebViewHost> m_webViewHost;
+    // It's important that this thread is destroyed after the WebViewHost.
     OwnPtr<WebKit::WebThread> m_webCompositorThread;
+    OwnPtr<WebViewHost> m_webViewHost;
 #if ENABLE(LINK_PRERENDER)
     OwnPtr<MockWebPrerenderingSupport> m_prerenderingSupport;
 #endif
@@ -228,6 +230,7 @@ private:
     int m_timeout; // timeout value in millisecond
     bool m_allowExternalPages;
     bool m_acceleratedCompositingForVideoEnabled;
+    bool m_acceleratedCompositingForFixedPositionEnabled;
     bool m_softwareCompositingEnabled;
     bool m_threadedCompositingEnabled;
     bool m_forceCompositingMode;
@@ -235,6 +238,7 @@ private:
     bool m_deferred2dCanvasEnabled;
     bool m_acceleratedPaintingEnabled;
     bool m_perTilePaintingEnabled;
+    bool m_acceleratedAnimationEnabled;
     bool m_deferredImageDecodingEnabled;
     WebPreferences m_prefs;
     bool m_stressOpt;

@@ -715,7 +715,6 @@ void PlatformCALayer::setFilters(const FilterOperations& filters)
             
             [m_layer.get() setShadowRadius:op->stdDeviation()];
             [m_layer.get() setShadowOpacity:1];
-
             break;
         }
         case FilterOperation::GRAYSCALE: {
@@ -838,6 +837,13 @@ void PlatformCALayer::setFilters(const FilterOperations& filters)
     END_BLOCK_OBJC_EXCEPTIONS
 }
 
+void PlatformCALayer::copyFiltersFrom(const PlatformCALayer* sourceLayer)
+{
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+    [m_layer.get() setFilters:[sourceLayer->platformLayer() filters]];
+    END_BLOCK_OBJC_EXCEPTIONS
+}
+
 bool PlatformCALayer::filtersCanBeComposited(const FilterOperations& filters)
 {
     // Return false if there are no filters to avoid needless work
@@ -850,6 +856,7 @@ bool PlatformCALayer::filtersCanBeComposited(const FilterOperations& filters)
         case FilterOperation::REFERENCE:
 #if ENABLE(CSS_SHADERS)
         case FilterOperation::CUSTOM:
+        case FilterOperation::VALIDATED_CUSTOM:
 #endif
             return false;
         case FilterOperation::DROP_SHADOW:

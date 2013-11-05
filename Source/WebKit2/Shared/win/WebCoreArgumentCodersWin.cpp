@@ -49,11 +49,11 @@ namespace CoreIPC {
 
 // FIXME: These coders should really go in a WebCoreArgumentCodersCFNetwork file.
 
-void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder* encoder, const ResourceRequest& resourceRequest)
+void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder& encoder, const ResourceRequest& resourceRequest)
 {
 #if USE(CFNETWORK)
     bool requestIsPresent = resourceRequest.cfURLRequest();
-    encoder->encode(requestIsPresent);
+    encoder << requestIsPresent;
 
     if (!requestIsPresent)
         return;
@@ -95,11 +95,11 @@ bool ArgumentCoder<ResourceRequest>::decodePlatformData(ArgumentDecoder* decoder
 }
 
 
-void ArgumentCoder<ResourceResponse>::encodePlatformData(ArgumentEncoder* encoder, const ResourceResponse& resourceResponse)
+void ArgumentCoder<ResourceResponse>::encodePlatformData(ArgumentEncoder& encoder, const ResourceResponse& resourceResponse)
 {
 #if USE(CFNETWORK)
     bool responseIsPresent = resourceResponse.cfURLResponse();
-    encoder->encode(responseIsPresent);
+    encoder << responseIsPresent;
 
     if (!responseIsPresent)
         return;
@@ -137,10 +137,10 @@ bool ArgumentCoder<ResourceResponse>::decodePlatformData(ArgumentDecoder* decode
 }
 
 
-void ArgumentCoder<ResourceError>::encodePlatformData(ArgumentEncoder* encoder, const ResourceError& resourceError)
+void ArgumentCoder<ResourceError>::encodePlatformData(ArgumentEncoder& encoder, const ResourceError& resourceError)
 {
 #if USE(CFNETWORK)
-    encoder->encode(PlatformCertificateInfo(resourceError.certificate()));
+    encoder << PlatformCertificateInfo(resourceError.certificate());
 #endif
 }
 

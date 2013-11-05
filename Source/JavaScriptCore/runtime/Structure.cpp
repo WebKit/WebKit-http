@@ -543,6 +543,16 @@ Structure* Structure::nonPropertyTransition(JSGlobalData& globalData, Structure*
     unsigned attributes = toAttributes(transitionKind);
     IndexingType indexingType = newIndexingType(structure->indexingTypeIncludingHistory(), transitionKind);
     
+    if (JSGlobalObject* globalObject = structure->m_globalObject.get()) {
+        if (globalObject->isOriginalArrayStructure(structure)) {
+            Structure* result = globalObject->originalArrayStructureForIndexingType(indexingType);
+            if (result->indexingTypeIncludingHistory() == indexingType) {
+                structure->notifyTransitionFromThisStructure();
+                return result;
+            }
+        }
+    }
+    
     if (Structure* existingTransition = structure->m_transitionTable.get(0, attributes)) {
         ASSERT(existingTransition->m_attributesInPrevious == attributes);
         ASSERT(existingTransition->indexingTypeIncludingHistory() == indexingType);
@@ -850,6 +860,32 @@ void Structure::visitChildren(JSCell* cell, SlotVisitor& visitor)
             visitor.append(&ptr->specificValue);
     }
     visitor.append(&thisObject->m_objectToStringValue);
+}
+
+bool Structure::prototypeChainMayInterceptStoreTo(JSGlobalData& globalData, PropertyName propertyName)
+{
+    unsigned i = propertyName.asIndex();
+    if (i != PropertyName::NotAnIndex)
+        return anyObjectInChainMayInterceptIndexedAccesses();
+    
+    for (Structure* current = this; ;) {
+        JSValue prototype = current->storedPrototype();
+        if (prototype.isNull())
+            return false;
+        
+        current = prototype.asCell()->structure();
+        
+        unsigned attributes;
+        JSCell* specificValue;
+        PropertyOffset offset = current->get(globalData, propertyName, attributes, specificValue);
+        if (!JSC::isValidOffset(offset))
+            continue;
+        
+        if (attributes & (ReadOnly | Accessor))
+            return true;
+        
+        return false;
+    }
 }
 
 #if DO_PROPERTYMAP_CONSTENCY_CHECK

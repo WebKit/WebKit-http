@@ -118,9 +118,9 @@ void ColorInputType::createShadowSubtree()
 
     Document* document = element()->document();
     RefPtr<HTMLDivElement> wrapperElement = HTMLDivElement::create(document);
-    wrapperElement->setShadowPseudoId("-webkit-color-swatch-wrapper");
+    wrapperElement->setPseudo(AtomicString("-webkit-color-swatch-wrapper", AtomicString::ConstructFromLiteral));
     RefPtr<HTMLDivElement> colorSwatch = HTMLDivElement::create(document);
-    colorSwatch->setShadowPseudoId("-webkit-color-swatch");
+    colorSwatch->setPseudo(AtomicString("-webkit-color-swatch", AtomicString::ConstructFromLiteral));
     ExceptionCode ec = 0;
     wrapperElement->appendChild(colorSwatch.release(), ec);
     ASSERT(!ec);
@@ -221,6 +221,8 @@ bool ColorInputType::shouldShowSuggestions() const
 {
 #if ENABLE(DATALIST_ELEMENT)
     return element()->fastHasAttribute(listAttr);
+#else
+    return false;
 #endif
 }
 

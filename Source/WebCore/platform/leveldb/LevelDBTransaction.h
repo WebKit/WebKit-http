@@ -30,6 +30,7 @@
 #if USE(LEVELDB)
 
 #include "LevelDBComparator.h"
+#include "LevelDBDatabase.h"
 #include "LevelDBIterator.h"
 #include "LevelDBSlice.h"
 #include <wtf/AVLTree.h>
@@ -42,7 +43,6 @@
 
 namespace WebCore {
 
-class LevelDBDatabase;
 class LevelDBWriteBatch;
 
 using WTF::AVLTree;
@@ -52,8 +52,8 @@ public:
     static PassRefPtr<LevelDBTransaction> create(LevelDBDatabase*);
 
     ~LevelDBTransaction();
-    bool put(const LevelDBSlice& key, const Vector<char>& value);
-    bool remove(const LevelDBSlice& key);
+    void put(const LevelDBSlice& key, const Vector<char>& value);
+    void remove(const LevelDBSlice& key);
     bool get(const LevelDBSlice& key, Vector<char>& value);
     bool commit();
     void rollback();
@@ -157,13 +157,14 @@ private:
         mutable bool m_treeChanged;
     };
 
-    bool set(const LevelDBSlice& key, const Vector<char>& value, bool deleted);
+    void set(const LevelDBSlice& key, const Vector<char>& value, bool deleted);
     void clearTree();
     void registerIterator(TransactionIterator*);
     void unregisterIterator(TransactionIterator*);
     void notifyIteratorsOfTreeChange();
 
     LevelDBDatabase* m_db;
+    const LevelDBSnapshot m_snapshot;
     const LevelDBComparator* m_comparator;
     TreeType m_tree;
     bool m_finished;

@@ -27,8 +27,8 @@
 #include "config.h"
 #include "LiteralParser.h"
 
-#include "ButterflyInlineMethods.h"
-#include "CopiedSpaceInlineMethods.h"
+#include "ButterflyInlines.h"
+#include "CopiedSpaceInlines.h"
 #include "JSArray.h"
 #include "JSString.h"
 #include "Lexer.h"
@@ -548,7 +548,7 @@ JSValue LiteralParser<CharType>::parse(ParserState initialState)
         switch(state) {
             startParseArray:
             case StartParseArray: {
-                JSArray* array = constructEmptyArray(m_exec);
+                JSArray* array = constructEmptyArray(m_exec, 0);
                 objectStack.append(array);
                 // fallthrough
             }

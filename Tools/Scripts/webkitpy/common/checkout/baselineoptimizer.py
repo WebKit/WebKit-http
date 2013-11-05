@@ -32,10 +32,11 @@ import logging
 
 _log = logging.getLogger(__name__)
 
+
 # Yes, it's a hypergraph.
 # FIXME: Should this function live with the ports somewhere?
 # Perhaps this should move onto PortFactory?
-def _baseline_search_hypergraph(host):
+def _baseline_search_hypergraph(host, port_names):
     hypergraph = {}
 
     # These edges in the hypergraph aren't visible on build.webkit.org,
@@ -46,7 +47,7 @@ def _baseline_search_hypergraph(host):
     fallback_path = ['LayoutTests']
 
     port_factory = host.port_factory
-    for port_name in port_factory.all_port_names():
+    for port_name in port_names:
         port = port_factory.get(port_name)
         webkit_base = port.webkit_base()
         search_path = port.baseline_search_path()
@@ -74,14 +75,14 @@ def _invert_dictionary(dictionary):
 
 
 class BaselineOptimizer(object):
-    def __init__(self, host):
+    def __init__(self, host, port_names):
         self._host = host
         self._filesystem = self._host.filesystem
         self._scm = self._host.scm()
-        self._hypergraph = _baseline_search_hypergraph(host)
+        self._hypergraph = _baseline_search_hypergraph(host, port_names)
         self._directories = reduce(set.union, map(set, self._hypergraph.values()))
 
-    def _read_results_by_directory(self, baseline_name):
+    def read_results_by_directory(self, baseline_name):
         results_by_directory = {}
         for directory in self._directories:
             path = self._filesystem.join(self._scm.checkout_root, directory, baseline_name)
@@ -122,7 +123,7 @@ class BaselineOptimizer(object):
             results_by_directory[directory] = result
 
     def _find_optimal_result_placement(self, baseline_name):
-        results_by_directory = self._read_results_by_directory(baseline_name)
+        results_by_directory = self.read_results_by_directory(baseline_name)
         results_by_port_name = self._results_by_port_name(results_by_directory)
         port_names_by_result = _invert_dictionary(results_by_port_name)
 
@@ -181,7 +182,7 @@ class BaselineOptimizer(object):
             return best_so_far
         except KeyError as e:
             # FIXME: KeyErrors get raised if we're missing baselines. We should handle this better.
-            return results_by_directory
+            return {}
 
     def _find_in_fallbackpath(self, fallback_path, current_result, results_by_directory):
         for index, directory in enumerate(fallback_path):
@@ -196,6 +197,15 @@ class BaselineOptimizer(object):
                 del results_by_port_name[port_name]
         return results_by_port_name
 
+    def _platform(self, filename):
+        platform_dir = 'LayoutTests' + self._filesystem.sep + 'platform' + self._filesystem.sep
+        if filename.startswith(platform_dir):
+            return filename.replace(platform_dir, '').split(self._filesystem.sep)[0]
+        platform_dir = self._filesystem.join(self._scm.checkout_root, platform_dir)
+        if filename.startswith(platform_dir):
+            return filename.replace(platform_dir, '').split(self._filesystem.sep)[0]
+        return '(generic)'
+
     def _move_baselines(self, baseline_name, results_by_directory, new_results_by_directory):
         data_for_result = {}
         for directory, result in results_by_directory.items():
@@ -208,12 +218,12 @@ class BaselineOptimizer(object):
             if new_results_by_directory.get(directory) != result:
                 file_names.append(self._filesystem.join(self._scm.checkout_root, directory, baseline_name))
         if file_names:
-            _log.debug("deleting:")
-            for filename in file_names:
-                _log.debug("  " + self._filesystem.relpath(filename, self._scm.checkout_root).replace(baseline_name, ''))
+            _log.debug("    Deleting:")
+            for platform_dir in sorted(self._platform(filename) for filename in file_names):
+                _log.debug("      " + platform_dir)
             self._scm.delete_list(file_names)
         else:
-            _log.debug("nothing to delete")
+            _log.debug("    (Nothing to delete)")
 
         file_names = []
         for directory, result in new_results_by_directory.items():
@@ -223,16 +233,20 @@ class BaselineOptimizer(object):
                 self._filesystem.write_binary_file(destination, data_for_result[result])
                 file_names.append(destination)
         if file_names:
-            _log.debug("adding:")
-            for filename in file_names:
-                _log.debug("  " + self._filesystem.relpath(filename, self._scm.checkout_root).replace(baseline_name, ''))
+            _log.debug("    Adding:")
+            for platform_dir in sorted(self._platform(filename) for filename in file_names):
+                _log.debug("      " + platform_dir)
             self._scm.add_list(file_names)
         else:
-            _log.debug("nothing to add")
+            _log.debug("    (Nothing to add)")
 
     def directories_by_result(self, baseline_name):
-        results_by_directory = self._read_results_by_directory(baseline_name)
+        results_by_directory = self.read_results_by_directory(baseline_name)
         return _invert_dictionary(results_by_directory)
+
+    def write_by_directory(self, results_by_directory, writer, indent):
+        for path in sorted(results_by_directory):
+            writer("%s%s: %s" % (indent, self._platform(path), results_by_directory[path][0:6]))
 
     def optimize(self, baseline_name):
         basename = self._filesystem.basename(baseline_name)
@@ -240,23 +254,21 @@ class BaselineOptimizer(object):
         self.new_results_by_directory = new_results_by_directory
         if new_results_by_directory == results_by_directory:
             if new_results_by_directory:
-                _log.debug("No optimization found for %s, optimal?" % basename)
-                for path, result in results_by_directory.items():
-                    _log.debug("  %s: %s" % (self._filesystem.relpath(path, self._scm.checkout_root).replace(baseline_name, ''), result[0:6]))
+                _log.debug("  %s: (already optimal)" % basename)
+                self.write_by_directory(results_by_directory, _log.debug, "    ")
             else:
-                _log.debug("No baselines found for %s" % basename)
+                _log.debug("  %s: (no baselines found)" % basename)
             return True
         if self._filtered_results_by_port_name(results_by_directory) != self._filtered_results_by_port_name(new_results_by_directory):
-            _log.warning("Optimization failed")
+            _log.warning("  %s: optimization failed" % basename)
+            self.write_by_directory(results_by_directory, _log.warning, "      ")
             return False
 
-        _log.debug("Optimizing %s" % basename)
-        _log.debug("before: ")
-        for path, result in results_by_directory.items():
-            _log.debug("  %s: %s" % (self._filesystem.relpath(path, self._scm.checkout_root).replace(baseline_name, ''), result[0:6]))
-        _log.debug("after: ")
-        for path, result in new_results_by_directory.items():
-            _log.debug("  %s: %s" % (self._filesystem.relpath(path, self._scm.checkout_root).replace(baseline_name, ''), result[0:6]))
+        _log.debug("  %s:" % basename)
+        _log.debug("    Before: ")
+        self.write_by_directory(results_by_directory, _log.debug, "      ")
+        _log.debug("    After: ")
+        self.write_by_directory(new_results_by_directory, _log.debug, "      ")
 
         self._move_baselines(baseline_name, results_by_directory, new_results_by_directory)
         return True

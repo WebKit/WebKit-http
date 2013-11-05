@@ -52,7 +52,7 @@ config.kPlatforms = {
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
         },
-        builderApplies: function(builderName) {
+        _builderApplies: function(builderName) {
             return builderName.indexOf('Apple') != -1;
         },
     },
@@ -84,16 +84,18 @@ config.kPlatforms = {
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return buildNumber;
         },
-        builderApplies: function(builderName) {
+        _builderApplies: function(builderName) {
             // FIXME: Should garden-o-matic show these? I can imagine showing the deps bots being useful at least so
             // that the gardener only need to look at garden-o-matic and never at the waterfall. Not really sure who
             // watches the GPU bots.
             // The 10.8 Tests bot is really an FYI bot at this point
+            // WebKit Android doesn't upload its results yet.
             return builderName.indexOf('GPU') == -1 &&
                    builderName.indexOf('deps') == -1 &&
                    builderName.indexOf('ASAN') == -1 &&
                    builderName.indexOf('Content Shell') == -1 &&
-                   builderName.indexOf('Mac10.8 Tests') == -1;
+                   builderName.indexOf('Mac10.8 Tests') == -1 &&
+                   builderName.indexOf('WebKit Android') == -1;
         },
     },
     'gtk' : {
@@ -115,7 +117,7 @@ config.kPlatforms = {
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
         },
-        builderApplies: function(builderName) {
+        _builderApplies: function(builderName) {
             return builderName.indexOf('GTK') != -1;
         },
     },
@@ -136,8 +138,31 @@ config.kPlatforms = {
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
         },
-        builderApplies: function(builderName) {
+        _builderApplies: function(builderName) {
             return builderName.indexOf('Qt') != -1;
+        },
+    },
+    'efl' : {
+        label : 'EFL',
+        buildConsoleURL: 'http://build.webkit.org',
+        layoutTestResultsURL: 'http://build.webkit.org/results',
+        waterfallURL: 'http://build.webkit.org/waterfall',
+        builders: {
+            'EFL Linux 64-bit Debug WK2' : {version : '64-bit WK2', debug: true},
+            'EFL Linux 64-bit Release WK2' : {version: '64-bit WK2'},
+            'EFL Linux 64-bit Release' : {version: '64-bit'},
+        },
+        haveBuilderAccumulatedResults : false,
+        useDirectoryListingForOldBuilds: false,
+        useFlakinessDashboard: false,
+        resultsDirectoryNameFromBuilderName: function(builderName) {
+            return encodeURIComponent(builderName);
+        },
+        resultsDirectoryForBuildNumber: function(buildNumber, revision) {
+            return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
+        },
+        _builderApplies: function(builderName) {
+            return builderName.indexOf('EFL') != -1;
         },
     },
 };
@@ -159,15 +184,36 @@ config.kRelativeTimeUpdateFrequency = 1000 * 60;
 
 config.kExperimentalFeatures = window.location.search.search('enableExperiments=1') != -1;
 
-config.currentPlatform = 'chromium';
+config.currentPlatform = base.getURLParameter('platform') || 'chromium';
 
-config.setPlatform = function(platform)
-{
+// FIXME: We should add a way to restrict the results to a subset of the builders
+// (or maybe just a single builder) in the UI as well as via an URL parameter.
+config.currentBuilder = base.getURLParameter('builder');
+
+config.currentBuilders = function() {
+    var current_builders = {};
+    if (config.currentBuilder) {
+        current_builders[config.currentBuilder] = config.kPlatforms[config.currentPlatform].builders[config.currentBuilder];
+        return current_builders;
+    } else {
+        return config.kPlatforms[config.currentPlatform].builders;
+    }
+};
+
+config.builderApplies = function(builderName) {
+    if (config.currentBuilder)
+        return builderName == config.currentBuilder;
+    return config.kPlatforms[config.currentPlatform]._builderApplies(builderName);
+};
+
+config.setPlatform = function(platform) {
     if (!this.kPlatforms[platform]) {
         window.console.log(platform + ' is not a recognized platform');
         return;
     }
     config.currentPlatform = platform;
 };
+
+config.useLocalResults = Boolean(base.getURLParameter('useLocalResults')) || false;
 
 })();

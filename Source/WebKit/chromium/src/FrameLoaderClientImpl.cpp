@@ -62,6 +62,9 @@
 #endif
 #include "Settings.h"
 #include "SocketStreamHandleInternal.h"
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+#include "WebAutofillClient.h"
+#endif
 #include "WebDOMEvent.h"
 #include "WebDataSourceImpl.h"
 #include "WebDevToolsAgentPrivate.h"
@@ -1651,5 +1654,28 @@ void FrameLoaderClientImpl::dispatchWillStartUsingPeerConnectionHandler(RTCPeerC
 }
 #endif
 
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+void FrameLoaderClientImpl::didRequestAutocomplete(PassRefPtr<FormState> formState)
+{
+    if (m_webFrame->viewImpl() && m_webFrame->viewImpl()->autofillClient())
+        m_webFrame->viewImpl()->autofillClient()->didRequestAutocomplete(m_webFrame, WebFormElement(formState->form()));
+}
+#endif
+
+#if ENABLE(WEBGL)
+bool FrameLoaderClientImpl::allowWebGL(bool enabledPerSettings)
+{
+    if (m_webFrame->client())
+        return m_webFrame->client()->allowWebGL(m_webFrame, enabledPerSettings);
+
+    return enabledPerSettings;
+}
+
+void FrameLoaderClientImpl::didLoseWebGLContext(int arbRobustnessContextLostReason)
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->didLoseWebGLContext(m_webFrame, arbRobustnessContextLostReason);
+}
+#endif
 
 } // namespace WebKit

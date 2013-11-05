@@ -30,7 +30,7 @@
 #define AccessibilityNodeObject_h
 
 #include "AccessibilityObject.h"
-#include "LayoutTypes.h"
+#include "LayoutRect.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -171,6 +171,7 @@ protected:
     void alterSliderValue(bool increase);
     void changeValueByStep(bool increase);
     bool isARIARange() const;
+    // This returns true if it's focusable but it's not content editable and it's not a control or ARIA control.
     bool isGenericFocusableElement() const;
     HTMLLabelElement* labelForElement(Element*) const;
     String ariaAccessibilityDescription() const;

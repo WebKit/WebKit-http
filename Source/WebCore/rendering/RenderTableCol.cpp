@@ -70,14 +70,16 @@ void RenderTableCol::updateFromElement()
         setNeedsLayoutAndPrefWidthsRecalc();
 }
 
+void RenderTableCol::insertedIntoTree()
+{
+    RenderBox::insertedIntoTree();
+    table()->addColumn(this);
+}
+
 void RenderTableCol::willBeRemovedFromTree()
 {
     RenderBox::willBeRemovedFromTree();
-
-    // We don't really need to recompute our sections, but we need to update our
-    // column count and whether we have a column. Currently, we only have one
-    // size-fit-all flag but we may have to consider splitting it.
-    table()->setNeedsSectionRecalc();
+    table()->removeColumn(this);
 }
 
 bool RenderTableCol::isChildAllowed(RenderObject* child, RenderStyle* style) const
@@ -93,7 +95,7 @@ bool RenderTableCol::canHaveChildren() const
     return isTableColumnGroup();
 }
 
-LayoutRect RenderTableCol::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
+LayoutRect RenderTableCol::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     // For now, just repaint the whole table.
     // FIXME: Find a better way to do this, e.g., need to repaint all the cells that we

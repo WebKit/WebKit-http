@@ -280,7 +280,7 @@ SMILTime SVGSMILElement::parseClockValue(const String& data)
     
     String parse = data.stripWhiteSpace();
 
-    DEFINE_STATIC_LOCAL(const AtomicString, indefiniteValue, ("indefinite"));
+    DEFINE_STATIC_LOCAL(const AtomicString, indefiniteValue, ("indefinite", AtomicString::ConstructFromLiteral));
     if (parse == indefiniteValue)
         return SMILTime::indefinite();
 
@@ -421,9 +421,6 @@ bool SVGSMILElement::isSupportedAttribute(const QualifiedName& attrName)
         supportedAttributes.add(SVGNames::minAttr);
         supportedAttributes.add(SVGNames::maxAttr);
         supportedAttributes.add(SVGNames::attributeNameAttr);
-        supportedAttributes.add(SVGNames::fromAttr);
-        supportedAttributes.add(SVGNames::toAttr);
-        supportedAttributes.add(SVGNames::byAttr);
         supportedAttributes.add(XLinkNames::hrefAttr);
     }
     return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
@@ -635,8 +632,8 @@ bool SVGSMILElement::isFrozen() const
     
 SVGSMILElement::Restart SVGSMILElement::restart() const
 {    
-    DEFINE_STATIC_LOCAL(const AtomicString, never, ("never"));
-    DEFINE_STATIC_LOCAL(const AtomicString, whenNotActive, ("whenNotActive"));
+    DEFINE_STATIC_LOCAL(const AtomicString, never, ("never", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, whenNotActive, ("whenNotActive", AtomicString::ConstructFromLiteral));
     const AtomicString& value = fastGetAttribute(SVGNames::restartAttr);
     if (value == never)
         return RestartNever;
@@ -647,7 +644,7 @@ SVGSMILElement::Restart SVGSMILElement::restart() const
     
 SVGSMILElement::FillMode SVGSMILElement::fill() const
 {   
-    DEFINE_STATIC_LOCAL(const AtomicString, freeze, ("freeze"));
+    DEFINE_STATIC_LOCAL(const AtomicString, freeze, ("freeze", AtomicString::ConstructFromLiteral));
     const AtomicString& value = fastGetAttribute(SVGNames::fillAttr);
     return value == freeze ? FillFreeze : FillRemove;
 }
@@ -680,7 +677,7 @@ SMILTime SVGSMILElement::repeatCount() const
     if (value.isNull())
         return SMILTime::unresolved();
 
-    DEFINE_STATIC_LOCAL(const AtomicString, indefiniteValue, ("indefinite"));
+    DEFINE_STATIC_LOCAL(const AtomicString, indefiniteValue, ("indefinite", AtomicString::ConstructFromLiteral));
     if (value == indefiniteValue)
         return SMILTime::indefinite();
     bool ok;
@@ -713,6 +710,7 @@ SMILTime SVGSMILElement::simpleDuration() const
 
 void SVGSMILElement::addBeginTime(SMILTime eventTime, SMILTime beginTime, SMILTimeWithOrigin::Origin origin)
 {
+    ASSERT(!isnan(beginTime.value()));
     m_beginTimes.append(SMILTimeWithOrigin(beginTime, origin));
     sortTimeList(m_beginTimes);
     beginListChanged(eventTime);
@@ -720,6 +718,7 @@ void SVGSMILElement::addBeginTime(SMILTime eventTime, SMILTime beginTime, SMILTi
 
 void SVGSMILElement::addEndTime(SMILTime eventTime, SMILTime endTime, SMILTimeWithOrigin::Origin origin)
 {
+    ASSERT(!isnan(endTime.value()));
     m_endTimes.append(SMILTimeWithOrigin(endTime, origin));
     sortTimeList(m_endTimes);
     endListChanged(eventTime);
@@ -1002,9 +1001,7 @@ float SVGSMILElement::calculateAnimationPercentAndRepeat(SMILTime elapsed, unsig
     SMILTime activeTime = elapsed - m_intervalBegin;
     SMILTime repeatingDuration = this->repeatingDuration();
     if (elapsed >= m_intervalEnd || activeTime > repeatingDuration) {
-        repeat = static_cast<unsigned>(repeatingDuration.value() / simpleDuration.value());
-        if (fmod(repeatingDuration.value(), !simpleDuration.value()))
-            repeat--;
+        repeat = static_cast<unsigned>(repeatingDuration.value() / simpleDuration.value()) - 1;
 
         double percent = (m_intervalEnd.value() - m_intervalBegin.value()) / simpleDuration.value();
         percent = percent - floor(percent);

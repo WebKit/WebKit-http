@@ -29,12 +29,13 @@
  */
 
 #include "config.h"
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 #include "BaseDateAndTimeInputType.h"
 
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "KeyboardEvent.h"
-#include "Localizer.h"
+#include "PlatformLocale.h"
 #include <limits>
 #include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
@@ -156,7 +157,7 @@ String BaseDateAndTimeInputType::localizeValue(const String& proposedValue) cons
     if (!parseToDateComponents(proposedValue, &date))
         return proposedValue;
 
-    String localized = element()->localizer().formatDateTime(date);
+    String localized = element()->locale().formatDateTime(date);
     return localized.isEmpty() ? proposedValue : localized;
 }
 
@@ -167,14 +168,11 @@ String BaseDateAndTimeInputType::visibleValue() const
 
 String BaseDateAndTimeInputType::convertFromVisibleValue(const String& visibleValue) const
 {
-    if (visibleValue.isEmpty())
-        return visibleValue;
-
-    double parsedValue = element()->localizer().parseDateTime(visibleValue, dateType());
-    if (!isfinite(parsedValue))
-        return visibleValue;
-
-    return serializeWithMilliseconds(parsedValue);
+    // convertFromVisibleValue is used in the textfield UI. Though this class
+    // inherits TextFieldInputType, users are unable to edit visible values, and
+    // this function is never called.
+    ASSERT_NOT_REACHED();
+    return visibleValue;
 }
 
 String BaseDateAndTimeInputType::sanitizeValue(const String& proposedValue) const
@@ -183,3 +181,4 @@ String BaseDateAndTimeInputType::sanitizeValue(const String& proposedValue) cons
 }
 
 } // namespace WebCore
+#endif

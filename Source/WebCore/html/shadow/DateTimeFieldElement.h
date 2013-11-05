@@ -65,9 +65,9 @@ public:
     virtual void populateDateTimeFieldsState(DateTimeFieldsState&) = 0;
     void removeEventHandler() { m_fieldOwner = 0; }
     void setReadOnly();
-    virtual void setEmptyValue(const DateComponents& dateForReadOnlyField, EventBehavior = DispatchNoEvent) = 0;
+    virtual void setEmptyValue(EventBehavior = DispatchNoEvent) = 0;
     virtual void setValueAsDate(const DateComponents&) = 0;
-    virtual void setValueAsDateTimeFieldsState(const DateTimeFieldsState&, const DateComponents& dateForReadOnlyField) = 0;
+    virtual void setValueAsDateTimeFieldsState(const DateTimeFieldsState&) = 0;
     virtual void setValueAsInteger(int, EventBehavior = DispatchNoEvent) = 0;
     virtual void stepDown() = 0;
     virtual void stepUp() = 0;
@@ -81,7 +81,7 @@ protected:
     virtual void didFocus();
     void focusOnNextField();
     virtual void handleKeyboardEvent(KeyboardEvent*) = 0;
-    void initialize(const AtomicString& shadowPseudoId, const String& axHelpText);
+    void initialize(const AtomicString& pseudo, const String& axHelpText);
     AtomicString localeIdentifier() const;
     virtual int maximum() const = 0;
     virtual int minimum() const = 0;

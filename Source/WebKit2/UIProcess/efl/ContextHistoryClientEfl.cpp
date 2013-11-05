@@ -53,7 +53,7 @@ void ContextHistoryClientEfl::didNavigateWithNavigationData(WKContextRef, WKPage
     if (!historyClient->m_navigate)
         return;
 
-    RefPtr<Ewk_Navigation_Data> navigationDataEwk = Ewk_Navigation_Data::create(navigationData);
+    RefPtr<Ewk_Navigation_Data> navigationDataEwk = EwkNavigationData::create(navigationData);
     historyClient->m_navigate(EwkViewImpl::viewFromPageViewMap(page), navigationDataEwk.get(), historyClient->m_userData);
 }
 
@@ -106,7 +106,7 @@ void ContextHistoryClientEfl::populateVisitedLinks(WKContextRef, const void* cli
     historyClient->m_populateVisitedLinks(historyClient->m_userData);
 }
 
-ContextHistoryClientEfl::ContextHistoryClientEfl(WKContextRef context)
+ContextHistoryClientEfl::ContextHistoryClientEfl(PassRefPtr<WebContext> context)
     : m_userData(0)
     , m_navigate(0)
     , m_clientRedirect(0)
@@ -128,7 +128,7 @@ ContextHistoryClientEfl::ContextHistoryClientEfl(WKContextRef context)
     wkHistoryClient.didUpdateHistoryTitle = didUpdateHistoryTitle;
     wkHistoryClient.populateVisitedLinks = populateVisitedLinks;
 
-    WKContextSetHistoryClient(context, &wkHistoryClient);
+    context->initializeHistoryClient(&wkHistoryClient);
 }
 
 void ContextHistoryClientEfl::setCallbacks(Ewk_History_Navigation_Cb navigate, Ewk_History_Client_Redirection_Cb clientRedirect, Ewk_History_Server_Redirection_Cb serverRedirect, Ewk_History_Title_Update_Cb titleUpdate, Ewk_History_Populate_Visited_Links_Cb populateVisitedLinks, void* data)

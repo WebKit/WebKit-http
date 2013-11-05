@@ -138,7 +138,7 @@ public:
     // A method asking if the platform is able to show datalist suggestions for a given input type.
     virtual bool supportsDataListUI(const AtomicString&) const { return false; }
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI) && ENABLE(CALENDAR_PICKER)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     // A method asking if the platform is able to show a calendar picker for a given input type.
     virtual bool supportsCalendarPicker(const AtomicString&) const { return false; }
 #endif
@@ -207,6 +207,7 @@ public:
     virtual bool usesVerticalVolumeSlider() const { return true; }
     virtual double mediaControlsFadeInDuration() { return 0.1; }
     virtual double mediaControlsFadeOutDuration() { return 0.3; }
+    virtual double timeWithoutMouseMovementBeforeHidingControls() { return 3.0; }
     virtual String formatMediaControlsTime(float time) const;
     virtual String formatMediaControlsCurrentTime(float currentTime, float duration) const;
     virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const;

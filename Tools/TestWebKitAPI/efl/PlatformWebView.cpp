@@ -41,12 +41,11 @@ static Ecore_Evas* initEcoreEvas()
 {
     ASSERT(ecore_evas_init());
 
-    Ecore_Evas* ecoreEvas;
-
-    if (useX11Window)
-        ecoreEvas = ecore_evas_new(0, 0, 0, 800, 600, 0);
-    else
-        ecoreEvas = ecore_evas_buffer_new(800, 600);
+    const char* engine = 0;
+#if defined(WTF_USE_ACCELERATED_COMPOSITING) && defined(HAVE_ECORE_X)
+    engine = "opengl_x11";
+#endif
+    Ecore_Evas* ecoreEvas = ecore_evas_new(engine, 0, 0, 800, 600, 0);
 
     ASSERT(ecoreEvas);
 
@@ -61,6 +60,7 @@ PlatformWebView::PlatformWebView(WKContextRef contextRef, WKPageGroupRef pageGro
     Evas* evas = ecore_evas_get(m_window);
     m_view = toImpl(WKViewCreate(evas, contextRef, pageGroupRef));
     ewk_view_theme_set(m_view, THEME_DIR"/default.edj");
+    resizeTo(600, 800);
 }
 
 PlatformWebView::~PlatformWebView()
@@ -68,6 +68,11 @@ PlatformWebView::~PlatformWebView()
     evas_object_del(m_view);
     ecore_evas_free(m_window);
     ecore_evas_shutdown();
+}
+
+void PlatformWebView::resizeTo(unsigned width, unsigned height)
+{
+    evas_object_resize(m_view, width, height);
 }
 
 WKPageRef PlatformWebView::page() const

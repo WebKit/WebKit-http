@@ -67,13 +67,13 @@ static void appendMailtoPostFormDataToURL(KURL& url, const FormData& data, const
 
     if (equalIgnoringCase(encodingType, "text/plain")) {
         // Convention seems to be to decode, and s/&/\r\n/. Also, spaces are encoded as %20.
-        body = decodeURLEscapeSequences(body.replace('&', "\r\n").replace('+', ' ') + "\r\n");
+        body = decodeURLEscapeSequences(body.replaceWithLiteral('&', "\r\n").replace('+', ' ') + "\r\n");
     }
 
     Vector<char> bodyData;
     bodyData.append("body=", 5);
     FormDataBuilder::encodeStringAsFormData(bodyData, body.utf8());
-    body = String(bodyData.data(), bodyData.size()).replace('+', "%20");
+    body = String(bodyData.data(), bodyData.size()).replaceWithLiteral('+', "%20");
 
     String query = url.query();
     if (!query.isEmpty())
@@ -245,9 +245,9 @@ void FormSubmission::populateFrameLoadRequest(FrameLoadRequest& frameRequest)
         frameRequest.resourceRequest().setHTTPBody(m_formData);
 
         // construct some user headers if necessary
-        if (m_contentType.isNull() || m_contentType == "application/x-www-form-urlencoded")
+        if (m_boundary.isEmpty())
             frameRequest.resourceRequest().setHTTPContentType(m_contentType);
-        else // contentType must be "multipart/form-data"
+        else
             frameRequest.resourceRequest().setHTTPContentType(m_contentType + "; boundary=" + m_boundary);
     }
 

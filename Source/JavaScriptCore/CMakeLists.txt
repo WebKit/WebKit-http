@@ -40,6 +40,7 @@ SET(JavaScriptCore_SOURCES
     assembler/MacroAssembler.cpp
     assembler/LinkBuffer.cpp
 
+    bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
@@ -49,8 +50,6 @@ SET(JavaScriptCore_SOURCES
     bytecode/GetByIdStatus.cpp
     bytecode/JumpTable.cpp
     bytecode/LazyOperandValueProfile.cpp
-    bytecode/MethodCallLinkInfo.cpp
-    bytecode/MethodCallLinkStatus.cpp
     bytecode/MethodOfGettingAValueProfile.cpp
     bytecode/Opcode.cpp
     bytecode/PolymorphicPutByIdList.cpp
@@ -61,6 +60,7 @@ SET(JavaScriptCore_SOURCES
     bytecode/SpecialPointer.cpp
     bytecode/StructureStubClearingWatchpoint.cpp
     bytecode/StructureStubInfo.cpp
+    bytecode/UnlinkedCodeBlock.cpp
     bytecode/Watchpoint.cpp
 
     bytecompiler/BytecodeGenerator.cpp
@@ -176,6 +176,7 @@ SET(JavaScriptCore_SOURCES
     runtime/BooleanObject.cpp
     runtime/BooleanPrototype.cpp
     runtime/CallData.cpp
+    runtime/CodeCache.cpp
     runtime/CommonIdentifiers.cpp
     runtime/Completion.cpp
     runtime/ConstructData.cpp
@@ -353,11 +354,18 @@ IF (ENABLE_LLINT)
     )
     TARGET_LINK_LIBRARIES(LLIntOffsetsExtractor ${WTF_LIBRARY_NAME})
 
+    # The build system will execute asm.rb every time LLIntOffsetsExtractor's mtime is newer than
+    # LLIntAssembly.h's mtime. The problem we have here is: asm.rb has some built-in optimization
+    # that generates a checksum of the LLIntOffsetsExtractor binary, if the checksum of the new
+    # LLIntOffsetsExtractor matches, no output is generated. To make this target consistent and avoid
+    # running this command for every build, we artificially update LLIntAssembly.h's mtime (using touch)
+    # after every asm.rb run.
     ADD_CUSTOM_COMMAND(
         OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
         MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb
         DEPENDS LLIntOffsetsExtractor ${LLINT_ASM} ${OFFLINE_ASM}
         COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/asm.rb ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm $<TARGET_FILE:LLIntOffsetsExtractor> ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
+        COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h
         VERBATIM)
 
     # The explanation for not making LLIntAssembly.h part of the OBJECT_DEPENDS property of some of

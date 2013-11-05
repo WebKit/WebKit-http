@@ -49,11 +49,29 @@ RenderPart* HTMLFrameOwnerElement::renderPart() const
     return toRenderPart(renderer());
 }
 
+void HTMLFrameOwnerElement::setContentFrame(Frame* frame)
+{
+    // Make sure we will not end up with two frames referencing the same owner element.
+    ASSERT(!m_contentFrame || m_contentFrame->ownerElement() != this);
+    ASSERT(frame);
+    // Disconnected frames should not be allowed to load.
+    ASSERT(inDocument());
+    m_contentFrame = frame;
+
+    for (ContainerNode* node = this; node; node = node->parentOrHostNode())
+        node->incrementConnectedSubframeCount();
+}
+
 void HTMLFrameOwnerElement::disconnectContentFrame()
 {
     ASSERT(hasCustomCallbacks());
-    // This causes an unload event thus cannot be a part of removedFrom().
+    // This causes an unload event in the subframe so it cannot be a part of
+    // removedFrom() because the unload handler in a same domain frame must be
+    // able to reach upward into the owner document.
     if (Frame* frame = contentFrame()) {
+        for (ContainerNode* node = this; node; node = node->parentOrHostNode())
+            node->decrementConnectedSubframeCount();
+
         RefPtr<Frame> protect(frame);
         frame->loader()->frameDetached();
         frame->disconnectOwnerElement();

@@ -32,8 +32,8 @@
 #include "PagePopupController.h"
 
 #if ENABLE(PAGE_POPUP)
-#include "Localizer.h"
 #include "PagePopupClient.h"
+#include "PlatformLocale.h"
 
 namespace WebCore {
 
@@ -57,9 +57,20 @@ void PagePopupController::setValueAndClosePopup(int numValue, const String& stri
 String PagePopupController::localizeNumberString(const String& numberString)
 {
     if (m_popupClient)
-        return m_popupClient->localizer().convertToLocalizedNumber(numberString);
+        return m_popupClient->locale().convertToLocalizedNumber(numberString);
     return numberString;
 }
+
+#if ENABLE(CALENDAR_PICKER)
+String PagePopupController::formatMonth(int year, int zeroBaseMonth)
+{
+    if (!m_popupClient)
+        return emptyString();
+    DateComponents date;
+    date.setMonthsSinceEpoch((year - 1970) * 12.0 + zeroBaseMonth);
+    return m_popupClient->locale().formatDateTime(date);
+}
+#endif
 
 void PagePopupController::clearPagePopupClient()
 {

@@ -31,12 +31,14 @@
 #include "IDBKey.h"
 #include "IDBTransaction.h"
 #include "ScriptValue.h"
+#include "ScriptWrappable.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
+class DOMRequestState;
 class IDBAny;
 class IDBCallbacks;
 class IDBCursorBackendInterface;
@@ -45,7 +47,7 @@ class ScriptExecutionContext;
 
 typedef int ExceptionCode;
 
-class IDBCursor : public RefCounted<IDBCursor> {
+class IDBCursor : public ScriptWrappable, public RefCounted<IDBCursor> {
 public:
     enum Direction {
         NEXT = 0,
@@ -83,7 +85,7 @@ public:
 
     void postSuccessHandlerCallback();
     void close();
-    void setValueReady(ScriptExecutionContext*, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, ScriptValue&);
+    void setValueReady(DOMRequestState*, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, ScriptValue&);
     PassRefPtr<IDBKey> idbPrimaryKey() { return m_currentPrimaryKey; }
 
 protected:

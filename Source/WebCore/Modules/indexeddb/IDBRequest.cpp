@@ -76,6 +76,7 @@ IDBRequest::IDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> sourc
     , m_pendingCursor(0)
     , m_didFireUpgradeNeededEvent(false)
     , m_preventPropagation(false)
+    , m_requestState(context)
 {
     if (m_transaction) {
         m_transaction->registerRequest(this);
@@ -136,8 +137,8 @@ PassRefPtr<IDBTransaction> IDBRequest::transaction() const
 const String& IDBRequest::readyState() const
 {
     ASSERT(m_readyState == PENDING || m_readyState == DONE);
-    DEFINE_STATIC_LOCAL(AtomicString, pending, ("pending"));
-    DEFINE_STATIC_LOCAL(AtomicString, done, ("done"));
+    DEFINE_STATIC_LOCAL(AtomicString, pending, ("pending", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(AtomicString, done, ("done", AtomicString::ConstructFromLiteral));
 
     if (m_readyState == PENDING)
         return pending;
@@ -284,7 +285,8 @@ void IDBRequest::onSuccess(PassRefPtr<IDBCursorBackendInterface> backend, PassRe
     if (!shouldEnqueueEvent())
         return;
 
-    ScriptValue value = deserializeIDBValue(scriptExecutionContext(), serializedValue);
+    DOMRequestState::Scope scope(m_requestState);
+    ScriptValue value = deserializeIDBValue(&m_requestState, serializedValue);
     ASSERT(m_cursorType != IDBCursorBackendInterface::InvalidCursorType);
     RefPtr<IDBCursor> cursor;
     if (m_cursorType == IDBCursorBackendInterface::IndexKeyCursor)
@@ -323,7 +325,7 @@ void IDBRequest::onSuccess(PassRefPtr<IDBTransactionBackendInterface> prpBackend
     if (!shouldEnqueueEvent())
         return;
 
-    RefPtr<IDBTransaction> frontend = IDBTransaction::create(scriptExecutionContext(), backend, IDBTransaction::VERSION_CHANGE, m_source->idbDatabase().get());
+    RefPtr<IDBTransaction> frontend = IDBTransaction::create(scriptExecutionContext(), backend, Vector<String>(), IDBTransaction::VERSION_CHANGE, m_source->idbDatabase().get());
     backend->setCallbacks(frontend.get());
     m_transaction = frontend;
 
@@ -340,7 +342,8 @@ void IDBRequest::onSuccess(PassRefPtr<SerializedScriptValue> serializedScriptVal
     if (!shouldEnqueueEvent())
         return;
 
-    ScriptValue value = deserializeIDBValue(scriptExecutionContext(), serializedScriptValue);
+    DOMRequestState::Scope scope(m_requestState);
+    ScriptValue value = deserializeIDBValue(&m_requestState, serializedScriptValue);
     onSuccessInternal(value);
 }
 
@@ -366,7 +369,8 @@ void IDBRequest::onSuccess(PassRefPtr<SerializedScriptValue> prpSerializedScript
 #ifndef NDEBUG
     ASSERT(keyPath == effectiveObjectStore(m_source)->keyPath());
 #endif
-    ScriptValue value = deserializeIDBValue(scriptExecutionContext(), prpSerializedScriptValue);
+    DOMRequestState::Scope scope(m_requestState);
+    ScriptValue value = deserializeIDBValue(&m_requestState, prpSerializedScriptValue);
 
     RefPtr<IDBKey> primaryKey = prpPrimaryKey;
 #ifndef NDEBUG
@@ -404,7 +408,8 @@ void IDBRequest::onSuccess(PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey
     if (!shouldEnqueueEvent())
         return;
 
-    ScriptValue value = deserializeIDBValue(scriptExecutionContext(), serializedValue);
+    DOMRequestState::Scope scope(m_requestState);
+    ScriptValue value = deserializeIDBValue(&m_requestState, serializedValue);
     ASSERT(m_pendingCursor);
     setResultCursor(m_pendingCursor.release(), key, primaryKey, value);
     enqueueEvent(createSuccessEvent());
@@ -425,6 +430,7 @@ void IDBRequest::stop()
         return;
 
     m_contextStopped = true;
+    m_requestState.clear();
     if (m_readyState == PENDING)
         markEarlyDeath();
 }
@@ -449,6 +455,9 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> event)
     ASSERT(scriptExecutionContext());
     ASSERT(event->target() == this);
     ASSERT_WITH_MESSAGE(m_readyState < DONE, "When dispatching event %s, m_readyState < DONE(%d), was %d", event->type().string().utf8().data(), DONE, m_readyState);
+
+    DOMRequestState::Scope scope(m_requestState);
+
     if (event->type() != eventNames().blockedEvent)
         m_readyState = DONE;
 
@@ -473,7 +482,7 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> event)
     if (event->type() == eventNames().successEvent) {
         cursorToNotify = getResultCursor();
         if (cursorToNotify) {
-            cursorToNotify->setValueReady(scriptExecutionContext(), m_cursorKey.release(), m_cursorPrimaryKey.release(), m_cursorValue);
+            cursorToNotify->setValueReady(&m_requestState, m_cursorKey.release(), m_cursorPrimaryKey.release(), m_cursorValue);
             m_cursorValue.clear();
         }
     }
@@ -521,7 +530,7 @@ void IDBRequest::uncaughtExceptionInEventHandler()
 {
     if (m_transaction && !m_requestAborted) {
         m_transaction->setError(DOMError::create(IDBDatabaseException::getErrorName(IDBDatabaseException::IDB_ABORT_ERR)));
-        ExceptionCode unused; 
+        ExceptionCode unused;
         m_transaction->abort(unused);
     }
 }

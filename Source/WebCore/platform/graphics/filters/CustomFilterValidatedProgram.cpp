@@ -34,10 +34,12 @@
 #include "CustomFilterValidatedProgram.h"
 
 #include "ANGLEWebKitBridge.h"
+#include "CustomFilterConstants.h"
 #include "CustomFilterGlobalContext.h"
 #include "CustomFilterProgramInfo.h"
 #include "NotImplemented.h"
 #include <wtf/HashMap.h>
+#include <wtf/Vector.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
@@ -45,8 +47,6 @@ namespace WebCore {
 
 #define SHADER(Src) (#Src) 
 
-// FIXME: Reuse this type when we validate the types of built-in uniforms.
-// https://bugs.webkit.org/show_bug.cgi?id=98974
 typedef HashMap<String, ShDataType> SymbolNameToTypeMap;
 
 static SymbolNameToTypeMap* builtInAttributeNameToTypeMap()
@@ -62,7 +62,21 @@ static SymbolNameToTypeMap* builtInAttributeNameToTypeMap()
     return nameToTypeMap;
 }
 
-static bool validateSymbols(const Vector<ANGLEShaderSymbol>& symbols)
+static SymbolNameToTypeMap* builtInUniformNameToTypeMap()
+{
+    static SymbolNameToTypeMap* nameToTypeMap = 0;
+    if (!nameToTypeMap) {
+        nameToTypeMap = new SymbolNameToTypeMap;
+        nameToTypeMap->set("u_meshBox", SH_FLOAT_VEC4);
+        nameToTypeMap->set("u_meshSize", SH_FLOAT_VEC2);
+        nameToTypeMap->set("u_projectionMatrix", SH_FLOAT_MAT4);
+        nameToTypeMap->set("u_textureSize", SH_FLOAT_VEC2);
+        nameToTypeMap->set("u_tileSize", SH_FLOAT_VEC2);
+    }
+    return nameToTypeMap;
+}
+
+static bool validateSymbols(const Vector<ANGLEShaderSymbol>& symbols, CustomFilterMeshType meshType)
 {
     for (size_t i = 0; i < symbols.size(); ++i) {
         const ANGLEShaderSymbol& symbol = symbols[i];
@@ -70,16 +84,27 @@ static bool validateSymbols(const Vector<ANGLEShaderSymbol>& symbols)
         case SHADER_SYMBOL_TYPE_ATTRIBUTE: {
             SymbolNameToTypeMap* attributeNameToTypeMap = builtInAttributeNameToTypeMap();
             SymbolNameToTypeMap::iterator builtInAttribute = attributeNameToTypeMap->find(symbol.name);
-            if (builtInAttribute != attributeNameToTypeMap->end() && symbol.dataType != builtInAttribute->value) {
-                // The author defined one of the built-in attributes with the wrong type.
+            if (builtInAttribute == attributeNameToTypeMap->end()) {
+                // The author defined a custom attribute.
+                // FIXME: Report the validation error.
+                // https://bugs.webkit.org/show_bug.cgi?id=74416
                 return false;
             }
-
-            // FIXME: Return false when the attribute is not one of the built-in attributes.
-            // https://bugs.webkit.org/show_bug.cgi?id=98973
+            if (meshType == MeshTypeAttached && symbol.name == "a_triangleCoord") {
+                // a_triangleCoord is only available for detached meshes.
+                // FIXME: Report the validation error.
+                // https://bugs.webkit.org/show_bug.cgi?id=74416
+                return false;
+            }
+            if (symbol.dataType != builtInAttribute->value) {
+                // The author defined one of the built-in attributes with the wrong type.
+                // FIXME: Report the validation error.
+                // https://bugs.webkit.org/show_bug.cgi?id=74416
+                return false;
+            }
             break;
         }
-        case SHADER_SYMBOL_TYPE_UNIFORM:
+        case SHADER_SYMBOL_TYPE_UNIFORM: {
             if (symbol.isSampler()) {
                 // FIXME: For now, we restrict shaders with any sampler defined.
                 // When we implement texture parameters, we will allow shaders whose samplers are bound to valid textures.
@@ -89,9 +114,16 @@ static bool validateSymbols(const Vector<ANGLEShaderSymbol>& symbols)
                 return false;
             }
 
-            // FIXME: Validate the types of built-in uniforms.
-            // https://bugs.webkit.org/show_bug.cgi?id=98974
+            SymbolNameToTypeMap* uniformNameToTypeMap = builtInUniformNameToTypeMap();
+            SymbolNameToTypeMap::iterator builtInUniform = uniformNameToTypeMap->find(symbol.name);
+            if (builtInUniform != uniformNameToTypeMap->end() && (symbol.isArray || symbol.dataType != builtInUniform->value)) {
+                // The author defined one of the built-in uniforms with the wrong type.
+                // FIXME: Report the validation error.
+                // https://bugs.webkit.org/show_bug.cgi?id=74416
+                return false;
+            }
             break;
+        }
         default:
             ASSERT_NOT_REACHED();
             break;
@@ -153,7 +185,7 @@ CustomFilterValidatedProgram::CustomFilterValidatedProgram(CustomFilterGlobalCon
         return;
     }
 
-    if (!validateSymbols(symbols)) {
+    if (!validateSymbols(symbols, m_programInfo.meshType())) {
         // FIXME: Report validation errors.
         // https://bugs.webkit.org/show_bug.cgi?id=74416
         return;
@@ -161,7 +193,7 @@ CustomFilterValidatedProgram::CustomFilterValidatedProgram(CustomFilterGlobalCon
 
     // We need to add texture access, blending, and compositing code to shaders that are referenced from the CSS mix function.
     if (blendsElementTexture) {
-        rewriteMixVertexShader();
+        rewriteMixVertexShader(symbols);
         rewriteMixFragmentShader();
     }
 
@@ -185,21 +217,32 @@ bool CustomFilterValidatedProgram::needsInputTexture() const
         && m_programInfo.mixSettings().compositeOperator != CompositeCopy;
 }
 
-void CustomFilterValidatedProgram::rewriteMixVertexShader()
+void CustomFilterValidatedProgram::rewriteMixVertexShader(const Vector<ANGLEShaderSymbol>& symbols)
 {
     ASSERT(m_programInfo.programType() == PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE);
+
+    // If the author defined a_texCoord, we can use it to shuttle the texture coordinate to the fragment shader.
+    // Note that vertex attributes are read-only in GLSL, so the author could not have changed a_texCoord's value.
+    // Also, note that we would have already rejected the shader if the author defined a_texCoord with the wrong type.
+    bool texCoordAttributeDefined = false;
+    for (size_t i = 0; i < symbols.size(); ++i) {
+        if (symbols[i].name == "a_texCoord")
+            texCoordAttributeDefined = true;
+    }
+
+    if (!texCoordAttributeDefined)
+        m_validatedVertexShader.append("attribute mediump vec2 a_texCoord;");
 
     // During validation, ANGLE renamed the author's "main" function to "css_main".
     // We write our own "main" function and call "css_main" from it.
     // This makes rewriting easy and ensures that our code runs after all author code.
     m_validatedVertexShader.append(SHADER(
-        attribute mediump vec2 css_a_texCoord;
         varying mediump vec2 css_v_texCoord;
 
         void main()
         {
             css_main();
-            css_v_texCoord = css_a_texCoord;
+            css_v_texCoord = a_texCoord;
         }
     ));
 }

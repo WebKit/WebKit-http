@@ -42,26 +42,28 @@ namespace WebCore {
 
 class GraphicsLayer;
 class ScrollingStateTree;
+class TextStream;
 
 class ScrollingStateNode {
-    WTF_MAKE_NONCOPYABLE(ScrollingStateNode);
-
 public:
     ScrollingStateNode(ScrollingStateTree*, ScrollingNodeID);
     virtual ~ScrollingStateNode();
 
-    virtual bool isScrollingStateScrollingNode() { return false; }
+    virtual bool isScrollingNode() { return false; }
+    virtual bool isFixedNode() { return false; }
 
-    virtual PassOwnPtr<ScrollingStateNode> cloneAndResetNode() = 0;
-    void cloneAndResetChildNodes(ScrollingStateNode*);
+    virtual PassOwnPtr<ScrollingStateNode> clone() = 0;
+    PassOwnPtr<ScrollingStateNode> cloneAndReset();
+    void cloneAndResetChildren(ScrollingStateNode*);
 
     virtual bool hasChangedProperties() const = 0;
     virtual unsigned changedProperties() const = 0;
     virtual void resetChangedProperties() = 0;
     virtual void setHasChangedProperties() { setScrollLayerDidChange(true); }
 
+    GraphicsLayer* graphicsLayer() { return m_graphicsLayer; }
     PlatformLayer* platformScrollLayer() const;
-    void setScrollLayer(const GraphicsLayer*);
+    void setScrollLayer(GraphicsLayer*);
     void setScrollLayer(PlatformLayer*);
 
     bool scrollLayerDidChange() const { return m_scrollLayerDidChange; }
@@ -81,12 +83,19 @@ public:
     void appendChild(PassOwnPtr<ScrollingStateNode>);
     void removeChild(ScrollingStateNode*);
 
+    String scrollingStateTreeAsText() const;
+
 protected:
-    ScrollingStateNode(ScrollingStateNode*);
+    ScrollingStateNode(const ScrollingStateNode&);
+    static void writeIndent(TextStream&, int indent);
 
     ScrollingStateTree* m_scrollingStateTree;
 
 private:
+    void dump(TextStream&, int indent) const;
+
+    virtual void dumpProperties(TextStream&, int indent) const = 0;
+
     ScrollingNodeID m_nodeID;
 
     ScrollingStateNode* m_parent;
@@ -97,6 +106,7 @@ private:
 #if PLATFORM(MAC)
     RetainPtr<PlatformLayer> m_platformScrollLayer;
 #endif
+    GraphicsLayer* m_graphicsLayer;
 
 };
 

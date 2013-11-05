@@ -53,8 +53,9 @@ INCLUDEPATH += \
     $$SOURCE_DIR/platform/animation \
     $$SOURCE_DIR/platform/audio \
     $$SOURCE_DIR/platform/graphics \
+    $$SOURCE_DIR/platform/graphics/cpu/arm \
+    $$SOURCE_DIR/platform/graphics/cpu/arm/filters \
     $$SOURCE_DIR/platform/graphics/filters \
-    $$SOURCE_DIR/platform/graphics/filters/arm \
     $$SOURCE_DIR/platform/graphics/opengl \
     $$SOURCE_DIR/platform/graphics/opentype \
     $$SOURCE_DIR/platform/graphics/qt \
@@ -285,4 +286,6 @@ unix|win32-g++* {
 *-g++*:QMAKE_CXXFLAGS -= -std=c++0x -std=gnu++0x
 
 enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1
+
+!production_build:have?(FONTCONFIG): PKGCONFIG += fontconfig
 

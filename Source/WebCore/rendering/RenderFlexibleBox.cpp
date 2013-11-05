@@ -132,7 +132,7 @@ struct RenderFlexibleBox::Violation {
 
 RenderFlexibleBox::RenderFlexibleBox(Node* node)
     : RenderBlock(node)
-    , m_numberOfChildrenOnFirstLine(0)
+    , m_numberOfInFlowChildrenOnFirstLine(-1)
 {
     setChildrenInline(false); // All of our children must be block-level.
 }
@@ -254,11 +254,11 @@ int RenderFlexibleBox::firstLineBoxBaseline() const
 {
     ASSERT(m_orderIterator);
 
-    if (isWritingModeRoot() || !m_numberOfChildrenOnFirstLine)
+    if (isWritingModeRoot() || m_numberOfInFlowChildrenOnFirstLine <= 0)
         return -1;
     RenderBox* baselineChild = 0;
-    RenderBox* child = m_orderIterator->first();
-    for (size_t childNumber = 0; childNumber < m_numberOfChildrenOnFirstLine; ++childNumber, child = m_orderIterator->next()) {
+    int childNumber = 0;
+    for (RenderBox* child = m_orderIterator->first(); child; child = m_orderIterator->next()) {
         if (child->isOutOfFlowPositioned())
             continue;
         if (alignmentForChild(child) == AlignBaseline && !hasAutoMarginsInCrossAxis(child)) {
@@ -267,6 +267,10 @@ int RenderFlexibleBox::firstLineBoxBaseline() const
         }
         if (!baselineChild)
             baselineChild = child;
+
+        ++childNumber;
+        if (childNumber == m_numberOfInFlowChildrenOnFirstLine)
+            break;
     }
 
     if (!baselineChild)
@@ -320,6 +324,7 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     setLogicalHeight(0);
     updateLogicalWidth();
 
+    m_numberOfInFlowChildrenOnFirstLine = -1;
     m_overflow.clear();
 
     RenderBlock::startDelayUpdateScrollInfo();
@@ -371,7 +376,7 @@ void RenderFlexibleBox::paintChildren(PaintInfo& paintInfo, const LayoutPoint& p
 
 void RenderFlexibleBox::repositionLogicalHeightDependentFlexItems(OrderIterator& iterator, WTF::Vector<LineContext>& lineContexts, LayoutUnit& oldClientAfterEdge)
 {
-    LayoutUnit crossAxisStartEdge = lineContexts.isEmpty() ? ZERO_LAYOUT_UNIT : lineContexts[0].crossAxisOffset;
+    LayoutUnit crossAxisStartEdge = lineContexts.isEmpty() ? LayoutUnit() : lineContexts[0].crossAxisOffset;
     alignFlexLines(iterator, lineContexts);
 
     // If we have a single line flexbox, the line height is all the available space.
@@ -385,8 +390,6 @@ void RenderFlexibleBox::repositionLogicalHeightDependentFlexItems(OrderIterator&
             oldClientAfterEdge = clientLogicalBottom();
         flipForWrapReverse(iterator, lineContexts, crossAxisStartEdge);
     }
-
-    m_numberOfChildrenOnFirstLine = lineContexts.isEmpty() ? 0 : lineContexts[0].numberOfChildren;
 
     // direction:rtl + flex-direction:column means the cross-axis direction is flipped.
     flipForRightToLeftColumn(iterator);
@@ -894,7 +897,8 @@ bool RenderFlexibleBox::computeNextFlexLine(OrderIterator& iterator, OrderedFlex
     if (!iterator.currentChild())
         return false;
 
-    LayoutUnit lineBreakLength = mainAxisContentExtent(MAX_LAYOUT_UNIT);
+    LayoutUnit lineBreakLength = mainAxisContentExtent(LayoutUnit::max());
+    bool lineHasInFlowItem = false;
 
     for (RenderBox* child = iterator.currentChild(); child; child = iterator.next()) {
         if (child->isOutOfFlowPositioned()) {
@@ -906,9 +910,10 @@ bool RenderFlexibleBox::computeNextFlexLine(OrderIterator& iterator, OrderedFlex
         LayoutUnit childMainAxisMarginBoxExtent = mainAxisBorderAndPaddingExtentForChild(child) + childMainAxisExtent;
         childMainAxisMarginBoxExtent += isHorizontalFlow() ? child->marginWidth() : child->marginHeight();
 
-        if (isMultiline() && preferredMainAxisExtent + childMainAxisMarginBoxExtent > lineBreakLength && orderedChildren.size() > 0)
+        if (isMultiline() && preferredMainAxisExtent + childMainAxisMarginBoxExtent > lineBreakLength && lineHasInFlowItem)
             break;
         orderedChildren.append(child);
+        lineHasInFlowItem  = true;
         preferredMainAxisExtent += childMainAxisMarginBoxExtent;
         totalFlexGrow += child->style()->flexGrow();
         totalWeightedFlexShrink += child->style()->flexShrink() * childMainAxisExtent;
@@ -1130,6 +1135,8 @@ void RenderFlexibleBox::layoutAndPlaceChildren(LayoutUnit& crossAxisOffset, cons
         layoutColumnReverse(children, crossAxisOffset, availableFreeSpace);
     }
 
+    if (m_numberOfInFlowChildrenOnFirstLine == -1)
+        m_numberOfInFlowChildrenOnFirstLine = seenInFlowPositionedChildren;
     lineContexts.append(LineContext(crossAxisOffset, maxChildCrossAxisExtent, children.size(), maxAscent));
     crossAxisOffset += maxChildCrossAxisExtent;
 }
@@ -1234,7 +1241,7 @@ void RenderFlexibleBox::alignChildren(OrderIterator& iterator, const WTF::Vector
 
     RenderBox* child = iterator.first();
     for (size_t lineNumber = 0; lineNumber < lineContexts.size(); ++lineNumber) {
-        LayoutUnit minMarginAfterBaseline = MAX_LAYOUT_UNIT;
+        LayoutUnit minMarginAfterBaseline = LayoutUnit::max();
         LayoutUnit lineCrossAxisExtent = lineContexts[lineNumber].crossAxisExtent;
         LayoutUnit maxAscent = lineContexts[lineNumber].maxAscent;
 
@@ -1319,7 +1326,7 @@ void RenderFlexibleBox::applyStretchAlignmentToChild(RenderBox* child, LayoutUni
     } else if (isColumnFlow() && child->style()->logicalWidth().isAuto()) {
         // FIXME: If the child doesn't have orthogonal flow, then it already has an override width set, so use it.
         if (hasOrthogonalFlow(child)) {
-            LayoutUnit childWidth = std::max(ZERO_LAYOUT_UNIT, lineCrossAxisExtent - crossAxisMarginExtentForChild(child));
+            LayoutUnit childWidth = std::max<LayoutUnit>(0, lineCrossAxisExtent - crossAxisMarginExtentForChild(child));
             childWidth = child->constrainLogicalWidthInRegionByMinMax(childWidth, childWidth, this);
 
             if (childWidth != child->logicalWidth()) {

@@ -49,7 +49,7 @@ typedef WebCore::LayerCompiledProgram PlatformCompiledProgram;
 
 namespace WebCore {
 
-class ANGLEWebKitBridge;
+struct ANGLEShaderSymbol;
 class CustomFilterCompiledProgram;
 class CustomFilterGlobalContext;
 
@@ -79,6 +79,18 @@ public:
     const CustomFilterProgramInfo& programInfo() const { return m_programInfo; }
     PassRefPtr<CustomFilterCompiledProgram> compiledProgram();
 
+    const String& validatedVertexShader() const 
+    {
+        ASSERT(m_isInitialized); 
+        return m_validatedVertexShader; 
+    }
+
+    const String& validatedFragmentShader() const 
+    { 
+        ASSERT(m_isInitialized); 
+        return m_validatedFragmentShader; 
+    }
+
 #if PLATFORM(BLACKBERRY)
     PlatformCompiledProgram* platformCompiledProgram();
 #endif
@@ -100,7 +112,7 @@ private:
     static String blendFunctionString(BlendMode);
     static String compositeFunctionString(CompositeOperator);
 
-    void rewriteMixVertexShader();
+    void rewriteMixVertexShader(const Vector<ANGLEShaderSymbol>& symbols);
     void rewriteMixFragmentShader();
 
     bool needsInputTexture() const;

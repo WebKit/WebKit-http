@@ -66,7 +66,7 @@ namespace WebCore {
         virtual void handleEvent(ScriptExecutionContext*, Event*);
 
     private:
-        mutable JSC::WriteBarrier<JSC::JSObject> m_jsFunction;
+        mutable JSC::Weak<JSC::JSObject> m_jsFunction;
         mutable JSC::Weak<JSC::JSObject> m_wrapper;
 
         bool m_isAttribute;
@@ -82,12 +82,16 @@ namespace WebCore {
 
         if (!m_jsFunction) {
             JSC::JSObject* function = initializeJSFunction(scriptExecutionContext);
-            m_jsFunction.setMayBeNull(*scriptExecutionContext->globalData(), m_wrapper.get(), function);
+            JSC::Heap::writeBarrier(m_wrapper.get(), function);
+            m_jsFunction = JSC::PassWeak<JSC::JSObject>(function);
         }
 
         // Verify that we have a valid wrapper protecting our function from
-        // garbage collection.
-        ASSERT(m_wrapper || !m_jsFunction);
+        // garbage collection. That is except for when we're not in the normal
+        // world and can have zombie m_jsFunctions.
+        ASSERT(!m_isolatedWorld->isNormal() || m_wrapper || !m_jsFunction);
+
+        // If m_wrapper is 0, then m_jsFunction is zombied, and should never be accessed.
         if (!m_wrapper)
             return 0;
 

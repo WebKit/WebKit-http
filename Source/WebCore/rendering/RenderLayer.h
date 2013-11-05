@@ -57,6 +57,7 @@ namespace WebCore {
 
 #if ENABLE(CSS_FILTERS)
 class FilterEffectRenderer;
+class FilterOperations;
 #endif
 class HitTestRequest;
 class HitTestResult;
@@ -236,6 +237,7 @@ public:
         for (int i = 0; i < NumCachedClipRectsTypes; ++i) {
             m_clipRectsRoot[i] = 0;
             m_respectingOverflowClip[i] = false;
+            m_scrollbarRelevancy[i] = IgnoreOverlayScrollbarSize;
         }
 #endif
     }
@@ -244,6 +246,7 @@ public:
 #ifndef NDEBUG
     const RenderLayer* m_clipRectsRoot[NumCachedClipRectsTypes];
     bool m_respectingOverflowClip[NumCachedClipRectsTypes];
+    OverlayScrollbarSizeRelevancy m_scrollbarRelevancy[NumCachedClipRectsTypes];
 #endif
 };
 
@@ -524,15 +527,16 @@ public:
         RenderRegion* = 0, PaintLayerFlags = 0);
     bool hitTest(const HitTestRequest&, HitTestResult&);
     bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
-    void paintOverlayScrollbars(GraphicsContext*, const LayoutRect& damageRect, PaintBehavior, RenderObject* paintingRoot);
+    void paintOverlayScrollbars(GraphicsContext*, const LayoutRect& damageRect, PaintBehavior, RenderObject* paintingRoot = 0);
 
     enum ShouldRespectOverflowClip { IgnoreOverflowClip, RespectOverflowClip };
 
     // This method figures out our layerBounds in coordinates relative to
     // |rootLayer}.  It also computes our background and foreground clip rects
     // for painting/event handling.
+    // Pass offsetFromRoot if known.
     void calculateRects(const RenderLayer* rootLayer, RenderRegion*, ClipRectsType, const LayoutRect& paintDirtyRect, LayoutRect& layerBounds,
-                        ClipRect& backgroundRect, ClipRect& foregroundRect, ClipRect& outlineRect,
+                        ClipRect& backgroundRect, ClipRect& foregroundRect, ClipRect& outlineRect, const LayoutPoint* offsetFromRoot = 0,
                         OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, ShouldRespectOverflowClip = RespectOverflowClip) const;
 
     // Compute and cache clip rects computed with the given layer as the root
@@ -547,10 +551,11 @@ public:
     LayoutRect selfClipRect() const; // Returns the background clip rect of the layer in the document's coordinate space.
     LayoutRect localClipRect() const; // Returns the background clip rect of the layer in the local coordinate space.
 
-    bool intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer) const;
+    // Pass offsetFromRoot if known.
+    bool intersectsDamageRect(const LayoutRect& layerBounds, const LayoutRect& damageRect, const RenderLayer* rootLayer, const LayoutPoint* offsetFromRoot = 0) const;
 
-    // Bounding box relative to some ancestor layer.
-    LayoutRect boundingBox(const RenderLayer* rootLayer) const;
+    // Bounding box relative to some ancestor layer. Pass offsetFromRoot if known.
+    LayoutRect boundingBox(const RenderLayer* rootLayer, const LayoutPoint* offsetFromRoot = 0) const;
     // Bounding box in the coordinates of this layer.
     LayoutRect localBoundingBox() const;
     // Pixel snapped bounding box relative to the root.
@@ -564,7 +569,8 @@ public:
         DefaultCalculateLayerBoundsFlags =  IncludeSelfTransform | UseLocalClipRectIfPossible | IncludeLayerFilterOutsets
     };
     typedef unsigned CalculateLayerBoundsFlags;
-    static IntRect calculateLayerBounds(const RenderLayer*, const RenderLayer* ancestorLayer, CalculateLayerBoundsFlags = DefaultCalculateLayerBoundsFlags);
+    // Can pass offsetFromRoot if known.
+    IntRect calculateLayerBounds(const RenderLayer* ancestorLayer, const LayoutPoint* offsetFromRoot = 0, CalculateLayerBoundsFlags = DefaultCalculateLayerBoundsFlags) const;
     
     // WARNING: This method returns the offset for the parent as this is what updateLayerPositions expects.
     LayoutPoint computeOffsetFromRoot(bool& hasLayerOffset) const;
@@ -652,7 +658,12 @@ public:
     bool containsDirtyOverlayScrollbars() const { return m_containsDirtyOverlayScrollbars; }
     void setContainsDirtyOverlayScrollbars(bool dirtyScrollbars) { m_containsDirtyOverlayScrollbars = dirtyScrollbars; }
 
+#if ENABLE(CSS_SHADERS)
+    bool isCSSCustomFilterEnabled() const;
+#endif
+
 #if ENABLE(CSS_FILTERS)
+    FilterOperations computeFilterOperations(const RenderStyle*);
     bool paintsWithFilters() const;
     bool requiresFullLayerImageForFilters() const;
     FilterEffectRenderer* filterRenderer() const 
@@ -693,7 +704,7 @@ private:
     void setAncestorChainHasSelfPaintingLayerDescendant();
     void dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
 
-    void computeRepaintRects(LayoutPoint* offsetFromRoot = 0);
+    void computeRepaintRects(const RenderLayerModelObject* repaintContainer, LayoutPoint* offsetFromRoot = 0);
     void computeRepaintRectsIncludingDescendants();
     void clearRepaintRects();
 
@@ -731,27 +742,31 @@ private:
 
     void updateCompositingAndLayerListsIfNeeded();
 
-    void paintLayer(RenderLayer* rootLayer, GraphicsContext*, const LayoutRect& paintDirtyRect, const LayoutSize& subPixelAccumulation,
-                    PaintBehavior, RenderObject* paintingRoot, RenderRegion* = 0, OverlapTestRequestMap* = 0,
-                    PaintLayerFlags = 0);
-    void paintLayerContentsAndReflection(RenderLayer* rootLayer, GraphicsContext*, const LayoutRect& paintDirtyRect, const LayoutSize& subPixelAccumulation,
-                    PaintBehavior, RenderObject* paintingRoot, RenderRegion* = 0, OverlapTestRequestMap* = 0,
-                    PaintLayerFlags = 0);
-    void paintLayerContents(RenderLayer* rootLayer, GraphicsContext*, const LayoutRect& paintDirtyRect, const LayoutSize& subPixelAccumulation,
-                    PaintBehavior, RenderObject* paintingRoot, RenderRegion* = 0, OverlapTestRequestMap* = 0,
-                    PaintLayerFlags = 0);
-    void paintList(Vector<RenderLayer*>*, RenderLayer* rootLayer, GraphicsContext* p,
-                   const LayoutRect& paintDirtyRect, PaintBehavior,
-                   RenderObject* paintingRoot, RenderRegion*, OverlapTestRequestMap*,
-                   PaintLayerFlags);
-    void paintPaginatedChildLayer(RenderLayer* childLayer, RenderLayer* rootLayer, GraphicsContext*,
-                                  const LayoutRect& paintDirtyRect, PaintBehavior,
-                                  RenderObject* paintingRoot, RenderRegion*, OverlapTestRequestMap*,
-                                  PaintLayerFlags);
-    void paintChildLayerIntoColumns(RenderLayer* childLayer, RenderLayer* rootLayer, GraphicsContext*,
-                                    const LayoutRect& paintDirtyRect, PaintBehavior,
-                                    RenderObject* paintingRoot, RenderRegion*, OverlapTestRequestMap*,
-                                    PaintLayerFlags, const Vector<RenderLayer*>& columnLayers, size_t columnIndex);
+    struct LayerPaintingInfo {
+        LayerPaintingInfo(RenderLayer* inRootLayer, const LayoutRect& inDirtyRect, PaintBehavior inPaintBehavior, const LayoutSize& inSubPixelAccumulation, RenderObject* inPaintingRoot = 0, RenderRegion*inRegion = 0, OverlapTestRequestMap* inOverlapTestRequests = 0)
+            : rootLayer(inRootLayer)
+            , paintingRoot(inPaintingRoot)
+            , paintDirtyRect(inDirtyRect)
+            , subPixelAccumulation(inSubPixelAccumulation)
+            , region(inRegion)
+            , overlapTestRequests(inOverlapTestRequests)
+            , paintBehavior(inPaintBehavior)
+        { }
+        RenderLayer* rootLayer;
+        RenderObject* paintingRoot; // only paint descendants of this object
+        LayoutRect paintDirtyRect; // relative to rootLayer;
+        LayoutSize subPixelAccumulation;
+        RenderRegion* region; // May be null.
+        OverlapTestRequestMap* overlapTestRequests; // May be null.
+        PaintBehavior paintBehavior;
+    };
+        
+    void paintLayer(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
+    void paintLayerContentsAndReflection(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
+    void paintLayerContents(GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
+    void paintList(Vector<RenderLayer*>*, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
+    void paintPaginatedChildLayer(RenderLayer* childLayer, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags);
+    void paintChildLayerIntoColumns(RenderLayer* childLayer, GraphicsContext*, const LayerPaintingInfo&, PaintLayerFlags, const Vector<RenderLayer*>& columnLayers, size_t columnIndex);
 
     RenderLayer* hitTestLayer(RenderLayer* rootLayer, RenderLayer* containerLayer, const HitTestRequest& request, HitTestResult& result,
                               const LayoutRect& hitTestRect, const HitTestLocation&, bool appliedTransform,
@@ -841,7 +856,8 @@ private:
     void setPaintingInsideReflection(bool b) { m_paintingInsideReflection = b; }
 
 #if ENABLE(CSS_FILTERS)
-    void updateOrRemoveFilterEffect();
+    void updateOrRemoveFilterClients();
+    void updateOrRemoveFilterEffectRenderer();
 #endif
 
     void parentClipRects(const RenderLayer* rootLayer, RenderRegion*, ClipRectsType, ClipRects&, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, ShouldRespectOverflowClip = RespectOverflowClip) const;

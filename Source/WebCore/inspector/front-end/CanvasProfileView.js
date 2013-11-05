@@ -37,34 +37,49 @@ WebInspector.CanvasProfileView = function(profile)
     WebInspector.View.call(this);
     this.registerRequiredCSS("canvasProfiler.css");
     this._profile = profile;
+    this._traceLogId = profile.traceLogId();
     this.element.addStyleClass("canvas-profile-view");
 
-    this._traceLogElement = document.createElement("div");
-    this._traceLogElement.className = "canvas-trace-log";
-    this._traceLogElement.addEventListener("click", this._onTraceLogItemClick.bind(this), false);
-    this.element.appendChild(this._traceLogElement);
+    this._linkifier = new WebInspector.Linkifier();
+    this._splitView = new WebInspector.SplitView(false, "canvasProfileViewSplitLocation", 300);
 
-    var replayImageContainer = document.createElement("div");
+    var columns = { 0: {}, 1: {}, 2: {} };
+    columns[0].title = "#";
+    columns[0].sortable = true;
+    columns[0].width = "5%";
+    columns[1].title = WebInspector.UIString("Call");
+    columns[1].sortable = true;
+    columns[1].width = "75%";
+    columns[2].title = WebInspector.UIString("Location");
+    columns[2].sortable = true;
+    columns[2].width = "20%";
+
+    this._logGrid = new WebInspector.DataGrid(columns);
+    this._logGrid.element.addStyleClass("fill");
+    this._logGrid.show(this._splitView.secondElement());
+    this._logGrid.addEventListener(WebInspector.DataGrid.Events.SelectedNode, this._replayTraceLog.bind(this));
+
+    var replayImageContainer = this._splitView.firstElement();
     replayImageContainer.id = "canvas-replay-image-container";
-    this.element.appendChild(replayImageContainer);
 
     this._replayImageElement = document.createElement("image");
     this._replayImageElement.id = "canvas-replay-image";
-    replayImageContainer.appendChild(this._replayImageElement);
 
+    replayImageContainer.appendChild(this._replayImageElement);
     this._debugInfoElement = document.createElement("div");
     replayImageContainer.appendChild(this._debugInfoElement);
 
-    this._linkifier = new WebInspector.Linkifier();
+    this._splitView.show(this.element);
 
-    this._showTraceLog();
+    this._enableWaitIcon(true);
+    CanvasAgent.getTraceLog(this._traceLogId, this._didReceiveTraceLog.bind(this));
 }
 
 WebInspector.CanvasProfileView.prototype = {
     dispose: function()
     {
         this._linkifier.reset();
-        CanvasAgent.dropTraceLog(this._profile.traceLogId());
+        CanvasAgent.dropTraceLog(this._traceLogId);
     },
 
     get statusBarItems()
@@ -77,79 +92,84 @@ WebInspector.CanvasProfileView.prototype = {
         return this._profile;
     },
 
-    wasShown: function()
+    /**
+     * @override
+     * @return {Array.<Element>}
+     */
+    elementsToRestoreScrollPositionsFor: function()
     {
-        var scrollPosition = this._traceLogElementScrollPosition;
-        delete this._traceLogElementScrollPosition;
-        if (scrollPosition) {
-            this._traceLogElement.scrollTop = scrollPosition.top;
-            this._traceLogElement.scrollLeft = scrollPosition.left;
-        }
+        return [this._logGrid.scrollContainer];
     },
 
-    willHide: function()
+    /**
+     * @param {boolean} enable
+     */
+    _enableWaitIcon: function(enable)
     {
-        this._traceLogElementScrollPosition = {
-            top: this._traceLogElement.scrollTop,
-            left: this._traceLogElement.scrollLeft
-        };
+        this._replayImageElement.className = enable ? "wait" : "";
     },
 
-    _showTraceLog: function()
+    _replayTraceLog: function()
     {
-        function didReceiveTraceLog(error, traceLog)
-        {
-            this._traceLogElement.textContent = "";
-            if (!traceLog)
-                return;
-            var calls = traceLog.calls;
-            for (var i = 0, n = calls.length; i < n; ++i) {
-                var call = calls[i];
-                var traceLogItem = document.createElement("div");
-                traceLogItem.traceLogId = traceLog.id;
-                traceLogItem.stepNo = i;
-                traceLogItem.appendChild(document.createTextNode("(" + (i+1) + ") "));
-
-                var sourceText = call.functionName || "context." + call.property;
-                if (call.sourceURL) {
-                    // FIXME(62725): stack trace line/column numbers are one-based.
-                    var lineNumber = Math.max(0, call.lineNumber - 1) || 0;
-                    var columnNumber = Math.max(0, call.columnNumber - 1) || 0;
-                    var linkElement = this._linkifier.linkifyLocation(call.sourceURL, lineNumber, columnNumber);
-                    linkElement.textContent = sourceText;
-                    traceLogItem.appendChild(linkElement);
-                } else
-                    traceLogItem.appendChild(document.createTextNode(sourceText));
-
-                if (call.arguments)
-                    traceLogItem.appendChild(document.createTextNode("(" + call.arguments.join(", ") + ")"));
-                else
-                    traceLogItem.appendChild(document.createTextNode(" = " + call.value));
-
-                if (typeof call.result !== "undefined")
-                    traceLogItem.appendChild(document.createTextNode(" => " + call.result));
-                this._traceLogElement.appendChild(traceLogItem);
-            }
-        }
-        CanvasAgent.getTraceLog(this._profile.traceLogId(), didReceiveTraceLog.bind(this));
-    },
-
-    _onTraceLogItemClick: function(e)
-    {
-        var item = e.target;
-        if (!item || !item.traceLogId)
+        var callNode = this._logGrid.selectedNode;
+        if (!callNode)
             return;
         var time = Date.now();
         function didReplayTraceLog(error, dataURL)
         {
+            this._enableWaitIcon(false);
+            if (error)
+                return;
             this._debugInfoElement.textContent = "Replay time: " + (Date.now() - time) + "ms";
-            if (this._activeTraceLogItem)
-                this._activeTraceLogItem.style.backgroundColor = "";
-            this._activeTraceLogItem = item;
-            this._activeTraceLogItem.style.backgroundColor = "yellow";
             this._replayImageElement.src = dataURL;
         }
-        CanvasAgent.replayTraceLog(item.traceLogId, item.stepNo, didReplayTraceLog.bind(this));
+        this._enableWaitIcon(true);
+        CanvasAgent.replayTraceLog(this._traceLogId, callNode.index, didReplayTraceLog.bind(this));
+    },
+
+    _didReceiveTraceLog: function(error, traceLog)
+    {
+        this._enableWaitIcon(false);
+        this._logGrid.rootNode().removeChildren();
+        if (error || !traceLog)
+            return;
+        var calls = traceLog.calls;
+        for (var i = 0, n = calls.length; i < n; ++i)
+            this._logGrid.rootNode().appendChild(this._createCallNode(i, calls[i]));
+        var lastNode = this._logGrid.rootNode().children[calls.length - 1];
+        if (lastNode) {
+            lastNode.reveal();
+            lastNode.select();
+        }
+    },
+
+    _createCallNode: function(index, call)
+    {
+        var traceLogItem = document.createElement("div");
+        var data = {};
+        data[0] = index + 1;
+        data[1] = call.functionName || "context." + call.property;
+        data[2] = "";
+        if (call.sourceURL) {
+            // FIXME(62725): stack trace line/column numbers are one-based.
+            var lineNumber = Math.max(0, call.lineNumber - 1) || 0;
+            var columnNumber = Math.max(0, call.columnNumber - 1) || 0;
+            data[2] = this._linkifier.linkifyLocation(call.sourceURL, lineNumber, columnNumber);
+        }
+
+        if (call.arguments)
+            data[1] += "(" + call.arguments.join(", ") + ")";
+        else
+            data[1] += " = " + call.value;
+
+        if (typeof call.result !== "undefined")
+            data[1] += " => " + call.result;
+
+        var node = new WebInspector.DataGridNode(data);
+        node.call = call;
+        node.index = index;
+        node.selectable = true;
+        return node;
     },
 
     __proto__: WebInspector.View.prototype
@@ -258,7 +278,8 @@ WebInspector.CanvasProfileHeader.prototype = {
     /**
      * @return {string?}
      */
-    traceLogId: function() {
+    traceLogId: function()
+    {
         return this._traceLogId;
     },
 

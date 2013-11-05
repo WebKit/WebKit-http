@@ -54,7 +54,9 @@
 #include "NativeImageSkia.h"
 #include "PlatformContextSkia.h"
 #include "ScrollableArea.h"
+#include "SkImageFilter.h"
 #include "SkMatrix44.h"
+#include "SkiaImageFilterBuilder.h"
 #include "SystemTime.h"
 #include <public/Platform.h>
 #include <public/WebAnimation.h>
@@ -106,7 +108,6 @@ GraphicsLayerChromium::GraphicsLayerChromium(GraphicsLayerClient* client)
     m_layer->layer()->setDrawsContent(m_drawsContent && m_contentsVisible);
     m_layer->layer()->setScrollClient(this);
     m_layer->setAutomaticallyComputeRasterScale(true);
-    updateDebugIndicators();
 }
 
 GraphicsLayerChromium::~GraphicsLayerChromium()
@@ -300,6 +301,7 @@ void GraphicsLayerChromium::setContentsOpaque(bool opaque)
 {
     GraphicsLayer::setContentsOpaque(opaque);
     m_layer->layer()->setOpaque(m_contentsOpaque);
+    m_opaqueRectTrackingContentLayerDelegate->setOpaque(m_contentsOpaque);
 }
 
 static bool copyWebCoreFilterOperationsToWebFilterOperations(const FilterOperations& filters, WebFilterOperations& webFilters)
@@ -367,6 +369,7 @@ static bool copyWebCoreFilterOperationsToWebFilterOperations(const FilterOperati
         }
 #if ENABLE(CSS_SHADERS)
         case FilterOperation::CUSTOM:
+        case FilterOperation::VALIDATED_CUSTOM:
             return false; // Not supported.
 #endif
         case FilterOperation::PASSTHROUGH:
@@ -379,15 +382,32 @@ static bool copyWebCoreFilterOperationsToWebFilterOperations(const FilterOperati
 
 bool GraphicsLayerChromium::setFilters(const FilterOperations& filters)
 {
-    WebFilterOperations webFilters;
-    if (!copyWebCoreFilterOperationsToWebFilterOperations(filters, webFilters)) {
-        // Make sure the filters are removed from the platform layer, as they are
-        // going to fallback to software mode.
-        m_layer->layer()->setFilters(WebFilterOperations());
-        GraphicsLayer::setFilters(FilterOperations());
-        return false;
+    // FIXME: For now, we only use SkImageFilters if there is a reference
+    // filter in the chain. Once all issues have been ironed out, we should
+    // switch all filtering over to this path, and remove setFilters() and
+    // WebFilterOperations altogether.
+    if (filters.hasReferenceFilter()) {
+        if (filters.hasCustomFilter()) {
+            // Make sure the filters are removed from the platform layer, as they are
+            // going to fallback to software mode.
+            m_layer->layer()->setFilter(0);
+            GraphicsLayer::setFilters(FilterOperations());
+            return false;
+        }
+        SkiaImageFilterBuilder builder;
+        SkAutoTUnref<SkImageFilter> imageFilter(builder.build(filters));
+        m_layer->layer()->setFilter(imageFilter);
+    } else {
+        WebFilterOperations webFilters;
+        if (!copyWebCoreFilterOperationsToWebFilterOperations(filters, webFilters)) {
+            // Make sure the filters are removed from the platform layer, as they are
+            // going to fallback to software mode.
+            m_layer->layer()->setFilters(WebFilterOperations());
+            GraphicsLayer::setFilters(FilterOperations());
+            return false;
+        }
+        m_layer->layer()->setFilters(webFilters);
     }
-    m_layer->layer()->setFilters(webFilters);
     return GraphicsLayer::setFilters(filters);
 }
 
@@ -435,14 +455,17 @@ void GraphicsLayerChromium::setReplicatedByLayer(GraphicsLayer* layer)
 
 void GraphicsLayerChromium::setContentsNeedsDisplay()
 {
-    if (WebLayer* contentsLayer = contentsLayerIfRegistered())
+    if (WebLayer* contentsLayer = contentsLayerIfRegistered()) {
         contentsLayer->invalidate();
+        addRepaintRect(contentsRect());
+    }
 }
 
 void GraphicsLayerChromium::setNeedsDisplay()
 {
     if (drawsContent()) {
         m_layer->layer()->invalidate();
+        addRepaintRect(FloatRect(FloatPoint(), m_size));
         if (m_linkHighlight)
             m_linkHighlight->invalidate();
     }
@@ -452,6 +475,7 @@ void GraphicsLayerChromium::setNeedsDisplayInRect(const FloatRect& rect)
 {
     if (drawsContent()) {
         m_layer->layer()->invalidateRect(rect);
+        addRepaintRect(rect);
         if (m_linkHighlight)
             m_linkHighlight->invalidate();
     }
@@ -626,25 +650,6 @@ PlatformLayer* GraphicsLayerChromium::platformLayer() const
     return m_transformLayer ? m_transformLayer.get() : m_layer->layer();
 }
 
-void GraphicsLayerChromium::setDebugBackgroundColor(const Color& color)
-{
-    if (color.isValid())
-        m_layer->layer()->setBackgroundColor(color.rgb());
-    else
-        m_layer->layer()->setBackgroundColor(static_cast<RGBA32>(0));
-}
-
-void GraphicsLayerChromium::setDebugBorder(const Color& color, float borderWidth)
-{
-    if (color.isValid()) {
-        m_layer->layer()->setDebugBorderColor(color.rgb());
-        m_layer->layer()->setDebugBorderWidth(borderWidth);
-    } else {
-        m_layer->layer()->setDebugBorderColor(static_cast<RGBA32>(0));
-        m_layer->layer()->setDebugBorderWidth(0);
-    }
-}
-
 void GraphicsLayerChromium::updateChildList()
 {
     WebLayer* childHost = m_transformLayer ? m_transformLayer.get() : m_layer->layer();
@@ -718,7 +723,6 @@ void GraphicsLayerChromium::updateChildrenTransform()
 void GraphicsLayerChromium::updateMasksToBounds()
 {
     m_layer->layer()->setMasksToBounds(m_masksToBounds);
-    updateDebugIndicators();
 }
 
 void GraphicsLayerChromium::updateLayerPreserves3D()
@@ -793,8 +797,6 @@ void GraphicsLayerChromium::updateLayerIsDrawable()
         if (m_linkHighlight)
             m_linkHighlight->invalidate();
     }
-
-    updateDebugIndicators();
 }
 
 void GraphicsLayerChromium::updateLayerBackgroundColor()
@@ -841,13 +843,7 @@ void GraphicsLayerChromium::setupContentsLayer(WebLayer* contentsLayer)
         // Insert the content layer first. Video elements require this, because they have
         // shadow content that must display in front of the video.
         m_layer->layer()->insertChild(m_contentsLayer, 0);
-
-        if (showDebugBorders()) {
-            m_contentsLayer->setDebugBorderColor(Color(0, 0, 128, 180).rgb());
-            m_contentsLayer->setDebugBorderWidth(1);
-        }
     }
-    updateDebugIndicators();
     updateNames();
 }
 
@@ -863,7 +859,6 @@ bool GraphicsLayerChromium::appliesPageScale() const
 
 void GraphicsLayerChromium::paint(GraphicsContext& context, const IntRect& clip)
 {
-    context.platformContext()->setDrawingToImageBuffer(true);
     paintGraphicsLayerContents(context, clip);
 }
 

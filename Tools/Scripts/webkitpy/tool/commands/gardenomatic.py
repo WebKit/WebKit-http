@@ -22,20 +22,38 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from webkitpy.tool.multicommandtool import AbstractDeclarativeCommand
+from webkitpy.layout_tests.port import builders
+from webkitpy.tool.commands.rebaseline import AbstractRebaseliningCommand
 from webkitpy.tool.servers.gardeningserver import GardeningHTTPServer
 
 
-class GardenOMatic(AbstractDeclarativeCommand):
+class GardenOMatic(AbstractRebaseliningCommand):
     name = "garden-o-matic"
-    help_text = "Experimental command for gardening the WebKit tree."
+    help_text = "Command for gardening the WebKit tree."
+
+    def __init__(self):
+        super(GardenOMatic, self).__init__(options=(self.platform_options + [
+            self.move_overwritten_baselines_option,
+            self.results_directory_option,
+            self.no_optimize_option,
+            ]))
 
     def execute(self, options, args, tool):
         print "This command runs a local HTTP server that changes your working copy"
         print "based on the actions you take in the web-based UI."
 
-        httpd = GardeningHTTPServer(httpd_port=8127, config={'tool': tool})
-        self._tool.user.open_url(httpd.url())
+        args = {}
+        if options.platform:
+            # FIXME: This assumes that the port implementation (chromium-, gtk-, etc.) is the first part of options.platform.
+            args['platform'] = options.platform.split('-')[0]
+            builder = builders.builder_name_for_port_name(options.platform)
+            if builder:
+                args['builder'] = builder
+        if options.results_directory:
+            args['useLocalResults'] = "true"
+
+        httpd = GardeningHTTPServer(httpd_port=8127, config={'tool': tool, 'options': options})
+        self._tool.user.open_url(httpd.url(args))
 
         print "Local HTTP server started."
         httpd.serve_forever()

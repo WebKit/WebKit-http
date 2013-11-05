@@ -68,6 +68,7 @@
 #include "FrameView.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLFormElement.h"
+#include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
@@ -399,8 +400,8 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
         if (m_frame->document()) {
             if (m_didCallImplicitClose && !m_wasUnloadEventEmitted) {
                 Node* currentFocusedNode = m_frame->document()->focusedNode();
-                if (currentFocusedNode)
-                    currentFocusedNode->aboutToUnload();
+                if (currentFocusedNode && currentFocusedNode->toInputElement())
+                    currentFocusedNode->toInputElement()->endEditing();
                 if (m_pageDismissalEventBeingDispatched == NoDismissal) {
                     if (unloadEventPolicy == UnloadEventPolicyUnloadAndPageHide) {
                         m_pageDismissalEventBeingDispatched = PageHideDismissal;
@@ -570,7 +571,7 @@ void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool 
         m_frame->script()->clearWindowShell(newDocument->domWindow(), m_frame->document()->inPageCache());
     }
 
-    m_frame->selection()->clear();
+    m_frame->selection()->prepareForDestruction();
     m_frame->eventHandler()->clear();
     if (clearFrameView && m_frame->view())
         m_frame->view()->clear();
@@ -660,13 +661,21 @@ void FrameLoader::didBeginDocument(bool dispatch)
         if (!dnsPrefetchControl.isEmpty())
             m_frame->document()->parseDNSPrefetchControlHeader(dnsPrefetchControl);
 
-        String contentSecurityPolicy = m_documentLoader->response().httpHeaderField("X-WebKit-CSP");
-        if (!contentSecurityPolicy.isEmpty())
-            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(contentSecurityPolicy, ContentSecurityPolicy::EnforcePolicy);
+        String policyValue = m_documentLoader->response().httpHeaderField("Content-Security-Policy");
+        if (!policyValue.isEmpty())
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::EnforceStableDirectives);
 
-        String reportOnlyContentSecurityPolicy = m_documentLoader->response().httpHeaderField("X-WebKit-CSP-Report-Only");
-        if (!reportOnlyContentSecurityPolicy.isEmpty())
-            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(reportOnlyContentSecurityPolicy, ContentSecurityPolicy::ReportOnly);
+        policyValue = m_documentLoader->response().httpHeaderField("Content-Security-Policy-Report-Only");
+        if (!policyValue.isEmpty())
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::ReportStableDirectives);
+
+        policyValue = m_documentLoader->response().httpHeaderField("X-WebKit-CSP");
+        if (!policyValue.isEmpty())
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::EnforceAllDirectives);
+
+        policyValue = m_documentLoader->response().httpHeaderField("X-WebKit-CSP-Report-Only");
+        if (!policyValue.isEmpty())
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::ReportAllDirectives);
 
         String headerContentLanguage = m_documentLoader->response().httpHeaderField("Content-Language");
         if (!headerContentLanguage.isEmpty()) {
@@ -734,7 +743,7 @@ void FrameLoader::checkCompleted()
     m_shouldCallCheckCompleted = false;
 
     if (m_frame->view())
-        m_frame->view()->checkFlushDeferredRepaintsAfterLoadComplete();
+        m_frame->view()->handleLoadCompleted();
 
     // Have we completed before?
     if (m_isComplete)
@@ -771,7 +780,7 @@ void FrameLoader::checkCompleted()
         checkLoadComplete();
 
     if (m_frame->view())
-        m_frame->view()->checkFlushDeferredRepaintsAfterLoadComplete();
+        m_frame->view()->handleLoadCompleted();
 }
 
 void FrameLoader::checkTimerFired(Timer<FrameLoader>*)
@@ -1392,7 +1401,7 @@ void FrameLoader::reportLocalLoadFailed(Frame* frame, const String& url)
     if (!frame)
         return;
 
-    frame->document()->domWindow()->console()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Not allowed to load local resource: " + url);
+    frame->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Not allowed to load local resource: " + url);
 }
 
 const ResourceRequest& FrameLoader::initialRequest() const
@@ -2892,7 +2901,7 @@ void FrameLoader::applyUserAgent(ResourceRequest& request)
     request.setHTTPUserAgent(userAgent);
 }
 
-bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, const KURL& url)
+bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, const KURL& url, unsigned long requestIdentifier)
 {
     Frame* topFrame = m_frame->tree()->top();
     if (m_frame == topFrame)
@@ -2900,11 +2909,13 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
 
     if (equalIgnoringCase(content, "deny"))
         return true;
-
-    if (equalIgnoringCase(content, "sameorigin")) {
+    else if (equalIgnoringCase(content, "sameorigin")) {
         RefPtr<SecurityOrigin> origin = SecurityOrigin::create(url);
         if (!origin->isSameSchemeHostPort(topFrame->document()->securityOrigin()))
             return true;
+    } else {
+        String message = "Invalid 'X-Frame-Options' header encountered when loading '" + url.string() + "': '" + content + "' is not a recognized directive. The header will be ignored.";
+        m_frame->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, message, url.string(), 0, 0, requestIdentifier);
     }
 
     return false;
@@ -3311,21 +3322,25 @@ Frame* createWindow(Frame* openerFrame, Frame* lookupFrame, const FrameLoadReque
     page->chrome()->setResizable(features.resizable);
 
     // 'x' and 'y' specify the location of the window, while 'width' and 'height'
-    // specify the size of the page. We can only resize the window, so
-    // adjust for the difference between the window size and the page size.
+    // specify the size of the viewport. We can only resize the window, so adjust
+    // for the difference between the window size and the viewport size.
 
     FloatRect windowRect = page->chrome()->windowRect();
-    FloatSize pageSize = page->chrome()->pageRect().size();
+    FloatSize viewportSize = page->chrome()->pageRect().size();
+
     if (features.xSet)
         windowRect.setX(features.x);
     if (features.ySet)
         windowRect.setY(features.y);
     if (features.widthSet)
-        windowRect.setWidth(features.width + (windowRect.width() - pageSize.width()));
+        windowRect.setWidth(features.width + (windowRect.width() - viewportSize.width()));
     if (features.heightSet)
-        windowRect.setHeight(features.height + (windowRect.height() - pageSize.height()));
-    page->chrome()->setWindowRect(windowRect);
+        windowRect.setHeight(features.height + (windowRect.height() - viewportSize.height()));
 
+    // Ensure non-NaN values, minimum size as well as being within valid screen area.
+    FloatRect newWindowRect = DOMWindow::adjustWindowRect(page, windowRect);
+
+    page->chrome()->setWindowRect(newWindowRect);
     page->chrome()->show();
 
     created = true;

@@ -32,6 +32,10 @@
 
 namespace WebCore {
 
+class ScrollingStateNode;
+class ScrollingStateScrollingNode;
+class ScrollingStateTree;
+
 class ScrollingCoordinatorMac : public ScrollingCoordinator {
 public:
     explicit ScrollingCoordinatorMac(Page*);
@@ -61,23 +65,34 @@ public:
     // Handle the wheel event on the scrolling thread. Returns whether the event was handled or not.
     virtual bool handleWheelEvent(FrameView*, const PlatformWheelEvent&);
 
-    // Dispatched by the scrolling tree whenever the main frame scroll position changes and the scroll layer position needs to be updated as well.
-    virtual void updateMainFrameScrollPositionAndScrollLayerPosition();
-
     // These functions are used to indicate that a layer should be (or should not longer be) represented by a node
     // in the scrolling tree.
-    virtual ScrollingNodeID attachToStateTree(ScrollingNodeID newNodeID, ScrollingNodeID parentID);
+    virtual ScrollingNodeID attachToStateTree(ScrollingNodeType, ScrollingNodeID newNodeID, ScrollingNodeID parentID);
     virtual void detachFromStateTree(ScrollingNodeID);
 
     // This function wipes out the current tree.
     virtual void clearStateTree();
 
+    virtual String scrollingStateTreeAsText() const OVERRIDE;
+
 private:
+    // Return whether this scrolling coordinator can keep fixed position layers fixed to their
+    // containers while scrolling.
+    virtual bool supportsFixedPositionLayers() const OVERRIDE { return true; }
+
+    // This function will update the ScrollingStateNode for the given viewport constrained object.
+    virtual void updateViewportConstrainedNode(ScrollingNodeID, const ViewportConstraints&, GraphicsLayer*) OVERRIDE;
+
+    // Called to synch the GraphicsLayer positions for child layers when their CALayers have been moved by the scrolling thread.
+    virtual void syncChildPositions(const LayoutRect& viewportRect) OVERRIDE;
+
     virtual void recomputeWheelEventHandlerCountForFrameView(FrameView*);
     virtual void setShouldUpdateScrollLayerPositionOnMainThread(MainThreadScrollingReasons);
 
+    virtual bool hasVisibleSlowRepaintFixedObjects(FrameView*) const { return false; }
+
     void ensureRootStateNodeForFrameView(FrameView*);
-    ScrollingStateScrollingNode* stateNodeForID(ScrollingNodeID);
+    ScrollingStateNode* stateNodeForID(ScrollingNodeID);
 
     struct ScrollParameters {
         ScrollElasticity horizontalScrollElasticity;
@@ -106,6 +121,8 @@ private:
 
     void scrollingStateTreeCommitterTimerFired(Timer<ScrollingCoordinatorMac>*);
     void commitTreeState();
+
+    void removeNode(ScrollingStateNode*);
 
     OwnPtr<ScrollingStateTree> m_scrollingStateTree;
     RefPtr<ScrollingTree> m_scrollingTree;

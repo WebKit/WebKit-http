@@ -244,6 +244,17 @@ ScrollingCoordinator* Page::scrollingCoordinator()
     return m_scrollingCoordinator.get();
 }
 
+String Page::scrollingStateTreeAsText()
+{
+    if (Document* document = m_mainFrame->document())
+        document->updateLayout();
+
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
+        return scrollingCoordinator->scrollingStateTreeAsText();
+
+    return String();
+}
+
 struct ViewModeInfo {
     const char* name;
     Page::ViewMode type;
@@ -1295,7 +1306,7 @@ void Page::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_mainFrame);
     info.addMember(m_pluginData);
     info.addMember(m_theme);
-    info.addMember(m_editorClient);
+    info.addWeakPointer(m_editorClient);
     info.addMember(m_featureObserver);
     info.addMember(m_groupName);
     info.addMember(m_pagination);
@@ -1308,7 +1319,7 @@ void Page::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_relevantUnpaintedRenderObjects);
     info.addMember(m_relevantPaintedRegion);
     info.addMember(m_relevantUnpaintedRegion);
-    info.addMember(m_alternativeTextClient);
+    info.addWeakPointer(m_alternativeTextClient);
     info.addMember(m_seenPlugins);
 }
 

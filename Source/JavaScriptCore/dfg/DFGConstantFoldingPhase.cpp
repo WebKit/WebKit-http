@@ -92,18 +92,31 @@ private:
             }
                     
             case CheckStructure:
-            case ForwardCheckStructure: {
+            case ForwardCheckStructure:
+            case ArrayifyToStructure: {
                 AbstractValue& value = m_state.forNode(node.child1());
+                StructureSet set;
+                if (node.op() == ArrayifyToStructure)
+                    set = node.structure();
+                else
+                    set = node.structureSet();
+                if (value.m_currentKnownStructure.isSubsetOf(set)) {
+                    ASSERT(node.refCount() == 1);
+                    node.setOpAndDefaultFlags(Phantom);
+                    eliminated = true;
+                    break;
+                }
                 StructureAbstractValue& structureValue = value.m_futurePossibleStructure;
-                if (structureValue.isSubsetOf(node.structureSet())
+                if (structureValue.isSubsetOf(set)
                     && structureValue.hasSingleton()
                     && isCellSpeculation(value.m_type))
                     node.convertToStructureTransitionWatchpoint(structureValue.singleton());
                 break;
             }
                 
-            case CheckArray: {
-                if (!modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode()))
+            case CheckArray:
+            case Arrayify: {
+                if (!node.arrayMode().alreadyChecked(m_graph, node, m_state.forNode(node.child1())))
                     break;
                 ASSERT(node.refCount() == 1);
                 node.setOpAndDefaultFlags(Phantom);
@@ -111,16 +124,14 @@ private:
                 break;
             }
                 
-            case Arrayify: {
-                if (!modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode()))
+            case CheckFunction: {
+                if (m_state.forNode(node.child1()).value() != node.function())
                     break;
-                ASSERT(node.refCount() >= 1);
-                node.setOpAndDefaultFlags(GetButterfly);
-                m_graph.deref(nodeIndex);
+                node.setOpAndDefaultFlags(Phantom);
                 eliminated = true;
                 break;
             }
-
+                
             default:
                 break;
             }

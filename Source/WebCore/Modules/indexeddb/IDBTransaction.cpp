@@ -44,54 +44,55 @@
 
 namespace WebCore {
 
-PassRefPtr<IDBTransaction> IDBTransaction::create(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db)
+PassRefPtr<IDBTransaction> IDBTransaction::create(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, const Vector<String>& objectStoreNames, IDBTransaction::Mode mode, IDBDatabase* db)
 {
     IDBOpenDBRequest* openDBRequest = 0;
-    return create(context, backend, mode, db, openDBRequest);
+    return create(context, backend, objectStoreNames, mode, db, openDBRequest);
 }
 
-PassRefPtr<IDBTransaction> IDBTransaction::create(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db, IDBOpenDBRequest* openDBRequest)
+PassRefPtr<IDBTransaction> IDBTransaction::create(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, const Vector<String>& objectStoreNames, IDBTransaction::Mode mode, IDBDatabase* db, IDBOpenDBRequest* openDBRequest)
 {
-    RefPtr<IDBTransaction> transaction(adoptRef(new IDBTransaction(context, backend, mode, db, openDBRequest)));
+    RefPtr<IDBTransaction> transaction(adoptRef(new IDBTransaction(context, backend, objectStoreNames, mode, db, openDBRequest)));
     transaction->suspendIfNeeded();
     return transaction.release();
 }
 
 const AtomicString& IDBTransaction::modeReadOnly()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, readonly, ("readonly"));
+    DEFINE_STATIC_LOCAL(AtomicString, readonly, ("readonly", AtomicString::ConstructFromLiteral));
     return readonly;
 }
 
 const AtomicString& IDBTransaction::modeReadWrite()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, readwrite, ("readwrite"));
+    DEFINE_STATIC_LOCAL(AtomicString, readwrite, ("readwrite", AtomicString::ConstructFromLiteral));
     return readwrite;
 }
 
 const AtomicString& IDBTransaction::modeVersionChange()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, versionchange, ("versionchange"));
+    DEFINE_STATIC_LOCAL(AtomicString, versionchange, ("versionchange", AtomicString::ConstructFromLiteral));
     return versionchange;
 }
 
 const AtomicString& IDBTransaction::modeReadOnlyLegacy()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, readonly, ("0"));
+    DEFINE_STATIC_LOCAL(AtomicString, readonly, ("0", AtomicString::ConstructFromLiteral));
     return readonly;
 }
 
 const AtomicString& IDBTransaction::modeReadWriteLegacy()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, readwrite, ("1"));
+    DEFINE_STATIC_LOCAL(AtomicString, readwrite, ("1", AtomicString::ConstructFromLiteral));
     return readwrite;
 }
 
 
-IDBTransaction::IDBTransaction(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, IDBTransaction::Mode mode, IDBDatabase* db, IDBOpenDBRequest* openDBRequest)
+IDBTransaction::IDBTransaction(ScriptExecutionContext* context, PassRefPtr<IDBTransactionBackendInterface> backend, const Vector<String>& objectStoreNames, IDBTransaction::Mode mode, IDBDatabase* db, IDBOpenDBRequest* openDBRequest)
     : ActiveDOMObject(context, this)
     , m_backend(backend)
     , m_database(db)
+    , m_objectStoreNames(objectStoreNames)
     , m_openDBRequest(openDBRequest)
     , m_mode(mode)
     , m_active(true)
@@ -155,16 +156,19 @@ PassRefPtr<IDBObjectStore> IDBTransaction::objectStore(const String& name, Excep
     if (it != m_objectStoreMap.end())
         return it->value;
 
-    RefPtr<IDBObjectStoreBackendInterface> objectStoreBackend = m_backend->objectStore(name, ec);
-    ASSERT(!objectStoreBackend != !ec); // If we didn't get a store, we should have gotten an exception code. And vice versa.
-    if (ec)
+    if (!isVersionChange() && !m_objectStoreNames.contains(name)) {
+        ec = IDBDatabaseException::IDB_NOT_FOUND_ERR;
         return 0;
+    }
+
+    int64_t objectStoreId = m_database->findObjectStoreId(name);
+    ASSERT(objectStoreId != IDBObjectStoreMetadata::InvalidId);
+    RefPtr<IDBObjectStoreBackendInterface> objectStoreBackend = m_backend->objectStore(objectStoreId, ec);
+    ASSERT(!ec && objectStoreBackend);
 
     const IDBDatabaseMetadata& metadata = m_database->metadata();
-    IDBDatabaseMetadata::ObjectStoreMap::const_iterator mdit = metadata.objectStores.find(name);
-    ASSERT(mdit != metadata.objectStores.end());
 
-    RefPtr<IDBObjectStore> objectStore = IDBObjectStore::create(mdit->value, objectStoreBackend, this);
+    RefPtr<IDBObjectStore> objectStore = IDBObjectStore::create(metadata.objectStores.get(objectStoreId), objectStoreBackend, this);
     objectStoreCreated(name, objectStore);
     return objectStore.release();
 }
@@ -350,7 +354,7 @@ IDBTransaction::Mode IDBTransaction::stringToMode(const String& modeString, Scri
         return static_cast<IDBTransaction::Mode>(IDBTransaction::READ_ONLY + (modeString[0] - '0'));
     }
 
-    ec = NATIVE_TYPE_ERR;
+    ec = TypeError;
     return IDBTransaction::READ_ONLY;
 }
 
@@ -370,7 +374,7 @@ const AtomicString& IDBTransaction::modeToString(IDBTransaction::Mode mode, Exce
         break;
 
     default:
-        ec = NATIVE_TYPE_ERR;
+        ec = TypeError;
         return IDBTransaction::modeReadOnly();
     }
 }

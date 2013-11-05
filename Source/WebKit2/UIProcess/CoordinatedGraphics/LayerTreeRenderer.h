@@ -49,18 +49,18 @@ class LayerTreeRenderer : public ThreadSafeRefCounted<LayerTreeRenderer>, public
 public:
     struct TileUpdate {
         WebCore::IntRect sourceRect;
-        WebCore::IntRect targetRect;
+        WebCore::IntRect tileRect;
         RefPtr<ShareableSurface> surface;
         WebCore::IntPoint offset;
-        TileUpdate(const WebCore::IntRect& source, const WebCore::IntRect& target, PassRefPtr<ShareableSurface> newSurface, const WebCore::IntPoint& newOffset)
+        TileUpdate(const WebCore::IntRect& source, const WebCore::IntRect& tile, PassRefPtr<ShareableSurface> newSurface, const WebCore::IntPoint& newOffset)
             : sourceRect(source)
-            , targetRect(target)
+            , tileRect(tile)
             , surface(newSurface)
             , offset(newOffset)
         {
         }
     };
-    LayerTreeRenderer(LayerTreeCoordinatorProxy*);
+    explicit LayerTreeRenderer(LayerTreeCoordinatorProxy*);
     virtual ~LayerTreeRenderer();
     void purgeGLResources();
     void paintToCurrentGLContext(const WebCore::TransformationMatrix&, float, const WebCore::FloatRect&, WebCore::TextureMapper::PaintFlags = 0);
@@ -75,7 +75,6 @@ public:
 
     void detach();
     void appendUpdate(const Function<void()>&);
-    void updateViewport();
     void setActive(bool);
 
     void deleteLayer(WebLayerID);
@@ -95,6 +94,17 @@ public:
     void setLayerAnimations(WebLayerID, const WebCore::GraphicsLayerAnimations&);
     void setAnimationsLocked(bool);
 
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    void requestAnimationFrame();
+    void animationFrameReady();
+#endif
+
+    void setAccelerationMode(WebCore::TextureMapper::AccelerationMode mode)
+    {
+        // The acceleration mode is set only before TextureMapper was created.
+        ASSERT(!m_textureMapper);
+        m_accelerationMode = mode;
+    }
 private:
     PassOwnPtr<WebCore::GraphicsLayer> createLayer(WebLayerID);
 
@@ -104,11 +114,21 @@ private:
     // Reimplementations from WebCore::GraphicsLayerClient.
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double) { }
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) { }
-    virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const { return false; }
-    virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const { return false; }
     void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect&) { }
+    void updateViewport();
     void dispatchOnMainThread(const Function<void()>&);
     void adjustPositionForFixedLayers();
+
+    void assignImageToLayer(WebCore::GraphicsLayer*, int64_t imageID);
+    void ensureRootLayer();
+    void ensureLayer(WebLayerID);
+    void commitTileOperations();
+    void renderNextFrame();
+    void purgeBackingStores();
+
+    PassRefPtr<CoordinatedBackingStore> getBackingStore(WebCore::GraphicsLayer*);
+    void removeBackingStoreIfNeeded(WebCore::GraphicsLayer*);
+    void resetBackingStoreSizeToLayerSize(WebCore::GraphicsLayer*);
 
     typedef HashMap<WebLayerID, WebCore::GraphicsLayer*> LayerMap;
     WebCore::FloatSize m_contentsSize;
@@ -116,27 +136,16 @@ private:
 
     // Render queue can be accessed ony from main thread or updatePaintNode call stack!
     Vector<Function<void()> > m_renderQueue;
+    Mutex m_renderQueueMutex;
 
-#if USE(TEXTURE_MAPPER)
     OwnPtr<WebCore::TextureMapper> m_textureMapper;
-    PassRefPtr<CoordinatedBackingStore> getBackingStore(WebLayerID);
     HashMap<int64_t, RefPtr<WebCore::TextureMapperBackingStore> > m_directlyCompositedImages;
     HashSet<RefPtr<CoordinatedBackingStore> > m_backingStoresWithPendingBuffers;
-#endif
+
 #if USE(GRAPHICS_SURFACE)
     typedef HashMap<WebLayerID, RefPtr<WebCore::TextureMapperSurfaceBackingStore> > SurfaceBackingStoreMap;
     SurfaceBackingStoreMap m_surfaceBackingStores;
 #endif
-
-    void scheduleWebViewUpdate();
-    void synchronizeViewport();
-    void assignImageToLayer(WebCore::GraphicsLayer*, int64_t imageID);
-    void ensureRootLayer();
-    void ensureLayer(WebLayerID);
-    void commitTileOperations();
-    void syncAnimations();
-    void renderNextFrame();
-    void purgeBackingStores();
 
     LayerTreeCoordinatorProxy* m_layerTreeCoordinatorProxy;
     OwnPtr<WebCore::GraphicsLayer> m_rootLayer;
@@ -148,6 +157,10 @@ private:
     WebCore::IntPoint m_pendingRenderedContentsScrollPosition;
     bool m_isActive;
     bool m_animationsLocked;
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    bool m_animationFrameRequested;
+#endif
+    WebCore::TextureMapper::AccelerationMode m_accelerationMode;
 };
 
 };

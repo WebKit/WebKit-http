@@ -196,7 +196,7 @@ CSSStyleDeclaration* Attr::style()
     if (!m_element || !m_element->isStyledElement())
         return 0;
     m_style = StylePropertySet::create();
-    static_cast<StyledElement*>(m_element)->collectStyleForAttribute(elementAttribute(), m_style.get());
+    static_cast<StyledElement*>(m_element)->collectStyleForPresentationAttribute(elementAttribute(), m_style.get());
     return m_style->ensureCSSStyleDeclaration();
 }
 
@@ -218,7 +218,6 @@ void Attr::detachFromElementWithValue(const AtomicString& value)
 {
     ASSERT(m_element);
     ASSERT(m_standaloneValue.isNull());
-    m_element->attributeData()->removeAttr(m_element, qualifiedName());
     m_standaloneValue = value;
     m_element = 0;
 }

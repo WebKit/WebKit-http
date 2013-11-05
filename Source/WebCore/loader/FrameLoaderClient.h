@@ -349,6 +349,17 @@ namespace WebCore {
 #if ENABLE(MEDIA_STREAM)
         virtual void dispatchWillStartUsingPeerConnectionHandler(RTCPeerConnectionHandler*) { }
 #endif
+
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+        virtual void didRequestAutocomplete(PassRefPtr<FormState>) = 0;
+#endif
+
+#if ENABLE(WEBGL)
+        virtual bool allowWebGL(bool enabledPerSettings) { return enabledPerSettings; }
+        // Informs the embedder that a WebGL canvas inside this frame received a lost context
+        // notification with the given GL_ARB_robustness guilt/innocence code (see Extensions3D.h).
+        virtual void didLoseWebGLContext(int) { }
+#endif
     };
 
 } // namespace WebCore

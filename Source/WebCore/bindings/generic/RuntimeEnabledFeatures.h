@@ -88,11 +88,6 @@ public:
     static bool webkitRequestFullscreenEnabled() { return isFullScreenAPIEnabled; }
 #endif
 
-#if ENABLE(POINTER_LOCK)
-    static bool pointerLockEnabled() { return isPointerLockEnabled; }
-    static void setPointerLockEnabled(bool isEnabled) { isPointerLockEnabled = isEnabled; }
-#endif
-
 #if ENABLE(VIDEO)
     static bool audioEnabled();
     static bool htmlMediaElementEnabled();
@@ -176,9 +171,6 @@ public:
 
     static bool peerConnectionEnabled() { return isMediaStreamEnabled && isPeerConnectionEnabled; }
     static void setPeerConnectionEnabled(bool isEnabled) { isPeerConnectionEnabled = isEnabled; }
-    static bool deprecatedPeerConnectionEnabled() { return isMediaStreamEnabled && isDeprecatedPeerConnectionEnabled; }
-    static void setDeprecatedPeerConnectionEnabled(bool isEnabled) { isDeprecatedPeerConnectionEnabled = isEnabled; }
-    static bool webkitPeerConnection00Enabled() { return deprecatedPeerConnectionEnabled(); }
     static bool webkitRTCPeerConnectionEnabled() { return peerConnectionEnabled(); }
 #endif
 
@@ -259,6 +251,12 @@ public:
     // The lang attribute support is incomplete and should only be turned on for tests.
     static void setLangAttributeAwareFormControlUIEnabled(bool isEnabled) { isLangAttributeAwareFormControlUIEnabled = isEnabled; }
 
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+    static bool requestAutocompleteEnabled() { return isRequestAutocompleteEnabled; }
+    static void setRequestAutocompleteEnabled(bool isEnabled) { isRequestAutocompleteEnabled = isEnabled; }
+#endif
+
+
 private:
     // Never instantiate.
     RuntimeEnabledFeatures() { }
@@ -291,7 +289,6 @@ private:
 #if ENABLE(MEDIA_STREAM)
     static bool isMediaStreamEnabled;
     static bool isPeerConnectionEnabled;
-    static bool isDeprecatedPeerConnectionEnabled;
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -304,10 +301,6 @@ private:
 
 #if ENABLE(FULLSCREEN_API)
     static bool isFullScreenAPIEnabled;
-#endif
-
-#if ENABLE(POINTER_LOCK)
-    static bool isPointerLockEnabled;
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -358,6 +351,10 @@ private:
 
 #if ENABLE(DIALOG_ELEMENT)
     static bool isDialogElementEnabled;
+#endif
+
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+    static bool isRequestAutocompleteEnabled;
 #endif
 };
 

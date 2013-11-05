@@ -54,12 +54,12 @@ class WebCookieJar;
 class WebFileSystem;
 class WebFileUtilities;
 class WebFlingAnimator;
+class WebGestureCurveTarget;
+class WebGestureCurve;
 class WebMediaStreamCenter;
 class WebMediaStreamCenterClient;
 class WebMessagePortChannel;
 class WebMimeRegistry;
-class WebPeerConnection00Handler;
-class WebPeerConnection00HandlerClient;
 class WebRTCPeerConnectionHandler;
 class WebRTCPeerConnectionHandlerClient;
 class WebSandboxSupport;
@@ -71,6 +71,8 @@ class WebURL;
 class WebURLLoader;
 class WebWorkerRunLoop;
 struct WebLocalizedString;
+struct WebFloatPoint;
+struct WebSize;
 
 class Platform {
 public:
@@ -416,13 +418,11 @@ public:
 
     virtual WebFlingAnimator* createFlingAnimator() { return 0; }
 
-    // WebRTC ----------------------------------------------------------
+    // Creates a new fling animation curve instance for device |deviceSource|
+    // with |velocity| and already scrolled |cumulativeScroll| pixels.
+    virtual WebGestureCurve* createFlingAnimationCurve(int deviceSource, const WebFloatPoint& velocity, const WebSize& cumulativeScroll) { return 0; }
 
-    // DEPRECATED
-    // Creates an WebPeerConnection00Handler for PeerConnection00.
-    // This is an highly experimental feature not yet in the WebRTC standard.
-    // May return null if WebRTC functionality is not avaliable or out of resources.
-    virtual WebPeerConnection00Handler* createPeerConnection00Handler(WebPeerConnection00HandlerClient*) { return 0; }
+    // WebRTC ----------------------------------------------------------
 
     // Creates an WebRTCPeerConnectionHandler for RTCPeerConnection.
     // May return null if WebRTC functionality is not avaliable or out of resources.

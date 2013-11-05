@@ -26,7 +26,7 @@
 #include "config.h"
 #include "DateTimeFormat.h"
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 #include <wtf/ASCIICType.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -241,10 +241,20 @@ bool DateTimeFormat::parse(const String& source, TokenHandler& tokenHandler)
     return false;
 }
 
+static bool isASCIIAlphabetOrQuote(UChar ch)
+{
+    return isASCIIAlpha(ch) || ch == '\'';
+}
+
 void DateTimeFormat::quoteAndAppendLiteral(const String& literal, StringBuilder& buffer)
 {
     if (literal.length() <= 0)
         return;
+
+    if (literal.find(isASCIIAlphabetOrQuote) == notFound) {
+        buffer.append(literal);
+        return;
+    }
     
     if (literal.find('\'') == notFound) {
         buffer.append("'");

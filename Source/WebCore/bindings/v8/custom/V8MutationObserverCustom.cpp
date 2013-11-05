@@ -63,11 +63,10 @@ v8::Handle<v8::Value> V8MutationObserver::constructorCallback(const v8::Argument
     ScriptExecutionContext* context = getScriptExecutionContext();
 
     RefPtr<MutationCallback> callback = V8MutationCallback::create(arg, context);
-    RefPtr<MutationObserver> observer = MutationObserver::create(callback.release());
+    RefPtr<MutationObserver> observer = MutationObserver::create(context, callback.release());
 
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::setDOMWrapper(wrapper, &info, observer.get());
-    V8DOMWrapper::setJSWrapperForDOMObject(observer.release(), wrapper);
+    V8DOMWrapper::createDOMWrapper(observer.release(), &info, wrapper);
     return wrapper;
 }
 

@@ -35,15 +35,16 @@
 #include "InlineTextBox.h"
 #include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
+#include "LoaderStrategy.h"
 #include "MemoryCache.h"
 #include "MutationEvent.h"
+#include "ResourceLoadScheduler.h"
 #include "Page.h"
+#include "PlatformStrategies.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
 #include "RenderWidget.h"
-#include "ResourceLoadScheduler.h"
 #include "RootInlineBox.h"
-#include "UndoManager.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Vector.h>
 
@@ -343,10 +344,6 @@ static void willRemoveChild(Node* child)
     ChildListMutationScope(child->parentNode()).willRemoveChild(child);
     child->notifyMutationObserversNodeWillDetach();
 #endif
-#if ENABLE(UNDO_MANAGER)
-    if (UndoManager::isRecordingAutomaticTransaction(child->parentNode()))
-        UndoManager::addTransactionStep(NodeRemovingDOMTransactionStep::create(child->parentNode(), child));
-#endif
 
     dispatchChildRemovalEvents(child);
     child->document()->nodeWillBeRemoved(child); // e.g. mutation event listener can create a new range.
@@ -371,16 +368,12 @@ static void willRemoveChildren(ContainerNode* container)
         mutation.willRemoveChild(child);
         child->notifyMutationObserversNodeWillDetach();
 #endif
-#if ENABLE(UNDO_MANAGER)
-        if (UndoManager::isRecordingAutomaticTransaction(container))
-            UndoManager::addTransactionStep(NodeRemovingDOMTransactionStep::create(container, child));
-#endif
 
         // fire removed from document mutation events.
         dispatchChildRemovalEvents(child);
     }
 
-    ChildFrameDisconnector(container, ChildFrameDisconnector::DoNotIncludeRoot).disconnect();
+    ChildFrameDisconnector(container).disconnect(ChildFrameDisconnector::DescendantsOnly);
 }
 
 void ContainerNode::disconnectDescendantFrames()
@@ -641,7 +634,11 @@ void ContainerNode::suspendPostAttachCallbacks()
                 s_shouldReEnableMemoryCacheCallsAfterAttach = true;
             }
         }
+#if USE(PLATFORM_STRATEGIES)
+        platformStrategies()->loaderStrategy()->resourceLoadScheduler()->suspendPendingRequests();
+#else
         resourceLoadScheduler()->suspendPendingRequests();
+#endif
     }
     ++s_attachDepth;
 }
@@ -658,7 +655,11 @@ void ContainerNode::resumePostAttachCallbacks()
             if (Page* page = document()->page())
                 page->setMemoryCacheClientCallsEnabled(true);
         }
+#if USE(PLATFORM_STRATEGIES)
+        platformStrategies()->loaderStrategy()->resourceLoadScheduler()->resumePendingRequests();
+#else
         resourceLoadScheduler()->resumePendingRequests();
+#endif
     }
     --s_attachDepth;
 }
@@ -1010,11 +1011,6 @@ static void updateTreeAfterInsertion(ContainerNode* parent, Node* child, bool sh
 
 #if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope(parent).childAdded(child);
-#endif
-
-#if ENABLE(UNDO_MANAGER)
-    if (UndoManager::isRecordingAutomaticTransaction(parent))
-        UndoManager::addTransactionStep(NodeInsertingDOMTransactionStep::create(parent, child));
 #endif
 
     parent->childrenChanged(false, child->previousSibling(), child->nextSibling(), 1);

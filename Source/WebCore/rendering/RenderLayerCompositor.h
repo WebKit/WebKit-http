@@ -34,11 +34,13 @@
 
 namespace WebCore {
 
+class FixedPositionViewportConstraints;
 class GraphicsLayer;
 class GraphicsLayerUpdater;
 class RenderEmbeddedObject;
 class RenderPart;
 class ScrollingCoordinator;
+class StickyPositionViewportConstraints;
 #if ENABLE(VIDEO)
 class RenderVideo;
 #endif
@@ -128,7 +130,7 @@ public:
     bool needsContentsCompositingLayer(const RenderLayer*) const;
     // Return the bounding box required for compositing layer and its childern, relative to ancestorLayer.
     // If layerBoundingBox is not 0, on return it contains the bounding box of this layer only.
-    IntRect calculateCompositedBounds(const RenderLayer*, const RenderLayer* ancestorLayer);
+    IntRect calculateCompositedBounds(const RenderLayer*, const RenderLayer* ancestorLayer) const;
 
     // Repaint the appropriate layers when the given RenderLayer starts or stops being composited.
     void repaintOnCompositingChange(RenderLayer*);
@@ -202,11 +204,6 @@ public:
 
     String layerTreeAsText(LayerTreeFlags);
 
-    // These are named to avoid conflicts with the functions in GraphicsLayerClient
-    // These return the actual internal variables.
-    bool compositorShowDebugBorders() const { return m_showDebugBorders; }
-    bool compositorShowRepaintCounter() const { return m_showRepaintCounter; }
-
     virtual float deviceScaleFactor() const OVERRIDE;
     virtual float pageScaleFactor() const OVERRIDE;
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const OVERRIDE;
@@ -228,6 +225,12 @@ public:
 
     void documentBackgroundColorDidChange();
 
+    void updateViewportConstraintStatus(RenderLayer*);
+    void removeViewportConstrainedLayer(RenderLayer*);
+
+    void resetTrackedRepaintRects();
+    void setTracksRepaints(bool);
+
 private:
     class OverlapMap;
 
@@ -236,8 +239,7 @@ private:
     virtual void notifyFlushRequired(const GraphicsLayer*) OVERRIDE { scheduleLayerFlush(); }
     virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect&) OVERRIDE;
 
-    virtual bool showDebugBorders(const GraphicsLayer*) const OVERRIDE;
-    virtual bool showRepaintCounter(const GraphicsLayer*) const OVERRIDE;
+    virtual bool isTrackingRepaints() const OVERRIDE;
     
     // GraphicsLayerUpdaterClient implementation
     virtual void flushLayers(GraphicsLayerUpdater*) OVERRIDE;
@@ -314,6 +316,13 @@ private:
     bool requiresCompositingForOverflowScrolling(const RenderLayer*) const;
     bool requiresCompositingForIndirectReason(RenderObject*, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
 
+    void addViewportConstrainedLayer(RenderLayer*);
+    void registerOrUpdateViewportConstrainedLayer(RenderLayer*);
+    void unregisterViewportConstrainedLayer(RenderLayer*);
+
+    const FixedPositionViewportConstraints computeFixedViewportConstraints(RenderLayer*);
+    const StickyPositionViewportConstraints computeStickyViewportConstraints(RenderLayer*);
+
     bool requiresScrollLayer(RootLayerAttachment) const;
     bool requiresHorizontalScrollbarLayer() const;
     bool requiresVerticalScrollbarLayer() const;
@@ -352,11 +361,16 @@ private:
     bool m_shouldFlushOnReattach;
     bool m_forceCompositingMode;
 
+    bool m_isTrackingRepaints; // Used for testing.
+
     RootLayerAttachment m_rootLayerAttachment;
 
     // Enclosing clipping layer for iframe content
     OwnPtr<GraphicsLayer> m_clipLayer;
     OwnPtr<GraphicsLayer> m_scrollLayer;
+
+    HashSet<RenderLayer*> m_viewportConstrainedLayers;
+    HashSet<RenderLayer*> m_viewportConstrainedLayersNeedingUpdate;
 
     // Enclosing layer for overflow controls and the clipping layer
     OwnPtr<GraphicsLayer> m_overflowControlsHostLayer;

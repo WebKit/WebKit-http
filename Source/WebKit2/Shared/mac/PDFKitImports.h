@@ -35,6 +35,8 @@ Class pdfDocumentClass();
 
 #if ENABLE(PDFKIT_PLUGIN)
 Class pdfLayerControllerClass();
+Class pdfAnnotationTextWidgetClass();
+Class pdfAnnotationChoiceWidgetClass();
 #endif
 
 }

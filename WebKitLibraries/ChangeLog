@@ -1,3 +1,105 @@
+2012-11-12  Beth Dakin  <bdakin@apple.com>
+
+        Build fix. Forgot these bits last time.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2012-11-12  Beth Dakin  <bdakin@apple.com>
+
+        Zoomed-in scrolling is very slow when deviceScaleFactor > 1
+        https://bugs.webkit.org/show_bug.cgi?id=101787
+
+        Reviewed by Simon Fraser.
+
+        wkSetCGFontRenderingMode now takes a BOOL parameter.
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2012-11-08  Anders Carlsson  <andersca@apple.com>
+
+        Roll WebKitSystemInterface DEPS.
+
+        Rubber-stamped by Andreas Kling.
+
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2012-11-07  Roger Fong  <roger_fong@apple.com>
+
+        Enable Subpixel Layout on Windows. Rebaseline any failing tests that were rebaselined in r133351.
+        https://bugs.webkit.org/show_bug.cgi?id=101538
+
+        Rubberstamped by Tim Horton.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+
+2012-11-06  Anders Carlsson  <andersca@apple.com>
+
+        Build fix.
+
+        * WebKitSystemInterface.h:
+
+2012-11-06  Anders Carlsson  <andersca@apple.com>
+
+        Update Java related WKSI function names
+        https://bugs.webkit.org/show_bug.cgi?id=101414
+
+        Reviewed by Sam Weinig.
+
+        Roll WebKitSystemInterface DEPS.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2012-11-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Clean up which storage cookie jar functions use
+        https://bugs.webkit.org/show_bug.cgi?id=101395
+
+        Reviewed by Brady Eidson.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+        Added WKHTTPCookies() and WKDeleteAllHTTPCookies(). Updated ifdefs for currently
+        supported OS versions.
+
+2012-11-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Delete Leopard and Snow Leopard versions of WKSI. These have not been updated in ages.
+
+        Rubber-stampted by Mark Rowe.
+
+        * libWebKitSystemInterfaceLeopard.a: Removed.
+        * libWebKitSystemInterfaceSnowLeopard.a: Removed.
+
+2012-11-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Get rid of setCookieStoragePrivateBrowsingEnabled.
+        https://bugs.webkit.org/show_bug.cgi?id=101247
+
+        Reviewed by Brady Eidson.
+
+        * WebKitSystemInterface.h: Removed the function.
+
+2012-11-02  Anders Carlsson  <andersca@apple.com>
+
+        Don't instantiate the Java plug-in if it's inactive
+        https://bugs.webkit.org/show_bug.cgi?id=101102
+        <rdar://problem/12595679>
+
+        Reviewed by Andreas Kling.
+
+        Update WebKitSystemInterface to a version that has WKJLReportWebComponentsUsed.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+        Roll WebKitSystemInterface DERPS.
+
 2012-10-25  Dominik Röttsches  <dominik.rottsches@intel.com>
 
         Conditionalize XHR timeout support

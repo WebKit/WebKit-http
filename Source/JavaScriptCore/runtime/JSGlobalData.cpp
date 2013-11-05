@@ -30,6 +30,7 @@
 #include "JSGlobalData.h"
 
 #include "ArgList.h"
+#include "CodeCache.h"
 #include "CommonIdentifiers.h"
 #include "DebuggerActivation.h"
 #include "FunctionConstructor.h"
@@ -57,6 +58,7 @@
 #include "RegExpObject.h"
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
+#include "UnlinkedCodeBlock.h"
 #include <wtf/RetainPtr.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
@@ -170,7 +172,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     , sizeOfLastScratchBuffer(0)
 #endif
     , dynamicGlobalObject(0)
-    , cachedUTCOffset(std::numeric_limits<double>::quiet_NaN())
+    , cachedUTCOffset(QNaN)
     , m_enabledProfiler(0)
     , m_regExpCache(new RegExpCache(this))
 #if ENABLE(REGEXP_TRACING)
@@ -196,6 +198,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     , m_initializingObjectClass(0)
 #endif
     , m_inDefineOwnProperty(false)
+    , m_codeCache(CodeCache::create())
 {
     interpreter = new Interpreter(*this);
 
@@ -221,6 +224,11 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     sharedSymbolTableStructure.set(*this, SharedSymbolTable::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
     sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
+    withScopeStructure.set(*this, JSWithScope::createStructure(*this, 0, jsNull()));
+    unlinkedFunctionExecutableStructure.set(*this, UnlinkedFunctionExecutable::createStructure(*this, 0, jsNull()));
+    unlinkedProgramCodeBlockStructure.set(*this, UnlinkedProgramCodeBlock::createStructure(*this, 0, jsNull()));
+    unlinkedEvalCodeBlockStructure.set(*this, UnlinkedEvalCodeBlock::createStructure(*this, 0, jsNull()));
+    unlinkedFunctionCodeBlockStructure.set(*this, UnlinkedFunctionCodeBlock::createStructure(*this, 0, jsNull()));
 
     wtfThreadData().setCurrentIdentifierTable(existingEntryIdentifierTable);
 
@@ -400,10 +408,10 @@ JSGlobalData::ClientData::~ClientData()
 
 void JSGlobalData::resetDateCache()
 {
-    cachedUTCOffset = std::numeric_limits<double>::quiet_NaN();
+    cachedUTCOffset = QNaN;
     dstOffsetCache.reset();
     cachedDateString = String();
-    cachedDateStringValue = std::numeric_limits<double>::quiet_NaN();
+    cachedDateStringValue = QNaN;
     dateInstanceCache.reset();
 }
 

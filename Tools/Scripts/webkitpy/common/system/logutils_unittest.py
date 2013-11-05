@@ -37,7 +37,7 @@ class GetLoggerTest(unittest.TestCase):
 
     def test_get_logger_in_webkitpy(self):
         logger = logutils.get_logger(__file__)
-        self.assertEquals(logger.name, "webkitpy.common.system.logutils_unittest")
+        self.assertEqual(logger.name, "webkitpy.common.system.logutils_unittest")
 
     def test_get_logger_not_in_webkitpy(self):
         # Temporarily change the working directory so that we
@@ -47,10 +47,10 @@ class GetLoggerTest(unittest.TestCase):
         os.chdir(root_dir)
 
         logger = logutils.get_logger("/Tools/Scripts/test-webkitpy")
-        self.assertEquals(logger.name, "test-webkitpy")
+        self.assertEqual(logger.name, "test-webkitpy")
 
         logger = logutils.get_logger("/Tools/Scripts/test-webkitpy.py")
-        self.assertEquals(logger.name, "test-webkitpy")
+        self.assertEqual(logger.name, "test-webkitpy")
 
         os.chdir(working_directory)
 
@@ -107,7 +107,11 @@ class ConfigureLoggingTest(ConfigureLoggingTestBase):
 
     def test_info_message(self):
         self._log.info("test message")
-        self._assert_log_messages(["unittest: [INFO] test message\n"])
+        self._assert_log_messages(["test message\n"])
+
+    def test_debug_message(self):
+        self._log.debug("test message")
+        self._assert_log_messages([])
 
     def test_below_threshold_message(self):
         # We test the boundary case of a logging level equal to 19.
@@ -120,9 +124,21 @@ class ConfigureLoggingTest(ConfigureLoggingTestBase):
     def test_two_messages(self):
         self._log.info("message1")
         self._log.info("message2")
-        self._assert_log_messages(["unittest: [INFO] message1\n",
-                                   "unittest: [INFO] message2\n"])
+        self._assert_log_messages(["message1\n",
+                                   "message2\n"])
 
+
+class ConfigureLoggingVerboseTest(ConfigureLoggingTestBase):
+    def _logging_level(self):
+        return logging.DEBUG
+
+    def test_info_message(self):
+        self._log.info("test message")
+        self._assert_log_messages(["unittest: [INFO] test message\n"])
+
+    def test_debug_message(self):
+        self._log.debug("test message")
+        self._assert_log_messages(["unittest: [DEBUG] test message\n"])
 
 class ConfigureLoggingCustomLevelTest(ConfigureLoggingTestBase):
 
@@ -135,7 +151,7 @@ class ConfigureLoggingCustomLevelTest(ConfigureLoggingTestBase):
 
     def test_logged_message(self):
         self._log.log(self._level, "test message")
-        self._assert_log_messages(["unittest: [Level 36] test message\n"])
+        self._assert_log_messages(["test message\n"])
 
     def test_below_threshold_message(self):
         self._log.log(self._level - 1, "test message")

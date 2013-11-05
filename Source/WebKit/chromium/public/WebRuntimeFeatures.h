@@ -108,14 +108,12 @@ public:
 
     WEBKIT_EXPORT static void enablePeerConnection(bool);
     WEBKIT_EXPORT static bool isPeerConnectionEnabled();
-    WEBKIT_EXPORT static void enableDeprecatedPeerConnection(bool);
-    WEBKIT_EXPORT static bool isDeprecatedPeerConnectionEnabled();
 
     WEBKIT_EXPORT static void enableFullScreenAPI(bool);
     WEBKIT_EXPORT static bool isFullScreenAPIEnabled();
 
+    // FIXME: Remove this API once chromium no longer has a compile dependency. http://crbug.com/160761
     WEBKIT_EXPORT static void enablePointerLock(bool);
-    WEBKIT_EXPORT static bool isPointerLockEnabled();
 
     WEBKIT_EXPORT static void enableMediaSource(bool);
     WEBKIT_EXPORT static bool isMediaSourceEnabled();
@@ -158,6 +156,9 @@ public:
 
     WEBKIT_EXPORT static void enableCSSExclusions(bool);
     WEBKIT_EXPORT static bool isCSSExclusionsEnabled();
+
+    WEBKIT_EXPORT static void enableRequestAutocomplete(bool);
+    WEBKIT_EXPORT static bool isRequestAutocompleteEnabled();
 
 private:
     WebRuntimeFeatures();

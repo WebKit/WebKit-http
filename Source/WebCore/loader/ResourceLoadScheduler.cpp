@@ -39,6 +39,7 @@
 #include "ResourceRequest.h"
 #include "SubresourceLoader.h"
 #include <wtf/MainThread.h>
+#include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(CHROMIUM)
@@ -73,20 +74,31 @@ ResourceLoadScheduler::HostInformation* ResourceLoadScheduler::hostForURL(const 
     return host;
 }
 
-ResourceLoadScheduler* ResourceLoadScheduler::defaultResourceLoadScheduler()
-{
-    ASSERT(isMainThread());
-    DEFINE_STATIC_LOCAL(ResourceLoadScheduler, resourceLoadScheduler, ());
-    return &resourceLoadScheduler;
-}
-
 ResourceLoadScheduler* resourceLoadScheduler()
 {
+    ASSERT(isMainThread());
+    static ResourceLoadScheduler* globalScheduler = 0;
+    
+    if (!globalScheduler) {
 #if USE(PLATFORM_STRATEGIES)
-    return platformStrategies()->loaderStrategy()->resourceLoadScheduler();
+        static bool isCallingOutToStrategy = false;
+        
+        // If we're re-entering resourceLoadScheduler() while calling out to the LoaderStrategy,
+        // then the LoaderStrategy is trying to use the default resourceLoadScheduler.
+        // So we'll create it here and start using it.
+        if (isCallingOutToStrategy) {
+            globalScheduler = new ResourceLoadScheduler;
+            return globalScheduler;
+        }
+        
+        TemporaryChange<bool> recursionGuard(isCallingOutToStrategy, true);
+        globalScheduler = platformStrategies()->loaderStrategy()->resourceLoadScheduler();
 #else
-    return ResourceLoadScheduler::defaultResourceLoadScheduler();
+        globalScheduler = new ResourceLoadScheduler;
 #endif
+    }
+
+    return globalScheduler;
 }
 
 ResourceLoadScheduler::ResourceLoadScheduler()
@@ -151,9 +163,16 @@ void ResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Resourc
         return;
     }
 
-    // Handle asynchronously so early low priority requests don't get scheduled before later high priority ones.
-    InspectorInstrumentation::didScheduleResourceRequest(resourceLoader->frameLoader() ? resourceLoader->frameLoader()->frame()->document() : 0, resourceLoader->url());
+    notifyDidScheduleResourceRequest(resourceLoader);
+
+    // Handle asynchronously so early low priority requests don't
+    // get scheduled before later high priority ones.
     scheduleServePendingRequests();
+}
+
+void ResourceLoadScheduler::notifyDidScheduleResourceRequest(ResourceLoader* loader)
+{
+    InspectorInstrumentation::didScheduleResourceRequest(loader->frameLoader() ? loader->frameLoader()->frame()->document() : 0, loader->url());
 }
 
 void ResourceLoadScheduler::remove(ResourceLoader* resourceLoader)
@@ -316,6 +335,12 @@ bool ResourceLoadScheduler::HostInformation::limitRequests(ResourceLoadPriority 
     if (priority == ResourceLoadPriorityVeryLow && !m_requestsLoading.isEmpty())
         return true;
     return m_requestsLoading.size() >= (resourceLoadScheduler()->isSerialLoadingEnabled() ? 1 : m_maxRequestsInFlight);
+}
+
+void ResourceLoadScheduler::startResourceLoader(ResourceLoader* loader)
+{
+    ASSERT(loader);
+    loader->start();
 }
 
 } // namespace WebCore

@@ -32,63 +32,48 @@
 
 using namespace WebKit;
 
-Ewk_Back_Forward_List_Item::Ewk_Back_Forward_List_Item(WKBackForwardListItemRef itemRef)
+EwkBackForwardListItem::EwkBackForwardListItem(WKBackForwardListItemRef itemRef)
     : m_wkItem(itemRef)
 { }
 
-const char* Ewk_Back_Forward_List_Item::url() const
+const char* EwkBackForwardListItem::url() const
 {
     m_url = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyURL(m_wkItem.get()));
 
     return m_url;
 }
 
-const char* Ewk_Back_Forward_List_Item::title() const
+const char* EwkBackForwardListItem::title() const
 {
     m_title = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyTitle(m_wkItem.get()));
 
     return m_title;
 }
 
-const char* Ewk_Back_Forward_List_Item::originalURL() const
+const char* EwkBackForwardListItem::originalURL() const
 {
     m_originalURL = WKEinaSharedString(AdoptWK, WKBackForwardListItemCopyOriginalURL(m_wkItem.get()));
 
     return m_originalURL;
 }
 
-Ewk_Back_Forward_List_Item* ewk_back_forward_list_item_ref(Ewk_Back_Forward_List_Item* item)
-{
-    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
-    item->ref();
-
-    return item;
-}
-
-void ewk_back_forward_list_item_unref(Ewk_Back_Forward_List_Item* item)
-{
-    EINA_SAFETY_ON_NULL_RETURN(item);
-
-    item->deref();
-}
-
 const char* ewk_back_forward_list_item_url_get(const Ewk_Back_Forward_List_Item* item)
 {
-    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkBackForwardListItem, item, impl, 0);
 
-    return item->url();
+    return impl->url();
 }
 
 const char* ewk_back_forward_list_item_title_get(const Ewk_Back_Forward_List_Item* item)
 {
-    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkBackForwardListItem, item, impl, 0);
 
-    return item->title();
+    return impl->title();
 }
 
 const char* ewk_back_forward_list_item_original_url_get(const Ewk_Back_Forward_List_Item* item)
 {
-    EINA_SAFETY_ON_NULL_RETURN_VAL(item, 0);
+    EWK_OBJ_GET_IMPL_OR_RETURN(const EwkBackForwardListItem, item, impl, 0);
 
-    return item->originalURL();
+    return impl->originalURL();
 }

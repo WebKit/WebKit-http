@@ -38,8 +38,10 @@
 #define ewk_context_h
 
 #include "ewk_cookie_manager.h"
+#include "ewk_database_manager.h"
 #include "ewk_favicon_database.h"
 #include "ewk_navigation_data.h"
+#include "ewk_storage_manager.h"
 #include "ewk_url_scheme_request.h"
 #include <Evas.h>
 
@@ -47,8 +49,12 @@
 extern "C" {
 #endif
 
-/** Creates a type name for @a Ewk_Context. */
-typedef struct Ewk_Context Ewk_Context;
+/**
+ * Declare Ewk_Context as Ewk_Object.
+ *
+ * @see Ewk_Object
+ */
+typedef struct Ewk_Object Ewk_Context;
 
 /**
  * \enum    Ewk_Cache_Model
@@ -72,20 +78,6 @@ typedef enum Ewk_Cache_Model Ewk_Cache_Model;
  * @brief Callback type for use with ewk_context_url_scheme_register().
  */
 typedef void (*Ewk_Url_Scheme_Request_Cb) (Ewk_Url_Scheme_Request *request, void *user_data);
-
-/**
- * @typedef Ewk_Vibration_Client_Vibrate_Cb Ewk_Vibration_Client_Vibrate_Cb
- * @brief Type definition for a function that will be called back when vibrate
- * request receiveed from the vibration controller.
- */
-typedef void (*Ewk_Vibration_Client_Vibrate_Cb)(uint64_t vibration_time, void *user_data);
-
-/**
- * @typedef Ewk_Vibration_Client_Vibration_Cancel_Cb Ewk_Vibration_Client_Vibration_Cancel_Cb
- * @brief Type definition for a function that will be called back when cancel
- * vibration request receiveed from the vibration controller.
- */
-typedef void (*Ewk_Vibration_Client_Vibration_Cancel_Cb)(void *user_data);
 
 /**
  * @typedef Ewk_History_Navigation_Cb Ewk_History_Navigation_Cb
@@ -118,24 +110,6 @@ typedef void (*Ewk_History_Title_Update_Cb)(const Evas_Object *view, const char 
  * @see ewk_context_visited_link_add
  */
 typedef void (*Ewk_History_Populate_Visited_Links_Cb)(void *user_data);
-
-/**
- * Increases the reference count of the given object.
- *
- * @param context context object to increase the reference count
- *
- * @return Ewk_Context object on success or @c NULL on failure
- */
-EAPI Ewk_Context *ewk_context_ref(Ewk_Context *context);
-
-/**
- * Decreases the reference count of the given object, possibly freeing it.
- *
- * When the reference count it's reached 0, the Ewk_Context is freed.
- *
- * @param context context object to decrease the reference count
- */
-EAPI void ewk_context_unref(Ewk_Context *context);
 
 /**
  * Gets default Ewk_Context instance.
@@ -183,6 +157,34 @@ EAPI Ewk_Context *ewk_context_new_with_injected_bundle_path(const char *path);
 EAPI Ewk_Cookie_Manager *ewk_context_cookie_manager_get(const Ewk_Context *context);
 
 /**
+ * Gets the database manager instance for this @a context.
+ *
+ * @param context context object to query
+ *
+ * @return Ewk_Database_Manager object instance or @c NULL in case of failure
+ */
+EAPI Ewk_Database_Manager *ewk_context_database_manager_get(const Ewk_Context *context);
+
+/**
+ * Sets the favicon database directory for this @a context.
+ *
+ * Sets the directory path to be used to store the favicons database
+ * for @a context on disk. Passing @c NULL as @a directory_path will
+ * result in using the default directory for the platform.
+ *
+ * Calling this method also means enabling the favicons database for
+ * its use from the applications, it is therefore expected to be
+ * called only once. Further calls for the same instance of
+ * @a context will not have any effect.
+ *
+ * @param context context object to update
+ * @param directory_path database directory path to set
+ *
+ * @return @c EINA_TRUE if successful, @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_context_favicon_database_directory_set(Ewk_Context *context, const char *directory_path);
+
+/**
  * Gets the favicon database instance for this @a context.
  *
  * @param context context object to query.
@@ -190,6 +192,15 @@ EAPI Ewk_Cookie_Manager *ewk_context_cookie_manager_get(const Ewk_Context *conte
  * @return Ewk_Favicon_Database object instance or @c NULL in case of failure.
  */
 EAPI Ewk_Favicon_Database *ewk_context_favicon_database_get(const Ewk_Context *context);
+
+/**
+ * Gets the storage manager instance for this @a context.
+ *
+ * @param context context object to query.
+ *
+ * @return Ewk_Storage_Manager object instance or @c NULL in case of failure.
+ */
+EAPI Ewk_Storage_Manager *ewk_context_storage_manager_get(const Ewk_Context *context);
 
 /**
  * Register @a scheme in @a context.
@@ -233,22 +244,6 @@ EAPI Ewk_Favicon_Database *ewk_context_favicon_database_get(const Ewk_Context *c
  * @endcode
  */
 EAPI Eina_Bool ewk_context_url_scheme_register(Ewk_Context *context, const char *scheme, Ewk_Url_Scheme_Request_Cb callback, void *user_data);
-
-/**
- * Sets vibration client callbacks to handle the tactile feedback in the form of
- * vibration in the client application when the content asks for vibration.
- *
- * To stop listening for vibration events, you may call this function with @c
- * NULL for the callbacks.
- *
- * @param context context object to set vibration client callbacks.
- * @param vibrate The function to call when the vibrate request received from the
- *        controller (may be @c NULL).
- * @param cancel The function to call when the cancel vibration request received
- *        from the controller (may be @c NULL).
- * @param data User data (may be @c NULL).
- */
-EAPI void ewk_context_vibration_client_callbacks_set(Ewk_Context *context, Ewk_Vibration_Client_Vibrate_Cb vibrate, Ewk_Vibration_Client_Vibration_Cancel_Cb cancel, void *data);
 
 /**
  * Sets history callbacks for the given @a context.
@@ -305,6 +300,16 @@ EAPI Eina_Bool ewk_context_cache_model_set(Ewk_Context *context, Ewk_Cache_Model
  * @return the cache model for the @a context.
  */
 EAPI Ewk_Cache_Model ewk_context_cache_model_get(const Ewk_Context *context);
+
+/**
+ * Sets additional plugin path for @a context.
+ *
+ * @param context context object to set additional plugin path
+ * @param path the path to be used for plugins
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
+ */
+EAPI Eina_Bool ewk_context_additional_plugin_path_set(Ewk_Context *context, const char *path);
 
 #ifdef __cplusplus
 }

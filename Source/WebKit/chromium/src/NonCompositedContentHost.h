@@ -71,8 +71,7 @@ private:
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time);
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*);
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect);
-    virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const;
-    virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const;
+    virtual bool isTrackingRepaints() const;
 
     bool haveScrollLayer();
     WebLayer* scrollLayer();
@@ -82,7 +81,6 @@ private:
     WebCore::IntSize m_viewportSize;
     WebCore::IntSize m_layerAdjust;
 
-    bool m_opaque;
     bool m_showDebugBorders;
 };
 

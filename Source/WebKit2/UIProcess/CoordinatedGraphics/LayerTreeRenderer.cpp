@@ -89,6 +89,10 @@ LayerTreeRenderer::LayerTreeRenderer(LayerTreeCoordinatorProxy* layerTreeCoordin
     , m_rootLayerID(InvalidWebLayerID)
     , m_isActive(false)
     , m_animationsLocked(false)
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    , m_animationFrameRequested(false)
+#endif
+    , m_accelerationMode(TextureMapper::OpenGLMode)
 {
 }
 
@@ -138,7 +142,27 @@ void LayerTreeRenderer::paintToCurrentGLContext(const TransformationMatrix& matr
 
     if (layer->descendantsOrSelfHaveRunningAnimations())
         dispatchOnMainThread(bind(&LayerTreeRenderer::updateViewport, this));
+
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    if (m_animationFrameRequested) {
+        m_animationFrameRequested = false;
+        dispatchOnMainThread(bind(&LayerTreeRenderer::animationFrameReady, this));
+    }
+#endif
 }
+
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+void LayerTreeRenderer::animationFrameReady()
+{
+    if (m_layerTreeCoordinatorProxy)
+        m_layerTreeCoordinatorProxy->animationFrameReady();
+}
+
+void LayerTreeRenderer::requestAnimationFrame()
+{
+    m_animationFrameRequested = true;
+}
+#endif
 
 void LayerTreeRenderer::paintToGraphicsContext(BackingStore::PlatformGraphicsContext painter)
 {
@@ -331,9 +355,9 @@ void LayerTreeRenderer::setRootLayerID(WebLayerID layerID)
     m_rootLayer->addChild(layer);
 }
 
-PassRefPtr<CoordinatedBackingStore> LayerTreeRenderer::getBackingStore(WebLayerID id)
+PassRefPtr<CoordinatedBackingStore> LayerTreeRenderer::getBackingStore(GraphicsLayer* graphicsLayer)
 {
-    TextureMapperLayer* layer = toTextureMapperLayer(layerByID(id));
+    TextureMapperLayer* layer = toTextureMapperLayer(graphicsLayer);
     ASSERT(layer);
     RefPtr<CoordinatedBackingStore> backingStore = static_cast<CoordinatedBackingStore*>(layer->backingStore().get());
     if (!backingStore) {
@@ -344,20 +368,51 @@ PassRefPtr<CoordinatedBackingStore> LayerTreeRenderer::getBackingStore(WebLayerI
     return backingStore;
 }
 
+void LayerTreeRenderer::removeBackingStoreIfNeeded(GraphicsLayer* graphicsLayer)
+{
+    TextureMapperLayer* layer = toTextureMapperLayer(graphicsLayer);
+    ASSERT(layer);
+    RefPtr<CoordinatedBackingStore> backingStore = static_cast<CoordinatedBackingStore*>(layer->backingStore().get());
+    ASSERT(backingStore);
+    if (backingStore->isEmpty())
+        layer->setBackingStore(0);
+}
+
+void LayerTreeRenderer::resetBackingStoreSizeToLayerSize(GraphicsLayer* graphicsLayer)
+{
+    TextureMapperLayer* layer = toTextureMapperLayer(graphicsLayer);
+    ASSERT(layer);
+    RefPtr<CoordinatedBackingStore> backingStore = static_cast<CoordinatedBackingStore*>(layer->backingStore().get());
+    ASSERT(backingStore);
+    backingStore->setSize(graphicsLayer->size());
+}
+
 void LayerTreeRenderer::createTile(WebLayerID layerID, int tileID, float scale)
 {
-    getBackingStore(layerID)->createTile(tileID, scale);
+    GraphicsLayer* layer = layerByID(layerID);
+    ASSERT(layer);
+    RefPtr<CoordinatedBackingStore> backingStore = getBackingStore(layer);
+    backingStore->createTile(tileID, scale);
+    resetBackingStoreSizeToLayerSize(layer);
 }
 
 void LayerTreeRenderer::removeTile(WebLayerID layerID, int tileID)
 {
-    getBackingStore(layerID)->removeTile(tileID);
+    GraphicsLayer* layer = layerByID(layerID);
+    ASSERT(layer);
+    RefPtr<CoordinatedBackingStore> backingStore = getBackingStore(layer);
+    backingStore->removeTile(tileID);
+    resetBackingStoreSizeToLayerSize(layer);
+    removeBackingStoreIfNeeded(layer);
 }
 
 void LayerTreeRenderer::updateTile(WebLayerID layerID, int tileID, const TileUpdate& update)
 {
-    RefPtr<CoordinatedBackingStore> backingStore = getBackingStore(layerID);
-    backingStore->updateTile(tileID, update.sourceRect, update.targetRect, update.surface, update.offset);
+    GraphicsLayer* layer = layerByID(layerID);
+    ASSERT(layer);
+    RefPtr<CoordinatedBackingStore> backingStore = getBackingStore(layer);
+    backingStore->updateTile(tileID, update.sourceRect, update.tileRect, update.surface, update.offset);
+    resetBackingStoreSizeToLayerSize(layer);
     m_backingStoresWithPendingBuffers.add(backingStore);
 }
 
@@ -420,7 +475,7 @@ void LayerTreeRenderer::ensureRootLayer()
     if (m_rootLayer)
         return;
     if (!m_textureMapper) {
-        m_textureMapper = TextureMapper::create(TextureMapper::OpenGLMode);
+        m_textureMapper = TextureMapper::create(m_accelerationMode);
         static_cast<TextureMapperGL*>(m_textureMapper.get())->setEnableEdgeDistanceAntialiasing(true);
     }
 
@@ -439,8 +494,16 @@ void LayerTreeRenderer::syncRemoteContent()
     // We enqueue messages and execute them during paint, as they require an active GL context.
     ensureRootLayer();
 
-    for (size_t i = 0; i < m_renderQueue.size(); ++i)
-        m_renderQueue[i]();
+    Vector<Function<void()> > renderQueue;
+    bool calledOnMainThread = WTF::isMainThread();
+    if (!calledOnMainThread)
+        m_renderQueueMutex.lock();
+    renderQueue.swap(m_renderQueue);
+    if (!calledOnMainThread)
+        m_renderQueueMutex.unlock();
+
+    for (size_t i = 0; i < renderQueue.size(); ++i)
+        renderQueue[i]();
 
     m_renderQueue.clear();
 }
@@ -499,6 +562,8 @@ void LayerTreeRenderer::appendUpdate(const Function<void()>& function)
     if (!m_isActive)
         return;
 
+    ASSERT(isMainThread());
+    MutexLocker locker(m_renderQueueMutex);
     m_renderQueue.append(function);
 }
 

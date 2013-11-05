@@ -33,13 +33,16 @@
 #include "BeforeTextInsertedEvent.h"
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
+#include "DateTimeChooser.h"
 #include "Document.h"
+#include "ElementShadow.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FileInputType.h"
 #include "FileList.h"
 #include "FormController.h"
 #include "Frame.h"
+#include "FrameView.h"
 #include "HTMLCollection.h"
 #include "HTMLDataListElement.h"
 #include "HTMLFormElement.h"
@@ -49,11 +52,14 @@
 #include "IdTargetObserver.h"
 #include "InputType.h"
 #include "KeyboardEvent.h"
+#include "Language.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "NumberInputType.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
+#include "RuntimeEnabledFeatures.h"
+#include "ScopedEventQueue.h"
 #include "SearchInputType.h"
 #include "ShadowRoot.h"
 #include "ScriptEventListener.h"
@@ -409,16 +415,13 @@ void HTMLInputElement::updateFocusAppearance(bool restorePreviousSelection)
         HTMLTextFormControlElement::updateFocusAppearance(restorePreviousSelection);
 }
 
-void HTMLInputElement::aboutToUnload()
+void HTMLInputElement::endEditing()
 {
-    if (!isTextField() || !focused())
+    if (!isTextField())
         return;
 
-    Frame* frame = document()->frame();
-    if (!frame)
-        return;
-
-    frame->editor()->textFieldDidEndEditing(this);
+    if (Frame* frame = document()->frame())
+        frame->editor()->textFieldDidEndEditing(this);
 }
 
 bool HTMLInputElement::shouldUseInputMethod()
@@ -618,7 +621,7 @@ bool HTMLInputElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLTextFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLInputElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLInputElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
 {
     if (attribute.name() == vspaceAttr) {
         addHTMLLengthToStyle(style, CSSPropertyMarginTop, attribute.value());
@@ -638,7 +641,7 @@ void HTMLInputElement::collectStyleForAttribute(const Attribute& attribute, Styl
     } else if (attribute.name() == borderAttr && isImageButton())
         applyBorderAttributeToStyle(attribute, style);
     else
-        HTMLTextFormControlElement::collectStyleForAttribute(attribute, style);
+        HTMLTextFormControlElement::collectStyleForPresentationAttribute(attribute, style);
 }
 
 void HTMLInputElement::parseAttribute(const Attribute& attribute)
@@ -901,6 +904,8 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
         setTextAsOfLastFormControlChangeEvent(String());
         dispatchFormControlChangeEvent();
     }
+
+    invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureChecked);
 }
 
 void HTMLInputElement::setIndeterminate(bool newValue)
@@ -1021,6 +1026,7 @@ void HTMLInputElement::setValue(const String& value, TextFieldEventBehavior even
         return;
 
     RefPtr<HTMLInputElement> protector(this);
+    EventQueueScope scope;
     String sanitizedValue = sanitizeValue(value);
     bool valueChanged = sanitizedValue != this->value();
 
@@ -1742,13 +1748,6 @@ bool HTMLInputElement::supportsPlaceholder() const
     return m_inputType->supportsPlaceholder();
 }
 
-bool HTMLInputElement::isPlaceholderEmpty() const
-{
-    if (m_inputType->usesFixedPlaceholder())
-        return m_inputType->fixedPlaceholder().isEmpty();
-    return HTMLTextFormControlElement::isPlaceholderEmpty();
-}
-
 void HTMLInputElement::updatePlaceholderText()
 {
     return m_inputType->updatePlaceholderText();
@@ -1904,6 +1903,64 @@ void HTMLInputElement::setRangeText(const String& replacement, unsigned start, u
     }
 
     HTMLTextFormControlElement::setRangeText(replacement, start, end, selectionMode, ec);
+}
+
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters& parameters)
+{
+    if (!document()->view())
+        return false;
+
+    parameters.type = type();
+    parameters.minimum = minimum();
+    parameters.maximum = maximum();
+    parameters.required = required();
+    if (!RuntimeEnabledFeatures::langAttributeAwareFormControlUIEnabled())
+        parameters.locale = defaultLanguage();
+    else {
+        AtomicString computedLocale = computeInheritedLanguage();
+        parameters.locale = computedLocale.isEmpty() ? AtomicString(defaultLanguage()) : computedLocale;
+    }
+
+    StepRange stepRange = createStepRange(RejectAny);
+    if (stepRange.hasStep()) {
+        parameters.step = stepRange.step().toDouble();
+        parameters.stepBase = stepRange.stepBase().toDouble();
+    } else {
+        parameters.step = 1.0;
+        parameters.stepBase = 0;
+    }
+
+    parameters.anchorRectInRootView = document()->view()->contentsToRootView(pixelSnappedBoundingBox());
+    parameters.currentValue = value();
+    parameters.isAnchorElementRTL = computedStyle()->direction() == RTL;
+#if ENABLE(DATALIST_ELEMENT)
+    if (HTMLDataListElement* dataList = this->dataList()) {
+        RefPtr<HTMLCollection> options = dataList->options();
+        for (unsigned i = 0; HTMLOptionElement* option = toHTMLOptionElement(options->item(i)); ++i) {
+            if (!isValidValue(option->value()))
+                continue;
+            parameters.suggestionValues.append(sanitizeValue(option->value()));
+            parameters.localizedSuggestionValues.append(localizeValue(option->value()));
+            parameters.suggestionLabels.append(option->value() == option->label() ? String() : option->label());
+        }
+    }
+#endif
+    return true;
+}
+#endif
+
+void HTMLInputElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    HTMLTextFormControlElement::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_name);
+    info.addMember(m_valueIfDirty);
+    info.addMember(m_suggestedValue);
+    info.addMember(m_inputType);
+#if ENABLE(DATALIST_ELEMENT)
+    info.addMember(m_listAttributeTargetObserver);
+#endif
 }
 
 } // namespace

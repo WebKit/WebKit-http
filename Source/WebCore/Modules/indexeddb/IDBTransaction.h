@@ -30,12 +30,12 @@
 
 #include "ActiveDOMObject.h"
 #include "DOMError.h"
-#include "DOMStringList.h"
 #include "Event.h"
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventTarget.h"
 #include "IDBTransactionCallbacks.h"
+#include "ScriptWrappable.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 
@@ -48,7 +48,7 @@ class IDBOpenDBRequest;
 class IDBTransactionBackendInterface;
 struct IDBObjectStoreMetadata;
 
-class IDBTransaction : public IDBTransactionCallbacks, public EventTarget, public ActiveDOMObject {
+class IDBTransaction : public ScriptWrappable, public IDBTransactionCallbacks, public EventTarget, public ActiveDOMObject {
 public:
     enum Mode {
         READ_ONLY = 0,
@@ -56,8 +56,8 @@ public:
         VERSION_CHANGE = 2
     };
 
-    static PassRefPtr<IDBTransaction> create(ScriptExecutionContext*, PassRefPtr<IDBTransactionBackendInterface>, Mode, IDBDatabase*);
-    static PassRefPtr<IDBTransaction> create(ScriptExecutionContext*, PassRefPtr<IDBTransactionBackendInterface>, Mode, IDBDatabase*, IDBOpenDBRequest*);
+    static PassRefPtr<IDBTransaction> create(ScriptExecutionContext*, PassRefPtr<IDBTransactionBackendInterface>, const Vector<String>& objectStoreNames, Mode, IDBDatabase*);
+    static PassRefPtr<IDBTransaction> create(ScriptExecutionContext*, PassRefPtr<IDBTransactionBackendInterface>, const Vector<String>& objectStoreNames, Mode, IDBDatabase*, IDBOpenDBRequest*);
     virtual ~IDBTransaction();
 
     static const AtomicString& modeReadOnly();
@@ -122,7 +122,7 @@ public:
     using RefCounted<IDBTransactionCallbacks>::deref;
 
 private:
-    IDBTransaction(ScriptExecutionContext*, PassRefPtr<IDBTransactionBackendInterface>, Mode, IDBDatabase*, IDBOpenDBRequest*);
+    IDBTransaction(ScriptExecutionContext*, PassRefPtr<IDBTransactionBackendInterface>, const Vector<String>&, Mode, IDBDatabase*, IDBOpenDBRequest*);
 
     void enqueueEvent(PassRefPtr<Event>);
     void closeOpenCursors();
@@ -145,6 +145,7 @@ private:
 
     RefPtr<IDBTransactionBackendInterface> m_backend;
     RefPtr<IDBDatabase> m_database;
+    const Vector<String> m_objectStoreNames;
     IDBOpenDBRequest* m_openDBRequest;
     const Mode m_mode;
     bool m_active;

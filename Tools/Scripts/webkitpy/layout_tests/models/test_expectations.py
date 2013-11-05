@@ -689,7 +689,7 @@ class TestExpectationsModel(object):
         # to be warnings and return False".
 
         if prev_expectation_line.matching_configurations == expectation_line.matching_configurations:
-            expectation_line.warnings.append('Duplicate or ambiguous entry for %s on lines %s:%d and %s:%d.' % (expectation_line.name,
+            expectation_line.warnings.append('Duplicate or ambiguous entry lines %s:%d and %s:%d.' % (
                 self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
                 self._shorten_filename(expectation_line.filename), expectation_line.line_number))
             return True
@@ -758,16 +758,16 @@ class TestExpectations(object):
                     'missing': MISSING}
 
     # (aggregated by category, pass/fail/skip, type)
-    EXPECTATION_DESCRIPTIONS = {SKIP: ('skipped', 'skipped', ''),
-                                PASS: ('passes', 'passed', ''),
-                                FAIL: ('failures', 'failed', ''),
-                                IMAGE: ('image-only failures', 'failed', ' (image diff)'),
-                                TEXT: ('text-only failures', 'failed', ' (text diff)'),
-                                IMAGE_PLUS_TEXT: ('image and text failures', 'failed', ' (image and text diff)'),
-                                AUDIO: ('audio failures', 'failed', ' (audio diff)'),
-                                CRASH: ('crashes', 'crashed', ''),
-                                TIMEOUT: ('timeouts', 'timed out', ''),
-                                MISSING: ('no expected results found', 'no expected result found', '')}
+    EXPECTATION_DESCRIPTIONS = {SKIP: 'skipped',
+                                PASS: 'passes',
+                                FAIL: 'failures',
+                                IMAGE: 'image-only failures',
+                                TEXT: 'text-only failures',
+                                IMAGE_PLUS_TEXT: 'image and text failures',
+                                AUDIO: 'audio failures',
+                                CRASH: 'crashes',
+                                TIMEOUT: 'timeouts',
+                                MISSING: 'missing results'}
 
     EXPECTATION_ORDER = (PASS, CRASH, TIMEOUT, MISSING, FAIL, IMAGE, SKIP)
 
@@ -932,6 +932,10 @@ class TestExpectations(object):
             self._has_warnings = True
             if self._is_lint_mode:
                 raise ParseError(warnings)
+            _log.warning('--lint-test-files warnings:')
+            for warning in warnings:
+                _log.warning(warning)
+            _log.warning('')
 
     def _process_tests_without_expectations(self):
         if self._full_test_list:

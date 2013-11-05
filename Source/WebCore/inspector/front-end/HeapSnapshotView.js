@@ -216,7 +216,7 @@ WebInspector.HeapSnapshotView.prototype = {
     {
         this._currentSearchResultIndex = -1;
         this._popoverHelper.hidePopover();
-        if (this.helpPopover && this.helpPopover.visible)
+        if (this.helpPopover && this.helpPopover.isShowing())
             this.helpPopover.hide();
     },
 
@@ -368,7 +368,7 @@ WebInspector.HeapSnapshotView.prototype = {
             return;
 
         this._baseProfileUid = this._profiles()[this.baseSelectElement.selectedIndex].uid;
-        var dataGrid = /** @type {WebInspector.HeapSnapshotDiffDataGrid} */ this.dataGrid;
+        var dataGrid = /** @type {WebInspector.HeapSnapshotDiffDataGrid} */ (this.dataGrid);
         // Change set base data source only if main data source is already set.
         if (dataGrid.snapshot)
             this.baseProfile.load(dataGrid.setBaseDataSource.bind(dataGrid));
@@ -646,7 +646,7 @@ WebInspector.HeapSnapshotView.prototype = {
             this._helpPopoverContentElement = contentElement;
             this.helpPopover = new WebInspector.Popover();
         }
-        if (this.helpPopover.visible)
+        if (this.helpPopover.isShowing())
             this.helpPopover.hide();
         else
             this.helpPopover.show(this._helpPopoverContentElement, this.helpButton.element);
@@ -866,7 +866,7 @@ WebInspector.HeapProfileHeader.prototype = {
             this.sidebarElement.wait = true;
             ProfilerAgent.getProfile(this.profileType().id, this.uid);
         }
-        var loaderProxy = /** @type {WebInspector.HeapSnapshotLoaderProxy} */ this._receiver;
+        var loaderProxy = /** @type {WebInspector.HeapSnapshotLoaderProxy} */ (this._receiver);
         loaderProxy.addConsumer(callback);
     },
 
@@ -937,7 +937,7 @@ WebInspector.HeapProfileHeader.prototype = {
         if (snapshotProxy)
             this._snapshotProxy = snapshotProxy;
         this._updateSnapshotStatus();
-        var worker = /** @type {WebInspector.HeapSnapshotWorker} */ this._snapshotProxy.worker;
+        var worker = /** @type {WebInspector.HeapSnapshotWorker} */ (this._snapshotProxy.worker);
         this.isTemporary = false;
         worker.startCheckingForLongRunningCalls();
     },

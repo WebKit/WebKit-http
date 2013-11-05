@@ -27,7 +27,7 @@
 #ifndef RenderThemeChromiumCommon_h
 #define RenderThemeChromiumCommon_h
 
-#include "LayoutTypes.h"
+#include "LayoutUnit.h"
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -35,7 +35,7 @@ namespace WebCore {
 class RenderThemeChromiumCommon {
 public:
     static bool supportsDataListUI(const AtomicString& type);
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI) && ENABLE(CALENDAR_PICKER)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     static bool supportsCalendarPicker(const AtomicString& type);
 #endif
     static LayoutUnit sliderTickSnappingThreshold();

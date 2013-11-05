@@ -1078,7 +1078,7 @@ def check_posix_threading(clean_lines, line_number, error):
     line = clean_lines.elided[line_number]
     for single_thread_function, multithread_safe_function in _THREADING_LIST:
         index = line.find(single_thread_function)
-        # Comparisons made explicit for clarity -- pylint: disable-msg=C6403
+        # Comparisons made explicit for clarity
         if index >= 0 and (index == 0 or (not line[index - 1].isalnum()
                                           and line[index - 1] not in ('_', '.', '>'))):
             error(line_number, 'runtime/threadsafe_fn', 2,
@@ -1594,7 +1594,7 @@ def check_function_definition_and_pass_ptr(type_text, row, location_description,
     """
     match_ref_or_own_ptr = '(?=\W|^)(Ref|Own)Ptr(?=\W)'
     bad_type_usage = search(match_ref_or_own_ptr, type_text)
-    if not bad_type_usage or type_text.endswith('&'):
+    if not bad_type_usage or type_text.endswith('&') or type_text.endswith('*'):
         return
     type_name = bad_type_usage.group(0)
     error(row, 'readability/pass_ptr', 5,
@@ -1793,7 +1793,7 @@ def check_spacing(file_extension, clean_lines, line_number, error):
     comment_position = line.find('//')
     if comment_position != -1:
         # Check if the // may be in quotes.  If so, ignore it
-        # Comparisons made explicit for clarity -- pylint: disable-msg=C6403
+        # Comparisons made explicit for clarity
         if (line.count('"', 0, comment_position) - line.count('\\"', 0, comment_position)) % 2 == 0:   # not in quotes
             # Allow one space before end of line comment.
             if (not match(r'^\s*$', line[:comment_position])

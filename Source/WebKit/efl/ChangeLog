@@ -1,3 +1,168 @@
+2012-11-15  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Rename member vars in ViewportArgument to match css-device-adapt
+        https://bugs.webkit.org/show_bug.cgi?id=102355
+
+        Reviewed by Gyuyoung Kim.
+
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new): Update to reflect name change.
+
+2012-11-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed. Fix build break when using --no-tiled-backing-store option.
+
+        * ewk/ewk_frame_private.h:
+        (WebCore):
+
+2012-11-14  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Port tiled backing store
+        https://bugs.webkit.org/show_bug.cgi?id=71352
+
+        Reviewed by Gyuyoung Kim.
+
+        Added ewk_view_setting_tiled_backing_store_enabled_{get|set} to give possibility
+        to use WebCore's tiled backing store in WebKit/Efl port. This makes WebKit/Efl
+        compliant with WebKit's generic solution of tiled backing store.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::invalidateRootView):
+        (WebCore):
+        (WebCore::ChromeClientEfl::visibleRectForTiledBackingStore):
+        * WebCoreSupport/ChromeClientEfl.h:
+        (ChromeClientEfl):
+        * ewk/ewk_frame_private.h:
+        Declared missing classes which used in this file.
+        * ewk/ewk_paint_context.cpp:
+        (ewk_paint_context_paint): Implemented to paint tiled backing store
+        * ewk/ewk_view.cpp:
+        (ewk_view_setting_tiled_backing_store_enabled_set):
+        Added API to enable/disable the WebCore's tiled backing store.
+        (ewk_view_setting_tiled_backing_store_enabled_get):
+        Added API to query if the WebCore's tiled backing store is enabled.
+        (ewk_view_tiled_backing_store_invalidate):
+        * ewk/ewk_view.h:
+        * ewk/ewk_view_private.h:
+        * ewk/ewk_view_single.cpp:
+        (_ewk_view_single_smart_repaints_process):
+        Implemented to update visible area of tiled backing store.
+        * tests/test_ewk_view.cpp: Added test case of ewk_view_setting_tiled_backing_store.
+        (TEST_F):
+
+2012-11-14  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Refactor theme to choose whether to support foreground color of selection
+        https://bugs.webkit.org/show_bug.cgi?id=102037
+
+        Reviewed by Gyuyoung Kim.
+
+        * DefaultTheme/default.edc:
+        Refactored color classes from active/inactive to foreground/background.
+
+2012-11-12  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] In ewk_tiled_backing_store_pre_render_region, the 'slicer' may be uninitialized
+        https://bugs.webkit.org/show_bug.cgi?id=102038
+
+        Reviewed by Gyuyoung Kim.
+
+        To fix build warning -Wuninitialized,
+        initialize the 'slicer' in ewk_tiled_backing_store_pre_render_region.
+
+        * ewk/ewk_tiled_backing_store.cpp:
+        (ewk_tiled_backing_store_pre_render_region):
+
+2012-11-09  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [EFL][DRT] Force a repaint before tracking repaint rects.
+        https://bugs.webkit.org/show_bug.cgi?id=101743
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::forceLayout): Added.
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
+2012-11-07  Emil A Eklund  <eae@chromium.org>
+
+        Unreviewed EFL build fix.
+
+        * ewk/ewk_view.cpp:
+
+2012-11-01  Seonae Kim  <sunaeluv.kim@samsung.com>
+
+        [EFL][DRT] Support Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=97427
+
+        Reviewed by Gyuyoung Kim. 
+
+        Implement methods to use GeolocationClientMock in DumpRenderTree.
+        This client attaches to the page whenever a view is created.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::attachClientToPage):
+        (DumpRenderTreeSupportEfl::resetGeolocationClientMock):
+        (DumpRenderTreeSupportEfl::setMockGeolocationPermission):
+        (DumpRenderTreeSupportEfl::setMockGeolocationPosition):
+        (DumpRenderTreeSupportEfl::setMockGeolocationPositionUnavailableError):
+        (DumpRenderTreeSupportEfl::numberOfPendingGeolocationPermissionRequests):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
+2012-10-31  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL][DRT] EventSender requires contextClick implementation
+        https://bugs.webkit.org/show_bug.cgi?id=86091
+
+        Reviewed by Gyuyoung Kim.
+
+        Add a pointer to parent menu in Ewk_Context_Menu_Item and a getter
+        function to allow selecting a context menu item without having
+        parent menu pointer in DumpRenderTree EventSender.
+        Three unit tests added due ewk API changes.
+
+        * ewk/ewk_contextmenu.cpp:
+        (_Ewk_Context_Menu_Item):
+        (ewk_context_menu_item_new):
+        (ewk_context_menu_item_parent_get):
+        (ewk_context_menu_item_append):
+        * ewk/ewk_contextmenu.h:
+        * ewk/ewk_view.cpp:
+        (ewk_view_context_menu_get):
+        * ewk/ewk_view.h:
+        * tests/test_ewk_contextmenu.cpp: Added.
+        (TEST_F):
+        * tests/test_ewk_view.cpp:
+        (TEST_F):
+
+2012-10-30  Seokju Kwon  <seokju.kwon@samsung.com>
+
+        [EFL] Fix failure to highlight nodes on web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=100303
+
+        Reviewed by Gyuyoung Kim.
+
+        It is not working to highlight nodes on web inspector
+        when using 'Single Backing Store'.
+        Add code for drawing it if there is the highlighted node.
+
+        * ewk/ewk_view_single.cpp:
+        (_ewk_view_single_smart_repaints_process):
+
+2012-10-30  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Refactor tooltip callback signal in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=100571
+
+        Reviewed by Gyuyoung Kim.
+
+        Separate tooltip callback signal into 'tooltip,text,set'
+        and 'tooltip,text,unset' to be consistent with WebKit2.
+
+        * ewk/ewk_view.cpp:
+        (ewk_view_tooltip_text_set):
+        * ewk/ewk_view.h:
+
 2012-10-26  Hyowon Kim  <hw1008.kim@samsung.com>
 
         [Texmap][EFL] Implementation of AC related functions in ChromeClientEfl and ewkView.

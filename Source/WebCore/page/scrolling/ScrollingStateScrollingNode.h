@@ -40,6 +40,9 @@ namespace WebCore {
 class ScrollingStateScrollingNode : public ScrollingStateNode {
 public:
     static PassOwnPtr<ScrollingStateScrollingNode> create(ScrollingStateTree*, ScrollingNodeID);
+
+    virtual PassOwnPtr<ScrollingStateNode> clone();
+
     virtual ~ScrollingStateScrollingNode();
 
     enum ChangedProperty {
@@ -58,9 +61,7 @@ public:
         RequestedScrollPosition = 1 << 12,
     };
 
-    virtual bool isScrollingStateScrollingNode() OVERRIDE { return true; }
-
-    virtual PassOwnPtr<ScrollingStateNode> cloneAndResetNode() OVERRIDE;
+    virtual bool isScrollingNode() OVERRIDE { return true; }
 
     virtual bool hasChangedProperties() const OVERRIDE { return m_changedProperties; }
     virtual unsigned changedProperties() const OVERRIDE { return m_changedProperties; }
@@ -107,9 +108,11 @@ public:
 
     bool requestedScrollPositionRepresentsProgrammaticScroll() const { return m_requestedScrollPositionRepresentsProgrammaticScroll; }
 
+    virtual void dumpProperties(TextStream&, int indent) const OVERRIDE;
+
 private:
     ScrollingStateScrollingNode(ScrollingStateTree*, ScrollingNodeID);
-    ScrollingStateScrollingNode(ScrollingStateScrollingNode*);
+    ScrollingStateScrollingNode(const ScrollingStateScrollingNode&);
 
     unsigned m_changedProperties;
 
@@ -138,7 +141,7 @@ private:
 
 inline ScrollingStateScrollingNode* toScrollingStateScrollingNode(ScrollingStateNode* node)
 {
-    ASSERT(!node || node->isScrollingStateScrollingNode());
+    ASSERT(!node || node->isScrollingNode());
     return static_cast<ScrollingStateScrollingNode*>(node);
 }
     

@@ -33,6 +33,7 @@
 
 #include "ActiveDOMObject.h"
 #include "DOMError.h"
+#include "DOMRequestState.h"
 #include "DOMStringList.h"
 #include "Event.h"
 #include "EventListener.h"
@@ -42,6 +43,10 @@
 #include "IDBCallbacks.h"
 #include "IDBCursor.h"
 #include "IDBCursorBackendInterface.h"
+#include "ScriptWrappable.h"
+#if USE(V8)
+#include "WorldContextHandle.h"
+#endif
 
 namespace WebCore {
 
@@ -49,7 +54,7 @@ class IDBTransaction;
 
 typedef int ExceptionCode;
 
-class IDBRequest : public IDBCallbacks, public EventTarget, public ActiveDOMObject {
+class IDBRequest : public ScriptWrappable, public IDBCallbacks, public EventTarget, public ActiveDOMObject {
 public:
     static PassRefPtr<IDBRequest> create(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBTransaction*);
     static PassRefPtr<IDBRequest> create(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBTransactionBackendInterface::TaskType, IDBTransaction*);
@@ -155,6 +160,7 @@ private:
     bool m_preventPropagation;
 
     EventTargetData m_eventTargetData;
+    DOMRequestState m_requestState;
 };
 
 } // namespace WebCore

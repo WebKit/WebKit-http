@@ -193,7 +193,7 @@ WebInspector.ProfilesPanel = function()
     this.registerRequiredCSS("heapProfiler.css");
     this.registerRequiredCSS("profilesPanel.css");
 
-    this.createSplitViewWithSidebarTree();
+    this.createSidebarViewWithTree();
 
     this.profilesItemTreeElement = new WebInspector.ProfilesSidebarTreeElement(this);
     this.sidebarTree.appendChild(this.profilesItemTreeElement);
@@ -1091,7 +1091,7 @@ WebInspector.ProfilesPanel.prototype = {
         if (WebInspector.inspectorView.currentPanel() !== this)
             return;
 
-        var object = /** @type {WebInspector.RemoteObject} */ target;
+        var object = /** @type {WebInspector.RemoteObject} */ (target);
         var objectId = object.objectId;
         if (!objectId)
             return;

@@ -83,7 +83,10 @@ public:
     ShadowRootIfShadowDOMEnabledOrNode* oldestShadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* youngerShadowRoot(Node* shadow, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* olderShadowRoot(Node* shadow, ExceptionCode&);
+    String shadowRootType(const Node*, ExceptionCode&) const;
     bool hasShadowInsertionPoint(const Node*, ExceptionCode&) const;
+    bool hasContentElement(const Node*, ExceptionCode&) const;
+    size_t countElementShadow(const Node*, ExceptionCode&) const;
     Element* includerFor(Node*, ExceptionCode&);
     String shadowPseudoId(Element*, ExceptionCode&);
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
@@ -93,6 +96,10 @@ public:
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
     Node* treeScopeRootNode(Node*, ExceptionCode&);
     Node* parentTreeScope(Node*, ExceptionCode&);
+    bool hasSelectorForIdInShadow(Element* host, const String& idValue, ExceptionCode&);
+    bool hasSelectorForClassInShadow(Element* host, const String& className, ExceptionCode&);
+    bool hasSelectorForAttributeInShadow(Element* host, const String& attributeName, ExceptionCode&);
+    bool hasSelectorForPseudoClassInShadow(Element* host, const String& pseudoClass, ExceptionCode&);
 
     bool attached(Node*, ExceptionCode&);
 
@@ -159,9 +166,6 @@ public:
     Vector<String> userPreferredLanguages() const;
     void setUserPreferredLanguages(const Vector<String>&);
 
-    void setShouldDisplayTrackKind(Document*, const String& kind, bool, ExceptionCode&);
-    bool shouldDisplayTrackKind(Document*, const String& kind, ExceptionCode&);
-
     unsigned wheelEventHandlerCount(Document*, ExceptionCode&);
     unsigned touchEventHandlerCount(Document*, ExceptionCode&);
 
@@ -193,11 +197,14 @@ public:
     enum {
         // Values need to be kept in sync with Internals.idl.
         LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1,
-        LAYER_TREE_INCLUDES_TILE_CACHES = 2
+        LAYER_TREE_INCLUDES_TILE_CACHES = 2,
+        LAYER_TREE_INCLUDES_REPAINT_RECTS = 4
         
     };
     String layerTreeAsText(Document*, unsigned flags, ExceptionCode&) const;
     String layerTreeAsText(Document*, ExceptionCode&) const;
+    String repaintRectsAsText(Document*, ExceptionCode&) const;
+    String scrollingStateTreeAsText(Document*, ExceptionCode&) const;
 
     void garbageCollectDocumentResources(Document*, ExceptionCode&) const;
 
@@ -235,6 +242,11 @@ public:
     PassRefPtr<MallocStatistics> mallocStatistics() const;
 
     PassRefPtr<DOMStringList> getReferencedFilePaths() const;
+
+    void startTrackingRepaints(Document*, ExceptionCode&);
+    void stopTrackingRepaints(Document*, ExceptionCode&);
+
+    String getCurrentCursorInfo(Document*, ExceptionCode&);
 
 private:
     explicit Internals(Document*);

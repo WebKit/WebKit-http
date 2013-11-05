@@ -44,7 +44,7 @@ using namespace std;
 
 namespace WebCore {
 
-PassOwnPtr<Localizer> Localizer::create(const AtomicString& locale)
+PassOwnPtr<Locale> Locale::create(const AtomicString& locale)
 {
     return LocaleICU::create(locale.string().utf8().data());
 }
@@ -58,7 +58,7 @@ LocaleICU::LocaleICU(const char* locale)
 #if ENABLE(CALENDAR_PICKER)
     , m_firstDayOfWeek(0)
 #endif
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
     , m_mediumTimeFormat(0)
     , m_shortTimeFormat(0)
     , m_didCreateTimeFormat(false)
@@ -70,7 +70,7 @@ LocaleICU::~LocaleICU()
 {
     unum_close(m_numberFormat);
     udat_close(m_shortDateFormat);
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
     udat_close(m_mediumTimeFormat);
     udat_close(m_shortTimeFormat);
 #endif
@@ -112,7 +112,7 @@ String LocaleICU::decimalTextAttribute(UNumberFormatTextAttribute tag)
     return String::adopt(buffer);
 }
 
-void LocaleICU::initializeLocalizerData()
+void LocaleICU::initializeLocaleData()
 {
     if (m_didCreateDecimalFormat)
         return;
@@ -136,7 +136,7 @@ void LocaleICU::initializeLocalizerData()
     symbols.append(decimalSymbol(UNUM_DECIMAL_SEPARATOR_SYMBOL));
     symbols.append(decimalSymbol(UNUM_GROUPING_SEPARATOR_SYMBOL));
     ASSERT(symbols.size() == DecimalSymbolsSize);
-    setLocalizerData(symbols, decimalTextAttribute(UNUM_POSITIVE_PREFIX), decimalTextAttribute(UNUM_POSITIVE_SUFFIX), decimalTextAttribute(UNUM_NEGATIVE_PREFIX), decimalTextAttribute(UNUM_NEGATIVE_SUFFIX));
+    setLocaleData(symbols, decimalTextAttribute(UNUM_POSITIVE_PREFIX), decimalTextAttribute(UNUM_POSITIVE_SUFFIX), decimalTextAttribute(UNUM_NEGATIVE_PREFIX), decimalTextAttribute(UNUM_NEGATIVE_SUFFIX));
 }
 
 bool LocaleICU::initializeShortDateFormat()
@@ -155,25 +155,7 @@ UDateFormat* LocaleICU::openDateFormat(UDateFormatStyle timeStyle, UDateFormatSt
     return udat_open(timeStyle, dateStyle, m_locale.data(), gmtTimezone, WTF_ARRAY_LENGTH(gmtTimezone), 0, -1, &status);
 }
 
-double LocaleICU::parseDateTime(const String& input, DateComponents::Type type)
-{
-    if (type != DateComponents::Date)
-        return std::numeric_limits<double>::quiet_NaN();
-    if (!initializeShortDateFormat())
-        return numeric_limits<double>::quiet_NaN();
-    if (input.length() > static_cast<unsigned>(numeric_limits<int32_t>::max()))
-        return numeric_limits<double>::quiet_NaN();
-    int32_t inputLength = static_cast<int32_t>(input.length());
-    UErrorCode status = U_ZERO_ERROR;
-    int32_t parsePosition = 0;
-    UDate date = udat_parse(m_shortDateFormat, input.characters(), inputLength, &parsePosition, &status);
-    if (parsePosition != inputLength || U_FAILURE(status))
-        return numeric_limits<double>::quiet_NaN();
-    // UDate, which is an alias of double, is compatible with our expectation.
-    return date;
-}
-
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 static String getDateFormatPattern(const UDateFormat* dateFormat)
 {
     if (!dateFormat)
@@ -189,78 +171,6 @@ static String getDateFormatPattern(const UDateFormat* dateFormat)
     if (U_FAILURE(status))
         return emptyString();
     return String::adopt(buffer);
-}
-#endif
-
-#if ENABLE(CALENDAR_PICKER)
-static inline bool isICUYearSymbol(UChar letter)
-{
-    return letter == 'y' || letter == 'Y';
-}
-
-static inline bool isICUMonthSymbol(UChar letter)
-{
-    return letter == 'M';
-}
-
-static inline bool isICUDayInMonthSymbol(UChar letter)
-{
-    return letter == 'd';
-}
-
-// Specification of the input:
-// http://icu-project.org/apiref/icu4c/classSimpleDateFormat.html#details
-static String localizeFormat(const String& buffer)
-{
-    StringBuilder builder;
-    UChar lastChar = 0;
-    bool inQuote = false;
-    for (unsigned i = 0; i < buffer.length(); ++i) {
-        if (inQuote) {
-            if (buffer[i] == '\'') {
-                inQuote = false;
-                lastChar = 0;
-                ASSERT(i);
-                if (buffer[i - 1] == '\'')
-                    builder.append('\'');
-            } else
-                builder.append(buffer[i]);
-        } else {
-            if (isASCIIAlpha(lastChar) && lastChar == buffer[i])
-                continue;
-            lastChar = buffer[i];
-            if (isICUYearSymbol(lastChar)) {
-                String text = dateFormatYearText();
-                builder.append(text.isEmpty() ? "Year" : text);
-            } else if (isICUMonthSymbol(lastChar)) {
-                String text = dateFormatMonthText();
-                builder.append(text.isEmpty() ? "Month" : text);
-            } else if (isICUDayInMonthSymbol(lastChar)) {
-                String text = dateFormatDayInMonthText();
-                builder.append(text.isEmpty() ? "Day" : text);
-            } else if (lastChar == '\'')
-                inQuote = true;
-            else
-                builder.append(lastChar);
-        }
-    }
-    return builder.toString();
-}
-
-void LocaleICU::initializeLocalizedDateFormatText()
-{
-    if (!m_localizedDateFormatText.isNull())
-        return;
-    m_localizedDateFormatText = emptyString();
-    if (!initializeShortDateFormat())
-        return;
-    m_localizedDateFormatText = localizeFormat(getDateFormatPattern(m_shortDateFormat));
-}
-
-String LocaleICU::dateFormatText()
-{
-    initializeLocalizedDateFormatText();
-    return m_localizedDateFormatText;
 }
 
 PassOwnPtr<Vector<String> > LocaleICU::createLabelVector(const UDateFormat* dateFormat, UDateFormatSymbolType type, int32_t startIndex, int32_t size)
@@ -286,7 +196,9 @@ PassOwnPtr<Vector<String> > LocaleICU::createLabelVector(const UDateFormat* date
     }
     return labels.release();
 }
+#endif
 
+#if ENABLE(CALENDAR_PICKER)
 static PassOwnPtr<Vector<String> > createFallbackWeekDayShortLabels()
 {
     OwnPtr<Vector<String> > labels = adoptPtr(new Vector<String>());
@@ -319,7 +231,7 @@ void LocaleICU::initializeCalendar()
 }
 #endif
 
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 static PassOwnPtr<Vector<String> > createFallbackMonthLabels()
 {
     OwnPtr<Vector<String> > labels = adoptPtr(new Vector<String>());
@@ -363,7 +275,7 @@ bool LocaleICU::isRTL()
 }
 #endif
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 static PassOwnPtr<Vector<String> > createFallbackAMPMLabels()
 {
     OwnPtr<Vector<String> > labels = adoptPtr(new Vector<String>());

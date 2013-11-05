@@ -31,10 +31,12 @@
 #include "ContextMenuController.h"
 #include "DocumentLoader.h"
 #include "DragClientEfl.h"
+#include "DumpRenderTreeSupportEfl.h"
 #include "EditorClientEfl.h"
 #include "EflScreenUtilities.h"
 #include "EventHandler.h"
 #include "FocusController.h"
+#include "Frame.h"
 #include "FrameLoaderClientEfl.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
@@ -47,7 +49,6 @@
 #include "JSDOMBinding.h"
 #include "JSDOMWindow.h"
 #include "JSLock.h"
-#include "LayoutTypes.h"
 #include "PageClientEfl.h"
 #include "PageGroup.h"
 #include "PlatformMouseEvent.h"
@@ -57,6 +58,7 @@
 #include "RenderThemeEfl.h"
 #include "ResourceHandle.h"
 #include "Settings.h"
+#include "TiledBackingStore.h"
 #include "c_instance.h"
 #include "ewk_contextmenu_private.h"
 #include "ewk_frame.h"
@@ -83,6 +85,11 @@
 #if ENABLE(DEVICE_ORIENTATION)
 #include "DeviceMotionClientEfl.h"
 #include "DeviceOrientationClientEfl.h"
+#endif
+
+#if ENABLE(GEOLOCATION)
+#include "GeolocationClientMock.h"
+#include "GeolocationController.h"
 #endif
 
 #if ENABLE(VIBRATION)
@@ -158,6 +165,7 @@ static const Evas_Smart_Cb_Description _ewk_view_callback_names[] = {
     { "toolbars,visible,get", "b" },
     { "toolbars,visible,set", "b" },
     { "tooltip,text,set", "s" },
+    { "tooltip,text,unset", "s" },
     { "uri,changed", "s" },
     { "view,resized", "" },
     { "zoom,animated,end", "" },
@@ -783,17 +791,26 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     WebCore::provideNavigatorContentUtilsTo(priv->page.get(), priv->navigatorContentUtilsClient.get());
 #endif
 
+#if ENABLE(GEOLOCATION)
+    if (DumpRenderTreeSupportEfl::dumpRenderTreeModeEnabled()) {
+        WebCore::GeolocationClientMock* mock = new WebCore::GeolocationClientMock;
+        WebCore::provideGeolocationTo(priv->page.get(), mock);
+        mock->setController(WebCore::GeolocationController::from(priv->page.get()));
+    }
+#endif
+
     priv->pageSettings = priv->page->settings();
 
     WebCore::LayoutMilestones layoutMilestones = WebCore::DidFirstLayout | WebCore::DidFirstVisuallyNonEmptyLayout;
     priv->page->addLayoutMilestones(layoutMilestones);
 
+    // FIXME: Noone is supposed to do this manually.
     priv->viewportArguments.width = WebCore::ViewportArguments::ValueAuto;
     priv->viewportArguments.height = WebCore::ViewportArguments::ValueAuto;
-    priv->viewportArguments.initialScale = WebCore::ViewportArguments::ValueAuto;
-    priv->viewportArguments.minimumScale = WebCore::ViewportArguments::ValueAuto;
-    priv->viewportArguments.maximumScale = WebCore::ViewportArguments::ValueAuto;
-    priv->viewportArguments.userScalable = true;
+    priv->viewportArguments.zoom = WebCore::ViewportArguments::ValueAuto;
+    priv->viewportArguments.minZoom = WebCore::ViewportArguments::ValueAuto;
+    priv->viewportArguments.maxZoom = WebCore::ViewportArguments::ValueAuto;
+    priv->viewportArguments.userZoom = true;
 
     priv->pageSettings->setLoadsImagesAutomatically(true);
     priv->pageSettings->setDefaultTextEncodingName("iso-8859-1");
@@ -3491,18 +3508,14 @@ void ewk_view_menubar_visible_get(Evas_Object* ewkView, bool* visible)
 
 /**
  * @internal
- * Set tooltip text and display if it is currently hidden.
- *
- * @param ewkView View.
- * @param text Text to set tooltip to.
- *
- * Emits signal: "tooltip,text,set" with a string. If tooltip must be actually
- * removed, text will be 0 or '\0'
  */
 void ewk_view_tooltip_text_set(Evas_Object* ewkView, const char* text)
 {
     DBG("ewkView=%p text=%s", ewkView, text);
-    evas_object_smart_callback_call(ewkView, "tooltip,text,set", (void*)text);
+    if (text && *text)
+        evas_object_smart_callback_call(ewkView, "tooltip,text,set", (void*)text);
+    else
+        evas_object_smart_callback_call(ewkView, "tooltip,text,unset", 0);
 }
 
 /**
@@ -4733,6 +4746,63 @@ void ewk_view_fullscreen_exit(const Evas_Object* ewkView)
         Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(smartData->base.evas);
         ecore_evas_fullscreen_set(ecoreEvas, false);
     }
+}
+#endif
+
+Ewk_Context_Menu* ewk_view_context_menu_get(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
+
+    return priv->contextMenu;
+}
+
+Eina_Bool ewk_view_setting_tiled_backing_store_enabled_set(Evas_Object* ewkView, Eina_Bool enable)
+{
+#if USE(TILED_BACKING_STORE)
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    priv->pageSettings->setTiledBackingStoreEnabled(enable);
+
+    return true;
+#else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(enable);
+    return false;
+#endif
+}
+
+Eina_Bool ewk_view_setting_tiled_backing_store_enabled_get(Evas_Object* ewkView)
+{
+#if USE(TILED_BACKING_STORE)
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    return priv->pageSettings->tiledBackingStoreEnabled();
+#else
+    UNUSED_PARAM(ewkView);
+    return false;
+#endif
+}
+
+#if USE(TILED_BACKING_STORE)
+/**
+ * @internal
+ * Invalidate given area to repaint. The backing store will mark tiles that are
+ * in the area as dirty.
+ *
+ * @param ewkView View.
+ * @param area Area to invalidate
+ */
+void ewk_view_tiled_backing_store_invalidate(Evas_Object* ewkView, const WebCore::IntRect& area)
+{
+    EINA_SAFETY_ON_NULL_RETURN(ewkView);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
+
+    if (priv->mainFrame->tiledBackingStore())
+        priv->mainFrame->tiledBackingStore()->invalidate(area);
 }
 #endif
 

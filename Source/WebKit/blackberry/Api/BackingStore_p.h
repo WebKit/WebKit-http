@@ -20,6 +20,7 @@
 #define BackingStore_p_h
 
 #include "BackingStore.h"
+#include "Color.h"
 #include "RenderQueue.h"
 #include "TileIndex.h"
 #include "TileIndexHash.h"
@@ -126,11 +127,17 @@ public:
 
     bool isSuspended() const { return m_suspendBackingStoreUpdates; }
 
+    // Suspends all backingstore updates so that rendering to the backingstore is disabled.
+    void suspendBackingStoreUpdates();
+
+    // Resumes all backingstore updates so that rendering to the backingstore is enabled.
+    void resumeBackingStoreUpdates();
+
     // Suspends all screen updates so that 'blitVisibleContents' is disabled.
-    void suspendScreenAndBackingStoreUpdates();
+    void suspendScreenUpdates();
 
     // Resumes all screen updates so that 'blitVisibleContents' is enabled.
-    void resumeScreenAndBackingStoreUpdates(BackingStore::ResumeUpdateOperation);
+    void resumeScreenUpdates(BackingStore::ResumeUpdateOperation);
 
     // The functions repaint(), slowScroll(), scroll(), scrollingStartedHelper() are
     // called from outside WebKit and within WebKit via ChromeClientBlackBerry.
@@ -319,6 +326,9 @@ public:
     void blitToWindow(const Platform::IntRect& dstRect, const BlackBerry::Platform::Graphics::Buffer* srcBuffer, const Platform::IntRect& srcRect, bool blend, unsigned char globalAlpha);
     void fillWindow(Platform::Graphics::FillPattern, const Platform::IntRect& dstRect, const Platform::IntPoint& contentsOrigin, double contentsScale);
 
+    WebCore::Color webPageBackgroundColorUserInterfaceThread() const; // use WebSettings::backgroundColor() for the WebKit thread
+    void setWebPageBackgroundColor(const WebCore::Color&);
+
     void invalidateWindow();
     void invalidateWindow(const Platform::IntRect& dst);
     void clearWindow(const Platform::IntRect&, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha = 255);
@@ -362,6 +372,8 @@ public:
 
     bool m_defersBlit;
     bool m_hasBlitJobs;
+
+    WebCore::Color m_webPageBackgroundColor; // for user interface thread operations such as blitting
 
     mutable unsigned m_frontState;
     mutable unsigned m_backState;

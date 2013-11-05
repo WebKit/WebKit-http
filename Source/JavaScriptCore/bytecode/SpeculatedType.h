@@ -61,6 +61,7 @@ static const SpeculatedType SpecInt32             = 0x00800000; // It's definite
 static const SpeculatedType SpecDoubleReal        = 0x01000000; // It's definitely a non-NaN double.
 static const SpeculatedType SpecDoubleNaN         = 0x02000000; // It's definitely a NaN.
 static const SpeculatedType SpecDouble            = 0x03000000; // It's either a non-NaN or a NaN double.
+static const SpeculatedType SpecRealNumber        = 0x01800000; // It's either an Int32 or a DoubleReal.
 static const SpeculatedType SpecNumber            = 0x03800000; // It's either an Int32 or a Double.
 static const SpeculatedType SpecBoolean           = 0x04000000; // It's definitely a Boolean.
 static const SpeculatedType SpecOther             = 0x08000000; // It's definitely none of the above.
@@ -228,6 +229,16 @@ inline bool isInt32Speculation(SpeculatedType value)
     return value == SpecInt32;
 }
 
+inline bool isInt32SpeculationForArithmetic(SpeculatedType value)
+{
+    return !(value & SpecDouble);
+}
+
+inline bool isInt32SpeculationExpectingDefined(SpeculatedType value)
+{
+    return isInt32Speculation(value & ~SpecOther);
+}
+
 inline bool isDoubleRealSpeculation(SpeculatedType value)
 {
     return value == SpecDoubleReal;
@@ -238,9 +249,24 @@ inline bool isDoubleSpeculation(SpeculatedType value)
     return !!value && (value & SpecDouble) == value;
 }
 
+inline bool isDoubleSpeculationForArithmetic(SpeculatedType value)
+{
+    return !!(value & SpecDouble);
+}
+
+inline bool isRealNumberSpeculation(SpeculatedType value)
+{
+    return !!(value & SpecRealNumber) && !(value & ~SpecRealNumber);
+}
+
 inline bool isNumberSpeculation(SpeculatedType value)
 {
     return !!(value & SpecNumber) && !(value & ~SpecNumber);
+}
+
+inline bool isNumberSpeculationExpectingDefined(SpeculatedType value)
+{
+    return isNumberSpeculation(value & ~SpecOther);
 }
 
 inline bool isBooleanSpeculation(SpeculatedType value)
@@ -282,6 +308,11 @@ inline bool mergeSpeculation(T& left, SpeculatedType right)
     bool result = newSpeculation != static_cast<SpeculatedType>(left);
     left = newSpeculation;
     return result;
+}
+
+inline bool speculationChecked(SpeculatedType actual, SpeculatedType desired)
+{
+    return (actual | desired) == desired;
 }
 
 SpeculatedType speculationFromClassInfo(const ClassInfo*);

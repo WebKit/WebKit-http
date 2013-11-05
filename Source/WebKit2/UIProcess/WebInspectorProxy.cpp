@@ -179,6 +179,8 @@ void WebInspectorProxy::attach()
     if (m_isVisible)
         inspectorPageGroup()->preferences()->setInspectorStartsAttached(true);
 
+    m_page->process()->send(Messages::WebInspector::SetAttachedWindow(true), m_page->pageID());
+
     platformAttach();
 }
 
@@ -188,6 +190,8 @@ void WebInspectorProxy::detach()
     
     if (m_isVisible)
         inspectorPageGroup()->preferences()->setInspectorStartsAttached(false);
+
+    m_page->process()->send(Messages::WebInspector::SetAttachedWindow(false), m_page->pageID());
 
     platformDetach();
 }
@@ -328,8 +332,8 @@ void WebInspectorProxy::createInspectorPage(uint64_t& inspectorPageID, WebPageCr
     inspectorPage->initializePolicyClient(&policyClient);
 
     String url = inspectorPageURL();
-    if (m_isAttached)
-        url.append("?docked=true");
+    url.append("?dockSide=");
+    url.append(m_isAttached ? "bottom" : "undocked");
 
     m_page->process()->assumeReadAccessToBaseURL(inspectorBaseURL());
 
@@ -363,6 +367,11 @@ void WebInspectorProxy::didClose()
 void WebInspectorProxy::bringToFront()
 {
     platformBringToFront();
+}
+
+void WebInspectorProxy::attachAvailabilityChanged(bool available)
+{
+    platformAttachAvailabilityChanged(available);
 }
 
 void WebInspectorProxy::inspectedURLChanged(const String& urlString)

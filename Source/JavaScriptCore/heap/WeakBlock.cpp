@@ -34,18 +34,14 @@
 
 namespace JSC {
 
-WeakBlock* WeakBlock::create()
+WeakBlock* WeakBlock::create(DeadBlock* block)
 {
-    void* allocation = fastMalloc(blockSize);
-    return new (NotNull, allocation) WeakBlock;
+    Region* region = block->region();
+    return new (NotNull, block) WeakBlock(region);
 }
 
-void WeakBlock::destroy(WeakBlock* block)
-{
-    fastFree(block);
-}
-
-WeakBlock::WeakBlock()
+WeakBlock::WeakBlock(Region* region)
+    : HeapBlock<WeakBlock>(region)
 {
     for (size_t i = 0; i < weakImplCount(); ++i) {
         WeakImpl* weakImpl = &weakImpls()[i];
@@ -102,7 +98,7 @@ void WeakBlock::visit(HeapRootVisitor& heapRootVisitor)
             continue;
 
         const JSValue& jsValue = weakImpl->jsValue();
-        if (Heap::isMarked(jsValue.asCell()))
+        if (Heap::isLive(jsValue.asCell()))
             continue;
 
         WeakHandleOwner* weakHandleOwner = weakImpl->weakHandleOwner();
@@ -127,7 +123,7 @@ void WeakBlock::reap()
         if (weakImpl->state() > WeakImpl::Dead)
             continue;
 
-        if (Heap::isMarked(weakImpl->jsValue().asCell())) {
+        if (Heap::isLive(weakImpl->jsValue().asCell())) {
             ASSERT(weakImpl->state() == WeakImpl::Live);
             continue;
         }

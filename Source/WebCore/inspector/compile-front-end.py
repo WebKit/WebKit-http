@@ -142,6 +142,7 @@ modules = [
             "SourceTokenizer.js",
             "Spectrum.js",
             "SplitView.js",
+            "SidebarView.js",
             "StatusBarButton.js",
             "TabbedPane.js",
             "TextEditor.js",
@@ -270,6 +271,7 @@ modules = [
             "TimelineModel.js",
             "TimelineOverviewPane.js",
             "TimelinePanel.js",
+            "TimelinePanelDescriptor.js",
             "TimelinePresentationModel.js",
             "TimelineFrameController.js"
         ]

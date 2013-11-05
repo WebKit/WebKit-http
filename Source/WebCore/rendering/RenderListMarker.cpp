@@ -1505,7 +1505,7 @@ void RenderListMarker::updateMargins()
                     case NoneListStyle:
                         break;
                     default:
-                        marginStart = m_text.isEmpty() ? ZERO_LAYOUT_UNIT : -minPreferredLogicalWidth() - offset / 2;
+                        marginStart = m_text.isEmpty() ? LayoutUnit() : -minPreferredLogicalWidth() - offset / 2;
                 }
             }
             marginEnd = -marginStart - minPreferredLogicalWidth();
@@ -1703,7 +1703,7 @@ void RenderListMarker::setSelectionState(SelectionState state)
             root->setHasSelectedChildren(state != SelectionNone);
 }
 
-LayoutRect RenderListMarker::selectionRectForRepaint(RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)
+LayoutRect RenderListMarker::selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)
 {
     ASSERT(!needsLayout());
 

@@ -24,31 +24,27 @@
  */
 
 #include "config.h"
-#include "Localizer.h"
+#include "PlatformLocale.h"
 #include <wtf/DateMath.h>
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
-class LocaleNone : public Localizer {
+class LocaleNone : public Locale {
 public:
     virtual ~LocaleNone();
 
 private:
-    virtual void initializeLocalizerData() OVERRIDE FINAL;
-    virtual double parseDateTime(const String&, DateComponents::Type) OVERRIDE;
+    virtual void initializeLocaleData() OVERRIDE FINAL;
 #if ENABLE(CALENDAR_PICKER)
-    virtual String dateFormatText() OVERRIDE;
     virtual bool isRTL() OVERRIDE;
 #endif
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    virtual const Vector<String>& monthLabels() OVERRIDE;
-#endif
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
     virtual String dateFormat() OVERRIDE;
     virtual String monthFormat() OVERRIDE;
     virtual String timeFormat() OVERRIDE;
     virtual String shortTimeFormat() OVERRIDE;
+    virtual const Vector<String>& monthLabels() OVERRIDE;
     virtual const Vector<String>& shortMonthLabels() OVERRIDE;
     virtual const Vector<String>& standAloneMonthLabels() OVERRIDE;
     virtual const Vector<String>& shortStandAloneMonthLabels() OVERRIDE;
@@ -56,13 +52,11 @@ private:
 
     Vector<String> m_timeAMPMLabels;
     Vector<String> m_shortMonthLabels;
-#endif
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     Vector<String> m_monthLabels;
 #endif
 };
 
-PassOwnPtr<Localizer> Localizer::create(const AtomicString&)
+PassOwnPtr<Locale> Locale::create(const AtomicString&)
 {
     return adoptPtr(new LocaleNone());
 }
@@ -71,28 +65,18 @@ LocaleNone::~LocaleNone()
 {
 }
 
-void LocaleNone::initializeLocalizerData()
+void LocaleNone::initializeLocaleData()
 {
-}
-
-double LocaleNone::parseDateTime(const String&, DateComponents::Type)
-{
-    return std::numeric_limits<double>::quiet_NaN();
 }
 
 #if ENABLE(CALENDAR_PICKER)
-String LocaleNone::dateFormatText()
-{
-    return ASCIILiteral("Year-Month-Day");
-}
-
 bool LocaleNone::isRTL()
 {
     return false;
 }
 #endif
 
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 const Vector<String>& LocaleNone::monthLabels()
 {
     if (!m_monthLabels.isEmpty())
@@ -102,9 +86,7 @@ const Vector<String>& LocaleNone::monthLabels()
         m_monthLabels.append(WTF::monthFullName[i]);
     return m_monthLabels;
 }
-#endif
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 String LocaleNone::dateFormat()
 {
     return ASCIILiteral("dd/MM/yyyyy");

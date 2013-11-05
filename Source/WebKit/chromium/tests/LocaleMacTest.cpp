@@ -69,6 +69,24 @@ protected:
         return dateToDaysFrom1970(year, month, day) * msPerDay;
     }
 
+    String formatWeek(const String& localeString, const String& isoString)
+    {
+        OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
+        DateComponents date;
+        unsigned end;
+        date.parseWeek(isoString.characters(), isoString.length(), 0, end);
+        return locale->formatDateTime(date);
+    }
+
+    String formatMonth(const String& localeString, const String& isoString)
+    {
+        OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
+        DateComponents date;
+        unsigned end;
+        date.parseMonth(isoString.characters(), isoString.length(), 0, end);
+        return locale->formatDateTime(date);
+    }
+
     String formatDate(const String& localeString, int year, int month, int day)
     {
         OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
@@ -78,22 +96,10 @@ protected:
     String formatTime(const String& localeString, int hour, int minute, int second, int millisecond, bool useShortFormat)
     {
         OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
-        return locale->formatDateTime(timeComponents(hour, minute, second, millisecond), (useShortFormat ? Localizer::FormatTypeShort : Localizer::FormatTypeMedium));
-    }
-
-    double parseDate(const String& localeString, const String& dateString)
-    {
-        OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
-        return locale->parseDateTime(dateString, DateComponents::Date);
+        return locale->formatDateTime(timeComponents(hour, minute, second, millisecond), (useShortFormat ? Locale::FormatTypeShort : Locale::FormatTypeMedium));
     }
 
 #if ENABLE(CALENDAR_PICKER)
-    String dateFormatText(const String& localeString)
-    {
-        OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
-        return locale->dateFormatText();
-    }
-
     unsigned firstDayOfWeek(const String& localeString)
     {
         OwnPtr<LocaleMac> locale = LocaleMac::create(localeString);
@@ -170,6 +176,19 @@ protected:
 #endif
 };
 
+TEST_F(LocaleMacTest, formatWeek)
+{
+    EXPECT_STREQ("Week 04, 2005", formatWeek("en_US", "2005-W04").utf8().data());
+    EXPECT_STREQ("Week 52, 2005", formatWeek("en_US", "2005-W52").utf8().data());
+}
+
+TEST_F(LocaleMacTest, formatMonth)
+{
+    EXPECT_STREQ("April 2005", formatMonth("en_US", "2005-04").utf8().data());
+    EXPECT_STREQ("avril 2005", formatMonth("fr_FR", "2005-04").utf8().data());
+    EXPECT_STREQ("2005\xE5\xB9\xB4" "04\xE6\x9C\x88", formatMonth("ja_JP", "2005-04").utf8().data());
+}
+
 TEST_F(LocaleMacTest, formatDate)
 {
     EXPECT_STREQ("04/27/2005", formatDate("en_US", 2005, April, 27).utf8().data());
@@ -198,21 +217,7 @@ TEST_F(LocaleMacTest, formatTime)
     EXPECT_STREQ("\xDB\xB7:\xDB\xB0\xDB\xB7:\xDB\xB0\xDB\xB7\xD9\xAB\xDB\xB0\xDB\xB0\xDB\xB7", formatTime("fa", 07, 07, 07, 007, false).utf8().data());
 }
 
-TEST_F(LocaleMacTest, parseDate)
-{
-    EXPECT_EQ(msForDate(2005, April, 27), parseDate("en_US", "April 27, 2005"));
-    EXPECT_EQ(msForDate(2005, April, 27), parseDate("fr_FR", "27 avril 2005"));
-    EXPECT_EQ(msForDate(2005, April, 27), parseDate("ja_JP", "2005/04/27"));
-}
-
 #if ENABLE(CALENDAR_PICKER)
-TEST_F(LocaleMacTest, dateFormatText)
-{
-    EXPECT_STREQ("Month/Day/Year", dateFormatText("en_US").utf8().data());
-    EXPECT_STREQ("Day/Month/Year", dateFormatText("fr_FR").utf8().data());
-    EXPECT_STREQ("Year/Month/Day", dateFormatText("ja_JP").utf8().data());
-}
-
 TEST_F(LocaleMacTest, firstDayOfWeek)
 {
     EXPECT_EQ(Sunday, firstDayOfWeek("en_US"));
@@ -350,7 +355,7 @@ TEST_F(LocaleMacTest, invalidLocale)
 
 static void testNumberIsReversible(const AtomicString& localeString, const char* original, const char* shouldHave = 0)
 {
-    OwnPtr<Localizer> locale = Localizer::create(localeString);
+    OwnPtr<Locale> locale = Locale::create(localeString);
     String localized = locale->convertToLocalizedNumber(original);
     if (shouldHave)
         EXPECT_TRUE(localized.contains(shouldHave));

@@ -157,6 +157,7 @@
 
 #if ENABLE(CSS_SHADERS)
 #include "CustomFilterArrayParameter.h"
+#include "CustomFilterConstants.h"
 #include "CustomFilterNumberParameter.h"
 #include "CustomFilterOperation.h"
 #include "CustomFilterParameter.h"
@@ -175,6 +176,14 @@
 #endif
 
 using namespace std;
+
+namespace WTF {
+
+template<> struct SequenceMemoryInstrumentationTraits<const WebCore::RuleData*> {
+    template <typename I> static void reportMemoryUsage(I, I, MemoryClassInfo&) { }
+};
+
+}
 
 namespace WebCore {
 
@@ -273,7 +282,6 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     , m_matchAuthorAndUserStyles(matchAuthorAndUserStyles)
     , m_sameOriginOnly(false)
     , m_distributedToInsertionPoint(false)
-    , m_hasUnknownPseudoElements(false)
     , m_fontSelector(CSSFontSelector::create(document))
     , m_applyPropertyToRegularStyle(true)
     , m_applyPropertyToVisitedLinkStyle(false)
@@ -331,23 +339,7 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     }
 #endif
 
-    addStylesheetsFromSeamlessParents();
     appendAuthorStyleSheets(0, styleSheetCollection->activeAuthorStyleSheets());
-}
-
-void StyleResolver::addStylesheetsFromSeamlessParents()
-{
-    // Build a list of stylesheet lists from our ancestors, and walk that
-    // list in reverse order so that the root-most sheets are appended first.
-    Document* childDocument = document();
-    Vector<const Vector<RefPtr<CSSStyleSheet> >* > ancestorSheets;
-    while (HTMLIFrameElement* parentIFrame = childDocument->seamlessParentIFrame()) {
-        Document* parentDocument = parentIFrame->document();
-        ancestorSheets.append(&parentDocument->styleSheetCollection()->activeAuthorStyleSheets());
-        childDocument = parentDocument;
-    }
-    for (int i = ancestorSheets.size() - 1; i >= 0; i--)
-        appendAuthorStyleSheets(0, *ancestorSheets[i]);
 }
 
 void StyleResolver::addAuthorRulesAndCollectUserRulesFromSheets(const Vector<RefPtr<CSSStyleSheet> >* userSheets, RuleSet& userStyle)
@@ -486,8 +478,8 @@ StyleResolver::~StyleResolver()
 void StyleResolver::sweepMatchedPropertiesCache(Timer<StyleResolver>*)
 {
     // Look for cache entries containing a style declaration with a single ref and remove them.
-    // This may happen when an element attribute mutation causes it to generate a new attributeStyle(),
-    // potentially leaving this cache with the last ref on the old one.
+    // This may happen when an element attribute mutation causes it to generate a new inlineStyle()
+    // or presentationAttributeStyle(), potentially leaving this cache with the last ref on the old one.
     Vector<unsigned, 16> toRemove;
     MatchedPropertiesCache::iterator it = m_matchedPropertiesCache.begin();
     MatchedPropertiesCache::iterator end = m_matchedPropertiesCache.end();
@@ -637,10 +629,55 @@ inline void StyleResolver::addElementStyleProperties(MatchResult& result, const 
         result.isCacheable = false;
 }
 
+class MatchingUARulesScope {
+public:
+    MatchingUARulesScope();
+    ~MatchingUARulesScope();
+
+    static bool isMatchingUARules();
+
+private:
+    static bool m_matchingUARules;
+};
+
+MatchingUARulesScope::MatchingUARulesScope()
+{
+    ASSERT(!m_matchingUARules);
+    m_matchingUARules = true;
+}
+
+MatchingUARulesScope::~MatchingUARulesScope()
+{
+    m_matchingUARules = false;
+}
+
+inline bool MatchingUARulesScope::isMatchingUARules()
+{
+    return m_matchingUARules;
+}
+
+bool MatchingUARulesScope::m_matchingUARules = false;
+
 void StyleResolver::collectMatchingRules(RuleSet* rules, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions& options)
 {
     ASSERT(rules);
     ASSERT(m_element);
+
+    const AtomicString& pseudoId = m_element->shadowPseudoId();
+    if (!pseudoId.isEmpty()) {
+        ASSERT(m_styledElement);
+        collectMatchingRulesForList(rules->shadowPseudoElementRules(pseudoId.impl()), firstRuleIndex, lastRuleIndex, options);
+    }
+
+    // Check whether other types of rules are applicable in the current tree scope. Criteria for this:
+    // a) it's a UA rule
+    // b) the tree scope allows author rules
+    // c) the rules comes from a scoped style sheet within the same tree scope
+    TreeScope* treeScope = m_element->treeScope();
+    if (!MatchingUARulesScope::isMatchingUARules()
+        && !treeScope->applyAuthorStyles()
+        && (!options.scope || options.scope->treeScope() != treeScope))
+        return;
 
     // We need to collect the rules for id, class, tag, and everything else into a buffer and
     // then sort the buffer.
@@ -650,11 +687,7 @@ void StyleResolver::collectMatchingRules(RuleSet* rules, int& firstRuleIndex, in
         for (size_t i = 0; i < m_styledElement->classNames().size(); ++i)
             collectMatchingRulesForList(rules->classRules(m_styledElement->classNames()[i].impl()), firstRuleIndex, lastRuleIndex, options);
     }
-    const AtomicString& pseudoId = m_element->shadowPseudoId();
-    if (!pseudoId.isEmpty()) {
-        ASSERT(m_styledElement);
-        collectMatchingRulesForList(rules->shadowPseudoElementRules(pseudoId.impl()), firstRuleIndex, lastRuleIndex, options);
-    }
+
     if (m_element->isLink())
         collectMatchingRulesForList(rules->linkPseudoClassRules(), firstRuleIndex, lastRuleIndex, options);
     if (m_checker.matchesFocusPseudoClass(m_element))
@@ -818,41 +851,10 @@ void StyleResolver::matchUARules(MatchResult& result, RuleSet* rules)
     sortAndTransferMatchedRules(result);
 }
 
-class MatchingUARulesScope {
-public:
-    MatchingUARulesScope();
-    ~MatchingUARulesScope();
-
-    static bool isMatchingUARules();
-
-private:
-    static bool m_matchingUARules;
-};
-
-MatchingUARulesScope::MatchingUARulesScope()
-{
-    ASSERT(!m_matchingUARules);
-    m_matchingUARules = true;
-}
-
-MatchingUARulesScope::~MatchingUARulesScope()
-{
-    m_matchingUARules = false;
-}
-
-inline bool MatchingUARulesScope::isMatchingUARules()
-{
-    return m_matchingUARules;
-}
-
-bool MatchingUARulesScope::m_matchingUARules = false;
-
 void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions& options)
 {
     if (!rules)
         return;
-
-    TreeScope* treeScope = m_element->treeScope();
 
     // In some cases we may end up looking up style for random elements in the middle of a recursive tree resolve.
     // Ancestor identifier filter won't be up-to-date in that case and we can't use the fast path.
@@ -867,19 +869,6 @@ void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, i
         StyleRule* rule = ruleData.rule();
         InspectorInstrumentationCookie cookie = InspectorInstrumentation::willMatchRule(document(), rule);
         if (checkSelector(ruleData, options.scope)) {
-            // Check whether the rule is applicable in the current tree scope. Criteria for this:
-            // a) it's a UA rule
-            // b) the tree scope allows author rules
-            // c) the rules comes from a scoped style sheet within the same tree scope
-            // d) the rule contains shadow-ID pseudo elements
-            if (!MatchingUARulesScope::isMatchingUARules()
-                && !treeScope->applyAuthorStyles()
-                && (!options.scope || options.scope->treeScope() != treeScope)
-                && !m_hasUnknownPseudoElements) {
-
-                InspectorInstrumentation::didMatchRule(cookie, false);
-                continue;
-            }
             // If the rule has no properties to apply, then ignore it in the non-debug mode.
             const StylePropertySet* properties = rule->properties();
             if (!properties || (properties->isEmpty() && !options.includeEmptyRules)) {
@@ -938,12 +927,12 @@ void StyleResolver::matchAllRules(MatchResult& result, bool includeSMILPropertie
         
     // Now check author rules, beginning first with presentational attributes mapped from HTML.
     if (m_styledElement) {
-        addElementStyleProperties(result, m_styledElement->attributeStyle());
+        addElementStyleProperties(result, m_styledElement->presentationAttributeStyle());
 
         // Now we check additional mapped declarations.
         // Tables and table cells share an additional mapped rule that must be applied
         // after all attributes, since their mapped style depends on the values of multiple attributes.
-        addElementStyleProperties(result, m_styledElement->additionalAttributeStyle());
+        addElementStyleProperties(result, m_styledElement->additionalPresentationAttributeStyle());
 
         if (m_styledElement->isHTMLElement()) {
             bool isAuto;
@@ -993,21 +982,10 @@ inline bool shouldResetStyleInheritance(NodeRenderingContext& context)
     if (context.resetStyleInheritance())
         return true;
 
-    InsertionPoint* insertionPoint = context.insertionPoint();
-    if (!insertionPoint)
-        return false;
+    if (InsertionPoint* insertionPoint = context.insertionPoint())
+        return insertionPoint->resetStyleInheritance();
 
-    ASSERT(parentElementForDistribution(context.node()));
-    ElementShadow* shadow = parentElementForDistribution(context.node())->shadow();
-    ASSERT(shadow);
-
-    for ( ; insertionPoint; ) {
-        InsertionPoint* youngerInsertionPoint = shadow->insertionPointFor(insertionPoint);
-        if (!youngerInsertionPoint)
-            break;
-        insertionPoint = youngerInsertionPoint;
-    }
-    return insertionPoint->resetStyleInheritance();
+    return false;
 }
 
 inline void StyleResolver::initForStyleResolve(Element* e, RenderStyle* parentStyle, PseudoId pseudoID)
@@ -1158,10 +1136,10 @@ static inline bool attributeStylesEqual(const StylePropertySet* a, const StylePr
         return false;
     unsigned propertyCount = a->propertyCount();
     for (unsigned i = 0; i < propertyCount; ++i) {
-        const CSSProperty& aProperty = a->propertyAt(i);
+        StylePropertySet::PropertyReference aProperty = a->propertyAt(i);
         unsigned j;
         for (j = 0; j < propertyCount; ++j) {
-            const CSSProperty& bProperty = b->propertyAt(j);
+            StylePropertySet::PropertyReference bProperty = b->propertyAt(j);
             if (aProperty.id() != bProperty.id())
                 continue;
             // We could get a few more hits by comparing cssText() here, but that gets expensive quickly.
@@ -1201,11 +1179,11 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (element->isSVGElement() && static_cast<SVGElement*>(element)->animatedSMILStyleProperties())
         return false;
 #endif
-    if (!!element->attributeStyle() != !!m_styledElement->attributeStyle())
+    if (!!element->presentationAttributeStyle() != !!m_styledElement->presentationAttributeStyle())
         return false;
-    const StylePropertySet* additionalAttributeStyleA = element->additionalAttributeStyle();
-    const StylePropertySet* additionalAttributeStyleB = m_styledElement->additionalAttributeStyle();
-    if (!additionalAttributeStyleA != !additionalAttributeStyleB)
+    const StylePropertySet* additionalPresentationAttributeStyleA = element->additionalPresentationAttributeStyle();
+    const StylePropertySet* additionalPresentationAttributeStyleB = m_styledElement->additionalPresentationAttributeStyle();
+    if (!additionalPresentationAttributeStyleA != !additionalPresentationAttributeStyleB)
         return false;
     if (element->isLink() != m_element->isLink())
         return false;
@@ -1220,8 +1198,6 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (element->shadowPseudoId() != m_element->shadowPseudoId())
         return false;
     if (element == element->document()->cssTarget())
-        return false;
-    if (m_element == m_element->document()->cssTarget())
         return false;
     if (element->fastGetAttribute(XMLNames::langAttr) != m_element->fastGetAttribute(XMLNames::langAttr))
         return false;
@@ -1238,9 +1214,7 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
 
 #if ENABLE(PROGRESS_ELEMENT)
     if (element->hasTagName(progressTag)) {
-        if (!m_element->hasTagName(progressTag))
-            return false;
-
+        ASSERT(m_element->hasTagName(progressTag));
         HTMLProgressElement* thisProgressElement = static_cast<HTMLProgressElement*>(element);
         HTMLProgressElement* otherProgressElement = static_cast<HTMLProgressElement*>(m_element);
         if (thisProgressElement->isDeterminate() != otherProgressElement->isDeterminate())
@@ -1277,7 +1251,7 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
         return false;
 #endif
 
-    if (elementHasDirectionAuto(element) || elementHasDirectionAuto(m_element))
+    if (elementHasDirectionAuto(element))
         return false;
 
     if (element->hasClass()) {
@@ -1292,10 +1266,10 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
             return false;
     }
 
-    if (element->attributeStyle() && !attributeStylesEqual(element->attributeStyle(), m_styledElement->attributeStyle()))
+    if (element->presentationAttributeStyle() && !attributeStylesEqual(element->presentationAttributeStyle(), m_styledElement->presentationAttributeStyle()))
         return false;
 
-    if (additionalAttributeStyleA && !attributeStylesEqual(additionalAttributeStyleA, additionalAttributeStyleB))
+    if (additionalPresentationAttributeStyleA && !attributeStylesEqual(additionalPresentationAttributeStyleA, additionalPresentationAttributeStyleB))
         return false;
 
     if (element->isLink() && m_elementLinkState != style->insideLink())
@@ -1342,6 +1316,10 @@ RenderStyle* StyleResolver::locateSharedStyle()
     if (parentStylePreventsSharing(m_parentStyle))
         return 0;
     if (m_styledElement->hasScopedHTMLStyleChild())
+        return 0;
+    if (m_element == m_element->document()->cssTarget())
+        return 0;
+    if (elementHasDirectionAuto(m_element))
         return 0;
 
     // Check previous siblings and their cousins.
@@ -1576,9 +1554,10 @@ PassRefPtr<RenderStyle> StyleResolver::styleForElement(Element* element, RenderS
     // contenteditable attribute (implemented by -webkit-user-modify) should
     // be propagated from shadow host to distributed node.
     if (m_distributedToInsertionPoint) {
-        ASSERT(element->parentElement());
-        if (RenderStyle* styleOfShadowHost = element->parentElement()->renderStyle())
-            m_style->setUserModify(styleOfShadowHost->userModify());
+        if (Element* parent = element->parentElement()) {
+            if (RenderStyle* styleOfShadowHost = parent->renderStyle())
+                m_style->setUserModify(styleOfShadowHost->userModify());
+        }
     }
 
     if (element->isLink()) {
@@ -2196,7 +2175,6 @@ PassRefPtr<CSSRuleList> StyleResolver::pseudoStyleRulesForElement(Element* e, Ps
 inline bool StyleResolver::checkSelector(const RuleData& ruleData, const ContainerNode* scope)
 {
     m_dynamicPseudo = NOPSEUDO;
-    m_hasUnknownPseudoElements = false;
 
     if (ruleData.hasFastCheckableSelector()) {
         // We know this selector does not include any pseudo elements.
@@ -2220,7 +2198,7 @@ inline bool StyleResolver::checkSelector(const RuleData& ruleData, const Contain
     context.elementParentStyle = m_parentNode ? m_parentNode->renderStyle() : 0;
     context.scope = scope;
     context.pseudoStyle = m_pseudoStyle;
-    SelectorChecker::SelectorMatch match = m_checker.checkSelector(context, m_dynamicPseudo, m_hasUnknownPseudoElements);
+    SelectorChecker::SelectorMatch match = m_checker.checkSelector(context, m_dynamicPseudo);
     if (match != SelectorChecker::SelectorMatches)
         return false;
     if (m_pseudoStyle != NOPSEUDO && m_pseudoStyle != m_dynamicPseudo)
@@ -2233,7 +2211,6 @@ bool StyleResolver::checkRegionSelector(CSSSelector* regionSelector, Element* re
     if (!regionSelector || !regionElement)
         return false;
 
-    m_hasUnknownPseudoElements = false;
     m_pseudoStyle = NOPSEUDO;
 
     for (CSSSelector* s = regionSelector; s; s = CSSSelectorList::next(s))
@@ -2264,7 +2241,7 @@ void StyleResolver::applyProperties(const StylePropertySet* properties, StyleRul
 
     unsigned propertyCount = properties->propertyCount();
     for (unsigned i = 0; i < propertyCount; ++i) {
-        const CSSProperty& current = properties->propertyAt(i);
+        StylePropertySet::PropertyReference current = properties->propertyAt(i);
         if (isImportant != current.isImportant())
             continue;
         if (inheritedOnly && !current.isInherited()) {
@@ -2817,7 +2794,7 @@ void StyleResolver::resolveVariables(CSSPropertyID id, CSSValue* value, Vector<s
         return; // expression failed to parse.
 
     for (unsigned i = 0; i < resultSet->propertyCount(); i++) {
-        const CSSProperty& property = resultSet->propertyAt(i);
+        StylePropertySet::PropertyReference property = resultSet->propertyAt(i);
         if (property.id() != CSSPropertyVariable && hasVariableReference(property.value()))
             resolveVariables(property.id(), property.value(), knownExpressions);
         else
@@ -3875,6 +3852,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 #if ENABLE(CSS3_TEXT)
     case CSSPropertyWebkitTextDecorationLine:
     case CSSPropertyWebkitTextDecorationStyle:
+    case CSSPropertyWebkitTextAlignLast:
 #endif // CSS3_TEXT
     case CSSPropertyWebkitTextEmphasisColor:
     case CSSPropertyWebkitTextEmphasisPosition:
@@ -3899,8 +3877,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
 #if ENABLE(CSS_EXCLUSIONS)
     case CSSPropertyWebkitWrap:
     case CSSPropertyWebkitWrapFlow:
-    case CSSPropertyWebkitWrapMargin:
-    case CSSPropertyWebkitWrapPadding:
+    case CSSPropertyWebkitShapeMargin:
+    case CSSPropertyWebkitShapePadding:
     case CSSPropertyWebkitWrapThrough:
     case CSSPropertyWebkitShapeInside:
     case CSSPropertyWebkitShapeOutside:
@@ -3913,6 +3891,12 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWordWrap:
     case CSSPropertyZIndex:
     case CSSPropertyZoom:
+#if ENABLE(CSS_DEVICE_ADAPTATION)
+    case CSSPropertyMaxZoom:
+    case CSSPropertyMinZoom:
+    case CSSPropertyOrientation:
+    case CSSPropertyUserZoom:
+#endif
         ASSERT_NOT_REACHED();
         return;
 #if ENABLE(SVG)
@@ -4272,18 +4256,6 @@ Color StyleResolver::colorFromPrimitiveValue(CSSPrimitiveValue* value, bool forV
     }
 }
 
-bool StyleResolver::hasSelectorForAttribute(const AtomicString &attrname) const
-{
-    return m_features.attrsInRules.contains(attrname.impl());
-}
-
-bool StyleResolver::hasSelectorForId(const AtomicString& idValue) const
-{
-    if (idValue.isEmpty())
-        return false;
-    return m_features.idsInRules.contains(idValue.impl());
-}
-
 void StyleResolver::addViewportDependentMediaQueryResult(const MediaQueryExp* expr, bool result)
 {
     m_viewportDependentMediaQueryResults.append(adoptPtr(new MediaQueryResult(*expr, result)));
@@ -4616,7 +4588,7 @@ void StyleResolver::loadPendingSVGDocuments()
         return;
 
     CachedResourceLoader* cachedResourceLoader = m_element->document()->cachedResourceLoader();
-    Vector<RefPtr<FilterOperation> >& filterOperations = m_style->filter().operations();
+    Vector<RefPtr<FilterOperation> >& filterOperations = m_style->mutableFilter().operations();
     for (unsigned i = 0; i < filterOperations.size(); ++i) {
         RefPtr<FilterOperation> filterOperation = filterOperations.at(i);
         if (filterOperation->getOperationType() == FilterOperation::REFERENCE) {
@@ -4660,7 +4632,7 @@ void StyleResolver::loadPendingShaders()
 
     CachedResourceLoader* cachedResourceLoader = m_element->document()->cachedResourceLoader();
 
-    Vector<RefPtr<FilterOperation> >& filterOperations = m_style->filter().operations();
+    Vector<RefPtr<FilterOperation> >& filterOperations = m_style->mutableFilter().operations();
     for (unsigned i = 0; i < filterOperations.size(); ++i) {
         RefPtr<FilterOperation> filterOperation = filterOperations.at(i);
         if (filterOperation->getOperationType() == FilterOperation::CUSTOM) {
@@ -4809,16 +4781,18 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
     ASSERT(shadersValue->isValueList());
     CSSValueList* shadersList = static_cast<CSSValueList*>(shadersValue);
 
-    ASSERT(shadersList->length());
-    RefPtr<StyleShader> vertexShader = styleShader(shadersList->itemWithoutBoundsCheck(0));
+    unsigned shadersListLength = shadersList->length();
+    ASSERT(shadersListLength);
 
+    RefPtr<StyleShader> vertexShader = styleShader(shadersList->itemWithoutBoundsCheck(0));
     RefPtr<StyleShader> fragmentShader;
-    CustomFilterProgramType programType = PROGRAM_TYPE_NO_ELEMENT_TEXTURE;
+    CustomFilterProgramType programType = PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE;
     CustomFilterProgramMixSettings mixSettings;
-    if (shadersList->length() > 1) {
+
+    if (shadersListLength > 1) {
         CSSValue* fragmentShaderOrMixFunction = shadersList->itemWithoutBoundsCheck(1);
+
         if (fragmentShaderOrMixFunction->isWebKitCSSMixFunctionValue()) {
-            programType = PROGRAM_TYPE_BLENDS_ELEMENT_TEXTURE;
             WebKitCSSMixFunctionValue* mixFunction = static_cast<WebKitCSSMixFunctionValue*>(fragmentShaderOrMixFunction);
             CSSValueListIterator iterator(mixFunction);
 
@@ -4837,14 +4811,16 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
                     ASSERT_NOT_REACHED();
                 iterator.advance();
             }
-        } else
+        } else {
+            programType = PROGRAM_TYPE_NO_ELEMENT_TEXTURE;
             fragmentShader = styleShader(fragmentShaderOrMixFunction);
+        }
     }
     
     unsigned meshRows = 1;
     unsigned meshColumns = 1;
-    CustomFilterOperation::MeshBoxType meshBoxType = CustomFilterOperation::FILTER_BOX;
-    CustomFilterOperation::MeshType meshType = CustomFilterOperation::ATTACHED;
+    CustomFilterMeshBoxType meshBoxType = MeshBoxTypeFilter;
+    CustomFilterMeshType meshType = MeshTypeAttached;
     
     CSSValue* parametersValue = 0;
     
@@ -4888,7 +4864,7 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
         if (iterator.hasMore() && iterator.isPrimitiveValue()) {
             CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(iterator.value());
             if (primitiveValue->getIdent() == CSSValueDetached) {
-                meshType = CustomFilterOperation::DETACHED;
+                meshType = MeshTypeDetached;
                 iterator.advance();
             }
         }
@@ -4908,7 +4884,7 @@ PassRefPtr<CustomFilterOperation> StyleResolver::createCustomFilterOperation(Web
     if (parametersValue && !parseCustomFilterParameterList(parametersValue, parameterList))
         return 0;
     
-    RefPtr<StyleCustomFilterProgram> program = StyleCustomFilterProgram::create(vertexShader.release(), fragmentShader.release(), programType, mixSettings);
+    RefPtr<StyleCustomFilterProgram> program = StyleCustomFilterProgram::create(vertexShader.release(), fragmentShader.release(), programType, mixSettings, meshType);
     return CustomFilterOperation::create(program.release(), parameterList, meshRows, meshColumns, meshBoxType, meshType);
 }
 #endif
@@ -4940,6 +4916,11 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
         FilterOperation::OperationType operationType = filterOperationForType(filterValue->operationType());
 
 #if ENABLE(CSS_SHADERS)
+        if (operationType == FilterOperation::VALIDATED_CUSTOM) {
+            // ValidatedCustomFilterOperation is not supposed to end up in the RenderStyle.
+            ASSERT_NOT_REACHED();
+            continue;
+        }
         if (operationType == FilterOperation::CUSTOM) {
             RefPtr<CustomFilterOperation> operation = createCustomFilterOperation(filterValue);
             if (!operation)
@@ -4965,7 +4946,7 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
             if (SVGURIReference::isExternalURIReference(svgDocumentValue->url(), m_element->document())) {
                 if (!svgDocumentValue->loadRequested())
                     m_pendingSVGDocuments.set(operation.get(), svgDocumentValue);
-                else
+                else if (svgDocumentValue->cachedSVGDocument())
                     operation->setData(adoptPtr(new CachedSVGDocumentReference(svgDocumentValue->cachedSVGDocument())));
             }
             operations.operations().append(operation);

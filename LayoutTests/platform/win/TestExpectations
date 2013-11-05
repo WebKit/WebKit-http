@@ -166,6 +166,7 @@ fast/events/drag-in-frames.html
 fast/events/drag-to-navigate.html
 fast/events/drop-with-file-paths.html
 fast/events/dropzone-004.html
+fast/events/only-valid-drop-targets-receive-file-drop.html
 fast/events/standalone-image-drag-to-editable.html
 http/tests/security/clipboard/clipboard-file-access.html
 http/tests/security/drag-drop-same-unique-origin.html
@@ -271,6 +272,7 @@ fast/dom/DOMURL/check-instanceof-domurl-functions.html
 fast/forms/file/input-file-entries.html
 fast/forms/file/recover-file-input-in-unposted-form.html
 http/tests/security/contentSecurityPolicy/blob-urls-match-self.html
+fast/workers/worker-domurl.html
 
 # Need to add functionality to DumpRenderTree to test IDN <rdar://problem/5301954>
 fast/encoding/idn-security.html
@@ -633,6 +635,7 @@ accessibility/radio-button-group-members.html
 accessibility/radio-button-title-label.html
 accessibility/secure-textfield-title-ui.html
 accessibility/spinbutton-value.html
+accessibility/svg-remote-element.html
 accessibility/table-attributes.html
 accessibility/table-cell-spans.html
 accessibility/table-cells.html
@@ -879,6 +882,9 @@ http/tests/local/blob/send-sliced-data-blob.html
 # BlodBuilder is not enabled
 http/tests/local/blob/send-data-blob.html
 
+# CSS Device Adaptation is not enabled.
+webkit.org/b/95959 css3/device-adapt [ Skip ]
+
 # <https://bugs.webkit.org/show_bug.cgi?id=29289>
 plugins/destroy-during-npp-new.html
 
@@ -1031,6 +1037,7 @@ fast/media/media-query-list-05.html
 fast/media/media-query-list-06.html
 fast/media/media-query-list-07.html
 fast/media/mq-resolution.html
+fast/media/mq-resolution-dpi-dpcm-warning.html
 
 # Need expectations. See https://bugs.webkit.org/show_bug.cgi?id=36461
 fast/repaint/overflow-scroll-body-appear.html
@@ -1481,6 +1488,9 @@ loader/navigation-while-deferring-loads.html
 # JSC does not support setIsolatedWorldSecurityOrigin (http://webkit.org/b/61540)
 http/tests/security/isolatedWorld/cross-origin-xhr.html
 
+# JSC also doesn't support setIsolatedWorldContentSecurityPolicy (webkit.org/b/100815)
+http/tests/security/isolatedWorld/bypass-main-world-csp.html
+
 # ENABLE(WEBGL) is disabled
 compositing/backface-visibility/backface-visibility-webgl.html
 compositing/visibility/visibility-simple-webgl-layer.html
@@ -1491,6 +1501,7 @@ http/tests/security/webgl-remote-read-remote-image-allowed.html
 http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
 inspector/profiler/webgl
+fast/images/webgl-teximage2d.html
 
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
 fast/dom/HTMLAnchorElement/anchor-nodownload.html
@@ -1987,7 +1998,6 @@ fast/css/word-space-extra.html
 fast/forms/date-multiple-fields
 fast/forms/month-multiple-fields
 fast/forms/time-multiple-fields
-fast/forms/week-multiple-fields
 
 # Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=84286
 fast/block/float/avoidance-rtl.html
@@ -2182,7 +2192,6 @@ inspector/timeline/timeline-decode-resize.html
 # https://bugs.webkit.org/show_bug.cgi?id=95802
 http/tests/inspector/appcache/appcache-manifest-with-non-existing-file.html
 http/tests/inspector/console-resource-errors.html
-http/tests/inspector/network/network-initiator-from-console.html
 http/tests/inspector/resource-tree/resource-request-content-while-loading.html
 http/tests/inspector/search/resources-search-match-index.html
 inspector/profiler/heap-snapshot.html
@@ -2207,6 +2216,15 @@ http/tests/security/script-crossorigin-loads-correctly.html
 http/tests/security/video-poster-cross-origin-crash.html
 http/tests/security/xss-eval.html
 http/tests/security/cookies/xmlhttprequest.html
+http/tests/security/canvas-cors-with-two-hosts.html
+http/tests/security/cross-frame-access-frameelement.html
+http/tests/security/document-all.html
+http/tests/security/window-named-proto.html
+http/tests/security/window-named-valueOf.html
+http/tests/security/xss-DENIED-synchronous-frame-load-in-javascript-url.html
+http/tests/security/xss-DENIED-window-open-javascript-url-with-spaces.html
+http/tests/security/xss-DENIED-window-open-parent.html
+http/tests/security/xss-DENIED-xsl-document-securityOrigin.xml
 
 # Flaky http/tests/cookie tests
 # https://bugs.webkit.org/show_bug.cgi?id=95805
@@ -2269,7 +2287,6 @@ tables/mozilla_expected_failures/marvin/table_overflow_hidden_tr.html
 http/tests/fullscreen/fullscreenelement-different-origin.html
 http/tests/fullscreen/fullscreenelement-same-origin.html
 http/tests/history/back-with-fragment-change.php
-http/tests/images/jpg-img-partial-load.html
 http/tests/inspector/console-cross-origin-iframe-logging.html
 http/tests/inspector/inspect-element.html
 http/tests/inspector/resource-har-conversion.html
@@ -2344,6 +2361,9 @@ css3/supports.html
 # https://bugs.webkit.org/show_bug.cgi?id=98169
 http/tests/inspector/stacktraces
 
+# Requires rebaselining after https://bugs.webkit.org/show_bug.cgi?id=11645
+webkit.org/b/11645 fast/table/025.html [ Failure ]
+
 # HIDDEN_PAGE_DOM_TIMER_THROTTLING is disabled
 fast/dom/timer-throttling-hidden-page.html
 
@@ -2357,6 +2377,8 @@ webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing
 # Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
 
+webkit.org/b/100424 editing/selection/user-select-all-selection.html [ Failure ]
+
 # https://bugs.webkit.org/show_bug.cgi?id=99567
 # Not supported on Mac or Windows ports
 inspector/elements/update-shadowdom.html
@@ -2365,9 +2387,35 @@ inspector/elements/update-shadowdom.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-aborted.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-simple.html
+http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-synconmain.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-twice.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-aborted.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-overridesexpires.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-simple.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-synconworker.html
 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-twice.html
+
+# Feature introduced in r132708 is chromium only
+animations/3d/change-transform-in-end-event.html 
+transitions/move-after-transition.html 
+compositing/text-on-large-layer.html 
+compositing/iframes/fixed-position-iframe.html 
+compositing/tiling/backface-preserve-3d-tiled.html 
+compositing/tiling/constrained-layer-size.html 
+compositing/tiling/crash-huge-layer.html 
+compositing/tiling/crash-reparent-tiled-layer.html 
+compositing/tiling/huge-layer-add-remove-child.html 
+compositing/tiling/huge-layer-img.html 
+compositing/tiling/huge-layer-with-layer-children-resize.html 
+compositing/tiling/huge-layer-with-layer-children.html 
+compositing/tiling/preserve3d-tiled.html 
+compositing/tiling/tile-cache-zoomed.html
+
+# Test added in r132901 is for chromium only
+fast/images/exif-orientation-image-document.html
+
+webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Skip ]
+
+#https://bugs.webkit.org/show_bug.cgi?id=100117
+fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html

@@ -26,6 +26,8 @@
 #ifndef NetworkProcessManager_h
 #define NetworkProcessManager_h
 
+#if ENABLE(NETWORK_PROCESS)
+
 #include "Connection.h"
 #include "WebProcessProxyMessages.h"
 #include <wtf/RefCounted.h>
@@ -48,6 +50,10 @@ public:
     
     void removeNetworkProcessProxy(NetworkProcessProxy*);
 
+#if PLATFORM(MAC)
+    void setApplicationIsOccluded(bool);
+#endif
+
 private:
     NetworkProcessManager();
 
@@ -55,5 +61,7 @@ private:
 };
 
 } // namespace WebKit
+
+#endif // ENABLE(NETWORK_PROCESS)
 
 #endif // NetworkProcessManager_h

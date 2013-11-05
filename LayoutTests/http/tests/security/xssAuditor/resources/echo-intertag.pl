@@ -4,17 +4,58 @@ use CGI;
 
 my $cgi = new CGI;
 
-if ($cgi->param('enable-full-block')) {
-    print "X-XSS-Protection: 1; mode=block\n";
-}
+# Passing semicolons through the url to this script is problematic. The raw
+# form truncates the input and the %-encoded form isn't being decoded. Hence
+# this set of hard-coded headers. 
 if ($cgi->param('disable-protection')) {
     print "X-XSS-Protection: 0\n";
 }
-if ($cgi->param('crazy-header')) {
+if ($cgi->param('enable-full-block')) {
+    print "X-XSS-Protection: 1; mode=block\n";
+}
+if ($cgi->param('enable-report')) {
+    print "X-XSS-Protection: 1; report=/security/contentSecurityPolicy/resources/save-report.php\n";
+}
+
+if ($cgi->param('valid-header') == 1) {
     print "X-XSS-Protection:   1  ;MoDe =  bLocK   \n";
 }
-if ($cgi->param('custom-header')) {
-    print $cgi->param('custom-header') . "\n";
+if ($cgi->param('valid-header') == 2) {
+    print "X-XSS-Protection: 1; \n";
+}
+if ($cgi->param('valid-header') == 3) {
+    print "X-XSS-Protection: 1; mode=block; \n";
+}
+if ($cgi->param('valid-header') == 4) {
+    print "X-XSS-Protection: 1; report=/security/contentSecurityPolicy/resources/nonesuch.php; mode=block; \n";
+}
+
+if ($cgi->param('malformed-header') == 1) {
+    print "X-XSS-Protection: 12345678901234567\n";
+}
+if ($cgi->param('malformed-header') == 2) {
+    print "X-XSS-Protection: red\n";
+}
+if ($cgi->param('malformed-header') == 3) {
+    print "X-XSS-Protection: 1; mode=purple\n";
+}
+if ($cgi->param('malformed-header') == 4) {
+    print "X-XSS-Protection: 1; mode=block-a-block-block\n";
+}
+if ($cgi->param('malformed-header') == 5) {
+    print "X-XSS-Protection: 1; mode=block; report\n";
+}
+if ($cgi->param('malformed-header') == 6) {
+    print "X-XSS-Protection: 1; report= ;\n";
+}
+if ($cgi->param('malformed-header') == 7) {
+    print "X-XSS-Protection: 1; red\n";
+}
+if ($cgi->param('malformed-header') == 8) {
+    print "X-XSS-Protection: 1; mode=block; report=/fail; mode=block;\n";
+}
+if ($cgi->param('malformed-header') == 9) {
+    print "X-XSS-Protection: 1; mode=block; report=/fail; report=/fail;\n";
 }
 
 print "Content-Type: text/html; charset=";
@@ -55,6 +96,9 @@ if ($cgi->param('enable-full-block')) {
 }
 if ($cgi->param('alert-cookie')) {
     print "<script>if (/xssAuditorTestCookie/.test(document.cookie)) { alert('FAIL: ' + document.cookie); document.cookie = 'xssAuditorTestCookie=remove; max-age=-1'; } else alert('PASS');</script>\n";
+}
+if ($cgi->param('echo-report')) {
+    print "<script src=/security/contentSecurityPolicy/resources/go-to-echo-report.js></script>\n";
 }
 print "</body>\n";
 print "</html>\n";

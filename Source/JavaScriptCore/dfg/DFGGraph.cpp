@@ -226,7 +226,7 @@ void Graph::dump(const char* prefix, NodeIndex nodeIndex)
         hasPrinted = true;
     }
     if (node.hasArrayMode()) {
-        dataLog("%s%s", hasPrinted ? ", " : "", modeToString(node.arrayMode()));
+        dataLog("%s%s", hasPrinted ? ", " : "", node.arrayMode().toString());
         hasPrinted = true;
     }
     if (node.hasVarNumber()) {
@@ -258,6 +258,10 @@ void Graph::dump(const char* prefix, NodeIndex nodeIndex)
         dataLog("%sstruct(%p -> %p)", hasPrinted ? ", " : "", node.structureTransitionData().previousStructure, node.structureTransitionData().newStructure);
         hasPrinted = true;
     }
+    if (node.hasFunction()) {
+        dataLog("%s%p", hasPrinted ? ", " : "", node.function());
+        hasPrinted = true;
+    }
     if (node.hasStorageAccessData()) {
         StorageAccessData& storageAccessData = m_storageAccessData[node.storageAccessDataIndex()];
         dataLog("%sid%u{%s}", hasPrinted ? ", " : "", storageAccessData.identifierNumber, m_codeBlock->identifier(storageAccessData.identifierNumber).string().utf8().data());
@@ -286,6 +290,11 @@ void Graph::dump(const char* prefix, NodeIndex nodeIndex)
         }
         dataLog("]");
         hasPrinted = true;
+    }
+    if (node.hasIndexingType()) {
+        if (hasPrinted)
+            dataLog(", ");
+        dataLog("%s", indexingTypeToString(node.indexingType()));
     }
     if (op == JSConstant) {
         dataLog("%s$%u", hasPrinted ? ", " : "", node.constantNumber());

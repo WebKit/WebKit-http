@@ -35,6 +35,8 @@
 #include <WebCore/HTTPStatusCodes.h>
 #include <wtf/text/CString.h>
 
+using namespace EwkViewCallbacks;
+
 namespace WebKit {
 
 static inline PagePolicyClientEfl* toPagePolicyClientEfl(const void* clientInfo)
@@ -46,16 +48,16 @@ void PagePolicyClientEfl::decidePolicyForNavigationAction(WKPageRef, WKFrameRef,
 {
     PagePolicyClientEfl* policyClient = toPagePolicyClientEfl(clientInfo);
 
-    RefPtr<Ewk_Navigation_Policy_Decision> decision = Ewk_Navigation_Policy_Decision::create(navigationType, mouseButton, modifiers, request, 0, listener);
-    policyClient->m_viewImpl->informNavigationPolicyDecision(decision.get());
+    RefPtr<Ewk_Navigation_Policy_Decision> decision = EwkNavigationPolicyDecision::create(navigationType, mouseButton, modifiers, request, 0, listener);
+    policyClient->m_viewImpl->smartCallback<NavigationPolicyDecision>().call(decision.get());
 }
 
 void PagePolicyClientEfl::decidePolicyForNewWindowAction(WKPageRef, WKFrameRef, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKURLRequestRef request, WKStringRef frameName, WKFramePolicyListenerRef listener, WKTypeRef /*userData*/, const void* clientInfo)
 {
     PagePolicyClientEfl* policyClient = toPagePolicyClientEfl(clientInfo);
 
-    RefPtr<Ewk_Navigation_Policy_Decision> decision = Ewk_Navigation_Policy_Decision::create(navigationType, mouseButton, modifiers, request, toImpl(frameName)->string().utf8().data(), listener);
-    policyClient->m_viewImpl->informNewWindowPolicyDecision(decision.get());
+    RefPtr<Ewk_Navigation_Policy_Decision> decision = EwkNavigationPolicyDecision::create(navigationType, mouseButton, modifiers, request, toImpl(frameName)->string().utf8().data(), listener);
+    policyClient->m_viewImpl->smartCallback<NewWindowPolicyDecision>().call(decision.get());
 }
 
 void PagePolicyClientEfl::decidePolicyForResponseCallback(WKPageRef, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef, WKFramePolicyListenerRef listener, WKTypeRef /*userData*/, const void* /*clientInfo*/)

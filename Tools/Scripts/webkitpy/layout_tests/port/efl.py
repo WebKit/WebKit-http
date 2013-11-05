@@ -62,8 +62,6 @@ class EflPort(Port, PulseAudioSanitizer):
         if self.webprocess_cmd_prefix:
             env['WEB_PROCESS_CMD_PREFIX'] = self.webprocess_cmd_prefix
 
-        env['XDG_CACHE_HOME'] = str(self._filesystem.mkdtemp(prefix='%s-Efl-CacheDir-' % self.driver_name()))
-        env['XDG_DATA_HOME'] = str(self._filesystem.mkdtemp(prefix='%s-Efl-DataDir-' % self.driver_name()))
         return env
 
     def default_timeout_ms(self):
@@ -106,6 +104,9 @@ class EflPort(Port, PulseAudioSanitizer):
             search_paths.append(self.port_name + '-wk1')
         search_paths.append(self.port_name)
         return search_paths
+
+    def default_baseline_search_path(self):
+        return map(self._webkit_baseline_path, self._search_paths())
 
     def expectations_files(self):
         # FIXME: We should be able to use the default algorithm here.

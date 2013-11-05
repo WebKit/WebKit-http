@@ -76,6 +76,10 @@ WebInspector.ConsoleMessageImpl.prototype = {
                 case WebInspector.ConsoleMessage.MessageType.Trace:
                     this._messageElement = document.createTextNode("console.trace()");
                     break;
+                case WebInspector.ConsoleMessage.MessageType.Clear:
+                    this._messageElement = document.createTextNode(WebInspector.UIString("Console was cleared"));
+                    this._formattedMessage.addStyleClass("console-info");
+                    break;
                 case WebInspector.ConsoleMessage.MessageType.Assert:
                     var args = [WebInspector.UIString("Assertion failed:")];
                     if (this._parameters)
@@ -324,8 +328,11 @@ WebInspector.ConsoleMessageImpl.prototype = {
                     span.addStyleClass("console-formatted-preview-node");
                 else if (property.subtype === "regexp")
                     span.addStyleClass("console-formatted-string");
-            }
-            span.textContent = property.value;
+                span.textContent = property.value;
+            } else if (property.type === "function")
+                span.textContent = "function";
+            else
+                span.textContent = property.value;
         }
         if (preview.overflow)
             titleElement.createChild("span").textContent = "\u2026";
@@ -355,9 +362,18 @@ WebInspector.ConsoleMessageImpl.prototype = {
         object.pushNodeToFrontend(printNode.bind(this));
     },
 
+    /**
+     * @param {WebInspector.RemoteObject} array
+     * @return {boolean}
+     */
+    useArrayPreviewInFormatter: function(array)
+    {
+        return !!array.preview;
+    },
+
     _formatParameterAsArray: function(array, elem)
     {
-        if (array.preview) {
+        if (this.useArrayPreviewInFormatter(array)) {
             this._formatParameterAsArrayOrObject(array, "", elem, true);
             return;
         }
@@ -442,19 +458,35 @@ WebInspector.ConsoleMessageImpl.prototype = {
             return this._formatParameter(obj, force, false);
         }
 
-        function valueFormatter(obj)
+        function stringFormatter(obj)
         {
             return obj.description;
         }
 
+        function floatFormatter(obj)
+        {
+            if (typeof obj.value !== "number")
+                return "NaN";
+            return obj.value;
+        }
+
+        function integerFormatter(obj)
+        {
+            if (typeof obj.value !== "number")
+                return "NaN";
+            return Math.floor(obj.value);
+        }
+
+        var currentStyle = null;
         function styleFormatter(obj)
         {
+            currentStyle = {};
             var buffer = document.createElement("span");
             buffer.setAttribute("style", obj.description);
             for (var i = 0; i < buffer.style.length; i++) {
                 var property = buffer.style[i];
                 if (isWhitelistedProperty(property))
-                    formattedResult.style[property] = buffer.style[property];
+                    currentStyle[property] = buffer.style[property];
             }
         }
 
@@ -470,11 +502,11 @@ WebInspector.ConsoleMessageImpl.prototype = {
 
         // Firebug uses %o for formatting objects.
         formatters.o = parameterFormatter.bind(this, false);
-        formatters.s = valueFormatter;
-        formatters.f = valueFormatter;
+        formatters.s = stringFormatter;
+        formatters.f = floatFormatter;
         // Firebug allows both %i and %d for formatting integers.
-        formatters.i = valueFormatter;
-        formatters.d = valueFormatter;
+        formatters.i = integerFormatter;
+        formatters.d = integerFormatter;
 
         // Firebug uses %c for styling the message.
         formatters.c = styleFormatter;
@@ -486,8 +518,17 @@ WebInspector.ConsoleMessageImpl.prototype = {
         {
             if (b instanceof Node)
                 a.appendChild(b);
-            else if (b)
-                a.appendChild(WebInspector.linkifyStringAsFragment(b.toString()));
+            else if (b) {
+                var toAppend = WebInspector.linkifyStringAsFragment(b.toString());
+                if (currentStyle) {
+                    var wrapper = document.createElement('span');
+                    for (var key in currentStyle)
+                        wrapper.style[key] = currentStyle[key];
+                    wrapper.appendChild(toAppend);
+                    toAppend = wrapper;
+                }
+                a.appendChild(toAppend);
+            }
             return a;
         }
 

@@ -111,6 +111,10 @@
 #include "WebSoupRequestManagerProxy.h"
 #endif
 
+#if ENABLE(VIBRATION)
+#include "WebVibrationProxy.h"
+#endif
+
 #ifndef NDEBUG
 #include <wtf/RefCountedLeakCounter.h>
 #endif
@@ -245,6 +249,10 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     WebContext::statistics().wkPageCount++;
 
     m_pageGroup->addPage(this);
+
+#if ENABLE(VIBRATION)
+    m_vibration = WebVibrationProxy::create(this);
+#endif
 }
 
 WebPageProxy::~WebPageProxy()
@@ -447,6 +455,10 @@ void WebPageProxy::close()
     }
 #endif
 
+#if ENABLE(VIBRATION)
+    m_vibration->invalidate();
+#endif
+
     if (m_openPanelResultListener) {
         m_openPanelResultListener->invalidate();
         m_openPanelResultListener = 0;
@@ -484,6 +496,7 @@ void WebPageProxy::close()
 
     invalidateCallbackMap(m_voidCallbacks);
     invalidateCallbackMap(m_dataCallbacks);
+    invalidateCallbackMap(m_imageCallbacks);
     invalidateCallbackMap(m_stringCallbacks);
     m_loadDependentStringCallbackIDs.clear();
     invalidateCallbackMap(m_scriptValueCallbacks);
@@ -2592,6 +2605,19 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
         pluginUnavailabilityReason = kWKPluginUnavailabilityReasonPluginCrashed;
         break;
 
+    case RenderEmbeddedObject::PluginInactive: {
+#if ENABLE(NETSCAPE_PLUGIN_API)
+        String newMimeType = mimeType;
+        PluginModuleInfo plugin = m_process->context()->pluginInfoStore().findPlugin(newMimeType, KURL(KURL(), url));
+
+        if (!plugin.path.isEmpty() && PluginInfoStore::reactivateInactivePlugin(plugin)) {
+            // The plug-in has been reactivated now; reload the page so it'll be instantiated.
+            reload(false);
+        }
+        return;
+#endif
+    }
+
     case RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy:
         ASSERT_NOT_REACHED();
     }
@@ -3450,6 +3476,17 @@ void WebPageProxy::dataCallback(const CoreIPC::DataReference& dataReference, uin
     callback->performCallbackWithReturnValue(WebData::create(dataReference.data(), dataReference.size()).get());
 }
 
+void WebPageProxy::imageCallback(const ShareableBitmap::Handle& bitmapHandle, uint64_t callbackID)
+{
+    RefPtr<ImageCallback> callback = m_imageCallbacks.take(callbackID);
+    if (!callback) {
+        // FIXME: Log error or assert.
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(bitmapHandle);
+}
+
 void WebPageProxy::stringCallback(const String& resultString, uint64_t callbackID)
 {
     RefPtr<StringCallback> callback = m_stringCallbacks.take(callbackID);
@@ -3596,6 +3633,10 @@ void WebPageProxy::processDidCrash()
         m_fullScreenManager->invalidate();
         m_fullScreenManager = nullptr;
     }
+#endif
+
+#if ENABLE(VIBRATION)
+    m_vibration->invalidate();
 #endif
 
     if (m_openPanelResultListener) {
@@ -3980,17 +4021,17 @@ void WebPageProxy::computePagesForPrinting(WebFrameProxy* frame, const PrintInfo
 }
 
 #if PLATFORM(MAC) || PLATFORM(WIN)
-void WebPageProxy::drawRectToPDF(WebFrameProxy* frame, const PrintInfo& printInfo, const IntRect& rect, PassRefPtr<DataCallback> prpCallback)
+void WebPageProxy::drawRectToImage(WebFrameProxy* frame, const PrintInfo& printInfo, const IntRect& rect, PassRefPtr<ImageCallback> prpCallback)
 {
-    RefPtr<DataCallback> callback = prpCallback;
+    RefPtr<ImageCallback> callback = prpCallback;
     if (!isValid()) {
         callback->invalidate();
         return;
     }
     
     uint64_t callbackID = callback->callbackID();
-    m_dataCallbacks.set(callbackID, callback.get());
-    m_process->send(Messages::WebPage::DrawRectToPDF(frame->frameID(), printInfo, rect, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
+    m_imageCallbacks.set(callbackID, callback.get());
+    m_process->send(Messages::WebPage::DrawRectToImage(frame->frameID(), printInfo, rect, callbackID), m_pageID, m_isPerformingDOMPrintOperation ? CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply : 0);
 }
 
 void WebPageProxy::drawPagesToPDF(WebFrameProxy* frame, const PrintInfo& printInfo, uint32_t first, uint32_t count, PassRefPtr<DataCallback> prpCallback)
@@ -4053,6 +4094,16 @@ Color WebPageProxy::backingStoreUpdatesFlashColor()
 void WebPageProxy::saveDataToFileInDownloadsFolder(const String& suggestedFilename, const String& mimeType, const String& originatingURLString, WebData* data)
 {
     m_uiClient.saveDataToFileInDownloadsFolder(this, suggestedFilename, mimeType, originatingURLString, data);
+}
+
+void WebPageProxy::savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const CoreIPC::DataReference& data)
+{
+    if (!suggestedFilename.endsWith(".pdf", false))
+        return;
+
+    RefPtr<WebData> webData = WebData::create(data.data(), data.size());
+
+    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString, webData.get());
 }
 
 void WebPageProxy::linkClicked(const String& url, const WebMouseEvent& event)

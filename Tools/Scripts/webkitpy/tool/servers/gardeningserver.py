@@ -23,9 +23,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import BaseHTTPServer
+import SocketServer
 import logging
 import json
 import os
+import sys
+import urllib
 
 from webkitpy.common.memoized import memoized
 from webkitpy.tool.servers.reflectionhandler import ReflectionHandler
@@ -50,14 +53,17 @@ class BuildCoverageExtrapolator(object):
         return self._covered_test_configurations_for_builder_name()[builder_name]
 
 
-class GardeningHTTPServer(BaseHTTPServer.HTTPServer):
+class GardeningHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
     def __init__(self, httpd_port, config):
         server_name = ''
         self.tool = config['tool']
+        self.options = config['options']
         BaseHTTPServer.HTTPServer.__init__(self, (server_name, httpd_port), GardeningHTTPRequestHandler)
 
-    def url(self):
-        return 'file://' + os.path.join(GardeningHTTPRequestHandler.STATIC_FILE_DIRECTORY, 'garden-o-matic.html')
+    def url(self, args=None):
+        # We can't use urllib.encode() here because that encodes spaces as plus signs and the buildbots don't decode those properly.
+        arg_string = ('?' + '&'.join("%s=%s" % (key, urllib.quote(value)) for (key, value) in args.items())) if args else ''
+        return 'file://' + os.path.join(GardeningHTTPRequestHandler.STATIC_FILE_DIRECTORY, 'garden-o-matic.html' + arg_string)
 
 
 class GardeningHTTPRequestHandler(ReflectionHandler):
@@ -75,32 +81,50 @@ class GardeningHTTPRequestHandler(ReflectionHandler):
         'TestFailures')
 
     allow_cross_origin_requests = True
-
-    def _run_webkit_patch(self, args):
-        return self.server.tool.executive.run_command([self.server.tool.path()] + args, cwd=self.server.tool.scm().checkout_root)
-
-    def rollout(self):
-        revision = self.query['revision'][0]
-        reason = self.query['reason'][0]
-        self._run_webkit_patch([
-            'rollout',
-            '--force-clean',
-            '--non-interactive',
-            revision,
-            reason,
-        ])
-        self._serve_text('success')
+    debug_output = ''
 
     def ping(self):
         self._serve_text('pong')
 
+    def _run_webkit_patch(self, command, input_string):
+        PIPE = self.server.tool.executive.PIPE
+        process = self.server.tool.executive.popen([self.server.tool.path()] + command, cwd=self.server.tool.scm().checkout_root, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        process.stdin.write(input_string)
+        output, error = process.communicate()
+        return (process.returncode, output, error)
+
     def rebaselineall(self):
         command = ['rebaseline-json']
+        if self.server.options.move_overwritten_baselines:
+            command.append('--move-overwritten-baselines')
+        if self.server.options.results_directory:
+            command.extend(['--results-directory', self.server.options.results_directory])
+        if not self.server.options.optimize:
+            command.append('--no-optimize')
+        if self.server.options.verbose:
+            command.append('--verbose')
         json_input = self.read_entity_body()
-        _log.debug("rebaselining using '%s'" % json_input)
 
-        def error_handler(script_error):
-            _log.error("error from rebaseline-json: %s, input='%s', output='%s'" % (str(script_error), json_input, script_error.output))
+        _log.debug("calling %s, input='%s'", command, json_input)
+        return_code, output, error = self._run_webkit_patch(command, json_input)
+        print >> sys.stderr, error
+        if return_code:
+            _log.error("rebaseline-json failed: %d, output='%s'" % (return_code, output))
+        else:
+            _log.debug("rebaseline-json succeeded")
 
-        self.server.tool.executive.run_command([self.server.tool.path()] + command, input=json_input, cwd=self.server.tool.scm().checkout_root, return_stderr=True, error_handler=error_handler)
+        # FIXME: propagate error and/or log messages back to the UI.
         self._serve_text('success')
+
+    def localresult(self):
+        path = self.query['path'][0]
+        filesystem = self.server.tool.filesystem
+
+        # Ensure that we're only serving files from inside the results directory.
+        if not filesystem.isabs(path) and self.server.options.results_directory:
+            fullpath = filesystem.abspath(filesystem.join(self.server.options.results_directory, path))
+            if fullpath.startswith(filesystem.abspath(self.server.options.results_directory)):
+                self._serve_file(fullpath, headers_only=(self.command == 'HEAD'))
+                return
+
+        self.send_response(403)

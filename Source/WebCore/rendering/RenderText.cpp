@@ -1615,8 +1615,8 @@ LayoutRect RenderText::linesVisualOverflowBoundingBox() const
         return LayoutRect();
 
     // Return the width of the minimal left side and the maximal right side.
-    LayoutUnit logicalLeftSide = MAX_LAYOUT_UNIT;
-    LayoutUnit logicalRightSide = MIN_LAYOUT_UNIT;
+    LayoutUnit logicalLeftSide = LayoutUnit::max();
+    LayoutUnit logicalRightSide = LayoutUnit::min();
     for (InlineTextBox* curr = firstTextBox(); curr; curr = curr->nextTextBox()) {
         logicalLeftSide = min(logicalLeftSide, curr->logicalLeftVisualOverflow());
         logicalRightSide = max(logicalRightSide, curr->logicalRightVisualOverflow());
@@ -1632,7 +1632,7 @@ LayoutRect RenderText::linesVisualOverflowBoundingBox() const
     return rect;
 }
 
-LayoutRect RenderText::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
+LayoutRect RenderText::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     RenderObject* rendererToRepaint = containingBlock();
 
@@ -1648,7 +1648,7 @@ LayoutRect RenderText::clippedOverflowRectForRepaint(RenderLayerModelObject* rep
     return rendererToRepaint->clippedOverflowRectForRepaint(repaintContainer);
 }
 
-LayoutRect RenderText::selectionRectForRepaint(RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)
+LayoutRect RenderText::selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)
 {
     ASSERT(!needsLayout());
 

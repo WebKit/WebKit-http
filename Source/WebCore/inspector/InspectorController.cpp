@@ -125,7 +125,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_resourceAgent = resourceAgentPtr.get();
     m_agents.append(resourceAgentPtr.release());
 
-    OwnPtr<InspectorRuntimeAgent> runtimeAgentPtr(PageRuntimeAgent::create(m_instrumentingAgents.get(), m_state.get(), m_injectedScriptManager.get(), page, pageAgent, m_inspectorAgent));
+    OwnPtr<InspectorRuntimeAgent> runtimeAgentPtr(PageRuntimeAgent::create(m_instrumentingAgents.get(), m_state.get(), m_injectedScriptManager.get(), page, pageAgent));
     InspectorRuntimeAgent* runtimeAgent = runtimeAgentPtr.get();
     m_agents.append(runtimeAgentPtr.release());
 
@@ -404,7 +404,7 @@ void InspectorController::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) 
     info.addMember(m_inspectorFrontendClient);
     info.addMember(m_inspectorFrontend);
     info.addMember(m_page);
-    info.addMember(m_inspectorClient);
+    info.addWeakPointer(m_inspectorClient);
     info.addMember(m_agents);
 }
 

@@ -139,7 +139,8 @@ InputHandler::InputHandler(WebPagePrivate* page)
     , m_delayKeyboardVisibilityChange(false)
     , m_request(0)
     , m_processingTransactionId(-1)
-    , m_focusZoomScale(0.0)
+    , m_receivedBackspaceKeyDown(false)
+    , m_expectedKeyUpChar(0)
 {
 }
 
@@ -698,13 +699,27 @@ SpellChecker* InputHandler::getSpellChecker()
 
 bool InputHandler::shouldRequestSpellCheckingOptionsForPoint(Platform::IntPoint& point, const Element* touchedElement, imf_sp_text_t& spellCheckingOptionRequest)
 {
-    if (!isActiveTextEdit() || touchedElement != m_currentFocusElement)
+    if (!isActiveTextEdit())
+        return false;
+
+    Element* currentFocusElement = m_currentFocusElement.get();
+    if (!currentFocusElement || !currentFocusElement->isElementNode())
+        return false;
+
+    while (!currentFocusElement->isRootEditableElement()) {
+        Element* parentElement = currentFocusElement->parentElement();
+        if (!parentElement)
+            break;
+        currentFocusElement = parentElement;
+    }
+
+    if (touchedElement != currentFocusElement)
         return false;
 
     LayoutPoint contentPos(m_webPage->mapFromViewportToContents(point));
     contentPos = DOMSupport::convertPointToFrame(m_webPage->mainFrame(), m_webPage->focusedOrMainFrame(), roundedIntPoint(contentPos));
 
-    Document* document = m_currentFocusElement->document();
+    Document* document = currentFocusElement->document();
     ASSERT(document);
 
     RenderedDocumentMarker* marker = document->markers()->renderedMarkerContainingPoint(contentPos, DocumentMarker::Spelling);
@@ -722,29 +737,41 @@ bool InputHandler::shouldRequestSpellCheckingOptionsForPoint(Platform::IntPoint&
     return true;
 }
 
-void InputHandler::requestSpellingCheckingOptions(imf_sp_text_t& spellCheckingOptionRequest)
+void InputHandler::requestSpellingCheckingOptions(imf_sp_text_t& spellCheckingOptionRequest, const WebCore::IntSize& screenOffset)
 {
     // If the caret is no longer active, no message should be sent.
     if (m_webPage->focusedOrMainFrame()->selection()->selectionType() != VisibleSelection::CaretSelection)
         return;
 
     // imf_sp_text_t should be generated in pixel viewport coordinates.
-    WebCore::IntRect caretLocation = m_webPage->focusedOrMainFrame()->selection()->selection().visibleStart().absoluteCaretBounds();
-    caretLocation = m_webPage->mapToTransformed(m_webPage->focusedOrMainFrame()->view()->contentsToWindow(enclosingIntRect(caretLocation)));
-    m_webPage->clipToTransformedContentsRect(caretLocation);
+    WebCore::IntRect caretRect = m_webPage->focusedOrMainFrame()->selection()->selection().visibleStart().absoluteCaretBounds();
+    caretRect = m_webPage->focusedOrMainFrame()->view()->contentsToRootView(caretRect);
+    const WebCore::IntPoint scrollPosition = m_webPage->mainFrame()->view()->scrollPosition();
+    caretRect.move(scrollPosition.x(), scrollPosition.y());
 
-    spellCheckingOptionRequest.caret_rect.caret_top_x = caretLocation.x();
-    spellCheckingOptionRequest.caret_rect.caret_top_y = caretLocation.y();
-    spellCheckingOptionRequest.caret_rect.caret_bottom_x = caretLocation.x();
-    spellCheckingOptionRequest.caret_rect.caret_bottom_y = caretLocation.y() + caretLocation.height();
+    // Calculate the offset for contentEditable since the marker offsets are relative to the node.
+    // Get caret position. Though the spelling markers might no longer exist, if this method is called we can assume the caret was placed on top of a marker earlier.
+    VisiblePosition caretPosition = m_currentFocusElement->document()->frame()->selection()->selection().visibleStart();
 
-    SpellingLog(LogLevelInfo, "InputHandler::requestSpellingCheckingOptions Sending request:\ncaret_rect.caret_top_x = %d\ncaret_rect.caret_top_y = %d" \
-                              "\ncaret_rect.caret_bottom_x = %d\ncaret_rect.caret_bottom_y = %d\nstartTextPosition = %d\nendTextPosition = %d",
-                              spellCheckingOptionRequest.caret_rect.caret_top_x, spellCheckingOptionRequest.caret_rect.caret_top_y,
-                              spellCheckingOptionRequest.caret_rect.caret_bottom_x, spellCheckingOptionRequest.caret_rect.caret_bottom_y,
-                              spellCheckingOptionRequest.startTextPosition, spellCheckingOptionRequest.endTextPosition);
+    // Create a range from the start to end of word.
+    RefPtr<Range> rangeSelection = VisibleSelection(startOfWord(caretPosition), endOfWord(caretPosition)).toNormalizedRange();
+    if (!rangeSelection)
+        return;
 
-    m_webPage->m_client->requestSpellingCheckingOptions(spellCheckingOptionRequest);
+    unsigned location = 0;
+    unsigned length = 0;
+    TextIterator::getLocationAndLengthFromRange(m_currentFocusElement.get(), rangeSelection.get(), location, length);
+
+    if (location != notFound && length) {
+        spellCheckingOptionRequest.startTextPosition = location;
+        spellCheckingOptionRequest.endTextPosition = location + length;
+    }
+
+    InputLog(LogLevelInfo, "InputHandler::requestSpellingCheckingOptions caretRect topLeft=(%d,%d), bottomRight=(%d,%d), startTextPosition=%d, endTextPosition=%d"
+                            , caretRect.minXMinYCorner().x(), caretRect.minXMinYCorner().y(), caretRect.maxXMaxYCorner().x(), caretRect.maxXMaxYCorner().y()
+                            , spellCheckingOptionRequest.startTextPosition, spellCheckingOptionRequest.endTextPosition);
+
+    m_webPage->m_client->requestSpellingCheckingOptions(spellCheckingOptionRequest, caretRect, screenOffset);
 }
 
 void InputHandler::setElementUnfocused(bool refocusOccuring)
@@ -961,7 +988,7 @@ PassRefPtr<Range> InputHandler::getRangeForSpellCheckWithFineGranularity(Visible
 
 bool InputHandler::openDatePopup(HTMLInputElement* element, BlackBerryInputType type)
 {
-    if (!element || element->disabled() || !DOMSupport::isDateTimeInputField(element))
+    if (!element || element->disabled() || element->readOnly() || !DOMSupport::isDateTimeInputField(element))
         return false;
 
     if (isActiveTextEdit())
@@ -973,6 +1000,9 @@ bool InputHandler::openDatePopup(HTMLInputElement* element, BlackBerryInputType 
     case BlackBerry::Platform::InputTypeDateTime:
     case BlackBerry::Platform::InputTypeDateTimeLocal:
     case BlackBerry::Platform::InputTypeMonth: {
+        // Date input have button appearance, we hide caret when they get clicked.
+        element->document()->frame()->selection()->setCaretVisible(false);
+
         // Check if popup already exists, close it if does.
         m_webPage->m_page->chrome()->client()->closePagePopup(0);
         WTF::String value = element->value();
@@ -990,7 +1020,7 @@ bool InputHandler::openDatePopup(HTMLInputElement* element, BlackBerryInputType 
 
 bool InputHandler::openColorPopup(HTMLInputElement* element)
 {
-    if (!element || element->disabled() || !DOMSupport::isColorInputField(element))
+    if (!element || element->disabled() || element->readOnly() || !DOMSupport::isColorInputField(element))
         return false;
 
     if (isActiveTextEdit())
@@ -1018,10 +1048,7 @@ void InputHandler::setInputValue(const WTF::String& value)
 
 void InputHandler::nodeTextChanged(const Node* node)
 {
-    if (processingChange() || !node)
-        return;
-
-    if (node != m_currentFocusElement)
+    if (processingChange() || !node || node != m_currentFocusElement || m_receivedBackspaceKeyDown)
         return;
 
     InputLog(LogLevelInfo, "InputHandler::nodeTextChanged");
@@ -1088,11 +1115,6 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
         break;
     }
     case VisibleSelection::NoSelection:
-        if (m_focusZoomScale) {
-            m_webPage->zoomAboutPoint(m_focusZoomScale, m_focusZoomLocation);
-            m_focusZoomScale = 0.0;
-            m_focusZoomLocation = WebCore::IntPoint();
-        }
         return;
     }
 
@@ -1104,18 +1126,17 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
     // The minimum size being defined as 3 mm is a good value based on my observations.
     static const int s_minimumTextHeightInPixels = Graphics::Screen::primaryScreen()->heightInMMToPixels(3);
 
-    if (m_webPage->isUserScalable() && fontHeight && fontHeight * m_webPage->currentScale() < s_minimumTextHeightInPixels && !isRunningDrt()) {
-        if (!m_focusZoomScale) {
-            m_focusZoomScale = m_webPage->currentScale();
-            m_focusZoomLocation = selectionFocusRect.location();
-        }
-        double zoomScaleRequired = static_cast<double>(s_minimumTextHeightInPixels) / fontHeight;
-        m_webPage->zoomAboutPoint(zoomScaleRequired, m_focusZoomLocation);
-        InputLog(LogLevelInfo, "InputHandler::ensureFocusTextElementVisible zooming in to %f at point %d, %d", zoomScaleRequired, m_focusZoomLocation.x(), m_focusZoomLocation.y());
-    } else {
-        m_focusZoomScale = 0.0;
-        m_focusZoomLocation = WebCore::IntPoint();
-    }
+    double zoomScaleRequired;
+    if (m_webPage->isUserScalable() && fontHeight && fontHeight * m_webPage->currentScale() < s_minimumTextHeightInPixels && !isRunningDrt())
+        zoomScaleRequired = static_cast<double>(s_minimumTextHeightInPixels) / fontHeight;
+    else
+        zoomScaleRequired = m_webPage->currentScale(); // Don't scale.
+
+    // The scroll location we should go to given the zoom required, could be adjusted later.
+    WebCore::FloatPoint offset(selectionFocusRect.location().y() - m_webPage->scrollPosition().x(), selectionFocusRect.location().y() - m_webPage->scrollPosition().y());
+    double inverseScale = zoomScaleRequired / m_webPage->currentScale();
+    WebCore::IntPoint destinationScrollLocation = WebCore::IntPoint(max(0, static_cast<int>(roundf(selectionFocusRect.location().x() - offset.x() / inverseScale))),
+                                                                    max(0, static_cast<int>(roundf(selectionFocusRect.location().y() - offset.y() / inverseScale))));
 
     if (elementFrame != mainFrame) { // Element is in a subframe.
         // Remove any scroll offset within the subframe to get the point relative to the main frame.
@@ -1131,7 +1152,9 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
     Position start = elementFrame->selection()->start();
     if (start.anchorNode() && start.anchorNode()->renderer()) {
         if (RenderLayer* layer = start.anchorNode()->renderer()->enclosingLayer()) {
-            WebCore::IntRect actualScreenRect = WebCore::IntRect(mainFrameView->scrollPosition(), m_webPage->actualVisibleSize());
+            // Screen rect after the required zoom.
+            WebCore::IntRect actualScreenRect = WebCore::IntRect(destinationScrollLocation.x(), destinationScrollLocation.y(), m_webPage->actualVisibleSize().width() / inverseScale, m_webPage->actualVisibleSize().height() / inverseScale);
+
             ScrollAlignment horizontalScrollAlignment = ScrollAlignment::alignToEdgeIfNeeded;
             ScrollAlignment verticalScrollAlignment = ScrollAlignment::alignToEdgeIfNeeded;
 
@@ -1178,14 +1201,25 @@ void InputHandler::ensureFocusTextElementVisible(CaretScrollType scrollType)
             // In order to adjust the scroll position to ensure the focused input field is visible,
             // we allow overscrolling. However this overscroll has to be strictly allowed towards the
             // bottom of the page on the y axis only, where the virtual keyboard pops up from.
-            WebCore::IntPoint scrollLocation = revealRect.location();
-            scrollLocation.clampNegativeToZero();
+            destinationScrollLocation = revealRect.location();
+            destinationScrollLocation.clampNegativeToZero();
             WebCore::IntPoint maximumScrollPosition = WebCore::IntPoint(mainFrameView->contentsWidth() - actualScreenRect.width(), mainFrameView->contentsHeight() - actualScreenRect.height());
-            scrollLocation = scrollLocation.shrunkTo(maximumScrollPosition);
-            mainFrameView->setScrollPosition(scrollLocation);
-            mainFrameView->setConstrainsScrollingToContentEdge(true);
-            InputLog(LogLevelInfo, "InputHandler::ensureFocusTextElementVisible scrolling to point %d, %d", scrollLocation.x(), scrollLocation.y());
+            destinationScrollLocation = destinationScrollLocation.shrunkTo(maximumScrollPosition);
         }
+    }
+
+    if (destinationScrollLocation != mainFrameView->scrollPosition() || zoomScaleRequired != m_webPage->currentScale()) {
+        mainFrameView->setConstrainsScrollingToContentEdge(true);
+
+        InputLog(LogLevelInfo, "InputHandler::ensureFocusTextElementVisible zooming in to %f and scrolling to point %d, %d", zoomScaleRequired, destinationScrollLocation.x(), destinationScrollLocation.y());
+
+        // Animate to given scroll position & zoom level
+        m_webPage->m_finalBlockPoint = WebCore::FloatPoint(destinationScrollLocation);
+        m_webPage->m_blockZoomFinalScale = zoomScaleRequired;
+        m_webPage->m_shouldReflowBlock = false;
+        m_webPage->m_userPerformedManualZoom = true;
+        m_webPage->m_userPerformedManualScroll = true;
+        m_webPage->client()->animateBlockZoom(zoomScaleRequired, m_webPage->m_finalBlockPoint);
     }
     m_webPage->resumeBackingStore();
 }
@@ -1387,6 +1421,9 @@ void InputHandler::selectionChanged()
 
     ASSERT(m_currentFocusElement->document() && m_currentFocusElement->document()->frame());
 
+    if (m_receivedBackspaceKeyDown)
+        return;
+
     int newSelectionStart = selectionStart();
     int newSelectionEnd = selectionEnd();
 
@@ -1455,12 +1492,29 @@ bool InputHandler::handleKeyboardInput(const Platform::KeyboardEvent& keyboardEv
 {
     InputLog(LogLevelInfo, "InputHandler::handleKeyboardInput received character=%lc, type=%d", keyboardEvent.character(), keyboardEvent.type());
 
+    // Clearing the m_receivedBackspaceKeyDown state on any KeyboardEvent.
+    m_receivedBackspaceKeyDown = false;
+
     // Enable input mode if we are processing a key event.
     setInputModeEnabled();
 
+    Platform::KeyboardEvent::Type type = keyboardEvent.type();
+    /*
+     * IMF sends us an unadultered KeyUp for all key presses. This key event should be allowed to be processed at all times.
+     * We bypass the check because the state of composition has no implication on this key event.
+     * In order to ensure we allow the correct key event through, we keep track of key down events with m_expectedKeyUpChar.
+    */
+    if (type == Platform::KeyboardEvent::KeyUp) {
+        // When IMF auto-capitalizes a KeyDown, say the first letter of a new sentence, our KeyUp will still be in lowercase.
+        if (m_expectedKeyUpChar == keyboardEvent.character() || (isASCIIUpper(m_expectedKeyUpChar) && m_expectedKeyUpChar == toASCIIUpper(keyboardEvent.character()))) {
+            m_expectedKeyUpChar = 0;
+            changeIsPartOfComposition = true;
+        }
+    }
+
     // If we aren't specifically part of a composition, fail, IMF should never send key input
     // while composing text. If IMF has failed, we should have already finished the
-    // composition manually.
+    // composition manually. There is a caveat for KeyUp which is explained above.
     if (!changeIsPartOfComposition && compositionActive())
         return false;
 
@@ -1473,15 +1527,23 @@ bool InputHandler::handleKeyboardInput(const Platform::KeyboardEvent& keyboardEv
     ASSERT(m_webPage->m_page->focusController());
     bool keyboardEventHandled = false;
     if (Frame* focusedFrame = m_webPage->m_page->focusController()->focusedFrame()) {
-        bool isKeyChar = keyboardEvent.type() == Platform::KeyboardEvent::KeyChar;
-        Platform::KeyboardEvent::Type type = keyboardEvent.type();
+        bool isKeyChar = type == Platform::KeyboardEvent::KeyChar;
 
         // If this is a KeyChar type then we handle it as a keydown followed by a key up.
         if (isKeyChar)
             type = Platform::KeyboardEvent::KeyDown;
+        else if (type == Platform::KeyboardEvent::KeyDown) {
+            m_expectedKeyUpChar = keyboardEvent.character();
+
+            // If we receive the KeyDown of a Backspace, set this flag to prevent sending unnecessary selection and caret changes to IMF.
+            if (keyboardEvent.character() == KEYCODE_BACKSPACE)
+                m_receivedBackspaceKeyDown = true;
+        }
 
         Platform::KeyboardEvent adjustedKeyboardEvent(keyboardEvent.character(), type, adjustedModifiers);
         keyboardEventHandled = focusedFrame->eventHandler()->keyEvent(PlatformKeyboardEvent(adjustedKeyboardEvent));
+
+        m_receivedBackspaceKeyDown = false;
 
         if (isKeyChar) {
             type = Platform::KeyboardEvent::KeyUp;
@@ -1507,7 +1569,7 @@ bool InputHandler::deleteSelection()
         return false;
 
     ASSERT(frame->editor());
-    return frame->editor()->command("DeleteBackward").execute();
+    return handleKeyboardInput(Platform::KeyboardEvent(KEYCODE_BACKSPACE, Platform::KeyboardEvent::KeyDown, 0), false /* changeIsPartOfComposition */);
 }
 
 void InputHandler::insertText(const WTF::String& string)
@@ -1517,7 +1579,6 @@ void InputHandler::insertText(const WTF::String& string)
 
     ASSERT(m_currentFocusElement->document() && m_currentFocusElement->document()->frame() && m_currentFocusElement->document()->frame()->editor());
     Editor* editor = m_currentFocusElement->document()->frame()->editor();
-
     editor->command("InsertText").execute(string);
 }
 
@@ -1777,10 +1838,14 @@ bool InputHandler::setBatchEditingActive(bool active)
     ASSERT(backingStoreClient);
 
     // Enable / Disable the backingstore to prevent visual updates.
-    if (!active)
-        backingStoreClient->backingStore()->resumeScreenAndBackingStoreUpdates(BackingStore::RenderAndBlit);
-    else
-        backingStoreClient->backingStore()->suspendScreenAndBackingStoreUpdates();
+    // FIXME: Do we really need to suspend/resume both backingstore and screen here?
+    if (!active) {
+        backingStoreClient->backingStore()->resumeBackingStoreUpdates();
+        backingStoreClient->backingStore()->resumeScreenUpdates(BackingStore::RenderAndBlit);
+    } else {
+        backingStoreClient->backingStore()->suspendBackingStoreUpdates();
+        backingStoreClient->backingStore()->suspendScreenUpdates();
+    }
 
     return true;
 }
@@ -1822,7 +1887,12 @@ bool InputHandler::deleteTextRelativeToCursor(int leftOffset, int rightOffset)
     int caretOffset = caretPosition();
     int start = relativeLeftOffset(caretOffset, leftOffset);
     int end = relativeRightOffset(caretOffset, elementText().length(), rightOffset);
-    if (!deleteText(start, end))
+
+    // If we have backspace in a single character, send this to webkit as a KeyboardEvent. Otherwise, call deleteText.
+    if (leftOffset == 1 && !rightOffset) {
+        if (!handleKeyboardInput(Platform::KeyboardEvent(KEYCODE_BACKSPACE, Platform::KeyboardEvent::KeyDown, 0), true /* changeIsPartOfComposition */))
+            return false;
+    } else if (!deleteText(start, end))
         return false;
 
     // Scroll the field if necessary. The automatic update is suppressed
@@ -1838,6 +1908,9 @@ bool InputHandler::deleteText(int start, int end)
         return false;
 
     ProcessingChangeGuard guard(this);
+
+    if (end - start == 1)
+        return handleKeyboardInput(Platform::KeyboardEvent(KEYCODE_BACKSPACE, Platform::KeyboardEvent::KeyDown, 0), true /* changeIsPartOfComposition */);
 
     if (!setSelection(start, end, true /*changeIsPartOfComposition*/))
         return false;
@@ -2098,7 +2171,7 @@ bool InputHandler::setText(spannable_string_t* spannableString)
             return editor->command("InsertText").execute(textToInsert.right(1));
         }
         InputLog(LogLevelInfo, "InputHandler::setText Single trailing character detected.");
-        return handleKeyboardInput(Platform::KeyboardEvent(textToInsert[textLength - 1], Platform::KeyboardEvent::KeyChar, 0), false /* changeIsPartOfComposition */);
+        return handleKeyboardInput(Platform::KeyboardEvent(textToInsert[textLength - 1], Platform::KeyboardEvent::KeyDown, 0), false /* changeIsPartOfComposition */);
     }
 
     // If no spans have changed, treat it as a delete operation.
@@ -2111,7 +2184,7 @@ bool InputHandler::setText(spannable_string_t* spannableString)
 
         if (composingTextLength - textLength == 1) {
             InputLog(LogLevelInfo, "InputHandler::setText No spans have changed. New text is one character shorter than the old. Treating as 'delete'.");
-            return editor->command("DeleteBackward").execute();
+            return handleKeyboardInput(Platform::KeyboardEvent(KEYCODE_BACKSPACE, Platform::KeyboardEvent::KeyDown, 0), true /* changeIsPartOfComposition */);
         }
     }
 
@@ -2121,7 +2194,7 @@ bool InputHandler::setText(spannable_string_t* spannableString)
     // If there is no text to add just delete.
     if (!textLength) {
         if (selectionActive())
-            return editor->command("DeleteBackward").execute();
+            return handleKeyboardInput(Platform::KeyboardEvent(KEYCODE_BACKSPACE, Platform::KeyboardEvent::KeyDown, 0), true /* changeIsPartOfComposition */);
 
         // Nothing to do.
         return true;
@@ -2144,7 +2217,7 @@ bool InputHandler::setText(spannable_string_t* spannableString)
         // Handle single key non-attributed entry as key press rather than insert to allow
         // triggering of javascript events.
         InputLog(LogLevelInfo, "InputHandler::setText Single character entry treated as key-press in the absense of spans.");
-        return handleKeyboardInput(Platform::KeyboardEvent(textToInsert[0], Platform::KeyboardEvent::KeyChar, 0), true /* changeIsPartOfComposition */);
+        return handleKeyboardInput(Platform::KeyboardEvent(textToInsert[0], Platform::KeyboardEvent::KeyDown, 0), true /* changeIsPartOfComposition */);
     }
 
     // Perform the text change as a single command if there is one.
@@ -2154,7 +2227,7 @@ bool InputHandler::setText(spannable_string_t* spannableString)
     }
 
     if (requiresSpaceKeyPress)
-        handleKeyboardInput(Platform::KeyboardEvent(32 /* space */, Platform::KeyboardEvent::KeyChar, 0), true /* changeIsPartOfComposition */);
+        handleKeyboardInput(Platform::KeyboardEvent(32 /* space */, Platform::KeyboardEvent::KeyDown, 0), true /* changeIsPartOfComposition */);
 
     InputLog(LogLevelInfo, "InputHandler::setText Request being processed. Text after processing '%s'", elementText().latin1().data());
 

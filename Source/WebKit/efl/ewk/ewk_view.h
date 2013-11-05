@@ -103,7 +103,8 @@
  *    will be deleted.
  *  - "restore", Evas_Object *: reports that view should be restored to default conditions
  *    and it gives a frame that originated restore as an argument.
- *  - "tooltip,text,set", const char*: sets tooltip text and displays if it is currently hidden.
+ *  - "tooltip,text,set", const char*: tooltip was set.
+ *  - "tooltip,text,unset", void: tooltip was unset.
  *  - "uri,changed", const char*: uri of the main frame was changed.
  *  - "view,resized", void: view object's size was changed.
  *  - "viewport,changed", void: reports that viewport was changed.
@@ -113,6 +114,7 @@
 #ifndef ewk_view_h
 #define ewk_view_h
 
+#include "ewk_contextmenu.h"
 #include "ewk_file_chooser.h"
 #include "ewk_frame.h"
 #include "ewk_history.h"
@@ -2773,6 +2775,36 @@ EAPI Eina_Bool ewk_view_setting_enable_fullscreen_set(Evas_Object *o, Eina_Bool 
  *         @c EINA_FALSE if not or on failure
  */
 EAPI Eina_Bool ewk_view_setting_enable_fullscreen_get(const Evas_Object *o);
+
+/**
+ * Enables/disables the WebCore's tiled backing store.
+ *
+ * @param o view object
+ * @oaram enable Enable or Disable WebCore's tiled backing store for given View
+ *
+ * @return true on success, or false on failure
+ *
+ * @note this is not for general use. It should be used for single view only.
+ */
+EAPI Eina_Bool ewk_view_setting_tiled_backing_store_enabled_set(Evas_Object *o, Eina_Bool enable);
+
+/**
+ * Queries if the WebCore's tiled backing store is enabled.
+ *
+ * @param o view object to query
+ *
+ * @return @c EINA_TRUE if the WebCore's tiled backing store is enabled
+ *         @c EINA_FALSE if not or on failure
+ */
+EAPI Eina_Bool ewk_view_setting_tiled_backing_store_enabled_get(Evas_Object *o);
+
+/**
+ * Gets the context menu object.
+ * @param o The view that contains context menu.
+ *
+ * @return context menu structure on success or @c NULL on failure
+ */
+EAPI Ewk_Context_Menu *ewk_view_context_menu_get(const Evas_Object *o);
 
 #ifdef __cplusplus
 }

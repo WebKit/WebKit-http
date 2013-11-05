@@ -33,6 +33,7 @@
 #include "IDBMetadata.h"
 #include "IDBObjectStore.h"
 #include "IDBRequest.h"
+#include "ScriptWrappable.h"
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
@@ -42,7 +43,7 @@ namespace WebCore {
 
 class IDBObjectStore;
 
-class IDBIndex : public RefCounted<IDBIndex> {
+class IDBIndex : public ScriptWrappable, public RefCounted<IDBIndex> {
 public:
     static PassRefPtr<IDBIndex> create(const IDBIndexMetadata& metadata, PassRefPtr<IDBIndexBackendInterface> backend, IDBObjectStore* objectStore, IDBTransaction* transaction)
     {
@@ -57,6 +58,7 @@ public:
     const IDBKeyPath keyPath() const { return m_metadata.keyPath; }
     bool unique() const { return m_metadata.unique; }
     bool multiEntry() const { return m_metadata.multiEntry; }
+    int64_t id() const { return m_metadata.id; }
 
     // FIXME: Try to modify the code generator so this is unneeded.
     PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, ExceptionCode& ec) { return openCursor(context, static_cast<IDBKeyRange*>(0), ec); }
@@ -68,7 +70,7 @@ public:
     PassRefPtr<IDBRequest> count(ScriptExecutionContext*, PassRefPtr<IDBKeyRange>, ExceptionCode&);
     PassRefPtr<IDBRequest> count(ScriptExecutionContext*, PassRefPtr<IDBKey>, ExceptionCode&);
 
-    PassRefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext* context, ExceptionCode& ec) { return openKeyCursor(context, static_cast<IDBKeyRange*>(0), ec); } 
+    PassRefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext* context, ExceptionCode& ec) { return openKeyCursor(context, static_cast<IDBKeyRange*>(0), ec); }
     PassRefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext* context, PassRefPtr<IDBKeyRange> keyRange, ExceptionCode& ec) { return openKeyCursor(context, keyRange, IDBCursor::directionNext(), ec); }
     PassRefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext* context, PassRefPtr<IDBKey> key, ExceptionCode& ec) { return openKeyCursor(context, key, IDBCursor::directionNext(), ec); }
     PassRefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext*, PassRefPtr<IDBKeyRange>, const String& direction, ExceptionCode&);

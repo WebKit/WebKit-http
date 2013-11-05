@@ -47,8 +47,7 @@ v8::Handle<v8::Value> V8DataView::constructorCallback(const v8::Arguments& args)
         // 'new DataView()' and the call used to construct the cached DataView object.
         RefPtr<DataView> dataView = DataView::create(0);
         v8::Handle<v8::Object> wrapper = args.Holder();
-        V8DOMWrapper::setDOMWrapper(wrapper, &info, dataView.get());
-        V8DOMWrapper::setJSWrapperForDOMObject(dataView.release(), wrapper);
+        V8DOMWrapper::createDOMWrapper(dataView.release(), &info, wrapper);
         return wrapper;
     }
     if (args[0]->IsNull() || !V8ArrayBuffer::HasInstance(args[0]))
@@ -56,11 +55,11 @@ v8::Handle<v8::Value> V8DataView::constructorCallback(const v8::Arguments& args)
     return constructWebGLArrayWithArrayBufferArgument<DataView, char>(args, &info, v8::kExternalByteArray, false);
 }
 
-v8::Handle<v8::Value> toV8(DataView* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+// FIXME: Don't need this override.
+v8::Handle<v8::Object> wrap(DataView* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
-    if (!impl)
-        return v8NullWithCheck(isolate);
-    return V8DataView::wrap(impl, creationContext, isolate);
+    ASSERT(impl);
+    return V8DataView::createWrapper(impl, creationContext, isolate);
 }
 
 v8::Handle<v8::Value> V8DataView::getInt8Callback(const v8::Arguments& args)

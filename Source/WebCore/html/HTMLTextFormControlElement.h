@@ -87,9 +87,11 @@ public:
 
     void setTextAsOfLastFormControlChangeEvent(const String& text) { m_textAsOfLastFormControlChangeEvent = text; }
 
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
 protected:
     HTMLTextFormControlElement(const QualifiedName&, Document*, HTMLFormElement*);
-    virtual bool isPlaceholderEmpty() const;
+    bool isPlaceholderEmpty() const;
     virtual void updatePlaceholderText() = 0;
 
     virtual void parseAttribute(const Attribute&) OVERRIDE;

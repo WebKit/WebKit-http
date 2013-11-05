@@ -84,7 +84,7 @@ void SelectPopupClient::generateHTML(bool multiple, int size, const ScopeArray<B
     // Add labels.
     source.append('[');
     for (int i = 0; i < size; i++) {
-        source.append("'" + String(labels[i]).replace('\\', "\\\\").replace('\'', "\\'") + "'");
+        source.append("'" + String(labels[i]).replaceWithLiteral('\\', "\\\\").replaceWithLiteral('\'', "\\'") + "'");
         // Don't append ',' to last element.
         if (i != size - 1)
             source.appendLiteral(", ");
@@ -173,8 +173,11 @@ void SelectPopupClient::setValueAndClosePopup(int, const String& stringValue)
 
         const Vector<HTMLElement*>& items = m_element->listItems();
 
-        if (items.size() != static_cast<unsigned int>(m_size))
+        // If element changed after select UI showed, do nothing but closePopup().
+        if (items.size() != static_cast<unsigned>(m_size)) {
+            closePopup();
             return;
+        }
 
         HTMLOptionElement* option;
         for (unsigned i = 0; i < m_size; i++) {

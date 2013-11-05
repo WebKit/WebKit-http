@@ -363,7 +363,7 @@ int RenderBox::scrollWidth() const
     // FIXME: Need to work right with writing modes.
     if (style()->isLeftToRightDirection())
         return snapSizeToPixel(max(clientWidth(), layoutOverflowRect().maxX() - borderLeft()), x() + clientLeft());
-    return clientWidth() - min(ZERO_LAYOUT_UNIT, layoutOverflowRect().x() - borderLeft());
+    return clientWidth() - min<LayoutUnit>(0, layoutOverflowRect().x() - borderLeft());
 }
 
 int RenderBox::scrollHeight() const
@@ -448,7 +448,7 @@ FloatQuad RenderBox::absoluteContentQuad() const
     return localToAbsoluteQuad(FloatRect(rect));
 }
 
-LayoutRect RenderBox::outlineBoundsForRepaint(RenderLayerModelObject* repaintContainer, LayoutPoint* cachedOffsetToRepaintContainer) const
+LayoutRect RenderBox::outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, LayoutPoint* cachedOffsetToRepaintContainer) const
 {
     LayoutRect box = borderBoundingBox();
     adjustRectForOutlineAndShadow(box);
@@ -617,6 +617,11 @@ bool RenderBox::canBeProgramaticallyScrolled() const
     return (hasOverflowClip() && (scrollsOverflow() || (node() && node()->rendererIsEditable()))) || (node() && node()->isDocumentNode());
 }
 
+bool RenderBox::usesCompositedScrolling() const
+{
+    return hasOverflowClip() && hasLayer() && layer()->usesCompositedScrolling();
+}
+
 void RenderBox::autoscroll()
 {
     if (layer())
@@ -651,6 +656,10 @@ LayoutSize RenderBox::cachedSizeForOverflowClip() const
 void RenderBox::applyCachedClipAndScrollOffsetForRepaint(LayoutRect& paintRect) const
 {
     paintRect.move(-scrolledContentOffset()); // For overflow:auto/scroll/hidden.
+
+    // Do not clip scroll layer contents to reduce the number of repaints while scrolling.
+    if (usesCompositedScrolling())
+        return;
 
     // height() is inaccurate if we're in the middle of a layout of this RenderBox, so use the
     // layer's size instead. Even if the layer's size is wrong, the layer itself will repaint
@@ -821,11 +830,8 @@ BackgroundBleedAvoidance RenderBox::determineBackgroundBleedAvoidance(GraphicsCo
     FloatSize contextScaling(static_cast<float>(ctm.xScale()), static_cast<float>(ctm.yScale()));
     if (borderObscuresBackgroundEdge(contextScaling))
         return BackgroundBleedShrinkBackground;
-    
-    // FIXME: there is one more strategy possible, for opaque backgrounds and
-    // translucent borders. In that case we could avoid using a transparency layer,
-    // and paint the border first, and then paint the background clipped to the
-    // inside of the border.
+    if (!style->hasAppearance() && borderObscuresBackground() && backgroundIsSingleOpaqueLayer())
+        return BackgroundBleedBackgroundOverBorder;
 
     return BackgroundBleedUseTransparencyLayer;
 }
@@ -859,12 +865,15 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
         paintInfo.context->addRoundedRectClip(border);
         paintInfo.context->beginTransparencyLayer(1);
     }
-    
+
     // If we have a native theme appearance, paint that before painting our background.
     // The theme will tell us whether or not we should also paint the CSS background.
     IntRect snappedPaintRect(pixelSnappedIntRect(paintRect));
     bool themePainted = style()->hasAppearance() && !theme()->paint(this, paintInfo, snappedPaintRect);
     if (!themePainted) {
+        if (bleedAvoidance == BackgroundBleedBackgroundOverBorder)
+            paintBorder(paintInfo, paintRect, style(), bleedAvoidance);
+
         paintBackground(paintInfo, paintRect, bleedAvoidance);
 
         if (style()->hasAppearance())
@@ -873,7 +882,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     paintBoxShadow(paintInfo, paintRect, style(), Inset);
 
     // The theme will tell us whether or not we should also paint the CSS border.
-    if ((!style()->hasAppearance() || (!themePainted && theme()->paintBorderOnly(this, paintInfo, snappedPaintRect))) && style()->hasBorder())
+    if (bleedAvoidance != BackgroundBleedBackgroundOverBorder && (!style()->hasAppearance() || (!themePainted && theme()->paintBorderOnly(this, paintInfo, snappedPaintRect))) && style()->hasBorder())
         paintBorder(paintInfo, paintRect, style(), bleedAvoidance);
 
     if (bleedAvoidance == BackgroundBleedUseTransparencyLayer)
@@ -892,6 +901,25 @@ void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& pa
         if (!backgroundIsObscured())
             paintFillLayers(paintInfo, style()->visitedDependentColor(CSSPropertyBackgroundColor), style()->backgroundLayers(), paintRect, bleedAvoidance);
     }
+}
+
+bool RenderBox::backgroundIsSingleOpaqueLayer() const
+{
+    const FillLayer* fillLayer = style()->backgroundLayers();
+    if (!fillLayer || fillLayer->next() || fillLayer->clip() != BorderFillBox || fillLayer->composite() != CompositeSourceOver)
+        return false;
+
+    // Clipped with local scrolling
+    if (hasOverflowClip() && fillLayer->attachment() == LocalBackgroundAttachment)
+        return false;
+
+    Color bgColor = style()->visitedDependentColor(CSSPropertyBackgroundColor);
+    if (bgColor.isValid() && bgColor.alpha() == 255)
+        return true;
+    
+    // FIXME: return true if a background image is present and is opaque
+
+    return false;
 }
 
 void RenderBox::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -1179,7 +1207,7 @@ LayoutUnit RenderBox::shrinkLogicalWidthToAvoidFloats(LayoutUnit childMarginStar
     LayoutUnit logicalTopPosition = logicalTop();
     LayoutUnit adjustedPageOffsetForContainingBlock = offsetFromLogicalTopOfFirstPage - logicalTop();
     if (region) {
-        LayoutUnit offsetFromLogicalTopOfRegion = region ? region->logicalTopForFlowThreadContent() - offsetFromLogicalTopOfFirstPage : ZERO_LAYOUT_UNIT;
+        LayoutUnit offsetFromLogicalTopOfRegion = region ? region->logicalTopForFlowThreadContent() - offsetFromLogicalTopOfFirstPage : LayoutUnit();
         logicalTopPosition = max(logicalTopPosition, logicalTopPosition + offsetFromLogicalTopOfRegion);
         containingBlockRegion = cb->clampToStartAndEndRegions(region);
     }
@@ -1241,7 +1269,7 @@ LayoutUnit RenderBox::containingBlockAvailableLineWidthInRegion(RenderRegion* re
     LayoutUnit logicalTopPosition = logicalTop();
     LayoutUnit adjustedPageOffsetForContainingBlock = offsetFromLogicalTopOfFirstPage - logicalTop();
     if (region) {
-        LayoutUnit offsetFromLogicalTopOfRegion = region ? region->logicalTopForFlowThreadContent() - offsetFromLogicalTopOfFirstPage : ZERO_LAYOUT_UNIT;
+        LayoutUnit offsetFromLogicalTopOfRegion = region ? region->logicalTopForFlowThreadContent() - offsetFromLogicalTopOfFirstPage : LayoutUnit();
         logicalTopPosition = max(logicalTopPosition, logicalTopPosition + offsetFromLogicalTopOfRegion);
         containingBlockRegion = cb->clampToStartAndEndRegions(region);
     }
@@ -1269,7 +1297,7 @@ LayoutUnit RenderBox::perpendicularContainingBlockLogicalHeight() const
     return cb->adjustContentBoxLogicalHeightForBoxSizing(logicalHeightLength.value());
 }
 
-void RenderBox::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
+void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     if (repaintContainer == this)
         return;
@@ -1484,7 +1512,7 @@ void RenderBox::deleteLineBoxWrapper()
     }
 }
 
-LayoutRect RenderBox::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
+LayoutRect RenderBox::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     if (style()->visibility() != VISIBLE && !enclosingLayer()->hasVisibleContent())
         return LayoutRect();
@@ -1511,7 +1539,7 @@ LayoutRect RenderBox::clippedOverflowRectForRepaint(RenderLayerModelObject* repa
     return r;
 }
 
-void RenderBox::computeRectForRepaint(RenderLayerModelObject* repaintContainer, LayoutRect& rect, bool fixed) const
+void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect& rect, bool fixed) const
 {
     // The rect we compute at each step is shifted by our x/y offset in the parent container's coordinate space.
     // Only when we cross a writing mode boundary will we have to possibly flipForWritingMode (to convert into a more appropriate
@@ -3533,7 +3561,7 @@ VisiblePosition RenderBox::positionForPoint(const LayoutPoint& point)
     }
 
     // Pass off to the closest child.
-    LayoutUnit minDist = MAX_LAYOUT_UNIT;
+    LayoutUnit minDist = LayoutUnit::max();
     RenderBox* closestRenderer = 0;
     LayoutPoint adjustedPoint = point;
     if (isTableRow())
@@ -3549,9 +3577,9 @@ VisiblePosition RenderBox::positionForPoint(const LayoutPoint& point)
         
         RenderBox* renderer = toRenderBox(renderObject);
 
-        LayoutUnit top = renderer->borderTop() + renderer->paddingTop() + (isTableRow() ? ZERO_LAYOUT_UNIT : renderer->y());
+        LayoutUnit top = renderer->borderTop() + renderer->paddingTop() + (isTableRow() ? LayoutUnit() : renderer->y());
         LayoutUnit bottom = top + renderer->contentHeight();
-        LayoutUnit left = renderer->borderLeft() + renderer->paddingLeft() + (isTableRow() ? ZERO_LAYOUT_UNIT : renderer->x());
+        LayoutUnit left = renderer->borderLeft() + renderer->paddingLeft() + (isTableRow() ? LayoutUnit() : renderer->x());
         LayoutUnit right = left + renderer->contentWidth();
         
         if (point.x() <= right && point.x() >= left && point.y() <= top && point.y() >= bottom) {
@@ -3926,6 +3954,17 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(RenderStyle* parentStyle)
         rect.setY(height() - rect.maxY());
 
     return rect;
+}
+
+LayoutRect RenderBox::overflowRectForPaintRejection() const
+{
+    LayoutRect overflowRect = visualOverflowRect();
+    if (!m_overflow || !usesCompositedScrolling())
+        return overflowRect;
+
+    overflowRect.unite(layoutOverflowRect());
+    overflowRect.move(-scrolledContentOffset());
+    return overflowRect;
 }
 
 LayoutUnit RenderBox::offsetLeft() const

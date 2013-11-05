@@ -48,7 +48,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/V8Binding.cpp
     bindings/v8/V8Collection.cpp
     bindings/v8/V8DOMConfiguration.cpp,
-    bindings/v8/V8DOMMap.cpp
     bindings/v8/V8DOMWindowShell.cpp
     bindings/v8/V8DOMWrapper.cpp
     bindings/v8/V8EventListener.cpp
@@ -85,6 +84,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8ClipboardCustom.cpp
     bindings/v8/custom/V8ConsoleCustom.cpp
     bindings/v8/custom/V8CoordinatesCustom.cpp
+    bindings/v8/custom/V8CustomEventCustom.cpp
     bindings/v8/custom/V8CustomSQLStatementErrorCallback.cpp
     bindings/v8/custom/V8CustomXPathNSResolver.cpp
     bindings/v8/custom/V8DOMFormDataCustom.cpp
@@ -137,7 +137,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8NodeListCustom.cpp
     bindings/v8/custom/V8NotificationCustom.cpp
     bindings/v8/custom/V8NotificationCenterCustom.cpp
-    bindings/v8/custom/V8PerformanceCustom.cpp
     bindings/v8/custom/V8PerformanceEntryCustom.cpp
     bindings/v8/custom/V8PopStateEventCustom.cpp
     bindings/v8/custom/V8SQLResultSetRowListCustom.cpp
@@ -150,7 +149,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8WebGLRenderingContextCustom.cpp
     bindings/v8/custom/V8WebKitAnimationCustom.cpp
     bindings/v8/custom/V8WebKitPointConstructor.cpp
-    bindings/v8/custom/V8WebSocketCustom.cpp
     bindings/v8/custom/V8WorkerContextCustom.cpp
     bindings/v8/custom/V8WorkerCustom.cpp
     bindings/v8/custom/V8XMLHttpRequestConstructor.cpp
@@ -204,15 +202,6 @@ IF (ENABLE_SVG)
         bindings/v8/custom/V8SVGElementCustom.cpp
         bindings/v8/custom/V8SVGLengthCustom.cpp
         bindings/v8/custom/V8SVGPathSegCustom.cpp
-    )
-ENDIF ()
-
-IF (ENABLE_UNDO_MANAGER)
-    LIST(APPEND WebCore_SOURCES
-        bindings/v8/DOMTransaction.cpp
-
-        bindings/v8/custom/V8DOMTransactionCustom.cpp
-        bindings/v8/custom/V8UndoManagerCustom.cpp
     )
 ENDIF ()
 

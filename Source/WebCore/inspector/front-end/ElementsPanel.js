@@ -48,10 +48,10 @@ WebInspector.ElementsPanel = function()
     this.setHideOnDetach();
 
     const initialSidebarWidth = 325;
-    const minimalContentWidthPercent = 34;
-    this.createSplitView(this.element, WebInspector.SplitView.SidebarPosition.Right, initialSidebarWidth);
-    this.splitView.minimalSidebarWidth = Preferences.minElementsSidebarWidth;
-    this.splitView.minimalMainWidthPercent = minimalContentWidthPercent;
+    const minimumContentWidthPercent = 34;
+    this.createSidebarView(this.element, WebInspector.SidebarView.SidebarPosition.Right, initialSidebarWidth);
+    this.splitView.setMinimumSidebarWidth(Preferences.minElementsSidebarWidth);
+    this.splitView.setMinimumMainWidthPercent(minimumContentWidthPercent);
 
     this.contentElement = this.splitView.mainElement;
     this.contentElement.id = "elements-content";
@@ -97,8 +97,6 @@ WebInspector.ElementsPanel = function()
         if (this.sidebarPanes[pane].onattach)
             this.sidebarPanes[pane].onattach();
     }
-
-    this._registerShortcuts();
 
     this._popoverHelper = new WebInspector.PopoverHelper(this.element, this._getPopoverAnchor.bind(this), this._showPopover.bind(this));
     this._popoverHelper.setTimeout(0);
@@ -415,7 +413,7 @@ WebInspector.ElementsPanel.prototype = {
             return;
         }
         
-        var node = /** @type {WebInspector.DOMNode} */ treeElement.representedObject;
+        var node = /** @type {WebInspector.DOMNode} */ (treeElement.representedObject);
 
         if (!node.nodeName() || node.nodeName().toLowerCase() !== "img") {
             callback();
@@ -604,7 +602,7 @@ WebInspector.ElementsPanel.prototype = {
         if (name !== "class" && name !== "id")
             return;
 
-        var node = /** @type {WebInspector.DOMNode} */ event.data.node;
+        var node = /** @type {WebInspector.DOMNode} */ (event.data.node);
         var crumbs = this.crumbsElement;
         var crumb = crumbs.firstChild;
         while (crumb) {
@@ -627,17 +625,8 @@ WebInspector.ElementsPanel.prototype = {
         var crumbs = this.crumbsElement;
 
         var handled = false;
-        var foundRoot = false;
         var crumb = crumbs.firstChild;
         while (crumb) {
-            if (crumb.representedObject === this.treeOutline.rootDOMNode)
-                foundRoot = true;
-
-            if (foundRoot)
-                crumb.addStyleClass("dimmed");
-            else
-                crumb.removeStyleClass("dimmed");
-
             if (crumb.representedObject === this.selectedDOMNode()) {
                 crumb.addStyleClass("selected");
                 handled = true;
@@ -685,13 +674,9 @@ WebInspector.ElementsPanel.prototype = {
             event.preventDefault();
         }
 
-        foundRoot = false;
         for (var current = this.selectedDOMNode(); current; current = current.parentNode) {
             if (current.nodeType() === Node.DOCUMENT_NODE)
                 continue;
-
-            if (current === this.treeOutline.rootDOMNode)
-                foundRoot = true;
 
             crumb = document.createElement("span");
             crumb.className = "crumb";
@@ -727,8 +712,6 @@ WebInspector.ElementsPanel.prototype = {
                 crumb.title = crumbTitle;
             }
 
-            if (foundRoot)
-                crumb.addStyleClass("dimmed");
             if (current === this.selectedDOMNode())
                 crumb.addStyleClass("selected");
             if (!crumbs.childNodes.length)
@@ -946,18 +929,6 @@ WebInspector.ElementsPanel.prototype = {
                 coalesceCollapsedCrumbs();
         }
 
-        function compactDimmed(crumb)
-        {
-            if (crumb.hasStyleClass("dimmed"))
-                compact(crumb);
-        }
-
-        function collapseDimmed(crumb)
-        {
-            if (crumb.hasStyleClass("dimmed"))
-                collapse(crumb, false);
-        }
-
         if (!focusedCrumb) {
             // When not focused on a crumb we can be biased and collapse less important
             // crumbs that the user might not care much about.
@@ -968,14 +939,6 @@ WebInspector.ElementsPanel.prototype = {
 
             // Collapse child crumbs.
             if (makeCrumbsSmaller(collapse, ChildSide))
-                return;
-
-            // Compact dimmed ancestor crumbs.
-            if (makeCrumbsSmaller(compactDimmed, AncestorSide))
-                return;
-
-            // Collapse dimmed ancestor crumbs.
-            if (makeCrumbsSmaller(collapseDimmed, AncestorSide))
                 return;
         }
 
@@ -1040,27 +1003,6 @@ WebInspector.ElementsPanel.prototype = {
         eventListenersSidebarPane.needsUpdate = false;
     },
 
-    _registerShortcuts: function()
-    {
-        var shortcut = WebInspector.KeyboardShortcut;
-        var section = WebInspector.shortcutsScreen.section(WebInspector.UIString("Elements Panel"));
-        var keys = [
-            shortcut.shortcutToString(shortcut.Keys.Up),
-            shortcut.shortcutToString(shortcut.Keys.Down)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Navigate elements"));
-
-        keys = [
-            shortcut.shortcutToString(shortcut.Keys.Right),
-            shortcut.shortcutToString(shortcut.Keys.Left)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Expand/collapse"));
-        section.addKey(shortcut.shortcutToString(shortcut.Keys.Enter), WebInspector.UIString("Edit attribute"));
-        section.addKey(shortcut.shortcutToString(shortcut.Keys.F2), WebInspector.UIString("Toggle edit as HTML"));
-
-        this.sidebarPanes.styles.registerShortcuts();
-    },
-
     handleShortcut: function(event)
     {
         if (WebInspector.KeyboardShortcut.eventHasCtrlOrMeta(event) && !event.shiftKey && event.keyIdentifier === "U+005A") { // Z key
@@ -1121,7 +1063,7 @@ WebInspector.ElementsPanel.prototype = {
     {
         if (!(target instanceof WebInspector.RemoteObject))
             return;
-        var remoteObject = /** @type {WebInspector.RemoteObject} */ target;
+        var remoteObject = /** @type {WebInspector.RemoteObject} */ (target);
         if (remoteObject.subtype !== "node")
             return;
 

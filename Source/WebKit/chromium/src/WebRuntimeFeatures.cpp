@@ -359,24 +359,6 @@ bool WebRuntimeFeatures::isPeerConnectionEnabled()
 #endif
 }
 
-void WebRuntimeFeatures::enableDeprecatedPeerConnection(bool enable)
-{
-#if ENABLE(MEDIA_STREAM)
-    RuntimeEnabledFeatures::setDeprecatedPeerConnectionEnabled(enable);
-#else
-    UNUSED_PARAM(enable);
-#endif
-}
-
-bool WebRuntimeFeatures::isDeprecatedPeerConnectionEnabled()
-{
-#if ENABLE(MEDIA_STREAM)
-    return RuntimeEnabledFeatures::deprecatedPeerConnectionEnabled();
-#else
-    return false;
-#endif
-}
-
 void WebRuntimeFeatures::enableFullScreenAPI(bool enable)
 {
 #if ENABLE(FULLSCREEN_API)
@@ -395,22 +377,10 @@ bool WebRuntimeFeatures::isFullScreenAPIEnabled()
 #endif
 }
 
+// FIXME: Remove this API once chromium no longer has a compile dependency. http://crbug.com/160761
 void WebRuntimeFeatures::enablePointerLock(bool enable)
 {
-#if ENABLE(POINTER_LOCK)
-    RuntimeEnabledFeatures::setPointerLockEnabled(enable);
-#else
     UNUSED_PARAM(enable);
-#endif
-}
-
-bool WebRuntimeFeatures::isPointerLockEnabled()
-{
-#if ENABLE(POINTER_LOCK)
-    return RuntimeEnabledFeatures::pointerLockEnabled();
-#else
-    return false;
-#endif
 }
 
 void WebRuntimeFeatures::enableMediaSource(bool enable)
@@ -655,6 +625,24 @@ void WebRuntimeFeatures::enableCSSExclusions(bool enable)
 bool WebRuntimeFeatures::isCSSExclusionsEnabled()
 {
     return RuntimeEnabledFeatures::cssExclusionsEnabled();
+}
+
+void WebRuntimeFeatures::enableRequestAutocomplete(bool enable)
+{
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+    RuntimeEnabledFeatures::setRequestAutocompleteEnabled(enable);
+#else
+    UNUSED_PARAM(enable);
+#endif
+}
+
+bool WebRuntimeFeatures::isRequestAutocompleteEnabled()
+{
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+    return RuntimeEnabledFeatures::requestAutocompleteEnabled();
+#else
+    return false;
+#endif
 }
 
 } // namespace WebKit

@@ -48,7 +48,7 @@ typedef void* LPVOID;
 typedef LPVOID HINTERNET;
 #endif
 
-#if PLATFORM(MAC) || USE(CFURLSTORAGESESSIONS)
+#if PLATFORM(MAC) || USE(CFNETWORK)
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -68,9 +68,7 @@ typedef int CFHTTPCookieStorageAcceptPolicy;
 typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
 #endif
 
-#if USE(CFURLSTORAGESESSIONS) && PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1060
-typedef struct __CFURLStorageSession* CFURLStorageSessionRef;
-#elif USE(CFURLSTORAGESESSIONS)
+#if PLATFORM(MAC) || USE(CFNETWORK)
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 #endif
 
@@ -97,7 +95,7 @@ enum StoredCredentials {
 template <typename T> class Timer;
 
 class ResourceHandle : public RefCounted<ResourceHandle>
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(HAIKU)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || USE(HAIKU)
     , public AuthenticationClient
 #endif
     {
@@ -114,7 +112,7 @@ public:
     void willSendRequest(ResourceRequest&, const ResourceResponse& redirectResponse);
     bool shouldUseCredentialStorage();
 #endif
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(HAIKU)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(SOUP) || USE(HAIKU)
     void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
     virtual void receivedCredential(const AuthenticationChallenge&, const Credential&);
     virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
@@ -174,11 +172,6 @@ public:
     static void setHostAllowsAnyHTTPSCertificate(const String&);
     static void setClientCertificate(const String& host, GTlsCertificate*);
     static void setIgnoreSSLErrors(bool);
-
-#if PLATFORM(GTK)
-    void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
-    virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
-#endif
 #endif
 
     // Used to work around the fact that you don't get any more NSURLConnection callbacks until you return from the one you're in.
@@ -203,7 +196,7 @@ public:
 
     void fireFailure(Timer<ResourceHandle>*);
 
-#if USE(CFURLSTORAGESESSIONS)
+#if PLATFORM(MAC) || USE(CFNETWORK)
     static CFURLStorageSessionRef currentStorageSession();
     static void setDefaultStorageSession(CFURLStorageSessionRef);
     static CFURLStorageSessionRef defaultStorageSession();
@@ -211,7 +204,7 @@ public:
 
     static void setPrivateBrowsingStorageSessionIdentifierBase(const String&);
     static RetainPtr<CFURLStorageSessionRef> createPrivateBrowsingStorageSession(CFStringRef identifier);
-#endif // USE(CFURLSTORAGESESSIONS)
+#endif
 
     using RefCounted<ResourceHandle>::ref;
     using RefCounted<ResourceHandle>::deref;
@@ -220,7 +213,7 @@ public:
     static CFStringRef synchronousLoadRunLoopMode();
 #endif
 
-#if HAVE(NETWORK_CFDATA_ARRAY_CALLBACK)
+#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     void handleDataArray(CFArrayRef dataArray);
 #endif
 
@@ -252,7 +245,7 @@ private:
     void createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff);
 #endif
 
-#if USE(CFURLSTORAGESESSIONS)
+#if PLATFORM(MAC) || USE(CFNETWORK)
     static String privateBrowsingStorageSessionIdentifierDefaultBase();
     static CFURLStorageSessionRef privateBrowsingStorageSession();
 #endif

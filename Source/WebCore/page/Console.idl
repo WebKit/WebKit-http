@@ -52,13 +52,14 @@
     [Custom] void profileEnd(in DOMString title);
 #endif
 
-    void time(in [TreatNullAs=NullString, TreatUndefinedAs=NullString,Optional=DefaultIsUndefined] DOMString title);
+    void time(in [TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString title);
     [CallWith=ScriptArguments|CallStack] void timeEnd(in [TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString title);
     [CallWith=ScriptArguments|CallStack] void timeStamp();
     [CallWith=ScriptArguments|CallStack] void group();
     [CallWith=ScriptArguments|CallStack] void groupCollapsed();
     void groupEnd();
+    [CallWith=ScriptArguments|CallStack] void clear();
 
-    [V8CustomGetter] readonly attribute MemoryInfo memory;
+    readonly attribute MemoryInfo memory;
 };
 

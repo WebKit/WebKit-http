@@ -20,37 +20,41 @@ textarea {
     font-family: monospace;
 }
 
-input, textarea {
-    border-radius: 3px;
+select {
+    border-radius: 0;
 }
 
-input[type="datetime"],
-input[type="date"],
-input[type="week"],
-input[type="month"],
-input[type="time"],
-input[type="datetime-local"],
-input[type="number"],
-input[type="color"] {
-    border: solid 2px blue;
+select[size="0"],
+select[size="1"] {
+    border-radius: 0;
 }
 
-select:focus {
-    border: 1px solid black;
-    outline: none;
+::-webkit-validation-bubble-message {
+    padding-left: 10px;
+    padding-right: 10px;
+    background: #fafafa;
+    border-color: #ffffff;
+    border-width: 1px;
+    box-shadow: 2px 2px 4px rgba(100,100,100,0.3), 0 0 4px rgba(100,100,100,0.6);
+    -webkit-border-radius: 4px;
+    top: -1px;
 }
 
-select[size],
-select[multiple],
-select[size][multiple] {
-    padding: 5px;
-    border-radius: 5px;
-    border: 1px solid rgb(139,139,139);
+::-webkit-validation-bubble-arrow {
+    left: 40px;
+    top: 3px;
+    background: #fafafa;
+    border-color: #ffffff;
+    border-width: 1px;
+    box-shadow: 0 0 4px rgba(100,100,100,0.6);
 }
 
-select[size]:focus,
-select[multiple]:focus,
-select[size][multiple]:focus {
-    border: 1px solid black;
-    outline: none;
+::-webkit-validation-bubble-heading {
+    font-weight: normal;
+}
+
+input[type="date"], input[type="datetime"], input[type="datetime-local"], input[type="time"], input[type="month"] {
+    font-family: "Slate Pro";
+    -webkit-appearance: button;
+    text-align: center;
 }

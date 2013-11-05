@@ -59,7 +59,7 @@ SpeculativeJIT::~SpeculativeJIT()
 
 void SpeculativeJIT::emitAllocateJSArray(Structure* structure, GPRReg resultGPR, GPRReg storageGPR, unsigned numElements)
 {
-    ASSERT(hasContiguous(structure->indexingType()));
+    ASSERT(hasUndecided(structure->indexingType()) || hasInt32(structure->indexingType()) || hasDouble(structure->indexingType()) || hasContiguous(structure->indexingType()));
     
     GPRTemporary scratch(this);
     GPRReg scratchGPR = scratch.gpr();
@@ -67,6 +67,7 @@ void SpeculativeJIT::emitAllocateJSArray(Structure* structure, GPRReg resultGPR,
     unsigned vectorLength = std::max(BASE_VECTOR_LEN, numElements);
     
     JITCompiler::JumpList slowCases;
+    
     slowCases.append(
         emitAllocateBasicStorage(TrustedImm32(vectorLength * sizeof(JSValue) + sizeof(IndexingHeader)), storageGPR));
     m_jit.subPtr(TrustedImm32(vectorLength * sizeof(JSValue)), storageGPR);
@@ -78,6 +79,21 @@ void SpeculativeJIT::emitAllocateJSArray(Structure* structure, GPRReg resultGPR,
     // I have no idea if that's true. And it probably doesn't matter anyway.
     m_jit.store32(TrustedImm32(numElements), MacroAssembler::Address(storageGPR, Butterfly::offsetOfPublicLength()));
     m_jit.store32(TrustedImm32(vectorLength), MacroAssembler::Address(storageGPR, Butterfly::offsetOfVectorLength()));
+    
+    if (hasDouble(structure->indexingType()) && numElements < vectorLength) {
+#if USE(JSVALUE64)
+        m_jit.move(TrustedImm64(bitwise_cast<int64_t>(QNaN)), scratchGPR);
+        for (unsigned i = numElements; i < vectorLength; ++i)
+            m_jit.store64(scratchGPR, MacroAssembler::Address(storageGPR, sizeof(double) * i));
+#else
+        EncodedValueDescriptor value;
+        value.asInt64 = JSValue::encode(JSValue(JSValue::EncodeAsDouble, QNaN));
+        for (unsigned i = numElements; i < vectorLength; ++i) {
+            m_jit.store32(TrustedImm32(value.asBits.tag), MacroAssembler::Address(storageGPR, sizeof(double) * i + OBJECT_OFFSETOF(JSValue, u.asBits.tag)));
+            m_jit.store32(TrustedImm32(value.asBits.payload), MacroAssembler::Address(storageGPR, sizeof(double) * i + OBJECT_OFFSETOF(JSValue, u.asBits.payload)));
+        }
+#endif
+    }
     
     // I want a slow path that also loads out the storage pointer, and that's
     // what this custom CallArrayAllocatorSlowPathGenerator gives me. It's a lot
@@ -153,19 +169,37 @@ JumpReplacementWatchpoint* SpeculativeJIT::speculationWatchpoint(ExitKind kind)
 
 void SpeculativeJIT::convertLastOSRExitToForward(const ValueRecovery& valueRecovery)
 {
-#if !ASSERT_DISABLED
     if (!valueRecovery) {
         // Check that the preceding node was a SetLocal with the same code origin.
         Node* setLocal = &at(m_jit.graph().m_blocks[m_block]->at(m_indexInBlock - 1));
-        ASSERT(setLocal->op() == SetLocal);
-        ASSERT(setLocal->codeOrigin == at(m_compileIndex).codeOrigin);
+        ASSERT_UNUSED(setLocal, setLocal->op() == SetLocal);
+        ASSERT_UNUSED(setLocal, setLocal->codeOrigin == at(m_compileIndex).codeOrigin);
+        
+        // Find the next node.
+        unsigned indexInBlock = m_indexInBlock + 1;
+        Node* node = 0;
+        for (;;) {
+            if (indexInBlock == m_jit.graph().m_blocks[m_block]->size()) {
+                // This is an inline return. Give up and do a backwards speculation. This is safe
+                // because an inline return has its own bytecode index and it's always safe to
+                // reexecute that bytecode.
+                ASSERT(node->op() == Jump);
+                return;
+            }
+            node = &at(m_jit.graph().m_blocks[m_block]->at(indexInBlock));
+            if (node->codeOrigin != at(m_compileIndex).codeOrigin)
+                break;
+            indexInBlock++;
+        }
+        
+        ASSERT(node->codeOrigin != at(m_compileIndex).codeOrigin);
+        OSRExit& exit = m_jit.codeBlock()->lastOSRExit();
+        exit.m_codeOrigin = node->codeOrigin;
+        return;
     }
-#endif
     
     unsigned setLocalIndexInBlock = m_indexInBlock + 1;
-
-    OSRExit& exit = m_jit.codeBlock()->lastOSRExit();
-
+    
     Node* setLocal = &at(m_jit.graph().m_blocks[m_block]->at(setLocalIndexInBlock));
     bool hadInt32ToDouble = false;
     
@@ -175,13 +209,11 @@ void SpeculativeJIT::convertLastOSRExitToForward(const ValueRecovery& valueRecov
     }
     if (setLocal->op() == Flush || setLocal->op() == Phantom)
         setLocal = &at(m_jit.graph().m_blocks[m_block]->at(++setLocalIndexInBlock));
-    
-    if (!!valueRecovery) {
-        if (hadInt32ToDouble)
-            ASSERT(at(setLocal->child1()).child1() == m_compileIndex);
-        else
-            ASSERT(setLocal->child1() == m_compileIndex);
-    }
+        
+    if (hadInt32ToDouble)
+        ASSERT(at(setLocal->child1()).child1() == m_compileIndex);
+    else
+        ASSERT(setLocal->child1() == m_compileIndex);
     ASSERT(setLocal->op() == SetLocal);
     ASSERT(setLocal->codeOrigin == at(m_compileIndex).codeOrigin);
 
@@ -190,34 +222,14 @@ void SpeculativeJIT::convertLastOSRExitToForward(const ValueRecovery& valueRecov
         // We're at an inlined return. Use a backward speculation instead.
         return;
     }
-
-    exit.m_setOperands[0] = setLocal->local();
-    while (nextNode->codeOrigin == at(m_compileIndex).codeOrigin) {
-        ++setLocalIndexInBlock;
-        Node* nextSetLocal = nextNode;
-        if (nextSetLocal->op() == Int32ToDouble)
-            nextSetLocal = &at(m_jit.graph().m_blocks[m_block]->at(++setLocalIndexInBlock));
-
-        if (nextSetLocal->op() == Flush || nextSetLocal->op() == Phantom)
-            nextSetLocal = &at(m_jit.graph().m_blocks[m_block]->at(++setLocalIndexInBlock));
-
-        nextNode = &at(m_jit.graph().m_blocks[m_block]->at(setLocalIndexInBlock + 1));
-        ASSERT(nextNode->op() != Jump || nextNode->codeOrigin != at(m_compileIndex).codeOrigin);
-        ASSERT(nextSetLocal->op() == SetLocal);
-        exit.m_setOperands.append(nextSetLocal->local());
-    }
-
     ASSERT(nextNode->codeOrigin != at(m_compileIndex).codeOrigin);
-
+        
+    OSRExit& exit = m_jit.codeBlock()->lastOSRExit();
     exit.m_codeOrigin = nextNode->codeOrigin;
         
-    if (!valueRecovery)
-        return;
-
-    ASSERT(exit.m_setOperands.size() == 1);
-    for (size_t i = 0; i < exit.m_setOperands.size(); i++)
-        exit.m_valueRecoveryOverrides.append(adoptRef(new ValueRecoveryOverride(exit.m_setOperands[i], valueRecovery)));
-
+    exit.m_lastSetOperand = setLocal->local();
+    exit.m_valueRecoveryOverride = adoptRef(
+        new ValueRecoveryOverride(setLocal->local(), valueRecovery));
 }
 
 JumpReplacementWatchpoint* SpeculativeJIT::forwardSpeculationWatchpoint(ExitKind kind)
@@ -321,9 +333,9 @@ void SpeculativeJIT::clearGenerationInfo()
     m_fprs = RegisterBank<FPRInfo>();
 }
 
-const TypedArrayDescriptor* SpeculativeJIT::typedArrayDescriptor(Array::Mode arrayMode)
+const TypedArrayDescriptor* SpeculativeJIT::typedArrayDescriptor(ArrayMode arrayMode)
 {
-    switch (arrayMode) {
+    switch (arrayMode.type()) {
     case Array::Int8Array:
         return &m_jit.globalData()->int8ArrayDescriptor();
     case Array::Int16Array:
@@ -341,62 +353,92 @@ const TypedArrayDescriptor* SpeculativeJIT::typedArrayDescriptor(Array::Mode arr
     case Array::Float32Array:
         return &m_jit.globalData()->float32ArrayDescriptor();
     case Array::Float64Array:
-        return &m_jit.globalData()->float32ArrayDescriptor();
+        return &m_jit.globalData()->float64ArrayDescriptor();
     default:
         return 0;
     }
 }
 
-JITCompiler::JumpList SpeculativeJIT::jumpSlowForUnwantedArrayMode(GPRReg tempGPR, Array::Mode arrayMode)
+JITCompiler::Jump SpeculativeJIT::jumpSlowForUnwantedArrayMode(GPRReg tempGPR, ArrayMode arrayMode, IndexingType shape, bool invert)
+{
+    switch (arrayMode.arrayClass()) {
+    case Array::OriginalArray: {
+        CRASH();
+        JITCompiler::Jump result; // I already know that VC++ takes unkindly to the expression "return Jump()", so I'm doing it this way in anticipation of someone eventually using VC++ to compile the DFG.
+        return result;
+    }
+        
+    case Array::Array:
+        m_jit.and32(TrustedImm32(IsArray | IndexingShapeMask), tempGPR);
+        return m_jit.branch32(
+            invert ? MacroAssembler::Equal : MacroAssembler::NotEqual, tempGPR, TrustedImm32(IsArray | shape));
+        
+    default:
+        m_jit.and32(TrustedImm32(IndexingShapeMask), tempGPR);
+        return m_jit.branch32(invert ? MacroAssembler::Equal : MacroAssembler::NotEqual, tempGPR, TrustedImm32(shape));
+    }
+}
+
+JITCompiler::JumpList SpeculativeJIT::jumpSlowForUnwantedArrayMode(GPRReg tempGPR, ArrayMode arrayMode, bool invert)
 {
     JITCompiler::JumpList result;
     
-    switch (arrayMode) {
-    case NON_ARRAY_CONTIGUOUS_MODES: {
+    switch (arrayMode.type()) {
+    case Array::Int32:
+        return jumpSlowForUnwantedArrayMode(tempGPR, arrayMode, Int32Shape, invert);
+
+    case Array::Double:
+        return jumpSlowForUnwantedArrayMode(tempGPR, arrayMode, DoubleShape, invert);
+
+    case Array::Contiguous:
+        return jumpSlowForUnwantedArrayMode(tempGPR, arrayMode, ContiguousShape, invert);
+
+    case Array::ArrayStorage:
+    case Array::SlowPutArrayStorage: {
+        ASSERT(!arrayMode.isJSArrayWithOriginalStructure());
+        
+        if (arrayMode.isJSArray()) {
+            if (arrayMode.isSlowPut()) {
+                if (invert) {
+                    JITCompiler::Jump slow = m_jit.branchTest32(
+                        MacroAssembler::Zero, tempGPR, MacroAssembler::TrustedImm32(IsArray));
+                    m_jit.and32(TrustedImm32(IndexingShapeMask), tempGPR);
+                    m_jit.sub32(TrustedImm32(ArrayStorageShape), tempGPR);
+                    result.append(
+                        m_jit.branch32(
+                            MacroAssembler::BelowOrEqual, tempGPR,
+                            TrustedImm32(SlowPutArrayStorageShape - ArrayStorageShape)));
+                    
+                    slow.link(&m_jit);
+                }
+                
+                result.append(
+                    m_jit.branchTest32(
+                        MacroAssembler::Zero, tempGPR, MacroAssembler::TrustedImm32(IsArray)));
+                m_jit.and32(TrustedImm32(IndexingShapeMask), tempGPR);
+                m_jit.sub32(TrustedImm32(ArrayStorageShape), tempGPR);
+                result.append(
+                    m_jit.branch32(
+                        MacroAssembler::Above, tempGPR,
+                        TrustedImm32(SlowPutArrayStorageShape - ArrayStorageShape)));
+                break;
+            }
+            m_jit.and32(TrustedImm32(IsArray | IndexingShapeMask), tempGPR);
+            result.append(
+                m_jit.branch32(invert ? MacroAssembler::Equal : MacroAssembler::NotEqual, tempGPR, TrustedImm32(ArrayStorageShape)));
+            break;
+        }
         m_jit.and32(TrustedImm32(IndexingShapeMask), tempGPR);
-        result.append(
-            m_jit.branch32(MacroAssembler::NotEqual, tempGPR, TrustedImm32(ContiguousShape)));
-        break;
-    }
-    case ARRAY_WITH_CONTIGUOUS_MODES: {
-        m_jit.and32(TrustedImm32(IsArray | IndexingShapeMask), tempGPR);
-        result.append(
-            m_jit.branch32(
-                MacroAssembler::NotEqual, tempGPR, TrustedImm32(IsArray | ContiguousShape)));
-        break;
-    }
-    case NON_ARRAY_ARRAY_STORAGE_MODES: {
-        m_jit.and32(TrustedImm32(IndexingShapeMask), tempGPR);
-        if (isSlowPutAccess(arrayMode)) {
+        if (arrayMode.isSlowPut()) {
             m_jit.sub32(TrustedImm32(ArrayStorageShape), tempGPR);
             result.append(
                 m_jit.branch32(
-                    MacroAssembler::Above, tempGPR,
+                    invert ? MacroAssembler::BelowOrEqual : MacroAssembler::Above, tempGPR,
                     TrustedImm32(SlowPutArrayStorageShape - ArrayStorageShape)));
-        } else {
-            result.append(
-                m_jit.branch32(MacroAssembler::NotEqual, tempGPR, TrustedImm32(ArrayStorageShape)));
+            break;
         }
-        break;
-    }
-    case Array::ArrayWithArrayStorage:
-    case Array::ArrayWithArrayStorageToHole:
-    case Array::ArrayWithArrayStorageOutOfBounds: {
-        m_jit.and32(TrustedImm32(IsArray | IndexingShapeMask), tempGPR);
         result.append(
-            m_jit.branch32(MacroAssembler::NotEqual, tempGPR, TrustedImm32(ArrayStorageShape)));
-        break;
-    }
-    case Array::ArrayWithSlowPutArrayStorage: {
-        result.append(
-            m_jit.branchTest32(
-                MacroAssembler::Zero, tempGPR, MacroAssembler::TrustedImm32(IsArray)));
-        m_jit.and32(TrustedImm32(IndexingShapeMask), tempGPR);
-        m_jit.sub32(TrustedImm32(ArrayStorageShape), tempGPR);
-        result.append(
-            m_jit.branch32(
-                MacroAssembler::Above, tempGPR,
-                TrustedImm32(SlowPutArrayStorageShape - ArrayStorageShape)));
+            m_jit.branch32(invert ? MacroAssembler::Equal : MacroAssembler::NotEqual, tempGPR, TrustedImm32(ArrayStorageShape)));
         break;
     }
     default:
@@ -409,28 +451,30 @@ JITCompiler::JumpList SpeculativeJIT::jumpSlowForUnwantedArrayMode(GPRReg tempGP
 
 void SpeculativeJIT::checkArray(Node& node)
 {
-    ASSERT(modeIsSpecific(node.arrayMode()));
+    ASSERT(node.arrayMode().isSpecific());
+    ASSERT(!node.arrayMode().doesConversion());
     
     SpeculateCellOperand base(this, node.child1());
     GPRReg baseReg = base.gpr();
     
     const TypedArrayDescriptor* result = typedArrayDescriptor(node.arrayMode());
     
-    if (modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode())) {
+    if (node.arrayMode().alreadyChecked(m_jit.graph(), node, m_state.forNode(node.child1()))) {
         noResult(m_compileIndex);
         return;
     }
     
     const ClassInfo* expectedClassInfo = 0;
     
-    switch (node.arrayMode()) {
+    switch (node.arrayMode().type()) {
     case Array::String:
         expectedClassInfo = &JSString::s_info;
         break;
-    case NON_ARRAY_CONTIGUOUS_MODES:
-    case ARRAY_WITH_CONTIGUOUS_MODES:
-    case NON_ARRAY_ARRAY_STORAGE_MODES:
-    case ARRAY_WITH_ARRAY_STORAGE_MODES: {
+    case Array::Int32:
+    case Array::Double:
+    case Array::Contiguous:
+    case Array::ArrayStorage:
+    case Array::SlowPutArrayStorage: {
         GPRTemporary temp(this);
         GPRReg tempGPR = temp.gpr();
         m_jit.loadPtr(
@@ -477,77 +521,77 @@ void SpeculativeJIT::checkArray(Node& node)
 
 void SpeculativeJIT::arrayify(Node& node, GPRReg baseReg, GPRReg propertyReg)
 {
-    Array::Mode desiredArrayMode;
+    ASSERT(node.arrayMode().doesConversion());
     
-    switch (node.arrayMode()) {
-    case Array::ToContiguous:
-        desiredArrayMode = Array::Contiguous;
-        break;
-    case Array::ToArrayStorage:
-        desiredArrayMode = Array::ArrayStorage;
-        break;
-    case Array::ToSlowPutArrayStorage:
-        desiredArrayMode = Array::SlowPutArrayStorage;
-        break;
-    case Array::ArrayToArrayStorage:
-        desiredArrayMode = Array::ArrayWithArrayStorage;
-        break;
-    case Array::PossiblyArrayToArrayStorage:
-        desiredArrayMode = Array::PossiblyArrayWithArrayStorage;
-        break;
-    default:
-        CRASH();
-        desiredArrayMode = Array::ForceExit;
-        break;
-    }
-    
-    GPRTemporary structure(this);
     GPRTemporary temp(this);
-    GPRReg structureGPR = structure.gpr();
+    GPRTemporary structure;
     GPRReg tempGPR = temp.gpr();
-        
-    m_jit.loadPtr(
-        MacroAssembler::Address(baseReg, JSCell::structureOffset()), structureGPR);
+    GPRReg structureGPR = InvalidGPRReg;
     
-    m_jit.load8(
-        MacroAssembler::Address(structureGPR, Structure::indexingTypeOffset()), tempGPR);
+    if (node.op() != ArrayifyToStructure) {
+        GPRTemporary realStructure(this);
+        structure.adopt(realStructure);
+        structureGPR = structure.gpr();
+    }
         
     // We can skip all that comes next if we already have array storage.
-    MacroAssembler::JumpList slowCases =
-        jumpSlowForUnwantedArrayMode(tempGPR, desiredArrayMode);
-        
-    m_jit.loadPtr(
-        MacroAssembler::Address(baseReg, JSObject::butterflyOffset()), tempGPR);
-        
-    MacroAssembler::Jump done = m_jit.jump();
-        
-    slowCases.link(&m_jit);
+    MacroAssembler::JumpList done;
     
+    if (node.op() == ArrayifyToStructure) {
+        done.append(m_jit.branchWeakPtr(
+            JITCompiler::Equal,
+            JITCompiler::Address(baseReg, JSCell::structureOffset()),
+            node.structure()));
+    } else {
+        m_jit.loadPtr(
+            MacroAssembler::Address(baseReg, JSCell::structureOffset()), structureGPR);
+        
+        m_jit.load8(
+            MacroAssembler::Address(structureGPR, Structure::indexingTypeOffset()), tempGPR);
+        
+        done = jumpSlowForUnwantedArrayMode(tempGPR, node.arrayMode(), true);
+
+        // Next check that the object does not intercept indexed accesses. If it does,
+        // then this mode won't work.
+        speculationCheck(
+            BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
+            m_jit.branchTest8(
+                MacroAssembler::NonZero,
+                MacroAssembler::Address(structureGPR, Structure::typeInfoFlagsOffset()),
+                MacroAssembler::TrustedImm32(InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero)));
+    }
+        
     // If we're allegedly creating contiguous storage and the index is bogus, then
     // just don't.
-    if (node.arrayMode() == Array::ToContiguous && propertyReg != InvalidGPRReg) {
-        speculationCheck(
-            Uncountable, JSValueRegs(), NoNode,
-            m_jit.branch32(
-                MacroAssembler::AboveOrEqual, propertyReg, TrustedImm32(MIN_SPARSE_ARRAY_INDEX)));
+    if (propertyReg != InvalidGPRReg) {
+        switch (node.arrayMode().type()) {
+        case Array::Int32:
+        case Array::Double:
+        case Array::Contiguous:
+            speculationCheck(
+                Uncountable, JSValueRegs(), NoNode,
+                m_jit.branch32(
+                    MacroAssembler::AboveOrEqual, propertyReg, TrustedImm32(MIN_SPARSE_ARRAY_INDEX)));
+            break;
+        default:
+            break;
+        }
     }
     
-    // Next check that the object does not intercept indexed accesses. If it does,
-    // then this mode won't work.
-    speculationCheck(
-        BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
-        m_jit.branchTest8(
-            MacroAssembler::NonZero,
-            MacroAssembler::Address(structureGPR, Structure::typeInfoFlagsOffset()),
-            MacroAssembler::TrustedImm32(InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero)));
-        
     // Now call out to create the array storage.
     silentSpillAllRegisters(tempGPR);
-    switch (node.arrayMode()) {
-    case ALL_EFFECTFUL_CONTIGUOUS_MODES:
+    switch (node.arrayMode().type()) {
+    case Array::Int32:
+        callOperation(operationEnsureInt32, tempGPR, baseReg);
+        break;
+    case Array::Double:
+        callOperation(operationEnsureDouble, tempGPR, baseReg);
+        break;
+    case Array::Contiguous:
         callOperation(operationEnsureContiguous, tempGPR, baseReg);
         break;
-    case ALL_EFFECTFUL_ARRAY_STORAGE_MODES:
+    case Array::ArrayStorage:
+    case Array::SlowPutArrayStorage:
         callOperation(operationEnsureArrayStorage, tempGPR, baseReg);
         break;
     default:
@@ -555,40 +599,41 @@ void SpeculativeJIT::arrayify(Node& node, GPRReg baseReg, GPRReg propertyReg)
         break;
     }
     silentFillAllRegisters(tempGPR);
-
-    // Alas, we need to reload the structure because silent spilling does not save
-    // temporaries. Nor would it be useful for it to do so. Either way we're talking
-    // about a load.
-    m_jit.loadPtr(
-        MacroAssembler::Address(baseReg, JSCell::structureOffset()), structureGPR);
     
-    // Finally, check that we have the kind of array storage that we wanted to get.
-    // Note that this is a backwards speculation check, which will result in the 
-    // bytecode operation corresponding to this arrayification being reexecuted.
-    // That's fine, since arrayification is not user-visible.
-    m_jit.load8(
-        MacroAssembler::Address(structureGPR, Structure::indexingTypeOffset()), structureGPR);
-    speculationCheck(
-        BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
-        jumpSlowForUnwantedArrayMode(structureGPR, desiredArrayMode));
+    if (node.op() == ArrayifyToStructure) {
+        speculationCheck(
+            BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
+            m_jit.branchWeakPtr(
+                JITCompiler::NotEqual,
+                JITCompiler::Address(baseReg, JSCell::structureOffset()),
+                node.structure()));
+    } else {
+        // Alas, we need to reload the structure because silent spilling does not save
+        // temporaries. Nor would it be useful for it to do so. Either way we're talking
+        // about a load.
+        m_jit.loadPtr(
+            MacroAssembler::Address(baseReg, JSCell::structureOffset()), structureGPR);
+    
+        // Finally, check that we have the kind of array storage that we wanted to get.
+        // Note that this is a backwards speculation check, which will result in the 
+        // bytecode operation corresponding to this arrayification being reexecuted.
+        // That's fine, since arrayification is not user-visible.
+        m_jit.load8(
+            MacroAssembler::Address(structureGPR, Structure::indexingTypeOffset()), structureGPR);
+        speculationCheck(
+            BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
+            jumpSlowForUnwantedArrayMode(structureGPR, node.arrayMode()));
+    }
     
     done.link(&m_jit);
-    storageResult(tempGPR, m_compileIndex);
+    noResult(m_compileIndex);
 }
 
 void SpeculativeJIT::arrayify(Node& node)
 {
-    ASSERT(modeIsSpecific(node.arrayMode()));
+    ASSERT(node.arrayMode().isSpecific());
     
     SpeculateCellOperand base(this, node.child1());
-    
-    if (modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode())) {
-        GPRTemporary temp(this);
-        m_jit.loadPtr(
-            MacroAssembler::Address(base.gpr(), JSObject::butterflyOffset()), temp.gpr());
-        storageResult(temp.gpr(), m_compileIndex);
-        return;
-    }
     
     if (!node.child2()) {
         arrayify(node, base.gpr(), InvalidGPRReg);
@@ -1801,9 +1846,87 @@ ValueRecovery SpeculativeJIT::computeValueRecoveryFor(const ValueSource& valueSo
     return ValueRecovery();
 }
 
+void SpeculativeJIT::compileDoublePutByVal(Node& node, SpeculateCellOperand& base, SpeculateStrictInt32Operand& property)
+{
+    Edge child3 = m_jit.graph().varArgChild(node, 2);
+    Edge child4 = m_jit.graph().varArgChild(node, 3);
+
+    ArrayMode arrayMode = node.arrayMode();
+    
+    GPRReg baseReg = base.gpr();
+    GPRReg propertyReg = property.gpr();
+    
+    SpeculateDoubleOperand value(this, child3);
+
+    FPRReg valueReg = value.fpr();
+    
+    if (!isRealNumberSpeculation(m_state.forNode(child3).m_type)) {
+        // FIXME: We need a way of profiling these, and we need to hoist them into
+        // SpeculateDoubleOperand.
+        speculationCheck(
+            BadType, JSValueRegs(), NoNode,
+            m_jit.branchDouble(MacroAssembler::DoubleNotEqualOrUnordered, valueReg, valueReg));
+    }
+    
+    if (!m_compileOkay)
+        return;
+    
+    StorageOperand storage(this, child4);
+    GPRReg storageReg = storage.gpr();
+
+    if (node.op() == PutByValAlias) {
+        // Store the value to the array.
+        GPRReg propertyReg = property.gpr();
+        FPRReg valueReg = value.fpr();
+        m_jit.storeDouble(valueReg, MacroAssembler::BaseIndex(storageReg, propertyReg, MacroAssembler::TimesEight));
+        
+        noResult(m_compileIndex);
+        return;
+    }
+    
+    GPRTemporary temporary;
+    GPRReg temporaryReg = temporaryRegisterForPutByVal(temporary, node);
+
+    MacroAssembler::JumpList slowCases;
+    
+    if (arrayMode.isInBounds()) {
+        speculationCheck(
+            Uncountable, JSValueRegs(), NoNode,
+            m_jit.branch32(MacroAssembler::AboveOrEqual, propertyReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfPublicLength())));
+    } else {
+        MacroAssembler::Jump inBounds = m_jit.branch32(MacroAssembler::Below, propertyReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfPublicLength()));
+        
+        slowCases.append(m_jit.branch32(MacroAssembler::AboveOrEqual, propertyReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfVectorLength())));
+        
+        if (!arrayMode.isOutOfBounds())
+            speculationCheck(Uncountable, JSValueRegs(), NoNode, slowCases);
+        
+        m_jit.add32(TrustedImm32(1), propertyReg, temporaryReg);
+        m_jit.store32(temporaryReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfPublicLength()));
+        
+        inBounds.link(&m_jit);
+    }
+    
+    m_jit.storeDouble(valueReg, MacroAssembler::BaseIndex(storageReg, propertyReg, MacroAssembler::TimesEight));
+
+    base.use();
+    property.use();
+    value.use();
+    storage.use();
+    
+    if (arrayMode.isOutOfBounds()) {
+        addSlowPathGenerator(
+            slowPathCall(
+                slowCases, this,
+                m_jit.codeBlock()->isStrictMode() ? operationPutDoubleByValBeyondArrayBoundsStrict : operationPutDoubleByValBeyondArrayBoundsNonStrict,
+                NoResult, baseReg, propertyReg, valueReg));
+    }
+
+    noResult(m_compileIndex, UseChildrenCalledExplicitly);
+}
+
 void SpeculativeJIT::compileGetCharCodeAt(Node& node)
 {
-    ASSERT(node.child3() == NoNode);
     SpeculateCellOperand string(this, node.child1());
     SpeculateStrictInt32Operand index(this, node.child2());
     StorageOperand storage(this, node.child3());
@@ -1812,12 +1935,7 @@ void SpeculativeJIT::compileGetCharCodeAt(Node& node)
     GPRReg indexReg = index.gpr();
     GPRReg storageReg = storage.gpr();
     
-    if (!isStringSpeculation(m_state.forNode(node.child1()).m_type)) {
-        ASSERT(!(at(node.child1()).prediction() & SpecString));
-        terminateSpeculativeExecution(Uncountable, JSValueRegs(), NoNode);
-        noResult(m_compileIndex);
-        return;
-    }
+    ASSERT(speculationChecked(m_state.forNode(node.child1()).m_type, SpecString));
 
     // unsigned comparison so we can filter out negative indices and indices that are too large
     speculationCheck(Uncountable, JSValueRegs(), NoNode, m_jit.branch32(MacroAssembler::AboveOrEqual, indexReg, MacroAssembler::Address(stringReg, JSString::offsetOfLength())));
@@ -1851,7 +1969,7 @@ void SpeculativeJIT::compileGetByValOnString(Node& node)
     GPRReg propertyReg = property.gpr();
     GPRReg storageReg = storage.gpr();
 
-    ASSERT(modeAlreadyChecked(m_state.forNode(node.child1()), Array::String));
+    ASSERT(ArrayMode(Array::String).alreadyChecked(m_jit.graph(), node, m_state.forNode(node.child1())));
 
     // unsigned comparison so we can filter out negative indices and indices that are too large
     speculationCheck(Uncountable, JSValueRegs(), NoNode, m_jit.branch32(MacroAssembler::AboveOrEqual, propertyReg, MacroAssembler::Address(baseReg, JSString::offsetOfLength())));
@@ -2260,7 +2378,7 @@ void SpeculativeJIT::compileGetByValOnIntTypedArray(const TypedArrayDescriptor& 
     GPRTemporary result(this);
     GPRReg resultReg = result.gpr();
 
-    ASSERT(modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode()));
+    ASSERT(node.arrayMode().alreadyChecked(m_jit.graph(), node, m_state.forNode(node.child1())));
 
     speculationCheck(
         Uncountable, JSValueRegs(), NoNode,
@@ -2410,7 +2528,7 @@ void SpeculativeJIT::compileGetByValOnFloatTypedArray(const TypedArrayDescriptor
     GPRReg propertyReg = property.gpr();
     GPRReg storageReg = storage.gpr();
 
-    ASSERT(modeAlreadyChecked(m_state.forNode(node.child1()), node.arrayMode()));
+    ASSERT(node.arrayMode().alreadyChecked(m_jit.graph(), node, m_state.forNode(node.child1())));
 
     FPRTemporary result(this);
     FPRReg resultReg = result.fpr();
@@ -2426,7 +2544,7 @@ void SpeculativeJIT::compileGetByValOnFloatTypedArray(const TypedArrayDescriptor
     case 8: {
         m_jit.loadDouble(MacroAssembler::BaseIndex(storageReg, propertyReg, MacroAssembler::TimesEight), resultReg);
         MacroAssembler::Jump notNaN = m_jit.branchDouble(MacroAssembler::DoubleEqual, resultReg, resultReg);
-        static const double NaN = std::numeric_limits<double>::quiet_NaN();
+        static const double NaN = QNaN;
         m_jit.loadDouble(&NaN, resultReg);
         notNaN.link(&m_jit);
         break;
@@ -2447,7 +2565,7 @@ void SpeculativeJIT::compilePutByValForFloatTypedArray(const TypedArrayDescripto
     
     SpeculateDoubleOperand valueOp(this, valueUse);
     
-    ASSERT_UNUSED(baseUse, modeAlreadyChecked(m_state.forNode(baseUse), node.arrayMode()));
+    ASSERT_UNUSED(baseUse, node.arrayMode().alreadyChecked(m_jit.graph(), m_jit.graph()[m_compileIndex], m_state.forNode(baseUse)));
     
     GPRTemporary result(this);
     
@@ -2773,7 +2891,7 @@ void SpeculativeJIT::compileAdd(Node& node)
         return;
     }
         
-    if (Node::shouldSpeculateNumber(at(node.child1()), at(node.child2()))) {
+    if (Node::shouldSpeculateNumberExpectingDefined(at(node.child1()), at(node.child2()))) {
         SpeculateDoubleOperand op1(this, node.child1());
         SpeculateDoubleOperand op2(this, node.child2());
         FPRTemporary result(this, op1, op2);
@@ -3011,7 +3129,7 @@ void SpeculativeJIT::compileIntegerArithDivForX86(Node& node)
 
 void SpeculativeJIT::compileArithMod(Node& node)
 {
-    if (Node::shouldSpeculateInteger(at(node.child1()), at(node.child2()))
+    if (Node::shouldSpeculateIntegerForArithmetic(at(node.child1()), at(node.child2()))
         && node.canSpeculateInteger()) {
         compileSoftModulo(node);
         return;
@@ -3230,7 +3348,7 @@ void SpeculativeJIT::compileGetIndexedPropertyStorage(Node& node)
     
     const TypedArrayDescriptor* descriptor = typedArrayDescriptor(node.arrayMode());
     
-    switch (node.arrayMode()) {
+    switch (node.arrayMode().type()) {
     case Array::String:
         m_jit.loadPtr(MacroAssembler::Address(baseReg, JSString::offsetOfValue()), storageReg);
         
@@ -3270,7 +3388,7 @@ void SpeculativeJIT::compileGetByValOnArguments(Node& node)
     if (!m_compileOkay)
         return;
   
-    ASSERT(modeAlreadyChecked(m_state.forNode(node.child1()), Array::Arguments));
+    ASSERT(ArrayMode(Array::Arguments).alreadyChecked(m_jit.graph(), node, m_state.forNode(node.child1())));
     
     // Two really lame checks.
     speculationCheck(
@@ -3327,7 +3445,7 @@ void SpeculativeJIT::compileGetArgumentsLength(Node& node)
     if (!m_compileOkay)
         return;
     
-    ASSERT(modeAlreadyChecked(m_state.forNode(node.child1()), Array::Arguments));
+    ASSERT(ArrayMode(Array::Arguments).alreadyChecked(m_jit.graph(), node, m_state.forNode(node.child1())));
     
     speculationCheck(
         Uncountable, JSValueSource(), NoNode,
@@ -3345,8 +3463,10 @@ void SpeculativeJIT::compileGetArrayLength(Node& node)
 {
     const TypedArrayDescriptor* descriptor = typedArrayDescriptor(node.arrayMode());
 
-    switch (node.arrayMode()) {
-    case ARRAY_WITH_CONTIGUOUS_MODES: {
+    switch (node.arrayMode().type()) {
+    case Array::Int32:
+    case Array::Double:
+    case Array::Contiguous: {
         StorageOperand storage(this, node.child2());
         GPRTemporary result(this, storage);
         GPRReg storageReg = storage.gpr();
@@ -3356,8 +3476,8 @@ void SpeculativeJIT::compileGetArrayLength(Node& node)
         integerResult(resultReg, m_compileIndex);
         break;
     }
-    case ARRAY_WITH_ARRAY_STORAGE_MODES:
-    case ARRAY_EFFECTFUL_MODES: {
+    case Array::ArrayStorage:
+    case Array::SlowPutArrayStorage: {
         StorageOperand storage(this, node.child2());
         GPRTemporary result(this, storage);
         GPRReg storageReg = storage.gpr();
@@ -3542,7 +3662,7 @@ void SpeculativeJIT::compileReallocatePropertyStorage(Node& node)
     storageResult(scratchGPR2, m_compileIndex);
 }
 
-GPRReg SpeculativeJIT::temporaryRegisterForPutByVal(GPRTemporary& temporary, Array::Mode arrayMode)
+GPRReg SpeculativeJIT::temporaryRegisterForPutByVal(GPRTemporary& temporary, ArrayMode arrayMode)
 {
     if (!putByValWillNeedExtraRegister(arrayMode))
         return InvalidGPRReg;

@@ -31,6 +31,7 @@
 #include "ClientRect.h"
 #include "ClientRectList.h"
 #include "ComposedShadowTreeWalker.h"
+#include "Cursor.h"
 #include "DOMStringList.h"
 #include "DOMWindow.h"
 #include "Document.h"
@@ -38,6 +39,7 @@
 #include "DocumentMarkerController.h"
 #include "Element.h"
 #include "ElementShadow.h"
+#include "EventHandler.h"
 #include "ExceptionCode.h"
 #include "FormController.h"
 #include "Frame.h"
@@ -68,12 +70,15 @@
 #include "RenderTreeAsText.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
+#include "SelectRuleFeatureSet.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SpellChecker.h"
 #include "TextIterator.h"
 #include "TreeScope.h"
 #include "ViewportArguments.h"
+#include <wtf/text/StringBuffer.h>
+
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -93,7 +98,6 @@
 #endif
 
 #if ENABLE(TOUCH_ADJUSTMENT)
-#include "EventHandler.h"
 #include "WebKitPoint.h"
 #endif
 
@@ -306,6 +310,67 @@ Node* Internals::parentTreeScope(Node* node, ExceptionCode& ec)
     return parentTreeScope ? parentTreeScope->rootNode() : 0;
 }
 
+bool Internals::hasSelectorForIdInShadow(Element* host, const String& idValue, ExceptionCode& ec)
+{
+    if (!host || !host->shadow()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    host->shadow()->ensureSelectFeatureSetCollected();
+    return host->shadow()->selectRuleFeatureSet().hasSelectorForId(idValue);
+}
+
+bool Internals::hasSelectorForClassInShadow(Element* host, const String& className, ExceptionCode& ec)
+{
+    if (!host || !host->shadow()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    host->shadow()->ensureSelectFeatureSetCollected();
+    return host->shadow()->selectRuleFeatureSet().hasSelectorForClass(className);
+}
+
+bool Internals::hasSelectorForAttributeInShadow(Element* host, const String& attributeName, ExceptionCode& ec)
+{
+    if (!host || !host->shadow()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    host->shadow()->ensureSelectFeatureSetCollected();
+    return host->shadow()->selectRuleFeatureSet().hasSelectorForAttribute(attributeName);
+}
+
+bool Internals::hasSelectorForPseudoClassInShadow(Element* host, const String& pseudoClass, ExceptionCode& ec)
+{
+    if (!host || !host->shadow()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    host->shadow()->ensureSelectFeatureSetCollected();
+    const SelectRuleFeatureSet& featureSet = host->shadow()->selectRuleFeatureSet();
+    if (pseudoClass == "checked")
+        return featureSet.hasSelectorForChecked();
+    if (pseudoClass == "enabled")
+        return featureSet.hasSelectorForEnabled();
+    if (pseudoClass == "disabled")
+        return featureSet.hasSelectorForDisabled();
+    if (pseudoClass == "indeterminate")
+        return featureSet.hasSelectorForIndeterminate();
+    if (pseudoClass == "link")
+        return featureSet.hasSelectorForLink();
+    if (pseudoClass == "target")
+        return featureSet.hasSelectorForTarget();
+    if (pseudoClass == "visited")
+        return featureSet.hasSelectorForVisited();
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
 bool Internals::hasShadowInsertionPoint(const Node* root, ExceptionCode& ec) const
 {
     if (root && root->isShadowRoot())
@@ -313,6 +378,25 @@ bool Internals::hasShadowInsertionPoint(const Node* root, ExceptionCode& ec) con
 
     ec = INVALID_ACCESS_ERR;
     return 0;
+}
+
+bool Internals::hasContentElement(const Node* root, ExceptionCode& ec) const
+{
+    if (root && root->isShadowRoot())
+        return toShadowRoot(root)->hasContentElement();
+
+    ec = INVALID_ACCESS_ERR;
+    return 0;
+}
+
+size_t Internals::countElementShadow(const Node* root, ExceptionCode& ec) const
+{
+    if (!root || !root->isShadowRoot()) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    return toShadowRoot(root)->countElementShadow();
 }
 
 bool Internals::attached(Node* node, ExceptionCode& ec)
@@ -473,6 +557,24 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::olderShadowRoot(Node* 
     return toShadowRoot(shadow)->olderShadowRoot();
 }
 
+String Internals::shadowRootType(const Node* root, ExceptionCode& ec) const
+{
+    if (!root || !root->isShadowRoot()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    switch (toShadowRoot(root)->type()) {
+    case ShadowRoot::UserAgentShadowRoot:
+        return String("UserAgentShadowRoot");
+    case ShadowRoot::AuthorShadowRoot:
+        return String("AuthorShadowRoot");
+    default:
+        ASSERT_NOT_REACHED();
+        return String("Unknown");
+    }
+}
+
 Element* Internals::includerFor(Node* node, ExceptionCode& ec)
 {
     if (!node) {
@@ -500,7 +602,7 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
         return;
     }
 
-    return element->setShadowPseudoId(id, ec);
+    return element->setPseudo(id);
 }
 
 String Internals::visiblePlaceholder(Element* element)
@@ -1003,16 +1105,6 @@ void Internals::setUserPreferredLanguages(const Vector<String>& languages)
     settings()->setUserPreferredLanguages(languages);
 }
 
-void Internals::setShouldDisplayTrackKind(Document*, const String& kind, bool enabled, ExceptionCode& ec)
-{
-    settings()->setShouldDisplayTrackKind(kind, enabled, ec);
-}
-
-bool Internals::shouldDisplayTrackKind(Document*, const String& kind, ExceptionCode& ec)
-{
-    return settings()->shouldDisplayTrackKind(kind, ec);
-}
-
 unsigned Internals::wheelEventHandlerCount(Document* document, ExceptionCode& ec)
 {
     if (!document) {
@@ -1269,8 +1361,34 @@ String Internals::layerTreeAsText(Document* document, unsigned flags, ExceptionC
         layerTreeFlags |= LayerTreeFlagsIncludeVisibleRects;
     if (flags & LAYER_TREE_INCLUDES_TILE_CACHES)
         layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
+    if (flags & LAYER_TREE_INCLUDES_REPAINT_RECTS)
+        layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
 
     return document->frame()->layerTreeAsText(layerTreeFlags);
+}
+
+String Internals::repaintRectsAsText(Document* document, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    return document->frame()->trackedRepaintRectsAsText();
+}
+
+String Internals::scrollingStateTreeAsText(Document* document, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    Page* page = document->page();
+    if (!page)
+        return String();
+
+    return page->scrollingStateTreeAsText();
 }
 
 void Internals::garbageCollectDocumentResources(Document* document, ExceptionCode& ec) const
@@ -1400,6 +1518,113 @@ PassRefPtr<DOMStringList> Internals::getReferencedFilePaths() const
     for (size_t i = 0; i < filePaths.size(); ++i)
         stringList->append(filePaths[i]);
     return stringList.release();
+}
+
+void Internals::startTrackingRepaints(Document* document, ExceptionCode& ec)
+{
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    FrameView* frameView = document->view();
+    frameView->setTracksRepaints(true);
+}
+
+void Internals::stopTrackingRepaints(Document* document, ExceptionCode& ec)
+{
+    if (!document || !document->view()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    FrameView* frameView = document->view();
+    frameView->setTracksRepaints(false);
+}
+
+#if USE(LAZY_NATIVE_CURSOR)
+static const char* cursorTypeToString(Cursor::Type cursorType)
+{
+    switch (cursorType) {
+    case Cursor::Pointer: return "Pointer";
+    case Cursor::Cross: return "Cross";
+    case Cursor::Hand: return "Hand";
+    case Cursor::IBeam: return "IBeam";
+    case Cursor::Wait: return "Wait";
+    case Cursor::Help: return "Help";
+    case Cursor::EastResize: return "EastResize";
+    case Cursor::NorthResize: return "NorthResize";
+    case Cursor::NorthEastResize: return "NorthEastResize";
+    case Cursor::NorthWestResize: return "NorthWestResize";
+    case Cursor::SouthResize: return "SouthResize";
+    case Cursor::SouthEastResize: return "SouthEastResize";
+    case Cursor::SouthWestResize: return "SouthWestResize";
+    case Cursor::WestResize: return "WestResize";
+    case Cursor::NorthSouthResize: return "NorthSouthResize";
+    case Cursor::EastWestResize: return "EastWestResize";
+    case Cursor::NorthEastSouthWestResize: return "NorthEastSouthWestResize";
+    case Cursor::NorthWestSouthEastResize: return "NorthWestSouthEastResize";
+    case Cursor::ColumnResize: return "ColumnResize";
+    case Cursor::RowResize: return "RowResize";
+    case Cursor::MiddlePanning: return "MiddlePanning";
+    case Cursor::EastPanning: return "EastPanning";
+    case Cursor::NorthPanning: return "NorthPanning";
+    case Cursor::NorthEastPanning: return "NorthEastPanning";
+    case Cursor::NorthWestPanning: return "NorthWestPanning";
+    case Cursor::SouthPanning: return "SouthPanning";
+    case Cursor::SouthEastPanning: return "SouthEastPanning";
+    case Cursor::SouthWestPanning: return "SouthWestPanning";
+    case Cursor::WestPanning: return "WestPanning";
+    case Cursor::Move: return "Move";
+    case Cursor::VerticalText: return "VerticalText";
+    case Cursor::Cell: return "Cell";
+    case Cursor::ContextMenu: return "ContextMenu";
+    case Cursor::Alias: return "Alias";
+    case Cursor::Progress: return "Progress";
+    case Cursor::NoDrop: return "NoDrop";
+    case Cursor::Copy: return "Copy";
+    case Cursor::None: return "None";
+    case Cursor::NotAllowed: return "NotAllowed";
+    case Cursor::ZoomIn: return "ZoomIn";
+    case Cursor::ZoomOut: return "ZoomOut";
+    case Cursor::Grab: return "Grab";
+    case Cursor::Grabbing: return "Grabbing";
+    case Cursor::Custom: return "Custom";
+    }
+
+    ASSERT_NOT_REACHED();
+    return "UNKNOWN";
+}
+#endif
+
+String Internals::getCurrentCursorInfo(Document* document, ExceptionCode& ec)
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+
+    Cursor cursor = document->frame()->eventHandler()->currentMouseCursor();
+
+#if USE(LAZY_NATIVE_CURSOR)
+    StringBuilder result;
+    result.append("type=");
+    result.append(cursorTypeToString(cursor.type()));
+    result.append(" hotSpot=");
+    result.appendNumber(cursor.hotSpot().x());
+    result.append(",");
+    result.appendNumber(cursor.hotSpot().y());
+    if (cursor.image()) {
+        IntSize size = cursor.image()->size();
+        result.append(" image=");
+        result.appendNumber(size.width());
+        result.append("x");
+        result.appendNumber(size.height());
+    }
+    return result.toString();
+#else
+    return "FAIL: Cursor details not available on this platform.";
+#endif
 }
 
 }

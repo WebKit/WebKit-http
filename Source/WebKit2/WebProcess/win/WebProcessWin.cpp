@@ -71,15 +71,13 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 {
 #if USE(CFNETWORK)
     RetainPtr<CFStringRef> cfurlCacheDirectory;
-#if USE(CFURLSTORAGESESSIONS)
     if (CFURLStorageSessionRef defaultStorageSession = ResourceHandle::defaultStorageSession())
         cfurlCacheDirectory.adoptCF(wkCopyFoundationCacheDirectory(defaultStorageSession));
     else
-#endif
         cfurlCacheDirectory.adoptCF(wkCopyFoundationCacheDirectory(0));
 
     if (!cfurlCacheDirectory)
-        cfurlCacheDirectory.adoptCF(WebCore::localUserSpecificStorageDirectory().createCFString());
+        cfurlCacheDirectory = WebCore::localUserSpecificStorageDirectory().createCFString();
 
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte 
     // count doesn't align exactly to a megabyte boundary.
@@ -103,11 +101,9 @@ void WebProcess::platformSetCacheModel(CacheModel cacheModel)
     pageCache()->setCapacity(pageCacheCapacity);
 
     RetainPtr<CFURLCacheRef> cfurlCache;
-#if USE(CFURLSTORAGESESSIONS)
     if (CFURLStorageSessionRef defaultStorageSession = ResourceHandle::defaultStorageSession())
         cfurlCache.adoptCF(wkCopyURLCache(defaultStorageSession));
     else
-#endif // USE(CFURLSTORAGESESSIONS)
         cfurlCache.adoptCF(CFURLCacheCopySharedURLCache());
 
     CFURLCacheSetMemoryCapacity(cfurlCache.get(), urlCacheMemoryCapacity);
@@ -122,11 +118,9 @@ void WebProcess::platformClearResourceCaches(ResourceCachesToClear cachesToClear
         return;
 
     RetainPtr<CFURLCacheRef> cache;
-#if USE(CFURLSTORAGESESSIONS)
     if (CFURLStorageSessionRef defaultStorageSession = ResourceHandle::defaultStorageSession())
         cache.adoptCF(wkCopyURLCache(defaultStorageSession));
     else
-#endif // USE(CFURLSTORAGESESSIONS)
         cache.adoptCF(CFURLCacheCopySharedURLCache());
 
     CFURLCacheRemoveAllCachedResponses(cache.get());
@@ -148,13 +142,12 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     if (defaultStorageSession)
         return;
 
-    RetainPtr<CFStringRef> cachePath(AdoptCF, parameters.diskCacheDirectory.createCFString());
-    if (!cachePath)
+    if (!parameters.diskCacheDirectory)
         return;
 
     CFIndex cacheDiskCapacity = parameters.cfURLCacheDiskCapacity;
     CFIndex cacheMemoryCapacity = parameters.cfURLCacheMemoryCapacity;
-    RetainPtr<CFURLCacheRef> uiProcessCache(AdoptCF, CFURLCacheCreate(kCFAllocatorDefault, cacheMemoryCapacity, cacheDiskCapacity, cachePath.get()));
+    RetainPtr<CFURLCacheRef> uiProcessCache(AdoptCF, CFURLCacheCreate(kCFAllocatorDefault, cacheMemoryCapacity, cacheDiskCapacity, parameters.diskCacheDirectory.createCFString().get()));
     CFURLCacheSetSharedURLCache(uiProcessCache.get());
 #endif // USE(CFNETWORK)
 }

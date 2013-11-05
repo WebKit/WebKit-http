@@ -29,8 +29,7 @@
 
 #include "DumpRenderTreeQt.h"
 
-#include "QtInitializeTestFonts.h"
-
+#include "QtTestSupport.h"
 #include <qapplication.h>
 #include <qdebug.h>
 #include <qdir.h>
@@ -66,11 +65,11 @@ void messageHandler(QtMsgType type, const QMessageLogContext&, const QString &me
     // do nothing
 }
 
-// We only support -v or --stdout or --stderr or -, all the others will be
+// We only support -v, -p, --pixel-tests, --stdout, --stderr and -, all the others will be
 // pass as test case name (even -abc.html is a valid test case name)
 bool isOption(const QString& str)
 {
-    return str == QString("-v")
+    return str == QString("-v") || str == QString("-p") || str == QString("--pixel-tests")
            || str == QString("--stdout") || str == QString("--stderr")
            || str == QString("--timeout") || str == QString("--no-timeout")
            || str == QString("-");
@@ -89,8 +88,8 @@ QString takeOptionValue(QStringList& arguments, int index)
 
 void printUsage()
 {
-    fprintf(stderr, "Usage: DumpRenderTree [-v] [--stdout output_filename] [-stderr error_filename] [--no-timeout] [--timeout timeout_MS] filename [filename2..n]\n");
-    fprintf(stderr, "Or folder containing test files: DumpRenderTree [-v] dirpath\n");
+    fprintf(stderr, "Usage: DumpRenderTree [-v|-p|--pixel-tests] [--stdout output_filename] [-stderr error_filename] [--no-timeout] [--timeout timeout_MS] filename [filename2..n]\n");
+    fprintf(stderr, "Or folder containing test files: DumpRenderTree [-v|--pixel-tests] dirpath\n");
     fflush(stderr);
 }
 
@@ -115,7 +114,7 @@ int main(int argc, char* argv[])
     if (suppressQtDebugOutput)
         qInstallMessageHandler(messageHandler);
 
-    WebKit::initializeTestFonts();
+    WebKit::QtTestSupport::initializeTestFonts();
 
     QApplication::setStyle(new QWindowsStyle);
     QApplication::setDesktopSettingsAware(false);
@@ -156,6 +155,14 @@ int main(int argc, char* argv[])
             exit(1);
         }
     }
+    index = args.indexOf("--pixel-tests");
+    if (index == -1)
+        index = args.indexOf("-p");
+    if (index != -1) {
+        dumper.setShouldDumpPixelsForAllTests();
+        args.removeAt(index);
+    }
+
     QWebDatabase::removeAllDatabases();
 
     index = args.indexOf(QLatin1String("--timeout"));

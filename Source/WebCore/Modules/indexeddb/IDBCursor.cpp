@@ -50,25 +50,25 @@ PassRefPtr<IDBCursor> IDBCursor::create(PassRefPtr<IDBCursorBackendInterface> ba
 
 const AtomicString& IDBCursor::directionNext()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, next, ("next"));
+    DEFINE_STATIC_LOCAL(AtomicString, next, ("next", AtomicString::ConstructFromLiteral));
     return next;
 }
 
 const AtomicString& IDBCursor::directionNextUnique()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, nextunique, ("nextunique"));
+    DEFINE_STATIC_LOCAL(AtomicString, nextunique, ("nextunique", AtomicString::ConstructFromLiteral));
     return nextunique;
 }
 
 const AtomicString& IDBCursor::directionPrev()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, prev, ("prev"));
+    DEFINE_STATIC_LOCAL(AtomicString, prev, ("prev", AtomicString::ConstructFromLiteral));
     return prev;
 }
 
 const AtomicString& IDBCursor::directionPrevUnique()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, prevunique, ("prevunique"));
+    DEFINE_STATIC_LOCAL(AtomicString, prevunique, ("prevunique", AtomicString::ConstructFromLiteral));
     return prevunique;
 }
 
@@ -170,7 +170,7 @@ void IDBCursor::advance(long long count, ExceptionCode& ec)
 
     // FIXME: This should only need to check for 0 once webkit.org/b/96798 lands.
     if (count < 1 || count > UINT_MAX) {
-        ec = NATIVE_TYPE_ERR;
+        ec = TypeError;
         return;
     }
 
@@ -257,13 +257,13 @@ void IDBCursor::close()
     }
 }
 
-void IDBCursor::setValueReady(ScriptExecutionContext* context, PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, ScriptValue& value)
+void IDBCursor::setValueReady(DOMRequestState* state, PassRefPtr<IDBKey> key, PassRefPtr<IDBKey> primaryKey, ScriptValue& value)
 {
     m_currentKey = key;
-    m_currentKeyValue = idbKeyToScriptValue(context, m_currentKey);
+    m_currentKeyValue = idbKeyToScriptValue(state, m_currentKey);
 
     m_currentPrimaryKey = primaryKey;
-    m_currentPrimaryKeyValue = idbKeyToScriptValue(context, m_currentPrimaryKey);
+    m_currentPrimaryKeyValue = idbKeyToScriptValue(state, m_currentPrimaryKey);
 
     if (!isKeyCursor()) {
         RefPtr<IDBObjectStore> objectStore = effectiveObjectStore();
@@ -310,7 +310,7 @@ IDBCursor::Direction IDBCursor::stringToDirection(const String& directionString,
         return static_cast<IDBCursor::Direction>(IDBCursor::NEXT + (directionString[0] - '0'));
     }
 
-    ec = NATIVE_TYPE_ERR;
+    ec = TypeError;
     return IDBCursor::NEXT;
 }
 
@@ -330,7 +330,7 @@ const AtomicString& IDBCursor::directionToString(unsigned short direction, Excep
         return IDBCursor::directionPrevUnique();
 
     default:
-        ec = NATIVE_TYPE_ERR;
+        ec = TypeError;
         return IDBCursor::directionNext();
     }
 }

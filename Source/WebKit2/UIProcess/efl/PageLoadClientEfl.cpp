@@ -30,11 +30,14 @@
 #include "WKAPICast.h"
 #include "WKFrame.h"
 #include "WKPage.h"
+#include "ewk_auth_request_private.h"
 #include "ewk_back_forward_list_private.h"
 #include "ewk_error_private.h"
 #include "ewk_intent_private.h"
 #include "ewk_intent_service_private.h"
 #include "ewk_view.h"
+
+using namespace EwkViewCallbacks;
 
 namespace WebKit {
 
@@ -49,15 +52,15 @@ void PageLoadClientEfl::didReceiveTitleForFrame(WKPageRef, WKStringRef title, WK
         return;
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    viewImpl->informTitleChange(toImpl(title)->string());
+    viewImpl->smartCallback<TitleChange>().call(toImpl(title)->string());
 }
 
 #if ENABLE(WEB_INTENTS)
 void PageLoadClientEfl::didReceiveIntentForFrame(WKPageRef, WKFrameRef, WKIntentDataRef intent, WKTypeRef, const void* clientInfo)
 {
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    RefPtr<Ewk_Intent> ewkIntent = Ewk_Intent::create(intent);
-    viewImpl->informIntentRequest(ewkIntent.get());
+    RefPtr<Ewk_Intent> ewkIntent = EwkIntent::create(intent);
+    viewImpl->smartCallback<IntentRequest>().call(ewkIntent.get());
 }
 #endif
 
@@ -65,15 +68,16 @@ void PageLoadClientEfl::didReceiveIntentForFrame(WKPageRef, WKFrameRef, WKIntent
 void PageLoadClientEfl::registerIntentServiceForFrame(WKPageRef, WKFrameRef, WKIntentServiceInfoRef serviceInfo, WKTypeRef, const void* clientInfo)
 {
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    RefPtr<Ewk_Intent_Service> ewkIntentService = Ewk_Intent_Service::create(serviceInfo);
-    viewImpl->informIntentServiceRegistration(ewkIntentService.get());
+    RefPtr<Ewk_Intent_Service> ewkIntentService = EwkIntentService::create(serviceInfo);
+    viewImpl->smartCallback<IntentServiceRegistration>().call(ewkIntentService.get());
 }
 #endif
 
 void PageLoadClientEfl::didChangeProgress(WKPageRef page, const void* clientInfo)
 {
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    viewImpl->informLoadProgress(WKPageGetEstimatedProgress(page));
+    double progress = WKPageGetEstimatedProgress(page);
+    viewImpl->smartCallback<LoadProgress>().call(&progress);
 }
 
 void PageLoadClientEfl::didFinishLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef /*userData*/, const void* clientInfo)
@@ -82,7 +86,7 @@ void PageLoadClientEfl::didFinishLoadForFrame(WKPageRef, WKFrameRef frame, WKTyp
         return;
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    viewImpl->informLoadFinished();
+    viewImpl->smartCallback<LoadFinished>().call();
 }
 
 void PageLoadClientEfl::didFailLoadWithErrorForFrame(WKPageRef, WKFrameRef frame, WKErrorRef error, WKTypeRef, const void* clientInfo)
@@ -92,8 +96,8 @@ void PageLoadClientEfl::didFailLoadWithErrorForFrame(WKPageRef, WKFrameRef frame
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
     OwnPtr<Ewk_Error> ewkError = Ewk_Error::create(error);
-    viewImpl->informLoadError(ewkError.get());
-    viewImpl->informLoadFinished();
+    viewImpl->smartCallback<LoadError>().call(ewkError.get());
+    viewImpl->smartCallback<LoadFinished>().call();
 }
 
 void PageLoadClientEfl::didStartProvisionalLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef /*userData*/, const void* clientInfo)
@@ -102,7 +106,8 @@ void PageLoadClientEfl::didStartProvisionalLoadForFrame(WKPageRef, WKFrameRef fr
         return;
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    viewImpl->informProvisionalLoadStarted();
+    viewImpl->informURLChange();
+    viewImpl->smartCallback<ProvisionalLoadStarted>().call();
 }
 
 void PageLoadClientEfl::didReceiveServerRedirectForProvisionalLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef /*userData*/, const void* clientInfo)
@@ -111,7 +116,8 @@ void PageLoadClientEfl::didReceiveServerRedirectForProvisionalLoadForFrame(WKPag
         return;
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
-    viewImpl->informProvisionalLoadRedirect();
+    viewImpl->informURLChange();
+    viewImpl->smartCallback<ProvisionalLoadRedirect>().call();
 }
 
 void PageLoadClientEfl::didFailProvisionalLoadWithErrorForFrame(WKPageRef, WKFrameRef frame, WKErrorRef error, WKTypeRef, const void* clientInfo)
@@ -121,7 +127,7 @@ void PageLoadClientEfl::didFailProvisionalLoadWithErrorForFrame(WKPageRef, WKFra
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
     OwnPtr<Ewk_Error> ewkError = Ewk_Error::create(error);
-    viewImpl->informProvisionalLoadFailed(ewkError.get());
+    viewImpl->smartCallback<ProvisionalLoadFailed>().call(ewkError.get());
 }
 
 #if USE(TILED_BACKING_STORE)
@@ -144,7 +150,7 @@ void PageLoadClientEfl::didChangeBackForwardList(WKPageRef, WKBackForwardListIte
     ASSERT(list);
     list->update(addedItem, removedItems);
 
-    viewImpl->informBackForwardListChange();
+    viewImpl->smartCallback<BackForwardListChange>().call();
 }
 
 void PageLoadClientEfl::didSameDocumentNavigationForFrame(WKPageRef, WKFrameRef frame, WKSameDocumentNavigationType, WKTypeRef, const void* clientInfo)
@@ -154,6 +160,14 @@ void PageLoadClientEfl::didSameDocumentNavigationForFrame(WKPageRef, WKFrameRef 
 
     EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
     viewImpl->informURLChange();
+}
+
+void PageLoadClientEfl::didReceiveAuthenticationChallengeInFrame(WKPageRef, WKFrameRef, WKAuthenticationChallengeRef authenticationChallenge, const void* clientInfo)
+{
+    EwkViewImpl* viewImpl = toPageLoadClientEfl(clientInfo)->viewImpl();
+
+    RefPtr<Ewk_Auth_Request> authenticationRequest = EwkAuthRequest::create(toImpl(authenticationChallenge));
+    viewImpl->smartCallback<AuthenticationRequest>().call(authenticationRequest.get());
 }
 
 PageLoadClientEfl::PageLoadClientEfl(EwkViewImpl* viewImpl)
@@ -186,6 +200,7 @@ PageLoadClientEfl::PageLoadClientEfl(EwkViewImpl* viewImpl)
 #endif
     loadClient.didChangeBackForwardList = didChangeBackForwardList;
     loadClient.didSameDocumentNavigationForFrame = didSameDocumentNavigationForFrame;
+    loadClient.didReceiveAuthenticationChallengeInFrame = didReceiveAuthenticationChallengeInFrame;
     WKPageSetPageLoaderClient(pageRef, &loadClient);
 }
 

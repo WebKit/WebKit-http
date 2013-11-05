@@ -220,7 +220,7 @@ public:
         if (right.hasConstant())
             return addImmediateShouldSpeculateInteger(add, left, right);
         
-        return Node::shouldSpeculateInteger(left, right) && add.canSpeculateInteger();
+        return Node::shouldSpeculateIntegerExpectingDefined(left, right) && add.canSpeculateInteger();
     }
     
     bool mulShouldSpeculateInteger(Node& mul)
@@ -230,18 +230,13 @@ public:
         Node& left = at(mul.child1());
         Node& right = at(mul.child2());
         
-        if (left.hasConstant())
-            return mulImmediateShouldSpeculateInteger(mul, right, left);
-        if (right.hasConstant())
-            return mulImmediateShouldSpeculateInteger(mul, left, right);
-        
-        return Node::shouldSpeculateInteger(left, right) && mul.canSpeculateInteger() && !nodeMayOverflow(mul.arithNodeFlags());
+        return Node::shouldSpeculateIntegerForArithmetic(left, right) && mul.canSpeculateInteger();
     }
     
     bool negateShouldSpeculateInteger(Node& negate)
     {
         ASSERT(negate.op() == ArithNegate);
-        return at(negate.child1()).shouldSpeculateInteger() && negate.canSpeculateInteger();
+        return at(negate.child1()).shouldSpeculateIntegerForArithmetic() && negate.canSpeculateInteger();
     }
     
     bool addShouldSpeculateInteger(NodeIndex nodeIndex)
@@ -490,14 +485,16 @@ public:
     // - and so on.
     bool byValIsPure(Node& node)
     {
-        switch (node.arrayMode()) {
+        switch (node.arrayMode().type()) {
         case Array::Generic:
-        case OUT_OF_BOUNDS_CONTIGUOUS_MODES:
-        case ARRAY_STORAGE_TO_HOLE_MODES:
-        case OUT_OF_BOUNDS_ARRAY_STORAGE_MODES:
-        case SLOW_PUT_ARRAY_STORAGE_MODES:
-        case ALL_EFFECTFUL_MODES:
             return false;
+        case Array::Int32:
+        case Array::Double:
+        case Array::Contiguous:
+        case Array::ArrayStorage:
+            return !node.arrayMode().isOutOfBounds();
+        case Array::SlowPutArrayStorage:
+            return !node.arrayMode().mayStoreToHole();
         case Array::String:
             return node.op() == GetByVal;
 #if USE(JSVALUE32_64)
@@ -712,7 +709,7 @@ private:
         if (!immediateValue.isNumber())
             return false;
         
-        if (!variable.shouldSpeculateInteger())
+        if (!variable.shouldSpeculateIntegerExpectingDefined())
             return false;
         
         if (immediateValue.isInt32())
@@ -734,7 +731,7 @@ private:
         if (!immediateValue.isInt32())
             return false;
         
-        if (!variable.shouldSpeculateInteger())
+        if (!variable.shouldSpeculateIntegerForArithmetic())
             return false;
         
         int32_t intImmediate = immediateValue.asInt32();

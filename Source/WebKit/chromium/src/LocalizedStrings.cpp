@@ -31,6 +31,7 @@
 #include "config.h"
 #include "LocalizedStrings.h"
 
+#include "DateTimeFormat.h"
 #include "IntSize.h"
 #include "NotImplemented.h"
 
@@ -267,10 +268,28 @@ String placeholderForYearField()
 {
     return query(WebLocalizedString::PlaceholderForYearField);
 }
+#endif
 
+#if ENABLE(INPUT_TYPE_WEEK)
 String weekFormatInLDML()
 {
-    return query(WebLocalizedString::WeekFormatTemplate);
+    String templ = query(WebLocalizedString::WeekFormatTemplate);
+    // Converts a string like "Week $2, $1" to an LDML date format pattern like
+    // "'Week 'ww', 'yyyy".
+    StringBuilder builder;
+    unsigned literalStart = 0;
+    unsigned length = templ.length();
+    for (unsigned i = 0; i + 1 < length; ++i) {
+        if (templ[i] == '$' && (templ[i + 1] == '1' || templ[i + 1] == '2')) {
+            if (literalStart < i)
+                DateTimeFormat::quoteAndAppendLiteral(templ.substring(literalStart, i - literalStart), builder);
+            builder.append(templ[++i] == '1' ? "yyyy" : "ww");
+            literalStart = i + 1;
+        }
+    }
+    if (literalStart < length)
+        DateTimeFormat::quoteAndAppendLiteral(templ.substring(literalStart, length - literalStart), builder);
+    return builder.toString();
 }
 
 #endif
@@ -293,6 +312,12 @@ String blockedPluginByContentSecurityPolicyText()
 }
 
 String insecurePluginVersionText()
+{
+    notImplemented();
+    return String();
+}
+
+String inactivePluginText()
 {
     notImplemented();
     return String();
@@ -478,32 +503,5 @@ String validationMessageStepMismatchText(const String& base, const String& step)
 {
     return query(WebLocalizedString::ValidationStepMismatch, base, step);
 }
-
-#if ENABLE(CALENDAR_PICKER)
-String calendarTodayText()
-{
-    return query(WebLocalizedString::CalendarToday);
-}
-
-String calendarClearText()
-{
-    return query(WebLocalizedString::CalendarClear);
-}
-
-String dateFormatYearText()
-{
-    return query(WebLocalizedString::DateFormatYearLabel);
-}
-
-String dateFormatMonthText()
-{
-    return query(WebLocalizedString::DateFormatMonthLabel);
-}
-
-String dateFormatDayInMonthText()
-{
-    return query(WebLocalizedString::DateFormatDayInMonthLabel);
-}
-#endif
 
 } // namespace WebCore

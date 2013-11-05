@@ -34,6 +34,7 @@
 #include "ScriptCallStack.h"
 #include "ScriptProfile.h"
 #include "ScriptState.h"
+#include "ScriptWrappable.h"
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -50,18 +51,19 @@ class ScriptCallStack;
 typedef Vector<RefPtr<ScriptProfile> > ProfilesArray;
 #endif
 
-class Console : public RefCounted<Console>, public DOMWindowProperty {
+class Console : public ScriptWrappable, public RefCounted<Console>, public DOMWindowProperty {
 public:
     static PassRefPtr<Console> create(Frame* frame) { return adoptRef(new Console(frame)); }
     virtual ~Console();
 
-    void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL = String(), unsigned lineNumber = 0, PassRefPtr<ScriptCallStack> = 0);
+    void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL = String(), unsigned lineNumber = 0, PassRefPtr<ScriptCallStack> = 0, unsigned long requestIdentifier = 0);
     void addMessage(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>);
 
     void debug(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     void error(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     void info(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     void log(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
+    void clear(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     void warn(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     void dir(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);
     void dirxml(PassRefPtr<ScriptArguments>, PassRefPtr<ScriptCallStack>);

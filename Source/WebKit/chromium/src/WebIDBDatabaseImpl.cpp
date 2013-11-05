@@ -70,9 +70,9 @@ WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(long long id, const Web
     return new WebIDBObjectStoreImpl(objectStore);
 }
 
-void WebIDBDatabaseImpl::deleteObjectStore(const WebString& name, const WebIDBTransaction& transaction, WebExceptionCode& ec)
+void WebIDBDatabaseImpl::deleteObjectStore(long long objectStoreId, const WebIDBTransaction& transaction, WebExceptionCode& ec)
 {
-    m_databaseBackend->deleteObjectStore(name, transaction.getIDBTransactionBackendInterface(), ec);
+    m_databaseBackend->deleteObjectStore(objectStoreId, transaction.getIDBTransactionBackendInterface(), ec);
 }
 
 void WebIDBDatabaseImpl::setVersion(const WebString& version, WebIDBCallbacks* callbacks, WebExceptionCode& ec)
@@ -80,14 +80,14 @@ void WebIDBDatabaseImpl::setVersion(const WebString& version, WebIDBCallbacks* c
     m_databaseBackend->setVersion(version, IDBCallbacksProxy::create(adoptPtr(callbacks)), m_databaseCallbacks, ec);
 }
 
-WebIDBTransaction* WebIDBDatabaseImpl::transaction(const WebDOMStringList& names, unsigned short mode, WebExceptionCode& ec)
+WebIDBTransaction* WebIDBDatabaseImpl::transaction(const WebVector<long long>& objectStoreIds, unsigned short mode)
 {
-    RefPtr<DOMStringList> nameList = PassRefPtr<DOMStringList>(names);
-    RefPtr<IDBTransactionBackendInterface> transaction = m_databaseBackend->transaction(nameList.get(), mode, ec);
-    if (!transaction) {
-        ASSERT(ec);
+    Vector<int64_t> objectStoreIdList(objectStoreIds.size());
+    for (size_t i = 0; i < objectStoreIds.size(); ++i)
+        objectStoreIdList[i] = objectStoreIds[i];
+    RefPtr<IDBTransactionBackendInterface> transaction = m_databaseBackend->transaction(objectStoreIdList, mode);
+    if (!transaction)
         return 0;
-    }
     return new WebIDBTransactionImpl(transaction);
 }
 

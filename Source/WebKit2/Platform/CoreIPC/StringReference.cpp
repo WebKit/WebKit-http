@@ -30,18 +30,24 @@
 #include "ArgumentEncoder.h"
 #include "DataReference.h"
 #include <wtf/StringHasher.h>
+#include <wtf/text/CString.h>
 
 namespace CoreIPC {
 
+CString StringReference::toString() const
+{
+    return WTF::CString(m_data, m_size);
+}
+
 void StringReference::encode(ArgumentEncoder& encoder) const
 {
-    encoder.encodeVariableLengthByteArray(DataReference(reinterpret_cast<const uint8_t*>(m_data), m_size));
+    encoder << DataReference(reinterpret_cast<const uint8_t*>(m_data), m_size);
 }
 
 bool StringReference::decode(ArgumentDecoder* decoder, StringReference& result)
 {
     DataReference dataReference;
-    if (!decoder->decodeVariableLengthByteArray(dataReference))
+    if (!decoder->decode(dataReference))
         return false;
 
     result.m_data = reinterpret_cast<const char*>(dataReference.data());

@@ -51,7 +51,6 @@
 #include "StylePropertySet.h"
 #include "V8Binding.h"
 #include "V8Collection.h"
-#include "V8DOMMap.h"
 #include "V8DOMWindow.h"
 #include "V8Document.h"
 #include "V8GCController.h"
@@ -170,16 +169,6 @@ static void checkDocumentWrapper(v8::Handle<v8::Object> wrapper, Document* docum
     ASSERT(!document->isHTMLDocument() || (V8Document::toNative(v8::Handle<v8::Object>::Cast(wrapper->GetPrototype())) == document));
 }
 
-static void setIsolatedWorldField(V8DOMWindowShell* shell, v8::Local<v8::Context> context)
-{
-    toInnerGlobalObject(context)->SetPointerInInternalField(V8DOMWindow::enteredIsolatedWorldIndex, shell);
-}
-
-V8DOMWindowShell* V8DOMWindowShell::enteredIsolatedWorldContext()
-{
-    return static_cast<V8DOMWindowShell*>(toInnerGlobalObject(v8::Context::GetEntered())->GetPointerFromInternalField(V8DOMWindow::enteredIsolatedWorldIndex));
-}
-
 static void setInjectedScriptContextDebugId(v8::Handle<v8::Context> targetContext, int debugId)
 {
     char buffer[32];
@@ -187,7 +176,7 @@ static void setInjectedScriptContextDebugId(v8::Handle<v8::Context> targetContex
         snprintf(buffer, sizeof(buffer), "injected");
     else
         snprintf(buffer, sizeof(buffer), "injected,%d", debugId);
-    targetContext->SetData(v8::String::New(buffer));
+    targetContext->SetEmbedderData(0, v8::String::New(buffer));
 }
 
 PassOwnPtr<V8DOMWindowShell> V8DOMWindowShell::create(Frame* frame, PassRefPtr<DOMWrapperWorld> world)
@@ -199,12 +188,6 @@ V8DOMWindowShell::V8DOMWindowShell(Frame* frame, PassRefPtr<DOMWrapperWorld> wor
     : m_frame(frame)
     , m_world(world)
 {
-}
-
-bool V8DOMWindowShell::isContextInitialized()
-{
-    ASSERT(m_context.isEmpty() || !m_global.isEmpty());
-    return !m_context.isEmpty();
 }
 
 void V8DOMWindowShell::destroyIsolatedShell()
@@ -345,13 +328,13 @@ bool V8DOMWindowShell::initializeIfNeeded()
         }
     }
 
-    // Flag context as isolated.
-    if (!isMainWorld) {
-        V8DOMWindowShell* mainWindow = m_frame->script()->windowShell();
-        mainWindow->initializeIfNeeded();
-        if (!mainWindow->context().IsEmpty())
+    if (isMainWorld)
+        context->SetAlignedPointerInEmbedderData(v8ContextIsolatedWindowShell, 0);
+    else {
+        V8DOMWindowShell* mainWindow = m_frame->script()->existingWindowShell(mainThreadNormalWorld());
+        if (mainWindow && !mainWindow->context().IsEmpty())
             setInjectedScriptContextDebugId(m_context.get(), m_frame->script()->contextDebugId(mainWindow->context()));
-        setIsolatedWorldField(this, context);
+        context->SetAlignedPointerInEmbedderData(v8ContextIsolatedWindowShell, this);
     }
 
     m_perContextData = V8PerContextData::create(m_context.get());
@@ -389,13 +372,6 @@ bool V8DOMWindowShell::initializeIfNeeded()
         }
     }
     m_frame->loader()->client()->didCreateScriptContext(m_context.get(), m_world->extensionGroup(), m_world->worldId());
-
-    if (isMainWorld) {
-        // FIXME: This call is probably in the wrong spot, but causes a test timeout for http/tests/misc/window-open-then-write.html when removed.
-        // Additionally, ScriptController::existingWindowShell cannot be correctly implemented until this call is gone.
-        m_frame->loader()->dispatchDidClearWindowObjectInWorld(0);
-    }
-
     return true;
 }
 
@@ -449,9 +425,8 @@ bool V8DOMWindowShell::installDOMWindow()
 
     V8DOMWindow::installPerContextProperties(windowWrapper, window);
 
-    V8DOMWrapper::setDOMWrapper(windowWrapper, &V8DOMWindow::info, window);
     V8DOMWrapper::setDOMWrapper(v8::Handle<v8::Object>::Cast(windowWrapper->GetPrototype()), &V8DOMWindow::info, window);
-    V8DOMWrapper::setJSWrapperForDOMObject(PassRefPtr<DOMWindow>(window), windowWrapper);
+    V8DOMWrapper::createDOMWrapper(PassRefPtr<DOMWindow>(window), &V8DOMWindow::info, windowWrapper);
 
     // Install the windowWrapper as the prototype of the innerGlobalObject.
     // The full structure of the global object is as follows:
@@ -553,7 +528,7 @@ void V8DOMWindowShell::updateDocument()
     ASSERT(m_world->isMainWorld());
     if (m_global.isEmpty())
         return;
-    if (!initializeIfNeeded())
+    if (m_context.isEmpty())
         return;
     updateDocumentProperty();
     updateSecurityOrigin();
@@ -578,7 +553,7 @@ void V8DOMWindowShell::namedItemAdded(HTMLDocument* document, const AtomicString
 {
     ASSERT(m_world->isMainWorld());
 
-    if (!initializeIfNeeded())
+    if (m_context.isEmpty())
         return;
 
     v8::HandleScope handleScope;
@@ -593,10 +568,10 @@ void V8DOMWindowShell::namedItemRemoved(HTMLDocument* document, const AtomicStri
 {
     ASSERT(m_world->isMainWorld());
 
-    if (document->hasNamedItem(name.impl()) || document->hasExtraNamedItem(name.impl()))
+    if (m_context.isEmpty())
         return;
 
-    if (!initializeIfNeeded())
+    if (document->hasNamedItem(name.impl()) || document->hasExtraNamedItem(name.impl()))
         return;
 
     v8::HandleScope handleScope;

@@ -469,7 +469,6 @@ RegisterID* FunctionCallDotNode::emitBytecode(BytecodeGenerator& generator, Regi
     CallArguments callArguments(generator, m_args);
     generator.emitNode(callArguments.thisRegister(), m_base);
     generator.emitExpressionInfo(divot() - m_subexpressionDivotOffset, startOffset() - m_subexpressionDivotOffset, m_subexpressionEndOffset);
-    generator.emitMethodCheck();
     generator.emitGetById(function.get(), callArguments.thisRegister(), m_ident);
     return generator.emitCall(generator.finalDestinationOrIgnored(dst, function.get()), function.get(), NoExpectedFunction, callArguments, divot(), startOffset(), endOffset());
 }
@@ -1036,6 +1035,16 @@ RegisterID* BinaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID*
 
     RefPtr<RegisterID> src1 = generator.emitNodeForLeftHandSide(m_expr1, m_rightHasAssignments, m_expr2->isPure(generator));
     RegisterID* src2 = generator.emitNode(m_expr2);
+    if (generator.m_lastOpcodeID == op_typeof && (opcodeID == op_neq || opcodeID == op_nstricteq)) {
+        RefPtr<RegisterID> tmp = generator.tempDestination(dst);
+        if (opcodeID == op_neq)
+            generator.emitEqualityOp(op_eq, generator.finalDestination(tmp.get(), src1.get()), src1.get(), src2);
+        else if (opcodeID == op_nstricteq)
+            generator.emitEqualityOp(op_stricteq, generator.finalDestination(tmp.get(), src1.get()), src1.get(), src2);
+        else
+            ASSERT_NOT_REACHED();
+        return generator.emitUnaryOp(op_not, generator.finalDestination(dst, tmp.get()), tmp.get());
+    }
     return generator.emitBinaryOp(opcodeID, generator.finalDestination(dst, src1.get()), src1.get(), src2, OperandTypes(m_expr1->resultDescriptor(), m_expr2->resultDescriptor()));
 }
 

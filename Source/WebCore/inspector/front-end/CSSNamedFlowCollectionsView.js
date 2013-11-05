@@ -29,11 +29,11 @@
 
 /**
  * @constructor
- * @extends {WebInspector.SplitView}
+ * @extends {WebInspector.SidebarView}
  */
 WebInspector.CSSNamedFlowCollectionsView = function()
 {
-    WebInspector.SplitView.call(this, WebInspector.SplitView.SidebarPosition.Left);
+    WebInspector.SidebarView.call(this, WebInspector.SidebarView.SidebarPosition.Left);
     this.registerRequiredCSS("cssNamedFlows.css");
 
     this._namedFlows = {};
@@ -91,7 +91,7 @@ WebInspector.CSSNamedFlowCollectionsView.prototype = {
      */
     _documentUpdated: function(event)
     {
-        var document = /** @type {WebInspector.DOMDocument} */ event.data;
+        var document = /** @type {WebInspector.DOMDocument} */ (event.data);
         this._setDocument(document);
     },
 
@@ -219,7 +219,7 @@ WebInspector.CSSNamedFlowCollectionsView.prototype = {
         if (event.data.documentNodeId !== this._document.id)
             return;
 
-        var flow = /** @type {WebInspector.NamedFlow} */ event.data;
+        var flow = /** @type {WebInspector.NamedFlow} */ (event.data);
         this._appendNamedFlow(flow);
     },
 
@@ -244,7 +244,7 @@ WebInspector.CSSNamedFlowCollectionsView.prototype = {
         if (event.data.documentNodeId !== this._document.id)
             return;
 
-        var flow = /** @type {WebInspector.NamedFlow} */ event.data;
+        var flow = /** @type {WebInspector.NamedFlow} */ (event.data);
         this._updateNamedFlow(flow);
     },
 
@@ -298,7 +298,7 @@ WebInspector.CSSNamedFlowCollectionsView.prototype = {
      */
     _selectedNodeChanged: function(event)
     {
-        var node = /** @type {WebInspector.DOMNode} */ event.data;
+        var node = /** @type {WebInspector.DOMNode} */ (event.data);
         this._showNamedFlowForNode(node);
     },
 
@@ -343,7 +343,7 @@ WebInspector.CSSNamedFlowCollectionsView.prototype = {
 
     wasShown: function()
     {
-        WebInspector.SplitView.prototype.wasShown.call(this);
+        WebInspector.SidebarView.prototype.wasShown.call(this);
 
         WebInspector.domAgent.requestDocument(this._setDocument.bind(this));
 
@@ -373,7 +373,7 @@ WebInspector.CSSNamedFlowCollectionsView.prototype = {
         this._tabbedPane.removeEventListener(WebInspector.TabbedPane.EventTypes.TabClosed, this._tabClosed, this);
     },
 
-    __proto__: WebInspector.SplitView.prototype
+    __proto__: WebInspector.SidebarView.prototype
 }
 
 /**

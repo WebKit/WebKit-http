@@ -33,7 +33,7 @@
 #include "FrameLoaderClient.h"
 #include "ResourceHandle.h"
 
-#if HAVE(NETWORK_CFDATA_ARRAY_CALLBACK)
+#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 #include "InspectorInstrumentation.h"
 #endif
 
@@ -68,7 +68,7 @@ NSCachedURLResponse* ResourceLoader::willCacheResponse(ResourceHandle*, NSCached
 
 #endif
 
-#if HAVE(NETWORK_CFDATA_ARRAY_CALLBACK)
+#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 
 void ResourceLoader::didReceiveDataArray(CFArrayRef dataArray)
 {
@@ -83,7 +83,7 @@ void ResourceLoader::didReceiveDataArray(CFArrayRef dataArray)
 
         if (m_options.shouldBufferData == BufferData) {
             if (!m_resourceData)
-                m_resourceData = SharedBuffer::create();
+                m_resourceData = ResourceBuffer::create();
             m_resourceData->append(data);
         }
 
@@ -97,7 +97,16 @@ void ResourceLoader::didReceiveDataArray(CFArrayRef dataArray)
 
 void ResourceLoader::didReceiveDataArray(ResourceHandle*, CFArrayRef dataArray)
 {
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceData(m_frame.get(), identifier());
+    CFIndex arrayCount = CFArrayGetCount(dataArray);
+    CFIndex dataLength = 0;
+    for (CFIndex i = 0; i < arrayCount; ++i) {
+        CFDataRef data = static_cast<CFDataRef>(CFArrayGetValueAtIndex(dataArray, i));
+        dataLength += CFDataGetLength(data);
+    }
+
+    // FIXME: didReceiveData() passes encoded data length to InspectorInstrumentation, but it is not available here.
+    // This probably results in incorrect size being displayed in Web Inspector.
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceData(m_frame.get(), identifier(), dataLength);
     didReceiveDataArray(dataArray);
     InspectorInstrumentation::didReceiveResourceData(cookie);
 }

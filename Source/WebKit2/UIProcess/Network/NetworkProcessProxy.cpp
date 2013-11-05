@@ -112,7 +112,7 @@ void NetworkProcessProxy::didClose(CoreIPC::Connection*)
     networkProcessCrashedOrFailedToLaunch();
 }
 
-void NetworkProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID)
+void NetworkProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)
 {
 
 }
@@ -162,6 +162,11 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connecti
         m_connection->send(Messages::NetworkProcess::CreateNetworkConnectionToWebProcess(), 0);
     
     m_numPendingConnectionRequests = 0;
+
+#if PLATFORM(MAC)
+    if (WebContext::applicationIsOccluded())
+        m_connection->send(Messages::NetworkProcess::SetApplicationIsOccluded(true), 0);
+#endif
 }
 
 } // namespace WebKit

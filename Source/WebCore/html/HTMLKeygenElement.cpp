@@ -50,16 +50,12 @@ public:
         return adoptRef(new KeygenSelectElement(document));
     }
 
-    virtual const AtomicString& shadowPseudoId() const
-    {
-        DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-keygen-select"));
-        return pseudoId;
-    }
-
 protected:
     KeygenSelectElement(Document* document)
         : HTMLSelectElement(selectTag, document, 0)
     {
+        DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-keygen-select", AtomicString::ConstructFromLiteral));
+        setPseudo(pseudoId);
     }
 
 private:
@@ -120,7 +116,7 @@ bool HTMLKeygenElement::appendFormData(FormDataList& encoded_values, bool)
 
 const AtomicString& HTMLKeygenElement::formControlType() const
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, keygen, ("keygen"));
+    DEFINE_STATIC_LOCAL(const AtomicString, keygen, ("keygen", AtomicString::ConstructFromLiteral));
     return keygen;
 }
 

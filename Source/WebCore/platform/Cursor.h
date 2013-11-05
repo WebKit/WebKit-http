@@ -28,6 +28,7 @@
 
 #include "Image.h"
 #include "IntPoint.h"
+#include <wtf/Assertions.h>
 #include <wtf/RefPtr.h>
 
 #if PLATFORM(WIN)
@@ -41,8 +42,6 @@ typedef HICON HCURSOR;
 #include "GRefPtrGtk.h"
 #elif PLATFORM(QT)
 #include <QCursor>
-#elif PLATFORM(CHROMIUM)
-#include "PlatformCursor.h"
 #elif PLATFORM(HAIKU)
 #include <app/Cursor.h>
 #elif PLATFORM(BLACKBERRY)
@@ -62,7 +61,8 @@ typedef struct HICON__ *HICON;
 typedef HICON HCURSOR;
 #endif
 
-#if PLATFORM(WIN) || PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+// Looks like it's just PLATFORM(WX) and PLATFORM(BLACKBERRY) still not using this?
+#if PLATFORM(WIN) || PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(CHROMIUM)
 #define WTF_USE_LAZY_NATIVE_CURSOR 1
 #endif
 
@@ -92,7 +92,6 @@ namespace WebCore {
     typedef QCursor* PlatformCursor;
 #elif PLATFORM(WX)
     typedef wxCursor* PlatformCursor;
-#elif PLATFORM(CHROMIUM)
     // See PlatformCursor.h
 #elif PLATFORM(HAIKU)
     typedef BCursor* PlatformCursor;
@@ -107,7 +106,7 @@ namespace WebCore {
         WTF_MAKE_FAST_ALLOCATED;
     public:
         enum Type {
-            Pointer,
+            Pointer = 0,
             Cross,
             Hand,
             IBeam,
@@ -157,8 +156,14 @@ namespace WebCore {
 
         Cursor()
 #if !PLATFORM(IOS) && !PLATFORM(BLACKBERRY)
+#if USE(LAZY_NATIVE_CURSOR)
+            // This is an invalid Cursor and should never actually get used.
+            : m_type(static_cast<Type>(-1))
+            , m_platformCursor(0)
+#else
             : m_platformCursor(0)
-#endif
+#endif // USE(LAZY_NATIVE_CURSOR)
+#endif // !PLATFORM(IOS) && !PLATFORM(BLACKBERRY)
         {
         }
 
@@ -170,7 +175,11 @@ namespace WebCore {
 
 #if USE(LAZY_NATIVE_CURSOR)
         explicit Cursor(Type);
-        Type type() const { return m_type; }
+        Type type() const
+        {
+            ASSERT(m_type >= 0 && m_type <= Custom);
+            return m_type;
+        }
         Image* image() const { return m_image.get(); }
         const IntPoint& hotSpot() const { return m_hotSpot; }
         PlatformCursor platformCursor() const;

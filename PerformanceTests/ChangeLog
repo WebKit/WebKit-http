@@ -1,3 +1,138 @@
+2012-11-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        runCount in runner.js should be renamed to iterationCount
+        https://bugs.webkit.org/show_bug.cgi?id=102208
+
+        Reviewed by Tony Chang.
+
+        Prior to this patch, there were terminology confusions between "runs" and "iterations".
+        The term "run" should refer to running a performance test once, and "iteration" should
+        refer to one measurement in the test. i.e. Executing run-perf-should once will result in
+        a single "run" of performance tests and each test may execute multiple "iterations"
+        to complete the run.
+
+        Unfortunately, we still overload the meaning of "runs" in "runs/s" (is "function calls/s")
+        but that could be addressed in a separate patch.
+
+        * Animation/balls.html:
+        * DOM/DOMTable.html:
+        * DOM/resources/dom-perf.js:
+        * Layout/floats_100_100.html:
+        * Layout/floats_100_100_nested.html:
+        * Layout/floats_20_100.html:
+        * Layout/floats_20_100_nested.html:
+        * Layout/floats_2_100.html:
+        * Layout/floats_2_100_nested.html:
+        * Layout/floats_50_100.html:
+        * Layout/floats_50_100_nested.html:
+        * Layout/subtree-detaching.html:
+        * Parser/html5-full-render.html:
+        * SVG/SvgHitTesting.html:
+        * resources/runner.js:
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134367.
+        http://trac.webkit.org/changeset/134367
+        https://bugs.webkit.org/show_bug.cgi?id=100738
+
+        Speculative rollout, could have cause Dromaeo setAttribute
+        perf regression.
+
+        * DOM/ModifyAttribute.html: Removed.
+        * DOM/resources/dom-perf/modify-attribute.js: Removed.
+
+2012-11-12  Shinya Kawanaka  <shinyak@chromium.org>
+
+        Changing id, className, or attribute should invalidate distribution
+        https://bugs.webkit.org/show_bug.cgi?id=100738
+
+        Reviewed by Dimitri Glazkov.
+
+        Added test code to modify id/class/attribute.
+
+        * DOM/ModifyAttribute.html: Added.
+        * DOM/resources/dom-perf/modify-attribute.js: Added.
+        (ModifyAttribute.CreateElementToSetUp):
+        (ModifyAttribute.ModifyId):
+        (ModifyAttribute.ModifyClass):
+        (ModifyAttribute.ModifyTitle):
+
+2012-11-06  Adam Barth  <abarth@webkit.org>
+
+        DOMImplementation should use ScriptWrappable
+        https://bugs.webkit.org/show_bug.cgi?id=101279
+
+        Reviewed by Eric Seidel.
+
+        This simple PerformanceTest measure how quickly we can access
+        document.implementation. The goal of this performance test is just to
+        validate that using ScriptWrappable actually makes the bindings faster.
+
+        * Bindings/document-implementation.html: Added.
+
+2012-11-05  Geoffrey Garen  <ggaren@apple.com>
+
+        WebKit should have performance tests for book chapter reflow
+        https://bugs.webkit.org/show_bug.cgi?id=101271
+
+        Reviewed by Dan Bernstein.
+
+        I grabbed a book chapter from the Project Gutenberg front page:
+
+        * Layout/chapter-reflow-once.html: Added.
+        * Layout/chapter-reflow-thrice.html: Added.
+        * Layout/chapter-reflow-twice.html: Added.
+        * Layout/chapter-reflow.html: Added.
+
+        I also created a torture-test random text generator:
+
+        * Layout/chapter-reflow-once-random.html: Added.
+
+2012-10-29  Zoltan Horvath  <zoltan@webkit.org>
+
+        Turn PageLoad tests into simple performancetests, commit #7 (last) 
+        https://bugs.webkit.org/show_bug.cgi?id=99899
+
+        Reviewed by Ryosuke Niwa.
+
+        We cannot provide an elegant way to measure the memory consumption of the PageLoad tests, but we can turn them into simple
+        performance tests and measure their memory footprint and performance that way. This change moves and renames the related files
+        to their new location and adds html/js wrappers for them.
+
+        This is the #7 (last) commit of the whole patch.
+
+        * PageLoad: Removed.
+        * PageLoad/svg: Removed.
+        * PageLoad/svg/LICENSES: Removed.
+        * PageLoad/svg/files: Removed.
+        * PageLoad/svg/files/33041-Samurai.svg: Removed.
+        * PageLoad/svg/files/42450-under the see.svg: Removed.
+        * PageLoad/svg/files/world-iso.svg: Removed.
+        * PageLoad/svg/svg.pltsuite: Removed.
+        * SVG/Samurai.html: Added.
+        * SVG/UnderTheSee.html: Added.
+        * SVG/WorldIso.html: Added.
+        * SVG/resources/LICENSES: Copied from PerformanceTests/PageLoad/svg/LICENSES.
+        * SVG/resources/Samurai.svg: Copied from PerformanceTests/PageLoad/svg/files/33041-Samurai.svg.
+        * SVG/resources/UnderTheSee.svg: Copied from PerformanceTests/PageLoad/svg/files/42450-under%20the%20see.svg.
+        * SVG/resources/WorldIso.svg: Copied from PerformanceTests/PageLoad/svg/files/world-iso.svg.
+        * SVG/resources/svg.pltsuite: Copied from PerformanceTests/PageLoad/svg/svg.pltsuite.
+        * Skipped: Rename the files on the skipped list also.
+
+2012-10-26  Eric Seidel  <eric@webkit.org>
+
+        Add a microbenchmark for Hindi (complex-text) line-layout
+        https://bugs.webkit.org/show_bug.cgi?id=100024
+
+        Reviewed by Ryosuke Niwa.
+
+        I wrote this to make sure that we don't regress line-breaking performance
+        for the complex-text codepath. This test has shown me that TOT is
+        already 5% slower than Safari 6.0.1 here. :(
+
+        * Layout/hindi-line-layout.html: Added.
+
 2012-10-26  Zoltan Horvath  <zoltan@webkit.org>
 
         Turn PageLoad tests into simple performancetests, commit #6 

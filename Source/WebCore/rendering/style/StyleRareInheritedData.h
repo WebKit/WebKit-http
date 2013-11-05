@@ -85,7 +85,7 @@ public:
     unsigned wordBreak : 2; // EWordBreak
     unsigned overflowWrap : 1; // EOverflowWrap
     unsigned nbspMode : 1; // ENBSPMode
-    unsigned khtmlLineBreak : 1; // EKHTMLLineBreak
+    unsigned lineBreak : 3; // LineBreak
     unsigned textSizeAdjust : 1; // An Apple extension.
     unsigned resize : 2; // EResize
     unsigned userSelect : 2; // EUserSelect
@@ -110,6 +110,9 @@ public:
     unsigned m_imageResolutionSource : 1; // ImageResolutionSource
     unsigned m_imageResolutionSnap : 1; // ImageResolutionSnap
 #endif
+#if ENABLE(CSS3_TEXT)
+    unsigned m_textAlignLast : 3; // ETextAlignLast
+#endif // CSS3_TEXT
 
     AtomicString hyphenationString;
     short hyphenationLimitBefore;

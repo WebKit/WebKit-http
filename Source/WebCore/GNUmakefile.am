@@ -54,8 +54,9 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/animation \
 	-I$(srcdir)/Source/WebCore/platform/audio \
 	-I$(srcdir)/Source/WebCore/platform/graphics \
+	-I$(srcdir)/Source/WebCore/platform/graphics/cpu/arm \
+	-I$(srcdir)/Source/WebCore/platform/graphics/cpu/arm/filters/ \
 	-I$(srcdir)/Source/WebCore/platform/graphics/filters \
-	-I$(srcdir)/Source/WebCore/platform/graphics/filters/arm \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gpu \
 	-I$(srcdir)/Source/WebCore/platform/graphics/opengl \
 	-I$(srcdir)/Source/WebCore/platform/graphics/opentype \
@@ -73,6 +74,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/mediastream/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/mock \
 	-I$(srcdir)/Source/WebCore/platform/network \
+	-I$(srcdir)/Source/WebCore/platform/network/gtk \
 	-I$(srcdir)/Source/WebCore/platform/sql \
 	-I$(srcdir)/Source/WebCore/platform/text \
 	-I$(srcdir)/Source/WebCore/platform/text/transcoder \
@@ -502,6 +504,9 @@ DerivedSources/WebCore/EventTargetHeaders.h DerivedSources/WebCore/EventTargetIn
 DerivedSources/WebCore/ExceptionCodeDescription.cpp DerivedSources/WebCore/ExceptionCodeDescription.h DerivedSources/WebCore/ExceptionHeaders.h DerivedSources/WebCore/ExceptionInterfaces.h: $(WebCore)/dom/make_dom_exceptions.pl $(WebCore)/dom/DOMExceptions.in
 	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $< --input $(WebCore)/dom/DOMExceptions.in --outputDir "$(GENSOURCES_WEBCORE)"
 
+DerivedSources/WebCore/SettingsMacros.h: $(WebCore)/page/make_settings.pl $(WebCore)/page/Settings.in
+	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $< --input $(WebCore)/page/Settings.in --outputDir "$(GENSOURCES_WEBCORE)"
+
 # All Web Inspector generated files are created with this one call to CodeGeneratorInspector.py
 DerivedSources/WebCore/InspectorProtocolVersion.h : $(WebCore)/inspector/Inspector.json $(WebCore)/inspector/generate-inspector-protocol-version
 	$(AM_V_GEN)$(PYTHON) $(WebCore)/inspector/generate-inspector-protocol-version -o $(GENSOURCES_WEBCORE)/InspectorProtocolVersion.h $(WebCore)/inspector/Inspector.json
@@ -551,7 +556,6 @@ IDL_PATH := \
     $(WebCore)/bindings/js \
     $(WebCore)/css \
     $(WebCore)/dom \
-    $(WebCore)/editing \
     $(WebCore)/fileapi \
     $(WebCore)/html \
     $(WebCore)/html/canvas \
@@ -641,6 +645,7 @@ libWebCore_la_CPPFLAGS = \
 	$(GEOCLUE_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(GSTREAMER_CFLAGS) \
+	$(LIBSECRET_CFLAGS) \
 	$(LIBSOUP_CFLAGS) \
 	$(LIBXML_CFLAGS) \
 	$(LIBXSLT_CFLAGS) \
@@ -704,6 +709,7 @@ libWebCoreGtk_la_CPPFLAGS = \
 	$(GSTREAMER_CFLAGS) \
 	$(GTK_CFLAGS) \
 	$(HILDON_CFLAGS) \
+	$(LIBSECRET_CFLAGS) \
 	$(LIBSOUP_CFLAGS) \
 	$(LIBXML_CFLAGS) \
 	$(LIBXSLT_CFLAGS) \
@@ -715,35 +721,34 @@ libWebCoreGtk_la_CPPFLAGS = \
 	$(XT_CFLAGS)
 
 EXTRA_DIST += \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/filesystem/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/gamepad/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/geolocation/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/indexeddb/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/mediasource/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/mediastream/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/navigatorcontentutils/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/notifications/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/quota/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/webaudio/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/webdatabase/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/Modules/websockets/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/css/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/dom/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/editing/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/fileapi/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/html/canvas/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/html/shadow/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/html/track/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/html/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/inspector/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/loader/appcache/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/page/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/plugins/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/storage/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/svg/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/testing/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/workers/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/xml/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/filesystem/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/gamepad/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/geolocation/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/indexeddb/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/mediasource/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/mediastream/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/navigatorcontentutils/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/notifications/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/quota/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/webaudio/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/webdatabase/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/Modules/websockets/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/css/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/dom/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/fileapi/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/html/canvas/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/html/shadow/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/html/track/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/html/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/inspector/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/loader/appcache/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/page/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/plugins/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/storage/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/svg/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/testing/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/workers/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/xml/*.idl) \
 	Source/ThirdParty/ANGLE/src/compiler/glslang.l \
 	Source/ThirdParty/ANGLE/src/compiler/glslang.y \
 	Source/WebCore/bindings/scripts/CodeGeneratorGObject.pm \
@@ -805,6 +810,8 @@ EXTRA_DIST += \
 	Source/WebCore/make-hash-tools.pl \
 	Source/WebCore/mathml/mathattrs.in \
 	Source/WebCore/mathml/mathtags.in \
+	Source/WebCore/page/make_settings.pl \
+	Source/WebCore/page/Settings.in \
 	Source/WebCore/platform/ColorData.gperf \
 	Source/WebCore/platform/text/mac/make-charset-table.pl \
 	Source/WebCore/svg/svgattrs.in \

@@ -72,7 +72,6 @@ SOURCES += \
      bindings/js/BindingState.cpp \
      bindings/js/CallbackFunction.cpp \
      bindings/js/DOMObjectHashTableMap.cpp \
-     bindings/js/DOMTransaction.cpp \
      bindings/js/DOMWrapperWorld.cpp \
      bindings/js/Dictionary.cpp \
      bindings/js/GCController.cpp \
@@ -173,7 +172,6 @@ SOURCES += \
      bindings/js/JSPopStateEventCustom.cpp \
      bindings/js/JSProcessingInstructionCustom.cpp \
      bindings/js/JSRequestAnimationFrameCallbackCustom.cpp \
-     bindings/js/JSScriptProfileNodeCustom.cpp \
      bindings/js/JSStorageCustom.cpp \
      bindings/js/JSStyleSheetCustom.cpp \
      bindings/js/JSStyleSheetListCustom.cpp \
@@ -181,7 +179,6 @@ SOURCES += \
      bindings/js/JSTouchCustom.cpp \
      bindings/js/JSTouchListCustom.cpp \
      bindings/js/JSTreeWalkerCustom.cpp \
-     bindings/js/JSUndoManagerCustom.cpp \
      bindings/js/JSWebKitAnimationCustom.cpp \
      bindings/js/JSWebKitAnimationListCustom.cpp \
      bindings/js/JSWebKitCSSKeyframeRuleCustom.cpp \
@@ -339,6 +336,7 @@ SOURCES += \
     css/WebKitCSSSVGDocumentValue.cpp \
     css/WebKitCSSShaderValue.cpp \
     css/WebKitCSSTransformValue.cpp \
+    css/WebKitCSSViewportRule.cpp \
     dom/ActiveDOMObject.cpp \
     dom/Attr.cpp \
     dom/BeforeTextInsertedEvent.cpp \
@@ -387,8 +385,9 @@ SOURCES += \
     dom/DynamicNodeList.cpp \
     dom/EditingText.cpp \
     dom/Element.cpp \
-    dom/ElementShadow.cpp \
     dom/ElementAttributeData.cpp \
+    dom/ElementRareData.cpp \
+    dom/ElementShadow.cpp \
     dom/EntityReference.cpp \
     dom/ErrorEvent.cpp \
     dom/Event.cpp \
@@ -427,6 +426,7 @@ SOURCES += \
     dom/NodeFilterCondition.cpp \
     dom/NodeFilter.cpp \
     dom/NodeIterator.cpp \
+    dom/NodeRareData.cpp \
     dom/NodeRenderingContext.cpp \
     dom/Notation.cpp \
     dom/StaticHashSetNodeList.cpp \
@@ -557,6 +557,7 @@ SOURCES += \
     history/PageCache.cpp \
     html/BaseButtonInputType.cpp \
     html/BaseCheckableInputType.cpp \
+    html/BaseChooserOnlyDateAndTimeInputType.cpp \
     html/BaseClickableWithKeyInputType.cpp \
     html/BaseDateAndTimeInputType.cpp \
     html/BaseMultipleFieldsDateAndTimeInputType.cpp \
@@ -730,9 +731,10 @@ SOURCES += \
     html/shadow/InsertionPoint.cpp \
     html/shadow/ImageInnerElement.cpp \
     html/shadow/MediaControls.cpp \
-    html/shadow/MediaControlRootElement.cpp \
+    html/shadow/MediaControlsApple.cpp \
     html/shadow/MeterShadowElement.cpp \
     html/shadow/ProgressShadowElement.cpp \
+    html/shadow/SelectRuleFeatureSet.cpp \
     html/shadow/SliderThumbElement.cpp \
     html/shadow/SpinButtonElement.cpp \
     html/shadow/TextControlInnerElements.cpp \
@@ -802,6 +804,7 @@ SOURCES += \
     loader/appcache/ManifestParser.cpp \
     loader/archive/ArchiveResource.cpp \
     loader/archive/ArchiveResourceCollection.cpp \
+    loader/CachedMetadata.cpp \
     loader/cache/MemoryCache.cpp \
     loader/cache/CachedCSSStyleSheet.cpp \
     loader/cache/CachedFont.cpp \
@@ -814,6 +817,7 @@ SOURCES += \
     loader/cache/CachedSVGDocument.cpp \
     loader/cache/CachedSVGDocument.h \
     loader/cache/CachedXSLStyleSheet.cpp \
+    loader/CookieJar.cpp \
     loader/CrossOriginAccessControl.cpp \
     loader/CrossOriginPreflightResultCache.cpp \
     loader/cache/CachedResourceLoader.cpp \
@@ -933,7 +937,7 @@ SOURCES += \
     platform/text/Hyphenation.cpp \
     platform/text/LocaleNone.cpp \
     platform/text/LocaleToScriptMappingDefault.cpp \
-    platform/text/Localizer.cpp \
+    platform/text/PlatformLocale.cpp \
     platform/text/QuotedPrintable.cpp \
     platform/CalculationValue.cpp \
     platform/Clock.cpp \
@@ -966,8 +970,8 @@ SOURCES += \
     platform/graphics/Font.cpp \
     platform/graphics/FontCache.cpp \
     platform/graphics/FontFastPath.cpp \
-    platform/graphics/FractionalLayoutBoxExtent.cpp \
-    platform/graphics/FractionalLayoutRect.cpp \
+    platform/graphics/LayoutBoxExtent.cpp \
+    platform/graphics/LayoutRect.cpp \
     platform/graphics/GeneratedImage.cpp \
     platform/graphics/GeneratorGeneratedImage.cpp \
     platform/graphics/GlyphPageTreeNode.cpp \
@@ -1323,7 +1327,6 @@ HEADERS += \
     bindings/js/JSDOMBinding.h \
     bindings/js/JSDOMGlobalObject.h \
     bindings/js/JSDOMStringMapCustom.h \
-    bindings/js/DOMTransaction.h \
     bindings/js/JSDOMWindowBase.h \
     bindings/js/JSDOMWindowCustom.h \
     bindings/js/JSDOMWindowShell.h \
@@ -1512,6 +1515,7 @@ HEADERS += \
     css/WebKitCSSSVGDocumentValue.h \
     css/WebKitCSSShaderValue.h \
     css/WebKitCSSTransformValue.h \
+    css/WebKitCSSViewportRule.h \
     dom/ActiveDOMObject.h \
     dom/Attr.h \
     dom/Attribute.h \
@@ -1594,6 +1598,7 @@ HEADERS += \
     dom/NodeFilter.h \
     dom/Node.h \
     dom/NodeIterator.h \
+    dom/NodeRareData.h \
     dom/NodeRenderingContext.h \
     dom/Notation.h \
     dom/StaticHashSetNodeList.h \
@@ -1945,6 +1950,7 @@ HEADERS += \
     loader/cache/CachedSVGDocument.h \
     loader/cache/CachedXSLStyleSheet.h \
     loader/cache/MemoryCache.h \
+    loader/CookieJar.h \
     loader/CrossOriginAccessControl.h \
     loader/CrossOriginPreflightResultCache.h \
     loader/cache/CachedResourceLoader.h \
@@ -2068,6 +2074,11 @@ HEADERS += \
     platform/mock/ScrollbarThemeMock.h \
     platform/graphics/BitmapImage.h \
     platform/graphics/Color.h \
+    platform/graphics/cpu/arm/filters/NEONHelpers.h \
+    platform/graphics/cpu/arm/filters/FEBlendNEON.h \
+    platform/graphics/cpu/arm/filters/FECompositeArithmeticNEON.h \
+    platform/graphics/cpu/arm/filters/FEGaussianBlurNEON.h \
+    platform/graphics/cpu/arm/filters/FELightingNEON.h \
     platform/graphics/CrossfadeGeneratedImage.h \
     platform/graphics/filters/CustomFilterArrayParameter.h \
     platform/graphics/filters/CustomFilterConstants.h \
@@ -2077,9 +2088,12 @@ HEADERS += \
     platform/graphics/filters/CustomFilterNumberParameter.h \
     platform/graphics/filters/CustomFilterCompiledProgram.h \
     platform/graphics/filters/CustomFilterOperation.h \
+    platform/graphics/filters/ValidatedCustomFilterOperation.h \
     platform/graphics/filters/CustomFilterParameter.h \
+    platform/graphics/filters/CustomFilterParameterList.h \
     platform/graphics/filters/CustomFilterProgram.h \
     platform/graphics/filters/CustomFilterProgramInfo.h \
+    platform/graphics/filters/CustomFilterRenderer.h \
     platform/graphics/filters/CustomFilterTransformParameter.h \
     platform/graphics/filters/CustomFilterValidatedProgram.h \
     platform/graphics/filters/FEBlend.h \
@@ -2106,11 +2120,6 @@ HEADERS += \
     platform/graphics/filters/LightSource.h \
     platform/graphics/filters/SourceAlpha.h \
     platform/graphics/filters/SourceGraphic.h \
-    platform/graphics/filters/arm/NEONHelpers.h \
-    platform/graphics/filters/arm/FEBlendNEON.h \
-    platform/graphics/filters/arm/FECompositeArithmeticNEON.h \
-    platform/graphics/filters/arm/FEGaussianBlurNEON.h \
-    platform/graphics/filters/arm/FELightingNEON.h \
     platform/graphics/FloatPoint3D.h \
     platform/graphics/FloatPoint.h \
     platform/graphics/FloatQuad.h \
@@ -2179,6 +2188,7 @@ HEADERS += \
     platform/graphics/transforms/TransformState.h \
     platform/graphics/transforms/TranslateTransformOperation.h \
     platform/graphics/WidthIterator.h \
+    platform/graphics/WidthCache.h \
     platform/image-decoders/bmp/BMPImageDecoder.h \
     platform/image-decoders/bmp/BMPImageReader.h \
     platform/image-decoders/ico/ICOImageDecoder.h \
@@ -2230,6 +2240,7 @@ HEADERS += \
     platform/network/MIMESniffing.h \
     platform/network/NetworkingContext.h \
     platform/network/NetworkStateNotifier.h \
+    platform/network/PlatformCookieJar.h \
     platform/network/ProtectionSpace.h \
     platform/network/ProxyServer.h \
     platform/network/qt/QtMIMETypeSniffer.h \
@@ -2242,6 +2253,7 @@ HEADERS += \
     platform/network/ResourceRequestBase.h \
     platform/network/ResourceResponseBase.h \
     platform/network/qt/NetworkStateNotifierPrivate.h \
+    platform/network/qt/CookieJarQt.h \
     platform/PlatformExportMacros.h \
     platform/PlatformMemoryInstrumentation.h \
     platform/PlatformTouchEvent.h \
@@ -2249,7 +2261,6 @@ HEADERS += \
     platform/PopupMenu.h \
     platform/ReferrerPolicy.h \
     platform/qt/ClipboardQt.h \
-    platform/qt/CookieJarQt.h \
     platform/qt/QWebPageClient.h \
     platform/qt/QStyleFacade.h \
     platform/qt/RenderThemeQStyle.h \
@@ -2328,7 +2339,6 @@ HEADERS += \
     rendering/InlineFlowBox.h \
     rendering/InlineTextBox.h \
     rendering/LayoutState.h \
-    rendering/LayoutTypes.h \
     rendering/LayoutRepainter.h \
     rendering/mathml/RenderMathMLBlock.h \
     rendering/mathml/RenderMathMLFenced.h \
@@ -2729,10 +2739,10 @@ HEADERS += \
     workers/WorkerRunLoop.h \
     workers/WorkerScriptLoader.h \
     workers/WorkerThread.h \
-    xml/parser/CharacterReferenceParserInlineMethods.h \
+    xml/parser/CharacterReferenceParserInlines.h \
     xml/parser/MarkupTokenBase.h \
     xml/parser/MarkupTokenizerBase.h \
-    xml/parser/MarkupTokenizerInlineMethods.h \
+    xml/parser/MarkupTokenizerInlines.h \
     xml/parser/NewXMLDocumentParser.h \
     xml/parser/XMLCharacterReferenceParser.h \
     xml/parser/XMLDocumentParser.h \
@@ -2775,9 +2785,9 @@ SOURCES += \
     platform/graphics/qt/FloatPointQt.cpp \
     platform/graphics/qt/FloatRectQt.cpp \
     platform/graphics/qt/FloatSizeQt.cpp \
-    platform/graphics/qt/FractionalLayoutPointQt.cpp \
-    platform/graphics/qt/FractionalLayoutRectQt.cpp \
-    platform/graphics/qt/FractionalLayoutSizeQt.cpp \
+    platform/graphics/qt/LayoutPointQt.cpp \
+    platform/graphics/qt/LayoutRectQt.cpp \
+    platform/graphics/qt/LayoutSizeQt.cpp \
     platform/graphics/qt/GradientQt.cpp \
     platform/graphics/qt/GraphicsContextQt.cpp \
     platform/graphics/qt/IconQt.cpp \
@@ -2797,6 +2807,7 @@ SOURCES += \
     platform/graphics/texmap/TextureMapperLayer.cpp \
     platform/network/DNSResolveQueue.cpp \
     platform/network/MIMESniffing.cpp \
+    platform/network/qt/CookieJarQt.cpp \
     platform/network/qt/CredentialStorageQt.cpp \
     platform/network/qt/ResourceHandleQt.cpp \
     platform/network/qt/ResourceRequestQt.cpp \
@@ -2810,7 +2821,6 @@ SOURCES += \
     platform/qt/ClipboardQt.cpp \
     platform/qt/ContextMenuItemQt.cpp \
     platform/qt/ContextMenuQt.cpp \
-    platform/qt/CookieJarQt.cpp \
     platform/qt/CursorQt.cpp \
     platform/qt/DragDataQt.cpp \
     platform/qt/DragImageQt.cpp \
@@ -2872,8 +2882,9 @@ win32-*|wince* {
 
 mac {
     SOURCES += \
-        platform/text/cf/StringCF.cpp \
         platform/cf/SharedBufferCF.cpp \
+        platform/text/cf/AtomicStringCF.cpp \
+        platform/text/cf/StringCF.cpp \
         platform/text/cf/StringImplCF.cpp
 }
 
@@ -3490,13 +3501,17 @@ enable?(XSLT) {
 
 enable?(FILTERS) {
     SOURCES += \
+        platform/graphics/cpu/arm/filters/FELightingNEON.cpp \
         platform/graphics/filters/CustomFilterGlobalContext.cpp \
         platform/graphics/filters/CustomFilterOperation.cpp \
+        platform/graphics/filters/CustomFilterParameterList.cpp \
+        platform/graphics/filters/ValidatedCustomFilterOperation.cpp \
         platform/graphics/filters/CustomFilterProgram.cpp \
         platform/graphics/filters/CustomFilterProgramInfo.cpp \
         platform/graphics/filters/CustomFilterCompiledProgram.cpp \
         platform/graphics/filters/CustomFilterMesh.cpp \
         platform/graphics/filters/CustomFilterMeshGenerator.cpp \
+        platform/graphics/filters/CustomFilterRenderer.cpp \
         platform/graphics/filters/CustomFilterValidatedProgram.cpp \
         platform/graphics/filters/DistantLightSource.cpp \
         platform/graphics/filters/FEBlend.cpp \
@@ -3525,7 +3540,6 @@ enable?(FILTERS) {
         platform/graphics/filters/SpotLightSource.cpp \
         platform/graphics/filters/SourceAlpha.cpp \
         platform/graphics/filters/SourceGraphic.cpp \
-        platform/graphics/filters/arm/FELightingNEON.cpp \
 }
 
 enable?(MATHML) {
@@ -3942,6 +3956,7 @@ enable?(WEBGL) {
 
 use?(3D_GRAPHICS) {
     HEADERS += \
+        platform/graphics/cpu/arm/GraphicsContext3DNEON.h \
         platform/graphics/ANGLEWebKitBridge.h \
         platform/graphics/Extensions3D.h \
         platform/graphics/GraphicsContext3D.h \
@@ -4008,13 +4023,6 @@ enable?(MHTML) {
         page/PageSerializer.cpp
 }
 
-enable?(UNDO_MANAGER) {
-    SOURCES += \
-        editing/UndoManager.cpp
-    HEADERS += \
-        editing/UndoManager.h
-}
-
 use?(LIBPNG) {
     SOURCES += platform/image-decoders/ico/ICOImageDecoder.cpp \
                platform/image-decoders/png/PNGImageDecoder.cpp
@@ -4070,6 +4078,11 @@ use?(GRAPHICS_SURFACE) {
     have?(XCOMPOSITE) {
         SOURCES += platform/graphics/surfaces/qt/GraphicsSurfaceGLX.cpp
     }
+}
+
+build?(qttestsupport) {
+    HEADERS += platform/qt/QtTestSupport.h
+    SOURCES += platform/qt/QtTestSupport.cpp
 }
 
 ALL_IN_ONE_SOURCES += \

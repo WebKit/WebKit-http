@@ -1,9 +1,10 @@
 #include "config.h"
 #include "SlotVisitor.h"
+#include "SlotVisitorInlines.h"
 
 #include "ConservativeRoots.h"
 #include "CopiedSpace.h"
-#include "CopiedSpaceInlineMethods.h"
+#include "CopiedSpaceInlines.h"
 #include "GCThread.h"
 #include "JSArray.h"
 #include "JSDestructibleObject.h"
@@ -15,7 +16,7 @@
 namespace JSC {
 
 SlotVisitor::SlotVisitor(GCThreadSharedData& shared)
-    : m_stack(shared.m_segmentAllocator)
+    : m_stack(shared.m_globalData->heap.blockAllocator())
     , m_visitCount(0)
     , m_isInParallelMode(false)
     , m_shared(shared)
@@ -294,6 +295,8 @@ ALWAYS_INLINE void SlotVisitor::internalAppend(JSValue* slot)
     if (!cell)
         return;
 
+    validate(cell);
+
     if (m_shouldHashConst && cell->isString()) {
         JSString* string = jsCast<JSString*>(cell);
         if (string->shouldTryHashConst() && string->tryHashConstLock()) {
@@ -355,6 +358,10 @@ void SlotVisitor::validate(JSCell* cell)
                 cell->structure()->structure(), parentClassName, cell, cell->structure(), ourClassName);
         CRASH();
     }
+
+    // Make sure we can walk the ClassInfo chain
+    const ClassInfo* info = cell->classInfo();
+    do { } while ((info = info->parentClass));
 }
 #else
 void SlotVisitor::validate(JSCell*)

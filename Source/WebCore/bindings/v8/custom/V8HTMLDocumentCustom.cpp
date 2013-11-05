@@ -75,8 +75,8 @@ v8::Local<v8::Object> V8HTMLDocument::wrapInShadowObject(v8::Local<v8::Object> w
     }
     if (shadow.IsEmpty())
         return v8::Local<v8::Object>();
-    V8DOMWrapper::setDOMWrapper(shadow, &V8HTMLDocument::info, impl);
     shadow->SetPrototype(wrapper);
+    V8DOMWrapper::setDOMWrapper(wrapper, &V8HTMLDocument::info, impl);
     return shadow;
 }
 
@@ -162,30 +162,21 @@ v8::Handle<v8::Value> V8HTMLDocument::openCallback(const v8::Arguments& args)
     return args.Holder();
 }
 
-v8::Handle<v8::Value> V8HTMLDocument::allAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
-{
-    INC_STATS("DOM.HTMLDocument.all._get");
-    v8::Handle<v8::Object> holder = info.Holder();
-    HTMLDocument* htmlDocument = V8HTMLDocument::toNative(holder);
-    return toV8(htmlDocument->all(), info.Holder(), info.GetIsolate());
-}
-
 void V8HTMLDocument::allAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     // Just emulate a normal JS behaviour---install a property on this.
     info.This()->ForceSet(name, value);
 }
 
-v8::Handle<v8::Value> toV8(HTMLDocument* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+v8::Handle<v8::Object> wrap(HTMLDocument* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
-    if (!impl)
-        return v8NullWithCheck(isolate);
-    v8::Handle<v8::Object> wrapper = V8HTMLDocument::wrap(impl, creationContext, isolate);
+    ASSERT(impl);
+    v8::Handle<v8::Object> wrapper = V8HTMLDocument::createWrapper(impl, creationContext, isolate);
     if (wrapper.IsEmpty())
         return wrapper;
     if (!V8DOMWindowShell::getEntered()) {
         if (Frame* frame = impl->frame())
-            frame->script()->windowShell()->updateDocumentWrapper(wrapper);
+            frame->script()->windowShell(mainThreadNormalWorld())->updateDocumentWrapper(wrapper);
     }
     return wrapper;
 }

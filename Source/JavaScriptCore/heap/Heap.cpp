@@ -24,8 +24,8 @@
 #include "CodeBlock.h"
 #include "ConservativeRoots.h"
 #include "CopiedSpace.h"
-#include "CopiedSpaceInlineMethods.h"
-#include "CopyVisitorInlineMethods.h"
+#include "CopiedSpaceInlines.h"
+#include "CopyVisitorInlines.h"
 #include "GCActivityCallback.h"
 #include "HeapRootVisitor.h"
 #include "HeapStatistics.h"
@@ -36,6 +36,7 @@
 #include "JSLock.h"
 #include "JSONObject.h"
 #include "Tracing.h"
+#include "UnlinkedCodeBlock.h"
 #include "WeakSetInlines.h"
 #include <algorithm>
 #include <wtf/RAMSize.h>
@@ -484,13 +485,13 @@ void Heap::markRoots(bool fullGC)
             }
         }
 #endif
-    
+
         if (m_globalData->codeBlocksBeingCompiled.size()) {
             GCPHASE(VisitActiveCodeBlock);
             for (size_t i = 0; i < m_globalData->codeBlocksBeingCompiled.size(); i++)
                 m_globalData->codeBlocksBeingCompiled[i]->visitAggregate(visitor);
         }
-    
+
         {
             GCPHASE(VisitMachineRoots);
             MARK_LOG_ROOT(visitor, "C++ Stack");

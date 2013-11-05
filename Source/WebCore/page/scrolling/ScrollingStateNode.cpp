@@ -26,7 +26,11 @@
 #include "config.h"
 #include "ScrollingStateNode.h"
 
+#include "ScrollingStateFixedNode.h"
 #include "ScrollingStateTree.h"
+#include "TextStream.h"
+
+#include <wtf/text/WTFString.h>
 
 #if ENABLE(THREADED_SCROLLING)
 
@@ -43,27 +47,39 @@ ScrollingStateNode::ScrollingStateNode(ScrollingStateTree* scrollingStateTree, S
 // This copy constructor is used for cloning nodes in the tree, and it doesn't make sense
 // to clone the relationship pointers, so don't copy that information from the original
 // node.
-ScrollingStateNode::ScrollingStateNode(ScrollingStateNode* stateNode)
+ScrollingStateNode::ScrollingStateNode(const ScrollingStateNode& stateNode)
     : m_scrollingStateTree(0)
-    , m_nodeID(stateNode->scrollingNodeID())
+    , m_nodeID(stateNode.scrollingNodeID())
     , m_parent(0)
-    , m_scrollLayerDidChange(stateNode->scrollLayerDidChange())
+    , m_scrollLayerDidChange(stateNode.scrollLayerDidChange())
 {
-    setScrollLayer(stateNode->platformScrollLayer());
+    setScrollLayer(stateNode.platformScrollLayer());
 }
 
 ScrollingStateNode::~ScrollingStateNode()
 {
 }
 
-void ScrollingStateNode::cloneAndResetChildNodes(ScrollingStateNode* clone)
+PassOwnPtr<ScrollingStateNode> ScrollingStateNode::cloneAndReset()
+{
+    OwnPtr<ScrollingStateNode> clone = this->clone();
+
+    // Now that this node is cloned, reset our change properties.
+    setScrollLayerDidChange(false);
+    resetChangedProperties();
+
+    cloneAndResetChildren(clone.get());
+    return clone.release();
+}
+
+void ScrollingStateNode::cloneAndResetChildren(ScrollingStateNode* clone)
 {
     if (!m_children)
         return;
 
     size_t size = m_children->size();
     for (size_t i = 0; i < size; ++i)
-        clone->appendChild(m_children->at(i)->cloneAndResetNode());
+        clone->appendChild(m_children->at(i)->cloneAndReset());
 }
 
 void ScrollingStateNode::appendChild(PassOwnPtr<ScrollingStateNode> childNode)
@@ -81,7 +97,11 @@ void ScrollingStateNode::removeChild(ScrollingStateNode* node)
     if (!m_children)
         return;
 
-    if (size_t index = m_children->find(node)) {
+    size_t index = m_children->find(node);
+
+    // The index will be notFound if the node to remove is a deeper-than-1-level descendant or
+    // if node is the root state node.
+    if (index != notFound) {
         m_scrollingStateTree->didRemoveNode(node->scrollingNodeID());
         m_children->remove(index);
         return;
@@ -90,6 +110,40 @@ void ScrollingStateNode::removeChild(ScrollingStateNode* node)
     size_t size = m_children->size();
     for (size_t i = 0; i < size; ++i)
         m_children->at(i)->removeChild(node);
+}
+
+void ScrollingStateNode::writeIndent(TextStream& ts, int indent)
+{
+    for (int i = 0; i != indent; ++i)
+        ts << "  ";
+}
+
+void ScrollingStateNode::dump(TextStream& ts, int indent) const
+{
+    writeIndent(ts, indent);
+    dumpProperties(ts, indent);
+
+    if (m_children) {
+        writeIndent(ts, indent + 1);
+        size_t size = children()->size();
+        ts << "(children " << size << "\n";
+        
+        for (size_t i = 0; i < size; i++)
+            m_children->at(i)->dump(ts, indent + 2);
+        writeIndent(ts, indent + 1);
+        ts << ")\n";
+    }
+
+    writeIndent(ts, indent);
+    ts << ")\n";
+}
+
+String ScrollingStateNode::scrollingStateTreeAsText() const
+{
+    TextStream ts;
+
+    dump(ts, 0);
+    return ts.release();
 }
 
 } // namespace WebCore

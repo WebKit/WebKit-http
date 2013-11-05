@@ -88,6 +88,11 @@ String contextMenuItemTagOpenLinkInNewWindow()
     return QCoreApplication::translate("QWebPage", "Open in New Window", "Open in New Window context menu item");
 }
 
+String contextMenuItemTagOpenLinkInThisWindow()
+{
+    return QCoreApplication::translate("QWebPage", "Open in This Window", "Open in This Window context menu item");
+}
+
 String contextMenuItemTagDownloadLinkToDisk()
 {
     return QCoreApplication::translate("QWebPage", "Save Link...", "Download Linked File context menu item");
@@ -452,6 +457,12 @@ String blockedPluginByContentSecurityPolicyText()
 }
 
 String insecurePluginVersionText()
+{
+    notImplemented();
+    return String();
+}
+
+String inactivePluginText()
 {
     notImplemented();
     return String();

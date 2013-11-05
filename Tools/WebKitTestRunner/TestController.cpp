@@ -53,6 +53,10 @@
 #include "EventSenderProxy.h"
 #endif
 
+#if !PLATFORM(MAC)
+#include <WebKit2/WKTextChecker.h>
+#endif
+
 namespace WTR {
 
 // defaultLongTimeout + defaultShortTimeout should be less than 80,
@@ -81,6 +85,7 @@ TestController::TestController(int argc, const char* argv[])
     , m_printSeparators(false)
     , m_usingServerMode(false)
     , m_gcBetweenTests(false)
+    , m_shouldDumpPixelsForAllTests(false)
     , m_state(Initial)
     , m_doneResetting(false)
     , m_longTimeout(defaultLongTimeout)
@@ -95,9 +100,6 @@ TestController::TestController(int argc, const char* argv[])
     , m_isGeolocationPermissionAllowed(false)
     , m_policyDelegateEnabled(false)
     , m_policyDelegatePermissive(false)
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
-    , m_eventSenderProxy(new EventSenderProxy(this))
-#endif
 {
     initialize(argc, argv);
     controller = this;
@@ -283,10 +285,15 @@ void TestController::initialize(int argc, const char* argv[])
             m_gcBetweenTests = true;
             continue;
         }
+        if (argument == "--pixel-tests" || argument == "-p") {
+            m_shouldDumpPixelsForAllTests = true;
+            continue;
+        }
         if (argument == "--print-supported-features") {
             printSupportedFeatures = true;
             break;
         }
+
 
         // Skip any other arguments that begin with '--'.
         if (argument.length() >= 2 && argument[0] == '-' && argument[1] == '-')
@@ -323,6 +330,18 @@ void TestController::initialize(int argc, const char* argv[])
         WKContextSetLocalStorageDirectory(m_context.get(), dumpRenderTreeTempWK.get());
         WKContextSetDiskCacheDirectory(m_context.get(), dumpRenderTreeTempWK.get());
         WKContextSetCookieStorageDirectory(m_context.get(), dumpRenderTreeTempWK.get());
+
+        std::string iconDatabaseFileTemp(dumpRenderTreeTemp);
+        // WebCore::pathByAppendingComponent is not used here because of the namespace,
+        // which leads us to this ugly #ifdef and file path concatenation.
+#if OS(WINDOWS)
+        const char separator = '\\';
+#else
+        const char separator = '/';
+#endif
+        iconDatabaseFileTemp = iconDatabaseFileTemp + separator + "WebpageIcons.db";
+        WKRetainPtr<WKStringRef> iconDatabaseFileTempWK = WKStringCreateWithUTF8CString(iconDatabaseFileTemp.c_str());
+        WKContextSetIconDatabasePath(m_context.get(), iconDatabaseFileTempWK.get());
     }
 
     platformInitializeContext();
@@ -486,6 +505,11 @@ bool TestController::resetStateToConsistentValues()
 
     // FIXME: This function should also ensure that there is only one page open.
 
+    // Reset the EventSender for each test.
+#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+    m_eventSenderProxy = adoptPtr(new EventSenderProxy(this));
+#endif
+
     // Reset preferences
     WKPreferencesRef preferences = WKPageGroupGetPreferences(m_pageGroup.get());
     WKPreferencesResetTestRunnerOverrides(preferences);
@@ -530,6 +554,9 @@ bool TestController::resetStateToConsistentValues()
 #endif
     WKPreferencesSetScreenFontSubstitutionEnabled(preferences, true);
     WKPreferencesSetInspectorUsesWebKitUserInterface(preferences, true);
+#if !PLATFORM(MAC)
+    WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
+#endif
 
     // in the case that a test using the chrome input field failed, be sure to clean up for the next test
     m_mainWebView->removeChromeInputField();
@@ -648,7 +675,7 @@ bool TestController::runTest(const char* inputLine)
     m_state = RunningTest;
 
     m_currentInvocation = adoptPtr(new TestInvocation(command.pathOrURL));
-    if (command.shouldDumpPixels)
+    if (command.shouldDumpPixels || m_shouldDumpPixelsForAllTests)
         m_currentInvocation->setIsPixelTest(command.expectedPixelHash);
 
     m_currentInvocation->invoke();
@@ -676,7 +703,7 @@ void TestController::runTestingServerLoop()
 void TestController::run()
 {
     if (!resetStateToConsistentValues()) {
-        TestInvocation::dumpWebProcessUnresponsiveness("Failed to reset to consistent state before the first test");
+        m_currentInvocation->dumpWebProcessUnresponsiveness();
         return;
     }
 

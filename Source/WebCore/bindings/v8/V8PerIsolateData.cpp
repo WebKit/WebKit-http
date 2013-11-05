@@ -27,6 +27,7 @@
 #include "V8PerIsolateData.h"
 
 #include "ScriptGCEvent.h"
+#include "ScriptProfiler.h"
 #include "V8Binding.h"
 #include <wtf/MemoryInstrumentationHashMap.h>
 #include <wtf/MemoryInstrumentationVector.h>
@@ -107,8 +108,7 @@ void V8PerIsolateData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) con
     info.addMember(m_stringCache);
     info.addMember(m_domDataList);
 
-    for (size_t i = 0; i < m_domDataList.size(); i++)
-        info.addMember(m_domDataList[i]);
+    info.addPrivateBuffer(ScriptProfiler::profilerSnapshotsSize(), WebCoreMemoryTypes::InspectorProfilerAgent);
 }
 
 #if ENABLE(INSPECTOR)
@@ -131,13 +131,6 @@ void V8PerIsolateData::visitExternalStrings(ExternalStringVisitor* visitor)
     v8::V8::VisitExternalResources(&v8Visitor);
 }
 #endif
-
-v8::Handle<v8::Context> V8PerIsolateData::ensureAuxiliaryContext()
-{
-    if (m_auxiliaryContext.isEmpty())
-        m_auxiliaryContext.adopt(v8::Context::New());
-    return m_auxiliaryContext.get();
-}
 
 v8::Handle<v8::Value> V8PerIsolateData::constructorOfToString(const v8::Arguments& args)
 {

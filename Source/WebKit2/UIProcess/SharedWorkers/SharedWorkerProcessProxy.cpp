@@ -128,7 +128,7 @@ void SharedWorkerProcessProxy::didClose(CoreIPC::Connection*)
     sharedWorkerProcessCrashedOrFailedToLaunch();
 }
 
-void SharedWorkerProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID)
+void SharedWorkerProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)
 {
 }
 
@@ -164,6 +164,11 @@ void SharedWorkerProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Con
         m_connection->send(Messages::SharedWorkerProcess::CreateWebProcessConnection(), 0);
     
     m_numPendingConnectionRequests = 0;
+
+#if PLATFORM(MAC)
+    if (WebContext::applicationIsOccluded())
+        m_connection->send(Messages::SharedWorkerProcess::SetApplicationIsOccluded(true), 0);
+#endif
 }
 
 void SharedWorkerProcessProxy::didCreateWebProcessConnection(const CoreIPC::Attachment& connectionIdentifier)

@@ -27,7 +27,7 @@
 #include "WebProcessCreationParameters.h"
 
 #include "ArgumentCoders.h"
-#if USE(CFURLSTORAGESESSIONS) && PLATFORM(WIN)
+#if PLATFORM(WIN) && USE(CFNETWORK)
 #include "ArgumentCodersCF.h"
 #endif
 
@@ -54,67 +54,70 @@ WebProcessCreationParameters::WebProcessCreationParameters()
 
 void WebProcessCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
 {
-    encoder.encode(injectedBundlePath);
-    encoder.encode(injectedBundlePathExtensionHandle);
-    encoder.encode(applicationCacheDirectory);
-    encoder.encode(applicationCacheDirectoryExtensionHandle);
-    encoder.encode(databaseDirectory);
-    encoder.encode(databaseDirectoryExtensionHandle);
-    encoder.encode(localStorageDirectory);
-    encoder.encode(localStorageDirectoryExtensionHandle);
-    encoder.encode(diskCacheDirectory);
-    encoder.encode(diskCacheDirectoryExtensionHandle);
-    encoder.encode(cookieStorageDirectory);
-    encoder.encode(cookieStorageDirectoryExtensionHandle);
-    encoder.encode(urlSchemesRegistererdAsEmptyDocument);
-    encoder.encode(urlSchemesRegisteredAsSecure);
-    encoder.encode(urlSchemesForWhichDomainRelaxationIsForbidden);
-    encoder.encode(urlSchemesRegisteredAsLocal);
-    encoder.encode(urlSchemesRegisteredAsNoAccess);
-    encoder.encode(urlSchemesRegisteredAsDisplayIsolated);
-    encoder.encode(urlSchemesRegisteredAsCORSEnabled);
+    encoder << injectedBundlePath;
+    encoder << injectedBundlePathExtensionHandle;
+    encoder << applicationCacheDirectory;
+    encoder << applicationCacheDirectoryExtensionHandle;
+    encoder << databaseDirectory;
+    encoder << databaseDirectoryExtensionHandle;
+    encoder << localStorageDirectory;
+    encoder << localStorageDirectoryExtensionHandle;
+    encoder << diskCacheDirectory;
+    encoder << diskCacheDirectoryExtensionHandle;
+    encoder << cookieStorageDirectory;
+    encoder << cookieStorageDirectoryExtensionHandle;
+    encoder << urlSchemesRegistererdAsEmptyDocument;
+    encoder << urlSchemesRegisteredAsSecure;
+    encoder << urlSchemesForWhichDomainRelaxationIsForbidden;
+    encoder << urlSchemesRegisteredAsLocal;
+    encoder << urlSchemesRegisteredAsNoAccess;
+    encoder << urlSchemesRegisteredAsDisplayIsolated;
+    encoder << urlSchemesRegisteredAsCORSEnabled;
+#if ENABLE(CUSTOM_PROTOCOLS)
+    encoder << urlSchemesRegisteredForCustomProtocols;
+#endif
     encoder.encodeEnum(cacheModel);
-    encoder.encode(shouldTrackVisitedLinks);
-    encoder.encode(shouldAlwaysUseComplexTextCodePath);
-    encoder.encode(shouldUseFontSmoothing);
-    encoder.encode(iconDatabaseEnabled);
-    encoder.encode(terminationTimeout);
-    encoder.encode(languages);
-    encoder.encode(textCheckerState);
-    encoder.encode(fullKeyboardAccessEnabled);
-    encoder.encode(defaultRequestTimeoutInterval);
-#if PLATFORM(MAC) || USE(CFURLSTORAGESESSIONS)
-    encoder.encode(uiProcessBundleIdentifier);
+    encoder << shouldTrackVisitedLinks;
+    encoder << shouldAlwaysUseComplexTextCodePath;
+    encoder << shouldUseFontSmoothing;
+    encoder << iconDatabaseEnabled;
+    encoder << terminationTimeout;
+    encoder << languages;
+    encoder << textCheckerState;
+    encoder << fullKeyboardAccessEnabled;
+    encoder << defaultRequestTimeoutInterval;
+#if PLATFORM(MAC) || USE(CFNETWORK)
+    encoder << uiProcessBundleIdentifier;
 #endif
 #if PLATFORM(MAC)
-    encoder.encode(parentProcessName);
-    encoder.encode(presenterApplicationPid);
-    encoder.encode(nsURLCacheMemoryCapacity);
-    encoder.encode(nsURLCacheDiskCapacity);
-    encoder.encode(acceleratedCompositingPort);
-    encoder.encode(uiProcessBundleResourcePath);
-    encoder.encode(uiProcessBundleResourcePathExtensionHandle);
-    encoder.encode(shouldForceScreenFontSubstitution);
-    encoder.encode(shouldEnableKerningAndLigaturesByDefault);
+    encoder << parentProcessName;
+    encoder << presenterApplicationPid;
+    encoder << nsURLCacheMemoryCapacity;
+    encoder << nsURLCacheDiskCapacity;
+    encoder << acceleratedCompositingPort;
+    encoder << uiProcessBundleResourcePath;
+    encoder << uiProcessBundleResourcePathExtensionHandle;
+    encoder << shouldForceScreenFontSubstitution;
+    encoder << shouldEnableKerningAndLigaturesByDefault;
 #elif PLATFORM(WIN)
-    encoder.encode(shouldPaintNativeControls);
-    encoder.encode(cfURLCacheDiskCapacity);
-    encoder.encode(cfURLCacheMemoryCapacity);
-    encoder.encode(initialHTTPCookieAcceptPolicy);
-#if USE(CFURLSTORAGESESSIONS)
+    encoder << shouldPaintNativeControls;
+    encoder << cfURLCacheDiskCapacity;
+    encoder << cfURLCacheMemoryCapacity;
+    encoder << initialHTTPCookieAcceptPolicy;
+#if PLATFORM(MAC) || USE(CFNETWORK)
     CFDataRef storageSession = serializedDefaultStorageSession.get();
-    encoder.encode(static_cast<bool>(storageSession));
+    encoder << static_cast<bool>(storageSession);
     if (storageSession)
-        CoreIPC::encode(&encoder, storageSession);
-#endif // USE(CFURLSTORAGESESSIONS)
+        CoreIPC::encode(encoder, storageSession);
+#endif
 #endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    encoder.encode(notificationPermissions);
+    encoder << notificationPermissions;
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
-    encoder.encode(usesNetworkProcess);
+    encoder << usesNetworkProcess;
 #endif
 }
 
@@ -158,6 +161,10 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder* decoder, Web
         return false;
     if (!decoder->decode(parameters.urlSchemesRegisteredAsCORSEnabled))
         return false;
+#if ENABLE(CUSTOM_PROTOCOLS)
+    if (!decoder->decode(parameters.urlSchemesRegisteredForCustomProtocols))
+        return false;
+#endif
     if (!decoder->decodeEnum(parameters.cacheModel))
         return false;
     if (!decoder->decode(parameters.shouldTrackVisitedLinks))
@@ -178,7 +185,7 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder* decoder, Web
         return false;
     if (!decoder->decode(parameters.defaultRequestTimeoutInterval))
         return false;
-#if PLATFORM(MAC) || USE(CFURLSTORAGESESSIONS)
+#if PLATFORM(MAC) || USE(CFNETWORK)
     if (!decoder->decode(parameters.uiProcessBundleIdentifier))
         return false;
 #endif
@@ -211,13 +218,13 @@ bool WebProcessCreationParameters::decode(CoreIPC::ArgumentDecoder* decoder, Web
         return false;
     if (!decoder->decode(parameters.initialHTTPCookieAcceptPolicy))
         return false;
-#if USE(CFURLSTORAGESESSIONS)
+#if PLATFORM(MAC) || USE(CFNETWORK)
     bool hasStorageSession = false;
     if (!decoder->decode(hasStorageSession))
         return false;
     if (hasStorageSession && !CoreIPC::decode(decoder, parameters.serializedDefaultStorageSession))
         return false;
-#endif // USE(CFURLSTORAGESESSIONS)
+#endif
 #endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)

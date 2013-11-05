@@ -26,15 +26,21 @@ messages -> LayerTreeCoordinatorProxy {
 #endif
     SetRootCompositingLayer(uint32_t id)
     DeleteCompositingLayer(uint32_t id)
-    CreateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect targetRect, WebKit::SurfaceUpdateInfo updateInfo)
-    UpdateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect targetRect, WebKit::SurfaceUpdateInfo updateInfo)
+    CreateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect tileRect, WebKit::SurfaceUpdateInfo updateInfo)
+    UpdateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect tileRect, WebKit::SurfaceUpdateInfo updateInfo)
     RemoveTileForLayer(uint32_t layerID, int tileID)
+    CreateUpdateAtlas(int atlasID, WebKit::ShareableSurface::Handle handle)
+    RemoveUpdateAtlas(int atlasID)
     CreateDirectlyCompositedImage(int64_t key, WebKit::ShareableBitmap::Handle handle)
     DestroyDirectlyCompositedImage(int64_t key)
     DidRenderFrame(WebCore::IntSize contentsSize, WebCore::IntRect coveredRect)
     DidChangeScrollPosition(WebCore::IntPoint position)
     SetLayerAnimations(uint32_t id, WebCore::GraphicsLayerAnimations animations)
     SetAnimationsLocked(bool locked)
+
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    RequestAnimationFrame()
+#endif
 
 #if USE(GRAPHICS_SURFACE)
     SyncCanvas(uint32_t id, WebCore::IntSize canvasSize, WebCore::GraphicsSurfaceToken token, uint32_t frontBuffer)

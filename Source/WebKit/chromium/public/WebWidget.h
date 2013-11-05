@@ -83,13 +83,15 @@ public:
 
     // Called to update imperative animation state. This should be called before
     // paint, although the client can rate-limit these calls.
-    //
-    // FIXME: remove this function entirely when inversion patches land.
     virtual void animate(double ignored) { }
 
     // Called to layout the WebWidget. This MUST be called before Paint,
     // and it may result in calls to WebWidgetClient::didInvalidateRect.
     virtual void layout() { }
+
+    // Called to toggle the WebWidget in or out of force compositing mode. This
+    // should be called before paint.
+    virtual void enterForceCompositingMode(bool enter) { }
 
     enum PaintOptions {
         // Attempt to fulfill the painting request by reading back from the
@@ -124,6 +126,9 @@ public:
     // asynchronously and perform layout and animation internally. Do not call
     // animate or layout in this case.
     virtual void composite(bool finish) = 0;
+
+    // Returns true if we've started tracking repaint rectangles.
+    virtual bool isTrackingRepaints() const { return false; }
 
     // Indicates that the compositing surface associated with this WebWidget is
     // ready to use.

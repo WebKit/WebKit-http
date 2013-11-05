@@ -58,7 +58,7 @@ public:
     void updateGeometry();
 
     // WebContentLayerClient implementation.
-    virtual void paintContents(WebCanvas*, const WebRect& clipRect, WebFloatRect& opaque) OVERRIDE;
+    virtual void paintContents(WebCanvas*, const WebRect& clipRect, bool canPaintLCDText, WebFloatRect& opaque) OVERRIDE;
 
     // WebAnimationDelegate implementation.
     virtual void notifyAnimationStarted(double time) OVERRIDE;
@@ -91,7 +91,6 @@ private:
 
     bool m_geometryNeedsUpdate;
     bool m_isAnimating;
-    WebCore::FloatPoint m_graphicsLayerOffset;
 };
 
 } // namespace WebKit

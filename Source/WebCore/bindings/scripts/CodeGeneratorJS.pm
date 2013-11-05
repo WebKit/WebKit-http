@@ -377,6 +377,17 @@ sub prototypeHashTableAccessor
     }
 }
 
+sub constructorHashTableAccessor
+{
+    my $noStaticTables = shift;
+    my $constructorClassName = shift;
+    if ($noStaticTables) {
+        return "get${constructorClassName}Table(exec)";
+    } else {
+        return "&${constructorClassName}Table";
+    }
+}
+
 sub GetGenerateIsReachable
 {
     my $dataNode = shift;
@@ -2692,17 +2703,13 @@ sub GenerateParametersCheck
             if ($optional) {
                 push(@$outputArray, "    RefPtr<$argType> $name;\n");
                 push(@$outputArray, "    if (exec->argumentCount() > $argsIndex && !exec->argument($argsIndex).isUndefinedOrNull()) {\n");
-                push(@$outputArray, "        if (!exec->argument($argsIndex).isFunction()) {\n");
-                push(@$outputArray, "            setDOMException(exec, TYPE_MISMATCH_ERR);\n");
-                push(@$outputArray, "            return JSValue::encode(jsUndefined());\n");
-                push(@$outputArray, "        }\n");
+                push(@$outputArray, "        if (!exec->argument($argsIndex).isFunction())\n");
+                push(@$outputArray, "            return throwVMTypeError(exec);\n");
                 push(@$outputArray, "        $name = ${callbackClassName}::create(asObject(exec->argument($argsIndex)), castedThis->globalObject());\n");
                 push(@$outputArray, "    }\n");
             } else {
-                push(@$outputArray, "    if (exec->argumentCount() <= $argsIndex || !exec->argument($argsIndex).isFunction()) {\n");
-                push(@$outputArray, "        setDOMException(exec, TYPE_MISMATCH_ERR);\n");
-                push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
-                push(@$outputArray, "    }\n");
+                push(@$outputArray, "    if (exec->argumentCount() <= $argsIndex || !exec->argument($argsIndex).isFunction())\n");
+                push(@$outputArray, "        return throwVMTypeError(exec);\n");
                 push(@$outputArray, "    RefPtr<$argType> $name = ${callbackClassName}::create(asObject(exec->argument($argsIndex)), castedThis->globalObject());\n");
             }
         } elsif ($parameter->extendedAttributes->{"Clamp"}) {
@@ -3710,13 +3717,17 @@ sub GenerateConstructorDefinition
     my $dataNode = shift;
     my $generatingNamedConstructor = shift;
 
+    # FIXME: Add support for overloaded constructors to JS as well.
+    # For now mimic the old behaviour by only generating code for the last "Constructor" attribute.
+    my $function = @{$dataNode->constructors}[-1];
+
     my $constructorClassName = $generatingNamedConstructor ? "${className}NamedConstructor" : "${className}Constructor";
     my $numberOfConstructorParameters = $dataNode->extendedAttributes->{"ConstructorParameters"};
     if (!defined $numberOfConstructorParameters) {
         if ($codeGenerator->IsConstructorTemplate($dataNode, "Event")) {
             $numberOfConstructorParameters = 2;
         } elsif ($dataNode->extendedAttributes->{"Constructor"}) {
-            $numberOfConstructorParameters = @{$dataNode->constructor->parameters};
+            $numberOfConstructorParameters = @{$function->parameters};
         }
     }
 
@@ -3727,7 +3738,16 @@ sub GenerateConstructorDefinition
         push(@$outputArray, "{\n");
         push(@$outputArray, "}\n\n");
     } else {
-        push(@$outputArray, "const ClassInfo ${constructorClassName}::s_info = { \"${visibleInterfaceName}Constructor\", &Base::s_info, &${constructorClassName}Table, 0, CREATE_METHOD_TABLE($constructorClassName) };\n\n");
+        if ($dataNode->extendedAttributes->{"JSNoStaticTables"}) {
+            push(@$outputArray, "static const HashTable* get${constructorClassName}Table(ExecState* exec)\n");
+            push(@$outputArray, "{\n");
+            push(@$outputArray, "    return getHashTableForGlobalData(exec->globalData(), &${constructorClassName}Table);\n");
+            push(@$outputArray, "}\n\n");
+            push(@$outputArray, "const ClassInfo ${constructorClassName}::s_info = { \"${visibleInterfaceName}Constructor\", &Base::s_info, 0, get${constructorClassName}Table, CREATE_METHOD_TABLE($constructorClassName) };\n\n");
+        } else {
+            push(@$outputArray, "const ClassInfo ${constructorClassName}::s_info = { \"${visibleInterfaceName}Constructor\", &Base::s_info, &${constructorClassName}Table, 0, CREATE_METHOD_TABLE($constructorClassName) };\n\n");
+        }
+
         push(@$outputArray, "${constructorClassName}::${constructorClassName}(Structure* structure, JSDOMGlobalObject* globalObject)\n");
         push(@$outputArray, "    : DOMConstructorObject(structure, globalObject)\n");
         push(@$outputArray, "{\n");
@@ -3765,12 +3785,12 @@ sub GenerateConstructorDefinition
 
         push(@$outputArray, "bool ${constructorClassName}::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)\n");
         push(@$outputArray, "{\n");
-        push(@$outputArray, "    return getStatic${kind}Slot<${constructorClassName}, JSDOMWrapper>(exec, &${constructorClassName}Table, jsCast<${constructorClassName}*>(cell), propertyName, slot);\n");
+        push(@$outputArray, "    return getStatic${kind}Slot<${constructorClassName}, JSDOMWrapper>(exec, " . constructorHashTableAccessor($dataNode->extendedAttributes->{"JSNoStaticTables"}, $constructorClassName) . ", jsCast<${constructorClassName}*>(cell), propertyName, slot);\n");
         push(@$outputArray, "}\n\n");
 
         push(@$outputArray, "bool ${constructorClassName}::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)\n");
         push(@$outputArray, "{\n");
-        push(@$outputArray, "    return getStatic${kind}Descriptor<${constructorClassName}, JSDOMWrapper>(exec, &${constructorClassName}Table, jsCast<${constructorClassName}*>(object), propertyName, descriptor);\n");
+        push(@$outputArray, "    return getStatic${kind}Descriptor<${constructorClassName}, JSDOMWrapper>(exec, " . constructorHashTableAccessor($dataNode->extendedAttributes->{"JSNoStaticTables"}, $constructorClassName) . ", jsCast<${constructorClassName}*>(object), propertyName, descriptor);\n");
         push(@$outputArray, "}\n\n");
     }
 
@@ -3869,7 +3889,6 @@ END
 
             push(@$outputArray, "    ${constructorClassName}* castedThis = jsCast<${constructorClassName}*>(exec->callee());\n");
 
-            my $function = $dataNode->constructor;
             my @constructorArgList;
 
             $implIncludes{"<runtime/Error.h>"} = 1;

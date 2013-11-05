@@ -55,12 +55,20 @@ DOMWrapperWorld* mainThreadNormalWorld()
     return cachedNormalWorld.get();
 }
 
-// FIXME: This should probably go to PerIsolateData.
 typedef HashMap<int, DOMWrapperWorld*> WorldMap;
 static WorldMap& isolatedWorldMap()
 {
+    ASSERT(isMainThread());
     DEFINE_STATIC_LOCAL(WorldMap, map, ());
     return map;
+}
+
+void DOMWrapperWorld::getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds)
+{
+    worlds.append(mainThreadNormalWorld());
+    WorldMap& isolatedWorlds = isolatedWorldMap();
+    for (WorldMap::iterator it = isolatedWorlds.begin(); it != isolatedWorlds.end(); ++it)
+        worlds.append(it->value);
 }
 
 void DOMWrapperWorld::deallocate(DOMWrapperWorld* world)
@@ -141,6 +149,37 @@ void DOMWrapperWorld::clearIsolatedWorldSecurityOrigin(int worldID)
 {
     ASSERT(DOMWrapperWorld::isIsolatedWorldId(worldID));
     isolatedWorldSecurityOrigins().remove(worldID);
+}
+
+typedef HashMap<int, bool> IsolatedWorldContentSecurityPolicyMap;
+static IsolatedWorldContentSecurityPolicyMap& isolatedWorldContentSecurityPolicies()
+{
+    ASSERT(isMainThread());
+    DEFINE_STATIC_LOCAL(IsolatedWorldContentSecurityPolicyMap, map, ());
+    return map;
+}
+
+bool DOMWrapperWorld::isolatedWorldHasContentSecurityPolicy()
+{
+    ASSERT(this->isIsolatedWorld());
+    IsolatedWorldContentSecurityPolicyMap& policies = isolatedWorldContentSecurityPolicies();
+    IsolatedWorldContentSecurityPolicyMap::iterator it = policies.find(worldId());
+    return it == policies.end() ? false : it->value;
+}
+
+void DOMWrapperWorld::setIsolatedWorldContentSecurityPolicy(int worldID, const String& policy)
+{
+    ASSERT(DOMWrapperWorld::isIsolatedWorldId(worldID));
+    if (!policy.isEmpty())
+        isolatedWorldContentSecurityPolicies().set(worldID, true);
+    else
+        isolatedWorldContentSecurityPolicies().remove(worldID);
+}
+
+void DOMWrapperWorld::clearIsolatedWorldContentSecurityPolicy(int worldID)
+{
+    ASSERT(DOMWrapperWorld::isIsolatedWorldId(worldID));
+    isolatedWorldContentSecurityPolicies().remove(worldID);
 }
 
 } // namespace WebCore

@@ -300,9 +300,6 @@ class Manager(object):
     def _http_tests(self):
         return set(test for test in self._test_names if self._is_http_test(test))
 
-    def _websocket_tests(self):
-        return set(test for test in self._test_files if self._is_websocket(test))
-
     def _is_perf_test(self, test):
         return self.PERF_SUBDIR == test or (self.PERF_SUBDIR + self._port.TEST_PATH_SEPARATOR) in test
 
@@ -459,7 +456,7 @@ class Manager(object):
 
     def _run_tests(self, tests, result_summary, num_workers):
         test_inputs = [self._test_input_for_file(test) for test in tests]
-        needs_http = any(self._is_http_test(test) for test in tests)
+        needs_http = self._port.requires_http_server() or any(self._is_http_test(test) for test in tests)
         needs_websockets = any(self._is_websocket_test(test) for test in tests)
         return self._runner.run_tests(test_inputs, self._expectations, result_summary, num_workers, needs_http, needs_websockets, self._retrying)
 

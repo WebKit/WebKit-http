@@ -35,12 +35,18 @@
 
 namespace WebCore {
 
+class ScrollingStateFixedNode;
+class ScrollingStateNode;
+class ScrollingStateScrollingNode;
+
 class ScrollingTreeNode {
 public:
     explicit ScrollingTreeNode(ScrollingTree*);
     virtual ~ScrollingTreeNode();
 
     virtual void update(ScrollingStateNode*) = 0;
+
+    virtual void parentScrollPositionDidChange(const IntRect& viewportRect) = 0;
 
     ScrollingNodeID scrollingNodeID() const { return m_nodeID; }
     void setScrollingNodeID(ScrollingNodeID nodeID) { m_nodeID = nodeID; }
@@ -54,13 +60,15 @@ public:
 protected:
     ScrollingTree* scrollingTree() const { return m_scrollingTree; }
 
+    typedef Vector<OwnPtr<ScrollingTreeNode> > ScrollingTreeChildrenVector;
+    OwnPtr<ScrollingTreeChildrenVector> m_children;
+
 private:
     ScrollingTree* m_scrollingTree;
 
     ScrollingNodeID m_nodeID;
 
     ScrollingTreeNode* m_parent;
-    OwnPtr<Vector<OwnPtr<ScrollingTreeNode> > > m_children;
 };
 
 } // namespace WebCore

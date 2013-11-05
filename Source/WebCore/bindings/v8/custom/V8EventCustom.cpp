@@ -42,12 +42,6 @@
 
 namespace WebCore {
 
-void V8Event::valueAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
-{
-    Event* event = V8Event::toNative(info.Holder());
-    event->setDefaultPrevented(!value->BooleanValue());
-}
-
 v8::Handle<v8::Value> V8Event::dataTransferAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     Event* event = V8Event::toNative(info.Holder());
@@ -70,22 +64,21 @@ v8::Handle<v8::Value> V8Event::clipboardDataAccessorGetter(v8::Local<v8::String>
 
 #define TRY_TO_WRAP_WITH_INTERFACE(interfaceName) \
     if (eventNames().interfaceFor##interfaceName == desiredInterface) \
-        return toV8(static_cast<interfaceName*>(event), creationContext, isolate);
+        return wrap(static_cast<interfaceName*>(event), creationContext, isolate);
 
-v8::Handle<v8::Value> toV8(Event* event, v8::Handle<v8::Object> creationContext, v8::Isolate *isolate)
+v8::Handle<v8::Object> wrap(Event* event, v8::Handle<v8::Object> creationContext, v8::Isolate *isolate)
 {
-    if (!event)
-        return v8NullWithCheck(isolate);
+    ASSERT(event);
 
     String desiredInterface = event->interfaceName();
 
     // We need to check Event first to avoid infinite recursion.
     if (eventNames().interfaceForEvent == desiredInterface)
-        return V8Event::wrap(event, creationContext, isolate);
+        return V8Event::createWrapper(event, creationContext, isolate);
 
     DOM_EVENT_INTERFACES_FOR_EACH(TRY_TO_WRAP_WITH_INTERFACE)
 
-    return V8Event::wrap(event, creationContext, isolate);
+    return V8Event::createWrapper(event, creationContext, isolate);
 }
 
 } // namespace WebCore

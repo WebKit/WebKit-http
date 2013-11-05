@@ -26,6 +26,7 @@
 #ifndef WebProcessProxy_h
 #define WebProcessProxy_h
 
+#include "MessageReceiverMap.h"
 #include "PlatformProcessIdentifier.h"
 #include "PluginInfoStore.h"
 #include "ProcessLauncher.h"
@@ -38,6 +39,10 @@
 #include <wtf/HashMap.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+
+#if ENABLE(CUSTOM_PROTOCOLS)
+#include "CustomProtocolManagerProxy.h"
+#endif
 
 namespace WebCore {
     class KURL;
@@ -76,6 +81,10 @@ public:
         
         return m_connection->connection(); 
     }
+
+    void addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver*);
+    void removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID);
+
     WebConnection* webConnection() const { return m_connection.get(); }
 
     WebContext* context() const { return m_context.get(); }
@@ -140,7 +149,7 @@ private:
     // Plugins
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void getPlugins(CoreIPC::Connection*, uint64_t requestID, bool refresh);
-    void getPluginPath(const String& mimeType, const String& urlString, String& pluginPath, bool& blocked);
+    void getPluginPath(const String& mimeType, const String& urlString, String& pluginPath, uint32_t& pluginLoadPolicy);
     void handleGetPlugins(uint64_t requestID, bool refresh);
     void sendDidGetPlugins(uint64_t requestID, PassOwnPtr<Vector<WebCore::PluginInfo> >);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -167,7 +176,7 @@ private:
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
     virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
     virtual void didClose(CoreIPC::Connection*);
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID);
+    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName);
 #if PLATFORM(WIN)
     virtual Vector<HWND> windowsToReceiveSentMessagesWhileWaitingForSyncReply();
 #endif
@@ -201,6 +210,7 @@ private:
     // This is not a CoreIPC::Connection so that we can wrap the CoreIPC::Connection in
     // an API object.
     RefPtr<WebConnectionToWebProcess> m_connection;
+    CoreIPC::MessageReceiverMap m_messageReceiverMap;
 
     Vector<std::pair<CoreIPC::Connection::OutgoingMessage, unsigned> > m_pendingMessages;
     RefPtr<ProcessLauncher> m_processLauncher;
@@ -213,6 +223,10 @@ private:
     HashMap<uint64_t, WebPageProxy*> m_pageMap;
     WebFrameProxyMap m_frameMap;
     WebBackForwardListItemMap m_backForwardListItemMap;
+    
+#if ENABLE(CUSTOM_PROTOCOLS)
+    CustomProtocolManagerProxy m_customProtocolManagerProxy;
+#endif
 };
 
 template<typename T>
@@ -220,7 +234,7 @@ bool WebProcessProxy::send(const T& message, uint64_t destinationID, unsigned me
 {
     COMPILE_ASSERT(!T::isSync, AsyncMessageExpected);
 
-    OwnPtr<CoreIPC::MessageEncoder> encoder = CoreIPC::MessageEncoder::create(T::receiverName(), "", destinationID);
+    OwnPtr<CoreIPC::MessageEncoder> encoder = CoreIPC::MessageEncoder::create(T::receiverName(), T::name(), destinationID);
     encoder->encode(message);
 
     return sendMessage(CoreIPC::MessageID(T::messageID), encoder.release(), messageSendFlags);

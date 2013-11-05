@@ -96,11 +96,18 @@ body.compact.inactive #toolbar {
 
 .toolbar-item.toggleable {
     padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+body.compact .toolbar-item.toggleable {
+  margin: 1px 0;
+  padding-bottom: 2px;
 }
 
 .toolbar-item.toggleable.toggled-on {
     border-width: 0 2px 0 2px;
-    padding: 4px 4px 0 4px;
+    padding-left: 4px;
+    padding-right: 4px;
     -webkit-border-image: url(Images/toolbarItemSelected.png) 0 2 0 2;
 }
 
@@ -109,6 +116,7 @@ body.compact.inactive #toolbar {
     width: 32px;
     height: 32px;
     background-image: url(Images/toolbarIcons.png);
+    vertical-align: top;
 }
 
 body.compact .toolbar-icon {
@@ -131,9 +139,12 @@ body.compact .toolbar-item:active .toolbar-icon {
 }
 
 .toolbar-label {
+    line-height: 15px;
     font-size: 11px;
     font-family: Lucida Grande, sans-serif;
     text-shadow: rgba(255, 255, 255, 0.5) 0 1px 0;
+    position: relative;
+    top: 1px;
 }
 
 .toolbar-item.toggleable:active .toolbar-label {
@@ -143,8 +154,7 @@ body.compact .toolbar-item:active .toolbar-icon {
 body.compact .toolbar-label {
     display: inline-block;
     margin-left: 3px;
-    position: relative;
-    top: 2px;
+    top: 0;
 }
 
 body.compact #search-toolbar-label {
@@ -159,17 +169,19 @@ body.compact #search-toolbar-label {
 }
 
 #toolbar-dropdown-arrow {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     border: 0;
     background-color: transparent;
     -webkit-border-radius: 5px;
     text-shadow: none;
-}
+    margin: 0;
+    position: relative;
+    top: 1px;
 
-body.compact #toolbar-dropdown-arrow {
-    font-size: 14px;
-    padding-bottom: 4px;
+    /* A line height of 0 allows precise text positioning using padding. */
+    line-height: 0;
+    padding: 9px 6px 11px;
 }
 
 #toolbar-dropdown-arrow.dropdown-visible {
@@ -231,6 +243,11 @@ body.undocked.platform-mac-snowleopard #toolbar-dropdown {
 
 #toolbar-dropdown .toolbar-icon {
     margin-right: 0.5em;
+}
+
+#toolbar-dropdown .toolbar-label {
+    line-height: 32px;
+    top: 0;
 }
 
 .scrollable-content {
@@ -454,7 +471,7 @@ body.compact .toolbar-item.console .toolbar-icon {
     background-position: 0 0;
     background-color: transparent;
     border: 0 none transparent;
-    margin-top: 4px;
+    padding: 0;
 }
 
 #close-button-left:hover, #close-button-right:hover {
@@ -490,7 +507,9 @@ body:not(.platform-mac) .toolbar-item.close-left {
 }
 
 .toolbar-item.close-left {
-    margin-top: 5px;
+  display: -webkit-box;
+  -webkit-box-align: center;
+  height: 100%;
 }
 
 #main {
@@ -769,7 +788,7 @@ body.port-qt .dock-status-bar-item {
 }
 
 #error-warning-count {
-    padding: 6px 2px 6px 0px;
+    padding: 5px 2px 6px 0px;
     font-size: 10px;
     height: 19px;
     cursor: pointer;
@@ -924,7 +943,7 @@ body.platform-linux .monospace, body.platform-linux .source-code {
     vertical-align: middle;
     white-space: nowrap;
     padding: 1px 4px;
-    margin-top: -2px;
+    margin-top: -1px;
     margin-right: 4px;
     margin-left: -18px;
     text-align: left;
@@ -943,6 +962,15 @@ body.platform-linux .monospace, body.platform-linux .source-code {
 
 .repeated-message.console-error-level::before, .repeated-message.console-warning-level:before, .repeated-message.console-debug-level:before {
     visibility: hidden;
+}
+
+.repeated-message .outline-disclosure, .repeated-message > .console-message-text {
+    -webkit-flex: 1;
+}
+
+.console-info {
+    color: rgb(128, 128, 128);
+    font-style: italic;
 }
 
 .console-group .console-group > .console-group-messages {
@@ -1039,6 +1067,7 @@ ol.watch-expressions > li.hovered {
 
 .console-message-url {
     float: right;
+    max-width: 100%;
     margin-left: 4px;
 }
 
@@ -1269,7 +1298,6 @@ iframe.panel.extension {
 .outline-disclosure li {
     padding: 0 0 0 14px;
     margin-top: 1px;
-    margin-bottom: 1px;
     margin-left: -2px;
     word-wrap: break-word;
 }
@@ -1307,7 +1335,6 @@ iframe.panel.extension {
     float: left;
     width: 8px;
     height: 8px;
-    margin-top: 1px;
     padding-right: 2px;
 }
 
@@ -1678,19 +1705,18 @@ li.editing .swatch, li.editing .enabled-button,  li.editing-sub-part .delete-but
     margin-bottom: -1px;
     width: 1em;
     height: 1em;
-    border: 1px solid rgba(128, 128, 128, 0.6);
-    background-image: url(Images/checker.png);
     display: inline-block;
+    background-image: url(Images/checker.png);
 }
 
 .swatch-inner {
     width: 100%;
     height: 100%;
     display: inline-block;
-    margin-bottom: 1px;
+    border: 1px solid rgba(128, 128, 128, 0.6);
 }
 
-.swatch:hover {
+.swatch-inner:hover {
     border: 1px solid rgba(64, 64, 64, 0.8);
 }
 
@@ -1986,6 +2012,12 @@ button.enable-toggle-status-bar-item.toggled-on .glyph {
 .filter-all .console-error-level, .filter-errors .console-error-level,
 .filter-all .console-log-level, .filter-logs .console-log-level {
     display: block;
+}
+
+.filter-all .console-warning-level.repeated-message, .filter-warnings .console-warning-level.repeated-message,
+.filter-all .console-error-level.repeated-message, .filter-errors .console-error-level.repeated-message,
+.filter-all .console-log-level.repeated-message, .filter-logs .console-log-level.repeated-message {
+    display: -webkit-flex;
 }
 
 .console-user-command-result {

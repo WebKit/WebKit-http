@@ -90,6 +90,7 @@ public:
     GraphicsLayer* scrollingContentsLayer() const { return m_scrollingContentsLayer.get(); }
 
     void attachToScrollingCoordinator(RenderLayerBacking* parent);
+    void detachFromScrollingCoordinator();
     uint64_t scrollLayerID() const { return m_scrollLayerID; }
     
     bool hasMaskLayer() const { return m_maskLayer != 0; }
@@ -141,6 +142,8 @@ public:
     TiledBacking* tiledBacking() const;
     void adjustTileCacheCoverage();
     
+    void updateDebugIndicators(bool showBorder, bool showRepaintCounter);
+    
     // GraphicsLayerClient interface
     virtual bool shouldUseTileCache(const GraphicsLayer*) const OVERRIDE;
     virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) OVERRIDE;
@@ -154,8 +157,7 @@ public:
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const OVERRIDE;
     virtual bool getCurrentTransform(const GraphicsLayer*, TransformationMatrix&) const OVERRIDE;
 
-    virtual bool showDebugBorders(const GraphicsLayer*) const OVERRIDE;
-    virtual bool showRepaintCounter(const GraphicsLayer*) const OVERRIDE;
+    virtual bool isTrackingRepaints() const OVERRIDE;
 
 #ifndef NDEBUG
     virtual void verifyNotPainting();
@@ -202,8 +204,6 @@ private:
     bool requiresScrollCornerLayer() const;
     bool updateScrollingLayers(bool scrollingLayers);
 
-    void detachFromScrollingCoordinator();
-
     GraphicsLayerPaintingPhase paintingPhaseForPrimaryLayer() const;
     
     IntSize contentOffsetInCompostingLayer() const;
@@ -247,7 +247,7 @@ private:
     bool hasTileCacheFlatteningLayer() const { return (m_containmentLayer && m_usingTiledCacheLayer); }
     GraphicsLayer* tileCacheFlatteningLayer() const { return m_usingTiledCacheLayer ? m_containmentLayer.get() : 0; }
 
-    void paintIntoLayer(RenderLayer* rootLayer, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase, RenderObject* paintingRoot);
+    void paintIntoLayer(RenderLayer* rootLayer, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
 
     static CSSPropertyID graphicsLayerToCSSProperty(AnimatedPropertyID);
     static AnimatedPropertyID cssToGraphicsLayerProperty(CSSPropertyID);

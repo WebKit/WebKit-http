@@ -164,7 +164,7 @@ public:
     // on all table parts and writing-mode on cells.
     const RenderStyle* styleForCellFlow() const
     {
-        return section()->style();
+        return row()->style();
     }
 
     const BorderValue& borderAdjoiningTableStart() const
@@ -223,8 +223,8 @@ private:
     virtual bool boxShadowShouldBeAppliedToBackground(BackgroundBleedAvoidance, InlineFlowBox*) const OVERRIDE;
 
     virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const;
-    virtual LayoutRect clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const OVERRIDE;
-    virtual void computeRectForRepaint(RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const OVERRIDE;
+    virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const OVERRIDE;
+    virtual void computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const OVERRIDE;
 
     int borderHalfLeft(bool outer) const;
     int borderHalfRight(bool outer) const;
@@ -239,6 +239,9 @@ private:
     void setIntrinsicPaddingBefore(int p) { m_intrinsicPaddingBefore = p; }
     void setIntrinsicPaddingAfter(int p) { m_intrinsicPaddingAfter = p; }
     void setIntrinsicPadding(int before, int after) { setIntrinsicPaddingBefore(before); setIntrinsicPaddingAfter(after); }
+
+    bool hasStartBorderAdjoiningTable() const;
+    bool hasEndBorderAdjoiningTable() const;
 
     CollapsedBorderValue collapsedStartBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;
     CollapsedBorderValue collapsedEndBorder(IncludeBorderColorOrNot = IncludeBorderColor) const;

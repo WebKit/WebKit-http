@@ -26,10 +26,15 @@
 #include <Evas.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
-class Widget;
+class HistoryItem;
+class HTMLPlugInElement;
+class KURL;
 class Frame;
+class IntSize;
+class Widget;
 }
 
 Evas_Object* ewk_frame_add(Evas* canvas);

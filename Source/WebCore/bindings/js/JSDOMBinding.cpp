@@ -142,7 +142,7 @@ JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, Pass
         for (unsigned i = 0; i < stringList->length(); ++i)
             list.append(jsStringWithCache(exec, stringList->item(i)));
     }
-    return JSC::constructArray(exec, globalObject, list);
+    return JSC::constructArray(exec, 0, globalObject, list);
 }
 
 void reportException(ExecState* exec, JSValue exception)
@@ -186,7 +186,8 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
     if (!ec || exec->hadException())
         return;
 
-    if (ec == NATIVE_TYPE_ERR) {
+    // FIXME: Handle other WebIDL exception types.
+    if (ec == TypeError) {
         throwTypeError(exec);
         return;
     }

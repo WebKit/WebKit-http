@@ -349,18 +349,30 @@ _llint_op_create_arguments:
 
 _llint_op_create_this:
     traceExecution()
-    loadp Callee[cfr], t0
+    loadi 8[PC], t0
+    loadp PayloadOffset[cfr, t0, 8], t0
     loadp JSFunction::m_cachedInheritorID[t0], t2
     btpz t2, .opCreateThisSlow
     allocateBasicJSObject(JSFinalObjectSizeClassIndex, t2, t0, t1, t3, .opCreateThisSlow)
     loadi 4[PC], t1
     storei CellTag, TagOffset[cfr, t1, 8]
     storei t0, PayloadOffset[cfr, t1, 8]
-    dispatch(2)
+    dispatch(3)
 
 .opCreateThisSlow:
     callSlowPath(_llint_slow_path_create_this)
-    dispatch(2)
+    dispatch(3)
+
+
+_llint_op_get_callee:
+    traceExecution()
+    loadi 4[PC], t0
+    loadp PayloadOffset + Callee[cfr], t1
+    loadp 8[PC], t2
+    valueProfile(CellTag, t1, t2)
+    storei CellTag, TagOffset[cfr, t0, 8]
+    storei t1, PayloadOffset[cfr, t0, 8]
+    dispatch(3)
 
 
 _llint_op_convert_this:
@@ -984,7 +996,7 @@ _llint_op_init_global_const:
     writeBarrier(t2, t3)
     storei t2, TagOffset[t0]
     storei t3, PayloadOffset[t0]
-    dispatch(3)
+    dispatch(5)
 
 
 _llint_op_init_global_const_check:
@@ -1185,7 +1197,9 @@ _llint_op_get_by_val:
     loadConstantOrVariablePayload(t3, Int32Tag, t1, .opGetByValSlow)
     loadp JSObject::m_butterfly[t0], t3
     andi IndexingShapeMask, t2
+    bieq t2, Int32Shape, .opGetByValIsContiguous
     bineq t2, ContiguousShape, .opGetByValNotContiguous
+.opGetByValIsContiguous:
     
     biaeq t1, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t3], .opGetByValSlow
     loadi TagOffset[t3, t1, 8], t2
@@ -1193,6 +1207,16 @@ _llint_op_get_by_val:
     jmp .opGetByValDone
 
 .opGetByValNotContiguous:
+    bineq t2, DoubleShape, .opGetByValNotDouble
+    biaeq t1, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t3], .opGetByValSlow
+    loadd [t3, t1, 8], ft0
+    bdnequn ft0, ft0, .opGetByValSlow
+    # FIXME: This could be massively optimized.
+    fd2ii ft0, t1, t2
+    loadi 4[PC], t0
+    jmp .opGetByValNotEmpty
+
+.opGetByValNotDouble:
     subi ArrayStorageShape, t2
     bia t2, SlowPutArrayStorageShape - ArrayStorageShape, .opGetByValSlow
     biaeq t1, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t3], .opGetByValSlow
@@ -1202,6 +1226,7 @@ _llint_op_get_by_val:
 .opGetByValDone:
     loadi 4[PC], t0
     bieq t2, EmptyValueTag, .opGetByValSlow
+.opGetByValNotEmpty:
     storei t2, TagOffset[cfr, t0, 8]
     storei t1, PayloadOffset[cfr, t0, 8]
     loadi 20[PC], t0
@@ -1270,6 +1295,24 @@ _llint_op_get_by_pname:
     dispatch(7)
 
 
+macro contiguousPutByVal(storeCallback)
+    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .outOfBounds
+.storeResult:
+    loadi 12[PC], t2
+    storeCallback(t2, t1, t0, t3)
+    dispatch(5)
+
+.outOfBounds:
+    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t0], .opPutByValSlow
+    if VALUE_PROFILER
+        loadp 16[PC], t2
+        storeb 1, ArrayProfile::m_mayStoreToHole[t2]
+    end
+    addi 1, t3, t2
+    storei t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0]
+    jmp .storeResult
+end
+
 _llint_op_put_by_val:
     traceExecution()
     loadi 4[PC], t0
@@ -1281,26 +1324,42 @@ _llint_op_put_by_val:
     loadConstantOrVariablePayload(t0, Int32Tag, t3, .opPutByValSlow)
     loadp JSObject::m_butterfly[t1], t0
     andi IndexingShapeMask, t2
+    bineq t2, Int32Shape, .opPutByValNotInt32
+    contiguousPutByVal(
+        macro (operand, scratch, base, index)
+            loadConstantOrVariablePayload(operand, Int32Tag, scratch, .opPutByValSlow)
+            storei Int32Tag, TagOffset[base, index, 8]
+            storei scratch, PayloadOffset[base, index, 8]
+        end)
+
+.opPutByValNotInt32:
+    bineq t2, DoubleShape, .opPutByValNotDouble
+    contiguousPutByVal(
+        macro (operand, scratch, base, index)
+            const tag = scratch
+            const payload = operand
+            loadConstantOrVariable2Reg(operand, tag, payload)
+            bineq tag, Int32Tag, .notInt
+            ci2d payload, ft0
+            jmp .ready
+        .notInt:
+            fii2d payload, tag, ft0
+            bdnequn ft0, ft0, .opPutByValSlow
+        .ready:
+            stored ft0, [base, index, 8]
+        end)
+
+.opPutByValNotDouble:
     bineq t2, ContiguousShape, .opPutByValNotContiguous
-
-    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValContiguousOutOfBounds
-.opPutByValContiguousStoreResult:
-    loadi 12[PC], t2
-    loadConstantOrVariable2Reg(t2, t1, t2)
-    writeBarrier(t1, t2)
-    storei t1, TagOffset[t0, t3, 8]
-    storei t2, PayloadOffset[t0, t3, 8]
-    dispatch(5)
-
-.opPutByValContiguousOutOfBounds:
-    biaeq t3, -sizeof IndexingHeader + IndexingHeader::m_vectorLength[t0], .opPutByValSlow
-    if VALUE_PROFILER
-        loadp 16[PC], t1
-        storeb 1, ArrayProfile::m_mayStoreToHole[t1]
-    end
-    addi 1, t3, t2
-    storei t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0]
-    jmp .opPutByValContiguousStoreResult
+    contiguousPutByVal(
+        macro (operand, scratch, base, index)
+            const tag = scratch
+            const payload = operand
+            loadConstantOrVariable2Reg(operand, tag, payload)
+            writeBarrier(tag, payload)
+            storei tag, TagOffset[base, index, 8]
+            storei payload, PayloadOffset[base, index, 8]
+        end)
 
 .opPutByValNotContiguous:
     bineq t2, ArrayStorageShape, .opPutByValSlow
@@ -1320,8 +1379,8 @@ _llint_op_put_by_val:
         storeb 1, ArrayProfile::m_mayStoreToHole[t1]
     end
     addi 1, ArrayStorage::m_numValuesInVector[t0]
-    bib t2, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValArrayStorageStoreResult
-    addi 1, t2, t1
+    bib t3, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0], .opPutByValArrayStorageStoreResult
+    addi 1, t3, t1
     storei t1, -sizeof IndexingHeader + IndexingHeader::m_publicLength[t0]
     jmp .opPutByValArrayStorageStoreResult
 

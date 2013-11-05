@@ -30,7 +30,11 @@ namespace WTR {
 
 static Ecore_Evas* initEcoreEvas()
 {
-    Ecore_Evas* ecoreEvas = ecore_evas_new(0, 0, 0, 800, 600, 0);
+    const char* engine = 0;
+#if defined(WTF_USE_ACCELERATED_COMPOSITING) && defined(HAVE_ECORE_X)
+    engine = "opengl_x11";
+#endif
+    Ecore_Evas* ecoreEvas = ecore_evas_new(engine, 0, 0, 800, 600, 0);
     if (!ecoreEvas)
         return 0;
 
@@ -69,10 +73,10 @@ WKPageRef PlatformWebView::page()
 
 void PlatformWebView::focus()
 {
-    // Force the view to receive focus even if Evas considers it to be focused; sometimes an iframe might receive
-    // focused via JavaScript and the main frame is considered unfocused, but that is not noticed by Evas.
-    // Perhaps WebCoreSupport::focusedFrameChanged() should emit some sort of notification?
-    if (evas_object_focus_get(m_view))
+    // In a few cases, an iframe might receive focus from JavaScript and Evas is not aware of it at all
+    // (WebCoreSupport::focusedFrameChanged() does not emit any notification). We then manually remove the
+    // focus from the view to make the call give focus to evas_object_focus_set(..., true) to be effectful.
+    if (WKPageGetFocusedFrame(page()) != WKPageGetMainFrame(page()))
         evas_object_focus_set(m_view, false);
     evas_object_focus_set(m_view, true);
 }

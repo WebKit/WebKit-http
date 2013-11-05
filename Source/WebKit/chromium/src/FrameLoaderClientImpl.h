@@ -225,6 +225,15 @@ public:
     virtual void dispatchWillStartUsingPeerConnectionHandler(WebCore::RTCPeerConnectionHandler*) OVERRIDE;
 #endif
 
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+    virtual void didRequestAutocomplete(PassRefPtr<WebCore::FormState>) OVERRIDE;
+#endif
+
+#if ENABLE(WEBGL)
+    virtual bool allowWebGL(bool enabledPerSettings) OVERRIDE;
+    virtual void didLoseWebGLContext(int arbRobustnessContextLostReason) OVERRIDE;
+#endif
+
 private:
     void makeDocumentView();
 

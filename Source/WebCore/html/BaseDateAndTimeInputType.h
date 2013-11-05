@@ -31,6 +31,7 @@
 #ifndef BaseDateAndTimeInputType_h
 #define BaseDateAndTimeInputType_h
 
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 #include "DateComponents.h"
 #include "TextFieldInputType.h"
 #include <wtf/unicode/Unicode.h>
@@ -38,6 +39,7 @@
 namespace WebCore {
 
 // A super class of date, datetime, datetime-local, month, time, and week types.
+// FIXME: Don't inherit TextFieldInputType. webkit.org/b/100935
 class BaseDateAndTimeInputType : public TextFieldInputType {
 protected:
     BaseDateAndTimeInputType(HTMLInputElement* element) : TextFieldInputType(element) { }
@@ -48,6 +50,7 @@ protected:
     virtual String serialize(const Decimal&) const OVERRIDE;
     String serializeWithComponents(const DateComponents&) const;
     virtual bool setMillisecondToDateComponents(double, DateComponents*) const = 0;
+    virtual String visibleValue() const OVERRIDE;
 
 private:
     virtual bool parseToDateComponentsInternal(const UChar*, unsigned length, DateComponents*) const = 0;
@@ -62,10 +65,9 @@ private:
     virtual bool isSteppable() const OVERRIDE;
     virtual String serializeWithMilliseconds(double) const;
     virtual String localizeValue(const String&) const OVERRIDE;
-    virtual String visibleValue() const OVERRIDE;
     virtual String convertFromVisibleValue(const String&) const OVERRIDE;
 };
 
 } // namespace WebCore
-
+#endif
 #endif // BaseDateAndTimeInputType_h

@@ -93,6 +93,9 @@ WebProcessProxy::WebProcessProxy(PassRefPtr<WebContext> context)
     : m_responsivenessTimer(this)
     , m_context(context)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
+#if ENABLE(CUSTOM_PROTOCOLS)
+    , m_customProtocolManagerProxy(this)
+#endif
 {
     connect();
 }
@@ -180,6 +183,16 @@ void WebProcessProxy::terminate()
 {
     if (m_processLauncher)
         m_processLauncher->terminateProcess();
+}
+
+void WebProcessProxy::addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver* messageReceiver)
+{
+    m_messageReceiverMap.addMessageReceiver(messageReceiverName, destinationID, messageReceiver);
+}
+
+void WebProcessProxy::removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID)
+{
+    m_messageReceiverMap.removeMessageReceiver(messageReceiverName, destinationID);
 }
 
 WebPageProxy* WebProcessProxy::webPage(uint64_t pageID) const
@@ -359,21 +372,20 @@ void WebProcessProxy::getPlugins(CoreIPC::Connection*, uint64_t requestID, bool 
     pluginWorkQueue().dispatch(bind(&WebProcessProxy::handleGetPlugins, this, requestID, refresh));
 }
 
-void WebProcessProxy::getPluginPath(const String& mimeType, const String& urlString, String& pluginPath, bool& blocked)
+void WebProcessProxy::getPluginPath(const String& mimeType, const String& urlString, String& pluginPath, uint32_t& pluginLoadPolicy)
 {
     MESSAGE_CHECK_URL(urlString);
 
     String newMimeType = mimeType.lower();
 
-    blocked = false;
+    pluginLoadPolicy = PluginModuleLoadNormally;
     PluginModuleInfo plugin = m_context->pluginInfoStore().findPlugin(newMimeType, KURL(KURL(), urlString));
     if (!plugin.path)
         return;
 
-    if (m_context->pluginInfoStore().shouldBlockPlugin(plugin)) {
-        blocked = true;
+    pluginLoadPolicy = PluginInfoStore::policyForPlugin(plugin);
+    if (pluginLoadPolicy != PluginModuleLoadNormally)
         return;
-    }
 
     pluginPath = plugin.path;
 }
@@ -416,6 +428,9 @@ void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProces
 
 void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
+    if (m_messageReceiverMap.dispatchMessage(connection, messageID, decoder))
+        return;
+
     if (m_context->dispatchMessage(connection, messageID, decoder))
         return;
 
@@ -423,6 +438,13 @@ void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC
         didReceiveWebProcessProxyMessage(connection, messageID, decoder);
         return;
     }
+
+#if ENABLE(CUSTOM_PROTOCOLS)
+    if (messageID.is<CoreIPC::MessageClassCustomProtocolManagerProxy>()) {
+        m_customProtocolManagerProxy.didReceiveMessage(connection, messageID, decoder);
+        return;
+    }
+#endif
 
     uint64_t pageID = decoder.destinationID();
     if (!pageID)
@@ -437,6 +459,9 @@ void WebProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC
 
 void WebProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
+    if (m_messageReceiverMap.dispatchSyncMessage(connection, messageID, decoder, replyEncoder))
+        return;
+
     if (m_context->dispatchSyncMessage(connection, messageID, decoder, replyEncoder))
         return;
 
@@ -477,9 +502,9 @@ void WebProcessProxy::didClose(CoreIPC::Connection*)
         pages[i]->processDidCrash();
 }
 
-void WebProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID messageID)
+void WebProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName)
 {
-    WTFLogAlways("Received an invalid message from the web process with message ID %x\n", messageID.toInt());
+    WTFLogAlways("Received an invalid message \"%s.%s\" from the web process.\n", messageReceiverName.toString().data(), messageName.toString().data());
 
     // Terminate the WebProcesses.
     terminate();
@@ -532,6 +557,11 @@ void WebProcessProxy::didFinishLaunching(CoreIPC::Connection::Identifier connect
 
     // Tell the context that we finished launching.
     m_context->processDidFinishLaunching(this);
+
+#if PLATFORM(MAC)
+    if (WebContext::applicationIsOccluded())
+        connection()->send(Messages::WebProcess::SetApplicationIsOccluded(true), 0);
+#endif
 }
 
 WebFrameProxy* WebProcessProxy::webFrame(uint64_t frameID) const
@@ -594,10 +624,8 @@ void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
 
 void WebProcessProxy::updateTextCheckerState()
 {
-    if (!isValid())
-        return;
-
-    send(Messages::WebProcess::SetTextCheckerState(TextChecker::state()), 0);
+    if (canSendMessage())
+        send(Messages::WebProcess::SetTextCheckerState(TextChecker::state()), 0);
 }
 
 void WebProcessProxy::didNavigateWithNavigationData(uint64_t pageID, const WebNavigationDataStore& store, uint64_t frameID) 

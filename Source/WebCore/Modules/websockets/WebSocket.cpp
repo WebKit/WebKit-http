@@ -164,6 +164,36 @@ PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context)
     return webSocket.release();
 }
 
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const String& url, ExceptionCode& ec)
+{
+    Vector<String> protocols;
+    return WebSocket::create(context, url, protocols, ec);
+}
+
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const String& url, const Vector<String>& protocols, ExceptionCode& ec)
+{
+    if (url.isNull()) {
+        ec = SYNTAX_ERR;
+        return 0;
+    }
+
+    RefPtr<WebSocket> webSocket(adoptRef(new WebSocket(context)));
+    webSocket->suspendIfNeeded();
+
+    webSocket->connect(context->completeURL(url), protocols, ec);
+    if (ec)
+        return 0;
+
+    return webSocket.release();
+}
+
+PassRefPtr<WebSocket> WebSocket::create(ScriptExecutionContext* context, const String& url, const String& protocol, ExceptionCode& ec)
+{
+    Vector<String> protocols;
+    protocols.append(protocol);
+    return WebSocket::create(context, url, protocols, ec);
+}
+
 void WebSocket::connect(const String& url, ExceptionCode& ec)
 {
     Vector<String> protocols;
@@ -341,15 +371,9 @@ void WebSocket::close(int code, const String& reason, ExceptionCode& ec)
             ec = INVALID_ACCESS_ERR;
             return;
         }
-        CString utf8 = reason.utf8(true);
+        CString utf8 = reason.utf8(String::StrictConversionReplacingUnpairedSurrogatesWithFFFD);
         if (utf8.length() > maxReasonSizeInBytes) {
             scriptExecutionContext()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "WebSocket close message is too long.");
-            ec = SYNTAX_ERR;
-            return;
-        }
-        // Checks whether reason is valid utf8.
-        if (utf8.isNull() && reason.length()) {
-            scriptExecutionContext()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "WebSocket close message contains invalid character(s).");
             ec = SYNTAX_ERR;
             return;
         }

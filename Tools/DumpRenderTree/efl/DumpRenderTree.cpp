@@ -66,6 +66,7 @@ RefPtr<TestRunner> gTestRunner;
 volatile bool done = false;
 
 static bool dumpPixelsForCurrentTest;
+static int dumpPixelsForAllTests = false;
 static int dumpTree = true;
 static int printSeparators = true;
 
@@ -192,6 +193,7 @@ static bool parseCommandLineOptions(int argc, char** argv)
 {
     static const option options[] = {
         {"notree", no_argument, &dumpTree, false},
+        {"pixel-tests", no_argument, &dumpPixelsForAllTests, true},
         {"tree", no_argument, &dumpTree, true},
         {0, 0, 0, 0}
     };
@@ -258,7 +260,7 @@ static void runTest(const char* inputLine)
     TestCommand command = parseInputLine(inputLine);
     const String testPathOrURL(command.pathOrURL.c_str());
     ASSERT(!testPathOrURL.isEmpty());
-    dumpPixelsForCurrentTest = command.shouldDumpPixels;
+    dumpPixelsForCurrentTest = command.shouldDumpPixels || dumpPixelsForAllTests;
     const String expectedPixelHash(command.expectedPixelHash.c_str());
 
     // Convert the path into a full file URL if it does not look
@@ -382,6 +384,7 @@ static void shutdownEfl()
 
 void displayWebView()
 {
+    DumpRenderTreeSupportEfl::forceLayout(browser->mainFrame());
     DumpRenderTreeSupportEfl::setTracksRepaints(browser->mainFrame(), true);
     DumpRenderTreeSupportEfl::resetTrackedRepaints(browser->mainFrame());
 }
@@ -419,7 +422,11 @@ void dump()
 
 static Ecore_Evas* initEcoreEvas()
 {
-    Ecore_Evas* ecoreEvas = ecore_evas_new(0, 0, 0, 800, 600, 0);
+    const char* engine = 0;
+#if defined(WTF_USE_ACCELERATED_COMPOSITING) && defined(HAVE_ECORE_X)
+    engine = "opengl_x11";
+#endif
+    Ecore_Evas* ecoreEvas = ecore_evas_new(engine, 0, 0, 800, 600, 0);
     if (!ecoreEvas) {
         shutdownEfl();
         exit(EXIT_FAILURE);

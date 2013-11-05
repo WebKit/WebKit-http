@@ -32,6 +32,8 @@
 #include "DecodeEscapeSequences.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "FormData.h"
+#include "FormDataList.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "HTMLDocumentParser.h"
@@ -39,6 +41,10 @@
 #include "HTMLTokenizer.h"
 #include "HTMLParamElement.h"
 #include "HTMLParserIdioms.h"
+#include "InspectorInstrumentation.h"
+#include "InspectorValues.h"
+#include "KURL.h"
+#include "PingLoader.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "TextEncoding.h"
@@ -167,7 +173,7 @@ XSSAuditor::XSSAuditor(HTMLDocumentParser* parser)
     , m_state(Uninitialized)
     , m_shouldAllowCDATA(false)
     , m_scriptTagNestingLevel(0)
-    , m_notifiedClient(false)
+    , m_notifyClient(true)
 {
     ASSERT(m_parser);
     if (Frame* frame = parser->document()->frame()) {
@@ -214,13 +220,32 @@ void XSSAuditor::init()
     if (m_decodedURL.find(isRequiredForInjection) == notFound)
         m_decodedURL = String();
 
+    String httpBodyAsString;
     if (DocumentLoader* documentLoader = m_parser->document()->frame()->loader()->documentLoader()) {
         DEFINE_STATIC_LOCAL(String, XSSProtectionHeader, (ASCIILiteral("X-XSS-Protection")));
-        m_xssProtection = parseXSSProtectionHeader(documentLoader->response().httpHeaderField(XSSProtectionHeader));
+        String headerValue = documentLoader->response().httpHeaderField(XSSProtectionHeader);
+        String errorDetails;
+        unsigned errorPosition = 0;
+        String reportURL;
+        m_xssProtection = parseXSSProtectionHeader(headerValue, errorDetails, errorPosition, reportURL);
+
+        if ((m_xssProtection == XSSProtectionEnabled || m_xssProtection == XSSProtectionBlockEnabled) && !reportURL.isEmpty()) {
+            m_reportURL = m_parser->document()->completeURL(reportURL);
+            if (MixedContentChecker::isMixedContent(m_parser->document()->securityOrigin(), m_reportURL)) {
+                errorDetails = "insecure reporting URL for secure page";
+                m_xssProtection = XSSProtectionInvalid;
+                m_reportURL = KURL();
+            }
+        }
+
+        if (m_xssProtection == XSSProtectionInvalid) {
+            m_parser->document()->addConsoleMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
+            m_xssProtection = XSSProtectionEnabled;
+        }
 
         FormData* httpBody = documentLoader->originalRequest().httpBody();
         if (httpBody && !httpBody->isEmpty()) {
-            String httpBodyAsString = httpBody->flattenToString();
+            httpBodyAsString = httpBody->flattenToString();
             if (!httpBodyAsString.isEmpty()) {
                 m_decodedHTTPBody = fullyDecodeString(httpBodyAsString, decoder);
                 if (m_decodedHTTPBody.find(isRequiredForInjection) == notFound)
@@ -231,8 +256,16 @@ void XSSAuditor::init()
         }
     }
 
-    if (m_decodedURL.isEmpty() && m_decodedHTTPBody.isEmpty())
+    if (m_decodedURL.isEmpty() && m_decodedHTTPBody.isEmpty()) {
         m_isEnabled = false;
+        return;
+    }
+
+    if (!m_reportURL.isEmpty()) {
+        // May need these for reporting later on.
+        m_originalURL = url;
+        m_originalHTTPBody = httpBodyAsString;
+    }
 }
 
 void XSSAuditor::filterToken(HTMLToken& token)
@@ -263,9 +296,25 @@ void XSSAuditor::filterToken(HTMLToken& token)
         if (didBlockEntirePage)
              m_parser->document()->frame()->loader()->stopAllLoaders();
 
-        if (!m_notifiedClient) {
+        if (m_notifyClient) {
             m_parser->document()->frame()->loader()->client()->didDetectXSS(m_parser->document()->url(), didBlockEntirePage);
-            m_notifiedClient = true;
+            m_notifyClient = false;
+        }
+
+        if (!m_reportURL.isEmpty()) {
+            RefPtr<InspectorObject> reportDetails = InspectorObject::create();
+            reportDetails->setString("request-url", m_originalURL);
+            reportDetails->setString("request-body", m_originalHTTPBody);
+
+            RefPtr<InspectorObject> reportObject = InspectorObject::create();
+            reportObject->setObject("xss-report", reportDetails.release());
+
+            RefPtr<FormData> report = FormData::create(reportObject->toJSONString().utf8().data());
+            PingLoader::sendViolationReport(m_parser->document()->frame(), m_reportURL, report);
+
+            m_reportURL = KURL();
+            m_originalURL = String();
+            m_originalHTTPBody = String();
         }
 
         if (didBlockEntirePage)
@@ -605,6 +654,12 @@ bool XSSAuditor::isContainedInRequest(const String& decodedSnippet)
 
 bool XSSAuditor::isLikelySafeResource(const String& url)
 {
+    // Give empty URLs and about:blank a pass. Making a resourceURL from an
+    // empty string below will likely later fail the "no query args test" as
+    // it inherits the document's query args.
+    if (url.isEmpty() || url == blankURL().string())
+        return true;
+
     // If the resource is loaded from the same host as the enclosing page, it's
     // probably not an XSS attack, so we reduce false positives by allowing the
     // request, ignoring scheme and port considerations. If the resource has a

@@ -93,7 +93,7 @@ WebInspector.StylesSidebarPane = function(computedStylePane, setPseudoClassCallb
     this._sectionsContainer = document.createElement("div");
     this.bodyElement.appendChild(this._sectionsContainer);
 
-    this._spectrum = new WebInspector.Spectrum();
+    this._spectrumHelper = new WebInspector.SpectrumPopupHelper();
     this._linkifier = new WebInspector.Linkifier(new WebInspector.Linkifier.DefaultCSSFormatter());
 
     WebInspector.cssModel.addEventListener(WebInspector.CSSStyleModel.Events.StyleSheetChanged, this._styleSheetOrMediaQueryResultChanged, this);
@@ -131,6 +131,14 @@ WebInspector.StylesSidebarPane.canonicalPropertyName = function(name)
     return match[1];
 }
 
+WebInspector.StylesSidebarPane.createExclamationMark = function(propertyName)
+{
+    var exclamationElement = document.createElement("img");
+    exclamationElement.className = "exclamation-mark";
+    exclamationElement.title = WebInspector.CSSCompletions.cssPropertiesMetainfo.keySet()[propertyName.toLowerCase()] ? WebInspector.UIString("Invalid property value.") : WebInspector.UIString("Unknown property name.");
+    return exclamationElement;
+}
+
 WebInspector.StylesSidebarPane.prototype = {
     _contextMenuEventFired: function(event)
     {
@@ -162,8 +170,7 @@ WebInspector.StylesSidebarPane.prototype = {
 
     update: function(node, forceUpdate)
     {
-        if (this._spectrum.visible)
-            this._spectrum.hide(false);
+        this._spectrumHelper.hide();
 
         var refresh = false;
 
@@ -686,42 +693,6 @@ WebInspector.StylesSidebarPane.prototype = {
         }
     },
 
-    registerShortcuts: function()
-    {
-        var section = WebInspector.shortcutsScreen.section(WebInspector.UIString("Styles Pane"));
-        var shortcut = WebInspector.KeyboardShortcut;
-        var keys = [
-            shortcut.shortcutToString(shortcut.Keys.Tab),
-            shortcut.shortcutToString(shortcut.Keys.Tab, shortcut.Modifiers.Shift)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Next/previous property"));
-        keys = [
-            shortcut.shortcutToString(shortcut.Keys.Up),
-            shortcut.shortcutToString(shortcut.Keys.Down)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Increment/decrement value"));
-        keys = [
-            shortcut.shortcutToString(shortcut.Keys.Up, shortcut.Modifiers.Shift),
-            shortcut.shortcutToString(shortcut.Keys.Down, shortcut.Modifiers.Shift)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Increment/decrement by %f", 10));
-        keys = [
-            shortcut.shortcutToString(shortcut.Keys.PageUp),
-            shortcut.shortcutToString(shortcut.Keys.PageDown)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Increment/decrement by %f", 10));
-        keys = [
-            shortcut.shortcutToString(shortcut.Keys.PageUp, shortcut.Modifiers.Shift),
-            shortcut.shortcutToString(shortcut.Keys.PageDown, shortcut.Modifiers.Shift)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Increment/decrement by %f", 100));
-        keys = [
-            shortcut.shortcutToString(shortcut.Keys.PageUp, shortcut.Modifiers.Alt),
-            shortcut.shortcutToString(shortcut.Keys.PageDown, shortcut.Modifiers.Alt)
-        ];
-        section.addRelatedKeys(keys, WebInspector.UIString("Increment/decrement by %f", 0.1));
-    },
-
     _toggleElementStatePane: function(event)
     {
         event.consume();
@@ -787,8 +758,7 @@ WebInspector.StylesSidebarPane.prototype = {
 
     willHide: function()
     {
-        if (this._spectrum.visible)
-            this._spectrum.hide(false);
+        this._spectrumHelper.hide();
     },
 
     __proto__: WebInspector.SidebarPane.prototype
@@ -1456,8 +1426,10 @@ WebInspector.ComputedStylePropertiesSection.prototype = {
                     treeElement.appendChild(childElement);
                     if (property.inactive || section.isPropertyOverloaded(property.name))
                         childElement.listItemElement.addStyleClass("overloaded");
-                    if (!property.parsedOk)
+                    if (!property.parsedOk) {
                         childElement.listItemElement.addStyleClass("not-parsed-ok");
+                        childElement.listItemElement.insertBefore(WebInspector.StylesSidebarPane.createExclamationMark(property.name), childElement.listItemElement.firstChild);
+                    }
                 }
             }
         }
@@ -1759,32 +1731,21 @@ WebInspector.StylePropertyTreeElement.prototype = {
 
                 var format = getFormat();
                 var hasSpectrum = self._parentPane;
-                var spectrum = hasSpectrum ? self._parentPane._spectrum : null;
+                var spectrumHelper = hasSpectrum ? self._parentPane._spectrumHelper : null;
+                var spectrum = spectrumHelper ? spectrumHelper.spectrum() : null;
 
-                var swatchElement = document.createElement("span");
-                var swatchInnerElement = swatchElement.createChild("span", "swatch-inner");
-                swatchElement.title = WebInspector.UIString("Click to open a colorpicker. Shift-click to change color format");
-
-                swatchElement.className = "swatch";
-
-                swatchElement.addEventListener("mousedown", consumeEvent, false);
-                swatchElement.addEventListener("click", swatchClick, false);
-                swatchElement.addEventListener("dblclick", consumeEvent, false);
-
-                swatchInnerElement.style.backgroundColor = text;
+                var colorSwatch = new WebInspector.ColorSwatch();
+                colorSwatch.setColorString(text);
+                colorSwatch.element.addEventListener("click", swatchClick, false);
 
                 var scrollerElement = hasSpectrum ? self._parentPane._computedStylePane.element.parentElement : null;
 
                 function spectrumChanged(e)
                 {
                     color = e.data;
-
                     var colorString = color.toString();
-
                     colorValueElement.textContent = colorString;
-                    spectrum.displayText = colorString;
-                    swatchInnerElement.style.backgroundColor = colorString;
-
+                    colorSwatch.setColorString(colorString);
                     self.applyStyleText(nameElement.textContent + ": " + valueElement.textContent, false, false, false);
                 }
 
@@ -1795,7 +1756,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
                     var propertyText = !commitEdit && self.originalPropertyText ? self.originalPropertyText : (nameElement.textContent + ": " + valueElement.textContent);
                     self.applyStyleText(propertyText, true, true, false);
                     spectrum.removeEventListener(WebInspector.Spectrum.Events.ColorChanged, spectrumChanged);
-                    spectrum.removeEventListener(WebInspector.Spectrum.Events.Hidden, spectrumHidden);
+                    spectrumHelper.removeEventListener(WebInspector.SpectrumPopupHelper.Events.Hidden, spectrumHidden);
 
                     delete self._parentPane._isEditingStyle;
                     delete self.originalPropertyText;
@@ -1803,24 +1764,24 @@ WebInspector.StylePropertyTreeElement.prototype = {
 
                 function repositionSpectrum()
                 {
-                    spectrum.reposition(swatchElement);
+                    spectrumHelper.reposition(colorSwatch.element);
                 }
 
                 function swatchClick(e)
                 {
                     // Shift + click toggles color formats.
                     // Click opens colorpicker, only if the element is not in computed styles section.
-                    if (!spectrum || e.shiftKey)
+                    if (!spectrumHelper || e.shiftKey)
                         changeColorDisplay(e);
                     else {
-                        var visible = spectrum.toggle(swatchElement, color, format);
+                        var visible = spectrumHelper.toggle(colorSwatch.element, color, format);
 
                         if (visible) {
                             spectrum.displayText = color.toString(format);
                             self.originalPropertyText = self.property.propertyText;
                             self._parentPane._isEditingStyle = true;
                             spectrum.addEventListener(WebInspector.Spectrum.Events.ColorChanged, spectrumChanged);
-                            spectrum.addEventListener(WebInspector.Spectrum.Events.Hidden, spectrumHidden);
+                            spectrumHelper.addEventListener(WebInspector.SpectrumPopupHelper.Events.Hidden, spectrumHidden);
 
                             scrollerElement.addEventListener("scroll", repositionSpectrum, false);
                         }
@@ -1907,7 +1868,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
                 }
 
                 var container = document.createElement("nobr");
-                container.appendChild(swatchElement);
+                container.appendChild(colorSwatch.element);
                 container.appendChild(colorValueElement);
                 return container;
             }
@@ -1940,10 +1901,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
             this.listItemElement.addStyleClass("not-parsed-ok");
 
             // Add a separate exclamation mark IMG element with a tooltip.
-            var exclamationElement = document.createElement("img");
-            exclamationElement.className = "exclamation-mark";
-            exclamationElement.title = WebInspector.CSSCompletions.cssPropertiesMetainfo.keySet()[this.property.name.toLowerCase()] ? WebInspector.UIString("Invalid property value.") : WebInspector.UIString("Unknown property name.");
-            this.listItemElement.insertBefore(exclamationElement, this.listItemElement.firstChild);
+            this.listItemElement.insertBefore(WebInspector.StylesSidebarPane.createExclamationMark(this.property.name), this.listItemElement.firstChild);
         }
         if (this.property.inactive)
             this.listItemElement.addStyleClass("inactive");

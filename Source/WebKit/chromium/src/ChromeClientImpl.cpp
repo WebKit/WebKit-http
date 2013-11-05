@@ -42,9 +42,11 @@
 #include "Console.h"
 #include "Cursor.h"
 #include "DatabaseTracker.h"
+#include "DateTimeChooser.h"
 #include "DateTimeChooserImpl.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "ExternalDateTimeChooser.h"
 #include "ExternalPopupMenu.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
@@ -291,7 +293,12 @@ static inline void updatePolicyForEvent(const WebInputEvent* inputEvent, WebNavi
     bool alt = mouseEvent->modifiers & WebMouseEvent::AltKey;
     bool meta = mouseEvent->modifiers & WebMouseEvent::MetaKey;
 
-    WebViewImpl::navigationPolicyFromMouseEvent(buttonNumber, ctrl, shift, alt, meta, policy);
+    WebNavigationPolicy userPolicy = *policy;
+    WebViewImpl::navigationPolicyFromMouseEvent(buttonNumber, ctrl, shift, alt, meta, &userPolicy);
+    // User and app agree that we want a new window; let the app override the decorations.
+    if (userPolicy == WebNavigationPolicyNewWindow && *policy == WebNavigationPolicyNewPopup)
+        return;
+    *policy = userPolicy;
 }
 
 WebNavigationPolicy ChromeClientImpl::getNavigationPolicy()
@@ -495,15 +502,7 @@ void ChromeClientImpl::invalidateContentsAndRootView(const IntRect& updateRect, 
 {
     if (updateRect.isEmpty())
         return;
-#if USE(ACCELERATED_COMPOSITING)
-    if (!m_webView->isAcceleratedCompositingActive()) {
-#endif
-        if (m_webView->client())
-            m_webView->client()->didInvalidateRect(updateRect);
-#if USE(ACCELERATED_COMPOSITING)
-    } else
-        m_webView->invalidateRootLayerRect(updateRect);
-#endif
+    m_webView->invalidateRect(updateRect);
 }
 
 void ChromeClientImpl::invalidateContentsForSlowScroll(const IntRect& updateRect, bool immediate)
@@ -622,13 +621,6 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     if (!m_webView->settings()->viewportEnabled() || !m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
         return;
 
-    ViewportArguments args;
-    if (arguments == args) {
-        // Default viewport arguments passed in. This is a signal to reset the viewport.
-        args.width = ViewportArguments::ValueDesktopWidth;
-    } else
-        args = arguments;
-
     FrameView* frameView = m_webView->mainFrameImpl()->frameView();
     int dpi = screenHorizontalDPI(frameView);
     ASSERT(dpi > 0);
@@ -643,7 +635,7 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     float devicePixelRatio = dpi / ViewportArguments::deprecatedTargetDPI;
     // Call the common viewport computing logic in ViewportArguments.cpp.
     ViewportAttributes computed = computeViewportAttributes(
-        args, settings->layoutFallbackWidth(), deviceRect.width, deviceRect.height,
+        arguments, settings->layoutFallbackWidth(), deviceRect.width, deviceRect.height,
         devicePixelRatio, IntSize(deviceRect.width, deviceRect.height));
 
     restrictScaleFactorToInitialScaleIfNotUserScalable(computed);
@@ -700,10 +692,14 @@ PassOwnPtr<WebColorChooser> ChromeClientImpl::createWebColorChooser(WebColorChoo
 }
 #endif
 
-#if ENABLE(CALENDAR_PICKER)
-PassOwnPtr<WebCore::DateTimeChooser> ChromeClientImpl::openDateTimeChooser(WebCore::DateTimeChooserClient* pickerClient, const WebCore::DateTimeChooserParameters& parameters)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+PassRefPtr<DateTimeChooser> ChromeClientImpl::openDateTimeChooser(DateTimeChooserClient* pickerClient, const DateTimeChooserParameters& parameters)
 {
-    return adoptPtr(new DateTimeChooserImpl(this, pickerClient, parameters));
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+    return DateTimeChooserImpl::create(this, pickerClient, parameters);
+#else
+    return ExternalDateTimeChooser::create(this, m_webView->client(), pickerClient, parameters);
+#endif
 }
 #endif
 

@@ -2697,7 +2697,6 @@ inspector/timeline/timeline-decode-resize.html
 # https://bugs.webkit.org/show_bug.cgi?id=95802
 http/tests/inspector/appcache/appcache-manifest-with-non-existing-file.html
 http/tests/inspector/console-resource-errors.html
-http/tests/inspector/network/network-initiator-from-console.html
 http/tests/inspector/resource-tree/resource-request-content-while-loading.html
 http/tests/inspector/search/resources-search-match-index.html
 inspector/profiler/heap-snapshot.html
@@ -2783,7 +2782,6 @@ tables/mozilla_expected_failures/marvin/table_overflow_hidden_tr.html
 http/tests/fullscreen/fullscreenelement-different-origin.html
 http/tests/fullscreen/fullscreenelement-same-origin.html
 http/tests/history/back-with-fragment-change.php
-http/tests/images/jpg-img-partial-load.html
 http/tests/inspector/console-cross-origin-iframe-logging.html
 http/tests/inspector/inspect-element.html
 http/tests/inspector/resource-har-conversion.html
@@ -2808,5 +2806,11 @@ http/tests/security/xssAuditor/xss-filter-bypass-long-string.html
 http/tests/xmlhttprequest/access-control-allow-lists-starting-with-comma.html
 http/tests/xmlhttprequest/range-test.html
 
+# CSS Device Adaptation is not enabled.
+webkit.org/b/95959 css3/device-adapt [ Skip ]
+
 # css3-conditionals support is not yet enabled.
 webkit.org/b/86146 css3/supports.html
+
+webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Skip ]

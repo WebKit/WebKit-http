@@ -129,7 +129,7 @@ void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, Graphi
     context->translate(-dirtyRect.x(), -dirtyRect.y());
     layer->paintGraphicsLayerContents(*context, dirtyRect);
 
-    if (layer->showRepaintCounter()) {
+    if (layer->isShowingRepaintCounter()) {
         layer->incrementRepaintCount();
         drawRepaintCounter(context, layer);
     }
@@ -138,7 +138,7 @@ void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, Graphi
     TextureMapperTiledBackingStore* backingStore = static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get());
     backingStore->updateContents(textureMapper, image.get(), m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
 
-    backingStore->setShowDebugBorders(layer->showDebugBorders());
+    backingStore->setShowDebugBorders(layer->isShowingDebugBorder());
     backingStore->setDebugBorder(m_debugBorderColor, m_debugBorderWidth);
 
     m_state.needsDisplay = false;
@@ -169,11 +169,15 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
     float opacity = options.opacity;
     RefPtr<BitmapTexture> mask = options.mask;
 
-    if (m_backingStore)
+    if (m_backingStore) {
+        ASSERT(!layerRect().isEmpty());
         m_backingStore->paintToTextureMapper(options.textureMapper, layerRect(), transform, opacity, mask.get());
+    }
 
-    if (m_contentsLayer)
+    if (m_contentsLayer) {
+        ASSERT(!layerRect().isEmpty());
         m_contentsLayer->paintToTextureMapper(options.textureMapper, m_state.contentsRect, transform, opacity, mask.get());
+    }
 }
 
 int TextureMapperLayer::compareGraphicsLayersZValue(const void* a, const void* b)
@@ -223,12 +227,12 @@ IntRect TextureMapperLayer::intermediateSurfaceRect(const TransformationMatrix& 
     }
 
 #if ENABLE(CSS_FILTERS)
-    if (m_state.filters.hasOutsets()) {
+    if (m_filters.hasOutsets()) {
         int leftOutset;
         int topOutset;
         int bottomOutset;
         int rightOutset;
-        m_state.filters.getOutsets(topOutset, rightOutset, bottomOutset, leftOutset);
+        m_filters.getOutsets(topOutset, rightOutset, bottomOutset, leftOutset);
         IntRect unfilteredTargetRect(rect);
         rect.move(std::max(0, -leftOutset), std::max(0, -topOutset));
         rect.expand(leftOutset + rightOutset, topOutset + bottomOutset);
@@ -262,7 +266,7 @@ TextureMapperLayer::ContentsLayerCount TextureMapperLayer::countPotentialLayersW
 bool TextureMapperLayer::shouldPaintToIntermediateSurface() const
 {
 #if ENABLE(CSS_FILTERS)
-    if (m_state.filters.size())
+    if (m_filters.size())
         return true;
 #endif
     bool hasOpacity = m_opacity < 0.99;
@@ -381,7 +385,7 @@ void TextureMapperLayer::paintRecursive(const TextureMapperPaintOptions& options
         maskTexture = 0;
 
 #if ENABLE(CSS_FILTERS)
-    surface = applyFilters(m_state.filters, options.textureMapper, surface.get(), surfaceRect);
+    surface = applyFilters(m_filters, options.textureMapper, surface.get(), surfaceRect);
 #endif
 
     options.textureMapper->bindSurface(options.surface.get());
@@ -488,7 +492,7 @@ void TextureMapperLayer::flushCompositingStateSelf(GraphicsLayerTextureMapper* g
     m_state.needsDisplay = m_state.needsDisplay || graphicsLayer->needsDisplay();
     if (!m_state.needsDisplay)
         m_state.needsDisplayRect.unite(graphicsLayer->needsDisplayRect());
-    m_contentsLayer = graphicsLayer->contentsLayer();
+    m_contentsLayer = graphicsLayer->platformLayer();
 
     m_transform.setPosition(adjustedPosition());
     m_transform.setAnchorPoint(m_state.anchorPoint);
@@ -524,6 +528,10 @@ void TextureMapperLayer::syncAnimations()
         setTransform(m_state.transform);
     if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity))
         setOpacity(m_state.opacity);
+#if ENABLE(CSS_FILTERS)
+    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyWebkitFilter))
+        setFilters(m_state.filters);
+#endif
 }
 
 void TextureMapperLayer::flushCompositingState(GraphicsLayerTextureMapper* graphicsLayer, TextureMapper* textureMapper, int options)
@@ -613,7 +621,7 @@ void TextureMapperLayer::drawRepaintCounter(GraphicsContext* context, GraphicsLa
     cairo_text_extents(cr, repaintCount.data(), &repaintTextExtents);
 
     static const int repaintCountBorderWidth = 10;
-    setSourceRGBAFromColor(cr, layer->showDebugBorders() ? m_debugBorderColor : Color(0, 255, 0, 127));
+    setSourceRGBAFromColor(cr, layer->isShowingDebugBorder() ? m_debugBorderColor : Color(0, 255, 0, 127));
     cairo_rectangle(cr, 0, 0,
                     repaintTextExtents.width + (repaintCountBorderWidth * 2),
                     repaintTextExtents.height + (repaintCountBorderWidth * 2));

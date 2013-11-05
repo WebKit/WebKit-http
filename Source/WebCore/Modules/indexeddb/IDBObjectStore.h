@@ -35,6 +35,7 @@
 #include "IDBObjectStoreBackendInterface.h"
 #include "IDBRequest.h"
 #include "IDBTransaction.h"
+#include "ScriptWrappable.h"
 #include "SerializedScriptValue.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -48,7 +49,7 @@ namespace WebCore {
 class DOMStringList;
 class IDBAny;
 
-class IDBObjectStore : public RefCounted<IDBObjectStore> {
+class IDBObjectStore : public ScriptWrappable, public RefCounted<IDBObjectStore> {
 public:
     static PassRefPtr<IDBObjectStore> create(const IDBObjectStoreMetadata& metadata, PassRefPtr<IDBObjectStoreBackendInterface> backend, IDBTransaction* transaction)
     {
@@ -66,9 +67,9 @@ public:
 
     PassRefPtr<IDBRequest> add(ScriptExecutionContext* context, ScriptValue& value, ExceptionCode& ec) { return add(context, value, 0, ec);  }
     PassRefPtr<IDBRequest> put(ScriptExecutionContext* context, ScriptValue& value, ExceptionCode& ec) { return put(context, value, 0, ec);  }
-    PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, ExceptionCode& ec) { return openCursor(context, static_cast<IDBKeyRange*>(0), ec); } 
-    PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, PassRefPtr<IDBKeyRange> keyRange, ExceptionCode& ec) { return openCursor(context, keyRange, IDBCursor::directionNext(), ec); } 
-    PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, PassRefPtr<IDBKey> key, ExceptionCode& ec) { return openCursor(context, key, IDBCursor::directionNext(), ec); } 
+    PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, ExceptionCode& ec) { return openCursor(context, static_cast<IDBKeyRange*>(0), ec); }
+    PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, PassRefPtr<IDBKeyRange> keyRange, ExceptionCode& ec) { return openCursor(context, keyRange, IDBCursor::directionNext(), ec); }
+    PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, PassRefPtr<IDBKey> key, ExceptionCode& ec) { return openCursor(context, key, IDBCursor::directionNext(), ec); }
     PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext* context, PassRefPtr<IDBKeyRange> range, const String& direction, ExceptionCode& ec) { return openCursor(context, range, direction, IDBTransactionBackendInterface::NormalTask, ec); }
     PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext*, PassRefPtr<IDBKeyRange>, const String& direction, IDBTransactionBackendInterface::TaskType, ExceptionCode&);
     PassRefPtr<IDBRequest> openCursor(ScriptExecutionContext*, PassRefPtr<IDBKey>, const String& direction, ExceptionCode&);
@@ -81,8 +82,8 @@ public:
     PassRefPtr<IDBRequest> deleteFunction(ScriptExecutionContext*, PassRefPtr<IDBKey> key, ExceptionCode&);
     PassRefPtr<IDBRequest> clear(ScriptExecutionContext*, ExceptionCode&);
 
-    PassRefPtr<IDBIndex> createIndex(ScriptExecutionContext*, const String& name, const String& keyPath, const Dictionary&, ExceptionCode&);
-    PassRefPtr<IDBIndex> createIndex(ScriptExecutionContext*, const String& name, PassRefPtr<DOMStringList> keyPath, const Dictionary&, ExceptionCode&);
+    PassRefPtr<IDBIndex> createIndex(ScriptExecutionContext* context, const String& name, const String& keyPath, const Dictionary& options, ExceptionCode& ec) { return createIndex(context, name, IDBKeyPath(keyPath), options, ec); }
+    PassRefPtr<IDBIndex> createIndex(ScriptExecutionContext* context, const String& name, const Vector<String>& keyPath, const Dictionary& options, ExceptionCode& ec) { return createIndex(context, name, IDBKeyPath(keyPath), options, ec); }
     PassRefPtr<IDBIndex> createIndex(ScriptExecutionContext*, const String&, const IDBKeyPath&, const Dictionary&, ExceptionCode&);
 
     PassRefPtr<IDBIndex> index(const String& name, ExceptionCode&);
@@ -104,6 +105,12 @@ public:
 
 private:
     IDBObjectStore(const IDBObjectStoreMetadata&, PassRefPtr<IDBObjectStoreBackendInterface>, IDBTransaction*);
+
+    int64_t findIndexId(const String& name) const;
+    bool containsIndex(const String& name) const
+    {
+        return findIndexId(name) != IDBIndexMetadata::InvalidId;
+    }
 
     IDBObjectStoreMetadata m_metadata;
     RefPtr<IDBObjectStoreBackendInterface> m_backend;

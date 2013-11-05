@@ -37,6 +37,9 @@ class RenderTableCol : public RenderBox {
 public:
     explicit RenderTableCol(Node*);
 
+    RenderObject* firstChild() const { ASSERT(children() == virtualChildren()); return children()->firstChild(); }
+    RenderObject* lastChild() const { ASSERT(children() == virtualChildren()); return children()->lastChild(); }
+
     const RenderObjectChildList* children() const { return &m_children; }
     RenderObjectChildList* children() { return &m_children; }
 
@@ -81,13 +84,14 @@ private:
     virtual bool isRenderTableCol() const OVERRIDE { return true; }
     virtual void updateFromElement();
 
+    virtual void insertedIntoTree() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
 
     virtual bool isChildAllowed(RenderObject*, RenderStyle*) const;
     virtual bool canHaveChildren() const;
     virtual bool requiresLayer() const { return false; }
 
-    virtual LayoutRect clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const OVERRIDE;
+    virtual LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const OVERRIDE;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);

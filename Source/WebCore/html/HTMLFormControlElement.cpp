@@ -151,6 +151,7 @@ void HTMLFormControlElement::disabledAttributeChanged()
 {
     setNeedsWillValidateCheck();
     setNeedsStyleRecalc();
+    invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureDisabled);
     if (renderer() && renderer()->style()->hasAppearance())
         renderer()->theme()->stateChanged(renderer(), EnabledState);
 }
@@ -496,6 +497,13 @@ HTMLFormControlElement* HTMLFormControlElement::enclosingFormControlElement(Node
             return static_cast<HTMLFormControlElement*>(node);
     }
     return 0;
+}
+
+void HTMLFormControlElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    LabelableElement::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_validationMessage);
 }
 
 } // namespace Webcore

@@ -52,6 +52,7 @@
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "ScrollbarTheme.h"
+#include "ScrollingConstraints.h"
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
 #include "TiledBacking.h"
@@ -95,7 +96,7 @@ public:
         // contribute to overlap as soon as their composited ancestor has been
         // recursively processed and popped off the stack.
         ASSERT(m_overlapStack.size() >= 2);
-        m_overlapStack[m_overlapStack.size() - 2].unite(bounds);
+        m_overlapStack[m_overlapStack.size() - 2].append(bounds);
         m_layers.add(layer);
     }
 
@@ -106,7 +107,12 @@ public:
 
     bool overlapsLayers(const IntRect& bounds) const
     {
-        return m_overlapStack.last().intersects(bounds);
+        const RectList& layerRects = m_overlapStack.last();
+        for (unsigned i = 0; i < layerRects.size(); i++) {
+            if (layerRects[i].intersects(bounds))
+                return true;
+        }
+        return false;
     }
 
     bool isEmpty()
@@ -116,19 +122,20 @@ public:
 
     void pushCompositingContainer()
     {
-        m_overlapStack.append(Region());
+        m_overlapStack.append(RectList());
     }
 
     void popCompositingContainer()
     {
-        m_overlapStack[m_overlapStack.size() - 2].unite(m_overlapStack.last());
+        m_overlapStack[m_overlapStack.size() - 2].append(m_overlapStack.last());
         m_overlapStack.removeLast();
     }
-    
+
     RenderGeometryMap& geometryMap() { return m_geometryMap; }
 
 private:
-    Vector<Region> m_overlapStack;
+    typedef Vector<IntRect> RectList;
+    Vector<RectList> m_overlapStack;
     HashSet<const RenderLayer*> m_layers;
     RenderGeometryMap m_geometryMap;
 };
@@ -188,6 +195,7 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView* renderView)
     , m_flushingLayers(false)
     , m_shouldFlushOnReattach(false)
     , m_forceCompositingMode(false)
+    , m_isTrackingRepaints(false)
     , m_rootLayerAttachment(RootLayerUnattached)
 #if !LOG_DISABLED
     , m_rootLayerUpdateCount(0)
@@ -251,11 +259,23 @@ void RenderLayerCompositor::cacheAcceleratedCompositingFlags()
     if (hasAcceleratedCompositing != m_hasAcceleratedCompositing || showDebugBorders != m_showDebugBorders || showRepaintCounter != m_showRepaintCounter || forceCompositingMode != m_forceCompositingMode)
         setCompositingLayersNeedRebuild();
 
+    bool debugBordersChanged = m_showDebugBorders != showDebugBorders;
     m_hasAcceleratedCompositing = hasAcceleratedCompositing;
     m_showDebugBorders = showDebugBorders;
     m_showRepaintCounter = showRepaintCounter;
     m_forceCompositingMode = forceCompositingMode;
     m_acceleratedDrawingEnabled = acceleratedDrawingEnabled;
+    
+    if (debugBordersChanged) {
+        if (m_layerForHorizontalScrollbar)
+            m_layerForHorizontalScrollbar->setShowDebugBorder(m_showDebugBorders);
+
+        if (m_layerForVerticalScrollbar)
+            m_layerForVerticalScrollbar->setShowDebugBorder(m_showDebugBorders);
+
+        if (m_layerForScrollCorner)
+            m_layerForScrollCorner->setShowDebugBorder(m_showDebugBorders);
+    }
 }
 
 bool RenderLayerCompositor::canRender3DTransforms() const
@@ -305,10 +325,20 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
     
     ASSERT(m_flushingLayers);
     m_flushingLayers = false;
+
+    if (!m_viewportConstrainedLayersNeedingUpdate.isEmpty()) {
+        HashSet<RenderLayer*>::const_iterator end = m_viewportConstrainedLayersNeedingUpdate.end();
+        for (HashSet<RenderLayer*>::const_iterator it = m_viewportConstrainedLayersNeedingUpdate.begin(); it != end; ++it)
+            registerOrUpdateViewportConstrainedLayer(*it);
+        
+        m_viewportConstrainedLayersNeedingUpdate.clear();
+    }
 }
 
-void RenderLayerCompositor::didFlushChangesForLayer(RenderLayer*)
+void RenderLayerCompositor::didFlushChangesForLayer(RenderLayer* layer)
 {
+    if (m_viewportConstrainedLayers.contains(layer))
+        m_viewportConstrainedLayersNeedingUpdate.add(layer);
 }
 
 void RenderLayerCompositor::notifyFlushBeforeDisplayRefresh(const GraphicsLayer*)
@@ -528,6 +558,9 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
 
             layerChanged = true;
         }
+
+        // Need to add for every compositing layer, because a composited layer may change from being non-fixed to fixed.
+        updateViewportConstraintStatus(layer);
     } else {
         if (layer->backing()) {
             // If we're removing backing on a reflection, clear the source GraphicsLayer's pointer to
@@ -540,6 +573,8 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
                     backing->graphicsLayer()->setReplicatedByLayer(0);
                 }
             }
+
+            removeViewportConstrainedLayer(layer);
             
             layer->clearBacking();
             layerChanged = true;
@@ -576,6 +611,10 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
         if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
             scrollingCoordinator->frameViewFixedObjectsDidChange(m_renderView->frameView());
     }
+    
+    if (layer->backing())
+        layer->backing()->updateDebugIndicators(m_showDebugBorders, m_showRepaintCounter);
+
     return layerChanged;
 }
 
@@ -634,11 +673,11 @@ void RenderLayerCompositor::repaintInCompositedAncestor(RenderLayer* layer, cons
 
 // The bounds of the GraphicsLayer created for a compositing layer is the union of the bounds of all the descendant
 // RenderLayers that are rendered by the composited RenderLayer.
-IntRect RenderLayerCompositor::calculateCompositedBounds(const RenderLayer* layer, const RenderLayer* ancestorLayer)
+IntRect RenderLayerCompositor::calculateCompositedBounds(const RenderLayer* layer, const RenderLayer* ancestorLayer) const
 {
     if (!canBeComposited(layer))
         return IntRect();
-    return RenderLayer::calculateLayerBounds(layer, ancestorLayer, RenderLayer::DefaultCalculateLayerBoundsFlags | RenderLayer::ExcludeHiddenDescendants);
+    return layer->calculateLayerBounds(ancestorLayer, 0, RenderLayer::DefaultCalculateLayerBoundsFlags | RenderLayer::ExcludeHiddenDescendants);
 }
 
 void RenderLayerCompositor::layerWasAdded(RenderLayer* /*parent*/, RenderLayer* /*child*/)
@@ -651,6 +690,7 @@ void RenderLayerCompositor::layerWillBeRemoved(RenderLayer* parent, RenderLayer*
     if (!child->isComposited() || parent->renderer()->documentBeingDestroyed())
         return;
 
+    removeViewportConstrainedLayer(child);
     repaintInCompositedAncestor(child, child->backing()->compositedBounds());
 
     setCompositingParent(child, 0);
@@ -1143,10 +1183,22 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
         layerTreeBehavior |= LayerTreeAsTextIncludeVisibleRects;
     if (flags & LayerTreeFlagsIncludeTileCaches)
         layerTreeBehavior |= LayerTreeAsTextIncludeTileCaches;
+    if (flags & LayerTreeFlagsIncludeRepaintRects)
+        layerTreeBehavior |= LayerTreeAsTextIncludeRepaintRects;
 
     // We skip dumping the scroll and clip layers to keep layerTreeAsText output
     // similar between platforms.
-    return m_rootContentLayer->layerTreeAsText(layerTreeBehavior);
+    String layerTreeText = m_rootContentLayer->layerTreeAsText(layerTreeBehavior);
+
+    // The true root layer is not included in the dump, so if we want to report
+    // its repaint rects, they must be included here.
+    if (flags & LayerTreeFlagsIncludeRepaintRects) {
+        String layerTreeTextWithRootRepaintRects = m_renderView->frameView()->trackedRepaintRectsAsText();
+        layerTreeTextWithRootRepaintRects.append(layerTreeText);
+        return layerTreeTextWithRootRepaintRects;
+    }
+
+    return layerTreeText;
 }
 
 RenderLayerCompositor* RenderLayerCompositor::frameContentsCompositor(RenderPart* renderer)
@@ -1385,8 +1437,10 @@ void RenderLayerCompositor::clearBackingForLayerIncludingDescendants(RenderLayer
     if (!layer)
         return;
 
-    if (layer->isComposited())
+    if (layer->isComposited()) {
+        removeViewportConstrainedLayer(layer);
         layer->clearBacking();
+    }
     
     for (RenderLayer* currLayer = layer->firstChild(); currLayer; currLayer = currLayer->nextSibling())
         clearBackingForLayerIncludingDescendants(currLayer);
@@ -1905,9 +1959,12 @@ bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* rendere
         return false;
 
     // Fixed position elements that are invisible in the current view don't get their own layer.
-    FrameView* frameView = m_renderView->frameView();
-    if (frameView && !layer->absoluteBoundingBox().intersects(IntRect(IntPoint(frameView->scrollOffsetForFixedPosition()), frameView->layoutSize())))
-        return false;
+    if (FrameView* frameView = m_renderView->frameView()) {
+        IntRect viewBounds = IntRect(IntPoint(frameView->scrollOffsetForFixedPosition()), frameView->layoutSize());
+        IntRect layerBounds = calculateCompositedBounds(layer, rootRenderLayer());
+        if (!viewBounds.intersects(layerBounds))
+            return false;
+    }
 
     return true;
 }
@@ -1997,20 +2054,37 @@ void RenderLayerCompositor::documentBackgroundColorDidChange()
     graphicsLayer->setBackgroundColor(backgroundColor);
 }
 
-bool RenderLayerCompositor::showDebugBorders(const GraphicsLayer* layer) const
+static void resetTrackedRepaintRectsRecursive(GraphicsLayer* graphicsLayer)
 {
-    if (layer == m_layerForHorizontalScrollbar || layer == m_layerForVerticalScrollbar || layer == m_layerForScrollCorner)
-        return m_showDebugBorders;
+    if (!graphicsLayer)
+        return;
 
-    return false;
+    graphicsLayer->resetTrackedRepaints();
+
+    for (size_t i = 0; i < graphicsLayer->children().size(); ++i)
+        resetTrackedRepaintRectsRecursive(graphicsLayer->children()[i]);
+
+    if (GraphicsLayer* replicaLayer = graphicsLayer->replicaLayer())
+        resetTrackedRepaintRectsRecursive(replicaLayer);
+
+    if (GraphicsLayer* maskLayer = graphicsLayer->maskLayer())
+        resetTrackedRepaintRectsRecursive(maskLayer);
 }
 
-bool RenderLayerCompositor::showRepaintCounter(const GraphicsLayer* layer) const
+void RenderLayerCompositor::resetTrackedRepaintRects()
 {
-    if (layer == m_layerForHorizontalScrollbar || layer == m_layerForVerticalScrollbar || layer == m_layerForScrollCorner)
-        return m_showDebugBorders;
+    if (GraphicsLayer* rootLayer = rootGraphicsLayer())
+        resetTrackedRepaintRectsRecursive(rootLayer);
+}
 
-    return false;
+void RenderLayerCompositor::setTracksRepaints(bool tracksRepaints)
+{
+    m_isTrackingRepaints = tracksRepaints;
+}
+
+bool RenderLayerCompositor::isTrackingRepaints() const
+{
+    return m_isTrackingRepaints;
 }
 
 float RenderLayerCompositor::deviceScaleFactor() const
@@ -2151,6 +2225,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
     if (requiresHorizontalScrollbarLayer()) {
         if (!m_layerForHorizontalScrollbar) {
             m_layerForHorizontalScrollbar = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForHorizontalScrollbar->setShowDebugBorder(m_showDebugBorders);
 #ifndef NDEBUG
             m_layerForHorizontalScrollbar->setName("horizontal scrollbar");
 #endif
@@ -2173,6 +2248,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
     if (requiresVerticalScrollbarLayer()) {
         if (!m_layerForVerticalScrollbar) {
             m_layerForVerticalScrollbar = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForVerticalScrollbar->setShowDebugBorder(m_showDebugBorders);
 #ifndef NDEBUG
             m_layerForVerticalScrollbar->setName("vertical scrollbar");
 #endif
@@ -2195,6 +2271,7 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
     if (requiresScrollCornerLayer()) {
         if (!m_layerForScrollCorner) {
             m_layerForScrollCorner = GraphicsLayer::create(graphicsLayerFactory(), this);
+            m_layerForScrollCorner->setShowDebugBorder(m_showDebugBorders);
 #ifndef NDEBUG
             m_layerForScrollCorner->setName("scroll corner");
 #endif
@@ -2482,6 +2559,165 @@ void RenderLayerCompositor::deviceOrPageScaleFactorChanged()
 
     if (GraphicsLayer* rootLayer = viewLayer->backing()->graphicsLayer())
         rootLayer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
+}
+
+static bool isRootmostFixedOrStickyLayer(RenderLayer* layer)
+{
+    if (layer->renderer()->isStickyPositioned())
+        return true;
+
+    if (layer->renderer()->style()->position() != FixedPosition)
+        return false;
+
+    for (RenderLayer* stackingContext = layer->stackingContext(); stackingContext; stackingContext = stackingContext->stackingContext()) {
+        if (stackingContext->isComposited() && stackingContext->renderer()->style()->position() == FixedPosition)
+            return false;
+    }
+
+    return true;
+}
+
+void RenderLayerCompositor::updateViewportConstraintStatus(RenderLayer* layer)
+{
+    if (isRootmostFixedOrStickyLayer(layer))
+        addViewportConstrainedLayer(layer);
+    else
+        removeViewportConstrainedLayer(layer);
+}
+
+void RenderLayerCompositor::addViewportConstrainedLayer(RenderLayer* layer)
+{
+    m_viewportConstrainedLayers.add(layer);
+    registerOrUpdateViewportConstrainedLayer(layer);
+}
+
+void RenderLayerCompositor::removeViewportConstrainedLayer(RenderLayer* layer)
+{
+    if (!m_viewportConstrainedLayers.contains(layer))
+        return;
+
+    unregisterViewportConstrainedLayer(layer);
+    m_viewportConstrainedLayers.remove(layer);
+}
+
+const FixedPositionViewportConstraints RenderLayerCompositor::computeFixedViewportConstraints(RenderLayer* layer)
+{
+    ASSERT(layer->isComposited());
+
+    FrameView* frameView = m_renderView->frameView();
+
+    LayoutRect viewportRect = frameView->visibleContentRect();
+    viewportRect.setLocation(toPoint(frameView->scrollOffsetForFixedPosition()));
+
+    FixedPositionViewportConstraints constraints = FixedPositionViewportConstraints();
+
+    GraphicsLayer* graphicsLayer = layer->backing()->graphicsLayer();
+
+    constraints.setLayerPositionAtLastLayout(graphicsLayer->position());
+    constraints.setViewportRectAtLastLayout(viewportRect);
+        
+    RenderStyle* style = layer->renderer()->style();
+    if (!style->left().isAuto())
+        constraints.addAnchorEdge(ViewportConstraints::AnchorEdgeLeft);
+
+    if (!style->right().isAuto())
+        constraints.addAnchorEdge(ViewportConstraints::AnchorEdgeRight);
+
+    if (!style->top().isAuto())
+        constraints.addAnchorEdge(ViewportConstraints::AnchorEdgeTop);
+
+    if (!style->bottom().isAuto())
+        constraints.addAnchorEdge(ViewportConstraints::AnchorEdgeBottom);
+
+    // If left and right are auto, use left.
+    if (style->left().isAuto() && style->right().isAuto())
+        constraints.addAnchorEdge(ViewportConstraints::AnchorEdgeLeft);
+
+    // If top and bottom are auto, use top.
+    if (style->top().isAuto() && style->bottom().isAuto())
+        constraints.addAnchorEdge(ViewportConstraints::AnchorEdgeTop);
+        
+    return constraints;
+}
+
+const StickyPositionViewportConstraints RenderLayerCompositor::computeStickyViewportConstraints(RenderLayer* layer)
+{
+    ASSERT(layer->isComposited());
+
+    FrameView* frameView = m_renderView->frameView();
+    LayoutRect viewportRect = frameView->visibleContentRect();
+
+    StickyPositionViewportConstraints constraints = StickyPositionViewportConstraints();
+
+    RenderBoxModelObject* renderer = toRenderBoxModelObject(layer->renderer());
+
+    renderer->computeStickyPositionConstraints(constraints, viewportRect);
+
+    GraphicsLayer* graphicsLayer = layer->backing()->graphicsLayer();
+
+    constraints.setLayerPositionAtLastLayout(graphicsLayer->position());
+    constraints.setStickyOffsetAtLastLayout(renderer->stickyPositionOffset());
+
+    return constraints;
+}
+
+static RenderLayerBacking* nearestScrollingCoordinatorAncestor(RenderLayer* layer)
+{
+    RenderLayer* ancestor = layer->parent();
+    while (ancestor) {
+        if (RenderLayerBacking* backing = ancestor->backing()) {
+            if (backing->scrollLayerID() && !ancestor->scrollsOverflow())
+                return backing;
+        }
+        ancestor = ancestor->parent();
+    }
+
+    return 0;
+}
+
+void RenderLayerCompositor::registerOrUpdateViewportConstrainedLayer(RenderLayer* layer)
+{
+    // FIXME: We should support sticky position here! And we should eventuall support fixed/sticky elements
+    // that are inside non-main frames once we get non-main frames scrolling with the ScrollingCoordinator.
+    if (layer->renderer()->isStickyPositioned() || m_renderView->document()->ownerElement())
+        return;
+
+    ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator();
+    if (!scrollingCoordinator)
+        return;
+
+    if (!scrollingCoordinator->supportsFixedPositionLayers() || !layer->parent())
+        return;
+
+    ASSERT(layer->renderer()->style()->position() == FixedPosition);
+    ASSERT(m_viewportConstrainedLayers.contains(layer));
+    ASSERT(layer->isComposited());
+
+    RenderLayerBacking* backing = layer->backing();
+    if (!backing)
+        return;
+
+    ScrollingNodeID nodeID = backing->scrollLayerID();
+    if (!nodeID) {
+        RenderLayerBacking* parent = nearestScrollingCoordinatorAncestor(layer);
+        if (!parent)
+            return;
+        backing->attachToScrollingCoordinator(parent);
+        nodeID = backing->scrollLayerID();
+    }
+
+    if (layer->renderer()->isStickyPositioned())
+        scrollingCoordinator->updateViewportConstrainedNode(nodeID, computeStickyViewportConstraints(layer), backing->graphicsLayer());
+    else
+        scrollingCoordinator->updateViewportConstrainedNode(nodeID, computeFixedViewportConstraints(layer), backing->graphicsLayer());
+}
+
+void RenderLayerCompositor::unregisterViewportConstrainedLayer(RenderLayer* layer)
+{
+    ASSERT(m_viewportConstrainedLayers.contains(layer));
+
+    if (RenderLayerBacking* backing = layer->backing())
+        backing->detachFromScrollingCoordinator();
 }
 
 void RenderLayerCompositor::windowScreenDidChange(PlatformDisplayID displayID)

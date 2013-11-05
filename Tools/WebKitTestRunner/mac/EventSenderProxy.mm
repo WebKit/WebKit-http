@@ -111,6 +111,10 @@ EventSenderProxy::EventSenderProxy(TestController* testController)
 {
 }
 
+EventSenderProxy::~EventSenderProxy()
+{
+}
+
 void EventSenderProxy::updateClickCountForButton(int button)
 {
     if (m_time - m_clickTime < 1 && m_position == m_clickPosition && button == m_clickButton) {
@@ -385,15 +389,11 @@ void EventSenderProxy::mouseScrollBy(int x, int y)
     RetainPtr<CGEventRef> cgScrollEvent(AdoptCF, CGEventCreateScrollWheelEvent(0, kCGScrollEventUnitLine, 2, y, x));
 
     // CGEvent locations are in global display coordinates.
-    CGPoint lastGlobalMousePosition = {
-        m_position.x,
-        [[NSScreen mainScreen] frame].size.height - m_position.y
-    };
+    CGPoint lastGlobalMousePosition = CGPointMake(m_position.x, [[NSScreen mainScreen] frame].size.height - m_position.y);
     CGEventSetLocation(cgScrollEvent.get(), lastGlobalMousePosition);
 
     NSEvent *event = [NSEvent eventWithCGEvent:cgScrollEvent.get()];
-    NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[event locationInWindow]];
-    if (targetView)
+    if (NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[event locationInWindow]])
         [targetView scrollWheel:event];
 }
 

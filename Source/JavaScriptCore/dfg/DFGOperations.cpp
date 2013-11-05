@@ -27,9 +27,9 @@
 #include "DFGOperations.h"
 
 #include "Arguments.h"
-#include "ButterflyInlineMethods.h"
+#include "ButterflyInlines.h"
 #include "CodeBlock.h"
-#include "CopiedSpaceInlineMethods.h"
+#include "CopiedSpaceInlines.h"
 #include "DFGOSRExit.h"
 #include "DFGRepatch.h"
 #include "DFGThunks.h"
@@ -302,12 +302,12 @@ JSCell* DFG_OPERATION operationCreateThis(ExecState* exec, JSCell* constructor)
     return constructEmptyObject(exec, jsCast<JSFunction*>(constructor)->cachedInheritorID(exec));
 }
 
-JSCell* DFG_OPERATION operationNewObject(ExecState* exec)
+JSCell* DFG_OPERATION operationNewObject(ExecState* exec, Structure* structure)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
     
-    return constructEmptyObject(exec);
+    return constructEmptyObject(exec, structure);
 }
 
 EncodedJSValue DFG_OPERATION operationValueAdd(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
@@ -580,12 +580,55 @@ void DFG_OPERATION operationPutByValBeyondArrayBoundsNonStrict(ExecState* exec, 
         array, exec, Identifier::from(exec, index), JSValue::decode(encodedValue), slot);
 }
 
+void DFG_OPERATION operationPutDoubleByValBeyondArrayBoundsStrict(ExecState* exec, JSObject* array, int32_t index, double value)
+{
+    JSGlobalData* globalData = &exec->globalData();
+    NativeCallFrameTracer tracer(globalData, exec);
+    
+    JSValue jsValue = JSValue(JSValue::EncodeAsDouble, value);
+    
+    if (index >= 0) {
+        array->putByIndexInline(exec, index, jsValue, true);
+        return;
+    }
+    
+    PutPropertySlot slot(true);
+    array->methodTable()->put(
+        array, exec, Identifier::from(exec, index), jsValue, slot);
+}
+
+void DFG_OPERATION operationPutDoubleByValBeyondArrayBoundsNonStrict(ExecState* exec, JSObject* array, int32_t index, double value)
+{
+    JSGlobalData* globalData = &exec->globalData();
+    NativeCallFrameTracer tracer(globalData, exec);
+    
+    JSValue jsValue = JSValue(JSValue::EncodeAsDouble, value);
+    
+    if (index >= 0) {
+        array->putByIndexInline(exec, index, jsValue, false);
+        return;
+    }
+    
+    PutPropertySlot slot(false);
+    array->methodTable()->put(
+        array, exec, Identifier::from(exec, index), jsValue, slot);
+}
+
 EncodedJSValue DFG_OPERATION operationArrayPush(ExecState* exec, EncodedJSValue encodedValue, JSArray* array)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
     
     array->push(exec, JSValue::decode(encodedValue));
+    return JSValue::encode(jsNumber(array->length()));
+}
+
+EncodedJSValue DFG_OPERATION operationArrayPushDouble(ExecState* exec, double value, JSArray* array)
+{
+    JSGlobalData* globalData = &exec->globalData();
+    NativeCallFrameTracer tracer(globalData, exec);
+    
+    array->push(exec, JSValue(JSValue::EncodeAsDouble, value));
     return JSValue::encode(jsNumber(array->length()));
 }
 
@@ -1157,8 +1200,7 @@ JSCell* DFG_OPERATION operationCreateActivation(ExecState* exec)
 {
     JSGlobalData& globalData = exec->globalData();
     NativeCallFrameTracer tracer(&globalData, exec);
-    JSActivation* activation = JSActivation::create(
-        globalData, exec, static_cast<FunctionExecutable*>(exec->codeBlock()->ownerExecutable()));
+    JSActivation* activation = JSActivation::create(globalData, exec, exec->codeBlock());
     exec->setScope(activation);
     return activation;
 }
@@ -1328,6 +1370,22 @@ char* DFG_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
     return reinterpret_cast<char*>(result);
 }
 
+char* DFG_OPERATION operationEnsureInt32(ExecState* exec, JSObject* object)
+{
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
+    
+    return reinterpret_cast<char*>(object->ensureInt32(globalData));
+}
+
+char* DFG_OPERATION operationEnsureDouble(ExecState* exec, JSObject* object)
+{
+    JSGlobalData& globalData = exec->globalData();
+    NativeCallFrameTracer tracer(&globalData, exec);
+    
+    return reinterpret_cast<char*>(object->ensureDouble(globalData));
+}
+
 char* DFG_OPERATION operationEnsureContiguous(ExecState* exec, JSObject* object)
 {
     JSGlobalData& globalData = exec->globalData();
@@ -1342,16 +1400,6 @@ char* DFG_OPERATION operationEnsureArrayStorage(ExecState* exec, JSObject* objec
     NativeCallFrameTracer tracer(&globalData, exec);
 
     return reinterpret_cast<char*>(object->ensureArrayStorage(globalData));
-}
-
-char* DFG_OPERATION operationEnsureContiguousOrArrayStorage(ExecState* exec, JSObject* object, int32_t index)
-{
-    JSGlobalData& globalData = exec->globalData();
-    NativeCallFrameTracer tracer(&globalData, exec);
-
-    if (static_cast<unsigned>(index) >= MIN_SPARSE_ARRAY_INDEX)
-        return reinterpret_cast<char*>(object->ensureArrayStorage(globalData));
-    return reinterpret_cast<char*>(object->ensureIndexedStorage(globalData));
 }
 
 double DFG_OPERATION operationFModOnInts(int32_t a, int32_t b)

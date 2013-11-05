@@ -142,8 +142,6 @@ void SVGTextRunRenderingContext::drawSVGGlyphs(GraphicsContext* context, const T
             continue;
          }
 
-        context->save();
-
         if (isVerticalText) {
             glyphOrigin.setX(svgGlyph.verticalOriginX * scale);
             glyphOrigin.setY(svgGlyph.verticalOriginY * scale);
@@ -157,14 +155,12 @@ void SVGTextRunRenderingContext::drawSVGGlyphs(GraphicsContext* context, const T
         glyphPath.transform(glyphPathTransform);
 
         if (activePaintingResource->applyResource(parentRenderObject, parentRenderObjectStyle, context, resourceMode)) {
-            if (renderObject && renderObject->isSVGInlineText()) {
-                const RenderSVGInlineText* textRenderer = toRenderSVGInlineText(renderObject);
-                context->setStrokeThickness(context->strokeThickness() * textRenderer->scalingFactor());
-            }
+            float strokeThickness = context->strokeThickness();
+            if (renderObject && renderObject->isSVGInlineText())
+                context->setStrokeThickness(strokeThickness * toRenderSVGInlineText(renderObject)->scalingFactor());
             activePaintingResource->postApplyResource(parentRenderObject, context, resourceMode, &glyphPath, 0);
-         }
- 
-        context->restore();
+            context->setStrokeThickness(strokeThickness);
+        }
 
         if (isVerticalText)
             currentPoint.move(0, advance);
@@ -187,6 +183,12 @@ GlyphData SVGTextRunRenderingContext::glyphDataForCharacter(const Font& font, co
         ASSERT(glyphData.fontData);
         return glyphData;
     }
+
+    // Save data fromt he font fallback list because we may modify it later. Do this before the
+    // potential change to glyphData.fontData below.
+    FontFallbackList* fontList = font.fontList();
+    ASSERT(fontList);
+    FontFallbackList::GlyphPagesStateSaver glyphPagesSaver(*fontList);
 
     // Characters enclosed by an <altGlyph> element, may not be registered in the GlyphPage.
     const SimpleFontData* originalFontData = glyphData.fontData;
@@ -225,14 +227,9 @@ GlyphData SVGTextRunRenderingContext::glyphDataForCharacter(const Font& font, co
     GlyphPage* page = pair.second;
     ASSERT(page);
 
-    FontFallbackList* fontList = font.fontList();
-    ASSERT(fontList);
-
     // No suitable glyph found that is compatible with the requirments (same language, arabic-form, orientation etc.)
     // Even though our GlyphPage contains an entry for eg. glyph "a", it's not compatible. So we have to temporarily
     // remove the glyph data information from the GlyphPage, and retry the lookup, which handles font fallbacks correctly.
-    GlyphPageTreeNode* originalGlyphPageZero = fontList->glyphPageZero();
-    const FontFallbackList::GlyphPages& originalGlyphPages = fontList->glyphPages();
     page->setGlyphDataForCharacter(character, glyphData.glyph, 0);
 
     // Assure that the font fallback glyph selection worked, aka. the fallbackGlyphData font data is not the same as before.
@@ -242,8 +239,6 @@ GlyphData SVGTextRunRenderingContext::glyphDataForCharacter(const Font& font, co
     // Restore original state of the SVG Font glyph table and the current font fallback list,
     // to assure the next lookup of the same glyph won't immediately return the fallback glyph.
     page->setGlyphDataForCharacter(character, glyphData.glyph, originalFontData);
-    fontList->setGlyphPageZero(originalGlyphPageZero);
-    fontList->setGlyphPages(originalGlyphPages);
     ASSERT(fallbackGlyphData.fontData);
     return fallbackGlyphData;
 }

@@ -176,13 +176,8 @@ private:
             case PutByVal:
                 if (!m_graph.byValIsPure(node))
                     return NoNode;
-                switch (node.arrayMode()) {
-                case CONTIGUOUS_TO_TAIL_MODES:
-                case ARRAY_STORAGE_TO_HOLE_MODES:
+                if (node.arrayMode().mayStoreToHole())
                     return NoNode;
-                default:
-                    break;
-                }
                 break;
                 
             default:
@@ -377,7 +372,7 @@ private:
         return NoNode;
     }
 
-    bool checkFunctionElimination(JSFunction* function, NodeIndex child1)
+    bool checkFunctionElimination(JSCell* function, NodeIndex child1)
     {
         for (unsigned i = endIndexForPureCSE(); i--;) {
             NodeIndex index = m_currentBlock->at(i);
@@ -438,6 +433,12 @@ private:
                 }
                 return false;
                 
+            case Arrayify:
+            case ArrayifyToStructure:
+                // We could check if the arrayification could affect our structures.
+                // But that seems like it would take Effort.
+                return false;
+                
             default:
                 if (m_graph.clobbersWorld(index))
                     return false;
@@ -488,6 +489,12 @@ private:
                 if (node.structure() == structure && node.child1() == child1)
                     return true;
                 break;
+                
+            case Arrayify:
+            case ArrayifyToStructure:
+                // We could check if the arrayification could affect our structures.
+                // But that seems like it would take Effort.
+                return false;
                 
             default:
                 if (m_graph.clobbersWorld(index))
@@ -663,7 +670,6 @@ private:
 
             case AllocatePropertyStorage:
             case ReallocatePropertyStorage:
-            case Arrayify:
                 // If we can cheaply prove this is a change to our object's storage, we
                 // can optimize and use its result.
                 if (node.child1() == child1)
@@ -689,6 +695,12 @@ private:
                 }
                 return NoNode;
                 
+            case Arrayify:
+            case ArrayifyToStructure:
+                // We could check if the arrayification could affect our butterfly.
+                // But that seems like it would take Effort.
+                return NoNode;
+                
             default:
                 if (m_graph.clobbersWorld(index))
                     return NoNode;
@@ -698,7 +710,7 @@ private:
         return NoNode;
     }
     
-    bool checkArrayElimination(NodeIndex child1, Array::Mode arrayMode)
+    bool checkArrayElimination(NodeIndex child1, ArrayMode arrayMode)
     {
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
@@ -720,6 +732,12 @@ private:
                     return true;
                 break;
                 
+            case Arrayify:
+            case ArrayifyToStructure:
+                // We could check if the arrayification could affect our array.
+                // But that seems like it would take Effort.
+                return false;
+                
             default:
                 if (m_graph.clobbersWorld(index))
                     return false;
@@ -729,7 +747,7 @@ private:
         return false;
     }
 
-    NodeIndex getIndexedPropertyStorageLoadElimination(NodeIndex child1, Array::Mode arrayMode)
+    NodeIndex getIndexedPropertyStorageLoadElimination(NodeIndex child1, ArrayMode arrayMode)
     {
         for (unsigned i = m_indexInBlock; i--;) {
             NodeIndex index = m_currentBlock->at(i);
@@ -788,8 +806,6 @@ private:
         }
         return NoNode;
     }
-
-
     
     NodeIndex getLocalLoadElimination(VirtualRegister local, NodeIndex& relevantLocalOp, bool careAboutClobbering)
     {
@@ -1234,7 +1250,7 @@ private:
         case PutByVal: {
             Edge child1 = m_graph.varArgChild(node, 0);
             Edge child2 = m_graph.varArgChild(node, 1);
-            if (canCSEStorage(node.arrayMode())) {
+            if (node.arrayMode().canCSEStorage()) {
                 NodeIndex nodeIndex = getByValLoadElimination(child1.index(), child2.index());
                 if (nodeIndex == NoNode)
                     break;

@@ -470,9 +470,7 @@ TreeScope* Node::treeScope() const
 NodeRareData* Node::rareData() const
 {
     ASSERT(hasRareData());
-    NodeRareData* data = isDocumentNode() ? static_cast<const Document*>(this)->documentRareData() : NodeRareData::rareDataFromMap(this);
-    ASSERT(data);
-    return data;
+    return static_cast<NodeRareData*>(m_data.m_rareData);
 }
 
 NodeRareData* Node::ensureRareData()
@@ -481,18 +479,13 @@ NodeRareData* Node::ensureRareData()
         return rareData();
 
     NodeRareData* data = createRareData().leakPtr();
-    if (isDocumentNode()) {
-        // Fast path for a Document. A Document knows a pointer to NodeRareData.
-        ASSERT(!static_cast<Document*>(this)->documentRareData());
-        static_cast<Document*>(this)->setDocumentRareData(data);
-    } else {
-        ASSERT(!NodeRareData::rareDataMap().contains(this));
-        NodeRareData::rareDataMap().set(this, data);
-    }
+    ASSERT(data);
+    data->setRenderer(m_data.m_renderer);
+    m_data.m_rareData = data;
     setFlag(HasRareDataFlag);
     return data;
 }
-    
+
 OwnPtr<NodeRareData> Node::createRareData()
 {
     return adoptPtr(new NodeRareData);
@@ -506,19 +499,9 @@ void Node::clearRareData()
     ASSERT(!transientMutationObserverRegistry() || transientMutationObserverRegistry()->isEmpty());
 #endif
 
-    if (isDocumentNode()) {
-        Document* document = static_cast<Document*>(this);
-        NodeRareData* data = document->documentRareData();
-        ASSERT(data);
-        delete data;
-        document->setDocumentRareData(0);
-    } else {
-        NodeRareData::NodeRareDataMap& dataMap = NodeRareData::rareDataMap();
-        NodeRareData::NodeRareDataMap::iterator it = dataMap.find(this);
-        ASSERT(it != dataMap.end());
-        delete it->value;
-        dataMap.remove(it);
-    }
+    RenderObject* renderer = m_data.m_rareData->renderer();
+    delete m_data.m_rareData;
+    m_data.m_renderer = renderer;
     clearFlag(HasRareDataFlag);
 }
 
@@ -717,16 +700,16 @@ const AtomicString& Node::virtualNamespaceURI() const
     return nullAtom;
 }
 
-bool Node::isContentEditable()
+bool Node::isContentEditable(UserSelectAllTreatment treatment)
 {
     document()->updateStyleIfNeeded();
-    return rendererIsEditable(Editable);
+    return rendererIsEditable(Editable, treatment);
 }
 
 bool Node::isContentRichlyEditable()
 {
     document()->updateStyleIfNeeded();
-    return rendererIsEditable(RichlyEditable);
+    return rendererIsEditable(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
 }
 
 void Node::inspect()
@@ -737,7 +720,7 @@ void Node::inspect()
 #endif
 }
 
-bool Node::rendererIsEditable(EditableLevel editableLevel) const
+bool Node::rendererIsEditable(EditableLevel editableLevel, UserSelectAllTreatment treatment) const
 {
     if (document()->frame() && document()->frame()->page() && document()->frame()->page()->isEditable() && !shadowRoot())
         return true;
@@ -748,6 +731,14 @@ bool Node::rendererIsEditable(EditableLevel editableLevel) const
 
     for (const Node* node = this; node; node = node->parentNode()) {
         if ((node->isHTMLElement() || node->isDocumentNode()) && node->renderer()) {
+#if ENABLE(USERSELECT_ALL)
+            // Elements with user-select: all style are considered atomic
+            // therefore non editable.
+            if (node->renderer()->style()->userSelect() == SELECT_ALL && treatment == UserSelectAllIsAlwaysNonEditable)
+                return false;
+#else
+            UNUSED_PARAM(treatment);
+#endif
             switch (node->renderer()->style()->userModify()) {
             case READ_ONLY:
                 return false;
@@ -785,17 +776,19 @@ bool Node::isEditableToAccessibility(EditableLevel editableLevel) const
 
 bool Node::shouldUseInputMethod()
 {
-    return isContentEditable();
+    return isContentEditable(UserSelectAllIsAlwaysNonEditable);
 }
 
 RenderBox* Node::renderBox() const
 {
-    return m_renderer && m_renderer->isBox() ? toRenderBox(m_renderer) : 0;
+    RenderObject* renderer = this->renderer();
+    return renderer && renderer->isBox() ? toRenderBox(renderer) : 0;
 }
 
 RenderBoxModelObject* Node::renderBoxModelObject() const
 {
-    return m_renderer && m_renderer->isBoxModelObject() ? toRenderBoxModelObject(m_renderer) : 0;
+    RenderObject* renderer = this->renderer();
+    return renderer && renderer->isBoxModelObject() ? toRenderBoxModelObject(renderer) : 0;
 }
 
 LayoutRect Node::boundingBox() const
@@ -1200,11 +1193,6 @@ static void checkAcceptChild(Node* newParent, Node* newChild, ExceptionCode& ec)
 
     if (newChild == newParent || newParent->isDescendantOf(newChild)) {
         ec = HIERARCHY_REQUEST_ERR;
-        return;
-    }
-
-    if (newParent->inDocument() && ChildFrameDisconnector::nodeHasDisconnector(newParent)) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
         return;
     }
 }
@@ -2112,8 +2100,8 @@ void Node::showNode(const char* prefix) const
         prefix = "";
     if (isTextNode()) {
         String value = nodeValue();
-        value.replace('\\', "\\\\");
-        value.replace('\n', "\\n");
+        value.replaceWithLiteral('\\', "\\\\");
+        value.replaceWithLiteral('\n', "\\n");
         fprintf(stderr, "%s%s\t%p \"%s\"\n", prefix, nodeName().utf8().data(), this, value.utf8().data());
     } else {
         StringBuilder attrs;
@@ -2665,12 +2653,12 @@ void Node::dispatchBlurEvent(PassRefPtr<Node> newFocusedNode)
 
 void Node::dispatchChangeEvent()
 {
-    dispatchEvent(Event::create(eventNames().changeEvent, true, false));
+    dispatchScopedEvent(Event::create(eventNames().changeEvent, true, false));
 }
 
 void Node::dispatchInputEvent()
 {
-    dispatchEvent(Event::create(eventNames().inputEvent, true, false));
+    dispatchScopedEvent(Event::create(eventNames().inputEvent, true, false));
 }
 
 bool Node::disabled() const
@@ -2746,7 +2734,7 @@ bool Node::willRespondToMouseClickEvents()
 {
     if (disabled())
         return false;
-    return isContentEditable() || hasEventListeners(eventNames().mouseupEvent) || hasEventListeners(eventNames().mousedownEvent) || hasEventListeners(eventNames().clickEvent) || hasEventListeners(eventNames().DOMActivateEvent);
+    return isContentEditable(UserSelectAllIsAlwaysNonEditable) || hasEventListeners(eventNames().mouseupEvent) || hasEventListeners(eventNames().mousedownEvent) || hasEventListeners(eventNames().clickEvent) || hasEventListeners(eventNames().DOMActivateEvent);
 }
 
 bool Node::willRespondToTouchEvents()
@@ -2822,8 +2810,10 @@ void Node::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_document);
     info.addMember(m_next);
     info.addMember(m_previous);
-    if (m_renderer)
-        info.addMember(m_renderer->style());
+    if (RenderObject* renderer = this->renderer())
+        info.addMember(renderer->style());
+    if (hasRareData())
+        info.addMember(rareData());
 }
 
 void Node::textRects(Vector<IntRect>& rects) const
@@ -2832,6 +2822,22 @@ void Node::textRects(Vector<IntRect>& rects) const
     WebCore::ExceptionCode ec = 0;
     range->selectNodeContents(const_cast<Node*>(this), ec);
     range->textRects(rects);
+}
+
+unsigned Node::connectedSubframeCount() const
+{
+    return hasRareData() ? rareData()->connectedSubframeCount() : 0;
+}
+
+void Node::incrementConnectedSubframeCount()
+{
+    ASSERT(isContainerNode());
+    ensureRareData()->incrementConnectedSubframeCount();
+}
+
+void Node::decrementConnectedSubframeCount()
+{
+    rareData()->decrementConnectedSubframeCount();
 }
 
 void Node::registerScopedHTMLStyleChild()

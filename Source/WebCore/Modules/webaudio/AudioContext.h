@@ -122,8 +122,8 @@ public:
     PassRefPtr<GainNode> createGain();
     PassRefPtr<BiquadFilterNode> createBiquadFilter();
     PassRefPtr<WaveShaperNode> createWaveShaper();
-    PassRefPtr<DelayNode> createDelay();
-    PassRefPtr<DelayNode> createDelay(double maxDelayTime);
+    PassRefPtr<DelayNode> createDelay(ExceptionCode&);
+    PassRefPtr<DelayNode> createDelay(double maxDelayTime, ExceptionCode&);
     PassRefPtr<PannerNode> createPanner();
     PassRefPtr<ConvolverNode> createConvolver();
     PassRefPtr<DynamicsCompressorNode> createDynamicsCompressor();    
@@ -245,7 +245,9 @@ public:
     void fireCompletionEvent();
     
     static unsigned s_hardwareContextCount;
-    
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
 private:
     explicit AudioContext(Document*);
     AudioContext(Document*, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
@@ -286,6 +288,11 @@ private:
     Vector<AudioNode*> m_referencedNodes;
 
     // Accumulate nodes which need to be deleted here.
+    // This is copied to m_nodesToDelete at the end of a render cycle in handlePostRenderTasks(), where we're assured of a stable graph
+    // state which will have no references to any of the nodes in m_nodesToDelete once the context lock is released
+    // (when handlePostRenderTasks() has completed).
+    Vector<AudioNode*> m_nodesMarkedForDeletion;
+
     // They will be scheduled for deletion (on the main thread) at the end of a render cycle (in realtime thread).
     Vector<AudioNode*> m_nodesToDelete;
     bool m_isDeletionScheduled;

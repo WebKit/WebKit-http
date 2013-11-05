@@ -44,6 +44,7 @@ PassOwnPtr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerClient* client)
 GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(GraphicsLayerClient* client)
     : GraphicsLayer(client)
     , m_layer(adoptPtr(new TextureMapperLayer()))
+    , m_compositedNativeImagePtr(0)
     , m_changeMask(0)
     , m_needsDisplay(false)
     , m_fixedToViewport(false)
@@ -88,6 +89,7 @@ void GraphicsLayerTextureMapper::setNeedsDisplay()
 {
     m_needsDisplay = true;
     notifyChange(TextureMapperLayer::DisplayChange);
+    addRepaintRect(FloatRect(FloatPoint(), m_size));
 }
 
 /* \reimp (GraphicsLayer.h)
@@ -95,6 +97,7 @@ void GraphicsLayerTextureMapper::setNeedsDisplay()
 void GraphicsLayerTextureMapper::setContentsNeedsDisplay()
 {
     notifyChange(TextureMapperLayer::DisplayChange);
+    addRepaintRect(contentsRect());
 }
 
 /* \reimp (GraphicsLayer.h)
@@ -105,6 +108,7 @@ void GraphicsLayerTextureMapper::setNeedsDisplayInRect(const FloatRect& rect)
         return;
     m_needsDisplayRect.unite(rect);
     notifyChange(TextureMapperLayer::DisplayChange);
+    addRepaintRect(rect);
 }
 
 /* \reimp (GraphicsLayer.h)
@@ -348,8 +352,10 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
         if (!m_compositedImage)
             m_compositedImage = TextureMapperTiledBackingStore::create();
         m_compositedImage->setContentsToImage(image);
-    } else
+    } else {
+        m_compositedNativeImagePtr = 0;
         m_compositedImage = 0;
+    }
 
     setContentsToMedia(m_compositedImage.get());
     notifyChange(TextureMapperLayer::ContentChange);

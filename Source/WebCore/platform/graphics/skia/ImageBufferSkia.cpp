@@ -160,8 +160,9 @@ GraphicsContext* ImageBuffer::context() const
     return m_context.get();
 }
 
-PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior) const
+PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
+    // FIXME: Start honoring ScaleBehavior to scale 2x buffers down to 1x.
     return BitmapImageSingleFrameSkia::create(*m_data.m_platformContext.bitmap(), copyBehavior == CopyBackingStore, m_resolutionScale);
 }
 
@@ -194,6 +195,7 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D& context, Platform3DOb
 
     context.pixelStorei(Extensions3D::UNPACK_FLIP_Y_CHROMIUM, false);
     context.pixelStorei(Extensions3D::UNPACK_UNPREMULTIPLY_ALPHA_CHROMIUM, false);
+    context.flush();
     return true;
 }
 

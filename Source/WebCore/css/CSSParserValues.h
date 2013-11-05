@@ -168,10 +168,6 @@ public:
     OwnPtr<CSSParserValueList> args;
 };
 
-class CSSParserSelector;
-
-typedef Vector<OwnPtr<CSSParserSelector> > CSSSelectorVector;
-
 class CSSParserSelector {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -188,10 +184,11 @@ public:
     void setRelation(CSSSelector::Relation value) { m_selector->m_relation = value; }
     void setForPage() { m_selector->setForPage(); }
 
-    void adoptSelectorVector(CSSSelectorVector&);
+    void adoptSelectorVector(Vector<OwnPtr<CSSParserSelector> >& selectorVector);
 
     CSSSelector::PseudoType pseudoType() const { return m_selector->pseudoType(); }
-    bool isUnknownPseudoElement() const { return m_selector->isUnknownPseudoElement(); }
+    bool isCustomPseudoElement() const { return m_selector->isCustomPseudoElement(); }
+
     bool isSimple() const { return !m_tagHistory && m_selector->isSimple(); }
     bool hasShadowDescendant() const;
 

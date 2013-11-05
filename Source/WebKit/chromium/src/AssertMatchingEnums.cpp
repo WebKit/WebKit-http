@@ -37,6 +37,7 @@
 #include "AccessibilityObject.h"
 #include "ApplicationCacheHost.h"
 #include "ContentSecurityPolicy.h"
+#include "Cursor.h"
 #include "DocumentMarker.h"
 #include "EditorInsertAction.h"
 #include "ExceptionCode.h"
@@ -48,6 +49,9 @@
 #include "FontSmoothingMode.h"
 #include "GeolocationError.h"
 #include "GeolocationPosition.h"
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+#include "HTMLFormElement.h"
+#endif
 #include "HTMLInputElement.h"
 #include "IDBCursor.h"
 #include "IDBDatabaseException.h"
@@ -56,14 +60,11 @@
 #include "IDBKeyPath.h"
 #include "IDBMetadata.h"
 #include "IDBTransactionBackendInterface.h"
-#include "IceOptions.h"
 #include "IconURL.h"
 #include "MediaPlayer.h"
 #include "MediaStreamSource.h"
 #include "NotificationClient.h"
 #include "PageVisibilityState.h"
-#include "PeerConnection00.h"
-#include "PlatformCursor.h"
 #include "RTCDataChannelDescriptor.h"
 #include "RTCPeerConnectionHandlerClient.h"
 #include "ReferrerPolicy.h"
@@ -86,6 +87,9 @@
 #include "WebFileError.h"
 #include "WebFileInfo.h"
 #include "WebFontDescription.h"
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+#include "WebFormElement.h"
+#endif
 #include "WebGeolocationError.h"
 #include "WebGeolocationPosition.h"
 #include "WebIDBCursor.h"
@@ -113,10 +117,7 @@
 #include <public/WebClipboard.h>
 #include <public/WebFileSystem.h>
 #include <public/WebFilterOperation.h>
-#include <public/WebICEOptions.h>
 #include <public/WebMediaStreamSource.h>
-#include <public/WebPeerConnection00Handler.h>
-#include <public/WebPeerConnection00HandlerClient.h>
 #include <public/WebRTCDataChannel.h>
 #include <public/WebRTCPeerConnectionHandler.h>
 #include <public/WebRTCPeerConnectionHandlerClient.h>
@@ -210,6 +211,7 @@ COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleWebCoreLink, WebCoreLinkRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleImageMapLink, ImageMapLinkRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleImageMap, ImageMapRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleListMarker, ListMarkerRole);
+COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleMathElement, MathElementRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleWebArea, WebAreaRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleHeading, HeadingRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleListBox, ListBoxRole);
@@ -262,6 +264,7 @@ COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleUserInterfaceTooltip, UserInter
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleToggleButton, ToggleButtonRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleCanvas, CanvasRole);
 COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleLegend, LegendRole);
+COMPILE_ASSERT_MATCHING_ENUM(WebAccessibilityRoleSVGRoot, SVGRootRole);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::Uncached, ApplicationCacheHost::UNCACHED);
 COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::Idle, ApplicationCacheHost::IDLE);
@@ -278,50 +281,50 @@ COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::UpdateReadyEvent, Applicat
 COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::CachedEvent, ApplicationCacheHost::CACHED_EVENT);
 COMPILE_ASSERT_MATCHING_ENUM(WebApplicationCacheHost::ObsoleteEvent, ApplicationCacheHost::OBSOLETE_EVENT);
 
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypePointer, PlatformCursor::TypePointer);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCross, PlatformCursor::TypeCross);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeHand, PlatformCursor::TypeHand);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeIBeam, PlatformCursor::TypeIBeam);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeWait, PlatformCursor::TypeWait);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeHelp, PlatformCursor::TypeHelp);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeEastResize, PlatformCursor::TypeEastResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthResize, PlatformCursor::TypeNorthResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthEastResize, PlatformCursor::TypeNorthEastResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthWestResize, PlatformCursor::TypeNorthWestResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthResize, PlatformCursor::TypeSouthResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthEastResize, PlatformCursor::TypeSouthEastResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthWestResize, PlatformCursor::TypeSouthWestResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeWestResize, PlatformCursor::TypeWestResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthSouthResize, PlatformCursor::TypeNorthSouthResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeEastWestResize, PlatformCursor::TypeEastWestResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthEastSouthWestResize, PlatformCursor::TypeNorthEastSouthWestResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthWestSouthEastResize, PlatformCursor::TypeNorthWestSouthEastResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeColumnResize, PlatformCursor::TypeColumnResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeRowResize, PlatformCursor::TypeRowResize);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeMiddlePanning, PlatformCursor::TypeMiddlePanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeEastPanning, PlatformCursor::TypeEastPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthPanning, PlatformCursor::TypeNorthPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthEastPanning, PlatformCursor::TypeNorthEastPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthWestPanning, PlatformCursor::TypeNorthWestPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthPanning, PlatformCursor::TypeSouthPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthEastPanning, PlatformCursor::TypeSouthEastPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthWestPanning, PlatformCursor::TypeSouthWestPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeWestPanning, PlatformCursor::TypeWestPanning);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeMove, PlatformCursor::TypeMove);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeVerticalText, PlatformCursor::TypeVerticalText);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCell, PlatformCursor::TypeCell);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeContextMenu, PlatformCursor::TypeContextMenu);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeAlias, PlatformCursor::TypeAlias);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeProgress, PlatformCursor::TypeProgress);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNoDrop, PlatformCursor::TypeNoDrop);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCopy, PlatformCursor::TypeCopy);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNone, PlatformCursor::TypeNone);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNotAllowed, PlatformCursor::TypeNotAllowed);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeZoomIn, PlatformCursor::TypeZoomIn);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeZoomOut, PlatformCursor::TypeZoomOut);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeGrab, PlatformCursor::TypeGrab);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeGrabbing, PlatformCursor::TypeGrabbing);
-COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCustom, PlatformCursor::TypeCustom);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypePointer, Cursor::Pointer);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCross, Cursor::Cross);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeHand, Cursor::Hand);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeIBeam, Cursor::IBeam);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeWait, Cursor::Wait);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeHelp, Cursor::Help);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeEastResize, Cursor::EastResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthResize, Cursor::NorthResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthEastResize, Cursor::NorthEastResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthWestResize, Cursor::NorthWestResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthResize, Cursor::SouthResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthEastResize, Cursor::SouthEastResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthWestResize, Cursor::SouthWestResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeWestResize, Cursor::WestResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthSouthResize, Cursor::NorthSouthResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeEastWestResize, Cursor::EastWestResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthEastSouthWestResize, Cursor::NorthEastSouthWestResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthWestSouthEastResize, Cursor::NorthWestSouthEastResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeColumnResize, Cursor::ColumnResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeRowResize, Cursor::RowResize);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeMiddlePanning, Cursor::MiddlePanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeEastPanning, Cursor::EastPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthPanning, Cursor::NorthPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthEastPanning, Cursor::NorthEastPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNorthWestPanning, Cursor::NorthWestPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthPanning, Cursor::SouthPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthEastPanning, Cursor::SouthEastPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeSouthWestPanning, Cursor::SouthWestPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeWestPanning, Cursor::WestPanning);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeMove, Cursor::Move);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeVerticalText, Cursor::VerticalText);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCell, Cursor::Cell);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeContextMenu, Cursor::ContextMenu);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeAlias, Cursor::Alias);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeProgress, Cursor::Progress);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNoDrop, Cursor::NoDrop);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCopy, Cursor::Copy);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNone, Cursor::None);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeNotAllowed, Cursor::NotAllowed);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeZoomIn, Cursor::ZoomIn);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeZoomOut, Cursor::ZoomOut);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeGrab, Cursor::Grab);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeGrabbing, Cursor::Grabbing);
+COMPILE_ASSERT_MATCHING_ENUM(WebCursorInfo::TypeCustom, Cursor::Custom);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebEditingActionTyped, EditorInsertActionTyped);
 COMPILE_ASSERT_MATCHING_ENUM(WebEditingActionPasted, EditorInsertActionPasted);
@@ -559,28 +562,6 @@ COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::ReadyStateLive, MediaStreamSo
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::ReadyStateMuted, MediaStreamSource::ReadyStateMuted);
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaStreamSource::ReadyStateEnded, MediaStreamSource::ReadyStateEnded);
 
-COMPILE_ASSERT_MATCHING_ENUM(WebICEOptions::CandidateTypeAll, IceOptions::ALL);
-COMPILE_ASSERT_MATCHING_ENUM(WebICEOptions::CandidateTypeNoRelay, IceOptions::NO_RELAY);
-COMPILE_ASSERT_MATCHING_ENUM(WebICEOptions::CandidateTypeOnlyRelay, IceOptions::ONLY_RELAY);
-
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00Handler::ActionSDPOffer, PeerConnection00::SDP_OFFER);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00Handler::ActionSDPPRanswer, PeerConnection00::SDP_PRANSWER);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00Handler::ActionSDPAnswer, PeerConnection00::SDP_ANSWER);
-
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ReadyStateNew, PeerConnection00::NEW);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ReadyStateOpening, PeerConnection00::OPENING);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ReadyStateNegotiating, PeerConnection00::OPENING);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ReadyStateActive, PeerConnection00::ACTIVE);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ReadyStateClosed, PeerConnection00::CLOSED);
-
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateGathering, PeerConnection00::ICE_GATHERING);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateWaiting, PeerConnection00::ICE_WAITING);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateChecking, PeerConnection00::ICE_CHECKING);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateConnected, PeerConnection00::ICE_CONNECTED);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateCompleted, PeerConnection00::ICE_COMPLETED);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateFailed, PeerConnection00::ICE_FAILED);
-COMPILE_ASSERT_MATCHING_ENUM(WebPeerConnection00HandlerClient::ICEStateClosed, PeerConnection00::ICE_CLOSED);
-
 COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateNew, RTCPeerConnectionHandlerClient::ReadyStateNew);
 COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateOpening, RTCPeerConnectionHandlerClient::ReadyStateOpening);
 COMPILE_ASSERT_MATCHING_ENUM(WebRTCPeerConnectionHandlerClient::ReadyStateActive, RTCPeerConnectionHandlerClient::ReadyStateActive);
@@ -619,8 +600,10 @@ COMPILE_ASSERT_MATCHING_ENUM(WebReferrerPolicyDefault, ReferrerPolicyDefault);
 COMPILE_ASSERT_MATCHING_ENUM(WebReferrerPolicyNever, ReferrerPolicyNever);
 COMPILE_ASSERT_MATCHING_ENUM(WebReferrerPolicyOrigin, ReferrerPolicyOrigin);
 
-COMPILE_ASSERT_MATCHING_ENUM(WebContentSecurityPolicyTypeReportOnly, ContentSecurityPolicy::ReportOnly);
-COMPILE_ASSERT_MATCHING_ENUM(WebContentSecurityPolicyTypeEnforcePolicy, ContentSecurityPolicy::EnforcePolicy);
+COMPILE_ASSERT_MATCHING_ENUM(WebContentSecurityPolicyTypeReportStableDirectives, ContentSecurityPolicy::ReportStableDirectives);
+COMPILE_ASSERT_MATCHING_ENUM(WebContentSecurityPolicyTypeEnforceStableDirectives, ContentSecurityPolicy::EnforceStableDirectives);
+COMPILE_ASSERT_MATCHING_ENUM(WebContentSecurityPolicyTypeReportAllDirectives, ContentSecurityPolicy::ReportAllDirectives);
+COMPILE_ASSERT_MATCHING_ENUM(WebContentSecurityPolicyTypeEnforceAllDirectives, ContentSecurityPolicy::EnforceAllDirectives);
 
 COMPILE_ASSERT_MATCHING_ENUM(WebURLResponse::Unknown, ResourceResponse::Unknown);
 COMPILE_ASSERT_MATCHING_ENUM(WebURLResponse::HTTP_0_9, ResourceResponse::HTTP_0_9);
@@ -630,3 +613,8 @@ COMPILE_ASSERT_MATCHING_ENUM(WebURLResponse::HTTP_1_1, ResourceResponse::HTTP_1_
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaPlayer::CORSModeUnspecified, MediaPlayerClient::Unspecified);
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaPlayer::CORSModeAnonymous, MediaPlayerClient::Anonymous);
 COMPILE_ASSERT_MATCHING_ENUM(WebMediaPlayer::CORSModeUseCredentials, MediaPlayerClient::UseCredentials);
+
+#if ENABLE(REQUEST_AUTOCOMPLETE)
+COMPILE_ASSERT_MATCHING_ENUM(WebFormElement::AutocompleteResultSuccess, HTMLFormElement::AutocompleteResultSuccess);
+COMPILE_ASSERT_MATCHING_ENUM(WebFormElement::AutocompleteResultError, HTMLFormElement::AutocompleteResultError);
+#endif

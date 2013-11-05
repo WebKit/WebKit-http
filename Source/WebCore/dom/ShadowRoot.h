@@ -59,8 +59,6 @@ public:
 
     void recalcShadowTreeStyle(StyleChange);
 
-    InsertionPoint* insertionPointFor(Node*) const;
-
     virtual bool applyAuthorStyles() const OVERRIDE;
     void setApplyAuthorStyles(bool);
     virtual bool resetStyleInheritance() const OVERRIDE;
@@ -85,6 +83,9 @@ public:
 
     virtual void attach();
 
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual void removedFrom(ContainerNode*) OVERRIDE;
+
     bool isUsedForRendering() const;
     InsertionPoint* assignedTo() const;
     void setAssignedTo(InsertionPoint*);
@@ -93,14 +94,23 @@ public:
     void unregisterShadowElement() { --m_numberOfShadowElementChildren; }
     bool hasShadowInsertionPoint() const { return m_numberOfShadowElementChildren > 0; }
 
+    void registerContentElement() { ++m_numberOfContentElementChildren; }
+    void unregisterContentElement() { --m_numberOfContentElementChildren; }
+    bool hasContentElement() const { return m_numberOfContentElementChildren > 0; }
+
+    void registerElementShadow() { ++m_numberOfElementShadowChildren; }
+    void unregisterElementShadow() { ASSERT(hasElementShadow()); --m_numberOfElementShadowChildren; }
+    bool hasElementShadow() const { return m_numberOfElementShadowChildren > 0; }
+    size_t countElementShadow() const { return m_numberOfElementShadowChildren; }
+
     virtual void registerScopedHTMLStyleChild() OVERRIDE;
     virtual void unregisterScopedHTMLStyleChild() OVERRIDE;
 
-#ifndef NDEBUG
-    ShadowRootType type() const { return m_type; }
-#endif
+    ShadowRootType type() const { return m_isAuthorShadowRoot ? AuthorShadowRoot : UserAgentShadowRoot; }
 
     PassRefPtr<Node> cloneNode(bool, ExceptionCode&);
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 private:
     explicit ShadowRoot(Document*);
@@ -110,17 +120,19 @@ private:
     virtual bool childTypeAllowed(NodeType) const;
     virtual void childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta) OVERRIDE;
 
+    void setType(ShadowRootType type) { m_isAuthorShadowRoot = type == AuthorShadowRoot; }
+
     ShadowRoot* m_prev;
     ShadowRoot* m_next;
     bool m_applyAuthorStyles : 1;
     bool m_resetStyleInheritance : 1;
+    bool m_isAuthorShadowRoot : 1;
+    bool m_registeredWithParentShadowRoot : 1;
     InsertionPoint* m_insertionPointAssignedTo;
     size_t m_numberOfShadowElementChildren;
+    size_t m_numberOfContentElementChildren;
+    size_t m_numberOfElementShadowChildren;
     size_t m_numberOfStyles;
-
-#ifndef NDEBUG
-    ShadowRootType m_type;
-#endif
 };
 
 inline Element* ShadowRoot::host() const

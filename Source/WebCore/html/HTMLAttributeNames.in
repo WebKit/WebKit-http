@@ -165,6 +165,8 @@ novalidate
 nowrap
 object
 onabort
+onautocomplete
+onautocompleteerror
 onbeforecopy
 onbeforecut
 onbeforeload
@@ -272,6 +274,7 @@ primary
 profile
 progress
 prompt
+pseudo
 readonly
 rel
 required

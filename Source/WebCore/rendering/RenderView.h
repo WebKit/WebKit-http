@@ -77,8 +77,8 @@ public:
 
     FrameView* frameView() const { return m_frameView; }
 
-    virtual void computeRectForRepaint(RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const OVERRIDE;
-    virtual void repaintViewRectangle(const LayoutRect&, bool immediate = false);
+    virtual void computeRectForRepaint(const RenderLayerModelObject* repaintContainer, LayoutRect&, bool fixed = false) const OVERRIDE;
+    virtual void repaintViewRectangle(const LayoutRect&, bool immediate = false) const;
     // Repaint the view, and all composited layers that intersect the given absolute rectangle.
     // FIXME: ideally we'd never have to do this, if all repaints are container-relative.
     virtual void repaintRectangleInViewAndCompositedLayers(const LayoutRect&, bool immediate = false);
@@ -127,8 +127,8 @@ public:
         if (m_layoutState) {
             m_layoutState->m_layoutDelta += delta;
 #if !ASSERT_DISABLED && ENABLE(SATURATED_LAYOUT_ARITHMETIC)
-            m_layoutState->m_layoutDeltaXSaturated |= m_layoutState->m_layoutDelta.width() == FractionalLayoutUnit::max() || m_layoutState->m_layoutDelta.width() == FractionalLayoutUnit::min();
-            m_layoutState->m_layoutDeltaYSaturated |= m_layoutState->m_layoutDelta.height() == FractionalLayoutUnit::max() || m_layoutState->m_layoutDelta.height() == FractionalLayoutUnit::min();
+            m_layoutState->m_layoutDeltaXSaturated |= m_layoutState->m_layoutDelta.width() == LayoutUnit::max() || m_layoutState->m_layoutDelta.width() == LayoutUnit::min();
+            m_layoutState->m_layoutDeltaYSaturated |= m_layoutState->m_layoutDelta.height() == LayoutUnit::max() || m_layoutState->m_layoutDelta.height() == LayoutUnit::min();
 #endif
         }
     }
@@ -228,7 +228,7 @@ public:
     bool hasRenderCounters() { return m_renderCounterCount; }
 
 protected:
-    virtual void mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip | SnapOffsetForTransforms, bool* wasFixed = 0) const OVERRIDE;
+    virtual void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags = ApplyContainerFlip | SnapOffsetForTransforms, bool* wasFixed = 0) const OVERRIDE;
     virtual const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const OVERRIDE;
     virtual void mapAbsoluteToLocalPoint(MapCoordinatesFlags, TransformState&) const;
     virtual bool requiresColumns(int desiredColumnCount) const OVERRIDE;
@@ -313,9 +313,6 @@ protected:
     typedef HashSet<RenderWidget*> RenderWidgetSet;
     RenderWidgetSet m_widgets;
 
-    typedef HashSet<RenderBox*> RenderBoxSet;
-    OwnPtr<RenderBoxSet> m_fixedPositionedElements;
-
 private:
     bool shouldUsePrintingLayout() const;
 
@@ -352,10 +349,9 @@ inline const RenderView* toRenderView(const RenderObject* object)
 // This will catch anyone doing an unnecessary cast.
 void toRenderView(const RenderView*);
 
-
-ALWAYS_INLINE RenderView* RenderObject::view() const
+ALWAYS_INLINE RenderView* Document::renderView() const
 {
-    return toRenderView(document()->renderer());
+    return toRenderView(renderer());
 }
 
 // Stack-based class to assist with LayoutState push/pop

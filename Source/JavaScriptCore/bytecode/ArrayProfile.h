@@ -33,6 +33,7 @@
 
 namespace JSC {
 
+class CodeBlock;
 class LLIntOffsetsExtractor;
 
 // This is a bitfield where each bit represents an IndexingType that we have seen.
@@ -44,15 +45,20 @@ typedef unsigned ArrayModes;
 
 #define ALL_NON_ARRAY_ARRAY_MODES                       \
     (asArrayModes(NonArray)                             \
-     | asArrayModes(NonArrayWithContiguous)             \
-     | asArrayModes(NonArrayWithArrayStorage)           \
-     | asArrayModes(NonArrayWithSlowPutArrayStorage))
+    | asArrayModes(NonArrayWithInt32)                   \
+    | asArrayModes(NonArrayWithDouble)                  \
+    | asArrayModes(NonArrayWithContiguous)              \
+    | asArrayModes(NonArrayWithArrayStorage)            \
+    | asArrayModes(NonArrayWithSlowPutArrayStorage))
 
 #define ALL_ARRAY_ARRAY_MODES                           \
     (asArrayModes(ArrayClass)                           \
-     | asArrayModes(ArrayWithContiguous)                \
-     | asArrayModes(ArrayWithArrayStorage)              \
-     | asArrayModes(ArrayWithSlowPutArrayStorage))
+    | asArrayModes(ArrayWithUndecided)                  \
+    | asArrayModes(ArrayWithInt32)                      \
+    | asArrayModes(ArrayWithDouble)                     \
+    | asArrayModes(ArrayWithContiguous)                 \
+    | asArrayModes(ArrayWithArrayStorage)               \
+    | asArrayModes(ArrayWithSlowPutArrayStorage))
 
 #define ALL_ARRAY_MODES (ALL_NON_ARRAY_ARRAY_MODES | ALL_ARRAY_ARRAY_MODES)
 
@@ -78,6 +84,36 @@ inline bool arrayModesAlreadyChecked(ArrayModes proven, ArrayModes expected)
     return (expected | proven) == expected;
 }
 
+inline bool arrayModesInclude(ArrayModes arrayModes, IndexingType shape)
+{
+    return !!(arrayModes & (asArrayModes(NonArray | shape) | asArrayModes(ArrayClass | shape)));
+}
+
+inline bool shouldUseSlowPutArrayStorage(ArrayModes arrayModes)
+{
+    return arrayModesInclude(arrayModes, SlowPutArrayStorageShape);
+}
+
+inline bool shouldUseFastArrayStorage(ArrayModes arrayModes)
+{
+    return arrayModesInclude(arrayModes, ArrayStorageShape);
+}
+
+inline bool shouldUseContiguous(ArrayModes arrayModes)
+{
+    return arrayModesInclude(arrayModes, ContiguousShape);
+}
+
+inline bool shouldUseDouble(ArrayModes arrayModes)
+{
+    return arrayModesInclude(arrayModes, DoubleShape);
+}
+
+inline bool shouldUseInt32(ArrayModes arrayModes)
+{
+    return arrayModesInclude(arrayModes, Int32Shape);
+}
+
 class ArrayProfile {
 public:
     ArrayProfile()
@@ -87,6 +123,7 @@ public:
         , m_structureIsPolymorphic(false)
         , m_mayStoreToHole(false)
         , m_mayInterceptIndexedAccesses(false)
+        , m_usesOriginalArrayStructures(true)
         , m_observedArrayModes(0)
     {
     }
@@ -98,6 +135,7 @@ public:
         , m_structureIsPolymorphic(false)
         , m_mayStoreToHole(false)
         , m_mayInterceptIndexedAccesses(false)
+        , m_usesOriginalArrayStructures(true)
         , m_observedArrayModes(0)
     {
     }
@@ -113,7 +151,7 @@ public:
         m_lastSeenStructure = structure;
     }
     
-    void computeUpdatedPrediction(OperationInProgress operation = NoOperation);
+    void computeUpdatedPrediction(CodeBlock*, OperationInProgress = NoOperation);
     
     Structure* expectedStructure() const { return m_expectedStructure; }
     bool structureIsPolymorphic() const
@@ -125,9 +163,12 @@ public:
         return !structureIsPolymorphic() && m_expectedStructure;
     }
     ArrayModes observedArrayModes() const { return m_observedArrayModes; }
+    ArrayModes updatedObservedArrayModes() const; // Computes the observed array modes without updating the profile.
     bool mayInterceptIndexedAccesses() const { return m_mayInterceptIndexedAccesses; }
     
     bool mayStoreToHole() const { return m_mayStoreToHole; }
+    
+    bool usesOriginalArrayStructures() const { return m_usesOriginalArrayStructures; }
     
 private:
     friend class LLIntOffsetsExtractor;
@@ -138,6 +179,7 @@ private:
     bool m_structureIsPolymorphic;
     bool m_mayStoreToHole; // This flag may become overloaded to indicate other special cases that were encountered during array access, as it depends on indexing type. Since we currently have basically just one indexing type (two variants of ArrayStorage), this flag for now just means exactly what its name implies.
     bool m_mayInterceptIndexedAccesses;
+    bool m_usesOriginalArrayStructures;
     ArrayModes m_observedArrayModes;
 };
 

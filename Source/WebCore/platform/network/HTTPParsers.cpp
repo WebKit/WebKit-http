@@ -43,35 +43,62 @@ using namespace WTF;
 
 namespace WebCore {
 
-// true if there is more to parse
+// true if there is more to parse, after incrementing pos past whitespace.
+// Note: Might return pos == str.length()
 static inline bool skipWhiteSpace(const String& str, unsigned& pos, bool fromHttpEquivMeta)
 {
     unsigned len = str.length();
 
     if (fromHttpEquivMeta) {
-        while (pos != len && str[pos] <= ' ')
+        while (pos < len && str[pos] <= ' ')
             ++pos;
     } else {
-        while (pos != len && (str[pos] == '\t' || str[pos] == ' '))
+        while (pos < len && (str[pos] == '\t' || str[pos] == ' '))
             ++pos;
     }
 
-    return pos != len;
+    return pos < len;
 }
 
-// Returns true if the function can match the whole token (case insensitive).
+// Returns true if the function can match the whole token (case insensitive)
+// incrementing pos on match, otherwise leaving pos unchanged.
 // Note: Might return pos == str.length()
 static inline bool skipToken(const String& str, unsigned& pos, const char* token)
 {
     unsigned len = str.length();
+    unsigned current = pos;
 
-    while (pos != len && *token) {
-        if (toASCIILower(str[pos]) != *token++)
+    while (current < len && *token) {
+        if (toASCIILower(str[current]) != *token++)
             return false;
-        ++pos;
+        ++current;
     }
 
+    if (*token)
+        return false;
+
+    pos = current;
     return true;
+}
+
+// True if the expected equals sign is seen and there is more to follow.
+static inline bool skipEquals(const String& str, unsigned &pos)
+{
+    return skipWhiteSpace(str, pos, false) && str[pos++] == '=' && skipWhiteSpace(str, pos, false);
+}
+
+// True if a value present, incrementing pos to next space or semicolon, if any.  
+// Note: might return pos == str.length().
+static inline bool skipValue(const String& str, unsigned& pos)
+{
+    unsigned start = pos;
+    unsigned len = str.length();
+    while (pos < len) {
+        if (str[pos] == ' ' || str[pos] == '\t' || str[pos] == ';')
+            break;
+        ++pos;
+    }
+    return pos != start;
 }
 
 // See RFC 2616, Section 2.2.
@@ -313,31 +340,93 @@ void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, u
     }
 }
 
-XSSProtectionDisposition parseXSSProtectionHeader(const String& header)
+XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL)
 {
-    String stippedHeader = header.stripWhiteSpace();
+    DEFINE_STATIC_LOCAL(String, failureReasonInvalidToggle, (ASCIILiteral("expected 0 or 1")));
+    DEFINE_STATIC_LOCAL(String, failureReasonInvalidSeparator, (ASCIILiteral("expected semicolon")));
+    DEFINE_STATIC_LOCAL(String, failureReasonInvalidEquals, (ASCIILiteral("expected equals sign")));
+    DEFINE_STATIC_LOCAL(String, failureReasonInvalidMode, (ASCIILiteral("invalid mode directive")));
+    DEFINE_STATIC_LOCAL(String, failureReasonInvalidReport, (ASCIILiteral("invalid report directive")));
+    DEFINE_STATIC_LOCAL(String, failureReasonDuplicateMode, (ASCIILiteral("duplicate mode directive")));
+    DEFINE_STATIC_LOCAL(String, failureReasonDuplicateReport, (ASCIILiteral("duplicate report directive")));
+    DEFINE_STATIC_LOCAL(String, failureReasonInvalidDirective, (ASCIILiteral("unrecognized directive")));
 
-    if (stippedHeader.isEmpty())
+    unsigned pos = 0;
+
+    if (!skipWhiteSpace(header, pos, false))
         return XSSProtectionEnabled;
 
-    if (stippedHeader[0] == '0')
+    if (header[pos] == '0')
         return XSSProtectionDisabled;
 
-    unsigned length = header.length();
-    unsigned pos = 0;
-    if (stippedHeader[pos++] == '1'
-        && skipWhiteSpace(stippedHeader, pos, false)
-        && stippedHeader[pos++] == ';'
-        && skipWhiteSpace(stippedHeader, pos, false)
-        && skipToken(stippedHeader, pos, "mode")
-        && skipWhiteSpace(stippedHeader, pos, false)
-        && stippedHeader[pos++] == '='
-        && skipWhiteSpace(stippedHeader, pos, false)
-        && skipToken(stippedHeader, pos, "block")
-        && pos == length)
-        return XSSProtectionBlockEnabled;
+    if (header[pos++] != '1') {
+        failureReason = failureReasonInvalidToggle;
+        return XSSProtectionInvalid;
+    }
 
-    return XSSProtectionEnabled;
+    XSSProtectionDisposition result = XSSProtectionEnabled;
+    bool modeDirectiveSeen = false;
+    bool reportDirectiveSeen = false;
+
+    while (1) {
+        // At end of previous directive: consume whitespace, semicolon, and whitespace.
+        if (!skipWhiteSpace(header, pos, false))
+            return result;
+
+        if (header[pos++] != ';') {
+            failureReason = failureReasonInvalidSeparator;
+            failurePosition = pos;
+            return XSSProtectionInvalid;
+        }
+
+        if (!skipWhiteSpace(header, pos, false))
+            return result;
+
+        // At start of next directive.
+        if (skipToken(header, pos, "mode")) {
+            if (modeDirectiveSeen) {
+                failureReason = failureReasonDuplicateMode;
+                failurePosition = pos;
+                return XSSProtectionInvalid;
+            }
+            modeDirectiveSeen = true;
+            if (!skipEquals(header, pos)) {
+                failureReason = failureReasonInvalidEquals;
+                failurePosition = pos;
+                return XSSProtectionInvalid;
+            }
+            if (!skipToken(header, pos, "block")) {
+                failureReason = failureReasonInvalidMode;
+                failurePosition = pos;
+                return XSSProtectionInvalid;
+            }
+            result = XSSProtectionBlockEnabled;
+        } else if (skipToken(header, pos, "report")) {
+            if (reportDirectiveSeen) {
+                failureReason = failureReasonDuplicateReport;
+                failurePosition = pos;
+                return XSSProtectionInvalid;
+            }
+            reportDirectiveSeen = true;
+            if (!skipEquals(header, pos)) {
+                failureReason = failureReasonInvalidEquals;
+                failurePosition = pos;
+                return XSSProtectionInvalid;
+            }
+            size_t startPos = pos;
+            if (!skipValue(header, pos)) {
+                failureReason = failureReasonInvalidReport;
+                failurePosition = pos;
+                return XSSProtectionInvalid;
+            }
+            reportURL = header.substring(startPos, pos - startPos);
+            failurePosition = startPos; // If later semantic check deems unacceptable.
+        } else {
+            failureReason = failureReasonInvalidDirective;
+            failurePosition = pos;
+            return XSSProtectionInvalid;
+        }
+    }
 }
 
 String extractReasonPhraseFromHTTPStatusLine(const String& statusLine)

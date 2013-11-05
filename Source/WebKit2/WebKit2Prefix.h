@@ -44,6 +44,8 @@
 
 #define ENABLE_MEMORY_SAMPLER 1
 
+#define ENABLE_CUSTOM_PROTOCOLS 1
+
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CoreGraphics.h>
 
@@ -54,10 +56,6 @@
 #import <Cocoa/Cocoa.h>
 #endif
 #endif
-
-#endif // PLATFORM(MAC)
-
-#if PLATFORM(MAC)
 
 #if ENABLE(PLUGIN_PROCESS)
 #define ENABLE_SHARED_WORKER_PROCESS 1

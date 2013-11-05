@@ -43,9 +43,10 @@
 #define CppVariant_h
 
 #include "WebBindings.h"
-#include "webkit/support/webkit_support.h"
 #include <string>
 #include <wtf/Vector.h>
+
+namespace WebTestRunner {
 
 class CppVariant : public NPVariant {
 public:
@@ -137,5 +138,7 @@ public:
     bool invokeDefault(const CppVariant* arguments,
                        uint32_t argumentCount, CppVariant& result) const;
 };
+
+}
 
 #endif // CppVariant_h

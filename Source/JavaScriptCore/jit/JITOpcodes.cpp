@@ -29,9 +29,9 @@
 #include "JIT.h"
 
 #include "Arguments.h"
-#include "CopiedSpaceInlineMethods.h"
+#include "CopiedSpaceInlines.h"
 #include "Heap.h"
-#include "JITInlineMethods.h"
+#include "JITInlines.h"
 #include "JITStubCall.h"
 #include "JSArray.h"
 #include "JSCell.h"
@@ -1069,13 +1069,14 @@ void JIT::emit_op_switch_string(Instruction* currentInstruction)
     jump(regT0);
 }
 
-void JIT::emit_op_throw_reference_error(Instruction* currentInstruction)
+void JIT::emit_op_throw_static_error(Instruction* currentInstruction)
 {
-    JITStubCall stubCall(this, cti_op_throw_reference_error);
+    JITStubCall stubCall(this, cti_op_throw_static_error);
     if (!m_codeBlock->getConstant(currentInstruction[1].u.operand).isNumber())
         stubCall.addArgument(TrustedImm64(JSValue::encode(m_codeBlock->getConstant(currentInstruction[1].u.operand))));
     else
         stubCall.addArgument(Imm64(JSValue::encode(m_codeBlock->getConstant(currentInstruction[1].u.operand))));
+    stubCall.addArgument(TrustedImm32(currentInstruction[2].u.operand));
     stubCall.call();
 }
 
@@ -1209,9 +1210,18 @@ void JIT::emit_op_convert_this(Instruction* currentInstruction)
     addSlowCase(branchPtr(Equal, Address(regT1, JSCell::structureOffset()), TrustedImmPtr(m_globalData->stringStructure.get())));
 }
 
+void JIT::emit_op_get_callee(Instruction* currentInstruction)
+{
+    unsigned result = currentInstruction[1].u.operand;
+    emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
+    emitValueProfilingSite();
+    emitPutVirtualRegister(result);
+}
+
 void JIT::emit_op_create_this(Instruction* currentInstruction)
 {
-    emitGetFromCallFrameHeaderPtr(JSStack::Callee, regT0);
+    int callee = currentInstruction[2].u.operand;
+    emitGetVirtualRegister(callee, regT0);
     loadPtr(Address(regT0, JSFunction::offsetOfCachedInheritorID()), regT2);
     addSlowCase(branchTestPtr(Zero, regT2));
     
@@ -1624,7 +1634,7 @@ void JIT::emit_resolve_operations(ResolveOperations* resolveOperations, const in
             break;
         case ResolveOperation::ReturnScopeAsBase:
             emitStoreCell(*baseVR, scope);
-            ASSERT(!value);
+            ASSERT(value == regT0);
             move(scope, value);
 #if USE(JSVALUE32_64)
             move(TrustedImm32(JSValue::CellTag), valueTag);
@@ -1951,6 +1961,7 @@ void JIT::emit_op_new_array(Instruction* currentInstruction)
     JITStubCall stubCall(this, cti_op_new_array);
     stubCall.addArgument(TrustedImm32(currentInstruction[2].u.operand));
     stubCall.addArgument(TrustedImm32(currentInstruction[3].u.operand));
+    stubCall.addArgument(TrustedImmPtr(currentInstruction[4].u.arrayAllocationProfile));
     stubCall.call(currentInstruction[1].u.operand);
 }
 
@@ -1962,6 +1973,7 @@ void JIT::emit_op_new_array_with_size(Instruction* currentInstruction)
 #else
     stubCall.addArgument(currentInstruction[2].u.operand);
 #endif
+    stubCall.addArgument(TrustedImmPtr(currentInstruction[3].u.arrayAllocationProfile));
     stubCall.call(currentInstruction[1].u.operand);
 }
 
@@ -1970,6 +1982,7 @@ void JIT::emit_op_new_array_buffer(Instruction* currentInstruction)
     JITStubCall stubCall(this, cti_op_new_array_buffer);
     stubCall.addArgument(TrustedImm32(currentInstruction[2].u.operand));
     stubCall.addArgument(TrustedImm32(currentInstruction[3].u.operand));
+    stubCall.addArgument(TrustedImmPtr(currentInstruction[4].u.arrayAllocationProfile));
     stubCall.call(currentInstruction[1].u.operand);
 }
 

@@ -147,6 +147,12 @@ public:
         didFinishLoading(handle, 0);
     }
 
+    virtual void didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge& challenge)
+    {
+        // We do not handle authentication for synchronous XMLHttpRequests.
+        challenge.authenticationClient()->receivedRequestToContinueWithoutCredential(challenge);
+    }
+
     void run()
     {
         if (!m_finished)
@@ -850,17 +856,56 @@ void ResourceHandle::setIgnoreSSLErrors(bool ignoreSSLErrors)
     gIgnoreSSLErrors = ignoreSSLErrors;
 }
 
-#if PLATFORM(GTK)
 void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
-    if (client())
+    ASSERT(d->m_currentWebChallenge.isNull());
+    d->m_currentWebChallenge = challenge;
+
+    if (client()) {
+        ASSERT(challenge.soupSession());
+        ASSERT(challenge.soupMessage());
+        soup_session_pause_message(challenge.soupSession(), challenge.soupMessage());
         client()->didReceiveAuthenticationChallenge(this, challenge);
+    }
 }
 
-void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&)
+void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
 {
+    ASSERT(!challenge.isNull());
+    if (challenge != d->m_currentWebChallenge)
+        return;
+    soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+
+    clearAuthentication();
 }
-#endif
+
+void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
+{
+    ASSERT(!challenge.isNull());
+    if (challenge != d->m_currentWebChallenge)
+        return;
+
+    ASSERT(challenge.soupSession());
+    ASSERT(challenge.soupMessage());
+    soup_auth_authenticate(challenge.soupAuth(), credential.user().utf8().data(), credential.password().utf8().data());
+    soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+
+    clearAuthentication();
+}
+
+void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challenge)
+{
+    ASSERT(!challenge.isNull());
+    if (challenge != d->m_currentWebChallenge)
+        return;
+
+    soup_session_unpause_message(challenge.soupSession(), challenge.soupMessage());
+
+    if (client())
+        client()->receivedCancellation(this, challenge);
+
+    clearAuthentication();
+}
 
 static bool waitingToSendRequest(ResourceHandle* handle)
 {
@@ -1014,18 +1059,13 @@ static gboolean requestTimeoutCallback(gpointer data)
     return FALSE;
 }
 
-#if PLATFORM(GTK)
-static void authenicateCallback(SoupSession* session, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying)
+static void authenticateCallback(SoupSession* session, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(g_object_get_data(G_OBJECT(soupMessage), "handle"));
     if (!handle)
         return;
-
-    // We don't need to pass a client here, because GTK+ does not yet use the AuthenticationClient to
-    // respond to the AuthenticationChallenge -- instead dealing with the Soup objects directly.
-    handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(session, soupMessage, soupAuth, retrying, 0));
+    handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(session, soupMessage, soupAuth, retrying, handle.get()));
 }
-#endif
 
 SoupSession* ResourceHandle::defaultSession()
 {
@@ -1047,9 +1087,7 @@ SoupSession* ResourceHandle::defaultSession()
                      SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
                      SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
                      NULL);
-#if PLATFORM(GTK)
-        g_signal_connect(session, "authenticate", G_CALLBACK(authenicateCallback), 0);
-#endif
+        g_signal_connect(session, "authenticate", G_CALLBACK(authenticateCallback), 0);
 
 #if ENABLE(WEB_TIMING)
         g_signal_connect(session, "request-started", G_CALLBACK(requestStartedCallback), 0);

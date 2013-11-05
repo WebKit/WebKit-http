@@ -168,7 +168,10 @@ namespace JSC {
         JSValue prototypeForLookup(CodeBlock*) const;
         StructureChain* prototypeChain(ExecState*) const;
         static void visitChildren(JSCell*, SlotVisitor&);
-
+        
+        // Will just the prototype chain intercept this property access?
+        bool prototypeChainMayInterceptStoreTo(JSGlobalData&, PropertyName);
+        
         Structure* previousID() const
         {
             ASSERT(structure()->classInfo() == &s_info);
@@ -519,6 +522,11 @@ namespace JSC {
     inline bool JSCell::isGetterSetter() const
     {
         return m_structure->typeInfo().type() == GetterSetterType;
+    }
+
+    inline bool JSCell::isProxy() const
+    {
+        return structure()->typeInfo().type() == ProxyType;
     }
 
     inline bool JSCell::isAPIValueWrapper() const

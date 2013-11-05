@@ -203,6 +203,7 @@ void HTMLOptionElement::parseAttribute(const Attribute& attribute)
         m_disabled = !attribute.isNull();
         if (oldDisabled != m_disabled) {
             setNeedsStyleRecalc();
+            invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureDisabled);
             if (renderer() && renderer()->style()->hasAppearance())
                 renderer()->theme()->stateChanged(renderer(), EnabledState);
         }
@@ -256,6 +257,7 @@ void HTMLOptionElement::setSelectedState(bool selected)
 
     m_isSelected = selected;
     setNeedsStyleRecalc();
+    invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureChecked);    
 
     if (HTMLSelectElement* select = ownerSelectElement())
         select->invalidateSelectedItems();

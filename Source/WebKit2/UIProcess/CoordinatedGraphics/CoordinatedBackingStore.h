@@ -25,6 +25,7 @@
 #include "TextureMapper.h"
 #include "TextureMapperBackingStore.h"
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 
 namespace WebKit {
 
@@ -48,7 +49,7 @@ public:
 private:
     RefPtr<ShareableSurface> m_surface;
     WebCore::IntRect m_sourceRect;
-    WebCore::IntRect m_targetRect;
+    WebCore::IntRect m_tileRect;
     WebCore::IntPoint m_surfaceOffset;
     float m_scale;
     int m_repaintCount;
@@ -59,17 +60,22 @@ public:
     void createTile(int, float);
     void removeTile(int);
     void updateTile(int, const WebCore::IntRect&, const WebCore::IntRect&, PassRefPtr<ShareableSurface>, const WebCore::IntPoint&);
+    bool isEmpty() const;
     static PassRefPtr<CoordinatedBackingStore> create() { return adoptRef(new CoordinatedBackingStore); }
     void commitTileOperations(WebCore::TextureMapper*);
     PassRefPtr<WebCore::BitmapTexture> texture() const;
+    void setSize(const WebCore::FloatSize&);
     virtual void paintToTextureMapper(WebCore::TextureMapper*, const WebCore::FloatRect&, const WebCore::TransformationMatrix&, float, WebCore::BitmapTexture*);
 
 private:
     CoordinatedBackingStore()
         : m_scale(1.)
     { }
+    void paintTilesToTextureMapper(Vector<WebCore::TextureMapperTile*>&, WebCore::TextureMapper*, const WebCore::TransformationMatrix&, float, WebCore::BitmapTexture*, const WebCore::FloatRect&);
+
     HashMap<int, CoordinatedBackingStoreTile> m_tiles;
-    Vector<int> m_tilesToRemove;
+    HashSet<int> m_tilesToRemove;
+    WebCore::FloatSize m_size;
     float m_scale;
 };
 

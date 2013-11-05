@@ -212,10 +212,10 @@ GraphicsContext* ImageBuffer::context() const
     return m_context.get();
 }
 
-PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior) const
+PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior scaleBehavior) const
 {
     RetainPtr<CGImageRef> image;
-    if (m_resolutionScale == 1)
+    if (m_resolutionScale == 1 || scaleBehavior == Unscaled)
         image = copyNativeImage(copyBehavior);
     else {
         image.adoptCF(copyNativeImage(DontCopyBackingStore));
@@ -377,8 +377,7 @@ static inline CFStringRef jpegUTI()
 static RetainPtr<CFStringRef> utiFromMIMEType(const String& mimeType)
 {
 #if PLATFORM(MAC)
-    RetainPtr<CFStringRef> mimeTypeCFString(AdoptCF, mimeType.createCFString());
-    return RetainPtr<CFStringRef>(AdoptCF, UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, mimeTypeCFString.get(), 0));
+    return adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, mimeType.createCFString().get(), 0));
 #else
     ASSERT(isMainThread()); // It is unclear if CFSTR is threadsafe.
 

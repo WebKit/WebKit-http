@@ -46,6 +46,8 @@ var ClassNames = {
     DayLabelContainer: "day-label-container",
     DaysArea: "days-area",
     DaysAreaContainer: "days-area-container",
+    Monday: "monday",
+    MonthMode: "month-mode",
     MonthSelector: "month-selector",
     MonthSelectorBox: "month-selector-box",
     MonthSelectorPopup: "month-selector-popup",
@@ -56,10 +58,13 @@ var ClassNames = {
     NotThisMonth: "not-this-month",
     Selected: "day-selected",
     SelectedMonthYear: "selected-month-year",
+    Sunday: "sunday",
     TodayButton: "today-button",
     TodayClearArea: "today-clear-area",
     Unavailable: "unavailable",
     WeekContainer: "week-container",
+    WeekColumn: "week-column",
+    WeekMode: "week-mode",
     YearMonthArea: "year-month-area",
     YearMonthButton: "year-month-button",
     YearMonthButtonLeft: "year-month-button-left",
@@ -105,7 +110,7 @@ function localizeNumber(number) {
     return window.pagePopupController.localizeNumberString(number);
 }
 
-/*
+/**
  * @const
  * @type {number}
  */
@@ -139,75 +144,424 @@ function formatJapaneseImperialEra(year, month) {
 }
 
 /**
- * @param {!number} year
- * @param {!number} month
  * @return {!string}
  */
-function formatYearMonth(year, month) {
-    var yearString = localizeNumber(year);
-    var monthString = global.params.monthLabels[month];
-    switch (getLanguage()) {
-    case "eu":
-    case "fil":
-    case "lt":
-    case "ml":
-    case "mt":
-    case "tl":
-    case "ur":
-        return yearString + " " + monthString;
-    case "hu":
-        return yearString + ". " + monthString;
-    case "ja":
-        return yearString + "年" + formatJapaneseImperialEra(year, month) + " " + monthString;
-    case "zh":
-        return yearString + "年" + monthString;
-    case "ko":
-        return yearString + "년 " + monthString;
-    case "lv":
-        return yearString + ". g. " + monthString;
-    case "pt":
-        return monthString + " de " + yearString;
-    case "sr":
-        return monthString + ". " + yearString;
-    default:
-        return monthString + " " + yearString;
-    }
-}
+Month.prototype.toLocaleString = function() {
+    if (isNaN(this.year) || isNaN(this.year))
+        return "Invalid Month";
+    if (getLanguage() == "ja")
+        return "" + this.year + "年" + formatJapaneseImperialEra(this.year, this.month) + " " + (this.month + 1) + "月";
+    return window.pagePopupController.formatMonth(this.year, this.month);
+};
 
 function createUTCDate(year, month, date) {
-    var newDate = new Date(Date.UTC(year, month, date));
-    if (year < 100)
-        newDate.setUTCFullYear(year);
+    var newDate = new Date(0);
+    newDate.setUTCFullYear(year);
+    newDate.setUTCMonth(month);
+    newDate.setUTCDate(date);
     return newDate;
 };
 
 /**
- * @param {string=} opt_current
- * @return {!Date}
+ * @param {string} dateString
+ * @return {?Day|Week|Month}
  */
-function parseDateString(opt_current) {
-    if (opt_current) {
-        var result = opt_current.match(/(\d+)-(\d+)-(\d+)/);
-        if (result)
-            return createUTCDate(Number(result[1]), Number(result[2]) - 1, Number(result[3]));
-    }
-    var now = new Date();
-    // Create UTC date with same numbers as local date.
-    return createUTCDate(now.getFullYear(), now.getMonth(), now.getDate());
+function parseDateString(dateString) {
+    var month = Month.parse(dateString);
+    if (month)
+        return month;
+    var week = Week.parse(dateString);
+    if (week)
+        return week;
+    return Day.parse(dateString);
 }
 
 /**
- * @param {!number} year
- * @param {!number} month
- * @param {!number} day
+ * @constructor
+ * @param {!number|Day} valueOrDayOrYear
+ * @param {!number=} month
+ * @param {!number=} date
+ */
+function Day(valueOrDayOrYear, month, date) {
+    var dateObject;
+    if (arguments.length == 3)
+        dateObject = createUTCDate(valueOrDayOrYear, month, date);
+    else if (valueOrDayOrYear instanceof Day)
+        dateObject = createUTCDate(valueOrDayOrYear.year, valueOrDayOrYear.month, valueOrDayOrYear.date);
+    else
+        dateObject = new Date(valueOrDayOrYear);
+    this.year = dateObject.getUTCFullYear();    
+    this.month = dateObject.getUTCMonth();
+    this.date = dateObject.getUTCDate();
+};
+
+Day.ISOStringRegExp = /^(\d+)-(\d+)-(\d+)/;
+
+/**
+ * @param {!string} str
+ * @return {?Month}
+ */
+Day.parse = function(str) {
+    var match = Day.ISOStringRegExp.exec(str);
+    if (!match)
+        return null;
+    var year = parseInt(match[1], 10);
+    var month = parseInt(match[2], 10) - 1;
+    var date = parseInt(match[3], 10);
+    return new Day(year, month, date);
+};
+
+/**
+ * @param {!Date} date
+ * @return {!Day}
+ */
+Day.createFromDate = function(date) {
+    return new Day(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+};
+
+/**
+ * @return {!Day}
+ */
+Day.createFromToday = function() {
+    var now = new Date();
+    return new Day(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
+/**
+ * @param {!Day} other
+ * @return {!bool}
+ */
+Day.prototype.equals = function(other) {
+    return this.year === other.year && this.month === other.month && this.date === other.date;
+};
+
+/**
+ * @return {!Day}
+ */
+Day.prototype.previous = function() {
+    return new Day(this.year, this.month, this.date - 1);
+};
+
+/**
+ * @return {!Day}
+ */
+Day.prototype.next = function() {
+    return new Day(this.year, this.month, this.date + 1);
+};
+
+/**
+ * @return {!Date}
+ */
+Day.prototype.startDate = function() {
+    return createUTCDate(this.year, this.month, this.date);
+};
+
+/**
+ * @return {!Date}
+ */
+Day.prototype.endDate = function() {
+    return createUTCDate(this.year, this.month, this.date + 1);
+};
+
+/**
+ * @return {!number}
+ */
+Day.prototype.valueOf = function() {
+    return this.startDate().getTime();
+};
+
+/**
  * @return {!string}
  */
-function serializeDate(year, month, day) {
-    var yearString = String(year);
+Day.prototype.toString = function() {
+    var yearString = String(this.year);
     if (yearString.length < 4)
         yearString = ("000" + yearString).substr(-4, 4);
-    return yearString + "-" + ("0" + (month + 1)).substr(-2, 2) + "-" + ("0" + day).substr(-2, 2);
+    return yearString + "-" + ("0" + (this.month + 1)).substr(-2, 2) + "-" + ("0" + this.date).substr(-2, 2);
+};
+
+// See WebCore/platform/DateComponents.h.
+Day.Minimum = new Day(-62135596800000.0);
+Day.Maximum = new Day(8640000000000000.0);
+// See WebCore/html/DayInputType.cpp.
+Day.DefaultStep = 86400000;
+Day.DefaultStepBase = 0;
+
+/**
+ * @constructor
+ * @param {!number|Week} valueOrWeekOrYear
+ * @param {!number=} week
+ */
+function Week(valueOrWeekOrYear, week) {
+    if (arguments.length === 2) {
+        this.year = valueOrWeekOrYear;
+        this.week = week;
+        // Number of years per year is either 52 or 53.
+        if (this.week < 1 || (this.week > 52 && this.week > Week.numberOfWeeksInYear(this.year))) {
+            var normalizedWeek = Week.createFromDate(this.startDate());
+            this.year = normalizedWeek.year;
+            this.week = normalizedWeek.week;
+        }
+    } else if (valueOrWeekOrYear instanceof Week) {
+        this.year = valueOrWeekOrYear.year;
+        this.week = valueOrWeekOrYear.week;
+    } else {
+        var week = Week.createFromDate(new Date(valueOrWeekOrYear));
+        this.year = week.year;
+        this.week = week.week;
+    }
 }
+
+Week.MillisecondsPerWeek = 7 * 24 * 60 * 60 * 1000;
+Week.ISOStringRegExp = /^(\d+)-[wW](\d+)$/;
+// See WebCore/platform/DateComponents.h.
+Week.Minimum = new Week(1, 1);
+Week.Maximum = new Week(275760, 37);
+// See WebCore/html/WeekInputType.cpp.
+Week.DefaultStep = 604800000;
+Week.DefaultStepBase = -259200000;
+
+/**
+ * @param {!string} str
+ * @return {?Week}
+ */
+Week.parse = function(str) {
+    var match = Week.ISOStringRegExp.exec(str);
+    if (!match)
+        return null;
+    var year = parseInt(match[1], 10);
+    var week = parseInt(match[2], 10);
+    return new Week(year, week);
+};
+
+/**
+ * @param {!Date} date
+ * @return {!Week}
+ */
+Week.createFromDate = function(date) {
+    var year = date.getUTCFullYear();
+    if (year <= Week.Maximum.year && Week.weekOneStartDateForYear(year + 1).getTime() <= date.getTime())
+        year++;
+    else if (year > 1 && Week.weekOneStartDateForYear(year).getTime() > date.getTime())
+        year--;
+    var week = 1 + Week._numberOfWeeksSinceDate(Week.weekOneStartDateForYear(year), date);
+    return new Week(year, week);
+};
+
+/**
+ * @return {!Week}
+ */
+Week.createFromToday = function() {
+    var now = new Date();
+    return Week.createFromDate(createUTCDate(now.getFullYear(), now.getMonth(), now.getDate()));
+};
+
+/**
+ * @param {!number} year
+ * @return {!Date}
+ */
+Week.weekOneStartDateForYear = function(year) {
+    if (year < 1)
+        return createUTCDate(1, 0, 1);
+    // The week containing January 4th is week one.
+    var yearStartDay = createUTCDate(year, 0, 4).getUTCDay();
+    return createUTCDate(year, 0, 4 - (yearStartDay + 6) % 7);
+};
+
+/**
+ * @param {!number} year
+ * @return {!number}
+ */
+Week.numberOfWeeksInYear = function(year) {
+    if (year < 1 || year > Week.Maximum.year)
+        return 0;
+    else if (year === Week.Maximum.year)
+        return Week.Maximum.week;
+    return Week._numberOfWeeksSinceDate(Week.weekOneStartDateForYear(year), Week.weekOneStartDateForYear(year + 1));
+};
+
+/**
+ * @param {!Date} baseDate
+ * @param {!Date} date
+ * @return {!number}
+ */
+Week._numberOfWeeksSinceDate = function(baseDate, date) {
+    return Math.floor((date.getTime() - baseDate.getTime()) / Week.MillisecondsPerWeek);
+};
+
+/**
+ * @param {!Week} other
+ * @return {!bool}
+ */
+Week.prototype.equals = function(other) {
+    return this.year === other.year && this.week === other.week;
+};
+
+/**
+ * @return {!Week}
+ */
+Week.prototype.previous = function() {
+    return new Week(this.year, this.week - 1);
+};
+
+/**
+ * @return {!Week}
+ */
+Week.prototype.next = function() {
+    return new Week(this.year, this.week + 1);
+};
+
+/**
+ * @return {!Date}
+ */
+Week.prototype.startDate = function() {
+    var weekStartDate = Week.weekOneStartDateForYear(this.year);
+    weekStartDate.setUTCDate(weekStartDate.getUTCDate() + (this.week - 1) * 7);
+    return weekStartDate;
+};
+
+/**
+ * @return {!Date}
+ */
+Week.prototype.endDate = function() {
+    if (this.equals(Week.Maximum))
+        return Day.Maximum.startDate();
+    return this.next().startDate();
+};
+
+/**
+ * @return {!number}
+ */
+Week.prototype.valueOf = function() {
+    return this.startDate().getTime() - createUTCDate(1970, 0, 1).getTime();
+};
+
+/**
+ * @return {!string}
+ */
+Week.prototype.toString = function() {
+    var yearString = String(this.year);
+    if (yearString.length < 4)
+        yearString = ("000" + yearString).substr(-4, 4);
+    return yearString + "-W" + ("0" + this.week).substr(-2, 2);
+};
+
+/**
+ * @constructor
+ * @param {!number|Month} valueOrMonthOrYear
+ * @param {!number=} month
+ */
+function Month(valueOrMonthOrYear, month) {
+    if (arguments.length == 2) {
+        this.year = valueOrMonthOrYear;
+        this.month = month;
+    } else if (valueOrMonthOrYear instanceof Month) {
+        this.year = valueOrMonthOrYear.year;
+        this.month = valueOrMonthOrYear.month;
+    } else {
+        this.year = 1970;
+        this.month = valueOrMonthOrYear;
+    }
+    this.year = this.year + Math.floor(this.month / 12);
+    this.month = this.month < 0 ? this.month % 12 + 12 : this.month % 12;
+    if (this.year <= 0 || Month.Maximum < this) {
+        this.year = NaN;
+        this.month = NaN;
+    }
+};
+
+Month.ISOStringRegExp = /^(\d+)-(\d+)$/;
+
+// See WebCore/platform/DateComponents.h.
+Month.Minimum = new Month(1, 0);
+Month.Maximum = new Month(275760, 8);
+// See WebCore/html/MonthInputType.cpp.
+Month.DefaultStep = 1;
+Month.DefaultStepBase = 0;
+
+/**
+ * @param {!string} str
+ * @return {?Month}
+ */
+Month.parse = function(str) {
+    var match = Month.ISOStringRegExp.exec(str);
+    if (!match)
+        return null;
+    var year = parseInt(match[1], 10);
+    var month = parseInt(match[2], 10) - 1;
+    return new Month(year, month);
+};
+
+/**
+ * @param {!Date} date
+ * @return {!Month}
+ */
+Month.createFromDate = function(date) {
+    return new Month(date.getUTCFullYear(), date.getUTCMonth());
+};
+
+/**
+ * @return {!Month}
+ */
+Month.createFromToday = function() {
+    var now = new Date();
+    return new Month(now.getFullYear(), now.getMonth());
+};
+
+/**
+ * @param {!Month} other
+ * @return {!bool}
+ */
+Month.prototype.equals = function(other) {
+    return this.year === other.year && this.month === other.month;
+};
+
+/**
+ * @return {!Month}
+ */
+Month.prototype.previous = function() {
+    return new Month(this.year, this.month - 1);
+};
+
+/**
+ * @return {!Month}
+ */
+Month.prototype.next = function() {
+    return new Month(this.year, this.month + 1);
+};
+
+/**
+ * @return {!Date}
+ */
+Month.prototype.startDate = function() {
+    return createUTCDate(this.year, this.month, 1);
+};
+
+/**
+ * @return {!Date}
+ */
+Month.prototype.endDate = function() {
+    if (this.equals(Month.Maximum))
+        return Day.Maximum.startDate();
+    return this.next().startDate();
+};
+
+/**
+ * @return {!number}
+ */
+Month.prototype.valueOf = function() {
+    return (this.year - 1970) * 12 + this.month;
+};
+
+/**
+ * @return {!string}
+ */
+Month.prototype.toString = function() {
+    var yearString = String(this.year);
+    if (yearString.length < 4)
+        yearString = ("000" + yearString).substr(-4, 4);
+    return yearString + "-" + ("0" + (this.month + 1)).substr(-2, 2);
+};
 
 // ----------------------------------------------------------------
 // Initialization
@@ -226,8 +580,6 @@ function handleArgumentsTimeout() {
     if (global.argumentsReceived)
         return;
     var args = {
-        monthLabels : ["m1", "m2", "m3", "m4", "m5", "m6",
-                       "m7", "m8", "m9", "m10", "m11", "m12"],
         dayLabels : ["d1", "d2", "d3", "d4", "d5", "d6", "d7"],
         todayLabel : "Today",
         clearLabel : "Clear",
@@ -245,10 +597,6 @@ function handleArgumentsTimeout() {
  * @return {?string} An error message, or null if the argument has no errors.
  */
 CalendarPicker.validateConfig = function(config) {
-    if (!config.monthLabels)
-        return "No monthLabels.";
-    if (config.monthLabels.length != 12)
-        return "monthLabels is not an array with 12 elements.";
     if (!config.dayLabels)
         return "No dayLabels.";
     if (config.dayLabels.length != 7)
@@ -309,38 +657,55 @@ function openCalendarPicker() {
  */
 function CalendarPicker(element, config) {
     Picker.call(this, element, config);
+    if (this._config.mode === "month") {
+        this.selectionConstructor = Month;
+        this._daysTable = new MonthPickerDaysTable(this);
+        this._element.classList.add(ClassNames.MonthMode);
+    } else if (this._config.mode === "week") {
+        this.selectionConstructor = Week;
+        this._daysTable = new WeekPickerDaysTable(this);
+        this._element.classList.add(ClassNames.WeekMode);
+    } else {
+        this.selectionConstructor = Day;
+        this._daysTable = new DaysTable(this);
+    }
     this._element.classList.add("calendar-picker");
     this._element.classList.add("preparing");
     this._handleWindowResizeBound = this._handleWindowResize.bind(this);
     window.addEventListener("resize", this._handleWindowResizeBound, false);
-    // We assume this._config.min is a valid date.
-    this.minimumDate = (typeof this._config.min !== "undefined") ? parseDateString(this._config.min) : CalendarPicker.MinimumPossibleDate;
-    // We assume this._config.max is a valid date.
-    this.maximumDate = (typeof this._config.max !== "undefined") ? parseDateString(this._config.max) : CalendarPicker.MaximumPossibleDate;
-    this.step = (typeof this._config.step !== undefined) ? Number(this._config.step) : CalendarPicker.DefaultStepScaleFactor;
-    this.stepBase = (typeof this._config.stepBase !== "undefined") ? Number(this._config.stepBase) : CalendarPicker.DefaultStepBase;
-    this.yearMonthController = new YearMonthController(this);
-    this.daysTable = new DaysTable(this);
+    // We assume this._config.min/max are valid dates or months.
+    var minimum = (typeof this._config.min !== "undefined") ? parseDateString(this._config.min) : this.selectionConstructor.Minimum;
+    var maximum = (typeof this._config.max !== "undefined") ? parseDateString(this._config.max) : this.selectionConstructor.Maximum;
+    this._minimumValue = minimum.valueOf();
+    this._maximumValue = maximum.valueOf();
+    this.step = (typeof this._config.step !== undefined) ? Number(this._config.step) : this.selectionConstructor.DefaultStep;
+    this.stepBase = (typeof this._config.stepBase !== "undefined") ? Number(this._config.stepBase) : this.selectionConstructor.DefaultStepBase;
+    this._minimumMonth = Month.createFromDate(minimum.startDate());
+    this.maximumMonth = Month.createFromDate(maximum.startDate());
+    this._currentMonth = new Month(NaN, NaN);
+    this._yearMonthController = new YearMonthController(this);
     this._hadKeyEvent = false;
     this._layout();
-    var initialDate = parseDateString(this._config.currentValue);
-    if (initialDate < this.minimumDate)
-        initialDate = this.minimumDate;
-    else if (initialDate > this.maximumDate)
-        initialDate = this.maximumDate;
-    this.daysTable.selectDate(initialDate);
+    var initialSelection = parseDateString(this._config.currentValue);
+    if (!initialSelection)
+        initialSelection = this.selectionConstructor.createFromToday();
+    if (initialSelection.valueOf() < this._minimumValue)
+        initialSelection = new this.selectionConstructor(this._minimumValue);
+    else if (initialSelection.valueOf() > this._maximumValue)
+        initialSelection = new this.selectionConstructor(this._maximumValue);
+    this.showMonth(Month.createFromDate(initialSelection.startDate()));
+    this._daysTable.selectRangeAndShowEntireRange(initialSelection);
     this.fixWindowSize();
     this._handleBodyKeyDownBound = this._handleBodyKeyDown.bind(this);
     document.body.addEventListener("keydown", this._handleBodyKeyDownBound, false);
 }
 CalendarPicker.prototype = Object.create(Picker.prototype);
 
-// Hard limits of type=date. See WebCore/platform/DateComponents.h.
-CalendarPicker.MinimumPossibleDate = new Date(-62135596800000.0);
-CalendarPicker.MaximumPossibleDate = new Date(8640000000000000.0);
-// See WebCore/html/DateInputType.cpp.
-CalendarPicker.DefaultStepScaleFactor = 86400000;
-CalendarPicker.DefaultStepBase = 0.0;
+CalendarPicker.NavigationBehaviour = {
+    None: 0,
+    Animate: 1 << 0,
+    KeepSelectionPosition: 1 << 1
+};
 
 CalendarPicker.prototype._handleWindowResize = function() {
     this._element.classList.remove("preparing");
@@ -353,17 +718,17 @@ CalendarPicker.prototype.cleanup = function() {
 CalendarPicker.prototype._layout = function() {
     if (this._config.isCalendarRTL)
         this._element.classList.add("rtl");
-    this.yearMonthController.attachTo(this._element);
-    this.daysTable.attachTo(this._element);
+    this._yearMonthController.attachTo(this._element);
+    this._daysTable.attachTo(this._element);
     this._layoutButtons();
     // DaysTable will have focus but we don't want to show its focus ring until the first key event.
     this._element.classList.add(ClassNames.NoFocusRing);
 };
 
 CalendarPicker.prototype.handleToday = function() {
-    var date = new Date();
-    this.daysTable.selectDate(date);
-    this.submitValue(serializeDate(date.getFullYear(), date.getMonth(), date.getDate()));
+    var today = this.selectionConstructor.createFromToday();
+    this._daysTable.selectRangeAndShowEntireRange(today);
+    this.submitValue(today.toString());
 };
 
 CalendarPicker.prototype.handleClear = function() {
@@ -407,6 +772,7 @@ CalendarPicker.prototype.fixWindowSize = function() {
 CalendarPicker.prototype._layoutButtons = function() {
     var container = createElement("div", ClassNames.TodayClearArea);
     this.today = createElement("input", ClassNames.TodayButton);
+    this.today.disabled = !this.isValidDate(this.selectionConstructor.createFromToday());
     this.today.type = "button";
     this.today.value = this._config.todayLabel;
     this.today.addEventListener("click", this.handleToday.bind(this), false);
@@ -424,6 +790,37 @@ CalendarPicker.prototype._layoutButtons = function() {
     this.lastFocusableControl = this.clear || this.today;
 };
 
+/**
+ * @param {!Month} month
+ * @return {!bool}
+ */
+CalendarPicker.prototype.shouldShowMonth = function(month) {
+    return this._minimumMonth.valueOf() <= month.valueOf() && this.maximumMonth.valueOf() >= month.valueOf();
+};
+
+/**
+ * @param {!Month} month
+ * @param {!CalendarPicker.NavigationBehaviour=} navigationBehaviour
+ */
+CalendarPicker.prototype.showMonth = function(month, navigationBehaviour) {
+    if (this._currentMonth.equals(month))
+        return;
+    else if (month.valueOf() < this._minimumMonth.valueOf())
+        month = this._minimumMonth;
+    else if (month.valueOf() > this.maximumMonth.valueOf())
+        month = this.maximumMonth;
+    this._yearMonthController.setMonth(month);
+    this._daysTable.navigateToMonth(month, navigationBehaviour || CalendarPicker.NavigationBehaviour.None);
+    this._currentMonth = month;
+};
+
+/**
+ * @return {!Month}
+ */
+CalendarPicker.prototype.currentMonth = function() {
+    return this._currentMonth;
+};
+
 // ----------------------------------------------------------------
 
 /**
@@ -432,14 +829,6 @@ CalendarPicker.prototype._layoutButtons = function() {
  */
 function YearMonthController(picker) {
     this.picker = picker;
-    /**
-     * @type {!number}
-     */
-    this._currentYear = -1;
-    /**
-     * @type {!number}
-     */
-    this._currentMonth = -1;
 }
 
 /**
@@ -476,15 +865,16 @@ YearMonthController.prototype.attachTo = function(element) {
     this._wall.addEventListener("click", this._closePopup.bind(this), false);
     element.appendChild(this._wall);
 
-    var maximumYear = this.picker.maximumDate.getUTCFullYear();
+    var month = this.picker.maximumMonth;
     var maxWidth = 0;
     for (var m = 0; m < 12; ++m) {
-        this._month.textContent = formatYearMonth(maximumYear, m);
+        this._month.textContent = month.toLocaleString();
         maxWidth = Math.max(maxWidth, this._month.offsetWidth);
+        month = month.previous();
     }
-    if (getLanguage() == "ja" && ImperialEraLimit < maximumYear) {
+    if (getLanguage() == "ja" && ImperialEraLimit < this.picker.maximumMonth.year) {
         for (var m = 0; m < 12; ++m) {
-            this._month.textContent = formatYearMonth(ImperialEraLimit, m);
+            this._month.textContent = new Month(ImperialEraLimit, m).toLocaleString();
             maxWidth = Math.max(maxWidth, this._month.offsetWidth);
         }
     }
@@ -551,52 +941,30 @@ YearMonthController.prototype._attachRightButtonsTo = function(parent) {
 };
 
 /**
- * @return {!number}
+ * @param {!Month} month
  */
-YearMonthController.prototype.year = function() {
-    return this._currentYear;
-};
-
-/**
- * @return {!number}
- */
-YearMonthController.prototype.month = function() {
-    return this._currentMonth;
-};
-
-/**
- * @param {!number} year
- * @param {!number} month
- */
-YearMonthController.prototype.setYearMonth = function(year, month) {
-    this._currentYear = year;
-    this._currentMonth = month;
-    this._redraw();
-};
-
-YearMonthController.prototype._redraw = function() {
-    var min = this.picker.minimumDate.getUTCFullYear() * 12 + this.picker.minimumDate.getUTCMonth();
-    var max = this.picker.maximumDate.getUTCFullYear() * 12 + this.picker.maximumDate.getUTCMonth();
-    var current = this._currentYear * 12 + this._currentMonth;
+YearMonthController.prototype.setMonth = function(month) {
+    var monthValue = month.valueOf();
     if (this._left3)
-        this._left3.disabled = current - 13 < min;
-    this._left2.disabled = current - 2 < min;
-    this._left1.disabled = current - 1 < min;
-    this._right1.disabled = current + 1 > max;
-    this._right2.disabled = current + 2 > max;
+        this._left3.disabled = !this.picker.shouldShowMonth(new Month(monthValue - 13));
+    this._left2.disabled = !this.picker.shouldShowMonth(new Month(monthValue - 2));
+    this._left1.disabled = !this.picker.shouldShowMonth(new Month(monthValue - 1));
+    this._right1.disabled = !this.picker.shouldShowMonth(new Month(monthValue + 1));
+    this._right2.disabled = !this.picker.shouldShowMonth(new Month(monthValue + 2));
     if (this._right3)
-        this._right3.disabled = current + 13 > max;
-    this._month.innerText = formatYearMonth(this._currentYear, this._currentMonth);
+        this._left3.disabled = !this.picker.shouldShowMonth(new Month(monthValue + 13));
+    this._month.innerText = month.toLocaleString();
     while (this._monthPopupContents.hasChildNodes())
         this._monthPopupContents.removeChild(this._monthPopupContents.firstChild);
 
-    for (var m = current - 6; m <= current + 6; m++) {
-        if (m < min || m > max)
+    for (var m = monthValue - 6; m <= monthValue + 6; m++) {
+        var month = new Month(m);
+        if (!this.picker.shouldShowMonth(month))
             continue;
-        var option = createElement("div", ClassNames.MonthSelectorPopupEntry, formatYearMonth(Math.floor(m / 12), m % 12));
-        option.dataset.value = String(Math.floor(m / 12)) + "-" + String(m % 12);
+        var option = createElement("div", ClassNames.MonthSelectorPopupEntry, month.toLocaleString());
+        option.dataset.value = month.toString();
         this._monthPopupContents.appendChild(option);
-        if (m == current)
+        if (m == monthValue)
             option.classList.add(ClassNames.SelectedMonthYear);
     }
 };
@@ -715,41 +1083,35 @@ YearMonthController.prototype._handleYearMonthChange = function() {
     var selection = this._getSelection();
     if (!selection)
         return;
-    var value = selection.dataset.value;
-    var result  = value.match(/(\d+)-(\d+)/);
-    if (!result)
-        return;
-    var newYear = Number(result[1]);
-    var newMonth = Number(result[2]);
-    this.picker.daysTable.navigateToMonthAndKeepSelectionPosition(newYear, newMonth);
+    this.picker.showMonth(Month.parse(selection.dataset.value));
 };
 
-/*
+/**
  * @const
  * @type {number}
  */
 YearMonthController.PreviousTenYears = -120;
-/*
+/**
  * @const
  * @type {number}
  */
 YearMonthController.PreviousYear = -12;
-/*
+/**
  * @const
  * @type {number}
  */
 YearMonthController.PreviousMonth = -1;
-/*
+/**
  * @const
  * @type {number}
  */
 YearMonthController.NextMonth = 1;
-/*
+/**
  * @const
  * @type {number}
  */
 YearMonthController.NextYear = 12;
-/*
+/**
  * @const
  * @type {number}
  */
@@ -779,17 +1141,9 @@ YearMonthController.prototype._handleButtonClick = function(event) {
  * @param {!number} amount
  */
 YearMonthController.prototype.moveRelatively = function(amount) {
-    var min = this.picker.minimumDate.getUTCFullYear() * 12 + this.picker.minimumDate.getUTCMonth();
-    var max = this.picker.maximumDate.getUTCFullYear() * 12 + this.picker.maximumDate.getUTCMonth();
-    var current = this._currentYear * 12 + this._currentMonth;
-    var updated = current;
-    if (amount < 0)
-        updated = current + amount >= min ? current + amount : min;
-    else
-        updated = current + amount <= max ? current + amount : max;
-    if (updated == current)
-        return;
-    this.picker.daysTable.navigateToMonthAndKeepSelectionPosition(Math.floor(updated / 12), updated % 12);
+    var current = this.picker.currentMonth().valueOf();
+    var updated = new Month(current + amount);
+    this.picker.showMonth(updated, CalendarPicker.NavigationBehaviour.Animate | CalendarPicker.NavigationBehaviour.KeepSelectionPosition);
 };
 
 // ----------------------------------------------------------------
@@ -800,14 +1154,6 @@ YearMonthController.prototype.moveRelatively = function(amount) {
  */
 function DaysTable(picker) {
     this.picker = picker;
-    /**
-     * @type {!number}
-     */
-    this._currentYear = -1;
-    /**
-     * @type {!number}
-     */
-    this._currentMonth = -1;
 }
 
 /**
@@ -835,13 +1181,20 @@ DaysTable.prototype.attachTo = function(element) {
     this._daysContainer.addEventListener("webkitTransitionEnd", this._moveInDays.bind(this), false);
     var container = createElement("tr", ClassNames.DayLabelContainer);
     var weekStartDay = global.params.weekStartDay || 0;
+    container.appendChild(createElement("th", ClassNames.DayLabel + " " + ClassNames.WeekColumn, global.params.weekLabel));
     for (var i = 0; i < 7; i++)
         container.appendChild(createElement("th", ClassNames.DayLabel, global.params.dayLabels[(weekStartDay + i) % 7]));
     this._daysContainer.appendChild(container);
     this._days = [];
+    this._weekNumbers = [];
     for (var w = 0; w < DaysTable._Weeks; w++) {
         container = createElement("tr", ClassNames.WeekContainer);
         var week = [];
+        var weekNumberNode = createElement("td", ClassNames.Day + " " + ClassNames.WeekColumn, " ");
+        weekNumberNode.dataset.positionX = -1;
+        weekNumberNode.dataset.positionY = w;
+        this._weekNumbers.push(weekNumberNode);
+        container.appendChild(weekNumberNode);
         for (var d = 0; d < 7; d++) {
             var day = createElement("td", ClassNames.Day, " ");
             day.setAttribute("data-position-x", String(d));
@@ -862,104 +1215,105 @@ DaysTable.prototype.attachTo = function(element) {
 };
 
 /**
- * @param {!number} time date in millisecond.
+ * @param {!number} value
  * @return {!boolean}
  */
-CalendarPicker.prototype.stepMismatch = function(time) {
-    return (time - this.stepBase) % this.step != 0;
+CalendarPicker.prototype._stepMismatch = function(value) {
+    return (value - this.stepBase) % this.step != 0;
 }
 
 /**
- * @param {!number} time date in millisecond.
+ * @param {!number} value
  * @return {!boolean}
  */
-CalendarPicker.prototype.outOfRange = function(time) {
-    return time < this.minimumDate.getTime() || time > this.maximumDate.getTime();
+CalendarPicker.prototype._outOfRange = function(value) {
+    return value < this._minimumValue || value > this._maximumValue;
 }
 
 /**
- * @param {!number} time date in millisecond.
+ * @param {!Month|Day} range
  * @return {!boolean}
  */
-CalendarPicker.prototype.isValidDate = function(time) {
-    return !this.outOfRange(time) && !this.stepMismatch(time);
+CalendarPicker.prototype.isValidDate = function(range) {
+    var value = range.valueOf();
+    return !this._outOfRange(value) && !this._stepMismatch(value);
 }
 
 /**
- * @param {!number} year
- * @param {!number} month
+ * @param {!Month} month
  */
-DaysTable.prototype._renderMonth = function(year, month) {
-    this._currentYear = year;
-    this._currentMonth = month;
-    var dayIterator = createUTCDate(year, month, 1);
+DaysTable.prototype._renderMonth = function(month) {
+    var dayIterator = month.startDate();
     var monthStartDay = dayIterator.getUTCDay();
     var weekStartDay = global.params.weekStartDay || 0;
     var startOffset = weekStartDay - monthStartDay;
     if (startOffset >= 0)
         startOffset -= 7;
     dayIterator.setUTCDate(startOffset + 1);
+    var mondayOffset = (8 - weekStartDay) % 7;
+    var sundayOffset = weekStartDay % 7;
     for (var w = 0; w < DaysTable._Weeks; w++) {
         for (var d = 0; d < 7; d++) {
-            var iterYear = dayIterator.getUTCFullYear();
-            var iterMonth = dayIterator.getUTCMonth();
+            var iterMonth = Month.createFromDate(dayIterator);
+            var iterWeek = Week.createFromDate(dayIterator);
             var time = dayIterator.getTime();
             var element = this._days[w][d];
             element.innerText = localizeNumber(dayIterator.getUTCDate());
             element.className = ClassNames.Day;
-            element.dataset.submitValue = serializeDate(iterYear, iterMonth, dayIterator.getUTCDate());
-            if (this.picker.outOfRange(time))
-                element.classList.add(ClassNames.Unavailable);
-            else if (this.picker.stepMismatch(time))
-                element.classList.add(ClassNames.Unavailable);
-            else if ((iterYear == year && dayIterator.getUTCMonth() < month) || (month == 0 && iterMonth == 11)) {
-                element.classList.add(ClassNames.Available);
-                element.classList.add(ClassNames.NotThisMonth);
-            } else if ((iterYear == year && dayIterator.getUTCMonth() > month) || (month == 11 && iterMonth == 0)) {
-                element.classList.add(ClassNames.Available);
-                element.classList.add(ClassNames.NotThisMonth);
-            } else if (isNaN(time)) {
+            element.dataset.submitValue = Day.createFromDate(dayIterator).toString();
+            element.dataset.weekValue = iterWeek.toString();
+            element.dataset.monthValue = iterMonth.toString();
+            if (isNaN(time)) {
                 element.innerText = "-";
                 element.classList.add(ClassNames.Unavailable);
+            } else if (!this.picker.isValidDate(this._rangeForNode(element)))
+                element.classList.add(ClassNames.Unavailable);
+            else if (!iterMonth.equals(month)) {
+                element.classList.add(ClassNames.Available);
+                element.classList.add(ClassNames.NotThisMonth);
             } else
                 element.classList.add(ClassNames.Available);
+            if (d === mondayOffset) {
+                element.classList.add(ClassNames.Monday);
+                if (this._weekNumbers[w]) {
+                    this._weekNumbers[w].dataset.weekValue = iterWeek.toString();
+                    this._weekNumbers[w].innerText = localizeNumber(iterWeek.week);
+                    if (element.classList.contains(ClassNames.Available))
+                        this._weekNumbers[w].classList.add(ClassNames.Available);
+                    else
+                        this._weekNumbers[w].classList.add(ClassNames.Unavailable);
+                }
+            } else if (d === sundayOffset)
+                element.classList.add(ClassNames.Sunday);
             dayIterator.setUTCDate(dayIterator.getUTCDate() + 1);
         }
     }
-
-    this.picker.today.disabled = !this.picker.isValidDate(parseDateString().getTime());
 };
 
 /**
- * @param {!number} year
- * @param {!number} month
+ * @param {!Month} month
+ * @param {!CalendarPicker.NavigationBehaviour} navigationBehaviour
  */
-DaysTable.prototype._navigateToMonth = function(year, month) {
-    this.picker.yearMonthController.setYearMonth(year, month);
-    this._renderMonth(year, month);
-};
-
-/**
- * @param {!number} year
- * @param {!number} month
- */
-DaysTable.prototype._navigateToMonthWithAnimation = function(year, month) {
-    if (this._currentYear >= 0 && this._currentMonth >= 0) {
-        if (year == this._currentYear && month == this._currentMonth)
-            return;
-        var decreasing = false;
-        if (year < this._currentYear)
-            decreasing = true;
-        else if (year > this._currentYear)
-            decreasing = false;
-        else
-            decreasing = month < this._currentMonth;
-        var daysStyle = this._daysContainer.style;
-        daysStyle.position = "relative";
-        daysStyle.webkitTransition = "left 0.1s ease";
-        daysStyle.left = (decreasing ? "" : "-") + this._daysContainer.offsetWidth + "px";
+DaysTable.prototype.navigateToMonth = function(month, navigationBehaviour) {
+    var firstNodeInSelectedRange = this._firstNodeInSelectedRange();
+    if (navigationBehaviour & CalendarPicker.NavigationBehaviour.Animate)
+        this._startMoveInAnimation(month);
+    this._renderMonth(month);
+    if (navigationBehaviour & CalendarPicker.NavigationBehaviour.KeepSelectionPosition && firstNodeInSelectedRange) {
+        var x = parseInt(firstNodeInSelectedRange.dataset.positionX, 10);
+        var y = parseInt(firstNodeInSelectedRange.dataset.positionY, 10);
+        this._selectRangeAtPosition(x, y);
     }
-    this._navigateToMonth(year, month);
+};
+
+/**
+ * @param {!Month} month
+ */
+DaysTable.prototype._startMoveInAnimation = function(month) {
+    var daysStyle = this._daysContainer.style;
+    daysStyle.position = "relative";
+    daysStyle.webkitTransition = "left 0.1s ease";
+    daysStyle.left = (this.picker.currentMonth().valueOf() > month.valueOf() ? "" : "-") + this._daysContainer.offsetWidth + "px";
 };
 
 DaysTable.prototype._moveInDays = function() {
@@ -974,28 +1328,10 @@ DaysTable.prototype._moveInDays = function() {
 };
 
 /**
- * @param {!number} year
- * @param {!number} month
+ * @param {!Day} day
  */
-DaysTable.prototype.navigateToMonthAndKeepSelectionPosition = function(year, month) {
-    if (year == this._currentYear && month == this._currentMonth)
-        return;
-    var firstNodeInSelectedRange = this._firstNodeInSelectedRange();
-    this._navigateToMonthWithAnimation(year, month);
-    if (firstNodeInSelectedRange) {
-        var x = parseInt(firstNodeInSelectedRange.dataset.positionX, 10);
-        var y = parseInt(firstNodeInSelectedRange.dataset.positionY, 10);
-        this._selectRangeAtPosition(x, y);
-    }
-};
-
-/**
- * @param {!Date} date
- */
-DaysTable.prototype.selectDate = function(date) {
-    this._deselect();
-    this._navigateToMonthWithAnimation(date.getUTCFullYear(), date.getUTCMonth());
-    var dateString = serializeDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+DaysTable.prototype._markRangeAsSelected = function(day) {
+    var dateString = day.toString();
     for (var w = 0; w < DaysTable._Weeks; w++) {
         for (var d = 0; d < 7; d++) {
             if (this._days[w][d].dataset.submitValue == dateString) {
@@ -1007,14 +1343,54 @@ DaysTable.prototype.selectDate = function(date) {
 };
 
 /**
+ * @param {!Day} day
+ */
+DaysTable.prototype.selectRange = function(day) {
+    this._deselect();
+    if (this.startDate() > day.startDate() || this.endDate() < day.endDate())
+        this.picker.showMonth(Month.createFromDate(day.startDate()));
+    this._markRangeAsSelected(day);
+};
+
+/**
+ * @param {!Day} day
+ */
+DaysTable.prototype.selectRangeAndShowEntireRange = function(day) {
+    this.selectRange(day);
+};
+
+/**
  * @param {!Element} dayNode
  */
 DaysTable.prototype._selectRangeContainingNode = function(dayNode) {
-    this._deselect();
-    if (!dayNode || !dayNode.classList.contains(ClassNames.Day) || !dayNode.classList.contains(ClassNames.Available))
+    var range = this._rangeForNode(dayNode);
+    if (!range)
         return;
-    // FIXME: Select date, week or month depending on the config.
-    dayNode.classList.add(ClassNames.Selected);
+    this.selectRange(range);
+};
+
+/**
+ * @param {!Element} dayNode
+ * @return {?Day}
+ */
+DaysTable.prototype._rangeForNode = function(dayNode) {
+    if (!dayNode)
+        return null;
+    return Day.parse(dayNode.dataset.submitValue);
+};
+
+/**
+ * @return {!Date}
+ */
+DaysTable.prototype.startDate = function() {
+    return Day.parse(this._days[0][0].dataset.submitValue).startDate();
+};
+
+/**
+ * @return {!Date}
+ */
+DaysTable.prototype.endDate = function() {
+    return Day.parse(this._days[DaysTable._Weeks - 1][7 - 1].dataset.submitValue).endDate();
 };
 
 /**
@@ -1022,7 +1398,8 @@ DaysTable.prototype._selectRangeContainingNode = function(dayNode) {
  * @param {!number} y
  */
 DaysTable.prototype._selectRangeAtPosition = function(x, y) {
-    this._selectRangeContainingNode(this._days[y][x]);
+    var node = x === -1 ? this._weekNumbers[y] : this._days[y][x];
+    this._selectRangeContainingNode(node);
 };
 
 /**
@@ -1039,38 +1416,30 @@ DaysTable.prototype._deselect = function() {
 };
 
 /**
+ * @param {!CalendarPicker.NavigationBehaviour=} navigationBehaviour
  * @return {!boolean}
  */
-DaysTable.prototype._maybeSetPreviousMonth = function() {
-    var year = this.picker.yearMonthController.year();
-    var month = this.picker.yearMonthController.month();
-    var thisMonthStartTime = createUTCDate(year, month, 1).getTime();
-    if (this.picker.minimumDate.getTime() >= thisMonthStartTime)
+DaysTable.prototype._maybeSetPreviousMonth = function(navigationBehaviour) {
+    if (typeof navigationBehaviour === "undefined")
+        navigationBehaviour = CalendarPicker.NavigationBehaviour.Animate;
+    var previousMonth = this.picker.currentMonth().previous();
+    if (!this.picker.shouldShowMonth(previousMonth))
         return false;
-    if (month == 0) {
-        year--;
-        month = 11;
-    } else
-        month--;
-    this._navigateToMonthWithAnimation(year, month);
+    this.picker.showMonth(previousMonth, navigationBehaviour);
     return true;
 };
 
 /**
+ * @param {!CalendarPicker.NavigationBehaviour=} navigationBehaviour
  * @return {!boolean}
  */
-DaysTable.prototype._maybeSetNextMonth = function() {
-    var year = this.picker.yearMonthController.year();
-    var month = this.picker.yearMonthController.month();
-    if (month == 11) {
-        year++;
-        month = 0;
-    } else
-        month++;
-    var nextMonthStartTime = createUTCDate(year, month, 1).getTime();
-    if (this.picker.maximumDate.getTime() < nextMonthStartTime)
+DaysTable.prototype._maybeSetNextMonth = function(navigationBehaviour) {
+    if (typeof navigationBehaviour === "undefined")
+        navigationBehaviour = CalendarPicker.NavigationBehaviour.Animate;
+    var nextMonth = this.picker.currentMonth().next();
+    if (!this.picker.shouldShowMonth(nextMonth))
         return false;
-    this._navigateToMonthWithAnimation(year, month);
+    this.picker.showMonth(nextMonth, navigationBehaviour);
     return true;
 };
 
@@ -1079,7 +1448,7 @@ DaysTable.prototype._maybeSetNextMonth = function() {
  */
 DaysTable.prototype._handleDayClick = function(event) {
     if (event.target.classList.contains(ClassNames.Available))
-        this.picker.submitValue(event.target.dataset.submitValue);
+        this.picker.submitValue(this._rangeForNode(event.target).toString());
 };
 
 /**
@@ -1180,7 +1549,7 @@ DaysTable.prototype._handleKey = function(event) {
         }
 
     } else if (key == "U+0054") { // 't'
-        this.selectDate(new Date());
+        this.selectRangeAndShowEntireRange(Day.createFromToday());
         event.stopPropagation();
         event.preventDefault();
     }
@@ -1195,6 +1564,222 @@ DaysTable.prototype.updateSelection = function(event, x, y) {
     this._selectRangeAtPosition(x, y);
     event.stopPropagation();
     event.preventDefault();
+};
+
+/**
+ * @constructor
+ * @param{!CalendarPicker} picker
+ */
+function MonthPickerDaysTable(picker) {
+    DaysTable.call(this, picker);
+}
+MonthPickerDaysTable.prototype = Object.create(DaysTable.prototype);
+
+/**
+ * @param {!Month} month
+ * @param {!CalendarPicker.NavigationBehaviour} navigationBehaviour
+ */
+MonthPickerDaysTable.prototype.navigateToMonth = function(month, navigationBehaviour) {
+    var hadSelection = this._hasSelection();
+    if (navigationBehaviour & CalendarPicker.NavigationBehaviour.Animate)
+        this._startMoveInAnimation(month);
+    this._renderMonth(month);
+    if (navigationBehaviour & CalendarPicker.NavigationBehaviour.KeepSelectionPosition && hadSelection)
+        this.selectRange(month);
+};
+
+/**
+ * @param {!Month} month
+ */
+MonthPickerDaysTable.prototype._markRangeAsSelected = function(month) {
+    var monthString = month.toString();
+    for (var w = 0; w < DaysTable._Weeks; w++) {
+        for (var d = 0; d < 7; d++) {
+            if (this._days[w][d].dataset.monthValue == monthString) {
+                this._days[w][d].classList.add(ClassNames.Selected);
+            }
+        }
+    }
+};
+
+/**
+ * @param {!Month} month
+ */
+MonthPickerDaysTable.prototype.selectRange = function(month) {
+    this._deselect();
+    if (this.startDate() >= month.endDate() || this.endDate() <= month.startDate())
+        this.picker.showMonth(month, CalendarPicker.NavigationBehaviour.Animate);
+    this._markRangeAsSelected(month);
+};
+
+/**
+ * @param {!Month} month
+ */
+MonthPickerDaysTable.prototype.selectRangeAndShowEntireRange = function(month) {
+    this._deselect();
+    this.picker.showMonth(month, CalendarPicker.NavigationBehaviour.Animate);
+    this._markRangeAsSelected(month);
+};
+
+/**
+ * @param {!Element} dayNode
+ * @return {?Month}
+ */
+MonthPickerDaysTable.prototype._rangeForNode = function(dayNode) {
+    if (!dayNode)
+        return null;
+    return Month.parse(dayNode.dataset.monthValue);
+};
+
+/**
+ * @param {Event} event
+ */
+MonthPickerDaysTable.prototype._handleKey = function(event) {
+    this.picker.maybeUpdateFocusStyle();
+    var key = event.keyIdentifier;
+    var eventHandled = false;
+    var currentMonth = this.picker.currentMonth();
+    var firstNodeInSelectedRange = this._firstNodeInSelectedRange();
+    var selectedMonth = this._rangeForNode(firstNodeInSelectedRange);
+    if (!firstNodeInSelectedRange
+        && (key == "Right" || key == "Left" || key == "Up" || key == "Down" || key == "PageUp" || key == "PageDown")) {
+        this.selectRange(currentMonth);
+        eventHandled = true;
+    } else if (key == (global.params.isCalendarRTL ? "Right" : "Left") || key == "Up" || key == "PageUp") {
+        if (selectedMonth.valueOf() > currentMonth.valueOf())
+            this.selectRangeAndShowEntireRange(currentMonth);
+        else
+            this.selectRangeAndShowEntireRange(currentMonth.previous());
+        eventHandled = true;
+    } else if (key == (global.params.isCalendarRTL ? "Left" : "Right") || key == "Down" || key == "PageDown") {
+        if (selectedMonth.valueOf() < currentMonth.valueOf())
+            this.selectRangeAndShowEntireRange(currentMonth);
+        else
+            this.selectRangeAndShowEntireRange(currentMonth.next());
+        eventHandled = true;
+    } else if (selectedMonth && key == "Enter") {
+        if (firstNodeInSelectedRange.classList.contains(ClassNames.Available)) {
+            this.picker.submitValue(selectedMonth.toString());
+            eventHandled = true;
+        }
+    } else if (key == "U+0054") { // 't'
+        this.selectRangeAndShowEntireRange(Month.createFromToday());
+        eventHandled = true;
+    }
+    if (eventHandled) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+};
+
+/**
+ * @constructor
+ * @param{!CalendarPicker} picker
+ */
+function WeekPickerDaysTable(picker) {
+    DaysTable.call(this, picker);
+}
+WeekPickerDaysTable.prototype = Object.create(DaysTable.prototype);
+
+/**
+ * @param {!Week} week
+ */
+WeekPickerDaysTable.prototype._markRangeAsSelected = function(week) {
+    var weekString = week.toString();
+    for (var w = 0; w < DaysTable._Weeks; w++) {
+        for (var d = 0; d < 7; d++) {
+            if (this._days[w][d].dataset.weekValue == weekString) {
+                this._days[w][d].classList.add(ClassNames.Selected);
+            }
+        }
+    }
+    for (var i = 0; i < this._weekNumbers.length; ++i) {
+        if (this._weekNumbers[i].dataset.weekValue === weekString) {
+            this._weekNumbers[i].classList.add(ClassNames.Selected);
+            break;
+        }
+    }
+};
+
+/**
+ * @param {!Week} week
+ */
+WeekPickerDaysTable.prototype.selectRange = function(week) {
+    this._deselect();
+    var weekStartDate = week.startDate();
+    var weekEndDate = week.endDate();
+    if (this.startDate() >= weekEndDate)
+        this.picker.showMonth(Month.createFromDate(weekEndDate), CalendarPicker.NavigationBehaviour.Animate);
+    else if (this.endDate() <= weekStartDate)
+        this.picker.showMonth(Month.createFromDate(weekStartDate), CalendarPicker.NavigationBehaviour.Animate);
+    this._markRangeAsSelected(week);
+};
+
+/**
+ * @param {!Week} week
+ */
+WeekPickerDaysTable.prototype.selectRangeAndShowEntireRange = function(week) {
+    this._deselect();
+    var weekStartDate = week.startDate();
+    var weekEndDate = week.endDate();
+    if (this.startDate() > weekStartDate)
+        this.picker.showMonth(Month.createFromDate(weekStartDate), CalendarPicker.NavigationBehaviour.Animate);
+    else if (this.endDate() < weekEndDate)
+        this.picker.showMonth(Month.createFromDate(weekEndDate), CalendarPicker.NavigationBehaviour.Animate);
+    this._markRangeAsSelected(week);
+};
+
+/**
+ * @param {!Element} dayNode
+ * @return {?Week}
+ */
+WeekPickerDaysTable.prototype._rangeForNode = function(dayNode) {
+    if (!dayNode)
+        return null;
+    return Week.parse(dayNode.dataset.weekValue);
+};
+
+/**
+ * @param {!Event} event
+ */
+WeekPickerDaysTable.prototype._handleKey = function(event) {
+    this.picker.maybeUpdateFocusStyle();
+    var key = event.keyIdentifier;
+    var eventHandled = false;
+    var currentMonth = this.picker.currentMonth();
+    var firstNodeInSelectedRange = this._firstNodeInSelectedRange();
+    var selectedWeek = this._rangeForNode(firstNodeInSelectedRange);
+    if (!firstNodeInSelectedRange
+        && (key == "Right" || key == "Left" || key == "Up" || key == "Down" || key == "PageUp" || key == "PageDown")) {
+        // Put the selection on a center cell.
+        this._selectRangeAtPosition(3, Math.floor(DaysTable._Weeks / 2 - 1));
+    } else if (key == (global.params.isCalendarRTL ? "Right" : "Left") || key == "Up") {
+        this.selectRangeAndShowEntireRange(selectedWeek.previous());
+        eventHandled = true;
+    } else if (key == (global.params.isCalendarRTL ? "Left" : "Right") || key == "Down") {
+        this.selectRangeAndShowEntireRange(selectedWeek.next());
+        eventHandled = true;
+    } else if (key == "PageUp") {
+        if (!this._maybeSetPreviousMonth(CalendarPicker.NavigationBehaviour.Animate | CalendarPicker.NavigationBehaviour.KeepSelectionPosition))
+            return;
+        eventHandled = true;
+    } else if (key == "PageDown") {
+        if (!this._maybeSetNextMonth(CalendarPicker.NavigationBehaviour.Animate | CalendarPicker.NavigationBehaviour.KeepSelectionPosition))
+            return;
+        eventHandled = true;
+    } else if (selectedWeek && key == "Enter") {
+        if (firstNodeInSelectedRange.classList.contains(ClassNames.Available)) {
+            this.picker.submitValue(selectedWeek.toString());
+            eventHandled = true;
+        }
+    } else if (key == "U+0054") { // 't'
+        this.selectRangeAndShowEntireRange(Week.createFromToday());
+        eventHandled = true;
+    }
+    if (eventHandled) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
 };
 
 /**
@@ -1214,11 +1799,11 @@ CalendarPicker.prototype._handleBodyKeyDown = function(event) {
             this.lastFocusableControl.focus();
         }
     } else if (key == "U+004D") { // 'm'
-        this.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousMonth : YearMonthController.NextMonth);
+        this._yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousMonth : YearMonthController.NextMonth);
     } else if (key == "U+0059") { // 'y'
-        this.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousYear : YearMonthController.NextYear);
+        this._yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousYear : YearMonthController.NextYear);
     } else if (key == "U+0044") { // 'd'
-        this.yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousTenYears : YearMonthController.NextTenYears);
+        this._yearMonthController.moveRelatively(event.shiftKey ? YearMonthController.PreviousTenYears : YearMonthController.NextTenYears);
     } else if (key == "U+001B") // ESC
         this.handleCancel();
 }

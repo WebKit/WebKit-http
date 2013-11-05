@@ -27,24 +27,29 @@
 #define WebCustomFilterProgram_h
 
 #if USE(COORDINATED_GRAPHICS) && ENABLE(CSS_SHADERS)
+#include <WebCore/CustomFilterConstants.h>
 #include <WebCore/CustomFilterProgram.h>
 
 namespace WebKit {
 
 class WebCustomFilterProgram : public WebCore::CustomFilterProgram {
 public:
-    static PassRefPtr<WebCustomFilterProgram> create(String vertexShaderString, String m_fragmentShaderString, WebCore::CustomFilterProgramType programType, WebCore::CustomFilterProgramMixSettings mixSettings)
+    static PassRefPtr<WebCustomFilterProgram> create(String vertexShaderString, String m_fragmentShaderString, WebCore::CustomFilterProgramType programType, WebCore::CustomFilterProgramMixSettings mixSettings, WebCore::CustomFilterMeshType meshType)
     {
-        return adoptRef(new WebCustomFilterProgram(vertexShaderString, m_fragmentShaderString, programType, mixSettings));
+        return adoptRef(new WebCustomFilterProgram(vertexShaderString, m_fragmentShaderString, programType, mixSettings, meshType));
     }
 
     virtual bool isLoaded() const OVERRIDE { return true; }
 
     virtual bool operator==(const CustomFilterProgram& o) const OVERRIDE
     {
+        // We don't use the != operator because that would recursively call this method.
+        if (!CustomFilterProgram::operator==(o))
+            return false;
+
         // The following cast is ugly, but WebCustomFilterProgram is the single implementation of CustomFilterProgram on UI Process.
         const WebCustomFilterProgram* other = static_cast<const WebCustomFilterProgram*>(&o);
-        return mixSettings() == other->mixSettings() && m_vertexShaderString == other->vertexShaderString() && m_fragmentShaderString == other->fragmentShaderString();
+        return m_vertexShaderString == other->vertexShaderString() && m_fragmentShaderString == other->fragmentShaderString();
     }
 
 protected:
@@ -55,8 +60,8 @@ protected:
     virtual void didRemoveLastClient() OVERRIDE { }
 
 private:
-    WebCustomFilterProgram(String vertexShaderString, String fragmentShaderString, WebCore::CustomFilterProgramType programType, WebCore::CustomFilterProgramMixSettings mixSettings)
-        : WebCore::CustomFilterProgram(programType, mixSettings)
+    WebCustomFilterProgram(String vertexShaderString, String fragmentShaderString, WebCore::CustomFilterProgramType programType, WebCore::CustomFilterProgramMixSettings mixSettings, WebCore::CustomFilterMeshType meshType)
+        : WebCore::CustomFilterProgram(programType, mixSettings, meshType)
         , m_vertexShaderString(vertexShaderString)
         , m_fragmentShaderString(fragmentShaderString)
     {

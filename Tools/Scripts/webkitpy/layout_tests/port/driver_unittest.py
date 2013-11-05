@@ -36,6 +36,8 @@ from webkitpy.layout_tests.port.server_process_mock import MockServerProcess
 # FIXME: remove the dependency on TestWebKitPort
 from webkitpy.layout_tests.port.port_testcase import TestWebKitPort
 
+from webkitpy.tool.mocktool import MockOptions
+
 
 class DriverOutputTest(unittest.TestCase):
     def test_strip_metrics(self):
@@ -80,7 +82,9 @@ class DriverOutputTest(unittest.TestCase):
 
 class DriverTest(unittest.TestCase):
     def make_port(self):
-        return Port(MockSystemHost())
+        port = Port(MockSystemHost(), MockOptions(configuration='Release'))
+        port._config.build_directory = lambda configuration: '/mock-build'
+        return port
 
     def _assert_wrapper(self, wrapper_string, expected_wrapper):
         wrapper = Driver(self.make_port(), None, pixel_tests=False)._command_wrapper(wrapper_string)
@@ -119,9 +123,9 @@ class DriverTest(unittest.TestCase):
             "#EOF",
         ])
         content_block = driver._read_block(0)
-        self.assertEquals(content_block.content_type, 'my_type')
-        self.assertEquals(content_block.encoding, 'none')
-        self.assertEquals(content_block.content_hash, 'foobar')
+        self.assertEqual(content_block.content_type, 'my_type')
+        self.assertEqual(content_block.encoding, 'none')
+        self.assertEqual(content_block.content_hash, 'foobar')
         driver._server_process = None
 
     def test_read_binary_block(self):
@@ -136,10 +140,10 @@ class DriverTest(unittest.TestCase):
             "#EOF",
         ])
         content_block = driver._read_block(0)
-        self.assertEquals(content_block.content_type, 'image/png')
-        self.assertEquals(content_block.content_hash, 'actual')
-        self.assertEquals(content_block.content, '12345678\n')
-        self.assertEquals(content_block.decoded_content, '12345678\n')
+        self.assertEqual(content_block.content_type, 'image/png')
+        self.assertEqual(content_block.content_hash, 'actual')
+        self.assertEqual(content_block.content, '12345678\n')
+        self.assertEqual(content_block.decoded_content, '12345678\n')
         driver._server_process = None
 
     def test_read_base64_block(self):
@@ -154,16 +158,17 @@ class DriverTest(unittest.TestCase):
             'MTIzNDU2NzgK#EOF',
         ])
         content_block = driver._read_block(0)
-        self.assertEquals(content_block.content_type, 'image/png')
-        self.assertEquals(content_block.content_hash, 'actual')
-        self.assertEquals(content_block.encoding, 'base64')
-        self.assertEquals(content_block.content, 'MTIzNDU2NzgK')
-        self.assertEquals(content_block.decoded_content, '12345678\n')
+        self.assertEqual(content_block.content_type, 'image/png')
+        self.assertEqual(content_block.content_hash, 'actual')
+        self.assertEqual(content_block.encoding, 'base64')
+        self.assertEqual(content_block.content, 'MTIzNDU2NzgK')
+        self.assertEqual(content_block.decoded_content, '12345678\n')
 
     def test_no_timeout(self):
         port = TestWebKitPort()
+        port._config.build_directory = lambda configuration: '/mock-build'
         driver = Driver(port, 0, pixel_tests=True, no_timeout=True)
-        self.assertEquals(driver.cmd_line(True, []), ['/mock-build/DumpRenderTree', '--no-timeout', '-'])
+        self.assertEqual(driver.cmd_line(True, []), ['/mock-build/DumpRenderTree', '--no-timeout', '-'])
 
     def test_check_for_driver_crash(self):
         port = TestWebKitPort()
@@ -186,10 +191,10 @@ class DriverTest(unittest.TestCase):
                 pass
 
         def assert_crash(driver, error_line, crashed, name, pid, unresponsive=False):
-            self.assertEquals(driver._check_for_driver_crash(error_line), crashed)
-            self.assertEquals(driver._crashed_process_name, name)
-            self.assertEquals(driver._crashed_pid, pid)
-            self.assertEquals(driver._subprocess_was_unresponsive, unresponsive)
+            self.assertEqual(driver._check_for_driver_crash(error_line), crashed)
+            self.assertEqual(driver._crashed_process_name, name)
+            self.assertEqual(driver._crashed_pid, pid)
+            self.assertEqual(driver._subprocess_was_unresponsive, unresponsive)
             driver.stop()
 
         driver._server_process = FakeServerProcess(False)
@@ -234,8 +239,8 @@ class DriverTest(unittest.TestCase):
     def test_creating_a_port_does_not_write_to_the_filesystem(self):
         port = TestWebKitPort()
         driver = Driver(port, 0, pixel_tests=True)
-        self.assertEquals(port._filesystem.written_files, {})
-        self.assertEquals(port._filesystem.last_tmpdir, None)
+        self.assertEqual(port._filesystem.written_files, {})
+        self.assertEqual(port._filesystem.last_tmpdir, None)
 
     def test_stop_cleans_up_properly(self):
         port = TestWebKitPort()

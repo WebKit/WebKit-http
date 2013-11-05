@@ -25,11 +25,11 @@
 #define RenderThemeChromiumMac_h
 
 #import "RenderThemeChromiumCommon.h"
-#import "RenderThemeMac.h"
+#import "RenderThemeMacShared.h"
 
 namespace WebCore {
 
-class RenderThemeChromiumMac : public RenderThemeMac {
+class RenderThemeChromiumMac : public RenderThemeMacShared {
 public:
     static PassRefPtr<RenderTheme> create();
 
@@ -77,7 +77,7 @@ private:
 #if ENABLE(CALENDAR_PICKER)
     virtual CString extraCalendarPickerStyleSheet() OVERRIDE;
 #endif
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI) && ENABLE(CALENDAR_PICKER)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     virtual bool supportsCalendarPicker(const AtomicString& type) const OVERRIDE;
 #endif
     virtual bool shouldShowPlaceholderWhenFocused() const OVERRIDE;

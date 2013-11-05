@@ -23,9 +23,12 @@
 #include "DownloadManagerEfl.h"
 #include "WKAPICast.h"
 #include "WKRetainPtr.h"
+#include "WebContext.h"
 #include "ewk_context.h"
+#include "ewk_object_private.h"
 
-class Ewk_Url_Scheme_Request;
+using namespace WebKit;
+
 class Ewk_Cookie_Manager;
 class Ewk_Favicon_Database;
 
@@ -38,30 +41,30 @@ class BatteryProvider;
 #if ENABLE(NETWORK_INFO)
 class NetworkInfoProvider;
 #endif
-#if ENABLE(VIBRATION)
-class VibrationProvider;
-#endif
 }
 
-class Ewk_Context : public RefCounted<Ewk_Context> {
+class EwkContext : public Ewk_Object {
 public:
-    static PassRefPtr<Ewk_Context> create(WKContextRef context);
-    static PassRefPtr<Ewk_Context> create();
-    static PassRefPtr<Ewk_Context> create(const String& injectedBundlePath);
+    EWK_OBJECT_DECLARE(EwkContext)
 
-    static PassRefPtr<Ewk_Context> defaultContext();
+    static PassRefPtr<EwkContext> create(PassRefPtr<WebContext> context);
+    static PassRefPtr<EwkContext> create();
+    static PassRefPtr<EwkContext> create(const String& injectedBundlePath);
 
-    ~Ewk_Context();
+    static PassRefPtr<EwkContext> defaultContext();
+
+    ~EwkContext();
 
     Ewk_Cookie_Manager* cookieManager();
 
+    Ewk_Database_Manager* databaseManager();
+
+    bool setFaviconDatabaseDirectoryPath(const String& databaseDirectory);
     Ewk_Favicon_Database* faviconDatabase();
 
-    WebKit::RequestManagerClientEfl* requestManager();
+    Ewk_Storage_Manager* storageManager() const;
 
-#if ENABLE(VIBRATION)
-    PassRefPtr<WebKit::VibrationProvider> vibrationProvider();
-#endif
+    WebKit::RequestManagerClientEfl* requestManager();
 
     void addVisitedLink(const String& visitedURL);
 
@@ -69,29 +72,32 @@ public:
 
     Ewk_Cache_Model cacheModel() const;
 
-    WKContextRef wkContext();
-
-    void urlSchemeRequestReceived(Ewk_Url_Scheme_Request*);
+    PassRefPtr<WebContext> webContext() { return m_context; }
 
     WebKit::DownloadManagerEfl* downloadManager() const;
 
     WebKit::ContextHistoryClientEfl* historyClient();
 
-private:
-    explicit Ewk_Context(WKContextRef);
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    void setAdditionalPluginPath(const String&);
+#endif
 
-    WKRetainPtr<WKContextRef> m_context;
+private:
+    explicit EwkContext(PassRefPtr<WebContext>);
+
+    void ensureFaviconDatabase();
+
+    RefPtr<WebContext> m_context;
 
     OwnPtr<Ewk_Cookie_Manager> m_cookieManager;
+    OwnPtr<Ewk_Database_Manager> m_databaseManager;
     OwnPtr<Ewk_Favicon_Database> m_faviconDatabase;
+    OwnPtr<Ewk_Storage_Manager> m_storageManager;
 #if ENABLE(BATTERY_STATUS)
     RefPtr<WebKit::BatteryProvider> m_batteryProvider;
 #endif
 #if ENABLE(NETWORK_INFO)
     RefPtr<WebKit::NetworkInfoProvider> m_networkInfoProvider;
-#endif
-#if ENABLE(VIBRATION)
-    RefPtr<WebKit::VibrationProvider> m_vibrationProvider;
 #endif
     OwnPtr<WebKit::DownloadManagerEfl> m_downloadManager;
     OwnPtr<WebKit::RequestManagerClientEfl> m_requestManagerClient;

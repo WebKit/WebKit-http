@@ -52,6 +52,7 @@ public:
     virtual void drawRepaintCounter(int value, int pointSize, const FloatPoint&, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) OVERRIDE;
     virtual void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges) OVERRIDE;
     virtual void drawTexture(uint32_t texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges = AllEdges);
+    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) OVERRIDE;
 
 #if !USE(TEXMAP_OPENGL_ES_2)
     virtual void drawTextureRectangleARB(uint32_t texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture);
@@ -70,6 +71,9 @@ public:
 
 #if ENABLE(CSS_FILTERS)
     void drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture& contentTexture, const FilterOperation&, int pass);
+#endif
+#if ENABLE(CSS_SHADERS)
+    bool drawUsingCustomFilter(BitmapTexture& targetTexture, const BitmapTexture& sourceTexture, const FilterOperation&);
 #endif
 
     void setEnableEdgeDistanceAntialiasing(bool enabled) { m_enableEdgeDistanceAntialiasing = enabled; }
@@ -135,6 +139,7 @@ public:
     virtual void didReset();
     void bind(TextureMapperGL*);
     void initializeStencil();
+    void initializeDepthBuffer();
     ~BitmapTextureGL();
     virtual uint32_t id() const { return m_id; }
     uint32_t textureTarget() const { return GraphicsContext3D::TEXTURE_2D; }
@@ -153,6 +158,7 @@ private:
     IntRect m_dirtyRect;
     Platform3DObject m_fbo;
     Platform3DObject m_rbo;
+    Platform3DObject m_depthBufferObject;
     bool m_shouldClear;
     TextureMapperGL::ClipStack m_clipStack;
     RefPtr<GraphicsContext3D> m_context3D;

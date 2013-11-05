@@ -27,9 +27,12 @@
 #include "config.h"
 #include "ElementShadow.h"
 
+#include "CSSParser.h"
+#include "CSSSelectorList.h"
 #include "ContainerNodeAlgorithms.h"
 #include "Document.h"
 #include "Element.h"
+#include "HTMLContentElement.h"
 #include "HTMLShadowElement.h"
 #include "InspectorInstrumentation.h"
 #include "ShadowRoot.h"
@@ -39,6 +42,7 @@
 namespace WebCore {
 
 ElementShadow::ElementShadow()
+    : m_shouldCollectSelectFeatureSet(false)
 {
 }
 
@@ -132,20 +136,6 @@ void ElementShadow::detach()
     }
 }
 
-InsertionPoint* ElementShadow::insertionPointFor(const Node* node) const
-{
-    ASSERT(node && node->parentNode());
-
-    if (node->parentNode()->isShadowRoot()) {
-        if (InsertionPoint* insertionPoint = toShadowRoot(node->parentNode())->assignedTo())
-            return insertionPoint;
-
-        return 0;
-    }
-
-    return distributor().findInsertionPointFor(node);
-}
-
 bool ElementShadow::childNeedsStyleRecalc()
 {
     ASSERT(youngestShadowRoot());
@@ -215,6 +205,75 @@ void ElementShadow::invalidateDistribution(Element* host)
 
     if (needsInvalidation)
         m_distributor.finishInivalidation();
+}
+
+void ElementShadow::setShouldCollectSelectFeatureSet()
+{
+    if (shouldCollectSelectFeatureSet())
+        return;
+
+    m_shouldCollectSelectFeatureSet = true;
+
+    if (ShadowRoot* parentShadowRoot = host()->shadowRoot()) {
+        if (ElementShadow* parentElementShadow = parentShadowRoot->owner())
+            parentElementShadow->setShouldCollectSelectFeatureSet();
+    }
+}
+
+void ElementShadow::ensureSelectFeatureSetCollected()
+{
+    if (!m_shouldCollectSelectFeatureSet)
+        return;
+
+    m_selectFeatures.clear();
+    for (ShadowRoot* root = oldestShadowRoot(); root; root = root->youngerShadowRoot())
+        collectSelectFeatureSetFrom(root);
+    m_shouldCollectSelectFeatureSet = false;
+}
+
+void ElementShadow::collectSelectFeatureSetFrom(ShadowRoot* root)
+{
+    if (root->hasElementShadow()) {
+        for (Node* node = root->firstChild(); node; node = node->traverseNextNode()) {
+            if (ElementShadow* elementShadow = node->isElementNode() ? toElement(node)->shadow() : 0) {
+                elementShadow->ensureSelectFeatureSetCollected();
+                m_selectFeatures.add(elementShadow->m_selectFeatures);
+            }
+        }
+    }
+
+    if (root->hasContentElement()) {
+        for (Node* node = root->firstChild(); node; node = node->traverseNextNode()) {
+            if (isHTMLContentElement(node)) {
+                const CSSSelectorList& list = toHTMLContentElement(node)->selectorList();
+                for (CSSSelector* selector = list.first(); selector; selector = list.next(selector))
+                    m_selectFeatures.collectFeaturesFromSelector(selector);                    
+            }
+        }
+    }
+}
+
+void ElementShadow::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    info.addMember(m_shadowRoots);
+    ShadowRoot* shadowRoot = m_shadowRoots.head();
+    while (shadowRoot) {
+        info.addMember(shadowRoot);
+        shadowRoot = shadowRoot->next();
+    }
+    info.addMember(m_distributor);
+}
+
+void invalidateParentDistributionIfNecessary(Element* element, SelectRuleFeatureSet::SelectRuleFeatureMask updatedFeatures)
+{
+    ElementShadow* elementShadow = shadowOfParentForDistribution(element);
+    if (!elementShadow)
+        return;
+
+    elementShadow->ensureSelectFeatureSetCollected();
+    if (elementShadow->selectRuleFeatureSet().hasSelectorFor(updatedFeatures))
+        elementShadow->invalidateDistribution();
 }
 
 } // namespace

@@ -107,12 +107,13 @@ public:
         }
     }
 
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
     typedef FixedArray<HTMLCollection*, NumNodeCollectionTypes> CachedHTMLCollectionArray;
     OwnPtr<CachedHTMLCollectionArray> m_cachedCollections;
 
     LayoutSize m_minimumSizeForResizing;
     RefPtr<RenderStyle> m_computedStyle;
-    AtomicString m_shadowPseudoId;
 
     OwnPtr<DatasetDOMStringMap> m_datasetDOMStringMap;
     OwnPtr<ClassList> m_classList;
@@ -124,7 +125,7 @@ public:
 
 inline IntSize defaultMinimumSizeForResizing()
 {
-    return IntSize(MAX_LAYOUT_UNIT, MAX_LAYOUT_UNIT);
+    return IntSize(LayoutUnit::max(), LayoutUnit::max());
 }
 
 inline ElementRareData::ElementRareData()

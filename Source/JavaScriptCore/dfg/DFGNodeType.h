@@ -139,7 +139,8 @@ namespace JSC { namespace DFG {
     macro(ReallocatePropertyStorage, NodeMustGenerate | NodeDoesNotExit | NodeResultStorage) \
     macro(GetButterfly, NodeResultStorage) \
     macro(CheckArray, NodeMustGenerate) \
-    macro(Arrayify, NodeResultStorage | NodeMustGenerate | NodeClobbersWorld) \
+    macro(Arrayify, NodeMustGenerate) \
+    macro(ArrayifyToStructure, NodeMustGenerate) \
     macro(GetIndexedPropertyStorage, NodeResultStorage) \
     macro(GetByOffset, NodeResultJS) \
     macro(PutByOffset, NodeMustGenerate) \
@@ -153,6 +154,7 @@ namespace JSC { namespace DFG {
     macro(GlobalVarWatchpoint, NodeMustGenerate) \
     macro(PutGlobalVarCheck, NodeMustGenerate) \
     macro(CheckFunction, NodeMustGenerate) \
+    macro(InheritorIDWatchpoint, NodeMustGenerate) \
     \
     /* Optimizations for array mutation. */\
     macro(ArrayPush, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \

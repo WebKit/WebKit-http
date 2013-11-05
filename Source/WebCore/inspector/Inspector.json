@@ -28,6 +28,13 @@
                     { "name": "object", "$ref": "Runtime.RemoteObject" },
                     { "name": "hints", "type": "object" }
                 ]
+            },
+            {
+                "name": "detached",
+                "description": "Fired when remote debugging connection is about to be terminated. Contains detach reason.",
+                "parameters": [
+                    { "name": "reason", "type": "string", "description": "The reason why connection has been terminated." }
+                ]
             }
         ]
     },
@@ -338,6 +345,22 @@
                 "hidden": true
             },
             {
+                "name": "canShowFPSCounter",
+                "description": "Tells if backend supports a FPS counter display",
+                "returns": [
+                    { "name": "show", "type": "boolean", "description": "True if the FPS count can be shown" }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "setShowFPSCounter",
+                "description": "Requests that backend shows the FPS counter",
+                "parameters": [
+                    { "name": "show", "type": "boolean", "description": "True for showing the FPS counter" }
+                ],
+                "hidden": true
+            },
+            {
                 "name": "getScriptExecutionStatus",
                 "description": "Determines if scripts can be executed in the page.",
                 "returns": [
@@ -510,7 +533,9 @@
                     { "name": "set", "$ref": "RemoteObject", "optional": true, "description": "A function which serves as a setter for the property, or <code>undefined</code> if there is no setter (accessor descriptors only)." },
                     { "name": "configurable", "type": "boolean", "description": "True if the type of this property descriptor may be changed and if the property may be deleted from the corresponding object." },
                     { "name": "enumerable", "type": "boolean", "description": "True if this property shows up during enumeration of the properties on the corresponding object." },
-                    { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." }
+                    { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." },
+                    { "name": "isOwn", "optional": true, "type": "boolean", "description": "True if the property is owned for the object." }
+
                 ]
             },
             {
@@ -560,7 +585,8 @@
                     { "name": "includeCommandLineAPI", "type": "boolean", "optional": true, "description": "Determines whether Command Line API should be available during the evaluation.", "hidden": true },
                     { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether evaluation should stop on exceptions and mute console. Overrides setPauseOnException state.", "hidden": true },
                     { "name": "contextId", "$ref": "Runtime.ExecutionContextId", "optional": true, "description": "Specifies in which isolated context to perform evaluation. Each content script lives in an isolated context and this parameter may be used to specify one of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page.", "hidden": true },
-                    { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." }
+                    { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." },
+                    { "name": "generatePreview", "type": "boolean", "optional": true, "hidden": true, "description": "Whether preview should be generated for the result." }
                 ],
                 "returns": [
                     { "name": "result", "$ref": "RemoteObject", "description": "Evaluation result." },
@@ -575,7 +601,8 @@
                     { "name": "functionDeclaration", "type": "string", "description": "Declaration of the function to call." },
                     { "name": "arguments", "type": "array", "items": { "$ref": "CallArgument", "description": "Call argument." }, "optional": true, "description": "Call arguments. All call arguments must belong to the same JavaScript world as the target object." },
                     { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether function call should stop on exceptions and mute console. Overrides setPauseOnException state.", "hidden": true },
-                    { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object which should be sent by value." }
+                    { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object which should be sent by value." },
+                    { "name": "generatePreview", "type": "boolean", "optional": true, "hidden": true, "description": "Whether preview should be generated for the result." }
                 ],
                 "returns": [
                     { "name": "result", "$ref": "RemoteObject", "description": "Call result." },
@@ -648,7 +675,7 @@
                     { "name": "source", "type": "string", "enum": ["html", "wml", "xml", "javascript", "network", "console-api", "other"], "description": "Message source." },
                     { "name": "level", "type": "string", "enum": ["tip", "log", "warning", "error", "debug"], "description": "Message severity." },
                     { "name": "text", "type": "string", "description": "Message text." },
-                    { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "trace", "startGroup", "startGroupCollapsed", "endGroup", "assert"], "description": "Console message type." },
+                    { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "trace", "clear", "startGroup", "startGroupCollapsed", "endGroup", "assert"], "description": "Console message type." },
                     { "name": "url", "type": "string", "optional": true, "description": "URL of the message origin." },
                     { "name": "line", "type": "integer", "optional": true, "description": "Line number in the resource that generated this message." },
                     { "name": "repeatCount", "type": "integer", "optional": true, "description": "Repeat count for repeated messages." },
@@ -797,7 +824,7 @@
                 "type": "object",
                 "description": "HTTP response data.",
                 "properties": [
-                    { "name": "url", "type": "string", "description": "Response URL." },
+                    { "name": "url", "type": "string", "description": "Response URL. This URL can be different from CachedResource.url in case of redirect." },
                     { "name": "status", "type": "number", "description": "HTTP response status code." },
                     { "name": "statusText", "type": "string", "description": "HTTP response status text." },
                     { "name": "headers", "$ref": "Headers", "description": "HTTP response headers." },
@@ -849,7 +876,7 @@
                 "type": "object",
                 "description": "Information about the cached resource.",
                 "properties": [
-                    { "name": "url", "type": "string", "description": "Resource URL." },
+                    { "name": "url", "type": "string", "description": "Resource URL. This is the url of the original network request." },
                     { "name": "type", "$ref": "Page.ResourceType", "description": "Type of this resource." },
                     { "name": "response", "$ref": "Response", "optional": true, "description": "Cached response data." },
                     { "name": "bodySize", "type": "number", "description": "Cached response body size." }
@@ -1231,8 +1258,8 @@
                 "type": "object",
                 "description": "Data entry.",
                 "properties": [
-                    { "name": "key", "$ref": "Key", "description": "Key." },
-                    { "name": "primaryKey", "$ref": "Key", "description": "Primary key." },
+                    { "name": "key", "$ref": "Runtime.RemoteObject", "description": "Key." },
+                    { "name": "primaryKey", "$ref": "Runtime.RemoteObject", "description": "Primary key." },
                     { "name": "value", "$ref": "Runtime.RemoteObject", "description": "Value." }
                 ]
             },
@@ -2478,6 +2505,14 @@
                 ],
                 "hidden": true,
                 "description": "Tells whether timeline agent supports frame instrumentation."
+            },
+            {
+                "name": "canMonitorMainThread",
+                "returns": [
+                    { "name": "result", "type": "boolean", "description": "True if timeline supports main thread CPU utilization instrumentation." }
+                ],
+                "hidden": true,
+                "description": "Tells whether timeline agent supports main thread CPU utilization instrumentation."
             }
         ],
         "events": [
@@ -2728,7 +2763,8 @@
                     { "name": "objectGroup", "type": "string", "optional": true, "description": "String object group name to put result into (allows rapid releasing resulting object handles using <code>releaseObjectGroup</code>)." },
                     { "name": "includeCommandLineAPI", "type": "boolean", "optional": true, "description": "Specifies whether command line API should be available to the evaluated expression, defaults to false.", "hidden": true },
                     { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether evaluation should stop on exceptions and mute console. Overrides setPauseOnException state.", "hidden": true },
-                    { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." }
+                    { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." },
+                    { "name": "generatePreview", "type": "boolean", "optional": true, "hidden": true, "description": "Whether preview should be generated for the result." }
                 ],
                 "returns": [
                     { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Object wrapper for the evaluation result." },

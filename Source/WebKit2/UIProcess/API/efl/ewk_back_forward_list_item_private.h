@@ -27,19 +27,21 @@
 #define ewk_back_forward_list_item_private_h
 
 #include "WKEinaSharedString.h"
+#include "ewk_object_private.h"
 #include <WebKit2/WKBase.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 
 /**
  * \struct  Ewk_Back_Forward_List
  * @brief   Contains the Back Forward List data.
  */
-class Ewk_Back_Forward_List_Item : public RefCounted<Ewk_Back_Forward_List_Item> {
+class EwkBackForwardListItem : public Ewk_Object {
 public:
-    static PassRefPtr<Ewk_Back_Forward_List_Item> create(WKBackForwardListItemRef itemRef)
+    EWK_OBJECT_DECLARE(EwkBackForwardListItem)
+
+    static PassRefPtr<EwkBackForwardListItem> create(WKBackForwardListItemRef itemRef)
     {
-        return adoptRef(new Ewk_Back_Forward_List_Item(itemRef));
+        return adoptRef(new EwkBackForwardListItem(itemRef));
     }
 
     const char* url() const;
@@ -47,7 +49,7 @@ public:
     const char* originalURL() const;
 
 private:
-    explicit Ewk_Back_Forward_List_Item(WKBackForwardListItemRef itemRef);
+    explicit EwkBackForwardListItem(WKBackForwardListItemRef itemRef);
 
     WKRetainPtr<WKBackForwardListItemRef> m_wkItem;
     mutable WKEinaSharedString m_url;

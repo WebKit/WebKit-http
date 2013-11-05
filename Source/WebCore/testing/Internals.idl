@@ -47,7 +47,10 @@
     Node oldestShadowRoot(in Element host) raises (DOMException);
     Node youngerShadowRoot(in Node root) raises (DOMException);
 #endif
+    DOMString shadowRootType(in Node root) raises (DOMException);
     boolean hasShadowInsertionPoint(in Node root) raises (DOMException);
+    boolean hasContentElement(in Node root) raises (DOMException);
+    unsigned long countElementShadow(in Node Root) raises (DOMException);
     Element includerFor(in Node node) raises (DOMException);
     DOMString shadowPseudoId(in Element element) raises (DOMException);
     void setShadowPseudoId(in Element element, in DOMString id) raises (DOMException);
@@ -56,6 +59,10 @@
     boolean isValidContentSelect(in Element contentElement) raises(DOMException);
     Node treeScopeRootNode(in Node node) raises (DOMException);
     Node parentTreeScope(in Node node) raises (DOMException);
+    boolean hasSelectorForIdInShadow(in Element host, in DOMString id) raises (DOMException);
+    boolean hasSelectorForClassInShadow(in Element host, in DOMString className) raises (DOMException);
+    boolean hasSelectorForAttributeInShadow(in Element host, in DOMString attributeName) raises (DOMException);
+    boolean hasSelectorForPseudoClassInShadow(in Element host, in DOMString pseudoClass) raises (DOMException);
 
     Node nextSiblingByWalker(in Node node) raises(DOMException);
     Node firstChildByWalker(in Node node) raises(DOMException);
@@ -125,11 +132,6 @@
     long lastSpellCheckRequestSequence(in Document document) raises (DOMException);
     long lastSpellCheckProcessedSequence(in Document document) raises (DOMException);
 
-#if defined(ENABLE_VIDEO_TRACK) && ENABLE_VIDEO_TRACK
-    void setShouldDisplayTrackKind(in Document document, in DOMString kind, in boolean enabled) raises (DOMException);
-    boolean shouldDisplayTrackKind(in Document document, in DOMString trackKind) raises (DOMException);
-#endif
-
     sequence<String> userPreferredLanguages();
     void setUserPreferredLanguages(in sequence<String> languages);
 
@@ -159,7 +161,12 @@
     // Flags for layerTreeAsText.
     const unsigned short LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1;
     const unsigned short LAYER_TREE_INCLUDES_TILE_CACHES = 2;
+    const unsigned short LAYER_TREE_INCLUDES_REPAINT_RECTS = 4;
     DOMString layerTreeAsText(in Document document, in [Optional] unsigned short flags) raises (DOMException);
+
+    DOMString scrollingStateTreeAsText(in Document document) raises (DOMException);
+
+    DOMString repaintRectsAsText(in Document document) raises (DOMException);
 
     void garbageCollectDocumentResources(in Document document) raises (DOMException);
 
@@ -202,4 +209,12 @@
     MallocStatistics mallocStatistics();
 
     DOMString[] getReferencedFilePaths();
+
+    // These functions both reset the tracked repaint rects. They are inteded to be used in the following order:
+    //  startTrackingRepaints, repaintRectsAsText, stopTrackingRepaints.
+    void startTrackingRepaints(in Document document) raises (DOMException);
+    void stopTrackingRepaints(in Document document) raises (DOMException);
+
+    // Returns a string with information about the mouse cursor used at the specified client location.
+    DOMString getCurrentCursorInfo(in Document document) raises (DOMException);
 };

@@ -26,23 +26,26 @@
 #include "config.h"
 #include "ElementAttributeData.h"
 
-#include "Attr.h"
-#include "CSSParser.h"
-#include "CSSStyleSheet.h"
-#include "StyledElement.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
-static size_t immutableElementAttributeDataSize(unsigned count)
+struct SameSizeAsElementAttributeData : public RefCounted<SameSizeAsElementAttributeData> {
+    unsigned bitfield;
+    void* refPtrs[4];
+};
+
+COMPILE_ASSERT(sizeof(ElementAttributeData) == sizeof(ElementAttributeData), element_attribute_data_should_stay_small);
+
+static size_t sizeForImmutableElementAttributeDataWithAttributeCount(unsigned count)
 {
-    return sizeof(ElementAttributeData) + sizeof(Attribute) * count;
+    return sizeof(ImmutableElementAttributeData) - sizeof(void*) + sizeof(Attribute) * count;
 }
 
 PassRefPtr<ElementAttributeData> ElementAttributeData::createImmutable(const Vector<Attribute>& attributes)
 {
-    void* slot = WTF::fastMalloc(immutableElementAttributeDataSize(attributes.size()));
+    void* slot = WTF::fastMalloc(sizeForImmutableElementAttributeDataWithAttributeCount(attributes.size()));
     return adoptRef(new (slot) ImmutableElementAttributeData(attributes));
 }
 
@@ -58,172 +61,66 @@ ImmutableElementAttributeData::ImmutableElementAttributeData(const Vector<Attrib
         new (&reinterpret_cast<Attribute*>(&m_attributeArray)[i]) Attribute(attributes[i]);
 }
 
-MutableElementAttributeData::MutableElementAttributeData(const ImmutableElementAttributeData& other)
-{
-    const ElementAttributeData& baseOther = static_cast<const ElementAttributeData&>(other);
-
-    m_inlineStyleDecl = baseOther.m_inlineStyleDecl;
-    m_attributeStyle = baseOther.m_attributeStyle;
-    m_classNames = baseOther.m_classNames;
-    m_idForStyleResolution = baseOther.m_idForStyleResolution;
-
-    // An ImmutableElementAttributeData should never have a mutable inline StylePropertySet attached.
-    ASSERT(!baseOther.m_inlineStyleDecl || !baseOther.m_inlineStyleDecl->isMutable());
-
-    m_attributeVector.reserveCapacity(baseOther.m_arraySize);
-    for (unsigned i = 0; i < baseOther.m_arraySize; ++i)
-        m_attributeVector.uncheckedAppend(other.immutableAttributeArray()[i]);
-}
-
 ImmutableElementAttributeData::~ImmutableElementAttributeData()
 {
     for (unsigned i = 0; i < m_arraySize; ++i)
         (reinterpret_cast<Attribute*>(&m_attributeArray)[i]).~Attribute();
 }
 
+ImmutableElementAttributeData::ImmutableElementAttributeData(const MutableElementAttributeData& other)
+    : ElementAttributeData(other, false)
+{
+    if (other.m_inlineStyle) {
+        ASSERT(!other.m_inlineStyle->isMutable());
+        m_inlineStyle = other.m_inlineStyle->immutableCopyIfNeeded();
+    }
+
+    for (unsigned i = 0; i < m_arraySize; ++i)
+        new (&reinterpret_cast<Attribute*>(&m_attributeArray)[i]) Attribute(*other.attributeItem(i));
+}
+
+ElementAttributeData::ElementAttributeData(const ElementAttributeData& other, bool isMutable)
+    : m_isMutable(isMutable)
+    , m_arraySize(isMutable ? 0 : other.length())
+    , m_presentationAttributeStyleIsDirty(other.m_presentationAttributeStyleIsDirty)
+    , m_presentationAttributeStyle(other.m_presentationAttributeStyle)
+    , m_classNames(other.m_classNames)
+    , m_idForStyleResolution(other.m_idForStyleResolution)
+{
+    // NOTE: The inline style is copied by the subclass copy constructor since we don't know what to do with it here.
+}
+
+MutableElementAttributeData::MutableElementAttributeData(const MutableElementAttributeData& other)
+    : ElementAttributeData(other, true)
+    , m_attributeVector(other.m_attributeVector)
+{
+    m_inlineStyle = other.m_inlineStyle ? other.m_inlineStyle->copy() : 0;
+}
+
+MutableElementAttributeData::MutableElementAttributeData(const ImmutableElementAttributeData& other)
+    : ElementAttributeData(other, true)
+{
+    // An ImmutableElementAttributeData should never have a mutable inline StylePropertySet attached.
+    ASSERT(!other.m_inlineStyle || !other.m_inlineStyle->isMutable());
+    m_inlineStyle = other.m_inlineStyle;
+
+    m_attributeVector.reserveCapacity(other.length());
+    for (unsigned i = 0; i < other.length(); ++i)
+        m_attributeVector.uncheckedAppend(other.immutableAttributeArray()[i]);
+}
+
 PassRefPtr<ElementAttributeData> ElementAttributeData::makeMutableCopy() const
 {
-    ASSERT(!isMutable());
+    if (isMutable())
+        return adoptRef(new MutableElementAttributeData(static_cast<const MutableElementAttributeData&>(*this)));
     return adoptRef(new MutableElementAttributeData(static_cast<const ImmutableElementAttributeData&>(*this)));
 }
 
-typedef Vector<RefPtr<Attr> > AttrList;
-typedef HashMap<Element*, OwnPtr<AttrList> > AttrListMap;
-
-static AttrListMap& attrListMap()
-{
-    DEFINE_STATIC_LOCAL(AttrListMap, map, ());
-    return map;
-}
-
-static AttrList* attrListForElement(Element* element)
-{
-    ASSERT(element);
-    if (!element->hasAttrList())
-        return 0;
-    ASSERT(attrListMap().contains(element));
-    return attrListMap().get(element);
-}
-
-static AttrList* ensureAttrListForElement(Element* element)
-{
-    ASSERT(element);
-    if (element->hasAttrList()) {
-        ASSERT(attrListMap().contains(element));
-        return attrListMap().get(element);
-    }
-    ASSERT(!attrListMap().contains(element));
-    element->setHasAttrList();
-    AttrListMap::AddResult result = attrListMap().add(element, adoptPtr(new AttrList));
-    return result.iterator->value.get();
-}
-
-static void removeAttrListForElement(Element* element)
-{
-    ASSERT(element);
-    ASSERT(element->hasAttrList());
-    ASSERT(attrListMap().contains(element));
-    attrListMap().remove(element);
-    element->clearHasAttrList();
-}
-
-static Attr* findAttrInList(AttrList* attrList, const QualifiedName& name)
-{
-    for (unsigned i = 0; i < attrList->size(); ++i) {
-        if (attrList->at(i)->qualifiedName() == name)
-            return attrList->at(i).get();
-    }
-    return 0;
-}
-
-PassRefPtr<Attr> ElementAttributeData::attrIfExists(Element* element, const QualifiedName& name) const
-{
-    if (AttrList* attrList = attrListForElement(element))
-        return findAttrInList(attrList, name);
-    return 0;
-}
-
-PassRefPtr<Attr> ElementAttributeData::ensureAttr(Element* element, const QualifiedName& name) const
-{
-    AttrList* attrList = ensureAttrListForElement(element);
-    RefPtr<Attr> attr = findAttrInList(attrList, name);
-    if (!attr) {
-        attr = Attr::create(element, name);
-        attrList->append(attr);
-    }
-    return attr.release();
-}
-
-void ElementAttributeData::setAttr(Element* element, const QualifiedName& name, Attr* attr) const
-{
-    AttrList* attrList = ensureAttrListForElement(element);
-
-    if (findAttrInList(attrList, name))
-        return;
-
-    attrList->append(attr);
-    attr->attachToElement(element);
-}
-
-void ElementAttributeData::removeAttr(Element* element, const QualifiedName& name) const
-{
-    AttrList* attrList = attrListForElement(element);
-    ASSERT(attrList);
-
-    for (unsigned i = 0; i < attrList->size(); ++i) {
-        if (attrList->at(i)->qualifiedName() == name) {
-            attrList->remove(i);
-            if (attrList->isEmpty())
-                removeAttrListForElement(element);
-            return;
-        }
-    }
-
-    ASSERT_NOT_REACHED();
-}
-
-StylePropertySet* ElementAttributeData::ensureInlineStyle(StyledElement* element)
+PassRefPtr<ElementAttributeData> ElementAttributeData::makeImmutableCopy() const
 {
     ASSERT(isMutable());
-    if (!m_inlineStyleDecl) {
-        ASSERT(element->isStyledElement());
-        m_inlineStyleDecl = StylePropertySet::create(strictToCSSParserMode(element->isHTMLElement() && !element->document()->inQuirksMode()));
-    }
-    return m_inlineStyleDecl.get();
-}
-
-StylePropertySet* ElementAttributeData::ensureMutableInlineStyle(StyledElement* element)
-{
-    ASSERT(isMutable());
-    if (m_inlineStyleDecl && !m_inlineStyleDecl->isMutable()) {
-        m_inlineStyleDecl = m_inlineStyleDecl->copy();
-        return m_inlineStyleDecl.get();
-    }
-    return ensureInlineStyle(element);
-}
-    
-void ElementAttributeData::updateInlineStyleAvoidingMutation(StyledElement* element, const String& text) const
-{
-    // We reconstruct the property set instead of mutating if there is no CSSOM wrapper.
-    // This makes wrapperless property sets immutable and so cacheable.
-    if (m_inlineStyleDecl && !m_inlineStyleDecl->isMutable())
-        m_inlineStyleDecl.clear();
-    if (!m_inlineStyleDecl)
-        m_inlineStyleDecl = CSSParser::parseInlineStyleDeclaration(text, element);
-    else
-        m_inlineStyleDecl->parseDeclaration(text, element->document()->elementSheet()->contents());
-}
-
-void ElementAttributeData::detachCSSOMWrapperIfNeeded(StyledElement* element)
-{
-    if (m_inlineStyleDecl)
-        m_inlineStyleDecl->clearParentElement(element);
-}
-
-void ElementAttributeData::destroyInlineStyle(StyledElement* element)
-{
-    detachCSSOMWrapperIfNeeded(element);
-    m_inlineStyleDecl = 0;
+    void* slot = WTF::fastMalloc(sizeForImmutableElementAttributeDataWithAttributeCount(mutableAttributeVector().size()));
+    return adoptRef(new (slot) ImmutableElementAttributeData(static_cast<const MutableElementAttributeData&>(*this)));
 }
 
 void ElementAttributeData::addAttribute(const Attribute& attribute)
@@ -258,26 +155,12 @@ bool ElementAttributeData::isEquivalent(const ElementAttributeData* other) const
     return true;
 }
 
-void ElementAttributeData::detachAttrObjectsFromElement(Element* element) const
-{
-    ASSERT(element->hasAttrList());
-
-    for (unsigned i = 0; i < length(); ++i) {
-        const Attribute* attribute = attributeItem(i);
-        if (RefPtr<Attr> attr = attrIfExists(element, attribute->name()))
-            attr->detachFromElementWithValue(attribute->value());
-    }
-
-    // The loop above should have cleaned out this element's Attr map.
-    ASSERT(!element->hasAttrList());
-}
-
 void ElementAttributeData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
-    size_t actualSize = m_isMutable ? sizeof(ElementAttributeData) : immutableElementAttributeDataSize(m_arraySize);
+    size_t actualSize = m_isMutable ? sizeof(ElementAttributeData) : sizeForImmutableElementAttributeDataWithAttributeCount(m_arraySize);
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM, actualSize);
-    info.addMember(m_inlineStyleDecl);
-    info.addMember(m_attributeStyle);
+    info.addMember(m_inlineStyle);
+    info.addMember(m_presentationAttributeStyle);
     info.addMember(m_classNames);
     info.addMember(m_idForStyleResolution);
     if (m_isMutable)
@@ -303,77 +186,6 @@ size_t ElementAttributeData::getAttributeItemIndexSlowCase(const AtomicString& n
         }
     }
     return notFound;
-}
-
-void ElementAttributeData::cloneDataFrom(const ElementAttributeData& sourceData, const Element& sourceElement, Element& targetElement)
-{
-    // FIXME: Cloned elements could start out with immutable attribute data.
-    ASSERT(isMutable());
-
-    const AtomicString& oldID = targetElement.getIdAttribute();
-    const AtomicString& newID = sourceElement.getIdAttribute();
-
-    if (!oldID.isNull() || !newID.isNull())
-        targetElement.updateId(oldID, newID);
-
-    const AtomicString& oldName = targetElement.getNameAttribute();
-    const AtomicString& newName = sourceElement.getNameAttribute();
-
-    if (!oldName.isNull() || !newName.isNull())
-        targetElement.updateName(oldName, newName);
-
-    clearAttributes(&targetElement);
-
-    if (sourceData.isMutable())
-        mutableAttributeVector() = sourceData.mutableAttributeVector();
-    else {
-        mutableAttributeVector().reserveInitialCapacity(sourceData.m_arraySize);
-        for (unsigned i = 0; i < sourceData.m_arraySize; ++i)
-            mutableAttributeVector().uncheckedAppend(sourceData.immutableAttributeArray()[i]);
-    }
-
-    for (unsigned i = 0; i < length(); ++i) {
-        const Attribute& attribute = mutableAttributeVector().at(i);
-        if (targetElement.isStyledElement() && attribute.name() == HTMLNames::styleAttr) {
-            static_cast<StyledElement&>(targetElement).styleAttributeChanged(attribute.value(), StyledElement::DoNotReparseStyleAttribute);
-            continue;
-        }
-        targetElement.attributeChanged(attribute.name(), attribute.value());
-    }
-
-    if (targetElement.isStyledElement() && sourceData.m_inlineStyleDecl) {
-        m_inlineStyleDecl = sourceData.m_inlineStyleDecl->immutableCopyIfNeeded();
-        targetElement.setIsStyleAttributeValid(sourceElement.isStyleAttributeValid());
-    }
-}
-
-void ElementAttributeData::clearAttributes(Element* element)
-{
-    ASSERT(isMutable());
-
-    if (element->hasAttrList())
-        detachAttrObjectsFromElement(element);
-
-    clearClass();
-    mutableAttributeVector().clear();
-}
-
-PassRefPtr<Attr> ElementAttributeData::getAttributeNode(const String& name, bool shouldIgnoreAttributeCase, Element* element) const
-{
-    ASSERT(element);
-    const Attribute* attribute = getAttributeItem(name, shouldIgnoreAttributeCase);
-    if (!attribute)
-        return 0;
-    return ensureAttr(element, attribute->name());
-}
-
-PassRefPtr<Attr> ElementAttributeData::getAttributeNode(const QualifiedName& name, Element* element) const
-{
-    ASSERT(element);
-    const Attribute* attribute = getAttributeItem(name);
-    if (!attribute)
-        return 0;
-    return ensureAttr(element, attribute->name());
 }
 
 }

@@ -1,3 +1,45 @@
+2012-10-29  Anders Carlsson  <andersca@apple.com>
+
+        Build WebKit as C++11 on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=100720
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/Base.xcconfig:
+        Add CLANG_CXX_LANGUAGE_STANDARD=gnu++0x.
+
+2012-10-28  Mark Rowe  <mrowe@apple.com>
+
+        Simplify Xcode configuration settings that used to vary between OS versions.
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2012-10-28  Mark Rowe  <mrowe@apple.com>
+
+        Remove references to unsupported OS and Xcode versions.
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CompilerVersion.xcconfig: Removed.
+        * Configurations/DebugRelease.xcconfig:
+
+2012-10-27  Dan Bernstein  <mitz@apple.com>
+
+        REAL_PLATFORM_NAME build setting is no longer needed
+        https://bugs.webkit.org/show_bug.cgi?id=100587
+
+        Reviewed by Mark Rowe.
+
+        Removed the definition of REAL_PLATFORM_NAME and replaced references to it with references
+        to PLATFORM_NAME.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CompilerVersion.xcconfig:
+
 2012-10-18  Dean Jackson  <dino@apple.com>
 
         Shader translator needs option to clamp uniform array accesses in vertex shaders

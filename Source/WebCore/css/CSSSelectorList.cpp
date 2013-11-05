@@ -58,7 +58,7 @@ void CSSSelectorList::adopt(CSSSelectorList& list)
     list.m_selectorArray = 0;
 }
 
-void CSSSelectorList::adoptSelectorVector(CSSSelectorVector& selectorVector)
+void CSSSelectorList::adoptSelectorVector(Vector<OwnPtr<CSSParserSelector> >& selectorVector)
 {
     deleteSelectors();
     const size_t vectorSize = selectorVector.size();
@@ -197,17 +197,17 @@ bool CSSSelectorList::selectorsNeedNamespaceResolution()
     return forEachSelector(functor, this);
 }
 
-class SelectorHasUnknownPseudoElementFunctor {
+class SelectorHasInvalidSelectorFunctor {
 public:
     bool operator()(CSSSelector* selector)
     {
-        return selector->isUnknownPseudoElement();
+        return selector->isUnknownPseudoElement() || selector->isCustomPseudoElement();
     }
 };
 
-bool CSSSelectorList::hasUnknownPseudoElements() const
+bool CSSSelectorList::hasInvalidSelector() const
 {
-    SelectorHasUnknownPseudoElementFunctor functor;
+    SelectorHasInvalidSelectorFunctor functor;
     return forEachSelector(functor, this);
 }
 

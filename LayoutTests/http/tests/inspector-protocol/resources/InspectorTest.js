@@ -22,11 +22,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-WebInspector = {};
+InspectorFrontendAPI = {};
 
 InspectorTest = {};
 InspectorTest._dispatchTable = [];
 InspectorTest._requestId = -1;
+InspectorTest.eventHandler = {};
 
 /**
  * @param {string} method
@@ -49,13 +50,18 @@ InspectorTest.sendCommand = function(method, params, handler)
 /**
  * @param {object} messageObject
  */
-WebInspector.dispatchMessageFromBackend = function(messageObject)
+InspectorFrontendAPI.dispatchMessageAsync = function(messageObject)
 {
     var messageId = messageObject["id"];
     if (typeof messageId === "number") {
         var handler = InspectorTest._dispatchTable[messageId];
         if (handler && typeof handler === "function")
             handler(messageObject);
+    } else {
+        var eventName = messageObject["method"];
+        var eventHandler = InspectorTest.eventHandler[eventName];
+        if (eventHandler)
+            eventHandler(messageObject);
     }
 }
 

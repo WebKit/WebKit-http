@@ -66,7 +66,7 @@ static ProtectionSpace protectionSpaceFromSoupAuthAndMessage(SoupAuth* soupAuth,
 AuthenticationChallenge::AuthenticationChallenge(SoupSession* soupSession, SoupMessage* soupMessage, SoupAuth* soupAuth, bool retrying, AuthenticationClient* client)
     : AuthenticationChallengeBase(protectionSpaceFromSoupAuthAndMessage(soupAuth, soupMessage),
         Credential(), // proposedCredentials
-        retrying ? 0 : 1, // previousFailureCount
+        retrying ? 1 : 0, // previousFailureCount
         soupMessage, // failureResponse
         ResourceError::authenticationError(soupMessage))
     , m_soupSession(soupSession)
@@ -74,6 +74,13 @@ AuthenticationChallenge::AuthenticationChallenge(SoupSession* soupSession, SoupM
     , m_soupAuth(soupAuth)
     , m_authenticationClient(client)
 {
+}
+
+bool AuthenticationChallenge::platformCompare(const AuthenticationChallenge& a, const AuthenticationChallenge& b)
+{
+    return a.soupSession() == b.soupSession()
+        && a.soupMessage() == b.soupMessage()
+        && a.soupAuth() == b.soupAuth();
 }
 
 } // namespace WebCore

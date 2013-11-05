@@ -50,6 +50,7 @@ SOURCES += \
     assembler/MacroAssembler.cpp \
     assembler/MacroAssemblerARM.cpp \
     assembler/MacroAssemblerSH4.cpp \
+    bytecode/ArrayAllocationProfile.cpp \
     bytecode/ArrayProfile.cpp \
     bytecode/CallLinkInfo.cpp \
     bytecode/CallLinkStatus.cpp \
@@ -59,8 +60,6 @@ SOURCES += \
     bytecode/GetByIdStatus.cpp \
     bytecode/JumpTable.cpp \
     bytecode/LazyOperandValueProfile.cpp \
-    bytecode/MethodCallLinkInfo.cpp \
-    bytecode/MethodCallLinkStatus.cpp \
     bytecode/MethodOfGettingAValueProfile.cpp \
     bytecode/Opcode.cpp \
     bytecode/PolymorphicPutByIdList.cpp \
@@ -71,6 +70,7 @@ SOURCES += \
     bytecode/SpeculatedType.cpp \
     bytecode/StructureStubClearingWatchpoint.cpp \
     bytecode/StructureStubInfo.cpp \
+    bytecode/UnlinkedCodeBlock.cpp \
     bytecode/Watchpoint.cpp \
     bytecompiler/BytecodeGenerator.cpp \
     bytecompiler/NodesCodegen.cpp \
@@ -186,6 +186,7 @@ SOURCES += \
     runtime/BooleanObject.cpp \
     runtime/BooleanPrototype.cpp \
     runtime/CallData.cpp \
+    runtime/CodeCache.cpp \
     runtime/CommonIdentifiers.cpp \
     runtime/Completion.cpp \
     runtime/ConstructData.cpp \

@@ -30,12 +30,12 @@
 
 /**
  * @constructor
- * @extends {WebInspector.SplitView}
+ * @extends {WebInspector.SidebarView}
  * @param {WebInspector.FileSystemModel.FileSystem} fileSystem
  */
 WebInspector.FileSystemView = function(fileSystem)
 {
-    WebInspector.SplitView.call(this, WebInspector.SplitView.SidebarPosition.Left, "FileSystemViewSidebarWidth");
+    WebInspector.SidebarView.call(this, WebInspector.SidebarView.SidebarPosition.Left, "FileSystemViewSidebarWidth");
     this.element.addStyleClass("file-system-view");
     this.element.addStyleClass("storage-view");
 
@@ -105,7 +105,7 @@ WebInspector.FileSystemView.prototype = {
         this._directoryTree.selectedTreeElement.deleteEntry();
     },
 
-    __proto__: WebInspector.SplitView.prototype
+    __proto__: WebInspector.SidebarView.prototype
 }
 
 /**
@@ -135,7 +135,7 @@ WebInspector.FileSystemView.EntryTreeElement.prototype = {
             if (this._entry.isDirectory)
                 this._view = new WebInspector.DirectoryContentView();
             else {
-                var file = /** @type {WebInspector.FileSystemModel.File} */ this._entry;
+                var file = /** @type {WebInspector.FileSystemModel.File} */ (this._entry);
                 this._view = new WebInspector.FileContentView(file);
             }
         }
@@ -211,7 +211,7 @@ WebInspector.FileSystemView.EntryTreeElement.prototype = {
     {
         if (!this._entry.isDirectory) {
             if (this._view && this._view === this._fileSystemView.visibleView) {
-                var fileContentView = /** @type {WebInspector.FileContentView} */ this._view;
+                var fileContentView = /** @type {WebInspector.FileContentView} */ (this._view);
                 fileContentView.refresh();
             }
         } else

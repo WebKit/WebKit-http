@@ -387,9 +387,9 @@ WK_EXPORT uint64_t WKPageGetRenderTreeSize(WKPageRef page);
 
 WK_EXPORT void WKPageSetMemoryCacheClientCallsEnabled(WKPageRef page, bool memoryCacheClientCallsEnabled);
 
-#if defined(ENABLE_INSPECTOR) && ENABLE_INSPECTOR
 WK_EXPORT WKInspectorRef WKPageGetInspector(WKPageRef page);
-#endif
+
+WK_EXPORT WKVibrationRef WKPageGetVibration(WKPageRef page);
 
 WK_EXPORT WKStringRef WKPageCopyUserAgent(WKPageRef page);
 

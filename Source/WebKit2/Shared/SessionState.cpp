@@ -30,9 +30,9 @@ namespace CoreIPC {
 
 // This assumes that when we encode a RefPtr we want to encode the object it points to and it is never null.
 template<typename T> struct ArgumentCoder<RefPtr<T> > {
-    static void encode(ArgumentEncoder* encoder, const RefPtr<T>& item)
+    static void encode(ArgumentEncoder& encoder, const RefPtr<T>& item)
     {
-        item->encode(*encoder);
+        item->encode(encoder);
     }
 
     static bool decode(ArgumentDecoder* decoder, RefPtr<T>& item)
@@ -66,8 +66,8 @@ bool SessionState::isEmpty() const
     
 void SessionState::encode(CoreIPC::ArgumentEncoder& encoder) const
 {
-    encoder.encode(m_list);
-    encoder.encode(m_currentIndex);
+    encoder << m_list;
+    encoder << m_currentIndex;
 }
 
 bool SessionState::decode(CoreIPC::ArgumentDecoder* decoder, SessionState& state)

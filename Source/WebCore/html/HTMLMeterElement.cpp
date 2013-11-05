@@ -85,12 +85,6 @@ void HTMLMeterElement::parseAttribute(const Attribute& attribute)
         LabelableElement::parseAttribute(attribute);
 }
 
-void HTMLMeterElement::attach()
-{
-    m_value->setWidthPercentage(valueRatio()*100);
-    LabelableElement::attach();
-}
-
 double HTMLMeterElement::min() const
 {
     return parseToDoubleForNumberType(getAttribute(minAttr), 0);
@@ -226,6 +220,7 @@ double HTMLMeterElement::valueRatio() const
 void HTMLMeterElement::didElementStateChange()
 {
     m_value->setWidthPercentage(valueRatio()*100);
+    m_value->updatePseudo();
     if (RenderMeter* render = renderMeter())
         render->updateFromElement();
 }
@@ -257,6 +252,7 @@ void HTMLMeterElement::createShadowSubtree()
     RefPtr<MeterBarElement> bar = MeterBarElement::create(document());
     m_value = MeterValueElement::create(document());
     m_value->setWidthPercentage(0);
+    m_value->updatePseudo();
     bar->appendChild(m_value, ASSERT_NO_EXCEPTION);
 
     inner->appendChild(bar, ASSERT_NO_EXCEPTION);

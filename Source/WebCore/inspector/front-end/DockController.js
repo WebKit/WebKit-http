@@ -40,7 +40,7 @@ WebInspector.DockController = function()
     if (Preferences.showDockToRight)
         this._dockToggleButton.makeLongClickEnabled(this._createDockOptions.bind(this));
 
-    this.setDockSide(WebInspector.queryParamsObject["dockSide"]);
+    this.setDockSide(WebInspector.queryParamsObject["dockSide"] || "bottom");
 }
 
 WebInspector.DockController.State = {
@@ -109,11 +109,11 @@ WebInspector.DockController.prototype = {
 
         if (this._isDockingUnavailable) {
             this._dockToggleButton.state = "undock";
-            this._dockToggleButton.disabled = true;
+            this._dockToggleButton.setEnabled(false);
             return;
         }
 
-        this._dockToggleButton.disabled = false;
+        this._dockToggleButton.setEnabled(true);
 
         // Choose different last state based on the current one if missing or if is the same.
         var sides = [WebInspector.DockController.State.DockedToBottom, WebInspector.DockController.State.Undocked, WebInspector.DockController.State.DockedToRight];

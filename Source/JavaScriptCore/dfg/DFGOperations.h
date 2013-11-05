@@ -64,6 +64,7 @@ typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EAZ)(ExecState*, JSArray*,
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_ECI)(ExecState*, JSCell*, Identifier*);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_ECJ)(ExecState*, JSCell*, EncodedJSValue);
+typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EDA)(ExecState*, double, JSArray*);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EGriJsgI)(ExecState*, ResolveOperation*, JSGlobalObject*, Identifier*);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EI)(ExecState*, Identifier*);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EIRo)(ExecState*, Identifier*, ResolveOperations*);
@@ -84,6 +85,7 @@ typedef JSCell* DFG_OPERATION (*C_DFGOperation_E)(ExecState*);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_EC)(ExecState*, JSCell*);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_EIcf)(ExecState*, InlineCallFrame*);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_ESt)(ExecState*, Structure*);
 typedef double DFG_OPERATION (*D_DFGOperation_DD)(double, double);
 typedef double DFG_OPERATION (*D_DFGOperation_ZZ)(int32_t, int32_t);
 typedef double DFG_OPERATION (*D_DFGOperation_EJ)(ExecState*, EncodedJSValue);
@@ -92,6 +94,7 @@ typedef size_t DFG_OPERATION (*S_DFGOperation_ECC)(ExecState*, JSCell*, JSCell*)
 typedef size_t DFG_OPERATION (*S_DFGOperation_EJ)(ExecState*, EncodedJSValue);
 typedef size_t DFG_OPERATION (*S_DFGOperation_EJJ)(ExecState*, EncodedJSValue, EncodedJSValue);
 typedef size_t DFG_OPERATION (*S_DFGOperation_J)(EncodedJSValue);
+typedef void DFG_OPERATION (*V_DFGOperation_EOZD)(ExecState*, JSObject*, int32_t, double);
 typedef void DFG_OPERATION (*V_DFGOperation_EOZJ)(ExecState*, JSObject*, int32_t, EncodedJSValue);
 typedef void DFG_OPERATION (*V_DFGOperation_EC)(ExecState*, JSCell*);
 typedef void DFG_OPERATION (*V_DFGOperation_ECIcf)(ExecState*, JSCell*, InlineCallFrame*);
@@ -116,7 +119,7 @@ typedef char* DFG_OPERATION (*P_DFGOperation_EStSS)(ExecState*, Structure*, size
 typedef char* DFG_OPERATION (*P_DFGOperation_EStZ)(ExecState*, Structure*, int32_t);
 
 // These routines are provide callbacks out to C++ implementations of operations too complex to JIT.
-JSCell* DFG_OPERATION operationNewObject(ExecState*) WTF_INTERNAL;
+JSCell* DFG_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;
 JSCell* DFG_OPERATION operationCreateThis(ExecState*, JSCell* constructor) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationConvertThis(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationValueAdd(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
@@ -148,7 +151,10 @@ void DFG_OPERATION operationPutByValCellStrict(ExecState*, JSCell*, EncodedJSVal
 void DFG_OPERATION operationPutByValCellNonStrict(ExecState*, JSCell*, EncodedJSValue encodedProperty, EncodedJSValue encodedValue) WTF_INTERNAL;
 void DFG_OPERATION operationPutByValBeyondArrayBoundsStrict(ExecState*, JSObject*, int32_t index, EncodedJSValue encodedValue) WTF_INTERNAL;
 void DFG_OPERATION operationPutByValBeyondArrayBoundsNonStrict(ExecState*, JSObject*, int32_t index, EncodedJSValue encodedValue) WTF_INTERNAL;
+void DFG_OPERATION operationPutDoubleByValBeyondArrayBoundsStrict(ExecState*, JSObject*, int32_t index, double value) WTF_INTERNAL;
+void DFG_OPERATION operationPutDoubleByValBeyondArrayBoundsNonStrict(ExecState*, JSObject*, int32_t index, double value) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationArrayPush(ExecState*, EncodedJSValue encodedValue, JSArray*) WTF_INTERNAL;
+EncodedJSValue DFG_OPERATION operationArrayPushDouble(ExecState*, double value, JSArray*) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationArrayPop(ExecState*, JSArray*) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationArrayPopAndRecoverLength(ExecState*, JSArray*) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationRegExpExec(ExecState*, JSCell*, JSCell*) WTF_INTERNAL;
@@ -195,9 +201,10 @@ char* DFG_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecStat
 char* DFG_OPERATION operationAllocatePropertyStorage(ExecState*, size_t newSize) WTF_INTERNAL;
 char* DFG_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitialCapacity(ExecState*, JSObject*) WTF_INTERNAL;
 char* DFG_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*, JSObject*, size_t newSize) WTF_INTERNAL;
+char* DFG_OPERATION operationEnsureInt32(ExecState*, JSObject*);
+char* DFG_OPERATION operationEnsureDouble(ExecState*, JSObject*);
 char* DFG_OPERATION operationEnsureContiguous(ExecState*, JSObject*);
 char* DFG_OPERATION operationEnsureArrayStorage(ExecState*, JSObject*);
-char* DFG_OPERATION operationEnsureContiguousOrArrayStorage(ExecState*, JSObject*, int32_t);
 
 // This method is used to lookup an exception hander, keyed by faultLocation, which is
 // the return location from one of the calls out to one of the helper operations above.

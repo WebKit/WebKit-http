@@ -1,3 +1,653 @@
+2012-11-15  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Windows Fibers can corrupt the cached StackBounds
+        https://bugs.webkit.org/show_bug.cgi?id=102411
+
+        Reviewed by Geoffrey Garen.
+
+        Windows has support for something called fibers, which are like lightweight versions of 
+        threads. Multiple fibers can run within the context of a single thread and they have access 
+        to the same thread local storage but have different stacks. If we create a new JSGlobalContext 
+        on one fiber, then switch to another fiber and create a JSGlobalContext there, we will call 
+        initializeThreading() once for each new JSGlobalContext created. However, since these fibers 
+        are technically running inside the same thread, they will clobber each other's wtfThreadData(), 
+        which is stored using thread local storage. This can lead to corruption of the WTFThreadData 
+        structure for the fibers other than the last one to create a new JSGlobalContext, including 
+        the StackBounds data structure which is used during conservative scanning, among other things. 
+        This can lead to crashes during garbage collection on Windows if fibers are used.
+
+        A quick fix would be to always get a fresh StackBounds data structure when asking for it 
+        instead of using the cached version from the thread local storage. There is a larger problem 
+        in that these fibers can corrupt other WebKit data that uses thread local storage. We'll leave 
+        those theoretical fixes for future theoretical bugs.
+
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack): We now refresh the m_stackBounds field whenever somebody asks for 
+        the StackBounds.
+
+2012-11-15  Maciej Stachowiak  <mjs@apple.com>
+
+        Fix an erroneous comment about the operators required by binarySearch
+        https://bugs.webkit.org/show_bug.cgi?id=102406
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/StdLibExtras.h: binarySearch needs '==' and '<', not '--', '<' and '>'.
+
+2012-11-14  Michael Saboff  <msaboff@apple.com>
+
+        String::append() should handle two 8 bit strings without converting both to 16 bits
+        https://bugs.webkit.org/show_bug.cgi?id=102286
+
+        Reviewed by Oliver Hunt.
+
+        If both strings are 8 bit, then allocate and copy to a new 8 bit string.  Since most strings are
+        8 bit, this will save up to 3x the resulting string length in bytes.  2x is due to the possible
+        surviving 16 bit source string upconversion and 1x for the 16 bit result now being 8 bit.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::append):
+
+2012-11-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][ARM] Enable the DFG JIT on ARMv7(Thumb2)
+        https://bugs.webkit.org/show_bug.cgi?id=101747
+
+        Reviewed by Simon Hausmann.
+
+        * wtf/Platform.h:
+
+2012-11-13  Christophe Dumez  <christophe.dumez@intel.com>
+
+        Use prefix form of increment / decrement operators in WTF String classes when possible
+        https://bugs.webkit.org/show_bug.cgi?id=101859
+
+        Reviewed by Benjamin Poulain.
+
+        Use prefix form of increment / decrement operators whenever possible in
+        WTF String classes as this seems to be the convention in WebKit.
+
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::add):
+        * wtf/text/Base64.cpp:
+        (WTF::base64Encode):
+        (WTF::base64DecodeInternal):
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::allocateBufferUpConvert):
+        * wtf/text/StringConcatenate.h:
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::getData16SlowCase):
+        (WTF::StringImpl::upconvertCharacters):
+        (WTF::StringImpl::containsOnlyWhitespace):
+        (WTF::StringImpl::lower):
+        (WTF::StringImpl::upper):
+        (WTF::StringImpl::foldCase):
+        (WTF::StringImpl::stripMatchedCharacters):
+        (WTF::StringImpl::removeCharacters):
+        (WTF::StringImpl::simplifyMatchedCharactersToSpace):
+        (WTF::reverseFindInner):
+        (WTF::reverseFindIgnoringCaseInner):
+        (WTF::StringImpl::replace):
+        (WTF::StringImpl::createWithTerminatingNullCharacter):
+        * wtf/text/StringImpl.h:
+        (WTF::codePointCompare):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::String):
+        (WTF::toIntegralType):
+
+2012-11-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r134490.
+
+        * wtf/FastMalloc.cpp:
+
+2012-11-13  Brent Fulgham  <bfulgham@webkit.org> and Alex Christensen <alex.christensen@flexsim.com>
+
+        Fix FastMalloc.cpp compile error for MSVC in 64-bit.
+        https://bugs.webkit.org/show_bug.cgi?id=88344
+
+        Reviewed by Ryosuke Niwa.
+
+        MSVC will not compile array declarations of zero size. The existing
+        padding math for TCMalloc_Central_FreeListPadded would evaluate
+        to zero on 64-bit machines, preventing the compile from finishing.
+
+        * wtf/FastMalloc.cpp:
+        (TCMalloc_Central_FreeListPadded_Template): Add new template (and
+        zero-size specialization) to provide proper behavior under 64-bit
+        Windows build.
+
+2012-11-13  Brent Fulgham <bfulgham@webkit.org> and Alex Christensen  <alex.christensen@flexsim.com>
+
+        FastMalloc.cpp needs to be reordered before padding bug can be fixed
+        https://bugs.webkit.org/show_bug.cgi?id=89366
+
+        Note: This file violates Style rules.  This change only moves
+        the TCMalloc_Central_FreeList class declaration and the various
+        FastMallocZone methods earlier in the file.
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FastMalloc.cpp:
+        Reordered definitions to prepare for adding specialized template
+        (WTF):
+        (TCMalloc_Central_FreeList):
+        (WTF::TCMalloc_Central_FreeList::length):
+        (WTF::TCMalloc_Central_FreeList::tc_length):
+        (WTF::TCMalloc_Central_FreeList::enumerateFreeObjects):
+        (TCMalloc_Central_FreeListPadded):
+        (FastMallocZone):
+        (WTF::FastMallocZone::goodSize):
+        (WTF::FastMallocZone::check):
+        (WTF::FastMallocZone::print):
+        (WTF::FastMallocZone::log):
+        (WTF::FastMallocZone::forceLock):
+        (WTF::FastMallocZone::forceUnlock):
+        (WTF::FastMallocZone::statistics):
+        (WTF::FastMallocZone::zoneValloc):
+        (WTF::FastMallocZone::zoneDestroy):
+        (WTF::KernelSupportsTLS):
+        (WTF::CheckIfKernelSupportsTLS):
+        (TCMalloc_ThreadCache):
+
+2012-11-11  Kenichi Ishibashi  <bashi@chromium.org>
+
+        WTFString::utf8() should have a mode of conversion to use replacement character
+        https://bugs.webkit.org/show_bug.cgi?id=101678
+
+        Reviewed by Alexander Pavlov.
+
+        Introduce conversion mode to String::utf8().
+        There are three conversion modes; lenient mode, strict mode, and
+        "replacing unpaired surrogates with the replacement character" (replacement) mode.
+        Lenient mode converts unpaired surrogates. Strict mode fails when there is an unpaired
+        surrogates and returns CString(). Replacement mode replaces unpaired surrogates with
+        the replacement character(U+FFFD). Replacement mode implements the algorithm defined at
+        http://dev.w3.org/2006/webapi/WebIDL/#dfn-obtain-unicode. WebSocket::send() requires
+        this algorithm to encode a string to utf-8.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::utf8): Changed to take ConversionMode as the argument.
+        * wtf/text/WTFString.h:
+        (String):
+
+2012-11-09  Alexei Filippov  <alph@chromium.org>
+
+        Web Inspector: Fix heap snapshots counted several times by NMI
+        https://bugs.webkit.org/show_bug.cgi?id=101085
+
+        The fix moves snapshots size counting to V8PerIsolateData class. As long
+        as it has one instance per isolate its reportMemoryUsage should be
+        called once per isolate.
+
+        Reviewed by Yury Semikhatsky.
+
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+
+2012-11-08  Michael Saboff  <msaboff@apple.com>
+
+        HashAndUTF8CharactersTranslator should create an 8 bit string if possible
+        https://bugs.webkit.org/show_bug.cgi?id=101515
+
+        Reviewed by Darin Adler.
+
+        Added isAllASCII flag that's passed to convertUTF8ToUTF16().  If on return it is true, create an
+        8 bit string, otherwise use the 16 bit string.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::HashAndUTF8CharactersTranslator::translate):
+
+2012-11-08  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix build with MSVC 2012 and Angle
+        https://bugs.webkit.org/show_bug.cgi?id=101588
+
+        Reviewed by Tor Arne Vestbø.
+
+        Angle includes STL's <memory> header file, which with MSVC 2012 includes stdint.h. MSVC 2012
+        does ship stdint.h, but it's lacking other headers such as inttypes.h.
+
+        So for the rest of WebKit we have to continue to use our own versions of these files from
+        JavaScriptCore/os-win32. But for Angle we are just including a shipped STL header file (memory)
+        and so it's up to the compiler to make that work, i.e. using the stdint.h it ships.
+
+        This patch moves the addition of JavaScriptCore/os-win32 out of default_post.prf, so that it
+        doesn't apply to each and every target anymore. In particular it won't apply to Angle anymore,
+        because its presence causes a build issue where due to the addition of os-win32/ we end up
+        including our own stdint.h but are lacking WTF/ to be in the include search path (which our own
+        stdint.h requires). So out of default_post.prf and into WTF.pri, our own wrappers are now only
+        used where WTF is also needed, and since os-win32/stdint.h depends on wtf/Platform.h, it seems
+        like a logical location.
+
+        * WTF.pri:
+
+2012-11-07  Hans Wennborg  <hans@chromium.org>
+
+        Fix asm operand type for weakCompareAndSwap on ARM_THUMB2
+        https://bugs.webkit.org/show_bug.cgi?id=101238
+
+        Reviewed by Benjamin Poulain.
+
+        'result' was a bool, but the asm was expecting a 32-bit register. A
+        recent version of Clang warned about this:
+
+          WebKit/Source/WTF/wtf/Atomics.h:163:34: error: the size being stored
+          is truncated, use a modifier to specify the size [-Werror,-Wasm-operand-widths]
+
+        This patch fixes it by making 'result' an unsigned. It does not change
+        the functionality in practice ('result' would be in a 32-bit register
+        anyway), but it makes the code more correct and makes the warning go
+        away.
+
+        Also make 'result' for the X86 version an 'unsigned char' to make it
+        more clear that it is a byte.
+
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+
+2012-11-07  Remy Demarest  <rdemarest@apple.com>
+
+        Function adoptNS and adoptCF should not generate memory leak diagnostic with Clang Static Analyzer.
+        https://bugs.webkit.org/show_bug.cgi?id=101420
+
+        Reviewed by Benjamin Poulain.
+
+        Add attributes to the adoptNS and adoptCF function arguments to remove Clang Static Analyzer diagnotics.
+        Define CF_RELEASES_ARGUMENT and NS_RELEASES_ARGUMENT if not available, use them in function declarations.
+
+        * wtf/RetainPtr.h:
+        (WTF::adoptCF): Adds CF_RELEASES_ARGUMENT attribute to the argument.
+        (WTF::adoptNS): Adds NS_RELEASES_ARGUMENT attribute to the argument.
+
+2012-11-07  Christophe Dumez  <christophe.dumez@intel.com>
+
+        Add replaceWithLiteral() method to WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=101257
+
+        Reviewed by Benjamin Poulain.
+
+        Add replaceWithLiteral() method to WTF::String that takes
+        replacement string as a literal to avoid uselessly constructing
+        a String object.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::replace):
+        (WTF):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::replace):
+        (StringImpl):
+        * wtf/text/WTFString.h:
+        (String):
+        (WTF::String::replaceWithLiteral):
+
+2012-11-06  Michael Saboff  <msaboff@apple.com>
+
+        StringBuilder::append(UChar) with an 8 bit quantity shouldn't change the contents to 16 bits
+        https://bugs.webkit.org/show_bug.cgi?id=101421
+
+        Reviewed by Anders Carlsson.
+
+        If the string builder contains only 8 bit data, check if the character being appended contains
+        8 bit data.  If so, append it to the 8 bit buffer instead of converting the buffer to 16 bits.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::append):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append):
+
+2012-11-06  Benjamin Poulain  <benjamin@webkit.org>
+
+        Speed up TransformationMatrix::multiply() on modern ARM
+        https://bugs.webkit.org/show_bug.cgi?id=101084
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/Platform.h:
+        Add CPU(ARM_VFP) for detecting VFP availability.
+        Add CPU(APPLE_ARMV7S) for the Apple ARMv7S architecture.
+
+2012-11-06  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Refactor setting TEXTURE_MAPPER_GL
+        https://bugs.webkit.org/show_bug.cgi?id=99758
+
+        Reviewed by Noam Rosenthal.
+
+        Make the rule that sets the default for USE(3D_GRAPHICS) port independent.
+
+        If not set, set USE(TEXTURE_MAPPER_GL) when USE(TEXTURE_MAPPER) and 
+        USE(3D_GRAPHICS) is enabled.
+
+        * wtf/Platform.h:
+
+2012-11-05  Philip Rogers  <pdr@google.com>
+
+        Unblock SVG external references
+        https://bugs.webkit.org/show_bug.cgi?id=100635
+
+        Reviewed by Adam Barth.
+
+        This patch reverts r132849 and r132869 because the potential XSS issue
+        turned out to not be an issue after all.
+
+        Covered by existing tests, many of which are re-whitelisted with this patch.
+
+        * wtf/Platform.h:
+
+2012-11-05  Dima Gorbik  <dgorbik@apple.com>
+
+        Back out controversial changes from Bug 98665.
+        https://bugs.webkit.org/show_bug.cgi?id=101244
+
+        Reviewed by David Kilzer.
+
+        Backing out changes from Bug 98665 until further discussions take place on rules for including Platform.h in Assertions.h.
+
+        * wtf/Assertions.h:
+
+2012-11-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Get rid of USE(CFURLSTORAGESESSIONS)
+        https://bugs.webkit.org/show_bug.cgi?id=101131
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h:
+
+2012-11-02  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: NMI instrument NodeRareData::Map. It uses ~250k on nytimes.com
+        https://bugs.webkit.org/show_bug.cgi?id=101052
+
+        Reviewed by Yury Semikhatsky.
+
+        I noticed that in many cases cache structures are plain static HashMap, HashSet etc.
+        MemoryAgent can visit it but instrumentation for these containers report no objectType.
+        It means that addRootObject method needs to accept objectType property as an argument.
+        Otherwise I would have had to create a proxy class with proper objectType.
+
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryInstrumentation::addRootObject):
+
+2012-11-01  Kent Tamura  <tkent@chromium.org>
+
+        Introduce ENABLE_DATE_AND_TIME_INPUT_TYPES, and clarify usage of other related flags
+        https://bugs.webkit.org/show_bug.cgi?id=101007
+
+        Reviewed by Kentaro Hara.
+
+        * wtf/Platform.h:
+        Add ENABLE_DATE_AND_TIME_INPUT_TYPES.  It's a union of
+        ENABLE_INPUT_TYPE_{DATE,DATETIME,DATETIMELOCAL,MONTH,TIME,WEEK}.
+
+2012-11-01  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: do not call checkCountedObject with wrong pointers
+        https://bugs.webkit.org/show_bug.cgi?id=100958
+
+        Reviewed by Alexander Pavlov.
+
+        Removed calls to checkCountedObject from places where the pointer may contain
+        an address of a base class which may differ from the actual object pointer. Instead
+        checkCountedObject is only called right after processing deferred pointer where
+        we know real address.
+
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF::::process):
+
+2012-11-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Rename HAVE(NETWORK_CFDATA_ARRAY_CALLBACK) to USE(NETWORK_CFDATA_ARRAY_CALLBACK)
+
+        Rubber-stamped by Joe Pecoraro.
+
+        All CFNetwork based platforms have this now, but not all use it at the moment.
+
+2012-11-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Fix HAVE(NETWORK_CFDATA_ARRAY_CALLBACK) build
+        https://bugs.webkit.org/show_bug.cgi?id=100979
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/Platform.h: Added a FIXME about HAVE(NETWORK_CFDATA_ARRAY_CALLBACK).
+
+2012-11-01  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: report memory occupied by ResourceRequest instead of its base ResourceRequestBase
+        https://bugs.webkit.org/show_bug.cgi?id=100497
+
+        Reviewed by Alexander Pavlov.
+
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryClassInfo::addPrivateBuffer): do not report memory usage for empty buffer.
+
+2012-10-31  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+        <rdar://problem/12612207>.
+
+        Reviewed by Sam Weinig.
+
+        * wtf/CheckedArithmetic.h:
+
+2012-10-31  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add an optimized version of copyLCharsFromUCharSource for ARM
+        https://bugs.webkit.org/show_bug.cgi?id=94886
+
+        Reviewed by Gavin Barraclough.
+
+        Michael Saboff added a SIMD version of copyLCharsFromUCharSource() in r125846.
+
+        This patch a similar optimization for ARMv7 by using the interleaved load/store available
+        in the NEON extension.
+
+        The performance gains:
+        -10000 characters: ~3.5 times faster.
+        -20 characters (2 vectors): ~55% faster.
+        -15 characters (1 vector): ~21% faster.
+        -3 characters (no vector, pure overhead): ~10% slower.
+
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+
+2012-10-31  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL][WK2][AC] Use smart pointers for Evas_GL types
+        https://bugs.webkit.org/show_bug.cgi?id=100745
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Make OwnPtr usable with Evas_GL type to avoid handling
+        raw pointers in EFL port.
+
+        * wtf/OwnPtrCommon.h:
+        (WTF):
+        * wtf/efl/OwnPtrEfl.cpp:
+        (WTF):
+        (WTF::deleteOwnedPtr):
+
+2012-10-29  Anders Carlsson  <andersca@apple.com>
+
+        Build WebKit as C++11 on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=100720
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/Base.xcconfig:
+        Add CLANG_CXX_LANGUAGE_STANDARD=gnu++0x.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::add):
+        Change the type of length to be unsigned to prevent implicit type conversions in non-constant initializer lists.
+
+        * wtf/unicode/UTF8.cpp:
+        (Unicode):
+        Add static_casts to prevent implicit type conversions in non-constant initializer lists.
+
+2012-10-29  Anders Carlsson  <andersca@apple.com>
+
+        String::createCFString should return a RetainPtr
+        https://bugs.webkit.org/show_bug.cgi?id=100419
+
+        Reviewed by Andreas Kling.
+
+        Make String::createCFString and StringImpl::createCFString return RetainPtrs.
+
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringImpl.h:
+        * wtf/text/WTFString.h:
+
+2012-10-30  Mark Rowe  <mrowe@apple.com>
+
+        Fix WTF to not install a few header files in bogus locations.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2012-10-28  Mark Rowe  <mrowe@apple.com>
+
+        Simplify Xcode configuration settings that used to vary between OS versions.
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2012-10-28  Mark Rowe  <mrowe@apple.com>
+
+        Remove references to unsupported OS and Xcode versions.
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CompilerVersion.xcconfig: Removed.
+        * Configurations/DebugRelease.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+
+2012-10-29  Anders Carlsson  <andersca@apple.com>
+
+        AtomicString(CFStringRef) shouldn't unconditionally create a StringImpl
+        https://bugs.webkit.org/show_bug.cgi?id=100701
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        Change the constructors that take a CFStringRef and an NSString * to call AtomicString::add(CFStringRef)
+        and remove AtomicString::createCFString.
+
+        (WTF::AtomicString::add):
+        Add new member function declaration. The definition is in a new file in WebCore, AtomicStringCF.cpp.
+        Also, fix the overload of add that takes a const char* to call the right other overload instead of itself.
+
+2012-10-29  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed. Correct my previous patch to disable external SVG
+        references only on PLATFORM(CHROMIUM).
+
+        * wtf/Platform.h:
+
+2012-10-29  Adam Barth  <abarth@webkit.org>
+
+        Block SVG external references pending a security review
+        https://bugs.webkit.org/show_bug.cgi?id=100635
+
+        Reviewed by Eric Seidel.
+
+        We need to do a security review of loading external SVG references
+        before we're sure that it is safe.
+
+        * wtf/Platform.h:
+
+2012-10-29  Michael Saboff  <msaboff@apple.com>
+
+        String::split(UChar, Vector<String>&) shouldn't create a temporary String
+        https://bugs.webkit.org/show_bug.cgi?id=100578
+
+        Reviewed by Anders Carlsson.
+
+        Changed split(UChar, Vector<String>&) to call split(UChar, bool, Vector<String>&) instead of creating a
+        string and calling the split(String,...) version and moved it to WTFString.h.  Also moved
+        split(const String& separator, Vector<String>& result) to WTFString.h.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::split):
+        * wtf/text/WTFString.h:
+        (WTF::String::split):
+
+2012-10-29  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r132736.
+        http://trac.webkit.org/changeset/132736
+        https://bugs.webkit.org/show_bug.cgi?id=100652
+
+        It broke all plugin related tests on GTK and on Qt (Requested
+        by Ossy on #webkit).
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::fromUTF8):
+
+2012-10-27  Michael Saboff  <msaboff@apple.com>
+
+        Try to create AtomicString as 8 bit where possible
+        https://bugs.webkit.org/show_bug.cgi?id=100575
+
+        Reviewed by Oliver Hunt.
+
+        Added StringImpl::create8BitIfPossible() that first tries to create an 8 bit string.  If it finds a 16 bit character
+        during processing, it calls the standard create() method.  The assumption is that this will be used on mostly 8 bit
+        strings and ones that are shorter (in the tens of characters).  Changed AtomicString to use the new creation method
+        for UChar based construction.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::UCharBufferTranslator::translate):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::create8BitIfPossible):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::create8BitIfPossible):
+
+2012-10-27  Michael Saboff  <msaboff@apple.com>
+
+        String::fromUTF8() should take advantage of the ASCII check in convertUTF8ToUTF16()
+        https://bugs.webkit.org/show_bug.cgi?id=100577
+
+        Reviewed by Oliver Hunt.
+
+        Passed is ASCII flag to convertUTF8ToUTF16() and if try, create an 8 bit string from the original arguments.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::fromUTF8):
+
+2012-10-27  Dan Bernstein  <mitz@apple.com>
+
+        REAL_PLATFORM_NAME build setting is no longer needed
+        https://bugs.webkit.org/show_bug.cgi?id=100587
+
+        Reviewed by Mark Rowe.
+
+        Removed the definition of REAL_PLATFORM_NAME and replaced references to it with references
+        to PLATFORM_NAME.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CompilerVersion.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2012-10-26  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r132689.
+        http://trac.webkit.org/changeset/132689
+        https://bugs.webkit.org/show_bug.cgi?id=100574
+
+        Broke HashMaps containing RetainPtrs (Requested by andersca on
+        #webkit).
+
+        * wtf/RetainPtr.h:
+
 2012-10-26  Anders Carlsson  <andersca@apple.com>
 
         Add an operator& to RetainPtr

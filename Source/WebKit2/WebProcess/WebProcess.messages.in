@@ -97,4 +97,13 @@ messages -> WebProcess {
     SecItemResponse(uint64_t requestID, WebKit::SecItemResponseData response) DispatchOnConnectionQueue
     SecKeychainItemResponse(uint64_t requestID, WebKit::SecKeychainItemResponseData response) DispatchOnConnectionQueue
 #endif
+
+#if PLATFORM(MAC)
+    SetApplicationIsOccluded(bool flag);
+#endif
+
+#if ENABLE(CUSTOM_PROTOCOLS)
+    RegisterSchemeForCustomProtocol(WTF::String name)
+    UnregisterSchemeForCustomProtocol(WTF::String name)
+#endif
 }

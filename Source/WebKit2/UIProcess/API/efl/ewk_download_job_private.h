@@ -40,11 +40,13 @@ class DownloadProxy;
 
 class EwkViewImpl;
 
-class Ewk_Download_Job : public RefCounted<Ewk_Download_Job> {
+class EwkDownloadJob : public Ewk_Object {
 public:
-    static PassRefPtr<Ewk_Download_Job> create(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl)
+    EWK_OBJECT_DECLARE(EwkDownloadJob)
+
+    static PassRefPtr<EwkDownloadJob> create(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl)
     {
-        return adoptRef(new Ewk_Download_Job(download, viewImpl));
+        return adoptRef(new EwkDownloadJob(download, viewImpl));
     }
 
     uint64_t id() const;
@@ -53,9 +55,9 @@ public:
     Ewk_Download_Job_State state() const;
     void setState(Ewk_Download_Job_State);
 
-    Ewk_Url_Request* request() const;
-    Ewk_Url_Response* response() const;
-    void setResponse(PassRefPtr<Ewk_Url_Response>);
+    EwkUrlRequest* request() const;
+    EwkUrlResponse* response() const;
+    void setResponse(PassRefPtr<EwkUrlResponse>);
 
     const char* destination() const;
     void setDestination(const char* destination);
@@ -70,13 +72,13 @@ public:
     void incrementReceivedData(uint64_t length);
 
 private:
-    Ewk_Download_Job(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl);
+    EwkDownloadJob(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl);
 
     WebKit::DownloadProxy* m_downloadProxy;
     EwkViewImpl* m_viewImpl;
     Ewk_Download_Job_State m_state;
-    mutable RefPtr<Ewk_Url_Request> m_request;
-    RefPtr<Ewk_Url_Response> m_response;
+    mutable RefPtr<EwkUrlRequest> m_request;
+    RefPtr<EwkUrlResponse> m_response;
     double m_startTime;
     double m_endTime;
     uint64_t m_downloaded; // length already downloaded

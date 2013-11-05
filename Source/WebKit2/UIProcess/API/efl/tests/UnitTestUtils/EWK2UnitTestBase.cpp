@@ -48,7 +48,12 @@ void EWK2UnitTestBase::SetUp()
     unsigned int width = environment->defaultWidth();
     unsigned int height = environment->defaultHeight();
 
+#if defined(WTF_USE_ACCELERATED_COMPOSITING) && defined(HAVE_ECORE_X)
+    const char* engine = "opengl_x11";
+    m_ecoreEvas = ecore_evas_new(engine, 0, 0, width, height, 0);
+#else
     m_ecoreEvas = ecore_evas_new(0, 0, 0, width, height, 0);
+#endif
 
     ecore_evas_show(m_ecoreEvas);
     Evas* evas = ecore_evas_get(m_ecoreEvas);
@@ -210,26 +215,26 @@ bool EWK2UnitTestBase::waitUntilURLChangedTo(const char* expectedURL, double tim
     return !data.didTimeOut();
 }
 
-void EWK2UnitTestBase::mouseClick(int x, int y)
+void EWK2UnitTestBase::mouseClick(int x, int y, int button)
 {
     Evas* evas = evas_object_evas_get(m_webView);
     evas_event_feed_mouse_move(evas, x, y, 0, 0);
-    evas_event_feed_mouse_down(evas, /* Left */ 1, EVAS_BUTTON_NONE, 0, 0);
-    evas_event_feed_mouse_up(evas, /* Left */ 1, EVAS_BUTTON_NONE, 0, 0);
+    evas_event_feed_mouse_down(evas, button, EVAS_BUTTON_NONE, 0, 0);
+    evas_event_feed_mouse_up(evas, button, EVAS_BUTTON_NONE, 0, 0);
 }
 
-void EWK2UnitTestBase::mouseDown(int x, int y)
+void EWK2UnitTestBase::mouseDown(int x, int y, int button)
 {
     Evas* evas = evas_object_evas_get(m_webView);
     evas_event_feed_mouse_move(evas, x, y, 0, 0);
-    evas_event_feed_mouse_down(evas, /* Left */ 1, EVAS_BUTTON_NONE, 0, 0);
+    evas_event_feed_mouse_down(evas, button, EVAS_BUTTON_NONE, 0, 0);
 }
 
-void EWK2UnitTestBase::mouseUp(int x, int y)
+void EWK2UnitTestBase::mouseUp(int x, int y, int button)
 {
     Evas* evas = evas_object_evas_get(m_webView);
     evas_event_feed_mouse_move(evas, x, y, 0, 0);
-    evas_event_feed_mouse_up(evas, /* Left */ 1, EVAS_BUTTON_NONE, 0, 0);
+    evas_event_feed_mouse_up(evas, button, EVAS_BUTTON_NONE, 0, 0);
 }
 
 void EWK2UnitTestBase::mouseMove(int x, int y)

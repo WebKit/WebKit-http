@@ -179,7 +179,7 @@ void PluginProcessProxy::didClose(CoreIPC::Connection*)
     pluginProcessCrashedOrFailedToLaunch();
 }
 
-void PluginProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID)
+void PluginProcessProxy::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)
 {
 }
 
@@ -228,6 +228,11 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connectio
         m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0);
     
     m_numPendingConnectionRequests = 0;
+
+#if PLATFORM(MAC)
+    if (WebContext::applicationIsOccluded())
+        m_connection->send(Messages::PluginProcess::SetApplicationIsOccluded(true), 0);
+#endif
 }
 
 void PluginProcessProxy::didCreateWebProcessConnection(const CoreIPC::Attachment& connectionIdentifier, bool supportsAsynchronousPluginInitialization)

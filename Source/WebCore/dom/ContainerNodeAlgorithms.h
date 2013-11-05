@@ -23,6 +23,7 @@
 #define ContainerNodeAlgorithms_h
 
 #include "Document.h"
+#include "Frame.h"
 #include "HTMLFrameOwnerElement.h"
 #include "InspectorInstrumentation.h"
 #include <wtf/Assertions.h>
@@ -264,36 +265,22 @@ inline void ChildNodeRemovalNotifier::notify(Node* node)
 
 class ChildFrameDisconnector {
 public:
-    enum ShouldIncludeRoot {
-        DoNotIncludeRoot,
-        IncludeRoot
+    enum DisconnectPolicy {
+        RootAndDescendants,
+        DescendantsOnly
     };
 
-    explicit ChildFrameDisconnector(Node* root, ShouldIncludeRoot shouldIncludeRoot = IncludeRoot)
+    explicit ChildFrameDisconnector(Node* root)
         : m_root(root)
     {
-        collectDescendant(m_root, shouldIncludeRoot);
-        rootNodes().add(m_root);
     }
 
-    ~ChildFrameDisconnector()
-    {
-        rootNodes().remove(m_root);
-    }
-
-    void disconnect();
-
-    static bool nodeHasDisconnector(Node*);
+    void disconnect(DisconnectPolicy = RootAndDescendants);
 
 private:
-    void collectDescendant(Node* root, ShouldIncludeRoot);
-    void collectDescendant(ElementShadow*);
-
-    static HashSet<Node*>& rootNodes()
-    {
-        DEFINE_STATIC_LOCAL(HashSet<Node*>, nodes, ());
-        return nodes;
-    }
+    void collectFrameOwners(Node* root);
+    void collectFrameOwners(ElementShadow*);
+    void disconnectCollectedFrameOwners();
 
     class Target {
     public:
@@ -315,22 +302,29 @@ private:
     Node* m_root;
 };
 
-inline void ChildFrameDisconnector::collectDescendant(Node* root, ShouldIncludeRoot shouldIncludeRoot)
+inline void ChildFrameDisconnector::collectFrameOwners(Node* root)
 {
-    for (Node* node = shouldIncludeRoot == IncludeRoot ? root : root->firstChild(); node;
-            node = node->traverseNextNode(root)) {
-        if (!node->isElementNode())
-            continue;
-        Element* element = toElement(node);
-        if (element->hasCustomCallbacks() && element->isFrameOwnerElement())
-            m_list.append(toFrameOwnerElement(element));
-        if (ElementShadow* shadow = element->shadow())
-            collectDescendant(shadow);
-    }
+    if (!root->connectedSubframeCount())
+        return;
+
+    // FIXME: This should just check isElementNode() to avoid the virtual call
+    // and we should not depend on hasCustomCallbacks().
+    if (root->hasCustomCallbacks() && root->isFrameOwnerElement())
+        m_list.append(toFrameOwnerElement(root));
+
+    for (Node* child = root->firstChild(); child; child = child->nextSibling())
+        collectFrameOwners(child);
+
+    ElementShadow* shadow = root->isElementNode() ? toElement(root)->shadow() : 0;
+    if (shadow)
+        collectFrameOwners(shadow);
 }
 
-inline void ChildFrameDisconnector::disconnect()
+inline void ChildFrameDisconnector::disconnectCollectedFrameOwners()
 {
+    // Must disable frame loading in the subtree so an unload handler cannot
+    // insert more frames and create loaded frames in detached subtrees.
+    SubframeLoadingDisabler disabler(m_root);
     unsigned size = m_list.size();
     for (unsigned i = 0; i < size; ++i) {
         Target& target = m_list[i];
@@ -339,18 +333,19 @@ inline void ChildFrameDisconnector::disconnect()
     }
 }
 
-inline bool ChildFrameDisconnector::nodeHasDisconnector(Node* node)
+inline void ChildFrameDisconnector::disconnect(DisconnectPolicy policy)
 {
-    HashSet<Node*>& nodes = rootNodes();
+    if (!m_root->connectedSubframeCount())
+        return;
 
-    if (nodes.isEmpty())
-        return false;
+    if (policy == RootAndDescendants)
+        collectFrameOwners(m_root);
+    else {
+        for (Node* child = m_root->firstChild(); child; child = child->nextSibling())
+            collectFrameOwners(child);
+    }
 
-    for (; node; node = node->parentNode())
-        if (nodes.contains(node))
-            return true;
-
-    return false;
+    disconnectCollectedFrameOwners();
 }
 
 } // namespace WebCore

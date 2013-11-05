@@ -29,17 +29,12 @@
  */
 
 #include "config.h"
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "PickerIndicatorElement.h"
-
-#if ENABLE(CALENDAR_PICKER)
 
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Event.h"
-#include "FrameView.h"
-#include "HTMLDataListElement.h"
-#include "HTMLInputElement.h"
-#include "HTMLOptionElement.h"
 #include "Page.h"
 #include "RenderDetailsMarker.h"
 
@@ -49,16 +44,16 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-inline PickerIndicatorElement::PickerIndicatorElement(Document* document)
+inline PickerIndicatorElement::PickerIndicatorElement(Document* document, PickerIndicatorOwner& pickerIndicatorOwner)
     : HTMLDivElement(divTag, document)
-    , m_chooser(nullptr)
+    , m_pickerIndicatorOwner(&pickerIndicatorOwner)
 {
-    setShadowPseudoId("-webkit-calendar-picker-indicator");
+    setPseudo(AtomicString("-webkit-calendar-picker-indicator", AtomicString::ConstructFromLiteral));
 }
 
-PassRefPtr<PickerIndicatorElement> PickerIndicatorElement::create(Document* document)
+PassRefPtr<PickerIndicatorElement> PickerIndicatorElement::create(Document* document, PickerIndicatorOwner& pickerIndicatorOwner)
 {
-    return adoptRef(new PickerIndicatorElement(document));
+    return adoptRef(new PickerIndicatorElement(document, pickerIndicatorOwner));
 }
 
 PickerIndicatorElement::~PickerIndicatorElement()
@@ -72,21 +67,11 @@ RenderObject* PickerIndicatorElement::createRenderer(RenderArena* arena, RenderS
     return new (arena) RenderDetailsMarker(this);
 }
 
-inline HTMLInputElement* PickerIndicatorElement::hostInput()
-{
-    // JavaScript code can't create PickerIndicatorElement objects. This is
-    // always in shadow of <input>.
-    ASSERT(shadowHost());
-    ASSERT(shadowHost()->hasTagName(inputTag));
-    return static_cast<HTMLInputElement*>(shadowHost());
-}
-
 void PickerIndicatorElement::defaultEventHandler(Event* event)
 {
     if (!renderer())
         return;
-    HTMLInputElement* input = hostInput();
-    if (input->readOnly() || input->disabled())
+    if (!m_pickerIndicatorOwner || m_pickerIndicatorOwner->isPickerIndicatorOwnerDisabledOrReadOnly())
         return;
 
     if (event->type() == eventNames().clickEvent) {
@@ -100,8 +85,7 @@ void PickerIndicatorElement::defaultEventHandler(Event* event)
 
 bool PickerIndicatorElement::willRespondToMouseClickEvents()
 {
-    const HTMLInputElement* input = hostInput();
-    if (renderer() && !input->readOnly() && !input->disabled())
+    if (renderer() && m_pickerIndicatorOwner && !m_pickerIndicatorOwner->isPickerIndicatorOwnerDisabledOrReadOnly())
         return true;
 
     return HTMLDivElement::willRespondToMouseClickEvents();
@@ -109,7 +93,9 @@ bool PickerIndicatorElement::willRespondToMouseClickEvents()
 
 void PickerIndicatorElement::didChooseValue(const String& value)
 {
-    hostInput()->setValue(value, DispatchChangeEvent);
+    if (!m_pickerIndicatorOwner)
+        return;
+    m_pickerIndicatorOwner->pickerIndicatorChooseValue(value);
 }
 
 void PickerIndicatorElement::didEndChooser()
@@ -123,41 +109,14 @@ void PickerIndicatorElement::openPopup()
         return;
     if (!document()->page())
         return;
+    if (!m_pickerIndicatorOwner)
+        return;
     Chrome* chrome = document()->page()->chrome();
     if (!chrome)
         return;
-    if (!document()->view())
-        return;
-
-    HTMLInputElement* input = hostInput();
     DateTimeChooserParameters parameters;
-    parameters.type = input->type();
-    parameters.minimum = input->minimum();
-    parameters.maximum = input->maximum();
-    parameters.required = input->required();
-
-    StepRange stepRange = input->createStepRange(RejectAny);
-    if (stepRange.hasStep()) {
-        parameters.step = stepRange.step().toDouble();
-        parameters.stepBase = stepRange.stepBase().toDouble();
-    } else {
-        parameters.step = 1.0;
-        parameters.stepBase = 0;
-    }
-
-    parameters.anchorRectInRootView = document()->view()->contentsToRootView(hostInput()->pixelSnappedBoundingBox());
-    parameters.currentValue = input->value();
-    parameters.isAnchorElementRTL = input->computedStyle()->direction() == RTL;
-    if (HTMLDataListElement* dataList = input->dataList()) {
-        RefPtr<HTMLCollection> options = dataList->options();
-        for (unsigned i = 0; HTMLOptionElement* option = toHTMLOptionElement(options->item(i)); ++i) {
-            if (!input->isValidValue(option->value()))
-                continue;
-            parameters.suggestionValues.append(input->sanitizeValue(option->value()));
-            parameters.localizedSuggestionValues.append(input->localizeValue(option->value()));
-            parameters.suggestionLabels.append(option->value() == option->label() ? String() : option->label());
-        }
-    }
+    if (!m_pickerIndicatorOwner->setupDateTimeChooserParameters(parameters))
+        return;
     m_chooser = chrome->client()->openDateTimeChooser(this, parameters);
 }
 

@@ -30,11 +30,12 @@
 #define AccessibilityRenderObject_h
 
 #include "AccessibilityNodeObject.h"
-#include "LayoutTypes.h"
+#include "LayoutRect.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
     
+class AccessibilitySVGRoot;
 class AXObjectCache;
 class Element;
 class Frame;
@@ -241,16 +242,24 @@ private:
     AccessibilityObject* internalLinkElement() const;
     AccessibilityObject* accessibilityImageMapHitTest(HTMLAreaElement*, const IntPoint&) const;
     AccessibilityObject* accessibilityParentForImageMap(HTMLMapElement*) const;
+    virtual AccessibilityObject* elementAccessibilityHitTest(const IntPoint&) const;
+
     bool renderObjectIsObservable(RenderObject*) const;
     RenderObject* renderParentObject() const;
     bool isDescendantOfElementType(const QualifiedName& tagName) const;
-    // This returns true if it's focusable but it's not content editable and it's not a control or ARIA control.
-
+    
+    bool isSVGImage() const;
+    void detachRemoteSVGRoot();
+    AccessibilitySVGRoot* remoteSVGRootElement() const;
+    AccessibilityObject* remoteSVGElementHitTest(const IntPoint&) const;
+    void offsetBoundingBoxForRemoteSVGElement(LayoutRect&) const;
+    
     void addHiddenChildren();
     void addTextFieldChildren();
     void addImageMapChildren();
     void addCanvasChildren();
     void addAttachmentChildren();
+    void addRemoteSVGChildren();
 #if PLATFORM(MAC)
     void updateAttachmentViewParents();
 #endif
@@ -268,6 +277,52 @@ private:
     virtual bool ariaLiveRegionBusy() const;    
     
     bool inheritsPresentationalRole() const;
+    
+#if ENABLE(MATHML)
+    // All math elements return true for isMathElement().
+    virtual bool isMathElement() const;
+    virtual bool isMathFraction() const;
+    virtual bool isMathFenced() const;
+    virtual bool isMathSubscriptSuperscript() const;
+    virtual bool isMathRow() const;
+    virtual bool isMathUnderOver() const;
+    virtual bool isMathRoot() const;
+    virtual bool isMathSquareRoot() const;
+    virtual bool isMathText() const;
+    virtual bool isMathNumber() const;
+    virtual bool isMathOperator() const;
+    virtual bool isMathFenceOperator() const;
+    virtual bool isMathSeparatorOperator() const;
+    virtual bool isMathIdentifier() const;
+    virtual bool isMathTable() const;
+    virtual bool isMathTableRow() const;
+    virtual bool isMathTableCell() const;
+    
+    // Generic components.
+    virtual AccessibilityObject* mathBaseObject();
+    
+    // Root components.
+    virtual AccessibilityObject* mathRadicandObject();
+    virtual AccessibilityObject* mathRootIndexObject();
+    
+    // Fraction components.
+    virtual AccessibilityObject* mathNumeratorObject();
+    virtual AccessibilityObject* mathDenominatorObject();
+
+    // Under over components.
+    virtual AccessibilityObject* mathUnderObject();
+    virtual AccessibilityObject* mathOverObject();
+    
+    // Subscript/superscript components.
+    virtual AccessibilityObject* mathSubscriptObject();
+    virtual AccessibilityObject* mathSuperscriptObject();
+    
+    // Fenced components.
+    virtual String mathFencedOpenString() const;
+    virtual String mathFencedCloseString() const;
+
+    bool isIgnoredElementWithinMathTree() const;
+#endif
 };
 
 inline AccessibilityRenderObject* toAccessibilityRenderObject(AccessibilityObject* object)

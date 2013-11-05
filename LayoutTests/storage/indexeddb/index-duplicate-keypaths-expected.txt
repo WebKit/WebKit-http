@@ -1,4 +1,3 @@
-CONSOLE MESSAGE: The setVersion() method is non-standard and will be removed. Use the "upgradeneeded" event instead.
 Test the use of identical keypaths between objectstores and indexes
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -6,10 +5,9 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 
 indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
 
-indexedDB.open('store-index-collision')
-db = event.target.result
-db.setVersion('1')
-Deleted all object stores.
+dbname = "index-duplicate-keypaths.html"
+indexedDB.deleteDatabase(dbname)
+indexedDB.open(dbname)
 store = db.createObjectStore('collideWithIndex', {keyPath: 'foo'})
 index = store.createIndex('foo', 'foo')
 objectStore.put({foo: 10})
@@ -17,7 +15,8 @@ objectStore.get(10)
 index.get(10)
 PASS JSON.stringify(result) is "{\"foo\":10}"
 PASS JSON.stringify(result) is "{\"foo\":10}"
-db.setVersion('2')
+db.close()
+request = indexedDB.open(dbname, 2)
 Deleted all object stores.
 store = db.createObjectStore('collideWithAutoIncrement', {keyPath: 'foo', autoIncrement: true})
 index = store.createIndex('foo', 'foo')

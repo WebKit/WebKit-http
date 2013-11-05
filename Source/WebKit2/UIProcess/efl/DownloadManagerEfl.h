@@ -31,14 +31,14 @@
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
 
-class Ewk_Context;
-class Ewk_Download_Job;
+class EwkContext;
+class EwkDownloadJob;
 
 namespace WebKit {
 
 class DownloadManagerEfl {
 public:
-    static PassOwnPtr<DownloadManagerEfl> create(Ewk_Context* context)
+    static PassOwnPtr<DownloadManagerEfl> create(EwkContext* context)
     {
         return adoptPtr(new DownloadManagerEfl(context));
     }
@@ -46,9 +46,9 @@ public:
     void registerDownload(DownloadProxy*, EwkViewImpl*);
 
 private:
-    DownloadManagerEfl(Ewk_Context*);
+    explicit DownloadManagerEfl(EwkContext*);
 
-    Ewk_Download_Job* downloadJob(uint64_t id) const;
+    EwkDownloadJob* downloadJob(uint64_t id) const;
     void unregisterDownloadJob(uint64_t id);
 
     static WKStringRef decideDestinationWithSuggestedFilename(WKContextRef, WKDownloadRef, WKStringRef filename, bool* allowOverwrite, const void* clientInfo);
@@ -59,8 +59,8 @@ private:
     static void didCancel(WKContextRef, WKDownloadRef, const void* clientInfo);
     static void didFinish(WKContextRef, WKDownloadRef, const void* clientInfo);
 
-    Ewk_Context* m_context;
-    HashMap<uint64_t, RefPtr<Ewk_Download_Job> > m_downloadJobs;
+    EwkContext* m_context;
+    HashMap<uint64_t, RefPtr<EwkDownloadJob> > m_downloadJobs;
 };
 
 } // namespace WebKit

@@ -5,30 +5,11 @@ if (this.importScripts) {
 
 description("Test IndexedDB's webkitIDBObjectStore.deleteObjectStore().");
 
-function test()
+indexedDBTest(prepareDatabase, getValue);
+function prepareDatabase()
 {
-    removeVendorPrefixes();
-    request = evalAndLog("indexedDB.open('objectstore-removeobjectstore')");
-    request.onsuccess = startSetVersion;
-    request.onerror = unexpectedErrorCallback;
-}
-
-function startSetVersion()
-{
-    db = evalAndLog("db = event.target.result");
-
-    request = evalAndLog("db.setVersion('new version')");
-    request.onsuccess = deleteExisting;
-    request.onerror = unexpectedErrorCallback;
-}
-
-function deleteExisting()
-{
-    self.trans = evalAndLog("trans = event.target.result");
-    shouldBeNonNull("trans");
-
-    deleteAllObjectStores(db);
-
+    db = event.target.result;
+    event.target.transaction.onabort = unexpectedAbortCallback;
     store = evalAndLog("store = db.createObjectStore('storeName', null)");
 
     self.index = evalAndLog("store.createIndex('indexName', '')");
@@ -36,33 +17,40 @@ function deleteExisting()
 
     request = evalAndLog("store.add('value', 'key')");
     request.onerror = unexpectedErrorCallback;
-    trans.oncomplete = getValue;
 }
 
 function getValue()
 {
     transaction = evalAndLog("db.transaction(['storeName'])");
     transaction.onabort = unexpectedErrorCallback;
+    transaction.oncomplete = addIndex;
     var store = evalAndLog("store = transaction.objectStore('storeName')");
 
     request = evalAndLog("store.get('key')");
-    request.onsuccess = addIndex;
+    request.onsuccess = checkResult;
     request.onerror = unexpectedErrorCallback;
+}
+
+function checkResult()
+{
+    shouldBeEqualToString("event.target.result", "value");
 }
 
 function addIndex()
 {
-    shouldBeEqualToString("event.target.result", "value");
+    evalAndLog("db.close()");
 
-    request = evalAndLog("db.setVersion('new version')");
-    request.onsuccess = deleteObjectStore;
+    request = evalAndLog("indexedDB.open(dbname, 2)");
+    request.onupgradeneeded = deleteObjectStore;
     request.onerror = unexpectedErrorCallback;
+    request.onsuccess = getValueAgain;
+    request.onblocked = unexpectedBlockedCallback;
 }
 
 function deleteObjectStore()
 {
-    self.trans = evalAndLog("trans = event.target.result");
-    shouldBeNonNull("trans");
+    trans = request.transaction;
+    db = request.result;
     trans.onabort = unexpectedAbortCallback;
 
     evalAndLog("db.deleteObjectStore('storeName')");
@@ -72,7 +60,6 @@ function deleteObjectStore()
 function createObjectStoreAgain()
 {
     evalAndLog("db.createObjectStore('storeName', null)");
-    trans.oncomplete = getValueAgain;
 }
 
 function getValueAgain()
@@ -93,5 +80,3 @@ function verifyNotFound()
 
     finishJSTest();
 }
-
-test();

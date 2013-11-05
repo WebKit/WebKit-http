@@ -52,15 +52,17 @@ WebInspector.CodeMirrorTextEditor = function(url, delegate)
 
     this._codeMirror = window.CodeMirror(this.element, {
         lineNumbers: true,
-        fixedGutter: true,
-        onChange: this._onChange.bind(this),
-        onGutterClick: this._onGutterClick.bind(this)
+        gutters: ["CodeMirror-linenumbers", "breakpoints"]
     });
+
+    this._codeMirror.on("change", this._change.bind(this));
+    this._codeMirror.on("gutterClick", this._gutterClick.bind(this));
 
     this._lastRange = this.range();
 
     this.element.firstChild.addStyleClass("source-code");
     this.element.firstChild.addStyleClass("fill");
+    this._elementToWidget = new Map();
 }
 
 WebInspector.CodeMirrorTextEditor.prototype = {
@@ -116,11 +118,10 @@ WebInspector.CodeMirrorTextEditor.prototype = {
     revealLine: function(lineNumber)
     {
         this._codeMirror.setCursor({ line: lineNumber, ch: 0 });
-        var coords = this._codeMirror.cursorCoords();
-        this._codeMirror.scrollTo(coords.x, coords.y);
+        this._codeMirror.scrollIntoView();
     },
 
-    _onGutterClick: function(instance, lineNumber, event)
+    _gutterClick: function(instance, lineNumber, gutter, event)
     {
         this.dispatchEventToListeners(WebInspector.TextEditor.Events.GutterClick, { lineNumber: lineNumber, event: event });
     },
@@ -132,8 +133,10 @@ WebInspector.CodeMirrorTextEditor.prototype = {
      */
     addBreakpoint: function(lineNumber, disabled, conditional)
     {
-        var className = "cm-breakpoint" + (disabled ? " cm-breakpoint-disabled" : "") + (conditional ? " cm-breakpoint-conditional" : "");
-        this._codeMirror.setMarker(lineNumber, null, className);
+        var element = document.createElement("span");
+        element.textContent = lineNumber + 1;
+        element.className = "cm-breakpoint" + (disabled ? " cm-breakpoint-disabled" : "") + (conditional ? " cm-breakpoint-conditional" : "");
+        this._codeMirror.setGutterMarker(lineNumber, "breakpoints", element);
     },
 
     /**
@@ -141,7 +144,7 @@ WebInspector.CodeMirrorTextEditor.prototype = {
      */
     removeBreakpoint: function(lineNumber)
     {
-        this._codeMirror.clearMarker(lineNumber);
+        this._codeMirror.setGutterMarker(lineNumber, "breakpoints", null);
     },
 
     /**
@@ -149,14 +152,14 @@ WebInspector.CodeMirrorTextEditor.prototype = {
      */
     setExecutionLine: function(lineNumber)
     {
-        this._executionLine = this._codeMirror.getLineHandle(lineNumber)
-        this._codeMirror.setLineClass(this._executionLine, null, "cm-execution-line");
+        this._executionLine = this._codeMirror.getLineHandle(lineNumber);
+        this._codeMirror.addLineClass(this._executionLine, null, "cm-execution-line");
     },
 
     clearExecutionLine: function()
     {
         if (this._executionLine)
-            this._codeMirror.setLineClass(this._executionLine, null, null);
+            this._codeMirror.removeLineClass(this._executionLine, null, "cm-execution-line");
         delete this._executionLine;
     },
 
@@ -166,7 +169,8 @@ WebInspector.CodeMirrorTextEditor.prototype = {
      */
     addDecoration: function(lineNumber, element)
     {
-        // TODO implement so that it doesn't hide context code
+        var widget = this._codeMirror.addLineWidget(lineNumber, element);
+        this._elementToWidget.put(element, widget);
     },
 
     /**
@@ -175,7 +179,9 @@ WebInspector.CodeMirrorTextEditor.prototype = {
      */
     removeDecoration: function(lineNumber, element)
     {
-        // TODO implement so that it doesn't hide context code
+        var widget = this._elementToWidget.remove(element);
+        if (widget)
+            this._codeMirror.removeLineWidget(widget);
     },
 
     /**
@@ -194,7 +200,10 @@ WebInspector.CodeMirrorTextEditor.prototype = {
     {
         this.clearLineHighlight();
         this._highlightedLine = this._codeMirror.getLineHandle(lineNumber);
-        this._codeMirror.setLineClass(this._highlightedLine, null, "cm-highlight");
+        if (!this._highlightedLine)
+          return;
+        this.revealLine(lineNumber);
+        this._codeMirror.addLineClass(this._highlightedLine, null, "cm-highlight");
         this._clearHighlightTimeout = setTimeout(this.clearLineHighlight.bind(this), 2000);
     },
 
@@ -204,8 +213,8 @@ WebInspector.CodeMirrorTextEditor.prototype = {
             clearTimeout(this._clearHighlightTimeout);
         delete this._clearHighlightTimeout;
 
-        if (this._highlightedLine)
-            this._codeMirror.setLineClass(this._highlightedLine, null, null);
+         if (this._highlightedLine)
+            this._codeMirror.removeLineClass(this._highlightedLine, null, "cm-highlight");
         delete this._highlightedLine;
     },
 
@@ -243,8 +252,13 @@ WebInspector.CodeMirrorTextEditor.prototype = {
         return newRange;
     },
 
-    _onChange: function()
+    _change: function()
     {
+        var widgets = this._elementToWidget.values();
+        for (var i = 0; i < widgets.length; ++i)
+            this._codeMirror.removeLineWidget(widgets[i]);
+        this._elementToWidget.clear();
+
         var newRange = this.range();
         this._delegate.onTextChanged(this._lastRange, newRange);
         this._lastRange = newRange;
@@ -263,8 +277,8 @@ WebInspector.CodeMirrorTextEditor.prototype = {
      */
     selection: function(textRange)
     {
-        var start = this._codeMirror.cursorCoords(true);
-        var end = this._codeMirror.cursorCoords(false);
+        var start = this._codeMirror.getCursor(true);
+        var end = this._codeMirror.getCursor(false);
 
         if (start.line > end.line || (start.line == end.line && start.ch > end.ch))
             return this._toRange(end, start);

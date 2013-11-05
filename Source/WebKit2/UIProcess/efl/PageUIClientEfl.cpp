@@ -31,8 +31,11 @@
 #include "WKAPICast.h"
 #include "WKEvent.h"
 #include "WKString.h"
+#include "ewk_file_chooser_request_private.h"
 #include <Ecore_Evas.h>
 #include <WebCore/Color.h>
+
+using namespace EwkViewCallbacks;
 
 namespace WebKit {
 
@@ -46,9 +49,9 @@ void PageUIClientEfl::closePage(WKPageRef, const void* clientInfo)
     toPageUIClientEfl(clientInfo)->m_viewImpl->closePage();
 }
 
-WKPageRef PageUIClientEfl::createNewPage(WKPageRef, WKURLRequestRef, WKDictionaryRef, WKEventModifiers, WKEventMouseButton, const void* clientInfo)
+WKPageRef PageUIClientEfl::createNewPage(WKPageRef, WKURLRequestRef, WKDictionaryRef windowFeatures, WKEventModifiers, WKEventMouseButton, const void* clientInfo)
 {
-    return toPageUIClientEfl(clientInfo)->m_viewImpl->createNewPage();
+    return toPageUIClientEfl(clientInfo)->m_viewImpl->createNewPage(windowFeatures);
 }
 
 void PageUIClientEfl::runJavaScriptAlert(WKPageRef, WKStringRef alertText, WKFrameRef, const void* clientInfo)
@@ -108,18 +111,19 @@ void PageUIClientEfl::takeFocus(WKPageRef, WKFocusDirection, const void* clientI
 
 WKRect PageUIClientEfl::getWindowFrame(WKPageRef, const void* clientInfo)
 {
-    int x, y, width, height;
-
-    Ecore_Evas* ee = ecore_evas_ecore_evas_get(evas_object_evas_get(toPageUIClientEfl(clientInfo)->m_viewImpl->view()));
-    ecore_evas_request_geometry_get(ee, &x, &y, &width, &height);
-
-    return WKRectMake(x, y, width, height);
+    return toPageUIClientEfl(clientInfo)->m_viewImpl->windowGeometry();
 }
 
 void PageUIClientEfl::setWindowFrame(WKPageRef, WKRect frame, const void* clientInfo)
 {
-    Ecore_Evas* ee = ecore_evas_ecore_evas_get(evas_object_evas_get(toPageUIClientEfl(clientInfo)->m_viewImpl->view()));
-    ecore_evas_move_resize(ee, frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
+    toPageUIClientEfl(clientInfo)->m_viewImpl->setWindowGeometry(frame);
+}
+
+void PageUIClientEfl::runOpenPanel(WKPageRef, WKFrameRef, WKOpenPanelParametersRef parameters, WKOpenPanelResultListenerRef listener, const void* clientInfo)
+{
+    EwkViewImpl* viewImpl = toPageUIClientEfl(clientInfo)->m_viewImpl;
+    RefPtr<Ewk_File_Chooser_Request> fileChooserRequest = EwkFileChooserRequest::create(toImpl(parameters), toImpl(listener));
+    viewImpl->smartCallback<FileChooserRequest>().call(fileChooserRequest.get());
 }
 
 PageUIClientEfl::PageUIClientEfl(EwkViewImpl* viewImpl)
@@ -142,6 +146,7 @@ PageUIClientEfl::PageUIClientEfl(EwkViewImpl* viewImpl)
     uiClient.unfocus = unfocus;
     uiClient.getWindowFrame = getWindowFrame;
     uiClient.setWindowFrame = setWindowFrame;
+    uiClient.runOpenPanel = runOpenPanel;
 #if ENABLE(SQL_DATABASE)
     uiClient.exceededDatabaseQuota = exceededDatabaseQuota;
 #endif

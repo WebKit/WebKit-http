@@ -30,6 +30,8 @@
 #include "ContentSecurityPolicy.h"
 #include "HTMLParserIdioms.h"
 #include "SecurityOrigin.h"
+#include "WebCoreMemoryInstrumentation.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -83,7 +85,7 @@ void SecurityContext::didUpdateSecurityOrigin()
     // Subclasses can override this function if the need to do extra work when the security origin changes.
 }
 
-SandboxFlags SecurityContext::parseSandboxPolicy(const String& policy)
+SandboxFlags SecurityContext::parseSandboxPolicy(const String& policy, String& invalidTokensErrorMessage)
 {
     // http://www.w3.org/TR/html5/the-iframe-element.html#attr-iframe-sandbox
     // Parse the unordered set of unique space-separated tokens.
@@ -91,6 +93,8 @@ SandboxFlags SecurityContext::parseSandboxPolicy(const String& policy)
     const UChar* characters = policy.characters();
     unsigned length = policy.length();
     unsigned start = 0;
+    unsigned numberOfTokenErrors = 0;
+    StringBuilder tokenErrors;
     while (true) {
         while (start < length && isHTMLSpace(characters[start]))
             ++start;
@@ -115,11 +119,35 @@ SandboxFlags SecurityContext::parseSandboxPolicy(const String& policy)
             flags &= ~SandboxPopups;
         else if (equalIgnoringCase(sandboxToken, "allow-pointer-lock"))
             flags &= ~SandboxPointerLock;
+        else {
+            if (numberOfTokenErrors)
+                tokenErrors.appendLiteral(", '");
+            else
+                tokenErrors.append('\'');
+            tokenErrors.append(sandboxToken);
+            tokenErrors.append('\'');
+            numberOfTokenErrors++;
+        }
 
         start = end + 1;
     }
 
+    if (numberOfTokenErrors) {
+        if (numberOfTokenErrors > 1)
+            tokenErrors.appendLiteral(" are invalid sandbox flags.");
+        else
+            tokenErrors.appendLiteral(" is an invalid sandbox flag.");
+        invalidTokensErrorMessage = tokenErrors.toString();
+    }
+
     return flags;
+}
+
+void SecurityContext::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    info.addMember(m_securityOrigin);
+    info.addMember(m_contentSecurityPolicy);
 }
 
 }

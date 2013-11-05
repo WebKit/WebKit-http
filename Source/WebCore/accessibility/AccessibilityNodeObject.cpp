@@ -234,7 +234,7 @@ LayoutRect AccessibilityNodeObject::boundingBoxRect() const
     for (AccessibilityObject* positionProvider = parentObject(); positionProvider; positionProvider = positionProvider->parentObject()) {
         if (positionProvider->isAccessibilityRenderObject()) {
             LayoutRect parentRect = positionProvider->elementRect();
-            boundingBox.setSize(LayoutSize(parentRect.width(), FractionalLayoutUnit(std::min(10.0f, parentRect.height().toFloat()))));
+            boundingBox.setSize(LayoutSize(parentRect.width(), LayoutUnit(std::min(10.0f, parentRect.height().toFloat()))));
             boundingBox.setLocation(parentRect.location());
             break;
         }
@@ -1475,6 +1475,9 @@ String AccessibilityNodeObject::title() const
     case RadioButtonRole:
     case TabRole:
         return textUnderElement();
+    // SVGRoots should not use the text under itself as a title. That could include the text of objects like <text>.
+    case SVGRootRole:
+        return String();
     default:
         break;
     }

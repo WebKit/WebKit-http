@@ -88,15 +88,18 @@ else
 end
 
 # Constant for reasoning about butterflies.
-const IsArray = 1
-const IndexingShapeMask = 30
-const ContiguousShape = 26
-const ArrayStorageShape = 28
+const IsArray                  = 1
+const IndexingShapeMask        = 30
+const NoIndexingShape          = 0
+const Int32Shape               = 20
+const DoubleShape              = 22
+const ContiguousShape          = 26
+const ArrayStorageShape        = 28
 const SlowPutArrayStorageShape = 30
 
 # Type constants.
 const StringType = 5
-const ObjectType = 13
+const ObjectType = 17
 
 # Type flags constants.
 const MasqueradesAsUndefined = 1
@@ -151,11 +154,10 @@ else
 end
 
 # This must match wtf/Vector.h
+const VectorSizeOffset = 0
 if JSVALUE64
-    const VectorSizeOffset = 0
     const VectorBufferOffset = 8
 else
-    const VectorSizeOffset = 0
     const VectorBufferOffset = 4
 end
 
@@ -344,9 +346,9 @@ macro functionInitialization(profileArgSkip)
         addp t2, t3
     .argumentProfileLoop:
         if JSVALUE64
-            loadp ThisArgumentOffset + 8 - profileArgSkip * 8[cfr, t0], t2
+            loadq ThisArgumentOffset + 8 - profileArgSkip * 8[cfr, t0], t2
             subp sizeof ValueProfile, t3
-            storep t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets[t3]
+            storeq t2, profileArgSkip * sizeof ValueProfile + ValueProfile::m_buckets[t3]
         else
             loadi ThisArgumentOffset + TagOffset + 8 - profileArgSkip * 8[cfr, t0], t2
             subp sizeof ValueProfile, t3
@@ -463,19 +465,19 @@ end
 _llint_op_new_array:
     traceExecution()
     callSlowPath(_llint_slow_path_new_array)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_new_array_with_size:
     traceExecution()
     callSlowPath(_llint_slow_path_new_array_with_size)
-    dispatch(3)
+    dispatch(4)
 
 
 _llint_op_new_array_buffer:
     traceExecution()
     callSlowPath(_llint_slow_path_new_array_buffer)
-    dispatch(4)
+    dispatch(5)
 
 
 _llint_op_new_regexp:
@@ -546,13 +548,13 @@ macro getPutToBaseOperationField(scratch, scratch1, fieldOffset, fieldGetter)
 end
 
 macro moveJSValueFromRegisterWithoutProfiling(value, destBuffer, destOffsetReg)
-    storep value, [destBuffer, destOffsetReg, 8]
+    storeq value, [destBuffer, destOffsetReg, 8]
 end
 
 
 macro moveJSValueFromRegistersWithoutProfiling(tag, payload, destBuffer, destOffsetReg)
-    storep tag, TagOffset[destBuffer, destOffsetReg, 8]
-    storep payload, PayloadOffset[destBuffer, destOffsetReg, 8]
+    storei tag, TagOffset[destBuffer, destOffsetReg, 8]
+    storei payload, PayloadOffset[destBuffer, destOffsetReg, 8]
 end
 
 macro putToBaseVariableBody(variableOffset, scratch1, scratch2, scratch3)
@@ -613,15 +615,15 @@ end
 
 macro moveJSValue(sourceBuffer, sourceOffsetReg, destBuffer, destOffsetReg, profileOffset, scratchRegister)
     if JSVALUE64
-        loadp [sourceBuffer, sourceOffsetReg, 8], scratchRegister
-        storep scratchRegister, [destBuffer, destOffsetReg, 8]
+        loadq [sourceBuffer, sourceOffsetReg, 8], scratchRegister
+        storeq scratchRegister, [destBuffer, destOffsetReg, 8]
         loadpFromInstruction(profileOffset, destOffsetReg)
         valueProfile(scratchRegister, destOffsetReg)
     else
-        loadp PayloadOffset[sourceBuffer, sourceOffsetReg, 8], scratchRegister
-        storep scratchRegister, PayloadOffset[destBuffer, destOffsetReg, 8]
-        loadp TagOffset[sourceBuffer, sourceOffsetReg, 8], sourceOffsetReg
-        storep sourceOffsetReg, TagOffset[destBuffer, destOffsetReg, 8]
+        loadi PayloadOffset[sourceBuffer, sourceOffsetReg, 8], scratchRegister
+        storei scratchRegister, PayloadOffset[destBuffer, destOffsetReg, 8]
+        loadi TagOffset[sourceBuffer, sourceOffsetReg, 8], sourceOffsetReg
+        storei sourceOffsetReg, TagOffset[destBuffer, destOffsetReg, 8]
         loadpFromInstruction(profileOffset, destOffsetReg)
         valueProfile(sourceOffsetReg, scratchRegister, destOffsetReg)
     end
@@ -629,29 +631,29 @@ end
 
 macro moveJSValueFromSlot(slot, destBuffer, destOffsetReg, profileOffset, scratchRegister)
     if JSVALUE64
-        loadp [slot], scratchRegister
-        storep scratchRegister, [destBuffer, destOffsetReg, 8]
+        loadq [slot], scratchRegister
+        storeq scratchRegister, [destBuffer, destOffsetReg, 8]
         loadpFromInstruction(profileOffset, destOffsetReg)
         valueProfile(scratchRegister, destOffsetReg)
     else
-        loadp PayloadOffset[slot], scratchRegister
-        storep scratchRegister, PayloadOffset[destBuffer, destOffsetReg, 8]
-        loadp TagOffset[slot], slot
-        storep slot, TagOffset[destBuffer, destOffsetReg, 8]
+        loadi PayloadOffset[slot], scratchRegister
+        storei scratchRegister, PayloadOffset[destBuffer, destOffsetReg, 8]
+        loadi TagOffset[slot], slot
+        storei slot, TagOffset[destBuffer, destOffsetReg, 8]
         loadpFromInstruction(profileOffset, destOffsetReg)
         valueProfile(slot, scratchRegister, destOffsetReg)
     end
 end
 
 macro moveJSValueFromRegister(value, destBuffer, destOffsetReg, profileOffset)
-    storep value, [destBuffer, destOffsetReg, 8]
+    storeq value, [destBuffer, destOffsetReg, 8]
     loadpFromInstruction(profileOffset, destOffsetReg)
     valueProfile(value, destOffsetReg)
 end
 
 macro moveJSValueFromRegisters(tag, payload, destBuffer, destOffsetReg, profileOffset)
-    storep tag, TagOffset[destBuffer, destOffsetReg, 8]
-    storep payload, PayloadOffset[destBuffer, destOffsetReg, 8]
+    storei tag, TagOffset[destBuffer, destOffsetReg, 8]
+    storei payload, PayloadOffset[destBuffer, destOffsetReg, 8]
     loadpFromInstruction(profileOffset, destOffsetReg)
     valueProfile(tag, payload, destOffsetReg)
 end
@@ -662,7 +664,7 @@ _llint_op_resolve_global_property:
     loadp CodeBlock[cfr], t1
     loadp CodeBlock::m_globalObject[t1], t1
     loadp ResolveOperation::m_structure[t0], t2
-    bpneq JSCell::m_structure[t1], t2, _llint_op_resolve
+    bpneq JSCell::m_structure[t1], t2, .llint_op_resolve_local
     loadis ResolveOperation::m_offset[t0], t0
     if JSVALUE64
         loadPropertyAtVariableOffsetKnownNotInline(t0, t1, t2)
@@ -747,6 +749,7 @@ _llint_op_resolve_scoped_var_with_top_scope_check:
     dispatch(5)
 
 _llint_op_resolve:
+.llint_op_resolve_local:
     traceExecution()
     getResolveOperation(3, t0, t1)
     btpz t0, .noInstructions
@@ -886,10 +889,11 @@ macro interpretResolveWithBase(opcodeLength, slowPath)
     # t1 now contains the index for the base register
 
     bineq t2, ResolveOperationSetBaseToScope, .notSetBaseToScope
-        storep t3, PayloadOffset[cfr, t1, 8]
         if JSVALUE64
+            storeq t3, [cfr, t1, 8]
         else
-            storep CellTag, TagOffset[cfr, t1, 8]
+            storei t3, PayloadOffset[cfr, t1, 8]
+            storei CellTag, TagOffset[cfr, t1, 8]
         end
         jmp .haveSetBase
 
@@ -897,10 +901,10 @@ macro interpretResolveWithBase(opcodeLength, slowPath)
 
     bineq t2, ResolveOperationSetBaseToUndefined, .notSetBaseToUndefined
         if JSVALUE64
-            storep ValueUndefined, PayloadOffset[cfr, t1, 8]
+            storeq ValueUndefined, [cfr, t1, 8]
         else
-            storep 0, PayloadOffset[cfr, t1, 8]
-            storep UndefinedTag, TagOffset[cfr, t1, 8]
+            storei 0, PayloadOffset[cfr, t1, 8]
+            storei UndefinedTag, TagOffset[cfr, t1, 8]
         end
         jmp .haveSetBase
 
@@ -908,10 +912,11 @@ macro interpretResolveWithBase(opcodeLength, slowPath)
     bineq t2, ResolveOperationSetBaseToGlobal, .slowPath
         loadp JSCell::m_structure[t3], t2
         loadp Structure::m_globalObject[t2], t2
-        storep t2, PayloadOffset[cfr, t1, 8]
         if JSVALUE64
+            storeq t2, [cfr, t1, 8]
         else
-            storep CellTag, TagOffset[cfr, t1, 8]
+            storei t2, PayloadOffset[cfr, t1, 8]
+            storei CellTag, TagOffset[cfr, t1, 8]
         end
 
     .haveSetBase:
@@ -1202,12 +1207,6 @@ _llint_op_strcat:
     dispatch(4)
 
 
-_llint_op_method_check:
-    traceExecution()
-    # We ignore method checks and use normal get_by_id optimizations.
-    dispatch(1)
-
-
 _llint_op_get_pnames:
     traceExecution()
     callSlowPath(_llint_slow_path_get_pnames)
@@ -1238,10 +1237,10 @@ _llint_op_throw:
     dispatch(2)
 
 
-_llint_op_throw_reference_error:
+_llint_op_throw_static_error:
     traceExecution()
-    callSlowPath(_llint_slow_path_throw_reference_error)
-    dispatch(2)
+    callSlowPath(_llint_slow_path_throw_static_error)
+    dispatch(3)
 
 
 _llint_op_profile_will_call:
@@ -1330,6 +1329,8 @@ _llint_op_put_by_id_replace:
 _llint_op_put_by_id_transition:
     notSupported()
 
+_llint_op_init_global_const_nop:
+    dispatch(5)
 
 # Indicate the end of LLInt.
 _llint_end:

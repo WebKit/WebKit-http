@@ -36,6 +36,8 @@ VPATH = \
     $(WebKit2)/WebProcess/IconDatabase \
     $(WebKit2)/WebProcess/KeyValueStorage \
     $(WebKit2)/WebProcess/MediaCache \
+    $(WebKit2)/WebProcess/Network \
+    $(WebKit2)/WebProcess/Network/CustomProtocols \
     $(WebKit2)/WebProcess/Notifications \
     $(WebKit2)/WebProcess/Plugins \
     $(WebKit2)/WebProcess/ResourceCache \
@@ -45,18 +47,23 @@ VPATH = \
     $(WebKit2)/UIProcess \
     $(WebKit2)/UIProcess/Downloads \
     $(WebKit2)/UIProcess/Network \
+    $(WebKit2)/UIProcess/Network/CustomProtocols \
     $(WebKit2)/UIProcess/Notifications \
     $(WebKit2)/UIProcess/Plugins \
     $(WebKit2)/UIProcess/SharedWorkers \
+    $(WebKit2)/UIProcess/mac \
 #
 
 MESSAGE_RECEIVERS = \
     AuthenticationManager \
+    CustomProtocolManager \
+    CustomProtocolManagerProxy \
     DrawingArea \
     DrawingAreaProxy \
     DownloadProxy \
     EventDispatcher \
     NetworkProcess \
+    NetworkProcessConnection \
     NetworkProcessProxy \
     NPObjectMessageReceiver \
     PluginControllerProxy \
@@ -72,6 +79,7 @@ MESSAGE_RECEIVERS = \
     WebCookieManagerProxy \
     WebConnection \
     NetworkConnectionToWebProcess \
+    RemoteLayerTreeHost \
     WebContext \
     WebDatabaseManager \
     WebDatabaseManagerProxy \
@@ -97,6 +105,7 @@ MESSAGE_RECEIVERS = \
     WebProcessProxy \
     WebResourceCacheManager \
     WebResourceCacheManagerProxy \
+    WebResourceLoader \
 #
 
 SCRIPTS = \
@@ -129,12 +138,7 @@ ifeq ($(OS),MACOS)
 
 FRAMEWORK_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(FRAMEWORK_SEARCH_PATHS) | perl -e 'print "-F " . join(" -F ", split(" ", <>));')
 HEADER_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(HEADER_SEARCH_PATHS) | perl -e 'print "-I" . join(" -I", split(" ", <>));')
-
-ifeq ($(TARGET_GCC_VERSION),LLVM_COMPILER)
-	TEXT_PREPROCESSOR_FLAGS=-E -P -x c -traditional -w
-else
-	TEXT_PREPROCESSOR_FLAGS=-E -P -x c -std=c89
-endif
+TEXT_PREPROCESSOR_FLAGS=-E -P -x c -traditional -w
 
 ifneq ($(SDKROOT),)
 	SDK_FLAGS=-isysroot $(SDKROOT)

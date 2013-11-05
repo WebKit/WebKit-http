@@ -26,7 +26,10 @@
  *
  * The following signals (see evas_object_smart_callback_add()) are emitted:
  *
+ * - "authentication,request", Ewk_Auth_Request*: reports that user authentication was requested. Call
+ *   ewk_auth_request_ref() on the request object to process the authentication asynchronously.
  * - "back,forward,list,changed", void: reports that the view's back / forward list had changed.
+ * - "cancel,vibration", void: request to cancel the vibration.
  * - "close,window", void: window is closed.
  * - "create,window", Evas_Object**: a new window is created.
  * - "download,cancelled", Ewk_Download_Job*: reports that a download was effectively cancelled.
@@ -34,6 +37,9 @@
  * - "download,finished", Ewk_Download_Job*: reports that a download completed successfully.
  * - "download,request", Ewk_Download_Job*: reports that a new download has been requested. The client should set the
  *   destination path by calling ewk_download_job_destination_set() or the download will fail.
+ * - "file,chooser,request", Ewk_File_Chooser_Request*: reports that a request has been made for the user to choose
+ *   a file (or several) on the file system. Call ewk_file_chooser_request_ref() on the request object to process it
+ *   asynchronously.
  * - "form,submission,request", Ewk_Form_Submission_Request*: Reports that a form request is about to be submitted.
  *   The Ewk_Form_Submission_Request passed contains information about the text fields of the form. This
  *   is typically used to store login information that can be used later to pre-fill the form.
@@ -68,6 +74,7 @@
  * - "tooltip,text,set", const char*: tooltip was set.
  * - "tooltip,text,unset", void: tooltip was unset.
  * - "url,changed", const char*: url of the main frame was changed.
+ * - "vibrate", uint64_t*: request to vibrate. (value is vibration time)
  * - "webprocess,crashed", Eina_Bool*: expects a @c EINA_TRUE if web process crash is handled; @c EINA_FALSE, otherwise.
  */
 
@@ -82,6 +89,7 @@
 #include "ewk_intent.h"
 #include "ewk_popup_menu.h"
 #include "ewk_resource.h"
+#include "ewk_security_origin.h"
 #include "ewk_settings.h"
 #include "ewk_touch.h"
 #include "ewk_url_request.h"
@@ -114,7 +122,7 @@ struct Ewk_View_Smart_Class {
     //  - if overridden, have to call parent method if desired
     Eina_Bool (*focus_in)(Ewk_View_Smart_Data *sd);
     Eina_Bool (*focus_out)(Ewk_View_Smart_Data *sd);
-    Eina_Bool (*fullscreen_enter)(Ewk_View_Smart_Data *sd);
+    Eina_Bool (*fullscreen_enter)(Ewk_View_Smart_Data *sd, Ewk_Security_Origin *origin);
     Eina_Bool (*fullscreen_exit)(Ewk_View_Smart_Data *sd);
     Eina_Bool (*mouse_wheel)(Ewk_View_Smart_Data *sd, const Evas_Event_Mouse_Wheel *ev);
     Eina_Bool (*mouse_down)(Ewk_View_Smart_Data *sd, const Evas_Event_Mouse_Down *ev);
@@ -122,6 +130,8 @@ struct Ewk_View_Smart_Class {
     Eina_Bool (*mouse_move)(Ewk_View_Smart_Data *sd, const Evas_Event_Mouse_Move *ev);
     Eina_Bool (*key_down)(Ewk_View_Smart_Data *sd, const Evas_Event_Key_Down *ev);
     Eina_Bool (*key_up)(Ewk_View_Smart_Data *sd, const Evas_Event_Key_Up *ev);
+    Eina_Bool (*window_geometry_set)(Ewk_View_Smart_Data *sd, Evas_Coord x, Evas_Coord y, Evas_Coord width, Evas_Coord height);
+    Eina_Bool (*window_geometry_get)(Ewk_View_Smart_Data *sd, Evas_Coord *x, Evas_Coord *y, Evas_Coord *width, Evas_Coord *height);
 
     // javascript popup:
     //   - All strings should be guaranteed to be stringshared.
@@ -137,13 +147,17 @@ struct Ewk_View_Smart_Class {
     // storage:
     //   - Web database.
     unsigned long long (*exceeded_database_quota)(Ewk_View_Smart_Data *sd, const char *databaseName, const char *displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage);
+
+    // new window:
+    //   - Create a new window with specified size
+    Evas_Object* (*window_create_new)(Ewk_View_Smart_Data *sd, Evas_Coord width, Evas_Coord height);
 };
 
 /**
  * The version you have to put into the version field
  * in the @a Ewk_View_Smart_Class structure.
  */
-#define EWK_VIEW_SMART_CLASS_VERSION 6UL
+#define EWK_VIEW_SMART_CLASS_VERSION 7UL
 
 /**
  * Initializer for whole Ewk_View_Smart_Class structure.
@@ -155,7 +169,7 @@ struct Ewk_View_Smart_Class {
  * @see EWK_VIEW_SMART_CLASS_INIT_VERSION
  * @see EWK_VIEW_SMART_CLASS_INIT_NAME_VERSION
  */
-#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /**
  * Initializer to zero a whole Ewk_View_Smart_Class structure.
@@ -790,6 +804,15 @@ EAPI Eina_Bool ewk_view_pagination_mode_set(Evas_Object *o, Ewk_Pagination_Mode 
  * @return The pagination mode of the current web page
  */
 EAPI Ewk_Pagination_Mode ewk_view_pagination_mode_get(const Evas_Object *o);
+
+/**
+ * Exit fullscreen mode.
+ *
+ * @param o view object where to exit fullscreen
+ *
+ * @return @c EINA_TRUE if successful, @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_fullscreen_exit(Evas_Object *o);
 
 #ifdef __cplusplus
 }

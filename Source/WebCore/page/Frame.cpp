@@ -33,7 +33,6 @@
 #include "ApplyStyleCommand.h"
 #include "BackForwardController.h"
 #include "CSSComputedStyleDeclaration.h"
-#include "CSSProperty.h"
 #include "CSSPropertyNames.h"
 #include "CachedCSSStyleSheet.h"
 #include "Chrome.h"
@@ -185,11 +184,7 @@ inline Frame::Frame(Page* page, HTMLFrameOwnerElement* ownerElement, FrameLoader
 #endif
     } else {
         page->incrementSubframeCount();
-
-        // Make sure we will not end up with two frames referencing the same owner element.
-        Frame*& contentFrameSlot = ownerElement->m_contentFrame;
-        ASSERT(!contentFrameSlot || contentFrameSlot->ownerElement() != ownerElement);
-        contentFrameSlot = this;
+        ownerElement->setContentFrame(this);
     }
 
 #ifndef NDEBUG
@@ -608,14 +603,7 @@ void Frame::injectUserScriptsForWorld(DOMWrapperWorld* world, const UserScriptVe
 
 RenderView* Frame::contentRenderer() const
 {
-    Document* doc = document();
-    if (!doc)
-        return 0;
-    RenderObject* object = doc->renderer();
-    if (!object)
-        return 0;
-    ASSERT(object->isRenderView());
-    return toRenderView(object);
+    return document() ? document()->renderView() : 0;
 }
 
 RenderPart* Frame::ownerRenderer() const
@@ -705,7 +693,7 @@ void Frame::disconnectOwnerElement()
     if (m_ownerElement) {
         if (Document* doc = document())
             doc->clearAXObjectCache();
-        m_ownerElement->m_contentFrame = 0;
+        m_ownerElement->clearContentFrame();
         if (m_page)
             m_page->decrementSubframeCount();
     }
@@ -892,6 +880,13 @@ String Frame::layerTreeAsText(LayerTreeFlags flags) const
     UNUSED_PARAM(flags);
     return String();
 #endif
+}
+
+String Frame::trackedRepaintRectsAsText() const
+{
+    if (!m_view)
+        return String();
+    return m_view->trackedRepaintRectsAsText();
 }
 
 void Frame::setPageZoomFactor(float factor)

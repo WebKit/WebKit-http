@@ -35,7 +35,7 @@ using namespace std;
 
 namespace WebCore {
 
-#if !USE(SOUP) && (!PLATFORM(MAC) || USE(CFNETWORK))
+#if !USE(SOUP) && (!PLATFORM(MAC) || USE(CFNETWORK)) && !PLATFORM(QT)
 double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 #else
 // Will use NSURLRequest default timeout unless set to a non-zero value with setDefaultTimeoutInterval().
@@ -310,12 +310,13 @@ void ResourceRequestBase::setResponseContentDispositionEncodingFallbackArray(con
     updateResourceRequest(); 
     
     m_responseContentDispositionEncodingFallbackArray.clear();
+    m_responseContentDispositionEncodingFallbackArray.reserveInitialCapacity(!encoding1.isNull() + !encoding2.isNull() + !encoding3.isNull());
     if (!encoding1.isNull())
-        m_responseContentDispositionEncodingFallbackArray.append(encoding1);
+        m_responseContentDispositionEncodingFallbackArray.uncheckedAppend(encoding1);
     if (!encoding2.isNull())
-        m_responseContentDispositionEncodingFallbackArray.append(encoding2);
+        m_responseContentDispositionEncodingFallbackArray.uncheckedAppend(encoding2);
     if (!encoding3.isNull())
-        m_responseContentDispositionEncodingFallbackArray.append(encoding3);
+        m_responseContentDispositionEncodingFallbackArray.uncheckedAppend(encoding3);
     
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
@@ -447,7 +448,7 @@ bool ResourceRequestBase::isConditional() const
             m_httpHeaderFields.contains("If-Unmodified-Since"));
 }
 
-void ResourceRequestBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+void ResourceRequestBase::reportMemoryUsageBase(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Loader);
     info.addMember(m_url);

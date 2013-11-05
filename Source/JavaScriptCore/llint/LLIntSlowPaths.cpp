@@ -275,7 +275,7 @@ inline bool shouldJIT(ExecState* exec)
 // Returns true if we should try to OSR.
 inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
 {
-    codeBlock->updateAllPredictions();
+    codeBlock->updateAllValueProfilePredictions();
     
     if (!codeBlock->checkIfJITThresholdReached()) {
 #if ENABLE(JIT_VERBOSE_OSR)
@@ -460,7 +460,7 @@ LLINT_SLOW_PATH_DECL(slow_path_create_activation)
 #if LLINT_SLOW_PATH_TRACING
     dataLog("Creating an activation, exec = %p!\n", exec);
 #endif
-    JSActivation* activation = JSActivation::create(globalData, exec, static_cast<FunctionExecutable*>(exec->codeBlock()->ownerExecutable()));
+    JSActivation* activation = JSActivation::create(globalData, exec, exec->codeBlock());
     exec->setScope(activation);
     LLINT_RETURN(JSValue(activation));
 }
@@ -478,7 +478,7 @@ LLINT_SLOW_PATH_DECL(slow_path_create_arguments)
 LLINT_SLOW_PATH_DECL(slow_path_create_this)
 {
     LLINT_BEGIN();
-    JSFunction* constructor = jsCast<JSFunction*>(exec->callee());
+    JSFunction* constructor = jsCast<JSFunction*>(LLINT_OP(2).jsValue().asCell());
     
 #if !ASSERT_DISABLED
     ConstructData constructData;
@@ -510,19 +510,19 @@ LLINT_SLOW_PATH_DECL(slow_path_new_object)
 LLINT_SLOW_PATH_DECL(slow_path_new_array)
 {
     LLINT_BEGIN();
-    LLINT_RETURN(constructArray(exec, bitwise_cast<JSValue*>(&LLINT_OP(2)), pc[3].u.operand));
+    LLINT_RETURN(constructArray(exec, pc[4].u.arrayAllocationProfile, bitwise_cast<JSValue*>(&LLINT_OP(2)), pc[3].u.operand));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_new_array_with_size)
 {
     LLINT_BEGIN();
-    LLINT_RETURN(constructArrayWithSizeQuirk(exec, exec->lexicalGlobalObject(), LLINT_OP_C(2).jsValue()));
+    LLINT_RETURN(constructArrayWithSizeQuirk(exec, pc[3].u.arrayAllocationProfile, exec->lexicalGlobalObject(), LLINT_OP_C(2).jsValue()));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_new_array_buffer)
 {
     LLINT_BEGIN();
-    LLINT_RETURN(constructArray(exec, exec->codeBlock()->constantBuffer(pc[2].u.operand), pc[3].u.operand));
+    LLINT_RETURN(constructArray(exec, pc[4].u.arrayAllocationProfile, exec->codeBlock()->constantBuffer(pc[2].u.operand), pc[3].u.operand));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_new_regexp)
@@ -1001,32 +1001,32 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
                     // below may GC.
                     pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id);
 
-                    normalizePrototypeChain(exec, baseCell);
-                    
-                    ASSERT(structure->previousID()->isObject());
-                    pc[4].u.structure.set(
-                        globalData, codeBlock->ownerExecutable(), structure->previousID());
-                    if (isInlineOffset(slot.cachedOffset()))
-                        pc[5].u.operand = offsetInInlineStorage(slot.cachedOffset()) * sizeof(JSValue) + JSObject::offsetOfInlineStorage();
-                    else
-                        pc[5].u.operand = offsetInButterfly(slot.cachedOffset()) * sizeof(JSValue);
-                    pc[6].u.structure.set(
-                        globalData, codeBlock->ownerExecutable(), structure);
-                    StructureChain* chain = structure->prototypeChain(exec);
-                    ASSERT(chain);
-                    pc[7].u.structureChain.set(
-                        globalData, codeBlock->ownerExecutable(), chain);
-                    
-                    if (pc[8].u.operand) {
+                    if (normalizePrototypeChain(exec, baseCell) != InvalidPrototypeChain) {
+                        ASSERT(structure->previousID()->isObject());
+                        pc[4].u.structure.set(
+                            globalData, codeBlock->ownerExecutable(), structure->previousID());
                         if (isInlineOffset(slot.cachedOffset()))
-                            pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_direct);
+                            pc[5].u.operand = offsetInInlineStorage(slot.cachedOffset()) * sizeof(JSValue) + JSObject::offsetOfInlineStorage();
                         else
-                            pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_direct_out_of_line);
-                    } else {
-                        if (isInlineOffset(slot.cachedOffset()))
-                            pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_normal);
-                        else
-                            pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_normal_out_of_line);
+                            pc[5].u.operand = offsetInButterfly(slot.cachedOffset()) * sizeof(JSValue);
+                        pc[6].u.structure.set(
+                            globalData, codeBlock->ownerExecutable(), structure);
+                        StructureChain* chain = structure->prototypeChain(exec);
+                        ASSERT(chain);
+                        pc[7].u.structureChain.set(
+                            globalData, codeBlock->ownerExecutable(), chain);
+                    
+                        if (pc[8].u.operand) {
+                            if (isInlineOffset(slot.cachedOffset()))
+                                pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_direct);
+                            else
+                                pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_direct_out_of_line);
+                        } else {
+                            if (isInlineOffset(slot.cachedOffset()))
+                                pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_normal);
+                            else
+                                pc[0].u.opcode = LLInt::getOpcode(llint_op_put_by_id_transition_normal_out_of_line);
+                        }
                     }
                 }
             } else {
@@ -1622,10 +1622,13 @@ LLINT_SLOW_PATH_DECL(slow_path_throw)
     LLINT_THROW(LLINT_OP_C(1).jsValue());
 }
 
-LLINT_SLOW_PATH_DECL(slow_path_throw_reference_error)
+LLINT_SLOW_PATH_DECL(slow_path_throw_static_error)
 {
     LLINT_BEGIN();
-    LLINT_THROW(createReferenceError(exec, LLINT_OP_C(1).jsValue().toString(exec)->value(exec)));
+    if (pc[2].u.operand)
+        LLINT_THROW(createReferenceError(exec, LLINT_OP_C(1).jsValue().toString(exec)->value(exec)));
+    else
+        LLINT_THROW(createTypeError(exec, LLINT_OP_C(1).jsValue().toString(exec)->value(exec)));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_debug)

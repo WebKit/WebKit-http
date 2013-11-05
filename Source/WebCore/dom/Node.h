@@ -27,9 +27,8 @@
 
 #include "EditingBoundary.h"
 #include "EventTarget.h"
-#include "FractionalLayoutRect.h"
 #include "KURLHash.h"
-#include "LayoutTypes.h"
+#include "LayoutRect.h"
 #include "MutationObserver.h"
 #include "RenderStyleConstants.h"
 #include "ScriptWrappable.h"
@@ -109,6 +108,17 @@ enum StyleChangeType {
     InlineStyleChange = 1 << nodeStyleChangeShift, 
     FullStyleChange = 2 << nodeStyleChangeShift, 
     SyntheticStyleChange = 3 << nodeStyleChangeShift
+};
+
+class NodeRareDataBase {
+public:
+    RenderObject* renderer() const { return m_renderer; }
+    void setRenderer(RenderObject* renderer) { m_renderer = renderer; }
+    virtual ~NodeRareDataBase() { }
+protected:
+    NodeRareDataBase() { }
+private:
+    RenderObject* m_renderer;
 };
 
 class Node : public EventTarget, public ScriptWrappable, public TreeShared<Node, ContainerNode> {
@@ -226,8 +236,10 @@ public:
     bool isDocumentNode() const;
     bool isShadowRoot() const { return getFlag(IsShadowRootFlag); }
     bool inNamedFlow() const { return getFlag(InNamedFlowFlag); }
-    bool hasAttrList() const { return getFlag(HasAttrListFlag); }
     bool hasCustomCallbacks() const { return getFlag(HasCustomCallbacksFlag); }
+
+    bool hasSyntheticAttrChildNodes() const { return getFlag(HasSyntheticAttrChildNodesFlag); }
+    void setHasSyntheticAttrChildNodes(bool flag) { setFlag(flag, HasSyntheticAttrChildNodesFlag); }
 
     // If this node is in a shadow tree, returns its shadow host. Otherwise, returns 0.
     Element* shadowHost() const;
@@ -299,15 +311,11 @@ public:
     virtual void finishParsingChildren() { }
     virtual void beginParsingChildren() { }
 
-    // Called on the focused node right before dispatching an unload event.
-    virtual void aboutToUnload() { }
-
     // For <link> and <style> elements.
     virtual bool sheetLoaded() { return true; }
     virtual void notifyLoadedSheetAndAllCriticalSubresources(bool /* error loading subresource */) { }
     virtual void startLoadingDynamicSheet() { ASSERT_NOT_REACHED(); }
 
-    bool attributeStyleDirty() const { return getFlag(AttributeStyleDirtyFlag); }
     bool hasName() const { return getFlag(HasNameFlag); }
     bool hasID() const;
     bool hasClass() const;
@@ -322,9 +330,6 @@ public:
     StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
     bool isLink() const { return getFlag(IsLinkFlag); }
-
-    void setAttributeStyleDirty() { setFlag(AttributeStyleDirtyFlag); }
-    void clearAttributeStyleDirty() { clearFlag(AttributeStyleDirtyFlag); }
 
     void setHasName(bool f) { setFlag(f, HasNameFlag); }
     void setChildNeedsStyleRecalc() { setFlag(ChildNeedsStyleRecalcFlag); }
@@ -344,14 +349,14 @@ public:
     void setInNamedFlow() { setFlag(InNamedFlowFlag); }
     void clearInNamedFlow() { clearFlag(InNamedFlowFlag); }
 
-    void setHasAttrList() { setFlag(HasAttrListFlag); }
-    void clearHasAttrList() { clearFlag(HasAttrListFlag); }
-
     bool hasScopedHTMLStyleChild() const { return getFlag(HasScopedHTMLStyleChildFlag); }
     void setHasScopedHTMLStyleChild(bool flag) { setFlag(flag, HasScopedHTMLStyleChildFlag); }
 
     bool hasEventTargetData() const { return getFlag(HasEventTargetDataFlag); }
     void setHasEventTargetData(bool flag) { setFlag(flag, HasEventTargetDataFlag); }
+
+    bool inEden() const { return getFlag(InEdenFlag); }
+    void setEden(bool flag) { setFlag(flag, InEdenFlag); }
 
     enum ShouldSetAttached {
         SetAttached,
@@ -375,16 +380,20 @@ public:
     virtual bool isMouseFocusable() const;
     virtual Node* focusDelegate();
 
-    bool isContentEditable();
+    enum UserSelectAllTreatment {
+        UserSelectAllDoesNotAffectEditability,
+        UserSelectAllIsAlwaysNonEditable
+    };
+    bool isContentEditable(UserSelectAllTreatment = UserSelectAllDoesNotAffectEditability);
     bool isContentRichlyEditable();
 
     void inspect();
 
-    bool rendererIsEditable(EditableType editableType = ContentIsEditable) const
+    bool rendererIsEditable(EditableType editableType = ContentIsEditable, UserSelectAllTreatment treatment = UserSelectAllIsAlwaysNonEditable) const
     {
         switch (editableType) {
         case ContentIsEditable:
-            return rendererIsEditable(Editable);
+            return rendererIsEditable(Editable, treatment);
         case HasEditableAXRole:
             return isEditableToAccessibility(Editable);
         }
@@ -396,7 +405,7 @@ public:
     {
         switch (editableType) {
         case ContentIsEditable:
-            return rendererIsEditable(RichlyEditable);
+            return rendererIsEditable(RichlyEditable, UserSelectAllIsAlwaysNonEditable);
         case HasEditableAXRole:
             return isEditableToAccessibility(RichlyEditable);
         }
@@ -499,9 +508,16 @@ public:
     // -----------------------------------------------------------------------------
     // Integration with rendering tree
 
-    RenderObject* renderer() const { return m_renderer; }
-    void setRenderer(RenderObject* renderer) { m_renderer = renderer; }
-    
+    // As renderer() includes a branch you should avoid calling it repeatedly in hot code paths.
+    RenderObject* renderer() const { return hasRareData() ? m_data.m_rareData->renderer() : m_data.m_renderer; };
+    void setRenderer(RenderObject* renderer)
+    {
+        if (hasRareData())
+            m_data.m_rareData->setRenderer(renderer);
+        else
+            m_data.m_renderer = renderer;
+    }
+
     // Use these two methods with caution.
     RenderBox* renderBox() const;
     RenderBoxModelObject* renderBoxModelObject() const;
@@ -669,6 +685,10 @@ public:
 
     void textRects(Vector<IntRect>&) const;
 
+    unsigned connectedSubframeCount() const;
+    void incrementConnectedSubframeCount();
+    void decrementConnectedSubframeCount();
+
 private:
     enum NodeFlags {
         IsTextFlag = 1,
@@ -703,18 +723,18 @@ private:
 
         HasNameFlag = 1 << 23,
 
-        AttributeStyleDirtyFlag = 1 << 24,
+        InNamedFlowFlag = 1 << 24,
+        HasSyntheticAttrChildNodesFlag = 1 << 25,
+        HasCustomCallbacksFlag = 1 << 26,
+        HasScopedHTMLStyleChildFlag = 1 << 27,
+        HasEventTargetDataFlag = 1 << 28,
+        InEdenFlag = 1 << 29,
 
 #if ENABLE(SVG)
         DefaultNodeFlags = IsParsingChildrenFinishedFlag | IsStyleAttributeValidFlag | AreSVGAttributesValidFlag,
 #else
         DefaultNodeFlags = IsParsingChildrenFinishedFlag | IsStyleAttributeValidFlag,
 #endif
-        InNamedFlowFlag = 1 << 26,
-        HasAttrListFlag = 1 << 27,
-        HasCustomCallbacksFlag = 1 << 28,
-        HasScopedHTMLStyleChildFlag = 1 << 29,
-        HasEventTargetDataFlag = 1 << 30,
     };
 
     // 2 bits remaining
@@ -768,7 +788,7 @@ private:
     void setDocument(Document*);
 
     enum EditableLevel { Editable, RichlyEditable };
-    bool rendererIsEditable(EditableLevel) const;
+    bool rendererIsEditable(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
     bool isEditableToAccessibility(EditableLevel) const;
 
     void setStyleChange(StyleChangeType);
@@ -811,7 +831,12 @@ private:
     Document* m_document;
     Node* m_previous;
     Node* m_next;
-    RenderObject* m_renderer;
+    // When a node has rare data we move the renderer into the rare data.
+    union DataUnion {
+        DataUnion() : m_renderer(0) { }
+        RenderObject* m_renderer;
+        NodeRareDataBase* m_rareData;
+    } m_data;
 
 public:
     bool isStyleAttributeValid() const { return getFlag(IsStyleAttributeValidFlag); }

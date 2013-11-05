@@ -66,11 +66,9 @@ public:
     ScriptController(Frame*);
     ~ScriptController();
 
-    V8DOMWindowShell* windowShell() const { return m_windowShell.get(); }
+    bool initializeMainWorld();
     V8DOMWindowShell* windowShell(DOMWrapperWorld*);
-    // FIXME: Replace existingWindowShell with existingWindowShellInternal see comment in V8DOMWindowShell::initializeIfNeeded.
-    ScriptController* existingWindowShell(DOMWrapperWorld*) { return this; }
-    V8DOMWindowShell* existingWindowShellInternal(DOMWrapperWorld*);
+    V8DOMWindowShell* existingWindowShell(DOMWrapperWorld*);
 
     ScriptValue executeScript(const ScriptSourceCode&);
     ScriptValue executeScript(const String& script, bool forceUserGesture = false);
@@ -106,6 +104,11 @@ public:
     //
     // FIXME: Get rid of extensionGroup here.
     void evaluateInIsolatedWorld(int worldID, const Vector<ScriptSourceCode>& sources, int extensionGroup, Vector<ScriptValue>* results);
+
+    // Returns true if the current world is isolated, and has its own Content
+    // Security Policy. In this case, the policy of the main world should be
+    // ignored when evaluating resources injected into the DOM.
+    bool shouldBypassMainWorldContentSecurityPolicy();
 
     // FIXME: Remove references to this call in chromium and delete it.
     inline static void setIsolatedWorldSecurityOrigin(int worldID, PassRefPtr<SecurityOrigin> origin)
@@ -168,13 +171,17 @@ public:
     void cleanupScriptObjectsForPlugin(Widget*);
 
     void clearForClose();
+    void clearForOutOfMemory();
+
 
     NPObject* createScriptObjectForPluginElement(HTMLPlugInElement*);
     NPObject* windowScriptNPObject();
 
-    // Dummy method to avoid a bunch of ifdef's in WebCore.
     void evaluateInWorld(const ScriptSourceCode&, DOMWrapperWorld*);
-    static void getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds);
+    static void getAllWorlds(Vector<RefPtr<DOMWrapperWorld> >& worlds)
+    {
+        DOMWrapperWorld::getAllWorlds(worlds);
+    }
 
     // Registers a v8 extension to be available on webpages. Will only
     // affect v8 contexts initialized after this call. Takes ownership of
@@ -196,7 +203,6 @@ private:
     Frame* m_frame;
     const String* m_sourceURL;
 
-    V8DOMWindowShell* ensureIsolatedWorldContext(int worldId, int extensionGroup);
     OwnPtr<V8DOMWindowShell> m_windowShell;
 
     // The isolated worlds we are tracking for this frame. We hold them alive

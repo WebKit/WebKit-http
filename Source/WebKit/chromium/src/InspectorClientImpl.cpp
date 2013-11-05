@@ -131,6 +131,11 @@ void InspectorClientImpl::clearBrowserCookies()
         agent->clearBrowserCookies();
 }
 
+bool InspectorClientImpl::canMonitorMainThread()
+{
+    return true;
+}
+
 void InspectorClientImpl::startMainThreadMonitoring()
 {
     WebKit::Platform::current()->currentThread()->addTaskObserver(this);
@@ -156,6 +161,16 @@ void InspectorClientImpl::autoZoomPageToFitWidth()
 {
     if (WebDevToolsAgentImpl* agent = devToolsAgent())
         agent->autoZoomPageToFitWidth();
+}
+
+bool InspectorClientImpl::canShowFPSCounter()
+{
+    return true;
+}
+
+void InspectorClientImpl::setShowFPSCounter(bool show)
+{
+    m_inspectedWebView->setShowFPSCounter(show);
 }
 
 bool InspectorClientImpl::supportsFrameInstrumentation()

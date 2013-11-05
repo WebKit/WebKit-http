@@ -189,8 +189,10 @@ void RenderRegion::updateRegionHasAutoLogicalHeightFlag()
     if (m_hasAutoLogicalHeight != didHaveAutoLogicalHeight) {
         if (m_hasAutoLogicalHeight)
             view()->flowThreadController()->incrementAutoLogicalHeightRegions();
-        else
+        else {
+            clearOverrideLogicalContentHeight();
             view()->flowThreadController()->decrementAutoLogicalHeightRegions();
+        }
     }
 }
 
@@ -368,14 +370,14 @@ void RenderRegion::deleteAllRenderBoxRegionInfo()
 LayoutUnit RenderRegion::logicalTopOfFlowThreadContentRect(const LayoutRect& rect) const
 {
     if (!m_isValid || !flowThread())
-        return ZERO_LAYOUT_UNIT;
+        return 0;
     return flowThread()->isHorizontalWritingMode() ? rect.y() : rect.x();
 }
 
 LayoutUnit RenderRegion::logicalBottomOfFlowThreadContentRect(const LayoutRect& rect) const
 {
     if (!m_isValid || !flowThread())
-        return ZERO_LAYOUT_UNIT;
+        return 0;
     return flowThread()->isHorizontalWritingMode() ? rect.maxY() : rect.maxX();
 }
 
@@ -605,6 +607,7 @@ void RenderRegion::updateLogicalHeight()
         return;
 
     LayoutUnit newLogicalHeight = overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
+    ASSERT(newLogicalHeight < LayoutUnit::max() / 2);
     if (newLogicalHeight > logicalHeight())
         setLogicalHeight(newLogicalHeight);
 }

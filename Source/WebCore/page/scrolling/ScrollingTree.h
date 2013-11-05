@@ -47,9 +47,10 @@ OBJC_CLASS CALayer;
 namespace WebCore {
 
 class IntPoint;
+class ScrollingStateNode;
+class ScrollingStateTree;
 class ScrollingTreeNode;
 class ScrollingTreeScrollingNode;
-class ScrollingStateTree;
 
 // The ScrollingTree class lives almost exclusively on the scrolling thread and manages the
 // hierarchy of scrollable regions on the page. It's also responsible for dispatching events
@@ -82,8 +83,7 @@ public:
 
     void setMainFramePinState(bool pinnedToTheLeft, bool pinnedToTheRight);
 
-    void updateMainFrameScrollPosition(const IntPoint& scrollPosition);
-    void updateMainFrameScrollPositionAndScrollLayerPosition(const IntPoint& scrollPosition);
+    void updateMainFrameScrollPosition(const IntPoint& scrollPosition, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition);
     IntPoint mainFrameScrollPosition();
 
 #if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))

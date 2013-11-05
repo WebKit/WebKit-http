@@ -21,7 +21,7 @@
 #include "config.h"
 #include "QNetworkReplyHandler.h"
 
-#include "BlobRegistryImpl.h"
+#include "BlobData.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "ResourceHandle.h"
@@ -61,68 +61,19 @@ FormDataIODevice::~FormDataIODevice()
     delete m_currentFile;
 }
 
-#if ENABLE(BLOB)
-static void appendBlobResolved(FormData* formData, const KURL& url)
-{
-    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(KURL(ParsedURLString, url));
-    if (blobData) {
-        BlobDataItemList::const_iterator it = blobData->items().begin();
-        const BlobDataItemList::const_iterator itend = blobData->items().end();
-        for (; it != itend; ++it) {
-            const BlobDataItem& blobItem = *it;
-            if (blobItem.type == BlobDataItem::Data)
-                formData->appendData(blobItem.data->data() + static_cast<int>(blobItem.offset), static_cast<int>(blobItem.length));
-            else if (blobItem.type == BlobDataItem::File)
-                formData->appendFileRange(blobItem.path, blobItem.offset, blobItem.length, blobItem.expectedModificationTime);
-            else if (blobItem.type == BlobDataItem::Blob)
-                appendBlobResolved(formData, blobItem.url);
-            else
-                ASSERT_NOT_REACHED();
-        }
-    }
-}
-#endif
-
 void FormDataIODevice::prepareFormElements(FormData* formData)
 {
     if (!formData)
         return;
 
-#if ENABLE(BLOB)
-    bool hasBlob = false;
-    Vector<FormDataElement>::const_iterator it = formData->elements().begin();
-    const Vector<FormDataElement>::const_iterator itend = formData->elements().end();
-    for (; it != itend; ++it) {
-        if (it->m_type == FormDataElement::encodedBlob) {
-            hasBlob = true;
-            break;
-        }
-    }
+    RefPtr<FormData> formDataRef(formData);
 
-    // Resolve all blobs so we only have file and data.
-    if (hasBlob) {
-        RefPtr<FormData> newFormData = FormData::create();
-        newFormData->setAlwaysStream(formData->alwaysStream());
-        newFormData->setIdentifier(formData->identifier());
-        it = formData->elements().begin();
-        for (; it != itend; ++it) {
-            const FormDataElement& element = *it;
-            if (element.m_type == FormDataElement::data)
-                newFormData->appendData(element.m_data.data(), element.m_data.size());
-            else if (element.m_type == FormDataElement::encodedFile)
-                newFormData->appendFileRange(element.m_filename, element.m_fileStart, element.m_fileLength, element.m_expectedFileModificationTime, element.m_shouldGenerateFile);
-            else if (element.m_type == FormDataElement::encodedBlob)
-                appendBlobResolved(newFormData.get(), element.m_url);
-            else
-                ASSERT_NOT_REACHED();
-        }
-        m_formElements = newFormData->elements();
-        return;
-    }
+#if ENABLE(BLOB)
+    formDataRef = formDataRef->resolveBlobReferences();
 #endif
 
     // Take a deep copy of the FormDataElements
-    m_formElements = formData->elements();
+    m_formElements = formDataRef->elements();
 }
 
 
@@ -514,6 +465,7 @@ QNetworkReply* QNetworkReplyHandler::release()
     if (!m_replyWrapper)
         return 0;
 
+    m_timeoutTimer.stop();
     QNetworkReply* reply = m_replyWrapper->release();
     m_replyWrapper = nullptr;
     return reply;
@@ -539,6 +491,7 @@ static bool shouldIgnoreHttpError(QNetworkReply* reply, bool receivedData)
 void QNetworkReplyHandler::finish()
 {
     ASSERT(m_replyWrapper && m_replyWrapper->reply() && !wasAborted());
+    m_timeoutTimer.stop();
 
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client) {
@@ -558,6 +511,38 @@ void QNetworkReplyHandler::finish()
         client->didFail(m_resourceHandle, errorForReply(m_replyWrapper->reply()));
 
     m_replyWrapper = nullptr;
+}
+
+void QNetworkReplyHandler::timeout()
+{
+    if (!m_replyWrapper || wasAborted())
+        return;
+
+    // The request is already finished, but is probably just waiting in the queue to get processed.
+    // In this case we ignore the timeout and proceed as normal.
+    if (m_replyWrapper->isFinished())
+        return;
+
+    ResourceHandleClient* client = m_resourceHandle->client();
+    if (!client) {
+        m_replyWrapper.clear();
+        return;
+    }
+
+    ASSERT(m_replyWrapper->reply());
+
+    ResourceError timeoutError("QtNetwork", QNetworkReply::TimeoutError, m_replyWrapper->reply()->url().toString(), "Request timed out");
+    timeoutError.setIsTimeout(true);
+    client->didFail(m_resourceHandle, timeoutError);
+
+    m_replyWrapper.clear();
+}
+
+void QNetworkReplyHandler::timerEvent(QTimerEvent* timerEvent)
+{
+    ASSERT_UNUSED(timerEvent, timerEvent->timerId()== m_timeoutTimer.timerId());
+    m_timeoutTimer.stop();
+    timeout();
 }
 
 void QNetworkReplyHandler::sendResponseIfNeeded()
@@ -780,6 +765,10 @@ void QNetworkReplyHandler::start()
         // If supported, a synchronous request will be finished at this point, no need to hook up the signals.
         return;
     }
+
+    double timeoutInSeconds = d->m_firstRequest.timeoutInterval();
+    if (timeoutInSeconds > 0 && timeoutInSeconds < (INT_MAX / 1000))
+        m_timeoutTimer.start(timeoutInSeconds * 1000, this);
 
     if (m_resourceHandle->firstRequest().reportUploadProgress())
         connect(m_replyWrapper->reply(), SIGNAL(uploadProgress(qint64, qint64)), this, SLOT(uploadProgress(qint64, qint64)));

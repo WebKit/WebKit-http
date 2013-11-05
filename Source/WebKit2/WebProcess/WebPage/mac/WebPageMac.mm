@@ -679,11 +679,9 @@ bool WebPage::platformHasLocalDataForURL(const WebCore::KURL& url)
     NSMutableURLRequest* request = [[NSMutableURLRequest alloc] initWithURL:url];
     [request setValue:(NSString*)userAgent() forHTTPHeaderField:@"User-Agent"];
     NSCachedURLResponse *cachedResponse;
-#if USE(CFURLSTORAGESESSIONS)
     if (CFURLStorageSessionRef storageSession = ResourceHandle::currentStorageSession())
         cachedResponse = WKCachedResponseForRequest(storageSession, request);
     else
-#endif
         cachedResponse = [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
     [request release];
     
@@ -695,10 +693,8 @@ static NSCachedURLResponse *cachedResponseForURL(WebPage* webPage, const KURL& u
     RetainPtr<NSMutableURLRequest> request(AdoptNS, [[NSMutableURLRequest alloc] initWithURL:url]);
     [request.get() setValue:(NSString *)webPage->userAgent() forHTTPHeaderField:@"User-Agent"];
 
-#if USE(CFURLSTORAGESESSIONS)
     if (CFURLStorageSessionRef storageSession = ResourceHandle::currentStorageSession())
         return WKCachedResponseForRequest(storageSession, request.get());
-#endif
 
     return [[NSURLCache sharedURLCache] cachedResponseForRequest:request.get()];
 }
@@ -841,7 +837,7 @@ static void drawPDFPage(PDFDocument *pdfDocument, CFIndex pageIndex, CGContextRe
     CGContextRestoreGState(context);
 }
 
-void WebPage::drawRectToPDFFromPDFDocument(CGContextRef context, PDFDocument *pdfDocument, const PrintInfo& printInfo, const WebCore::IntRect& rect)
+void WebPage::drawPDFDocument(CGContextRef context, PDFDocument *pdfDocument, const PrintInfo& printInfo, const WebCore::IntRect& rect)
 {
     NSUInteger pageCount = [pdfDocument pageCount];
     IntSize paperSize(ceilf(printInfo.availablePaperWidth), ceilf(printInfo.availablePaperHeight));

@@ -80,7 +80,11 @@ public:
     // Terminates the plug-in process.
     void terminate();
 
+    bool isValid() const { return m_connection; }
+
 #if PLATFORM(MAC)
+    void setApplicationIsOccluded(bool);
+
     // Returns whether the plug-in needs the heap to be marked executable.
     static bool pluginNeedsExecutableHeap(const PluginModuleInfo&);
 
@@ -100,7 +104,7 @@ private:
     // CoreIPC::Connection::Client
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*) OVERRIDE;
-    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::MessageID) OVERRIDE;
+    virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
 
     // ProcessLauncher::Client
     virtual void didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier);

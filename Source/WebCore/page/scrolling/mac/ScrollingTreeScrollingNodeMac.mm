@@ -263,7 +263,7 @@ void ScrollingTreeScrollingNodeMac::setScrollPositionWithoutContentEdgeConstrain
 
     if (shouldUpdateScrollLayerPositionOnMainThread()) {
         m_probableMainThreadScrollPosition = scrollPosition;
-        scrollingTree()->updateMainFrameScrollPositionAndScrollLayerPosition(scrollPosition);
+        scrollingTree()->updateMainFrameScrollPosition(scrollPosition, SetScrollingLayerPosition);
         return;
     }
 
@@ -275,6 +275,18 @@ void ScrollingTreeScrollingNodeMac::setScrollLayerPosition(const IntPoint& posit
 {
     ASSERT(!shouldUpdateScrollLayerPositionOnMainThread());
     m_scrollLayer.get().position = CGPointMake(-position.x() + scrollOrigin().x(), -position.y() + scrollOrigin().y());
+
+    if (!m_children)
+        return;
+
+    IntSize scrollOffsetForFixedChildren = WebCore::scrollOffsetForFixedPosition(viewportRect(), contentsSize(), position,
+        scrollOrigin(), 1, false);
+    IntRect viewportRect = this->viewportRect();
+    viewportRect.setLocation(toPoint(scrollOffsetForFixedChildren));
+
+    size_t size = m_children->size();
+    for (size_t i = 0; i < size; ++i)
+        m_children->at(i)->parentScrollPositionDidChange(viewportRect);
 }
 
 IntPoint ScrollingTreeScrollingNodeMac::minimumScrollPosition() const

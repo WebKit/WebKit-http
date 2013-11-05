@@ -46,7 +46,7 @@ public:
         PreemptiveTask
     };
 
-    virtual WebIDBObjectStore* objectStore(const WebString& name, WebExceptionCode&)
+    virtual WebIDBObjectStore* objectStore(long long, WebExceptionCode&)
     {
         WEBKIT_ASSERT_NOT_REACHED();
         return 0;

@@ -1440,31 +1440,46 @@ template<> inline CSSPrimitiveValue::operator EFloat() const
     return NoFloat;
 }
 
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EKHTMLLineBreak e)
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(LineBreak e)
     : CSSValue(PrimitiveClass)
 {
     m_primitiveUnitType = CSS_IDENT;
     switch (e) {
-        case LBNORMAL:
-            m_value.ident = CSSValueNormal;
-            break;
-        case AFTER_WHITE_SPACE:
-            m_value.ident = CSSValueAfterWhiteSpace;
-            break;
+    case LineBreakAuto:
+        m_value.ident = CSSValueAuto;
+        break;
+    case LineBreakLoose:
+        m_value.ident = CSSValueLoose;
+        break;
+    case LineBreakNormal:
+        m_value.ident = CSSValueNormal;
+        break;
+    case LineBreakStrict:
+        m_value.ident = CSSValueStrict;
+        break;
+    case LineBreakAfterWhiteSpace:
+        m_value.ident = CSSValueAfterWhiteSpace;
+        break;
     }
 }
 
-template<> inline CSSPrimitiveValue::operator EKHTMLLineBreak() const
+template<> inline CSSPrimitiveValue::operator LineBreak() const
 {
     switch (m_value.ident) {
-        case CSSValueAfterWhiteSpace:
-            return AFTER_WHITE_SPACE;
-        case CSSValueNormal:
-            return LBNORMAL;
+    case CSSValueAuto:
+        return LineBreakAuto;
+    case CSSValueLoose:
+        return LineBreakLoose;
+    case CSSValueNormal:
+        return LineBreakNormal;
+    case CSSValueStrict:
+        return LineBreakStrict;
+    case CSSValueAfterWhiteSpace:
+        return LineBreakAfterWhiteSpace;
     }
 
     ASSERT_NOT_REACHED();
-    return LBNORMAL;
+    return LineBreakAuto;
 }
 
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EListStylePosition e)
@@ -2183,6 +2198,60 @@ template<> inline CSSPrimitiveValue::operator ETextAlign() const
         return static_cast<ETextAlign>(m_value.ident - CSSValueLeft);
     }
 }
+
+#if ENABLE(CSS3_TEXT)
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ETextAlignLast e)
+    : CSSValue(PrimitiveClass)
+{
+    m_primitiveUnitType = CSS_IDENT;
+    switch (e) {
+    case TextAlignLastStart:
+        m_value.ident = CSSValueStart;
+        break;
+    case TextAlignLastEnd:
+        m_value.ident = CSSValueEnd;
+        break;
+    case TextAlignLastLeft:
+        m_value.ident = CSSValueLeft;
+        break;
+    case TextAlignLastRight:
+        m_value.ident = CSSValueRight;
+        break;
+    case TextAlignLastCenter:
+        m_value.ident = CSSValueCenter;
+        break;
+    case TextAlignLastJustify:
+        m_value.ident = CSSValueJustify;
+        break;
+    case TextAlignLastAuto:
+        m_value.ident = CSSValueAuto;
+        break;
+    }
+}
+
+template<> inline CSSPrimitiveValue::operator ETextAlignLast() const
+{
+    switch (m_value.ident) {
+    case CSSValueAuto:
+        return TextAlignLastAuto;
+    case CSSValueStart:
+        return TextAlignLastStart;
+    case CSSValueEnd:
+        return TextAlignLastEnd;
+    case CSSValueLeft:
+        return TextAlignLastLeft;
+    case CSSValueRight:
+        return TextAlignLastRight;
+    case CSSValueCenter:
+        return TextAlignLastCenter;
+    case CSSValueJustify:
+        return TextAlignLastJustify;
+    }
+
+    ASSERT_NOT_REACHED();
+    return TextAlignLastAuto;
+}
+#endif // CSS3_TEXT
 
 template<> inline CSSPrimitiveValue::operator ETextDecoration() const
 {
@@ -3400,41 +3469,41 @@ template<> inline CSSPrimitiveValue::operator ESpeak() const
 }
 
 #if ENABLE(CSS_SHADERS)
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(CustomFilterOperation::MeshBoxType meshBoxType)
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(CustomFilterMeshBoxType meshBoxType)
     : CSSValue(PrimitiveClass)
 {
     m_primitiveUnitType = CSS_IDENT;
     switch (meshBoxType) {
-    case CustomFilterOperation::FILTER_BOX:
+    case MeshBoxTypeFilter:
         m_value.ident = CSSValueFilterBox;
         break;
-    case CustomFilterOperation::BORDER_BOX:
+    case MeshBoxTypeBorder:
         m_value.ident = CSSValueBorderBox;
         break;
-    case CustomFilterOperation::PADDING_BOX:
+    case MeshBoxTypePadding:
         m_value.ident = CSSValuePaddingBox;
         break;
-    case CustomFilterOperation::CONTENT_BOX:
+    case MeshBoxTypeContent:
         m_value.ident = CSSValueContentBox;
         break;
     }
 }
 
-template<> inline CSSPrimitiveValue::operator CustomFilterOperation::MeshBoxType() const
+template<> inline CSSPrimitiveValue::operator CustomFilterMeshBoxType() const
 {
     switch (m_value.ident) {
     case CSSValueFilterBox:
-        return CustomFilterOperation::FILTER_BOX;
+        return MeshBoxTypeFilter;
     case CSSValueBorderBox:
-        return CustomFilterOperation::BORDER_BOX;
+        return MeshBoxTypeBorder;
     case CSSValuePaddingBox:
-        return CustomFilterOperation::PADDING_BOX;
+        return MeshBoxTypePadding;
     case CSSValueContentBox:
-        return CustomFilterOperation::CONTENT_BOX;
+        return MeshBoxTypeContent;
     }
 
     ASSERT_NOT_REACHED();
-    return CustomFilterOperation::FILTER_BOX;
+    return MeshBoxTypeFilter;
 }
 #endif // ENABLE(CSS_SHADERS)
 

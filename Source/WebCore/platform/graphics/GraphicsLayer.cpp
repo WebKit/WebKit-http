@@ -30,10 +30,12 @@
 #include "GraphicsLayer.h"
 
 #include "FloatPoint.h"
+#include "FloatRect.h"
 #include "GraphicsContext.h"
-#include "LayoutTypesInlineMethods.h"
+#include "LayoutRect.h"
 #include "RotateTransformOperation.h"
 #include "TextStream.h"
+#include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -43,6 +45,13 @@
 #endif
 
 namespace WebCore {
+
+typedef HashMap<const GraphicsLayer*, Vector<FloatRect> > RepaintMap;
+static RepaintMap& repaintRectMap()
+{
+    DEFINE_STATIC_LOCAL(RepaintMap, map, ());
+    return map;
+}
 
 void KeyframeValueList::insert(const AnimationValue* value)
 {
@@ -80,6 +89,8 @@ GraphicsLayer::GraphicsLayer(GraphicsLayerClient* client)
     , m_acceleratesDrawing(false)
     , m_maintainsPixelAlignment(false)
     , m_appliesPageScale(false)
+    , m_showDebugBorder(false)
+    , m_showRepaintCounter(false)
     , m_paintingPhase(GraphicsLayerPaintAllWithOverflowClip)
     , m_contentsOrientation(CompositingCoordinatesTopDown)
     , m_parent(0)
@@ -96,6 +107,7 @@ GraphicsLayer::GraphicsLayer(GraphicsLayerClient* client)
 
 GraphicsLayer::~GraphicsLayer()
 {
+    resetTrackedRepaints();
     ASSERT(!m_parent); // willBeDestroyed should have been called already.
 }
 
@@ -284,7 +296,7 @@ void GraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
     m_replicaLayer = layer;
 }
 
-void GraphicsLayer::setOffsetFromRenderer(const IntSize& offset)
+void GraphicsLayer::setOffsetFromRenderer(const IntSize& offset, ShouldSetNeedsDisplay shouldSetNeedsDisplay)
 {
     if (offset == m_offsetFromRenderer)
         return;
@@ -292,7 +304,8 @@ void GraphicsLayer::setOffsetFromRenderer(const IntSize& offset)
     m_offsetFromRenderer = offset;
 
     // If the compositing layer offset changes, we need to repaint.
-    setNeedsDisplay();
+    if (shouldSetNeedsDisplay == SetNeedsDisplay)
+        setNeedsDisplay();
 }
 
 void GraphicsLayer::setBackgroundColor(const Color& color)
@@ -364,7 +377,7 @@ void GraphicsLayer::getDebugBorderInfo(Color& color, float& width) const
 
 void GraphicsLayer::updateDebugIndicators()
 {
-    if (!GraphicsLayer::showDebugBorders())
+    if (!isShowingDebugBorder())
         return;
 
     Color borderColor;
@@ -536,6 +549,28 @@ double GraphicsLayer::backingStoreMemoryEstimate() const
     return static_cast<double>(4 * size().width()) * size().height();
 }
 
+void GraphicsLayer::resetTrackedRepaints()
+{
+    repaintRectMap().remove(this);
+}
+
+void GraphicsLayer::addRepaintRect(const FloatRect& repaintRect)
+{
+    if (m_client->isTrackingRepaints()) {
+        FloatRect largestRepaintRect(FloatPoint(), m_size);
+        largestRepaintRect.intersect(repaintRect);
+        RepaintMap::iterator repaintIt = repaintRectMap().find(this);
+        if (repaintIt == repaintRectMap().end()) {
+            Vector<FloatRect> repaintRects;
+            repaintRects.append(largestRepaintRect);
+            repaintRectMap().set(this, repaintRects);
+        } else {
+            Vector<FloatRect>& repaintRects = repaintIt->value;
+            repaintRects.append(largestRepaintRect);
+        }
+    }
+}
+
 void GraphicsLayer::writeIndent(TextStream& ts, int indent)
 {
     for (int i = 0; i != indent; ++i)
@@ -658,7 +693,25 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         writeIndent(ts, indent + 1);
         ts << "(replicated layer";
         if (behavior & LayerTreeAsTextDebug)
-            ts << " " << m_replicatedLayer;;
+            ts << " " << m_replicatedLayer;
+        ts << ")\n";
+    }
+
+    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty()) {
+        writeIndent(ts, indent + 1);
+        ts << "(repaint rects\n";
+        for (size_t i = 0; i < repaintRectMap().get(this).size(); ++i) {
+            if (repaintRectMap().get(this)[i].isEmpty())
+                continue;
+            writeIndent(ts, indent + 2);
+            ts << "(rect ";
+            ts << repaintRectMap().get(this)[i].x() << " ";
+            ts << repaintRectMap().get(this)[i].y() << " ";
+            ts << repaintRectMap().get(this)[i].width() << " ";
+            ts << repaintRectMap().get(this)[i].height();
+            ts << ")\n";
+        }
+        writeIndent(ts, indent + 1);
         ts << ")\n";
     }
     

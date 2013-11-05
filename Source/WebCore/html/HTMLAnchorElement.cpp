@@ -26,6 +26,7 @@
 
 #include "Attribute.h"
 #include "DNS.h"
+#include "ElementShadow.h"
 #include "EventNames.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
@@ -218,8 +219,10 @@ void HTMLAnchorElement::parseAttribute(const Attribute& attribute)
     if (attribute.name() == hrefAttr) {
         bool wasLink = isLink();
         setIsLink(!attribute.isNull());
-        if (wasLink != isLink())
+        if (wasLink != isLink()) {
             setNeedsStyleRecalc();
+            invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureLink | SelectRuleFeatureSet::RuleFeatureVisited);
+        }
         if (isLink()) {
             String parsedURL = stripLeadingAndTrailingHTMLSpaces(attribute.value());
             if (document()->isDNSPrefetchEnabled()) {
@@ -463,7 +466,7 @@ void HTMLAnchorElement::setSearch(const String& value)
     KURL url = href();
     String newSearch = (value[0] == '?') ? value.substring(1) : value;
     // Make sure that '#' in the query does not leak to the hash.
-    url.setQuery(newSearch.replace('#', "%23"));
+    url.setQuery(newSearch.replaceWithLiteral('#', "%23"));
 
     setHref(url.string());
 }

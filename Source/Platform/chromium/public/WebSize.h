@@ -36,7 +36,9 @@
 #if WEBKIT_IMPLEMENTATION
 #include "IntSize.h"
 #else
+#include <cmath>
 #include <ui/gfx/size.h>
+#include <ui/gfx/vector2d.h>
 #endif
 
 namespace WebKit {
@@ -84,6 +86,12 @@ struct WebSize {
     {
     }
 
+    WebSize(const gfx::Vector2d& v)
+        : width(v.x())
+        , height(v.y())
+    {
+    }
+
     WebSize& operator=(const gfx::Size& s)
     {
         width = s.width();
@@ -91,9 +99,21 @@ struct WebSize {
         return *this;
     }
 
+    WebSize& operator=(const gfx::Vector2d& v)
+    {
+        width = v.x();
+        height = v.y();
+        return *this;
+    }
+
     operator gfx::Size() const
     {
-        return gfx::Size(width, height);
+        return gfx::Size(std::max(0, width), std::max(0, height));
+    }
+
+    operator gfx::Vector2d() const
+    {
+        return gfx::Vector2d(width, height);
     }
 #endif
 };

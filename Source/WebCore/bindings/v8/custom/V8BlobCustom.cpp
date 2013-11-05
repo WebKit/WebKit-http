@@ -43,15 +43,12 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> toV8(Blob* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+v8::Handle<v8::Object> wrap(Blob* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
-    if (!impl)
-        return v8NullWithCheck(isolate);
-
+    ASSERT(impl);
     if (impl->isFile())
-        return toV8(toFile(impl), creationContext, isolate);
-
-    return V8Blob::wrap(impl, creationContext, isolate);
+        return wrap(toFile(impl), creationContext, isolate);
+    return V8Blob::createWrapper(impl, creationContext, isolate);
 }
 
 v8::Handle<v8::Value> V8Blob::constructorCallback(const v8::Arguments& args)
@@ -99,7 +96,7 @@ v8::Handle<v8::Value> V8Blob::constructorCallback(const v8::Arguments& args)
         if (tryCatchType.HasCaught())
             return throwError(tryCatchType.Exception(), args.GetIsolate());
         if (!type.containsOnlyASCII())
-            return throwError(SyntaxError, "type must consist of ASCII characters", args.GetIsolate());
+            return throwError(v8SyntaxError, "type must consist of ASCII characters", args.GetIsolate());
         type.makeLower();
     }
 

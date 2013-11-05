@@ -44,13 +44,13 @@ PASS intersects is true
 PASS intersects is true
 
 2.1 Detached Range, attached node
-PASS detachedRange.intersectsNode(document.getElementById('a1')) threw exception Error: INVALID_STATE_ERR: DOM Exception 11.
+PASS detachedRange.intersectsNode(document.getElementById('a1')) threw exception Error: InvalidStateError: DOM Exception 11.
 
 2.2 attached range, detached node
 PASS intersects is false
 
 2.3 Node has no parent
-PASS range.intersectsNode(document) threw exception Error: NOT_FOUND_ERR: DOM Exception 8.
+PASS range.intersectsNode(document) threw exception Error: NotFoundError: DOM Exception 8.
 
 2.4 Range has no parent
 PASS range.selectNode(document) threw exception Error: INVALID_NODE_TYPE_ERR: DOM Range Exception 2.
@@ -59,7 +59,7 @@ PASS range.selectNode(document) threw exception Error: INVALID_NODE_TYPE_ERR: DO
 PASS intersects is false
 
 2.6 Node deleted
-PASS range.intersectsNode(node) threw exception Error: NOT_FOUND_ERR: DOM Exception 8.
+PASS range.intersectsNode(node) threw exception Error: NotFoundError: DOM Exception 8.
 
 PASS successfullyParsed is true
 

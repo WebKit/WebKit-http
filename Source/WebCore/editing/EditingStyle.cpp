@@ -1058,7 +1058,7 @@ void EditingStyle::mergeStyle(const StylePropertySet* style, CSSPropertyOverride
 
     unsigned propertyCount = style->propertyCount();
     for (unsigned i = 0; i < propertyCount; ++i) {
-        const CSSProperty& property = style->propertyAt(i);
+        StylePropertySet::PropertyReference property = style->propertyAt(i);
         RefPtr<CSSValue> value = m_mutableStyle->getPropertyCSSValue(property.id());
 
         // text decorations never override values
@@ -1114,7 +1114,7 @@ void EditingStyle::mergeStyleFromRulesForSerialization(StyledElement* element)
     {
         unsigned propertyCount = m_mutableStyle->propertyCount();
         for (unsigned i = 0; i < propertyCount; ++i) {
-            const CSSProperty& property = m_mutableStyle->propertyAt(i);
+            StylePropertySet::PropertyReference property = m_mutableStyle->propertyAt(i);
             CSSValue* value = property.value();
             if (!value->isPrimitiveValue())
                 continue;
@@ -1427,7 +1427,7 @@ void StyleChange::extractTextStyles(Document* document, StylePropertySet* style,
 
     m_applyFontFace = style->getPropertyValue(CSSPropertyFontFamily);
     // Remove single quotes for Outlook 2007 compatibility. See https://bugs.webkit.org/show_bug.cgi?id=79448
-    m_applyFontFace.replace('\'', "");
+    m_applyFontFace.replaceWithLiteral('\'', "");
     style->removeProperty(CSSPropertyFontFamily);
 
     if (RefPtr<CSSValue> fontSize = style->getPropertyCSSValue(CSSPropertyFontSize)) {

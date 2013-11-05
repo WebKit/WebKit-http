@@ -27,6 +27,8 @@ iframe {
  <option>with long datalist</option>
  <option>Arabic with datalist</option>
  <option>Arabic with long datalist</option>
+ <option>Week</option>
+ <option>Month</option>
 </select>
 
 <div><input type="text" id="date"></div>
@@ -38,8 +40,6 @@ iframe {
 <script>
 var englishArguments = {
     locale: 'en-US',
-    monthLabels : ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'],
     dayLabels : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     todayLabel : 'Today',
     clearLabel : 'Clear',
@@ -51,8 +51,6 @@ var englishArguments = {
 };
 var japaneseArguments = {
     locale: 'ja-JP',
-    monthLabels : ['1月', '2月', '3月', '4月', '5月', '6月',
-    '7月', '8月', '9月', '10月', '11月', '12月'],
     dayLabels : ['日', '月', '火', '水', '木', '金', '土'],
     todayLabel : '今日',
     clearLabel : 'クリア',
@@ -66,8 +64,6 @@ var arabicArguments = {
     locale: 'ar',
     isRTL: false,
     isCalendarRTL: true,
-    monthLabels : ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-                   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
     dayLabels : ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'],
     todayLabel : 'اليوم',
     clearLabel : 'مسح',
@@ -78,8 +74,6 @@ var arabicArguments = {
 };
 var datalistArguments = {
     locale: 'en-US',
-    monthLabels : ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'],
     dayLabels : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     todayLabel : 'Today',
     clearLabel : 'Clear',
@@ -99,8 +93,6 @@ var datalistArguments = {
 };
 var longDatalistArguments = {
     locale: 'en-US',
-    monthLabels : ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'],
     dayLabels : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     todayLabel : 'Today',
     clearLabel : 'Clear',
@@ -160,8 +152,6 @@ var arabicDatalistArguments = {
     locale: 'ar',
     isRTL: true,
     isCalendarRTL: true,
-    monthLabels : ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-                   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
     dayLabels : ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'],
     todayLabel : 'اليوم',
     clearLabel : 'مسح',
@@ -183,8 +173,6 @@ var arabicLongDatalistArguments = {
     locale: 'ar',
     isRTL: true,
     isCalendarRTL: true,
-    monthLabels : ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-                   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
     dayLabels : ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'],
     todayLabel : 'اليوم',
     clearLabel : 'مسح',
@@ -238,6 +226,33 @@ var arabicLongDatalistArguments = {
     suggestionHighlightColor: "#0000ff",
     suggestionHighlightTextColor: "#ffffff"
 };
+var weekArguments = {
+    locale: 'en-US',
+    dayLabels : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    todayLabel : 'This Week',
+    clearLabel : 'Clear',
+    cancelLabel : 'Cancel',
+    weekLabel: 'Week',
+    weekStartDay : 0,
+    step : "604800000",
+    stepBase: "-259200000",
+    currentValue : '2000-W01',
+    max : '2099-W03',
+    mode: "week"
+};
+var monthArguments = {
+    locale: 'en-US',
+    dayLabels : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    todayLabel : 'This Month',
+    clearLabel : 'Clear',
+    cancelLabel : 'Cancel',
+    weekStartDay : 0,
+    step : "1",
+    stepBase: "0",
+    currentValue : '2000-01',
+    max : '2099-03',
+    mode: "month"
+};
 
 function openCalendar(args) {
     var frame = document.getElementsByTagName('iframe')[0];
@@ -275,6 +290,11 @@ function openCalendar(args) {
             if (typeof numString == "number")
                 return numString.toLocaleString();
             return numString.toString();
+        },
+        formatMonth: function(year, zeroBaseMonth) {
+            var monthLabels = ['<January>', '<February>', '<March>', '<April>', '<May>', '<June>',
+                               '<July>', '<August>', '<September>', '<October>', '<November>', '<December>'];
+            return monthLabels[zeroBaseMonth] + " " + year;
         }
     }
 
@@ -309,6 +329,12 @@ function selected(select) {
         break;
     case 6:
         openCalendar(arabicLongDatalistArguments);
+        break;
+    case 7:
+        openCalendar(weekArguments);
+        break;
+    case 8:
+        openCalendar(monthArguments);
         break;
     }
 }

@@ -26,8 +26,6 @@
 #ifndef CookieStorageCFNet_h
 #define CookieStorageCFNet_h
 
-#if USE(CFNETWORK) || USE(CFURLSTORAGESESSIONS)
-
 #include <wtf/RetainPtr.h>
 
 typedef struct OpaqueCFHTTPCookieStorage*  CFHTTPCookieStorageRef;
@@ -35,6 +33,7 @@ typedef struct OpaqueCFHTTPCookieStorage*  CFHTTPCookieStorageRef;
 namespace WebCore {
 
 RetainPtr<CFHTTPCookieStorageRef> currentCFHTTPCookieStorage(); // Will be null when using shared NSHTTPCookieStorage.
+RetainPtr<CFHTTPCookieStorageRef> defaultCFHTTPCookieStorage(); // Doesn't take current session into account.
 
 #if PLATFORM(WIN)
 // Needed for WebKit1 API only.
@@ -42,7 +41,5 @@ void overrideCookieStorage(CFHTTPCookieStorageRef);
 #endif
 
 }
-
-#endif // USE(CFNETWORK) || USE(CFURLSTORAGESESSIONS)
 
 #endif // CookieStorageCFNet_h

@@ -1,3 +1,449 @@
+2012-11-15  Tony Chang  <tony@chromium.org>
+
+        Generate Settings from a .in file
+        https://bugs.webkit.org/show_bug.cgi?id=100393
+
+        Reviewed by Adam Barth.
+
+        Generate SettingsMacros.h for cmake.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2012-11-15  Rick Byers  <rbyers@chromium.org>
+
+        No tests for changing mouse cursors
+        https://bugs.webkit.org/show_bug.cgi?id=100550
+
+        Reviewed by Brent Fulgham.
+
+        Add necessary exports for Internals::getCurrentCursorInfo
+
+        * Source/autotools/symbols.filter:
+
+2012-11-15  Kent Tamura  <tkent@chromium.org>
+
+        Support stand-alone month names in calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=102196
+
+        Reviewed by Kentaro Hara.
+
+        * ManualTests/forms/calendar-picker.html:
+        - Remove monthLabels arguments.
+        - Add a mock implementation of pagePopupController.formatMonth.
+
+2012-11-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134741.
+        http://trac.webkit.org/changeset/134741
+        https://bugs.webkit.org/show_bug.cgi?id=102337
+
+        "Change is incorrect." (Requested by dydx on #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-11-14  Daniel Bates  <dbates@webkit.org>
+
+        Attempt to fix the Apple Windows Debug and GTK builds after <http://trac.webkit.org/changeset/134691>
+        (https://bugs.webkit.org/show_bug.cgi?id=96818)
+
+        Export symbols similar to the ones we added to WebCore.exp.in in
+        <http://trac.webkit.org/changeset/134691>.
+
+        * Source/autotools/symbols.filter:
+
+2012-11-14  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Turn on error on warnings for "sign-compare"
+        https://bugs.webkit.org/show_bug.cgi?id=101761
+
+        Reviewed by Gyuyoung Kim.
+
+        Remove "-Wno-error=sign-compare" to turn on error on warnings for "sign-compare"
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2012-11-13  Hugo Parente Lima  <hugo.lima@openbossa.org>
+
+        FindGLIB.cmake fails do find glib gmodule module.
+        https://bugs.webkit.org/show_bug.cgi?id=101784
+
+        Reviewed by Caio Marcelo de Oliveira Filho.
+
+        * Source/cmake/FindGLIB.cmake:
+
+2012-11-13  Huang Dongsung  <luxtella@company100.net>
+
+        Coordinated Graphics: Directly composited animated GIFs only render the first image.
+        https://bugs.webkit.org/show_bug.cgi?id=102043
+
+        Reviewed by Noam Rosenthal.
+
+        Add a test to check that a gif animation can run on a compositing layer.
+
+        * ManualTests/animated-gif-on-compositing-layer.html: Added.
+
+2012-11-12  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Turn on errors on warnings for WebKit1 and WebKit2 libraries
+        https://bugs.webkit.org/show_bug.cgi?id=101762
+
+        Reviewed by Gyuyoung Kim.
+
+        In case of EFL, add ENABLE_WERROR to EXTRA_COMPILER_FLAGS for WEBKIT and WEBKIT2
+
+        * Source/CMakeLists.txt:
+
+2012-11-12  Joe Mason  <jmason@rim.com>
+
+        [BlackBerry] NetworkJob should not check if data is received with HEAD
+        https://bugs.webkit.org/show_bug.cgi?id=102034
+
+        Reviewed by George Staikos.
+
+        Internal PR: 241391
+
+        Add test that HEAD XMLHttpRequests return status 404 instead of calling onerror.
+
+        * ManualTests/blackberry/head-xhr-nonexistant-file.html: Added.
+
+2012-11-12  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Turn on error on warnings for "switch"
+        https://bugs.webkit.org/show_bug.cgi?id=101760
+
+        Reviewed by Gyuyoung Kim.
+
+        Turn on error on warning for "switch" by removing "-Wno-error=switch" 
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2012-11-11  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] ElementShadow should have RuleFeatureSet for select attribute selectors.
+        https://bugs.webkit.org/show_bug.cgi?id=101180
+
+        Reviewed by Dimitri Glazkov.
+
+        Exposes necessary symbols.
+
+        * Source/autotools/symbols.filter:
+
+2012-11-11  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134144.
+        http://trac.webkit.org/changeset/134144
+        https://bugs.webkit.org/show_bug.cgi?id=101876
+
+        seems to break win 7 chromium browser test (Requested by
+        hayato on #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-11-09  Rick Byers  <rbyers@chromium.org>
+
+        No tests for changing mouse cursors
+        https://bugs.webkit.org/show_bug.cgi?id=100550
+
+        Reviewed by Adam Barth.
+
+        Add necessary exports for Internals::getCurrentCursorInfo
+
+        * Source/autotools/symbols.filter:
+
+2012-11-09  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Enable -Werror for the EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=98715
+
+        Reviewed by Gyuyoung Kim.
+
+        Treat all warnings as errors, except the existing warnings in the
+        current code base ("unused-parameter", "sign-compare" and "switch").
+
+        Thanks for Raphael Kubo da Costa for the extra help.      
+
+        * Source/CMakeLists.txt: Enable warnings as error for all libraries
+        (except WebKit and WebKit2) for the EFL port. 
+        Other cmake-based ports are welcome to join.
+
+        * Source/cmake/WebKitHelpers.cmake: Treat warnings as errors by
+        default for cmake-based ports when ENABLE_WERROR is set.
+
+2012-11-08  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [EFL] Turn WTF_USE_TILED_BACKING_STORE in OptionsEfl.cmake.
+        https://bugs.webkit.org/show_bug.cgi?id=101559
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Follow-up to 133859; also change the default value in
+        OptionsEfl.cmake so that the default changes for people not using
+        build-webkit (ie. users) as well.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-08  Yael Aharon  <yael.aharon@intel.com>
+
+        [EFL] Turn on WTF_USE_TILED_BACKING_STORE by default
+        https://bugs.webkit.org/show_bug.cgi?id=101526
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Separate out ENABLE_WEBGL. It is not ready to be enabled by default.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-08  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Remove non-variable options from the build system
+        https://bugs.webkit.org/show_bug.cgi?id=101506
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove WTF_USE_PTHREADS, WTF_USE_ICU_UNICODE, WTF_USE_CAIRO,
+        WTF_USE_FREETYPE and WTF_USE_HARFBUZZ_NG cmake variables 
+        as these are always set to const 1 and not really configurable.
+
+        Remove the definition of ENABLE_CONTEXT_MENUS as this is already set to 1 by default in Platform.h.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-08  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r133865.
+        http://trac.webkit.org/changeset/133865
+        https://bugs.webkit.org/show_bug.cgi?id=101579
+
+        dependent patch has been rolled out. (Requested by drott on
+        #webkit).
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-08  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        Unreviewed, rolling out r133859.
+        http://trac.webkit.org/changeset/133859
+        https://bugs.webkit.org/show_bug.cgi?id=101526
+
+        Breaks EFL bots test execution.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-08  Raphael Kubo da Costa  <raphael.kubo.da.costa@intel.com>
+
+        [EFL] Turn WTF_USE_TILED_BACKING_STORE in OptionsEfl.cmake.
+        https://bugs.webkit.org/show_bug.cgi?id=101559
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Follow-up to 133859; also change the default value in
+        OptionsEfl.cmake so that the default changes for people not using
+        build-webkit (ie. users) as well.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-08  Yael Aharon  <yael.aharon@intel.com>
+
+        [EFL] Turn on WTF_USE_TILED_BACKING_STORE by default
+        https://bugs.webkit.org/show_bug.cgi?id=101526
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Separate out ENABLE_WEBGL. It is not ready to be enabled by default.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-07  Keishi Hattori  <keishi@webkit.org>
+
+        Implement week picking to calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=101449
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Added test for week picker.
+
+2012-11-07  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r133841.
+        http://trac.webkit.org/changeset/133841
+        https://bugs.webkit.org/show_bug.cgi?id=101542
+
+        Reverted patches were innocent (Requested by shinyak on
+        #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-11-07  Shinya Kawanaka  <shinyak@chromium.org> 
+
+        Unreviewed, rolling out r133428 and r133749
+        https://bugs.webkit.org/show_bug.cgi?id=101533
+
+        These patches might cause memory regression.
+
+        * Source/autotools/symbols.filter:
+
+2012-11-07  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] Use setPseudo() instead of setShadowPseudoId().
+        https://bugs.webkit.org/show_bug.cgi?id=101306
+
+        Reviewed by Kent Tamura.
+
+        Exposes necessary symbols.
+
+        * Source/autotools/symbols.filter:
+
+2012-11-07  Oswald Buddenhagen <oswald.buddenhagen@nokia.com>
+
+        [Qt] Fix build of modules depending on QtWebKit when using prefix
+        https://bugs.webkit.org/show_bug.cgi?id=101437
+
+        Reviewed by Simon Hausmann.
+
+        .qmake.conf loads qt_build_config.prf, which nowadays is responsible for
+        adding the path to .qmake.super (before it was done by default_pre.prf,
+        so having setting the path in our default_pre wrapper was sufficient).
+
+        * .qmake.conf:
+
+2012-11-06  Keishi Hattori  <keishi@webkit.org>
+
+        Implement month picking to calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=101333
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Added test for month picker.
+
+2012-11-06  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Simplify the build system
+        https://bugs.webkit.org/show_bug.cgi?id=101392
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove unused cmake variables. In addition there is no longer a need to define 
+        WTF_USE_TEXTURE_MAPPER_GL in the build system as that is now handled in Platform.h
+        (see r133623).
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-05  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Trivial unreviewed: Add missing module dependencies for builds in Qt CI system.
+
+        These fields aren't used by anyone except some perl scripts in the Qt CI builds.
+
+        * Source/sync.profile:
+
+2012-11-02  Adam Barth  <abarth@webkit.org>
+
+        ENABLE(UNDO_MANAGER) is disabled everywhere and is not under active development
+        https://bugs.webkit.org/show_bug.cgi?id=100711
+
+        Reviewed by Eric Seidel.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-11-02  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove dependency on SoupPasswordManager
+        https://bugs.webkit.org/show_bug.cgi?id=100775
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a libsecret dependency to the build. This is necessary so that we can remove
+        a dependency on SoupPasswordManager.
+
+        * configure.ac: Look for libsecret using the pkg-config configuration macro.
+
+2012-11-02  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt][WK2] ASSERT hit for every mouse click
+        https://bugs.webkit.org/show_bug.cgi?id=100607
+
+        Reviewed by Jocelyn Turcotte.
+
+        Added a test with a link that contains an <em> tag surrounding the entire inner text.
+        The test should be run on an assert enabled build and the assert should not be
+        triggered when tapping the link.
+
+        * ManualTests/tap-gesture-on-em-link-tap-highlight-assert.html: Added.
+
+2012-11-01  Ami Fischman  <fischman@chromium.org>
+
+        HTMLMediaPlayer should free m_player when src is set/changed
+        https://bugs.webkit.org/show_bug.cgi?id=99647
+
+        Reviewed by Eric Carlson.
+
+        * ManualTests/media-players-are-dropped-on-error.html: Added.
+            Various scenarios are tested to make sure players aren't
+            leaked in different ways for each of them.
+
+2012-11-01  Beth Dakin  <bdakin@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=100917
+        There should be a way to dump the scrolling tree from the layout tests
+
+        Reviewed by Simon Fraser.
+
+        * Source/autotools/symbols.filter:
+
+2012-10-31  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        Added viewport at-rule to the CSS parser and tokenizer
+        https://bugs.webkit.org/show_bug.cgi?id=95961
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Enable CSS Device Adaptation by default on EFL.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-10-31  Ian Vollick  <vollick@chromium.org>
+
+        Add support for text-based repaint testing
+        https://bugs.webkit.org/show_bug.cgi?id=100584
+
+        Reviewed by Simon Fraser.
+
+        Allows tracked repaint rects to be dumped as text.
+
+        * Source/autotools/symbols.filter:
+          Exports for:
+            FrameView::setTracksRepaints(bool)
+            Frame::trackedRepaintRectsAsText() const
+
+
+2012-10-30  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Add files generated by Windows to ignore list for git repository
+        https://bugs.webkit.org/show_bug.cgi?id=100729
+
+        Reviewed by Gyuyoung Kim.
+
+        Adding the additional files generated by windows port to the ignore list
+
+        * .gitignore:
+
+2012-10-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add a configure option to build with -g1
+        https://bugs.webkit.org/show_bug.cgi?id=100670
+
+        Reviewed by Martin Robinson.
+
+        Add min and full options to the --enable-debug-symbols configure
+        option. Using --enable-debug-symbols=min will use -g1 instead of
+        -g (which is actually -g2). The first level is enough for most of
+        the cases, like getting a backtrace, and it's the only way to
+        build WebKit with debug symbols in a 32 bit system. The option
+        full is actually the same than yes for backwards compatibility.
+
+        * configure.ac:
+
 2012-10-26  Rob Buis  <rbuis@rim.com>
 
         [BlackBerry] Platform Abstraction for WebKit Resource/Image Loading

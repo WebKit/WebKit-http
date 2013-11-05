@@ -42,12 +42,13 @@ namespace WebCore {
     static const int v8DOMWrapperObjectIndex = 1;
     static const int v8DefaultWrapperInternalFieldCount = 2;
 
-    static const uint16_t v8DOMSubtreeClassId = 1;
+    static const uint16_t v8DOMNodeClassId = 1;
+    static const uint16_t v8DOMObjectClassId = 2;
 
     typedef v8::Persistent<v8::FunctionTemplate> (*GetTemplateFunction)();
     typedef void (*DerefObjectFunction)(void*);
     typedef ActiveDOMObject* (*ToActiveDOMObjectFunction)(v8::Handle<v8::Object>);
-    typedef void (*DOMWrapperVisitorFunction)(DOMDataStore*, void*, v8::Persistent<v8::Object>);
+    typedef void* (*OpaqueRootForGC)(void*, v8::Persistent<v8::Object>);
     typedef void (*InstallPerContextPrototypePropertiesFunction)(v8::Handle<v8::Object>);
 
     enum WrapperTypePrototype {
@@ -62,7 +63,7 @@ namespace WebCore {
 
         static WrapperTypeInfo* unwrap(v8::Handle<v8::Value> typeInfoWrapper)
         {
-            return reinterpret_cast<WrapperTypeInfo*>(v8::External::Unwrap(typeInfoWrapper));
+            return reinterpret_cast<WrapperTypeInfo*>(v8::External::Cast(*typeInfoWrapper)->Value());
         }
         
         
@@ -102,16 +103,17 @@ namespace WebCore {
             return toActiveDOMObjectFunction(object);
         }
 
-        void visitDOMWrapper(DOMDataStore* store, void* object, v8::Persistent<v8::Object> wrapper)
+        void* opaqueRootForGC(void* object, v8::Persistent<v8::Object> wrapper)
         {
-            if (domWrapperVisitorFunction)
-                domWrapperVisitorFunction(store, object, wrapper);
+            if (!opaqueRootForGCFunction)
+                return object;
+            return opaqueRootForGCFunction(object, wrapper);
         }
 
         const GetTemplateFunction getTemplateFunction;
         const DerefObjectFunction derefObjectFunction;
         const ToActiveDOMObjectFunction toActiveDOMObjectFunction;
-        const DOMWrapperVisitorFunction domWrapperVisitorFunction;
+        const OpaqueRootForGC opaqueRootForGCFunction;
         const InstallPerContextPrototypePropertiesFunction installPerContextPrototypePropertiesFunction;
         const WrapperTypeInfo* parentClass;
         const WrapperTypePrototype wrapperTypePrototype;
@@ -120,13 +122,13 @@ namespace WebCore {
     inline void* toNative(v8::Handle<v8::Object> object)
     {
         ASSERT(object->InternalFieldCount() >= v8DOMWrapperObjectIndex);
-        return object->GetPointerFromInternalField(v8DOMWrapperObjectIndex);
+        return object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex);
     }
 
     inline WrapperTypeInfo* toWrapperTypeInfo(v8::Handle<v8::Object> object)
     {
         ASSERT(object->InternalFieldCount() >= v8DOMWrapperTypeIndex);
-        return static_cast<WrapperTypeInfo*>(object->GetPointerFromInternalField(v8DOMWrapperTypeIndex));
+        return static_cast<WrapperTypeInfo*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperTypeIndex));
     }
 
 }

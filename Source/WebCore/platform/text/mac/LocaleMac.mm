@@ -54,20 +54,20 @@ static inline String languageFromLocale(const String& locale)
     return normalizedLocale.left(separatorPosition);
 }
 
-static NSLocale* determineLocale(const String& locale)
+static RetainPtr<NSLocale> determineLocale(const String& locale)
 {
-    NSLocale* currentLocale = [NSLocale currentLocale];
-    String currentLocaleLanguage = languageFromLocale(String([currentLocale localeIdentifier]));
+    RetainPtr<NSLocale> currentLocale = [NSLocale currentLocale];
+    String currentLocaleLanguage = languageFromLocale(String([currentLocale.get() localeIdentifier]));
     String localeLanguage = languageFromLocale(locale);
     if (equalIgnoringCase(currentLocaleLanguage, localeLanguage))
         return currentLocale;
     // It seems initWithLocaleIdentifier accepts dash-separated locale identifier.
-    return [[NSLocale alloc] initWithLocaleIdentifier:locale];
+     return RetainPtr<NSLocale>(AdoptNS, [[NSLocale alloc] initWithLocaleIdentifier:locale]);
 }
 
-PassOwnPtr<Localizer> Localizer::create(const AtomicString& locale)
+PassOwnPtr<Locale> Locale::create(const AtomicString& locale)
 {
-    return LocaleMac::create(determineLocale(locale.string()));
+    return LocaleMac::create(determineLocale(locale.string()).get());
 }
 
 static RetainPtr<NSDateFormatter> createDateTimeFormatter(NSLocale* locale, NSCalendar* calendar, NSDateFormatterStyle dateStyle, NSDateFormatterStyle timeStyle)
@@ -90,7 +90,7 @@ LocaleMac::LocaleMac(NSLocale* locale)
     // NSLocale returns a lower case NSLocaleLanguageCode so we don't have care about case.
     NSString* language = [m_locale.get() objectForKey:NSLocaleLanguageCode];
     if ([availableLanguages indexOfObject:language] == NSNotFound)
-        m_locale = [[NSLocale alloc] initWithLocaleIdentifier:defaultLanguage()];
+        m_locale.adoptNS([[NSLocale alloc] initWithLocaleIdentifier:defaultLanguage()]);
     [m_gregorianCalendar.get() setLocale:m_locale.get()];
 }
 
@@ -100,7 +100,8 @@ LocaleMac::~LocaleMac()
 
 PassOwnPtr<LocaleMac> LocaleMac::create(const String& localeIdentifier)
 {
-    return adoptPtr(new LocaleMac([[NSLocale alloc] initWithLocaleIdentifier:localeIdentifier]));
+    RetainPtr<NSLocale> locale = [[NSLocale alloc] initWithLocaleIdentifier:localeIdentifier];
+    return adoptPtr(new LocaleMac(locale.get()));
 }
 
 PassOwnPtr<LocaleMac> LocaleMac::create(NSLocale* locale)
@@ -113,74 +114,7 @@ RetainPtr<NSDateFormatter> LocaleMac::shortDateFormatter()
     return createDateTimeFormatter(m_locale.get(), m_gregorianCalendar.get(), NSDateFormatterShortStyle, NSDateFormatterNoStyle);
 }
 
-double LocaleMac::parseDateTime(const String& input, DateComponents::Type type)
-{
-    if (type != DateComponents::Date)
-        return std::numeric_limits<double>::quiet_NaN();
-    NSDate *date = [shortDateFormatter().get() dateFromString:input];
-    if (!date)
-        return std::numeric_limits<double>::quiet_NaN();
-    return [date timeIntervalSince1970] * msPerSecond;
-}
-
-#if ENABLE(CALENDAR_PICKER)
-static bool isYearSymbol(UChar letter) { return letter == 'y' || letter == 'Y' || letter == 'u'; }
-static bool isMonthSymbol(UChar letter) { return letter == 'M' || letter == 'L'; }
-static bool isDaySymbol(UChar letter) { return letter == 'd'; }
-
-// http://unicode.org/reports/tr35/tr35-6.html#Date_Format_Patterns
-static String localizeDateFormat(const String& format)
-{
-    String yearText = dateFormatYearText().isEmpty() ? "Year" : dateFormatYearText();
-    String monthText = dateFormatMonthText().isEmpty() ? "Month" : dateFormatMonthText();
-    String dayText = dateFormatDayInMonthText().isEmpty() ? "Day" : dateFormatDayInMonthText();
-    StringBuilder buffer;
-    bool inQuote = false;
-    for (unsigned i = 0; i < format.length(); ++i) {
-        UChar ch = format[i];
-        if (inQuote) {
-            if (ch == '\'') {
-                inQuote = false;
-                ASSERT(i);
-                if (format[i - 1] == '\'')
-                    buffer.append('\'');
-            } else
-                buffer.append(ch);
-            continue;
-        }
-
-        if (ch == '\'') {
-            inQuote = true;
-            if (i > 0 && format[i - 1] == '\'')
-                buffer.append(ch);
-        } else if (isYearSymbol(ch)) {
-            if (i > 0 && format[i - 1] == ch)
-                continue;
-            buffer.append(yearText);
-        } else if (isMonthSymbol(ch)) {
-            if (i > 0 && format[i - 1] == ch)
-                continue;
-            buffer.append(monthText);
-        } else if (isDaySymbol(ch)) {
-            if (i > 0 && format[i - 1] == ch)
-                continue;
-            buffer.append(dayText);
-        } else
-            buffer.append(ch);
-    }
-    return buffer.toString();
-}
-
-String LocaleMac::dateFormatText()
-{
-    if (!m_localizedDateFormatText.isNull())
-        return m_localizedDateFormatText;
-    m_localizedDateFormatText = localizeDateFormat([shortDateFormatter().get() dateFormat]);
-    return  m_localizedDateFormatText;
-}
-#endif
-
-#if ENABLE(CALENDAR_PICKER) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 const Vector<String>& LocaleMac::monthLabels()
 {
     if (!m_monthLabels.isEmpty())
@@ -231,7 +165,7 @@ bool LocaleMac::isRTL()
 }
 #endif
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 RetainPtr<NSDateFormatter> LocaleMac::timeFormatter()
 {
     return createDateTimeFormatter(m_locale.get(), m_gregorianCalendar.get(), NSDateFormatterNoStyle, NSDateFormatterMediumStyle);
@@ -334,7 +268,7 @@ const Vector<String>& LocaleMac::timeAMPMLabels()
 }
 #endif
 
-void LocaleMac::initializeLocalizerData()
+void LocaleMac::initializeLocaleData()
 {
     if (m_didInitializeNumberData)
         return;
@@ -362,7 +296,7 @@ void LocaleMac::initializeLocalizerData()
     String positiveSuffix([formatter.get() positiveSuffix]);
     String negativePrefix([formatter.get() negativePrefix]);
     String negativeSuffix([formatter.get() negativeSuffix]);
-    setLocalizerData(symbols, positivePrefix, positiveSuffix, negativePrefix, negativeSuffix);
+    setLocaleData(symbols, positivePrefix, positiveSuffix, negativePrefix, negativeSuffix);
 }
 
 }

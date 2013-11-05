@@ -192,8 +192,11 @@ extern void (*wkQTMovieViewSetDrawSynchronously)(QTMovieView*, BOOL);
 extern NSArray *(*wkQTGetSitesInMediaDownloadCache)();
 extern void (*wkQTClearMediaDownloadCacheForSite)(NSString *site);
 extern void (*wkQTClearMediaDownloadCache)();
+#if PLATFORM(MAC)
+extern void (*wkSetCGFontRenderingMode)(CGContextRef, NSFont*, BOOL);
+#else
 extern void (*wkSetCGFontRenderingMode)(CGContextRef, NSFont*);
-extern void (*wkSetCookieStoragePrivateBrowsingEnabled)(BOOL);
+#endif
 extern void (*wkSetDragImage)(NSImage*, NSPoint offset);
 extern void (*wkSetNSURLConnectionDefersCallbacks)(NSURLConnection *, BOOL);
 extern void (*wkSetNSURLRequestShouldContentSniff)(NSMutableURLRequest *, BOOL);
@@ -291,9 +294,11 @@ typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
 extern CFHTTPCookieStorageRef (*wkCopyHTTPCookieStorage)(CFURLStorageSessionRef);
 extern unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
 extern void (*wkSetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef, unsigned);
+extern NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
 extern NSArray *(*wkHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSURL *);
 extern void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
 extern void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
+extern void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
 
 extern CFStringRef (*wkGetCFURLResponseMIMEType)(CFURLResponseRef);
 extern CFURLRef (*wkGetCFURLResponseURL)(CFURLResponseRef);

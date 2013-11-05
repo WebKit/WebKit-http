@@ -210,8 +210,8 @@ enum ENBSPMode {
     NBNORMAL, SPACE
 };
 
-enum EKHTMLLineBreak {
-    LBNORMAL, AFTER_WHITE_SPACE
+enum LineBreak {
+    LineBreakAuto, LineBreakLoose, LineBreakNormal, LineBreakStrict, LineBreakAfterWhiteSpace
 };
 
 enum EResize {
@@ -345,6 +345,12 @@ enum TextDecorationStyle {
     TextDecorationStyleWavy
 #endif // CSS3_TEXT
 };
+
+#if ENABLE(CSS3_TEXT)
+enum ETextAlignLast {
+    TextAlignLastAuto, TextAlignLastStart, TextAlignLastEnd, TextAlignLastLeft, TextAlignLastRight, TextAlignLastCenter, TextAlignLastJustify
+};
+#endif // CSS3_TEXT
 
 enum EPageBreak {
     PBAUTO, PBALWAYS, PBAVOID

@@ -41,6 +41,7 @@ class Icon;
 class InputType;
 class KURL;
 class ListAttributeTargetObserver;
+struct DateTimeChooserParameters;
 
 class HTMLInputElement : public HTMLTextFormControlElement, public ImageLoaderClientBase<HTMLInputElement> {
 public:
@@ -286,10 +287,17 @@ public:
 
     virtual const AtomicString& name() const OVERRIDE;
 
+    void endEditing();
+
     static Vector<FileChooserFileInfo> filesFromFileInputFormControlState(const FormControlState&);
 
     virtual void setRangeText(const String& replacement, ExceptionCode&) OVERRIDE;
     virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&) OVERRIDE;
+
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+    bool setupDateTimeChooserParameters(DateTimeChooserParameters&);
+#endif
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 protected:
     HTMLInputElement(const QualifiedName&, Document*, HTMLFormElement*, bool createdByParser);
@@ -314,7 +322,6 @@ private:
     virtual bool isEnumeratable() const;
     virtual bool supportLabels() const OVERRIDE;
     virtual void updateFocusAppearance(bool restorePreviousSelection);
-    virtual void aboutToUnload();
     virtual bool shouldUseInputMethod();
 
     virtual bool isTextFormControl() const { return isTextField(); }
@@ -333,7 +340,7 @@ private:
 
     virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
     virtual void finishParsingChildren();
 
     virtual void copyNonAttributePropertiesFromElement(const Element&);
@@ -369,7 +376,6 @@ private:
     bool tooLong(const String&, NeedsToCheckDirtyFlag) const;
 
     virtual bool supportsPlaceholder() const;
-    virtual bool isPlaceholderEmpty() const OVERRIDE;
     virtual void updatePlaceholderText();
     virtual bool isEmptyValue() const OVERRIDE { return innerTextValue().isEmpty(); }
     virtual bool isEmptySuggestedValue() const { return suggestedValue().isEmpty(); }
@@ -425,12 +431,6 @@ private:
     OwnPtr<ListAttributeTargetObserver> m_listAttributeTargetObserver;
 #endif
 };
-
-inline bool isHTMLInputElement(Node* node)
-{
-    ASSERT(node);
-    return node->hasTagName(HTMLNames::inputTag);
-}
 
 } //namespace
 #endif

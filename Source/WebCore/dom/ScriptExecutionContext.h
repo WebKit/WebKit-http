@@ -31,6 +31,7 @@
 #include "ActiveDOMObject.h"
 #include "ConsoleTypes.h"
 #include "KURL.h"
+#include "ScriptCallStack.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
 #include <wtf/Forward.h>
@@ -53,7 +54,6 @@ class EventListener;
 class EventQueue;
 class EventTarget;
 class MessagePort;
-class ScriptCallStack;
 
 #if ENABLE(BLOB)
 class PublicURLManager;
@@ -83,8 +83,8 @@ public:
 
     bool sanitizeScriptError(String& errorMessage, int& lineNumber, String& sourceURL);
     void reportException(const String& errorMessage, int lineNumber, const String& sourceURL, PassRefPtr<ScriptCallStack>);
-    void addConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL = String(), unsigned lineNumber = 0, PassRefPtr<ScriptCallStack> = 0);
-    void addConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>);
+    void addConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL = String(), unsigned lineNumber = 0, PassRefPtr<ScriptCallStack> = 0, unsigned long requestIdentifier = 0);
+    void addConsoleMessage(MessageSource, MessageType, MessageLevel, const String& message, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0);
 
 #if ENABLE(BLOB)
     PublicURLManager& publicURLManager();
@@ -161,6 +161,8 @@ public:
 
     virtual EventQueue* eventQueue() const = 0;
 
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
 protected:
     class AddConsoleMessageTask : public Task {
     public:
@@ -187,7 +189,7 @@ private:
     virtual const KURL& virtualURL() const = 0;
     virtual KURL virtualCompleteURL(const String&) const = 0;
 
-    virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack>) = 0;
+    virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack>, unsigned long requestIdentifier = 0) = 0;
     virtual EventTarget* errorEventTarget() = 0;
     virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, PassRefPtr<ScriptCallStack>) = 0;
     bool dispatchErrorEvent(const String& errorMessage, int lineNumber, const String& sourceURL);

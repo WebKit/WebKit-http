@@ -26,8 +26,8 @@
 #include "config.h"
 #include "RenderThemeChromiumCommon.h"
 
-#include "FractionalLayoutUnit.h"
 #include "InputTypeNames.h"
+#include "LayoutUnit.h"
 
 namespace WebCore {
 
@@ -42,15 +42,20 @@ bool RenderThemeChromiumCommon::supportsDataListUI(const AtomicString& type)
 #if ENABLE(CALENDAR_PICKER)
         || type == InputTypeNames::date()
 #endif
+        || type == InputTypeNames::month()
+        || type == InputTypeNames::week()
         || type == InputTypeNames::time()
         || type == InputTypeNames::range();
 }
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI) && ENABLE(CALENDAR_PICKER)
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 bool RenderThemeChromiumCommon::supportsCalendarPicker(const AtomicString& type)
 {
-    // FIXME: We'd like to support datetime, datetime-local, month, and week too.
-    return type == InputTypeNames::date();
+    return type == InputTypeNames::date()
+        || type == InputTypeNames::datetime()
+        || type == InputTypeNames::datetimelocal()
+        || type == InputTypeNames::month()
+        || type == InputTypeNames::week();
 }
 #endif
 

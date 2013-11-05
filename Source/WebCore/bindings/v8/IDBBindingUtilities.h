@@ -34,6 +34,7 @@
 
 namespace WebCore {
 
+class DOMRequestState;
 class IDBKey;
 class IDBKeyPath;
 class SerializedScriptValue;
@@ -43,8 +44,8 @@ PassRefPtr<IDBKey> createIDBKeyFromValue(v8::Handle<v8::Value>);
 bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey>, ScriptValue&, const IDBKeyPath&);
 PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue&, const IDBKeyPath&);
 bool canInjectIDBKeyIntoScriptValue(const ScriptValue&, const IDBKeyPath&);
-ScriptValue deserializeIDBValue(ScriptExecutionContext*, PassRefPtr<SerializedScriptValue>);
-ScriptValue idbKeyToScriptValue(ScriptExecutionContext*, PassRefPtr<IDBKey>);
+ScriptValue deserializeIDBValue(DOMRequestState*, PassRefPtr<SerializedScriptValue>);
+ScriptValue idbKeyToScriptValue(DOMRequestState*, PassRefPtr<IDBKey>);
 
 }
 

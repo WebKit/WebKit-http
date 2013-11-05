@@ -31,8 +31,6 @@
 
 namespace JSC {
 
-ASSERT_HAS_TRIVIAL_DESTRUCTOR(JSBoundFunction);
-
 const ClassInfo JSBoundFunction::s_info = { "Function", &Base::s_info, 0, 0, CREATE_METHOD_TABLE(JSBoundFunction) };
 
 EncodedJSValue JSC_HOST_CALL boundFunctionCall(ExecState* exec)
@@ -86,6 +84,11 @@ JSBoundFunction* JSBoundFunction::create(ExecState* exec, JSGlobalObject* global
 
     function->finishCreation(exec, executable, length, name);
     return function;
+}
+
+void JSBoundFunction::destroy(JSCell* cell)
+{
+    static_cast<JSBoundFunction*>(cell)->JSBoundFunction::~JSBoundFunction();
 }
 
 bool JSBoundFunction::customHasInstance(JSObject* object, ExecState* exec, JSValue value)

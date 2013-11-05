@@ -27,7 +27,6 @@
 // changes in its ouput.
 [
     Conditional=Condition1|Condition2,
-    Constructor(in DOMString hello, in SerializedScriptValue value),
     Constructor(in DOMString hello, in [TransferList=transferList] SerializedScriptValue data, in [Optional=DefaultIsUndefined] Array transferList),
 ] interface TestSerializedScriptValueInterface {
     attribute SerializedScriptValue value;

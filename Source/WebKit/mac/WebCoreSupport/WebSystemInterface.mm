@@ -93,7 +93,6 @@ void InitWebCoreSystemInterface(void)
     INIT(SetCGFontRenderingMode);
     INIT(SetCONNECTProxyAuthorizationForStream);
     INIT(SetCONNECTProxyForStream);
-    INIT(SetCookieStoragePrivateBrowsingEnabled);
     INIT(SetDragImage);
     INIT(SetHTTPPipeliningMaximumPriority);
     INIT(SetHTTPPipeliningPriority);
@@ -166,8 +165,14 @@ void InitWebCoreSystemInterface(void)
     INIT(CopyRequestWithStorageSession);
     INIT(CopyHTTPCookieStorage);
     INIT(GetHTTPCookieAcceptPolicy);
+#if PLATFORM(MAC)
+    INIT(HTTPCookies);
+#endif
     INIT(HTTPCookiesForURL);
     INIT(SetHTTPCookiesForURL);
+#if PLATFORM(MAC)
+    INIT(DeleteAllHTTPCookies);
+#endif
     INIT(DeleteHTTPCookie);
 
     INIT(GetCFURLResponseMIMEType);

@@ -28,6 +28,13 @@
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
+editing/spelling/design-mode-spellcheck-off.html [ Pass ]
+editing/spelling/spellcheck-api-crash.html [ Pass ]
+editing/spelling/spellcheck-attribute.html [ Pass ]
+editing/spelling/spelling-attribute-at-child.html [ Pass ]
+editing/spelling/spelling-attribute-change.html [ Pass ]
+editing/spelling/spelling-hasspellingmarker.html [ Pass ]
+editing/spelling/spelling-linebreak.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # TESTS EXPECTED TO FAIL
@@ -43,11 +50,8 @@ webkit.org/b/92726 fast/dom/unregister-protocol-handler.html [ Crash ]
 # Crashes on plugin test.
 webkit.org/b/98747 plugins/document-open.html [ Crash ]
 
-# WebKitTestRunner needs an implementation for download attribute feature
-# The implementation for DumpRenderTree is on https://bugs.webkit.org/show_bug.cgi?id=96462
-# anchor-download-unset.html and anchor-nodownload.html are currently passed, but need to be checked along with below test cases
-Bug(EFL) fast/dom/HTMLAnchorElement/anchor-download.html [ Crash ]
-Bug(EFL) fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Crash ]
+webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-download.html [ Crash Failure ]
+webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Crash Failure ]
 
 #Crash after r132386
 webkit.org/b/100342 fast/dom/nested-script-exceptions.html [ Crash ]
@@ -57,15 +61,20 @@ webkit.org/b/100342 networkinformation/updates.html [ Crash ]
 webkit.org/b/100342 networkinformation/add-listener-from-callback.html [ Crash ]
 webkit.org/b/100342 networkinformation/basic-operation.html [ Crash ]
 
+webkit.org/b/101428 media/media-continues-playing-after-replace-source.html [ Crash ]
+
+webkit.org/b/102203 fast/events/attribute-listener-deletion-crash.html [ Crash ]
+webkit.org/b/102204 http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Crash ]
+
+webkit.org/b/102217 media/audio-concurrent-supported.html [ Crash ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/97560 http/tests/inspector/extensions-useragent.html [ Failure Pass ]
 webkit.org/b/97560 inspector/extensions/extensions-api.html [ Failure Pass ]
-webkit.org/b/97560 inspector/extensions/extensions-audits-content-script.html [ Failure Pass ]
 webkit.org/b/97560 inspector/extensions/extensions-audits.html [ Failure Pass ]
-webkit.org/b/97560 inspector/extensions/extensions-eval-content-script.html [ Failure Pass ]
 
 Bug(EFL) editing/selection/fake-doubleclick.html [ Failure Pass ]
 Bug(EFL) http/tests/security/contentSecurityPolicy/connect-src-websocket-blocked.html [ Crash Pass ]
@@ -136,12 +145,6 @@ Bug(EFL) fast/layers/no-clipping-overflow-hidden-hardware-acceleration.html [ Im
 Bug(EFL) fast/events/domactivate-sets-underlying-click-event-as-handled.html [ Failure Pass ]
 Bug(EFL) http/tests/inspector/change-iframe-src.html [ Failure Pass ]
 Bug(EFL) http/tests/loading/fire-error-event-empty-404-script.html [ Crash Failure Pass ]
-Bug(EFL) sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A5.html [ Crash Failure Pass ]
-Bug(EFL) sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A6.html [ Crash Failure Pass ]
-Bug(EFL) sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.1_T2.html [ Crash Failure Pass ]
-Bug(EFL) sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.4_T2.html [ Crash Failure Pass ]
-Bug(EFL) sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.1_T2.html [ Crash Failure Pass ]
-Bug(EFL) sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.4_T2.html [ Crash Failure Pass ]
 Bug(EFL) svg/dom/viewspec-parser-3.html [ Failure Pass ]
 Bug(EFL) svg/dom/viewspec-parser-1.html [ Failure Pass ]
 Bug(EFL) svg/dom/viewspec-parser-4.html [ Failure Pass ]
@@ -174,6 +177,8 @@ webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Failure Pas
 # Flaky, probably because the result is sometimes taken before data about visited link have passed through IPC.
 webkit.org/b/81797 fast/history/visited-link-background-color.html [ Failure  Pass ]
 
+webkit.org/b/101417 fast/dom/shadow/shadowdom-for-object-only-shadow.html [ ImageOnlyFailure Pass ]
+
 # Also flaky at least on GTK+
 webkit.org/b/72698 media/audio-garbage-collect.html
 
@@ -197,11 +202,18 @@ Bug(EFL) fast/media/media-query-list-06.html [ Failure ]
 Bug(EFL) fast/media/media-query-list-07.html [ Failure ]
 Bug(EFL) fast/media/view-mode-media-feature.html [ Failure ]
 
+# Needs grammar checking
+Bug(EFL) editing/spelling/grammar-edit-word.html [ Failure ]
+Bug(EFL) editing/spelling/markers.html [ Failure ]
+
+# Unified text checking is failing
+Bug(EFL) editing/spelling/spelling-unified-emulation.html [ Failure ]
+
 # WebKitTestRunner needs an implementation for eventSender.scheduleAsynchronousKeyDown
 webkit.org/b/93979 fast/mutation/end-of-task-delivery.html [ Failure ]
 
-# testRunner.setUseDeferredFrameLoading() is not implemented in WK2
-webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Failure ]
+# testRunner.setUseDeferredFrameLoading() is not implemented in WK2. Skipped so it does not generate PNG results.
+webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Skip ]
 
 # WebKitTestRunner needs an implementation for testRunner.setStorageDatabaseIdleInterval
 webkit.org/b/93982 storage/domstorage/storage-close-database-on-idle.html [ Failure ]
@@ -233,10 +245,6 @@ webkit.org/b/99436 editing/selection/doubleclick-whitespace.html [ Failure ]
 # Text input controller needs selectedRange implementation
 webkit.org/b/99438 editing/selection/mixed-editability-10.html [ Failure ]
 
-# BUG: wrong test results that need investigation
-editing/selection/anchor-focus3.html [ Failure ]
-editing/selection/click-in-margins-inside-editable-div.html [ Failure ]
-
 # NPN_ReloadPlugins is not implemented.
 webkit.org/b/98744 plugins/reloadplugins-and-pages.html [ Failure ]
 
@@ -256,6 +264,9 @@ webkit.org/b/98741 plugins/refcount-leaks.html [ Failure ]
 # NPP_SetWindow is not called during plugin destruction on X11.
 webkit.org/b/63261 plugins/npp-set-window-called-during-destruction.html [ Failure ]
 
+# Focus navigation behaves differently than in DRT
+webkit.org/b/100669 fast/dom/shadow/focus-navigation.html [ Failure ]
+
 # Delete plugin failures.
 webkit.org/b/98740 plugins/npruntime/delete-plugin-within-hasProperty-return-false.html [ Failure ]
 webkit.org/b/98740 plugins/npruntime/delete-plugin-within-hasProperty-return-true.html [ Failure ]
@@ -268,13 +279,26 @@ webkit.org/b/99562 http/tests/plugins/post-url-file.html [ Failure ]
 # Comparison of two javascript objects in C++ is failing.
 webkit.org/b/98739 plugins/npruntime/embed-property-equality.html [ Failure ]
 
-# Flaky on EFL port.
-webkit.org/b/96641 media/video-seek-past-end-playing.html [ Failure ]
+# WebKitTestRunner needs an implementation for eventSender.contextClick
+webkit.org/b/86881 editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
+webkit.org/b/86881 editing/selection/5354455-1.html [ Failure ]
+webkit.org/b/86881 editing/selection/5354455-2.html [ Failure ]
+webkit.org/b/86881 editing/selection/button-right-click.html [ Failure ]
+webkit.org/b/86881 editing/selection/context-menu-on-text.html [ Failure ]
+webkit.org/b/86881 editing/selection/context-menu-text-selection.html [ Failure ]
+webkit.org/b/86881 editing/selection/empty-cell-right-click.html [ Failure ]
+webkit.org/b/86881 editing/shadow/rightclick-on-meter-in-shadow-crash.html [ Failure ]
+webkit.org/b/86881 editing/spelling/context-menu-suggestions.html [ Failure ]
+webkit.org/b/86881 fast/events/context-no-deselect.html [ Failure ]
+webkit.org/b/86881 fast/events/context-onmousedown-event.html [ Failure ]
+webkit.org/b/86881 fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
+webkit.org/b/86881 fast/events/right-click-focus.html [ Failure ]
+webkit.org/b/86881 fast/events/selectstart-prevent-selection-on-right-click.html [ Failure ]
+webkit.org/b/86881 media/context-menu-actions.html [ Failure ]
+webkit.org/b/86881 media/controls-right-click-on-timebar.html [ Failure ]
 
-# EFL WK2 does not support the spellchecker feature
-webkit.org/b/91854 editing/spelling [ Skip ]
+webkit.org/b/102201 fast/dom/Window/window-resize.html [ Failure ]
+webkit.org/b/102201 fast/dom/Window/open-window-min-size.html [ Failure ]
+webkit.org/b/102202 inspector/timeline/timeline-timer-fired-from-eval-call-site.html [ Failure ]
 
-webkit.org/b/100248 fast/forms/select-multiple-elements-with-mouse-drag.html [ Failure ]
-
-# Spurious output after fixing flakiness
-webkit.org/b/100010 fast/events/frame-tab-focus.html [ Failure ]
+webkit.org/b/102216 inspector-protocol/nmi-webaudio.html [ Failure ]

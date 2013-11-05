@@ -693,6 +693,9 @@ webkit.org/b/6033 css3/filters/regions-expanding.html [ ImageOnlyFailure Pass ]
 webkit.org/b/6033 css3/filters/simple-filter-rendering.html [ ImageOnlyFailure Pass ]
 webkit.org/b/6033 svg/filters/color-interpolation-filters.svg [ Missing Pass ]
 
+# CSS shaders only work in qt-wk2
+css3/filters/custom
+
 # UndoManager is not yet enabled.
 webkit.org/b/87908 editing/undomanager
 
@@ -704,6 +707,7 @@ webkit.org/b/89052 fast/css/image-orientation
 
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
+webkit.org/b/76173 fast/css3-text/css3-text-align-last
 
 # Needs rebaseline after bug 86441
 # failing new tests

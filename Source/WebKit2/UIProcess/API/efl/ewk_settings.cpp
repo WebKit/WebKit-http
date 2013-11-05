@@ -225,7 +225,7 @@ void ewk_settings_continuous_spell_checking_enabled_set(Eina_Bool enable)
         WKTextCheckerContinuousSpellCheckingEnabledStateChanged(enable);
 
         // Sets the default language if user didn't specify any.
-        if (enable && Ewk_Text_Checker::loadedSpellCheckingLanguages().isEmpty())
+        if (enable && !Ewk_Text_Checker::hasDictionary())
             spellCheckingLanguagesSet(Vector<String>());
 
         if (ewkTextCheckerSettings.onContinuousSpellChecking)
@@ -269,4 +269,66 @@ Eina_List* ewk_settings_spell_checking_languages_get()
 
 #endif
     return listOflanguages;
+}
+
+Eina_Bool ewk_settings_encoding_detector_enabled_set(Ewk_Settings* settings, Eina_Bool enable)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    settings->preferences()->setUsesEncodingDetector(enable);
+
+    return true;
+}
+
+Eina_Bool ewk_settings_encoding_detector_enabled_get(const Ewk_Settings* settings)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    return settings->preferences()->usesEncodingDetector();
+}
+
+Eina_Bool ewk_settings_preferred_minimum_contents_width_set(Ewk_Settings *settings, unsigned width)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    settings->preferences()->setLayoutFallbackWidth(width);
+
+    return true;
+}
+
+unsigned ewk_settings_preferred_minimum_contents_width_get(const Ewk_Settings *settings)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    return settings->preferences()->layoutFallbackWidth();
+}
+
+Eina_Bool ewk_settings_offline_web_application_cache_enabled_set(Ewk_Settings* settings, Eina_Bool enable)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+    settings->preferences()->setOfflineWebApplicationCacheEnabled(enable);
+
+    return true;
+}
+
+Eina_Bool ewk_settings_offline_web_application_cache_enabled_get(const Ewk_Settings* settings)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    return settings->preferences()->offlineWebApplicationCacheEnabled();
+}
+
+Eina_Bool ewk_settings_scripts_can_open_windows_set(Ewk_Settings* settings, Eina_Bool enable)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+    settings->preferences()->setJavaScriptCanOpenWindowsAutomatically(enable);
+
+    return true;
+}
+
+Eina_Bool ewk_settings_scripts_can_open_windows_get(const Ewk_Settings* settings)
+{
+    EINA_SAFETY_ON_NULL_RETURN_VAL(settings, false);
+
+    return settings->preferences()->javaScriptCanOpenWindowsAutomatically();
 }

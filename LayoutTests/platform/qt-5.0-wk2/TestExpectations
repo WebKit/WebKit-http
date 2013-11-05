@@ -90,6 +90,7 @@ fast/files/workers/worker-read-blob-sync.html
 fast/files/workers/worker-read-file-async.html
 fast/files/workers/worker-read-file-sync.html
 fast/forms/file/get-file-upload.html
+fast/forms/file/input-file-value.html
 fast/forms/file/input-file-write-files.html
 fast/forms/file/file-input-change-event.html
 fast/forms/file/recover-file-input-in-unposted-form.html
@@ -98,9 +99,6 @@ http/tests/local/blob/send-hybrid-blob.html
 http/tests/local/formdata
 
 svg/custom/use-events-crash.svg
-
-# eventSender.mouseScrollBy() is unimplemented
-scrollbars/scroll-rtl-or-bt-layer.html
 
 # [WK2] [Qt] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=69946>
@@ -363,6 +361,9 @@ compositing/overflow/textarea-scroll-touch.html
 # [Qt][WK2] New compositing/tiling/tile-cache-zoomed.html introduced in r132542 fails
 webkit.org/b/100490 compositing/tiling/tile-cache-zoomed.html
 
+# [Qt][WK2]New compositing/repaint/invalidations-on-composited-layers.html fails
+webkit.org/b/101165 compositing/repaint/invalidations-on-composited-layers.html
+
 # [Qt] [WK2] Some fullscreen layout tests are timing out on the bot
 # https://bugs.webkit.org/show_bug.cgi?id=92543
 fullscreen/video-controls-timeline.html
@@ -592,7 +593,6 @@ webkit.org/b/98897 compositing/geometry/foreground-offset-change.html [ ImageOnl
 webkit.org/b/98897 compositing/iframes/iframe-content-flipping.html [ ImageOnlyFailure ]
 webkit.org/b/98897 compositing/iframes/repaint-after-losing-scrollbars.html [ ImageOnlyFailure ]
 webkit.org/b/98897 compositing/iframes/scroll-grandchild-iframe.html [ ImageOnlyFailure ]
-webkit.org/b/98897 compositing/iframes/scroll-grandchild-iframe.html [ ImageOnlyFailure ]
 webkit.org/b/98897 compositing/overflow/repaint-after-losing-scrollbars.html [ ImageOnlyFailure ]
 webkit.org/b/98897 compositing/repaint/transform-style-change.html [ ImageOnlyFailure ]
 webkit.org/b/98897 compositing/video-page-visibility.html [ ImageOnlyFailure ]
@@ -683,12 +683,7 @@ webkit.org/b/99306 compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html [ 
 webkit.org/b/99306 compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/scaling/tiled-layer-recursion.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/transitions/singular-scale-transition.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css3/filters/blur-filter-page-scroll-parents.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css3/filters/blur-filter-page-scroll-self.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css3/filters/blur-filter-page-scroll.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css3/filters/effect-brightness-clamping.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/effect-combined-hw.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css3/filters/effect-drop-shadow.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/effect-opacity-hw.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/filter-change-repaint.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/filtered-compositing-descendant.html [ ImageOnlyFailure ]
@@ -764,3 +759,20 @@ webkit.org/b/99306 fast/repaint/fixed-child-of-fixed-move-after-scroll.html [ Im
 webkit.org/b/99306 fast/replaced/border-radius-clip.html [ ImageOnlyFailure ]
 webkit.org/b/99306 transitions/opacity-transition-zindex.html [ ImageOnlyFailure ]
 webkit.org/b/99306 transitions/suspend-transform-transition.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/backgrounds/background-clip-text-on-body.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/regions/region-style-text-shadow.html [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/filters/feImage-reference-svg-primitive.svg [ ImageOnlyFailure ] # Reni said this is actually a know svg issue with feImage.
+webkit.org/b/99306 svg/repaint/inner-svg-change-viewBox.svg [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/custom/use-instanceRoot-event-bubbling.xhtml [ ImageOnlyFailure ]
+
+# missing "PASS: mousewheel event is fired."
+fast/dom/shadow/wheel-event-in-shadow-dom.html
+fast/dom/shadow/wheel-event-on-input-in-shadow-dom.html
+
+# [Qt][WK2] REGRESSION(r132907): It made animations/negative-delay.html fail
+webkit.org/b/100769 animations/negative-delay.html
+webkit.org/b/100769 transitions/negative-delay.html
+
+# [Qt] Text on scaled layer is blurry
+webkit.org/b/101491 compositing/text-on-scaled-layer.html [ ImageOnlyFailure ]
+webkit.org/b/101491 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]

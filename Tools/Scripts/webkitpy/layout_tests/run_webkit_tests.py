@@ -41,7 +41,7 @@ from webkitpy.common.host import Host
 from webkitpy.common.system import stack_utils
 from webkitpy.layout_tests.controllers.manager import Manager, WorkerException, TestRunInterruptedException
 from webkitpy.layout_tests.models import test_expectations
-from webkitpy.layout_tests.port import port_options
+from webkitpy.layout_tests.port import configuration_options, platform_options
 from webkitpy.layout_tests.views import printing
 
 
@@ -201,50 +201,15 @@ def parse_args(args=None):
 
     option_group_definitions = []
 
-    option_group_definitions.append(("Configuration options", port_options()))
+    option_group_definitions.append(("Platform options", platform_options()))
+    option_group_definitions.append(("Configuration options", configuration_options()))
     option_group_definitions.append(("Printing Options", printing.print_options()))
 
     # FIXME: These options should move onto the ChromiumPort.
     option_group_definitions.append(("Chromium-specific Options", [
-        optparse.make_option("--startup-dialog", action="store_true",
-            default=False, help="create a dialog on DumpRenderTree startup"),
-        optparse.make_option("--gp-fault-error-box", action="store_true",
-            default=False, help="enable Windows GP fault error box"),
-        optparse.make_option("--js-flags",
-            type="string", help="JavaScript flags to pass to tests"),
-        optparse.make_option("--stress-opt", action="store_true",
-            default=False,
-            help="Enable additional stress test to JavaScript optimization"),
-        optparse.make_option("--stress-deopt", action="store_true",
-            default=False,
-            help="Enable additional stress test to JavaScript optimization"),
         optparse.make_option("--nocheck-sys-deps", action="store_true",
             default=False,
             help="Don't check the system dependencies (themes)"),
-        optparse.make_option("--accelerated-video",
-            action="store_true",
-            help="Use hardware-accelerated compositing for video"),
-        optparse.make_option("--no-accelerated-video",
-            action="store_false",
-            dest="accelerated_video",
-            help="Don't use hardware-accelerated compositing for video"),
-        optparse.make_option("--threaded-compositing",
-            action="store_true",
-            help="Use threaded compositing for rendering"),
-        optparse.make_option("--accelerated-2d-canvas",
-            action="store_true",
-            help="Use hardware-accelerated 2D Canvas calls"),
-        optparse.make_option("--no-accelerated-2d-canvas",
-            action="store_false",
-            dest="accelerated_2d_canvas",
-            help="Don't use hardware-accelerated 2D Canvas calls"),
-        optparse.make_option("--accelerated-painting",
-            action="store_true",
-            default=False,
-            help="Use hardware accelerated painting of composited pages"),
-        optparse.make_option("--per-tile-painting",
-            action="store_true",
-            help="Use per-tile painting of composited pages"),
         optparse.make_option("--adb-device",
             action="append", default=[],
             help="Run Android layout tests on these devices."),

@@ -32,6 +32,7 @@
 #include "ScrollingCoordinator.h"
 #include "ScrollingStateTree.h"
 #include "ScrollingThread.h"
+#include "ScrollingTreeFixedNode.h"
 #include "ScrollingTreeNode.h"
 #include "ScrollingTreeScrollingNode.h"
 #include <wtf/MainThread.h>
@@ -162,9 +163,13 @@ void ScrollingTree::updateTreeFromStateNode(ScrollingStateNode* stateNode)
             m_nodeMap.set(stateNode->scrollingNodeID(), m_rootNode.get());
             m_rootNode->update(stateNode);
         } else {
-            // FIXME: In the future, we will have more than just ScrollingTreeScrollingNode, so we'll have to
-            // figure out which type of node to create.
-            OwnPtr<ScrollingTreeNode> newNode = ScrollingTreeScrollingNode::create(this);
+            OwnPtr<ScrollingTreeNode> newNode;
+            if (stateNode->isScrollingNode())
+                newNode = ScrollingTreeScrollingNode::create(this);
+            else if (stateNode->isFixedNode())
+                newNode = ScrollingTreeFixedNode::create(this);
+            else
+                ASSERT_NOT_REACHED();
             ScrollingTreeNode* newNodeRawPtr = newNode.get();
             m_nodeMap.set(stateNode->scrollingNodeID(), newNodeRawPtr);
             ScrollingTreeNodeMap::const_iterator it = m_nodeMap.find(stateNode->parent()->scrollingNodeID());
@@ -209,7 +214,7 @@ void ScrollingTree::setMainFramePinState(bool pinnedToTheLeft, bool pinnedToTheR
     m_mainFramePinnedToTheRight = pinnedToTheRight;
 }
 
-void ScrollingTree::updateMainFrameScrollPosition(const IntPoint& scrollPosition)
+void ScrollingTree::updateMainFrameScrollPosition(const IntPoint& scrollPosition, SetOrSyncScrollingLayerPosition scrollingLayerPositionAction)
 {
     if (!m_scrollingCoordinator)
         return;
@@ -219,26 +224,13 @@ void ScrollingTree::updateMainFrameScrollPosition(const IntPoint& scrollPosition
         m_mainFrameScrollPosition = scrollPosition;
     }
 
-    callOnMainThread(bind(&ScrollingCoordinator::updateMainFrameScrollPosition, m_scrollingCoordinator.get(), scrollPosition, m_isHandlingProgrammaticScroll));
+    callOnMainThread(bind(&ScrollingCoordinator::scheduleUpdateMainFrameScrollPosition, m_scrollingCoordinator.get(), scrollPosition, m_isHandlingProgrammaticScroll, scrollingLayerPositionAction));
 }
 
 IntPoint ScrollingTree::mainFrameScrollPosition()
 {
     MutexLocker lock(m_mutex);
     return m_mainFrameScrollPosition;
-}
-
-void ScrollingTree::updateMainFrameScrollPositionAndScrollLayerPosition(const IntPoint& scrollPosition)
-{
-    if (!m_scrollingCoordinator)
-        return;
-
-    {
-        MutexLocker lock(m_mutex);
-        m_mainFrameScrollPosition = scrollPosition;
-    }
-
-    callOnMainThread(bind(&ScrollingCoordinator::updateMainFrameScrollPositionAndScrollLayerPosition, m_scrollingCoordinator.get()));
 }
 
 #if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))

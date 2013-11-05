@@ -31,8 +31,7 @@
 #ifndef PickerIndicatorElement_h
 #define PickerIndicatorElement_h
 
-#if ENABLE(CALENDAR_PICKER)
-
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeChooser.h"
 #include "DateTimeChooserClient.h"
 #include "HTMLDivElement.h"
@@ -45,25 +44,37 @@ class PagePopup;
 
 class PickerIndicatorElement : public HTMLDivElement, public DateTimeChooserClient {
 public:
-    static PassRefPtr<PickerIndicatorElement> create(Document*);
+    // PickerIndicatorOwner implementer must call removePickerIndicatorOwner when
+    // it doesn't handle event, e.g. at destruction.
+    class PickerIndicatorOwner {
+    public:
+        virtual ~PickerIndicatorOwner() { }
+        virtual bool isPickerIndicatorOwnerDisabledOrReadOnly() const = 0;
+        virtual void pickerIndicatorChooseValue(const String&) = 0;
+        virtual bool setupDateTimeChooserParameters(DateTimeChooserParameters&) = 0;
+    };
+
+    static PassRefPtr<PickerIndicatorElement> create(Document*, PickerIndicatorOwner&);
     virtual ~PickerIndicatorElement();
     void openPopup();
     void closePopup();
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
+    void removePickerIndicatorOwner() { m_pickerIndicatorOwner = 0; }
 
     // DateTimeChooserClient implementation.
     virtual void didChooseValue(const String&) OVERRIDE;
     virtual void didEndChooser() OVERRIDE;
 
 private:
-    PickerIndicatorElement(Document*);
+    PickerIndicatorElement(Document*, PickerIndicatorOwner&);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
     virtual void defaultEventHandler(Event*) OVERRIDE;
     virtual void detach() OVERRIDE;
 
     HTMLInputElement* hostInput();
 
-    OwnPtr<DateTimeChooser> m_chooser;
+    PickerIndicatorOwner* m_pickerIndicatorOwner;
+    RefPtr<DateTimeChooser> m_chooser;
 };
 
 }

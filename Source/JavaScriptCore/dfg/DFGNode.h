@@ -62,6 +62,7 @@ struct StructureTransitionData {
 struct NewArrayBufferData {
     unsigned startConstant;
     unsigned numConstants;
+    IndexingType indexingType;
 };
 
 // This type used in passing an immediate argument to Node constructor;
@@ -255,9 +256,9 @@ struct Node {
     
     void convertToStructureTransitionWatchpoint(Structure* structure)
     {
-        ASSERT(m_op == CheckStructure || m_op == ForwardCheckStructure);
+        ASSERT(m_op == CheckStructure || m_op == ForwardCheckStructure || m_op == ArrayifyToStructure);
         m_opInfo = bitwise_cast<uintptr_t>(structure);
-        if (m_op == CheckStructure)
+        if (m_op == CheckStructure || m_op == ArrayifyToStructure)
             m_op = StructureTransitionWatchpoint;
         else
             m_op = ForwardStructureTransitionWatchpoint;
@@ -431,6 +432,32 @@ struct Node {
     unsigned numConstants()
     {
         return newArrayBufferData()->numConstants;
+    }
+    
+    bool hasIndexingType()
+    {
+        switch (op()) {
+        case NewArray:
+        case NewArrayWithSize:
+        case NewArrayBuffer:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
+    IndexingType indexingType()
+    {
+        ASSERT(hasIndexingType());
+        if (op() == NewArrayBuffer)
+            return newArrayBufferData()->indexingType;
+        return m_opInfo;
+    }
+    
+    void setIndexingType(IndexingType indexingType)
+    {
+        ASSERT(hasIndexingType());
+        m_opInfo = indexingType;
     }
     
     bool hasRegexpIndex()
@@ -649,15 +676,23 @@ struct Node {
         return mergeSpeculation(m_opInfo2, prediction);
     }
     
-    bool hasFunctionCheckData()
+    bool hasFunction()
     {
-        return op() == CheckFunction;
+        switch (op()) {
+        case CheckFunction:
+        case InheritorIDWatchpoint:
+            return true;
+        default:
+            return false;
+        }
     }
 
-    JSFunction* function()
+    JSCell* function()
     {
-        ASSERT(hasFunctionCheckData());
-        return reinterpret_cast<JSFunction*>(m_opInfo);
+        ASSERT(hasFunction());
+        JSCell* result = reinterpret_cast<JSFunction*>(m_opInfo);
+        ASSERT(JSValue(result).isFunction());
+        return result;
     }
 
     bool hasStructureTransitionData()
@@ -701,6 +736,8 @@ struct Node {
         switch (op()) {
         case StructureTransitionWatchpoint:
         case ForwardStructureTransitionWatchpoint:
+        case ArrayifyToStructure:
+        case NewObject:
             return true;
         default:
             return false;
@@ -759,6 +796,7 @@ struct Node {
         case StringCharCodeAt:
         case CheckArray:
         case Arrayify:
+        case ArrayifyToStructure:
         case ArrayPush:
         case ArrayPop:
             return true;
@@ -767,18 +805,20 @@ struct Node {
         }
     }
     
-    Array::Mode arrayMode()
+    ArrayMode arrayMode()
     {
         ASSERT(hasArrayMode());
-        return static_cast<Array::Mode>(m_opInfo);
+        if (op() == ArrayifyToStructure)
+            return ArrayMode::fromWord(m_opInfo2);
+        return ArrayMode::fromWord(m_opInfo);
     }
     
-    bool setArrayMode(Array::Mode arrayMode)
+    bool setArrayMode(ArrayMode arrayMode)
     {
         ASSERT(hasArrayMode());
         if (this->arrayMode() == arrayMode)
             return false;
-        m_opInfo = arrayMode;
+        m_opInfo = arrayMode.asWord();
         return true;
     }
     
@@ -918,14 +958,34 @@ struct Node {
         return isInt32Speculation(prediction());
     }
     
+    bool shouldSpeculateIntegerForArithmetic()
+    {
+        return isInt32SpeculationForArithmetic(prediction());
+    }
+    
+    bool shouldSpeculateIntegerExpectingDefined()
+    {
+        return isInt32SpeculationExpectingDefined(prediction());
+    }
+    
     bool shouldSpeculateDouble()
     {
         return isDoubleSpeculation(prediction());
     }
     
+    bool shouldSpeculateDoubleForArithmetic()
+    {
+        return isDoubleSpeculationForArithmetic(prediction());
+    }
+    
     bool shouldSpeculateNumber()
     {
         return isNumberSpeculation(prediction());
+    }
+    
+    bool shouldSpeculateNumberExpectingDefined()
+    {
+        return isNumberSpeculationExpectingDefined(prediction());
     }
     
     bool shouldSpeculateBoolean()
@@ -1033,9 +1093,29 @@ struct Node {
         return op1.shouldSpeculateInteger() && op2.shouldSpeculateInteger();
     }
     
+    static bool shouldSpeculateIntegerForArithmetic(Node& op1, Node& op2)
+    {
+        return op1.shouldSpeculateIntegerForArithmetic() && op2.shouldSpeculateIntegerForArithmetic();
+    }
+    
+    static bool shouldSpeculateIntegerExpectingDefined(Node& op1, Node& op2)
+    {
+        return op1.shouldSpeculateIntegerExpectingDefined() && op2.shouldSpeculateIntegerExpectingDefined();
+    }
+    
+    static bool shouldSpeculateDoubleForArithmetic(Node& op1, Node& op2)
+    {
+        return op1.shouldSpeculateDoubleForArithmetic() && op2.shouldSpeculateDoubleForArithmetic();
+    }
+    
     static bool shouldSpeculateNumber(Node& op1, Node& op2)
     {
         return op1.shouldSpeculateNumber() && op2.shouldSpeculateNumber();
+    }
+    
+    static bool shouldSpeculateNumberExpectingDefined(Node& op1, Node& op2)
+    {
+        return op1.shouldSpeculateNumberExpectingDefined() && op2.shouldSpeculateNumberExpectingDefined();
     }
     
     static bool shouldSpeculateFinalObject(Node& op1, Node& op2)

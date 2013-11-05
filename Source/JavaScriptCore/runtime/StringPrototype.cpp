@@ -22,9 +22,9 @@
 #include "config.h"
 #include "StringPrototype.h"
 
-#include "ButterflyInlineMethods.h"
+#include "ButterflyInlines.h"
 #include "CachedCall.h"
-#include "CopiedSpaceInlineMethods.h"
+#include "CopiedSpaceInlines.h"
 #include "Error.h"
 #include "Executable.h"
 #include "JSGlobalObjectFunctions.h"
@@ -666,7 +666,7 @@ static inline EncodedJSValue replaceUsingStringSearch(ExecState* exec, JSString*
     String leftPart(StringImpl::create(stringImpl, 0, matchStart));
 
     size_t matchEnd = matchStart + searchString.impl()->length();
-    int ovector[2] = { matchStart,  matchEnd};
+    int ovector[2] = { static_cast<int>(matchStart),  static_cast<int>(matchEnd)};
     String middlePart = substituteBackreferences(replaceString, string, ovector, 0);
 
     size_t leftLength = stringImpl->length() - matchEnd;
@@ -870,7 +870,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncMatch(ExecState* exec)
         return JSValue::encode(jsNull());
     }
 
-    return JSValue::encode(constructArray(exec, list));
+    return JSValue::encode(constructArray(exec, static_cast<ArrayAllocationProfile*>(0), list));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncSearch(ExecState* exec)
@@ -973,7 +973,7 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncSplit(ExecState* exec)
 
     // 3. Let A be a new array created as if by the expression new Array()
     //    where Array is the standard built-in constructor with that name.
-    JSArray* result = constructEmptyArray(exec);
+    JSArray* result = constructEmptyArray(exec, 0);
 
     // 4. Let lengthA be 0.
     unsigned resultLength = 0;
@@ -1388,7 +1388,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncFontcolor(ExecState* exec)
         return throwVMTypeError(exec);
     String s = thisValue.toString(exec)->value(exec);
     JSValue a0 = exec->argument(0);
-    return JSValue::encode(jsMakeNontrivialString(exec, "<font color=\"", a0.toString(exec)->value(exec), "\">", s, "</font>"));
+    String color = a0.toWTFString(exec);
+    color.replaceWithLiteral('"', "&quot;");
+
+    return JSValue::encode(jsMakeNontrivialString(exec, "<font color=\"", color, "\">", s, "</font>"));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncFontsize(ExecState* exec)
@@ -1433,7 +1436,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncFontsize(ExecState* exec)
         return JSValue::encode(jsNontrivialString(exec, impl));
     }
 
-    return JSValue::encode(jsMakeNontrivialString(exec, "<font size=\"", a0.toString(exec)->value(exec), "\">", s, "</font>"));
+    String fontSize = a0.toWTFString(exec);
+    fontSize.replaceWithLiteral('"', "&quot;");
+
+    return JSValue::encode(jsMakeNontrivialString(exec, "<font size=\"", fontSize, "\">", s, "</font>"));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncAnchor(ExecState* exec)
@@ -1443,7 +1449,10 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncAnchor(ExecState* exec)
         return throwVMTypeError(exec);
     String s = thisValue.toString(exec)->value(exec);
     JSValue a0 = exec->argument(0);
-    return JSValue::encode(jsMakeNontrivialString(exec, "<a name=\"", a0.toString(exec)->value(exec), "\">", s, "</a>"));
+    String anchor = a0.toWTFString(exec);
+    anchor.replaceWithLiteral('"', "&quot;");
+
+    return JSValue::encode(jsMakeNontrivialString(exec, "<a name=\"", anchor, "\">", s, "</a>"));
 }
 
 EncodedJSValue JSC_HOST_CALL stringProtoFuncLink(ExecState* exec)
@@ -1453,7 +1462,8 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncLink(ExecState* exec)
         return throwVMTypeError(exec);
     String s = thisValue.toString(exec)->value(exec);
     JSValue a0 = exec->argument(0);
-    String linkText = a0.toString(exec)->value(exec);
+    String linkText = a0.toWTFString(exec);
+    linkText.replaceWithLiteral('"', "&quot;");
 
     unsigned linkTextSize = linkText.length();
     unsigned stringSize = s.length();

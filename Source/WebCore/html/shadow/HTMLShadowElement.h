@@ -42,8 +42,9 @@ public:
 
     virtual ~HTMLShadowElement();
 
-    const AtomicString& select() const;
-    bool isSelectValid() const OVERRIDE { return true; }
+    virtual const AtomicString& select() const;
+    virtual bool isSelectValid() OVERRIDE { return true; }
+    virtual const CSSSelectorList& selectorList() { return emptySelectorList(); }
 
 protected:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
@@ -51,6 +52,8 @@ protected:
 
 private:
     HTMLShadowElement(const QualifiedName&, Document*);
+
+    static const CSSSelectorList& emptySelectorList();
 
     bool m_registeredWithShadowRoot;
 };
@@ -65,6 +68,12 @@ inline HTMLShadowElement* toHTMLShadowElement(Node* node)
 {
     ASSERT(!node || isHTMLShadowElement(node));
     return static_cast<HTMLShadowElement*>(node);
+}
+
+inline const HTMLShadowElement* toHTMLShadowElement(const Node* node)
+{
+    ASSERT(!node || isHTMLShadowElement(node));
+    return static_cast<const HTMLShadowElement*>(node);
 }
 
 } // namespace WebCore

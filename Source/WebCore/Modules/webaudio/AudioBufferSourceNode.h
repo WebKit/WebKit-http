@@ -62,6 +62,7 @@ public:
     unsigned numberOfChannels();
                     
     // Play-state
+    void startGrain(double when, double grainOffset);
     void startGrain(double when, double grainOffset, double grainDuration);
 
 #if ENABLE(LEGACY_WEB_AUDIO)
@@ -74,10 +75,16 @@ public:
     bool loop() const { return m_isLooping; }
     void setLoop(bool looping) { m_isLooping = looping; }
 
+    // Loop times in seconds.
+    double loopStart() const { return m_loopStart; }
+    double loopEnd() const { return m_loopEnd; }
+    void setLoopStart(double loopStart) { m_loopStart = loopStart; }
+    void setLoopEnd(double loopEnd) { m_loopEnd = loopEnd; }
+
     // Deprecated.
     bool looping();
     void setLooping(bool);
-    
+
     AudioGain* gain() { return m_gain.get(); }                                        
     AudioParam* playbackRate() { return m_playbackRate.get(); }
 
@@ -94,7 +101,8 @@ public:
 private:
     AudioBufferSourceNode(AudioContext*, float sampleRate);
 
-    void renderFromBuffer(AudioBus*, unsigned destinationFrameOffset, size_t numberOfFrames);
+    // Returns true on success.
+    bool renderFromBuffer(AudioBus*, unsigned destinationFrameOffset, size_t numberOfFrames);
 
     // Render silence starting from "index" frame in AudioBus.
     inline bool renderSilenceAndFinishIfNotLooping(AudioBus*, unsigned index, size_t framesToProcess);
@@ -113,6 +121,9 @@ private:
     // If m_isLooping is false, then this node will be done playing and become inactive after it reaches the end of the sample data in the buffer.
     // If true, it will wrap around to the start of the buffer each time it reaches the end.
     bool m_isLooping;
+
+    double m_loopStart;
+    double m_loopEnd;
 
     // m_virtualReadIndex is a sample-frame index into our buffer representing the current playback position.
     // Since it's floating-point, it has sub-sample accuracy.

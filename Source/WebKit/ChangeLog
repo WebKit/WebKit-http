@@ -1,3 +1,111 @@
+2012-11-12  Timothy Hatcher  <timothy@apple.com>
+
+        Add a dock button to the top right corner of the Web Inspector window (similar to the full screen button).
+
+        https://bugs.webkit.org/show_bug.cgi?id=102025
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebKit.xcodeproj/project.pbxproj: Added Dock.pdf.
+
+2012-11-08  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Remove non-variable options from the build system
+        https://bugs.webkit.org/show_bug.cgi?id=101506
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove WTF_USE_FREETYPE and ENABLE_GLIB_SUPPORT cmake variables
+        as these are always set to const 1 and not really configurable.
+
+        * PlatformEfl.cmake:
+
+2012-11-07  Andreas Kling  <akling@apple.com>
+
+        Remove build-webkit dependency on Java SDK for Apple Mac WebKit.
+        <http://webkit.org/b/101492>
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcodeproj/project.pbxproj: Remove WebJavaPlugIn.h
+
+2012-11-06  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Simplify the build system
+        https://bugs.webkit.org/show_bug.cgi?id=101392
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Use WTF_USE_3D_GRAPHICS to guard the inclusion of surfaces and textmap 
+        directories under WebCore/graphics to be consistent with 
+        WebCore/PlatformEfl.cmake.
+
+        * PlatformEfl.cmake:
+
+2012-11-04  Halton Huo  <halton.huo@intel.com>
+
+        [EFL] Use _LIBRARIES instead of _LIBRARY
+        https://bugs.webkit.org/show_bug.cgi?id=101042
+
+        Reviewed by Gyuyoung Kim.
+
+        In CMake Find files, _LIBRARY is intended for internal use, should
+        use _LIBRARIES instead.
+
+        * PlatformEfl.cmake: s/_LIBRARY}/_LIBRARIES}
+
+2012-11-01  Seonae Kim  <sunaeluv.kim@samsung.com>
+
+        [EFL][DRT] Support Geolocation
+        https://bugs.webkit.org/show_bug.cgi?id=97427
+
+        Reviewed by Gyuyoung Kim. 
+
+        Add a mock directory to use GeolocationClientMock in DumpRenderTree.
+
+        * PlatformEfl.cmake:
+
+2012-10-31  Otto Derek Cheung  <otcheung@rim.com>
+
+        [BlackBerry] Adding window.external to our port
+        https://bugs.webkit.org/show_bug.cgi?id=100868
+
+        Reviewed by Rob Buis.
+
+        Adding ExternalExtension classes to the BB cmake file.
+
+        * PlatformBlackBerry.cmake:
+
+2012-10-31  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL][DRT] EventSender requires contextClick implementation
+        https://bugs.webkit.org/show_bug.cgi?id=86091
+
+        Reviewed by Gyuyoung Kim.
+
+        Add new unit test file, needed due to ewk API changes.
+
+        * PlatformEfl.cmake:
+
+2012-10-30  Peter Wang  <peter.wang@torchmobile.com.cn>
+
+        [BlackBerry] Clean the code of "JavaScriptDebuggerBlackBerry"
+        https://bugs.webkit.org/show_bug.cgi?id=100724
+
+        Reviewed by Rob Buis.
+
+        Remove the code of JavaScriptDebuggerBlackBerry.
+
+        * PlatformBlackBerry.cmake:
+
+2012-10-28  Mark Rowe  <mrowe@apple.com>
+
+        Remove references to unsupported OS and Xcode versions.
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
 2012-10-26  Sheriff Bot  <webkit.review.bot@gmail.com>
 
         Unreviewed, rolling out r132601.

@@ -3,6 +3,7 @@
  *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *  Copyright (C) 2008 Eric Seidel <eric@webkit.org>
+ *  Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -35,7 +36,7 @@
     StyleRuleBase* rule;
     Vector<RefPtr<StyleRuleBase> >* ruleList;
     CSSParserSelector* selector;
-    CSSSelectorVector* selectorList;
+    Vector<OwnPtr<CSSParserSelector> >* selectorList;
     CSSSelector::MarginBoxType marginBox;
     CSSSelector::Relation relation;
     MediaQuerySet* mediaList;
@@ -109,6 +110,7 @@ static inline int cssyyerror(void*, const char*)
 %token WEBKIT_MEDIAQUERY_SYM
 %token WEBKIT_SELECTOR_SYM
 %token WEBKIT_REGION_RULE_SYM
+%token WEBKIT_VIEWPORT_RULE_SYM
 %token <marginBox> TOPLEFTCORNER_SYM
 %token <marginBox> TOPLEFT_SYM
 %token <marginBox> TOPCENTER_SYM
@@ -205,6 +207,9 @@ static inline int cssyyerror(void*, const char*)
 %type <rule> region
 #if ENABLE_CSS3_CONDITIONAL_RULES
 %type <rule> supports
+#endif
+#if ENABLE_CSS_DEVICE_ADAPTATION
+%type <rule> viewport
 #endif
 
 %type <string> maybe_ns_prefix
@@ -319,9 +324,9 @@ webkit_value:
     WEBKIT_VALUE_SYM '{' maybe_space expr '}' {
         if ($4) {
             parser->m_valueList = parser->sinkFloatingValueList($4);
-            int oldParsedProperties = parser->m_parsedProperties->size();
+            int oldParsedProperties = parser->m_parsedProperties.size();
             if (!parser->parseValue(parser->m_id, parser->m_important))
-                parser->rollbackLastProperties(parser->m_parsedProperties->size() - oldParsedProperties);
+                parser->rollbackLastProperties(parser->m_parsedProperties.size() - oldParsedProperties);
             parser->m_valueList = nullptr;
         }
     }
@@ -411,6 +416,9 @@ valid_rule:
 #if ENABLE_SHADOW_DOM
   | host
 #endif
+#if ENABLE_CSS_DEVICE_ADAPTATION
+  | viewport
+#endif
   ;
 
 rule:
@@ -439,6 +447,9 @@ block_valid_rule:
   | page
   | font_face
   | keyframes
+#if ENABLE_CSS_DEVICE_ADAPTATION
+  | viewport
+#endif
   ;
 
 block_rule:
@@ -929,6 +940,33 @@ host:
     ;
 #endif
 
+#if ENABLE_CSS_DEVICE_ADAPTATION
+before_viewport_rule:
+    /* empty */ {
+        parser->markViewportRuleBodyStart();
+        parser->markRuleHeaderStart(CSSRuleSourceData::VIEWPORT_RULE);
+    }
+    ;
+
+viewport:
+    before_viewport_rule WEBKIT_VIEWPORT_RULE_SYM at_rule_header_end_maybe_space
+    '{' at_rule_body_start maybe_space_before_declaration declaration_list closing_brace {
+        $$ = parser->createViewportRule();
+        parser->markViewportRuleBodyEnd();
+    }
+    | before_viewport_rule WEBKIT_VIEWPORT_RULE_SYM error invalid_block {
+        $$ = 0;
+        parser->popRuleData();
+        parser->markViewportRuleBodyEnd();
+    }
+    | before_viewport_rule WEBKIT_VIEWPORT_RULE_SYM error ';' {
+        $$ = 0;
+        parser->popRuleData();
+        parser->markViewportRuleBodyEnd();
+    }
+;
+#endif
+
 region_selector:
     selector_list {
         if ($1) {
@@ -1000,7 +1038,7 @@ ruleset:
 selector_list:
     selector %prec UNIMPORTANT_TOK {
         if ($1) {
-            $$ = parser->selectorVector();
+            $$ = parser->reusableSelectorVector();
             $$->shrink(0);
             $$->append(parser->sinkFloatingSelector($1));
             parser->updateLastSelectorLineAndPosition();
@@ -1269,7 +1307,9 @@ pseudo:
         $3.lower();
         $$->setValue($3);
         // FIXME: This call is needed to force selector to compute the pseudoType early enough.
-        $$->pseudoType();
+        CSSSelector::PseudoType type = $$->pseudoType();
+        if (type == CSSSelector::PseudoUnknown)
+            $$ = 0;
     }
     // use by :-webkit-any.
     // FIXME: should we support generic selectors here or just simple_selectors?
@@ -1335,7 +1375,7 @@ pseudo:
             $$ = parser->createFloatingSelector();
             $$->setMatch(CSSSelector::PseudoClass);
 
-            CSSSelectorVector selectorVector;
+            Vector<OwnPtr<CSSParserSelector> > selectorVector;
             selectorVector.append(parser->sinkFloatingSelector($4));
             $$->adoptSelectorVector(selectorVector);
 
@@ -1421,10 +1461,10 @@ declaration:
         bool isPropertyParsed = false;
         if ($1 && $4) {
             parser->m_valueList = parser->sinkFloatingValueList($4);
-            int oldParsedProperties = parser->m_parsedProperties->size();
+            int oldParsedProperties = parser->m_parsedProperties.size();
             $$ = parser->parseValue(static_cast<CSSPropertyID>($1), $5);
             if (!$$)
-                parser->rollbackLastProperties(parser->m_parsedProperties->size() - oldParsedProperties);
+                parser->rollbackLastProperties(parser->m_parsedProperties.size() - oldParsedProperties);
             else
                 isPropertyParsed = true;
             parser->m_valueList = nullptr;

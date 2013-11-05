@@ -56,35 +56,34 @@ void LayerTreeCoordinatorProxy::dispatchUpdate(const Function<void()>& function)
     m_renderer->appendUpdate(function);
 }
 
-void LayerTreeCoordinatorProxy::createTileForLayer(int layerID, int tileID, const IntRect& targetRect, const WebKit::SurfaceUpdateInfo& updateInfo)
+void LayerTreeCoordinatorProxy::createTileForLayer(int layerID, int tileID, const WebCore::IntRect& tileRect, const WebKit::SurfaceUpdateInfo& updateInfo)
 {
     dispatchUpdate(bind(&LayerTreeRenderer::createTile, m_renderer.get(), layerID, tileID, updateInfo.scaleFactor));
-    updateTileForLayer(layerID, tileID, targetRect, updateInfo);
+    updateTileForLayer(layerID, tileID, tileRect, updateInfo);
 }
 
-void LayerTreeCoordinatorProxy::updateTileForLayer(int layerID, int tileID, const IntRect& targetRect, const WebKit::SurfaceUpdateInfo& updateInfo)
+void LayerTreeCoordinatorProxy::updateTileForLayer(int layerID, int tileID, const IntRect& tileRect, const WebKit::SurfaceUpdateInfo& updateInfo)
 {
-    RefPtr<ShareableSurface> surface;
-#if USE(GRAPHICS_SURFACE)
-    GraphicsSurfaceToken token = updateInfo.surfaceHandle.graphicsSurfaceToken();
-    if (token.isValid()) {
-        HashMap<GraphicsSurfaceToken::BufferHandle, RefPtr<ShareableSurface> >::iterator it = m_surfaces.find(token.frontBufferHandle);
-        if (it == m_surfaces.end()) {
-            surface = ShareableSurface::create(updateInfo.surfaceHandle);
-            m_surfaces.add(token.frontBufferHandle, surface);
-        } else
-            surface = it->value;
-    } else
-        surface = ShareableSurface::create(updateInfo.surfaceHandle);
-#else
-    surface = ShareableSurface::create(updateInfo.surfaceHandle);
-#endif
-    dispatchUpdate(bind(&LayerTreeRenderer::updateTile, m_renderer.get(), layerID, tileID, LayerTreeRenderer::TileUpdate(updateInfo.updateRect, targetRect, surface, updateInfo.surfaceOffset)));
+    SurfaceMap::iterator it = m_surfaces.find(updateInfo.atlasID);
+    ASSERT(it != m_surfaces.end());
+    dispatchUpdate(bind(&LayerTreeRenderer::updateTile, m_renderer.get(), layerID, tileID, LayerTreeRenderer::TileUpdate(updateInfo.updateRect, tileRect, it->value, updateInfo.surfaceOffset)));
 }
 
 void LayerTreeCoordinatorProxy::removeTileForLayer(int layerID, int tileID)
 {
     dispatchUpdate(bind(&LayerTreeRenderer::removeTile, m_renderer.get(), layerID, tileID));
+}
+
+void LayerTreeCoordinatorProxy::createUpdateAtlas(int atlasID, const ShareableSurface::Handle& handle)
+{
+    ASSERT(!m_surfaces.contains(atlasID));
+    m_surfaces.add(atlasID, ShareableSurface::create(handle));
+}
+
+void LayerTreeCoordinatorProxy::removeUpdateAtlas(int atlasID)
+{
+    ASSERT(m_surfaces.contains(atlasID));
+    m_surfaces.remove(atlasID);
 }
 
 void LayerTreeCoordinatorProxy::deleteCompositingLayer(WebLayerID id)
@@ -175,6 +174,19 @@ void LayerTreeCoordinatorProxy::renderNextFrame()
     m_drawingAreaProxy->page()->process()->send(Messages::LayerTreeCoordinator::RenderNextFrame(), m_drawingAreaProxy->page()->pageID());
 }
 
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+void LayerTreeCoordinatorProxy::requestAnimationFrame()
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::requestAnimationFrame, m_renderer.get()));
+    updateViewport();
+}
+
+void LayerTreeCoordinatorProxy::animationFrameReady()
+{
+    m_drawingAreaProxy->page()->process()->send(Messages::LayerTreeCoordinator::AnimationFrameReady(), m_drawingAreaProxy->page()->pageID());
+}
+#endif
+
 void LayerTreeCoordinatorProxy::didChangeScrollPosition(const IntPoint& position)
 {
     dispatchUpdate(bind(&LayerTreeRenderer::didChangeScrollPosition, m_renderer.get(), position));
@@ -189,6 +201,7 @@ void LayerTreeCoordinatorProxy::syncCanvas(uint32_t id, const IntSize& canvasSiz
 
 void LayerTreeCoordinatorProxy::purgeBackingStores()
 {
+    m_surfaces.clear();
     m_drawingAreaProxy->page()->process()->send(Messages::LayerTreeCoordinator::PurgeBackingStores(), m_drawingAreaProxy->page()->pageID());
 }
 

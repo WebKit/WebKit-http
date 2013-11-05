@@ -100,9 +100,9 @@ public:
     explicit MemoryInstrumentation(MemoryInstrumentationClient* client) : m_client(client) { }
     virtual ~MemoryInstrumentation() { }
 
-    template <typename T> void addRootObject(const T& t)
+    template <typename T> void addRootObject(const T& t, MemoryObjectType objectType = 0)
     {
-        addObject(t, 0);
+        addObject(t, objectType);
         processDeferredInstrumentedPointers();
     }
 
@@ -201,7 +201,11 @@ public:
 
     template<typename M> void addMember(const M& member) { m_memoryInstrumentation->addObject(member, m_objectType); }
     void addRawBuffer(const void* const& buffer, size_t size) { m_memoryInstrumentation->addRawBuffer(buffer, m_objectType, size); }
-    void addPrivateBuffer(size_t size) { m_memoryInstrumentation->countObjectSize(0, m_objectType, size); }
+    void addPrivateBuffer(size_t size, MemoryObjectType ownerObjectType = 0)
+    {
+        if (size)
+            m_memoryInstrumentation->countObjectSize(0, ownerObjectType ? ownerObjectType : m_objectType, size);
+    }
 
     void addWeakPointer(void*) { }
 
@@ -226,7 +230,6 @@ void MemoryInstrumentation::addObjectImpl(const T* const& object, MemoryObjectTy
     } else {
         if (!object || visited(object))
             return;
-        checkCountedObject(object);
         deferInstrumentedPointer(adoptPtr(new InstrumentedPointer<T>(object, ownerObjectType)));
     }
 }
@@ -258,6 +261,7 @@ void MemoryInstrumentation::InstrumentedPointer<T>::process(MemoryInstrumentatio
     if (pointer != m_pointer && memoryInstrumentation->visited(pointer))
         return;
     memoryInstrumentation->countObjectSize(pointer, memoryObjectInfo.objectType(), memoryObjectInfo.objectSize());
+    memoryInstrumentation->checkCountedObject(pointer);
 }
 
 // Link time guard for classes with external memory instrumentation.

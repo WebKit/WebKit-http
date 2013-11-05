@@ -34,8 +34,10 @@
 #include "ewk_error_private.h"
 #include "ewk_url_request_private.h"
 #include "ewk_url_response_private.h"
+#include "ewk_view.h"
 
 using namespace WebCore;
+using namespace EwkViewCallbacks;
 
 namespace WebKit {
 
@@ -50,13 +52,14 @@ void ResourceLoadClientEfl::didInitiateLoadForResource(WKPageRef, WKFrameRef wkF
     bool isMainResource = (WKFrameIsMainFrame(wkFrame) && pageIsProvisionallyLoading);
     WKRetainPtr<WKURLRef> wkUrl(AdoptWK, WKURLRequestCopyURL(wkRequest));
 
-    RefPtr<Ewk_Resource> resource = Ewk_Resource::create(wkUrl.get(), isMainResource);
+    RefPtr<Ewk_Resource> resource = EwkResource::create(wkUrl.get(), isMainResource);
 
     // Keep the resource internally to reuse it later.
     resourceLoadClient->m_loadingResourcesMap.add(resourceIdentifier, resource);
 
-    RefPtr<Ewk_Url_Request> request = Ewk_Url_Request::create(wkRequest);
-    resourceLoadClient->m_viewImpl->informResourceLoadStarted(resource.get(), request.get());
+    RefPtr<Ewk_Url_Request> request = EwkUrlRequest::create(wkRequest);
+    Ewk_Resource_Request resourceRequest = {resource.get(), request.get(), 0};
+    resourceLoadClient->m_viewImpl->smartCallback<ResourceLoadStarted>().call(&resourceRequest);
 }
 
 void ResourceLoadClientEfl::didSendRequestForResource(WKPageRef, WKFrameRef, uint64_t resourceIdentifier, WKURLRequestRef wkRequest, WKURLResponseRef wkRedirectResponse, const void* clientInfo)
@@ -68,9 +71,10 @@ void ResourceLoadClientEfl::didSendRequestForResource(WKPageRef, WKFrameRef, uin
     if (!resource)
         return;
 
-    RefPtr<Ewk_Url_Request> request = Ewk_Url_Request::create(wkRequest);
-    RefPtr<Ewk_Url_Response> redirectResponse = Ewk_Url_Response::create(wkRedirectResponse);
-    resourceLoadClient->m_viewImpl->informResourceRequestSent(resource.get(), request.get(), redirectResponse.get());
+    RefPtr<Ewk_Url_Request> request = EwkUrlRequest::create(wkRequest);
+    RefPtr<Ewk_Url_Response> redirectResponse = EwkUrlResponse::create(wkRedirectResponse);
+    Ewk_Resource_Request resourceRequest = {resource.get(), request.get(), redirectResponse.get()};
+    resourceLoadClient->m_viewImpl->smartCallback<ResourceRequestSent>().call(&resourceRequest);
 }
 
 void ResourceLoadClientEfl::didReceiveResponseForResource(WKPageRef, WKFrameRef, uint64_t resourceIdentifier, WKURLResponseRef wkResponse, const void* clientInfo)
@@ -82,8 +86,9 @@ void ResourceLoadClientEfl::didReceiveResponseForResource(WKPageRef, WKFrameRef,
     if (!resource)
         return;
 
-    RefPtr<Ewk_Url_Response> response = Ewk_Url_Response::create(wkResponse);
-    resourceLoadClient->m_viewImpl->informResourceLoadResponse(resource.get(), response.get());
+    RefPtr<Ewk_Url_Response> response = EwkUrlResponse::create(wkResponse);
+    Ewk_Resource_Load_Response resourceLoadResponse = {resource.get(), response.get()};
+    resourceLoadClient->m_viewImpl->smartCallback<ResourceLoadResponse>().call(&resourceLoadResponse);
 }
 
 void ResourceLoadClientEfl::didFinishLoadForResource(WKPageRef, WKFrameRef, uint64_t resourceIdentifier, const void* clientInfo)
@@ -95,7 +100,7 @@ void ResourceLoadClientEfl::didFinishLoadForResource(WKPageRef, WKFrameRef, uint
     if (!resource)
         return;
 
-    resourceLoadClient->m_viewImpl->informResourceLoadFinished(resource.get());
+    resourceLoadClient->m_viewImpl->smartCallback<ResourceLoadFinished>().call(resource.get());
 }
 
 void ResourceLoadClientEfl::didFailLoadForResource(WKPageRef, WKFrameRef, uint64_t resourceIdentifier, WKErrorRef wkError, const void* clientInfo)
@@ -108,8 +113,9 @@ void ResourceLoadClientEfl::didFailLoadForResource(WKPageRef, WKFrameRef, uint64
         return;
 
     OwnPtr<Ewk_Error> ewkError = Ewk_Error::create(wkError);
-    resourceLoadClient->m_viewImpl->informResourceLoadFailed(resource.get(), ewkError.get());
-    resourceLoadClient->m_viewImpl->informResourceLoadFinished(resource.get());
+    Ewk_Resource_Load_Error resourceLoadError = {resource.get(), ewkError.get()};
+    resourceLoadClient->m_viewImpl->smartCallback<ResourceLoadFailed>().call(&resourceLoadError);
+    resourceLoadClient->m_viewImpl->smartCallback<ResourceLoadFinished>().call(resource.get());
 }
 
 void ResourceLoadClientEfl::onViewProvisionalLoadStarted(void* userData, Evas_Object*, void*)
@@ -124,7 +130,7 @@ ResourceLoadClientEfl::ResourceLoadClientEfl(EwkViewImpl* viewImpl)
     : m_viewImpl(viewImpl)
 {
     // Listen for "load,provisional,started" on the view to clear internal resources map.
-    evas_object_smart_callback_add(m_viewImpl->view(), "load,provisional,started", onViewProvisionalLoadStarted, this);
+    evas_object_smart_callback_add(m_viewImpl->view(), CallBackInfo<ProvisionalLoadStarted>::name(), onViewProvisionalLoadStarted, this);
 
     WKPageRef pageRef = m_viewImpl->wkPage();
     ASSERT(pageRef);
@@ -144,7 +150,7 @@ ResourceLoadClientEfl::ResourceLoadClientEfl(EwkViewImpl* viewImpl)
 
 ResourceLoadClientEfl::~ResourceLoadClientEfl()
 {
-    evas_object_smart_callback_del(m_viewImpl->view(), "load,provisional,started", onViewProvisionalLoadStarted);
+    evas_object_smart_callback_del(m_viewImpl->view(), CallBackInfo<ProvisionalLoadStarted>::name(), onViewProvisionalLoadStarted);
 }
 
 } // namespace WebKit

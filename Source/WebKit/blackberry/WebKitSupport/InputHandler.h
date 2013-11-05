@@ -101,6 +101,7 @@ public:
 
     bool isInputMode() const { return isActiveTextEdit(); }
     bool isMultilineInputMode() const { return isActiveTextEdit() && elementType(m_currentFocusElement.get()) == BlackBerry::Platform::InputTypeTextArea; }
+    PassRefPtr<WebCore::Element> currentFocusElement() const { return m_currentFocusElement; }
 
     void ensureFocusElementVisible(bool centerFieldInDisplay = true);
     void handleInputLocaleChanged(bool isRTL);
@@ -141,7 +142,7 @@ public:
     void spellCheckingRequestCancelled(int32_t transactionId);
 
     bool shouldRequestSpellCheckingOptionsForPoint(Platform::IntPoint&, const WebCore::Element*, imf_sp_text_t&);
-    void requestSpellingCheckingOptions(imf_sp_text_t&);
+    void requestSpellingCheckingOptions(imf_sp_text_t&, const WebCore::IntSize& screenOffset);
 
 private:
     enum PendingKeyboardStateChange { NoChange, Visible, NotVisible };
@@ -223,8 +224,8 @@ private:
     RefPtr<WebCore::TextCheckingRequest> m_request;
     int32_t m_processingTransactionId;
 
-    double m_focusZoomScale;
-    WebCore::FloatPoint m_focusZoomLocation;
+    bool m_receivedBackspaceKeyDown;
+    unsigned short m_expectedKeyUpChar;
 };
 
 }

@@ -25,7 +25,9 @@
 #define JSFunction_h
 
 #include "InternalFunction.h"
+#include "JSDestructibleObject.h"
 #include "JSScope.h"
+#include "Watchpoint.h"
 
 namespace JSC {
 
@@ -46,14 +48,14 @@ namespace JSC {
 
     JS_EXPORT_PRIVATE String getCalculatedDisplayName(CallFrame*, JSObject*);
     
-    class JSFunction : public JSNonFinalObject {
+    class JSFunction : public JSDestructibleObject {
         friend class JIT;
         friend class DFG::SpeculativeJIT;
         friend class DFG::JITCompiler;
         friend class JSGlobalData;
 
     public:
-        typedef JSNonFinalObject Base;
+        typedef JSDestructibleObject Base;
 
         JS_EXPORT_PRIVATE static JSFunction* create(ExecState*, JSGlobalObject*, int length, const String& name, NativeFunction, Intrinsic = NoIntrinsic, NativeFunction nativeConstructor = callHostFunctionAsConstructor);
 
@@ -65,6 +67,8 @@ namespace JSC {
             function->finishCreation(globalData);
             return function;
         }
+        
+        static void destroy(JSCell*);
         
         JS_EXPORT_PRIVATE String name(ExecState*);
         JS_EXPORT_PRIVATE String displayName(ExecState*);
@@ -129,6 +133,21 @@ namespace JSC {
             return m_cachedInheritorID.get();
         }
 
+        Structure* tryGetKnownInheritorID()
+        {
+            if (!m_cachedInheritorID)
+                return 0;
+            if (m_inheritorIDWatchpoint.hasBeenInvalidated())
+                return 0;
+            return m_cachedInheritorID.get();
+        }
+        
+        void addInheritorIDWatchpoint(Watchpoint* watchpoint)
+        {
+            ASSERT(tryGetKnownInheritorID());
+            m_inheritorIDWatchpoint.add(watchpoint);
+        }
+
         static size_t offsetOfCachedInheritorID()
         {
             return OBJECT_OFFSETOF(JSFunction, m_cachedInheritorID);
@@ -169,6 +188,7 @@ namespace JSC {
         WriteBarrier<ExecutableBase> m_executable;
         WriteBarrier<JSScope> m_scope;
         WriteBarrier<Structure> m_cachedInheritorID;
+        InlineWatchpointSet m_inheritorIDWatchpoint;
     };
 
     inline bool JSValue::isFunction() const

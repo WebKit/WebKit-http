@@ -53,6 +53,7 @@ void TestRunner::reset()
     m_hasDumped = false;
     m_loadFinished = false;
     m_textDump = false;
+    m_shouldDumpPixels = true;
     m_dumpBackForwardList = false;
     m_dumpChildrenAsText = false;
     m_dumpChildFrameScrollPositions = false;
@@ -140,6 +141,12 @@ void TestRunner::maybeDump(bool /*success*/)
         emit done();
         m_hasDumped = true;
     }
+}
+
+void TestRunner::dumpAsText(bool shouldDumpPixels)
+{
+    m_textDump = true;
+    m_shouldDumpPixels = shouldDumpPixels;
 }
 
 void TestRunner::waitUntilDone()
@@ -406,11 +413,6 @@ QString TestRunner::decodeHostName(const QString& host)
     QString decoded = QUrl::fromAce(host.toLatin1() + QByteArray(".no"));
     decoded.truncate(decoded.length() - 3);
     return decoded;
-}
-
-void TestRunner::setMediaType(const QString& type)
-{
-    DumpRenderTreeSupportQt::setMediaType(m_drt->webPage()->mainFrame(), type);
 }
 
 void TestRunner::closeWebInspector()

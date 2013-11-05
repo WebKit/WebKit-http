@@ -67,7 +67,9 @@ namespace WebCore {
 InternalSettings::Backup::Backup(Page* page, Settings* settings)
     : m_originalPasswordEchoDurationInSeconds(settings->passwordEchoDurationInSeconds())
     , m_originalPasswordEchoEnabled(settings->passwordEchoEnabled())
+    , m_originalFixedElementsLayoutRelativeToFrame(settings->fixedElementsLayoutRelativeToFrame())
     , m_originalCSSExclusionsEnabled(RuntimeEnabledFeatures::cssExclusionsEnabled())
+    , m_originalCSSVariablesEnabled(settings->cssVariablesEnabled())
 #if ENABLE(SHADOW_DOM)
     , m_originalShadowDOMEnabled(RuntimeEnabledFeatures::shadowDOMEnabled())
     , m_originalAuthorShadowDOMForAnyElementEnabled(RuntimeEnabledFeatures::authorShadowDOMForAnyElementEnabled())
@@ -93,9 +95,18 @@ InternalSettings::Backup::Backup(Page* page, Settings* settings)
     , m_originalDialogElementEnabled(RuntimeEnabledFeatures::dialogElementEnabled())
 #endif
     , m_canStartMedia(page->canStartMedia())
+    , m_originalForceCompositingMode(settings->forceCompositingMode())
+    , m_originalCompositingForFixedPositionEnabled(settings->acceleratedCompositingForFixedPositionEnabled())
+    , m_originalCompositingForScrollableFramesEnabled(settings->acceleratedCompositingForScrollableFramesEnabled())
+    , m_originalAcceleratedDrawingEnabled(settings->acceleratedDrawingEnabled())
     , m_originalMockScrollbarsEnabled(settings->mockScrollbarsEnabled())
     , m_langAttributeAwareFormControlUIEnabled(RuntimeEnabledFeatures::langAttributeAwareFormControlUIEnabled())
     , m_imagesEnabled(settings->areImagesEnabled())
+#if ENABLE(VIDEO_TRACK)
+    , m_shouldDisplaySubtitles(settings->shouldDisplaySubtitles())
+    , m_shouldDisplayCaptions(settings->shouldDisplayCaptions())
+    , m_shouldDisplayTextDescriptions(settings->shouldDisplayTextDescriptions())
+#endif
 {
 }
 
@@ -104,7 +115,9 @@ void InternalSettings::Backup::restoreTo(Page* page, Settings* settings)
 {
     settings->setPasswordEchoDurationInSeconds(m_originalPasswordEchoDurationInSeconds);
     settings->setPasswordEchoEnabled(m_originalPasswordEchoEnabled);
+    settings->setFixedElementsLayoutRelativeToFrame(m_originalFixedElementsLayoutRelativeToFrame);
     RuntimeEnabledFeatures::setCSSExclusionsEnabled(m_originalCSSExclusionsEnabled);
+    settings->setCSSVariablesEnabled(m_originalCSSVariablesEnabled);
 #if ENABLE(SHADOW_DOM)
     RuntimeEnabledFeatures::setShadowDOMEnabled(m_originalShadowDOMEnabled);
     RuntimeEnabledFeatures::setAuthorShadowDOMForAnyElementEnabled(m_originalAuthorShadowDOMForAnyElementEnabled);
@@ -130,14 +143,23 @@ void InternalSettings::Backup::restoreTo(Page* page, Settings* settings)
     RuntimeEnabledFeatures::setDialogElementEnabled(m_originalDialogElementEnabled);
 #endif
     page->setCanStartMedia(m_canStartMedia);
+    settings->setForceCompositingMode(m_originalForceCompositingMode);
+    settings->setAcceleratedCompositingForFixedPositionEnabled(m_originalCompositingForFixedPositionEnabled);
+    settings->setAcceleratedCompositingForScrollableFramesEnabled(m_originalCompositingForScrollableFramesEnabled);
+    settings->setAcceleratedDrawingEnabled(m_originalAcceleratedDrawingEnabled);
     settings->setMockScrollbarsEnabled(m_originalMockScrollbarsEnabled);
     RuntimeEnabledFeatures::setLangAttributeAwareFormControlUIEnabled(m_langAttributeAwareFormControlUIEnabled);
     settings->setImagesEnabled(m_imagesEnabled);
+#if ENABLE(VIDEO_TRACK)
+    settings->setShouldDisplaySubtitles(m_shouldDisplaySubtitles);
+    settings->setShouldDisplayCaptions(m_shouldDisplayCaptions);
+    settings->setShouldDisplayTextDescriptions(m_shouldDisplayTextDescriptions);
+#endif
 }
 
 InternalSettings* InternalSettings::from(Page* page)
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("InternalSettings"));
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("InternalSettings", AtomicString::ConstructFromLiteral));
     if (!SuperType::from(page, name))
         SuperType::provideTo(page, name, adoptRef(new InternalSettings(page)));
     return static_cast<InternalSettings*>(SuperType::from(page, name));

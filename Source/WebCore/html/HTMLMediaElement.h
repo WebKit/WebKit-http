@@ -428,7 +428,10 @@ private:
     virtual bool mediaPlayerNeedsSiteSpecificHacks() const OVERRIDE;
     virtual String mediaPlayerDocumentHost() const OVERRIDE;
 
+    virtual void mediaPlayerEnterFullscreen() OVERRIDE;
     virtual void mediaPlayerExitFullscreen() OVERRIDE;
+    virtual bool mediaPlayerIsFullscreen() const OVERRIDE;
+    virtual bool mediaPlayerIsFullscreenPermitted() const OVERRIDE;
     virtual bool mediaPlayerIsVideo() const OVERRIDE;
     virtual LayoutRect mediaPlayerContentBoxRect() const OVERRIDE;
     virtual void mediaPlayerSetSize(const IntSize&) OVERRIDE;
@@ -438,6 +441,7 @@ private:
     virtual bool mediaPlayerIsLooping() const OVERRIDE;
     virtual HostWindow* mediaPlayerHostWindow() OVERRIDE;
     virtual IntRect mediaPlayerWindowClipRect() OVERRIDE;
+    virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() OVERRIDE;
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const OVERRIDE;
@@ -464,6 +468,7 @@ private:
     void scheduleNextSourceChild();
     void loadNextSourceChild();
     void userCancelledLoad();
+    void clearMediaPlayer(int flags);
     bool havePotentialSourceChild();
     void noneSupported();
     void mediaEngineError(PassRefPtr<MediaError> err);

@@ -60,6 +60,7 @@ RenderSVGRoot::RenderSVGRoot(SVGStyledElement* node)
     , m_objectBoundingBoxValid(false)
     , m_isLayoutSizeChanged(false)
     , m_needsBoundariesOrTransformUpdate(true)
+    , m_hasSVGShadow(false)
 {
 }
 
@@ -299,15 +300,19 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
     IntPoint adjustedPaintOffset = roundedIntPoint(paintOffset);
     childPaintInfo.applyTransform(AffineTransform::translation(adjustedPaintOffset.x(), adjustedPaintOffset.y()) * localToBorderBoxTransform());
 
-    SVGRenderingContext renderingContext;
-    bool continueRendering = true;
-    if (childPaintInfo.phase == PaintPhaseForeground) {
-        renderingContext.prepareToRenderSVGContent(this, childPaintInfo);
-        continueRendering = renderingContext.isRenderingPrepared();
-    }
+    // SVGRenderingContext must be destroyed before we restore the childPaintInfo.context, because a filter may have
+    // changed the context and it is only reverted when the SVGRenderingContext destructor finishes applying the filter.
+    {
+        SVGRenderingContext renderingContext;
+        bool continueRendering = true;
+        if (childPaintInfo.phase == PaintPhaseForeground) {
+            renderingContext.prepareToRenderSVGContent(this, childPaintInfo);
+            continueRendering = renderingContext.isRenderingPrepared();
+        }
 
-    if (continueRendering)
-        RenderBox::paint(childPaintInfo, LayoutPoint());
+        if (continueRendering)
+            RenderBox::paint(childPaintInfo, LayoutPoint());
+    }
 
     childPaintInfo.context->restore();
 }
@@ -370,23 +375,23 @@ const AffineTransform& RenderSVGRoot::localToParentTransform() const
     return m_localToParentTransform;
 }
 
-LayoutRect RenderSVGRoot::clippedOverflowRectForRepaint(RenderLayerModelObject* repaintContainer) const
+LayoutRect RenderSVGRoot::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     return SVGRenderSupport::clippedOverflowRectForRepaint(this, repaintContainer);
 }
 
-void RenderSVGRoot::computeFloatRectForRepaint(RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed) const
+void RenderSVGRoot::computeFloatRectForRepaint(const RenderLayerModelObject* repaintContainer, FloatRect& repaintRect, bool fixed) const
 {
     // Apply our local transforms (except for x/y translation), then our shadow, 
     // and then call RenderBox's method to handle all the normal CSS Box model bits
     repaintRect = m_localToBorderBoxTransform.mapRect(repaintRect);
 
-    // Apply initial viewport clip - not affected by overflow settings    
-    repaintRect.intersect(pixelSnappedBorderBoxRect());
-
     const SVGRenderStyle* svgStyle = style()->svgStyle();
     if (const ShadowData* shadow = svgStyle->shadow())
         shadow->adjustRectForShadow(repaintRect);
+
+    // Apply initial viewport clip - not affected by overflow settings
+    repaintRect.intersect(pixelSnappedBorderBoxRect());
 
     LayoutRect rect = enclosingIntRect(repaintRect);
     RenderReplaced::computeRectForRepaint(repaintContainer, rect, fixed);
@@ -396,7 +401,7 @@ void RenderSVGRoot::computeFloatRectForRepaint(RenderLayerModelObject* repaintCo
 // This method expects local CSS box coordinates.
 // Callers with local SVG viewport coordinates should first apply the localToBorderBoxTransform
 // to convert from SVG viewport coordinates to local CSS box coordinates.
-void RenderSVGRoot::mapLocalToContainer(RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
+void RenderSVGRoot::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
 {
     ASSERT(mode & ~IsFixed); // We should have no fixed content in the SVG rendering tree.
     ASSERT(mode & UseTransforms); // mapping a point through SVG w/o respecting trasnforms is useless.
@@ -411,9 +416,12 @@ const RenderObject* RenderSVGRoot::pushMappingToContainer(const RenderLayerModel
 
 void RenderSVGRoot::updateCachedBoundaries()
 {
-    SVGRenderSupport::computeContainerBoundingBoxes(this, m_objectBoundingBox, m_objectBoundingBoxValid, m_strokeBoundingBox, m_repaintBoundingBox);
-    SVGRenderSupport::intersectRepaintRectWithResources(this, m_repaintBoundingBox);
-    m_repaintBoundingBox.inflate(borderAndPaddingWidth());
+    SVGRenderSupport::computeContainerBoundingBoxes(this, m_objectBoundingBox, m_objectBoundingBoxValid, m_strokeBoundingBox, m_repaintBoundingBoxExcludingShadow);
+    SVGRenderSupport::intersectRepaintRectWithResources(this, m_repaintBoundingBoxExcludingShadow);
+    m_repaintBoundingBoxExcludingShadow.inflate(borderAndPaddingWidth());
+
+    m_repaintBoundingBox = m_repaintBoundingBoxExcludingShadow;
+    SVGRenderSupport::intersectRepaintRectWithShadows(this, m_repaintBoundingBox);
 }
 
 bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)

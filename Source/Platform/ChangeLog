@@ -1,3 +1,464 @@
+2012-11-15  Scott Violet  <sky@chromium.org>
+
+        [chromium] Create default directory so that cq can apply patch
+        https://bugs.webkit.org/show_bug.cgi?id=102421
+
+        Reviewed by Tony Chang.
+
+        Done in hopes of patch that copies files to this directory working.
+
+        * chromium/public/default: Added.
+
+2012-11-15  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove unused debug border setters from the WebLayer API
+        https://bugs.webkit.org/show_bug.cgi?id=102274
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayer.h:
+        (WebLayer):
+
+2012-11-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134800 and r134805.
+        http://trac.webkit.org/changeset/134800
+        http://trac.webkit.org/changeset/134805
+        https://bugs.webkit.org/show_bug.cgi?id=102417
+
+        This patch broke chromium port (Requested by jianli on
+        #webkit).
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebRTCPeerConnectionHandlerClient):
+
+2012-11-15  Tommy Widenflycht  <tommyw@google.com>
+
+        [chromium] MediaStream API: Add missing WebRTCPeerConnectionHandlerClient::didAddRemoteDataChannel
+        https://bugs.webkit.org/show_bug.cgi?id=102386
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebRTCPeerConnectionHandlerClient):
+
+2012-11-15  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update RTCPeerConnection states to match the latest editors draft
+        https://bugs.webkit.org/show_bug.cgi?id=102382
+
+        Reviewed by Adam Barth.
+
+        Adding a callback for the new RTCPeerConnection::iceGatheringState.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeICEGatheringState):
+
+2012-11-14  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Clamp negative sizes to zero when converting to gfx:: types
+        https://bugs.webkit.org/show_bug.cgi?id=102159
+
+        Reviewed by James Robinson.
+
+        Here we clamp Rect, RectF and Size types to not have negative widths or
+        heights. WebSizes that you want to keep their negative values, because
+        they are vectors, should be converted to Vector2d instead.
+
+        * chromium/public/WebFloatRect.h:
+        (WebKit::WebFloatRect::operator gfx::RectF):
+        * chromium/public/WebRect.h:
+        (WebKit::WebRect::operator gfx::Rect):
+        * chromium/public/WebSize.h:
+        (WebKit::WebSize::operator gfx::Size):
+
+2012-11-14  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Match the LayerTreeSetting default for acceleratedAnimationEnabled in the WebLayerTreeSetting
+        https://bugs.webkit.org/show_bug.cgi?id=102285
+
+        Reviewed by James Robinson.
+
+        Accelerated animations default to on.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+
+2012-11-13  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Pass showDebugBorders directly to WebLayerTreeSettings, don't use the GraphicsLayer border width setting.
+        https://bugs.webkit.org/show_bug.cgi?id=102130
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-13  Eberhard Graether  <egraether@google.com>
+
+        checkbox to toggle FPS counter in the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Reviewed by Pavel Feldman.
+
+        Added a checkbox to the inspector's settings to toggle a FPS counter. The checkbox appears when InspectorClient::canShowFPSCounter() returns true.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::setShowFPSCounter):
+
+2012-11-13  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Plumb WebCompositorSupport settings through WebLayerTreeSettings as well, in preparation for removing the settings from WebCompositorSupport
+        https://bugs.webkit.org/show_bug.cgi?id=102146
+
+        Reviewed by James Robinson.
+
+        Add accelerated animation and per-tile painting to the
+        WebLayerTreeView structure.
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134446.
+        http://trac.webkit.org/changeset/134446
+        https://bugs.webkit.org/show_bug.cgi?id=101968
+
+        Need to try a different strategy for landing a two-sided patch
+        (3/3).
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-12  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove the WebCompositorSupport methods for changing settings, plumb everything through WebLayerTreeSettings
+        https://bugs.webkit.org/show_bug.cgi?id=101968
+
+        Reviewed by James Robinson.
+
+        Move the outlier settings from WebCompositorSupport to WebLayerTreeView.
+
+        PerTilePainting and AcceleratedAnimations are simply moved over. The
+        PartialSwap and PageScalePinchZoomInCompositor settings, however, are
+        not used by DRT, so we remove them.
+
+        This change will temporarily break the --per-tile-painting and
+        --accelerated-animations command line flags for chromium DRT until
+        a chromium side patch hooks up the WebLayerTreeSettings again, but
+        we have no bots running with these flags.
+
+        PinchZoom will be unaffected by this, as DRT never turned it on, and by
+        passing the WebLayerTreeSetting, chromium will not use it from here yet,
+        either.
+
+        PartialSwap will be also unaffected, as there was no place in WebKit
+        that would enable it currently.
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134391.
+        http://trac.webkit.org/changeset/134391
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Speculative rollout, trying to fix browser_tests failure.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+
+2012-11-13  Eberhard Graether  <egraether@google.com>
+
+        checkbox to toggle FPS counter in the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Reviewed by Pavel Feldman.
+
+        Added a checkbox to the inspector's settings to toggle a FPS counter. The checkbox appears when InspectorClient::canShowFPSCounter() returns true.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::setShowFPSCounter):
+
+2012-11-12  Alexandre Elias  <aelias@chromium.org>
+
+        [chromium] Delete WebCompositor.h
+        https://bugs.webkit.org/show_bug.cgi?id=101137
+
+        Reviewed by James Robinson.
+
+        The implementation of this class is getting deleted and all
+        WebKit-side users are already going via WebCompositorSupport instead.
+
+        * Platform.gypi:
+        * chromium/public/WebCompositor.h: Removed.
+
+2012-11-12  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Schedule the RTCDataChannel events to be triggered at idle state
+        https://bugs.webkit.org/show_bug.cgi?id=101751
+
+        Reviewed by Adam Barth.
+
+        Making some WebRTCDataChannel methods const.
+
+        * chromium/public/WebRTCDataChannel.h:
+        (WebRTCDataChannel):
+
+2012-11-09  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Deleting all files relating to the deprecated PeerConnection00
+        https://bugs.webkit.org/show_bug.cgi?id=101730
+
+        Reviewed by Adam Barth.
+
+        Since RTCPeerConenction has superseeded PeerConnection00 this patch removes all
+        files relating to the old API.
+
+        * Platform.gypi:
+        * chromium/public/Platform.h:
+        (WebKit):
+        (Platform):
+        * chromium/public/WebICECandidateDescriptor.h: Removed.
+        * chromium/public/WebICEOptions.h: Removed.
+        * chromium/public/WebMediaHints.h: Removed.
+        * chromium/public/WebMediaStreamCenter.h:
+        (WebKit):
+        (WebMediaStreamCenter):
+        * chromium/public/WebPeerConnection00Handler.h: Removed.
+        * chromium/public/WebPeerConnection00HandlerClient.h: Removed.
+        * chromium/public/WebPeerConnectionHandler.h: Removed.
+        * chromium/public/WebPeerConnectionHandlerClient.h: Removed.
+        * chromium/public/WebSessionDescriptionDescriptor.h: Removed.
+
+2012-11-08  Sami Kyostila  <skyostil@chromium.org>
+
+        Introduce WebScreenInfo.deviceScaleFactor
+        https://bugs.webkit.org/show_bug.cgi?id=101613
+
+        Reviewed by Adam Barth.
+
+        Introduce the WebScreenInfo.deviceScaleFactor property, which specifies the
+        ratio between physical and logical pixels. This is the first step in replacing
+        horizontalDPI/verticalDPI in favor of the deviceScaleFactor.
+
+        For now, this value is only initialized on Mac, because the other ports that
+        use it initialize the value in Chromium, whereas Windows and X11 default to a
+        factor of 1. The value on Mac is truncated to an integer to match the
+        expectation in Chromium's RenderWidget.
+
+        * chromium/public/WebScreenInfo.h:
+        (WebScreenInfo):
+        (WebKit::WebScreenInfo::WebScreenInfo):
+
+2012-11-08  Keishi Hattori  <keishi@webkit.org>
+
+        Add properties for week/month picker in DateTimeChooserImpl::writeDocument
+        https://bugs.webkit.org/show_bug.cgi?id=101552
+
+        Reviewed by Kent Tamura.
+
+        * chromium/public/WebLocalizedString.h: Add WeekNumberLabel.
+
+2012-11-08  Robert Kroeger  <rjkroege@chromium.org>
+
+        [chromium] correct coding oversight for clang
+        https://bugs.webkit.org/show_bug.cgi?id=101513
+
+        Reviewed by Kent Tamura.
+
+        https://bugs.webkit.org/show_bug.cgi?id=100675 contains an
+        incorrect declaration that precludes compiling embedder code
+        with clang: patch changes class to struct appropriately.
+
+        * chromium/public/WebGestureCurveTarget.h:
+        (WebKit):
+
+2012-11-07  Yusuf Ozuysal  <yusufo@google.com>
+
+        Add API for touchEventHandlerRegion to WebLayer
+        https://bugs.webkit.org/show_bug.cgi?id=101406
+
+        Reviewed by James Robinson.
+
+        These will be used to keep track of JavaScript touch event handlers from the compositor thread.
+
+        * chromium/public/WebLayer.h:
+        (WebKit::WebLayer::setTouchEventHandlerRegion):
+        (WebKit::WebLayer::touchEventHandlerRegion):
+        (WebLayer):
+
+2012-10-23  Stephen White  <senorblanco@chromium.org>
+
+        [skia] Implement reference (url) filters on composited layers.
+        https://bugs.webkit.org/show_bug.cgi?id=100142
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayer.h:
+        Expose Layer::setFilter() to the WebKit API.
+
+2012-11-05  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Use const SkBitmap& parameter for WebLayerTreeView::setFontAtlas
+        https://bugs.webkit.org/show_bug.cgi?id=101016
+
+        Reviewed by Adrienne Walker.
+
+        Passing SkBitmap by value requires including SkBitmap.h, which is tricky for some clients to do since it
+        requires having the rest of skia's headers on the include path and setting up the correct config to set
+        preprocessor defines.  Also shuffles the parameter order around to make rolling easier since you can't override
+        just by const ref-ness.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::setFontAtlas):
+
+2012-11-05  Alok Priyadarshi  <alokp@chromium.org>
+
+        [chromium] Pass canPaintLCDText to WebContentLayerClient::paintContents
+        https://bugs.webkit.org/show_bug.cgi?id=99083
+
+        Reviewed by Stephen White.
+
+        Use LCD text setting passed to WebContentLayerClient::paintContents instead of turning it off for all composited layers.
+
+        * chromium/public/WebContentLayerClient.h:
+        (WebContentLayerClient):
+        (WebKit::WebContentLayerClient::paintContents):
+
+2012-11-01  Robert Kroeger  <rjkroege@chromium.org>
+
+        [chromium] Provide WebKit API interface for platform gesture curves
+        https://bugs.webkit.org/show_bug.cgi?id=100675
+
+        Reviewed by James Robinson.
+
+        Define interfaces to permit the Chromium embedder to provide its own
+        implementation of a gesture animation curve and add an entry point
+        to Platform.h that permits WebKit to obtain an instance of an embedder-
+        provided gesture curve.
+
+        No tests needed in this CL: only interfaces are being added.
+
+        * Platform.gypi:
+        * chromium/public/Platform.h:
+        (WebKit):
+        (Platform):
+        (WebKit::Platform::createFlingAnimationCurve):
+        * chromium/public/WebGestureCurve.h: Added.
+        (WebKit):
+        (WebGestureCurve):
+        (WebKit::WebGestureCurve::~WebGestureCurve):
+        * chromium/public/WebGestureCurveTarget.h: Added.
+        (WebKit):
+        (WebGestureCurveTarget):
+        (WebKit::WebGestureCurveTarget::~WebGestureCurveTarget):
+        * chromium/src/WebActiveGestureAnimation.cpp: Added.
+        (WebKit):
+        (WebKit::WebActiveGestureAnimation::createAtAnimationStart):
+        (WebKit::WebActiveGestureAnimation::createWithTimeOffset):
+        (WebKit::WebActiveGestureAnimation::~WebActiveGestureAnimation):
+        (WebKit::WebActiveGestureAnimation::WebActiveGestureAnimation):
+        (WebKit::WebActiveGestureAnimation::animate):
+        * chromium/src/WebActiveGestureAnimation.h: Added.
+        (WebKit):
+        (WebActiveGestureAnimation):
+
+2012-11-01  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Allow implicit conversion between gfx::Vector2d and WebSize
+        https://bugs.webkit.org/show_bug.cgi?id=100553
+
+        Reviewed by James Robinson.
+
+        The gfx::Vector2d class is used in chromium for defining distances. The
+        IntSize class is used equivalently inside WebCore. This lets us convert
+        between vectors and sizes along the API boundary.
+
+        * chromium/public/WebSize.h:
+        (WebKit::WebSize::WebSize):
+        (WebSize):
+        (WebKit::WebSize::operator=):
+        (WebKit::WebSize::operator gfx::Vector2d):
+
+2012-11-01  W. James MacLean  <wjmaclean@chromium.org>
+
+        [chromium] Make WebLayerTreeView::adjustEventPointForPinchZoom pure virtual.
+        https://bugs.webkit.org/show_bug.cgi?id=100875
+
+        Reviewed by James Robinson.
+
+        This CL removes the default implementation for adjustEventPointForPinchZoom(), which
+        was necessary for landing the original patch in https://bugs.webkit.org/show_bug.cgi?id=100542.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+
+2012-10-31  Stephen White  <senorblanco@chromium.org>
+
+        Unreviewed, rolling out r133122.
+        http://trac.webkit.org/changeset/133122
+        https://bugs.webkit.org/show_bug.cgi?id=99083
+
+        Broke Chromium Win, Android, ChromeOS builds
+
+        * chromium/public/WebContentLayerClient.h:
+        (WebContentLayerClient):
+
+2012-10-31  Alok Priyadarshi  <alokp@chromium.org>
+
+        [chromium] Pass canPaintLCDText to WebContentLayerClient::paintContents
+        https://bugs.webkit.org/show_bug.cgi?id=99083
+
+        Reviewed by James Robinson.
+
+        Use LCD text setting passed to WebContentLayerClient::paintContents instead of turning it off for all composited layers.
+
+        * chromium/public/WebContentLayerClient.h:
+        (WebContentLayerClient):
+        (WebKit::WebContentLayerClient::paintContents):
+
+2012-10-30  W. James MacLean  <wjmaclean@chromium.org>
+
+        [chromium] Transform mouse/gesture event coordinates to account for pinch-zoom in compositor.
+        https://bugs.webkit.org/show_bug.cgi?id=100542
+
+        Reviewed by James Robinson.
+
+        Pinch-zoom in the compositor applies a transformation that WebCore does not know about.
+        We need to adjust mouse and gesture event coordinates to account for this in order that
+        hit testing work properly for these types while zoomed.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::adjustPointForZoom): Adjusts point coordinated to account for zoom in compositor.
+
+2012-10-30  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Forward declare WebGraphicsContext3D in WebLayerTreeViewClient.h
+        https://bugs.webkit.org/show_bug.cgi?id=100717
+
+        Reviewed by Adrienne Walker.
+
+        Currently it isn't possible to include WebLayerTreeViewClient by itself.
+
+        * chromium/public/WebLayerTreeViewClient.h:
+        (WebKit):
+
 2012-10-26  Christopher Cameron  <ccameron@chromium.org>
 
         [chromium] Add additional memory management fields to WebGraphicsContext3D

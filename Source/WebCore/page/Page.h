@@ -25,7 +25,7 @@
 #include "FrameLoaderTypes.h"
 #include "FindOptions.h"
 #include "LayoutMilestones.h"
-#include "LayoutTypes.h"
+#include "LayoutRect.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
 #include "PlatformScreen.h"
@@ -194,6 +194,8 @@ namespace WebCore {
         ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient; }
 
         ScrollingCoordinator* scrollingCoordinator();
+
+        String scrollingStateTreeAsText();
 
         Settings* settings() const { return m_settings.get(); }
         ProgressTracker* progress() const { return m_progress.get(); }

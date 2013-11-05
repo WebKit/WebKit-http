@@ -145,7 +145,9 @@ public:
     virtual void setCompositorSurfaceReady();
     virtual void animate(double);
     virtual void layout(); // Also implements WebLayerTreeViewClient::layout()
+    virtual void enterForceCompositingMode(bool enable) OVERRIDE;
     virtual void paint(WebCanvas*, const WebRect&, PaintOptions = ReadbackFromCompositorIfAvailable);
+    virtual bool isTrackingRepaints() const OVERRIDE;
     virtual void themeChanged();
     virtual void composite(bool finish);
     virtual void setNeedsRedraw();
@@ -247,6 +249,7 @@ public:
     virtual void performPluginAction(
         const WebPluginAction&,
         const WebPoint&);
+    virtual WebHitTestResult hitTestResultAt(const WebPoint&);
     virtual void copyImageAt(const WebPoint& point);
     virtual void dragSourceEndedAt(
         const WebPoint& clientPoint,
@@ -306,6 +309,7 @@ public:
 #endif
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&);
     virtual WebViewBenchmarkSupport* benchmarkSupport();
+    virtual void setShowFPSCounter(bool);
 
     // WebLayerTreeViewClient
     virtual void willBeginFrame();
@@ -326,6 +330,7 @@ public:
     // WebViewImpl
 
     void suppressInvalidations(bool enable);
+    void invalidateRect(const WebCore::IntRect&);
 
     void setIgnoreInputEvents(bool newValue);
     WebDevToolsAgentPrivate* devToolsAgentPrivate() { return m_devToolsAgent.get(); }
@@ -531,7 +536,6 @@ public:
     void setRootGraphicsLayer(WebCore::GraphicsLayer*);
     void scheduleCompositingLayerSync();
     void scrollRootLayerRect(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& clipRect);
-    void invalidateRootLayerRect(const WebCore::IntRect&);
     void paintRootLayer(WebCore::GraphicsContext&, const WebCore::IntRect& contentRect);
     NonCompositedContentHost* nonCompositedContentHost();
     void setBackgroundColor(const WebCore::Color&);
@@ -564,8 +568,8 @@ public:
 
 #if ENABLE(GESTURE_EVENTS)
     void computeScaleAndScrollForHitRect(const WebRect& hitRect, AutoZoomType, float& scale, WebPoint& scroll, bool& isAnchor);
-    WebCore::Node* bestTouchLinkNode(WebCore::IntPoint touchEventLocation);
-    void enableTouchHighlight(WebCore::IntPoint touchEventLocation);
+    WebCore::Node* bestTouchLinkNode(const WebGestureEvent& touchEvent);
+    void enableTouchHighlight(const WebGestureEvent& touchEvent);
 #endif
     void animateZoomAroundPoint(const WebCore::IntPoint&, AutoZoomType);
 
@@ -647,6 +651,7 @@ private:
 
 #if USE(ACCELERATED_COMPOSITING)
     void setIsAcceleratedCompositingActive(bool);
+    void loadFontAtlasIfNecessary();
     void doComposite();
     void doPixelReadbackToCanvas(WebCanvas*, const WebCore::IntRect&);
     void reallocateRenderer();
@@ -836,12 +841,14 @@ private:
     WebLayer* m_rootLayer;
     WebCore::GraphicsLayer* m_rootGraphicsLayer;
     bool m_isAcceleratedCompositingActive;
+    bool m_layerTreeViewCommitsDeferred;
     bool m_compositorCreationFailed;
     // If true, the graphics context is being restored.
     bool m_recreatingGraphicsContext;
     bool m_compositorSurfaceReady;
     float m_deviceScaleInCompositor;
     int m_inputHandlerIdentifier;
+    bool m_isFontAtlasLoaded;
 #endif
     static const WebInputEvent* m_currentInputEvent;
 

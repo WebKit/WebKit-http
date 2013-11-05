@@ -28,7 +28,6 @@
 
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSParser.h"
-#include "CSSProperty.h"
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
@@ -390,7 +389,7 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
         }
         lastStyledNode = node;
 
-        RefPtr<StylePropertySet> inlineStyleDecl = element->ensureInlineStyle()->copy();
+        RefPtr<StylePropertySet> inlineStyleDecl = element->ensureMutableInlineStyle()->copy();
         float currentFontSize = computedFontSize(node);
         float desiredFontSize = max(MinimumFontSize, startingFontSizes.get(node) + style->fontSizeDelta());
         RefPtr<CSSValue> value = inlineStyleDecl->getPropertyCSSValue(CSSPropertyFontSize);
@@ -517,7 +516,7 @@ void ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock(Node* node, Node* unsp
             // other attributes, like we (should) do with B and I elements.
             removeNodeAttribute(element, dirAttr);
         } else {
-            RefPtr<StylePropertySet> inlineStyle = element->ensureInlineStyle()->copy();
+            RefPtr<StylePropertySet> inlineStyle = element->ensureMutableInlineStyle()->copy();
             inlineStyle->setProperty(CSSPropertyUnicodeBidi, CSSValueNormal);
             inlineStyle->removeProperty(CSSPropertyDirection);
             setNodeAttribute(element, styleAttr, inlineStyle->asText());
@@ -736,7 +735,7 @@ void ApplyStyleCommand::applyInlineStyleToNodeRange(EditingStyle* style, PassRef
                 break;
             // Add to this element's inline style and skip over its contents.
             HTMLElement* element = toHTMLElement(node.get());
-            RefPtr<StylePropertySet> inlineStyle = element->ensureInlineStyle()->copy();
+            RefPtr<StylePropertySet> inlineStyle = element->ensureMutableInlineStyle()->copy();
             inlineStyle->mergeAndOverrideOnConflict(style->style());
             setNodeAttribute(element, styleAttr, inlineStyle->asText());
             next = node->traverseNextSibling();
@@ -826,7 +825,7 @@ bool ApplyStyleCommand::removeInlineStyleFromElement(EditingStyle* style, PassRe
 {
     ASSERT(element);
 
-    if (!element->parentNode() || !element->parentNode()->isContentEditable())
+    if (!element->parentNode() || !element->parentNode()->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable))
         return false;
 
     if (isStyledInlineElementToRemove(element.get())) {
@@ -942,6 +941,8 @@ HTMLElement* ApplyStyleCommand::highestAncestorWithConflictingInlineStyle(Editin
 void ApplyStyleCommand::applyInlineStyleToPushDown(Node* node, EditingStyle* style)
 {
     ASSERT(node);
+
+    node->document()->updateStyleIfNeeded();
 
     if (!style || style->isEmpty() || !node->renderer())
         return;
@@ -1289,7 +1290,7 @@ void ApplyStyleCommand::surroundNodeRangeWithElement(PassRefPtr<Node> passedStar
     RefPtr<Node> node = startNode;
     while (node) {
         RefPtr<Node> next = node->nextSibling();
-        if (node->isContentEditable()) {
+        if (node->isContentEditable(Node::UserSelectAllIsAlwaysNonEditable)) {
             removeNode(node);
             appendNode(node, element);
         }

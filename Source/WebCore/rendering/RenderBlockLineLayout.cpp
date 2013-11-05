@@ -94,13 +94,8 @@ public:
 #endif
         updateAvailableWidth();
     }
-#if ENABLE(SUBPIXEL_LAYOUT)
     bool fitsOnLine() const { return currentWidth() <= m_availableWidth; }
     bool fitsOnLine(float extra) const { return currentWidth() + extra <= m_availableWidth; }
-#else
-    bool fitsOnLine() const { return currentWidth() <= m_availableWidth; }
-    bool fitsOnLine(float extra) const { return currentWidth() + extra <= m_availableWidth; }
-#endif
     float currentWidth() const { return m_committedWidth + m_uncommittedWidth; }
 
     // FIXME: We should eventually replace these three functions by ones that work on a higher abstraction.
@@ -177,12 +172,12 @@ inline void LineWidth::shrinkAvailableWidthForNewFloatIfNeeded(RenderBlock::Floa
         return;
 
     if (newFloat->type() == RenderBlock::FloatingObject::FloatLeft) {
-        float newLeft = m_block->pixelSnappedLogicalRightForFloat(newFloat);
+        float newLeft = m_block->logicalRightForFloat(newFloat);
         if (m_isFirstLine && m_block->style()->isLeftToRightDirection())
             newLeft += floorToInt(m_block->textIndentOffset());
         m_left = max<float>(m_left, newLeft);
     } else {
-        float newRight = m_block->pixelSnappedLogicalLeftForFloat(newFloat);
+        float newRight = m_block->logicalLeftForFloat(newFloat);
         if (m_isFirstLine && !m_block->style()->isLeftToRightDirection())
             newRight -= floorToInt(m_block->textIndentOffset());
         m_right = min<float>(m_right, newRight);
@@ -1253,8 +1248,8 @@ public:
     void updateRepaintRangeFromBox(RootInlineBox* box, LayoutUnit paginationDelta = 0)
     {
         m_usesRepaintBounds = true;
-        m_repaintLogicalTop = min(m_repaintLogicalTop, box->logicalTopVisualOverflow() + min(paginationDelta, ZERO_LAYOUT_UNIT));
-        m_repaintLogicalBottom = max(m_repaintLogicalBottom, box->logicalBottomVisualOverflow() + max(paginationDelta, ZERO_LAYOUT_UNIT));
+        m_repaintLogicalTop = min(m_repaintLogicalTop, box->logicalTopVisualOverflow() + min<LayoutUnit>(paginationDelta, 0));
+        m_repaintLogicalBottom = max(m_repaintLogicalBottom, box->logicalBottomVisualOverflow() + max<LayoutUnit>(paginationDelta, 0));
     }
     
     bool endLineMatched() const { return m_endLineMatched; }
@@ -1758,7 +1753,7 @@ void RenderBlock::checkFloatsInCleanLine(RootInlineBox* line, Vector<FloatWithRe
             LayoutUnit floatTop = isHorizontalWritingMode() ? floats[floatIndex].rect.y() : floats[floatIndex].rect.x();
             LayoutUnit floatHeight = isHorizontalWritingMode() ? max(floats[floatIndex].rect.height(), newSize.height())
                                                                  : max(floats[floatIndex].rect.width(), newSize.width());
-            floatHeight = min(floatHeight, MAX_LAYOUT_UNIT - floatTop);
+            floatHeight = min(floatHeight, LayoutUnit::max() - floatTop);
             line->markDirty();
             markLinesDirtyInBlockRange(line->lineBottomWithLeading(), floatTop + floatHeight, line);
             floats[floatIndex].rect.setSize(newSize);
@@ -2815,7 +2810,7 @@ InlineIterator RenderBlock::LineBreaker::nextLineBreak(InlineBidiResolver& resol
         } else
             ASSERT_NOT_REACHED();
 
-        bool checkForBreak = autoWrap;
+        bool checkForBreak = autoWrap || blockStyle->autoWrap();
         if (width.committedWidth() && !width.fitsOnLine() && lBreak.m_obj && currWS == NOWRAP)
             checkForBreak = true;
         else if (next && current.m_obj->isText() && next->isText() && !next->isBR() && (autoWrap || (next->style()->autoWrap()))) {
@@ -2923,7 +2918,7 @@ InlineIterator RenderBlock::LineBreaker::nextLineBreak(InlineBidiResolver& resol
 
 void RenderBlock::addOverflowFromInlineChildren()
 {
-    LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : ZERO_LAYOUT_UNIT;
+    LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : LayoutUnit();
     // FIXME: Need to find another way to do this, since scrollbars could show when we don't want them to.
     if (hasOverflowClip() && !endPadding && node() && node()->isRootEditableElement() && style()->isLeftToRightDirection())
         endPadding = 1;

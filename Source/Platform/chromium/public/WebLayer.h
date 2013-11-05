@@ -36,6 +36,7 @@
 #include "WebVector.h"
 
 class SkMatrix44;
+class SkImageFilter;
 
 namespace WebKit {
 class WebAnimationDelegate;
@@ -125,6 +126,12 @@ public:
     // WebFilterOperations object.
     virtual void setFilters(const WebFilterOperations&) = 0;
 
+    // Set the root of the image filter graph for this layer. The 
+    // implementation should grab a ref on the passed-in filter in order
+    // to retain ownership. The passed-in graph will be unref'ed by the
+    // caller after this call.
+    virtual void setFilter(SkImageFilter*) = 0;
+
     // Apply filters to pixels that show through the background of this layer.
     // Note: These filters are only possible on layers that are drawn directly
     // to a root render surface with an opaque background. This means if an
@@ -132,8 +139,6 @@ public:
     // (opacity, transforms), it may conflict and hide the background filters.
     virtual void setBackgroundFilters(const WebFilterOperations&) = 0;
 
-    virtual void setDebugBorderColor(const WebColor&) = 0;
-    virtual void setDebugBorderWidth(float) = 0;
     virtual void setDebugName(WebString) = 0;
 
     // An animation delegate is notified when animations are started and
@@ -183,6 +188,9 @@ public:
 
     virtual void setNonFastScrollableRegion(const WebVector<WebRect>&) = 0;
     virtual WebVector<WebRect> nonFastScrollableRegion() const = 0;
+
+    virtual void setTouchEventHandlerRegion(const WebVector<WebRect>&) { };
+    virtual WebVector<WebRect> touchEventHandlerRegion() const { return WebVector<WebRect>();}
 
     virtual void setIsContainerForFixedPositionLayers(bool) = 0;
     virtual bool isContainerForFixedPositionLayers() const = 0;

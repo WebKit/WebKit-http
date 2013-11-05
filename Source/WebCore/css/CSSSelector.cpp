@@ -218,6 +218,8 @@ PseudoId CSSSelector::pseudoId(PseudoType type)
     case PseudoRightPage:
     case PseudoInRange:
     case PseudoOutOfRange:
+    case PseudoUserAgentCustomElement:
+    case PseudoWebKitCustomElement:
         return NOPSEUDO;
     case PseudoNotParsed:
         ASSERT_NOT_REACHED();
@@ -387,12 +389,22 @@ CSSSelector::PseudoType CSSSelector::parsePseudoType(const AtomicString& name)
         return PseudoUnknown;
     HashMap<AtomicStringImpl*, CSSSelector::PseudoType>* nameToPseudoType = nameToPseudoTypeMap();
     HashMap<AtomicStringImpl*, CSSSelector::PseudoType>::iterator slot = nameToPseudoType->find(name.impl());
-    return slot == nameToPseudoType->end() ? PseudoUnknown : slot->value;
+
+    if (slot != nameToPseudoType->end())
+        return slot->value;
+
+    if (name.startsWith("-webkit-"))
+        return PseudoWebKitCustomElement;
+    if (name.startsWith("x-"))
+        return PseudoUserAgentCustomElement;
+
+    return PseudoUnknown;
 }
 
-bool CSSSelector::isUnknownPseudoType(const AtomicString& name)
+bool CSSSelector::isCustomPseudoType(const AtomicString& name)
 {
-    return parsePseudoType(name) == PseudoUnknown;
+    CSSSelector::PseudoType type = parsePseudoType(name);
+    return type == PseudoUserAgentCustomElement || type == PseudoWebKitCustomElement;
 }
 
 void CSSSelector::extractPseudoType() const
@@ -420,6 +432,8 @@ void CSSSelector::extractPseudoType() const
     case PseudoScrollbarTrack:
     case PseudoScrollbarTrackPiece:
     case PseudoSelection:
+    case PseudoUserAgentCustomElement:
+    case PseudoWebKitCustomElement:
         element = true;
         break;
     case PseudoUnknown:
@@ -627,17 +641,19 @@ String CSSSelector::selectorText() const
 
     if (CSSSelector* tagHistory = cs->tagHistory()) {
         String tagHistoryText = tagHistory->selectorText();
-        if (cs->relation() == CSSSelector::DirectAdjacent)
-            return tagHistoryText + " + " + str.toString();
-        else if (cs->relation() == CSSSelector::IndirectAdjacent)
-            return tagHistoryText + " ~ " + str.toString();
-        else if (cs->relation() == CSSSelector::Child)
-            return tagHistoryText + " > " + str.toString();
-        else if (cs->relation() == CSSSelector::ShadowDescendant)
-            return tagHistoryText + str.toString();
-        else {
-            // Descendant
+        switch (cs->relation()) {
+        case CSSSelector::Descendant:
             return tagHistoryText + " " + str.toString();
+        case CSSSelector::Child:
+            return tagHistoryText + " > " + str.toString();
+        case CSSSelector::DirectAdjacent:
+            return tagHistoryText + " + " + str.toString();
+        case CSSSelector::IndirectAdjacent:
+            return tagHistoryText + " ~ " + str.toString();
+        case CSSSelector::SubSelector:
+            ASSERT_NOT_REACHED();
+        case CSSSelector::ShadowDescendant:
+            return tagHistoryText + str.toString();
         }
     }
 

@@ -43,6 +43,7 @@
 #include "MouseEvent.h"
 #include "PlatformMouseEvent.h"
 #include "RenderSlider.h"
+#include "ScopedEventQueue.h"
 #include "ShadowRoot.h"
 #include "SliderThumbElement.h"
 #include "StepRange.h"
@@ -235,6 +236,7 @@ void RangeInputType::handleKeydownEvent(KeyboardEvent* event)
     newValue = stepRange.clampValue(newValue);
 
     if (newValue != current) {
+        EventQueueScope scope;
         ExceptionCode ec;
         TextFieldEventBehavior eventBehavior = DispatchChangeEvent;
         setValueAsDecimal(newValue, eventBehavior, ec);
@@ -253,7 +255,7 @@ void RangeInputType::createShadowSubtree()
 
     Document* document = element()->document();
     RefPtr<HTMLDivElement> track = HTMLDivElement::create(document);
-    track->setShadowPseudoId("-webkit-slider-runnable-track");
+    track->setPseudo(AtomicString("-webkit-slider-runnable-track", AtomicString::ConstructFromLiteral));
     ExceptionCode ec = 0;
     track->appendChild(SliderThumbElement::create(document), ec);
     RefPtr<HTMLElement> container = SliderContainerElement::create(document);

@@ -32,6 +32,7 @@
 
 #include "GraphicsContext.h"
 #include "MathMLNames.h"
+#include "RenderView.h"
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
 #include "PaintInfo.h"
@@ -43,6 +44,7 @@ using namespace MathMLNames;
     
 RenderMathMLBlock::RenderMathMLBlock(Node* container) 
     : RenderFlexibleBox(container)
+    , m_ignoreInAccessibilityTree(false)
     , m_intrinsicPaddingBefore(0)
     , m_intrinsicPaddingAfter(0)
     , m_intrinsicPaddingStart(0)
@@ -165,25 +167,35 @@ void RenderMathMLBlock::computeChildrenPreferredLogicalHeights()
     // Ensure a full repaint will happen after layout finishes.
     setNeedsLayout(true, MarkOnlyThis);
     
-    LayoutUnit oldAvailableLogicalWidth = availableLogicalWidth();
-    setLogicalWidth(cLargeLogicalWidth);
-    
-    for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
-        if (!child->isBox())
-            continue;
+    RenderView* renderView = view();
+    bool hadLayoutState = renderView->layoutState();
+    if (!hadLayoutState)
+        renderView->pushLayoutState(this);
+    {
+        LayoutStateDisabler layoutStateDisabler(renderView);
         
-        // Because our width changed, |child| may need layout.
-        if (child->maxPreferredLogicalWidth() > oldAvailableLogicalWidth)
-            child->setNeedsLayout(true, MarkOnlyThis);
+        LayoutUnit oldAvailableLogicalWidth = availableLogicalWidth();
+        setLogicalWidth(cLargeLogicalWidth);
         
-        RenderMathMLBlock* childMathMLBlock = child->isRenderMathMLBlock() ? toRenderMathMLBlock(child) : 0;
-        if (childMathMLBlock && !childMathMLBlock->isPreferredLogicalHeightDirty())
-            continue;
-        // Layout our child to compute its preferred logical height.
-        child->layoutIfNeeded();
-        if (childMathMLBlock)
-            childMathMLBlock->setPreferredLogicalHeight(childMathMLBlock->logicalHeight());
+        for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
+            if (!child->isBox())
+                continue;
+            
+            // Because our width changed, |child| may need layout.
+            if (child->maxPreferredLogicalWidth() > oldAvailableLogicalWidth)
+                child->setNeedsLayout(true, MarkOnlyThis);
+            
+            RenderMathMLBlock* childMathMLBlock = child->isRenderMathMLBlock() ? toRenderMathMLBlock(child) : 0;
+            if (childMathMLBlock && !childMathMLBlock->isPreferredLogicalHeightDirty())
+                continue;
+            // Layout our child to compute its preferred logical height.
+            child->layoutIfNeeded();
+            if (childMathMLBlock)
+                childMathMLBlock->setPreferredLogicalHeight(childMathMLBlock->logicalHeight());
+        }
     }
+    if (!hadLayoutState)
+        renderView->popLayoutState(this);
 }
 
 LayoutUnit RenderMathMLBlock::preferredLogicalHeightAfterSizing(RenderObject* child)

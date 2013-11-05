@@ -67,7 +67,8 @@ public:
     // (e.g., after setting docoument.domain).
     void updateSecurityOrigin();
 
-    bool isContextInitialized();
+    bool isContextInitialized() { return !m_context.isEmpty(); }
+    bool isGlobalInitialized() { return !m_global.isEmpty(); }
 
     v8::Persistent<v8::Context> createNewContext(v8::Handle<v8::Object> global, int extensionGroup, int worldId);
 
@@ -98,7 +99,7 @@ public:
             return 0;
         if (!v8::Context::InContext())
             return 0;
-        return enteredIsolatedWorldContext();
+        return static_cast<V8DOMWindowShell*>(v8::Context::GetEntered()->GetAlignedPointerFromEmbedderData(v8ContextIsolatedWindowShell));
     }
 
     void destroyIsolatedShell();

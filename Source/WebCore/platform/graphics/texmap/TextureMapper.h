@@ -47,6 +47,7 @@
 
 namespace WebCore {
 
+class BitmapTexturePool;
 class TextureMapper;
 
 // A 2D texture that can be the target of software or GL rendering.
@@ -115,7 +116,7 @@ public:
     typedef unsigned PaintFlags;
 
     static PassOwnPtr<TextureMapper> create(AccelerationMode newMode = SoftwareMode);
-    virtual ~TextureMapper() { }
+    virtual ~TextureMapper();
 
     enum ExposedEdges {
         NoEdges = 0,
@@ -129,6 +130,7 @@ public:
     virtual void drawBorder(const Color&, float borderWidth, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) = 0;
     virtual void drawRepaintCounter(int value, int pointSize, const FloatPoint&, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) = 0;
     virtual void drawTexture(const BitmapTexture&, const FloatRect& target, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0f, const BitmapTexture* maskTexture = 0, unsigned exposedEdges = AllEdges) = 0;
+    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) = 0;
 
     // makes a surface the target for the following drawTexture calls.
     virtual void bindSurface(BitmapTexture* surface) = 0;
@@ -150,15 +152,10 @@ public:
 
     virtual IntSize maxTextureSize() const { return IntSize(INT_MAX, INT_MAX); }
 
-    // A surface is released implicitly when dereferenced.
     virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&);
 
 protected:
-    TextureMapper(AccelerationMode accelerationMode)
-        : m_interpolationQuality(InterpolationDefault)
-        , m_textDrawingMode(TextModeFill)
-        , m_accelerationMode(accelerationMode)
-    {}
+    TextureMapper(AccelerationMode);
 
 private:
 #if USE(TEXTURE_MAPPER_GL)
@@ -171,7 +168,7 @@ private:
 #endif
     InterpolationQuality m_interpolationQuality;
     TextDrawingModeFlags m_textDrawingMode;
-    Vector<RefPtr<BitmapTexture> > m_texturePool;
+    OwnPtr<BitmapTexturePool> m_texturePool;
     GraphicsContext* m_context;
     AccelerationMode m_accelerationMode;
 };

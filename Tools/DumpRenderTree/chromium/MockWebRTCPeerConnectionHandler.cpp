@@ -161,7 +161,7 @@ public:
     virtual void runIfValid() OVERRIDE
     {
         m_dataChannel.dataArrived(m_data, m_length);
-        delete m_data;
+        delete [] m_data;
     }
 
 private:
@@ -351,7 +351,7 @@ bool MockWebRTCPeerConnectionHandler::sendStringData(const WebRTCDataChannel& da
     if (m_stopped)
         return false;
 
-    postTask(new StringDataTask(this, dataChannel, data));
+    dataChannel.dataArrived(data);
     return true;
 }
 
@@ -360,7 +360,7 @@ bool MockWebRTCPeerConnectionHandler::sendRawData(const WebRTCDataChannel& dataC
     if (m_stopped)
         return false;
 
-    postTask(new CharPtrDataTask(this, dataChannel, data, length));
+    dataChannel.dataArrived(data, length);
     return true;
 }
 

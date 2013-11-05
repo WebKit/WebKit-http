@@ -100,7 +100,6 @@ void InitWebCoreSystemInterface(void)
         INIT(SetCGFontRenderingMode);
         INIT(SetCONNECTProxyAuthorizationForStream);
         INIT(SetCONNECTProxyForStream);
-        INIT(SetCookieStoragePrivateBrowsingEnabled);
         INIT(SetDragImage);
         INIT(SetHTTPPipeliningMaximumPriority);
         INIT(SetHTTPPipeliningPriority);
@@ -117,8 +116,10 @@ void InitWebCoreSystemInterface(void)
         INIT(CopyHTTPCookieStorage);
         INIT(GetHTTPCookieAcceptPolicy);
         INIT(SetHTTPCookieAcceptPolicy);
+        INIT(HTTPCookies);
         INIT(HTTPCookiesForURL);
         INIT(SetHTTPCookiesForURL);
+        INIT(DeleteAllHTTPCookies);
         INIT(DeleteHTTPCookie);
 
         INIT(SetMetadataURL);

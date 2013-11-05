@@ -37,31 +37,29 @@
     bottom: 0;
 }
 
-.canvas-trace-log {
-    position: absolute;
-    top: 10px;
-    left: 0;
-    bottom: 10px;
-    font-size: 13px;
-    overflow: auto;
-    white-space: nowrap;
-    padding: 0 20px;
-}
-
-.canvas-trace-log div {
-    padding-bottom: 4px;
-}
-
 #canvas-replay-image-container {
-    position: absolute;
-    right: 0;
-    top: 0;
-    padding: 10px;
-    background-color: white;
+    text-align: center;
+    background-color: black;
+    overflow: hidden;
+    padding: 5px;
+    color: white;
 }
 
 #canvas-replay-image {
-    width: 400px;
-    height: 400px;
+    zoom: 100;
+    height: auto;
+    width: auto;
+    max-width: 100%;
+    max-height: 100%;
+    margin: auto;
     display: block;
+}
+
+#canvas-replay-image.wait {
+    content: url(Images/spinnerActiveSelected.gif);
+    zoom: inherit;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -16px 0 0 -16px;
 }

@@ -36,7 +36,9 @@
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
 #include "KURL.h"
+#include "LoaderStrategy.h"
 #include "Logging.h"
+#include "PlatformStrategies.h"
 #include "PurgeableBuffer.h"
 #include "ResourceBuffer.h"
 #include "ResourceHandle.h"
@@ -53,6 +55,14 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/Vector.h>
+
+namespace WTF {
+
+template<> struct SequenceMemoryInstrumentationTraits<WebCore::CachedResourceClient*> {
+    template <typename I> static void reportMemoryUsage(I, I, MemoryClassInfo&) { }
+};
+
+}
 
 using namespace WTF;
 
@@ -283,7 +293,11 @@ void CachedResource::load(CachedResourceLoader* cachedResourceLoader, const Reso
     if (type() != MainResource)
         addAdditionalRequestHeaders(cachedResourceLoader);
 
+#if USE(PLATFORM_STRATEGIES)
+    m_loader = platformStrategies()->loaderStrategy()->resourceLoadScheduler()->scheduleSubresourceLoad(cachedResourceLoader->frame(), this, m_resourceRequest, m_resourceRequest.priority(), options);
+#else
     m_loader = resourceLoadScheduler()->scheduleSubresourceLoad(cachedResourceLoader->frame(), this, m_resourceRequest, m_resourceRequest.priority(), options);
+#endif
 
     if (!m_loader) {
         failBeforeStarting();
@@ -424,8 +438,9 @@ void CachedResource::stopLoading()
     // canceled loads, which silently set our request to 0. Be sure to notify our
     // client in that case, so we don't seem to continue loading forever.
     if (isLoading()) {
+        ASSERT(!m_error.isNull());
         setLoading(false);
-        setStatus(Canceled);
+        setStatus(LoadError);
         checkNotify();
     }
 }
@@ -695,7 +710,7 @@ void CachedResource::updateResponseAfterRevalidation(const ResourceResponse& val
 {
     m_responseTimestamp = currentTime();
 
-    DEFINE_STATIC_LOCAL(const AtomicString, contentHeaderPrefix, ("content-"));
+    DEFINE_STATIC_LOCAL(const AtomicString, contentHeaderPrefix, ("content-", AtomicString::ConstructFromLiteral));
     // RFC2616 10.3.5
     // Update cached headers from the 304 response
     const HTTPHeaderMap& newHeaders = validatingResponse.httpHeaderFields();

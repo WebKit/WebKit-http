@@ -38,13 +38,12 @@ class UpdateInfo;
 class WebPage;
 
 class LayerTreeCoordinator : public LayerTreeHost, WebCore::GraphicsLayerClient
-                           , public CoordinatedGraphicsLayerClient
-                           , public WebCore::GraphicsLayerFactory {
+    , public CoordinatedGraphicsLayerClient
+    , public UpdateAtlasClient
+    , public WebCore::GraphicsLayerFactory {
 public:
     static PassRefPtr<LayerTreeCoordinator> create(WebPage*);
     virtual ~LayerTreeCoordinator();
-
-    static bool supportsAcceleratedCompositing();
 
     virtual const LayerTreeContext& layerTreeContext() { return m_layerTreeContext; }
     virtual void setLayerFlushSchedulingEnabled(bool);
@@ -91,12 +90,18 @@ public:
 #if USE(GRAPHICS_SURFACE)
     virtual void syncCanvas(WebLayerID, const WebCore::IntSize& canvasSize, const WebCore::GraphicsSurfaceToken&, uint32_t frontBuffer) OVERRIDE;
 #endif
-    virtual void attachLayer(WebCore::CoordinatedGraphicsLayer*);
     virtual void detachLayer(WebCore::CoordinatedGraphicsLayer*);
     virtual void syncFixedLayers();
 
-    virtual PassOwnPtr<WebCore::GraphicsContext> beginContentUpdate(const WebCore::IntSize&, ShareableBitmap::Flags, ShareableSurface::Handle&, WebCore::IntPoint&);
+    virtual PassOwnPtr<WebCore::GraphicsContext> beginContentUpdate(const WebCore::IntSize&, ShareableBitmap::Flags, int& atlasID, WebCore::IntPoint&);
+
+    // UpdateAtlasClient
+    virtual void createUpdateAtlas(int atlasID, const ShareableSurface::Handle&);
+    virtual void removeUpdateAtlas(int atlasID);
+
+#if ENABLE(REQUEST_ANIMATION_FRAME)
     virtual void scheduleAnimation() OVERRIDE;
+#endif
 
 protected:
     explicit LayerTreeCoordinator(WebPage*);
@@ -106,8 +111,6 @@ private:
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time);
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*);
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect);
-    virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const;
-    virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const;
 
     // GraphicsLayerFactory
     virtual PassOwnPtr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayerClient*) OVERRIDE;
@@ -122,10 +125,15 @@ private:
     void syncDisplayState();
     void lockAnimations();
     void unlockAnimations();
+    void purgeReleasedImages();
 
     void layerFlushTimerFired(WebCore::Timer<LayerTreeCoordinator>*);
 
     void scheduleReleaseInactiveAtlases();
+#if ENABLE(REQUEST_ANIMATION_FRAME)
+    void animationFrameReady();
+#endif
+
     void releaseInactiveAtlasesTimerFired(WebCore::Timer<LayerTreeCoordinator>*);
 
     OwnPtr<WebCore::GraphicsLayer> m_rootLayer;
@@ -144,6 +152,8 @@ private:
 
     bool m_notifyAfterScheduledLayerFlush;
     bool m_isValid;
+    // We don't send the messages related to releasing resources to UI Process during purging, because UI Process already had removed all resources.
+    bool m_isPurging;
 
     bool m_waitingForUIProcess;
     bool m_isSuspended;

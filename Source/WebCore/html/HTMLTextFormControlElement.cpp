@@ -394,9 +394,9 @@ int HTMLTextFormControlElement::computeSelectionEnd() const
 
 static const AtomicString& directionString(TextFieldSelectionDirection direction)
 {
-    DEFINE_STATIC_LOCAL(const AtomicString, none, ("none"));
-    DEFINE_STATIC_LOCAL(const AtomicString, forward, ("forward"));
-    DEFINE_STATIC_LOCAL(const AtomicString, backward, ("backward"));
+    DEFINE_STATIC_LOCAL(const AtomicString, none, ("none", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, forward, ("forward", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, backward, ("backward", AtomicString::ConstructFromLiteral));
 
     switch (direction) {
     case SelectionHasNoDirection:
@@ -670,6 +670,13 @@ String HTMLTextFormControlElement::directionForFormData() const
     }
 
     return "ltr";
+}
+
+void HTMLTextFormControlElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    HTMLFormControlElementWithState::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_textAsOfLastFormControlChangeEvent);
 }
 
 } // namespace Webcore

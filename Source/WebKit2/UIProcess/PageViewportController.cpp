@@ -39,34 +39,16 @@ bool fuzzyCompare(float a, float b, float epsilon)
     return std::abs(a - b) < epsilon;
 }
 
-ViewportUpdateDeferrer::ViewportUpdateDeferrer(PageViewportController* PageViewportController, SuspendContentFlag suspendContentFlag)
-    : m_controller(PageViewportController)
-{
-    m_controller->m_activeDeferrerCount++;
-
-    // There is no need to suspend content for immediate updates
-    // only during animations or longer gestures.
-    if (suspendContentFlag == DeferUpdateAndSuspendContent)
-        m_controller->suspendContent();
-}
-
-ViewportUpdateDeferrer::~ViewportUpdateDeferrer()
-{
-    if (--(m_controller->m_activeDeferrerCount))
-        return;
-
-    m_controller->resumeContent();
-}
-
 PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, PageViewportControllerClient* client)
     : m_webPageProxy(proxy)
     , m_client(client)
     , m_allowsUserScaling(false)
     , m_minimumScaleToFit(1)
-    , m_activeDeferrerCount(0)
     , m_hasSuspendedContent(false)
     , m_hadUserInteraction(false)
     , m_effectiveScale(1)
+    , m_viewportPosIsLocked(false)
+    , m_effectiveScaleIsLocked(false)
 {
     // Initializing Viewport Raw Attributes to avoid random negative or infinity scale factors
     // if there is a race condition between the first layout and setting the viewport attributes for the first time.
@@ -112,6 +94,9 @@ void PageViewportController::didCommitLoad()
 {
     // Do not count the previous committed page contents as covered.
     m_lastFrameCoveredRect = FloatRect();
+
+    // Do not continue to use the content size of the previous page.
+    m_contentsSize = IntSize();
 
     // Reset the position to the top, page/history scroll requests may override this before we re-enable rendering.
     applyPositionAfterRenderingContents(FloatPoint());
@@ -159,7 +144,8 @@ void PageViewportController::pageTransitionViewportReady()
 {
     if (!m_rawAttributes.layoutSize.isEmpty()) {
         m_hadUserInteraction = false;
-        applyScaleAfterRenderingContents(innerBoundedViewportScale(toViewportScale(m_rawAttributes.initialScale)));
+        float initialScale = (m_rawAttributes.initialScale < 0) ? m_minimumScaleToFit : m_rawAttributes.initialScale;
+        applyScaleAfterRenderingContents(innerBoundedViewportScale(toViewportScale(initialScale)));
     }
 
     // At this point we should already have received the first viewport arguments and the requested scroll
@@ -172,7 +158,7 @@ void PageViewportController::pageTransitionViewportReady()
 void PageViewportController::pageDidRequestScroll(const IntPoint& cssPosition)
 {
     // Ignore the request if suspended. Can only happen due to delay in event delivery.
-    if (m_activeDeferrerCount)
+    if (m_hasSuspendedContent)
         return;
 
     FloatRect endVisibleContentRect(clampViewportToContents(cssPosition, m_effectiveScale), viewportSizeInContentsCoordinates());

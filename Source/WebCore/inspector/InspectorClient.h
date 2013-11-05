@@ -57,6 +57,7 @@ public:
     virtual void clearBrowserCache() { }
     virtual bool canClearBrowserCookies() { return false; }
     virtual void clearBrowserCookies() { }
+    virtual bool canMonitorMainThread() { return false; }
     virtual void startMainThreadMonitoring() { }
     virtual void stopMainThreadMonitoring() { }
 
@@ -70,6 +71,9 @@ public:
     {
         // FIXME: Platforms may want to implement this (see https://bugs.webkit.org/show_bug.cgi?id=82886).
     }
+
+    virtual bool canShowFPSCounter() { return false; }
+    virtual void setShowFPSCounter(bool) { }
 
     virtual bool supportsFrameInstrumentation() { return false; }
 

@@ -112,12 +112,10 @@ NetscapePlugin::~NetscapePlugin()
 
 PassRefPtr<NetscapePlugin> NetscapePlugin::fromNPP(NPP npp)
 {
-    if (npp)
-        return static_cast<NetscapePlugin*>(npp->ndata);
+    if (!npp)
+        return 0;
 
-    // FIXME: Return the current NetscapePlugin here.
-    ASSERT_NOT_REACHED();
-    return 0;
+    return static_cast<NetscapePlugin*>(npp->ndata);
 }
 
 void NetscapePlugin::invalidate(const NPRect* invalidRect)
@@ -922,7 +920,12 @@ bool NetscapePlugin::isEditingCommandEnabled(const String& /* commandName */)
 {
     return false;
 }
-    
+
+bool NetscapePlugin::shouldAllowScripting()
+{
+    return true;
+}
+
 bool NetscapePlugin::handlesPageScaleFactor()
 {
     return false;

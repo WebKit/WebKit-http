@@ -153,7 +153,7 @@ WebInspector.Panel.prototype = {
      * @param {string=} position
      * @param {number=} defaultWidth
      */
-    createSplitView: function(parentElement, position, defaultWidth)
+    createSidebarView: function(parentElement, position, defaultWidth)
     {
         if (this.splitView)
             return;
@@ -161,9 +161,9 @@ WebInspector.Panel.prototype = {
         if (!parentElement)
             parentElement = this.element;
 
-        this.splitView = new WebInspector.SplitView(position || WebInspector.SplitView.SidebarPosition.Left, this._sidebarWidthSettingName(), defaultWidth);
+        this.splitView = new WebInspector.SidebarView(position || WebInspector.SidebarView.SidebarPosition.Left, this._sidebarWidthSettingName(), defaultWidth);
         this.splitView.show(parentElement);
-        this.splitView.addEventListener(WebInspector.SplitView.EventTypes.Resized, this.sidebarResized.bind(this));
+        this.splitView.addEventListener(WebInspector.SidebarView.EventTypes.Resized, this.sidebarResized.bind(this));
 
         this.sidebarElement = this.splitView.sidebarElement;
     },
@@ -173,12 +173,12 @@ WebInspector.Panel.prototype = {
      * @param {string=} position
      * @param {number=} defaultWidth
      */
-    createSplitViewWithSidebarTree: function(parentElement, position, defaultWidth)
+    createSidebarViewWithTree: function(parentElement, position, defaultWidth)
     {
         if (this.splitView)
             return;
 
-        this.createSplitView(parentElement, position);
+        this.createSidebarView(parentElement, position);
 
         this.sidebarTreeElement = document.createElement("ol");
         this.sidebarTreeElement.className = "sidebar-tree";
@@ -229,6 +229,9 @@ WebInspector.Panel.prototype = {
         return [];
     },
 
+    /**
+     * @param {KeyboardEvent} event
+     */
     handleShortcut: function(event)
     {
         var shortcutKey = WebInspector.KeyboardShortcut.makeKeyFromEvent(event);
@@ -239,14 +242,14 @@ WebInspector.Panel.prototype = {
         }
     },
 
-    registerShortcut: function(key, handler)
+    /**
+     * @param {!Array.<!WebInspector.KeyboardShortcut.Descriptor>} keys
+     * @param {function(KeyboardEvent)} handler
+     */
+    registerShortcuts: function(keys, handler)
     {
-        this._shortcuts[key] = handler;
-    },
-
-    unregisterShortcut: function(key)
-    {
-        delete this._shortcuts[key];
+        for (var i = 0; i < keys.length; ++i)
+            this._shortcuts[keys[i].key] = handler;
     },
 
     __proto__: WebInspector.View.prototype
@@ -313,5 +316,7 @@ WebInspector.PanelDescriptor.prototype = {
             importScript(this._scriptName);
         this._panel = new WebInspector[this._className];
         return this._panel;
-    }
+    },
+
+    registerShortcuts: function() {}
 }
