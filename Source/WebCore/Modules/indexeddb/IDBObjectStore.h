@@ -32,7 +32,6 @@
 #include "IDBKey.h"
 #include "IDBKeyRange.h"
 #include "IDBMetadata.h"
-#include "IDBObjectStoreBackendInterface.h"
 #include "IDBRequest.h"
 #include "IDBTransaction.h"
 #include "ScriptWrappable.h"
@@ -51,13 +50,14 @@ class IDBAny;
 
 class IDBObjectStore : public ScriptWrappable, public RefCounted<IDBObjectStore> {
 public:
-    static PassRefPtr<IDBObjectStore> create(const IDBObjectStoreMetadata& metadata, PassRefPtr<IDBObjectStoreBackendInterface> backend, IDBTransaction* transaction)
+    static PassRefPtr<IDBObjectStore> create(const IDBObjectStoreMetadata& metadata, IDBTransaction* transaction)
     {
-        return adoptRef(new IDBObjectStore(metadata, backend, transaction));
+        return adoptRef(new IDBObjectStore(metadata, transaction));
     }
     ~IDBObjectStore() { }
 
     // Implement the IDBObjectStore IDL
+    int64_t id() const { return m_metadata.id; }
     const String name() const { return m_metadata.name; }
     PassRefPtr<IDBAny> keyPathAny() const { return IDBAny::create(m_metadata.keyPath); }
     const IDBKeyPath keyPath() const { return m_metadata.keyPath; }
@@ -94,7 +94,7 @@ public:
     PassRefPtr<IDBRequest> count(ScriptExecutionContext*, PassRefPtr<IDBKeyRange>, ExceptionCode&);
     PassRefPtr<IDBRequest> count(ScriptExecutionContext*, PassRefPtr<IDBKey>, ExceptionCode&);
 
-    PassRefPtr<IDBRequest> put(IDBObjectStoreBackendInterface::PutMode, PassRefPtr<IDBAny> source, ScriptState*, ScriptValue&, PassRefPtr<IDBKey>, ExceptionCode&);
+    PassRefPtr<IDBRequest> put(IDBDatabaseBackendInterface::PutMode, PassRefPtr<IDBAny> source, ScriptState*, ScriptValue&, PassRefPtr<IDBKey>, ExceptionCode&);
     void markDeleted() { m_deleted = true; }
     void transactionFinished();
 
@@ -104,8 +104,10 @@ public:
     typedef Vector<RefPtr<IDBKey> > IndexKeys;
     typedef HashMap<String, IndexKeys> IndexKeyMap;
 
+    IDBDatabaseBackendInterface* backendDB() const;
+
 private:
-    IDBObjectStore(const IDBObjectStoreMetadata&, PassRefPtr<IDBObjectStoreBackendInterface>, IDBTransaction*);
+    IDBObjectStore(const IDBObjectStoreMetadata&, IDBTransaction*);
 
     int64_t findIndexId(const String& name) const;
     bool containsIndex(const String& name) const
@@ -114,7 +116,6 @@ private:
     }
 
     IDBObjectStoreMetadata m_metadata;
-    RefPtr<IDBObjectStoreBackendInterface> m_backend;
     RefPtr<IDBTransaction> m_transaction;
     bool m_deleted;
 

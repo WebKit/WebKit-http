@@ -236,6 +236,10 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)mockScrollbarsEnabled;
 - (void)setMockScrollbarsEnabled:(BOOL)flag;
 
+// This is a global setting.
+- (BOOL)seamlessIFramesEnabled;
+- (void)setSeamlessIFramesEnabled:(BOOL)enabled;
+
 // Other private methods
 - (void)_postPreferencesChangedNotification;
 - (void)_postPreferencesChangedAPINotification;
@@ -275,6 +279,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 // compiled with USE_AVFOUNDATION.
 - (void)setAVFoundationEnabled:(BOOL)flag;
 - (BOOL)isAVFoundationEnabled;
+
+- (void)setQTKitEnabled:(BOOL)flag;
+- (BOOL)isQTKitEnabled;
 
 // WebSocket support depends on ENABLE(WEB_SOCKETS).
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag;

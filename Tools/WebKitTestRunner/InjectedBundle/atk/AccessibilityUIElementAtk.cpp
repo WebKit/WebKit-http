@@ -27,6 +27,8 @@
 #include "config.h"
 #include "AccessibilityUIElement.h"
 
+#if HAVE(ACCESSIBILITY)
+
 #include "InjectedBundle.h"
 #include "InjectedBundlePage.h"
 #include <JavaScriptCore/JSStringRef.h>
@@ -518,10 +520,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::title()
         return JSStringCreateWithCharacters(0, 0);
 
     const gchar* name = atk_object_get_name(ATK_OBJECT(m_element));
-    if (!name)
-        return JSStringCreateWithCharacters(0, 0);
-
-    GOwnPtr<gchar> axTitle(g_strdup_printf("AXTitle: %s", name));
+    GOwnPtr<gchar> axTitle(g_strdup_printf("AXTitle: %s", name ? name : ""));
 
     return JSStringCreateWithUTF8CString(axTitle.get());
 }
@@ -1130,3 +1129,5 @@ PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForIndex(i
 
 
 } // namespace WTR
+
+#endif

@@ -47,6 +47,18 @@
 
 #if ENABLE(JIT)
 
+#if CPU(MIPS)
+#if WTF_MIPS_PIC
+#define LOAD_FUNCTION_TO_T9(function) \
+        ".set noreorder" "\n" \
+        ".cpload $25" "\n" \
+        ".set reorder" "\n" \
+        "la $t9, " LOCAL_REFERENCE(function) "\n"
+#else
+#define LOAD_FUNCTION_TO_T9(function) "" "\n"
+#endif
+#endif
+
 #if ENABLE(DFG_JIT)
 
 #if COMPILER(GCC) && CPU(X86_64)
@@ -198,6 +210,52 @@
     INLINE_ARM_FUNCTION(function) \
     SYMBOL_STRING(function) ":" "\n" \
         INSTRUCTION_STORE_RETURN_ADDRESS_EJCI "\n" \
+        "b " LOCAL_REFERENCE(function) "WithReturnAddress" "\n" \
+    );
+
+#elif COMPILER(GCC) && CPU(MIPS)
+
+#define FUNCTION_WRAPPER_WITH_RETURN_ADDRESS_E(function) \
+    asm( \
+    ".text" "\n" \
+    ".globl " SYMBOL_STRING(function) "\n" \
+    HIDE_SYMBOL(function) "\n" \
+    SYMBOL_STRING(function) ":" "\n" \
+    LOAD_FUNCTION_TO_T9(function##WithReturnAddress) \
+        "move $a1, $ra" "\n" \
+        "b " LOCAL_REFERENCE(function) "WithReturnAddress" "\n" \
+    );
+
+#define FUNCTION_WRAPPER_WITH_RETURN_ADDRESS_ECI(function) \
+    asm( \
+    ".text" "\n" \
+    ".globl " SYMBOL_STRING(function) "\n" \
+    HIDE_SYMBOL(function) "\n" \
+    SYMBOL_STRING(function) ":" "\n" \
+    LOAD_FUNCTION_TO_T9(function##WithReturnAddress) \
+        "move $a3, $ra" "\n" \
+        "b " LOCAL_REFERENCE(function) "WithReturnAddress" "\n" \
+    );
+
+#define FUNCTION_WRAPPER_WITH_RETURN_ADDRESS_EJI(function) \
+    asm( \
+    ".text" "\n" \
+    ".globl " SYMBOL_STRING(function) "\n" \
+    HIDE_SYMBOL(function) "\n" \
+    SYMBOL_STRING(function) ":" "\n" \
+    LOAD_FUNCTION_TO_T9(function##WithReturnAddress) \
+        "sw $ra, 20($sp)" "\n" \
+        "b " LOCAL_REFERENCE(function) "WithReturnAddress" "\n" \
+    );
+
+#define FUNCTION_WRAPPER_WITH_RETURN_ADDRESS_EJCI(function) \
+    asm( \
+    ".text" "\n" \
+    ".globl " SYMBOL_STRING(function) "\n" \
+    HIDE_SYMBOL(function) "\n" \
+    SYMBOL_STRING(function) ":" "\n" \
+    LOAD_FUNCTION_TO_T9(function##WithReturnAddress) \
+        "sw $ra, 24($sp)" "\n" \
         "b " LOCAL_REFERENCE(function) "WithReturnAddress" "\n" \
     );
 
@@ -1370,6 +1428,11 @@ size_t DFG_OPERATION operationIsFunction(EncodedJSValue value)
     return jsIsFunctionType(JSValue::decode(value));
 }
 
+JSCell* DFG_OPERATION operationTypeOf(ExecState* exec, JSCell* value)
+{
+    return jsTypeStringForValue(exec, JSValue(value)).asCell();
+}
+
 void DFG_OPERATION operationReallocateStorageAndFinishPut(ExecState* exec, JSObject* base, Structure* structure, PropertyOffset offset, EncodedJSValue value)
 {
     JSGlobalData& globalData = exec->globalData();
@@ -1378,7 +1441,7 @@ void DFG_OPERATION operationReallocateStorageAndFinishPut(ExecState* exec, JSObj
     ASSERT(structure->outOfLineCapacity() > base->structure()->outOfLineCapacity());
     ASSERT(!globalData.heap.storageAllocator().fastPathShouldSucceed(structure->outOfLineCapacity() * sizeof(JSValue)));
     base->setStructureAndReallocateStorageIfNecessary(globalData, structure);
-    base->putDirectOffset(globalData, offset, JSValue::decode(value));
+    base->putDirect(globalData, offset, JSValue::decode(value));
 }
 
 char* DFG_OPERATION operationAllocatePropertyStorageWithInitialCapacity(ExecState* exec)
@@ -1544,8 +1607,7 @@ size_t DFG_OPERATION dfgConvertJSValueToBoolean(ExecState* exec, EncodedJSValue 
     return JSValue::decode(encodedOp).toBoolean(exec);
 }
 
-#if DFG_ENABLE(VERBOSE_SPECULATION_FAILURE)
-void DFG_OPERATION debugOperationPrintSpeculationFailure(ExecState* exec, void* debugInfoRaw)
+void DFG_OPERATION debugOperationPrintSpeculationFailure(ExecState* exec, void* debugInfoRaw, void* scratch)
 {
     JSGlobalData* globalData = &exec->globalData();
     NativeCallFrameTracer tracer(globalData, exec);
@@ -1564,8 +1626,25 @@ void DFG_OPERATION debugOperationPrintSpeculationFailure(ExecState* exec, void* 
     } else
         dataLog("no alternative code block (i.e. we've been jettisoned)");
     dataLog(", osrExitCounter = ", codeBlock->osrExitCounter(), "\n");
+    dataLog("    GPRs at time of exit:");
+    char* scratchPointer = static_cast<char*>(scratch);
+    for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i) {
+        GPRReg gpr = GPRInfo::toRegister(i);
+        dataLog(" ", GPRInfo::debugName(gpr), ":", RawPointer(*reinterpret_cast<void**>(scratchPointer)));
+        scratchPointer += sizeof(EncodedJSValue);
+    }
+    dataLog("\n");
+    dataLog("    FPRs at time of exit:");
+    for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
+        FPRReg fpr = FPRInfo::toRegister(i);
+        dataLog(" ", FPRInfo::debugName(fpr), ":");
+        uint64_t bits = *reinterpret_cast<uint64_t*>(scratchPointer);
+        double value = *reinterpret_cast<double*>(scratchPointer);
+        dataLogF("%llx:%lf", static_cast<long long>(bits), value);
+        scratchPointer += sizeof(EncodedJSValue);
+    }
+    dataLog("\n");
 }
-#endif
 
 extern "C" void DFG_OPERATION triggerReoptimizationNow(CodeBlock* codeBlock)
 {
@@ -1636,6 +1715,17 @@ INLINE_ARM_FUNCTION(getHostCallReturnValue)
 SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     "ldr r5, [r5, #-40]" "\n"
     "mov r0, r5" "\n"
+    "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
+);
+#elif COMPILER(GCC) && CPU(MIPS)
+asm(
+".text" "\n"
+".globl " SYMBOL_STRING(getHostCallReturnValue) "\n"
+HIDE_SYMBOL(getHostCallReturnValue) "\n"
+SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
+    LOAD_FUNCTION_TO_T9(getHostCallReturnValueWithExecState)
+    "lw $s0, -40($s0)" "\n"
+    "move $a0, $s0" "\n"
     "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
 );
 #endif

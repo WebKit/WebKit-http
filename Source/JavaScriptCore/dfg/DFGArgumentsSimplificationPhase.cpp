@@ -35,6 +35,7 @@
 #include "DFGPhase.h"
 #include "DFGValidate.h"
 #include "DFGVariableAccessDataDump.h"
+#include "Operations.h"
 #include <wtf/HashSet.h>
 #include <wtf/HashMap.h>
 
@@ -622,26 +623,27 @@ public:
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
                 NodeIndex nodeIndex = block->at(indexInBlock);
-                Node& node = m_graph[nodeIndex];
-                if (node.op() != CreateArguments)
+                Node* nodePtr = &m_graph[nodeIndex];
+                if (nodePtr->op() != CreateArguments)
                     continue;
                 // If this is a CreateArguments for an InlineCallFrame* that does
                 // not create arguments, then replace it with a PhantomArguments.
                 // PhantomArguments is a non-executing node that just indicates
                 // that the node should be reified as an arguments object on OSR
                 // exit.
-                if (m_createsArguments.contains(node.codeOrigin.inlineCallFrame))
+                if (m_createsArguments.contains(nodePtr->codeOrigin.inlineCallFrame))
                     continue;
-                if (node.shouldGenerate()) {
-                    Node phantom(Phantom, node.codeOrigin);
-                    phantom.children = node.children;
+                if (nodePtr->shouldGenerate()) {
+                    Node phantom(Phantom, nodePtr->codeOrigin);
+                    phantom.children = nodePtr->children;
                     phantom.ref();
                     NodeIndex phantomNodeIndex = m_graph.size();
                     m_graph.append(phantom);
                     insertionSet.append(indexInBlock, phantomNodeIndex);
+                    nodePtr = &m_graph[nodeIndex];
                 }
-                node.setOpAndDefaultFlags(PhantomArguments);
-                node.children.reset();
+                nodePtr->setOpAndDefaultFlags(PhantomArguments);
+                nodePtr->children.reset();
                 changed = true;
             }
             insertionSet.execute(*block);

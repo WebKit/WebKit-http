@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,6 +80,11 @@ using namespace std;
 @end
 
 namespace WebCore {
+    
+enum TileValidationPolicyFlag {
+    PruneSecondaryTiles = 1 << 0,
+    UnparentAllTiles = 1 << 1
+};
 
 static const int defaultTileCacheWidth = 512;
 static const int defaultTileCacheHeight = 512;
@@ -100,8 +105,11 @@ TileCache::TileCache(WebTileCacheLayer* tileCacheLayer)
     , m_tileCoverage(CoverageForVisibleArea)
     , m_isInWindow(false)
     , m_scrollingPerformanceLoggingEnabled(false)
+    , m_aggressivelyRetainsTiles(false)
+    , m_unparentsOffscreenTiles(false)
     , m_acceleratesDrawing(false)
     , m_tilesAreOpaque(false)
+    , m_clipsToExposedRect(false)
     , m_tileDebugBorderWidth(0)
     , m_indicatorMode(ThreadedScrollingIndication)
 {
@@ -242,7 +250,7 @@ void TileCache::setScale(CGFloat scale)
     m_scale = scale;
     [m_tileContainerLayer.get() setTransform:CATransform3DMakeScale(1 / m_scale, 1 / m_scale, 1)];
 
-    revalidateTiles(PruneSecondaryTiles);
+    revalidateTiles(PruneSecondaryTiles, PruneSecondaryTiles);
 
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
         const TileInfo& tileInfo = it->value;
@@ -298,6 +306,27 @@ void TileCache::setVisibleRect(const IntRect& visibleRect)
     revalidateTiles();
 }
 
+void TileCache::setExposedRect(const IntRect& exposedRect)
+{
+    if (m_exposedRect == exposedRect)
+        return;
+
+    m_exposedRect = exposedRect;
+    revalidateTiles();
+}
+
+void TileCache::setClipsToExposedRect(bool clipsToExposedRect)
+{
+    if (m_clipsToExposedRect == clipsToExposedRect)
+        return;
+
+    m_clipsToExposedRect = clipsToExposedRect;
+
+    // Going from not clipping to clipping, we don't need to revalidate right away.
+    if (clipsToExposedRect)
+        revalidateTiles();
+}
+
 void TileCache::prepopulateRect(const IntRect& rect)
 {
     ensureTilesForRect(rect);
@@ -310,10 +339,8 @@ void TileCache::setIsInWindow(bool isInWindow)
 
     m_isInWindow = isInWindow;
 
-    if (!m_isInWindow) {
-        const double tileRevalidationTimeout = 4;
-        scheduleTileRevalidation(tileRevalidationTimeout);
-    }
+    const double tileRevalidationTimeout = 4;
+    scheduleTileRevalidation(m_isInWindow ? 0 : tileRevalidationTimeout);
 }
 
 void TileCache::setTileCoverage(TileCoverage coverage)
@@ -388,17 +415,22 @@ void TileCache::getTileIndexRangeForRect(const IntRect& rect, TileIndex& topLeft
 
 IntRect TileCache::computeTileCoverageRect(const IntRect& previousVisibleRect) const
 {
+    IntRect visibleRect = m_visibleRect;
+
+    if (m_clipsToExposedRect)
+        visibleRect.intersect(m_exposedRect);
+
     // If the page is not in a window (for example if it's in a background tab), we limit the tile coverage rect to the visible rect.
     // Furthermore, if the page can't have scrollbars (for example if its body element has overflow:hidden) it's very unlikely that the
     // page will ever be scrolled so we limit the tile coverage rect as well.
     if (!m_isInWindow || m_tileCoverage & CoverageForSlowScrolling)
-        return m_visibleRect;
+        return visibleRect;
 
-    bool largeVisibleRectChange = !previousVisibleRect.isEmpty() && !m_visibleRect.intersects(previousVisibleRect);
+    bool largeVisibleRectChange = !previousVisibleRect.isEmpty() && !visibleRect.intersects(previousVisibleRect);
     
     // FIXME: look at how far the document can scroll in each dimension.
-    int coverageHorizontalSize = m_visibleRect.width();
-    int coverageVerticalSize = m_visibleRect.height();
+    int coverageHorizontalSize = visibleRect.width();
+    int coverageVerticalSize = visibleRect.height();
     
     // Inflate the coverage rect so that it covers 2x of the visible width and 3x of the visible height.
     // These values were chosen because it's more common to have tall pages and to scroll vertically,
@@ -411,11 +443,11 @@ IntRect TileCache::computeTileCoverageRect(const IntRect& previousVisibleRect) c
 
     // Don't extend coverage before 0 or after the end.
     IntRect coverageBounds = bounds();
-    int coverageLeft = m_visibleRect.x() - (coverageHorizontalSize - m_visibleRect.width()) / 2;
+    int coverageLeft = visibleRect.x() - (coverageHorizontalSize - visibleRect.width()) / 2;
     coverageLeft = min(coverageLeft, coverageBounds.maxX() - coverageHorizontalSize);
     coverageLeft = max(coverageLeft, coverageBounds.x());
 
-    int coverageTop = m_visibleRect.y() - (coverageVerticalSize - m_visibleRect.height()) / 2;
+    int coverageTop = visibleRect.y() - (coverageVerticalSize - visibleRect.height()) / 2;
     coverageTop = min(coverageTop, coverageBounds.maxY() - coverageVerticalSize);
     coverageTop = max(coverageTop, coverageBounds.y());
 
@@ -440,7 +472,10 @@ void TileCache::scheduleTileRevalidation(double interval)
 
 void TileCache::tileRevalidationTimerFired(Timer<TileCache>*)
 {
-    revalidateTiles(PruneSecondaryTiles);
+    TileValidationPolicyFlags foregroundValidationPolicy = m_aggressivelyRetainsTiles ? 0 : PruneSecondaryTiles;
+    TileValidationPolicyFlags backgroundValidationPolicy = foregroundValidationPolicy | UnparentAllTiles;
+
+    revalidateTiles(foregroundValidationPolicy, backgroundValidationPolicy);
 }
 
 unsigned TileCache::blankPixelCount() const
@@ -531,7 +566,7 @@ void TileCache::removeTilesInCohort(TileCohort cohort)
     }
 }
 
-void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
+void TileCache::revalidateTiles(TileValidationPolicyFlags foregroundValidationPolicy, TileValidationPolicyFlags backgroundValidationPolicy)
 {
     // If the underlying PlatformLayer has been destroyed, but the WebTileCacheLayer hasn't
     // platformLayer will be null here.
@@ -539,14 +574,15 @@ void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
     if (!platformLayer)
         return;
 
-    if (m_visibleRect.isEmpty() || bounds().isEmpty())
-        return;
+    IntRect visibleRect = m_visibleRect;
 
-    // If the visible rect size changed, drop secondary tiles to avoid lots of repainting.
-    // FIXME: when scaled, this changes due to rounding. We should use FloatRects or something.
-    // Also changes on rubber banding.
-    if (m_visibleRectAtLastRevalidate.size() != m_visibleRect.size())
-        validationPolicy = PruneSecondaryTiles;
+    if (m_clipsToExposedRect)
+        visibleRect.intersect(m_exposedRect);
+
+    if (visibleRect.isEmpty() || bounds().isEmpty())
+        return;
+    
+    TileValidationPolicyFlags validationPolicy = m_isInWindow ? foregroundValidationPolicy : backgroundValidationPolicy;
     
     IntRect tileCoverageRect = computeTileCoverageRect(m_visibleRectAtLastRevalidate);
     FloatRect scaledRect(tileCoverageRect);
@@ -583,6 +619,9 @@ void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
                 if (tileInfo.cohort == VisibleTileCohort) {
                     tileInfo.cohort = currCohort;
                     ++tilesInCohort;
+                    
+                    if (m_unparentsOffscreenTiles)
+                        [tileInfo.layer.get() removeFromSuperlayer];
                 }
             }
         }
@@ -590,7 +629,8 @@ void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
         if (tilesInCohort)
             startedNewCohort(currCohort);
 
-        scheduleCohortRemoval();
+        if (!m_aggressivelyRetainsTiles)
+            scheduleCohortRemoval();
     }
 
     TileIndex topLeft;
@@ -601,7 +641,7 @@ void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
     
     // Ensure primary tile coverage tiles.
     m_primaryTileCoverageRect = IntRect();
-    
+
     for (int y = topLeft.y(); y <= bottomRight.y(); ++y) {
         for (int x = topLeft.x(); x <= bottomRight.x(); ++x) {
             TileIndex tileIndex(x, y);
@@ -612,8 +652,12 @@ void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
             TileInfo& tileInfo = m_tiles.add(tileIndex, TileInfo()).iterator->value;
             if (!tileInfo.layer) {
                 tileInfo.layer = createTileLayer(tileRect);
-                [m_tileContainerLayer.get() addSublayer:tileInfo.layer.get()];
+                if (!m_unparentsOffscreenTiles || m_isInWindow)
+                    [m_tileContainerLayer.get() addSublayer:tileInfo.layer.get()];
             } else {
+                if ((!m_unparentsOffscreenTiles || m_isInWindow) && ![tileInfo.layer.get() superlayer])
+                    [m_tileContainerLayer.get() addSublayer:tileInfo.layer.get()];
+
                 // We already have a layer for this tile. Ensure that its size is correct.
                 FloatSize tileLayerSize([tileInfo.layer.get() frame].size);
                 if (tileLayerSize == FloatSize(tileRect.size()))
@@ -628,15 +672,20 @@ void TileCache::revalidateTiles(TileValidationPolicy validationPolicy)
         }
     }
 
-    if (validationPolicy == PruneSecondaryTiles) {
+    if (validationPolicy & PruneSecondaryTiles) {
         removeAllSecondaryTiles();
         m_cohortList.clear();
+    }
+
+    if (m_unparentsOffscreenTiles && (validationPolicy & UnparentAllTiles)) {
+        for (TileMap::iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it)
+            [it->value.layer.get() removeFromSuperlayer];
     }
     
     if (m_tiledScrollingIndicatorLayer)
         updateTileCoverageMap();
 
-    m_visibleRectAtLastRevalidate = m_visibleRect;
+    m_visibleRectAtLastRevalidate = visibleRect;
 
     if (dirtyRects.isEmpty())
         return;
@@ -669,7 +718,7 @@ TileCache::TileCohort TileCache::oldestTileCohort() const
 void TileCache::scheduleCohortRemoval()
 {
     const double cohortRemovalTimerSeconds = 1;
-    
+
     // Start the timer, or reschedule the timer from now if it's already active.
     if (!m_cohortRemovalTimer.isActive())
         m_cohortRemovalTimer.startRepeating(cohortRemovalTimerSeconds);
@@ -684,7 +733,7 @@ void TileCache::cohortRemovalTimerFired(Timer<TileCache>*)
 
     double cohortLifeTimeSeconds = 2;
     double timeThreshold = monotonicallyIncreasingTime() - cohortLifeTimeSeconds;
-    
+
     while (!m_cohortList.isEmpty() && m_cohortList.first().creationTime < timeThreshold) {
         TileCohortInfo firstCohort = m_cohortList.takeFirst();
         removeTilesInCohort(firstCohort.cohort);
@@ -696,6 +745,9 @@ void TileCache::cohortRemovalTimerFired(Timer<TileCache>*)
 
 void TileCache::ensureTilesForRect(const IntRect& rect)
 {
+    if (m_unparentsOffscreenTiles && !m_isInWindow)
+        return;
+
     PlatformCALayer* platformLayer = PlatformCALayer::platformCALayer(m_tileCacheLayer);
     if (!platformLayer)
         return;
@@ -725,6 +777,9 @@ void TileCache::ensureTilesForRect(const IntRect& rect)
                 tileInfo.layer = createTileLayer(tileRect);
                 [m_tileContainerLayer.get() addSublayer:tileInfo.layer.get()];
             } else {
+                if (![tileInfo.layer.get() superlayer])
+                    [m_tileContainerLayer.get() addSublayer:tileInfo.layer.get()];
+
                 // We already have a layer for this tile. Ensure that its size is correct.
                 CGSize tileLayerSize = [tileInfo.layer.get() frame].size;
                 if (tileLayerSize.width >= tileRect.width() && tileLayerSize.height >= tileRect.height())
@@ -933,18 +988,14 @@ void TileCache::drawTileMapContents(CGContextRef context, CGRect layerBounds)
     CGContextFillRect(context, layerBounds);
 
     CGFloat scaleFactor = layerBounds.size.width / bounds().width();
-    
-    CGContextSetRGBStrokeColor(context, 0, 0, 0, 1);
 
     CGFloat contextScale = scaleFactor / scale();
     CGContextScaleCTM(context, contextScale, contextScale);
-
-    CGContextSetLineWidth(context, 0.5 / contextScale);
     
     for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
         const TileInfo& tileInfo = it->value;
         WebTileLayer* tileLayer = tileInfo.layer.get();
-        
+
         CGFloat red = 1;
         CGFloat green = 1;
         CGFloat blue = 1;
@@ -953,15 +1004,23 @@ void TileCache::drawTileMapContents(CGContextRef context, CGRect layerBounds)
             green = 0.125;
             blue = 0;
         }
-        
+
         TileCohort newestCohort = newestTileCohort();
         TileCohort oldestCohort = oldestTileCohort();
-        
-        if (tileInfo.cohort != VisibleTileCohort && newestCohort > oldestCohort) {
+
+        if (!m_aggressivelyRetainsTiles && tileInfo.cohort != VisibleTileCohort && newestCohort > oldestCohort) {
             float cohortProportion = static_cast<float>((newestCohort - tileInfo.cohort)) / (newestCohort - oldestCohort);
             CGContextSetRGBFillColor(context, red, green, blue, 1 - cohortProportion);
         } else
             CGContextSetRGBFillColor(context, red, green, blue, 1);
+
+        if ([tileLayer superlayer]) {
+            CGContextSetLineWidth(context, 0.5 / contextScale);
+            CGContextSetRGBStrokeColor(context, 0, 0, 0, 1);
+        } else {
+            CGContextSetLineWidth(context, 1 / contextScale);
+            CGContextSetRGBStrokeColor(context, 0.2, 0.1, 0.9, 1);
+        }
 
         CGRect frame = [tileLayer frame];
         CGContextFillRect(context, frame);

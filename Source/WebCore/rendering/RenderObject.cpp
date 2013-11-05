@@ -135,17 +135,17 @@ void RenderObject::operator delete(void* ptr, size_t sz)
     *(size_t *)ptr = sz;
 }
 
-RenderObject* RenderObject::createObject(Node* node, RenderStyle* style)
+RenderObject* RenderObject::createObject(Element* element, RenderStyle* style)
 {
-    Document* doc = node->document();
+    Document* doc = element->document();
     RenderArena* arena = doc->renderArena();
 
     // Minimal support for content properties replacing an entire element.
     // Works only if we have exactly one piece of content and it's a URL.
     // Otherwise acts as if we didn't support this feature.
     const ContentData* contentData = style->contentData();
-    if (contentData && !contentData->next() && contentData->isImage() && doc != node && !node->isPseudoElement()) {
-        RenderImage* image = new (arena) RenderImage(node);
+    if (contentData && !contentData->next() && contentData->isImage() && !element->isPseudoElement()) {
+        RenderImage* image = new (arena) RenderImage(element);
         // RenderImageResourceStyleImage requires a style being present on the image but we don't want to
         // trigger a style change now as the node is not fully attached. Moving this code to style change
         // doesn't make sense as it should be run once at renderer creation.
@@ -159,56 +159,56 @@ RenderObject* RenderObject::createObject(Node* node, RenderStyle* style)
         return image;
     }
 
-    if (node->hasTagName(rubyTag)) {
+    if (element->hasTagName(rubyTag)) {
         if (style->display() == INLINE)
-            return new (arena) RenderRubyAsInline(node);
+            return new (arena) RenderRubyAsInline(element);
         else if (style->display() == BLOCK)
-            return new (arena) RenderRubyAsBlock(node);
+            return new (arena) RenderRubyAsBlock(element);
     }
     // treat <rt> as ruby text ONLY if it still has its default treatment of block
-    if (node->hasTagName(rtTag) && style->display() == BLOCK)
-        return new (arena) RenderRubyText(node);
+    if (element->hasTagName(rtTag) && style->display() == BLOCK)
+        return new (arena) RenderRubyText(element);
     if (doc->cssRegionsEnabled() && style->isDisplayRegionType() && !style->regionThread().isEmpty() && doc->renderView())
-        return new (arena) RenderRegion(node, 0);
+        return new (arena) RenderRegion(element, 0);
     switch (style->display()) {
     case NONE:
         return 0;
     case INLINE:
-        return new (arena) RenderInline(node);
+        return new (arena) RenderInline(element);
     case BLOCK:
     case INLINE_BLOCK:
     case RUN_IN:
     case COMPACT:
         if ((!style->hasAutoColumnCount() || !style->hasAutoColumnWidth()) && doc->regionBasedColumnsEnabled())
-            return new (arena) RenderMultiColumnBlock(node);
-        return new (arena) RenderBlock(node);
+            return new (arena) RenderMultiColumnBlock(element);
+        return new (arena) RenderBlock(element);
     case LIST_ITEM:
-        return new (arena) RenderListItem(node);
+        return new (arena) RenderListItem(element);
     case TABLE:
     case INLINE_TABLE:
-        return new (arena) RenderTable(node);
+        return new (arena) RenderTable(element);
     case TABLE_ROW_GROUP:
     case TABLE_HEADER_GROUP:
     case TABLE_FOOTER_GROUP:
-        return new (arena) RenderTableSection(node);
+        return new (arena) RenderTableSection(element);
     case TABLE_ROW:
-        return new (arena) RenderTableRow(node);
+        return new (arena) RenderTableRow(element);
     case TABLE_COLUMN_GROUP:
     case TABLE_COLUMN:
-        return new (arena) RenderTableCol(node);
+        return new (arena) RenderTableCol(element);
     case TABLE_CELL:
-        return new (arena) RenderTableCell(node);
+        return new (arena) RenderTableCell(element);
     case TABLE_CAPTION:
-        return new (arena) RenderTableCaption(node);
+        return new (arena) RenderTableCaption(element);
     case BOX:
     case INLINE_BOX:
-        return new (arena) RenderDeprecatedFlexibleBox(node);
+        return new (arena) RenderDeprecatedFlexibleBox(element);
     case FLEX:
     case INLINE_FLEX:
-        return new (arena) RenderFlexibleBox(node);
+        return new (arena) RenderFlexibleBox(element);
     case GRID:
     case INLINE_GRID:
-        return new (arena) RenderGrid(node);
+        return new (arena) RenderGrid(element);
     }
 
     return 0;
@@ -446,7 +446,7 @@ static void addLayers(RenderObject* obj, RenderLayer* parentLayer, RenderObject*
 {
     if (obj->hasLayer()) {
         if (!beforeChild && newObject) {
-            // We need to figure out the layer that follows newObject.  We only do
+            // We need to figure out the layer that follows newObject. We only do
             // this the first time we find a child layer, and then we update the
             // pointer values for newObject and beforeChild used by everyone else.
             beforeChild = newObject->parent()->findNextLayer(parentLayer, newObject);
@@ -505,7 +505,7 @@ void RenderObject::moveLayers(RenderLayer* oldParent, RenderLayer* newParent)
 RenderLayer* RenderObject::findNextLayer(RenderLayer* parentLayer, RenderObject* startPoint,
                                          bool checkParent)
 {
-    // Error check the parent layer passed in.  If it's null, we can't find anything.
+    // Error check the parent layer passed in. If it's null, we can't find anything.
     if (!parentLayer)
         return 0;
 
@@ -525,7 +525,7 @@ RenderLayer* RenderObject::findNextLayer(RenderLayer* parentLayer, RenderObject*
         }
     }
 
-    // Step 3: If our layer is the desired parent layer, then we're finished.  We didn't
+    // Step 3: If our layer is the desired parent layer, then we're finished. We didn't
     // find anything.
     if (parentLayer == ourLayer)
         return 0;
@@ -2370,13 +2370,19 @@ void RenderObject::willBeDestroyed()
     if (frame() && frame()->eventHandler()->autoscrollRenderer() == this)
         frame()->eventHandler()->stopAutoscrollTimer(true);
 
-    if (AXObjectCache::accessibilityEnabled()) {
-        document()->axObjectCache()->childrenChanged(this->parent());
-        document()->axObjectCache()->remove(this);
-    }
     animation()->cancelAnimations(this);
 
+    // For accessibility management, notify the parent of the imminent change to its child set.
+    // We do it now, before remove(), while the parent pointer is still available.
+    if (AXObjectCache::accessibilityEnabled())
+        document()->axObjectCache()->childrenChanged(this->parent());
+
     remove();
+
+    // The remove() call above may invoke axObjectCache()->childrenChanged() on the parent, which may require the AX render
+    // object for this renderer. So we remove the AX render object now, after the renderer is removed.
+    if (AXObjectCache::accessibilityEnabled())
+        document()->axObjectCache()->remove(this);
 
     // Continuation and first-letter can generate several renderers associated with a single node.
     // We only want to clear the node's renderer if we are the associated renderer.
@@ -2522,8 +2528,10 @@ void RenderObject::destroyAndCleanupAnonymousWrappers()
     if (destroyRoot->everHadLayout()) {
         if (destroyRoot->isBody())
             destroyRoot->view()->repaint();
-        else
+        else {
             destroyRoot->repaint();
+            destroyRoot->repaintOverhangingFloats(true);
+        }
     }
 
     destroyRoot->destroy();
@@ -2618,11 +2626,19 @@ void RenderObject::updateHitTestResult(HitTestResult& result, const LayoutPoint&
     if (result.innerNode())
         return;
 
-    Node* n = node();
-    if (n) {
-        result.setInnerNode(n);
+    Node* node = this->node();
+
+    // If we hit the anonymous renderers inside generated content we should
+    // actually hit the generated content so walk up to the PseudoElement.
+    if (!node && parent() && parent()->isBeforeOrAfterContent()) {
+        for (RenderObject* renderer = parent(); renderer && !node; renderer = renderer->parent())
+            node = renderer->node();
+    }
+
+    if (node) {
+        result.setInnerNode(node);
         if (!result.innerNonSharedNode())
-            result.setInnerNonSharedNode(n);
+            result.setInnerNonSharedNode(node);
         result.setLocalPoint(point);
     }
 }

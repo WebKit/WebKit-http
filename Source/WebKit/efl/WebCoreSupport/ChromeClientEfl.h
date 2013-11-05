@@ -36,8 +36,6 @@
 #include "NotificationClient.h"
 #endif
 
-typedef struct _Evas_Object Evas_Object;
-
 namespace WebCore {
 
 class ChromeClientEfl : public ChromeClient {
@@ -115,7 +113,7 @@ public:
     virtual void print(Frame*);
 
 #if ENABLE(SQL_DATABASE)
-    virtual void exceededDatabaseQuota(Frame*, const String&);
+    virtual void exceededDatabaseQuota(Frame*, const String&, DatabaseDetails);
 #endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)

@@ -36,10 +36,12 @@
 WebInspector.StylesSourceMapping = function(workspace)
 {
     this._workspace = workspace;
-    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._reset, this);
+    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._projectWillReset, this);
     this._workspace.addEventListener(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, this._uiSourceCodeAddedToWorkspace, this);
 
-    this._uiSourceCodeForURL = {};
+    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.MainFrameCreatedOrNavigated, this._mainFrameCreatedOrNavigated, this);
+    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
+    this._initialize();
 }
 
 WebInspector.StylesSourceMapping.prototype = {
@@ -50,7 +52,8 @@ WebInspector.StylesSourceMapping.prototype = {
     rawLocationToUILocation: function(rawLocation)
     {
         var location = /** @type WebInspector.CSSLocation */ (rawLocation);
-        var uiSourceCode = this._uiSourceCodeForURL[location.url];
+        var uri = WebInspector.fileMapping.uriForURL(location.url);
+        var uiSourceCode = this._workspace.uiSourceCodeForURI(uri);
         return new WebInspector.UILocation(uiSourceCode, location.lineNumber, 0);
     },
 
@@ -62,38 +65,73 @@ WebInspector.StylesSourceMapping.prototype = {
      */
     uiLocationToRawLocation: function(uiSourceCode, lineNumber, columnNumber)
     {
-        return new WebInspector.CSSLocation(uiSourceCode.contentURL() || "", lineNumber);
+        return new WebInspector.CSSLocation(uiSourceCode.url || "", lineNumber);
+    },
+
+    _resourceAdded: function(event)
+    {
+        var resource = /** @type {WebInspector.UISourceCode} */ (event.data);
+        if (resource.contentType() !== WebInspector.resourceTypes.Stylesheet)
+            return;
+        if (!resource.url)
+            return;
+        var uri = WebInspector.fileMapping.uriForURL(resource.url);
+        var uiSourceCode = this._workspace.uiSourceCodeForURI(uri);
+        if (!uiSourceCode)
+            return;
+        this._bindUISourceCode(uiSourceCode);
     },
 
     _uiSourceCodeAddedToWorkspace: function(event)
     {
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ (event.data);
-        if (!uiSourceCode.url || this._uiSourceCodeForURL[uiSourceCode.url])
-            return;
         if (uiSourceCode.contentType() !== WebInspector.resourceTypes.Stylesheet)
             return;
-        if (!WebInspector.resourceForURL(uiSourceCode.url))
+        if (!uiSourceCode.url || !WebInspector.resourceForURL(uiSourceCode.url))
             return;
-
-        this._addUISourceCode(uiSourceCode);
+        this._bindUISourceCode(uiSourceCode);
     },
 
-    /**
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     */
-    _addUISourceCode: function(uiSourceCode)
+    _bindUISourceCode: function(uiSourceCode)
     {
-        this._uiSourceCodeForURL[uiSourceCode.url] = uiSourceCode;
+        if (this._mappedURLs[uiSourceCode.url])
+            return;
+        this._mappedURLs[uiSourceCode.url] = true;
         uiSourceCode.setSourceMapping(this);
         var styleFile = new WebInspector.StyleFile(uiSourceCode);
         uiSourceCode.setStyleFile(styleFile);
         WebInspector.cssModel.setSourceMapping(uiSourceCode.url, this);
     },
 
-    _reset: function()
+    _projectWillReset: function(event)
     {
-        this._uiSourceCodeForURL = {};
-        WebInspector.cssModel.resetSourceMappings();
+        var project = event.data;
+        var uiSourceCodes = project.uiSourceCodes();
+        for (var i = 0; i < uiSourceCodes; ++i)
+            delete this._mappedURLs[uiSourceCodes[i].url];
+    },
+
+    _initialize: function()
+    {
+        /** {Object.<string, boolean>} */
+        this._mappedURLs = {};
+    },
+
+    /**
+     * @param {WebInspector.Event} event
+     */
+    _mainFrameCreatedOrNavigated: function(event)
+    {
+        for (var mappedURL in this._mappedURLs) {
+            var uri = WebInspector.fileMapping.uriForURL(mappedURL);
+            var uiSourceCode = this._workspace.uiSourceCodeForURI(uri);
+            if (!uiSourceCode)
+                continue;
+            uiSourceCode.styleFile().dispose();
+            uiSourceCode.setStyleFile(null);
+            uiSourceCode.setSourceMapping(null);
+        }
+        this._initialize();
     }
 }
 
@@ -166,6 +204,12 @@ WebInspector.StyleFile.prototype = {
         this._uiSourceCode.addRevision(content);
         delete this._isAddingRevision;
     },
+
+    dispose: function()
+    {
+        this._uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.WorkingCopyCommitted, this._workingCopyCommitted, this);
+        this._uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._workingCopyChanged, this);
+    }
 }
 
 
@@ -264,7 +308,8 @@ WebInspector.StyleContentBinding.prototype = {
             if (typeof styleSheetURL !== "string")
                 return;
 
-            var uiSourceCode = WebInspector.workspace.uiSourceCodeForURL(styleSheetURL);
+            var uri = WebInspector.fileMapping.uriForURL(styleSheetURL);
+            var uiSourceCode = WebInspector.workspace.uiSourceCodeForURI(uri);
             if (!uiSourceCode)
                 return;
 

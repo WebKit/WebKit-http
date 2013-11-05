@@ -2284,7 +2284,7 @@ void RenderBlock::LineBreaker::skipLeadingWhitespace(InlineBidiResolver& resolve
         } else if (object->isFloating()) {
             // The top margin edge of a self-collapsing block that clears a float intrudes up into it by the height of the margin,
             // so in order to place this child float at the top content edge of the self-collapsing block add the margin back in before placement.
-            LayoutUnit marginOffset = (m_block->isSelfCollapsingBlock() && m_block->getClearDelta(m_block, LayoutUnit())) ? m_block->collapsedMarginBeforeForChild(m_block) : LayoutUnit();
+            LayoutUnit marginOffset = (m_block->isSelfCollapsingBlock() && m_block->style()->clear() && m_block->getClearDelta(m_block, LayoutUnit())) ? m_block->collapsedMarginBeforeForChild(m_block) : LayoutUnit();
             LayoutUnit oldLogicalHeight = m_block->logicalHeight();
             m_block->setLogicalHeight(oldLogicalHeight + marginOffset);
             m_block->positionNewFloatOnLine(m_block->insertFloatingObject(toRenderBox(object)), lastFloatFromPreviousLine, lineInfo, width);
@@ -2912,7 +2912,9 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
                                     wordMeasurement.width = charWidth;
                                 }
                             }
-                            goto end; // Didn't fit. Jump to the end.
+                            // Didn't fit. Jump to the end unless there's still an opportunity to collapse whitespace.
+                            if (ignoringSpaces || !currentStyle->collapseWhiteSpace() || !currentCharacterIsSpace || !previousCharacterIsSpace)
+                                goto end;
                         } else {
                             if (!betweenWords || (midWordBreak && !autoWrap))
                                 width.addUncommittedWidth(-additionalTmpW);
@@ -3036,20 +3038,20 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
         } else
             ASSERT_NOT_REACHED();
 
-        bool checkForBreak = autoWrap || blockStyle->autoWrap();
+        bool checkForBreak = autoWrap;
         if (width.committedWidth() && !width.fitsOnLine() && lBreak.m_obj && currWS == NOWRAP)
             checkForBreak = true;
-        else if (next && current.m_obj->isText() && next->isText() && !next->isBR() && (autoWrap || (next->style()->autoWrap()))) {
-            if (currentCharacterIsSpace)
+        else if (next && current.m_obj->isText() && next->isText() && !next->isBR() && (autoWrap || next->style()->autoWrap())) {
+            if (autoWrap && currentCharacterIsSpace)
                 checkForBreak = true;
             else {
                 RenderText* nextText = toRenderText(next);
                 if (nextText->textLength()) {
                     UChar c = nextText->characterAt(0);
-                    checkForBreak = (c == ' ' || c == '\t' || (c == '\n' && !next->preservesNewline()));
                     // If the next item on the line is text, and if we did not end with
                     // a space, then the next text run continues our word (and so it needs to
-                    // keep adding to |tmpW|. Just update and continue.
+                    // keep adding to the uncommitted width. Just update and continue.
+                    checkForBreak = !currentCharacterIsSpace && (c == ' ' || c == '\t' || (c == '\n' && !next->preservesNewline()));
                 } else if (nextText->isWordBreak())
                     checkForBreak = true;
 
@@ -3079,6 +3081,10 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
             // the end label if we still don't fit on the line. -dwh
             if (!width.fitsOnLine())
                 goto end;
+        } else if (blockStyle->autoWrap() && !width.fitsOnLine() && !width.committedWidth()) {
+            // If the container autowraps but the current child does not then we still need to ensure that it
+            // wraps and moves below any floats.
+            width.fitBelowFloats();
         }
 
         if (!current.m_obj->isFloatingOrOutOfFlowPositioned()) {
@@ -3104,15 +3110,8 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
  end:
     if (lBreak == resolver.position() && (!lBreak.m_obj || !lBreak.m_obj->isBR())) {
         // we just add as much as possible
-        if (blockStyle->whiteSpace() == PRE) {
-            // FIXME: Don't really understand this case.
-            if (current.m_pos) {
-                // FIXME: This should call moveTo which would clear m_nextBreakablePosition
-                // this code as-is is likely wrong.
-                lBreak.m_obj = current.m_obj;
-                lBreak.m_pos = current.m_pos - 1;
-            } else
-                lBreak.moveTo(last, last->isText() ? last->length() : 0);
+        if (blockStyle->whiteSpace() == PRE && !current.m_pos) {
+            lBreak.moveTo(last, last->isText() ? last->length() : 0);
         } else if (lBreak.m_obj) {
             // Don't ever break in the middle of a word if we can help it.
             // There's no room at all. We just have to be on this line,
@@ -3203,7 +3202,7 @@ void RenderBlock::checkLinesForTextOverflow()
         // https://bugs.webkit.org/show_bug.cgi?id=105461
         int blockRightEdge = snapSizeToPixel(logicalRightOffsetForLine(curr->lineTop(), firstLine), curr->x());
         int blockLeftEdge = pixelSnappedLogicalLeftOffsetForLine(curr->lineTop(), firstLine);
-        LayoutUnit lineBoxEdge = ltr ? curr->x() + curr->logicalWidth() : curr->x();
+        int lineBoxEdge = ltr ? snapSizeToPixel(curr->x() + curr->logicalWidth(), curr->x()) : snapSizeToPixel(curr->x(), 0);
         if ((ltr && lineBoxEdge > blockRightEdge) || (!ltr && lineBoxEdge < blockLeftEdge)) {
             // This line spills out of our box in the appropriate direction.  Now we need to see if the line
             // can be truncated.  In order for truncation to be possible, the line must have sufficient space to

@@ -28,32 +28,55 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "OpenGLShims.h"
+#define GL_GLEXT_PROTOTYPES 1
 
 #if USE(OPENGL_ES_2)
+#include "Extensions3DOpenGLES.h"
+#include "OpenGLESShims.h"
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #else
+#include "Extensions3DOpenGL.h"
+#include "OpenGLShims.h"
 #include <GL/gl.h>
 #include <GL/glext.h>
+#if USE(GLX)
+#define GLX_GLXEXT_PROTOTYPES 1
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#endif
 #endif
 
-#if HAVE(GLX)
-#include <GL/glx.h>
+#if USE(EGL)
+#define EGL_EGLEXT_PROTOTYPES 1
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 #endif
 
 namespace WebCore {
 
-#if HAVE(GLX)
+typedef uint32_t PlatformBufferHandle;
+
+#if USE(GLX)
 typedef GLXContext PlatformContext;
 typedef Display* PlatformDisplay;
 typedef GLXFBConfig PlatformSurfaceConfig;
-typedef GLXDrawable PlatformSurface;
+typedef GLXDrawable PlatformDrawable;
+#elif USE(EGL)
+#if USE(OPENGL_ES_2)
+static const EGLenum eglAPIVersion = EGL_OPENGL_ES_API;
+#else
+static const EGLenum eglAPIVersion = EGL_OPENGL_API;
+#endif
+typedef EGLContext PlatformContext;
+typedef EGLDisplay PlatformDisplay;
+typedef EGLConfig PlatformSurfaceConfig;
+typedef EGLSurface PlatformDrawable;
 #else
 typedef void* PlatformContext;
 typedef void* PlatformDisplay;
 typedef void* PlatformSurfaceConfig;
-typedef void* PlatformSurface;
+typedef void* PlatformDrawable;
 #endif
 
 }

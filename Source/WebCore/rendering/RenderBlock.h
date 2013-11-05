@@ -88,7 +88,7 @@ public:
     template <class> friend struct ValueToString;
 #endif
 
-    RenderBlock(Node*);
+    RenderBlock(ContainerNode*);
     virtual ~RenderBlock();
 
     RenderObject* firstChild() const { ASSERT(children() == virtualChildren()); return children()->firstChild(); }
@@ -238,10 +238,10 @@ public:
     RenderBlock* blockBeforeWithinSelectionRoot(LayoutSize& offset) const;
 
     LayoutRect logicalRectToPhysicalRect(const LayoutPoint& physicalPosition, const LayoutRect& logicalRect);
-        
+
     // Helper methods for computing line counts and heights for line counts.
-    RootInlineBox* lineAtIndex(int);
-    int lineCount();
+    RootInlineBox* lineAtIndex(int) const;
+    int lineCount() const;
     int heightForLineCount(int);
     void clearTruncation();
 

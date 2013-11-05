@@ -203,6 +203,8 @@ void WebPage::resetSettings()
     QWebSettings::setMaximumPagesInCache(0); // reset to default
     settings()->setUserStyleSheetUrl(QUrl()); // reset to default
 
+    DumpRenderTreeSupportQt::setSeamlessIFramesEnabled(true);
+
     DumpRenderTreeSupportQt::setMinimumTimerInterval(handle(), DumpRenderTreeSupportQt::defaultMinimumTimerInterval());
 
     DumpRenderTreeSupportQt::resetInternalsObject(mainFrame()->handle());
@@ -720,6 +722,8 @@ void DumpRenderTree::processLine(const QString &input)
         open(QUrl::fromLocalFile(fi.absoluteFilePath()));
     }
 
+    if (command.timeout > 0)
+        setTimeout(command.timeout);
     fflush(stdout);
 }
 
@@ -912,14 +916,19 @@ void DumpRenderTree::dump()
 
     // Dump render text...
     QString resultString;
-    if (m_controller->shouldDumpAsText())
+    QString resultContentType = "text/plain";
+    QByteArray resultData;
+    if (m_controller->shouldDumpAsAudio()) {
+        resultContentType = "audio/wav";
+        resultData = m_controller->audioData();
+    } else if (m_controller->shouldDumpAsText())
         resultString = dumpFramesAsText(mainFrame);
     else {
         resultString = DumpRenderTreeSupportQt::frameRenderTreeDump(mainFrame->handle());
         resultString += dumpFrameScrollPosition(mainFrame);
     }
     if (!resultString.isEmpty()) {
-        fprintf(stdout, "Content-Type: text/plain\n");
+        fprintf(stdout, "Content-Type: %s\n", resultContentType.toUtf8().constData());
         fprintf(stdout, "%s", resultString.toUtf8().constData());
 
         if (m_controller->shouldDumpBackForwardList()) {
@@ -929,7 +938,10 @@ void DumpRenderTree::dump()
                 fprintf(stdout, "%s", dumpBackForwardList(page).toUtf8().constData());
             }
         }
-
+    } else if (!resultData.isEmpty()) {
+        fprintf(stdout, "Content-Type: %s\n", resultContentType.toUtf8().constData());
+        fprintf(stdout, "Content-Transfer-Encoding: base64\n");
+        fprintf(stdout, "%s", resultData.toBase64().constData());
     } else
         printf("ERROR: nil result from %s", methodNameStringForFailedTest(m_controller));
 

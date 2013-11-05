@@ -284,6 +284,13 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
             return buttonRoleType();
         if (input->isRangeControl())
             return SliderRole;
+
+#if ENABLE(INPUT_TYPE_COLOR)
+        const AtomicString& type = input->getAttribute(typeAttr);
+        if (equalIgnoringCase(type, "color"))
+            return ColorWellRole;
+#endif
+
         return TextFieldRole;
     }
     if (node()->hasTagName(selectTag)) {
@@ -1192,6 +1199,9 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     
     switch (roleValue()) {
     case PopUpButtonRole:
+        // Native popup buttons should not use their button children's text as a title. That value is retrieved through stringValue().
+        if (node->hasTagName(selectTag))
+            break;
     case ButtonRole:
     case ToggleButtonRole:
     case CheckBoxRole:
@@ -1415,9 +1425,9 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     if (roleValue() != TreeItemRole)
         return 0;
     
-    // Hierarchy leveling starts at 0.
+    // Hierarchy leveling starts at 1, to match the aria-level spec.
     // We measure tree hierarchy by the number of groups that the item is within.
-    unsigned level = 0;
+    unsigned level = 1;
     for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
         AccessibilityRole parentRole = parent->roleValue();
         if (parentRole == GroupRole)
@@ -1512,6 +1522,9 @@ String AccessibilityNodeObject::title() const
 
     switch (roleValue()) {
     case PopUpButtonRole:
+        // Native popup buttons should not use their button children's text as a title. That value is retrieved through stringValue().
+        if (node->hasTagName(selectTag))
+            return String();
     case ButtonRole:
     case ToggleButtonRole:
     case CheckBoxRole:
@@ -1603,6 +1616,30 @@ String AccessibilityNodeObject::stringValue() const
     // this would require subclassing or making accessibilityAttributeNames do something other than return a
     // single static array.
     return String();
+}
+
+void AccessibilityNodeObject::colorValue(int& r, int& g, int& b) const
+{
+    r = 0;
+    g = 0;
+    b = 0;
+
+    if (!isColorWell())
+        return;
+
+    if (!node() || !node()->hasTagName(inputTag))
+        return;
+
+    HTMLInputElement* input = static_cast<HTMLInputElement*>(node());
+    const AtomicString& type = input->getAttribute(typeAttr);
+    if (!equalIgnoringCase(type, "color"))
+        return;
+
+    // HTMLInputElement::value always returns a string parseable by Color().
+    Color color(input->value());
+    r = color.red();
+    g = color.green();
+    b = color.blue();
 }
 
 // This function implements the ARIA accessible name as described by the Mozilla                                        

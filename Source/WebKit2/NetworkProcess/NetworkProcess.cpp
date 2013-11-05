@@ -30,16 +30,22 @@
 
 #include "ArgumentCoders.h"
 #include "Attachment.h"
+#include "AuthenticationManager.h"
 #include "CustomProtocolManager.h"
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessProxyMessages.h"
 #include "RemoteNetworkingContext.h"
+#include "WebCookieManager.h"
 #include <WebCore/InitializeLogging.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RunLoop.h>
 #include <wtf/text/CString.h>
+
+#if USE(SECURITY_FRAMEWORK)
+#include "SecItemShim.h"
+#endif
 
 using namespace WebCore;
 
@@ -54,8 +60,10 @@ NetworkProcess& NetworkProcess::shared()
 NetworkProcess::NetworkProcess()
     : m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
-    , m_downloadsAuthenticationManager(m_messageReceiverMap)
 {
+    addSupplement<AuthenticationManager>();
+    addSupplement<WebCookieManager>();
+    addSupplement<CustomProtocolManager>();
 }
 
 NetworkProcess::~NetworkProcess()
@@ -66,17 +74,6 @@ DownloadManager& NetworkProcess::downloadManager()
 {
     DEFINE_STATIC_LOCAL(DownloadManager, downloadManager, (this));
     return downloadManager;
-}
-
-void NetworkProcess::initialize(CoreIPC::Connection::Identifier serverIdentifier, WebCore::RunLoop* runLoop)
-{
-    ASSERT(!m_uiConnection);
-
-    m_uiConnection = CoreIPC::Connection::createClientConnection(serverIdentifier, this, runLoop);
-    m_uiConnection->setDidCloseOnConnectionWorkQueueCallback(didCloseOnConnectionWorkQueue);
-    m_uiConnection->open();
-
-    m_downloadsAuthenticationManager.setConnection(m_uiConnection.get());
 }
 
 void NetworkProcess::removeNetworkConnectionToWebProcess(NetworkConnectionToWebProcess* connection)
@@ -95,22 +92,15 @@ bool NetworkProcess::shouldTerminate()
 
 void NetworkProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
 {
-    if (m_messageReceiverMap.dispatchMessage(connection, messageID, decoder))
+    if (messageReceiverMap().dispatchMessage(connection, messageID, decoder))
         return;
-
-#if ENABLE(CUSTOM_PROTOCOLS)
-    if (messageID.is<CoreIPC::MessageClassCustomProtocolManager>()) {
-        CustomProtocolManager::shared().didReceiveMessage(connection, messageID, decoder);
-        return;
-    }
-#endif
 
     didReceiveNetworkProcessMessage(connection, messageID, decoder);
 }
 
 void NetworkProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    m_messageReceiverMap.dispatchSyncMessage(connection, messageID, decoder, replyEncoder);
+    messageReceiverMap().dispatchSyncMessage(connection, messageID, decoder, replyEncoder);
 }
 
 void NetworkProcess::didClose(CoreIPC::Connection*)
@@ -136,22 +126,17 @@ void NetworkProcess::didDestroyDownload()
 
 CoreIPC::Connection* NetworkProcess::downloadProxyConnection()
 {
-    return m_uiConnection.get();
+    return parentProcessConnection();
 }
 
 AuthenticationManager& NetworkProcess::downloadsAuthenticationManager()
 {
-    return m_downloadsAuthenticationManager;
+    return *supplement<AuthenticationManager>();
 }
 
 void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
-#if !LOG_DISABLED
-    WebCore::initializeLoggingChannelsIfNecessary();
-    WebKit::initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED
-
-    platformInitialize(parameters);
+    platformInitializeNetworkProcess(parameters);
 
     setCacheModel(static_cast<uint32_t>(parameters.cacheModel));
 
@@ -162,10 +147,18 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
     if (parameters.privateBrowsingEnabled)
         RemoteNetworkingContext::ensurePrivateBrowsingSession();
 
-#if ENABLE(CUSTOM_PROTOCOLS)
-    CustomProtocolManager::shared().initialize(m_uiConnection);
-    for (size_t i = 0; i < parameters.urlSchemesRegisteredForCustomProtocols.size(); ++i)
-        CustomProtocolManager::shared().registerScheme(parameters.urlSchemesRegisteredForCustomProtocols[i]);
+    NetworkProcessSupplementMap::const_iterator it = m_supplements.begin();
+    NetworkProcessSupplementMap::const_iterator end = m_supplements.end();
+    for (; it != end; ++it)
+        it->value->initialize(parameters);
+}
+
+void NetworkProcess::initializeConnection(CoreIPC::Connection* connection)
+{
+    ChildProcess::initializeConnection(connection);
+
+#if USE(SECURITY_FRAMEWORK)
+    connection->addQueueClient(&SecItemShim::shared());
 #endif
 }
 
@@ -181,7 +174,7 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
     m_webProcessConnections.append(connection.release());
 
     CoreIPC::Attachment clientPort(listeningPort, MACH_MSG_TYPE_MAKE_SEND);
-    m_uiConnection->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientPort), 0);
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientPort), 0);
 #else
     notImplemented();
 #endif
@@ -207,18 +200,6 @@ void NetworkProcess::cancelDownload(uint64_t downloadID)
     downloadManager().cancelDownload(downloadID);
 }
 
-#if ENABLE(CUSTOM_PROTOCOLS)
-void NetworkProcess::registerSchemeForCustomProtocol(const String& scheme)
-{
-    CustomProtocolManager::shared().registerScheme(scheme);
-}
-
-void NetworkProcess::unregisterSchemeForCustomProtocol(const String& scheme)
-{
-    CustomProtocolManager::shared().unregisterScheme(scheme);
-}
-#endif
-
 void NetworkProcess::setCacheModel(uint32_t cm)
 {
     CacheModel cacheModel = static_cast<CacheModel>(cm);
@@ -229,6 +210,16 @@ void NetworkProcess::setCacheModel(uint32_t cm)
         platformSetCacheModel(cacheModel);
     }
 }
+
+#if !PLATFORM(MAC)
+void NetworkProcess::initializeProcessName(const ChildProcessInitializationParameters&)
+{
+}
+
+void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters&)
+{
+}
+#endif
 
 } // namespace WebKit
 

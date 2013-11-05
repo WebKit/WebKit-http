@@ -36,6 +36,7 @@ RTCDataChannelEvent conditional=MEDIA_STREAM
 SpeechInputEvent conditional=INPUT_SPEECH
 SpeechRecognitionError conditional=SCRIPTED_SPEECH
 SpeechRecognitionEvent conditional=SCRIPTED_SPEECH
+SpeechSynthesisEvent conditional=SPEECH_SYNTHESIS
 WebGLContextEvent conditional=WEBGL
 StorageEvent
 SVGEvents interfaceName=Event, conditional=SVG
@@ -50,3 +51,4 @@ DeviceProximityEvent conditional=PROXIMITY_EVENTS
 OrientationEvent interfaceName=Event, conditional=ORIENTATION_EVENTS
 MediaKeyEvent conditional=ENCRYPTED_MEDIA
 TrackEvent conditional=VIDEO_TRACK
+AutocompleteErrorEvent conditional=REQUEST_AUTOCOMPLETE

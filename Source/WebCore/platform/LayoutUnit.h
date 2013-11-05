@@ -66,15 +66,29 @@ const int intMinForLayoutUnit = INT_MIN / kEffectiveFixedPointDenominator;
 
 class LayoutUnit {
 public:
-    // FIXME: Ideally we would have size_t versions of the constructor and operators.
-    // However due to compiler and platform differences adding those are non-trivial.
-    // See https://bugs.webkit.org/show_bug.cgi?id=83848 for details.
-    
     LayoutUnit() : m_value(0) { }
 #if ENABLE(SUBPIXEL_LAYOUT)
     LayoutUnit(int value) { setValue(value); }
     LayoutUnit(unsigned short value) { setValue(value); }
     LayoutUnit(unsigned value) { setValue(value); }
+    LayoutUnit(unsigned long value)
+    {
+#if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+        m_value = clampTo<int>(value * kEffectiveFixedPointDenominator);
+#else
+        REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value)));
+        m_value = value * kEffectiveFixedPointDenominator;
+#endif
+    }
+    LayoutUnit(unsigned long long value)
+    {
+#if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+        m_value = clampTo<int>(value * kEffectiveFixedPointDenominator);
+#else
+        REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value)));
+        m_value = static_cast<int>(value * kEffectiveFixedPointDenominator);
+#endif
+    }
     LayoutUnit(float value)
     {
 #if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
@@ -97,6 +111,8 @@ public:
     LayoutUnit(int value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
     LayoutUnit(unsigned short value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
     LayoutUnit(unsigned value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
+    LayoutUnit(unsigned long long value) { REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value))); m_value = value; }
+    LayoutUnit(unsigned long value) { REPORT_OVERFLOW(isInBounds(static_cast<unsigned>(value))); m_value = value; }
     LayoutUnit(float value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
     LayoutUnit(double value) { REPORT_OVERFLOW(isInBounds(value)); m_value = value; }
 #endif
@@ -196,6 +212,10 @@ public:
 #endif
     {
 #if ENABLE(SUBPIXEL_LAYOUT)
+#if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+        if (UNLIKELY(m_value >= INT_MAX - kEffectiveFixedPointDenominator + 1))
+            return intMaxForLayoutUnit;
+#endif
         if (m_value >= 0)
             return (m_value + kEffectiveFixedPointDenominator - 1) / kEffectiveFixedPointDenominator;
         return toInt();
@@ -221,6 +241,10 @@ public:
     int floor() const
     {
 #if ENABLE(SUBPIXEL_LAYOUT)
+#if ENABLE(SATURATED_LAYOUT_ARITHMETIC)
+        if (UNLIKELY(m_value <= INT_MIN + kEffectiveFixedPointDenominator - 1))
+            return intMinForLayoutUnit;
+#endif
         if (m_value >= 0)
             return toInt();
         return (m_value - kEffectiveFixedPointDenominator + 1) / kEffectiveFixedPointDenominator;
@@ -529,12 +553,42 @@ inline LayoutUnit operator*(const LayoutUnit& a, int b)
     return a * LayoutUnit(b);
 }
 
+inline LayoutUnit operator*(const LayoutUnit& a, unsigned short b)
+{
+    return a * LayoutUnit(b);
+}
+
 inline LayoutUnit operator*(const LayoutUnit& a, unsigned b)
 {
     return a * LayoutUnit(b);
 }
 
+inline LayoutUnit operator*(const LayoutUnit& a, unsigned long b)
+{
+    return a * LayoutUnit(b);
+}
+
+inline LayoutUnit operator*(const LayoutUnit& a, unsigned long long b)
+{
+    return a * LayoutUnit(b);
+}
+
+inline LayoutUnit operator*(unsigned short a, const LayoutUnit& b)
+{
+    return LayoutUnit(a) * b;
+}
+
 inline LayoutUnit operator*(unsigned a, const LayoutUnit& b)
+{
+    return LayoutUnit(a) * b;
+}
+
+inline LayoutUnit operator*(unsigned long a, const LayoutUnit& b)
+{
+    return LayoutUnit(a) * b;
+}
+
+inline LayoutUnit operator*(unsigned long long a, const LayoutUnit& b)
 {
     return LayoutUnit(a) * b;
 }
@@ -585,7 +639,22 @@ inline LayoutUnit operator/(const LayoutUnit& a, int b)
     return a / LayoutUnit(b);
 }
 
+inline LayoutUnit operator/(const LayoutUnit& a, unsigned short b)
+{
+    return a / LayoutUnit(b);
+}
+
 inline LayoutUnit operator/(const LayoutUnit& a, unsigned b)
+{
+    return a / LayoutUnit(b);
+}
+
+inline LayoutUnit operator/(const LayoutUnit& a, unsigned long b)
+{
+    return a / LayoutUnit(b);
+}
+
+inline LayoutUnit operator/(const LayoutUnit& a, unsigned long long b)
 {
     return a / LayoutUnit(b);
 }
@@ -605,7 +674,22 @@ inline LayoutUnit operator/(const int a, const LayoutUnit& b)
     return LayoutUnit(a) / b;
 }
 
+inline LayoutUnit operator/(unsigned short a, const LayoutUnit& b)
+{
+    return LayoutUnit(a) / b;
+}
+
 inline LayoutUnit operator/(unsigned a, const LayoutUnit& b)
+{
+    return LayoutUnit(a) / b;
+}
+
+inline LayoutUnit operator/(unsigned long a, const LayoutUnit& b)
+{
+    return LayoutUnit(a) / b;
+}
+
+inline LayoutUnit operator/(unsigned long long a, const LayoutUnit& b)
 {
     return LayoutUnit(a) / b;
 }

@@ -26,6 +26,7 @@
 // This all-in-one cpp file cuts down on template bloat to allow us to build our Windows release build.
 
 #include "ActiveDOMObject.cpp"
+#include "AncestorChainWalker.cpp"
 #include "Attr.cpp"
 #include "BeforeTextInsertedEvent.cpp"
 #include "BeforeUnloadEvent.cpp"
@@ -149,6 +150,7 @@
 #include "UserGestureIndicator.cpp"
 #include "UserTypingGestureIndicator.cpp"
 #include "ViewportArguments.cpp"
+#include "VisitedLinkState.cpp"
 #include "WebKitAnimationEvent.cpp"
 #include "WebKitNamedFlow.cpp"
 #include "WebKitTransitionEvent.cpp"

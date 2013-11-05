@@ -348,7 +348,7 @@ bool HTMLSelectElement::childShouldCreateRenderer(const NodeRenderingContext& ch
     if (!HTMLFormControlElementWithState::childShouldCreateRenderer(childContext))
         return false;
     if (!usesMenuList())
-        return true;
+        return childContext.node()->hasTagName(HTMLNames::optionTag) || childContext.node()->hasTagName(HTMLNames::optgroupTag) || validationMessageShadowTreeContains(childContext.node());
     return validationMessageShadowTreeContains(childContext.node());
 }
 
@@ -747,8 +747,8 @@ void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
         // (http://www.w3.org/TR/html401/interact/forms.html#h-17.6)
         if (current->hasTagName(optgroupTag)) {
             m_listItems.append(current);
-            if (current->firstChild()) {
-                currentElement = ElementTraversal::firstWithin(current);
+            if (Element* nextElement = ElementTraversal::firstWithin(current)) {
+                currentElement = nextElement;
                 continue;
             }
         }
@@ -1287,7 +1287,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         // Convert to coords relative to the list box if needed.
         MouseEvent* mouseEvent = static_cast<MouseEvent*>(event);
         IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms));
-        int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
+        int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toIntSize(localOffset));
         if (listIndex >= 0) {
             if (!disabled()) {
 #if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
@@ -1307,7 +1307,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
             return;
 
         IntPoint localOffset = roundedIntPoint(renderer()->absoluteToLocal(mouseEvent->absoluteLocation(), UseTransforms));
-        int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toSize(localOffset));
+        int listIndex = toRenderListBox(renderer())->listIndexAtOffset(toIntSize(localOffset));
         if (listIndex >= 0) {
             if (!disabled()) {
                 if (m_multiple) {

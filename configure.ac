@@ -2,14 +2,14 @@ AC_PREREQ(2.60)
 
 m4_define([webkit_major_version], [1])
 m4_define([webkit_minor_version], [11])
-m4_define([webkit_micro_version], [2])
+m4_define([webkit_micro_version], [4])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
 #
 # Sourced from Source/WebCore/Configurations/Version.xcconfig
 m4_define([webkit_user_agent_major_version], [537])
-m4_define([webkit_user_agent_minor_version], [20])
+m4_define([webkit_user_agent_minor_version], [26])
 
 AC_INIT([WebKitGTK],[webkit_major_version.webkit_minor_version.webkit_micro_version],[http://bugs.webkit.org/])
 
@@ -35,13 +35,13 @@ AC_CONFIG_SRCDIR([Source/WebCore/config.h])
 
 dnl # Libtool library version, not to confuse with API version
 dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-LIBWEBKITGTK_VERSION=17:1:17
+LIBWEBKITGTK_VERSION=18:0:18
 AC_SUBST([LIBWEBKITGTK_VERSION])
 
-LIBJAVASCRIPTCOREGTK_VERSION=13:7:13
+LIBJAVASCRIPTCOREGTK_VERSION=13:8:13
 AC_SUBST([LIBJAVASCRIPTCOREGTK_VERSION])
 
-LIBWEBKIT2GTK_VERSION=19:0:19
+LIBWEBKIT2GTK_VERSION=20:0:20
 AC_SUBST([LIBWEBKIT2GTK_VERSION])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip tar-ustar])
@@ -267,6 +267,9 @@ if test "$png_ok" != yes; then
 fi
 AC_SUBST([PNG_LIBS])
 
+# Check for WEBP Image support
+AC_CHECK_HEADERS([webp/decode.h], [WEBP_LIBS='-lwebp'], [AC_MSG_ERROR([WebP library (libwebp) not found])])
+AC_SUBST([WEBP_LIBS])
 
 if test "$os_win32" = "yes"; then
   WINMM_LIBS=-lwinmm
@@ -276,6 +279,12 @@ fi
 AC_SUBST([WINMM_LIBS])
 AC_SUBST([SHLWAPI_LIBS])
 AC_SUBST([OLE32_LIBS])
+
+
+# check whether dlopen() is in the core libc like on FreeBSD, or in a separate
+# libdl like on GNU/Linux (in which case we want to link to libdl)
+AC_CHECK_FUNC([dlopen], [], [AC_CHECK_LIB([dl], [dlopen], [DLOPEN_LIBS="-ldl"])])
+AC_SUBST([DLOPEN_LIBS])
 
 
 # determine the GTK+ version to use
@@ -673,14 +682,6 @@ AC_ARG_ENABLE(xslt,
               [],[enable_xslt="yes"])
 AC_MSG_RESULT([$enable_xslt])
 
-# check whether to enable unprefixed support for CSS Transforms, Animations and Transitions
-AC_MSG_CHECKING([whether to enable support for unprefixed CSS Transforms, Animations and Transitions])
-AC_ARG_ENABLE(xslt,
-              AC_HELP_STRING([--enable-unprefixed-css-transforms-animations-transitions],
-                             [enable support for for unprefixed CSS Transforms, Animations and Transitions [default=yes]]),
-              [],[enable_css_transforms_animations_transitions_unprefixed="yes"])
-AC_MSG_RESULT([$enable_css_transforms_animations_transitions_unprefixed])
-
 # check whether to enable geolocation support
 AC_MSG_CHECKING([whether to enable geolocation support])
 AC_ARG_ENABLE(geolocation,
@@ -1033,7 +1034,7 @@ if test "$with_acceleration_backend" = "opengl"; then
    if test "$enable_glx" = "yes"; then
     acceleration_backend_description+=", glx"
    fi
-   OPENGL_LIBS+=" -ldl"
+   OPENGL_LIBS+=" $DLOPEN_LIBS"
    acceleration_backend_description+=")"
 fi
 AC_SUBST([OPENGL_LIBS])
@@ -1053,55 +1054,47 @@ if test "$enable_coverage" = "yes"; then
    AC_SUBST([COVERAGE_LDFLAGS])
 fi
 
+# WebKit1
+AC_MSG_CHECKING([whether to build WebKit1])
+AC_ARG_ENABLE(webkit1,
+    AC_HELP_STRING([--enable-webkit1], [build WebKit1 [default=yes]]),
+    [], [enable_webkit1="yes"])
+
 # WebKit2
 # If you change the default here, please also make sure the assumptions made
 # in Tools/Scripts/webkitdirs.pm:buildAutotoolsProject still make sense.
-AC_MSG_CHECKING([whether to build Webkit2])
+AC_MSG_CHECKING([whether to build WebKit2])
 AC_ARG_ENABLE(webkit2,
-    AC_HELP_STRING([--enable-webkit2], [build webkit2 [default=yes]]),
+    AC_HELP_STRING([--enable-webkit2], [build WebKit2 [default=yes]]),
     [], [enable_webkit2="yes"])
 AC_MSG_RESULT([$enable_webkit2])
 if test "$enable_webkit2" = "yes"; then
-   if test "$GTK_API_VERSION" = "2.0"; then
-      AC_MSG_ERROR([WebKit2 requires GTK+ 3.x, use --with-gtk=3.0])
-   fi
+    if test "$GTK_API_VERSION" = "2.0"; then
+        AC_MSG_ERROR([WebKit2 requires GTK+ 3.x, use --with-gtk=3.0])
+    fi
 
-   # Check Unix printing
-   PKG_CHECK_MODULES(GTK_UNIX_PRINTING, gtk+-unix-print-3.0,
+    # Make sure we have GTK+ 2.x to build the plugin process.
+    PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= $GTK2_REQUIRED_VERSION gail >= $GAIL2_REQUIRED_VERSION)
+    AC_SUBST(GTK2_CFLAGS)
+    AC_SUBST(GTK2_LIBS)
+
+    # Check Unix printing
+    PKG_CHECK_MODULES(GTK_UNIX_PRINTING, gtk+-unix-print-3.0,
                      [have_gtk_unix_printing=yes],
                      [have_gtk_unix_printing=no])
-   AC_SUBST(GTK_UNIX_PRINTING_CFLAGS)
-   AC_SUBST(GTK_UNIX_PRINTING_LIBS)
-   if test "$have_gtk_unix_printing" = "yes"; then
-       AC_DEFINE([HAVE_GTK_UNIX_PRINTING], [1], [Define if GTK+ UNIX Printing is available])
-   fi
+    AC_SUBST(GTK_UNIX_PRINTING_CFLAGS)
+    AC_SUBST(GTK_UNIX_PRINTING_LIBS)
+    if test "$have_gtk_unix_printing" = "yes"; then
+        AC_DEFINE([HAVE_GTK_UNIX_PRINTING], [1], [Define if GTK+ UNIX Printing is available])
+    fi
 
-   # On some Linux/Unix platforms, shm_* may only be available if linking
-   # against librt
-   if test "$os_win32" = "no"; then
-       AC_SEARCH_LIBS([shm_open], [rt], [SHM_LIBS="-lrt"])
-       AC_SUBST(SHM_LIBS)
-   fi
+    # On some Linux/Unix platforms, shm_* may only be available if linking
+    # against librt
+    if test "$os_win32" = "no"; then
+        AC_SEARCH_LIBS([shm_open], [rt], [SHM_LIBS="-lrt"])
+        AC_SUBST(SHM_LIBS)
+    fi
 fi
-
-# Plugin Process
-AC_MSG_CHECKING([whether to build plugin process for WebKit2])
-AC_ARG_ENABLE(plugin_process,
-            AC_HELP_STRING([--enable-plugin-process], [build plugin process for WebKit2 [default=yes]]),
-                           [], [enable_plugin_process="yes"])
-AC_MSG_RESULT([$enable_plugin_process])
-
-# Build the plugin process only when building Webkit2.
-if test "$enable_webkit2" = "no"; then
-    enable_plugin_process=no
-fi
-
-# Make sure we have GTK+ 2.x to build the plugin process.
-if test "$enable_plugin_process" = "yes"; then
-   PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= $GTK2_REQUIRED_VERSION gail >= $GAIL2_REQUIRED_VERSION)
-fi
-AC_SUBST(GTK2_CFLAGS)
-AC_SUBST(GTK2_LIBS)
 
 GTK_DOC_CHECK([1.10])
 
@@ -1168,12 +1161,11 @@ AM_CONDITIONAL([ENABLE_COVERAGE],[test "$enable_coverage" = "yes"])
 AM_CONDITIONAL([ENABLE_FAST_MALLOC],[test "$enable_fast_malloc" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_AUDIO],[test "$enable_web_audio" = "yes"])
 AM_CONDITIONAL([ENABLE_OPCODE_STATS],[test "$enable_opcode_stats" = "yes"])
+AM_CONDITIONAL([ENABLE_WEBKIT1],[test "$enable_webkit1" = "yes"])
 AM_CONDITIONAL([ENABLE_WEBKIT2],[test "$enable_webkit2" = "yes"])
-AM_CONDITIONAL([ENABLE_PLUGIN_PROCESS],[test "$enable_plugin_process" = "yes"])
 AM_CONDITIONAL([ENABLE_SPELLCHECK],[test "$enable_spellcheck" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_FILTERS],[test "$enable_css_filters" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS_SHADERS],[test "$enable_css_shaders" = "yes"])
-AM_CONDITIONAL([ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED],[test "$enable_css_transforms_animations_transitions_unprefixed" = "yes"])
 
 # Gtk conditionals
 AM_CONDITIONAL([ENABLE_INTROSPECTION],[test "$enable_introspection" = "yes"])
@@ -1181,22 +1173,30 @@ AM_CONDITIONAL([ENABLE_INTROSPECTION],[test "$enable_introspection" = "yes"])
 AC_CONFIG_FILES([
 GNUmakefile
 ])
- 
 
 AC_CONFIG_FILES([
-Source/WebKit/gtk/webkit/webkitversion.h
-Source/WebKit/gtk/po/POTFILES
 DerivedSources/WebCore/UserAgentGtk.h:Source/WebCore/platform/gtk/UserAgentGtk.h.in
 ])
 
 AC_CONFIG_FILES([
-Source/WebKit/gtk/${WEBKITGTK_PC_NAME}-${WEBKITGTK_API_VERSION}.pc:Source/WebKit/gtk/webkit.pc.in
-Source/WebKit/gtk/JSCore-${WEBKITGTK_API_VERSION}.gir:Source/WebKit/gtk/JSCore.gir.in
 Source/JavaScriptCore/javascriptcoregtk-${WEBKITGTK_API_VERSION}.pc:Source/JavaScriptCore/javascriptcoregtk.pc.in
+Source/WebKit/gtk/JSCore-${WEBKITGTK_API_VERSION}.gir:Source/WebKit/gtk/JSCore.gir.in
 ]
 ,[WEBKITGTK_API_VERSION=$WEBKITGTK_API_VERSION,WEBKITGTK_PC_NAME=$WEBKITGTK_PC_NAME]
 )
 
+if test "$enable_webkit1" = "yes"; then
+    AC_CONFIG_FILES([
+    Source/WebKit/gtk/webkit/webkitversion.h
+    Source/WebKit/gtk/po/POTFILES
+    ])
+
+    AC_CONFIG_FILES([
+    Source/WebKit/gtk/${WEBKITGTK_PC_NAME}-${WEBKITGTK_API_VERSION}.pc:Source/WebKit/gtk/webkit.pc.in
+    ]
+    ,[WEBKITGTK_API_VERSION=$WEBKITGTK_API_VERSION,WEBKITGTK_PC_NAME=$WEBKITGTK_PC_NAME]
+    )
+fi
 
 if test "$enable_webkit2" = "yes"; then
     AC_CONFIG_FILES([
@@ -1227,6 +1227,8 @@ Build configuration:
 
 Features:
 =======
+ WebKit1 support                                          : $enable_webkit1
+ WebKit2 support                                          : $enable_webkit2
  Accelerated Compositing                                  : $enable_accelerated_compositing
  Gamepad support                                          : $enable_gamepad
  Geolocation support                                      : $enable_geolocation
@@ -1237,14 +1239,10 @@ Features:
  SVG fonts support                                        : $enable_svg_fonts
  SVG support                                              : $enable_svg
  Spellcheck support                                       : $enable_spellcheck
- Unprefixed support for CSS Transforms, animations and transtions : enable_css_transforms_animations_transitions_unprefixed
  Web Audio support                                        : $enable_web_audio
  WebGL                                                    : $enable_webgl
  XSLT support                                             : $enable_xslt
 
-WebKit2 support:
- WebKit2 support                                          : $enable_webkit2
- WebKit2 plugin process                                   : $enable_plugin_process
 
 GTK+ configuration:
  GTK+ version                                             : $with_gtk

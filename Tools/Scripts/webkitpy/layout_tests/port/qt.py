@@ -80,6 +80,9 @@ class QtPort(Port):
         # The Qt port builds DRT as part of the main build step
         return True
 
+    def supports_per_test_timeout(self):
+        return True
+
     def _path_to_driver(self):
         return self._build_path('bin/%s' % self.driver_name())
 
@@ -115,6 +118,8 @@ class QtPort(Port):
         return version
 
     def _search_paths(self):
+        #                 qt-5.0-mac-wk2
+        #                /
         # qt-5.0-wk1    qt-5.0-wk2
         #            \/
         #         qt-5.0    qt-4.8
@@ -126,6 +131,8 @@ class QtPort(Port):
         version = self.qt_version()
         if '5.0' in version:
             if self.get_option('webkit_test_runner'):
+                if self.operating_system() == 'mac':
+                    search_paths.append('qt-5.0-mac-wk2')
                 search_paths.append('qt-5.0-wk2')
             else:
                 search_paths.append('qt-5.0-wk1')
@@ -182,3 +189,6 @@ class QtPort(Port):
             return False
         return result
 
+    # Qt port is not ready for parallel testing, see https://bugs.webkit.org/show_bug.cgi?id=77730 for details.
+    def default_child_processes(self):
+        return 1

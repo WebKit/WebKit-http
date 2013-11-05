@@ -29,6 +29,7 @@
 #include "HeapRootVisitor.h"
 #include "JSGlobalObject.h"
 #include "JSString.h"
+#include "Operations.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/StringImpl.h>
@@ -80,6 +81,22 @@ SmallStrings::SmallStrings()
         m_singleCharacterStrings[i] = 0;
 }
 
+void SmallStrings::initializeCommonStrings(JSGlobalData& globalData)
+{
+    createEmptyString(&globalData);
+#define JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE(name) initialize(&globalData, m_##name, #name);
+    JSC_COMMON_STRINGS_EACH_NAME(JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE)
+#undef JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE
+}
+
+void SmallStrings::visitStrongReferences(SlotVisitor& visitor)
+{
+    visitor.appendUnbarrieredPointer(&m_emptyString);
+#define JSC_COMMON_STRINGS_ATTRIBUTE_VISIT(name) visitor.appendUnbarrieredPointer(&m_##name);
+    JSC_COMMON_STRINGS_EACH_NAME(JSC_COMMON_STRINGS_ATTRIBUTE_VISIT)
+#undef JSC_COMMON_STRINGS_ATTRIBUTE_VISIT
+}
+
 SmallStrings::~SmallStrings()
 {
 }
@@ -89,9 +106,6 @@ void SmallStrings::finalizeSmallStrings()
     finalize(m_emptyString);
     for (unsigned i = 0; i < singleCharacterStringCount; ++i)
         finalize(m_singleCharacterStrings[i]);
-#define JSC_COMMON_STRINGS_ATTRIBUTE_FINALIZE(name) finalize(m_##name);
-    JSC_COMMON_STRINGS_EACH_NAME(JSC_COMMON_STRINGS_ATTRIBUTE_FINALIZE)
-#undef JSC_COMMON_STRINGS_ATTRIBUTE_FINALIZE
 }
 
 void SmallStrings::createEmptyString(JSGlobalData* globalData)

@@ -31,6 +31,7 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
 #include "WebResourceBuffer.h"
+#include "WebResourceLoadScheduler.h"
 #include <WebCore/ResourceBuffer.h>
 
 #if ENABLE(NETWORK_PROCESS)
@@ -41,7 +42,7 @@ namespace WebKit {
 
 NetworkProcessConnection::NetworkProcessConnection(CoreIPC::Connection::Identifier connectionIdentifier)
 {
-    m_connection = CoreIPC::Connection::createClientConnection(connectionIdentifier, this, WebProcess::shared().runLoop());
+    m_connection = CoreIPC::Connection::createClientConnection(connectionIdentifier, this, RunLoop::main());
     m_connection->open();
 }
 
@@ -54,6 +55,18 @@ void NetworkProcessConnection::didReceiveMessage(CoreIPC::Connection* connection
     if (messageID.is<CoreIPC::MessageClassWebResourceLoader>()) {
         if (WebResourceLoader* webResourceLoader = WebProcess::shared().webResourceLoadScheduler().webResourceLoaderForIdentifier(decoder.destinationID()))
             webResourceLoader->didReceiveWebResourceLoaderMessage(connection, messageID, decoder);
+        
+        return;
+    }
+
+    ASSERT_NOT_REACHED();
+}
+
+void NetworkProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+{
+    if (messageID.is<CoreIPC::MessageClassWebResourceLoader>()) {
+        if (WebResourceLoader* webResourceLoader = WebProcess::shared().webResourceLoadScheduler().webResourceLoaderForIdentifier(decoder.destinationID()))
+            webResourceLoader->didReceiveSyncWebResourceLoaderMessage(connection, messageID, decoder, replyEncoder);
         
         return;
     }

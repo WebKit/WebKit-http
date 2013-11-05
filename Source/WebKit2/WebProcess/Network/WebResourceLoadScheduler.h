@@ -30,6 +30,7 @@
 #include <WebCore/ResourceLoadPriority.h>
 #include <WebCore/ResourceLoadScheduler.h>
 #include <WebCore/ResourceLoader.h>
+#include <WebCore/RunLoop.h>
 
 #if ENABLE(NETWORK_PROCESS)
 
@@ -47,7 +48,6 @@ public:
     virtual PassRefPtr<WebCore::SubresourceLoader> scheduleSubresourceLoad(WebCore::Frame*, WebCore::CachedResource*, const WebCore::ResourceRequest&, WebCore::ResourceLoadPriority, const WebCore::ResourceLoaderOptions&) OVERRIDE;
     virtual PassRefPtr<WebCore::NetscapePlugInStreamLoader> schedulePluginStreamLoad(WebCore::Frame*, WebCore::NetscapePlugInStreamLoaderClient*, const WebCore::ResourceRequest&) OVERRIDE;
     
-    virtual void addMainResourceLoad(WebCore::ResourceLoader*) OVERRIDE;
     virtual void remove(WebCore::ResourceLoader*) OVERRIDE;
     virtual void crossOriginRedirectReceived(WebCore::ResourceLoader*, const WebCore::KURL& redirectURL) OVERRIDE;
     
@@ -60,10 +60,16 @@ public:
 
     WebResourceLoader* webResourceLoaderForIdentifier(ResourceLoadIdentifier identifier) const { return m_webResourceLoaders.get(identifier).get(); }
 
+    void networkProcessCrashed();
+
 private:
     void scheduleLoad(WebCore::ResourceLoader*, WebCore::ResourceLoadPriority);
+    void addUnschedulableLoad(WebCore::ResourceLoader*);
+    void unscheduledLoadTimerFired();
     
-    HashMap<unsigned long, RefPtr<WebCore::ResourceLoader> > m_coreResourceLoaders;
+    HashSet<RefPtr<WebCore::ResourceLoader> > m_unschedulableResourceLoaders;
+    WebCore::RunLoop::Timer<WebResourceLoadScheduler> m_unschedulableLoadTimer;
+    
     HashMap<unsigned long, RefPtr<WebResourceLoader> > m_webResourceLoaders;
     
     unsigned m_suspendPendingRequestsCount;

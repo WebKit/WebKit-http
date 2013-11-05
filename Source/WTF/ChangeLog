@@ -1,3 +1,433 @@
+2013-01-17  David Kilzer  <ddkilzer@apple.com>
+
+        Fix vprintf_stderr_common() to compile with -Wshorten-64-to-32
+        <http://webkit.org/b/107126>
+
+        Reviewed by Darin Adler.
+
+        Fixes the following build error:
+
+            Assertions.cpp:92:22: error: implicit conversion loses integer precision: 'CFIndex' (aka 'long') to 'int' [-Werror,-Wshorten-64-to-32]
+                    int length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(str), kCFStringEncodingUTF8);
+                        ~~~~~~   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            1 error generated.
+
+        * wtf/Assertions.cpp:
+        (vprintf_stderr_common): Use CFIndex type instead of int for the
+        return value of CFStringGetMaximumSizeForEncoding().
+
+2013-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Unify WTF sources list regardless of the target OS, Unicode backend
+        https://bugs.webkit.org/show_bug.cgi?id=105886
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Rather than including files in the sources list in an OS-specific way,
+        guard specific files with OS(UNIX|WINDOWS), USE((GLIB|ICU)_UNICODE) guards
+        and include all of them in the list.
+
+        Proper comments for namespace and #if guard closings are also added or adjusted
+        where necessary in the affected files.
+
+        * GNUmakefile.list.am:
+        * wtf/OSAllocatorPosix.cpp: Add OS(UNIX) guards.
+        * wtf/OSAllocatorWin.cpp: Add OS(WINDOWS) guards.
+        * wtf/ThreadSpecificWin.cpp: Ditto.
+        * wtf/ThreadingWin.cpp: Ditto.
+        * wtf/unicode/glib/UnicodeGLib.cpp: Add USE(GLIB_UNICODE) guards.
+        (WTF):
+        * wtf/unicode/glib/UnicodeGLib.h: Ditto.
+        (WTF):
+        * wtf/unicode/icu/CollatorICU.cpp: Style changes.
+        * wtf/unicode/icu/UnicodeIcu.h: Add USE(ICU_UNICODE) guards.
+        (WTF):
+        * wtf/win/OwnPtrWin.cpp: Add OS(WINDOWS) guards.
+
+2013-01-16  Benjamin Poulain  <benjamin@webkit.org>
+
+        Use GCC's implementation of atomicIncrement/Decrement on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=106976
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Atomics.h:
+        GCC and LLVM have builtin for atomic ADD and SUB: __sync_add_and_fetch,
+        __sync_sub_and_fetch.
+
+        Using them let the compiler just generate the atomic operations inline
+        instead of generating a function call to LibC. It also simplify the
+        code a bit.
+
+2013-01-15  Adam Barth  <abarth@webkit.org>
+
+        Generalize DocumentWeakReference into WTF::WeakPtr
+        https://bugs.webkit.org/show_bug.cgi?id=106854
+
+        Reviewed by Darin Adler.
+
+        This patch adds a simple WeakPtr object to WTF. To use WeakPtr, objects
+        must hold a WeakPtrFactory member variable, which clears the WeakPtrs
+        when the object is destructed. The underlying storage is a
+        ThreadSafeRefCounted "WeakReference" object, which is shared by all the
+        WeakPtrs.
+
+        WeakPtr is a generalization of DocumentWeakReference, which is used to
+        check whether the Document object is alive when tasks arive on the main
+        thread from worker threads. We plan to use a similar pattern in the
+        threaded HTML parser, but we want to send tasks to objects other than
+        Document.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/WeakPtr.h: Added.
+        (WeakReference):
+            - The ThreadSafeRefCounted object shared by all the WeakPtr
+              instances. This patch uses ThreadSafeRefCounted so that we can
+              use WeakPtrs to cancel cross-thread messages.
+        (WTF::WeakReference::create):
+        (WTF::WeakReference::get):
+        (WTF::WeakReference::clear):
+            - When the object is destroyed, WeakPtrFactory calls this function
+              to clear all the WeakPtrs.
+        (WTF::WeakReference::WeakReference):
+        (WTF::WeakPtr::WeakPtr):
+        (WTF::WeakPtr::get):
+            - We might want to add implicit conversions and Boolean operators
+              in the future, but I've kept this class simple for now.
+        (WTF::WeakPtrFactory::WeakPtrFactory):
+        (WTF::WeakPtrFactory::~WeakPtrFactory):
+        (WTF::WeakPtrFactory::createWeakPtr):
+
+2013-01-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Use __sync_add_and_fetch instead of __gnu_cxx::__exchange_and_add
+        https://bugs.webkit.org/show_bug.cgi?id=106729
+
+        After r139514 we need atomicIncrement(int64_t volatile*) for all platform. Now the
+        GCC implementation of atomicIncrement() is based on __gnu_cxx::__exchange_and_add,
+        which doesn't support int64_t type, but __sync_add_and_fetch does.
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/Atomics.h:
+        (WTF::atomicIncrement):
+        (WTF::atomicDecrement):
+
+2013-01-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Add WTF_EXPORT_PRIVATE to printInternal() methods of PrintStream.h
+
+        Rubber stamped by Mark Hahnenberg.
+        
+        This will make it easier to use dataLog() from WebCore.
+
+        * wtf/PrintStream.h:
+        (WTF):
+
+2013-01-09  Antti Koivisto  <antti@apple.com>
+
+        Release FastMalloc thread caches on memory warning
+        https://bugs.webkit.org/show_bug.cgi?id=106471
+        
+        Reviewed by Geoff Garen.
+
+        Use TCMalloc_ThreadCache::Cleanup() instead of calling Scavenge() twice. This releases all the memory
+        and looks nicer too.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::releaseFastMallocFreeMemory):
+
+2013-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck.
+
+        * GNUmakefile.list.am: Add missing header.
+
+2013-01-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Rationalize closure call heuristics and profiling
+        https://bugs.webkit.org/show_bug.cgi?id=106270
+
+        Reviewed by Oliver Hunt.
+        
+        Add a macro to add a method to a class that returns a dumper. Allows you to have
+        secondary dump() methods for dumping either more or less information.
+
+        * wtf/PrintStream.h:
+        (WTF):
+
+2013-01-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sorted the xcodeproj file.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2013-01-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, it should be possible to build JSC on ARM.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::TCMalloc_PageHeap::IncrementalScavenge):
+
+2013-01-07  Balazs Kilvady  <kilvadyb@homejinni.com>
+
+        MIPS LLInt implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=99706
+
+        Reviewed by Filip Pizlo.
+
+        LLInt implementation for MIPS.
+
+        * wtf/Platform.h:
+
+2013-01-05  Jonathan Liu  <net147@gmail.com>
+
+        Only enable MinGW-w64 pow() workaround if needed
+        https://bugs.webkit.org/show_bug.cgi?id=106099
+
+        Reviewed by Filip Pizlo.
+
+        The pow() workaround is no longer needed in the latest version
+        of MinGW-w64.
+
+        * wtf/MathExtras.h:
+
+2013-01-05  Jonathan Liu  <net147@gmail.com>
+
+        Fix compilation of MathExtras.h with MinGW-w64
+        https://bugs.webkit.org/show_bug.cgi?id=106105
+
+        Reviewed by Simon Hausmann.
+
+        The isfinite and isinf functions are required by wtf_pow but
+        not defined until after wtf_pow. Move wtf_pow to after
+        "using std::isfinite" and "using std::isinf" to fix compilation.
+
+        * wtf/MathExtras.h:
+        (wtf_pow):
+
+2013-01-03  Filip Pizlo  <fpizlo@apple.com>
+
+        CallLinkStatus should be aware of closure calls, and the DFG bytecode parser should use that as its sole internal notion of how to optimize calls
+        https://bugs.webkit.org/show_bug.cgi?id=106027
+
+        Reviewed by Mark Hahnenberg.
+        
+        I got tired of the various idioms for printing a list of things with comma in between, so I wrote a helper.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CommaPrinter.h: Added.
+        (WTF):
+        (CommaPrinter):
+        (WTF::CommaPrinter::CommaPrinter):
+        (WTF::CommaPrinter::dump):
+
+2013-01-02  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [MinGW-w64] Centralize workaround for pow() implementation
+        https://bugs.webkit.org/show_bug.cgi?id=105925
+
+        Reviewed by Sam Weinig.
+
+        As suggested by Sam, move the MinGW-w64 workaround into MathExtras.h
+        away from the JSC usage.
+
+        * wtf/MathExtras.h:
+        (wtf_pow):
+
+2013-01-02  Adam Barth  <abarth@webkit.org>
+
+        WTF.gypi lists Platform.h twice
+        https://bugs.webkit.org/show_bug.cgi?id=105731
+
+        Reviewed by Tony Chang.
+
+        Once ought to be enough for everybody.
+
+        * WTF.gypi:
+
+2012-12-31  Gavin Barraclough  <barraclough@apple.com>
+
+        Objective-C API for JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=105889
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTFThreadData):
+            - Added m_apiData - provide convenient storage for use by the API.
+
+2012-12-28  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: instrument not instrumented members.
+        https://bugs.webkit.org/show_bug.cgi?id=105830
+
+        Reviewed by Vsevolod Vlasov.
+
+        In some cases we don't want to visit some class members.
+        As example we decided to skip pointers to interface classes such as GraphicLayerClient.
+        We could use addWeakPointer for them but it can't be used for nonpointer members.
+        In the offline discussion we came to a conclusion that we need a new instrumentation
+        method ignoreMember, which will be used for all the members which we won't like to visit/instrument.
+
+        DriveBy: Also I instrumented not yet instrumented members.
+
+        * wtf/MemoryInstrumentation.h:
+        (MemoryClassInfo):
+        (WTF::MemoryClassInfo::ignoreMember):
+
+2012-12-26  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Fix build warning in OSAllocatorPosix.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=105761
+
+        Reviewed by Kentaro Hara.
+
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::reserveUncommitted): Fix unused param warnings.
+
+2012-12-24  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: provide a way to mark a node as a root
+        https://bugs.webkit.org/show_bug.cgi?id=105737
+
+        Reviewed by Alexander Pavlov.
+
+        Objects added using MemoryInstrumentation::addRootObject will be marked as roots.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryInstrumentation::WrapperBase::process):
+        (WTF):
+        (WTF::MemoryInstrumentation::WrapperBase::processPointer):
+        (WTF::MemoryInstrumentation::WrapperBase::processRootObjectRef):
+        * wtf/MemoryInstrumentation.h:
+        (WrapperBase):
+        * wtf/MemoryObjectInfo.h: added root marker which can be used by the heap graph builder.
+        (WTF::MemoryObjectInfo::MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::isRoot):
+        (WTF::MemoryObjectInfo::markAsRoot):
+        (MemoryObjectInfo):
+
+2012-12-24  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: propagate member type as edge type to the serialized heap graph.
+        https://bugs.webkit.org/show_bug.cgi?id=105725
+
+        Reviewed by Yury Semikhatsky.
+
+        MemoryOwningType was renamed to MemberType.
+        Source argument were removed from reportEdge, reportLeaf and other edge related methods because it is not necessary.
+        MemberType argument was propagated from MemoryInstrumentation down to HeapGraphSerializer.
+
+        The changes covered by tests in TestWebKitAPI.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryInstrumentation::reportEdge):
+        (WTF::MemoryInstrumentation::reportLinkToBuffer):
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentationClient):
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::addRawBuffer):
+        (WTF::MemoryInstrumentation::MemberTypeTraits::addObject):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+
+2012-12-21  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed. Another try to fix Apple Win Release build.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::ClassIndex):
+
+2012-12-21  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed compilation fix for Apple Win Release after r138398.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::ClassIndex):
+
+2012-12-21  Oliver Hunt  <oliver@apple.com>
+
+        Further harden FastMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=105656
+
+        Reviewed by Gavin Barraclough.
+
+        This increases the degree to which we harden the FastMalloc
+        linked lists.  We now also mask the previous and next pointers
+        in the doubly linked list implementation.  I've also made
+        the masking itself somewhat more complex without a measurable
+        cost.  We still use ASLR to provide some general entropy, but
+        we blind the pointers against each nodes 'this' pointer.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::ClassIndex):
+        (WTF::SLL_Next):
+        (WTF::SLL_SetNext):
+        (WTF::Span::next):
+        (WTF::Span::prev):
+        (WTF::Span::setNext):
+        (WTF::Span::setPrev):
+        (Span):
+          As Span now has to do masking on the next and previous pointers,
+          I've updated the code to use accessors instead.
+        (WTF::DLL_Init):
+        (WTF::DLL_Remove):
+        (WTF::DLL_IsEmpty):
+        (WTF::DLL_Length):
+        (WTF::DLL_Prepend):
+        (WTF::TCMalloc_Central_FreeList::enumerateFreeObjects):
+        (WTF::TCMalloc_PageHeap::scavenge):
+        (WTF::TCMalloc_PageHeap::New):
+        (WTF::TCMalloc_PageHeap::AllocLarge):
+        (WTF::TCMalloc_PageHeap::ReturnedBytes):
+        (WTF::TCMalloc_PageHeap::Check):
+        (WTF::TCMalloc_PageHeap::CheckList):
+        (WTF::TCMalloc_PageHeap::ReleaseFreeList):
+        (WTF::TCMalloc_Central_FreeList::FetchFromSpans):
+
+2012-12-20  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Build break with latest EFL libraries.
+        https://bugs.webkit.org/show_bug.cgi?id=104827
+
+        Reviewed by Laszlo Gombos.
+
+        The eo EFL package is introduced and evas and ecore use it since 1.8.
+        While introducing Eo, EFL changed several structures of Evas and Ecore
+        from own specific class to Eo.
+
+        So, this patch adds FindEo and changes declaration of Evas, Evas_Object,
+        Ecore_Timer to build with latest EFL libraries.
+
+        * wtf/OwnPtrCommon.h: Modified declaration of Evas_Object and Ecore_Timer.
+        * wtf/PlatformEfl.cmake: Includes eo EFL library.
+        * wtf/efl/RefPtrEfl.h: Modified declaration of Evas_Object.
+
+2012-12-20  Oliver Hunt  <oliver@apple.com>
+
+        Harden pointers in FastMalloc's singly linked list implementation
+        https://bugs.webkit.org/show_bug.cgi?id=105571
+
+        Reviewed by Gavin Barraclough.
+
+        Add simple xor based hardening of the next pointer in the
+        fast malloc singly linked list implementation.  We rely on
+        ASLR to introduce the address randomness we want for the mask.
+        Happily this produces a very low cost random value to use.
+
+        * wtf/FastMalloc.cpp:
+        (WTF):
+        (WTF::SLL_Next):
+        (WTF::SLL_SetNext):
+
 2012-12-19  Oliver Hunt  <oliver@apple.com>
 
         StringImpl isolatedCopy unnecessarily copies text-segment character data

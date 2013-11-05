@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -30,9 +31,11 @@
 #include "QtWebError.h"
 #include "QtWebIconDatabaseClient.h"
 #include "QtWebPageEventHandler.h"
+#include "QtWebPageFindClient.h"
 #include "QtWebPageLoadClient.h"
 #include "QtWebPagePolicyClient.h"
 #include "WebBackForwardList.h"
+#include "WebFindOptions.h"
 #if ENABLE(INSPECTOR_SERVER)
 #include "WebInspectorProxy.h"
 #include "WebInspectorServer.h"
@@ -65,6 +68,7 @@
 #include <WKSerializedScriptValue.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/IntRect.h>
+#include <limits>
 #include <wtf/Assertions.h>
 #include <wtf/MainThread.h>
 #include <wtf/Vector.h>
@@ -307,6 +311,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     QQuickWebPagePrivate* const pageViewPrivate = pageView.data()->d;
     pageViewPrivate->initialize(webPageProxy.get());
 
+    pageFindClient.reset(new QtWebPageFindClient(toAPI(webPageProxy.get()), q_ptr));
     pageLoadClient.reset(new QtWebPageLoadClient(toAPI(webPageProxy.get()), q_ptr));
     pagePolicyClient.reset(new QtWebPagePolicyClient(toAPI(webPageProxy.get()), q_ptr));
     pageUIClient.reset(new QtWebPageUIClient(toAPI(webPageProxy.get()), q_ptr));
@@ -722,7 +727,10 @@ void QQuickWebViewPrivate::setNavigatorQtObjectEnabled(bool enabled)
     ASSERT(enabled != m_navigatorQtObjectEnabled);
     // FIXME: Currently we have to keep this information in both processes and the setting is asynchronous.
     m_navigatorQtObjectEnabled = enabled;
-    context->setNavigatorQtObjectEnabled(webPageProxy.get(), enabled);
+
+    static String messageName("SetNavigatorQtObjectEnabled");
+    RefPtr<WebBoolean> webEnabled = WebBoolean::create(enabled);
+    webPageProxy->postMessageToInjectedBundle(messageName, webEnabled.get());
 }
 
 static QString readUserScript(const QUrl& url)
@@ -752,8 +760,10 @@ static QString readUserScript(const QUrl& url)
 
 void QQuickWebViewPrivate::updateUserScripts()
 {
-    Vector<String> scripts;
-    scripts.reserveCapacity(userScripts.size());
+    // This feature works per-WebView because we keep an unique page group for
+    // each Page/WebView pair we create.
+    WebPageGroup* pageGroup = webPageProxy->pageGroup();
+    pageGroup->removeAllUserScripts();
 
     for (unsigned i = 0; i < userScripts.size(); ++i) {
         const QUrl& url = userScripts.at(i);
@@ -765,10 +775,8 @@ void QQuickWebViewPrivate::updateUserScripts()
         QString contents = readUserScript(url);
         if (contents.isEmpty())
             continue;
-        scripts.append(String(contents));
+        pageGroup->addUserScript(String(contents), emptyString(), 0, 0, InjectInTopFrameOnly, InjectAtDocumentEnd);
     }
-
-    webPageProxy->setUserScripts(scripts);
 }
 
 QPointF QQuickWebViewPrivate::contentPos() const
@@ -999,7 +1007,9 @@ bool QQuickWebViewExperimental::flickableViewportEnabled()
 void QQuickWebViewExperimental::postMessage(const QString& message)
 {
     Q_D(QQuickWebView);
-    d->context->postMessageToNavigatorQtObject(d->webPageProxy.get(), message);
+    static String messageName("MessageToNavigatorQtObject");
+    RefPtr<WebString> contents = WebString::create(String(message));
+    d->webPageProxy->postMessageToInjectedBundle(messageName, contents.get());
 }
 
 QQmlComponent* QQuickWebViewExperimental::alertDialog() const
@@ -1245,6 +1255,26 @@ void QQuickWebViewExperimental::evaluateJavaScript(const QString& script, const 
     closure->value = value;
 
     d_ptr->webPageProxy.get()->runJavaScriptInMainFrame(script, ScriptValueCallback::create(closure, javaScriptCallback));
+}
+
+void QQuickWebViewExperimental::findText(const QString& string, FindFlags options)
+{
+    Q_D(QQuickWebView);
+    if (string.isEmpty()) {
+        d->webPageProxy->hideFindUI();
+        return;
+    }
+    WebKit::FindOptions wkOptions = WebKit::FindOptionsCaseInsensitive;
+    if (options & FindCaseSensitively)
+        wkOptions = static_cast<WebKit::FindOptions>(wkOptions & ~WebKit::FindOptionsCaseInsensitive);
+    if (options & FindBackward)
+        wkOptions = static_cast<WebKit::FindOptions>(wkOptions | FindOptionsBackwards);
+    if (options & FindWrapsAroundDocument)
+        wkOptions = static_cast<WebKit::FindOptions>(wkOptions | FindOptionsWrapAround);
+    if (options & FindHighlightAllOccurrences)
+        wkOptions = static_cast<WebKit::FindOptions>(wkOptions | FindOptionsShowHighlight);
+
+    d->webPageProxy->findString(string, wkOptions, std::numeric_limits<unsigned>::max() - 1);
 }
 
 QList<QUrl> QQuickWebViewExperimental::userScripts() const
@@ -2007,6 +2037,12 @@ void QQuickWebView::setAllowAnyHTTPSCertificateForLocalHost(bool allow)
 {
     Q_D(QQuickWebView);
     d->m_allowAnyHTTPSCertificateForLocalHost = allow;
+}
+
+void QQuickWebViewPrivate::didFindString(unsigned matchCount)
+{
+    Q_Q(QQuickWebView);
+    emit q->experimental()->textFound(matchCount);
 }
 
 /*!

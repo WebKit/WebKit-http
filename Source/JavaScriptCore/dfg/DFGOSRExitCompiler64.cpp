@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT) && USE(JSVALUE64)
 
 #include "DFGOperations.h"
+#include "Operations.h"
 #include <wtf/DataLog.h>
 
 namespace JSC { namespace DFG {
@@ -47,13 +48,14 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
     dataLogF(")  ");
     dumpOperands(operands, WTF::dataFile());
 #endif
-#if DFG_ENABLE(VERBOSE_SPECULATION_FAILURE)
-    SpeculationFailureDebugInfo* debugInfo = new SpeculationFailureDebugInfo;
-    debugInfo->codeBlock = m_jit.codeBlock();
-    debugInfo->nodeIndex = exit.m_nodeIndex;
-    
-    m_jit.debugCall(debugOperationPrintSpeculationFailure, debugInfo);
-#endif
+
+    if (Options::printEachOSRExit()) {
+        SpeculationFailureDebugInfo* debugInfo = new SpeculationFailureDebugInfo;
+        debugInfo->codeBlock = m_jit.codeBlock();
+        debugInfo->nodeIndex = exit.m_nodeIndex;
+        
+        m_jit.debugCall(debugOperationPrintSpeculationFailure, debugInfo);
+    }
     
 #if DFG_ENABLE(JIT_BREAK_ON_SPECULATION_FAILURE)
     m_jit.breakpoint();
@@ -136,10 +138,6 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
         
         if (!!exit.m_valueProfile) {
             EncodedJSValue* bucket = exit.m_valueProfile.getSpecFailBucket(0);
-            
-#if DFG_ENABLE(VERBOSE_SPECULATION_FAILURE)
-            dataLogF("  (have exit profile, bucket %p)  ", bucket);
-#endif
             
             if (exit.m_jsValueSource.isAddress()) {
                 // We can't be sure that we have a spare register. So use the tagTypeNumberRegister,
@@ -623,11 +621,13 @@ void OSRExitCompiler::compileExit(const OSRExit& exit, const Operands<ValueRecov
             callerFrameGPR = GPRInfo::callFrameRegister;
         
         m_jit.storePtr(AssemblyHelpers::TrustedImmPtr(baselineCodeBlock), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::CodeBlock)));
-        m_jit.store64(AssemblyHelpers::TrustedImm64(JSValue::encode(JSValue(inlineCallFrame->callee->scope()))), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ScopeChain)));
+        if (!inlineCallFrame->isClosureCall())
+            m_jit.store64(AssemblyHelpers::TrustedImm64(JSValue::encode(JSValue(inlineCallFrame->callee->scope()))), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ScopeChain)));
         m_jit.store64(callerFrameGPR, AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::CallerFrame)));
         m_jit.storePtr(AssemblyHelpers::TrustedImmPtr(jumpTarget), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ReturnPC)));
         m_jit.store32(AssemblyHelpers::TrustedImm32(inlineCallFrame->arguments.size()), AssemblyHelpers::payloadFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::ArgumentCount)));
-        m_jit.store64(AssemblyHelpers::TrustedImm64(JSValue::encode(JSValue(inlineCallFrame->callee.get()))), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::Callee)));
+        if (!inlineCallFrame->isClosureCall())
+            m_jit.store64(AssemblyHelpers::TrustedImm64(JSValue::encode(JSValue(inlineCallFrame->callee.get()))), AssemblyHelpers::addressFor((VirtualRegister)(inlineCallFrame->stackOffset + JSStack::Callee)));
     }
     
     // 15) Create arguments if necessary and place them into the appropriate aliased

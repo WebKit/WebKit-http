@@ -30,6 +30,7 @@
 #include "DataURL.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
+#include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceError.h"
 #include "ResourceHandleClient.h"
@@ -428,12 +429,6 @@ void ResourceHandle::setSynchronousInternetHandle(HINTERNET internetHandle)
 {
     d->m_internetHandle = internetHandle;
     d->m_loadSynchronously = true;
-}
-
-bool ResourceHandle::willLoadFromCache(ResourceRequest&, Frame*)
-{
-    notImplemented();
-    return false;
 }
 
 void prefetchDNS(const String&)

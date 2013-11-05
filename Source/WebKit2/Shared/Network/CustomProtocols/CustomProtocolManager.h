@@ -28,8 +28,9 @@
 
 #if ENABLE(CUSTOM_PROTOCOLS)
 
-#include "Connection.h"
-#include "MessageID.h"
+#include "MessageReceiver.h"
+#include "NetworkProcessSupplement.h"
+#include "WebProcessSupplement.h"
 #include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
@@ -42,7 +43,6 @@ OBJC_CLASS WKCustomProtocol;
 
 namespace CoreIPC {
 class DataReference;
-class MessageDecoder;
 } // namespace CoreIPC
 
 namespace WebCore {
@@ -52,29 +52,21 @@ class ResourceResponse;
 
 namespace WebKit {
 
-class CustomProtocolManager {
+class ChildProcess;
+struct NetworkProcessCreationParameters;
+
+class CustomProtocolManager : public WebProcessSupplement, public NetworkProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(CustomProtocolManager);
-
 public:
-    static CustomProtocolManager& shared();
-    
-    void initialize(PassRefPtr<CoreIPC::Connection>);
+    explicit CustomProtocolManager(ChildProcess*);
 
-    CoreIPC::Connection* connection() const
-    {
-        ASSERT(m_connection);
-        return m_connection.get();
-    }
+    static const AtomicString& supplementName();
+
+    ChildProcess* childProcess() const { return m_childProcess; }
 
     void registerScheme(const String&);
     void unregisterScheme(const String&);
     bool supportsScheme(const String&);
-
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didFailWithError(uint64_t customProtocolID, const WebCore::ResourceError&);
-    void didLoadData(uint64_t customProtocolID, const CoreIPC::DataReference&);
-    void didReceiveResponse(uint64_t customProtocolID, const WebCore::ResourceResponse&, uint32_t cacheStoragePolicy);
-    void didFinishLoading(uint64_t customProtocolID);
     
 #if PLATFORM(MAC)
     void addCustomProtocol(WKCustomProtocol *);
@@ -82,11 +74,25 @@ public:
 #endif
 
 private:
-    CustomProtocolManager() { }
+    // WebProcessSupplement
+    void initialize(const WebProcessCreationParameters&) OVERRIDE;
+
+#if ENABLE(NETWORK_PROCESS)
+    // NetworkProcessSupplement
+    void initialize(const NetworkProcessCreationParameters&) OVERRIDE;
+#endif
+
+    // CoreIPC::MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
     void didReceiveCustomProtocolManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    
+
+    void didFailWithError(uint64_t customProtocolID, const WebCore::ResourceError&);
+    void didLoadData(uint64_t customProtocolID, const CoreIPC::DataReference&);
+    void didReceiveResponse(uint64_t customProtocolID, const WebCore::ResourceResponse&, uint32_t cacheStoragePolicy);
+    void didFinishLoading(uint64_t customProtocolID);
+
     HashSet<String> m_registeredSchemes;
-    RefPtr<CoreIPC::Connection> m_connection;
+    ChildProcess* m_childProcess;
 
 #if PLATFORM(MAC)
     typedef HashMap<uint64_t, RetainPtr<WKCustomProtocol> > CustomProtocolMap;

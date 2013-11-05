@@ -42,10 +42,9 @@ class NetscapePluginModule;
 class WebProcessConnection;
 struct PluginProcessCreationParameters;
         
-class PluginProcess : ChildProcess {
+class PluginProcess : public ChildProcess {
     WTF_MAKE_NONCOPYABLE(PluginProcess);
 public:
-
     enum Type {
         // Start with value one since default HashTraits<> disallows zero as key.
         TypeRegularProcess = 1,
@@ -54,17 +53,13 @@ public:
 
     static PluginProcess& shared();
 
-    void initialize(CoreIPC::Connection::Identifier, WebCore::RunLoop*);
-    void removeWebProcessConnection(WebProcessConnection* webProcessConnection);
+    void removeWebProcessConnection(WebProcessConnection*);
 
     NetscapePluginModule* netscapePluginModule();
 
     const String& pluginPath() const { return m_pluginPath; }
 
 #if PLATFORM(MAC)
-    void initializeShim();
-    void initializeCocoaOverrides();
-
     void setModalWindowIsShowing(bool);
     void setFullscreenWindowIsShowing(bool);
 
@@ -78,7 +73,10 @@ private:
     ~PluginProcess();
 
     // ChildProcess
-    virtual bool shouldTerminate();
+    virtual void initializeProcess(const ChildProcessInitializationParameters&) OVERRIDE;
+    virtual bool shouldTerminate() OVERRIDE;
+
+    void platformInitializeProcess(const ChildProcessInitializationParameters&);
 
     // CoreIPC::Connection::Client
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
@@ -92,13 +90,10 @@ private:
     void getSitesWithData(uint64_t callbackID);
     void clearSiteData(const Vector<String>& sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID);
 
-    void platformInitialize(const PluginProcessCreationParameters&);
+    void platformInitializePluginProcess(const PluginProcessCreationParameters&);
     
     void setMinimumLifetime(double);
     void minimumLifetimeTimerFired();
-
-    // The connection to the UI process.
-    RefPtr<CoreIPC::Connection> m_connection;
 
     // Our web process connections.
     Vector<RefPtr<WebProcessConnection> > m_webProcessConnections;

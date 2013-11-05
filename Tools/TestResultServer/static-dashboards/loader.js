@@ -64,6 +64,10 @@ loader.Loader = function()
         this._loadResultsFiles,
         this._loadExpectationsFiles,
     ];
+
+    this._buildersThatFailedToLoad = [];
+    this._staleBuilders = [];
+    this._loadingComplete = false;
 }
 
 loader.Loader.prototype = {
@@ -71,11 +75,19 @@ loader.Loader.prototype = {
     {
         this._loadNext();
     },
+    isLoadingComplete: function()
+    {
+        return this._loadingComplete;
+    },
     _loadNext: function()
     {
         var loadingStep = this._loadingSteps.shift();
         if (!loadingStep) {
-            resourceLoadingComplete();
+            this._loadingComplete = true;
+            // FIXME(jparent): Loader should not know about global
+            // functions, should use a callback or dispatch load
+            // event instead.
+            resourceLoadingComplete(this._getLoadingErrorMessages());
             return;
         }
         loadingStep.apply(this);
@@ -83,7 +95,6 @@ loader.Loader.prototype = {
     _loadBuildersList: function()
     {
         loadBuildersList(g_crossDashboardState.group, g_crossDashboardState.testType);
-        initBuilders();
         this._loadNext();
     },
     _loadResultsFiles: function()
@@ -151,7 +162,7 @@ loader.Loader.prototype = {
                 continue;
 
             if ((Date.now() / 1000) - lastRunSeconds > ONE_DAY_SECONDS)
-                g_staleBuilders.push(builderName);
+                this._staleBuilders.push(builderName);
 
             if (json_version >= 4)
                 builds[builderName][TESTS_KEY] = flattenTrie(builds[builderName][TESTS_KEY]);
@@ -163,26 +174,22 @@ loader.Loader.prototype = {
         console.error('Failed to load results file for ' + builderName + '.');
 
         // FIXME: loader shouldn't depend on state defined in dashboard_base.js.
-        g_buildersThatFailedToLoad.push(builderName);
+        this._buildersThatFailedToLoad.push(builderName);
 
         // Remove this builder from builders, so we don't try to use the
         // data that isn't there.
         delete currentBuilders()[builderName];
 
         // Change the default builder name if it has been deleted.
-        if (g_defaultBuilderName == builderName) {
-            g_defaultBuilderName = null;
-            for (var availableBuilderName in currentBuilders()) {
-                g_defaultBuilderName = availableBuilderName;
-                g_defaultDashboardSpecificStateValues.builder = availableBuilderName;
-                break;
-            }
-            if (!g_defaultBuilderName) {
+        if (g_defaultDashboardSpecificStateValues.builder == builderName) {
+            var defaultBuilderName = currentBuilderGroup().defaultBuilder();
+            g_defaultDashboardSpecificStateValues.builder = defaultBuilderName;
+            if (!defaultBuilderName) {
                 var error = 'No tests results found for ' + g_crossDashboardState.testType + '. Reload the page to try fetching it again.';
                 console.error(error);
                 addError(error);
             }
-        }
+       }
 
         // Proceed as if the resource had loaded.
         this._handleResourceLoad();
@@ -232,6 +239,17 @@ loader.Loader.prototype = {
                     partial(function(platformName, xhr) {
                         console.error('Could not load expectations file for ' + platformName);
                     }, platformWithExpectations));
+    },
+    _getLoadingErrorMessages: function()
+    {
+        var errorMsgs = '';
+        if (this._buildersThatFailedToLoad.length)
+            errorMsgs += 'ERROR: Failed to get data from ' + this._buildersThatFailedToLoad.toString() + '.<br>';
+
+        if (this._staleBuilders.length)
+            errorMsgs +='ERROR: Data from ' + this._staleBuilders.toString() + ' is more than 1 day stale.<br>';
+
+        return errorMsgs;
     }
 }
 

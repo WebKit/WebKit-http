@@ -31,6 +31,7 @@
 #include "JSGlobalObject.h"
 #include "JSFunction.h"
 #include "JSNotAnObject.h"
+#include "JSValueInlines.h"
 #include "NumberObject.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StringExtras.h>
@@ -144,7 +145,7 @@ void JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
                 return;
             }
 
-            JSValue gs = obj->getDirectOffset(offset);
+            JSValue gs = obj->getDirect(offset);
             if (gs.isGetterSetter()) {
                 JSObject* setterFunc = asGetterSetter(gs)->setter();        
                 if (!setterFunc) {
@@ -295,13 +296,13 @@ JSString* JSValue::toStringSlowCase(ExecState* exec) const
     if (isDouble())
         return jsString(&globalData, globalData.numericStrings.add(asDouble()));
     if (isTrue())
-        return globalData.smallStrings.trueString(&globalData);
+        return globalData.smallStrings.trueString();
     if (isFalse())
-        return globalData.smallStrings.falseString(&globalData);
+        return globalData.smallStrings.falseString();
     if (isNull())
-        return globalData.smallStrings.nullString(&globalData);
+        return globalData.smallStrings.nullString();
     if (isUndefined())
-        return globalData.smallStrings.undefinedString(&globalData);
+        return globalData.smallStrings.undefinedString();
 
     ASSERT(isCell());
     JSValue value = asCell()->toPrimitive(exec, PreferString);

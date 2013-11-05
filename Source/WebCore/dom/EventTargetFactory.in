@@ -19,7 +19,6 @@ MediaController conditional=VIDEO
 MediaSource conditional=MEDIA_SOURCE
 MediaStream conditional=MEDIA_STREAM
 MediaStreamTrack conditional=MEDIA_STREAM
-MediaStreamTrackList conditional=MEDIA_STREAM
 MessagePort
 NetworkInfoConnection conditional=NETWORK_INFO
 Node
@@ -31,6 +30,7 @@ SharedWorker conditional=SHARED_WORKERS
 SharedWorkerContext conditional=SHARED_WORKERS
 SourceBufferList conditional=MEDIA_SOURCE
 SpeechRecognition conditional=SCRIPTED_SPEECH
+SpeechSynthesisUtterance conditional=SPEECH_SYNTHESIS
 SVGElementInstance conditional=SVG
 TextTrack conditional=VIDEO_TRACK
 TextTrackCue conditional=VIDEO_TRACK

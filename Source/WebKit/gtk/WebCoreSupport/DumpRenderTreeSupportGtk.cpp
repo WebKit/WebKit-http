@@ -709,6 +709,13 @@ void DumpRenderTreeSupportGtk::setExperimentalContentSecurityPolicyFeaturesEnabl
 #endif
 }
 
+void DumpRenderTreeSupportGtk::setSeamlessIFramesEnabled(bool enabled)
+{
+#if ENABLE(IFRAME_SEAMLESS)
+    RuntimeEnabledFeatures::setSeamlessIFramesEnabled(enabled);
+#endif
+}
+
 void DumpRenderTreeSupportGtk::setShadowDOMEnabled(bool enabled)
 {
 #if ENABLE(SHADOW_DOM)
@@ -761,9 +768,7 @@ JSValueRef DumpRenderTreeSupportGtk::computedStyleIncludingVisitedInfo(JSContext
 
 void DumpRenderTreeSupportGtk::deliverAllMutationsIfNecessary()
 {
-#if ENABLE(MUTATION_OBSERVERS)
     MutationObserver::deliverAllMutations();
-#endif
 }
 
 void DumpRenderTreeSupportGtk::setDomainRelaxationForbiddenForURLScheme(bool forbidden, const char* urlScheme)

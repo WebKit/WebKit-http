@@ -35,9 +35,11 @@ namespace WebCore {
 
 class ContainerNode;
 class DOMSelection;
+class Document;
 class Element;
 class HTMLLabelElement;
 class HTMLMapElement;
+class LayoutPoint;
 class IdTargetObserverRegistry;
 class Node;
 
@@ -46,6 +48,7 @@ class Node;
 // the destructor.
 class TreeScope {
     friend class Document;
+    friend class TreeScopeAdopter;
 
 public:
     TreeScope* parentTreeScope() const { return m_parentTreeScope; }
@@ -58,11 +61,15 @@ public:
     void addElementById(const AtomicString& elementId, Element*);
     void removeElementById(const AtomicString& elementId, Element*);
 
+    Document* documentScope() const { return m_documentScope; }
+
     Node* ancestorInThisScope(Node*) const;
 
     void addImageMap(HTMLMapElement*);
     void removeImageMap(HTMLMapElement*);
     HTMLMapElement* getImageMap(const String& url) const;
+
+    Element* elementFromPoint(int x, int y) const;
 
     // For accessibility.
     bool shouldCacheLabelsByForAttribute() const { return m_labelsByForAttribute; }
@@ -91,14 +98,31 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
+    static TreeScope* noDocumentInstance()
+    {
+        DEFINE_STATIC_LOCAL(TreeScope, instance, ());
+        return &instance;
+    }
+
 protected:
-    explicit TreeScope(ContainerNode*);
+    TreeScope(ContainerNode*, Document*);
+    TreeScope(Document*);
     virtual ~TreeScope();
 
     void destroyTreeScopeData();
+    void clearDocumentScope();
+    void setDocumentScope(Document* document)
+    {
+        ASSERT(document);
+        ASSERT(this != noDocumentInstance());
+        m_documentScope = document;
+    }
 
 private:
+    TreeScope();
+
     ContainerNode* m_rootNode;
+    Document* m_documentScope;
     TreeScope* m_parentTreeScope;
 
     OwnPtr<DocumentOrderedMap> m_elementsById;
@@ -121,6 +145,7 @@ inline bool TreeScope::containsMultipleElementsWithId(const AtomicString& id) co
     return m_elementsById && m_elementsById->containsMultiple(id.impl());
 }
 
+Node* nodeFromPoint(Document*, int x, int y, LayoutPoint* localPoint = 0);
 TreeScope* commonTreeScope(Node*, Node*);
 
 } // namespace WebCore

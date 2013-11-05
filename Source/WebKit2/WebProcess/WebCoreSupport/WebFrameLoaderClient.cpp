@@ -211,7 +211,7 @@ void WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge(DocumentLoa
     if (!webPage)
         return;
 
-    WebProcess::shared().authenticationManager().didReceiveAuthenticationChallenge(m_frame, challenge);
+    WebProcess::shared().supplement<AuthenticationManager>()->didReceiveAuthenticationChallenge(m_frame, challenge);
 }
 
 void WebFrameLoaderClient::dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long /*identifier*/, const AuthenticationChallenge&)    
@@ -464,7 +464,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad()
 
     // Notify the UIProcess.
 
-    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), response.mimeType(), m_frameHasCustomRepresentation, PlatformCertificateInfo(response), InjectedBundleUserMessageEncoder(userData.get())));
+    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), response.mimeType(), m_frameHasCustomRepresentation, m_frame->coreFrame()->loader()->loadType(), PlatformCertificateInfo(response), InjectedBundleUserMessageEncoder(userData.get())));
 
     // Only restore the scale factor for standard frame loads (of the main frame).
     if (m_frame->isMainFrame() && m_frame->coreFrame()->loader()->loadType() == FrameLoadTypeStandard) {
@@ -1226,19 +1226,30 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     Color backgroundColor = webPage->drawsTransparentBackground() ? Color::transparent : Color::white;
     bool isMainFrame = webPage->mainWebFrame() == m_frame;
+    bool isTransparent = !webPage->drawsBackground();
     bool shouldUseFixedLayout = isMainFrame && webPage->useFixedLayout();
+    bool shouldDisableScrolling = isMainFrame && !webPage->mainFrameIsScrollable();
+    bool shouldHideScrollbars = shouldUseFixedLayout || shouldDisableScrolling;
     IntRect currentFixedVisibleContentRect = m_frame->coreFrame()->view() ? m_frame->coreFrame()->view()->fixedVisibleContentRect() : IntRect();
 
     const ResourceResponse& response = m_frame->coreFrame()->loader()->documentLoader()->response();
     m_frameHasCustomRepresentation = isMainFrame && webPage->shouldUseCustomRepresentationForResponse(response);
     m_frameCameFromPageCache = false;
 
-    m_frame->coreFrame()->createView(webPage->size(), backgroundColor, /* transparent */ false, IntSize(), currentFixedVisibleContentRect, shouldUseFixedLayout);
-    m_frame->coreFrame()->view()->setTransparent(!webPage->drawsBackground());
+    ScrollbarMode defaultScrollbarMode = shouldHideScrollbars ? ScrollbarAlwaysOff : ScrollbarAuto;
+
+    m_frame->coreFrame()->createView(webPage->size(), backgroundColor, isTransparent,
+        IntSize(), currentFixedVisibleContentRect, shouldUseFixedLayout,
+        defaultScrollbarMode, /* lock */ shouldHideScrollbars, defaultScrollbarMode, /* lock */ shouldHideScrollbars);
+
+    m_frame->coreFrame()->view()->setProhibitsScrolling(shouldDisableScrolling);
 
 #if USE(TILED_BACKING_STORE)
-    m_frame->coreFrame()->view()->setDelegatesScrolling(shouldUseFixedLayout);
-    m_frame->coreFrame()->view()->setPaintsEntireContents(shouldUseFixedLayout);
+    if (shouldUseFixedLayout) {
+        m_frame->coreFrame()->view()->setDelegatesScrolling(shouldUseFixedLayout);
+        m_frame->coreFrame()->view()->setPaintsEntireContents(shouldUseFixedLayout);
+        return;
+    }
 #endif
 }
 
@@ -1556,17 +1567,6 @@ NSCachedURLResponse* WebFrameLoaderClient::willCacheResponse(DocumentLoader*, un
 }
 
 #endif // PLATFORM(MAC)
-
-#if PLATFORM(WIN) && USE(CFNETWORK)
-bool WebFrameLoaderClient::shouldCacheResponse(DocumentLoader*, unsigned long identifier, const ResourceResponse&, const unsigned char* data, unsigned long long length)
-{
-    WebPage* webPage = m_frame->page();
-    if (!webPage)
-        return true;
-
-    return webPage->injectedBundleResourceLoadClient().shouldCacheResponse(webPage, m_frame, identifier);
-}
-#endif // PLATFORM(WIN) && USE(CFNETWORK)
 
 #if ENABLE(WEB_INTENTS)
 void WebFrameLoaderClient::dispatchIntent(PassRefPtr<IntentRequest> request)

@@ -51,6 +51,16 @@ public:
 
     static PassOwnPtr<GLPlatformContext> createContext(GraphicsContext3D::RenderStyle);
 
+    static bool supportsGLExtension(const String&);
+
+#if USE(EGL)
+    static bool supportsEGLExtension(EGLDisplay, const String&);
+#endif
+
+#if USE(GLX)
+    static bool supportsGLXExtension(Display*, const String&);
+#endif
+
     virtual ~GLPlatformContext();
 
     virtual bool initialize(GLPlatformSurface*);
@@ -64,7 +74,7 @@ public:
     // Doesn't have any effect if this is not the current Context.
     void releaseCurrent();
 
-    PlatformContext handle() const;
+    virtual PlatformContext handle() const;
 
     virtual bool isCurrentContext() const;
 
@@ -82,10 +92,6 @@ protected:
     PlatformContext m_contextHandle;
     bool m_resetLostContext;
     bool m_contextLost;
-
-private:
-    static PassOwnPtr<GLPlatformContext> createOffScreenContext();
-    static PassOwnPtr<GLPlatformContext> createCurrentContextWrapper();
 };
 
 } // namespace WebCore

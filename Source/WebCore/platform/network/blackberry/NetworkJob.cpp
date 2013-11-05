@@ -63,6 +63,22 @@ inline static bool isUnauthorized(int statusCode)
     return statusCode == 401;
 }
 
+static char* const appendableHeaders[] = {"access-control-allow-origin", "allow",
+    "set-cookie", "set-cookie2", "vary", "via", "warning"};
+
+static bool isAppendableHeader(const String& key)
+{
+    // Non-standard header fields are conventionally marked by prefixing the field name with X-.
+    if (key.startsWith("x-"))
+        return true;
+
+    for (int i = 0; i < sizeof(appendableHeaders) /sizeof(char*); i++)
+        if (key == appendableHeaders[i])
+            return true;
+
+    return false;
+}
+
 NetworkJob::NetworkJob()
     : FrameDestructionObserver(0)
     , m_playerId(0)
@@ -252,7 +268,7 @@ void NetworkJob::notifyMultipartHeaderReceived(const char* key, const char* valu
         handleNotifyMultipartHeaderReceived(key, value);
 }
 
-void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthType authType, const char* realm, bool success, bool requireCredentials)
+void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthType authType, const char* realm, AuthResult result, bool requireCredentials)
 {
     using BlackBerry::Platform::NetworkRequest;
 
@@ -292,7 +308,12 @@ void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthTy
         return;
     }
 
-    if (success) {
+    // On success, update stored credentials if necessary
+    // On failure, purge credentials and send new request
+    // On retry, update stored credentials if necessary and send new request
+    if (result == AuthResultFailure)
+        purgeCredentials();
+    else {
         // Update the credentials that will be stored to match the scheme that was actually used
         AuthenticationChallenge& challenge = m_handle->getInternal()->m_currentWebChallenge;
         if (!challenge.isNull()) {
@@ -307,11 +328,9 @@ void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthTy
             }
         }
         storeCredentials();
-        return;
     }
-
-    purgeCredentials();
-    m_newJobWithCredentialsStarted = sendRequestWithCredentials(serverType, scheme, realm, requireCredentials);
+    if (result != AuthResultSuccess)
+        m_newJobWithCredentialsStarted = sendRequestWithCredentials(serverType, scheme, realm, requireCredentials);
 }
 
 void NetworkJob::notifyStringHeaderReceived(const String& key, const String& value)
@@ -333,20 +352,17 @@ void NetworkJob::handleNotifyHeaderReceived(const String& key, const String& val
         m_contentType = value.lower();
     else if (lowerKey == "content-disposition")
         m_contentDisposition = value;
-    else if (lowerKey == "set-cookie") {
-        if (m_frame && m_frame->loader() && m_frame->loader()->client()
-            && static_cast<FrameLoaderClientBlackBerry*>(m_frame->loader()->client())->cookiesEnabled()) {
-            handleSetCookieHeader(value);
-            // If there are several "Set-Cookie" headers, we should combine the following ones with the first.
-            if (m_response.httpHeaderFields().contains("Set-Cookie")) {
-                m_response.setHTTPHeaderField(key, m_response.httpHeaderField(key) + ", " + value);
-                return;
-            }
-        }
-    } else if (equalIgnoringCase(key, BlackBerry::Platform::NetworkRequest::HEADER_BLACKBERRY_FTP))
+    else if (lowerKey == "set-cookie" && m_frame && m_frame->loader() && m_frame->loader()->client()
+        && static_cast<FrameLoaderClientBlackBerry*>(m_frame->loader()->client())->cookiesEnabled())
+        handleSetCookieHeader(value);
+    else if (equalIgnoringCase(key, BlackBerry::Platform::NetworkRequest::HEADER_BLACKBERRY_FTP))
         handleFTPHeader(value);
 
-    m_response.setHTTPHeaderField(key, value);
+    if (m_response.httpHeaderFields().contains(key.utf8().data()) && isAppendableHeader(lowerKey)) {
+        // If there are several headers with same key, we should combine the following ones with the first.
+        m_response.setHTTPHeaderField(key, m_response.httpHeaderField(key) + ", " + value);
+    } else
+        m_response.setHTTPHeaderField(key, value);
 }
 
 void NetworkJob::handleNotifyMultipartHeaderReceived(const String& key, const String& value)

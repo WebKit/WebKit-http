@@ -79,6 +79,14 @@ WebInspector.ProfileType.prototype = {
         return "";
     },
 
+    /**
+     * @return {Element}
+     */
+    decorationElement: function()
+    {
+        return null;
+    },
+
     // Must be implemented by subclasses.
     /**
      * @param {string=} title
@@ -1377,6 +1385,7 @@ importScript("HeapSnapshotLoader.js");
 importScript("HeapSnapshotProxy.js");
 importScript("HeapSnapshotView.js");
 importScript("HeapSnapshotWorkerDispatcher.js");
+importScript("JSHeapSnapshot.js");
 importScript("NativeHeapGraph.js");
 importScript("NativeMemorySnapshotView.js");
 importScript("ProfileLauncherView.js");

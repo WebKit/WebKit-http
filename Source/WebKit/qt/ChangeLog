@@ -1,3 +1,181 @@
+2013-01-16  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Use the shared HistoryItem serialization for QWebHistory
+        https://bugs.webkit.org/show_bug.cgi?id=106671
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        Bump the serialization version and change the code to abort the
+        restore of a previous stream version rather than trying to keep the
+        support of restoring previous versions. This is mainly to simplify
+        things given that HistoryItem itself aborts in that case.
+ 
+        * Api/qwebhistory.cpp:
+        (operator<<):
+        (operator>>):
+        * tests/qwebhistory/tst_qwebhistory.cpp:
+        (tst_QWebHistory::serialize_2): Modify the test to cover same-document navigations.
+        (tst_QWebHistory::restoreIncompatibleVersion1): Add a previous version
+        hard-coded stream to verify that the deserialization doesn't hang or
+        crash.
+
+2013-01-16  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Crash in WebCore::CachedFrame::destroy
+        https://bugs.webkit.org/show_bug.cgi?id=104525
+
+        Reviewed by Adam Barth.
+
+        Remove the call to HistoryController::setCurrentItem which is ultimately
+        causing the initial empty document of a page to be added to the page cache.
+
+        This re-introduce the bug that was fixed by this line, which will be
+        properly fixed in a follow-up patch.
+
+        * Api/qwebhistory.cpp:
+        (operator>>):
+        * tests/qwebhistory/tst_qwebhistory.cpp:
+        (tst_QWebHistory::saveAndRestore_crash_4): Cover the crash.
+
+2013-01-11  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Rename current[Transform|Opacity|Filters] in TextureMapperLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=105760
+
+        Reviewed by Noam Rosenthal.
+
+        TextureMapperLayerClientQt uses setTransform() and setOpacity() in
+        GraphicsLayer instead of TextureMapperLayer like LayerTreeRenderer.
+        This removes unnecessary public API for TextureMapperLayer.
+
+        * WebCoreSupport/TextureMapperLayerClientQt.cpp:
+        (TextureMapperLayerClientQt::renderCompositedLayers):
+
+2013-01-11  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt][WK1] Web Audio support
+        https://bugs.webkit.org/show_bug.cgi?id=106651
+
+        Reviewed by Jocelyn Turcotte.
+
+        Expose setting to enable WebAudio at runtime.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+        (QWebSettings::QWebSettings):
+        * Api/qwebsettings.h:
+
+2013-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Removed the need for the ProposedDatabase mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=106292.
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        * WebCoreSupport/ChromeClientQt.h:
+        (ChromeClientQt):
+
+2013-01-07  Mike West  <mkwst@chromium.org>
+
+        [qt] Fix ENABLE_IFRAME_SEAMLESS=0 builds.
+        https://bugs.webkit.org/show_bug.cgi?id=106252
+
+        Reviewed by Eric Seidel.
+
+        Wrap the call to setSeamlessIFramesEnabled in an ifdef in order
+        to ensure that it's only called when IFRAME_SEAMLESS is enabled.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setSeamlessIFramesEnabled):
+
+2013-01-07  Mike West  <mkwst@chromium.org>
+
+        Make the IFRAME_SEAMLESS flag runtime-enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=106213
+
+        Reviewed by Ojan Vafai.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setSeamlessIFramesEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+            Add a toggle for seamless IFrames to QT's DRTSuport.
+
+2013-01-07  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Apply correct patch for the scrolling issue from bug 105014
+        https://bugs.webkit.org/show_bug.cgi?id=106219
+
+        Correct the if condition when overwriting the layout direction option
+        with the values from the facade options to only overwrite if the facade
+        direction is not equal to LayoutDirectionAuto.
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        * WidgetSupport/QStyleFacadeImp.cpp:
+        (WebKit::initGenericStyleOption):
+
+2013-01-07  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Horizontal scrollbars events are offseted making them difficult to use
+        https://bugs.webkit.org/show_bug.cgi?id=105014
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        Patch co-authored by Simon Hausmann.
+
+        Only copy the layout direction from the facade options if the
+        current option is Qt::LayoutDirectionAuto in order to prevent
+        misinterpretations as different layout direction when hit testing.
+
+        Tests added to tst_qwebview and tst_qgraphicswebview to verify
+        that the view actually is scrolled in the right direction.
+
+        * WidgetSupport/QStyleFacadeImp.cpp:
+        (WebKit::initGenericStyleOption):
+        * tests/qgraphicswebview/resources/scrolltest_page.html: Added.
+        * tests/qgraphicswebview/tst_qgraphicswebview.cpp:
+        (tst_QGraphicsWebView):
+        (tst_QGraphicsWebView::horizontalScrollbarTest):
+        * tests/qgraphicswebview/tst_qgraphicswebview.qrc:
+        * tests/qwebview/resources/scrolltest_page.html: Added.
+        * tests/qwebview/tst_qwebview.cpp:
+        (tst_QWebView):
+        (tst_QWebView::horizontalScrollbarTest):
+        * tests/qwebview/tst_qwebview.qrc:
+
+2012-12-23  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/12808377> Network process should respect cookie accept policy
+        https://bugs.webkit.org/show_bug.cgi?id=105684
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        * WebCoreSupport/PlatformStrategiesQt.h:
+        CookiesStrategy no longer has notifyCookiesChanged(). This port didn't use it anyway.
+
+2012-12-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a separate class for networking related storage
+        https://bugs.webkit.org/show_bug.cgi?id=105676
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::cookiesForDOM):
+        (PlatformStrategiesQt::setCookiesFromDOM):
+        (PlatformStrategiesQt::cookiesEnabled):
+        (PlatformStrategiesQt::cookieRequestHeaderFieldValue):
+        (PlatformStrategiesQt::getRawCookies):
+        (PlatformStrategiesQt::deleteCookie):
+        * WebCoreSupport/PlatformStrategiesQt.h:
+        Cookie functions now take a NetworkStorageSession, not a NetworkingContext.
+
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        Updated for ResourceHandle include changes.
+
 2012-12-18  Alexey Proskuryakov  <ap@apple.com>
 
         Remove unnecessary functions from CookiesStrategy

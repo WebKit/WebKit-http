@@ -26,10 +26,11 @@
 #include "config.h"
 #include "WebApplicationCacheManager.h"
 
-#include "MessageID.h"
+#include "ChildProcess.h"
 #include "SecurityOriginData.h"
+#include "WebApplicationCacheManagerMessages.h"
 #include "WebApplicationCacheManagerProxyMessages.h"
-#include "WebProcess.h"
+#include "WebCoreArgumentCoders.h"
 #include <WebCore/ApplicationCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/SecurityOrigin.h>
@@ -39,14 +40,16 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebApplicationCacheManager& WebApplicationCacheManager::shared()
+const AtomicString& WebApplicationCacheManager::supplementName()
 {
-    static WebApplicationCacheManager& shared = *new WebApplicationCacheManager;
-    return shared;
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebApplicationCacheManager", AtomicString::ConstructFromLiteral));
+    return name;
 }
 
-WebApplicationCacheManager::WebApplicationCacheManager()
+WebApplicationCacheManager::WebApplicationCacheManager(ChildProcess* childProcess)
+    : m_childProcess(childProcess)
 {
+    m_childProcess->addMessageReceiver(Messages::WebApplicationCacheManager::messageReceiverName(), this);
 }
 
 void WebApplicationCacheManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
@@ -56,8 +59,6 @@ void WebApplicationCacheManager::didReceiveMessage(CoreIPC::Connection* connecti
 
 void WebApplicationCacheManager::getApplicationCacheOrigins(uint64_t callbackID)
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash> origins;
 
     cacheStorage().getOriginsWithCache(origins);
@@ -78,13 +79,11 @@ void WebApplicationCacheManager::getApplicationCacheOrigins(uint64_t callbackID)
         identifiers.uncheckedAppend(originData);
     }
 
-    WebProcess::shared().connection()->send(Messages::WebApplicationCacheManagerProxy::DidGetApplicationCacheOrigins(identifiers, callbackID), 0);
+    m_childProcess->send(Messages::WebApplicationCacheManagerProxy::DidGetApplicationCacheOrigins(identifiers, callbackID), 0);
 }
 
 void WebApplicationCacheManager::deleteEntriesForOrigin(const SecurityOriginData& originData)
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     RefPtr<SecurityOrigin> origin = SecurityOrigin::create(originData.protocol, originData.host, originData.port);
     if (!origin)
         return;
@@ -94,15 +93,11 @@ void WebApplicationCacheManager::deleteEntriesForOrigin(const SecurityOriginData
 
 void WebApplicationCacheManager::deleteAllEntries()
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     cacheStorage().deleteAllEntries();
 }
 
 void WebApplicationCacheManager::setAppCacheMaximumSize(uint64_t size)
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     cacheStorage().setMaximumSize(size);
 }
 

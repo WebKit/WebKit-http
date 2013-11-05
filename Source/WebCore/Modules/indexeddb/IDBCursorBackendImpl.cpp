@@ -30,10 +30,10 @@
 
 #include "IDBBackingStore.h"
 #include "IDBCallbacks.h"
+#include "IDBDatabaseBackendImpl.h"
 #include "IDBDatabaseError.h"
 #include "IDBDatabaseException.h"
 #include "IDBKeyRange.h"
-#include "IDBObjectStoreBackendImpl.h"
 #include "IDBRequest.h"
 #include "IDBTracing.h"
 #include "IDBTransactionBackendImpl.h"
@@ -101,12 +101,13 @@ private:
     RefPtr<IDBCallbacks> m_callbacks;
 };
 
-IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, CursorType cursorType, IDBTransactionBackendInterface::TaskType taskType, IDBTransactionBackendImpl* transaction, IDBObjectStoreBackendImpl* objectStore)
-    : m_cursor(cursor)
-    , m_taskType(taskType)
+IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, CursorType cursorType, IDBTransactionBackendInterface::TaskType taskType, IDBTransactionBackendImpl* transaction, int64_t objectStoreId)
+    : m_taskType(taskType)
     , m_cursorType(cursorType)
+    , m_database(transaction->database())
     , m_transaction(transaction)
-    , m_objectStore(objectStore)
+    , m_objectStoreId(objectStoreId)
+    , m_cursor(cursor)
     , m_closed(false)
 {
     m_transaction->registerOpenCursor(this);
@@ -115,11 +116,6 @@ IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> c
 IDBCursorBackendImpl::~IDBCursorBackendImpl()
 {
     m_transaction->unregisterOpenCursor(this);
-    // Order is important, the cursors have to be destructed before the objectStore.
-    m_cursor.clear();
-    m_savedCursor.clear();
-
-    m_objectStore.clear();
 }
 
 
@@ -127,17 +123,14 @@ void IDBCursorBackendImpl::continueFunction(PassRefPtr<IDBKey> key, PassRefPtr<I
 {
     IDB_TRACE("IDBCursorBackendImpl::continue");
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
-    if (!m_transaction->scheduleTask(m_taskType, CursorIterationOperation::create(this, key, callbacks)))
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError));
+    m_transaction->scheduleTask(m_taskType, CursorIterationOperation::create(this, key, callbacks));
 }
 
 void IDBCursorBackendImpl::advance(unsigned long count, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
 {
     IDB_TRACE("IDBCursorBackendImpl::advance");
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
-
-    if (!m_transaction->scheduleTask(CursorAdvanceOperation::create(this, count, callbacks)))
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError));
+    m_transaction->scheduleTask(CursorAdvanceOperation::create(this, count, callbacks));
 }
 
 void IDBCursorBackendImpl::CursorAdvanceOperation::perform(IDBTransactionBackendImpl*)
@@ -173,16 +166,14 @@ void IDBCursorBackendImpl::deleteFunction(PassRefPtr<IDBCallbacks> prpCallbacks,
     RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(m_cursor->primaryKey(), ec);
     ASSERT(!ec);
 
-    m_objectStore->deleteFunction(keyRange.release(), prpCallbacks, m_transaction.get(), ec);
-    ASSERT(!ec);
+    m_database->deleteRange(m_transaction->id(), m_objectStoreId, keyRange.release(), prpCallbacks);
 }
 
 void IDBCursorBackendImpl::prefetchContinue(int numberToFetch, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
 {
     IDB_TRACE("IDBCursorBackendImpl::prefetchContinue");
     RefPtr<IDBCallbacks> callbacks = prpCallbacks;
-    if (!m_transaction->scheduleTask(m_taskType, CursorPrefetchIterationOperation::create(this, numberToFetch, callbacks)))
-        callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::AbortError));
+    m_transaction->scheduleTask(m_taskType, CursorPrefetchIterationOperation::create(this, numberToFetch, callbacks));
 }
 
 void IDBCursorBackendImpl::CursorPrefetchIterationOperation::perform(IDBTransactionBackendImpl*)
@@ -208,15 +199,19 @@ void IDBCursorBackendImpl::CursorPrefetchIterationOperation::perform(IDBTransact
         foundKeys.append(m_cursor->m_cursor->key());
         foundPrimaryKeys.append(m_cursor->m_cursor->primaryKey());
 
-        if (m_cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
-            foundValues.append(SerializedScriptValue::createFromWireBytes(m_cursor->m_cursor->value()));
-        else
+        switch (m_cursor->m_cursorType) {
+        case KeyOnly:
             foundValues.append(SerializedScriptValue::create());
-
+            break;
+        case KeyAndValue:
+            sizeEstimate += m_cursor->m_cursor->value().size();
+            foundValues.append(SerializedScriptValue::createFromWireBytes(m_cursor->m_cursor->value()));
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
         sizeEstimate += m_cursor->m_cursor->key()->sizeEstimate();
         sizeEstimate += m_cursor->m_cursor->primaryKey()->sizeEstimate();
-        if (m_cursor->m_cursorType != IDBCursorBackendInterface::IndexKeyCursor)
-            sizeEstimate += m_cursor->m_cursor->value().size();
 
         if (sizeEstimate > maxSizeEstimate)
             break;

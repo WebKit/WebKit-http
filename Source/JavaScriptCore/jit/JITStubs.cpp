@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) Research In Motion Limited 2010, 2011. All rights reserved.
  *
@@ -280,11 +280,13 @@ extern "C" {
 #define PRESERVED_S0_OFFSET         64
 #define PRESERVED_S1_OFFSET         68
 #define PRESERVED_S2_OFFSET         72
-#define PRESERVED_RETURN_ADDRESS_OFFSET 76
-#define THUNK_RETURN_ADDRESS_OFFSET 80
-#define REGISTER_FILE_OFFSET        84
-#define GLOBAL_DATA_OFFSET         100
-#define STACK_LENGTH               104
+#define PRESERVED_S3_OFFSET         76
+#define PRESERVED_S4_OFFSET         80
+#define PRESERVED_RETURN_ADDRESS_OFFSET 84
+#define THUNK_RETURN_ADDRESS_OFFSET 88
+#define REGISTER_FILE_OFFSET        92
+#define GLOBAL_DATA_OFFSET         108
+#define STACK_LENGTH               112
 #elif CPU(SH4)
 #define SYMBOL_STRING(name) #name
 /* code (r4), JSStack* (r5), CallFrame* (r6), void* unused1 (r7), void* unused2(sp), JSGlobalData (sp)*/
@@ -451,6 +453,8 @@ asm (
 SYMBOL_STRING(ctiTrampoline) ":" "\n"
     "addiu $29,$29,-" STRINGIZE_VALUE_OF(STACK_LENGTH) "\n"
     "sw    $31," STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "($29)" "\n"
+    "sw    $20," STRINGIZE_VALUE_OF(PRESERVED_S4_OFFSET) "($29)" "\n"
+    "sw    $19," STRINGIZE_VALUE_OF(PRESERVED_S3_OFFSET) "($29)" "\n"
     "sw    $18," STRINGIZE_VALUE_OF(PRESERVED_S2_OFFSET) "($29)" "\n"
     "sw    $17," STRINGIZE_VALUE_OF(PRESERVED_S1_OFFSET) "($29)" "\n"
     "sw    $16," STRINGIZE_VALUE_OF(PRESERVED_S0_OFFSET) "($29)" "\n"
@@ -467,12 +471,17 @@ SYMBOL_STRING(ctiTrampoline) ":" "\n"
     "lw    $16," STRINGIZE_VALUE_OF(PRESERVED_S0_OFFSET) "($29)" "\n"
     "lw    $17," STRINGIZE_VALUE_OF(PRESERVED_S1_OFFSET) "($29)" "\n"
     "lw    $18," STRINGIZE_VALUE_OF(PRESERVED_S2_OFFSET) "($29)" "\n"
+    "lw    $19," STRINGIZE_VALUE_OF(PRESERVED_S3_OFFSET) "($29)" "\n"
+    "lw    $20," STRINGIZE_VALUE_OF(PRESERVED_S4_OFFSET) "($29)" "\n"
     "lw    $31," STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "($29)" "\n"
     "jr    $31" "\n"
     "addiu $29,$29," STRINGIZE_VALUE_OF(STACK_LENGTH) "\n"
 ".set reorder" "\n"
 ".set macro" "\n"
 ".end " SYMBOL_STRING(ctiTrampoline) "\n"
+".globl " SYMBOL_STRING(ctiTrampolineEnd) "\n"
+HIDE_SYMBOL(ctiTrampolineEnd) "\n"
+SYMBOL_STRING(ctiTrampolineEnd) ":" "\n"
 );
 
 asm (
@@ -485,8 +494,8 @@ asm (
 ".ent " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
 SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
 #if WTF_MIPS_PIC
-    "lw    $28," STRINGIZE_VALUE_OF(PRESERVED_GP_OFFSET) "($29)" "\n"
 ".set macro" "\n"
+".cpload $31" "\n"
     "la    $25," SYMBOL_STRING(cti_vm_throw) "\n"
 ".set nomacro" "\n"
     "bal " SYMBOL_STRING(cti_vm_throw) "\n"
@@ -498,6 +507,8 @@ SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
     "lw    $16," STRINGIZE_VALUE_OF(PRESERVED_S0_OFFSET) "($29)" "\n"
     "lw    $17," STRINGIZE_VALUE_OF(PRESERVED_S1_OFFSET) "($29)" "\n"
     "lw    $18," STRINGIZE_VALUE_OF(PRESERVED_S2_OFFSET) "($29)" "\n"
+    "lw    $19," STRINGIZE_VALUE_OF(PRESERVED_S3_OFFSET) "($29)" "\n"
+    "lw    $20," STRINGIZE_VALUE_OF(PRESERVED_S4_OFFSET) "($29)" "\n"
     "lw    $31," STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "($29)" "\n"
     "jr    $31" "\n"
     "addiu $29,$29," STRINGIZE_VALUE_OF(STACK_LENGTH) "\n"
@@ -518,6 +529,8 @@ SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
     "lw    $16," STRINGIZE_VALUE_OF(PRESERVED_S0_OFFSET) "($29)" "\n"
     "lw    $17," STRINGIZE_VALUE_OF(PRESERVED_S1_OFFSET) "($29)" "\n"
     "lw    $18," STRINGIZE_VALUE_OF(PRESERVED_S2_OFFSET) "($29)" "\n"
+    "lw    $19," STRINGIZE_VALUE_OF(PRESERVED_S3_OFFSET) "($29)" "\n"
+    "lw    $20," STRINGIZE_VALUE_OF(PRESERVED_S4_OFFSET) "($29)" "\n"
     "lw    $31," STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "($29)" "\n"
     "jr    $31" "\n"
     "addiu $29,$29," STRINGIZE_VALUE_OF(STACK_LENGTH) "\n"
@@ -776,14 +789,11 @@ __asm void ctiOpThrowNotCaught()
     #define CTI_SAMPLER 0
 #endif
 
-JITThunks::JITThunks(JSGlobalData* globalData)
-    : m_hostFunctionStubMap(adoptPtr(new HostFunctionStubMap))
+void performPlatformSpecificJITAssertions(JSGlobalData* globalData)
 {
     if (!globalData->canUseJIT())
         return;
 
-    m_executableMemory = JIT::compileCTIMachineTrampolines(globalData, &m_trampolineStructure);
-    ASSERT(!!m_executableMemory);
 #if CPU(ARM_THUMB2)
     // Unfortunate the arm compiler does not like the use of offsetof on JITStackFrame (since it contains non POD types),
     // and the OBJECT_OFFSETOF macro does not appear constantish enough for it to be happy with its use in COMPILE_ASSERT
@@ -823,11 +833,7 @@ JITThunks::JITThunks(JSGlobalData* globalData)
 #endif
 }
 
-JITThunks::~JITThunks()
-{
-}
-
-NEVER_INLINE void JITThunks::tryCachePutByID(CallFrame* callFrame, CodeBlock* codeBlock, ReturnAddressPtr returnAddress, JSValue baseValue, const PutPropertySlot& slot, StructureStubInfo* stubInfo, bool direct)
+NEVER_INLINE static void tryCachePutByID(CallFrame* callFrame, CodeBlock* codeBlock, ReturnAddressPtr returnAddress, JSValue baseValue, const PutPropertySlot& slot, StructureStubInfo* stubInfo, bool direct)
 {
     // The interpreter checks for recursion here; I do not believe this can occur in CTI.
 
@@ -881,7 +887,7 @@ NEVER_INLINE void JITThunks::tryCachePutByID(CallFrame* callFrame, CodeBlock* co
     JIT::patchPutByIdReplace(codeBlock, stubInfo, structure, slot.cachedOffset(), returnAddress, direct);
 }
 
-NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* codeBlock, ReturnAddressPtr returnAddress, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo* stubInfo)
+NEVER_INLINE static void tryCacheGetByID(CallFrame* callFrame, CodeBlock* codeBlock, ReturnAddressPtr returnAddress, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo* stubInfo)
 {
     // FIXME: Write a test that proves we need to check for recursion here just
     // like the interpreter does, then add a check for recursion.
@@ -902,7 +908,7 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
     if (isJSString(baseValue) && propertyName == callFrame->propertyNames().length) {
         // The tradeoff of compiling an patched inline string length access routine does not seem
         // to pay off, so we currently only do this for arrays.
-        ctiPatchCallByReturnAddress(codeBlock, returnAddress, globalData->jitStubs->ctiStringLengthTrampoline());
+        ctiPatchCallByReturnAddress(codeBlock, returnAddress, globalData->getCTIStub(stringLengthTrampolineGenerator).code());
         return;
     }
 
@@ -1118,9 +1124,9 @@ template<typename T> static T throwExceptionFromOpCall(JITStackFrame& jitStackFr
         ".globl " SYMBOL_STRING(cti_##op) "\n" \
         ".ent " SYMBOL_STRING(cti_##op) "\n" \
         SYMBOL_STRING(cti_##op) ":" "\n" \
-        "lw    $28," STRINGIZE_VALUE_OF(PRESERVED_GP_OFFSET) "($29)" "\n" \
-        "sw    $31," STRINGIZE_VALUE_OF(THUNK_RETURN_ADDRESS_OFFSET) "($29)" "\n" \
         ".set macro" "\n" \
+        ".cpload $25" "\n" \
+        "sw    $31," STRINGIZE_VALUE_OF(THUNK_RETURN_ADDRESS_OFFSET) "($29)" "\n" \
         "la    $25," SYMBOL_STRING(JITStubThunked_##op) "\n" \
         ".set nomacro" "\n" \
         ".reloc 1f,R_MIPS_JALR," SYMBOL_STRING(JITStubThunked_##op) "\n" \
@@ -1444,7 +1450,7 @@ DEFINE_STUB_FUNCTION(void, op_put_by_id)
         if (!stubInfo->seenOnce())
             stubInfo->setSeen();
         else
-            JITThunks::tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, false);
+            tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, false);
     }
     
     CHECK_FOR_EXCEPTION_AT_END();
@@ -1470,7 +1476,7 @@ DEFINE_STUB_FUNCTION(void, op_put_by_id_direct)
         if (!stubInfo->seenOnce())
             stubInfo->setSeen();
         else
-            JITThunks::tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, true);
+            tryCachePutByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, stackFrame.args[0].jsValue(), slot, stubInfo, true);
     }
     
     CHECK_FOR_EXCEPTION_AT_END();
@@ -1545,7 +1551,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id)
     if (!stubInfo->seenOnce())
         stubInfo->setSeen();
     else
-        JITThunks::tryCacheGetByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, baseValue, ident, slot, stubInfo);
+        tryCacheGetByID(callFrame, codeBlock, STUB_RETURN_ADDRESS, baseValue, ident, slot, stubInfo);
 
     CHECK_FOR_EXCEPTION_AT_END();
     return JSValue::encode(result);
@@ -2158,6 +2164,69 @@ DEFINE_STUB_FUNCTION(void*, vm_lazyLinkCall)
         return throwExceptionFromOpCall<void*>(stackFrame, callFrame, STUB_RETURN_ADDRESS);
 
     return result;
+}
+
+DEFINE_STUB_FUNCTION(void*, vm_lazyLinkClosureCall)
+{
+    STUB_INIT_STACK_FRAME(stackFrame);
+
+    CallFrame* callFrame = stackFrame.callFrame;
+    
+    CodeBlock* callerCodeBlock = callFrame->callerFrame()->codeBlock();
+    JSGlobalData* globalData = callerCodeBlock->globalData();
+    CallLinkInfo* callLinkInfo = &callerCodeBlock->getCallLinkInfo(callFrame->returnPC());
+    JSFunction* callee = jsCast<JSFunction*>(callFrame->callee());
+    ExecutableBase* executable = callee->executable();
+    Structure* structure = callee->structure();
+    
+    ASSERT(callLinkInfo->callType == CallLinkInfo::Call);
+    ASSERT(callLinkInfo->isLinked());
+    ASSERT(callLinkInfo->callee);
+    ASSERT(callee != callLinkInfo->callee.get());
+    
+    bool shouldLink = false;
+    CodeBlock* calleeCodeBlock = 0;
+    MacroAssemblerCodePtr codePtr;
+    
+    if (executable == callLinkInfo->callee.get()->executable()
+        && structure == callLinkInfo->callee.get()->structure()) {
+        
+        shouldLink = true;
+        
+        ASSERT(executable->hasJITCodeForCall());
+        codePtr = executable->generatedJITCodeForCall().addressForCall();
+        if (!callee->executable()->isHostFunction()) {
+            calleeCodeBlock = &jsCast<FunctionExecutable*>(executable)->generatedBytecodeForCall();
+            if (callFrame->argumentCountIncludingThis() < static_cast<size_t>(calleeCodeBlock->numParameters())) {
+                shouldLink = false;
+                codePtr = executable->generatedJITCodeWithArityCheckFor(CodeForCall);
+            }
+        }
+    } else if (callee->isHostFunction())
+        codePtr = executable->generatedJITCodeForCall().addressForCall();
+    else {
+        // Need to clear the code block before compilation, because compilation can GC.
+        callFrame->setCodeBlock(0);
+        
+        FunctionExecutable* functionExecutable = jsCast<FunctionExecutable*>(executable);
+        JSScope* scopeChain = callee->scope();
+        JSObject* error = functionExecutable->compileFor(callFrame, scopeChain, CodeForCall);
+        if (error) {
+            callFrame->globalData().exception = error;
+            return 0;
+        }
+        
+        codePtr = functionExecutable->generatedJITCodeWithArityCheckFor(CodeForCall);
+    }
+    
+    if (shouldLink) {
+        ASSERT(codePtr);
+        JIT::compileClosureCall(globalData, callLinkInfo, callerCodeBlock, calleeCodeBlock, structure, executable, codePtr);
+        callLinkInfo->hasSeenClosure = true;
+    } else
+        JIT::linkSlowCall(callerCodeBlock, callLinkInfo);
+
+    return codePtr.executableAddress();
 }
 
 DEFINE_STUB_FUNCTION(void*, vm_lazyLinkConstruct)
@@ -3410,48 +3479,6 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, to_object)
 
     CallFrame* callFrame = stackFrame.callFrame;
     return JSValue::encode(stackFrame.args[0].jsValue().toObject(callFrame));
-}
-
-MacroAssemblerCodeRef JITThunks::ctiStub(JSGlobalData* globalData, ThunkGenerator generator)
-{
-    CTIStubMap::AddResult entry = m_ctiStubMap.add(generator, MacroAssemblerCodeRef());
-    if (entry.isNewEntry)
-        entry.iterator->value = generator(globalData);
-    return entry.iterator->value;
-}
-
-NativeExecutable* JITThunks::hostFunctionStub(JSGlobalData* globalData, NativeFunction function, NativeFunction constructor)
-{
-    if (NativeExecutable* nativeExecutable = m_hostFunctionStubMap->get(function))
-        return nativeExecutable;
-
-    NativeExecutable* nativeExecutable = NativeExecutable::create(*globalData, JIT::compileCTINativeCall(globalData, function), function, MacroAssemblerCodeRef::createSelfManagedCodeRef(ctiNativeConstruct()), constructor, NoIntrinsic);
-    weakAdd(*m_hostFunctionStubMap, function, PassWeak<NativeExecutable>(nativeExecutable));
-    return nativeExecutable;
-}
-
-NativeExecutable* JITThunks::hostFunctionStub(JSGlobalData* globalData, NativeFunction function, ThunkGenerator generator, Intrinsic intrinsic)
-{
-    if (NativeExecutable* nativeExecutable = m_hostFunctionStubMap->get(function))
-        return nativeExecutable;
-
-    MacroAssemblerCodeRef code;
-    if (generator) {
-        if (globalData->canUseJIT())
-            code = generator(globalData);
-        else
-            code = MacroAssemblerCodeRef();
-    } else
-        code = JIT::compileCTINativeCall(globalData, function);
-
-    NativeExecutable* nativeExecutable = NativeExecutable::create(*globalData, code, function, MacroAssemblerCodeRef::createSelfManagedCodeRef(ctiNativeConstruct()), callHostFunctionAsConstructor, intrinsic);
-    weakAdd(*m_hostFunctionStubMap, function, PassWeak<NativeExecutable>(nativeExecutable));
-    return nativeExecutable;
-}
-
-void JITThunks::clearHostFunctionStubs()
-{
-    m_hostFunctionStubMap.clear();
 }
 
 } // namespace JSC

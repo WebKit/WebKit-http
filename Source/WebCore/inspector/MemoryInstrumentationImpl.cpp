@@ -101,16 +101,16 @@ void MemoryInstrumentationClientImpl::reportNode(const MemoryObjectInfo& node)
         m_graphSerializer->reportNode(node);
 }
 
-void MemoryInstrumentationClientImpl::reportEdge(const void* source, const void* target, const char* name)
+void MemoryInstrumentationClientImpl::reportEdge(const void* target, const char* name, MemberType memberType)
 {
     if (m_graphSerializer)
-        m_graphSerializer->reportEdge(source, target, name);
+        m_graphSerializer->reportEdge(target, name, memberType);
 }
 
-void MemoryInstrumentationClientImpl::reportLeaf(const void* owner, const MemoryObjectInfo& target, const char* edgeName)
+void MemoryInstrumentationClientImpl::reportLeaf(const MemoryObjectInfo& target, const char* edgeName)
 {
     if (m_graphSerializer)
-        m_graphSerializer->reportLeaf(owner, target, edgeName);
+        m_graphSerializer->reportLeaf(target, edgeName);
 }
 
 void MemoryInstrumentationClientImpl::reportBaseAddress(const void* base, const void* real)
@@ -126,6 +126,7 @@ void MemoryInstrumentationClientImpl::reportMemoryUsage(MemoryObjectInfo* memory
     info.addMember(m_visitedObjects);
     info.addMember(m_allocatedObjects);
     info.addMember(m_countedObjects);
+    info.addMember(m_graphSerializer);
 }
 
 void MemoryInstrumentationImpl::processDeferredObjects()

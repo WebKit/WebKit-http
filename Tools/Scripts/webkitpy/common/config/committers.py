@@ -30,6 +30,7 @@
 # WebKit's Python module for committer and reviewer validation.
 
 from webkitpy.common.editdistance import edit_distance
+import fnmatch
 
 class Account(object):
     def __init__(self, name, email_or_emails, irc_nickname_or_nicknames=None):
@@ -69,6 +70,18 @@ class Account(object):
                 return True
         return False
 
+    def matches_glob(self, glob_string):
+        if fnmatch.fnmatch(self.full_name, glob_string):
+            return True
+        if self.irc_nicknames:
+            for nickname in self.irc_nicknames:
+                if fnmatch.fnmatch(nickname, glob_string):
+                    return True
+        for email in self.emails:
+            if fnmatch.fnmatch(email, glob_string):
+                return True
+        return False
+
 
 class Contributor(Account):
     def __init__(self, name, email_or_emails, irc_nickname=None):
@@ -98,6 +111,7 @@ watchers_who_are_not_contributors = [
     Account("David Levin", ["levin+threading@chromium.org"], ""),
     Account("David Levin", ["levin+watchlist@chromium.org"], ""),
     Account("Kent Tamura", ["tkent+wkapi@chromium.org"], ""),
+    Account("Mike West", ["mkwst+watchlist@chromium.org"], ""),
 ]
 
 
@@ -109,6 +123,7 @@ watchers_who_are_not_contributors = [
 contributors_who_are_not_committers = [
     Contributor("Adobe Bug Tracker", "WebkitBugTracker@adobe.com"),
     Contributor("Aharon Lanin", "aharon@google.com"),
+    Contributor("Alan Cutter", "alancutter@chromium.org", "alancutter"),
     Contributor("Alan Stearns", "stearns@adobe.com", "astearns"),
     Contributor("Alejandro Pineiro", "apinheiro@igalia.com"),
     Contributor("Alexey Marinichev", ["amarinichev@chromium.org", "amarinichev@google.com"], "amarinichev"),
@@ -136,7 +151,6 @@ contributors_who_are_not_committers = [
     Contributor("Gabor Ballabas", "gaborb@inf.u-szeged.hu", "bgabor"),
     Contributor("Grace Kloba", "klobag@chromium.org", "klobag"),
     Contributor("Greg Simon", "gregsimon@chromium.org", "gregsimon"),
-    Contributor("Gregg Tavares", ["gman@google.com", "gman@chromium.org"], "gman"),
     Contributor("Hao Zheng", "zhenghao@chromium.org"),
     Contributor("Harald Alvestrand", "hta@google.com", "hta"),
     Contributor("Ian Hickson", "ian@hixie.ch", "hixie"),
@@ -150,6 +164,7 @@ contributors_who_are_not_committers = [
     Contributor("Kulanthaivel Palanichamy", "kulanthaivel@codeaurora.org", "kvel"),
     Contributor("Kiran Muppala", "cmuppala@apple.com", "kiranm"),
     Contributor("Koji Ishii", "kojiishi@gmail.com"),
+    Contributor("Michael Pruett", "michael@68k.org", "mpruett"),
     Contributor("Mihai Balan", "mibalan@adobe.com", "miChou"),
     Contributor("Mihai Maerean", "mmaerean@adobe.com", "mmaerean"),
     Contributor("Min Qin", "qinmin@chromium.org"),
@@ -197,7 +212,6 @@ committers_unable_to_review = [
     Committer("Alexandre Elias", ["aelias@chromium.org", "aelias@google.com"], "aelias"),
     Committer("Alexandru Chiculita", "achicu@adobe.com", "achicu"),
     Committer("Alice Boxhall", "aboxhall@chromium.org", "aboxhall"),
-    Committer("Allan Sandfeld Jensen", ["allan.jensen@digia.com", "kde@carewolf.com", "sandfeld@kde.org", "allan.jensen@nokia.com"], "carewolf"),
     Committer("Alok Priyadarshi", "alokp@chromium.org", "alokp"),
     Committer("Ami Fischman", ["fischman@chromium.org", "fischman@google.com"], "fischman"),
     Committer("Amruth Raj", "amruthraj@motorola.com", "amruthraj"),
@@ -270,6 +284,7 @@ committers_unable_to_review = [
     Committer("Girish Ramakrishnan", ["girish@forwardbias.in", "ramakrishnan.girish@gmail.com"], "girishr"),
     Committer("Graham Dennis", ["Graham.Dennis@gmail.com", "gdennis@webkit.org"]),
     Committer("Greg Bolsinga", "bolsinga@apple.com"),
+    Committer("Gregg Tavares", ["gman@google.com", "gman@chromium.org"], "gman"),
     Committer("Grzegorz Czajkowski", "g.czajkowski@samsung.com", "grzegorz"),
     Committer("Hans Wennborg", "hans@chromium.org", "hwennborg"),
     Committer("Hayato Ito", "hayato@chromium.org", "hayato"),
@@ -341,7 +356,7 @@ committers_unable_to_review = [
     Committer("Mads Ager", "ager@chromium.org"),
     Committer("Mahesh Kulkarni", ["mahesh.kulkarni@nokia.com", "maheshk@webkit.org"], "maheshk"),
     Committer("Marcus Voltis Bulach", "bulach@chromium.org"),
-    Committer("Mario Sanchez Prada", ["mario@webkit.org"], "msanchez"),
+    Committer("Mario Sanchez Prada", ["mario@webkit.org", "mario.prada@samsung.com"], "msanchez"),
     Committer("Mark Lam", "mark.lam@apple.com", "mlam"),
     Committer("Mary Wu", ["mary.wu@torchmobile.com.cn", "wwendy2007@gmail.com"], "marywu"),
     Committer("Matt Delaney", "mdelaney@apple.com"),
@@ -416,7 +431,7 @@ committers_unable_to_review = [
     Committer("Tristan O'Tierney", ["tristan@otierney.net", "tristan@apple.com"]),
     Committer("Vangelis Kokkevis", "vangelis@chromium.org", "vangelis"),
     Committer("Viatcheslav Ostapenko", ["ostap73@gmail.com", "v.ostapenko@samsung.com", "v.ostapenko@sisa.samsung.com"], "ostap"),
-    Committer("Victor Carbune", "victor@rosedu.org", "vcarbune"),
+    Committer("Victor Carbune", ["vcarbune@chromium.org", "victor@rosedu.org"], "vcarbune"),
     Committer("Victor Wang", "victorw@chromium.org", "victorw"),
     Committer("Victoria Kirst", ["vrk@chromium.org", "vrk@google.com"], "vrk"),
     Committer("Vincent Scheib", "scheib@chromium.org", "scheib"),
@@ -462,6 +477,7 @@ reviewers_list = [
     Reviewer("Alexey Proskuryakov", ["ap@webkit.org", "ap@apple.com"], "ap"),
     Reviewer("Alexis Menard", ["alexis@webkit.org", "menard@kde.org"], "darktears"),
     Reviewer("Alice Liu", "alice.liu@apple.com", "aliu"),
+    Reviewer("Allan Sandfeld Jensen", ["allan.jensen@digia.com", "kde@carewolf.com", "sandfeld@kde.org", "allan.jensen@nokia.com"], "carewolf"),
     Reviewer("Alp Toker", ["alp@nuanti.com", "alp@atoker.com", "alp@webkit.org"], "alp"),
     Reviewer("Anders Carlsson", ["andersca@apple.com", "acarlsson@apple.com"], "andersca"),
     Reviewer("Andreas Kling", ["akling@apple.com", "kling@webkit.org", "awesomekling@apple.com", "andreas.kling@nokia.com"], "kling"),
@@ -557,7 +573,7 @@ reviewers_list = [
     Reviewer("Simon Hausmann", ["hausmann@webkit.org", "hausmann@kde.org", "simon.hausmann@digia.com"], "tronical"),
     Reviewer("Stephanie Lewis", "slewis@apple.com", "sundiamonde"),
     Reviewer("Stephen White", "senorblanco@chromium.org", "senorblanco"),
-    Reviewer("Steve Block", "steveblock@google.com", "steveblock"),
+    Reviewer("Steve Block", ["steveblock@chromium.org", "steveblock@google.com"], "steveblock"),
     Reviewer("Steve Falkenburg", "sfalken@apple.com", "sfalken"),
     Reviewer("Tim Omernick", "timo@apple.com"),
     Reviewer("Timothy Hatcher", ["timothy@apple.com", "timothy@hatcher.name"], "xenon"),
@@ -654,7 +670,8 @@ class CommitterList(object):
         return None
 
     def contributors_by_search_string(self, string):
-        return filter(lambda contributor: contributor.contains_string(string), self.contributors())
+        glob_matches = filter(lambda contributor: contributor.matches_glob(string), self.contributors())
+        return glob_matches or filter(lambda contributor: contributor.contains_string(string), self.contributors())
 
     def contributors_by_email_username(self, string):
         string = string + '@'

@@ -28,35 +28,32 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "Arguments.h"
+#include "MessageReceiver.h"
+#include "WebProcessSupplement.h"
 #include <WebCore/DatabaseManagerClient.h>
+#include <stdint.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/text/WTFString.h>
-
-namespace CoreIPC {
-class MessageDecoder;
-class Connection;
-class MessageID;
-}
 
 namespace WebKit {
 
-class WebDatabaseManager : public WebCore::DatabaseManagerClient {
+class WebProcess;
+
+class WebDatabaseManager : public WebCore::DatabaseManagerClient, public WebProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebDatabaseManager);
 public:
-    static WebDatabaseManager& shared();
-    static void initialize(const String& databaseDirectory);
+    explicit WebDatabaseManager(WebProcess*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    static const AtomicString& supplementName();
+
     void setQuotaForOrigin(const String& originIdentifier, unsigned long long quota) const;
-
-public:
     void deleteAllDatabases() const;
 
 private:
-    WebDatabaseManager();
-    virtual ~WebDatabaseManager();
+    // WebProcessSupplement
+    virtual void initialize(const WebProcessCreationParameters&) OVERRIDE;
 
+    // CoreIPC::MessageReceiver
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
     // Implemented in generated WebDatabaseManagerMessageReceiver.cpp
     void didReceiveWebDatabaseManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
@@ -68,6 +65,8 @@ private:
     // WebCore::DatabaseManagerClient
     virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*) OVERRIDE;
     virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const String& databaseIdentifier) OVERRIDE;
+
+    WebProcess* m_process;
 };
 
 } // namespace WebKit

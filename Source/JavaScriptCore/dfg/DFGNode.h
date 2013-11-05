@@ -32,6 +32,7 @@
 
 #include "CodeBlock.h"
 #include "CodeOrigin.h"
+#include "DFGAbstractValue.h"
 #include "DFGAdjacencyList.h"
 #include "DFGArrayMode.h"
 #include "DFGCommon.h"
@@ -702,6 +703,16 @@ struct Node {
         ASSERT(JSValue(result).isFunction());
         return result;
     }
+    
+    bool hasExecutable()
+    {
+        return op() == CheckExecutable;
+    }
+    
+    ExecutableBase* executable()
+    {
+        return jsCast<ExecutableBase*>(reinterpret_cast<JSCell*>(m_opInfo));
+    }
 
     bool hasStructureTransitionData()
     {
@@ -1182,6 +1193,11 @@ private:
     unsigned m_opInfo2;
     // The prediction ascribed to this node after propagation.
     SpeculatedType m_prediction;
+
+public:
+    // Fields used by various analyses.
+    AbstractValue value;
+    NodeIndex replacement;
 };
 
 } } // namespace JSC::DFG

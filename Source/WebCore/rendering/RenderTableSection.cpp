@@ -89,7 +89,7 @@ static inline void updateLogicalHeightForCell(RenderTableSection::RowStruct& row
 }
 
 
-RenderTableSection::RenderTableSection(Node* node)
+RenderTableSection::RenderTableSection(ContainerNode* node)
     : RenderBox(node)
     , m_cCol(0)
     , m_cRow(0)
@@ -130,10 +130,6 @@ void RenderTableSection::willBeRemovedFromTree()
 
 void RenderTableSection::addChild(RenderObject* child, RenderObject* beforeChild)
 {
-    // Make sure we don't append things after :after-generated content if we have it.
-    if (!beforeChild)
-        beforeChild = afterPseudoElementRenderer();
-
     if (!child->isTableRow()) {
         RenderObject* last = beforeChild;
         if (!last)
@@ -1457,6 +1453,7 @@ void RenderTableSection::RowStruct::reportMemoryUsage(MemoryObjectInfo* memoryOb
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
     info.addMember(row);
     info.addMember(rowRenderer);
+    info.addMember(logicalHeight);
 }
 
 void RenderTableSection::CellStruct::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const

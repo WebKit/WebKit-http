@@ -57,7 +57,8 @@
 #include "FrameLoadRequest.h"
 #include "FrameView.h"
 #include "Geolocation.h"
-#include "GraphicsLayer.h"
+#include "GraphicsLayerChromium.h"
+#include "GraphicsLayerFactory.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HitTestResult.h"
@@ -111,6 +112,20 @@
 
 using namespace WebCore;
 
+namespace {
+
+class GraphicsLayerFactoryChromium : public GraphicsLayerFactory {
+public:
+    virtual ~GraphicsLayerFactoryChromium() { }
+
+    virtual PassOwnPtr<GraphicsLayer> createGraphicsLayer(GraphicsLayerClient* client) OVERRIDE
+    {
+        return adoptPtr(new GraphicsLayerChromium(client));
+    }
+};
+
+} // namespace
+
 namespace WebKit {
 
 // Converts a WebCore::PopupContainerType to a WebKit::WebPopupType.
@@ -145,6 +160,9 @@ ChromeClientImpl::ChromeClientImpl(WebViewImpl* webView)
 #if ENABLE(PAGE_POPUP)
     , m_pagePopupDriver(webView)
 #endif
+#if USE(ACCELERATED_COMPOSITING)
+    , m_graphicsLayerFactory(adoptPtr(new GraphicsLayerFactoryChromium))
+#endif
 {
 }
 
@@ -170,17 +188,19 @@ void ChromeClientImpl::setWindowRect(const FloatRect& r)
 
 FloatRect ChromeClientImpl::windowRect()
 {
-    WebRect rect;
-    if (m_webView->client())
-        rect = m_webView->client()->rootWindowRect();
-    else {
-        // These numbers will be fairly wrong. The window's x/y coordinates will
-        // be the top left corner of the screen and the size will be the content
-        // size instead of the window size.
-        rect.width = m_webView->size().width;
-        rect.height = m_webView->size().height;
+    if (m_webView->client()) {
+        // On Chrome for Android, rootWindowRect is in physical screen pixels
+        // instead of density independent (UI) pixels, and must be scaled down.
+        FloatRect rect = FloatRect(m_webView->client()->rootWindowRect());
+        if (!m_webView->page()->settings()->applyDeviceScaleFactorInCompositor())
+            rect.scale(1 / m_webView->client()->screenInfo().deviceScaleFactor);
+        return rect;
     }
-    return FloatRect(rect);
+
+    // These numbers will be fairly wrong. The window's x/y coordinates will
+    // be the top left corner of the screen and the size will be the content
+    // size instead of the window size.
+    return FloatRect(0, 0, m_webView->size().width, m_webView->size().height);
 }
 
 FloatRect ChromeClientImpl::pageRect()
@@ -620,7 +640,7 @@ void ChromeClientImpl::setToolTip(const String& tooltipText, TextDirection dir)
 void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArguments& arguments) const
 {
 #if ENABLE(VIEWPORT)
-    if (!m_webView->settings()->viewportEnabled() || !m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
+    if (!m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
         return;
 
     WebViewClient* client = m_webView->client();
@@ -629,11 +649,23 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     if (!deviceSize.width || !deviceSize.height)
         return;
 
-    Settings* settings = m_webView->page()->settings();
+    int viewportWidthInDIPs = m_webView->dipSize().width();
+    ViewportArguments effectiveViewportArguments;
+    int effectiveFallbackWidth;
+    if (m_webView->settings()->viewportEnabled()) {
+        effectiveViewportArguments = arguments;
+        effectiveFallbackWidth = std::max(m_webView->page()->settings()->layoutFallbackWidth(), viewportWidthInDIPs);
+    } else {
+        // This is for Android WebView to use layout width in device-independent pixels.
+        // Once WebViewImpl on Android will start using DIP pixels size,
+        // dispatchViewportPropertiesDidChange can bail out when viewport is disabled.
+        effectiveViewportArguments = ViewportArguments();
+        effectiveFallbackWidth = viewportWidthInDIPs;
+    }
     float devicePixelRatio = client->screenInfo().deviceScaleFactor;
     // Call the common viewport computing logic in ViewportArguments.cpp.
     ViewportAttributes computed = computeViewportAttributes(
-        arguments, settings->layoutFallbackWidth(), deviceSize.width, deviceSize.height,
+        effectiveViewportArguments, effectiveFallbackWidth, deviceSize.width, deviceSize.height,
         devicePixelRatio, IntSize(deviceSize.width, deviceSize.height));
 
     restrictScaleFactorToInitialScaleIfNotUserScalable(computed);
@@ -661,7 +693,7 @@ void ChromeClientImpl::print(Frame* frame)
         m_webView->client()->printPage(WebFrameImpl::fromFrame(frame));
 }
 
-void ChromeClientImpl::exceededDatabaseQuota(Frame* frame, const String& databaseName)
+void ChromeClientImpl::exceededDatabaseQuota(Frame* frame, const String& databaseName, DatabaseDetails)
 {
     // Chromium users cannot currently change the default quota
 }
@@ -918,6 +950,11 @@ bool ChromeClientImpl::paintCustomOverhangArea(GraphicsContext* context, const I
 }
 
 #if USE(ACCELERATED_COMPOSITING)
+GraphicsLayerFactory* ChromeClientImpl::graphicsLayerFactory() const
+{
+    return m_graphicsLayerFactory.get();
+}
+
 void ChromeClientImpl::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graphicsLayer)
 {
     m_webView->setRootGraphicsLayer(graphicsLayer);
@@ -945,6 +982,8 @@ ChromeClient::CompositingTriggerFlags ChromeClientImpl::allowedCompositingTrigge
         flags |= AnimationTrigger;
     if (settings->acceleratedCompositingForCanvasEnabled())
         flags |= CanvasTrigger;
+    if (settings->acceleratedCompositingForScrollableFramesEnabled())
+        flags |= ScrollableInnerFrameTrigger;
 
     return flags;
 }

@@ -33,6 +33,7 @@
 #include "RenderStyleConstants.h"
 #include "ScriptWrappable.h"
 #include "SimulatedClickOptions.h"
+#include "TreeScope.h"
 #include "TreeShared.h"
 #include <wtf/Forward.h>
 #include <wtf/ListHashSet.h>
@@ -85,7 +86,6 @@ class RenderObject;
 class RenderStyle;
 class ShadowRoot;
 class TagNodeList;
-class TreeScope;
 
 #if ENABLE(GESTURE_EVENTS)
 class PlatformGestureEvent;
@@ -115,21 +115,16 @@ public:
     RenderObject* renderer() const { return m_renderer; }
     void setRenderer(RenderObject* renderer) { m_renderer = renderer; }
 
-    TreeScope* treeScope() const { return m_treeScope; }
-    void setTreeScope(TreeScope* scope) { m_treeScope = scope; }
-
-    virtual ~NodeRareDataBase() { }
 protected:
-    NodeRareDataBase(TreeScope* scope)
-        : m_treeScope(scope)
-    {
-    }
+    NodeRareDataBase(RenderObject* renderer)
+        : m_renderer(renderer)
+    { }
+
 private:
     RenderObject* m_renderer;
-    TreeScope* m_treeScope;
 };
 
-class Node : public EventTarget, public ScriptWrappable, public TreeShared<Node, ContainerNode> {
+class Node : public EventTarget, public ScriptWrappable, public TreeShared<Node> {
     friend class Document;
     friend class TreeScope;
     friend class TreeScopeAdopter;
@@ -246,12 +241,12 @@ public:
     virtual bool isCharacterDataNode() const { return false; }
     virtual bool isFrameOwnerElement() const { return false; }
     virtual bool isPluginElement() const { return false; }
-    virtual bool documentFragmentIsShadowRoot() const;
     virtual bool isInsertionPointNode() const { return false; }
 
     bool isDocumentNode() const;
+    bool isTreeScope() const;
     bool isDocumentFragment() const { return getFlag(IsDocumentFragmentFlag); }
-    bool isShadowRoot() const { return isDocumentFragment() && documentFragmentIsShadowRoot(); }
+    bool isShadowRoot() const { return isDocumentFragment() && isTreeScope(); }
     bool isInsertionPoint() const { return getFlag(NeedsShadowTreeWalkerFlag) && isInsertionPointNode(); }
 
     bool needsShadowTreeWalker() const;
@@ -277,6 +272,7 @@ public:
     Node* nonBoundaryShadowTreeRootNode();
 
     // Node's parent, shadow tree host.
+    // FIXME: These methods should be renamed parentOrShadowHost*
     ContainerNode* parentOrHostNode() const;
     Element* parentOrHostElement() const;
     void setParentOrHostNode(ContainerNode*);
@@ -467,13 +463,13 @@ public:
         return documentInternal();
     }
 
-    TreeScope* treeScope() const;
+    TreeScope* treeScope() const { return m_treeScope; }
 
     // Returns true if this node is associated with a document and is in its associated document's
     // node tree, false otherwise.
     bool inDocument() const 
     { 
-        ASSERT(m_document || !getFlag(InDocumentFlag));
+        ASSERT(documentInternal() || !getFlag(InDocumentFlag));
         return getFlag(InDocumentFlag);
     }
     bool isInShadowTree() const { return getFlag(IsInShadowTreeFlag); }
@@ -488,7 +484,8 @@ public:
     void checkSetPrefix(const AtomicString& prefix, ExceptionCode&);
     bool isDescendantOf(const Node*) const;
     bool contains(const Node*) const;
-    bool containsIncludingShadowDOM(Node*);
+    bool containsIncludingShadowDOM(const Node*) const;
+    bool containsIncludingHostElements(const Node*) const;
 
     // Used to determine whether range offsets use characters or node indices.
     virtual bool offsetInCharacters() const;
@@ -616,7 +613,8 @@ public:
     virtual void postDispatchEventHandler(Event*, void* /*dataFromPreDispatch*/) { }
 
     using EventTarget::dispatchEvent;
-    bool dispatchEvent(PassRefPtr<Event>);
+    virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
+
     void dispatchScopedEvent(PassRefPtr<Event>);
     void dispatchScopedEventDispatchMediator(PassRefPtr<EventDispatchMediator>);
 
@@ -648,8 +646,8 @@ public:
     // to event listeners, and prevents DOMActivate events from being sent at all.
     virtual bool disabled() const;
 
-    using TreeShared<Node, ContainerNode>::ref;
-    using TreeShared<Node, ContainerNode>::deref;
+    using TreeShared<Node>::ref;
+    using TreeShared<Node>::deref;
 
     virtual EventTargetData* eventTargetData();
     virtual EventTargetData* ensureEventTargetData();
@@ -661,14 +659,12 @@ public:
     PassRefPtr<PropertyNodeList> propertyNodeList(const String&);
 #endif
 
-#if ENABLE(MUTATION_OBSERVERS)
     void getRegisteredMutationObserversOfType(HashMap<MutationObserver*, MutationRecordDeliveryOptions>&, MutationObserver::MutationType, const QualifiedName* attributeName);
     void registerMutationObserver(MutationObserver*, MutationObserverOptions, const HashSet<AtomicString>& attributeFilter);
     void unregisterMutationObserver(MutationObserverRegistration*);
     void registerTransientMutationObserver(MutationObserverRegistration*);
     void unregisterTransientMutationObserver(MutationObserverRegistration*);
     void notifyMutationObserversNodeWillDetach();
-#endif // ENABLE(MUTATION_OBSERVERS)
 
     virtual void registerScopedHTMLStyleChild();
     virtual void unregisterScopedHTMLStyleChild();
@@ -754,9 +750,7 @@ protected:
     virtual void didMoveToNewDocument(Document* oldDocument);
     
     virtual void addSubresourceAttributeURLs(ListHashSet<KURL>&) const { }
-    void setTabIndexExplicitly(short);
-    void clearTabIndexExplicitly();
-    
+
     bool hasRareData() const { return getFlag(HasRareDataFlag); }
 
     NodeRareData* rareData() const;
@@ -767,16 +761,14 @@ protected:
 
     void setHasCustomCallbacks() { setFlag(true, HasCustomCallbacksFlag); }
 
-    Document* documentInternal() const { return m_document; }
+    Document* documentInternal() const { return treeScope()->documentScope(); }
+    void setTreeScope(TreeScope* scope) { m_treeScope = scope; }
 
 private:
-    friend class TreeShared<Node, ContainerNode>;
+    friend class TreeShared<Node>;
 
     void removedLastRef();
-
-    // These API should be only used for a tree scope migration.
-    void setTreeScope(TreeScope*);
-    void setDocument(Document*);
+    bool hasTreeSharedParent() const { return !!parentOrHostNode(); }
 
     enum EditableLevel { Editable, RichlyEditable };
     bool rendererIsEditable(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
@@ -795,8 +787,6 @@ private:
     virtual void refEventTarget();
     virtual void derefEventTarget();
 
-    virtual PassOwnPtr<NodeRareData> createRareData();
-
     virtual RenderStyle* nonRendererStyle() const { return 0; }
 
     virtual const AtomicString& virtualPrefix() const;
@@ -806,21 +796,14 @@ private:
 
     Element* ancestorElement() const;
 
-    // Use Node::parentNode as the consistent way of querying a parent node.
-    // This method is made private to ensure a compiler error on call sites that
-    // don't follow this rule.
-    using TreeShared<Node, ContainerNode>::parent;
-    using TreeShared<Node, ContainerNode>::setParent;
-
     void trackForDebugging();
 
-#if ENABLE(MUTATION_OBSERVERS)
     Vector<OwnPtr<MutationObserverRegistration> >* mutationObserverRegistry();
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
-#endif
 
     mutable uint32_t m_nodeFlags;
-    Document* m_document;
+    ContainerNode* m_parentOrHostNode;
+    TreeScope* m_treeScope;
     Node* m_previous;
     Node* m_next;
     // When a node has rare data we move the renderer into the rare data.
@@ -855,19 +838,21 @@ inline void addSubresourceURL(ListHashSet<KURL>& urls, const KURL& url)
         urls.add(url);
 }
 
-inline ContainerNode* Node::parentNode() const
-{
-    return isShadowRoot() ? 0 : parent();
-}
-
 inline void Node::setParentOrHostNode(ContainerNode* parent)
 {
-    setParent(parent);
+    ASSERT(isMainThread());
+    m_parentOrHostNode = parent;
 }
 
 inline ContainerNode* Node::parentOrHostNode() const
 {
-    return parent();
+    ASSERT(isMainThreadOrGCThread());
+    return m_parentOrHostNode;
+}
+
+inline ContainerNode* Node::parentNode() const
+{
+    return isShadowRoot() ? 0 : parentOrHostNode();
 }
 
 inline ContainerNode* Node::parentNodeGuaranteedHostFree() const

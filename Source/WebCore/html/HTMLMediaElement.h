@@ -310,6 +310,7 @@ public:
     static void getSitesInMediaCache(Vector<String>&);
     static void clearMediaCache();
     static void clearMediaCacheForSite(const String&);
+    static void requeryMediaEngines();
 
     bool isPlaying() const { return m_playing; }
 
@@ -331,7 +332,7 @@ public:
     MediaController* controller() const;
     void setController(PassRefPtr<MediaController>);
 
-    virtual bool dispatchEvent(PassRefPtr<Event>);
+    virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
 
     virtual bool willRespondToMouseClickEvents() OVERRIDE;
 

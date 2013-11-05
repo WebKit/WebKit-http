@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011 Philippe Normand <pnormand@igalia.com>
+ *  Copyright (C) 2011, 2012 Igalia S.L
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,7 @@
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPad GstPad;
+typedef struct _GstMessage GstMessage;
 
 namespace WebCore {
 
@@ -40,6 +41,7 @@ public:
     AudioIOCallback& callback() const { return m_callback; }
 
     void finishBuildingPipelineAfterWavParserPadReady(GstPad*);
+    gboolean handleMessage(GstMessage*);
 
 private:
     AudioIOCallback& m_callback;

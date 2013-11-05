@@ -707,10 +707,12 @@ void CachedResource::switchClientsToRevalidatedResource()
             --count;
         }
     }
-    // Equivalent of calling removeClient() for all clients
-    m_clients.clear();
 
     unsigned moveCount = clientsToMove.size();
+    for (unsigned n = 0; n < moveCount; ++n)
+        removeClient(clientsToMove[n]);
+    ASSERT(m_clients.isEmpty());
+
     for (unsigned n = 0; n < moveCount; ++n)
         m_resourceToRevalidate->addClientToSet(clientsToMove[n]);
     for (unsigned n = 0; n < moveCount; ++n) {
@@ -891,6 +893,7 @@ void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResource);
     memoryObjectInfo->setName(url().string());
     info.addMember(m_resourceRequest);
+    info.addMember(m_fragmentIdentifierForRequest);
     info.addMember(m_clients);
     info.addMember(m_accept);
     info.addMember(m_loader);
@@ -905,6 +908,9 @@ void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_resourceToRevalidate);
     info.addMember(m_proxyResource);
     info.addMember(m_handlesToRevalidate);
+    info.addMember(m_options);
+    info.addMember(m_decodedDataDeletionTimer);
+    info.ignoreMember(m_clientsAwaitingCallback);
 
     if (m_purgeableData && !m_purgeableData->wasPurged())
         info.addRawBuffer(m_purgeableData.get(), m_purgeableData->size());

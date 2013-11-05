@@ -35,6 +35,7 @@
 #include "Frame.h"
 #include "FrameTree.h"
 #include "FrameView.h"
+#include "HTMLMediaElement.h"
 #include "HistoryItem.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -93,6 +94,10 @@ bool Settings::gShouldPaintNativeControls = true;
 bool Settings::gAVFoundationEnabled = false;
 #endif
 
+#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+bool Settings::gQTKitEnabled = true;
+#endif
+
 bool Settings::gMockScrollbarsEnabled = false;
 bool Settings::gUsesOverlayScrollbars = false;
 
@@ -126,6 +131,11 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
 }
 
 static const double defaultIncrementalRenderingSuppressionTimeoutInSeconds = 5;
+#if USE(UNIFIED_TEXT_CHECKING)
+static const double defaultUnifiedTextCheckerEnabled = true;
+#else
+static const double defaultUnifiedTextCheckerEnabled = false;
+#endif
 
 Settings::Settings(Page* page)
     : m_page(0)
@@ -174,11 +184,6 @@ Settings::Settings(Page* page)
     , m_showTiledScrollingIndicator(false)
     , m_tiledBackingStoreEnabled(false)
     , m_dnsPrefetchingEnabled(false)
-#if USE(UNIFIED_TEXT_CHECKING)
-    , m_unifiedTextCheckerEnabled(true)
-#else
-    , m_unifiedTextCheckerEnabled(false)
-#endif
 #if ENABLE(SMOOTH_SCROLLING)
     , m_scrollAnimatorEnabled(true)
 #endif
@@ -186,6 +191,7 @@ Settings::Settings(Page* page)
     , m_touchEventEmulationEnabled(false)
 #endif
     , m_scrollingPerformanceLoggingEnabled(false)
+    , m_aggressiveTileRetentionEnabled(false)
     , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString
@@ -634,12 +640,39 @@ void Settings::setTiledBackingStoreEnabled(bool enabled)
 #endif
 }
 
+#if USE(AVFOUNDATION)
+void Settings::setAVFoundationEnabled(bool enabled)
+{
+    if (gAVFoundationEnabled == enabled)
+        return;
+
+    gAVFoundationEnabled = enabled;
+    HTMLMediaElement::requeryMediaEngines();
+}
+#endif
+
+#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+void Settings::setQTKitEnabled(bool enabled)
+{
+    if (gQTKitEnabled == enabled)
+        return;
+
+    gQTKitEnabled = enabled;
+    HTMLMediaElement::requeryMediaEngines();
+}
+#endif
+
 void Settings::setScrollingPerformanceLoggingEnabled(bool enabled)
 {
     m_scrollingPerformanceLoggingEnabled = enabled;
 
     if (m_page->mainFrame() && m_page->mainFrame()->view())
         m_page->mainFrame()->view()->setScrollingPerformanceLoggingEnabled(enabled);
+}
+    
+void Settings::setAggressiveTileRetentionEnabled(bool enabled)
+{
+    m_aggressiveTileRetentionEnabled = enabled;
 }
 
 void Settings::setMockScrollbarsEnabled(bool flag)

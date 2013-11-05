@@ -60,6 +60,7 @@
 #include "TiledBacking.h"
 #include "TransformState.h"
 #include "WebCoreMemoryInstrumentation.h"
+#include <wtf/MemoryInstrumentationHashMap.h>
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 #include "HTMLMediaElement.h"
@@ -255,7 +256,7 @@ void RenderLayerCompositor::cacheAcceleratedCompositingFlags()
         forceCompositingMode = settings->forceCompositingMode() && hasAcceleratedCompositing;
 
         if (forceCompositingMode && m_renderView->document()->ownerElement())
-            forceCompositingMode = settings->acceleratedCompositingForScrollableFramesEnabled() && requiresCompositingForScrollableFrame();
+            forceCompositingMode = requiresCompositingForScrollableFrame();
 
         acceleratedDrawingEnabled = settings->acceleratedDrawingEnabled();
     }
@@ -401,6 +402,10 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     if (!m_renderView->document()->visualUpdatesAllowed())
         return;
 
+    // Avoid updating the layers with old values. Compositing layers will be updated after the layout is finished.
+    if (m_renderView->needsLayout())
+        return;
+
     if (m_forceCompositingMode && !m_compositing)
         enableCompositingMode(true);
 
@@ -454,7 +459,6 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
         CompositingState compState(updateRoot, m_compositingConsultsOverlap);
         bool layersChanged = false;
         bool saw3DTransform = false;
-        m_fixedPositionLayerNotCompositedReasonMap.clear();
         if (m_compositingConsultsOverlap) {
             OverlapMap overlapTestRequestMap;
             computeCompositingRequirements(0, updateRoot, &overlapTestRequestMap, compState, layersChanged, saw3DTransform);
@@ -543,15 +547,16 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer* layer, int depth)
 
     LOG(Compositing, "%*p %dx%d %.2fKB (%s) %s\n", 12 + depth * 2, layer, backing->compositedBounds().width(), backing->compositedBounds().height(),
         backing->backingStoreMemoryEstimate() / 1024,
-        reasonForCompositing(layer), layer->backing()->nameForLayer().utf8().data());
+        reasonForCompositing(layer), layer->name().utf8().data());
 }
 #endif
 
 bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeRepaint shouldRepaint)
 {
     bool layerChanged = false;
+    RenderLayer::ViewportConstrainedNotCompositedReason viewportConstrainedNotCompositedReason = RenderLayer::NoNotCompositedReason;
 
-    if (needsToBeComposited(layer)) {
+    if (needsToBeComposited(layer, &viewportConstrainedNotCompositedReason)) {
         enableCompositingMode();
         
         if (!layer->backing()) {
@@ -563,7 +568,7 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
 
             // At this time, the ScrollingCooridnator only supports the top-level frame.
             if (layer->isRootLayer() && !m_renderView->document()->ownerElement()) {
-                layer->backing()->attachToScrollingCoordinator(0);
+                layer->backing()->attachToScrollingCoordinatorWithParent(0);
                 if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
                     scrollingCoordinator->frameViewRootLayerDidChange(m_renderView->frameView());
             }
@@ -623,10 +628,17 @@ bool RenderLayerCompositor::updateBacking(RenderLayer* layer, CompositingChangeR
     if (layerChanged)
         layer->clearClipRectsIncludingDescendants(PaintingClipRects);
 
-    // If a fixed position layer gained/lost a backing, the scrolling coordinator needs to recalculate whether it can do fast scrolling.
-    if (layerChanged && layer->renderer()->style()->position() == FixedPosition) {
-        if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-            scrollingCoordinator->frameViewFixedObjectsDidChange(m_renderView->frameView());
+    // If a fixed position layer gained/lost a backing or the reason not compositing it changed,
+    // the scrolling coordinator needs to recalculate whether it can do fast scrolling.
+    if (layer->renderer()->style()->position() == FixedPosition) {
+        if (layer->viewportConstrainedNotCompositedReason() != viewportConstrainedNotCompositedReason) {
+            layer->setViewportConstrainedNotCompositedReason(viewportConstrainedNotCompositedReason);
+            layerChanged = true;
+        }
+        if (layerChanged) {
+            if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
+                scrollingCoordinator->frameViewFixedObjectsDidChange(m_renderView->frameView());
+        }
     }
     
     if (layer->backing())
@@ -732,7 +744,9 @@ void RenderLayerCompositor::addToOverlapMap(OverlapMap& overlapMap, RenderLayer*
         return;
 
     if (!boundsComputed) {
-        layerBounds = enclosingIntRect(overlapMap.geometryMap().absoluteRect(layer->localBoundingBox()));
+        // FIXME: If this layer's overlap bounds include its children, we don't need to add its
+        // children's bounds to the overlap map.
+        layerBounds = enclosingIntRect(overlapMap.geometryMap().absoluteRect(layer->overlapBounds()));
         // Empty rects never intersect, but we need them to for the purposes of overlap testing.
         if (layerBounds.isEmpty())
             layerBounds.setSize(IntSize(1, 1));
@@ -819,7 +833,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     IntRect absBounds;
     if (overlapMap && !overlapMap->isEmpty() && compositingState.m_testingOverlap) {
         // If we're testing for overlap, we only need to composite if we overlap something that is already composited.
-        absBounds = enclosingIntRect(overlapMap->geometryMap().absoluteRect(layer->localBoundingBox()));
+        absBounds = enclosingIntRect(overlapMap->geometryMap().absoluteRect(layer->overlapBounds()));
 
         // Empty rects never intersect, but we need them to for the purposes of overlap testing.
         if (absBounds.isEmpty())
@@ -845,8 +859,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     CompositingState childState(compositingState);
     childState.m_subtreeIsCompositing = false;
 
-    FixedPositionLayerNotCompositedReason fixedPositionLayerNotCompositedReason = NoReason;
-    bool willBeComposited = needsToBeComposited(layer, &fixedPositionLayerNotCompositedReason);
+    bool willBeComposited = needsToBeComposited(layer);
     if (willBeComposited) {
         // Tell the parent it has compositing descendants.
         compositingState.m_subtreeIsCompositing = true;
@@ -855,8 +868,10 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
 
         if (overlapMap)
             overlapMap->pushCompositingContainer();
-    } else if (fixedPositionLayerNotCompositedReason != NoReason)
-        m_fixedPositionLayerNotCompositedReasonMap.set(layer, fixedPositionLayerNotCompositedReason);
+        // This layer is going to be composited, so children can safely ignore the fact that there's an 
+        // animation running behind this layer, meaning they can rely on the overlap map testing again.
+        childState.m_testingOverlap = true;
+    }
 
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(layer);
@@ -879,6 +894,9 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
                     childState.m_compositingAncestor = layer;
                     if (overlapMap)
                         overlapMap->pushCompositingContainer();
+                    // This layer is going to be composited, so children can safely ignore the fact that there's an 
+                    // animation running behind this layer, meaning they can rely on the overlap map testing again
+                    childState.m_testingOverlap = true;
                     willBeComposited = true;
                 }
             }
@@ -940,16 +958,20 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     if (childState.m_subtreeIsCompositing)
         compositingState.m_subtreeIsCompositing = true;
 
-    // Turn overlap testing off for later layers if it's already off, or if we have a 3D transform or an animating transform.
-    if (!childState.m_testingOverlap || layer->has3DTransform() || isRunningAcceleratedTransformAnimation(layer->renderer()))
-        compositingState.m_testingOverlap = false;
-
     // Set the flag to say that this SC has compositing children.
     layer->setHasCompositingDescendant(childState.m_subtreeIsCompositing);
 
     // setHasCompositingDescendant() may have changed the answer to needsToBeComposited() when clipping,
     // so test that again.
-    if (canBeComposited(layer) && clipsCompositingDescendants(layer)) {
+    bool isCompositedClippingLayer = canBeComposited(layer) && clipsCompositingDescendants(layer);
+
+    // Turn overlap testing off for later layers if it's already off, or if we have an animating transform.
+    // Note that if the layer clips its descendants, there's no reason to propagate the child animation to the parent layers. That's because
+    // we know for sure the animation is contained inside the clipping rectangle, which is already added to the overlap map.
+    if ((!childState.m_testingOverlap && !isCompositedClippingLayer) || isRunningAcceleratedTransformAnimation(layer->renderer()))
+        compositingState.m_testingOverlap = false;
+    
+    if (isCompositedClippingLayer) {
         if (!willBeComposited) {
             childState.m_compositingAncestor = layer;
             if (overlapMap) {
@@ -958,9 +980,6 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
             }
             willBeComposited = true;
          }
-
-        // We're done processing an element that clips. The container can keep testing overlap.
-        compositingState.m_testingOverlap = true;
     }
 
     if (overlapMap && childState.m_compositingAncestor == layer && !layer->isRootLayer())
@@ -1169,6 +1188,9 @@ void RenderLayerCompositor::frameViewDidScroll()
     if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
         if (scrollingCoordinator->coordinatesScrollingForFrameView(frameView))
             return;
+        if (Settings* settings = m_renderView->document()->settings())
+            if (settings->compositedScrollingForFramesEnabled())
+                scrollingCoordinator->scrollableAreaScrollLayerDidChange(frameView, m_scrollLayer.get());
     }
 
     m_scrollLayer->setPosition(FloatPoint(-scrollPosition.x(), -scrollPosition.y()));
@@ -1561,18 +1583,18 @@ bool RenderLayerCompositor::shouldPropagateCompositingToEnclosingFrame() const
     return false;
 }
 
-bool RenderLayerCompositor::needsToBeComposited(const RenderLayer* layer, FixedPositionLayerNotCompositedReason* fixedPositionLayerNotCompositedReason) const
+bool RenderLayerCompositor::needsToBeComposited(const RenderLayer* layer, RenderLayer::ViewportConstrainedNotCompositedReason* viewportConstrainedNotCompositedReason) const
 {
     if (!canBeComposited(layer))
         return false;
 
-    return requiresCompositingLayer(layer, fixedPositionLayerNotCompositedReason) || layer->mustCompositeForIndirectReasons() || (inCompositingMode() && layer->isRootLayer());
+    return requiresCompositingLayer(layer, viewportConstrainedNotCompositedReason) || layer->mustCompositeForIndirectReasons() || (inCompositingMode() && layer->isRootLayer());
 }
 
 // Note: this specifies whether the RL needs a compositing layer for intrinsic reasons.
 // Use needsToBeComposited() to determine if a RL actually needs a compositing layer.
 // static
-bool RenderLayerCompositor::requiresCompositingLayer(const RenderLayer* layer, FixedPositionLayerNotCompositedReason* fixedPositionLayerNotCompositedReason) const
+bool RenderLayerCompositor::requiresCompositingLayer(const RenderLayer* layer, RenderLayer::ViewportConstrainedNotCompositedReason* viewportConstrainedNotCompositedReason) const
 {
     RenderObject* renderer = layer->renderer();
     // The compositing state of a reflection should match that of its reflected layer.
@@ -1590,7 +1612,7 @@ bool RenderLayerCompositor::requiresCompositingLayer(const RenderLayer* layer, F
         || clipsCompositingDescendants(layer)
         || requiresCompositingForAnimation(renderer)
         || requiresCompositingForFilters(renderer)
-        || requiresCompositingForPosition(renderer, layer, fixedPositionLayerNotCompositedReason)
+        || requiresCompositingForPosition(renderer, layer, viewportConstrainedNotCompositedReason)
         || requiresCompositingForOverflowScrolling(layer)
         || requiresCompositingForBlending(renderer);
 }
@@ -1678,7 +1700,7 @@ const char* RenderLayerCompositor::reasonForCompositing(const RenderLayer* layer
         return "filters";
 
     if (requiresCompositingForPosition(renderer, layer))
-        return "position: fixed";
+        return renderer->style()->position() == FixedPosition ? "position: fixed" : "position: sticky";
 
     if (requiresCompositingForOverflowScrolling(layer))
         return "-webkit-overflow-scrolling: touch";
@@ -1796,6 +1818,12 @@ bool RenderLayerCompositor::requiresCompositingForScrollableFrame() const
 {
     // Need this done first to determine overflow.
     ASSERT(!m_renderView->needsLayout());
+    HTMLFrameOwnerElement* ownerElement = m_renderView->document()->ownerElement();
+    if (!ownerElement)
+        return false;
+
+    if (!(m_compositingTriggers & ChromeClient::ScrollableInnerFrameTrigger))
+        return false;
 
     FrameView* frameView = m_renderView->frameView();
     return frameView->isScrollable();
@@ -1968,7 +1996,7 @@ bool RenderLayerCompositor::requiresCompositingForBlending(RenderObject* rendere
 #endif
 }
 
-bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* renderer, const RenderLayer* layer, FixedPositionLayerNotCompositedReason* fixedPositionLayerNotCompositedReason) const
+bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* renderer, const RenderLayer* layer, RenderLayer::ViewportConstrainedNotCompositedReason* viewportConstrainedNotCompositedReason) const
 {
     // position:fixed elements that create their own stacking context (e.g. have an explicit z-index,
     // opacity, transform) can get their own composited layer. A stacking context is required otherwise
@@ -2000,11 +2028,11 @@ bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* rendere
         return false;
     }
 
-    // Don't promote fixed position elements that are descendants of transformed elements.
-    // They will stay fixed wrt the transformed element rather than the enclosing frame.
+    // Don't promote fixed position elements that are descendants of a non-view container, e.g. transformed elements.
+    // They will stay fixed wrt the container rather than the enclosing frame.
     if (container != m_renderView) {
-        if (fixedPositionLayerNotCompositedReason)
-            *fixedPositionLayerNotCompositedReason = DescendantOfTransformedElement;
+        if (viewportConstrainedNotCompositedReason)
+            *viewportConstrainedNotCompositedReason = RenderLayer::NotCompositedForNonViewContainer;
         return false;
     }
 
@@ -2015,8 +2043,8 @@ bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* rendere
             | RenderLayer::ExcludeHiddenDescendants | RenderLayer::DontConstrainForMask | RenderLayer::IncludeCompositedDescendants);
         layerBounds.scale(frameView->frame()->frameScaleFactor());
         if (!viewBounds.intersects(enclosingIntRect(layerBounds))) {
-            if (fixedPositionLayerNotCompositedReason)
-                *fixedPositionLayerNotCompositedReason = LayerBoundsOutOfView;
+            if (viewportConstrainedNotCompositedReason)
+                *viewportConstrainedNotCompositedReason = RenderLayer::NotCompositedForBoundsOutOfView;
             return false;
         }
     }
@@ -2194,8 +2222,8 @@ bool RenderLayerCompositor::requiresOverhangAreasLayer() const
     if (m_renderView->document()->ownerElement())
         return false;
 
-    // We do want a layer if we have a scrolling coordinator.
-    if (scrollingCoordinator())
+    // We do want a layer if we have a scrolling coordinator and can scroll.
+    if (scrollingCoordinator() && m_renderView->frameView()->hasOpaqueBackground() && !m_renderView->frameView()->prohibitsScrolling())
         return true;
 
     // Chromium always wants a layer.
@@ -2213,8 +2241,8 @@ bool RenderLayerCompositor::requiresContentShadowLayer() const
         return false;
 
 #if PLATFORM(MAC)
-    // On Mac, we want a content shadow layer if we have a scrolling coordinator.
-    if (scrollingCoordinator())
+    // On Mac, we want a content shadow layer if we have a scrolling coordinator and can scroll.
+    if (scrollingCoordinator() && !m_renderView->frameView()->prohibitsScrolling())
         return true;
 #endif
 
@@ -2598,7 +2626,7 @@ void RenderLayerCompositor::deviceOrPageScaleFactorChanged()
     if (!viewLayer->isComposited())
         return;
 
-    if (GraphicsLayer* rootLayer = viewLayer->backing()->graphicsLayer())
+    if (GraphicsLayer* rootLayer = viewLayer->backing()->childForSuperlayers())
         rootLayer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
 }
 
@@ -2739,13 +2767,13 @@ void RenderLayerCompositor::registerOrUpdateViewportConstrainedLayer(RenderLayer
         return;
 
     ScrollingNodeID nodeID = backing->scrollLayerID();
-    if (!nodeID) {
-        RenderLayerBacking* parent = nearestScrollingCoordinatorAncestor(layer);
-        if (!parent)
-            return;
-        backing->attachToScrollingCoordinator(parent);
-        nodeID = backing->scrollLayerID();
-    }
+    RenderLayerBacking* parent = nearestScrollingCoordinatorAncestor(layer);
+    if (!parent)
+        return;
+
+    // Always call this even if the backing is already attached because the parent may have changed.
+    backing->attachToScrollingCoordinatorWithParent(parent);
+    nodeID = backing->scrollLayerID();
 
     if (layer->renderer()->isStickyPositioned())
         scrollingCoordinator->updateViewportConstrainedNode(nodeID, computeStickyViewportConstraints(layer), backing->graphicsLayer());

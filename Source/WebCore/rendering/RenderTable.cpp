@@ -49,7 +49,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTable::RenderTable(Node* node)
+RenderTable::RenderTable(ContainerNode* node)
     : RenderBlock(node)
     , m_head(0)
     , m_foot(0)
@@ -113,10 +113,6 @@ static inline void resetSectionPointerIfNotBefore(RenderTableSection*& ptr, Rend
 
 void RenderTable::addChild(RenderObject* child, RenderObject* beforeChild)
 {
-    // Make sure we don't append things after :after-generated content if we have it.
-    if (!beforeChild)
-        beforeChild = afterPseudoElementRenderer();
-
     bool wrapInAnonymousSection = !child->isOutOfFlowPositioned();
 
     if (child->isTableCaption())
@@ -762,7 +758,6 @@ void RenderTable::splitColumn(unsigned position, unsigned firstSpan)
     }
 
     m_columnPos.grow(numEffCols() + 1);
-    setNeedsLayoutAndPrefWidthsRecalc();
 }
 
 void RenderTable::appendColumn(unsigned span)
@@ -784,7 +779,6 @@ void RenderTable::appendColumn(unsigned span)
     }
 
     m_columnPos.grow(numEffCols() + 1);
-    setNeedsLayoutAndPrefWidthsRecalc();
 }
 
 RenderTableCol* RenderTable::firstColumn() const

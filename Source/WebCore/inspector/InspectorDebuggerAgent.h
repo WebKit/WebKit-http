@@ -71,17 +71,17 @@ public:
     virtual void canSetScriptSource(ErrorString*, bool*);
     virtual void supportsSeparateScriptCompilationAndExecution(ErrorString*, bool*);
 
-    virtual void enable(ErrorString*);
-    virtual void disable(ErrorString*);
-
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
     virtual void restore();
 
     bool isPaused();
+    bool runningNestedMessageLoop();
     void addMessageToConsole(MessageSource, MessageType);
 
     // Part of the protocol.
+    virtual void enable(ErrorString*);
+    virtual void disable(ErrorString*);
     virtual void setBreakpointsActive(ErrorString*, bool active);
 
     virtual void setBreakpointByUrl(ErrorString*, int lineNumber, const String* optionalURL, const String* optionalURLRegex, const int* optionalColumnNumber, const String* optionalCondition, TypeBuilder::Debugger::BreakpointId*, RefPtr<TypeBuilder::Array<TypeBuilder::Debugger::Location> >& locations);
@@ -124,6 +124,8 @@ public:
         virtual ~Listener() { }
         virtual void debuggerWasEnabled() = 0;
         virtual void debuggerWasDisabled() = 0;
+        virtual void stepInto() = 0;
+        virtual void didPause() = 0;
     };
     void setListener(Listener* listener) { m_listener = listener; }
 
@@ -132,7 +134,7 @@ public:
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
-    InspectorDebuggerAgent(InstrumentingAgents*, InspectorState*, InjectedScriptManager*);
+    InspectorDebuggerAgent(InstrumentingAgents*, InspectorCompositeState*, InjectedScriptManager*);
 
     virtual void startListeningScriptDebugServer() = 0;
     virtual void stopListeningScriptDebugServer() = 0;
@@ -141,13 +143,13 @@ protected:
     InjectedScriptManager* injectedScriptManager() { return m_injectedScriptManager; }
     virtual InjectedScript injectedScriptForEval(ErrorString*, const int* executionContextId) = 0;
 
+    virtual void enable();
     virtual void disable();
     virtual void didPause(ScriptState*, const ScriptValue& callFrames, const ScriptValue& exception);
     virtual void didContinue();
     void reset();
 
 private:
-    void enable();
     bool enabled();
 
     PassRefPtr<TypeBuilder::Array<TypeBuilder::Debugger::CallFrame> > currentCallFrames();

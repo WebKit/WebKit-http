@@ -22,7 +22,9 @@
 
 #include "Connection.h"
 #include "ProcessExecutablePath.h"
+#include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/FileSystem.h>
+#include <WebCore/NetworkingContext.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/RunLoop.h>
 #include <wtf/text/CString.h>
@@ -40,14 +42,14 @@ void ProcessLauncher::launchProcess()
         return;
     }
 
-    const char* executablePath = 0;
+    CString executablePath;
     switch (m_launchOptions.processType) {
     case WebProcess:
-        executablePath = executablePathOfWebProcess().utf8().data();
+        executablePath = executablePathOfWebProcess().utf8();
         break;
 #if ENABLE(PLUGIN_PROCESS)
     case PluginProcess:
-        executablePath = executablePathOfPluginProcess().utf8().data();
+        executablePath = executablePathOfPluginProcess().utf8();
         break;
 #endif
     default:
@@ -59,11 +61,10 @@ void ProcessLauncher::launchProcess()
     snprintf(socket, sizeof(socket), "%d", sockets[0]);
 
 #ifndef NDEBUG
-    const char* prefixedExecutablePath = 0;
-    String prefixedExecutablePathStr;
+    CString prefixedExecutablePath;
     if (!m_launchOptions.processCmdPrefix.isEmpty()) {
-        prefixedExecutablePathStr = m_launchOptions.processCmdPrefix + ' ' + executablePath + ' ' + socket;
-        prefixedExecutablePath = prefixedExecutablePathStr.utf8().data();
+        String prefixedExecutablePathStr = m_launchOptions.processCmdPrefix + ' ' + String::fromUTF8(executablePath.data()) + ' ' + socket;
+        prefixedExecutablePath = prefixedExecutablePathStr.utf8();
     }
 #endif
 
@@ -74,18 +75,18 @@ void ProcessLauncher::launchProcess()
     if (!pid) { // Child process.
         close(sockets[1]);
 #ifndef NDEBUG
-        if (prefixedExecutablePath) {
+        if (!prefixedExecutablePath.isNull()) {
             // FIXME: This is not correct because it invokes the shell
             // and keeps this process waiting. Should be changed to
             // something like execvp().
-            if (system(prefixedExecutablePath) == -1) {
+            if (system(prefixedExecutablePath.data()) == -1) {
                 ASSERT_NOT_REACHED();
                 exit(EXIT_FAILURE);
             } else
                 exit(EXIT_SUCCESS);
         }
 #endif
-        execl(executablePath, executablePath, socket, static_cast<char*>(0));
+        execl(executablePath.data(), executablePath.data(), socket, static_cast<char*>(0));
     } else if (pid > 0) { // parent process;
         close(sockets[0]);
         m_processIdentifier = pid;

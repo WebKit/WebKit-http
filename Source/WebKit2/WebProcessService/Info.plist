@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleGetInfoString</key>
-	<string>${BUNDLE_VERSION}, Copyright 2003-2012 Apple Inc.</string>
+	<string>${BUNDLE_VERSION}, Copyright 2003-2013 Apple Inc.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
@@ -39,7 +39,7 @@
 		<key>EnvironmentVariables</key>
 		<dict>
 			<key>DYLD_INSERT_LIBRARIES</key>
-			<string>$(WEBKIT2_FRAMEWORKS_DIR)/WebKit2.framework/WebProcess.app/Contents/MacOS/WebProcessShim.dylib</string>
+			<string>$(WEBKIT2_FRAMEWORKS_DIR)/WebKit2.framework/WebProcess.app/Contents/MacOS/SecItemShim.dylib</string>
 		</dict>
 	</dict>
 </dict>

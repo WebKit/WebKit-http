@@ -32,11 +32,14 @@
 #include "WKBase.h"
 #include <Ecore.h>
 #include <Efreet.h>
+#include <WebCore/AuthenticationChallenge.h>
+#include <WebCore/NetworkingContext.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/RunLoop.h>
 #include <WebKit2/WebProcess.h>
 #include <libsoup/soup-cache.h>
 #include <runtime/InitializeThreading.h>
+#include <runtime/Operations.h>
 #include <unistd.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
@@ -112,7 +115,12 @@ WK_EXPORT int WebProcessMainEfl(int argc, char* argv[])
     soup_cache_load(soupCache);
 
     int socket = atoi(argv[1]);
-    WebProcess::shared().initialize(socket, RunLoop::main());
+
+    ChildProcessInitializationParameters parameters;
+    parameters.connectionIdentifier = socket;
+
+    WebProcess::shared().initialize(parameters);
+
     RunLoop::run();
 
     soup_cache_flush(soupCache);

@@ -36,23 +36,20 @@
 
 namespace WebCore {
 
+#if ENABLE(SHADOW_DOM)
+
 class HTMLShadowElement : public InsertionPoint {
 public:
     static PassRefPtr<HTMLShadowElement> create(const QualifiedName&, Document*);
 
     virtual ~HTMLShadowElement();
 
-    virtual const AtomicString& select() const;
-    virtual bool isSelectValid() OVERRIDE { return true; }
-    virtual const CSSSelectorList& selectorList() { return emptySelectorList(); }
     virtual Type insertionPointType() const OVERRIDE { return ShadowInsertionPoint; }
 
     ShadowRoot* olderShadowRoot();
 
 private:
     HTMLShadowElement(const QualifiedName&, Document*);
-
-    static const CSSSelectorList& emptySelectorList();
 };
 
 inline bool isHTMLShadowElement(const Node* node)
@@ -72,6 +69,15 @@ inline const HTMLShadowElement* toHTMLShadowElement(const Node* node)
     ASSERT(!node || isHTMLShadowElement(node));
     return static_cast<const HTMLShadowElement*>(node);
 }
+
+#else
+
+class HTMLShadowElement { };
+inline bool isHTMLShadowElement(const Node*) { return false; }
+inline HTMLShadowElement* toHTMLShadowElement(Node*) { return 0; }
+inline const HTMLShadowElement* toHTMLShadowElement(const Node*) { return 0; }
+
+#endif // if ENABLE(SHADOW_DOM)
 
 } // namespace WebCore
 

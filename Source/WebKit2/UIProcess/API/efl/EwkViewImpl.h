@@ -31,6 +31,7 @@
 #include <Evas.h>
 #include <WebCore/FloatPoint.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/RefPtrCairo.h>
 #include <WebCore/TextDirection.h>
 #include <WebCore/Timer.h>
 #include <WebKit2/WKBase.h>
@@ -121,6 +122,7 @@ public:
     bool isVisible() const;
 
     void setDeviceScaleFactor(float scale);
+    float deviceScaleFactor() const;
 
     WebCore::AffineTransform transformToScene() const;
     WebCore::AffineTransform transformFromScene() const;
@@ -173,7 +175,7 @@ public:
 #endif
 
     WKPageRef createNewPage(PassRefPtr<EwkUrlRequest>, WebKit::ImmutableDictionary* windowFeatures);
-    void closePage();
+    void close();
 
     void requestPopupMenu(WebKit::WebPopupMenuProxyEfl*, const WebCore::IntRect&, WebCore::TextDirection, double pageScaleFactor, const Vector<WebKit::WebPopupItem>& items, int32_t selectedIndex);
     void closePopupMenu();
@@ -193,16 +195,13 @@ public:
         return EwkViewCallbacks::CallBack<callbackType>(m_view);
     }
 
-#if USE(TILED_BACKING_STORE)
-    void informLoadCommitted();
-#endif
     unsigned long long informDatabaseQuotaReached(const String& databaseName, const String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage);
 
 #if USE(TILED_BACKING_STORE)
     WebKit::PageClientBase* pageClient() { return m_pageClient.get(); }
 
-    void setScaleFactor(float scaleFactor) { m_scaleFactor = scaleFactor; }
-    float scaleFactor() const { return m_scaleFactor; }
+    void setPageScaleFactor(float scaleFactor) { m_pageScaleFactor = scaleFactor; }
+    float pageScaleFactor() const { return m_pageScaleFactor; }
 
     void setPagePosition(const WebCore::FloatPoint& position) { m_pagePosition = position; }
     const WebCore::FloatPoint pagePosition() const { return m_pagePosition; }
@@ -214,7 +213,7 @@ public:
     bool isHardwareAccelerated() const { return m_isHardwareAccelerated; }
     void setDrawsBackground(bool enable) { m_setDrawsBackground = enable; }
 
-    WKImageRef takeSnapshot();
+    PassRefPtr<cairo_surface_t> takeSnapshot();
 
 private:
 #if USE(ACCELERATED_COMPOSITING)
@@ -265,7 +264,7 @@ private:
 #endif
     OwnPtr<EwkBackForwardList> m_backForwardList;
 #if USE(TILED_BACKING_STORE)
-    float m_scaleFactor;
+    float m_pageScaleFactor;
     WebCore::FloatPoint m_pagePosition;
 #endif
     OwnPtr<EwkSettings> m_settings;
@@ -284,7 +283,9 @@ private:
     OwnPtr<EwkContextMenu> m_contextMenu;
     OwnPtr<EwkPopupMenu> m_popupMenu;
     OwnPtr<WebKit::InputMethodContextEfl> m_inputMethodContext;
+#if ENABLE(INPUT_TYPE_COLOR)
     OwnPtr<EwkColorPicker> m_colorPicker;
+#endif
     bool m_isHardwareAccelerated;
     bool m_setDrawsBackground;
 };

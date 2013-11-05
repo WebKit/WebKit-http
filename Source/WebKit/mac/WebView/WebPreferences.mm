@@ -39,9 +39,13 @@
 #import "WebKitVersionChecks.h"
 #import "WebNSDictionaryExtras.h"
 #import "WebNSURLExtras.h"
+#import "WebSystemInterface.h"
 #import <WebCore/ApplicationCacheStorage.h>
-#import <WebCore/CookieStorageCFNet.h>
+#import <WebCore/NetworkStorageSession.h>
 #import <WebCore/ResourceHandle.h>
+#import <WebCore/RunLoop.h>
+#import <runtime/InitializeThreading.h>
+#import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
 
 using namespace WebCore;
@@ -303,6 +307,10 @@ public:
 // if we ever have more than one WebPreferences object, this would move to init
 + (void)initialize
 {
+    JSC::initializeThreading();
+    WTF::initializeMainThreadToProcessMainThread();
+    WebCore::RunLoop::initializeMainRunLoop();
+
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
         @"Times",                       WebKitStandardFontPreferenceKey,
         @"Courier",                     WebKitFixedFontPreferenceKey,
@@ -411,6 +419,7 @@ public:
 
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
+        [NSNumber numberWithBool:YES],  WebKitQTKitEnabledPreferenceKey,
         nil];
 
 
@@ -1286,12 +1295,13 @@ static NSString *classIBCreatorID = nil;
 
 + (void)_switchNetworkLoaderToNewTestingSession
 {
-    WebFrameNetworkingContext::switchToNewTestingSession();
+    InitWebCoreSystemInterface();
+    NetworkStorageSession::switchToNewTestingSession();
 }
 
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
-    WebFrameNetworkingContext::setCookieAcceptPolicyForTestingContext(policy);
+    WKSetHTTPCookieAcceptPolicy(NetworkStorageSession::defaultStorageSession().cookieStorage().get(), policy);
 }
 
 - (BOOL)isDOMPasteAllowed
@@ -1569,6 +1579,16 @@ static NSString *classIBCreatorID = nil;
     return [self _boolValueForKey:WebKitAVFoundationEnabledKey];
 }
 
+- (void)setQTKitEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitQTKitEnabledPreferenceKey];
+}
+
+- (BOOL)isQTKitEnabled
+{
+    return [self _boolValueForKey:WebKitQTKitEnabledPreferenceKey];
+}
+
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag
 {
 }
@@ -1606,6 +1626,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMockScrollbarsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMockScrollbarsEnabledPreferenceKey];
+}
+
+- (BOOL)seamlessIFramesEnabled
+{
+    return [self _boolValueForKey:WebKitSeamlessIFramesEnabledPreferenceKey];
+}
+
+- (void)setSeamlessIFramesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitSeamlessIFramesEnabledPreferenceKey];
 }
 
 - (NSString *)pictographFontFamily

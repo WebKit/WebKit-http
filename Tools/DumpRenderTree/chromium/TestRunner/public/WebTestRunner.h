@@ -31,13 +31,50 @@
 #ifndef WebTestRunner_h
 #define WebTestRunner_h
 
+#include "WebKit/chromium/public/WebTextDirection.h"
+
+namespace WebKit {
+class WebArrayBufferView;
+class WebPermissionClient;
+}
+
 namespace WebTestRunner {
 
 // FIXME: Once the TestRunner class is complete, this class should take a
 // TestRunner* as ctor argument, and not have default implementations.
 class WebTestRunner {
 public:
+    virtual void setTestIsRunning(bool) { }
     virtual bool shouldDumpEditingCallbacks() const { return false; }
+    virtual bool shouldDumpAsText() const { return false; }
+    virtual void setShouldDumpAsText(bool) { }
+    virtual bool shouldGeneratePixelResults() const { return false; }
+    virtual void setShouldGeneratePixelResults(bool) { }
+    virtual bool shouldDumpChildFrameScrollPositions() const { return false; }
+    virtual bool shouldDumpChildFramesAsText() const { return false; }
+    virtual bool shouldDumpAsAudio() const { return false; }
+    virtual const WebKit::WebArrayBufferView* audioData() const { return 0; }
+    virtual bool shouldDumpFrameLoadCallbacks() const { return false; }
+    virtual void setShouldDumpFrameLoadCallbacks(bool) { }
+    virtual bool shouldDumpUserGestureInFrameLoadCallbacks() const { return false; }
+    virtual bool stopProvisionalFrameLoads() const { return false; }
+    virtual bool shouldDumpTitleChanges() const { return false; }
+    virtual bool shouldDumpCreateView() const { return false; }
+    virtual bool canOpenWindows() const { return false; }
+    virtual bool shouldDumpResourceLoadCallbacks() const { return false; }
+    virtual bool shouldDumpResourceRequestCallbacks() const { return false; }
+    virtual bool shouldDumpResourceResponseMIMETypes() const { return false; }
+    virtual WebKit::WebPermissionClient* webPermissions() const { return 0; }
+    virtual bool shouldDumpStatusCallbacks() const { return false; }
+    virtual bool shouldDumpProgressFinishedCallback() const { return false; }
+    virtual bool shouldDumpBackForwardList() const { return false; }
+    virtual bool deferMainResourceDataLoad() const { return false; }
+    virtual bool shouldDumpSelectionRect() const { return false; }
+    virtual bool testRepaint() const { return false; }
+    virtual bool sweepHorizontally() const { return false; }
+    virtual bool isPrinting() const { return false; }
+    virtual bool shouldStayOnPageAfterHandlingBeforeUnload() const { return false; } 
+    virtual void setTitleTextDirection(WebKit::WebTextDirection) { }
 };
 
 }

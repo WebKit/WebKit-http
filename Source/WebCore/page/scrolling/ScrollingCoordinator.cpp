@@ -136,7 +136,7 @@ bool ScrollingCoordinator::coordinatesScrollingForFrameView(FrameView* frameView
 #endif
 }
 
-Region ScrollingCoordinator::computeNonFastScrollableRegion(Frame* frame, const IntPoint& frameLocation)
+Region ScrollingCoordinator::computeNonFastScrollableRegion(const Frame* frame, const IntPoint& frameLocation) const
 {
     Region nonFastScrollableRegion;
     FrameView* frameView = frame->view();
@@ -179,15 +179,27 @@ Region ScrollingCoordinator::computeNonFastScrollableRegion(Frame* frame, const 
 }
 
 #if ENABLE(TOUCH_EVENT_TRACKING)
-static void accumulateRendererTouchEventTargetRects(Vector<IntRect>& rects, const RenderObject* renderer)
+static void accumulateRendererTouchEventTargetRects(Vector<IntRect>& rects, const RenderObject* renderer, const IntRect& parentRect = IntRect())
 {
-    // FIXME: This method is O(N^2) as it walks the tree to the root for every renderer. RenderGeometryMap would fix this.
-    rects.append(enclosingIntRect(renderer->clippedOverflowRectForRepaint(0)));
-    if (renderer->isRenderBlock()) {
-        const RenderBlock* block = toRenderBlock(renderer);
-        for (RenderObject* child = block->firstChild(); child; child = child->nextSibling())
-            accumulateRendererTouchEventTargetRects(rects, child);
+    IntRect adjustedParentRect = parentRect;
+    if (parentRect.isEmpty() || renderer->isFloating() || renderer->isPositioned() || renderer->hasTransform()) {
+        // FIXME: This method is O(N^2) as it walks the tree to the root for every renderer. RenderGeometryMap would fix this.
+        IntRect r = enclosingIntRect(renderer->clippedOverflowRectForRepaint(0));
+        if (!r.isEmpty()) {
+            // Convert to the top-level view's coordinates.
+            ASSERT(renderer->document()->view());
+            for (ScrollView* view = renderer->document()->view(); view && view->parent(); view = view->parent())
+                r = view->convertToContainingView(r);
+
+            if (!parentRect.contains(r)) {
+                rects.append(r);
+                adjustedParentRect = r;
+            }
+        }
     }
+
+    for (RenderObject* child = renderer->firstChild(); child; child = child->nextSibling())
+        accumulateRendererTouchEventTargetRects(rects, child, adjustedParentRect);
 }
 
 static void accumulateDocumentEventTargetRects(Vector<IntRect>& rects, const Document* document)
@@ -203,8 +215,11 @@ static void accumulateDocumentEventTargetRects(Vector<IntRect>& rects, const Doc
             continue;
 
         if (touchTarget == document) {
-            if (RenderView* view = document->renderView())
-                rects.append(enclosingIntRect(view->clippedOverflowRectForRepaint(0)));
+            if (RenderView* view = document->renderView()) {
+                IntRect r = enclosingIntRect(view->clippedOverflowRectForRepaint(0));
+                if (!r.isEmpty())
+                    rects.append(r);
+            }
             return;
         }
 
@@ -355,7 +370,7 @@ void ScrollingCoordinator::updateMainFrameScrollPosition(const IntPoint& scrollP
         else {
             scrollLayer->syncPosition(-frameView->scrollPosition());
             LayoutRect viewportRect = frameView->visibleContentRect();
-            viewportRect.setLocation(toPoint(frameView->scrollOffsetForFixedPosition()));
+            viewportRect.setLocation(IntPoint(frameView->scrollOffsetForFixedPosition()));
             syncChildPositions(viewportRect);
         }
     }
@@ -380,7 +395,7 @@ void ScrollingCoordinator::handleWheelEventPhase(PlatformWheelEventPhase phase)
 }
 #endif
 
-bool ScrollingCoordinator::hasVisibleSlowRepaintFixedObjects(FrameView* frameView) const
+bool ScrollingCoordinator::hasVisibleSlowRepaintViewportConstrainedObjects(FrameView* frameView) const
 {
     const FrameView::ViewportConstrainedObjectSet* viewportConstrainedObjects = frameView->viewportConstrainedObjects();
     if (!viewportConstrainedObjects)
@@ -393,7 +408,7 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintFixedObjects(FrameView* frameVie
             return true;
         RenderLayer* layer = toRenderBoxModelObject(viewportConstrainedObject)->layer();
         // Any explicit reason that a fixed position element is not composited shouldn't cause slow scrolling.
-        if (!layer->isComposited() && layer->compositor()->fixedPositionLayerNotCompositedReason(layer) == RenderLayerCompositor::NoReason)
+        if (!layer->isComposited() && layer->viewportConstrainedNotCompositedReason() == RenderLayer::NoNotCompositedReason)
             return true;
     }
     return false;
@@ -414,8 +429,8 @@ MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() co
         mainThreadScrollingReasons |= HasSlowRepaintObjects;
     if (!supportsFixedPositionLayers() && frameView->hasViewportConstrainedObjects())
         mainThreadScrollingReasons |= HasViewportConstrainedObjectsWithoutSupportingFixedLayers;
-    if (supportsFixedPositionLayers() && hasVisibleSlowRepaintFixedObjects(frameView))
-        mainThreadScrollingReasons |= HasNonLayerFixedObjects;
+    if (supportsFixedPositionLayers() && hasVisibleSlowRepaintViewportConstrainedObjects(frameView))
+        mainThreadScrollingReasons |= HasNonLayerViewportConstrainedObjects;
     if (m_page->mainFrame()->document()->isImageDocument())
         mainThreadScrollingReasons |= IsImageDocument;
 
@@ -457,8 +472,8 @@ String ScrollingCoordinator::mainThreadScrollingReasonsAsText(MainThreadScrollin
         stringBuilder.append("Has slow repaint objects, ");
     if (reasons & ScrollingCoordinator::HasViewportConstrainedObjectsWithoutSupportingFixedLayers)
         stringBuilder.append("Has viewport constrained objects without supporting fixed layers, ");
-    if (reasons & ScrollingCoordinator::HasNonLayerFixedObjects)
-        stringBuilder.append("Has non-layer fixed objects, ");
+    if (reasons & ScrollingCoordinator::HasNonLayerViewportConstrainedObjects)
+        stringBuilder.append("Has non-layer viewport-constrained objects, ");
     if (reasons & ScrollingCoordinator::IsImageDocument)
         stringBuilder.append("Is image document, ");
 

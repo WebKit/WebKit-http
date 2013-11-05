@@ -1007,6 +1007,10 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     // All objects should expose the ARIA busy attribute (ARIA 1.1 with ISSUE-538).
     [additional addObject:NSAccessibilityARIABusyAttribute];
     
+    // Popup buttons on the Mac expose the value attribute.
+    if (m_object->isPopUpButton())
+        [additional addObject:NSAccessibilityValueAttribute];
+
     if (m_object->ariaHasPopup())
         [additional addObject:NSAccessibilityHasPopupAttribute];
     
@@ -2239,6 +2243,12 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         
         if (m_object->isTabItem())
             return [NSNumber numberWithInt:m_object->isSelected()];
+
+        if (m_object->isColorWell()) {
+            int r, g, b;
+            m_object->colorValue(r, g, b);
+            return [NSString stringWithFormat:@"rgb %7.5f %7.5f %7.5f 1", r / 255., g / 255., b / 255.];
+        }
         
         return m_object->stringValue();
     }
@@ -2477,8 +2487,13 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         }
     }
 
-    if ([attributeName isEqualToString:NSAccessibilityDisclosureLevelAttribute])
-        return [NSNumber numberWithInt:m_object->hierarchicalLevel()];
+    if ([attributeName isEqualToString:NSAccessibilityDisclosureLevelAttribute]) {
+        // Convert from 1-based level (from aria-level spec) to 0-based level (Mac)
+        int level = m_object->hierarchicalLevel();
+        if (level > 0)
+            level -= 1;
+        return [NSNumber numberWithInt:level];
+    }
     if ([attributeName isEqualToString:NSAccessibilityDisclosingAttribute])
         return [NSNumber numberWithBool:m_object->isExpanded()];
     
@@ -2892,16 +2907,27 @@ static NSString* roleValueToNSString(AccessibilityRole value)
 
 - (void)accessibilityShowContextMenu
 {    
-    FrameView* frameView = m_object->documentFrameView();
-    if (!frameView)
-        return;
-    Frame* frame = frameView->frame();
-    if (!frame)
-        return;
-    Page* page = frame->page();
+    Page* page = m_object->page();
     if (!page)
         return;
-    page->contextMenuController()->showContextMenuAt(frame, m_object->clickPoint());
+    
+    IntRect rect = pixelSnappedIntRect(m_object->elementRect());
+    FrameView* frameView = m_object->documentFrameView();
+
+    // On WK2, we need to account for the scroll position.
+    // On WK1, this isn't necessary, it's taken care of by the attachment views.
+    if (frameView && !frameView->platformWidget()) {
+        // Find the appropriate scroll view to use to convert the contents to the window.
+        for (AccessibilityObject* parent = m_object->parentObject(); parent; parent = parent->parentObject()) {
+            if (parent->isAccessibilityScrollView()) {
+                ScrollView* scrollView = toAccessibilityScrollView(parent)->scrollView();
+                rect = scrollView->contentsToRootView(rect);
+                break;
+            }
+        }
+    }
+    
+    page->contextMenuController()->showContextMenuAt(page->mainFrame(), rect.center());
 }
 
 - (void)accessibilityPerformAction:(NSString*)action

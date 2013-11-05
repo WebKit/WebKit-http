@@ -602,7 +602,7 @@ WebSize WebFrameImpl::minimumScrollOffset() const
     FrameView* view = frameView();
     if (!view)
         return WebSize();
-    return view->minimumScrollPosition() - IntPoint();
+    return toIntSize(view->minimumScrollPosition());
 }
 
 WebSize WebFrameImpl::maximumScrollOffset() const
@@ -610,7 +610,7 @@ WebSize WebFrameImpl::maximumScrollOffset() const
     FrameView* view = frameView();
     if (!view)
         return WebSize();
-    return view->maximumScrollPosition() - IntPoint();
+    return toIntSize(view->maximumScrollPosition());
 }
 
 void WebFrameImpl::setScrollOffset(const WebSize& offset)
@@ -912,7 +912,7 @@ v8::Local<v8::Context> WebFrameImpl::mainWorldScriptContext() const
 v8::Handle<v8::Value> WebFrameImpl::createFileSystem(WebFileSystem::Type type, const WebString& name, const WebString& path)
 {
     ASSERT(frame());
-    return toV8(DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create()));
+    return toV8(DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create()), v8::Handle<v8::Object>());
 }
 
 v8::Handle<v8::Value> WebFrameImpl::createSerializableFileSystem(WebFileSystem::Type type, const WebString& name, const WebString& path)
@@ -920,7 +920,7 @@ v8::Handle<v8::Value> WebFrameImpl::createSerializableFileSystem(WebFileSystem::
     ASSERT(frame());
     RefPtr<DOMFileSystem> fileSystem = DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create());
     fileSystem->makeClonable();
-    return toV8(fileSystem.release());
+    return toV8(fileSystem.release(), v8::Handle<v8::Object>());
 }
 
 v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type, const WebString& fileSystemName, const WebString& fileSystemPath, const WebString& filePath, bool isDirectory)
@@ -929,8 +929,8 @@ v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type, co
 
     RefPtr<DOMFileSystemBase> fileSystem = DOMFileSystem::create(frame()->document(), fileSystemName, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, fileSystemPath.utf8().data()), AsyncFileSystemChromium::create());
     if (isDirectory)
-        return toV8(DirectoryEntry::create(fileSystem, filePath));
-    return toV8(FileEntry::create(fileSystem, filePath));
+        return toV8(DirectoryEntry::create(fileSystem, filePath), v8::Handle<v8::Object>());
+    return toV8(FileEntry::create(fileSystem, filePath), v8::Handle<v8::Object>());
 }
 
 void WebFrameImpl::reload(bool ignoreCache)
@@ -1386,6 +1386,16 @@ void WebFrameImpl::selectRange(const WebRange& webRange)
 {
     if (RefPtr<Range> range = static_cast<PassRefPtr<Range> >(webRange))
         frame()->selection()->setSelectedRange(range.get(), WebCore::VP_DEFAULT_AFFINITY, false);
+}
+
+void WebFrameImpl::moveCaretSelectionTowardsWindowPoint(const WebPoint& point)
+{
+    Element* editable = frame()->selection()->rootEditableElement();
+    IntPoint contentsPoint = frame()->view()->windowToContents(IntPoint(point));
+    LayoutPoint localPoint(editable->convertFromPage(contentsPoint));
+    VisiblePosition position = editable->renderer()->positionForPoint(localPoint);
+    if (frame()->selection()->shouldChangeSelection(position))
+        frame()->selection()->moveTo(position, UserTriggered);
 }
 
 VisiblePosition WebFrameImpl::visiblePositionForWindowPoint(const WebPoint& point)

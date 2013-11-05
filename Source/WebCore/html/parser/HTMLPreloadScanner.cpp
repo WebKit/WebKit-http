@@ -34,6 +34,7 @@
 #include "HTMLTokenizer.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "HTMLParserOptions.h"
 #include "InputTypeNames.h"
 #include "LinkRelAttribute.h"
 #include "MediaList.h"
@@ -123,7 +124,7 @@ public:
         m_urlToLoad = stripLeadingAndTrailingHTMLSpaces(attributeValue);
     }
 
-    void preload(Document* document, bool scanningBody, const KURL& baseURL)
+    void preload(Document* document, const KURL& baseURL)
     {
         if (m_urlToLoad.isEmpty())
             return;
@@ -133,12 +134,12 @@ public:
         request.setInitiator(tagName());
         if (m_tagName == scriptTag) {
             request.mutableResourceRequest().setAllowCookies(crossOriginModeAllowsCookies());
-            cachedResourceLoader->preload(CachedResource::Script, request, m_charset, scanningBody);
+            cachedResourceLoader->preload(CachedResource::Script, request, m_charset);
         }
         else if (m_tagName == imgTag || (m_tagName == inputTag && m_inputIsImage))
-            cachedResourceLoader->preload(CachedResource::ImageResource, request, String(), scanningBody);
+            cachedResourceLoader->preload(CachedResource::ImageResource, request, String());
         else if (m_tagName == linkTag && m_linkIsStyleSheet && m_linkMediaAttributeIsScreen) 
-            cachedResourceLoader->preload(CachedResource::CSSStyleSheet, request, m_charset, scanningBody);
+            cachedResourceLoader->preload(CachedResource::CSSStyleSheet, request, m_charset);
     }
 
     const AtomicString& tagName() const { return m_tagName; }
@@ -161,12 +162,14 @@ private:
     bool m_inputIsImage;
 };
 
-HTMLPreloadScanner::HTMLPreloadScanner(Document* document)
+HTMLPreloadScanner::HTMLPreloadScanner(Document* document, const HTMLParserOptions& options)
     : m_document(document)
     , m_cssScanner(document)
-    , m_tokenizer(HTMLTokenizer::create(HTMLDocumentParser::usePreHTML5ParserQuirks(document)))
-    , m_bodySeen(false)
+    , m_tokenizer(HTMLTokenizer::create(options))
     , m_inStyle(false)
+#if ENABLE(TEMPLATE_ELEMENT)
+    , m_templateCount(0)
+#endif
 {
 }
 
@@ -192,21 +195,28 @@ void HTMLPreloadScanner::processToken()
 {
     if (m_inStyle) {
         if (m_token.type() == HTMLTokenTypes::Character)
-            m_cssScanner.scan(m_token, scanningBody());
+            m_cssScanner.scan(m_token);
         else if (m_token.type() == HTMLTokenTypes::EndTag) {
             m_inStyle = false;
             m_cssScanner.reset();
         }
     }
 
-    if (m_token.type() != HTMLTokenTypes::StartTag)
+    if (m_token.type() != HTMLTokenTypes::StartTag) {
+#if ENABLE(TEMPLATE_ELEMENT)
+        if (m_templateCount && m_token.type() == HTMLTokenTypes::EndTag && AtomicString(m_token.name().data()) == templateTag)
+            m_templateCount--;
+#endif
         return;
+    }
 
     PreloadTask task(m_token);
-    m_tokenizer->updateStateFor(task.tagName(), m_document->frame());
+    m_tokenizer->updateStateFor(task.tagName());
 
-    if (task.tagName() == bodyTag)
-        m_bodySeen = true;
+#if ENABLE(TEMPLATE_ELEMENT)
+    if (task.tagName() == templateTag)
+        m_templateCount++;
+#endif
 
     if (task.tagName() == styleTag)
         m_inStyle = true;
@@ -214,12 +224,15 @@ void HTMLPreloadScanner::processToken()
     if (task.tagName() == baseTag)
         updatePredictedBaseElementURL(KURL(m_document->url(), task.baseElementHref()));
 
-    task.preload(m_document, scanningBody(), m_predictedBaseElementURL.isEmpty() ? m_document->baseURL() : m_predictedBaseElementURL);
-}
+    bool preload = true;
 
-bool HTMLPreloadScanner::scanningBody() const
-{
-    return m_document->body() || m_bodySeen;
+#if ENABLE(TEMPLATE_ELEMENT)
+    if (m_templateCount)
+        preload = false;
+#endif
+
+    if (preload)
+        task.preload(m_document, m_predictedBaseElementURL.isEmpty() ? m_document->baseURL() : m_predictedBaseElementURL);
 }
 
 void HTMLPreloadScanner::updatePredictedBaseElementURL(const KURL& baseElementURL)

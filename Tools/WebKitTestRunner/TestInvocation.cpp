@@ -103,6 +103,7 @@ TestInvocation::TestInvocation(const std::string& pathOrURL)
     : m_url(AdoptWK, createWKURL(pathOrURL.c_str()))
     , m_pathOrURL(pathOrURL)
     , m_dumpPixels(false)
+    , m_timeout(0)
     , m_gotInitialResponse(false)
     , m_gotFinalMessage(false)
     , m_gotRepaint(false)
@@ -119,6 +120,11 @@ void TestInvocation::setIsPixelTest(const std::string& expectedPixelHash)
 {
     m_dumpPixels = true;
     m_expectedPixelHash = expectedPixelHash;
+}
+
+void TestInvocation::setCustomTimeout(int timeout)
+{
+    m_timeout = timeout;
 }
 
 static const unsigned w3cSVGWidth = 480;
@@ -191,6 +197,7 @@ static void updateLayoutType(const char* pathOrURL)
 
 void TestInvocation::invoke()
 {
+    TestController::TimeoutDuration timeoutToUse = TestController::LongTimeout;
     sizeWebViewForCurrentTest(m_pathOrURL.c_str());
     updateLayoutType(m_pathOrURL.c_str());
     updateTiledDrawingForCurrentTest(m_pathOrURL.c_str());
@@ -212,6 +219,10 @@ void TestInvocation::invoke()
     WKRetainPtr<WKBooleanRef> useWaitToDumpWatchdogTimerValue = adoptWK(WKBooleanCreate(TestController::shared().useWaitToDumpWatchdogTimer()));
     WKDictionaryAddItem(beginTestMessageBody.get(), useWaitToDumpWatchdogTimerKey.get(), useWaitToDumpWatchdogTimerValue.get());
 
+    WKRetainPtr<WKStringRef> timeoutKey = adoptWK(WKStringCreateWithUTF8CString("Timeout"));
+    WKRetainPtr<WKUInt64Ref> timeoutValue = adoptWK(WKUInt64Create(m_timeout));
+    WKDictionaryAddItem(beginTestMessageBody.get(), timeoutKey.get(), timeoutValue.get());
+
     WKContextPostMessageToInjectedBundle(TestController::shared().context(), messageName.get(), beginTestMessageBody.get());
 
     TestController::shared().runUntil(m_gotInitialResponse, TestController::ShortTimeout);
@@ -230,7 +241,13 @@ void TestInvocation::invoke()
 
     WKPageLoadURL(TestController::shared().mainWebView()->page(), m_url.get());
 
-    TestController::shared().runUntil(m_gotFinalMessage, TestController::shared().useWaitToDumpWatchdogTimer() ? TestController::LongTimeout : TestController::NoTimeout);
+    if (TestController::shared().useWaitToDumpWatchdogTimer()) {
+        if (m_timeout > 0)
+            timeoutToUse = TestController::CustomTimeout;
+    } else
+        timeoutToUse = TestController::NoTimeout;
+    TestController::shared().runUntil(m_gotFinalMessage, timeoutToUse);
+
     if (!m_gotFinalMessage) {
         m_errorMessage = "Timed out waiting for final message from web process\n";
         m_webProcessIsUnresponsive = true;
@@ -288,9 +305,9 @@ void TestInvocation::dump(const char* textToStdout, const char* textToStderr, bo
 
 void TestInvocation::dumpResults()
 {
-    if (m_textOutput.length())
+    if (m_textOutput.length() || !m_audioResult)
         dump(m_textOutput.toString().utf8().data());
-    else if (m_audioResult)
+    else
         dumpAudio(m_audioResult.get());
 
     if (m_dumpPixels && m_pixelResult)
@@ -590,6 +607,27 @@ void TestInvocation::didReceiveMessageFromInjectedBundle(WKStringRef messageName
         return;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "SetHandlesAuthenticationChallenge")) {
+        ASSERT(WKGetTypeID(messageBody) == WKBooleanGetTypeID());
+        WKBooleanRef value = static_cast<WKBooleanRef>(messageBody);
+        TestController::shared().setHandlesAuthenticationChallenges(WKBooleanGetValue(value));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetAuthenticationUsername")) {
+        ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
+        WKStringRef username = static_cast<WKStringRef>(messageBody);
+        TestController::shared().setAuthenticationUsername(toWTFString(username));
+        return;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SetAuthenticationPassword")) {
+        ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
+        WKStringRef password = static_cast<WKStringRef>(messageBody);
+        TestController::shared().setAuthenticationPassword(toWTFString(password));
+        return;
+    }
+
     ASSERT_NOT_REACHED();
 }
 
@@ -610,6 +648,11 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
 
     ASSERT_NOT_REACHED();
     return 0;
+}
+
+void TestInvocation::outputText(const WTF::String& text)
+{
+    m_textOutput.append(text);
 }
 
 } // namespace WTR

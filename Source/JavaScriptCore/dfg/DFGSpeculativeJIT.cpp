@@ -29,8 +29,10 @@
 #if ENABLE(DFG_JIT)
 
 #include "Arguments.h"
+#include "DFGArrayifySlowPathGenerator.h"
 #include "DFGCallArrayAllocatorSlowPathGenerator.h"
 #include "DFGSlowPathGenerator.h"
+#include "JSValueInlines.h"
 #include "LinkBuffer.h"
 
 namespace JSC { namespace DFG {
@@ -117,6 +119,23 @@ void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource
 {
     ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
     speculationCheck(kind, jsValueSource, nodeUse.index(), jumpToFail);
+}
+
+OSRExitJumpPlaceholder SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex)
+{
+    if (!m_compileOkay)
+        return OSRExitJumpPlaceholder();
+    ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
+    unsigned index = m_jit.codeBlock()->numberOfOSRExits();
+    m_jit.appendExitInfo();
+    m_jit.codeBlock()->appendOSRExit(OSRExit(kind, jsValueSource, m_jit.graph().methodOfGettingAValueProfileFor(nodeIndex), this, m_stream->size()));
+    return OSRExitJumpPlaceholder(index);
+}
+
+OSRExitJumpPlaceholder SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, Edge nodeUse)
+{
+    ASSERT(at(m_compileIndex).canExit() || m_isCheckingArgumentTypes);
+    return speculationCheck(kind, jsValueSource, nodeUse.index());
 }
 
 void SpeculativeJIT::speculationCheck(ExitKind kind, JSValueSource jsValueSource, NodeIndex nodeIndex, const MacroAssembler::JumpList& jumpsToFail)
@@ -346,6 +365,276 @@ void SpeculativeJIT::clearGenerationInfo()
     m_fprs = RegisterBank<FPRInfo>();
 }
 
+SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForGPR(VirtualRegister spillMe, GPRReg source)
+{
+    GenerationInfo& info = m_generationInfo[spillMe];
+    NodeIndex nodeIndex = info.nodeIndex();
+    Node& node = at(nodeIndex);
+    DataFormat registerFormat = info.registerFormat();
+    ASSERT(registerFormat != DataFormatNone);
+    ASSERT(registerFormat != DataFormatDouble);
+        
+    SilentSpillAction spillAction;
+    SilentFillAction fillAction;
+        
+    if (!info.needsSpill())
+        spillAction = DoNothingForSpill;
+    else {
+#if USE(JSVALUE64)
+        ASSERT(info.gpr() == source);
+        if (registerFormat == DataFormatInteger)
+            spillAction = Store32Payload;
+        else if (registerFormat == DataFormatCell || registerFormat == DataFormatStorage)
+            spillAction = StorePtr;
+        else {
+            ASSERT(registerFormat & DataFormatJS);
+            spillAction = Store64;
+        }
+#elif USE(JSVALUE32_64)
+        if (registerFormat & DataFormatJS) {
+            ASSERT(info.tagGPR() == source || info.payloadGPR() == source);
+            spillAction = source == info.tagGPR() ? Store32Tag : Store32Payload;
+        } else {
+            ASSERT(info.gpr() == source);
+            spillAction = Store32Payload;
+        }
+#endif
+    }
+        
+    if (registerFormat == DataFormatInteger) {
+        ASSERT(info.gpr() == source);
+        ASSERT(isJSInteger(info.registerFormat()));
+        if (node.hasConstant()) {
+            ASSERT(isInt32Constant(nodeIndex));
+            fillAction = SetInt32Constant;
+        } else
+            fillAction = Load32Payload;
+    } else if (registerFormat == DataFormatBoolean) {
+#if USE(JSVALUE64)
+        ASSERT_NOT_REACHED();
+        fillAction = DoNothingForFill;
+#elif USE(JSVALUE32_64)
+        ASSERT(info.gpr() == source);
+        if (node.hasConstant()) {
+            ASSERT(isBooleanConstant(nodeIndex));
+            fillAction = SetBooleanConstant;
+        } else
+            fillAction = Load32Payload;
+#endif
+    } else if (registerFormat == DataFormatCell) {
+        ASSERT(info.gpr() == source);
+        if (node.hasConstant()) {
+            JSValue value = valueOfJSConstant(nodeIndex);
+            ASSERT_UNUSED(value, value.isCell());
+            fillAction = SetCellConstant;
+        } else {
+#if USE(JSVALUE64)
+            fillAction = LoadPtr;
+#else
+            fillAction = Load32Payload;
+#endif
+        }
+    } else if (registerFormat == DataFormatStorage) {
+        ASSERT(info.gpr() == source);
+        fillAction = LoadPtr;
+    } else {
+        ASSERT(registerFormat & DataFormatJS);
+#if USE(JSVALUE64)
+        ASSERT(info.gpr() == source);
+        if (node.hasConstant()) {
+            if (valueOfJSConstant(nodeIndex).isCell())
+                fillAction = SetTrustedJSConstant;
+            else
+                fillAction = SetJSConstant;
+        } else if (info.spillFormat() == DataFormatInteger) {
+            ASSERT(registerFormat == DataFormatJSInteger);
+            fillAction = Load32PayloadBoxInt;
+        } else if (info.spillFormat() == DataFormatDouble) {
+            ASSERT(registerFormat == DataFormatJSDouble);
+            fillAction = LoadDoubleBoxDouble;
+        } else
+            fillAction = Load64;
+#else
+        ASSERT(info.tagGPR() == source || info.payloadGPR() == source);
+        if (node.hasConstant())
+            fillAction = info.tagGPR() == source ? SetJSConstantTag : SetJSConstantPayload;
+        else if (info.payloadGPR() == source)
+            fillAction = Load32Payload;
+        else { // Fill the Tag
+            switch (info.spillFormat()) {
+            case DataFormatInteger:
+                ASSERT(registerFormat == DataFormatJSInteger);
+                fillAction = SetInt32Tag;
+                break;
+            case DataFormatCell:
+                ASSERT(registerFormat == DataFormatJSCell);
+                fillAction = SetCellTag;
+                break;
+            case DataFormatBoolean:
+                ASSERT(registerFormat == DataFormatJSBoolean);
+                fillAction = SetBooleanTag;
+                break;
+            default:
+                fillAction = Load32Tag;
+                break;
+            }
+        }
+#endif
+    }
+        
+    return SilentRegisterSavePlan(spillAction, fillAction, nodeIndex, source);
+}
+    
+SilentRegisterSavePlan SpeculativeJIT::silentSavePlanForFPR(VirtualRegister spillMe, FPRReg source)
+{
+    GenerationInfo& info = m_generationInfo[spillMe];
+    NodeIndex nodeIndex = info.nodeIndex();
+    Node& node = at(nodeIndex);
+    ASSERT(info.registerFormat() == DataFormatDouble);
+
+    SilentSpillAction spillAction;
+    SilentFillAction fillAction;
+        
+    if (!info.needsSpill())
+        spillAction = DoNothingForSpill;
+    else {
+        ASSERT(!at(info.nodeIndex()).hasConstant());
+        ASSERT(info.spillFormat() == DataFormatNone);
+        ASSERT(info.fpr() == source);
+        spillAction = StoreDouble;
+    }
+        
+#if USE(JSVALUE64)
+    if (node.hasConstant()) {
+        ASSERT(isNumberConstant(nodeIndex));
+        fillAction = SetDoubleConstant;
+    } else if (info.spillFormat() != DataFormatNone && info.spillFormat() != DataFormatDouble) {
+        // it was already spilled previously and not as a double, which means we need unboxing.
+        ASSERT(info.spillFormat() & DataFormatJS);
+        fillAction = LoadJSUnboxDouble;
+    } else
+        fillAction = LoadDouble;
+#elif USE(JSVALUE32_64)
+    ASSERT(info.registerFormat() == DataFormatDouble || info.registerFormat() == DataFormatJSDouble);
+    if (node.hasConstant()) {
+        ASSERT(isNumberConstant(nodeIndex));
+        fillAction = SetDoubleConstant;
+    } else
+        fillAction = LoadDouble;
+#endif
+
+    return SilentRegisterSavePlan(spillAction, fillAction, nodeIndex, source);
+}
+    
+void SpeculativeJIT::silentSpill(const SilentRegisterSavePlan& plan)
+{
+    switch (plan.spillAction()) {
+    case DoNothingForSpill:
+        break;
+    case Store32Tag:
+        m_jit.store32(plan.gpr(), JITCompiler::tagFor(at(plan.nodeIndex()).virtualRegister()));
+        break;
+    case Store32Payload:
+        m_jit.store32(plan.gpr(), JITCompiler::payloadFor(at(plan.nodeIndex()).virtualRegister()));
+        break;
+    case StorePtr:
+        m_jit.storePtr(plan.gpr(), JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()));
+        break;
+#if USE(JSVALUE64)
+    case Store64:
+        m_jit.store64(plan.gpr(), JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()));
+        break;
+#endif
+    case StoreDouble:
+        m_jit.storeDouble(plan.fpr(), JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()));
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
+    
+void SpeculativeJIT::silentFill(const SilentRegisterSavePlan& plan, GPRReg canTrample)
+{
+#if USE(JSVALUE32_64)
+    UNUSED_PARAM(canTrample);
+#endif
+    switch (plan.fillAction()) {
+    case DoNothingForFill:
+        break;
+    case SetInt32Constant:
+        m_jit.move(Imm32(valueOfInt32Constant(plan.nodeIndex())), plan.gpr());
+        break;
+    case SetBooleanConstant:
+        m_jit.move(TrustedImm32(valueOfBooleanConstant(plan.nodeIndex())), plan.gpr());
+        break;
+    case SetCellConstant:
+        m_jit.move(TrustedImmPtr(valueOfJSConstant(plan.nodeIndex()).asCell()), plan.gpr());
+        break;
+#if USE(JSVALUE64)
+    case SetTrustedJSConstant:
+        m_jit.move(valueOfJSConstantAsImm64(plan.nodeIndex()).asTrustedImm64(), plan.gpr());
+        break;
+    case SetJSConstant:
+        m_jit.move(valueOfJSConstantAsImm64(plan.nodeIndex()), plan.gpr());
+        break;
+    case SetDoubleConstant:
+        m_jit.move(Imm64(reinterpretDoubleToInt64(valueOfNumberConstant(plan.nodeIndex()))), canTrample);
+        m_jit.move64ToDouble(canTrample, plan.fpr());
+        break;
+    case Load32PayloadBoxInt:
+        m_jit.load32(JITCompiler::payloadFor(at(plan.nodeIndex()).virtualRegister()), plan.gpr());
+        m_jit.or64(GPRInfo::tagTypeNumberRegister, plan.gpr());
+        break;
+    case LoadDoubleBoxDouble:
+        m_jit.load64(JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()), plan.gpr());
+        m_jit.sub64(GPRInfo::tagTypeNumberRegister, plan.gpr());
+        break;
+    case LoadJSUnboxDouble:
+        m_jit.load64(JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()), canTrample);
+        unboxDouble(canTrample, plan.fpr());
+        break;
+#else
+    case SetJSConstantTag:
+        m_jit.move(Imm32(valueOfJSConstant(plan.nodeIndex()).tag()), plan.gpr());
+        break;
+    case SetJSConstantPayload:
+        m_jit.move(Imm32(valueOfJSConstant(plan.nodeIndex()).payload()), plan.gpr());
+        break;
+    case SetInt32Tag:
+        m_jit.move(TrustedImm32(JSValue::Int32Tag), plan.gpr());
+        break;
+    case SetCellTag:
+        m_jit.move(TrustedImm32(JSValue::CellTag), plan.gpr());
+        break;
+    case SetBooleanTag:
+        m_jit.move(TrustedImm32(JSValue::BooleanTag), plan.gpr());
+        break;
+    case SetDoubleConstant:
+        m_jit.loadDouble(addressOfDoubleConstant(plan.nodeIndex()), plan.fpr());
+        break;
+#endif
+    case Load32Tag:
+        m_jit.load32(JITCompiler::tagFor(at(plan.nodeIndex()).virtualRegister()), plan.gpr());
+        break;
+    case Load32Payload:
+        m_jit.load32(JITCompiler::payloadFor(at(plan.nodeIndex()).virtualRegister()), plan.gpr());
+        break;
+    case LoadPtr:
+        m_jit.loadPtr(JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()), plan.gpr());
+        break;
+#if USE(JSVALUE64)
+    case Load64:
+        m_jit.load64(JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()), plan.gpr());
+        break;
+#endif
+    case LoadDouble:
+        m_jit.loadDouble(JITCompiler::addressFor(at(plan.nodeIndex()).virtualRegister()), plan.fpr());
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
+    
 const TypedArrayDescriptor* SpeculativeJIT::typedArrayDescriptor(ArrayMode arrayMode)
 {
     switch (arrayMode.type()) {
@@ -548,11 +837,11 @@ void SpeculativeJIT::arrayify(Node& node, GPRReg baseReg, GPRReg propertyReg)
     }
         
     // We can skip all that comes next if we already have array storage.
-    MacroAssembler::JumpList done;
+    MacroAssembler::JumpList slowPath;
     
     if (node.op() == ArrayifyToStructure) {
-        done.append(m_jit.branchWeakPtr(
-            JITCompiler::Equal,
+        slowPath.append(m_jit.branchWeakPtr(
+            JITCompiler::NotEqual,
             JITCompiler::Address(baseReg, JSCell::structureOffset()),
             node.structure()));
     } else {
@@ -562,77 +851,12 @@ void SpeculativeJIT::arrayify(Node& node, GPRReg baseReg, GPRReg propertyReg)
         m_jit.load8(
             MacroAssembler::Address(structureGPR, Structure::indexingTypeOffset()), tempGPR);
         
-        done = jumpSlowForUnwantedArrayMode(tempGPR, node.arrayMode(), true);
-    }
-        
-    // If we're allegedly creating contiguous storage and the index is bogus, then
-    // just don't.
-    if (propertyReg != InvalidGPRReg) {
-        switch (node.arrayMode().type()) {
-        case Array::Int32:
-        case Array::Double:
-        case Array::Contiguous:
-            speculationCheck(
-                Uncountable, JSValueRegs(), NoNode,
-                m_jit.branch32(
-                    MacroAssembler::AboveOrEqual, propertyReg, TrustedImm32(MIN_SPARSE_ARRAY_INDEX)));
-            break;
-        default:
-            break;
-        }
+        slowPath.append(jumpSlowForUnwantedArrayMode(tempGPR, node.arrayMode()));
     }
     
-    // Now call out to create the array storage.
-    silentSpillAllRegisters(tempGPR);
-    switch (node.arrayMode().type()) {
-    case Array::Int32:
-        callOperation(operationEnsureInt32, tempGPR, baseReg);
-        break;
-    case Array::Double:
-        callOperation(operationEnsureDouble, tempGPR, baseReg);
-        break;
-    case Array::Contiguous:
-        if (node.arrayMode().conversion() == Array::RageConvert)
-            callOperation(operationRageEnsureContiguous, tempGPR, baseReg);
-        else
-            callOperation(operationEnsureContiguous, tempGPR, baseReg);
-        break;
-    case Array::ArrayStorage:
-    case Array::SlowPutArrayStorage:
-        callOperation(operationEnsureArrayStorage, tempGPR, baseReg);
-        break;
-    default:
-        CRASH();
-        break;
-    }
-    silentFillAllRegisters(tempGPR);
+    addSlowPathGenerator(adoptPtr(new ArrayifySlowPathGenerator(
+        slowPath, this, node, baseReg, propertyReg, tempGPR, structureGPR)));
     
-    if (node.op() == ArrayifyToStructure) {
-        speculationCheck(
-            BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
-            m_jit.branchWeakPtr(
-                JITCompiler::NotEqual,
-                JITCompiler::Address(baseReg, JSCell::structureOffset()),
-                node.structure()));
-    } else {
-        // Alas, we need to reload the structure because silent spilling does not save
-        // temporaries. Nor would it be useful for it to do so. Either way we're talking
-        // about a load.
-        m_jit.loadPtr(
-            MacroAssembler::Address(baseReg, JSCell::structureOffset()), structureGPR);
-    
-        // Finally, check that we have the kind of array storage that we wanted to get.
-        // Note that this is a backwards speculation check, which will result in the 
-        // bytecode operation corresponding to this arrayification being reexecuted.
-        // That's fine, since arrayification is not user-visible.
-        m_jit.load8(
-            MacroAssembler::Address(structureGPR, Structure::indexingTypeOffset()), structureGPR);
-        speculationCheck(
-            BadIndexingType, JSValueSource::unboxedCell(baseReg), NoNode,
-            jumpSlowForUnwantedArrayMode(structureGPR, node.arrayMode()));
-    }
-    
-    done.link(&m_jit);
     noResult(m_compileIndex);
 }
 
@@ -3094,11 +3318,11 @@ void SpeculativeJIT::compileIntegerArithDivForX86(Node& node)
         speculationCheck(Overflow, JSValueRegs(), NoNode, m_jit.branch32(JITCompiler::Equal, op1GPR, TrustedImm32(-2147483647-1)));
     } else {
         JITCompiler::Jump zero = m_jit.branchTest32(JITCompiler::Zero, op2GPR);
-        JITCompiler::Jump notNeg2ToThe31 = m_jit.branch32(JITCompiler::Equal, op1GPR, TrustedImm32(-2147483647-1));
+        JITCompiler::Jump isNeg2ToThe31 = m_jit.branch32(JITCompiler::Equal, op1GPR, TrustedImm32(-2147483647-1));
         zero.link(&m_jit);
         m_jit.move(TrustedImm32(0), eax.gpr());
+        isNeg2ToThe31.link(&m_jit);
         done = m_jit.jump();
-        notNeg2ToThe31.link(&m_jit);
     }
     
     safeDenominator.link(&m_jit);

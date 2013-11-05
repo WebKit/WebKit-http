@@ -39,6 +39,8 @@
 #include "PingLoader.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
+#include "ScriptCallStack.h"
+#include "ScriptCallStackFactory.h"
 #include "ScriptState.h"
 #include "SecurityOrigin.h"
 #include "TextEncoding.h"
@@ -157,6 +159,15 @@ FeatureObserver::Feature getFeatureObserverType(ContentSecurityPolicy::HeaderTyp
     return FeatureObserver::NumberOfFeatures;
 }
 
+const ScriptCallFrame& getFirstNonNativeFrame(PassRefPtr<ScriptCallStack> stack)
+{
+    int frameNumber = 0;
+    if (!stack->at(0).lineNumber() && stack->size() > 1 && stack->at(1).lineNumber())
+        frameNumber = 1;
+
+    return stack->at(frameNumber);
+}
+
 } // namespace
 
 static bool skipExactly(const UChar*& position, const UChar* end, UChar delimiter)
@@ -189,6 +200,24 @@ static void skipWhile(const UChar*& position, const UChar* end)
 {
     while (position < end && characterPredicate(*position))
         ++position;
+}
+
+static bool isSourceListNone(const String& value)
+{
+    const UChar* begin = value.characters();
+    const UChar* end = value.characters() + value.length();
+    skipWhile<isASCIISpace>(begin, end);
+
+    const UChar* position = begin;
+    skipWhile<isSourceCharacter>(position, end);
+    if (!equalIgnoringCase("'none'", begin, position - begin))
+        return false;
+
+    skipWhile<isASCIISpace>(position, end);
+    if (position != end)
+        return false;
+
+    return true;
 }
 
 class CSPSource {
@@ -312,6 +341,9 @@ CSPSourceList::CSPSourceList(ContentSecurityPolicy* policy, const String& direct
 
 void CSPSourceList::parse(const String& value)
 {
+    // We represent 'none' as an empty m_list.
+    if (isSourceListNone(value))
+        return;
     parse(value.characters(), value.characters() + value.length());
 }
 
@@ -337,7 +369,6 @@ void CSPSourceList::parse(const UChar* begin, const UChar* end)
 {
     const UChar* position = begin;
 
-    bool isFirstSourceInList = true;
     while (position < end) {
         skipWhile<isASCIISpace>(position, end);
         if (position == end)
@@ -345,10 +376,6 @@ void CSPSourceList::parse(const UChar* begin, const UChar* end)
 
         const UChar* beginSource = position;
         skipWhile<isSourceCharacter>(position, end);
-
-        if (isFirstSourceInList && equalIgnoringCase("'none'", beginSource, position - beginSource))
-            return; // We represent 'none' as an empty m_list.
-        isFirstSourceInList = false;
 
         String scheme, host, path;
         int port = 0;
@@ -382,6 +409,9 @@ bool CSPSourceList::parseSource(const UChar* begin, const UChar* end,
                                 bool& hostHasWildcard, bool& portHasWildcard)
 {
     if (begin == end)
+        return false;
+
+    if (equalIgnoringCase("'none'", begin, end - begin))
         return false;
 
     if (end - begin == 1 && *begin == '*') {
@@ -1605,6 +1635,17 @@ void ContentSecurityPolicy::reportViolation(const String& directiveText, const S
     else
         cspReport->setString("blocked-uri", String());
 
+    RefPtr<ScriptCallStack> stack = createScriptCallStack(2, false);
+    if (stack) {
+        const ScriptCallFrame& callFrame = getFirstNonNativeFrame(stack);
+
+        if (callFrame.lineNumber()) {
+            KURL source = KURL(KURL(), callFrame.sourceURL());
+            cspReport->setString("source-file", document->securityOrigin()->canRequest(source) ? source.strippedForUseAsReferrer() : SecurityOrigin::create(source)->toString());
+            cspReport->setNumber("line-number", callFrame.lineNumber());
+        }
+    }
+
     RefPtr<InspectorObject> reportObject = InspectorObject::create();
     reportObject->setObject("csp-report", cspReport.release());
 
@@ -1687,6 +1728,8 @@ void ContentSecurityPolicy::reportInvalidNonce(const String& nonce) const
 void ContentSecurityPolicy::reportInvalidSourceExpression(const String& directiveName, const String& source) const
 {
     String message = makeString("The source list for Content Security Policy directive '", directiveName, "' contains an invalid source: '", source, "'. It will be ignored.");
+    if (equalIgnoringCase(source, "'none'"))
+        message = makeString(message, " Note that 'none' has no effect unless it is the only expression in the source list.");
     logToConsole(message);
 }
 

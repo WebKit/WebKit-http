@@ -44,10 +44,10 @@
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebInputEvent.h"
-#include "platform/WebSize.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
 #include <gtest/gtest.h>
+#include <public/WebSize.h>
 #include <webkit/support/webkit_support.h>
 
 using namespace WebKit;
@@ -123,7 +123,7 @@ private:
 class TapHandlingWebViewClient : public WebViewClient {
 public:
     // WebViewClient methods
-    virtual void didHandleGestureEvent(const WebGestureEvent& event, bool handled)
+    virtual void didHandleGestureEvent(const WebGestureEvent& event, EventStatus eventStatus)
     {
         if (event.type == WebInputEvent::GestureTap) {
             m_tapX = event.x;

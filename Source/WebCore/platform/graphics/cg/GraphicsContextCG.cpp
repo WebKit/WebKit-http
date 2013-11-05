@@ -1097,23 +1097,6 @@ IntRect GraphicsContext::clipBounds() const
     return enclosingIntRect(CGContextGetClipBoundingBox(platformContext()));
 }
 
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
-{
-    if (paintingDisabled())
-        return;
-
-    clip(rect);
-    CGContextRef context = platformContext();
-
-    // Add outer ellipse
-    CGContextAddEllipseInRect(context, CGRectMake(rect.x(), rect.y(), rect.width(), rect.height()));
-    // Add inner ellipse.
-    CGContextAddEllipseInRect(context, CGRectMake(rect.x() + thickness, rect.y() + thickness,
-        rect.width() - (thickness * 2), rect.height() - (thickness * 2)));
-
-    CGContextEOClip(context);
-}
-
 void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
 {
     if (paintingDisabled())
@@ -1334,7 +1317,7 @@ void GraphicsContext::setLineJoin(LineJoin join)
     }
 }
 
-void GraphicsContext::clip(const Path& path)
+void GraphicsContext::clip(const Path& path, WindRule fillRule)
 {
     if (paintingDisabled())
         return;
@@ -1348,14 +1331,17 @@ void GraphicsContext::clip(const Path& path)
     else {
         CGContextBeginPath(context);
         CGContextAddPath(context, path.platformPath());
-        CGContextClip(context);
+        if (fillRule == RULE_EVENODD)
+            CGContextClip(context);
+        else
+            CGContextEOClip(context);
     }
     m_data->clip(path);
 }
 
-void GraphicsContext::canvasClip(const Path& path)
+void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
 {
-    clip(path);
+    clip(path, fillRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)
@@ -1698,55 +1684,106 @@ void GraphicsContext::setPlatformShouldSmoothFonts(bool enable)
     CGContextSetShouldSmoothFonts(platformContext(), enable);
 }
 
-void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, BlendMode)
+void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, BlendMode blendMode)
 {
     if (paintingDisabled())
         return;
 
     CGBlendMode target = kCGBlendModeNormal;
-    switch (mode) {
-    case CompositeClear:
-        target = kCGBlendModeClear;
-        break;
-    case CompositeCopy:
-        target = kCGBlendModeCopy;
-        break;
-    case CompositeSourceOver:
-        //kCGBlendModeNormal
-        break;
-    case CompositeSourceIn:
-        target = kCGBlendModeSourceIn;
-        break;
-    case CompositeSourceOut:
-        target = kCGBlendModeSourceOut;
-        break;
-    case CompositeSourceAtop:
-        target = kCGBlendModeSourceAtop;
-        break;
-    case CompositeDestinationOver:
-        target = kCGBlendModeDestinationOver;
-        break;
-    case CompositeDestinationIn:
-        target = kCGBlendModeDestinationIn;
-        break;
-    case CompositeDestinationOut:
-        target = kCGBlendModeDestinationOut;
-        break;
-    case CompositeDestinationAtop:
-        target = kCGBlendModeDestinationAtop;
-        break;
-    case CompositeXOR:
-        target = kCGBlendModeXOR;
-        break;
-    case CompositePlusDarker:
-        target = kCGBlendModePlusDarker;
-        break;
-    case CompositePlusLighter:
-        target = kCGBlendModePlusLighter;
-        break;
-    case CompositeDifference:
-        target = kCGBlendModeDifference;
-        break;
+    if (blendMode != BlendModeNormal) {
+        switch (blendMode) {
+        case BlendModeMultiply:
+            target = kCGBlendModeMultiply;
+            break;
+        case BlendModeScreen:
+            target = kCGBlendModeScreen;
+            break;
+        case BlendModeOverlay:
+            target = kCGBlendModeOverlay;
+            break;
+        case BlendModeDarken:
+            target = kCGBlendModeDarken;
+            break;
+        case BlendModeLighten:
+            target = kCGBlendModeLighten;
+            break;
+        case BlendModeColorDodge:
+            target = kCGBlendModeColorDodge;
+            break;
+        case BlendModeColorBurn:
+            target = kCGBlendModeColorBurn;
+            break;
+        case BlendModeHardLight:
+            target = kCGBlendModeHardLight;
+            break;
+        case BlendModeSoftLight:
+            target = kCGBlendModeSoftLight;
+            break;
+        case BlendModeDifference:
+            target = kCGBlendModeDifference;
+            break;
+        case BlendModeExclusion:
+            target = kCGBlendModeExclusion;
+            break;
+        case BlendModeHue:
+            target = kCGBlendModeHue;
+            break;
+        case BlendModeSaturation:
+            target = kCGBlendModeSaturation;
+            break;
+        case BlendModeColor:
+            target = kCGBlendModeColor;
+            break;
+        case BlendModeLuminosity:
+            target = kCGBlendModeLuminosity;
+        default:
+            break;
+        }
+    } else {
+        switch (mode) {
+        case CompositeClear:
+            target = kCGBlendModeClear;
+            break;
+        case CompositeCopy:
+            target = kCGBlendModeCopy;
+            break;
+        case CompositeSourceOver:
+            // kCGBlendModeNormal
+            break;
+        case CompositeSourceIn:
+            target = kCGBlendModeSourceIn;
+            break;
+        case CompositeSourceOut:
+            target = kCGBlendModeSourceOut;
+            break;
+        case CompositeSourceAtop:
+            target = kCGBlendModeSourceAtop;
+            break;
+        case CompositeDestinationOver:
+            target = kCGBlendModeDestinationOver;
+            break;
+        case CompositeDestinationIn:
+            target = kCGBlendModeDestinationIn;
+            break;
+        case CompositeDestinationOut:
+            target = kCGBlendModeDestinationOut;
+            break;
+        case CompositeDestinationAtop:
+            target = kCGBlendModeDestinationAtop;
+            break;
+        case CompositeXOR:
+            target = kCGBlendModeXOR;
+            break;
+        case CompositePlusDarker:
+            target = kCGBlendModePlusDarker;
+            break;
+        case CompositePlusLighter:
+            target = kCGBlendModePlusLighter;
+            break;
+        case CompositeDifference:
+            target = kCGBlendModeDifference;
+            break;
+        }
     }
     CGContextSetBlendMode(platformContext(), target);
 }

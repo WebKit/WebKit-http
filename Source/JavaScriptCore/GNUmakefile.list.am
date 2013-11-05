@@ -172,11 +172,11 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGArgumentsSimplificationPhase.h \
 	Source/JavaScriptCore/dfg/DFGArrayMode.cpp \
 	Source/JavaScriptCore/dfg/DFGArrayMode.h \
+	Source/JavaScriptCore/dfg/DFGArrayifySlowPathGenerator.h \
 	Source/JavaScriptCore/dfg/DFGAssemblyHelpers.cpp \
 	Source/JavaScriptCore/dfg/DFGAssemblyHelpers.h \
 	Source/JavaScriptCore/dfg/DFGBasicBlock.h \
 	Source/JavaScriptCore/dfg/DFGBranchDirection.h \
-	Source/JavaScriptCore/dfg/DFGByteCodeCache.h \
 	Source/JavaScriptCore/dfg/DFGByteCodeParser.cpp \
 	Source/JavaScriptCore/dfg/DFGByteCodeParser.h \
 	Source/JavaScriptCore/dfg/DFGCCallHelpers.h \
@@ -229,6 +229,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGOSRExit.h \
 	Source/JavaScriptCore/dfg/DFGOSRExit.cpp \
 	Source/JavaScriptCore/dfg/DFGOSRExitCompilationInfo.h \
+	Source/JavaScriptCore/dfg/DFGOSRExitJumpPlaceholder.cpp \
+	Source/JavaScriptCore/dfg/DFGOSRExitJumpPlaceholder.h \
 	Source/JavaScriptCore/dfg/DFGPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGPhase.h \
 	Source/JavaScriptCore/dfg/DFGPredictionPropagationPhase.cpp \
@@ -403,6 +405,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/jit/ClosureCallStubRoutine.h \
 	Source/JavaScriptCore/jit/ExecutableAllocator.cpp \
 	Source/JavaScriptCore/jit/ExecutableAllocator.h \
+	Source/JavaScriptCore/jit/ExecutableAllocatorFixedVMPool.cpp \
 	Source/JavaScriptCore/jit/GCAwareJITStubRoutine.cpp \
 	Source/JavaScriptCore/jit/GCAwareJITStubRoutine.h \
 	Source/JavaScriptCore/jit/HostCallReturnValue.cpp \
@@ -431,13 +434,17 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/jit/JITStubRoutine.h \
 	Source/JavaScriptCore/jit/JITStubs.cpp \
 	Source/JavaScriptCore/jit/JITStubs.h \
+	Source/JavaScriptCore/jit/JITThunks.cpp \
+	Source/JavaScriptCore/jit/JITThunks.h \
 	Source/JavaScriptCore/jit/JITWriteBarrier.h \
 	Source/JavaScriptCore/jit/JSInterfaceJIT.h \
 	Source/JavaScriptCore/jit/JumpReplacementWatchpoint.cpp \
 	Source/JavaScriptCore/jit/JumpReplacementWatchpoint.h \
 	Source/JavaScriptCore/jit/SpecializedThunkJIT.h \
+	Source/JavaScriptCore/jit/ThunkGenerator.h \
 	Source/JavaScriptCore/jit/ThunkGenerators.cpp \
 	Source/JavaScriptCore/jit/ThunkGenerators.h \
+	Source/JavaScriptCore/jit/UnusedPointer.h \
 	Source/JavaScriptCore/llint/LLIntCommon.h \
 	Source/JavaScriptCore/llint/LLIntCLoop.cpp \
 	Source/JavaScriptCore/llint/LLIntCLoop.h \
@@ -759,12 +766,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/yarr/YarrSyntaxChecker.cpp \
 	Source/JavaScriptCore/yarr/YarrSyntaxChecker.h
 
-if TARGET_WIN32
-else
-javascriptcore_sources += \
-	Source/JavaScriptCore/jit/ExecutableAllocatorFixedVMPool.cpp
-endif
-
 llint_nosources += \
 	Source/JavaScriptCore/llint/LowLevelInterpreter32_64.asm \
 	Source/JavaScriptCore/llint/LowLevelInterpreter64.asm \
@@ -779,6 +780,7 @@ offlineasm_nosources += \
 	Source/JavaScriptCore/offlineasm/config.rb \
 	Source/JavaScriptCore/offlineasm/generate_offset_extractor.rb \
 	Source/JavaScriptCore/offlineasm/instructions.rb \
+	Source/JavaScriptCore/offlineasm/mips.rb \
 	Source/JavaScriptCore/offlineasm/offsets.rb \
 	Source/JavaScriptCore/offlineasm/opt.rb \
 	Source/JavaScriptCore/offlineasm/parser.rb \

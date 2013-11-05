@@ -54,10 +54,10 @@
 #include "WebSettings.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
-#include "platform/WebFloatRect.h"
-#include "platform/WebURLResponse.h"
 #include "v8.h"
 #include <gtest/gtest.h>
+#include <public/WebFloatRect.h>
+#include <public/WebURLResponse.h>
 #include <webkit/support/webkit_support.h>
 
 using namespace WebKit;
@@ -341,10 +341,10 @@ TEST_F(WebFrameTest, DivAutoZoomParamsTest)
     int viewportWidth = 640;
     int viewportHeight = 480;
     WebKit::WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "get_scale_for_auto_zoom_into_div_test.html");
-    webView->enableFixedLayoutMode(true);
     webView->setDeviceScaleFactor(2.0f);
     webView->resize(WebSize(viewportWidth, viewportHeight));
     webView->setPageScaleFactorLimits(0.01f, 4);
+    webView->enableFixedLayoutMode(true);
     webView->layout();
 
     WebRect wideDiv(200, 100, 400, 150);

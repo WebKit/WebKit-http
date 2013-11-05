@@ -47,14 +47,12 @@ v8::Handle<v8::Value> V8DOMFormData::constructorCallbackCustom(const v8::Argumen
     RefPtr<DOMFormData> domFormData = DOMFormData::create(form);
 
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::associateObjectWithWrapper(domFormData.release(), &info, wrapper);
+    V8DOMWrapper::associateObjectWithWrapper(domFormData.release(), &info, wrapper, args.GetIsolate());
     return wrapper;
 }
 
 v8::Handle<v8::Value> V8DOMFormData::appendCallback(const v8::Arguments& args)
 {
-    INC_STATS("DOM.FormData.append()");
-    
     if (args.Length() < 2)
         return throwError(v8SyntaxError, "Not enough arguments", args.GetIsolate());
 

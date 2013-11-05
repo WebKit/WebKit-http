@@ -205,7 +205,8 @@ fast/js/i18n-bindings-locale.html
 http/tests/security/isolatedWorld/cross-origin-xhr.html
 
 # JSC also doesn't support setIsolatedWorldContentSecurityPolicy (webkit.org/b/100815)
-http/tests/security/isolatedWorld/bypass-main-world-csp.html
+webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp.html
+webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr.html
 
 # This test is for clients that choose to make the missing plugin indicator a button
 plugins/clicking-missing-plugin-fires-delegate.html
@@ -410,10 +411,6 @@ fast/canvas/webgl
 
 # Pre-HMTL5 parser quirks only apply to the mac port for now.
 fast/parser/pre-html5-parser-quirks.html
-
-# fast/dom/Window/window-postmessage-arrays.html fails on JSC platforms
-# https://bugs.webkit.org/show_bug.cgi?id=72363
-fast/dom/Window/window-postmessage-arrays.html
 
 #Vibration API is not implemented.
 fast/dom/navigator-vibration.html
@@ -899,19 +896,14 @@ webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/cr
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrack/removeCue.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/align.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/id.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/pauseOnExit.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/track.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
@@ -926,12 +918,6 @@ webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timest
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
-
-# After fixing webkit.org/b/103258, these tests fail when they used to simply timeout.
-# At any rate, there is no regression, just a different type of failure.
-webkit.org/b/105536 media/track/opera/interfaces/TextTrack/addCue.html [ Failure ]
-webkit.org/b/105536 media/track/opera/interfaces/TextTrackCue/endTime.html [ Failure ]
-webkit.org/b/105536 media/track/opera/interfaces/TextTrackCue/startTime.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=38376
 media/media-document-audio-size.html
@@ -1094,6 +1080,7 @@ fast/autoresize
 # Needs layoutTestController.setBackingScaleFactor()
 editing/spelling/grammar-markers-hidpi.html
 editing/spelling/inline-spelling-markers-hidpi.html
+fast/backgrounds/gradient-background-leakage-hidpi.html
 fast/canvas/2d.backingStorePixelRatio.html
 fast/canvas/2d.imageDataHD.html
 fast/canvas/canvas-as-image-hidpi.html
@@ -1105,17 +1092,6 @@ svg/as-image/svg-as-image-canvas.html
 http/tests/security/isolatedWorld/didClearWindowObject.html
 # This needs more investigation
 http/tests/security/isolatedWorld/world-reuse.html
-
-# ------- missing ruby annotation support for japanese fonts
-fast/ruby/ruby-beforeafter.html
-fast/ruby/ruby-empty-rt.html
-fast/ruby/ruby-length.html
-fast/ruby/ruby-run-break.html
-fast/ruby/ruby-runs-spans.html
-fast/ruby/ruby-runs.html
-fast/ruby/ruby-simple-rp.html
-fast/ruby/ruby-simple.html
-fast/ruby/ruby-trailing.html
 
 # [Qt] http/tests/misc/favicon-loads-with-icon-loading-override.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=58396
@@ -1193,6 +1169,11 @@ css3/filters/custom/custom-filter-transforms-animation.html
 css3/filters/custom/custom-filter-blend-modes.html
 css3/filters/custom/custom-filter-array-blending.html
 
+# The following test fail because blending is not yet implemented
+# https://bugs.webkit.org/show_bug.cgi?id=100072
+fast/canvas/canvas-blend-image.html
+fast/canvas/canvas-blend-solid.html
+
 # ReferenceError: Can't find variable: MediaKeyError
 # http://trac.webkit.org/changeset/114067
 fast/events/constructors/media-key-event-constructor.html
@@ -1208,6 +1189,9 @@ http/tests/fullscreen/fullscreenelement-same-origin.html
 
 # Missing testRunner.setShouldPaintBrokenImage() implementation
 fast/images/support-broken-image-delegate.html
+
+# Missing testRunner.setHandlesAuthenticationChallenges() implementation
+http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url.html
 
 # ============================================================================= #
 # Failing SVG tests
@@ -1433,10 +1417,6 @@ css3/filters/effect-reference-hw.html
 # ============================================================================= #
 # failing fast tests
 # ============================================================================= #
-
-# [Qt] fast/ruby/overhang* tests fail
-# https://bugs.webkit.org/show_bug.cgi?id=57824
-fast/ruby/overhang-vertical.html
 
 # New test flakey on Qt Linux Release introduced in r113086
 # https://bugs.webkit.org/show_bug.cgi?id=83057
@@ -1820,10 +1800,6 @@ fast/block/positioning/002.html
 # https://bugs.webkit.org/show_bug.cgi?id=92733
 fast/block/positioning/056.html
 
-# REGRESSION (r130557): fast/exclusions/shape-inside/shape-inside-rounded-rectangle-003.html fails on Qt and GTK
-# https://bugs.webkit.org/show_bug.cgi?id=98585
-fast/exclusions/shape-inside/shape-inside-rounded-rectangle-003.html
-
 # REGRESSION (r130570): fast/writing-mode/vertical-subst-font-vert-no-dflt.html fails on non-Chromium platforms
 # https://bugs.webkit.org/show_bug.cgi?id=98587
 fast/writing-mode/vertical-subst-font-vert-no-dflt.html
@@ -1831,6 +1807,12 @@ fast/writing-mode/vertical-subst-font-vert-no-dflt.html
 # [Qt] fast/xmlhttprequest/xmlhttprequest-nonexistent-file.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=98751
 fast/xmlhttprequest/xmlhttprequest-nonexistent-file.html
+
+# [Qt] REGRESSION (r139609) - should be unskipped after Qt update (with system libjpeg/libpng)
+# https://bugs.webkit.org/show_bug.cgi?id=104909
+fast/events/mouse-cursor-multiframecur.html
+fast/events/mouse-cursor.html
+fast/images/icon-decoding.html
 
 # ============================================================================= #
 # failing security tests
@@ -2086,7 +2068,7 @@ fast/dom/HTMLDocument/hasFocus.html
 fast/loader/form-submission-after-beforeunload-cancel.html
 
 # This test verifies that a mismatch reftest will fail as intended if both results are same.
-fast/harness/sample-fail-mismatch-reftest.html
+fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
 # [Qt] fast/text/line-initial-and-final-swashes.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=69719
@@ -2104,6 +2086,7 @@ fast/canvas/canvas-composite-canvas.html
 
 # track not functional yet.
 fast/events/constructors/track-event-constructor.html
+http/tests/security/contentSecurityPolicy/media-src-track-block.html
 http/tests/security/text-track-crossorigin.html
 
 # Linecaps wrong for zero length lines
@@ -2179,9 +2162,11 @@ fast/sub-pixel/block-with-margin-overflow.html
 svg/custom/anchor-on-use.svg
 svg/animations/animateTransform-rotate-around-point.svg
 svg/animations/animateMotion-additive-1.svg
+svg/text/alt-glyph-for-surrogate-pair.svg
 svg/transforms/transformed-text-fill-gradient.html
 fast/regions/floats-basic-in-variable-width-regions.html
 fast/regions/region-style-rule-position.html
+fast/forms/select/intrinsic-min-width-applies-with-fixed-width.html
 
 # Failing fast/css/sticky/ tests with minor pixel differences
 # https://bugs.webkit.org/show_bug.cgi?id=92080
@@ -2355,7 +2340,6 @@ webkit.org/b/84771 ietestcenter/css3/multicolumn/column-width-applies-to-009.htm
 webkit.org/b/84772 ietestcenter/css3/multicolumn/column-width-applies-to-010.htm [ ImageOnlyFailure ]
 webkit.org/b/84773 ietestcenter/css3/multicolumn/column-width-applies-to-012.htm [ ImageOnlyFailure ]
 webkit.org/b/84777 ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ ImageOnlyFailure ]
-webkit.org/b/84778 ietestcenter/css3/multicolumn/column-width-negative-001.htm [ ImageOnlyFailure ]
 
 # IETC flexbox failures
 webkit.org/b/85211 ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
@@ -2412,6 +2396,7 @@ webkit.org/b/23166 ietestcenter/css3/bordersbackgrounds/border-radius-clip-002.h
 
 # css3-conditionals support is not yet enabled.
 webkit.org/b/86146 css3/supports.html
+webkit.org/b/104822 css3/supports-cssom.html
 
 # CSS Device Adaptation is not enabled.
 webkit.org/b/95969 css3/device-adapt [ Skip ]
@@ -2433,6 +2418,7 @@ webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg
 
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 
 # [Qt] Unidentified pixel failures
 webkit.org/b/99306 animations/additive-transform-animations.html [ ImageOnlyFailure ]
@@ -2502,4 +2488,33 @@ webkit.org/b/104150 fast/media/implicit-media-all.html [ ImageOnlyFailure ]
 http/tests/xmlhttprequest/post-blob-content-type-async.html
 http/tests/xmlhttprequest/post-blob-content-type-sync.html
 
-webkit.org/b/104788 css3/flexbox/flex-algorithm.html [ Failure ]
+# Leaking state into the next test.
+webkit.org/b/85522 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
+
+# [Qt] New tests introduced in r138632 fails
+# https://bugs.webkit.org/show_bug.cgi?id=106015
+fast/css-generated-content/pseudo-animation.html
+fast/css-generated-content/pseudo-transition.html
+
+# [Qt] New fast/workers/worker-document-leak.html fails
+webkit.org/b/106016 fast/workers/worker-document-leak.html
+
+# [Qt] New fast/regions/full-screen-video-from-region.html times out
+webkit.org/b/106095 fast/regions/full-screen-video-from-region.html
+
+# [Qt][EFL] New fast/events/drag-and-drop-autoscroll.html fails
+webkit.org/b/106318 fast/events/drag-and-drop-autoscroll.html
+
+# REGRESSION(r139145): A couple of fast/workers tests fail
+# https://bugs.webkit.org/show_bug.cgi?id=106415
+fast/workers/worker-close-more.html
+fast/workers/worker-document-leak.html
+fast/workers/worker-lifecycle.html
+fast/workers/storage/interrupt-database.html
+
+# [Qt] New fast/js/dfg-create-inlined-arguments-in-closure-inline.html asserts on 32 bit
+webkit.org/b/106459 [ Debug ] fast/js/dfg-create-inlined-arguments-in-closure-inline.html
+
+# New inspector/editor/text-editor-formatter.html introduced in r139617 fails on EFL, Mac, QT
+# https://bugs.webkit.org/show_bug.cgi?id=106883
+inspector/editor/text-editor-formatter.html

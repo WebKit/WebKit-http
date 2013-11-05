@@ -132,6 +132,12 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitWindowProperties.h \
 	$(WebKit2)/UIProcess/API/gtk/webkit2.h
 
+webkit2_web_extension_h_api += \
+	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.h \
+	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionDefines.h \
+	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.h \
+	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/webkit-web-extension.h
+
 webkit2_built_sources += \
 	DerivedSources/WebKit2/AuthenticationManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/AuthenticationManagerMessages.h \
@@ -411,6 +417,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/NativeWebKeyboardEvent.h \
 	Source/WebKit2/Shared/NativeWebMouseEvent.h \
 	Source/WebKit2/Shared/NativeWebWheelEvent.h \
+	Source/WebKit2/Shared/Network/NetworkProcessSupplement.h \
 	Source/WebKit2/Shared/OriginAndDatabases.cpp \
 	Source/WebKit2/Shared/OriginAndDatabases.h \
 	Source/WebKit2/Shared/PlatformPopupMenuData.cpp \
@@ -490,6 +497,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/WebIntentServiceInfo.cpp \
 	Source/WebKit2/Shared/WebIntentServiceInfo.h \
 	Source/WebKit2/Shared/WebKeyboardEvent.cpp \
+	Source/WebKit2/Shared/WebKit2Initialize.cpp \
+	Source/WebKit2/Shared/WebKit2Initialize.h \
 	Source/WebKit2/Shared/WebMouseEvent.cpp \
 	Source/WebKit2/Shared/WebNavigationDataStore.h \
 	Source/WebKit2/Shared/WebNetworkInfo.h \
@@ -763,6 +772,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWindowProperties.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWindowProperties.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWindowPropertiesPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebViewBaseInputMethodFilter.h \
+	Source/WebKit2/UIProcess/API/gtk/WebViewBaseInputMethodFilter.cpp \
 	Source/WebKit2/UIProcess/API/gtk/webkit2.h \
 	Source/WebKit2/UIProcess/Authentication/AuthenticationChallengeProxy.cpp \
 	Source/WebKit2/UIProcess/Authentication/AuthenticationChallengeProxy.h \
@@ -867,6 +878,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebContextMenuProxy.cpp \
 	Source/WebKit2/UIProcess/WebContextMenuProxy.h \
 	Source/WebKit2/UIProcess/WebContextUserMessageCoders.h \
+	Source/WebKit2/UIProcess/WebContextSupplement.h \
 	Source/WebKit2/UIProcess/WebCookieManagerProxy.h \
 	Source/WebKit2/UIProcess/WebCookieManagerProxy.cpp \
 	Source/WebKit2/UIProcess/WebCookieManagerProxyClient.cpp \
@@ -985,6 +997,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Geolocation/GeolocationPermissionRequestManager.h \
 	Source/WebKit2/WebProcess/Geolocation/WebGeolocationManager.cpp \
 	Source/WebKit2/WebProcess/Geolocation/WebGeolocationManager.h \
+	Source/WebKit2/WebProcess/gtk/WebGtkExtensionManager.cpp \
+	Source/WebKit2/WebProcess/gtk/WebGtkExtensionManager.h \
 	Source/WebKit2/WebProcess/gtk/WebProcessMainGtk.cpp \
 	Source/WebKit2/WebProcess/gtk/WebProcessMainGtk.h \
 	Source/WebKit2/WebProcess/IconDatabase/WebIconDatabaseProxy.cpp \
@@ -1027,6 +1041,14 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleRangeHandle.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionPrivate.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionDefines.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebPagePrivate.h \
+	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/webkit-web-extension.h \
 	Source/WebKit2/WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h \
 	Source/WebKit2/WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp \
@@ -1179,8 +1201,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebPage/FindController.h \
 	Source/WebKit2/WebProcess/WebPage/TapHighlightController.cpp \
 	Source/WebKit2/WebProcess/WebPage/TapHighlightController.h \
-    Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObject.h \
-    Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp \
+	Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObject.h \
+	Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebInspectorGtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPageGtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp \
@@ -1207,6 +1229,7 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebPage/WebUndoStep.h \
 	Source/WebKit2/WebProcess/WebConnectionToUIProcess.cpp \
 	Source/WebKit2/WebProcess/WebConnectionToUIProcess.h \
+	Source/WebKit2/WebProcess/WebProcessSupplement.h \
 	Source/WebKit2/WebProcess/WebProcess.cpp \
 	Source/WebKit2/WebProcess/WebProcess.h
 
@@ -1215,8 +1238,6 @@ webkit2_sources += \
    Source/WebKit2/WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp \
    Source/WebKit2/WebProcess/WebPage/gtk/LayerTreeHostGtk.h
 endif # END USE_TEXTURE_MAPPER_GL
-
-if ENABLE_PLUGIN_PROCESS
 
 webkit2_plugin_process_built_sources += \
 	DerivedSources/WebKit2/NPObjectMessageReceiverMessageReceiver.cpp \
@@ -1310,6 +1331,7 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Shared/WebEvent.cpp \
 	Source/WebKit2/Shared/WebEvent.h \
 	Source/WebKit2/Shared/WebKeyboardEvent.cpp \
+	Source/WebKit2/Shared/WebKit2Initialize.cpp \
 	Source/WebKit2/Shared/WebMouseEvent.cpp \
 	Source/WebKit2/Shared/WebWheelEvent.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebKeyboardEventGtk.cpp \
@@ -1332,5 +1354,3 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/WebProcess/Plugins/Netscape/NetscapePluginStream.h \
 	Source/WebKit2/WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp \
 	Source/WebKit2/unix/PluginMainUnix.cpp
-
-endif # ENABLE_PLUGIN_PROCESS

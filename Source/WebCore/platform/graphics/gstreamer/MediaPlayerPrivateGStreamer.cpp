@@ -75,10 +75,17 @@ typedef enum {
     GST_PLAY_FLAG_BUFFERING     = 0x000000100
 } GstPlayFlags;
 
+// gPercentMax is used when parsing buffering ranges with
+// gst_query_parse_nth_buffering_range as there was a bug in GStreamer
+// 0.10 that was using 100 instead of GST_FORMAT_PERCENT_MAX. This was
+// corrected in 1.0. gst_query_parse_buffering_range worked as
+// expected with GST_FORMAT_PERCENT_MAX in both cases.
 #ifdef GST_API_VERSION_1
 static const char* gPlaybinName = "playbin";
+static const gint64 gPercentMax = GST_FORMAT_PERCENT_MAX;
 #else
 static const char* gPlaybinName = "playbin2";
+static const gint64 gPercentMax = 100;
 #endif
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_player_debug);
@@ -758,11 +765,11 @@ PassRefPtr<TimeRanges> MediaPlayerPrivateGStreamer::buffered() const
         return timeRanges.release();
     }
 
-    gint64 rangeStart = 0, rangeStop = 0;
     for (guint index = 0; index < gst_query_get_n_buffering_ranges(query); index++) {
+        gint64 rangeStart = 0, rangeStop = 0;
         if (gst_query_parse_nth_buffering_range(query, index, &rangeStart, &rangeStop))
-            timeRanges->add(static_cast<float>((rangeStart * mediaDuration) / 100),
-                            static_cast<float>((rangeStop * mediaDuration) / 100));
+            timeRanges->add(static_cast<float>((rangeStart * mediaDuration) / gPercentMax),
+                static_cast<float>((rangeStop * mediaDuration) / gPercentMax));
     }
 
     // Fallback to the more general maxTimeLoaded() if no range has
@@ -1607,90 +1614,93 @@ static HashSet<String> mimeTypeCache()
 
     if (typeListInitialized)
         return cache;
-    const char* mimeTypes[] = {"application/ogg",
-                               "application/vnd.apple.mpegurl",
-                               "application/vnd.rn-realmedia",
-                               "application/x-3gp",
-                               "application/x-pn-realaudio",
-                               "audio/3gpp",
-                               "audio/aac",
-                               "audio/flac",
-                               "audio/iLBC-sh",
-                               "audio/midi",
-                               "audio/mobile-xmf",
-                               "audio/mp1",
-                               "audio/mp2",
-                               "audio/mp3",
-                               "audio/mp4",
-                               "audio/mpeg",
-                               "audio/ogg",
-                               "audio/qcelp",
-                               "audio/riff-midi",
-                               "audio/wav",
-                               "audio/webm",
-                               "audio/x-ac3",
-                               "audio/x-aiff",
-                               "audio/x-amr-nb-sh",
-                               "audio/x-amr-wb-sh",
-                               "audio/x-au",
-                               "audio/x-ay",
-                               "audio/x-celt",
-                               "audio/x-dts",
-                               "audio/x-flac",
-                               "audio/x-gbs",
-                               "audio/x-gsm",
-                               "audio/x-gym",
-                               "audio/x-imelody",
-                               "audio/x-ircam",
-                               "audio/x-kss",
-                               "audio/x-m4a",
-                               "audio/x-mod",
-                               "audio/x-mp3",
-                               "audio/x-mpeg",
-                               "audio/x-musepack",
-                               "audio/x-nist",
-                               "audio/x-nsf",
-                               "audio/x-paris",
-                               "audio/x-sap",
-                               "audio/x-sbc",
-                               "audio/x-sds",
-                               "audio/x-shorten",
-                               "audio/x-sid",
-                               "audio/x-spc",
-                               "audio/x-speex",
-                               "audio/x-svx",
-                               "audio/x-ttafile",
-                               "audio/x-vgm",
-                               "audio/x-voc",
-                               "audio/x-vorbis+ogg",
-                               "audio/x-w64",
-                               "audio/x-wav",
-                               "audio/x-wavpack",
-                               "audio/x-wavpack-correction",
-                               "video/3gpp",
-                               "video/mj2",
-                               "video/mp4",
-                               "video/mpeg",
-                               "video/mpegts",
-                               "video/ogg",
-                               "video/quicktime",
-                               "video/vivo",
-                               "video/webm",
-                               "video/x-cdxa",
-                               "video/x-dirac",
-                               "video/x-dv",
-                               "video/x-fli",
-                               "video/x-flv",
-                               "video/x-h263",
-                               "video/x-ivf",
-                               "video/x-m4v",
-                               "video/x-matroska",
-                               "video/x-mng",
-                               "video/x-ms-asf",
-                               "video/x-msvideo",
-                               "video/x-mve",
-                               "video/x-nuv",
-                               "video/x-vcd"};
+
+    const char* mimeTypes[] = {
+        "application/ogg",
+        "application/vnd.apple.mpegurl",
+        "application/vnd.rn-realmedia",
+        "application/x-3gp",
+        "application/x-pn-realaudio",
+        "audio/3gpp",
+        "audio/aac",
+        "audio/flac",
+        "audio/iLBC-sh",
+        "audio/midi",
+        "audio/mobile-xmf",
+        "audio/mp1",
+        "audio/mp2",
+        "audio/mp3",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/qcelp",
+        "audio/riff-midi",
+        "audio/wav",
+        "audio/webm",
+        "audio/x-ac3",
+        "audio/x-aiff",
+        "audio/x-amr-nb-sh",
+        "audio/x-amr-wb-sh",
+        "audio/x-au",
+        "audio/x-ay",
+        "audio/x-celt",
+        "audio/x-dts",
+        "audio/x-flac",
+        "audio/x-gbs",
+        "audio/x-gsm",
+        "audio/x-gym",
+        "audio/x-imelody",
+        "audio/x-ircam",
+        "audio/x-kss",
+        "audio/x-m4a",
+        "audio/x-mod",
+        "audio/x-mp3",
+        "audio/x-mpeg",
+        "audio/x-musepack",
+        "audio/x-nist",
+        "audio/x-nsf",
+        "audio/x-paris",
+        "audio/x-sap",
+        "audio/x-sbc",
+        "audio/x-sds",
+        "audio/x-shorten",
+        "audio/x-sid",
+        "audio/x-spc",
+        "audio/x-speex",
+        "audio/x-svx",
+        "audio/x-ttafile",
+        "audio/x-vgm",
+        "audio/x-voc",
+        "audio/x-vorbis+ogg",
+        "audio/x-w64",
+        "audio/x-wav",
+        "audio/x-wavpack",
+        "audio/x-wavpack-correction",
+        "video/3gpp",
+        "video/mj2",
+        "video/mp4",
+        "video/mpeg",
+        "video/mpegts",
+        "video/ogg",
+        "video/quicktime",
+        "video/vivo",
+        "video/webm",
+        "video/x-cdxa",
+        "video/x-dirac",
+        "video/x-dv",
+        "video/x-fli",
+        "video/x-flv",
+        "video/x-h263",
+        "video/x-ivf",
+        "video/x-m4v",
+        "video/x-matroska",
+        "video/x-mng",
+        "video/x-ms-asf",
+        "video/x-msvideo",
+        "video/x-mve",
+        "video/x-nuv",
+        "video/x-vcd"
+    };
 
     for (unsigned i = 0; i < (sizeof(mimeTypes) / sizeof(*mimeTypes)); ++i)
         cache.add(String(mimeTypes[i]));

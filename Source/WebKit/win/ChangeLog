@@ -1,3 +1,234 @@
+2013-01-15  peavo@outlook.com  <peavo@outlook.com>
+
+        Crash when saving history with no items in it.
+        https://bugs.webkit.org/show_bug.cgi?id=104261
+
+        Reviewed by Darin Adler.
+
+        * WebHistory.cpp:
+        (WebHistory::saveHistoryGuts): Added null pointer check
+
+2013-01-09  Levi Weintraub <leviw@chromium.org>
+
+        Rolling out r139683. It broke a bunch of webkit_unit_tests. 
+
+2013-01-09  Hajime Morrita  <morrita@google.com>
+
+        [Shadow DOM] Distribution related code on ElementShadow should be minimized.
+        https://bugs.webkit.org/show_bug.cgi?id=106294
+
+        Reviewed by Dimitri Glazkov.
+
+        * WebKit.vcproj/WebKit.def.in:
+
+2013-01-09  Roger Fong  <roger_fong@apple.com>
+
+        Rename export files to make them more easily findable.
+        https://bugs.webkit.org/show_bug.cgi?id=98695.
+
+        Reviewed by Timothy Horton.
+
+        * WebKit.vcproj/WebKit.def.in: Removed.
+        * WebKit.vcproj/WebKit.vcproj:
+        * WebKit.vcproj/WebKitExportGenerator.vcproj:
+        * WebKit.vcproj/WebKitExportGeneratorBuildCmd.cmd:
+        * WebKit.vcproj/WebKitExportGeneratorPostBuild.cmd:
+        * WebKit.vcproj/WebKitExportGeneratorPreBuild.cmd:
+        * WebKit.vcproj/WebKitExports.def.in: Copied from Source/WebKit/win/WebKit.vcproj/WebKit.def.in.
+        * WebKit.vcproj/WebKitLibCommon.vsprops:
+
+2013-01-09  Roger Fong  <roger_fong@apple.com>
+
+        Add WebPreferences for Seamless IFrames on Windows port.
+        https://bugs.webkit.org/show_bug.cgi?id=106468.
+
+        Rubberstamped by Eric Seidel.
+
+        * Interfaces/IWebPreferences.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::areSeamlessIFramesEnabled):
+        (WebPreferences::setSeamlessIFramesEnabled):
+        * WebPreferences.h:
+        (WebPreferences):
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2013-01-09  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] Link fix after r138759
+        https://bugs.webkit.org/show_bug.cgi?id=106323
+
+        Reviewed by Kentaro Hara.
+
+        * WebKit.vcproj/WebKitLibDebugCairoCFLite.vsprops: Include WebKitCFLite.vsprops.
+        * WebKit.vcproj/WebKitLibReleaseCairoCFLite.vsprops: Include WebKitCFLite.vsprops.
+
+2013-01-08  Hajime Morrita  <morrita@google.com>
+
+        [Shadow DOM] Distribution related code on ShadowRoot should be minimized.
+        https://bugs.webkit.org/show_bug.cgi?id=106282
+
+        Reviewed by Dimitri Glazkov.
+
+        * WebKit.vcproj/WebKit.def.in:
+
+2013-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Removed the need for the ProposedDatabase mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=106292.
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::exceededDatabaseQuota):
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2013-01-04  Roger Fong  <roger_fong@apple.com>
+
+        Make private browsing work on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=106032.
+
+        Reviewed by Alexey Proskuryakov.
+
+        Code path never called ensurePrivateBrowsingSession which is what starts up the private browsing session.
+        This was causing many tests to involving private browsing to fail.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2013-01-03  Roger Fong  <roger_fong@apple.com>
+
+        Remove all traces of Windows from WebKit2 folder.
+        https://bugs.webkit.org/show_bug.cgi?id=105585.
+
+        Reviewed by Sam Weinig.
+
+        WebKitExportGenerator project needs to be moved out of the WebKit2/win folder and into WebKit/win.
+
+        * WebKit.vcproj/WebKit.def.in: Added.
+        * WebKit.vcproj/WebKit.sln:
+        * WebKit.vcproj/WebKit.vcproj:
+        * WebKit.vcproj/WebKitCFLite.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGenerator.vcproj: Added.
+        * WebKit.vcproj/WebKitExportGeneratorBuildCmd.cmd: Added.
+        * WebKit.vcproj/WebKitExportGeneratorCommon.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGeneratorDebug.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGeneratorDebugAll.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGeneratorDebugCairoCFLite.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGeneratorPostBuild.cmd: Added.
+        * WebKit.vcproj/WebKitExportGeneratorPreBuild.cmd: Added.
+        * WebKit.vcproj/WebKitExportGeneratorProduction.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGeneratorRelease.vsprops: Added.
+        * WebKit.vcproj/WebKitExportGeneratorReleaseCairoCFLite.vsprops: Added.
+        * WebKit.vcproj/WebKitLibCommon.vsprops:
+
+2013-01-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed fix after r138656 to make GIT-SVN repositories happy.
+
+        * WebKit.vcproj/WebKitApple.vsprops: Added property svn:eol-style. Removed property svn:mime-type.
+        * WebKit.vcproj/WebKitDirectX.vsprops: Added property svn:eol-style. Removed property svn:mime-type.
+
+2013-01-02  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Build fix after reintroducing r138331.
+
+        Attempted to remove WebKit2 from Apple Windows port in r138331 but two vsprops files were missing.
+
+        * WebKit.vcproj/WebKitApple.vsprops: Added.
+        * WebKit.vcproj/WebKitDirectX.vsprops: Added.
+
+2013-01-02  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r138403.
+        http://trac.webkit.org/changeset/138403
+        https://bugs.webkit.org/show_bug.cgi?id=105950
+
+        Fixing e138331 which was rolled out in r138403 (Requested by
+        rfong on #webkit).
+
+        * WebKit.vcproj/WebKit.sln:
+        * WebKit.vcproj/WebKit.vcproj:
+        * WebKit.vcproj/WebKitLibCommon.vsprops:
+        * WebKit.vcproj/WebKitLibDebug.vsprops:
+        * WebKit.vcproj/WebKitLibDebugAll.vsprops:
+        * WebKit.vcproj/WebKitLibProduction.vsprops:
+        * WebKit.vcproj/WebKitLibRelease.vsprops:
+
+2012-12-23  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/12808377> Network process should respect cookie accept policy
+        https://bugs.webkit.org/show_bug.cgi?id=105684
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebCoreSupport/WebPlatformStrategies.h:
+        CookiesStrategy no longer has notifyCookiesChanged(). This port didn't use it anyway.
+
+2012-12-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a separate class for networking related storage
+        https://bugs.webkit.org/show_bug.cgi?id=105676
+
+        Reviewed by Sam Weinig.
+
+        * WebCookieManagerCFNet.cpp:
+        * WebView.cpp:
+        Updated includes.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        This class is now simpler, with most session tracking being in WebCore.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::cookiesForDOM):
+        (WebPlatformStrategies::setCookiesFromDOM):
+        (WebPlatformStrategies::cookiesEnabled):
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebPlatformStrategies::getRawCookies):
+        (WebPlatformStrategies::deleteCookie):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        We no longer need a function for default storage! Other functions now take a session.
+
+2012-12-21  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r138331.
+        http://trac.webkit.org/changeset/138331
+        https://bugs.webkit.org/show_bug.cgi?id=105668
+
+        Broke Windows clean builds; can't figure out how to fix it
+        (Requested by rniwa on #webkit).
+
+        * WebKit.vcproj/WebKit.sln:
+        * WebKit.vcproj/WebKit.vcproj:
+        * WebKit.vcproj/WebKitLibCommon.vsprops:
+        * WebKit.vcproj/WebKitLibDebug.vsprops:
+        * WebKit.vcproj/WebKitLibDebugAll.vsprops:
+        * WebKit.vcproj/WebKitLibProduction.vsprops:
+        * WebKit.vcproj/WebKitLibRelease.vsprops:
+
+2012-12-20  Anders Carlsson  <andersca@apple.com>
+
+        Stop building WebKit2 for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=105585
+
+        Reviewed by Brian Weinstein.
+
+        Stop building WebKit2 on Windows, and change WebKit.vcproj to build WebKit.dll again.
+
+        * WebKit.vcproj/WebKit.sln:
+        * WebKit.vcproj/WebKit.vcproj:
+        * WebKit.vcproj/WebKitApple.vsprops: Added.
+        * WebKit.vcproj/WebKitDirectX.vsprops: Added.
+        * WebKit.vcproj/WebKitLibCommon.vsprops:
+        * WebKit.vcproj/WebKitLibDebug.vsprops:
+        * WebKit.vcproj/WebKitLibDebugAll.vsprops:
+        * WebKit.vcproj/WebKitLibProduction.vsprops:
+        * WebKit.vcproj/WebKitLibRelease.vsprops:
+
 2012-12-20  Anders Carlsson  <andersca@apple.com>
 
         Copy WebKit2.rc to back to WebKit/win/WebKit.vcproj.

@@ -30,6 +30,7 @@
 #include "NetworkProcess.h"
 #include "NetworkResourceLoader.h"
 #include "RemoteNetworkingContext.h"
+#include "SyncNetworkResourceLoader.h"
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
@@ -103,10 +104,6 @@ void NetworkConnectionToWebProcess::didClose(CoreIPC::Connection*)
     
     NetworkProcess::shared().removeNetworkConnectionToWebProcess(this);
 
-    // Unblock waiting threads.
-    m_willSendRequestResponseMap.cancel();
-    m_canAuthenticateAgainstProtectionSpaceResponseMap.cancel();
-
     Vector<NetworkConnectionToWebProcessObserver*> observers;
     copyToVector(m_observers, observers);
     for (size_t i = 0; i < observers.size(); ++i)
@@ -124,9 +121,9 @@ void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLo
     resourceLoadIdentifier = NetworkProcess::shared().networkResourceLoadScheduler().scheduleResourceLoad(loadParameters, this);
 }
 
-void NetworkConnectionToWebProcess::addLoadInProgress(const KURL& url, ResourceLoadIdentifier& identifier)
+void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResourceLoadParameters& loadParameters, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply> reply)
 {
-    identifier = NetworkProcess::shared().networkResourceLoadScheduler().addLoadInProgress(url);
+    NetworkProcess::shared().networkResourceLoadScheduler().scheduleSyncNetworkResourceLoader(SyncNetworkResourceLoader::create(loadParameters, reply));
 }
 
 void NetworkConnectionToWebProcess::removeLoadIdentifier(ResourceLoadIdentifier identifier)
@@ -139,31 +136,14 @@ void NetworkConnectionToWebProcess::servePendingRequests(uint32_t resourceLoadPr
     NetworkProcess::shared().networkResourceLoadScheduler().servePendingRequests(static_cast<ResourceLoadPriority>(resourceLoadPriority));
 }
 
-void NetworkConnectionToWebProcess::suspendPendingRequests()
-{
-    NetworkProcess::shared().networkResourceLoadScheduler().suspendPendingRequests();
-}
-
-void NetworkConnectionToWebProcess::resumePendingRequests()
-{
-    NetworkProcess::shared().networkResourceLoadScheduler().resumePendingRequests();
-}
-
 void NetworkConnectionToWebProcess::setSerialLoadingEnabled(bool enabled)
 {
     m_serialLoadingEnabled = enabled;
 }
 
-static RemoteNetworkingContext* networkingContext(bool privateBrowsingEnabled)
+static NetworkStorageSession& storageSession(bool privateBrowsingEnabled)
 {
-    // This networking context is only needed to get storage session from.
-    if (privateBrowsingEnabled) {
-        static RemoteNetworkingContext* context = RemoteNetworkingContext::create(false, false, true).leakRef();
-        return context;
-    } else {
-        static RemoteNetworkingContext* context = RemoteNetworkingContext::create(false, false, false).leakRef();
-        return context;
-    }
+    return privateBrowsingEnabled ? RemoteNetworkingContext::privateBrowsingSession() : NetworkStorageSession::defaultStorageSession();
 }
 
 void NetworkConnectionToWebProcess::startDownload(bool privateBrowsingEnabled, uint64_t downloadID, const ResourceRequest& request)
@@ -174,32 +154,32 @@ void NetworkConnectionToWebProcess::startDownload(bool privateBrowsingEnabled, u
 
 void NetworkConnectionToWebProcess::cookiesForDOM(bool privateBrowsingEnabled, const KURL& firstParty, const KURL& url, String& result)
 {
-    result = WebCore::cookiesForDOM(networkingContext(privateBrowsingEnabled), firstParty, url);
+    result = WebCore::cookiesForDOM(storageSession(privateBrowsingEnabled), firstParty, url);
 }
 
 void NetworkConnectionToWebProcess::setCookiesFromDOM(bool privateBrowsingEnabled, const KURL& firstParty, const KURL& url, const String& cookieString)
 {
-    WebCore::setCookiesFromDOM(networkingContext(privateBrowsingEnabled), firstParty, url, cookieString);
+    WebCore::setCookiesFromDOM(storageSession(privateBrowsingEnabled), firstParty, url, cookieString);
 }
 
 void NetworkConnectionToWebProcess::cookiesEnabled(bool privateBrowsingEnabled, const KURL& firstParty, const KURL& url, bool& result)
 {
-    result = WebCore::cookiesEnabled(networkingContext(privateBrowsingEnabled), firstParty, url);
+    result = WebCore::cookiesEnabled(storageSession(privateBrowsingEnabled), firstParty, url);
 }
 
 void NetworkConnectionToWebProcess::cookieRequestHeaderFieldValue(bool privateBrowsingEnabled, const KURL& firstParty, const KURL& url, String& result)
 {
-    result = WebCore::cookieRequestHeaderFieldValue(networkingContext(privateBrowsingEnabled), firstParty, url);
+    result = WebCore::cookieRequestHeaderFieldValue(storageSession(privateBrowsingEnabled), firstParty, url);
 }
 
 void NetworkConnectionToWebProcess::getRawCookies(bool privateBrowsingEnabled, const KURL& firstParty, const KURL& url, Vector<Cookie>& result)
 {
-    WebCore::getRawCookies(networkingContext(privateBrowsingEnabled), firstParty, url, result);
+    WebCore::getRawCookies(storageSession(privateBrowsingEnabled), firstParty, url, result);
 }
 
 void NetworkConnectionToWebProcess::deleteCookie(bool privateBrowsingEnabled, const KURL& url, const String& cookieName)
 {
-    WebCore::deleteCookie(networkingContext(privateBrowsingEnabled), url, cookieName);
+    WebCore::deleteCookie(storageSession(privateBrowsingEnabled), url, cookieName);
 }
 
 } // namespace WebKit

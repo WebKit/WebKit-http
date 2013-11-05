@@ -466,7 +466,8 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float 
     m_data->context->DrawLine(origin.x(), origin.y(), origin.x() + width, origin.y());
 }
 
-void GraphicsContext::clip(const Path& path) 
+// FIXME: don't ignore the winding rule.
+void GraphicsContext::clip(const Path& path, WindRule) 
 { 
     if (paintingDisabled())
         return;
@@ -479,9 +480,9 @@ void GraphicsContext::clip(const Path& path)
         clipPath(path, RULE_NONZERO);
 }
 
-void GraphicsContext::canvasClip(const Path& path)
+void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
 {
-    clip(path);
+    clip(path, fillRule);
 }
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
@@ -741,20 +742,6 @@ void GraphicsContext::setMiterLimit(float)
 void GraphicsContext::setAlpha(float)
 {
     notImplemented();
-}
-
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& r, int thickness)
-{
-    if (paintingDisabled())
-        return;
-
-    FloatRect rect(r);
-    clip(rect);
-    Path path;
-    path.addEllipse(rect);
-    rect.inflate(-thickness);
-    path.addEllipse(rect);
-    clipPath(path, RULE_EVENODD);
 }
 
 #if OS(WINDOWS)

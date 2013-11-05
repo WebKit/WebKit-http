@@ -39,11 +39,11 @@
 
 namespace WebKit {
 
-NonCompositedContentHost::NonCompositedContentHost(WebViewImpl* webView)
+NonCompositedContentHost::NonCompositedContentHost(WebViewImpl* webView, WebCore::GraphicsLayerFactory* graphicsLayerFactory)
     : m_webView(webView)
     , m_showDebugBorders(false)
 {
-    m_graphicsLayer = WebCore::GraphicsLayer::create(0, this);
+    m_graphicsLayer = WebCore::GraphicsLayer::create(graphicsLayerFactory, this);
 #ifndef NDEBUG
     m_graphicsLayer->setName("non-composited content");
 #endif
@@ -121,7 +121,7 @@ void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize,
     // In RTL-style pages, the origin of the initial containing block for the
     // root layer may be positive; translate the layer to avoid negative
     // coordinates.
-    m_layerAdjust = -toSize(scrollOrigin);
+    m_layerAdjust = -toIntSize(scrollOrigin);
     if (m_graphicsLayer->transform().m41() != m_layerAdjust.width() || m_graphicsLayer->transform().m42() != m_layerAdjust.height()) {
         WebCore::TransformationMatrix transform = m_graphicsLayer->transform();
         transform.setM41(m_layerAdjust.width());
@@ -172,13 +172,6 @@ void NonCompositedContentHost::notifyFlushRequired(const WebCore::GraphicsLayer*
 
 void NonCompositedContentHost::paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext& context, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect)
 {
-    // FIXME: Remove LCD text setting after it is implemented in chromium.
-    // On non-android platforms, we want to render text with subpixel antialiasing on the root layer
-    // so long as the root is opaque. On android all text is grayscale.
-#if !OS(ANDROID)
-    if (m_graphicsLayer->contentsOpaque())
-        context.platformContext()->setDrawingToImageBuffer(false);
-#endif
     context.translate(-m_layerAdjust);
     WebCore::IntRect adjustedClipRect = clipRect;
     adjustedClipRect.move(m_layerAdjust);

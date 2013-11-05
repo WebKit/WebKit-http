@@ -267,6 +267,7 @@ sub IDLFileForInterface
     unless ($idlFiles) {
         my $sourceRoot = $ENV{SOURCE_ROOT};
         my @directories = map { $_ = "$sourceRoot/$_" if $sourceRoot && -d "$sourceRoot/$_"; $_ } @$useDirectories;
+        push(@directories, ".");
 
         $idlFiles = { };
 
@@ -319,14 +320,6 @@ sub SkipIncludeHeader
     # Special case: SVGPoint.h / SVGNumber.h do not exist.
     return 1 if $type eq "SVGPoint" or $type eq "SVGNumber";
     return 0;
-}
-
-sub IsArrayType
-{
-    my $object = shift;
-    my $type = shift;
-    # FIXME: Add proper support for T[], T[]?, sequence<T>.
-    return $type =~ m/\[\]$/;
 }
 
 sub IsConstructorTemplate
@@ -401,6 +394,8 @@ sub IsRefPtrType
     my $type = shift;
 
     return 0 if $object->IsPrimitiveType($type);
+    return 0 if $object->GetArrayType($type);
+    return 0 if $object->GetSequenceType($type);
     return 0 if $type eq "DOMString";
 
     return 1;
@@ -567,13 +562,10 @@ sub ContentAttributeName
 
 sub CanUseFastAttribute
 {
-    my ($generator, $attribute, $contentAttributeName) = @_;
+    my ($generator, $attribute) = @_;
     my $attributeType = $attribute->signature->type;
     # HTMLNames::styleAttr cannot be used with fast{Get,Has}Attribute but we do not [Reflect] the
     # style attribute.
-
-    # Unfortunately SVG makes class animatable.
-    return 0 if $contentAttributeName eq "WebCore::HTMLNames::classAttr";
 
     return !$generator->IsSVGAnimatedType($attributeType);
 }
@@ -593,7 +585,7 @@ sub GetterExpression
         $functionName = "getURLAttribute";
     } elsif ($attribute->signature->type eq "boolean") {
         my $namespace = $generator->NamespaceForAttributeName($interfaceName, $contentAttributeName);
-        if ($generator->CanUseFastAttribute($attribute, $contentAttributeName)) {
+        if ($generator->CanUseFastAttribute($attribute)) {
             $functionName = "fastHasAttribute";
         } else {
             $functionName = "hasAttribute";
@@ -603,7 +595,13 @@ sub GetterExpression
     } elsif ($attribute->signature->type eq "unsigned long") {
         $functionName = "getUnsignedIntegralAttribute";
     } else {
-        if ($generator->CanUseFastAttribute($attribute, $contentAttributeName)) {
+        if ($contentAttributeName eq "WebCore::HTMLNames::idAttr") {
+            $functionName = "getIdAttribute";
+            $contentAttributeName = "";
+        } elsif ($contentAttributeName eq "WebCore::HTMLNames::nameAttr") {
+            $functionName = "getNameAttribute";
+            $contentAttributeName = "";
+        } elsif ($generator->CanUseFastAttribute($attribute)) {
             $functionName = "fastGetAttribute";
         } else {
             $functionName = "getAttribute";

@@ -35,6 +35,7 @@
 
 namespace WebCore {
 class GraphicsContext;
+class GraphicsLayer;
 }
 
 namespace WebKit {
@@ -57,6 +58,8 @@ public:
 
     void update();
     void paintWebFrame(WebCore::GraphicsContext&);
+
+    size_t findGraphicsLayer(WebCore::GraphicsLayer*);
 
 private:
     typedef Vector<OwnPtr<PageOverlay>, 2> PageOverlays;

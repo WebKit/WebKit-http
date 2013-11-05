@@ -26,11 +26,11 @@
 #include "config.h"
 #include "WebKeyValueStorageManager.h"
 
-#include "MessageID.h"
 #include "SecurityOriginData.h"
+#include "WebKeyValueStorageManagerMessages.h"
 #include "WebKeyValueStorageManagerProxyMessages.h"
 #include "WebProcess.h"
-
+#include "WebProcessCreationParameters.h"
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/StorageTracker.h>
@@ -39,14 +39,25 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebKeyValueStorageManager& WebKeyValueStorageManager::shared()
+const AtomicString& WebKeyValueStorageManager::supplementName()
 {
-    static WebKeyValueStorageManager& shared = *new WebKeyValueStorageManager;
-    return shared;
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebKeyValueStorageManager", AtomicString::ConstructFromLiteral));
+    return name;
 }
 
-WebKeyValueStorageManager::WebKeyValueStorageManager()
+WebKeyValueStorageManager::WebKeyValueStorageManager(WebProcess* process)
+    : m_process(process)
 {
+    m_process->addMessageReceiver(Messages::WebKeyValueStorageManager::messageReceiverName(), this);
+}
+
+void WebKeyValueStorageManager::initialize(const WebProcessCreationParameters& parameters)
+{
+    StorageTracker::initializeTracker(parameters.localStorageDirectory, this);
+    m_localStorageDirectory = parameters.localStorageDirectory;
+#if ENABLE(INDEXED_DATABASE)
+    m_indexedDBDatabaseDirectory = parameters.databaseDirectory;
+#endif
 }
 
 void WebKeyValueStorageManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
@@ -76,15 +87,13 @@ static void keyValueStorageOriginIdentifiers(Vector<SecurityOriginData>& identif
     }
 }
 
-static void dispatchDidGetKeyValueStorageOrigins(const Vector<SecurityOriginData>& identifiers, uint64_t callbackID)
+void WebKeyValueStorageManager::dispatchDidGetKeyValueStorageOrigins(const Vector<SecurityOriginData>& identifiers, uint64_t callbackID)
 {
-    WebProcess::shared().connection()->send(Messages::WebKeyValueStorageManagerProxy::DidGetKeyValueStorageOrigins(identifiers, callbackID), 0);
+    m_process->send(Messages::WebKeyValueStorageManagerProxy::DidGetKeyValueStorageOrigins(identifiers, callbackID), 0);
 }
 
 void WebKeyValueStorageManager::getKeyValueStorageOrigins(uint64_t callbackID)
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     if (!StorageTracker::tracker().originsLoaded()) {
         m_originsRequestCallbackIDs.append(callbackID);
         return;
@@ -115,8 +124,6 @@ void WebKeyValueStorageManager::dispatchDidModifyOrigin(const String&)
 
 void WebKeyValueStorageManager::deleteEntriesForOrigin(const SecurityOriginData& originData)
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     RefPtr<SecurityOrigin> origin = SecurityOrigin::create(originData.protocol, originData.host, originData.port);
     if (!origin)
         return;
@@ -126,7 +133,6 @@ void WebKeyValueStorageManager::deleteEntriesForOrigin(const SecurityOriginData&
 
 void WebKeyValueStorageManager::deleteAllEntries()
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
     StorageTracker::tracker().deleteAllOrigins();
 }
 

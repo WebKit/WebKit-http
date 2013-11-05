@@ -184,14 +184,6 @@
         raises(DOMException);
     [DoNotCheckSecurity, Custom] void postMessage(in SerializedScriptValue message, in DOMString targetOrigin, in Array messagePorts)
         raises(DOMException);
-
-#if defined(ENABLE_LEGACY_VENDOR_PREFIXES) && ENABLE_LEGACY_VENDOR_PREFIXES
-    [DoNotCheckSecurity, Custom] void webkitPostMessage(in SerializedScriptValue message, in DOMString targetOrigin)
-        raises(DOMException);
-    [DoNotCheckSecurity, Custom] void webkitPostMessage(in SerializedScriptValue message, in DOMString targetOrigin, in Array transferList)
-        raises(DOMException);
-#endif // defined(ENABLE_LEGACY_VENDOR_PREFIXES) && ENABLE_LEGACY_VENDOR_PREFIXES
-
 #else
     // There's no good way to expose an array via the ObjC bindings, so for now just allow passing in a single port.
     [DoNotCheckSecurity, Custom] void postMessage(in SerializedScriptValue message, in [Optional] MessagePort messagePort, in DOMString targetOrigin)
@@ -216,7 +208,7 @@
 #if defined(ENABLE_REQUEST_ANIMATION_FRAME) && ENABLE_REQUEST_ANIMATION_FRAME
     [V8MeasureAs=UnprefixedRequestAnimationFrame] long requestAnimationFrame(in [Callback] RequestAnimationFrameCallback callback);
     void cancelAnimationFrame(in long id);
-    [ImplementedAs=requestAnimationFrame, V8MeasureAs=PrefixedRequestAnimationFrame] long webkitRequestAnimationFrame(in [Callback] RequestAnimationFrameCallback callback);
+    [V8MeasureAs=PrefixedRequestAnimationFrame] long webkitRequestAnimationFrame(in [Callback] RequestAnimationFrameCallback callback);
     [ImplementedAs=cancelAnimationFrame] void webkitCancelAnimationFrame(in long id);
     [ImplementedAs=cancelAnimationFrame] void webkitCancelRequestAnimationFrame(in long id); // This is a deprecated alias for webkitCancelAnimationFrame(). Remove this when removing vendor prefix.
 #endif
@@ -308,10 +300,10 @@
 #if defined(ENABLE_ORIENTATION_EVENTS) && ENABLE_ORIENTATION_EVENTS
     attribute EventListener onorientationchange;
 #endif
-    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime] EventListener ontouchstart;
-    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime] EventListener ontouchmove;
-    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime] EventListener ontouchend;
-    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime] EventListener ontouchcancel;
+    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] EventListener ontouchstart;
+    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] EventListener ontouchmove;
+    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] EventListener ontouchend;
+    attribute [Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] EventListener ontouchcancel;
 
     attribute [Conditional=DEVICE_ORIENTATION,V8EnabledAtRuntime] EventListener ondevicemotion;
     attribute [Conditional=DEVICE_ORIENTATION,V8EnabledAtRuntime] EventListener ondeviceorientation;
@@ -529,6 +521,7 @@
     attribute DOMStringMapConstructor DOMStringMap;
 
     attribute ArrayBufferConstructor ArrayBuffer; // Usable with new operator
+    attribute ArrayBufferViewConstructor ArrayBufferView;
     attribute Int8ArrayConstructor Int8Array; // Usable with new operator
     attribute Uint8ArrayConstructor Uint8Array; // Usable with new operator
     attribute Uint8ClampedArrayConstructor Uint8ClampedArray; // Usable with new operator
@@ -563,13 +556,14 @@
     attribute XMLHttpRequestProgressEventConstructor XMLHttpRequestProgressEvent;
     [Conditional=DEVICE_ORIENTATION, V8EnabledAtRuntime] attribute DeviceMotionEventConstructor DeviceMotionEvent;
     [Conditional=DEVICE_ORIENTATION, V8EnabledAtRuntime] attribute DeviceOrientationEventConstructor DeviceOrientationEvent;
-    [Conditional=TOUCH_EVENTS] attribute TouchConstructor Touch;
-    [Conditional=TOUCH_EVENTS] attribute TouchEventConstructor TouchEvent;
-    [Conditional=TOUCH_EVENTS] attribute TouchListConstructor TouchList;
+    [Conditional=TOUCH_EVENTS, V8EnabledAtRuntime=touch] attribute TouchConstructor Touch;
+    [Conditional=TOUCH_EVENTS, V8EnabledAtRuntime=touch] attribute TouchEventConstructor TouchEvent;
+    [Conditional=TOUCH_EVENTS, V8EnabledAtRuntime=touch] attribute TouchListConstructor TouchList;
     attribute StorageEventConstructor StorageEvent;
     [Conditional=INPUT_SPEECH] attribute SpeechInputEventConstructor SpeechInputEvent;
     [Conditional=WEBGL] attribute WebGLContextEventConstructor WebGLContextEvent;
     [Conditional=PROXIMITY_EVENTS] attribute DeviceProximityEventConstructor DeviceProximityEvent;
+    [Conditional=REQUEST_AUTOCOMPLETE] attribute AutocompleteErrorEventConstructor AutocompleteErrorEvent;
 
     attribute EventExceptionConstructor EventException;
 
@@ -793,7 +787,7 @@
     [Conditional=BLOB] attribute DOMURLConstructor URL;
     [Conditional=BLOB] attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
 
-    [Conditional=MUTATION_OBSERVERS] attribute MutationObserverConstructor WebKitMutationObserver;
+    attribute MutationObserverConstructor WebKitMutationObserver;
 
     [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] attribute MediaSourceConstructor WebKitMediaSource;
     [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] attribute SourceBufferConstructor WebKitSourceBuffer;

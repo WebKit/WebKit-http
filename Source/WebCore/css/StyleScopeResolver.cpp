@@ -31,6 +31,7 @@
 
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
+#include "ContentDistributor.h"
 #include "ContextFeatures.h"
 #include "ElementShadow.h"
 #include "HTMLNames.h"
@@ -170,6 +171,7 @@ inline RuleSet* StyleScopeResolver::atHostRuleSetFor(const ShadowRoot* shadowRoo
     return it != m_atHostRules.end() ? it->value.get() : 0;
 }
 
+#if ENABLE(SHADOW_DOM)
 void StyleScopeResolver::addHostRule(StyleRuleHost* hostRule, bool hasDocumentSecurityOrigin, const ContainerNode* scope)
 {
     if (!scope || !scope->isInShadowTree())
@@ -190,6 +192,7 @@ void StyleScopeResolver::addHostRule(StyleRuleHost* hostRule, bool hasDocumentSe
             rule->addStyleRule(static_cast<StyleRule*>(hostStylingRule), addRuleFlags);
     }
 }
+#endif
 
 bool StyleScopeResolver::styleSharingCandidateMatchesHostRules(const Element* element)
 {
@@ -208,7 +211,7 @@ bool StyleScopeResolver::styleSharingCandidateMatchesHostRules(const Element* el
         if (atHostRuleSetFor(shadowRoot))
             return true;
 
-        if (!shadowRoot->hasShadowInsertionPoint())
+        if (!ScopeContentDistribution::hasShadowElement(shadowRoot))
             break;
     }
     return false;
@@ -230,7 +233,7 @@ void StyleScopeResolver::matchHostRules(const Element* element, Vector<RuleSet*>
     for (ShadowRoot* shadowRoot = shadow->youngestShadowRoot(); shadowRoot; shadowRoot = shadowRoot->olderShadowRoot()) { 
         if (RuleSet* ruleSet = atHostRuleSetFor(shadowRoot))
             matchedRules.append(ruleSet);
-        if (!shadowRoot->hasShadowInsertionPoint())
+        if (!ScopeContentDistribution::hasShadowElement(shadowRoot))
             break;
     }
 }
@@ -241,6 +244,7 @@ void StyleScopeResolver::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) c
     info.addMember(m_authorStyles);
     info.addMember(m_stack);
     info.addMember(m_atHostRules);
+    info.addMember(m_stackParent);
 }
 
 }

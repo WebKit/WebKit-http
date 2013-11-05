@@ -31,6 +31,7 @@
 #include "CodeBlock.h"
 
 #include "BytecodeGenerator.h"
+#include "CallLinkStatus.h"
 #include "DFGCapabilities.h"
 #include "DFGCommon.h"
 #include "DFGNode.h"
@@ -44,10 +45,12 @@
 #include "JSNameScope.h"
 #include "JSValue.h"
 #include "LowLevelInterpreter.h"
+#include "Operations.h"
 #include "ReduceWhitespace.h"
 #include "RepatchBuffer.h"
 #include "SlotVisitorInlines.h"
 #include <stdio.h>
+#include <wtf/CommaPrinter.h>
 #include <wtf/StringExtras.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/UnusedParam.h>
@@ -72,7 +75,7 @@ String CodeBlock::inferredName() const
     case EvalCode:
         return "<eval>";
     case FunctionCode:
-        return jsCast<FunctionExecutable*>(ownerExecutable())->unlinkedExecutable()->inferredName().string();
+        return jsCast<FunctionExecutable*>(ownerExecutable())->inferredName().string();
     default:
         CRASH();
         return String();
@@ -155,6 +158,15 @@ static CString idName(int id0, const Identifier& ident)
 
 void CodeBlock::dumpBytecodeCommentAndNewLine(PrintStream& out, int location)
 {
+#if ENABLE(DFG_JIT)
+    Vector<FrequentExitSite> exitSites = exitProfile().exitSitesFor(location);
+    if (!exitSites.isEmpty()) {
+        out.print(" !! frequent exits: ");
+        CommaPrinter comma;
+        for (unsigned i = 0; i < exitSites.size(); ++i)
+            out.print(comma, exitSites[i].kind());
+    }
+#endif // ENABLE(DFG_JIT)
 #if ENABLE(BYTECODE_COMMENTS)
     const char* comment = commentForBytecodeOffset(location);
     if (comment)
@@ -473,6 +485,7 @@ void CodeBlock::printCallOp(PrintStream& out, ExecState* exec, int location, con
                 out.printf(" jit(%p, exec %p)", target, target->executable());
         }
 #endif
+        out.print(" status(", CallLinkStatus::computeFor(this, location), ")");
     }
     it += 2;
 }
@@ -679,6 +692,7 @@ void CodeBlock::dumpValueProfiling(PrintStream& out, const Instruction*& it, boo
     out.print(description);
 #else
     UNUSED_PARAM(out);
+    UNUSED_PARAM(hasPrintedProfiling);
 #endif
 }
 
@@ -693,6 +707,7 @@ void CodeBlock::dumpArrayProfiling(PrintStream& out, const Instruction*& it, boo
     out.print(description);
 #else
     UNUSED_PARAM(out);
+    UNUSED_PARAM(hasPrintedProfiling);
 #endif
 }
 
@@ -1638,9 +1653,6 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_isStrictMode(other.m_isStrictMode)
     , m_source(other.m_source)
     , m_sourceOffset(other.m_sourceOffset)
-#if ENABLE(VALUE_PROFILER)
-    , m_executionEntryCount(0)
-#endif
     , m_identifiers(other.m_identifiers)
     , m_constantRegisters(other.m_constantRegisters)
     , m_functionDecls(other.m_functionDecls)
@@ -1687,9 +1699,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_isStrictMode(unlinkedCodeBlock->isStrictMode())
     , m_source(sourceProvider)
     , m_sourceOffset(sourceOffset)
-#if ENABLE(VALUE_PROFILER)
-    , m_executionEntryCount(0)
-#endif
     , m_alternative(alternative)
     , m_osrExitCounter(0)
     , m_optimizationDelayCounter(0)
@@ -2930,6 +2939,13 @@ bool FunctionCodeBlock::jitCompileImpl(ExecState* exec)
     return static_cast<FunctionExecutable*>(ownerExecutable())->jitCompileFor(exec, m_isConstructor ? CodeForConstruct : CodeForCall);
 }
 #endif
+
+JSGlobalObject* CodeBlock::globalObjectFor(CodeOrigin codeOrigin)
+{
+    if (!codeOrigin.inlineCallFrame)
+        return globalObject();
+    return jsCast<FunctionExecutable*>(codeOrigin.inlineCallFrame->executable.get())->generatedBytecode().globalObject();
+}
 
 unsigned CodeBlock::reoptimizationRetryCounter() const
 {

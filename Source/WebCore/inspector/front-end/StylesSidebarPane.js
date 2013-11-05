@@ -1819,8 +1819,6 @@ WebInspector.StylePropertyTreeElement.prototype = {
                     var formatSetting = WebInspector.settings.colorFormat.get();
                     if (formatSetting === cf.Original)
                         format = cf.Original;
-                    else if (color.nickname)
-                        format = cf.Nickname;
                     else if (formatSetting === cf.RGB)
                         format = (color.simple ? cf.RGB : cf.RGBA);
                     else if (formatSetting === cf.HSL)
@@ -1900,7 +1898,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
             var colorRegex = /((?:rgb|hsl)a?\([^)]+\)|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3}|\b\w+\b(?!-))/g;
             var colorProcessor = processValue.bind(window, colorRegex, processColor, null);
 
-            valueElement.appendChild(processValue(/url\(\s*([^)\s]+)\s*\)/g, linkifyURL.bind(this), WebInspector.CSSMetadata.isColorAwareProperty(self.name) ? colorProcessor : null, value));
+            valueElement.appendChild(processValue(/url\(\s*([^)]+)\s*\)/g, linkifyURL.bind(this), WebInspector.CSSMetadata.isColorAwareProperty(self.name) ? colorProcessor : null, value));
         }
 
         this.listItemElement.removeChildren();

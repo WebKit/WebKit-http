@@ -43,9 +43,16 @@
 #include <runtime/JSArray.h>
 #include <runtime/Lookup.h>
 #include <runtime/ObjectPrototype.h>
+#include <runtime/Operations.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
+
+namespace JSC {
+
+class HashEntry;
+
+}
 
 namespace WebCore {
 
@@ -510,6 +517,21 @@ enum ParameterDefaultPolicy {
     inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
     {
         return AtomicString(propertyName.publicName());
+    }
+
+    template <class ThisImp>
+    inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching(JSC::ExecState* exec, JSC::PropertyName propertyName)
+    {
+        const JSC::HashEntry* entry = ThisImp::s_info.propHashTable(exec)->entry(exec, propertyName);
+        if (!entry) // not found, forward to parent
+            return getStaticValueSlotEntryWithoutCaching<typename ThisImp::Base>(exec, propertyName);
+        return entry;
+    }
+
+    template <>
+    inline const JSC::HashEntry* getStaticValueSlotEntryWithoutCaching<JSDOMWrapper>(JSC::ExecState*, JSC::PropertyName)
+    {
+        return 0;
     }
 
 } // namespace WebCore

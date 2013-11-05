@@ -26,36 +26,34 @@
 #ifndef WebApplicationCacheManager_h
 #define WebApplicationCacheManager_h
 
+#include "MessageReceiver.h"
+#include "WebProcessSupplement.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
-namespace CoreIPC {
-class Connection;
-class MessageDecoder;
-class MessageID;
-}
-
 namespace WebKit {
 
+class ChildProcess;
 struct SecurityOriginData;
 
-class WebApplicationCacheManager {
+class WebApplicationCacheManager : public WebProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebApplicationCacheManager);
-
 public:
-    static WebApplicationCacheManager& shared();
+    WebApplicationCacheManager(ChildProcess*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    static const AtomicString& supplementName();
 
     void deleteAllEntries();
     void setAppCacheMaximumSize(uint64_t);
+
 private:
-    WebApplicationCacheManager();
-    
     void getApplicationCacheOrigins(uint64_t callbackID);
     void deleteEntriesForOrigin(const SecurityOriginData&);
 
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
     void didReceiveWebApplicationCacheManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+
+    ChildProcess* m_childProcess;
 };
 
 } // namespace WebKit

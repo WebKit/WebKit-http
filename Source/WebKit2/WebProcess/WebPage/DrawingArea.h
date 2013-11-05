@@ -52,10 +52,6 @@ class WebPage;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 
-#if PLATFORM(WIN)
-struct WindowGeometry;
-#endif
-
 class DrawingArea {
     WTF_MAKE_NONCOPYABLE(DrawingArea);
 
@@ -88,6 +84,9 @@ public:
     virtual void updatePreferences(const WebPreferencesStore&) { }
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) { }
 
+    virtual void setExposedRect(const WebCore::IntRect&) { }
+    virtual void mainFrameScrollabilityChanged(bool) { }
+
 #if USE(ACCELERATED_COMPOSITING)
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return 0; }
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) = 0;
@@ -96,10 +95,6 @@ public:
 
 #if USE(COORDINATED_GRAPHICS)
     virtual void didReceiveCoordinatedLayerTreeHostMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) = 0;
-#endif
-
-#if PLATFORM(WIN)
-    virtual void scheduleChildWindowGeometryUpdate(const WindowGeometry&) = 0;
 #endif
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>&);

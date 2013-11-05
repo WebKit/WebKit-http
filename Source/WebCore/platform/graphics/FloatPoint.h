@@ -137,6 +137,7 @@ public:
         return m_x * a.x() + m_y * a.y();
     }
 
+    float slopeAngleRadians() const;
     float length() const;
     float lengthSquared() const
     {
@@ -269,6 +270,11 @@ inline IntPoint ceiledIntPoint(const FloatPoint& p)
 inline IntSize flooredIntSize(const FloatPoint& p)
 {
     return IntSize(clampToInteger(floorf(p.x())), clampToInteger(floorf(p.y())));
+}
+
+inline FloatSize toFloatSize(const FloatPoint& a)
+{
+    return FloatSize(a.x(), a.y());
 }
 
 float findSlope(const FloatPoint& p1, const FloatPoint& p2, float& c);

@@ -51,15 +51,19 @@ class ImageGStreamer : public RefCounted<ImageGStreamer> {
         {
             if (!m_cropRect.isEmpty())
                 return FloatRect(m_cropRect);
-
-            // Default rectangle used by GraphicsContext::drawImage().
-            return FloatRect(0, 0, -1, -1);
+            ASSERT(m_image);
+            return FloatRect(0, 0, m_image->size().width(), m_image->size().height());
         }
 
     private:
         ImageGStreamer(GstBuffer*, GstCaps*);
         RefPtr<BitmapImage> m_image;
         FloatRect m_cropRect;
+
+#if USE(CAIRO) && defined(GST_API_VERSION_1)
+        GRefPtr<GstBuffer> m_buffer;
+        GstMapInfo m_mapInfo;
+#endif
     };
 }
 

@@ -45,7 +45,11 @@ typedef QTimer PlatformTimerRef;
 #elif PLATFORM(GTK)
 typedef unsigned int PlatformTimerRef;
 #elif PLATFORM(EFL)
+#if USE(EO)
+typedef struct _Eo Ecore_Timer;
+#else
 typedef struct _Ecore_Timer Ecore_Timer;
+#endif
 typedef Ecore_Timer* PlatformTimerRef;
 #endif
 
@@ -158,6 +162,11 @@ public:
     // Printing
     bool isPageBoxVisible(int pageIndex);
 
+    // Authentication
+    void setHandlesAuthenticationChallenges(bool);
+    void setAuthenticationUsername(JSStringRef);
+    void setAuthenticationPassword(JSStringRef);
+
     void setValueForUser(JSContextRef, JSValueRef element, JSStringRef value);
 
     // Audio testing.
@@ -266,6 +275,8 @@ public:
 
     bool callShouldCloseOnWebView();
 
+    void setCustomTimeout(int duration);
+
     // Work queue.
     void queueBackNavigation(unsigned howFarBackward);
     void queueForwardNavigation(unsigned howFarForward);
@@ -317,6 +328,8 @@ private:
     
     bool m_globalFlag;
     bool m_customFullScreenBehavior;
+
+    int m_timeout;
 
     bool m_userStyleSheetEnabled;
     WKRetainPtr<WKStringRef> m_userStyleSheetLocation;

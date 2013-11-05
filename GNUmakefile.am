@@ -98,6 +98,7 @@ webkit2_sources :=
 webkit2_built_sources :=
 webkit2gtk_h_api :=
 webkit2gtk_built_sources :=
+webkit2_web_extension_h_api :=
 webkit2_plugin_process_sources :=
 webkit2_plugin_process_built_sources :=
 webkittestrunner_built_sources :=
@@ -295,7 +296,6 @@ include Source/WebKit/gtk/GNUmakefile.am
 include Source/WebCore/bindings/gobject/GNUmakefile.am
 include Tools/GNUmakefile.am
 include Source/WebKit/gtk/po/GNUmakefile.am
-include Tools/DumpRenderTree/gtk/GNUmakefile.ImageDiff.am
 
 include Source/WebKit2/GNUmakefile.am
 include Source/WebKit2/UIProcess/API/gtk/tests/GNUmakefile.am
@@ -356,10 +356,12 @@ distclean-local:
 dist-hook: doc-dist-hook
 doc-dist-hook: docs-build.stamp
 	cp $(WebKit)/NEWS $(distdir)
+if ENABLE_WEBKIT1
 	@mkdir -p $(distdir)/Documentation/webkitgtk/html
 	@mkdir -p $(distdir)/Documentation/webkitgtk/tmpl
 	@-cp ./Documentation/webkitgtk/tmpl/*.sgml $(distdir)/Documentation/webkitgtk/tmpl
 	@cp ./Documentation/webkitgtk/html/* $(distdir)/Documentation/webkitgtk/html
+endif
 if ENABLE_WEBKIT2
 	@mkdir -p $(distdir)/Documentation/webkit2gtk/html
 	@mkdir -p $(distdir)/Documentation/webkit2gtk/tmpl

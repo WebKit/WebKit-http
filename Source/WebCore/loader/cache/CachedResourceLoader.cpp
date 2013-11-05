@@ -310,6 +310,7 @@ bool CachedResourceLoader::canRequest(CachedResource::Type type, const KURL& url
         return 0;
     }
 
+    // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is solved.
     bool shouldBypassMainWorldContentSecurityPolicy = (frame() && frame()->script()->shouldBypassMainWorldContentSecurityPolicy());
 
     // Some types of resources can be loaded only from the same origin.  Other
@@ -704,7 +705,7 @@ void CachedResourceLoader::loadDone(CachedResource* resource)
 
 #if ENABLE(RESOURCE_TIMING)
     // FIXME: Add resource timing support for main resources.
-    if (resource && resource->type() != CachedResource::MainResource && !resource->errorOccurred() && !resource->wasCanceled() && resource->response().isHTTP()) {
+    if (resource && resource->type() != CachedResource::MainResource && resource->response().isHTTP() && ((!resource->errorOccurred() && !resource->wasCanceled()) || resource->response().httpStatusCode() == 304)) {
         HashMap<CachedResource*, InitiatorInfo>::iterator initiatorIt = m_initiatorMap.find(resource);
         if (initiatorIt != m_initiatorMap.end()) {
             ASSERT(document());
@@ -790,11 +791,8 @@ void CachedResourceLoader::decrementRequestCount(const CachedResource* res)
     ASSERT(m_requestCount > -1);
 }
 
-void CachedResourceLoader::preload(CachedResource::Type type, CachedResourceRequest& request, const String& charset, bool referencedFromBody)
+void CachedResourceLoader::preload(CachedResource::Type type, CachedResourceRequest& request, const String& charset)
 {
-    // FIXME: Rip this out when we are sure it is no longer necessary (even for mobile).
-    UNUSED_PARAM(referencedFromBody);
-
     bool delaySubresourceLoad = true;
 #if PLATFORM(IOS) || PLATFORM(CHROMIUM)
     delaySubresourceLoad = false;
@@ -948,9 +946,17 @@ void CachedResourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo)
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
     info.addMember(m_documentResources);
+    info.addMember(m_document);
+    info.addMember(m_documentLoader);
     info.addMember(m_validatedURLs);
     info.addMember(m_preloads);
     info.addMember(m_pendingPreloads);
+    info.addMember(m_garbageCollectDocumentResourcesTimer);
+#if ENABLE(RESOURCE_TIMING)
+    // FIXME: m_initiatorMap has pointers to already deleted CachedResources
+    info.ignoreMember(m_initiatorMap);
+#endif
+
 }
 
 const ResourceLoaderOptions& CachedResourceLoader::defaultCachedResourceOptions()

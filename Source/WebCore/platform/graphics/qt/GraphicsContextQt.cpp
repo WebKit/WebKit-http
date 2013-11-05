@@ -1251,7 +1251,8 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     m_data->p()->setCompositionMode(toQtCompositionMode(op));
 }
 
-void GraphicsContext::clip(const Path& path)
+// FIXME: don't ignore the winding rule. https://bugs.webkit.org/show_bug.cgi?id=106873
+void GraphicsContext::clip(const Path& path, WindRule)
 {
     if (paintingDisabled())
         return;
@@ -1261,9 +1262,9 @@ void GraphicsContext::clip(const Path& path)
     m_data->p()->setClipPath(clipPath, Qt::IntersectClip);
 }
 
-void GraphicsContext::canvasClip(const Path& path)
+void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
 {
-    clip(path);
+    clip(path, fillRule);
 }
 
 void GraphicsContext::clipOut(const Path& path)
@@ -1332,32 +1333,6 @@ void GraphicsContext::clipOut(const IntRect& rect)
         newClip.addRect(clipOutRect);
         p->setClipPath(newClip);
     }
-}
-
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect,
-                                              int thickness)
-{
-    if (paintingDisabled())
-        return;
-
-    clip(rect);
-    QPainterPath path;
-
-    // Add outer ellipse
-    path.addEllipse(QRectF(rect.x(), rect.y(), rect.width(), rect.height()));
-
-    // Add inner ellipse.
-    path.addEllipse(QRectF(rect.x() + thickness, rect.y() + thickness,
-                           rect.width() - (thickness * 2), rect.height() - (thickness * 2)));
-
-    path.setFillRule(Qt::OddEvenFill);
-
-    QPainter* p = m_data->p();
-
-    const bool antiAlias = p->testRenderHint(QPainter::Antialiasing);
-    p->setRenderHint(QPainter::Antialiasing, true);
-    p->setClipPath(path, Qt::IntersectClip);
-    p->setRenderHint(QPainter::Antialiasing, antiAlias);
 }
 
 void GraphicsContext::concatCTM(const AffineTransform& transform)

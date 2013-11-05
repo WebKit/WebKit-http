@@ -36,12 +36,10 @@
 #include "WebProcess.h"
 #include <QClipboard>
 #include <QGuiApplication>
-#include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/Frame.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/Page.h>
-#include <WebCore/PageGroup.h>
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/Range.h>
 #include <WebCore/Settings.h>
@@ -308,90 +306,6 @@ PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const KURL&)
     return 0;
 }
 
-static Frame* targetFrameForEditing(WebPage* page)
-{
-    Frame* targetFrame = page->corePage()->focusController()->focusedOrMainFrame();
-
-    if (!targetFrame || !targetFrame->editor())
-        return 0;
-
-    Editor* editor = targetFrame->editor();
-    if (!editor->canEdit())
-        return 0;
-
-    if (editor->hasComposition()) {
-        // We should verify the parent node of this IME composition node are
-        // editable because JavaScript may delete a parent node of the composition
-        // node. In this case, WebKit crashes while deleting texts from the parent
-        // node, which doesn't exist any longer.
-        if (PassRefPtr<Range> range = editor->compositionRange()) {
-            Node* node = range->startContainer();
-            if (!node || !node->isContentEditable())
-                return 0;
-        }
-    }
-    return targetFrame;
-}
-
-void WebPage::confirmComposition(const String& compositionString, int64_t selectionStart, int64_t selectionLength)
-{
-    Frame* targetFrame = targetFrameForEditing(this);
-    if (!targetFrame)
-        return;
-
-    Editor* editor = targetFrame->editor();
-    editor->confirmComposition(compositionString);
-
-    if (selectionStart == -1)
-        return;
-
-    Element* scope = targetFrame->selection()->rootEditableElement();
-    RefPtr<Range> selectionRange = TextIterator::rangeFromLocationAndLength(scope, selectionStart, selectionLength);
-    ASSERT_WITH_MESSAGE(selectionRange, "Invalid selection: [%lld:%lld] in text of length %d", static_cast<long long>(selectionStart), static_cast<long long>(selectionLength), scope->innerText().length());
-
-    if (selectionRange) {
-        VisibleSelection selection(selectionRange.get(), SEL_DEFAULT_AFFINITY);
-        targetFrame->selection()->setSelection(selection);
-    }
-
-    // FIXME: static_cast<WebEditorClient*>(editor->client())->sendSelectionChangedMessage();
-}
-
-void WebPage::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementStart, uint64_t replacementLength)
-{
-    Frame* targetFrame = targetFrameForEditing(this);
-    if (!targetFrame)
-        return;
-
-    Element* scope = targetFrame->selection()->rootEditableElement();
-
-    if (targetFrame->selection()->isContentEditable()) {
-        if (replacementLength > 0) {
-            // The layout needs to be uptodate before setting a selection
-            targetFrame->document()->updateLayout();
-
-            RefPtr<Range> replacementRange = TextIterator::rangeFromLocationAndLength(scope, replacementStart, replacementLength);
-
-            targetFrame->editor()->setIgnoreCompositionSelectionChange(true);
-            targetFrame->selection()->setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
-            targetFrame->editor()->setIgnoreCompositionSelectionChange(false);
-        }
-
-        targetFrame->editor()->setComposition(text, underlines, selectionStart, selectionEnd);
-
-        // FIXME: static_cast<WebEditorClient*>(targetFrame->editor()->client())->sendSelectionChangedMessage();
-    }
-}
-
-void WebPage::cancelComposition()
-{
-    Frame* frame = targetFrameForEditing(this);
-
-    frame->editor()->cancelComposition();
-
-    // FIXME: static_cast<WebEditorClient*>(targetFrame->editor()->client())->sendSelectionChangedMessage();
-}
-
 void WebPage::registerApplicationScheme(const String& scheme)
 {
     QtNetworkAccessManager* qnam = qobject_cast<QtNetworkAccessManager*>(WebProcess::shared().networkAccessManager());
@@ -415,15 +329,6 @@ void WebPage::applicationSchemeReply(const QtNetworkReplyData& replyData)
     QtNetworkReply* networkReply = m_applicationSchemeReplies.take(replyData.m_replyUuid);
     networkReply->setReplyData(replyData);
     networkReply->finalize();
-}
-
-void WebPage::setUserScripts(const Vector<String>& scripts)
-{
-    // This works because we keep an unique page group for each Page.
-    PageGroup* pageGroup = PageGroup::pageGroup(this->pageGroup()->identifier());
-    pageGroup->removeUserScriptsFromWorld(mainThreadNormalWorld());
-    for (unsigned i = 0; i < scripts.size(); ++i)
-        pageGroup->addUserScriptToWorld(mainThreadNormalWorld(), scripts.at(i), KURL(), Vector<String>(), Vector<String>(), InjectAtDocumentEnd, InjectInTopFrameOnly);
 }
 
 void WebPage::selectedIndex(int32_t newIndex)

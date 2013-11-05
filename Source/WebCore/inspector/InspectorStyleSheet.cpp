@@ -37,6 +37,7 @@
 #include "CSSRuleList.h"
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
+#include "CSSSupportsRule.h"
 #include "ContentSecurityPolicy.h"
 #include "Document.h"
 #include "Element.h"
@@ -109,6 +110,10 @@ static void flattenSourceData(RuleSourceDataList* dataList, RuleSourceDataList* 
             target->append(data);
         else if (data->type == CSSRuleSourceData::MEDIA_RULE)
             flattenSourceData(&data->childRules, target);
+#if ENABLE(CSS3_CONDITIONAL_RULES)
+        else if (data->type == CSSRuleSourceData::SUPPORTS_RULE)
+            flattenSourceData(&data->childRules, target);
+#endif
     }
 }
 
@@ -208,6 +213,11 @@ static PassRefPtr<CSSRuleList> asCSSRuleList(CSSRule* rule)
 
     if (rule->type() == CSSRule::WEBKIT_KEYFRAMES_RULE)
         return static_cast<WebKitCSSKeyframesRule*>(rule)->cssRules();
+
+#if ENABLE(CSS3_CONDITIONAL_RULES)
+    if (rule->type() == CSSRule::SUPPORTS_RULE)
+        return static_cast<CSSSupportsRule*>(rule)->cssRules();
+#endif
 
     return 0;
 }
@@ -910,7 +920,7 @@ CSSStyleRule* InspectorStyleSheet::ruleForId(const InspectorCSSId& id) const
 
     ASSERT(!id.isEmpty());
     ensureFlatRules();
-    return id.ordinal() >= m_flatRules.size() ? 0 : m_flatRules.at(id.ordinal());
+    return id.ordinal() >= m_flatRules.size() ? 0 : m_flatRules.at(id.ordinal()).get();
 
 }
 
@@ -1268,7 +1278,7 @@ void InspectorStyleSheet::revalidateStyle(CSSStyleDeclaration* pageStyle)
     m_isRevalidating = true;
     ensureFlatRules();
     for (unsigned i = 0, size = m_flatRules.size(); i < size; ++i) {
-        CSSStyleRule* parsedRule = m_flatRules.at(i);
+        CSSStyleRule* parsedRule = m_flatRules.at(i).get();
         if (parsedRule->style() == pageStyle) {
             if (parsedRule->styleRule()->properties()->asText() != pageStyle->cssText()) {
                 // Clear the disabled properties for the invalid style here.
@@ -1330,16 +1340,16 @@ PassRefPtr<TypeBuilder::Array<TypeBuilder::CSS::CSSRule> > InspectorStyleSheet::
         return result.release();
 
     RefPtr<CSSRuleList> refRuleList = ruleList;
-    Vector<CSSStyleRule*> rules;
+    CSSStyleRuleVector rules;
     collectFlatRules(refRuleList, &rules);
 
     for (unsigned i = 0, size = rules.size(); i < size; ++i)
-        result->addItem(buildObjectForRule(rules.at(i)));
+        result->addItem(buildObjectForRule(rules.at(i).get()));
 
     return result.release();
 }
 
-void InspectorStyleSheet::collectFlatRules(PassRefPtr<CSSRuleList> ruleList, Vector<CSSStyleRule*>* result)
+void InspectorStyleSheet::collectFlatRules(PassRefPtr<CSSRuleList> ruleList, CSSStyleRuleVector* result)
 {
     if (!ruleList)
         return;

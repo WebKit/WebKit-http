@@ -26,33 +26,32 @@
 #ifndef WebMediaCacheManager_h
 #define WebMediaCacheManager_h
 
+#include "MessageReceiver.h"
+#include "WebProcessSupplement.h"
+#include <stdint.h>
+#include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/text/WTFString.h>
-
-namespace CoreIPC {
-class Connection;
-class MessageDecoder;
-class MessageID;
-}
 
 namespace WebKit {
 
-class WebMediaCacheManager {
+class WebProcess;
+
+class WebMediaCacheManager : public WebProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebMediaCacheManager);
-
 public:
-    static WebMediaCacheManager& shared();
+    explicit WebMediaCacheManager(WebProcess*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    static const AtomicString& supplementName();
 
 private:
-    WebMediaCacheManager();
-    
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    void didReceiveWebMediaCacheManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+
     void getHostnamesWithMediaCache(uint64_t callbackID);
     void clearCacheForHostname(const String&);
     void clearCacheForAllHostnames();
 
-    void didReceiveWebMediaCacheManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    WebProcess* m_process;
 };
 
 } // namespace WebKit

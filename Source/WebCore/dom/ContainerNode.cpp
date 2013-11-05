@@ -47,6 +47,7 @@
 #include "RenderTheme.h"
 #include "RenderWidget.h"
 #include "RootInlineBox.h"
+#include "TemplateContentDocumentFragment.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Vector.h>
 
@@ -137,6 +138,24 @@ static inline bool isChildTypeAllowed(ContainerNode* newParent, Node* child)
     return true;
 }
 
+static inline bool isInTemplateContent(const Node* node)
+{
+#if ENABLE(TEMPLATE_ELEMENT)
+    Document* document = node->document();
+    return document && document == document->templateDocument();
+#else
+    UNUSED_PARAM(node);
+    return false;
+#endif
+}
+
+static inline bool containsConsideringHostElements(const Node* newChild, const Node* newParent)
+{
+    return (newParent->isInShadowTree() || isInTemplateContent(newParent))
+        ? newChild->containsIncludingHostElements(newParent)
+        : newChild->contains(newParent);
+}
+
 static inline ExceptionCode checkAcceptChild(ContainerNode* newParent, Node* newChild, Node* oldChild)
 {
     // Not mentioned in spec: throw NOT_FOUND_ERR if newChild is null
@@ -148,7 +167,7 @@ static inline ExceptionCode checkAcceptChild(ContainerNode* newParent, Node* new
         ASSERT(!newParent->isReadOnlyNode());
         ASSERT(!newParent->isDocumentTypeNode());
         ASSERT(isChildTypeAllowed(newParent, newChild));
-        if (newChild->contains(newParent))
+        if (containsConsideringHostElements(newChild, newParent))
             return HIERARCHY_REQUEST_ERR;
         return 0;
     }
@@ -162,7 +181,7 @@ static inline ExceptionCode checkAcceptChild(ContainerNode* newParent, Node* new
         return NO_MODIFICATION_ALLOWED_ERR;
     if (newChild->inDocument() && newChild->isDocumentTypeNode())
         return HIERARCHY_REQUEST_ERR;
-    if (newChild->contains(newParent))
+    if (containsConsideringHostElements(newChild, newParent))
         return HIERARCHY_REQUEST_ERR;
 
     if (oldChild && newParent->isDocumentNode()) {
@@ -249,10 +268,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
 
     InspectorInstrumentation::willInsertDOMNode(document(), this);
 
-#if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(this);
-#endif
-
     for (NodeVector::const_iterator it = targets.begin(); it != targets.end(); ++it) {
         Node* child = it->get();
 
@@ -347,9 +363,7 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
         return false;
     }
 
-#if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(this);
-#endif
 
     RefPtr<Node> next = oldChild->nextSibling();
 
@@ -410,12 +424,9 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
 
 static void willRemoveChild(Node* child)
 {
-#if ENABLE(MUTATION_OBSERVERS)
     ASSERT(child->parentNode());
     ChildListMutationScope(child->parentNode()).willRemoveChild(child);
     child->notifyMutationObserversNodeWillDetach();
-#endif
-
     dispatchChildRemovalEvents(child);
     child->document()->nodeWillBeRemoved(child); // e.g. mutation event listener can create a new range.
     ChildFrameDisconnector(child).disconnect();
@@ -428,17 +439,11 @@ static void willRemoveChildren(ContainerNode* container)
 
     container->document()->nodeChildrenWillBeRemoved(container);
 
-#if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(container);
-#endif
-
     for (NodeVector::const_iterator it = children.begin(); it != children.end(); it++) {
         Node* child = it->get();
-
-#if ENABLE(MUTATION_OBSERVERS)
         mutation.willRemoveChild(child);
         child->notifyMutationObserversNodeWillDetach();
-#endif
 
         // fire removed from document mutation events.
         dispatchChildRemovalEvents(child);
@@ -577,43 +582,42 @@ void ContainerNode::removeChildren()
     Vector<RefPtr<Node>, 10> removedChildren;
     {
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
-        NoEventDispatchAssertion assertNoEventDispatch;
-        removedChildren.reserveInitialCapacity(childNodeCount());
-        while (RefPtr<Node> n = m_firstChild) {
-            Node* next = n->nextSibling();
+        {
+            NoEventDispatchAssertion assertNoEventDispatch;
+            removedChildren.reserveInitialCapacity(childNodeCount());
+            while (RefPtr<Node> n = m_firstChild) {
+                Node* next = n->nextSibling();
 
-            // Remove the node from the tree before calling detach or removedFromDocument (4427024, 4129744).
-            // removeChild() does this after calling detach(). There is no explanation for
-            // this discrepancy between removeChild() and its optimized version removeChildren().
-            n->setPreviousSibling(0);
-            n->setNextSibling(0);
-            n->setParentOrHostNode(0);
-            document()->adoptIfNeeded(n.get());
+                // Remove the node from the tree before calling detach or removedFromDocument (4427024, 4129744).
+                // removeChild() does this after calling detach(). There is no explanation for
+                // this discrepancy between removeChild() and its optimized version removeChildren().
+                n->setPreviousSibling(0);
+                n->setNextSibling(0);
+                n->setParentOrHostNode(0);
+                document()->adoptIfNeeded(n.get());
 
-            m_firstChild = next;
-            if (n == m_lastChild)
-                m_lastChild = 0;
-            removedChildren.append(n.release());
+                m_firstChild = next;
+                if (n == m_lastChild)
+                    m_lastChild = 0;
+                removedChildren.append(n.release());
+            }
+
+            // Detach the nodes only after properly removed from the tree because
+            // a. detaching requires a proper DOM tree (for counters and quotes for
+            // example) and during the previous loop the next sibling still points to
+            // the node being removed while the node being removed does not point back
+            // and does not point to the same parent as its next sibling.
+            // b. destroying Renderers of standalone nodes is sometimes faster.
+            for (size_t i = 0; i < removedChildren.size(); ++i) {
+                Node* removedChild = removedChildren[i].get();
+                if (removedChild->attached())
+                    removedChild->detach();
+            }
         }
 
-        size_t removedChildrenCount = removedChildren.size();
-        size_t i;
-
-        // Detach the nodes only after properly removed from the tree because
-        // a. detaching requires a proper DOM tree (for counters and quotes for
-        // example) and during the previous loop the next sibling still points to
-        // the node being removed while the node being removed does not point back
-        // and does not point to the same parent as its next sibling.
-        // b. destroying Renderers of standalone nodes is sometimes faster.
-        for (i = 0; i < removedChildrenCount; ++i) {
-            Node* removedChild = removedChildren[i].get();
-            if (removedChild->attached())
-                removedChild->detach();
-        }
-
-        childrenChanged(false, 0, 0, -static_cast<int>(removedChildrenCount));
-
-        for (i = 0; i < removedChildrenCount; ++i)
+        childrenChanged(false, 0, 0, -static_cast<int>(removedChildren.size()));
+        
+        for (size_t i = 0; i < removedChildren.size(); ++i)
             ChildNodeRemovalNotifier(this).notify(removedChildren[i].get());
     }
 
@@ -651,11 +655,8 @@ bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, bo
 
     InspectorInstrumentation::willInsertDOMNode(document(), this);
 
-#if ENABLE(MUTATION_OBSERVERS)
-    ChildListMutationScope mutation(this);
-#endif
-
     // Now actually add the child(ren)
+    ChildListMutationScope mutation(this);
     for (NodeVector::const_iterator it = targets.begin(); it != targets.end(); ++it) {
         Node* child = it->get();
 
@@ -1086,9 +1087,7 @@ static void updateTreeAfterInsertion(ContainerNode* parent, Node* child, bool sh
     ASSERT(parent->refCount());
     ASSERT(child->refCount());
 
-#if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope(parent).childAdded(child);
-#endif
 
     parent->childrenChanged(false, child->previousSibling(), child->nextSibling(), 1);
 

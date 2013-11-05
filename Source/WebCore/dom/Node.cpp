@@ -40,12 +40,12 @@
 #include "CSSStyleSheet.h"
 #include "ChildNodeList.h"
 #include "ClassNodeList.h"
-#include "ComposedShadowTreeWalker.h"
 #include "ContainerNodeAlgorithms.h"
 #include "ContextMenuController.h"
 #include "DOMImplementation.h"
 #include "DOMSettableTokenList.h"
 #include "Document.h"
+#include "DocumentFragment.h"
 #include "DocumentType.h"
 #include "Element.h"
 #include "ElementRareData.h"
@@ -96,6 +96,7 @@
 #include "StorageEvent.h"
 #include "StyleResolver.h"
 #include "TagNodeList.h"
+#include "TemplateContentDocumentFragment.h"
 #include "Text.h"
 #include "TextEvent.h"
 #include "TreeScopeAdopter.h"
@@ -129,6 +130,7 @@
 
 #if USE(JSC)
 #include <runtime/JSGlobalData.h>
+#include <runtime/Operations.h>
 #endif
 
 #if ENABLE(MICRODATA)
@@ -412,10 +414,12 @@ Node::~Node()
     if (hasRareData())
         clearRareData();
 
+    Document* doc = documentInternal();
+
     if (hasEventTargetData()) {
 #if ENABLE(TOUCH_EVENT_TRACKING)
-        if (m_document)
-            m_document->didRemoveEventTargetNode(this);
+        if (doc)
+            doc->didRemoveEventTargetNode(this);
 #endif
         clearEventTargetData();
     }
@@ -423,7 +427,6 @@ Node::~Node()
     if (renderer())
         detach();
 
-    Document* doc = m_document;
     if (AXObjectCache::accessibilityEnabled() && doc && doc->axObjectCacheExists() && !isContainerNode())
         doc->axObjectCache()->remove(this);
     
@@ -438,23 +441,6 @@ Node::~Node()
     InspectorCounters::decrementCounter(InspectorCounters::NodeCounter);
 }
 
-void Node::setDocument(Document* document)
-{
-    ASSERT(!inDocument() || m_document == document);
-    if (inDocument() || m_document == document)
-        return;
-
-    m_document = document;
-}
-
-void Node::setTreeScope(TreeScope* scope)
-{
-    if (!hasRareData() && scope->rootNode()->isDocumentNode())
-        return;
-
-    ensureRareData()->setTreeScope(scope);
-}
-
 NodeRareData* Node::rareData() const
 {
     ASSERT(hasRareData());
@@ -466,29 +452,28 @@ NodeRareData* Node::ensureRareData()
     if (hasRareData())
         return rareData();
 
-    NodeRareData* data = createRareData().leakPtr();
+    NodeRareData* data;
+    if (isElementNode())
+        data = ElementRareData::create(m_data.m_renderer).leakPtr();
+    else
+        data = NodeRareData::create(m_data.m_renderer).leakPtr();
     ASSERT(data);
-    data->setRenderer(m_data.m_renderer);
+
     m_data.m_rareData = data;
     setFlag(HasRareDataFlag);
     return data;
 }
 
-PassOwnPtr<NodeRareData> Node::createRareData()
-{
-    return adoptPtr(new NodeRareData(documentInternal()));
-}
-
 void Node::clearRareData()
 {
     ASSERT(hasRareData());
-
-#if ENABLE(MUTATION_OBSERVERS)
     ASSERT(!transientMutationObserverRegistry() || transientMutationObserverRegistry()->isEmpty());
-#endif
 
     RenderObject* renderer = m_data.m_rareData->renderer();
-    delete m_data.m_rareData;
+    if (isElementNode())
+        delete static_cast<ElementRareData*>(m_data.m_rareData);
+    else
+        delete static_cast<NodeRareData*>(m_data.m_rareData);
     m_data.m_renderer = renderer;
     clearFlag(HasRareDataFlag);
 }
@@ -509,17 +494,7 @@ HTMLInputElement* Node::toInputElement()
 
 short Node::tabIndex() const
 {
-    return hasRareData() ? rareData()->tabIndex() : 0;
-}
-    
-void Node::setTabIndexExplicitly(short i)
-{
-    ensureRareData()->setTabIndexExplicitly(i);
-}
-
-void Node::clearTabIndexExplicitly()
-{
-    ensureRareData()->clearTabIndexExplicitly();
+    return 0;
 }
 
 String Node::nodeValue() const
@@ -880,7 +855,7 @@ void Node::lazyAttach(ShouldSetAttached shouldSetAttached)
 
 bool Node::supportsFocus() const
 {
-    return hasRareData() && rareData()->tabIndexSetExplicitly();
+    return false;
 }
     
 bool Node::isFocusable() const
@@ -913,6 +888,11 @@ bool Node::isFocusable() const
     return true;
 }
 
+bool Node::isTreeScope() const
+{
+    return treeScope()->rootNode() == this;
+}
+
 bool Node::isKeyboardFocusable(KeyboardEvent*) const
 {
     return isFocusable() && tabIndex() >= 0;
@@ -921,12 +901,6 @@ bool Node::isKeyboardFocusable(KeyboardEvent*) const
 bool Node::isMouseFocusable() const
 {
     return isFocusable();
-}
-
-bool Node::documentFragmentIsShadowRoot() const
-{
-    ASSERT_NOT_REACHED();
-    return false;
 }
 
 Node* Node::focusDelegate()
@@ -1054,15 +1028,30 @@ bool Node::contains(const Node* node) const
     return this == node || node->isDescendantOf(this);
 }
 
-bool Node::containsIncludingShadowDOM(Node* node)
+bool Node::containsIncludingShadowDOM(const Node* node) const
 {
-    if (!node)
-        return false;
-    for (Node* n = node; n; n = n->parentOrHostNode()) {
-        if (n == this)
+    for (; node; node = node->parentOrHostNode()) {
+        if (node == this)
             return true;
     }
     return false;
+}
+
+bool Node::containsIncludingHostElements(const Node* node) const
+{
+#if ENABLE(TEMPLATE_ELEMENT)
+    while (node) {
+        if (node == this)
+            return true;
+        if (node->isDocumentFragment() && static_cast<const DocumentFragment*>(node)->isTemplateContent())
+            node = static_cast<const TemplateContentDocumentFragment*>(node)->host();
+        else
+            node = node->parentOrHostNode();
+    }
+    return false;
+#else
+    return containsIncludingShadowDOM(node);
+#endif
 }
 
 void Node::attach()
@@ -1087,7 +1076,7 @@ void Node::attach()
     setAttached();
     clearNeedsStyleRecalc();
 
-    Document* doc = m_document;
+    Document* doc = documentInternal();
     if (AXObjectCache::accessibilityEnabled() && doc && doc->axObjectCacheExists())
         doc->axObjectCache()->updateCacheAfterNodeIsAttached(this);
 }
@@ -1245,13 +1234,8 @@ Node* Node::shadowAncestorNode() const
 
 ShadowRoot* Node::containingShadowRoot() const
 {
-    Node* root = const_cast<Node*>(this);
-    while (root) {
-        if (root->isShadowRoot())
-            return toShadowRoot(root);
-        root = root->parentNodeGuaranteedHostFree();
-    }
-    return 0;
+    Node* root = treeScope()->rootNode();
+    return root && root->isShadowRoot() ? toShadowRoot(root) : 0;
 }
 
 Node* Node::nonBoundaryShadowTreeRootNode()
@@ -1713,9 +1697,7 @@ void Node::setTextContent(const String& text, ExceptionCode& ec)
         case ENTITY_REFERENCE_NODE:
         case DOCUMENT_FRAGMENT_NODE: {
             RefPtr<ContainerNode> container = toContainerNode(this);
-#if ENABLE(MUTATION_OBSERVERS)
             ChildListMutationScope mutation(this);
-#endif
             container->removeChildren();
             if (!text.isEmpty())
                 container->appendChild(document()->createTextNode(text), ec);
@@ -2099,6 +2081,9 @@ void Node::didMoveToNewDocument(Document* oldDocument)
 {
     TreeScopeAdopter::ensureDidMoveToNewDocumentWasCalled(oldDocument);
 
+    if (AXObjectCache::accessibilityEnabled() && oldDocument && oldDocument->axObjectCacheExists())
+        oldDocument->axObjectCache()->remove(this);
+
     // FIXME: Event listener types for this node should be set on the new owner document here.
 
     const EventListenerVector& wheelListeners = getEventListeners(eventNames().mousewheelEvent);
@@ -2116,7 +2101,6 @@ void Node::didMoveToNewDocument(Document* oldDocument)
         }
     }
 
-#if ENABLE(MUTATION_OBSERVERS)
     if (Vector<OwnPtr<MutationObserverRegistration> >* registry = mutationObserverRegistry()) {
         for (size_t i = 0; i < registry->size(); ++i) {
             document()->addMutationObserverTypes(registry->at(i)->mutationTypes());
@@ -2128,7 +2112,6 @@ void Node::didMoveToNewDocument(Document* oldDocument)
             document()->addMutationObserverTypes((*iter)->mutationTypes());
         }
     }
-#endif
 }
 
 static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
@@ -2202,15 +2185,24 @@ void Node::clearEventTargetData()
     eventTargetDataMap().remove(this);
 }
 
-#if ENABLE(MUTATION_OBSERVERS)
 Vector<OwnPtr<MutationObserverRegistration> >* Node::mutationObserverRegistry()
 {
-    return hasRareData() ? rareData()->mutationObserverRegistry() : 0;
+    if (!hasRareData())
+        return 0;
+    NodeMutationObserverData* data = rareData()->mutationObserverData();
+    if (!data)
+        return 0;
+    return &data->registry;
 }
 
 HashSet<MutationObserverRegistration*>* Node::transientMutationObserverRegistry()
 {
-    return hasRareData() ? rareData()->transientMutationObserverRegistry() : 0;
+    if (!hasRareData())
+        return 0;
+    NodeMutationObserverData* data = rareData()->mutationObserverData();
+    if (!data)
+        return 0;
+    return &data->transientRegistry;
 }
 
 template<typename Registry>
@@ -2243,17 +2235,17 @@ void Node::getRegisteredMutationObserversOfType(HashMap<MutationObserver*, Mutat
 void Node::registerMutationObserver(MutationObserver* observer, MutationObserverOptions options, const HashSet<AtomicString>& attributeFilter)
 {
     MutationObserverRegistration* registration = 0;
-    Vector<OwnPtr<MutationObserverRegistration> >* registry = ensureRareData()->ensureMutationObserverRegistry();
-    for (size_t i = 0; i < registry->size(); ++i) {
-        if (registry->at(i)->observer() == observer) {
-            registration = registry->at(i).get();
+    Vector<OwnPtr<MutationObserverRegistration> >& registry = ensureRareData()->ensureMutationObserverData()->registry;
+    for (size_t i = 0; i < registry.size(); ++i) {
+        if (registry[i]->observer() == observer) {
+            registration = registry[i].get();
             registration->resetObservation(options, attributeFilter);
         }
     }
 
     if (!registration) {
-        registry->append(MutationObserverRegistration::create(observer, this, options, attributeFilter));
-        registration = registry->last().get();
+        registry.append(MutationObserverRegistration::create(observer, this, options, attributeFilter));
+        registration = registry.last().get();
     }
 
     document()->addMutationObserverTypes(registration->mutationTypes());
@@ -2276,7 +2268,7 @@ void Node::unregisterMutationObserver(MutationObserverRegistration* registration
 
 void Node::registerTransientMutationObserver(MutationObserverRegistration* registration)
 {
-    ensureRareData()->ensureTransientMutationObserverRegistry()->add(registration);
+    ensureRareData()->ensureMutationObserverData()->transientRegistry.add(registration);
 }
 
 void Node::unregisterTransientMutationObserver(MutationObserverRegistration* registration)
@@ -2308,7 +2300,6 @@ void Node::notifyMutationObserversNodeWillDetach()
         }
     }
 }
-#endif // ENABLE(MUTATION_OBSERVERS)
 
 void Node::handleLocalEvents(Event* event)
 {
@@ -2532,32 +2523,32 @@ bool Node::willRespondToTouchEvents()
 #if ENABLE(MICRODATA)
 DOMSettableTokenList* Node::itemProp()
 {
-    return ensureRareData()->itemProp();
+    return ensureRareData()->ensureMicroDataTokenLists()->itemProp();
 }
 
 void Node::setItemProp(const String& value)
 {
-    ensureRareData()->setItemProp(value);
+    ensureRareData()->ensureMicroDataTokenLists()->itemProp()->setValue(value);
 }
 
 DOMSettableTokenList* Node::itemRef()
 {
-    return ensureRareData()->itemRef();
+    return ensureRareData()->ensureMicroDataTokenLists()->itemRef();
 }
 
 void Node::setItemRef(const String& value)
 {
-    ensureRareData()->setItemRef(value);
+    ensureRareData()->ensureMicroDataTokenLists()->itemRef()->setValue(value);
 }
 
 DOMSettableTokenList* Node::itemType()
 {
-    return ensureRareData()->itemType();
+    return ensureRareData()->ensureMicroDataTokenLists()->itemType();
 }
 
 void Node::setItemType(const String& value)
 {
-    ensureRareData()->setItemType(value);
+    ensureRareData()->ensureMicroDataTokenLists()->itemType()->setValue(value);
 }
 
 PassRefPtr<PropertyNodeList> Node::propertyNodeList(const String& name)
@@ -2586,14 +2577,18 @@ void Node::removedLastRef()
 void Node::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    TreeShared<Node, ContainerNode>::reportMemoryUsage(memoryObjectInfo);
     ScriptWrappable::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_document);
+    info.addMember(m_parentOrHostNode);
+    info.addMember(m_treeScope);
     info.addMember(m_next);
     info.addMember(m_previous);
     info.addMember(this->renderer());
-    if (hasRareData())
-        info.addMember(rareData());
+    if (hasRareData()) {
+        if (isElementNode())
+            info.addMember(static_cast<ElementRareData*>(rareData()));
+        else
+            info.addMember(rareData());
+    }
 }
 
 void Node::textRects(Vector<IntRect>& rects) const

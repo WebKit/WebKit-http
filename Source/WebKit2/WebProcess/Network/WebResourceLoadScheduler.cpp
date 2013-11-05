@@ -31,6 +31,7 @@
 #include "NetworkProcessConnection.h"
 #include "NetworkResourceLoadParameters.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebErrors.h"
 #include "WebProcess.h"
 #include "WebResourceLoader.h"
 #include <WebCore/DocumentLoader.h>
@@ -50,7 +51,8 @@ using namespace WebCore;
 namespace WebKit {
 
 WebResourceLoadScheduler::WebResourceLoadScheduler()
-    : m_suspendPendingRequestsCount(0)
+    : m_unschedulableLoadTimer(RunLoop::main(), this, &WebResourceLoadScheduler::unscheduledLoadTimerFired)
+    , m_suspendPendingRequestsCount(0)
 {
 }
 
@@ -101,8 +103,10 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Reso
 
     NetworkResourceLoadParameters loadParameters(request, priority, resourceLoader->shouldSniffContent() ? SniffContent : DoNotSniffContent, allowStoredCredentials, resourceLoader->frameLoader()->frame()->settings()->privateBrowsingEnabled());
     if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::ScheduleResourceLoad(loadParameters), Messages::NetworkConnectionToWebProcess::ScheduleResourceLoad::Reply(identifier), 0)) {
-        // FIXME (NetworkProcess): What should we do if this fails?
-        ASSERT_NOT_REACHED();
+        // We probably failed to schedule this load with the NetworkProcess because it had crashed.
+        // This load will never succeed so we will schedule it to fail asynchronously.
+        addUnschedulableLoad(resourceLoader);
+        return;
     }
     
     resourceLoader->setIdentifier(identifier);
@@ -111,26 +115,30 @@ void WebResourceLoadScheduler::scheduleLoad(ResourceLoader* resourceLoader, Reso
     notifyDidScheduleResourceRequest(resourceLoader);
 }
 
-void WebResourceLoadScheduler::addMainResourceLoad(ResourceLoader* resourceLoader)
+void WebResourceLoadScheduler::addUnschedulableLoad(WebCore::ResourceLoader* resourceLoader)
 {
-    LOG(NetworkScheduling, "(WebProcess) WebResourceLoadScheduler::addMainResourceLoad, url '%s'", resourceLoader->url().string().utf8().data());
+    m_unschedulableResourceLoaders.add(resourceLoader);
+    m_unschedulableLoadTimer.startOneShot(0);
+}
 
-    ResourceLoadIdentifier identifier;
-
-    if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::AddLoadInProgress(resourceLoader->url()), Messages::NetworkConnectionToWebProcess::AddLoadInProgress::Reply(identifier), 0)) {
-        // FIXME (NetworkProcess): What should we do if this fails?
-        ASSERT_NOT_REACHED();
-    }
-
-    resourceLoader->setIdentifier(identifier);
+void WebResourceLoadScheduler::unscheduledLoadTimerFired()
+{
+    Vector<RefPtr<ResourceLoader> > unschedulableLoaders;
+    copyToVector(m_unschedulableResourceLoaders, unschedulableLoaders);
     
-    m_coreResourceLoaders.set(identifier, resourceLoader);
+    for (size_t i = 0; i < unschedulableLoaders.size(); ++i)
+        unschedulableLoaders[i]->didFail(internalError(unschedulableLoaders[i]->url()));
 }
 
 void WebResourceLoadScheduler::remove(ResourceLoader* resourceLoader)
 {
     ASSERT(resourceLoader);
     LOG(NetworkScheduling, "(WebProcess) WebResourceLoadScheduler::remove, url '%s'", resourceLoader->url().string().utf8().data());
+
+    if (m_unschedulableResourceLoaders.contains(resourceLoader)) {
+        m_unschedulableResourceLoaders.remove(resourceLoader);
+        return;
+    }
 
     // FIXME (NetworkProcess): It's possible for a resourceLoader to be removed before it ever started,
     // meaning before it even has an identifier.
@@ -147,9 +155,8 @@ void WebResourceLoadScheduler::remove(ResourceLoader* resourceLoader)
     // If a resource load was actually started within the NetworkProcess then the NetworkProcess handles clearing out the identifier.
     WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::RemoveLoadIdentifier(identifier), 0);
     
-    ASSERT(m_webResourceLoaders.contains(identifier) || m_coreResourceLoaders.contains(identifier));
+    ASSERT(m_webResourceLoaders.contains(identifier));
     m_webResourceLoaders.remove(identifier);
-    m_coreResourceLoaders.remove(identifier);
 }
 
 void WebResourceLoadScheduler::crossOriginRedirectReceived(ResourceLoader*, const KURL&)
@@ -162,8 +169,8 @@ void WebResourceLoadScheduler::servePendingRequests(ResourceLoadPriority minimum
 {
     LOG(NetworkScheduling, "(WebProcess) WebResourceLoadScheduler::servePendingRequests");
     
-    // If this WebProcess has its own request suspension count then we don't even
-    // have to bother messaging the NetworkProcess.
+    // The NetworkProcess scheduler is good at making sure loads are serviced until there are no more pending requests.
+    // If this WebProcess isn't expecting requests to be served then we can ignore messaging the NetworkProcess right now.
     if (m_suspendPendingRequestsCount)
         return;
 
@@ -172,15 +179,11 @@ void WebResourceLoadScheduler::servePendingRequests(ResourceLoadPriority minimum
 
 void WebResourceLoadScheduler::suspendPendingRequests()
 {
-    WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::SuspendPendingRequests(), Messages::NetworkConnectionToWebProcess::SuspendPendingRequests::Reply(), 0);
-
     ++m_suspendPendingRequestsCount;
 }
 
 void WebResourceLoadScheduler::resumePendingRequests()
 {
-    WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::ResumePendingRequests(), Messages::NetworkConnectionToWebProcess::ResumePendingRequests::Reply(), 0);
-
     ASSERT(m_suspendPendingRequestsCount);
     --m_suspendPendingRequestsCount;
 }
@@ -188,6 +191,17 @@ void WebResourceLoadScheduler::resumePendingRequests()
 void WebResourceLoadScheduler::setSerialLoadingEnabled(bool enabled)
 {
     WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::SetSerialLoadingEnabled(enabled), Messages::NetworkConnectionToWebProcess::SetSerialLoadingEnabled::Reply(), 0);
+}
+
+void WebResourceLoadScheduler::networkProcessCrashed()
+{
+    Vector<RefPtr<WebResourceLoader> > webResourceLoaders;
+    copyValuesToVector(m_webResourceLoaders, webResourceLoaders);
+    
+    for (size_t i = 0; i < webResourceLoaders.size(); ++i)
+        webResourceLoaders[i]->networkProcessCrashed();
+
+    ASSERT(m_webResourceLoaders.isEmpty());
 }
 
 } // namespace WebKit

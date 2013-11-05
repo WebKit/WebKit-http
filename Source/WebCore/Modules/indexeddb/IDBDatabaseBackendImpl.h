@@ -40,7 +40,6 @@ namespace WebCore {
 class IDBBackingStore;
 class IDBDatabase;
 class IDBFactoryBackendImpl;
-class IDBObjectStoreBackendImpl;
 class IDBTransactionBackendImpl;
 class IDBTransactionBackendInterface;
 class IDBTransactionCoordinator;
@@ -54,15 +53,18 @@ public:
 
     static const int64_t InvalidId = 0;
     int64_t id() const { return m_metadata.id; }
+    void addObjectStore(const IDBObjectStoreMetadata&, int64_t newMaxObjectStoreId);
+    void removeObjectStore(int64_t objectStoreId);
+    void addIndex(int64_t objectStoreId, const IDBIndexMetadata&, int64_t newMaxIndexId);
+    void removeIndex(int64_t objectStoreId, int64_t indexId);
 
-    void openConnection(PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, int64_t transactionId);
-    void openConnectionWithVersion(PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, int64_t transactionId, int64_t version);
+    void openConnection(PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, int64_t transactionId, int64_t version);
     void deleteDatabase(PassRefPtr<IDBCallbacks>);
 
     // IDBDatabaseBackendInterface
     virtual IDBDatabaseMetadata metadata() const;
-    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(int64_t id, const String& name, const IDBKeyPath&, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&);
-    virtual void deleteObjectStore(int64_t, IDBTransactionBackendInterface*, ExceptionCode&);
+    virtual void createObjectStore(int64_t transactionId, int64_t objectStoreId, const String& name, const IDBKeyPath&, bool autoIncrement);
+    virtual void deleteObjectStore(int64_t transactionId, int64_t objectStoreId);
     // FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
     virtual PassRefPtr<IDBTransactionBackendInterface> createTransaction(int64_t transactionId, const Vector<int64_t>& objectStoreIds, IDBTransaction::Mode);
     virtual void createTransaction(int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>& objectStoreIds, unsigned short mode);
@@ -71,7 +73,9 @@ public:
     virtual void commit(int64_t transactionId);
     virtual void abort(int64_t transactionId);
 
-    PassRefPtr<IDBObjectStoreBackendImpl> objectStore(int64_t id);
+    virtual void createIndex(int64_t transactionId, int64_t objectStoreId, int64_t indexId, const String& name, const IDBKeyPath&, bool unique, bool multiEntry);
+    virtual void deleteIndex(int64_t transactionId, int64_t objectStoreId, int64_t indexId);
+
     IDBTransactionCoordinator* transactionCoordinator() const { return m_transactionCoordinator.get(); }
     void transactionStarted(PassRefPtr<IDBTransactionBackendImpl>);
     void transactionFinished(PassRefPtr<IDBTransactionBackendImpl>);
@@ -79,7 +83,7 @@ public:
     void transactionFinishedAndAbortFired(PassRefPtr<IDBTransactionBackendImpl>);
 
     virtual void get(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange>, bool keyOnly, PassRefPtr<IDBCallbacks>) OVERRIDE;
-    virtual void put(int64_t transactionId, int64_t objectStoreId, const Vector<uint8_t>&, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE;
+    virtual void put(int64_t transactionId, int64_t objectStoreId, Vector<uint8_t>* value, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE;
     virtual void setIndexKeys(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKey> prpPrimaryKey, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE;
     virtual void setIndexesReady(int64_t transactionId, int64_t objectStoreId, const Vector<int64_t>& indexIds) OVERRIDE;
     virtual void openCursor(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange>, unsigned short direction, bool keyOnly, TaskType, PassRefPtr<IDBCallbacks>) OVERRIDE;
@@ -92,20 +96,15 @@ private:
 
     bool openInternal();
     void runIntVersionChangeTransaction(PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, int64_t transactionId, int64_t requestedVersion);
-    void loadObjectStores();
     size_t connectionCount();
     void processPendingCalls();
 
     bool isDeleteDatabaseBlocked();
     void deleteDatabaseFinal(PassRefPtr<IDBCallbacks>);
 
-    class CreateObjectStoreOperation;
-    class DeleteObjectStoreOperation;
     class VersionChangeOperation;
 
     // When a "versionchange" transaction aborts, these restore the back-end object hierarchy.
-    class CreateObjectStoreAbortOperation;
-    class DeleteObjectStoreAbortOperation;
     class VersionChangeAbortOperation;
 
     RefPtr<IDBBackingStore> m_backingStore;
@@ -115,9 +114,6 @@ private:
     // This might not need to be a RefPtr since the factory's lifetime is that of the page group, but it's better to be conservitive than sorry.
     RefPtr<IDBFactoryBackendImpl> m_factory;
 
-    typedef HashMap<int64_t, RefPtr<IDBObjectStoreBackendImpl> > ObjectStoreMap;
-    ObjectStoreMap m_objectStores;
-
     OwnPtr<IDBTransactionCoordinator> m_transactionCoordinator;
     RefPtr<IDBTransactionBackendImpl> m_runningVersionChangeTransaction;
 
@@ -126,10 +122,7 @@ private:
 
     class PendingOpenCall;
     Deque<OwnPtr<PendingOpenCall> > m_pendingOpenCalls;
-
-    class PendingOpenWithVersionCall;
-    Deque<OwnPtr<PendingOpenWithVersionCall> > m_pendingOpenWithVersionCalls;
-    OwnPtr<PendingOpenWithVersionCall> m_pendingSecondHalfOpenWithVersion;
+    OwnPtr<PendingOpenCall> m_pendingSecondHalfOpen;
 
     class PendingDeleteCall;
     Deque<OwnPtr<PendingDeleteCall> > m_pendingDeleteCalls;

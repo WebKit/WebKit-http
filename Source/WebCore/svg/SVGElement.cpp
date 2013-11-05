@@ -65,9 +65,6 @@ SVGElement::~SVGElement()
         ASSERT(!SVGElementRareData::rareDataMap().contains(this));
     else {
         ASSERT(document());
-        if (hasPendingResources())
-            document()->accessSVGExtensions()->removeElementFromPendingResources(this);
-        ASSERT(!hasPendingResources());
         SVGElementRareData::SVGElementRareDataMap& rareDataMap = SVGElementRareData::rareDataMap();
         SVGElementRareData::SVGElementRareDataMap::iterator it = rareDataMap.find(this);
         ASSERT(it != rareDataMap.end());
@@ -185,7 +182,6 @@ void SVGElement::removedFrom(ContainerNode* rootParent)
     if (wasInDocument) {
         document()->accessSVGExtensions()->rebuildAllElementReferencesForTarget(this);
         document()->accessSVGExtensions()->removeAllElementReferencesForTarget(this);
-        document()->accessSVGExtensions()->removeElementFromPendingResources(this);
     }
 }
 
@@ -546,22 +542,6 @@ void SVGElement::attributeChanged(const QualifiedName& name, const AtomicString&
         svgAttributeChanged(name);
 }
 
-bool SVGElement::hasPendingResources() const
-{
-    return hasSVGRareData() && svgRareData()->hasPendingResources();
-}
-
-void SVGElement::setHasPendingResources()
-{
-    ensureSVGRareData()->setHasPendingResources(true);
-}
-
-void SVGElement::clearHasPendingResourcesIfPossible()
-{
-    if (!document()->accessSVGExtensions()->isElementPendingResources(this))
-        ensureSVGRareData()->setHasPendingResources(false);
-}
-
 void SVGElement::updateAnimatedSVGAttribute(const QualifiedName& name) const
 {
     if (!attributeData() || !attributeData()->m_animatedSVGAttributesAreDirty)
@@ -646,12 +626,11 @@ RenderStyle* SVGElement::computedStyle(PseudoId pseudoElementSpecifier)
 }
 
 #ifndef NDEBUG
-bool SVGElement::isAnimatableAttribute(const QualifiedName& name)
+bool SVGElement::isAnimatableAttribute(const QualifiedName& name) const
 {
     DEFINE_STATIC_LOCAL(HashSet<QualifiedName>, animatableAttributes, ());
 
     if (animatableAttributes.isEmpty()) {
-        animatableAttributes.add(classAttr);
         animatableAttributes.add(XLinkNames::hrefAttr);
         animatableAttributes.add(SVGNames::amplitudeAttr);
         animatableAttributes.add(SVGNames::azimuthAttr);
@@ -746,6 +725,10 @@ bool SVGElement::isAnimatableAttribute(const QualifiedName& name)
         animatableAttributes.add(SVGNames::yChannelSelectorAttr);
         animatableAttributes.add(SVGNames::zAttr);
     }
+
+    if (name == classAttr)
+        return isStyled();
+
     return animatableAttributes.contains(name);
 }
 #endif

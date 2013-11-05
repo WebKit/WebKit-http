@@ -32,13 +32,13 @@
  * @constructor
  * @implements {WebInspector.SourceMapping}
  * @param {WebInspector.Workspace} workspace
- * @param {WebInspector.NetworkWorkspaceProvider} networkWorkspaceProvider
+ * @param {WebInspector.SimpleWorkspaceProvider} networkWorkspaceProvider
  */
 WebInspector.SASSSourceMapping = function(workspace, networkWorkspaceProvider)
 {
     this._workspace = workspace;
     this._networkWorkspaceProvider = networkWorkspaceProvider;
-    this._uiLocations = {};
+    this._mappingEntries = {};
     this._cssURLsForSASSURL = {};
     this._timeoutForURL = {};
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
@@ -67,6 +67,7 @@ WebInspector.SASSSourceMapping.prototype = {
      */
     _fileSaveFinished: function(event)
     {
+        // FIXME: add support for FileMapping.
         var sassURL = /** @type {string} */ (event.data);
         function callback()
         {
@@ -92,7 +93,8 @@ WebInspector.SASSSourceMapping.prototype = {
 
     _reloadCSS: function(url)
     {
-        var uiSourceCode = this._workspace.uiSourceCodeForURL(url);
+        var uri = WebInspector.fileMapping.uriForURL(url);
+        var uiSourceCode = this._workspace.uiSourceCodeForURI(uri);
         if (!uiSourceCode)
             return;
         var newContent = InspectorFrontendHost.loadResourceSynchronously(url);
@@ -151,19 +153,18 @@ WebInspector.SASSSourceMapping.prototype = {
      * @param {string} rawURL
      * @param {number} rawLine
      */
-    _bindUISourceCode: function(url, line, rawURL, rawLine)
+    _addURLMapping: function(url, line, rawURL, rawLine)
     {
-        var uiSourceCode = this._workspace.uiSourceCodeForURL(url);
-        if (!uiSourceCode) {
+        var uri = WebInspector.fileMapping.uriForURL(url);
+        if (!WebInspector.fileMapping.hasMappingForURL(url) && !this._workspace.uiSourceCodeForURI(uri)) {
             var content = InspectorFrontendHost.loadResourceSynchronously(url);
             var contentProvider = new WebInspector.StaticContentProvider(WebInspector.resourceTypes.Stylesheet, content, "text/x-scss");
-            this._networkWorkspaceProvider.addFile(url, contentProvider, true);
-            uiSourceCode = this._workspace.uiSourceCodeForURL(url);
-            WebInspector.cssModel.setSourceMapping(rawURL, this);
+            this._networkWorkspaceProvider.addFileForURL(url, contentProvider, true);
         }
         var rawLocationString = rawURL + ":" + (rawLine + 1);  // Next line after mapping metainfo
-        this._uiLocations[rawLocationString] = new WebInspector.UILocation(uiSourceCode, line - 1, 0);
+        this._mappingEntries[rawLocationString] = new WebInspector.SASSSourceMapping.MappingEntry(uri, line - 1, 0);
         this._addCSSURLforSASSURL(rawURL, url);
+        WebInspector.cssModel.setSourceMapping(rawURL, this);
     },
 
     /**
@@ -190,10 +191,18 @@ WebInspector.SASSSourceMapping.prototype = {
     rawLocationToUILocation: function(rawLocation)
     {
         var location = /** @type WebInspector.CSSLocation */ (rawLocation);
-        var uiLocation = this._uiLocations[location.url + ":" + location.lineNumber];
+        var mappingEntry = this._mappingEntries[location.url + ":" + location.lineNumber];
+        var uiLocation = null;
+        if (mappingEntry) {
+            var uiSourceCode = this._workspace.uiSourceCodeForURI(mappingEntry.uri);
+            if (uiSourceCode)
+                uiLocation = new WebInspector.UILocation(uiSourceCode, mappingEntry.lineNumber, mappingEntry.columnNumber);
+        }
         if (!uiLocation) {
-            var uiSourceCode = this._workspace.uiSourceCodeForURL(location.url);
-            uiLocation = new WebInspector.UILocation(uiSourceCode, location.lineNumber, 0);
+            var uri = WebInspector.fileMapping.uriForURL(location.url);
+            var uiSourceCode = this._workspace.uiSourceCodeForURI(uri);
+            if (uiSourceCode)
+                uiLocation = new WebInspector.UILocation(uiSourceCode, location.lineNumber, 0);
         }
         return uiLocation;
     },
@@ -207,13 +216,25 @@ WebInspector.SASSSourceMapping.prototype = {
     uiLocationToRawLocation: function(uiSourceCode, lineNumber, columnNumber)
     {
         // FIXME: Implement this when ui -> raw mapping has clients.
-        return new WebInspector.CSSLocation(uiSourceCode.contentURL() || "", lineNumber);
+        return new WebInspector.CSSLocation(uiSourceCode.url || "", lineNumber);
     },
 
     _reset: function()
     {
-        this._uiLocations = {};
+        this._mappingEntries = {};
         this._populate();
     }
+}
+
+/**
+ * @constructor
+ * @param {string} uri
+ * @param {number} lineNumber
+ */
+WebInspector.SASSSourceMapping.MappingEntry = function(uri, lineNumber, columnNumber)
+{
+    this.uri = uri;
+    this.lineNumber = lineNumber;
+    this.columnNumber = columnNumber;
 }
 

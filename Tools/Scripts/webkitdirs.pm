@@ -223,7 +223,7 @@ sub determineBaseProductDir
 
         undef $baseProductDir unless $baseProductDir =~ /^\//;
     } elsif (isChromium()) {
-        if (isLinux() || isChromiumAndroid() || isChromiumMacMake()) {
+        if (isLinux() || isChromiumAndroid() || isChromiumMacMake() || isChromiumNinja()) {
             $baseProductDir = "$sourceDir/out";
         } elsif (isDarwin()) {
             $baseProductDir = "$sourceDir/Source/WebKit/chromium/xcodebuild";
@@ -727,7 +727,7 @@ sub builtDylibPathForName
     }
     if (isQt()) {
         my $isSearchingForWebCore = $libraryName =~ "WebCore";
-        if (isDarwin() || isWindows()) {
+        if (isDarwin()) {
             $libraryName = "QtWebKitWidgets";
         } else {
             $libraryName = "Qt5WebKitWidgets";
@@ -1216,7 +1216,11 @@ sub determineIsChromiumNinja()
 {
     return if defined($isChromiumNinja);
 
-    my $config = configuration();
+    # This function can be called from baseProductDir(), which in turn is
+    # called by configuration(). So calling configuration() here leads to
+    # infinite recursion. Gyp writes both Debug and Release at the same time
+    # by default, so just check the timestamp on the Release build.ninja file.
+    my $config = "Release";
 
     my $hasUpToDateNinjabuild = 0;
     if (-e "out/$config/build.ninja") {
@@ -1232,7 +1236,12 @@ sub determineIsChromiumNinja()
           $statMake = stat('Makefile.chromium')->mtime;
         }
 
-        $hasUpToDateNinjabuild = $statNinja > $statXcode && $statNinja > $statMake;
+        my $statVisualStudio = 0;
+        if (-e 'Source/WebKit/chromium/All.sln') {
+          $statVisualStudio = stat('Source/WebKit/chromium/All.sln')->mtime;
+        }
+
+        $hasUpToDateNinjabuild = $statNinja > $statXcode && $statNinja > $statMake && $statNinja > $statVisualStudio;
     }
     $isChromiumNinja = $hasUpToDateNinjabuild;
 }
@@ -1978,10 +1987,7 @@ sub runAutogenForAutotoolsProjectIfNecessary($@)
 
     # Prefix the command with jhbuild run.
     unshift(@buildArgs, "$relSourceDir/autogen.sh");
-    my $jhbuildWrapperPrefix = jhbuildWrapperPrefixIfNeeded();
-    if ($jhbuildWrapperPrefix) {
-        unshift(@buildArgs, $jhbuildWrapperPrefix);
-    }
+    unshift(@buildArgs, jhbuildWrapperPrefixIfNeeded());
     if (system(@buildArgs) ne 0) {
         die "Calling autogen.sh failed!\n";
     }
@@ -2020,7 +2026,7 @@ sub mustReRunAutogen($@)
 
 sub buildAutotoolsProject($@)
 {
-    my ($project, $clean, $prefix, $makeArgs, $noWebKit2, @features) = @_;
+    my ($project, $clean, $prefix, $makeArgs, $noWebKit1, $noWebKit2, @features) = @_;
 
     my $make = 'make';
     my $dir = productDir();
@@ -2041,6 +2047,9 @@ sub buildAutotoolsProject($@)
     }
 
     my @buildArgs = @ARGV;
+    if ($noWebKit1) {
+        unshift(@buildArgs, "--disable-webkit1");
+    }
     if ($noWebKit2) {
         unshift(@buildArgs, "--disable-webkit2");
     }
@@ -2094,9 +2103,6 @@ sub buildAutotoolsProject($@)
         push @buildArgs, "--disable-debug";
     }
 
-    # Enable unstable features when building through build-webkit.
-    push @buildArgs, "--enable-unstable-features";
-
     if (checkForArgumentAndRemoveFromArrayRef("--update-gtk", \@buildArgs)) {
         # Force autogen to run, to catch the possibly updated libraries.
         system("rm -f previous-autogen-arguments.txt");
@@ -2110,7 +2116,7 @@ sub buildAutotoolsProject($@)
     my $joinedOverridableFeatures = join(" ", @overridableFeatures);
     runAutogenForAutotoolsProjectIfNecessary($dir, $prefix, $sourceDir, $project, $joinedOverridableFeatures, @buildArgs);
 
-    my $runWithJhbuild = jhbuildWrapperPrefixIfNeeded();
+    my $runWithJhbuild = join(" ", jhbuildWrapperPrefixIfNeeded());
     if (system("$runWithJhbuild $make $makeArgs") ne 0) {
         die "\nFailed to build WebKit using '$make'!\n";
     }
@@ -2121,9 +2127,7 @@ sub buildAutotoolsProject($@)
         my @docGenerationOptions = ("$sourceDir/Tools/gtk/generate-gtkdoc", "--skip-html");
         push(@docGenerationOptions, productDir());
 
-        if ($runWithJhbuild) {
-            unshift(@docGenerationOptions, $runWithJhbuild);
-        }
+        unshift(@docGenerationOptions, jhbuildWrapperPrefixIfNeeded());
 
         if (system(@docGenerationOptions)) {
             die "\n gtkdoc did not build without warnings\n";
@@ -2136,14 +2140,18 @@ sub buildAutotoolsProject($@)
 sub jhbuildWrapperPrefixIfNeeded()
 {
     if (-e getJhbuildPath()) {
+        my @prefix = (File::Spec->catfile(sourceDir(), "Tools", "jhbuild", "jhbuild-wrapper"));
         if (isEfl()) {
-            return File::Spec->catfile(sourceDir(), "Tools", "efl", "run-with-jhbuild");
+            push(@prefix, "--efl");
         } elsif (isGtk()) {
-            return File::Spec->catfile(sourceDir(), "Tools", "gtk", "run-with-jhbuild");
+            push(@prefix, "--gtk");
         }
+        push(@prefix, "run");
+
+        return @prefix;
     }
 
-    return "";
+    return ();
 }
 
 sub removeCMakeCache()
@@ -2184,7 +2192,7 @@ sub generateBuildSystemFromCMakeProject
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters.
-    my $wrapper = jhbuildWrapperPrefixIfNeeded() . " ";
+    my $wrapper = join(" ", jhbuildWrapperPrefixIfNeeded()) . " ";
     my $returnCode = system($wrapper . "cmake @args");
 
     chdir($originalWorkingDirectory);
@@ -2204,7 +2212,7 @@ sub buildCMakeGeneratedProject($)
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters. In particular, $makeArgs may contain such metacharacters.
-    my $wrapper = jhbuildWrapperPrefixIfNeeded() . " ";
+    my $wrapper = join(" ", jhbuildWrapperPrefixIfNeeded()) . " ";
     return system($wrapper . "cmake @args");
 }
 
@@ -2460,13 +2468,13 @@ EOF
 
 sub buildGtkProject
 {
-    my ($project, $clean, $prefix, $makeArgs, $noWebKit2, @features) = @_;
+    my ($project, $clean, $prefix, $makeArgs, $noWebKit1, $noWebKit2, @features) = @_;
 
     if ($project ne "WebKit" and $project ne "JavaScriptCore" and $project ne "WTF") {
         die "Unsupported project: $project. Supported projects: WebKit, JavaScriptCore, WTF\n";
     }
 
-    return buildAutotoolsProject($project, $clean, $prefix, $makeArgs, $noWebKit2, @features);
+    return buildAutotoolsProject($project, $clean, $prefix, $makeArgs, $noWebKit1, $noWebKit2, @features);
 }
 
 sub buildChromiumMakefile($$@)
@@ -2571,7 +2579,7 @@ sub buildChromium($@)
     if (isDarwin() && !isChromiumAndroid() && !isChromiumMacMake() && !isChromiumNinja()) {
         # Mac build - builds the root xcode project.
         $result = buildXCodeProject("Source/WebKit/chromium/All", $clean, "-configuration", configuration(), @options);
-    } elsif (isCygwin() || isWindows()) {
+    } elsif ((isCygwin() || isWindows()) && !isChromiumNinja()) {
         # Windows build - builds the root visual studio solution.
         $result = buildChromiumVisualStudioProject("Source/WebKit/chromium/All.sln", $clean);
     } elsif (isChromiumNinja()) {
@@ -2699,7 +2707,7 @@ sub execMacWebKitAppForDebugging($)
             die "Targetting the Web Process is not compatible with using an XPC Service for the Web Process at this time.";
         }
         
-        my $webProcessShimPath = File::Spec->catfile($productDir, "WebProcessShim.dylib");
+        my $webProcessShimPath = File::Spec->catfile($productDir, "SecItemShim.dylib");
         my $webProcessPath = File::Spec->catdir($productDir, "WebProcess.app");
         my $webKit2ExecutablePath = File::Spec->catfile($productDir, "WebKit2.framework", "WebKit2");
 

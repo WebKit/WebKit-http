@@ -55,7 +55,7 @@ StorageTask::StorageTask(Type type)
     , m_area(0)
     , m_thread(0)
 {
-    ASSERT(m_type == ImportOrigins || m_type == DeleteAllOrigins);
+    ASSERT(m_type == ImportOrigins || m_type == DeleteAllOrigins || m_type == ReleaseFastMallocFreeMemory);
 }
 
 StorageTask::StorageTask(Type type, const String& originIdentifier)
@@ -104,6 +104,9 @@ void StorageTask::performTask()
             break;
         case DeleteEmptyDatabase:
             m_area->deleteEmptyDatabase();
+            break;
+        case ReleaseFastMallocFreeMemory:
+            WTF::releaseFastMallocFreeMemory();
             break;
         case TerminateThread:
             m_thread->performTerminate();

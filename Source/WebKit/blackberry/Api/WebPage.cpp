@@ -1114,6 +1114,10 @@ void WebPagePrivate::setLoadState(LoadState state)
             } else {
                 Platform::IntSize virtualViewport = recomputeVirtualViewportFromViewportArguments();
                 m_webPage->setVirtualViewportSize(virtualViewport);
+                if (m_shouldUseFixedDesktopMode)
+                    setViewMode(FixedDesktop);
+                else
+                    setViewMode(Desktop);
             }
 
 #if ENABLE(EVENT_MODE_METATAGS)
@@ -1475,16 +1479,7 @@ void WebPagePrivate::updateViewportSize(bool setFixedReportedSize, bool sendResi
         m_mainFrame->view()->adjustViewSize();
 
 #if ENABLE(FULLSCREEN_API)
-        // If we are in fullscreen video mode, and we change the FrameView::viewportRect,
-        // we need to adjust the media container to the new size.
-        if (m_fullscreenVideoNode) {
-            Document* document = m_fullscreenVideoNode->document();
-            ASSERT(document);
-            ASSERT(document->fullScreenRenderer());
-
-            int width = m_mainFrame->view()->visibleContentRect().size().width();
-            document->fullScreenRenderer()->style()->setWidth(Length(width, Fixed));
-        }
+        adjustFullScreenElementDimensionsIfNeeded();
 #endif
     }
 
@@ -1704,7 +1699,7 @@ double WebPagePrivate::zoomToFitScale() const
 
 bool WebPagePrivate::respectViewport() const
 {
-    return m_forceRespectViewportArguments || contentsSize().width() <= m_virtualViewportSize.width();
+    return m_forceRespectViewportArguments || contentsSize().width() <= m_virtualViewportSize.width() + 1;
 }
 
 double WebPagePrivate::initialScale() const
@@ -1784,6 +1779,7 @@ void WebPagePrivate::resetScales()
     m_initialScale = m_webSettings->initialScale() > 0 ? m_webSettings->initialScale() : -1.0;
     m_minimumScale = -1.0;
     m_maximumScale = -1.0;
+    m_client->scaleChanged();
 
     // We have to let WebCore know about updated framerect now that we've
     // reset our scales. See: RIM Bug #401.
@@ -1986,6 +1982,10 @@ void WebPagePrivate::notifyTransformedScrollChanged()
     const IntPoint pos = transformedScrollPosition();
     m_backingStore->d->scrollChanged(pos);
     m_client->scrollChanged();
+
+#if ENABLE(FULLSCREEN_API)
+    adjustFullScreenElementDimensionsIfNeeded();
+#endif
 }
 
 bool WebPagePrivate::setViewMode(ViewMode mode)
@@ -3160,6 +3160,11 @@ WebCookieJar* WebPage::cookieJar() const
     return d->m_cookieJar;
 }
 
+bool WebPage::isLoading() const
+{
+    return d->isLoading();
+}
+
 bool WebPage::isVisible() const
 {
     return d->m_visible;
@@ -3207,6 +3212,9 @@ void WebPagePrivate::setVisible(bool visible)
                 m_mainFrame->animation()->suspendAnimations();
             if (!m_page->scriptedAnimationsSuspended())
                 m_page->suspendScriptedAnimations();
+
+            if (m_webPage->hasOpenedPopup())
+                m_page->chrome()->client()->closePagePopup(0);
         }
 
         m_visible = visible;
@@ -3509,19 +3517,6 @@ void WebPagePrivate::dispatchViewportPropertiesDidChange(const ViewportArguments
         zoomToInitialScaleOnLoad();
 }
 
-void WebPagePrivate::onInputLocaleChanged(bool isRTL)
-{
-    if (isRTL != m_webSettings->isWritingDirectionRTL()) {
-        m_webSettings->setWritingDirectionRTL(isRTL);
-        m_inputHandler->handleInputLocaleChanged(isRTL);
-    }
-}
-
-void WebPage::onInputLocaleChanged(bool isRTL)
-{
-    d->onInputLocaleChanged(isRTL);
-}
-
 void WebPagePrivate::suspendBackingStore()
 {
 #if USE(ACCELERATED_COMPOSITING)
@@ -3655,7 +3650,7 @@ void WebPagePrivate::setViewportSize(const IntSize& transformedActualVisibleSize
     IntSize viewportSizeAfter = actualVisibleSize();
 
     IntSize offset;
-    if (hasPendingOrientation) {
+    if (hasPendingOrientation && !m_fullscreenVideoNode) {
         offset = IntSize(roundf((viewportSizeBefore.width() - viewportSizeAfter.width()) / 2.0),
             roundf((viewportSizeBefore.height() - viewportSizeAfter.height()) / 2.0));
     }
@@ -3824,14 +3819,32 @@ void WebPagePrivate::setViewportSize(const IntSize& transformedActualVisibleSize
     }
 
 #if ENABLE(FULLSCREEN_API) && ENABLE(VIDEO)
-    // When leaving fullscreen mode, restore the scale and scroll position
-    // if needed.
-    // FIXME: The cached values might get imprecise if user have rotated the
-    // device while in fullscreen.
+    // When leaving fullscreen mode, restore the scale and scroll position if needed.
+    // We also need to make sure the scale and scroll position won't cause over scale or over scroll.
     if (m_scaleBeforeFullScreen > 0 && !m_fullscreenVideoNode) {
         // Restore the scale when leaving fullscreen. We can't use TransformationMatrix::scale(double) here,
         // as it will multiply the scale rather than set the scale.
         // FIXME: We can refactor this into setCurrentScale(double) if it is useful in the future.
+        if (m_orientationBeforeFullScreen % 180 != orientation() % 180) { // Orientation changed
+            if (m_actualVisibleWidth > contentsSize().width() * m_scaleBeforeFullScreen) {
+                // Cached scale need to be adjusted after rotation.
+                m_scaleBeforeFullScreen = double(m_actualVisibleWidth) / contentsSize().width();
+            }
+            if (m_scaleBeforeFullScreen * contentsSize().height() < m_actualVisibleHeight) {
+                // Use zoom to fit height scale in order to cover the screen height.
+                m_scaleBeforeFullScreen = double(m_actualVisibleHeight) / contentsSize().height();
+            }
+
+            if (m_actualVisibleWidth > m_scaleBeforeFullScreen * (contentsSize().width() - m_scrollPositionBeforeFullScreen.x())) {
+                // Cached scroll position over scrolls horizontally after rotation.
+                m_scrollPositionBeforeFullScreen.setX(contentsSize().width() - m_actualVisibleWidth / m_scaleBeforeFullScreen);
+            }
+            if (m_actualVisibleHeight > m_scaleBeforeFullScreen * (contentsSize().height() - m_scrollPositionBeforeFullScreen.y())) {
+                // Cached scroll position over scrolls vertically after rotation.
+                m_scrollPositionBeforeFullScreen.setY(contentsSize().height() - m_actualVisibleHeight / m_scaleBeforeFullScreen);
+            }
+        }
+
         m_transformationMatrix->setM11(m_scaleBeforeFullScreen);
         m_transformationMatrix->setM22(m_scaleBeforeFullScreen);
         m_scaleBeforeFullScreen = -1.0;
@@ -4032,6 +4045,9 @@ bool WebPage::touchEvent(const Platform::TouchEvent& event)
     if (d->m_page->defersLoading())
         return false;
 
+    if (d->m_inputHandler)
+        d->m_inputHandler->setInputModeEnabled();
+
     PluginView* pluginView = d->m_fullScreenPluginView.get();
     if (pluginView)
         return d->dispatchTouchEventToFullScreenPlugin(pluginView, event);
@@ -4054,7 +4070,7 @@ bool WebPage::touchEvent(const Platform::TouchEvent& event)
 
     bool handled = false;
 
-    if (!event.m_type != Platform::TouchEvent::TouchInjected)
+    if (event.m_type != Platform::TouchEvent::TouchInjected)
         handled = d->m_mainFrame->eventHandler()->handleTouchEvent(PlatformTouchEvent(&tEvent));
 
     if (d->m_preventDefaultOnTouchStart) {
@@ -5810,6 +5826,11 @@ void WebPagePrivate::enterFullScreenForElement(Element* element)
             // position might change. So we keep track of it here, in order to restore it
             // once element leaves fullscreen.
             m_scrollPositionBeforeFullScreen = m_mainFrame->view()->scrollPosition();
+
+            // We need to remember the orientation before entering fullscreen, so that we can adjust
+            // the scale and scroll position when exiting fullscreen if needed, because the scale and
+            // scroll position  may not apply (overscale and/or overscroll) in the other orientation.
+            m_orientationBeforeFullScreen = orientation();
         }
 
         // No fullscreen video widget has been made available by the Browser
@@ -5838,6 +5859,40 @@ void WebPagePrivate::exitFullScreenForElement(Element* element)
         m_fullscreenVideoNode = 0;
     }
 #endif
+}
+
+// FIXME: Move this method to WebCore.
+void WebPagePrivate::adjustFullScreenElementDimensionsIfNeeded()
+{
+    // If we are in fullscreen video mode, and we change the FrameView::viewportRect,
+    // we need to adjust the media container to the new size.
+    if (!m_fullscreenVideoNode || !m_fullscreenVideoNode->renderer()
+        || !m_fullscreenVideoNode->document() || !m_fullscreenVideoNode->document()->fullScreenRenderer())
+        return;
+
+    ASSERT(m_fullscreenVideoNode->isElementNode());
+    ASSERT(static_cast<Element*>(m_fullscreenVideoNode.get())->isMediaElement());
+
+    Document* document = m_fullscreenVideoNode->document();
+    RenderStyle* fullScreenStyle = document->fullScreenRenderer()->style();
+    ASSERT(fullScreenStyle);
+
+    // In order to compensate possible round errors when we scale the fullscreen
+    // container element to fit to the viewport, lets make the fullscreen 1px wider
+    // than the viewport size on the right, and one pixel longer at the bottom
+    // of the scroll position.
+    IntRect viewportRect = m_mainFrame->view()->visibleContentRect();
+    int viewportWidth = viewportRect.width() + 1;
+    int viewportHeight = viewportRect.height() + 1;
+
+    fullScreenStyle->setWidth(Length(viewportWidth, WebCore::Fixed));
+    fullScreenStyle->setHeight(Length(viewportHeight, WebCore::Fixed));
+    fullScreenStyle->setLeft(Length(0, WebCore::Fixed));
+    fullScreenStyle->setTop(Length(0, WebCore::Fixed));
+    fullScreenStyle->setBackgroundColor(Color::black);
+
+    document->fullScreenRenderer()->setNeedsLayoutAndPrefWidthsRecalc();
+    document->recalcStyle(Node::Force);
 }
 #endif
 

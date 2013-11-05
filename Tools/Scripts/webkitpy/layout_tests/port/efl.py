@@ -34,22 +34,26 @@ from webkitpy.layout_tests.port.base import Port
 from webkitpy.layout_tests.port.pulseaudio_sanitizer import PulseAudioSanitizer
 from webkitpy.layout_tests.port.xvfbdriver import XvfbDriver
 
-class EflPort(Port, PulseAudioSanitizer):
+
+class EflPort(Port):
     port_name = 'efl'
 
     def __init__(self, *args, **kwargs):
         super(EflPort, self).__init__(*args, **kwargs)
 
-        self._jhbuild_wrapper_path = self.path_from_webkit_base('Tools', 'efl', 'run-with-jhbuild')
+        self._jhbuild_wrapper_path = [self.path_from_webkit_base('Tools', 'jhbuild', 'jhbuild-wrapper'), '--efl', 'run']
 
-        self.set_option_default('wrapper', self._jhbuild_wrapper_path)
+        self.set_option_default('wrapper', ' '.join(self._jhbuild_wrapper_path))
         self.webprocess_cmd_prefix = self.get_option('webprocess_cmd_prefix')
+
+        self._pulseaudio_sanitizer = PulseAudioSanitizer()
 
     def _port_flag_for_scripts(self):
         return "--efl"
 
     def setup_test_run(self):
-        self._unload_pulseaudio_module()
+        super(EflPort, self).setup_test_run()
+        self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
     def setup_environ_for_server(self, server_name=None):
         env = super(EflPort, self).setup_environ_for_server(server_name)
@@ -73,7 +77,7 @@ class EflPort(Port, PulseAudioSanitizer):
 
     def clean_up_test_run(self):
         super(EflPort, self).clean_up_test_run()
-        self._restore_pulseaudio_module()
+        self._pulseaudio_sanitizer.restore_pulseaudio_module()
 
     def _generate_all_test_configurations(self):
         return [TestConfiguration(version=self._version, architecture='x86', build_type=build_type) for build_type in self.ALL_BUILD_TYPES]
@@ -88,7 +92,7 @@ class EflPort(Port, PulseAudioSanitizer):
         return self._build_path('bin', 'ImageDiff')
 
     def _image_diff_command(self, *args, **kwargs):
-        return [self._jhbuild_wrapper_path] + super(EflPort, self)._image_diff_command(*args, **kwargs)
+        return self._jhbuild_wrapper_path + super(EflPort, self)._image_diff_command(*args, **kwargs)
 
     def _path_to_webcore_library(self):
         static_path = self._build_path('lib', 'libwebcore_efl.a')
@@ -121,3 +125,6 @@ class EflPort(Port, PulseAudioSanitizer):
         # FIXME: old-run-webkit-tests also added ["-graphicssystem", "raster", "-style", "windows"]
         # FIXME: old-run-webkit-tests converted results_filename path for cygwin.
         self._run_script("run-launcher", run_launcher_args)
+
+    def check_sys_deps(self, needs_http):
+        return super(EflPort, self).check_sys_deps(needs_http) and XvfbDriver.check_xvfb(self)

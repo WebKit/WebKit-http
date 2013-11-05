@@ -859,3 +859,85 @@
 |         <tbody>
 |           <tr>
 |         <tfoot>
+
+#data
+<body><template><template><b><template></template></template>text</template>
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <template>
+|           #document-fragment
+|             <b>
+|               <template>
+|                 #document-fragment
+|         "text"
+
+#data
+<body><template><col><colgroup>
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <col>
+
+#data
+<body><template><col></colgroup>
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <col>
+
+#data
+<body><template><col><colgroup></template></body>
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <col>
+
+#data
+<body><template><col><div>
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <col>
+
+#data
+<body><template><col></div>
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <col>
+
+#data
+<body><template><col>Hello
+#errors
+#document
+| <html>
+|   <head>
+|   <body>
+|     <template>
+|       #document-fragment
+|         <col>

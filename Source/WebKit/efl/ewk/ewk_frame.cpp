@@ -513,7 +513,7 @@ unsigned int ewk_frame_text_matches_mark(Evas_Object* ewkFrame, const char* stri
     EINA_SAFETY_ON_NULL_RETURN_VAL(string, 0);
 
     smartData->frame->editor()->setMarkedTextMatchesAreHighlighted(highlight);
-    return smartData->frame->editor()->countMatchesForText(WTF::String::fromUTF8(string), caseSensitive, limit, true);
+    return smartData->frame->editor()->countMatchesForText(WTF::String::fromUTF8(string), 0, caseSensitive, limit, true, 0);
 }
 
 Eina_Bool ewk_frame_text_matches_unmark_all(Evas_Object* ewkFrame)
@@ -995,6 +995,10 @@ Eina_Bool ewk_frame_feed_touch_event(Evas_Object* ewkFrame, Ewk_Touch_Event_Type
 
     return smartData->frame->eventHandler()->handleTouchEvent(EWKPrivate::platformTouchEvent(x, y, points, action, modifiers));
 #else
+    UNUSED_PARAM(ewkFrame);
+    UNUSED_PARAM(action);
+    UNUSED_PARAM(points);
+    UNUSED_PARAM(modifiers);
     return false;
 #endif
 }

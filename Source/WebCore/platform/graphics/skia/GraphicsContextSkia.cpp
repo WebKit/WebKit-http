@@ -49,6 +49,7 @@
 #include "SkCornerPathEffect.h"
 #include "SkData.h"
 #include "SkLayerDrawLooper.h"
+#include "SkRRect.h"
 #include "SkShader.h"
 #include "SkiaUtils.h"
 #include "skia/ext/platform_canvas.h"
@@ -67,6 +68,7 @@ using namespace std;
 namespace WebCore {
 
 namespace {
+// Local helper functions ------------------------------------------------------
 
 // Return value % max, but account for value possibly being negative.
 inline int fastMod(int value, int max)
@@ -82,10 +84,6 @@ inline int fastMod(int value, int max)
         value = -value;
     return value;
 }
-
-}  // namespace
-
-// Local helper functions ------------------------------------------------------
 
 void addCornerArc(SkPath* path, const SkRect& rect, const IntSize& size, int startAngle)
 {
@@ -199,6 +197,20 @@ void draw1xMarker(SkBitmap* bitmap, int index)
     }
 }
 
+inline void setRadii(SkVector* radii, IntSize topLeft, IntSize topRight, IntSize bottomRight, IntSize bottomLeft)
+{
+    radii[SkRRect::kUpperLeft_Corner].set(SkIntToScalar(topLeft.width()),
+        SkIntToScalar(topLeft.height()));
+    radii[SkRRect::kUpperRight_Corner].set(SkIntToScalar(topRight.width()),
+        SkIntToScalar(topRight.height()));
+    radii[SkRRect::kLowerRight_Corner].set(SkIntToScalar(bottomRight.width()),
+        SkIntToScalar(bottomRight.height()));
+    radii[SkRRect::kLowerLeft_Corner].set(SkIntToScalar(bottomLeft.width()),
+        SkIntToScalar(bottomLeft.height()));
+}
+
+} // namespace
+
 // -----------------------------------------------------------------------------
 
 // This may be called with a NULL pointer to create a graphics context that has
@@ -275,25 +287,6 @@ bool GraphicsContext::supportsTransparencyLayers()
 
 // Graphics primitives ---------------------------------------------------------
 
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
-{
-    if (paintingDisabled())
-        return;
-
-    SkRect r(rect);
-    SkPath path;
-    path.addOval(r, SkPath::kCW_Direction);
-    // only perform the inset if we won't invert r
-    if (2 * thickness < rect.width() && 2 * thickness < rect.height()) {
-        // Adding one to the thickness doesn't make the border too thick as
-        // it's painted over afterwards. But without this adjustment the
-        // border appears a little anemic after anti-aliasing.
-        r.inset(SkIntToScalar(thickness + 1), SkIntToScalar(thickness + 1));
-        path.addOval(r, SkPath::kCCW_Direction);
-    }
-    platformContext()->clipPath(path, PlatformContextSkia::AntiAliased);
-}
-
 void GraphicsContext::clearPlatformShadow()
 {
     if (paintingDisabled())
@@ -321,7 +314,8 @@ void GraphicsContext::clip(const FloatRect& rect)
     platformContext()->clipRect(rect);
 }
 
-void GraphicsContext::clip(const Path& path)
+// FIXME: don't ignore the winding rule. https://bugs.webkit.org/show_bug.cgi?id=106872
+void GraphicsContext::clip(const Path& path, WindRule)
 {
     if (paintingDisabled() || path.isEmpty())
         return;
@@ -329,7 +323,23 @@ void GraphicsContext::clip(const Path& path)
     platformContext()->clipPath(*path.platformPath(), PlatformContextSkia::AntiAliased);
 }
 
-void GraphicsContext::canvasClip(const Path& path)
+void GraphicsContext::clipRoundedRect(const RoundedRect& rect)
+{
+    if (paintingDisabled())
+        return;
+
+    SkVector radii[4];
+    RoundedRect::Radii wkRadii = rect.radii();
+    setRadii(radii, wkRadii.topLeft(), wkRadii.topRight(), wkRadii.bottomRight(), wkRadii.bottomLeft());
+
+    SkRRect r;
+    r.setRectRadii(rect.rect(), radii);
+
+    platformContext()->clipRRect(r, PlatformContextSkia::AntiAliased);
+}
+
+// FIXME: don't ignore the winding rule. https://bugs.webkit.org/show_bug.cgi?id=106872
+void GraphicsContext::canvasClip(const Path& path, WindRule)
 {
     if (paintingDisabled())
         return;
@@ -825,17 +835,17 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect,
         return;
     }
 
-    SkRect r = rect;
-    SkPath path;
-    addCornerArc(&path, r, topRight, 270);
-    addCornerArc(&path, r, bottomRight, 0);
-    addCornerArc(&path, r, bottomLeft, 90);
-    addCornerArc(&path, r, topLeft, 180);
+    SkVector radii[4];
+    setRadii(radii, topLeft, topRight, bottomRight, bottomLeft);
+
+    SkRRect rr;
+    rr.setRectRadii(rect, radii);
 
     SkPaint paint;
     platformContext()->setupPaintForFilling(&paint);
     paint.setColor(color.rgb());
-    platformContext()->drawPath(path, paint);
+
+    platformContext()->drawRRect(rr, paint);
 }
 
 AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const

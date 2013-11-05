@@ -78,10 +78,27 @@ public:
         return adoptRef(new TextTrackCue(context, start, end, content));
     }
 
+    static const QualifiedName& voiceElementTagName()
+    {
+        DEFINE_STATIC_LOCAL(QualifiedName, vTag, (nullAtom, "v", nullAtom));
+        return vTag;
+    }
+
+    static const QualifiedName& classElementTagName()
+    {
+        DEFINE_STATIC_LOCAL(QualifiedName, cTag, (nullAtom, "c", nullAtom));
+        return cTag;
+    }
+    
+    static const QualifiedName& voiceAttributeName()
+    {
+        DEFINE_STATIC_LOCAL(QualifiedName, voiceAttr, (nullAtom, "voice", nullAtom));
+        return voiceAttr;
+    }
+
     virtual ~TextTrackCue();
 
-    static const AtomicString& pastNodesShadowPseudoId();
-    static const AtomicString& futureNodesShadowPseudoId();
+    static const AtomicString& allNodesShadowPseudoId();
 
     TextTrack* track() const;
     void setTrack(TextTrack*);
@@ -126,10 +143,10 @@ public:
     void invalidateCueIndex();
 
     PassRefPtr<DocumentFragment> getCueAsHTML();
-    void markNodesAsWebVTTNodes(Node*);
+    PassRefPtr<DocumentFragment> createCueRenderingTree();
 
-    virtual bool dispatchEvent(PassRefPtr<Event>);
-    bool dispatchEvent(PassRefPtr<Event>, ExceptionCode&);
+    using EventTarget::dispatchEvent;
+    virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
 
     bool isActive();
     void setIsActive(bool);
@@ -137,6 +154,7 @@ public:
     PassRefPtr<TextTrackCueBox> getDisplayTree();
     void updateDisplayTree(float);
     void removeDisplayTree();
+    void markFutureAndPastNodes(ContainerNode*, double, double);
 
     int calculateComputedLinePosition();
 
@@ -198,7 +216,7 @@ private:
     enum Alignment { Start, Middle, End };
     Alignment m_cueAlignment;
 
-    RefPtr<DocumentFragment> m_documentFragment;
+    RefPtr<DocumentFragment> m_webVTTNodeTree;
     TextTrack* m_track;
 
     EventTargetData m_eventTargetData;
@@ -208,9 +226,7 @@ private:
     bool m_pauseOnExit;
     bool m_snapToLines;
 
-    bool m_hasInnerTimestamps;
-    RefPtr<HTMLDivElement> m_pastDocumentNodes;
-    RefPtr<HTMLDivElement> m_futureDocumentNodes;
+    RefPtr<HTMLDivElement> m_allDocumentNodes;
 
     bool m_displayTreeShouldChange;
     RefPtr<TextTrackCueBox> m_displayTree;
@@ -223,6 +239,9 @@ private:
     int m_displaySize;
 
     std::pair<float, float> m_displayPosition;
+
+    void createWebVTTNodeTree();
+    void copyWebVTTNodeToDOMTree(ContainerNode* WebVTTNode, ContainerNode* root);
 };
 
 } // namespace WebCore

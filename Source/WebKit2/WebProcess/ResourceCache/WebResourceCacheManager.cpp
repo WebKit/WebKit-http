@@ -26,13 +26,11 @@
 #include "config.h"
 #include "WebResourceCacheManager.h"
 
-#include "Connection.h"
-#include "MessageID.h"
-#include "ResourceCachesToClear.h"
 #include "SecurityOriginData.h"
 #include "WebCoreArgumentCoders.h"
-#include "WebResourceCacheManagerProxyMessages.h"
 #include "WebProcess.h"
+#include "WebResourceCacheManagerMessages.h"
+#include "WebResourceCacheManagerProxyMessages.h"
 #include <WebCore/MemoryCache.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginHash.h>
@@ -42,18 +40,16 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebResourceCacheManager& WebResourceCacheManager::shared()
+const AtomicString& WebResourceCacheManager::supplementName()
 {
-    static WebResourceCacheManager& shared = *new WebResourceCacheManager;
-    return shared;
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebResourceCacheManager", AtomicString::ConstructFromLiteral));
+    return name;
 }
 
-WebResourceCacheManager::WebResourceCacheManager()
+WebResourceCacheManager::WebResourceCacheManager(WebProcess* process)
+    : m_process(process)
 {
-}
-
-WebResourceCacheManager::~WebResourceCacheManager()
-{
+    m_process->addMessageReceiver(Messages::WebResourceCacheManager::messageReceiverName(), this);
 }
 
 void WebResourceCacheManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
@@ -61,11 +57,8 @@ void WebResourceCacheManager::didReceiveMessage(CoreIPC::Connection* connection,
     didReceiveWebResourceCacheManagerMessage(connection, messageID, decoder);
 }
 
-
 void WebResourceCacheManager::getCacheOrigins(uint64_t callbackID) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     MemoryCache::SecurityOriginSet origins;
     memoryCache()->getOriginsWithCache(origins);
 
@@ -96,13 +89,11 @@ void WebResourceCacheManager::getCacheOrigins(uint64_t callbackID) const
         identifiers.uncheckedAppend(originData);
     }
 
-    WebProcess::shared().connection()->send(Messages::WebResourceCacheManagerProxy::DidGetCacheOrigins(identifiers, callbackID), 0);
+    m_process->send(Messages::WebResourceCacheManagerProxy::DidGetCacheOrigins(identifiers, callbackID), 0);
 }
 
 void WebResourceCacheManager::clearCacheForOrigin(SecurityOriginData originData, uint32_t cachesToClear) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
 #if USE(CFURLCACHE)
     ResourceCachesToClear resourceCachesToClear = static_cast<ResourceCachesToClear>(cachesToClear);
 #else
@@ -127,11 +118,8 @@ void WebResourceCacheManager::clearCacheForOrigin(SecurityOriginData originData,
 
 void WebResourceCacheManager::clearCacheForAllOrigins(uint32_t cachesToClear) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     ResourceCachesToClear resourceCachesToClear = static_cast<ResourceCachesToClear>(cachesToClear);
-
-    WebProcess::shared().clearResourceCaches(resourceCachesToClear);
+    m_process->clearResourceCaches(resourceCachesToClear);
 }
 
 } // namespace WebKit

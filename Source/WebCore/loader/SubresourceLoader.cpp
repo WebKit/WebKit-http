@@ -214,6 +214,8 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 
 void SubresourceLoader::didReceiveData(const char* data, int length, long long encodedDataLength, bool allAtOnce)
 {
+    if (m_resource->response().httpStatusCode() >= 400 && !m_resource->shouldIgnoreHTTPStatusCodeErrors())
+        return;
     ASSERT(!m_resource->resourceToRevalidate());
     ASSERT(!m_resource->errorOccurred());
     ASSERT(m_state == Initialized);
@@ -232,8 +234,8 @@ bool SubresourceLoader::checkForHTTPStatusCodeError()
     if (m_resource->response().httpStatusCode() < 400 || m_resource->shouldIgnoreHTTPStatusCodeErrors())
         return false;
 
-    m_resource->error(CachedResource::LoadError);
     m_state = Finishing;
+    m_resource->error(CachedResource::LoadError);
     cancel();
     return true;
 }
@@ -283,12 +285,13 @@ void SubresourceLoader::didFail(const ResourceError& error)
     if (m_state != Initialized)
         return;
     ASSERT(!reachedTerminalState());
-    ASSERT(!m_resource->resourceToRevalidate());
     LOG(ResourceLoading, "Failed to load '%s'.\n", m_resource->url().string().latin1().data());
 
     RefPtr<SubresourceLoader> protect(this);
     CachedResourceHandle<CachedResource> protectResource(m_resource);
     m_state = Finishing;
+    if (m_resource->resourceToRevalidate())
+        memoryCache()->revalidationFailed(m_resource);
     m_resource->setResourceError(error);
     m_resource->error(CachedResource::LoadError);
     if (!m_resource->isPreloaded())

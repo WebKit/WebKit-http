@@ -107,8 +107,8 @@ static inline bool isEndTagBufferingState(HTMLTokenizerState::State state)
 #define HTML_ADVANCE_TO(stateName) ADVANCE_TO(HTMLTokenizerState, stateName)
 #define HTML_SWITCH_TO(stateName) SWITCH_TO(HTMLTokenizerState, stateName)
 
-HTMLTokenizer::HTMLTokenizer(bool usePreHTML5ParserQuirks)
-    : m_usePreHTML5ParserQuirks(usePreHTML5ParserQuirks)
+HTMLTokenizer::HTMLTokenizer(const HTMLParserOptions& options)
+    : m_options(options)
 {
     reset();
 }
@@ -136,6 +136,41 @@ void HTMLTokenizer::reset()
     m_additionalAllowedCharacter = '\0';
 }
 
+#if ENABLE(THREADED_HTML_PARSER)
+
+bool HTMLTokenizer::canCreateCheckpoint() const
+{
+    if (!m_appropriateEndTagName.isEmpty())
+        return false;
+    if (!m_temporaryBuffer.isEmpty())
+        return false;
+    if (!m_bufferedEndTagName.isEmpty())
+        return false;
+    return true;
+}
+
+void HTMLTokenizer::createCheckpoint(Checkpoint& result) const
+{
+    ASSERT(canCreateCheckpoint());
+    result.options = m_options;
+    result.state = m_state;
+    result.additionalAllowedCharacter = m_additionalAllowedCharacter;
+    result.skipNextNewLine = m_inputStreamPreprocessor.skipNextNewLine();
+    result.shouldAllowCDATA = m_shouldAllowCDATA;
+}
+
+void HTMLTokenizer::restoreFromCheckpoint(const Checkpoint& checkpoint)
+{
+    m_token = 0;
+    m_options = checkpoint.options;
+    m_state = checkpoint.state;
+    m_additionalAllowedCharacter = checkpoint.additionalAllowedCharacter;
+    m_inputStreamPreprocessor.reset(checkpoint.skipNextNewLine);
+    m_shouldAllowCDATA = checkpoint.shouldAllowCDATA;
+}
+
+#endif
+
 inline bool HTMLTokenizer::processEntity(SegmentedString& source)
 {
     bool notEnoughCharacters = false;
@@ -161,6 +196,7 @@ bool HTMLTokenizer::flushBufferedEndTag(SegmentedString& source)
         return true;
     m_token->beginEndTag(m_bufferedEndTagName);
     m_bufferedEndTagName.clear();
+    m_appropriateEndTagName.clear();
     m_temporaryBuffer.clear();
     return false;
 }
@@ -196,6 +232,7 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
         // We started an end tag during our last iteration.
         m_token->beginEndTag(m_bufferedEndTagName);
         m_bufferedEndTagName.clear();
+        m_appropriateEndTagName.clear();
         m_temporaryBuffer.clear();
         if (m_state == HTMLTokenizerState::DataState) {
             // We're back in the data state, so we must be done with the tag.
@@ -317,9 +354,11 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
     HTML_BEGIN_STATE(EndTagOpenState) {
         if (isASCIIUpper(cc)) {
             m_token->beginEndTag(static_cast<LChar>(toLowerCase(cc)));
+            m_appropriateEndTagName.clear();
             HTML_ADVANCE_TO(TagNameState);
         } else if (isASCIILower(cc)) {
             m_token->beginEndTag(static_cast<LChar>(cc));
+            m_appropriateEndTagName.clear();
             HTML_ADVANCE_TO(TagNameState);
         } else if (cc == '>') {
             parseError();
@@ -343,7 +382,7 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
             HTML_ADVANCE_TO(SelfClosingStartTagState);
         else if (cc == '>')
             return emitAndResumeIn(source, HTMLTokenizerState::DataState);
-        else if (m_usePreHTML5ParserQuirks && cc == '<')
+        else if (m_options.usePreHTML5ParserQuirks && cc == '<')
             return emitAndReconsumeIn(source, HTMLTokenizerState::DataState);
         else if (isASCIIUpper(cc)) {
             m_token->appendToName(toLowerCase(cc));
@@ -814,7 +853,7 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
             HTML_ADVANCE_TO(SelfClosingStartTagState);
         else if (cc == '>')
             return emitAndResumeIn(source, HTMLTokenizerState::DataState);
-        else if (m_usePreHTML5ParserQuirks && cc == '<')
+        else if (m_options.usePreHTML5ParserQuirks && cc == '<')
             return emitAndReconsumeIn(source, HTMLTokenizerState::DataState);
         else if (isASCIIUpper(cc)) {
             m_token->addNewAttribute();
@@ -848,7 +887,7 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
         } else if (cc == '>') {
             m_token->endAttributeName(source.numberOfCharactersConsumed());
             return emitAndResumeIn(source, HTMLTokenizerState::DataState);
-        } else if (m_usePreHTML5ParserQuirks && cc == '<') {
+        } else if (m_options.usePreHTML5ParserQuirks && cc == '<') {
             m_token->endAttributeName(source.numberOfCharactersConsumed());
             return emitAndReconsumeIn(source, HTMLTokenizerState::DataState);
         } else if (isASCIIUpper(cc)) {
@@ -876,7 +915,7 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
             HTML_ADVANCE_TO(BeforeAttributeValueState);
         else if (cc == '>')
             return emitAndResumeIn(source, HTMLTokenizerState::DataState);
-        else if (m_usePreHTML5ParserQuirks && cc == '<')
+        else if (m_options.usePreHTML5ParserQuirks && cc == '<')
             return emitAndReconsumeIn(source, HTMLTokenizerState::DataState);
         else if (isASCIIUpper(cc)) {
             m_token->addNewAttribute();
@@ -1019,7 +1058,7 @@ bool HTMLTokenizer::nextToken(SegmentedString& source, HTMLToken& token)
             HTML_ADVANCE_TO(SelfClosingStartTagState);
         else if (cc == '>')
             return emitAndResumeIn(source, HTMLTokenizerState::DataState);
-        else if (m_usePreHTML5ParserQuirks && cc == '<')
+        else if (m_options.usePreHTML5ParserQuirks && cc == '<')
             return emitAndReconsumeIn(source, HTMLTokenizerState::DataState);
         else if (cc == InputStreamPreprocessor::endOfFileMarker) {
             parseError();
@@ -1589,7 +1628,7 @@ String HTMLTokenizer::bufferedCharacters() const
     return characters.toString();
 }
 
-void HTMLTokenizer::updateStateFor(const AtomicString& tagName, Frame* frame)
+void HTMLTokenizer::updateStateFor(const AtomicString& tagName)
 {
     if (tagName == textareaTag || tagName == titleTag)
         setState(HTMLTokenizerState::RCDATAState);
@@ -1600,9 +1639,9 @@ void HTMLTokenizer::updateStateFor(const AtomicString& tagName, Frame* frame)
     else if (tagName == styleTag
         || tagName == iframeTag
         || tagName == xmpTag
-        || (tagName == noembedTag && HTMLTreeBuilder::pluginsEnabled(frame))
+        || (tagName == noembedTag && m_options.pluginsEnabled)
         || tagName == noframesTag
-        || (tagName == noscriptTag && HTMLTreeBuilder::scriptEnabled(frame)))
+        || (tagName == noscriptTag && m_options.scriptEnabled))
         setState(HTMLTokenizerState::RAWTEXTState);
 }
 

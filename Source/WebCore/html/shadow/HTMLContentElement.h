@@ -37,6 +37,8 @@
 
 namespace WebCore {
 
+#if ENABLE(SHADOW_DOM)
+
 class HTMLContentElement : public InsertionPoint {
 public:
     static const QualifiedName& contentTagName(Document*);
@@ -46,10 +48,13 @@ public:
     virtual ~HTMLContentElement();
 
     void setSelect(const AtomicString&);
-    virtual const AtomicString& select() const;
-    virtual bool isSelectValid();
-    virtual const CSSSelectorList& selectorList();
+    const AtomicString& select() const;
+
+    virtual MatchType matchTypeFor(Node*) OVERRIDE;
+    virtual const CSSSelectorList& selectorList() OVERRIDE;
     virtual Type insertionPointType() const OVERRIDE { return ContentInsertionPoint; }
+    virtual bool canAffectSelector() const OVERRIDE { return true; }
+    virtual bool isSelectValid();
 
 protected:
     HTMLContentElement(const QualifiedName&, Document*);
@@ -76,10 +81,27 @@ inline const CSSSelectorList& HTMLContentElement::selectorList()
     return m_selectorList;
 }
 
+#else
+
+// FIXME: shouldn't inherit from InsertionPoint: https://bugs.webkit.org/show_bug.cgi?id=103339
+class HTMLContentElement : public InsertionPoint {
+public:
+    static const QualifiedName& contentTagName(Document*);
+    static PassRefPtr<HTMLContentElement> create(Document*);
+
+    virtual Type insertionPointType() const OVERRIDE { return ContentInsertionPoint; }
+
+protected:
+    HTMLContentElement(const QualifiedName&, Document*);
+
+};
+
+#endif // if ENABLE(SHADOW_DOM)
+
 inline bool isHTMLContentElement(const Node* node)
 {
     ASSERT(node);
-    return node->hasTagName(HTMLContentElement::contentTagName(node->document()));
+    return node->isInsertionPoint() && toInsertionPoint(node)->insertionPointType() == InsertionPoint::ContentInsertionPoint;
 }
 
 inline HTMLContentElement* toHTMLContentElement(Node* node)

@@ -49,6 +49,7 @@
 #include "JSDOMBinding.h"
 #include "JSDOMWindow.h"
 #include "JSLock.h"
+#include "Operations.h"
 #include "PageClientEfl.h"
 #include "PageGroup.h"
 #include "PlatformMouseEvent.h"
@@ -820,6 +821,7 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->pageSettings->setStandardFontFamily("sans");
     priv->pageSettings->setHyperlinkAuditingEnabled(false);
     WebCore::RuntimeEnabledFeatures::setCSSRegionsEnabled(true);
+    WebCore::RuntimeEnabledFeatures::setSeamlessIFramesEnabled(true);
     priv->pageSettings->setScriptEnabled(true);
     priv->pageSettings->setPluginsEnabled(true);
     priv->pageSettings->setLocalStorageEnabled(true);
@@ -1708,6 +1710,8 @@ Eina_Bool ewk_view_context_menu_forward_event(Evas_Object* ewkView, const Evas_E
 
     return true;
 #else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(downEvent);
     return false;
 #endif
 }
@@ -4413,6 +4417,7 @@ Eina_Bool ewk_view_setting_should_display_subtitles_get(const Evas_Object *ewkVi
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
     return priv->settings.shouldDisplaySubtitles;
 #else
+    UNUSED_PARAM(ewkView);
     return false;
 #endif
 }
@@ -4424,6 +4429,7 @@ Eina_Bool ewk_view_setting_should_display_captions_get(const Evas_Object *ewkVie
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
     return priv->settings.shouldDisplayCaptions;
 #else
+    UNUSED_PARAM(ewkView);
     return false;
 #endif
 }
@@ -4438,6 +4444,9 @@ void ewk_view_setting_should_display_captions_set(Evas_Object *ewkView, Eina_Boo
         priv->pageSettings->setShouldDisplayCaptions(enable);
         priv->settings.shouldDisplayCaptions = enable;
     }
+#else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(enable);
 #endif
 }
 
@@ -4451,6 +4460,9 @@ void ewk_view_setting_should_display_subtitles_set(Evas_Object *ewkView, Eina_Bo
         priv->pageSettings->setShouldDisplaySubtitles(enable);
         priv->settings.shouldDisplaySubtitles = enable;
     }
+#else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(enable);
 #endif
 }
 
@@ -4461,6 +4473,7 @@ Eina_Bool ewk_view_setting_should_display_text_descriptions_get(const Evas_Objec
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
     return priv->settings.shouldDisplayTextDescriptions;
 #else
+    UNUSED_PARAM(ewkView);
     return false;
 #endif
 }
@@ -4475,6 +4488,9 @@ void ewk_view_setting_should_display_text_descriptions_set(Evas_Object *ewkView,
         priv->pageSettings->setShouldDisplayTextDescriptions(enable);
         priv->settings.shouldDisplayTextDescriptions = enable;
     }
+#else
+    UNUSED_PARAM(ewkView);
+    UNUSED_PARAM(enable);
 #endif
 }
 

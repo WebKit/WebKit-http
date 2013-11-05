@@ -1,3 +1,181 @@
+2013-01-10  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Adding the new id attribute to MediaStream and MediaStreamTrack
+        https://bugs.webkit.org/show_bug.cgi?id=106564
+
+        Reviewed by Adam Barth.
+
+        Specification: http://dev.w3.org/2011/webrtc/editor/getusermedia.html
+        MediaStream looses its label attribute and instead gets an id attribute.
+        MediaStreamTrack gets an id attribute.
+
+        * chromium/public/WebMediaStreamComponent.h:
+        (WebMediaStreamComponent):
+        * chromium/public/WebMediaStreamDescriptor.h:
+        (WebMediaStreamDescriptor):
+
+2013-01-09  Chris Rogers  <crogers@google.com>
+
+        Allow live/local audio input to be enabled only when needed
+        https://bugs.webkit.org/show_bug.cgi?id=106490
+
+        Reviewed by Kenneth Russell.
+
+        * chromium/public/Platform.h:
+        (Platform):
+        (WebKit::Platform::createAudioDevice):
+
+2013-01-08  Chris Rogers  <crogers@google.com>
+
+        Remove unused/deprecated render() method in chromium WebKit API
+        https://bugs.webkit.org/show_bug.cgi?id=106399
+
+        Reviewed by Kent Tamura.
+
+        * chromium/public/WebAudioDevice.h:
+
+2013-01-08  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Remove transitional #defines from WebKit API headers
+        https://bugs.webkit.org/show_bug.cgi?id=106381
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebGraphicsContext3D.h:
+
+2013-01-05  Chris Rogers  <crogers@google.com>
+
+        Implement MediaStreamSource::setAudioFormat()
+        https://bugs.webkit.org/show_bug.cgi?id=106053
+
+        Reviewed by Kenneth Russell.
+
+        * chromium/public/WebAudioDestinationConsumer.h:
+        (WebAudioDestinationConsumer):
+
+2013-01-04  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Remove static create functions from types WebCompositorSupport can construct
+        https://bugs.webkit.org/show_bug.cgi?id=99877
+
+        Reviewed by Adrienne Walker.
+
+        * chromium/public/WebAnimation.h:
+        * chromium/public/WebContentLayer.h:
+        * chromium/public/WebExternalTextureLayer.h:
+        * chromium/public/WebFloatAnimationCurve.h:
+        * chromium/public/WebIOSurfaceLayer.h:
+        * chromium/public/WebImageLayer.h:
+        * chromium/public/WebLayer.h:
+        * chromium/public/WebLayerTreeView.h:
+        * chromium/public/WebScrollbarLayer.h:
+        * chromium/public/WebSolidColorLayer.h:
+        * chromium/public/WebTransformAnimationCurve.h:
+        * chromium/public/WebVideoLayer.h:
+
+2013-01-04  James Robinson  <jamesr@chromium.org>
+
+        [chromium] WebTransformationMatrix shouldn't alias memory for TransformationMatrix
+        https://bugs.webkit.org/show_bug.cgi?id=106025
+
+        Reviewed by Adrienne Walker.
+
+        * chromium/public/WebTransformationMatrix.h:
+        (WebCore):
+        (WebKit::WebTransformationMatrix::~WebTransformationMatrix):
+        (WebTransformationMatrix):
+
+2013-01-04  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Remove unneeded WebDelegatedRendererLayer and WebCompositorTransferableResourceList headers
+        https://bugs.webkit.org/show_bug.cgi?id=105263
+
+        Reviewed by Darin Fisher.
+
+        These aren't needed any more since the delegation will be set up on the chromium side.
+
+        * Platform.gypi:
+        * chromium/public/WebCompositorSupport.h:
+        (WebKit):
+        * chromium/public/WebCompositorTransferableResourceList.h: Removed.
+        * chromium/public/WebDelegatedRendererLayer.h: Removed.
+
+2013-01-04  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove lost-compositor-context layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=106089
+
+        Reviewed by James Robinson.
+
+        Mark the loseCompositorContext() test function for removal.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+
+2013-01-03  Sami Kyostila  <skyostil@chromium.org>
+
+        [chromium] Rename low latency rendering mode setting to vsync notification
+        https://bugs.webkit.org/show_bug.cgi?id=106020
+
+        Reviewed by James Robinson.
+
+        Rename low latency rendering mode setting to vsync notification because
+        the old name was ambiguous and bad. This setting is meant to control
+        whether the renderer uses a vsync signal provided by the browser to
+        schedule rendering.
+
+2013-01-03  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Add a missing state to RTCPeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=106017
+
+        Reviewed by Adam Barth.
+
+        Adding the missing ReadyStateHaveRemoteOffer which will show up in the spec soon.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+
+2013-01-02  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Remove unused transitional #defines from Platform API
+        https://bugs.webkit.org/show_bug.cgi?id=105971
+
+        Reviewed by Adrienne Walker.
+
+        These are leftovers from multi-sided patches that landed months ago.
+
+        * chromium/public/WebContentLayerClient.h:
+        (WebContentLayerClient):
+        * chromium/public/WebLayer.h:
+        * chromium/public/WebLayerTreeView.h:
+        * chromium/public/WebThread.h:
+
+2013-01-02  David Tseng  <dtseng@google.com>
+
+        AX: Chromium needs platform localized strings for media controls.
+        https://bugs.webkit.org/show_bug.cgi?id=105940
+
+        Reviewed by Tony Chang.
+
+        * chromium/public/WebLocalizedString.h:
+
+2012-12-24  Alexei Filippov  <alph@chromium.org>
+
+        Web Inspector: add async API for passing renderer process memory stats
+        https://bugs.webkit.org/show_bug.cgi?id=105278
+
+        Reviewed by Yury Semikhatsky.
+
+        On some platforms (e.g. Linux) it may take some time to collect
+        total process memory information as it involves an IPC out of a
+        sandboxed renderer process. So add an async way to collect the statistics.
+
+        * chromium/public/Platform.h:
+        (Platform):
+        (ProcessMemorySizesCallback):
+        (WebKit::Platform::ProcessMemorySizesCallback::~ProcessMemorySizesCallback):
+        (WebKit::Platform::requestProcessMemorySizes):
+
 2012-12-18  Dana Jansens  <danakj@chromium.org>
 
         [chromium] Make WebLayerTreeView::loseCompositorContext non-pure virtual

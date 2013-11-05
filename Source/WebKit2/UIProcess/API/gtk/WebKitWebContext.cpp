@@ -20,6 +20,8 @@
 #include "config.h"
 #include "WebKitWebContext.h"
 
+#include "WebCookieManagerProxy.h"
+#include "WebGeolocationManagerProxy.h"
 #include "WebKitCookieManagerPrivate.h"
 #include "WebKitDownloadClient.h"
 #include "WebKitDownloadPrivate.h"
@@ -164,13 +166,28 @@ static void webkit_web_context_class_init(WebKitWebContextClass* webContextClass
                      WEBKIT_TYPE_DOWNLOAD);
 }
 
+static CString injectedBundleDirectory()
+{
+    if (const char* bundleDirectory = g_getenv("WEBKIT_INJECTED_BUNDLE_PATH"))
+        return bundleDirectory;
+
+    static const char* injectedBundlePath = LIBDIR""G_DIR_SEPARATOR_S"webkit2gtk-"WEBKITGTK_API_VERSION_STRING""G_DIR_SEPARATOR_S"injected-bundle"G_DIR_SEPARATOR_S;
+    return injectedBundlePath;
+}
+
+static CString injectedBundleFilename()
+{
+    GOwnPtr<char> bundleFilename(g_build_filename(injectedBundleDirectory().data(), "libwebkit2gtkinjectedbundle.so", NULL));
+    return bundleFilename.get();
+}
+
 static gpointer createDefaultWebContext(gpointer)
 {
     static GRefPtr<WebKitWebContext> webContext = adoptGRef(WEBKIT_WEB_CONTEXT(g_object_new(WEBKIT_TYPE_WEB_CONTEXT, NULL)));
     WebKitWebContextPrivate* priv = webContext->priv;
 
-    priv->context = WebContext::create(String());
-    priv->requestManager = webContext->priv->context->soupRequestManagerProxy();
+    priv->context = WebContext::create(WebCore::filenameToString(injectedBundleFilename().data()));
+    priv->requestManager = webContext->priv->context->supplement<WebSoupRequestManagerProxy>();
     priv->context->setCacheModel(CacheModelPrimaryWebBrowser);
     priv->tlsErrorsPolicy = WEBKIT_TLS_ERRORS_POLICY_IGNORE;
 
@@ -178,7 +195,7 @@ static gpointer createDefaultWebContext(gpointer)
     attachRequestManagerClientToContext(webContext.get());
 
 #if ENABLE(GEOLOCATION)
-    priv->geolocationProvider = WebKitGeolocationProvider::create(priv->context->geolocationManagerProxy());
+    priv->geolocationProvider = WebKitGeolocationProvider::create(priv->context->supplement<WebGeolocationManagerProxy>());
 #endif
 #if ENABLE(SPELLCHECK)
     priv->textChecker = WebKitTextChecker::create();
@@ -286,7 +303,7 @@ void webkit_web_context_clear_cache(WebKitWebContext* context)
 {
     g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
 
-    context->priv->context->resourceCacheManagerProxy()->clearCacheForAllOrigins(AllResourceCaches);
+    context->priv->context->supplement<WebResourceCacheManagerProxy>()->clearCacheForAllOrigins(AllResourceCaches);
 }
 
 typedef HashMap<DownloadProxy*, GRefPtr<WebKitDownload> > DownloadsMap;
@@ -332,7 +349,7 @@ WebKitCookieManager* webkit_web_context_get_cookie_manager(WebKitWebContext* con
 
     WebKitWebContextPrivate* priv = context->priv;
     if (!priv->cookieManager)
-        priv->cookieManager = adoptGRef(webkitCookieManagerCreate(priv->context->cookieManagerProxy()));
+        priv->cookieManager = adoptGRef(webkitCookieManagerCreate(priv->context->supplement<WebCookieManagerProxy>()));
 
     return priv->cookieManager.get();
 }
@@ -729,6 +746,24 @@ WebKitTLSErrorsPolicy webkit_web_context_get_tls_errors_policy(WebKitWebContext*
     g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 
     return context->priv->tlsErrorsPolicy;
+}
+
+/**
+ * webkit_web_context_set_web_extensions_directory:
+ * @context: a #WebKitWebContext
+ * @directory: the directory to add
+ *
+ * Set the directory where WebKit will look for Web Extensions.
+ * This method must be called before loading anything in this context, otherwise
+ * it will not have any effect.
+ */
+void webkit_web_context_set_web_extensions_directory(WebKitWebContext* context, const char* directory)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+    g_return_if_fail(directory);
+
+    // We pass the additional web extensions directory to the injected bundle as initialization user data.
+    context->priv->context->setInjectedBundleInitializationUserData(WebString::create(WebCore::filenameToString(directory)));
 }
 
 WebKitDownload* webkitWebContextGetOrCreateDownload(DownloadProxy* downloadProxy)

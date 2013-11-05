@@ -45,6 +45,7 @@ webkit_web_context_set_spell_checking_languages
 webkit_web_context_set_preferred_languages
 webkit_web_context_set_tls_errors_policy
 webkit_web_context_get_tls_errors_policy
+webkit_web_context_set_web_extensions_directory
 
 <SUBSECTION URI Scheme>
 WebKitURISchemeRequestCallback
@@ -71,6 +72,7 @@ WebKitWebView
 WebKitLoadEvent
 WebKitPolicyDecisionType
 WebKitSaveMode
+WebKitViewMode
 WebKitInsecureContentEvent
 
 <SUBSECTION Editing Commands>
@@ -95,6 +97,7 @@ webkit_web_view_go_back
 webkit_web_view_can_go_forward
 webkit_web_view_go_forward
 webkit_web_view_get_title
+webkit_web_view_get_page_id
 webkit_web_view_reload
 webkit_web_view_reload_bypass_cache
 webkit_web_view_stop_loading
@@ -127,6 +130,8 @@ webkit_web_view_save_finish
 webkit_web_view_save_to_file
 webkit_web_view_save_to_file_finish
 webkit_web_view_download_uri
+webkit_web_view_set_view_mode
+webkit_web_view_get_view_mode
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult
@@ -923,4 +928,43 @@ WEBKIT_SECURITY_MANAGER_GET_CLASS
 <SUBSECTION Private>
 WebKitSecurityManagerPrivate
 webkit_security_manager_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebExtension</FILE>
+WebKitWebExtension
+WebKitWebExtensionInitializeFunction
+webkit_web_extension_get_page
+
+<SUBSECTION Standard>
+WebKitWebExtensionClass
+WEBKIT_TYPE_WEB_EXTENSION
+WEBKIT_WEB_EXTENSION
+WEBKIT_IS_WEB_EXTENSION
+WEBKIT_WEB_EXTENSION_CLASS
+WEBKIT_IS_WEB_EXTENSION_CLASS
+WEBKIT_WEB_EXTENSION_GET_CLASS
+
+<SUBSECTION Private>
+WebKitWebExtensionPrivate
+webkit_web_extension_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebPage</FILE>
+WebKitWebPage
+webkit_web_page_get_dom_document
+
+<SUBSECTION Standard>
+WebKitWebPageClass
+WEBKIT_TYPE_WEB_PAGE
+WEBKIT_WEB_PAGE
+WEBKIT_IS_WEB_PAGE
+WEBKIT_WEB_PAGE_CLASS
+WEBKIT_IS_WEB_PAGE_CLASS
+WEBKIT_WEB_PAGE_GET_CLASS
+
+<SUBSECTION Private>
+WebKitWebPagePrivate
+webkit_web_page_get_type
 </SECTION>

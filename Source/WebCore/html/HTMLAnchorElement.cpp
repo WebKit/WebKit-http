@@ -26,7 +26,6 @@
 
 #include "Attribute.h"
 #include "DNS.h"
-#include "ElementShadow.h"
 #include "EventNames.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
@@ -219,10 +218,8 @@ void HTMLAnchorElement::parseAttribute(const QualifiedName& name, const AtomicSt
     if (name == hrefAttr) {
         bool wasLink = isLink();
         setIsLink(!value.isNull());
-        if (wasLink != isLink()) {
-            setNeedsStyleRecalc();
-            invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureLink | SelectRuleFeatureSet::RuleFeatureVisited | SelectRuleFeatureSet::RuleFeatureEnabled);
-        }
+        if (wasLink != isLink())
+            didAffectSelector(AffectedSelectorLink | AffectedSelectorVisited | AffectedSelectorEnabled);
         if (isLink()) {
             String parsedURL = stripLeadingAndTrailingHTMLSpaces(value);
             if (document()->isDNSPrefetchEnabled()) {
@@ -512,6 +509,7 @@ void HTMLAnchorElement::handleClick(Event* event)
     if (hasAttribute(downloadAttr)) {
         ResourceRequest request(kurl);
 
+        // FIXME: Why are we not calling addExtraFieldsToMainResourceRequest() if this check fails? It sets many important header fields.
         if (!hasRel(RelationNoReferrer)) {
             String referrer = SecurityPolicy::generateReferrerHeader(document()->referrerPolicy(), kurl, frame->loader()->outgoingReferrer());
             if (!referrer.isEmpty())

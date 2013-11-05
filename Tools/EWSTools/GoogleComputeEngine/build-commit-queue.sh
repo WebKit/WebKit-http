@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2012 Google Inc. All rights reserved.
+# Copyright (c) 2013 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -32,21 +32,35 @@ echo "Usage: build-commit-queue.sh BOT_NUMBER"
 exit 1
 fi
 
+CWD="$(pwd)"
+cd "$(dirname "$0")"
+
 QUEUE_TYPE=commit-queue
 BOT_ID=gce-cq-$1
 BUGZILLA_USERNAME=webkit.review.bot@gmail.com
 read -s -p "Bugzilla Password: " BUGZILLA_PASSWORD && echo
-
 SVN_USERNAME=commit-queue@webkit.org
 read -s -p "Subversion Password: " SVN_PASSWORD && echo
 
-# FIXME: We should use gcutil to find a zone that's actually up.
-ZONE=us-east-b
+PROJECT=google.com:webkit
+ZONE=$(bash findzone.sh $PROJECT)
 IMAGE=projects/google/images/ubuntu-10-04-v20120621
+MACHINE_TYPE=n1-standard-4-d
 
-gcutil addinstance $BOT_ID --machine_type=standard-4-cpu-ephemeral-disk --image=$IMAGE --zone=$ZONE --wait_until_running
+gcutil --project=$PROJECT addinstance $BOT_ID --machine_type=$MACHINE_TYPE --image=$IMAGE --zone=$ZONE --wait_until_running
 
 echo "Sleeping for 30s to let the server spin up ssh..."
 sleep 30
 
-gcutil ssh $BOT_ID "sudo apt-get install subversion -y && svn checkout http://svn.webkit.org/repository/webkit/trunk/Tools/EWSTools tools && cd tools && bash configure-svn-auth.sh $SVN_USERNAME $SVN_PASSWORD && bash cold-boot.sh $QUEUE_TYPE $BOT_ID $BUGZILLA_USERNAME $BUGZILLA_PASSWORD"
+gcutil --project=$PROJECT ssh $BOT_ID "
+    sudo apt-get install subversion -y &&
+    svn checkout http://svn.webkit.org/repository/webkit/trunk/Tools/EWSTools tools &&
+    cd tools &&
+    bash configure-svn-auth.sh $SVN_USERNAME $SVN_PASSWORD &&
+    bash build-vm.sh &&
+    bash build-repo.sh $QUEUE_TYPE $BUGZILLA_USERNAME $BUGZILLA_PASSWORD &&
+    bash build-boot-cmd.sh \"screen -t kr ./start-queue.sh $QUEUE_TYPE $BOT_ID 10\" &&
+    bash boot.sh
+"
+
+cd "$CWD"

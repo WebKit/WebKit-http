@@ -31,8 +31,19 @@
                         r"|Source/WebCore/html/shadow/(SliderThumbElement|TextControlInnerElements)\."
                         r"|Source/WebCore/rendering/Render(FileUploadControl|ListBox|MenuList|Slider|TextControl.*)\."
         },
+        "Geolocation": {
+            "filename": r"Source/WebCore/Modules/geolocation/"
+                        r"|Source/WebCore/page/GeolocationClient.h"
+                        r"|Source/WebCore/bindings/js/JSGeolocationCustom.cpp"
+                        r"|Source/WebCore/bindings/v8/custom/V8GeolocationCustom.cpp"
+                        r"|Source/WebCore/platform/mock/GeolocationClientMock.(h|cpp)"
+                        r"|Source/WebKit2/WebProcess/Geolocation/",
+        },
         "GStreamerGraphics": {
             "filename": r"Source/WebCore/platform/graphics/gstreamer/",
+        },
+        "GStreamerAudio": {
+            "filename": r"Source/WebCore/platform/audio/gstreamer/",
         },
         "WebIDL": {
             "filename": r"Source/WebCore/(?!inspector)(?!testing).*\.idl"
@@ -308,13 +319,27 @@
         "PerformanceTests": {
             "filename": r"PerformanceTests"
                         r"|Tools/Scripts/webkitpy/performance_tests",
+        },
+        "GtkBuildSystem": {
+            "filename": r"configure.ac"
+                        r"|.*GNUmakefile.(am|features.am.in)",
+        },
+        "ConsoleUsage": {
+            "more": r"[Aa]ddConsoleMessage|reportException|logExceptionToConsole|addMessage|printErrorMessage"
+        },
+        "ContentSecurityPolicyUsage": {
+            "more": r"[Cc]ontentSecurityPolicy(?!\.(h|cpp))",
+        },
+        "ContentSecurityPolicyFiles": {
+            "filename": r"Source/WebCore/page/(Content|DOM)SecurityPolicy\."
+                        r"|LayoutTests/http/tests/security/contentSecurityPolicy"
         }
     },
     "CC_RULES": {
         # Note: All email addresses listed must be registered with bugzilla.
         # Specifically, levin@chromium.org and levin+threading@chromium.org are
         # two different accounts as far as bugzilla is concerned.
-        "Accessibility": [ "cfleizach@apple.com", "dmazzoni@google.com", "apinheiro@igalia.com", "jdiggs@igalia.com" ],
+        "Accessibility": [ "cfleizach@apple.com", "dmazzoni@google.com", "apinheiro@igalia.com", "jdiggs@igalia.com", "aboxhall@chromium.org" ],
         "Animation" : [ "simon.fraser@apple.com", "dino@apple.com" ],
         "AppleMacPublicApi": [ "timothy@apple.com" ],
         "Battery": [ "gyuyoung.kim@samsung.com" ],
@@ -322,6 +347,8 @@
         "Cairo": [ "dominik.rottsches@intel.com" ],
         "CMake": [ "rakuco@webkit.org", "gyuyoung.kim@samsung.com" ],
         "CoordinatedGraphics" : [ "noam@webkit.org", "zeno@webkit.org" ],
+        "ConsoleUsage" : [ "mkwst+watchlist@chromium.org" ],
+        "ContentSecurityPolicyFiles|ContentSecurityPolicyUsage" : [ "mkwst+watchlist@chromium.org" ],
         "CoreAnimation" : [ "simon.fraser@apple.com" ],
         "CSS": [ "alexis@webkit.org", "macpherson@chromium.org", "cmarcelo@webkit.org", "ojan.autocc@gmail.com"],
         "ChromiumGraphics": [ "jamesr@chromium.org", "cc-bugs@chromium.org" ],
@@ -336,8 +363,11 @@
         "Filters": [ "dino@apple.com" ],
         "Forms": [ "tkent@chromium.org", "mifenton@rim.com" ],
         "FrameLoader": [ "abarth@webkit.org", "japhet@chromium.org" ],
+        "Geolocation": [ "benjamin@webkit.org" ],
         "GraphicsLayer": [ "simon.fraser@apple.com" ],
         "GStreamerGraphics": [ "alexis@webkit.org", "pnormand@igalia.com", "gns@gnome.org", "mrobinson@webkit.org" ],
+        "GStreamerAudio": [ "pnormand@igalia.com" ],
+        "GtkBuildSystem": [ "zandobersek@gmail.com" ],
         "GtkWebKit2PublicAPI": [ "cgarcia@igalia.com", "gns@gnome.org", "mrobinson@webkit.org" ],
         "Harfbuzz": [ "dominik.rottsches@intel.com" ],
         "HTML": [ "ojan.autocc@gmail.com" ],
@@ -376,7 +406,7 @@
         "WebSocket": [ "yutak@chromium.org" ],
         "XSS": [ "dbates@webkit.org", "ojan.autocc@gmail.com" ],
         "webkitperl": [ "dbates@webkit.org" ],
-        "webkitpy": [ "abarth@webkit.org", "dpranke@chromium.org" ],
+        "webkitpy": [ "abarth@webkit.org", "dpranke@chromium.org", "eric@webkit.org" ],
     },
     "MESSAGE_RULES": {
         "ChromiumPublicApi": [ "Please wait for approval from abarth@webkit.org, dglazkov@chromium.org, "

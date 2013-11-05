@@ -42,9 +42,9 @@
 
 #import "NetscapeSandboxFunctions.h"
 
-namespace WebKit {
+using namespace WebCore;
 
-static pthread_once_t shouldCallRealDebuggerOnce = PTHREAD_ONCE_INIT;
+namespace WebKit {
 
 class FullscreenWindowTracker {
     WTF_MAKE_NONCOPYABLE(FullscreenWindowTracker);
@@ -127,6 +127,9 @@ static FullscreenWindowTracker& fullscreenWindowTracker()
     return fullscreenWindowTracker;
 }
 
+#if defined(__i386__)
+
+static pthread_once_t shouldCallRealDebuggerOnce = PTHREAD_ONCE_INIT;
 static bool isUserbreakSet = false;
 
 static void initShouldCallRealDebugger()
@@ -179,6 +182,8 @@ static void carbonWindowHidden(WindowRef window)
 #endif
 }
 
+#endif
+
 static void setModal(bool modalWindowIsShowing)
 {
     PluginProcess::shared().setModalWindowIsShowing(modalWindowIsShowing);
@@ -221,8 +226,10 @@ static NSInteger replacedRunModalForWindow(id self, SEL _cmd, NSWindow* window)
     return result;
 }
 
-void PluginProcess::initializeShim()
+#if defined(__i386__)
+static void initializeShim()
 {
+    // Initialize the shim for 32-bit only.
     const PluginProcessShimCallbacks callbacks = {
         shouldCallRealDebugger,
         isWindowActive,
@@ -237,8 +244,9 @@ void PluginProcess::initializeShim()
     PluginProcessShimInitializeFunc initFunc = reinterpret_cast<PluginProcessShimInitializeFunc>(dlsym(RTLD_DEFAULT, "WebKitPluginProcessShimInitialize"));
     initFunc(callbacks);
 }
+#endif
 
-void PluginProcess::initializeCocoaOverrides()
+static void initializeCocoaOverrides()
 {
     // Override -[NSApplication runModalForWindow:]
     Method runModalForWindowMethod = class_getInstanceMethod(objc_getClass("NSApplication"), @selector(runModalForWindow:));
@@ -262,14 +270,35 @@ void PluginProcess::initializeCocoaOverrides()
     CFRetain(orderOffScreenObserver);
 }
 
+void PluginProcess::platformInitializeProcess(const ChildProcessInitializationParameters&)
+{
+#if defined(__i386__)
+    // Initialize the shim.
+    initializeShim();
+#endif
+
+    // Initialize Cocoa overrides.
+    initializeCocoaOverrides();
+
+    // FIXME: It would be better to proxy SetCursor calls over to the UI process instead of
+    // allowing plug-ins to change the mouse cursor at any time.
+    WKEnableSettingCursorWhenInBackground();
+
+#if defined(__i386__)
+    NSDictionary *defaults = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithBool:YES], @"AppleMagnifiedMode", nil];
+    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
+    [defaults release];
+#endif
+}
+
 void PluginProcess::setModalWindowIsShowing(bool modalWindowIsShowing)
 {
-    m_connection->send(Messages::PluginProcessProxy::SetModalWindowIsShowing(modalWindowIsShowing), 0);
+    parentProcessConnection()->send(Messages::PluginProcessProxy::SetModalWindowIsShowing(modalWindowIsShowing), 0);
 }
 
 void PluginProcess::setFullscreenWindowIsShowing(bool fullscreenWindowIsShowing)
 {
-    m_connection->send(Messages::PluginProcessProxy::SetFullscreenWindowIsShowing(fullscreenWindowIsShowing), 0);
+    parentProcessConnection()->send(Messages::PluginProcessProxy::SetFullscreenWindowIsShowing(fullscreenWindowIsShowing), 0);
 }
 
 static void initializeSandbox(const String& pluginPath, const String& sandboxProfileDirectoryPath)
@@ -309,8 +338,10 @@ static void muteAudio(void)
     ASSERT_UNUSED(result, result == noErr);
 }
 
-void PluginProcess::platformInitialize(const PluginProcessCreationParameters& parameters)
+void PluginProcess::platformInitializePluginProcess(const PluginProcessCreationParameters& parameters)
 {
+    RunLoop::setUseApplicationRunLoopOnMainRunLoop();
+
     m_compositingRenderServerPort = parameters.acceleratedCompositingPort.port();
 
     NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ (%@ Internet plug-in)",
@@ -321,7 +352,7 @@ void PluginProcess::platformInitialize(const PluginProcessCreationParameters& pa
     
     WKSetVisibleApplicationName((CFStringRef)applicationName);
 
-    initializeSandbox(m_pluginPath, parameters.sandboxProfileDirectoryPath);
+    WebKit::initializeSandbox(m_pluginPath, parameters.sandboxProfileDirectoryPath);
 
     if (parameters.processType == TypeSnapshotProcess)
         muteAudio();

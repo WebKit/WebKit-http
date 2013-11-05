@@ -30,8 +30,10 @@
 
 #include "ContextDestructionObserver.h"
 #include "EventTarget.h"
+#include "ExceptionBase.h"
 #include "MediaStreamDescriptor.h"
-#include "MediaStreamTrackList.h"
+#include "MediaStreamTrack.h"
+#include "Timer.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -39,27 +41,34 @@ namespace WebCore {
 
 class MediaStream : public RefCounted<MediaStream>, public MediaStreamDescriptorClient, public EventTarget, public ContextDestructionObserver {
 public:
-    enum ReadyState {
-        LIVE = 1,
-        ENDED = 2
-    };
-
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext*);
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStream>);
+    static PassRefPtr<MediaStream> create(ScriptExecutionContext*, const MediaStreamTrackVector&);
     static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStreamDescriptor>);
-    static PassRefPtr<MediaStream> create(ScriptExecutionContext*, PassRefPtr<MediaStreamTrackList>, PassRefPtr<MediaStreamTrackList>, ExceptionCode&);
     virtual ~MediaStream();
 
+    // DEPRECATED
+    String label() const { return m_descriptor->id(); }
+
+    String id() const { return m_descriptor->id(); }
+
+    void addTrack(PassRefPtr<MediaStreamTrack>, ExceptionCode&);
+    void removeTrack(PassRefPtr<MediaStreamTrack>, ExceptionCode&);
+    MediaStreamTrack* getTrackById(String);
+
+    MediaStreamTrackVector getAudioTracks() const { return m_audioTracks; }
+    MediaStreamTrackVector getVideoTracks() const { return m_videoTracks; }
+
+    bool ended() const;
+
     DEFINE_ATTRIBUTE_EVENT_LISTENER(ended);
-
-    ReadyState readyState() const;
-    String label() const { return m_descriptor->label(); }
-
-    MediaStreamTrackList* audioTracks() { return m_audioTracks.get(); }
-    MediaStreamTrackList* videoTracks() { return m_videoTracks.get(); }
-
-    virtual bool isLocal() const { return false; }
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(addtrack);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(removetrack);
 
     // MediaStreamDescriptorClient
     virtual void streamEnded() OVERRIDE;
+
+    virtual bool isLocal() const { return false; }
 
     MediaStreamDescriptor* descriptor() const { return m_descriptor.get(); }
 
@@ -77,20 +86,31 @@ protected:
     virtual EventTargetData* eventTargetData() OVERRIDE;
     virtual EventTargetData* ensureEventTargetData() OVERRIDE;
 
+    // ContextDestructionObserver
+    virtual void contextDestroyed();
+
 private:
     // EventTarget
     virtual void refEventTarget() OVERRIDE { ref(); }
     virtual void derefEventTarget() OVERRIDE { deref(); }
 
     // MediaStreamDescriptorClient
-    virtual void addTrack(MediaStreamComponent*) OVERRIDE;
-    virtual void removeTrack(MediaStreamComponent*) OVERRIDE;
+    virtual void addRemoteTrack(MediaStreamComponent*) OVERRIDE;
+    virtual void removeRemoteTrack(MediaStreamComponent*) OVERRIDE;
+
+    void scheduleDispatchEvent(PassRefPtr<Event>);
+    void scheduledEventTimerFired(Timer<MediaStream>*);
+
+    bool m_stopped;
 
     EventTargetData m_eventTargetData;
 
-    RefPtr<MediaStreamTrackList> m_audioTracks;
-    RefPtr<MediaStreamTrackList> m_videoTracks;
+    MediaStreamTrackVector m_audioTracks;
+    MediaStreamTrackVector m_videoTracks;
     RefPtr<MediaStreamDescriptor> m_descriptor;
+
+    Timer<MediaStream> m_scheduledEventTimer;
+    Vector<RefPtr<Event> > m_scheduledEvents;
 };
 
 } // namespace WebCore

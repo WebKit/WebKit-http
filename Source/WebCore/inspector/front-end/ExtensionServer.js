@@ -109,11 +109,6 @@ WebInspector.ExtensionServer.prototype = {
         this._postNotification(WebInspector.extensionAPI.Events.InspectedURLChanged, url);
     },
 
-    _mainFrameNavigated: function(event)
-    {
-        this._postNotification(WebInspector.extensionAPI.Events.Reset);
-    },
-
     startAuditRun: function(category, auditRun)
     {
         this._clientObjects[auditRun.id] = auditRun;
@@ -291,7 +286,7 @@ WebInspector.ExtensionServer.prototype = {
     _handleOpenURL: function(port, details)
     {
         var url = /** @type {string} */ (details.url);
-        var contentProvider = WebInspector.workspace.uiSourceCodeForURL(url) || WebInspector.resourceForURL(url);
+        var contentProvider = WebInspector.workspace.uiSourceCodeForOriginURL(url) || WebInspector.resourceForURL(url);
         if (!contentProvider)
             return false;
             
@@ -446,7 +441,8 @@ WebInspector.ExtensionServer.prototype = {
             if (!resources[contentProvider.contentURL()])
                 resources[contentProvider.contentURL()] = this._makeResource(contentProvider);
         }
-        WebInspector.workspace.uiSourceCodes().forEach(pushResourceData.bind(this));
+        var uiSourceCodes = WebInspector.workspace.project(WebInspector.projectNames.Network).uiSourceCodes();
+        uiSourceCodes.forEach(pushResourceData.bind(this));
         WebInspector.resourceTreeModel.forAllResources(pushResourceData.bind(this));
         return Object.values(resources);
     },
@@ -483,7 +479,7 @@ WebInspector.ExtensionServer.prototype = {
     _onGetResourceContent: function(message, port)
     {
         var url = /** @type {string} */ (message.url);
-        var contentProvider = WebInspector.workspace.uiSourceCodeForURL(url) || WebInspector.resourceForURL(url);
+        var contentProvider = WebInspector.workspace.uiSourceCodeForOriginURL(url) || WebInspector.resourceForURL(url);
         if (!contentProvider)
             return this._status.E_NOTFOUND(url);
         this._getResourceContent(contentProvider, message, port);
@@ -501,7 +497,7 @@ WebInspector.ExtensionServer.prototype = {
         }
 
         var url = /** @type {string} */ (message.url);
-        var uiSourceCode = WebInspector.workspace.uiSourceCodeForURL(url);
+        var uiSourceCode = WebInspector.workspace.uiSourceCodeForOriginURL(url);
         if (!uiSourceCode) {
             var resource = WebInspector.resourceTreeModel.resourceForURL(url);
             if (!resource)
@@ -609,7 +605,6 @@ WebInspector.ExtensionServer.prototype = {
 
         WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.InspectedURLChanged,
             this._inspectedURLChanged, this);
-        WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.MainFrameNavigated, this._mainFrameNavigated, this);
         this._initDone = true;
         if (this._pendingExtensions) {
             this._pendingExtensions.forEach(this._innerAddExtension, this);

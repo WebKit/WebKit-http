@@ -1,3 +1,210 @@
+2013-01-15  Jer Noble  <jer.noble@apple.com>
+
+        Add a Setting to disable QTKit media engine.
+        https://bugs.webkit.org/show_bug.cgi?id=106972
+
+        Reviewed by Eric Carlson.
+
+        Add WebKit API to set QTKit enabled setting from user defaults.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Set WebCore settings based on user defaults.
+        (-[WebPreferences setQTKitEnabled:]): Pass through to WebCore.
+        (-[WebPreferences isQTKitEnabled]): Ditto.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Synchronize WebKit/WebCore settings.
+
+2013-01-15  Enrica Casucci  <enrica@apple.com>
+
+        Add a new set of WebKit2 APIs for text search and
+        search results management.
+        https://bugs.webkit.org/show_bug.cgi?id=106834.
+        <rdar://problem/12597159>
+
+        Reviewed by Simon Fraser.
+        
+        Adding new API to perform text search in WebKit2 without using
+        the stock UI. The new interface provides all the information
+        necessary to write a custom UI for search.
+
+        Added new TextWebKitAPI test.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView countMatchesForText:inDOMRange:options:limit:markMatches:]):
+        Modified to reflect the changes to Editor::countMatchesForText interface.
+
+2013-01-10  Zan Dobersek  <zandobersek@gmail.com>
+
+        Remove the ENABLE_ANIMATION_API feature define occurences
+        https://bugs.webkit.org/show_bug.cgi?id=106544
+
+        Reviewed by Simon Fraser.
+
+        The Animation API code was removed in r137243. The ENABLE_ANIMATION_API
+        feature define handling still lingers in various build systems and configurations
+        but is of no use, so it should be removed.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Removed the need for the ProposedDatabase mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=106292.
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::exceededDatabaseQuota):
+
+2013-01-07  Dan Bernstein  <mitz@apple.com>
+
+        [mac] WebKit1 clients can’t tell when a frame has been removed from the hierarchy
+        https://bugs.webkit.org/show_bug.cgi?id=106261
+
+        Reviewed by Simon Fraser.
+
+        Test: TestWebKitAPI/Tests/mac/WebViewDidRemoveFrameFromHierarchy.mm.
+
+        Added -[WebFrameLoadDelegate webView:didRemoveFrameFromHierarchy:].
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::detachedFromParent2): Added a call to the new frame load delegate
+        method.
+        * WebView/WebDelegateImplementationCaching.h:
+        (WebFrameLoadDelegateImplementationCache): Added the new method to the cache.
+        * WebView/WebFrameLoadDelegatePrivate.h: Declared the new delegate method.
+        * WebView/WebView.mm:
+        (-[WebView _cacheFrameLoadDelegateImplementations]): Added the new method to the cache.
+
+2013-01-07  Mike West  <mkwst@chromium.org>
+
+        Make the IFRAME_SEAMLESS flag runtime-enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=106213
+
+        Reviewed by Ojan Vafai.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences seamlessIFramesEnabled]):
+        (-[WebPreferences setSeamlessIFramesEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+            Add a seamless IFrame preference to WebPreferences, and use it to
+            toggle the runtime state of the feature as appropriate.
+
+2013-01-04  Adam Klein  <adamk@chromium.org>
+
+        Remove ENABLE_MUTATION_OBSERVERS #define
+        https://bugs.webkit.org/show_bug.cgi?id=105459
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-01  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/12942239> Update copyright strings
+
+        Reviewed by Sam Weinig.
+
+        * Info.plist:
+
+2012-12-29  Adam Roben  <aroben@webkit.org>
+
+        Web Inspector: Mac WK1 Inspector can't save/load timeline data
+        https://bugs.webkit.org/show_bug.cgi?id=105547
+
+        Reviewed by Pavel Feldman.
+
+        * WebCoreSupport/WebInspectorClient.h: Declared new overrides and
+        member variables necessary for save support.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (WebInspectorFrontendClient::append):
+        Implemented these to make saving timeline data work. (It seems to me
+        the InspectorFrontendClient API could be cleaned up a bit. I had to
+        look at Chromium source code to determine that I needed to call back
+        into the InspectorFrontendAPI JS object after saving/appending, and
+        that I needed to keep a map of passed URLs -> chosen URLs.)
+
+        (-[WebInspectorWindowController window:willPositionSheet:usingRect:]):
+        Tweaked the position of the sheet so that open/save sheets look a
+        little bette.r
+
+        (-[WebInspectorWindowController webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:]):
+        Implemented to make loading timeline data work.
+
+2012-12-28  Mark Rowe  <mrowe@apple.com>
+
+        Move logic for extracting the OS X marketing version in to WebCore
+        <http://webkit.org/b/105841> / <rdar://problem/10736041>
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Remove the code related to the WKSI symbol.
+        * WebView/WebView.mm:
+        (systemMarketingVersionForUserAgentString): Call the WebCore function instead of the WKSI function.
+        (+[WebView _standardUserAgentWithApplicationName:]): Retain the result now that our helper doesn't
+        do that for us.
+
+2012-12-27  Sam Weinig  <sam@webkit.org>
+
+        Attempt to fix the tests.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2012-12-23  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/12808377> Network process should respect cookie accept policy
+        https://bugs.webkit.org/show_bug.cgi?id=105684
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        CookiesStrategy no longer has notifyCookiesChanged().
+
+2012-12-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a separate class for networking related storage
+        https://bugs.webkit.org/show_bug.cgi?id=105676
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        Updated for ResourceHandle include changes.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        This class is now simpler, with more session tracking being in WebCore now.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookiesForDOM):
+        (WebPlatformStrategies::setCookiesFromDOM):
+        (WebPlatformStrategies::cookiesEnabled):
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        (WebPlatformStrategies::getRawCookies):
+        (WebPlatformStrategies::deleteCookie):
+        We no longer need a function for default cookie storage! Other cookie functions
+        now take a session.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _switchNetworkLoaderToNewTestingSession]): Initialize WCSI before
+        calling a WebCore that uses it.
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]): Use
+        NetworkStorageSession for session tracking.
+
+        * WebView/WebView.mm: (-[WebView _cachedResponseForURL:]): Updated for networking
+        context now returning a class for session.
+
 2012-12-20  Ilya Tikhonovsky  <loislo@chromium.org>
 
         Unreviewed build fix for chromium mac after r138206.

@@ -34,25 +34,28 @@
 #include "OpenGLShims.h"
 #endif
 
-unsigned char* getImageFromCurrentTexture(int width, int height, int textureId)
+#include <WebCore/CairoUtilitiesEfl.h>
+
+PassRefPtr<cairo_surface_t> getImageSurfaceFromFrameBuffer(int x, int y, int width, int height)
 {
-    glBindTexture(GL_TEXTURE_2D, textureId);
-    unsigned char* buffer = new unsigned char[width * height * 4];
-    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_BYTE, buffer);
+    RefPtr<cairo_surface_t> newSurface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height));
+    unsigned char* data = cairo_image_surface_get_data(newSurface.get());
+
+    glReadPixels(x, y, width, height, GL_BGRA, GL_UNSIGNED_BYTE, data);
 
     // Textures are flipped on the Y axis, so we need to flip the image back.
-    unsigned tmp;
-    unsigned* buf = reinterpret_cast<unsigned*>(buffer);
+    unsigned* buf = reinterpret_cast<unsigned*>(data);
 
     for (int i = 0; i < height / 2; ++i) {
         for (int j = 0; j < width; ++j) {
-            tmp = buf[i * width + j];
+            unsigned tmp = buf[i * width + j];
             buf[i * width + j] = buf[(height - i - 1) * width + j];
             buf[(height - i - 1) * width + j] = tmp;
         }
     }
 
-    return buffer;
+    cairo_surface_mark_dirty(newSurface.get());
+    return newSurface;
 }
 
 #endif

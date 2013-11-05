@@ -26,33 +26,28 @@
 #ifndef WebResourceCacheManager_h
 #define WebResourceCacheManager_h
 
-#include "Arguments.h"
+#include "MessageReceiver.h"
 #include "ResourceCachesToClear.h"
+#include "WebProcessSupplement.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
-namespace CoreIPC {
-class Connection;
-class MessageDecoder;
-class MessageID;
-}
-
 namespace WebKit {
 
+class WebProcess;
 struct SecurityOriginData;
 
-class WebResourceCacheManager {
+class WebResourceCacheManager : public WebProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebResourceCacheManager);
 public:
-    static WebResourceCacheManager& shared();
+    WebResourceCacheManager(WebProcess*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    static const AtomicString& supplementName();
 
 private:
-    WebResourceCacheManager();
-    virtual ~WebResourceCacheManager();
-
+    // CoreIPC::MessageReceiver
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
     // Implemented in generated WebResourceCacheManagerMessageReceiver.cpp
     void didReceiveWebResourceCacheManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
@@ -64,6 +59,8 @@ private:
     static RetainPtr<CFArrayRef> cfURLCacheHostNames();
     static void clearCFURLCacheForHostNames(CFArrayRef);
 #endif
+
+    WebProcess* m_process;
 };
 
 } // namespace WebKit

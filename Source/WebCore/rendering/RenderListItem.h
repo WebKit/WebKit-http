@@ -31,7 +31,7 @@ class RenderListMarker;
 
 class RenderListItem : public RenderBlock {
 public:
-    explicit RenderListItem(Node*);
+    explicit RenderListItem(ContainerNode*);
 
     int value() const { if (!m_isValueUpToDate) updateValueNow(); return m_value; }
     void updateValue();
@@ -65,7 +65,6 @@ private:
     virtual void paint(PaintInfo&, const LayoutPoint&);
 
     virtual void layout();
-    virtual void computePreferredLogicalWidths();
 
     void positionListMarker();
 

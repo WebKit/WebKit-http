@@ -26,7 +26,7 @@
 #include "config.h"
 #include "GLXSurface.h"
 
-#if USE(ACCELERATED_COMPOSITING) && HAVE(GLX)
+#if USE(ACCELERATED_COMPOSITING) && USE(GLX)
 
 namespace WebCore {
 
@@ -34,9 +34,32 @@ static const int pbufferAttributes[] = { GLX_PBUFFER_WIDTH, 1, GLX_PBUFFER_HEIGH
 
 #if USE(GRAPHICS_SURFACE)
 GLXTransportSurface::GLXTransportSurface()
-    : X11OffScreenWindow()
+    : GLPlatformSurface()
 {
-    createOffscreenWindow();
+    m_nativeResource = adoptPtr(new X11OffScreenWindow());
+    m_sharedDisplay = m_nativeResource->nativeSharedDisplay();
+
+    if (!m_sharedDisplay) {
+        m_nativeResource = nullptr;
+        return;
+    }
+
+    m_configSelector = adoptPtr(new GLXConfigSelector(m_sharedDisplay, m_nativeResource->isXRenderExtensionSupported()));
+
+    if (!configuration()) {
+        destroy();
+        return;
+    }
+
+    m_nativeResource->setVisualInfo(m_configSelector->visualInfo());
+    m_nativeResource->createOffscreenWindow(&m_bufferHandle);
+
+    if (!m_bufferHandle) {
+        destroy();
+        return;
+    }
+
+    m_drawable = m_bufferHandle;
 }
 
 GLXTransportSurface::~GLXTransportSurface()
@@ -45,7 +68,15 @@ GLXTransportSurface::~GLXTransportSurface()
 
 PlatformSurfaceConfig GLXTransportSurface::configuration()
 {
-    return m_sharedResources->surfaceContextConfig();
+    return m_configSelector->surfaceContextConfig();
+}
+
+void GLXTransportSurface::setGeometry(const IntRect& newRect)
+{
+    GLPlatformSurface::setGeometry(newRect);
+    m_nativeResource->reSizeWindow(newRect, m_drawable);
+    // Force resize of GL surface after window resize.
+    glXSwapBuffers(sharedDisplay(), m_drawable);
 }
 
 void GLXTransportSurface::swapBuffers()
@@ -65,13 +96,20 @@ void GLXTransportSurface::swapBuffers()
 
 void GLXTransportSurface::destroy()
 {
-    destroyWindow();
+    if (m_bufferHandle) {
+        m_nativeResource->destroyWindow(m_bufferHandle);
+        m_bufferHandle = 0;
+        m_drawable = 0;
+    }
+
+    m_nativeResource = nullptr;
+    m_configSelector = nullptr;
 }
 
 #endif
 
 GLXPBuffer::GLXPBuffer()
-    : X11OffScreenWindow()
+    : GLPlatformSurface()
 {
     initialize();
 }
@@ -82,17 +120,35 @@ GLXPBuffer::~GLXPBuffer()
 
 void GLXPBuffer::initialize()
 {
-    Display* display = sharedDisplay();
-    GLXFBConfig config = m_sharedResources->pBufferContextConfig();
-    if (!config)
-        return;
+    m_nativeResource = adoptPtr(new X11OffScreenWindow());
+    m_sharedDisplay = m_nativeResource->nativeSharedDisplay();
 
-    m_drawable = glXCreatePbuffer(display, config, pbufferAttributes);
+    if (!m_sharedDisplay) {
+        m_nativeResource = nullptr;
+        return;
+    }
+
+    m_configSelector = adoptPtr(new GLXConfigSelector(m_sharedDisplay, m_nativeResource->isXRenderExtensionSupported()));
+    GLXFBConfig config = m_configSelector->pBufferContextConfig();
+
+    if (!config) {
+        destroy();
+        return;
+    }
+
+    m_drawable = glXCreatePbuffer(m_sharedDisplay, config, pbufferAttributes);
+
+    if (!m_drawable) {
+        destroy();
+        return;
+    }
+
+    m_bufferHandle = m_drawable;
 }
 
 PlatformSurfaceConfig GLXPBuffer::configuration()
 {
-    return m_sharedResources->pBufferContextConfig();
+    return m_configSelector->pBufferContextConfig();
 }
 
 void GLXPBuffer::destroy()
@@ -102,16 +158,17 @@ void GLXPBuffer::destroy()
 
 void GLXPBuffer::freeResources()
 {
-    if (!m_drawable)
-        return;
-
     GLPlatformSurface::destroy();
     Display* display = sharedDisplay();
-    if (!display)
-        return;
 
-    glXDestroyPbuffer(display, m_drawable);
-    m_drawable = 0;
+    if (m_drawable && display) {
+        glXDestroyPbuffer(display, m_drawable);
+        m_drawable = 0;
+        m_bufferHandle = 0;
+    }
+
+    m_configSelector = nullptr;
+    m_nativeResource = nullptr;
 }
 
 void GLXPBuffer::setGeometry(const IntRect& newRect)

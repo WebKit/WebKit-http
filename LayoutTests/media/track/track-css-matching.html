@@ -8,35 +8,79 @@
         <script src=../media-controls.js></script>
 
         <style>
-
+        video::cue(c) {color: purple}
+        video::cue(v) {color: yellow}
+        video::cue(v[voice="Mark"]) {color: red}
+        video::cue(v[voice="Nancy"]) {color: green}
+        video::cue(b) {color: lime}
         video::cue(.red, .red2) { color:red }
         #testvideo::cue(.green) { color:green }
-
+        video::cue(#testcue) {color: green}
+        video::cue(:future) {color: gray}
         </style>
 
         <script>
 
         var cueNode;
+        var seekedCount = 0;
+        var seekTimes = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5];
+
+        var info = [["rgb(255, 0, 0)", "rgb(0, 128, 0)", "rgb(255, 0, 0)"],
+                    ["rgb(128, 0, 128)", "rgb(128, 128, 128)", "rgb(128, 128, 128)"],
+                    ["rgb(128, 0, 128)", "rgb(128, 0, 128)", "rgb(128, 128, 128)"],
+                    ["rgb(128, 0, 128)", "rgb(128, 0, 128)", "rgb(128, 0, 128)"],
+                    ["rgb(128, 0, 128)", "rgb(255, 255, 0)", "rgb(0, 255, 0)"],
+                    ["rgb(0, 128, 0)", "rgb(0, 128, 0)", "rgb(0, 128, 0)"],
+                    ["rgb(255, 255, 0)", "rgb(255, 0, 0)", "rgb(0, 128, 0)"]];
+
+        var description = ["1. Test that cues are being matched properly by the class name",
+                           "2. Test that cues are being matched properly by the ':future' pseudo class.", "", "",
+                           "3. Test that cues are being matched properly by tag.",
+                           "4. Test that cues are being matched properly by id.",
+                           "5. Test that cues are being matched properly by the voice attribute."];
+
+        function skipNonElements(root)
+        {
+            nextElementSibling = root;
+            while (nextElementSibling.nodeType != 1) {
+                nextElementSibling = nextElementSibling.nextSibling;
+            }
+            return nextElementSibling;
+        }
 
         function seeked()
         {
-            cueNode = textTrackDisplayElement(video, 'past-nodes').firstChild;
-            testExpected("getComputedStyle(cueNode).color", "rgb(255, 0, 0)");
-            cueNode = cueNode.nextSibling;
-            testExpected("getComputedStyle(cueNode).color", "rgb(0, 128, 0)");
-            cueNode = cueNode.nextSibling;
-            testExpected("getComputedStyle(cueNode).color", "rgb(255, 0, 0)");
-            endTest();
+            if (testEnded)
+                return;
+
+            if (description[seekedCount] != "") {
+                consoleWrite("<br>");
+                consoleWrite(description[seekedCount]);
+            }
+
+            cueNode = skipNonElements(textTrackDisplayElement(video, 'all-nodes').firstChild);
+            skipNonElements(cueNode);
+            testExpected("getComputedStyle(cueNode).color", info[seekedCount][0]);
+            cueNode = skipNonElements(cueNode.nextSibling);
+            testExpected("getComputedStyle(cueNode).color", info[seekedCount][1]);
+            cueNode = skipNonElements(cueNode.nextSibling);
+            testExpected("getComputedStyle(cueNode).color", info[seekedCount][2]);
+
+            if (++seekedCount == info.length)
+                endTest();
+            else {
+                consoleWrite("");
+                run("video.currentTime = " + seekTimes[seekedCount]);
+            }
         }
 
         function loaded()
         {
-            consoleWrite("Test that cues are being matched properly by the class name");
             findMediaElement();
             video.src = findMediaFile('video', '../content/test');
             video.id = "testvideo";
             waitForEvent('seeked', seeked);
-            waitForEvent('canplaythrough', function() { video.currentTime = 1.5; });
+            waitForEvent('canplaythrough', function() { video.currentTime = seekTimes[0]; });
         }
 
         </script>

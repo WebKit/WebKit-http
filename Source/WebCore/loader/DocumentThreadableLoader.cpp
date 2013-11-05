@@ -371,10 +371,13 @@ void DocumentThreadableLoader::loadRequest(const ResourceRequest& request, Secur
             options.sendLoadCallbacks = DoNotSendCallbacks;
             options.sniffContent = DoNotSniffContent;
             // Keep buffering the data for the preflight request.
-            options.shouldBufferData = BufferData;
+            options.dataBufferingPolicy = BufferData;
         }
 
         CachedResourceRequest newRequest(request, options);
+#if ENABLE(RESOURCE_TIMING)
+        newRequest.setInitiator(m_options.initiator);
+#endif
 #if ENABLE(INSPECTOR)
         if (m_actualRequest) {
             // Because willSendRequest only gets called during redirects, we initialize the identifier and the first willSendRequest here.

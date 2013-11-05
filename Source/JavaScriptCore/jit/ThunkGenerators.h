@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,26 +26,33 @@
 #ifndef ThunkGenerators_h
 #define ThunkGenerators_h
 
+#include "ThunkGenerator.h"
+
 #if ENABLE(JIT)
 namespace JSC {
-    class ExecutablePool;
-    class JSGlobalData;
-    class NativeExecutable;
-    class MacroAssemblerCodeRef;
 
-    typedef MacroAssemblerCodeRef (*ThunkGenerator)(JSGlobalData*);
-    MacroAssemblerCodeRef charCodeAtThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef charAtThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef fromCharCodeThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef absThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef ceilThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef expThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef floorThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef logThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef roundThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef sqrtThunkGenerator(JSGlobalData*);
-    MacroAssemblerCodeRef powThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef linkCallGenerator(JSGlobalData*);
+MacroAssemblerCodeRef linkConstructGenerator(JSGlobalData*);
+MacroAssemblerCodeRef linkClosureCallGenerator(JSGlobalData*);
+MacroAssemblerCodeRef virtualCallGenerator(JSGlobalData*);
+MacroAssemblerCodeRef virtualConstructGenerator(JSGlobalData*);
+MacroAssemblerCodeRef stringLengthTrampolineGenerator(JSGlobalData*);
+MacroAssemblerCodeRef nativeCallGenerator(JSGlobalData*);
+MacroAssemblerCodeRef nativeConstructGenerator(JSGlobalData*);
+
+MacroAssemblerCodeRef charCodeAtThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef charAtThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef fromCharCodeThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef absThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef ceilThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef expThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef floorThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef logThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef roundThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef sqrtThunkGenerator(JSGlobalData*);
+MacroAssemblerCodeRef powThunkGenerator(JSGlobalData*);
+
 }
-#endif
+#endif // ENABLE(JIT)
 
 #endif // ThunkGenerator_h

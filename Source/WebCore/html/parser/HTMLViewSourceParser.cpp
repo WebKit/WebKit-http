@@ -28,13 +28,14 @@
 
 #include "HTMLDocumentParser.h"
 #include "HTMLNames.h"
+#include "HTMLParserOptions.h"
 #include "HTMLViewSourceDocument.h"
 
 namespace WebCore {
 
 HTMLViewSourceParser::HTMLViewSourceParser(HTMLViewSourceDocument* document)
     : DecodedDataDocumentParser(document)
-    , m_tokenizer(HTMLTokenizer::create(HTMLDocumentParser::usePreHTML5ParserQuirks(document)))
+    , m_tokenizer(HTMLTokenizer::create(HTMLParserOptions(document)))
 {
 }
 
@@ -79,7 +80,7 @@ void HTMLViewSourceParser::updateTokenizerState()
         return;
 
     AtomicString tagName(m_token.name().data(), m_token.name().size());
-    m_tokenizer->updateStateFor(tagName, document()->frame());
+    m_tokenizer->updateStateFor(tagName);
 }
 
 void HTMLViewSourceParser::finish()

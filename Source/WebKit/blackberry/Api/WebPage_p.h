@@ -219,6 +219,7 @@ public:
 #if ENABLE(FULLSCREEN_API)
     void enterFullScreenForElement(WebCore::Element*);
     void exitFullScreenForElement(WebCore::Element*);
+    void adjustFullScreenElementDimensionsIfNeeded();
 #endif
     void contentsSizeChanged(const WebCore::IntSize&);
     void overflowExceedsContentsSize();
@@ -324,8 +325,6 @@ public:
     void updateDelegatedOverlays(bool dispatched = false);
 
     void updateCursor();
-
-    void onInputLocaleChanged(bool isRTL);
 
     ViewMode viewMode() const { return m_viewMode; }
     bool setViewMode(ViewMode); // Returns true if the change requires re-layout.
@@ -529,6 +528,7 @@ public:
 #if ENABLE(VIDEO)
     double m_scaleBeforeFullScreen;
     WebCore::IntPoint m_scrollPositionBeforeFullScreen;
+    int m_orientationBeforeFullScreen;
 #endif
 #endif
 

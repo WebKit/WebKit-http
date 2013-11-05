@@ -62,9 +62,6 @@ public:
 
     bool isSerialLoadingEnabled() const { return m_serialLoadingEnabled; }
 
-    BlockingResponseMap<WebCore::ResourceRequest*>& willSendRequestResponseMap() { return m_willSendRequestResponseMap; }
-    BlockingBoolResponseMap& canAuthenticateAgainstProtectionSpaceResponseMap() { return m_canAuthenticateAgainstProtectionSpaceResponseMap; }
-
 private:
     NetworkConnectionToWebProcess(CoreIPC::Connection::Identifier);
 
@@ -79,12 +76,11 @@ private:
     void didReceiveSyncNetworkConnectionToWebProcessMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
     
     void scheduleResourceLoad(const NetworkResourceLoadParameters&, ResourceLoadIdentifier&);
-    void addLoadInProgress(const WebCore::KURL&, ResourceLoadIdentifier&);
+    void performSynchronousLoad(const NetworkResourceLoadParameters&, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>);
+
     void removeLoadIdentifier(ResourceLoadIdentifier);
     void crossOriginRedirectReceived(ResourceLoadIdentifier, const WebCore::KURL& redirectURL);
     void servePendingRequests(uint32_t resourceLoadPriority);
-    void suspendPendingRequests();
-    void resumePendingRequests();
     void setSerialLoadingEnabled(bool);
     void startDownload(bool privateBrowsingEnabled, uint64_t downloadID, const WebCore::ResourceRequest&);
     void cookiesForDOM(bool privateBrowsingEnabled, const WebCore::KURL& firstParty, const WebCore::KURL&, String& result);
@@ -97,9 +93,6 @@ private:
     RefPtr<CoreIPC::Connection> m_connection;
     
     HashSet<NetworkConnectionToWebProcessObserver*> m_observers;
-
-    BlockingResponseMap<WebCore::ResourceRequest*> m_willSendRequestResponseMap;
-    BlockingBoolResponseMap m_canAuthenticateAgainstProtectionSpaceResponseMap;
 
     bool m_serialLoadingEnabled;
 };

@@ -89,7 +89,7 @@ public:
     virtual bool canAuthenticateAgainstProtectionSpace(WebCore::ResourceHandle*, const WebCore::ProtectionSpace&) OVERRIDE;
 #endif
 
-#if HAVE(NETWORK_CFDATA_ARRAY_CALLBACK)
+#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     virtual bool supportsDataArray() OVERRIDE;
     virtual void didReceiveDataArray(WebCore::ResourceHandle*, CFArrayRef) OVERRIDE;
 #endif
@@ -110,8 +110,6 @@ public:
 private:
     NetworkResourceLoader(const NetworkResourceLoadParameters&, ResourceLoadIdentifier, NetworkConnectionToWebProcess*);
 
-    void willSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest&);
-    void canAuthenticateAgainstProtectionSpaceHandled(uint64_t requestID, bool canAuthenticate);
     void receivedAuthenticationCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
     void receivedRequestToContinueWithoutAuthenticationCredential(const WebCore::AuthenticationChallenge&);
     void receivedAuthenticationCancellation(const WebCore::AuthenticationChallenge&);

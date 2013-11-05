@@ -29,11 +29,11 @@
 #include "EventHandler.h"
 
 #include "AXObjectCache.h"
+#include "AncestorChainWalker.h"
 #include "AutoscrollController.h"
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
-#include "ComposedShadowTreeWalker.h"
 #include "Cursor.h"
 #include "CursorList.h"
 #include "Document.h"
@@ -82,7 +82,6 @@
 #include "StyleCachedImage.h"
 #include "TextEvent.h"
 #include "TextIterator.h"
-#include "UserGestureIndicator.h"
 #include "UserTypingGestureIndicator.h"
 #include "WheelEvent.h"
 #include "WindowsKeyboardCodes.h"
@@ -276,18 +275,6 @@ static inline bool scrollNode(float delta, ScrollGranularity granularity, Scroll
     return enclosingBox->scroll(delta < 0 ? negativeDirection : positiveDirection, granularity, absDelta, stopNode);
 }
 
-static Node* closestScrollableNodeInDocumentIfPossible(Node* node)
-{
-    for (Node* scrollableNode = node; scrollableNode; scrollableNode = scrollableNode->parentNode()) {
-        if (scrollableNode->isDocumentNode())
-            break;
-        RenderObject* renderer = scrollableNode->renderer();
-        if (renderer && renderer->isBox() && toRenderBox(renderer)->canBeScrolledAndHasScrollableArea())
-            return scrollableNode;
-    }
-    return node;
-}
-
 #if ENABLE(GESTURE_EVENTS)
 static inline bool shouldGesturesTriggerActive()
 {
@@ -395,6 +382,7 @@ void EventHandler::clear()
     m_mousePositionIsUnknown = true;
     m_lastKnownMousePosition = IntPoint();
     m_lastKnownMouseGlobalPosition = IntPoint();
+    m_lastMouseDownUserGestureToken.clear();
     m_mousePressNode = 0;
     m_mousePressed = false;
     m_capturesDragging = false;
@@ -900,7 +888,6 @@ bool EventHandler::handleMouseReleaseEvent(const MouseEventWithHitTestResults& e
 
     // Used to prevent mouseMoveEvent from initiating a drag before
     // the mouse is pressed again.
-    m_frame->selection()->setCaretBlinkingSuspended(false);
     m_mousePressed = false;
     m_capturesDragging = false;
 #if ENABLE(DRAG_SUPPORT)
@@ -1434,6 +1421,7 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& mouseEvent)
 #endif
 
     UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+    m_lastMouseDownUserGestureToken = gestureIndicator.currentToken();
 
     // FIXME (bug 68185): this call should be made at another abstraction layer
     m_frame->loader()->resetMultipleFormSubmissionProtection();
@@ -1563,6 +1551,8 @@ bool EventHandler::handleMousePressEvent(const PlatformMouseEvent& mouseEvent)
 bool EventHandler::handleMouseDoubleClickEvent(const PlatformMouseEvent& mouseEvent)
 {
     RefPtr<FrameView> protector(m_frame->view());
+
+    m_frame->selection()->setCaretBlinkingSuspended(false);
 
     UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
 
@@ -1772,13 +1762,20 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& mouseEvent)
 {
     RefPtr<FrameView> protector(m_frame->view());
 
+    m_frame->selection()->setCaretBlinkingSuspended(false);
+
 #if ENABLE(TOUCH_EVENTS)
     bool defaultPrevented = dispatchSyntheticTouchEventIfEnabled(mouseEvent);
     if (defaultPrevented)
         return true;
 #endif
 
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+    OwnPtr<UserGestureIndicator> gestureIndicator;
+
+    if (m_lastMouseDownUserGestureToken)
+        gestureIndicator = adoptPtr(new UserGestureIndicator(m_lastMouseDownUserGestureToken.release()));
+    else
+        gestureIndicator = adoptPtr(new UserGestureIndicator(DefinitelyProcessingUserGesture));
 
 #if ENABLE(PAN_SCROLLING)
     m_autoscrollController->handleMouseReleaseEvent(mouseEvent);
@@ -1818,7 +1815,13 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& mouseEvent)
         clickTarget = clickTarget->shadowAncestorNode();
     Node* adjustedClickNode = m_clickNode ? m_clickNode->shadowAncestorNode() : 0;
 
-    bool swallowClickEvent = m_clickCount > 0 && mouseEvent.button() != RightButton && clickTarget == adjustedClickNode && !dispatchMouseEvent(eventNames().clickEvent, mev.targetNode(), true, m_clickCount, mouseEvent, true);
+    bool contextMenuEvent = mouseEvent.button() == RightButton;
+#if PLATFORM(CHROMIUM) && OS(DARWIN)
+    // FIXME: The Mac port achieves the same behavior by checking whether the context menu is currently open in WebPage::mouseEvent(). Consider merging the implementations.
+    if (mouseEvent.button() == LeftButton && mouseEvent.modifiers() & PlatformEvent::CtrlKey)
+        contextMenuEvent = true;
+#endif
+    bool swallowClickEvent = m_clickCount > 0 && !contextMenuEvent && clickTarget == adjustedClickNode && !dispatchMouseEvent(eventNames().clickEvent, mev.targetNode(), true, m_clickCount, mouseEvent, true);
 
     if (m_resizeLayer) {
         m_resizeLayer->setInResizeMode(false);
@@ -2306,7 +2309,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
 
     if (useLatchedWheelEventNode) {
         if (!m_latchedWheelEventNode) {
-            m_latchedWheelEventNode = closestScrollableNodeInDocumentIfPossible(result.innerNode());
+            m_latchedWheelEventNode = result.innerNode();
             m_widgetIsLatched = result.isOverWidget();
         }
 
@@ -2593,10 +2596,13 @@ bool EventHandler::isScrollbarHandlingGestures() const
 bool EventHandler::handleGestureScrollCore(const PlatformGestureEvent& gestureEvent, PlatformWheelEventGranularity granularity, bool latchedWheel)
 {
     const float tickDivisor = (float)WheelEvent::tickMultiplier;
+    const float scaleFactor = m_frame->pageZoomFactor() * m_frame->frameScaleFactor();
+    float scaledDeltaX = gestureEvent.deltaX() / scaleFactor;
+    float scaledDeltaY = gestureEvent.deltaY() / scaleFactor;
     IntPoint point(gestureEvent.position().x(), gestureEvent.position().y());
     IntPoint globalPoint(gestureEvent.globalPosition().x(), gestureEvent.globalPosition().y());
     PlatformWheelEvent syntheticWheelEvent(point, globalPoint,
-        gestureEvent.deltaX(), gestureEvent.deltaY(), gestureEvent.deltaX() / tickDivisor, gestureEvent.deltaY() / tickDivisor,
+        scaledDeltaX, scaledDeltaY, scaledDeltaX / tickDivisor, scaledDeltaY / tickDivisor,
         granularity,
         gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey());
     syntheticWheelEvent.setUseLatchedEventNode(latchedWheel);
@@ -3343,7 +3349,7 @@ bool EventHandler::handleDrag(const MouseEventWithHitTestResults& event, CheckDr
                 // FIXME: This doesn't work correctly with transforms.
                 FloatPoint absPos = renderer->localToAbsolute();
                 IntSize delta = m_mouseDownPos - roundedIntPoint(absPos);
-                dragState().m_dragClipboard->setDragImageElement(dragState().m_dragSrc.get(), toPoint(delta));
+                dragState().m_dragClipboard->setDragImageElement(dragState().m_dragSrc.get(), IntPoint(delta));
             } else {
                 // The renderer has disappeared, this can happen if the onStartDrag handler has hidden
                 // the element in some way.  In this case we just kill the drag.

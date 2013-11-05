@@ -372,6 +372,11 @@ void DumpRenderTreeSupportEfl::setCSSRegionsEnabled(const Evas_Object* ewkView, 
     WebCore::RuntimeEnabledFeatures::setCSSRegionsEnabled(enabled);
 }
 
+void DumpRenderTreeSupportEfl::setSeamlessIFramesEnabled(bool enabled)
+{
+    WebCore::RuntimeEnabledFeatures::setSeamlessIFramesEnabled(enabled);
+}
+
 bool DumpRenderTreeSupportEfl::isCommandEnabled(const Evas_Object* ewkView, const char* name)
 {
     DRT_SUPPRT_PAGE_GET_OR_RETURN(ewkView, page, false);
@@ -588,9 +593,7 @@ void DumpRenderTreeSupportEfl::setMockScrollbarsEnabled(bool enable)
 
 void DumpRenderTreeSupportEfl::deliverAllMutationsIfNecessary()
 {
-#if ENABLE(MUTATION_OBSERVERS)
     WebCore::MutationObserver::deliverAllMutations();
-#endif
 }
 
 String DumpRenderTreeSupportEfl::markerTextForListItem(JSContextRef context, JSValueRef nodeObject)
@@ -667,6 +670,7 @@ WebCore::MessagePortChannelArray* DumpRenderTreeSupportEfl::intentMessagePorts(c
     const WebCore::Intent* coreIntent = EWKPrivate::coreIntent(intent);
     return coreIntent ? coreIntent->messagePorts() : 0;
 #else
+    UNUSED_PARAM(intent);
     return 0;
 #endif
 }

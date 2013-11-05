@@ -215,12 +215,7 @@ inline bool operator!=(const IntPoint& a, const IntPoint& b)
     return a.x() != b.x() || a.y() != b.y();
 }
 
-inline IntPoint toPoint(const IntSize& size)
-{
-    return IntPoint(size.width(), size.height());
-}
-
-inline IntSize toSize(const IntPoint& a)
+inline IntSize toIntSize(const IntPoint& a)
 {
     return IntSize(a.x(), a.y());
 }

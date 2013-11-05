@@ -37,6 +37,7 @@ public:
     bool parseXML(const String&, Element* contextElement, FragmentScriptingPermission = AllowScriptingContent);
     
     virtual bool canContainRangeEndPoint() const { return true; }
+    virtual bool isTemplateContent() const { return false; }
 
 protected:
     DocumentFragment(Document*, ConstructionType = CreateContainer);
@@ -46,7 +47,6 @@ private:
     virtual NodeType nodeType() const;
     virtual PassRefPtr<Node> cloneNode(bool deep);
     virtual bool childTypeAllowed(NodeType) const;
-    virtual bool documentFragmentIsShadowRoot() const OVERRIDE { return false; }
 };
 
 } //namespace

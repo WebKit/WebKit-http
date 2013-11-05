@@ -30,7 +30,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-typedef struct _Evas_Object Evas_Object;
 typedef struct _Ewk_History_Item Ewk_History_Item;
 typedef struct _Ewk_Intent Ewk_Intent;
 typedef struct _Ewk_Intent_Request Ewk_Intent_Request;
@@ -86,6 +85,7 @@ public:
     static void setCSSRegionsEnabled(const Evas_Object* ewkView, bool enabled);
     static void setSmartInsertDeleteEnabled(Evas_Object* ewkView, bool enabled);
     static void setSelectTrailingWhitespaceEnabled(Evas_Object* ewkView, bool enabled);
+    static void setSeamlessIFramesEnabled(bool);
 
     static void forceLayout(Evas_Object* ewkFrame);
     static void setTracksRepaints(Evas_Object* ewkFrame, bool enabled);

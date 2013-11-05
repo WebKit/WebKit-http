@@ -25,6 +25,7 @@
 #include "BackForwardList.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ClientRectList.h"
 #include "ContextMenuClient.h"
 #include "ContextMenuController.h"
 #include "DOMWindow.h"
@@ -69,8 +70,8 @@
 #include "SharedBuffer.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
-#include "StyleResolver.h"
 #include "TextResourceDecoder.h"
+#include "VisitedLinkState.h"
 #include "VoidCallback.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include "Widget.h"
@@ -267,6 +268,21 @@ String Page::mainThreadScrollingReasonsAsText()
         return scrollingCoordinator->mainThreadScrollingReasonsAsText();
 
     return String();
+}
+
+PassRefPtr<ClientRectList> Page::nonFastScrollableRects(const Frame* frame)
+{
+    if (Document* document = m_mainFrame->document())
+        document->updateLayout();
+
+    Vector<IntRect> rects;
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
+        rects = scrollingCoordinator->computeNonFastScrollableRegion(frame, IntPoint()).rects();
+
+    Vector<FloatQuad> quads(rects.size());
+    for (size_t i = 0; i < rects.size(); ++i)
+        quads[i] = FloatRect(rects[i]);
+    return ClientRectList::create(quads);
 }
 
 struct ViewModeInfo {
@@ -553,6 +569,37 @@ bool Page::findString(const String& target, FindOptions options)
     return false;
 }
 
+void Page::findStringMatchingRanges(const String& target, FindOptions options, int limit, Vector<RefPtr<Range> >* matchRanges, int& indexForSelection)
+{
+    indexForSelection = 0;
+    if (!mainFrame())
+        return;
+
+    Frame* frame = mainFrame();
+    Frame* frameWithSelection = 0;
+    do {
+        frame->editor()->countMatchesForText(target, 0, options, limit ? (limit - matchRanges->size()) : 0, true, matchRanges);
+        if (frame->selection()->isRange())
+            frameWithSelection = frame;
+        frame = incrementFrame(frame, true, false);
+    } while (frame);
+
+    if (matchRanges->isEmpty())
+        return;
+
+    if (frameWithSelection) {
+        indexForSelection = NoMatchBeforeUserSelection;
+        RefPtr<Range> selectedRange = frameWithSelection->selection()->selection().firstRange();
+        for (size_t i = 0; i < matchRanges->size(); ++i) {
+            ExceptionCode ec;
+            if (selectedRange->compareBoundaryPoints(Range::START_TO_END, matchRanges->at(i).get(), ec) < 0) {
+                indexForSelection = i;
+                break;
+            }
+        }
+    }
+}
+
 PassRefPtr<Range> Page::rangeOfString(const String& target, Range* referenceRange, FindOptions options)
 {
     if (target.isEmpty() || !mainFrame())
@@ -596,7 +643,7 @@ unsigned int Page::markAllMatchesForText(const String& target, FindOptions optio
     Frame* frame = mainFrame();
     do {
         frame->editor()->setMarkedTextMatchesAreHighlighted(shouldHighlight);
-        matches += frame->editor()->countMatchesForText(target, options, limit ? (limit - matches) : 0, true);
+        matches += frame->editor()->countMatchesForText(target, 0, options, limit ? (limit - matches) : 0, true, 0);
         frame = incrementFrame(frame, true, false);
     } while (frame);
 
@@ -940,14 +987,12 @@ void Page::allVisitedStateChanged(PageGroup* group)
         Page* page = *it;
         if (page->m_group != group)
             continue;
-        for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree()->traverseNext()) {
-            if (StyleResolver* styleResolver = frame->document()->styleResolver())
-                styleResolver->allVisitedStateChanged();
-        }
+        for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree()->traverseNext())
+            frame->document()->visitedLinkState()->invalidateStyleForAllLinks();
     }
 }
 
-void Page::visitedStateChanged(PageGroup* group, LinkHash visitedLinkHash)
+void Page::visitedStateChanged(PageGroup* group, LinkHash linkHash)
 {
     ASSERT(group);
     if (!allPages)
@@ -958,10 +1003,8 @@ void Page::visitedStateChanged(PageGroup* group, LinkHash visitedLinkHash)
         Page* page = *it;
         if (page->m_group != group)
             continue;
-        for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree()->traverseNext()) {
-            if (StyleResolver* styleResolver = frame->document()->styleResolver())
-                styleResolver->visitedStateChanged(visitedLinkHash);
-        }
+        for (Frame* frame = page->m_mainFrame.get(); frame; frame = frame->tree()->traverseNext())
+            frame->document()->visitedLinkState()->invalidateStyleForLink(linkHash);
     }
 }
 
@@ -1141,14 +1184,19 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
         m_mainFrame->dispatchVisibilityStateChangeEvent();
 #endif
 
+    if (visibilityState == WebCore::PageVisibilityStateHidden) {
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-    if (visibilityState == WebCore::PageVisibilityStateHidden)
         setTimerAlignmentInterval(Settings::hiddenPageDOMTimerAlignmentInterval());
-    else
+#endif
+        mainFrame()->animation()->suspendAnimations();
+    } else {
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
         setTimerAlignmentInterval(Settings::defaultDOMTimerAlignmentInterval());
+#endif
+        mainFrame()->animation()->resumeAnimations();
+    }
 #if !ENABLE(PAGE_VISIBILITY_API)
     UNUSED_PARAM(isInitialState);
-#endif
 #endif
 }
 #endif // ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
@@ -1344,7 +1392,6 @@ void Page::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_mainFrame);
     info.addMember(m_pluginData);
     info.addMember(m_theme);
-    info.addWeakPointer(m_editorClient);
     info.addMember(m_featureObserver);
     info.addMember(m_groupName);
     info.addMember(m_pagination);
@@ -1352,13 +1399,18 @@ void Page::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_userStyleSheet);
     info.addMember(m_singlePageGroup);
     info.addMember(m_group);
-    info.addWeakPointer(m_debugger);
     info.addMember(m_sessionStorage);
     info.addMember(m_relevantUnpaintedRenderObjects);
     info.addMember(m_relevantPaintedRegion);
     info.addMember(m_relevantUnpaintedRegion);
-    info.addWeakPointer(m_alternativeTextClient);
     info.addMember(m_seenPlugins);
+    info.addMember(m_seenMediaEngines);
+
+    info.ignoreMember(m_debugger);
+    info.ignoreMember(m_alternativeTextClient);
+    info.ignoreMember(m_editorClient);
+    info.ignoreMember(m_plugInClient);
+    info.ignoreMember(m_validationMessageClient);
 }
 
 Page::PageClients::PageClients()

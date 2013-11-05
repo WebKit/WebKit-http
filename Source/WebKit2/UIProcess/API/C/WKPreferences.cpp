@@ -994,3 +994,22 @@ bool WKPreferencesGetTextAutosizingEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->textAutosizingEnabled();
 }
 
+void WKPreferencesSetAggressiveTileRetentionEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAggressiveTileRetentionEnabled(enabled);
+}
+
+bool WKPreferencesGetAggressiveTileRetentionEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->aggressiveTileRetentionEnabled();
+}
+
+void WKPreferencesSetQTKitEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setQTKitEnabled(enabled);
+}
+
+bool WKPreferencesGetQTKitEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->isQTKitEnabled();
+}

@@ -30,6 +30,7 @@
 
 #include "DFGGraph.h"
 #include "DFGPhase.h"
+#include "Operations.h"
 
 namespace JSC { namespace DFG {
 
@@ -518,7 +519,13 @@ private:
             changed |= mergeDefaultFlags(node);
             break;
         }
-            
+
+        case TypeOf: {
+            changed |= setPrediction(SpecString);
+            changed |= mergeDefaultFlags(node);
+            break;
+        }
+
         case GetById: {
             changed |= mergePrediction(node.getHeapPrediction());
             changed |= mergeDefaultFlags(node);
@@ -767,6 +774,16 @@ private:
         case Phi:
             break;
 
+        case SetCallee:
+        case SetMyScope:
+            changed |= m_graph[node.child1()].mergeFlags(NodeUsedAsValue);
+            break;
+            
+        case GetScope:
+            changed |= m_graph[node.child1()].mergeFlags(NodeUsedAsValue);
+            changed |= setPrediction(SpecCellOther);
+            break;
+
 #ifndef NDEBUG
         // These get ignored because they don't return anything.
         case DFG::Jump:
@@ -777,6 +794,7 @@ private:
         case ForceOSRExit:
         case SetArgument:
         case CheckStructure:
+        case CheckExecutable:
         case ForwardCheckStructure:
         case StructureTransitionWatchpoint:
         case ForwardStructureTransitionWatchpoint:
@@ -789,11 +807,11 @@ private:
         case GlobalVarWatchpoint:
         case GarbageValue:
         case InheritorIDWatchpoint:
+        case Phantom:
             changed |= mergeDefaultFlags(node);
             break;
             
         // These gets ignored because it doesn't do anything.
-        case Phantom:
         case InlineStart:
         case Nop:
         case CountExecution:

@@ -33,6 +33,7 @@
 #include "StringFunctions.h"
 #include "TestController.h"
 #include <WebCore/PageVisibilityState.h>
+#include <WebKit2/WKBundle.h>
 #include <WebKit2/WKBundleBackForwardList.h>
 #include <WebKit2/WKBundleFrame.h>
 #include <WebKit2/WKBundleFramePrivate.h>
@@ -163,6 +164,11 @@ void TestRunner::notifyDone()
         InjectedBundle::shared().page()->dump();
 
     m_waitToDump = false;
+}
+
+void TestRunner::setCustomTimeout(int timeout)
+{
+    m_timeout = timeout;
 }
 
 unsigned TestRunner::numberOfActiveAnimations() const
@@ -894,6 +900,27 @@ void TestRunner::setViewModeMediaFeature(JSStringRef mode)
 {
     WKRetainPtr<WKStringRef> modeWK = toWK(mode);
     WKBundlePageSetViewMode(InjectedBundle::shared().page()->page(), modeWK.get());
+}
+
+void TestRunner::setHandlesAuthenticationChallenges(bool handlesAuthenticationChallenges)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetHandlesAuthenticationChallenge"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(handlesAuthenticationChallenges));
+    WKBundlePostMessage(InjectedBundle::shared().bundle(), messageName.get(), messageBody.get());
+}
+
+void TestRunner::setAuthenticationUsername(JSStringRef username)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetAuthenticationUsername"));
+    WKRetainPtr<WKStringRef> messageBody(AdoptWK, WKStringCreateWithJSString(username));
+    WKBundlePostMessage(InjectedBundle::shared().bundle(), messageName.get(), messageBody.get());
+}
+
+void TestRunner::setAuthenticationPassword(JSStringRef password)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetAuthenticationPassword"));
+    WKRetainPtr<WKStringRef> messageBody(AdoptWK, WKStringCreateWithJSString(password));
+    WKBundlePostMessage(InjectedBundle::shared().bundle(), messageName.get(), messageBody.get());
 }
 
 } // namespace WTR

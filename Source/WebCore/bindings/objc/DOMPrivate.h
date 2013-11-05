@@ -31,6 +31,10 @@
 - (NSArray *)textRects;
 @end
 
+@interface DOMNode (WebPrivate)
++ (id)_nodeFromJSWrapper:(JSObjectRef)jsWrapper;
+@end
+
 // FIXME: this should be removed as soon as all internal Apple uses of it have been replaced with
 // calls to the public method - (NSColor *)color.
 @interface DOMRGBColor (WebPrivate)
@@ -65,6 +69,10 @@
 @interface DOMHTMLDocument (WebPrivate)
 - (DOMDocumentFragment *)_createDocumentFragmentWithMarkupString:(NSString *)markupString baseURLString:(NSString *)baseURLString;
 - (DOMDocumentFragment *)_createDocumentFragmentWithText:(NSString *)text;
+@end
+
+@interface DOMHTMLTableCellElement (WebPrivate)
+- (DOMHTMLTableCellElement *)_cellAbove;
 @end
 
 // All the methods in this category are used by Safari forms autofill and should not be used for any other purpose.

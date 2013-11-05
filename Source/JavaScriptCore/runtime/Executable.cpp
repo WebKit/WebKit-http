@@ -33,6 +33,7 @@
 #include "ExecutionHarness.h"
 #include "JIT.h"
 #include "JITDriver.h"
+#include "Operations.h"
 #include "Parser.h"
 #include <wtf/Vector.h>
 #include <wtf/text/StringBuilder.h>
@@ -65,6 +66,11 @@ Intrinsic ExecutableBase::intrinsic() const
 {
     if (const NativeExecutable* nativeExecutable = jsDynamicCast<const NativeExecutable*>(this))
         return nativeExecutable->intrinsic();
+    return NoIntrinsic;
+}
+#else
+Intrinsic ExecutableBase::intrinsic() const
+{
     return NoIntrinsic;
 }
 #endif
@@ -367,7 +373,7 @@ int ProgramExecutable::addGlobalVar(JSGlobalObject* globalObject, const Identifi
     return index;
 }
 
-JSObject* ProgramExecutable::initalizeGlobalProperties(JSGlobalData& globalData, CallFrame* callFrame, JSScope* scope)
+JSObject* ProgramExecutable::initializeGlobalProperties(JSGlobalData& globalData, CallFrame* callFrame, JSScope* scope)
 {
     ASSERT(scope);
     JSGlobalObject* globalObject = scope->globalObject();
@@ -481,11 +487,6 @@ bool FunctionExecutable::jitCompileForConstruct(ExecState* exec)
     return jitCompileFunctionIfAppropriate(exec, m_codeBlockForConstruct, m_jitCodeForConstruct, m_jitCodeForConstructWithArityCheck, JITCode::bottomTierJIT(), UINT_MAX, JITCompilationCanFail);
 }
 #endif
-
-FunctionCodeBlock* FunctionExecutable::codeBlockWithBytecodeFor(CodeSpecializationKind kind)
-{
-    return baselineCodeBlockFor(kind);
-}
 
 PassOwnPtr<FunctionCodeBlock> FunctionExecutable::produceCodeBlockFor(JSScope* scope, CodeSpecializationKind specializationKind, JSObject*& exception)
 {

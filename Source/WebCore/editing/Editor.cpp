@@ -1090,7 +1090,7 @@ void Editor::copyImage(const HitTestResult& result)
     Pasteboard::generalPasteboard()->writeImage(result.innerNonSharedNode(), url, result.altDisplayString());
 }
 
-bool Editor::isContinuousSpellCheckingEnabled()
+bool Editor::isContinuousSpellCheckingEnabled() const
 {
     return client() && client()->isContinuousSpellCheckingEnabled();
 }
@@ -1681,23 +1681,50 @@ void Editor::advanceToNextMisspelling(bool startBeforeSelection)
     }
 }
 
-bool Editor::isSelectionMisspelled()
+String Editor::misspelledWordAtCaretOrRange(Node* clickedNode) const
+{
+    if (!isContinuousSpellCheckingEnabled() || !clickedNode || !isSpellCheckingEnabledFor(clickedNode))
+        return String();
+
+    VisibleSelection selection = m_frame->selection()->selection();
+    if (!selection.isContentEditable() || selection.isNone())
+        return String();
+
+    VisibleSelection wordSelection(selection.base());
+    wordSelection.expandUsingGranularity(WordGranularity);
+    RefPtr<Range> wordRange = wordSelection.toNormalizedRange();
+
+    // In compliance with GTK+ applications, additionally allow to provide suggestions when the current
+    // selection exactly match the word selection.
+    if (selection.isRange() && !areRangesEqual(wordRange.get(), selection.toNormalizedRange().get()))
+        return String();
+
+    String word = wordRange->text();
+    if (word.isEmpty() || !client())
+        return String();
+
+    int wordLength = word.length();
+    int misspellingLocation = -1;
+    int misspellingLength = 0;
+    textChecker()->checkSpellingOfString(word.characters(), wordLength, &misspellingLocation, &misspellingLength);
+
+    return misspellingLength == wordLength ? word : String();
+}
+
+String Editor::misspelledSelectionString() const
 {
     String selectedString = selectedText();
     int length = selectedString.length();
-    if (!length)
-        return false;
+    if (!length || !client())
+        return String();
 
-    if (!client())
-        return false;
-    
     int misspellingLocation = -1;
     int misspellingLength = 0;
     textChecker()->checkSpellingOfString(selectedString.characters(), length, &misspellingLocation, &misspellingLength);
     
     // The selection only counts as misspelled if the selected text is exactly one misspelled word
     if (misspellingLength != length)
-        return false;
+        return String();
     
     // Update the spelling panel to be displaying this error (whether or not the spelling panel is on screen).
     // This is necessary to make a subsequent call to [NSSpellChecker ignoreWord:inSpellDocumentWithTag:] work
@@ -1705,7 +1732,7 @@ bool Editor::isSelectionMisspelled()
     // or a grammar error.
     client()->updateSpellingUIWithMisspelledWord(selectedString);
     
-    return true;
+    return selectedString;
 }
 
 bool Editor::isSelectionUngrammatical()
@@ -1736,18 +1763,17 @@ Vector<String> Editor::guessesForUngrammaticalSelection()
 #endif
 }
 
-Vector<String> Editor::guessesForMisspelledSelection()
+Vector<String> Editor::guessesForMisspelledWord(const String& word) const
 {
-    String selectedString = selectedText();
-    ASSERT(selectedString.length());
+    ASSERT(word.length());
 
     Vector<String> guesses;
     if (client())
-        textChecker()->getGuessesForWord(selectedString, String(), guesses);
+        textChecker()->getGuessesForWord(word, String(), guesses);
     return guesses;
 }
 
-Vector<String> Editor::guessesForMisspelledOrUngrammaticalSelection(bool& misspelled, bool& ungrammatical)
+Vector<String> Editor::guessesForMisspelledOrUngrammatical(bool& misspelled, bool& ungrammatical)
 {
     if (unifiedTextCheckerEnabled()) {
         RefPtr<Range> range = frame()->selection()->toNormalizedRange();
@@ -1756,10 +1782,12 @@ Vector<String> Editor::guessesForMisspelledOrUngrammaticalSelection(bool& misspe
         return TextCheckingHelper(client(), range).guessesForMisspelledOrUngrammaticalRange(isGrammarCheckingEnabled(), misspelled, ungrammatical);
     }
 
-    misspelled = isSelectionMisspelled();
+    String misspelledWord = behavior().shouldAllowSpellingSuggestionsWithoutSelection() ? misspelledWordAtCaretOrRange(m_frame->document()->focusedNode()) : misspelledSelectionString();
+    misspelled = !misspelledWord.isEmpty();
+
     if (misspelled) {
         ungrammatical = false;
-        return guessesForMisspelledSelection();
+        return guessesForMisspelledWord(misspelledWord);
     }
     if (isGrammarCheckingEnabled() && isSelectionUngrammatical()) {
         ungrammatical = true;
@@ -2714,12 +2742,7 @@ static bool isFrameInRange(Frame* frame, Range* range)
     return inRange;
 }
 
-unsigned Editor::countMatchesForText(const String& target, FindOptions options, unsigned limit, bool markMatches)
-{
-    return countMatchesForText(target, 0, options, limit, markMatches);
-}
-
-unsigned Editor::countMatchesForText(const String& target, Range* range, FindOptions options, unsigned limit, bool markMatches)
+unsigned Editor::countMatchesForText(const String& target, Range* range, FindOptions options, unsigned limit, bool markMatches, Vector<RefPtr<Range> >* matches)
 {
     if (target.isEmpty())
         return 0;
@@ -2751,6 +2774,9 @@ unsigned Editor::countMatchesForText(const String& target, Range* range, FindOpt
         }
 
         ++matchCount;
+        if (matches)
+            matches->append(resultRange);
+        
         if (markMatches)
             m_frame->document()->markers()->addMarker(resultRange.get(), DocumentMarker::TextMatch);
 
@@ -2769,7 +2795,7 @@ unsigned Editor::countMatchesForText(const String& target, Range* range, FindOpt
             searchRange->setEnd(shadowTreeRoot, shadowTreeRoot->childNodeCount(), exception);
     } while (true);
 
-    if (markMatches) {
+    if (markMatches || matches) {
         // Do a "fake" paint in order to execute the code that computes the rendered rect for each text match.
         if (m_frame->view() && m_frame->contentRenderer()) {
             m_frame->document()->updateLayout(); // Ensure layout is up to date.

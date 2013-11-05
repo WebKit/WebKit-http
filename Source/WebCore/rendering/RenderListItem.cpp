@@ -39,7 +39,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderListItem::RenderListItem(Node* node)
+RenderListItem::RenderListItem(ContainerNode* node)
     : RenderBlock(node)
     , m_marker(0)
     , m_hasExplicitValue(false)
@@ -265,22 +265,12 @@ void RenderListItem::updateMarkerLocation()
             if (!lineBoxParent)
                 lineBoxParent = this;
             lineBoxParent->addChild(m_marker, firstNonMarkerChild(lineBoxParent));
-            if (m_marker->preferredLogicalWidthsDirty())
-                m_marker->computePreferredLogicalWidths();
+            m_marker->updateMarginsAndContent();
             // If markerPar is an anonymous block that has lost all its children, destroy it.
             if (markerPar && markerPar->isAnonymousBlock() && !markerPar->firstChild() && !toRenderBlock(markerPar)->continuation())
                 markerPar->destroy();
         }
     }
-}
-
-void RenderListItem::computePreferredLogicalWidths()
-{
-    ASSERT(preferredLogicalWidthsDirty());
-    
-    updateMarkerLocation();
-
-    RenderBlock::computePreferredLogicalWidths();
 }
 
 void RenderListItem::layout()

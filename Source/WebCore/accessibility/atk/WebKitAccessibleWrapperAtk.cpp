@@ -407,9 +407,6 @@ static gint webkitAccessibleGetIndexInParent(AtkObject* object)
     AccessibilityObject* coreObject = core(object);
     AccessibilityObject* parent = coreObject->parentObjectUnignored();
 
-    if (!parent)
-        return -1;
-
     if (!parent && isRootObject(coreObject)) {
         AtkObject* atkParent = atkParentOfRootObject(object);
         if (!atkParent)
@@ -430,6 +427,9 @@ static gint webkitAccessibleGetIndexInParent(AtkObject* object)
     if (parent && parent->isTableRow() && coreObject->isTableCell())
         return getIndexInParentForCellInRow(coreObject);
 
+    if (!parent)
+        return -1;
+
     size_t index = parent->children().find(coreObject);
     return (index == WTF::notFound) ? -1 : index;
 }
@@ -446,6 +446,16 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     AccessibilityObject* coreObject = core(object);
     if (!coreObject)
         return attributeSet;
+
+    // Hack needed for WebKit2 tests because obtaining an element by its ID
+    // cannot be done from the UIProcess. Assistive technologies have no need
+    // for this information.
+    Node* node = coreObject->node();
+    if (node && node->isElementNode()) {
+        String id = toElement(node)->getIdAttribute().string();
+        if (!id.isEmpty())
+            attributeSet = addToAtkAttributeSet(attributeSet, "html-id", id.utf8().data());
+    }
 
     int headingLevel = coreObject->headingLevel();
     if (headingLevel) {

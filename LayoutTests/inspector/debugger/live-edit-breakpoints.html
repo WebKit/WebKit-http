@@ -3,7 +3,7 @@
 <script src="../../http/tests/inspector/inspector-test.js"></script>
 <script src="../../http/tests/inspector/debugger-test.js"></script>
 <script src="../../http/tests/inspector/live-edit-test.js"></script>
-<script src="resources/edit-me.js"></script>
+<script src="resources/edit-me-breakpoints.js"></script>
 <script>
 function loadDynamicAnonymousScript()
 {
@@ -30,10 +30,8 @@ function test()
         var breakpointManager = WebInspector.breakpointManager;
         var breakpoints = breakpointManager._storage._setting.get();
         InspectorTest.addResult("    Dumping breakpoint storage");
-        for (var i = 0; i < breakpoints.length; ++i) {
-            var url = 
+        for (var i = 0; i < breakpoints.length; ++i)
             InspectorTest.addResult("        " + pathToFileName(breakpoints[i].sourceFileId) + ":" + breakpoints[i].lineNumber + ", enabled:" + breakpoints[i].enabled);
-        }
 
         var breakpointManager = WebInspector.breakpointManager;
         locations = breakpointManager.allBreakpointLocations();
@@ -41,7 +39,8 @@ function test()
         for (var i = 0; i < locations.length; ++i) {
             var uiLocation = locations[i].uiLocation;
             var uiSourceCode = uiLocation.uiSourceCode;
-            InspectorTest.addResult("        url: " + pathToFileName(uiSourceCode.url) + ", lineNumber: " + uiLocation.lineNumber + ", isTemporary: " + !!uiSourceCode.isTemporary);
+            var project = WebInspector.workspace.projectForUISourceCode(uiSourceCode);
+            InspectorTest.addResult("        url: " + pathToFileName(uiSourceCode.originURL()) + ", lineNumber: " + uiLocation.lineNumber + ", project name: " + project.name());
         }
     }
 
@@ -66,7 +65,7 @@ function test()
         {
             var javaScriptSourceFrame, uiSourceCode, script, originalJavaScriptSourceFrame, originalUISourceCode;
 
-            InspectorTest.showScriptSource("edit-me.js", didShowScriptSource);
+            InspectorTest.showScriptSource("edit-me-breakpoints.js", didShowScriptSource);
 
             function didShowScriptSource(sourceFrame)
             {
@@ -118,7 +117,7 @@ function test()
         {
             var javaScriptSourceFrame, uiSourceCode, script, originalJavaScriptSourceFrame, originalUISourceCode;
 
-            InspectorTest.showScriptSource("edit-me.js", didShowScriptSource);
+            InspectorTest.showScriptSource("edit-me-breakpoints.js", didShowScriptSource);
 
             function didShowScriptSource(sourceFrame)
             {
@@ -169,7 +168,7 @@ function test()
         {
             var javaScriptSourceFrame, uiSourceCode, script, originalJavaScriptSourceFrame, originalUISourceCode;
 
-            InspectorTest.showScriptSource("edit-me.js", didShowScriptSource);
+            InspectorTest.showScriptSource("edit-me-breakpoints.js", didShowScriptSource);
 
             function didShowScriptSource(sourceFrame)
             {
@@ -233,7 +232,7 @@ function test()
         {
             var javaScriptSourceFrame, uiSourceCode, script, originalJavaScriptSourceFrame, originalUISourceCode;
 
-            InspectorTest.showScriptSource("edit-me.js", didShowScriptSource);
+            InspectorTest.showScriptSource("edit-me-breakpoints.js", didShowScriptSource);
 
             function didShowScriptSource(sourceFrame)
             {
@@ -295,7 +294,7 @@ function test()
 
         function testEditAnonymousUndo(next)
         {
-            var javaScriptSourceFrame, uiSourceCode, script, originalJavaScriptSourceFrame, originalUISourceCode;
+            var javaScriptSourceFrame, uiSourceCode, script, liveEditSourceFrame, liveEditUISourceCode;
             
             function testFunction()
             {
@@ -329,31 +328,31 @@ function test()
                 script = WebInspector.debuggerModel.scriptForId(location.scriptId);
 
                 dumpBreakpointStorageAndLocations();
+                liveEditUISourceCode = WebInspector.liveEditSupport.uiSourceCodeForLiveEdit(uiSourceCode);
+                InspectorTest.showUISourceCode(liveEditUISourceCode, didShowLiveEditScriptSource);
+            }
+
+            function didShowLiveEditScriptSource(sourceFrame)
+            {
+                liveEditSourceFrame = sourceFrame;
+                InspectorTest.assertTrue(liveEditSourceFrame !== javaScriptSourceFrame, "Edited and original javaScriptSourceFrames should differ.");
+                InspectorTest.assertTrue(liveEditUISourceCode !== uiSourceCode, "Edited and original uiSourceCodes should differ.");
                 InspectorTest.addResult("Editing source:");
                 InspectorTest.replaceInSource(javaScriptSourceFrame, "}", "}//");
+                dumpBreakpointStorageAndLocations();
 
-                originalUISourceCode = script.rawLocationToUILocation(location.lineNumber).uiSourceCode;
-                InspectorTest.showUISourceCode(originalUISourceCode, didShowOriginalUISourceCode);
+                var originalUISourceCode = script.rawLocationToUILocation(location.lineNumber).uiSourceCode;
+                InspectorTest.assertTrue(originalUISourceCode === uiSourceCode, "Mapped and original uiSourceCodes should be the same.");
+                InspectorTest.addResult("Undoing source editing:");
+                InspectorTest.undoSourceEditing(liveEditSourceFrame);
+                dumpBreakpointStorageAndLocations();
+                InspectorTest.showUISourceCode(uiSourceCode, didShowOriginalUISourceCode);
             }
 
             function didShowOriginalUISourceCode(sourceFrame)
             {
-                originalJavaScriptSourceFrame = sourceFrame;
-                InspectorTest.assertTrue(originalJavaScriptSourceFrame !== javaScriptSourceFrame, "Edited and original javaScriptSourceFrames should differ.");
-                InspectorTest.assertTrue(originalUISourceCode !== uiSourceCode, "Edited and original uiSourceCodes should differ.");
-
-                dumpBreakpointStorageAndLocations();
-                InspectorTest.addResult("Undoing source editing:");
-                InspectorTest.addSniffer(WebInspector.BreakpointManager.Breakpoint.prototype, "_addResolvedLocation", breakpointResolvedAgain);
-                InspectorTest.undoSourceEditing(javaScriptSourceFrame);
-            }
-
-            function breakpointResolvedAgain()
-            {
-                dumpBreakpointStorageAndLocations();
                 InspectorTest.addResult("Finally removing breakpoint:");
                 InspectorTest.removeBreakpoint(javaScriptSourceFrame, 2);
-
                 dumpBreakpointStorageAndLocations();
                 next();
             }
@@ -361,7 +360,7 @@ function test()
 
         function testEditDynamicAnonymousUndo(next)
         {
-            var javaScriptSourceFrame, uiSourceCode, script, originalJavaScriptSourceFrame, originalUISourceCode;
+            var javaScriptSourceFrame, uiSourceCode, script, liveEditSourceFrame, liveEditUISourceCode;
             
             InspectorTest.evaluateInPage("loadDynamicAnonymousScript()", InspectorTest.runTestFunctionAndWaitUntilPaused.bind(InspectorTest, paused));
             function paused()
@@ -391,31 +390,31 @@ function test()
                 script = WebInspector.debuggerModel.scriptForId(location.scriptId);
 
                 dumpBreakpointStorageAndLocations();
+                liveEditUISourceCode = WebInspector.liveEditSupport.uiSourceCodeForLiveEdit(uiSourceCode);
+                InspectorTest.showUISourceCode(liveEditUISourceCode, didShowLiveEditScriptSource);
+            }
+
+            function didShowLiveEditScriptSource(sourceFrame)
+            {
+                liveEditSourceFrame = sourceFrame;
+                InspectorTest.assertTrue(liveEditSourceFrame !== javaScriptSourceFrame, "Edited and original javaScriptSourceFrames should differ.");
+                InspectorTest.assertTrue(liveEditUISourceCode !== uiSourceCode, "Edited and original uiSourceCodes should differ.");
                 InspectorTest.addResult("Editing source:");
                 InspectorTest.replaceInSource(javaScriptSourceFrame, "}", "}//");
+                dumpBreakpointStorageAndLocations();
 
-                originalUISourceCode = script.rawLocationToUILocation(location.lineNumber).uiSourceCode;
-                InspectorTest.showUISourceCode(originalUISourceCode, didShowOriginalUISourceCode);
+                var originalUISourceCode = script.rawLocationToUILocation(location.lineNumber).uiSourceCode;
+                InspectorTest.assertTrue(originalUISourceCode === uiSourceCode, "Mapped and original uiSourceCodes should be the same.");
+                InspectorTest.addResult("Undoing source editing:");
+                InspectorTest.undoSourceEditing(liveEditSourceFrame);
+                dumpBreakpointStorageAndLocations();
+                InspectorTest.showUISourceCode(uiSourceCode, didShowOriginalUISourceCode);
             }
 
             function didShowOriginalUISourceCode(sourceFrame)
             {
-                originalJavaScriptSourceFrame = sourceFrame;
-                InspectorTest.assertTrue(originalJavaScriptSourceFrame !== javaScriptSourceFrame, "Edited and original javaScriptSourceFrames should differ.");
-                InspectorTest.assertTrue(originalUISourceCode !== uiSourceCode, "Edited and original uiSourceCodes should differ.");
-
-                dumpBreakpointStorageAndLocations();
-                InspectorTest.addResult("Undoing source editing:");
-                InspectorTest.addSniffer(WebInspector.BreakpointManager.Breakpoint.prototype, "_addResolvedLocation", breakpointResolvedAgain);
-                InspectorTest.undoSourceEditing(javaScriptSourceFrame);
-            }
-
-            function breakpointResolvedAgain()
-            {
-                dumpBreakpointStorageAndLocations();
                 InspectorTest.addResult("Finally removing breakpoint:");
                 InspectorTest.removeBreakpoint(javaScriptSourceFrame, 2);
-
                 dumpBreakpointStorageAndLocations();
                 next();
             }

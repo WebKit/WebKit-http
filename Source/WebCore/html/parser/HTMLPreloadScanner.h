@@ -34,6 +34,7 @@
 namespace WebCore {
 
 class Document;
+class HTMLParserOptions;
 class HTMLToken;
 class HTMLTokenizer;
 class SegmentedString;
@@ -41,14 +42,13 @@ class SegmentedString;
 class HTMLPreloadScanner {
     WTF_MAKE_NONCOPYABLE(HTMLPreloadScanner); WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit HTMLPreloadScanner(Document*);
+    HTMLPreloadScanner(Document*, const HTMLParserOptions&);
 
     void appendToEnd(const SegmentedString&);
     void scan();
 
 private:
     void processToken();
-    bool scanningBody() const;
     void updatePredictedBaseElementURL(const KURL& baseElementURL);
 
     Document* m_document;
@@ -56,9 +56,12 @@ private:
     CSSPreloadScanner m_cssScanner;
     OwnPtr<HTMLTokenizer> m_tokenizer;
     HTMLToken m_token;
-    bool m_bodySeen;
     bool m_inStyle;
     KURL m_predictedBaseElementURL;
+
+#if ENABLE(TEMPLATE_ELEMENT)
+    size_t m_templateCount;
+#endif
 };
 
 }

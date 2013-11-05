@@ -1817,6 +1817,7 @@ inspector/profiler/heap-snapshot-summary-sorting-instances.html
 
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -2022,7 +2023,8 @@ loader/navigation-while-deferring-loads.html
 http/tests/security/isolatedWorld/cross-origin-xhr.html
 
 # JSC also doesn't support setIsolatedWorldContentSecurityPolicy (webkit.org/b/100815)
-http/tests/security/isolatedWorld/bypass-main-world-csp.html
+webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp.html [ Failure ]
+webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr.html [ Failure ]
 
 # ENABLE(WEBGL) is disabled
 compositing/backface-visibility/backface-visibility-webgl.html
@@ -2100,7 +2102,7 @@ fast/events/constructors/media-key-event-constructor.html
 css3/font-feature-settings-rendering.html
 
 # This test verifies that a mismatch reftest will fail as intended if both results are same.
-fast/harness/sample-fail-mismatch-reftest.html
+fast/harness/sample-fail-mismatch-reftest.html [ WontFix ImageOnlyFailure ]
 
 # Need DRT change: https://bugs.webkit.org/show_bug.cgi?id=66620
 editing/spelling/spelling-insert-html.html
@@ -2891,8 +2893,9 @@ css3/flexbox/flexbox-baseline.html
 #https://bugs.webkit.org/show_bug.cgi?id=99878
 css3/flexbox/flexbox-baseline-margins.html
 
-# css3-conditionals support is not yet enabled. http://webkit.org/b/86146
+# css3-conditionals support is not yet enabled. http://webkit.org/b/86146 http://webkit.org/b/104822
 css3/supports.html
+css3/supports-cssom.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=98169
 http/tests/inspector/stacktraces

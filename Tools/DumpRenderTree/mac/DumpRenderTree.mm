@@ -587,6 +587,10 @@ static void resetDefaultsToConsistentValues()
     [defaults setBool:YES forKey:WebKitFullScreenEnabledPreferenceKey];
     [defaults setBool:YES forKey:@"UseWebKitWebInspector"];
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    [defaults setObject:[NSDictionary dictionaryWithObjectsAndKeys:@"notational", @"notationl", nil] forKey:@"NSTestCorrectionDictionary"];
+#endif
+
     // Scrollbars are drawn either using AppKit (which uses NSUserDefaults) or using HIToolbox (which uses CFPreferences / kCFPreferencesAnyApplication / kCFPreferencesCurrentUser / kCFPreferencesAnyHost)
     [defaults setObject:@"DoubleMax" forKey:@"AppleScrollBarVariant"];
     RetainPtr<CFTypeRef> initialValue = CFPreferencesCopyValue(CFSTR("AppleScrollBarVariant"), kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
@@ -675,6 +679,7 @@ static void resetDefaultsToConsistentValues()
     [preferences setUsePreHTML5ParserQuirks:NO];
     [preferences setAsynchronousSpellCheckingEnabled:NO];
     [preferences setMockScrollbarsEnabled:YES];
+    [preferences setSeamlessIFramesEnabled:YES];
 
 #if ENABLE(WEB_AUDIO)
     [preferences setWebAudioEnabled:YES];

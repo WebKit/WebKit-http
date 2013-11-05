@@ -25,20 +25,31 @@
 [
     Conditional=MEDIA_STREAM,
     EventTarget,
-    Constructor(in MediaStreamTrackList audioTracks, in MediaStreamTrackList videoTracks),
+    Constructor,
+    Constructor(in MediaStream stream),
+    Constructor(in MediaStreamTrack[] tracks),
+    ConstructorParameters=0,
     CallWith=ScriptExecutionContext,
-    ConstructorRaisesException
-   ] interface MediaStream {
+] interface MediaStream {
+    // DEPRECATED
     readonly attribute DOMString label;
-    readonly attribute MediaStreamTrackList audioTracks;
-    readonly attribute MediaStreamTrackList videoTracks;
 
-    // FIXME: implement the record method when MediaStreamRecorder is available.
+    readonly attribute DOMString id;
 
-    const unsigned short LIVE = 1;
-    const unsigned short ENDED = 2;
-    readonly attribute unsigned short readyState;
-             attribute EventListener onended;
+    sequence<MediaStreamTrack> getAudioTracks();
+    sequence<MediaStreamTrack> getVideoTracks();
+
+    void addTrack(MediaStreamTrack track)
+        raises(DOMException);
+    void removeTrack(MediaStreamTrack track)
+        raises(DOMException);
+    MediaStreamTrack getTrackById(DOMString trackId);
+
+    readonly attribute boolean ended;
+
+    attribute EventListener onended;
+    attribute EventListener onaddtrack;
+    attribute EventListener onremovetrack;
 
     // EventTarget interface
     void addEventListener(in DOMString type,

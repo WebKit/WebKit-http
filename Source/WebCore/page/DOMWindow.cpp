@@ -47,6 +47,7 @@
 #include "DOMWindowNotifications.h"
 #include "DeviceMotionController.h"
 #include "DeviceOrientationController.h"
+#include "DeviceProximityController.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Element.h"
@@ -1549,6 +1550,15 @@ void DOMWindow::clearInterval(int timeoutId)
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 int DOMWindow::requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
 {
+    callback->m_useLegacyTimeBase = false;
+    if (Document* d = document())
+        return d->requestAnimationFrame(callback);
+    return 0;
+}
+
+int DOMWindow::webkitRequestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
+{
+    callback->m_useLegacyTimeBase = true;
     if (Document* d = document())
         return d->requestAnimationFrame(callback);
     return 0;
@@ -1601,6 +1611,13 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<Event
     }
 #endif
 
+#if ENABLE(PROXIMITY_EVENTS)
+    else if (eventType == eventNames().webkitdeviceproximityEvent) {
+        if (DeviceProximityController* controller = DeviceProximityController::from(page()))
+            controller->addDeviceEventListener(this);
+    }
+#endif
+
     return true;
 }
 
@@ -1626,6 +1643,13 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
             controller->removeDeviceEventListener(this);
     } else if (eventType == eventNames().deviceorientationEvent) {
         if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
+            controller->removeDeviceEventListener(this);
+    }
+#endif
+
+#if ENABLE(PROXIMITY_EVENTS)
+    else if (eventType == eventNames().webkitdeviceproximityEvent) {
+        if (DeviceProximityController* controller = DeviceProximityController::from(page()))
             controller->removeDeviceEventListener(this);
     }
 #endif
@@ -1688,6 +1712,11 @@ void DOMWindow::removeAllEventListeners()
 #if ENABLE(TOUCH_EVENTS)
     if (Document* document = this->document())
         document->didRemoveEventTargetNode(document);
+#endif
+
+#if ENABLE(PROXIMITY_EVENTS)
+    if (DeviceProximityController* controller = DeviceProximityController::from(page()))
+        controller->removeAllDeviceEventListeners(this);
 #endif
 
     removeAllUnloadEventListeners(this);

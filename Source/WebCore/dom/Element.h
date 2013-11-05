@@ -31,9 +31,13 @@
 #include "FragmentScriptingPermission.h"
 #include "HTMLNames.h"
 #include "ScrollTypes.h"
+#if ENABLE(VIDEO_TRACK)
+#include "TextTrack.h"
+#endif
 
 namespace WebCore {
 
+class Attr;
 class Attribute;
 class ClientRect;
 class ClientRectList;
@@ -46,6 +50,17 @@ class Locale;
 class PseudoElement;
 class RenderRegion;
 class ShadowRoot;
+
+enum AffectedSelectorType {
+    AffectedSelectorChecked = 1,
+    AffectedSelectorEnabled = 1 << 1,
+    AffectedSelectorDisabled = 1 << 2,
+    AffectedSelectorIndeterminate = 1 << 3,
+    AffectedSelectorLink = 1 << 4,
+    AffectedSelectorTarget = 1 << 5,
+    AffectedSelectorVisited = 1 << 6
+};
+typedef int AffectedSelectorMask;
 
 enum SpellcheckAttributeState {
     SpellcheckAttributeTrue,
@@ -214,7 +229,9 @@ public:
 
     PassRefPtr<Attr> attrIfExists(const QualifiedName&);
     PassRefPtr<Attr> ensureAttr(const QualifiedName&);
-    
+
+    const Vector<RefPtr<Attr> >& attrNodeList();
+
     virtual CSSStyleDeclaration* style();
 
     const QualifiedName& tagQName() const { return m_tagName; }
@@ -272,6 +289,7 @@ public:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual bool rendererIsNeeded(const NodeRenderingContext&);
     void recalcStyle(StyleChange = NoChange);
+    void didAffectSelector(AffectedSelectorMask);
 
     ElementShadow* shadow() const;
     ElementShadow* ensureShadow();
@@ -368,8 +386,7 @@ public:
 
     bool hasPseudoElements() const;
     PseudoElement* pseudoElement(PseudoId) const;
-    PseudoElement* beforePseudoElement() const { return pseudoElement(BEFORE); }
-    PseudoElement* afterPseudoElement() const { return pseudoElement(AFTER); }
+    RenderObject* pseudoElementRenderer(PseudoId) const;
     bool childNeedsShadowWalker() const;
     void didShadowTreeAwareChildrenChange();
 
@@ -385,7 +402,6 @@ public:
     bool webkitMatchesSelector(const String& selectors, ExceptionCode&);
 
     DOMTokenList* classList();
-    DOMTokenList* optionalClassList() const;
 
     DOMStringMap* dataset();
 
@@ -430,13 +446,17 @@ public:
 
 #if ENABLE(SVG)
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const;
+    bool hasPendingResources() const;
+    void setHasPendingResources();
+    void clearHasPendingResources();
+    virtual void buildPendingResource() { };
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-    bool isWebVTTNode() const;
-    void setIsWebVTTNode(bool flag);
+    WebVTTNodeType webVTTNodeType() const;
+    void setWebVTTNodeType(WebVTTNodeType);
 #endif
-    
+
 #if ENABLE(FULLSCREEN_API)
     enum {
         ALLOW_KEYBOARD_INPUT = 1 << 0,
@@ -498,6 +518,11 @@ protected:
     virtual bool shouldRegisterAsNamedItem() const { return false; }
     virtual bool shouldRegisterAsExtraNamedItem() const { return false; }
 
+    void clearTabIndexExplicitlyIfNeeded();    
+    void setTabIndexExplicitly(short);
+    virtual bool supportsFocus() const OVERRIDE;
+    virtual short tabIndex() const OVERRIDE;
+
     PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
     HTMLCollection* cachedHTMLCollection(CollectionType);
 
@@ -558,7 +583,6 @@ private:
     virtual PassRefPtr<Element> cloneElementWithoutAttributesAndChildren();
 
     QualifiedName m_tagName;
-    virtual PassOwnPtr<NodeRareData> createRareData();
     bool rareDataStyleAffectedByEmpty() const;
     bool rareDataChildrenAffectedByHover() const;
     bool rareDataChildrenAffectedByActive() const;
@@ -672,7 +696,7 @@ inline const ElementAttributeData* Element::ensureUpdatedAttributeData() const
 
 inline void Element::updateName(const AtomicString& oldName, const AtomicString& newName)
 {
-    if (!inDocument())
+    if (!inDocument() || isInShadowTree())
         return;
 
     if (oldName == newName)

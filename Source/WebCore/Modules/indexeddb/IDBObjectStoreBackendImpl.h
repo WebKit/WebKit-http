@@ -30,7 +30,6 @@
 #include "IDBDatabaseBackendImpl.h"
 #include "IDBKeyPath.h"
 #include "IDBMetadata.h"
-#include "IDBObjectStoreBackendInterface.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
 
@@ -39,82 +38,39 @@
 namespace WebCore {
 
 class IDBDatabaseBackendImpl;
-class IDBIndexBackendImpl;
 class IDBTransactionBackendImpl;
 class IDBTransactionBackendInterface;
 struct IDBObjectStoreMetadata;
 
-class IDBObjectStoreBackendImpl : public IDBObjectStoreBackendInterface {
-public:
-    static PassRefPtr<IDBObjectStoreBackendImpl> create(const IDBDatabaseBackendImpl* database, const IDBObjectStoreMetadata& metadata)
-    {
-        return adoptRef(new IDBObjectStoreBackendImpl(database, metadata));
-    }
-    virtual ~IDBObjectStoreBackendImpl();
+// FIXME: this namespace is temporary until we move its contents out to their own home.
+namespace IDBObjectStoreBackendImpl {
 
-    typedef HashMap<int64_t, RefPtr<IDBIndexBackendImpl> > IndexMap;
+    class IndexWriter {
+    public:
+        explicit IndexWriter(const IDBIndexMetadata& indexMetadata)
+            : m_indexMetadata(indexMetadata)
+        { }
 
-    static const int64_t InvalidId = 0;
-    int64_t id() const
-    {
-        ASSERT(m_metadata.id != InvalidId);
-        return m_metadata.id;
-    }
+        IndexWriter(const IDBIndexMetadata& indexMetadata, const IDBDatabaseBackendInterface::IndexKeys& indexKeys)
+            : m_indexMetadata(indexMetadata)
+            , m_indexKeys(indexKeys)
+        { }
 
-    // IDBObjectStoreBackendInterface
-    virtual void get(PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>, IDBTransactionBackendInterface*, ExceptionCode&);
-    virtual void put(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, IDBTransactionBackendInterface*, const Vector<int64_t>&, const Vector<IndexKeys>&);
+        bool verifyIndexKeys(IDBBackingStore&, IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, int64_t indexId, bool& canAddKeys, const IDBKey* primaryKey = 0, String* errorMessage = 0) const WARN_UNUSED_RETURN;
 
-    virtual void deleteFunction(PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>, IDBTransactionBackendInterface*, ExceptionCode&);
-    virtual void clear(PassRefPtr<IDBCallbacks>, IDBTransactionBackendInterface*, ExceptionCode&);
+        void writeIndexKeys(const IDBBackingStore::RecordIdentifier&, IDBBackingStore&, IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId) const;
 
-    virtual PassRefPtr<IDBIndexBackendInterface> createIndex(int64_t, const String& name, const IDBKeyPath&, bool unique, bool multiEntry, IDBTransactionBackendInterface*, ExceptionCode&);
-    virtual void setIndexKeys(PassRefPtr<IDBKey> prpPrimaryKey, const Vector<int64_t>&, const Vector<IndexKeys>&, IDBTransactionBackendInterface*);
-    virtual void setIndexesReady(const Vector<int64_t>&, IDBTransactionBackendInterface*);
-    virtual PassRefPtr<IDBIndexBackendInterface> index(int64_t);
-    virtual void deleteIndex(int64_t, IDBTransactionBackendInterface*, ExceptionCode&);
+    private:
+        bool addingKeyAllowed(IDBBackingStore&, IDBBackingStore::Transaction*, int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey* indexKey, const IDBKey* primaryKey, bool& allowed) const WARN_UNUSED_RETURN;
 
-    virtual void openCursor(PassRefPtr<IDBKeyRange>, IDBCursor::Direction, PassRefPtr<IDBCallbacks>, IDBTransactionBackendInterface::TaskType, IDBTransactionBackendInterface*, ExceptionCode&);
-    virtual void count(PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>, IDBTransactionBackendInterface*, ExceptionCode&);
+        const IDBIndexMetadata m_indexMetadata;
+        IDBDatabaseBackendInterface::IndexKeys m_indexKeys;
+    };
 
-    static bool populateIndex(IDBBackingStore&, int64_t databaseId, int64_t objectStoreId, PassRefPtr<IDBIndexBackendImpl>);
+    bool makeIndexWriters(PassRefPtr<IDBTransactionBackendImpl>, IDBBackingStore*, int64_t databaseId, const IDBObjectStoreMetadata&, PassRefPtr<IDBKey> primaryKey, bool keyWasGenerated, const Vector<int64_t>& indexIds, const Vector<IDBDatabaseBackendInterface::IndexKeys>&, Vector<OwnPtr<IndexWriter> >* indexWriters, String* errorMessage, bool& completed) WARN_UNUSED_RETURN;
 
-    const IndexMap::iterator iterIndexesBegin() { return m_indexes.begin(); };
-    const IndexMap::iterator iterIndexesEnd() { return m_indexes.end(); };
-
-    IDBObjectStoreMetadata metadata() const;
-    const String& name() { return m_metadata.name; }
-    const IDBKeyPath& keyPath() const { return m_metadata.keyPath; }
-    const bool& autoIncrement() const { return m_metadata.autoIncrement; }
-
-    PassRefPtr<IDBBackingStore> backingStore() const { return m_database->backingStore(); }
-    int64_t databaseId() const { return m_database->id(); }
-
-private:
-    IDBObjectStoreBackendImpl(const IDBDatabaseBackendImpl*, const IDBObjectStoreMetadata&);
-
-    void loadIndexes();
-    PassRefPtr<IDBKey> generateKey(PassRefPtr<IDBTransactionBackendImpl>);
-    bool updateKeyGenerator(PassRefPtr<IDBTransactionBackendImpl>, const IDBKey*, bool checkCurrent);
-
-    class ObjectStoreRetrievalOperation;
-    class ObjectStoreStorageOperation;
-    class ObjectStoreIndexesReadyOperation;
-    class ObjectStoreDeletionOperation;
-    class ObjectStoreClearOperation;
-    class CreateIndexOperation;
-    class DeleteIndexOperation;
-    class OpenObjectStoreCursorOperation;
-    class ObjectStoreCountOperation;
-
-    // When a "versionchange" transaction aborts, these restore the back-end object hierarchy.
-    class CreateIndexAbortOperation;
-    class DeleteIndexAbortOperation;
-
-    const IDBDatabaseBackendImpl* m_database;
-
-    IDBObjectStoreMetadata m_metadata;
-    IndexMap m_indexes;
+    PassRefPtr<IDBKey> generateKey(PassRefPtr<IDBBackingStore>, PassRefPtr<IDBTransactionBackendImpl>, int64_t databaseId, int64_t objectStoreId);
+    bool updateKeyGenerator(PassRefPtr<IDBBackingStore>, PassRefPtr<IDBTransactionBackendImpl>, int64_t databaseId, int64_t objectStoreId, const IDBKey*, bool checkCurrent);
 };
 
 } // namespace WebCore

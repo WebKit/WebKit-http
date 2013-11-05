@@ -224,7 +224,7 @@ void PlatformContextSkia::setDrawingToImageBuffer(bool value)
 
 SkDevice* PlatformContextSkia::createCompatibleDevice(const IntSize& size, bool hasAlpha)
 {
-    return m_canvas->createCompatibleDevice(bitmap()->config(), size.width(), size.height(), !hasAlpha);
+    return m_canvas->createCompatibleDevice(SkBitmap::kARGB_8888_Config, size.width(), size.height(), !hasAlpha);
 }
 
 bool PlatformContextSkia::isDrawingToImageBuffer() const
@@ -629,9 +629,7 @@ bool PlatformContextSkia::couldUseLCDRenderedText()
     if (isDrawingToLayer())
         return false;
 
-    // If this text is not in an image buffer and so won't be externally
-    // composited, then subpixel antialiasing is fine.
-    return !isDrawingToImageBuffer();
+    return m_gc->shouldSmoothFonts();
 }
 
 } // namespace WebCore

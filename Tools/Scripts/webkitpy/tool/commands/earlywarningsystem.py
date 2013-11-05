@@ -47,20 +47,14 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
     # FIXME: Switch _default_run_tests from opt-in to opt-out once more bots are ready to run tests.
     _default_run_tests = False
 
-    # Subclasses must override.
-    port_name = None
-
     def __init__(self):
         options = [make_option("--run-tests", action="store_true", dest="run_tests", default=self._default_run_tests, help="Run the Layout tests for each patch")]
         AbstractReviewQueue.__init__(self, options=options)
-        self.port = DeprecatedPort.port(self.port_name)
 
     def begin_work_queue(self):
-        # FIXME: This violates abstraction
-        self._tool._deprecated_port = self.port
         AbstractReviewQueue.begin_work_queue(self)
         self._expected_failures = ExpectedFailures()
-        self._layout_test_results_reader = LayoutTestResultsReader(self._tool, self._log_directory())
+        self._layout_test_results_reader = LayoutTestResultsReader(self._tool, self._port.results_directory(), self._log_directory())
 
     def _failing_tests_message(self, task, patch):
         results = task.results_from_patch_test_run(patch)
@@ -72,11 +66,13 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
     def _post_reject_message_on_bug(self, tool, patch, status_id, extra_message_text=None):
         results_link = tool.status_server.results_url_for_status(status_id)
         message = "Attachment %s did not pass %s (%s):\nOutput: %s" % (patch.id(), self.name, self.port_name, results_link)
+        if extra_message_text:
+            message += "\n\n%s" % extra_message_text
         # FIXME: We might want to add some text about rejecting from the commit-queue in
         # the case where patch.commit_queue() isn't already set to '-'.
         if self.watchers:
             tool.bugs.add_cc_to_bug(patch.bug_id(), self.watchers)
-        tool.bugs.set_flag_on_attachment(patch.id(), "commit-queue", "-", message, extra_message_text)
+        tool.bugs.set_flag_on_attachment(patch.id(), "commit-queue", "-", message)
 
     def review_patch(self, patch):
         task = EarlyWarningSystemTask(self, patch, self._options.run_tests)
@@ -105,7 +101,7 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
         return self.name
 
     def run_command(self, command):
-        self.run_webkit_patch(command + [self.port.flag()])
+        self.run_webkit_patch(command + [self._deprecated_port.flag()])
 
     def command_passed(self, message, patch):
         pass
@@ -214,3 +210,15 @@ class MacEWS(AbstractEarlyWarningSystem):
     name = "mac-ews"
     port_name = "mac"
     _default_run_tests = True
+    watchers = AbstractEarlyWarningSystem.watchers + [
+        "rniwa@webkit.org",
+    ]
+
+
+class MacWK2EWS(AbstractEarlyWarningSystem):
+    name = "mac-wk2-ews"
+    port_name = "mac-wk2"
+    _default_run_tests = True
+    watchers = AbstractEarlyWarningSystem.watchers + [
+        "rniwa@webkit.org",
+    ]

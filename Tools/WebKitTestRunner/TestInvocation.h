@@ -42,11 +42,14 @@ public:
 
     void setIsPixelTest(const std::string& expectedPixelHash);
 
+    void setCustomTimeout(int duration);
+
     void invoke();
     void didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
     WKRetainPtr<WKTypeRef> didReceiveSynchronousMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
 
     void dumpWebProcessUnresponsiveness();
+    void outputText(const WTF::String&);
 private:
     void dumpResults();
     static void dump(const char* textToStdout, const char* textToStderr = 0, bool seenError = false);
@@ -63,6 +66,8 @@ private:
     
     bool m_dumpPixels;
     std::string m_expectedPixelHash;
+
+    int m_timeout;
 
     // Invocation state
     bool m_gotInitialResponse;

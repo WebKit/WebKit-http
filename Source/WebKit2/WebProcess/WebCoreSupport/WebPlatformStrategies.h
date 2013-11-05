@@ -56,16 +56,12 @@ private:
     virtual WebCore::VisitedLinkStrategy* createVisitedLinkStrategy() OVERRIDE;
 
     // WebCore::CookiesStrategy
-    virtual void notifyCookiesChanged() OVERRIDE;
-#if PLATFORM(MAC) || USE(CFNETWORK)
-    virtual RetainPtr<CFHTTPCookieStorageRef> defaultCookieStorage() OVERRIDE;
-#endif
-    virtual String cookiesForDOM(WebCore::NetworkingContext*, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
-    virtual void setCookiesFromDOM(WebCore::NetworkingContext*, const WebCore::KURL& firstParty, const WebCore::KURL&, const String&) OVERRIDE;
-    virtual bool cookiesEnabled(WebCore::NetworkingContext*, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
-    virtual String cookieRequestHeaderFieldValue(WebCore::NetworkingContext*, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
-    virtual bool getRawCookies(WebCore::NetworkingContext*, const WebCore::KURL& firstParty, const WebCore::KURL&, Vector<WebCore::Cookie>&) OVERRIDE;
-    virtual void deleteCookie(WebCore::NetworkingContext*, const WebCore::KURL&, const String&) OVERRIDE;
+    virtual String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
+    virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&, const String&) OVERRIDE;
+    virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
+    virtual String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&) OVERRIDE;
+    virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::KURL& firstParty, const WebCore::KURL&, Vector<WebCore::Cookie>&) OVERRIDE;
+    virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::KURL&, const String&) OVERRIDE;
 
     // WebCore::DatabaseStrategy
 #if ENABLE(SQL_DATABASE)
@@ -75,6 +71,7 @@ private:
     // WebCore::LoaderStrategy
 #if ENABLE(NETWORK_PROCESS)
     virtual WebCore::ResourceLoadScheduler* resourceLoadScheduler() OVERRIDE;
+    virtual void loadResourceSynchronously(WebCore::NetworkingContext*, const WebCore::ResourceRequest&, WebCore::StoredCredentials, WebCore::ResourceError&, WebCore::ResourceResponse&, Vector<char>& data) OVERRIDE;
 #endif
 
     // WebCore::PluginStrategy

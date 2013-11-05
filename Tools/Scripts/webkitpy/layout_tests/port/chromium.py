@@ -84,15 +84,22 @@ class ChromiumPort(Port):
         if build_directory:
             return filesystem.join(build_directory, configuration, *comps)
 
+        hits = []
         for directory in cls.DEFAULT_BUILD_DIRECTORIES:
             base_dir = filesystem.join(chromium_base, directory, configuration)
-            if filesystem.exists(base_dir):
-                return filesystem.join(base_dir, *comps)
+            path = filesystem.join(base_dir, *comps)
+            if filesystem.exists(path):
+                hits.append((filesystem.mtime(path), path))
 
         for directory in cls.DEFAULT_BUILD_DIRECTORIES:
             base_dir = filesystem.join(webkit_base, directory, configuration)
-            if filesystem.exists(base_dir):
-                return filesystem.join(base_dir, *comps)
+            path = filesystem.join(base_dir, *comps)
+            if filesystem.exists(path):
+                hits.append((filesystem.mtime(path), path))
+
+        if hits:
+            hits.sort(reverse=True)
+            return hits[0][1]  # Return the newest file found.
 
         # We have to default to something, so pick the last one.
         return filesystem.join(base_dir, *comps)
@@ -278,6 +285,7 @@ class ChromiumPort(Port):
         }
 
     def setup_test_run(self):
+        super(ChromiumPort, self).setup_test_run()
         # Delete the disk cache if any to ensure a clean test run.
         dump_render_tree_binary_path = self._path_to_driver()
         cachedir = self._filesystem.dirname(dump_render_tree_binary_path)

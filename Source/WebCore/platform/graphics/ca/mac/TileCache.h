@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -106,6 +106,8 @@ private:
 
     // TiledBacking member functions.
     virtual void setVisibleRect(const IntRect&) OVERRIDE;
+    virtual void setExposedRect(const IntRect&) OVERRIDE;
+    virtual void setClipsToExposedRect(bool) OVERRIDE;
     virtual void prepopulateRect(const IntRect&) OVERRIDE;
     virtual void setIsInWindow(bool) OVERRIDE;
     virtual void setTileCoverage(TileCoverage) OVERRIDE;
@@ -115,6 +117,10 @@ private:
     virtual IntRect tileGridExtent() const OVERRIDE;
     virtual void setScrollingPerformanceLoggingEnabled(bool flag) OVERRIDE { m_scrollingPerformanceLoggingEnabled = flag; }
     virtual bool scrollingPerformanceLoggingEnabled() const OVERRIDE { return m_scrollingPerformanceLoggingEnabled; }
+    virtual void setAggressivelyRetainsTiles(bool flag) OVERRIDE { m_aggressivelyRetainsTiles = flag; }
+    virtual bool aggressivelyRetainsTiles() const OVERRIDE { return m_aggressivelyRetainsTiles; }
+    virtual void setUnparentsOffscreenTiles(bool flag) OVERRIDE { m_unparentsOffscreenTiles = flag; }
+    virtual bool unparentsOffscreenTiles() const OVERRIDE { return m_unparentsOffscreenTiles; }
     virtual IntRect tileCoverageRect() const OVERRIDE;
     virtual CALayer *tiledScrollingIndicatorLayer() OVERRIDE;
     virtual void setScrollingModeIndication(ScrollingModeIndication) OVERRIDE;
@@ -133,11 +139,9 @@ private:
     void scheduleCohortRemoval();
     void cohortRemovalTimerFired(Timer<TileCache>*);
     
-    enum TileValidationPolicy {
-        KeepSecondaryTiles,
-        PruneSecondaryTiles
-    };
-    void revalidateTiles(TileValidationPolicy = KeepSecondaryTiles);
+    typedef unsigned TileValidationPolicyFlags;
+
+    void revalidateTiles(TileValidationPolicyFlags foregroundValidationPolicy = 0, TileValidationPolicyFlags backgroundValidationPolicy = 0);
     void ensureTilesForRect(const IntRect&);
     void updateTileCoverageMap();
 
@@ -166,6 +170,7 @@ private:
     IntSize m_tileSize;
     IntRect m_visibleRect;
     IntRect m_visibleRectAtLastRevalidate;
+    IntRect m_exposedRect; // The exposed area of containing platform views.
 
     typedef HashMap<TileIndex, TileInfo> TileMap;
     TileMap m_tiles;
@@ -191,8 +196,11 @@ private:
     TileCoverage m_tileCoverage;
     bool m_isInWindow;
     bool m_scrollingPerformanceLoggingEnabled;
+    bool m_aggressivelyRetainsTiles;
+    bool m_unparentsOffscreenTiles;
     bool m_acceleratesDrawing;
     bool m_tilesAreOpaque;
+    bool m_clipsToExposedRect;
 
     RetainPtr<CGColorRef> m_tileDebugBorderColor;
     float m_tileDebugBorderWidth;

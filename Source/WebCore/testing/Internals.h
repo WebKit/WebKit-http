@@ -55,6 +55,7 @@ class ShadowRoot;
 class WebKitPoint;
 class MallocStatistics;
 class SerializedScriptValue;
+class TypeConversions;
 
 typedef int ExceptionCode;
 
@@ -94,6 +95,9 @@ public:
     String shadowPseudoId(Element*, ExceptionCode&);
     void setShadowPseudoId(Element*, const String&, ExceptionCode&);
 
+    bool pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element*, const String& pseudoId, ExceptionCode&);
+    bool pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element*, const String& pseudoId, ExceptionCode&);
+
     PassRefPtr<Element> createContentElement(Document*, ExceptionCode&);
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
     Node* treeScopeRootNode(Node*, ExceptionCode&);
@@ -116,8 +120,8 @@ public:
 #if ENABLE(INPUT_TYPE_COLOR)
     void selectColorInColorChooser(Element*, const String& colorValue);
 #endif
-    PassRefPtr<DOMStringList> formControlStateOfPreviousHistoryItem(ExceptionCode&);
-    void setFormControlStateOfPreviousHistoryItem(PassRefPtr<DOMStringList>, ExceptionCode&);
+    Vector<String> formControlStateOfPreviousHistoryItem(ExceptionCode&);
+    void setFormControlStateOfPreviousHistoryItem(const Vector<String>&, ExceptionCode&);
     void setEnableMockPagePopup(bool, ExceptionCode&);
 #if ENABLE(PAGE_POPUP)
     PassRefPtr<PagePopupController> pagePopupController();
@@ -197,6 +201,8 @@ public:
 
     void setNetworkInformation(Document*, const String& eventType, double bandwidth, bool metered, ExceptionCode&);
 
+    void setDeviceProximity(Document*, const String& eventType, double value, double min, double max, ExceptionCode&);
+
     void suspendAnimations(Document*, ExceptionCode&) const;
     void resumeAnimations(Document*, ExceptionCode&) const;
 
@@ -211,8 +217,8 @@ public:
     String layerTreeAsText(Document*, ExceptionCode&) const;
     String repaintRectsAsText(Document*, ExceptionCode&) const;
     String scrollingStateTreeAsText(Document*, ExceptionCode&) const;
-
     String mainThreadScrollingReasons(Document*, ExceptionCode&) const;
+    PassRefPtr<ClientRectList> nonFastScrollableRects(Document*, ExceptionCode&) const;
 
     void garbageCollectDocumentResources(Document*, ExceptionCode&) const;
 
@@ -234,7 +240,7 @@ public:
     String counterValue(Element*);
 
     int pageNumber(Element*, float pageWidth = 800, float pageHeight = 600);
-    PassRefPtr<DOMStringList> iconURLs(Document*) const;
+    Vector<String> iconURLs(Document*) const;
 
     int numberOfPages(float pageWidthInPixels = 800, float pageHeightInPixels = 600);
     String pageProperty(String, int, ExceptionCode& = ASSERT_NO_EXCEPTION) const;
@@ -253,8 +259,9 @@ public:
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
 
     PassRefPtr<MallocStatistics> mallocStatistics() const;
+    PassRefPtr<TypeConversions> typeConversions() const;
 
-    PassRefPtr<DOMStringList> getReferencedFilePaths() const;
+    Vector<String> getReferencedFilePaths() const;
 
     void startTrackingRepaints(Document*, ExceptionCode&);
     void stopTrackingRepaints(Document*, ExceptionCode&);

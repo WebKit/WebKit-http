@@ -594,11 +594,11 @@ namespace JSC {
         
         bool isCaptured(int operand, InlineCallFrame* inlineCallFrame = 0) const
         {
-            if (inlineCallFrame && !operandIsArgument(operand))
-                return inlineCallFrame->capturedVars.get(operand);
-
             if (operandIsArgument(operand))
-                return usesArguments();
+                return operandToArgument(operand) && usesArguments();
+
+            if (inlineCallFrame)
+                return inlineCallFrame->capturedVars.get(operand);
 
             // The activation object isn't in the captured region, but it's "captured"
             // in the sense that stores to its location can be observed indirectly.
@@ -717,7 +717,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned value = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return value >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
+            return value >= Options::likelyToTakeSlowCaseMinimumCount();
         }
         
         bool couldTakeSlowCase(int bytecodeOffset)
@@ -725,7 +725,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned value = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return value >= Options::couldTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::couldTakeSlowCaseThreshold();
+            return value >= Options::couldTakeSlowCaseMinimumCount();
         }
         
         RareCaseProfile* addSpecialFastCaseProfile(int bytecodeOffset)
@@ -747,7 +747,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return specialFastCaseCount >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(specialFastCaseCount) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
+            return specialFastCaseCount >= Options::likelyToTakeSlowCaseMinimumCount();
         }
         
         bool couldTakeSpecialFastCase(int bytecodeOffset)
@@ -755,7 +755,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount() && static_cast<double>(specialFastCaseCount) / m_executionEntryCount >= Options::couldTakeSlowCaseThreshold();
+            return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount();
         }
         
         bool likelyToTakeDeepestSlowCase(int bytecodeOffset)
@@ -765,7 +765,7 @@ namespace JSC {
             unsigned slowCaseCount = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned value = slowCaseCount - specialFastCaseCount;
-            return value >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
+            return value >= Options::likelyToTakeSlowCaseMinimumCount();
         }
         
         bool likelyToTakeAnySlowCase(int bytecodeOffset)
@@ -775,11 +775,9 @@ namespace JSC {
             unsigned slowCaseCount = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned value = slowCaseCount + specialFastCaseCount;
-            return value >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
+            return value >= Options::likelyToTakeSlowCaseMinimumCount();
         }
         
-        unsigned executionEntryCount() const { return m_executionEntryCount; }
-
         unsigned numberOfArrayProfiles() const { return m_arrayProfiles.size(); }
         const ArrayProfileVector& arrayProfiles() { return m_arrayProfiles; }
         ArrayProfile* addArrayProfile(unsigned bytecodeOffset)
@@ -936,13 +934,7 @@ namespace JSC {
 
         JSGlobalObject* globalObject() { return m_globalObject.get(); }
         
-        JSGlobalObject* globalObjectFor(CodeOrigin codeOrigin)
-        {
-            if (!codeOrigin.inlineCallFrame)
-                return globalObject();
-            // FIXME: if we ever inline based on executable not function, this code will need to change.
-            return codeOrigin.inlineCallFrame->callee->scope()->globalObject();
-        }
+        JSGlobalObject* globalObjectFor(CodeOrigin);
 
         // Jump Tables
 
@@ -1321,7 +1313,6 @@ namespace JSC {
         SegmentedVector<RareCaseProfile, 8> m_specialFastCaseProfiles;
         SegmentedVector<ArrayAllocationProfile, 8> m_arrayAllocationProfiles;
         ArrayProfileVector m_arrayProfiles;
-        unsigned m_executionEntryCount;
 #endif
 
         // Constant Pool

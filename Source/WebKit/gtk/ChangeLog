@@ -1,3 +1,122 @@
+2013-01-15  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Autotools] Add support for WebKit2-only builds
+        https://bugs.webkit.org/show_bug.cgi?id=106889
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: Only build the WebKit1-specific targets if actually
+        building WebKit1. This puts the libwebkitgtk library, the pkg-config file
+        and the WebKit1-specific unit tests under the ENABLE_WEBKIT1 Automake
+        conditional.
+
+2013-01-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.11.4 release
+
+        * NEWS: Added release notes for 1.11.4.
+
+2013-01-08  Mark Lam  <mark.lam@apple.com>
+
+        Removed the need for the ProposedDatabase mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=106292.
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::exceededDatabaseQuota):
+        * WebCoreSupport/ChromeClientGtk.h:
+        (ChromeClient):
+
+2013-01-03  Sergio Villar Senin  <svillar@igalia.com>
+
+        [GTK] Add WebP image support
+        https://bugs.webkit.org/show_bug.cgi?id=105915
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: link against WebP library.
+
+2013-01-07  Mike West  <mkwst@chromium.org>
+
+        Make the IFRAME_SEAMLESS flag runtime-enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=106213
+
+        Reviewed by Ojan Vafai.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+            Add a toggle for seamless IFrames to GTK's DRTSuport.
+
+2013-01-04  Adam Klein  <adamk@chromium.org>
+
+        Remove ENABLE_MUTATION_OBSERVERS #define
+        https://bugs.webkit.org/show_bug.cgi?id=105459
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::deliverAllMutationsIfNecessary):
+
+2012-12-28  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK][WK2] Add support for IME Composition
+        https://bugs.webkit.org/show_bug.cgi?id=65093
+
+        Reviewed by Carlos Garcia Campos.
+
+        Update the method signatures for concrete WebKit1 implementation of
+        the GtkInputMethodFilter.
+
+        * WebCoreSupport/WebViewInputMethodFilter.cpp:
+        (WebKit::WebViewInputMethodFilter::sendSimpleKeyEvent):
+        (WebKit::WebViewInputMethodFilter::sendKeyEventWithCompositionResults):
+        * WebCoreSupport/WebViewInputMethodFilter.h:
+        (WebViewInputMethodFilter):
+
+2012-12-27  ChangSeok Oh  <shivamidow@gmail.com>
+
+        [GTK] invalid use of incomplete type WebCore::ResourceResponse in webkitwebviewprivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=105720
+
+        Reviewed by Martin Robinson.
+
+        If the acceleration backend is clutter, then css_filter feature is disabled.
+        So ResourceResponse.h could not be reached with only existing headers
+        in webkitwebviewprivate.h. For this reason, I add ResourceResponse.h explicitly
+        to fix a build failure using incomplete type 'WebCore::ResourceResponse()'.
+
+        * webkit/webkitwebviewprivate.h:
+
+2012-12-23  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/12808377> Network process should respect cookie accept policy
+        https://bugs.webkit.org/show_bug.cgi?id=105684
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        * WebCoreSupport/PlatformStrategiesGtk.h:
+        CookiesStrategy no longer has notifyCookiesChanged(). This port didn't use it anyway.
+
+2012-12-22  Alexey Proskuryakov  <ap@apple.com>
+
+        Add a separate class for networking related storage
+        https://bugs.webkit.org/show_bug.cgi?id=105676
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::cookiesForDOM):
+        (PlatformStrategiesGtk::setCookiesFromDOM):
+        (PlatformStrategiesGtk::cookiesEnabled):
+        (PlatformStrategiesGtk::cookieRequestHeaderFieldValue):
+        (PlatformStrategiesGtk::getRawCookies):
+        (PlatformStrategiesGtk::deleteCookie):
+        * WebCoreSupport/PlatformStrategiesGtk.h:
+        Cookie functions now take a NetworkStorageSession, not a NetworkingContext.
+
 2012-12-18  Alexey Proskuryakov  <ap@apple.com>
 
         Remove unnecessary functions from CookiesStrategy

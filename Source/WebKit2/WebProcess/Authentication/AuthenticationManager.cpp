@@ -27,10 +27,9 @@
 #include "AuthenticationManager.h"
 
 #include "AuthenticationManagerMessages.h"
+#include "ChildProcess.h"
 #include "Download.h"
 #include "DownloadProxyMessages.h"
-#include "MessageID.h"
-#include "MessageReceiverMap.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebFrame.h"
 #include "WebPage.h"
@@ -48,15 +47,16 @@ static uint64_t generateAuthenticationChallengeID()
     return uniqueAuthenticationChallengeID++;
 }
 
-AuthenticationManager::AuthenticationManager(CoreIPC::MessageReceiverMap& messageReceiverMap)
+const AtomicString& AuthenticationManager::supplementName()
 {
-    messageReceiverMap.addMessageReceiver(Messages::AuthenticationManager::messageReceiverName(), this);
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("AuthenticationManager", AtomicString::ConstructFromLiteral));
+    return name;
 }
 
-void AuthenticationManager::setConnection(CoreIPC::Connection* connection)
+AuthenticationManager::AuthenticationManager(ChildProcess* process)
+    : m_process(process)
 {
-    ASSERT(!m_connection);
-    m_connection = connection;
+    m_process->addMessageReceiver(Messages::AuthenticationManager::messageReceiverName(), this);
 }
 
 void AuthenticationManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
@@ -72,7 +72,7 @@ void AuthenticationManager::didReceiveAuthenticationChallenge(WebFrame* frame, c
     uint64_t challengeID = generateAuthenticationChallengeID();
     m_challenges.set(challengeID, authenticationChallenge);    
     
-    m_connection->send(Messages::WebPageProxy::DidReceiveAuthenticationChallenge(frame->frameID(), authenticationChallenge, challengeID), frame->page()->pageID());
+    m_process->send(Messages::WebPageProxy::DidReceiveAuthenticationChallenge(frame->frameID(), authenticationChallenge, challengeID), frame->page()->pageID());
 }
 
 void AuthenticationManager::didReceiveAuthenticationChallenge(Download* download, const AuthenticationChallenge& authenticationChallenge)

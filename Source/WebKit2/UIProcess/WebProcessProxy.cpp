@@ -53,6 +53,10 @@
 #endif
 #endif
 
+#if USE(SECURITY_FRAMEWORK)
+#include "SecItemShimProxy.h"
+#endif
+
 using namespace WebCore;
 using namespace std;
 
@@ -502,13 +506,17 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, CoreIPC::Con
 {
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
+#if USE(SECURITY_FRAMEWORK)
+    connection()->addQueueClient(&SecItemShimProxy::shared());
+#endif
+
     m_webConnection = WebConnectionToWebProcess::create(this);
 
     // Tell the context that we finished launching.
     m_context->processDidFinishLaunching(this);
 
 #if PLATFORM(MAC)
-    if (WebContext::applicationIsOccluded())
+    if (WebContext::applicationIsOccluded() && m_context->processSuppressionEnabled())
         connection()->send(Messages::WebProcess::SetApplicationIsOccluded(true), 0);
 #endif
 }

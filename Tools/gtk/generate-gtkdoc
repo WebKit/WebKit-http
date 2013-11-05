@@ -77,6 +77,8 @@ def get_webkit2_options():
         return common.build_path(*(('DerivedSources', 'WebKit2') + args))
     def src_path(*args):
         return common.top_level_path(*(('Source', 'WebKit2', 'UIProcess', 'API', 'gtk') + args))
+    def injected_bundle_src_path(*args):
+        return common.top_level_path(*(('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + args))
 
     xref_deps = get_common_xref_deps().copy()
     xref_deps.update({
@@ -88,7 +90,7 @@ def get_webkit2_options():
         'module_name' : 'webkit2gtk',
         'doc_dir' : src_path('docs'),
         'output_dir' : common.build_path('Documentation', 'webkit2gtk'),
-        'source_dirs' : [src_path(), derived_sources_path('webkit2gtk', 'webkit2')],
+        'source_dirs' : [src_path(), derived_sources_path('webkit2gtk', 'webkit2'), injected_bundle_src_path()],
         'cflags' : ' -I' + derived_sources_path('webkit2gtk', 'include') + \
                    ' -I' + derived_sources_path('webkit2gtk') + \
                    ' -I' + derived_sources_path('include') + \
@@ -96,11 +98,13 @@ def get_webkit2_options():
                    ' -I' + src_path(),
         'cross_reference_deps' : get_gtkdoc_module_paths(xref_deps),
         'ignored_files': glob.glob(src_path('*Private.h')) + \
+                         glob.glob(injected_bundle_src_path('*Private.h')) + \
                          glob.glob(src_path('*Client*')) + \
-                         glob.glob(src_path('WebKitWebViewBaseAccessible.*')) + \
                          glob.glob(src_path('WebKit2GtkAuthenticationDialog.*')) + \
                          glob.glob(src_path('WebKitGeolocationProvider.*')) + \
                          glob.glob(src_path('WebKitTextChecker.*')) + \
+                         glob.glob(src_path('WebKitWebViewBaseAccessible.*')) + \
+                         glob.glob(src_path('WebViewBaseInputMethodFilter.*')) + \
                          glob.glob(derived_sources_path('webkit2gtk', 'webkit2', 'WebKitMarshal.*')) + \
                          glob.glob(derived_sources_path('webkit2gtk', 'webkit2', 'WebKitEnumTypes.*')) + \
                          glob.glob(src_path('tests/*.h'))
@@ -142,9 +146,9 @@ def print_missing_api(generator):
     missing_api = generator.api_missing_documentation()
     if not missing_api:
         return
-    print "\nThe following API are missing documentation:"
+    print("\nThe following API are missing documentation:")
     for api in missing_api:
-        print "\t%s" % api
+        print("\t%s" % api)
 
 def generate_doc(generator):
     generator.generate(html='--skip-html' not in sys.argv)
@@ -177,27 +181,27 @@ if os.path.exists(pkg_config_path):
     options = get_webkit1_options(common.gtk_version_of_pkg_config_file(pkg_config_path))
     generator = gtkdoc.PkgConfigGTKDoc(pkg_config_path, options)
     if '--rebase' not in sys.argv:
-        print "Generating WebKit1 documentation..."
+        print("Generating WebKit1 documentation...")
         saw_webkit1_warnings = generate_doc(generator)
     else:
-        print "Rebasing WebKit1 documentation..."
+        print("Rebasing WebKit1 documentation...")
         try:
             generator.rebase_installed_docs()
-        except Exception,e:
-            print "Rebase did not happen, likely no documentation is present."
+        except Exception:
+            print("Rebase did not happen, likely no documentation is present.")
 
 # WebKit2 might not be enabled, so check for the pkg-config file before building documentation.
 pkg_config_path = common.build_path('Source', 'WebKit2', 'webkit2gtk-3.0.pc')
 if os.path.exists(pkg_config_path):
     generator = gtkdoc.PkgConfigGTKDoc(pkg_config_path, get_webkit2_options())
     if '--rebase' not in sys.argv:
-        print "\nGenerating WebKit2 documentation..."
+        print("\nGenerating WebKit2 documentation...")
         saw_webkit2_warnings = generate_doc(generator)
     else:
-        print "\nRebasing WebKit2 documentation..."
+        print("\nRebasing WebKit2 documentation...")
         try:
             generator.rebase_installed_docs()
-        except Exception,e:
-            print "Rebase did not happen, likely no documentation is present."
+        except Exception:
+            print("Rebase did not happen, likely no documentation is present.")
 
 sys.exit(saw_webkit1_warnings or saw_webkit2_warnings)

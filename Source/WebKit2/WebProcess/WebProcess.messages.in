@@ -51,9 +51,6 @@ messages -> WebProcess {
     SetShouldUseFontSmoothing(bool useFontSmoothing)
     UserPreferredLanguagesChanged(Vector<WTF::String> languages)
     FullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
-#if PLATFORM(WIN)
-    SetShouldPaintNativeControls(bool shouldPaintNativeControls)
-#endif
 #if USE(SOUP)
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
 #endif
@@ -70,8 +67,8 @@ messages -> WebProcess {
     GetSitesWithPluginData(Vector<WTF::String> pluginPaths, uint64_t callbackID)
     ClearPluginSiteData(Vector<WTF::String> pluginPaths, Vector<WTF::String> sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
 #endif
-    DidAddPlugInAutoStartOrigin(uint32_t hash)
-    PlugInAutoStartOriginsChanged(Vector<uint32_t> hashes)
+    DidAddPlugInAutoStartOrigin(uint32_t hash, double expirationTime)
+    ResetPlugInAutoStartOrigins(HashMap<uint32_t,double> hashes)
 
 #if ENABLE(PLUGIN_PROCESS)
     PluginProcessCrashed(String pluginProcess, uint32_t processType) DispatchOnConnectionQueue
@@ -98,16 +95,7 @@ messages -> WebProcess {
 
     PostInjectedBundleMessage(CoreIPC::DataReference messageData);
 
-#if USE(SECURITY_FRAMEWORK)
-    SecItemResponse(uint64_t requestID, WebKit::SecItemResponseData response) DispatchOnConnectionQueue
-#endif
-
 #if PLATFORM(MAC)
     SetApplicationIsOccluded(bool flag);
-#endif
-
-#if ENABLE(CUSTOM_PROTOCOLS)
-    RegisterSchemeForCustomProtocol(WTF::String name)
-    UnregisterSchemeForCustomProtocol(WTF::String name)
 #endif
 }

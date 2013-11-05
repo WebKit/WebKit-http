@@ -68,7 +68,7 @@ void InspectorFrontendClientImpl::windowObjectCleared()
 
     ASSERT(!m_frontendHost);
     m_frontendHost = InspectorFrontendHost::create(this, m_frontendPage);
-    v8::Handle<v8::Value> frontendHostObj = toV8(m_frontendHost.get());
+    v8::Handle<v8::Value> frontendHostObj = toV8(m_frontendHost.get(), v8::Handle<v8::Object>());
     v8::Handle<v8::Object> global = frameContext->Global();
 
     global->Set(v8::String::New("InspectorFrontendHost"), frontendHostObj);
@@ -153,5 +153,26 @@ void InspectorFrontendClientImpl::sendMessageToBackend(const String& message)
 {
     m_client->sendMessageToBackend(message);
 }
+
+bool InspectorFrontendClientImpl::supportsFileSystems()
+{
+    return true;
+}
+
+void InspectorFrontendClientImpl::requestFileSystems()
+{
+    m_client->requestFileSystems();
+}
+
+void InspectorFrontendClientImpl::addFileSystem()
+{
+    m_client->addFileSystem();
+}
+
+void InspectorFrontendClientImpl::removeFileSystem(const String& fileSystemPath)
+{
+    m_client->removeFileSystem(fileSystemPath);
+}
+
 
 } // namespace WebKit

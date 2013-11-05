@@ -30,17 +30,17 @@
 
 #include "DOMStringList.h"
 #include "IDBCallbacksProxy.h"
+#include "IDBCursor.h"
 #include "IDBDatabaseBackendInterface.h"
 #include "IDBDatabaseCallbacksProxy.h"
 #include "IDBKeyRange.h"
 #include "IDBMetadata.h"
-#include "IDBObjectStoreBackendInterface.h"
 #include "IDBTransactionBackendInterface.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBDatabaseCallbacks.h"
+#include "WebIDBKey.h"
 #include "WebIDBKeyRange.h"
 #include "WebIDBMetadata.h"
-#include "WebIDBObjectStoreImpl.h"
 #include "WebIDBTransactionImpl.h"
 
 using namespace WebCore;
@@ -62,20 +62,16 @@ WebIDBMetadata WebIDBDatabaseImpl::metadata() const
     return m_databaseBackend->metadata();
 }
 
-WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(long long id, const WebString& name, const WebIDBKeyPath& keyPath, bool autoIncrement, const WebIDBTransaction& transaction, WebExceptionCode& ec)
+void WebIDBDatabaseImpl::createObjectStore(long long transactionId, long long objectStoreId, const WebString& name, const WebIDBKeyPath& keyPath, bool autoIncrement)
 {
-    RefPtr<IDBObjectStoreBackendInterface> objectStore = m_databaseBackend->createObjectStore(id, name, keyPath, autoIncrement, transaction.getIDBTransactionBackendInterface(), ec);
-    if (!objectStore) {
-        ASSERT(ec);
-        return 0;
-    }
-    return new WebIDBObjectStoreImpl(objectStore);
+    m_databaseBackend->createObjectStore(transactionId, objectStoreId, name, keyPath, autoIncrement);
 }
 
-void WebIDBDatabaseImpl::deleteObjectStore(long long objectStoreId, const WebIDBTransaction& transaction, WebExceptionCode& ec)
+void WebIDBDatabaseImpl::deleteObjectStore(long long transactionId, long long objectStoreId)
 {
-    m_databaseBackend->deleteObjectStore(objectStoreId, transaction.getIDBTransactionBackendInterface(), ec);
+    m_databaseBackend->deleteObjectStore(transactionId, objectStoreId);
 }
+
 
 // FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
 WebIDBTransaction* WebIDBDatabaseImpl::createTransaction(long long id, const WebVector<long long>& objectStoreIds, unsigned short mode)
@@ -147,14 +143,14 @@ void WebIDBDatabaseImpl::get(long long transactionId, long long objectStoreId, l
         m_databaseBackend->get(transactionId, objectStoreId, indexId, keyRange, keyOnly, IDBCallbacksProxy::create(adoptPtr(callbacks)));
 }
 
-void WebIDBDatabaseImpl::put(long long transactionId, long long objectStoreId, const WebVector<unsigned char>& value, const WebIDBKey& key, PutMode putMode, WebIDBCallbacks* callbacks, const WebVector<long long>& webIndexIds, const WebVector<WebIndexKeys>& webIndexKeys)
+void WebIDBDatabaseImpl::put(long long transactionId, long long objectStoreId, WebVector<unsigned char>* value, const WebIDBKey& key, PutMode putMode, WebIDBCallbacks* callbacks, const WebVector<long long>& webIndexIds, const WebVector<WebIndexKeys>& webIndexKeys)
 {
     if (!m_databaseBackend)
         return;
 
     ASSERT(webIndexIds.size() == webIndexKeys.size());
     Vector<int64_t> indexIds(webIndexIds.size());
-    Vector<IDBObjectStoreBackendInterface::IndexKeys> indexKeys(webIndexKeys.size());
+    Vector<IDBDatabaseBackendInterface::IndexKeys> indexKeys(webIndexKeys.size());
 
     for (size_t i = 0; i < webIndexIds.size(); ++i) {
         indexIds[i] = webIndexIds[i];
@@ -165,8 +161,8 @@ void WebIDBDatabaseImpl::put(long long transactionId, long long objectStoreId, c
     }
 
     Vector<uint8_t> valueBuffer;
-    valueBuffer.append(value.data(), value.size());
-    m_databaseBackend->put(transactionId, objectStoreId, valueBuffer, key, static_cast<IDBDatabaseBackendInterface::PutMode>(putMode), IDBCallbacksProxy::create(adoptPtr(callbacks)), indexIds, indexKeys);
+    valueBuffer.append(value->data(), value->size());
+    m_databaseBackend->put(transactionId, objectStoreId, &valueBuffer, key, static_cast<IDBDatabaseBackendInterface::PutMode>(putMode), IDBCallbacksProxy::create(adoptPtr(callbacks)), indexIds, indexKeys);
 }
 
 void WebIDBDatabaseImpl::setIndexKeys(long long transactionId, long long objectStoreId, const WebIDBKey& primaryKey, const WebVector<long long>& webIndexIds, const WebVector<WebIndexKeys>& webIndexKeys)
@@ -176,7 +172,7 @@ void WebIDBDatabaseImpl::setIndexKeys(long long transactionId, long long objectS
 
     ASSERT(webIndexIds.size() == webIndexKeys.size());
     Vector<int64_t> indexIds(webIndexIds.size());
-    Vector<IDBObjectStoreBackendInterface::IndexKeys> indexKeys(webIndexKeys.size());
+    Vector<IDBDatabaseBackendInterface::IndexKeys> indexKeys(webIndexKeys.size());
 
     for (size_t i = 0; i < webIndexIds.size(); ++i) {
         indexIds[i] = webIndexIds[i];
@@ -209,6 +205,18 @@ void WebIDBDatabaseImpl::clear(long long transactionId, long long objectStoreId,
 {
     if (m_databaseBackend)
         m_databaseBackend->clear(transactionId, objectStoreId, IDBCallbacksProxy::create(adoptPtr(callbacks)));
+}
+
+void WebIDBDatabaseImpl::createIndex(long long transactionId, long long objectStoreId, long long indexId, const WebString& name, const WebIDBKeyPath& keyPath, bool unique, bool multiEntry)
+{
+    if (m_databaseBackend)
+        m_databaseBackend->createIndex(transactionId, objectStoreId, indexId, name, keyPath, unique, multiEntry);
+}
+
+void WebIDBDatabaseImpl::deleteIndex(long long transactionId, long long objectStoreId, long long indexId)
+{
+    if (m_databaseBackend)
+        m_databaseBackend->deleteIndex(transactionId, objectStoreId, indexId);
 }
 
 } // namespace WebKit

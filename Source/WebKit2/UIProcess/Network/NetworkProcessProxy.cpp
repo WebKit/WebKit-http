@@ -26,6 +26,8 @@
 #include "config.h"
 #include "NetworkProcessProxy.h"
 
+#if ENABLE(NETWORK_PROCESS)
+
 #include "DownloadProxyMessages.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
@@ -33,7 +35,9 @@
 #include "WebProcessMessages.h"
 #include <WebCore/RunLoop.h>
 
-#if ENABLE(NETWORK_PROCESS)
+#if USE(SECURITY_FRAMEWORK)
+#include "SecItemShimProxy.h"
+#endif
 
 using namespace WebCore;
 
@@ -113,6 +117,9 @@ void NetworkProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, Cor
     if (m_messageReceiverMap.dispatchMessage(connection, messageID, decoder))
         return;
 
+    if (m_webContext->dispatchMessage(connection, messageID, decoder))
+        return;
+
 #if ENABLE(CUSTOM_PROTOCOLS)
     if (messageID.is<CoreIPC::MessageClassCustomProtocolManagerProxy>()) {
         m_customProtocolManagerProxy.didReceiveMessage(connection, messageID, decoder);
@@ -162,6 +169,10 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, CoreIPC:
 {
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
 
+#if USE(SECURITY_FRAMEWORK)
+    connection()->addQueueClient(&SecItemShimProxy::shared());
+#endif
+
     if (CoreIPC::Connection::identifierIsNull(connectionIdentifier)) {
         // FIXME: Do better cleanup here.
         return;
@@ -173,7 +184,7 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, CoreIPC:
     m_numPendingConnectionRequests = 0;
 
 #if PLATFORM(MAC)
-    if (WebContext::applicationIsOccluded())
+    if (WebContext::applicationIsOccluded() && m_webContext->processSuppressionEnabled())
         connection()->send(Messages::NetworkProcess::SetApplicationIsOccluded(true), 0);
 #endif
 }

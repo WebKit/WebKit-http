@@ -28,19 +28,34 @@
 
 #if ENABLE(CUSTOM_PROTOCOLS)
 
+#import "ChildProcess.h"
+#import "CustomProtocolManagerMessages.h"
 #import "CustomProtocolManagerProxyMessages.h"
 #import "DataReference.h"
 #import "WebCoreArgumentCoders.h"
-#import "WebProcess.h"
+#import "WebProcessCreationParameters.h"
 #import <WebCore/KURL.h>
+#import <WebCore/ResourceError.h>
+#import <WebCore/ResourceRequest.h>
+#import <WebCore/ResourceResponse.h>
+
+#if ENABLE(NETWORK_PROCESS)
+#import "NetworkProcessCreationParameters.h"
+#endif
 
 using namespace WebKit;
+
+namespace WebKit {
+
+static CustomProtocolManager* sharedCustomProtocolManager;
 
 static uint64_t generateCustomProtocolID()
 {
     static uint64_t uniqueCustomProtocolID = 0;
     return ++uniqueCustomProtocolID;
 }
+
+} // namespace WebKit
 
 @interface WKCustomProtocol : NSURLProtocol {
 @private
@@ -55,7 +70,7 @@ static uint64_t generateCustomProtocolID()
 
 + (BOOL)canInitWithRequest:(NSURLRequest *)request
 {
-    return CustomProtocolManager::shared().supportsScheme([[[request URL] scheme] lowercaseString]);
+    return sharedCustomProtocolManager->supportsScheme([[[request URL] scheme] lowercaseString]);
 }
 
 + (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request
@@ -75,38 +90,63 @@ static uint64_t generateCustomProtocolID()
         return nil;
     
     _customProtocolID = generateCustomProtocolID();
-    CustomProtocolManager::shared().addCustomProtocol(self);
+    sharedCustomProtocolManager->addCustomProtocol(self);
     return self;
 }
 
 - (void)startLoading
 {
-    CustomProtocolManager::shared().connection()->send(Messages::CustomProtocolManagerProxy::StartLoading(self.customProtocolID, [self request]), 0);
+    sharedCustomProtocolManager->childProcess()->send(Messages::CustomProtocolManagerProxy::StartLoading(self.customProtocolID, [self request]), 0);
 }
 
 - (void)stopLoading
 {
-    CustomProtocolManager::shared().connection()->send(Messages::CustomProtocolManagerProxy::StopLoading(self.customProtocolID), 0);
-    CustomProtocolManager::shared().removeCustomProtocol(self);
+    sharedCustomProtocolManager->childProcess()->send(Messages::CustomProtocolManagerProxy::StopLoading(self.customProtocolID), 0);
+    sharedCustomProtocolManager->removeCustomProtocol(self);
 }
 
 @end
 
 namespace WebKit {
 
-CustomProtocolManager& CustomProtocolManager::shared()
+const AtomicString& CustomProtocolManager::supplementName()
 {
-    DEFINE_STATIC_LOCAL(CustomProtocolManager, customProtocolManager, ());
-    return customProtocolManager;
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("CustomProtocolManager", AtomicString::ConstructFromLiteral));
+    return name;
 }
 
-void CustomProtocolManager::initialize(PassRefPtr<CoreIPC::Connection> connection)
+CustomProtocolManager::CustomProtocolManager(ChildProcess* childProcess)
+    : m_childProcess(childProcess)
 {
-    ASSERT(connection);
-    ASSERT(!CustomProtocolManager::shared().m_connection);
-    CustomProtocolManager::shared().m_connection = connection;
-    [NSURLProtocol registerClass:[WKCustomProtocol class]];
+    m_childProcess->addMessageReceiver(Messages::CustomProtocolManager::messageReceiverName(), this);
+
+    ASSERT(!sharedCustomProtocolManager);
+    sharedCustomProtocolManager = this;
 }
+
+void CustomProtocolManager::initialize(const WebProcessCreationParameters& parameters)
+{
+#if ENABLE(NETWORK_PROCESS)
+    ASSERT(parameters.urlSchemesRegisteredForCustomProtocols.isEmpty() || !parameters.usesNetworkProcess);
+    if (parameters.usesNetworkProcess)
+        return;
+#endif
+
+    [NSURLProtocol registerClass:[WKCustomProtocol class]];
+
+    for (size_t i = 0; i < parameters.urlSchemesRegisteredForCustomProtocols.size(); ++i)
+        registerScheme(parameters.urlSchemesRegisteredForCustomProtocols[i]);
+}
+
+#if ENABLE(NETWORK_PROCESS)
+void CustomProtocolManager::initialize(const NetworkProcessCreationParameters& parameters)
+{
+    [NSURLProtocol registerClass:[WKCustomProtocol class]];
+
+    for (size_t i = 0; i < parameters.urlSchemesRegisteredForCustomProtocols.size(); ++i)
+        registerScheme(parameters.urlSchemesRegisteredForCustomProtocols[i]);
+}
+#endif
 
 void CustomProtocolManager::addCustomProtocol(WKCustomProtocol *customProtocol)
 {

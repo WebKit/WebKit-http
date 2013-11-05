@@ -28,7 +28,6 @@
 
 #import "CustomProtocolManager.h"
 #import "SandboxExtension.h"
-#import "SecItemShimMethods.h"
 #import "WKFullKeyboardAccessWatcher.h"
 #import "WebInspector.h"
 #import "WebPage.h"
@@ -47,6 +46,10 @@
 #import <mach/mach_error.h>
 #import <objc/runtime.h>
 #import <stdio.h>
+
+#if USE(SECURITY_FRAMEWORK)
+#import "SecItemShim.h"
+#endif
 
 #if ENABLE(WEB_PROCESS_SANDBOX)
 #import <pwd.h>
@@ -183,7 +186,7 @@ static void appendReadwriteSandboxDirectory(Vector<const char*>& vector, const c
 
 #endif
 
-void WebProcess::initializeSandbox(const String& clientIdentifier)
+void WebProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters)
 {
     [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
 
@@ -196,7 +199,7 @@ void WebProcess::initializeSandbox(const String& clientIdentifier)
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     // Use private temporary and cache directories.
-    String systemDirectorySuffix = "com.apple.WebProcess+" + clientIdentifier;
+    String systemDirectorySuffix = "com.apple.WebProcess+" + parameters.clientIdentifier;
     setenv("DIRHELPER_USER_DIR_SUFFIX", fileSystemRepresentation(systemDirectorySuffix).data(), 0);
     char temporaryDirectory[PATH_MAX];
     if (!confstr(_CS_DARWIN_USER_TEMP_DIR, temporaryDirectory, sizeof(temporaryDirectory))) {
@@ -270,28 +273,19 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     SandboxExtension::consumePermanently(parameters.applicationCacheDirectoryExtensionHandle);
     SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
 
-#if ENABLE(NETWORK_PROCESS)
-    if (!parameters.usesNetworkProcess) {
-#endif
-        if (!parameters.diskCacheDirectory.isNull()) {
-            NSUInteger cacheMemoryCapacity = parameters.nsURLCacheMemoryCapacity;
-            NSUInteger cacheDiskCapacity = parameters.nsURLCacheDiskCapacity;
+    // FIXME (NetworkProcess): This should not be necessary once all loading is in NetworkProcess.
+    if (!parameters.diskCacheDirectory.isNull()) {
+        NSUInteger cacheMemoryCapacity = parameters.nsURLCacheMemoryCapacity;
+        NSUInteger cacheDiskCapacity = parameters.nsURLCacheDiskCapacity;
 
-            RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.diskCacheDirectory]);
-            [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
-        }
-#if ENABLE(NETWORK_PROCESS)
+        RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.diskCacheDirectory]);
+        [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
     }
-#endif
 
     m_shouldForceScreenFontSubstitution = parameters.shouldForceScreenFontSubstitution;
     Font::setDefaultTypesettingFeatures(parameters.shouldEnableKerningAndLigaturesByDefault ? Kerning | Ligatures : 0);
 
     m_compositingRenderServerPort = parameters.acceleratedCompositingPort.port();
-
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    m_notificationManager.initialize(parameters.notificationPermissions);
-#endif
 
     m_presenterApplicationPid = parameters.presenterApplicationPid;
 
@@ -301,9 +295,23 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
     method_setImplementation(methodToPatch, (IMP)NSApplicationAccessibilityFocusedUIElement);
 }
 
-void WebProcess::initializeShim()
+void WebProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
 {
-    initializeSecItemShim();
+    if (!parameters.uiProcessName.isNull()) {
+        NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
+        WKSetVisibleApplicationName((CFStringRef)applicationName);
+    }
+}
+
+void WebProcess::platformInitializeProcess(const ChildProcessInitializationParameters&)
+{
+    RunLoop::setUseApplicationRunLoopOnMainRunLoop();
+
+    WKAXRegisterRemoteApp();
+
+#if USE(SECURITY_FRAMEWORK)
+    SecItemShim::shared().initialize(this);
+#endif
 }
 
 void WebProcess::platformTerminate()
@@ -313,11 +321,6 @@ void WebProcess::platformTerminate()
         dispatch_release(m_clearResourceCachesDispatchGroup);
         m_clearResourceCachesDispatchGroup = 0;
     }
-}
-
-void WebProcess::secItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecItemResponseData& response)
-{
-    didReceiveSecItemResponse(requestID, response);
 }
 
 } // namespace WebKit

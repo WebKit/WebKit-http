@@ -208,6 +208,9 @@ void DocumentLoader::mainReceivedError(const ResourceError& error)
 // but not loads initiated by child frames' data sources -- that's the WebFrame's job.
 void DocumentLoader::stopLoading()
 {
+    RefPtr<Frame> protectFrame(m_frame);
+    RefPtr<DocumentLoader> protectLoader(this);
+
     // In some rare cases, calling FrameLoader::stopLoading could cause isLoading() to return false.
     // (This can happen when there's a single XMLHttpRequest currently loading and stopLoading causes it
     // to stop loading. Because of this, we need to save it so we don't return early.
@@ -244,9 +247,6 @@ void DocumentLoader::stopLoading()
     // See <rdar://problem/9673866> for more details.
     if (m_isStopping)
         return;
-    
-    RefPtr<Frame> protectFrame(m_frame);
-    RefPtr<DocumentLoader> protectLoader(this);
 
     m_isStopping = true;
 
@@ -360,7 +360,9 @@ void DocumentLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
     info.addMember(m_frame);
+    info.addMember(m_cachedResourceLoader);
     info.addMember(m_mainResourceLoader);
+    info.addMember(m_mainResourceData);
     info.addMember(m_subresourceLoaders);
     info.addMember(m_multipartSubresourceLoaders);
     info.addMember(m_plugInStreamLoaders);
@@ -375,10 +377,18 @@ void DocumentLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_lastCheckedRequest);
     info.addMember(m_responses);
     info.addMember(m_pendingSubstituteResources);
+    info.addMember(m_substituteResourceDeliveryTimer);
+    info.addMember(m_archiveResourceCollection);
+#if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
+    info.addMember(m_archive);
+    info.addMember(m_parsedArchiveData);
+#endif
     info.addMember(m_resourcesClientKnowsAbout);
     info.addMember(m_resourcesLoadedFromMemoryCacheForClientNotification);
     info.addMember(m_clientRedirectSourceForHistory);
-    info.addMember(m_mainResourceData);
+    info.addMember(m_iconLoadDecisionCallback);
+    info.addMember(m_iconDataCallback);
+    info.addMember(m_applicationCacheHost);
 }
 
 void DocumentLoader::receivedData(const char* data, int length)
@@ -884,6 +894,8 @@ void DocumentLoader::startLoadingMainResource()
 
     // FIXME: Is there any way the extra fields could have not been added by now?
     // If not, it would be great to remove this line of code.
+    // Note that currently, some requests may have incorrect extra fields even if this function has been called,
+    // because we pass a wrong loadType (see FIXME in addExtraFieldsToMainResourceRequest()).
     frameLoader()->addExtraFieldsToMainResourceRequest(m_request);
     m_mainResourceLoader->load(m_request, m_substituteData);
 

@@ -38,7 +38,6 @@ class PageClientBase : public PageClient {
 public:
     virtual ~PageClientBase();
 
-    // Called from the view
     virtual void didCommitLoad() = 0;
     virtual void updateViewportSize() = 0;
     virtual void didChangeContentsSize(const WebCore::IntSize&) = 0;
@@ -52,6 +51,7 @@ protected:
     virtual PassOwnPtr<DrawingAreaProxy> createDrawingAreaProxy();
     virtual void setViewNeedsDisplay(const WebCore::IntRect&);
     virtual void displayView();
+    virtual bool canScrollView() { return false; }
     virtual void scrollView(const WebCore::IntRect&, const WebCore::IntSize&);
     virtual WebCore::IntSize viewSize();
     virtual bool isViewWindowActive();

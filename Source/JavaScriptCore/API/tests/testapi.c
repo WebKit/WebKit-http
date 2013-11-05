@@ -48,8 +48,12 @@ static double nan(const char*)
 
 #endif
 
+#if JS_OBJC_API_ENABLED
+void testObjectiveCAPI(void);
+#endif
+
 static JSGlobalContextRef context;
-static int failed;
+int failed;
 static void assertEqualsAsBoolean(JSValueRef value, bool expectedValue)
 {
     if (JSValueToBoolean(context, value) != expectedValue) {
@@ -1040,6 +1044,10 @@ int main(int argc, char* argv[])
     ::SetErrorMode(0);
 #endif
 
+#if JS_OBJC_API_ENABLED
+    testObjectiveCAPI();
+#endif
+
     const char *scriptPath = "testapi.js";
     if (argc > 1) {
         scriptPath = argv[1];
@@ -1047,7 +1055,6 @@ int main(int argc, char* argv[])
     
     // Test garbage collection with a fresh context
     context = JSGlobalContextCreateInGroup(NULL, NULL);
-    JSContextGroupRef contextGroup = JSContextGetGroup(context);
     TestInitializeFinalize = true;
     testInitializeFinalize();
     JSGlobalContextRelease(context);
@@ -1063,6 +1070,8 @@ int main(int argc, char* argv[])
     JSClassRef globalObjectClass = JSClassCreate(&globalObjectClassDefinition);
     context = JSGlobalContextCreateInGroup(NULL, globalObjectClass);
 
+    JSContextGroupRef contextGroup = JSContextGetGroup(context);
+    
     JSGlobalContextRetain(context);
     JSGlobalContextRelease(context);
     ASSERT(JSContextGetGlobalContext(context) == context);

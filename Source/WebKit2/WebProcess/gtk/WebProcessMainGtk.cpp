@@ -30,6 +30,8 @@
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
 
 #include "WKBase.h"
+#include <WebCore/AuthenticationChallenge.h>
+#include <WebCore/NetworkingContext.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/RunLoop.h>
 #include <WebKit2/WebProcess.h>
@@ -61,7 +63,11 @@ WK_EXPORT int WebProcessMainGtk(int argc, char* argv[])
 
     RunLoop::initializeMainRunLoop();
     int socket = atoi(argv[1]);
-    WebProcess::shared().initialize(socket, RunLoop::main());
+
+    ChildProcessInitializationParameters parameters;
+    parameters.connectionIdentifier = socket;
+
+    WebProcess::shared().initialize(parameters);
 
     // Despite using system CAs to validate certificates we're
     // accepting invalid certificates by default. New API will be

@@ -31,12 +31,22 @@
 #import "NetworkProcessCreationParameters.h"
 #import "PlatformCertificateInfo.h"
 #import "SandboxExtension.h"
+#import "StringUtilities.h"
+#import <WebCore/FileSystem.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebKitSystemInterface.h>
 #import <mach/host_info.h>
 #import <mach/mach.h>
 #import <mach/mach_error.h>
+#import <sysexits.h>
 #import <wtf/text/WTFString.h>
+
+#if USE(SECURITY_FRAMEWORK)
+#import "SecItemShim.h"
+#endif
+
+// Define this to 1 to bypass the sandbox for debugging purposes.
+#define DEBUG_BYPASS_SANDBOX 0
 
 using namespace WebCore;
 
@@ -46,7 +56,81 @@ using namespace WebCore;
 
 namespace WebKit {
 
-void NetworkProcess::platformInitialize(const NetworkProcessCreationParameters& parameters)
+void NetworkProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
+{
+    if (!parameters.uiProcessName.isNull()) {
+        NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Networking", "visible name of the network process. The argument is the application name."), (NSString *)parameters.uiProcessName];
+        WKSetVisibleApplicationName((CFStringRef)applicationName);
+    }
+}
+
+void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters)
+{
+    [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
+
+#if DEBUG_BYPASS_SANDBOX
+    WTFLogAlways("Bypassing network process sandbox.\n");
+    return;
+#endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+    // Use private temporary and cache directories.
+    String systemDirectorySuffix = "com.apple.WebKit.NetworkProcess+" + parameters.clientIdentifier;
+    setenv("DIRHELPER_USER_DIR_SUFFIX", fileSystemRepresentation(systemDirectorySuffix).data(), 0);
+    char temporaryDirectory[PATH_MAX];
+    if (!confstr(_CS_DARWIN_USER_TEMP_DIR, temporaryDirectory, sizeof(temporaryDirectory))) {
+        WTFLogAlways("NetworkProcess: couldn't retrieve private temporary directory path: %d\n", errno);
+        exit(EX_NOPERM);
+    }
+    setenv("TMPDIR", temporaryDirectory, 1);
+#endif
+
+    // FIXME (NetworkProcess): <rdar://problem/12772605> Actually initialize the sandbox.
+
+    // This will override LSFileQuarantineEnabled from Info.plist unless sandbox quarantine is globally disabled.
+    OSStatus error = WKEnableSandboxStyleFileQuarantine();
+    if (error) {
+        WTFLogAlways("NetworkProcess: Couldn't enable sandbox style file quarantine: %ld\n", (long)error);
+        exit(EX_NOPERM);
+    }
+}
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+static void overrideSystemProxies(const String& httpProxy, const String& httpsProxy)
+{
+    NSMutableDictionary *proxySettings = [NSMutableDictionary dictionary];
+
+    if (!httpProxy.isNull()) {
+        KURL httpProxyURL(KURL(), httpProxy);
+        if (httpProxyURL.isValid()) {
+            [proxySettings setObject:nsStringFromWebCoreString(httpProxyURL.host()) forKey:(NSString *)kCFNetworkProxiesHTTPProxy];
+            if (httpProxyURL.hasPort()) {
+                NSNumber *port = [NSNumber numberWithInt:httpProxyURL.port()];
+                [proxySettings setObject:port forKey:(NSString *)kCFNetworkProxiesHTTPPort];
+            }
+        }
+        else
+            NSLog(@"Malformed HTTP Proxy URL '%s'.  Expected 'http://<hostname>[:<port>]'\n", httpProxy.utf8().data());
+    }
+
+    if (!httpsProxy.isNull()) {
+        KURL httpsProxyURL(KURL(), httpsProxy);
+        if (httpsProxyURL.isValid()) {
+            [proxySettings setObject:nsStringFromWebCoreString(httpsProxyURL.host()) forKey:(NSString *)kCFNetworkProxiesHTTPSProxy];
+            if (httpsProxyURL.hasPort()) {
+                NSNumber *port = [NSNumber numberWithInt:httpsProxyURL.port()];
+                [proxySettings setObject:port forKey:(NSString *)kCFNetworkProxiesHTTPSPort];
+            }
+        } else
+            NSLog(@"Malformed HTTPS Proxy URL '%s'.  Expected 'https://<hostname>[:<port>]'\n", httpsProxy.utf8().data());
+    }
+
+    if ([proxySettings count] > 0)
+        WKCFNetworkSetOverrideSystemProxySettings((CFDictionaryRef)proxySettings);
+}
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+
+void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
     m_diskCacheDirectory = parameters.diskCacheDirectory;
 
@@ -59,11 +143,14 @@ void NetworkProcess::platformInitialize(const NetworkProcessCreationParameters& 
         [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
     }
 
-    // FIXME: This should be moved to earlier in the setup process, as this won't work once sandboxing is enable.
-    NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Networking", "visible name of the network process. The argument is the application name."),
-        (NSString *)parameters.parentProcessName];
-    
-    WKSetVisibleApplicationName((CFStringRef)applicationName);
+#if USE(SECURITY_FRAMEWORK)
+    SecItemShim::shared().initialize(this);
+#endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+    if (!parameters.httpProxy.isNull() || !parameters.httpsProxy.isNull())
+        overrideSystemProxies(parameters.httpProxy, parameters.httpsProxy);
+#endif
 }
 
 static uint64_t memorySize()

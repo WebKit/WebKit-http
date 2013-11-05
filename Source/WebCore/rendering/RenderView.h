@@ -44,7 +44,7 @@ class CustomFilterGlobalContext;
 
 class RenderView : public RenderBlock {
 public:
-    RenderView(Node*, FrameView*);
+    RenderView(Document*);
     virtual ~RenderView();
 
     bool hitTest(const HitTestRequest&, HitTestResult&);
@@ -61,11 +61,8 @@ public:
     virtual void layout() OVERRIDE;
     virtual void updateLogicalWidth() OVERRIDE;
     virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
-    // FIXME: This override is not needed and should be removed
-    // it only exists to make computePreferredLogicalWidths public.
-    virtual void computePreferredLogicalWidths() OVERRIDE;
 
-    virtual LayoutUnit availableLogicalHeight() const OVERRIDE;
+    virtual LayoutUnit availableLogicalHeight(AvailableLogicalHeightType) const OVERRIDE;
 
     // The same as the FrameView's layoutHeight/layoutWidth but with null check guards.
     int viewHeight() const;
@@ -95,6 +92,7 @@ public:
     RenderObject* selectionEnd() const { return m_selectionEnd; }
     IntRect selectionBounds(bool clipToVisibleContent = true) const;
     void selectionStartEnd(int& startPos, int& endPos) const;
+    void repaintSelection() const;
 
     bool printing() const;
 

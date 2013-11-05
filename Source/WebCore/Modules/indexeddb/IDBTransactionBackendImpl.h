@@ -52,7 +52,6 @@ public:
     virtual ~IDBTransactionBackendImpl();
 
     // IDBTransactionBackendInterface
-    virtual PassRefPtr<IDBObjectStoreBackendInterface> objectStore(int64_t, ExceptionCode&);
     virtual void abort();
     void commit();
     virtual void setCallbacks(IDBTransactionCallbacks* callbacks) { m_callbacks = callbacks; }
@@ -76,6 +75,8 @@ public:
     void didCompletePreemptiveEvent() { m_pendingPreemptiveEvents--; ASSERT(m_pendingPreemptiveEvents >= 0); }
     IDBBackingStore::Transaction* backingStoreTransaction() { return &m_transaction; }
     int64_t id() const { return m_id; }
+
+    IDBDatabaseBackendImpl* database() const { return m_database.get(); }
 
 private:
     IDBTransactionBackendImpl(int64_t id, const HashSet<int64_t>& objectStoreIds, IDBTransaction::Mode, IDBDatabaseBackendImpl*);

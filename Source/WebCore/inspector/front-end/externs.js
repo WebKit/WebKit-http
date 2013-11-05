@@ -138,6 +138,17 @@ DOMApplicationCache.prototype.DOWNLOADING = 3;
 DOMApplicationCache.prototype.UPDATEREADY = 4;
 DOMApplicationCache.prototype.OBSOLETE = 5;
 
+// File System API
+/**
+ * @constructor
+ */
+function DOMFileSystem() {}
+
+/**
+ * @type {DirectoryEntry}
+ */
+DOMFileSystem.prototype.root = null;
+
 /** @type {Node} */
 Range.prototype.startContainer;
 
@@ -171,6 +182,11 @@ InspectorFrontendHostAPI.prototype.recordActionTaken = function(actionCode) {}
 InspectorFrontendHostAPI.prototype.recordPanelShown = function(panelCode) {}
 InspectorFrontendHostAPI.prototype.recordSettingChanged = function(settingCode) {}
 InspectorFrontendHostAPI.prototype.loadResourceSynchronously = function(url) {}
+InspectorFrontendHostAPI.prototype.supportsFileSystems = function() {}
+InspectorFrontendHostAPI.prototype.requestFileSystems = function() {}
+InspectorFrontendHostAPI.prototype.addFileSystem = function() {}
+InspectorFrontendHostAPI.prototype.removeFileSystem = function(fileSystemPath) {}
+InspectorFrontendHostAPI.prototype.isolatedFileSystem = function(fileSystemId, registeredName) {}
 InspectorFrontendHostAPI.prototype.setZoomFactor = function(zoom) {}
 InspectorFrontendHostAPI.prototype.canInspectWorkers = function() {}
 /** @type {InspectorFrontendHostAPI} */
@@ -308,3 +324,7 @@ difflib.SequenceMatcher.prototype.get_opcodes = function() { return []; }
 WebInspector.CodeMirrorTextEditor = function(url, delegate) { }
 
 WebInspector.ProfileURLRegExp = "";
+
+
+/** @type {boolean} */
+window.dispatchStandaloneTestRunnerMessages;

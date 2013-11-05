@@ -28,7 +28,6 @@
 #include "LayerTreeHost.h"
 #include "Timer.h"
 #include "UpdateAtlas.h"
-#include "WebCoordinatedSurface.h"
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/GraphicsLayerFactory.h>
 #include <wtf/OwnPtr.h>
@@ -39,6 +38,7 @@
 
 namespace WebKit {
 
+class CoordinatedSurface;
 class UpdateInfo;
 class WebPage;
 
@@ -107,7 +107,7 @@ public:
     virtual PassOwnPtr<WebCore::GraphicsContext> beginContentUpdate(const WebCore::IntSize&, CoordinatedSurface::Flags, uint32_t& atlasID, WebCore::IntPoint&);
 
     // UpdateAtlasClient
-    virtual void createUpdateAtlas(uint32_t atlasID, const WebCoordinatedSurface::Handle&);
+    virtual bool createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface>) OVERRIDE;
     virtual void removeUpdateAtlas(uint32_t atlasID);
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
@@ -126,7 +126,7 @@ private:
 
     // CoordinatedImageBacking::Coordinator
     virtual void createImageBacking(CoordinatedImageBackingID) OVERRIDE;
-    virtual void updateImageBacking(CoordinatedImageBackingID, const WebCoordinatedSurface::Handle&) OVERRIDE;
+    virtual bool updateImageBacking(CoordinatedImageBackingID, PassRefPtr<CoordinatedSurface>) OVERRIDE;
     virtual void clearImageBackingContents(CoordinatedImageBackingID) OVERRIDE;
     virtual void removeImageBacking(CoordinatedImageBackingID) OVERRIDE;
 
@@ -140,6 +140,8 @@ private:
     void createPageOverlayLayer();
     void destroyPageOverlayLayer();
     bool flushPendingLayerChanges();
+    void createCompositingLayers();
+    void deleteCompositingLayers();
     void cancelPendingLayerFlush();
     void performScheduledLayerFlush();
     void didPerformScheduledLayerFlush();
@@ -173,7 +175,8 @@ private:
     OwnPtr<WebCore::GraphicsLayer> m_pageOverlayLayer;
 
     HashSet<WebCore::CoordinatedGraphicsLayer*> m_registeredLayers;
-    Vector<CoordinatedLayerID> m_detachedLayers;
+    Vector<CoordinatedLayerID> m_layersToCreate;
+    Vector<CoordinatedLayerID> m_layersToDelete;
     typedef HashMap<CoordinatedImageBackingID, RefPtr<CoordinatedImageBacking> > ImageBackingMap;
     ImageBackingMap m_imageBackings;
     Vector<OwnPtr<UpdateAtlas> > m_updateAtlases;

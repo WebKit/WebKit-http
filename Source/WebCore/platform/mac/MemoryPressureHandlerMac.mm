@@ -32,8 +32,12 @@
 #import <WebCore/MemoryCache.h>
 #import <WebCore/PageCache.h>
 #import <WebCore/LayerPool.h>
+#import <WebCore/ScrollingThread.h>
+#import <WebCore/StorageThread.h>
+#import <WebCore/WorkerThread.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/FastMalloc.h>
+#import <wtf/Functional.h>
 
 #if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #import "WebCoreSystemInterface.h"
@@ -85,15 +89,19 @@ void MemoryPressureHandler::uninstall()
     if (!m_installed)
         return;
 
-    dispatch_source_cancel(_cache_event_source);
-    dispatch_release(_cache_event_source);
-    _cache_event_source = 0;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (_cache_event_source) {
+            dispatch_source_cancel(_cache_event_source);
+            dispatch_release(_cache_event_source);
+            _cache_event_source = 0;
+        }
 
-    if (_timer_event_source) {
-        dispatch_source_cancel(_timer_event_source);
-        dispatch_release(_timer_event_source);
-        _timer_event_source = 0;
-    }
+        if (_timer_event_source) {
+            dispatch_source_cancel(_timer_event_source);
+            dispatch_release(_timer_event_source);
+            _timer_event_source = 0;
+        }
+    });
 
     m_installed = false;
     
@@ -156,6 +164,14 @@ void MemoryPressureHandler::releaseMemory(bool critical)
 
     gcController().discardAllCompiledCode();
 
+    // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
+    StorageThread::releaseFastMallocFreeMemoryInAllThreads();
+#if ENABLE(WORKERS)
+    WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
+#endif
+#if ENABLE(THREADED_SCROLLING)
+    ScrollingThread::dispatch(bind(WTF::releaseFastMallocFreeMemory));
+#endif
     WTF::releaseFastMallocFreeMemory();
 }
 #endif

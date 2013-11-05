@@ -57,7 +57,7 @@ typedef String ErrorString;
 class InspectorDOMDebuggerAgent : public InspectorBaseAgent<InspectorDOMDebuggerAgent>, public InspectorDebuggerAgent::Listener, public InspectorBackendDispatcher::DOMDebuggerCommandHandler {
     WTF_MAKE_NONCOPYABLE(InspectorDOMDebuggerAgent);
 public:
-    static PassOwnPtr<InspectorDOMDebuggerAgent> create(InstrumentingAgents*, InspectorState*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
+    static PassOwnPtr<InspectorDOMDebuggerAgent> create(InstrumentingAgents*, InspectorCompositeState*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
 
     virtual ~InspectorDOMDebuggerAgent();
 
@@ -81,15 +81,19 @@ public:
     void willSendXMLHttpRequest(const String& url);
     void pauseOnNativeEventIfNeeded(bool isDOMEvent, const String& eventName, bool synchronous);
 
+    void didProcessTask();
+
     virtual void clearFrontend();
     virtual void discardAgent();
 
 private:
-    InspectorDOMDebuggerAgent(InstrumentingAgents*, InspectorState*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
+    InspectorDOMDebuggerAgent(InstrumentingAgents*, InspectorCompositeState*, InspectorDOMAgent*, InspectorDebuggerAgent*, InspectorAgent*);
 
     // InspectorDebuggerAgent::Listener implementation.
     virtual void debuggerWasEnabled();
     virtual void debuggerWasDisabled();
+    virtual void stepInto();
+    virtual void didPause();
     void disable();
 
     void descriptionForDOMEvent(Node* target, int breakpointType, bool insertion, InspectorObject* description);
@@ -104,6 +108,7 @@ private:
     InspectorDOMAgent* m_domAgent;
     InspectorDebuggerAgent* m_debuggerAgent;
     HashMap<Node*, uint32_t> m_domBreakpoints;
+    bool m_pauseInNextEventListener;
 };
 
 } // namespace WebCore

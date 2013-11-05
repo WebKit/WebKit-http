@@ -35,6 +35,7 @@
 #include "JSGlobalObject.h"
 #include "JSLock.h"
 #include "JSONObject.h"
+#include "Operations.h"
 #include "Tracing.h"
 #include "UnlinkedCodeBlock.h"
 #include "WeakSetInlines.h"
@@ -491,6 +492,8 @@ void Heap::markRoots(bool fullGC)
             for (size_t i = 0; i < m_globalData->codeBlocksBeingCompiled.size(); i++)
                 m_globalData->codeBlocksBeingCompiled[i]->visitAggregate(visitor);
         }
+
+        m_globalData->smallStrings.visitStrongReferences(visitor);
 
         {
             GCPHASE(VisitMachineRoots);

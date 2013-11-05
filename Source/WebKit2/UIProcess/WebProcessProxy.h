@@ -51,11 +51,6 @@ namespace WebCore {
 
 namespace WebKit {
 
-#if USE(SECURITY_FRAMEWORK)
-class SecItemRequestData;
-class SecItemResponseData;
-#endif
-
 class DownloadProxyMap;
 class WebBackForwardListItem;
 class WebContext;
@@ -153,19 +148,12 @@ private:
     void getSharedWorkerProcessConnection(const String& url, const String& name, PassRefPtr<Messages::WebProcessProxy::GetSharedWorkerProcessConnection::DelayedReply>);
 #endif
 
-#if USE(SECURITY_FRAMEWORK)
-    void secItemRequest(CoreIPC::Connection*, uint64_t requestID, const SecItemRequestData&);
-#endif
-
     // CoreIPC::Connection::Client
     friend class WebConnectionToWebProcess;
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
     virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*) OVERRIDE;
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
-#if PLATFORM(WIN)
-    virtual Vector<HWND> windowsToReceiveSentMessagesWhileWaitingForSyncReply() OVERRIDE;
-#endif
 
     // CoreIPC::Connection::QueueClient
     virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, bool& didHandleMessage) OVERRIDE;

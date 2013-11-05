@@ -37,6 +37,7 @@
 #include "GraphicsContext.h"
 #include "MessageID.h"
 #include "SurfaceUpdateInfo.h"
+#include "WebCoordinatedSurface.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
@@ -203,6 +204,10 @@ void CoordinatedLayerTreeHost::forceRepaint()
 
 bool CoordinatedLayerTreeHost::forceRepaintAsync(uint64_t callbackID)
 {
+    // Avoid deadlocks when the UI process has requested a forceRepaint by falling back to a synchronous repaint, see caller WebPage::forceRepaint.
+    if (m_waitingForUIProcess)
+        return false;
+
     // We expect the UI process to not require a new repaint until the previous one has finished.
     ASSERT(!m_forceRepaintAsyncCallbackID);
     m_forceRepaintAsyncCallbackID = callbackID;
@@ -269,6 +274,8 @@ bool CoordinatedLayerTreeHost::flushPendingLayerChanges()
 
     TemporaryChange<bool> protector(m_isFlushingLayerChanges, true);
 
+    createCompositingLayers();
+
     initializeRootCompositingLayerIfNeeded();
 
     m_rootLayer->flushCompositingStateForThisLayerOnly();
@@ -280,9 +287,7 @@ bool CoordinatedLayerTreeHost::flushPendingLayerChanges()
 
     flushPendingImageBackingChanges();
 
-    for (size_t i = 0; i < m_detachedLayers.size(); ++i)
-        m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::DeleteCompositingLayer(m_detachedLayers[i]));
-    m_detachedLayers.clear();
+    deleteCompositingLayers();
 
     if (m_shouldSyncFrame) {
         didSync = true;
@@ -301,6 +306,42 @@ bool CoordinatedLayerTreeHost::flushPendingLayerChanges()
     }
 
     return didSync;
+}
+
+void CoordinatedLayerTreeHost::createCompositingLayers()
+{
+    if (m_layersToCreate.isEmpty())
+        return;
+
+    // If a layer gets created and deleted in the same cycle, we can simply remove it from m_layersToCreate and m_layersToDelete.
+    for (int i = m_layersToCreate.size() - 1; i >= 0; --i) {
+        size_t index = m_layersToDelete.find(m_layersToCreate[i]);
+        if (index != notFound) {
+            m_layersToCreate.remove(i);
+            m_layersToDelete.remove(index);
+        }
+    }
+
+    for (size_t i = 0; i < m_layersToCreate.size(); ++i)
+        m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::CreateCompositingLayer(m_layersToCreate[i]));
+    m_layersToCreate.clear();
+    m_shouldSyncFrame = true;
+}
+
+void CoordinatedLayerTreeHost::deleteCompositingLayers()
+{
+    if (m_layersToDelete.isEmpty())
+        return;
+
+    if (m_isPurging) {
+        m_layersToDelete.clear();
+        return;
+    }
+
+    for (size_t i = 0; i < m_layersToDelete.size(); ++i)
+        m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::DeleteCompositingLayer(m_layersToDelete[i]));
+    m_layersToDelete.clear();
+    m_shouldSyncFrame = true;
 }
 
 void CoordinatedLayerTreeHost::initializeRootCompositingLayerIfNeeded()
@@ -422,8 +463,7 @@ void CoordinatedLayerTreeHost::disconnectCustomFilterPrograms()
 void CoordinatedLayerTreeHost::detachLayer(CoordinatedGraphicsLayer* layer)
 {
     m_registeredLayers.remove(layer);
-    m_shouldSyncFrame = true;
-    m_detachedLayers.append(layer->id());
+    m_layersToDelete.append(layer->id());
     scheduleLayerFlush();
 }
 
@@ -578,10 +618,15 @@ void CoordinatedLayerTreeHost::createImageBacking(CoordinatedImageBackingID imag
     m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::CreateImageBacking(imageID));
 }
 
-void CoordinatedLayerTreeHost::updateImageBacking(CoordinatedImageBackingID imageID, const WebCoordinatedSurface::Handle& handle)
+bool CoordinatedLayerTreeHost::updateImageBacking(CoordinatedImageBackingID imageID, PassRefPtr<CoordinatedSurface> coordinatedSurface)
 {
     m_shouldSyncFrame = true;
+    WebCoordinatedSurface* webCoordinatedSurface = static_cast<WebCoordinatedSurface*>(coordinatedSurface.get());
+    WebCoordinatedSurface::Handle handle;
+    if (!webCoordinatedSurface->createHandle(handle))
+        return false;
     m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::UpdateImageBacking(imageID, handle));
+    return true;
 }
 
 void CoordinatedLayerTreeHost::clearImageBackingContents(CoordinatedImageBackingID imageID)
@@ -637,8 +682,10 @@ PassOwnPtr<GraphicsLayer> CoordinatedLayerTreeHost::createGraphicsLayer(Graphics
     CoordinatedGraphicsLayer* layer = new CoordinatedGraphicsLayer(client);
     layer->setCoordinator(this);
     m_registeredLayers.add(layer);
+    m_layersToCreate.append(layer->id());
     layer->setContentsScale(m_contentsScale);
     layer->setNeedsVisibleRectAdjustment();
+    scheduleLayerFlush();
     return adoptPtr(layer);
 }
 
@@ -667,9 +714,14 @@ void CoordinatedLayerTreeHost::removeTile(CoordinatedLayerID layerID, uint32_t t
     m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::RemoveTileForLayer(layerID, tileID));
 }
 
-void CoordinatedLayerTreeHost::createUpdateAtlas(uint32_t atlasID, const WebCoordinatedSurface::Handle& handle)
+bool CoordinatedLayerTreeHost::createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface> coordinatedSurface)
 {
+    WebCoordinatedSurface* webCoordinatedSurface = static_cast<WebCoordinatedSurface*>(coordinatedSurface.get());
+    WebCoordinatedSurface::Handle handle;
+    if (!webCoordinatedSurface->createHandle(handle))
+        return false;
     m_webPage->send(Messages::CoordinatedLayerTreeHostProxy::CreateUpdateAtlas(atlasID, handle));
+    return true;
 }
 
 void CoordinatedLayerTreeHost::removeUpdateAtlas(uint32_t atlasID)

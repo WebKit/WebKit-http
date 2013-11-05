@@ -302,6 +302,22 @@ namespace JSC {
 
         NativeFunction function() { return m_function; }
         NativeFunction constructor() { return m_constructor; }
+        
+        NativeFunction nativeFunctionFor(CodeSpecializationKind kind)
+        {
+            if (kind == CodeForCall)
+                return function();
+            ASSERT(kind == CodeForConstruct);
+            return constructor();
+        }
+        
+        static ptrdiff_t offsetOfNativeFunctionFor(CodeSpecializationKind kind)
+        {
+            if (kind == CodeForCall)
+                return OBJECT_OFFSETOF(NativeExecutable, m_function);
+            ASSERT(kind == CodeForConstruct);
+            return OBJECT_OFFSETOF(NativeExecutable, m_constructor);
+        }
 
         static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue proto) { return Structure::create(globalData, globalObject, proto, TypeInfo(LeafType, StructureFlags), &s_info); }
         
@@ -484,7 +500,7 @@ namespace JSC {
         }
 
 
-        JSObject* initalizeGlobalProperties(JSGlobalData&, CallFrame*, JSScope*);
+        JSObject* initializeGlobalProperties(JSGlobalData&, CallFrame*, JSScope*);
 
         static void destroy(JSCell*);
 
@@ -580,8 +596,6 @@ namespace JSC {
             ASSERT(m_codeBlockForConstruct);
             return *m_codeBlockForConstruct;
         }
-        
-        FunctionCodeBlock* codeBlockWithBytecodeFor(CodeSpecializationKind);
         
         PassOwnPtr<FunctionCodeBlock> produceCodeBlockFor(JSScope*, CodeSpecializationKind, JSObject*& exception);
 

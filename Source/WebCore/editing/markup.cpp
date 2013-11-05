@@ -54,6 +54,7 @@
 #include "NodeTraversal.h"
 #include "Range.h"
 #include "RenderObject.h"
+#include "Settings.h"
 #include "StylePropertySet.h"
 #include "StyleResolver.h"
 #include "TextIterator.h"
@@ -663,6 +664,10 @@ PassRefPtr<DocumentFragment> createFragmentFromMarkup(Document* document, const 
     // We use a fake body element here to trick the HTML parser to using the InBody insertion mode.
     RefPtr<HTMLBodyElement> fakeBody = HTMLBodyElement::create(document);
     RefPtr<DocumentFragment> fragment = DocumentFragment::create(document);
+
+    if (scriptingPermission == DisallowScriptingAndPluginContentIfNeeded && (!document->settings() || document->settings()->unsafePluginPastingEnabled()))
+        scriptingPermission = DisallowScriptingContent;
+
     fragment->parseHTML(markup, fakeBody.get(), scriptingPermission);
 
     if (!baseURL.isEmpty() && baseURL != blankURL() && baseURL != document->baseURL())
@@ -996,7 +1001,7 @@ PassRefPtr<DocumentFragment> createFragmentForInnerOuterHTML(const String& marku
     Document* document = contextElement->document();
 #if ENABLE(TEMPLATE_ELEMENT)
     if (contextElement->hasTagName(templateTag))
-        document = document->templateContentsOwnerDocument();
+        document = document->ensureTemplateDocument();
 #endif
     RefPtr<DocumentFragment> fragment = DocumentFragment::create(document);
 
@@ -1103,9 +1108,7 @@ void replaceChildrenWithFragment(ContainerNode* container, PassRefPtr<DocumentFr
 {
     RefPtr<ContainerNode> containerNode(container);
 
-#if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(containerNode.get());
-#endif
 
     if (!fragment->firstChild()) {
         containerNode->removeChildren();
@@ -1130,9 +1133,7 @@ void replaceChildrenWithText(ContainerNode* container, const String& text, Excep
 {
     RefPtr<ContainerNode> containerNode(container);
 
-#if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(containerNode.get());
-#endif
 
     if (hasOneTextChild(containerNode.get())) {
         toText(containerNode->firstChild())->setData(text, ec);

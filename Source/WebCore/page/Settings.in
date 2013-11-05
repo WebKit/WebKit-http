@@ -82,6 +82,7 @@ cssGridLayoutEnabled initial=false
 downloadableBinaryFontsEnabled initial=true
 
 xssAuditorEnabled initial=false
+unsafePluginPastingEnabled initial=true
 acceleratedCompositingFor3DTransformsEnabled initial=true
 acceleratedCompositingForVideoEnabled initial=true
 acceleratedCompositingForPluginsEnabled initial=true
@@ -92,6 +93,7 @@ acceleratedCompositingForOverflowScrollEnabled initial=false
 
 # Works only in conjunction with forceCompositingMode.
 acceleratedCompositingForScrollableFramesEnabled initial=false
+compositedScrollingForFramesEnabled initial=false
 
 experimentalNotificationsEnabled initial=false
 webGLEnabled initial=false
@@ -100,6 +102,7 @@ openGLMultisamplingEnabled initial=true
 privilegedWebGLExtensionsEnabled initial=false
 accelerated2dCanvasEnabled initial=false
 deferred2dCanvasEnabled initial=false
+antialiased2dCanvasEnabled initial=true
 loadDeferringEnabled initial=true
 webAudioEnabled initial=false
 paginateDuringLayoutEnabled initial=false
@@ -151,12 +154,15 @@ fixedPositionCreatesStackingContext initial=false
 syncXHRInDocumentsEnabled initial=true
 cookieEnabled initial=true
 
+threadedHTMLParser initial=false, conditional=THREADED_HTML_PARSER
+
 # When enabled, window.blur() does not change focus, and
 # window.focus() only changes focus when invoked from the context that
 # created the window.
 windowFocusRestricted initial=true
 
 diagnosticLoggingEnabled initial=false
+applyDeviceScaleFactorInCompositor initial=true
 applyPageScaleFactorInCompositor initial=false
 plugInSnapshottingEnabled initial=false
 frameFlatteningEnabled initial=false
@@ -168,3 +174,5 @@ spatialNavigationEnabled initial=false
 # This setting adds a means to enable/disable touch initiated drag & drop. If
 # enabled, the user can initiate drag using long press.
 touchDragDropEnabled initial=false
+
+unifiedTextCheckerEnabled initial=defaultUnifiedTextCheckerEnabled

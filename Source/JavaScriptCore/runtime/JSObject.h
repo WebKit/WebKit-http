@@ -504,22 +504,15 @@ public:
     JSValue getDirect(JSGlobalData& globalData, PropertyName propertyName) const
     {
         PropertyOffset offset = structure()->get(globalData, propertyName);
-        checkOffset(offset, structure()->typeInfo().type());
-        return offset != invalidOffset ? getDirectOffset(offset) : JSValue();
+        checkOffset(offset, structure()->inlineCapacity());
+        return offset != invalidOffset ? getDirect(offset) : JSValue();
     }
 
-    WriteBarrierBase<Unknown>* getDirectLocation(JSGlobalData& globalData, PropertyName propertyName)
+    PropertyOffset getDirectOffset(JSGlobalData& globalData, PropertyName propertyName)
     {
         PropertyOffset offset = structure()->get(globalData, propertyName);
-        checkOffset(offset, structure()->typeInfo().type());
-        return isValidOffset(offset) ? locationForOffset(offset) : 0;
-    }
-
-    WriteBarrierBase<Unknown>* getDirectLocation(JSGlobalData& globalData, PropertyName propertyName, unsigned& attributes)
-    {
-        JSCell* specificFunction;
-        PropertyOffset offset = structure()->get(globalData, propertyName, attributes, specificFunction);
-        return isValidOffset(offset) ? locationForOffset(offset) : 0;
+        checkOffset(offset, structure()->inlineCapacity());
+        return offset;
     }
 
     bool hasInlineStorage() const { return structure()->hasInlineStorage(); }
@@ -562,18 +555,6 @@ public:
         return &outOfLineStorage()[offsetInOutOfLineStorage(offset)];
     }
 
-    PropertyOffset offsetForLocation(WriteBarrierBase<Unknown>* location) const
-    {
-        PropertyOffset result;
-        size_t offsetInInlineStorage = location - inlineStorageUnsafe();
-        if (offsetInInlineStorage < static_cast<size_t>(firstOutOfLineOffset))
-            result = offsetInInlineStorage;
-        else
-            result = outOfLineStorage() - location + (firstOutOfLineOffset - 1);
-        validateOffset(result, structure()->typeInfo().type());
-        return result;
-    }
-
     void transitionTo(JSGlobalData&, Structure*);
 
     bool removeDirect(JSGlobalData&, PropertyName); // Return true if anything is removed.
@@ -588,9 +569,9 @@ public:
     bool putOwnDataProperty(JSGlobalData&, PropertyName, JSValue, PutPropertySlot&);
 
     // Fast access to known property offsets.
-    JSValue getDirectOffset(PropertyOffset offset) const { return locationForOffset(offset)->get(); }
-    void putDirectOffset(JSGlobalData& globalData, PropertyOffset offset, JSValue value) { locationForOffset(offset)->set(globalData, this, value); }
-    void putUndefinedAtDirectOffset(PropertyOffset offset) { locationForOffset(offset)->setUndefined(); }
+    JSValue getDirect(PropertyOffset offset) const { return locationForOffset(offset)->get(); }
+    void putDirect(JSGlobalData& globalData, PropertyOffset offset, JSValue value) { locationForOffset(offset)->set(globalData, this, value); }
+    void putDirectUndefined(PropertyOffset offset) { locationForOffset(offset)->setUndefined(); }
 
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
 
@@ -1171,32 +1152,11 @@ inline JSValue JSObject::prototype() const
     return structure()->storedPrototype();
 }
 
-inline const MethodTable* JSCell::methodTable() const
-{
-    return &classInfo()->methodTable;
-}
-
-inline bool JSCell::inherits(const ClassInfo* info) const
-{
-    return classInfo()->isSubClassOf(info);
-}
-
-// this method is here to be after the inline declaration of JSCell::inherits
-inline bool JSValue::inherits(const ClassInfo* classInfo) const
-{
-    return isCell() && asCell()->inherits(classInfo);
-}
-
-inline JSObject* JSValue::toThisObject(ExecState* exec) const
-{
-    return isCell() ? asCell()->methodTable()->toThisObject(asCell(), exec) : toThisObjectSlowCase(exec);
-}
-
 ALWAYS_INLINE bool JSObject::inlineGetOwnPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     PropertyOffset offset = structure()->get(exec->globalData(), propertyName);
     if (LIKELY(isValidOffset(offset))) {
-        JSValue value = getDirectOffset(offset);
+        JSValue value = getDirect(offset);
         if (structure()->hasGetterSetterProperties() && value.isGetterSetter())
             fillGetterPropertySlot(slot, offset);
         else
@@ -1213,29 +1173,6 @@ ALWAYS_INLINE bool JSObject::inlineGetOwnPropertySlot(ExecState* exec, PropertyN
 ALWAYS_INLINE bool JSObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     return jsCast<JSObject*>(cell)->inlineGetOwnPropertySlot(exec, propertyName, slot);
-}
-
-ALWAYS_INLINE bool JSCell::fastGetOwnPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
-{
-    if (!structure()->typeInfo().overridesGetOwnPropertySlot())
-        return asObject(this)->inlineGetOwnPropertySlot(exec, propertyName, slot);
-    return methodTable()->getOwnPropertySlot(this, exec, propertyName, slot);
-}
-
-// Fast call to get a property where we may not yet have converted the string to an
-// identifier. The first time we perform a property access with a given string, try
-// performing the property map lookup without forming an identifier. We detect this
-// case by checking whether the hash has yet been set for this string.
-ALWAYS_INLINE JSValue JSCell::fastGetOwnProperty(ExecState* exec, const String& name)
-{
-    if (!structure()->typeInfo().overridesGetOwnPropertySlot() && !structure()->hasGetterSetterProperties()) {
-        PropertyOffset offset = name.impl()->hasHash()
-            ? structure()->get(exec->globalData(), Identifier(exec, name))
-            : structure()->get(exec->globalData(), name);
-        if (offset != invalidOffset)
-            return asObject(this)->locationForOffset(offset)->get();
-    }
-    return JSValue();
 }
 
 // It may seem crazy to inline a function this large but it makes a big difference
@@ -1304,7 +1241,7 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
             if ((mode == PutModePut) && currentAttributes & ReadOnly)
                 return false;
 
-            putDirectOffset(globalData, offset, value);
+            putDirect(globalData, offset, value);
             // At this point, the objects structure only has a specific value set if previously there
             // had been one set, and if the new value being specified is the same (otherwise we would
             // have despecified, above).  So, if currentSpecificFunction is not set, or if the new
@@ -1327,7 +1264,7 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
 
         validateOffset(offset);
         ASSERT(structure()->isValidOffset(offset));
-        putDirectOffset(globalData, offset, value);
+        putDirect(globalData, offset, value);
         // See comment on setNewProperty call below.
         if (!specificFunction)
             slot.setNewProperty(this, offset);
@@ -1346,7 +1283,7 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
         validateOffset(offset);
         ASSERT(structure->isValidOffset(offset));
         setButterfly(globalData, newButterfly, structure);
-        putDirectOffset(globalData, offset, value);
+        putDirect(globalData, offset, value);
         // This is a new property; transitions with specific values are not currently cachable,
         // so leave the slot in an uncachable state.
         if (!specificFunction)
@@ -1373,7 +1310,7 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
         if (currentSpecificFunction) {
             // case (1) Do the put, then return leaving the slot uncachable.
             if (specificFunction == currentSpecificFunction) {
-                putDirectOffset(globalData, offset, value);
+                putDirect(globalData, offset, value);
                 return true;
             }
             // case (2) Despecify, fall through to (3).
@@ -1382,7 +1319,7 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
 
         // case (3) set the slot, do the put, return.
         slot.setExistingProperty(this, offset);
-        putDirectOffset(globalData, offset, value);
+        putDirect(globalData, offset, value);
         return true;
     }
 
@@ -1395,7 +1332,7 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
     ASSERT(structure->isValidOffset(offset));
     setStructureAndReallocateStorageIfNecessary(globalData, structure);
 
-    putDirectOffset(globalData, offset, value);
+    putDirect(globalData, offset, value);
     // This is a new property; transitions with specific values are not currently cachable,
     // so leave the slot in an uncachable state.
     if (!specificFunction)
@@ -1455,80 +1392,12 @@ inline void JSObject::putDirectWithoutTransition(JSGlobalData& globalData, Prope
         newButterfly = growOutOfLineStorage(globalData, structure()->outOfLineCapacity(), structure()->suggestedNewOutOfLineStorageCapacity());
     PropertyOffset offset = structure()->addPropertyWithoutTransition(globalData, propertyName, attributes, getCallableObject(value));
     setButterfly(globalData, newButterfly, structure());
-    putDirectOffset(globalData, offset, value);
+    putDirect(globalData, offset, value);
 }
 
 inline JSValue JSObject::toPrimitive(ExecState* exec, PreferredPrimitiveType preferredType) const
 {
     return methodTable()->defaultValue(this, exec, preferredType);
-}
-
-inline JSValue JSValue::get(ExecState* exec, PropertyName propertyName) const
-{
-    PropertySlot slot(asValue());
-    return get(exec, propertyName, slot);
-}
-
-inline JSValue JSValue::get(ExecState* exec, PropertyName propertyName, PropertySlot& slot) const
-{
-    if (UNLIKELY(!isCell())) {
-        JSObject* prototype = synthesizePrototype(exec);
-        if (!prototype->getPropertySlot(exec, propertyName, slot))
-            return jsUndefined();
-        return slot.getValue(exec, propertyName);
-    }
-    JSCell* cell = asCell();
-    while (true) {
-        if (cell->fastGetOwnPropertySlot(exec, propertyName, slot))
-            return slot.getValue(exec, propertyName);
-        JSValue prototype = asObject(cell)->prototype();
-        if (!prototype.isObject())
-            return jsUndefined();
-        cell = asObject(prototype);
-    }
-}
-
-inline JSValue JSValue::get(ExecState* exec, unsigned propertyName) const
-{
-    PropertySlot slot(asValue());
-    return get(exec, propertyName, slot);
-}
-
-inline JSValue JSValue::get(ExecState* exec, unsigned propertyName, PropertySlot& slot) const
-{
-    if (UNLIKELY(!isCell())) {
-        JSObject* prototype = synthesizePrototype(exec);
-        if (!prototype->getPropertySlot(exec, propertyName, slot))
-            return jsUndefined();
-        return slot.getValue(exec, propertyName);
-    }
-    JSCell* cell = const_cast<JSCell*>(asCell());
-    while (true) {
-        if (cell->methodTable()->getOwnPropertySlotByIndex(cell, exec, propertyName, slot))
-            return slot.getValue(exec, propertyName);
-        JSValue prototype = asObject(cell)->prototype();
-        if (!prototype.isObject())
-            return jsUndefined();
-        cell = prototype.asCell();
-    }
-}
-
-inline void JSValue::put(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
-{
-    if (UNLIKELY(!isCell())) {
-        putToPrimitive(exec, propertyName, value, slot);
-        return;
-    }
-    asCell()->methodTable()->put(asCell(), exec, propertyName, value, slot);
-}
-
-inline void JSValue::putByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
-{
-    if (UNLIKELY(!isCell())) {
-        putToPrimitiveByIndex(exec, propertyName, value, shouldThrow);
-        return;
-    }
-    asCell()->methodTable()->putByIndex(asCell(), exec, propertyName, value, shouldThrow);
 }
 
 ALWAYS_INLINE JSObject* Register::function() const

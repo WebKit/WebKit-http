@@ -213,7 +213,6 @@ BackingStorePrivate::BackingStorePrivate()
     , m_webPage(0)
     , m_client(0)
     , m_renderQueue(adoptPtr(new RenderQueue(this)))
-    , m_defersBlit(true)
     , m_hasBlitJobs(false)
     , m_webPageBackgroundColor(WebCore::Color::white)
     , m_currentWindowBackBuffer(0)
@@ -1235,7 +1234,7 @@ void BackingStorePrivate::blitVisibleContents(bool force)
         return;
     }
 
-    if (m_defersBlit && !force) {
+    if (!force) {
 #if USE(ACCELERATED_COMPOSITING)
         // If there's a WebPageCompositorClient, let it schedule the blit.
         if (WebPageCompositorPrivate* compositor = m_webPage->d->compositor()) {
@@ -1888,7 +1887,7 @@ int BackingStorePrivate::tileHeight()
 
 Platform::IntSize BackingStorePrivate::tileSize()
 {
-    static Platform::IntSize tileSize = BlackBerry::Platform::Settings::instance()->tileSize();
+    static Platform::IntSize tileSize = Platform::Settings::instance()->tileSize(Platform::BackingStoreTileUsage);
     return tileSize;
 }
 
@@ -2356,16 +2355,18 @@ bool BackingStorePrivate::isActive() const
 
 void BackingStorePrivate::didRenderContent(const Platform::IntRectRegion& renderedRegion)
 {
-    if (isScrollingOrZooming())
-        return;
-
     if (!shouldDirectRenderingToWindow()) {
 #if USE(ACCELERATED_COMPOSITING)
         if (m_webPage->d->needsOneShotDrawingSynchronization())
             m_webPage->d->commitRootLayerIfNeeded();
         else
 #endif
+        {
+            if (isScrollingOrZooming())
+                return; // don't drag down framerates by double-blitting.
+
             blitVisibleContents();
+        }
     } else
         invalidateWindow();
 
@@ -2468,16 +2469,6 @@ void BackingStore::releaseBackingStoreMemory()
     suspendScreenUpdates();
     if (BackingStorePrivate::s_currentBackingStoreOwner == d->m_webPage)
         SurfacePool::globalSurfacePool()->releaseBuffers();
-}
-
-bool BackingStore::defersBlit() const
-{
-        return d->m_defersBlit;
-}
-
-void BackingStore::setDefersBlit(bool b)
-{
-        d->m_defersBlit = b;
 }
 
 bool BackingStore::hasBlitJobs() const

@@ -347,6 +347,28 @@ using std::wtf_isnan;
 #endif
 #endif
 
+#if COMPILER(MINGW64) && (!defined(__MINGW64_VERSION_RC) || __MINGW64_VERSION_RC < 1)
+inline double wtf_pow(double x, double y)
+{
+    // MinGW-w64 has a custom implementation for pow.
+    // This handles certain special cases that are different.
+    if ((x == 0.0 || isinf(x)) && isfinite(y)) {
+        double f;
+        if (modf(y, &f) != 0.0)
+            return ((x == 0.0) ^ (y > 0.0)) ? std::numeric_limits<double>::infinity() : 0.0;
+    }
+
+    if (x == 2.0) {
+        int yInt = static_cast<int>(y);
+        if (y == yInt)
+            return ldexp(1.0, yInt);
+    }
+
+    return pow(x, y);
+}
+#define pow(x, y) wtf_pow(x, y)
+#endif // COMPILER(MINGW64) && (!defined(__MINGW64_VERSION_RC) || __MINGW64_VERSION_RC < 1)
+
 
 // decompose 'number' to its sign, exponent, and mantissa components.
 // The result is interpreted as:

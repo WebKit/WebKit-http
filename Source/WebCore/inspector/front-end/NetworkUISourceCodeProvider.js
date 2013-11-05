@@ -31,15 +31,14 @@
 /**
  * @constructor
  * @param {WebInspector.Workspace} workspace
- * @param {WebInspector.NetworkWorkspaceProvider} networkWorkspaceProvider
+ * @param {WebInspector.SimpleWorkspaceProvider} networkWorkspaceProvider
  */
 WebInspector.NetworkUISourceCodeProvider = function(workspace, networkWorkspaceProvider)
 {
     this._workspace = workspace;
     this._networkWorkspaceProvider = networkWorkspaceProvider;
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
-    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectWillReset, this._projectWillReset, this);
-    this._workspace.addEventListener(WebInspector.Workspace.Events.ProjectDidReset, this._projectDidReset, this);
+    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.MainFrameNavigated, this._mainFrameNavigated, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.ParsedScriptSource, this._parsedScriptSource, this);
 
     this._processedURLs = {};
@@ -101,12 +100,23 @@ WebInspector.NetworkUISourceCodeProvider.prototype = {
     },
 
     /**
+     * @param {WebInspector.Event} event
+     */
+    _mainFrameNavigated: function(event)
+    {
+        this._reset();
+    },
+
+    /**
      * @param {string} url
      * @param {WebInspector.ContentProvider} contentProvider
      * @param {boolean=} isContentScript
      */
     _addFile: function(url, contentProvider, isContentScript)
     {
+        if (WebInspector.fileMapping.hasMappingForURL(url))
+            return;
+
         var type = contentProvider.contentType();
         if (type !== WebInspector.resourceTypes.Stylesheet && type !== WebInspector.resourceTypes.Document && type !== WebInspector.resourceTypes.Script)
             return;
@@ -114,17 +124,19 @@ WebInspector.NetworkUISourceCodeProvider.prototype = {
             return;
         this._processedURLs[url] = true;
         var isEditable = type !== WebInspector.resourceTypes.Document;
-        this._networkWorkspaceProvider.addFile(url, contentProvider, isEditable, isContentScript);
+        this._networkWorkspaceProvider.addFileForURL(url, contentProvider, isEditable, isContentScript);
     },
 
-    _projectWillReset: function()
+    _reset: function()
     {
         this._processedURLs = {};
         this._lastDynamicAnonymousScriptIndexForURL = {};
-    },
-
-    _projectDidReset: function()
-    {
+        this._networkWorkspaceProvider.reset();
         this._populate();
     }
 }
+
+/**
+ * @type {?WebInspector.SimpleWorkspaceProvider}
+ */
+WebInspector.networkWorkspaceProvider = null;

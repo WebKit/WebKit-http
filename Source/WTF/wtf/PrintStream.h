@@ -208,22 +208,22 @@ public:
     }
 };
 
-void printInternal(PrintStream&, const char*);
-void printInternal(PrintStream&, const CString&);
-void printInternal(PrintStream&, const String&);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, const char*);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, const CString&);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, const String&);
 inline void printInternal(PrintStream& out, char* value) { printInternal(out, static_cast<const char*>(value)); }
 inline void printInternal(PrintStream& out, CString& value) { printInternal(out, static_cast<const CString&>(value)); }
 inline void printInternal(PrintStream& out, String& value) { printInternal(out, static_cast<const String&>(value)); }
-void printInternal(PrintStream&, bool);
-void printInternal(PrintStream&, int);
-void printInternal(PrintStream&, unsigned);
-void printInternal(PrintStream&, long);
-void printInternal(PrintStream&, unsigned long);
-void printInternal(PrintStream&, long long);
-void printInternal(PrintStream&, unsigned long long);
-void printInternal(PrintStream&, float);
-void printInternal(PrintStream&, double);
-void printInternal(PrintStream&, RawPointer);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, bool);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, int);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, unsigned);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, long);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, unsigned long);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, long long);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, unsigned long long);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, float);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, double);
+WTF_EXPORT_PRIVATE void printInternal(PrintStream&, RawPointer);
 
 template<typename T>
 void printInternal(PrintStream& out, const T& value)
@@ -258,8 +258,12 @@ void printInternal(PrintStream& out, const T& value)
             m_value.method(out);                 \
         }                                        \
     private:                                     \
-        Type m_value;                            \
+        const Type& m_value;                     \
     }
+
+#define MAKE_PRINT_METHOD(Type, dumpMethod, method) \
+    MAKE_PRINT_METHOD_ADAPTOR(DumperFor_##method, Type, dumpMethod);    \
+    DumperFor_##method method() const { return DumperFor_##method(*this); }
 
 // Use an adaptor-based dumper for characters to avoid situations where
 // you've "compressed" an integer to a character and it ends up printing

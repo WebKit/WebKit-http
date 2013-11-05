@@ -74,7 +74,6 @@ messages -> WebPage {
 #if PLATFORM(QT)
     ApplicationSchemeReply(WebKit::QtNetworkReplyData reply)
     RegisterApplicationScheme(WTF::String scheme)
-    SetUserScripts(WTF::Vector<WTF::String> script)
 #endif
 
     StopLoadingFrame(uint64_t frameID)
@@ -98,6 +97,7 @@ messages -> WebPage {
     GetResourceDataFromFrame(uint64_t frameID, WTF::String resourceURL, uint64_t callbackID)
     GetRenderTreeExternalRepresentation(uint64_t callbackID)
     GetSelectionOrContentsAsString(uint64_t callbackID)
+    GetSelectionAsWebArchiveData(uint64_t callbackID)
     GetSourceForFrame(uint64_t frameID, uint64_t callbackID)
     GetWebArchiveOfFrame(uint64_t frameID, uint64_t callbackID)
     RunJavaScriptInMainFrame(WTF::String script, uint64_t callbackID)
@@ -151,17 +151,17 @@ messages -> WebPage {
 
     # Find.
     FindString(WTF::String string, uint32_t findOptions, unsigned maxMatchCount)
+    FindStringMatches(WTF::String string, uint32_t findOptions, unsigned maxMatchCount)
+    GetImageForFindMatch(uint32_t matchIndex)
+    SelectFindMatch(uint32_t matchIndex)
     HideFindUI()
     CountStringMatches(WTF::String string, uint32_t findOptions, unsigned maxMatchCount)
 
     # Drag and drop.
-#if PLATFORM(WIN) && ENABLE(DRAG_SUPPORT)
-    PerformDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, HashMap<UINT,Vector<String>> dataMap, uint32_t flags)
-#endif
 #if (PLATFORM(QT) || PLATFORM(GTK)) && ENABLE(DRAG_SUPPORT)
     PerformDragControllerAction(uint64_t action, WebCore::DragData dragData)
 #endif
-#if !PLATFORM(WIN) && !PLATFORM(QT) && !PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
+#if !PLATFORM(QT) && !PLATFORM(GTK) && ENABLE(DRAG_SUPPORT)
     PerformDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, WTF::String dragStorageName, uint32_t flags, WebKit::SandboxExtension::Handle sandboxExtensionHandle, WebKit::SandboxExtension::HandleArray sandboxExtensionsForUpload)
 #endif
 #if ENABLE(DRAG_SUPPORT)
@@ -216,8 +216,8 @@ messages -> WebPage {
     BeginPrinting(uint64_t frameID, WebKit::PrintInfo printInfo)
     EndPrinting()
     ComputePagesForPrinting(uint64_t frameID, WebKit::PrintInfo printInfo, uint64_t callbackID)
-#if PLATFORM(MAC) || PLATFORM(WIN)
-    DrawRectToImage(uint64_t frameID, WebKit::PrintInfo printInfo, WebCore::IntRect rect, uint64_t callbackID)
+#if PLATFORM(MAC)
+    DrawRectToImage(uint64_t frameID, WebKit::PrintInfo printInfo, WebCore::IntRect rect, WebCore::IntSize imageSize, uint64_t callbackID)
     DrawPagesToPDF(uint64_t frameID, WebKit::PrintInfo printInfo, uint32_t first, uint32_t count, uint64_t callbackID)
 #endif
 #if PLATFORM(GTK)
@@ -250,7 +250,7 @@ messages -> WebPage {
     CommitPageTransitionViewport()
 #endif
 
-#if PLATFORM(QT)
+#if PLATFORM(QT) || PLATFORM(GTK)
     SetComposition(WTF::String text, WTF::Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd)
     ConfirmComposition(WTF::String text, int64_t selectionStart, int64_t selectionLength)
     CancelComposition()
@@ -262,6 +262,8 @@ messages -> WebPage {
 
     SetWindowIsVisible(bool windowIsVisible)
     WindowAndViewFramesChanged(WebCore::IntRect windowFrameInScreenCoordinates, WebCore::IntRect viewFrameInWindowCoordinates, WebCore::IntPoint accessibilityViewCoordinates)
+    ViewExposedRectChanged(WebCore::IntRect exposedRect)
+    SetMainFrameIsScrollable(bool isScrollable)
     RegisterUIProcessAccessibilityTokens(CoreIPC::DataReference elemenToken, CoreIPC::DataReference windowToken)
     GetStringSelectionForPasteboard() -> (WTF::String stringValue)
     GetDataSelectionForPasteboard(WTF::String pasteboardType) -> (WebKit::SharedMemory::Handle handle, uint64_t size)
@@ -281,17 +283,6 @@ messages -> WebPage {
     ShouldDelayWindowOrderingEvent(WebKit::WebMouseEvent event) -> (bool result)
     AcceptsFirstMouse(int eventNumber, WebKit::WebMouseEvent event) -> (bool result)
     InsertDictatedText(WTF::String text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, WTF::Vector<WebCore::DictationAlternative> dictationAlternatives) -> (bool handled, WebKit::EditorState newState)
-#endif
-#if PLATFORM(WIN)
-    // FIXME: Unify with Mac counterparts.
-    ConfirmComposition(WTF::String compositionString)
-    SetComposition(WTF::String compositionString, WTF::Vector<WebCore::CompositionUnderline> underlines, uint64_t cursorPosition)
-    FirstRectForCharacterInSelectedRange(uint64_t characterPosition) -> (WebCore::IntRect resultRect)
-    GetSelectedText() -> (WTF::String text)
-
-    GestureWillBegin(WebCore::IntPoint point) -> (bool canBeginPanning)
-    GestureDidScroll(WebCore::IntSize size)
-    GestureDidEnd()
 #endif
 #if PLATFORM(EFL)
     ConfirmComposition(WTF::String compositionString)
@@ -313,4 +304,6 @@ messages -> WebPage {
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)
     SetAcceleratedCompositingWindowId(int64_t id)
 #endif
+
+    SetMainFrameInViewSourceMode(bool inViewSourceMode)
 }

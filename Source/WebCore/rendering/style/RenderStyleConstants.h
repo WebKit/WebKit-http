@@ -355,7 +355,7 @@ enum TextDecorationStyle {
 };
 
 #if ENABLE(CSS3_TEXT)
-enum ETextAlignLast {
+enum TextAlignLast {
     TextAlignLastAuto, TextAlignLastStart, TextAlignLastEnd, TextAlignLastLeft, TextAlignLastRight, TextAlignLastCenter, TextAlignLastJustify
 };
 #endif // CSS3_TEXT
@@ -490,6 +490,9 @@ enum RubyPosition { RubyPositionBefore, RubyPositionAfter };
 #if ENABLE(DRAGGABLE_REGION)
 enum DraggableRegionMode { DraggableRegionNone, DraggableRegionDrag, DraggableRegionNoDrag };
 #endif
+
+// Reasonable maximum to prevent insane font sizes from causing crashes on some platforms (such as Windows).
+static const float maximumAllowedFontSize = 1000000.0f;
 
 } // namespace WebCore
 

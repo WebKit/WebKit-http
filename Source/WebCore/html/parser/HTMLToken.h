@@ -26,35 +26,13 @@
 #ifndef HTMLToken_h
 #define HTMLToken_h
 
+#include "CompactHTMLToken.h"
+#include "HTMLTokenTypes.h"
 #include "MarkupTokenBase.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
-
-class HTMLTokenTypes {
-public:
-    enum Type {
-        Uninitialized,
-        DOCTYPE,
-        StartTag,
-        EndTag,
-        Comment,
-        Character,
-        EndOfFile,
-    };
-
-    class DoctypeData : public DoctypeDataBase {
-        WTF_MAKE_NONCOPYABLE(DoctypeData);
-    public:
-        DoctypeData()
-            : m_forceQuirks(false)
-        {
-        }
-
-        bool m_forceQuirks;
-    };
-};
 
 class HTMLToken : public MarkupTokenBase<HTMLTokenTypes, HTMLTokenTypes::DoctypeData> {
 public:
@@ -91,6 +69,15 @@ public:
         return adoptRef(new AtomicHTMLToken(token));
     }
 
+#if ENABLE(THREADED_HTML_PARSER)
+
+    static PassRefPtr<AtomicHTMLToken> create(const CompactHTMLToken& token)
+    {
+        return adoptRef(new AtomicHTMLToken(token));
+    }
+
+#endif
+
     static PassRefPtr<AtomicHTMLToken> create(HTMLTokenTypes::Type type, const AtomicString& name, const Vector<Attribute>& attributes = Vector<Attribute>())
     {
         return adoptRef(new AtomicHTMLToken(type, name, attributes));
@@ -102,10 +89,52 @@ public:
         return m_doctypeData->m_forceQuirks;
     }
 private:
-    AtomicHTMLToken(HTMLToken& token)
+    explicit AtomicHTMLToken(HTMLToken& token)
         : AtomicMarkupTokenBase<HTMLToken>(&token)
     {
     }
+
+#if ENABLE(THREADED_HTML_PARSER)
+
+    explicit AtomicHTMLToken(const CompactHTMLToken& token)
+        : AtomicMarkupTokenBase<HTMLToken>(token.type())
+    {
+        switch (m_type) {
+        case HTMLTokenTypes::Uninitialized:
+            ASSERT_NOT_REACHED();
+            break;
+        case HTMLTokenTypes::DOCTYPE:
+            m_name = token.data();
+            m_doctypeData = adoptPtr(new HTMLToken::DoctypeData());
+            m_doctypeData->m_hasPublicIdentifier = true;
+            m_doctypeData->m_publicIdentifier.append(token.publicIdentifier().characters(), token.publicIdentifier().length());
+            m_doctypeData->m_hasSystemIdentifier = true;
+            m_doctypeData->m_systemIdentifier.append(token.systemIdentifier().characters(), token.systemIdentifier().length());
+            break;
+        case HTMLTokenTypes::EndOfFile:
+            break;
+        case HTMLTokenTypes::StartTag:
+            m_attributes.reserveInitialCapacity(token.attributes().size());
+            for (Vector<CompactAttribute>::const_iterator it = token.attributes().begin(); it != token.attributes().end(); ++it)
+                m_attributes.append(Attribute(QualifiedName(nullAtom, it->name(), nullAtom), it->value()));
+            // Fall through!
+        case HTMLTokenTypes::EndTag:
+            m_selfClosing = token.selfClosing();
+            m_name = AtomicString(token.data());
+            break;
+        case HTMLTokenTypes::Comment:
+            m_data = token.data();
+            break;
+        case HTMLTokenTypes::Character:
+            m_externalCharacters = token.data().characters();
+            m_externalCharactersLength = token.data().length();
+            break;
+        default:
+            break;
+        }
+    }
+
+#endif
 
     AtomicHTMLToken(HTMLTokenTypes::Type type, const AtomicString& name, const Vector<Attribute>& attributes = Vector<Attribute>())
         : AtomicMarkupTokenBase<HTMLToken>(type, name, attributes)

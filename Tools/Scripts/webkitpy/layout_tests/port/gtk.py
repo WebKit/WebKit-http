@@ -35,8 +35,12 @@ from webkitpy.layout_tests.port.pulseaudio_sanitizer import PulseAudioSanitizer
 from webkitpy.layout_tests.port.xvfbdriver import XvfbDriver
 
 
-class GtkPort(Port, PulseAudioSanitizer):
+class GtkPort(Port):
     port_name = "gtk"
+
+    def __init__(self, *args, **kwargs):
+        super(GtkPort, self).__init__(*args, **kwargs)
+        self._pulseaudio_sanitizer = PulseAudioSanitizer()
 
     def warn_if_bug_missing_in_test_expectations(self):
         return True
@@ -48,20 +52,17 @@ class GtkPort(Port, PulseAudioSanitizer):
         return XvfbDriver
 
     def default_timeout_ms(self):
-        # For now, use the base Port's default timeout value in case of WebKitTestRunner.
-        if self.get_option('webkit_test_runner'):
-            return super(GtkPort, self).default_timeout_ms()
-
         if self.get_option('configuration') == 'Debug':
             return 12 * 1000
         return 6 * 1000
 
     def setup_test_run(self):
-        self._unload_pulseaudio_module()
+        super(GtkPort, self).setup_test_run()
+        self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
     def clean_up_test_run(self):
         super(GtkPort, self).clean_up_test_run()
-        self._restore_pulseaudio_module()
+        self._pulseaudio_sanitizer.restore_pulseaudio_module()
 
     def setup_environ_for_server(self, server_name=None):
         environment = super(GtkPort, self).setup_environ_for_server(server_name)
@@ -100,6 +101,19 @@ class GtkPort(Port, PulseAudioSanitizer):
                 return full_library
         return None
 
+    def _search_paths(self):
+        search_paths = []
+        if self.get_option('webkit_test_runner'):
+            search_paths.extend([self.port_name + '-wk2', 'wk2'])
+        else:
+            search_paths.append(self.port_name + '-wk1')
+        search_paths.append(self.port_name)
+        search_paths.extend(self.get_option("additional_platform_directory", []))
+        return search_paths
+
+    def expectations_files(self):
+        return [self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in reversed(self._search_paths())]
+
     # FIXME: We should find a way to share this implmentation with Gtk,
     # or teach run-launcher how to call run-safari and move this down to Port.
     def show_results_html_file(self, results_filename):
@@ -110,13 +124,15 @@ class GtkPort(Port, PulseAudioSanitizer):
         # FIXME: old-run-webkit-tests converted results_filename path for cygwin.
         self._run_script("run-launcher", run_launcher_args)
 
+    def check_sys_deps(self, needs_http):
+        return super(GtkPort, self).check_sys_deps(needs_http) and XvfbDriver.check_xvfb(self)
+
     def _get_gdb_output(self, coredump_path):
-        cmd = ['gdb', '-ex', 'thread apply all bt', '--batch', str(self._path_to_driver()), coredump_path]
+        cmd = ['gdb', '-ex', 'thread apply all bt 1024', '--batch', str(self._path_to_driver()), coredump_path]
         proc = subprocess.Popen(cmd, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        proc.wait()
-        errors = [l.strip().decode('utf8', 'ignore') for l in proc.stderr.readlines()]
-        trace = proc.stdout.read().decode('utf8', 'ignore')
-        return (trace, errors)
+        stdout, stderr = proc.communicate()
+        errors = [l.strip().decode('utf8', 'ignore') for l in stderr.splitlines()]
+        return (stdout.decode('utf8', 'ignore'), errors)
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
         pid_representation = str(pid or '<unknown>')

@@ -29,9 +29,17 @@
 #include "AutodrainedPool.h"
 #include "StorageTask.h"
 #include "StorageAreaSync.h"
+#include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {
+
+static HashSet<StorageThread*>& activeStorageThreads()
+{
+    ASSERT(isMainThread());
+    DEFINE_STATIC_LOCAL(HashSet<StorageThread*>, threads, ());
+    return threads;
+}
 
 PassOwnPtr<StorageThread> StorageThread::create()
 {
@@ -41,6 +49,7 @@ PassOwnPtr<StorageThread> StorageThread::create()
 StorageThread::StorageThread()
     : m_threadID(0)
 {
+    ASSERT(isMainThread());
 }
 
 StorageThread::~StorageThread()
@@ -54,6 +63,7 @@ bool StorageThread::start()
     ASSERT(isMainThread());
     if (!m_threadID)
         m_threadID = createThread(StorageThread::threadEntryPointCallback, this, "WebCore: LocalStorage");
+    activeStorageThreads().add(this);
     return m_threadID;
 }
 
@@ -84,6 +94,7 @@ void StorageThread::terminate()
 {
     ASSERT(isMainThread());
     ASSERT(!m_queue.killed() && m_threadID);
+    activeStorageThreads().remove(this);
     // Even in weird, exceptional cases, don't wait on a nonexistent thread to terminate.
     if (!m_threadID)
         return;
@@ -98,6 +109,14 @@ void StorageThread::performTerminate()
 {
     ASSERT(!isMainThread());
     m_queue.kill();
+}
+
+void StorageThread::releaseFastMallocFreeMemoryInAllThreads()
+{
+    HashSet<StorageThread*>& threads = activeStorageThreads();
+    HashSet<StorageThread*>::iterator end = threads.end();
+    for (HashSet<StorageThread*>::iterator it = threads.begin(); it != end; ++it)
+        (*it)->scheduleTask(StorageTask::createReleaseFastMallocFreeMemory());
 }
 
 }

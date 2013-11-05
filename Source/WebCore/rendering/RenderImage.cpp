@@ -52,7 +52,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderImage::RenderImage(Node* node)
+RenderImage::RenderImage(ContainerNode* node)
     : RenderReplaced(node, IntSize())
     , m_needsToSetSizeForAltText(false)
     , m_didIncrementVisuallyNonEmptyPixelCount(false)
@@ -222,21 +222,27 @@ void RenderImage::imageDimensionsChanged(bool imageSizeChanged, const IntRect* r
     if (intrinsicSizeChanged) {
         if (!preferredLogicalWidthsDirty())
             setPreferredLogicalWidthsDirty(true);
-        LogicalExtentComputedValues computedValues;
-        computeLogicalWidthInRegion(computedValues);
-        LayoutUnit newWidth = computedValues.m_extent;
-        computeLogicalHeight(height(), 0, computedValues);
-        LayoutUnit newHeight = computedValues.m_extent;
+
+        bool hasOverrideSize = hasOverrideHeight() || hasOverrideWidth();
+        if (!hasOverrideSize && !imageSizeChanged) {
+            LogicalExtentComputedValues computedValues;
+            computeLogicalWidthInRegion(computedValues);
+            LayoutUnit newWidth = computedValues.m_extent;
+            computeLogicalHeight(height(), 0, computedValues);
+            LayoutUnit newHeight = computedValues.m_extent;
+
+            imageSizeChanged = width() != newWidth || height() != newHeight;
+        }
 
         // FIXME: We only need to recompute the containing block's preferred size
         // if the containing block's size depends on the image's size (i.e., the container uses shrink-to-fit sizing).
         // There's no easy way to detect that shrink-to-fit is needed, always force a layout.
         bool containingBlockNeedsToRecomputePreferredSize =
-            style()->logicalWidth().type() == Percent
-            || style()->logicalMaxWidth().type() == Percent
-            || style()->logicalMinWidth().type() == Percent;
+            style()->logicalWidth().isPercent()
+            || style()->logicalMaxWidth().isPercent()
+            || style()->logicalMinWidth().isPercent();
 
-        if (imageSizeChanged || width() != newWidth || height() != newHeight || containingBlockNeedsToRecomputePreferredSize) {
+        if (imageSizeChanged || hasOverrideSize || containingBlockNeedsToRecomputePreferredSize) {
             shouldRepaint = false;
             if (!selfNeedsLayout())
                 setNeedsLayout(true);
@@ -561,7 +567,7 @@ void RenderImage::computeIntrinsicRatioInformation(FloatSize& intrinsicSize, dou
         if (containingBlock->isBox()) {
             RenderBox* box = toRenderBox(containingBlock);
             intrinsicSize.setWidth(box->availableLogicalWidth());
-            intrinsicSize.setHeight(box->availableLogicalHeight());
+            intrinsicSize.setHeight(box->availableLogicalHeight(IncludeMarginBorderPadding));
         }
     }
     // Don't compute an intrinsic ratio to preserve historical WebKit behavior if we're painting alt text and/or a broken image.
@@ -580,7 +586,7 @@ HTMLImageElement* RenderImage::hostImageElement() const
         return toHTMLImageElement(node());
 
     if (node()->hasTagName(webkitInnerImageTag)) {
-        if (Node* ancestor = node()->shadowAncestorNode()) {
+        if (Node* ancestor = node()->shadowHost()) {
             if (ancestor->hasTagName(imgTag))
                 return toHTMLImageElement(ancestor);
         }

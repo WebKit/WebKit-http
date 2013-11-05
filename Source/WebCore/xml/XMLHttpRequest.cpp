@@ -64,11 +64,16 @@
 #include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 
+#if ENABLE(RESOURCE_TIMING)
+#include "CachedResourceRequestInitiators.h"
+#endif
+
 #if USE(JSC)
 #include "JSDOMBinding.h"
 #include "JSDOMWindow.h"
 #include <heap/Strong.h>
 #include <runtime/JSLock.h>
+#include <runtime/Operations.h>
 #endif
 
 namespace WebCore {
@@ -493,7 +498,13 @@ void XMLHttpRequest::open(const String& method, const KURL& url, bool async, Exc
         return;
     }
 
-    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(url)) {
+    // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is solved.
+    bool shouldBypassMainWorldContentSecurityPolicy = false;
+    if (scriptExecutionContext()->isDocument()) {
+        Document* document = static_cast<Document*>(scriptExecutionContext());
+        shouldBypassMainWorldContentSecurityPolicy = document->frame()->script()->shouldBypassMainWorldContentSecurityPolicy();
+    }
+    if (!shouldBypassMainWorldContentSecurityPolicy && !scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(url)) {
         // FIXME: Should this be throwing an exception?
         ec = SECURITY_ERR;
         return;
@@ -780,6 +791,9 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     options.allowCredentials = (m_sameOriginRequest || m_includeCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials;
     options.crossOriginRequestPolicy = UseAccessControl;
     options.securityOrigin = securityOrigin();
+#if ENABLE(RESOURCE_TIMING)
+    options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
+#endif
 
 #if ENABLE(XHR_TIMEOUT)
     if (m_timeoutMilliseconds)

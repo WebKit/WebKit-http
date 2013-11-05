@@ -48,6 +48,7 @@
 #include "CSSSelectorList.h"
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
+#include "CSSSupportsRule.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSValueList.h"
 #if ENABLE(CSS_VARIABLES)
@@ -88,7 +89,6 @@
 #include "NodeRenderStyle.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
-#include "PageGroup.h"
 #include "Pair.h"
 #include "PerspectiveTransformOperation.h"
 #include "QuotesData.h"
@@ -124,6 +124,7 @@
 #include "TranslateTransformOperation.h"
 #include "UserAgentStyleSheets.h"
 #include "ViewportStyleResolver.h"
+#include "VisitedLinkState.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
@@ -258,12 +259,14 @@ static StylePropertySet* rightToLeftDeclaration()
     return rightToLeftDecl.get();
 }
 
+
 StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     : m_hasUAAppearance(false)
     , m_backgroundData(BackgroundFillLayer)
     , m_matchedPropertiesCacheAdditionsSinceLastSweep(0)
     , m_matchedPropertiesCacheSweepTimer(this, &StyleResolver::sweepMatchedPropertiesCache)
-    , m_checker(document, !document->inQuirksMode())
+    , m_document(document)
+    , m_selectorChecker(document)
     , m_parentStyle(0)
     , m_rootElementStyle(0)
     , m_element(0)
@@ -405,10 +408,10 @@ void StyleResolver::pushParentElement(Element* parent)
     // style recalc in the middle of tree building. We may also be invoked from somewhere within the tree.
     // Reset the stack in this case, or if we see a new root element.
     // Otherwise just push the new parent.
-    if (!parentsParent || m_checker.parentStackIsEmpty())
-        m_checker.setupParentStack(parent);
+    if (!parentsParent || m_selectorFilter.parentStackIsEmpty())
+        m_selectorFilter.setupParentStack(parent);
     else
-        m_checker.pushParent(parent);
+        m_selectorFilter.pushParent(parent);
 
     // Note: We mustn't skip ShadowRoot nodes for the scope stack.
     if (m_scopeResolver)
@@ -419,8 +422,8 @@ void StyleResolver::popParentElement(Element* parent)
 {
     // Note that we may get invoked for some random elements in some wacky cases during style resolve.
     // Pause maintaining the stack in this case.
-    if (m_checker.parentStackIsConsistent(parent))
-        m_checker.popParent();
+    if (m_selectorFilter.parentStackIsConsistent(parent))
+        m_selectorFilter.popParent();
     if (m_scopeResolver)
         m_scopeResolver->pop(parent);
 }
@@ -535,11 +538,13 @@ static void loadSimpleDefaultStyle()
     // No need to initialize quirks sheet yet as there are no quirk rules for elements allowed in simple default style.
 }
 
-static void loadViewSourceStyle()
+static RuleSet* viewSourceStyle()
 {
-    ASSERT(!defaultViewSourceStyle);
-    defaultViewSourceStyle = RuleSet::create().leakPtr();
-    defaultViewSourceStyle->addRulesFromSheet(parseUASheet(sourceUserAgentStyleSheet, sizeof(sourceUserAgentStyleSheet)), screenEval());
+    if (!defaultViewSourceStyle) {
+        defaultViewSourceStyle = RuleSet::create().leakPtr();
+        defaultViewSourceStyle->addRulesFromSheet(parseUASheet(sourceUserAgentStyleSheet, sizeof(sourceUserAgentStyleSheet)), screenEval());
+    }
+    return defaultViewSourceStyle;
 }
 
 static void ensureDefaultStyleSheetsForElement(Element* element)
@@ -638,20 +643,20 @@ inline bool MatchingUARulesScope::isMatchingUARules()
 
 bool MatchingUARulesScope::m_matchingUARules = false;
 
-void StyleResolver::collectMatchingRules(RuleSet* rules, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions& options)
+void StyleResolver::collectMatchingRules(const MatchRequest& matchRequest, int& firstRuleIndex, int& lastRuleIndex)
 {
-    ASSERT(rules);
+    ASSERT(matchRequest.ruleSet);
     ASSERT(m_element);
 
     const AtomicString& pseudoId = m_element->shadowPseudoId();
     if (!pseudoId.isEmpty()) {
         ASSERT(m_styledElement);
-        collectMatchingRulesForList(rules->shadowPseudoElementRules(pseudoId.impl()), firstRuleIndex, lastRuleIndex, options);
+        collectMatchingRulesForList(matchRequest.ruleSet->shadowPseudoElementRules(pseudoId.impl()), matchRequest, firstRuleIndex, lastRuleIndex);
     }
 
 #if ENABLE(VIDEO_TRACK)
-    if (m_element->isWebVTTNode())
-        collectMatchingRulesForList(rules->cuePseudoRules(), firstRuleIndex, lastRuleIndex, options);
+    if (m_element->webVTTNodeType())
+        collectMatchingRulesForList(matchRequest.ruleSet->cuePseudoRules(), matchRequest, firstRuleIndex, lastRuleIndex);
 #endif
     // Check whether other types of rules are applicable in the current tree scope. Criteria for this:
     // a) it's a UA rule
@@ -660,38 +665,38 @@ void StyleResolver::collectMatchingRules(RuleSet* rules, int& firstRuleIndex, in
     TreeScope* treeScope = m_element->treeScope();
     if (!MatchingUARulesScope::isMatchingUARules()
         && !treeScope->applyAuthorStyles()
-        && (!options.scope || options.scope->treeScope() != treeScope))
+        && (!matchRequest.scope || matchRequest.scope->treeScope() != treeScope))
         return;
 
     // We need to collect the rules for id, class, tag, and everything else into a buffer and
     // then sort the buffer.
     if (m_element->hasID())
-        collectMatchingRulesForList(rules->idRules(m_element->idForStyleResolution().impl()), firstRuleIndex, lastRuleIndex, options);
+        collectMatchingRulesForList(matchRequest.ruleSet->idRules(m_element->idForStyleResolution().impl()), matchRequest, firstRuleIndex, lastRuleIndex);
     if (m_styledElement && m_styledElement->hasClass()) {
         for (size_t i = 0; i < m_styledElement->classNames().size(); ++i)
-            collectMatchingRulesForList(rules->classRules(m_styledElement->classNames()[i].impl()), firstRuleIndex, lastRuleIndex, options);
+            collectMatchingRulesForList(matchRequest.ruleSet->classRules(m_styledElement->classNames()[i].impl()), matchRequest, firstRuleIndex, lastRuleIndex);
     }
 
     if (m_element->isLink())
-        collectMatchingRulesForList(rules->linkPseudoClassRules(), firstRuleIndex, lastRuleIndex, options);
-    if (m_checker.matchesFocusPseudoClass(m_element))
-        collectMatchingRulesForList(rules->focusPseudoClassRules(), firstRuleIndex, lastRuleIndex, options);
-    collectMatchingRulesForList(rules->tagRules(m_element->localName().impl()), firstRuleIndex, lastRuleIndex, options);
-    collectMatchingRulesForList(rules->universalRules(), firstRuleIndex, lastRuleIndex, options);
+        collectMatchingRulesForList(matchRequest.ruleSet->linkPseudoClassRules(), matchRequest, firstRuleIndex, lastRuleIndex);
+    if (m_selectorChecker.matchesFocusPseudoClass(m_element))
+        collectMatchingRulesForList(matchRequest.ruleSet->focusPseudoClassRules(), matchRequest, firstRuleIndex, lastRuleIndex);
+    collectMatchingRulesForList(matchRequest.ruleSet->tagRules(m_element->localName().impl()), matchRequest, firstRuleIndex, lastRuleIndex);
+    collectMatchingRulesForList(matchRequest.ruleSet->universalRules(), matchRequest, firstRuleIndex, lastRuleIndex);
 }
 
-void StyleResolver::collectMatchingRulesForRegion(RuleSet* rules, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions& options)
+void StyleResolver::collectMatchingRulesForRegion(const MatchRequest& matchRequest, int& firstRuleIndex, int& lastRuleIndex)
 {
     if (!m_regionForStyling)
         return;
 
-    unsigned size = rules->m_regionSelectorsAndRuleSets.size();
+    unsigned size = matchRequest.ruleSet->m_regionSelectorsAndRuleSets.size();
     for (unsigned i = 0; i < size; ++i) {
-        CSSSelector* regionSelector = rules->m_regionSelectorsAndRuleSets.at(i).selector;
+        CSSSelector* regionSelector = matchRequest.ruleSet->m_regionSelectorsAndRuleSets.at(i).selector;
         if (checkRegionSelector(regionSelector, static_cast<Element*>(m_regionForStyling->node()))) {
-            RuleSet* regionRules = rules->m_regionSelectorsAndRuleSets.at(i).ruleSet.get();
+            RuleSet* regionRules = matchRequest.ruleSet->m_regionSelectorsAndRuleSets.at(i).ruleSet.get();
             ASSERT(regionRules);
-            collectMatchingRules(regionRules, firstRuleIndex, lastRuleIndex, options);
+            collectMatchingRules(MatchRequest(regionRules, matchRequest.includeEmptyRules, matchRequest.scope), firstRuleIndex, lastRuleIndex);
         }
     }
 }
@@ -703,7 +708,7 @@ void StyleResolver::sortAndTransferMatchedRules(MatchResult& result)
 
     sortMatchedRules();
 
-    if (m_checker.mode() == SelectorChecker::CollectingRules) {
+    if (m_selectorChecker.mode() == SelectorChecker::CollectingRules) {
         if (!m_ruleList)
             m_ruleList = StaticCSSRuleList::create();
         for (unsigned i = 0; i < m_matchedRules.size(); ++i)
@@ -749,9 +754,9 @@ void StyleResolver::matchScopedAuthorRules(MatchResult& result, bool includeEmpt
                     continue;
             }
 
-            MatchOptions options(includeEmptyRules, frame.m_scope);
-            collectMatchingRules(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
-            collectMatchingRulesForRegion(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
+            MatchRequest matchRequest(frame.m_ruleSet, includeEmptyRules, frame.m_scope);
+            collectMatchingRules(matchRequest, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule);
+            collectMatchingRulesForRegion(matchRequest, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule);
             sortAndTransferMatchedRules(result);
         }
     }
@@ -785,9 +790,8 @@ void StyleResolver::matchHostRules(MatchResult& result, bool includeEmptyRules)
     if (matchedRules.isEmpty())
         return;
 
-    MatchOptions options(includeEmptyRules, m_element);
     for (unsigned i = matchedRules.size(); i > 0; --i)
-        collectMatchingRules(matchedRules.at(i-1), result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
+        collectMatchingRules(MatchRequest(matchedRules.at(i-1), includeEmptyRules, m_element), result.ranges.firstAuthorRule, result.ranges.lastAuthorRule);
     sortAndTransferMatchedRules(result);
 #else
     UNUSED_PARAM(result);
@@ -804,9 +808,9 @@ void StyleResolver::matchAuthorRules(MatchResult& result, bool includeEmptyRules
         return;
 
     // Match global author rules.
-    MatchOptions options(includeEmptyRules);
-    collectMatchingRules(m_authorStyle.get(), result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
-    collectMatchingRulesForRegion(m_authorStyle.get(), result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
+    MatchRequest matchRequest(m_authorStyle.get(), includeEmptyRules);
+    collectMatchingRules(matchRequest, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule);
+    collectMatchingRulesForRegion(matchRequest, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule);
     sortAndTransferMatchedRules(result);
 
     matchScopedAuthorRules(result, includeEmptyRules);
@@ -820,8 +824,9 @@ void StyleResolver::matchUserRules(MatchResult& result, bool includeEmptyRules)
     m_matchedRules.clear();
 
     result.ranges.lastUserRule = result.matchedProperties.size() - 1;
-    collectMatchingRules(m_userStyle.get(), result.ranges.firstUserRule, result.ranges.lastUserRule, includeEmptyRules);
-    collectMatchingRulesForRegion(m_userStyle.get(), result.ranges.firstUserRule, result.ranges.lastUserRule, includeEmptyRules);
+    MatchRequest matchRequest(m_userStyle.get(), includeEmptyRules);
+    collectMatchingRules(matchRequest, result.ranges.firstUserRule, result.ranges.lastUserRule);
+    collectMatchingRulesForRegion(matchRequest, result.ranges.firstUserRule, result.ranges.lastUserRule);
 
     sortAndTransferMatchedRules(result);
 }
@@ -831,32 +836,32 @@ void StyleResolver::matchUARules(MatchResult& result, RuleSet* rules)
     m_matchedRules.clear();
     
     result.ranges.lastUARule = result.matchedProperties.size() - 1;
-    collectMatchingRules(rules, result.ranges.firstUARule, result.ranges.lastUARule, false);
+    collectMatchingRules(MatchRequest(rules), result.ranges.firstUARule, result.ranges.lastUARule);
 
     sortAndTransferMatchedRules(result);
 }
 
-void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions& options)
+void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, const MatchRequest& matchRequest, int& firstRuleIndex, int& lastRuleIndex)
 {
     if (!rules)
         return;
 
     // In some cases we may end up looking up style for random elements in the middle of a recursive tree resolve.
     // Ancestor identifier filter won't be up-to-date in that case and we can't use the fast path.
-    bool canUseFastReject = m_checker.parentStackIsConsistent(m_parentNode);
+    bool canUseFastReject = m_selectorFilter.parentStackIsConsistent(m_parentNode);
 
     unsigned size = rules->size();
     for (unsigned i = 0; i < size; ++i) {
         const RuleData& ruleData = rules->at(i);
-        if (canUseFastReject && m_checker.fastRejectSelector<RuleData::maximumIdentifierCount>(ruleData.descendantSelectorIdentifierHashes()))
+        if (canUseFastReject && m_selectorFilter.fastRejectSelector<RuleData::maximumIdentifierCount>(ruleData.descendantSelectorIdentifierHashes()))
             continue;
 
         StyleRule* rule = ruleData.rule();
         InspectorInstrumentationCookie cookie = InspectorInstrumentation::willMatchRule(document(), rule, this);
-        if (checkSelector(ruleData, options.scope)) {
+        if (ruleMatches(ruleData, matchRequest.scope)) {
             // If the rule has no properties to apply, then ignore it in the non-debug mode.
             const StylePropertySet* properties = rule->properties();
-            if (!properties || (properties->isEmpty() && !options.includeEmptyRules)) {
+            if (!properties || (properties->isEmpty() && !matchRequest.includeEmptyRules)) {
                 InspectorInstrumentation::didMatchRule(cookie, false);
                 continue;
             }
@@ -868,7 +873,7 @@ void StyleResolver::collectMatchingRulesForList(const Vector<RuleData>* rules, i
             // If we're matching normal rules, set a pseudo bit if
             // we really just matched a pseudo-element.
             if (m_dynamicPseudo != NOPSEUDO && m_pseudoStyle == NOPSEUDO) {
-                if (m_checker.mode() == SelectorChecker::CollectingRules) {
+                if (m_selectorChecker.mode() == SelectorChecker::CollectingRules) {
                     InspectorInstrumentation::didMatchRule(cookie, false);
                     continue;
                 }
@@ -963,7 +968,7 @@ inline void StyleResolver::initElement(Element* e)
     if (m_element != e) {
         m_element = e;
         m_styledElement = m_element && m_element->isStyledElement() ? static_cast<StyledElement*>(m_element) : 0;
-        m_elementLinkState = m_checker.determineLinkState(m_element);
+        m_elementLinkState = document()->visitedLinkState()->determineLinkState(m_element);
         if (e && e == e->document()->documentElement()) {
             e->document()->setDirectionSetOnDocumentElement(false);
             e->document()->setWritingModeSetOnDocumentElement(false);
@@ -989,7 +994,7 @@ inline void StyleResolver::initForStyleResolve(Element* e, RenderStyle* parentSt
     }
 
     Node* docElement = e ? e->document()->documentElement() : 0;
-    RenderStyle* docStyle = m_checker.document()->renderStyle();
+    RenderStyle* docStyle = document()->renderStyle();
     m_rootElementStyle = docElement && e != docElement ? docElement->renderStyle() : docStyle;
 
     m_style = 0;
@@ -1056,9 +1061,9 @@ bool StyleResolver::styleSharingCandidateMatchesRuleSet(RuleSet* ruleSet)
     m_matchedRules.clear();
 
     int firstRuleIndex = -1, lastRuleIndex = -1;
-    m_checker.setMode(SelectorChecker::SharingRules);
-    collectMatchingRules(ruleSet, firstRuleIndex, lastRuleIndex, false);
-    m_checker.setMode(SelectorChecker::ResolvingStyle);
+    m_selectorChecker.setMode(SelectorChecker::SharingRules);
+    collectMatchingRules(MatchRequest(ruleSet), firstRuleIndex, lastRuleIndex);
+    m_selectorChecker.setMode(SelectorChecker::ResolvingStyle);
     if (m_matchedRules.isEmpty())
         return false;
     m_matchedRules.clear();
@@ -1236,6 +1241,15 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (element->isLink() && m_elementLinkState != style->insideLink())
         return false;
 
+#if ENABLE(VIDEO_TRACK)
+    if (element->webVTTNodeType() != m_element->webVTTNodeType())
+        return false;
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+    if (element == element->document()->webkitCurrentFullScreenElement() || m_element == m_element->document()->webkitCurrentFullScreenElement())
+        return false;
+#endif
     return true;
 }
 
@@ -1332,15 +1346,12 @@ void StyleResolver::matchUARules(MatchResult& result)
     matchUARules(result, userAgentStyleSheet);
 
     // In quirks mode, we match rules from the quirks user agent sheet.
-    if (!m_checker.strictParsing())
+    if (!m_selectorChecker.strictParsing())
         matchUARules(result, defaultQuirksStyle);
 
     // If document uses view source styles (in view source mode or in xml viewer mode), then we match rules from the view source style sheet.
-    if (m_checker.document()->isViewSource()) {
-        if (!defaultViewSourceStyle)
-            loadViewSourceStyle();
-        matchUARules(result, defaultViewSourceStyle);
-    }
+    if (document()->isViewSource())
+        matchUARules(result, viewSourceStyle());
 }
 
 static void setStylesForPaginationMode(Pagination::Mode paginationMode, RenderStyle* style)
@@ -1757,7 +1768,7 @@ PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(PseudoId pseudo, El
 
 PassRefPtr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
 {
-    initForStyleResolve(m_checker.document()->documentElement()); // m_rootElementStyle will be set to the document style.
+    initForStyleResolve(document()->documentElement()); // m_rootElementStyle will be set to the document style.
 
     m_style = RenderStyle::create();
     m_style->inheritFrom(m_rootElementStyle);
@@ -1913,7 +1924,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         // property.
         // Sites also commonly use display:inline/block on <td>s and <table>s. In quirks mode we force
         // these tags to retain their display types.
-        if (!m_checker.strictParsing() && e) {
+        if (!m_selectorChecker.strictParsing() && e) {
             if (e->hasTagName(tdTag)) {
                 style->setDisplay(TABLE_CELL);
                 style->setFloating(NoFloat);
@@ -1960,19 +1971,19 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
 
         // Absolute/fixed positioned elements, floating elements and the document element need block-like outside display.
         if (style->hasOutOfFlowPosition() || style->isFloating() || (e && e->document()->documentElement() == e))
-            style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_checker.strictParsing()));
+            style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_selectorChecker.strictParsing()));
 
         // FIXME: Don't support this mutation for pseudo styles like first-letter or first-line, since it's not completely
         // clear how that should work.
         if (style->display() == INLINE && style->styleType() == NOPSEUDO && style->writingMode() != parentStyle->writingMode())
             style->setDisplay(INLINE_BLOCK);
 
-        // After performing the display mutation, check table rows. We do not honor position:relative on
-        // table rows or cells. This has been established in CSS2.1 (and caused a crash in containingBlock()
+        // After performing the display mutation, check table rows. We do not honor position:relative or position:sticky on
+        // table rows or cells. This has been established for position:relative in CSS2.1 (and caused a crash in containingBlock()
         // on some sites).
         if ((style->display() == TABLE_HEADER_GROUP || style->display() == TABLE_ROW_GROUP
-             || style->display() == TABLE_FOOTER_GROUP || style->display() == TABLE_ROW)
-             && style->position() == RelativePosition)
+            || style->display() == TABLE_FOOTER_GROUP || style->display() == TABLE_ROW)
+            && style->hasInFlowPosition())
             style->setPosition(StaticPosition);
 
         // writing-mode does not apply to table row groups, table column groups, table rows, and table columns.
@@ -1990,7 +2001,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
 
         if (isDisplayFlexibleBox(parentStyle->display())) {
             style->setFloating(NoFloat);
-            style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_checker.strictParsing()));
+            style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_selectorChecker.strictParsing()));
         }
     }
 
@@ -2048,7 +2059,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
     // Call setStylesForPaginationMode() if a pagination mode is set for any non-root elements. If these
     // styles are specified on a root element, then they will be incorporated in
     // StyleResolver::styleForDocument().
-    if ((style->overflowY() == OPAGEDX || style->overflowY() == OPAGEDY) && !(e->hasTagName(htmlTag) || e->hasTagName(bodyTag)))
+    if ((style->overflowY() == OPAGEDX || style->overflowY() == OPAGEDY) && !(e && (e->hasTagName(htmlTag) || e->hasTagName(bodyTag))))
         setStylesForPaginationMode(WebCore::paginationModeForRenderStyle(style), style);
 
     // Table rows, sections and the table itself will support overflow:hidden and will ignore scroll/auto.
@@ -2151,23 +2162,19 @@ bool StyleResolver::checkRegionStyle(Element* regionElement)
     return false;
 }
 
-static void checkForOrientationChange(RenderStyle* style, const RenderStyle* parentStyle)
+static void checkForOrientationChange(RenderStyle* style)
 {
-    FontOrientation childFontOrientation;
-    NonCJKGlyphOrientation childGlyphOrientation;
-    getFontAndGlyphOrientation(style, childFontOrientation, childGlyphOrientation);
+    FontOrientation fontOrientation;
+    NonCJKGlyphOrientation glyphOrientation;
+    getFontAndGlyphOrientation(style, fontOrientation, glyphOrientation);
 
-    FontOrientation parentFontOrientation;
-    NonCJKGlyphOrientation parentGlyphOrientation;
-    getFontAndGlyphOrientation(parentStyle, parentFontOrientation, parentGlyphOrientation);
-
-    if (childFontOrientation == parentFontOrientation && childGlyphOrientation == parentGlyphOrientation)
+    const FontDescription& fontDescription = style->fontDescription();
+    if (fontDescription.orientation() == fontOrientation && fontDescription.nonCJKGlyphOrientation() == glyphOrientation)
         return;
 
-    const FontDescription& childFont = style->fontDescription();
-    FontDescription newFontDescription(childFont);
-    newFontDescription.setNonCJKGlyphOrientation(childGlyphOrientation);
-    newFontDescription.setOrientation(childFontOrientation);
+    FontDescription newFontDescription(fontDescription);
+    newFontDescription.setNonCJKGlyphOrientation(glyphOrientation);
+    newFontDescription.setOrientation(fontOrientation);
     style->setFontDescription(newFontDescription);
 }
 
@@ -2179,7 +2186,7 @@ void StyleResolver::updateFont()
     checkForTextSizeAdjust();
     checkForGenericFamilyChange(style(), m_parentStyle);
     checkForZoomChange(style(), m_parentStyle);
-    checkForOrientationChange(style(), m_parentStyle);
+    checkForOrientationChange(style());
     m_style->font().update(m_fontSelector);
     m_fontDirty = false;
 }
@@ -2204,7 +2211,7 @@ PassRefPtr<CSSRuleList> StyleResolver::pseudoStyleRulesForElement(Element* e, Ps
     if (!e || !e->document()->haveStylesheetsLoaded())
         return 0;
 
-    m_checker.setMode(SelectorChecker::CollectingRules);
+    m_selectorChecker.setMode(SelectorChecker::CollectingRules);
 
     initElement(e);
     initForStyleResolve(e, 0, pseudoId);
@@ -2228,12 +2235,12 @@ PassRefPtr<CSSRuleList> StyleResolver::pseudoStyleRulesForElement(Element* e, Ps
         m_sameOriginOnly = false;
     }
 
-    m_checker.setMode(SelectorChecker::ResolvingStyle);
+    m_selectorChecker.setMode(SelectorChecker::ResolvingStyle);
 
     return m_ruleList.release();
 }
 
-inline bool StyleResolver::checkSelector(const RuleData& ruleData, const ContainerNode* scope)
+inline bool StyleResolver::ruleMatches(const RuleData& ruleData, const ContainerNode* scope)
 {
     m_dynamicPseudo = NOPSEUDO;
 
@@ -2250,7 +2257,7 @@ inline bool StyleResolver::checkSelector(const RuleData& ruleData, const Contain
             return false;
         if (!SelectorChecker::fastCheckRightmostAttributeSelector(m_element, ruleData.selector()))
             return false;
-        return m_checker.fastCheckSelector(ruleData.selector(), m_element);
+        return m_selectorChecker.fastCheck(ruleData.selector(), m_element);
     }
 
     // Slow path.
@@ -2259,7 +2266,7 @@ inline bool StyleResolver::checkSelector(const RuleData& ruleData, const Contain
     context.elementParentStyle = m_parentNode ? m_parentNode->renderStyle() : 0;
     context.scope = scope;
     context.pseudoStyle = m_pseudoStyle;
-    SelectorChecker::SelectorMatch match = m_checker.checkSelector(context, m_dynamicPseudo);
+    SelectorChecker::Match match = m_selectorChecker.match(context, m_dynamicPseudo);
     if (match != SelectorChecker::SelectorMatches)
         return false;
     if (m_pseudoStyle != NOPSEUDO && m_pseudoStyle != m_dynamicPseudo)
@@ -2275,7 +2282,7 @@ bool StyleResolver::checkRegionSelector(CSSSelector* regionSelector, Element* re
     m_pseudoStyle = NOPSEUDO;
 
     for (CSSSelector* s = regionSelector; s; s = CSSSelectorList::next(s))
-        if (m_checker.checkSelector(s, regionElement))
+        if (m_selectorChecker.matches(s, regionElement))
             return true;
 
     return false;
@@ -2286,12 +2293,12 @@ bool StyleResolver::checkRegionSelector(CSSSelector* regionSelector, Element* re
 
 Length StyleResolver::convertToIntLength(CSSPrimitiveValue* primitiveValue, RenderStyle* style, RenderStyle* rootStyle, double multiplier)
 {
-    return primitiveValue ? primitiveValue->convertToLength<FixedIntegerConversion | PercentConversion | FractionConversion | ViewportPercentageConversion>(style, rootStyle, multiplier) : Length(Undefined);
+    return primitiveValue ? primitiveValue->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion | FractionConversion | ViewportPercentageConversion>(style, rootStyle, multiplier) : Length(Undefined);
 }
 
 Length StyleResolver::convertToFloatLength(CSSPrimitiveValue* primitiveValue, RenderStyle* style, RenderStyle* rootStyle, double multiplier)
 {
-    return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | FractionConversion | ViewportPercentageConversion>(style, rootStyle, multiplier) : Length(Undefined);
+    return primitiveValue ? primitiveValue->convertToLength<FixedFloatConversion | PercentConversion | CalculatedConversion | FractionConversion | ViewportPercentageConversion>(style, rootStyle, multiplier) : Length(Undefined);
 }
 
 template <StyleResolver::StyleApplicationPass pass>
@@ -2632,6 +2639,11 @@ static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wra
         case CSSRule::MEDIA_RULE:
             collectCSSOMWrappers(wrapperMap, static_cast<CSSMediaRule*>(cssRule));
             break;
+#if ENABLE(CSS3_CONDITIONAL_RULES)
+        case CSSRule::SUPPORTS_RULE:
+            collectCSSOMWrappers(wrapperMap, static_cast<CSSSupportsRule*>(cssRule));
+            break;
+#endif
 #if ENABLE(CSS_REGIONS)
         case CSSRule::WEBKIT_REGION_RULE:
             collectCSSOMWrappers(wrapperMap, static_cast<WebKitCSSRegionRule*>(cssRule));
@@ -3092,7 +3104,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             // We need to adjust the size to account for the generic family change from monospace
             // to non-monospace.
             if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize())
-                setFontSize(fontDescription, fontSizeForKeyword(m_checker.document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, false));
+                setFontSize(fontDescription, fontSizeForKeyword(document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, false));
             fontDescription.setGenericFamily(initialDesc.genericFamily());
             if (!initialDesc.firstFamily().familyIsEmpty())
                 fontDescription.setFamily(initialDesc.firstFamily());
@@ -3171,7 +3183,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         // If currFamily is non-zero then we set at least one family on this description.
         if (currFamily) {
             if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
-                setFontSize(fontDescription, fontSizeForKeyword(m_checker.document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize));
+                setFontSize(fontDescription, fontSizeForKeyword(document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize));
 
             setFontDescription(fontDescription);
         }
@@ -3220,10 +3232,10 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
                 if (!settings)
                     return;
                 fontDescription.setRenderingMode(settings->fontRenderingMode());
-                fontDescription.setUsePrinterFont(m_checker.document()->printing() || !settings->screenFontSubstitutionEnabled());
+                fontDescription.setUsePrinterFont(document()->printing() || !settings->screenFontSubstitutionEnabled());
 
                 // Handle the zoom factor.
-                fontDescription.setComputedSize(getComputedSizeFromSpecifiedSize(m_checker.document(), m_style.get(), fontDescription.isAbsoluteSize(), fontDescription.specifiedSize(), useSVGZoomRules()));
+                fontDescription.setComputedSize(getComputedSizeFromSpecifiedSize(document(), m_style.get(), fontDescription.isAbsoluteSize(), fontDescription.specifiedSize(), useSVGZoomRules()));
                 setFontDescription(fontDescription);
             }
         } else if (value->isFontValue()) {
@@ -4104,7 +4116,7 @@ void StyleResolver::checkForGenericFamilyChange(RenderStyle* style, RenderStyle*
     // multiplying by our scale factor.
     float size;
     if (childFont.keywordSize())
-        size = fontSizeForKeyword(m_checker.document(), CSSValueXxSmall + childFont.keywordSize() - 1, childFont.useFixedDefaultSize());
+        size = fontSizeForKeyword(document(), CSSValueXxSmall + childFont.keywordSize() - 1, childFont.useFixedDefaultSize());
     else {
         Settings* settings = documentSettings();
         float fixedScaleFactor = (settings && settings->defaultFixedFontSize() && settings->defaultFontSize())
@@ -4125,14 +4137,14 @@ void StyleResolver::initializeFontStyle(Settings* settings)
     FontDescription fontDescription;
     fontDescription.setGenericFamily(FontDescription::StandardFamily);
     fontDescription.setRenderingMode(settings->fontRenderingMode());
-    fontDescription.setUsePrinterFont(m_checker.document()->printing() || !settings->screenFontSubstitutionEnabled());
+    fontDescription.setUsePrinterFont(document()->printing() || !settings->screenFontSubstitutionEnabled());
     const AtomicString& standardFontFamily = documentSettings()->standardFontFamily();
     if (!standardFontFamily.isEmpty()) {
         fontDescription.firstFamily().setFamily(standardFontFamily);
         fontDescription.firstFamily().appendFamily(0);
     }
     fontDescription.setKeywordSize(CSSValueMedium - CSSValueXxSmall + 1);
-    setFontSize(fontDescription, fontSizeForKeyword(m_checker.document(), CSSValueMedium, false));
+    setFontSize(fontDescription, fontSizeForKeyword(document(), CSSValueMedium, false));
     m_style->setLineHeight(RenderStyle::initialLineHeight());
     m_lineHeightValue = 0;
     setFontDescription(fontDescription);
@@ -4141,7 +4153,7 @@ void StyleResolver::initializeFontStyle(Settings* settings)
 void StyleResolver::setFontSize(FontDescription& fontDescription, float size)
 {
     fontDescription.setSpecifiedSize(size);
-    fontDescription.setComputedSize(getComputedSizeFromSpecifiedSize(m_checker.document(), m_style.get(), fontDescription.isAbsoluteSize(), size, useSVGZoomRules()));
+    fontDescription.setComputedSize(getComputedSizeFromSpecifiedSize(document(), m_style.get(), fontDescription.isAbsoluteSize(), size, useSVGZoomRules()));
 }
 
 float StyleResolver::getComputedSizeFromSpecifiedSize(Document* document, RenderStyle* style, bool isAbsoluteSize, float specifiedSize, bool useSVGZoomRules)
@@ -4196,7 +4208,7 @@ float StyleResolver::getComputedSizeFromSpecifiedSize(Document* document, float 
 
     // Also clamp to a reasonable maximum to prevent insane font sizes from causing crashes on various
     // platforms (I'm looking at you, Windows.)
-    return min(1000000.0f, zoomedSize);
+    return min(maximumAllowedFontSize, zoomedSize);
 }
 
 const int fontSizeTableMax = 16;
@@ -5278,11 +5290,8 @@ void StyleResolver::collectFeatures()
     // sharing candidates.
     m_features.add(defaultStyle->features());
     m_features.add(m_authorStyle->features());
-    if (document()->isViewSource()) {
-        if (!defaultViewSourceStyle)
-            loadViewSourceStyle();
-        m_features.add(defaultViewSourceStyle->features());
-    }
+    if (document()->isViewSource())
+        m_features.add(viewSourceStyle()->features());
 
     if (m_scopeResolver)
         m_scopeResolver->collectFeaturesTo(m_features);
@@ -5303,6 +5312,9 @@ void StyleResolver::MatchedPropertiesCacheItem::reportMemoryUsage(MemoryObjectIn
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addMember(matchedProperties);
+    info.addMember(ranges);
+    info.addMember(renderStyle);
+    info.addMember(parentRenderStyle);
 }
 
 void MediaQueryResult::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
@@ -5317,16 +5329,32 @@ void StyleResolver::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_style);
     info.addMember(m_authorStyle);
     info.addMember(m_userStyle);
+    info.addMember(m_features);
     info.addMember(m_siblingRuleSet);
     info.addMember(m_uncommonAttributeRuleSet);
     info.addMember(m_keyframesRuleMap);
     info.addMember(m_matchedPropertiesCache);
+    info.addMember(m_matchedPropertiesCacheSweepTimer);
     info.addMember(m_matchedRules);
 
     info.addMember(m_ruleList);
     info.addMember(m_pendingImageProperties);
+    info.addMember(m_medium);
+    info.addMember(m_rootDefaultStyle);
+    info.addMember(m_document);
+
+    // FIXME: pointer to RenderStyle could point to an already deleted object.
+    info.ignoreMember(m_parentStyle);
+    info.ignoreMember(m_rootElementStyle);
+
+    info.addMember(m_element);
+    info.addMember(m_styledElement);
+    info.addMember(m_regionForStyling);
+    info.addMember(m_parentNode);
     info.addMember(m_lineHeightValue);
+    info.addMember(m_fontSelector);
     info.addMember(m_viewportDependentMediaQueryResults);
+    info.ignoreMember(m_styleBuilder);
     info.addMember(m_styleRuleToCSSOMWrapperMap);
     info.addMember(m_styleSheetCSSOMWrapperSet);
 #if ENABLE(CSS_FILTERS) && ENABLE(SVG)

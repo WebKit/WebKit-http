@@ -26,6 +26,7 @@
 #ifndef ResourceHandleInternal_h
 #define ResourceHandleInternal_h
 
+#include "NetworkingContext.h"
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 #include "AuthenticationChallenge.h"
@@ -123,6 +124,7 @@ namespace WebCore {
             , m_buffer(0)
             , m_bodySize(0)
             , m_bodyDataSent(0)
+            , m_redirectCount(0)
 #endif
 #if PLATFORM(QT)
             , m_job(0)
@@ -217,6 +219,7 @@ namespace WebCore {
         unsigned long m_bodyDataSent;
         RefPtr<NetworkingContext> m_context;
         SoupSession* soupSession();
+        int m_redirectCount;
 #endif
 #if PLATFORM(GTK)
         struct {

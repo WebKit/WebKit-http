@@ -185,22 +185,6 @@ public:
             return children->lastChild();
         return 0;
     }
-    RenderObject* beforePseudoElementRenderer() const
-    {
-        if (const RenderObjectChildList* children = virtualChildren())
-            return children->beforePseudoElementRenderer(this);
-        return 0;
-    }
-
-    // This function only returns the renderer of the "after" pseudoElement if it is a child of
-    // this renderer. If "continuations" exist, the function returns 0 even if the element that
-    // generated this renderer has an "after" pseudo-element.
-    RenderObject* afterPseudoElementRenderer() const
-    {
-        if (const RenderObjectChildList* children = virtualChildren())
-            return children->afterPseudoElementRenderer(this);
-        return 0;
-    }
 
     virtual RenderObjectChildList* virtualChildren() { return 0; }
     virtual const RenderObjectChildList* virtualChildren() const { return 0; }
@@ -310,7 +294,7 @@ public:
     void showRenderTreeAndMark(const RenderObject* markedObject1 = 0, const char* markedLabel1 = 0, const RenderObject* markedObject2 = 0, const char* markedLabel2 = 0, int depth = 0) const;
 #endif
 
-    static RenderObject* createObject(Node*, RenderStyle*);
+    static RenderObject* createObject(Element*, RenderStyle*);
 
     // Overloaded new operator.  Derived classes must override operator new
     // in order to allocate out of the RenderArena.
@@ -1288,6 +1272,13 @@ inline int adjustForAbsoluteZoom(int value, RenderObject* renderer)
 {
     return adjustForAbsoluteZoom(value, renderer->style());
 }
+
+#if ENABLE(SUBPIXEL_LAYOUT)
+inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, RenderObject* renderer)
+{
+    return adjustLayoutUnitForAbsoluteZoom(value, renderer->style());
+}
+#endif
 
 inline void adjustFloatQuadForAbsoluteZoom(FloatQuad& quad, RenderObject* renderer)
 {

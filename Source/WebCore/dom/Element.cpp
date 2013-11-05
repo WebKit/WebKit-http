@@ -84,6 +84,7 @@
 #include <wtf/text/CString.h>
 
 #if ENABLE(SVG)
+#include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
 #endif
@@ -202,6 +203,13 @@ Element::~Element()
 
     if (hasSyntheticAttrChildNodes())
         detachAllAttrNodesFromElement();
+
+#if ENABLE(SVG)
+    if (hasPendingResources()) {
+        document()->accessSVGExtensions()->removeElementFromPendingResources(this);
+        ASSERT(!hasPendingResources());
+    }
+#endif
 }
 
 inline ElementRareData* Element::elementRareData() const
@@ -215,9 +223,25 @@ inline ElementRareData* Element::ensureElementRareData()
     return static_cast<ElementRareData*>(ensureRareData());
 }
 
-PassOwnPtr<NodeRareData> Element::createRareData()
+void Element::clearTabIndexExplicitlyIfNeeded()
 {
-    return adoptPtr(new ElementRareData(documentInternal()));
+    if (hasRareData())
+        elementRareData()->clearTabIndexExplicitly();
+}
+
+void Element::setTabIndexExplicitly(short tabIndex)
+{
+    ensureElementRareData()->setTabIndexExplicitly(tabIndex);
+}
+
+bool Element::supportsFocus() const
+{
+    return hasRareData() && elementRareData()->tabIndexSetExplicitly();
+}
+
+short Element::tabIndex() const
+{
+    return hasRareData() ? elementRareData()->tabIndex() : 0;
 }
 
 DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, blur);
@@ -445,7 +469,11 @@ int Element::offsetWidth()
 {
     document()->updateLayoutIgnorePendingStylesheets();
     if (RenderBoxModelObject* renderer = renderBoxModelObject())
+#if ENABLE(SUBPIXEL_LAYOUT)
+        return adjustLayoutUnitForAbsoluteZoom(renderer->pixelSnappedOffsetWidth(), renderer).round();
+#else
         return adjustForAbsoluteZoom(renderer->pixelSnappedOffsetWidth(), renderer);
+#endif
     return 0;
 }
 
@@ -453,7 +481,11 @@ int Element::offsetHeight()
 {
     document()->updateLayoutIgnorePendingStylesheets();
     if (RenderBoxModelObject* renderer = renderBoxModelObject())
+#if ENABLE(SUBPIXEL_LAYOUT)
+        return adjustLayoutUnitForAbsoluteZoom(renderer->pixelSnappedOffsetHeight(), renderer).round();
+#else
         return adjustForAbsoluteZoom(renderer->pixelSnappedOffsetHeight(), renderer);
+#endif
     return 0;
 }
 
@@ -500,7 +532,11 @@ int Element::clientWidth()
     }
     
     if (RenderBox* renderer = renderBox())
+#if ENABLE(SUBPIXEL_LAYOUT)
+        return adjustLayoutUnitForAbsoluteZoom(renderer->pixelSnappedClientWidth(), renderer).round();
+#else
         return adjustForAbsoluteZoom(renderer->pixelSnappedClientWidth(), renderer);
+#endif
     return 0;
 }
 
@@ -521,7 +557,11 @@ int Element::clientHeight()
     }
     
     if (RenderBox* renderer = renderBox())
+#if ENABLE(SUBPIXEL_LAYOUT)
+        return adjustLayoutUnitForAbsoluteZoom(renderer->pixelSnappedClientHeight(), renderer).round();
+#else
         return adjustForAbsoluteZoom(renderer->pixelSnappedClientHeight(), renderer);
+#endif
     return 0;
 }
 
@@ -739,7 +779,7 @@ inline void Element::setAttributeInternal(size_t index, const QualifiedName& nam
         // If there is an Attr node hooked to this attribute, the Attr::setValue() call below
         // will write into the ElementAttributeData.
         // FIXME: Refactor this so it makes some sense.
-        if (RefPtr<Attr> attrNode = attrIfExists(name))
+        if (RefPtr<Attr> attrNode = inSynchronizationOfLazyAttribute ? 0 : attrIfExists(name))
             attrNode->setValue(newValue);
         else
             mutableAttributeData()->attributeItem(index)->setValue(newValue);
@@ -899,8 +939,8 @@ void Element::classAttributeChanged(const AtomicString& newClassString)
         attributeData->clearClass();
     }
 
-    if (DOMTokenList* classList = optionalClassList())
-        static_cast<ClassList*>(classList)->reset(newClassString);
+    if (hasRareData())
+        elementRareData()->clearClassListValueForQuirksMode();
 
     if (shouldInvalidateStyle)
         setNeedsStyleRecalc();
@@ -909,15 +949,15 @@ void Element::classAttributeChanged(const AtomicString& newClassString)
 bool Element::shouldInvalidateDistributionWhenAttributeChanged(ElementShadow* elementShadow, const QualifiedName& name, const AtomicString& newValue)
 {
     ASSERT(elementShadow);
-    elementShadow->ensureSelectFeatureSetCollected();
+    const SelectRuleFeatureSet& featureSet = elementShadow->distributor().ensureSelectFeatureSet(elementShadow);
 
     if (isIdAttributeName(name)) {
         AtomicString oldId = attributeData()->idForStyleResolution();
         AtomicString newId = makeIdForStyleResolution(newValue, document()->inQuirksMode());
         if (newId != oldId) {
-            if (!oldId.isEmpty() && elementShadow->selectRuleFeatureSet().hasSelectorForId(oldId))
+            if (!oldId.isEmpty() && featureSet.hasSelectorForId(oldId))
                 return true;
-            if (!newId.isEmpty() && elementShadow->selectRuleFeatureSet().hasSelectorForId(newId))
+            if (!newId.isEmpty() && featureSet.hasSelectorForId(newId))
                 return true;
         }
     }
@@ -929,16 +969,16 @@ bool Element::shouldInvalidateDistributionWhenAttributeChanged(ElementShadow* el
             const bool shouldFoldCase = document()->inQuirksMode();
             const SpaceSplitString& oldClasses = attributeData->classNames();
             const SpaceSplitString newClasses(newClassString, shouldFoldCase);
-            if (checkSelectorForClassChange(oldClasses, newClasses, elementShadow->selectRuleFeatureSet()))
+            if (checkSelectorForClassChange(oldClasses, newClasses, featureSet))
                 return true;
         } else if (const ElementAttributeData* attributeData = this->attributeData()) {
             const SpaceSplitString& oldClasses = attributeData->classNames();
-            if (checkSelectorForClassChange(oldClasses, elementShadow->selectRuleFeatureSet()))
+            if (checkSelectorForClassChange(oldClasses, featureSet))
                 return true;
         }
     }
 
-    return elementShadow->selectRuleFeatureSet().hasSelectorForAttribute(name.localName());
+    return featureSet.hasSelectorForAttribute(name.localName());
 }
 
 // Returns true is the given attribute is an event handler.
@@ -972,8 +1012,8 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, Frag
 
     // If the element is created as result of a paste or drag-n-drop operation
     // we want to remove all the script and event handlers.
-    if (scriptingPermission == DisallowScriptingContent) {
-        unsigned i = 0;
+    if (!scriptingContentIsAllowed(scriptingPermission)) {
+        size_t i = 0;
         while (i < filteredAttributes.size()) {
             Attribute& attribute = filteredAttributes[i];
             if (isEventHandlerAttribute(attribute.name())) {
@@ -1101,6 +1141,9 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertio
     if (!insertionPoint->isInTreeScope())
         return InsertionDone;
 
+    if (hasRareData())
+        elementRareData()->clearClassListValueForQuirksMode();
+
     TreeScope* scope = insertionPoint->treeScope();
     if (scope != treeScope())
         return InsertionDone;
@@ -1123,8 +1166,12 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertio
 
 void Element::removedFrom(ContainerNode* insertionPoint)
 {
+#if ENABLE(SVG)
+    bool wasInDocument = insertionPoint->document();
+#endif
+
 #if ENABLE(DIALOG_ELEMENT)
-    setIsInTopLayer(false);
+    document()->removeFromTopLayer(this);
 #endif
 #if ENABLE(FULLSCREEN_API)
     if (containsFullScreenElement())
@@ -1154,6 +1201,10 @@ void Element::removedFrom(ContainerNode* insertionPoint)
     }
 
     ContainerNode::removedFrom(insertionPoint);
+#if ENABLE(SVG)
+    if (wasInDocument && hasPendingResources())
+        document()->accessSVGExtensions()->removeElementFromPendingResources(this);
+#endif
 }
 
 void Element::createRendererIfNeeded()
@@ -1390,6 +1441,13 @@ ElementShadow* Element::ensureShadow()
     return data->shadow();
 }
 
+void Element::didAffectSelector(AffectedSelectorMask mask)
+{
+    setNeedsStyleRecalc();
+    if (ElementShadow* elementShadow = shadowOfParentForDistribution(this))
+        elementShadow->didAffectSelector(mask);
+}
+
 PassRefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
 {
     return ShadowRoot::create(this, ec);
@@ -1583,6 +1641,12 @@ void Element::formatForDebugger(char* buffer, unsigned length) const
     strncpy(buffer, result.toString().utf8().data(), length - 1);
 }
 #endif
+
+const Vector<RefPtr<Attr> >& Element::attrNodeList()
+{
+    ASSERT(hasSyntheticAttrChildNodes());
+    return *attrNodeListForElement(this);
+}
 
 PassRefPtr<Attr> Element::setAttributeNode(Attr* attrNode, ExceptionCode& ec)
 {
@@ -2152,6 +2216,12 @@ void Element::setPseudoElement(PseudoId pseudoId, PassRefPtr<PseudoElement> elem
     resetNeedsShadowTreeWalker();
 }
 
+RenderObject* Element::pseudoElementRenderer(PseudoId pseudoId) const
+{
+    if (PseudoElement* element = pseudoElement(pseudoId))
+        return element->renderer();
+    return 0;
+}
 
 // ElementTraversal API
 Element* Element::firstElementChild() const
@@ -2207,13 +2277,6 @@ DOMTokenList* Element::classList()
     if (!data->classList())
         data->setClassList(ClassList::create(this));
     return data->classList();
-}
-
-DOMTokenList* Element::optionalClassList() const
-{
-    if (!hasRareData())
-        return 0;
-    return elementRareData()->classList();
 }
 
 DOMStringMap* Element::dataset()
@@ -2283,14 +2346,14 @@ bool Element::childShouldCreateRenderer(const NodeRenderingContext& childContext
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-bool Element::isWebVTTNode() const
+WebVTTNodeType Element::webVTTNodeType() const
 {
-    return hasRareData() && elementRareData()->isWebVTTNode();
+    return hasRareData() ? elementRareData()->webVTTNodeType() : WebVTTNodeTypeNone;
 }
 
-void Element::setIsWebVTTNode(bool flag)
+void Element::setWebVTTNodeType(WebVTTNodeType type)
 {
-    ensureElementRareData()->setIsWebVTTNode(flag);
+    ensureElementRareData()->setWebVTTNodeType(type);
 }
 #endif
 
@@ -2339,7 +2402,10 @@ bool Element::isInTopLayer() const
 void Element::setIsInTopLayer(bool inTopLayer)
 {
     ensureElementRareData()->setIsInTopLayer(inTopLayer);
-    setNeedsStyleRecalc(SyntheticStyleChange);
+
+    // We must ensure a reattach occurs so the renderer is inserted in the correct sibling order under RenderView according to its
+    // top layer position, or in its usual place if not in the top layer.
+    reattachIfAttached();
 }
 #endif
 
@@ -2443,7 +2509,7 @@ bool Element::fastAttributeLookupAllowed(const QualifiedName& name) const
 
 #if ENABLE(SVG)
     if (isSVGElement())
-        return !SVGElement::isAnimatableAttribute(name);
+        return !static_cast<const SVGElement*>(this)->isAnimatableAttribute(name);
 #endif
 
     return true;
@@ -2485,10 +2551,8 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
             updateLabel(scope, oldValue, newValue);
     }
 
-#if ENABLE(MUTATION_OBSERVERS)
     if (OwnPtr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(this, name))
         recipients->enqueueMutationRecord(MutationRecord::createAttributes(this, name, oldValue));
-#endif
 
 #if ENABLE(INSPECTOR)
     InspectorInstrumentation::willModifyDOMAttr(document(), this, oldValue, newValue);
@@ -2710,5 +2774,22 @@ void Element::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_tagName);
     info.addMember(m_attributeData);
 }
+
+#if ENABLE(SVG)
+bool Element::hasPendingResources() const
+{
+    return hasRareData() && elementRareData()->hasPendingResources();
+}
+
+void Element::setHasPendingResources()
+{
+    ensureElementRareData()->setHasPendingResources(true);
+}
+
+void Element::clearHasPendingResources()
+{
+    ensureElementRareData()->setHasPendingResources(false);
+}
+#endif
 
 } // namespace WebCore

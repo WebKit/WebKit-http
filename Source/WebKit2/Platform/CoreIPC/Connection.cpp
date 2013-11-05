@@ -27,9 +27,9 @@
 #include "Connection.h"
 
 #include "BinarySemaphore.h"
-#include "CoreIPCMessageKinds.h"
 #include <WebCore/RunLoop.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/HashSet.h>
 
 using namespace WebCore;
 
@@ -50,18 +50,13 @@ public:
         return m_waitForSyncReplySemaphore.wait(absoluteTime);
     }
 
-#if PLATFORM(WIN)
-    bool waitWhileDispatchingSentWin32Messages(double absoluteTime, const Vector<HWND>& windowsToReceiveMessages)
-    {
-        return Connection::dispatchSentMessagesUntil(windowsToReceiveMessages, m_waitForSyncReplySemaphore, absoluteTime);
-    }
-#endif
-
     // Returns true if this message will be handled on a client thread that is currently
     // waiting for a reply to a synchronous message.
     bool processIncomingMessage(Connection*, IncomingMessage&);
 
-    void dispatchMessages();
+    // Dispatch pending sync messages. if allowedConnection is not null, will only dispatch messages
+    // from that connection and put the other messages back in the queue.
+    void dispatchMessages(Connection* allowedConnection);
 
 private:
     explicit SyncMessageState(RunLoop*);
@@ -79,15 +74,16 @@ private:
         return syncMessageStateMapMutex;
     }
 
-    void dispatchMessageAndResetDidScheduleDispatchMessagesWork();
+    void dispatchMessageAndResetDidScheduleDispatchMessagesForConnection(Connection*);
 
     RunLoop* m_runLoop;
     BinarySemaphore m_waitForSyncReplySemaphore;
 
-    // Protects m_didScheduleDispatchMessagesWork and m_messagesToDispatchWhileWaitingForSyncReply.
+    // Protects m_didScheduleDispatchMessagesWorkSet and m_messagesToDispatchWhileWaitingForSyncReply.
     Mutex m_mutex;
 
-    bool m_didScheduleDispatchMessagesWork;
+    // The set of connections for which we've scheduled a call to dispatchMessageAndResetDidScheduleDispatchMessagesForConnection.
+    HashSet<RefPtr<Connection> > m_didScheduleDispatchMessagesWorkSet;
 
     struct ConnectionAndIncomingMessage {
         RefPtr<Connection> connection;
@@ -95,6 +91,18 @@ private:
     };
     Vector<ConnectionAndIncomingMessage> m_messagesToDispatchWhileWaitingForSyncReply;
 };
+
+class Connection::SecondaryThreadPendingSyncReply {
+WTF_MAKE_NONCOPYABLE(SecondaryThreadPendingSyncReply);
+public:
+    SecondaryThreadPendingSyncReply() : replyDecoder(0) { }
+
+    // The reply decoder, will be null if there was an error processing the sync message on the other side.
+    MessageDecoder* replyDecoder;
+
+    BinarySemaphore semaphore;
+};
+
 
 PassRefPtr<Connection::SyncMessageState> Connection::SyncMessageState::getOrCreate(RunLoop* runLoop)
 {
@@ -114,7 +122,6 @@ PassRefPtr<Connection::SyncMessageState> Connection::SyncMessageState::getOrCrea
 
 Connection::SyncMessageState::SyncMessageState(RunLoop* runLoop)
     : m_runLoop(runLoop)
-    , m_didScheduleDispatchMessagesWork(false)
 {
 }
 
@@ -139,10 +146,8 @@ bool Connection::SyncMessageState::processIncomingMessage(Connection* connection
     {
         MutexLocker locker(m_mutex);
         
-        if (!m_didScheduleDispatchMessagesWork) {
-            m_runLoop->dispatch(WTF::bind(&SyncMessageState::dispatchMessageAndResetDidScheduleDispatchMessagesWork, this));
-            m_didScheduleDispatchMessagesWork = true;
-        }
+        if (m_didScheduleDispatchMessagesWorkSet.add(connection).isNewEntry)
+            m_runLoop->dispatch(bind(&SyncMessageState::dispatchMessageAndResetDidScheduleDispatchMessagesForConnection, this, RefPtr<Connection>(connection)));
 
         m_messagesToDispatchWhileWaitingForSyncReply.append(connectionAndIncomingMessage);
     }
@@ -152,7 +157,7 @@ bool Connection::SyncMessageState::processIncomingMessage(Connection* connection
     return true;
 }
 
-void Connection::SyncMessageState::dispatchMessages()
+void Connection::SyncMessageState::dispatchMessages(Connection* allowedConnection)
 {
     ASSERT(m_runLoop == RunLoop::current());
 
@@ -163,21 +168,36 @@ void Connection::SyncMessageState::dispatchMessages()
         m_messagesToDispatchWhileWaitingForSyncReply.swap(messagesToDispatchWhileWaitingForSyncReply);
     }
 
+    Vector<ConnectionAndIncomingMessage> messagesToPutBack;
+
     for (size_t i = 0; i < messagesToDispatchWhileWaitingForSyncReply.size(); ++i) {
         ConnectionAndIncomingMessage& connectionAndIncomingMessage = messagesToDispatchWhileWaitingForSyncReply[i];
+
+        if (allowedConnection && allowedConnection != connectionAndIncomingMessage.connection) {
+            // This incoming message belongs to another connection and we don't want to dispatch it now
+            // so mark it to be put back in the message queue.
+            messagesToPutBack.append(connectionAndIncomingMessage);
+            continue;
+        }
+
         connectionAndIncomingMessage.connection->dispatchMessage(connectionAndIncomingMessage.incomingMessage);
+    }
+
+    if (!messagesToPutBack.isEmpty()) {
+        MutexLocker locker(m_mutex);
+        m_messagesToDispatchWhileWaitingForSyncReply.append(messagesToPutBack);
     }
 }
 
-void Connection::SyncMessageState::dispatchMessageAndResetDidScheduleDispatchMessagesWork()
+void Connection::SyncMessageState::dispatchMessageAndResetDidScheduleDispatchMessagesForConnection(Connection* connection)
 {
     {
         MutexLocker locker(m_mutex);
-        ASSERT(m_didScheduleDispatchMessagesWork);
-        m_didScheduleDispatchMessagesWork = false;
+        ASSERT(m_didScheduleDispatchMessagesWorkSet.contains(connection));
+        m_didScheduleDispatchMessagesWorkSet.remove(connection);
     }
 
-    dispatchMessages();
+    dispatchMessages(connection);
 }
 
 PassRefPtr<Connection> Connection::createServerConnection(Identifier identifier, Client* client, RunLoop* clientRunLoop)
@@ -288,7 +308,8 @@ PassOwnPtr<MessageEncoder> Connection::createSyncMessageEncoder(StringReference 
     OwnPtr<MessageEncoder> encoder = MessageEncoder::create(messageReceiverName, messageName, destinationID);
 
     // Encode the sync request ID.
-    syncRequestID = ++m_syncRequestID;
+    COMPILE_ASSERT(sizeof(m_syncRequestID) == sizeof(int64_t), CanUseAtomicIncrement);
+    syncRequestID = atomicIncrement(reinterpret_cast<int64_t volatile*>(&m_syncRequestID));
     encoder->encode(syncRequestID);
 
     return encoder.release();
@@ -316,7 +337,7 @@ bool Connection::sendMessage(MessageID messageID, PassOwnPtr<MessageEncoder> enc
 
 bool Connection::sendSyncReply(PassOwnPtr<MessageEncoder> encoder)
 {
-    return sendMessage(MessageID(CoreIPCMessage::SyncMessageReply), encoder);
+    return sendMessage(MessageID(), encoder);
 }
 
 PassOwnPtr<MessageDecoder> Connection::waitForMessage(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, double timeout)
@@ -377,13 +398,14 @@ PassOwnPtr<MessageDecoder> Connection::waitForMessage(StringReference messageRec
 
 PassOwnPtr<MessageDecoder> Connection::sendSyncMessage(MessageID messageID, uint64_t syncRequestID, PassOwnPtr<MessageEncoder> encoder, double timeout, unsigned syncSendFlags)
 {
-    // We only allow sending sync messages from the client run loop.
-    ASSERT(RunLoop::current() == m_clientRunLoop);
-
-    if (!isValid()) {
-        didFailToSendSyncMessage();
-        return nullptr;
+    if (RunLoop::current() != m_clientRunLoop) {
+        // No flags are supported for synchronous messages sent from secondary threads.
+        ASSERT(!syncSendFlags);
+        return sendSyncMessageFromSecondaryThread(messageID, syncRequestID, encoder, timeout);
     }
+
+    if (!isValid())
+        return nullptr;
 
     // Push the pending sync reply information on our stack.
     {
@@ -411,10 +433,51 @@ PassOwnPtr<MessageDecoder> Connection::sendSyncMessage(MessageID messageID, uint
         m_pendingSyncReplies.removeLast();
     }
 
-    if (!reply)
+    return reply.release();
+}
+
+PassOwnPtr<MessageDecoder> Connection::sendSyncMessageFromSecondaryThread(MessageID messageID, uint64_t syncRequestID, PassOwnPtr<MessageEncoder> encoder, double timeout)
+{
+    ASSERT(RunLoop::current() != m_clientRunLoop);
+
+    if (!isValid()) {
+        didFailToSendSyncMessage();
+        return nullptr;
+    }
+
+    SecondaryThreadPendingSyncReply pendingReply;
+
+    // Push the pending sync reply information on our stack.
+    {
+        MutexLocker locker(m_syncReplyStateMutex);
+        if (!m_shouldWaitForSyncReplies) {
+            didFailToSendSyncMessage();
+            return nullptr;
+        }
+
+        ASSERT(!m_secondaryThreadPendingSyncReplyMap.contains(syncRequestID));
+        m_secondaryThreadPendingSyncReplyMap.add(syncRequestID, &pendingReply);
+    }
+
+    sendMessage(messageID.messageIDWithAddedFlags(MessageID::SyncMessage), encoder, 0);
+
+    // Use a really long timeout.
+    if (timeout == NoTimeout)
+        timeout = 1e10;
+
+    pendingReply.semaphore.wait(timeout);
+
+    // Finally, pop the pending sync reply information.
+    {
+        MutexLocker locker(m_syncReplyStateMutex);
+        ASSERT(m_secondaryThreadPendingSyncReplyMap.contains(syncRequestID));
+        m_secondaryThreadPendingSyncReplyMap.remove(syncRequestID);
+    }
+
+    if (!pendingReply.replyDecoder)
         didFailToSendSyncMessage();
 
-    return reply.release();
+    return adoptPtr(pendingReply.replyDecoder);
 }
 
 PassOwnPtr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncRequestID, double timeout, unsigned syncSendFlags)
@@ -428,7 +491,7 @@ PassOwnPtr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncRequestID, 
     bool timedOut = false;
     while (!timedOut) {
         // First, check if we have any messages that we need to process.
-        m_syncMessageState->dispatchMessages();
+        m_syncMessageState->dispatchMessages(0);
         
         {
             MutexLocker locker(m_syncReplyStateMutex);
@@ -452,11 +515,7 @@ PassOwnPtr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncRequestID, 
             return nullptr;
 
         // We didn't find a sync reply yet, keep waiting.
-#if PLATFORM(WIN)
-        timedOut = !m_syncMessageState->waitWhileDispatchingSentWin32Messages(absoluteTime, m_client->windowsToReceiveSentMessagesWhileWaitingForSyncReply());
-#else
-
-        // This allows the WebProcess to still serve clients while waiting for the message to return. 
+        // This allows the WebProcess to still serve clients while waiting for the message to return.
         // Notably, it can continue to process accessibility requests, which are on the main thread.
         if (syncSendFlags & SpinRunLoopWhileWaitingForReply) {
 #if PLATFORM(MAC)
@@ -467,7 +526,6 @@ PassOwnPtr<MessageDecoder> Connection::waitForSyncReply(uint64_t syncRequestID, 
 #endif
         } else
             timedOut = !m_syncMessageState->wait(absoluteTime);
-#endif
         
     }
 
@@ -498,14 +556,22 @@ void Connection::processIncomingSyncReply(PassOwnPtr<MessageDecoder> decoder)
         return;
     }
 
-    // If we get here, it means we got a reply for a message that wasn't in the sync request stack.
+    // If it's not a reply to any primary thread message, check if it is a reply to a secondary thread one.
+    SecondaryThreadPendingSyncReplyMap::iterator secondaryThreadReplyMapItem = m_secondaryThreadPendingSyncReplyMap.find(decoder->destinationID());
+    if (secondaryThreadReplyMapItem != m_secondaryThreadPendingSyncReplyMap.end()) {
+        SecondaryThreadPendingSyncReply* reply = secondaryThreadReplyMapItem->value;
+        ASSERT(!reply->replyDecoder);
+        reply->replyDecoder = decoder.leakPtr();
+        reply->semaphore.signal();
+    }
+
+    // If we get here, it means we got a reply for a message that wasn't in the sync request stack or map.
     // This can happen if the send timed out, so it's fine to ignore.
 }
 
 void Connection::processIncomingMessage(MessageID messageID, PassOwnPtr<MessageDecoder> decoder)
 {
-    // Check if this is a sync reply.
-    if (messageID == MessageID(CoreIPCMessage::SyncMessageReply)) {
+    if (decoder->messageReceiverName() == "IPC" && decoder->messageName() == "SyncMessageReply") {
         processIncomingSyncReply(decoder);
         return;
     }
@@ -566,6 +632,9 @@ void Connection::connectionDidClose()
 
         if (!m_pendingSyncReplies.isEmpty())
             m_syncMessageState->wakeUpClientRunLoop();
+
+        for (SecondaryThreadPendingSyncReplyMap::iterator iter = m_secondaryThreadPendingSyncReplyMap.begin(); iter != m_secondaryThreadPendingSyncReplyMap.end(); ++iter)
+            iter->value->semaphore.signal();
     }
 
     if (m_didCloseOnConnectionWorkQueueCallback)
@@ -626,7 +695,7 @@ void Connection::dispatchSyncMessage(MessageID messageID, MessageDecoder& decode
         return;
     }
 
-    OwnPtr<MessageEncoder> replyEncoder = MessageEncoder::create("IPC", "", syncRequestID);
+    OwnPtr<MessageEncoder> replyEncoder = MessageEncoder::create("IPC", "SyncMessageReply", syncRequestID);
 
     // Hand off both the decoder and encoder to the client.
     m_client->didReceiveSyncMessage(this, messageID, decoder, replyEncoder);

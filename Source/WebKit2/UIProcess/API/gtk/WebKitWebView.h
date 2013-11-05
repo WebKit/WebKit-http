@@ -146,6 +146,19 @@ typedef enum {
     WEBKIT_INSECURE_CONTENT_DISPLAYED
 } WebKitInsecureContentEvent;
 
+/**
+ * WebKitViewMode:
+ * @WEBKIT_VIEW_MODE_WEB: The normal view mode to display web contents.
+ * @WEBKIT_VIEW_MODE_SOURCE: The source mode to display web source code.
+ *
+ * Enum values to specify the different ways in which a #WebKitWebView
+ * can display a web page.
+ */
+typedef enum {
+    WEBKIT_VIEW_MODE_WEB,
+    WEBKIT_VIEW_MODE_SOURCE
+} WebKitViewMode;
+
 struct _WebKitWebView {
     WebKitWebViewBase parent;
 
@@ -247,6 +260,9 @@ webkit_web_view_stop_loading                         (WebKitWebView             
 
 WEBKIT_API gboolean
 webkit_web_view_is_loading                           (WebKitWebView             *web_view);
+
+WEBKIT_API guint64
+webkit_web_view_get_page_id                          (WebKitWebView             *web_view);
 
 WEBKIT_API const gchar *
 webkit_web_view_get_title                            (WebKitWebView             *web_view);
@@ -393,6 +409,13 @@ webkit_web_view_save_to_file_finish                  (WebKitWebView             
 WEBKIT_API WebKitDownload *
 webkit_web_view_download_uri                         (WebKitWebView             *web_view,
                                                       const char                *uri);
+
+WEBKIT_API void
+webkit_web_view_set_view_mode                        (WebKitWebView             *web_view,
+                                                      WebKitViewMode             view_mode);
+
+WEBKIT_API WebKitViewMode
+webkit_web_view_get_view_mode                        (WebKitWebView             *web_view);
 
 G_END_DECLS
 

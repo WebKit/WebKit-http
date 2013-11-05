@@ -28,12 +28,12 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "Connection.h"
-#include "MessageID.h"
 #include "OriginAndDatabases.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebDatabaseManagerMessages.h"
 #include "WebDatabaseManagerProxyMessages.h"
 #include "WebProcess.h"
+#include "WebProcessCreationParameters.h"
 #include <WebCore/DatabaseDetails.h>
 #include <WebCore/DatabaseManager.h>
 #include <WebCore/SecurityOrigin.h>
@@ -42,24 +42,22 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebDatabaseManager& WebDatabaseManager::shared()
+const AtomicString& WebDatabaseManager::supplementName()
 {
-    static WebDatabaseManager& shared = *new WebDatabaseManager;
-    return shared;
+    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebDatabaseManager", AtomicString::ConstructFromLiteral));
+    return name;
 }
 
-void WebDatabaseManager::initialize(const String& databaseDirectory)
+WebDatabaseManager::WebDatabaseManager(WebProcess* process)
+    : m_process(process)
 {
-    DatabaseManager::manager().initialize(databaseDirectory);
+    m_process->addMessageReceiver(Messages::WebDatabaseManager::messageReceiverName(), this);
 }
 
-WebDatabaseManager::WebDatabaseManager()
+void WebDatabaseManager::initialize(const WebProcessCreationParameters& parameters)
 {
+    DatabaseManager::manager().initialize(parameters.databaseDirectory);
     DatabaseManager::manager().setClient(this);
-}
-
-WebDatabaseManager::~WebDatabaseManager()
-{
 }
 
 void WebDatabaseManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
@@ -69,8 +67,6 @@ void WebDatabaseManager::didReceiveMessage(CoreIPC::Connection* connection, Core
 
 void WebDatabaseManager::getDatabasesByOrigin(uint64_t callbackID) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     // FIXME: This could be made more efficient by adding a function to DatabaseManager
     // to get both the origins and the Vector of DatabaseDetails for each origin in one
     // shot.  That would avoid taking the numerous locks this requires.
@@ -108,13 +104,11 @@ void WebDatabaseManager::getDatabasesByOrigin(uint64_t callbackID) const
         originAndDatabasesVector.append(originAndDatabases);
     }
 
-    WebProcess::shared().connection()->send(Messages::WebDatabaseManagerProxy::DidGetDatabasesByOrigin(originAndDatabasesVector, callbackID), 0);
+    m_process->send(Messages::WebDatabaseManagerProxy::DidGetDatabasesByOrigin(originAndDatabasesVector, callbackID), 0);
 }
 
 void WebDatabaseManager::getDatabaseOrigins(uint64_t callbackID) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     Vector<RefPtr<SecurityOrigin> > origins;
     DatabaseManager::manager().origins(origins);
 
@@ -123,13 +117,11 @@ void WebDatabaseManager::getDatabaseOrigins(uint64_t callbackID) const
     Vector<String> identifiers(numOrigins);
     for (size_t i = 0; i < numOrigins; ++i)
         identifiers[i] = origins[i]->databaseIdentifier();
-    WebProcess::shared().connection()->send(Messages::WebDatabaseManagerProxy::DidGetDatabaseOrigins(identifiers, callbackID), 0);
+    m_process->send(Messages::WebDatabaseManagerProxy::DidGetDatabaseOrigins(identifiers, callbackID), 0);
 }
 
 void WebDatabaseManager::deleteDatabaseWithNameForOrigin(const String& databaseIdentifier, const String& originIdentifier) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     RefPtr<SecurityOrigin> origin = SecurityOrigin::createFromDatabaseIdentifier(originIdentifier);
     if (!origin)
         return;
@@ -139,8 +131,6 @@ void WebDatabaseManager::deleteDatabaseWithNameForOrigin(const String& databaseI
 
 void WebDatabaseManager::deleteDatabasesForOrigin(const String& originIdentifier) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     RefPtr<SecurityOrigin> origin = SecurityOrigin::createFromDatabaseIdentifier(originIdentifier);
     if (!origin)
         return;
@@ -150,15 +140,11 @@ void WebDatabaseManager::deleteDatabasesForOrigin(const String& originIdentifier
 
 void WebDatabaseManager::deleteAllDatabases() const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     DatabaseManager::manager().deleteAllDatabases();
 }
 
 void WebDatabaseManager::setQuotaForOrigin(const String& originIdentifier, unsigned long long quota) const
 {
-    WebProcess::LocalTerminationDisabler terminationDisabler(WebProcess::shared());
-
     // If the quota is set to a value lower than the current usage, that quota will
     // "stick" but no data will be purged to meet the new quota. This will simply
     // prevent new data from being added to databases in that origin.
@@ -173,13 +159,13 @@ void WebDatabaseManager::setQuotaForOrigin(const String& originIdentifier, unsig
 void WebDatabaseManager::dispatchDidModifyOrigin(SecurityOrigin* origin)
 {
     // NOTE: This may be called on a non-main thread.
-    WebProcess::shared().connection()->send(Messages::WebDatabaseManagerProxy::DidModifyOrigin(origin->databaseIdentifier()), 0);
+    m_process->send(Messages::WebDatabaseManagerProxy::DidModifyOrigin(origin->databaseIdentifier()), 0);
 }
 
 void WebDatabaseManager::dispatchDidModifyDatabase(WebCore::SecurityOrigin* origin, const String& databaseIdentifier)
 {
     // NOTE: This may be called on a non-main thread.
-    WebProcess::shared().connection()->send(Messages::WebDatabaseManagerProxy::DidModifyDatabase(origin->databaseIdentifier(), databaseIdentifier), 0);
+    m_process->send(Messages::WebDatabaseManagerProxy::DidModifyDatabase(origin->databaseIdentifier(), databaseIdentifier), 0);
 }
 
 } // namespace WebKit

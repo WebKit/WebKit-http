@@ -31,6 +31,7 @@
 #include "RuleFeature.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SelectorChecker.h"
+#include "SelectorFilter.h"
 #include "StyleInheritedData.h"
 #include "StyleScopeResolver.h"
 #include "ViewportStyleResolver.h"
@@ -163,7 +164,7 @@ public:
     RenderStyle* parentStyle() const { return m_parentStyle; }
     RenderStyle* rootElementStyle() const { return m_rootElementStyle; }
     Element* element() const { return m_element; }
-    Document* document() const { return m_checker.document(); }
+    Document* document() const { return m_document; }
     const FontDescription& fontDescription() { return style()->fontDescription(); }
     const FontDescription& parentFontDescription() { return parentStyle()->fontDescription(); }
     void setFontDescription(const FontDescription& fontDescription) { m_fontDirty |= style()->setFontDescription(fontDescription); }
@@ -262,9 +263,6 @@ public:
     bool hasViewportDependentMediaQueries() const { return !m_viewportDependentMediaQueryResults.isEmpty(); }
     bool affectedByViewportChange() const;
 
-    void allVisitedStateChanged() { m_checker.allVisitedStateChanged(); }
-    void visitedStateChanged(LinkHash visitedHash) { m_checker.visitedStateChanged(visitedHash); }
-
     void addKeyframeStyle(PassRefPtr<StyleRuleKeyframes>);
 
     bool checkRegionStyle(Element* regionElement);
@@ -344,10 +342,14 @@ private:
         bool isCacheable;
     };
 
-    struct MatchOptions {
-        MatchOptions(bool includeEmptyRules, const ContainerNode* scope = 0) : scope(scope), includeEmptyRules(includeEmptyRules) { }
+    struct MatchRequest {
+        MatchRequest(RuleSet* ruleSet, bool includeEmptyRules = false, const ContainerNode* scope = 0)
+            : ruleSet(ruleSet)
+            , includeEmptyRules(includeEmptyRules)
+            , scope(scope) { }
+        const RuleSet* ruleSet;
+        const bool includeEmptyRules;
         const ContainerNode* scope;
-        bool includeEmptyRules;
     };
 
     static void addMatchedProperties(MatchResult&, const StylePropertySet* properties, StyleRule* = 0, unsigned linkMatchType = SelectorChecker::MatchAll, bool inRegionRule = false);
@@ -360,14 +362,16 @@ private:
     void matchUserRules(MatchResult&, bool includeEmptyRules);
     void matchScopedAuthorRules(MatchResult&, bool includeEmptyRules);
     void matchHostRules(MatchResult&, bool includeEmptyRules);
-    void collectMatchingRules(RuleSet*, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions&);
-    void collectMatchingRulesForRegion(RuleSet*, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions&);
-    void collectMatchingRulesForList(const Vector<RuleData>*, int& firstRuleIndex, int& lastRuleIndex, const MatchOptions&);
+
+    void collectMatchingRules(const MatchRequest&, int& firstRuleIndex, int& lastRuleIndex);
+    void collectMatchingRulesForRegion(const MatchRequest&, int& firstRuleIndex, int& lastRuleIndex);
+    void collectMatchingRulesForList(const Vector<RuleData>*, const MatchRequest&, int& firstRuleIndex, int& lastRuleIndex);
+
     bool fastRejectSelector(const RuleData&) const;
     void sortMatchedRules();
     void sortAndTransferMatchedRules(MatchResult&);
 
-    bool checkSelector(const RuleData&, const ContainerNode* scope);
+    bool ruleMatches(const RuleData&, const ContainerNode* scope);
     bool checkRegionSelector(CSSSelector* regionSelector, Element* regionElement);
     void applyMatchedProperties(const MatchResult&, const Element*);
     enum StyleApplicationPass {
@@ -388,7 +392,7 @@ private:
 
     void matchPageRules(MatchResult&, RuleSet*, bool isLeftPage, bool isFirstPage, const String& pageName);
     void matchPageRulesForList(Vector<StyleRulePage*>& matchedRules, const Vector<StyleRulePage*>&, bool isLeftPage, bool isFirstPage, const String& pageName);
-    Settings* documentSettings() { return m_checker.document()->settings(); }
+    Settings* documentSettings() { return m_document->settings(); }
 
     bool isLeftPage(int pageIndex) const;
     bool isRightPage(int pageIndex) const { return !isLeftPage(pageIndex); }
@@ -490,7 +494,9 @@ private:
     PseudoId m_dynamicPseudo;
     PseudoId m_pseudoStyle;
 
-    SelectorChecker m_checker;
+    Document* m_document;
+    SelectorChecker m_selectorChecker;
+    SelectorFilter m_selectorFilter;
 
     RefPtr<RenderStyle> m_style;
     RenderStyle* m_parentStyle;

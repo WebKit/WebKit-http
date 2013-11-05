@@ -151,8 +151,8 @@ QJsonObject QWebKitTest::viewport() const
     if (const PageViewportController* const viewportHandler = m_webViewPrivate->viewportController()) {
         viewportData.insert(QLatin1String("layoutSize"), toJsonObject(viewportHandler->contentsLayoutSize()));
         viewportData.insert(QLatin1String("isScalable"), viewportHandler->allowsUserScaling());
-        viewportData.insert(QLatin1String("minimumScale"), viewportHandler->minimumContentsScale());
-        viewportData.insert(QLatin1String("maximumScale"), viewportHandler->maximumContentsScale());
+        viewportData.insert(QLatin1String("minimumScale"), viewportHandler->minimumScale());
+        viewportData.insert(QLatin1String("maximumScale"), viewportHandler->maximumScale());
     } else {
         viewportData.insert(QLatin1String("initialScale"), 1.0);
         viewportData.insert(QLatin1String("layoutSize"), toJsonObject(QSizeF()));
@@ -166,13 +166,13 @@ QJsonObject QWebKitTest::viewport() const
 QVariant QWebKitTest::devicePixelRatio() const
 {
     if (const PageViewportController* const viewport = m_webViewPrivate->viewportController())
-        return viewport->devicePixelRatio();
+        return viewport->deviceScaleFactor();
     return 1.0;
 }
 
 QVariant QWebKitTest::contentsScale() const
 {
     if (const PageViewportController* const viewport = m_webViewPrivate->viewportController())
-        return viewport->currentContentsScale();
+        return viewport->currentScale();
     return 1.0;
 }

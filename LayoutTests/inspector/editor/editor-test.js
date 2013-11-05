@@ -1,19 +1,38 @@
 function initialize_EditorTests()
 {
 
-InspectorTest.createTestEditor = function(lineCount, clientHeight, chunkSize)
+InspectorTest.createTestEditor = function(clientHeight, chunkSize)
 {
     WebInspector.debugDefaultTextEditor = true;
     var textEditor = new WebInspector.DefaultTextEditor("", new WebInspector.TextEditorDelegate());
     textEditor.overrideViewportForTest(0, clientHeight || 100, chunkSize || 10);
     textEditor.show(WebInspector.inspectorView.element);
+    return textEditor;
+};
+
+InspectorTest.fillEditorWithText = function(textEditor, lineCount)
+{
     var textModel = textEditor._textModel;
     var lines = [];
     for (var i = 0; i < lineCount; ++i)
         lines.push(i);
     textModel.setText(lines.join("\n"));
-    return textEditor;
-};
+}
+
+InspectorTest.insertTextLine = function(line)
+{
+    function enter()
+    {
+        eventSender.keyDown("\n");
+    }
+
+    function innerInsertTextLine()
+    {
+        textInputController.insertText(line);
+    }
+    setTimeout(innerInsertTextLine);
+    setTimeout(enter);
+}
 
 InspectorTest.dumpEditorChunks = function(textEditor)
 {
@@ -48,6 +67,13 @@ InspectorTest.dumpEditorDOM = function(textEditor)
             prefix += " ";
         InspectorTest.addResult(prefix + node.outerHTML);
     }
+};
+
+InspectorTest.dumpEditorHTML = function(textEditor, mainPanelOnly)
+{
+    var element = mainPanelOnly ? textEditor._mainPanel.element : textEditor.element;
+    var dumpedHTML = element.innerHTML.replace(/<div/g, "\n<div");
+    InspectorTest.addResult(dumpedHTML);
 };
 
 InspectorTest.getLineElement = function(textEditor, lineNumber)

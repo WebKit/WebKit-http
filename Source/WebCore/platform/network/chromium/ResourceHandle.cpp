@@ -31,9 +31,12 @@
 #include "config.h"
 #include "ResourceHandle.h"
 
+#include "NetworkingContext.h"
+#include "ResourceError.h"
 #include "ResourceHandleClient.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
+#include "ResourceResponse.h"
 #include "SharedBuffer.h"
 #include "WrappedResourceRequest.h"
 #include "WrappedResourceResponse.h"
@@ -271,22 +274,6 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context,
     error = errorOut;
     data.clear();
     data.append(dataOut.data(), dataOut.size());
-}
-
-// static
-bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame*)
-{
-    // This method is used to determine if a POST request can be repeated from
-    // cache, but you cannot really know until you actually try to read from the
-    // cache. Even if we checked now, something else could come along and wipe
-    // out the cache entry by the time we fetch it.
-    //
-    // So, we always say yes here, to prevent the FrameLoader from initiating a
-    // reload. Then in FrameLoaderClientImpl::dispatchWillSendRequest, we
-    // fix-up the cache policy of the request to force a load from the cache.
-    //
-    ASSERT(request.httpMethod() == "POST");
-    return true;
 }
 
 // static

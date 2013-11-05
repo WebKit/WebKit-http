@@ -33,7 +33,6 @@
 #import "BlobRegistry.h"
 #import "BlockExceptions.h"
 #import "CookieStorage.h"
-#import "CookieStorageCFNet.h"
 #import "CredentialStorage.h"
 #import "CachedResourceLoader.h"
 #import "EmptyProtocolDefinitions.h"
@@ -42,6 +41,7 @@
 #import "FrameLoader.h"
 #import "Logging.h"
 #import "MIMETypeRegistry.h"
+#import "NetworkingContext.h"
 #import "Page.h"
 #import "ResourceError.h"
 #import "ResourceResponse.h"
@@ -147,7 +147,7 @@ static bool shouldRelaxThirdPartyCookiePolicy(NetworkingContext* context, const 
 {
     // If a URL already has cookies, then we'll relax the 3rd party cookie policy and accept new cookies.
 
-    RetainPtr<CFHTTPCookieStorageRef> cfCookieStorage = currentCFHTTPCookieStorage(context);
+    RetainPtr<CFHTTPCookieStorageRef> cfCookieStorage = context->storageSession().cookieStorage();
     NSHTTPCookieAcceptPolicy cookieAcceptPolicy = static_cast<NSHTTPCookieAcceptPolicy>(wkGetHTTPCookieAcceptPolicy(cfCookieStorage.get()));
 
     if (cookieAcceptPolicy != NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain)
@@ -230,7 +230,7 @@ bool ResourceHandle::start(NetworkingContext* context)
     if (!context->isValid())
         return false;
 
-    d->m_storageSession = context->storageSession();
+    d->m_storageSession = context->storageSession().platformSession();
 
     ASSERT(!d->m_proxy);
     d->m_proxy.adoptNS(wkCreateNSURLConnectionDelegateProxy());
@@ -357,19 +357,6 @@ bool ResourceHandle::loadsBlocked()
     return false;
 }
 
-bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame*)
-{
-    request.setCachePolicy(ReturnCacheDataDontLoad);
-    NSURLResponse *nsURLResponse = nil;
-    BEGIN_BLOCK_OBJC_EXCEPTIONS;
-
-    [NSURLConnection sendSynchronousRequest:request.nsURLRequest() returningResponse:&nsURLResponse error:nil];
-    
-    END_BLOCK_OBJC_EXCEPTIONS;
-    
-    return nsURLResponse;
-}
-
 CFStringRef ResourceHandle::synchronousLoadRunLoopMode()
 {
     return CFSTR("WebCoreSynchronousLoaderRunLoopMode");
@@ -396,7 +383,7 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
 
     RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(request, client.get(), false /*defersLoading*/, true /*shouldContentSniff*/));
 
-    handle->d->m_storageSession = context->storageSession();
+    handle->d->m_storageSession = context->storageSession().platformSession();
 
     if (context && handle->d->m_scheduledFailureType != NoFailure) {
         error = context->blockedError(request);
@@ -472,10 +459,12 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
         }
     }
 
+    RefPtr<ResourceHandle> protect(this);
     client()->willSendRequest(this, request, redirectResponse);
 
     // Client call may not preserve the session, especially if the request is sent over IPC.
-    request.setStorageSession(d->m_storageSession.get());
+    if (!request.isNull())
+        request.setStorageSession(d->m_storageSession.get());
 }
 
 bool ResourceHandle::shouldUseCredentialStorage()

@@ -31,8 +31,6 @@
 #ifndef WebRuntimeFeatures_h
 #define WebRuntimeFeatures_h
 
-#define HAS_WEBAUDIO_RUNTIMEFEATURES 1
-
 #include "platform/WebCommon.h"
 
 namespace WebKit {
@@ -162,6 +160,9 @@ public:
 
     WEBKIT_EXPORT static void enableExperimentalContentSecurityPolicyFeatures(bool);
     WEBKIT_EXPORT static bool isExperimentalContentSecurityPolicyFeaturesEnabled();
+
+    WEBKIT_EXPORT static void enableSeamlessIFrames(bool);
+    WEBKIT_EXPORT static bool areSeamlessIFramesEnabled();
 
     WEBKIT_EXPORT static void enableWebIntents(bool);
     WEBKIT_EXPORT static bool isWebIntentsEnabled();

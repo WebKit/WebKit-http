@@ -79,6 +79,9 @@ public:
     void detach();
     void executeQueuedTasks();
 
+    void setDefaultCompatibilityMode();
+    void finishedParsing();
+
     void insertDoctype(AtomicHTMLToken*);
     void insertComment(AtomicHTMLToken*);
     void insertCommentOnDocument(AtomicHTMLToken*);
@@ -107,6 +110,8 @@ public:
 
     void generateImpliedEndTags();
     void generateImpliedEndTagsWithExclusion(const AtomicString& tagName);
+
+    bool inQuirksMode();
 
     bool isEmpty() const { return !m_openElements.stackDepth(); }
     HTMLElementStack::ElementRecord* currentElementRecord() const { return m_openElements.topRecord(); }
@@ -151,6 +156,9 @@ private:
     // tokens produce only one DOM mutation.
     typedef Vector<HTMLConstructionSiteTask, 1> AttachmentQueue;
 
+    void setCompatibilityMode(Document::CompatibilityMode);
+    void setCompatibilityModeFromDoctype(const String& name, const String& publicId, const String& systemId);
+
     void attachLater(ContainerNode* parent, PassRefPtr<Node> child, bool selfClosing = false);
 
     void findFosterSite(HTMLConstructionSiteTask&);
@@ -185,6 +193,8 @@ private:
     bool m_redirectAttachToFosterParent;
 
     unsigned m_maximumDOMTreeDepth;
+
+    bool m_inQuirksMode;
 };
 
 } // namespace WebCore

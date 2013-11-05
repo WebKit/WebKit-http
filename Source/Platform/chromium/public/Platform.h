@@ -112,6 +112,12 @@ public:
 
     virtual double audioHardwareSampleRate() { return 0; }
     virtual size_t audioHardwareBufferSize() { return 0; }
+
+    // Creates a device for audio I/O.
+    // Pass in (numberOfInputChannels > 0) if live/local audio input is desired.
+    virtual WebAudioDevice* createAudioDevice(size_t bufferSize, unsigned numberOfInputChannels, unsigned numberOfChannels, double sampleRate, WebAudioDevice::RenderCallback*) { return 0; }
+
+    // FIXME: remove deprecated API once chromium switches over to new method.
     virtual WebAudioDevice* createAudioDevice(size_t bufferSize, unsigned numberOfChannels, double sampleRate, WebAudioDevice::RenderCallback*) { return 0; }
 
 
@@ -211,6 +217,18 @@ public:
     // memory currently allocated to this process that cannot be shared. Returns
     // false on platform specific error conditions.
     virtual bool processMemorySizesInBytes(size_t* privateBytes, size_t* sharedBytes) { return false; }
+
+    // A callback interface for requestProcessMemorySizes
+    class ProcessMemorySizesCallback {
+    public:
+        virtual ~ProcessMemorySizesCallback() { }
+        virtual void dataReceived(size_t privateBytes, size_t sharedBytes) = 0;
+    };
+
+    // Requests private and shared usage, in bytes. Private bytes is the amount of
+    // memory currently allocated to this process that cannot be shared.
+    // The callback ownership is passed to the callee.
+    virtual void requestProcessMemorySizes(ProcessMemorySizesCallback* requestCallback) { }
 
     // Reports number of bytes used by memory allocator for internal needs.
     // Returns true if the size has been reported, or false otherwise.

@@ -31,7 +31,9 @@
 #include "WKRetainPtr.h"
 #include "WKString.h"
 #include "WebContext.h"
+#include "WebCookieManagerProxy.h"
 #include "WebIconDatabase.h"
+#include "WebResourceCacheManagerProxy.h"
 #include "WebSoupRequestManagerProxy.h"
 #include "ewk_context_private.h"
 #include "ewk_cookie_manager_private.h"
@@ -134,7 +136,7 @@ PassRefPtr<EwkContext> EwkContext::defaultContext()
 EwkCookieManager* EwkContext::cookieManager()
 {
     if (!m_cookieManager)
-        m_cookieManager = EwkCookieManager::create(m_context->cookieManagerProxy());
+        m_cookieManager = EwkCookieManager::create(m_context->supplement<WebCookieManagerProxy>());
 
     return m_cookieManager.get();
 }
@@ -207,6 +209,11 @@ void EwkContext::setAdditionalPluginPath(const String& path)
     m_context->setAdditionalPluginsDirectory(path);
 }
 #endif
+
+void EwkContext::clearResourceCache()
+{
+    m_context->supplement<WebResourceCacheManagerProxy>()->clearCacheForAllOrigins(AllResourceCaches);
+}
 
 Ewk_Cookie_Manager* ewk_context_cookie_manager_get(const Ewk_Context* ewkContext)
 {
@@ -319,13 +326,23 @@ Ewk_Cache_Model ewk_context_cache_model_get(const Ewk_Context* ewkContext)
 
 Eina_Bool ewk_context_additional_plugin_path_set(Ewk_Context* ewkContext, const char* path)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     EWK_OBJ_GET_IMPL_OR_RETURN(EwkContext, ewkContext, impl, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(path, false);
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
     impl->setAdditionalPluginPath(String::fromUTF8(path));
     return true;
 #else
+    UNUSED_PARAM(ewkContext);
+    UNUSED_PARAM(path);
     return false;
 #endif
 }
+
+void ewk_context_resource_cache_clear(Ewk_Context* ewkContext)
+{
+    EWK_OBJ_GET_IMPL_OR_RETURN(EwkContext, ewkContext, impl);
+
+    impl->clearResourceCache();
+}
+

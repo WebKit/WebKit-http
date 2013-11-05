@@ -203,12 +203,22 @@ public:
         return GraphicsContext3DPrivate::extractWebGraphicsContext3D(m_drawingBuffer->graphicsContext3D());
     }
 
+    void clearTextureId()
+    {
+        m_layer->setTextureId(0);
+    }
+
     WebKit::WebLayer* layer() { return m_layer->layer(); }
 
 private:
     DrawingBuffer* m_drawingBuffer;
     OwnPtr<WebKit::WebExternalTextureLayer> m_layer;
 };
+
+Platform3DObject DrawingBuffer::framebuffer() const
+{
+    return m_fbo;
+}
 
 #if USE(ACCELERATED_COMPOSITING)
 PlatformLayer* DrawingBuffer::platformLayer()
@@ -218,20 +228,11 @@ PlatformLayer* DrawingBuffer::platformLayer()
 
     return m_private->layer();
 }
-#endif
 
-Platform3DObject DrawingBuffer::framebuffer() const
-{
-    return m_fbo;
-}
-
-#if USE(ACCELERATED_COMPOSITING)
 void DrawingBuffer::paintCompositedResultsToCanvas(ImageBuffer* imageBuffer)
 {
     if (!m_context->makeContextCurrent() || m_context->getExtensions()->getGraphicsResetStatusARB() != GraphicsContext3D::NO_ERROR)
         return;
-
-    IntSize framebufferSize = m_context->getInternalFramebufferSize();
 
     // Since we're using the same context as WebGL, we have to restore any state we change (in this case, just the framebuffer binding).
     // FIXME: The WebGLRenderingContext tracks the current framebuffer binding, it would be slightly more efficient to use this value
@@ -244,10 +245,18 @@ void DrawingBuffer::paintCompositedResultsToCanvas(ImageBuffer* imageBuffer)
     m_context->framebufferTexture2D(GraphicsContext3D::FRAMEBUFFER, GraphicsContext3D::COLOR_ATTACHMENT0, GraphicsContext3D::TEXTURE_2D, frontColorBuffer(), 0);
 
     Extensions3DChromium* extensions = static_cast<Extensions3DChromium*>(m_context->getExtensions());
-    extensions->paintFramebufferToCanvas(framebuffer, framebufferSize.width(), framebufferSize.height(), !m_context->getContextAttributes().premultipliedAlpha, imageBuffer);
+    extensions->paintFramebufferToCanvas(framebuffer, size().width(), size().height(), !m_context->getContextAttributes().premultipliedAlpha, imageBuffer);
     m_context->deleteFramebuffer(framebuffer);
 
     m_context->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, previousFramebuffer);
+}
+
+void DrawingBuffer::clearPlatformLayer()
+{
+    if (m_private)
+        m_private->clearTextureId();
+
+    m_context->flush();
 }
 #endif
 

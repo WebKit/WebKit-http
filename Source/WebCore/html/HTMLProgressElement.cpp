@@ -23,7 +23,6 @@
 
 #if ENABLE(PROGRESS_ELEMENT)
 #include "Attribute.h"
-#include "ElementShadow.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "HTMLDivElement.h"
@@ -32,7 +31,6 @@
 #include "NodeRenderingContext.h"
 #include "ProgressShadowElement.h"
 #include "RenderProgress.h"
-#include "SelectRuleFeatureSet.h"
 #include "ShadowRoot.h"
 #include <wtf/StdLibExtras.h>
 
@@ -92,7 +90,7 @@ void HTMLProgressElement::willAddAuthorShadowRoot()
 
 bool HTMLProgressElement::supportsFocus() const
 {
-    return Node::supportsFocus() && !disabled();
+    return HTMLElement::supportsFocus() && !disabled();
 }
 
 void HTMLProgressElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -160,10 +158,8 @@ void HTMLProgressElement::didElementStateChange()
     if (RenderProgress* render = renderProgress()) {
         bool wasDeterminate = render->isDeterminate();
         render->updateFromElement();
-        if (wasDeterminate != isDeterminate()) {
-            setNeedsStyleRecalc();
-            invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureIndeterminate);
-        }
+        if (wasDeterminate != isDeterminate())
+            didAffectSelector(AffectedSelectorIndeterminate);
     }
 }
 

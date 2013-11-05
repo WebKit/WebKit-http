@@ -35,8 +35,9 @@ namespace WebCore {
 
 class ElementRareData : public NodeRareData {
 public:
-    ElementRareData(Document*);
-    virtual ~ElementRareData();
+    static PassOwnPtr<ElementRareData> create(RenderObject* renderer) { return adoptPtr(new ElementRareData(renderer)); }
+
+    ~ElementRareData();
 
     void setPseudoElement(PseudoId, PassRefPtr<PseudoElement>);
     PseudoElement* pseudoElement(PseudoId) const;
@@ -44,6 +45,11 @@ public:
 
     void resetComputedStyle();
     void resetDynamicRestyleObservations();
+    
+    short tabIndex() const { return m_tabIndex; }
+    void setTabIndexExplicitly(short index) { m_tabIndex = index; m_tabIndexWasSetExplicitly = true; }
+    bool tabIndexSetExplicitly() const { return m_tabIndexWasSetExplicitly; }
+    void clearTabIndexExplicitly() { m_tabIndex = 0; m_tabIndexWasSetExplicitly = false; }
 
     bool needsFocusAppearanceUpdateSoonAfterAttach() const { return m_needsFocusAppearanceUpdateSoonAfterAttach; }
     void setNeedsFocusAppearanceUpdateSoonAfterAttach(bool needs) { m_needsFocusAppearanceUpdateSoonAfterAttach = needs; }
@@ -55,9 +61,10 @@ public:
     void setIsInCanvasSubtree(bool value) { m_isInCanvasSubtree = value; }
 
 #if ENABLE(VIDEO_TRACK)
-    using NodeRareData::isWebVTTNode;
-    using NodeRareData::setIsWebVTTNode;
+    void setWebVTTNodeType(WebVTTNodeType type) { m_webVTTNodeType = type; }
+    WebVTTNodeType webVTTNodeType() const { return static_cast<WebVTTNodeType>(m_webVTTNodeType); }
 #endif
+
 #if ENABLE(FULLSCREEN_API)
     bool containsFullScreenElement() { return m_containsFullScreenElement; }
     void setContainsFullScreenElement(bool value) { m_containsFullScreenElement = value; }
@@ -88,7 +95,8 @@ public:
     unsigned childIndex() const { return m_childIndex; }
     void setChildIndex(unsigned index) { m_childIndex = index; }
 
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+    // Manually called by Node::reportMemoryUsage.
+    void reportMemoryUsage(MemoryObjectInfo*) const;
 
     ElementShadow* shadow() const { return m_shadow.get(); }
     void setShadow(PassOwnPtr<ElementShadow> shadow) { m_shadow = shadow; }
@@ -101,6 +109,12 @@ public:
 
     ClassList* classList() const { return m_classList.get(); }
     void setClassList(PassOwnPtr<ClassList> classList) { m_classList = classList; }
+    void clearClassListValueForQuirksMode()
+    {
+        if (!m_classList)
+            return;
+        m_classList->clearValueForQuirksMode();
+    }
 
     DatasetDOMStringMap* dataset() const { return m_dataset.get(); }
     void setDataset(PassOwnPtr<DatasetDOMStringMap> dataset) { m_dataset = dataset; }
@@ -111,9 +125,44 @@ public:
     IntSize savedLayerScrollOffset() const { return m_savedLayerScrollOffset; }
     void setSavedLayerScrollOffset(IntSize size) { m_savedLayerScrollOffset = size; }
 
+#if ENABLE(SVG)
+    bool hasPendingResources() const { return m_hasPendingResources; }
+    void setHasPendingResources(bool has) { m_hasPendingResources = has; }
+#endif
+
 private:
-    // Many fields are in NodeRareData for better packing.
+    short m_tabIndex;
+    unsigned short m_childIndex;
+    unsigned m_tabIndexWasSetExplicitly : 1;
+    unsigned m_needsFocusAppearanceUpdateSoonAfterAttach : 1;
+    unsigned m_styleAffectedByEmpty : 1;
+    unsigned m_isInCanvasSubtree : 1;
+#if ENABLE(FULLSCREEN_API)
+    unsigned m_containsFullScreenElement : 1;
+#endif
+#if ENABLE(DIALOG_ELEMENT)
+    unsigned m_isInTopLayer : 1;
+#endif
+#if ENABLE(SVG)
+    unsigned m_hasPendingResources : 1;
+#endif
+    unsigned m_childrenAffectedByHover : 1;
+    unsigned m_childrenAffectedByActive : 1;
+    unsigned m_childrenAffectedByDrag : 1;
+    // Bits for dynamic child matching.
+    // We optimize for :first-child and :last-child. The other positional child selectors like nth-child or
+    // *-child-of-type, we will just give up and re-evaluate whenever children change at all.
+    unsigned m_childrenAffectedByFirstChildRules : 1;
+    unsigned m_childrenAffectedByLastChildRules : 1;
+    unsigned m_childrenAffectedByDirectAdjacentRules : 1;
+    unsigned m_childrenAffectedByForwardPositionalRules : 1;
+    unsigned m_childrenAffectedByBackwardPositionalRules : 1;
+#if ENABLE(VIDEO_TRACK)
+    unsigned m_webVTTNodeType : 2; // WebVTTNodeType
+#endif
+
     LayoutSize m_minimumSizeForResizing;
+    IntSize m_savedLayerScrollOffset;
     RefPtr<RenderStyle> m_computedStyle;
 
     OwnPtr<DatasetDOMStringMap> m_dataset;
@@ -124,9 +173,7 @@ private:
     RefPtr<PseudoElement> m_generatedBefore;
     RefPtr<PseudoElement> m_generatedAfter;
 
-    IntSize m_savedLayerScrollOffset;
-
-private:
+    ElementRareData(RenderObject*);
     void releasePseudoElement(PseudoElement*);
 };
 
@@ -135,11 +182,35 @@ inline IntSize defaultMinimumSizeForResizing()
     return IntSize(LayoutUnit::max(), LayoutUnit::max());
 }
 
-inline ElementRareData::ElementRareData(Document* document)
-    : NodeRareData(document)
+inline ElementRareData::ElementRareData(RenderObject* renderer)
+    : NodeRareData(renderer)
+    , m_tabIndex(0)
+    , m_childIndex(0)
+    , m_tabIndexWasSetExplicitly(false)
+    , m_needsFocusAppearanceUpdateSoonAfterAttach(false)
+    , m_styleAffectedByEmpty(false)
+    , m_isInCanvasSubtree(false)
+#if ENABLE(FULLSCREEN_API)
+    , m_containsFullScreenElement(false)
+#endif
+#if ENABLE(DIALOG_ELEMENT)
+    , m_isInTopLayer(false)
+#endif
+#if ENABLE(SVG)
+    , m_hasPendingResources(false)
+#endif
+    , m_childrenAffectedByHover(false)
+    , m_childrenAffectedByActive(false)
+    , m_childrenAffectedByDrag(false)
+    , m_childrenAffectedByFirstChildRules(false)
+    , m_childrenAffectedByLastChildRules(false)
+    , m_childrenAffectedByDirectAdjacentRules(false)
+    , m_childrenAffectedByForwardPositionalRules(false)
+    , m_childrenAffectedByBackwardPositionalRules(false)
+#if ENABLE(VIDEO_TRACK)
+    , m_webVTTNodeType(WebVTTNodeTypeNone)
+#endif
     , m_minimumSizeForResizing(defaultMinimumSizeForResizing())
-    , m_generatedBefore(0)
-    , m_generatedAfter(0)
 {
 }
 

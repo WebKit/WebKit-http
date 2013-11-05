@@ -131,6 +131,8 @@ public:
 
     WebCookieJar* cookieJar() const;
 
+    bool isLoading() const;
+
     void setVisible(bool);
     bool isVisible() const;
 
@@ -262,7 +264,6 @@ public:
     void setDateTimeInput(const BlackBerry::Platform::String& value);
     void setColorInput(const BlackBerry::Platform::String& value);
 
-    void onInputLocaleChanged(bool isRTL);
     static void onNetworkAvailabilityChanged(bool available);
     static void onCertificateStoreLocationSet(const BlackBerry::Platform::String& caPath);
 

@@ -28,70 +28,14 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
-#import "CommandLine.h"
-#import "EnvironmentUtilities.h"
+#import "ChildProcessMain.h"
 #import "NetworkProcess.h"
-#import <WebCore/RunLoop.h>
-#import <WebKitSystemInterface.h>
-#import <WebSystemInterface.h>
-#import <mach/mach_error.h>
-#import <runtime/InitializeThreading.h>
-#import <servers/bootstrap.h>
-#import <stdio.h>
-#import <wtf/MainThread.h>
-#import <wtf/RetainPtr.h>
-#import <wtf/text/CString.h>
-#import <wtf/text/WTFString.h>
-
-#define SHOW_CRASH_REPORTER 1
-
-using namespace WebCore;
 
 namespace WebKit {
 
-// FIXME: There is much code here that is duplicated in WebProcessMainMac.mm, we should add a shared base class where
-// we can put everything.
-
 int NetworkProcessMain(const CommandLine& commandLine)
 {
-    String serviceName = commandLine["servicename"];
-    if (serviceName.isEmpty())
-        return EXIT_FAILURE;
-    
-    // Get the server port.
-    mach_port_t serverPort;
-    kern_return_t kr = bootstrap_look_up(bootstrap_port, serviceName.utf8().data(), &serverPort);
-    if (kr) {
-        WTFLogAlways("bootstrap_look_up result: %s (%x)\n", mach_error_string(kr), kr);
-        return EXIT_FAILURE;
-    }
-
-    String localization = commandLine["localization"];
-    RetainPtr<CFStringRef> cfLocalization(AdoptCF, CFStringCreateWithCharacters(0, reinterpret_cast<const UniChar*>(localization.characters()), localization.length()));
-    if (cfLocalization)
-        WKSetDefaultLocalization(cfLocalization.get());
-
-#if !SHOW_CRASH_REPORTER
-    // Installs signal handlers that exit on a crash so that CrashReporter does not show up.
-    signal(SIGILL, _exit);
-    signal(SIGFPE, _exit);
-    signal(SIGBUS, _exit);
-    signal(SIGSEGV, _exit);
-#endif
-
-    InitWebCoreSystemInterface();
-    JSC::initializeThreading();
-    WTF::initializeMainThread();
-    RunLoop::initializeMainRunLoop();
-
-    // Initialize the network process connection.
-    NetworkProcess::shared().initialize(CoreIPC::Connection::Identifier(serverPort), RunLoop::main());
-
-    [NSApplication sharedApplication];
-
-    RunLoop::run();
-
-    return 0;
+    return ChildProcessMain<NetworkProcess, ChildProcessMainDelegate>(commandLine);
 }
 
 } // namespace WebKit

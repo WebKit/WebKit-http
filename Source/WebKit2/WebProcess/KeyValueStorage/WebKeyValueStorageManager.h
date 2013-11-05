@@ -26,43 +26,54 @@
 #ifndef WebKeyValueStorageManager_h
 #define WebKeyValueStorageManager_h
 
+#include "MessageReceiver.h"
+#include "WebProcessSupplement.h"
 #include <WebCore/StorageTrackerClient.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
-
-namespace CoreIPC {
-class Connection;
-class MessageDecoder;
-class MessageID;
-}
 
 namespace WebKit {
 
+class WebProcess;
 struct SecurityOriginData;
 
-class WebKeyValueStorageManager : public WebCore::StorageTrackerClient {
+class WebKeyValueStorageManager : public WebCore::StorageTrackerClient, public WebProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebKeyValueStorageManager);
-
 public:
-    static WebKeyValueStorageManager& shared();
+    explicit WebKeyValueStorageManager(WebProcess*);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    static const AtomicString& supplementName();
+
+    const String& localStorageDirectory() const { return m_localStorageDirectory; }
+#if ENABLE(INDEXED_DATABASE)
+    const String& indexedDBDatabaseDirectory() const { return m_indexedDBDatabaseDirectory; }
+#endif
 
 private:
-    WebKeyValueStorageManager();
-    
+    // WebProcessSupplement
+    virtual void initialize(const WebProcessCreationParameters&) OVERRIDE;
+
+    // CoreIPC::MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    void didReceiveWebKeyValueStorageManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+
     void getKeyValueStorageOrigins(uint64_t callbackID);
     void deleteEntriesForOrigin(const SecurityOriginData&);
     void deleteAllEntries();
+
+    void dispatchDidGetKeyValueStorageOrigins(const Vector<SecurityOriginData>& identifiers, uint64_t callbackID);
 
     // WebCore::StorageTrackerClient
     virtual void dispatchDidModifyOrigin(const String&) OVERRIDE;
     virtual void didFinishLoadingOrigins() OVERRIDE;
 
-    void didReceiveWebKeyValueStorageManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-
     Vector<uint64_t> m_originsRequestCallbackIDs;
-    bool m_originsLoaded;
+    String m_localStorageDirectory;
+#if ENABLE(INDEXED_DATABASE)
+    String m_indexedDBDatabaseDirectory;
+#endif
+    WebProcess* m_process;
 };
 
 } // namespace WebKit

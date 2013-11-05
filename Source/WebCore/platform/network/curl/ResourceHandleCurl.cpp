@@ -29,6 +29,7 @@
 #include "ResourceHandle.h"
 
 #include "CachedResourceLoader.h"
+#include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceHandleManager.h"
@@ -163,12 +164,6 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
 #else
     LOG_ERROR("Deferred loading is implemented if libcURL version is above 7.18.0");
 #endif
-}
-
-bool ResourceHandle::willLoadFromCache(ResourceRequest&, Frame*)
-{
-    notImplemented();
-    return false;
 }
 
 bool ResourceHandle::loadsBlocked()

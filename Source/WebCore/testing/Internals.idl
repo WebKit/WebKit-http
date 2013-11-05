@@ -65,6 +65,9 @@
     boolean hasSelectorForAttributeInShadow(in Element host, in DOMString attributeName) raises (DOMException);
     boolean hasSelectorForPseudoClassInShadow(in Element host, in DOMString pseudoClass) raises (DOMException);
 
+    boolean pauseAnimationAtTimeOnPseudoElement(in DOMString animationName, in double pauseTime, in Element element, in DOMString pseudoId) raises (DOMException);
+    boolean pauseTransitionAtTimeOnPseudoElement(in DOMString property, in double pauseTime, in Element element, in DOMString pseudoId) raises (DOMException);
+
     Node nextSiblingByWalker(in Node node) raises(DOMException);
     Node firstChildByWalker(in Node node) raises(DOMException);
     Node lastChildByWalker(in Node node) raises(DOMException);
@@ -78,7 +81,7 @@
     void selectColorInColorChooser(in Element element, in DOMString colorValue);
 #endif
     DOMString[] formControlStateOfPreviousHistoryItem() raises(DOMException);
-    void setFormControlStateOfPreviousHistoryItem(in DOMString[] values) raises(DOMException);
+    void setFormControlStateOfPreviousHistoryItem(in sequence<DOMString> values) raises(DOMException);
     void setEnableMockPagePopup(in boolean enabled) raises(DOMException);
 #if defined(ENABLE_PAGE_POPUP) && ENABLE_PAGE_POPUP
     readonly attribute PagePopupController pagePopupController;
@@ -171,6 +174,7 @@
 
     DOMString scrollingStateTreeAsText(in Document document) raises (DOMException);
     DOMString mainThreadScrollingReasons(in Document document) raises (DOMException);
+    ClientRectList nonFastScrollableRects(in Document document) raises (DOMException);
 
     DOMString repaintRectsAsText(in Document document) raises (DOMException);
 
@@ -187,6 +191,10 @@
 
 #if defined(ENABLE_NETWORK_INFO) && ENABLE_NETWORK_INFO
     void setNetworkInformation(in Document document, in DOMString eventType, in double bandwidth, in boolean metered) raises (DOMException);
+#endif
+
+#if defined(ENABLE_PROXIMITY_EVENTS) && ENABLE_PROXIMITY_EVENTS
+    void setDeviceProximity(in Document document, in DOMString eventType, in double value, in double min, in double max) raises (DOMException);
 #endif
 
     [Conditional=INSPECTOR] unsigned long numberOfLiveNodes();
@@ -217,6 +225,7 @@
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(in DOMString scheme);
 
     MallocStatistics mallocStatistics();
+    TypeConversions typeConversions();
 
     DOMString[] getReferencedFilePaths();
 

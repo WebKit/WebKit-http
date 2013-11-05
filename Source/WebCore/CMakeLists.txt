@@ -121,6 +121,7 @@ set(WebCore_IDL_INCLUDES
     Modules/mediastream
     Modules/networkinfo
     Modules/notifications
+    Modules/proximity
     Modules/quota
     Modules/speech
     Modules/vibration
@@ -222,7 +223,6 @@ set(WebCore_IDL_FILES
     Modules/mediastream/MediaStreamList.idl
     Modules/mediastream/MediaStreamTrack.idl
     Modules/mediastream/MediaStreamTrackEvent.idl
-    Modules/mediastream/MediaStreamTrackList.idl
     Modules/mediastream/NavigatorMediaStream.idl
     Modules/mediastream/NavigatorUserMediaError.idl
     Modules/mediastream/NavigatorUserMediaErrorCallback.idl
@@ -324,6 +324,7 @@ set(WebCore_IDL_FILES
     css/CSSStyleDeclaration.idl
     css/CSSStyleRule.idl
     css/CSSStyleSheet.idl
+    css/CSSSupportsRule.idl
     css/CSSValue.idl
     css/CSSValueList.idl
     css/MediaList.idl
@@ -514,6 +515,7 @@ set(WebCore_IDL_FILES
     html/canvas/ArrayBufferView.idl
     html/canvas/CanvasGradient.idl
     html/canvas/CanvasPattern.idl
+    html/canvas/CanvasProxy.idl
     html/canvas/CanvasRenderingContext2D.idl
     html/canvas/CanvasRenderingContext.idl
     html/canvas/DataView.idl
@@ -827,7 +829,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBFactoryBackendImpl.cpp
     Modules/indexeddb/IDBFactoryBackendInterface.cpp
     Modules/indexeddb/IDBIndex.cpp
-    Modules/indexeddb/IDBIndexBackendImpl.cpp
     Modules/indexeddb/IDBKey.cpp
     Modules/indexeddb/IDBKeyRange.cpp
     Modules/indexeddb/IDBKeyPath.cpp
@@ -863,7 +864,6 @@ set(WebCore_SOURCES
     Modules/mediastream/MediaStreamRegistry.cpp
     Modules/mediastream/MediaStreamTrack.cpp
     Modules/mediastream/MediaStreamTrackEvent.cpp
-    Modules/mediastream/MediaStreamTrackList.cpp
     Modules/mediastream/NavigatorMediaStream.cpp
     Modules/mediastream/RTCDataChannel.cpp
     Modules/mediastream/RTCDataChannelEvent.cpp
@@ -893,6 +893,7 @@ set(WebCore_SOURCES
     Modules/notifications/Notification.cpp
     Modules/notifications/WorkerContextNotifications.cpp
 
+    Modules/proximity/DeviceProximityController.cpp
     Modules/proximity/DeviceProximityEvent.cpp
 
     Modules/quota/DOMWindowQuota.cpp
@@ -1034,6 +1035,7 @@ set(WebCore_SOURCES
     css/CSSFontSelector.cpp
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
+    css/CSSGroupingRule.cpp
     css/CSSImageGeneratorValue.cpp
     css/CSSImageSetValue.cpp
     css/CSSImageValue.cpp
@@ -1057,6 +1059,7 @@ set(WebCore_SOURCES
     css/CSSSelectorList.cpp
     css/CSSStyleRule.cpp
     css/CSSStyleSheet.cpp
+    css/CSSSupportsRule.cpp
     css/CSSTimingFunctionValue.cpp
     css/CSSToStyleMap.cpp
     css/CSSUnicodeRangeValue.cpp
@@ -1081,6 +1084,7 @@ set(WebCore_SOURCES
     css/RuleSet.h
     css/RuleSet.cpp
     css/SelectorChecker.cpp
+    css/SelectorFilter.cpp
     css/ShadowValue.cpp
     css/StyleBuilder.cpp
     css/StyleInvalidationAnalysis.cpp
@@ -1109,6 +1113,7 @@ set(WebCore_SOURCES
     css/WebKitCSSViewportRule.cpp
 
     dom/ActiveDOMObject.cpp
+    dom/AncestorChainWalker.cpp
     dom/Attr.cpp
     dom/BeforeTextInsertedEvent.cpp
     dom/BeforeUnloadEvent.cpp
@@ -1248,6 +1253,7 @@ set(WebCore_SOURCES
     dom/UserGestureIndicator.cpp
     dom/UserTypingGestureIndicator.cpp
     dom/ViewportArguments.cpp
+    dom/VisitedLinkState.cpp
     dom/WebCoreMemoryInstrumentation.cpp
     dom/WebKitAnimationEvent.cpp
     dom/WebKitNamedFlow.cpp
@@ -1489,6 +1495,7 @@ set(WebCore_SOURCES
     html/canvas/CanvasContextAttributes.cpp
     html/canvas/CanvasGradient.cpp
     html/canvas/CanvasPattern.cpp
+    html/canvas/CanvasProxy.cpp
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
@@ -1522,14 +1529,18 @@ set(WebCore_SOURCES
     html/canvas/WebGLUniformLocation.cpp
     html/canvas/WebGLVertexArrayObjectOES.cpp
 
+    html/parser/BackgroundHTMLParser.cpp
     html/parser/CSSPreloadScanner.cpp
+    html/parser/CompactHTMLToken.cpp
     html/parser/HTMLConstructionSite.cpp
     html/parser/HTMLDocumentParser.cpp
     html/parser/HTMLElementStack.cpp
     html/parser/HTMLEntityParser.cpp
     html/parser/HTMLEntitySearch.cpp
     html/parser/HTMLParserIdioms.cpp
+    html/parser/HTMLParserOptions.cpp
     html/parser/HTMLParserScheduler.cpp
+    html/parser/HTMLParserThread.cpp
     html/parser/HTMLFormattingElementList.cpp
     html/parser/HTMLMetaCharsetParser.cpp
     html/parser/HTMLPreloadScanner.cpp
@@ -2031,6 +2042,7 @@ set(WebCore_SOURCES
     platform/network/HTTPValidation.cpp
     platform/network/MIMEHeader.cpp
     platform/network/NetworkStateNotifier.cpp
+    platform/network/NetworkStorageSessionStub.cpp
     platform/network/ParsedContentType.cpp
     platform/network/ProtectionSpace.cpp
     platform/network/ProxyServer.cpp
@@ -2654,6 +2666,7 @@ if (WTF_USE_3D_GRAPHICS)
         ${OPENGL_INCLUDE_DIR}
         "${THIRDPARTY_DIR}/ANGLE/src"
         "${THIRDPARTY_DIR}/ANGLE/include"
+        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
         "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
         "${WEBCORE_DIR}/platform/graphics/gpu"
     )
@@ -2706,24 +2719,17 @@ if (WTF_USE_3D_GRAPHICS)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/parseConst.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/ParseHelper.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/PoolAlloc.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/atom.c
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/cpp.c
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/cppstruct.c
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/memory.c
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/DiagnosticsBase.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/DirectiveHandlerBase.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/DirectiveParser.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/ExpressionParser.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/Input.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/Lexer.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/Macro.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/MacroExpander.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/Preprocessor.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/Token.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/new/Tokenizer.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/scanner.c
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/symbols.c
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/tokens.c
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/DiagnosticsBase.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/DirectiveHandlerBase.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/DirectiveParser.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/ExpressionParser.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Input.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Lexer.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Macro.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/MacroExpander.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Preprocessor.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Token.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/preprocessor/Tokenizer.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/QualifierAlive.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/RemoveTree.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/SearchSymbol.cpp
@@ -2738,6 +2744,7 @@ if (WTF_USE_3D_GRAPHICS)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/util.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/ValidateLimitations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/VariableInfo.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/VariablePacker.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/VersionGLSL.cpp
     )
 
@@ -2760,6 +2767,7 @@ set(WebCoreTestSupport_IDL_FILES
     testing/Internals.idl
     testing/InternalSettings.idl
     testing/MallocStatistics.idl
+    testing/TypeConversions.idl
 )
 
 set(WebCoreTestSupport_SOURCES
@@ -2943,7 +2951,7 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ExceptionCodeDescript
 
 
 GENERATE_SETTINGS_MACROS(${WEBCORE_DIR}/page/Settings.in SettingsMacros.h)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SettingsMacros.h)
+list(APPEND WebCoreTestSupport_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.cpp)
 
 
 GENERATE_FONT_NAMES(${WEBCORE_DIR}/css/WebKitFontFamilyNames.in)

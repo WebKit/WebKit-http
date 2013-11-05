@@ -70,15 +70,16 @@ static const char pauseOnAllXHRs[] = "pauseOnAllXHRs";
 static const char xhrBreakpoints[] = "xhrBreakpoints";
 }
 
-PassOwnPtr<InspectorDOMDebuggerAgent> InspectorDOMDebuggerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorState* inspectorState, InspectorDOMAgent* domAgent, InspectorDebuggerAgent* debuggerAgent, InspectorAgent* inspectorAgent)
+PassOwnPtr<InspectorDOMDebuggerAgent> InspectorDOMDebuggerAgent::create(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* inspectorState, InspectorDOMAgent* domAgent, InspectorDebuggerAgent* debuggerAgent, InspectorAgent* inspectorAgent)
 {
     return adoptPtr(new InspectorDOMDebuggerAgent(instrumentingAgents, inspectorState, domAgent, debuggerAgent, inspectorAgent));
 }
 
-InspectorDOMDebuggerAgent::InspectorDOMDebuggerAgent(InstrumentingAgents* instrumentingAgents, InspectorState* inspectorState, InspectorDOMAgent* domAgent, InspectorDebuggerAgent* debuggerAgent, InspectorAgent*)
+InspectorDOMDebuggerAgent::InspectorDOMDebuggerAgent(InstrumentingAgents* instrumentingAgents, InspectorCompositeState* inspectorState, InspectorDOMAgent* domAgent, InspectorDebuggerAgent* debuggerAgent, InspectorAgent*)
     : InspectorBaseAgent<InspectorDOMDebuggerAgent>("DOMDebugger", instrumentingAgents, inspectorState)
     , m_domAgent(domAgent)
     , m_debuggerAgent(debuggerAgent)
+    , m_pauseInNextEventListener(false)
 {
     m_debuggerAgent->setListener(this);
 }
@@ -98,6 +99,25 @@ void InspectorDOMDebuggerAgent::debuggerWasEnabled()
 void InspectorDOMDebuggerAgent::debuggerWasDisabled()
 {
     disable();
+}
+
+void InspectorDOMDebuggerAgent::stepInto()
+{
+    m_pauseInNextEventListener = true;
+}
+
+void InspectorDOMDebuggerAgent::didPause()
+{
+    m_pauseInNextEventListener = false;
+}
+
+void InspectorDOMDebuggerAgent::didProcessTask()
+{
+    if (!m_pauseInNextEventListener)
+        return;
+    if (m_debuggerAgent && m_debuggerAgent->runningNestedMessageLoop())
+        return;
+    m_pauseInNextEventListener = false;
 }
 
 void InspectorDOMDebuggerAgent::disable()
@@ -358,9 +378,13 @@ void InspectorDOMDebuggerAgent::updateSubtreeBreakpoints(Node* node, uint32_t ro
 void InspectorDOMDebuggerAgent::pauseOnNativeEventIfNeeded(bool isDOMEvent, const String& eventName, bool synchronous)
 {
     String fullEventName = (isDOMEvent ? listenerEventCategoryType : instrumentationEventCategoryType) + eventName;
-    RefPtr<InspectorObject> eventListenerBreakpoints = m_state->getObject(DOMDebuggerAgentState::eventListenerBreakpoints);
-    if (eventListenerBreakpoints->find(fullEventName) == eventListenerBreakpoints->end())
-        return;
+    if (m_pauseInNextEventListener)
+        m_pauseInNextEventListener = false;
+    else {
+        RefPtr<InspectorObject> eventListenerBreakpoints = m_state->getObject(DOMDebuggerAgentState::eventListenerBreakpoints);
+        if (eventListenerBreakpoints->find(fullEventName) == eventListenerBreakpoints->end())
+            return;
+    }
 
     RefPtr<InspectorObject> eventData = InspectorObject::create();
     eventData->setString("eventName", fullEventName);
@@ -421,6 +445,7 @@ void InspectorDOMDebuggerAgent::willSendXMLHttpRequest(const String& url)
 void InspectorDOMDebuggerAgent::clear()
 {
     m_domBreakpoints.clear();
+    m_pauseInNextEventListener = false;
 }
 
 } // namespace WebCore

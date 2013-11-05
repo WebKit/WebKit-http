@@ -349,8 +349,6 @@ public:
     void updatePluginsActiveAndFocusedState();
     const WebCore::IntRect& windowFrameInScreenCoordinates() const { return m_windowFrameInScreenCoordinates; }
     const WebCore::IntRect& viewFrameInWindowCoordinates() const { return m_viewFrameInWindowCoordinates; }
-#elif PLATFORM(WIN)
-    HWND nativeWindow() const { return m_nativeWindow; }
 #endif
 
     bool windowIsFocused() const;
@@ -427,7 +425,7 @@ public:
     void commitPageTransitionViewport();
 #endif
 
-#if PLATFORM(QT)
+#if PLATFORM(QT) || PLATFORM(GTK)
     void setComposition(const String& text, Vector<WebCore::CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementRangeStart, uint64_t replacementRangeEnd);
     void confirmComposition(const String& text, int64_t selectionStart, int64_t selectionLength);
     void cancelComposition();
@@ -457,15 +455,6 @@ public:
     void acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEvent&, bool& result);
     bool performNonEditingBehaviorForSelector(const String&);
     void insertDictatedText(const String& text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool& handled, EditorState& newState);
-#elif PLATFORM(WIN)
-    void confirmComposition(const String& compositionString);
-    void setComposition(const WTF::String& compositionString, const WTF::Vector<WebCore::CompositionUnderline>& underlines, uint64_t cursorPosition);
-    void firstRectForCharacterInSelectedRange(const uint64_t characterPosition, WebCore::IntRect& resultRect);
-    void getSelectedText(WTF::String&);
-
-    void gestureWillBegin(const WebCore::IntPoint&, bool& canBeginPanning);
-    void gestureDidScroll(const WebCore::IntSize&);
-    void gestureDidEnd();
 #elif PLATFORM(EFL)
     void confirmComposition(const String& compositionString);
     void setComposition(const WTF::String& compositionString, const WTF::Vector<WebCore::CompositionUnderline>& underlines, uint64_t cursorPosition);
@@ -503,9 +492,7 @@ public:
     void clearSelection();
 
 #if ENABLE(DRAG_SUPPORT)
-#if PLATFORM(WIN)
-    void performDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, const WebCore::DragDataMap&, uint32_t flags);
-#elif PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
     void performDragControllerAction(uint64_t action, WebCore::DragData);
 #else
     void performDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, const WTF::String& dragStorageName, uint32_t flags, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
@@ -519,8 +506,8 @@ public:
     void beginPrinting(uint64_t frameID, const PrintInfo&);
     void endPrinting();
     void computePagesForPrinting(uint64_t frameID, const PrintInfo&, uint64_t callbackID);
-#if PLATFORM(MAC) || PLATFORM(WIN)
-    void drawRectToImage(uint64_t frameID, const PrintInfo&, const WebCore::IntRect&, uint64_t callbackID);
+#if PLATFORM(MAC)
+    void drawRectToImage(uint64_t frameID, const PrintInfo&, const WebCore::IntRect&, const WebCore::IntSize&, uint64_t callbackID);
     void drawPagesToPDF(uint64_t frameID, const PrintInfo&, uint32_t first, uint32_t count, uint64_t callbackID);
 #elif PLATFORM(GTK)
     void drawPagesForPrinting(uint64_t frameID, const PrintInfo&, uint64_t callbackID);
@@ -617,6 +604,8 @@ public:
     void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID);
 #endif
 
+    bool mainFrameIsScrollable() const { return m_mainFrameIsScrollable; }
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -708,6 +697,7 @@ private:
     void getResourceDataFromFrame(uint64_t frameID, const String& resourceURL, uint64_t callbackID);
     void getRenderTreeExternalRepresentation(uint64_t callbackID);
     void getSelectionOrContentsAsString(uint64_t callbackID);
+    void getSelectionAsWebArchiveData(uint64_t callbackID);
     void getSourceForFrame(uint64_t frameID, uint64_t callbackID);
     void getWebArchiveOfFrame(uint64_t frameID, uint64_t callbackID);
     void runJavaScriptInMainFrame(const String&, uint64_t callbackID);
@@ -736,11 +726,17 @@ private:
     void drawPagesToPDFFromPDFDocument(CGContextRef, PDFDocument *, const PrintInfo&, uint32_t first, uint32_t count);
 #endif
 
+    void viewExposedRectChanged(const WebCore::IntRect& exposedRect);
+    void setMainFrameIsScrollable(bool);
+
     void unapplyEditCommand(uint64_t commandID);
     void reapplyEditCommand(uint64_t commandID);
     void didRemoveEditCommand(uint64_t commandID);
 
     void findString(const String&, uint32_t findOptions, uint32_t maxMatchCount);
+    void findStringMatches(const String&, uint32_t findOptions, uint32_t maxMatchCount);
+    void getImageForFindMatch(uint32_t matchIndex);
+    void selectFindMatch(uint32_t matchIndex);
     void hideFindUI();
     void countStringMatches(const String&, uint32_t findOptions, uint32_t maxMatchCount);
 
@@ -790,6 +786,8 @@ private:
 
     bool canHandleUserEvents() const;
 
+    void setMainFrameInViewSourceMode(bool);
+
     static bool platformCanHandleRequest(const WebCore::ResourceRequest&);
 
     OwnPtr<WebCore::Page> m_page;
@@ -821,6 +819,8 @@ private:
 
     bool m_scrollingPerformanceLoggingEnabled;
 
+    bool m_mainFrameIsScrollable;
+
 #if PLATFORM(MAC)
     bool m_pdfPluginEnabled;
 
@@ -846,11 +846,6 @@ private:
 
     WebCore::KeyboardEvent* m_keyboardEventBeingInterpreted;
 
-#elif PLATFORM(WIN)
-    // Our view's window (in the UI process).
-    HWND m_nativeWindow;
-
-    RefPtr<WebCore::Node> m_gestureTargetNode;
 #elif PLATFORM(GTK)
     GRefPtr<WebPageAccessibilityObject> m_accessibilityObject;
 
@@ -944,9 +939,6 @@ private:
     
     bool m_willGoToBackForwardItemCallbackEnabled;
 
-#if PLATFORM(WIN)
-    bool m_gestureReachedScrollingLimit;
-#endif
 #if PLATFORM(QT)
     HashMap<String, QtNetworkReply*> m_applicationSchemeReplies;
 #endif

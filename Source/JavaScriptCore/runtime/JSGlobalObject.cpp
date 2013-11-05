@@ -57,6 +57,7 @@
 #include "JSLock.h"
 #include "JSNameScope.h"
 #include "JSONObject.h"
+#include "JSValueInlines.h"
 #include "JSWithScope.h"
 #include "LegacyProfiler.h"
 #include "Lookup.h"
@@ -114,6 +115,7 @@ JSGlobalObject::JSGlobalObject(JSGlobalData& globalData, Structure* structure, c
     , m_weakRandom(Options::forceWeakRandomSeed() ? Options::forcedWeakRandomSeed() : static_cast<unsigned>(randomNumber() * (std::numeric_limits<unsigned>::max() + 1.0)))
     , m_evalEnabled(true)
     , m_globalObjectMethodTable(globalObjectMethodTable ? globalObjectMethodTable : &s_globalObjectMethodTable)
+    , m_apiData(0)
 {
 }
 

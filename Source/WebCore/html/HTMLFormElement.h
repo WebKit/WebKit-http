@@ -99,7 +99,12 @@ public:
     bool checkValidity();
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
-    enum AutocompleteResult { AutocompleteResultSuccess, AutocompleteResultError };
+    enum AutocompleteResult {
+        AutocompleteResultSuccess,
+        AutocompleteResultErrorDisabled,
+        AutocompleteResultErrorCancel,
+        AutocompleteResultErrorInvalid,
+    };
 
     void requestAutocomplete();
     void finishRequestAutocomplete(AutocompleteResult);

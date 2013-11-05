@@ -31,9 +31,6 @@ namespace CoreIPC {
 enum MessageClass {
     MessageClassInvalid = 0,
 
-    // Messages sent by Core IPC.
-    MessageClassCoreIPC,
-
     // Messages sent by the UI process to the web process.
     MessageClassAuthenticationManager,
     MessageClassCoordinatedLayerTreeHost,
@@ -136,6 +133,14 @@ enum MessageClass {
     // Messages sent by a web process (soon the network process) to the UI process.
     MessageClassCustomProtocolManagerProxy,
 #endif
+
+#if USE(SECURITY_FRAMEWORK)
+    // Messages sent by a web process or a network process to the UI process.
+    MessageClassSecItemShimProxy,
+
+    // Responses to SecItemShimProxy that are sent back.
+    MessageClassSecItemShim,
+#endif
 };
 
 template<typename> struct MessageKindTraits { };
@@ -193,11 +198,6 @@ public:
         return getClass() == K;
     }
     
-    template <typename EnumType>
-    bool operator==(EnumType messageKind) const
-    {
-        return m_messageID == MessageID(messageKind).m_messageID;
-    }
 
     static MessageID fromInt(unsigned i)
     {
@@ -212,15 +212,21 @@ public:
     bool shouldDispatchMessageWhenWaitingForSyncReply() const { return getFlags() & DispatchMessageWhenWaitingForSyncReply; }
     bool isSync() const { return getFlags() & SyncMessage; }
 
+private:
+    static inline unsigned stripMostSignificantBit(unsigned value)
+    {
+        return value & 0x7fffffff;
+    }
+
     MessageClass messageClass() const
     {
         return static_cast<MessageClass>(getClass());
     }
 
-private:
-    static inline unsigned stripMostSignificantBit(unsigned value)
+    template <typename EnumType>
+    bool operator==(EnumType messageKind) const
     {
-        return value & 0x7fffffff;
+        return m_messageID == MessageID(messageKind).m_messageID;
     }
 
     unsigned char getFlags() const { return (m_messageID & 0xff000000) >> 24; }

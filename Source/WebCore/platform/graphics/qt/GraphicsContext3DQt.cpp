@@ -210,6 +210,7 @@ static inline quint32 swapBgrToRgb(quint32 pixel)
 #if USE(ACCELERATED_COMPOSITING)
 void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, BitmapTexture* mask)
 {
+    m_context->markLayerComposited();
     blitMultisampleFramebufferAndRestoreContext();
 
     if (textureMapper->accelerationMode() == TextureMapper::OpenGLMode) {
@@ -290,6 +291,7 @@ uint32_t GraphicsContext3DPrivate::copyToGraphicsSurface()
     if (!m_graphicsSurface)
         return 0;
 
+    m_context->markLayerComposited();
     blitMultisampleFramebufferAndRestoreContext();
     m_graphicsSurface->copyFromTexture(m_context->m_texture, IntRect(0, 0, m_context->m_currentWidth, m_context->m_currentHeight));
     return m_graphicsSurface->frontBuffer();
@@ -320,16 +322,20 @@ void GraphicsContext3DPrivate::blitMultisampleFramebuffer() const
 
 void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext() const
 {
-    if (!m_context->m_attrs.antialias)
-        return;
-
     const QOpenGLContext* currentContext = QOpenGLContext::currentContext();
     QSurface* currentSurface = 0;
     if (currentContext && currentContext != m_platformContext) {
         currentSurface = currentContext->surface();
         m_platformContext->makeCurrent(m_surface);
     }
-    blitMultisampleFramebuffer();
+
+    if (m_context->m_attrs.antialias)
+        blitMultisampleFramebuffer();
+
+    // While the context is still bound, make sure all the Framebuffer content is in finished state.
+    // This is necessary as we are doing our own double buffering instead of using a drawable that provides swapBuffers.
+    glFinish();
+
     if (currentContext && currentContext != m_platformContext)
         const_cast<QOpenGLContext*>(currentContext)->makeCurrent(currentSurface);
 }

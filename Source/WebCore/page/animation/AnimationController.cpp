@@ -179,7 +179,7 @@ void AnimationControllerPrivate::fireEventsAndUpdateStyle()
     m_eventsToDispatch.clear();
     Vector<EventToDispatch>::const_iterator eventsToDispatchEnd = eventsToDispatch.end();
     for (Vector<EventToDispatch>::const_iterator it = eventsToDispatch.begin(); it != eventsToDispatchEnd; ++it) {
-        if (it->eventType == eventNames().webkitTransitionEndEvent)
+        if (it->eventType == eventNames().transitionendEvent)
             it->element->dispatchEvent(WebKitTransitionEvent::create(it->eventType, it->name, it->elapsedTime));
         else
             it->element->dispatchEvent(WebKitAnimationEvent::create(it->eventType, it->name, it->elapsedTime));
@@ -510,10 +510,6 @@ PassRefPtr<RenderStyle> AnimationController::updateAnimations(RenderObject* rend
     if (!renderer->document() || renderer->document()->inPageCache())
         return newStyle;
 
-    // FIXME: We do not animate generated content yet.
-    if (renderer->isPseudoElement())
-        return newStyle;
-
     RenderStyle* oldStyle = renderer->style();
 
     if ((!oldStyle || (!oldStyle->animations() && !oldStyle->transitions())) && (!newStyle->animations() && !newStyle->transitions()))
@@ -527,7 +523,9 @@ PassRefPtr<RenderStyle> AnimationController::updateAnimations(RenderObject* rend
     // against the animations in the style and make sure we're in sync.  If destination values
     // have changed, we reset the animation.  We then do a blend to get new values and we return
     // a new style.
-    ASSERT(renderer->node() && !renderer->isPseudoElement()); // FIXME: We do not animate generated content yet.
+
+    // We don't support anonymous pseudo elements like :first-line or :first-letter.
+    ASSERT(renderer->node());
 
     RefPtr<CompositeAnimation> rendererAnimations = m_data->accessCompositeAnimation(renderer);
     RefPtr<RenderStyle> blendedStyle = rendererAnimations->animate(renderer, oldStyle, newStyle);

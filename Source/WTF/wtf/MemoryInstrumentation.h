@@ -45,9 +45,12 @@ class MemoryInstrumentation;
 
 typedef const char* MemoryObjectType;
 
-enum MemoryOwningType {
-    byPointer,
-    byReference
+enum MemberType {
+    PointerMember,
+    ReferenceMember,
+    OwnPtrMember,
+    RefPtrMember,
+    LastMemberTypeEntry
 };
 
 template<typename T> void reportMemoryUsage(const T*, MemoryObjectInfo*);
@@ -60,8 +63,8 @@ public:
     virtual bool checkCountedObject(const void*) = 0;
 
     virtual void reportNode(const MemoryObjectInfo&) = 0;
-    virtual void reportEdge(const void* source, const void* target, const char* edgeName) = 0;
-    virtual void reportLeaf(const void* source, const MemoryObjectInfo&, const char* edgeName) = 0;
+    virtual void reportEdge(const void* target, const char* edgeName, MemberType) = 0;
+    virtual void reportLeaf(const MemoryObjectInfo&, const char* edgeName) = 0;
     virtual void reportBaseAddress(const void* base, const void* real) = 0;
 };
 
@@ -72,7 +75,7 @@ public:
 
     template <typename T> void addRootObject(const T& t, MemoryObjectType objectType = 0)
     {
-        OwningTraits<T>::addRootObject(this, t, objectType);
+        MemberTypeTraits<T>::addRootObject(this, t, objectType);
         processDeferredObjects();
     }
 
@@ -85,6 +88,7 @@ protected:
         WTF_EXPORT_PRIVATE WrapperBase(MemoryObjectType, const void* pointer);
         virtual ~WrapperBase() { }
         WTF_EXPORT_PRIVATE void process(MemoryInstrumentation*);
+        WTF_EXPORT_PRIVATE void processPointer(MemoryInstrumentation*, bool isRoot);
         WTF_EXPORT_PRIVATE void processRootObjectRef(MemoryInstrumentation*);
 
     protected:
@@ -105,7 +109,7 @@ private:
     bool visited(const void* pointer) { return m_client->visited(pointer); }
     bool checkCountedObject(const void* pointer) { return m_client->checkCountedObject(pointer); }
 
-    WTF_EXPORT_PRIVATE void reportEdge(MemoryObjectInfo* ownerObjectInfo, const void* target, const char* edgeName);
+    WTF_EXPORT_PRIVATE void reportEdge(const void* target, const char* edgeName, MemberType);
 
     virtual void deferObject(PassOwnPtr<WrapperBase>) = 0;
     virtual void processDeferredObjects() = 0;
@@ -164,21 +168,21 @@ private:
         virtual void callReportMemoryUsage(MemoryObjectInfo*) OVERRIDE;
     };
 
-    template<typename T> void addObject(const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName) { OwningTraits<T>::addObject(this, t, ownerObjectInfo, edgeName); }
-    void addRawBuffer(const void* owner, const void* buffer, MemoryObjectType ownerObjectType, size_t size, const char* nodeName = 0, const char* edgeName = 0)
+    template<typename T> void addObject(const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName) { MemberTypeTraits<T>::addObject(this, t, ownerObjectInfo, edgeName); }
+    void addRawBuffer(const void* buffer, MemoryObjectType ownerObjectType, size_t size, const char* nodeName = 0, const char* edgeName = 0)
     {
         if (!buffer || visited(buffer))
             return;
         countObjectSize(buffer, ownerObjectType, size);
-        reportLinkToBuffer(owner, buffer, ownerObjectType, size, nodeName, edgeName);
+        reportLinkToBuffer(buffer, ownerObjectType, size, nodeName, edgeName);
     }
-    WTF_EXPORT_PRIVATE void reportLinkToBuffer(const void* owner, const void* buffer, MemoryObjectType ownerObjectType, size_t, const char* nodeName, const char* edgeName);
+    WTF_EXPORT_PRIVATE void reportLinkToBuffer(const void* buffer, MemoryObjectType ownerObjectType, size_t, const char* nodeName, const char* edgeName);
 
     template<typename T>
-    struct OwningTraits { // Default byReference implementation.
+    struct MemberTypeTraits { // Default ReferenceMember implementation.
         static void addObject(MemoryInstrumentation* instrumentation, const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName)
         {
-            instrumentation->addObjectImpl(&t, ownerObjectInfo, byReference, edgeName);
+            instrumentation->addObjectImpl(&t, ownerObjectInfo, ReferenceMember, edgeName);
         }
 
         static void addRootObject(MemoryInstrumentation* instrumentation, const T& t, MemoryObjectType objectType)
@@ -188,22 +192,22 @@ private:
     };
 
     template<typename T>
-    struct OwningTraits<T*> { // Custom byPointer implementation.
+    struct MemberTypeTraits<T*> { // Custom PointerMember implementation.
         static void addObject(MemoryInstrumentation* instrumentation, const T* const& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName)
         {
-            instrumentation->addObjectImpl(t, ownerObjectInfo, byPointer, edgeName);
+            instrumentation->addObjectImpl(t, ownerObjectInfo, PointerMember, edgeName);
         }
 
         static void addRootObject(MemoryInstrumentation* instrumentation, const T* const& t, MemoryObjectType objectType)
         {
             if (t && !instrumentation->visited(t))
-                Wrapper<T>(t, objectType).process(instrumentation);
+                Wrapper<T>(t, objectType).processPointer(instrumentation, true);
         }
     };
 
-    template<typename T> void addObjectImpl(const T*, MemoryObjectInfo*, MemoryOwningType, const char* edgeName);
-    template<typename T> void addObjectImpl(const OwnPtr<T>*, MemoryObjectInfo*, MemoryOwningType, const char* edgeName);
-    template<typename T> void addObjectImpl(const RefPtr<T>*, MemoryObjectInfo*, MemoryOwningType, const char* edgeName);
+    template<typename T> void addObjectImpl(const T*, MemoryObjectInfo*, MemberType, const char* edgeName);
+    template<typename T> void addObjectImpl(const OwnPtr<T>*, MemoryObjectInfo*, MemberType, const char* edgeName);
+    template<typename T> void addObjectImpl(const RefPtr<T>*, MemoryObjectInfo*, MemberType, const char* edgeName);
 
     MemoryInstrumentationClient* m_client;
 };
@@ -239,11 +243,13 @@ public:
         if (!m_skipMembers)
             m_memoryInstrumentation->addObject(member, m_memoryObjectInfo, edgeName);
     }
+
     WTF_EXPORT_PRIVATE void addRawBuffer(const void* buffer, size_t, const char* nodeName = 0, const char* edgeName = 0);
     WTF_EXPORT_PRIVATE void addPrivateBuffer(size_t, MemoryObjectType ownerObjectType = 0, const char* nodeName = 0, const char* edgeName = 0);
     WTF_EXPORT_PRIVATE void setCustomAllocation(bool);
 
     void addWeakPointer(void*) { }
+    template<typename M> void ignoreMember(const M&) { }
 
 private:
     WTF_EXPORT_PRIVATE void init(const void* pointer, MemoryObjectType, size_t actualSize);
@@ -261,14 +267,14 @@ void reportMemoryUsage(const T* object, MemoryObjectInfo* memoryObjectInfo)
 }
 
 template<typename T>
-void MemoryInstrumentation::addObjectImpl(const T* object, MemoryObjectInfo* ownerObjectInfo, MemoryOwningType owningType, const char* edgeName)
+void MemoryInstrumentation::addObjectImpl(const T* object, MemoryObjectInfo* ownerObjectInfo, MemberType memberType, const char* edgeName)
 {
-    if (owningType == byReference)
+    if (memberType == ReferenceMember)
         reportMemoryUsage(object, ownerObjectInfo);
     else {
         if (!object)
             return;
-        reportEdge(ownerObjectInfo, object, edgeName);
+        reportEdge(object, edgeName, memberType);
         if (visited(object))
             return;
         deferObject(adoptPtr(new Wrapper<T>(object, getObjectType(ownerObjectInfo))));
@@ -276,19 +282,19 @@ void MemoryInstrumentation::addObjectImpl(const T* object, MemoryObjectInfo* own
 }
 
 template<typename T>
-void MemoryInstrumentation::addObjectImpl(const OwnPtr<T>* object, MemoryObjectInfo* ownerObjectInfo, MemoryOwningType owningType, const char* edgeName)
+void MemoryInstrumentation::addObjectImpl(const OwnPtr<T>* object, MemoryObjectInfo* ownerObjectInfo, MemberType memberType, const char* edgeName)
 {
-    if (owningType == byPointer && !visited(object))
+    if (memberType == PointerMember && !visited(object))
         countObjectSize(object, getObjectType(ownerObjectInfo), sizeof(*object));
-    addObjectImpl(object->get(), ownerObjectInfo, byPointer, edgeName);
+    addObjectImpl(object->get(), ownerObjectInfo, OwnPtrMember, edgeName);
 }
 
 template<typename T>
-void MemoryInstrumentation::addObjectImpl(const RefPtr<T>* object, MemoryObjectInfo* ownerObjectInfo, MemoryOwningType owningType, const char* edgeName)
+void MemoryInstrumentation::addObjectImpl(const RefPtr<T>* object, MemoryObjectInfo* ownerObjectInfo, MemberType memberType, const char* edgeName)
 {
-    if (owningType == byPointer && !visited(object))
+    if (memberType == PointerMember && !visited(object))
         countObjectSize(object, getObjectType(ownerObjectInfo), sizeof(*object));
-    addObjectImpl(object->get(), ownerObjectInfo, byPointer, edgeName);
+    addObjectImpl(object->get(), ownerObjectInfo, RefPtrMember, edgeName);
 }
 
 template<typename T>

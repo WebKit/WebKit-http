@@ -100,6 +100,11 @@
 #define FORCE_SYSTEM_MALLOC 1
 #endif
 
+// Harden the pointers stored in the TCMalloc linked lists
+#if COMPILER(GCC)
+#define ENABLE_TCMALLOC_HARDENING 1
+#endif
+
 // Use a background thread to periodically scavenge memory to release back to the system
 #if PLATFORM(IOS)
 #define USE_BACKGROUND_THREAD_TO_SCAVENGE_MEMORY 0
@@ -496,6 +501,26 @@ namespace WTF {
 #define MESSAGE LOG_ERROR
 #define CHECK_CONDITION ASSERT
 
+#if ENABLE(TCMALLOC_HARDENING)
+/*
+ * To make it harder to exploit use-after free style exploits
+ * we mask the addresses we put into our linked lists with the
+ * address of kLLHardeningMask.  Due to ASLR the address of
+ * kLLHardeningMask should be sufficiently randomized to make direct
+ * freelist manipulation much more difficult.
+ */
+static const char kLLHardeningMask = 0;
+enum {
+    MaskAddrShift = 8,
+    MaskKeyShift = 4
+};
+#define ROTATE_VALUE(value, amount) (((value) >> (amount)) | ((value) << (sizeof(value) * 8 - (amount))))
+#define XOR_MASK_PTR_WITH_KEY(ptr, key) (reinterpret_cast<typeof(ptr)>(reinterpret_cast<uintptr_t>(ptr)^ROTATE_VALUE(reinterpret_cast<uintptr_t>(key), MaskKeyShift)^ROTATE_VALUE(reinterpret_cast<uintptr_t>(&kLLHardeningMask), MaskAddrShift)))
+#else
+#define XOR_MASK_PTR_WITH_KEY(ptr, key) (ptr)
+#endif
+
+
 //-------------------------------------------------------------------
 // Configuration
 //-------------------------------------------------------------------
@@ -662,11 +687,11 @@ static inline int LgFloor(size_t n) {
 // storage.
 
 static inline void *SLL_Next(void *t) {
-  return *(reinterpret_cast<void**>(t));
+  return XOR_MASK_PTR_WITH_KEY(*(reinterpret_cast<void**>(t)), t);
 }
 
 static inline void SLL_SetNext(void *t, void *n) {
-  *(reinterpret_cast<void**>(t)) = n;
+  *(reinterpret_cast<void**>(t)) = XOR_MASK_PTR_WITH_KEY(n, t);
 }
 
 static inline void SLL_Push(void **list, void *element) {
@@ -1006,8 +1031,15 @@ static size_t AllocationSize(size_t bytes) {
 struct Span {
   PageID        start;          // Starting page number
   Length        length;         // Number of pages in span
-  Span*         next;           // Used when in link list
-  Span*         prev;           // Used when in link list
+  Span* next() const { return XOR_MASK_PTR_WITH_KEY(m_next, this); }
+  Span* prev() const { return XOR_MASK_PTR_WITH_KEY(m_prev, this); }
+  void setNext(Span* next) { m_next = XOR_MASK_PTR_WITH_KEY(next, this); }
+  void setPrev(Span* prev) { m_prev = XOR_MASK_PTR_WITH_KEY(prev, this); }
+
+private:
+  Span*         m_next;           // Used when in link list
+  Span*         m_prev;           // Used when in link list
+public:
   void*         objects;        // Linked list of free objects
   unsigned int  free : 1;       // Is the span free
 #ifndef NO_TCMALLOC_SAMPLES
@@ -1065,24 +1097,24 @@ static inline void DeleteSpan(Span* span) {
 // -------------------------------------------------------------------------
 
 static inline void DLL_Init(Span* list) {
-  list->next = list;
-  list->prev = list;
+  list->setNext(list);
+  list->setPrev(list);
 }
 
 static inline void DLL_Remove(Span* span) {
-  span->prev->next = span->next;
-  span->next->prev = span->prev;
-  span->prev = NULL;
-  span->next = NULL;
+  span->prev()->setNext(span->next());
+  span->next()->setPrev(span->prev());
+  span->setPrev(NULL);
+  span->setNext(NULL);
 }
 
 static ALWAYS_INLINE bool DLL_IsEmpty(const Span* list) {
-  return list->next == list;
+  return list->next() == list;
 }
 
 static int DLL_Length(const Span* list) {
   int result = 0;
-  for (Span* s = list->next; s != list; s = s->next) {
+  for (Span* s = list->next(); s != list; s = s->next()) {
     result++;
   }
   return result;
@@ -1099,12 +1131,12 @@ static void DLL_Print(const char* label, const Span* list) {
 #endif
 
 static inline void DLL_Prepend(Span* list, Span* span) {
-  ASSERT(span->next == NULL);
-  ASSERT(span->prev == NULL);
-  span->next = list->next;
-  span->prev = list;
-  list->next->prev = span;
-  list->next = span;
+  ASSERT(span->next() == NULL);
+  ASSERT(span->prev() == NULL);
+  span->setNext(list->next());
+  span->setPrev(list);
+  list->next()->setPrev(span);
+  list->setNext(span);
 }
 
 //-------------------------------------------------------------------
@@ -1140,16 +1172,16 @@ class TCMalloc_Central_FreeList {
   template <class Finder, class Reader>
   void enumerateFreeObjects(Finder& finder, const Reader& reader, TCMalloc_Central_FreeList* remoteCentralFreeList)
   {
-    for (Span* span = &empty_; span && span != &empty_; span = (span->next ? reader(span->next) : 0))
+    for (Span* span = &empty_; span && span != &empty_; span = (span->next() ? reader(span->next()) : 0))
       ASSERT(!span->objects);
 
     ASSERT(!nonempty_.objects);
     static const ptrdiff_t nonemptyOffset = reinterpret_cast<const char*>(&nonempty_) - reinterpret_cast<const char*>(this);
 
     Span* remoteNonempty = reinterpret_cast<Span*>(reinterpret_cast<char*>(remoteCentralFreeList) + nonemptyOffset);
-    Span* remoteSpan = nonempty_.next;
+    Span* remoteSpan = nonempty_.next();
 
-    for (Span* span = reader(remoteSpan); span && remoteSpan != remoteNonempty; remoteSpan = span->next, span = (span->next ? reader(span->next) : 0)) {
+    for (Span* span = reader(remoteSpan); span && remoteSpan != remoteNonempty; remoteSpan = span->next(), span = (span->next() ? reader(span->next()) : 0)) {
       for (void* nextObject = span->objects; nextObject; nextObject = reader.nextEntryInLinkedList(reinterpret_cast<void**>(nextObject)))
         finder.visit(nextObject);
     }
@@ -1799,7 +1831,7 @@ void TCMalloc_PageHeap::scavenge()
             size_t length = DLL_Length(&slist->normal);
             size_t numSpansToReturn = (i > kMinSpanListsWithSpans) ? length : length / 2;
             for (int j = 0; static_cast<size_t>(j) < numSpansToReturn && !DLL_IsEmpty(&slist->normal) && free_committed_pages_ > targetPageCount; j++) {
-                Span* s = slist->normal.prev; 
+                Span* s = slist->normal.prev();
                 DLL_Remove(s);
                 ASSERT(!s->decommitted);
                 if (!s->decommitted) {
@@ -1848,7 +1880,7 @@ inline Span* TCMalloc_PageHeap::New(Length n) {
       continue;
     }
 
-    Span* result = ll->next;
+    Span* result = ll->next();
     Carve(result, n, released);
 #if USE_BACKGROUND_THREAD_TO_SCAVENGE_MEMORY
     // The newly allocated memory is from a span that's in the normal span list (already committed).  Update the
@@ -1885,9 +1917,9 @@ Span* TCMalloc_PageHeap::AllocLarge(Length n) {
   Span *best = NULL;
 
   // Search through normal list
-  for (Span* span = large_.normal.next;
+  for (Span* span = large_.normal.next();
        span != &large_.normal;
-       span = span->next) {
+       span = span->next()) {
     if (span->length >= n) {
       if ((best == NULL)
           || (span->length < best->length)
@@ -1899,9 +1931,9 @@ Span* TCMalloc_PageHeap::AllocLarge(Length n) {
   }
 
   // Search through released list in case it has a better fit
-  for (Span* span = large_.returned.next;
+  for (Span* span = large_.returned.next();
        span != &large_.returned;
-       span = span->next) {
+       span = span->next()) {
     if (span->length >= n) {
       if ((best == NULL)
           || (span->length < best->length)
@@ -2105,7 +2137,7 @@ void TCMalloc_PageHeap::IncrementalScavenge(Length n) {
     SpanList* slist = (index == kMaxPages) ? &large_ : &free_[index];
     if (!DLL_IsEmpty(&slist->normal)) {
       // Release the last span on the normal portion of this list
-      Span* s = slist->normal.prev;
+      Span* s = slist->normal.prev();
       DLL_Remove(s);
       TCMalloc_SystemRelease(reinterpret_cast<void*>(s->start << kPageShift),
                              static_cast<size_t>(s->length << kPageShift));
@@ -2153,7 +2185,7 @@ size_t TCMalloc_PageHeap::ReturnedBytes() const {
         result += r_pages << kPageShift;
     }
     
-    for (Span* s = large_.returned.next; s != &large_.returned; s = s->next)
+    for (Span* s = large_.returned.next(); s != &large_.returned; s = s->next())
         result += s->length << kPageShift;
     return result;
 }
@@ -2280,8 +2312,8 @@ bool TCMalloc_PageHeap::Check() {
 #if USE_BACKGROUND_THREAD_TO_SCAVENGE_MEMORY
   size_t totalFreeCommitted = 0;
 #endif
-  ASSERT(free_[0].normal.next == &free_[0].normal);
-  ASSERT(free_[0].returned.next == &free_[0].returned);
+  ASSERT(free_[0].normal.next() == &free_[0].normal);
+  ASSERT(free_[0].returned.next() == &free_[0].returned);
 #if USE_BACKGROUND_THREAD_TO_SCAVENGE_MEMORY
   totalFreeCommitted = CheckList(&large_.normal, kMaxPages, 1000000000, false);
 #else
@@ -2309,7 +2341,7 @@ size_t TCMalloc_PageHeap::CheckList(Span*, Length, Length, bool) {
 #else
 size_t TCMalloc_PageHeap::CheckList(Span* list, Length min_pages, Length max_pages, bool decommitted) {
   size_t freeCount = 0;
-  for (Span* s = list->next; s != list; s = s->next) {
+  for (Span* s = list->next(); s != list; s = s->next()) {
     CHECK_CONDITION(s->free);
     CHECK_CONDITION(s->length >= min_pages);
     CHECK_CONDITION(s->length <= max_pages);
@@ -2330,7 +2362,7 @@ void TCMalloc_PageHeap::ReleaseFreeList(Span* list, Span* returned) {
 #endif
 
   while (!DLL_IsEmpty(list)) {
-    Span* s = list->prev;
+    Span* s = list->prev();
 
     DLL_Remove(s);
     s->decommitted = true;
@@ -2854,7 +2886,7 @@ void* TCMalloc_Central_FreeList::FetchFromSpansSafe() {
 
 void* TCMalloc_Central_FreeList::FetchFromSpans() {
   if (DLL_IsEmpty(&nonempty_)) return NULL;
-  Span* span = nonempty_.next;
+  Span* span = nonempty_.next();
 
   ASSERT(span->objects != NULL);
   ASSERT_SPAN_COMMITTED(span);
@@ -4350,17 +4382,13 @@ void *(*__memalign_hook)(size_t, size_t, const void *) = MemalignOverride;
 void releaseFastMallocFreeMemory()
 {
     // Flush free pages in the current thread cache back to the page heap.
-    // Low watermark mechanism in Scavenge() prevents full return on the first pass.
-    // The second pass flushes everything.
-    if (TCMalloc_ThreadCache* threadCache = TCMalloc_ThreadCache::GetCacheIfPresent()) {
-        threadCache->Scavenge();
-        threadCache->Scavenge();
-    }
+    if (TCMalloc_ThreadCache* threadCache = TCMalloc_ThreadCache::GetCacheIfPresent())
+        threadCache->Cleanup();
 
     SpinLockHolder h(&pageheap_lock);
     pageheap->ReleaseFreePages();
 }
-    
+
 FastMallocStatistics fastMallocStatistics()
 {
     FastMallocStatistics statistics;

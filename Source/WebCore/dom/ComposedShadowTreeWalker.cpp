@@ -45,16 +45,6 @@ static inline ElementShadow* shadowFor(const Node* node)
     return 0;
 }
 
-static inline ElementShadow* shadowOfParent(const Node* node)
-{
-    if (!node)
-        return 0;
-    if (Node* parent = node->parentNode())
-        if (parent->isElementNode())
-            return toElement(parent)->shadow();
-    return 0;
-}
-
 static inline bool nodeCanBeDistributed(const Node* node)
 {
     ASSERT(node);
@@ -63,7 +53,7 @@ static inline bool nodeCanBeDistributed(const Node* node)
         return false;
 
     if (ShadowRoot* shadowRoot = parent->isShadowRoot() ? toShadowRoot(parent) : 0)
-        return shadowRoot->assignedTo();
+        return ScopeContentDistribution::assignedTo(shadowRoot);
 
     if (parent->isElementNode() && toElement(parent)->shadow())
         return true;
@@ -198,7 +188,7 @@ Node* ComposedShadowTreeWalker::traverseBackToYoungerShadowRoot(const Node* node
     if (node->parentNode() && node->parentNode()->isShadowRoot()) {
         ShadowRoot* parentShadowRoot = toShadowRoot(node->parentNode());
         if (!parentShadowRoot->isYoungest()) {
-            InsertionPoint* assignedInsertionPoint = parentShadowRoot->assignedTo();
+            InsertionPoint* assignedInsertionPoint = ScopeContentDistribution::assignedTo(parentShadowRoot);
             ASSERT(assignedInsertionPoint);
             return traverseSiblingInCurrentTree(assignedInsertionPoint, direction);
         }
@@ -267,7 +257,7 @@ inline Node* ComposedShadowTreeWalker::traverseParentInCurrentTree(const Node* n
 Node* ComposedShadowTreeWalker::traverseParentBackToYoungerShadowRootOrHost(const ShadowRoot* shadowRoot, ParentTraversalDetails* details) const
 {
     ASSERT(shadowRoot);
-    ASSERT(!shadowRoot->assignedTo());
+    ASSERT(!ScopeContentDistribution::assignedTo(shadowRoot));
 
     if (shadowRoot->isYoungest()) {
         if (canCrossUpperBoundary()) {
@@ -320,44 +310,6 @@ void ComposedShadowTreeWalker::previous()
     } else
         parent();
     assertPostcondition();
-}
-
-AncestorChainWalker::AncestorChainWalker(const Node* node)
-    : m_node(node)
-    , m_distributedNode(node)
-    , m_isCrossingInsertionPoint(false)
-{
-    ASSERT(node);
-}
-
-void AncestorChainWalker::parent()
-{
-    ASSERT(m_node);
-    ASSERT(m_distributedNode);
-    if (ElementShadow* shadow = shadowOfParent(m_node)) {
-        if (InsertionPoint* insertionPoint = shadow->distributor().findInsertionPointFor(m_distributedNode)) {
-            m_node = insertionPoint;
-            m_isCrossingInsertionPoint = true;
-            return;
-        }
-    }
-    if (!m_node->isShadowRoot()) {
-        m_node = m_node->parentNode();
-        if (!(m_node && m_node->isShadowRoot() && toShadowRoot(m_node)->assignedTo()))
-            m_distributedNode = m_node;
-        m_isCrossingInsertionPoint = false;
-        return;
-    }
-
-    const ShadowRoot* shadowRoot = toShadowRoot(m_node);
-    if (InsertionPoint* insertionPoint = shadowRoot->assignedTo()) {
-        m_node = insertionPoint;
-        m_isCrossingInsertionPoint = true;
-        return;
-    }
-    m_node = shadowRoot->host();
-    m_distributedNode = m_node;
-    m_isCrossingInsertionPoint = false;
 }
 
 } // namespace

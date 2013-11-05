@@ -118,6 +118,7 @@ fast/events/mouse-click-events.html
 fast/events/mouseup-from-button2.html
 fast/events/node-event-anchor-lock.html
 fast/events/ondragenter.html
+fast/events/only-valid-drop-targets-receive-file-drop.html
 fast/events/open-window-from-another-frame.html
 fast/events/popup-when-select-change.html
 fast/events/right-click-focus.html
@@ -130,6 +131,7 @@ fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html
 fast/events/wheelevent-direction-inverted-from-device.html
 fast/forms/drag-into-textarea.html
 fast/forms/drag-out-of-textarea.html
+fast/forms/file/input-file-value.html
 fast/forms/input-readonly-autoscroll.html
 fast/forms/input-text-drag-down.html
 fast/forms/listbox-typeahead-cyrillic.html
@@ -155,11 +157,13 @@ media/controls-right-click-on-timebar.html
 platform/mac/editing/pasteboard/dataTransfer-set-data-file-url.html
 platform/mac/editing/pasteboard/drag-selections-to-contenteditable.html
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html
-plugins/clicking-missing-plugin-fires-delegate.html
 scrollbars/scrollbar-iframe-click-does-not-blur-content.html
 scrollbars/scrollevent-iframe-no-scrolling-wheel.html
 svg/custom/foreignObject-crash-on-hover.xml
 svg/custom/use-events-crash.svg
+
+# [WK2] [Mac] Spellcheck tests don't seem to work
+webkit.org/b/105616 platform/mac/editing/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -267,6 +271,48 @@ webkit.org/b/98960 fast/parser/document-open-in-unload.html [ Skip ]
 # ENABLE(SHADOW_DOM) is disabled.
 webkit.org/b/76359 editing/shadow [ Skip ]
 webkit.org/b/76359 fast/dom/shadow [ Skip ]
+
+# fast/events/controlclick-no-onclick.html fails on Mac WK2
+webkit.org/b/105948 fast/events/controlclick-no-onclick.html [ Failure ]
+
+webkit.org/b/105954 http/tests/navigation/reload-subframe-object.html [ Failure ]
+
+webkit.org/b/105956 inspector/geolocation-watchPosition.html [ Pass Failure ]
+
+webkit.org/b/105960 plugins/navigator-plugins.html [ Failure ]
+
+webkit.org/b/105988 [ Debug ] inspector/debugger/pause-in-internal-script.html [ Pass Crash ]
+webkit.org/b/105988 [ Debug ] inspector/debugger/watch-expressions-panel-switch.html [ Pass Crash ]
+webkit.org/b/105988 [ Debug ] inspector/debugger/properties-special.html [ Pass Crash ]
+webkit.org/b/105988 [ Debug ] inspector/debugger/reveal-execution-line.html [ Pass Crash ]
+webkit.org/b/105988 [ Debug ] inspector/debugger/watch-expressions-preserve-expansion.html [ Pass Crash ]
+
+webkit.org/b/105998 [ Lion Release ] fast/css/sticky/inline-sticky-abspos-child.html [ ImageOnlyFailure ]
+webkit.org/b/105998 [ MountainLion Debug ] fast/css/sticky/inline-sticky-abspos-child.html [ ImageOnlyFailure Pass ]
+webkit.org/b/105998 [ Lion Release ] fast/css/sticky/inline-sticky.html [ ImageOnlyFailure ]
+webkit.org/b/105998 [ MountainLion Debug ] fast/css/sticky/inline-sticky.html [ ImageOnlyFailure Pass ]
+webkit.org/b/105998 [ MountainLion Debug ] fast/css/sticky/sticky-both-sides.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/93552 inspector/device-orientation-success.html [ Failure ]
+
+webkit.org/b/106187 platform/mac/tiled-drawing/fixed/absolute-inside-out-of-view-fixed.html [ Failure ]
+webkit.org/b/106187 platform/mac/tiled-drawing/fixed/four-bars-zoomed.html [ Failure ]
+webkit.org/b/106187 platform/mac/tiled-drawing/fixed/negative-scroll-offset.html [ Failure ]
+webkit.org/b/106187 platform/mac/tiled-drawing/sticky/sticky-horizontal.html [ Failure ]
+webkit.org/b/106187 platform/mac/tiled-drawing/sticky/sticky-vertical.html [ Failure ]
+
+webkit.org/b/106405 http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html [ Failure ]
+webkit.org/b/106405 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Failure ]
+webkit.org/b/106405 http/tests/loading/basic-credentials-sent-automatically.html [ Failure ]
+webkit.org/b/106405 http/tests/misc/401-alternative-content.php [ Failure ]
+webkit.org/b/106405 http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin.html [ Failure ]
+webkit.org/b/106405 http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin.html [ Failure ]
+webkit.org/b/106405 http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials.html [ Failure ]
+webkit.org/b/106405 http/tests/misc/authentication-redirect-4/authentication-sent-to-redirect-same-origin-url.html [ Failure ]
+webkit.org/b/106405 http/tests/security/401-logout/401-logout.php [ Failure ]
+webkit.org/b/106405 http/tests/xmlhttprequest/basic-auth-nouser.html [ Failure ]
+webkit.org/b/106405 http/tests/xmlhttprequest/failed-auth.html [ Failure ]
+webkit.org/b/106405 http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################

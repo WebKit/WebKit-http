@@ -1,5 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
-# Copyright (C) 2012 Apple Inc. All rights reserved.
+# Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -79,9 +79,11 @@ class MacPort(ApplePort):
         else:
             fallback_names = self.VERSION_FALLBACK_ORDER[self.VERSION_FALLBACK_ORDER.index(name):-1] + [self.port_name]
         if self.get_option('webkit_test_runner'):
-            fallback_names.insert(0, self._wk2_port_name())
-            # Note we do not add 'wk2' here, even though it's included in _skipped_search_paths().
+            fallback_names = [self._wk2_port_name(), 'wk2'] + fallback_names
         return map(self._webkit_baseline_path, fallback_names)
+
+    def expectations_files(self):
+        return reversed([self._filesystem.join(self._webkit_baseline_path(d), 'TestExpectations') for d in self.baseline_search_path()])
 
     def setup_environ_for_server(self, server_name=None):
         env = super(MacPort, self).setup_environ_for_server(server_name)
@@ -128,7 +130,7 @@ class MacPort(ApplePort):
 
     def _build_java_test_support(self):
         java_tests_path = self._filesystem.join(self.layout_tests_dir(), "java")
-        build_java = ["/usr/bin/make", "-C", java_tests_path]
+        build_java = [self.make_command(), "-C", java_tests_path]
         if self._executive.run_command(build_java, return_exit_code=True):  # Paths are absolute, so we don't need to set a cwd.
             _log.error("Failed to build Java support files: %s" % build_java)
             return False
@@ -266,9 +268,15 @@ class MacPort(ApplePort):
                 _log.debug("IOError raised while stopping helper: %s" % str(e))
             self._helper = None
 
+    def make_command(self):
+        return self.xcrun_find('make', '/usr/bin/make')
+
     def nm_command(self):
+        return self.xcrun_find('nm', 'nm')
+
+    def xcrun_find(self, command, fallback):
         try:
-            return self._executive.run_command(['xcrun', '-find', 'nm']).rstrip()
+            return self._executive.run_command(['xcrun', '-find', command]).rstrip()
         except ScriptError:
-            _log.warn("xcrun failed; falling back to 'nm'.")
-            return 'nm'
+            _log.warn("xcrun failed; falling back to '%s'." % fallback)
+            return fallback

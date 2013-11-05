@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
+ * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -68,6 +69,7 @@
 #include "WebInspector.h"
 #include "WebInspectorClient.h"
 #include "WebInspectorMessages.h"
+#include "WebKeyValueStorageManager.h"
 #include "WebNotificationClient.h"
 #include "WebOpenPanelResultListener.h"
 #include "WebPageCreationParameters.h"
@@ -107,6 +109,7 @@
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PluginDocument.h>
 #include <WebCore/PrintContext.h>
+#include <WebCore/Range.h>
 #include <WebCore/RenderLayer.h>
 #include <WebCore/RenderTreeAsText.h>
 #include <WebCore/RenderView.h>
@@ -122,12 +125,11 @@
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/SubstituteData.h>
 #include <WebCore/TextIterator.h>
+#include <WebCore/VisiblePosition.h>
 #include <WebCore/markup.h>
 #include <runtime/JSLock.h>
 #include <runtime/JSValue.h>
-
-#include <WebCore/Range.h>
-#include <WebCore/VisiblePosition.h>
+#include <runtime/Operations.h>
 
 #if ENABLE(MHTML)
 #include <WebCore/MHTMLArchive.h>
@@ -156,11 +158,16 @@
 #include "WebVibrationClient.h"
 #endif
 
+#if ENABLE(PROXIMITY_EVENTS)
+#include "WebDeviceProximityClient.h"
+#endif
+
 #if PLATFORM(MAC)
 #include "SimplePDFPlugin.h"
 #if ENABLE(PDFKIT_PLUGIN)
 #include "PDFPlugin.h"
 #endif
+#include <WebCore/LegacyWebArchive.h>
 #endif
 
 #if PLATFORM(QT)
@@ -232,18 +239,17 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_asynchronousPluginInitializationEnabledForAllPlugins(false)
     , m_artificialPluginInitializationDelayEnabled(false)
     , m_scrollingPerformanceLoggingEnabled(false)
+    , m_mainFrameIsScrollable(true)
 #if PLATFORM(MAC)
     , m_pdfPluginEnabled(false)
     , m_windowIsVisible(false)
     , m_isSmartInsertDeleteEnabled(parameters.isSmartInsertDeleteEnabled)
     , m_layerHostingMode(parameters.layerHostingMode)
     , m_keyboardEventBeingInterpreted(0)
-#elif PLATFORM(WIN)
-    , m_nativeWindow(parameters.nativeWindow)
 #elif PLATFORM(GTK)
     , m_accessibilityObject(0)
 #endif
-    , m_setCanStartMediaTimer(WebProcess::shared().runLoop(), this, &WebPage::setCanStartMediaTimerFired)
+    , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
     , m_findController(this)
 #if ENABLE(TOUCH_EVENTS)
 #if PLATFORM(QT)
@@ -271,9 +277,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_isShowingContextMenu(false)
 #endif
     , m_willGoToBackForwardItemCallbackEnabled(true)
-#if PLATFORM(WIN)
-    , m_gestureReachedScrollingLimit(false)
-#endif
 #if ENABLE(PAGE_VISIBILITY_API)
     , m_visibilityState(WebCore::PageVisibilityStateVisible)
 #endif
@@ -324,6 +327,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 #if ENABLE(VIBRATION)
     WebCore::provideVibrationTo(m_page.get(), new WebVibrationClient(this));
+#endif
+#if ENABLE(PROXIMITY_EVENTS)
+    WebCore::provideDeviceProximityTo(m_page.get(), new WebDeviceProximityClient(this));
 #endif
 
     m_page->setCanStartMedia(false);
@@ -629,6 +635,10 @@ EditorState WebPage::editorState() const
     }
 #endif
 
+#if PLATFORM(GTK)
+    result.cursorRect = frame->selection()->absoluteCaretBounds();
+#endif
+
     return result;
 }
 
@@ -802,7 +812,7 @@ void WebPage::close()
     WebProcess::shared().removeWebPage(m_pageID);
 
     if (isRunningModal)
-        WebProcess::shared().runLoop()->stop();
+        RunLoop::main()->stop();
 }
 
 void WebPage::tryClose()
@@ -1023,24 +1033,22 @@ void WebPage::sendViewportAttributesChanged()
     // Recalculate the recommended layout size, when the available size (device pixel) changes.
     Settings* settings = m_page->settings();
 
-    int minimumLayoutFallbackWidth = std::max(settings->layoutFallbackWidth(), int(m_viewportSize.width() / m_page->deviceScaleFactor()));
+    int minimumLayoutFallbackWidth = std::max(settings->layoutFallbackWidth(), m_viewportSize.width());
 
     // If unset  we use the viewport dimensions. This fits with the behavior of desktop browsers.
     int deviceWidth = (settings->deviceWidth() > 0) ? settings->deviceWidth() : m_viewportSize.width();
     int deviceHeight = (settings->deviceHeight() > 0) ? settings->deviceHeight() : m_viewportSize.height();
 
-    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, m_page->deviceScaleFactor(), m_viewportSize);
+    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, 1, m_viewportSize);
 
-    // Keep the current position, update size only.
-    // For the new loads position is already reset to (0,0).
     FrameView* view = m_page->mainFrame()->view();
-    IntPoint contentFixedOrigin = view->fixedVisibleContentRect().location();
+
+    // If no layout was done yet set contentFixedOrigin to (0,0).
+    IntPoint contentFixedOrigin = view->didFirstLayout() ? view->fixedVisibleContentRect().location() : IntPoint();
 
     // Put the width and height to the viewport width and height. In css units however.
     // Use FloatSize to avoid truncated values during scale.
     FloatSize contentFixedSize = m_viewportSize;
-
-    contentFixedSize.scale(1 / m_page->deviceScaleFactor());
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     // CSS viewport descriptors might be applied to already affected viewport size
@@ -1130,6 +1138,10 @@ double WebPage::textZoomFactor() const
 
 void WebPage::setTextZoomFactor(double zoomFactor)
 {
+    PluginView* pluginView = pluginViewForFrame(m_page->mainFrame());
+    if (pluginView && pluginView->handlesPageScaleFactor())
+        return;
+
     Frame* frame = m_mainFrame->coreFrame();
     if (!frame)
         return;
@@ -1138,6 +1150,10 @@ void WebPage::setTextZoomFactor(double zoomFactor)
 
 double WebPage::pageZoomFactor() const
 {
+    PluginView* pluginView = pluginViewForFrame(m_page->mainFrame());
+    if (pluginView && pluginView->handlesPageScaleFactor())
+        return pluginView->pageScaleFactor();
+
     Frame* frame = m_mainFrame->coreFrame();
     if (!frame)
         return 1;
@@ -1146,6 +1162,12 @@ double WebPage::pageZoomFactor() const
 
 void WebPage::setPageZoomFactor(double zoomFactor)
 {
+    PluginView* pluginView = pluginViewForFrame(m_page->mainFrame());
+    if (pluginView && pluginView->handlesPageScaleFactor()) {
+        pluginView->setPageScaleFactor(zoomFactor, IntPoint());
+        return;
+    }
+
     Frame* frame = m_mainFrame->coreFrame();
     if (!frame)
         return;
@@ -1154,6 +1176,12 @@ void WebPage::setPageZoomFactor(double zoomFactor)
 
 void WebPage::setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFactor)
 {
+    PluginView* pluginView = pluginViewForFrame(m_page->mainFrame());
+    if (pluginView && pluginView->handlesPageScaleFactor()) {
+        pluginView->setPageScaleFactor(pageZoomFactor, IntPoint());
+        return;
+    }
+
     Frame* frame = m_mainFrame->coreFrame();
     if (!frame)
         return;
@@ -1339,10 +1367,6 @@ void WebPage::installPageOverlay(PassRefPtr<PageOverlay> pageOverlay)
         m_pageOverlay->startFadeInAnimation();
 
     m_drawingArea->didInstallPageOverlay();
-#if PLATFORM(WIN)
-    send(Messages::WebPageProxy::DidInstallOrUninstallPageOverlay(true));
-#endif
-
     m_pageOverlay->setNeedsDisplay();
 }
 
@@ -1360,9 +1384,6 @@ void WebPage::uninstallPageOverlay(PageOverlay* pageOverlay, bool fadeOut)
     m_pageOverlay = nullptr;
 
     m_drawingArea->didUninstallPageOverlay();
-#if PLATFORM(WIN)
-    send(Messages::WebPageProxy::DidInstallOrUninstallPageOverlay(false));
-#endif
 }
 
 static ImageOptions snapshotOptionsToImageOptions(SnapshotOptions snapshotOptions)
@@ -2084,6 +2105,37 @@ void WebPage::getRenderTreeExternalRepresentation(uint64_t callbackID)
     send(Messages::WebPageProxy::StringCallback(resultString, callbackID));
 }
 
+#if PLATFORM(MAC)
+static Frame* frameWithSelection(Page* page)
+{
+    for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+        if (frame->selection()->isRange())
+            return frame;
+    }
+
+    return 0;
+}
+#endif
+
+void WebPage::getSelectionAsWebArchiveData(uint64_t callbackID)
+{
+    CoreIPC::DataReference dataReference;
+
+#if PLATFORM(MAC)
+    RefPtr<LegacyWebArchive> archive;
+    RetainPtr<CFDataRef> data;
+
+    Frame* frame = frameWithSelection(m_page.get());
+    if (frame) {
+        archive = LegacyWebArchive::createFromSelection(frame);
+        data = archive->rawDataRepresentation();
+        dataReference = CoreIPC::DataReference(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()));
+    }
+#endif
+
+    send(Messages::WebPageProxy::DataCallback(dataReference, callbackID));
+}
+
 void WebPage::getSelectionOrContentsAsString(uint64_t callbackID)
 {
     String resultString = m_mainFrame->selectionAsString();
@@ -2153,7 +2205,7 @@ void WebPage::getWebArchiveOfFrame(uint64_t frameID, uint64_t callbackID)
 {
     CoreIPC::DataReference dataReference;
 
-#if PLATFORM(MAC) || PLATFORM(WIN)
+#if PLATFORM(MAC)
     RetainPtr<CFDataRef> data;
     if (WebFrame* frame = WebProcess::shared().webFrame(frameID)) {
         if ((data = frame->webArchiveData(0, 0)))
@@ -2287,6 +2339,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setShowDebugBorders(store.getBoolValueForKey(WebPreferencesKey::compositingBordersVisibleKey()));
     settings->setShowRepaintCounter(store.getBoolValueForKey(WebPreferencesKey::compositingRepaintCountersVisibleKey()));
     settings->setShowTiledScrollingIndicator(store.getBoolValueForKey(WebPreferencesKey::tiledScrollingIndicatorVisibleKey()));
+    settings->setAggressiveTileRetentionEnabled(store.getBoolValueForKey(WebPreferencesKey::aggressiveTileRetentionEnabledKey()));
     settings->setCSSCustomFilterEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCustomFilterEnabledKey()));
     RuntimeEnabledFeatures::setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
     settings->setCSSGridLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::cssGridLayoutEnabledKey()));
@@ -2311,10 +2364,14 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setFullScreenEnabled(store.getBoolValueForKey(WebPreferencesKey::fullScreenEnabledKey()));
 #endif
 
-    settings->setLocalStorageDatabasePath(WebProcess::shared().localStorageDirectory());
+    settings->setLocalStorageDatabasePath(WebProcess::shared().supplement<WebKeyValueStorageManager>()->localStorageDirectory());
 
 #if USE(AVFOUNDATION)
     settings->setAVFoundationEnabled(store.getBoolValueForKey(WebPreferencesKey::isAVFoundationEnabledKey()));
+#endif
+
+#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+    settings->setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -2425,38 +2482,7 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 
 #if ENABLE(DRAG_SUPPORT)
 
-#if PLATFORM(WIN)
-void WebPage::performDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, const WebCore::DragDataMap& dataMap, uint32_t flags)
-{
-    if (!m_page) {
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(WebCore::DragSession()));
-        return;
-    }
-
-    DragData dragData(dataMap, clientPosition, globalPosition, static_cast<DragOperation>(draggingSourceOperationMask), static_cast<DragApplicationFlags>(flags));
-    switch (action) {
-    case DragControllerActionEntered:
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(m_page->dragController()->dragEntered(&dragData)));
-        break;
-
-    case DragControllerActionUpdated:
-        send(Messages::WebPageProxy::DidPerformDragControllerAction(m_page->dragController()->dragUpdated(&dragData)));
-        break;
-        
-    case DragControllerActionExited:
-        m_page->dragController()->dragExited(&dragData);
-        break;
-        
-    case DragControllerActionPerformDrag:
-        m_page->dragController()->performDrag(&dragData);
-        break;
-        
-    default:
-        ASSERT_NOT_REACHED();
-    }
-}
-
-#elif PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(QT) || PLATFORM(GTK)
 void WebPage::performDragControllerAction(uint64_t action, WebCore::DragData dragData)
 {
     if (!m_page) {
@@ -2657,6 +2683,21 @@ bool WebPage::findStringFromInjectedBundle(const String& target, FindOptions opt
 void WebPage::findString(const String& string, uint32_t options, uint32_t maxMatchCount)
 {
     m_findController.findString(string, static_cast<FindOptions>(options), maxMatchCount);
+}
+
+void WebPage::findStringMatches(const String& string, uint32_t options, uint32_t maxMatchCount)
+{
+    m_findController.findStringMatches(string, static_cast<FindOptions>(options), maxMatchCount);
+}
+
+void WebPage::getImageForFindMatch(uint32_t matchIndex)
+{
+    m_findController.getImageForFindMatch(matchIndex);
+}
+
+void WebPage::selectFindMatch(uint32_t matchIndex)
+{
+    m_findController.selectFindMatch(matchIndex);
 }
 
 void WebPage::hideFindUI()
@@ -2878,7 +2919,7 @@ void WebPage::setWindowIsVisible(bool windowIsVisible)
         (*it)->setWindowIsVisible(windowIsVisible);
 }
 
-void WebPage::windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInScreenCoordinates, const WebCore::IntRect& viewFrameInWindowCoordinates, const WebCore::IntPoint& accessibilityViewCoordinates)
+void WebPage::windowAndViewFramesChanged(const IntRect& windowFrameInScreenCoordinates, const IntRect& viewFrameInWindowCoordinates, const IntPoint& accessibilityViewCoordinates)
 {
     m_windowFrameInScreenCoordinates = windowFrameInScreenCoordinates;
     m_viewFrameInWindowCoordinates = viewFrameInWindowCoordinates;
@@ -2889,6 +2930,22 @@ void WebPage::windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInSc
         (*it)->windowAndViewFramesChanged(windowFrameInScreenCoordinates, viewFrameInWindowCoordinates);
 }
 #endif
+
+void WebPage::viewExposedRectChanged(const IntRect& exposedRect)
+{
+    m_drawingArea->setExposedRect(exposedRect);
+}
+
+void WebPage::setMainFrameIsScrollable(bool isScrollable)
+{
+    m_mainFrameIsScrollable = isScrollable;
+    m_drawingArea->mainFrameScrollabilityChanged(isScrollable);
+
+    if (FrameView* frameView = m_mainFrame->coreFrame()->view()) {
+        frameView->setCanHaveScrollbars(isScrollable);
+        frameView->setProhibitsScrolling(!isScrollable);
+    }
+}
 
 bool WebPage::windowIsFocused() const
 {
@@ -3261,8 +3318,8 @@ void WebPage::computePagesForPrinting(uint64_t frameID, const PrintInfo& printIn
     send(Messages::WebPageProxy::ComputedPagesCallback(resultPageRects, resultTotalScaleFactorForPrinting, callbackID));
 }
 
-#if PLATFORM(MAC) || PLATFORM(WIN)
-void WebPage::drawRectToImage(uint64_t frameID, const PrintInfo& printInfo, const WebCore::IntRect& rect, uint64_t callbackID)
+#if PLATFORM(MAC)
+void WebPage::drawRectToImage(uint64_t frameID, const PrintInfo& printInfo, const IntRect& rect, const WebCore::IntSize& imageSize, uint64_t callbackID)
 {
     WebFrame* frame = WebProcess::shared().webFrame(frameID);
     Frame* coreFrame = frame ? frame->coreFrame() : 0;
@@ -3277,8 +3334,11 @@ void WebPage::drawRectToImage(uint64_t frameID, const PrintInfo& printInfo, cons
         ASSERT(coreFrame->document()->printing());
 #endif
 
-        RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(rect.size(), ShareableBitmap::SupportsAlpha);
+        RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(imageSize, ShareableBitmap::SupportsAlpha);
         OwnPtr<GraphicsContext> graphicsContext = bitmap->createGraphicsContext();
+
+        float printingScale = static_cast<float>(imageSize.width()) / rect.width();
+        graphicsContext->scale(FloatSize(printingScale, printingScale));
 
 #if PLATFORM(MAC)
         if (RetainPtr<PDFDocument> pdfDocument = pdfDocumentForPrintingFrame(coreFrame)) {
@@ -3627,6 +3687,95 @@ bool WebPage::shouldUseCustomRepresentationForResponse(const ResourceResponse& r
 
     // If a plug-in exists that claims to support this response, it should take precedence over the custom representation.
     return !canPluginHandleResponse(response);
+}
+
+#if PLATFORM(QT) || PLATFORM(GTK)
+static Frame* targetFrameForEditing(WebPage* page)
+{
+    Frame* targetFrame = page->corePage()->focusController()->focusedOrMainFrame();
+
+    if (!targetFrame || !targetFrame->editor())
+        return 0;
+
+    Editor* editor = targetFrame->editor();
+    if (!editor->canEdit())
+        return 0;
+
+    if (editor->hasComposition()) {
+        // We should verify the parent node of this IME composition node are
+        // editable because JavaScript may delete a parent node of the composition
+        // node. In this case, WebKit crashes while deleting texts from the parent
+        // node, which doesn't exist any longer.
+        if (PassRefPtr<Range> range = editor->compositionRange()) {
+            Node* node = range->startContainer();
+            if (!node || !node->isContentEditable())
+                return 0;
+        }
+    }
+    return targetFrame;
+}
+
+void WebPage::confirmComposition(const String& compositionString, int64_t selectionStart, int64_t selectionLength)
+{
+    Frame* targetFrame = targetFrameForEditing(this);
+    if (!targetFrame) {
+        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+        return;
+    }
+
+    Editor* editor = targetFrame->editor();
+    editor->confirmComposition(compositionString);
+
+    if (selectionStart == -1) {
+        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+        return;
+    }
+
+    Element* scope = targetFrame->selection()->rootEditableElement();
+    RefPtr<Range> selectionRange = TextIterator::rangeFromLocationAndLength(scope, selectionStart, selectionLength);
+    ASSERT_WITH_MESSAGE(selectionRange, "Invalid selection: [%lld:%lld] in text of length %d", static_cast<long long>(selectionStart), static_cast<long long>(selectionLength), scope->innerText().length());
+
+    if (selectionRange) {
+        VisibleSelection selection(selectionRange.get(), SEL_DEFAULT_AFFINITY);
+        targetFrame->selection()->setSelection(selection);
+    }
+    send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+}
+
+void WebPage::setComposition(const String& text, Vector<CompositionUnderline> underlines, uint64_t selectionStart, uint64_t selectionEnd, uint64_t replacementStart, uint64_t replacementLength)
+{
+    Frame* targetFrame = targetFrameForEditing(this);
+    if (!targetFrame || !targetFrame->selection()->isContentEditable()) {
+        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+        return;
+    }
+
+    if (replacementLength > 0) {
+        // The layout needs to be uptodate before setting a selection
+        targetFrame->document()->updateLayout();
+
+        Element* scope = targetFrame->selection()->rootEditableElement();
+        RefPtr<Range> replacementRange = TextIterator::rangeFromLocationAndLength(scope, replacementStart, replacementLength);
+        targetFrame->editor()->setIgnoreCompositionSelectionChange(true);
+        targetFrame->selection()->setSelection(VisibleSelection(replacementRange.get(), SEL_DEFAULT_AFFINITY));
+        targetFrame->editor()->setIgnoreCompositionSelectionChange(false);
+    }
+
+    targetFrame->editor()->setComposition(text, underlines, selectionStart, selectionEnd);
+    send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+}
+
+void WebPage::cancelComposition()
+{
+    if (Frame* targetFrame = targetFrameForEditing(this))
+        targetFrame->editor()->cancelComposition();
+    send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+}
+#endif
+
+void WebPage::setMainFrameInViewSourceMode(bool inViewSourceMode)
+{
+    m_mainFrame->coreFrame()->setInViewSourceMode(inViewSourceMode);
 }
 
 } // namespace WebKit

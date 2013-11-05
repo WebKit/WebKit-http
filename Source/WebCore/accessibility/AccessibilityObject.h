@@ -426,8 +426,10 @@ public:
     bool isCheckboxOrRadio() const { return isCheckbox() || isRadioButton(); }
     bool isScrollView() const { return roleValue() == ScrollAreaRole; }
     bool isCanvas() const { return roleValue() == CanvasRole; }
+    bool isPopUpButton() const { return roleValue() == PopUpButtonRole; }
     bool isBlockquote() const;
     bool isLandmark() const;
+    bool isColorWell() const { return roleValue() == ColorWellRole; }
     
     virtual bool isChecked() const { return false; }
     virtual bool isEnabled() const { return false; }
@@ -559,6 +561,9 @@ public:
     virtual String ariaDescribedByAttribute() const { return String(); }
     const AtomicString& placeholderValue() const;
 
+    // Only if isColorWell()
+    virtual void colorValue(int& r, int& g, int& b) const { r = 0; g = 0; b = 0; }
+
     void setRoleValue(AccessibilityRole role) { m_role = role; }
     virtual AccessibilityRole roleValue() const { return m_role; }
 
@@ -595,6 +600,7 @@ public:
     virtual FrameView* topDocumentFrameView() const { return 0; }
     virtual FrameView* documentFrameView() const;
     String language() const;
+    // 1-based, to match the aria-level spec.
     virtual unsigned hierarchicalLevel() const { return 0; }
     
     virtual void setFocused(bool) { }

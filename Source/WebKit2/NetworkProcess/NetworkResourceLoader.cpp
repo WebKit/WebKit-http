@@ -182,33 +182,18 @@ void NetworkResourceLoader::didFail(ResourceHandle*, const ResourceError& error)
     scheduleStopOnMainThread();
 }
 
-static uint64_t generateWillSendRequestID()
-{
-    static int64_t uniqueWillSendRequestID;
-    return atomicIncrement(&uniqueWillSendRequestID);
-}
-
 void NetworkResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
     // We only expect to get the willSendRequest callback from ResourceHandle as the result of a redirect.
     ASSERT(!redirectResponse.isNull());
+    ASSERT(!isMainThread());
 
-    uint64_t requestID = generateWillSendRequestID();
-
-    if (!send(Messages::WebResourceLoader::WillSendRequest(requestID, request, redirectResponse))) {
+    // IMPORTANT: The fact that this message to the WebProcess is sync is what makes our current approach to synchronous XMLHttpRequests safe.
+    // If this message changes to be asynchronous we might introduce a situation where the NetworkProcess is deadlocked waiting for 6 connections
+    // to complete while the WebProcess is waiting for a 7th to complete.
+    // If we ever change this message to be asynchronous we have to include safeguards to make sure the new design interacts well with sync XHR.
+    if (!sendSync(Messages::WebResourceLoader::WillSendRequest(request, redirectResponse), Messages::WebResourceLoader::WillSendRequest::Reply(request)))
         request = ResourceRequest();
-        return;
-    }
-
-    OwnPtr<ResourceRequest> newRequest = m_connection->willSendRequestResponseMap().waitForResponse(requestID);
-    request = newRequest ? *newRequest : ResourceRequest();
-
-    RunLoop::main()->dispatch(WTF::bind(&NetworkResourceLoadScheduler::receivedRedirect, &NetworkProcess::shared().networkResourceLoadScheduler(), m_identifier, request.url()));
-}
-
-void NetworkResourceLoader::willSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest& newRequest)
-{
-    m_connection->willSendRequestResponseMap().didReceiveResponse(requestID, adoptPtr(new ResourceRequest(newRequest)));
 }
 
 // FIXME (NetworkProcess): Many of the following ResourceHandleClient methods definitely need implementations. A few will not.
@@ -302,29 +287,23 @@ void NetworkResourceLoader::receivedAuthenticationCancellation(const Authenticat
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-static uint64_t generateCanAuthenticateAgainstProtectionSpaceID()
-{
-    static int64_t uniqueCanAuthenticateAgainstProtectionSpaceID;
-    return atomicIncrement(&uniqueCanAuthenticateAgainstProtectionSpaceID);
-}
-
 bool NetworkResourceLoader::canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace& protectionSpace)
 {
-    uint64_t requestID = generateCanAuthenticateAgainstProtectionSpaceID();
+    ASSERT(!isMainThread());
 
-    if (!send(Messages::WebResourceLoader::CanAuthenticateAgainstProtectionSpace(requestID, protectionSpace)))
+    // IMPORTANT: The fact that this message to the WebProcess is sync is what makes our current approach to synchronous XMLHttpRequests safe.
+    // If this message changes to be asynchronous we might introduce a situation where the NetworkProcess is deadlocked waiting for 6 connections
+    // to complete while the WebProcess is waiting for a 7th to complete.
+    // If we ever change this message to be asynchronous we have to include safeguards to make sure the new design interacts well with sync XHR.
+    bool result;
+    if (!sendSync(Messages::WebResourceLoader::CanAuthenticateAgainstProtectionSpace(protectionSpace), Messages::WebResourceLoader::CanAuthenticateAgainstProtectionSpace::Reply(result)))
         return false;
 
-    return m_connection->canAuthenticateAgainstProtectionSpaceResponseMap().waitForResponse(requestID);
-}
-
-void NetworkResourceLoader::canAuthenticateAgainstProtectionSpaceHandled(uint64_t requestID, bool canAuthenticate)
-{
-    m_connection->canAuthenticateAgainstProtectionSpaceResponseMap().didReceiveResponse(requestID, canAuthenticate);
+    return result;
 }
 #endif
 
-#if HAVE(NETWORK_CFDATA_ARRAY_CALLBACK)
+#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
 bool NetworkResourceLoader::supportsDataArray()
 {
     notImplemented();
@@ -333,6 +312,7 @@ bool NetworkResourceLoader::supportsDataArray()
 
 void NetworkResourceLoader::didReceiveDataArray(WebCore::ResourceHandle*, CFArrayRef)
 {
+    ASSERT_NOT_REACHED();
     notImplemented();
 }
 #endif

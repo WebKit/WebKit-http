@@ -137,7 +137,7 @@ public:
         ForcedOnMainThread = 1 << 0,
         HasSlowRepaintObjects = 1 << 1,
         HasViewportConstrainedObjectsWithoutSupportingFixedLayers = 1 << 2,
-        HasNonLayerFixedObjects = 1 << 3,
+        HasNonLayerViewportConstrainedObjects = 1 << 3,
         IsImageDocument = 1 << 4
     };
 
@@ -160,10 +160,11 @@ public:
     static String mainThreadScrollingReasonsAsText(MainThreadScrollingReasons);
     String mainThreadScrollingReasonsAsText() const;
 
+    Region computeNonFastScrollableRegion(const Frame*, const IntPoint& frameLocation) const;
+
 protected:
     explicit ScrollingCoordinator(Page*);
 
-    Region computeNonFastScrollableRegion(Frame*, const IntPoint& frameLocation);
     unsigned computeCurrentWheelEventHandlerCount();
     GraphicsLayer* scrollLayerForFrameView(FrameView*);
 
@@ -173,7 +174,7 @@ private:
     virtual void recomputeWheelEventHandlerCountForFrameView(FrameView*) { }
     virtual void setShouldUpdateScrollLayerPositionOnMainThread(MainThreadScrollingReasons) { }
 
-    virtual bool hasVisibleSlowRepaintFixedObjects(FrameView*) const;
+    virtual bool hasVisibleSlowRepaintViewportConstrainedObjects(FrameView*) const;
     void updateShouldUpdateScrollLayerPositionOnMainThread();
     
     void updateMainFrameScrollPositionTimerFired(Timer<ScrollingCoordinator>*);

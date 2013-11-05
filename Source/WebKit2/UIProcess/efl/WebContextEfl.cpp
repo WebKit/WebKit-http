@@ -89,8 +89,8 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
 {
     initializeInspectorServer();
 
-    parameters.urlSchemesRegistered = m_soupRequestManagerProxy->registeredURISchemes();
-    m_cookieManagerProxy->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
+    parameters.urlSchemesRegistered = supplement<WebSoupRequestManagerProxy>()->registeredURISchemes();
+    supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
     parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
 }

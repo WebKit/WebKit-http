@@ -1061,12 +1061,6 @@ void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
     notImplemented();
 }
 
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
-{
-    // We can only clip rectangles on WINCE
-    clip(rect);
-}
-
 void GraphicsContext::clearRect(const FloatRect& rect)
 {
     if (paintingDisabled())
@@ -1198,14 +1192,14 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendM
     notImplemented();
 }
 
-void GraphicsContext::clip(const Path& path)
+void GraphicsContext::clip(const Path& path, WindRule)
 {
     notImplemented();
 }
 
-void GraphicsContext::canvasClip(const Path& path)
+void GraphicsContext::canvasClip(const Path& path, WindRule fillRule)
 {
-    clip(path);
+    clip(path, fillRule);
 }
 
 void GraphicsContext::clipOut(const Path&)

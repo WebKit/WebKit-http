@@ -51,6 +51,7 @@ class InspectorBackendDispatcher;
 class InspectorBaseAgentInterface;
 class InspectorClient;
 class InspectorDOMAgent;
+class InspectorDOMDebuggerAgent;
 class InspectorDebuggerAgent;
 class InspectorFrontend;
 class InspectorFrontendChannel;
@@ -130,7 +131,7 @@ private:
 
     OwnPtr<InstrumentingAgents> m_instrumentingAgents;
     OwnPtr<InjectedScriptManager> m_injectedScriptManager;
-    OwnPtr<InspectorState> m_state;
+    OwnPtr<InspectorCompositeState> m_state;
     OwnPtr<InspectorOverlay> m_overlay;
 
     InspectorAgent* m_inspectorAgent;
@@ -139,6 +140,7 @@ private:
     InspectorPageAgent* m_pageAgent;
 #if ENABLE(JAVASCRIPT_DEBUGGER)
     InspectorDebuggerAgent* m_debuggerAgent;
+    InspectorDOMDebuggerAgent* m_domDebuggerAgent;
     InspectorProfilerAgent* m_profilerAgent;
 #endif
 

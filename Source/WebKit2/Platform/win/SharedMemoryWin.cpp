@@ -183,7 +183,7 @@ SharedMemory::~SharedMemory()
     ::UnmapViewOfFile(m_data);
     ::CloseHandle(m_handle);
 }
-    
+
 bool SharedMemory::createHandle(Handle& handle, Protection protection)
 {
     ASSERT_ARG(handle, !handle.m_handle);

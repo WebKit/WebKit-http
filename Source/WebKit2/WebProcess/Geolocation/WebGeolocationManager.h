@@ -28,6 +28,7 @@
 
 #include "MessageReceiver.h"
 #include "WebGeolocationPosition.h"
+#include "WebProcessSupplement.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -42,11 +43,13 @@ namespace WebKit {
 class WebProcess;
 class WebPage;
 
-class WebGeolocationManager : private CoreIPC::MessageReceiver {
+class WebGeolocationManager : public WebProcessSupplement, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebGeolocationManager);
 public:
     explicit WebGeolocationManager(WebProcess*);
     ~WebGeolocationManager();
+
+    static const AtomicString& supplementName();
 
     void registerWebPage(WebPage*);
     void unregisterWebPage(WebPage*);

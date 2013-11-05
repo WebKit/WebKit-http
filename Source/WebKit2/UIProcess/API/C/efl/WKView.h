@@ -22,7 +22,11 @@
 
 #include <WebKit2/WKBase.h>
 
+#if USE(EO)
+typedef struct _Eo Evas;
+#else
 typedef struct _Evas Evas;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,7 +38,7 @@ WK_EXPORT WKViewRef WKViewCreateWithFixedLayout(Evas* canvas, WKContextRef conte
 
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef view);
 
-WK_EXPORT WKImageRef WKViewGetSnapshot(WKViewRef viewRef);
+WK_EXPORT WKImageRef WKViewCreateSnapshot(WKViewRef viewRef);
 
 #ifdef __cplusplus
 }

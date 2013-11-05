@@ -99,6 +99,11 @@ void MainResourceLoader::receivedError(const ResourceError& error)
     RefPtr<MainResourceLoader> protect(this);
     RefPtr<Frame> protectFrame(m_documentLoader->frame());
 
+    if (m_substituteDataLoadIdentifier) {
+        ASSERT(!loader());
+        frameLoader()->client()->dispatchDidFailLoading(documentLoader(), m_substituteDataLoadIdentifier, error);
+    }
+
     // It is important that we call DocumentLoader::mainReceivedError before calling 
     // ResourceLoadNotifier::didFailToLoad because mainReceivedError clears out the relevant
     // document loaders. Also, mainReceivedError ends up calling a FrameLoadDelegate method
@@ -181,7 +186,18 @@ void MainResourceLoader::continueAfterNavigationPolicy(const ResourceRequest& re
     else if (m_substituteData.isValid()) {
         // A redirect resulted in loading substitute data.
         ASSERT(documentLoader()->timing()->redirectCount());
+
+        // We need to remove our reference to the CachedResource in favor of a SubstituteData load.
+        // This will probably trigger the cancellation of the CachedResource's underlying ResourceLoader, though there is a
+        // small chance that the resource is being loaded by a different Frame, preventing the ResourceLoader from being cancelled.
+        // If the ResourceLoader is indeed cancelled, it would normally send resource load callbacks.
+        // However, from an API perspective, this isn't a cancellation. Therefore, sever our relationship with the network load via clearResource(),
+        // but prevent the ResourceLoader from sending ResourceLoadNotifier callbacks.
+        RefPtr<ResourceLoader> resourceLoader = loader();
+        ASSERT(resourceLoader->shouldSendResourceLoadCallbacks());
+        resourceLoader->setSendCallbackPolicy(DoNotSendCallbacks);
         clearResource();
+        resourceLoader->setSendCallbackPolicy(SendCallbacks);
         handleSubstituteDataLoadSoon(request);
     }
 
@@ -269,6 +285,8 @@ void MainResourceLoader::willSendRequest(ResourceRequest& newRequest, const Reso
         // We checked application cache for initial URL, now we need to check it for redirected one.
         ASSERT(!m_substituteData.isValid());
         documentLoader()->applicationCacheHost()->maybeLoadMainResourceForRedirect(newRequest, m_substituteData);
+        if (m_substituteData.isValid())
+            m_substituteDataLoadIdentifier = identifier();
     }
 
     // FIXME: Ideally we'd stop the I/O until we hear back from the navigation policy delegate
@@ -520,8 +538,10 @@ void MainResourceLoader::didFinishLoading(double finishTime)
     RefPtr<MainResourceLoader> protect(this);
     RefPtr<DocumentLoader> dl = documentLoader();
 
-    if (!loader())
+    if (!loader()) {
         frameLoader()->notifier()->dispatchDidFinishLoading(documentLoader(), identifier(), finishTime);
+        m_substituteDataLoadIdentifier = 0;
+    }
 
 #if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     if (m_filter) {
@@ -548,8 +568,14 @@ void MainResourceLoader::didFinishLoading(double finishTime)
 void MainResourceLoader::notifyFinished(CachedResource* resource)
 {
     ASSERT_UNUSED(resource, m_resource == resource);
-    if (!m_resource || (!m_resource->errorOccurred() && !m_resource->wasCanceled())) {
+    ASSERT(m_resource);
+    if (!m_resource->errorOccurred() && !m_resource->wasCanceled()) {
         didFinishLoading(m_resource->loadFinishTime());
+        return;
+    }
+
+    if (m_documentLoader->request().cachePolicy() == ReturnCacheDataDontLoad && !m_resource->wasCanceled()) {
+        frameLoader()->retryAfterFailedCacheOnlyMainResourceLoad();
         return;
     }
 
@@ -576,9 +602,11 @@ void MainResourceLoader::notifyFinished(CachedResource* resource)
 void MainResourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
+    info.addMember(m_resource);
     info.addMember(m_initialRequest);
     info.addMember(m_substituteData);
     info.addMember(m_dataLoadTimer);
+    info.addMember(m_documentLoader);
 }
 
 void MainResourceLoader::handleSubstituteDataLoadNow(MainResourceLoaderTimer*)
@@ -679,10 +707,10 @@ bool MainResourceLoader::defersLoading() const
     return loader() ? loader()->defersLoading() : false;
 }
 
-void MainResourceLoader::setShouldBufferData(DataBufferingPolicy shouldBufferData)
+void MainResourceLoader::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
 {
     ASSERT(m_resource);
-    m_resource->setShouldBufferData(shouldBufferData);
+    m_resource->setDataBufferingPolicy(dataBufferingPolicy);
 }
 
 ResourceLoader* MainResourceLoader::loader() const

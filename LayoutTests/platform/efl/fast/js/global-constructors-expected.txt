@@ -3,8 +3,10 @@ This test documents our set of global constructors we expose on the window objec
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
 
+PASS ArrayBufferView.toString() is '[object ArrayBufferViewConstructor]'
 PASS Attr.toString() is '[object AttrConstructor]'
 PASS Audio.toString() is '[object AudioConstructor]'
+PASS AudioProcessingEvent.toString() is '[object AudioProcessingEventConstructor]'
 PASS BeforeLoadEvent.toString() is '[object BeforeLoadEventConstructor]'
 PASS Blob.toString() is '[object BlobConstructor]'
 PASS CDATASection.toString() is '[object CDATASectionConstructor]'
@@ -123,6 +125,7 @@ PASS HTMLTableColElement.toString() is '[object HTMLTableColElementConstructor]'
 PASS HTMLTableElement.toString() is '[object HTMLTableElementConstructor]'
 PASS HTMLTableRowElement.toString() is '[object HTMLTableRowElementConstructor]'
 PASS HTMLTableSectionElement.toString() is '[object HTMLTableSectionElementConstructor]'
+PASS HTMLTemplateElement.toString() is '[object HTMLTemplateElementConstructor]'
 PASS HTMLTextAreaElement.toString() is '[object HTMLTextAreaElementConstructor]'
 PASS HTMLTitleElement.toString() is '[object HTMLTitleElementConstructor]'
 PASS HTMLTrackElement.toString() is '[object HTMLTrackElementConstructor]'
@@ -148,6 +151,7 @@ PASS Node.toString() is '[object NodeConstructor]'
 PASS NodeFilter.toString() is '[object NodeFilterConstructor]'
 PASS NodeList.toString() is '[object NodeListConstructor]'
 PASS Notation.toString() is '[object NotationConstructor]'
+PASS OfflineAudioCompletionEvent.toString() is '[object OfflineAudioCompletionEventConstructor]'
 PASS Option.toString() is '[object OptionConstructor]'
 PASS OverflowEvent.toString() is '[object OverflowEventConstructor]'
 PASS PageTransitionEvent.toString() is '[object PageTransitionEventConstructor]'
@@ -351,6 +355,9 @@ PASS XPathEvaluator.toString() is '[object XPathEvaluatorConstructor]'
 PASS XPathException.toString() is '[object XPathExceptionConstructor]'
 PASS XPathResult.toString() is '[object XPathResultConstructor]'
 PASS XSLTProcessor.toString() is '[object XSLTProcessorConstructor]'
+FAIL webkitAudioContext.toString() should be [object webkitAudioContextConstructor]. Was [object AudioContextConstructor].
+FAIL webkitAudioPannerNode.toString() should be [object webkitAudioPannerNodeConstructor]. Was [object PannerNodeConstructor].
+FAIL webkitOfflineAudioContext.toString() should be [object webkitOfflineAudioContextConstructor]. Was [object OfflineAudioContextConstructor].
 FAIL webkitURL.toString() should be [object webkitURLConstructor]. Was [object URLConstructor].
 PASS successfullyParsed is true
 

@@ -61,8 +61,6 @@ namespace WebKit {
 
 #if PLATFORM(MAC)
 typedef NSBundle *PlatformBundle;
-#elif PLATFORM(WIN)
-typedef HMODULE PlatformBundle;
 #elif PLATFORM(QT)
 typedef QLibrary PlatformBundle;
 #elif PLATFORM(GTK)
@@ -97,10 +95,6 @@ public:
     void initializeClient(WKBundleClient*);
     void postMessage(const String&, APIObject*);
     void postSynchronousMessage(const String&, APIObject*, RefPtr<APIObject>& returnData);
-#if PLATFORM(WIN)
-    void setHostAllowsAnyHTTPSCertificate(const String&);
-    void setClientCertificate(const String& host, const String& certificateSystemStoreName, const WebCertificateInfo*);
-#endif
 
     WebConnection* webConnectionToUIProcess() const;
 
@@ -183,6 +177,7 @@ public:
     void setSerialLoadingEnabled(bool);
     void setShadowDOMEnabled(bool);
     void setCSSRegionsEnabled(bool);
+    void setSeamlessIFramesEnabled(bool);
     void dispatchPendingLoadRequests();
 
 private:

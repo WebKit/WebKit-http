@@ -28,13 +28,8 @@
 #include "RenderObjectChildList.h"
 
 #include "AXObjectCache.h"
-#include "ContentData.h"
-#include "RenderBlock.h"
 #include "RenderCounter.h"
-#include "RenderLayer.h"
-#include "RenderListItem.h"
-#include "RenderNamedFlowThread.h"
-#include "RenderRegion.h"
+#include "RenderObject.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
 
@@ -105,9 +100,8 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
 
     // rendererRemovedFromTree walks the whole subtree. We can improve performance
     // by skipping this step when destroying the entire tree.
-    if (!owner->documentBeingDestroyed()) {
+    if (!owner->documentBeingDestroyed())
         RenderCounter::rendererRemovedFromTree(oldChild);
-    }
 
     if (AXObjectCache::accessibilityEnabled())
         owner->document()->axObjectCache()->childrenChanged(owner);
@@ -115,120 +109,54 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
     return oldChild;
 }
 
-void RenderObjectChildList::appendChildNode(RenderObject* owner, RenderObject* newChild, bool notifyRenderer)
+void RenderObjectChildList::insertChildNode(RenderObject* owner, RenderObject* newChild, RenderObject* beforeChild, bool notifyRenderer)
 {
-    ASSERT(newChild->parent() == 0);
+    ASSERT(!newChild->parent());
     ASSERT(!owner->isBlockFlow() || (!newChild->isTableSection() && !newChild->isTableRow() && !newChild->isTableCell()));
 
-    newChild->setParent(owner);
-    RenderObject* lChild = lastChild();
+    while (beforeChild && beforeChild->parent() && beforeChild->parent() != owner)
+        beforeChild = beforeChild->parent();
 
-    if (lChild) {
-        newChild->setPreviousSibling(lChild);
-        lChild->setNextSibling(newChild);
-    } else
+    // This should never happen, but if it does prevent render tree corruption
+    // where child->parent() ends up being owner but child->nextSibling()->parent()
+    // is not owner.
+    if (beforeChild && beforeChild->parent() != owner) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    newChild->setParent(owner);
+
+    if (firstChild() == beforeChild)
         setFirstChild(newChild);
 
-    setLastChild(newChild);
-    
+    if (beforeChild) {
+        RenderObject* previousSibling = beforeChild->previousSibling();
+        if (previousSibling)
+            previousSibling->setNextSibling(newChild);
+        newChild->setPreviousSibling(previousSibling);
+        newChild->setNextSibling(beforeChild);
+        beforeChild->setPreviousSibling(newChild);
+    } else {
+        if (lastChild())
+            lastChild()->setNextSibling(newChild);
+        newChild->setPreviousSibling(lastChild());
+        setLastChild(newChild);
+    }
+
     if (!owner->documentBeingDestroyed() && notifyRenderer)
         newChild->insertedIntoTree();
 
     if (!owner->documentBeingDestroyed()) {
         RenderCounter::rendererSubtreeAttached(newChild);
     }
-    newChild->setNeedsLayoutAndPrefWidthsRecalc(); // Goes up the containing block hierarchy.
+
+    newChild->setNeedsLayoutAndPrefWidthsRecalc();
     if (!owner->normalChildNeedsLayout())
         owner->setChildNeedsLayout(true); // We may supply the static position for an absolute positioned child.
-    
+
     if (AXObjectCache::accessibilityEnabled())
         owner->document()->axObjectCache()->childrenChanged(owner);
-}
-
-void RenderObjectChildList::insertChildNode(RenderObject* owner, RenderObject* child, RenderObject* beforeChild, bool notifyRenderer)
-{
-    if (!beforeChild) {
-        appendChildNode(owner, child, notifyRenderer);
-        return;
-    }
-
-    ASSERT(!child->parent());
-    while (beforeChild->parent() != owner && beforeChild->parent()->isAnonymousBlock())
-        beforeChild = beforeChild->parent();
-    ASSERT(beforeChild->parent() == owner);
-
-    ASSERT(!owner->isBlockFlow() || (!child->isTableSection() && !child->isTableRow() && !child->isTableCell()));
-
-    if (beforeChild == firstChild())
-        setFirstChild(child);
-
-    RenderObject* prev = beforeChild->previousSibling();
-    child->setNextSibling(beforeChild);
-    beforeChild->setPreviousSibling(child);
-    if (prev)
-        prev->setNextSibling(child);
-    child->setPreviousSibling(prev);
-
-    child->setParent(owner);
-    
-    if (!owner->documentBeingDestroyed() && notifyRenderer)
-        child->insertedIntoTree();
-
-    if (!owner->documentBeingDestroyed()) {
-        RenderCounter::rendererSubtreeAttached(child);
-    }
-    child->setNeedsLayoutAndPrefWidthsRecalc();
-    if (!owner->normalChildNeedsLayout())
-        owner->setChildNeedsLayout(true); // We may supply the static position for an absolute positioned child.
-    
-    if (AXObjectCache::accessibilityEnabled())
-        owner->document()->axObjectCache()->childrenChanged(owner);
-}
-
-RenderObject* RenderObjectChildList::beforePseudoElementRenderer(const RenderObject* owner) const
-{
-    // An anonymous (generated) inline run-in that has PseudoId BEFORE must come from a grandparent.
-    // Therefore we should skip these generated run-ins when checking our immediate children.
-    // If we don't find our :before child immediately, then we should check if we own a
-    // generated inline run-in in the next level of children.
-    RenderObject* first = const_cast<RenderObject*>(owner);
-    do {
-        first = first->firstChild();
-        // Skip list markers and generated run-ins.
-        while (first && (first->isListMarker() || (first->isRenderInline() && first->isRunIn())))
-            first = first->nextInPreOrderAfterChildren(owner);
-    } while (first && first->isAnonymous() && first->style()->styleType() == NOPSEUDO);
-
-    if (!first)
-        return 0;
-
-    if (first->isBeforeContent())
-        return first;
-
-    // Check for a possible generated run-in, using run-in positioning rules.
-    first = owner->firstChild();
-    if (!first->isRenderBlock())
-        return 0;
-    
-    first = first->firstChild();
-    // We still need to skip any list markers that could exist before the run-in.
-    while (first && first->isListMarker())
-        first = first->nextSibling();
-    if (first && first->isBeforeContent() && first->isRenderInline() && first->isRunIn())
-        return first;
-    
-    return 0;
-}
-
-RenderObject* RenderObjectChildList::afterPseudoElementRenderer(const RenderObject* owner) const
-{
-    RenderObject* last = const_cast<RenderObject*>(owner);
-    do {
-        last = last->lastChild();
-    } while (last && last->isAnonymous() && last->style()->styleType() == NOPSEUDO && !last->isListMarker());
-    if (last && !last->isAfterContent())
-        return 0;
-    return last;
 }
 
 } // namespace WebCore

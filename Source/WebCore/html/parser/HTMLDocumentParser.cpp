@@ -26,6 +26,7 @@
 #include "config.h"
 #include "HTMLDocumentParser.h"
 
+#include "CompactHTMLToken.h"
 #include "ContentSecurityPolicy.h"
 #include "DocumentFragment.h"
 #include "Element.h"
@@ -47,7 +48,7 @@ using namespace HTMLNames;
 
 // This is a direct transcription of step 4 from:
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-end.html#fragment-case
-static HTMLTokenizerState::State tokenizerStateForContextElement(Element* contextElement, bool reportErrors)
+static HTMLTokenizerState::State tokenizerStateForContextElement(Element* contextElement, bool reportErrors, const HTMLParserOptions& options)
 {
     if (!contextElement)
         return HTMLTokenizerState::DataState;
@@ -59,8 +60,8 @@ static HTMLTokenizerState::State tokenizerStateForContextElement(Element* contex
     if (contextTag.matches(styleTag)
         || contextTag.matches(xmpTag)
         || contextTag.matches(iframeTag)
-        || (contextTag.matches(noembedTag) && HTMLTreeBuilder::pluginsEnabled(contextElement->document()->frame()))
-        || (contextTag.matches(noscriptTag) && HTMLTreeBuilder::scriptEnabled(contextElement->document()->frame()))
+        || (contextTag.matches(noembedTag) && options.pluginsEnabled)
+        || (contextTag.matches(noscriptTag) && options.scriptEnabled)
         || contextTag.matches(noframesTag))
         return reportErrors ? HTMLTokenizerState::RAWTEXTState : HTMLTokenizerState::PLAINTEXTState;
     if (contextTag.matches(scriptTag))
@@ -72,9 +73,10 @@ static HTMLTokenizerState::State tokenizerStateForContextElement(Element* contex
 
 HTMLDocumentParser::HTMLDocumentParser(HTMLDocument* document, bool reportErrors)
     : ScriptableDocumentParser(document)
-    , m_tokenizer(HTMLTokenizer::create(usePreHTML5ParserQuirks(document)))
+    , m_options(document)
+    , m_tokenizer(HTMLTokenizer::create(m_options))
     , m_scriptRunner(HTMLScriptRunner::create(document, this))
-    , m_treeBuilder(HTMLTreeBuilder::create(this, document, reportErrors, usePreHTML5ParserQuirks(document), maximumDOMTreeDepth(document)))
+    , m_treeBuilder(HTMLTreeBuilder::create(this, document, reportErrors, m_options))
     , m_parserScheduler(HTMLParserScheduler::create(this))
     , m_xssAuditor(this)
     , m_endWasDelayed(false)
@@ -86,14 +88,15 @@ HTMLDocumentParser::HTMLDocumentParser(HTMLDocument* document, bool reportErrors
 // minimize code duplication between these constructors.
 HTMLDocumentParser::HTMLDocumentParser(DocumentFragment* fragment, Element* contextElement, FragmentScriptingPermission scriptingPermission)
     : ScriptableDocumentParser(fragment->document())
-    , m_tokenizer(HTMLTokenizer::create(usePreHTML5ParserQuirks(fragment->document())))
-    , m_treeBuilder(HTMLTreeBuilder::create(this, fragment, contextElement, scriptingPermission, usePreHTML5ParserQuirks(fragment->document()), maximumDOMTreeDepth(fragment->document())))
+    , m_options(fragment->document())
+    , m_tokenizer(HTMLTokenizer::create(m_options))
+    , m_treeBuilder(HTMLTreeBuilder::create(this, fragment, contextElement, scriptingPermission, m_options))
     , m_xssAuditor(this)
     , m_endWasDelayed(false)
     , m_pumpSessionNestingLevel(0)
 {
     bool reportErrors = false; // For now document fragment parsing never reports errors.
-    m_tokenizer->setState(tokenizerStateForContextElement(contextElement, reportErrors));
+    m_tokenizer->setState(tokenizerStateForContextElement(contextElement, reportErrors, m_options));
 }
 
 HTMLDocumentParser::~HTMLDocumentParser()
@@ -145,6 +148,11 @@ void HTMLDocumentParser::prepareToStopParsing()
     // We will not have a scriptRunner when parsing a DocumentFragment.
     if (m_scriptRunner)
         document()->setReadyState(Document::Interactive);
+
+    // Setting the ready state above can fire mutation event and detach us
+    // from underneath. In that case, just bail out.
+    if (isDetached())
+        return;
 
     attemptToRunDeferredScriptsAndEnd();
 }
@@ -235,6 +243,15 @@ bool HTMLDocumentParser::canTakeNextToken(SynchronousMode mode, PumpSession& ses
     return true;
 }
 
+#if ENABLE(THREADED_HTML_PARSER)
+
+void HTMLDocumentParser::didReceiveTokensFromBackgroundParser(const Vector<CompactHTMLToken>& tokens)
+{
+    // FIXME: Actually consume the tokens.
+}
+
+#endif // ENABLE(THREADED_HTML_PARSER)
+
 void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
 {
     ASSERT(!isStopped());
@@ -266,7 +283,7 @@ void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
             m_xssAuditor.filterToken(m_token);
         }
 
-        m_treeBuilder->constructTreeFromToken(m_token);
+        constructTreeFromHTMLToken(m_token);
         ASSERT(m_token.isUninitialized());
     }
 
@@ -283,7 +300,7 @@ void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
     if (isWaitingForScripts()) {
         ASSERT(m_tokenizer->state() == HTMLTokenizerState::DataState);
         if (!m_preloadScanner) {
-            m_preloadScanner = adoptPtr(new HTMLPreloadScanner(document()));
+            m_preloadScanner = adoptPtr(new HTMLPreloadScanner(document(), m_options));
             m_preloadScanner->appendToEnd(m_input.current());
         }
         m_preloadScanner->scan();
@@ -291,6 +308,47 @@ void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
 
     InspectorInstrumentation::didWriteHTML(cookie, m_input.current().currentLine().zeroBasedInt());
 }
+
+void HTMLDocumentParser::constructTreeFromHTMLToken(HTMLToken& rawToken)
+{
+    RefPtr<AtomicHTMLToken> token = AtomicHTMLToken::create(rawToken);
+
+    // We clear the rawToken in case constructTreeFromAtomicToken
+    // synchronously re-enters the parser. We don't clear the token immedately
+    // for Character tokens because the AtomicHTMLToken avoids copying the
+    // characters by keeping a pointer to the underlying buffer in the
+    // HTMLToken. Fortunately, Character tokens can't cause us to re-enter
+    // the parser.
+    //
+    // FIXME: Stop clearing the rawToken once we start running the parser off
+    // the main thread or once we stop allowing synchronous JavaScript
+    // execution from parseAttribute.
+    if (rawToken.type() != HTMLTokenTypes::Character)
+        rawToken.clear();
+
+    m_treeBuilder->constructTree(token.get());
+
+    // AtomicHTMLToken keeps a pointer to the HTMLToken's buffer instead
+    // of copying the characters for performance.
+    // Clear the external characters pointer before the raw token is cleared
+    // to make sure that we won't have a dangling pointer.
+    token->clearExternalCharacters();
+
+    if (!rawToken.isUninitialized()) {
+        ASSERT(rawToken.type() == HTMLTokenTypes::Character);
+        rawToken.clear();
+    }
+}
+
+#if ENABLE(THREADED_HTML_PARSER)
+
+void HTMLDocumentParser::constructTreeFromCompactHTMLToken(const CompactHTMLToken& compactToken)
+{
+    RefPtr<AtomicHTMLToken> token = AtomicHTMLToken::create(compactToken);
+    m_treeBuilder->constructTree(token.get());
+}
+
+#endif
 
 bool HTMLDocumentParser::hasInsertionPoint()
 {
@@ -320,7 +378,7 @@ void HTMLDocumentParser::insert(const SegmentedString& source)
         // Check the document.write() output with a separate preload scanner as
         // the main scanner can't deal with insertions.
         if (!m_insertionPreloadScanner)
-            m_insertionPreloadScanner = adoptPtr(new HTMLPreloadScanner(document()));
+            m_insertionPreloadScanner = adoptPtr(new HTMLPreloadScanner(document(), m_options));
         m_insertionPreloadScanner->appendToEnd(source);
         m_insertionPreloadScanner->scan();
     }
@@ -544,18 +602,6 @@ void HTMLDocumentParser::parseDocumentFragment(const String& source, DocumentFra
     parser->detach(); // Allows ~DocumentParser to assert it was detached before destruction.
 }
     
-bool HTMLDocumentParser::usePreHTML5ParserQuirks(Document* document)
-{
-    ASSERT(document);
-    return document->settings() && document->settings()->usePreHTML5ParserQuirks();
-}
-
-unsigned HTMLDocumentParser::maximumDOMTreeDepth(Document* document)
-{
-    ASSERT(document);
-    return document->settings() ? document->settings()->maximumHTMLParserDOMTreeDepth() : Settings::defaultMaximumHTMLParserDOMTreeDepth;
-}
-
 void HTMLDocumentParser::suspendScheduledTasks()
 {
     if (m_parserScheduler)

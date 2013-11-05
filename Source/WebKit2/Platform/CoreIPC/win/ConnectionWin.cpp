@@ -33,7 +33,7 @@
 #include <wtf/text/WTFString.h>
 
 using namespace std;
- 
+
 namespace CoreIPC {
 
 // FIXME: Rename this or use a different constant on windows.

@@ -31,22 +31,16 @@
 #include "ChildProcess.h"
 #include <wtf/Forward.h>
 
-namespace WebCore {
-class RunLoop;
-}
-
 namespace WebKit {
 
-class NetscapePluginModule;
 class WebProcessConnection;
 struct SharedWorkerProcessCreationParameters;
 
-class SharedWorkerProcess : ChildProcess {
+class SharedWorkerProcess : public ChildProcess {
     WTF_MAKE_NONCOPYABLE(SharedWorkerProcess);
 public:
     static SharedWorkerProcess& shared();
 
-    void initialize(CoreIPC::Connection::Identifier, WebCore::RunLoop*);
     void removeWebProcessConnection(WebProcessConnection*);
 
 private:
@@ -54,7 +48,7 @@ private:
     ~SharedWorkerProcess();
 
     // ChildProcess
-    virtual bool shouldTerminate();
+    virtual bool shouldTerminate() OVERRIDE;
 
     // CoreIPC::Connection::Client
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
@@ -66,13 +60,10 @@ private:
     void initializeSharedWorkerProcess(const SharedWorkerProcessCreationParameters&);
     void createWebProcessConnection();
 
-    void platformInitialize(const SharedWorkerProcessCreationParameters&);
+    void platformInitializeSharedWorkerProcess(const SharedWorkerProcessCreationParameters&);
     
     void setMinimumLifetime(double);
     void minimumLifetimeTimerFired();
-
-    // The connection to the UI process.
-    RefPtr<CoreIPC::Connection> m_connection;
 
     // Our web process connections.
     Vector<RefPtr<WebProcessConnection> > m_webProcessConnections;

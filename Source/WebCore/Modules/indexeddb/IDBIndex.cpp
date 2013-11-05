@@ -30,7 +30,6 @@
 
 #include "IDBCursorBackendInterface.h"
 #include "IDBDatabaseException.h"
-#include "IDBIndexBackendInterface.h"
 #include "IDBKey.h"
 #include "IDBKeyRange.h"
 #include "IDBObjectStore.h"
@@ -43,16 +42,15 @@ namespace WebCore {
 
 static const unsigned short defaultDirection = IDBCursor::NEXT;
 
-IDBIndex::IDBIndex(const IDBIndexMetadata& metadata, PassRefPtr<IDBIndexBackendInterface> backend, IDBObjectStore* objectStore, IDBTransaction* transaction)
+IDBIndex::IDBIndex(const IDBIndexMetadata& metadata, IDBObjectStore* objectStore, IDBTransaction* transaction)
     : m_metadata(metadata)
-    , m_backend(backend)
     , m_objectStore(objectStore)
     , m_transaction(transaction)
     , m_deleted(false)
 {
-    ASSERT(m_backend);
     ASSERT(m_objectStore);
     ASSERT(m_transaction);
+    ASSERT(m_metadata.id != IDBIndexMetadata::InvalidId);
 }
 
 IDBIndex::~IDBIndex()
@@ -75,9 +73,8 @@ PassRefPtr<IDBRequest> IDBIndex::openCursor(ScriptExecutionContext* context, Pas
         return 0;
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    request->setCursorDetails(IDBCursorBackendInterface::IndexCursor, direction);
-    m_backend->openCursor(keyRange, direction, request, m_transaction->backend(), ec);
-    ASSERT(!ec);
+    request->setCursorDetails(IDBCursorBackendInterface::KeyAndValue, direction);
+    backendDB()->openCursor(m_transaction->id(), m_objectStore->id(), m_metadata.id, keyRange, direction, false, IDBDatabaseBackendInterface::NormalTask, request);
     return request;
 }
 
@@ -102,8 +99,8 @@ PassRefPtr<IDBRequest> IDBIndex::count(ScriptExecutionContext* context, PassRefP
         return 0;
     }
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->count(keyRange, request, m_transaction->backend(), ec);
-    ASSERT(!ec);
+    IDBDatabaseMetadata metadata(m_transaction->db()->metadata());
+    backendDB()->count(m_transaction->id(), m_objectStore->id(), m_metadata.id, keyRange, request);
     return request;
 }
 
@@ -132,9 +129,8 @@ PassRefPtr<IDBRequest> IDBIndex::openKeyCursor(ScriptExecutionContext* context, 
         return 0;
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    request->setCursorDetails(IDBCursorBackendInterface::IndexKeyCursor, direction);
-    m_backend->openKeyCursor(keyRange, direction, request, m_transaction->backend(), ec);
-    ASSERT(!ec);
+    request->setCursorDetails(IDBCursorBackendInterface::KeyOnly, direction);
+    backendDB()->openCursor(m_transaction->id(), m_objectStore->id(), m_metadata.id, keyRange, direction, true, IDBDatabaseBackendInterface::NormalTask, request);
     return request;
 }
 
@@ -173,8 +169,7 @@ PassRefPtr<IDBRequest> IDBIndex::get(ScriptExecutionContext* context, PassRefPtr
     }
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->get(keyRange, request, m_transaction->backend(), ec);
-    ASSERT(!ec);
+    backendDB()->get(m_transaction->id(), m_objectStore->id(), m_metadata.id, keyRange, false, request);
     return request;
 }
 
@@ -205,9 +200,13 @@ PassRefPtr<IDBRequest> IDBIndex::getKey(ScriptExecutionContext* context, PassRef
     }
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->getKey(keyRange, request, m_transaction->backend(), ec);
-    ASSERT(!ec);
+    backendDB()->get(m_transaction->id(), m_objectStore->id(), m_metadata.id, keyRange, true, request);
     return request;
+}
+
+IDBDatabaseBackendInterface* IDBIndex::backendDB() const
+{
+    return m_transaction->backendDB();
 }
 
 } // namespace WebCore

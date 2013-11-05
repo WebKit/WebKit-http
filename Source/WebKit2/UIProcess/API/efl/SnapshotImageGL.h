@@ -26,8 +26,11 @@
 #ifndef SnapshotImageGL_h
 #define SnapshotImageGL_h
 
+#include <RefPtrCairo.h>
+#include <wtf/OwnArrayPtr.h>
+
 #if USE(ACCELERATED_COMPOSITING)
-unsigned char* getImageFromCurrentTexture(int width, int height, int textureId);
+PassRefPtr<cairo_surface_t> getImageSurfaceFromFrameBuffer(int x, int y, int width, int height);
 #endif
 
 #endif // SnapshotImageGL_h

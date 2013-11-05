@@ -133,7 +133,7 @@ private:
     virtual void print(WebCore::Frame*) OVERRIDE;
     
 #if ENABLE(SQL_DATABASE)
-    virtual void exceededDatabaseQuota(WebCore::Frame*, const String& databaseName) OVERRIDE;
+    virtual void exceededDatabaseQuota(WebCore::Frame*, const String& databaseName, WebCore::DatabaseDetails) OVERRIDE;
 #endif
 
     virtual void reachedMaxAppCacheSize(int64_t spaceNeeded) OVERRIDE;
@@ -194,16 +194,8 @@ private:
     }
 #endif
 
-#if PLATFORM(WIN) && USE(AVFOUNDATION)
-    virtual WebCore::GraphicsDeviceAdapter* graphicsDeviceAdapter() const OVERRIDE;
-#endif
-
 #if ENABLE(TOUCH_EVENTS)
     virtual void needTouchEvents(bool) OVERRIDE;
-#endif
-
-#if PLATFORM(WIN)
-    virtual void setLastSetCursorToCurrentCursor() OVERRIDE;
 #endif
 
 #if ENABLE(FULLSCREEN_API)

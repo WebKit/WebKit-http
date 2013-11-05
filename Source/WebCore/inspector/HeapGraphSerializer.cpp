@@ -60,6 +60,7 @@ public:
     int m_className;
     int m_name;
     int m_edgeCount;
+    static const int s_nodeFieldCount = 5;
 };
 
 class HeapGraphEdge {
@@ -85,6 +86,18 @@ HeapGraphSerializer::HeapGraphSerializer()
     : m_lastReportedEdgeIndex(0)
 {
     m_strings.append(String());
+
+    memset(m_edgeTypes, 0, sizeof(m_edgeTypes));
+
+    ASSERT(m_strings.size());
+    m_edgeTypes[WTF::PointerMember] = m_strings.size();
+    m_strings.append("weakRef");
+
+    m_edgeTypes[WTF::OwnPtrMember] = m_strings.size();
+    m_strings.append("ownRef");
+
+    m_edgeTypes[WTF::RefPtrMember] = m_strings.size();
+    m_strings.append("countRef");
 }
 
 HeapGraphSerializer::~HeapGraphSerializer()
@@ -103,19 +116,24 @@ void HeapGraphSerializer::reportNode(const WTF::MemoryObjectInfo& info)
     m_lastReportedEdgeIndex = m_edges.size();
 
     m_objectToNodeIndex.set(info.reportedPointer(), m_nodes.size());
+    if (info.isRoot())
+        m_roots.append(info.reportedPointer());
     m_nodes.append(node);
 }
 
-void HeapGraphSerializer::reportEdge(const void*, const void* to, const char* name)
+void HeapGraphSerializer::reportEdge(const void* to, const char* name, WTF::MemberType memberType)
 {
     HeapGraphEdge edge;
     ASSERT(to);
+    ASSERT(memberType >= 0);
+    ASSERT(memberType < WTF::LastMemberTypeEntry);
+    edge.m_type = m_edgeTypes[memberType];
     edge.m_toObject = to;
     edge.m_name = addString(name);
     m_edges.append(edge);
 }
 
-void HeapGraphSerializer::reportLeaf(const void*, const WTF::MemoryObjectInfo& info, const char* edgeName)
+void HeapGraphSerializer::reportLeaf(const WTF::MemoryObjectInfo& info, const char* edgeName)
 {
     HeapGraphNode node;
     node.m_type = addString(info.objectType());
@@ -127,6 +145,7 @@ void HeapGraphSerializer::reportLeaf(const void*, const WTF::MemoryObjectInfo& i
     m_nodes.append(node);
 
     HeapGraphEdge edge;
+    edge.m_type = m_edgeTypes[WTF::OwnPtrMember];
     edge.m_toIndex = nodeIndex;
     edge.m_targetIndexIsKnown = true;
     edge.m_name = addString(edgeName);
@@ -140,22 +159,23 @@ void HeapGraphSerializer::reportBaseAddress(const void* base, const void* real)
 
 PassRefPtr<InspectorObject> HeapGraphSerializer::serialize()
 {
+    addRootNode();
     adjutEdgeTargets();
     RefPtr<InspectorArray> nodes = InspectorArray::create();
     for (size_t i = 0; i < m_nodes.size(); i++) {
         HeapGraphNode& node = m_nodes[i];
         nodes->pushInt(node.m_type);
-        nodes->pushInt(node.m_size);
         nodes->pushInt(node.m_className);
         nodes->pushInt(node.m_name);
+        nodes->pushInt(node.m_size);
         nodes->pushInt(node.m_edgeCount);
     }
     RefPtr<InspectorArray> edges = InspectorArray::create();
     for (size_t i = 0; i < m_edges.size(); i++) {
         HeapGraphEdge& edge = m_edges[i];
         edges->pushInt(edge.m_type);
-        edges->pushInt(edge.m_toIndex);
         edges->pushInt(edge.m_name);
+        edges->pushInt(edge.m_toIndex * HeapGraphNode::s_nodeFieldCount);
     }
     RefPtr<InspectorArray> strings = InspectorArray::create();
     for (size_t i = 0; i < m_strings.size(); i++)
@@ -177,6 +197,7 @@ void HeapGraphSerializer::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) 
     info.addMember(m_baseToRealAddress);
     info.addMember(m_nodes);
     info.addMember(m_edges);
+    info.addMember(m_roots);
 }
 
 int HeapGraphSerializer::addString(const String& string)
@@ -187,6 +208,17 @@ int HeapGraphSerializer::addString(const String& string)
     if (result.isNewEntry)
         m_strings.append(string);
     return result.iterator->value;
+}
+
+void HeapGraphSerializer::addRootNode()
+{
+    for (size_t i = 0; i < m_roots.size(); i++)
+        reportEdge(m_roots[i], 0, WTF::PointerMember);
+    HeapGraphNode node;
+    node.m_name = addString("Root");
+    node.m_edgeCount = m_edges.size() - m_lastReportedEdgeIndex;
+    m_lastReportedEdgeIndex = m_edges.size();
+    m_nodes.append(node);
 }
 
 void HeapGraphSerializer::adjutEdgeTargets()

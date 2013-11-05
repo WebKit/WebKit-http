@@ -304,7 +304,7 @@ Structure* Structure::addPropertyTransitionToExistingStructure(Structure* struct
         JSCell* specificValueInPrevious = existingTransition->m_specificValueInPrevious.get();
         if (specificValueInPrevious && specificValueInPrevious != specificValue)
             return 0;
-        validateOffset(existingTransition->m_offset, structure->m_typeInfo.type());
+        validateOffset(existingTransition->m_offset, existingTransition->inlineCapacity());
         offset = existingTransition->m_offset;
         return existingTransition;
     }
@@ -634,13 +634,13 @@ Structure* Structure::flattenDictionaryStructure(JSGlobalData& globalData, JSObj
         unsigned i = 0;
         PropertyTable::iterator end = m_propertyTable->end();
         for (PropertyTable::iterator iter = m_propertyTable->begin(); iter != end; ++iter, ++i) {
-            values[i] = object->getDirectOffset(iter->offset);
-            iter->offset = propertyOffsetFor(i, m_inlineCapacity);
+            values[i] = object->getDirect(iter->offset);
+            iter->offset = offsetForPropertyNumber(i, m_inlineCapacity);
         }
         
         // Copies in our values to their compacted locations.
         for (unsigned i = 0; i < propertyCount; i++)
-            object->putDirectOffset(globalData, propertyOffsetFor(i, m_inlineCapacity), values[i]);
+            object->putDirect(globalData, offsetForPropertyNumber(i, m_inlineCapacity), values[i]);
 
         m_propertyTable->clearDeletedOffsets();
     }

@@ -256,12 +256,14 @@ namespace WebCore {
         bool tiledBackingStoreEnabled() const { return m_tiledBackingStoreEnabled; }
 
 #if USE(AVFOUNDATION)
-        static void setAVFoundationEnabled(bool flag) { gAVFoundationEnabled = flag; }
+        static void setAVFoundationEnabled(bool flag);
         static bool isAVFoundationEnabled() { return gAVFoundationEnabled; }
 #endif
 
-        void setUnifiedTextCheckerEnabled(bool flag) { m_unifiedTextCheckerEnabled = flag; }
-        bool unifiedTextCheckerEnabled() const { return m_unifiedTextCheckerEnabled; }
+#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+        static void setQTKitEnabled(bool flag);
+        static bool isQTKitEnabled() { return gQTKitEnabled; }
+#endif
 
         static const unsigned defaultMaximumHTMLParserDOMTreeDepth = 512;
 
@@ -292,6 +294,9 @@ namespace WebCore {
 
         void setScrollingPerformanceLoggingEnabled(bool);
         bool scrollingPerformanceLoggingEnabled() { return m_scrollingPerformanceLoggingEnabled; }
+        
+        void setAggressiveTileRetentionEnabled(bool);
+        bool aggressiveTileRetentionEnabled() { return m_aggressiveTileRetentionEnabled; }
 
 #if USE(JSC)
         static void setShouldRespectPriorityInCSSAttributeSetters(bool);
@@ -357,7 +362,6 @@ namespace WebCore {
         bool m_showTiledScrollingIndicator : 1;
         bool m_tiledBackingStoreEnabled : 1;
         bool m_dnsPrefetchingEnabled : 1;
-        bool m_unifiedTextCheckerEnabled : 1;
 #if ENABLE(SMOOTH_SCROLLING)
         bool m_scrollAnimatorEnabled : 1;
 #endif
@@ -366,6 +370,7 @@ namespace WebCore {
         bool m_touchEventEmulationEnabled : 1;
 #endif
         bool m_scrollingPerformanceLoggingEnabled : 1;
+        bool m_aggressiveTileRetentionEnabled : 1;
 
         Timer<Settings> m_setImageLoadingSettingsTimer;
         void imageLoadingSettingsTimerFired(Timer<Settings>*);
@@ -376,6 +381,11 @@ namespace WebCore {
 #if USE(AVFOUNDATION)
         static bool gAVFoundationEnabled;
 #endif
+
+#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+        static bool gQTKitEnabled;
+#endif
+        
         static bool gMockScrollbarsEnabled;
         static bool gUsesOverlayScrollbars;
 

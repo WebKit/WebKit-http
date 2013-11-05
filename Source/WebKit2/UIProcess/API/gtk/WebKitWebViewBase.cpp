@@ -29,7 +29,6 @@
 #include "WebKitWebViewBase.h"
 
 #include "DrawingAreaProxyImpl.h"
-#include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
 #include "PageClientImpl.h"
@@ -41,6 +40,7 @@
 #include "WebKitWebViewBaseAccessible.h"
 #include "WebKitWebViewBasePrivate.h"
 #include "WebPageProxy.h"
+#include "WebViewBaseInputMethodFilter.h"
 #include <WebCore/ClipboardGtk.h>
 #include <WebCore/ClipboardUtilitiesGtk.h>
 #include <WebCore/DataObjectGtk.h>
@@ -81,9 +81,8 @@ void redirectedWindowDamagedCallback(void* data);
 
 struct _WebKitWebViewBasePrivate {
     _WebKitWebViewBasePrivate()
-        : imContext(adoptGRef(gtk_im_multicontext_new()))
 #if USE(TEXTURE_MAPPER_GL)
-        , redirectedWindow(RedirectedXCompositeWindow::create(IntSize(1, 1), RedirectedXCompositeWindow::DoNotCreateGLContext))
+        : redirectedWindow(RedirectedXCompositeWindow::create(IntSize(1, 1), RedirectedXCompositeWindow::DoNotCreateGLContext))
 #endif
     {
     }
@@ -97,7 +96,6 @@ struct _WebKitWebViewBasePrivate {
     OwnPtr<PageClientImpl> pageClient;
     RefPtr<WebPageProxy> pageProxy;
     bool shouldForwardNextKeyEvent;
-    GRefPtr<GtkIMContext> imContext;
     GtkClickCounter clickCounter;
     CString tooltipText;
     IntRect tooltipArea;
@@ -111,6 +109,7 @@ struct _WebKitWebViewBasePrivate {
     unsigned inspectorViewHeight;
     GOwnPtr<GdkEvent> contextMenuEvent;
     WebContextMenuProxyGtk* activeContextMenuProxy;
+    WebViewBaseInputMethodFilter inputMethodFilter;
 
     GtkWindow* toplevelOnScreenWindow;
     unsigned long toplevelResizeGripVisibilityID;
@@ -265,9 +264,6 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
 
     WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(widget);
-    WebKitWebViewBasePrivate* priv = webView->priv;
-    gtk_im_context_set_client_window(priv->imContext.get(), window);
-
     GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
     if (widgetIsOnscreenToplevelWindow(toplevel))
         webkitWebViewBaseSetToplevelOnScreenWindow(webView, GTK_WINDOW(toplevel));
@@ -463,12 +459,13 @@ static void resizeWebKitWebViewBaseFromAllocation(WebKitWebViewBase* webViewBase
     IntRect viewRect(allocation->x, allocation->y, allocation->width, allocation->height);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
     if (priv->inspectorView) {
+        int inspectorViewHeight = std::min(static_cast<int>(priv->inspectorViewHeight), allocation->height);
         GtkAllocation childAllocation = viewRect;
-        childAllocation.y = allocation->height - priv->inspectorViewHeight;
-        childAllocation.height = priv->inspectorViewHeight;
+        childAllocation.y = allocation->height - inspectorViewHeight;
+        childAllocation.height = inspectorViewHeight;
         gtk_widget_size_allocate(priv->inspectorView, &childAllocation);
 
-        viewRect.setHeight(allocation->height - priv->inspectorViewHeight);
+        viewRect.setHeight(std::max(allocation->height - inspectorViewHeight, 1));
     }
 
     // The authentication dialog is centered in the view rect, which means that it
@@ -549,7 +546,7 @@ static gboolean webkitWebViewBaseFocusInEvent(GtkWidget* widget, GdkEventFocus* 
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     webkitWebViewBaseSetFocus(webViewBase, true);
-    gtk_im_context_focus_in(webViewBase->priv->imContext.get());
+    webViewBase->priv->inputMethodFilter.notifyFocusedIn();
 
     return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->focus_in_event(widget, event);
 }
@@ -558,7 +555,7 @@ static gboolean webkitWebViewBaseFocusOutEvent(GtkWidget* widget, GdkEventFocus*
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     webkitWebViewBaseSetFocus(webViewBase, false);
-    gtk_im_context_focus_out(webViewBase->priv->imContext.get());
+    webViewBase->priv->inputMethodFilter.notifyFocusedOut();
 
     return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->focus_out_event(widget, event);
 }
@@ -593,7 +590,7 @@ static gboolean webkitWebViewBaseKeyPressEvent(GtkWidget* widget, GdkEventKey* e
         priv->shouldForwardNextKeyEvent = FALSE;
         return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_press_event(widget, event);
     }
-    priv->pageProxy->handleKeyboardEvent(NativeWebKeyboardEvent(reinterpret_cast<GdkEvent*>(event)));
+    priv->inputMethodFilter.filterKeyEvent(event);
     return TRUE;
 }
 
@@ -602,14 +599,11 @@ static gboolean webkitWebViewBaseKeyReleaseEvent(GtkWidget* widget, GdkEventKey*
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
 
-    if (gtk_im_context_filter_keypress(priv->imContext.get(), event))
-        return TRUE;
-
     if (priv->shouldForwardNextKeyEvent) {
         priv->shouldForwardNextKeyEvent = FALSE;
         return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_release_event(widget, event);
     }
-    priv->pageProxy->handleKeyboardEvent(NativeWebKeyboardEvent(reinterpret_cast<GdkEvent*>(event)));
+    priv->inputMethodFilter.filterKeyEvent(event);
     return TRUE;
 }
 
@@ -622,6 +616,8 @@ static gboolean webkitWebViewBaseButtonPressEvent(GtkWidget* widget, GdkEventBut
         return TRUE;
 
     gtk_widget_grab_focus(widget);
+
+    priv->inputMethodFilter.notifyMouseButtonPress();
 
     if (!priv->clickCounter.shouldProcessButtonEvent(buttonEvent))
         return TRUE;
@@ -874,7 +870,7 @@ WebKitWebViewBase* webkitWebViewBaseCreate(WebContext* context, WebPageGroup* pa
 
 GtkIMContext* webkitWebViewBaseGetIMContext(WebKitWebViewBase* webkitWebViewBase)
 {
-    return webkitWebViewBase->priv->imContext.get();
+    return webkitWebViewBase->priv->inputMethodFilter.context();
 }
 
 WebPageProxy* webkitWebViewBaseGetPage(WebKitWebViewBase* webkitWebViewBase)
@@ -897,6 +893,10 @@ void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, WebCon
     if (priv->redirectedWindow)
         priv->pageProxy->setAcceleratedCompositingWindowId(priv->redirectedWindow->windowId());
 #endif
+
+    // This must happen here instead of the instance initializer, because the input method
+    // filter must have access to the page.
+    priv->inputMethodFilter.setWebView(webkitWebViewBase);
 }
 
 void webkitWebViewBaseSetTooltipText(WebKitWebViewBase* webViewBase, const char* tooltip)
@@ -1078,4 +1078,14 @@ void webkitWebViewBaseHandleDownloadRequest(WebKitWebViewBase* webViewBase, Down
 {
     if (webViewBase->priv->downloadHandler)
         webViewBase->priv->downloadHandler(webViewBase, download);
+}
+
+void webkitWebViewBaseSetInputMethodState(WebKitWebViewBase* webkitWebViewBase, bool enabled)
+{
+    webkitWebViewBase->priv->inputMethodFilter.setEnabled(enabled);
+}
+
+void webkitWebViewBaseUpdateTextInputState(WebKitWebViewBase* webkitWebViewBase)
+{
+    webkitWebViewBase->priv->inputMethodFilter.setCursorRect(webkitWebViewBase->priv->pageProxy->editorState().cursorRect);
 }

@@ -49,6 +49,9 @@ PassRefPtr<IDBRequest> IDBRequest::create(ScriptExecutionContext* context, PassR
 {
     RefPtr<IDBRequest> request(adoptRef(new IDBRequest(context, source, IDBTransactionBackendInterface::NormalTask, transaction)));
     request->suspendIfNeeded();
+    // Requests associated with IDBFactory (open/deleteDatabase/getDatabaseNames) are not associated with transactions.
+    if (transaction)
+        transaction->registerRequest(request.get());
     return request.release();
 }
 
@@ -56,6 +59,9 @@ PassRefPtr<IDBRequest> IDBRequest::create(ScriptExecutionContext* context, PassR
 {
     RefPtr<IDBRequest> request(adoptRef(new IDBRequest(context, source, taskType, transaction)));
     request->suspendIfNeeded();
+    // Requests associated with IDBFactory (open/deleteDatabase/getDatabaseNames) are not associated with transactions.
+    if (transaction)
+        transaction->registerRequest(request.get());
     return request.release();
 }
 
@@ -70,7 +76,7 @@ IDBRequest::IDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> sourc
     , m_source(source)
     , m_taskType(taskType)
     , m_hasPendingActivity(true)
-    , m_cursorType(IDBCursorBackendInterface::InvalidCursorType)
+    , m_cursorType(IDBCursorBackendInterface::KeyAndValue)
     , m_cursorDirection(IDBCursor::NEXT)
     , m_cursorFinished(false)
     , m_pendingCursor(0)
@@ -78,10 +84,6 @@ IDBRequest::IDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> sourc
     , m_preventPropagation(false)
     , m_requestState(context)
 {
-    // Requests associated with IDBFactory (open/deleteDatabase/getDatabaseNames) are not
-    // associated with transactions.
-    if (m_transaction)
-        m_transaction->registerRequest(this);
 }
 
 IDBRequest::~IDBRequest()
@@ -185,7 +187,7 @@ void IDBRequest::abort()
 void IDBRequest::setCursorDetails(IDBCursorBackendInterface::CursorType cursorType, IDBCursor::Direction direction)
 {
     ASSERT(m_readyState == PENDING);
-    ASSERT(m_cursorType == IDBCursorBackendInterface::InvalidCursorType);
+    ASSERT(!m_pendingCursor);
     m_cursorType = cursorType;
     m_cursorDirection = direction;
 }
@@ -225,7 +227,7 @@ void IDBRequest::setResultCursor(PassRefPtr<IDBCursor> cursor, PassRefPtr<IDBKey
     m_cursorPrimaryKey = primaryKey;
     m_cursorValue = value;
 
-    if (m_cursorType == IDBCursorBackendInterface::IndexKeyCursor) {
+    if (m_cursorType == IDBCursorBackendInterface::KeyOnly) {
         m_result = IDBAny::create(cursor);
         return;
     }
@@ -288,12 +290,18 @@ void IDBRequest::onSuccess(PassRefPtr<IDBCursorBackendInterface> backend, PassRe
 
     DOMRequestState::Scope scope(m_requestState);
     ScriptValue value = deserializeIDBValue(requestState(), serializedValue);
-    ASSERT(m_cursorType != IDBCursorBackendInterface::InvalidCursorType);
+    ASSERT(!m_pendingCursor);
     RefPtr<IDBCursor> cursor;
-    if (m_cursorType == IDBCursorBackendInterface::IndexKeyCursor)
+    switch (m_cursorType) {
+    case IDBCursorBackendInterface::KeyOnly:
         cursor = IDBCursor::create(backend, m_cursorDirection, this, m_source.get(), m_transaction.get());
-    else
+        break;
+    case IDBCursorBackendInterface::KeyAndValue:
         cursor = IDBCursorWithValue::create(backend, m_cursorDirection, this, m_source.get(), m_transaction.get());
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
     setResultCursor(cursor, key, primaryKey, value);
 
     enqueueEvent(createSuccessEvent());

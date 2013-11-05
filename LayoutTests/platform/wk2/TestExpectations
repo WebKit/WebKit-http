@@ -345,6 +345,7 @@ http/tests/security/referrer-policy-redirect-link.html
 
 # css3-conditionals support is not yet enabled.
 webkit.org/b/86146 css3/supports.html
+webkit.org/b/104822 css3/supports-cssom.html
 
 # Text Autosizing is not yet enabled.
 # https://bugs.webkit.org/show_bug.cgi?id=84186
@@ -362,6 +363,8 @@ storage/domstorage/localstorage/close-idle-localstorage-databases-immediately.ht
 # [WK2] The new npruntime/embed-property-iframe-equality.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=105266
 plugins/npruntime/embed-property-iframe-equality.html
+
+webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -385,20 +388,6 @@ http/tests/misc/link-rel-icon-beforeload.html
 
 # WebKitTestRunner should dump text/plain content as text
 http/tests/incremental/slow-utf8-text.pl
-
-# WebKitTestRunner needs layoutTestController.setHandlesAuthenticationChallenges
-http/tests/misc/authentication-redirect-1/authentication-sent-to-redirect-cross-origin.html
-http/tests/misc/authentication-redirect-2/authentication-sent-to-redirect-same-origin.html
-http/tests/misc/authentication-redirect-3/authentication-sent-to-redirect-same-origin-with-location-credentials.html
-http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html
-http/tests/loading/basic-auth-resend-wrong-credentials.html
-http/tests/loading/basic-credentials-sent-automatically.html
-http/tests/security/401-logout/401-logout.php
-http/tests/xmlhttprequest/basic-auth-nopassword.html
-http/tests/xmlhttprequest/basic-auth-nouser.html
-http/tests/xmlhttprequest/remember-bad-password.html
-http/tests/xmlhttprequest/failed-auth.html
-http/tests/misc/401-alternative-content.php
 
 # WebKitTestRunner needs layoutTestController.setSmartInsertDeleteEnabled
 editing/deleting/smart-editing-disabled.html
@@ -523,10 +512,6 @@ storage/domstorage/localstorage/storagetracker/storage-tracker-7-usage.html
 # WebKitTestRunner needs layoutTestController.setAutofilled
 fast/forms/input-autofilled.html
 fast/forms/reset-autofilled.html
-
-# WebKitTestRunner needs a more-complete implementation of eventSender
-# https://bugs.webkit.org/show_bug.cgi?id=42194
-fast/dom/MutationObserver/inline-event-listener.html
 
 # WebKitTestRunner needs eventSender.contextClick()
 # https://bugs.webkit.org/show_bug.cgi?id=86881
@@ -917,6 +902,8 @@ http/tests/local/formdata/send-form-data-with-sliced-file.html
 http/tests/local/formdata/send-form-data.html
 http/tests/local/formdata/upload-events.html
 http/tests/security/clipboard/clipboard-file-access.html
+storage/indexeddb/noblobs.html
+storage/indexeddb/structured-clone.html
 
 # WebKitTestRunner doesn't have eventSender.fireKeyboardEventsToElement
 platform/mac/fast/events/objc-keyboard-event-creation.html

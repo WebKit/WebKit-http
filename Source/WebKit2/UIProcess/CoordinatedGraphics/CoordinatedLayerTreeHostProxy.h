@@ -44,7 +44,6 @@ namespace WebKit {
 
 class CoordinatedLayerInfo;
 class LayerTreeRenderer;
-class CoordinatedLayerUpdateInfo;
 
 class CoordinatedLayerTreeHostProxy {
     WTF_MAKE_NONCOPYABLE(CoordinatedLayerTreeHostProxy);
@@ -61,6 +60,7 @@ public:
     void createCustomFilterProgram(int id, const WebCore::CustomFilterProgramInfo&);
     void removeCustomFilterProgram(int id);
 #endif
+    void createCompositingLayer(CoordinatedLayerID);
     void deleteCompositingLayer(CoordinatedLayerID);
     void setRootCompositingLayer(CoordinatedLayerID);
     void setContentsSize(const WebCore::FloatSize&);

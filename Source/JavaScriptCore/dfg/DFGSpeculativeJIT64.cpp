@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "ArrayPrototype.h"
 #include "DFGCallArrayAllocatorSlowPathGenerator.h"
 #include "DFGSlowPathGenerator.h"
+#include "JSValueInlines.h"
 #include "ObjectPrototype.h"
 
 namespace JSC { namespace DFG {
@@ -498,7 +499,7 @@ void SpeculativeJIT::nonSpeculativeUInt32ToNumber(Node& node)
 void SpeculativeJIT::cachedGetById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode spillMode)
 {
     JITCompiler::DataLabelPtr structureToCompare;
-    JITCompiler::PatchableJump structureCheck = m_jit.patchableBranchPtrWithPatch(JITCompiler::NotEqual, JITCompiler::Address(baseGPR, JSCell::structureOffset()), structureToCompare, JITCompiler::TrustedImmPtr(reinterpret_cast<void*>(-1)));
+    JITCompiler::PatchableJump structureCheck = m_jit.patchableBranchPtrWithPatch(JITCompiler::NotEqual, JITCompiler::Address(baseGPR, JSCell::structureOffset()), structureToCompare, JITCompiler::TrustedImmPtr(reinterpret_cast<void*>(unusedPointer)));
     
     JITCompiler::ConvertibleLoadLabel propertyStorageLoad =
         m_jit.convertibleLoadPtr(JITCompiler::Address(baseGPR, JSObject::butterflyOffset()), resultGPR);
@@ -532,7 +533,7 @@ void SpeculativeJIT::cachedPutById(CodeOrigin codeOrigin, GPRReg baseGPR, GPRReg
 {
     
     JITCompiler::DataLabelPtr structureToCompare;
-    JITCompiler::PatchableJump structureCheck = m_jit.patchableBranchPtrWithPatch(JITCompiler::NotEqual, JITCompiler::Address(baseGPR, JSCell::structureOffset()), structureToCompare, JITCompiler::TrustedImmPtr(reinterpret_cast<void*>(-1)));
+    JITCompiler::PatchableJump structureCheck = m_jit.patchableBranchPtrWithPatch(JITCompiler::NotEqual, JITCompiler::Address(baseGPR, JSCell::structureOffset()), structureToCompare, JITCompiler::TrustedImmPtr(reinterpret_cast<void*>(unusedPointer)));
 
     writeBarrier(baseGPR, valueGPR, valueUse, WriteBarrierForPropertyAccess, scratchGPR);
 
@@ -3916,7 +3917,22 @@ void SpeculativeJIT::compile(Node& node)
 
     case GetCallee: {
         GPRTemporary result(this);
-        m_jit.loadPtr(JITCompiler::addressFor(static_cast<VirtualRegister>(JSStack::Callee)), result.gpr());
+        m_jit.loadPtr(JITCompiler::addressFor(static_cast<VirtualRegister>(node.codeOrigin.stackOffset() + static_cast<int>(JSStack::Callee))), result.gpr());
+        cellResult(result.gpr(), m_compileIndex);
+        break;
+    }
+        
+    case SetCallee: {
+        SpeculateCellOperand callee(this, node.child1());
+        m_jit.storePtr(callee.gpr(), JITCompiler::addressFor(static_cast<VirtualRegister>(node.codeOrigin.stackOffset() + static_cast<int>(JSStack::Callee))));
+        noResult(m_compileIndex);
+        break;
+    }
+        
+    case GetScope: {
+        SpeculateCellOperand function(this, node.child1());
+        GPRTemporary result(this, function);
+        m_jit.loadPtr(JITCompiler::Address(function.gpr(), JSFunction::offsetOfScopeChain()), result.gpr());
         cellResult(result.gpr(), m_compileIndex);
         break;
     }
@@ -3925,8 +3941,15 @@ void SpeculativeJIT::compile(Node& node)
         GPRTemporary result(this);
         GPRReg resultGPR = result.gpr();
 
-        m_jit.loadPtr(JITCompiler::addressFor(static_cast<VirtualRegister>(JSStack::ScopeChain)), resultGPR);
+        m_jit.loadPtr(JITCompiler::addressFor(static_cast<VirtualRegister>(node.codeOrigin.stackOffset() + static_cast<int>(JSStack::ScopeChain))), resultGPR);
         cellResult(resultGPR, m_compileIndex);
+        break;
+    }
+        
+    case SetMyScope: {
+        SpeculateCellOperand callee(this, node.child1());
+        m_jit.storePtr(callee.gpr(), JITCompiler::addressFor(static_cast<VirtualRegister>(node.codeOrigin.stackOffset() + static_cast<int>(JSStack::ScopeChain))));
+        noResult(m_compileIndex);
         break;
     }
         
@@ -4066,7 +4089,7 @@ void SpeculativeJIT::compile(Node& node)
         cachedGetById(node.codeOrigin, baseGPR, resultGPR, node.identifierNumber(), notCell, DontSpill);
         
         jsValueResult(resultGPR, m_compileIndex, UseChildrenCalledExplicitly);
-        
+
         break;
     }
 
@@ -4076,10 +4099,18 @@ void SpeculativeJIT::compile(Node& node)
         
     case CheckFunction: {
         SpeculateCellOperand function(this, node.child1());
-        speculationCheck(BadCache, JSValueRegs(function.gpr()), node.child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node.function()));
+        speculationCheck(BadFunction, JSValueRegs(function.gpr()), node.child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node.function()));
         noResult(m_compileIndex);
         break;
     }
+        
+    case CheckExecutable: {
+        SpeculateCellOperand function(this, node.child1());
+        speculationCheck(BadExecutable, JSValueRegs(function.gpr()), node.child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, JITCompiler::Address(function.gpr(), JSFunction::offsetOfExecutable()), node.executable()));
+        noResult(m_compileIndex);
+        break;
+    }
+        
     case CheckStructure:
     case ForwardCheckStructure: {
         AbstractValue& value = m_state.forNode(node.child1());
@@ -4478,6 +4509,64 @@ void SpeculativeJIT::compile(Node& node)
         callOperation(operationIsFunction, resultGPR, valueGPR);
         m_jit.or32(TrustedImm32(ValueFalse), resultGPR);
         jsValueResult(result.gpr(), m_compileIndex, DataFormatJSBoolean);
+        break;
+    }
+
+    case TypeOf: {
+        JSValueOperand value(this, node.child1());
+        GPRReg valueGPR = value.gpr();
+        GPRTemporary temp(this);
+        GPRReg tempGPR = temp.gpr();
+        GPRResult result(this);
+        GPRReg resultGPR = result.gpr();
+        JITCompiler::JumpList doneJumps;
+
+        flushRegisters();
+
+        JITCompiler::Jump isNotCell = m_jit.branchTest64(JITCompiler::NonZero, valueGPR, GPRInfo::tagMaskRegister);
+        Node& child = m_jit.graph()[node.child1()];
+        if (child.shouldSpeculateCell())
+            speculationCheck(BadType, JSValueSource(valueGPR), node.child1(), isNotCell);
+
+        if (!child.shouldSpeculateNonStringCell()) {
+            m_jit.loadPtr(JITCompiler::Address(valueGPR, JSCell::structureOffset()), tempGPR);
+            JITCompiler::Jump notString = m_jit.branch8(JITCompiler::NotEqual, JITCompiler::Address(tempGPR, Structure::typeInfoTypeOffset()), TrustedImm32(StringType));
+            if (child.shouldSpeculateString())
+                speculationCheck(BadType, JSValueSource(valueGPR), node.child1(), notString);
+            m_jit.move(TrustedImmPtr(m_jit.globalData()->smallStrings.stringString()), resultGPR);
+            doneJumps.append(m_jit.jump());
+            if (!child.shouldSpeculateString()) {
+                notString.link(&m_jit);
+                callOperation(operationTypeOf, resultGPR, valueGPR);
+                doneJumps.append(m_jit.jump());
+            }
+        } else {
+            callOperation(operationTypeOf, resultGPR, valueGPR);
+            doneJumps.append(m_jit.jump());
+        }
+
+        if (!child.shouldSpeculateCell()) {
+            isNotCell.link(&m_jit);
+            JITCompiler::Jump notNumber = m_jit.branchTest64(JITCompiler::Zero, valueGPR, GPRInfo::tagTypeNumberRegister);
+            m_jit.move(TrustedImmPtr(m_jit.globalData()->smallStrings.numberString()), resultGPR);
+            doneJumps.append(m_jit.jump());
+            notNumber.link(&m_jit);
+
+            JITCompiler::Jump notUndefined = m_jit.branch64(JITCompiler::NotEqual, valueGPR, JITCompiler::TrustedImm64(ValueUndefined));
+            m_jit.move(TrustedImmPtr(m_jit.globalData()->smallStrings.undefinedString()), resultGPR);
+            doneJumps.append(m_jit.jump());
+            notUndefined.link(&m_jit);
+
+            JITCompiler::Jump notNull = m_jit.branch64(JITCompiler::NotEqual, valueGPR, JITCompiler::TrustedImm64(ValueNull));
+            m_jit.move(TrustedImmPtr(m_jit.globalData()->smallStrings.objectString()), resultGPR);
+            doneJumps.append(m_jit.jump());
+            notNull.link(&m_jit);
+
+            // Only boolean left
+            m_jit.move(TrustedImmPtr(m_jit.globalData()->smallStrings.booleanString()), resultGPR);
+        }
+        doneJumps.link(&m_jit);
+        cellResult(resultGPR, m_compileIndex);
         break;
     }
 

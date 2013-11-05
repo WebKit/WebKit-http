@@ -30,8 +30,7 @@
 #include "IDBDatabaseCallbacksProxy.h"
 #include "IDBFactoryBackendImpl.h"
 #include "IDBFakeBackingStore.h"
-#include "IDBIndexBackendImpl.h"
-#include "IDBObjectStoreBackendImpl.h"
+#include "IDBTransactionBackendImpl.h"
 #include "WebIDBDatabaseCallbacksImpl.h"
 #include "WebIDBDatabaseImpl.h"
 
@@ -56,20 +55,7 @@ TEST(IDBDatabaseBackendTest, BackingStoreRetention)
     RefPtr<IDBDatabaseBackendImpl> db = IDBDatabaseBackendImpl::create("db", backingStore.get(), factory, "uniqueid");
     EXPECT_GT(backingStore->refCount(), 1);
 
-    const bool autoIncrement = false;
-    RefPtr<IDBObjectStoreBackendImpl> store = IDBObjectStoreBackendImpl::create(db.get(), IDBObjectStoreMetadata("store", 1, IDBKeyPath("keyPath"), autoIncrement, 0));
-    EXPECT_GT(backingStore->refCount(), 1);
-
-    const bool unique = false;
-    const bool multiEntry = false;
-    RefPtr<IDBIndexBackendImpl> index = IDBIndexBackendImpl::create(db.get(), store.get(), IDBIndexMetadata("index", -1, IDBKeyPath("keyPath"), unique, multiEntry));
-    EXPECT_GT(backingStore->refCount(), 1);
-
     db.clear();
-    EXPECT_TRUE(backingStore->hasOneRef());
-    store.clear();
-    EXPECT_TRUE(backingStore->hasOneRef());
-    index.clear();
     EXPECT_TRUE(backingStore->hasOneRef());
 }
 
@@ -125,11 +111,11 @@ TEST(IDBDatabaseBackendTest, ConnectionLifecycle)
 
     RefPtr<MockIDBCallbacks> request1 = MockIDBCallbacks::create();
     RefPtr<FakeIDBDatabaseCallbacks> connection1 = FakeIDBDatabaseCallbacks::create();
-    db->openConnectionWithVersion(request1, connection1, 1, IDBDatabaseMetadata::NoIntVersion);
+    db->openConnection(request1, connection1, 1, IDBDatabaseMetadata::DefaultIntVersion);
 
     RefPtr<MockIDBCallbacks> request2 = MockIDBCallbacks::create();
     RefPtr<FakeIDBDatabaseCallbacks> connection2 = FakeIDBDatabaseCallbacks::create();
-    db->openConnectionWithVersion(request2, connection2, 2, IDBDatabaseMetadata::NoIntVersion);
+    db->openConnection(request2, connection2, 2, IDBDatabaseMetadata::DefaultIntVersion);
 
     db->close(connection1);
     EXPECT_GT(backingStore->refCount(), 1);
@@ -151,9 +137,8 @@ public:
     }
 
     virtual IDBDatabaseMetadata metadata() const { return IDBDatabaseMetadata(); }
-    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(int64_t, const String& name, const IDBKeyPath&, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&) { return 0; }
-    virtual void deleteObjectStore(const String& name, IDBTransactionBackendInterface*, ExceptionCode&) { }
-    virtual void deleteObjectStore(int64_t, IDBTransactionBackendInterface*, ExceptionCode&) { }
+    virtual void createObjectStore(int64_t transactionId, int64_t objectStoreId, const String& name, const IDBKeyPath&, bool autoIncrement) OVERRIDE { };
+    virtual void deleteObjectStore(int64_t transactionId, int64_t objectStoreId) OVERRIDE { }
     // FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
     virtual PassRefPtr<IDBTransactionBackendInterface> createTransaction(int64_t, const Vector<int64_t>&, IDBTransaction::Mode) OVERRIDE { return 0; }
     virtual void createTransaction(int64_t, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>&, unsigned short mode) OVERRIDE { }
@@ -170,11 +155,14 @@ public:
     virtual void openCursor(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange>, unsigned short direction, bool keyOnly, TaskType, PassRefPtr<IDBCallbacks>) OVERRIDE { }
     virtual void count(int64_t objectStoreId, int64_t indexId, int64_t transactionId, PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>) OVERRIDE { }
     virtual void get(int64_t objectStoreId, int64_t indexId, int64_t transactionId, PassRefPtr<IDBKeyRange>, bool keyOnly, PassRefPtr<IDBCallbacks>) OVERRIDE { }
-    virtual void put(int64_t transactionId, int64_t objectStoreId, const Vector<uint8_t>&, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE { }
+    virtual void put(int64_t transactionId, int64_t objectStoreId, Vector<uint8_t>*, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE { }
     virtual void setIndexKeys(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKey> prpPrimaryKey, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE { }
     virtual void setIndexesReady(int64_t transactionId, int64_t objectStoreId, const Vector<int64_t>& indexIds) OVERRIDE { }
     virtual void deleteRange(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>) OVERRIDE { }
     virtual void clear(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBCallbacks>) OVERRIDE { }
+
+    virtual void createIndex(int64_t transactionId, int64_t objectStoreId, int64_t indexId, const String& name, const IDBKeyPath&, bool unique, bool multiEntry) OVERRIDE { ASSERT_NOT_REACHED(); }
+    virtual void deleteIndex(int64_t transactionId, int64_t objectStoreId, int64_t indexId) OVERRIDE { ASSERT_NOT_REACHED(); }
 
 private:
     MockIDBDatabaseBackendProxy(WebIDBDatabaseImpl& webDatabase)
@@ -201,7 +189,7 @@ TEST(IDBDatabaseBackendTest, ForcedClose)
 
     RefPtr<MockIDBDatabaseBackendProxy> proxy = MockIDBDatabaseBackendProxy::create(webDatabase);
     RefPtr<MockIDBCallbacks> request = MockIDBCallbacks::create();
-    backend->openConnectionWithVersion(request, connectionProxy, 3, IDBDatabaseMetadata::NoIntVersion);
+    backend->openConnection(request, connectionProxy, 3, IDBDatabaseMetadata::DefaultIntVersion);
 
     ScriptExecutionContext* context = 0;
     RefPtr<IDBDatabase> idbDatabase = IDBDatabase::create(context, proxy, connection);

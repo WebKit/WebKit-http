@@ -40,6 +40,7 @@
 #include "SkDrawLooper.h"
 #include "SkPaint.h"
 #include "SkPath.h"
+#include "SkRRect.h"
 
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
@@ -84,7 +85,7 @@ public:
 
     SkDevice* createCompatibleDevice(const IntSize&, bool hasAlpha);
 
-    // If false we're rendering to a GraphicsContext for a web page, if false
+    // If false we're rendering to a GraphicsContext for a web page, if true
     // we're not (as is the case when rendering to a canvas object).
     // If this is true the contents have not been marked up with the magic
     // color and all text drawing needs to go to a layer so that the alpha is
@@ -225,6 +226,8 @@ public:
         SkRegion::Op = SkRegion::kIntersect_Op);
     bool clipRect(const SkRect&, AntiAliasingMode = NotAntiAliased,
         SkRegion::Op = SkRegion::kIntersect_Op);
+    bool clipRRect(const SkRRect&, AntiAliasingMode = NotAntiAliased,
+        SkRegion::Op = SkRegion::kIntersect_Op);
     bool getClipBounds(SkRect*) const;
 
     void setMatrix(const SkMatrix&);
@@ -241,6 +244,7 @@ public:
     void drawPoints(SkCanvas::PointMode, size_t count, const SkPoint pts[], const SkPaint&);
     void drawRect(const SkRect&, const SkPaint&);
     void drawIRect(const SkIRect&, const SkPaint&);
+    void drawRRect(const SkRRect&, const SkPaint&);
     void drawPosText(const void* text, size_t byteLength, const SkPoint pos[], const SkPaint&);
     void drawPosTextH(const void* text, size_t byteLength, const SkScalar xpos[], SkScalar constY,
         const SkPaint&);
@@ -365,6 +369,13 @@ inline bool PlatformContextSkia::clipRect(const SkRect& rect, AntiAliasingMode a
     return m_canvas->clipRect(rect, op, aa == AntiAliased);
 }
 
+inline bool PlatformContextSkia::clipRRect(const SkRRect& rect, AntiAliasingMode aa, SkRegion::Op op)
+{
+    realizeSave(SkCanvas::kClip_SaveFlag);
+
+    return m_canvas->clipRRect(rect, op, aa == AntiAliased);
+}
+
 inline bool PlatformContextSkia::getClipBounds(SkRect* bounds) const
 {
     return m_canvas->getClipBounds(bounds);
@@ -471,6 +482,14 @@ inline void PlatformContextSkia::drawIRect(const SkIRect& rect, const SkPaint& p
         SkRect r = SkRect::MakeFromIRect(rect);
         m_opaqueRegion.didDrawRect(this, r, paint, 0);
     }
+}
+
+inline void PlatformContextSkia::drawRRect(const SkRRect& rect, const SkPaint& paint)
+{
+    m_canvas->drawRRect(rect, paint);
+
+    if (m_trackOpaqueRegion)
+        m_opaqueRegion.didDrawBounded(this, rect.getBounds(), paint);
 }
 
 inline void PlatformContextSkia::drawPosText(const void* text, size_t byteLength,

@@ -37,6 +37,7 @@
 #include "DOMImplementation.h"
 #include "DocumentFragment.h"
 #include "HTMLDocument.h"
+#include "TemplateContentDocumentFragment.h"
 #include "markup.h"
 
 namespace WebCore {
@@ -57,12 +58,10 @@ PassRefPtr<HTMLTemplateElement> HTMLTemplateElement::create(const QualifiedName&
     return adoptRef(new HTMLTemplateElement(tagName, document));
 }
 
-// FIXME: https://www.w3.org/Bugs/Public/show_bug.cgi?id=20127 (prevent DOM hierarchy cycles).
-// FIXME: https://www.w3.org/Bugs/Public/show_bug.cgi?id=20129 (extended adoptNode to consider template.content).
 DocumentFragment* HTMLTemplateElement::content() const
 {
     if (!m_content)
-        m_content = DocumentFragment::create(ownerDocument()->templateContentsOwnerDocument());
+        m_content = TemplateContentDocumentFragment::create(document()->ensureTemplateDocument(), this);
 
     return m_content.get();
 }
@@ -76,6 +75,14 @@ PassRefPtr<Node> HTMLTemplateElement::cloneNode(bool deep)
     if (m_content)
         content()->cloneChildNodes(toHTMLTemplateElement(clone.get())->content());
     return clone.release();
+}
+
+void HTMLTemplateElement::didMoveToNewDocument(Document* oldDocument)
+{
+    HTMLElement::didMoveToNewDocument(oldDocument);
+    if (!m_content)
+        return;
+    document()->ensureTemplateDocument()->adoptIfNeeded(m_content.get());
 }
 
 #ifndef NDEBUG

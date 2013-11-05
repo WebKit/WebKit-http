@@ -767,6 +767,15 @@ void FrameView::restoreBackingStores()
     compositor->updateCompositingLayers(CompositingUpdateAfterLayout);
 }
 
+bool FrameView::usesCompositedScrolling() const
+{
+    if (m_frame->settings() && m_frame->settings()->compositedScrollingForFramesEnabled()) {
+        RenderView* root = rootRenderer(this);
+        return root && root->compositor()->inForcedCompositingMode();
+    }
+    return false;
+}
+
 GraphicsLayer* FrameView::layerForHorizontalScrollbar() const
 {
     RenderView* root = rootRenderer(this);
@@ -2316,6 +2325,11 @@ void FrameView::setTransparent(bool isTransparent)
     m_isTransparent = isTransparent;
 }
 
+bool FrameView::hasOpaqueBackground() const
+{
+    return !m_isTransparent && !m_baseBackgroundColor.hasAlpha();
+}
+
 Color FrameView::baseBackgroundColor() const
 {
     return m_baseBackgroundColor;
@@ -2830,8 +2844,11 @@ ScrollableArea* FrameView::enclosingScrollableArea() const
 
 IntRect FrameView::scrollableAreaBoundingBox() const
 {
-    // FIXME: This isn't correct for transformed frames. We probably need to ask the renderer instead.
-    return frameRect();
+    RenderPart* ownerRenderer = frame()->ownerRenderer();
+    if (!ownerRenderer)
+        return frameRect();
+
+    return ownerRenderer->absoluteContentQuad().enclosingBoundingBox();
 }
 
 bool FrameView::isScrollable()
@@ -3100,6 +3117,9 @@ bool FrameView::hasCustomScrollbars() const
 
 FrameView* FrameView::parentFrameView() const
 {
+    if (!parent())
+        return 0;
+
     if (Frame* parentFrame = m_frame->tree()->parent())
         return parentFrame->view();
 
@@ -3717,18 +3737,24 @@ String FrameView::trackedRepaintRectsAsText() const
     return ts.release();
 }
 
-void FrameView::addScrollableArea(ScrollableArea* scrollableArea)
+bool FrameView::addScrollableArea(ScrollableArea* scrollableArea)
 {
     if (!m_scrollableAreas)
         m_scrollableAreas = adoptPtr(new ScrollableAreaSet);
-    m_scrollableAreas->add(scrollableArea);
+    return m_scrollableAreas->add(scrollableArea).isNewEntry;
 }
 
-void FrameView::removeScrollableArea(ScrollableArea* scrollableArea)
+bool FrameView::removeScrollableArea(ScrollableArea* scrollableArea)
 {
     if (!m_scrollableAreas)
-        return;
-    m_scrollableAreas->remove(scrollableArea);
+        return false;
+
+    ScrollableAreaSet::iterator it = m_scrollableAreas->find(scrollableArea);
+    if (it == m_scrollableAreas->end())
+        return false;
+
+    m_scrollableAreas->remove(it);
+    return true;
 }
 
 bool FrameView::containsScrollableArea(ScrollableArea* scrollableArea) const
@@ -3748,6 +3774,20 @@ void FrameView::removeChild(Widget* widget)
 
 bool FrameView::wheelEvent(const PlatformWheelEvent& wheelEvent)
 {
+    if (!isScrollable())
+        return false;
+
+    if (delegatesScrolling()) {
+        IntSize offset = scrollOffset();
+        IntSize newOffset = IntSize(offset.width() - wheelEvent.deltaX(), offset.height() - wheelEvent.deltaY());
+        if (offset != newOffset) {
+            ScrollView::scrollTo(newOffset);
+            scrollPositionChanged();
+            frame()->loader()->client()->didChangeScrollOffset();
+        }
+        return true;
+    }
+
     // We don't allow mouse wheeling to happen in a ScrollView that has had its scrollbars explicitly disabled.
     if (!canHaveScrollbars())
         return false;

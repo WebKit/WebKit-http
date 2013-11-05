@@ -36,7 +36,7 @@ using namespace std;
 
 namespace WebCore {
 
-RenderTextControl::RenderTextControl(Node* node)
+RenderTextControl::RenderTextControl(ContainerNode* node)
     : RenderBlock(node)
 {
     ASSERT(toTextFormControl(node));
@@ -254,6 +254,17 @@ float RenderTextControl::scaleEmToUnits(int x) const
     return roundf(style()->font().size() * x / unitsPerEm);
 }
 
+void RenderTextControl::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
+{
+    // Use average character width. Matches IE.
+    AtomicString family = style()->font().family().family();
+    maxLogicalWidth = preferredContentWidth(const_cast<RenderTextControl*>(this)->getAvgCharWidth(family));
+    if (RenderBox* innerTextRenderBox = innerTextElement()->renderBox())
+        maxLogicalWidth += innerTextRenderBox->paddingLeft() + innerTextRenderBox->paddingRight();
+    if (!style()->width().isPercent())
+        minLogicalWidth = maxLogicalWidth;
+}
+
 void RenderTextControl::computePreferredLogicalWidths()
 {
     ASSERT(preferredLogicalWidthsDirty());
@@ -263,21 +274,13 @@ void RenderTextControl::computePreferredLogicalWidths()
 
     if (style()->width().isFixed() && style()->width().value() >= 0)
         m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(style()->width().value());
-    else {
-        // Use average character width. Matches IE.
-        AtomicString family = style()->font().family().family();
-        m_maxPreferredLogicalWidth = preferredContentWidth(getAvgCharWidth(family));
-        if (RenderBox* innerTextRenderBox = innerTextElement()->renderBox())
-            m_maxPreferredLogicalWidth += innerTextRenderBox->paddingLeft() + innerTextRenderBox->paddingRight();
-    }
+    else
+        computeIntrinsicLogicalWidths(m_minPreferredLogicalWidth, m_maxPreferredLogicalWidth);
 
     if (style()->minWidth().isFixed() && style()->minWidth().value() > 0) {
         m_maxPreferredLogicalWidth = max(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->minWidth().value()));
         m_minPreferredLogicalWidth = max(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->minWidth().value()));
-    } else if (style()->width().isPercent() || (style()->width().isAuto() && style()->height().isPercent()))
-        m_minPreferredLogicalWidth = 0;
-    else
-        m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth;
+    }
 
     if (style()->maxWidth().isFixed()) {
         m_maxPreferredLogicalWidth = min(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(style()->maxWidth().value()));

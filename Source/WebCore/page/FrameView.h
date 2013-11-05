@@ -164,6 +164,9 @@ public:
 
     bool isTransparent() const;
     void setTransparent(bool isTransparent);
+    
+    // True if the FrameView is not transparent, and the base background color is opaque.
+    bool hasOpaqueBackground() const;
 
     Color baseBackgroundColor() const;
     void setBaseBackgroundColor(const Color&);
@@ -346,8 +349,10 @@ public:
     String trackedRepaintRectsAsText() const;
 
     typedef HashSet<ScrollableArea*> ScrollableAreaSet;
-    void addScrollableArea(ScrollableArea*);
-    void removeScrollableArea(ScrollableArea*);
+    // Returns whether the scrollable area has just been newly added.
+    bool addScrollableArea(ScrollableArea*);
+    // Returns whether the scrollable area has just been removed.
+    bool removeScrollableArea(ScrollableArea*);
     bool containsScrollableArea(ScrollableArea*) const;
     const ScrollableAreaSet* scrollableAreas() const { return m_scrollableAreas.get(); }
 
@@ -438,6 +443,7 @@ private:
     virtual IntRect scrollableAreaBoundingBox() const OVERRIDE;
     virtual bool scrollAnimatorEnabled() const OVERRIDE;
 #if USE(ACCELERATED_COMPOSITING)
+    virtual bool usesCompositedScrolling() const OVERRIDE;
     virtual GraphicsLayer* layerForHorizontalScrollbar() const OVERRIDE;
     virtual GraphicsLayer* layerForVerticalScrollbar() const OVERRIDE;
     virtual GraphicsLayer* layerForScrollCorner() const OVERRIDE;

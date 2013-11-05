@@ -198,6 +198,7 @@ IDL_BINDINGS += \
     $$PWD/css/CSSStyleDeclaration.idl \
     $$PWD/css/CSSStyleRule.idl \
     $$PWD/css/CSSStyleSheet.idl \
+    $$PWD/css/CSSSupportsRule.idl \
     $$PWD/css/CSSValue.idl \
     $$PWD/css/CSSValueList.idl \
     $$PWD/css/MediaList.idl \
@@ -300,6 +301,7 @@ IDL_BINDINGS += \
     $$PWD/html/canvas/CanvasGradient.idl \
     $$PWD/html/canvas/Int32Array.idl \
     $$PWD/html/canvas/CanvasPattern.idl \
+    $$PWD/html/canvas/CanvasProxy.idl \
     $$PWD/html/canvas/CanvasRenderingContext.idl \
     $$PWD/html/canvas/CanvasRenderingContext2D.idl \
     $$PWD/html/canvas/EXTTextureFilterAnisotropic.idl \
@@ -459,6 +461,7 @@ IDL_BINDINGS += \
     $$PWD/testing/Internals.idl \
     $$PWD/testing/InternalSettings.idl \
     $$PWD/testing/MallocStatistics.idl \
+    $$PWD/testing/TypeConversions.idl \
     $$PWD/workers/AbstractWorker.idl \
     $$PWD/workers/DedicatedWorkerContext.idl \
     $$PWD/workers/SharedWorker.idl \
@@ -693,6 +696,21 @@ cssvalues.depends = ${QMAKE_FILE_NAME} $${EXTRACSSVALUES} $$cssvalues.script
 cssvalues.clean = ${QMAKE_FILE_OUT} ${QMAKE_FUNC_FILE_OUT_PATH}/${QMAKE_FILE_BASE}.h
 GENERATORS += cssvalues
 
+INTERNAL_SETTINGS_GENERATED_IDL = InternalSettingsGenerated.idl
+# GENERATOR 6-C:
+settingsmacros.output = $$INTERNAL_SETTINGS_GENERATED_IDL InternalSettingsGenerated.cpp
+settingsmacros.input = SETTINGS_MACROS
+settingsmacros.script = $$PWD/page/make_settings.pl
+settingsmacros.commands = perl -I$$PWD/bindings/scripts $$settingsmacros.script --input $$SETTINGS_MACROS --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
+settingsmacros.depends = $$PWD/page/make_settings.pl $$SETTINGS_MACROS
+settingsmacros.add_output_to_sources = false
+settingsmacros.extra_sources = InternalSettingsGenerated.cpp
+GENERATORS += settingsmacros
+
+# make_settings.pl generates this file. We can't use ${QMAKE_FUNC_FILE_OUT_PATH} here since generateBindings.input
+# doesn't know how to resolve ${QMAKE_FUNC_FILE_OUT_PATH}.
+IDL_BINDINGS += generated/$$INTERNAL_SETTINGS_GENERATED_IDL
+
 # GENERATOR 0: Resolve [Supplemental] dependency in IDLs
 SUPPLEMENTAL_DEPENDENCY_FILE = supplemental_dependency.tmp
 IDL_FILES_TMP = ${QMAKE_FUNC_FILE_OUT_PATH}/idl_files.tmp
@@ -712,12 +730,10 @@ for(binding, IDL_BINDINGS) {
 preprocessIdls.commands += perl -I$$PWD/bindings/scripts $$preprocessIdls.script \
                                --defines \"$$javascriptFeatureDefines()\" \
                                --idlFilesList $$IDL_FILES_TMP \
-                               --supplementalDependencyFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
-                               --idlAttributesFile $${IDL_ATTRIBUTES_FILE} \
-                               --preprocessor \"$${QMAKE_MOC} -E\"
+                               --supplementalDependencyFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE
 preprocessIdls.output = $$SUPPLEMENTAL_DEPENDENCY_FILE
 preprocessIdls.add_output_to_sources = false
-preprocessIdls.depends = $$PWD/bindings/scripts/IDLParser.pm $$IDL_BINDINGS
+preprocessIdls.depends = $$IDL_BINDINGS
 GENERATORS += preprocessIdls
 
 # GENERATOR 1: Generate .h and .cpp from IDLs
@@ -754,6 +770,7 @@ generateBindings.commands = $$setEnvironmentVariable(SOURCE_ROOT, $$toSystemPath
                             --include xml \
                             --outputDir ${QMAKE_FUNC_FILE_OUT_PATH} \
                             --supplementalDependencyFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
+                            --idlAttributesFile $${IDL_ATTRIBUTES_FILE} \
                             --preprocessor \"$${QMAKE_MOC} -E\" ${QMAKE_FILE_NAME}
 generateBindings.output = JS${QMAKE_FILE_BASE}.cpp
 generateBindings.depends = ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
@@ -761,7 +778,8 @@ generateBindings.depends = ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY
                            $$PWD/bindings/scripts/CodeGeneratorJS.pm \
                            $$PWD/bindings/scripts/IDLParser.pm \
                            $$PWD/bindings/scripts/InFilesParser.pm \
-                           $$PWD/bindings/scripts/preprocessor.pm
+                           $$PWD/bindings/scripts/preprocessor.pm \
+                           $$IDL_ATTRIBUTES_FILE
 GENERATORS += generateBindings
 
 # GENERATOR 2: inspector idl compiler
@@ -870,14 +888,6 @@ exceptioncodedescription.script = $$PWD/dom/make_dom_exceptions.pl
 exceptioncodedescription.commands = perl -I$$PWD/bindings/scripts $$exceptioncodedescription.script --input $$DOM_EXCEPTIONS --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
 exceptioncodedescription.depends = $$PWD/dom/make_dom_exceptions.pl $$DOM_EXCEPTIONS
 GENERATORS += exceptioncodedescription
-
-# GENERATOR 5-H:
-settingsmacros.output = SettingsMacros.h
-settingsmacros.input = SETTINGS_MACROS
-settingsmacros.script = $$PWD/page/make_settings.pl
-settingsmacros.commands = perl -I$$PWD/bindings/scripts $$settingsmacros.script --input $$SETTINGS_MACROS --outputDir ${QMAKE_FUNC_FILE_OUT_PATH}
-settingsmacros.depends = $$PWD/page/make_settings.pl $$SETTINGS_MACROS
-GENERATORS += settingsmacros
 
 # GENERATOR 8-A:
 entities.output = HTMLEntityTable.cpp

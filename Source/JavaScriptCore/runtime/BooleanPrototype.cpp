@@ -26,6 +26,7 @@
 #include "JSFunction.h"
 #include "JSString.h"
 #include "ObjectPrototype.h"
+#include "Operations.h"
 
 namespace JSC {
 
@@ -79,19 +80,19 @@ EncodedJSValue JSC_HOST_CALL booleanProtoFuncToString(ExecState* exec)
     JSGlobalData* globalData = &exec->globalData();
     JSValue thisValue = exec->hostThisValue();
     if (thisValue == jsBoolean(false))
-        return JSValue::encode(globalData->smallStrings.falseString(globalData));
+        return JSValue::encode(globalData->smallStrings.falseString());
 
     if (thisValue == jsBoolean(true))
-        return JSValue::encode(globalData->smallStrings.trueString(globalData));
+        return JSValue::encode(globalData->smallStrings.trueString());
 
     if (!thisValue.inherits(&BooleanObject::s_info))
         return throwVMTypeError(exec);
 
     if (asBooleanObject(thisValue)->internalValue() == jsBoolean(false))
-        return JSValue::encode(globalData->smallStrings.falseString(globalData));
+        return JSValue::encode(globalData->smallStrings.falseString());
 
     ASSERT(asBooleanObject(thisValue)->internalValue() == jsBoolean(true));
-    return JSValue::encode(globalData->smallStrings.trueString(globalData));
+    return JSValue::encode(globalData->smallStrings.trueString());
 }
 
 EncodedJSValue JSC_HOST_CALL booleanProtoFuncValueOf(ExecState* exec)

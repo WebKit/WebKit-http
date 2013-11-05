@@ -49,7 +49,6 @@ namespace WebKit {
 class CoordinatedBackingStore;
 class CoordinatedLayerTreeHostProxy;
 class CoordinatedLayerInfo;
-class CoordinatedLayerUpdateInfo;
 
 class LayerTreeRenderer : public ThreadSafeRefCounted<LayerTreeRenderer>, public WebCore::GraphicsLayerClient {
 public:
@@ -87,6 +86,7 @@ public:
     void purgeGLResources();
     void setActive(bool);
 
+    void createLayer(CoordinatedLayerID);
     void deleteLayer(CoordinatedLayerID);
     void setRootLayerID(CoordinatedLayerID);
     void setLayerChildren(CoordinatedLayerID, const Vector<CoordinatedLayerID>&);
@@ -118,9 +118,13 @@ public:
 #endif
 
 private:
-    PassOwnPtr<WebCore::GraphicsLayer> createLayer(CoordinatedLayerID);
-
-    WebCore::GraphicsLayer* layerByID(CoordinatedLayerID id) { return (id == InvalidCoordinatedLayerID) ? 0 : m_layers.get(id); }
+    WebCore::GraphicsLayer* layerByID(CoordinatedLayerID id)
+    {
+        ASSERT(m_layers.contains(id));
+        ASSERT(id != InvalidCoordinatedLayerID);
+        return m_layers.get(id);
+    }
+    WebCore::GraphicsLayer* getLayerByIDIfExists(CoordinatedLayerID);
     WebCore::GraphicsLayer* rootLayer() { return m_rootLayer.get(); }
 
     void syncRemoteContent();
@@ -142,7 +146,6 @@ private:
     void assignImageBackingToLayer(WebCore::GraphicsLayer*, CoordinatedImageBackingID);
     void removeReleasedImageBackingsIfNeeded();
     void ensureRootLayer();
-    WebCore::GraphicsLayer* ensureLayer(CoordinatedLayerID);
     void commitPendingBackingStoreOperations();
 
     CoordinatedBackingStore* getBackingStore(WebCore::GraphicsLayer*);

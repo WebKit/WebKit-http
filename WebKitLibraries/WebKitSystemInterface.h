@@ -462,7 +462,6 @@ NSCursor *WKCursor(const char *name);
 dispatch_source_t WKCreateVMPressureDispatchOnMainQueue(void);
 
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
-NSString *WKGetMacOSXVersionString(void);
 bool WKExecutableWasLinkedOnOrBeforeLion(void);
 #endif
 
@@ -541,6 +540,8 @@ id WKNSProcessInfoProcessAssertionWithTypes(WKProcessAssertionTypes);
 
 bool WKIsJavaPlugInActive(void);
 void WKActivateJavaPlugIn(void);
+
+void WKCFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
 
 #ifdef __cplusplus
 }

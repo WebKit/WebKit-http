@@ -111,7 +111,7 @@ public:
     {
         MutexLocker locker(m_mutex);
         if (m_webWorkerBase)
-            m_webWorkerBase->postTaskForModeToWorkerContext(createCallbackTask(&didComplete, this, result), mode);
+            m_webWorkerBase->workerLoaderProxy()->postTaskForModeToWorkerContext(createCallbackTask(&didComplete, this, result), mode);
     }
 
 private:
@@ -172,7 +172,7 @@ bool IDBFactoryBackendProxy::allowIndexedDB(ScriptExecutionContext* context, con
         allowed = !webView->permissionClient() || webView->permissionClient()->allowIndexedDB(webFrame, name, origin);
     } else {
         WorkerContext* workerContext = static_cast<WorkerContext*>(context);
-        WebWorkerBase* webWorkerBase = static_cast<WebWorkerBase*>(&workerContext->thread()->workerLoaderProxy());
+        WebWorkerBase* webWorkerBase = static_cast<WebWorkerBase*>(workerContext->thread()->workerLoaderProxy().toWebWorkerBase());
         WorkerRunLoop& runLoop = workerContext->thread()->runLoop();
 
         String mode = allowIndexedDBMode;
@@ -212,20 +212,6 @@ void IDBFactoryBackendProxy::getDatabaseNames(PassRefPtr<IDBCallbacks> prpCallba
 
     WebFrameImpl* webFrame = getWebFrame(context);
     m_webIDBFactory->getDatabaseNames(new WebIDBCallbacksImpl(callbacks), origin, webFrame, dataDir);
-}
-
-
-// FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
-void IDBFactoryBackendProxy::open(const String& name, int64_t version, PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext* context, const String& dataDir)
-{
-    RefPtr<IDBCallbacks> callbacks(prpCallbacks);
-    RefPtr<IDBDatabaseCallbacks> databaseCallbacks(prpDatabaseCallbacks);
-    WebSecurityOrigin origin(securityOrigin);
-    if (!allowIndexedDB(context, name, origin, callbacks))
-        return;
-
-    WebFrameImpl* webFrame = getWebFrame(context);
-    m_webIDBFactory->open(name, version, new WebIDBCallbacksImpl(callbacks), new WebIDBDatabaseCallbacksImpl(databaseCallbacks), origin, webFrame, dataDir);
 }
 
 void IDBFactoryBackendProxy::open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext* context, const String& dataDir)

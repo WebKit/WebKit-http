@@ -32,6 +32,7 @@
 #include "Plugin.h"
 #include "PluginProcess.h"
 #include <WebCore/AffineTransform.h>
+#include <WebCore/FindOptions.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/SecurityOrigin.h>
 
@@ -105,6 +106,7 @@ private:
     virtual bool handleEditingCommand(const String& commandName, const String& argument) OVERRIDE;
     virtual bool isEditingCommandEnabled(const String& commandName) OVERRIDE;
     virtual bool shouldAllowScripting() OVERRIDE { return true; }
+    virtual bool shouldAllowNavigationFromDrags() OVERRIDE { return false; }
     
     virtual bool handlesPageScaleFactor();
     
@@ -125,6 +127,9 @@ private:
     virtual bool handleScroll(WebCore::ScrollDirection, WebCore::ScrollGranularity);
     virtual WebCore::Scrollbar* horizontalScrollbar();
     virtual WebCore::Scrollbar* verticalScrollbar();
+
+    virtual unsigned countFindMatches(const String&, WebCore::FindOptions, unsigned) OVERRIDE  { return 0; }
+    virtual bool findString(const String&, WebCore::FindOptions, unsigned) OVERRIDE { return false; }
 
     virtual WebCore::IntPoint convertToRootView(const WebCore::IntPoint&) const OVERRIDE;
 

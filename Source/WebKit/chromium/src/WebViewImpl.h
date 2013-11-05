@@ -35,6 +35,7 @@
 #include "ContextMenuClientImpl.h"
 #include "DragClientImpl.h"
 #include "EditorClientImpl.h"
+#include "FloatSize.h"
 #include "GraphicsContext3D.h"
 #include "GraphicsLayer.h"
 #include "InspectorClientImpl.h"
@@ -64,8 +65,10 @@ namespace WebCore {
 class ChromiumDataObject;
 class Color;
 class DocumentLoader;
+class FloatSize;
 class Frame;
 class GraphicsContext3D;
+class GraphicsLayerFactory;
 class HistoryItem;
 class HitTestResult;
 class KeyboardEvent;
@@ -142,7 +145,6 @@ public:
     virtual void willExitFullScreen();
     virtual void didExitFullScreen();
     virtual void setCompositorSurfaceReady();
-    virtual WebLayerTreeView* webLayerTreeView();
     virtual void animate(double);
     virtual void layout(); // Also implements WebLayerTreeViewClient::layout()
     virtual void enterForceCompositingMode(bool enable) OVERRIDE;
@@ -176,6 +178,7 @@ public:
     virtual bool caretOrSelectionRange(size_t* location, size_t* length);
     virtual void setTextDirection(WebTextDirection direction);
     virtual bool isAcceleratedCompositingActive() const;
+    virtual void willCloseLayerTreeView();
     virtual void didAcquirePointerLock();
     virtual void didNotAcquirePointerLock();
     virtual void didLosePointerLock();
@@ -240,6 +243,7 @@ public:
     virtual void enableFixedLayoutMode(bool enable);
     virtual WebSize fixedLayoutSize() const;
     virtual void setFixedLayoutSize(const WebSize&);
+    virtual WebCore::FloatSize dipSize() const;
     virtual void enableAutoResizeMode(
         const WebSize& minSize,
         const WebSize& maxSize);
@@ -540,6 +544,7 @@ public:
     void paintRootLayer(WebCore::GraphicsContext&, const WebCore::IntRect& contentRect);
     NonCompositedContentHost* nonCompositedContentHost();
     void setBackgroundColor(const WebCore::Color&);
+    WebCore::GraphicsLayerFactory* graphicsLayerFactory() const;
 #endif
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     void scheduleAnimation();
@@ -575,8 +580,6 @@ public:
     void animateZoomAroundPoint(const WebCore::IntPoint&, AutoZoomType);
 
     void shouldUseAnimateDoubleTapTimeZeroForTesting(bool);
-
-    void loseCompositorContext(int numTimes);
 
     void enterFullScreenForElement(WebCore::Element*);
     void exitFullScreenForElement(WebCore::Element*);
@@ -677,6 +680,7 @@ private:
     virtual void handleMouseLeave(WebCore::Frame&, const WebMouseEvent&) OVERRIDE;
     virtual void handleMouseDown(WebCore::Frame&, const WebMouseEvent&) OVERRIDE;
     virtual void handleMouseUp(WebCore::Frame&, const WebMouseEvent&) OVERRIDE;
+    virtual bool handleMouseWheel(WebCore::Frame&, const WebMouseWheelEvent&) OVERRIDE;
     virtual bool handleGestureEvent(const WebGestureEvent&) OVERRIDE;
     virtual bool handleKeyEvent(const WebKeyboardEvent&) OVERRIDE;
     virtual bool handleCharEvent(const WebKeyboardEvent&) OVERRIDE;
@@ -886,6 +890,7 @@ private:
 
     bool m_showFPSCounter;
     bool m_showPaintRects;
+    bool m_continuousPaintingEnabled;
 };
 
 } // namespace WebKit

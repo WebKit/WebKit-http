@@ -259,9 +259,9 @@
                 "name": "deleteCookie",
                 "parameters": [
                     { "name": "cookieName", "type": "string", "description": "Name of the cookie to remove." },
-                    { "name": "domain", "type": "string", "description": "Domain of the cookie to remove." }
+                    { "name": "url", "type": "string", "description": "URL to match cooke domain and path." }
                 ],
-                "description": "Deletes browser cookie with given name for the given domain.",
+                "description": "Deletes browser cookie with given name, domain and path.",
                 "hidden": true
             },
             {
@@ -865,7 +865,6 @@
                 "description": "WebSocket request data.",
                 "hidden": true,
                 "properties": [
-                    { "name": "requestKey3", "type": "string", "description": "HTTP response status text." },
                     { "name": "headers", "$ref": "Headers", "description": "HTTP response headers." }
                 ]
             },
@@ -877,8 +876,7 @@
                 "properties": [
                     { "name": "status", "type": "number", "description": "HTTP response status code." },
                     { "name": "statusText", "type": "string", "description": "HTTP response status text." },
-                    { "name": "headers", "$ref": "Headers", "description": "HTTP response headers." },
-                    { "name": "challengeResponse", "type": "string", "description": "Challenge response." }
+                    { "name": "headers", "$ref": "Headers", "description": "HTTP response headers." }
                 ]
             },
             {
@@ -1652,7 +1650,8 @@
                     { "name": "value", "type": "string", "optional": true, "description": "<code>Attr</code>'s value." },
                     { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Frame ID for frame owner elements." },
                     { "name": "contentDocument", "$ref": "Node", "optional": true, "description": "Content document for frame owner elements." },
-                    { "name": "shadowRoots", "type": "array", "optional": true, "items": { "$ref": "Node" }, "description": "Shadow root list for given element host." }
+                    { "name": "shadowRoots", "type": "array", "optional": true, "items": { "$ref": "Node" }, "description": "Shadow root list for given element host." },
+                    { "name": "templateContent", "$ref": "Node", "optional": true, "description": "Content document fragment for template elements" }
                 ],
                 "description": "DOM interaction is implemented in terms of mirror objects that represent the actual DOM nodes. DOMNode is a base node mirror type."
             },
@@ -1706,9 +1705,10 @@
             {
                 "name": "requestChildNodes",
                 "parameters": [
-                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get children for." }
+                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get children for." },
+                    { "name": "depth", "type": "integer", "optional": true, "description": "The maximum depth at which children should be retrieved, defaults to 1. Use -1 for the entire subtree or provide an integer larger than 0." }
                 ],
-                "description": "Requests that children of the node with given id are returned to the caller in form of <code>setChildNodes</code> events."
+                "description": "Requests that children of the node with given id are returned to the caller in form of <code>setChildNodes</code> events where not only immediate children are retrieved, but all children down to the specified depth."
             },
             {
                 "name": "querySelector",
@@ -3189,23 +3189,36 @@
         "hidden": true,
         "types": [
             {
-                "id": "TraceLogId",
+                "id": "ContextId",
                 "type": "string",
-                "description": "Unique object identifier."
+                "description": "Unique context identifier."
+            },
+            {
+                "id": "CallArgument",
+                "type": "object",
+                "properties": [
+                    { "name": "description", "type": "string" }
+                ]
             },
             {
                 "id": "Call",
                 "type": "object",
                 "properties": [
+                    { "name": "contextId", "$ref": "ContextId" },
                     { "name": "functionName", "type": "string", "optional": true },
-                    { "name": "arguments", "type": "array", "items": { "type": "string" }, "optional": true },
+                    { "name": "arguments", "type": "array", "items": { "$ref": "CallArgument" }, "optional": true },
+                    { "name": "result", "$ref": "CallArgument", "optional": true },
                     { "name": "property", "type": "string", "optional": true },
-                    { "name": "value", "type": "string", "optional": true },
-                    { "name": "result", "type": "string", "optional": true },
+                    { "name": "value", "$ref": "CallArgument", "optional": true },
                     { "name": "sourceURL", "type": "string", "optional": true },
                     { "name": "lineNumber", "type": "integer", "optional": true },
                     { "name": "columnNumber", "type": "integer", "optional": true }
                 ]
+            },
+            {
+                "id": "TraceLogId",
+                "type": "string",
+                "description": "Unique trace log identifier."
             },
             {
                 "id": "TraceLog",
@@ -3232,6 +3245,13 @@
                 "parameters": [
                     { "name": "traceLogId", "$ref": "TraceLogId" }
                 ]
+            },
+            {
+                "name": "hasUninstrumentedCanvases",
+                "returns": [
+                    { "name": "result", "type": "boolean" }
+                ],
+                "description": "Checks if there is any uninstrumented canvas in the inspected page."
             },
             {
                 "name": "captureFrame",

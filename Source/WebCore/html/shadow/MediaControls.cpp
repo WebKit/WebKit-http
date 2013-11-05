@@ -151,6 +151,7 @@ void MediaControls::loadedMetadata()
 
 void MediaControls::show()
 {
+    makeOpaque();
     m_panel->setIsDisplayed(true);
     m_panel->show();
 }
@@ -249,6 +250,17 @@ void MediaControls::changedClosedCaptionsVisibility()
 {
     if (m_toggleClosedCaptionsButton)
         m_toggleClosedCaptionsButton->updateDisplayType();
+}
+
+void MediaControls::closedCaptionTracksChanged()
+{
+    if (!m_toggleClosedCaptionsButton)
+        return;
+
+    if (m_mediaController->hasClosedCaptions())
+        m_toggleClosedCaptionsButton->show();
+    else
+        m_toggleClosedCaptionsButton->hide();
 }
 
 void MediaControls::enteredFullscreen()
