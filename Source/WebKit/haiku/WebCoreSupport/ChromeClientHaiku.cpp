@@ -166,7 +166,7 @@ Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& requ
 	    return 0;
 
     if (!request.resourceRequest().isEmpty() && page->mainFrame() && page->mainFrame()->loader())
-        page->mainFrame()->loader()->load(request.resourceRequest(), false);
+        page->mainFrame()->loader()->load(request);
 
     return page;
 }
@@ -236,7 +236,7 @@ void ChromeClientHaiku::setResizable(bool resizable)
     m_webPage->setResizable(resizable);
 }
 
-void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message,
+void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageLevel, const String& message,
                                             unsigned int lineNumber, const String& sourceID)
 {
     printf("MESSAGE %s:%i %s\n", BString(sourceID).String(), lineNumber, BString(message).String());

@@ -160,6 +160,7 @@ public:
     virtual void saveScrollPositionAndViewStateToItem(HistoryItem*);
 
     virtual bool canCachePage() const;
+    virtual void convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest&, const ResourceResponse&);
 
     virtual void didDisplayInsecureContent();
 

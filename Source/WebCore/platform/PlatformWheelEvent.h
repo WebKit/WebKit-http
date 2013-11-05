@@ -40,6 +40,10 @@ typedef struct _GdkEventScroll GdkEventScroll;
 typedef struct _Evas_Event_Mouse_Wheel Evas_Event_Mouse_Wheel;
 #endif
 
+#if PLATFORM(HAIKU)
+class BMessage;
+#endif
+
 #if PLATFORM(WX)
 class wxMouseEvent;
 class wxPoint;
@@ -153,6 +157,10 @@ namespace WebCore {
 
 #if PLATFORM(EFL)
         explicit PlatformWheelEvent(const Evas_Event_Mouse_Wheel*);
+#endif
+
+#if PLATFORM(HAIKU)
+        explicit PlatformWheelEvent(BMessage*);
 #endif
 
 #if PLATFORM(MAC) || PLATFORM(CHROMIUM)

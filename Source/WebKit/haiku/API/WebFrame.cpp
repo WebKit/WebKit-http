@@ -124,7 +124,7 @@ void BWebFrame::LoadURL(KURL url)
 
     fData->requestedURL = url.string();
 
-    fData->frame->loader()->load(url, false);
+    fData->frame->loader()->reloadWithOverrideURL(url);
 }
 
 void BWebFrame::StopLoading()

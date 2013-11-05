@@ -811,7 +811,7 @@ void GraphicsContext::setAlpha(float opacity)
     m_data->m_currentLayer->globalAlpha = (uint8)(opacity * 255.0f);
 }
 
-void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op)
+void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op, BlendMode blend)
 {
     if (paintingDisabled())
         return;
@@ -833,7 +833,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op)
         break;
     default:
         printf("GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",
-                compositeOperatorName(op).utf8().data());
+                compositeOperatorName(op, blend).utf8().data());
     }
     m_data->view()->SetDrawingMode(mode);
 }

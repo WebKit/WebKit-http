@@ -100,7 +100,7 @@ PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBeh
 }
 
 void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
-                       CompositeOperator op, bool useLowQualityScale)
+                       CompositeOperator op, BlendMode, bool useLowQualityScale)
 {
     ASSERT(context());
     m_data.m_view.Sync();

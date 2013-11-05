@@ -485,6 +485,12 @@ String validationMessageValueMissingForSelectText()
     return String();
 }
 
+String validationMessageBadInputForNumberText()
+{
+    notImplemented();
+    return validationMessageTypeMismatchText();
+}
+
 String validationMessageTypeMismatchText()
 {
     notImplemented();

@@ -24,7 +24,7 @@
 #include "FontOrientation.h"
 #include "FontRenderingMode.h"
 #include "FontWidthVariant.h"
-#include "TextOrientation.h"
+#include <wtf/FastAllocBase.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 
@@ -34,13 +34,12 @@ namespace WebCore {
     class SharedBuffer;
 
     struct FontCustomPlatformData {
-        WTF_MAKE_NONCOPYABLE(FontCustomPlatformData);
+        WTF_MAKE_NONCOPYABLE(FontCustomPlatformData); WTF_MAKE_FAST_ALLOCATED;
     public:
         FontCustomPlatformData() { }
         ~FontCustomPlatformData();
 
-        FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontOrientation = Horizontal, TextOrientation = TextOrientationVerticalRight,
-                                          FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
+        FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontOrientation = Horizontal, FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
 	    static bool supportsFormat(const String&);
     };
 

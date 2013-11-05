@@ -79,7 +79,7 @@ void BitmapImage::invalidatePlatformData()
 }
 
 // Drawing Routines
-void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst, const FloatRect& src, ColorSpace styleColorSpace, CompositeOperator op)
+void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst, const FloatRect& src, ColorSpace styleColorSpace, CompositeOperator op, BlendMode)
 {
     if (!m_source.initialized())
         return;

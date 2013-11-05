@@ -756,6 +756,11 @@ void FrameLoaderClientHaiku::didDetectXSS(const KURL&, bool)
     notImplemented();
 }
 
+void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest& request, const ResourceResponse&)
+{
+    startDownload(request);
+}
+
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
     CALLED();
