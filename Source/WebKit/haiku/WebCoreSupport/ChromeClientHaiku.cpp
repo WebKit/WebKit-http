@@ -428,7 +428,7 @@ void ChromeClientHaiku::print(Frame*)
 }
 
 #if ENABLE(SQL_DATABASE)
-void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& databaseName)
+void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails)
 {
     notImplemented();
 }

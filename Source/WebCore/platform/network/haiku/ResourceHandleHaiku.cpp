@@ -146,12 +146,6 @@ bool ResourceHandle::loadsBlocked()
     return false;
 }
 
-bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame* frame)
-{
-    notImplemented();
-    return false;
-}
-
 void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader;

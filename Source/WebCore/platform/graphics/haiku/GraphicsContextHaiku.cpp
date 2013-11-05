@@ -613,7 +613,7 @@ void GraphicsContext::clip(const FloatRect& rect)
     m_data->setClipping(BRegion(rect));
 }
 
-void GraphicsContext::clip(const Path& path)
+void GraphicsContext::clip(const Path& path, WindRule)
 {
     if (paintingDisabled())
         return;
@@ -628,7 +628,7 @@ void GraphicsContext::clip(const Path& path)
     clip(rect);
 }
 
-void GraphicsContext::canvasClip(const Path& path)
+void GraphicsContext::canvasClip(const Path& path, WindRule)
 {
     clip(path);
 }
@@ -649,16 +649,6 @@ void GraphicsContext::clipOut(const IntRect& rect)
     BRegion region(m_data->view()->Bounds());
     region.Include(rect);
     m_data->setClipping(region);
-}
-
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
-{
-    if (paintingDisabled())
-        return;
-
-    // NOTE: Used by RenderBoxModelObject to clip out the inner part of an arc when rending box corners...
-
-    notImplemented();
 }
 
 void GraphicsContext::drawFocusRing(const Path& path, int width, int offset, const Color& color)

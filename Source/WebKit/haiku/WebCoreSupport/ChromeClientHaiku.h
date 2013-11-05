@@ -132,7 +132,7 @@ namespace WebCore {
         virtual bool shouldRubberBandInDirection(ScrollDirection) const { return true; }
 
 #if ENABLE(SQL_DATABASE)
-        virtual void exceededDatabaseQuota(Frame*, const String& databaseName);
+        virtual void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails);
 #endif
         virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
         virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded);
