@@ -49,9 +49,14 @@ WebInspector.ElementsPanel = function()
 
     const initialSidebarWidth = 325;
     const minimumContentWidthPercent = 34;
-    this.createSidebarView(this.element, WebInspector.SidebarView.SidebarPosition.Right, initialSidebarWidth);
+    const initialSidebarHeight = 325;
+    const minimumContentHeightPercent = 34;
+    this.createSidebarView(this.element, WebInspector.SidebarView.SidebarPosition.End, initialSidebarWidth, initialSidebarHeight);
+    this.splitView.setAutoOrientation(WebInspector.experimentsSettings.elementsPanelSingleColumn.isEnabled());
     this.splitView.setMinimumSidebarWidth(Preferences.minElementsSidebarWidth);
     this.splitView.setMinimumMainWidthPercent(minimumContentWidthPercent);
+    this.splitView.setMinimumSidebarHeight(Preferences.minElementsSidebarHeight);
+    this.splitView.setMinimumMainHeightPercent(minimumContentHeightPercent);
 
     this.contentElement = this.splitView.mainElement;
     this.contentElement.id = "elements-content";
@@ -92,11 +97,8 @@ WebInspector.ElementsPanel = function()
     this.sidebarPanes.styles.addEventListener("style property toggled", this._stylesPaneEdited, this);
     this.sidebarPanes.metrics.addEventListener("metrics edited", this._metricsPaneEdited, this);
 
-    for (var pane in this.sidebarPanes) {
-        this.sidebarElement.appendChild(this.sidebarPanes[pane].element);
-        if (this.sidebarPanes[pane].onattach)
-            this.sidebarPanes[pane].onattach();
-    }
+    for (var pane in this.sidebarPanes)
+        this.sidebarPanes[pane].show(this.sidebarElement);
 
     this._popoverHelper = new WebInspector.PopoverHelper(this.element, this._getPopoverAnchor.bind(this), this._showPopover.bind(this));
     this._popoverHelper.setTimeout(0);
@@ -142,7 +144,7 @@ WebInspector.ElementsPanel.prototype = {
         if (!this.treeOutline.rootDOMNode)
             WebInspector.domAgent.requestDocument();
 
-        this.sidebarElement.insertBefore(this.sidebarPanes.domBreakpoints.element, this.sidebarPanes.eventListeners.element);
+        this.sidebarPanes.domBreakpoints.show(this.sidebarElement, this.sidebarPanes.eventListeners.element);
     },
 
     willHide: function()
@@ -153,11 +155,6 @@ WebInspector.ElementsPanel.prototype = {
 
         // Detach heavy component on hide
         this.contentElement.removeChild(this.treeOutline.element);
-
-        for (var pane in this.sidebarPanes) {
-            if (this.sidebarPanes[pane].willHide)
-                this.sidebarPanes[pane].willHide();
-        }
 
         WebInspector.Panel.prototype.willHide.call(this);
     },

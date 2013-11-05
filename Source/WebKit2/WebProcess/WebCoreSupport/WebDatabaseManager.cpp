@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,10 +42,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-const AtomicString& WebDatabaseManager::supplementName()
+const char* WebDatabaseManager::supplementName()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebDatabaseManager", AtomicString::ConstructFromLiteral));
-    return name;
+    return "WebDatabaseManager";
 }
 
 WebDatabaseManager::WebDatabaseManager(WebProcess* process)
@@ -58,11 +57,6 @@ void WebDatabaseManager::initialize(const WebProcessCreationParameters& paramete
 {
     DatabaseManager::manager().initialize(parameters.databaseDirectory);
     DatabaseManager::manager().setClient(this);
-}
-
-void WebDatabaseManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveWebDatabaseManagerMessage(connection, messageID, decoder);
 }
 
 void WebDatabaseManager::getDatabasesByOrigin(uint64_t callbackID) const

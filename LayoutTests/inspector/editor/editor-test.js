@@ -1,10 +1,10 @@
 function initialize_EditorTests()
 {
 
-InspectorTest.createTestEditor = function(clientHeight, chunkSize)
+InspectorTest.createTestEditor = function(clientHeight, chunkSize, textEditorDelegate)
 {
     WebInspector.debugDefaultTextEditor = true;
-    var textEditor = new WebInspector.DefaultTextEditor("", new WebInspector.TextEditorDelegate());
+    var textEditor = new WebInspector.DefaultTextEditor("", textEditorDelegate || new WebInspector.TextEditorDelegate());
     textEditor.overrideViewportForTest(0, clientHeight || 100, chunkSize || 10);
     textEditor.show(WebInspector.inspectorView.element);
     return textEditor;
@@ -73,6 +73,7 @@ InspectorTest.dumpEditorHTML = function(textEditor, mainPanelOnly)
 {
     var element = mainPanelOnly ? textEditor._mainPanel.element : textEditor.element;
     var dumpedHTML = element.innerHTML.replace(/<div/g, "\n<div");
+    var dumpedHTML = dumpedHTML.replace(/height: [0-9]+/g, "height: <number>");
     InspectorTest.addResult(dumpedHTML);
 };
 

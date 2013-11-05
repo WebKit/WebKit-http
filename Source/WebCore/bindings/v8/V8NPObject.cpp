@@ -70,13 +70,13 @@ static v8::Handle<v8::Value> npObjectInvokeImpl(const v8::Arguments& args, Invok
     NPObject* npObject;
 
     // These three types are subtypes of HTMLPlugInElement.
-    if (V8HTMLAppletElement::HasInstance(args.Holder()) || V8HTMLEmbedElement::HasInstance(args.Holder())
-        || V8HTMLObjectElement::HasInstance(args.Holder())) {
+    if (V8HTMLAppletElement::HasInstance(args.Holder(), args.GetIsolate()) || V8HTMLEmbedElement::HasInstance(args.Holder(), args.GetIsolate())
+        || V8HTMLObjectElement::HasInstance(args.Holder(), args.GetIsolate())) {
         // The holder object is a subtype of HTMLPlugInElement.
         HTMLPlugInElement* element;
-        if (V8HTMLAppletElement::HasInstance(args.Holder()))
+        if (V8HTMLAppletElement::HasInstance(args.Holder(), args.GetIsolate()))
             element = V8HTMLAppletElement::toNative(args.Holder());
-        else if (V8HTMLEmbedElement::HasInstance(args.Holder()))
+        else if (V8HTMLEmbedElement::HasInstance(args.Holder(), args.GetIsolate()))
             element = V8HTMLEmbedElement::toNative(args.Holder());
         else
             element = V8HTMLObjectElement::toNative(args.Holder());
@@ -431,24 +431,25 @@ v8::Local<v8::Object> createV8ObjectForNPObject(NPObject* object, NPObject* root
         npObjectDesc->InstanceTemplate()->SetCallAsFunctionHandler(npObjectInvokeDefaultHandler);
     }
 
+    // FIXME: Move staticNPObjectMap() to DOMDataStore.
+    // Use V8DOMWrapper::createWrapper() and
+    // V8DOMWrapper::associateObjectWithWrapper()
+    // to create a wrapper object.
     v8::Handle<v8::Function> v8Function = npObjectDesc->GetFunction();
     v8::Local<v8::Object> value = V8ObjectConstructor::newInstance(v8Function);
-
-    // If we were unable to allocate the instance, we avoid wrapping and registering the NP object.
     if (value.IsEmpty())
         return value;
 
     V8DOMWrapper::setNativeInfo(value, npObjectTypeInfo(), object);
+    v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(value);
+    V8DOMWrapper::setWrapperClass(object, wrapperHandle);
 
     // KJS retains the object as part of its wrapper (see Bindings::CInstance).
     _NPN_RetainObject(object);
-
     _NPN_RegisterObject(object, root);
 
-    // Maintain a weak pointer for v8 so we can cleanup the object.
-    v8::Persistent<v8::Object> weakRef = v8::Persistent<v8::Object>::New(value);
-    staticNPObjectMap().set(object, weakRef);
-
+    staticNPObjectMap().set(object, wrapperHandle);
+    ASSERT(V8DOMWrapper::maybeDOMWrapper(wrapperHandle));
     return value;
 }
 

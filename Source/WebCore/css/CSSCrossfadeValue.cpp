@@ -52,17 +52,17 @@ static bool subimageIsPending(CSSValue* value)
     return false;
 }
 
-static bool subimageHasAlpha(CSSValue* value, const RenderObject* renderer)
+static bool subimageKnownToBeOpaque(CSSValue* value, const RenderObject* renderer)
 {
     if (value->isImageValue())
-        return static_cast<CSSImageValue*>(value)->hasAlpha(renderer);
+        return static_cast<CSSImageValue*>(value)->knownToBeOpaque(renderer);
 
     if (value->isImageGeneratorValue())
-        return static_cast<CSSImageGeneratorValue*>(value)->hasAlpha(renderer);
+        return static_cast<CSSImageGeneratorValue*>(value)->knownToBeOpaque(renderer);
 
     ASSERT_NOT_REACHED();
 
-    return true;
+    return false;
 }
 
 static CachedImage* cachedImageForCSSValue(CSSValue* value, CachedResourceLoader* cachedResourceLoader)
@@ -139,9 +139,9 @@ bool CSSCrossfadeValue::isPending() const
     return subimageIsPending(m_fromValue.get()) || subimageIsPending(m_toValue.get());
 }
 
-bool CSSCrossfadeValue::hasAlpha(const RenderObject* renderer) const
+bool CSSCrossfadeValue::knownToBeOpaque(const RenderObject* renderer) const
 {
-    return subimageHasAlpha(m_fromValue.get(), renderer) || subimageHasAlpha(m_toValue.get(), renderer);
+    return subimageKnownToBeOpaque(m_fromValue.get(), renderer) && subimageKnownToBeOpaque(m_toValue.get(), renderer);
 }
 
 void CSSCrossfadeValue::loadSubimages(CachedResourceLoader* cachedResourceLoader)
@@ -173,9 +173,9 @@ void CSSCrossfadeValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObje
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     CSSImageGeneratorValue::reportBaseClassMemoryUsage(memoryObjectInfo);
-    info.addMember(m_fromValue);
-    info.addMember(m_toValue);
-    info.addMember(m_percentageValue);
+    info.addMember(m_fromValue, "fromValue");
+    info.addMember(m_toValue, "toValue");
+    info.addMember(m_percentageValue, "percentageValue");
     // FIXME: add instrumentation for
     // m_cachedFromImage
     // m_cachedToImage

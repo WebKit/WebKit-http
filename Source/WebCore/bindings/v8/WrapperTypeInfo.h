@@ -37,6 +37,7 @@ namespace WebCore {
     
     class ActiveDOMObject;
     class DOMDataStore;
+    class EventTarget;
 
     static const int v8DOMWrapperTypeIndex = 0;
     static const int v8DOMWrapperObjectIndex = 1;
@@ -45,9 +46,10 @@ namespace WebCore {
     static const uint16_t v8DOMNodeClassId = 1;
     static const uint16_t v8DOMObjectClassId = 2;
 
-    typedef v8::Persistent<v8::FunctionTemplate> (*GetTemplateFunction)();
+    typedef v8::Persistent<v8::FunctionTemplate> (*GetTemplateFunction)(v8::Isolate*);
     typedef void (*DerefObjectFunction)(void*);
     typedef ActiveDOMObject* (*ToActiveDOMObjectFunction)(v8::Handle<v8::Object>);
+    typedef EventTarget* (*ToEventTargetFunction)(v8::Handle<v8::Object>);
     typedef void* (*OpaqueRootForGC)(void*, v8::Persistent<v8::Object>);
     typedef void (*InstallPerContextPrototypePropertiesFunction)(v8::Handle<v8::Object>);
 
@@ -82,7 +84,7 @@ namespace WebCore {
             return false;
         }
         
-        v8::Persistent<v8::FunctionTemplate> getTemplate() { return getTemplateFunction(); }
+        v8::Persistent<v8::FunctionTemplate> getTemplate(v8::Isolate* isolate = 0) { return getTemplateFunction(isolate); }
         
         void derefObject(void* object)
         {
@@ -103,6 +105,13 @@ namespace WebCore {
             return toActiveDOMObjectFunction(object);
         }
 
+        EventTarget* toEventTarget(v8::Handle<v8::Object> object)
+        {
+            if (!toEventTargetFunction)
+                return 0;
+            return toEventTargetFunction(object);
+        }
+
         void* opaqueRootForGC(void* object, v8::Persistent<v8::Object> wrapper)
         {
             if (!opaqueRootForGCFunction)
@@ -113,6 +122,7 @@ namespace WebCore {
         const GetTemplateFunction getTemplateFunction;
         const DerefObjectFunction derefObjectFunction;
         const ToActiveDOMObjectFunction toActiveDOMObjectFunction;
+        const ToEventTargetFunction toEventTargetFunction;
         const OpaqueRootForGC opaqueRootForGCFunction;
         const InstallPerContextPrototypePropertiesFunction installPerContextPrototypePropertiesFunction;
         const WrapperTypeInfo* parentClass;

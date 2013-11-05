@@ -34,7 +34,7 @@ class GridTrack;
 
 class RenderGrid : public RenderBlock {
 public:
-    RenderGrid(ContainerNode*);
+    RenderGrid(Element*);
     virtual ~RenderGrid();
 
     virtual const char* renderName() const OVERRIDE;
@@ -48,14 +48,34 @@ private:
     virtual bool isRenderGrid() const OVERRIDE { return true; }
     virtual void computePreferredLogicalWidths() OVERRIDE;
 
+    LayoutUnit computePreferredTrackWidth(const Length&, size_t) const;
+
     enum TrackSizingDirection { ForColumns, ForRows };
-    void computedUsedBreadthOfGridTracks(TrackSizingDirection, Vector<GridTrack>&);
-    LayoutUnit computeUsedBreadthOfLength(TrackSizingDirection, const Length&);
-    void distributeSpaceToTracks(TrackSizingDirection, Vector<GridTrack>&, LayoutUnit availableLogicalSpace);
+    void computedUsedBreadthOfGridTracks(TrackSizingDirection, Vector<GridTrack>& columnTracks, Vector<GridTrack>& rowTracks);
+    LayoutUnit computeUsedBreadthOfMinLength(TrackSizingDirection, const Length&) const;
+    LayoutUnit computeUsedBreadthOfMaxLength(TrackSizingDirection, const Length&) const;
+    LayoutUnit computeUsedBreadthOfSpecifiedLength(TrackSizingDirection, const Length&) const;
+    void resolveContentBasedTrackSizingFunctions(TrackSizingDirection, Vector<GridTrack>& columnTracks, Vector<GridTrack>& rowTracks, LayoutUnit& availableLogicalSpace);
     void layoutGridItems();
 
+    typedef LayoutUnit (RenderGrid::* SizingFunction)(RenderBox*, TrackSizingDirection, Vector<GridTrack>&);
+    typedef LayoutUnit (GridTrack::* AccumulatorGetter)() const;
+    typedef void (GridTrack::* AccumulatorGrowFunction)(LayoutUnit);
+    void resolveContentBasedTrackSizingFunctionsForItems(TrackSizingDirection, Vector<GridTrack>& columnTracks, Vector<GridTrack>& rowTracks, size_t, SizingFunction, AccumulatorGetter, AccumulatorGrowFunction);
+    void distributeSpaceToTracks(Vector<GridTrack*>&, Vector<GridTrack*>* tracksForGrowthAboveMaxBreadth, AccumulatorGetter, AccumulatorGrowFunction, LayoutUnit& availableLogicalSpace);
+
+    const GridTrackSize& gridTrackSize(TrackSizingDirection, size_t);
+    size_t maximumIndexInDirection(TrackSizingDirection) const;
+
+    LayoutUnit minContentForChild(RenderBox*, TrackSizingDirection, Vector<GridTrack>& columnTracks);
+    LayoutUnit maxContentForChild(RenderBox*, TrackSizingDirection, Vector<GridTrack>& columnTracks);
     LayoutPoint findChildLogicalPosition(RenderBox*, const Vector<GridTrack>& columnTracks, const Vector<GridTrack>& rowTracks);
+    size_t resolveGridPosition(TrackSizingDirection, const RenderObject*) const;
     size_t resolveGridPosition(const GridPosition&) const;
+
+#ifndef NDEBUG
+    bool tracksAreWiderThanMinTrackBreadth(TrackSizingDirection, const Vector<GridTrack>&);
+#endif
 };
 
 } // namespace WebCore

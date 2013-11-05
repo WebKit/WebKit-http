@@ -45,7 +45,7 @@ typedef ListHashSet<Node*> NamedFlowContentNodes;
 
 class RenderNamedFlowThread : public RenderFlowThread {
 public:
-    RenderNamedFlowThread(ContainerNode*, PassRefPtr<WebKitNamedFlow>);
+    RenderNamedFlowThread(Document*, PassRefPtr<WebKitNamedFlow>);
     virtual ~RenderNamedFlowThread();
 
     const AtomicString& flowThreadName() const;
@@ -119,13 +119,13 @@ private:
 
 inline RenderNamedFlowThread* toRenderNamedFlowThread(RenderObject* object)
 {
-    ASSERT(!object || object->isRenderNamedFlowThread());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderNamedFlowThread());
     return static_cast<RenderNamedFlowThread*>(object);
 }
 
 inline const RenderNamedFlowThread* toRenderNamedFlowThread(const RenderObject* object)
 {
-    ASSERT(!object || object->isRenderNamedFlowThread());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderNamedFlowThread());
     return static_cast<const RenderNamedFlowThread*>(object);
 }
 

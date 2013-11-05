@@ -58,6 +58,7 @@
 #include "JSWithScope.h"
 #include "LegacyProfiler.h"
 #include "NameInstance.h"
+#include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
 #include "Operations.h"
 #include "Parser.h"
@@ -67,6 +68,7 @@
 #include "RepatchBuffer.h"
 #include "SamplingTool.h"
 #include "Strong.h"
+#include "StructureRareDataInlines.h"
 #include <wtf/StdLibExtras.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -931,10 +933,9 @@ NEVER_INLINE static void tryCacheGetByID(CallFrame* callFrame, CodeBlock* codeBl
     // Cache hit: Specialize instruction and ref Structures.
 
     if (slot.slotBase() == baseValue) {
-        // set this up, so derefStructures can do it's job.
         stubInfo->initGetByIdSelf(callFrame->globalData(), codeBlock->ownerExecutable(), structure);
         if ((slot.cachedPropertyType() != PropertySlot::Value)
-            || !MacroAssembler::isCompactPtrAlignedAddressOffset(offsetRelativeToPatchedStorage(slot.cachedOffset())))
+            || !MacroAssembler::isCompactPtrAlignedAddressOffset(maxOffsetRelativeToPatchedStorage(slot.cachedOffset())))
             ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_self_fail));
         else
             JIT::patchGetByIdSelf(codeBlock, stubInfo, structure, slot.cachedOffset(), returnAddress);
@@ -1036,7 +1037,7 @@ struct StackHack {
 // handling code out of line as possible.
 static NEVER_INLINE void returnToThrowTrampoline(JSGlobalData* globalData, ReturnAddressPtr exceptionLocation, ReturnAddressPtr& returnAddressSlot)
 {
-    ASSERT(globalData->exception);
+    RELEASE_ASSERT(globalData->exception);
     globalData->exceptionLocation = exceptionLocation;
     returnAddressSlot = ReturnAddressPtr(FunctionPtr(ctiVMThrowTrampoline));
 }
@@ -1300,6 +1301,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_create_this)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
     CallFrame* callFrame = stackFrame.callFrame;
+    size_t inlineCapacity = stackFrame.args[0].int32();
 
     JSFunction* constructor = jsCast<JSFunction*>(callFrame->callee());
 #if !ASSERT_DISABLED
@@ -1307,7 +1309,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_create_this)
     ASSERT(constructor->methodTable()->getConstructData(constructor, constructData) == ConstructTypeJS);
 #endif
 
-    Structure* structure = constructor->cachedInheritorID(callFrame);
+    Structure* structure = constructor->allocationProfile(callFrame, inlineCapacity)->structure();
     JSValue result = constructEmptyObject(callFrame, structure);
 
     return JSValue::encode(result);
@@ -1395,7 +1397,7 @@ DEFINE_STUB_FUNCTION(JSObject*, op_new_object)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
 
-    return constructEmptyObject(stackFrame.callFrame);
+    return constructEmptyObject(stackFrame.callFrame, stackFrame.args[0].structure());
 }
 
 DEFINE_STUB_FUNCTION(void, op_put_by_id_generic)
@@ -1630,7 +1632,7 @@ static PolymorphicAccessStructureList* getPolymorphicAccessStructureListSlot(JSG
             stubInfo->u.getByIdProtoList.listSize++;
         break;
     default:
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
     }
     
     ASSERT(listIndex <= POLYMORPHIC_LIST_CACHE_SIZE);
@@ -2956,7 +2958,7 @@ DEFINE_STUB_FUNCTION(int, op_eq_strings)
     return string1->value(stackFrame.callFrame) == string2->value(stackFrame.callFrame);
 #else
     UNUSED_PARAM(args);
-    ASSERT_NOT_REACHED();
+    RELEASE_ASSERT_NOT_REACHED();
     return 0;
 #endif
 }

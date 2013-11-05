@@ -22,8 +22,8 @@
 #define WebCoordinatedSurface_h
 
 #if USE(COORDINATED_GRAPHICS)
-#include "CoordinatedSurface.h"
 #include "ShareableBitmap.h"
+#include <WebCore/CoordinatedSurface.h>
 
 #if USE(GRAPHICS_SURFACE)
 #include "GraphicsSurface.h"
@@ -36,7 +36,7 @@ class GraphicsContext;
 
 namespace WebKit {
 
-class WebCoordinatedSurface : public CoordinatedSurface {
+class WebCoordinatedSurface : public WebCore::CoordinatedSurface {
 public:
     class Handle {
         WTF_MAKE_NONCOPYABLE(Handle);
@@ -44,7 +44,7 @@ public:
         Handle();
 
         void encode(CoreIPC::ArgumentEncoder&) const;
-        static bool decode(CoreIPC::ArgumentDecoder*, Handle&);
+        static bool decode(CoreIPC::ArgumentDecoder&, Handle&);
 
 #if USE(GRAPHICS_SURFACE)
         WebCore::GraphicsSurfaceToken graphicsSurfaceToken() const { return m_graphicsSurfaceToken; }
@@ -57,7 +57,7 @@ public:
         WebCore::GraphicsSurfaceToken m_graphicsSurfaceToken;
 #endif
         WebCore::IntSize m_size;
-        CoordinatedSurface::Flags m_flags;
+        WebCore::CoordinatedSurface::Flags m_flags;
     };
 
     // Create a new WebCoordinatedSurface, and allocate either a GraphicsSurface or a ShareableBitmap as backing.

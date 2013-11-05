@@ -65,7 +65,9 @@
 #include <QtQml/QJSValue>
 #include <QtQuick/QQuickView>
 #include <WKOpenPanelResultListener.h>
+#include <WKPageGroup.h>
 #include <WKSerializedScriptValue.h>
+#include <WKString.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/IntRect.h>
 #include <limits>
@@ -295,14 +297,12 @@ QQuickWebViewPrivate::~QQuickWebViewPrivate()
 // Note: we delay this initialization to make sure that QQuickWebView has its d-ptr in-place.
 void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
 {
-    RefPtr<WebPageGroup> pageGroup;
-    if (pageGroupRef)
-        pageGroup = toImpl(pageGroupRef);
-    else
-        pageGroup = WebPageGroup::create();
+    pageGroup = pageGroupRef;
+    if (!pageGroup)
+        pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(0));
 
     context = contextRef ? QtWebContext::create(toImpl(contextRef)) : QtWebContext::defaultContext();
-    webPageProxy = context->createWebPage(&pageClient, pageGroup.get());
+    webPageProxy = context->createWebPage(&pageClient, toImpl(pageGroup.get()));
     webPageProxy->setUseFixedLayout(s_flickableViewportEnabled);
 #if ENABLE(FULLSCREEN_API)
     webPageProxy->fullScreenManager()->setWebView(q_ptr);
@@ -323,11 +323,15 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     // Any page setting should preferrable be set before creating the page.
     webPageProxy->pageGroup()->preferences()->setAcceleratedCompositingEnabled(true);
     webPageProxy->pageGroup()->preferences()->setForceCompositingMode(true);
+    bool showDebugVisuals = qgetenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1";
+    webPageProxy->pageGroup()->preferences()->setCompositingBordersVisible(showDebugVisuals);
+    webPageProxy->pageGroup()->preferences()->setCompositingRepaintCountersVisible(showDebugVisuals);
     webPageProxy->pageGroup()->preferences()->setFrameFlatteningEnabled(true);
     webPageProxy->pageGroup()->preferences()->setWebGLEnabled(true);
 
     pageClient.initialize(q_ptr, pageViewPrivate->eventHandler.data(), &undoController);
     webPageProxy->initializeWebPage();
+    webPageProxy->registerApplicationScheme(ASCIILiteral("qrc"));
 
     q_ptr->setAcceptedMouseButtons(Qt::MouseButtonMask);
     q_ptr->setAcceptHoverEvents(true);
@@ -733,7 +737,7 @@ void QQuickWebViewPrivate::setNavigatorQtObjectEnabled(bool enabled)
     webPageProxy->postMessageToInjectedBundle(messageName, webEnabled.get());
 }
 
-static QString readUserScript(const QUrl& url)
+static WKRetainPtr<WKStringRef> readUserScript(const QUrl& url)
 {
     QString path;
     if (url.isLocalFile())
@@ -742,28 +746,27 @@ static QString readUserScript(const QUrl& url)
         path = QStringLiteral(":") + url.path();
     else {
         qWarning("QQuickWebView: Couldn't open '%s' as user script because only file:/// and qrc:/// URLs are supported.", qPrintable(url.toString()));
-        return QString();
+        return 0;
     }
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qWarning("QQuickWebView: Couldn't open '%s' as user script due to error '%s'.", qPrintable(url.toString()), qPrintable(file.errorString()));
-        return QString();
+        return 0;
     }
 
-    QString contents = QString::fromUtf8(file.readAll());
+    QByteArray contents = file.readAll();
     if (contents.isEmpty())
         qWarning("QQuickWebView: Ignoring '%s' as user script because file is empty.", qPrintable(url.toString()));
 
-    return contents;
+    return adoptWK(WKStringCreateWithUTF8CString(contents.constData()));
 }
 
 void QQuickWebViewPrivate::updateUserScripts()
 {
     // This feature works per-WebView because we keep an unique page group for
     // each Page/WebView pair we create.
-    WebPageGroup* pageGroup = webPageProxy->pageGroup();
-    pageGroup->removeAllUserScripts();
+    WKPageGroupRemoveAllUserScripts(pageGroup.get());
 
     for (unsigned i = 0; i < userScripts.size(); ++i) {
         const QUrl& url = userScripts.at(i);
@@ -772,10 +775,10 @@ void QQuickWebViewPrivate::updateUserScripts()
             continue;
         }
 
-        QString contents = readUserScript(url);
-        if (contents.isEmpty())
+        WKRetainPtr<WKStringRef> contents = readUserScript(url);
+        if (!contents || WKStringIsEmpty(contents.get()))
             continue;
-        pageGroup->addUserScript(String(contents), emptyString(), 0, 0, InjectInTopFrameOnly, InjectAtDocumentEnd);
+        WKPageGroupAddUserScript(pageGroup.get(), contents.get(), /*baseURL*/ 0, /*whitelistedURLPatterns*/ 0, /*blacklistedURLPatterns*/ 0, kWKInjectInTopFrameOnly, kWKInjectAtDocumentEnd);
     }
 }
 
@@ -842,7 +845,7 @@ void QQuickWebViewLegacyPrivate::updateViewportSize()
     webPageProxy->drawingArea()->setSize(viewportSize.toSize(), IntSize());
     // The backing store scale factor should already be set to the device pixel ratio
     // of the underlying window, thus we set the effective scale to 1 here.
-    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize)), 1, FloatPoint());
+    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize)), FloatPoint());
 }
 
 qreal QQuickWebViewLegacyPrivate::zoomFactor() const
@@ -1312,6 +1315,12 @@ QQuickUrlSchemeDelegate* QQuickWebViewExperimental::schemeDelegates_At(QQmlListP
 
 void QQuickWebViewExperimental::schemeDelegates_Append(QQmlListProperty<QQuickUrlSchemeDelegate>* property, QQuickUrlSchemeDelegate *scheme)
 {
+    if (!scheme->scheme().compare(QLatin1String("qrc"), Qt::CaseInsensitive)) {
+        qWarning("WARNING: The qrc scheme is reserved to be handled internally. The handler will be ignored.");
+        delete scheme;
+        return;
+    }
+
     QObject* schemeParent = property->object;
     scheme->setParent(schemeParent);
     QQuickWebViewExperimental* webViewExperimental = qobject_cast<QQuickWebViewExperimental*>(property->object->parent());
@@ -1349,6 +1358,15 @@ QQmlListProperty<QQuickUrlSchemeDelegate> QQuickWebViewExperimental::schemeDeleg
 void QQuickWebViewExperimental::invokeApplicationSchemeHandler(PassRefPtr<QtRefCountedNetworkRequestData> request)
 {
     RefPtr<QtRefCountedNetworkRequestData> req = request;
+    if (req->data().m_scheme.startsWith("qrc", false)) {
+        QQuickQrcSchemeDelegate qrcDelegate(QUrl(QString(req->data().m_urlString)));
+        qrcDelegate.request()->setNetworkRequestData(req);
+        qrcDelegate.reply()->setNetworkRequestData(req);
+        qrcDelegate.reply()->setWebViewExperimental(this);
+        qrcDelegate.readResourceAndSend();
+        return;
+    }
+
     const QObjectList children = schemeParent->children();
     for (int index = 0; index < children.count(); index++) {
         QQuickUrlSchemeDelegate* delegate = qobject_cast<QQuickUrlSchemeDelegate*>(children.at(index));

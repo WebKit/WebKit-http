@@ -60,6 +60,10 @@
 #include <math.h>
 #include <wtf/MemoryInstrumentationHashMap.h>
 
+#if USE(ACCELERATED_COMPOSITING)
+#include "RenderLayerCompositor.h"
+#endif
+
 using namespace std;
 
 namespace WTF {
@@ -80,6 +84,11 @@ static OverrideSizeMap* gOverrideWidthMap = 0;
 // Used by grid elements to properly size their grid items.
 static OverrideSizeMap* gOverrideContainingBlockLogicalHeightMap = 0;
 static OverrideSizeMap* gOverrideContainingBlockLogicalWidthMap = 0;
+
+
+// Size of border belt for autoscroll. When mouse pointer in border belt,
+// autoscroll is started.
+static const int autoscrollBeltSize = 20;
 
 bool RenderBox::s_hadOverflowClip = false;
 
@@ -151,7 +160,7 @@ void RenderBox::willBeDestroyed()
     RenderBlock::removePercentHeightDescendantIfNeeded(this);
 
 #if ENABLE(CSS_EXCLUSIONS)
-    ExclusionShapeOutsideInfo::removeInfoForRenderBox(this);
+    ExclusionShapeOutsideInfo::removeInfo(this);
 #endif
 
     RenderBoxModelObject::willBeDestroyed();
@@ -197,8 +206,14 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle* newStyl
         // The background of the root element or the body element could propagate up to
         // the canvas.  Just dirty the entire canvas when our style changes substantially.
         if (diff >= StyleDifferenceRepaint && node() &&
-                (node()->hasTagName(htmlTag) || node()->hasTagName(bodyTag)))
+            (node()->hasTagName(htmlTag) || node()->hasTagName(bodyTag))) {
             view()->repaint();
+            
+#if USE(ACCELERATED_COMPOSITING)
+            if (oldStyle->hasEntirelyFixedBackground() != newStyle->hasEntirelyFixedBackground())
+                view()->compositor()->rootFixedBackgroundsChanged();
+#endif
+        }
         
         // When a layout hint happens and an object's position style changes, we have to do a layout
         // to dirty the render tree using the old position value now.
@@ -215,6 +230,14 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle* newStyl
         view()->repaint();
 
     RenderBoxModelObject::styleWillChange(diff, newStyle);
+}
+
+static bool borderWidthChanged(const RenderStyle* oldStyle, const RenderStyle* newStyle)
+{
+    return oldStyle->borderLeftWidth() != newStyle->borderLeftWidth()
+        || oldStyle->borderTopWidth() != newStyle->borderTopWidth()
+        || oldStyle->borderRightWidth() != newStyle->borderRightWidth()
+        || oldStyle->borderBottomWidth() != newStyle->borderBottomWidth();
 }
 
 void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -290,6 +313,13 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
 #if ENABLE(CSS_EXCLUSIONS)
     updateExclusionShapeOutsideInfoAfterStyleChange(style()->shapeOutside(), oldStyle ? oldStyle->shapeOutside() : 0);
 #endif
+
+    if (oldStyle && (newStyle->boxSizing() == BORDER_BOX || oldStyle->boxSizing() == BORDER_BOX) && diff == StyleDifferenceLayout
+        && (newStyle->paddingBox() != oldStyle->paddingBox() || borderWidthChanged(oldStyle, newStyle))) {
+        ASSERT(needsLayout());
+        for (RenderObject* child = firstChild(); child; child = child->nextSibling())
+            child->setChildNeedsLayout(true, MarkOnlyThis);
+    }
 }
 
 #if ENABLE(CSS_EXCLUSIONS)
@@ -300,10 +330,10 @@ void RenderBox::updateExclusionShapeOutsideInfoAfterStyleChange(const ExclusionS
         return;
 
     if (shapeOutside) {
-        ExclusionShapeOutsideInfo* exclusionShapeOutsideInfo = ExclusionShapeOutsideInfo::ensureInfoForRenderBox(this);
+        ExclusionShapeOutsideInfo* exclusionShapeOutsideInfo = ExclusionShapeOutsideInfo::ensureInfo(this);
         exclusionShapeOutsideInfo->dirtyShapeSize();
     } else
-        ExclusionShapeOutsideInfo::removeInfoForRenderBox(this);
+        ExclusionShapeOutsideInfo::removeInfo(this);
 }
 #endif
 
@@ -698,10 +728,10 @@ bool RenderBox::usesCompositedScrolling() const
     return hasOverflowClip() && hasLayer() && layer()->usesCompositedScrolling();
 }
 
-void RenderBox::autoscroll()
+void RenderBox::autoscroll(const IntPoint& position)
 {
     if (layer())
-        layer()->autoscroll();
+        layer()->autoscroll(position);
 }
 
 // There are two kinds of renderer that can autoscroll.
@@ -723,6 +753,33 @@ bool RenderBox::canAutoscroll() const
         return false;
     Page* page = frame->page();
     return page && page->mainFrame() == frame;
+}
+
+// If specified point is in border belt, returned offset denotes direction of
+// scrolling.
+IntSize RenderBox::calculateAutoscrollDirection(const IntPoint& windowPoint) const
+{
+    if (!frame())
+        return IntSize();
+
+    FrameView* frameView = frame()->view();
+    if (!frameView)
+        return IntSize();
+
+    IntSize offset;
+    IntPoint point = frameView->windowToContents(windowPoint);
+    IntRect box(absoluteBoundingBoxRect());
+
+    if (point.x() < box.x() + autoscrollBeltSize)
+        point.move(-autoscrollBeltSize, 0);
+    else if (point.x() > box.maxX() - autoscrollBeltSize)
+        point.move(autoscrollBeltSize, 0);
+
+    if (point.y() < box.y() + autoscrollBeltSize)
+        point.move(0, -autoscrollBeltSize);
+    else if (point.y() > box.maxY() - autoscrollBeltSize)
+        point.move(0, autoscrollBeltSize);
+    return frameView->contentsToWindow(point) - windowPoint;
 }
 
 RenderBox* RenderBox::findAutoscrollable(RenderObject* renderer)
@@ -801,16 +858,24 @@ void RenderBox::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, Layou
 
 LayoutUnit RenderBox::minPreferredLogicalWidth() const
 {
-    if (preferredLogicalWidthsDirty())
+    if (preferredLogicalWidthsDirty()) {
+#ifndef NDEBUG
+        SetLayoutNeededForbiddenScope layoutForbiddenScope(const_cast<RenderBox*>(this));
+#endif
         const_cast<RenderBox*>(this)->computePreferredLogicalWidths();
+    }
         
     return m_minPreferredLogicalWidth;
 }
 
 LayoutUnit RenderBox::maxPreferredLogicalWidth() const
 {
-    if (preferredLogicalWidthsDirty())
+    if (preferredLogicalWidthsDirty()) {
+#ifndef NDEBUG
+        SetLayoutNeededForbiddenScope layoutForbiddenScope(const_cast<RenderBox*>(this));
+#endif
         const_cast<RenderBox*>(this)->computePreferredLogicalWidths();
+    }
         
     return m_maxPreferredLogicalWidth;
 }
@@ -983,6 +1048,9 @@ void RenderBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
 void RenderBox::paintRootBoxFillLayers(const PaintInfo& paintInfo)
 {
+    if (paintInfo.skipRootBackground())
+        return;
+
     RenderObject* rootBackgroundRenderer = rendererForRootBackground();
     
     const FillLayer* bgLayer = rootBackgroundRenderer->style()->backgroundLayers();
@@ -2356,25 +2424,22 @@ void RenderBox::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logica
     bool paginatedContentNeedsBaseHeight = document()->printing() && h.isPercent()
         && (isRoot() || (isBody() && document()->documentElement()->renderer()->style()->logicalHeight().isPercent()));
     if (stretchesToViewport() || paginatedContentNeedsBaseHeight) {
-        // FIXME: Finish accounting for block flow here.
-        // https://bugs.webkit.org/show_bug.cgi?id=46603
         LayoutUnit margins = collapsedMarginBefore() + collapsedMarginAfter();
-        LayoutUnit visHeight;
-        if (document()->printing())
-            visHeight = static_cast<LayoutUnit>(view()->pageLogicalHeight());
-        else  {
-            if (isHorizontalWritingMode())
-                visHeight = view()->viewHeight();
-            else
-                visHeight = view()->viewWidth();
-        }
+        LayoutUnit visibleHeight = viewLogicalHeightForPercentages();
         if (isRoot())
-            computedValues.m_extent = max(computedValues.m_extent, visHeight - margins);
+            computedValues.m_extent = max(computedValues.m_extent, visibleHeight - margins);
         else {
             LayoutUnit marginsBordersPadding = margins + parentBox()->marginBefore() + parentBox()->marginAfter() + parentBox()->borderAndPaddingLogicalHeight();
-            computedValues.m_extent = max(computedValues.m_extent, visHeight - marginsBordersPadding);
+            computedValues.m_extent = max(computedValues.m_extent, visibleHeight - marginsBordersPadding);
         }
     }
+}
+
+LayoutUnit RenderBox::viewLogicalHeightForPercentages() const
+{
+    if (document()->printing())
+        return static_cast<LayoutUnit>(view()->pageLogicalHeight());
+    return view()->viewLogicalHeight();
 }
 
 LayoutUnit RenderBox::computeLogicalHeightUsing(SizeType heightType, const Length& height) const
@@ -2482,13 +2547,14 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
             LayoutUnit contentBoxHeight = cb->constrainContentBoxLogicalHeightByMinMax(contentBoxHeightWithScrollbar - cb->scrollbarLogicalHeight());
             availableHeight = max<LayoutUnit>(0, contentBoxHeight);
         }
-    } else if (cb->isRenderView() || isOutOfFlowPositionedWithSpecifiedHeight) {
+    } else if (isOutOfFlowPositionedWithSpecifiedHeight) {
         // Don't allow this to affect the block' height() member variable, since this
         // can get called while the block is still laying out its kids.
         LogicalExtentComputedValues computedValues;
         cb->computeLogicalHeight(cb->logicalHeight(), 0, computedValues);
         availableHeight = computedValues.m_extent - cb->borderAndPaddingLogicalHeight() - cb->scrollbarLogicalHeight();
-    }
+    } else if (cb->isRenderView())
+        availableHeight = viewLogicalHeightForPercentages();
 
     if (availableHeight == -1)
         return availableHeight;
@@ -4344,6 +4410,13 @@ bool RenderBox::hasRelativeLogicalHeight() const
             || style()->logicalMaxHeight().isPercent();
 }
 
+bool RenderBox::hasViewportPercentageLogicalHeight() const
+{
+    return style()->logicalHeight().isViewportPercentage()
+        || style()->logicalMinHeight().isViewportPercentage()
+        || style()->logicalMaxHeight().isViewportPercentage();
+}
+
 static void markBoxForRelayoutAfterSplit(RenderBox* box)
 {
     // FIXME: The table code should handle that automatically. If not,
@@ -4399,7 +4472,7 @@ void RenderBox::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
     RenderBoxModelObject::reportMemoryUsage(memoryObjectInfo);
     info.addWeakPointer(m_inlineBoxWrapper);
-    info.addMember(m_overflow);
+    info.addMember(m_overflow, "overflow");
 }
 
 void RenderBox::reportStaticMembersMemoryUsage(MemoryInstrumentation* memoryInstrumentation)

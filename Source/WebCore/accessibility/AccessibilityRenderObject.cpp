@@ -123,9 +123,7 @@ void AccessibilityRenderObject::init()
 
 PassRefPtr<AccessibilityRenderObject> AccessibilityRenderObject::create(RenderObject* renderer)
 {
-    AccessibilityRenderObject* obj = new AccessibilityRenderObject(renderer);
-    obj->init();
-    return adoptRef(obj);
+    return adoptRef(new AccessibilityRenderObject(renderer));
 }
 
 void AccessibilityRenderObject::detach()
@@ -1123,8 +1121,35 @@ AccessibilityObjectInclusion AccessibilityRenderObject::accessibilityIsIgnoredBa
         
     return DefaultBehavior;
 }  
- 
+
 bool AccessibilityRenderObject::accessibilityIsIgnored() const
+{
+#ifndef NDEBUG
+    ASSERT(m_initialized);
+#endif
+
+    AXComputedObjectAttributeCache* attributeCache = axObjectCache()->computedObjectAttributeCache();
+    if (attributeCache) {
+        AccessibilityObjectInclusion ignored = attributeCache->getIgnored(axObjectID());
+        switch (ignored) {
+        case IgnoreObject:
+            return true;
+        case IncludeObject:
+            return false;
+        case DefaultBehavior:
+            break;
+        }
+    }
+
+    bool result = computeAccessibilityIsIgnored();
+
+    if (attributeCache)
+        attributeCache->setIgnored(axObjectID(), result ? IgnoreObject : IncludeObject);
+
+    return result;
+}
+
+bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 {
     // Check first if any of the common reasons cause this element to be ignored.
     // Then process other use cases that need to be applied to all the various roles
@@ -2194,7 +2219,7 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
     layer->hitTest(request, hitTestResult);
     if (!hitTestResult.innerNode())
         return 0;
-    Node* node = hitTestResult.innerNode()->shadowAncestorNode();
+    Node* node = hitTestResult.innerNode()->deprecatedShadowAncestorNode();
 
     if (node->hasTagName(areaTag)) 
         return accessibilityImageMapHitTest(static_cast<HTMLAreaElement*>(node), point);
@@ -2224,11 +2249,20 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
     return result;
 }
 
+bool AccessibilityRenderObject::shouldNotifyActiveDescendant() const
+{
+    // We want to notify that the combo box has changed its active descendant,
+    // but we do not want to change the focus, because focus should remain with the combo box.
+    if (isComboBox())
+        return true;
+    
+    return shouldFocusActiveDescendant();
+}
+
 bool AccessibilityRenderObject::shouldFocusActiveDescendant() const
 {
     switch (ariaRoleAttribute()) {
     case GroupRole:
-    case ComboBoxRole:
     case ListBoxRole:
     case MenuRole:
     case MenuBarRole:
@@ -2321,7 +2355,7 @@ void AccessibilityRenderObject::handleActiveDescendantChanged()
         return; 
     AccessibilityRenderObject* activedescendant = static_cast<AccessibilityRenderObject*>(activeDescendant());
     
-    if (activedescendant && shouldFocusActiveDescendant())
+    if (activedescendant && shouldNotifyActiveDescendant())
         doc->axObjectCache()->postNotification(m_renderer, AXObjectCache::AXActiveDescendantChanged, true);
 }
 
@@ -2495,10 +2529,10 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return MathElementRole;
     
     if (node && node->hasTagName(ddTag))
-        return DefinitionListDefinitionRole;
+        return DescriptionListDetailRole;
     
     if (node && node->hasTagName(dtTag))
-        return DefinitionListTermRole;
+        return DescriptionListTermRole;
 
     if (node && (node->hasTagName(rpTag) || node->hasTagName(rtTag)))
         return AnnotationRole;
@@ -2536,6 +2570,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 
     if (node && node->hasTagName(articleTag))
         return DocumentArticleRole;
+
+    if (node && node->hasTagName(mainTag))
+        return LandmarkMainRole;
 
     if (node && node->hasTagName(navTag))
         return LandmarkNavigationRole;

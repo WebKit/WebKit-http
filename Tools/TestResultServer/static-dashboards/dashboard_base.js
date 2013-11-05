@@ -94,6 +94,12 @@ var FAILURE_EXPECTATIONS_ = {
     'Z': 1
 };
 
+// Map of parameter to other parameter it invalidates.
+var CROSS_DB_INVALIDATING_PARAMETERS = {
+    'testType': 'group'
+};
+var DB_SPECIFIC_INVALIDATING_PARAMETERS;
+
 // Keys in the JSON files.
 var WONTFIX_COUNTS_KEY = 'wontfixCounts';
 var FIXABLE_COUNTS_KEY = 'fixableCounts';
@@ -146,6 +152,9 @@ var TEST_TYPES = [
     'unit_tests',
     'views_unittests',
     'webkit_unit_tests',
+    'androidwebview_instrumentation_tests',
+    'chromiumtestshell_instrumentation_tests',
+    'contentshell_instrumentation_tests',
 ];
 
 var RELOAD_REQUIRING_PARAMETERS = ['showAllRuns', 'group', 'testType'];
@@ -181,6 +190,7 @@ function handleValidHashParameterWrapper(key, value)
             function() {
               return value in LAYOUT_TESTS_BUILDER_GROUPS ||
                   value in CHROMIUM_GPU_TESTS_BUILDER_GROUPS ||
+                  value in CHROMIUM_INSTRUMENTATION_TESTS_BUILDER_GROUPS ||
                   value in CHROMIUM_GTESTS_BUILDER_GROUPS;
             });
         return true;
@@ -196,7 +206,7 @@ function handleValidHashParameterWrapper(key, value)
 }
 
 var g_defaultCrossDashboardStateValues = {
-    group: '@ToT - chromium.org',
+    group: null,
     showAllRuns: false,
     testType: 'layout-tests',
     useTestData: false,
@@ -297,8 +307,6 @@ function parseCrossDashboardParameters()
         parseParameter(parameters, parameterName);
 
     fillMissingValues(g_crossDashboardState, g_defaultCrossDashboardStateValues);
-    if (currentBuilderGroup() === undefined)
-        g_crossDashboardState.group = g_defaultCrossDashboardStateValues.group;
 }
 
 function parseDashboardSpecificParameters()
@@ -407,14 +415,23 @@ function currentBuilderGroupCategory()
     case 'test_shell_tests':
     case 'webkit_unit_tests':
         return TEST_SHELL_TESTS_BUILDER_GROUPS;
+    case 'androidwebview_instrumentation_tests':
+    case 'chromiumtestshell_instrumentation_tests':
+    case 'contentshell_instrumentation_tests':
+        return CHROMIUM_INSTRUMENTATION_TESTS_BUILDER_GROUPS;
     default:
         return CHROMIUM_GTESTS_BUILDER_GROUPS;
     }
 }
 
+function currentBuilderGroupName()
+{
+    return g_crossDashboardState.group || Object.keys(currentBuilderGroupCategory())[0];
+}
+
 function currentBuilderGroup()
 {
-    return currentBuilderGroupCategory()[g_crossDashboardState.group]
+    return currentBuilderGroupCategory()[currentBuilderGroupName()];
 }
 
 function currentBuilders()
@@ -519,19 +536,36 @@ function combinedDashboardState()
     return combinedState;    
 }
 
+function invalidateQueryParameters(queryParamsAsState) {
+    for (var key in queryParamsAsState) {
+        if (key in CROSS_DB_INVALIDATING_PARAMETERS)
+            delete g_crossDashboardState[CROSS_DB_INVALIDATING_PARAMETERS[key]];
+        if (key in DB_SPECIFIC_INVALIDATING_PARAMETERS)
+            delete g_currentState[DB_SPECIFIC_INVALIDATING_PARAMETERS[key]];
+    }
+}
+
 // Sets the page state. Takes varargs of key, value pairs.
 function setQueryParameter(var_args)
 {
-    var state = combinedDashboardState();
+    var queryParamsAsState = {};
     for (var i = 0; i < arguments.length; i += 2) {
         var key = arguments[i];
-        state[key] = arguments[i + 1];
+        queryParamsAsState[key] = arguments[i + 1];
     }
+
+    invalidateQueryParameters(queryParamsAsState);
+
+    var newState = combinedDashboardState();
+    for (var key in queryParamsAsState) {
+        newState[key] = queryParamsAsState[key];
+    }
+
     // Note: We use window.location.hash rather that window.location.replace
     // because of bugs in Chrome where extra entries were getting created
     // when back button was pressed and full page navigation was occuring.
     // FIXME: file those bugs.
-    window.location.hash = permaLinkURLHash(state);
+    window.location.hash = permaLinkURLHash(newState);
 }
 
 function permaLinkURLHash(opt_state)
@@ -675,11 +709,6 @@ function htmlForTestTypeSwitcher(opt_noBuilderMenu, opt_extraHtml, opt_includeNo
     if (opt_extraHtml)
         html += opt_extraHtml;
     return html + '</div>';
-}
-
-function selectBuilder(builder)
-{
-    setQueryParameter('builder', builder);
 }
 
 function loadDashboard(fileName)

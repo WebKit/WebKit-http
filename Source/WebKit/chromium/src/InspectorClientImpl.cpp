@@ -36,6 +36,7 @@
 #include "InspectorInstrumentation.h"
 #include "NotImplemented.h"
 #include "Page.h"
+#include "Settings.h"
 #include "WebDevToolsAgentImpl.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
@@ -164,12 +165,26 @@ void InspectorClientImpl::setShowPaintRects(bool show)
 
 bool InspectorClientImpl::canShowFPSCounter()
 {
-    return true;
+    if (m_inspectedWebView->page())
+        return m_inspectedWebView->page()->settings()->forceCompositingMode();
+    return false;
 }
 
 void InspectorClientImpl::setShowFPSCounter(bool show)
 {
     m_inspectedWebView->setShowFPSCounter(show);
+}
+
+bool InspectorClientImpl::canContinuouslyPaint()
+{
+    if (m_inspectedWebView->page())
+        return m_inspectedWebView->page()->settings()->forceCompositingMode();
+    return false;
+}
+
+void InspectorClientImpl::setContinuousPaintingEnabled(bool enabled)
+{
+    m_inspectedWebView->setContinuousPaintingEnabled(enabled);
 }
 
 bool InspectorClientImpl::supportsFrameInstrumentation()
@@ -193,6 +208,13 @@ bool InspectorClientImpl::captureScreenshot(String* data)
 {
     if (WebDevToolsAgentImpl* agent = devToolsAgent())
         return agent->captureScreenshot(data);
+    return false;
+}
+
+bool InspectorClientImpl::handleJavaScriptDialog(bool accept)
+{
+    if (WebDevToolsAgentImpl* agent = devToolsAgent())
+        return agent->handleJavaScriptDialog(accept);
     return false;
 }
 

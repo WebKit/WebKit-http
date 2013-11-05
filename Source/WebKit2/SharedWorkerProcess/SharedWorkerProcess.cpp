@@ -94,9 +94,9 @@ bool SharedWorkerProcess::shouldTerminate()
     return true;
 }
 
-void SharedWorkerProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void SharedWorkerProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveSharedWorkerProcessMessage(connection, messageID, decoder);
+    didReceiveSharedWorkerProcessMessage(connection, decoder);
 }
 
 void SharedWorkerProcess::didClose(CoreIPC::Connection*)

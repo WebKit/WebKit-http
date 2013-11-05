@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,8 +35,8 @@
 #include "DFGSlowPathGenerator.h"
 #include "DFGSpeculativeJIT.h"
 #include "DFGThunks.h"
+#include "JSCJSValueInlines.h"
 #include "JSGlobalData.h"
-#include "JSValueInlines.h"
 #include "LinkBuffer.h"
 
 namespace JSC { namespace DFG {
@@ -237,7 +237,6 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     
     codeBlock()->saveCompilation(m_graph.m_compilation);
     
-    codeBlock()->minifiedDFG().setOriginalGraphSize(m_graph.size());
     codeBlock()->shrinkToFit(CodeBlock::LateShrink);
 }
 

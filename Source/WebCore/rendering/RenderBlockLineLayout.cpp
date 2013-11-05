@@ -1071,11 +1071,7 @@ static void setStaticPositions(RenderBlock* block, RenderBox* child)
         toRenderInline(containerBlock)->layer()->setStaticInlinePosition(block->startAlignedOffsetForLine(blockHeight, false));
         toRenderInline(containerBlock)->layer()->setStaticBlockPosition(blockHeight);
     }
-
-    if (child->style()->isOriginalDisplayInlineType())
-        block->setStaticInlinePositionForChild(child, blockHeight, block->startAlignedOffsetForLine(blockHeight, false));
-    else
-        block->setStaticInlinePositionForChild(child, blockHeight, block->startOffsetForContent(blockHeight));
+    block->updateStaticInlinePositionForChild(child, blockHeight);
     child->layer()->setStaticBlockPosition(blockHeight);
 }
 
@@ -1499,7 +1495,7 @@ void RenderBlock::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, Inlin
     LayoutUnit absoluteLogicalTop;
     ExclusionShapeInsideInfo* exclusionShapeInsideInfo = layoutExclusionShapeInsideInfo(this);
     if (exclusionShapeInsideInfo) {
-        ASSERT(exclusionShapeInsideInfo->ownerBlock() == this || allowsExclusionShapeInsideInfoSharing());
+        ASSERT(exclusionShapeInsideInfo->owner() == this || allowsExclusionShapeInsideInfoSharing());
         if (exclusionShapeInsideInfo != this->exclusionShapeInsideInfo()) {
             // FIXME Bug 100284: If subsequent LayoutStates are pushed, we will have to add
             // their offsets from the original shape-inside container.
@@ -1671,7 +1667,7 @@ void RenderBlock::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, Inlin
         }
 
         // If there were no breaks in the block, we didn't create any widows.
-        if (!lineBox->isFirstAfterPageBreak() || lineBox == firstLineInBlock)
+        if (!lineBox || !lineBox->isFirstAfterPageBreak() || lineBox == firstLineInBlock)
             return;
 
         if (numLinesHanging < style()->widows()) {
@@ -2216,12 +2212,12 @@ static bool requiresLineBoxForContent(RenderInline* flow, const LineInfo& lineIn
     return false;
 }
 
-static bool alwaysRequiresLineBox(RenderInline* flow)
+static bool alwaysRequiresLineBox(RenderObject* flow)
 {
     // FIXME: Right now, we only allow line boxes for inlines that are truly empty.
     // We need to fix this, though, because at the very least, inlines containing only
     // ignorable whitespace should should also have line boxes.
-    return !flow->firstChild() && flow->hasInlineDirectionBordersPaddingOrMargin();
+    return isEmptyInline(flow) && toRenderInline(flow)->hasInlineDirectionBordersPaddingOrMargin();
 }
 
 static bool requiresLineBox(const InlineIterator& it, const LineInfo& lineInfo = LineInfo(), WhitespacePosition whitespacePosition = LeadingWhitespace)
@@ -2229,15 +2225,15 @@ static bool requiresLineBox(const InlineIterator& it, const LineInfo& lineInfo =
     if (it.m_obj->isFloatingOrOutOfFlowPositioned())
         return false;
 
-    if (it.m_obj->isRenderInline() && !alwaysRequiresLineBox(toRenderInline(it.m_obj)) && !requiresLineBoxForContent(toRenderInline(it.m_obj), lineInfo))
+    if (it.m_obj->isRenderInline() && !alwaysRequiresLineBox(it.m_obj) && !requiresLineBoxForContent(toRenderInline(it.m_obj), lineInfo))
         return false;
 
     if (!shouldCollapseWhiteSpace(it.m_obj->style(), lineInfo, whitespacePosition) || it.m_obj->isBR())
         return true;
 
     UChar current = it.current();
-    return current != ' ' && current != '\t' && current != softHyphen && (current != '\n' || it.m_obj->preservesNewline())
-    && !skipNonBreakingSpace(it, lineInfo);
+    bool notJustWhitespace = current != ' ' && current != '\t' && current != softHyphen && (current != '\n' || it.m_obj->preservesNewline()) && !skipNonBreakingSpace(it, lineInfo);
+    return notJustWhitespace || isEmptyInline(it.m_obj);
 }
 
 bool RenderBlock::generatesLineBoxesForInlineChild(RenderObject* inlineObj)
@@ -2660,6 +2656,7 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
                 trailingObjects.appendBoxIfNeeded(box);
             } else
                 m_positionedObjects.append(box);
+            width.addUncommittedWidth(inlineLogicalWidth(current.m_obj));
         } else if (current.m_obj->isFloating()) {
             RenderBox* floatBox = toRenderBox(current.m_obj);
             FloatingObject* f = m_block->insertFloatingObject(floatBox);
@@ -2676,7 +2673,7 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
                 floatsFitOnLine = false;
         } else if (current.m_obj->isRenderInline()) {
             // Right now, we should only encounter empty inlines here.
-            ASSERT(!current.m_obj->firstChild());
+            ASSERT(isEmptyInline(current.m_obj));
 
             RenderInline* flowBox = toRenderInline(current.m_obj);
 
@@ -2684,7 +2681,7 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
             // to make sure that we stop to include this object and then start ignoring spaces again.
             // If this object is at the start of the line, we need to behave like list markers and
             // start ignoring spaces.
-            bool requiresLineBox = alwaysRequiresLineBox(flowBox);
+            bool requiresLineBox = alwaysRequiresLineBox(current.m_obj);
             if (requiresLineBox || requiresLineBoxForContent(flowBox, lineInfo)) {
                 // An empty inline that only has line-height, vertical-align or font-metrics will only get a
                 // line box to affect the height of the line if the rest of the line is not empty.
@@ -2704,7 +2701,7 @@ InlineIterator RenderBlock::LineBreaker::nextSegmentBreak(InlineBidiResolver& re
                 }
             }
 
-            width.addUncommittedWidth(borderPaddingMarginStart(flowBox) + borderPaddingMarginEnd(flowBox));
+            width.addUncommittedWidth(inlineLogicalWidth(current.m_obj) + borderPaddingMarginStart(flowBox) + borderPaddingMarginEnd(flowBox));
         } else if (current.m_obj->isReplaced()) {
             RenderBox* replacedBox = toRenderBox(current.m_obj);
 

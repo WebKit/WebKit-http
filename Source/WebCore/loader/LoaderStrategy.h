@@ -43,7 +43,7 @@ class LoaderStrategy {
 public:
     virtual ResourceLoadScheduler* resourceLoadScheduler();
 
-    virtual void loadResourceSynchronously(NetworkingContext*, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>& data);
+    virtual void loadResourceSynchronously(NetworkingContext*, unsigned long identifier, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>& data);
 
 protected:
     virtual ~LoaderStrategy()

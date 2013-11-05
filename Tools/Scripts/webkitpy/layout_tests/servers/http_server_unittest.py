@@ -28,7 +28,7 @@
 
 import re
 import sys
-import unittest
+import unittest2 as unittest
 
 from webkitpy.common.host_mock import MockHost
 from webkitpy.layout_tests.port import test
@@ -98,4 +98,4 @@ class TestHttpServer(unittest.TestCase):
         server._wait_for_action = wait_for_action
 
         server.stop()
-        self.assertEquals(['taskkill.exe', '/f', '/t', '/pid', 42], host.executive.calls[1])
+        self.assertEqual(['taskkill.exe', '/f', '/t', '/pid', 42], host.executive.calls[1])

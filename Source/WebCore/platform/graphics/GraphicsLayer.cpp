@@ -610,6 +610,11 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         ts << "(usingTiledLayer " << m_usingTiledLayer << ")\n";
     }
 
+    if (m_contentsOpaque) {
+        writeIndent(ts, indent + 1);
+        ts << "(contentsOpaque " << m_contentsOpaque << ")\n";
+    }
+
     if (m_preserves3D) {
         writeIndent(ts, indent + 1);
         ts << "(preserves3D " << m_preserves3D << ")\n";
@@ -725,13 +730,13 @@ String GraphicsLayer::layerTreeAsText(LayerTreeAsTextBehavior behavior) const
 void GraphicsLayer::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Layers);
-    info.addMember(m_children);
-    info.addMember(m_parent);
-    info.addMember(m_maskLayer);
-    info.addMember(m_replicaLayer);
-    info.addMember(m_replicatedLayer);
+    info.addMember(m_children, "children");
+    info.addMember(m_parent, "parent");
+    info.addMember(m_maskLayer, "maskLayer");
+    info.addMember(m_replicaLayer, "replicaLayer");
+    info.addMember(m_replicatedLayer, "replicatedLayer");
     info.ignoreMember(m_client);
-    info.addMember(m_name);
+    info.addMember(m_name, "name");
 }
 
 } // namespace WebCore

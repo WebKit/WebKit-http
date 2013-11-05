@@ -51,6 +51,7 @@
 namespace WebCore {
 
 class CachedScript;
+class DatabaseContext;
 class DOMTimer;
 class EventListener;
 class EventQueue;
@@ -88,6 +89,8 @@ public:
 
     void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, ScriptState* = 0, unsigned long requestIdentifier = 0);
     virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) = 0;
+
+    virtual const SecurityOrigin* topOrigin() const = 0;
 
 #if ENABLE(BLOB)
     PublicURLManager& publicURLManager();
@@ -169,6 +172,10 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
+#if ENABLE(SQL_DATABASE)
+    void setDatabaseContext(DatabaseContext*);
+#endif
+
 protected:
     class AddConsoleMessageTask : public Task {
     public:
@@ -224,6 +231,10 @@ private:
 #if ENABLE(BLOB)
     OwnPtr<PublicURLManager> m_publicURLManager;
     RefPtr<FileThread> m_fileThread;
+#endif
+
+#if ENABLE(SQL_DATABASE)
+    RefPtr<DatabaseContext> m_databaseContext;
 #endif
 };
 

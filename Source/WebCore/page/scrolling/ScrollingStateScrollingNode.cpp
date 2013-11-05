@@ -41,7 +41,7 @@ PassOwnPtr<ScrollingStateScrollingNode> ScrollingStateScrollingNode::create(Scro
 
 ScrollingStateScrollingNode::ScrollingStateScrollingNode(ScrollingStateTree* stateTree, ScrollingNodeID nodeID)
     : ScrollingStateNode(stateTree, nodeID)
-    , m_changedProperties(0)
+    , m_counterScrollingLayer(0)
     , m_frameScaleFactor(1)
     , m_wheelEventHandlerCount(0)
     , m_shouldUpdateScrollLayerPositionOnMainThread(0)
@@ -57,7 +57,6 @@ ScrollingStateScrollingNode::ScrollingStateScrollingNode(ScrollingStateTree* sta
 
 ScrollingStateScrollingNode::ScrollingStateScrollingNode(const ScrollingStateScrollingNode& stateNode)
     : ScrollingStateNode(stateNode)
-    , m_changedProperties(stateNode.changedProperties())
     , m_viewportRect(stateNode.viewportRect())
     , m_contentsSize(stateNode.contentsSize())
     , m_frameScaleFactor(stateNode.frameScaleFactor())
@@ -74,6 +73,7 @@ ScrollingStateScrollingNode::ScrollingStateScrollingNode(const ScrollingStateScr
     , m_requestedScrollPosition(stateNode.requestedScrollPosition())
     , m_scrollOrigin(stateNode.scrollOrigin())
 {
+    setCounterScrollingLayer(stateNode.counterScrollingLayer());
 }
 
 ScrollingStateScrollingNode::~ScrollingStateScrollingNode()
@@ -91,7 +91,7 @@ void ScrollingStateScrollingNode::setViewportRect(const IntRect& viewportRect)
         return;
 
     m_viewportRect = viewportRect;
-    m_changedProperties |= ViewportRect;
+    setPropertyChanged(ViewportRect);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -101,7 +101,7 @@ void ScrollingStateScrollingNode::setContentsSize(const IntSize& contentsSize)
         return;
 
     m_contentsSize = contentsSize;
-    m_changedProperties |= ContentsSize;
+    setPropertyChanged(ContentsSize);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -112,7 +112,7 @@ void ScrollingStateScrollingNode::setFrameScaleFactor(float scaleFactor)
 
     m_frameScaleFactor = scaleFactor;
 
-    m_changedProperties |= FrameScaleFactor;
+    setPropertyChanged(FrameScaleFactor);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -122,7 +122,7 @@ void ScrollingStateScrollingNode::setNonFastScrollableRegion(const Region& nonFa
         return;
 
     m_nonFastScrollableRegion = nonFastScrollableRegion;
-    m_changedProperties |= NonFastScrollableRegion;
+    setPropertyChanged(NonFastScrollableRegion);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -132,7 +132,7 @@ void ScrollingStateScrollingNode::setWheelEventHandlerCount(unsigned wheelEventH
         return;
 
     m_wheelEventHandlerCount = wheelEventHandlerCount;
-    m_changedProperties |= WheelEventHandlerCount;
+    setPropertyChanged(WheelEventHandlerCount);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -142,7 +142,7 @@ void ScrollingStateScrollingNode::setShouldUpdateScrollLayerPositionOnMainThread
         return;
 
     m_shouldUpdateScrollLayerPositionOnMainThread = reasons;
-    m_changedProperties |= ShouldUpdateScrollLayerPositionOnMainThread;
+    setPropertyChanged(ShouldUpdateScrollLayerPositionOnMainThread);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -152,7 +152,7 @@ void ScrollingStateScrollingNode::setHorizontalScrollElasticity(ScrollElasticity
         return;
 
     m_horizontalScrollElasticity = horizontalScrollElasticity;
-    m_changedProperties |= HorizontalScrollElasticity;
+    setPropertyChanged(HorizontalScrollElasticity);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -162,7 +162,7 @@ void ScrollingStateScrollingNode::setVerticalScrollElasticity(ScrollElasticity v
         return;
 
     m_verticalScrollElasticity = verticalScrollElasticity;
-    m_changedProperties |= VerticalScrollElasticity;
+    setPropertyChanged(VerticalScrollElasticity);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -172,7 +172,7 @@ void ScrollingStateScrollingNode::setHasEnabledHorizontalScrollbar(bool hasEnabl
         return;
 
     m_hasEnabledHorizontalScrollbar = hasEnabledHorizontalScrollbar;
-    m_changedProperties |= HasEnabledHorizontalScrollbar;
+    setPropertyChanged(HasEnabledHorizontalScrollbar);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -182,7 +182,7 @@ void ScrollingStateScrollingNode::setHasEnabledVerticalScrollbar(bool hasEnabled
         return;
 
     m_hasEnabledVerticalScrollbar = hasEnabledVerticalScrollbar;
-    m_changedProperties |= HasEnabledVerticalScrollbar;
+    setPropertyChanged(HasEnabledVerticalScrollbar);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -192,7 +192,7 @@ void ScrollingStateScrollingNode::setHorizontalScrollbarMode(ScrollbarMode horiz
         return;
 
     m_horizontalScrollbarMode = horizontalScrollbarMode;
-    m_changedProperties |= HorizontalScrollbarMode;
+    setPropertyChanged(HorizontalScrollbarMode);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -202,7 +202,7 @@ void ScrollingStateScrollingNode::setVerticalScrollbarMode(ScrollbarMode vertica
         return;
 
     m_verticalScrollbarMode = verticalScrollbarMode;
-    m_changedProperties |= VerticalScrollbarMode;
+    setPropertyChanged(VerticalScrollbarMode);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -210,7 +210,7 @@ void ScrollingStateScrollingNode::setRequestedScrollPosition(const IntPoint& req
 {
     m_requestedScrollPosition = requestedScrollPosition;
     m_requestedScrollPositionRepresentsProgrammaticScroll = representsProgrammaticScroll;
-    m_changedProperties |= RequestedScrollPosition;
+    setPropertyChanged(RequestedScrollPosition);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -220,7 +220,7 @@ void ScrollingStateScrollingNode::setScrollOrigin(const IntPoint& scrollOrigin)
         return;
 
     m_scrollOrigin = scrollOrigin;
-    m_changedProperties |= ScrollOrigin;
+    setPropertyChanged(ScrollOrigin);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 

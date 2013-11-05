@@ -27,9 +27,12 @@
 #include "MessageEncoder.h"
 
 #include "ArgumentCoders.h"
+#include "MessageFlags.h"
 #include "StringReference.h"
 
 namespace CoreIPC {
+
+static uint8_t defaultMessageFlags = 0;
 
 PassOwnPtr<MessageEncoder> MessageEncoder::create(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID)
 {
@@ -40,6 +43,7 @@ MessageEncoder::MessageEncoder(StringReference messageReceiverName, StringRefere
 {
     ASSERT(!messageReceiverName.isEmpty());
 
+    encode(defaultMessageFlags);
     encode(messageReceiverName);
     encode(messageName);
     encode(destinationID);
@@ -47,6 +51,23 @@ MessageEncoder::MessageEncoder(StringReference messageReceiverName, StringRefere
 
 MessageEncoder::~MessageEncoder()
 {
+}
+
+void MessageEncoder::setIsSyncMessage(bool isSyncMessage)
+{
+    if (isSyncMessage)
+        *buffer() |= SyncMessage;
+    else
+        *buffer() &= ~SyncMessage;
+
+}
+
+void MessageEncoder::setShouldDispatchMessageWhenWaitingForSyncReply(bool shouldDispatchMessageWhenWaitingForSyncReply)
+{
+    if (shouldDispatchMessageWhenWaitingForSyncReply)
+        *buffer() |= DispatchMessageWhenWaitingForSyncReply;
+    else
+        *buffer() &= ~DispatchMessageWhenWaitingForSyncReply;
 }
 
 } // namespace CoreIPC

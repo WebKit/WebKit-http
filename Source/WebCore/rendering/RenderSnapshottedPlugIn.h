@@ -37,7 +37,7 @@ class HTMLPlugInImageElement;
 
 class RenderSnapshottedPlugIn : public RenderEmbeddedObject {
 public:
-    RenderSnapshottedPlugIn(HTMLPlugInImageElement*);
+    explicit RenderSnapshottedPlugIn(HTMLPlugInImageElement*);
     virtual ~RenderSnapshottedPlugIn();
 
     enum LabelSize {
@@ -88,7 +88,7 @@ private:
 
 inline RenderSnapshottedPlugIn* toRenderSnapshottedPlugIn(RenderObject* object)
 {
-    ASSERT(!object || object->isSnapshottedPlugIn());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSnapshottedPlugIn());
     return static_cast<RenderSnapshottedPlugIn*>(object);
 }
 

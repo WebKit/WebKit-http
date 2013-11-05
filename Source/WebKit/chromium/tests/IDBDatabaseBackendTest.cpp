@@ -69,7 +69,7 @@ public:
     virtual void onError(PassRefPtr<IDBDatabaseError>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<DOMStringList>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>) OVERRIDE
+    virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&) OVERRIDE
     {
         m_wasSuccessDBCalled = true;
     }
@@ -80,7 +80,6 @@ public:
     virtual void onSuccess() OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { };
     virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) OVERRIDE { }
-    virtual void onBlocked() OVERRIDE { }
 private:
     MockIDBCallbacks()
         : m_wasSuccessDBCalled(false) { }
@@ -139,8 +138,6 @@ public:
     virtual IDBDatabaseMetadata metadata() const { return IDBDatabaseMetadata(); }
     virtual void createObjectStore(int64_t transactionId, int64_t objectStoreId, const String& name, const IDBKeyPath&, bool autoIncrement) OVERRIDE { };
     virtual void deleteObjectStore(int64_t transactionId, int64_t objectStoreId) OVERRIDE { }
-    // FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
-    virtual PassRefPtr<IDBTransactionBackendInterface> createTransaction(int64_t, const Vector<int64_t>&, IDBTransaction::Mode) OVERRIDE { return 0; }
     virtual void createTransaction(int64_t, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>&, unsigned short mode) OVERRIDE { }
 
     virtual void close(PassRefPtr<IDBDatabaseCallbacks>) OVERRIDE
@@ -150,6 +147,7 @@ public:
     }
 
     virtual void abort(int64_t transactionId) OVERRIDE { }
+    virtual void abort(int64_t transactionId, PassRefPtr<IDBDatabaseError>) OVERRIDE { }
     virtual void commit(int64_t transactionId) OVERRIDE { }
 
     virtual void openCursor(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange>, unsigned short direction, bool keyOnly, TaskType, PassRefPtr<IDBCallbacks>) OVERRIDE { }

@@ -67,8 +67,8 @@
 #include <BlackBerryPlatformIntRectRegion.h>
 #include <BlackBerryPlatformWindow.h>
 
+#include <runtime/JSCJSValue.h>
 #include <runtime/JSLock.h>
-#include <runtime/JSValue.h>
 #include <sys/keycodes.h>
 #include <vector>
 
@@ -108,8 +108,11 @@ void PluginView::updatePluginWidget()
 
     m_windowRect = IntRect(frameView->contentsToWindow(frameRect().location()), frameRect().size());
 
+    ScrollView* theRoot = root();
+    if (!theRoot)
+        return; // ASSERT(parent()->isFrameView()) should prevent this but check just in case
     // Map rect to content coordinate space of main frame.
-    m_windowRect.move(root()->scrollOffset());
+    m_windowRect.move(theRoot->scrollOffset());
 
     m_clipRect = calculateClipRect();
 

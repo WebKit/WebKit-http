@@ -96,7 +96,7 @@ void BaseChooserOnlyDateAndTimeInputType::detach()
 
 void BaseChooserOnlyDateAndTimeInputType::didChooseValue(const String& value)
 {
-    element()->setValue(value, DispatchChangeEvent);
+    element()->setValue(value, DispatchInputAndChangeEvent);
 }
 
 void BaseChooserOnlyDateAndTimeInputType::didEndChooser()
@@ -129,6 +129,11 @@ void BaseChooserOnlyDateAndTimeInputType::accessKeyAction(bool sendMouseEvents)
 {
     BaseDateAndTimeInputType::accessKeyAction(sendMouseEvents);
     BaseClickableWithKeyInputType::accessKeyAction(element(), sendMouseEvents);
+}
+
+bool BaseChooserOnlyDateAndTimeInputType::isMouseFocusable() const
+{
+    return element()->isTextFormControlFocusable();
 }
 
 }

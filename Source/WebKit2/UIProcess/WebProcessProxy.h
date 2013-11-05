@@ -59,8 +59,9 @@ struct WebNavigationDataStore;
 
 class WebProcessProxy : public ThreadSafeRefCounted<WebProcessProxy>, public ChildProcessProxy, ResponsivenessTimer::Client, CoreIPC::Connection::QueueClient {
 public:
-    typedef HashMap<uint64_t, RefPtr<WebFrameProxy> > WebFrameProxyMap;
     typedef HashMap<uint64_t, RefPtr<WebBackForwardListItem> > WebBackForwardListItemMap;
+    typedef HashMap<uint64_t, RefPtr<WebFrameProxy> > WebFrameProxyMap;
+    typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
 
     static PassRefPtr<WebProcessProxy> create(PassRefPtr<WebContext>);
     ~WebProcessProxy();
@@ -78,15 +79,11 @@ public:
 
     WebContext* context() const { return m_context.get(); }
 
-    WebPageProxy* webPage(uint64_t pageID) const;
+    static WebPageProxy* webPage(uint64_t pageID);
     PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebContext*, WebPageGroup*);
     void addExistingWebPage(WebPageProxy*, uint64_t pageID);
     void removeWebPage(uint64_t pageID);
     Vector<WebPageProxy*> pages() const;
-
-#if ENABLE(WEB_INTENTS)
-    void removeMessagePortChannel(uint64_t channelID);
-#endif
 
     WebBackForwardListItem* webBackForwardItem(uint64_t itemID) const;
 
@@ -112,11 +109,23 @@ public:
 
     DownloadProxy* createDownloadProxy();
 
+    void pageVisibilityChanged(WebPageProxy*);
+    void pagePreferencesChanged(WebPageProxy*);
+
+#if PLATFORM(MAC)
+    bool allPagesAreProcessSuppressible() const;
+    static bool pageIsProcessSuppressible(WebPageProxy*);
+    void updateProcessSuppressionState();
+#endif
+
 private:
     explicit WebProcessProxy(PassRefPtr<WebContext>);
 
-    void getLaunchOptions(ProcessLauncher::LaunchOptions&);
+    // From ChildProcessProxy
+    virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) OVERRIDE;
     void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&);
+    virtual void connectionWillOpen(CoreIPC::Connection*) OVERRIDE;
+    virtual void connectionWillClose(CoreIPC::Connection*) OVERRIDE;
 
     // Called when the web process has crashed or we know that it will terminate soon.
     // Will potentially cause the WebProcessProxy object to be freed.
@@ -131,7 +140,6 @@ private:
     // Plugins
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void getPlugins(CoreIPC::Connection*, uint64_t requestID, bool refresh);
-    void getPluginPath(const String& mimeType, const String& urlString, String& pluginPath, uint32_t& pluginLoadPolicy);
     void handleGetPlugins(uint64_t requestID, bool refresh);
     void sendDidGetPlugins(uint64_t requestID, PassOwnPtr<Vector<WebCore::PluginInfo> >);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -150,13 +158,13 @@ private:
 
     // CoreIPC::Connection::Client
     friend class WebConnectionToWebProcess;
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*) OVERRIDE;
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
 
     // CoreIPC::Connection::QueueClient
-    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, bool& didHandleMessage) OVERRIDE;
+    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage) OVERRIDE;
 
     // ResponsivenessTimer::Client
     void didBecomeUnresponsive(ResponsivenessTimer*) OVERRIDE;
@@ -173,9 +181,9 @@ private:
     void didUpdateHistoryTitle(uint64_t pageID, const String& title, const String& url, uint64_t frameID);
 
     // Implemented in generated WebProcessProxyMessageReceiver.cpp
-    void didReceiveWebProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didReceiveSyncWebProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
-    void didReceiveWebProcessProxyMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, bool& didHandleMessage);
+    void didReceiveWebProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveSyncWebProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveWebProcessProxyMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage);
 
     ResponsivenessTimer m_responsivenessTimer;
     
@@ -187,7 +195,7 @@ private:
     bool m_mayHaveUniversalFileReadSandboxExtension; // True if a read extension for "/" was ever granted - we don't track whether WebProcess still has it.
     HashSet<String> m_localPathsWithAssumedReadAccess;
 
-    HashMap<uint64_t, WebPageProxy*> m_pageMap;
+    WebPageProxyMap m_pageMap;
     WebFrameProxyMap m_frameMap;
     WebBackForwardListItemMap m_backForwardListItemMap;
 
@@ -195,6 +203,11 @@ private:
 
 #if ENABLE(CUSTOM_PROTOCOLS)
     CustomProtocolManagerProxy m_customProtocolManagerProxy;
+#endif
+
+#if PLATFORM(MAC)
+    HashSet<uint64_t> m_processSuppressiblePages;
+    bool m_processSuppressionEnabled;
 #endif
 };
     

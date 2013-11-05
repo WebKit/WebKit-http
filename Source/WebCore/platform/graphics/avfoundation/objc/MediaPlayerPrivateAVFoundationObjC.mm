@@ -50,16 +50,33 @@
 #import <wtf/Uint16Array.h>
 #import <wtf/Uint32Array.h>
 
-#import <CoreMedia/CoreMedia.h>
 #import <AVFoundation/AVFoundation.h>
+#import <CoreMedia/CoreMedia.h>
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+#import <CoreVideo/CoreVideo.h>
+#import <VideoToolbox/VideoToolbox.h>
+#endif
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 SOFT_LINK_FRAMEWORK_OPTIONAL(CoreMedia)
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+SOFT_LINK_FRAMEWORK_OPTIONAL(CoreVideo)
+SOFT_LINK_FRAMEWORK_OPTIONAL(VideoToolbox)
+#endif
 
 SOFT_LINK(CoreMedia, CMTimeCompare, int32_t, (CMTime time1, CMTime time2), (time1, time2))
 SOFT_LINK(CoreMedia, CMTimeMakeWithSeconds, CMTime, (Float64 seconds, int32_t preferredTimeScale), (seconds, preferredTimeScale))
 SOFT_LINK(CoreMedia, CMTimeGetSeconds, Float64, (CMTime time), (time))
 SOFT_LINK(CoreMedia, CMTimeRangeGetEnd, CMTime, (CMTimeRange range), (range))
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+SOFT_LINK(CoreVideo, CVPixelBufferGetWidth, size_t, (CVPixelBufferRef pixelBuffer), (pixelBuffer))
+SOFT_LINK(CoreVideo, CVPixelBufferGetHeight, size_t, (CVPixelBufferRef pixelBuffer), (pixelBuffer))
+SOFT_LINK(VideoToolbox, VTPixelTransferSessionCreate, OSStatus, (CFAllocatorRef allocator, VTPixelTransferSessionRef *pixelTransferSessionOut), (allocator, pixelTransferSessionOut))
+SOFT_LINK(VideoToolbox, VTPixelTransferSessionTransferImage, OSStatus, (VTPixelTransferSessionRef session, CVPixelBufferRef sourceBuffer, CVPixelBufferRef destinationBuffer), (session, sourceBuffer, destinationBuffer))
+#endif
 
 SOFT_LINK_CLASS(AVFoundation, AVPlayer)
 SOFT_LINK_CLASS(AVFoundation, AVPlayerItem)
@@ -106,6 +123,7 @@ SOFT_LINK_CLASS(AVFoundation, AVMediaSelectionOption)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicLegible, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVMediaTypeSubtitle, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicContainsOnlyForcedSubtitles, NSString *)
+SOFT_LINK_POINTER(AVFoundation, AVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly, NSString *)
 
 #define AVPlayerItemLegibleOutput getAVPlayerItemLegibleOutputClass()
 #define AVMediaSelectionGroup getAVMediaSelectionGroupClass()
@@ -113,6 +131,7 @@ SOFT_LINK_POINTER(AVFoundation, AVMediaCharacteristicContainsOnlyForcedSubtitles
 #define AVMediaCharacteristicLegible getAVMediaCharacteristicLegible()
 #define AVMediaTypeSubtitle getAVMediaTypeSubtitle()
 #define AVMediaCharacteristicContainsOnlyForcedSubtitles getAVMediaCharacteristicContainsOnlyForcedSubtitles()
+#define AVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly getAVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly()
 #endif
 
 #define kCMTimeZero getkCMTimeZero()
@@ -391,7 +410,6 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
 #if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
     [m_avPlayer.get() setAppliesMediaSelectionCriteriaAutomatically:YES];
 #endif
-    
 
     if (m_avPlayerItem)
         [m_avPlayer.get() replaceCurrentItemWithPlayerItem:m_avPlayerItem.get()];
@@ -410,7 +428,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerItem()
 
     // Create the player item so we can load media data. 
     m_avPlayerItem.adoptNS([[AVPlayerItem alloc] initWithAsset:m_avAsset.get()]);
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:m_objcObserver.get() selector:@selector(didEnd:) name:AVPlayerItemDidPlayToEndTimeNotification object:m_avPlayerItem.get()];
 
     for (NSString *keyName in itemKVOProperties())
@@ -897,6 +915,7 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
 
         [m_legibleOutput.get() setDelegate:m_objcObserver.get() queue:dispatch_get_main_queue()];
         [m_legibleOutput.get() setAdvanceIntervalForDelegateInvocation:NSTimeIntervalSince1970];
+        [m_legibleOutput.get() setTextStylingResolution:AVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly];
         [m_avPlayerItem.get() addOutput:m_legibleOutput.get()];
     }
 #endif
@@ -998,8 +1017,12 @@ void MediaPlayerPrivateAVFoundationObjC::createVideoOutput()
     if (!m_avPlayerItem || m_videoOutput)
         return;
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    NSDictionary* attributes = @{ (NSString*)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_422YpCbCr8) };
+#else
     NSDictionary* attributes = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInt:k32BGRAPixelFormat], kCVPixelBufferPixelFormatTypeKey,
                                 nil];
+#endif
     m_videoOutput.adoptNS([[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:attributes]);
     ASSERT(m_videoOutput);
 
@@ -1030,7 +1053,26 @@ RetainPtr<CVPixelBufferRef> MediaPlayerPrivateAVFoundationObjC::createPixelBuffe
     double start = WTF::currentTime();
 #endif
 
-    RetainPtr<CVPixelBufferRef> buffer = adoptCF([m_videoOutput.get() copyPixelBufferForItemTime:[m_avPlayerItem.get() currentTime] itemTimeForDisplay:nil]);
+    CMTime currentTime = [m_avPlayerItem.get() currentTime];
+
+    if (![m_videoOutput.get() hasNewPixelBufferForItemTime:currentTime])
+        return 0;
+
+    RetainPtr<CVPixelBufferRef> buffer = adoptCF([m_videoOutput.get() copyPixelBufferForItemTime:currentTime itemTimeForDisplay:nil]);
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    // Create a VTPixelTransferSession, if necessary, as we cannot guarantee timely delivery of ARGB pixels.
+    if (!m_pixelTransferSession) {
+        VTPixelTransferSessionRef session = 0;
+        VTPixelTransferSessionCreate(kCFAllocatorDefault, &session);
+        m_pixelTransferSession = adoptCF(session);
+    }
+
+    CVPixelBufferRef outputBuffer;
+    CVPixelBufferCreate(kCFAllocatorDefault, CVPixelBufferGetWidth(buffer.get()), CVPixelBufferGetHeight(buffer.get()), k32BGRAPixelFormat, 0, &outputBuffer);
+    VTPixelTransferSessionTransferImage(m_pixelTransferSession.get(), buffer.get(), outputBuffer);
+    buffer = adoptCF(outputBuffer);
+#endif
 
 #if !LOG_DISABLED
     double duration = WTF::currentTime() - start;
@@ -1059,7 +1101,9 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext* c
         // ciContext does not use a RetainPtr for results of contextWithCGContext:, as the returned value
         // is autoreleased, and there is no non-autoreleased version of that function.
         CIContext* ciContext = [CIContext contextWithCGContext:context->platformContext() options:nil];
-        [ciContext drawImage:image.get() inRect:rect fromRect:rect];
+        CGRect outputRect = { CGPointZero, rect.size() };
+        CGRect imageRect = CGRectMake(0, 0, CVPixelBufferGetWidth(m_lastImage.get()), CVPixelBufferGetHeight(m_lastImage.get()));
+        [ciContext drawImage:image.get() inRect:outputRect fromRect:imageRect];
     }
 }
 
@@ -1212,7 +1256,7 @@ void MediaPlayerPrivateAVFoundationObjC::processTextTracks()
         LOG(Media, "MediaPlayerPrivateAVFoundationObjC::processTextTracks(%p) - nil mediaSelectionGroup", this);
         return;
     }
-
+    
     Vector<RefPtr<InbandTextTrackPrivateAVF> > removedTextTracks = m_textTracks;
     NSArray *legibleOptions = [AVMediaSelectionGroup playableMediaSelectionOptionsFromArray:[legibleGroup options]];
     for (AVMediaSelectionOptionType *option in legibleOptions) {
@@ -1228,13 +1272,8 @@ void MediaPlayerPrivateAVFoundationObjC::processTextTracks()
         if (!newTrack)
             continue;
 
-        if ([[option mediaType] isEqualToString:AVMediaTypeSubtitle]) {
-            if (![option hasMediaCharacteristic:AVMediaCharacteristicContainsOnlyForcedSubtitles]) {
-                AVMediaSelectionOptionType *forcedOnlyOption = [option associatedMediaSelectionOptionInMediaSelectionGroup:legibleGroup];
-                if (forcedOnlyOption)
-                    continue;
-            }
-        }
+        if ([[option mediaType] isEqualToString:AVMediaTypeSubtitle] && [option hasMediaCharacteristic:AVMediaCharacteristicContainsOnlyForcedSubtitles])
+            continue;
 
         m_textTracks.append(InbandTextTrackPrivateAVFObjC::create(this, option));
     }
@@ -1275,6 +1314,9 @@ void MediaPlayerPrivateAVFoundationObjC::processCue(NSArray *attributedStrings, 
 void MediaPlayerPrivateAVFoundationObjC::setCurrentTrack(InbandTextTrackPrivateAVF *track)
 {
     InbandTextTrackPrivateAVFObjC* trackPrivate = static_cast<InbandTextTrackPrivateAVFObjC*>(track);
+    if (m_currentTrack == trackPrivate)
+        return;
+
     AVMediaSelectionOptionType *mediaSelectionOption = trackPrivate ? trackPrivate->mediaSelectionOption() : 0;
 
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::setCurrentTrack(%p) - selecting media option %p", this, mediaSelectionOption);
@@ -1424,6 +1466,8 @@ NSArray* itemKVOProperties()
         return;
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (!m_callback)
+            return;
         m_callback->processCue(strings, CMTimeGetSeconds(itemTime));
     });
 }

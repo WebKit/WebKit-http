@@ -28,7 +28,7 @@ namespace WebCore {
 
 class RenderDetailsMarker : public RenderBlock {
 public:
-    RenderDetailsMarker(ContainerNode*);
+    RenderDetailsMarker(Element*);
 
     enum Orientation { Up, Down, Left, Right };
 
@@ -46,13 +46,13 @@ private:
 
 inline RenderDetailsMarker* toRenderDetailsMarker(RenderObject* object)
 {
-    ASSERT(!object || object->isDetailsMarker());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isDetailsMarker());
     return static_cast<RenderDetailsMarker*>(object);
 }
 
 inline const RenderDetailsMarker* toRenderDetailsMarker(const RenderObject* object)
 {
-    ASSERT(!object || object->isDetailsMarker());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isDetailsMarker());
     return static_cast<const RenderDetailsMarker*>(object);
 }
 

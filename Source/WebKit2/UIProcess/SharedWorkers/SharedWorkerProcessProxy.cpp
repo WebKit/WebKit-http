@@ -115,9 +115,9 @@ void SharedWorkerProcessProxy::sharedWorkerProcessCrashedOrFailedToLaunch()
     m_sharedWorkerProcessManager->removeSharedWorkerProcessProxy(this);
 }
 
-void SharedWorkerProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void SharedWorkerProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveSharedWorkerProcessProxyMessage(connection, messageID, decoder);
+    didReceiveSharedWorkerProcessProxyMessage(connection, decoder);
 }
 
 void SharedWorkerProcessProxy::didClose(CoreIPC::Connection*)
@@ -166,8 +166,8 @@ void SharedWorkerProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Con
     m_numPendingConnectionRequests = 0;
 
 #if PLATFORM(MAC)
-    if (WebContext::applicationIsOccluded() && WebContext::processSuppressionEnabledForGlobalChildProcesses())
-        m_connection->send(Messages::SharedWorkerProcess::SetApplicationIsOccluded(true), 0);
+    if (WebContext::canEnableProcessSuppressionForGlobalChildProcesses())
+        setProcessSuppressionEnabled(true);
 #endif
 }
 

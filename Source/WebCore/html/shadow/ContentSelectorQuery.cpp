@@ -41,16 +41,17 @@ ContentSelectorChecker::ContentSelectorChecker(Document* document)
     m_selectorChecker.setMode(SelectorChecker::CollectingRules);
 }
 
-bool ContentSelectorChecker::checkContentSelector(CSSSelector* selector, const Vector<RefPtr<Node> >& siblings, int nth) const
+bool ContentSelectorChecker::checkContentSelector(const CSSSelector* selector, const Vector<RefPtr<Node> >& siblings, int nth) const
 {
     SelectorChecker::SelectorCheckingContext context(selector, toElement(siblings[nth].get()), SelectorChecker::VisitedMatchEnabled);
     ShadowDOMSiblingTraversalStrategy strategy(siblings, nth);
-    return m_selectorChecker.checkOne(context, strategy);
+    PseudoId ignoreDynamicPseudo = NOPSEUDO;
+    return m_selectorChecker.match(context, ignoreDynamicPseudo, strategy) == SelectorChecker::SelectorMatches;
 }
 
 void ContentSelectorDataList::initialize(const CSSSelectorList& selectors)
 {
-    for (CSSSelector* selector = selectors.first(); selector; selector = CSSSelectorList::next(selector))
+    for (const CSSSelector* selector = selectors.first(); selector; selector = CSSSelectorList::next(selector))
         m_selectors.append(selector);
 }
 

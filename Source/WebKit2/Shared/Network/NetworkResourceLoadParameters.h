@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #ifndef NetworkResourceLoadParameters_h
 #define NetworkResourceLoadParameters_h
 
+#include "SandboxExtension.h"
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
@@ -44,19 +45,29 @@ typedef uint64_t ResourceLoadIdentifier;
 class NetworkResourceLoadParameters {
 public:
     NetworkResourceLoadParameters();
-    NetworkResourceLoadParameters(const WebCore::ResourceRequest&, WebCore::ResourceLoadPriority, WebCore::ContentSniffingPolicy, WebCore::StoredCredentials, bool inPrivateBrowsingMode);
+    NetworkResourceLoadParameters(ResourceLoadIdentifier, uint64_t webPageID, uint64_t webFrameID, const WebCore::ResourceRequest&, WebCore::ResourceLoadPriority, WebCore::ContentSniffingPolicy, WebCore::StoredCredentials, bool inPrivateBrowsingMode);
 
     void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder*, NetworkResourceLoadParameters&);
+    static bool decode(CoreIPC::ArgumentDecoder&, NetworkResourceLoadParameters&);
 
+    ResourceLoadIdentifier identifier() const { return m_identifier; }
+    uint64_t webPageID() const { return m_webPageID; }
+    uint64_t webFrameID() const { return m_webFrameID; }
     const WebCore::ResourceRequest& request() const { return m_request; }
+    const SandboxExtension::HandleArray& requestBodySandboxExtensions() const { return m_requestBodySandboxExtensions; }
+    const SandboxExtension::Handle& resourceSandboxExtension() const { return m_resourceSandboxExtension; }
     WebCore::ResourceLoadPriority priority() const { return m_priority; }
     WebCore::ContentSniffingPolicy contentSniffingPolicy() const { return m_contentSniffingPolicy; }
     WebCore::StoredCredentials allowStoredCredentials() const { return m_allowStoredCredentials; }
     bool inPrivateBrowsingMode() const { return m_inPrivateBrowsingMode; }
 
 private:
+    ResourceLoadIdentifier m_identifier;
+    uint64_t m_webPageID;
+    uint64_t m_webFrameID;
     WebCore::ResourceRequest m_request;
+    SandboxExtension::HandleArray m_requestBodySandboxExtensions; // Created automatically for the sender.
+    SandboxExtension::Handle m_resourceSandboxExtension; // Created automatically for the sender.
     WebCore::ResourceLoadPriority m_priority;
     WebCore::ContentSniffingPolicy m_contentSniffingPolicy;
     WebCore::StoredCredentials m_allowStoredCredentials;

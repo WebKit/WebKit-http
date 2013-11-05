@@ -27,11 +27,11 @@
 #include "DateConversion.h"
 #include "DateInstance.h"
 #include "Error.h"
+#include "JSCJSValueInlines.h"
 #include "JSDateMath.h"
 #include "JSGlobalObject.h"
 #include "JSString.h"
 #include "JSStringBuilder.h"
-#include "JSValueInlines.h"
 #include "Lookup.h"
 #include "ObjectPrototype.h"
 
@@ -61,7 +61,7 @@
 #include <sys/timeb.h>
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(IOS) || (PLATFORM(WX) && OS(DARWIN)) || (PLATFORM(QT) && OS(DARWIN))
+#if OS(DARWIN) && USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
 #elif USE(ICU_UNICODE)
 #include <unicode/udat.h>
@@ -125,9 +125,9 @@ namespace JSC {
 
 enum LocaleDateTimeFormat { LocaleDateAndTime, LocaleDate, LocaleTime };
  
-#if PLATFORM(MAC) || PLATFORM(IOS) || (PLATFORM(WX) && OS(DARWIN)) || (PLATFORM(QT) && OS(DARWIN))
+#if OS(DARWIN) && USE(CF)
 
-// FIXME: Since this is superior to the strftime-based version, why limit this to PLATFORM(MAC)?
+// FIXME: Since this is superior to the strftime-based version, why limit this to OS(DARWIN)?
 // Instead we should consider using this whenever USE(CF) is true.
 
 static CFDateFormatterStyle styleFromArgString(const String& string, CFDateFormatterStyle defaultStyle)
@@ -246,7 +246,7 @@ static JSCell* formatLocaleDate(ExecState* exec, const GregorianDateTime& gdt, L
             length += GetTimeFormatW(LOCALE_USER_DEFAULT, 0, &systemTime, 0, buffer.data() + length, buffer.size() - length);
         }
     } else
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
 
     //  Remove terminating null character.
     if (length)
@@ -337,7 +337,7 @@ static JSCell* formatLocaleDate(ExecState* exec, DateInstance* dateObject, doubl
     return formatLocaleDate(exec, *gregorianDateTime, format);
 }
 
-#endif // !PLATFORM(MAC) && !PLATFORM(IOS)
+#endif // OS(DARWIN) && USE(CF)
 
 static EncodedJSValue formateDateInstance(ExecState* exec, DateTimeFormat format, bool asUTCVariant)
 {

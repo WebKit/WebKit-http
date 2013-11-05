@@ -33,34 +33,52 @@
 
 namespace WebCore {
 
-CompactHTMLToken::CompactHTMLToken(const HTMLToken& token)
-    : m_type(token.type())
+struct SameSizeAsCompactHTMLToken  {
+    unsigned bitfields;
+    String name;
+    Vector<CompactAttribute> vector;
+    TextPosition textPosition;
+};
+
+COMPILE_ASSERT(sizeof(CompactHTMLToken) == sizeof(SameSizeAsCompactHTMLToken), CompactHTMLToken_should_stay_small);
+
+CompactHTMLToken::CompactHTMLToken(const HTMLToken* token, const TextPosition& textPosition)
+    : m_type(token->type())
+    , m_isAll8BitData(false)
+    , m_doctypeForcesQuirks(false)
+    , m_textPosition(textPosition)
 {
     switch (m_type) {
     case HTMLTokenTypes::Uninitialized:
         ASSERT_NOT_REACHED();
         break;
-    case HTMLTokenTypes::DOCTYPE:
-        m_data = String(token.name().data(), token.name().size());
-        m_publicIdentifier = String(token.publicIdentifier().data(), token.publicIdentifier().size());
-        m_systemIdentifier = String(token.systemIdentifier().data(), token.systemIdentifier().size());
+    case HTMLTokenTypes::DOCTYPE: {
+        m_data = String(token->name().data(), token->name().size());
+        // There is only 1 DOCTYPE token per document, so to avoid increasing the
+        // size of CompactHTMLToken, we just use the m_attributes vector.
+        String publicIdentifier(token->publicIdentifier().data(), token->publicIdentifier().size());
+        String systemIdentifier(token->systemIdentifier().data(), token->systemIdentifier().size());
+        m_attributes.append(CompactAttribute(publicIdentifier, systemIdentifier));
+        m_doctypeForcesQuirks = token->forceQuirks();
         break;
+    }
     case HTMLTokenTypes::EndOfFile:
         break;
     case HTMLTokenTypes::StartTag:
-        m_attributes.reserveInitialCapacity(token.attributes().size());
-        for (Vector<AttributeBase>::const_iterator it = token.attributes().begin(); it != token.attributes().end(); ++it)
+        m_attributes.reserveInitialCapacity(token->attributes().size());
+        for (Vector<AttributeBase>::const_iterator it = token->attributes().begin(); it != token->attributes().end(); ++it)
             m_attributes.append(CompactAttribute(String(it->m_name.data(), it->m_name.size()), String(it->m_value.data(), it->m_value.size())));
         // Fall through!
     case HTMLTokenTypes::EndTag:
-        m_selfClosing = token.selfClosing();
+        m_selfClosing = token->selfClosing();
         // Fall through!
     case HTMLTokenTypes::Comment:
     case HTMLTokenTypes::Character:
-        if (token.isAll8BitData())
-            m_data = String::make8BitFrom16BitSource(token.data().data(), token.data().size());
-        else
-            m_data = String(token.data().data(), token.data().size());
+        if (token->isAll8BitData()) {
+            m_data = String::make8BitFrom16BitSource(token->data().data(), token->data().size());
+            m_isAll8BitData = true;
+        } else
+            m_data = String(token->data().data(), token->data().size());
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -88,10 +106,7 @@ bool CompactHTMLToken::isSafeToSendToAnotherThread() const
         if (!isStringSafeToSendToAnotherThread(it->value()))
             return false;
     }
-
-    return isStringSafeToSendToAnotherThread(m_data)
-        && isStringSafeToSendToAnotherThread(m_publicIdentifier)
-        && isStringSafeToSendToAnotherThread(m_systemIdentifier);
+    return isStringSafeToSendToAnotherThread(m_data);
 }
 
 }

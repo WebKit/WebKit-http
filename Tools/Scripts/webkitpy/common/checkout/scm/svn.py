@@ -29,8 +29,10 @@
 
 import logging
 import os
+import random
 import re
 import shutil
+import string
 import sys
 import tempfile
 
@@ -52,7 +54,7 @@ class SVNRepository(object):
         # If we are working on a file:// repository realm will be None
         if realm is None:
             return True
-        # ignore false positives for methods implemented in the mixee class. pylint: disable-msg=E1101
+        # ignore false positives for methods implemented in the mixee class. pylint: disable=E1101
         # Assumes find and grep are installed.
         if not os.path.isdir(os.path.join(home_directory, ".subversion")):
             return False
@@ -271,11 +273,12 @@ class SVN(SCM, SVNRepository):
         return self._run_svn(['diff', '-c', revision])
 
     def _bogus_dir_name(self):
+        rnd = ''.join(random.sample(string.ascii_letters, 5))
         if sys.platform.startswith("win"):
             parent_dir = tempfile.gettempdir()
         else:
             parent_dir = sys.path[0]  # tempdir is not secure.
-        return os.path.join(parent_dir, "temp_svn_config")
+        return os.path.join(parent_dir, "temp_svn_config_" + rnd)
 
     def _setup_bogus_dir(self, log):
         self._bogus_dir = self._bogus_dir_name()

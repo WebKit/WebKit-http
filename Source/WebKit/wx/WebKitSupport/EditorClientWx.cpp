@@ -273,6 +273,16 @@ void EditorClientWx::didWriteSelectionToPasteboard()
     notImplemented();
 }
 
+void EditorClientWx::willWriteSelectionToPasteboard(WebCore::Range*)
+{
+    notImplemented();
+}
+
+void EditorClientWx::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>&, Vector<RefPtr<WebCore::SharedBuffer> >&)
+{
+    notImplemented();
+}
+
 void EditorClientWx::didSetSelectionTypesForPasteboard()
 {
     notImplemented();

@@ -57,6 +57,8 @@ public:
         TypeURLRequest,
         TypeURLResponse,
         TypeUserContentURLPattern,
+        TypeWebArchive,
+        TypeWebArchiveResource,
 
         // Base numeric types
         TypeBoolean,
@@ -91,8 +93,6 @@ public:
         TypeGrammarDetail,
         TypeIconDatabase,
         TypeInspector,
-        TypeIntentData,
-        TypeIntentServiceInfo,
         TypeKeyValueStorageManager,
         TypeMediaCacheManager,
         TypeNavigationData,
@@ -118,8 +118,6 @@ public:
         TypeBundleFrame,
         TypeBundleHitTestResult,
         TypeBundleInspector,
-        TypeBundleIntent,
-        TypeBundleIntentRequest,
         TypeBundleNavigationAction,
         TypeBundleNodeHandle,
         TypeBundlePage,

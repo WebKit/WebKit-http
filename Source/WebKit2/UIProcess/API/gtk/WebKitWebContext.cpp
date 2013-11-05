@@ -27,6 +27,7 @@
 #include "WebKitDownloadPrivate.h"
 #include "WebKitFaviconDatabasePrivate.h"
 #include "WebKitGeolocationProvider.h"
+#include "WebKitInjectedBundleClient.h"
 #include "WebKitPluginPrivate.h"
 #include "WebKitPrivate.h"
 #include "WebKitRequestManagerClient.h"
@@ -34,6 +35,7 @@
 #include "WebKitTextChecker.h"
 #include "WebKitURISchemeRequestPrivate.h"
 #include "WebKitWebContextPrivate.h"
+#include "WebKitWebViewBasePrivate.h"
 #include "WebResourceCacheManagerProxy.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/IconDatabase.h>
@@ -139,6 +141,8 @@ struct _WebKitWebContextPrivate {
 #endif
     CString faviconDatabaseDirectory;
     WebKitTLSErrorsPolicy tlsErrorsPolicy;
+
+    HashMap<uint64_t, WebKitWebView*> webViews;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -191,6 +195,7 @@ static gpointer createDefaultWebContext(gpointer)
     priv->context->setCacheModel(CacheModelPrimaryWebBrowser);
     priv->tlsErrorsPolicy = WEBKIT_TLS_ERRORS_POLICY_IGNORE;
 
+    attachInjectedBundleClientToContext(webContext.get());
     attachDownloadClientToContext(webContext.get());
     attachRequestManagerClientToContext(webContext.get());
 
@@ -766,6 +771,24 @@ void webkit_web_context_set_web_extensions_directory(WebKitWebContext* context, 
     context->priv->context->setInjectedBundleInitializationUserData(WebString::create(WebCore::filenameToString(directory)));
 }
 
+/**
+ * webkit_web_context_prefetch_dns:
+ * @context: a #WebKitWebContext
+ * @hostname: a hostname to be resolved
+ *
+ * Resolve the domain name of the given @hostname in advance, so that if a URI
+ * of @hostname is requested the load will be performed more quickly.
+ */
+void webkit_web_context_prefetch_dns(WebKitWebContext* context, const char* hostname)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+    g_return_if_fail(hostname);
+
+    ImmutableDictionary::MapType message;
+    message.set(String::fromUTF8("Hostname"), WebString::create(String::fromUTF8(hostname)));
+    context->priv->context->postMessageToInjectedBundle(String::fromUTF8("PrefetchDNS"), ImmutableDictionary::adopt(message).get());
+}
+
 WebKitDownload* webkitWebContextGetOrCreateDownload(DownloadProxy* downloadProxy)
 {
     GRefPtr<WebKitDownload> download = downloadsMap().get(downloadProxy);
@@ -830,4 +853,23 @@ void webkitWebContextDidFailToLoadURIRequest(WebKitWebContext* context, uint64_t
 void webkitWebContextDidFinishURIRequest(WebKitWebContext* context, uint64_t requestID)
 {
     context->priv->uriSchemeRequests.remove(requestID);
+}
+
+void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebView* webView)
+{
+    WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
+    webkitWebViewBaseCreateWebPage(webViewBase, context->priv->context.get(), 0);
+    WebPageProxy* page = webkitWebViewBaseGetPage(webViewBase);
+    context->priv->webViews.set(page->pageID(), webView);
+}
+
+void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* webView)
+{
+    WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(webView));
+    context->priv->webViews.remove(page->pageID());
+}
+
+WebKitWebView* webkitWebContextGetWebViewForPage(WebKitWebContext* context, WebPageProxy* page)
+{
+    return page ? context->priv->webViews.get(page->pageID()) : 0;
 }

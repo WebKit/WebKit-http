@@ -366,6 +366,22 @@
                 "hidden": true
             },
             {
+                "name": "canContinuouslyPaint",
+                "description": "Tells if backend supports continuous painting",
+                "returns": [
+                    { "name": "value", "type": "boolean", "description": "True if continuous painting is available" }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "setContinuousPaintingEnabled",
+                "description": "Requests that backend enables continuous painting",
+                "parameters": [
+                    { "name": "enabled", "type": "boolean", "description": "True for enabling cointinuous painting" }
+                ],
+                "hidden": true
+            },
+            {
                 "name": "getScriptExecutionStatus",
                 "description": "Determines if scripts can be executed in the page.",
                 "returns": [
@@ -464,6 +480,14 @@
                     { "name": "data", "type": "string", "description": "Base64-encoded image data (PNG)." }
                 ],
                 "hidden": true
+            },
+            {
+                "name": "handleJavaScriptDialog",
+                "description": "Accepts or dismisses a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload).",
+                "parameters": [
+                    { "name": "accept", "type": "boolean", "description": "Whether to accept or dismiss the dialog." }
+                ],
+                "hidden": true
             }
         ],
         "events": [
@@ -493,6 +517,52 @@
                 "parameters": [
                     { "name": "frameId", "$ref": "Network.FrameId", "description": "Id of the frame that has been detached." }
                 ],
+                "hidden": true
+            },
+            {
+                "name": "frameStartedLoading",
+                "description": "Fired when frame has started loading.",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Id of the frame that has started loading." }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "frameStoppedLoading",
+                "description": "Fired when frame has stopped loading.",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Id of the frame that has stopped loading." }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "frameScheduledNavigation",
+                "description": "Fired when frame schedules a potential navigation.",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Id of the frame that has scheduled a navigation." },
+                    { "name": "delay", "type": "number", "description": "Delay (in seconds) until the navigation is scheduled to begin. The navigation is not guaranteed to start." }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "frameClearedScheduledNavigation",
+                "description": "Fired when frame no longer has a scheduled navigation.",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Id of the frame that has cleared its scheduled navigation." }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "javascriptDialogOpening",
+                "description": "Fired when a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload) is about to open.",
+                "parameters": [
+                    { "name": "message", "type": "string", "description": "Message that will be displayed by the dialog." }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "javascriptDialogClosed",
+                "description": "Fired when a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload) has been closed.",
                 "hidden": true
             }
         ]
@@ -2984,12 +3054,28 @@
                 ]
             },
             {
-                "id": "Profile",
+                "id": "CPUProfileNode",
+                "type": "object",
+                "description": "CPU Profile node. Holds callsite information, execution statistics and child nodes.",
+                "properties": [
+                    { "name": "functionName", "type": "string", "description": "Function name." },
+                    { "name": "url", "type": "string", "description": "URL." },
+                    { "name": "lineNumber", "type": "integer", "description": "Line number." },
+                    { "name": "totalTime", "type": "number", "description": "Total execution time." },
+                    { "name": "selfTime", "type": "number", "description": "Self time." },
+                    { "name": "numberOfCalls", "type": "integer", "description": "Number of calls." },
+                    { "name": "visible", "type": "boolean", "description": "Visibility." },
+                    { "name": "callUID", "type": "number", "description": "Call UID." },
+                    { "name": "children", "type": "array", "items": { "$ref": "CPUProfileNode" }, "description": "Child nodes." }
+                ]
+            },
+            {
+                "id": "CPUProfile",
                 "type": "object",
                 "description": "Profile.",
                 "properties": [
-                    { "name": "head", "type": "object", "optional": true },
-                    { "name": "bottomUpHead", "type": "object", "optional": true },
+                    { "name": "head", "$ref": "CPUProfileNode", "optional": true },
+                    { "name": "bottomUpHead", "$ref": "CPUProfileNode", "optional": true },
                     { "name": "idleTime", "type": "number", "optional": true }
                 ]
             },
@@ -3037,13 +3123,18 @@
                 ]
             },
             {
-                "name": "getProfile",
+                "name": "getCPUProfile",
                 "parameters": [
-                    { "name": "type", "type": "string" },
                     { "name": "uid", "type": "integer" }
                 ],
                 "returns": [
-                    { "name": "profile", "$ref": "Profile" }
+                    { "name": "profile", "$ref": "CPUProfile" }
+                ]
+            },
+            {
+                "name": "getHeapSnapshot",
+                "parameters": [
+                    { "name": "uid", "type": "integer" }
                 ]
             },
             {
@@ -3057,7 +3148,10 @@
                 "name": "clearProfiles"
             },
             {
-                "name": "takeHeapSnapshot"
+                "name": "takeHeapSnapshot",
+                "parameters": [
+                    { "name": "reportProgress", "type": "boolean", "optional": true, "description": "If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken." }
+                ]
             },
             {
                 "name": "collectGarbage"
@@ -3189,9 +3283,26 @@
         "hidden": true,
         "types": [
             {
-                "id": "ContextId",
+                "id": "ResourceId",
                 "type": "string",
-                "description": "Unique context identifier."
+                "description": "Unique resource identifier."
+            },
+            {
+                "id": "ResourceInfo",
+                "type": "object",
+                "properties": [
+                    { "name": "id", "$ref": "ResourceId" },
+                    { "name": "description", "type": "string" }
+                ]
+            },
+            {
+                "id": "ResourceState",
+                "type": "object",
+                "properties": [
+                    { "name": "id", "$ref": "ResourceId" },
+                    { "name": "traceLogId", "$ref": "TraceLogId" },
+                    { "name": "imageURL", "type": "string", "optional": true, "description": "Screenshot image data URL." }
+                ]
             },
             {
                 "id": "CallArgument",
@@ -3204,10 +3315,11 @@
                 "id": "Call",
                 "type": "object",
                 "properties": [
-                    { "name": "contextId", "$ref": "ContextId" },
+                    { "name": "contextId", "$ref": "ResourceId" },
                     { "name": "functionName", "type": "string", "optional": true },
                     { "name": "arguments", "type": "array", "items": { "$ref": "CallArgument" }, "optional": true },
                     { "name": "result", "$ref": "CallArgument", "optional": true },
+                    { "name": "isDrawingCall", "type": "boolean", "optional": true },
                     { "name": "property", "type": "string", "optional": true },
                     { "name": "value", "$ref": "CallArgument", "optional": true },
                     { "name": "sourceURL", "type": "string", "optional": true },
@@ -3226,8 +3338,9 @@
                 "properties": [
                     { "name": "id", "$ref": "TraceLogId" },
                     { "name": "calls", "type": "array", "items": { "$ref": "Call" } },
-                    { "name": "startOffset", "type": "integer", "optional": true },
-                    { "name": "alive", "type": "boolean", "optional": true }
+                    { "name": "startOffset", "type": "integer" },
+                    { "name": "alive", "type": "boolean" },
+                    { "name": "totalAvailableCalls", "type": "number" }
                 ]
             }
         ],
@@ -3255,15 +3368,23 @@
             },
             {
                 "name": "captureFrame",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Identifier of the frame containing document whose canvases are to be captured. If omitted, main frame is assumed." }
+                ],
                 "returns": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" }
-                ]
+                    { "name": "traceLogId", "$ref": "TraceLogId", "description": "Identifier of the trace log containing captured canvas calls." }
+                ],
+                "description": "Starts (or continues) a canvas frame capturing which will be stopped automatically after the next frame is prepared."
             },
             {
                 "name": "startCapturing",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Identifier of the frame containing document whose canvases are to be captured. If omitted, main frame is assumed." }
+                ],
                 "returns": [
-                    { "name": "traceLogId", "$ref": "TraceLogId" }
-                ]
+                    { "name": "traceLogId", "$ref": "TraceLogId", "description": "Identifier of the trace log containing captured canvas calls." }
+                ],
+                "description": "Starts (or continues) consecutive canvas frames capturing. The capturing is stopped by the corresponding stopCapturing command."
             },
             {
                 "name": "stopCapturing",
@@ -3275,7 +3396,8 @@
                 "name": "getTraceLog",
                 "parameters": [
                     { "name": "traceLogId", "$ref": "TraceLogId" },
-                    { "name": "startOffset", "type": "integer", "optional": true }
+                    { "name": "startOffset", "type": "integer", "optional": true },
+                    { "name": "maxLength", "type": "integer", "optional": true }
                 ],
                 "returns": [
                     { "name": "traceLog", "$ref": "TraceLog" }
@@ -3288,11 +3410,46 @@
                     { "name": "stepNo", "type": "integer" }
                 ],
                 "returns": [
-                    { "name": "screenshotDataUrl", "type": "string" }
+                    { "name": "resourceState", "$ref": "ResourceState" }
+                ]
+            },
+            {
+                "name": "getResourceInfo",
+                "parameters": [
+                    { "name": "resourceId", "$ref": "ResourceId" }
+                ],
+                "returns": [
+                    { "name": "resourceInfo", "$ref": "ResourceInfo" }
+                ]
+            },
+            {
+                "name": "getResourceState",
+                "parameters": [
+                    { "name": "traceLogId", "$ref": "TraceLogId" },
+                    { "name": "resourceId", "$ref": "ResourceId" }
+                ],
+                "returns": [
+                    { "name": "resourceState", "$ref": "ResourceState" }
                 ]
             }
         ],
-        "events": []
+        "events": [
+            {
+                "name": "contextCreated",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Identifier of the frame containing a canvas with a context." }
+                ],
+                "description": "Fired when a canvas context has been created in the given frame. The context may not be instrumented (see hasUninstrumentedCanvases command)."
+            },
+            {
+                "name": "traceLogsRemoved",
+                "parameters": [
+                    { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "If given, trace logs from the given frame were removed." },
+                    { "name": "traceLogId", "$ref": "TraceLogId", "optional": true, "description": "If given, trace log with the given ID was removed." }
+                ],
+                "description": "Fired when a set of trace logs were removed from the backend. If no parameters are given, all trace logs were removed."
+            }
+        ]
     },
     {
         "domain": "Input",

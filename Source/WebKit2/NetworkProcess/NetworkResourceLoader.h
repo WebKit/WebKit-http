@@ -30,8 +30,7 @@
 
 #include "MessageSender.h"
 #include "NetworkConnectionToWebProcess.h"
-#include "NetworkResourceLoadParameters.h"
-#include <WebCore/AuthenticationChallenge.h>
+#include "SchedulableLoader.h"
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
@@ -44,32 +43,22 @@ class ResourceHandle;
 namespace WebKit {
 
 class RemoteNetworkingContext;
-typedef uint64_t ResourceLoadIdentifier;
 
-class NetworkResourceLoader : public RefCounted<NetworkResourceLoader>, public NetworkConnectionToWebProcessObserver, public WebCore::ResourceHandleClient, public CoreIPC::MessageSender<NetworkResourceLoader> {
+class NetworkResourceLoader : public SchedulableLoader, public WebCore::ResourceHandleClient, public CoreIPC::MessageSender<NetworkResourceLoader> {
 public:
-    static RefPtr<NetworkResourceLoader> create(const NetworkResourceLoadParameters& parameters, ResourceLoadIdentifier identifier, NetworkConnectionToWebProcess* connection)
+    static RefPtr<NetworkResourceLoader> create(const NetworkResourceLoadParameters& parameters, NetworkConnectionToWebProcess* connection)
     {
-        return adoptRef(new NetworkResourceLoader(parameters, identifier, connection));
+        return adoptRef(new NetworkResourceLoader(parameters, connection));
     }
     
     ~NetworkResourceLoader();
 
     // Used by MessageSender.
     CoreIPC::Connection* connection() const;
-    uint64_t destinationID() const { return identifier(); }
+    uint64_t destinationID() const;
     
-    void didReceiveNetworkResourceLoaderMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-
-    void start();
-
-    virtual void connectionToWebProcessDidClose(NetworkConnectionToWebProcess*) OVERRIDE;
-    
-    ResourceLoadIdentifier identifier() const { return m_identifier; }
-    WebCore::ResourceLoadPriority priority() const;
-    
-    NetworkConnectionToWebProcess* connectionToWebProcess() { return m_connection.get(); }
-
+    virtual void start();
+        
     // ResourceHandleClient methods
     virtual void willSendRequest(WebCore::ResourceHandle*, WebCore::ResourceRequest&, const WebCore::ResourceResponse& /*redirectResponse*/) OVERRIDE;
     virtual void didSendData(WebCore::ResourceHandle*, unsigned long long /*bytesSent*/, unsigned long long /*totalBytesToBeSent*/) OVERRIDE;
@@ -83,7 +72,6 @@ public:
     virtual bool shouldUseCredentialStorage(WebCore::ResourceHandle*) OVERRIDE;
     virtual void didReceiveAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) OVERRIDE;
     virtual void didCancelAuthenticationChallenge(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) OVERRIDE;
-    virtual void receivedCancellation(WebCore::ResourceHandle*, const WebCore::AuthenticationChallenge&) OVERRIDE;
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     virtual bool canAuthenticateAgainstProtectionSpace(WebCore::ResourceHandle*, const WebCore::ProtectionSpace&) OVERRIDE;
@@ -108,25 +96,15 @@ public:
 #endif
 
 private:
-    NetworkResourceLoader(const NetworkResourceLoadParameters&, ResourceLoadIdentifier, NetworkConnectionToWebProcess*);
+    NetworkResourceLoader(const NetworkResourceLoadParameters&, NetworkConnectionToWebProcess*);
 
-    void receivedAuthenticationCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
-    void receivedRequestToContinueWithoutAuthenticationCredential(const WebCore::AuthenticationChallenge&);
-    void receivedAuthenticationCancellation(const WebCore::AuthenticationChallenge&);
-    
     void scheduleStopOnMainThread();
     static void performStops(void*);
 
-    void stop();
-
-    NetworkResourceLoadParameters m_requestParameters;
-    ResourceLoadIdentifier m_identifier;
+    void resourceHandleStopped();
 
     RefPtr<RemoteNetworkingContext> m_networkingContext;
     RefPtr<WebCore::ResourceHandle> m_handle;    
-    RefPtr<NetworkConnectionToWebProcess> m_connection;
-    
-    OwnPtr<WebCore::AuthenticationChallenge> m_currentAuthenticationChallenge;
 };
 
 } // namespace WebKit

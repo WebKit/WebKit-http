@@ -20,7 +20,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-messages -> DrawingArea {
+messages -> DrawingArea LegacyReceiver {
     UpdateBackingStoreState(uint64_t backingStoreStateID, bool respondImmediately, float deviceScaleFactor, WebCore::IntSize size, WebCore::IntSize scrollOffset)
     DidUpdate()
     SuspendPainting()
@@ -30,7 +30,7 @@ messages -> DrawingArea {
 
 #if PLATFORM(MAC)
     // Used by TiledCoreAnimationDrawingArea.
-    UpdateGeometry(WebCore::IntSize viewSize, double minimumLayoutWidth)
+    UpdateGeometry(WebCore::IntSize viewSize)
     SetDeviceScaleFactor(float deviceScaleFactor)
     SetColorSpace(WebKit::ColorSpaceData colorSpace)
 #endif

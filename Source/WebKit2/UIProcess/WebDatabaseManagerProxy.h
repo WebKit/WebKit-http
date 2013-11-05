@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,7 +50,7 @@ class WebDatabaseManagerProxy : public APIObject, public WebContextSupplement, p
 public:
     static const Type APIType = TypeDatabaseManager;
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
     static PassRefPtr<WebDatabaseManagerProxy> create(WebContext*);
     virtual ~WebDatabaseManagerProxy();
@@ -89,8 +89,7 @@ private:
     virtual void derefWebContextSupplement() OVERRIDE;
 
     // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveWebDatabaseManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     // Message handlers.
     void didGetDatabasesByOrigin(const Vector<OriginAndDatabases>& originAndDatabases, uint64_t callbackID);

@@ -38,6 +38,7 @@
 #include "DatabaseManager.h"
 #include "DatabaseTask.h"
 #include "DatabaseThread.h"
+#include "DatabaseTracker.h"
 #include "Document.h"
 #include "Logging.h"
 #include "NotImplemented.h"
@@ -65,8 +66,8 @@
 
 namespace WebCore {
 
-Database::Database(ScriptExecutionContext* context, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize)
-    : AbstractDatabase(context, name, expectedVersion, displayName, estimatedSize, AsyncDatabase)
+Database::Database(PassRefPtr<DatabaseContext> databaseContext, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize)
+    : DatabaseBackend(databaseContext, name, expectedVersion, displayName, estimatedSize, AsyncDatabase)
     , m_transactionInProgress(false)
     , m_isTransactionQueueEnabled(true)
     , m_deleted(false)
@@ -74,7 +75,7 @@ Database::Database(ScriptExecutionContext* context, const String& name, const St
     m_databaseThreadSecurityOrigin = m_contextThreadSecurityOrigin->isolatedCopy();
 
     ScriptController::initializeThreading();
-    ASSERT(databaseContext()->databaseThread());
+    ASSERT(m_databaseContext->databaseThread());
 }
 
 class DerefContextTask : public ScriptExecutionContext::Task {
@@ -117,17 +118,20 @@ String Database::version() const
 {
     if (m_deleted)
         return String();
-    return AbstractDatabase::version();
+    return DatabaseBackend::version();
 }
 
-bool Database::openAndVerifyVersion(bool setVersionInNewDatabase, ExceptionCode& e, String& errorMessage)
+bool Database::openAndVerifyVersion(bool setVersionInNewDatabase, DatabaseError& error, String& errorMessage)
 {
     DatabaseTaskSynchronizer synchronizer;
     if (!databaseContext()->databaseThread() || databaseContext()->databaseThread()->terminationRequested(&synchronizer))
         return false;
 
+#if PLATFORM(CHROMIUM)
+    DatabaseTracker::tracker().prepareToOpenDatabase(this);
+#endif
     bool success = false;
-    OwnPtr<DatabaseOpenTask> task = DatabaseOpenTask::create(this, setVersionInNewDatabase, &synchronizer, e, errorMessage, success);
+    OwnPtr<DatabaseOpenTask> task = DatabaseOpenTask::create(this, setVersionInNewDatabase, &synchronizer, error, errorMessage, success);
     databaseContext()->databaseThread()->scheduleImmediateTask(task.release());
     synchronizer.waitForTaskCompletion();
 
@@ -171,7 +175,6 @@ void Database::close()
     RefPtr<Database> protect = this;
     databaseContext()->databaseThread()->recordDatabaseClosed(this);
     databaseContext()->databaseThread()->unscheduleDatabaseTasks(this);
-    DatabaseManager::manager().removeOpenDatabase(this);
 }
 
 void Database::closeImmediately()
@@ -189,9 +192,9 @@ unsigned long long Database::maximumSize() const
     return DatabaseManager::manager().getMaxSizeForDatabase(this);
 }
 
-bool Database::performOpenAndVerify(bool setVersionInNewDatabase, ExceptionCode& e, String& errorMessage)
+bool Database::performOpenAndVerify(bool setVersionInNewDatabase, DatabaseError& error, String& errorMessage)
 {
-    if (AbstractDatabase::performOpenAndVerify(setVersionInNewDatabase, e, errorMessage)) {
+    if (DatabaseBackend::performOpenAndVerify(setVersionInNewDatabase, error, errorMessage)) {
         if (databaseContext()->databaseThread())
             databaseContext()->databaseThread()->recordDatabaseOpen(this);
 

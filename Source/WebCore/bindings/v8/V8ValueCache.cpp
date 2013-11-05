@@ -42,7 +42,11 @@ namespace WebCore {
 
 static v8::Local<v8::String> makeExternalString(const String& string)
 {
+#ifdef V8_ONE_BYTE_STRINGS_ENABLED
+    if (string.is8Bit()) {
+#else
     if (string.is8Bit() && string.containsOnlyASCII()) {
+#endif
         WebCoreStringResource8* stringResource = new WebCoreStringResource8(string);
         v8::Local<v8::String> newString = v8::String::NewExternal(stringResource);
         if (newString.IsEmpty())
@@ -115,9 +119,9 @@ v8::Handle<v8::String> StringCache::v8ExternalStringSlow(StringImpl* stringImpl,
 void StringCache::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Binding);
-    info.addMember(m_stringCache);
+    info.addMember(m_stringCache, "stringCache");
     info.ignoreMember(m_lastV8String);
-    info.addMember(m_lastStringImpl);
+    info.addMember(m_lastStringImpl, "lastStringImpl");
 }
 
 IntegerCache::IntegerCache()

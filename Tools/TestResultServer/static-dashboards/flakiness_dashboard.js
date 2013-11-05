@@ -262,6 +262,11 @@ g_defaultDashboardSpecificStateValues = {
     result: '',
 };
 
+DB_SPECIFIC_INVALIDATING_PARAMETERS = {
+    'testType': 'builder',
+    'group': 'builder'
+};
+
 //////////////////////////////////////////////////////////////////////////////
 // GLOBALS
 //////////////////////////////////////////////////////////////////////////////
@@ -385,7 +390,7 @@ function platformAndBuildType(builderName)
         var builderNameUpperCase = builderName.toUpperCase();
         
         var platform = '';
-        if (isLayoutTestResults() && g_crossDashboardState.group == '@ToT - webkit.org' && !stringContains(builderNameUpperCase, 'CHROMIUM'))
+        if (isLayoutTestResults() && currentBuilderGroupName() == '@ToT - webkit.org' && !stringContains(builderNameUpperCase, 'CHROMIUM'))
             platform = nonChromiumPlatform(builderNameUpperCase);
         else
             platform = chromiumPlatform(builderNameUpperCase);

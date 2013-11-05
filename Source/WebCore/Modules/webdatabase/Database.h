@@ -31,8 +31,9 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractDatabase.h"
+#include "DatabaseBackend.h"
 #include "DatabaseBasicTypes.h"
+#include "DatabaseError.h"
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
@@ -40,7 +41,6 @@
 namespace WebCore {
 
 class DatabaseCallback;
-class ScriptExecutionContext;
 class SecurityOrigin;
 class SQLTransaction;
 class SQLTransactionCallback;
@@ -50,7 +50,7 @@ class SQLTransactionErrorCallback;
 class SQLTransactionWrapper;
 class VoidCallback;
 
-class Database : public AbstractDatabase {
+class Database : public DatabaseBackend {
 public:
     virtual ~Database();
 
@@ -87,13 +87,13 @@ private:
     class DatabaseTransactionTask;
     class DatabaseTableNamesTask;
 
-    Database(ScriptExecutionContext*, const String& name, const String& expectedVersion,
+    Database(PassRefPtr<DatabaseContext>, const String& name, const String& expectedVersion,
              const String& displayName, unsigned long estimatedSize);
     void runTransaction(PassRefPtr<SQLTransactionCallback>, PassRefPtr<SQLTransactionErrorCallback>,
                         PassRefPtr<VoidCallback> successCallback, PassRefPtr<SQLTransactionWrapper>, bool readOnly);
 
-    bool openAndVerifyVersion(bool setVersionInNewDatabase, ExceptionCode&, String& errorMessage);
-    virtual bool performOpenAndVerify(bool setVersionInNewDatabase, ExceptionCode&, String& errorMessage);
+    bool openAndVerifyVersion(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
+    virtual bool performOpenAndVerify(bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
 
     void inProgressTransactionCompleted();
     void scheduleTransaction();

@@ -39,8 +39,8 @@ namespace WebCore {
 ScrollingStateNode::ScrollingStateNode(ScrollingStateTree* scrollingStateTree, ScrollingNodeID nodeID)
     : m_scrollingStateTree(scrollingStateTree)
     , m_nodeID(nodeID)
+    , m_changedProperties(0)
     , m_parent(0)
-    , m_scrollLayerDidChange(false)
 {
 }
 
@@ -50,10 +50,11 @@ ScrollingStateNode::ScrollingStateNode(ScrollingStateTree* scrollingStateTree, S
 ScrollingStateNode::ScrollingStateNode(const ScrollingStateNode& stateNode)
     : m_scrollingStateTree(0)
     , m_nodeID(stateNode.scrollingNodeID())
+    , m_changedProperties(stateNode.changedProperties())
     , m_parent(0)
-    , m_scrollLayerDidChange(stateNode.scrollLayerDidChange())
 {
-    setScrollLayer(stateNode.platformScrollLayer());
+    // FIXME: why doesn't this set the GraphicsLayer?
+    setScrollPlatformLayer(stateNode.platformScrollLayer());
 }
 
 ScrollingStateNode::~ScrollingStateNode()
@@ -65,7 +66,6 @@ PassOwnPtr<ScrollingStateNode> ScrollingStateNode::cloneAndReset()
     OwnPtr<ScrollingStateNode> clone = this->clone();
 
     // Now that this node is cloned, reset our change properties.
-    setScrollLayerDidChange(false);
     resetChangedProperties();
 
     cloneAndResetChildren(clone.get());

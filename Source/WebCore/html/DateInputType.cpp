@@ -61,6 +61,11 @@ PassOwnPtr<InputType> DateInputType::create(HTMLInputElement* element)
     return adoptPtr(new DateInputType(element));
 }
 
+void DateInputType::attach()
+{
+    observeFeatureIfVisible(FeatureObserver::InputTypeDate);
+}
+
 const AtomicString& DateInputType::formControlType() const
 {
     return InputTypeNames::date();

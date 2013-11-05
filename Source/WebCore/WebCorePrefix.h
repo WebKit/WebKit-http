@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2007 Apple Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2013 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,6 +27,8 @@
 
 /* Things that need to be defined globally should go into "config.h". */
 
+#include <wtf/Platform.h>
+
 #if defined(__APPLE__)
 #ifdef __cplusplus
 #define NULL __null
@@ -35,17 +37,17 @@
 #endif
 #endif
 
-#if defined(WIN32) || defined(_WIN32)
+#if OS(WINDOWS)
 
 #ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0500
+#define _WIN32_WINNT 0x0502
 #endif
 
 #ifndef WINVER
-#define WINVER 0x0500
+#define WINVER 0x0502
 #endif
 
-#ifndef WTF_USE_CURL
+#if !USE(CURL)
 #ifndef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
 #endif
@@ -62,7 +64,7 @@
 
 #include <pthread.h>
 
-#endif // defined(WIN32) || defined(_WIN32)
+#endif // OS(WINDOWS)
 
 #include <sys/types.h>
 #include <fcntl.h>
@@ -72,7 +74,7 @@
 
 // On Linux this causes conflicts with libpng because there are two impls. of
 // longjmp - see here: https://bugs.launchpad.net/ubuntu/+source/libpng/+bug/218409
-#ifndef BUILDING_WX__
+#if !PLATFORM(WX)
 #include <setjmp.h>
 #endif
 
@@ -130,14 +132,14 @@ _LIBCPP_END_NAMESPACE_STD
 #include <sys/resource.h>
 #endif
 
-#if !defined(BUILDING_WX__)
+#if !PLATFORM(WX)
 #include <CoreFoundation/CoreFoundation.h>
-#ifdef WTF_PLATFORM_WIN_CAIRO
+#if PLATFORM(WIN_CAIRO)
 #include <ConditionalMacros.h>
 #include <windows.h>
 #else
 
-#if defined(WIN32) || defined(_WIN32)
+#if OS(WINDOWS)
 // FIXME <rdar://problem/8208868> Remove support for obsolete ColorSync API, CoreServices header in CoreGraphics
 // We can remove this once the new ColorSync APIs are available in an internal Safari SDK.
 #include <ColorSync/ColorSync.h>
@@ -150,14 +152,20 @@ _LIBCPP_END_NAMESPACE_STD
 #include <CFNetwork/CFNetwork.h>
 #include <windows.h>
 #else
+#if !PLATFORM(IOS)
 #include <CoreServices/CoreServices.h>
-#endif
+#endif // !PLATFORM(IOS)
+#endif // OS(WINDOWS)
 
 #endif
-#endif // !defined(BUILDING_WX__)
+#endif // !PLATFORM(WX)
 
 #ifdef __OBJC__
+#if PLATFORM(IOS)
+#import <Foundation/Foundation.h>
+#else
 #import <Cocoa/Cocoa.h>
+#endif // PLATFORM(IOS)
 #endif
 
 #ifdef __cplusplus

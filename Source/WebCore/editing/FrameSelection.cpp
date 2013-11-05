@@ -125,6 +125,16 @@ Element* FrameSelection::rootEditableElementOrDocumentElement() const
     return selectionRoot ? selectionRoot : m_frame->document()->documentElement();
 }
 
+Node* FrameSelection::rootEditableElementOrTreeScopeRootNode() const
+{
+    Element* selectionRoot = m_selection.rootEditableElement();
+    if (selectionRoot)
+        return selectionRoot;
+
+    Node* node = m_selection.base().containerNode();
+    return node ? node->treeScope()->rootNode() : 0;
+}
+
 Element* FrameSelection::rootEditableElementRespectingShadowTree() const
 {
     Element* selectionRoot = m_selection.rootEditableElement();
@@ -1327,7 +1337,12 @@ static void repaintCaretForLocalRect(Node* node, const LayoutRect& rect)
     if (!caretPainter)
         return;
 
-    caretPainter->repaintRectangle(rect);
+    // FIXME: Need to over-paint 1 pixel to workaround some rounding problems.
+    // https://bugs.webkit.org/show_bug.cgi?id=108283
+    LayoutRect inflatedRect = rect;
+    inflatedRect.inflate(1);
+
+    caretPainter->repaintRectangle(inflatedRect);
 }
 
 bool FrameSelection::recomputeCaretRect()
@@ -1607,13 +1622,13 @@ void FrameSelection::selectAll()
     if (isContentEditable()) {
         root = highestEditableRoot(m_selection.start());
         if (Node* shadowRoot = m_selection.nonBoundaryShadowTreeRootNode())
-            selectStartTarget = shadowRoot->shadowAncestorNode();
+            selectStartTarget = shadowRoot->shadowHost();
         else
             selectStartTarget = root.get();
     } else {
         root = m_selection.nonBoundaryShadowTreeRootNode();
         if (root)
-            selectStartTarget = root->shadowAncestorNode();
+            selectStartTarget = root->shadowHost();
         else {
             root = document->documentElement();
             selectStartTarget = document->body();
@@ -1830,9 +1845,6 @@ void FrameSelection::notifyRendererOfSelectionChange(EUserTriggered userTriggere
 {
     m_frame->document()->updateStyleIfNeeded();
 
-    if (!rootEditableElement())
-        return;
-
     if (HTMLTextFormControlElement* textControl = enclosingTextFormControl(start()))
         textControl->selectionChanged(userTriggered == UserTriggered);
 }
@@ -1873,7 +1885,7 @@ void FrameSelection::setFocusedNodeIfNeeded()
                 m_frame->page()->focusController()->setFocusedNode(target, m_frame);
                 return;
             }
-            target = target->parentOrHostNode(); 
+            target = target->parentOrShadowHostNode();
         }
         m_frame->document()->setFocusedNode(0);
     }

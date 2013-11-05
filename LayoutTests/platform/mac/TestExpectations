@@ -2,6 +2,9 @@
 #
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 
+# https://bugs.webkit.org/show_bug.cgi?id=89812
+fast/parser/parser-yield-timing.html [ Pass Failure ]
+
 # <rdar://problem/5647952> fast/events/mouseout-on-window.html needs mac DRT to issue mouse out events
 fast/events/mouseout-on-window.html
 
@@ -135,6 +138,15 @@ canvas/philip/tests/2d.drawImage.outsidesource.html
 # IndexedDB is not yet enabled.
 storage/indexeddb
 http/tests/inspector/indexeddb
+http/tests/security/cross-origin-indexeddb-allowed.html
+http/tests/security/cross-origin-indexeddb.html
+http/tests/security/cross-origin-worker-indexeddb-allowed.html
+http/tests/security/cross-origin-worker-indexeddb.html
+http/tests/security/no-indexeddb-from-sandbox.html
+
+# Remove from list after enabling CANVAS_PATH
+fast/canvas/canvas-currentPath.html
+fast/canvas/canvas-path-constructors.html
 
 # This port doesn't support DeviceMotion or DeviceOrientation.
 fast/dom/DeviceMotion
@@ -196,6 +208,7 @@ fast/events/constructors/speech-recognition-event-constructor.html
 
 # Media Stream API is not yet enabled.
 fast/mediastream
+fast/events/constructors/media-stream-event-constructor.html
 
 # Needs to be fixed at image decoder layer for Safari.
 fast/images/large-size-image-crash.html
@@ -239,6 +252,7 @@ animations/play-state.html
 # window.eventSender doesn't exist in devtools front-end on mac.
 # https://bugs.webkit.org/show_bug.cgi?id=106793
 inspector/editor/text-editor-formatter.html [ Skip ]
+inspector/editor/text-editor-word-jumps.html [ Skip ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=71120
 inspector/debugger/selected-call-frame-after-formatting-source.html
@@ -262,11 +276,12 @@ inspector/profiler/heap-snapshot-summary-show-ranges.html
 inspector/profiler/heap-snapshot-summary-sorting-fields.html
 inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
-webkit.org/b/50485 inspector-protocol/take-heap-snapshot.html [ Skip ]
+webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
 
 # Skipping newly added tests while I'm finding out what is wrong.
 # https://bugs.webkit.org/show_bug.cgi?id=59706
@@ -379,10 +394,6 @@ webarchive/test-link-rel-icon.html
 http/tests/inspector/network/network-size-chunked.html
 http/tests/inspector/network/network-size-sync.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=64097
-http/tests/inspector/network/network-disable-cache-memory.html
-http/tests/inspector/network/network-disable-cache-xhrs.html
-
 # Quota API is not supported.
 storage/storageinfo-missing-arguments.html
 storage/storageinfo-no-callbacks.html
@@ -406,13 +417,6 @@ plugins/mouse-click-iframe-to-plugin.html
 # HTTP 204 (No Content) should be ignored
 # https://bugs.webkit.org/show_bug.cgi?id=60206
 http/tests/navigation/response204.html
-
-# This platform does not support the Page Visibility API.
-fast/events/page-visibility-iframe-delete-test.html
-fast/events/page-visibility-iframe-move-test.html
-fast/events/page-visibility-iframe-propagation-test.html
-fast/events/page-visibility-null-view.html
-fast/events/page-visibility-transition-test.html
 
 # console long eval test is timeout 60616
 inspector/console/console-long-eval-crash.html
@@ -442,6 +446,9 @@ accessibility/corresponding-control-deleted-crash.html
 # ENABLE(TEMPLATE_ELEMENT) is disabled.
 fast/dom/HTMLTemplateElement
 html5lib/run-template.html
+fast/xsl/xslt-xhtml-template.xml
+fast/xpath/xpath-template-element.html
+fast/xsl/xslt-processor-template.html
 
 # JSC does not support setIsolatedWorldSecurityOrigin (http://webkit.org/b/61540)
 http/tests/security/isolatedWorld/cross-origin-xhr.html
@@ -839,9 +846,6 @@ compositing/iframes/overlapped-nested-iframes.html [ Failure Pass ]
 # https://bugs.webkit.org/show_bug.cgi?id=90725
 media/media-blocked-by-beforeload.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=90742
-sputnik/Conformance/08_Types/8.4_The_String_Type/S8.4_A7.2.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=90833
 fast/js/global-constructors.html
 
@@ -935,6 +939,9 @@ svg/custom/use-instanceRoot-as-event-target.xhtml
 canvas/philip/tests/2d.gradient.interpolate.colouralpha.html
 canvas/philip/tests/2d.line.miter.lineedge.html
 canvas/philip/tests/2d.strokeRect.zero.4.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=107118
+fast/canvas/canvas-quadratic-same-endpoint.html
 
 # --- Compositing ----
 css3/filters/composited-during-transition-layertree.html
@@ -1080,7 +1087,6 @@ webkit.org/b/73766 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFail
 
 # Flakey media tests
 webkit.org/b/34331 http/tests/media/video-referer.html [ Failure Pass ]
-webkit.org/b/97259 media/track/track-cue-rendering-inner-timestamps.html [ Skip ]
 
 # Failing ref tests
 webkit.org/b/84759 ietestcenter/css3/multicolumn/column-containing-block-001.htm [ ImageOnlyFailure ]
@@ -1115,7 +1121,6 @@ webkit.org/b/85689 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
 # Hits assert https://bugs.webkit.org/show_bug.cgi?id=86208
 webkit.org/b/85308 ietestcenter/css3/valuesandunits/units-000.htm [ Skip ]
-webkit.org/b/85310 ietestcenter/css3/valuesandunits/units-010.htm [ ImageOnlyFailure ]
 
 # IETC namespace failures
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
@@ -1147,6 +1152,9 @@ webkit.org/b/101177 svg/repaint/inner-svg-change-viewBox.svg [ ImageOnlyFailure 
 # Needs rebaseline after bug https://bugs.webkit.org/show_bug.cgi?id=104462
 webkit.org/b/98687 fast/css-generated-content/table-row-group-to-inline.html [ Failure ]
 webkit.org/b/104595 fast/css/empty-generated-content.html [ Failure ]
+
+# Needs a rebaseline after WK108429 lands.
+webkit.org/b/108429 svg/custom/text-ctm.svg [ Pass Failure ]
 
 webkit.org/b/93247 [ Debug ] fast/lists/list-marker-remove-crash.html [ Crash ]
 
@@ -1204,9 +1212,6 @@ webkit.org/b/98257 fast/canvas/webgl/oes-element-index-uint.html [ Failure Pass 
 # Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing [ Skip ]
 
-# TileCache tests that don't apply to WK1 (they are re-enabled via the WK2 TestExpectations file)
-platform/mac/tiled-drawing/ [ Skip ]
-
 # Can't hide scrollbars in WK1
 fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
 
@@ -1251,8 +1256,6 @@ webkit.org/b/105603 http/tests/cookies/single-quoted-value.html [ Failure Pass ]
 
 webkit.org/b/105777 platform/mac/editing/spelling/autocorrection-in-textarea.html [ Failure Pass ]
 
-webkit.org/b/105932 [ MountainLion Debug ] http/tests/inspector/resource-har-pages.html [ Crash ]
-
 webkit.org/b/105986 [ Debug ] transitions/hang-with-bad-transition-list.html [ Pass Crash ]
 webkit.org/b/105986 [ Debug ] svg/dynamic-updates/SVGFEMorphologyElement-dom-in-attr.html [ Pass Crash ]
 webkit.org/b/105986 [ Debug ] svg/dynamic-updates/SVGFEMorphologyElement-dom-radius-attr.html [ Pass Crash ]
@@ -1269,25 +1272,73 @@ webkit.org/b/106151 [ Lion ] http/tests/misc/link-rel-icon-beforeload.html [ Pas
 
 webkit.org/b/106185 fast/frames/flattening/iframe-flattening-fixed-height.html [ Pass Failure ]
 
-webkit.org/b/106361 [ Debug ] svg/custom/text-use-click-crash.xhtml [ Crash ]
-
-webkit.org/b/106318 fast/events/drag-and-drop-autoscroll.html [ Failure ]
-
 webkit.org/b/106412 [ Debug ] editing/style/justify-without-enclosing-block.xhtml [ Crash ]
 webkit.org/b/106412 [ Debug ] editing/execCommand/insert-list-xml.xhtml [ Crash ]
 webkit.org/b/106412 [ Debug ] editing/pasteboard/paste-noscript-xhtml.xhtml [ Crash ]
 webkit.org/b/106412 [ Debug ] editing/pasteboard/paste-xml.xhtml [ Crash ]
 
-webkit.org/b/106415 fast/workers/worker-close-more.html [ Pass Failure ]
-webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ]
-webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
+webkit.org/b/106957 svg/dom/SVGViewSpec-invalid-ref-crash.html [ Failure ]
+
+# Enable when support drag-and-drop autoscrolling
+webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
 
 # Transient. Needs rebaseline.
-webkit.org/b/103955 fast/repaint/4774354.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/4776765.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/caret-outside-block.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/japanese-rl-selection-repaint-in-regions.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/japanese-rl-selection-repaint.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/repaint-across-writing-mode-boundary.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/selection-rl.html [ ImageOnlyFailure ]
 webkit.org/b/103955 fast/repaint/caret-with-transformation.html [ Missing ]
+
+# Needs rebaseline.
+webkit.org/b/105574 editing/input/caret-at-the-edge-of-contenteditable.html [ Failure ]
+webkit.org/b/105574 editing/input/reveal-caret-of-multiline-contenteditable.html [ Failure ]
+webkit.org/b/105574 editing/input/reveal-caret-of-multiline-input.html [ Failure ]
+webkit.org/b/105574 fast/spatial-navigation/snav-div-overflow-scrol-hidden.html [ Failure ]
+
+# Rebaseline required after https://webkit.org/b/31397
+webkit.org/b/107567 svg/batik/text/xmlSpace.svg [ Failure ] 
+webkit.org/b/107567 fast/text/capitalize-empty-generated-string.html [ Failure ] 
+webkit.org/b/107567 fast/text/whitespace/007.html [ Failure ] 
+webkit.org/b/107567 fast/text/whitespace/006.html [ Failure ] 
+webkit.org/b/107567 fast/inline/drawStyledEmptyInlinesWithWS.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug1318.html [ Failure ] 
+webkit.org/b/107567 fast/inline/drawStyledEmptyInlines.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug113235-3.html [ Failure ] 
+webkit.org/b/107567 css2.1/t0505-c16-descendant-01-e.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug1188.html [ Failure ] 
+webkit.org/b/107567 editing/selection/extend-by-sentence-001.html [ Failure ] 
+webkit.org/b/107567 svg/carto.net/combobox.svg [ Failure ] 
+
+webkit.org/b/106415 fast/workers/worker-close-more.html [ Pass Failure ] 
+webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ] 
+webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
+
+# Rebaseline required after https://webkit.org/b/108354
+webkit.org/b/108656 compositing/visible-rect/iframe-no-layers.html [ Failure ]
+webkit.org/b/108656 compositing/visibility/visibility-image-layers-dynamic.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-transformed-html.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-html-background.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-zoomed.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-opacity-html.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-body-layer.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background.html [ Failure ]
+webkit.org/b/108656 platform/mac-wk2/tiled-drawing/fixed-background/fixed-body-background-positioned.html [ Failure ]
+
+# Spellchecker behavior tests.
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word-with-underscores.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-should-select-single-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
+
+webkit.org/b/108257 [ Debug ] compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Crash ]
+webkit.org/b/108257 [ Debug ] compositing/overflow/automatically-opt-into-composited-scrolling.html [ Crash ]
+
+webkit.org/b/108380 http/tests/cache/cached-main-resource.html [ Failure ]
+webkit.org/b/108380 http/tests/cache/iframe-304-crash.html [ Failure ]
+webkit.org/b/108380 http/tests/inspector/resource-har-pages.html [ Failure ]
+webkit.org/b/108380 http/tests/loading/redirect-methods.html [ Failure ]
+webkit.org/b/108380 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
+webkit.org/b/108380 http/tests/misc/favicon-loads-with-images-disabled.html [ Failure ]

@@ -75,7 +75,11 @@ namespace JSC {
     v(bool, showDFGDisassembly, false) \
     v(bool, showAllDFGNodes, false) \
     v(bool, dumpBytecodeAtDFGTime, false) \
+    v(bool, dumpGraphAtEachPhase, false) \
+    v(bool, verboseCompilation, false) \
     v(bool, printEachOSRExit, false) \
+    v(bool, validateGraph, false) \
+    v(bool, validateGraphAtEachPhase, false) \
     \
     v(bool, enableProfiler, false) \
     \
@@ -122,7 +126,6 @@ namespace JSC {
     v(double, structureCheckVoteRatioForHoisting, 1) \
     \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100) \
-    v(unsigned, gcMarkStackSegmentSize, pageSize()) \
     v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7)) \
     v(unsigned, opaqueRootMergeThreshold, 1000) \
     v(double, minHeapUtilization, 0.8) \

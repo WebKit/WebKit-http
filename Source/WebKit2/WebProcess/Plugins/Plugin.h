@@ -80,7 +80,7 @@ public:
 #endif
 
         void encode(CoreIPC::ArgumentEncoder&) const;
-        static bool decode(CoreIPC::ArgumentDecoder*, Parameters&);
+        static bool decode(CoreIPC::ArgumentDecoder&, Parameters&);
     };
 
     // Sets the active plug-in controller and initializes the plug-in.
@@ -262,6 +262,10 @@ public:
     virtual WebCore::IntPoint convertToRootView(const WebCore::IntPoint& pointInLocalCoordinates) const;
 
     virtual bool shouldAlwaysAutoStart() const { return false; }
+
+    virtual bool getResourceData(const unsigned char*& bytes, unsigned& length) const = 0;
+
+    virtual bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) = 0;
 
 protected:
     Plugin();

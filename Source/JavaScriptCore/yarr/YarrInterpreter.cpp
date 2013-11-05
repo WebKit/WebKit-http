@@ -83,8 +83,8 @@ public:
 
     static inline void popParenthesesDisjunctionContext(BackTrackInfoParentheses* backTrack)
     {
-        ASSERT(backTrack->matchAmount);
-        ASSERT(backTrack->lastContext);
+        RELEASE_ASSERT(backTrack->matchAmount);
+        RELEASE_ASSERT(backTrack->lastContext);
         backTrack->lastContext = backTrack->lastContext->next;
         --backTrack->matchAmount;
     }
@@ -111,8 +111,7 @@ public:
     {
         size_t size = sizeof(DisjunctionContext) - sizeof(uintptr_t) + disjunction->m_frameSize * sizeof(uintptr_t);
         allocatorPool = allocatorPool->ensureCapacity(size);
-        if (!allocatorPool)
-            CRASH();
+        RELEASE_ASSERT(allocatorPool);
         return new (allocatorPool->alloc(size)) DisjunctionContext();
     }
 
@@ -161,8 +160,7 @@ public:
     {
         size_t size = sizeof(ParenthesesDisjunctionContext) - sizeof(unsigned) + (term.atom.parenthesesDisjunction->m_numSubpatterns << 1) * sizeof(unsigned) + sizeof(DisjunctionContext) - sizeof(uintptr_t) + disjunction->m_frameSize * sizeof(uintptr_t);
         allocatorPool = allocatorPool->ensureCapacity(size);
-        if (!allocatorPool)
-            CRASH();
+        RELEASE_ASSERT(allocatorPool);
         return new (allocatorPool->alloc(size)) ParenthesesDisjunctionContext(output, term);
     }
 
@@ -207,8 +205,7 @@ public:
 
         int readChecked(unsigned negativePositionOffest)
         {
-            if (pos < negativePositionOffest)
-                CRASH();
+            RELEASE_ASSERT(pos >= negativePositionOffest);
             unsigned p = pos - negativePositionOffest;
             ASSERT(p < length);
             return input[p];
@@ -264,8 +261,7 @@ public:
 
         void uncheckInput(unsigned count)
         {
-            if (pos < count)
-                CRASH();
+            RELEASE_ASSERT(pos >= count);
             pos -= count;
         }
 
@@ -276,8 +272,7 @@ public:
 
         bool atEnd(unsigned negativePositionOffest)
         {
-            if (pos < negativePositionOffest)
-                CRASH();
+            RELEASE_ASSERT(pos >= negativePositionOffest);
             return (pos - negativePositionOffest) == length;
         }
 
@@ -485,7 +480,7 @@ public:
             return true;
         }
 
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return false;
     }
 
@@ -567,7 +562,7 @@ public:
             return true;
         }
 
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return false;
     }
 
@@ -801,7 +796,7 @@ public:
     {
         // 'Terminal' parentheses are at the end of the regex, and as such a match past end
         // should always be returned as a successful match - we should never backtrack to here.
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return false;
     }
 
@@ -927,7 +922,7 @@ public:
             return JSRegExpMatch;
         }
 
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return JSRegExpErrorNoMatch;
     }
 
@@ -1067,7 +1062,7 @@ public:
         }
         }
 
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return JSRegExpErrorNoMatch;
     }
 
@@ -1273,7 +1268,7 @@ public:
         }
 
         // We should never fall-through to here.
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
 
     backtrack:
         ASSERT(context->term < static_cast<int>(disjunction->terms.size()));
@@ -1282,7 +1277,7 @@ public:
         case ByteTerm::TypeSubpatternBegin:
             return JSRegExpNoMatch;
         case ByteTerm::TypeSubpatternEnd:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
 
         case ByteTerm::TypeBodyAlternativeBegin:
         case ByteTerm::TypeBodyAlternativeDisjunction: {
@@ -1304,7 +1299,7 @@ public:
             MATCH_NEXT();
         }
         case ByteTerm::TypeBodyAlternativeEnd:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
 
         case ByteTerm::TypeAlternativeBegin:
         case ByteTerm::TypeAlternativeDisjunction: {
@@ -1393,10 +1388,10 @@ public:
             BACKTRACK();
 
         case ByteTerm::TypeDotStarEnclosure:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
         }
 
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return JSRegExpErrorNoMatch;
     }
 
@@ -1425,8 +1420,7 @@ public:
             output[i << 1] = offsetNoMatch;
 
         allocatorPool = pattern->m_allocator->startAllocator();
-        if (!allocatorPool)
-            CRASH();
+        RELEASE_ASSERT(allocatorPool);
 
         DisjunctionContext* context = allocDisjunctionContext(pattern->m_body.get());
 

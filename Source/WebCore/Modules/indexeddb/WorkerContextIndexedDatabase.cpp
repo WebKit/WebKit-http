@@ -38,8 +38,7 @@
 
 namespace WebCore {
 
-WorkerContextIndexedDatabase::WorkerContextIndexedDatabase(ScriptExecutionContext* context)
-    : m_context(context)
+WorkerContextIndexedDatabase::WorkerContextIndexedDatabase()
 {
 }
 
@@ -47,13 +46,17 @@ WorkerContextIndexedDatabase::~WorkerContextIndexedDatabase()
 {
 }
 
+const char* WorkerContextIndexedDatabase::supplementName()
+{
+    return "WorkerContextIndexedDatabase";
+}
+
 WorkerContextIndexedDatabase* WorkerContextIndexedDatabase::from(ScriptExecutionContext* context)
 {
-    AtomicString name = "WorkderContextIndexedDatabase";
-    WorkerContextIndexedDatabase* supplement = static_cast<WorkerContextIndexedDatabase*>(Supplement<ScriptExecutionContext>::from(context, name));
+    WorkerContextIndexedDatabase* supplement = static_cast<WorkerContextIndexedDatabase*>(Supplement<ScriptExecutionContext>::from(context, supplementName()));
     if (!supplement) {
-        supplement = new WorkerContextIndexedDatabase(context);
-        provideTo(context, name, adoptPtr(supplement));
+        supplement = new WorkerContextIndexedDatabase();
+        provideTo(context, supplementName(), adoptPtr(supplement));
     }
     return supplement;
 }
@@ -65,8 +68,6 @@ IDBFactory* WorkerContextIndexedDatabase::indexedDB(ScriptExecutionContext* cont
 
 IDBFactory* WorkerContextIndexedDatabase::indexedDB()
 {
-    if (!m_context->securityOrigin()->canAccessDatabase())
-        return 0;
     if (!m_factoryBackend)
         m_factoryBackend = IDBFactoryBackendInterface::create();
     if (!m_idbFactory)

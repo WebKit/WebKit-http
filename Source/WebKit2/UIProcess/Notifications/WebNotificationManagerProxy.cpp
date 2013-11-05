@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,10 +40,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-const AtomicString& WebNotificationManagerProxy::supplementName()
+const char* WebNotificationManagerProxy::supplementName()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebNotificationManagerProxy", AtomicString::ConstructFromLiteral));
-    return name;
+    return "WebNotificationManagerProxy";
 }
 
 PassRefPtr<WebNotificationManagerProxy> WebNotificationManagerProxy::create(WebContext* context)
@@ -86,11 +85,6 @@ void WebNotificationManagerProxy::derefWebContextSupplement()
 }
 
 // CoreIPC::MessageReceiver
-
-void WebNotificationManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveWebNotificationManagerProxyMessage(connection, messageID, decoder);
-}
 
 void WebNotificationManagerProxy::populateCopyOfNotificationPermissions(HashMap<String, bool>& permissions)
 {

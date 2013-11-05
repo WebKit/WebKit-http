@@ -21,7 +21,6 @@
 #include "WebSoupRequestManager.h"
 
 #include "DataReference.h"
-#include "MessageID.h"
 #include "WebErrors.h"
 #include "WebKitSoupRequestGeneric.h"
 #include "WebKitSoupRequestInputStream.h"
@@ -86,11 +85,6 @@ WebSoupRequestManager::WebSoupRequestManager(WebProcess* process)
 
 WebSoupRequestManager::~WebSoupRequestManager()
 {
-}
-
-void WebSoupRequestManager::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveWebSoupRequestManagerMessage(connection, messageID, decoder);
 }
 
 void WebSoupRequestManager::registerURIScheme(const String& scheme)

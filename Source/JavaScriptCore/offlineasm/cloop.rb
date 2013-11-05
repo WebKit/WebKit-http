@@ -55,7 +55,7 @@ end
 
 
 class SpecialRegister < NoChildren
-    def dump
+    def clDump
         @name
     end
     def clValue(type=:int)
@@ -66,7 +66,7 @@ end
 C_LOOP_SCRATCH_FPR = SpecialRegister.new("d8")
 
 class RegisterID
-    def dump
+    def clDump
         case name
         when "t0"
             "t0"
@@ -95,12 +95,12 @@ class RegisterID
         end
     end
     def clValue(type=:int)
-        dump + cloopMapType(type)
+        clDump + cloopMapType(type)
     end
 end
 
 class FPRegisterID
-    def dump
+    def clDump
         case name
         when "ft0", "fr"
             "d0"
@@ -119,12 +119,12 @@ class FPRegisterID
         end
     end
     def clValue(type=:int)
-        dump + cloopMapType(type)
+        clDump + cloopMapType(type)
     end
 end
 
 class Immediate
-    def dump
+    def clDump
         "#{value}"
     end
     def clValue(type=:int)
@@ -156,8 +156,8 @@ class Immediate
 end
 
 class Address
-    def dump
-        "[#{base.dump}, #{offset.value}]"
+    def clDump
+        "[#{base.clDump}, #{offset.value}]"
     end
     def clValue(type=:int)
         case type
@@ -229,8 +229,8 @@ class Address
 end
 
 class BaseIndex
-    def dump
-        "[#{base.dump}, #{offset.dump}, #{index.dump} << #{scaleShift}]"
+    def clDump
+        "[#{base.clDump}, #{offset.clDump}, #{index.clDump} << #{scaleShift}]"
     end
     def clValue(type=:int)
         case type
@@ -294,11 +294,11 @@ class BaseIndex
 end
 
 class AbsoluteAddress
-    def dump
+    def clDump
         "#{codeOriginString}"
     end
     def clValue
-        dump
+        clDump
     end
 end
 
@@ -348,7 +348,7 @@ class Sequence
 end
 
 def clOperands(operands)
-    operands.map{|v| v.dump}.join(", ")
+    operands.map{|v| v.clDump}.join(", ")
 end
 
 
@@ -358,14 +358,14 @@ def cloopEmitOperation(operands, type, operator)
     if operands.size == 3
         $asm.putc "#{operands[2].clValue(type)} = #{operands[1].clValue(type)} #{operator} #{operands[0].clValue(type)};"
         if operands[2].is_a? RegisterID and (type == :int32 or type == :uint32)
-            $asm.putc "#{operands[2].dump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
+            $asm.putc "#{operands[2].clDump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
         end
     else
         raise unless operands.size == 2
         raise unless not operands[1].is_a? Immediate
         $asm.putc "#{operands[1].clValue(type)} = #{operands[1].clValue(type)} #{operator} #{operands[0].clValue(type)};"
         if operands[1].is_a? RegisterID and (type == :int32 or type == :uint32)
-            $asm.putc "#{operands[1].dump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
+            $asm.putc "#{operands[1].clDump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
         end
     end
 end
@@ -375,14 +375,14 @@ def cloopEmitShiftOperation(operands, type, operator)
     if operands.size == 3
         $asm.putc "#{operands[2].clValue(type)} = #{operands[1].clValue(type)} #{operator} (#{operands[0].clValue(:int)} & 0x1f);"
         if operands[2].is_a? RegisterID and (type == :int32 or type == :uint32)
-            $asm.putc "#{operands[2].dump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
+            $asm.putc "#{operands[2].clDump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
         end
     else
         raise unless operands.size == 2
         raise unless not operands[1].is_a? Immediate
         $asm.putc "#{operands[1].clValue(type)} = #{operands[1].clValue(type)} #{operator} (#{operands[0].clValue(:int)} & 0x1f);"
         if operands[1].is_a? RegisterID and (type == :int32 or type == :uint32)
-            $asm.putc "#{operands[1].dump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
+            $asm.putc "#{operands[1].clDump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
         end
     end
 end
@@ -393,7 +393,7 @@ def cloopEmitUnaryOperation(operands, type, operator)
     raise unless not operands[0].is_a? Immediate
     $asm.putc "#{operands[0].clValue(type)} = #{operator}#{operands[0].clValue(type)};"
     if operands[0].is_a? RegisterID and (type == :int32 or type == :uint32)
-        $asm.putc "#{operands[0].dump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
+        $asm.putc "#{operands[0].clDump}.clearHighWord();" # Just clear it. It does nothing on the 32-bit port.
     end
 end
 
@@ -703,7 +703,7 @@ class Instruction
 
         when "td2i"
             $asm.putc "#{operands[1].clValue(:int)} = #{operands[0].clValue(:double)};"
-            $asm.putc "#{operands[1].dump}.clearHighWord();"
+            $asm.putc "#{operands[1].clDump}.clearHighWord();"
 
         when "bcd2i"  # operands: srcDbl dstInt slowPath
             $asm.putc "{"
@@ -712,7 +712,7 @@ class Instruction
             $asm.putc "    if (asInt32 != d || (!asInt32 && signbit(d))) // true for -0.0"
             $asm.putc "        goto  #{operands[2].cLabel};"
             $asm.putc "    #{operands[1].clValue} = asInt32;"            
-            $asm.putc "    #{operands[1].dump}.clearHighWord();"
+            $asm.putc "    #{operands[1].clDump}.clearHighWord();"
             $asm.putc "}"
 
         when "move"

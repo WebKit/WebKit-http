@@ -50,6 +50,7 @@ DateTimeFieldElement::DateTimeFieldElement(Document* document, FieldOwner& field
 {
     // On accessibility, DateTimeFieldElement acts like spin button.
     setAttribute(roleAttr, "spinbutton");
+    setAttribute(aria_valuetextAttr, AXDateTimeFieldEmptyValueText());
 }
 
 void DateTimeFieldElement::defaultEventHandler(Event* event)
@@ -140,11 +141,11 @@ void DateTimeFieldElement::focusOnNextField()
     m_fieldOwner->focusOnNextField(*this);
 }
 
-void DateTimeFieldElement::initialize(const AtomicString& pseudo, const String& axHelpText)
+void DateTimeFieldElement::initialize(const AtomicString& pseudo, const String& axHelpText, int axMinimum, int axMaximum)
 {
     setAttribute(aria_helpAttr, axHelpText);
-    setAttribute(aria_valueminAttr, String::number(minimum()));
-    setAttribute(aria_valuemaxAttr, String::number(maximum()));
+    setAttribute(aria_valueminAttr, String::number(axMinimum));
+    setAttribute(aria_valuemaxAttr, String::number(axMaximum));
     setPseudo(pseudo);
     appendChild(Text::create(document(), visibleValue()));
 }
@@ -206,11 +207,21 @@ void DateTimeFieldElement::updateVisibleValue(EventBehavior eventBehavior)
         return;
 
     textNode->replaceWholeText(newVisibleValue, ASSERT_NO_EXCEPTION);
-    setAttribute(aria_valuetextAttr, hasValue() ? newVisibleValue : AXDateTimeFieldEmptyValueText());
-    setAttribute(aria_valuenowAttr, newVisibleValue);
+    if (hasValue()) {
+        setAttribute(aria_valuetextAttr, newVisibleValue);
+        setAttribute(aria_valuenowAttr, String::number(valueForARIAValueNow()));
+    } else {
+        setAttribute(aria_valuetextAttr, AXDateTimeFieldEmptyValueText());
+        removeAttribute(aria_valuenowAttr);
+    }
 
     if (eventBehavior == DispatchEvent && m_fieldOwner)
         m_fieldOwner->fieldValueChanged();
+}
+
+int DateTimeFieldElement::valueForARIAValueNow() const
+{
+    return valueAsInteger();
 }
 
 } // namespace WebCore

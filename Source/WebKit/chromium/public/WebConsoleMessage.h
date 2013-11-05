@@ -31,7 +31,7 @@
 #ifndef WebConsoleMessage_h
 #define WebConsoleMessage_h
 
-#include "platform/WebString.h"
+#include "../../../Platform/chromium/public/WebString.h"
 
 namespace WebKit {
 
@@ -40,7 +40,8 @@ struct WebConsoleMessage {
         LevelTip,
         LevelLog,
         LevelWarning,
-        LevelError
+        LevelError,
+        LevelDebug
     };
 
     Level level;

@@ -647,7 +647,7 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
 
     Node* node = 0;
     if (frame->selection()->rootEditableElement())
-        node = frame->selection()->rootEditableElement()->shadowAncestorNode();
+        node = frame->selection()->rootEditableElement()->deprecatedShadowAncestorNode();
 
     Vector<CompositionUnderline> underlines;
     bool hasSelection = false;
@@ -676,8 +676,8 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
             hasSelection = true;
             // A selection in the inputMethodEvent is always reflected in the visible text
             if (node) {
-                if (HTMLTextFormControlElement* textControl = toTextFormControl(node))
-                    textControl->setSelectionRange(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)));
+                if (isHTMLTextFormControlElement(node))
+                    toHTMLTextFormControlElement(node)->setSelectionRange(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)));
             }
 
             if (!ev->preeditString().isEmpty())
@@ -698,8 +698,8 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
     if (node && ev->replacementLength() > 0) {
         int cursorPos = frame->selection()->extent().offsetInContainerNode();
         int start = cursorPos + ev->replacementStart();
-        if (HTMLTextFormControlElement* textControl = toTextFormControl(node))
-            textControl->setSelectionRange(start, start + ev->replacementLength());
+        if (isHTMLTextFormControlElement(node))
+            toHTMLTextFormControlElement(node)->setSelectionRange(start, start + ev->replacementLength());
         // Commit regardless of whether commitString is empty, to get rid of selection.
         editor->confirmComposition(ev->commitString());
     } else if (!ev->commitString().isEmpty()) {
@@ -727,7 +727,7 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     RenderTextControl* renderTextControl = 0;
 
     if (frame->selection()->rootEditableElement())
-        renderer = frame->selection()->rootEditableElement()->shadowAncestorNode()->renderer();
+        renderer = frame->selection()->rootEditableElement()->deprecatedShadowAncestorNode()->renderer();
 
     if (renderer && renderer->isTextControl())
         renderTextControl = toRenderTextControl(renderer);
@@ -1228,9 +1228,9 @@ QString QWebPageAdapter::contextMenuItemTagForAction(QWebPageAdapter::MenuAction
 }
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-void QWebPageAdapter::allowNotificationsForFrame(QWebFrameAdapter* frame)
+void QWebPageAdapter::setNotificationsAllowedForFrame(QWebFrameAdapter* frame, bool allowed)
 {
-    NotificationPresenterClientQt::notificationPresenter()->allowNotificationForFrame(frame->frame);
+    NotificationPresenterClientQt::notificationPresenter()->setNotificationsAllowedForFrame(frame->frame, allowed);
 }
 
 void QWebPageAdapter::addNotificationPresenterClient()

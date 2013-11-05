@@ -111,8 +111,9 @@ enum AccessibilityRole {
     ColumnRole,
     ColumnHeaderRole,
     ComboBoxRole,
-    DefinitionListTermRole,
-    DefinitionListDefinitionRole,
+    DefinitionRole,
+    DescriptionListTermRole,
+    DescriptionListDetailRole,
     DirectoryRole,
     DisclosureTriangleRole,
     DivRole,
@@ -355,6 +356,15 @@ protected:
     
 public:
     virtual ~AccessibilityObject();
+
+    // After constructing an AccessibilityObject, it must be given a
+    // unique ID, then added to AXObjectCache, and finally init() must
+    // be called last.
+    void setAXObjectID(AXID axObjectID) { m_id = axObjectID; }
+    virtual void init() { }
+
+    // When the corresponding WebCore object that this AccessibilityObject
+    // wraps is deleted, it must be detached.
     virtual void detach();
     virtual bool isDetached() const;
 
@@ -412,7 +422,7 @@ public:
     virtual bool isSpinButtonPart() const { return false; }
     virtual bool isMockObject() const { return false; }
     virtual bool isMediaControlLabel() const { return false; }
-    bool isTextControl() const { return roleValue() == TextAreaRole || roleValue() == TextFieldRole; }
+    bool isTextControl() const;
     bool isARIATextControl() const;
     bool isTabList() const { return roleValue() == TabListRole; }
     bool isTabItem() const { return roleValue() == TabRole; }
@@ -569,7 +579,6 @@ public:
 
     virtual AXObjectCache* axObjectCache() const;
     AXID axObjectID() const { return m_id; }
-    void setAXObjectID(AXID axObjectID) { m_id = axObjectID; }
     
     static AccessibilityObject* anchorElementForNode(Node*);
     virtual Element* anchorElement() const { return 0; }

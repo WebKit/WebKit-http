@@ -40,17 +40,18 @@
 #include "V8History.h"
 #include "V8Location.h"
 #include "V8PerContextData.h"
+#include <v8-debug.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-static Frame* findFrame(v8::Local<v8::Object> host, v8::Local<v8::Value> data)
+static Frame* findFrame(v8::Local<v8::Object> host, v8::Local<v8::Value> data, v8::Isolate* isolate)
 {
     WrapperTypeInfo* type = WrapperTypeInfo::unwrap(data);
 
     if (V8DOMWindow::info.equals(type)) {
-        v8::Handle<v8::Object> windowWrapper = host->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
+        v8::Handle<v8::Object> windowWrapper = host->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(isolate));
         if (windowWrapper.IsEmpty())
             return 0;
         return V8DOMWindow::toNative(windowWrapper)->frame();
@@ -96,7 +97,7 @@ static void messageHandlerInMainThread(v8::Handle<v8::Message> message, v8::Hand
 
 static void failedAccessCheckCallbackInMainThread(v8::Local<v8::Object> host, v8::AccessType type, v8::Local<v8::Value> data)
 {
-    Frame* target = findFrame(host, data);
+    Frame* target = findFrame(host, data, v8::Isolate::GetCurrent());
     if (!target)
         return;
     DOMWindow* targetWindow = target->document()->domWindow();
@@ -108,6 +109,8 @@ static void initializeV8Common()
     v8::V8::AddGCPrologueCallback(V8GCController::gcPrologue);
     v8::V8::AddGCEpilogueCallback(V8GCController::gcEpilogue);
     v8::V8::IgnoreOutOfMemoryException();
+
+    v8::Debug::SetLiveEditEnabled(false);
 }
 
 void V8Initializer::initializeMainThreadIfNeeded(v8::Isolate* isolate)

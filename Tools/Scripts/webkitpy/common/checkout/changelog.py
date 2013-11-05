@@ -28,14 +28,14 @@
 #
 # WebKit's Python module for parsing and modifying ChangeLog files
 
-import codecs
-import fileinput # inplace file editing for set_reviewer_in_changelog
 import logging
 import re
+from StringIO import StringIO
 import textwrap
 
 from webkitpy.common.config.committers import CommitterList
 from webkitpy.common.config.committers import Account
+from webkitpy.common.system.filesystem import FileSystem
 import webkitpy.common.config.urls as config_urls
 
 _log = logging.getLogger(__name__)
@@ -64,6 +64,8 @@ class ChangeLogEntry(object):
 
     # e.g. * Source/WebCore/page/EventHandler.cpp: Implement FooBarQuux.
     touched_files_regexp = r'^\s*\*\s*(?P<file>[A-Za-z0-9_\-\./\\]+)\s*\:'
+    # e.g. (ChangeLogEntry.touched_functions): Added.
+    touched_functions_regexp = r'^\s*\((?P<function>[^)]*)\):'
 
     # e.g. Reviewed by Darin Adler.
     # (Discard everything after the first period to match more invalid lines.)
@@ -108,8 +110,8 @@ class ChangeLogEntry(object):
         self._revision = revision
         self._parse_entry()
 
-    @staticmethod
-    def _parse_reviewer_text(text):
+    @classmethod
+    def _parse_reviewer_text(cls, text):
         match = re.search(ChangeLogEntry.reviewed_by_regexp, text, re.MULTILINE | re.IGNORECASE)
         if not match:
             # There are cases where people omit "by". We match it only if reviewer part looked nice
@@ -137,8 +139,8 @@ class ChangeLogEntry(object):
 
         return reviewer_text, reviewer_list
 
-    @staticmethod
-    def _split_contributor_names(text):
+    @classmethod
+    def _split_contributor_names(cls, text):
         return re.split(r'\s*(?:,(?:\s+and\s+|&)?|(?:^|\s+)and\s+|&&|[/+&])\s*', text)
 
     def _fuzz_match_reviewers(self, reviewers_text_list):
@@ -148,23 +150,52 @@ class ChangeLogEntry(object):
         # Flatten lists and get rid of any reviewers with more than one candidate.
         return [reviewers[0] for reviewers in list_of_reviewers if len(reviewers) == 1]
 
-    @staticmethod
-    def _parse_author_name_and_email(author_name_and_email):
+    @classmethod
+    def _parse_author_name_and_email(cls, author_name_and_email):
         match = re.match(r'(?P<name>.+?)\s+<(?P<email>[^>]+)>', author_name_and_email)
         return {'name': match.group("name"), 'email': match.group("email")}
 
-    @staticmethod
-    def _parse_author_text(text):
+    @classmethod
+    def _parse_author_text(cls, text):
         if not text:
             return []
-        authors = ChangeLogEntry._split_contributor_names(text)
+        authors = cls._split_contributor_names(text)
         assert(authors and len(authors) >= 1)
-        return [ChangeLogEntry._parse_author_name_and_email(author) for author in authors]
+        return [cls._parse_author_name_and_email(author) for author in authors]
+
+    @classmethod
+    def _parse_touched_functions(cls, text):
+        result = {}
+        cur_file = None
+        for line in text.splitlines():
+            file_match = re.match(cls.touched_files_regexp, line)
+            if file_match:
+                cur_file = file_match.group("file")
+                result[cur_file] = []
+            func_match = re.match(cls.touched_functions_regexp, line)
+            if func_match and cur_file:
+                result[cur_file].append(func_match.group("function"))
+        return result
+
+    @classmethod
+    def _parse_bug_description(cls, text):
+        # If line 4 is a bug url, line 3 is the bug description.
+        # It's too hard to guess in other cases, so we return None.
+        lines = text.splitlines()
+        if len(lines) < 4:
+            return None
+        for bug_url in (config_urls.bug_url_short, config_urls.bug_url_long):
+            if re.match("^\s*" + bug_url + "$", lines[3]):
+                return lines[2].strip()
+        return None
 
     def _parse_entry(self):
         match = re.match(self.date_line_regexp, self._contents, re.MULTILINE)
         if not match:
             _log.warning("Creating invalid ChangeLogEntry:\n%s" % self._contents)
+
+        self._date_line = match.group()
+        self._bug_description = self._parse_bug_description(self._contents)
 
         # FIXME: group("name") does not seem to be Unicode?  Probably due to self._contents not being unicode.
         self._author_text = match.group("authors") if match else None
@@ -175,6 +206,10 @@ class ChangeLogEntry(object):
         self._author = self._committer_list.contributor_by_email(self.author_email()) or self._committer_list.contributor_by_name(self.author_name())
 
         self._touched_files = re.findall(self.touched_files_regexp, self._contents, re.MULTILINE)
+        self._touched_functions = self._parse_touched_functions(self._contents)
+
+    def date_line(self):
+        return self._date_line
 
     def author_text(self):
         return self._author_text
@@ -220,69 +255,75 @@ class ChangeLogEntry(object):
     def bug_id(self):
         return parse_bug_id_from_changelog(self._contents)
 
+    def bug_description(self):
+        return self._bug_description
+
     def touched_files(self):
         return self._touched_files
 
+    # Returns a dict from file name to lists of function names.
+    def touched_functions(self):
+        return self._touched_functions
+
+    def touched_files_text(self):
+        match = re.search(self.touched_files_regexp, self._contents, re.MULTILINE)
+        return self._contents[match.start():].lstrip("\n\r") if match else ""
+
+    # Determine if any text has been added to the section on touched files
+    def is_touched_files_text_clean(self):
+        file_line_end = r"( (Added|Removed|(Copied|Renamed) from [A-Za-z0-9_\-./\\]+).)?$"
+        for line in self.touched_files_text().splitlines():
+            if re.match(self.touched_files_regexp + file_line_end, line):
+                continue
+            if re.match(self.touched_functions_regexp + "$", line):
+                continue
+            return False
+        return True
 
 # FIXME: Various methods on ChangeLog should move into ChangeLogEntry instead.
 class ChangeLog(object):
 
-    def __init__(self, path):
+    def __init__(self, path, filesystem=None):
         self.path = path
+        self._filesystem = filesystem or FileSystem()
 
     _changelog_indent = " " * 8
 
-    @staticmethod
-    def parse_latest_entry_from_file(changelog_file):
-        """changelog_file must be a file-like object which returns
-        unicode strings.  Use codecs.open or StringIO(unicode())
-        to pass file objects to this class."""
-        date_line_regexp = re.compile(ChangeLogEntry.date_line_regexp)
-        rolled_over_regexp = re.compile(ChangeLogEntry.rolled_over_regexp)
-        entry_lines = []
-        # The first line should be a date line.
-        first_line = changelog_file.readline()
-        assert(isinstance(first_line, unicode))
-        if not date_line_regexp.match(first_line):
+    @classmethod
+    def parse_latest_entry_from_file(cls, changelog_file):
+        try:
+            return next(cls.parse_entries_from_file(changelog_file))
+        except StopIteration, e:
             return None
-        entry_lines.append(first_line)
-
-        for line in changelog_file:
-            # If we've hit the next entry, return.
-            if date_line_regexp.match(line) or rolled_over_regexp.match(line):
-                # Remove the extra newline at the end
-                return ChangeLogEntry(''.join(entry_lines[:-1]))
-            entry_lines.append(line)
-        return None # We never found a date line!
 
     svn_blame_regexp = re.compile(r'^(\s*(?P<revision>\d+) [^ ]+)\s*(?P<line>.*?\n)')
 
-    @staticmethod
-    def _separate_revision_and_line(line):
-        match = ChangeLog.svn_blame_regexp.match(line)
+    @classmethod
+    def _separate_revision_and_line(cls, line):
+        match = cls.svn_blame_regexp.match(line)
         if not match:
             return None, line
         return int(match.group('revision')), match.group('line')
 
-    @staticmethod
-    def parse_entries_from_file(changelog_file):
+    @classmethod
+    def parse_entries_from_file(cls, changelog_file):
         """changelog_file must be a file-like object which returns
-        unicode strings.  Use codecs.open or StringIO(unicode())
-        to pass file objects to this class."""
+        unicode strings, e.g. from StringIO(unicode()) or
+        fs.open_text_file_for_reading()"""
         date_line_regexp = re.compile(ChangeLogEntry.date_line_regexp)
         rolled_over_regexp = re.compile(ChangeLogEntry.rolled_over_regexp)
 
         # The first line should be a date line.
-        revision, first_line = ChangeLog._separate_revision_and_line(changelog_file.readline())
+        revision, first_line = cls._separate_revision_and_line(changelog_file.readline())
         assert(isinstance(first_line, unicode))
-        if not date_line_regexp.match(ChangeLog.svn_blame_regexp.sub('', first_line)):
+        if not date_line_regexp.match(cls.svn_blame_regexp.sub('', first_line)):
             raise StopIteration
 
         entry_lines = [first_line]
         revisions_in_entry = {revision: 1} if revision != None else None
         for line in changelog_file:
             if revisions_in_entry:
-                revision, line = ChangeLog._separate_revision_and_line(line)
+                revision, line = cls._separate_revision_and_line(line)
 
             if rolled_over_regexp.match(line):
                 break
@@ -303,7 +344,7 @@ class ChangeLog(object):
 
     def latest_entry(self):
         # ChangeLog files are always UTF-8, we read them in as such to support Reviewers with unicode in their names.
-        changelog_file = codecs.open(self.path, "r", "utf-8")
+        changelog_file = self._filesystem.open_text_file_for_reading(self.path)
         try:
             return self.parse_latest_entry_from_file(changelog_file)
         finally:
@@ -331,20 +372,22 @@ class ChangeLog(object):
         first_boilerplate_line_regexp = re.compile(
                 "%sNeed a short description \(OOPS!\)\." % self._changelog_indent)
         removing_boilerplate = False
-        # inplace=1 creates a backup file and re-directs stdout to the file
-        for line in fileinput.FileInput(self.path, inplace=1):
-            if first_boilerplate_line_regexp.search(line):
-                message_lines = self._wrap_lines(message)
-                print first_boilerplate_line_regexp.sub(message_lines, line),
-                # Remove all the ChangeLog boilerplate before the first changed
-                # file.
-                removing_boilerplate = True
-            elif removing_boilerplate:
-                if line.find('*') >= 0: # each changed file is preceded by a *
-                    removing_boilerplate = False
+        result = StringIO()
+        with self._filesystem.open_text_file_for_reading(self.path) as file:
+            for line in file:
+                if first_boilerplate_line_regexp.search(line):
+                    message_lines = self._wrap_lines(message)
+                    result.write(first_boilerplate_line_regexp.sub(message_lines, line))
+                    # Remove all the ChangeLog boilerplate before the first changed
+                    # file.
+                    removing_boilerplate = True
+                elif removing_boilerplate:
+                    if line.find('*') >= 0:  # each changed file is preceded by a *
+                        removing_boilerplate = False
 
-            if not removing_boilerplate:
-                print line,
+                if not removing_boilerplate:
+                    result.write(line)
+        self._filesystem.write_text_file(self.path, result.getvalue())
 
     def set_reviewer(self, reviewer):
         latest_entry = self.latest_entry()
@@ -355,25 +398,49 @@ class ChangeLog(object):
         if not found_nobody and not reviewer_text:
             bug_url_number_of_items = len(re.findall(config_urls.bug_url_long, latest_entry_contents, re.MULTILINE))
             bug_url_number_of_items += len(re.findall(config_urls.bug_url_short, latest_entry_contents, re.MULTILINE))
-            for line in fileinput.FileInput(self.path, inplace=1):
-                found_bug_url = re.search(config_urls.bug_url_long, line)
-                if not found_bug_url:
-                    found_bug_url = re.search(config_urls.bug_url_short, line)
-                print line,
-                if found_bug_url:
-                    if bug_url_number_of_items == 1:
-                        print "\n        Reviewed by %s." % (reviewer.encode("utf-8"))
-                    bug_url_number_of_items -= 1
+            result = StringIO()
+            with self._filesystem.open_text_file_for_reading(self.path) as file:
+                for line in file:
+                    found_bug_url = re.search(config_urls.bug_url_long, line)
+                    if not found_bug_url:
+                        found_bug_url = re.search(config_urls.bug_url_short, line)
+                    result.write(line)
+                    if found_bug_url:
+                        if bug_url_number_of_items == 1:
+                            result.write("\n        Reviewed by %s.\n" % reviewer)
+                        bug_url_number_of_items -= 1
+            self._filesystem.write_text_file(self.path, result.getvalue())
         else:
-            # inplace=1 creates a backup file and re-directs stdout to the file
-            for line in fileinput.FileInput(self.path, inplace=1):
-                # Trailing comma suppresses printing newline
-                print line.replace("NOBODY (OOPS!)", reviewer.encode("utf-8")),
+            data = self._filesystem.read_text_file(self.path)
+            newdata = data.replace("NOBODY (OOPS!)", reviewer)
+            self._filesystem.write_text_file(self.path, newdata)
 
     def set_short_description_and_bug_url(self, short_description, bug_url):
         message = "%s\n%s%s" % (short_description, self._changelog_indent, bug_url)
         bug_boilerplate = "%sNeed the bug URL (OOPS!).\n" % self._changelog_indent
-        for line in fileinput.FileInput(self.path, inplace=1):
-            line = line.replace("Need a short description (OOPS!).", message.encode("utf-8"))
-            if line != bug_boilerplate:
-                print line,
+        result = StringIO()
+        with self._filesystem.open_text_file_for_reading(self.path) as file:
+            for line in file:
+                line = line.replace("Need a short description (OOPS!).", message)
+                if line != bug_boilerplate:
+                    result.write(line)
+        self._filesystem.write_text_file(self.path, result.getvalue())
+
+    def delete_entries(self, num_entries):
+        date_line_regexp = re.compile(ChangeLogEntry.date_line_regexp)
+        rolled_over_regexp = re.compile(ChangeLogEntry.rolled_over_regexp)
+        entries = 0
+        result = StringIO()
+        with self._filesystem.open_text_file_for_reading(self.path) as file:
+            for line in file:
+                if date_line_regexp.match(line):
+                    entries += 1
+                elif rolled_over_regexp.match(line):
+                    entries = num_entries + 1
+                if entries > num_entries:
+                    result.write(line)
+        self._filesystem.write_text_file(self.path, result.getvalue())
+
+    def prepend_text(self, text):
+        data = self._filesystem.read_text_file(self.path)
+        self._filesystem.write_text_file(self.path, text + data)

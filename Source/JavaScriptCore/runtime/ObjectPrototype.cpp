@@ -26,6 +26,7 @@
 #include "JSString.h"
 #include "JSStringBuilder.h"
 #include "Operations.h"
+#include "StructureRareDataInlines.h"
 
 namespace JSC {
 
@@ -73,7 +74,7 @@ void ObjectPrototype::finishCreation(JSGlobalData& globalData, JSGlobalObject*)
 {
     Base::finishCreation(globalData);
     ASSERT(inherits(&s_info));
-    notifyUsedAsPrototype(globalData);
+    globalData.prototypeMap.addPrototype(this);
 }
 
 bool ObjectPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot &slot)

@@ -55,7 +55,7 @@ void WebConnection::postMessage(const String& messageName, APIObject* messageBod
     encoder->encode(messageName);
     encodeMessageBody(*encoder, messageBody);
 
-    sendMessage(CoreIPC::MessageID(Messages::WebConnection::HandleMessage::messageID), encoder.release());
+    sendMessage(encoder.release());
 }
 
 void WebConnection::didClose()
@@ -63,9 +63,9 @@ void WebConnection::didClose()
     m_client.didClose(this);
 }
 
-void WebConnection::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void WebConnection::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    didReceiveWebConnectionMessage(connection, messageID, decoder);
+    didReceiveWebConnectionMessage(connection, decoder);
 }
 
 void WebConnection::handleMessage(CoreIPC::MessageDecoder& decoder)

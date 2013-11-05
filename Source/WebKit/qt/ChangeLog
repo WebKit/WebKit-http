@@ -1,3 +1,349 @@
+2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
+
+        Fix build warning after r141473
+        https://bugs.webkit.org/show_bug.cgi?id=108782
+
+        Reviewed by Kentaro Hara.
+
+        Fix -Wunused-parameter build warning.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::getClientPasteboardDataForRange):
+
+2013-02-01  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Make QWebHistory unit tests more robust
+
+        Reviewed by Jocelyn Turcotten.
+
+        The tests were using a QEventLoop::exec() call to verify the emission
+        of the loadFinished() signal after calling for example back() or forward().
+        However sometimes the call to back() may emit the signal immediately and
+        sometimes async, causing instabilities in test runs. The call to exec()
+        also means that if there was a bug then the rest would hang forever because
+        exec() has no timeout.
+
+        This patch introduces a simple SignalBarrier class that solves both issues:
+
+        (1) ensureSignalEmitted() supports the immediate signal emission case as well
+        as the async one.
+
+        (2) Through the use of QSignalSpy's wait() there's an actual timeout.
+
+        * tests/qwebhistory/tst_qwebhistory.cpp:
+        (tst_QWebHistory::init):
+        (tst_QWebHistory::cleanup):
+        (tst_QWebHistory::back):
+        (tst_QWebHistory::forward):
+        (tst_QWebHistory::goToItem):
+        (tst_QWebHistory::serialize_2):
+        * tests/util.h:
+        (waitForSignal):
+        (SignalBarrier):
+        (SignalBarrier::SignalBarrier):
+        (SignalBarrier::ensureSignalEmitted):
+
+2013-02-01  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Fix hanging deleteQWebViewTwice test
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        Don't use QCoreApplication::instance()->exec(), because in case of a bug
+        that never finishes. Instead use waitForSignal() which has the concept of
+        a timeout.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::deleteQWebViewTwice):
+
+2013-02-01  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Skip hanging WebGL software fallback tests
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        See also https://bugs.webkit.org/show_bug.cgi?id=105820.
+
+        * tests/qgraphicswebview/tst_qgraphicswebview.cpp:
+        (tst_QGraphicsWebView::webglSoftwareFallbackVerticalOrientation):
+        (tst_QGraphicsWebView::webglSoftwareFallbackHorizontalOrientation):
+
+2013-02-01  Pierre Rossi  <pierre.rossi@digia.com>
+
+        [Qt] visibility of embedded widget
+        https://bugs.webkit.org/show_bug.cgi?id=108327
+
+        Rubber-stamped by Simon Hausmann.
+
+        In overriding Widget::hide in QtPluginWidget, we forgot to call the
+        parent implementation, which as it turns, out does sensible stuff.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+
+2013-02-01  Pierre Rossi  <pierre.rossi@digia.com>
+
+        [Qt] visibility of embedded widget
+        https://bugs.webkit.org/show_bug.cgi?id=108327
+
+        Rubber-stamped by Simon Hausmann.
+
+        In overriding Widget::show in QtPluginWidget, we forgot to call the
+        parent implementation, which as it turns, out does sensible stuff.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::willWriteSelectionToPasteboard):
+        (WebCore::EditorClientQt::getClientPasteboardDataForRange):
+        * WebCoreSupport/EditorClientQt.h:
+
+2013-01-30  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Fix minimal build after r141259.
+
+        Unreviewed build fix.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::clearNotificationPermissions):
+
+2013-01-26  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] USE(NATIVE_FULLSCREEN_VIDEO) support
+        https://bugs.webkit.org/show_bug.cgi?id=106760
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Build fixes for GStreamer NATIVE_FULLSCREEN_VIDEO support. Some
+        more changes will be needed to use the new
+        FullscreenVideoController though.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::ChromeClientQt):
+        (WebCore::ChromeClientQt::~ChromeClientQt):
+        * WebCoreSupport/FullScreenVideoQt.cpp:
+        (WebCore):
+        (WebCore::FullScreenVideoQt::FullScreenVideoQt):
+        (WebCore::FullScreenVideoQt::~FullScreenVideoQt):
+        (WebCore::FullScreenVideoQt::enterFullScreenForNode):
+        (WebCore::FullScreenVideoQt::exitFullScreenForNode):
+        (WebCore::FullScreenVideoQt::isValid):
+        * WebCoreSupport/FullScreenVideoQt.h:
+        (WebCore):
+        (FullScreenVideoQt):
+
+2013-01-30  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt][WK1] Support better testing of Web Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=107696
+
+        Reviewed by Jocelyn Turcotte.
+
+        Implement support for the DRT to clear notification permissions.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::clearNotificationPermissions):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::clearCachedPermissions):
+        (WebCore):
+        * WebCoreSupport/NotificationPresenterClientQt.h:
+        (NotificationPresenterClientQt):
+
+2013-01-30  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Remove GraphicsLayer in TextureMapperLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=107073
+
+        Reviewed by Noam Rosenthal.
+
+        Include GraphicsLayerTextureMapper.h to use toTextureMapperLayer().
+
+        * WebCoreSupport/TextureMapperLayerClientQt.cpp:
+
+2013-01-30  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt][WK1] Remember denied permission for notifications 
+        https://bugs.webkit.org/show_bug.cgi?id=107694
+
+        Reviewed by Jocelyn Turcotte.
+
+        Store denied permissions. According to the specification, we should
+        ask the user again if he has already granted or denied permission.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::requestPermission):
+        (WebCore::NotificationPresenterClientQt::setNotificationsAllowedForFrame):
+        * WebCoreSupport/NotificationPresenterClientQt.h:
+        (NotificationPresenterClientQt):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::setNotificationsAllowedForFrame):
+        * WebCoreSupport/QWebPageAdapter.h:
+        * WidgetApi/qwebpage.cpp:
+        (QWebPage::setFeaturePermission):
+
+2013-01-29  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r140983.
+        http://trac.webkit.org/changeset/140983
+        https://bugs.webkit.org/show_bug.cgi?id=108277
+
+        Unfortunately, this API has one last client (Requested by
+        abarth on #webkit).
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::displayNotification):
+        (WebCore::NotificationPresenterClientQt::cancel):
+        (WebCore::NotificationPresenterClientQt::notificationClicked):
+        (WebCore::NotificationPresenterClientQt::removeReplacedNotificationFromQueue):
+        (WebCore::NotificationPresenterClientQt::dumpReplacedIdText):
+        (WebCore::NotificationPresenterClientQt::dumpShowText):
+
+2013-01-29  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt][WK1] Fix QObject Bridge tests expected output.
+        https://bugs.webkit.org/show_bug.cgi?id=107827
+
+        Reviewed by Simon Hausmann.
+
+        The "not a function" TypeError now includes the call that caused the error.
+        Correct expected values accordingly.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::connectAndDisconnect):
+
+2013-01-28  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Enable debug borders and repaint counter via Settings.
+        https://bugs.webkit.org/show_bug.cgi?id=107198
+
+        Reviewed by Benjamin Poulain.
+
+        If WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS is set to 1, set
+        showDebugBorders and showRepaintCounter in Settings to true.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+
+2013-01-24  Hajime Morrita  <morrita@google.com>
+
+        There are a few of wrong removeAllChildren() call
+        https://bugs.webkit.org/show_bug.cgi?id=107790
+
+        Reviewed by Ryosuke Niwa.
+
+        * Api/qwebelement.cpp: Repalced removeAllChildren() with safer removeChildren()
+        (QWebElement::removeAllChildren):
+
+2013-01-23  Shinya Kawanaka  <shinyak@chromium.org>
+
+        shadowAncestorNode() should be renamed to deprecatedShadowAncestorNode()
+        https://bugs.webkit.org/show_bug.cgi?id=107624
+
+        Reviewed by Dimitri Glazkov.
+
+        Since Node::shadowAncestorNode() is deprecated, we would like to rename it to prevent from further use.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::inputMethodEvent):
+        (QWebPageAdapter::inputMethodQuery):
+
+2013-01-22  Anders Carlsson  <andersca@apple.com>
+
+        Use a platforom strategy for local storage
+        https://bugs.webkit.org/show_bug.cgi?id=107600
+
+        Reviewed by Andreas Kling.
+
+        Update for new storage strategy.
+
+        * WebCoreSupport/PlatformStrategiesQt.cpp:
+        (PlatformStrategiesQt::createStorageStrategy):
+        * WebCoreSupport/PlatformStrategiesQt.h:
+        (PlatformStrategiesQt):
+
+2013-01-21  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt][WK1] Permission request callbacks for non-legacy notifications
+        https://bugs.webkit.org/show_bug.cgi?id=107438
+
+        Reviewed by Jocelyn Turcotte.
+
+        Tracks the new callbacks the same way legacy callbacks are tracked.
+
+        No test affected yet as we are still lacking support for testing
+        feature permission callbacks.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::requestPermission):
+        (WebCore::NotificationPresenterClientQt::allowNotificationForFrame):
+        * WebCoreSupport/NotificationPresenterClientQt.h:
+        (NotificationPresenterClientQt):
+        (CallbacksInfo):
+
+2013-01-21  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Update the documentation about the storage of inspector settings
+        https://bugs.webkit.org/show_bug.cgi?id=106777
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        Since r76770, QSettings isn't queried anymore to persist inspector
+        settings like whether or not the debugger is enabled by default.
+        It still seems to be used for the default attach height.
+
+        Update the documentation accordingly.
+
+        * WidgetApi/qwebinspector.cpp:
+
+2013-01-21  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Crash in gmail on enabling desktop notifications
+        https://bugs.webkit.org/show_bug.cgi?id=106699
+
+        Patch by David Rosca.
+        Reviewed by Jocelyn Turcotte.
+
+        Protect against callback that may be null. This also matches WebKit2 behaviour.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::allowNotificationForFrame):
+
+2013-01-18  Shinya Kawanaka  <shinyak@chromium.org>
+
+        Introduce isHTMLTextFormControlElement and toHTMLTextFormControlElement instead of toTextFormControl
+        https://bugs.webkit.org/show_bug.cgi?id=107089
+
+        Reviewed by Kent Tamura.
+
+        Updated code to use isHTMLTextFormControlElement and toHTMLTextFormControlElement combination instead of
+        toTextFormControl.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::inputMethodEvent):
+
+2013-01-18  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Add explicit keyword to constructors in platform-specific InspectorClient
+        https://bugs.webkit.org/show_bug.cgi?id=107255
+
+        Reviewed by Kentaro Hara.
+
+        Add explicit keyword to constructors that take one argument
+        in platform-specific implementation of InspectorClient.
+
+        * WebCoreSupport/InspectorClientQt.h:
+        (InspectorClientQt):
+
 2013-01-16  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
 
         [Qt] Use the shared HistoryItem serialization for QWebHistory

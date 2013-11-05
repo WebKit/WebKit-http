@@ -35,8 +35,8 @@ using namespace std;
 
 namespace WebCore {
 
-RenderScrollbarPart::RenderScrollbarPart(ContainerNode* node, RenderScrollbar* scrollbar, ScrollbarPart part)
-    : RenderBlock(node)
+RenderScrollbarPart::RenderScrollbarPart(RenderScrollbar* scrollbar, ScrollbarPart part)
+    : RenderBlock(0)
     , m_scrollbar(scrollbar)
     , m_part(part)
 {
@@ -44,6 +44,13 @@ RenderScrollbarPart::RenderScrollbarPart(ContainerNode* node, RenderScrollbar* s
 
 RenderScrollbarPart::~RenderScrollbarPart()
 {
+}
+
+RenderScrollbarPart* RenderScrollbarPart::createAnonymous(Document* document, RenderScrollbar* scrollbar, ScrollbarPart part)
+{
+    RenderScrollbarPart* renderer = new (document->renderArena()) RenderScrollbarPart(scrollbar, part);
+    renderer->setDocumentForAnonymous(document);
+    return renderer;
 }
 
 void RenderScrollbarPart::layout()
@@ -177,7 +184,7 @@ void RenderScrollbarPart::paintIntoRect(GraphicsContext* graphicsContext, const 
         return;
 
     // Now do the paint.
-    PaintInfo paintInfo(graphicsContext, pixelSnappedIntRect(rect), PaintPhaseBlockBackground, false, 0, 0, 0);
+    PaintInfo paintInfo(graphicsContext, pixelSnappedIntRect(rect), PaintPhaseBlockBackground, PaintBehaviorNormal);
     paint(paintInfo, paintOffset);
     paintInfo.phase = PaintPhaseChildBlockBackgrounds;
     paint(paintInfo, paintOffset);

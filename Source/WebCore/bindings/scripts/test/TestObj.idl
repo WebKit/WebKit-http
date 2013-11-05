@@ -29,6 +29,9 @@
 
 // This IDL file is for testing the bindings code generator and for tracking
 // changes in its ouput.
+
+enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
+
 [
     Constructor(in [Callback] TestCallback testCallback),
     InterfaceName=TestObject
@@ -37,11 +40,10 @@
     readonly attribute long            readOnlyLongAttr;
     readonly attribute DOMString       readOnlyStringAttr;
     readonly attribute TestObj         readOnlyTestObjAttr;
-#if defined(TESTING_JS) || defined(TESTING_V8)
     static readonly attribute long     staticReadOnlyLongAttr;
     static attribute DOMString         staticStringAttr;
     static readonly attribute TestSubObjConstructor TestSubObj;
-#endif
+    attribute TestEnumType             enumAttr;
     attribute short                    shortAttr;
     attribute unsigned short           unsignedShortAttr;
     attribute long                     longAttr;
@@ -83,7 +85,6 @@
         raises(DOMException);
 
     void serializedValue(in SerializedScriptValue serializedArg);
-    void idbKey(in IDBKey key);
     void optionsObject(in Dictionary oo, in [Optional] Dictionary ooo);
 
     // Exceptions

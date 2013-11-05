@@ -48,16 +48,13 @@ public:
 
     void initializeProvider(const WKVibrationProvider*);
 
-    // Implemented in generated WebVibrationProxyMessageReceiver.cpp
-    void didReceiveWebVibrationProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-
 private:
     explicit WebVibrationProxy(WebPageProxy*);
 
     virtual Type type() const { return APIType; }
 
     // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     void vibrate(uint32_t vibrationTime);
     void cancelVibration();

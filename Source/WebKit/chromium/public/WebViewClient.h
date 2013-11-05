@@ -31,6 +31,9 @@
 #ifndef WebViewClient_h
 #define WebViewClient_h
 
+#include "../../../Platform/chromium/public/WebColor.h"
+#include "../../../Platform/chromium/public/WebGraphicsContext3D.h"
+#include "../../../Platform/chromium/public/WebString.h"
 #include "WebAccessibilityNotification.h"
 #include "WebContentDetectionResult.h"
 #include "WebDragOperation.h"
@@ -42,9 +45,6 @@
 #include "WebTextAffinity.h"
 #include "WebTextDirection.h"
 #include "WebWidgetClient.h"
-#include "platform/WebColor.h"
-#include "platform/WebGraphicsContext3D.h"
-#include "platform/WebString.h"
 
 namespace WebKit {
 
@@ -190,6 +190,7 @@ public:
     virtual bool isSelectTrailingWhitespaceEnabled() { return true; }
 
     virtual void didBeginEditing() { }
+    virtual void didCancelCompositionOnSelectionChange() { }
     virtual void didChangeSelection(bool isSelectionEmpty) { }
     virtual void didChangeContents() { }
     virtual void didExecuteCommand(const WebString& commandName) { }

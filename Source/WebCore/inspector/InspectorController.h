@@ -56,6 +56,7 @@ class InspectorDebuggerAgent;
 class InspectorFrontend;
 class InspectorFrontendChannel;
 class InspectorFrontendClient;
+class InspectorMemoryAgent;
 class InspectorOverlay;
 class InspectorPageAgent;
 class InspectorProfilerAgent;
@@ -104,6 +105,7 @@ public:
     void hideHighlight();
     Node* highlightedNode() const;
 
+    bool isUnderTest();
     void evaluateForTestInFrontend(long callId, const String& script);
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
@@ -123,13 +125,15 @@ public:
     void willProcessTask();
     void didProcessTask();
 
+    HashMap<String, size_t> processMemoryDistribution() const;
+
 private:
     InspectorController(Page*, InspectorClient*);
 
     friend class PostWorkerNotificationToFrontendTask;
     friend InstrumentingAgents* instrumentationForPage(Page*);
 
-    OwnPtr<InstrumentingAgents> m_instrumentingAgents;
+    RefPtr<InstrumentingAgents> m_instrumentingAgents;
     OwnPtr<InjectedScriptManager> m_injectedScriptManager;
     OwnPtr<InspectorCompositeState> m_state;
     OwnPtr<InspectorOverlay> m_overlay;
@@ -138,6 +142,7 @@ private:
     InspectorDOMAgent* m_domAgent;
     InspectorResourceAgent* m_resourceAgent;
     InspectorPageAgent* m_pageAgent;
+    InspectorMemoryAgent* m_memoryAgent;
 #if ENABLE(JAVASCRIPT_DEBUGGER)
     InspectorDebuggerAgent* m_debuggerAgent;
     InspectorDOMDebuggerAgent* m_domDebuggerAgent;
@@ -150,6 +155,7 @@ private:
     Page* m_page;
     InspectorClient* m_inspectorClient;
     InspectorAgentRegistry m_agents;
+    bool m_isUnderTest;
 };
 
 }

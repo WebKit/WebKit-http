@@ -503,6 +503,7 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
         currentPosition += textNode->length();
         ASSERT(currentPosition <= characters.length());
         task.child = textNode.release();
+
         executeTask(task);
     }
 }
@@ -606,6 +607,7 @@ void HTMLConstructionSite::findFosterSite(HTMLConstructionSiteTask& task)
         task.parent = lastTemplateElement->element();
         return;
     }
+
 #endif
 
     HTMLElementStack::ElementRecord* lastTableElementRecord = m_openElements.topmost(tableTag.localName());
@@ -639,6 +641,7 @@ void HTMLConstructionSite::fosterParent(PassRefPtr<Node> node)
     findFosterSite(task);
     task.child = node;
     ASSERT(task.parent);
+
     m_attachmentQueue.append(task);
 }
 

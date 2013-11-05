@@ -380,7 +380,6 @@ void DrawingAreaImpl::updateBackingStoreState(uint64_t stateID, bool respondImme
         m_webPage->scrollMainFrameIfNotAtMaxScrollPosition(scrollOffset);
 
         if (m_layerTreeHost) {
-            m_layerTreeHost->deviceScaleFactorDidChange();
             // Use the previously set page size instead of the argument.
             // It gets adjusted properly when using the fixed layout mode.
             m_layerTreeHost->sizeDidChange(m_webPage->size());
@@ -727,10 +726,10 @@ void DrawingAreaImpl::display(UpdateInfo& updateInfo)
 }
 
 #if USE(COORDINATED_GRAPHICS)
-void DrawingAreaImpl::didReceiveCoordinatedLayerTreeHostMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void DrawingAreaImpl::didReceiveCoordinatedLayerTreeHostMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
     if (m_layerTreeHost)
-        m_layerTreeHost->didReceiveCoordinatedLayerTreeHostMessage(connection, messageID, decoder);
+        m_layerTreeHost->didReceiveCoordinatedLayerTreeHostMessage(connection, decoder);
 }
 #endif
 

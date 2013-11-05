@@ -53,13 +53,6 @@ public:
     static void executeEventSource(EventSource* eventSource)
     {
         ASSERT(eventSource);
-        WorkQueue* queue = eventSource->m_workQueue;
-        {
-            MutexLocker locker(queue->m_isValidMutex);
-            if (!queue->m_isValid)
-                return;
-        }
-
         eventSource->m_function();
     }
 
@@ -94,7 +87,7 @@ public:
    
 public:
     Function<void()> m_function;
-    WorkQueue* m_workQueue;
+    RefPtr<WorkQueue> m_workQueue;
     GCancellable* m_cancellable;
 };
 

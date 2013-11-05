@@ -27,30 +27,28 @@
 #define ewk_download_job_private_h
 
 #include "WKBase.h"
+#include "WKDownload.h"
 #include "WKEinaSharedString.h"
+#include "WKRetainPtr.h"
 #include "ewk_download_job.h"
 #include "ewk_url_request_private.h"
 #include "ewk_url_response_private.h"
 #include <Evas.h>
 #include <wtf/PassRefPtr.h>
 
-namespace WebKit {
-class DownloadProxy;
-}
-
-class EwkViewImpl;
+class EwkView;
 
 class EwkDownloadJob : public EwkObject {
 public:
     EWK_OBJECT_DECLARE(EwkDownloadJob)
 
-    static PassRefPtr<EwkDownloadJob> create(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl)
+    static PassRefPtr<EwkDownloadJob> create(WKDownloadRef download, EwkView* viewImpl)
     {
         return adoptRef(new EwkDownloadJob(download, viewImpl));
     }
 
     uint64_t id() const;
-    EwkViewImpl* viewImpl() const;
+    EwkView* view() const;
 
     Ewk_Download_Job_State state() const;
     void setState(Ewk_Download_Job_State);
@@ -72,10 +70,10 @@ public:
     void incrementReceivedData(uint64_t length);
 
 private:
-    EwkDownloadJob(WebKit::DownloadProxy* download, EwkViewImpl* viewImpl);
+    EwkDownloadJob(WKDownloadRef download, EwkView* view);
 
-    WebKit::DownloadProxy* m_downloadProxy;
-    EwkViewImpl* m_viewImpl;
+    WKRetainPtr<WKDownloadRef> m_download;
+    EwkView* m_viewImpl;
     Ewk_Download_Job_State m_state;
     mutable RefPtr<EwkUrlRequest> m_request;
     RefPtr<EwkUrlResponse> m_response;

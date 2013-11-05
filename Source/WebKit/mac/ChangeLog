@@ -1,3 +1,332 @@
+2013-02-03  David Kilzer  <ddkilzer@apple.com>
+
+        Upstream ENABLE_PDFKIT_PLUGIN settting
+        <http://webkit.org/b/108792>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig: Disable PDFKIT_PLUGIN
+        on iOS since PDFKit is a Mac-only framework.
+
+2013-02-02  David Kilzer  <ddkilzer@apple.com>
+
+        Upstream iOS FeatureDefines
+        <http://webkit.org/b/108753>
+
+        Reviewed by Anders Carlsson.
+
+        * Configurations/FeatureDefines.xcconfig:
+        - ENABLE_DEVICE_ORIENTATION: Add iOS configurations.
+        - ENABLE_PLUGIN_PROXY_FOR_VIDEO: Ditto.
+        - FEATURE_DEFINES: Add ENABLE_PLUGIN_PROXY_FOR_VIDEO.  Add
+          PLATFORM_NAME variant to reduce future merge conflicts. 
+
+2013-02-01  Alexis Menard  <alexis@webkit.org>
+
+        Enable unprefixed CSS transitions by default.
+        https://bugs.webkit.org/show_bug.cgi?id=108216
+
+        Reviewed by Dean Jackson.
+
+        Rename the flag CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED
+        to CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED which will be used later to 
+        guard the unprefixing work for CSS Transforms and animations.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateSelectionForInputManager]):
+
+2013-01-31  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r141479.
+        http://trac.webkit.org/changeset/141479
+        https://bugs.webkit.org/show_bug.cgi?id=108564
+
+        breaks chromium test (Requested by morrita on #webkit).
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateSelectionForInputManager]):
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        Mac: Editor::baseWritingDirectionForSelectionStart should return WritingDirection instead of NSWritingDirection.
+        https://bugs.webkit.org/show_bug.cgi?id=108519.
+
+        Reviewed by Sam Weinig.
+
+        There is no need to use AppKit types here.
+        baseWritingDirectionForSelectionStart now returns WritingDirection and
+        WebHTMLView toggleWritingDirection has been modified accordingly.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView toggleBaseWritingDirection:]):
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateSelectionForInputManager]):
+
+2013-01-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Disable ENABLE_FULLSCREEN_API on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=108250
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::willWriteSelectionToPasteboard):
+        (WebEditorClient::getClientPasteboardDataForRange):
+
+2013-01-31  Brady Eidson  <beidson@apple.com>
+
+        Lack of a log level string should not obliterate compiled in logging channel state.
+        https://bugs.webkit.org/show_bug.cgi?id=108502
+
+        Reviewed by Alexey Proskuryakov and Sam Weinig.
+
+        * Misc/WebKitLogging.m: If there's no log level string, leave the channel state alone.
+
+2013-01-29  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r140983.
+        http://trac.webkit.org/changeset/140983
+        https://bugs.webkit.org/show_bug.cgi?id=108277
+
+        Unfortunately, this API has one last client (Requested by
+        abarth on #webkit).
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-28  Jer Noble  <jer.noble@apple.com>
+
+        Allow clients to ask for the WebView/WKView placeholder view when in full screen mode.
+        https://bugs.webkit.org/show_bug.cgi?id=103558
+        <rdar://problem/12763112>
+
+        Reviewed by Benjamin Poulain.
+
+        Clients may want to behave differently when their WebView/WKView has been swapped out by a placeholder
+        view when in full screen mode.  Add a simple accessor for the existing placeholder view to
+        WebFullScreenController and WebView.
+
+        * WebView/WebFullScreenController.h:
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController webViewPlaceholder]): Added simple accessor.
+        * WebView/WebView.mm:
+        (-[WebView fullScreenPlaceholderView]): Added simple accessor.
+
+2013-01-28  Pratik Solanki  <psolanki@apple.com>
+
+        PLATFORM(IOS) should come before __MAC_OS_X_VERSION_MIN_REQUIRED
+        https://bugs.webkit.org/show_bug.cgi?id=108101
+
+        Reviewed by Benjamin Poulain.
+
+        Since iOS does not define __MAC_OS_X_VERSION_MIN_REQUIRED, any usage of
+        __MAC_OS_X_VERSION_MIN_REQUIRED should be after a PLATFORM(IOS) check.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2013-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Update PageVisibilityState when WebView is hidden / visible
+        https://bugs.webkit.org/show_bug.cgi?id=107509
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        Set the initial visibility of the page.
+
+        (-[WebView addWindowObserversForWindow:]):
+        (-[WebView removeWindowObservers]):
+        (-[WebView _isViewVisible]):
+        (-[WebView _updateVisibilityState]):
+        (-[WebView viewDidMoveToWindow]):
+        (-[WebView _windowVisibilityChanged:]):
+        Update visibility state in the same ways WK2 does. This involves
+        listening for some new NSWindow delegates.
+
+2013-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Improve PageVisibility API with enums
+        https://bugs.webkit.org/show_bug.cgi?id=107364
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+        (core):
+        (-[WebView _setVisibilityState:isInitialState:]):
+        Switch the private API form int to a WebPageVisibilityState enum.
+
+2013-01-28  Adam Barth  <abarth@webkit.org>
+
+        Remove webkitNotifications.createHTMLNotification
+        https://bugs.webkit.org/show_bug.cgi?id=107598
+
+        Reviewed by Benjamin Poulain.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-25  Andy Estes  <aestes@apple.com>
+
+        Wrap content filtering code in an object
+        https://bugs.webkit.org/show_bug.cgi?id=107914
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Updated to reflect changes in WKSI.
+
+2013-01-24  Dan Bernstein  <mitz@apple.com>
+
+        WebNavigationData does not distinguish between an empty title and a missing title
+        https://bugs.webkit.org/show_bug.cgi?id=107917
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (nilOrNSString): Added this helper function.
+        (WebFrameLoaderClient::updateGlobalHistory): Initialize the WebNavigationData with a nil
+        title, rather than the empty string, if the document does not have a title.
+
+2013-01-24  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Objective-C API: Rename JSValue.h/APIJSValue.h to JSCJSValue.h/JSValue.h
+        https://bugs.webkit.org/show_bug.cgi?id=107327
+
+        Reviewed by Filip Pizlo.
+
+        We're renaming these two files, so we have to replace the names everywhere.
+
+        * DOM/WebDOMOperations.mm:
+        * ForwardingHeaders/runtime/JSCJSValue.h: Copied from Source/WebKit/mac/ForwardingHeaders/runtime/JSValue.h.
+        * ForwardingHeaders/runtime/JSValue.h: Removed.
+        * WebView/WebFrame.mm:
+        * WebView/WebView.mm:
+
+2013-01-22  Anders Carlsson  <andersca@apple.com>
+
+        Use a platforom strategy for local storage
+        https://bugs.webkit.org/show_bug.cgi?id=107600
+
+        Reviewed by Andreas Kling.
+
+        Update for new storage strategy.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::createStorageStrategy):
+
+2013-01-21  Kentaro Hara  <haraken@chromium.org>
+
+        Implement UIEvent constructor
+        https://bugs.webkit.org/show_bug.cgi?id=107430
+
+        Reviewed by Adam Barth.
+
+        Editor's draft: https://dvcs.w3.org/hg/d4e/raw-file/tip/source_respec.htm
+
+        UIEvent constructor is implemented under a DOM4_EVENTS_CONSTRUCTOR flag,
+        which is enabled on Safari and Chromium for now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] Enable Page Visibility (PAGE_VISIBILITY_API)
+        https://bugs.webkit.org/show_bug.cgi?id=107230
+
+        Reviewed by David Kilzer.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-22  Tim Horton  <timothy_horton@apple.com>
+
+        PDFPlugin: Build PDFPlugin everywhere, enable at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=107117
+
+        Reviewed by Alexey Proskuryakov.
+
+        Since PDFLayerController SPI is all forward-declared, the plugin should build
+        on all Mac platforms, and can be enabled at runtime.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-21  Dirk Schulze  <dschulze@adobe.com>
+
+        Add build flag for Canvas's Path object (disabled by default)
+        https://bugs.webkit.org/show_bug.cgi?id=107473
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-01-17  Andy Estes  <aestes@apple.com>
+
+        Add a USE() macro for content filtering code
+        https://bugs.webkit.org/show_bug.cgi?id=107098
+
+        Reviewed by Mark Rowe.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface): Use USE(CONTENT_FILTERING).
+
+2013-01-19  Philip Rogers  <pdr@google.com>
+
+        Merge SVGStylable into SVGStyledElement
+        https://bugs.webkit.org/show_bug.cgi?id=106877
+
+        SVG2 changes element inheritance so all SVGElements are stylable. As a first-step towards a
+        cleaner class hierarchy, this patch moves SVGStylable into SVGStyledElement.
+
+        Reviewed by Dirk Schulze.
+
+        * MigrateHeaders.make:
+
+2013-01-18  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Add explicit keyword to constructors in platform-specific InspectorClient
+        https://bugs.webkit.org/show_bug.cgi?id=107255
+
+        Reviewed by Kentaro Hara.
+
+        Add explicit keyword to constructors that take one argument
+        in platform-specific implementation of InspectorClient.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient):
+
 2013-01-15  Jer Noble  <jer.noble@apple.com>
 
         Add a Setting to disable QTKit media engine.

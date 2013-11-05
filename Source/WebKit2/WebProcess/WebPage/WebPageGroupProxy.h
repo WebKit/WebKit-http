@@ -33,7 +33,6 @@
 namespace CoreIPC {
 class Connection;
 class MessageDecoder;
-class MessageID;
 }
 
 namespace WebCore {
@@ -54,15 +53,13 @@ public:
     bool isVisibleToInjectedBundle() const { return m_data.visibleToInjectedBundle; }
     bool isVisibleToHistoryClient() const { return m_data.visibleToHistoryClient; }
     
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
 
 private:
     WebPageGroupProxy(const WebPageGroupData&);
 
     virtual Type type() const { return APIType; }
-    
-    void didReceiveWebPageGroupProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    
+
     void addUserStyleSheet(const WebCore::UserStyleSheet&);
     void addUserScript(const WebCore::UserScript&);
     void removeAllUserStyleSheets();

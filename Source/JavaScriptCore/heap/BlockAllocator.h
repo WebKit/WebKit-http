@@ -93,16 +93,14 @@ inline Region* Region::create(size_t blockSize)
     ASSERT(blockSize <= s_regionSize);
     ASSERT(!(s_regionSize % blockSize));
     PageAllocationAligned allocation = PageAllocationAligned::allocate(s_regionSize, s_regionSize, OSAllocator::JSGCHeapPages);
-    if (!static_cast<bool>(allocation))
-        CRASH();
+    RELEASE_ASSERT(static_cast<bool>(allocation));
     return new Region(allocation, blockSize, s_regionSize / blockSize);
 }
 
 inline Region* Region::createCustomSize(size_t blockSize, size_t blockAlignment)
 {
     PageAllocationAligned allocation = PageAllocationAligned::allocate(blockSize, blockAlignment, OSAllocator::JSGCHeapPages);
-    if (!static_cast<bool>(allocation))
-        CRASH();
+    RELEASE_ASSERT(static_cast<bool>(allocation));
     Region* region = new Region(allocation, blockSize, 1);
     region->m_isCustomSize = true;
     return region;
@@ -373,7 +371,7 @@ inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor<HeapBlock<CopyWor
 template <typename T>
 inline BlockAllocator::RegionSet& BlockAllocator::regionSetFor()
 {
-    ASSERT_NOT_REACHED();
+    RELEASE_ASSERT_NOT_REACHED();
     return *(RegionSet*)0;
 }
 

@@ -71,12 +71,12 @@ void SandboxExtension::Handle::encode(CoreIPC::ArgumentEncoder& encoder) const
     m_sandboxExtension = 0;
 }
 
-bool SandboxExtension::Handle::decode(CoreIPC::ArgumentDecoder* decoder, Handle& result)
+bool SandboxExtension::Handle::decode(CoreIPC::ArgumentDecoder& decoder, Handle& result)
 {
     ASSERT(!result.m_sandboxExtension);
 
     CoreIPC::DataReference dataReference;
-    if (!decoder->decode(dataReference))
+    if (!decoder.decode(dataReference))
         return false;
 
     if (dataReference.isEmpty())
@@ -134,14 +134,14 @@ void SandboxExtension::HandleArray::encode(CoreIPC::ArgumentEncoder& encoder) co
     
 }
 
-bool SandboxExtension::HandleArray::decode(CoreIPC::ArgumentDecoder* decoder, SandboxExtension::HandleArray& handles)
+bool SandboxExtension::HandleArray::decode(CoreIPC::ArgumentDecoder& decoder, SandboxExtension::HandleArray& handles)
 {
     uint64_t size;
-    if (!decoder->decodeUInt64(size))
+    if (!decoder.decode(size))
         return false;
     handles.allocate(size);
     for (size_t i = 0; i < size; i++) {
-        if (!decoder->decode(handles[i]))
+        if (!decoder.decode(handles[i]))
             return false;
     }
     return true;
@@ -160,14 +160,11 @@ static WKSandboxExtensionType wkSandboxExtensionType(SandboxExtension::Type type
     switch (type) {
     case SandboxExtension::ReadOnly:
         return WKSandboxExtensionTypeReadOnly;
-    case SandboxExtension::WriteOnly:
-        return WKSandboxExtensionTypeWriteOnly;
     case SandboxExtension::ReadWrite:
         return WKSandboxExtensionTypeReadWrite;
     }
 
-    ASSERT_NOT_REACHED();
-    return WKSandboxExtensionTypeReadOnly;
+    CRASH();
 }
 
 static CString resolveSymlinksInPath(const CString& path)

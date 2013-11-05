@@ -22,7 +22,7 @@
 
 #if ENABLE(PLUGIN_PROCESS)
 
-messages -> PluginProcess {
+messages -> PluginProcess LegacyReceiver {
     # Initializes the plug-in process.
     InitializePluginProcess(WebKit::PluginProcessCreationParameters processCreationParameters)
     
@@ -40,7 +40,7 @@ messages -> PluginProcess {
     ClearSiteData(Vector<WTF::String> sites, uint64_t flags, uint64_t maxAgeInSeconds, uint64_t callbackID)
 
 #if PLATFORM(MAC)
-    SetApplicationIsOccluded(bool flag);
+    SetProcessSuppressionEnabled(bool flag);
 #endif
 }
 

@@ -509,7 +509,7 @@ void RenderBoxModelObject::computeStickyPositionConstraints(StickyPositionViewpo
 
 LayoutSize RenderBoxModelObject::stickyPositionOffset() const
 {
-    LayoutRect viewportRect = view()->frameView()->visibleContentRect();
+    LayoutRect viewportRect = view()->frameView()->viewportConstrainedVisibleContentRect();
     float scale = 1;
     if (Frame* frame = view()->frameView()->frame())
         scale = frame->frameScaleFactor();
@@ -919,35 +919,37 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
     // Paint the color first underneath all images, culled if background image occludes it.
     // FIXME: In the bgLayer->hasFiniteBounds() case, we could improve the culling test
     // by verifying whether the background image covers the entire layout rect.
-    if (!bgLayer->next() && !(shouldPaintBackgroundImage && bgLayer->hasOpaqueImage(this) && bgLayer->hasRepeatXY())) {
+    if (!bgLayer->next()) {
         IntRect backgroundRect(pixelSnappedIntRect(scrolledPaintRect));
         bool boxShadowShouldBeAppliedToBackground = this->boxShadowShouldBeAppliedToBackground(bleedAvoidance, box);
-        if (!boxShadowShouldBeAppliedToBackground)
-            backgroundRect.intersect(paintInfo.rect);
+        if (boxShadowShouldBeAppliedToBackground || !shouldPaintBackgroundImage || !bgLayer->hasOpaqueImage(this) || !bgLayer->hasRepeatXY()) {
+            if (!boxShadowShouldBeAppliedToBackground)
+                backgroundRect.intersect(paintInfo.rect);
 
-        // If we have an alpha and we are painting the root element, go ahead and blend with the base background color.
-        Color baseColor;
-        bool shouldClearBackground = false;
-        if (isOpaqueRoot) {
-            baseColor = view()->frameView()->baseBackgroundColor();
-            if (!baseColor.alpha())
-                shouldClearBackground = true;
+            // If we have an alpha and we are painting the root element, go ahead and blend with the base background color.
+            Color baseColor;
+            bool shouldClearBackground = false;
+            if (isOpaqueRoot) {
+                baseColor = view()->frameView()->baseBackgroundColor();
+                if (!baseColor.alpha())
+                    shouldClearBackground = true;
+            }
+
+            GraphicsContextStateSaver shadowStateSaver(*context, boxShadowShouldBeAppliedToBackground);
+            if (boxShadowShouldBeAppliedToBackground)
+                applyBoxShadowForBackground(context, style());
+
+            if (baseColor.alpha()) {
+                if (bgColor.alpha())
+                    baseColor = baseColor.blend(bgColor);
+
+                context->fillRect(backgroundRect, baseColor, style()->colorSpace(), CompositeCopy);
+            } else if (bgColor.alpha()) {
+                CompositeOperator operation = shouldClearBackground ? CompositeCopy : context->compositeOperation();
+                context->fillRect(backgroundRect, bgColor, style()->colorSpace(), operation);
+            } else if (shouldClearBackground)
+                context->clearRect(backgroundRect);
         }
-
-        GraphicsContextStateSaver shadowStateSaver(*context, boxShadowShouldBeAppliedToBackground);
-        if (boxShadowShouldBeAppliedToBackground)
-            applyBoxShadowForBackground(context, style());
-
-        if (baseColor.alpha()) {
-            if (bgColor.alpha())
-                baseColor = baseColor.blend(bgColor);
-
-            context->fillRect(backgroundRect, baseColor, style()->colorSpace(), CompositeCopy);
-        } else if (bgColor.alpha()) {
-            CompositeOperator operation = shouldClearBackground ? CompositeCopy : context->compositeOperation();
-            context->fillRect(backgroundRect, bgColor, style()->colorSpace(), operation);
-        } else if (shouldClearBackground)
-            context->clearRect(backgroundRect);
     }
 
     // no progressive loading of the background image
@@ -1172,7 +1174,26 @@ IntPoint RenderBoxModelObject::BackgroundImageGeometry::relativePhase() const
     return phase;
 }
 
-void RenderBoxModelObject::calculateBackgroundImageGeometry(const FillLayer* fillLayer, const LayoutRect& paintRect, 
+bool RenderBoxModelObject::fixedBackgroundPaintsInLocalCoordinates() const
+{
+#if USE(ACCELERATED_COMPOSITING)
+    if (!isRoot())
+        return false;
+
+    if (view()->frameView() && view()->frameView()->paintBehavior() & PaintBehaviorFlattenCompositingLayers)
+        return false;
+
+    RenderLayer* rootLayer = view()->layer();
+    if (!rootLayer || !rootLayer->isComposited())
+        return false;
+
+    return rootLayer->backing()->backgroundLayerPaintsFixedRootBackground();
+#else
+    return false;
+#endif
+}
+
+void RenderBoxModelObject::calculateBackgroundImageGeometry(const FillLayer* fillLayer, const LayoutRect& paintRect,
                                                             BackgroundImageGeometry& geometry)
 {
     LayoutUnit left = 0;
@@ -1224,8 +1245,11 @@ void RenderBoxModelObject::calculateBackgroundImageGeometry(const FillLayer* fil
             positioningAreaSize = pixelSnappedIntSize(paintRect.size() - LayoutSize(left + right, top + bottom), paintRect.location());
     } else {
         IntRect viewportRect = pixelSnappedIntRect(viewRect());
-        if (FrameView* frameView = view()->frameView())
+        if (fixedBackgroundPaintsInLocalCoordinates())
+            viewportRect.setLocation(IntPoint());
+        else if (FrameView* frameView = view()->frameView())
             viewportRect.setLocation(IntPoint(frameView->scrollOffsetForFixedPosition()));
+        
         geometry.setDestRect(pixelSnappedIntRect(viewportRect));
         positioningAreaSize = geometry.destRect().size();
     }
@@ -2834,8 +2858,8 @@ void RenderBoxModelObject::moveChildrenTo(RenderBoxModelObject* toBoxModelObject
     // or when fullRemoveInsert is false.
     if (fullRemoveInsert && isRenderBlock()) {
         RenderBlock* block = toRenderBlock(this);
-        if (block->hasPositionedObjects())
-            block->removePositionedObjects(0);
+        block->removePositionedObjects(0);
+        block->removeFloatingObjects(); 
     }
 
     ASSERT(!beforeChild || toBoxModelObject == beforeChild->parent());

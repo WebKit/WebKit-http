@@ -58,7 +58,7 @@ v8::Handle<v8::Value> V8MessageEvent::dataAccessorGetter(v8::Local<v8::String> n
     }
 
     case MessageEvent::DataTypeSerializedScriptValue:
-        if (SerializedScriptValue* serializedValue = event->dataAsSerializedScriptValue())
+        if (RefPtr<SerializedScriptValue> serializedValue = event->dataAsSerializedScriptValue())
             result = serializedValue->deserialize(info.GetIsolate(), event->ports());
         else
             result = v8Null(info.GetIsolate());
@@ -116,7 +116,7 @@ v8::Handle<v8::Value> V8MessageEvent::initMessageEventCallback(const v8::Argumen
     DOMWindow* sourceArg = 0;
     if (args[6]->IsObject()) {
         v8::Handle<v8::Object> wrapper = v8::Handle<v8::Object>::Cast(args[6]);
-        v8::Handle<v8::Object> window = wrapper->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
+        v8::Handle<v8::Object> window = wrapper->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(args.GetIsolate()));
         if (!window.IsEmpty())
             sourceArg = V8DOMWindow::toNative(window);
     }

@@ -68,18 +68,6 @@ public:
         return value;
     }
 
-    inline static void convertToUTF16(UChar32 value, StringBuilder& decodedEntity)
-    {
-        if (U_IS_BMP(value)) {
-            UChar character = static_cast<UChar>(value);
-            ASSERT(character == value);
-            decodedEntity.append(character);
-            return;
-        }
-        decodedEntity.append(U16_LEAD(value));
-        decodedEntity.append(U16_TRAIL(value));
-    }
-
     inline static bool acceptMalformed() { return true; }
 
     inline static bool consumeNamedEntity(SegmentedString& source, StringBuilder& decodedEntity, bool& notEnoughCharacters, UChar additionalAllowedCharacter, UChar& cc)
@@ -125,9 +113,9 @@ public:
         if (entitySearch.mostRecentMatch()->lastCharacter() == ';'
             || !additionalAllowedCharacter
             || !(isAlphaNumeric(cc) || cc == '=')) {
-            convertToUTF16(entitySearch.mostRecentMatch()->firstValue, decodedEntity);
+            decodedEntity.append(entitySearch.mostRecentMatch()->firstValue);
             if (entitySearch.mostRecentMatch()->secondValue)
-                convertToUTF16(entitySearch.mostRecentMatch()->secondValue, decodedEntity);
+                decodedEntity.append(entitySearch.mostRecentMatch()->secondValue);
             return true;
         }
         unconsumeCharacters(source, consumedCharacters);
@@ -140,7 +128,21 @@ bool consumeHTMLEntity(SegmentedString& source, StringBuilder& decodedEntity, bo
     return consumeCharacterReference<HTMLEntityParser>(source, decodedEntity, notEnoughCharacters, additionalAllowedCharacter);
 }
 
-UChar decodeNamedEntity(const char* name)
+static size_t appendUChar32ToUCharArray(UChar32 value, UChar* result)
+{
+    if (U_IS_BMP(value)) {
+        UChar character = static_cast<UChar>(value);
+        ASSERT(character == value);
+        result[0] = character;
+        return 1;
+    }
+
+    result[0] = U16_LEAD(value);
+    result[1] = U16_TRAIL(value);
+    return 2;
+}
+
+size_t decodeNamedEntityToUCharArray(const char* name, UChar result[4])
 {
     HTMLEntitySearch search;
     while (*name) {
@@ -152,13 +154,10 @@ UChar decodeNamedEntity(const char* name)
     if (!search.isEntityPrefix())
         return 0;
 
-    UChar32 firstValue = search.mostRecentMatch()->firstValue;
-    if (U16_LENGTH(firstValue) != 1 || search.mostRecentMatch()->secondValue) {
-        // FIXME: Callers need to move off this API. Not all entities can be
-        // represented in a single UChar!
-        return 0;
-    }
-    return static_cast<UChar>(firstValue);
+    size_t numberOfCodePoints = appendUChar32ToUCharArray(search.mostRecentMatch()->firstValue, result);
+    if (!search.mostRecentMatch()->secondValue)
+        return numberOfCodePoints;
+    return numberOfCodePoints + appendUChar32ToUCharArray(search.mostRecentMatch()->secondValue, result + numberOfCodePoints);
 }
 
 } // namespace WebCore

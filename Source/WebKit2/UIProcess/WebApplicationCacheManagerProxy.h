@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,6 @@
 
 namespace CoreIPC {
     class Connection;
-    class MessageID;
 }
 
 namespace WebKit {
@@ -51,7 +50,7 @@ class WebApplicationCacheManagerProxy : public APIObject, public WebContextSuppl
 public:
     static const Type APIType = TypeApplicationCacheManager;
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
     static PassRefPtr<WebApplicationCacheManagerProxy> create(WebContext*);
     virtual ~WebApplicationCacheManagerProxy();
@@ -78,8 +77,7 @@ private:
     virtual void derefWebContextSupplement() OVERRIDE;
 
     // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveWebApplicationCacheManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     HashMap<uint64_t, RefPtr<ArrayCallback> > m_arrayCallbacks;
 };

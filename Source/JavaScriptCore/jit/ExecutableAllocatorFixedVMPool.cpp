@@ -63,8 +63,7 @@ public:
     {
         m_reservation = PageReservation::reserveWithGuardPages(fixedExecutableMemoryPoolSize, OSAllocator::JSJITCodePages, EXECUTABLE_POOL_WRITABLE, true);
 #if !ENABLE(LLINT)
-        if (!m_reservation)
-            CRASH();
+        RELEASE_ASSERT(m_reservation);
 #endif
         if (m_reservation) {
             ASSERT(m_reservation.size() == fixedExecutableMemoryPoolSize);
@@ -99,7 +98,7 @@ protected:
                 return;
             ASSERT(result == -1);
             if (errno != EAGAIN) {
-                ASSERT_NOT_REACHED(); // In debug mode, this should be a hard failure.
+                RELEASE_ASSERT_NOT_REACHED(); // In debug mode, this should be a hard failure.
                 break; // In release mode, we should just ignore the error - not returning memory to the OS is better than crashing, especially since we _will_ be able to reuse the memory internally anyway.
             }
         }
@@ -165,8 +164,7 @@ PassRefPtr<ExecutableMemoryHandle> ExecutableAllocator::allocate(JSGlobalData& g
             return result;
         releaseExecutableMemory(globalData);
         result = allocator->allocate(sizeInBytes, ownerUID);
-        if (!result)
-            CRASH();
+        RELEASE_ASSERT(result);
     }
     return result.release();
 }

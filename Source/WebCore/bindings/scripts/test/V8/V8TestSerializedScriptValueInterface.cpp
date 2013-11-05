@@ -36,9 +36,32 @@
 #include <wtf/ArrayBuffer.h>
 #include <wtf/UnusedParam.h>
 
+#if ENABLE(BINDING_INTEGRITY)
+#if defined(OS_WIN)
+#pragma warning(disable: 4483)
+extern "C" { extern void (*const __identifier("??_7TestSerializedScriptValueInterface@WebCore@@6B@")[])(); }
+#else
+extern "C" { extern void* _ZTVN7WebCore34TestSerializedScriptValueInterfaceE[]; }
+#endif
+#endif // ENABLE(BINDING_INTEGRITY)
+
 namespace WebCore {
 
-WrapperTypeInfo V8TestSerializedScriptValueInterface::info = { V8TestSerializedScriptValueInterface::GetTemplate, V8TestSerializedScriptValueInterface::derefObject, 0, 0, V8TestSerializedScriptValueInterface::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
+#if ENABLE(BINDING_INTEGRITY)
+inline void checkTypeOrDieTrying(TestSerializedScriptValueInterface* object)
+{
+    void* actualVTablePointer = *(reinterpret_cast<void**>(object));
+#if defined(OS_WIN)
+    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestSerializedScriptValueInterface@WebCore@@6B@"));
+#else
+    void* expectedVTablePointer = &_ZTVN7WebCore34TestSerializedScriptValueInterfaceE[2];
+#endif
+    if (actualVTablePointer != expectedVTablePointer)
+        CRASH();
+}
+#endif // ENABLE(BINDING_INTEGRITY)
+
+WrapperTypeInfo V8TestSerializedScriptValueInterface::info = { V8TestSerializedScriptValueInterface::GetTemplate, V8TestSerializedScriptValueInterface::derefObject, 0, 0, 0, V8TestSerializedScriptValueInterface::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestSerializedScriptValueInterfaceV8Internal {
 
@@ -71,7 +94,7 @@ static v8::Handle<v8::Value> cachedValueAttrGetter(v8::Local<v8::String> name, c
     if (!value.IsEmpty())
         return value;
     TestSerializedScriptValueInterface* imp = V8TestSerializedScriptValueInterface::toNative(info.Holder());
-    SerializedScriptValue* serialized = imp->cachedValue();
+    RefPtr<SerializedScriptValue> serialized = imp->cachedValue();
     value = serialized ? serialized->deserialize() : v8::Handle<v8::Value>(v8Null(info.GetIsolate()));
     info.Holder()->SetHiddenValue(propertyName, value);
     return value;
@@ -106,7 +129,7 @@ static v8::Handle<v8::Value> cachedReadonlyValueAttrGetter(v8::Local<v8::String>
     if (!value.IsEmpty())
         return value;
     TestSerializedScriptValueInterface* imp = V8TestSerializedScriptValueInterface::toNative(info.Holder());
-    SerializedScriptValue* serialized = imp->cachedReadonlyValue();
+    RefPtr<SerializedScriptValue> serialized = imp->cachedReadonlyValue();
     value = serialized ? serialized->deserialize() : v8::Handle<v8::Value>(v8Null(info.GetIsolate()));
     info.Holder()->SetHiddenValue(propertyName, value);
     return value;
@@ -121,7 +144,7 @@ static v8::Handle<v8::Value> acceptTransferListCallback(const v8::Arguments& arg
     ArrayBufferArray arrayBufferArrayTransferList;
     if (args.Length() > 1) {
         if (!extractTransferables(args[1], messagePortArrayTransferList, arrayBufferArrayTransferList, args.GetIsolate()))
-            return throwTypeError("Could not extract transferables");
+            return throwTypeError("Could not extract transferables", args.GetIsolate());
     }
     bool dataDidThrow = false;
     RefPtr<SerializedScriptValue> data = SerializedScriptValue::create(args[0], &messagePortArrayTransferList, &arrayBufferArrayTransferList, dataDidThrow, args.GetIsolate());
@@ -146,7 +169,7 @@ static v8::Handle<v8::Value> multiTransferListCallback(const v8::Arguments& args
     ArrayBufferArray arrayBufferArrayTx;
     if (args.Length() > 1) {
         if (!extractTransferables(args[1], messagePortArrayTx, arrayBufferArrayTx, args.GetIsolate()))
-            return throwTypeError("Could not extract transferables");
+            return throwTypeError("Could not extract transferables", args.GetIsolate());
     }
     bool firstDidThrow = false;
     RefPtr<SerializedScriptValue> first = SerializedScriptValue::create(args[0], &messagePortArrayTx, &arrayBufferArrayTx, firstDidThrow, args.GetIsolate());
@@ -164,7 +187,7 @@ static v8::Handle<v8::Value> multiTransferListCallback(const v8::Arguments& args
     ArrayBufferArray arrayBufferArrayTxx;
     if (args.Length() > 3) {
         if (!extractTransferables(args[3], messagePortArrayTxx, arrayBufferArrayTxx, args.GetIsolate()))
-            return throwTypeError("Could not extract transferables");
+            return throwTypeError("Could not extract transferables", args.GetIsolate());
     }
     bool secondDidThrow = false;
     RefPtr<SerializedScriptValue> second = SerializedScriptValue::create(args[2], &messagePortArrayTxx, &arrayBufferArrayTxx, secondDidThrow, args.GetIsolate());
@@ -202,7 +225,7 @@ v8::Handle<v8::Value> V8TestSerializedScriptValueInterface::constructorCallback(
 {
     
     if (!args.IsConstructCall())
-        return throwTypeError("DOM object constructor cannot be called as a function.");
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -213,7 +236,7 @@ v8::Handle<v8::Value> V8TestSerializedScriptValueInterface::constructorCallback(
     ArrayBufferArray arrayBufferArrayTransferList;
     if (args.Length() > 2) {
         if (!extractTransferables(args[2], messagePortArrayTransferList, arrayBufferArrayTransferList, args.GetIsolate()))
-            return throwTypeError("Could not extract transferables");
+            return throwTypeError("Could not extract transferables", args.GetIsolate());
     }
     bool dataDidThrow = false;
     RefPtr<SerializedScriptValue> data = SerializedScriptValue::create(args[1], &messagePortArrayTransferList, &arrayBufferArrayTransferList, dataDidThrow, args.GetIsolate());
@@ -227,7 +250,7 @@ v8::Handle<v8::Value> V8TestSerializedScriptValueInterface::constructorCallback(
     return wrapper;
 }
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestSerializedScriptValueInterfaceTemplate(v8::Persistent<v8::FunctionTemplate> desc)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestSerializedScriptValueInterfaceTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
 {
     desc->ReadOnlyPrototype();
 
@@ -248,9 +271,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestSerializedScriptValue
     return desc;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestSerializedScriptValueInterface::GetRawTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestSerializedScriptValueInterface::GetRawTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
@@ -261,23 +286,27 @@ v8::Persistent<v8::FunctionTemplate> V8TestSerializedScriptValueInterface::GetRa
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestSerializedScriptValueInterface::GetTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestSerializedScriptValueInterface::GetTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestSerializedScriptValueInterfaceTemplate(GetRawTemplate());
+        ConfigureV8TestSerializedScriptValueInterfaceTemplate(GetRawTemplate(isolate), isolate);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
-bool V8TestSerializedScriptValueInterface::HasInstance(v8::Handle<v8::Value> value)
+bool V8TestSerializedScriptValueInterface::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    return GetRawTemplate()->HasInstance(value);
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return GetRawTemplate(isolate)->HasInstance(value);
 }
 
 
@@ -285,6 +314,10 @@ v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::createWrapper(PassR
 {
     ASSERT(impl.get());
     ASSERT(DOMDataStore::getWrapper(impl.get(), isolate).IsEmpty());
+
+#if ENABLE(BINDING_INTEGRITY)
+    checkTypeOrDieTrying(impl.get());
+#endif
 
     v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
@@ -296,7 +329,6 @@ v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::createWrapper(PassR
         wrapperHandle.MarkIndependent();
     return wrapper;
 }
-
 void V8TestSerializedScriptValueInterface::derefObject(void* object)
 {
     static_cast<TestSerializedScriptValueInterface*>(object)->deref();

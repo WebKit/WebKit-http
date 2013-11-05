@@ -53,10 +53,7 @@ public:
     bool metered(WebPage*) const;
 private:
     // CoreIPC::MessageReceiver
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-
-    // Implemented in generated WebNetworkInfoManagerMessageReceiver.cpp
-    void didReceiveWebNetworkInfoManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     void didChangeNetworkInformation(const AtomicString& eventType, const WebNetworkInfo::Data&);
 

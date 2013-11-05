@@ -61,6 +61,38 @@ WebInspector.JSHeapSnapshot.prototype = {
         return new WebInspector.JSHeapSnapshotRetainerEdge(this, retainedNodeIndex, retainerIndex);
     },
 
+    classNodesFilter: function()
+    {
+        function filter(node)
+        {
+            return node.isUserObject();
+        }
+        return filter;
+    },
+
+    containmentEdgesFilter: function(showHiddenData)
+    {
+        function filter(edge) {
+            if (edge.isInvisible())
+                return false;
+            if (showHiddenData)
+                return true;
+            return !edge.isHidden() && !edge.node().isHidden();
+        }
+        return filter;
+    },
+
+    retainingEdgesFilter: function(showHiddenData)
+    {
+        var containmentEdgesFilter = this.containmentEdgesFilter(showHiddenData);
+        function filter(edge) {
+            if (!containmentEdgesFilter(edge))
+                return false;
+            return edge.node().id() !== 1 && !edge.node().isSynthetic() && !edge.isWeak();
+        }
+        return filter;
+    },
+
     dispose: function()
     {
         WebInspector.HeapSnapshot.prototype.dispose.call(this);
@@ -102,9 +134,13 @@ WebInspector.JSHeapSnapshot.prototype = {
         this._markPageOwnedNodes();
     },
 
-    canHaveDistanceOne: function(node)
+    distanceForUserRoot: function(node)
     {
-        return node.isWindow();
+        if (node.isWindow())
+            return 1;
+        if (node.isDocumentDOMTreesRoot())
+            return 0;
+        return -1;
     },
 
     userObjectsMapAndFlag: function()
@@ -126,7 +162,7 @@ WebInspector.JSHeapSnapshot.prototype = {
         var detachedDOMTreesRoot;
         for (var iter = this.rootNode().edges(); iter.hasNext(); iter.next()) {
             var node = iter.edge.node();
-            if (node.isDetachedDOMTreesRoot()) {
+            if (node.name() === "(Detached DOM trees)") {
                 detachedDOMTreesRoot = node;
                 break;
             }
@@ -135,9 +171,10 @@ WebInspector.JSHeapSnapshot.prototype = {
         if (!detachedDOMTreesRoot)
             return;
 
+        var detachedDOMTreeRE = /^Detached DOM tree/;
         for (var iter = detachedDOMTreesRoot.edges(); iter.hasNext(); iter.next()) {
             var node = iter.edge.node();
-            if (node.isDetachedDOMTree()) {
+            if (detachedDOMTreeRE.test(node.className())) {
                 for (var edgesIter = node.edges(); edgesIter.hasNext(); edgesIter.next())
                     this._flags[edgesIter.edge.node().nodeIndex / this._nodeFieldCount] |= flag;
             }
@@ -194,6 +231,7 @@ WebInspector.JSHeapSnapshot.prototype = {
     _markPageOwnedNodes: function()
     {
         var edgeShortcutType = this._edgeShortcutType;
+        var edgeElementType = this._edgeElementType;
         var edgeToNodeOffset = this._edgeToNodeOffset;
         var edgeTypeOffset = this._edgeTypeOffset;
         var edgeFieldsCount = this._edgeFieldsCount;
@@ -215,14 +253,21 @@ WebInspector.JSHeapSnapshot.prototype = {
         var nodesToVisitLength = 0;
 
         var rootNodeOrdinal = this._rootNodeIndex / nodeFieldCount;
+        var node = this.rootNode();
         for (var edgeIndex = firstEdgeIndexes[rootNodeOrdinal], endEdgeIndex = firstEdgeIndexes[rootNodeOrdinal + 1];
              edgeIndex < endEdgeIndex;
              edgeIndex += edgeFieldsCount) {
-            if (containmentEdges[edgeIndex + edgeTypeOffset] === edgeShortcutType) {
-                var nodeOrdinal = containmentEdges[edgeIndex + edgeToNodeOffset] / nodeFieldCount;
-                nodesToVisit[nodesToVisitLength++] = nodeOrdinal;
-                flags[nodeOrdinal] |= visitedMarker;
-            }
+            var edgeType = containmentEdges[edgeIndex + edgeTypeOffset];
+            var nodeIndex = containmentEdges[edgeIndex + edgeToNodeOffset];
+            if (edgeType === edgeElementType) {
+                node.nodeIndex = nodeIndex;
+                if (!node.isDocumentDOMTreesRoot())
+                    continue;
+            } else if (edgeType !== edgeShortcutType)
+                continue;
+            var nodeOrdinal = nodeIndex / nodeFieldCount;
+            nodesToVisit[nodesToVisitLength++] = nodeOrdinal;
+            flags[nodeOrdinal] |= visitedMarker;
         }
 
         while (nodesToVisitLength) {
@@ -277,12 +322,12 @@ WebInspector.JSHeapSnapshotNode.prototype = {
         var type = this.type();
         switch (type) {
         case "hidden":
-            return WebInspector.UIString("(system)");
+            return "(system)";
         case "object":
         case "native":
             return this.name();
         case "code":
-            return WebInspector.UIString("(compiled code)");
+            return "(compiled code)";
         default:
             return "(" + type + ")";
         }
@@ -320,15 +365,9 @@ WebInspector.JSHeapSnapshotNode.prototype = {
         return windowRE.test(this.name());
     },
 
-    isDetachedDOMTreesRoot: function()
+    isDocumentDOMTreesRoot: function()
     {
-        return this.name() === "(Detached DOM trees)";
-    },
-
-    isDetachedDOMTree: function()
-    {
-        const detachedDOMTreeRE = /^Detached DOM tree/;
-        return detachedDOMTreeRE.test(this.className());
+        return this.isSynthetic() && this.name() === "(Document DOM trees)";
     },
 
     serialize: function()
@@ -468,11 +507,6 @@ WebInspector.JSHeapSnapshotRetainerEdge.prototype = {
     clone: function()
     {
         return new WebInspector.JSHeapSnapshotRetainerEdge(this._snapshot, this._retainedNodeIndex, this.retainerIndex());
-    },
-
-    isElement: function()
-    {
-        return this._edge().isElement();
     },
 
     isHidden: function()

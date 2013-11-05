@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -44,6 +44,8 @@
 #include <network/MultipartStream.h>
 #include <network/NetworkStreamFactory.h>
 
+using BlackBerry::Platform::NetworkRequest;
+
 namespace WebCore {
 
 static const int s_redirectMaximum = 10;
@@ -63,7 +65,7 @@ inline static bool isUnauthorized(int statusCode)
     return statusCode == 401;
 }
 
-static char* const appendableHeaders[] = {"access-control-allow-origin", "allow",
+static const char* const appendableHeaders[] = {"access-control-allow-origin", "allow",
     "set-cookie", "set-cookie2", "vary", "via", "warning"};
 
 static bool isAppendableHeader(const String& key)
@@ -72,7 +74,7 @@ static bool isAppendableHeader(const String& key)
     if (key.startsWith("x-"))
         return true;
 
-    for (int i = 0; i < sizeof(appendableHeaders) /sizeof(char*); i++)
+    for (size_t i = 0; i < sizeof(appendableHeaders) /sizeof(char*); i++)
         if (key == appendableHeaders[i])
             return true;
 
@@ -268,43 +270,70 @@ void NetworkJob::notifyMultipartHeaderReceived(const char* key, const char* valu
         handleNotifyMultipartHeaderReceived(key, value);
 }
 
-void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthType authType, const char* realm, AuthResult result, bool requireCredentials)
+void NetworkJob::notifyAuthReceived(NetworkRequest::AuthType authType, NetworkRequest::AuthProtocol authProtocol, NetworkRequest::AuthScheme authScheme, const char* realm, AuthResult result, bool requireCredentials)
 {
-    using BlackBerry::Platform::NetworkRequest;
-
-    ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
-    ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
-
-    if (m_response.url().protocolIs("https"))
-        serverType = ProtectionSpaceServerHTTPS;
-
+    ProtectionSpaceServerType serverType;
     switch (authType) {
-    case NetworkRequest::AuthHTTPBasic:
+    case NetworkRequest::AuthTypeHost:
+        switch (authProtocol) {
+        case NetworkRequest::AuthProtocolHTTP:
+            serverType = ProtectionSpaceServerHTTP;
+            break;
+        case NetworkRequest::AuthProtocolHTTPS:
+            serverType = ProtectionSpaceServerHTTPS;
+            break;
+        case NetworkRequest::AuthProtocolFTP:
+            serverType = ProtectionSpaceServerFTP;
+            break;
+        case NetworkRequest::AuthProtocolFTPS:
+            serverType = ProtectionSpaceServerFTPS;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            return;
+        }
+        break;
+    case NetworkRequest::AuthTypeProxy:
+        switch (authProtocol) {
+        case NetworkRequest::AuthProtocolHTTP:
+            serverType = ProtectionSpaceProxyHTTP;
+            break;
+        case NetworkRequest::AuthProtocolHTTPS:
+            serverType = ProtectionSpaceProxyHTTPS;
+            break;
+        case NetworkRequest::AuthProtocolFTP:
+        case NetworkRequest::AuthProtocolFTPS:
+            serverType = ProtectionSpaceProxyFTP;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            return;
+        }
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    ProtectionSpaceAuthenticationScheme scheme;
+    switch (authScheme) {
+    case NetworkRequest::AuthSchemeDefault:
+        scheme = ProtectionSpaceAuthenticationSchemeDefault;
+        break;
+    case NetworkRequest::AuthSchemeHTTPBasic:
         scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
         break;
-    case NetworkRequest::AuthHTTPDigest:
+    case NetworkRequest::AuthSchemeHTTPDigest:
         scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
         break;
-    case NetworkRequest::AuthNegotiate:
+    case NetworkRequest::AuthSchemeNegotiate:
         scheme = ProtectionSpaceAuthenticationSchemeNegotiate;
         break;
-    case NetworkRequest::AuthHTTPNTLM:
+    case NetworkRequest::AuthSchemeNTLM:
         scheme = ProtectionSpaceAuthenticationSchemeNTLM;
         break;
-    case NetworkRequest::AuthFTP:
-        if (m_response.url().protocolIs("ftps"))
-            serverType = ProtectionSpaceServerFTPS;
-        else
-            serverType = ProtectionSpaceServerFTP;
-        break;
-    case NetworkRequest::AuthProxy:
-        if (m_response.url().protocolIs("https"))
-            serverType = ProtectionSpaceProxyHTTPS;
-        else
-            serverType = ProtectionSpaceProxyHTTP;
-        break;
-    case NetworkRequest::AuthNone:
     default:
+        ASSERT_NOT_REACHED();
         return;
     }
 
@@ -315,16 +344,12 @@ void NetworkJob::notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthTy
         purgeCredentials();
     else {
         // Update the credentials that will be stored to match the scheme that was actually used
-        AuthenticationChallenge& challenge = m_handle->getInternal()->m_currentWebChallenge;
-        if (!challenge.isNull()) {
+        AuthenticationChallenge& challenge = authType == NetworkRequest::AuthTypeProxy ? m_handle->getInternal()->m_proxyWebChallenge : m_handle->getInternal()->m_hostWebChallenge;
+        if (challenge.hasCredentials()) {
             const ProtectionSpace& oldSpace = challenge.protectionSpace();
             if (oldSpace.authenticationScheme() != scheme && oldSpace.serverType() == serverType) {
                 ProtectionSpace newSpace(oldSpace.host(), oldSpace.port(), oldSpace.serverType(), oldSpace.realm(), scheme);
-                m_handle->getInternal()->m_currentWebChallenge = AuthenticationChallenge(newSpace,
-                                                                                         challenge.proposedCredential(),
-                                                                                         challenge.previousFailureCount(),
-                                                                                         challenge.failureResponse(),
-                                                                                         challenge.error());
+                updateCurrentWebChallenge(AuthenticationChallenge(newSpace, challenge.proposedCredential(), challenge.previousFailureCount(), challenge.failureResponse(), challenge.error()));
             }
         }
         storeCredentials();
@@ -639,12 +664,13 @@ bool NetworkJob::handleRedirect()
         newRequest.clearHTTPContentType();
     }
 
-    if (!m_handle->getInternal()->m_currentWebChallenge.isNull()) {
-        // If this request is challenged, store the credentials now because the credential is correct (otherwise, it won't get here).
-        storeCredentials();
-        // Do not send existing credentials with the new request.
-        m_handle->getInternal()->m_currentWebChallenge.nullify();
-    }
+    // If this request is challenged, store the credentials now (if they are null this will do nothing)
+    storeCredentials();
+
+    // Do not send existing credentials with the new request.
+    m_handle->getInternal()->m_currentWebChallenge.nullify();
+    m_handle->getInternal()->m_proxyWebChallenge.nullify();
+    m_handle->getInternal()->m_hostWebChallenge.nullify();
 
     return startNewJobWithRequest(newRequest, true);
 }
@@ -762,6 +788,9 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
     if (!newURL.isValid())
         return false;
 
+    // IMPORTANT: if a new source of credentials is added to this method, be sure to handle it in
+    // purgeCredentials as well!
+
     String host;
     int port;
     BlackBerry::Platform::ProxyInfo proxyInfo;
@@ -800,16 +829,16 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
     Credential credential;
     if (!requireCredentials) {
         // Don't overwrite any existing credentials with the empty credential
-        if (m_handle->getInternal()->m_currentWebChallenge.isNull())
-            m_handle->getInternal()->m_currentWebChallenge = AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError());
+        updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()), /* allowOverwrite */ false);
     } else if (!(credential = CredentialStorage::get(protectionSpace)).isEmpty()
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
             || !(credential = CredentialStorage::getFromPersistentStorage(protectionSpace)).isEmpty()
 #endif
             ) {
         // First search the CredentialStorage and Persistent Credential Storage
-        m_handle->getInternal()->m_currentWebChallenge = AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError());
-        m_handle->getInternal()->m_currentWebChallenge.setStored(true);
+        AuthenticationChallenge challenge(protectionSpace, credential, 0, m_response, ResourceError());
+        challenge.setStored(true);
+        updateCurrentWebChallenge(challenge);
     } else {
         if (m_handle->firstRequest().targetType() == ResourceRequest::TargetIsFavicon) {
             // The favicon loading is triggerred after the main resource has been loaded
@@ -832,25 +861,15 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
         }
 
         // Before asking the user for credentials, we check if the URL contains that.
-        if (!username.isEmpty() || !password.isEmpty()) {
-            // Prevent them from been used again if they are wrong.
-            // If they are correct, they will be put into CredentialStorage.
-            if (!proxyInfo.address.empty()) {
-                proxyInfo.username.clear();
-                proxyInfo.password.clear();
-                BlackBerry::Platform::Settings::instance()->storeProxyCredentials(proxyInfo);
-            } else {
-                m_handle->getInternal()->m_user = "";
-                m_handle->getInternal()->m_pass = "";
-            }
-        } else {
+        if (username.isEmpty() && password.isEmpty()) {
             if (m_handle->firstRequest().targetType() != ResourceRequest::TargetIsMainFrame && BlackBerry::Platform::Settings::instance()->isChromeProcess())
                 return false;
 
             if (!m_frame || !m_frame->page())
                 return false;
 
-            m_handle->getInternal()->m_currentWebChallenge = AuthenticationChallenge();
+            // DO overwrite any existing credentials with the empty credential
+            updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()));
 
             m_isAuthenticationChallenging = true;
             updateDeferLoadingCount(1);
@@ -862,7 +881,7 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
 
         credential = Credential(username, password, CredentialPersistenceForSession);
 
-        m_handle->getInternal()->m_currentWebChallenge = AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError());
+        updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()));
     }
 
     notifyChallengeResult(newURL, protectionSpace, AuthenticationChallengeSuccess, credential);
@@ -874,11 +893,26 @@ void NetworkJob::storeCredentials()
     if (!m_handle)
         return;
 
-    AuthenticationChallenge& challenge = m_handle->getInternal()->m_currentWebChallenge;
+    storeCredentials(m_handle->getInternal()->m_hostWebChallenge);
+    storeCredentials(m_handle->getInternal()->m_proxyWebChallenge);
+}
+
+void NetworkJob::storeCredentials(AuthenticationChallenge& challenge)
+{
     if (challenge.isNull())
         return;
 
     if (challenge.isStored())
+        return;
+
+    // Obviously we can't have successfully authenticated with empty credentials. (To store empty
+    // credentials, use purgeCredentials.)
+
+    // FIXME: We should assert here, but there is one path (when the credentials are read from the
+    // proxy config entirely in the platform layer) where storeCredentials is called with an empty
+    // challenge. The credentials should be passed back from the platform layer for storage in this
+    // case - see PR 287791.
+    if (challenge.proposedCredential().user().isEmpty() || challenge.proposedCredential().password().isEmpty())
         return;
 
     CredentialStorage::set(challenge.proposedCredential(), challenge.protectionSpace(), m_response.url());
@@ -906,9 +940,33 @@ void NetworkJob::purgeCredentials()
     if (!m_handle)
         return;
 
-    AuthenticationChallenge& challenge = m_handle->getInternal()->m_currentWebChallenge;
+    purgeCredentials(m_handle->getInternal()->m_hostWebChallenge);
+    purgeCredentials(m_handle->getInternal()->m_proxyWebChallenge);
+}
+
+void NetworkJob::purgeCredentials(AuthenticationChallenge& challenge)
+{
     if (challenge.isNull())
         return;
+
+    const String& purgeUsername = challenge.proposedCredential().user();
+    const String& purgePassword = challenge.proposedCredential().password();
+
+    // Since this credential didn't work, remove it from all sources which would return it
+    // IMPORTANT: every source that is checked for a password in sendRequestWithCredentials should
+    // be handled here!
+
+    if (challenge.protectionSpace().serverType() == ProtectionSpaceProxyHTTP || challenge.protectionSpace().serverType() == ProtectionSpaceProxyHTTPS) {
+        BlackBerry::Platform::ProxyInfo proxyInfo = BlackBerry::Platform::Settings::instance()->proxyInfo(m_handle->firstRequest().url().string());
+        if (!proxyInfo.address.empty() && purgeUsername == proxyInfo.username.c_str() && purgePassword == proxyInfo.password.c_str()) {
+            proxyInfo.username.clear();
+            proxyInfo.password.clear();
+            BlackBerry::Platform::Settings::instance()->storeProxyCredentials(proxyInfo);
+        }
+    } else if (m_handle->getInternal()->m_user == purgeUsername && m_handle->getInternal()->m_pass == purgePassword) {
+        m_handle->getInternal()->m_user = "";
+        m_handle->getInternal()->m_pass = "";
+    }
 
     CredentialStorage::remove(challenge.protectionSpace());
     challenge.setStored(false);
@@ -944,8 +1002,7 @@ void NetworkJob::notifyChallengeResult(const KURL& url, const ProtectionSpace& p
     if (result != AuthenticationChallengeSuccess)
         return;
 
-    if (m_handle->getInternal()->m_currentWebChallenge.isNull())
-        m_handle->getInternal()->m_currentWebChallenge = AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError());
+    updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()), /* allowOverwrite */ false);
 
     ResourceRequest newRequest = m_handle->firstRequest();
     newRequest.setURL(url);
@@ -964,6 +1021,19 @@ void NetworkJob::willDetachPage()
 {
     if (m_frame && !m_cancelled)
         cancelJob();
+}
+
+void NetworkJob::updateCurrentWebChallenge(const AuthenticationChallenge& challenge, bool allowOverwrite)
+{
+    if (allowOverwrite || !m_handle->getInternal()->m_currentWebChallenge.hasCredentials())
+        m_handle->getInternal()->m_currentWebChallenge = challenge;
+    if (challenge.protectionSpace().serverType() == ProtectionSpaceProxyHTTP || challenge.protectionSpace().serverType() == ProtectionSpaceProxyHTTPS) {
+        if (allowOverwrite || !m_handle->getInternal()->m_proxyWebChallenge.hasCredentials())
+            m_handle->getInternal()->m_proxyWebChallenge = challenge;
+    } else {
+        if (allowOverwrite || !m_handle->getInternal()->m_hostWebChallenge.hasCredentials())
+            m_handle->getInternal()->m_hostWebChallenge = challenge;
+    }
 }
 
 } // namespace WebCore

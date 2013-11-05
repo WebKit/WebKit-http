@@ -53,8 +53,8 @@ static inline void collectElementIdentifierHashes(const Element* element, Vector
 void SelectorFilter::pushParentStackFrame(Element* parent)
 {
     ASSERT(m_ancestorIdentifierFilter);
-    ASSERT(m_parentStack.isEmpty() || m_parentStack.last().element == parent->parentOrHostElement());
-    ASSERT(!m_parentStack.isEmpty() || !parent->parentOrHostElement());
+    ASSERT(m_parentStack.isEmpty() || m_parentStack.last().element == parent->parentOrShadowHostElement());
+    ASSERT(!m_parentStack.isEmpty() || !parent->parentOrShadowHostElement());
     m_parentStack.append(ParentStackFrame(parent));
     ParentStackFrame& parentFrame = m_parentStack.last();
     // Mix tags, class names and ids into some sort of weird bouillabaisse.
@@ -87,13 +87,13 @@ void SelectorFilter::setupParentStack(Element* parent)
     m_parentStack.shrink(0);
     m_ancestorIdentifierFilter = adoptPtr(new BloomFilter<bloomFilterKeyBits>);
     // Fast version if parent is a root element:
-    if (!parent->parentOrHostNode()) {
+    if (!parent->parentOrShadowHostNode()) {
         pushParentStackFrame(parent);
         return;
     }
     // Otherwise climb up the tree.
     Vector<Element*, 30> ancestors;
-    for (Element* ancestor = parent; ancestor; ancestor = ancestor->parentOrHostElement())
+    for (Element* ancestor = parent; ancestor; ancestor = ancestor->parentOrShadowHostElement())
         ancestors.append(ancestor);
     for (size_t n = ancestors.size(); n; --n)
         pushParentStackFrame(ancestors[n - 1]);
@@ -104,12 +104,12 @@ void SelectorFilter::pushParent(Element* parent)
     ASSERT(m_ancestorIdentifierFilter);
     // We may get invoked for some random elements in some wacky cases during style resolve.
     // Pause maintaining the stack in this case.
-    if (m_parentStack.last().element != parent->parentOrHostElement())
+    if (m_parentStack.last().element != parent->parentOrShadowHostElement())
         return;
     pushParentStackFrame(parent);
 }
 
-static inline void collectDescendantSelectorIdentifierHashes(const CSSSelector* selector, unsigned*& hash, const unsigned* end)
+static inline void collectDescendantSelectorIdentifierHashes(const CSSSelector* selector, unsigned*& hash)
 {
     switch (selector->m_match) {
     case CSSSelector::Id:
@@ -120,14 +120,13 @@ static inline void collectDescendantSelectorIdentifierHashes(const CSSSelector* 
         if (!selector->value().isEmpty())
             (*hash++) = selector->value().impl()->existingHash() * ClassAttributeSalt;
         break;
+    case CSSSelector::Tag:
+        if (selector->tagQName().localName() != starAtom)
+            (*hash++) = selector->tagQName().localName().impl()->existingHash() * TagNameSalt;
+        break;
     default:
         break;
     }
-    if (hash == end)
-        return;
-    const AtomicString& localName = selector->tag().localName();
-    if (localName != starAtom)
-        (*hash++) = localName.impl()->existingHash() * TagNameSalt;
 }
 
 void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsigned* identifierHashes, unsigned maximumIdentifierCount)
@@ -143,7 +142,7 @@ void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsign
         switch (relation) {
         case CSSSelector::SubSelector:
             if (!skipOverSubselectors)
-                collectDescendantSelectorIdentifierHashes(selector, hash, end);
+                collectDescendantSelectorIdentifierHashes(selector, hash);
             break;
         case CSSSelector::DirectAdjacent:
         case CSSSelector::IndirectAdjacent:
@@ -153,7 +152,7 @@ void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsign
         case CSSSelector::Descendant:
         case CSSSelector::Child:
             skipOverSubselectors = false;
-            collectDescendantSelectorIdentifierHashes(selector, hash, end);
+            collectDescendantSelectorIdentifierHashes(selector, hash);
             break;
         }
         if (hash == end)

@@ -1494,6 +1494,13 @@ void FrameView::removeViewportConstrainedObject(RenderObject* object)
     }
 }
 
+LayoutRect FrameView::viewportConstrainedVisibleContentRect() const
+{
+    LayoutRect viewportRect = visibleContentRect();
+    viewportRect.setLocation(toPoint(scrollOffsetForFixedPosition()));
+    return viewportRect;
+}
+
 IntSize FrameView::scrollOffsetForFixedPosition() const
 {
     IntRect visibleContentRect = this->visibleContentRect();
@@ -1792,6 +1799,7 @@ void FrameView::setFixedVisibleContentRect(const IntRect& visibleContentRect)
     IntSize offset = scrollOffset();
     ScrollView::setFixedVisibleContentRect(visibleContentRect);
     if (offset != scrollOffset()) {
+        repaintFixedElementsAfterScrolling();
         if (m_frame->page()->settings()->acceleratedCompositingForFixedPositionEnabled())
             updateFixedElementsAfterScrolling();
         scrollAnimator()->setCurrentPosition(scrollPosition());
@@ -1899,6 +1907,28 @@ bool FrameView::shouldRubberBandInDirection(ScrollDirection direction) const
     return page->chrome()->client()->shouldRubberBandInDirection(direction);
 }
 
+bool FrameView::isRubberBandInProgress() const
+{
+    if (scrollbarsSuppressed())
+        return false;
+
+    // If the scrolling thread updates the scroll position for this FrameView, then we should return
+    // ScrollingCoordinator::isRubberBandInProgress().
+    if (Page* page = m_frame->page()) {
+        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator()) {
+            if (!scrollingCoordinator->shouldUpdateScrollLayerPositionOnMainThread())
+                return scrollingCoordinator->isRubberBandInProgress();
+        }
+    }
+
+    // If the main thread updates the scroll position for this FrameView, we should return
+    // ScrollAnimator::isRubberBandInProgress().
+    if (ScrollAnimator* scrollAnimator = existingScrollAnimator())
+        return scrollAnimator->isRubberBandInProgress();
+
+    return false;
+}
+
 bool FrameView::requestScrollPositionUpdate(const IntPoint& position)
 {
 #if ENABLE(THREADED_SCROLLING)
@@ -1992,7 +2022,7 @@ void FrameView::visibleContentsResized()
     if (!frame()->view())
         return;
 
-    if (needsLayout())
+    if (!useFixedLayout() && needsLayout())
         layout();
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -2807,6 +2837,17 @@ IntRect FrameView::windowResizerRect() const
     return page->chrome()->windowResizerRect();
 }
 
+float FrameView::visibleContentScaleFactor() const
+{
+    if (!m_frame || !m_frame->page())
+        return 1;
+
+    if (!m_frame->settings()->applyPageScaleFactorInCompositor() || m_frame != m_frame->page()->mainFrame())
+        return 1;
+
+    return m_frame->page()->pageScaleFactor();
+}
+
 void FrameView::setVisibleScrollerThumbRect(const IntRect& scrollerThumb)
 {
     Page* page = m_frame->page();
@@ -3015,7 +3056,7 @@ void FrameView::updateScrollCorner()
 
     if (cornerStyle) {
         if (!m_scrollCorner)
-            m_scrollCorner = new (renderer->renderArena()) RenderScrollbarPart(renderer->document());
+            m_scrollCorner = RenderScrollbarPart::createAnonymous(renderer->document());
         m_scrollCorner->setStyle(cornerStyle.release());
         invalidateScrollCorner(cornerRect);
     } else if (m_scrollCorner) {
@@ -3774,8 +3815,12 @@ void FrameView::removeChild(Widget* widget)
 
 bool FrameView::wheelEvent(const PlatformWheelEvent& wheelEvent)
 {
+    // Note that to allow for rubber-band over-scroll behavior, even non-scrollable views
+    // should handle wheel events.
+#if !ENABLE(RUBBER_BANDING)
     if (!isScrollable())
         return false;
+#endif
 
     if (delegatesScrolling()) {
         IntSize offset = scrollOffset();

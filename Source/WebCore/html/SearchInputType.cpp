@@ -57,6 +57,12 @@ PassOwnPtr<InputType> SearchInputType::create(HTMLInputElement* element)
     return adoptPtr(new SearchInputType(element));
 }
 
+void SearchInputType::attach()
+{
+    TextFieldInputType::attach();
+    observeFeatureIfVisible(FeatureObserver::InputTypeSearch);
+}
+
 void SearchInputType::addSearchResult()
 {
     if (RenderObject* renderer = element()->renderer())

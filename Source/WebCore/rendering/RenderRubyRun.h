@@ -43,7 +43,6 @@ class RenderRubyText;
 
 class RenderRubyRun : public RenderBlock {
 public:
-    RenderRubyRun(ContainerNode*);
     virtual ~RenderRubyRun();
 
     bool hasRubyText() const;
@@ -71,6 +70,8 @@ protected:
     RenderRubyBase* createRubyBase() const;
 
 private:
+    RenderRubyRun();
+
     virtual bool isRubyRun() const { return true; }
     virtual const char* renderName() const { return "RenderRubyRun (anonymous)"; }
     virtual bool createsAnonymousWrapper() const { return true; }
@@ -79,13 +80,13 @@ private:
 
 inline RenderRubyRun* toRenderRubyRun(RenderObject* object)
 {
-    ASSERT(!object || object->isRubyRun());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRubyRun());
     return static_cast<RenderRubyRun*>(object);
 }
 
 inline const RenderRubyRun* toRenderRubyRun(const RenderObject* object)
 {
-    ASSERT(!object || object->isBox());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isBox());
     return static_cast<const RenderRubyRun*>(object);
 }
 

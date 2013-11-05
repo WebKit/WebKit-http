@@ -64,10 +64,7 @@ public:
 
 private:
     // CoreIPC::MessageReceiver
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-
-    // Implemented in generated WebIconDatabaseProxyMessageReceiver.cpp
-    void didReceiveWebIconDatabaseProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
     
     // Callbacks from the UIProcess
     void urlImportFinished();

@@ -32,6 +32,7 @@
 #include "FloatRect.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
@@ -90,16 +91,21 @@ static void collectChildrenAndRemoveFromOldParent(Node* node, NodeVector& nodes,
     toContainerNode(node)->removeChildren();
 }
 
-void ContainerNode::removeAllChildren()
+void ContainerNode::removeDetachedChildren()
 {
-    removeAllChildrenInContainer<Node, ContainerNode>(this);
+    if (connectedSubframeCount()) {
+        for (Node* child = firstChild(); child; child = child->nextSibling())
+            child->updateAncestorConnectedSubframeCountForRemoval();
+    }
+    // FIXME: We should be able to ASSERT(!attached()) here: https://bugs.webkit.org/show_bug.cgi?id=107801
+    removeDetachedChildrenInContainer<Node, ContainerNode>(this);
 }
 
 void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
 {
     NodeVector children;
     getChildNodes(oldParent, children);
-    oldParent->removeAllChildren();
+    oldParent->removeDetachedChildren();
 
     for (unsigned i = 0; i < children.size(); ++i) {
         ExceptionCode ec = 0;
@@ -123,7 +129,7 @@ ContainerNode::~ContainerNode()
     if (AXObjectCache::accessibilityEnabled() && documentInternal() && documentInternal()->axObjectCacheExists())
         documentInternal()->axObjectCache()->remove(this);
 
-    removeAllChildren();
+    removeDetachedChildren();
 }
 
 static inline bool isChildTypeAllowed(ContainerNode* newParent, Node* child)
@@ -208,21 +214,19 @@ static inline bool checkAcceptChildGuaranteedNodeTypes(ContainerNode* newParent,
 
 static inline bool checkAddChild(ContainerNode* newParent, Node* newChild, ExceptionCode& ec)
 {
-    if (ExceptionCode code = checkAcceptChild(newParent, newChild, 0)) {
-        ec = code;
+    ec = checkAcceptChild(newParent, newChild, 0);
+    if (ec)
         return false;
-    }
 
     return true;
 }
 
 static inline bool checkReplaceChild(ContainerNode* newParent, Node* newChild, Node* oldChild, ExceptionCode& ec)
 {
-    if (ExceptionCode code = checkAcceptChild(newParent, newChild, oldChild)) {
-        ec = code;
+    ec = checkAcceptChild(newParent, newChild, oldChild);
+    if (ec)
         return false;
-    }
-    
+
     return true;
 }
 
@@ -230,7 +234,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
-    ASSERT(refCount() || parentOrHostNode());
+    ASSERT(refCount() || parentOrShadowHostNode());
 
     RefPtr<Node> protect(this);
 
@@ -313,7 +317,7 @@ void ContainerNode::insertBeforeCommon(Node* nextChild, Node* newChild)
         ASSERT(m_firstChild == nextChild);
         m_firstChild = newChild;
     }
-    newChild->setParentOrHostNode(this);
+    newChild->setParentOrShadowHostNode(this);
     newChild->setPreviousSibling(prev);
     newChild->setNextSibling(nextChild);
 }
@@ -323,13 +327,20 @@ void ContainerNode::parserInsertBefore(PassRefPtr<Node> newChild, Node* nextChil
     ASSERT(newChild);
     ASSERT(nextChild);
     ASSERT(nextChild->parentNode() == this);
-    ASSERT(document() == newChild->document());
     ASSERT(!newChild->isDocumentFragment());
+#if ENABLE(TEMPLATE_ELEMENT)
+    ASSERT(!hasTagName(HTMLNames::templateTag));
+#endif
 
     if (nextChild->previousSibling() == newChild || nextChild == newChild) // nothing to do
         return;
 
+    if (document() != newChild->document())
+        document()->adoptNode(newChild.get(), ASSERT_NO_EXCEPTION);
+
     insertBeforeCommon(nextChild, newChild.get());
+
+    newChild->updateAncestorConnectedSubframeCountForInsertion();
 
     childrenChanged(true, newChild->previousSibling(), nextChild, 1);
     ChildNodeInsertionNotifier(this).notify(newChild.get());
@@ -339,7 +350,7 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
-    ASSERT(refCount() || parentOrHostNode());
+    ASSERT(refCount() || parentOrShadowHostNode());
 
     RefPtr<Node> protect(this);
 
@@ -449,7 +460,7 @@ static void willRemoveChildren(ContainerNode* container)
         dispatchChildRemovalEvents(child);
     }
 
-    ChildFrameDisconnector(container, ChildFrameDisconnector::DoNotIncludeRoot).disconnect();
+    ChildFrameDisconnector(container).disconnect(ChildFrameDisconnector::DescendantsOnly);
 }
 
 void ContainerNode::disconnectDescendantFrames()
@@ -461,7 +472,7 @@ bool ContainerNode::removeChild(Node* oldChild, ExceptionCode& ec)
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
-    ASSERT(refCount() || parentOrHostNode());
+    ASSERT(refCount() || parentOrShadowHostNode());
 
     RefPtr<Node> protect(this);
 
@@ -538,7 +549,7 @@ void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node* ol
 
     oldChild->setPreviousSibling(0);
     oldChild->setNextSibling(0);
-    oldChild->setParentOrHostNode(0);
+    oldChild->setParentOrShadowHostNode(0);
 
     document()->adoptIfNeeded(oldChild);
 }
@@ -551,6 +562,8 @@ void ContainerNode::parserRemoveChild(Node* oldChild)
 
     Node* prev = oldChild->previousSibling();
     Node* next = oldChild->nextSibling();
+
+    oldChild->updateAncestorConnectedSubframeCountForRemoval();
 
     removeBetween(prev, next, oldChild);
 
@@ -593,7 +606,7 @@ void ContainerNode::removeChildren()
                 // this discrepancy between removeChild() and its optimized version removeChildren().
                 n->setPreviousSibling(0);
                 n->setNextSibling(0);
-                n->setParentOrHostNode(0);
+                n->setParentOrShadowHostNode(0);
                 document()->adoptIfNeeded(n.get());
 
                 m_firstChild = next;
@@ -630,7 +643,7 @@ bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, bo
 
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
-    ASSERT(refCount() || parentOrHostNode());
+    ASSERT(refCount() || parentOrShadowHostNode());
 
     ec = 0;
 
@@ -686,7 +699,12 @@ void ContainerNode::parserAppendChild(PassRefPtr<Node> newChild)
     ASSERT(newChild);
     ASSERT(!newChild->parentNode()); // Use appendChild if you need to handle reparenting (and want DOM mutation events).
     ASSERT(!newChild->isDocumentFragment());
-    ASSERT(document() == newChild->document());
+#if ENABLE(TEMPLATE_ELEMENT)
+    ASSERT(!hasTagName(HTMLNames::templateTag));
+#endif
+
+    if (document() != newChild->document())
+        document()->adoptNode(newChild.get(), ASSERT_NO_EXCEPTION);
 
     Node* last = m_lastChild;
     {
@@ -695,6 +713,8 @@ void ContainerNode::parserAppendChild(PassRefPtr<Node> newChild)
         appendChildToContainer(newChild.get(), this);
         treeScope()->adoptIfNeeded(newChild.get());
     }
+
+    newChild->updateAncestorConnectedSubframeCountForInsertion();
 
     childrenChanged(true, last, 0, 1);
     ChildNodeInsertionNotifier(this).notify(newChild.get());
@@ -1033,6 +1053,13 @@ Node *ContainerNode::childNode(unsigned index) const
     return n;
 }
 
+void ContainerNode::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    Node::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_firstChild, "firstChild");
+    info.addMember(m_lastChild, "lastChild");
+}
 
 static void dispatchChildInsertionEvents(Node* child)
 {

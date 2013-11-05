@@ -280,8 +280,8 @@ bool Heap::isPagedOut(double deadline)
 // Run all pending finalizers now because we won't get another chance.
 void Heap::lastChanceToFinalize()
 {
-    ASSERT(!m_globalData->dynamicGlobalObject);
-    ASSERT(m_operationInProgress == NoOperation);
+    RELEASE_ASSERT(!m_globalData->dynamicGlobalObject);
+    RELEASE_ASSERT(m_operationInProgress == NoOperation);
 
     m_objectSpace.lastChanceToFinalize();
 
@@ -417,12 +417,11 @@ void Heap::getConservativeRegisterRoots(HashSet<JSCell*>& roots)
     }
 }
 
-void Heap::markRoots(bool fullGC)
+void Heap::markRoots()
 {
     SamplingRegion samplingRegion("Garbage Collection: Tracing");
 
-    COND_GCPHASE(fullGC, MarkFullRoots, MarkYoungRoots);
-    UNUSED_PARAM(fullGC);
+    GCPHASE(MarkRoots);
     ASSERT(isValidThreadState(m_globalData));
 
 #if ENABLE(OBJECT_MARK_LOGGING)
@@ -456,13 +455,6 @@ void Heap::markRoots(bool fullGC)
     }
 #endif
 
-#if ENABLE(GGC)
-    MarkedBlock::DirtyCellVector dirtyCells;
-    if (!fullGC) {
-        GCPHASE(GatheringDirtyCells);
-        m_objectSpace.gatherDirtyCells(dirtyCells);
-    } else
-#endif
     {
         GCPHASE(clearMarks);
         m_objectSpace.clearMarks();
@@ -475,17 +467,6 @@ void Heap::markRoots(bool fullGC)
 
     {
         ParallelModeEnabler enabler(visitor);
-#if ENABLE(GGC)
-        {
-            size_t dirtyCellCount = dirtyCells.size();
-            GCPHASE(VisitDirtyCells);
-            GCCOUNTER(DirtyCellCount, dirtyCellCount);
-            for (size_t i = 0; i < dirtyCellCount; i++) {
-                heapRootVisitor.visitChildren(dirtyCells[i]);
-                visitor.donateAndDrain();
-            }
-        }
-#endif
 
         if (m_globalData->codeBlocksBeingCompiled.size()) {
             GCPHASE(VisitActiveCodeBlock);
@@ -718,11 +699,10 @@ void Heap::collect(SweepToggle sweepToggle)
     
     GCPHASE(Collect);
     ASSERT(globalData()->apiLock().currentThreadIsHoldingLock());
-    ASSERT(globalData()->identifierTable == wtfThreadData().currentIdentifierTable());
+    RELEASE_ASSERT(globalData()->identifierTable == wtfThreadData().currentIdentifierTable());
     ASSERT(m_isSafeToCollect);
     JAVASCRIPTCORE_GC_BEGIN();
-    if (m_operationInProgress != NoOperation)
-        CRASH();
+    RELEASE_ASSERT(m_operationInProgress == NoOperation);
     m_operationInProgress = Collection;
 
     m_activityCallback->willCollect();
@@ -733,19 +713,12 @@ void Heap::collect(SweepToggle sweepToggle)
         m_lastCodeDiscardTime = WTF::currentTime();
     }
 
-#if ENABLE(GGC)
-    bool fullGC = sweepToggle == DoSweep;
-    if (!fullGC)
-        fullGC = (capacity() > 4 * m_sizeAfterLastCollect);  
-#else
-    bool fullGC = true;
-#endif
     {
         GCPHASE(Canonicalize);
         m_objectSpace.canonicalizeCellLivenessData();
     }
 
-    markRoots(fullGC);
+    markRoots();
     
     {
         GCPHASE(ReapingWeakHandles);
@@ -796,23 +769,22 @@ void Heap::collect(SweepToggle sweepToggle)
     if (Options::gcMaxHeapSize() && currentHeapSize > Options::gcMaxHeapSize())
         HeapStatistics::exitWithFailure();
 
-    if (fullGC) {
-        m_sizeAfterLastCollect = currentHeapSize;
+    m_sizeAfterLastCollect = currentHeapSize;
 
-        // To avoid pathological GC churn in very small and very large heaps, we set
-        // the new allocation limit based on the current size of the heap, with a
-        // fixed minimum.
-        size_t maxHeapSize = max(minHeapSize(m_heapType, m_ramSize), proportionalHeapSize(currentHeapSize, m_ramSize));
-        m_bytesAllocatedLimit = maxHeapSize - currentHeapSize;
-    }
+    // To avoid pathological GC churn in very small and very large heaps, we set
+    // the new allocation limit based on the current size of the heap, with a
+    // fixed minimum.
+    size_t maxHeapSize = max(minHeapSize(m_heapType, m_ramSize), proportionalHeapSize(currentHeapSize, m_ramSize));
+    m_bytesAllocatedLimit = maxHeapSize - currentHeapSize;
+
     m_bytesAllocated = 0;
     double lastGCEndTime = WTF::currentTime();
     m_lastGCLength = lastGCEndTime - lastGCStartTime;
 
     if (Options::recordGCPauseTimes())
         HeapStatistics::recordGCPauseTime(lastGCStartTime, lastGCEndTime);
-    if (m_operationInProgress != Collection)
-        CRASH();
+    RELEASE_ASSERT(m_operationInProgress == Collection);
+
     m_operationInProgress = NoOperation;
     JAVASCRIPTCORE_GC_END();
 

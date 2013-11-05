@@ -29,10 +29,9 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBBackingStore.h"
+#include "IDBDatabaseBackendInterface.h"
 #include "IDBDatabaseError.h"
 #include "IDBTransaction.h"
-#include "IDBTransactionBackendInterface.h"
-#include "IDBTransactionCallbacks.h"
 #include "Timer.h"
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
@@ -41,20 +40,16 @@
 namespace WebCore {
 
 class IDBDatabaseBackendImpl;
+class IDBCursorBackendImpl;
+class IDBDatabaseCallbacks;
 
-class IDBTransactionBackendImpl : public IDBTransactionBackendInterface {
+class IDBTransactionBackendImpl : public RefCounted<IDBTransactionBackendImpl> {
 public:
-    static PassRefPtr<IDBTransactionBackendImpl> create(int64_t transactionId, const Vector<int64_t>&, IDBTransaction::Mode, IDBDatabaseBackendImpl*);
-    static IDBTransactionBackendImpl* from(IDBTransactionBackendInterface* interface)
-    {
-        return static_cast<IDBTransactionBackendImpl*>(interface);
-    }
+    static PassRefPtr<IDBTransactionBackendImpl> create(int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks>, const Vector<int64_t>&, IDBTransaction::Mode, IDBDatabaseBackendImpl*);
     virtual ~IDBTransactionBackendImpl();
 
-    // IDBTransactionBackendInterface
     virtual void abort();
     void commit();
-    virtual void setCallbacks(IDBTransactionCallbacks* callbacks) { m_callbacks = callbacks; }
 
     class Operation {
     public:
@@ -66,9 +61,8 @@ public:
     void run();
     IDBTransaction::Mode mode() const { return m_mode; }
     const HashSet<int64_t>& scope() const { return m_objectStoreIds; }
-    bool isFinished() const { return m_state == Finished; }
-    bool scheduleTask(PassOwnPtr<Operation> task, PassOwnPtr<Operation> abortTask = nullptr) { return scheduleTask(NormalTask, task, abortTask); }
-    bool scheduleTask(TaskType, PassOwnPtr<Operation>, PassOwnPtr<Operation> abortTask = nullptr);
+    void scheduleTask(PassOwnPtr<Operation> task, PassOwnPtr<Operation> abortTask = nullptr) { scheduleTask(IDBDatabaseBackendInterface::NormalTask, task, abortTask); }
+    void scheduleTask(IDBDatabaseBackendInterface::TaskType, PassOwnPtr<Operation>, PassOwnPtr<Operation> abortTask = nullptr);
     void registerOpenCursor(IDBCursorBackendImpl*);
     void unregisterOpenCursor(IDBCursorBackendImpl*);
     void addPreemptiveEvent() { m_pendingPreemptiveEvents++; }
@@ -79,7 +73,7 @@ public:
     IDBDatabaseBackendImpl* database() const { return m_database.get(); }
 
 private:
-    IDBTransactionBackendImpl(int64_t id, const HashSet<int64_t>& objectStoreIds, IDBTransaction::Mode, IDBDatabaseBackendImpl*);
+    IDBTransactionBackendImpl(int64_t id, PassRefPtr<IDBDatabaseCallbacks>, const HashSet<int64_t>& objectStoreIds, IDBTransaction::Mode, IDBDatabaseBackendImpl*);
 
     enum State {
         Unused, // Created, but no tasks yet.
@@ -102,7 +96,7 @@ private:
 
     State m_state;
     bool m_commitPending;
-    RefPtr<IDBTransactionCallbacks> m_callbacks;
+    RefPtr<IDBDatabaseCallbacks> m_callbacks;
     RefPtr<IDBDatabaseBackendImpl> m_database;
 
     typedef Deque<OwnPtr<Operation> > TaskQueue;

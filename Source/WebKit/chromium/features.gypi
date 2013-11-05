@@ -36,6 +36,7 @@
       'ENABLE_BATTERY_STATUS=0',
       'ENABLE_BLOB=1',
       'ENABLE_BLOB_SLICE=1',
+      'ENABLE_CANVAS_PATH=0',
       'ENABLE_CANVAS_PROXY=1',
       'ENABLE_CHANNEL_MESSAGING=1',
       'ENABLE_CSP_NEXT=1',
@@ -50,7 +51,7 @@
       'ENABLE_CSS_IMAGE_RESOLUTION=0',
       'ENABLE_CSS_REGIONS=1',
       'ENABLE_CSS_SHADERS=1',
-      'ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED=0',
+      'ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED=0',
       'ENABLE_CSS_VARIABLES=1',
       'ENABLE_CSS_STICKY_POSITION=1',
       'ENABLE_CUSTOM_SCHEME_HANDLER=0',
@@ -60,6 +61,7 @@
       'ENABLE_DEVICE_ORIENTATION=1',
       'ENABLE_DIALOG_ELEMENT=1',
       'ENABLE_DIRECTORY_UPLOAD=1',
+      'ENABLE_DOM4_EVENTS_CONSTRUCTOR=1',
       'ENABLE_DOWNLOAD_ATTRIBUTE=1',
       'ENABLE_DRAGGABLE_REGION=1',
       'ENABLE_ENCRYPTED_MEDIA=1',
@@ -85,7 +87,7 @@
       'ENABLE_LEGACY_WEB_AUDIO=1',
       'ENABLE_LINK_PREFETCH=1',
       'ENABLE_LINK_PRERENDER=1',
-      'ENABLE_MATHML=1',
+      'ENABLE_MATHML=0',
       'ENABLE_MEDIA_SOURCE=1',
       'ENABLE_MEDIA_STATISTICS=1',
       'ENABLE_MEDIA_STREAM=<(enable_webrtc)',
@@ -109,13 +111,14 @@
       'ENABLE_SCRIPTED_SPEECH=1',
       'ENABLE_SHADOW_DOM=1',
       'ENABLE_SMOOTH_SCROLLING=1',
+      'ENABLE_SPEECH_SYNTHESIS=0',
       'ENABLE_SQL_DATABASE=1',
       'ENABLE_STYLE_SCOPED=1',
       'ENABLE_SVG=<(enable_svg)',
       'ENABLE_SVG_FONTS=<(enable_svg)',
       'ENABLE_TEMPLATE_ELEMENT=1',
       'ENABLE_TEXT_AUTOSIZING=1',
-      'ENABLE_THREADED_HTML_PARSER=0',
+      'ENABLE_THREADED_HTML_PARSER=1',
       'ENABLE_TOUCH_ADJUSTMENT=1',
       'ENABLE_TOUCH_EVENTS=<(enable_touch_events)',
       'ENABLE_TOUCH_EVENT_TRACKING=<(enable_touch_events)',
@@ -127,7 +130,6 @@
       'ENABLE_VIDEO_TRACK=1',
       'ENABLE_VIEWPORT=1',
       'ENABLE_WEBGL=1',
-      'ENABLE_WEB_INTENTS=1',
       'ENABLE_WEB_SOCKETS=1',
       'ENABLE_WEB_TIMING=1',
       'ENABLE_WORKERS=1',
@@ -201,6 +203,15 @@
           'ENABLE_WEB_AUDIO=1',
         ],
       }],
+      ['OS=="linux" or OS=="mac"', {
+        'feature_defines': [
+          'ENABLE_BINDING_INTEGRITY=1',
+        ],
+      }, { # OS!="linux"
+        'feature_defines': [
+          'ENABLE_BINDING_INTEGRITY=0',
+        ],
+      }],
       ['use_accelerated_compositing==1', {
         'feature_defines': [
           'ENABLE_3D_RENDERING=1',
@@ -237,7 +248,7 @@
       }],
       ['use_x11==1 or OS=="android"', {
         'feature_defines': [
-          'WTF_USE_HARFBUZZ_NG=1',
+          'WTF_USE_HARFBUZZ=1',
         ],
       }],
       ['chromeos==1', {

@@ -29,9 +29,12 @@
 #include "HTMLToken.h"
 #include "HTTPParsers.h"
 #include "SuffixTree.h"
+#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 
+class DidBlockScriptRequest;
+class Document;
 class HTMLDocumentParser;
 
 class XSSAuditor {
@@ -39,7 +42,8 @@ class XSSAuditor {
 public:
     explicit XSSAuditor(HTMLDocumentParser*);
 
-    void filterToken(HTMLToken&);
+    void init(Document*);
+    PassOwnPtr<DidBlockScriptRequest> filterToken(HTMLToken&);
 
 private:
     static const size_t kMaximumFragmentLengthTarget = 100;
@@ -54,8 +58,6 @@ private:
         SrcLikeAttribute,
         ScriptLikeAttribute
     };
-
-    void init();
 
     bool filterStartToken(HTMLToken&);
     void filterEndToken(HTMLToken&);
@@ -81,7 +83,9 @@ private:
     bool isContainedInRequest(const String&);
     bool isLikelySafeResource(const String& url);
 
+    // FIXME: Remove this dependency.
     HTMLDocumentParser* m_parser;
+    KURL m_documentURL;
     bool m_isEnabled;
     XSSProtectionDisposition m_xssProtection;
 
@@ -95,7 +99,6 @@ private:
     String m_cachedDecodedSnippet;
     bool m_shouldAllowCDATA;
     unsigned m_scriptTagNestingLevel;
-    bool m_notifyClient;
     KURL m_reportURL;
 };
 

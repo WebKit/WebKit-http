@@ -75,6 +75,8 @@ public:
 
     virtual String scrollingStateTreeAsText() const OVERRIDE;
 
+    virtual bool isRubberBandInProgress() const OVERRIDE;
+
 private:
     // Return whether this scrolling coordinator can keep fixed position layers fixed to their
     // containers while scrolling.
@@ -82,6 +84,8 @@ private:
 
     // This function will update the ScrollingStateNode for the given viewport constrained object.
     virtual void updateViewportConstrainedNode(ScrollingNodeID, const ViewportConstraints&, GraphicsLayer*) OVERRIDE;
+
+    virtual void updateScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* counterScrollingLayer) OVERRIDE;
 
     // Called to synch the GraphicsLayer positions for child layers when their CALayers have been moved by the scrolling thread.
     virtual void syncChildPositions(const LayoutRect& viewportRect) OVERRIDE;
@@ -114,6 +118,7 @@ private:
 
     void setScrollParametersForNode(const ScrollParameters&, ScrollingStateScrollingNode*);
     void setScrollLayerForNode(GraphicsLayer*, ScrollingStateNode*);
+    void setCounterScrollingLayerForNode(GraphicsLayer*, ScrollingStateScrollingNode*);
     void setNonFastScrollableRegionForNode(const Region&, ScrollingStateScrollingNode*);
     void setWheelEventHandlerCountForNode(unsigned, ScrollingStateScrollingNode*);
 

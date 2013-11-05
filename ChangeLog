@@ -1,3 +1,339 @@
+2013-02-02  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Adopt the WinCE port to new CMake
+        https://bugs.webkit.org/show_bug.cgi?id=108754
+
+        Reviewed by Laszlo Gombos.
+
+        Remove the entry point hack which isn't required in the new
+        CMake version with offical WindowsCE support.
+
+        * Source/cmake/OptionsWindows.cmake:
+
+2013-02-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        Clean the String->AtomicString conversion for AnimationController::pauseAnimationAtTime
+        https://bugs.webkit.org/show_bug.cgi?id=108558
+
+        Reviewed by Dean Jackson.
+
+        * Source/autotools/symbols.filter:
+
+2013-02-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add WTFURL source files to the build
+        https://bugs.webkit.org/show_bug.cgi?id=108215
+
+        Reviewed by Benjamin Poulain.
+
+        * Source/autotools/symbols.filter: Force the export of the KURL::string() symbol.
+        This is required when using the WTFURL backend but otherwise doesn't affect the build.
+
+2013-02-01  Alexis Menard  <alexis@webkit.org>
+
+        Enable unprefixed CSS transitions by default.
+        https://bugs.webkit.org/show_bug.cgi?id=108216
+
+        Reviewed by Dean Jackson.
+
+        Rename the flag CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED
+        to CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED which will be used later to
+        guard the unprefixing work for CSS Transforms and animations.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-01-31  Christophe Dumez  <dchris@gmail.com>
+
+        [EFL] Disable Web Intents
+        https://bugs.webkit.org/show_bug.cgi?id=108457
+
+        Reviewed by Alexey Proskuryakov.
+
+        Turn off WEB_INTENTS flag in EFL CMake project.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2013-01-31  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Make it possible to compile WebKit2 Qt related files without access to internal WK2 C++ API
+        https://bugs.webkit.org/show_bug.cgi?id=108472
+
+        Reviewed by Andreas Kling.
+
+        When linking WebKit2, also link the WebKit2QML module.
+
+        * Source/api.pri:
+
+2013-01-30  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        [HarfBuzz] Remove the HarfBuzz-old code
+        https://bugs.webkit.org/show_bug.cgi?id=108077
+
+        Reviewed by Benjamin Poulain.
+
+        Rename WTF_USE_HARFBUZZ_NG to WTF_USE_HARFBUZZ since there
+        won't be a distinction between ng and non-ng HarfBuzz after
+        removing the old code.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2013-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix after r141175.
+
+        * Source/autotools/symbols.filter: Export the WebCore::Element::createShadowRoot symbol.
+
+2013-01-29  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Chromium] Cannot copy text when selecting readonly (or disabled) input elements
+        https://bugs.webkit.org/show_bug.cgi?id=106287
+
+        Reviewed by Hajime Morita.
+
+        * Source/autotools/symbols.filter:
+
+2013-01-29  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [CMake] Add minimum version information for tool dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=97592
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Capture the minimum version information for the tools that are required
+        to build WebKit for all CMake based build systems.
+
+        * CMakeLists.txt:
+
+2013-01-29  Nate Chapin  <japhet@chromium.org>
+
+        Enable reuse of cached main resources
+        https://bugs.webkit.org/show_bug.cgi?id=105667
+
+        Reviewed by Adam Barth.
+
+        * Source/autotools/symbols.filter: Expose MemoryCache::resourceForURL().
+
+2013-01-29  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Enable Workers for WinCE
+        https://bugs.webkit.org/show_bug.cgi?id=108099
+
+        Reviewed by Gyuyoung Kim.
+
+        WORKERS are enabled for all CMake based ports except WinCE.
+        Turn on WORKERS for all CMake based ports.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2013-01-28  Halton Huo  <halton.huo@intel.com>
+
+        [EFL] Quit debug build without -DSHARED_CORE=ON
+        https://bugs.webkit.org/show_bug.cgi?id=104773
+
+        Reviewed by Laszlo Gombos.
+
+        Debug build without -DSHARED_CORE=ON will fail because libwebcore_efl.a
+        is too big (>4G) to archive. The solution is simply to abort cmake in
+        this condition and notify developer.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsCommon.cmake: 
+
+2013-01-28  Renata Hodovan  <reni@webkit.org>
+
+        [WK2] Putting QtWebProcess into a chrooted sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=90005
+
+        Reviewed by Anders Carlsson and Zoltan Herczeg.
+
+        Make it possible to build WebKit2 with SandboxProcess.
+
+        * Source/QtWebKit.pro:
+
+2013-01-27  David Farler  <dfarler@apple.com>
+
+        REGRESSION (r140912): Broke specifying non-trivial ARCHS value to make / build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=108028
+
+        Reviewed by Dan Bernstein.
+
+        * Makefile: Reverted.
+        * Makefile.shared: Reverted.
+        * Source/Makefile: Reverted.
+
+2013-01-26  David Farler  <dfarler@apple.com>
+
+        Allow building with arbitrary SDK and ARCHS with make + Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=107863
+
+        Reviewed by David Kilzer.
+
+        * Makefile:
+        Removed references to legacy Xcode configurations.
+        * Makefile.shared:
+        Added default ARCHS + SDK settings and parameterized xcodebuild calls.
+        * Source/Makefile:
+        iOS does not build WebKit2.
+
+2013-01-25  Jussi Kukkonen  <jussi.kukkonen@intel.com>
+
+        [CMake][EFL] Build ThirdParty/leveldb when IndexedDB is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=106443
+
+        Reviewed by Laszlo Gombos.
+
+        LevelDB is now included in ThirdParty. Use it when IndexDB is
+        enabled for EFL.
+
+        * Source/cmake/OptionsEfl.cmake:
+        Set WTF_USE_LEVELDB when IndexedDB is enabled
+
+2013-01-24  Keishi Hattori  <keishi@webkit.org>
+
+        Adjust design of the Calendar Picker
+        https://bugs.webkit.org/show_bug.cgi?id=107507
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/forms/calendar-picker.html: Use pickerCommonChromium.css and calendarPickerChromium.css.
+
+2013-01-24  Soo-Hyun Choi  <s.choi@hackerslab.eu>
+
+        [CMake] Remove the definition of WTF_PLATFORM_WIN from the build system
+        https://bugs.webkit.org/show_bug.cgi?id=101635
+
+        Reviewed by Laszlo Gombos.
+
+        WTF_PLATFORM_WIN defined twice: Source/cmake/OptionsWindows.cmake and in
+        Source/WTF/wtf/Platform.h.
+        It would be more future-proof to have it only defined in common C++ code in
+        Platform.h.
+
+        * Source/cmake/OptionsWindows.cmake:
+
+2013-01-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed.
+
+        Speculative build fix for the GTK port after 140539.
+
+        * Source/autotools/symbols.filter:
+
+2013-01-22  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Debug build failure on x86-64
+        https://bugs.webkit.org/show_bug.cgi?id=107400
+
+        Reviewed by Xan Lopez.
+
+        * configure.ac: use thin archives for convenience libraries, if AR_FLAGS was not
+        overriden through the environment variable.
+
+2013-01-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Remove the Canvas Path configuration option
+        https://bugs.webkit.org/show_bug.cgi?id=107537
+
+        Reviewed by Martin Robinson.
+
+        * configure.ac: Remove the configuration option for the Canvas Path
+        feature as this is not in line with the new guidelines about feature
+        enablement in the autotools build system.
+
+2013-01-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Autotools] Place a warning in configure.ac about adding new configuration options
+        https://bugs.webkit.org/show_bug.cgi?id=107559
+
+        Reviewed by Martin Robinson.
+
+        * configure.ac: Add an eye-catching section explaining that changes in this file might
+        not be necessary at all and a link pointing to the guidelines on the Trac wiki.
+
+2013-01-21  Dirk Schulze  <dschulze@adobe.com>
+
+        Add build flag for Canvas's Path object (disabled by default)
+        https://bugs.webkit.org/show_bug.cgi?id=107473
+
+        Reviewed by Dean Jackson.
+
+        Add CANVAS_PATH build flag to build systems.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+        * configure.ac:
+
+2013-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Delete webkit-perf.appspot.com code from WebKit repository
+        https://bugs.webkit.org/show_bug.cgi?id=107390
+
+        Reviewed by Adam Barth.
+
+        Delete webkit-perf.appspot.com code from WebKit repository since I maintain
+        and push the code via https://github.com/rniwa/webkit-perf now.
+
+        * Websites/webkit-perf.appspot.com: Removed.
+
+2013-01-19  Philip Rogers  <pdr@google.com>
+
+        Merge SVGStylable into SVGStyledElement
+        https://bugs.webkit.org/show_bug.cgi?id=106877
+
+        Reviewed by Dirk Schulze.
+
+        SVG2 changes element inheritance so all SVGElements are stylable. As a first-step towards a
+        cleaner class hierarchy, this patch moves SVGStylable into SVGStyledElement.
+
+        * wscript:
+
+2013-01-18  Sudarsana Nagineni  <sudarsana.nagineni@intel.com>
+
+        [CMake] Fix CMake warnings
+        https://bugs.webkit.org/show_bug.cgi?id=107290
+
+        Reviewed by Laszlo Gombos.
+
+        Add missing WebKit options to CMake features list.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-01-18  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r140005.
+        http://trac.webkit.org/changeset/140005
+        https://bugs.webkit.org/show_bug.cgi?id=107235
+
+        broke downstream Chromium interactive_ui_tests (Requested by
+        dominicc on #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2013-01-17  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Build with LevelDB when IndexedDB is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=103220
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * configure.ac: Detect whether the IndexedDatabase feature is enabled. We cannot
+        use the typical approach for feature detection since we need to adjust the automake
+        file output based on whether or not IndexedDatabase is enabled.
+
+2013-01-17  Nate Chapin  <japhet@chromium.org>
+
+        Enable reuse of cached main resources
+        https://bugs.webkit.org/show_bug.cgi?id=105667
+
+        Reviewed by Antti Koivisto.
+
+        * Source/autotools/symbols.filter: Expose MemoryCache::resourceForURL().
+
 2013-01-17  Seokju Kwon  <seokju.kwon@gmail.com>
 
         [EFL][CMAKE] Compress resource files of inspector

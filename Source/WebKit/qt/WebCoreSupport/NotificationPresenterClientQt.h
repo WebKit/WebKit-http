@@ -94,14 +94,14 @@ public:
     virtual void requestPermission(ScriptExecutionContext*, PassRefPtr<VoidCallback>);
 #endif
 #if ENABLE(NOTIFICATIONS)
-    virtual void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback>) { }
+    virtual void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback>);
 #endif
     virtual NotificationClient::Permission checkPermission(ScriptExecutionContext*);
     virtual void cancelRequestsForPermission(ScriptExecutionContext*);
 
     void cancel(NotificationWrapper*);
 
-    void allowNotificationForFrame(Frame*);
+    void setNotificationsAllowedForFrame(Frame*, bool allowed);
 
     static bool dumpNotification;
 
@@ -118,6 +118,8 @@ public:
     void notificationClicked(const QString& title);
     void sendDisplayEvent(NotificationWrapper*);
 
+    void clearCachedPermissions();
+
 private:
     void sendEvent(Notification*, const AtomicString& eventName);
     void displayNotification(Notification*);
@@ -131,7 +133,12 @@ private:
     int m_clientCount;
     struct CallbacksInfo {
         QWebFrameAdapter* m_frame;
-        QList<RefPtr<VoidCallback> > m_callbacks;
+#if ENABLE(LEGACY_NOTIFICATIONS)
+        QList<RefPtr<VoidCallback> > m_voidCallbacks;
+#endif
+#if ENABLE(NOTIFICATIONS)
+        QList<RefPtr<NotificationPermissionCallback> > m_callbacks;
+#endif
     };
     QHash<ScriptExecutionContext*,  CallbacksInfo > m_pendingPermissionRequests;
     QHash<ScriptExecutionContext*, NotificationClient::Permission> m_cachedPermissions;

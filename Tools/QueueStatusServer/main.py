@@ -39,6 +39,7 @@ from handlers.gc import GC
 from handlers.nextpatch import NextPatch
 from handlers.patch import Patch
 from handlers.patchstatus import PatchStatus
+from handlers.queuecharts import QueueCharts
 from handlers.queuestatus import QueueStatus
 from handlers.recentstatus import QueuesOverview
 from handlers.releasepatch import ReleasePatch
@@ -46,6 +47,7 @@ from handlers.showresults import ShowResults
 from handlers.statusbubble import StatusBubble
 from handlers.submittoews import SubmitToEWS
 from handlers.svnrevision import SVNRevision
+from handlers.syncqueuelogs import SyncQueueLogs
 from handlers.updatestatus import UpdateStatus
 from handlers.updatesvnrevision import UpdateSVNRevision
 from handlers.updateworkitems import UpdateWorkItems
@@ -57,12 +59,14 @@ routes = [
     ('/', QueuesOverview),
     ('/dashboard', Dashboard),
     ('/gc', GC),
+    ('/sync-queue-logs', SyncQueueLogs),
     (r'/patch-status/(.*)/(.*)', PatchStatus),
     (r'/patch/(.*)', Patch),
     (r'/submit-to-ews', SubmitToEWS),
     (r'/results/(.*)', ShowResults),
     (r'/status-bubble/(.*)', StatusBubble),
     (r'/svn-revision/(.*)', SVNRevision),
+    (r'/queue-charts/(.*)', QueueCharts),
     (r'/queue-status/(.*)/bots/(.*)', QueueStatus),
     (r'/queue-status/(.*)', QueueStatus),
     (r'/next-patch/(.*)', NextPatch),

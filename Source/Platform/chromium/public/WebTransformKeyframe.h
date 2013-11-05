@@ -25,19 +25,25 @@
 #ifndef WebTransformKeyframe_h
 #define WebTransformKeyframe_h
 
+#include "WebPrivateOwnPtr.h"
 #include "WebTransformOperations.h"
 
 namespace WebKit {
 
-struct WebTransformKeyframe {
-    WebTransformKeyframe(double time, const WebTransformOperations& value)
-        : time(time)
-        , value(value)
-    {
-    }
+class WebTransformKeyframe {
+public:
+    // Takes ownership of the WebTranformOperations object.
+    WEBKIT_EXPORT WebTransformKeyframe(double time, WebTransformOperations* value);
 
-    double time;
-    WebTransformOperations value;
+    WEBKIT_EXPORT ~WebTransformKeyframe();
+
+    WEBKIT_EXPORT double time() const;
+
+    WEBKIT_EXPORT const WebTransformOperations& value() const;
+
+private:
+    double m_time;
+    WebPrivateOwnPtr<WebTransformOperations> m_value;
 };
 
 } // namespace WebKit

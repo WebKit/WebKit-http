@@ -58,6 +58,22 @@ WebInspector.ContextMenuItem.prototype = {
         return this._type;
     },
 
+    /**
+     * @return {boolean}
+     */
+    isEnabled: function()
+    {
+        return !this._disabled;
+    },
+
+    /**
+     * @param {boolean} enabled
+     */
+    setEnabled: function(enabled)
+    {
+        this._disabled = !enabled;
+    },
+
     _buildDescriptor: function()
     {
         switch (this._type) {
@@ -81,12 +97,16 @@ WebInspector.ContextMenuItem.prototype = {
 WebInspector.ContextSubMenuItem = function(topLevelMenu, label, disabled)
 {
     WebInspector.ContextMenuItem.call(this, topLevelMenu, "subMenu", label, disabled);
+    /** @type {!Array.<!WebInspector.ContextMenuItem>} */
     this._items = [];
 }
 
 WebInspector.ContextSubMenuItem.prototype = {
     /**
+     * @param {string} label
+     * @param {function(?)} handler
      * @param {boolean=} disabled
+     * @return {WebInspector.ContextMenuItem}
      */
     appendItem: function(label, handler, disabled)
     {
@@ -96,6 +116,11 @@ WebInspector.ContextSubMenuItem.prototype = {
         return item;
     },
 
+    /**
+     * @param {string} label
+     * @param {boolean=} disabled
+     * @return {WebInspector.ContextMenuItem}
+     */
     appendSubMenuItem: function(label, disabled)
     {
         var item = new WebInspector.ContextSubMenuItem(this._contextMenu, label, disabled);
@@ -120,6 +145,9 @@ WebInspector.ContextSubMenuItem.prototype = {
             this._pendingSeparator = true;
     },
 
+    /**
+     * @param {!WebInspector.ContextMenuItem} item
+     */
     _pushItem: function(item)
     {
         if (this._pendingSeparator) {

@@ -65,6 +65,7 @@
 #include "IntRect.h"
 #include "Language.h"
 #include "MallocStatistics.h"
+#include "MemoryCache.h"
 #include "MockPagePopupDriver.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
@@ -285,16 +286,23 @@ String Internals::address(Node* node)
     return String(buf);
 }
 
-bool Internals::isPreloaded(Document* document, const String& url)
+bool Internals::isPreloaded(const String& url)
 {
-    if (!document)
-        return false;
-
+    Document* document = contextDocument();
     return document->cachedResourceLoader()->isPreloaded(url);
 }
 
-PassRefPtr<Element> Internals::createContentElement(Document* document, ExceptionCode& ec)
+bool Internals::isLoadingFromMemoryCache(const String& url)
 {
+    if (!contextDocument())
+        return false;
+    CachedResource* resource = memoryCache()->resourceForURL(contextDocument()->completeURL(url));
+    return resource && resource->status() == CachedResource::Cached;
+}
+
+PassRefPtr<Element> Internals::createContentElement(ExceptionCode& ec)
+{
+    Document* document = contextDocument();
     if (!document) {
         ec = INVALID_ACCESS_ERR;
         return 0;
@@ -416,7 +424,7 @@ bool Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName,
         return false;
     }
 
-    return frame()->animation()->pauseAnimationAtTime(pseudoElement->renderer(), animationName, pauseTime);
+    return frame()->animation()->pauseAnimationAtTime(pseudoElement->renderer(), AtomicString(animationName), pauseTime);
 }
 
 bool Internals::pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element* element, const String& pseudoId, ExceptionCode& ec)
@@ -572,7 +580,7 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::ensureShadowRoot(Eleme
     if (ElementShadow* shadow = host->shadow())
         return shadow->youngestShadowRoot();
 
-    return ShadowRoot::create(host, ec).get();
+    return host->createShadowRoot(ec).get();
 }
 
 Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::createShadowRoot(Element* host, ExceptionCode& ec)
@@ -581,7 +589,7 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::createShadowRoot(Eleme
         ec = INVALID_ACCESS_ERR;
         return 0;
     }
-    return ShadowRoot::create(host, ec).get();
+    return host->createShadowRoot(ec).get();
 }
 
 Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::shadowRoot(Element* host, ExceptionCode& ec)
@@ -685,9 +693,11 @@ void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionC
 
 String Internals::visiblePlaceholder(Element* element)
 {
-    HTMLTextFormControlElement* textControl = toTextFormControl(element);
-    if (textControl && textControl->placeholderShouldBeVisible())
-        return textControl->placeholderElement()->textContent();
+    if (element && isHTMLTextFormControlElement(element)) {
+        if (toHTMLTextFormControlElement(element)->placeholderShouldBeVisible())
+            return toHTMLTextFormControlElement(element)->placeholderElement()->textContent();
+    }
+
     return String();
 }
 
@@ -761,8 +771,9 @@ PassRefPtr<PagePopupController> Internals::pagePopupController()
 }
 #endif
 
-PassRefPtr<ClientRect> Internals::absoluteCaretBounds(Document* document, ExceptionCode& ec)
+PassRefPtr<ClientRect> Internals::absoluteCaretBounds(ExceptionCode& ec)
 {
+    Document* document = contextDocument();
     if (!document || !document->frame() || !document->frame()->selection()) {
         ec = INVALID_ACCESS_ERR;
         return ClientRect::create();

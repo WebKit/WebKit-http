@@ -33,25 +33,23 @@ import signal
 import subprocess
 import sys
 import time
-import unittest
 
 # Since we execute this script directly as part of the unit tests, we need to ensure
 # that Tools/Scripts is in sys.path for the next imports to work correctly.
 script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 if script_dir not in sys.path:
     sys.path.append(script_dir)
+third_party_py = os.path.join(script_dir, "webkitpy", "thirdparty", "autoinstalled")
+if third_party_py not in sys.path:
+    sys.path.append(third_party_py)
+
+import unittest2 as unittest
 
 from webkitpy.common.system.executive import Executive, ScriptError
 from webkitpy.common.system.filesystem_mock import MockFileSystem
 
 
 class ScriptErrorTest(unittest.TestCase):
-    def test_string_from_args(self):
-        error = ScriptError()
-        self.assertEqual(error._string_from_args(None), 'None')
-        self.assertEqual(error._string_from_args([]), '[]')
-        self.assertEqual(error._string_from_args(map(str, range(30))), "['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17'...")
-
     def test_message_with_output(self):
         error = ScriptError('My custom message!', '', -1)
         self.assertEqual(error.message_with_output(), 'My custom message!')
@@ -172,11 +170,11 @@ class ExecutiveTest(unittest.TestCase):
         if sys.platform == "win32":
             # FIXME: https://bugs.webkit.org/show_bug.cgi?id=54790
             # We seem to get either 0 or 1 here for some reason.
-            self.assertTrue(process.wait() in (0, 1))
+            self.assertIn(process.wait(), (0, 1))
         elif sys.platform == "cygwin":
             # FIXME: https://bugs.webkit.org/show_bug.cgi?id=98196
             # cygwin seems to give us either SIGABRT or SIGKILL
-            self.assertTrue(process.wait() in (-signal.SIGABRT, -signal.SIGKILL))
+            self.assertIn(process.wait(), (-signal.SIGABRT, -signal.SIGKILL))
         else:
             expected_exit_code = -signal.SIGKILL
             self.assertEqual(process.wait(), expected_exit_code)
@@ -187,7 +185,7 @@ class ExecutiveTest(unittest.TestCase):
     def serial_test_kill_all(self):
         executive = Executive()
         process = subprocess.Popen(never_ending_command(), stdout=subprocess.PIPE)
-        self.assertEqual(process.poll(), None)  # Process is running
+        self.assertIsNone(process.poll())  # Process is running
         executive.kill_all(never_ending_command()[0])
         # Note: Can't use a ternary since signal.SIGTERM is undefined for sys.platform == "win32"
         if sys.platform == "cygwin":
@@ -196,7 +194,7 @@ class ExecutiveTest(unittest.TestCase):
         elif sys.platform == "win32":
             # FIXME: https://bugs.webkit.org/show_bug.cgi?id=54790
             # We seem to get either 0 or 1 here for some reason.
-            self.assertTrue(process.wait() in (0, 1))
+            self.assertIn(process.wait(), (0, 1))
         else:
             expected_exit_code = -signal.SIGTERM
             self.assertEqual(process.wait(), expected_exit_code)
@@ -229,7 +227,7 @@ class ExecutiveTest(unittest.TestCase):
 
         executive = Executive()
         pids = executive.running_pids()
-        self.assertTrue(os.getpid() in pids)
+        self.assertIn(os.getpid(), pids)
 
     def serial_test_run_in_parallel(self):
         # We run this test serially to avoid overloading the machine and throwing off the timing.

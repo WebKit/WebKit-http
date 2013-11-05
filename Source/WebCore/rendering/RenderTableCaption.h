@@ -28,7 +28,7 @@ class RenderTable;
 
 class RenderTableCaption : public RenderBlock {
 public:
-    explicit RenderTableCaption(ContainerNode*);
+    explicit RenderTableCaption(Element*);
     virtual ~RenderTableCaption();
     virtual LayoutUnit containingBlockLogicalWidthForContent() const OVERRIDE;
     
@@ -43,13 +43,13 @@ private:
 
 inline RenderTableCaption* toRenderTableCaption(RenderObject* object)
 {
-    ASSERT(!object || object->isTableCaption());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableCaption());
     return static_cast<RenderTableCaption*>(object);
 }
 
 inline const RenderTableCaption* toRenderTableCaption(const RenderObject* object)
 {
-    ASSERT(!object || object->isTableCaption());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableCaption());
     return static_cast<const RenderTableCaption*>(object);
 }
 

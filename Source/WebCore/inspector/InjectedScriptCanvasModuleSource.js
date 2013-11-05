@@ -51,6 +51,12 @@ var TypeUtils = {
     })(["Int8Array", "Uint8Array", "Uint8ClampedArray", "Int16Array", "Uint16Array", "Int32Array", "Uint32Array", "Float32Array", "Float64Array"]),
 
     /**
+     * @const
+     * @type {!Array.<string>}
+     */
+    _supportedPropertyPrefixes: ["webkit"],
+
+    /**
      * @param {*} array
      * @return {function(new:ArrayBufferView, ArrayBufferView)|null}
      */
@@ -92,12 +98,12 @@ var TypeUtils = {
             // Special case for Images with Blob URIs: cloneNode will fail if the Blob URI has already been revoked.
             // FIXME: Maybe this is a bug in WebKit core?
             if (/^blob:/.test(img.src))
-                return TypeUtils.cloneIntoCanvas(img, img.width, img.height);
+                return TypeUtils.cloneIntoCanvas(img);
             return img.cloneNode(true);
         }
 
         if (obj instanceof HTMLCanvasElement)
-            return TypeUtils.cloneIntoCanvas(obj, obj.width, obj.height);
+            return TypeUtils.cloneIntoCanvas(obj);
 
         if (obj instanceof HTMLVideoElement)
             return TypeUtils.cloneIntoCanvas(obj, obj.videoWidth, obj.videoHeight);
@@ -117,15 +123,15 @@ var TypeUtils = {
 
     /**
      * @param {HTMLImageElement|HTMLCanvasElement|HTMLVideoElement} obj
-     * @param {number} width
-     * @param {number} height
+     * @param {number=} width
+     * @param {number=} height
      * @return {HTMLCanvasElement}
      */
     cloneIntoCanvas: function(obj, width, height)
     {
         var canvas = /** @type {HTMLCanvasElement} */ (inspectedWindow.document.createElement("canvas"));
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = width || +obj.width;
+        canvas.height = height || +obj.height;
         var context = /** @type {CanvasRenderingContext2D} */ (Resource.wrappedObject(canvas.getContext("2d")));
         context.drawImage(obj, 0, 0);
         return canvas;
@@ -142,6 +148,22 @@ var TypeUtils = {
         var result = {};
         for (var key in obj)
             result[key] = obj[key];
+        return result;
+    },
+
+    /**
+     * @param {!Array.<string>} names
+     * @return {!Object.<string, boolean>}
+     */
+    createPrefixedPropertyNamesSet: function(names)
+    {
+        var result = Object.create(null);
+        for (var i = 0, name; name = names[i]; ++i) {
+            result[name] = true;
+            var suffix = name.substr(0, 1).toUpperCase() + name.substr(1);
+            for (var j = 0, prefix; prefix = TypeUtils._supportedPropertyPrefixes[j]; ++j)
+                result[prefix + suffix] = true;
+        }
         return result;
     },
 
@@ -170,7 +192,7 @@ function StackTrace()
 StackTrace.prototype = {
     /**
      * @param {number} index
-     * @return {{sourceURL: string, lineNumber: number, columnNumber: number}}
+     * @return {{sourceURL: string, lineNumber: number, columnNumber: number}|undefined}
      */
     callFrame: function(index)
     {
@@ -200,50 +222,45 @@ StackTrace.create = function(stackTraceLimit, topMostFunctionToIgnore)
 function StackTraceV8(stackTraceLimit, topMostFunctionToIgnore)
 {
     StackTrace.call(this);
+
+    var oldPrepareStackTrace = Error.prepareStackTrace;
     var oldStackTraceLimit = Error.stackTraceLimit;
     if (typeof stackTraceLimit === "number")
         Error.stackTraceLimit = stackTraceLimit;
 
-    this._error = /** @type {{stack: Array}} */ ({});
-    Error.captureStackTrace(this._error, topMostFunctionToIgnore || arguments.callee);
+    /**
+     * @param {Object} error
+     * @param {Array.<CallSite>} structuredStackTrace
+     * @return {Array.<{sourceURL: string, lineNumber: number, columnNumber: number}>}
+     */
+    Error.prepareStackTrace = function(error, structuredStackTrace)
+    {
+        return structuredStackTrace.map(function(callSite) {
+            return {
+                sourceURL: callSite.getFileName(),
+                lineNumber: callSite.getLineNumber(),
+                columnNumber: callSite.getColumnNumber()
+            };
+        });
+    }
+
+    var holder = /** @type {{stack: Array.<{sourceURL: string, lineNumber: number, columnNumber: number}>}} */ ({});
+    Error.captureStackTrace(holder, topMostFunctionToIgnore || arguments.callee);
+    this._stackTrace = holder.stack;
 
     Error.stackTraceLimit = oldStackTraceLimit;
+    Error.prepareStackTrace = oldPrepareStackTrace;
 }
 
 StackTraceV8.prototype = {
     /**
      * @override
      * @param {number} index
-     * @return {{sourceURL: string, lineNumber: number, columnNumber: number}}
+     * @return {{sourceURL: string, lineNumber: number, columnNumber: number}|undefined}
      */
     callFrame: function(index)
     {
-        if (!this._stackTrace)
-            this._prepareStackTrace();
         return this._stackTrace[index];
-    },
-
-    _prepareStackTrace: function()
-    {
-        var oldPrepareStackTrace = Error.prepareStackTrace;
-        /**
-         * @param {Object} error
-         * @param {Array.<CallSite>} structuredStackTrace
-         * @return {Array.<{sourceURL: string, lineNumber: number, columnNumber: number}>}
-         */
-        Error.prepareStackTrace = function(error, structuredStackTrace)
-        {
-            return structuredStackTrace.map(function(callSite) {
-                return {
-                    sourceURL: callSite.getFileName(),
-                    lineNumber: callSite.getLineNumber(),
-                    columnNumber: callSite.getColumnNumber()
-                };
-            });
-        }
-        this._stackTrace = this._error.stack;
-        Error.prepareStackTrace = oldPrepareStackTrace;
-        delete this._error; // No longer needed, free memory.
     },
 
     __proto__: StackTrace.prototype
@@ -737,6 +754,14 @@ Resource.prototype = {
     },
 
     /**
+     * @return {string}
+     */
+    toDataURL: function()
+    {
+        return "";
+    },
+
+    /**
      * @param {!Cache} cache
      * @return {!ReplayableResource}
      */
@@ -1063,6 +1088,14 @@ ReplayableResource.prototype = {
     id: function()
     {
         return this._data.id;
+    },
+
+    /**
+     * @return {string}
+     */
+    name: function()
+    {
+        return this._data.name;
     },
 
     /**
@@ -1599,12 +1632,10 @@ WebGLRenderbufferResource.prototype = {
  * @constructor
  * @extends {ContextResource}
  * @param {!WebGLRenderingContext} glContext
- * @param {function():WebGLRenderingContext} replayContextCallback
  */
-function WebGLRenderingContextResource(glContext, replayContextCallback)
+function WebGLRenderingContextResource(glContext)
 {
     ContextResource.call(this, glContext, "WebGLRenderingContext");
-    this._replayContextCallback = replayContextCallback;
     /** @type {Object.<number, boolean>} */
     this._customErrors = null;
     /** @type {!Object.<string, boolean>} */
@@ -1696,6 +1727,16 @@ WebGLRenderingContextResource.StateParameters = [
 ];
 
 /**
+ * @const
+ * @type {!Object.<string, boolean>}
+ */
+WebGLRenderingContextResource.DrawingMethods = TypeUtils.createPrefixedPropertyNamesSet([
+    "clear",
+    "drawArrays",
+    "drawElements"
+]);
+
+/**
  * @param {*} obj
  * @return {WebGLRenderingContextResource}
  */
@@ -1716,6 +1757,15 @@ WebGLRenderingContextResource.prototype = {
     wrappedObject: function()
     {
         return this._wrappedObject;
+    },
+
+    /**
+     * @override
+     * @return {string}
+     */
+    toDataURL: function()
+    {
+        return this.wrappedObject().canvas.toDataURL();
     },
 
     /**
@@ -1808,7 +1858,8 @@ WebGLRenderingContextResource.prototype = {
     _populateReplayableData: function(data, cache)
     {
         var gl = this.wrappedObject();
-        data.replayContextCallback = this._replayContextCallback;
+        data.originalCanvas = gl.canvas;
+        data.originalContextAttributes = gl.getContextAttributes();
         data.extensions = TypeUtils.cloneObject(this._extensions);
 
         var originalErrors = this.getAllErrors();
@@ -1863,11 +1914,19 @@ WebGLRenderingContextResource.prototype = {
      */
     _doReplayCalls: function(data, cache)
     {
-        this._replayContextCallback = data.replayContextCallback;
         this._customErrors = null;
         this._extensions = TypeUtils.cloneObject(data.extensions) || {};
 
-        var gl = /** @type {!WebGLRenderingContext} */ (Resource.wrappedObject(this._replayContextCallback()));
+        var canvas = data.originalCanvas.cloneNode(true);
+        var replayContext = null;
+        var contextIds = ["experimental-webgl", "webkit-3d", "3d"];
+        for (var i = 0, contextId; contextId = contextIds[i]; ++i) {
+            replayContext = canvas.getContext(contextId, data.originalContextAttributes);
+            if (replayContext)
+                break;
+        }
+
+        var gl = /** @type {!WebGLRenderingContext} */ (Resource.wrappedObject(replayContext));
         this.setWrappedObject(gl);
 
         // Enable corresponding WebGL extensions.
@@ -2186,12 +2245,10 @@ WebGLRenderingContextResource.prototype = {
  * @constructor
  * @extends {ContextResource}
  * @param {!CanvasRenderingContext2D} context
- * @param {function():CanvasRenderingContext2D} replayContextCallback
  */
-function CanvasRenderingContext2DResource(context, replayContextCallback)
+function CanvasRenderingContext2DResource(context)
 {
     ContextResource.call(this, context, "CanvasRenderingContext2D");
-    this._replayContextCallback = replayContextCallback;
 }
 
 /**
@@ -2248,6 +2305,26 @@ CanvasRenderingContext2DResource.TransformationMatrixMethods = [
     "setTransform"
 ];
 
+/**
+ * @const
+ * @type {!Object.<string, boolean>}
+ */
+CanvasRenderingContext2DResource.DrawingMethods = TypeUtils.createPrefixedPropertyNamesSet([
+    "clearRect",
+    "drawImage",
+    "drawImageFromRect",
+    "drawCustomFocusRing",
+    "drawSystemFocusRing",
+    "fill",
+    "fillRect",
+    "fillText",
+    "putImageData",
+    "putImageDataHD",
+    "stroke",
+    "strokeRect",
+    "strokeText"
+]);
+
 CanvasRenderingContext2DResource.prototype = {
     /**
      * @override (overrides @return type)
@@ -2260,19 +2337,22 @@ CanvasRenderingContext2DResource.prototype = {
 
     /**
      * @override
+     * @return {string}
+     */
+    toDataURL: function()
+    {
+        return this.wrappedObject().canvas.toDataURL();
+    },
+
+    /**
+     * @override
      * @param {!Object} data
      * @param {!Cache} cache
      */
     _populateReplayableData: function(data, cache)
     {
-        data.replayContextCallback = this._replayContextCallback;
         data.currentAttributes = this._currentAttributesState();
-        var ctx = this.wrappedObject();
-        try {
-            data.originalImageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-        } catch (e) {
-            console.error("ASSERT_NOT_REACHED: getImageData failed.", e);
-        }
+        data.originalCanvasCloned = TypeUtils.cloneIntoCanvas(this.wrappedObject().canvas);
     },
 
     /**
@@ -2282,21 +2362,12 @@ CanvasRenderingContext2DResource.prototype = {
      */
     _doReplayCalls: function(data, cache)
     {
-        this._replayContextCallback = data.replayContextCallback;
-
-        var ctx = /** @type {!CanvasRenderingContext2D} */ (Resource.wrappedObject(this._replayContextCallback()));
+        var canvas = TypeUtils.cloneIntoCanvas(data.originalCanvasCloned);
+        var ctx = /** @type {!CanvasRenderingContext2D} */ (Resource.wrappedObject(canvas.getContext("2d")));
         this.setWrappedObject(ctx);
 
-        if (data.originalImageData) {
-            try {
-                ctx.putImageData(data.originalImageData, 0, 0);
-            } catch (e) {
-                console.error("ASSERT_NOT_REACHED: putImageData failed.", e);
-            }
-        }
-
         for (var i = 0, n = data.calls.length; i < n; ++i) {
-            var replayableCall = data.calls[i];
+            var replayableCall = /** @type {ReplayableCall} */ (data.calls[i]);
             if (replayableCall.functionName() === "save")
                 this._applyAttributesState(replayableCall.attachment("canvas2dAttributesState"));
             this._calls.push(replayableCall.replay(cache));
@@ -2563,6 +2634,85 @@ CanvasRenderingContext2DResource.prototype = {
 
 /**
  * @constructor
+ * @param {!Object.<string, boolean>=} drawingMethodNames
+ */
+function CallFormatter(drawingMethodNames)
+{
+    this._drawingMethodNames = drawingMethodNames || Object.create(null);
+}
+
+CallFormatter.prototype = {
+    /**
+     * @param {!ReplayableCall} replayableCall
+     * @return {!Object}
+     */
+    formatCall: function(replayableCall)
+    {
+        var result = {};
+        var functionName = replayableCall.functionName();
+        if (functionName) {
+            result.functionName = functionName;
+            result.arguments = replayableCall.args().map(this.formatValue.bind(this));
+            if (replayableCall.result() !== undefined)
+                result.result = this.formatValue(replayableCall.result());
+            if (this._drawingMethodNames[functionName])
+                result.isDrawingCall = true;
+        } else {
+            result.property = replayableCall.args()[0];
+            result.value = this.formatValue(replayableCall.args()[1]);
+        }
+        return result;
+    },
+
+    /**
+     * @param {*} value
+     * @return {!Object}
+     */
+    formatValue: function(value)
+    {
+        if (value instanceof ReplayableResource)
+            var description = value.description();
+        else
+            var description = "" + value;
+        return { description: description };
+    }
+}
+
+/**
+ * @const
+ * @type {!Object.<string, !CallFormatter>}
+ */
+CallFormatter._formatters = {};
+
+/**
+ * @param {string} resourceName
+ * @param {!CallFormatter} callFormatter
+ */
+CallFormatter.register = function(resourceName, callFormatter)
+{
+    CallFormatter._formatters[resourceName] = callFormatter;
+}
+
+/**
+ * @param {!ReplayableCall} replayableCall
+ * @return {!Object}
+ */
+CallFormatter.formatCall = function(replayableCall)
+{
+    var resource = replayableCall.replayableResource();
+    var formatter = CallFormatter._formatters[resource.name()];
+    if (!formatter) {
+        var contextResource = resource.replayableContextResource();
+        formatter = CallFormatter._formatters[contextResource.name()] || new CallFormatter();
+    }
+    return formatter.formatCall(replayableCall);
+}
+
+CallFormatter.register("CanvasRenderingContext2D", new CallFormatter(CanvasRenderingContext2DResource.DrawingMethods));
+CallFormatter.register("WebGLRenderingContext", new CallFormatter(WebGLRenderingContextResource.DrawingMethods));
+
+/**
+ * @constructor
  */
 function TraceLog()
 {
@@ -2590,6 +2740,15 @@ TraceLog.prototype = {
     },
 
     /**
+     * @param {number} id
+     * @return {ReplayableResource}
+     */
+    replayableResource: function(id)
+    {
+        return /** @type {ReplayableResource} */ (this._replayablesCache.get(id));
+    },
+
+    /**
      * @param {!Resource} resource
      */
     captureResource: function(resource)
@@ -2609,9 +2768,8 @@ TraceLog.prototype = {
 /**
  * @constructor
  * @param {!TraceLog} traceLog
- * @param {function()=} resetCallback
  */
-function TraceLogPlayer(traceLog, resetCallback)
+function TraceLogPlayer(traceLog)
 {
     /** @type {!TraceLog} */
     this._traceLog = traceLog;
@@ -2619,8 +2777,6 @@ function TraceLogPlayer(traceLog, resetCallback)
     this._nextReplayStep = 0;
     /** @type {!Cache} */
     this._replayWorldCache = new Cache();
-    /** @type {function()|undefined} */
-    this._resetCallback = resetCallback;
 }
 
 TraceLogPlayer.prototype = {
@@ -2630,6 +2786,15 @@ TraceLogPlayer.prototype = {
     traceLog: function()
     {
         return this._traceLog;
+    },
+
+    /**
+     * @param {number} id
+     * @return {Resource}
+     */
+    replayWorldResource: function(id)
+    {
+        return /** @type {Resource} */ (this._replayWorldCache.get(id));
     },
 
     /**
@@ -2644,8 +2809,6 @@ TraceLogPlayer.prototype = {
     {
         this._nextReplayStep = 0;
         this._replayWorldCache.reset();
-        if (this._resetCallback)
-            this._resetCallback();
     },
 
     /**
@@ -2799,10 +2962,8 @@ var InjectedCanvasModule = function()
     this._lastTraceLogId = 0;
     /** @type {!Object.<string, TraceLog>} */
     this._traceLogs = {};
-    /** @type {TraceLogPlayer} */
-    this._traceLogPlayer = null;
-    /** @type {!Array.<{type: string, context: Object}>} */
-    this._replayContexts = [];
+    /** @type {!Object.<string, TraceLogPlayer>} */
+    this._traceLogPlayers = {};
 }
 
 InjectedCanvasModule.prototype = {
@@ -2812,7 +2973,7 @@ InjectedCanvasModule.prototype = {
      */
     wrapWebGLContext: function(glContext)
     {
-        var resource = Resource.forObject(glContext) || new WebGLRenderingContextResource(glContext, this._constructWebGLReplayContext.bind(this, glContext));
+        var resource = Resource.forObject(glContext) || new WebGLRenderingContextResource(glContext);
         this._manager.registerResource(resource);
         return resource.proxyObject();
     },
@@ -2823,13 +2984,13 @@ InjectedCanvasModule.prototype = {
      */
     wrapCanvas2DContext: function(context)
     {
-        var resource = Resource.forObject(context) || new CanvasRenderingContext2DResource(context, this._constructCanvas2DReplayContext.bind(this, context));
+        var resource = Resource.forObject(context) || new CanvasRenderingContext2DResource(context);
         this._manager.registerResource(resource);
         return resource.proxyObject();
     },
 
     /**
-     * @return {string}
+     * @return {CanvasAgent.TraceLogId}
      */
     captureFrame: function()
     {
@@ -2837,7 +2998,7 @@ InjectedCanvasModule.prototype = {
     },
 
     /**
-     * @return {string}
+     * @return {CanvasAgent.TraceLogId}
      */
     startCapturing: function()
     {
@@ -2846,7 +3007,7 @@ InjectedCanvasModule.prototype = {
 
     /**
      * @param {function(this:ResourceTrackingManager)} func
-     * @return {string}
+     * @return {CanvasAgent.TraceLogId}
      */
     _callStartCapturingFunction: function(func)
     {
@@ -2865,7 +3026,7 @@ InjectedCanvasModule.prototype = {
     },
 
     /**
-     * @param {string} id
+     * @param {CanvasAgent.TraceLogId} id
      */
     stopCapturing: function(id)
     {
@@ -2875,67 +3036,65 @@ InjectedCanvasModule.prototype = {
     },
 
     /**
-     * @param {string} id
+     * @param {CanvasAgent.TraceLogId} id
      */
     dropTraceLog: function(id)
     {
         this.stopCapturing(id);
-        if (this._traceLogPlayer && this._traceLogPlayer.traceLog() === this._traceLogs[id]) {
-            this._traceLogPlayer = null;
-            this._replayContexts = [];
-        }
         delete this._traceLogs[id];
+        delete this._traceLogPlayers[id];
     },
 
     /**
-     * @param {string} id
+     * @param {CanvasAgent.TraceLogId} id
      * @param {number=} startOffset
-     * @return {Object|string}
+     * @param {number=} maxLength
+     * @return {!CanvasAgent.TraceLog|string}
      */
-    traceLog: function(id, startOffset)
+    traceLog: function(id, startOffset, maxLength)
     {
         var traceLog = this._traceLogs[id];
         if (!traceLog)
-            return "Error: Trace log with this ID not found.";
-        startOffset = Math.max(0, startOffset || 0);
+            return "Error: Trace log with the given ID not found.";
+
+        var replayableCalls = traceLog.replayableCalls();
+        if (typeof startOffset !== "number")
+            startOffset = 0;
+        if (typeof maxLength !== "number")
+            maxLength = replayableCalls.length;
+
+        var fromIndex = Math.max(0, startOffset);
+        var toIndex = Math.min(replayableCalls.length - 1, fromIndex + maxLength - 1);
+
         var alive = this._manager.capturing() && this._manager.lastTraceLog() === traceLog;
         var result = {
             id: id,
+            /** @type {Array.<CanvasAgent.Call>} */
             calls: [],
             alive: alive,
-            startOffset: startOffset
+            startOffset: fromIndex,
+            totalAvailableCalls: replayableCalls.length
         };
-        var calls = traceLog.replayableCalls();
-        for (var i = startOffset, n = calls.length; i < n; ++i) {
-            var call = calls[i];
+        for (var i = fromIndex; i <= toIndex; ++i) {
+            var call = replayableCalls[i];
             var contextResource = call.replayableResource().replayableContextResource();
             var stackTrace = call.stackTrace();
             var callFrame = stackTrace ? stackTrace.callFrame(0) || {} : {};
-            var traceLogItem = {
-                contextId: this._makeContextId(contextResource.id()),
-                sourceURL: callFrame.sourceURL,
-                lineNumber: callFrame.lineNumber,
-                columnNumber: callFrame.columnNumber
-            };
-            if (call.functionName()) {
-                traceLogItem.functionName = call.functionName();
-                traceLogItem.arguments = call.args().map(this._createRemoteObject.bind(this));
-                if (call.result() !== undefined)
-                    traceLogItem.result = this._createRemoteObject(call.result());
-            } else {
-                traceLogItem.property = call.args()[0];
-                traceLogItem.value = this._createRemoteObject(call.args()[1]);
-            }
-            result.calls.push(traceLogItem);
+            var item = CallFormatter.formatCall(call);
+            item.contextId = this._makeStringResourceId(contextResource.id());
+            item.sourceURL = callFrame.sourceURL;
+            item.lineNumber = callFrame.lineNumber;
+            item.columnNumber = callFrame.columnNumber;
+            result.calls.push(item);
         }
         return result;
     },
 
     /**
      * @param {*} obj
-     * @return {Object}
+     * @return {!CanvasAgent.CallArgument}
      */
-    _createRemoteObject: function(obj)
+    _makeCallArgument: function(obj)
     {
         if (obj instanceof ReplayableResource)
             var description = obj.description();
@@ -2945,37 +3104,81 @@ InjectedCanvasModule.prototype = {
     },
 
     /**
-     * @param {string} id
+     * @param {CanvasAgent.TraceLogId} traceLogId
      * @param {number} stepNo
-     * @return {string}
+     * @return {!CanvasAgent.ResourceState|string}
      */
-    replayTraceLog: function(id, stepNo)
+    replayTraceLog: function(traceLogId, stepNo)
     {
-        var traceLog = this._traceLogs[id];
+        var traceLog = this._traceLogs[traceLogId];
         if (!traceLog)
-            return "";
-        if (!this._traceLogPlayer || this._traceLogPlayer.traceLog() !== traceLog) {
-            this._replayContexts = [];
-            this._traceLogPlayer = new TraceLogPlayer(traceLog, this._onTraceLogPlayerReset.bind(this));
+            return "Error: Trace log with the given ID not found.";
+        this._traceLogPlayers[traceLogId] = this._traceLogPlayers[traceLogId] || new TraceLogPlayer(traceLog);
+        var lastCall = this._traceLogPlayers[traceLogId].stepTo(stepNo);
+        var resource = lastCall.resource();
+        var dataURL = resource.toDataURL();
+        if (!dataURL) {
+            resource = resource.contextResource();
+            dataURL = resource.toDataURL();
         }
-        var lastCall = this._traceLogPlayer.stepTo(stepNo);
-        if (!this._replayContexts.length) {
-            console.error("ASSERT_NOT_REACHED: replayTraceLog failed to create a replay canvas?!");
-            return "";
-        }
-        // FIXME: Support replaying several canvases simultaneously.
-        var lastCallResourceContext = Resource.wrappedObject(lastCall.resource());
-        for (var i = 0, n = this._replayContexts.length; i < n; ++i) {
-            var context = this._replayContexts[i].context;
-            if (lastCallResourceContext === context)
-                return context.canvas.toDataURL();
-        }
-        console.assert("ASSERT_NOT_REACHED: replayTraceLog failed to match the replaying canvas?!");
-        return this._replayContexts[0].context.canvas.toDataURL();
+        return this._makeResourceState(this._makeStringResourceId(resource.id()), traceLogId, dataURL);
     },
 
     /**
-     * @return {string}
+     * @param {CanvasAgent.ResourceId} stringResourceId
+     * @return {!CanvasAgent.ResourceInfo|string}
+     */
+    resourceInfo: function(stringResourceId)
+    {
+        var resourceId = this._parseStringId(stringResourceId).resourceId;
+        if (!resourceId)
+            return "Error: Wrong resource ID: " + stringResourceId;
+
+        var replayableResource = null;
+        for (var id in this._traceLogs) {
+            replayableResource = this._traceLogs[id].replayableResource(resourceId);
+            if (replayableResource)
+                break;
+        }
+        if (!replayableResource)
+            return "Error: Resource with the given ID not found.";
+
+        return this._makeResourceInfo(stringResourceId, replayableResource.description());
+    },
+
+    /**
+     * @param {CanvasAgent.TraceLogId} traceLogId
+     * @param {CanvasAgent.ResourceId} stringResourceId
+     * @return {!CanvasAgent.ResourceState|string}
+     */
+    resourceState: function(traceLogId, stringResourceId)
+    {
+        var traceLog = this._traceLogs[traceLogId];
+        if (!traceLog)
+            return "Error: Trace log with the given ID not found.";
+
+        var traceLogPlayer = this._traceLogPlayers[traceLogId];
+        if (!traceLogPlayer)
+            return "Error: Trace log replay has not started yet.";
+
+        var parsedStringId1 = this._parseStringId(traceLogId);
+        var parsedStringId2 = this._parseStringId(stringResourceId);
+        if (parsedStringId1.injectedScriptId !== parsedStringId2.injectedScriptId)
+            return "Error: Both IDs must point to the same injected script.";
+
+        var resourceId = parsedStringId2.resourceId;
+        if (!resourceId)
+            return "Error: Wrong resource ID: " + stringResourceId;
+
+        var resource = traceLogPlayer.replayWorldResource(resourceId);
+        if (!resource)
+            return "Error: Resource with the given ID has not been replayed yet.";
+
+        return this._makeResourceState(stringResourceId, traceLogId, resource.toDataURL());
+    },
+
+    /**
+     * @return {CanvasAgent.TraceLogId}
      */
     _makeTraceLogId: function()
     {
@@ -2984,55 +3187,48 @@ InjectedCanvasModule.prototype = {
 
     /**
      * @param {number} resourceId
-     * @return {string}
+     * @return {CanvasAgent.ResourceId}
      */
-    _makeContextId: function(resourceId)
+    _makeStringResourceId: function(resourceId)
     {
-        return "{\"injectedScriptId\":" + injectedScriptId + ",\"canvasContextId\":" + resourceId + "}";
-    },
-
-    _onTraceLogPlayerReset: function()
-    {
-        this._replayContexts = [];
+        return "{\"injectedScriptId\":" + injectedScriptId + ",\"resourceId\":" + resourceId + "}";
     },
 
     /**
-     * @param {!WebGLRenderingContext} originalGlContext
-     * @return {WebGLRenderingContext}
+     * @param {CanvasAgent.ResourceId} stringResourceId
+     * @param {string} description
+     * @return {!CanvasAgent.ResourceInfo}
      */
-    _constructWebGLReplayContext: function(originalGlContext)
+    _makeResourceInfo: function(stringResourceId, description)
     {
-        var canvas = originalGlContext.canvas.cloneNode(true);
-        var attributes = originalGlContext.getContextAttributes();
-        var contextIds = ["experimental-webgl", "webkit-3d", "3d"];
-        for (var i = 0, contextId; contextId = contextIds[i]; ++i) {
-            var replayContext = canvas.getContext(contextId, attributes);
-            if (replayContext) {
-                replayContext = /** @type {WebGLRenderingContext} */ (Resource.wrappedObject(replayContext));
-                this._replayContexts.push({
-                    type: "3d",
-                    context: replayContext
-                });
-                return replayContext;
-            }
-        }
-        return null;
+        return {
+            id: stringResourceId,
+            description: description
+        };
     },
 
     /**
-     * @param {!CanvasRenderingContext2D} originalContext
-     * @return {CanvasRenderingContext2D}
+     * @param {CanvasAgent.ResourceId} stringResourceId
+     * @param {CanvasAgent.TraceLogId} traceLogId
+     * @param {string} imageURL
+     * @return {!CanvasAgent.ResourceState}
      */
-    _constructCanvas2DReplayContext: function(originalContext)
+    _makeResourceState: function(stringResourceId, traceLogId, imageURL)
     {
-        // Create a new 2D context each time to start with an empty context drawing state stack (managed by save() and restore() methods).
-        var canvas = originalContext.canvas.cloneNode(true);
-        var replayContext = /** @type {CanvasRenderingContext2D} */ (Resource.wrappedObject(canvas.getContext("2d")));
-        this._replayContexts.push({
-            type: "2d",
-            context: replayContext
-        });
-        return replayContext;
+        return {
+            id: stringResourceId,
+            traceLogId: traceLogId,
+            imageURL: imageURL
+        };
+    },
+
+    /**
+     * @param {string} stringId
+     * @return {{injectedScriptId: number, traceLogId: ?number, resourceId: ?number}}
+     */
+    _parseStringId: function(stringId)
+    {
+        return InjectedScriptHost.evaluate("(" + stringId + ")");
     }
 }
 

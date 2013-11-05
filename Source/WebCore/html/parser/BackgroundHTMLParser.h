@@ -28,11 +28,12 @@
 
 #if ENABLE(THREADED_HTML_PARSER)
 
+#include "BackgroundHTMLInputStream.h"
 #include "CompactHTMLToken.h"
-#include "HTMLInputStream.h"
 #include "HTMLParserOptions.h"
 #include "HTMLToken.h"
 #include "HTMLTokenizer.h"
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -43,35 +44,36 @@ class BackgroundHTMLParser {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     void append(const String&);
-    void continueParsing();
+    void resumeFrom(const WeakPtr<HTMLDocumentParser>&, PassOwnPtr<HTMLToken>, PassOwnPtr<HTMLTokenizer>, HTMLInputCheckpoint);
     void finish();
 
-    static PassOwnPtr<BackgroundHTMLParser> create(const HTMLParserOptions& options, ParserIdentifier identifier)
+    static PassOwnPtr<BackgroundHTMLParser> create(const HTMLParserOptions& options, const WeakPtr<HTMLDocumentParser>& parser)
     {
-        return adoptPtr(new BackgroundHTMLParser(options, identifier));
+        return adoptPtr(new BackgroundHTMLParser(options, parser));
     }
 
-    static void createPartial(ParserIdentifier, HTMLParserOptions);
+    static void createPartial(ParserIdentifier, const HTMLParserOptions&, const WeakPtr<HTMLDocumentParser>&);
     static void stopPartial(ParserIdentifier);
     static void appendPartial(ParserIdentifier, const String& input);
-    static void continuePartial(ParserIdentifier);
+    static void resumeFromPartial(ParserIdentifier, const WeakPtr<HTMLDocumentParser>&, PassOwnPtr<HTMLToken>, PassOwnPtr<HTMLTokenizer>, HTMLInputCheckpoint);
     static void finishPartial(ParserIdentifier);
 
 private:
-    explicit BackgroundHTMLParser(const HTMLParserOptions&, ParserIdentifier);
+    BackgroundHTMLParser(const HTMLParserOptions&, const WeakPtr<HTMLDocumentParser>&);
 
+    void markEndOfFile();
     void pumpTokenizer();
+    bool simulateTreeBuilder(const CompactHTMLToken&);
 
     void sendTokensToMainThread();
 
-    HTMLInputStream m_input;
-    HTMLToken m_token;
-    bool m_isPausedWaitingForScripts;
     bool m_inForeignContent; // FIXME: We need a stack of foreign content markers.
+    BackgroundHTMLInputStream m_input;
+    OwnPtr<HTMLToken> m_token;
     OwnPtr<HTMLTokenizer> m_tokenizer;
     HTMLParserOptions m_options;
-    ParserIdentifier m_parserIdentifer;
-    Vector<CompactHTMLToken> m_pendingTokens;
+    WeakPtr<HTMLDocumentParser> m_parser;
+    OwnPtr<CompactHTMLTokenStream> m_pendingTokens;
 };
 
 class ParserMap {
@@ -82,14 +84,11 @@ public:
     }
 
     typedef HashMap<ParserIdentifier, OwnPtr<BackgroundHTMLParser> > BackgroundParserMap;
-    typedef HashMap<ParserIdentifier, HTMLDocumentParser*> MainThreadParserMap;
 
     BackgroundParserMap& backgroundParsers();
-    MainThreadParserMap& mainThreadParsers();
 
 private:
     BackgroundParserMap m_backgroundParsers;
-    MainThreadParserMap m_mainThreadParsers;
 };
 
 ParserMap& parserMap();

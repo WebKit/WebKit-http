@@ -36,6 +36,7 @@ namespace BlackBerry {
 namespace WebKit {
 
 DEFINE_STATIC_LOCAL(String, BlackBerryAllowCrossSiteRequests, (ASCIILiteral("BlackBerryAllowCrossSiteRequests")));
+DEFINE_STATIC_LOCAL(String, BlackBerryApplyDeviceScaleFactorInCompositor, (ASCIILiteral("BlackBerryApplyDeviceScaleFactorInCompositor")));
 DEFINE_STATIC_LOCAL(String, BlackBerryAsynchronousSpellChecking, (ASCIILiteral("BlackBerryAsynchronousSpellChecking")));
 DEFINE_STATIC_LOCAL(String, BlackBerryBackgroundColor, (ASCIILiteral("BlackBerryBackgroundColor")));
 DEFINE_STATIC_LOCAL(String, BlackBerryCookiesEnabled, (ASCIILiteral("BlackBerryCookiesEnabled")));
@@ -61,7 +62,8 @@ DEFINE_STATIC_LOCAL(String, BlackBerryZoomToFitOnLoadEnabled, (ASCIILiteral("Bla
 DEFINE_STATIC_LOCAL(String, BlackBerryFullScreenVideoCapable, (ASCIILiteral("BlackBerryFullScreenVideoCapable")));
 DEFINE_STATIC_LOCAL(String, BlackBerryCredentialAutofillEnabled, (ASCIILiteral("BlackBerryCredentialAutofillEnabled")));
 DEFINE_STATIC_LOCAL(String, BlackBerryFormAutofillEnabled, (ASCIILiteral("BlackBerryFormAutofillEnabled")));
-DEFINE_STATIC_LOCAL(String, BlackBerryDevicePixelRatio, (ASCCIILiteral("BlackBerryDevicePixelRatio")));
+DEFINE_STATIC_LOCAL(String, BlackBerryDevicePixelRatio, (ASCIILiteral("BlackBerryDevicePixelRatio")));
+DEFINE_STATIC_LOCAL(String, BlackBerryBackingStoreEnabled, (ASCIILiteral("BlackBerryBackingStoreEnabled")));
 DEFINE_STATIC_LOCAL(String, SpatialNavigationEnabled, (ASCIILiteral("SpatialNavigationEnabled")));
 DEFINE_STATIC_LOCAL(String, WebKitDatabasePath, (ASCIILiteral("WebKitDatabasePath")));
 DEFINE_STATIC_LOCAL(String, WebKitDatabasesEnabled, (ASCIILiteral("WebKitDatabasesEnabled")));
@@ -161,6 +163,7 @@ WebSettings* WebSettings::standardSettings()
     settings->m_private->setBoolean(BlackBerryAllowCrossSiteRequests, false);
     settings->m_private->setUnsigned(BlackBerryBackgroundColor, WebCore::Color::white);
     settings->m_private->setBoolean(BlackBerryCookiesEnabled, true);
+    settings->m_private->setBoolean(BlackBerryBackingStoreEnabled, true);
     settings->m_private->setDouble(BlackBerryInitialScale, -1);
     settings->m_private->setUnsigned(BlackBerryMaxPluginInstances, 1);
     settings->m_private->setUnsigned(BlackBerryOverScrollColor, WebCore::Color::white);
@@ -177,6 +180,7 @@ WebSettings* WebSettings::standardSettings()
     settings->m_private->setBoolean(BlackBerryCredentialAutofillEnabled, false);
     settings->m_private->setBoolean(BlackBerryFormAutofillEnabled, false);
     settings->m_private->setBoolean(BlackBerryAsynchronousSpellChecking, true);
+    settings->m_private->setBoolean(BlackBerryApplyDeviceScaleFactorInCompositor, false);
 
     if (BlackBerry::Platform::DeviceInfo::instance()->isMobile()) {
         WebCore::FloatSize currentPPI = Platform::Graphics::Screen::primaryScreen()->pixelsPerInch(-1);
@@ -750,6 +754,16 @@ void WebSettings::setDirectRenderingToWindowEnabled(bool enable)
     m_private->setBoolean(BlackBerryDirectRenderingToWindowEnabled, enable);
 }
 
+bool WebSettings::isBackingStoreEnabled() const
+{
+    return m_private->getBoolean(BlackBerryBackingStoreEnabled);
+}
+
+void WebSettings::setBackingStoreEnabled(bool enable)
+{
+    m_private->setBoolean(BlackBerryBackingStoreEnabled, enable);
+}
+
 unsigned WebSettings::maxPluginInstances() const
 {
     return m_private->getUnsigned(BlackBerryMaxPluginInstances);
@@ -828,6 +842,16 @@ double WebSettings::devicePixelRatio() const
 void WebSettings::setDevicePixelRatio(double ratio)
 {
     m_private->setDouble(BlackBerryDevicePixelRatio, ratio);
+}
+
+bool WebSettings::applyDeviceScaleFactorInCompositor() const
+{
+    return m_private->getBoolean(BlackBerryApplyDeviceScaleFactorInCompositor);
+}
+
+void WebSettings::setApplyPageScaleFactorInCompositor(bool applyDeviceScaleFactorInCompositor)
+{
+    m_private->setBoolean(BlackBerryApplyDeviceScaleFactorInCompositor, applyDeviceScaleFactorInCompositor);
 }
 
 } // namespace WebKit

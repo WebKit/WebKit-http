@@ -237,7 +237,7 @@ WebInspector.ExtensionServer.prototype = {
         var sidebar = new WebInspector.ExtensionSidebarPane(message.title, message.id);
         this._clientObjects[id] = sidebar;
         panel.sidebarPanes[id] = sidebar;
-        panel.sidebarElement.appendChild(sidebar.element);
+        sidebar.show(panel.sidebarElement);
 
         return this._status.OK();
     },
@@ -333,11 +333,12 @@ WebInspector.ExtensionServer.prototype = {
             if (error) {
                 result.isException = true;
                 result.value = error.toString();
-            }  else
-                result.value = resultPayload.value;
-
-            if (wasThrown)
+            }  else if (wasThrown) {
                 result.isException = true;
+                result.value = resultPayload.description;
+            } else {
+                result.value = resultPayload.value;
+            }
       
             this._dispatchCallback(message.requestId, port, result);
         }

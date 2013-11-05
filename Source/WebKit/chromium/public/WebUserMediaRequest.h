@@ -31,9 +31,9 @@
 #ifndef WebUserMediaRequest_h
 #define WebUserMediaRequest_h
 
+#include "../../../Platform/chromium/public/WebCommon.h"
+#include "../../../Platform/chromium/public/WebPrivatePtr.h"
 #include "WebSecurityOrigin.h"
-#include "platform/WebCommon.h"
-#include "platform/WebPrivatePtr.h"
 
 namespace WebCore {
 class UserMediaRequest;
@@ -42,7 +42,7 @@ class UserMediaRequest;
 namespace WebKit {
 class WebDocument;
 class WebMediaConstraints;
-class WebMediaStreamDescriptor;
+class WebMediaStream;
 class WebMediaStreamSource;
 class WebString;
 template <typename T> class WebVector;
@@ -72,7 +72,7 @@ public:
     WEBKIT_EXPORT WebSecurityOrigin securityOrigin() const;
     WEBKIT_EXPORT WebDocument ownerDocument() const;
 
-    WEBKIT_EXPORT void requestSucceeded(const WebMediaStreamDescriptor&);
+    WEBKIT_EXPORT void requestSucceeded(const WebMediaStream&);
 
     WEBKIT_EXPORT void requestFailed();
 

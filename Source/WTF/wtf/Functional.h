@@ -30,8 +30,9 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/WeakPtr.h>
 
-#if PLATFORM(MAC) && COMPILER_SUPPORTS(BLOCKS)
+#if OS(DARWIN) && COMPILER_SUPPORTS(BLOCKS)
 #include <Block.h>
 #include <wtf/ObjcRuntimeExtras.h>
 #endif
@@ -76,6 +77,8 @@ public:
 // provide a unified interface for calling that function.
 template<typename>
 class FunctionWrapper;
+
+// Bound static functions:
 
 template<typename R>
 class FunctionWrapper<R (*)()> {
@@ -157,6 +160,48 @@ private:
     R (*m_function)(P1, P2, P3);
 };
 
+template<typename R, typename P1, typename P2, typename P3, typename P4>
+class FunctionWrapper<R (*)(P1, P2, P3, P4)> {
+public:
+    typedef R ResultType;
+    static const bool shouldRefFirstParameter = false;
+
+    explicit FunctionWrapper(R (*function)(P1, P2, P3, P4))
+        : m_function(function)
+    {
+    }
+
+    R operator()(P1 p1, P2 p2, P3 p3, P4 p4)
+    {
+        return m_function(p1, p2, p3, p4);
+    }
+
+private:
+    R (*m_function)(P1, P2, P3, P4);
+};
+
+template<typename R, typename P1, typename P2, typename P3, typename P4, typename P5>
+class FunctionWrapper<R (*)(P1, P2, P3, P4, P5)> {
+public:
+    typedef R ResultType;
+    static const bool shouldRefFirstParameter = false;
+
+    explicit FunctionWrapper(R (*function)(P1, P2, P3, P4, P5))
+        : m_function(function)
+    {
+    }
+
+    R operator()(P1 p1, P2 p2, P3 p3, P4 p4, P5 p5)
+    {
+        return m_function(p1, p2, p3, p4, p5);
+    }
+
+private:
+    R (*m_function)(P1, P2, P3, P4, P5);
+};
+
+// Bound member functions:
+
 template<typename R, typename C>
 class FunctionWrapper<R (C::*)()> {
 public:
@@ -171,6 +216,14 @@ public:
     R operator()(C* c)
     {
         return (c->*m_function)();
+    }
+
+    R operator()(const WeakPtr<C>& c)
+    {
+        C* obj = c.get();
+        if (!obj)
+            return R();
+        return (obj->*m_function)();
     }
 
 private:
@@ -193,6 +246,14 @@ public:
         return (c->*m_function)(p1);
     }
 
+    R operator()(const WeakPtr<C>& c, P1 p1)
+    {
+        C* obj = c.get();
+        if (!obj)
+            return R();
+        return (obj->*m_function)(p1);
+    }
+
 private:
     R (C::*m_function)(P1);
 };
@@ -211,6 +272,14 @@ public:
     R operator()(C* c, P1 p1, P2 p2)
     {
         return (c->*m_function)(p1, p2);
+    }
+
+    R operator()(const WeakPtr<C>& c, P1 p1, P2 p2)
+    {
+        C* obj = c.get();
+        if (!obj)
+            return R();
+        return (obj->*m_function)(p1, p2);
     }
 
 private:
@@ -233,6 +302,14 @@ public:
         return (c->*m_function)(p1, p2, p3);
     }
 
+    R operator()(const WeakPtr<C>& c, P1 p1, P2 p2, P3 p3)
+    {
+        C* obj = c.get();
+        if (!obj)
+            return R();
+        return (obj->*m_function)(p1, p2, p3);
+    }
+
 private:
     R (C::*m_function)(P1, P2, P3);
 };
@@ -251,6 +328,14 @@ public:
     R operator()(C* c, P1 p1, P2 p2, P3 p3, P4 p4)
     {
         return (c->*m_function)(p1, p2, p3, p4);
+    }
+
+    R operator()(const WeakPtr<C>& c, P1 p1, P2 p2, P3 p3, P4 p4)
+    {
+        C* obj = c.get();
+        if (!obj)
+            return R();
+        return (obj->*m_function)(p1, p2, p3, p4);
     }
 
 private:
@@ -273,11 +358,19 @@ public:
         return (c->*m_function)(p1, p2, p3, p4, p5);
     }
 
+    R operator()(const WeakPtr<C>& c, P1 p1, P2 p2, P3 p3, P4 p4, P5 p5)
+    {
+        C* obj = c.get();
+        if (!obj)
+            return R();
+        return (obj->*m_function)(p1, p2, p3, p4, p5);
+    }
+
 private:
     R (C::*m_function)(P1, P2, P3, P4, P5);
 };
 
-#if PLATFORM(MAC) && COMPILER_SUPPORTS(BLOCKS)
+#if OS(DARWIN) && COMPILER_SUPPORTS(BLOCKS)
 template<typename R>
 class FunctionWrapper<R (^)()> {
 public:
@@ -340,7 +433,6 @@ template<typename T> struct ParamStorageTraits<RefPtr<T> > {
     static T* unwrap(const StorageType& value) { return value.get(); }
 };
 
-
 template<typename> class RetainPtr;
 
 template<typename T> struct ParamStorageTraits<RetainPtr<T> > {
@@ -375,7 +467,7 @@ public:
     {
     }
 
-    virtual R operator()()
+    virtual typename FunctionWrapper::ResultType operator()()
     {
         return m_functionWrapper();
     }
@@ -386,7 +478,6 @@ private:
 
 template<typename FunctionWrapper, typename R, typename P1>
 class BoundFunctionImpl<FunctionWrapper, R (P1)> : public FunctionImpl<typename FunctionWrapper::ResultType ()> {
-
 public:
     BoundFunctionImpl(FunctionWrapper functionWrapper, const P1& p1)
         : m_functionWrapper(functionWrapper)
@@ -400,7 +491,7 @@ public:
         RefAndDeref<P1, FunctionWrapper::shouldRefFirstParameter>::deref(m_p1);
     }
 
-    virtual R operator()()
+    virtual typename FunctionWrapper::ResultType operator()()
     {
         return m_functionWrapper(ParamStorageTraits<P1>::unwrap(m_p1));
     }
@@ -613,7 +704,7 @@ public:
         return impl<R ()>()->operator()();
     }
 
-#if PLATFORM(MAC) && COMPILER_SUPPORTS(BLOCKS)
+#if OS(DARWIN) && COMPILER_SUPPORTS(BLOCKS)
     typedef void (^BlockType)();
     operator BlockType() const
     {

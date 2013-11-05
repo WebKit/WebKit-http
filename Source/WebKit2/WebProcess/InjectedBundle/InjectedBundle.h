@@ -54,7 +54,6 @@ OBJC_CLASS NSBundle;
 namespace CoreIPC {
     class ArgumentDecoder;
     class Connection;
-    class MessageID;
 }
 
 namespace WebKit {
@@ -168,8 +167,6 @@ public:
     static void reportException(JSContextRef, JSValueRef exception);
 
     static bool isProcessingUserGesture();
-
-    void setPageVisibilityState(WebPage*, int state, bool isInitialState);
 
     static size_t workerThreadCount();
 

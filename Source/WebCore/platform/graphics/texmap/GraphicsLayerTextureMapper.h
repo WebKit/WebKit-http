@@ -20,7 +20,6 @@
 #ifndef GraphicsLayerTextureMapper_h
 #define GraphicsLayerTextureMapper_h
 
-#include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "GraphicsLayerClient.h"
 #include "Image.h"
@@ -30,8 +29,6 @@
 namespace WebCore {
 
 class GraphicsLayerTextureMapper : public GraphicsLayer {
-    friend class TextureMapperLayer;
-
 public:
     explicit GraphicsLayerTextureMapper(GraphicsLayerClient*);
     virtual ~GraphicsLayerTextureMapper();
@@ -66,12 +63,14 @@ public:
     Color solidColor() const { return m_solidColor; }
     virtual void setContentsToMedia(PlatformLayer*);
     virtual void setContentsToCanvas(PlatformLayer* canvas) { setContentsToMedia(canvas); }
+    virtual void setShowDebugBorder(bool) OVERRIDE;
+    virtual void setDebugBorder(const Color&, float width) OVERRIDE;
+    virtual void setShowRepaintCounter(bool) OVERRIDE;
     virtual void flushCompositingState(const FloatRect&);
     virtual void flushCompositingStateForThisLayerOnly();
     virtual void setName(const String& name);
     virtual PlatformLayer* platformLayer() const { return m_contentsLayer; }
 
-    void notifyChange(TextureMapperLayer::ChangeMask);
     inline int changeMask() const { return m_changeMask; }
 
     virtual bool addAnimation(const KeyframeValueList&, const IntSize&, const Animation*, const String&, double);
@@ -81,26 +80,71 @@ public:
 
     TextureMapperLayer* layer() const { return m_layer.get(); }
 
-    virtual void setDebugBorder(const Color&, float width);
-
 #if ENABLE(CSS_FILTERS)
     virtual bool setFilters(const FilterOperations&);
 #endif
 
-    // FIXME: It will be removed after removing dependency of LayerTreeRenderer on GraphicsLayerTextureMapper.
+    // FIXME: It will be removed after removing dependency of CoordinatedGraphicsScene on GraphicsLayerTextureMapper.
     void setHasOwnBackingStore(bool b) { m_hasOwnBackingStore = b; }
+    void setBackingStore(PassRefPtr<TextureMapperBackingStore>);
 
-    void setFixedToViewport(bool fixed) { m_fixedToViewport = fixed; }
+    void setFixedToViewport(bool);
     bool fixedToViewport() const { return m_fixedToViewport; }
 
-    void drawRepaintCounter(GraphicsContext*);
+    Color debugBorderColor() const { return m_debugBorderColor; }
+    float debugBorderWidth() const { return m_debugBorderWidth; }
+    void setRepaintCount(int);
+
 private:
     virtual void willBeDestroyed();
-    void didFlushCompositingState();
-    void updateBackingStore();
-    void prepareBackingStore();
+
+    void commitLayerChanges();
+    void updateDebugBorderAndRepaintCount();
+    void updateBackingStoreIfNeeded();
+    void prepareBackingStoreIfNeeded();
     bool shouldHaveBackingStore() const;
     void animationStartedTimerFired(Timer<GraphicsLayerTextureMapper>*);
+
+    // This set of flags help us defer which properties of the layer have been
+    // modified by the compositor, so we can know what to look for in the next flush.
+    enum ChangeMask {
+        NoChanges =                 0,
+
+        ChildrenChange =            (1L << 1),
+        MaskLayerChange =           (1L << 2),
+        ReplicaLayerChange =        (1L << 3),
+
+        ContentChange =             (1L << 4),
+        ContentsRectChange =        (1L << 5),
+        ContentsVisibleChange =     (1L << 6),
+        ContentsOpaqueChange =      (1L << 7),
+
+        PositionChange =            (1L << 8),
+        AnchorPointChange =         (1L << 9),
+        SizeChange =                (1L << 10),
+        TransformChange =           (1L << 11),
+        ChildrenTransformChange =   (1L << 12),
+        Preserves3DChange =         (1L << 13),
+
+        MasksToBoundsChange =       (1L << 14),
+        DrawsContentChange =        (1L << 15),
+        OpacityChange =             (1L << 16),
+        BackfaceVisibilityChange =  (1L << 17),
+
+        BackingStoreChange =        (1L << 18),
+        DisplayChange =             (1L << 19),
+        ContentsDisplayChange =     (1L << 20),
+        BackgroundColorChange =     (1L << 21),
+
+        AnimationChange =           (1L << 22),
+        FilterChange =              (1L << 23),
+
+        DebugVisualsChange =        (1L << 24),
+        RepaintCountChange =        (1L << 25),
+
+        FixedToViewporChange =      (1L << 26)
+    };
+    void notifyChange(ChangeMask);
 
     OwnPtr<TextureMapperLayer> m_layer;
     RefPtr<TextureMapperTiledBackingStore> m_compositedImage;
@@ -126,6 +170,8 @@ inline static GraphicsLayerTextureMapper* toGraphicsLayerTextureMapper(GraphicsL
 {
     return static_cast<GraphicsLayerTextureMapper*>(layer);
 }
+
+TextureMapperLayer* toTextureMapperLayer(GraphicsLayer*);
 
 }
 #endif // GraphicsLayerTextureMapper_h

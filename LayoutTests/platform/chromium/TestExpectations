@@ -27,7 +27,7 @@ webkit.org/b/92948 [ Debug ] fast/js/dfg-osr-entry-hoisted-clobbered-structure-c
 webkit.org/b/74787 [ Debug ] fast/js/dfg-poison-fuzz.html [ Pass Slow ]
 crbug.com/24182 fast/js/regexp-overflow.html [ Pass Slow ]
 crbug.com/24182 [ SnowLeopard Debug ] fast/js/repeat-cached-vm-reentry.html [ Pass Timeout ]
-crbug.com/24182 [ Debug ] fast/js/toString-and-valueOf-override.html [ Failure Slow ]
+crbug.com/24182 [ Debug ] fast/js/toString-and-valueOf-override.html [ Failure Timeout ]
 crbug.com/24182 [ SnowLeopard Debug ] fast/loader/javascript-url-iframe-crash.html [ Pass Slow ]
 crbug.com/24182 [ Android ] fast/parser/nested-fragment-parser-crash.html [ Pass Slow ]
 crbug.com/24182 [ Debug ] html5lib/webkit-resumer.html [ Pass Slow ]
@@ -95,7 +95,11 @@ webkit.org/b/105785 [ Release ] http/tests/inspector/indexeddb [ Pass Slow ]
 crbug.com/24182 [ Debug ] platform/chromium/virtual/gpu/fast/hidpi/image-set-background-dynamic.html [ Pass Slow ]
 webkit.org/b/106606 fast/canvas/webgl/context-release-upon-reload.html [ Pass Slow ]
 webkit.org/b/106606 platform/chromium/virtual/gpu/fast/canvas/webgl/context-release-upon-reload.html [ Pass Slow ]
-webkit.org/b/106853 [ Debug ] media/track/track-css-cue-lifetime.html [ Pass Timeout ]
+webkit.org/b/107587 [ Win7 Debug ] platform/chromium/virtual/gpu/fast/hidpi/clip-text-in-hidpi.html [ Pass Slow ]
+webkit.org/b/107587 [ Win7 Debug ] platform/chromium/virtual/gpu/fast/hidpi/device-scale-factor-paint.html [ Pass Slow ]
+webkit.org/b/107587 [ Win7 Debug ] platform/chromium/virtual/gpu/fast/hidpi/focus-rings.html [ Pass Slow ]
+crbug.com/24182 [ Mac Debug ] fast/frames/remove-frame-with-scrollbars-crash.html [ Pass Slow ]
+crbug.com/24182 [ Mac Debug ] fast/forms/post-popup-no-multiple-windows.html [ Pass Slow ]
 
 # These tests started being slow when we switched to DRT.
 webkit.org/b/90488 [ Debug ] inspector [ Pass Slow ]
@@ -929,6 +933,9 @@ webkit.org/b/96109 [ Linux ] editing/pasteboard/paste-global-selection.html [ Sk
 # Chromium does not enable HIDDEN_PAGE_DOM_TIMER_THROTTLING
 fast/dom/timer-throttling-hidden-page.html [ WontFix ]
 
+# Chromium disabled MATHML
+crbug.com/22554 mathml [ Skip ]
+
 # Skipping rules for ANDROID are in platform/chromium-android/TestExpectations.
 
 # -----------------------------------------------------------------
@@ -1057,8 +1064,6 @@ webkit.org/b/75186 [ Linux ] http/tests/inspector-enabled/dedicated-workers-list
 
 webkit.org/b/75647 http/tests/inspector/network/download.html [ Pass Timeout Failure ]
 
-webkit.org/b/104800 [ Debug ] inspector-protocol/take-heap-snapshot.html [ Crash ]
-
 # -----------------------------------------------------------------
 # Editing tests
 # -----------------------------------------------------------------
@@ -1095,8 +1100,6 @@ crbug.com/64733 editing/text-iterator/findString.html [ Failure ]
 # Selection is wrong.
 crbug.com/64938 editing/selection/5354455-1.html [ Failure ]
 
-webkit.org/b/55560 editing/input/setting-input-value-cancel-ime-composition.html [ Failure ]
-
 # New test added in r82159
 crbug.com/77706 editing/spelling/grammar.html [ Failure ]
 
@@ -1131,7 +1134,8 @@ crbug.com/27849 http/tests/security/isolatedWorld/didClearWindowObject.html [ Fa
 
 # Due to the differences in initialization checks in KURL and googleurl.
 # Note: this test was also marked as flaky on WIN RELEASE above, BUGCR31342.
-crbug.com/39423 security/block-test.html [ Timeout ]
+# See also https://webkit.org/b/108780
+crbug.com/39423 security/block-test.html [ Timeout Failure ]
 
 crbug.com/20345 http/tests/security/cross-frame-access-getOwnPropertyDescriptor.html [ Failure ]
 webkit.org/b/42769 http/tests/security/401-logout/401-logout.php [ Timeout ]
@@ -1257,34 +1261,6 @@ webkit.org/b/60118 [ Mac ] svg/dom/SVGScriptElement/script-set-href.svg [ Failur
 
 # Introduced due to BUGWK53512, fails under Skia right now
 webkit.org/b/65939 svg/custom/getBBox-path.svg [ Failure ]
-
-# These files need new expectations after changing the behavior from radiaGradients to SVG2
-webkit.org/b/98569 svg/hixie/perf/006.xml [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1-SE/styling-pres-02-f.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1-SE/svgdom-over-01-f.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/coords-units-01-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-02-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-04-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-05-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-11-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-12-b.svg [ ImageOnlyFailure Pass ]
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-13-b.svg [ ImageOnlyFailure Failure Pass ]
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-14-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/pservers-grad-15-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/struct-use-05-b.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/W3C-SVG-1.1/styling-inherit-01-b.svg [ ImageOnlyFailure Pass ]
-webkit.org/b/98569 svg/batik/paints/gradientLimit.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/batik/paints/patternRegions-positioned-objects.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/batik/paints/patternRegions.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/batik/text/textEffect.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/batik/text/textEffect3.svg [ ImageOnlyFailure Pass ] 
-webkit.org/b/98569 svg/custom/relative-sized-content-with-resources.xhtml [ ImageOnlyFailure Pass ]
-webkit.org/b/98569 svg/custom/stroked-pattern.svg [ ImageOnlyFailure Pass ]
-webkit.org/b/98569 svg/custom/gradient-deep-referencing.svg [ ImageOnlyFailure Pass ]
-webkit.org/b/98569 svg/custom/radial-gradient-with-outstanding-focalPoint.svg [ ImageOnlyFailure Failure Pass ]
-webkit.org/b/98569 svg/custom/radialGradient-focal-radius.svg [ ImageOnlyFailure Failure Pass ]
-webkit.org/b/98569 svg/custom/gradient-with-1d-boundingbox.svg [ ImageOnlyFailure Pass ]
-webkit.org/b/98569 svg/custom/recursive-gradient.svg [ ImageOnlyFailure Pass ]
 
 # Failure: drawing a filled shadow for a fill=transparent rectangle.
 webkit.org/b/76557 svg/custom/transform-with-shadow-and-gradient.svg [ ImageOnlyFailure ]
@@ -1424,7 +1400,6 @@ crbug.com/10322 accessibility/radio-button-group-members.html [ Skip ]
 crbug.com/10322 accessibility/table-attributes.html [ Skip ]
 crbug.com/10322 accessibility/table-cell-spans.html [ Skip ]
 crbug.com/10322 accessibility/table-cells.html [ Skip ]
-crbug.com/10322 accessibility/table-detection.html [ Skip ]
 crbug.com/10322 accessibility/table-one-cell.html [ Skip ]
 crbug.com/10322 accessibility/table-sections.html [ Skip ]
 crbug.com/10322 accessibility/table-with-aria-role.html [ Skip ]
@@ -1948,9 +1923,6 @@ crbug.com/9798 [ Win Release ] http/tests/xmlhttprequest/small-chunks-response-t
 # so the test timeouts.
 crbug.com/11001 http/tests/history/back-to-post.php [ Timeout ]
 
-# Regressions from WebKit Merge 42932:42994 due to text metric changes.
-crbug.com/11251 [ Android Linux Win ] svg/custom/svg-fonts-in-text-controls.html [ Failure ]
-
 # WebKit 45086:45111
 crbug.com/15270 fast/js/excessive-comma-usage.html [ Failure ]
 
@@ -2016,7 +1988,7 @@ webkit.org/b/90225 [ Android Linux Mac ] http/tests/loading/text-content-type-wi
 # These tests time out *and* are slow. The test should be fixed to not timeout,
 # then should be marked as SLOW/PASS.
 crbug.com/2844 [ Win ] http/tests/appcache/cyrillic-uri.html [ Pass Timeout ]
-crbug.com/2844 [ Win ] http/tests/appcache/fail-on-update.html [ Pass Timeout ]
+crbug.com/2844 [ Win Linux Mac ] http/tests/appcache/fail-on-update.html [ Pass Timeout Crash ]
 crbug.com/2844 [ Win ] http/tests/appcache/offline-access.html [ Pass Timeout ]
 crbug.com/2844 [ Win ] http/tests/appcache/update-cache.html [ Pass Timeout ]
 
@@ -2048,7 +2020,9 @@ webkit.org/b/ http/tests/appcache/origins-with-appcache.html
 webkit.org/b/ http/tests/appcache/origin-usage.html
 
 # LayoutTestController::setAutomaticLinkDetectionEnabled isn't implemented
+webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 webkit.org/b/85463 editing/inserting/typing-space-to-trigger-smart-link.html
+webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 
 # These tests got very flaky (failing 8/10 runs!) after
 # http://src.chromium.org/viewvc/chrome?view=rev&revision=34610
@@ -2072,6 +2046,10 @@ crbug.com/30826 [ Win Debug ] platform/win/fast/events/panScroll-event-fired.htm
 webkit.org/b/104991 [ Android Linux Mac ] platform/chromium-win/fast/events/panScroll-click-hyperlink.html [ Skip ]
 webkit.org/b/104991 [ Android Linux Mac ] platform/chromium-win/fast/events/panScroll-event-fired.html [ Skip ]
 webkit.org/b/104991 [ Android Linux Mac ] platform/chromium-win/fast/events/panScroll-nested-divs.html [ Skip ]
+
+webkit.org/b/107205 [ Android Linux Mac ] platform/chromium-win/fast/events/panScroll-click.html [ Skip ]
+webkit.org/b/107205 [ Android Linux Mac ] platform/chromium-win/fast/events/panScroll-drag.html [ Skip ]
+webkit.org/b/107623 [ Android Linux Mac ] platform/chromium-win/fast/events/panScroll-panIcon.html [ Skip ]
 
 crbug.com/31623 [ SnowLeopard Win ] http/tests/appcache/remove-cache.html [ Failure Pass Timeout ]
 
@@ -2331,7 +2309,7 @@ webkit.org/b/98977 fast/canvas/webgl/array-bounds-clamping.html [ Failure ]
 # Flaky since r68438:r68445 or before that.
 webkit.org/b/46693 [ Mac ] fast/repaint/repaint-svg-after-style-change.html [ Failure ]
 
-crbug.com/57934 [ Win Debug ] http/tests/appcache/fail-on-update-2.html [ Pass Timeout ]
+crbug.com/57934 [ Win Linux Mac ] http/tests/appcache/fail-on-update-2.html [ Pass Timeout Crash ]
 
 # Flakiness first seen
 # http://build.chromium.org/buildbot/waterfall.fyi/builders/Webkit%20%28webkit.org%29/builds/35995
@@ -2780,10 +2758,6 @@ webkit.org/b/96267 fast/regions/autoheight-regions-mark.html [ Pass ]
 
 webkit.org/b/74137 [ SnowLeopard ] fast/regions/outline-sides-in-region.html [ Pass Timeout ]
 webkit.org/b/74137 fast/regions/float-pushed-width-change.html [ ImageOnlyFailure Pass ]
-webkit.org/b/74137 [ SnowLeopard ] fast/regions/region-overflow-auto-overflow-hidden.html [ Failure ]
-webkit.org/b/74137 [ Lion MountainLion Win ] fast/regions/region-overflow-auto-overflow-hidden.html [ Missing ]
-webkit.org/b/74137 [ SnowLeopard ] fast/regions/region-overflow-auto-overflow-visible.html [ Failure ]
-webkit.org/b/74137 [ Lion MountainLion Win ] fast/regions/region-overflow-auto-overflow-visible.html [ Missing ]
 
 # CSS Regions tests for region styling and scoped styles
 webkit.org/b/49142 fast/regions/style-scoped-in-flow-override-region-styling-multiple-regions.html [ ImageOnlyFailure ]
@@ -2882,8 +2856,6 @@ webkit.org/b/54322 webkit.org/b/68437 [ SnowLeopard ] platform/chromium/virtual/
 # Failures introduced by USE_NEW_BUILDER in Skia.
 crbug.com/33287 [ Mac ] fast/canvas/set-colors.html [ Failure ]
 
-webkit.org/b/69060 [ Android ] fast/repaint/selection-clear.html [ Failure ]
-
 webkit.org/b/69103 [ Android Linux Win ] fast/text/line-initial-and-final-swashes.html [ Failure ]
 
 webkit.org/b/69136 [ Mac ] fast/frames/frame-set-rotation-hit.html [ ImageOnlyFailure ]
@@ -2913,7 +2885,8 @@ crbug.com/146756 [ Win Mac Android ] fast/hidpi/broken-image-with-size-hidpi.htm
 crbug.com/146756 [ Win Mac Android ] platform/chromium/virtual/gpu/fast/hidpi/broken-image-icon-hidpi.html [ ImageOnlyFailure Timeout ]
 crbug.com/146756 [ Win Mac Android ] platform/chromium/virtual/gpu/fast/hidpi/broken-image-with-size-hidpi.html [ ImageOnlyFailure Timeout ]
 
-webkit.org/b/70866 [ Android Linux Mac Debug ] fast/forms/form-associated-element-crash3.html [ Pass Timeout ]
+# Test is sometimes missing because of https://bugs.webkit.org/show_bug.cgi?id=107328
+webkit.org/b/70866 [ Android Linux Mac Debug ] fast/forms/form-associated-element-crash3.html [ Pass Timeout Missing ]
 webkit.org/b/72039 [ Release ] fast/forms/form-associated-element-crash3.html [ Missing Pass ]
 webkit.org/b/72039 [ Android Linux Release ] fast/forms/form-associated-element-crash.html [ Missing Pass ]
 webkit.org/b/72039 [ Android Linux Release ] fast/forms/form-associated-element-removal.html [ Missing Pass ]
@@ -3064,8 +3037,6 @@ webkit.org/b/69210 [ SnowLeopard ] fast/inline/continuation-outlines-with-layers
 
 webkit.org/b/106064 [ Android ] fast/inline/continuation-outlines-with-layers.html [ ImageOnlyFailure ]
 
-webkit.org/b/79013 http/tests/workers/terminate-during-sync-operation.html [ Pass Timeout Crash ]
-
 crbug.com/113063 [ Debug ] storage/indexeddb/basics-workers.html [ Crash Pass ]
 
 webkit.org/b/79224 [ Win ] fast/canvas/webgl/tex-image-with-format-and-type.html [ Failure Pass ]
@@ -3122,9 +3093,6 @@ webkit.org/b/81697 fast/notifications/notifications-request-permission.html [ Fa
 webkit.org/b/81697 fast/notifications/notifications-without-permission.html [ Failure ]
 
 webkit.org/b/81732 fast/js/integer-division-neg2tothe32-by-neg1.html [ Crash Pass ]
-
-# Old test, has been flaky on and off on all platforms since at least r111389
-webkit.org/b/81801 fast/forms/basic-textareas.html [ Failure Pass ]
 
 webkit.org/b/81803 [ Mac ] platform/chromium/compositing/rubberbanding/transform-overhang-e.html [ ImageOnlyFailure Pass ]
 webkit.org/b/81803 [ Mac ] platform/chromium/compositing/rubberbanding/transform-overhang-n.html [ ImageOnlyFailure Pass ]
@@ -3330,7 +3298,6 @@ webkit.org/b/85212 ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyF
 # IETC CSS units
 webkit.org/b/85308 [ Debug ] ietestcenter/css3/valuesandunits/units-000.htm [ Crash ]
 webkit.org/b/85308 [ Release ] ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
-webkit.org/b/85310 ietestcenter/css3/valuesandunits/units-010.htm [ ImageOnlyFailure ]
 # IETC namespace failures
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 
@@ -3600,6 +3567,10 @@ webkit.org/b/92570 [ Win Debug ] inspector/timeline/timeline-start-time.html [ F
 
 webkit.org/b/94242 [ Android Debug ] media/track/track-cues-sorted-before-dispatch.html [ Pass Timeout ]
 
+# Needs a rebaseline after WK108429 lands.
+webkit.org/b/108429 svg/custom/text-ctm.svg [ Pass Failure ]
+webkit.org/b/108429 svg/repaint/svgsvgelement-repaint-children.html [ Pass Failure ]
+
 # Chromium still has the CC toggle button, not the menu of tracks.
 webkit.org/b/101670 media/video-controls-captions-trackmenu.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-sorted.html [ Skip ]
@@ -3624,6 +3595,9 @@ webkit.org/b/92968 http/tests/appcache/abort-cache-onprogress.html
 
 # Scrolling content draws beneath scrollbars in composited scrolling mode.
 webkit.org/b/103156 platform/chromium/virtual/gpu/compositedscrolling/scrollbars/custom-scrollbar-with-incomplete-style.html [ ImageOnlyFailure ]
+
+# Requires an updated baseline after 106142.
+webkit.org/b/106820 platform/chromium/virtual/gpu/compositedscrolling/overflow/overflow-scroll.html [ Failure ]
 
 # Fails due to Bug 85856.
 webkit.org/b/85856 [ Win Mac Android ] fast/block/float/028.html [ ImageOnlyFailure ]
@@ -3663,6 +3637,10 @@ webkit.org/b/89826 [ Mac Win ] fast/css/word-space-extra.html [ Failure ]
 
 webkit.org/b/94002 [ Win7 Debug ] inspector/debugger [ Pass Timeout ]
 webkit.org/b/94002 [ Win7 Debug ] inspector/debugger/event-listener-breakpoints.html [ Pass Timeout Failure ]
+
+# Requires a rebaseline after webkit.org/b/108108 
+webkit.org/b/108108 svg/zoom/page/zoom-img-preserveAspectRatio-support-1.html [ ImageOnlyFailure Pass ]
+webkit.org/b/108108 fast/backgrounds/size/contain-and-cover-zoomed.html [ ImageOnlyFailure Pass ]
 
 # Flaky
 webkit.org/b/99389 [ Win ] inspector/debugger/xhr-breakpoints.html [ Pass Failure ]
@@ -3820,6 +3798,7 @@ crbug.com/146401 [ Android ] fast/css/sticky/sticky-writing-mode-vertical-lr.htm
 
 webkit.org/b/96441 [ Win Android Debug ] fast/hidpi/gradient-with-scaled-ancestor.html [ ImageOnlyFailure ]
 webkit.org/b/96441 [ Linux Win ] platform/chromium/virtual/gpu/fast/hidpi/gradient-with-scaled-ancestor.html [ ImageOnlyFailure ]
+webkit.org/b/96441 [ Win7 Debug ] platform/chromium/virtual/gpu/fast/hidpi/gradient-with-scaled-ancestor.html [ Timeout Pass ]
 
 webkit.org/b/96950 [ Linux ] http/tests/cache/cancel-during-revalidation-succeeded.html [ Failure Pass ]
 
@@ -3839,7 +3818,6 @@ webkit.org/b/98086 platform/chromium/virtual/threaded/compositing/visibility/vis
 webkit.org/b/98087 [ Linux ] fast/css/lang-mapped-to-webkit-locale-dynamic.xhtml [ Failure Pass ]
 
 webkit.org/b/96833 svg/carto.net/selectionlist.svg [ ImageOnlyFailure Pass ]
-webkit.org/b/96833 svg/carto.net/combobox.svg [ ImageOnlyFailure Pass ]
 
 webkit.org/b/96549 [ Android ] platform/chromium/virtual/gpu/fast/hidpi/focus-rings.html [ ImageOnlyFailure ]
 webkit.org/b/96628 [ Lion Debug ] fast/frames/calculate-order.html [ Failure ]
@@ -3905,6 +3883,9 @@ webkit.org/b/98192 fast/js/post-message-numeric-property.html [ Failure Pass ]
 
 webkit.org/b/98275 media/event-queue-crash.html [ Skip ]
 
+# Needs rebaselining on after webkit.org/b/107339
+webkit.org/b/107339 [ Mac Android Win ] platform/chromium/fast/events/touch/compositor-touch-hit-rects.html [ Pass Failure ]
+
 # Requires rebaselining after https://bugs.webkit.org/show_bug.cgi?id=11645
 webkit.org/b/11645 [ Mac Android ] fast/table/025.html [ Failure ]
 
@@ -3937,8 +3918,6 @@ webkit.org/b/89167 media/track/track-cue-rendering-vertical.html [ Failure ]
 #webkit.org/b/98766 [ Android ] media/track/track-cue-rendering-vertical.html [ Failure ]
 #webkit.org/b/98766 [ Android ] media/track/track-cue-rendering-horizontal.html [ Failure ]
 
-webkit.org/b/98686 editing/pasteboard/data-transfer-items.html [ Failure ]
-
 webkit.org/b/23166 [ Android Mac Win ] fast/css/background-clip-radius-values.html [ Pass ImageOnlyFailure ]
 webkit.org/b/23166 ietestcenter/css3/bordersbackgrounds/border-radius-clip-002.htm [ Pass ImageOnlyFailure ]
 
@@ -3962,6 +3941,13 @@ webkit.org/b/98257 platform/chromium/virtual/gpu/fast/canvas/webgl/oes-element-i
 webkit.org/b/99802 [ MountainLion ] fast/forms/text-control-intrinsic-widths.html [ Failure ]
 
 webkit.org/b/99873 platform/chromium/virtual/gpu/fast/canvas/webgl/array-bounds-clamping.html [ Failure ]
+
+# Failures introduced by page scale coordinate space change.
+crbug.com/172972 compositing/geometry/fixed-position-composited-page-scale-down.html [ ImageOnlyFailure ]
+crbug.com/172972 compositing/geometry/fixed-position-iframe-composited-page-scale-down.html [ ImageOnlyFailure ]
+crbug.com/172972 compositing/geometry/fixed-position-composited-page-scale-down.html [ ImageOnlyFailure ]
+crbug.com/172972 compositing/geometry/fixed-position-iframe-composited-page-scale-down.html [ ImageOnlyFailure ]
+crbug.com/172970 fast/events/touch/emulate-touch-events.html [ Failure Pass ]
 
 # These tests are failing already and because of virtual test suite for deferred
 # image decoding they need to be suppressed again.
@@ -4084,8 +4070,7 @@ webkit.org/b/100955 http/tests/security/contentSecurityPolicy/object-src-none-bl
 
 webkit.org/b/101377 [ Linux MountainLion ] platform/chromium-linux/fast/text/international/complex-joining-using-gpos.html [ Failure ImageOnlyFailure Pass Crash ]
 
-webkit.org/b/101408 [ Mac ] platform/chromium/fast/forms/calendar-picker/calendar-picker-key-operations.html [ Failure ]
-webkit.org/b/101408 platform/chromium/fast/forms/calendar-picker/calendar-picker-mouse-operations.html [ Failure Pass ]
+webkit.org/b/107423 platform/chromium/fast/forms/calendar-picker/calendar-picker-mouse-operations.html [ Failure Pass ]
 
 webkit.org/b/104993 [ XP ] fast/forms/time-multiple-fields/time-multiple-fields-stepup-stepdown-from-renderer.html [ Failure ]
 
@@ -4188,17 +4173,6 @@ webkit.org/b/104727 transforms/3d/hit-testing/backface-no-transform-hit-test.htm
 
 webkit.org/b/104616 [ Win Mac ] fast/gradients/css3-linear-angle-gradients.html [ ImageOnlyFailure Pass ]
 
-# Fail only on WebKit-only checkout
-webkit.org/b/104548 [ Linux ] fast/text/hyphenate-character.html [ Failure ]
-webkit.org/b/104548 [ Linux ] fast/text/hyphenate-first-word.html [ Failure ]
-webkit.org/b/104548 [ Linux ] fast/text/hyphenate-limit-lines.html [ Failure ]
-webkit.org/b/104548 [ Linux ] fast/text/hyphenate-locale.html [ Failure ]
-webkit.org/b/104548 [ Linux ] fast/text/hyphens.html [ Failure ]
-
-# Unprefixed transitions are disabled while they're being implemented.
-# See also http://wkb.ug/105647
-webkit.org/b/93136 transitions/transitions-parsing.html [ Failure ]
-
 # Flaky
 webkit.org/b/104283 [ Win Release ] fonts/monospace.html [ Failure Pass ]
 webkit.org/b/104283 [ Mac Debug ] fonts/monospace.html [ ImageOnlyFailure Pass ]
@@ -4258,6 +4232,15 @@ webkit.org/b/106426 [ Win ] inspector/geolocation-success.html [ Failure Pass ]
 webkit.org/b/106426 [ Win ] inspector/geolocation-watchPosition.html [ Failure Pass ]
 crbug.com/166932 [ Debug ] plugins/embed-attributes-setting.html [ Crash Pass ]
 
+# Needs rebaseline.
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/week-picker-appearance-step.html [ ImageOnlyFailure Pass ]
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/week-picker-appearance.html [ ImageOnlyFailure Pass ]
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/calendar-picker-appearance-ru.html [ ImageOnlyFailure Pass ]
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/month-picker-appearance-step.html [ ImageOnlyFailure Pass ]
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/month-picker-appearance.html [ ImageOnlyFailure Pass ]
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/calendar-picker-appearance-step.html [ ImageOnlyFailure Pass ]
+webkit.org/b/107508 platform/chromium/fast/forms/calendar-picker/calendar-picker-appearance.html [ ImageOnlyFailure Pass ]
+
 # Broken by Skia flag changes in r139445
 crbug.com/169550 [ Debug ] fast/lists/big-list-marker.html [ Crash ]
 crbug.com/169550 [ Debug ] platform/chromium/virtual/deferred/fast/images/icon-decoding.html [ Crash ]
@@ -4272,15 +4255,9 @@ webkit.org/b/106746 css3/filters/effect-brightness.html [ ImageOnlyFailure ]
 webkit.org/b/106746 css3/filters/effect-brightness-clamping-hw.html [ ImageOnlyFailure ]
 webkit.org/b/106746 css3/filters/filter-property-parsing.html [ Failure ]
 
-# Transient. Needs rebaseline.
-webkit.org/b/103955 fast/repaint/caret-outside-block.html [ ImageOnlyFailure ]
-webkit.org/b/103955 [ Linux ] fast/repaint/japanese-rl-selection-repaint-in-regions.html [ ImageOnlyFailure ]
-webkit.org/b/103955 [ Linux Lion SnowLeopard ] fast/repaint/japanese-rl-selection-repaint.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/repaint-across-writing-mode-boundary.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/selection-rl.html [ ImageOnlyFailure ]
-webkit.org/b/103955 fast/repaint/caret-with-transformation.html [ Missing ]
+webkit.org/b/108065 [ Debug ] tables/mozilla_expected_failures/bugs/bug2479-5.html [ Crash ]
+
 webkit.org/b/106609 [ Win ] animations/fill-mode-iteration-count-non-integer.html [ Failure ]
-webkit.org/b/106612 [ Win ] fast/dom/HTMLTemplateElement/ownerDocument-adoptNode.html [ Failure Pass ]
 
 webkit.org/b/106689 canvas/philip/tests/2d.gradient.interpolate.overlap2.html [ Failure ]
 webkit.org/b/106689 canvas/philip/tests/2d.gradient.linear.transform.1.html [ Failure ]
@@ -4293,11 +4270,82 @@ webkit.org/b/106689 canvas/philip/tests/2d.gradient.radial.transform.3.html [ Fa
 # Ref tests that now fail with Skia changes
 crbug.com/169602 fast/backgrounds/background-opaque-clipped-gradients.html [ ImageOnlyFailure ]
 crbug.com/169602 fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
+crbug.com/169602 fast/backgrounds/gradient-background-shadow.html [ ImageOnlyFailure ]
 
-webkit.org/b/106858 [ SnowLeopard Debug ] scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ ImageOnlyFailure ]
+webkit.org/b/106858 [ Mac Debug ] scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ ImageOnlyFailure ]
+webkit.org/b/106858 [ Linux Win Debug ] scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ ImageOnlyFailure Pass ]
 webkit.org/b/106858 [ Mac Debug ] scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ ImageOnlyFailure ]
+webkit.org/b/106858 [ Linux Win Debug ] scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ ImageOnlyFailure Pass ]
 
-webkit.org/b/107033 [ Debug ] fast/frames/valid.html [ Crash ]
-webkit.org/b/107033 [ Debug ] fast/events/form-iframe-target-before-load-crash.html [ Crash ]
-webkit.org/b/107033 [ Debug ] fast/events/before-unload-with-subframes.html [ Crash ]
-webkit.org/b/107033 [ Debug ] fast/css/stylesheet-enable-first-alternate-link.html [ Crash ]
+# Needs rebaseline.
+webkit.org/b/105574 editing/input/caret-at-the-edge-of-contenteditable.html [ Failure ]
+webkit.org/b/105574 editing/input/reveal-caret-of-multiline-contenteditable.html [ Failure ]
+webkit.org/b/105574 editing/input/reveal-caret-of-multiline-input.html [ Failure ]
+
+# Needs rebaseline after enabling CANVAS_PATH.
+webkit.org/b/108508 fast/canvas/canvas-path-constructors.html [ Failure ]
+webkit.org/b/108508 platform/chromium/virtual/gpu/fast/canvas/canvas-path-constructors.html [ Failure ]
+webkit.org/b/108508 fast/canvas/canvas-path-object.html [ Failure ]
+webkit.org/b/108508 platform/chromium/virtual/gpu/fast/canvas/canvas-path-object.html [ Failure ]
+webkit.org/b/108508 fast/canvas/canvas-currentPath.html [ Failure ]
+webkit.org/b/108508 platform/chromium/virtual/gpu/fast/canvas/canvas-currentPath.html [ Failure ]
+
+# This is won't fix, as the debug and release versions differ.
+webkit.org/b/99138 [ Debug SnowLeopard ] svg/custom/foreign-object-skew.svg [ ImageOnlyFailure ]
+
+webkit.org/b/107204 fast/events/touch/multi-touch-inside-iframes.html [ Pass Failure ]
+
+webkit.org/b/107316 [ Mac Debug ] fast/inline/fixed-pos-moves-with-abspos-inline-parent.html [ Failure ]
+webkit.org/b/107316 [ Win Debug ] fast/inline/fixed-pos-moves-with-abspos-inline-parent.html [ Pass Failure ]
+
+webkit.org/b/107328 http/tests/cache/cancel-multiple-post-xhrs.html [ Missing ]
+webkit.org/b/107341 [ Debug ] inspector/profiler/memory-instrumentation-cached-images.html [ Failure ]
+
+webkit.org/b/108163 [ Debug ] platform/chromium/virtual/deferred/fast/images/icon-0colors.html [ Crash ]
+
+# New clamping logic in the tile shader will causes slight diffs. These images must be rebaselined.
+crbug.com/170722 [ Mac Win Linux ] compositing/color-matching/image-color-matching.html [ ImageOnlyFailure ]
+crbug.com/170722 [ Mac Win Linux ] compositing/visibility/visibility-image-layers.html [ ImageOnlyFailure ]
+crbug.com/170722 fast/sub-pixel/transformed-iframe-copy-on-scroll.html [ ImageOnlyFailure ]
+
+# Rebaseline required after https://webkit.org/b/31397
+webkit.org/b/107567 svg/batik/text/xmlSpace.svg [ Failure ] 
+webkit.org/b/107567 fast/text/capitalize-empty-generated-string.html [ Failure ] 
+webkit.org/b/107567 fast/text/whitespace/007.html [ Failure ] 
+webkit.org/b/107567 fast/text/whitespace/006.html [ Failure ] 
+webkit.org/b/107567 fast/inline/drawStyledEmptyInlinesWithWS.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug1318.html [ Failure ] 
+webkit.org/b/107567 fast/inline/drawStyledEmptyInlines.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug113235-3.html [ Failure ] 
+webkit.org/b/107567 css2.1/t0505-c16-descendant-01-e.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug1188.html [ Failure ] 
+webkit.org/b/107567 editing/selection/extend-by-sentence-001.html [ Failure ] 
+webkit.org/b/107567 svg/carto.net/combobox.svg [ Pass Failure ] 
+
+webkit.org/b/107899 fast/repaint/selection-clear.html [ ImageOnlyFailure ]
+
+webkit.org/b/107962 http/tests/misc/favicon-loads-with-images-disabled.html [ Failure ]
+webkit.org/b/107962 http/tests/loading/redirect-methods.html [ Failure ]
+webkit.org/b/107962 http/tests/cache/cached-main-resource.html [ Failure ]
+webkit.org/b/107962 http/tests/cache/iframe-304-crash.html [ Failure ]
+
+webkit.org/b/107893 [ MountainLion ] fast/exclusions/shape-inside/shape-inside-first-fit-001.html [ ImageOnlyFailure ] 
+
+# Needs rebaseline after https://bugs.webkit.org/show_bug.cgi?id=9221
+webkit.org/b/9221 [ Mac ] fast/css/resize-corner-tracking-transformed.html [ Failure ]
+
+# Rebaseline required after https://webkit.org/b/108354
+webkit.org/b/108656 compositing/visibility/visibility-image-layers-dynamic.html [ Failure ]
+
+# The test is flaky on chromium-ews
+webkit.org/b/107953 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Pass Failure ]
+
+webkit.org/b/108286 platform/chromium/virtual/softwarecompositing/geometry/fixed-position-composited-page-scale-down.html [ ImageOnlyFailure ]
+webkit.org/b/108286 platform/chromium/virtual/softwarecompositing/geometry/fixed-position-iframe-composited-page-scale-down.html [ ImageOnlyFailure ]
+
+webkit.org/b/108424 media/video-error-does-not-exist.html [ Failure Crash ]
+webkit.org/b/108594 [ Debug ] tables/table-section-overflow-clip-crash.html [ Crash ]
+
+webkit.org/b/108781 [ Win ] fast/css-grid-layout/grid-preferred-logical-widths.html [ Timeout ]
+webkit.org/b/108789 [ Win Mac ] http/tests/workers/terminate-during-sync-operation.html [ Pass Timeout ]
+webkit.org/b/108790 [ Win7 Debug ] platform/chromium/virtual/gpu/fast/hidpi/gradient-with-scaled-ancestor.html [ Pass Timeout ]

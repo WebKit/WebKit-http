@@ -59,7 +59,7 @@ public:
     bool isValid() const { return m_connection; }
 
 #if PLATFORM(MAC)
-    void setApplicationIsOccluded(bool);
+    void setProcessSuppressionEnabled(bool);
 #endif
 
 private:
@@ -68,7 +68,7 @@ private:
     void sharedWorkerProcessCrashedOrFailedToLaunch();
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
     virtual void didClose(CoreIPC::Connection*);
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName);
 
@@ -76,7 +76,7 @@ private:
     virtual void didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier);
 
     // Message handlers
-    void didReceiveSharedWorkerProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveSharedWorkerProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
     void didCreateWebProcessConnection(const CoreIPC::Attachment&);
 
     void platformInitializeSharedWorkerProcess(SharedWorkerProcessCreationParameters&);

@@ -31,13 +31,13 @@
 #include "config.h"
 #include "AccessibilityControllerChromium.h"
 
-#include "TestDelegate.h"
 #include "WebAccessibilityObject.h"
 #include "WebElement.h"
 #include "WebFrame.h"
 #include "WebNode.h"
+#include "WebTestDelegate.h"
 #include "WebView.h"
-#include "platform/WebCString.h"
+#include <public/WebCString.h>
 
 using namespace WebKit;
 

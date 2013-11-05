@@ -188,7 +188,7 @@
 #import <runtime/DateInstance.h>
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSLock.h>
-#import <runtime/JSValue.h>
+#import <runtime/JSCJSValue.h>
 #import <wtf/Assertions.h>
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
@@ -407,6 +407,23 @@ WebLayoutMilestones kitLayoutMilestones(LayoutMilestones milestones)
     return (milestones & DidFirstLayout ? WebDidFirstLayout : 0)
         | (milestones & DidFirstVisuallyNonEmptyLayout ? WebDidFirstVisuallyNonEmptyLayout : 0)
         | (milestones & DidHitRelevantRepaintedObjectsAreaThreshold ? WebDidHitRelevantRepaintedObjectsAreaThreshold : 0);
+}
+
+static PageVisibilityState core(WebPageVisibilityState visibilityState)
+{
+    switch (visibilityState) {
+    case WebPageVisibilityStateVisible:
+        return PageVisibilityStateVisible;
+    case WebPageVisibilityStateHidden:
+        return PageVisibilityStateHidden;
+    case WebPageVisibilityStatePrerender:
+        return PageVisibilityStatePrerender;
+    case WebPageVisibilityStatePreview:
+        return PageVisibilityStatePreview;
+    }
+
+    ASSERT_NOT_REACHED();
+    return PageVisibilityStateVisible;
 }
 
 @interface WebView (WebFileInternal)
@@ -792,6 +809,8 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
         ++WebViewCount;
 
     [self _registerDraggedTypes];
+
+    [self _setVisibilityState:([self _isViewVisible] ? WebPageVisibilityStateVisible : WebPageVisibilityStateHidden) isInitialState:YES];
 
     WebPreferences *prefs = [self preferences];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_preferencesChangedNotification:)
@@ -2606,9 +2625,29 @@ static inline IMP getMethod(id o, SEL s)
     SecurityPolicy::removeOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
-+(void)_resetOriginAccessWhitelists
++ (void)_resetOriginAccessWhitelists
 {
     SecurityPolicy::resetOriginAccessWhitelists();
+}
+
+- (BOOL)_isViewVisible
+{
+    if (![self window])
+        return false;
+
+    if (![[self window] isVisible])
+        return false;
+
+    if ([self isHiddenOrHasHiddenAncestor])
+        return false;
+
+    return true;
+}
+
+- (void)_updateVisibilityState
+{
+    if (_private && _private->page)
+        [self _setVisibilityState:([self _isViewVisible] ? WebPageVisibilityStateVisible : WebPageVisibilityStateHidden) isInitialState:NO];
 }
 
 - (void)_updateActiveState
@@ -2919,6 +2958,14 @@ static Vector<String> toStringVector(NSArray* patterns)
     return kitLayoutMilestones(page->layoutMilestones());
 }
 
+- (void)_setVisibilityState:(WebPageVisibilityState)visibilityState isInitialState:(BOOL)isInitialState
+{
+#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    if (_private->page)
+        _private->page->setVisibilityState(core(visibilityState), isInitialState);
+#endif
+}
+
 - (void)_setPaginationBehavesLikeColumns:(BOOL)behavesLikeColumns
 {
     Page* page = core(self);
@@ -3045,15 +3092,6 @@ static Vector<String> toStringVector(NSArray* patterns)
 + (void)_setHTTPPipeliningEnabled:(BOOL)enabled
 {
     ResourceRequest::setHTTPPipeliningEnabled(enabled);
-}
-
-- (void)_setVisibilityState:(int)visibilityState isInitialState:(BOOL)isInitialState
-{
-#if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-    if (_private->page) {
-        _private->page->setVisibilityState(static_cast<PageVisibilityState>(visibilityState), isInitialState);
-    }
-#endif
 }
 
 @end
@@ -3527,6 +3565,14 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             name:windowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidChangeScreen:)
             name:NSWindowDidChangeScreenNotification object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowVisibilityChanged:) 
+            name:NSWindowDidMiniaturizeNotification object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowVisibilityChanged:)
+            name:NSWindowDidDeminiaturizeNotification object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowVisibilityChanged:) 
+            name:@"NSWindowDidOrderOffScreenNotification" object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowVisibilityChanged:) 
+            name:@"_NSWindowDidBecomeVisible" object:window];
     }
 }
 
@@ -3542,6 +3588,14 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             name:windowDidChangeBackingPropertiesNotification object:window];
         [[NSNotificationCenter defaultCenter] removeObserver:self
             name:NSWindowDidChangeScreenNotification object:window];
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+            name:NSWindowDidMiniaturizeNotification object:window];
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+            name:NSWindowDidDeminiaturizeNotification object:window];
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+            name:@"NSWindowDidOrderOffScreenNotification" object:window];
+        [[NSNotificationCenter defaultCenter] removeObserver:self
+            name:@"_NSWindowDidBecomeVisible" object:window];
     }
 }
 
@@ -3592,6 +3646,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
 
     [self _updateActiveState];
+    [self _updateVisibilityState];
 }
 
 - (void)doWindowDidChangeScreen
@@ -3630,6 +3685,11 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         _private->page->suspendScriptedAnimations();
         _private->page->focusController()->setContainingWindowIsVisible(false);
     }
+}
+
+- (void)_windowVisibilityChanged:(NSNotification *)notification
+{
+    [self _updateVisibilityState];
 }
 
 - (void)_windowWillClose:(NSNotification *)notification
@@ -6655,6 +6715,19 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
     Element* element = jsElement->impl();
     RefPtr<CSSComputedStyleDeclaration> style = CSSComputedStyleDeclaration::create(element, true);
     return toRef(exec, toJS(exec, jsElement->globalObject(), style.get()));
+}
+
+@end
+
+@implementation WebView (WebViewFullScreen)
+
+- (NSView*)fullScreenPlaceholderView
+{
+#if ENABLE(FULLSCREEN_API)
+    if (_private->newFullscreenController && [_private->newFullscreenController isFullScreen])
+        return [_private->newFullscreenController webViewPlaceholder];
+#endif
+    return nil;
 }
 
 @end

@@ -45,14 +45,14 @@ GLXTransportSurface::GLXTransportSurface()
     }
 
     m_configSelector = adoptPtr(new GLXConfigSelector(m_sharedDisplay, m_nativeResource->isXRenderExtensionSupported()));
+    OwnPtrX11<XVisualInfo> visInfo(m_configSelector->visualInfo());
 
-    if (!configuration()) {
+    if (!visInfo.get()) {
         destroy();
         return;
     }
 
-    m_nativeResource->setVisualInfo(m_configSelector->visualInfo());
-    m_nativeResource->createOffscreenWindow(&m_bufferHandle);
+    m_nativeResource->createOffScreenWindow(&m_bufferHandle, *visInfo.get());
 
     if (!m_bufferHandle) {
         destroy();
@@ -96,13 +96,14 @@ void GLXTransportSurface::swapBuffers()
 
 void GLXTransportSurface::destroy()
 {
+    GLPlatformSurface::destroy();
+
     if (m_bufferHandle) {
         m_nativeResource->destroyWindow(m_bufferHandle);
         m_bufferHandle = 0;
         m_drawable = 0;
     }
 
-    m_nativeResource = nullptr;
     m_configSelector = nullptr;
 }
 
@@ -168,7 +169,6 @@ void GLXPBuffer::freeResources()
     }
 
     m_configSelector = nullptr;
-    m_nativeResource = nullptr;
 }
 
 void GLXPBuffer::setGeometry(const IntRect& newRect)

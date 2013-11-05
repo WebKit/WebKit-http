@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include "PlugInAutoStartProvider.h"
 #include "PluginInfoStore.h"
 #include "ProcessModel.h"
+#include "StorageManager.h"
 #include "VisitedLinkProvider.h"
 #include "WebContextClient.h"
 #include "WebContextConnectionClient.h"
@@ -107,8 +108,8 @@ public:
     void addMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID, CoreIPC::MessageReceiver*);
     void removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID);
 
-    bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    bool dispatchSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    bool dispatchMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    bool dispatchSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     void initializeClient(const WKContextClient*);
     void initializeInjectedBundleClient(const WKContextInjectedBundleClient*);
@@ -175,8 +176,8 @@ public:
     void addVisitedLinkHash(WebCore::LinkHash);
 
     // MessageReceiver.
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&) OVERRIDE;
 
     void setCacheModel(CacheModel);
     CacheModel cacheModel() const { return m_cacheModel; }
@@ -263,7 +264,7 @@ public:
 #if ENABLE(NETWORK_PROCESS)
     void ensureNetworkProcess();
     NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
-    void removeNetworkProcessProxy(NetworkProcessProxy*);
+    void networkProcessCrashed(NetworkProcessProxy*);
 
     void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
 #endif
@@ -272,9 +273,10 @@ public:
 #if PLATFORM(MAC)
     void setProcessSuppressionEnabled(bool);
     bool processSuppressionEnabled() const { return m_processSuppressionEnabled; }
-    void updateChildProcessesApplicationOcclusionState();
-    static bool applicationIsOccluded();
-    static bool processSuppressionEnabledForGlobalChildProcesses();
+    bool canEnableProcessSuppressionForNetworkProcess() const;
+    bool canEnableProcessSuppressionForWebProcess(const WebProcessProxy*) const;
+    static bool canEnableProcessSuppressionForGlobalChildProcesses();
+    void updateProcessSuppressionStateOfChildProcesses();
 #endif
 
     static void willStartUsingPrivateBrowsing();
@@ -326,8 +328,8 @@ private:
     void didGetWebCoreStatistics(const StatisticsData&, uint64_t callbackID);
         
     // Implemented in generated WebContextMessageReceiver.cpp
-    void didReceiveWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didReceiveSyncWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveSyncWebContextMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     static void languageChanged(void* context);
     void languageChanged();
@@ -420,7 +422,9 @@ private:
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
 #endif
 
-    typedef HashMap<AtomicString, RefPtr<WebContextSupplement> > WebContextSupplementMap;
+    RefPtr<StorageManager> m_storageManager;
+
+    typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*> > WebContextSupplementMap;
     WebContextSupplementMap m_supplements;
 
 #if USE(SOUP)

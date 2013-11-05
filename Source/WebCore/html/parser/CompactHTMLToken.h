@@ -32,6 +32,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/TextPosition.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -56,28 +57,35 @@ private:
 
 class CompactHTMLToken {
 public:
-    explicit CompactHTMLToken(const HTMLToken&);
+    CompactHTMLToken(const HTMLToken*, const TextPosition&);
 
     bool isSafeToSendToAnotherThread() const;
 
-    HTMLTokenTypes::Type type() const { return m_type; }
+    HTMLTokenTypes::Type type() const { return static_cast<HTMLTokenTypes::Type>(m_type); }
     const String& data() const { return m_data; }
     bool selfClosing() const { return m_selfClosing; }
+    bool isAll8BitData() const { return m_isAll8BitData; }
     const Vector<CompactAttribute>& attributes() const { return m_attributes; }
+    const TextPosition& textPosition() const { return m_textPosition; }
 
-    const String& publicIdentifier() const { return m_publicIdentifier; }
-    const String& systemIdentifier() const { return m_systemIdentifier; }
+    // There is only 1 DOCTYPE token per document, so to avoid increasing the
+    // size of CompactHTMLToken, we just use the m_attributes vector.
+    const String& publicIdentifier() const { return m_attributes[0].name(); }
+    const String& systemIdentifier() const { return m_attributes[0].value(); }
+    bool doctypeForcesQuirks() const { return m_doctypeForcesQuirks; }
 
 private:
-    HTMLTokenTypes::Type m_type;
-    String m_data; // "name", "characters", or "data" depending on m_type
-    bool m_selfClosing;
-    Vector<CompactAttribute> m_attributes;
+    unsigned m_type : 4;
+    unsigned m_selfClosing : 1;
+    unsigned m_isAll8BitData : 1;
+    unsigned m_doctypeForcesQuirks: 1;
 
-    // For doctype only.
-    String m_publicIdentifier;
-    String m_systemIdentifier;
+    String m_data; // "name", "characters", or "data" depending on m_type
+    Vector<CompactAttribute> m_attributes;
+    TextPosition m_textPosition;
 };
+
+typedef Vector<CompactHTMLToken> CompactHTMLTokenStream;
 
 }
 

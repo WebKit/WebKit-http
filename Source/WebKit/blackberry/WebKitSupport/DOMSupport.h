@@ -64,6 +64,8 @@ AttributeState elementSupportsAutocorrect(const WebCore::Element*);
 AttributeState elementSupportsAutocomplete(const WebCore::Element*);
 AttributeState elementSupportsSpellCheck(const WebCore::Element*);
 
+bool elementHasContinuousSpellCheckingEnabled(const PassRefPtr<WebCore::Element>);
+
 WTF::String inputElementText(WebCore::Element*);
 WTF::String webWorksContext(const WebCore::Element*);
 
@@ -91,6 +93,7 @@ WebCore::VisibleSelection visibleSelectionForClosestActualWordStart(const WebCor
 
 WebCore::Frame* incrementFrame(WebCore::Frame* curr, bool forward, bool wrapFlag);
 
+PassRefPtr<WebCore::Range> trimWhitespaceFromRange(PassRefPtr<WebCore::Range>);
 PassRefPtr<WebCore::Range> trimWhitespaceFromRange(WebCore::VisiblePosition startPosition, WebCore::VisiblePosition endPosition);
 bool isEmptyRangeOrAllSpaces(WebCore::VisiblePosition, WebCore::VisiblePosition);
 

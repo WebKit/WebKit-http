@@ -238,8 +238,8 @@ CFStringRef WKCopyFoundationCacheDirectory(void);
 
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 CFURLStorageSessionRef WKCreatePrivateStorageSession(CFStringRef);
-NSURLRequest *WKCopyRequestWithStorageSession(CFURLStorageSessionRef, NSURLRequest*);
-NSCachedURLResponse *WKCachedResponseForRequest(CFURLStorageSessionRef, NSURLRequest*);
+NSURLRequest *WKCopyRequestWithStorageSession(CFURLStorageSessionRef, NSURLRequest *);
+NSCachedURLResponse *WKCachedResponseForRequest(CFURLStorageSessionRef, NSURLRequest *);
 void WKSetRequestStorageSession(CFURLStorageSessionRef, CFMutableURLRequestRef);
 
 typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
@@ -358,6 +358,7 @@ void WKCAContextSetLayer(WKCAContextRef, CALayer *);
 CALayer *WKCAContextGetLayer(WKCAContextRef);
 void WKCAContextSetColorSpace(WKCAContextRef, CGColorSpaceRef);
 CGColorSpaceRef WKCAContextGetColorSpace(WKCAContextRef);
+void WKCABackingStoreCollectBlocking(void);
 
 void WKCALayerEnumerateRectsBeingDrawnWithBlock(CALayer *layer, CGContextRef context, void (^block)(CGRect rect));
 
@@ -425,7 +426,6 @@ CIFormat WKCIGetRGBA8Format(void);
 
 typedef enum {
     WKSandboxExtensionTypeReadOnly,
-    WKSandboxExtensionTypeWriteOnly,    
     WKSandboxExtensionTypeReadWrite,
 } WKSandboxExtensionType;
 typedef struct __WKSandboxExtension *WKSandboxExtensionRef;
@@ -440,8 +440,6 @@ const char* WKSandboxExtensionGetSerializedFormat(WKSandboxExtensionRef sandboxE
 WKSandboxExtensionRef WKSandboxExtensionCreateFromSerializedFormat(const char* serializationFormat, size_t length);
 
 OSStatus WKEnableSandboxStyleFileQuarantine(void);
-
-bool WKEnterPluginSandbox(const char* profile, const char* parameters[], const char* readOnlyPaths[], const char* readWritePaths[]);
 
 int WKRecommendedScrollerStyle(void);
 
@@ -474,10 +472,10 @@ void WKCFURLRequestAllowAllPostCaching(CFURLRequestRef);
 
 BOOL WKFilterIsManagedSession(void);
 WebFilterEvaluator *WKFilterCreateInstance(NSURLResponse *);
-void WKFilterRelease(WebFilterEvaluator *);
+BOOL WKFilterIsBuffering(WebFilterEvaluator *);
 BOOL WKFilterWasBlocked(WebFilterEvaluator *);
-const char* WKFilterAddData(WebFilterEvaluator *, const char* data, int* length);
-const char* WKFilterDataComplete(WebFilterEvaluator *, int* length);
+NSData *WKFilterAddData(WebFilterEvaluator *, NSData *);
+NSData *WKFilterDataComplete(WebFilterEvaluator *);
 
 CGFloat WKNSElasticDeltaForTimeDelta(CGFloat initialPosition, CGFloat initialVelocity, CGFloat elapsedTime);
 CGFloat WKNSElasticDeltaForReboundDelta(CGFloat delta);
@@ -522,13 +520,18 @@ CFStringRef WKCaptionAppearanceGetSettingsChangedNotification(void);
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 typedef enum {
     WKOcclusionNotificationTypeApplicationBecameVisible,
-    WKOcclusionNotificationTypeApplicationBecameOccluded
+    WKOcclusionNotificationTypeApplicationBecameOccluded,
+    WKOcclusionNotificationTypeWindowBecameVisible,
+    WKOcclusionNotificationTypeWindowBecameOccluded
 } WKOcclusionNotificationType;
 
-typedef void (*WKOcclusionNotificationHandler)(uint32_t, void*, uint32_t, void*, uint32_t);
+typedef uint32_t WKWindowID;
+
+typedef void (*WKOcclusionNotificationHandler)(uint32_t, void* data, uint32_t dataLength, void*, uint32_t);
 
 bool WKRegisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclusionNotificationHandler);
 bool WKUnregisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclusionNotificationHandler);
+bool WKEnableWindowOcclusionNotifications(NSInteger windowID, bool *outCurrentOcclusionState);
 
 enum {
     WKProcessAssertionTypeVisible = (1UL << 10)

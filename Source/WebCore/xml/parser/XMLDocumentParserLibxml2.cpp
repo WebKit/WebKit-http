@@ -42,6 +42,7 @@
 #include "HTMLLinkElement.h"
 #include "HTMLNames.h"
 #include "HTMLStyleElement.h"
+#include "HTMLTemplateElement.h"
 #include "ProcessingInstruction.h"
 #include "ResourceError.h"
 #include "ResourceHandle.h"
@@ -62,6 +63,7 @@
 #include <wtf/Threading.h>
 #include <wtf/UnusedParam.h>
 #include <wtf/Vector.h>
+#include <wtf/unicode/UTF8.h>
 
 #if ENABLE(XSLT)
 #include "XMLTreeViewer.h"
@@ -788,7 +790,7 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
     m_sawFirstElement = true;
 
     QualifiedName qName(prefix, localName, uri);
-    RefPtr<Element> newElement = document()->createElement(qName, true);
+    RefPtr<Element> newElement = m_currentNode->document()->createElement(qName, true);
     if (!newElement) {
         stopParsing();
         return;
@@ -818,7 +820,15 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
 
     m_currentNode->parserAppendChild(newElement.get());
 
+#if ENABLE(TEMPLATE_ELEMENT)
+    if (newElement->hasTagName(HTMLNames::templateTag))
+        pushCurrentNode(toHTMLTemplateElement(newElement.get())->content());
+    else
+        pushCurrentNode(newElement.get());
+#else
     pushCurrentNode(newElement.get());
+#endif
+
     if (m_view && !newElement->attached())
         newElement->attach();
 
@@ -961,7 +971,7 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
 
     // ### handle exceptions
     ExceptionCode ec = 0;
-    RefPtr<ProcessingInstruction> pi = document()->createProcessingInstruction(
+    RefPtr<ProcessingInstruction> pi = m_currentNode->document()->createProcessingInstruction(
         toString(target), toString(data), ec);
     if (ec)
         return;
@@ -995,7 +1005,7 @@ void XMLDocumentParser::cdataBlock(const xmlChar* s, int len)
 
     exitText();
 
-    RefPtr<CDATASection> newNode = CDATASection::create(document(), toString(s, len));
+    RefPtr<CDATASection> newNode = CDATASection::create(m_currentNode->document(), toString(s, len));
     m_currentNode->parserAppendChild(newNode.get());
     if (m_view && !newNode->attached())
         newNode->attach();
@@ -1013,7 +1023,7 @@ void XMLDocumentParser::comment(const xmlChar* s)
 
     exitText();
 
-    RefPtr<Comment> newNode = Comment::create(document(), toString(s));
+    RefPtr<Comment> newNode = Comment::create(m_currentNode->document(), toString(s));
     m_currentNode->parserAppendChild(newNode.get());
     if (m_view && !newNode->attached())
         newNode->attach();
@@ -1160,7 +1170,7 @@ static void normalErrorHandler(void* closure, const char* message, ...)
 // Using a static entity and marking it XML_INTERNAL_PREDEFINED_ENTITY is
 // a hack to avoid malloc/free. Using a global variable like this could cause trouble
 // if libxml implementation details were to change
-static xmlChar sharedXHTMLEntityResult[5] = {0, 0, 0, 0, 0};
+static xmlChar sharedXHTMLEntityResult[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static xmlEntityPtr sharedXHTMLEntity()
 {
@@ -1174,19 +1184,36 @@ static xmlEntityPtr sharedXHTMLEntity()
     return &entity;
 }
 
-static xmlEntityPtr getXHTMLEntity(const xmlChar* name)
+static size_t convertUTF16EntityToUTF8(const UChar* utf16Entity, size_t numberOfCodeUnits, char* target, size_t targetSize)
 {
-    UChar c = decodeNamedEntity(reinterpret_cast<const char*>(name));
-    if (!c)
+    const char* originalTarget = target;
+    WTF::Unicode::ConversionResult conversionResult = WTF::Unicode::convertUTF16ToUTF8(&utf16Entity,
+        utf16Entity + numberOfCodeUnits, &target, target + targetSize);
+    if (conversionResult != WTF::Unicode::conversionOK)
         return 0;
 
-    CString value = String(&c, 1).utf8();
-    ASSERT(value.length() < 5);
-    xmlEntityPtr entity = sharedXHTMLEntity();
-    entity->length = value.length();
-    entity->name = name;
-    memcpy(sharedXHTMLEntityResult, value.data(), entity->length + 1);
+    // Even though we must pass the length, libxml expects the entity string to be null terminated.
+    ASSERT(target > originalTarget + 1);
+    *target = '\0';
+    return target - originalTarget;
+}
 
+static xmlEntityPtr getXHTMLEntity(const xmlChar* name)
+{
+    UChar utf16DecodedEntity[4];
+    size_t numberOfCodeUnits = decodeNamedEntityToUCharArray(reinterpret_cast<const char*>(name), utf16DecodedEntity);
+    if (!numberOfCodeUnits)
+        return 0;
+
+    ASSERT(numberOfCodeUnits <= 4);
+    size_t entityLengthInUTF8 = convertUTF16EntityToUTF8(utf16DecodedEntity, numberOfCodeUnits,
+        reinterpret_cast<char*>(sharedXHTMLEntityResult), WTF_ARRAY_LENGTH(sharedXHTMLEntityResult));
+    if (!entityLengthInUTF8)
+        return 0;
+
+    xmlEntityPtr entity = sharedXHTMLEntity();
+    entity->length = entityLengthInUTF8;
+    entity->name = name;
     return entity;
 }
 

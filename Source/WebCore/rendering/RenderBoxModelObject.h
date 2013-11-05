@@ -289,7 +289,8 @@ private:
 
     RoundedRect getBackgroundRoundedRect(const LayoutRect&, InlineFlowBox*, LayoutUnit inlineBoxWidth, LayoutUnit inlineBoxHeight,
         bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
-
+    
+    bool fixedBackgroundPaintsInLocalCoordinates() const;
 
     void clipBorderSidePolygon(GraphicsContext*, const RoundedRect& outerBorder, const RoundedRect& innerBorder,
                                BoxSide, bool firstEdgeMatches, bool secondEdgeMatches);
@@ -309,13 +310,13 @@ private:
 
 inline RenderBoxModelObject* toRenderBoxModelObject(RenderObject* object)
 { 
-    ASSERT(!object || object->isBoxModelObject());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isBoxModelObject());
     return static_cast<RenderBoxModelObject*>(object);
 }
 
 inline const RenderBoxModelObject* toRenderBoxModelObject(const RenderObject* object)
 { 
-    ASSERT(!object || object->isBoxModelObject());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isBoxModelObject());
     return static_cast<const RenderBoxModelObject*>(object);
 }
 

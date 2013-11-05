@@ -1050,7 +1050,7 @@ RegisterID* BinaryOpNode::emitBytecode(BytecodeGenerator& generator, RegisterID*
         else if (opcodeID == op_nstricteq)
             generator.emitEqualityOp(op_stricteq, generator.finalDestination(tmp.get(), src1.get()), src1.get(), src2);
         else
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
         return generator.emitUnaryOp(op_not, generator.finalDestination(dst, tmp.get()), tmp.get());
     }
     return generator.emitBinaryOp(opcodeID, generator.finalDestination(dst, src1.get()), src1.get(), src2, OperandTypes(left->resultDescriptor(), right->resultDescriptor()));
@@ -1231,7 +1231,7 @@ static ALWAYS_INLINE RegisterID* emitReadModifyAssignment(BytecodeGenerator& gen
             opcodeID = op_mod;
             break;
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return dst;
     }
 
@@ -1851,9 +1851,22 @@ static void processClauseList(ClauseListNode* list, Vector<ExpressionNode*, 8>& 
         break;        
     }
 }
-    
-SwitchInfo::SwitchType CaseBlockNode::tryOptimizedSwitch(Vector<ExpressionNode*, 8>& literalVector, int32_t& min_num, int32_t& max_num)
+
+static inline size_t length(ClauseListNode* list1, ClauseListNode* list2)
 {
+    size_t length = 0;
+    for (ClauseListNode* node = list1; node; node = node->getNext())
+        ++length;
+    for (ClauseListNode* node = list2; node; node = node->getNext())
+        ++length;
+    return length;
+}
+
+SwitchInfo::SwitchType CaseBlockNode::tryTableSwitch(Vector<ExpressionNode*, 8>& literalVector, int32_t& min_num, int32_t& max_num)
+{
+    if (length(m_list1, m_list2) < s_tableSwitchMinimum)
+        return SwitchInfo::SwitchNone;
+
     SwitchKind typeForTable = SwitchUnset;
     bool singleCharacterSwitch = true;
     
@@ -1888,7 +1901,7 @@ RegisterID* CaseBlockNode::emitBytecodeForBlock(BytecodeGenerator& generator, Re
     Vector<ExpressionNode*, 8> literalVector;
     int32_t min_num = std::numeric_limits<int32_t>::max();
     int32_t max_num = std::numeric_limits<int32_t>::min();
-    SwitchInfo::SwitchType switchType = tryOptimizedSwitch(literalVector, min_num, max_num);
+    SwitchInfo::SwitchType switchType = tryTableSwitch(literalVector, min_num, max_num);
 
     if (switchType != SwitchInfo::SwitchNone) {
         // Prepare the various labels

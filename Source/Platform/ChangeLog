@@ -1,3 +1,286 @@
+2013-02-02  Michael Nordman  <michaeln@google.com>
+
+        [chromium] FileSystem mods: Changes to snapshot file creation to reduce dependencies on blobs.
+        This patch just alters the WebKitAPI in advance of coding to the new API in chromium and webkit
+        sources, defining two new virtual methods (unimplemented and uncalled). The existing API remains
+        in place and in use.
+        https://bugs.webkit.org/show_bug.cgi?id=108736
+
+        Reviewed by Darin Fisher.
+
+        * chromium/public/WebFileSystem.h:
+        (WebFileSystem):
+        (WebKit::WebFileSystem::createSnapshotFileAndReadMetadata):
+
+2013-02-01  James Simonsen  <simonjam@chromium.org>
+
+        Add didChangePriority() to ResourceHandle
+        https://bugs.webkit.org/show_bug.cgi?id=107995
+
+        Reviewed by Darin Fisher.
+
+        * chromium/public/WebURLLoader.h:
+        (WebKit):
+        (WebURLLoader):
+        (WebKit::WebURLLoader::didChangePriority): Added.
+
+2013-02-01  Kevin Ellis  <kevers@chromium.org>
+
+        [chromium] Fat scrollbars on Windows in high-DPI mode.
+        https://bugs.webkit.org/show_bug.cgi?id=108637
+
+        Updates mechanism for retrieving scrollbar metrics on the
+        Windows port of Chromium.  Previously, GetSystemMetrics calls
+        were used, which fetches prescaled sizes in pixel rather than
+        logical units, resulting in a double scaling when a device
+        scale factor is set.  With the patch, the size is retrieved
+        from the theme engine in DIP.
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/win/WebThemeEngine.h:
+        (WebThemeEngine):
+
+2013-01-31  Tommy Widenflycht  <tommyw@google.com>
+
+        [chromium] MediaStream API: Rename WebMediaStreamDescriptor and WebMediaStreamComponent to WebMediaStream and WebMediaStreamTrack
+        https://bugs.webkit.org/show_bug.cgi?id=108458
+
+        Only renames, no other code changes.
+
+        Reviewed by Adam Barth.
+
+        * Platform.gypi:
+        * chromium/public/WebMediaStream.h: Copied from Source/Platform/chromium/public/WebMediaStreamDescriptor.h.
+        (WebCore):
+        (WebKit):
+        (WebMediaStream):
+        (ExtraData):
+        (WebKit::WebMediaStream::ExtraData::~ExtraData):
+        (WebKit::WebMediaStream::WebMediaStream):
+        (WebKit::WebMediaStream::~WebMediaStream):
+        (WebKit::WebMediaStream::operator=):
+        (WebKit::WebMediaStream::isNull):
+        * chromium/public/WebMediaStreamCenter.h:
+        (WebKit):
+        (WebMediaStreamCenter):
+        (WebKit::WebMediaStreamCenter::didAddMediaStreamTrack):
+        (WebKit::WebMediaStreamCenter::didRemoveMediaStreamTrack):
+        * chromium/public/WebMediaStreamCenterClient.h:
+        (WebKit):
+        (WebMediaStreamCenterClient):
+        * chromium/public/WebMediaStreamComponent.h:
+        * chromium/public/WebMediaStreamDescriptor.h:
+        * chromium/public/WebMediaStreamTrack.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebMediaStreamTrack):
+        (WebKit::WebMediaStreamTrack::WebMediaStreamTrack):
+        (WebKit::WebMediaStreamTrack::~WebMediaStreamTrack):
+        (WebKit::WebMediaStreamTrack::operator=):
+        (WebKit::WebMediaStreamTrack::isNull):
+        * chromium/public/WebRTCPeerConnectionHandler.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandler):
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebKit):
+        (WebRTCPeerConnectionHandlerClient):
+        * chromium/public/WebRTCStatsRequest.h:
+        (WebKit):
+        (WebRTCStatsRequest):
+
+2013-01-30  Yusuf Ozuysal  <yusufo@google.com>
+
+        Start sending scrollType as NonBubblingGesture for flings
+        https://bugs.webkit.org/show_bug.cgi?id=108372
+
+        Reviewed by James Robinson.
+
+        Using the newly defined scrollType layerTreeHostImpl will stop bubbling flings to
+        parent layers. It will only bubble if the child layer is at the end of its scroll
+        range
+
+        * chromium/public/WebInputHandlerClient.h:
+
+2013-01-30  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Add recordRenderingStats to WebSettings
+        https://bugs.webkit.org/show_bug.cgi?id=108358
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2013-01-29  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: A MediaStreamComponent should be able to return the MediaStreamDescriptor it belongs to
+        https://bugs.webkit.org/show_bug.cgi?id=108173
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebMediaStreamComponent.h:
+        (WebKit):
+        (WebMediaStreamComponent):
+
+2013-01-28  Alexandre Elias  <aelias@chromium.org>
+
+        Make page scale shrink FrameView in applyPageScaleInCompositor mode
+        https://bugs.webkit.org/show_bug.cgi?id=107424
+
+        Reviewed by Levi Weintraub.
+
+        If applyPageScaleFactorInCompositor is enabled (Chromium-only setting),
+        instead of the entire document expanding as the user pinch zooms, the
+        viewport shrinks instead. This patch applies the pageScaleFactor to
+        visibleContentRect to get this behavior, and simplifies Chromium's
+        resize logic to stop hiding the true viewport size from WebCore.
+
+        I verified that the scaling makes sense for all the callers of
+        visibleContentRect. The exceptions are clip-layer size,
+        layout size in non-fixed-layout mode, and text autosizing, which need
+        the original unscaled size. Therefore I added a new method
+        unscaledVisibleContentSize() to ScrollView/FrameView.
+
+        This patch also modifies Page::setPageScaleFactor to perform no
+        invalidates or layout when applyPageScaleFactorInCompositor is true,
+        and also writes pageScaleFactor into HistoryItems instead of using
+        frameScaleFactor.
+
+        Since all behavior changes are tied to applyPageScaleFactorInCompositor,
+        this patch should be a no-op for non-Chromium ports.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::adjustEventPointForPinchZoom):
+
+2013-01-26  James Simonsen  <simonjam@chromium.org>
+
+        [chromium] Export ResourceRequest's priority through WebURLRequest
+        https://bugs.webkit.org/show_bug.cgi?id=107985
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebURLRequest.h:
+        (WebURLRequest):
+
+2013-01-25  Eberhard Graether  <egraether@google.com>
+
+        Web Inspector: add checkbox for continuous painting to the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=107352
+
+        Reviewed by Pavel Feldman.
+
+        This change adds a checkbox to activate continuous painting to the WebInspector's
+        rendering settings and plumbs the setting to Chromium's WebLayerTreeView. The
+        setting is visible if InspectorClient::canContinuouslyPaint() returns true.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::setContinuousPaintingEnabled):
+
+2013-01-22  Nat Duca  <nduca@chromium.org>
+
+        [chromium] Add WebDiscardableMemory to platform
+        https://bugs.webkit.org/show_bug.cgi?id=107183
+
+        Reviewed by James Robinson.
+
+        WebDiscardable provides a wrapper around memory that can be
+        relcaimed by the underlying kernel when it is under heavy memory
+        pressure. This will be used in a followup patch in the Chromium
+        image decoding store for decoded/resized images.
+
+        * Platform.gypi:
+        * chromium/public/Platform.h:
+        (WebKit):
+        (Platform):
+        (WebKit::Platform::allocateDiscardableMemory):
+        * chromium/public/WebDiscardableMemory.h: Added.
+        (WebKit):
+        (WebDiscardableMemory):
+        (WebKit::WebDiscardableMemory::~WebDiscardableMemory):
+
+2013-01-21  Justin Schuh  <jschuh@chromium.org>
+
+        [CHROMIUM] Suppress c4267 build warnings for Win64 targets
+        https://bugs.webkit.org/show_bug.cgi?id=107499
+
+        Reviewed by Abhishek Arya.
+
+        * Platform.gyp/Platform.gyp:
+
+2013-01-21  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update the RTCPeerConnection states to match the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=107120
+
+        Reviewed by Adam Barth.
+
+        Updating the chromium WebKit API for the new states.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebKit::WebRTCPeerConnectionHandlerClient::~WebRTCPeerConnectionHandlerClient):
+        (WebRTCPeerConnectionHandlerClient):
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeSignalingState):
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeICEGatheringState):
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeICEConnectionState):
+        (WebKit::WebRTCPeerConnectionHandlerClient::didAddRemoteDataChannel):
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeReadyState):
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeICEState):
+
+2013-01-18  Ali Juma  <ajuma@chromium.org>
+
+        [chromium] Convert WebTransformOperations into pure virtual
+        https://bugs.webkit.org/show_bug.cgi?id=105553
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebKit):
+        (WebKit::WebCompositorSupport::createTransformOperations):
+        (WebCompositorSupport):
+        * chromium/public/WebTransformKeyframe.h:
+        (WebTransformKeyframe):
+        * chromium/public/WebTransformOperations.h:
+        (WebKit::WebTransformOperations::~WebTransformOperations):
+        (WebTransformOperations):
+
+2013-01-18  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r140158.
+        http://trac.webkit.org/changeset/140158
+        https://bugs.webkit.org/show_bug.cgi?id=107297
+
+        Broke android build (Requested by danakj on #webkit).
+
+        * chromium/public/WebVideoFrame.h:
+        (WebKit):
+        (WebKit::WebVideoFrame::format):
+        (WebKit::WebVideoFrame::width):
+        (WebKit::WebVideoFrame::height):
+        (WebKit::WebVideoFrame::planes):
+        (WebKit::WebVideoFrame::stride):
+        (WebKit::WebVideoFrame::data):
+        (WebKit::WebVideoFrame::textureId):
+        (WebKit::WebVideoFrame::textureTarget):
+        (WebKit::WebVideoFrame::visibleRect):
+        (WebKit::WebVideoFrame::textureSize):
+
+2013-01-18  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove the contents of WebVideoFrame class
+        https://bugs.webkit.org/show_bug.cgi?id=106037
+
+        Reviewed by James Robinson.
+
+        This class becomes an empty base class now, used only for the API
+        boundary.
+
+        * chromium/public/WebVideoFrame.h:
+        (WebKit):
+
 2013-01-10  Tommy Widenflycht  <tommyw@google.com>
 
         MediaStream API: Adding the new id attribute to MediaStream and MediaStreamTrack

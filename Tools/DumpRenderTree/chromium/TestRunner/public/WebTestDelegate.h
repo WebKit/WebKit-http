@@ -54,7 +54,7 @@ class WebTestDelegate {
 public:
     virtual void clearContextMenuData() = 0;
     virtual void clearEditCommand() = 0;
-    virtual void fillSpellingSuggestionList(const WebKit::WebString& word, WebKit::WebVector<WebKit::WebString>* suggestions) = 0;
+    virtual void fillSpellingSuggestionList(const WebKit::WebString&, WebKit::WebVector<WebKit::WebString>*) { }
     virtual void setEditCommand(const std::string& name, const std::string& value) = 0;
     virtual WebKit::WebContextMenuData* lastContextMenuData() const = 0;
     virtual void setGamepadData(const WebKit::WebGamepads&) = 0;
@@ -81,8 +81,6 @@ public:
     virtual std::string makeURLErrorDescription(const WebKit::WebURLError&) { return std::string(); }
     virtual std::string normalizeLayoutTestURL(const std::string&) { return std::string(); }
     virtual void setClientWindowRect(const WebKit::WebRect&) { }
-    virtual void setSelectTrailingWhitespaceEnabled(bool) { }
-    virtual void setSmartInsertDeleteEnabled(bool) { }
     virtual void showDevTools() { }
     virtual void closeDevTools() { }
     virtual void evaluateInWebInspector(long, const std::string&) { }
@@ -94,6 +92,35 @@ public:
     virtual std::string pathToLocalResource(const std::string& resource) { return std::string(); }
     virtual void setLocale(const std::string&) { }
     virtual void setDeviceOrientation(WebKit::WebDeviceOrientation&) { }
+    virtual void didAcquirePointerLock() { }
+    virtual void didNotAcquirePointerLock() { }
+    virtual void didLosePointerLock() { }
+    virtual void setPointerLockWillRespondAsynchronously() { }
+    virtual void setPointerLockWillFailSynchronously() { }
+    virtual int numberOfPendingGeolocationPermissionRequests() { return 0; }
+    virtual void setGeolocationPermission(bool) { }
+    virtual void setMockGeolocationPosition(double, double, double) { }
+    virtual void setMockGeolocationPositionUnavailableError(const std::string&) { }
+    virtual void grantWebNotificationPermission(const std::string&) { }
+    virtual bool simulateLegacyWebNotificationClick(const std::string&) { return false; }
+    virtual void addMockSpeechInputResult(const std::string&, double, const std::string&) { }
+    virtual void setMockSpeechInputDumpRect(bool) { }
+    virtual void addMockSpeechRecognitionResult(const std::string&, double) { }
+    virtual void setMockSpeechRecognitionError(const std::string&, const std::string&) { }
+    virtual bool wasMockSpeechRecognitionAborted() { return false; }
+    virtual void display() { }
+    virtual void displayInvalidatedRegion() { }
+    virtual void testFinished() { }
+    virtual void testTimedOut() { }
+    virtual bool isBeingDebugged() { return false; }
+    virtual int layoutTestTimeout() { return 30 * 1000; }
+    virtual void closeRemainingWindows() { }
+    virtual int navigationEntryCount() { return 0; }
+    virtual int windowCount() { return 0; }
+    virtual void goToOffset(int) { }
+    virtual void reload() { }
+    virtual void loadURLForFrame(const WebKit::WebURL&, const std::string&) { }
+    virtual bool allowExternalPages() { return false; }
 };
 
 }

@@ -68,7 +68,7 @@ void InspectorFrontendClientImpl::windowObjectCleared()
 
     ASSERT(!m_frontendHost);
     m_frontendHost = InspectorFrontendHost::create(this, m_frontendPage);
-    v8::Handle<v8::Value> frontendHostObj = toV8(m_frontendHost.get(), v8::Handle<v8::Object>());
+    v8::Handle<v8::Value> frontendHostObj = toV8(m_frontendHost.get(), v8::Handle<v8::Object>(), frameContext->GetIsolate());
     v8::Handle<v8::Object> global = frameContext->Global();
 
     global->Set(v8::String::New("InspectorFrontendHost"), frontendHostObj);
@@ -114,9 +114,9 @@ void InspectorFrontendClientImpl::requestSetDockSide(DockSide side)
     m_client->requestSetDockSide(sideString);
 }
 
-void InspectorFrontendClientImpl::changeAttachedWindowHeight(unsigned)
+void InspectorFrontendClientImpl::changeAttachedWindowHeight(unsigned height)
 {
-    // Do nothing;
+    m_client->changeAttachedWindowHeight(height);
 }
 
 void InspectorFrontendClientImpl::openInNewTab(const String& url)
@@ -174,5 +174,9 @@ void InspectorFrontendClientImpl::removeFileSystem(const String& fileSystemPath)
     m_client->removeFileSystem(fileSystemPath);
 }
 
+bool InspectorFrontendClientImpl::isUnderTest()
+{
+    return m_client->isUnderTest();
+}
 
 } // namespace WebKit

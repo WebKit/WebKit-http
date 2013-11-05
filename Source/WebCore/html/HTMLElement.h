@@ -102,11 +102,10 @@ public:
     void getItemRefElements(Vector<HTMLElement*>&);
 #endif
 
-#ifndef NDEBUG
     virtual bool isHTMLUnknownElement() const { return false; }
-#endif
 
     virtual bool isLabelable() const { return false; }
+    virtual bool isFocusableByClickOnLabel() const;
 
 protected:
     HTMLElement(const QualifiedName& tagName, Document*, ConstructionType);
@@ -120,6 +119,7 @@ protected:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
+    unsigned parseBorderWidthAttribute(const QualifiedName&, const AtomicString& value) const;
 
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
     void calculateAndAdjustDirectionality();
@@ -151,13 +151,13 @@ private:
 
 inline HTMLElement* toHTMLElement(Node* node)
 {
-    ASSERT(!node || node->isHTMLElement());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isHTMLElement());
     return static_cast<HTMLElement*>(node);
 }
 
 inline const HTMLElement* toHTMLElement(const Node* node)
 {
-    ASSERT(!node || node->isHTMLElement());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isHTMLElement());
     return static_cast<const HTMLElement*>(node);
 }
 

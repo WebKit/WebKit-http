@@ -32,6 +32,7 @@
 #include "ArgList.h"
 #include "CodeCache.h"
 #include "CommonIdentifiers.h"
+#include "DFGLongLivedState.h"
 #include "DebuggerActivation.h"
 #include "FunctionConstructor.h"
 #include "GCActivityCallback.h"
@@ -207,6 +208,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     JSLockHolder lock(this);
     IdentifierTable* existingEntryIdentifierTable = wtfThreadData().setCurrentIdentifierTable(identifierTable);
     structureStructure.set(*this, Structure::createStructure(*this));
+    structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, 0, jsNull()));
     debuggerActivationStructure.set(*this, DebuggerActivation::createStructure(*this, 0, jsNull()));
     interruptedExecutionErrorStructure.set(*this, InterruptedExecutionError::createStructure(*this, 0, jsNull()));
     terminatedExecutionErrorStructure.set(*this, TerminatedExecutionError::createStructure(*this, 0, jsNull()));
@@ -251,6 +253,11 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     
     if (Options::enableProfiler())
         m_perBytecodeProfiler = adoptPtr(new Profiler::Database(*this));
+
+#if ENABLE(DFG_JIT)
+    if (canUseJIT())
+        m_dfgState = adoptPtr(new DFG::LongLivedState());
+#endif
 }
 
 JSGlobalData::~JSGlobalData()

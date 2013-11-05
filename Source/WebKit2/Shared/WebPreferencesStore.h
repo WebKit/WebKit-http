@@ -138,6 +138,8 @@ namespace WebKit {
     macro(TextAutosizingEnabled, textAutosizingEnabled, Bool, bool, false) \
     macro(AggressiveTileRetentionEnabled, aggressiveTileRetentionEnabled, Bool, bool, false) \
     macro(QTKitEnabled, isQTKitEnabled, Bool, bool, true) \
+    macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false) \
+    macro(PageVisibilityBasedProcessSuppressionEnabled, pageVisibilityBasedProcessSuppressionEnabled, Bool, bool, false) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
@@ -216,7 +218,7 @@ struct WebPreferencesStore {
     WebPreferencesStore();
 
     void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder*, WebPreferencesStore&);
+    static bool decode(CoreIPC::ArgumentDecoder&, WebPreferencesStore&);
 
     // NOTE: The getters in this class have non-standard names to aid in the use of the preference macros.
 

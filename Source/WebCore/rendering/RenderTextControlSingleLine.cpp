@@ -49,13 +49,13 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTextControlSingleLine::RenderTextControlSingleLine(ContainerNode* node)
-    : RenderTextControl(node)
+RenderTextControlSingleLine::RenderTextControlSingleLine(Element* element)
+    : RenderTextControl(element)
     , m_shouldDrawCapsLockIndicator(false)
     , m_desiredInnerTextHeight(-1)
 {
-    ASSERT(node->isHTMLElement());
-    ASSERT(node->toInputElement());
+    ASSERT(element->isHTMLElement());
+    ASSERT(element->toInputElement());
 }
 
 RenderTextControlSingleLine::~RenderTextControlSingleLine()
@@ -381,11 +381,11 @@ bool RenderTextControlSingleLine::textShouldBeTruncated() const
         && style()->textOverflow() == TextOverflowEllipsis;
 }
 
-void RenderTextControlSingleLine::autoscroll()
+void RenderTextControlSingleLine::autoscroll(const IntPoint& position)
 {
     RenderLayer* layer = innerTextElement()->renderBox()->layer();
     if (layer)
-        layer->autoscroll();
+        layer->autoscroll(position);
 }
 
 int RenderTextControlSingleLine::scrollWidth() const

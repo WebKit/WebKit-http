@@ -444,7 +444,7 @@ static bool childRulesHaveFailedOrCanceledSubresources(const Vector<RefPtr<Style
                 return true;
             break;
 #if ENABLE(SHADOW_DOM)
-        case StyleRuleBase::Host:
+        case StyleRuleBase::HostInternal:
             if (childRulesHaveFailedOrCanceledSubresources(static_cast<const StyleRuleHost*>(rule)->childRules()))
                 return true;
             break;
@@ -461,6 +461,9 @@ static bool childRulesHaveFailedOrCanceledSubresources(const Vector<RefPtr<Style
 #endif
 #if ENABLE(CSS_DEVICE_ADAPTATION)
         case StyleRuleBase::Viewport:
+#endif
+#if ENABLE(CSS_SHADERS)
+        case StyleRuleBase::Filter:
 #endif
             break;
         }
@@ -515,14 +518,14 @@ void StyleSheetContents::shrinkToFit()
 void StyleSheetContents::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_ownerRule);
-    info.addMember(m_originalURL);
-    info.addMember(m_encodingFromCharsetRule);
-    info.addMember(m_importRules);
-    info.addMember(m_childRules);
-    info.addMember(m_namespaces);
-    info.addMember(m_parserContext);
-    info.addMember(m_clients);
+    info.addMember(m_ownerRule, "ownerRule");
+    info.addMember(m_originalURL, "originalURL");
+    info.addMember(m_encodingFromCharsetRule, "encodingFromCharsetRule");
+    info.addMember(m_importRules, "importRules");
+    info.addMember(m_childRules, "childRules");
+    info.addMember(m_namespaces, "namespaces");
+    info.addMember(m_parserContext, "parserContext");
+    info.addMember(m_clients, "clients");
 }
 
 }

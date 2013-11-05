@@ -88,6 +88,7 @@ class MediaControls : public HTMLDivElement {
     virtual void changedVolume();
 
     virtual void changedClosedCaptionsVisibility();
+    virtual void refreshClosedCaptionsButtonVisibility();
     virtual void toggleClosedCaptionTrackList() { }
     virtual void closedCaptionTracksChanged();
 
@@ -145,7 +146,7 @@ private:
 
 inline MediaControls* toMediaControls(Node* node)
 {
-    ASSERT(!node || node->isMediaControls());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isMediaControls());
     return static_cast<MediaControls*>(node);
 }
 

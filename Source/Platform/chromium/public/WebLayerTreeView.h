@@ -56,6 +56,7 @@ public:
             , partialSwapEnabled(false)
             , acceleratedAnimationEnabled(true)
             , pageScalePinchZoomEnabled(false)
+            , recordRenderingStats(false)
             , refreshRate(0)
             , defaultTileSize(WebSize(256, 256))
             , maxUntiledLayerSize(WebSize(512, 512))
@@ -73,6 +74,7 @@ public:
         bool partialSwapEnabled;
         bool acceleratedAnimationEnabled;
         bool pageScalePinchZoomEnabled;
+        bool recordRenderingStats;
         double refreshRate;
         WebSize defaultTileSize;
         WebSize maxUntiledLayerSize;
@@ -102,9 +104,8 @@ public:
     // mode).
     virtual WebSize deviceViewportSize() const = 0;
 
-    // Gives the corrected location for an event, accounting for the pinch-zoom transformation
-    // in the compositor.
-    virtual WebFloatPoint adjustEventPointForPinchZoom(const WebFloatPoint&) const = 0;
+    // FIXME: remove this after WebKit roll
+    virtual WebFloatPoint adjustEventPointForPinchZoom(const WebFloatPoint& p) const { return p; }
 
     virtual void setDeviceScaleFactor(float) = 0;
     virtual float deviceScaleFactor() const = 0;
@@ -182,6 +183,9 @@ public:
 
     // Toggles the paint rects in the HUD layer
     virtual void setShowPaintRects(bool) { }
+
+    // Toggles continuous painting
+    virtual void setContinuousPaintingEnabled(bool) { }
 
     // FIXME: Remove this.
     virtual void loseCompositorContext(int numTimes) { }

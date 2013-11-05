@@ -31,6 +31,7 @@
 #include "SecItemRequestData.h"
 #include "SecItemResponseData.h"
 #include "SecItemShimMessages.h"
+#include "SecItemShimProxyMessages.h"
 #include <Security/SecItem.h>
 
 namespace WebKit {
@@ -105,10 +106,10 @@ void SecItemShimProxy::secItemRequest(CoreIPC::Connection* connection, uint64_t 
     dispatchFunctionOnQueue(keychainWorkQueue, bind(handleSecItemRequest, RefPtr<CoreIPC::Connection>(connection), requestID, request));
 }
 
-void SecItemShimProxy::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
+void SecItemShimProxy::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
 {
-    if (messageID.is<CoreIPC::MessageClassSecItemShimProxy>()) {
-        didReceiveSecItemShimProxyMessageOnConnectionWorkQueue(connection, messageID, decoder, didHandleMessage);
+    if (decoder.messageReceiverName() == Messages::SecItemShimProxy::messageReceiverName()) {
+        didReceiveSecItemShimProxyMessageOnConnectionWorkQueue(connection, decoder, didHandleMessage);
         return;
     }
 }

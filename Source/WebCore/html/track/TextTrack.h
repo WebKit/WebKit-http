@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2011, 2012 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,12 +53,6 @@ public:
     virtual void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>) = 0;
 };
 
-enum WebVTTNodeType {
-    WebVTTNodeTypeNone = 0,
-    WebVTTNodeTypeFuture,
-    WebVTTNodeTypePast
-};
-
 class TextTrack : public TrackBase {
 public:
     static PassRefPtr<TextTrack> create(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& label, const AtomicString& language)
@@ -105,6 +99,7 @@ public:
 
     void addCue(PassRefPtr<TextTrackCue>);
     void removeCue(TextTrackCue*, ExceptionCode&);
+    bool hasCue(TextTrackCue*);
 
     void cueWillChange(TextTrackCue*);
     void cueDidChange(TextTrackCue*);

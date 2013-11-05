@@ -4864,14 +4864,14 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     WritingDirection direction = RightToLeftWritingDirection;
     switch (coreFrame->editor()->baseWritingDirectionForSelectionStart()) {
-        case NSWritingDirectionLeftToRight:
+        case LeftToRightWritingDirection:
             break;
-        case NSWritingDirectionRightToLeft:
+        case RightToLeftWritingDirection:
             direction = LeftToRightWritingDirection;
             break;
         // The writingDirectionForSelectionStart method will never return "natural". It
         // will always return a concrete direction. So, keep the compiler happy, and assert not reached.
-        case NSWritingDirectionNatural:
+        case NaturalWritingDirection:
             ASSERT_NOT_REACHED();
             break;
     }
@@ -6037,10 +6037,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     [self _updateSecureInputState];
 
-    if (!coreFrame->editor()->hasComposition())
-        return;
-
-    if (coreFrame->editor()->ignoreCompositionSelectionChange())
+    if (!coreFrame->editor()->hasComposition() || coreFrame->editor()->ignoreCompositionSelectionChange())
         return;
 
     unsigned start;

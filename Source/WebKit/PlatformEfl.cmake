@@ -89,6 +89,17 @@ if (ENABLE_GEOLOCATION)
     )
 endif ()
 
+if (ENABLE_ACCESSIBILITY)
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/accessibility"
+        "${WEBCORE_DIR}/accessibility/atk"
+        ${ATK_INCLUDE_DIRS}
+    )
+    list(APPEND WebKit_LIBRARIES
+        ${ATK_LIBRARIES}
+    )
+endif ()
+
 list(APPEND WebKit_SOURCES
     efl/WebCoreSupport/AcceleratedCompositingContextEfl.cpp
     efl/WebCoreSupport/AssertMatchingEnums.cpp
@@ -124,8 +135,6 @@ list(APPEND WebKit_SOURCES
     efl/ewk/ewk_file_chooser.cpp
     efl/ewk/ewk_frame.cpp
     efl/ewk/ewk_history.cpp
-    efl/ewk/ewk_intent.cpp
-    efl/ewk/ewk_intent_request.cpp
     efl/ewk/ewk_js.cpp
     efl/ewk/ewk_main.cpp
     efl/ewk/ewk_network.cpp
@@ -188,8 +197,6 @@ set(EWebKit_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_file_chooser.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_frame.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_history.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_intent.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_intent_request.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_js.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_main.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_network.h

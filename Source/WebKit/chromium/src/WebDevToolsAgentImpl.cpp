@@ -55,6 +55,7 @@
 #include "WebDataSource.h"
 #include "WebDevToolsAgentClient.h"
 #include "WebFrameImpl.h"
+#include "WebMemoryUsageInfo.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
 #include <public/Platform.h>
@@ -82,6 +83,8 @@ namespace WebKit {
 
 namespace BrowserDataHintStringValues {
 static const char screenshot[] = "screenshot";
+static const char acceptJavaScriptDialog[] = "acceptJavaScriptDialog";
+static const char dismissJavaScriptDialog[] = "dismissJavaScriptDialog";
 }
 
 class ClientMessageLoopAdapter : public PageScriptDebugServer::ClientMessageLoop {
@@ -573,11 +576,18 @@ void WebDevToolsAgentImpl::dumpUncountedAllocatedObjects(const HashMap<const voi
     m_client->dumpUncountedAllocatedObjects(&provider);
 }
 
-bool WebDevToolsAgentImpl::captureScreenshot(WTF::String* data)
+bool WebDevToolsAgentImpl::captureScreenshot(String* data)
 {
-    // Value is going to be substituted with the actual data on the browser level.
+    // Value is going to be substituted with the actual data in the browser process.
     *data = "{screenshot-placeholder}";
     m_sendWithBrowserDataHint = BrowserDataHintScreenshot;
+    return true;
+}
+
+bool WebDevToolsAgentImpl::handleJavaScriptDialog(bool accept)
+{
+    // Operation is going to be performed in the browser process.
+    m_sendWithBrowserDataHint = accept ? BrowserDataHintAcceptJavaScriptDialog : BrowserDataHintDismissJavaScriptDialog;
     return true;
 }
 
@@ -635,6 +645,16 @@ void WebDevToolsAgentImpl::paintPageOverlay(WebCanvas* canvas)
     }
 }
 
+WebVector<WebMemoryUsageInfo> WebDevToolsAgentImpl::processMemoryDistribution() const
+{
+    HashMap<String, size_t> memoryInfo = m_webViewImpl->page()->inspectorController()->processMemoryDistribution();
+    WebVector<WebMemoryUsageInfo> memoryInfoVector((size_t)memoryInfo.size());
+    size_t i = 0;
+    for (HashMap<String, size_t>::const_iterator it = memoryInfo.begin(); it != memoryInfo.end(); ++it)
+        memoryInfoVector[i++] = WebMemoryUsageInfo(it->key, it->value);
+    return memoryInfoVector;
+}
+
 void WebDevToolsAgentImpl::highlight()
 {
     m_webViewImpl->addPageOverlay(this, OverlayZOrders::highlight);
@@ -650,6 +670,10 @@ static String browserHintToString(WebDevToolsAgent::BrowserDataHint dataHint)
     switch (dataHint) {
     case WebDevToolsAgent::BrowserDataHintScreenshot:
         return BrowserDataHintStringValues::screenshot;
+    case WebDevToolsAgent::BrowserDataHintAcceptJavaScriptDialog:
+        return BrowserDataHintStringValues::acceptJavaScriptDialog;
+    case WebDevToolsAgent::BrowserDataHintDismissJavaScriptDialog:
+        return BrowserDataHintStringValues::dismissJavaScriptDialog;
     case WebDevToolsAgent::BrowserDataHintNone:
     default:
         ASSERT_NOT_REACHED();
@@ -661,6 +685,10 @@ static WebDevToolsAgent::BrowserDataHint browserHintFromString(const String& val
 {
     if (value == BrowserDataHintStringValues::screenshot)
         return WebDevToolsAgent::BrowserDataHintScreenshot;
+    if (value == BrowserDataHintStringValues::acceptJavaScriptDialog)
+        return WebDevToolsAgent::BrowserDataHintAcceptJavaScriptDialog;
+    if (value == BrowserDataHintStringValues::dismissJavaScriptDialog)
+        return WebDevToolsAgent::BrowserDataHintDismissJavaScriptDialog;
     ASSERT_NOT_REACHED();
     return WebDevToolsAgent::BrowserDataHintNone;
 }
@@ -749,7 +777,8 @@ bool WebDevToolsAgent::shouldInterruptForMessage(const WebString& message)
         || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kDebugger_setBreakpointsActiveCmd]
         || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_startCmd]
         || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_stopCmd]
-        || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_getProfileCmd];
+        || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_getCPUProfileCmd]
+        || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_getHeapSnapshotCmd];
 }
 
 void WebDevToolsAgent::processPendingMessages()
@@ -814,6 +843,10 @@ WebString WebDevToolsAgent::patchWithBrowserData(const WebString& message, Brows
     switch (dataHint) {
     case BrowserDataHintScreenshot:
         resultObject->setString("data", hintData);
+        break;
+    case BrowserDataHintAcceptJavaScriptDialog:
+        break;
+    case BrowserDataHintDismissJavaScriptDialog:
         break;
     case BrowserDataHintNone:
     default:

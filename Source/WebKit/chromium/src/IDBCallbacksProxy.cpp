@@ -37,7 +37,7 @@
 #include "IDBDatabaseBackendProxy.h"
 #include "IDBDatabaseCallbacksProxy.h"
 #include "IDBDatabaseError.h"
-#include "IDBTransactionBackendInterface.h"
+#include "IDBMetadata.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBCursorImpl.h"
 #include "WebIDBDatabaseCallbacks.h"
@@ -45,8 +45,8 @@
 #include "WebIDBDatabaseException.h"
 #include "WebIDBDatabaseImpl.h"
 #include "WebIDBKey.h"
-#include "WebIDBTransactionImpl.h"
-#include "platform/WebSerializedScriptValue.h"
+#include "WebIDBMetadata.h"
+#include "WebSerializedScriptValue.h"
 
 using namespace WebCore;
 
@@ -83,12 +83,12 @@ void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBCursorBackendInterface> idbCurso
     m_callbacks->onSuccess(new WebIDBCursorImpl(idbCursorBackend), key, primaryKey, value);
 }
 
-void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBDatabaseBackendInterface> backend)
+void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBDatabaseBackendInterface> backend, const IDBDatabaseMetadata& metadata)
 {
     ASSERT(m_databaseCallbacks.get());
     m_didComplete = true;
     WebIDBDatabaseImpl* impl = m_didCreateProxy ? 0 : new WebIDBDatabaseImpl(backend, m_databaseCallbacks.release());
-    m_callbacks->onSuccess(impl);
+    m_callbacks->onSuccess(impl, metadata);
 }
 
 void IDBCallbacksProxy::onSuccess(PassRefPtr<IDBKey> idbKey)
@@ -151,21 +151,16 @@ void IDBCallbacksProxy::onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >& key
     m_callbacks->onSuccessWithPrefetch(webKeys, webPrimaryKeys, webValues);
 }
 
-void IDBCallbacksProxy::onBlocked()
-{
-    m_callbacks->onBlocked();
-}
-
 void IDBCallbacksProxy::onBlocked(int64_t existingVersion)
 {
     m_callbacks->onBlocked(existingVersion);
 }
 
-void IDBCallbacksProxy::onUpgradeNeeded(int64_t oldVersion, PassRefPtr<IDBTransactionBackendInterface> transaction, PassRefPtr<IDBDatabaseBackendInterface> database)
+void IDBCallbacksProxy::onUpgradeNeeded(int64_t oldVersion, PassRefPtr<IDBDatabaseBackendInterface> database, const IDBDatabaseMetadata& metadata)
 {
     ASSERT(m_databaseCallbacks);
     m_didCreateProxy = true;
-    m_callbacks->onUpgradeNeeded(oldVersion, new WebIDBTransactionImpl(transaction), new WebIDBDatabaseImpl(database, m_databaseCallbacks));
+    m_callbacks->onUpgradeNeeded(oldVersion, new WebIDBDatabaseImpl(database, m_databaseCallbacks), metadata);
 }
 
 void IDBCallbacksProxy::setDatabaseCallbacks(PassRefPtr<IDBDatabaseCallbacksProxy> databaseCallbacks)

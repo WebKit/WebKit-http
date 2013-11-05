@@ -45,6 +45,7 @@
 #include "WebMemorySampler.h"
 #include "WebPage.h"
 #include "WebPageCreationParameters.h"
+#include "WebPageGroupProxyMessages.h"
 #include "WebPlatformStrategies.h"
 #include "WebPreferencesStore.h"
 #include "WebProcessCreationParameters.h"
@@ -79,10 +80,6 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/PassRefPtr.h>
-
-#if ENABLE(WEB_INTENTS)
-#include <WebCore/PlatformMessagePortChannel.h>
-#endif
 
 #if ENABLE(NETWORK_INFO)
 #include "WebNetworkInfoManagerMessages.h"
@@ -583,22 +580,22 @@ void WebProcess::terminate()
     ChildProcess::terminate();
 }
 
-void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    messageReceiverMap().dispatchSyncMessage(connection, messageID, decoder, replyEncoder);
+    messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
 
-void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    if (messageReceiverMap().dispatchMessage(connection, messageID, decoder))
+    if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
 
-    if (messageID.is<CoreIPC::MessageClassWebProcess>()) {
-        didReceiveWebProcessMessage(connection, messageID, decoder);
+    if (decoder.messageReceiverName() == Messages::WebProcess::messageReceiverName()) {
+        didReceiveWebProcessMessage(connection, decoder);
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassWebPageGroupProxy>()) {
+    if (decoder.messageReceiverName() == Messages::WebPageGroupProxy::messageReceiverName()) {
         uint64_t pageGroupID = decoder.destinationID();
         if (!pageGroupID)
             return;
@@ -607,7 +604,7 @@ void WebProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Mes
         if (!pageGroupProxy)
             return;
         
-        pageGroupProxy->didReceiveMessage(connection, messageID, decoder);
+        pageGroupProxy->didReceiveMessage(connection, decoder);
     }
 }
 
@@ -637,10 +634,10 @@ void WebProcess::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringR
     // we'll let it slide.
 }
 
-void WebProcess::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
+void WebProcess::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
 {
-    if (messageID.is<CoreIPC::MessageClassWebProcess>()) {
-        didReceiveWebProcessMessageOnConnectionWorkQueue(connection, messageID, decoder, didHandleMessage);
+    if (decoder.messageReceiverName() == Messages::WebProcess::messageReceiverName()) {
+        didReceiveWebProcessMessageOnConnectionWorkQueue(connection, decoder, didHandleMessage);
         return;
     }
 }
@@ -683,26 +680,6 @@ WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupDat
 
     return result.iterator->value.get();
 }
-
-#if ENABLE(WEB_INTENTS)
-uint64_t WebProcess::addMessagePortChannel(PassRefPtr<PlatformMessagePortChannel> messagePortChannel)
-{
-    static uint64_t channelID = 0;
-    m_messagePortChannels.add(++channelID, messagePortChannel);
-
-    return channelID;
-}
-
-PlatformMessagePortChannel* WebProcess::messagePortChannel(uint64_t channelID)
-{
-    return m_messagePortChannels.get(channelID).get();
-}
-
-void WebProcess::removeMessagePortChannel(uint64_t channelID)
-{
-    m_messagePortChannels.remove(channelID);
-}
-#endif
 
 void WebProcess::clearResourceCaches(ResourceCachesToClear resourceCachesToClear)
 {
@@ -816,7 +793,8 @@ void WebProcess::plugInDidReceiveUserInteraction(unsigned plugInOriginHash)
         return;
 
     HashMap<unsigned, double>::iterator it = m_plugInAutoStartOrigins.find(plugInOriginHash);
-    ASSERT(it != m_plugInAutoStartOrigins.end());
+    if (it == m_plugInAutoStartOrigins.end())
+        return;
     if (it->value - currentTime() > plugInAutoStartExpirationTimeUpdateThreshold)
         return;
 
@@ -1078,7 +1056,7 @@ void WebProcess::initializeProcessName(const ChildProcessInitializationParameter
 {
 }
 
-void WebProcess::initializeSandbox(const ChildProcessInitializationParameters&)
+void WebProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
 {
 }
 

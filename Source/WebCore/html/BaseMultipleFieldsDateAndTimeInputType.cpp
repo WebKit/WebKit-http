@@ -73,10 +73,17 @@ void BaseMultipleFieldsDateAndTimeInputType::didFocusOnControl()
 void BaseMultipleFieldsDateAndTimeInputType::editControlValueChanged()
 {
     RefPtr<HTMLInputElement> input(element());
-    input->setValueInternal(sanitizeValue(m_dateTimeEditElement->value()), DispatchNoEvent);
-    input->setNeedsStyleRecalc();
-    input->dispatchFormControlInputEvent();
-    input->dispatchFormControlChangeEvent();
+    String oldValue = input->value();
+    String newValue = sanitizeValue(m_dateTimeEditElement->value());
+    // Even if oldValue is null and newValue is "", we should assume they are same.
+    if ((oldValue.isEmpty() && newValue.isEmpty()) || oldValue == newValue)
+        input->setNeedsValidityCheck();
+    else {
+        input->setValueInternal(newValue, DispatchNoEvent);
+        input->setNeedsStyleRecalc();
+        input->dispatchFormControlInputEvent();
+        input->dispatchFormControlChangeEvent();
+    }
     input->notifyFormStateChanged();
 }
 
@@ -133,7 +140,7 @@ bool BaseMultipleFieldsDateAndTimeInputType::isPickerIndicatorOwnerDisabledOrRea
 void BaseMultipleFieldsDateAndTimeInputType::pickerIndicatorChooseValue(const String& value)
 {
     if (element()->isValidValue(value)) {
-        element()->setValue(value, DispatchChangeEvent);
+        element()->setValue(value, DispatchInputAndChangeEvent);
         return;
     }
 
@@ -183,14 +190,10 @@ void BaseMultipleFieldsDateAndTimeInputType::blur()
 
 void BaseMultipleFieldsDateAndTimeInputType::createShadowSubtree()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, dateAndTimeInputContainerPseudoId, ("-webkit-date-and-time-container", AtomicString::ConstructFromLiteral));
-
     ASSERT(element()->shadow());
 
     Document* document = element()->document();
-    RefPtr<HTMLDivElement> container = HTMLDivElement::create(document);
-    element()->userAgentShadowRoot()->appendChild(container);
-    container->setPseudo(dateAndTimeInputContainerPseudoId);
+    ContainerNode* container = element()->userAgentShadowRoot();
 
     RefPtr<DateTimeEditElement> dateTimeEditElement(DateTimeEditElement::create(document, *this));
     m_dateTimeEditElement = dateTimeEditElement.get();
@@ -237,7 +240,7 @@ void BaseMultipleFieldsDateAndTimeInputType::destroyShadowSubtree()
     BaseDateAndTimeInputType::destroyShadowSubtree();
 }
 
-void BaseMultipleFieldsDateAndTimeInputType::focus(bool)
+void BaseMultipleFieldsDateAndTimeInputType::focus(bool, FocusDirection)
 {
     if (m_dateTimeEditElement)
         m_dateTimeEditElement->focusByOwner();
@@ -278,6 +281,11 @@ void BaseMultipleFieldsDateAndTimeInputType::handleKeydownEvent(KeyboardEvent* e
 bool BaseMultipleFieldsDateAndTimeInputType::hasBadInput() const
 {
     return element()->value().isEmpty() && m_dateTimeEditElement && m_dateTimeEditElement->anyEditableFieldsHaveValues();
+}
+
+bool BaseMultipleFieldsDateAndTimeInputType::isFocusableByClickOnLabel() const
+{
+    return element()->isTextFormControlFocusable();
 }
 
 bool BaseMultipleFieldsDateAndTimeInputType::isKeyboardFocusable(KeyboardEvent*) const
@@ -333,6 +341,11 @@ void BaseMultipleFieldsDateAndTimeInputType::setValue(const String& sanitizedVal
     }
 }
 
+bool BaseMultipleFieldsDateAndTimeInputType::shouldApplyLocaleDirection() const
+{
+    return true;
+}
+
 bool BaseMultipleFieldsDateAndTimeInputType::shouldUseInputMethod() const
 {
     return false;
@@ -347,10 +360,6 @@ void BaseMultipleFieldsDateAndTimeInputType::updateInnerTextValue()
 {
     if (!m_dateTimeEditElement)
         return;
-
-    AtomicString direction = element()->locale().isRTL() ? AtomicString("rtl", AtomicString::ConstructFromLiteral) : AtomicString("ltr", AtomicString::ConstructFromLiteral);
-    if (Element* container = ElementTraversal::firstWithin(element()->userAgentShadowRoot()))
-        container->setAttribute(HTMLNames::dirAttr, direction);
 
     DateTimeEditElement::LayoutParameters layoutParameters(element()->locale(), createStepRange(AnyIsDefaultStep));
 

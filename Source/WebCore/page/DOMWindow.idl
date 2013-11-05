@@ -297,6 +297,7 @@
     attribute EventListener onwebkitanimationiteration;
     attribute EventListener onwebkitanimationstart;
     attribute EventListener onwebkittransitionend;
+    attribute EventListener ontransitionend;
 #if defined(ENABLE_ORIENTATION_EVENTS) && ENABLE_ORIENTATION_EVENTS
     attribute EventListener onorientationchange;
 #endif
@@ -348,6 +349,9 @@
     attribute CSSRuleConstructor CSSRule;
     attribute CSSCharsetRuleConstructor CSSCharsetRule;
     attribute CSSFontFaceRuleConstructor CSSFontFaceRule;
+#if defined(ENABLE_SHADOW_DOM) && ENABLE_SHADOW_DOM
+    attribute CSSHostRuleConstructor CSSHostRule;
+#endif
     attribute CSSImportRuleConstructor CSSImportRule;
     attribute CSSMediaRuleConstructor CSSMediaRule;
     attribute CSSPageRuleConstructor CSSPageRule;
@@ -392,6 +396,7 @@
     attribute NotationConstructor Notation;
     attribute EntityConstructor Entity;
     attribute EntityReferenceConstructor EntityReference;
+    [Conditional=CANVAS_PATH] attribute DOMPathConstructor Path;
     attribute ProcessingInstructionConstructor ProcessingInstruction;
     [Conditional=SHADOW_DOM, V8EnabledAtRuntime=shadowDOM] attribute ShadowRootConstructor WebKitShadowRoot;
     [Conditional=SHADOW_DOM, V8EnabledAtRuntime=shadowDOM] attribute HTMLContentElementConstructor HTMLContentElement;
@@ -549,6 +554,7 @@
     attribute PageTransitionEventConstructor PageTransitionEvent;
     attribute ProgressEventConstructor ProgressEvent;
     attribute TextEventConstructor TextEvent;
+    attribute TransitionEventConstructor TransitionEvent;
     attribute UIEventConstructor UIEvent;
     attribute WebKitAnimationEventConstructor WebKitAnimationEvent;
     attribute WebKitTransitionEventConstructor WebKitTransitionEvent;
@@ -626,7 +632,7 @@
     // Expose all implemented SVG 1.1 interfaces, excluding the SVG MI interfaces:
     // SVGAnimatedPathData, SVGAnimatedPoints, SVGExternalResourcesRequired,
     // SVGFilterPrimitiveStandardAttributes, SVGFitToViewBox, SVGLangSpace, SVGLocatable
-    // SVGStylable, SVGTests, SVGTransformable, SVGURIReference, SVGZoomAndPan
+    // SVGTests, SVGTransformable, SVGURIReference, SVGZoomAndPan
     attribute SVGAElementConstructor SVGAElement;
     attribute SVGAngleConstructor SVGAngle;
     attribute SVGAnimatedAngleConstructor SVGAnimatedAngle;

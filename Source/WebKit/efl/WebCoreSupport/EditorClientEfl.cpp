@@ -152,14 +152,7 @@ void EditorClientEfl::respondToChangedSelection(Frame* coreFrame)
     Evas_Object* webFrame = EWKPrivate::kitFrame(coreFrame);
     ewk_frame_editor_client_selection_changed(webFrame);
 
-    if (!coreFrame->editor()->hasComposition() || coreFrame->editor()->ignoreCompositionSelectionChange())
-        return;
-
-    unsigned start;
-    unsigned end;
-
-    if (!coreFrame->editor()->getCompositionSelection(start, end))
-        coreFrame->editor()->cancelComposition();
+    coreFrame->editor()->cancelCompositionIfSelectionIsInvalid();
 }
 
 void EditorClientEfl::didEndEditing()
@@ -170,6 +163,14 @@ void EditorClientEfl::didEndEditing()
 void EditorClientEfl::didWriteSelectionToPasteboard()
 {
     notImplemented();
+}
+
+void EditorClientEfl::willWriteSelectionToPasteboard(WebCore::Range*)
+{
+}
+
+void EditorClientEfl::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>&, Vector<RefPtr<WebCore::SharedBuffer> >&)
+{
 }
 
 void EditorClientEfl::didSetSelectionTypesForPasteboard()

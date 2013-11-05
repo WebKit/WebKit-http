@@ -31,14 +31,14 @@
 #ifndef WebFrame_h
 #define WebFrame_h
 
+#include "../../../Platform/chromium/public/WebCanvas.h"
+#include "../../../Platform/chromium/public/WebFileSystem.h"
+#include "../../../Platform/chromium/public/WebReferrerPolicy.h"
+#include "../../../Platform/chromium/public/WebURL.h"
 #include "WebIconURL.h"
 #include "WebMessagePortChannel.h"
 #include "WebNode.h"
 #include "WebURLLoaderOptions.h"
-#include "platform/WebCanvas.h"
-#include "platform/WebFileSystem.h"
-#include "platform/WebReferrerPolicy.h"
-#include "platform/WebURL.h"
 
 struct NPObject;
 
@@ -169,6 +169,9 @@ public:
 
     // Returns true if the contents (minus scrollbars) has non-zero area.
     virtual bool hasVisibleContent() const = 0;
+
+    // Returns the visible content rect (minus scrollbars, in absolute coordinate)
+    virtual WebRect visibleContentRect() const = 0;
 
     virtual bool hasHorizontalScrollbar() const = 0;
     virtual bool hasVerticalScrollbar() const = 0;

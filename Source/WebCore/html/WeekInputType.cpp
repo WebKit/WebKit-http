@@ -58,6 +58,11 @@ PassOwnPtr<InputType> WeekInputType::create(HTMLInputElement* element)
     return adoptPtr(new WeekInputType(element));
 }
 
+void WeekInputType::attach()
+{
+    observeFeatureIfVisible(FeatureObserver::InputTypeWeek);
+}
+
 const AtomicString& WeekInputType::formControlType() const
 {
     return InputTypeNames::week();
@@ -109,7 +114,7 @@ String WeekInputType::formatDateTimeFieldsState(const DateTimeFieldsState& dateT
 void WeekInputType::setupLayoutParameters(DateTimeEditElement::LayoutParameters& layoutParameters, const DateComponents&) const
 {
     layoutParameters.dateTimeFormat = weekFormatInLDML();
-    layoutParameters.fallbackDateTimeFormat = "'Week' ww-yyyy";
+    layoutParameters.fallbackDateTimeFormat = "yyyy-'W'ww";
     if (!parseToDateComponents(element()->fastGetAttribute(minAttr), &layoutParameters.minimum))
         layoutParameters.minimum = DateComponents();
     if (!parseToDateComponents(element()->fastGetAttribute(maxAttr), &layoutParameters.maximum))

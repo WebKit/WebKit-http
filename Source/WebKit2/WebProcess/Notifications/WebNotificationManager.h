@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,7 +51,7 @@ public:
     explicit WebNotificationManager(WebProcess*);
     ~WebNotificationManager();
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
     
     bool show(WebCore::Notification*, WebPage*);
     void cancel(WebCore::Notification*, WebPage*);
@@ -72,10 +72,8 @@ private:
     virtual void initialize(const WebProcessCreationParameters&) OVERRIDE;
 
     // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-
     // Implemented in generated WebNotificationManagerMessageReceiver.cpp
-    void didReceiveWebNotificationManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
     
     void didShowNotification(uint64_t notificationID);
     void didClickNotification(uint64_t notificationID);

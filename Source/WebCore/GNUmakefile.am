@@ -6,7 +6,7 @@ WEBCORE_CSS_VALUE_KEYWORDS := $(WebCore)/css/CSSValueKeywords.in
 
 webcore_cppflags += \
 	-DWTF_USE_FREETYPE=1 \
-	-DWTF_USE_HARFBUZZ_NG=1 \
+	-DWTF_USE_HARFBUZZ=1 \
 	-DWTF_USE_WEBP=1 \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/src \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include \
@@ -161,6 +161,7 @@ if USE_GSTREAMER
 if ENABLE_DEBUG
 webcore_cppflags += -DGST_DISABLE_DEPRECATED
 endif # END ENABLE_DEBUG
+webcore_cppflags += -DWTF_USE_NATIVE_FULLSCREEN_VIDEO=1
 endif # END USE_GSTREAMER
 else
 feature_defines_overrides += ENABLE_VIDEO=0 ENABLE_VIDEO_TRACK=0
@@ -253,7 +254,8 @@ libWebCoreSVG_la_CPPFLAGS = \
 	-fno-strict-aliasing \
 	$(CAIRO_CFLAGS) \
 	$(FREETYPE_CFLAGS) \
-	$(LIBSOUP_CFLAGS)
+	$(LIBSOUP_CFLAGS) \
+	$(UNICODE_CFLAGS)
 
 feature_defines_overrides += ENABLE_SVG=1
 WEBCORE_CSS_PROPERTY_NAMES += $(WebCore)/css/SVGCSSPropertyNames.in
@@ -336,6 +338,12 @@ else
 feature_defines_overrides += ENABLE_SPELLCHECK=0
 endif  # END ENABLE_SPELLCHECK
 
+if ENABLE_INDEXED_DATABASE
+webcore_cppflags += \
+	-DWTF_USE_LEVELDB=1 \
+	-I$(srcdir)/Source/ThirdParty/leveldb \
+	-I$(srcdir)/Source/ThirdParty/leveldb/include
+endif
 
 # Fill the feature_defines variable with all the defines, making it possible
 # to override the default define value (as set in feature_defines_defaults)
@@ -408,7 +416,8 @@ USER_AGENT_STYLE_SHEETS = \
 	$(WebCore)/css/svg.css \
 	$(WebCore)/css/mediaControls.css \
 	$(WebCore)/css/mediaControlsGtk.css \
-	$(WebCore)/css/fullscreen.css
+	$(WebCore)/css/fullscreen.css \
+	$(WebCore)/css/plugIns.css
 
 # new-style JavaScript bindings
 SCRIPTS_FOR_GENERATE_BINDINGS = \
@@ -564,6 +573,11 @@ noinst_LTLIBRARIES += \
 	libWebCoreModules.la \
 	libWebCore.la
 
+if ENABLE_INDEXED_DATABASE
+noinst_LTLIBRARIES += \
+	libLevelDB.la
+endif
+
 if ENABLE_SVG
 noinst_LTLIBRARIES += \
 	libWebCoreSVG.la
@@ -634,24 +648,36 @@ endif
 
 libWebCoreModules_la_SOURCES = \
 	$(webcore_modules_sources)
-
 libWebCoreModules_la_CXXFLAGS = $(libWebCore_la_CXXFLAGS)
-
 libWebCoreModules_la_CFLAGS = $(libWebCore_la_CFLAGS)
-
 libWebCoreModules_la_CPPFLAGS = $(libWebCore_la_CPPFLAGS)
+
+libLevelDB_la_CXXFLAGS = $(global_cxxflags)
+libLevelDB_la_CFLAGS = $(global_cxflags)
+libLevelDB_la_CPPFLAGS = \
+	$(global_cppflags) \
+	-fno-builtin-memcmp \
+	-I$(srcdir)/Source/ThirdParty/leveldb \
+	-I$(srcdir)/Source/ThirdParty/leveldb/include
+
+if TARGET_WIN32
+libLevelDB_la_CPPFLAGS += \
+	-DOS_WIN
+else
+libLevelDB_la_CPPFLAGS += \
+	-pthread \
+	-DOS_LINUX \
+	-DLEVELDB_PLATFORM_POSIX
+endif
 
 libWebCorePlatform_la_SOURCES = \
 	$(webcore_platform_sources)
-
 libWebCorePlatform_la_CXXFLAGS = \
 	$(SYMBOL_VISIBILITY_INLINES) \
 	$(global_cxxflags)
-
 libWebCorePlatform_la_CFLAGS = \
 	$(SYMBOL_VISIBILITY) \
 	$(global_cflags)
-
 libWebCorePlatform_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
 	$(global_cppflags) \
@@ -790,6 +816,7 @@ EXTRA_DIST += \
 	Source/WebCore/css/mathml.css \
 	Source/WebCore/css/mediaControls.css \
 	Source/WebCore/css/mediaControlsGtk.css \
+	Source/WebCore/css/plugIns.css \
 	Source/WebCore/css/quirks.css \
 	Source/WebCore/css/svg.css \
 	Source/WebCore/css/SVGCSSPropertyNames.in \

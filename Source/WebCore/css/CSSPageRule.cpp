@@ -73,7 +73,7 @@ void CSSPageRule::setSelectorText(const String& selectorText)
     CSSParser parser(parserContext());
     CSSSelectorList selectorList;
     parser.parseSelector(selectorText, selectorList);
-    if (!selectorList.first())
+    if (!selectorList.isValid())
         return;
 
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -107,8 +107,8 @@ void CSSPageRule::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     CSSRule::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_pageRule);
-    info.addMember(m_propertiesCSSOMWrapper);
+    info.addMember(m_pageRule, "pageRule");
+    info.addMember(m_propertiesCSSOMWrapper, "propertiesCSSOMWrapper");
 }
 
 } // namespace WebCore

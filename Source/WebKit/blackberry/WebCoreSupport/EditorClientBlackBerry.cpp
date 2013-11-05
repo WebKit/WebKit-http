@@ -253,6 +253,16 @@ void EditorClientBlackBerry::didWriteSelectionToPasteboard()
     notImplemented();
 }
 
+void EditorClientBlackBerry::willWriteSelectionToPasteboard(WebCore::Range*)
+{
+    notImplemented();
+}
+
+void EditorClientBlackBerry::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>&, Vector<RefPtr<WebCore::SharedBuffer> >&)
+{
+    notImplemented();
+}
+
 void EditorClientBlackBerry::didSetSelectionTypesForPasteboard()
 {
     notImplemented();

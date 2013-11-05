@@ -47,7 +47,7 @@ public:
 
     virtual ~SVGElementInstance();
 
-    void setParentOrHostNode(SVGElementInstance* instance) { m_parentInstance = instance; }
+    void setParentOrShadowHostNode(SVGElementInstance* instance) { m_parentInstance = instance; }
 
     virtual const AtomicString& interfaceName() const;
     virtual ScriptExecutionContext* scriptExecutionContext() const;
@@ -161,7 +161,7 @@ private:
     friend void appendChildToContainer(GenericNode* child, GenericNodeContainer* container);
 
     template<class GenericNode, class GenericNodeContainer>
-    friend void removeAllChildrenInContainer(GenericNodeContainer* container);
+    friend void removeDetachedChildrenInContainer(GenericNodeContainer*);
 
     template<class GenericNode, class GenericNodeContainer>
     friend void Private::addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer* container);

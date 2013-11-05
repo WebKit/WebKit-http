@@ -47,6 +47,10 @@
 #include <wtf/MemoryInstrumentationHashSet.h>
 #include <wtf/MemoryInstrumentationVector.h>
 
+#if ENABLE(VIDEO_TRACK)
+#include "TextTrackCue.h"
+#endif
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -55,13 +59,15 @@ using namespace HTMLNames;
 
 static inline bool isSelectorMatchingHTMLBasedOnRuleHash(const CSSSelector* selector)
 {
-    const AtomicString& selectorNamespace = selector->tag().namespaceURI();
-    if (selectorNamespace != starAtom && selectorNamespace != xhtmlNamespaceURI)
-        return false;
-    if (selector->m_match == CSSSelector::None)
+    ASSERT(selector);
+    if (selector->m_match == CSSSelector::Tag) {
+        const AtomicString& selectorNamespace = selector->tagQName().namespaceURI();
+        if (selectorNamespace != starAtom && selectorNamespace != xhtmlNamespaceURI)
+            return false;
+        if (selector->relation() == CSSSelector::SubSelector)
+            return isSelectorMatchingHTMLBasedOnRuleHash(selector->tagHistory());
         return true;
-    if (selector->tag() != starAtom)
-        return false;
+    }
     if (SelectorChecker::isCommonPseudoClassSelector(selector))
         return true;
     return selector->m_match == CSSSelector::Id || selector->m_match == CSSSelector::Class;
@@ -69,12 +75,14 @@ static inline bool isSelectorMatchingHTMLBasedOnRuleHash(const CSSSelector* sele
 
 static inline bool selectorListContainsUncommonAttributeSelector(const CSSSelector* selector)
 {
-    CSSSelectorList* selectorList = selector->selectorList();
+    const CSSSelectorList* selectorList = selector->selectorList();
     if (!selectorList)
         return false;
-    for (CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
-        if (subSelector->isAttributeSelector())
-            return true;
+    for (const CSSSelector* selector = selectorList->first(); selector; selector = CSSSelectorList::next(selector)) {
+        for (const CSSSelector* component = selector; component; component = component->tagHistory()) {
+            if (component->isAttributeSelector())
+                return true;
+        }
     }
     return false;
 }
@@ -108,18 +116,33 @@ static inline bool containsUncommonAttributeSelector(const CSSSelector* selector
     return false;
 }
 
+static inline PropertyWhitelistType determinePropertyWhitelistType(const AddRuleFlags addRuleFlags, const CSSSelector* selector)
+{
+    if (addRuleFlags & RuleIsInRegionRule)
+        return PropertyWhitelistRegion;
+#if ENABLE(VIDEO_TRACK)
+    for (const CSSSelector* component = selector; component; component = component->tagHistory()) {
+        if (component->pseudoType() == CSSSelector::PseudoCue || (component->m_match != CSSSelector::Tag && component->value() == TextTrackCue::cueShadowPseudoId()))
+            return PropertyWhitelistCue;
+    }
+#else
+    UNUSED_PARAM(selector);
+#endif
+    return PropertyWhitelistNone;
+}
+
 RuleData::RuleData(StyleRule* rule, unsigned selectorIndex, unsigned position, AddRuleFlags addRuleFlags)
     : m_rule(rule)
     , m_selectorIndex(selectorIndex)
     , m_position(position)
-    , m_specificity(selector()->specificity())
     , m_hasFastCheckableSelector((addRuleFlags & RuleCanUseFastCheckSelector) && SelectorChecker::isFastCheckableSelector(selector()))
+    , m_specificity(selector()->specificity())
     , m_hasMultipartSelector(!!selector()->tagHistory())
     , m_hasRightmostSelectorMatchingHTMLBasedOnRuleHash(isSelectorMatchingHTMLBasedOnRuleHash(selector()))
     , m_containsUncommonAttributeSelector(WebCore::containsUncommonAttributeSelector(selector()))
     , m_linkMatchType(SelectorChecker::determineLinkMatchType(selector()))
     , m_hasDocumentSecurityOrigin(addRuleFlags & RuleHasDocumentSecurityOrigin)
-    , m_isInRegionRule(!!(addRuleFlags & RuleIsInRegionRule))
+    , m_propertyWhitelistType(determinePropertyWhitelistType(addRuleFlags, selector()))
 {
     ASSERT(m_position == position);
     ASSERT(m_selectorIndex == selectorIndex);
@@ -129,49 +152,42 @@ RuleData::RuleData(StyleRule* rule, unsigned selectorIndex, unsigned position, A
 void RuleData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_rule);
-}
-
-static void reportAtomRuleMap(MemoryClassInfo* info, const RuleSet::AtomRuleMap& atomicRuleMap)
-{
-    info->addMember(atomicRuleMap);
-    for (RuleSet::AtomRuleMap::const_iterator it = atomicRuleMap.begin(); it != atomicRuleMap.end(); ++it)
-        info->addMember(*it->value);
+    info.addMember(m_rule, "rule");
 }
 
 void RuleSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    reportAtomRuleMap(&info, m_idRules);
-    reportAtomRuleMap(&info, m_classRules);
-    reportAtomRuleMap(&info, m_tagRules);
-    reportAtomRuleMap(&info, m_shadowPseudoElementRules);
-    info.addMember(m_linkPseudoClassRules);
+    info.addMember(m_idRules, "idRules");
+    info.addMember(m_classRules, "classRules");
+    info.addMember(m_tagRules, "tagRules");
+    info.addMember(m_shadowPseudoElementRules, "shadowPseudoElementRules");
+    info.addMember(m_linkPseudoClassRules, "linkPseudoClassRules");
 #if ENABLE(VIDEO_TRACK)
-    info.addMember(m_cuePseudoRules);
+    info.addMember(m_cuePseudoRules, "cuePseudoRules");
 #endif
-    info.addMember(m_focusPseudoClassRules);
-    info.addMember(m_universalRules);
-    info.addMember(m_pageRules);
-    info.addMember(m_regionSelectorsAndRuleSets);
-    info.addMember(m_features);
+    info.addMember(m_focusPseudoClassRules, "focusPseudoClassRules");
+    info.addMember(m_universalRules, "universalRules");
+    info.addMember(m_pageRules, "pageRules");
+    info.addMember(m_regionSelectorsAndRuleSets, "regionSelectorsAndRuleSets");
+    info.addMember(m_features, "features");
 }
 
 void RuleSet::RuleSetSelectorPair::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(ruleSet);
-    info.addMember(selector);
+    info.addMember(ruleSet, "ruleSet");
+    info.addMember(selector, "selector");
 }
 
 static void collectFeaturesFromRuleData(RuleFeatureSet& features, const RuleData& ruleData)
 {
     bool foundSiblingSelector = false;
-    for (CSSSelector* selector = ruleData.selector(); selector; selector = selector->tagHistory()) {
+    for (const CSSSelector* selector = ruleData.selector(); selector; selector = selector->tagHistory()) {
         features.collectFeaturesFromSelector(selector);
         
-        if (CSSSelectorList* selectorList = selector->selectorList()) {
-            for (CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
+        if (const CSSSelectorList* selectorList = selector->selectorList()) {
+            for (const CSSSelector* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
                 if (!foundSiblingSelector && selector->isSiblingSelector())
                     foundSiblingSelector = true;
                 features.collectFeaturesFromSelector(subSelector);
@@ -195,53 +211,66 @@ void RuleSet::addToRuleSet(AtomicStringImpl* key, AtomRuleMap& map, const RuleDa
     rules->append(ruleData);
 }
 
-void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, AddRuleFlags addRuleFlags)
+bool RuleSet::findBestRuleSetAndAdd(const CSSSelector* component, RuleData& ruleData)
 {
-    RuleData ruleData(rule, selectorIndex, m_ruleCount++, addRuleFlags);
-
-    collectFeaturesFromRuleData(m_features, ruleData);
-
-    CSSSelector* selector = ruleData.selector();
-
-    if (selector->m_match == CSSSelector::Id) {
-        addToRuleSet(selector->value().impl(), m_idRules, ruleData);
-        return;
+    if (component->m_match == CSSSelector::Id) {
+        addToRuleSet(component->value().impl(), m_idRules, ruleData);
+        return true;
     }
-    if (selector->m_match == CSSSelector::Class) {
-        addToRuleSet(selector->value().impl(), m_classRules, ruleData);
-        return;
+    if (component->m_match == CSSSelector::Class) {
+        addToRuleSet(component->value().impl(), m_classRules, ruleData);
+        return true;
     }
-    if (selector->isCustomPseudoElement()) {
-        addToRuleSet(selector->value().impl(), m_shadowPseudoElementRules, ruleData);
-        return;
+    if (component->isCustomPseudoElement()) {
+        addToRuleSet(component->value().impl(), m_shadowPseudoElementRules, ruleData);
+        return true;
     }
 #if ENABLE(VIDEO_TRACK)
-    if (selector->pseudoType() == CSSSelector::PseudoCue) {
+    if (component->pseudoType() == CSSSelector::PseudoCue) {
         m_cuePseudoRules.append(ruleData);
-        return;
+        return true;
     }
 #endif
-    if (SelectorChecker::isCommonPseudoClassSelector(selector)) {
-        switch (selector->pseudoType()) {
+    if (SelectorChecker::isCommonPseudoClassSelector(component)) {
+        switch (component->pseudoType()) {
         case CSSSelector::PseudoLink:
         case CSSSelector::PseudoVisited:
         case CSSSelector::PseudoAnyLink:
             m_linkPseudoClassRules.append(ruleData);
-            return;
+            return true;
         case CSSSelector::PseudoFocus:
             m_focusPseudoClassRules.append(ruleData);
-            return;
+            return true;
         default:
             ASSERT_NOT_REACHED();
+            return true;
         }
-        return;
     }
-    const AtomicString& localName = selector->tag().localName();
-    if (localName != starAtom) {
-        addToRuleSet(localName.impl(), m_tagRules, ruleData);
-        return;
+
+    if (component->m_match == CSSSelector::Tag) {
+        if (component->tagQName().localName() != starAtom) {
+            // If this is part of a subselector chain, recurse ahead to find a narrower set (ID/class.)
+            if (component->relation() == CSSSelector::SubSelector
+                && (component->tagHistory()->m_match == CSSSelector::Class || component->tagHistory()->m_match == CSSSelector::Id || SelectorChecker::isCommonPseudoClassSelector(component->tagHistory()))
+                && findBestRuleSetAndAdd(component->tagHistory(), ruleData))
+                return true;
+
+            addToRuleSet(component->tagQName().localName().impl(), m_tagRules, ruleData);
+            return true;
+        }
     }
-    m_universalRules.append(ruleData);
+    return false;
+}
+
+void RuleSet::addRule(StyleRule* rule, unsigned selectorIndex, AddRuleFlags addRuleFlags)
+{
+    RuleData ruleData(rule, selectorIndex, m_ruleCount++, addRuleFlags);
+    collectFeaturesFromRuleData(m_features, ruleData);
+
+    if (!findBestRuleSetAndAdd(ruleData.selector(), ruleData)) {
+        // If we didn't find a specialized map to stick it in, file under universal rules.
+        m_universalRules.append(ruleData);
+    }
 }
 
 void RuleSet::addPageRule(StyleRulePage* rule)

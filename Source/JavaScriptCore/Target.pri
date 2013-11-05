@@ -114,6 +114,7 @@ SOURCES += \
     dfg/DFGAssemblyHelpers.cpp \
     dfg/DFGByteCodeParser.cpp \
     dfg/DFGCapabilities.cpp \
+    dfg/DFGCommon.cpp \
     dfg/DFGCFAPhase.cpp \
     dfg/DFGCFGSimplificationPhase.cpp \
     dfg/DFGConstantFoldingPhase.cpp \
@@ -121,10 +122,13 @@ SOURCES += \
     dfg/DFGDisassembler.cpp \
     dfg/DFGDominators.cpp \
     dfg/DFGDriver.cpp \
+    dfg/DFGEdge.cpp \
     dfg/DFGFixupPhase.cpp \
     dfg/DFGGraph.cpp \
     dfg/DFGJITCompiler.cpp \
+    dfg/DFGLongLivedState.cpp \
     dfg/DFGMinifiedNode.cpp \
+    dfg/DFGNode.cpp \
     dfg/DFGNodeFlags.cpp \
     dfg/DFGOperations.cpp \
     dfg/DFGOSREntry.cpp \
@@ -235,6 +239,7 @@ SOURCES += \
     runtime/ExceptionHelpers.cpp \
     runtime/Executable.cpp \
     runtime/FunctionConstructor.cpp \
+    runtime/FunctionExecutableDump.cpp \
     runtime/FunctionPrototype.cpp \
     runtime/GCActivityCallback.cpp \
     runtime/GetterSetter.cpp \
@@ -266,7 +271,7 @@ SOURCES += \
     runtime/JSString.cpp \
     runtime/JSStringJoiner.cpp \
     runtime/JSSymbolTableObject.cpp \
-    runtime/JSValue.cpp \
+    runtime/JSCJSValue.cpp \
     runtime/JSVariableObject.cpp \
     runtime/JSWrapperObject.cpp \
     runtime/LiteralParser.cpp \
@@ -287,6 +292,7 @@ SOURCES += \
     runtime/PropertyDescriptor.cpp \
     runtime/PropertyNameArray.cpp \
     runtime/PropertySlot.cpp \
+    runtime/PrototypeMap.cpp \
     runtime/RegExpConstructor.cpp \
     runtime/RegExpCachedResult.cpp \
     runtime/RegExpMatchesArray.cpp \
@@ -304,6 +310,7 @@ SOURCES += \
     runtime/StringRecursionChecker.cpp \
     runtime/StructureChain.cpp \
     runtime/Structure.cpp \
+    runtime/StructureRareData.cpp \
     runtime/SymbolTable.cpp \
     runtime/TimeoutChecker.cpp \
     tools/CodeProfile.cpp \

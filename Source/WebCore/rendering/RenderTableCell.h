@@ -37,7 +37,7 @@ enum IncludeBorderColorOrNot { DoNotIncludeBorderColor, IncludeBorderColor };
 
 class RenderTableCell : public RenderBlock {
 public:
-    explicit RenderTableCell(ContainerNode*);
+    explicit RenderTableCell(Element*);
     
     unsigned colSpan() const
     {
@@ -102,7 +102,6 @@ public:
         return max(styleLogicalHeight, adjustedLogicalHeight);
     }
 
-    virtual void computePreferredLogicalWidths();
 
     void setCellLogicalWidth(int constrainedLogicalWidth);
 
@@ -151,6 +150,7 @@ public:
     bool cellWidthChanged() const { return m_cellWidthChanged; }
     void setCellWidthChanged(bool b = true) { m_cellWidthChanged = b; }
 
+    static RenderTableCell* createAnonymous(Document*);
     static RenderTableCell* createAnonymousWithParentRenderer(const RenderObject*);
     virtual RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const OVERRIDE
     {
@@ -207,6 +207,7 @@ public:
 #endif
 protected:
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
+    virtual void computePreferredLogicalWidths();
 
 private:
     virtual const char* renderName() const { return (isAnonymous() || isPseudoElement()) ? "RenderTableCell (anonymous)" : "RenderTableCell"; }
@@ -276,13 +277,13 @@ private:
 
 inline RenderTableCell* toRenderTableCell(RenderObject* object)
 {
-    ASSERT(!object || object->isTableCell());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableCell());
     return static_cast<RenderTableCell*>(object);
 }
 
 inline const RenderTableCell* toRenderTableCell(const RenderObject* object)
 {
-    ASSERT(!object || object->isTableCell());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTableCell());
     return static_cast<const RenderTableCell*>(object);
 }
 

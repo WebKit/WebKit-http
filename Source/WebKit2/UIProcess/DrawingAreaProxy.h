@@ -38,7 +38,6 @@
 namespace CoreIPC {
     class Connection;
     class MessageDecoder;
-    class MessageID;
 }
 
 namespace WebCore {
@@ -60,7 +59,7 @@ public:
 
     DrawingAreaType type() const { return m_type; }
 
-    void didReceiveDrawingAreaProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceiveDrawingAreaProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
 
     virtual void deviceScaleFactorDidChange() = 0;
 
@@ -86,8 +85,8 @@ public:
     virtual WebCore::IntRect viewportVisibleRect() const { return contentsRect(); }
     virtual WebCore::IntRect contentsRect() const;
     CoordinatedLayerTreeHostProxy* coordinatedLayerTreeHostProxy() const { return m_coordinatedLayerTreeHostProxy.get(); }
-    virtual void setVisibleContentsRect(const WebCore::FloatRect& /* visibleContentsRect */, float /* scale */, const WebCore::FloatPoint& /* trajectoryVector */) { }
-    virtual void didReceiveCoordinatedLayerTreeHostProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void setVisibleContentsRect(const WebCore::FloatRect& /* visibleContentsRect */, const WebCore::FloatPoint& /* trajectoryVector */) { }
+    virtual void didReceiveCoordinatedLayerTreeHostProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
 
     WebPageProxy* page() { return m_webPageProxy; }
 #endif

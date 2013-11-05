@@ -22,7 +22,7 @@
 
 #if ENABLE(SHARED_WORKER_PROCESS)
 
-messages -> SharedWorkerProcess {
+messages -> SharedWorkerProcess LegacyReceiver {
     # Initializes the shared worker process.
     InitializeSharedWorkerProcess(WebKit::SharedWorkerProcessCreationParameters processCreationParameters)
     
@@ -32,7 +32,7 @@ messages -> SharedWorkerProcess {
     CreateWebProcessConnection()
 
 #if PLATFORM(MAC)
-    SetApplicationIsOccluded(bool flag)
+    SetProcessSuppressionEnabled(bool flag)
 #endif
 }
 

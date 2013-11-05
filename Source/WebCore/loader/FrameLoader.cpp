@@ -1003,7 +1003,7 @@ void FrameLoader::setFirstPartyForCookies(const KURL& url)
 
 // This does the same kind of work that didOpenURL does, except it relies on the fact
 // that a higher level already checked that the URLs match and the scrolling is the right thing to do.
-void FrameLoader::loadInSameDocument(const KURL& url, SerializedScriptValue* stateObject, bool isNewNavigation)
+void FrameLoader::loadInSameDocument(const KURL& url, PassRefPtr<SerializedScriptValue> stateObject, bool isNewNavigation)
 {
     // If we have a state object, we cannot also be a new navigation.
     ASSERT(!stateObject || (stateObject && !isNewNavigation));
@@ -2584,7 +2584,10 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
         
         if (!documentLoader()->applicationCacheHost()->maybeLoadSynchronously(newRequest, error, response, data)) {
 #if USE(PLATFORM_STRATEGIES)
-            platformStrategies()->loaderStrategy()->loadResourceSynchronously(networkingContext(), newRequest, storedCredentials, error, response, data);
+            unsigned long identifier = 0;
+            if (m_frame->page())
+                identifier = m_frame->page()->progress()->createUniqueIdentifier();
+            platformStrategies()->loaderStrategy()->loadResourceSynchronously(networkingContext(), identifier, newRequest, storedCredentials, error, response, data);
 #else
             ResourceHandle::loadResourceSynchronously(networkingContext(), newRequest, storedCredentials, error, response, data);
 #endif
@@ -2891,6 +2894,10 @@ void FrameLoader::loadedResourceFromMemoryCache(CachedResource* resource)
         return;
 
     if (!resource->shouldSendResourceLoadCallbacks() || m_documentLoader->haveToldClientAboutLoad(resource->url()))
+        return;
+
+    // Main resource delegate messages are synthesized in MainResourceLoader, so we must not send them here.
+    if (resource->type() == CachedResource::MainResource)
         return;
 
     if (!page->areMemoryCacheClientCallsEnabled()) {
@@ -3297,21 +3304,21 @@ NetworkingContext* FrameLoader::networkingContext() const
 void FrameLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
-    info.addMember(m_frame);
+    info.addMember(m_frame, "frame");
     info.ignoreMember(m_client);
-    info.addMember(m_progressTracker);
-    info.addMember(m_documentLoader);
-    info.addMember(m_provisionalDocumentLoader);
-    info.addMember(m_policyDocumentLoader);
-    info.addMember(m_pendingStateObject);
-    info.addMember(m_submittedFormURL);
-    info.addMember(m_checkTimer);
-    info.addMember(m_opener);
-    info.addMember(m_openedFrames);
-    info.addMember(m_outgoingReferrer);
-    info.addMember(m_networkingContext);
-    info.addMember(m_previousUrl);
-    info.addMember(m_requestedHistoryItem);
+    info.addMember(m_progressTracker, "progressTracker");
+    info.addMember(m_documentLoader, "documentLoader");
+    info.addMember(m_provisionalDocumentLoader, "provisionalDocumentLoader");
+    info.addMember(m_policyDocumentLoader, "policyDocumentLoader");
+    info.addMember(m_pendingStateObject, "pendingStateObject");
+    info.addMember(m_submittedFormURL, "submittedFormURL");
+    info.addMember(m_checkTimer, "checkTimer");
+    info.addMember(m_opener, "opener");
+    info.addMember(m_openedFrames, "openedFrames");
+    info.addMember(m_outgoingReferrer, "outgoingReferrer");
+    info.addMember(m_networkingContext, "networkingContext");
+    info.addMember(m_previousUrl, "previousUrl");
+    info.addMember(m_requestedHistoryItem, "requestedHistoryItem");
 }
 
 bool FrameLoaderClient::hasHTMLView() const

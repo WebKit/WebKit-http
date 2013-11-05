@@ -31,10 +31,10 @@
 #ifndef WebNode_h
 #define WebNode_h
 
+#include "../../../Platform/chromium/public/WebCommon.h"
+#include "../../../Platform/chromium/public/WebPrivatePtr.h"
+#include "../../../Platform/chromium/public/WebString.h"
 #include "WebExceptionCode.h"
-#include "platform/WebCommon.h"
-#include "platform/WebPrivatePtr.h"
-#include "platform/WebString.h"
 
 namespace WebCore { class Node; }
 
@@ -123,6 +123,7 @@ public:
     // Note: This method only works properly after layout has occurred.
     WEBKIT_EXPORT bool hasNonEmptyBoundingBox() const;
     WEBKIT_EXPORT WebPluginContainer* pluginContainer() const;
+    WEBKIT_EXPORT WebElement shadowHost() const;
 
     template<typename T> T to()
     {

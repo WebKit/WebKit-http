@@ -20,6 +20,7 @@ webkit2_h_api += \
 	$(WebKit2)/Shared/API/c/WKMutableDictionary.h \
 	$(WebKit2)/Shared/API/c/WKNumber.h \
 	$(WebKit2)/Shared/API/c/WKPageLoadTypes.h \
+	$(WebKit2)/Shared/API/c/WKPageVisibilityTypes.h \
 	$(WebKit2)/Shared/API/c/WKRenderLayer.h \
 	$(WebKit2)/Shared/API/c/WKRenderObject.h \
 	$(WebKit2)/Shared/API/c/WKSecurityOrigin.h \
@@ -66,8 +67,6 @@ webkit2_h_api += \
 	$(WebKit2)/UIProcess/API/C/WKGrammarDetail.h \
 	$(WebKit2)/UIProcess/API/C/WKHitTestResult.h \
 	$(WebKit2)/UIProcess/API/C/WKInspector.h \
-	$(WebKit2)/UIProcess/API/C/WKIntentData.h \
-	$(WebKit2)/UIProcess/API/C/WKIntentServiceInfo.h \
 	$(WebKit2)/UIProcess/API/C/WKKeyValueStorageManager.h \
 	$(WebKit2)/UIProcess/API/C/WKMediaCacheManager.h \
 	$(WebKit2)/UIProcess/API/C/WKNativeEvent.h \
@@ -161,6 +160,8 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/PluginProcessProxyMessages.h \
 	DerivedSources/WebKit2/PluginProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/PluginProxyMessages.h \
+	DerivedSources/WebKit2/StorageManagerMessageReceiver.cpp \
+	DerivedSources/WebKit2/StorageManagerMessages.h \
 	DerivedSources/WebKit2/WebApplicationCacheManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/WebApplicationCacheManagerMessages.h \
 	DerivedSources/WebKit2/WebApplicationCacheManagerProxyMessageReceiver.cpp \
@@ -259,7 +260,6 @@ webkit2_sources += \
 	Source/WebKit2/Platform/CoreIPC/BinarySemaphore.h \
 	Source/WebKit2/Platform/CoreIPC/Connection.cpp \
 	Source/WebKit2/Platform/CoreIPC/Connection.h \
-	Source/WebKit2/Platform/CoreIPC/CoreIPCMessageKinds.h \
 	Source/WebKit2/Platform/CoreIPC/DataReference.cpp \
 	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
@@ -267,7 +267,6 @@ webkit2_sources += \
 	Source/WebKit2/Platform/CoreIPC/MessageDecoder.h \
 	Source/WebKit2/Platform/CoreIPC/MessageEncoder.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageEncoder.h \
-	Source/WebKit2/Platform/CoreIPC/MessageID.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiver.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
@@ -294,7 +293,6 @@ webkit2_sources += \
 	Source/WebKit2/PluginProcess/PluginCreationParameters.h \
 	Source/WebKit2/PluginProcess/PluginProcess.cpp \
 	Source/WebKit2/PluginProcess/PluginProcess.h \
-	Source/WebKit2/PluginProcess/PluginProcessMain.h \
 	Source/WebKit2/PluginProcess/WebProcessConnection.cpp \
 	Source/WebKit2/PluginProcess/WebProcessConnection.h \
 	Source/WebKit2/PluginProcess/unix/PluginControllerProxyUnix.cpp \
@@ -344,6 +342,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKNumber.cpp \
 	Source/WebKit2/Shared/API/c/WKNumber.h \
 	Source/WebKit2/Shared/API/c/WKPageLoadTypes.h \
+	Source/WebKit2/Shared/API/c/WKPageVisibilityTypes.h \
 	Source/WebKit2/Shared/API/c/WKRenderLayer.cpp \
 	Source/WebKit2/Shared/API/c/WKRenderLayer.h \
 	Source/WebKit2/Shared/API/c/WKRenderObject.cpp \
@@ -369,6 +368,8 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKUserContentURLPattern.h \
 	Source/WebKit2/Shared/APIObject.cpp \
 	Source/WebKit2/Shared/APIObject.h \
+	Source/WebKit2/Shared/Authentication/AuthenticationManager.cpp \
+	Source/WebKit2/Shared/Authentication/AuthenticationManager.h \
 	Source/WebKit2/Shared/BlockingResponseMap.h \
 	Source/WebKit2/Shared/ShareableBitmap.cpp \
 	Source/WebKit2/Shared/ShareableBitmap.h \
@@ -381,10 +382,16 @@ webkit2_sources += \
 	Source/WebKit2/Shared/CommandLine.h \
 	Source/WebKit2/Shared/ConnectionStack.cpp \
 	Source/WebKit2/Shared/ConnectionStack.h \
-	Source/WebKit2/Shared/CoreIPCSupport/WebConnectionMessageKinds.h \
 	Source/WebKit2/Shared/CoreIPCSupport/WebContextMessageKinds.h \
-	Source/WebKit2/Shared/CoreIPCSupport/WebPageProxyMessageKinds.h \
 	Source/WebKit2/Shared/DrawingAreaInfo.h \
+	Source/WebKit2/Shared/Downloads/Download.cpp \
+	Source/WebKit2/Shared/Downloads/Download.h \
+	Source/WebKit2/Shared/Downloads/DownloadAuthenticationClient.h \
+	Source/WebKit2/Shared/Downloads/DownloadManager.cpp \
+	Source/WebKit2/Shared/Downloads/DownloadManager.h \
+	Source/WebKit2/Shared/Downloads/gtk/DownloadSoupErrorsGtk.cpp \
+	Source/WebKit2/Shared/Downloads/soup/DownloadSoup.cpp \
+	Source/WebKit2/Shared/Downloads/soup/DownloadSoupErrors.h \
 	Source/WebKit2/Shared/EditorState.cpp \
 	Source/WebKit2/Shared/EditorState.h \
 	Source/WebKit2/Shared/FontSmoothingLevel.h \
@@ -405,10 +412,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ImmutableArray.h \
 	Source/WebKit2/Shared/ImmutableDictionary.cpp \
 	Source/WebKit2/Shared/ImmutableDictionary.h \
-	Source/WebKit2/Shared/IntentData.cpp \
-	Source/WebKit2/Shared/IntentData.h \
-	Source/WebKit2/Shared/IntentServiceInfo.cpp \
-	Source/WebKit2/Shared/IntentServiceInfo.h \
 	Source/WebKit2/Shared/LayerTreeContext.h \
 	Source/WebKit2/Shared/MutableArray.cpp \
 	Source/WebKit2/Shared/MutableArray.h \
@@ -494,8 +497,6 @@ webkit2_sources += \
 	Source/WebKit2/Shared/WebHitTestResult.h \
 	Source/WebKit2/Shared/WebImage.cpp \
 	Source/WebKit2/Shared/WebImage.h \
-	Source/WebKit2/Shared/WebIntentServiceInfo.cpp \
-	Source/WebKit2/Shared/WebIntentServiceInfo.h \
 	Source/WebKit2/Shared/WebKeyboardEvent.cpp \
 	Source/WebKit2/Shared/WebKit2Initialize.cpp \
 	Source/WebKit2/Shared/WebKit2Initialize.h \
@@ -594,10 +595,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/C/WKIconDatabase.h \
 	Source/WebKit2/UIProcess/API/C/WKInspector.cpp \
 	Source/WebKit2/UIProcess/API/C/WKInspector.h \
-	Source/WebKit2/UIProcess/API/C/WKIntentData.cpp \
-	Source/WebKit2/UIProcess/API/C/WKIntentData.h \
-	Source/WebKit2/UIProcess/API/C/WKIntentServiceInfo.cpp \
-	Source/WebKit2/UIProcess/API/C/WKIntentServiceInfo.h \
 	Source/WebKit2/UIProcess/API/C/WKKeyValueStorageManager.cpp \
 	Source/WebKit2/UIProcess/API/C/WKKeyValueStorageManager.h \
 	Source/WebKit2/UIProcess/API/C/WKMediaCacheManager.cpp \
@@ -693,6 +690,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitHitTestResult.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitHitTestResult.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitHitTestResultPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitInjectedBundleClient.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitInjectedBundleClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitJavascriptResult.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitJavascriptResult.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitJavascriptResultPrivate.h \
@@ -723,8 +722,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitPrivate.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitRequestManagerClient.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitRequestManagerClient.h \
-	Source/WebKit2/UIProcess/API/gtk/WebKitResourceLoadClient.cpp \
-	Source/WebKit2/UIProcess/API/gtk/WebKitResourceLoadClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitResponsePolicyDecision.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitResponsePolicyDecision.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitResponsePolicyDecisionPrivate.h \
@@ -845,6 +842,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/ProcessModel.h \
 	Source/WebKit2/UIProcess/ResponsivenessTimer.cpp \
 	Source/WebKit2/UIProcess/ResponsivenessTimer.h \
+	Source/WebKit2/UIProcess/Storage/StorageManager.cpp \
+	Source/WebKit2/UIProcess/Storage/StorageManager.h \
 	Source/WebKit2/UIProcess/soup/WebCookieManagerProxySoup.cpp \
 	Source/WebKit2/UIProcess/soup/WebSoupRequestManagerClient.cpp \
 	Source/WebKit2/UIProcess/soup/WebSoupRequestManagerClient.h \
@@ -919,8 +918,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebIconDatabaseClient.h \
 	Source/WebKit2/UIProcess/WebInspectorProxy.cpp \
 	Source/WebKit2/UIProcess/WebInspectorProxy.h \
-	Source/WebKit2/UIProcess/WebIntentData.cpp \
-	Source/WebKit2/UIProcess/WebIntentData.h \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.cpp \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.h \
 	Source/WebKit2/UIProcess/WebMediaCacheManagerProxy.cpp \
@@ -950,8 +947,6 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebProcessProxy.h \
 	Source/WebKit2/UIProcess/WebResourceCacheManagerProxy.h \
 	Source/WebKit2/UIProcess/WebResourceCacheManagerProxy.cpp \
-	Source/WebKit2/UIProcess/WebResourceLoadClient.cpp \
-	Source/WebKit2/UIProcess/WebResourceLoadClient.h \
 	Source/WebKit2/UIProcess/WebTextChecker.cpp \
 	Source/WebKit2/UIProcess/WebTextChecker.h \
 	Source/WebKit2/UIProcess/WebTextCheckerClient.cpp \
@@ -974,8 +969,6 @@ webkit2_sources += \
 	Source/WebKit2/WebKit2Prefix.h \
 	Source/WebKit2/WebProcess/ApplicationCache/WebApplicationCacheManager.h \
 	Source/WebKit2/WebProcess/ApplicationCache/WebApplicationCacheManager.cpp \
-	Source/WebKit2/WebProcess/Authentication/AuthenticationManager.cpp \
-	Source/WebKit2/WebProcess/Authentication/AuthenticationManager.h \
 	Source/WebKit2/WebProcess/Battery/WebBatteryManager.cpp \
 	Source/WebKit2/WebProcess/Battery/WebBatteryManager.h \
 	Source/WebKit2/WebProcess/Cookies/WebCookieManager.h \
@@ -983,14 +976,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Cookies/soup/WebCookieManagerSoup.cpp \
 	Source/WebKit2/WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp \
 	Source/WebKit2/WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.h \
-	Source/WebKit2/WebProcess/Downloads/Download.cpp \
-	Source/WebKit2/WebProcess/Downloads/Download.h \
-	Source/WebKit2/WebProcess/Downloads/DownloadAuthenticationClient.h \
-	Source/WebKit2/WebProcess/Downloads/DownloadManager.cpp \
-	Source/WebKit2/WebProcess/Downloads/DownloadManager.h \
-	Source/WebKit2/WebProcess/Downloads/gtk/DownloadSoupErrorsGtk.cpp \
-	Source/WebKit2/WebProcess/Downloads/soup/DownloadSoup.cpp \
-	Source/WebKit2/WebProcess/Downloads/soup/DownloadSoupErrors.h \
 	Source/WebKit2/WebProcess/FullScreen/WebFullScreenManager.cpp \
 	Source/WebKit2/WebProcess/FullScreen/WebFullScreenManager.h \
 	Source/WebKit2/WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp \
@@ -1022,10 +1007,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInitialize.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInspector.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleInspector.h \
-	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntent.cpp \
-	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntent.h \
-	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.cpp \
-	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleIntentRequest.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h \
@@ -1066,10 +1047,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleHitTestResult.h \
-	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntent.cpp \
-	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntent.h \
-	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntentRequest.cpp \
-	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleIntentRequest.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleNavigationAction.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp \
@@ -1093,8 +1070,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleScriptWorld.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleScriptWorld.h \
 	Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleUserMessageCoders.h \
-	Source/WebKit2/WebProcess/KeyValueStorage/WebKeyValueStorageManager.cpp \
-	Source/WebKit2/WebProcess/KeyValueStorage/WebKeyValueStorageManager.h \
 	Source/WebKit2/WebProcess/MediaCache/WebMediaCacheManager.cpp \
 	Source/WebKit2/WebProcess/MediaCache/WebMediaCacheManager.h \
 	Source/WebKit2/WebProcess/NetworkInfo/WebNetworkInfoManager.cpp \
@@ -1135,6 +1110,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Plugins/PluginView.h \
 	Source/WebKit2/WebProcess/ResourceCache/WebResourceCacheManager.h \
 	Source/WebKit2/WebProcess/ResourceCache/WebResourceCacheManager.cpp \
+	Source/WebKit2/WebProcess/Storage/WebKeyValueStorageManager.cpp \
+	Source/WebKit2/WebProcess/Storage/WebKeyValueStorageManager.h \
 	Source/WebKit2/WebProcess/soup/WebSoupRequestManager.cpp \
 	Source/WebKit2/WebProcess/soup/WebSoupRequestManager.h \
 	Source/WebKit2/WebProcess/soup/WebProcessSoup.cpp \
@@ -1264,7 +1241,6 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Platform/CoreIPC/BinarySemaphore.h \
 	Source/WebKit2/Platform/CoreIPC/Connection.cpp \
 	Source/WebKit2/Platform/CoreIPC/Connection.h \
-	Source/WebKit2/Platform/CoreIPC/CoreIPCMessageKinds.h \
 	Source/WebKit2/Platform/CoreIPC/DataReference.cpp \
 	Source/WebKit2/Platform/CoreIPC/DataReference.h \
 	Source/WebKit2/Platform/CoreIPC/HandleMessage.h \
@@ -1272,7 +1248,6 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Platform/CoreIPC/MessageDecoder.h \
 	Source/WebKit2/Platform/CoreIPC/MessageEncoder.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageEncoder.h \
-	Source/WebKit2/Platform/CoreIPC/MessageID.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiver.h \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.cpp \
 	Source/WebKit2/Platform/CoreIPC/MessageReceiverMap.h \
@@ -1295,7 +1270,6 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/PluginProcess/PluginCreationParameters.h \
 	Source/WebKit2/PluginProcess/PluginProcess.cpp \
 	Source/WebKit2/PluginProcess/PluginProcess.h \
-	Source/WebKit2/PluginProcess/PluginProcessMain.h \
 	Source/WebKit2/PluginProcess/WebProcessConnection.cpp \
 	Source/WebKit2/PluginProcess/WebProcessConnection.h \
 	Source/WebKit2/Shared/Plugins/PluginProcessCreationParameters.cpp \

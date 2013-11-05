@@ -87,14 +87,15 @@ public:
     bool enabled() { return m_enabled; }
     String getCurrentUserInitiatedProfileName(bool incrementProfileNumber = false);
     virtual void getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::Profiler::ProfileHeader> >&);
-    virtual void getProfile(ErrorString*, const String& type, int uid, RefPtr<TypeBuilder::Profiler::Profile>&);
+    virtual void getCPUProfile(ErrorString*, int uid, RefPtr<TypeBuilder::Profiler::CPUProfile>&);
+    virtual void getHeapSnapshot(ErrorString*, int uid);
     virtual void removeProfile(ErrorString*, const String& type, int uid);
 
     virtual void setFrontend(InspectorFrontend*);
     virtual void clearFrontend();
     virtual void restore();
 
-    virtual void takeHeapSnapshot(ErrorString*);
+    virtual void takeHeapSnapshot(ErrorString*, const bool* reportProgress);
     void toggleRecordButton(bool isProfiling);
 
     virtual void getObjectByHeapObjectId(ErrorString*, const String& heapSnapshotObjectId, const String* objectGroup, RefPtr<TypeBuilder::Runtime::RemoteObject>& result);

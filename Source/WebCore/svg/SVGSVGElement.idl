@@ -25,12 +25,11 @@
 // TODO: no events::DocumentEvent available!
 [
     Conditional=SVG
-] interface SVGSVGElement : SVGElement,
+] interface SVGSVGElement : SVGStyledElement,
                                             SVGTests,
                                             SVGLangSpace,
                                             SVGExternalResourcesRequired,
-                                            SVGStylable,
-                                            SVGLocatable,
+                                            SVGTransformable,
                                             SVGFitToViewBox,
                                             SVGZoomAndPan {
     readonly attribute SVGAnimatedLength x;

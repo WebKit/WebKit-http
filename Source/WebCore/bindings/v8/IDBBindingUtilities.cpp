@@ -28,16 +28,48 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "DOMRequestState.h"
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
 #include "IDBTracing.h"
 #include "SerializedScriptValue.h"
 #include "V8Binding.h"
-#include "V8IDBKey.h"
 #include <wtf/MathExtras.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+static v8::Handle<v8::Value> idbKeyToV8Value(IDBKey* key, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+{
+    if (!key) {
+        // This should be undefined, not null.
+        // Spec: http://dvcs.w3.org/hg/IndexedDB/raw-file/tip/Overview.html#idl-def-IDBKeyRange
+        return v8Undefined();
+    }
+
+    switch (key->type()) {
+    case IDBKey::InvalidType:
+    case IDBKey::MinType:
+        ASSERT_NOT_REACHED();
+        return v8Undefined();
+    case IDBKey::NumberType:
+        return v8::Number::New(key->number());
+    case IDBKey::StringType:
+        return v8String(key->string(), isolate);
+    case IDBKey::DateType:
+        return v8::Date::New(key->date());
+    case IDBKey::ArrayType:
+        {
+            v8::Local<v8::Array> array = v8::Array::New(key->array().size());
+            for (size_t i = 0; i < key->array().size(); ++i)
+                array->Set(i, idbKeyToV8Value(key->array()[i].get(), creationContext, isolate));
+            return array;
+        }
+    }
+
+    ASSERT_NOT_REACHED();
+    return v8Undefined();
+}
 
 static const size_t maximumDepth = 2000;
 
@@ -221,7 +253,7 @@ ScriptValue deserializeIDBValue(DOMRequestState* state, PassRefPtr<SerializedScr
     return ScriptValue(v8::Null());
 }
 
-bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
+bool injectIDBKeyIntoScriptValue(DOMRequestState* state, PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("injectIDBKeyIntoScriptValue");
     ASSERT(v8::Context::InContext());
@@ -241,7 +273,7 @@ bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey> key, Scrip
     if (parent.IsEmpty())
         return false;
 
-    if (!set(parent, keyPathElements.last(), toV8(key.get(), v8::Handle<v8::Object>())))
+    if (!set(parent, keyPathElements.last(), idbKeyToV8Value(key.get(), v8::Handle<v8::Object>(), state->context()->GetIsolate())))
         return false;
 
     return true;
@@ -267,8 +299,16 @@ ScriptValue idbKeyToScriptValue(DOMRequestState* state, PassRefPtr<IDBKey> key)
 {
     ASSERT(v8::Context::InContext());
     v8::HandleScope handleScope;
-    v8::Handle<v8::Value> v8Value(toV8(key.get(), v8::Handle<v8::Object>()));
+    v8::Handle<v8::Value> v8Value(idbKeyToV8Value(key.get(), v8::Handle<v8::Object>(), state->context()->GetIsolate()));
     return ScriptValue(v8Value);
+}
+
+PassRefPtr<IDBKey> scriptValueToIDBKey(DOMRequestState*, const ScriptValue& scriptValue)
+{
+    ASSERT(v8::Context::InContext());
+    v8::HandleScope handleScope;
+    v8::Handle<v8::Value> v8Value(scriptValue.v8Value());
+    return createIDBKeyFromValue(v8Value);
 }
 
 } // namespace WebCore

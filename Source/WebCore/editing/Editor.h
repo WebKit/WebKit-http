@@ -273,6 +273,7 @@ public:
 
     void didBeginEditing();
     void didEndEditing();
+    void willWriteSelectionToPasteboard(PassRefPtr<Range>);
     void didWriteSelectionToPasteboard();
     
     void showFontPanel();
@@ -295,6 +296,7 @@ public:
     void confirmComposition();
     void confirmComposition(const String&); // if no existing composition, replaces selection
     void cancelComposition();
+    bool cancelCompositionIfSelectionIsInvalid();
     PassRefPtr<Range> compositionRange() const;
     bool getCompositionSelection(unsigned& selectionStart, unsigned& selectionEnd) const;
     bool setSelectionOffsets(int selectionStart, int selectionEnd);
@@ -375,7 +377,7 @@ public:
 #if PLATFORM(MAC)
     const SimpleFontData* fontForSelection(bool&) const;
     NSDictionary* fontAttributesForSelectionStart() const;
-    NSWritingDirection baseWritingDirectionForSelectionStart() const;
+    WritingDirection baseWritingDirectionForSelectionStart() const;
     bool canCopyExcludingStandaloneImages();
     void takeFindStringFromSelection();
     void writeSelectionToPasteboard(const String& pasteboardName, const Vector<String>& pasteboardTypes);

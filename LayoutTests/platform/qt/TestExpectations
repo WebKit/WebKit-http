@@ -90,6 +90,9 @@ fast/forms/input-in-table-cell-no-value.html
 # ENABLE_GAMEPAD not enabled.
 gamepad/
 
+# Remove from list after enabling CANVAS_PATH
+fast/canvas/canvas-currentPath.html
+
 # ENABLE(INPUT_SPEECH) is disabled.
 fast/speech
 
@@ -99,13 +102,26 @@ fast/events/constructors/speech-recognition-error-constructor.html
 
 # ENABLE(MEDIA_STREAM) is disabled.
 fast/mediastream
+fast/events/constructors/media-stream-event-constructor.html
 
 # ENABLE(DIRECTORY_UPLOAD) is disabled.
 fast/forms/file/input-file-directory-upload.html
 
+# ENABLE(DOM4_EVENTS_CONSTRUCTOR) is disabled.
+fast/events/constructors/ui-event-constructor.html
+fast/events/constructors/mouse-event-constructor.html
+fast/events/constructors/composition-event-constructor.html
+fast/events/constructors/wheel-event-constructor.html
+fast/events/constructors/keyboard-event-constructor.html
+
 # ENABLE(INDEXED_DATABASE) is disabled.
 storage/indexeddb
 http/tests/inspector/indexeddb
+http/tests/security/cross-origin-indexeddb-allowed.html
+http/tests/security/cross-origin-indexeddb.html
+http/tests/security/cross-origin-worker-indexeddb-allowed.html
+http/tests/security/cross-origin-worker-indexeddb.html
+http/tests/security/no-indexeddb-from-sandbox.html
 
 inspector/timeline/timeline-animation-frame.html
 
@@ -191,6 +207,9 @@ fast/css/cursor-parsing-image-set.html
 # ENABLE(TEMPLATE_ELEMENT) is disabled.
 fast/dom/HTMLTemplateElement
 html5lib/run-template.html
+fast/xsl/xslt-xhtml-template.xml
+fast/xpath/xpath-template-element.html
+fast/xsl/xslt-processor-template.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85532
@@ -263,7 +282,7 @@ inspector/profiler/heap-snapshot-summary-show-ranges.html
 inspector/profiler/heap-snapshot-summary-sorting-fields.html
 inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
-webkit.org/b/50485 inspector-protocol/take-heap-snapshot.html [ Skip ]
+webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -271,6 +290,10 @@ inspector/debugger/live-edit-breakpoints.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=89652
 inspector/debugger/debugger-compile-and-run.html
+
+# [Qt] New inspector-protocol/page/javascriptDialogEvents.html started to fail r141555.
+# https://bugs.webkit.org/show_bug.cgi?id=108609
+inspector-protocol/page/javascriptDialogEvents.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=53003
 http/tests/inspector/compiler-source-mapping-debug.html
@@ -292,6 +315,12 @@ touchadjustment/touch-links-active.html
 
 # Don't have gestureTapDown event type
 fast/events/touch/gesture/gesture-scrollbar.html
+fast/events/touch/gesture/long-press-on-draggable-element-in-iframe-triggers-drag.html
+fast/events/touch/gesture/long-press-on-draggable-element-in-nested-iframes-triggers-drag.html
+fast/events/touch/gesture/touch-gesture-scroll-div-propagated.html
+fast/events/touch/gesture/touch-gesture-scroll-div-twice-propagated.html
+fast/events/touch/gesture/touch-gesture-scroll-iframe-editable.html
+fast/events/touch/gesture/touch-gesture-scroll-page-propagated.html
 
 # Don't have width/height on GestureLongPress necessary to enable adjustment
 touchadjustment/touch-links-longpress.html
@@ -793,6 +822,20 @@ editing/spelling/spelling-unified-emulation.html
 # https://bugs.webkit.org/show_bug.cgi?id=89199
 editing/spelling/grammar-edit-word.html
 
+# Spellchecker behavior tests.
+# https://bugs.webkit.org/show_bug.cgi?id=108370
+editing/spelling/spelling-double-clicked-word.html
+editing/spelling/spelling-double-clicked-word-with-underscores.html
+editing/spelling/spelling-exactly-selected-multiple-words.html
+editing/spelling/spelling-exactly-selected-word.html
+editing/spelling/spelling-multiword-selection.html
+editing/spelling/spelling-should-select-multiple-words.html
+editing/spelling/spelling-should-select-single-word.html
+editing/spelling/spelling-subword-selection.html
+editing/spelling/spelling-with-punctuation-selection.html
+editing/spelling/spelling-with-underscore-selection.html
+editing/spelling/spelling-with-whitespace-selection.html
+
 # =========================================================================== #
 #       Failing plugins tests.                                                #
 # =========================================================================== #
@@ -1157,6 +1200,8 @@ css3/filters/custom/effect-custom-parameters.html
 css3/filters/custom/filter-repaint-custom-clipped.html
 css3/filters/custom/filter-repaint-custom-rotated.html
 css3/filters/custom/filter-repaint-custom.html
+css3/filters/custom-with-at-rule-syntax/parsing-custom-function-invalid.html
+css3/filters/custom-with-at-rule-syntax/parsing-custom-function-valid.html
 
 # The following tests need further investigation:
 # https://bugs.webkit.org/show_bug.cgi?id=101531
@@ -1173,6 +1218,9 @@ css3/filters/custom/custom-filter-array-blending.html
 # https://bugs.webkit.org/show_bug.cgi?id=100072
 fast/canvas/canvas-blend-image.html
 fast/canvas/canvas-blend-solid.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=107118
+fast/canvas/canvas-quadratic-same-endpoint.html
 
 # ReferenceError: Can't find variable: MediaKeyError
 # http://trac.webkit.org/changeset/114067
@@ -1302,11 +1350,17 @@ svg/animations/animate-elem-08-t-drt.html
 # https://bugs.webkit.org/show_bug.cgi?id=82601
 fast/repaint/moving-shadow-on-container.html
 fast/repaint/moving-shadow-on-path.html
+ietestcenter/css3/valuesandunits/units-010.htm
+inspector/audits/audits-panel-functional.html
 svg/W3C-SVG-1.1/paths-data-03-f.svg
 svg/css/stars-with-shadow.html
 svg/custom/use-on-symbol-inside-pattern.svg
 svg/batik/text/longTextOnPath.svg
 svg/carto.net/tabgroup.svg
+
+# [Qt] New inspector/console/console-filter-test.html fails on 32bit since r141269.
+# https://bugs.webkit.org/show_bug.cgi?id=108481
+inspector/console/console-filter-test.html
 
 # Fail on 32 bit with minor pixel differences (tests introduced in r132602)
 fast/regions/autoheight-middleregion.html
@@ -1355,6 +1409,8 @@ webkit.org/b/105437 svg/filters/feImage-target-property-change.svg [ ImageOnlyFa
 webkit.org/b/105437 svg/filters/feImage-target-reappend-to-document.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/105437 svg/filters/feImage-target-remove-from-document.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/105437 svg/filters/feImage-target-style-change.svg [ ImageOnlyFailure Pass ]
+
+webkit.org/b/106957 svg/dom/SVGViewSpec-invalid-ref-crash.html [ Failure ]
 
 
 # ============================================================================= #
@@ -1814,6 +1870,22 @@ fast/events/mouse-cursor-multiframecur.html
 fast/events/mouse-cursor.html
 fast/images/icon-decoding.html
 
+# [Qt][EFL][GTK] REGRESSION(r140202): fast/spatial-navigation/snav-div-overflow-scrol-hidden.html fails.
+# https://bugs.webkit.org/show_bug.cgi?id=105574
+fast/spatial-navigation/snav-div-overflow-scrol-hidden.html
+
+# [Qt] REGRESSION(140685): These tests will only work after upgrading gstreamer 0.10 to 1.0.
+# https://bugs.webkit.org/show_bug.cgi?id=108175
+fast/events/media-focus-in-standalone-media-document.html
+fast/events/tabindex-focus-blur-all.html
+fast/spatial-navigation/snav-media-elements.html
+
+# [Qt] These ref html tests are flaky. Investigating.
+# https://bugs.webkit.org/show_bug.cgi?id=108340
+fast/layers/no-clipping-overflow-hidden-added-after-transform.html
+fast/layers/no-clipping-overflow-hidden-added-after-transition.html
+fast/layers/no-clipping-overflow-hidden-hardware-acceleration.html
+
 # ============================================================================= #
 # failing security tests
 # ============================================================================= #
@@ -1950,7 +2022,8 @@ svg/filters/feImage-filterUnits-objectBoundingBox-primitiveUnits-userSpaceOnUse.
 css2.1/t100801-c548-ln-ht-01-b-ag.html
 css2.1/20110323/inline-non-replaced-height-003.htm
 css2.1/20110323/inline-non-replaced-height-002.htm
-
+fast/css/resize-corner-tracking-transformed-iframe.html
+fast/css/resize-corner-tracking.html
 
 # ============================================================================= #
 # Regressions occured after Qt version update
@@ -2133,8 +2206,14 @@ fast/inline/continuation-outlines-with-layers.html
 # Refactor notification tests requiring file:// permission
 fast/notifications/notifications-cancel-request-permission.html
 fast/notifications/notifications-check-permission.html
+fast/notifications/notifications-constructor-request-permission.html
 fast/notifications/notifications-request-permission.html
 fast/notifications/notifications-without-permission.html
+
+# [Qt] New fast/notifications/ introduced in r140927 fails on Qt.
+# https://bugs.webkit.org/show_bug.cgi?id=108190
+fast/notifications/notifications-constructor-with-permission.html
+fast/notifications/notifications-constructor-without-permission.html
 
 # [Qt] unexpected result in fast/js/large-expressions.html
 # https://bugs.webkit.org/show_bug.cgi?id=76379
@@ -2280,9 +2359,6 @@ svg/custom/clamped-masking-clipping.svg
 # https://bugs.webkit.org/show_bug.cgi?id=95530
 http/tests/security/inactive-document-with-empty-security-origin.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=95507
-http/tests/notifications
-
 # New fast/canvas/canvas-lineDash.html introduced in r128116 fails
 # https://bugs.webkit.org/show_bug.cgi?id=96360
 fast/canvas/canvas-lineDash.html
@@ -2351,7 +2427,6 @@ webkit.org/b/85689 fast/animation/request-animation-frame-disabled.html [ Skip ]
 # ietestcenter/css3/valuesandunits/units-000.htm asserts
 # https://bugs.webkit.org/show_bug.cgi?id=86176
 webkit.org/b/85308 ietestcenter/css3/valuesandunits/units-000.htm [ Skip ]
-webkit.org/b/85310 ietestcenter/css3/valuesandunits/units-010.htm [ ImageOnlyFailure ]
 
 # IETC namespace failures
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
@@ -2369,6 +2444,9 @@ webkit.org/b/99870 svg/custom/pattern-skew-transformed.svg [ Pass ImageOnlyFailu
 webkit.org/b/99870 svg/custom/pattern-with-transformation.svg [ Pass ImageOnlyFailure ]
 webkit.org/b/99870 svg/transforms/text-with-pattern-inside-transformed-html.xhtml [ Pass ImageOnlyFailure ]
 webkit.org/b/99870 svg/custom/pattern-scaling.svg [ Pass ImageOnlyFailure Missing ]
+
+# Needs a rebaseline after WK108429 lands.
+webkit.org/b/108429 svg/custom/text-ctm.svg [ Pass Failure ]
 
 # Disable webaudio codec tests, including proprietary codecs.
 webkit.org/b/88794 webaudio/codec-tests
@@ -2419,6 +2497,7 @@ webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
 
 # [Qt] Unidentified pixel failures
 webkit.org/b/99306 animations/additive-transform-animations.html [ ImageOnlyFailure ]
@@ -2477,6 +2556,10 @@ webkit.org/b/61138 http/tests/w3c/webperf/submission/resource-timing [ Skip ]
 # [Qt] A new compositing bug uncovered by r135859
 webkit.org/b/103424 fast/backgrounds/background-opaque-images-over-color.html
 
+# [Qt] Two tests hit assertion fail after r140999.
+webkit.org/b/108257 compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Skip ]
+webkit.org/b/108257 compositing/overflow/automatically-opt-into-composited-scrolling.html [ Skip ]
+
 # No support for exposing in-band text tracks
 webkit.org/b/103769 media/track/track-in-band.html [ Skip ]
 webkit.org/b/103769 media/track/track-in-band-cues-added-once.html [ Skip ]
@@ -2515,6 +2598,28 @@ fast/workers/storage/interrupt-database.html
 # [Qt] New fast/js/dfg-create-inlined-arguments-in-closure-inline.html asserts on 32 bit
 webkit.org/b/106459 [ Debug ] fast/js/dfg-create-inlined-arguments-in-closure-inline.html
 
+# Enable when support drag-and-drop autoscrolling
+webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
+
 # New inspector/editor/text-editor-formatter.html introduced in r139617 fails on EFL, Mac, QT
 # https://bugs.webkit.org/show_bug.cgi?id=106883
 inspector/editor/text-editor-formatter.html
+inspector/editor/text-editor-word-jumps.html
+
+# Needs rebaseline after https://bugs.webkit.org/show_bug.cgi?id=14664
+webkit.org/b/107476 fast/block/float/024.html [ Failure ]
+webkit.org/b/107476 fast/block/margin-collapse/empty-clear-blocks.html [ Failure ]
+
+# Rebaseline required after https://webkit.org/b/31397
+webkit.org/b/107567 svg/batik/text/xmlSpace.svg [ Failure ] 
+webkit.org/b/107567 fast/text/capitalize-empty-generated-string.html [ Failure ] 
+webkit.org/b/107567 fast/text/whitespace/007.html [ Failure ] 
+webkit.org/b/107567 fast/text/whitespace/006.html [ Failure ] 
+webkit.org/b/107567 fast/inline/drawStyledEmptyInlinesWithWS.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug1318.html [ Failure ] 
+webkit.org/b/107567 fast/inline/drawStyledEmptyInlines.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug113235-3.html [ Failure ] 
+webkit.org/b/107567 css2.1/t0505-c16-descendant-01-e.html [ Failure ] 
+webkit.org/b/107567 tables/mozilla/bugs/bug1188.html [ Failure ] 
+webkit.org/b/107567 editing/selection/extend-by-sentence-001.html [ Failure ] 
+webkit.org/b/107567 svg/carto.net/combobox.svg [ Failure ] 

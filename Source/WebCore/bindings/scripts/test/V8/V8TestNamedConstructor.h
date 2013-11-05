@@ -33,16 +33,16 @@ namespace WebCore {
 
 class V8TestNamedConstructorConstructor {
 public:
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate();
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*);
     static WrapperTypeInfo info;
 };
 
 class V8TestNamedConstructor {
 public:
     static const bool hasDependentLifetime = true;
-    static bool HasInstance(v8::Handle<v8::Value>);
-    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate();
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate();
+    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate* = 0);
+    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate* = 0);
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate* = 0);
     static TestNamedConstructor* toNative(v8::Handle<v8::Object> object)
     {
         return reinterpret_cast<TestNamedConstructor*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
@@ -66,7 +66,7 @@ inline v8::Handle<v8::Object> wrap(TestNamedConstructor* impl, v8::Handle<v8::Ob
     return V8TestNamedConstructor::createWrapper(impl, creationContext, isolate);
 }
 
-inline v8::Handle<v8::Value> toV8(TestNamedConstructor* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
+inline v8::Handle<v8::Value> toV8(TestNamedConstructor* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     if (UNLIKELY(!impl))
         return v8NullWithCheck(isolate);
@@ -93,7 +93,7 @@ inline v8::Handle<v8::Value> toV8Fast(PassRefPtr< TestNamedConstructor > impl, c
     return toV8Fast(impl.get(), container, wrappable);
 }
 
-inline v8::Handle<v8::Value> toV8(PassRefPtr< TestNamedConstructor > impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
+inline v8::Handle<v8::Value> toV8(PassRefPtr< TestNamedConstructor > impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     return toV8(impl.get(), creationContext, isolate);
 }

@@ -37,6 +37,7 @@
 #include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GLContext.h>
+#include <WebCore/GraphicsLayerTextureMapper.h>
 #include <WebCore/Page.h>
 #include <WebCore/Settings.h>
 
@@ -207,7 +208,7 @@ void LayerTreeHostGtk::sizeDidChange(const IntSize& newSize)
     compositeLayersToContext(ForResize);
 }
 
-void LayerTreeHostGtk::deviceScaleFactorDidChange()
+void LayerTreeHostGtk::deviceOrPageScaleFactorChanged()
 {
     // Other layers learn of the scale factor change via WebPage::setDeviceScaleFactor.
     m_nonCompositedContentLayer->deviceOrPageScaleFactorChanged();

@@ -52,6 +52,7 @@ public:
     const QualifiedName& name() const { return m_name; }
 
     bool isEmpty() const { return m_value.isEmpty(); }
+    bool matches(const QualifiedName&) const;
 
     void setValue(const AtomicString& value) { m_value = value; }
     void setPrefix(const AtomicString& prefix) { m_name.setPrefix(prefix); }
@@ -64,14 +65,21 @@ public:
     void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     {
         MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-        info.addMember(m_name);
-        info.addMember(m_value);
+        info.addMember(m_name, "name");
+        info.addMember(m_value, "value");
     }
 
 private:
     QualifiedName m_name;
     AtomicString m_value;
 };
+
+inline bool Attribute::matches(const QualifiedName& qualifiedName) const
+{
+    if (qualifiedName.localName() != localName())
+        return false;
+    return qualifiedName.prefix() == starAtom || qualifiedName.namespaceURI() == namespaceURI();
+}
 
 } // namespace WebCore
 

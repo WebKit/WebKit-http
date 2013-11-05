@@ -37,8 +37,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTableCol::RenderTableCol(ContainerNode* node)
-    : RenderBox(node)
+RenderTableCol::RenderTableCol(Element* element)
+    : RenderBox(element)
     , m_span(1)
 {
     // init RenderObject attributes
@@ -115,7 +115,7 @@ void RenderTableCol::imageChanged(WrappedImagePtr, const IntRect*)
     repaint();
 }
 
-void RenderTableCol::computePreferredLogicalWidths()
+void RenderTableCol::clearPreferredLogicalWidthsDirtyBits()
 {
     setPreferredLogicalWidthsDirty(false);
 
@@ -192,7 +192,7 @@ void RenderTableCol::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
     RenderBox::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_children);
+    info.addMember(m_children, "children");
 }
 
 }

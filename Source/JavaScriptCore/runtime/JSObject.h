@@ -124,14 +124,6 @@ public:
     void setPrototype(JSGlobalData&, JSValue prototype);
     bool setPrototypeWithCycleCheck(JSGlobalData&, JSValue prototype);
         
-    Structure* inheritorID(JSGlobalData&);
-    void notifyUsedAsPrototype(JSGlobalData&);
-        
-    bool mayBeUsedAsPrototype(JSGlobalData& globalData)
-    {
-        return isValidOffset(structure()->get(globalData, globalData.m_inheritorIDKey));
-    }
-        
     bool mayInterceptIndexedAccesses()
     {
         return structure()->mayInterceptIndexedAccesses();
@@ -217,7 +209,7 @@ public:
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
             return i < m_butterfly->arrayStorage()->vectorLength() && m_butterfly->arrayStorage()->m_vector[i];
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
     }
@@ -233,7 +225,7 @@ public:
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
             return m_butterfly->arrayStorage()->m_vector[i].get();
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return JSValue();
         }
     }
@@ -262,7 +254,7 @@ public:
                 return m_butterfly->arrayStorage()->m_vector[i].get();
             break;
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             break;
         }
         return JSValue();
@@ -302,7 +294,7 @@ public:
             return i < m_butterfly->arrayStorage()->vectorLength()
                 && !!m_butterfly->arrayStorage()->m_vector[i];
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
     }
@@ -319,7 +311,7 @@ public:
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
             return i < m_butterfly->vectorLength();
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
     }
@@ -371,7 +363,7 @@ public:
             break;
         }
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
         }
     }
         
@@ -420,7 +412,7 @@ public:
             break;
         }
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
         }
     }
         
@@ -436,7 +428,7 @@ public:
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
             return m_butterfly->arrayStorage()->m_sparseMap;
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
     }
@@ -453,7 +445,7 @@ public:
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
             return m_butterfly->arrayStorage()->inSparseMode();
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
     }
@@ -630,7 +622,7 @@ public:
     // indexing should be sparse, we're having a bad time, or because
     // we already have a more general form of storage (double,
     // contiguous, array storage).
-    WriteBarrier<Unknown>* ensureInt32(JSGlobalData& globalData)
+    ContiguousJSValues ensureInt32(JSGlobalData& globalData)
     {
         if (LIKELY(hasInt32(structure()->indexingType())))
             return m_butterfly->contiguousInt32();
@@ -642,7 +634,7 @@ public:
     // indexing should be sparse, we're having a bad time, or because
     // we already have a more general form of storage (contiguous,
     // or array storage).
-    double* ensureDouble(JSGlobalData& globalData)
+    ContiguousDoubles ensureDouble(JSGlobalData& globalData)
     {
         if (LIKELY(hasDouble(structure()->indexingType())))
             return m_butterfly->contiguousDouble();
@@ -652,7 +644,7 @@ public:
         
     // Returns 0 if contiguous storage cannot be created - either because
     // indexing should be sparse or because we're having a bad time.
-    WriteBarrier<Unknown>* ensureContiguous(JSGlobalData& globalData)
+    ContiguousJSValues ensureContiguous(JSGlobalData& globalData)
     {
         if (LIKELY(hasContiguous(structure()->indexingType())))
             return m_butterfly->contiguous();
@@ -663,7 +655,7 @@ public:
     // Same as ensureContiguous(), except that if the indexed storage is in
     // double mode, then it does a rage conversion to contiguous: it
     // attempts to convert each double to an int32.
-    WriteBarrier<Unknown>* rageEnsureContiguous(JSGlobalData& globalData)
+    ContiguousJSValues rageEnsureContiguous(JSGlobalData& globalData)
     {
         if (LIKELY(hasContiguous(structure()->indexingType())))
             return m_butterfly->contiguous();
@@ -718,8 +710,6 @@ protected:
     // To create derived types you likely want JSNonFinalObject, below.
     JSObject(JSGlobalData&, Structure*, Butterfly* = 0);
         
-    void resetInheritorID(JSGlobalData&);
-        
     void visitButterfly(SlotVisitor&, Butterfly*, size_t storageSize);
     void copyButterfly(CopyVisitor&, Butterfly*, size_t storageSize);
 
@@ -745,9 +735,9 @@ protected:
     }
         
     Butterfly* createInitialUndecided(JSGlobalData&, unsigned length);
-    WriteBarrier<Unknown>* createInitialInt32(JSGlobalData&, unsigned length);
-    double* createInitialDouble(JSGlobalData&, unsigned length);
-    WriteBarrier<Unknown>* createInitialContiguous(JSGlobalData&, unsigned length);
+    ContiguousJSValues createInitialInt32(JSGlobalData&, unsigned length);
+    ContiguousDoubles createInitialDouble(JSGlobalData&, unsigned length);
+    ContiguousJSValues createInitialContiguous(JSGlobalData&, unsigned length);
         
     void convertUndecidedForValue(JSGlobalData&, JSValue);
     void convertInt32ForValue(JSGlobalData&, JSValue);
@@ -755,21 +745,21 @@ protected:
     ArrayStorage* createArrayStorage(JSGlobalData&, unsigned length, unsigned vectorLength);
     ArrayStorage* createInitialArrayStorage(JSGlobalData&);
         
-    WriteBarrier<Unknown>* convertUndecidedToInt32(JSGlobalData&);
-    double* convertUndecidedToDouble(JSGlobalData&);
-    WriteBarrier<Unknown>* convertUndecidedToContiguous(JSGlobalData&);
+    ContiguousJSValues convertUndecidedToInt32(JSGlobalData&);
+    ContiguousDoubles convertUndecidedToDouble(JSGlobalData&);
+    ContiguousJSValues convertUndecidedToContiguous(JSGlobalData&);
     ArrayStorage* convertUndecidedToArrayStorage(JSGlobalData&, NonPropertyTransition, unsigned neededLength);
     ArrayStorage* convertUndecidedToArrayStorage(JSGlobalData&, NonPropertyTransition);
     ArrayStorage* convertUndecidedToArrayStorage(JSGlobalData&);
         
-    double* convertInt32ToDouble(JSGlobalData&);
-    WriteBarrier<Unknown>* convertInt32ToContiguous(JSGlobalData&);
+    ContiguousDoubles convertInt32ToDouble(JSGlobalData&);
+    ContiguousJSValues convertInt32ToContiguous(JSGlobalData&);
     ArrayStorage* convertInt32ToArrayStorage(JSGlobalData&, NonPropertyTransition, unsigned neededLength);
     ArrayStorage* convertInt32ToArrayStorage(JSGlobalData&, NonPropertyTransition);
     ArrayStorage* convertInt32ToArrayStorage(JSGlobalData&);
     
-    WriteBarrier<Unknown>* convertDoubleToContiguous(JSGlobalData&);
-    WriteBarrier<Unknown>* rageConvertDoubleToContiguous(JSGlobalData&);
+    ContiguousJSValues convertDoubleToContiguous(JSGlobalData&);
+    ContiguousJSValues rageConvertDoubleToContiguous(JSGlobalData&);
     ArrayStorage* convertDoubleToArrayStorage(JSGlobalData&, NonPropertyTransition, unsigned neededLength);
     ArrayStorage* convertDoubleToArrayStorage(JSGlobalData&, NonPropertyTransition);
     ArrayStorage* convertDoubleToArrayStorage(JSGlobalData&);
@@ -820,7 +810,7 @@ protected:
     // as if it contained JSValues. But it won't always contain JSValues.
     // Make sure you cast this to the appropriate type before using.
     template<IndexingType indexingType>
-    WriteBarrier<Unknown>* indexingData()
+    ContiguousJSValues indexingData()
     {
         switch (indexingType) {
         case ALL_INT32_INDEXING_TYPES:
@@ -829,15 +819,15 @@ protected:
             return m_butterfly->contiguous();
                 
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
-            return m_butterfly->arrayStorage()->m_vector;
-                
+            return m_butterfly->arrayStorage()->vector();
+
         default:
             CRASH();
-            return 0;
+            return ContiguousJSValues();
         }
     }
 
-    WriteBarrier<Unknown>* currentIndexingData()
+    ContiguousJSValues currentIndexingData()
     {
         switch (structure()->indexingType()) {
         case ALL_INT32_INDEXING_TYPES:
@@ -845,16 +835,17 @@ protected:
             return m_butterfly->contiguous();
 
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
-            return m_butterfly->arrayStorage()->m_vector;
+            return m_butterfly->arrayStorage()->vector();
 
         default:
             CRASH();
-            return 0;
+            return ContiguousJSValues();
         }
     }
         
     JSValue getHolyIndexQuickly(unsigned i)
     {
+        ASSERT(i < m_butterfly->vectorLength());
         switch (structure()->indexingType()) {
         case ALL_INT32_INDEXING_TYPES:
         case ALL_CONTIGUOUS_INDEXING_TYPES:
@@ -934,7 +925,6 @@ private:
     JS_EXPORT_PRIVATE void fillGetterPropertySlot(PropertySlot&, PropertyOffset);
 
     const HashEntry* findPropertyHashEntry(ExecState*, PropertyName) const;
-    Structure* createInheritorID(JSGlobalData&);
         
     void putIndexedDescriptor(ExecState*, SparseArrayEntry*, PropertyDescriptor&, PropertyDescriptor& old);
         
@@ -955,21 +945,20 @@ private:
         
     void ensureLengthSlow(JSGlobalData&, unsigned length);
         
-    WriteBarrier<Unknown>* ensureInt32Slow(JSGlobalData&);
-    double* ensureDoubleSlow(JSGlobalData&);
-    WriteBarrier<Unknown>* ensureContiguousSlow(JSGlobalData&);
-    WriteBarrier<Unknown>* rageEnsureContiguousSlow(JSGlobalData&);
+    ContiguousJSValues ensureInt32Slow(JSGlobalData&);
+    ContiguousDoubles ensureDoubleSlow(JSGlobalData&);
+    ContiguousJSValues ensureContiguousSlow(JSGlobalData&);
+    ContiguousJSValues rageEnsureContiguousSlow(JSGlobalData&);
     ArrayStorage* ensureArrayStorageSlow(JSGlobalData&);
     
     enum DoubleToContiguousMode { EncodeValueAsDouble, RageConvertDoubleToValue };
     template<DoubleToContiguousMode mode>
-    WriteBarrier<Unknown>* genericConvertDoubleToContiguous(JSGlobalData&);
-    WriteBarrier<Unknown>* ensureContiguousSlow(JSGlobalData&, DoubleToContiguousMode);
+    ContiguousJSValues genericConvertDoubleToContiguous(JSGlobalData&);
+    ContiguousJSValues ensureContiguousSlow(JSGlobalData&, DoubleToContiguousMode);
     
 protected:
     Butterfly* m_butterfly;
 };
-
 
 // JSNonFinalObject is a type of JSObject that has some internal storage,
 // but also preserves some space in the collector cell for additional
@@ -1009,10 +998,22 @@ class JSFinalObject : public JSObject {
 public:
     typedef JSObject Base;
 
-    static JSFinalObject* create(ExecState*, Structure*);
-    static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype)
+    static const unsigned defaultSize = 64;
+    static inline unsigned defaultInlineCapacity()
     {
-        return Structure::create(globalData, globalObject, prototype, TypeInfo(FinalObjectType, StructureFlags), &s_info, NonArray, INLINE_STORAGE_CAPACITY);
+        return (defaultSize - allocationSize(0)) / sizeof(WriteBarrier<Unknown>);
+    }
+
+    static const unsigned maxSize = 512;
+    static inline unsigned maxInlineCapacity()
+    {
+        return (maxSize - allocationSize(0)) / sizeof(WriteBarrier<Unknown>);
+    }
+
+    static JSFinalObject* create(ExecState*, Structure*);
+    static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype, unsigned inlineCapacity)
+    {
+        return Structure::create(globalData, globalObject, prototype, TypeInfo(FinalObjectType, StructureFlags), &s_info, NonArray, inlineCapacity);
     }
 
     JS_EXPORT_PRIVATE static void visitChildren(JSCell*, SlotVisitor&);
@@ -1106,11 +1107,6 @@ inline void JSObject::setButterflyWithoutChangingStructure(Butterfly* butterfly)
     m_butterfly = butterfly;
 }
 
-inline JSObject* constructEmptyObject(ExecState* exec, Structure* structure)
-{
-    return JSFinalObject::create(exec, structure);
-}
-
 inline CallType getCallData(JSValue value, CallData& callData)
 {
     CallType result = value.isCell() ? value.asCell()->methodTable()->getCallData(value.asCell(), callData) : CallTypeNone;
@@ -1123,11 +1119,6 @@ inline ConstructType getConstructData(JSValue value, ConstructData& constructDat
     ConstructType result = value.isCell() ? value.asCell()->methodTable()->getConstructData(value.asCell(), constructData) : ConstructTypeNone;
     ASSERT(result == ConstructTypeNone || value.isValidCallee());
     return result;
-}
-
-inline Structure* createEmptyObjectStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue prototype)
-{
-    return JSFinalObject::createStructure(globalData, globalObject, prototype);
 }
 
 inline JSObject* asObject(JSCell* cell)
@@ -1419,7 +1410,7 @@ inline size_t offsetInButterfly(PropertyOffset offset)
     return offsetInOutOfLineStorage(offset) + Butterfly::indexOfPropertyStorage();
 }
 
-// This is a helper for patching code where you want to emit a load or store and
+// Helpers for patching code where you want to emit a load or store and
 // the base is:
 // For inline offsets: a pointer to the out-of-line storage pointer.
 // For out-of-line offsets: the base of the out-of-line storage.
@@ -1428,6 +1419,17 @@ inline size_t offsetRelativeToPatchedStorage(PropertyOffset offset)
     if (isOutOfLineOffset(offset))
         return sizeof(EncodedJSValue) * offsetInButterfly(offset);
     return JSObject::offsetOfInlineStorage() - JSObject::butterflyOffset() + sizeof(EncodedJSValue) * offsetInInlineStorage(offset);
+}
+
+// Returns the maximum offset a load instruction will encode.
+inline size_t maxOffsetRelativeToPatchedStorage(PropertyOffset offset)
+{
+#if USE(JSVALUE32_64)
+    return offsetRelativeToPatchedStorage(offset)
+        + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag);
+#else
+    return offsetRelativeToPatchedStorage(offset);
+#endif
 }
 
 inline int indexRelativeToBase(PropertyOffset offset)

@@ -30,6 +30,7 @@
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
+#include "FeatureObserver.h"
 #include "Frame.h"
 #include "HTMLFieldSetElement.h"
 #include "HTMLFormElement.h"
@@ -69,11 +70,6 @@ HTMLFormControlElement::~HTMLFormControlElement()
 {
 }
 
-void HTMLFormControlElement::willAddAuthorShadowRoot()
-{
-    ensureUserAgentShadowRoot();
-}
-
 String HTMLFormControlElement::formEnctype() const
 {
     return FormSubmission::Attributes::parseEncodingType(fastGetAttribute(formenctypeAttr));
@@ -86,7 +82,10 @@ void HTMLFormControlElement::setFormEnctype(const String& value)
 
 String HTMLFormControlElement::formMethod() const
 {
-    return FormSubmission::Attributes::methodString(FormSubmission::Attributes::parseMethodType(fastGetAttribute(formmethodAttr)));
+    const AtomicString& formMethodAttr = fastGetAttribute(formmethodAttr);
+    if (formMethodAttr.isNull())
+        return emptyString();
+    return FormSubmission::Attributes::methodString(FormSubmission::Attributes::parseMethodType(formMethodAttr));
 }
 
 void HTMLFormControlElement::setFormMethod(const String& value)
@@ -122,9 +121,10 @@ void HTMLFormControlElement::ancestorDisabledStateWasChanged()
 
 void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == formAttr)
+    if (name == formAttr) {
         formAttributeChanged();
-    else if (name == disabledAttr) {
+        FeatureObserver::observe(document(), FeatureObserver::FormAttribute);
+    } else if (name == disabledAttr) {
         bool oldDisabled = m_disabled;
         m_disabled = !value.isNull();
         if (oldDisabled != m_disabled)
@@ -143,6 +143,10 @@ void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const Ato
         m_isRequired = !value.isNull();
         if (wasRequired != m_isRequired)
             requiredAttributeChanged();
+        FeatureObserver::observe(document(), FeatureObserver::RequiredAttribute);
+    } else if (name == autofocusAttr) {
+        HTMLElement::parseAttribute(name, value);
+        FeatureObserver::observe(document(), FeatureObserver::AutoFocusAttribute);
     } else
         HTMLElement::parseAttribute(name, value);
 }
@@ -481,7 +485,7 @@ void HTMLFormControlElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInf
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     LabelableElement::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_validationMessage);
+    info.addMember(m_validationMessage, "validationMessage");
 }
 
 } // namespace Webcore

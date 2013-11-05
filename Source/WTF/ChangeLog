@@ -1,3 +1,701 @@
+2013-02-04  David Kilzer  <ddkilzer@apple.com>
+
+        Sort WTF Xcode project file
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2013-02-02  Andreas Kling  <akling@apple.com>
+
+        Vector should consult allocator about ideal size when choosing capacity.
+        <http://webkit.org/b/108410>
+        <rdar://problem/13124002>
+
+        Reviewed by Benjamin Poulain.
+
+        Added WTF::fastMallocGoodSize(), a workalike/wrapper for OS X's malloc_good_size().
+        It returns the actual size of the block that will get allocated for a given byte size.
+
+        Vector's internal buffer now checks with the allocator if the resulting allocation
+        could actually house more objects and updates its capacity to make use of the space.
+
+        * wtf/Deque.h:
+        (WTF::::expandCapacity):
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMallocGoodSize):
+        * wtf/FastMalloc.h:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+
+2013-02-02  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/108745> WTF shouldn't use a script build phase to detect the presence of headers when the compiler can do it for us
+
+        Reviewed by Sam Weinig.
+
+        * WTF.xcodeproj/project.pbxproj: Remove the script phase that used to generate a header file
+        containing information about whether certain header files exist on the system.
+        * wtf/FastMalloc.cpp: Use Clang's __has_include to detect whether the header exists before including it.
+
+2013-02-01  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. WTF VS2010 project cleanup.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.vcxproj/WTFPreLink.cmd: Removed.
+
+2013-02-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Add WTFURL source files to the build
+        https://bugs.webkit.org/show_bug.cgi?id=108215
+
+        Reviewed by Benjamin Poulain.
+
+        The WTFURL implementation sources are all still guarded by the USE(WTFURL) guard,
+        meaning that the GTK port still uses the default KURL backend. To use the WTFURL
+        backend instead, one would have to define WTF_USE_WTFURL in Platform.h.
+
+        * GNUmakefile.am: List the directories from which source headers will be included.
+        Plenty of WTFURL code currently just includes the required header by name rather
+        than specifying the header path as relative to Source/WTF. In the future all the inclusions
+        should probaby be changed to include the header through the path relative to Source/WTF.
+        * GNUmakefile.list.am: Add build targets for the WTFURL source files.
+        * wtf/url/api/ParsedURL.cpp: Specify the complete path to the required headers and
+        reorder the inclusions.
+        * wtf/url/src/URLCanon.h: Ditto.
+
+2013-01-18  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: provide edge names and class names for WTF containers and strings
+        https://bugs.webkit.org/show_bug.cgi?id=107303
+
+        Reviewed by Yury Semikhatsky.
+
+        I'd like to use ValueType[] as className for the container data members
+        because class names of template parameters already present in the container class names.
+
+        * wtf/MemoryInstrumentationArrayBufferView.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashCountedSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashMap.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationListHashSet.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationSequence.h:
+        * wtf/MemoryInstrumentationString.h:
+        (WTF::reportMemoryUsage):
+        * wtf/MemoryInstrumentationVector.h:
+        (WTF::reportMemoryUsage):
+
+2013-02-01  Geoffrey Garen  <ggaren@apple.com>
+
+        Added TriState to WTF and started using it in one place
+        https://bugs.webkit.org/show_bug.cgi?id=108628
+
+        Reviewed by Beth Dakin.
+
+        Useful for expressing "maybe" conditions in a boolean context.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/TriState.h: Added.
+        (WTF):
+
+2013-02-01  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix for WinCE after r137709
+        https://bugs.webkit.org/show_bug.cgi?id=105767
+
+        Do not pass functions as const references to
+        templated arguments to make the compiler happy.
+
+        * wtf/StdLibExtras.h:
+        (WTF::binarySearch):
+        (WTF::tryBinarySearch):
+        (WTF::approximateBinarySearch):
+
+2013-01-31  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Native Memory Instrumentation: replace nodeName argument with className
+        https://bugs.webkit.org/show_bug.cgi?id=107278
+
+        Reviewed by Yury Semikhatsky.
+
+        I replaced nodeName with className because we newer report node name for private and raw buffers
+        but need to report their class names.
+
+        * wtf/MemoryInstrumentation.cpp:
+        (WTF::MemoryInstrumentation::reportLinkToBuffer):
+        (WTF::MemoryClassInfo::addRawBuffer):
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (WTF::MemoryInstrumentation::addRawBuffer):
+        (MemoryClassInfo):
+
+2013-01-31  Jessie Berlin  <jberlin@apple.com>
+
+        Rolling out r141407 because it is causing crashes under
+        WTF::TCMalloc_Central_FreeList::FetchFromSpans() in Release builds.
+
+        * wtf/Deque.h:
+        (WTF::::expandCapacity):
+        * wtf/FastMalloc.cpp:
+        * wtf/FastMalloc.h:
+        (WTF):
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+
+2013-01-31  Mark Lam  <mark.lam@apple.com>
+
+        Abstraction for hiding enum class.
+        https://bugs.webkit.org/show_bug.cgi?id=108533
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h:
+        * wtf/EnumClass.h: Copied from Source/WTF/wtf/TypeSafeEnum.h.
+        (WTF::EnumClass::EnumClass):
+        (WTF::EnumClass::operator==):
+        (WTF::EnumClass::operator!=):
+        (WTF::EnumClass::operator<):
+        (WTF::EnumClass::operator<=):
+        (WTF::EnumClass::operator>):
+        (WTF::EnumClass::operator>=):
+        * wtf/TypeSafeEnum.h: Removed.
+
+2013-01-31  Andreas Kling  <akling@apple.com>
+
+        Vector should consult allocator about ideal size when choosing capacity.
+        <http://webkit.org/b/108410>
+        <rdar://problem/13124002>
+
+        Reviewed by Benjamin Poulain.
+
+        Added WTF::fastMallocGoodSize(), a workalike/wrapper for OS X's malloc_good_size().
+        It returns the actual size of the block that will get allocated for a given byte size.
+
+        Vector's internal buffer now checks with the allocator if the resulting allocation
+        could actually house more objects and updates its capacity to make use of the space.
+
+        * wtf/Deque.h:
+        (WTF::::expandCapacity):
+        * wtf/FastMalloc.cpp:
+        (WTF::fastMallocGoodSize):
+        * wtf/FastMalloc.h:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+
+2013-01-30  Christophe Dumez  <christophe.dumez@intel.com>
+
+        Add a StringTypeAdapter for ASCIILiteral
+        https://bugs.webkit.org/show_bug.cgi?id=108338
+
+        Reviewed by Benjamin Poulain.
+
+        Add StringTypeAdapter for ASCIILiteral type so that concatenation of an
+        ASCIILiteral and a String using + operator is efficiently handled.
+
+        * wtf/text/StringConcatenate.h:
+        * wtf/text/StringOperators.h:
+        (WTF::operator+): Inline some of the operator+ functions that were not
+        yet.
+        (WTF):
+
+2013-01-30  David Kilzer  <ddkilzer@apple.com>
+
+        Upstream iOS build file changes for WTF
+        <http://webkit.org/b/108221>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig:
+        - Import iOS.xcconfig.
+        - Remove VALID_ARCHS.  Modern Xcodes define these correctly.
+        - Make HEADER_SEARCH_PATHS work with iOS Simulator builds.
+        - Add SUPPORTED_PLATFORMS so both Mac and iOS SDKs appear in
+          schemes.
+        - Define INSTALL_PATH when building for macosx SDK.
+        * Configurations/CopyWTFHeaders.xcconfig:
+        - Make PRIVATE_HEADERS_FOLDER_PATH work with iOS Simulator
+          builds.
+        * Configurations/DebugRelease.xcconfig:
+        - Simplify ARCHS.  This works correctly on 32-bit-only SDKs.
+        * Configurations/WTF.xcconfig:
+        - Fix installation directory for iOS Simulator builds by
+          defining INSTALL_PATH_ACTUAL.
+        * Configurations/iOS.xcconfig: Add.
+        * WTF.xcodeproj/project.pbxproj:
+        - Add iOS.xcconfig to the project.
+
+2013-01-29  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Structure::m_outOfLineCapacity is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=108206
+
+        Reviewed by Geoffrey Garen.
+
+        We're adding a new function that gives us the ability to round a value up to the next power of a certain base.
+
+        * wtf/MathExtras.h:
+        (WTF::roundUpToPowerOf):
+
+2013-01-30  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt] Fix Qt/Mac build after r141024 and r141037
+        https://bugs.webkit.org/show_bug.cgi?id=108318
+
+        Reviewed by Kentaro Hara.
+
+        * wtf/Functional.h:
+            Make sure Block.h is included and its functionality
+            is enabled for Qt on Mac.
+
+2013-01-30  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Remove QT4_UNICODE related code paths
+        https://bugs.webkit.org/show_bug.cgi?id=108316
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Get rid of QT4_UNICODE and any related code paths. The Qt port
+        requires Qt5 and ICU these days.
+
+        * WTF.gypi:
+        * WTF.pro:
+        * wtf/unicode/Unicode.h:
+        * wtf/unicode/qt4/UnicodeQt4.h: Removed.
+
+2013-01-29  Mark Lam  <mark.lam@apple.com>
+
+        Introducing WTF::TypeSafeEnum and DatabaseError.
+        https://bugs.webkit.org/show_bug.cgi?id=108279.
+
+        Reviewed by Geoffrey Garen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/TypeSafeEnum.h: Added.
+        (WTF):
+        (TypeSafeEnum):
+        (WTF::TypeSafeEnum::TypeSafeEnum):
+        (WTF::TypeSafeEnum::value):
+        (WTF::TypeSafeEnum::operator==):
+        (WTF::TypeSafeEnum::operator!=):
+        (WTF::TypeSafeEnum::operator<):
+        (WTF::TypeSafeEnum::operator<=):
+        (WTF::TypeSafeEnum::operator>):
+        (WTF::TypeSafeEnum::operator>=):
+
+2013-01-29  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r140983.
+        http://trac.webkit.org/changeset/140983
+        https://bugs.webkit.org/show_bug.cgi?id=108277
+
+        Unfortunately, this API has one last client (Requested by
+        abarth on #webkit).
+
+        * wtf/Platform.h:
+
+2013-01-28  Benjamin Poulain  <benjamin@webkit.org>
+
+        String constructed from Literals should be non-empty
+        https://bugs.webkit.org/show_bug.cgi?id=108103
+
+        Reviewed by Eric Carlson.
+
+        For efficiency, the construction from literal only works with valid non-empty strings.
+        One of the constructor was changed to fix an error from HTMLMediaElement.
+
+        This patch replaces the branch with an assertions.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::createFromLiteral):
+
+2013-01-28  David Kilzer  <ddkilzer@apple.com>
+
+        BUILD FIX: Platform.h:1212:22: error: '__MAC_OS_X_VERSION_MIN_REQUIRED' is not defined, evaluates to 0 [-Werror,-Wundef]
+
+        This fixes the following build error introduced in r140366 for
+        Bug 107098:
+
+            Platform.h:1212:22: error: '__MAC_OS_X_VERSION_MIN_REQUIRED' is not defined, evaluates to 0 [-Werror,-Wundef]
+            #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+                                 ^
+            1 error generated.
+
+        * wtf/Platform.h: Check !PLATFORM(IOS) first so that iOS builds
+        do not try to evaluate __MAC_OS_X_VERSION_MIN_REQUIRED.
+
+2013-01-28  Adam Barth  <abarth@webkit.org>
+
+        Remove webkitNotifications.createHTMLNotification
+        https://bugs.webkit.org/show_bug.cgi?id=107598
+
+        Reviewed by Benjamin Poulain.
+
+        * wtf/Platform.h:
+
+2013-01-27  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [ANDROID] Fix a typo
+        https://bugs.webkit.org/show_bug.cgi?id=108046
+
+        Reviewed by Adam Barth.
+
+        HAVE_NMAP -> HAVE_MMAP.
+
+        * wtf/Platform.h:
+
+2013-01-27  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        Fixing atomicIncrement implementation for Windows by dropping support before XP SP2.
+        https://bugs.webkit.org/show_bug.cgi?id=106740
+
+        Reviewed by Benjamin Poulain.
+
+        Adding int64_t type atomicIncrement and atomicDecrement implementations for Windows
+        into Atomics.h required by WebKit2 after r139514. Separating WinCE implementation
+        that does not support WebKit2 and has no support for 64 bit interlocked methods.
+
+        Increasing WINVER and _WIN32_WINNT to XP SP2, because the 64 bit type interlocked methods
+        are not supported on previous versions on 32 bit target.
+
+        * config.h:
+        * wtf/Atomics.h:
+        (WTF):
+        (WTF::atomicIncrement):
+        (WTF::atomicDecrement):
+
+2013-01-26  Andras Becsi  <andras.becsi@digia.com>
+
+        Unreviewed fix after r140451 to make GIT-SVN repositories happy.
+
+        * WTF.vcproj/WTF.sln:
+
+2013-01-26  Justin Schuh  <jschuh@chromium.org>
+
+        [CHROMIUM] Suppress more c4267 build warnings for Win64 targets
+        https://bugs.webkit.org/show_bug.cgi?id=107993
+
+        Reviewed by Abhishek Arya.
+
+        * WTF.gyp/WTF.gyp:
+
+2013-01-25  Eric Seidel  <eric@webkit.org>
+
+        Support 4 and 5 argument bound static functions
+        https://bugs.webkit.org/show_bug.cgi?id=107973
+
+        Reviewed by Anders Carlsson.
+
+        Yummy copy/paste template code!
+        I'm about to use this in a BackgroundHTMLParser patch, but figured this should be landed separately.
+
+        * wtf/Functional.h:
+        (WTF):
+        (WTF::R):
+
+2013-01-24  Martin Robinson  <mrobinson@igalia.com>
+
+        Abstract the logic for appending a UChar32 onto StringBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=107505
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append): Added a method for appending a UChar32 to a StringBuilder.
+
+2013-01-24  Brent Fulgham  <bfulgham@webkit.org>
+
+        Stipulate build order between WTFGenerated and WTF
+        https://bugs.webkit.org/show_bug.cgi?id=107844
+
+        Reviewed by Tim Horton.
+
+        * WTF.vcxproj/WTF.vcxproj: Use VS2010 project dependency
+        declaration so WTF depends on a completed WTFGenerated build.
+
+2013-01-23  Abhishek Arya  <inferno@chromium.org>
+
+        Add support for ASSERT_WITH_SECURITY_IMPLICATION.
+        https://bugs.webkit.org/show_bug.cgi?id=107699
+
+        Reviewed by Eric Seidel.
+
+        * wtf/Assertions.h: Add ASSERT_WITH_SECURITY_IMPLICATION to
+        indicate possible security vulnerabily and enable it by default
+        in fuzzing builds.
+        * wtf/Vector.h: Use ASSERT_WITH_SECURITY_IMPLICATION for
+        bounds check on [] operator.
+
+2013-01-23  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style to CRLF on Windows .sln files.
+
+        * WTF.vcproj/WTF.sln: Added property svn:eol-style.
+
+2013-01-23  Adam Barth  <abarth@webkit.org>
+
+        BackgroundHTMLParser::sendTokensToMainThread should use bind
+        https://bugs.webkit.org/show_bug.cgi?id=107637
+
+        Reviewed by Eric Seidel.
+
+        * wtf/Functional.h:
+            - I had to re-work the approach to validating WeakPtr |this|
+              arguments a bit. Previously you couldn't pass a WeakPtr as a
+              non-|this| argument to a function because we would try to unwrap
+              it into a raw pointer.
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrFactory::revokeAll):
+        (WeakPtrFactory):
+            - Let clients revoke all outstanding WeakPtrs without needing to
+              destroy the WeakPtrFactory.
+        * wtf/chromium/MainThreadChromium.cpp:
+        (WTF::callFunctionObject):
+        (WTF::callOnMainThread):
+            - Implement callOnMainThread for Function objects. The non-Chromium
+              implementation of MainThread.cpp already implements this feature.
+
+2013-01-23  Justin Schuh  <jschuh@chromium.org>
+
+        [CHROMIUM] Suppress c4267 build warnings in WTF for Win64 targets
+        https://bugs.webkit.org/show_bug.cgi?id=107721
+
+        Reviewed by Abhishek Arya.
+
+        * WTF.gyp/WTF.gyp:
+
+2013-01-23  Oliver Hunt  <oliver@apple.com>
+
+        Add RELEASE_ASSERT (and a few friends)
+        https://bugs.webkit.org/show_bug.cgi?id=107725
+
+        Reviewed by Filip Pizlo.
+
+        Adding a few macros to make release mode assertions easier and more readable.
+        Also makes same assertions more useful in debug builds.
+
+        * wtf/Assertions.h:
+
+2013-01-22  Joshua Bell  <jsbell@chromium.org>
+
+        Prevent race condition during Worker shutdown
+        https://bugs.webkit.org/show_bug.cgi?id=107577
+
+        Reviewed by Dmitry Titov.
+
+        Add MessageQueue::appendAndKill() which wraps those two steps with a mutex so other
+        threads can't sneak a message in between.
+
+        * wtf/MessageQueue.h: Added appendAndKill() method.
+
+2013-01-22  Roger Fong  <roger_fong@apple.com>
+
+        WTF project files and property sheets for getting WebKit to compile in VS2010.
+        https://bugs.webkit.org/show_bug.cgi?id=106986
+
+        Reviewed by Timothy Horton and Brent Fulgham.
+
+        * WTF.vcproj/WTF.sln:
+        * WTF.vcxproj: Added.
+        * WTF.vcxproj/WTF.vcxproj: Added.
+        * WTF.vcxproj/WTF.vcxproj.filters: Added.
+        * WTF.vcxproj/WTF.vcxproj.user: Added.
+        * WTF.vcxproj/WTFCommon.props: Added.
+        * WTF.vcxproj/WTFDebug.props: Added.
+        * WTF.vcxproj/WTFGenerated.make: Added.
+        * WTF.vcxproj/WTFGenerated.vcxproj: Added.
+        * WTF.vcxproj/WTFGenerated.vcxproj.filters: Added.
+        * WTF.vcxproj/WTFGenerated.vcxproj.user: Added.
+        * WTF.vcxproj/WTFGeneratedCommon.props: Added.
+        * WTF.vcxproj/WTFGeneratedDebug.props: Added.
+        * WTF.vcxproj/WTFGeneratedRelease.props: Added.
+        * WTF.vcxproj/WTFPostBuild.cmd: Added.
+        * WTF.vcxproj/WTFPreBuild.cmd: Added.
+        * WTF.vcxproj/WTFPreLink.cmd: Added.
+        * WTF.vcxproj/WTFRelease.props: Added.
+        * WTF.vcxproj/build-generated-files.sh: Added.
+        * WTF.vcxproj/copy-files.cmd: Added.
+        * WTF.vcxproj/work-around-vs-dependency-tracking-bugs.py: Added.
+        * config.h:
+
+2013-01-22  David Kilzer  <ddkilzer@apple.com>
+
+        Fix DateMath.cpp to compile with -Wshorten-64-to-32
+        <http://webkit.org/b/107503>
+
+        Reviewed by Darin Adler.
+
+        Fixes the following build errors with -Wshorten-64-to-32:
+
+            DateMath.cpp:742:47: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                if (month == 2 && day > 28 && !isLeapYear(year))
+                                               ~~~~~~~~~~ ^~~~
+            DateMath.cpp:757:48: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                double dateSeconds = ymdhmsToSeconds(year, month, day, hours, minutes, seconds) - timeZoneSeconds;
+                                     ~~~~~~~~~~~~~~~       ^~~~~
+            DateMath.cpp:757:55: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                double dateSeconds = ymdhmsToSeconds(year, month, day, hours, minutes, seconds) - timeZoneSeconds;
+                                     ~~~~~~~~~~~~~~~              ^~~
+            DateMath.cpp:757:60: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                double dateSeconds = ymdhmsToSeconds(year, month, day, hours, minutes, seconds) - timeZoneSeconds;
+                                     ~~~~~~~~~~~~~~~                   ^~~~~
+            DateMath.cpp:757:67: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                double dateSeconds = ymdhmsToSeconds(year, month, day, hours, minutes, seconds) - timeZoneSeconds;
+                                     ~~~~~~~~~~~~~~~                          ^~~~~~~
+            DateMath.cpp:996:59: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                                offset = ((o / 100) * 60 + (o % 100)) * sgn;
+                                       ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+            DateMath.cpp:998:37: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                                offset = o * 60 * sgn;
+                                       ~ ~~~~~~~^~~~~
+            DateMath.cpp:1005:40: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                            offset = (o * 60 + o2) * sgn;
+                                   ~ ~~~~~~~~~~~~~~^~~~~
+            DateMath.cpp:1041:40: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                return ymdhmsToSeconds(year, month + 1, day, hour, minute, second) * msPerSecond;
+                       ~~~~~~~~~~~~~~~       ~~~~~~^~~
+            DateMath.cpp:1041:45: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                return ymdhmsToSeconds(year, month + 1, day, hour, minute, second) * msPerSecond;
+                       ~~~~~~~~~~~~~~~                  ^~~
+            DateMath.cpp:1041:50: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                return ymdhmsToSeconds(year, month + 1, day, hour, minute, second) * msPerSecond;
+                       ~~~~~~~~~~~~~~~                       ^~~~
+            DateMath.cpp:1041:56: error: implicit conversion loses integer precision: 'long' to 'int' [-Werror,-Wshorten-64-to-32]
+                return ymdhmsToSeconds(year, month + 1, day, hour, minute, second) * msPerSecond;
+                       ~~~~~~~~~~~~~~~                             ^~~~~~
+            12 errors generated.
+
+        * wtf/DateMath.cpp:
+        (WTF::ymdhmsToSeconds): Change year argument from long to int.
+        Change mon, day, hour, minute arguments from int to long.
+        (WTF::parseInt): Add.  Identical to parseLong but bounds checks
+        for type int.
+        (WTF::parseLong): Switch to std::numeric_limits<long> instead of
+        macros.
+        (WTF::parseES5DatePortion): Change year argument from long to
+        int.
+        (WTF::parseES5DateFromNullTerminatedCharacters): Change year
+        local variable from long to int.
+        (WTF::parseDateFromNullTerminatedCharacters): Change year and
+        offset local variables from long to int.  Switch from using
+        parseLong() to parseInt() as needed.  Ditto for labs() to abs().
+        Add overflow check when switching from "MM/DD/YYYY" to
+        "YYYY/MM/DD" parsing.
+
+2013-01-17  Andy Estes  <aestes@apple.com>
+
+        Add a USE() macro for content filtering code
+        https://bugs.webkit.org/show_bug.cgi?id=107098
+
+        Reviewed by Mark Rowe.
+
+        * wtf/Platform.h: Define WTF_USE_CONTENT_FILTERING on Mac platforms
+        more recent than Lion.
+
+2013-01-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove unnecessary PLATFORM() tests
+        https://bugs.webkit.org/show_bug.cgi?id=107360
+
+        Reviewed by Eric Seidel.
+
+        PLATFORM(WIN), PLATFORM(CHROMIUM) and PLATFORM(QT) are mutually
+        exclusive. Remove redundant PLATFORM() tests based on this
+        invariant.
+
+        * wtf/Platform.h:
+
+2013-01-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove PLATFORM(TORCHMOBILE) from Assertions.h
+        https://bugs.webkit.org/show_bug.cgi?id=107355
+
+        Reviewed by Eric Seidel.
+
+        This appears to be the only place where PLATFORM(TORCHMOBILE) is
+        used. I don't believe this ifdef is needed anymore.
+
+        * wtf/Assertions.h:
+
+2013-01-18  Michael Saboff  <msaboff@apple.com>
+
+        Refactor isPowerOf2() and add getLSBSet()
+        https://bugs.webkit.org/show_bug.cgi?id=107306
+
+        Reviewed by Filip Pizlo.
+
+        Moved runtime/PropertyMapHashTable.h:PowerOf2() to new hasOneBitSet() and added getLSBSet().
+
+        * wtf/MathExtras.h:
+        (hasOneBitSet):
+        (getLSBSet):
+
+2013-01-18  David Kilzer  <ddkilzer@apple.com>
+
+        Fix WTF::copyLCharsFromUCharSource() to compile with -Wshorten-64-to-32
+        <http://webkit.org/b/107227>
+
+        Reviewed by Benjamin Poulain.
+
+        Fixes the following build error:
+
+            ASCIIFastPath.h:117:59: error: implicit conversion loses integer precision: 'unsigned long' to 'const unsigned int' [-Werror,-Wshorten-64-to-32]
+                    const unsigned endLength = length - ucharsPerLoop + 1;
+                                   ~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~^~~
+            1 error generated.
+
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource): Change local variables from
+        unsigned to size_t.
+
+2013-01-14  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        [EFL] Update freetype in jhbuild to 2.4.11 and activate subpixel layout
+        https://bugs.webkit.org/show_bug.cgi?id=106774
+
+        In order to fix a long standing linespacing/font ascent & descent issue
+        we found that FreeType commit b0962ac34e660 solves that problem.
+        Let's update FreeType accordingly, but bump it to 2.4.11 due to the
+        maintainer recommending several security updates after that said commit.
+
+        Also, in order to avoid extra rebaselining, let's activate subpixel
+        layout at the same time.
+
+        Reviewed by Martin Robinson.
+
+        * wtf/Platform.h: Activate Subpixel Layout for EFL.
+
+2013-01-17  Adam Barth  <abarth@webkit.org>
+
+        Teach Functional.h about WeakPtr
+        https://bugs.webkit.org/show_bug.cgi?id=107105
+
+        Reviewed by Anders Carlsson.
+
+        A common pattern in cross-thread communication is to call member
+        functions of an object on a remote thread. If the caller's reference to
+        the object on the remote thread is a WeakPtr, the caller usually wants
+        to validate that the object still exists when the call actually takes
+        place.
+
+        It's possible to do this manually for every cross-thread call, but that
+        is tiresome and error prone. Instead, we can teach bind to validate
+        WeakPtr arguments when passed as the "this" parameter to a member
+        function.
+
+        * wtf/Functional.h:
+        (WTF::ParamStorageTraits::validate):
+
 2013-01-17  David Kilzer  <ddkilzer@apple.com>
 
         Fix vprintf_stderr_common() to compile with -Wshorten-64-to-32

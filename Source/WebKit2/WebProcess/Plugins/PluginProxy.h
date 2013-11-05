@@ -62,8 +62,8 @@ public:
     uint64_t pluginInstanceID() const { return m_pluginInstanceID; }
     void pluginProcessCrashed();
 
-    void didReceivePluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didReceiveSyncPluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceivePluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveSyncPluginProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     bool isBeingAsynchronouslyInitialized() const { return m_waitingOnAsynchronousInitialization; }
 
@@ -132,6 +132,9 @@ private:
     virtual bool findString(const String&, WebCore::FindOptions, unsigned) OVERRIDE { return false; }
 
     virtual WebCore::IntPoint convertToRootView(const WebCore::IntPoint&) const OVERRIDE;
+
+    virtual bool getResourceData(const unsigned char*& /* bytes */, unsigned& /* length */) const OVERRIDE { return false; }
+    virtual bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) OVERRIDE { return false; }
 
     float contentsScaleFactor();
     bool needsBackingStore() const;

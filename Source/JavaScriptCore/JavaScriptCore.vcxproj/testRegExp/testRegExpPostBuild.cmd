@@ -1,0 +1,27 @@
+if exist "%CONFIGURATIONBUILDDIR%\buildfailed" del "%CONFIGURATIONBUILDDIR%\buildfailed"
+
+echo "WOAHHHAHAHAHA"
+
+mkdir 2>NUL "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt46.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt46.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt46.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt46.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt44.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt44.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt44.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt44.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\libicuin.dll" xcopy /y /d "%WebKit_Libraries%\bin\libicuin.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\libicuuc.dll" xcopy /y /d "%WebKit_Libraries%\bin\libicuuc.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt40.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt40.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt40.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt40.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icuin40.dll" xcopy /y /d "%WebKit_Libraries%\bin\icuin40.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icuuc40.dll" xcopy /y /d "%WebKit_Libraries%\bin\icuuc40.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt42.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt42.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icudt42.dll" xcopy /y /d "%WebKit_Libraries%\bin\icudt42.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icuin42.dll" xcopy /y /d "%WebKit_Libraries%\bin\icuin42.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\icuuc42.dll" xcopy /y /d "%WebKit_Libraries%\bin\icuuc42.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\CoreFoundation.dll" xcopy /y /d "%WebKit_Libraries%\bin\CoreFoundation.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\CoreFoundation.resources" xcopy /y /d /e /i "%WebKit_Libraries%\bin\CoreFoundation.resources" "%CONFIGURATIONBUILDDIR%\bin\CoreFoundation.resources"
+if exist "%WebKit_Libraries%\bin\pthreadVC2.dll" xcopy /y /d "%WebKit_Libraries%\bin\pthreadVC2.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\objc.dll" xcopy /y /d "%WebKit_Libraries%\bin\objc.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\ASL.dll" xcopy /y /d "%WebKit_Libraries%\bin\ASL.dll" "%CONFIGURATIONBUILDDIR%\bin"
+if exist "%WebKit_Libraries%\bin\libdispatch.dll" xcopy /y /d "%WebKit_Libraries%\bin\libdispatch.dll" "%CONFIGURATIONBUILDDIR%\bin"
+
+cmd /c

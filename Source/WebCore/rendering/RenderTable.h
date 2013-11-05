@@ -42,7 +42,7 @@ enum SkipEmptySectionsValue { DoNotSkipEmptySections, SkipEmptySections };
 
 class RenderTable : public RenderBlock {
 public:
-    explicit RenderTable(ContainerNode*);
+    explicit RenderTable(Element*);
     virtual ~RenderTable();
 
     // Per CSS 3 writing-mode: "The first and second values of the 'border-spacing' property represent spacing between columns
@@ -348,13 +348,13 @@ inline RenderTableSection* RenderTable::topSection() const
 
 inline RenderTable* toRenderTable(RenderObject* object)
 {
-    ASSERT(!object || object->isTable());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTable());
     return static_cast<RenderTable*>(object);
 }
 
 inline const RenderTable* toRenderTable(const RenderObject* object)
 {
-    ASSERT(!object || object->isTable());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTable());
     return static_cast<const RenderTable*>(object);
 }
 

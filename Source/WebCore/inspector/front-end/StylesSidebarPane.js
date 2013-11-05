@@ -1395,7 +1395,7 @@ WebInspector.ComputedStylePropertiesSection.prototype = {
     {
         function sorter(a, b)
         {
-            return a.name.localeCompare(b.name);
+            return a.name.compareTo(b.name);
         }
 
         var style = this.styleRule.style;
@@ -1768,6 +1768,7 @@ WebInspector.StylePropertyTreeElement.prototype = {
                 {
                     color = e.data;
                     var colorString = color.toString();
+                    spectrum.displayText = colorString;
                     colorValueElement.textContent = colorString;
                     colorSwatch.setColorString(colorString);
                     self.applyStyleText(nameElement.textContent + ": " + valueElement.textContent, false, false, false);
@@ -2074,10 +2075,14 @@ WebInspector.StylePropertyTreeElement.prototype = {
             selectElement = selectElement.enclosingNodeOrSelfWithClass("webkit-css-property") || selectElement.enclosingNodeOrSelfWithClass("value");
 
         var isEditingName = selectElement === this.nameElement;
-        if (!isEditingName && selectElement !== this.valueElement) {
-            // Double-click in the LI - start editing value.
-            isEditingName = false;
-            selectElement = this.valueElement;
+        if (!isEditingName) {
+            if (selectElement !== this.valueElement) {
+                // Click in the LI - start editing value.
+                isEditingName = false;
+                selectElement = this.valueElement;
+            }
+
+            this.valueElement.textContent = this.value;
         }
 
         if (WebInspector.isBeingEdited(selectElement))

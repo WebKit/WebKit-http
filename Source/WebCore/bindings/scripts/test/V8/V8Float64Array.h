@@ -35,9 +35,9 @@ namespace WebCore {
 class V8Float64Array {
 public:
     static const bool hasDependentLifetime = V8ArrayBufferView::hasDependentLifetime;
-    static bool HasInstance(v8::Handle<v8::Value>);
-    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate();
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate();
+    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate* = 0);
+    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate* = 0);
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate* = 0);
     static Float64Array* toNative(v8::Handle<v8::Object> object)
     {
         return reinterpret_cast<Float64Array*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
@@ -56,7 +56,7 @@ private:
 
 v8::Handle<v8::Object> wrap(Float64Array* impl, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 
-inline v8::Handle<v8::Value> toV8(Float64Array* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
+inline v8::Handle<v8::Value> toV8(Float64Array* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     if (UNLIKELY(!impl))
         return v8NullWithCheck(isolate);
@@ -83,7 +83,7 @@ inline v8::Handle<v8::Value> toV8Fast(PassRefPtr< Float64Array > impl, const Hol
     return toV8Fast(impl.get(), container, wrappable);
 }
 
-inline v8::Handle<v8::Value> toV8(PassRefPtr< Float64Array > impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
+inline v8::Handle<v8::Value> toV8(PassRefPtr< Float64Array > impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     return toV8(impl.get(), creationContext, isolate);
 }

@@ -43,8 +43,8 @@
 
 namespace WebCore {
 
-RenderRegion::RenderRegion(ContainerNode* node, RenderFlowThread* flowThread)
-    : RenderReplaced(node, IntSize())
+RenderRegion::RenderRegion(Element* element, RenderFlowThread* flowThread)
+    : RenderReplaced(element, IntSize())
     , m_flowThread(flowThread)
     , m_parentNamedFlowThread(0)
     , m_isValid(false)
@@ -62,14 +62,22 @@ LayoutUnit RenderRegion::pageLogicalWidth() const
 LayoutUnit RenderRegion::pageLogicalHeight() const
 {
     if (hasOverrideHeight() && view()->normalLayoutPhase())
-        return overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
+        return overrideLogicalContentHeight();
     return m_flowThread->isHorizontalWritingMode() ? contentHeight() : contentWidth();
+}
+
+// This method returns the maximum page size of a region with auto-height. This is the initial
+// height value for auto-height regions in the first layout phase of the parent named flow.
+LayoutUnit RenderRegion::maxPageLogicalHeight() const
+{
+    ASSERT(hasAutoLogicalHeight() && view()->normalLayoutPhase());
+    return style()->logicalMaxHeight().isUndefined() ? LayoutUnit::max() / 2 : computeReplacedLogicalHeightUsing(MaxSize, style()->logicalMaxHeight());
 }
 
 LayoutUnit RenderRegion::logicalHeightOfAllFlowThreadContent() const
 {
     if (hasOverrideHeight() && view()->normalLayoutPhase())
-        return overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
+        return overrideLogicalContentHeight();
     return m_flowThread->isHorizontalWritingMode() ? contentHeight() : contentWidth();
 }
 
@@ -177,6 +185,23 @@ void RenderRegion::checkRegionStyle()
     m_flowThread->checkRegionsWithStyling();
 }
 
+void RenderRegion::incrementAutoLogicalHeightCount()
+{
+    ASSERT(m_flowThread);
+    ASSERT(isValid());
+    ASSERT(m_hasAutoLogicalHeight);
+
+    m_flowThread->incrementAutoLogicalHeightRegions();
+}
+
+void RenderRegion::decrementAutoLogicalHeightCount()
+{
+    ASSERT(m_flowThread);
+    ASSERT(isValid());
+
+    m_flowThread->decrementAutoLogicalHeightRegions();
+}
+
 void RenderRegion::updateRegionHasAutoLogicalHeightFlag()
 {
     ASSERT(m_flowThread);
@@ -188,10 +213,10 @@ void RenderRegion::updateRegionHasAutoLogicalHeightFlag()
     m_hasAutoLogicalHeight = shouldHaveAutoLogicalHeight();
     if (m_hasAutoLogicalHeight != didHaveAutoLogicalHeight) {
         if (m_hasAutoLogicalHeight)
-            view()->flowThreadController()->incrementAutoLogicalHeightRegions();
+            incrementAutoLogicalHeightCount();
         else {
             clearOverrideLogicalContentHeight();
-            view()->flowThreadController()->decrementAutoLogicalHeightRegions();
+            decrementAutoLogicalHeightCount();
         }
     }
 }
@@ -220,8 +245,15 @@ void RenderRegion::layout()
         LayoutRect oldRegionRect(flowThreadPortionRect());
         if (!isHorizontalWritingMode())
             oldRegionRect = oldRegionRect.transposedRect();
-        if (oldRegionRect.width() != pageLogicalWidth() || oldRegionRect.height() != pageLogicalHeight())
+
+        if (view()->checkTwoPassLayoutForAutoHeightRegions() && hasAutoLogicalHeight())
+            view()->flowThreadController()->setNeedsTwoPassLayoutForAutoHeightRegions(true);
+
+        if (oldRegionRect.width() != pageLogicalWidth() || oldRegionRect.height() != pageLogicalHeight()) {
             m_flowThread->invalidateRegions();
+            if (view()->checkTwoPassLayoutForAutoHeightRegions())
+                view()->flowThreadController()->setNeedsTwoPassLayoutForAutoHeightRegions(true);
+        }
     }
 
     // FIXME: We need to find a way to set up overflow properly. Our flow thread hasn't gotten a layout
@@ -314,17 +346,15 @@ void RenderRegion::attachRegion()
 
     m_hasAutoLogicalHeight = shouldHaveAutoLogicalHeight();
     if (hasAutoLogicalHeight())
-        view()->flowThreadController()->incrementAutoLogicalHeightRegions();
+        incrementAutoLogicalHeightCount();
 }
 
 void RenderRegion::detachRegion()
 {
     if (m_flowThread) {
         m_flowThread->removeRegionFromThread(this);
-        if (hasAutoLogicalHeight()) {
-            ASSERT(isValid());
-            view()->flowThreadController()->decrementAutoLogicalHeightRegions();
-        }
+        if (hasAutoLogicalHeight())
+            decrementAutoLogicalHeightCount();
     }
     m_flowThread = 0;
 }
@@ -610,11 +640,6 @@ void RenderRegion::updateLogicalHeight()
     ASSERT(newLogicalHeight < LayoutUnit::max() / 2);
     if (newLogicalHeight > logicalHeight())
         setLogicalHeight(newLogicalHeight);
-}
-
-bool RenderRegion::needsOverrideLogicalContentHeightComputation() const
-{
-    return hasAutoLogicalHeight() && view()->normalLayoutPhase() && !hasOverrideHeight();
 }
 
 } // namespace WebCore

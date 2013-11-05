@@ -170,25 +170,17 @@ NSURLCredential *mac(const Credential& coreCredential)
 NSString * const NSURLAuthenticationMethodNTLM = @"NSURLAuthenticationMethodNTLM";
 #endif
 
-static uint64_t generateUniqueIdentifier()
-{
-    static uint64_t uniqueIdentifier;
-    return ++uniqueIdentifier;
-}
-
 AuthenticationChallenge::AuthenticationChallenge(const ProtectionSpace& protectionSpace,
                                                  const Credential& proposedCredential,
                                                  unsigned previousFailureCount,
                                                  const ResourceResponse& response,
-                                                 const ResourceError& error,
-                                                 uint64_t identifier)
+                                                 const ResourceError& error)
     : AuthenticationChallengeBase(protectionSpace,
                                   proposedCredential,
                                   previousFailureCount,
                                   response,
                                   error)
 {
-    m_identifier = identifier;
 }
 
 AuthenticationChallenge::AuthenticationChallenge(NSURLAuthenticationChallenge *challenge)
@@ -200,14 +192,14 @@ AuthenticationChallenge::AuthenticationChallenge(NSURLAuthenticationChallenge *c
     , m_sender([challenge sender])
     , m_nsChallenge(challenge)
 {
-    m_identifier = generateUniqueIdentifier();
 }
 
 void AuthenticationChallenge::setAuthenticationClient(AuthenticationClient* client)
 {
     if (client) {
         m_sender.adoptNS([[WebCoreAuthenticationClientAsChallengeSender alloc] initWithAuthenticationClient:client]);
-        m_nsChallenge.adoptNS([[NSURLAuthenticationChallenge alloc] initWithAuthenticationChallenge:m_nsChallenge.get() sender:m_sender.get()]);
+        if (m_nsChallenge)
+            m_nsChallenge.adoptNS([[NSURLAuthenticationChallenge alloc] initWithAuthenticationChallenge:m_nsChallenge.get() sender:m_sender.get()]);
     } else {
         if ([m_sender.get() isMemberOfClass:[WebCoreAuthenticationClientAsChallengeSender class]])
             [(WebCoreAuthenticationClientAsChallengeSender *)m_sender.get() detachClient];

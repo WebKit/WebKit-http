@@ -35,9 +35,32 @@
 #include <wtf/ArrayBufferView.h>
 #include <wtf/UnusedParam.h>
 
+#if ENABLE(BINDING_INTEGRITY)
+#if defined(OS_WIN)
+#pragma warning(disable: 4483)
+extern "C" { extern void (*const __identifier("??_7TestOverloadedConstructors@WebCore@@6B@")[])(); }
+#else
+extern "C" { extern void* _ZTVN7WebCore26TestOverloadedConstructorsE[]; }
+#endif
+#endif // ENABLE(BINDING_INTEGRITY)
+
 namespace WebCore {
 
-WrapperTypeInfo V8TestOverloadedConstructors::info = { V8TestOverloadedConstructors::GetTemplate, V8TestOverloadedConstructors::derefObject, 0, 0, V8TestOverloadedConstructors::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
+#if ENABLE(BINDING_INTEGRITY)
+inline void checkTypeOrDieTrying(TestOverloadedConstructors* object)
+{
+    void* actualVTablePointer = *(reinterpret_cast<void**>(object));
+#if defined(OS_WIN)
+    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestOverloadedConstructors@WebCore@@6B@"));
+#else
+    void* expectedVTablePointer = &_ZTVN7WebCore26TestOverloadedConstructorsE[2];
+#endif
+    if (actualVTablePointer != expectedVTablePointer)
+        CRASH();
+}
+#endif // ENABLE(BINDING_INTEGRITY)
+
+WrapperTypeInfo V8TestOverloadedConstructors::info = { V8TestOverloadedConstructors::GetTemplate, V8TestOverloadedConstructors::derefObject, 0, 0, 0, V8TestOverloadedConstructors::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestOverloadedConstructorsV8Internal {
 
@@ -48,7 +71,7 @@ template <typename T> void V8_USE(T) { }
 v8::Handle<v8::Value> V8TestOverloadedConstructors::constructor1Callback(const v8::Arguments& args)
 {
     
-    V8TRYCATCH(ArrayBuffer*, arrayBuffer, V8ArrayBuffer::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined)) ? V8ArrayBuffer::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
+    V8TRYCATCH(ArrayBuffer*, arrayBuffer, V8ArrayBuffer::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined), args.GetIsolate()) ? V8ArrayBuffer::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
 
     RefPtr<TestOverloadedConstructors> impl = TestOverloadedConstructors::create(arrayBuffer);
     v8::Handle<v8::Object> wrapper = args.Holder();
@@ -60,7 +83,7 @@ v8::Handle<v8::Value> V8TestOverloadedConstructors::constructor1Callback(const v
 v8::Handle<v8::Value> V8TestOverloadedConstructors::constructor2Callback(const v8::Arguments& args)
 {
     
-    V8TRYCATCH(ArrayBufferView*, arrayBufferView, V8ArrayBufferView::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined)) ? V8ArrayBufferView::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
+    V8TRYCATCH(ArrayBufferView*, arrayBufferView, V8ArrayBufferView::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined), args.GetIsolate()) ? V8ArrayBufferView::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
 
     RefPtr<TestOverloadedConstructors> impl = TestOverloadedConstructors::create(arrayBufferView);
     v8::Handle<v8::Object> wrapper = args.Holder();
@@ -72,7 +95,7 @@ v8::Handle<v8::Value> V8TestOverloadedConstructors::constructor2Callback(const v
 v8::Handle<v8::Value> V8TestOverloadedConstructors::constructor3Callback(const v8::Arguments& args)
 {
     
-    V8TRYCATCH(Blob*, blob, V8Blob::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined)) ? V8Blob::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
+    V8TRYCATCH(Blob*, blob, V8Blob::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined), args.GetIsolate()) ? V8Blob::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
 
     RefPtr<TestOverloadedConstructors> impl = TestOverloadedConstructors::create(blob);
     v8::Handle<v8::Object> wrapper = args.Holder();
@@ -96,15 +119,15 @@ v8::Handle<v8::Value> V8TestOverloadedConstructors::constructor4Callback(const v
 v8::Handle<v8::Value> V8TestOverloadedConstructors::constructorCallback(const v8::Arguments& args)
 {
     if (!args.IsConstructCall())
-        return throwTypeError("DOM object constructor cannot be called as a function.");
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
-    if ((args.Length() == 1 && (V8ArrayBuffer::HasInstance(args[0]))))
+    if ((args.Length() == 1 && (V8ArrayBuffer::HasInstance(args[0], args.GetIsolate()))))
         return constructor1Callback(args);
-    if ((args.Length() == 1 && (V8ArrayBufferView::HasInstance(args[0]))))
+    if ((args.Length() == 1 && (V8ArrayBufferView::HasInstance(args[0], args.GetIsolate()))))
         return constructor2Callback(args);
-    if ((args.Length() == 1 && (V8Blob::HasInstance(args[0]))))
+    if ((args.Length() == 1 && (V8Blob::HasInstance(args[0], args.GetIsolate()))))
         return constructor3Callback(args);
     if (args.Length() == 1)
         return constructor4Callback(args);
@@ -113,7 +136,7 @@ v8::Handle<v8::Value> V8TestOverloadedConstructors::constructorCallback(const v8
     return throwTypeError(0, args.GetIsolate());
 }
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestOverloadedConstructorsTemplate(v8::Persistent<v8::FunctionTemplate> desc)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestOverloadedConstructorsTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
 {
     desc->ReadOnlyPrototype();
 
@@ -130,9 +153,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestOverloadedConstructor
     return desc;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestOverloadedConstructors::GetRawTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestOverloadedConstructors::GetRawTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
@@ -143,23 +168,27 @@ v8::Persistent<v8::FunctionTemplate> V8TestOverloadedConstructors::GetRawTemplat
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestOverloadedConstructors::GetTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestOverloadedConstructors::GetTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestOverloadedConstructorsTemplate(GetRawTemplate());
+        ConfigureV8TestOverloadedConstructorsTemplate(GetRawTemplate(isolate), isolate);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
-bool V8TestOverloadedConstructors::HasInstance(v8::Handle<v8::Value> value)
+bool V8TestOverloadedConstructors::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    return GetRawTemplate()->HasInstance(value);
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return GetRawTemplate(isolate)->HasInstance(value);
 }
 
 
@@ -167,6 +196,10 @@ v8::Handle<v8::Object> V8TestOverloadedConstructors::createWrapper(PassRefPtr<Te
 {
     ASSERT(impl.get());
     ASSERT(DOMDataStore::getWrapper(impl.get(), isolate).IsEmpty());
+
+#if ENABLE(BINDING_INTEGRITY)
+    checkTypeOrDieTrying(impl.get());
+#endif
 
     v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
@@ -178,7 +211,6 @@ v8::Handle<v8::Object> V8TestOverloadedConstructors::createWrapper(PassRefPtr<Te
         wrapperHandle.MarkIndependent();
     return wrapper;
 }
-
 void V8TestOverloadedConstructors::derefObject(void* object)
 {
     static_cast<TestOverloadedConstructors*>(object)->deref();

@@ -59,7 +59,7 @@ void ScriptProfiler::start(ScriptState* state, const String& title)
     profileNameIdleTimeMap->add(title, 0);
 
     v8::HandleScope hs;
-    v8::CpuProfiler::StartProfiling(deprecatedV8String(title));
+    v8::CpuProfiler::StartProfiling(v8String(title, state ? state->isolate() : v8::Isolate::GetCurrent()));
 }
 
 void ScriptProfiler::startForPage(Page*, const String& title)
@@ -78,8 +78,8 @@ PassRefPtr<ScriptProfile> ScriptProfiler::stop(ScriptState* state, const String&
 {
     v8::HandleScope hs;
     const v8::CpuProfile* profile = state ?
-        v8::CpuProfiler::StopProfiling(deprecatedV8String(title), state->context()->GetSecurityToken()) :
-        v8::CpuProfiler::StopProfiling(deprecatedV8String(title));
+        v8::CpuProfiler::StopProfiling(v8String(title, state->isolate()), state->context()->GetSecurityToken()) :
+        v8::CpuProfiler::StopProfiling(v8String(title, v8::Isolate::GetCurrent()));
     if (!profile)
         return 0;
 
@@ -217,10 +217,15 @@ void ScriptProfiler::visitNodeWrappers(WrappedNodeVisitor* visitor)
 {
     v8::HandleScope scope;
 
+    // visitNodeWrappers() should receive a ScriptState and retrieve an Isolate
+    // from the ScriptState.
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
+
     class DOMNodeWrapperVisitor : public v8::PersistentHandleVisitor {
     public:
-        explicit DOMNodeWrapperVisitor(WrappedNodeVisitor* visitor)
+        DOMNodeWrapperVisitor(WrappedNodeVisitor* visitor, v8::Isolate* isolate)
             : m_visitor(visitor)
+            , m_isolate(isolate)
         {
         }
 
@@ -228,7 +233,8 @@ void ScriptProfiler::visitNodeWrappers(WrappedNodeVisitor* visitor)
         {
             if (classId != v8DOMNodeClassId)
                 return;
-            ASSERT(V8Node::HasInstance(value));
+            UNUSED_PARAM(m_isolate);
+            ASSERT(V8Node::HasInstance(value, m_isolate));
             ASSERT(value->IsObject());
             v8::Persistent<v8::Object> wrapper = v8::Persistent<v8::Object>::Cast(value);
             m_visitor->visitNode(V8Node::toNative(wrapper));
@@ -236,7 +242,8 @@ void ScriptProfiler::visitNodeWrappers(WrappedNodeVisitor* visitor)
 
     private:
         WrappedNodeVisitor* m_visitor;
-    } wrapperVisitor(visitor);
+        v8::Isolate* m_isolate;
+    } wrapperVisitor(visitor, isolate);
 
     v8::V8::VisitHandlesWithClassIds(&wrapperVisitor);
 }

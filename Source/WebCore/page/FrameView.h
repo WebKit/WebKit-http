@@ -183,6 +183,8 @@ public:
 
     virtual IntRect windowResizerRect() const;
 
+    virtual float visibleContentScaleFactor() const OVERRIDE;
+
     virtual void setFixedVisibleContentRect(const IntRect&) OVERRIDE;
     virtual void setScrollPosition(const IntPoint&) OVERRIDE;
     void scrollPositionChangedViaPlatformWidget();
@@ -190,6 +192,11 @@ public:
     virtual void updateFixedElementsAfterScrolling();
     virtual bool shouldRubberBandInDirection(ScrollDirection) const;
     virtual bool requestScrollPositionUpdate(const IntPoint&) OVERRIDE;
+    virtual bool isRubberBandInProgress() const OVERRIDE;
+
+    // This is different than visibleContentRect() in that it ignores negative (or overly positive)
+    // offsets from rubber-banding, and it takes zooming into account. 
+    LayoutRect viewportConstrainedVisibleContentRect() const;
 
     String mediaType() const;
     void setMediaType(const String&);

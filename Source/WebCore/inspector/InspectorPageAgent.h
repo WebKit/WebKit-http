@@ -111,6 +111,8 @@ public:
     virtual void setShowPaintRects(ErrorString*, bool show);
     virtual void canShowFPSCounter(ErrorString*, bool*);
     virtual void setShowFPSCounter(ErrorString*, bool show);
+    virtual void canContinuouslyPaint(ErrorString*, bool*);
+    virtual void setContinuousPaintingEnabled(ErrorString*, bool enabled);
     virtual void getScriptExecutionStatus(ErrorString*, PageCommandHandler::Result::Enum*);
     virtual void setScriptExecutionDisabled(ErrorString*, bool);
     virtual void setGeolocationOverride(ErrorString*, const double*, const double*, const double*);
@@ -124,6 +126,7 @@ public:
     virtual void getCompositingBordersVisible(ErrorString*, bool* out_param);
     virtual void setCompositingBordersVisible(ErrorString*, bool);
     virtual void captureScreenshot(ErrorString*, String* data);
+    virtual void handleJavaScriptDialog(ErrorString*, bool accept);
 
     // Geolocation override helpers.
     GeolocationPosition* overrideGeolocationPosition(GeolocationPosition*);
@@ -138,6 +141,12 @@ public:
     void frameNavigated(DocumentLoader*);
     void frameDetached(Frame*);
     void loaderDetachedFromFrame(DocumentLoader*);
+    void frameStartedLoading(Frame*);
+    void frameStoppedLoading(Frame*);
+    void frameScheduledNavigation(Frame*, double delay);
+    void frameClearedScheduledNavigation(Frame*);
+    void willRunJavaScriptDialog(const String& message);
+    void didRunJavaScriptDialog();
     void applyScreenWidthOverride(long*);
     void applyScreenHeightOverride(long*);
     void applyEmulatedMedia(String*);
@@ -159,8 +168,9 @@ public:
     String createIdentifier();
     Frame* frameForId(const String& frameId);
     String frameId(Frame*);
+    bool hasIdForFrame(Frame*) const;
     String loaderId(DocumentLoader*);
-    Frame* assertFrame(ErrorString*, String frameId);
+    Frame* assertFrame(ErrorString*, const String& frameId);
     String scriptPreprocessor() { return m_scriptPreprocessor; }
     static DocumentLoader* assertDocumentLoader(ErrorString*, Frame*);
 

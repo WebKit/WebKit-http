@@ -92,7 +92,7 @@ class FontDescription;
 class SharedBuffer;
 
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
-class HarfBuzzNGFace;
+class HarfBuzzFace;
 #endif
 
 #if OS(DARWIN)
@@ -166,7 +166,7 @@ public:
 #endif
 
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
-    HarfBuzzNGFace* harfbuzzFace();
+    HarfBuzzFace* harfBuzzFace();
 #endif
 
     unsigned hash() const
@@ -270,7 +270,7 @@ private:
 
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
     RefPtr<MemoryActivatedFont> m_inMemoryFont;
-    RefPtr<HarfBuzzNGFace> m_harfbuzzFace;
+    RefPtr<HarfBuzzFace> m_harfBuzzFace;
 #endif
 
     bool m_isColorBitmapFont;

@@ -42,13 +42,9 @@ class ResourceRequest;
 namespace WebKit {
 
 class NetworkConnectionToWebProcess;
+class NetworkResourceLoader;
+class SyncNetworkResourceLoader;
 typedef uint64_t ResourceLoadIdentifier;
-
-class NetworkConnectionToWebProcessObserver {
-public:
-    virtual ~NetworkConnectionToWebProcessObserver() { }
-    virtual void connectionToWebProcessDidClose(NetworkConnectionToWebProcess*) = 0;
-};
 
 class NetworkConnectionToWebProcess : public RefCounted<NetworkConnectionToWebProcess>, CoreIPC::Connection::Client {
 public:
@@ -56,9 +52,6 @@ public:
     virtual ~NetworkConnectionToWebProcess();
 
     CoreIPC::Connection* connection() const { return m_connection.get(); }
-    
-    void registerObserver(NetworkConnectionToWebProcessObserver*);
-    void unregisterObserver(NetworkConnectionToWebProcessObserver*);
 
     bool isSerialLoadingEnabled() const { return m_serialLoadingEnabled; }
 
@@ -66,16 +59,16 @@ private:
     NetworkConnectionToWebProcess(CoreIPC::Connection::Identifier);
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
     virtual void didClose(CoreIPC::Connection*);
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName);
 
     // Message handlers.
-    void didReceiveNetworkConnectionToWebProcessMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didReceiveSyncNetworkConnectionToWebProcessMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveNetworkConnectionToWebProcessMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveSyncNetworkConnectionToWebProcessMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
     
-    void scheduleResourceLoad(const NetworkResourceLoadParameters&, ResourceLoadIdentifier&);
+    void scheduleResourceLoad(const NetworkResourceLoadParameters&);
     void performSynchronousLoad(const NetworkResourceLoadParameters&, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>);
 
     void removeLoadIdentifier(ResourceLoadIdentifier);
@@ -91,8 +84,9 @@ private:
     void deleteCookie(bool privateBrowsingEnabled, const WebCore::KURL&, const String& cookieName);
 
     RefPtr<CoreIPC::Connection> m_connection;
-    
-    HashSet<NetworkConnectionToWebProcessObserver*> m_observers;
+
+    HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader> > m_networkResourceLoaders;
+    HashMap<ResourceLoadIdentifier, RefPtr<SyncNetworkResourceLoader> > m_syncNetworkResourceLoaders;
 
     bool m_serialLoadingEnabled;
 };

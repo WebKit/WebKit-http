@@ -28,8 +28,8 @@
 
 #include "APICast.h"
 #include "APIShims.h"
+#include "JSCJSValue.h"
 #include "JSCallbackObject.h"
-#include "JSValue.h"
 #include "JSWeakObjectMapRefInternal.h"
 #include "Operations.h"
 #include <wtf/HashMap.h>
@@ -59,7 +59,7 @@ void JSWeakObjectMapSet(JSContextRef ctx, JSWeakObjectMapRef map, void* key, JSO
     if (!obj)
         return;
     ASSERT(obj->inherits(&JSCallbackObject<JSGlobalObject>::s_info) || obj->inherits(&JSCallbackObject<JSDestructibleObject>::s_info));
-    map->map().set(exec->globalData(), key, obj);
+    map->map().set(key, obj);
 }
 
 JSObjectRef JSWeakObjectMapGet(JSContextRef ctx, JSWeakObjectMapRef map, void* key)

@@ -404,11 +404,11 @@ void JIT::privateCompileMainPass()
         case op_put_by_id_generic:
         case op_put_by_id_replace:
         case op_put_by_id_transition:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
         }
     }
 
-    ASSERT(m_callLinkInfoIndex == m_callStructureStubCompilationInfo.size());
+    RELEASE_ASSERT(m_callLinkInfoIndex == m_callStructureStubCompilationInfo.size());
 
 #ifndef NDEBUG
     // Reset this, in order to guard its use with ASSERTs.
@@ -433,7 +433,7 @@ void JIT::privateCompileSlowCases()
     m_globalResolveInfoIndex = 0;
     m_callLinkInfoIndex = 0;
     
-#if !ASSERT_DISABLED && ENABLE(VALUE_PROFILER)
+#if ENABLE(VALUE_PROFILER)
     // Use this to assert that slow-path code associates new profiling sites with existing
     // ValueProfiles rather than creating new ones. This ensures that for a given instruction
     // (say, get_by_id) we get combined statistics for both the fast-path executions of that
@@ -449,9 +449,9 @@ void JIT::privateCompileSlowCases()
 #endif
 
         m_bytecodeOffset = iter->to;
-#ifndef NDEBUG
+
         unsigned firstTo = m_bytecodeOffset;
-#endif
+
         Instruction* currentInstruction = instructionsBegin + m_bytecodeOffset;
         
 #if ENABLE(VALUE_PROFILER)
@@ -551,11 +551,11 @@ void JIT::privateCompileSlowCases()
         DEFINE_SLOWCASE_OP(op_put_to_base)
 
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
         }
 
-        ASSERT_WITH_MESSAGE(iter == m_slowCases.end() || firstTo != iter->to,"Not enough jumps linked in slow case codegen.");
-        ASSERT_WITH_MESSAGE(firstTo == (iter - 1)->to, "Too many jumps linked in slow case codegen.");
+        RELEASE_ASSERT_WITH_MESSAGE(iter == m_slowCases.end() || firstTo != iter->to, "Not enough jumps linked in slow case codegen.");
+        RELEASE_ASSERT_WITH_MESSAGE(firstTo == (iter - 1)->to, "Too many jumps linked in slow case codegen.");
         
 #if ENABLE(VALUE_PROFILER)
         if (shouldEmitProfiling())
@@ -565,10 +565,10 @@ void JIT::privateCompileSlowCases()
         emitJumpSlowToHot(jump(), 0);
     }
 
-    ASSERT(m_propertyAccessInstructionIndex == m_propertyAccessCompilationInfo.size());
-    ASSERT(m_callLinkInfoIndex == m_callStructureStubCompilationInfo.size());
+    RELEASE_ASSERT(m_propertyAccessInstructionIndex == m_propertyAccessCompilationInfo.size());
+    RELEASE_ASSERT(m_callLinkInfoIndex == m_callStructureStubCompilationInfo.size());
 #if ENABLE(VALUE_PROFILER)
-    ASSERT(numberOfValueProfiles == m_codeBlock->numberOfValueProfiles());
+    RELEASE_ASSERT(numberOfValueProfiles == m_codeBlock->numberOfValueProfiles());
 #endif
 
 #ifndef NDEBUG
@@ -636,7 +636,7 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         m_shouldEmitProfiling = true;
         break;
     default:
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         break;
     }
 #endif

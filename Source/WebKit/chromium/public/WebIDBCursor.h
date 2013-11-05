@@ -26,12 +26,12 @@
 #ifndef WebIDBCursor_h
 #define WebIDBCursor_h
 
+#include "../../../Platform/chromium/public/WebCommon.h"
+#include "../../../Platform/chromium/public/WebString.h"
 #include "WebExceptionCode.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBKey.h"
-#include "platform/WebCommon.h"
-#include "platform/WebSerializedScriptValue.h"
-#include "platform/WebString.h"
+#include "WebSerializedScriptValue.h"
 
 namespace WebKit {
 

@@ -31,9 +31,6 @@
 #include "FragmentScriptingPermission.h"
 #include "HTMLNames.h"
 #include "ScrollTypes.h"
-#if ENABLE(VIDEO_TRACK)
-#include "TextTrack.h"
-#endif
 
 namespace WebCore {
 
@@ -296,10 +293,11 @@ public:
     PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
     ShadowRoot* shadowRoot() const;
 
+    bool hasAuthorShadowRoot() const { return shadowRoot(); }
     virtual void willAddAuthorShadowRoot() { }
-    virtual bool areAuthorShadowsAllowed() const { return true; }
 
     ShadowRoot* userAgentShadowRoot() const;
+    ShadowRoot* ensureUserAgentShadowRoot();
 
     virtual const AtomicString& shadowPseudoId() const;
 
@@ -317,6 +315,8 @@ public:
     bool childrenAffectedByForwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByForwardPositionalRules(); }
     bool childrenAffectedByBackwardPositionalRules() const { return hasRareData() && rareDataChildrenAffectedByBackwardPositionalRules(); }
     unsigned childIndex() const { return hasRareData() ? rareDataChildIndex() : 0; }
+
+    bool hasFlagsSetDuringStylingOfChildren() const;
 
     void setStyleAffectedByEmpty();
     void setChildrenAffectedByHover(bool);
@@ -345,7 +345,7 @@ public:
     virtual const QualifiedName& imageSourceAttributeName() const;
     virtual String target() const { return String(); }
 
-    virtual void focus(bool restorePreviousSelection = true);
+    virtual void focus(bool restorePreviousSelection = true, FocusDirection = FocusDirectionNone);
     virtual void updateFocusAppearance(bool restorePreviousSelection);
     virtual void blur();
 
@@ -452,11 +452,6 @@ public:
     virtual void buildPendingResource() { };
 #endif
 
-#if ENABLE(VIDEO_TRACK)
-    WebVTTNodeType webVTTNodeType() const;
-    void setWebVTTNodeType(WebVTTNodeType);
-#endif
-
 #if ENABLE(FULLSCREEN_API)
     enum {
         ALLOW_KEYBOARD_INPUT = 1 << 0,
@@ -535,6 +530,10 @@ private:
     void updatePseudoElement(PseudoId, StyleChange = NoChange);
     PassRefPtr<PseudoElement> createPseudoElementIfNeeded(PseudoId);
     void setPseudoElement(PseudoId, PassRefPtr<PseudoElement>);
+
+    virtual bool areAuthorShadowsAllowed() const { return true; }
+    virtual void didAddUserAgentShadowRoot(ShadowRoot*) { }
+    virtual bool alwaysCreateUserAgentShadowRoot() const { return false; }
 
     // FIXME: Remove the need for Attr to call willModifyAttribute/didModifyAttribute.
     friend class Attr;
@@ -618,13 +617,13 @@ private:
     
 inline Element* toElement(Node* node)
 {
-    ASSERT(!node || node->isElementNode());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isElementNode());
     return static_cast<Element*>(node);
 }
 
 inline const Element* toElement(const Node* node)
 {
-    ASSERT(!node || node->isElementNode());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isElementNode());
     return static_cast<const Element*>(node);
 }
 
@@ -860,7 +859,7 @@ inline Node::InsertionNotificationRequest Node::insertedInto(ContainerNode* inse
     ASSERT(insertionPoint->inDocument() || isContainerNode());
     if (insertionPoint->inDocument())
         setFlag(InDocumentFlag);
-    if (parentOrHostNode()->isInShadowTree())
+    if (parentOrShadowHostNode()->isInShadowTree())
         setFlag(IsInShadowTreeFlag);
     return InsertionDone;
 }

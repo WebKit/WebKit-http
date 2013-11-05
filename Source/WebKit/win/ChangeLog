@@ -1,3 +1,199 @@
+2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
+
+        Fix build warning after r141473
+        https://bugs.webkit.org/show_bug.cgi?id=108782
+
+        Reviewed by Kentaro Hara.
+
+        Fix -Wunused-parameter build warning.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::getClientPasteboardDataForRange):
+
+2013-02-01  Philip Rogers  <pdr@google.com>
+
+        Change hasAlpha to isKnownToBeOpaque and correct the return value for SVG images.
+        https://bugs.webkit.org/show_bug.cgi?id=106966
+
+        Reviewed by Stephen White.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView.cpp:
+        (WebView::updateSelectionForIME):
+            Adding a call to the newly refactored method.
+
+2013-01-31  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r141479.
+        http://trac.webkit.org/changeset/141479
+        https://bugs.webkit.org/show_bug.cgi?id=108564
+
+        breaks chromium test (Requested by morrita on #webkit).
+
+        * WebView.cpp:
+        (WebView::updateSelectionForIME):
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView.cpp:
+        (WebView::updateSelectionForIME):
+            Adding a call to the newly refactored method.
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::willWriteSelectionToPasteboard):
+        (WebEditorClient::getClientPasteboardDataForRange):
+        * WebCoreSupport/WebEditorClient.h:
+
+2013-01-29  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Chromium] Cannot copy text when selecting readonly (or disabled) input elements
+        https://bugs.webkit.org/show_bug.cgi?id=106287
+
+        Reviewed by Hajime Morita.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-01-29  Elliott Sprehn  <esprehn@chromium.org>
+
+        Refactor ShadowRoot exception handling
+        https://bugs.webkit.org/show_bug.cgi?id=108209
+
+        Reviewed by Dimitri Glazkov.
+
+        * WebKit.vcproj/WebKitExports.def.in: Swap ShadowRoot::create export with Element::createShadowRoot.
+
+2013-01-29  Nate Chapin  <japhet@chromium.org>
+
+        Enable reuse of cached main resources
+        https://bugs.webkit.org/show_bug.cgi?id=105667
+
+        Reviewed by Adam Barth.
+
+        * WebKit.vcproj/WebKitExports.def.in: Expose some MemoryCache symbols for use in Internals.
+
+2013-01-27  Zoltan Arvai  <zarvai@inf.u-szeged.hu>
+
+        Fixing atomicIncrement implementation for Windows by dropping support before XP SP2.
+        https://bugs.webkit.org/show_bug.cgi?id=106740
+
+        Reviewed by Benjamin Poulain.
+
+        * WebKitPrefix.h:
+
+2013-01-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove code for handling NetworkProcess authentication challenges in WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=108003
+
+        Reviewed by Sam Weinig.
+
+        * WebURLAuthenticationChallenge.cpp:
+        (WebURLAuthenticationChallenge::initWithProtectionSpace):
+        Adapted for new AuthenticationChallenge constructor signature.
+
+2013-01-24  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Objective-C API: Rename JSValue.h/APIJSValue.h to JSCJSValue.h/JSValue.h
+        https://bugs.webkit.org/show_bug.cgi?id=107327
+
+        Reviewed by Filip Pizlo.
+
+        We're renaming these two files, so we have to replace the names everywhere.
+
+        * WebFrame.cpp:
+        * WebView.cpp:
+
+2013-01-23  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style to CRLF on Windows .sln files.
+
+        * WebKit.vcproj/WebKit.sln: Modified property svn:eol-style.
+        * WebKit.vcproj/WebKit.submit.sln: Modified property svn:eol-style.
+
+2013-01-23  Pavel Feldman  <pfeldman@chromium.org>
+
+        Follow up to 140539, adding exports for Win build.
+
+        Not reviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-01-22  Anders Carlsson  <andersca@apple.com>
+
+        Use a platforom strategy for local storage
+        https://bugs.webkit.org/show_bug.cgi?id=107600
+
+        Reviewed by Andreas Kling.
+
+        Update for new storage strategy.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::createStorageStrategy):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        (WebPlatformStrategies):
+
+2013-01-18  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix. Remove deleted symbol from windows export list.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-01-18  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Add explicit keyword to constructors in platform-specific InspectorClient
+        https://bugs.webkit.org/show_bug.cgi?id=107255
+
+        Reviewed by Kentaro Hara.
+
+        Add explicit keyword to constructors that take one argument
+        in platform-specific implementation of InspectorClient.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient):
+
+2013-01-18  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r140005.
+        http://trac.webkit.org/changeset/140005
+        https://bugs.webkit.org/show_bug.cgi?id=107235
+
+        broke downstream Chromium interactive_ui_tests (Requested by
+        dominicc on #webkit).
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-01-17  Nate Chapin  <japhet@chromium.org>
+
+        Enable reuse of cached main resources
+        https://bugs.webkit.org/show_bug.cgi?id=105667
+
+        Reviewed by Antti Koivisto.
+
+        * WebKit.vcproj/WebKitExports.def.in: Expose some MemoryCache symbols for use in Internals.
+
 2013-01-15  peavo@outlook.com  <peavo@outlook.com>
 
         Crash when saving history with no items in it.

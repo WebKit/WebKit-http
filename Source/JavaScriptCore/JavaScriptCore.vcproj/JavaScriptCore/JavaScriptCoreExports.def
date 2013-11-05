@@ -27,7 +27,7 @@ EXPORTS
     ??0SHA1@WTF@@QAE@XZ
     ??0StringObject@JSC@@IAE@AAVJSGlobalData@1@PAVStructure@1@@Z
     ??0StringPrintStream@WTF@@QAE@XZ
-    ??0Structure@JSC@@AAE@AAVJSGlobalData@1@PAVJSGlobalObject@1@VJSValue@1@ABVTypeInfo@1@PBUClassInfo@1@EH@Z
+    ??0Structure@JSC@@AAE@AAVJSGlobalData@1@PAVJSGlobalObject@1@VJSValue@1@ABVTypeInfo@1@PBUClassInfo@1@EI@Z
     ??0ThreadCondition@WTF@@QAE@XZ
     ??0WTFThreadData@WTF@@QAE@XZ
     ??0WrapperBase@MemoryInstrumentation@WTF@@QAE@PBDPBX@Z
@@ -114,7 +114,7 @@ EXPORTS
     ?className@JSObject@JSC@@SA?AVString@WTF@@PBV12@@Z
     ?className@JSProxy@JSC@@KA?AVString@WTF@@PBVJSObject@2@@Z
     ?clear@SourceProviderCache@JSC@@QAEXXZ
-    ?clearRareData@JSGlobalObject@JSC@@CAXPAVJSCell@2@@Z
+    ?clearAll@BitVector@WTF@@QAEXXZ
     ?collate@Collator@WTF@@QBE?AW4Result@12@PB_WI0I@Z
     ?collectAllGarbage@Heap@JSC@@QAEXXZ
     ?computeHash@SHA1@WTF@@QAEXAAV?$Vector@E$0BE@@2@@Z
@@ -195,6 +195,7 @@ EXPORTS
     ?dumpSampleData@JSGlobalData@JSC@@QAEXPAVExecState@2@@Z
     ?EcmaScriptConverter@DoubleToStringConverter@double_conversion@WTF@@SAABV123@XZ
     ?empty@StringImpl@WTF@@SAPAV12@XZ
+    ?emptyObjectStructureForPrototype@PrototypeMap@JSC@@QAEPAVStructure@2@PAVJSObject@2@I@Z
     ?enumerable@PropertyDescriptor@JSC@@QBE_NXZ
     ?equalUTF16WithUTF8@Unicode@WTF@@YA_NPB_W0PBD1@Z
     ?evaluate@DebuggerCallFrame@JSC@@QBE?AVJSValue@2@ABVString@WTF@@AAV32@@Z
@@ -205,6 +206,7 @@ EXPORTS
     ?fastCalloc@WTF@@YAPAXII@Z
     ?fastFree@WTF@@YAXPAX@Z
     ?fastMalloc@WTF@@YAPAXI@Z
+    ?fastMallocGoodSize@WTF@@YAII@Z
     ?fastMallocMatchFailed@Internal@WTF@@YAXPAX@Z
     ?fastMallocSize@WTF@@YAIPBX@Z
     ?fastMallocStatistics@WTF@@YA?AUFastMallocStatistics@1@XZ
@@ -346,6 +348,7 @@ EXPORTS
     ?restoreAll@Profile@JSC@@QAEXXZ
     ?retrieveCallerFromVMCode@Interpreter@JSC@@QBE?AVJSValue@2@PAVExecState@2@PAVJSFunction@2@@Z
     ?retrieveLastCaller@Interpreter@JSC@@QBEXPAVExecState@2@AAH1AAVString@WTF@@AAVJSValue@2@@Z
+    ?s_segmentCapacity@MarkStackArray@JSC@@0IB
     ?save@Database@Profiler@JSC@@QBE_NPBD@Z
     ?setConfigurable@PropertyDescriptor@JSC@@QAEX_N@Z
     ?setCustomAllocation@MemoryClassInfo@WTF@@QAEX_N@Z

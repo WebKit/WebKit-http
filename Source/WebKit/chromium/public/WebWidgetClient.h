@@ -31,10 +31,10 @@
 #ifndef WebWidgetClient_h
 #define WebWidgetClient_h
 
+#include "../../../Platform/chromium/public/WebCommon.h"
+#include "../../../Platform/chromium/public/WebRect.h"
 #include "WebNavigationPolicy.h"
 #include "WebScreenInfo.h"
-#include "platform/WebCommon.h"
-#include "platform/WebRect.h"
 #include <public/WebLayerTreeView.h>
 
 namespace WebKit {
@@ -83,6 +83,9 @@ public:
     // Indicates to the embedder that the WebWidget is ready for additional
     // input.
     virtual void didBecomeReadyForAdditionalInput() { }
+
+    // Called for compositing mode when a frame commit operation has finished.
+    virtual void didCommitCompositorFrame() { }
 
     // Called for compositing mode when the draw commands for a WebKit-side
     // frame have been issued.
@@ -165,13 +168,7 @@ public:
     virtual bool isPointerLocked() { return false; }
 
     // Called when a gesture event is handled.
-    enum EventStatus {
-        EventStatusUnprocessed,
-        EventStatusProcessed,
-        EventStatusCancelled
-    };
-    virtual void didHandleGestureEvent(const WebGestureEvent& event, EventStatus) { }
-    virtual void didHandleGestureEvent(const WebGestureEvent& event, bool eventSwallowed) { } // deprecated
+    virtual void didHandleGestureEvent(const WebGestureEvent& event, bool eventCancelled) { }
 
 protected:
     ~WebWidgetClient() { }

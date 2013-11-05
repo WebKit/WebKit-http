@@ -42,17 +42,14 @@ public:
     static PassRefPtr<WebCore::IDBDatabaseBackendInterface> create(PassOwnPtr<WebIDBDatabase>);
     virtual ~IDBDatabaseBackendProxy();
 
-    virtual WebCore::IDBDatabaseMetadata metadata() const;
-
     virtual void createObjectStore(int64_t transactionId, int64_t objectStoreId, const String& name, const WebCore::IDBKeyPath&, bool autoIncrement);
     virtual void deleteObjectStore(int64_t transactionId, int64_t objectStoreId);
-    // FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
-    virtual PassRefPtr<WebCore::IDBTransactionBackendInterface> createTransaction(int64_t, const Vector<int64_t>&, WebCore::IDBTransaction::Mode);
     virtual void createTransaction(int64_t, PassRefPtr<WebCore::IDBDatabaseCallbacks>, const Vector<int64_t>&, unsigned short mode);
     virtual void close(PassRefPtr<WebCore::IDBDatabaseCallbacks>);
 
     virtual void commit(int64_t);
     virtual void abort(int64_t);
+    virtual void abort(int64_t, PassRefPtr<WebCore::IDBDatabaseError>);
 
     virtual void get(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<WebCore::IDBKeyRange>, bool keyOnly, PassRefPtr<WebCore::IDBCallbacks>) OVERRIDE;
     virtual void put(int64_t transactionId, int64_t objectStoreId, Vector<uint8_t>* value, PassRefPtr<WebCore::IDBKey>, PutMode, PassRefPtr<WebCore::IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE;

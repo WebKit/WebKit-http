@@ -177,7 +177,7 @@ void ScrollableArea::scrollPositionChanged(const IntPoint& position)
     }
 
     if (scrollPosition() != oldPosition)
-        scrollAnimator()->notifyContentAreaScrolled();
+        scrollAnimator()->notifyContentAreaScrolled(scrollPosition() - oldPosition);
 }
 
 bool ScrollableArea::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
@@ -424,7 +424,7 @@ IntRect ScrollableArea::visibleContentRect(bool includeScrollbars) const
 void ScrollableArea::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this);
-    info.addMember(m_scrollAnimator);
+    info.addMember(m_scrollAnimator, "scrollAnimator");
 }
 
 } // namespace WebCore

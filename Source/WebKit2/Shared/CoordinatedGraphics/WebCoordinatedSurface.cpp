@@ -50,27 +50,22 @@ void WebCoordinatedSurface::Handle::encode(CoreIPC::ArgumentEncoder& encoder) co
     encoder << m_bitmapHandle;
 }
 
-bool WebCoordinatedSurface::Handle::decode(CoreIPC::ArgumentDecoder* decoder, Handle& handle)
+bool WebCoordinatedSurface::Handle::decode(CoreIPC::ArgumentDecoder& decoder, Handle& handle)
 {
-    if (!decoder->decode(handle.m_size))
+    if (!decoder.decode(handle.m_size))
         return false;
-    if (!decoder->decode(handle.m_flags))
+    if (!decoder.decode(handle.m_flags))
         return false;
 #if USE(GRAPHICS_SURFACE)
-    if (!decoder->decode(handle.m_graphicsSurfaceToken))
+    if (!decoder.decode(handle.m_graphicsSurfaceToken))
         return false;
     if (handle.m_graphicsSurfaceToken.isValid())
         return true;
 #endif
-    if (!decoder->decode(handle.m_bitmapHandle))
+    if (!decoder.decode(handle.m_bitmapHandle))
         return false;
 
     return true;
-}
-
-PassRefPtr<CoordinatedSurface> CoordinatedSurface::create(const WebCore::IntSize& size, CoordinatedSurface::Flags flags)
-{
-    return WebCoordinatedSurface::create(size, flags);
 }
 
 PassRefPtr<WebCoordinatedSurface> WebCoordinatedSurface::create(const IntSize& size, CoordinatedSurface::Flags flags)

@@ -58,11 +58,9 @@ typedef gboolean (*GSourceFunc) (gpointer data);
 #include <Ecore.h>
 #endif
 
-class WorkQueue {
-    WTF_MAKE_NONCOPYABLE(WorkQueue);
-
+class WorkQueue : public ThreadSafeRefCounted<WorkQueue> {
 public:
-    explicit WorkQueue(const char* name);
+    static PassRefPtr<WorkQueue> create(const char* name);
     ~WorkQueue();
 
     // Will dispatch the given function to run as soon as possible.
@@ -71,21 +69,9 @@ public:
     // Will dispatch the given function after the given delay (in seconds).
     void dispatchAfterDelay(const Function<void()>&, double delay);
 
-    void invalidate();
-
 #if OS(DARWIN)
-    enum MachPortEventType {
-        // Fired when there is data on the given receive right.
-        MachPortDataAvailable,
-        
-        // Fired when the receive right for this send right has been destroyed.
-        MachPortDeadNameNotification
-    };
-    
-    // Will execute the given function whenever the given mach port event fires.
-    // Note that this will adopt the mach port and destroy it when the work queue is invalidated.
-    void registerMachPortEventHandler(mach_port_t, MachPortEventType, const Function<void()>&);
-    void unregisterMachPortEventHandler(mach_port_t);
+    dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
+
 #elif OS(WINDOWS)
     void registerHandle(HANDLE, const Function<void()>&);
     void unregisterAndCloseHandle(HANDLE);
@@ -102,21 +88,14 @@ public:
 #endif
 
 private:
-    // FIXME: Use an atomic boolean here instead.
-    Mutex m_isValidMutex;
-    bool m_isValid;
+    explicit WorkQueue(const char* name);
 
     void platformInitialize(const char* name);
     void platformInvalidate();
 
 #if OS(DARWIN)
-#if HAVE(DISPATCH_H)
     static void executeFunction(void*);
-    Mutex m_eventSourcesMutex;
-    class EventSource;
-    HashMap<mach_port_t, EventSource*> m_eventSources;
     dispatch_queue_t m_dispatchQueue;
-#endif
 #elif OS(WINDOWS)
     class WorkItemWin : public ThreadSafeRefCounted<WorkItemWin> {
     public:

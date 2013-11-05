@@ -30,7 +30,7 @@ class HTMLProgressElement;
 
 class RenderProgress : public RenderBlock {
 public:
-    RenderProgress(HTMLElement*);
+    explicit RenderProgress(HTMLElement*);
     virtual ~RenderProgress();
 
     double position() const { return m_position; }
@@ -61,7 +61,7 @@ private:
 
 inline RenderProgress* toRenderProgress(RenderObject* object)
 {
-    ASSERT(!object || object->isProgress());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isProgress());
     return static_cast<RenderProgress*>(object);
 }
 

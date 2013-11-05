@@ -37,7 +37,9 @@
 #include "EventNames.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "PseudoElement.h"
 #include "RenderView.h"
+#include "TransitionEvent.h"
 #include "WebKitAnimationEvent.h"
 #include "WebKitTransitionEvent.h"
 #include <wtf/CurrentTime.h>
@@ -179,10 +181,11 @@ void AnimationControllerPrivate::fireEventsAndUpdateStyle()
     m_eventsToDispatch.clear();
     Vector<EventToDispatch>::const_iterator eventsToDispatchEnd = eventsToDispatch.end();
     for (Vector<EventToDispatch>::const_iterator it = eventsToDispatch.begin(); it != eventsToDispatchEnd; ++it) {
+        Element* element = it->element.get();
         if (it->eventType == eventNames().transitionendEvent)
-            it->element->dispatchEvent(WebKitTransitionEvent::create(it->eventType, it->name, it->elapsedTime));
+            element->dispatchEvent(TransitionEvent::create(it->eventType, it->name, it->elapsedTime, PseudoElement::pseudoElementNameForEvents(element->pseudoId())));
         else
-            it->element->dispatchEvent(WebKitAnimationEvent::create(it->eventType, it->name, it->elapsedTime));
+            element->dispatchEvent(WebKitAnimationEvent::create(it->eventType, it->name, it->elapsedTime));
     }
 
     // call setChanged on all the elements
@@ -317,7 +320,7 @@ void AnimationControllerPrivate::resumeAnimationsForDocument(Document* document)
     updateAnimationTimer();
 }
 
-bool AnimationControllerPrivate::pauseAnimationAtTime(RenderObject* renderer, const String& name, double t)
+bool AnimationControllerPrivate::pauseAnimationAtTime(RenderObject* renderer, const AtomicString& name, double t)
 {
     if (!renderer)
         return false;
@@ -558,7 +561,7 @@ void AnimationController::notifyAnimationStarted(RenderObject*, double startTime
     m_data->receivedStartTimeResponse(startTime);
 }
 
-bool AnimationController::pauseAnimationAtTime(RenderObject* renderer, const String& name, double t)
+bool AnimationController::pauseAnimationAtTime(RenderObject* renderer, const AtomicString& name, double t)
 {
     return m_data->pauseAnimationAtTime(renderer, name, t);
 }

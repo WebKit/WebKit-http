@@ -33,6 +33,7 @@
 #include "SecItemRequestData.h"
 #include "SecItemResponseData.h"
 #include "SecItemShimLibrary.h"
+#include "SecItemShimMessages.h"
 #include "SecItemShimProxyMessages.h"
 #include <Security/Security.h>
 #include <dlfcn.h>
@@ -131,10 +132,10 @@ void SecItemShim::initialize(ChildProcess* process)
     func(callbacks);
 }
 
-void SecItemShim::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
+void SecItemShim::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
 {
-    if (messageID.is<CoreIPC::MessageClassSecItemShim>()) {
-        didReceiveSecItemShimMessageOnConnectionWorkQueue(connection, messageID, decoder, didHandleMessage);
+    if (decoder.messageReceiverName() == Messages::SecItemShim::messageReceiverName()) {
+        didReceiveSecItemShimMessageOnConnectionWorkQueue(connection, decoder, didHandleMessage);
         return;
     }
 }

@@ -66,6 +66,11 @@ PassOwnPtr<InputType> TimeInputType::create(HTMLInputElement* element)
     return adoptPtr(new TimeInputType(element));
 }
 
+void TimeInputType::attach()
+{
+    observeFeatureIfVisible(FeatureObserver::InputTypeTime);
+}
+
 const AtomicString& TimeInputType::formControlType() const
 {
     return InputTypeNames::time();

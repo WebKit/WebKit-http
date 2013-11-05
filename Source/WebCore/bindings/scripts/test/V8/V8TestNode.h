@@ -34,15 +34,16 @@ namespace WebCore {
 class V8TestNode {
 public:
     static const bool hasDependentLifetime = true;
-    static bool HasInstance(v8::Handle<v8::Value>);
-    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate();
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate();
+    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate* = 0);
+    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate* = 0);
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate* = 0);
     static TestNode* toNative(v8::Handle<v8::Object> object)
     {
         return reinterpret_cast<TestNode*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
     }
     static void derefObject(void*);
     static WrapperTypeInfo info;
+    static EventTarget* toEventTarget(v8::Handle<v8::Object>);
     static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + 0;
     static void installPerContextProperties(v8::Handle<v8::Object>, TestNode*) { }
@@ -60,7 +61,7 @@ inline v8::Handle<v8::Object> wrap(TestNode* impl, v8::Handle<v8::Object> creati
     return V8TestNode::createWrapper(impl, creationContext, isolate);
 }
 
-inline v8::Handle<v8::Value> toV8(TestNode* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
+inline v8::Handle<v8::Value> toV8(TestNode* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     if (UNLIKELY(!impl))
         return v8NullWithCheck(isolate);
@@ -87,7 +88,7 @@ inline v8::Handle<v8::Value> toV8Fast(PassRefPtr< TestNode > impl, const HolderC
     return toV8Fast(impl.get(), container, wrappable);
 }
 
-inline v8::Handle<v8::Value> toV8(PassRefPtr< TestNode > impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
+inline v8::Handle<v8::Value> toV8(PassRefPtr< TestNode > impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     return toV8(impl.get(), creationContext, isolate);
 }

@@ -29,15 +29,13 @@
 #include "FontDescription.h"
 #include "FontOrientation.h"
 #include "GlyphBuffer.h"
-#if USE(HARFBUZZ_NG)
-#include "HarfBuzzNGFace.h"
-#endif
+#include "HarfBuzzFace.h"
 #include "RefPtrCairo.h"
 #include <wtf/Forward.h>
 #include <wtf/HashFunctions.h>
 
 typedef struct _FcFontSet FcFontSet;
-class HarfBuzzNGFace;
+class HarfBuzzFace;
 
 namespace WebCore {
 
@@ -67,9 +65,7 @@ public:
 
     ~FontPlatformData();
 
-#if USE(HARFBUZZ_NG)
-    HarfBuzzNGFace* harfbuzzFace() const;
-#endif
+    HarfBuzzFace* harfBuzzFace() const;
 
     bool isFixedPitch();
     float size() const { return m_size; }
@@ -106,9 +102,7 @@ public:
     bool m_syntheticOblique;
     bool m_fixedWidth;
     cairo_scaled_font_t* m_scaledFont;
-#if USE(HARFBUZZ_NG)
-    mutable RefPtr<HarfBuzzNGFace> m_harfbuzzFace;
-#endif
+    mutable RefPtr<HarfBuzzFace> m_harfBuzzFace;
 
 private:
     void initializeWithFontFace(cairo_font_face_t*, const FontDescription& = FontDescription());

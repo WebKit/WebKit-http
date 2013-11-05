@@ -1013,3 +1013,23 @@ bool WKPreferencesGetQTKitEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->isQTKitEnabled();
 }
+
+void WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setLogsPageMessagesToSystemConsoleEnabled(enabled);
+}
+
+bool WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->logsPageMessagesToSystemConsoleEnabled();
+}
+
+void WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setPageVisibilityBasedProcessSuppressionEnabled(enabled);
+}
+
+bool WKPreferencesGetPageVisibilityBasedProcessSuppressionEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->pageVisibilityBasedProcessSuppressionEnabled();
+}

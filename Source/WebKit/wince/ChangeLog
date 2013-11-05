@@ -1,3 +1,65 @@
+2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
+
+        Fix build warning after r141473
+        https://bugs.webkit.org/show_bug.cgi?id=108782
+
+        Reviewed by Kentaro Hara.
+
+        Fix -Wunused-parameter build warning.
+
+        * WebCoreSupport/EditorClientWinCE.cpp:
+        (WebKit::EditorClientWinCE::getClientPasteboardDataForRange):
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebCoreSupport/EditorClientWinCE.cpp:
+        (WebKit::EditorClientWinCE::willWriteSelectionToPasteboard):
+        (WebKit::EditorClientWinCE::getClientPasteboardDataForRange):
+        * WebCoreSupport/EditorClientWinCE.h:
+
+2013-01-24  Patrick Gansterer  <paroga@webkit.org>
+
+        Unreviewed WinCE build fix after r139078.
+
+        * WebCoreSupport/ChromeClientWinCE.h:
+        (ChromeClientWinCE):
+
+2013-01-22  Anders Carlsson  <andersca@apple.com>
+
+        Use a platforom strategy for local storage
+        https://bugs.webkit.org/show_bug.cgi?id=107600
+
+        Reviewed by Andreas Kling.
+
+        Update for new storage strategy.
+
+        * WebCoreSupport/PlatformStrategiesWinCE.cpp:
+        (PlatformStrategiesWinCE::createStorageStrategy):
+        * WebCoreSupport/PlatformStrategiesWinCE.h:
+        (PlatformStrategiesWinCE):
+
+2013-01-18  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Add explicit keyword to constructors in platform-specific InspectorClient
+        https://bugs.webkit.org/show_bug.cgi?id=107255
+
+        Reviewed by Kentaro Hara.
+
+        Add explicit keyword to constructors that take one argument
+        in platform-specific implementation of InspectorClient.
+        And fix some coding style.
+
+        * WebCoreSupport/InspectorClientWinCE.h:
+        (InspectorClientWinCE):
+
 2013-01-08  Mark Lam  <mark.lam@apple.com>
 
         Removed the need for the ProposedDatabase mechanism.

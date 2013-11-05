@@ -31,7 +31,6 @@
 #ifndef TestShell_h
 #define TestShell_h
 
-#include "DRTTestRunner.h"
 #include "NotificationPresenter.h"
 #include "TestEventPrinter.h"
 #include "WebPreferences.h"
@@ -84,7 +83,7 @@ public:
     WebKit::WebView* webView() const { return m_webView; }
     // Returns the host for the main WebView.
     WebViewHost* webViewHost() const { return m_webViewHost.get(); }
-    DRTTestRunner* testRunner() const { return m_testRunner.get(); }
+    WebTestRunner::WebTestRunner* testRunner() const { return m_testInterfaces->testRunner(); }
     WebTestRunner::WebEventSender* eventSender() const { return m_testInterfaces->eventSender(); }
     WebTestRunner::WebAccessibilityController* accessibilityController() const { return m_testInterfaces->accessibilityController(); }
 #if ENABLE(NOTIFICATIONS)
@@ -108,13 +107,9 @@ public:
     int navigationEntryCount() const;
 
     void setFocus(WebKit::WebWidget*, bool enable);
-    bool shouldDumpResourceRequestCallbacks() const { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceRequestCallbacks(); }
-    bool shouldDumpResourceLoadCallbacks() const  { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceLoadCallbacks(); }
-    bool shouldDumpResourceResponseMIMETypes() const  { return (m_testIsPreparing || m_testIsPending) && testRunner()->shouldDumpResourceResponseMIMETypes(); }
-    void setIsLoading(bool flag) { m_isLoading = flag; }
 
     // Called by the DRTTestRunner to signal test completion.
-    void testFinished();
+    void testFinished(WebViewHost*);
     // Called by DRTTestRunner when a test hits the timeout, but does not
     // cause a hang. We can avoid killing TestShell in this case and still dump
     // the test results.
@@ -200,7 +195,6 @@ private:
 
     bool m_testIsPending;
     bool m_testIsPreparing;
-    bool m_isLoading;
     WebKit::WebView* m_webView;
     WebKit::WebWidget* m_focusedWidget;
     WebViewHost* m_devTools;
@@ -211,7 +205,6 @@ private:
     OwnPtr<DRTDevToolsClient> m_drtDevToolsClient;
     OwnPtr<WebTestRunner::WebTestInterfaces> m_testInterfaces;
     OwnPtr<WebTestRunner::WebTestInterfaces> m_devToolsTestInterfaces;
-    OwnPtr<DRTTestRunner> m_testRunner;
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     OwnPtr<NotificationPresenter> m_notificationPresenter;
 #endif

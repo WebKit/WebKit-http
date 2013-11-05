@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,10 +34,9 @@
 
 namespace WebKit {
 
-const AtomicString& WebCookieManagerProxy::supplementName()
+const char* WebCookieManagerProxy::supplementName()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebCookieManagerProxy", AtomicString::ConstructFromLiteral));
-    return name;
+    return "WebCookieManagerProxy";
 }
 
 PassRefPtr<WebCookieManagerProxy> WebCookieManagerProxy::create(WebContext* context)
@@ -97,13 +96,6 @@ void WebCookieManagerProxy::refWebContextSupplement()
 void WebCookieManagerProxy::derefWebContextSupplement()
 {
     APIObject::deref();
-}
-
-// CoreIPC::MessageReceiver
-
-void WebCookieManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveWebCookieManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebCookieManagerProxy::getHostnamesWithCookies(PassRefPtr<ArrayCallback> prpCallback)

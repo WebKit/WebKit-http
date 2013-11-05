@@ -123,8 +123,8 @@ struct RenderFlexibleBox::Violation {
 };
 
 
-RenderFlexibleBox::RenderFlexibleBox(ContainerNode* node)
-    : RenderBlock(node)
+RenderFlexibleBox::RenderFlexibleBox(Element* element)
+    : RenderBlock(element)
     , m_orderIterator(this)
     , m_numberOfInFlowChildrenOnFirstLine(-1)
 {
@@ -296,6 +296,15 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
         return;
 
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
+
+    if (updateLogicalWidthAndColumnWidth())
+        relayoutChildren = true;
+
+    m_overflow.clear();
+
+    LayoutUnit previousHeight = logicalHeight();
+    setLogicalHeight(0);
+
     LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
     if (inRenderFlowThread()) {
@@ -305,13 +314,7 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     }
     updateRegionsAndExclusionsLogicalSize();
 
-    LayoutSize previousSize = size();
-
-    setLogicalHeight(0);
-    updateLogicalWidth();
-
     m_numberOfInFlowChildrenOnFirstLine = -1;
-    m_overflow.clear();
 
     RenderBlock::startDelayUpdateScrollInfo();
 
@@ -330,7 +333,7 @@ void RenderFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     RenderBlock::finishDelayUpdateScrollInfo();
 
-    if (size() != previousSize)
+    if (logicalHeight() != previousHeight)
         relayoutChildren = true;
 
     layoutPositionedObjects(relayoutChildren || isRoot());

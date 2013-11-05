@@ -30,13 +30,18 @@
 
 #include "AbstractDatabaseServer.h"
 #include "DatabaseBasicTypes.h"
+#include "DatabaseError.h"
+#include <wtf/Assertions.h>
+#include <wtf/HashMap.h>
 #include <wtf/PassRefPtr.h>
+#include <wtf/Threading.h>
 
 namespace WebCore {
 
 class AbstractDatabaseServer;
 class Database;
 class DatabaseCallback;
+class DatabaseContext;
 class DatabaseManagerClient;
 class DatabaseSync;
 class DatabaseTaskSynchronizer;
@@ -56,11 +61,27 @@ public:
     bool isAvailable();
     void setIsAvailable(bool);
 
-    PassRefPtr<Database> openDatabase(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback>, ExceptionCode&);
-    PassRefPtr<DatabaseSync> openDatabaseSync(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback>, ExceptionCode&);
+    // This gets a DatabaseContext for the specified ScriptExecutionContext.
+    // If one doesn't already exist, it will create a new one.
+    PassRefPtr<DatabaseContext> databaseContextFor(ScriptExecutionContext*);
+
+    // These 2 methods are for DatabaseContext (un)registration, and should only
+    // be called by the DatabaseContext constructor and destructor.
+    void registerDatabaseContext(DatabaseContext*);
+    void unregisterDatabaseContext(DatabaseContext*);
+
+#if !ASSERT_DISABLED
+    void didConstructDatabaseContext();
+    void didDestructDatabaseContext();
+#else
+    void didConstructDatabaseContext() { }
+    void didDestructDatabaseContext() { }
+#endif
+
+    PassRefPtr<Database> openDatabase(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback>, DatabaseError&);
+    PassRefPtr<DatabaseSync> openDatabaseSync(ScriptExecutionContext*, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback>, DatabaseError&);
 
     bool hasOpenDatabases(ScriptExecutionContext*);
-    void setHasOpenDatabases(ScriptExecutionContext*);
     void stopDatabases(ScriptExecutionContext*, DatabaseTaskSynchronizer*);
 
     String fullPathForDatabase(SecurityOrigin*, const String& name, bool createIfDoesNotExist = true);
@@ -83,28 +104,39 @@ public:
     // From a secondary thread, must be thread safe with its data
     void scheduleNotifyDatabaseChanged(SecurityOrigin*, const String& name);
 
-    void databaseChanged(AbstractDatabase*);
+    void databaseChanged(DatabaseBackend*);
 
 #else // PLATFORM(CHROMIUM)
     void closeDatabasesImmediately(const String& originIdentifier, const String& name);
 #endif // PLATFORM(CHROMIUM)
 
-    void interruptAllDatabasesForContext(const ScriptExecutionContext*);
+    void interruptAllDatabasesForContext(ScriptExecutionContext*);
 
     bool canEstablishDatabase(ScriptExecutionContext*, const String& name, const String& displayName, unsigned long estimatedSize);
-    void addOpenDatabase(AbstractDatabase*);
-    void removeOpenDatabase(AbstractDatabase*);
 
     void setDatabaseDetails(SecurityOrigin*, const String& name, const String& displayName, unsigned long estimatedSize);
-    unsigned long long getMaxSizeForDatabase(const AbstractDatabase*);
+    unsigned long long getMaxSizeForDatabase(const DatabaseBackend*);
 
 private:
     DatabaseManager();
     ~DatabaseManager() { }
 
+    // This gets a DatabaseContext for the specified ScriptExecutionContext if
+    // it already exist previously. Otherwise, it returns 0.
+    PassRefPtr<DatabaseContext> existingDatabaseContextFor(ScriptExecutionContext*);
+
     AbstractDatabaseServer* m_server;
     DatabaseManagerClient* m_client;
     bool m_databaseIsAvailable;
+
+    // Access to the following fields require locking m_contextMapLock:
+    typedef HashMap<ScriptExecutionContext*, DatabaseContext*> ContextMap;
+    ContextMap m_contextMap;
+#if !ASSERT_DISABLED
+    int m_databaseContextRegisteredCount;
+    int m_databaseContextInstanceCount;
+#endif
+    Mutex m_contextMapLock;
 };
 
 } // namespace WebCore

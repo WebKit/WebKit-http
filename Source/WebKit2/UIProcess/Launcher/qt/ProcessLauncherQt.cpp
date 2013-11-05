@@ -61,6 +61,10 @@
 #include <windows.h>
 #endif
 
+#if ENABLE(SUID_SANDBOX_LINUX)
+#include <QCoreApplication>
+#endif
+
 #if OS(DARWIN)
 #include <mach/mach_init.h>
 #include <servers/bootstrap.h>
@@ -108,12 +112,14 @@ void QtWebProcess::setupChildProcess()
 
 void ProcessLauncher::launchProcess()
 {
-    QString commandLine = QLatin1String("%1 %2 %3");
+    QString commandLine;
     if (m_launchOptions.processType == WebProcess) {
+        commandLine = QLatin1String("%1 %2 %3");
         QByteArray webProcessPrefix = qgetenv("QT_WEBKIT2_WP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(webProcessPrefix.constData())).arg(QString(executablePathOfWebProcess()));
 #if ENABLE(PLUGIN_PROCESS)
     } else if (m_launchOptions.processType == PluginProcess) {
+        commandLine = QLatin1String("%1 %2 %3 %4");
         QByteArray pluginProcessPrefix = qgetenv("QT_WEBKIT2_PP_CMD_PREFIX");
         commandLine = commandLine.arg(QLatin1String(pluginProcessPrefix.constData())).arg(QString(executablePathOfPluginProcess()));
 #endif
@@ -166,37 +172,53 @@ void ProcessLauncher::launchProcess()
     commandLine = commandLine.arg(sockets[0]);
 #endif
 
-    QProcess* webProcess = new QtWebProcess();
-    webProcess->setProcessChannelMode(QProcess::ForwardedChannels);
-    webProcess->start(commandLine);
+#if ENABLE(PLUGIN_PROCESS)
+    if (m_launchOptions.processType == PluginProcess)
+        commandLine = commandLine.arg(QString(m_launchOptions.extraInitializationData.get("plugin-path")));
+#endif
+
+    QProcess* webProcessOrSUIDHelper = new QtWebProcess();
+    webProcessOrSUIDHelper->setProcessChannelMode(QProcess::ForwardedChannels);
+
+#if ENABLE(SUID_SANDBOX_LINUX)
+    if (m_launchOptions.processType == WebProcess) {
+        QString sandboxCommandLine = QLatin1String("%1 %2 %3");
+        sandboxCommandLine = sandboxCommandLine.arg(QCoreApplication::applicationDirPath() + QLatin1String("/SUIDSandboxHelper"));
+        sandboxCommandLine = sandboxCommandLine.arg(executablePathOfWebProcess());
+        sandboxCommandLine = sandboxCommandLine.arg(sockets[0]);
+
+        webProcessOrSUIDHelper->start(sandboxCommandLine);
+    } else
+        webProcessOrSUIDHelper->start(commandLine);
+#else
+    webProcessOrSUIDHelper->start(commandLine);
+#endif
 
 #if OS(UNIX) && !OS(DARWIN)
     // Don't expose the web socket to possible future web processes
     while (fcntl(sockets[0], F_SETFD, FD_CLOEXEC) == -1) {
         if (errno != EINTR) {
             ASSERT_NOT_REACHED();
-            delete webProcess;
+            delete webProcessOrSUIDHelper;
             return;
         }
     }
 #endif
 
-    if (!webProcess->waitForStarted()) {
+    if (!webProcessOrSUIDHelper->waitForStarted()) {
         qDebug() << "Failed to start" << commandLine;
         ASSERT_NOT_REACHED();
 #if OS(DARWIN)
         mach_port_deallocate(mach_task_self(), connector);
         mach_port_mod_refs(mach_task_self(), connector, MACH_PORT_RIGHT_RECEIVE, -1);
 #endif
-        delete webProcess;
+        delete webProcessOrSUIDHelper;
         return;
     }
-
 #if OS(UNIX)
-    setpriority(PRIO_PROCESS, webProcess->pid(), 10);
+    setpriority(PRIO_PROCESS, webProcessOrSUIDHelper->pid(), 10);
 #endif
-
-    RunLoop::main()->dispatch(bind(&WebKit::ProcessLauncher::didFinishLaunchingProcess, this, webProcess, connector));
+    RunLoop::main()->dispatch(bind(&WebKit::ProcessLauncher::didFinishLaunchingProcess, this, webProcessOrSUIDHelper, connector));
 }
 
 void ProcessLauncher::terminateProcess()

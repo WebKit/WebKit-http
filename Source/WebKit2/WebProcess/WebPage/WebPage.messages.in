@@ -20,7 +20,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-messages -> WebPage {
+messages -> WebPage LegacyReceiver {
     SetActive(bool active)
     SetFocused(bool focused)
     SetInitialFocus(bool forward, bool isKeyboardEventValid, WebKit::WebKeyboardEvent event)
@@ -237,11 +237,6 @@ messages -> WebPage {
     SetCanRunBeforeUnloadConfirmPanel(bool canRunBeforeUnloadConfirmPanel)
     SetCanRunModal(bool canRunModal)
 
-    # Web Intents
-#if ENABLE(WEB_INTENTS)
-    DeliverIntentToFrame(uint64_t frameID, WebKit::IntentData intentData)
-#endif
-
 #if PLATFORM(EFL)
     SetThemePath(WTF::String themePath)
 #endif
@@ -284,6 +279,9 @@ messages -> WebPage {
     AcceptsFirstMouse(int eventNumber, WebKit::WebMouseEvent event) -> (bool result)
     InsertDictatedText(WTF::String text, uint64_t replacementRangeStart, uint64_t replacementRangeEnd, WTF::Vector<WebCore::DictationAlternative> dictationAlternatives) -> (bool handled, WebKit::EditorState newState)
 #endif
+
+    SetMinimumLayoutWidth(double minimumLayoutWidth)
+
 #if PLATFORM(EFL)
     ConfirmComposition(WTF::String compositionString)
     SetComposition(WTF::String compositionString, WTF::Vector<WebCore::CompositionUnderline> underlines, uint64_t cursorPosition)
@@ -298,7 +296,7 @@ messages -> WebPage {
 #endif
 
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-    SetVisibilityState(int visibilityState, bool isInitialState)
+    SetVisibilityState(uint32_t visibilityState, bool isInitialState)
 #endif
 
 #if PLATFORM(GTK) && USE(TEXTURE_MAPPER_GL)

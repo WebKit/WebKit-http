@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -37,7 +38,7 @@ class WebSoupRequestManagerProxy : public APIObject, public WebContextSupplement
 public:
     static const Type APIType = TypeSoupRequestManager;
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
     static PassRefPtr<WebSoupRequestManagerProxy> create(WebContext*);
     virtual ~WebSoupRequestManagerProxy();
@@ -66,8 +67,7 @@ private:
     virtual void derefWebContextSupplement() OVERRIDE;
 
     // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveWebSoupRequestManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     void didFailToLoadURIRequest(uint64_t requestID);
 

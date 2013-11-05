@@ -31,7 +31,7 @@ class RenderLayer;
 
 class RenderLayerModelObject : public RenderObject {
 public:
-    RenderLayerModelObject(ContainerNode*);
+    explicit RenderLayerModelObject(ContainerNode*);
     virtual ~RenderLayerModelObject();
 
     // Called by RenderObject::willBeDestroyed() and is the only way layers should ever be destroyed
@@ -70,13 +70,13 @@ private:
 
 inline RenderLayerModelObject* toRenderLayerModelObject(RenderObject* object)
 {
-    ASSERT(!object || object->isLayerModelObject());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isLayerModelObject());
     return static_cast<RenderLayerModelObject*>(object);
 }
 
 inline const RenderLayerModelObject* toRenderLayerModelObject(const RenderObject* object)
 {
-    ASSERT(!object || object->isLayerModelObject());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isLayerModelObject());
     return static_cast<const RenderLayerModelObject*>(object);
 }
 

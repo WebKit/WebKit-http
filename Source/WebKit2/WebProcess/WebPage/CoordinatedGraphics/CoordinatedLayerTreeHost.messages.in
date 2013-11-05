@@ -20,8 +20,8 @@
 
 
 #if USE(COORDINATED_GRAPHICS)
-messages -> CoordinatedLayerTreeHost {
-    SetVisibleContentsRect(WebCore::FloatRect visibleContentsRect, float scale, WebCore::FloatPoint trajectoryVectory)
+messages -> CoordinatedLayerTreeHost LegacyReceiver {
+    SetVisibleContentsRect(WebCore::FloatRect visibleContentsRect, WebCore::FloatPoint trajectoryVectory)
     RenderNextFrame()
     PurgeBackingStores()
 #if ENABLE(REQUEST_ANIMATION_FRAME)

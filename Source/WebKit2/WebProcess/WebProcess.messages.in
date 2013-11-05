@@ -20,16 +20,12 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-messages -> WebProcess {
+messages -> WebProcess LegacyReceiver {
     # Initialize the WebProcess. 
     InitializeWebProcess(WebKit::WebProcessCreationParameters processCreationParameters, WebKit::WebContextUserMessageEncoder initializationUserData) Variadic
 
     # Create a new page.
     CreateWebPage(uint64_t newPageID, WebKit::WebPageCreationParameters pageCreationParameters)
-
-#if ENABLE(WEB_INTENTS)
-    RemoveMessagePortChannel(uint64_t channelID);
-#endif
 
     # Visited link tracking.
     SetVisitedLinkTable(WebKit::SharedMemory::Handle handle)
@@ -96,6 +92,6 @@ messages -> WebProcess {
     PostInjectedBundleMessage(CoreIPC::DataReference messageData);
 
 #if PLATFORM(MAC)
-    SetApplicationIsOccluded(bool flag);
+    SetProcessSuppressionEnabled(bool flag);
 #endif
 }

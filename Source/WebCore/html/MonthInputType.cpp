@@ -62,6 +62,11 @@ PassOwnPtr<InputType> MonthInputType::create(HTMLInputElement* element)
     return adoptPtr(new MonthInputType(element));
 }
 
+void MonthInputType::attach()
+{
+    observeFeatureIfVisible(FeatureObserver::InputTypeMonth);
+}
+
 const AtomicString& MonthInputType::formControlType() const
 {
     return InputTypeNames::month();
@@ -155,7 +160,7 @@ String MonthInputType::formatDateTimeFieldsState(const DateTimeFieldsState& date
 void MonthInputType::setupLayoutParameters(DateTimeEditElement::LayoutParameters& layoutParameters, const DateComponents& date) const
 {
     layoutParameters.dateTimeFormat = layoutParameters.locale.monthFormat();
-    layoutParameters.fallbackDateTimeFormat = "MM/yyyy";
+    layoutParameters.fallbackDateTimeFormat = "yyyy-MM";
     if (!parseToDateComponents(element()->fastGetAttribute(minAttr), &layoutParameters.minimum))
         layoutParameters.minimum = DateComponents();
     if (!parseToDateComponents(element()->fastGetAttribute(maxAttr), &layoutParameters.maximum))

@@ -109,13 +109,13 @@ PassRefPtr<CSSValue> CSSImageValue::cloneForCSSOM() const
 void CSSImageValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_url);
+    info.addMember(m_url, "url");
     // No need to report m_image as it is counted as part of RenderArena.
 }
 
-bool CSSImageValue::hasAlpha(const RenderObject* renderer) const
+bool CSSImageValue::knownToBeOpaque(const RenderObject* renderer) const
 {
-    return m_image ? m_image->hasAlpha(renderer) : true;
+    return m_image ? m_image->knownToBeOpaque(renderer) : false;
 }
 
 } // namespace WebCore

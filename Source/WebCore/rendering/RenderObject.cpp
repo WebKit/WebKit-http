@@ -232,7 +232,6 @@ RenderObject::RenderObject(Node* node)
 #ifndef NDEBUG
     renderObjectCounter.increment();
 #endif
-    ASSERT(node);
 }
 
 RenderObject::~RenderObject()
@@ -754,19 +753,8 @@ RenderBlock* RenderObject::containingBlock() const
         o = toRenderScrollbarPart(this)->rendererOwningScrollbar();
     if (!isText() && m_style->position() == FixedPosition) {
         while (o) {
-            if (o->isRenderView())
+            if (o->canContainFixedPositionObjects())
                 break;
-            if (o->hasTransform() && o->isRenderBlock())
-                break;
-            // The render flow thread is the top most containing block
-            // for the fixed positioned elements.
-            if (o->isRenderFlowThread())
-                break;
-#if ENABLE(SVG)
-            // foreignObject is the containing block for its contents.
-            if (o->isSVGForeignObject())
-                break;
-#endif
             o = o->parent();
         }
         ASSERT(!o || !o->isAnonymousBlock());
@@ -1843,6 +1831,11 @@ void RenderObject::setStyle(PassRefPtr<RenderStyle> style)
     }
 }
 
+static inline bool rendererHasBackground(const RenderObject* renderer)
+{
+    return renderer && renderer->hasBackground();
+}
+
 void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
 {
     if (m_style) {
@@ -1916,6 +1909,19 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
 
         bool newStyleSlowScroll = newStyle && !shouldBlitOnFixedBackgroundImage && newStyle->hasFixedBackgroundImage();
         bool oldStyleSlowScroll = m_style && !shouldBlitOnFixedBackgroundImage && m_style->hasFixedBackgroundImage();
+
+#if USE(ACCELERATED_COMPOSITING)
+        bool drawsRootBackground = isRoot() || (isBody() && !rendererHasBackground(document()->documentElement()->renderer()));
+        if (drawsRootBackground && !shouldBlitOnFixedBackgroundImage) {
+            if (view()->compositor()->supportsFixedRootBackgroundCompositing()) {
+                if (newStyleSlowScroll && newStyle->hasEntirelyFixedBackground())
+                    newStyleSlowScroll = false;
+
+                if (oldStyleSlowScroll && m_style->hasEntirelyFixedBackground())
+                    oldStyleSlowScroll = false;
+            }
+        }
+#endif
         if (oldStyleSlowScroll != newStyleSlowScroll) {
             if (oldStyleSlowScroll)
                 view()->frameView()->removeSlowRepaintObject();
@@ -2059,6 +2065,14 @@ FloatPoint RenderObject::absoluteToLocal(const FloatPoint& containerPoint, MapCo
     transformState.flatten();
     
     return transformState.lastPlanarPoint();
+}
+
+FloatQuad RenderObject::absoluteToLocalQuad(const FloatQuad& quad, MapCoordinatesFlags mode) const
+{
+    TransformState transformState(TransformState::UnapplyInverseTransformDirection, quad.boundingBox().center(), quad);
+    mapAbsoluteToLocalPoint(mode, transformState);
+    transformState.flatten();
+    return transformState.lastPlanarQuad();
 }
 
 void RenderObject::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
@@ -2261,12 +2275,17 @@ RespectImageOrientationEnum RenderObject::shouldRespectImageOrientation() const
         // This can only be enabled for ports which honor the orientation flag in their drawing code.
         document()->isImageDocument() ||
 #endif
-        (document()->settings() && document()->settings()->shouldRespectImageOrientation() && node() && (node()->hasTagName(HTMLNames::imgTag) || node()->hasTagName(HTMLNames::webkitInnerImageTag))) ? RespectImageOrientation : DoNotRespectImageOrientation;
+        (document()->settings() && document()->settings()->shouldRespectImageOrientation() && node() && node()->hasTagName(HTMLNames::imgTag)) ? RespectImageOrientation : DoNotRespectImageOrientation;
 }
 
 bool RenderObject::hasOutlineAnnotation() const
 {
     return node() && node()->isLink() && document()->printing();
+}
+
+bool RenderObject::hasEntirelyFixedBackground() const
+{
+    return m_style->hasEntirelyFixedBackground();
 }
 
 RenderObject* RenderObject::container(const RenderLayerModelObject* repaintContainer, bool* repaintContainerSkipped) const
@@ -3096,7 +3115,7 @@ bool RenderObject::canBeReplacedWithInlineRunIn() const
 void RenderObject::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
-    info.addMember(m_style);
+    info.addMember(m_style, "style");
     info.addWeakPointer(m_node);
     info.addWeakPointer(m_parent);
     info.addWeakPointer(m_previous);

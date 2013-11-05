@@ -31,8 +31,8 @@
 #ifndef WebSettings_h
 #define WebSettings_h
 
-#include "platform/WebCommon.h"
-#include "platform/WebSize.h"
+#include "../../../Platform/chromium/public/WebCommon.h"
+#include "../../../Platform/chromium/public/WebSize.h"
 #include <unicode/uscript.h>
 
 namespace WebKit {
@@ -141,6 +141,7 @@ public:
     virtual void setPictographFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void setPluginsEnabled(bool) = 0;
     virtual void setPrivilegedWebGLExtensionsEnabled(bool) = 0;
+    virtual void setRecordRenderingStats(bool) = 0;
     virtual void setRenderVSyncEnabled(bool) = 0;
     virtual void setRenderVSyncNotificationEnabled(bool) = 0;
     virtual void setSansSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
@@ -175,9 +176,6 @@ public:
 
     // DEPRECATED (renamed. remove this after all call sites changed to the new name)
     void setApplyDefaultDeviceScaleFactorInCompositor(bool enabled) { setApplyDeviceScaleFactorInCompositor(enabled); }
-
-    // DEPRECATED
-    void setExperimentalCSSRegionsEnabled(bool) { }
 
 protected:
     ~WebSettings() { }

@@ -213,6 +213,7 @@ void ContentDistributor::distribute(Element* host)
 {
     ASSERT(needsDistribution());
     ASSERT(m_nodeToInsertionPoint.isEmpty());
+    ASSERT(!host->containingShadowRoot() || host->containingShadowRoot()->owner()->distributor().isValid());
 
     m_validity = Valid;
 
@@ -280,6 +281,15 @@ bool ContentDistributor::invalidate(Element* host)
             for (size_t i = 0; i < insertionPoints.size(); ++i) {
                 needsReattach = needsReattach || true;
                 insertionPoints[i]->clearDistribution();
+
+                // After insertionPoint's distribution is invalidated, its reprojection should also be invalidated.
+                if (!insertionPoints[i]->isActive())
+                    continue;
+
+                if (Element* parent = insertionPoints[i]->parentElement()) {
+                    if (ElementShadow* shadow = parent->shadow())
+                        shadow->invalidateDistribution();
+                }
             }
         }
     }
@@ -338,25 +348,21 @@ void ContentDistributor::distributeNodeChildrenTo(InsertionPoint* insertionPoint
     insertionPoint->setDistribution(distribution);
 }
 
-void ContentDistributor::ensureDistribution(Element* host)
+void ContentDistributor::ensureDistribution(ShadowRoot* shadowRoot)
 {
-    if (!needsDistribution())
-        return;
-    distribute(host);
-}
+    ASSERT(shadowRoot);
 
-void ContentDistributor::ensureDistributionFromDocument(Element* source)
-{
-    ContainerNode* mayShadow = source->treeScope()->rootNode();
-    if (!mayShadow->isShadowRoot())
-        return;
+    Vector<ElementShadow*, 8> elementShadows;
+    for (Element* current = shadowRoot->host(); current; current = current->shadowHost()) {
+        ElementShadow* elementShadow = current->shadow();
+        if (!elementShadow->distributor().needsDistribution())
+            break;
 
-    Vector<Element*, 8> hosts;
-    for (Element* current = toShadowRoot(mayShadow)->host(); current; current = current->shadowHost())
-        hosts.append(current);
+        elementShadows.append(elementShadow);
+    }
 
-    for (size_t i = hosts.size(); i > 0; --i)
-        hosts[i - 1]->shadow()->ensureDistribution();
+    for (size_t i = elementShadows.size(); i > 0; --i)
+        elementShadows[i - 1]->distributor().distribute(elementShadows[i - 1]->host());
 }
 
 
@@ -400,10 +406,12 @@ void ContentDistributor::collectSelectFeatureSetFrom(ShadowRoot* root)
 
     if (ScopeContentDistribution::hasContentElement(root)) {
         for (Element* element = ElementTraversal::firstWithin(root); element; element = ElementTraversal::next(element)) {
-            if (isHTMLContentElement(element)) {
-                const CSSSelectorList& list = toHTMLContentElement(element)->selectorList();
-                for (CSSSelector* selector = list.first(); selector; selector = list.next(selector))
-                    m_selectFeatures.collectFeaturesFromSelector(selector);
+            if (!isHTMLContentElement(element))
+                continue;
+            const CSSSelectorList& list = toHTMLContentElement(element)->selectorList();
+            for (const CSSSelector* selector = list.first(); selector; selector = CSSSelectorList::next(selector)) {
+                for (const CSSSelector* component = selector; component; component = component->tagHistory())
+                    m_selectFeatures.collectFeaturesFromSelector(component);
             }
         }
     }

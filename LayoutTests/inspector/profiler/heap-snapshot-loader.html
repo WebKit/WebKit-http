@@ -30,7 +30,7 @@ function test()
 
         var profileHeader = panel._profiles[0];
 
-        function getProfileMock(profileTypeName, uid) {
+        function getHeapSnapshotMock(uid) {
             for (var i = 0, l = sourceStringified.length; i < l; i += partSize)
                 dispatcher.addHeapSnapshotChunk(uid, sourceStringified.slice(i, i + partSize));
             dispatcher.finishHeapSnapshot(uid);
@@ -39,12 +39,12 @@ function test()
         function snapshotLoaded()
         {
             if (overrideGetProfile)
-                InspectorTest.override(ProfilerAgent, "getProfile", getProfileMock);
+                InspectorTest.override(ProfilerAgent, "getHeapSnapshot", getHeapSnapshotMock);
             callback(profileHeader);
         }
         InspectorTest.addSniffer(profileHeader, "_snapshotReceived", snapshotLoaded);
 
-        InspectorTest.override(ProfilerAgent, "getProfile", getProfileMock);
+        InspectorTest.override(ProfilerAgent, "getHeapSnapshot", getHeapSnapshotMock);
         panel.showProfile(profileHeader);
     }
 
@@ -55,7 +55,7 @@ function test()
             for (var i = 0, l = sourceStringified.length; i < l; i += partSize)
                 loader.write(sourceStringified.slice(i, i + partSize));
             loader.close();
-            var result = loader.buildSnapshot();
+            var result = loader.buildSnapshot("JSHeapSnapshot");
             result._nodes = new Uint32Array(result._nodes);
             result._containmentEdges = new Uint32Array(result._containmentEdges);
             InspectorTest.assertSnapshotEquals(new WebInspector.JSHeapSnapshot(InspectorTest.createHeapSnapshotMock()), result);

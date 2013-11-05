@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ class WebDatabaseManager : public WebCore::DatabaseManagerClient, public WebProc
 public:
     explicit WebDatabaseManager(WebProcess*);
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
     void setQuotaForOrigin(const String& originIdentifier, unsigned long long quota) const;
     void deleteAllDatabases() const;
@@ -53,9 +53,7 @@ private:
     virtual void initialize(const WebProcessCreationParameters&) OVERRIDE;
 
     // CoreIPC::MessageReceiver
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    // Implemented in generated WebDatabaseManagerMessageReceiver.cpp
-    void didReceiveWebDatabaseManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     void getDatabasesByOrigin(uint64_t callbackID) const;
     void getDatabaseOrigins(uint64_t callbackID) const;

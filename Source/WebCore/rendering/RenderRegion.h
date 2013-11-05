@@ -42,7 +42,7 @@ class RenderNamedFlowThread;
 
 class RenderRegion : public RenderReplaced {
 public:
-    explicit RenderRegion(ContainerNode*, RenderFlowThread*);
+    explicit RenderRegion(Element*, RenderFlowThread*);
 
     virtual bool isRenderRegion() const { return true; }
 
@@ -98,6 +98,7 @@ public:
     // height of a single column or page in the set.
     virtual LayoutUnit pageLogicalWidth() const;
     virtual LayoutUnit pageLogicalHeight() const;
+    LayoutUnit maxPageLogicalHeight() const;
 
     virtual LayoutUnit minPreferredLogicalWidth() const OVERRIDE;
     virtual LayoutUnit maxPreferredLogicalWidth() const OVERRIDE;
@@ -115,8 +116,6 @@ public:
     virtual LayoutUnit logicalHeightOfAllFlowThreadContent() const;
 
     bool hasAutoLogicalHeight() const { return m_hasAutoLogicalHeight; }
-
-    bool needsOverrideLogicalContentHeightComputation() const;
 
     virtual void updateLogicalHeight() OVERRIDE;
 
@@ -169,6 +168,9 @@ private:
     void checkRegionStyle();
     void updateRegionHasAutoLogicalHeightFlag();
 
+    void incrementAutoLogicalHeightCount();
+    void decrementAutoLogicalHeightCount();
+
 protected:
     RenderFlowThread* m_flowThread;
 
@@ -207,13 +209,13 @@ private:
 
 inline RenderRegion* toRenderRegion(RenderObject* object)
 {
-    ASSERT(!object || object->isRenderRegion());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderRegion());
     return static_cast<RenderRegion*>(object);
 }
 
 inline const RenderRegion* toRenderRegion(const RenderObject* object)
 {
-    ASSERT(!object || object->isRenderRegion());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderRegion());
     return static_cast<const RenderRegion*>(object);
 }
 

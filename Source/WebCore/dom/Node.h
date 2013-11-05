@@ -27,6 +27,7 @@
 
 #include "EditingBoundary.h"
 #include "EventTarget.h"
+#include "FocusDirection.h"
 #include "KURLHash.h"
 #include "LayoutRect.h"
 #include "MutationObserver.h"
@@ -236,6 +237,9 @@ public:
 
     virtual bool isMediaControlElement() const { return false; }
     virtual bool isMediaControls() const { return false; }
+#if ENABLE(VIDEO_TRACK)
+    virtual bool isWebVTTElement() const { return false; }
+#endif
     bool isStyledElement() const { return getFlag(IsStyledElementFlag); }
     virtual bool isAttributeNode() const { return false; }
     virtual bool isCharacterDataNode() const { return false; }
@@ -264,7 +268,7 @@ public:
     Element* shadowHost() const;
     // If this node is in a shadow tree, returns its shadow host. Otherwise, returns this.
     // Deprecated. Should use shadowHost() and check the return value.
-    Node* shadowAncestorNode() const;
+    Node* deprecatedShadowAncestorNode() const;
     ShadowRoot* containingShadowRoot() const;
     ShadowRoot* youngestShadowRoot() const;
 
@@ -272,10 +276,9 @@ public:
     Node* nonBoundaryShadowTreeRootNode();
 
     // Node's parent, shadow tree host.
-    // FIXME: These methods should be renamed parentOrShadowHost*
-    ContainerNode* parentOrHostNode() const;
-    Element* parentOrHostElement() const;
-    void setParentOrHostNode(ContainerNode*);
+    ContainerNode* parentOrShadowHostNode() const;
+    Element* parentOrShadowHostElement() const;
+    void setParentOrShadowHostNode(ContainerNode*);
     Node* highestAncestor() const;
 
     // Use when it's guaranteed to that shadowHost is 0.
@@ -387,7 +390,7 @@ public:
     void lazyAttach(ShouldSetAttached = SetAttached);
     void lazyReattach(ShouldSetAttached = SetAttached);
 
-    virtual void setFocus(bool flag = true);
+    virtual void setFocus(bool flag);
     virtual void setActive(bool flag = true, bool pause = false);
     virtual void setHovered(bool flag = true);
 
@@ -582,6 +585,7 @@ public:
 
     void invalidateNodeListCachesInAncestors(const QualifiedName* attrName = 0, Element* attributeOwnerElement = 0);
     NodeListsNodeData* nodeLists();
+    void clearNodeLists();
 
     PassRefPtr<NodeList> getElementsByTagName(const AtomicString&);
     PassRefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
@@ -634,7 +638,7 @@ public:
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
-    virtual void dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode);
+    virtual void dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode, FocusDirection);
     virtual void dispatchBlurEvent(PassRefPtr<Node> newFocusedNode);
     virtual void dispatchChangeEvent();
     virtual void dispatchInputEvent();
@@ -673,6 +677,12 @@ public:
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
     void textRects(Vector<IntRect>&) const;
+
+    unsigned connectedSubframeCount() const;
+    void incrementConnectedSubframeCount(unsigned amount = 1);
+    void decrementConnectedSubframeCount(unsigned amount = 1);
+    void updateAncestorConnectedSubframeCountForRemoval() const;
+    void updateAncestorConnectedSubframeCountForInsertion() const;
 
 private:
     enum NodeFlags {
@@ -768,7 +778,7 @@ private:
     friend class TreeShared<Node>;
 
     void removedLastRef();
-    bool hasTreeSharedParent() const { return !!parentOrHostNode(); }
+    bool hasTreeSharedParent() const { return !!parentOrShadowHostNode(); }
 
     enum EditableLevel { Editable, RichlyEditable };
     bool rendererIsEditable(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
@@ -802,7 +812,7 @@ private:
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
 
     mutable uint32_t m_nodeFlags;
-    ContainerNode* m_parentOrHostNode;
+    ContainerNode* m_parentOrShadowHostNode;
     TreeScope* m_treeScope;
     Node* m_previous;
     Node* m_next;
@@ -838,27 +848,27 @@ inline void addSubresourceURL(ListHashSet<KURL>& urls, const KURL& url)
         urls.add(url);
 }
 
-inline void Node::setParentOrHostNode(ContainerNode* parent)
+inline void Node::setParentOrShadowHostNode(ContainerNode* parent)
 {
     ASSERT(isMainThread());
-    m_parentOrHostNode = parent;
+    m_parentOrShadowHostNode = parent;
 }
 
-inline ContainerNode* Node::parentOrHostNode() const
+inline ContainerNode* Node::parentOrShadowHostNode() const
 {
     ASSERT(isMainThreadOrGCThread());
-    return m_parentOrHostNode;
+    return m_parentOrShadowHostNode;
 }
 
 inline ContainerNode* Node::parentNode() const
 {
-    return isShadowRoot() ? 0 : parentOrHostNode();
+    return isShadowRoot() ? 0 : parentOrShadowHostNode();
 }
 
 inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
 {
     ASSERT(!isShadowRoot());
-    return parentOrHostNode();
+    return parentOrShadowHostNode();
 }
 
 inline void Node::reattach()

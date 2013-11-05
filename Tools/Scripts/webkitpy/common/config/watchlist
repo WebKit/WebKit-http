@@ -333,14 +333,46 @@
         "ContentSecurityPolicyFiles": {
             "filename": r"Source/WebCore/page/(Content|DOM)SecurityPolicy\."
                         r"|LayoutTests/http/tests/security/contentSecurityPolicy"
-        }
+        },
+        "RegionsDevelopment": {
+            "filename": r"Source/WebCore/rendering/RenderRegion\.(h|cpp)"
+                        r"|Source/WebCore/rendering/RenderFlowThread\.(h|cpp)"
+                        r"|Source/WebCore/rendering/FlowThreadController\.(h|cpp)"
+                        r"|Source/WebCore/rendering/RenderRegionSet\.(h|cpp)"
+                        r"|Source/WebCore/rendering/RenderNamedFlowThread\.(h|cpp)"
+                        r"|Source/WebCore/rendering/RenderBoxRegionInfo\.h"
+                        r"|Source/WebCore/dom/WebKitNamedFlow\.(h|cpp|idl)"
+                        r"|Source/WebCore/dom/(DOM)?NamedFlowCollection\.(h|cpp|idl)"
+                        r"|Source/WebCore/css/WebKitCSSRegionRule\.(h|cpp|idl)"
+                        r"|LayoutTests/fast/regions",
+        },
+        "RegionsExpectationsMore": {
+            "filename": r"LayoutTests/platform/.*TestExpectations",
+            "more": r"fast/regions/.*\.html",
+        },
+        "RegionsExpectationsLess": {
+            "filename": r"LayoutTests/platform/.*TestExpectations",
+            "less": r"fast/regions/.*\.html",
+        },
+        "RegionsUsage": {
+            "more": r"(RenderRegion|RenderFlowThread|RenderNamedFlowThread)(?!\.(h|cpp))",
+        },
+        "IndexedDB": {
+            "filename": r"Source/WebCore/Modules/indexeddb"
+                        r"|Source/WebCore/bindings/.*IDB.*\.(h|cpp)"
+                        r"|Source/WebCore/bindings/.*SerializedScriptValue.*\.(h|cpp)"
+                        r"|Source/WebKit/chromium/.*IDB.*\.(h|cpp)"
+                        r"|Source/WebCore/platform/leveldb"
+                        r"|LayoutTests/storage/indexeddb"
+                        r"|LayoutTests/platform/.*/storage/indexeddb",
+        },
     },
     "CC_RULES": {
         # Note: All email addresses listed must be registered with bugzilla.
         # Specifically, levin@chromium.org and levin+threading@chromium.org are
         # two different accounts as far as bugzilla is concerned.
         "Accessibility": [ "cfleizach@apple.com", "dmazzoni@google.com", "apinheiro@igalia.com", "jdiggs@igalia.com", "aboxhall@chromium.org" ],
-        "Animation" : [ "simon.fraser@apple.com", "dino@apple.com" ],
+        "Animation" : [ "simon.fraser@apple.com", "dino@apple.com", "dstockwell@chromium.org" ],
         "AppleMacPublicApi": [ "timothy@apple.com" ],
         "Battery": [ "gyuyoung.kim@samsung.com" ],
         "BlackBerry": [ "mifenton@rim.com", "rwlbuis@gmail.com", "tonikitoo@webkit.org", "yoli@rim.com" ],
@@ -371,6 +403,7 @@
         "GtkWebKit2PublicAPI": [ "cgarcia@igalia.com", "gns@gnome.org", "mrobinson@webkit.org" ],
         "Harfbuzz": [ "dominik.rottsches@intel.com" ],
         "HTML": [ "ojan.autocc@gmail.com" ],
+        "IndexedDB": [ "alecflett@chromium.org", "dgrogan@chromium.org", "jsbell@chromium.org" ],
         "Loader": [ "japhet@chromium.org" ],
         "MathML": [ "dbarton@mathscribe.com" ],
         "Media": [ "feature-media-reviews@chromium.org", "eric.carlson@apple.com" ],
@@ -382,6 +415,7 @@
         "QtGraphics" : [ "noam@webkit.org" ],
         "QtWebKit2PlatformSpecific": [ "alexis@webkit.org", "cmarcelo@webkit.org", "abecsi@webkit.org" ],
         "QtWebKit2PublicAPI": [ "alexis@webkit.org", "cmarcelo@webkit.org", "abecsi@webkit.org" ],
+        "RegionsDevelopment|RegionsExpectationsMore|RegionsExpectationsLess|RegionsUsage": [ "WebkitBugTracker@adobe.com" ],
         "Rendering": [ "eric@webkit.org", "ojan.autocc@gmail.com" ],
         "RenderLayers" : [ "simon.fraser@apple.com" ],
         "SVG": ["schenney@chromium.org", "pdr@google.com", "fmalita@chromium.org", "dominik.rottsches@intel.com" ],

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,6 +34,8 @@
 #include <network/FilterStream.h>
 #include <network/NetworkRequest.h>
 
+using BlackBerry::Platform::NetworkRequest;
+
 namespace WebCore {
 
 SINGLETON_INITIALIZER_THREADUNSAFE(NetworkManager)
@@ -53,6 +55,79 @@ bool NetworkManager::startJob(int playerId, PassRefPtr<ResourceHandle> job, cons
         return false;
     BlackBerry::Platform::NetworkStreamFactory* streamFactory = page->chrome()->platformPageClient()->networkStreamFactory();
     return startJob(playerId, page->groupName(), job, request, streamFactory, frame, defersLoading ? 1 : 0);
+}
+
+static void setAuthCredentials(NetworkRequest& platformRequest, const AuthenticationChallenge& challenge)
+{
+    if (challenge.isNull())
+        return;
+
+    Credential credential = challenge.proposedCredential();
+    const ProtectionSpace& protectionSpace = challenge.protectionSpace();
+
+    String username = credential.user();
+    String password = credential.password();
+
+    NetworkRequest::AuthScheme authScheme = NetworkRequest::AuthSchemeNone;
+    switch (protectionSpace.authenticationScheme()) {
+    case ProtectionSpaceAuthenticationSchemeDefault:
+        authScheme = NetworkRequest::AuthSchemeDefault;
+        break;
+    case ProtectionSpaceAuthenticationSchemeHTTPBasic:
+        authScheme = NetworkRequest::AuthSchemeHTTPBasic;
+        break;
+    case ProtectionSpaceAuthenticationSchemeHTTPDigest:
+        authScheme = NetworkRequest::AuthSchemeHTTPDigest;
+        break;
+    case ProtectionSpaceAuthenticationSchemeNegotiate:
+        authScheme = NetworkRequest::AuthSchemeNegotiate;
+        break;
+    case ProtectionSpaceAuthenticationSchemeNTLM:
+        authScheme = NetworkRequest::AuthSchemeNTLM;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+
+    NetworkRequest::AuthType authType = NetworkRequest::AuthTypeNone;
+    NetworkRequest::AuthProtocol authProtocol = NetworkRequest::AuthProtocolNone;
+    switch (protectionSpace.serverType()) {
+    case ProtectionSpaceServerHTTP:
+        authType = NetworkRequest::AuthTypeHost;
+        authProtocol = NetworkRequest::AuthProtocolHTTP;
+        break;
+    case ProtectionSpaceServerHTTPS:
+        authType = NetworkRequest::AuthTypeHost;
+        authProtocol = NetworkRequest::AuthProtocolHTTPS;
+        break;
+    case ProtectionSpaceServerFTP:
+        authType = NetworkRequest::AuthTypeHost;
+        authProtocol = NetworkRequest::AuthProtocolFTP;
+        break;
+    case ProtectionSpaceServerFTPS:
+        authType = NetworkRequest::AuthTypeHost;
+        authProtocol = NetworkRequest::AuthProtocolFTPS;
+        break;
+    case ProtectionSpaceProxyHTTP:
+        authType = NetworkRequest::AuthTypeProxy;
+        authProtocol = NetworkRequest::AuthProtocolHTTP;
+        break;
+    case ProtectionSpaceProxyHTTPS:
+        authType = NetworkRequest::AuthTypeProxy;
+        authProtocol = NetworkRequest::AuthProtocolHTTPS;
+        break;
+    case ProtectionSpaceProxyFTP:
+        authType = NetworkRequest::AuthTypeProxy;
+        authProtocol = NetworkRequest::AuthProtocolFTP;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        break;
+    }
+
+    if (authType != NetworkRequest::AuthTypeNone && authProtocol != NetworkRequest::AuthProtocolNone && authScheme != NetworkRequest::AuthSchemeNone)
+        platformRequest.setCredentials(authType, authProtocol, authScheme, username.utf8().data(), password.utf8().data());
 }
 
 bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRefPtr<ResourceHandle> job, const ResourceRequest& request, BlackBerry::Platform::NetworkStreamFactory* streamFactory, Frame* frame, int deferLoadingCount, int redirectCount)
@@ -78,43 +153,8 @@ bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRef
     platformRequest.setSecurityOrigin(frame->document()->securityOrigin()->toRawString());
 
     // Attach any applicable auth credentials to the NetworkRequest.
-    AuthenticationChallenge& challenge = guardJob->getInternal()->m_currentWebChallenge;
-    if (!challenge.isNull()) {
-        Credential credential = challenge.proposedCredential();
-        ProtectionSpace protectionSpace = challenge.protectionSpace();
-        ProtectionSpaceServerType type = protectionSpace.serverType();
-
-        String username = credential.user();
-        String password = credential.password();
-
-        BlackBerry::Platform::NetworkRequest::AuthType authType = BlackBerry::Platform::NetworkRequest::AuthNone;
-        if (type == ProtectionSpaceServerHTTP || type == ProtectionSpaceServerHTTPS) {
-            switch (protectionSpace.authenticationScheme()) {
-            case ProtectionSpaceAuthenticationSchemeHTTPBasic:
-                authType = BlackBerry::Platform::NetworkRequest::AuthHTTPBasic;
-                break;
-            case ProtectionSpaceAuthenticationSchemeHTTPDigest:
-                authType = BlackBerry::Platform::NetworkRequest::AuthHTTPDigest;
-                break;
-            case ProtectionSpaceAuthenticationSchemeNegotiate:
-                authType = BlackBerry::Platform::NetworkRequest::AuthNegotiate;
-                break;
-            case ProtectionSpaceAuthenticationSchemeNTLM:
-                authType = BlackBerry::Platform::NetworkRequest::AuthHTTPNTLM;
-                break;
-            // Lots more cases to handle.
-            default:
-                // Defaults to AuthNone as per above.
-                break;
-            }
-        } else if (type == ProtectionSpaceServerFTP || type == ProtectionSpaceServerFTPS)
-            authType = BlackBerry::Platform::NetworkRequest::AuthFTP;
-        else if (type == ProtectionSpaceProxyHTTP || type == ProtectionSpaceProxyHTTPS)
-            authType = BlackBerry::Platform::NetworkRequest::AuthProxy;
-
-        if (authType != BlackBerry::Platform::NetworkRequest::AuthNone)
-            platformRequest.setCredentials(username.utf8().data(), password.utf8().data(), authType);
-    }
+    setAuthCredentials(platformRequest, guardJob->getInternal()->m_hostWebChallenge);
+    setAuthCredentials(platformRequest, guardJob->getInternal()->m_proxyWebChallenge);
 
     if (!request.overrideContentType().isEmpty())
         platformRequest.setOverrideContentType(request.overrideContentType().latin1().data());

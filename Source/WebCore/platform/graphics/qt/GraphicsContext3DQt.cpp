@@ -34,6 +34,7 @@
 #include "OpenGLShims.h"
 #include "QWebPageClient.h"
 #include "SharedBuffer.h"
+#include "TextureMapperPlatformLayer.h"
 #include <QWindow>
 #include <qpa/qplatformpixmap.h>
 #include <wtf/UnusedParam.h>
@@ -538,7 +539,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     if (!m_imageWidth || !m_imageHeight)
         return false;
     m_imagePixelData = m_qtImage.constBits();
-    m_imageSourceFormat = SourceFormatBGRA8;
+    m_imageSourceFormat = DataFormatBGRA8;
     m_imageSourceUnpackAlignment = 0;
 
     return true;

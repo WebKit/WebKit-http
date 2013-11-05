@@ -183,4 +183,23 @@ PassRefPtr<WebImage> InjectedBundlePageUIClient::plugInStartLabelImage(RenderSna
     return adoptRef(toImpl(m_client.plugInStartLabelImage(wkSize, m_client.clientInfo)));
 }
 
+String InjectedBundlePageUIClient::plugInStartLabelTitle() const
+{
+    return String();
+}
+
+String InjectedBundlePageUIClient::plugInStartLabelSubtitle() const
+{
+    return String();
+}
+
+String InjectedBundlePageUIClient::plugInExtraStyleSheet() const
+{
+    if (!m_client.createPlugInExtraStyleSheet)
+        return String();
+
+    RefPtr<WebString> styleSheet = adoptRef(toImpl(m_client.createPlugInExtraStyleSheet(m_client.clientInfo)));
+    return styleSheet ? styleSheet->string() : String();
+}
+
 } // namespace WebKit

@@ -160,6 +160,7 @@ modules = [
             "Toolbar.js",
             "UIUtils.js",
             "View.js",
+            "ViewportControl.js",
             "treeoutline.js",
         ]
     },
@@ -338,7 +339,7 @@ modules = [
             "HeapSnapshotWorker.js",
             "HeapSnapshotWorkerDispatcher.js",
             "JSHeapSnapshot.js",
-            "NativeHeapGraph.js",
+            "NativeHeapSnapshot.js",
             "NativeMemorySnapshotView.js",
             "ProfileDataGridTree.js",
             "ProfilesPanel.js",
@@ -421,6 +422,7 @@ if not process_recursively:
     os.system("cat  " + inspector_path + "/" + "InjectedScriptSource.js" + " >> " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
     command = compiler_command
     command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
+    command += "    --externs " + protocol_externs_path + " \\\n"
     command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
     command += "        --js " + inspector_path + "/" + "InjectedScriptSourceTmp.js" + " \\\n"
     command += "\n"
@@ -432,6 +434,7 @@ if not process_recursively:
     os.system("cat  " + inspector_path + "/" + "InjectedScriptCanvasModuleSource.js" + " >> " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js")
     command = compiler_command
     command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
+    command += "    --externs " + protocol_externs_path + " \\\n"
     command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
     command += "        --js " + inspector_path + "/" + "InjectedScriptCanvasModuleSourceTmp.js" + " \\\n"
     command += "\n"

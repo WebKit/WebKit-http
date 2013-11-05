@@ -45,13 +45,13 @@
 #include "GeolocationPosition.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
+#include "JSCJSValue.h"
 #include "JSCSSStyleDeclaration.h"
 #include "JSDOMWindow.h"
 #include "JSDocument.h"
 #include "JSElement.h"
 #include "JSLock.h"
 #include "JSNodeList.h"
-#include "JSValue.h"
 #include "MemoryCache.h"
 #include "MutationObserver.h"
 #include "NodeList.h"
@@ -192,6 +192,20 @@ CString DumpRenderTreeSupportGtk::dumpRenderTree(WebKitWebFrame* frame)
         view->layout();
 
     return externalRepresentation(coreFrame).utf8();
+}
+
+void DumpRenderTreeSupportGtk::addUserScript(WebKitWebFrame* frame, const char* sourceCode, bool runAtStart, bool allFrames)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_FRAME(frame));
+
+    Frame* coreFrame = core(frame);
+    if (!coreFrame)
+        return;
+
+    WebKitWebView* webView = getViewFromFrame(frame);
+    Page* page = core(webView);
+    page->group().addUserScriptToWorld(mainThreadNormalWorld(), sourceCode, KURL(), Vector<String>(), Vector<String>(),
+        runAtStart ? InjectAtDocumentStart : InjectAtDocumentEnd, allFrames ? InjectInAllFrames : InjectInTopFrameOnly);
 }
 
 /**

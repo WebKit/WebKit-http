@@ -49,6 +49,7 @@
 #include "Interpreter.h"
 #include "JSActivation.h"
 #include "JSBoundFunction.h"
+#include "JSCJSValueInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
@@ -57,7 +58,6 @@
 #include "JSLock.h"
 #include "JSNameScope.h"
 #include "JSONObject.h"
-#include "JSValueInlines.h"
 #include "JSWithScope.h"
 #include "LegacyProfiler.h"
 #include "Lookup.h"
@@ -223,8 +223,7 @@ void JSGlobalObject::reset(JSValue prototype)
     m_strictEvalActivationStructure.set(exec->globalData(), this, StrictEvalActivation::createStructure(exec->globalData(), this, jsNull()));
     m_withScopeStructure.set(exec->globalData(), this, JSWithScope::createStructure(exec->globalData(), this, jsNull()));
 
-    m_emptyObjectStructure.set(exec->globalData(), this, m_objectPrototype->inheritorID(exec->globalData()));
-    m_nullPrototypeObjectStructure.set(exec->globalData(), this, createEmptyObjectStructure(exec->globalData(), this, jsNull()));
+    m_nullPrototypeObjectStructure.set(exec->globalData(), this, JSFinalObject::createStructure(globalData(), this, jsNull(), JSFinalObject::defaultInlineCapacity()));
 
     m_callbackFunctionStructure.set(exec->globalData(), this, JSCallbackFunction::createStructure(exec->globalData(), this, m_functionPrototype.get()));
     m_argumentsStructure.set(exec->globalData(), this, Arguments::createStructure(exec->globalData(), this, m_objectPrototype.get()));
@@ -513,7 +512,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_callbackFunctionStructure);
     visitor.append(&thisObject->m_callbackObjectStructure);
     visitor.append(&thisObject->m_dateStructure);
-    visitor.append(&thisObject->m_emptyObjectStructure);
     visitor.append(&thisObject->m_nullPrototypeObjectStructure);
     visitor.append(&thisObject->m_errorStructure);
     visitor.append(&thisObject->m_functionStructure);
@@ -593,8 +591,7 @@ DynamicGlobalObjectScope::DynamicGlobalObjectScope(JSGlobalData& globalData, JSG
 
 void slowValidateCell(JSGlobalObject* globalObject)
 {
-    if (!globalObject->isGlobalObject())
-        CRASH();
+    RELEASE_ASSERT(globalObject->isGlobalObject());
     ASSERT_GC_OBJECT_INHERITS(globalObject, &JSGlobalObject::s_info);
 }
 
@@ -635,21 +632,5 @@ UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame,
 
     return unlinkedCode;
 }
-
-UnlinkedFunctionExecutable* JSGlobalObject::createFunctionExecutableFromGlobalCode(CallFrame* callFrame, const Identifier& name, const SourceCode& code, JSObject** exception)
-{
-    ParserError error;
-    UnlinkedFunctionExecutable* executable = globalData().codeCache()->getFunctionExecutableFromGlobalCode(globalData(), name, code, error);
-    if (hasDebugger())
-        debugger()->sourceParsed(callFrame, code.provider(), error.m_line, error.m_message);
-
-    if (error.m_type != ParserError::ErrorNone) {
-        *exception = error.toErrorObject(this, code);
-        return 0;
-    }
-
-    return executable;
-}
-
 
 } // namespace JSC

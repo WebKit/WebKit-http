@@ -48,9 +48,7 @@ AccessibilityARIAGridRow::~AccessibilityARIAGridRow()
 
 PassRefPtr<AccessibilityARIAGridRow> AccessibilityARIAGridRow::create(RenderObject* renderer)
 {
-    AccessibilityARIAGridRow* obj = new AccessibilityARIAGridRow(renderer);
-    obj->init();
-    return adoptRef(obj);
+    return adoptRef(new AccessibilityARIAGridRow(renderer));
 }
 
 bool AccessibilityARIAGridRow::isARIATreeGridRow() const
@@ -118,15 +116,6 @@ AccessibilityObject* AccessibilityARIAGridRow::disclosedByRow() const
     return 0;
 }
     
-AccessibilityObject* AccessibilityARIAGridRow::parentTable() const
-{
-    AccessibilityObject* parent = parentObjectUnignored();
-    if (!parent->isAccessibilityTable())
-        return 0;
-    
-    return parent;
-}
-
 AccessibilityObject* AccessibilityARIAGridRow::headerObject()
 {
     AccessibilityChildrenVector rowChildren = children();

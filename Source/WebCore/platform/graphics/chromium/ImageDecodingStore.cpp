@@ -82,37 +82,46 @@ bool ImageDecodingStore::lockCache(const ImageFrameGenerator* generator, const S
     ASSERT(cachedImage);
 
     CacheEntry* cacheEntry = 0;
+    Vector<OwnPtr<CacheEntry> > cacheEntriesToDelete;
     {
         MutexLocker lock(m_mutex);
         CacheMap::iterator iter = m_cacheMap.find(std::make_pair(generator, scaledSize));
         if (iter == m_cacheMap.end())
             return false;
         cacheEntry = iter->value.get();
-        if (condition == CacheMustBeComplete && !cacheEntry->cachedImage()->isComplete())
+        ScaledImageFragment* image = cacheEntry->cachedImage();
+        if (condition == CacheMustBeComplete && !image->isComplete())
             return false;
 
         // Incomplete cache entry cannot be used more than once.
-        ASSERT(cacheEntry->cachedImage()->isComplete() || !cacheEntry->useCount());
+        ASSERT(image->isComplete() || !cacheEntry->useCount());
 
-        // Increment use count such that it doesn't get evicted.
-        cacheEntry->incrementUseCount();
+        image->bitmap().lockPixels();
+        if (image->bitmap().getPixels()) {
+            // Increment use count such that it doesn't get evicted.
+            cacheEntry->incrementUseCount();
+
+            // Complete cache entry doesn't have a decoder.
+            ASSERT(!image->isComplete() || !cacheEntry->cachedDecoder());
+
+            if (decoder)
+                *decoder = cacheEntry->cachedDecoder();
+            *cachedImage = image;
+        } else {
+            image->bitmap().unlockPixels();
+            removeFromCacheInternal(cacheEntry, &cacheEntriesToDelete);
+            removeFromCacheListInternal(cacheEntriesToDelete);
+            return false;
+        }
     }
 
-    // Complete cache entry doesn't have a decoder.
-    ASSERT(!cacheEntry->cachedImage()->isComplete() || !cacheEntry->cachedDecoder());
-
-    if (decoder)
-        *decoder = cacheEntry->cachedDecoder();
-    *cachedImage = cacheEntry->cachedImage();
-    (*cachedImage)->bitmap().lockPixels();
     return true;
 }
 
 void ImageDecodingStore::unlockCache(const ImageFrameGenerator* generator, const ScaledImageFragment* cachedImage)
 {
-    cachedImage->bitmap().unlockPixels();
-
     MutexLocker lock(m_mutex);
+    cachedImage->bitmap().unlockPixels();
     CacheMap::iterator iter = m_cacheMap.find(std::make_pair(generator, cachedImage->scaledSize()));
     ASSERT(iter != m_cacheMap.end());
 
@@ -129,9 +138,6 @@ const ScaledImageFragment* ImageDecodingStore::insertAndLockCache(const ImageFra
     // Prune old cache entries to give space for the new one.
     prune();
 
-    // Lock the underlying SkBitmap to prevent it from being purged.
-    image->bitmap().lockPixels();
-
     ScaledImageFragment* cachedImage = image.get();
     OwnPtr<CacheEntry> newCacheEntry;
 
@@ -142,6 +148,8 @@ const ScaledImageFragment* ImageDecodingStore::insertAndLockCache(const ImageFra
         newCacheEntry = CacheEntry::createAndUse(generator, image, decoder);
 
     MutexLocker lock(m_mutex);
+    // Lock the underlying SkBitmap to prevent it from being purged.
+    cachedImage->bitmap().lockPixels();
     ASSERT(!m_cacheMap.contains(newCacheEntry->cacheKey()));
     insertCacheInternal(newCacheEntry.release());
     return cachedImage;
@@ -149,12 +157,11 @@ const ScaledImageFragment* ImageDecodingStore::insertAndLockCache(const ImageFra
 
 const ScaledImageFragment* ImageDecodingStore::overwriteAndLockCache(const ImageFrameGenerator* generator, const ScaledImageFragment* cachedImage, PassOwnPtr<ScaledImageFragment> newImage)
 {
-    cachedImage->bitmap().unlockPixels();
-
     OwnPtr<ImageDecoder> trash;
     const ScaledImageFragment* newCachedImage = 0;
     {
         MutexLocker lock(m_mutex);
+        cachedImage->bitmap().unlockPixels();
         CacheMap::iterator iter = m_cacheMap.find(std::make_pair(generator, cachedImage->scaledSize()));
         ASSERT(iter != m_cacheMap.end());
 
@@ -162,12 +169,17 @@ const ScaledImageFragment* ImageDecodingStore::overwriteAndLockCache(const Image
         ASSERT(cacheEntry->useCount() == 1);
         ASSERT(!cacheEntry->cachedImage()->isComplete());
 
+        bool isNewImageDiscardable = DiscardablePixelRef::isDiscardable(newImage->bitmap().pixelRef());
+        if (cacheEntry->isDiscardable() && !isNewImageDiscardable)
+            incrementMemoryUsage(cacheEntry->memoryUsageInBytes());
+        else if (!cacheEntry->isDiscardable() && isNewImageDiscardable)
+            decrementMemoryUsage(cacheEntry->memoryUsageInBytes());
         trash = cacheEntry->overwriteCachedImage(newImage);
         newCachedImage = cacheEntry->cachedImage();
+        // Lock the underlying SkBitmap to prevent it from being purged.
+        newCachedImage->bitmap().lockPixels();
     }
 
-    // Lock the underlying SkBitmap to prevent it from being purged.
-    newCachedImage->bitmap().lockPixels();
     return newCachedImage;
 }
 
@@ -232,7 +244,7 @@ void ImageDecodingStore::prune()
 
         // Walk the list of cache entries starting from the least recently used
         // and then keep them for deletion later.
-        while (cacheEntry && m_memoryUsageInBytes > m_cacheLimitInBytes) {
+        while (cacheEntry && (m_memoryUsageInBytes > m_cacheLimitInBytes || !m_cacheLimitInBytes)) {
             // Cache is not used; Remove it.
             if (!cacheEntry->useCount())
                 removeFromCacheInternal(cacheEntry, &cacheEntriesToDelete);
@@ -246,7 +258,8 @@ void ImageDecodingStore::prune()
 
 void ImageDecodingStore::insertCacheInternal(PassOwnPtr<CacheEntry> cacheEntry)
 {
-    incrementMemoryUsage(cacheEntry->memoryUsageInBytes());
+    if (!cacheEntry->isDiscardable())
+        incrementMemoryUsage(cacheEntry->memoryUsageInBytes());
 
     // m_orderedCacheList is used to support LRU operations to reorder cache
     // entries quickly.
@@ -264,7 +277,8 @@ void ImageDecodingStore::insertCacheInternal(PassOwnPtr<CacheEntry> cacheEntry)
 
 void ImageDecodingStore::removeFromCacheInternal(const CacheEntry* cacheEntry, Vector<OwnPtr<CacheEntry> >* deletionList)
 {
-    decrementMemoryUsage(cacheEntry->memoryUsageInBytes());
+    if (!cacheEntry->isDiscardable())
+        decrementMemoryUsage(cacheEntry->memoryUsageInBytes());
 
     // Remove from m_cacheMap.
     CacheIdentifier key = cacheEntry->cacheKey();

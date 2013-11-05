@@ -29,6 +29,7 @@
 #include "AuthenticationClient.h"
 #include "HTTPHeaderMap.h"
 #include "ResourceHandleTypes.h"
+#include "ResourceLoadPriority.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
 
@@ -166,6 +167,7 @@ public:
     void continueDidReceiveAuthenticationChallenge(const Credential& credentialFromPersistentStorage);
     void sendPendingRequest();
     bool shouldUseCredentialStorage();
+    bool cancelledOrClientless();
     static SoupSession* defaultSession();
     static uint64_t getSoupRequestInitiatingPageID(SoupRequest*);
     static void setHostAllowsAnyHTTPSCertificate(const String&);
@@ -189,7 +191,9 @@ public:
 #if PLATFORM(BLACKBERRY)
     void pauseLoad(bool);
 #endif
-      
+
+    void didChangePriority(ResourceLoadPriority);
+
     ResourceRequest& firstRequest();
     const String& lastHTTPMethod() const;
 

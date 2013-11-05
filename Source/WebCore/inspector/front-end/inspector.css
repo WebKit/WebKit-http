@@ -694,6 +694,10 @@ button.status-bar-item {
     margin: 0 -1px;
 }
 
+.status-bar button.status-bar-item img {
+    margin-top: 1px;
+}
+
 .status-bar select.status-bar-item:active,
 .status-bar button.status-bar-item:active {
     background-color: rgb(163,163,163);
@@ -1208,6 +1212,27 @@ ol.watch-expressions > li.hovered {
     font-style: italic;
 }
 
+.object-info-state-note {
+    display: none;
+    width: 11px;
+    height: 11px;
+    background-color: rgb(179, 203, 247);
+    color: white;
+    text-align: center;
+    border-radius: 3px;
+    line-height: 13px;
+    margin: 0 6px;
+    font-size: 9px;
+}
+
+.object-info-state-note::before {
+    content: "i";
+}
+
+.section.expanded .object-info-state-note {
+    display: inline-block;
+}
+
 .error-message {
     color: red;
 }
@@ -1530,6 +1555,9 @@ iframe.panel.extension {
 
 .section.expanded .properties, .event-bar.expanded .event-properties {
     display: block;
+}
+
+.pane.expanded .section .properties, .event-bar .event-properties {
     padding-left: 16px;
 }
 
@@ -3024,4 +3052,13 @@ body.platform-mac .progress-bar-container progress {
 .progress-bar-container button.status-bar-item {
     border-left: none;
     margin-top: 1px;
+}
+
+.source-frame-cursor-position {
+    padding-left: 6px;
+    padding-top: 5px;
+    display: inline-block;
+    pointer-events: auto;
+    -webkit-user-select: text;
+    font-size: 11px;
 }

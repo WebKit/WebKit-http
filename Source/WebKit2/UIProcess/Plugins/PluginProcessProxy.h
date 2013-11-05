@@ -86,7 +86,7 @@ public:
     PluginProcess::Type processType() const { return m_processType; }
 
 #if PLATFORM(MAC)
-    void setApplicationIsOccluded(bool);
+    void setProcessSuppressionEnabled(bool);
 
     // Returns whether the plug-in needs the heap to be marked executable.
     static bool pluginNeedsExecutableHeap(const PluginModuleInfo&);
@@ -105,7 +105,7 @@ private:
     void pluginProcessCrashedOrFailedToLaunch();
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*) OVERRIDE;
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
 
@@ -113,7 +113,7 @@ private:
     virtual void didFinishLaunching(ProcessLauncher*, CoreIPC::Connection::Identifier);
 
     // Message handlers
-    void didReceivePluginProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceivePluginProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
     void didCreateWebProcessConnection(const CoreIPC::Attachment&, bool supportsAsynchronousPluginInitialization);
     void didGetSitesWithData(const Vector<String>& sites, uint64_t callbackID);
     void didClearSiteData(uint64_t callbackID);

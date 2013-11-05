@@ -46,7 +46,7 @@
 #include "RTCVoidRequest.h"
 #include <public/Platform.h>
 #include <public/WebMediaConstraints.h>
-#include <public/WebMediaStreamDescriptor.h>
+#include <public/WebMediaStream.h>
 #include <public/WebRTCConfiguration.h>
 #include <public/WebRTCDataChannelHandler.h>
 #include <public/WebRTCICECandidate.h>
@@ -173,9 +173,9 @@ void RTCPeerConnectionHandlerChromium::didGenerateICECandidate(const WebKit::Web
     m_client->didGenerateIceCandidate(iceCandidate);
 }
 
-void RTCPeerConnectionHandlerChromium::didChangeReadyState(WebKit::WebRTCPeerConnectionHandlerClient::ReadyState state)
+void RTCPeerConnectionHandlerChromium::didChangeSignalingState(WebKit::WebRTCPeerConnectionHandlerClient::SignalingState state)
 {
-    m_client->didChangeReadyState(static_cast<RTCPeerConnectionHandlerClient::ReadyState>(state));
+    m_client->didChangeSignalingState(static_cast<RTCPeerConnectionHandlerClient::SignalingState>(state));
 }
 
 void RTCPeerConnectionHandlerChromium::didChangeICEGatheringState(WebKit::WebRTCPeerConnectionHandlerClient::ICEGatheringState state)
@@ -183,17 +183,17 @@ void RTCPeerConnectionHandlerChromium::didChangeICEGatheringState(WebKit::WebRTC
     m_client->didChangeIceGatheringState(static_cast<RTCPeerConnectionHandlerClient::IceGatheringState>(state));
 }
 
-void RTCPeerConnectionHandlerChromium::didChangeICEState(WebKit::WebRTCPeerConnectionHandlerClient::ICEState state)
+void RTCPeerConnectionHandlerChromium::didChangeICEConnectionState(WebKit::WebRTCPeerConnectionHandlerClient::ICEConnectionState state)
 {
-    m_client->didChangeIceState(static_cast<RTCPeerConnectionHandlerClient::IceState>(state));
+    m_client->didChangeIceConnectionState(static_cast<RTCPeerConnectionHandlerClient::IceConnectionState>(state));
 }
 
-void RTCPeerConnectionHandlerChromium::didAddRemoteStream(const WebKit::WebMediaStreamDescriptor& webMediaStreamDescriptor)
+void RTCPeerConnectionHandlerChromium::didAddRemoteStream(const WebKit::WebMediaStream& webMediaStreamDescriptor)
 {
     m_client->didAddRemoteStream(webMediaStreamDescriptor);
 }
 
-void RTCPeerConnectionHandlerChromium::didRemoveRemoteStream(const WebKit::WebMediaStreamDescriptor& webMediaStreamDescriptor)
+void RTCPeerConnectionHandlerChromium::didRemoveRemoteStream(const WebKit::WebMediaStream& webMediaStreamDescriptor)
 {
     m_client->didRemoveRemoteStream(webMediaStreamDescriptor);
 }

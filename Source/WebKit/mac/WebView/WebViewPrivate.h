@@ -115,7 +115,13 @@ enum {
 };
 typedef NSUInteger WebLayoutMilestones;
 
-// This needs to be in sync with WebCore::NotificationClient::Permission
+typedef enum {
+    WebPageVisibilityStateVisible,
+    WebPageVisibilityStateHidden,
+    WebPageVisibilityStatePrerender,
+    WebPageVisibilityStatePreview
+} WebPageVisibilityState;
+
 typedef enum {
     WebNotificationPermissionAllowed,
     WebNotificationPermissionNotAllowed,
@@ -315,6 +321,10 @@ Could be worth adding to the API.
 
 // Indicates if the WebView is in the midst of a user gesture.
 - (BOOL)_isProcessingUserGesture;
+
+// Determining and updating page visibility state.
+- (BOOL)_isViewVisible;
+- (void)_updateVisibilityState;
 
 // SPI for DumpRenderTree
 - (void)_updateActiveState;
@@ -574,6 +584,8 @@ Could be worth adding to the API.
 - (void)_listenForLayoutMilestones:(WebLayoutMilestones)layoutMilestones;
 - (WebLayoutMilestones)_layoutMilestones;
 
+- (void)_setVisibilityState:(WebPageVisibilityState)visibilityState isInitialState:(BOOL)isInitialState;
+
 // Whether the column-break-{before,after} properties are respected instead of the
 // page-break-{before,after} properties.
 - (void)_setPaginationBehavesLikeColumns:(BOOL)behavesLikeColumns;
@@ -639,9 +651,6 @@ Could be worth adding to the API.
     @param enabled The new HTTP pipelining status.
  */
 + (void)_setHTTPPipeliningEnabled:(BOOL)enabled;
-
-// SPI for DumpRenderTree
-- (void)_setVisibilityState:(int)visibilityState isInitialState:(BOOL)isInitialState;
 
 @end
 

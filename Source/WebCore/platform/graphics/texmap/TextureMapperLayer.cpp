@@ -22,8 +22,6 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "GraphicsLayerTextureMapper.h"
-
 namespace WebCore {
 
 class TextureMapperPaintOptions {
@@ -40,11 +38,6 @@ public:
     { }
 };
 
-TextureMapperLayer* toTextureMapperLayer(GraphicsLayer* layer)
-{
-    return layer ? toGraphicsLayerTextureMapper(layer)->layer() : 0;
-}
-
 const TextureMapperLayer* TextureMapperLayer::rootLayer() const
 {
     if (m_effectTarget)
@@ -52,16 +45,6 @@ const TextureMapperLayer* TextureMapperLayer::rootLayer() const
     if (m_parent)
         return m_parent->rootLayer();
     return this;
-}
-
-void TextureMapperLayer::clearBackingStoresRecursive()
-{
-    m_backingStore.clear();
-    m_contentsLayer = 0;
-    for (size_t i = 0; i < m_children.size(); ++i)
-        m_children[i]->clearBackingStoresRecursive();
-    if (m_state.maskLayer)
-        m_state.maskLayer->clearBackingStoresRecursive();
 }
 
 void TextureMapperLayer::computeTransformsRecursive()
@@ -129,6 +112,8 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
 
     if (m_state.solidColor.isValid() && !m_state.contentsRect.isEmpty()) {
         options.textureMapper->drawSolidColor(m_state.contentsRect, transform, blendWithOpacity(m_state.solidColor, opacity));
+        if (m_state.showDebugBorders)
+            options.textureMapper->drawBorder(m_state.debugBorderColor, m_state.debugBorderWidth, layerRect(), transform);
         return;
     }
 
@@ -136,11 +121,18 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
         ASSERT(m_state.drawsContent && m_state.contentsVisible && !m_state.size.isEmpty());
         ASSERT(!layerRect().isEmpty());
         m_backingStore->paintToTextureMapper(options.textureMapper, layerRect(), transform, opacity, mask.get());
+        if (m_state.showDebugBorders)
+            m_backingStore->drawBorder(options.textureMapper, m_state.debugBorderColor, m_state.debugBorderWidth, layerRect(), transform);
+        // Only draw repaint count for the main backing store.
+        if (m_state.showRepaintCounter)
+            m_backingStore->drawRepaintCounter(options.textureMapper, m_state.repaintCount, m_state.debugBorderColor, layerRect(), transform);
     }
 
     if (m_contentsLayer) {
         ASSERT(!layerRect().isEmpty());
         m_contentsLayer->paintToTextureMapper(options.textureMapper, m_state.contentsRect, transform, opacity, mask.get());
+        if (m_state.showDebugBorders)
+            m_contentsLayer->drawBorder(options.textureMapper, m_state.debugBorderColor, m_state.debugBorderWidth, m_state.contentsRect, transform);
     }
 }
 
@@ -287,7 +279,25 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
     paintSelfAndChildren(options);
 }
 
+void TextureMapperLayer::setAnimatedTransform(const TransformationMatrix& matrix)
+{
+    m_shouldUpdateCurrentTransformFromGraphicsLayer = false;
+    m_currentTransform.setLocalTransform(matrix);
+}
+
+void TextureMapperLayer::setAnimatedOpacity(float opacity)
+{
+    m_shouldUpdateCurrentOpacityFromGraphicsLayer = false;
+    m_currentOpacity = opacity;
+}
+
 #if ENABLE(CSS_FILTERS)
+void TextureMapperLayer::setAnimatedFilters(const FilterOperations& filters)
+{
+    m_shouldUpdateCurrentFiltersFromGraphicsLayer = false;
+    m_currentFilters = filters;
+}
+
 static bool shouldKeepContentTexture(const FilterOperations& filters)
 {
     for (size_t i = 0; i < filters.size(); ++i) {
@@ -375,74 +385,11 @@ TextureMapper* TextureMapperLayer::textureMapper() const
     return rootLayer()->m_textureMapper;
 }
 
-void TextureMapperLayer::flushCompositingStateForThisLayerOnly(GraphicsLayerTextureMapper* graphicsLayer)
-{
-    ASSERT(graphicsLayer);
-    int changeMask = graphicsLayer->changeMask();
-
-    if (changeMask == NoChanges && graphicsLayer->m_animations.isEmpty())
-        return;
-
-    graphicsLayer->updateDebugIndicators();
-
-    if (changeMask & ChildrenChange)
-        setChildren(graphicsLayer->children());
-
-    if (changeMask & MaskLayerChange) {
-       if (TextureMapperLayer* layer = toTextureMapperLayer(graphicsLayer->maskLayer()))
-           layer->m_effectTarget = this;
-    }
-
-    if (changeMask & ReplicaLayerChange) {
-       if (TextureMapperLayer* layer = toTextureMapperLayer(graphicsLayer->replicaLayer()))
-           layer->m_effectTarget = this;
-    }
-
-    if (changeMask & AnimationChange)
-        m_animations = graphicsLayer->m_animations;
-
-    m_state.maskLayer = toTextureMapperLayer(graphicsLayer->maskLayer());
-    m_state.replicaLayer = toTextureMapperLayer(graphicsLayer->replicaLayer());
-    m_state.pos = graphicsLayer->position();
-    m_state.anchorPoint = graphicsLayer->anchorPoint();
-    m_state.size = graphicsLayer->size();
-    m_state.transform = graphicsLayer->transform();
-    m_state.contentsRect = graphicsLayer->contentsRect();
-    m_state.preserves3D = graphicsLayer->preserves3D();
-    m_state.masksToBounds = graphicsLayer->masksToBounds();
-    m_state.drawsContent = graphicsLayer->drawsContent();
-    m_state.contentsVisible = graphicsLayer->contentsAreVisible();
-    m_state.contentsOpaque = graphicsLayer->contentsOpaque();
-    m_state.backfaceVisibility = graphicsLayer->backfaceVisibility();
-    m_state.childrenTransform = graphicsLayer->childrenTransform();
-    m_state.opacity = graphicsLayer->opacity();
-    m_state.solidColor = graphicsLayer->solidColor();
-#if ENABLE(CSS_FILTERS)
-    if (changeMask & FilterChange)
-        m_state.filters = graphicsLayer->filters();
-#endif
-    m_fixedToViewport = graphicsLayer->fixedToViewport();
-
-    m_contentsLayer = graphicsLayer->platformLayer();
-
-    m_currentTransform.setPosition(adjustedPosition());
-    m_currentTransform.setAnchorPoint(m_state.anchorPoint);
-    m_currentTransform.setSize(m_state.size);
-    m_currentTransform.setFlattening(!m_state.preserves3D);
-    m_currentTransform.setLocalTransform(m_state.transform);
-    m_currentTransform.setChildrenTransform(m_state.childrenTransform);
-
-    syncAnimations();
-}
-
-void TextureMapperLayer::setChildren(const Vector<GraphicsLayer*>& newChildren)
+void TextureMapperLayer::setChildren(const Vector<TextureMapperLayer*>& newChildren)
 {
     removeAllChildren();
-    for (size_t i = 0; i < newChildren.size(); ++i) {
-        TextureMapperLayer* child = toTextureMapperLayer(newChildren[i]);
-        ASSERT(child);
-        addChild(child);
-    }
+    for (size_t i = 0; i < newChildren.size(); ++i)
+        addChild(newChildren[i]);
 }
 
 void TextureMapperLayer::addChild(TextureMapperLayer* childLayer)
@@ -480,6 +427,135 @@ void TextureMapperLayer::removeAllChildren()
     }
 }
 
+void TextureMapperLayer::setMaskLayer(TextureMapperLayer* maskLayer)
+{
+    if (maskLayer)
+        maskLayer->m_effectTarget = this;
+    m_state.maskLayer = maskLayer;
+}
+
+void TextureMapperLayer::setReplicaLayer(TextureMapperLayer* replicaLayer)
+{
+    if (replicaLayer)
+        replicaLayer->m_effectTarget = this;
+    m_state.replicaLayer = replicaLayer;
+}
+
+void TextureMapperLayer::setPosition(const FloatPoint& position)
+{
+    m_state.pos = position;
+    m_currentTransform.setPosition(adjustedPosition());
+}
+
+void TextureMapperLayer::setSize(const FloatSize& size)
+{
+    m_state.size = size;
+    m_currentTransform.setSize(size);
+}
+
+void TextureMapperLayer::setAnchorPoint(const FloatPoint3D& anchorPoint)
+{
+    m_state.anchorPoint = anchorPoint;
+    m_currentTransform.setAnchorPoint(anchorPoint);
+}
+
+void TextureMapperLayer::setPreserves3D(bool preserves3D)
+{
+    m_state.preserves3D = preserves3D;
+    m_currentTransform.setFlattening(!preserves3D);
+}
+
+void TextureMapperLayer::setTransform(const TransformationMatrix& transform)
+{
+    m_state.transform = transform;
+    m_currentTransform.setLocalTransform(transform);
+}
+
+void TextureMapperLayer::setChildrenTransform(const TransformationMatrix& childrenTransform)
+{
+    m_state.childrenTransform = childrenTransform;
+    m_currentTransform.setChildrenTransform(childrenTransform);
+}
+
+void TextureMapperLayer::setContentsRect(const IntRect& contentsRect)
+{
+    m_state.contentsRect = contentsRect;
+}
+
+void TextureMapperLayer::setMasksToBounds(bool masksToBounds)
+{
+    m_state.masksToBounds = masksToBounds;
+}
+
+void TextureMapperLayer::setDrawsContent(bool drawsContent)
+{
+    m_state.drawsContent = drawsContent;
+}
+
+void TextureMapperLayer::setContentsVisible(bool contentsVisible)
+{
+    m_state.contentsVisible = contentsVisible;
+}
+
+void TextureMapperLayer::setContentsOpaque(bool contentsOpaque)
+{
+    m_state.contentsOpaque = contentsOpaque;
+}
+
+void TextureMapperLayer::setBackfaceVisibility(bool backfaceVisibility)
+{
+    m_state.backfaceVisibility = backfaceVisibility;
+}
+
+void TextureMapperLayer::setOpacity(float opacity)
+{
+    m_state.opacity = opacity;
+}
+
+void TextureMapperLayer::setSolidColor(const Color& color)
+{
+    m_state.solidColor = color;
+}
+
+#if ENABLE(CSS_FILTERS)
+void TextureMapperLayer::setFilters(const FilterOperations& filters)
+{
+    m_state.filters = filters;
+}
+#endif
+
+void TextureMapperLayer::setDebugVisuals(bool showDebugBorders, const Color& debugBorderColor, float debugBorderWidth, bool showRepaintCounter)
+{
+    m_state.showDebugBorders = showDebugBorders;
+    m_state.debugBorderColor = debugBorderColor;
+    m_state.debugBorderWidth = debugBorderWidth;
+    m_state.showRepaintCounter = showRepaintCounter;
+}
+
+void TextureMapperLayer::setRepaintCount(int repaintCount)
+{
+    m_state.repaintCount = repaintCount;
+}
+
+void TextureMapperLayer::setContentsLayer(TextureMapperPlatformLayer* platformLayer)
+{
+    m_contentsLayer = platformLayer;
+}
+
+void TextureMapperLayer::setAnimations(const GraphicsLayerAnimations& animations)
+{
+    m_animations = animations;
+}
+
+void TextureMapperLayer::setFixedToViewport(bool fixedToViewport)
+{
+    m_fixedToViewport = fixedToViewport;
+}
+
+void TextureMapperLayer::setBackingStore(PassRefPtr<TextureMapperBackingStore> backingStore)
+{
+    m_backingStore = backingStore;
+}
 
 bool TextureMapperLayer::descendantsOrSelfHaveRunningAnimations() const
 {
@@ -504,13 +580,14 @@ void TextureMapperLayer::applyAnimationsRecursively()
 void TextureMapperLayer::syncAnimations()
 {
     m_animations.apply(this);
-    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyWebkitTransform))
-        setAnimatedTransform(m_state.transform);
-    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity))
-        setAnimatedOpacity(m_state.opacity);
+    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyWebkitTransform) && m_shouldUpdateCurrentTransformFromGraphicsLayer)
+        m_currentTransform.setLocalTransform(m_state.transform);
+    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity) && m_shouldUpdateCurrentOpacityFromGraphicsLayer)
+        m_currentOpacity = m_state.opacity;
+
 #if ENABLE(CSS_FILTERS)
-    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyWebkitFilter))
-        setAnimatedFilters(m_state.filters);
+    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyWebkitFilter) && m_shouldUpdateCurrentFiltersFromGraphicsLayer)
+        m_currentFilters = m_state.filters;
 #endif
 }
 

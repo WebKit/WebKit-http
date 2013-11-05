@@ -31,6 +31,7 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
+#include "FeatureObserver.h"
 #include "Frame.h"
 #include "HTMLBRElement.h"
 #include "HTMLFormElement.h"
@@ -83,12 +84,12 @@ Node::InsertionNotificationRequest HTMLTextFormControlElement::insertedInto(Cont
     return InsertionDone;
 }
 
-void HTMLTextFormControlElement::dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode)
+void HTMLTextFormControlElement::dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode, FocusDirection direction)
 {
     if (supportsPlaceholder())
         updatePlaceholderVisibility(false);
-    handleFocusEvent();
-    HTMLFormControlElementWithState::dispatchFocusEvent(oldFocusedNode);
+    handleFocusEvent(direction);
+    HTMLFormControlElementWithState::dispatchFocusEvent(oldFocusedNode, direction);
 }
 
 void HTMLTextFormControlElement::dispatchBlurEvent(PassRefPtr<Node> newFocusedNode)
@@ -510,9 +511,10 @@ void HTMLTextFormControlElement::selectionChanged(bool userTriggered)
 
 void HTMLTextFormControlElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (name == placeholderAttr)
+    if (name == placeholderAttr) {
         updatePlaceholderVisibility(true);
-    else if (name == onselectAttr)
+        FeatureObserver::observe(document(), FeatureObserver::PlaceholderAttribute);
+    } else if (name == onselectAttr)
         setAttributeEventListener(eventNames().selectEvent, createAttributeEventListener(this, name, value));
     else if (name == onchangeAttr)
         setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, name, value));
@@ -639,12 +641,14 @@ String HTMLTextFormControlElement::valueWithHardLineBreaks() const
 HTMLTextFormControlElement* enclosingTextFormControl(const Position& position)
 {
     ASSERT(position.isNull() || position.anchorType() == Position::PositionIsOffsetInAnchor
-        || position.containerNode() || !position.anchorNode()->shadowHost());
+        || position.containerNode() || !position.anchorNode()->shadowHost()
+        || (position.anchorNode()->parentNode() && position.anchorNode()->parentNode()->isShadowRoot()));
+        
     Node* container = position.containerNode();
     if (!container)
         return 0;
-    Node* ancestor = container->shadowHost();
-    return ancestor ? toTextFormControl(ancestor) : 0;
+    Element* ancestor = container->shadowHost();
+    return ancestor && isHTMLTextFormControlElement(ancestor) ? toHTMLTextFormControlElement(ancestor) : 0;
 }
 
 static const Element* parentHTMLElement(const Element* element)
@@ -681,7 +685,7 @@ void HTMLTextFormControlElement::reportMemoryUsage(MemoryObjectInfo* memoryObjec
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     HTMLFormControlElementWithState::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_textAsOfLastFormControlChangeEvent);
+    info.addMember(m_textAsOfLastFormControlChangeEvent, "textAsOfLastFormControlChangeEvent");
 }
 
 } // namespace Webcore

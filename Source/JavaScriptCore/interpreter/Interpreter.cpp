@@ -640,7 +640,7 @@ static CallFrame* getCallerInfo(JSGlobalData* globalData, CallFrame* callFrame, 
         } else if (callerCodeBlock && callerCodeBlock->getJITType() == JITCode::DFGJIT) {
             CodeOrigin origin;
             if (!callerCodeBlock->codeOriginForReturn(callFrame->returnPC(), origin))
-                ASSERT_NOT_REACHED();
+                RELEASE_ASSERT_NOT_REACHED();
             bytecodeOffset = origin.bytecodeIndex;
             if (InlineCallFrame* icf = origin.inlineCallFrame) {
                 FunctionExecutable* executable = static_cast<FunctionExecutable*>(icf->executable.get());
@@ -677,7 +677,7 @@ static StackFrameCodeType getStackFrameCodeType(CallFrame* callFrame)
     case GlobalCode:
         return StackFrameGlobalCode;
     }
-    ASSERT_NOT_REACHED();
+    RELEASE_ASSERT_NOT_REACHED();
     return StackFrameGlobalCode;
 }
 
@@ -790,7 +790,7 @@ NEVER_INLINE HandlerInfo* Interpreter::throwException(CallFrame*& callFrame, JSV
         int currentDepth = depth(codeBlock, scope);
         int targetDepth = handler->scopeDepth;
         scopeDelta = currentDepth - targetDepth;
-        ASSERT(scopeDelta >= 0);
+        RELEASE_ASSERT(scopeDelta >= 0);
     }
     while (scopeDelta--)
         scope = scope->next();
@@ -837,7 +837,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
     ASSERT(!globalData.exception);
     ASSERT(!globalData.isCollectorBusy());
     if (globalData.isCollectorBusy())
-        CRASH();
+        return jsNull();
 
     StackStats::CheckPoint stackCheckPoint;
     const StackBounds& nativeStack = wtfThreadData().stack();
@@ -905,7 +905,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                     continue;
                 }
                 default:
-                    ASSERT_NOT_REACHED();
+                    RELEASE_ASSERT_NOT_REACHED();
                     return jsUndefined();
                 }
             }
@@ -940,7 +940,7 @@ JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, J
                 break;
             }
             default:
-                ASSERT_NOT_REACHED();
+                RELEASE_ASSERT_NOT_REACHED();
                     return jsUndefined();
             }
             result = JSONPValue;
@@ -1266,7 +1266,7 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
 
     JSObject* variableObject;
     for (JSScope* node = scope; ; node = node->next()) {
-        ASSERT(node);
+        RELEASE_ASSERT(node);
         if (node->isVariableObject() && !node->isNameScopeObject()) {
             variableObject = node;
             break;

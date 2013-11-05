@@ -127,9 +127,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
     platform/graphics/harfbuzz/HarfBuzzShaperBase.cpp
-    platform/graphics/harfbuzz/ng/HarfBuzzNGFaceCairo.cpp
-    platform/graphics/harfbuzz/ng/HarfBuzzNGFace.cpp
-    platform/graphics/harfbuzz/ng/HarfBuzzShaper.cpp
+    platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
+    platform/graphics/harfbuzz/HarfBuzzFace.cpp
+    platform/graphics/harfbuzz/HarfBuzzShaper.cpp
 
     platform/graphics/surfaces/glx/GLXContext.cpp
     platform/graphics/surfaces/glx/GLXSurface.cpp
@@ -150,6 +150,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/CredentialStorageSoup.cpp
     platform/network/soup/DNSSoup.cpp
     platform/network/soup/GOwnPtrSoup.cpp
+    platform/network/soup/NetworkStorageSessionSoup.cpp
     platform/network/soup/ProxyResolverSoup.cpp
     platform/network/soup/ProxyServerSoup.cpp
     platform/network/soup/ResourceErrorSoup.cpp
@@ -317,7 +318,7 @@ if (WTF_USE_3D_GRAPHICS)
         platform/graphics/surfaces/glx/GraphicsSurfaceGLX.cpp
         platform/graphics/surfaces/glx/X11WindowResources.cpp
         platform/graphics/texmap/TextureMapperGL.cpp
-        platform/graphics/texmap/TextureMapperShaderManager.cpp
+        platform/graphics/texmap/TextureMapperShaderProgram.cpp
     )
 
     if (WTF_USE_EGL)

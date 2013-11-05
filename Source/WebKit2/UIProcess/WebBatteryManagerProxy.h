@@ -59,10 +59,7 @@ private:
     virtual Type type() const { return APIType; }
 
     // CoreIPC::MessageReceiver
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-
-    // Implemented in generated WebBatteryManagerProxyMessageReceiver.cpp
-    void didReceiveWebBatteryManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     void startUpdating();
     void stopUpdating();

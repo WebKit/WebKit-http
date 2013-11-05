@@ -380,6 +380,9 @@ public:
 
     bool hasBackgroundImage() const { return m_background->background().hasImage(); }
     bool hasFixedBackgroundImage() const { return m_background->background().hasFixedImage(); }
+    
+    bool hasEntirelyFixedBackground() const;
+    
     bool hasAppearance() const { return appearance() != NoControlPart; }
 
     bool hasBackground() const
@@ -1042,7 +1045,7 @@ public:
     RoundedRect getRoundedInnerBorderFor(const LayoutRect& borderRect, bool includeLogicalLeftEdge = true, bool includeLogicalRightEdge = true) const;
 
     RoundedRect getRoundedInnerBorderFor(const LayoutRect& borderRect,
-        LayoutUnit topWidth, LayoutUnit bottomWidth, LayoutUnit leftWidth, LayoutUnit rightWidth, bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
+        int topWidth, int bottomWidth, int leftWidth, int rightWidth, bool includeLogicalLeftEdge, bool includeLogicalRightEdge) const;
 
     void setBorderLeftWidth(unsigned v) { SET_VAR(surround, border.m_left.m_width, v); }
     void setBorderLeftStyle(EBorderStyle v) { SET_VAR(surround, border.m_left.m_style, v); }

@@ -38,7 +38,7 @@ public:
     VisiblePosition visiblePositionForIndex(int index) const;
 
 protected:
-    RenderTextControl(ContainerNode*);
+    RenderTextControl(Element*);
 
     // This convenience function should not be made public because innerTextElement may outlive the render tree.
     HTMLElement* innerTextElement() const;
@@ -84,13 +84,13 @@ private:
 
 inline RenderTextControl* toRenderTextControl(RenderObject* object)
 { 
-    ASSERT(!object || object->isTextControl());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTextControl());
     return static_cast<RenderTextControl*>(object);
 }
 
 inline const RenderTextControl* toRenderTextControl(const RenderObject* object)
 { 
-    ASSERT(!object || object->isTextControl());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isTextControl());
     return static_cast<const RenderTextControl*>(object);
 }
 

@@ -235,6 +235,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         0, // unavailablePluginButtonClicked
         0, // showColorPicker
         0, // hideColorPicker
+        0, // shouldInstantiatePlugin
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient);
 
@@ -425,6 +426,7 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
         unavailablePluginButtonClicked,
         0, // showColorPicker
         0, // hideColorPicker
+        0, // shouldInstantiatePlugin
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient);
 
@@ -1145,6 +1147,11 @@ void TestController::setCustomPolicyDelegate(bool enabled, bool permissive)
 {
     m_policyDelegateEnabled = enabled;
     m_policyDelegatePermissive = permissive;
+}
+
+void TestController::setVisibilityState(WKPageVisibilityState visibilityState, bool isInitialState)
+{
+    WKPageSetVisibilityState(m_mainWebView->page(), visibilityState, isInitialState);
 }
 
 void TestController::decidePolicyForGeolocationPermissionRequestIfPossible()

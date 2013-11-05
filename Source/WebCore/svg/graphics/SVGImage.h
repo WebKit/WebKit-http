@@ -51,7 +51,7 @@ public:
         DontClearImageBuffer
     };
 
-    void drawSVGToImageBuffer(ImageBuffer*, const IntSize&, float zoom, float scale, ShouldClearBuffer);
+    void drawSVGToImageBuffer(ImageBuffer*, const FloatSize&, float, ShouldClearBuffer);
     RenderBox* embeddedContentBox() const;
     FrameView* frameView() const;
 
@@ -81,6 +81,9 @@ private:
     virtual unsigned decodedSize() const { return 0; }
 
     virtual NativeImagePtr frameAtIndex(size_t) { return 0; }
+
+    // FIXME: Implement this to be less conservative.
+    virtual bool currentFrameKnownToBeOpaque() OVERRIDE { return false; }
 
     SVGImage(ImageObserver*);
     virtual void draw(GraphicsContext*, const FloatRect& fromRect, const FloatRect& toRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode);

@@ -28,9 +28,9 @@
 
 #include "WKAPICast.h"
 #include "WKIconDatabase.h"
+#include "WKIconDatabaseCairo.h"
 #include "WKURL.h"
 #include "WebIconDatabase.h"
-#include "WebURL.h"
 #include "ewk_favicon_database_private.h"
 #include <WebCore/CairoUtilitiesEfl.h>
 #include <WebCore/RefPtrCairo.h>
@@ -39,7 +39,7 @@
 
 using namespace WebKit;
 
-EwkFaviconDatabase::EwkFaviconDatabase(WebIconDatabase* iconDatabase)
+EwkFaviconDatabase::EwkFaviconDatabase(WKIconDatabaseRef iconDatabase)
     : m_iconDatabase(iconDatabase)
 {
     WKIconDatabaseClient iconDatabaseClient;
@@ -48,18 +48,18 @@ EwkFaviconDatabase::EwkFaviconDatabase(WebIconDatabase* iconDatabase)
     iconDatabaseClient.clientInfo = this;
     iconDatabaseClient.didChangeIconForPageURL = didChangeIconForPageURL;
     iconDatabaseClient.iconDataReadyForPageURL = iconDataReadyForPageURL;
-    WKIconDatabaseSetIconDatabaseClient(toAPI(m_iconDatabase.get()), &iconDatabaseClient);
+    WKIconDatabaseSetIconDatabaseClient(m_iconDatabase.get(), &iconDatabaseClient);
 }
 
 EwkFaviconDatabase::~EwkFaviconDatabase()
 {
-    WKIconDatabaseSetIconDatabaseClient(toAPI(m_iconDatabase.get()), 0);
+    WKIconDatabaseSetIconDatabaseClient(m_iconDatabase.get(), 0);
 }
 
 String EwkFaviconDatabase::iconURLForPageURL(const String& pageURL) const
 {
     String iconURL;
-    m_iconDatabase->synchronousIconURLForPageURL(pageURL, iconURL);
+    toImpl(m_iconDatabase.get())->synchronousIconURLForPageURL(pageURL, iconURL);
 
     return iconURL;
 }
@@ -103,26 +103,28 @@ static Eina_Bool respond_icon_request_idle(void* data)
     return ECORE_CALLBACK_DONE;
 }
 
-void EwkFaviconDatabase::iconForPageURL(const String& pageURL, const IconRequestCallbackData& callbackData)
+void EwkFaviconDatabase::iconForPageURL(const char* pageURL, const IconRequestCallbackData& callbackData)
 {
     // We ask for the icon directly. If we don't get the icon data now,
     // we'll be notified later (even if the database is still importing icons).
-    RefPtr<cairo_surface_t> surface = getIconSurfaceSynchronously(pageURL);
+    WKRetainPtr<WKURLRef> wkPageURL(AdoptWK, WKURLCreateWithUTF8CString(pageURL));
+    RefPtr<cairo_surface_t> surface = getIconSurfaceSynchronously(wkPageURL.get());
 
     // If there's no valid icon, but there's an iconURL registered,
     // or it's still not registered but the import process hasn't
     // finished yet, we need to wait for iconDataReadyForPageURL to be
     // called before making and informed decision.
-    String iconURL = iconURLForPageURL(pageURL);
-    if (!surface && (!iconURL.isEmpty() || !m_iconDatabase->isUrlImportCompleted())) {
-        PendingIconRequestVector requests = m_iconRequests.get(pageURL);
+    String pageURLString = String::fromUTF8(pageURL);
+    String iconURL = iconURLForPageURL(pageURLString);
+    if (!surface && (!iconURL.isEmpty() || !toImpl(m_iconDatabase.get())->isUrlImportCompleted())) {
+        PendingIconRequestVector requests = m_iconRequests.get(pageURLString);
         requests.append(callbackData);
-        m_iconRequests.set(pageURL, requests);
+        m_iconRequests.set(pageURLString, requests);
         return;
     }
 
     // Respond when idle.
-    AsyncIconRequestResponse* response = new AsyncIconRequestResponse(pageURL, surface.release(), callbackData);
+    AsyncIconRequestResponse* response = new AsyncIconRequestResponse(pageURLString, surface.release(), callbackData);
     ecore_idler_add(respond_icon_request_idle, response);
 }
 
@@ -133,7 +135,7 @@ void EwkFaviconDatabase::didChangeIconForPageURL(WKIconDatabaseRef, WKURLRef pag
     if (ewkIconDatabase->m_changeListeners.isEmpty())
         return;
 
-    CString pageURL = toImpl(pageURLRef)->string().utf8();
+    CString pageURL = toWTFString(pageURLRef).utf8();
 
     ChangeListenerMap::const_iterator it = ewkIconDatabase->m_changeListeners.begin();
     ChangeListenerMap::const_iterator end = ewkIconDatabase->m_changeListeners.end();
@@ -141,17 +143,15 @@ void EwkFaviconDatabase::didChangeIconForPageURL(WKIconDatabaseRef, WKURLRef pag
         it->value.callback(pageURL.data(), it->value.userData);
 }
 
-PassRefPtr<cairo_surface_t> EwkFaviconDatabase::getIconSurfaceSynchronously(const String& pageURL) const
+PassRefPtr<cairo_surface_t> EwkFaviconDatabase::getIconSurfaceSynchronously(WKURLRef pageURL) const
 {
-    m_iconDatabase->retainIconForPageURL(pageURL);
+    WKIconDatabaseRetainIconForURL(m_iconDatabase.get(), pageURL);
 
-    WebCore::NativeImagePtr icon = m_iconDatabase->nativeImageForPageURL(pageURL);
-    if (!icon) {
-        m_iconDatabase->releaseIconForPageURL(pageURL);
+    RefPtr<cairo_surface_t> surface = WKIconDatabaseTryGetCairoSurfaceForURL(m_iconDatabase.get(), pageURL);
+    if (!surface) {
+        WKIconDatabaseReleaseIconForURL(m_iconDatabase.get(), pageURL);
         return 0;
     }
-
-    RefPtr<cairo_surface_t> surface = icon->surface();
 
     return surface.release();
 }
@@ -160,11 +160,11 @@ void EwkFaviconDatabase::iconDataReadyForPageURL(WKIconDatabaseRef, WKURLRef pag
 {
     EwkFaviconDatabase* ewkIconDatabase = const_cast<EwkFaviconDatabase*>(static_cast<const EwkFaviconDatabase*>(clientInfo));
 
-    String urlString = toImpl(pageURL)->string();
+    String urlString = toWTFString(pageURL);
     if (!ewkIconDatabase->m_iconRequests.contains(urlString))
         return;
 
-    RefPtr<cairo_surface_t> surface = ewkIconDatabase->getIconSurfaceSynchronously(urlString);
+    RefPtr<cairo_surface_t> surface = ewkIconDatabase->getIconSurfaceSynchronously(pageURL);
 
     PendingIconRequestVector requestsForURL = ewkIconDatabase->m_iconRequests.take(urlString);
     size_t requestCount = requestsForURL.size();
@@ -192,7 +192,7 @@ Eina_Bool ewk_favicon_database_async_icon_get(Ewk_Favicon_Database* ewkIconDatab
     EINA_SAFETY_ON_NULL_RETURN_VAL(evas, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(callback, false);
 
-    ewkIconDatabase->iconForPageURL(String::fromUTF8(page_url), IconRequestCallbackData(callback, userData, evas));
+    ewkIconDatabase->iconForPageURL(page_url, IconRequestCallbackData(callback, userData, evas));
 
     return true;
 }

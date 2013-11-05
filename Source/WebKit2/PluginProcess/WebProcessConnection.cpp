@@ -30,12 +30,14 @@
 
 #include "ArgumentCoders.h"
 #include "ConnectionStack.h"
+#include "NPObjectMessageReceiverMessages.h"
 #include "NPRemoteObjectMap.h"
 #include "PluginControllerProxy.h"
 #include "PluginCreationParameters.h"
 #include "PluginProcess.h"
 #include "PluginProcessConnectionMessages.h"
 #include "PluginProxyMessages.h"
+#include "WebProcessConnectionMessages.h"
 #include <WebCore/RunLoop.h>
 #include <unistd.h>
 
@@ -114,12 +116,12 @@ void WebProcessConnection::setGlobalException(const String& exceptionString)
     connection->sendSync(Messages::PluginProcessConnection::SetException(exceptionString), Messages::PluginProcessConnection::SetException::Reply(), 0);
 }
 
-void WebProcessConnection::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void WebProcessConnection::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
     ConnectionStack::CurrentConnectionPusher currentConnection(ConnectionStack::shared(), connection);
 
-    if (messageID.is<CoreIPC::MessageClassWebProcessConnection>()) {
-        didReceiveWebProcessConnectionMessage(connection, messageID, decoder);
+    if (decoder.messageReceiverName() == Messages::WebProcessConnection::messageReceiverName()) {
+        didReceiveWebProcessConnectionMessage(connection, decoder);
         return;
     }
 
@@ -133,22 +135,22 @@ void WebProcessConnection::didReceiveMessage(CoreIPC::Connection* connection, Co
         return;
 
     PluginController::PluginDestructionProtector protector(pluginControllerProxy->asPluginController());
-    pluginControllerProxy->didReceivePluginControllerProxyMessage(connection, messageID, decoder);
+    pluginControllerProxy->didReceivePluginControllerProxyMessage(connection, decoder);
 }
 
-void WebProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void WebProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     ConnectionStack::CurrentConnectionPusher currentConnection(ConnectionStack::shared(), connection);
 
     uint64_t destinationID = decoder.destinationID();
 
     if (!destinationID) {
-        didReceiveSyncWebProcessConnectionMessage(connection, messageID, decoder, replyEncoder);
+        didReceiveSyncWebProcessConnectionMessage(connection, decoder, replyEncoder);
         return;
     }
 
-    if (messageID.is<CoreIPC::MessageClassNPObjectMessageReceiver>()) {
-        m_npRemoteObjectMap->didReceiveSyncMessage(connection, messageID, decoder, replyEncoder);
+    if (decoder.messageReceiverName() == Messages::NPObjectMessageReceiver::messageReceiverName()) {
+        m_npRemoteObjectMap->didReceiveSyncMessage(connection, decoder, replyEncoder);
         return;
     }
 
@@ -157,7 +159,7 @@ void WebProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection
         return;
 
     PluginController::PluginDestructionProtector protector(pluginControllerProxy->asPluginController());
-    pluginControllerProxy->didReceiveSyncPluginControllerProxyMessage(connection, messageID, decoder, replyEncoder);
+    pluginControllerProxy->didReceiveSyncPluginControllerProxyMessage(connection, decoder, replyEncoder);
 }
 
 void WebProcessConnection::didClose(CoreIPC::Connection*)

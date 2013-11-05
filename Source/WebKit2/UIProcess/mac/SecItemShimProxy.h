@@ -43,10 +43,10 @@ private:
     SecItemShimProxy();
 
     // QueueClient
-    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, bool& didHandleMessage);
+    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage);
 
     // Implemented in generated SecItemShimProxyMessageReceiver.cpp.
-    void didReceiveSecItemShimProxyMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, bool& didHandleMessage);
+    void didReceiveSecItemShimProxyMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage);
 
     void secItemRequest(CoreIPC::Connection*, uint64_t requestID, const SecItemRequestData&);
 };

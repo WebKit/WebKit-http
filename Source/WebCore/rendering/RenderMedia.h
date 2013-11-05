@@ -36,7 +36,7 @@ class HTMLMediaElement;
 
 class RenderMedia : public RenderImage {
 public:
-    RenderMedia(HTMLMediaElement*);
+    explicit RenderMedia(HTMLMediaElement*);
     RenderMedia(HTMLMediaElement*, const IntSize& intrinsicSize);
     virtual ~RenderMedia();
 
@@ -68,7 +68,7 @@ private:
 
 inline RenderMedia* toRenderMedia(RenderObject* object)
 {
-    ASSERT(!object || object->isMedia());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isMedia());
     return static_cast<RenderMedia*>(object);
 }
 

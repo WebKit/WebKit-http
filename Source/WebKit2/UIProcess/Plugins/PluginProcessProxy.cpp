@@ -157,9 +157,9 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
     m_pluginProcessManager->removePluginProcessProxy(this);
 }
 
-void PluginProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void PluginProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    didReceivePluginProcessProxyMessage(connection, messageID, decoder);
+    didReceivePluginProcessProxyMessage(connection, decoder);
 }
 
 void PluginProcessProxy::didClose(CoreIPC::Connection*)
@@ -203,13 +203,9 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connectio
     m_connection->open();
     
     PluginProcessCreationParameters parameters;
-
-    parameters.pluginPath = m_pluginInfo.path;
     parameters.processType = m_processType;
-
     parameters.minimumLifetime = minimumLifetime;
     parameters.terminationTimeout = shutdownTimeout;
-
     platformInitializePluginProcess(parameters);
 
     // Initialize the plug-in host process.
@@ -232,8 +228,8 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connectio
     m_numPendingConnectionRequests = 0;
 
 #if PLATFORM(MAC)
-    if (WebContext::applicationIsOccluded() && WebContext::processSuppressionEnabledForGlobalChildProcesses())
-        m_connection->send(Messages::PluginProcess::SetApplicationIsOccluded(true), 0);
+    if (WebContext::canEnableProcessSuppressionForGlobalChildProcesses())
+        setProcessSuppressionEnabled(true);
 #endif
 }
 

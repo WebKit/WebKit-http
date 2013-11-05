@@ -548,19 +548,15 @@ PassRefPtr<IDBBackingStore> IDBDatabaseBackendImpl::backingStore() const
     return m_backingStore;
 }
 
-IDBDatabaseMetadata IDBDatabaseBackendImpl::metadata() const
-{
-    return m_metadata;
-}
-
 void IDBDatabaseBackendImpl::createObjectStore(int64_t transactionId, int64_t objectStoreId, const String& name, const IDBKeyPath& keyPath, bool autoIncrement)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::createObjectStore");
-    ASSERT(!m_metadata.objectStores.contains(objectStoreId));
-
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
+    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
 
+    ASSERT(!m_metadata.objectStores.contains(objectStoreId));
     IDBObjectStoreMetadata objectStoreMetadata(name, objectStoreId, keyPath, autoIncrement, IDBDatabaseBackendInterface::MinimumIndexId);
 
     transaction->scheduleTask(CreateObjectStoreOperation::create(m_backingStore, objectStoreMetadata), CreateObjectStoreAbortOperation::create(this, objectStoreId));
@@ -581,12 +577,13 @@ void CreateObjectStoreOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::deleteObjectStore(int64_t transactionId, int64_t objectStoreId)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::deleteObjectStore");
+    IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
+    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
+
     ASSERT(m_metadata.objectStores.contains(objectStoreId));
     const IDBObjectStoreMetadata& objectStoreMetadata = m_metadata.objectStores.get(objectStoreId);
-
-    ASSERT(m_transactions.contains(transactionId));
-    IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
-    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
 
     transaction->scheduleTask(DeleteObjectStoreOperation::create(m_backingStore, objectStoreMetadata),  DeleteObjectStoreAbortOperation::create(this, objectStoreMetadata));
     removeObjectStore(objectStoreId);
@@ -595,21 +592,21 @@ void IDBDatabaseBackendImpl::deleteObjectStore(int64_t transactionId, int64_t ob
 void IDBDatabaseBackendImpl::createIndex(int64_t transactionId, int64_t objectStoreId, int64_t indexId, const String& name, const IDBKeyPath& keyPath, bool unique, bool multiEntry)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::createIndex");
+    IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
+    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
+
     ASSERT(m_metadata.objectStores.contains(objectStoreId));
     const IDBObjectStoreMetadata objectStore = m_metadata.objectStores.get(objectStoreId);
 
     ASSERT(!objectStore.indexes.contains(indexId));
     const IDBIndexMetadata indexMetadata(name, indexId, keyPath, unique, multiEntry);
 
-    ASSERT(m_transactions.contains(transactionId));
-    IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
-    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
-
     transaction->scheduleTask(CreateIndexOperation::create(m_backingStore, objectStoreId, indexMetadata), CreateIndexAbortOperation::create(this, objectStoreId, indexId));
 
     addIndex(objectStoreId, indexMetadata, indexId);
 }
-
 
 void CreateIndexOperation::perform(IDBTransactionBackendImpl* transaction)
 {
@@ -630,15 +627,16 @@ void CreateIndexAbortOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::deleteIndex(int64_t transactionId, int64_t objectStoreId, int64_t indexId)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::deleteIndex");
+    IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
+    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
+
     ASSERT(m_metadata.objectStores.contains(objectStoreId));
     const IDBObjectStoreMetadata objectStore = m_metadata.objectStores.get(objectStoreId);
 
     ASSERT(objectStore.indexes.contains(indexId));
     const IDBIndexMetadata& indexMetadata = objectStore.indexes.get(indexId);
-
-    ASSERT(m_transactions.contains(transactionId));
-    IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
-    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
 
     transaction->scheduleTask(DeleteIndexOperation::create(m_backingStore, objectStoreId, indexId), DeleteIndexAbortOperation::create(this, objectStoreId, indexMetadata));
 
@@ -660,21 +658,31 @@ void DeleteIndexAbortOperation::perform(IDBTransactionBackendImpl* transaction)
 
 void IDBDatabaseBackendImpl::commit(int64_t transactionId)
 {
-    ASSERT(m_transactions.contains(transactionId));
-    m_transactions.get(transactionId)->commit();
+    // The frontend suggests that we commit, but we may have previously initiated an abort, and so have disposed of the transaction. onAbort has already been dispatched to the frontend, so it will find out about that asynchronously.
+    if (m_transactions.contains(transactionId))
+        m_transactions.get(transactionId)->commit();
 }
 
 void IDBDatabaseBackendImpl::abort(int64_t transactionId)
 {
-    ASSERT(m_transactions.contains(transactionId));
-    m_transactions.get(transactionId)->abort();
+    // If the transaction is unknown, then it has already been aborted by the backend before this call so it is safe to ignore it.
+    if (m_transactions.contains(transactionId))
+        m_transactions.get(transactionId)->abort();
+}
+
+void IDBDatabaseBackendImpl::abort(int64_t transactionId, PassRefPtr<IDBDatabaseError> error)
+{
+    // If the transaction is unknown, then it has already been aborted by the backend before this call so it is safe to ignore it.
+    if (m_transactions.contains(transactionId))
+        m_transactions.get(transactionId)->abort(error);
 }
 
 void IDBDatabaseBackendImpl::get(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange> keyRange, bool keyOnly, PassRefPtr<IDBCallbacks> callbacks)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::get");
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
 
     transaction->scheduleTask(GetOperation::create(m_backingStore, m_metadata, objectStoreId, indexId, keyRange, keyOnly ? IDBCursorBackendInterface::KeyOnly : IDBCursorBackendInterface::KeyAndValue, callbacks));
 }
@@ -742,6 +750,10 @@ void GetOperation::perform(IDBTransactionBackendImpl* transaction)
         m_callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error in getPrimaryKeyViaIndex."));
         return;
     }
+    if (!primaryKey) {
+        m_callbacks->onSuccess();
+        return;
+    }
     if (m_cursorType == IDBCursorBackendInterface::KeyOnly) {
         // Index Value Retrieval Operation
         m_callbacks->onSuccess(primaryKey.get());
@@ -770,9 +782,9 @@ void GetOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::put(int64_t transactionId, int64_t objectStoreId, Vector<uint8_t>* value, PassRefPtr<IDBKey> key, PutMode putMode, PassRefPtr<IDBCallbacks> callbacks, const Vector<int64_t>& indexIds, const Vector<IndexKeys>& indexKeys)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::put");
-
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
     ASSERT(transaction->mode() != IDBTransaction::READ_ONLY);
 
     const IDBObjectStoreMetadata objectStoreMetadata = m_metadata.objectStores.get(objectStoreId);
@@ -853,16 +865,13 @@ void PutOperation::perform(IDBTransactionBackendImpl* transaction)
     m_callbacks->onSuccess(key.release());
 }
 
-
 void IDBDatabaseBackendImpl::setIndexKeys(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKey> prpPrimaryKey, const Vector<int64_t>& indexIds, const Vector<IndexKeys>& indexKeys)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::setIndexKeys");
-    if (!m_transactions.contains(transactionId))
-        return;
-
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
-    if (transaction->isFinished())
+    if (!transaction)
         return;
+    ASSERT(transaction->mode() == IDBTransaction::VERSION_CHANGE);
 
     RefPtr<IDBKey> primaryKey = prpPrimaryKey;
     RefPtr<IDBBackingStore> store = backingStore();
@@ -905,15 +914,11 @@ void IDBDatabaseBackendImpl::setIndexesReady(int64_t transactionId, int64_t obje
 {
     IDB_TRACE("IDBObjectStoreBackendImpl::setIndexesReady");
 
-    if (!m_transactions.contains(transactionId))
-        return;
-
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
-    if (transaction->isFinished())
+    if (!transaction)
         return;
 
-    if (!transaction->scheduleTask(IDBTransactionBackendInterface::PreemptiveTask, SetIndexesReadyOperation::create(indexIds.size())))
-        ASSERT_NOT_REACHED();
+    transaction->scheduleTask(IDBDatabaseBackendInterface::PreemptiveTask, SetIndexesReadyOperation::create(indexIds.size()));
 }
 
 void SetIndexesReadyOperation::perform(IDBTransactionBackendImpl* transaction)
@@ -926,8 +931,9 @@ void SetIndexesReadyOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::openCursor(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange> keyRange, unsigned short direction, bool keyOnly, TaskType taskType, PassRefPtr<IDBCallbacks> callbacks)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::openCursor");
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
 
     transaction->scheduleTask(OpenCursorOperation::create(m_backingStore, id(), objectStoreId, indexId, keyRange, direction, keyOnly ? IDBCursorBackendInterface::KeyOnly : IDBCursorBackendInterface::KeyAndValue, taskType, callbacks));
 }
@@ -961,7 +967,7 @@ void OpenCursorOperation::perform(IDBTransactionBackendImpl* transaction)
         return;
     }
 
-    IDBTransactionBackendInterface::TaskType taskType(static_cast<IDBTransactionBackendInterface::TaskType>(m_taskType));
+    IDBDatabaseBackendInterface::TaskType taskType(static_cast<IDBDatabaseBackendInterface::TaskType>(m_taskType));
     RefPtr<IDBCursorBackendImpl> cursor = IDBCursorBackendImpl::create(backingStoreCursor.get(), m_cursorType, taskType, transaction, m_objectStoreId);
     m_callbacks->onSuccess(cursor, cursor->key(), cursor->primaryKey(), cursor->value());
 }
@@ -969,8 +975,10 @@ void OpenCursorOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::count(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange> keyRange, PassRefPtr<IDBCallbacks> callbacks)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::count");
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
+
     ASSERT(m_metadata.objectStores.contains(objectStoreId));
     transaction->scheduleTask(CountOperation::create(m_backingStore, id(), objectStoreId, indexId, keyRange, callbacks));
 }
@@ -1000,9 +1008,9 @@ void CountOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::deleteRange(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKeyRange> keyRange, PassRefPtr<IDBCallbacks> callbacks)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::deleteRange");
-
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
     ASSERT(transaction->mode() != IDBTransaction::READ_ONLY);
 
     transaction->scheduleTask(DeleteRangeOperation::create(m_backingStore, id(), objectStoreId, keyRange, callbacks));
@@ -1024,9 +1032,9 @@ void DeleteRangeOperation::perform(IDBTransactionBackendImpl* transaction)
 void IDBDatabaseBackendImpl::clear(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBCallbacks> callbacks)
 {
     IDB_TRACE("IDBDatabaseBackendImpl::clear");
-
-    ASSERT(m_transactions.contains(transactionId));
     IDBTransactionBackendImpl* transaction = m_transactions.get(transactionId);
+    if (!transaction)
+        return;
     ASSERT(transaction->mode() != IDBTransaction::READ_ONLY);
 
     transaction->scheduleTask(ClearOperation::create(m_backingStore, id(), objectStoreId, callbacks));
@@ -1064,7 +1072,7 @@ void IDBDatabaseBackendImpl::VersionChangeOperation::perform(IDBTransactionBacke
     }
     ASSERT(!m_database->m_pendingSecondHalfOpen);
     m_database->m_pendingSecondHalfOpen = PendingOpenCall::create(m_callbacks, m_databaseCallbacks, m_transactionId, m_version);
-    m_callbacks->onUpgradeNeeded(oldVersion, transaction, m_database);
+    m_callbacks->onUpgradeNeeded(oldVersion, m_database, m_database->metadata());
 }
 
 void IDBDatabaseBackendImpl::transactionStarted(PassRefPtr<IDBTransactionBackendImpl> prpTransaction)
@@ -1121,7 +1129,7 @@ void IDBDatabaseBackendImpl::processPendingCalls()
     if (m_pendingSecondHalfOpen) {
         ASSERT(m_pendingSecondHalfOpen->version() == m_metadata.intVersion);
         ASSERT(m_metadata.id != InvalidId);
-        m_pendingSecondHalfOpen->callbacks()->onSuccess(this);
+        m_pendingSecondHalfOpen->callbacks()->onSuccess(this, this->metadata());
         m_pendingSecondHalfOpen.release();
         // Fall through when complete, as pending deletes may be (partially) unblocked.
     }
@@ -1154,18 +1162,11 @@ void IDBDatabaseBackendImpl::processPendingCalls()
     }
 }
 
-// FIXME: Remove this method in https://bugs.webkit.org/show_bug.cgi?id=103923.
-PassRefPtr<IDBTransactionBackendInterface> IDBDatabaseBackendImpl::createTransaction(int64_t transactionId, const Vector<int64_t>& objectStoreIds, IDBTransaction::Mode mode)
-{
-    RefPtr<IDBTransactionBackendImpl> transaction = IDBTransactionBackendImpl::create(transactionId, objectStoreIds, mode, this);
-    ASSERT(!m_transactions.contains(transactionId));
-    m_transactions.add(transactionId, transaction.get());
-    return transaction.release();
-}
-
 void IDBDatabaseBackendImpl::createTransaction(int64_t transactionId, PassRefPtr<IDBDatabaseCallbacks> callbacks, const Vector<int64_t>& objectStoreIds, unsigned short mode)
 {
-    ASSERT_NOT_REACHED();
+    RefPtr<IDBTransactionBackendImpl> transaction = IDBTransactionBackendImpl::create(transactionId, callbacks, objectStoreIds, static_cast<IDBTransaction::Mode>(mode), this);
+    ASSERT(!m_transactions.contains(transactionId));
+    m_transactions.add(transactionId, transaction.get());
 }
 
 void IDBDatabaseBackendImpl::openConnection(PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, int64_t transactionId, int64_t version)
@@ -1202,14 +1203,14 @@ void IDBDatabaseBackendImpl::openConnection(PassRefPtr<IDBCallbacks> prpCallback
         // For unit tests only - skip upgrade steps. Calling from script with DefaultIntVersion throws exception.
         ASSERT(isNewDatabase);
         m_databaseCallbacksSet.add(databaseCallbacks);
-        callbacks->onSuccess(this);
+        callbacks->onSuccess(this, this->metadata());
         return;
     }
 
     if (version == IDBDatabaseMetadata::NoIntVersion) {
         if (!isNewDatabase) {
             m_databaseCallbacksSet.add(RefPtr<IDBDatabaseCallbacks>(databaseCallbacks));
-            callbacks->onSuccess(this);
+            callbacks->onSuccess(this, this->metadata());
             return;
         }
         // Spec says: If no version is specified and no database exists, set database version to 1.
@@ -1226,7 +1227,7 @@ void IDBDatabaseBackendImpl::openConnection(PassRefPtr<IDBCallbacks> prpCallback
     }
     ASSERT(version == m_metadata.intVersion);
     m_databaseCallbacksSet.add(databaseCallbacks);
-    callbacks->onSuccess(this);
+    callbacks->onSuccess(this, this->metadata());
 }
 
 void IDBDatabaseBackendImpl::runIntVersionChangeTransaction(PassRefPtr<IDBCallbacks> prpCallbacks, PassRefPtr<IDBDatabaseCallbacks> prpDatabaseCallbacks, int64_t transactionId, int64_t requestedVersion)
@@ -1255,12 +1256,11 @@ void IDBDatabaseBackendImpl::runIntVersionChangeTransaction(PassRefPtr<IDBCallba
     }
 
     Vector<int64_t> objectStoreIds;
-    RefPtr<IDBTransactionBackendInterface> transactionInterface = createTransaction(transactionId, objectStoreIds, IDBTransaction::VERSION_CHANGE);
-    RefPtr<IDBTransactionBackendImpl> transaction = IDBTransactionBackendImpl::from(transactionInterface.get());
+    createTransaction(transactionId, databaseCallbacks, objectStoreIds, IDBTransaction::VERSION_CHANGE);
+    RefPtr<IDBTransactionBackendImpl> transaction = m_transactions.get(transactionId);
 
-    if (!transaction->scheduleTask(VersionChangeOperation::create(this, transactionId, requestedVersion, callbacks, databaseCallbacks), VersionChangeAbortOperation::create(this, m_metadata.version, m_metadata.intVersion))) {
-        ASSERT_NOT_REACHED();
-    }
+    transaction->scheduleTask(VersionChangeOperation::create(this, transactionId, requestedVersion, callbacks, databaseCallbacks), VersionChangeAbortOperation::create(this, m_metadata.version, m_metadata.intVersion));
+
     ASSERT(!m_pendingSecondHalfOpen);
     m_databaseCallbacksSet.add(databaseCallbacks);
 }
@@ -1276,7 +1276,7 @@ void IDBDatabaseBackendImpl::deleteDatabase(PassRefPtr<IDBCallbacks> prpCallback
         // FIXME: Only fire onBlocked if there are open connections after the
         // VersionChangeEvents are received, not just set up to fire.
         // https://bugs.webkit.org/show_bug.cgi?id=71130
-        callbacks->onBlocked();
+        callbacks->onBlocked(m_metadata.intVersion);
         m_pendingDeleteCalls.append(PendingDeleteCall::create(callbacks.release()));
         return;
     }

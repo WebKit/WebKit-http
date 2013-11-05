@@ -33,7 +33,7 @@
 
 #include "WebDevToolsFrontendClient.h"
 #include "WebTask.h"
-#include "platform/WebString.h"
+#include <public/WebString.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/OwnPtr.h>
 namespace WebKit {
@@ -60,6 +60,7 @@ public:
     virtual void closeWindow();
     virtual void dockWindow();
     virtual void undockWindow();
+    virtual bool isUnderTest();
 
     void asyncCall(const WebKit::WebString& args);
 

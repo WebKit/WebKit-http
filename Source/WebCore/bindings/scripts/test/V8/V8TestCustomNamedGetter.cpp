@@ -30,9 +30,32 @@
 #include "V8DOMWrapper.h"
 #include <wtf/UnusedParam.h>
 
+#if ENABLE(BINDING_INTEGRITY)
+#if defined(OS_WIN)
+#pragma warning(disable: 4483)
+extern "C" { extern void (*const __identifier("??_7TestCustomNamedGetter@WebCore@@6B@")[])(); }
+#else
+extern "C" { extern void* _ZTVN7WebCore21TestCustomNamedGetterE[]; }
+#endif
+#endif // ENABLE(BINDING_INTEGRITY)
+
 namespace WebCore {
 
-WrapperTypeInfo V8TestCustomNamedGetter::info = { V8TestCustomNamedGetter::GetTemplate, V8TestCustomNamedGetter::derefObject, 0, 0, V8TestCustomNamedGetter::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
+#if ENABLE(BINDING_INTEGRITY)
+inline void checkTypeOrDieTrying(TestCustomNamedGetter* object)
+{
+    void* actualVTablePointer = *(reinterpret_cast<void**>(object));
+#if defined(OS_WIN)
+    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestCustomNamedGetter@WebCore@@6B@"));
+#else
+    void* expectedVTablePointer = &_ZTVN7WebCore21TestCustomNamedGetterE[2];
+#endif
+    if (actualVTablePointer != expectedVTablePointer)
+        CRASH();
+}
+#endif // ENABLE(BINDING_INTEGRITY)
+
+WrapperTypeInfo V8TestCustomNamedGetter::info = { V8TestCustomNamedGetter::GetTemplate, V8TestCustomNamedGetter::derefObject, 0, 0, 0, V8TestCustomNamedGetter::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestCustomNamedGetterV8Internal {
 
@@ -54,7 +77,7 @@ static const V8DOMConfiguration::BatchedCallback V8TestCustomNamedGetterCallback
     {"anotherFunction", TestCustomNamedGetterV8Internal::anotherFunctionCallback},
 };
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemplate(v8::Persistent<v8::FunctionTemplate> desc)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
 {
     desc->ReadOnlyPrototype();
 
@@ -75,9 +98,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestCustomNamedGetterTemp
     return desc;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetRawTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetRawTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
@@ -88,23 +113,27 @@ v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetRawTemplate()
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestCustomNamedGetter::GetTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestCustomNamedGetterTemplate(GetRawTemplate());
+        ConfigureV8TestCustomNamedGetterTemplate(GetRawTemplate(isolate), isolate);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
-bool V8TestCustomNamedGetter::HasInstance(v8::Handle<v8::Value> value)
+bool V8TestCustomNamedGetter::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    return GetRawTemplate()->HasInstance(value);
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return GetRawTemplate(isolate)->HasInstance(value);
 }
 
 
@@ -112,6 +141,10 @@ v8::Handle<v8::Object> V8TestCustomNamedGetter::createWrapper(PassRefPtr<TestCus
 {
     ASSERT(impl.get());
     ASSERT(DOMDataStore::getWrapper(impl.get(), isolate).IsEmpty());
+
+#if ENABLE(BINDING_INTEGRITY)
+    checkTypeOrDieTrying(impl.get());
+#endif
 
     v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
@@ -123,7 +156,6 @@ v8::Handle<v8::Object> V8TestCustomNamedGetter::createWrapper(PassRefPtr<TestCus
         wrapperHandle.MarkIndependent();
     return wrapper;
 }
-
 void V8TestCustomNamedGetter::derefObject(void* object)
 {
     static_cast<TestCustomNamedGetter*>(object)->deref();

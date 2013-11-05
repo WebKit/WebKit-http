@@ -52,6 +52,8 @@ private:
     JSContext *m_weakContext;
 };
 
+@class JSWrapperMap;
+
 @interface JSContext(Internal)
 
 JSGlobalContextRef contextInternalContext(JSContext *);
@@ -63,10 +65,9 @@ JSGlobalContextRef contextInternalContext(JSContext *);
 - (void)beginCallbackWithData:(CallbackData *)callbackData thisValue:(JSValueRef)thisValue argumentCount:(size_t)argumentCount arguments:(const JSValueRef *)arguments;
 - (void)endCallbackWithData:(CallbackData *)callbackData;
 
-- (void)protect:(JSValueRef)value;
-- (void)unprotect:(JSValueRef)value;
-
 - (JSValue *)wrapperForObject:(id)object;
+
+@property (readonly, retain) JSWrapperMap *wrapperMap;
 
 @end
 

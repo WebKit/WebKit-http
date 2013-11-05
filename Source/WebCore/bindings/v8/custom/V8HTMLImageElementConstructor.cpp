@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8HTMLImageElementConstructor::info = { V8HTMLImageElementConstructor::GetTemplate, V8HTMLImageElement::derefObject, 0, 0, V8HTMLImageElement::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
+WrapperTypeInfo V8HTMLImageElementConstructor::info = { V8HTMLImageElementConstructor::GetTemplate, V8HTMLImageElement::derefObject, 0, V8HTMLImageElement::toEventTarget, 0, V8HTMLImageElement::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 static v8::Handle<v8::Value> v8HTMLImageElementConstructorCallback(const v8::Arguments& args)
 {
@@ -81,7 +81,7 @@ static v8::Handle<v8::Value> v8HTMLImageElementConstructorCallback(const v8::Arg
     return wrapper;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8HTMLImageElementConstructor::GetTemplate()
+v8::Persistent<v8::FunctionTemplate> V8HTMLImageElementConstructor::GetTemplate(v8::Isolate* isolate)
 {
     static v8::Persistent<v8::FunctionTemplate> cachedTemplate;
     if (!cachedTemplate.IsEmpty())
@@ -93,7 +93,7 @@ v8::Persistent<v8::FunctionTemplate> V8HTMLImageElementConstructor::GetTemplate(
     v8::Local<v8::ObjectTemplate> instance = result->InstanceTemplate();
     instance->SetInternalFieldCount(V8HTMLImageElement::internalFieldCount);
     result->SetClassName(v8::String::NewSymbol("HTMLImageElement"));
-    result->Inherit(V8HTMLImageElement::GetTemplate());
+    result->Inherit(V8HTMLImageElement::GetTemplate(isolate));
 
     cachedTemplate = v8::Persistent<v8::FunctionTemplate>::New(result);
     return cachedTemplate;

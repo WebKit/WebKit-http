@@ -55,6 +55,7 @@
 #include "KeyboardEvent.h"
 #include "LocalizedStrings.h"
 #include "MonthInputType.h"
+#include "NodeRenderStyle.h"
 #include "NumberInputType.h"
 #include "Page.h"
 #include "PasswordInputType.h"
@@ -85,7 +86,7 @@ using namespace HTMLNames;
 using namespace std;
 
 typedef PassOwnPtr<InputType> (*InputTypeFactoryFunction)(HTMLInputElement*);
-typedef HashMap<String, InputTypeFactoryFunction, CaseFoldingHash> InputTypeFactoryMap;
+typedef HashMap<AtomicString, InputTypeFactoryFunction, CaseFoldingHash> InputTypeFactoryMap;
 
 static PassOwnPtr<InputTypeFactoryMap> createInputTypeFactoryMap()
 {
@@ -136,7 +137,7 @@ static PassOwnPtr<InputTypeFactoryMap> createInputTypeFactoryMap()
     return map.release();
 }
 
-PassOwnPtr<InputType> InputType::create(HTMLInputElement* element, const String& typeName)
+PassOwnPtr<InputType> InputType::create(HTMLInputElement* element, const AtomicString& typeName)
 {
     static const InputTypeFactoryMap* factoryMap = createInputTypeFactoryMap().leakPtr();
     PassOwnPtr<InputType> (*factory)(HTMLInputElement*) = typeName.isEmpty() ? 0 : factoryMap->get(typeName);
@@ -469,9 +470,9 @@ void InputType::blur()
     element()->defaultBlur();
 }
 
-void InputType::focus(bool restorePreviousSelection)
+void InputType::focus(bool restorePreviousSelection, FocusDirection direction)
 {
-    element()->defaultFocus(restorePreviousSelection);
+    element()->defaultFocus(restorePreviousSelection, direction);
 }
 
 void InputType::createShadowSubtree()
@@ -484,14 +485,14 @@ void InputType::destroyShadowSubtree()
     if (!root)
         return;
 
-    root->removeAllChildren();
+    root->removeChildren();
 
     // It's ok to clear contents of all other ShadowRoots because they must have
     // been created by TextFieldDecorationElement, and we don't allow adding
     // AuthorShadowRoot to HTMLInputElement.
     while ((root = root->youngerShadowRoot())) {
 #if ENABLE(SHADOW_DOM)
-        root->removeAllChildren();
+        root->removeChildren();
         root->appendChild(HTMLShadowElement::create(shadowTag, element()->document()));
 #else
         ASSERT_NOT_REACHED();
@@ -544,6 +545,11 @@ bool InputType::canSetStringValue() const
 bool InputType::hasCustomFocusLogic() const
 {
     return true;
+}
+
+bool InputType::isFocusableByClickOnLabel() const
+{
+    return isMouseFocusable();
 }
 
 bool InputType::isKeyboardFocusable(KeyboardEvent* event) const
@@ -674,8 +680,19 @@ void InputType::setValue(const String& sanitizedValue, bool valueChanged, TextFi
 {
     element()->setValueInternal(sanitizedValue, eventBehavior);
     element()->setNeedsStyleRecalc();
-    if (valueChanged && eventBehavior != DispatchNoEvent)
+    if (!valueChanged)
+        return;
+    switch (eventBehavior) {
+    case DispatchChangeEvent:
         element()->dispatchFormControlChangeEvent();
+        break;
+    case DispatchInputAndChangeEvent:
+        element()->dispatchFormControlInputEvent();
+        element()->dispatchFormControlChangeEvent();
+        break;
+    case DispatchNoEvent:
+        break;
+    }
 }
 
 bool InputType::canSetValue(const String&)
@@ -725,6 +742,11 @@ Icon* InputType::icon() const
 {
     ASSERT_NOT_REACHED();
     return 0;
+}
+
+bool InputType::shouldApplyLocaleDirection() const
+{
+    return false;
 }
 
 bool InputType::shouldResetOnDocumentActivation()
@@ -1115,6 +1137,14 @@ void InputType::stepUpFromRenderer(int n)
                 applyStep(n + 1, AnyIsDefaultStep, DispatchInputAndChangeEvent, ec);
         } else
             applyStep(n, AnyIsDefaultStep, DispatchInputAndChangeEvent, ec);
+    }
+}
+
+void InputType::observeFeatureIfVisible(FeatureObserver::Feature feature) const
+{
+    if (RenderStyle* style = element()->renderStyle()) {
+        if (style->visibility() != HIDDEN)
+            FeatureObserver::observe(element()->document(), feature);
     }
 }
 

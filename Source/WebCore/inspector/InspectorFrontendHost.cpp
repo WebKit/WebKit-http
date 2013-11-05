@@ -269,6 +269,9 @@ void InspectorFrontendHost::sendMessageToBackend(const String& message)
 #if ENABLE(CONTEXT_MENUS)
 void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMenuItem>& items)
 {
+    if (!event)
+        return;
+
     ASSERT(m_frontendPage);
     ScriptState* frontendScriptState = scriptStateFromPage(debuggerWorld(), m_frontendPage);
     ScriptObject frontendApiObject;
@@ -327,6 +330,11 @@ PassRefPtr<DOMFileSystem> InspectorFrontendHost::isolatedFileSystem(const String
     return DOMFileSystem::create(context, fileSystemName, FileSystemTypeIsolated, KURL(ParsedURLString, rootURL), AsyncFileSystem::create());
 }
 #endif
+
+bool InspectorFrontendHost::isUnderTest()
+{
+    return m_client && m_client->isUnderTest();
+}
 
 } // namespace WebCore
 

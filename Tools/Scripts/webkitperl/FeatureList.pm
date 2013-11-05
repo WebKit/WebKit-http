@@ -46,6 +46,7 @@ my (
     $accelerated2DCanvasSupport,
     $batteryStatusSupport,
     $blobSupport,
+    $canvasPathSupport,
     $canvasProxySupport,
     $channelMessagingSupport,
     $cspNextSupport,
@@ -63,7 +64,7 @@ my (
     $cssShadersSupport,
     $cssStickyPositionSupport,
     $cssCompositingSupport,
-    $cssAnimationsTransitionsTransformsUnprefixedSupport,
+    $cssAnimationsTransformsUnprefixedSupport,
     $cssVariablesSupport,
     $customSchemeHandlerSupport,
     $dataTransferItemsSupport,
@@ -72,6 +73,7 @@ my (
     $deviceOrientationSupport,
     $dialogElementSupport,
     $directoryUploadSupport,
+    $dom4EventsConstructor,
     $downloadAttributeSupport,
     $fileSystemSupport,
     $filtersSupport,
@@ -127,6 +129,7 @@ my (
     $sharedWorkersSupport,
     $sqlDatabaseSupport,
     $styleScopedSupport,
+    $suidLinuxSandbox,
     $svgDOMObjCBindingsSupport,
     $svgFontsSupport,
     $svgSupport,
@@ -166,6 +169,9 @@ my @features = (
     { option => "blob", desc => "Toggle Blob support",
       define => "ENABLE_BLOB", default => (isAppleMacWebKit() || isGtk() || isChromium() || isBlackBerry() || isEfl()), value => \$blobSupport },
 
+    { option => "canvas-path", desc => "Toggle Canvas Path support",
+      define => "ENABLE_CANVAS_PATH", default => 0, value => \$canvasPathSupport },
+
     { option => "canvas-proxy", desc => "Toggle CanvasProxy support",
       define => "ENABLE_CANVAS_PROXY", default => 0, value => \$canvasProxySupport },
 
@@ -194,7 +200,7 @@ my @features = (
       define => "ENABLE_CSS_BOX_DECORATION_BREAK", default => 1, value => \$cssBoxDecorationBreakSupport },
 
     { option => "css-image-orientation", desc => "Toggle CSS image-orientation support",
-      define => "ENABLE_CSS_IMAGE_ORIENTATION", default => 0, value => \$cssImageOrientationSupport },
+      define => "ENABLE_CSS_IMAGE_ORIENTATION", default => isGtk(), value => \$cssImageOrientationSupport },
 
     { option => "css-image-resolution", desc => "Toggle CSS image-resolution support",
       define => "ENABLE_CSS_IMAGE_RESOLUTION", default => (isBlackBerry() || isGtk()), value => \$cssImageResolutionSupport },
@@ -211,8 +217,8 @@ my @features = (
     { option => "css-compositing", desc => "Toggle CSS Compositing support",
       define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },
 
-    { option => "css-transforms-animations-transitions-unprefixed", desc => "Toggle support for unprefixed CSS animations, transitions and transforms",
-      define => "ENABLE_CSS_TRANSFORMS_ANIMATIONS_TRANSITIONS_UNPREFIXED", default => 1, value => \$cssAnimationsTransitionsTransformsUnprefixedSupport },
+    { option => "css-transforms-animations-unprefixed", desc => "Toggle support for unprefixed CSS animations and transforms",
+      define => "ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED", default => 1, value => \$cssAnimationsTransformsUnprefixedSupport },
 
     { option => "css-variables", desc => "Toggle CSS Variable support",
       define => "ENABLE_CSS_VARIABLES", default => (isBlackBerry() || isEfl()), value => \$cssVariablesSupport },
@@ -237,6 +243,9 @@ my @features = (
 
     { option => "directory-upload", desc => "Toggle Directory Upload support",
       define => "ENABLE_DIRECTORY_UPLOAD", default => 0, value => \$directoryUploadSupport },
+
+    { option => "dom4-events-constructor", desc => "Expose DOM4 Events constructors",
+      define => "ENABLE_DOM4_EVENTS_CONSTRUCTOR", default => isAppleWebKit(), value => \$dom4EventsConstructor },
 
     { option => "download-attribute", desc => "Toggle Download Attribute support",
       define => "ENABLE_DOWNLOAD_ATTRIBUTE", default => (isBlackBerry() || isEfl()), value => \$downloadAttributeSupport },
@@ -269,7 +278,7 @@ my @features = (
       define => "ENABLE_IFRAME_SEAMLESS", default => 1, value => \$iframeSeamlessSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
-      define => "ENABLE_INDEXED_DATABASE", default => 0, value => \$indexedDatabaseSupport },
+      define => "ENABLE_INDEXED_DATABASE", default => isGtk(), value => \$indexedDatabaseSupport },
 
     { option => "input-speech", desc => "Toggle Input Speech support",
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
@@ -397,6 +406,9 @@ my @features = (
     { option => "style-scoped", desc => "Toggle Style Scoped support",
       define => "ENABLE_STYLE_SCOPED", default => (isBlackBerry() || isGtk()), value => \$styleScopedSupport },
 
+    { option => "suid-linux-sandbox", desc => "Toggle suid sandbox for linux",
+      define => "ENABLE_SUID_SANDBOX_LINUX", default => 0, value => \$suidLinuxSandbox },
+
     { option => "svg", desc => "Toggle SVG support",
       define => "ENABLE_SVG", default => 1, value => \$svgSupport },
 
@@ -410,7 +422,7 @@ my @features = (
       define => "USE_SYSTEM_MALLOC", default => (isWinCE() || isHaiku()), value => \$systemMallocSupport },
 
     { option => "template-element", desc => "Toggle HTMLTemplateElement support",
-      define => "ENABLE_TEMPLATE_ELEMENT", default => isEfl(), value => \$templateElementSupport },
+      define => "ENABLE_TEMPLATE_ELEMENT", default => (isEfl() || isGtk()), value => \$templateElementSupport },
 
     { option => "text-autosizing", desc => "Toggle Text Autosizing support",
       define => "ENABLE_TEXT_AUTOSIZING", default => 0, value => \$textAutosizingSupport },
@@ -446,10 +458,10 @@ my @features = (
       define => "ENABLE_WEB_AUDIO", default => (isEfl()), value => \$webAudioSupport },
 
     { option => "web-intents", desc => "Toggle Web Intents support",
-      define => "ENABLE_WEB_INTENTS", default => isEfl(), value => \$webIntentsSupport },
+      define => "ENABLE_WEB_INTENTS", default => 0, value => \$webIntentsSupport },
 
     { option => "web-intents-tag", desc => "Toggle Web Intents Tag support",
-      define => "ENABLE_WEB_INTENTS_TAG", default => isEfl(), value => \$webIntentsTagSupport },
+      define => "ENABLE_WEB_INTENTS_TAG", default => 0, value => \$webIntentsTagSupport },
 
     { option => "web-sockets", desc => "Toggle Web Sockets support",
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },

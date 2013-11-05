@@ -22,7 +22,7 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
-messages -> NetworkProcess {
+messages -> NetworkProcess LegacyReceiver {
     # Initializes the network process.
     InitializeNetworkProcess(WebKit::NetworkProcessCreationParameters processCreationParameters)
 
@@ -36,7 +36,7 @@ messages -> NetworkProcess {
     CancelDownload(uint64_t downloadID)
 
 #if PLATFORM(MAC)
-    SetApplicationIsOccluded(bool flag)
+    SetProcessSuppressionEnabled(bool flag)
 #endif
 
     AllowSpecificHTTPSCertificateForHost(WebKit::PlatformCertificateInfo certificate, WTF::String host)

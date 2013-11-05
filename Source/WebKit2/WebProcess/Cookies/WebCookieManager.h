@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,14 +47,17 @@ class WebCookieManager : public WebProcessSupplement, public NetworkProcessSuppl
 public:
     WebCookieManager(ChildProcess*);
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
     void setHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy);
 #if USE(SOUP)
     void setCookiePersistentStorage(const String& storagePath, uint32_t storageType);
 #endif
 
-private:    
+private:
+    // CoreIPC::MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+
     void getHostnamesWithCookies(uint64_t callbackID);
     void deleteCookiesForHostname(const String&);
     void deleteAllCookies();
@@ -69,8 +72,6 @@ private:
     static void cookiesDidChange();
     void dispatchCookiesDidChange();
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveWebCookieManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
     ChildProcess* m_process;
 };

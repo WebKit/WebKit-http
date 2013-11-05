@@ -62,7 +62,7 @@ enum AlphaFormat {
 };
 
 // This returns SourceFormatNumFormats if the combination of input parameters is unsupported.
-static GraphicsContext3D::SourceDataFormat getSourceDataFormat(unsigned int componentsPerPixel, AlphaFormat alphaFormat, bool is16BitFormat, bool bigEndian)
+static GraphicsContext3D::DataFormat getSourceDataFormat(unsigned componentsPerPixel, AlphaFormat alphaFormat, bool is16BitFormat, bool bigEndian)
 {
     const static SourceDataFormatBase formatTableBase[4][AlphaFormatNumFormats] = { // componentsPerPixel x AlphaFormat
         // AlphaFormatNone            AlphaFormatFirst            AlphaFormatLast
@@ -71,21 +71,21 @@ static GraphicsContext3D::SourceDataFormat getSourceDataFormat(unsigned int comp
         { SourceFormatBaseRGB,        SourceFormatBaseNumFormats, SourceFormatBaseNumFormats }, // 3 componentsPerPixel
         { SourceFormatBaseNumFormats, SourceFormatBaseARGB,       SourceFormatBaseRGBA        } // 4 componentsPerPixel
     };
-    const static GraphicsContext3D::SourceDataFormat formatTable[SourceFormatBaseNumFormats][4] = { // SourceDataFormatBase x bitsPerComponent x endian
+    const static GraphicsContext3D::DataFormat formatTable[SourceFormatBaseNumFormats][4] = { // SourceDataFormatBase x bitsPerComponent x endian
         // 8bits, little endian                 8bits, big endian                     16bits, little endian                        16bits, big endian
-        { GraphicsContext3D::SourceFormatR8,    GraphicsContext3D::SourceFormatR8,    GraphicsContext3D::SourceFormatR16Little,    GraphicsContext3D::SourceFormatR16Big },
-        { GraphicsContext3D::SourceFormatA8,    GraphicsContext3D::SourceFormatA8,    GraphicsContext3D::SourceFormatA16Little,    GraphicsContext3D::SourceFormatA16Big },
-        { GraphicsContext3D::SourceFormatAR8,   GraphicsContext3D::SourceFormatRA8,   GraphicsContext3D::SourceFormatRA16Little,   GraphicsContext3D::SourceFormatRA16Big },
-        { GraphicsContext3D::SourceFormatRA8,   GraphicsContext3D::SourceFormatAR8,   GraphicsContext3D::SourceFormatAR16Little,   GraphicsContext3D::SourceFormatAR16Big },
-        { GraphicsContext3D::SourceFormatBGR8,  GraphicsContext3D::SourceFormatRGB8,  GraphicsContext3D::SourceFormatRGB16Little,  GraphicsContext3D::SourceFormatRGB16Big },
-        { GraphicsContext3D::SourceFormatABGR8, GraphicsContext3D::SourceFormatRGBA8, GraphicsContext3D::SourceFormatRGBA16Little, GraphicsContext3D::SourceFormatRGBA16Big },
-        { GraphicsContext3D::SourceFormatBGRA8, GraphicsContext3D::SourceFormatARGB8, GraphicsContext3D::SourceFormatARGB16Little, GraphicsContext3D::SourceFormatARGB16Big }
+        { GraphicsContext3D::DataFormatR8,    GraphicsContext3D::DataFormatR8,    GraphicsContext3D::DataFormatR16Little,    GraphicsContext3D::DataFormatR16Big },
+        { GraphicsContext3D::DataFormatA8,    GraphicsContext3D::DataFormatA8,    GraphicsContext3D::DataFormatA16Little,    GraphicsContext3D::DataFormatA16Big },
+        { GraphicsContext3D::DataFormatAR8,   GraphicsContext3D::DataFormatRA8,   GraphicsContext3D::DataFormatRA16Little,   GraphicsContext3D::DataFormatRA16Big },
+        { GraphicsContext3D::DataFormatRA8,   GraphicsContext3D::DataFormatAR8,   GraphicsContext3D::DataFormatAR16Little,   GraphicsContext3D::DataFormatAR16Big },
+        { GraphicsContext3D::DataFormatBGR8,  GraphicsContext3D::DataFormatRGB8,  GraphicsContext3D::DataFormatRGB16Little,  GraphicsContext3D::DataFormatRGB16Big },
+        { GraphicsContext3D::DataFormatABGR8, GraphicsContext3D::DataFormatRGBA8, GraphicsContext3D::DataFormatRGBA16Little, GraphicsContext3D::DataFormatRGBA16Big },
+        { GraphicsContext3D::DataFormatBGRA8, GraphicsContext3D::DataFormatARGB8, GraphicsContext3D::DataFormatARGB16Little, GraphicsContext3D::DataFormatARGB16Big }
     };
 
     ASSERT(componentsPerPixel <= 4 && componentsPerPixel > 0);
     SourceDataFormatBase formatBase = formatTableBase[componentsPerPixel - 1][alphaFormat];
     if (formatBase == SourceFormatBaseNumFormats)
-        return GraphicsContext3D::SourceFormatNumFormats;
+        return GraphicsContext3D::DataFormatNumFormats;
     return formatTable[formatBase][(is16BitFormat ? 2 : 0) + (bigEndian ? 1 : 0)];
 }
 
@@ -97,7 +97,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
 {
     if (!m_image)
         return false;
-    bool hasAlpha = m_image->isBitmapImage() ? m_image->currentFrameHasAlpha() : true;
+    bool hasAlpha = !m_image->currentFrameKnownToBeOpaque();
     if ((ignoreGammaAndColorProfile || (hasAlpha && !premultiplyAlpha)) && m_image->data()) {
         ImageSource decoder(ImageSource::AlphaNotPremultiplied,
                             ignoreGammaAndColorProfile ? ImageSource::GammaAndColorProfileIgnored : ImageSource::GammaAndColorProfileApplied);
@@ -230,7 +230,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     }
 
     m_imageSourceFormat = getSourceDataFormat(componentsPerPixel, alphaFormat, bitsPerComponent == 16, bigEndianSource);
-    if (m_imageSourceFormat == SourceFormatNumFormats)
+    if (m_imageSourceFormat == DataFormatNumFormats)
         return false;
 
     m_pixelData.adoptCF(CGDataProviderCopyData(CGImageGetDataProvider(m_cgImage)));
@@ -253,25 +253,45 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     return true;
 }
 
-void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight, int canvasWidth, int canvasHeight, CGContextRef context)
+static void releaseImageData(void*, const void* data, size_t)
+{
+    fastFree(const_cast<void*>(data));
+}
+
+void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight, int canvasWidth, int canvasHeight, GraphicsContext* context)
 {
     if (!imagePixels || imageWidth <= 0 || imageHeight <= 0 || canvasWidth <= 0 || canvasHeight <= 0 || !context)
         return;
     int rowBytes = imageWidth * 4;
-    RetainPtr<CGDataProviderRef> dataProvider(AdoptCF, CGDataProviderCreateWithData(0, imagePixels, rowBytes * imageHeight, 0));
-    RetainPtr<CGImageRef> cgImage(AdoptCF, CGImageCreate(imageWidth, imageHeight, 8, 32, rowBytes, deviceRGBColorSpaceRef(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host,
+    RetainPtr<CGDataProviderRef> dataProvider;
+
+    if (context->isAcceleratedContext()) {
+        unsigned char* copiedPixels;
+
+        if (!tryFastCalloc(imageHeight, rowBytes).getValue(copiedPixels))
+            return;
+
+        memcpy(copiedPixels, imagePixels, rowBytes * imageHeight);
+        dataProvider = adoptCF(CGDataProviderCreateWithData(0, copiedPixels, rowBytes * imageHeight, releaseImageData));
+    } else
+        dataProvider = adoptCF(CGDataProviderCreateWithData(0, imagePixels, rowBytes * imageHeight, 0));
+
+    RetainPtr<CGImageRef> cgImage = adoptCF(CGImageCreate(imageWidth, imageHeight, 8, 32, rowBytes, deviceRGBColorSpaceRef(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host,
         dataProvider.get(), 0, false, kCGRenderingIntentDefault));
+
     // CSS styling may cause the canvas's content to be resized on
     // the page. Go back to the Canvas to figure out the correct
     // width and height to draw.
-    CGRect rect = CGRectMake(0, 0, canvasWidth, canvasHeight);
+    FloatRect canvasRect(0, 0, canvasWidth, canvasHeight);
+    FloatSize imageSize(imageWidth, imageHeight);
     // We want to completely overwrite the previous frame's
     // rendering results.
-    CGContextSaveGState(context);
-    CGContextSetBlendMode(context, kCGBlendModeCopy);
-    CGContextSetInterpolationQuality(context, kCGInterpolationNone);
-    CGContextDrawImage(context, rect, cgImage.get());
-    CGContextRestoreGState(context);
+
+    GraphicsContextStateSaver stateSaver(*context);
+    context->scale(FloatSize(1, -1));
+    context->translate(0, -imageHeight);
+    context->setImageInterpolationQuality(InterpolationNone);
+    context->drawNativeImage(cgImage.get(), imageSize, ColorSpaceDeviceRGB, canvasRect, FloatRect(FloatPoint(), imageSize), CompositeCopy);
 }
 
 } // namespace WebCore

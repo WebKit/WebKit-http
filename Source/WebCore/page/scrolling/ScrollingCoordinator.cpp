@@ -188,8 +188,7 @@ static void accumulateRendererTouchEventTargetRects(Vector<IntRect>& rects, cons
         if (!r.isEmpty()) {
             // Convert to the top-level view's coordinates.
             ASSERT(renderer->document()->view());
-            for (ScrollView* view = renderer->document()->view(); view && view->parent(); view = view->parent())
-                r = view->convertToContainingView(r);
+            r = renderer->document()->view()->convertToRootView(r);
 
             if (!parentRect.contains(r)) {
                 rects.append(r);
@@ -216,9 +215,17 @@ static void accumulateDocumentEventTargetRects(Vector<IntRect>& rects, const Doc
 
         if (touchTarget == document) {
             if (RenderView* view = document->renderView()) {
-                IntRect r = enclosingIntRect(view->clippedOverflowRectForRepaint(0));
-                if (!r.isEmpty())
+                IntRect r;
+                if (touchTarget == document->topDocument())
+                    r = view->documentRect();
+                else
+                    r = enclosingIntRect(view->clippedOverflowRectForRepaint(0));
+
+                if (!r.isEmpty()) {
+                    ASSERT(view->document()->view());
+                    r = view->document()->view()->convertToRootView(r);
                     rects.append(r);
+                }
             }
             return;
         }
@@ -303,6 +310,23 @@ GraphicsLayer* ScrollingCoordinator::scrollLayerForFrameView(FrameView* frameVie
 #endif
 }
 
+GraphicsLayer* ScrollingCoordinator::counterScrollingLayerForFrameView(FrameView* frameView)
+{
+#if USE(ACCELERATED_COMPOSITING)
+    Frame* frame = frameView->frame();
+    if (!frame)
+        return 0;
+
+    RenderView* renderView = frame->contentRenderer();
+    if (!renderView)
+        return 0;
+    return renderView->compositor()->fixedRootBackgroundLayer();
+#else
+    UNUSED_PARAM(frameView);
+    return 0;
+#endif
+}
+
 void ScrollingCoordinator::frameViewRootLayerDidChange(FrameView* frameView)
 {
     ASSERT(isMainThread());
@@ -365,12 +389,17 @@ void ScrollingCoordinator::updateMainFrameScrollPosition(const IntPoint& scrollP
 
 #if USE(ACCELERATED_COMPOSITING)
     if (GraphicsLayer* scrollLayer = scrollLayerForFrameView(frameView)) {
-        if (programmaticScroll || scrollingLayerPositionAction == SetScrollingLayerPosition)
+        GraphicsLayer* counterScrollingLayer = counterScrollingLayerForFrameView(frameView);
+        if (programmaticScroll || scrollingLayerPositionAction == SetScrollingLayerPosition) {
             scrollLayer->setPosition(-frameView->scrollPosition());
-        else {
+            if (counterScrollingLayer)
+                counterScrollingLayer->setPosition(IntPoint(frameView->scrollOffsetForFixedPosition()));
+        } else {
             scrollLayer->syncPosition(-frameView->scrollPosition());
-            LayoutRect viewportRect = frameView->visibleContentRect();
-            viewportRect.setLocation(IntPoint(frameView->scrollOffsetForFixedPosition()));
+            if (counterScrollingLayer)
+                counterScrollingLayer->syncPosition(IntPoint(frameView->scrollOffsetForFixedPosition()));
+
+            LayoutRect viewportRect = frameView->viewportConstrainedVisibleContentRect();
             syncChildPositions(viewportRect);
         }
     }
@@ -420,6 +449,8 @@ bool ScrollingCoordinator::hasVisibleSlowRepaintViewportConstrainedObjects(Frame
 MainThreadScrollingReasons ScrollingCoordinator::mainThreadScrollingReasons() const
 {
     FrameView* frameView = m_page->mainFrame()->view();
+    if (!frameView)
+        return static_cast<MainThreadScrollingReasons>(0);
 
     MainThreadScrollingReasons mainThreadScrollingReasons = (MainThreadScrollingReasons)0;
 

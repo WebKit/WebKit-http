@@ -26,8 +26,7 @@
 #include "config.h"
 #include "ContextHistoryClientEfl.h"
 
-#include "DownloadProxy.h"
-#include "EwkViewImpl.h"
+#include "EwkView.h"
 #include "WKAPICast.h"
 #include "WKContext.h"
 #include "WKEinaSharedString.h"
@@ -54,7 +53,7 @@ void ContextHistoryClientEfl::didNavigateWithNavigationData(WKContextRef, WKPage
         return;
 
     RefPtr<EwkNavigationData> navigationDataEwk = EwkNavigationData::create(navigationData);
-    historyClient->m_navigate(EwkViewImpl::viewFromPageViewMap(page), navigationDataEwk.get(), historyClient->m_userData);
+    historyClient->m_navigate(EwkView::viewFromPageViewMap(page), navigationDataEwk.get(), historyClient->m_userData);
 }
 
 void ContextHistoryClientEfl::didPerformClientRedirect(WKContextRef, WKPageRef page, WKURLRef sourceURL, WKURLRef destinationURL, WKFrameRef, const void* clientInfo)
@@ -67,7 +66,7 @@ void ContextHistoryClientEfl::didPerformClientRedirect(WKContextRef, WKPageRef p
     WKEinaSharedString sourceURLString(sourceURL);
     WKEinaSharedString destinationURLString(destinationURL);
 
-    historyClient->m_clientRedirect(EwkViewImpl::viewFromPageViewMap(page), sourceURLString, destinationURLString, historyClient->m_userData);
+    historyClient->m_clientRedirect(EwkView::viewFromPageViewMap(page), sourceURLString, destinationURLString, historyClient->m_userData);
 }
 
 void ContextHistoryClientEfl::didPerformServerRedirect(WKContextRef, WKPageRef page, WKURLRef sourceURL, WKURLRef destinationURL, WKFrameRef, const void* clientInfo)
@@ -80,7 +79,7 @@ void ContextHistoryClientEfl::didPerformServerRedirect(WKContextRef, WKPageRef p
     WKEinaSharedString sourceURLString(sourceURL);
     WKEinaSharedString destinationURLString(destinationURL);
 
-    historyClient->m_serverRedirect(EwkViewImpl::viewFromPageViewMap(page), sourceURLString, destinationURLString, historyClient->m_userData);
+    historyClient->m_serverRedirect(EwkView::viewFromPageViewMap(page), sourceURLString, destinationURLString, historyClient->m_userData);
 }
 
 void ContextHistoryClientEfl::didUpdateHistoryTitle(WKContextRef, WKPageRef page, WKStringRef title, WKURLRef URL, WKFrameRef, const void* clientInfo)
@@ -93,7 +92,7 @@ void ContextHistoryClientEfl::didUpdateHistoryTitle(WKContextRef, WKPageRef page
     WKEinaSharedString titleString(title);
     WKEinaSharedString stringURL(URL);
 
-    historyClient->m_titleUpdated(EwkViewImpl::viewFromPageViewMap(page), titleString, stringURL, historyClient->m_userData);
+    historyClient->m_titleUpdated(EwkView::viewFromPageViewMap(page), titleString, stringURL, historyClient->m_userData);
 }
 
 void ContextHistoryClientEfl::populateVisitedLinks(WKContextRef, const void* clientInfo)
@@ -106,7 +105,7 @@ void ContextHistoryClientEfl::populateVisitedLinks(WKContextRef, const void* cli
     historyClient->m_populateVisitedLinks(historyClient->m_userData);
 }
 
-ContextHistoryClientEfl::ContextHistoryClientEfl(PassRefPtr<WebContext> context)
+ContextHistoryClientEfl::ContextHistoryClientEfl(WKContextRef context)
     : m_context(context)
     , m_userData(0)
     , m_navigate(0)
@@ -129,12 +128,12 @@ ContextHistoryClientEfl::ContextHistoryClientEfl(PassRefPtr<WebContext> context)
     wkHistoryClient.didUpdateHistoryTitle = didUpdateHistoryTitle;
     wkHistoryClient.populateVisitedLinks = populateVisitedLinks;
 
-    m_context->initializeHistoryClient(&wkHistoryClient);
+    WKContextSetHistoryClient(m_context.get(), &wkHistoryClient);
 }
 
 ContextHistoryClientEfl::~ContextHistoryClientEfl()
 {
-    m_context->initializeHistoryClient(0);
+    WKContextSetHistoryClient(m_context.get(), 0);
 }
 
 void ContextHistoryClientEfl::setCallbacks(Ewk_History_Navigation_Cb navigate, Ewk_History_Client_Redirection_Cb clientRedirect, Ewk_History_Server_Redirection_Cb serverRedirect, Ewk_History_Title_Update_Cb titleUpdate, Ewk_History_Populate_Visited_Links_Cb populateVisitedLinks, void* data)

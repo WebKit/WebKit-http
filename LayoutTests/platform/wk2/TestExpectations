@@ -89,10 +89,6 @@ inspector/elements/edit-dom-actions.html
 inspector/extensions/extensions-events.html
 inspector/styles/styles-computed-trace.html
 
-# Fail until SUBPIXEL_LAYOUT is enabled
-# https://bugs.webkit.org/show_bug.cgi?id=85532
-fast/sub-pixel
-
 # [WK2][WTR] svg/animations/animate-text-nested-transforms.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=95191
 svg/animations/animate-text-nested-transforms.html
@@ -415,8 +411,19 @@ editing/spelling/design-mode-spellcheck-off.html
 editing/spelling/spellcheck-attribute.html
 editing/spelling/spelling-attribute-at-child.html
 editing/spelling/spelling-attribute-change.html
-editing/spelling/spelling-linebreak.html
+editing/spelling/spelling-double-clicked-word.html
+editing/spelling/spelling-double-clicked-word-with-underscores.html
+editing/spelling/spelling-exactly-selected-multiple-words.html
+editing/spelling/spelling-exactly-selected-word.html
 editing/spelling/spelling-hasspellingmarker.html
+editing/spelling/spelling-linebreak.html
+editing/spelling/spelling-multiword-selection.html
+editing/spelling/spelling-should-select-multiple-words.html
+editing/spelling/spelling-should-select-single-word.html
+editing/spelling/spelling-subword-selection.html
+editing/spelling/spelling-with-punctuation-selection.html
+editing/spelling/spelling-with-underscore-selection.html
+editing/spelling/spelling-with-whitespace-selection.html
 platform/mac/editing/spelling/delete-into-misspelled-word.html
 platform/mac/editing/spelling/editing-multiple-words-with-markers.html
 platform/mac/editing/spelling/editing-word-with-marker-1.html
@@ -559,6 +566,7 @@ editing/spelling/spelling-marker-description.html
 
 # WTR needs an implementation of setAutomaticLinkDetectionEnabled.
 # https://bugs.webkit.org/show_bug.cgi?id=87162
+editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 editing/inserting/typing-space-to-trigger-smart-link.html
 
 # No CORS support for media elements is implemented yet.
@@ -681,7 +689,6 @@ plugins/embed-attributes-style.html
 plugins/plugin-initiate-popup-window.html
 storage/websql/open-database-while-transaction-in-progress.html
 svg/custom/clip-path-referencing-use2.svg
-svg/dom/fuzz-path-parser.html
 svg/hixie/cascade/002.xml
 tables/mozilla_expected_failures/bugs/bug8499.html
 transitions/font-family-during-transition.html
@@ -902,6 +909,7 @@ http/tests/local/formdata/send-form-data-with-sliced-file.html
 http/tests/local/formdata/send-form-data.html
 http/tests/local/formdata/upload-events.html
 http/tests/security/clipboard/clipboard-file-access.html
+media/video-src-blob.html
 storage/indexeddb/noblobs.html
 storage/indexeddb/structured-clone.html
 

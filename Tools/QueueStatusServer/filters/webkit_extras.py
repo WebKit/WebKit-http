@@ -36,6 +36,7 @@ register = webapp.template.create_template_register()
 bug_regexp = re.compile(r"bug (?P<bug_id>\d+)")
 patch_regexp = re.compile(r"patch (?P<patch_id>\d+)")
 
+
 @register.filter
 @stringfilter
 def webkit_linkify(value):
@@ -43,17 +44,32 @@ def webkit_linkify(value):
     value = patch_regexp.sub(r'<a href="https://bugs.webkit.org/attachment.cgi?id=\g<patch_id>&action=prettypatch">patch \g<patch_id></a>', value)
     return value
 
+
 @register.filter
 @stringfilter
 def webkit_bug_id(value):
     return '<a href="http://webkit.org/b/%s">%s</a>' % (value, value)
+
 
 @register.filter
 @stringfilter
 def webkit_attachment_id(value):
     return '<a href="https://bugs.webkit.org/attachment.cgi?id=%s&action=prettypatch">%s</a>' % (value, value)
 
+
 @register.filter
 @stringfilter
 def results_link(status_id):
     return '<a href="/results/%s">results</a>' % status_id
+
+
+@register.filter
+@stringfilter
+def queue_status_link(queue_name, text):
+    return '<a href="/queue-status/%s">%s</a>' % (queue_name, text)
+
+
+@register.filter
+@stringfilter
+def queue_charts_link(queue_name, text):
+    return '<a href="/queue-charts/%s">%s</a>' % (queue_name, text)

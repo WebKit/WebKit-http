@@ -54,16 +54,20 @@ AccessibilityTableRow::~AccessibilityTableRow()
 
 PassRefPtr<AccessibilityTableRow> AccessibilityTableRow::create(RenderObject* renderer)
 {
-    AccessibilityTableRow* obj = new AccessibilityTableRow(renderer);
-    obj->init();
-    return adoptRef(obj);
+    return adoptRef(new AccessibilityTableRow(renderer));
 }
 
-AccessibilityRole AccessibilityTableRow::roleValue() const
+AccessibilityRole AccessibilityTableRow::determineAccessibilityRole()
 {
     if (!isTableRow())
-        return AccessibilityRenderObject::roleValue();
-    
+        return AccessibilityRenderObject::determineAccessibilityRole();
+
+    m_ariaRole = determineAriaRoleAttribute();
+
+    AccessibilityRole ariaRole = ariaRoleAttribute();
+    if (ariaRole != UnknownRole)
+        return ariaRole;
+
     return RowRole;
 }
 
@@ -98,11 +102,11 @@ bool AccessibilityTableRow::accessibilityIsIgnored() const
     
 AccessibilityObject* AccessibilityTableRow::parentTable() const
 {
-    if (!m_renderer || !m_renderer->isTableRow())
+    AccessibilityObject* parent = parentObjectUnignored();
+    if (!parent || !parent->isAccessibilityTable())
         return 0;
     
-    // Do not use getOrCreate. parentTable() can be called while the render tree is being modified.
-    return axObjectCache()->get(toRenderTableRow(m_renderer)->table());
+    return parent;
 }
     
 AccessibilityObject* AccessibilityTableRow::headerObject()

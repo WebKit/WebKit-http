@@ -97,16 +97,6 @@ void DownloadProxy::processDidClose()
     m_webContext->downloadClient().processDidCrash(m_webContext.get(), this);
 }
 
-void DownloadProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveDownloadProxyMessage(connection, messageID, decoder);
-}
-
-void DownloadProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
-{
-    didReceiveSyncDownloadProxyMessage(connection, messageID, decoder, replyEncoder);
-}
-
 void DownloadProxy::didStart(const ResourceRequest& request)
 {
     m_request = request;
@@ -159,7 +149,7 @@ void DownloadProxy::decideDestinationWithSuggestedFilename(const String& filenam
     destination = m_webContext->downloadClient().decideDestinationWithSuggestedFilename(m_webContext.get(), this, filename, allowOverwrite);
 
     if (!destination.isNull())
-        SandboxExtension::createHandle(destination, SandboxExtension::WriteOnly, sandboxExtensionHandle);
+        SandboxExtension::createHandle(destination, SandboxExtension::ReadWrite, sandboxExtensionHandle);
 }
 
 void DownloadProxy::didCreateDestination(const String& path)

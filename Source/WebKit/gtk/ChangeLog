@@ -1,3 +1,296 @@
+2013-02-04  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [Soup] Wrap SoupSession by NetworkStorageSession
+        https://bugs.webkit.org/show_bug.cgi?id=108615
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/FrameNetworkingContextGtk.cpp:
+        (WebKit::FrameNetworkingContextGtk::storageSession):
+        * WebCoreSupport/FrameNetworkingContextGtk.h:
+        (FrameNetworkingContextGtk):
+
+2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
+
+        Fix build warning after r141473
+        https://bugs.webkit.org/show_bug.cgi?id=108782
+
+        Reviewed by Kentaro Hara.
+
+        Fix -Wunused-parameter build warning.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::getClientPasteboardDataForRange):
+
+2013-02-01  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][GStreamer] FullscreenVideoControllerGtk implementation
+        https://bugs.webkit.org/show_bug.cgi?id=107398
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Remove the FullscreenVideoController as it moved to
+        FullscreenVideoControllerGStreamer and its Gtk subclass in
+        WebCore. Hook in NATIVE_FULLSCREEN_VIDEO in the ChromeClient in
+        the two possible scenarios, wether FULLSCREEN_API is enabled or not.
+
+        * GNUmakefile.am: Remove FullscreenVideoController.
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit):
+        (WebKit::ChromeClient::enterFullscreenForNode): Hook
+        NATIVE_FULLSCREEN_VIDEO support.
+        (WebKit::ChromeClient::exitFullscreenForNode): Ditto
+        (WebKit::ChromeClient::enterFullScreenForElement): Ditto
+        (WebKit::ChromeClient::exitFullScreenForElement): Ditto
+        * WebCoreSupport/ChromeClientGtk.h:
+        (ChromeClient):
+        * WebCoreSupport/FullscreenVideoController.cpp: Removed.
+        * WebCoreSupport/FullscreenVideoController.h: Removed.
+        * webkit/webkitwebview.cpp: Remove FullscreenVideoController support.
+        * webkit/webkitwebviewprivate.h: Ditto
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::respondToChangedSelection):
+            Adding a call to the newly refactored Editor method.
+
+2013-01-31  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r141479.
+        http://trac.webkit.org/changeset/141479
+        https://bugs.webkit.org/show_bug.cgi?id=108564
+
+        breaks chromium test (Requested by morrita on #webkit).
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::respondToChangedSelection):
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::respondToChangedSelection):
+            Adding a call to the newly refactored Editor method.
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::willWriteSelectionToPasteboard):
+        (WebKit::EditorClient::getClientPasteboardDataForRange):
+        * WebCoreSupport/EditorClientGtk.h:
+
+2013-01-30  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Remove GraphicsLayer in TextureMapperLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=107073
+
+        Reviewed by Noam Rosenthal.
+
+        Include GraphicsLayerTextureMapper.h to use toTextureMapperLayer().
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+
+2013-01-29  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Missing build flags when building with Harfbuzz
+        https://bugs.webkit.org/show_bug.cgi?id=108174
+
+        Reviewed by Martin Robinson.
+
+        Add FREETYPE_CFLAGS and FREETYPE_LIBS to makefiles so -lharfbuzz
+        parameter will be added to linking lines when needed.
+
+        * GNUmakefile.am: Added FREETYPE_CFLAGS and FREETYPE_LIBS.
+
+2013-01-28  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Enable debug borders and repaint counter via Settings.
+        https://bugs.webkit.org/show_bug.cgi?id=107198
+
+        Reviewed by Benjamin Poulain.
+
+        If WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS is set to 1, set
+        showDebugBorders and showRepaintCounter in Settings to true.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+
+2013-01-25  Joone Hur  <joone.hur@intel.com>
+
+        [GTK][AC] Use new Clutter APIs instead of deprecated APIs
+        https://bugs.webkit.org/show_bug.cgi?id=105736
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Use clutter_actor_set_background_color instead of clutter_stage_set_color.
+        Use clutter_actor_add_child instead of clutter_container_add_actor.
+        Remove clutter_actor_show_all because Actors are visible by default.
+
+        * WebCoreSupport/AcceleratedCompositingContextClutter.cpp:
+        (WebKit::AcceleratedCompositingContext::setRootCompositingLayer):
+
+2013-01-25  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] LDFLAGS are being incorrectly used at compile time (rather than linking)
+        https://bugs.webkit.org/show_bug.cgi?id=100616
+
+        Unreviewed, since this is just a build fix.
+
+        * GNUmakefile.am: use PACKAGE_CFLAGS instead of PACKAGE_LIBS when appending pkg-config
+        variables to build target _CFLAGS.
+
+2013-01-24  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Objective-C API: Rename JSValue.h/APIJSValue.h to JSCJSValue.h/JSValue.h
+        https://bugs.webkit.org/show_bug.cgi?id=107327
+
+        Reviewed by Filip Pizlo.
+
+        We're renaming these two files, so we have to replace the names everywhere.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+
+2013-01-23  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Avoid reset title for navigation within the page
+        https://bugs.webkit.org/show_bug.cgi?id=106908
+
+        Reviewed by Martin Robinson.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::dispatchDidNavigateWithinPage): Call
+        dispatchDidCommitLoad with true as param.
+        (WebKit::FrameLoaderClient::dispatchDidCommitLoad): The method has been
+        overloaded. The default implementation (without params) simply calls
+        dispatchDidCommitLoad with false. The new private method with
+        isNavigatingWithinPage as param will avoid to reset the title for
+        navigation within the page.
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        (FrameLoaderClient): Add new private method dispatchDidCommitLoad with a
+        boolean parameter to know if it is navigating withing the same page or
+        not.
+
+2013-01-22  Anders Carlsson  <andersca@apple.com>
+
+        Use a platforom strategy for local storage
+        https://bugs.webkit.org/show_bug.cgi?id=107600
+
+        Reviewed by Andreas Kling.
+
+        Update for new storage strategy.
+
+        * WebCoreSupport/PlatformStrategiesGtk.cpp:
+        (PlatformStrategiesGtk::createStorageStrategy):
+        * WebCoreSupport/PlatformStrategiesGtk.h:
+        (PlatformStrategiesGtk):
+
+2013-01-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Add listener for direction-changed signal in WebKitWebView
+        https://bugs.webkit.org/show_bug.cgi?id=107131
+
+        Reviewed by Philippe Normand.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init): Add listener for direction-changed signal.
+        (webkitWebViewDirectionChanged): Implement listener using
+        Editor::setBaseWritingDirection().
+
+2013-01-21  Oleg Smirnov  <oleg.smirnov@lge.com>
+
+        [Gtk] Dispatching event list into input element.
+        https://bugs.webkit.org/show_bug.cgi?id=107259
+
+        Reviewed by Martin Robinson.
+
+        Clear pending command list after dispatching events.
+
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::handleKeyboardEvent):
+
+2013-01-18  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add property for IndexedDB database path to WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=106136
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Make the web database directory affect both the legacy SQLite web
+        database API and the newer indexed database API. This will allow us
+        to run IDB tests in WebKit1.
+
+        * webkit/webkitglobals.cpp:
+        (webkitPageGroupName): Added this helper to get the default page
+        group name.
+        * webkit/webkitglobalsprivate.h: Added a declaration for the helper.
+        * webkit/webkitwebdatabase.cpp:
+        (webkit_get_web_database_directory_path): Just return the cached value.
+        This is always set by webkitInit.
+        (webkit_set_web_database_directory_path): Set both the IDB and legacy
+        database paths.
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_init): Use the new page group name helper.
+
+2013-01-18  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Add explicit keyword to constructors in platform-specific InspectorClient
+        https://bugs.webkit.org/show_bug.cgi?id=107255
+
+        Reviewed by Kentaro Hara.
+
+        Add explicit keyword to constructors that take one argument
+        in platform-specific implementation of InspectorClient.
+        And fix some coding style.
+
+        * WebCoreSupport/InspectorClientGtk.h:
+        (WebCore):
+        (WebKit):
+        (InspectorClient):
+        (WebKit::InspectorClient::disconnectFrontendClient):
+        (InspectorFrontendClient):
+        (WebKit::InspectorFrontendClient::disconnectInspectorClient):
+
+2013-01-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Add new method to support addUserScript in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=107275
+
+        Reviewed by Philippe Normand.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::addUserScript): Implement new method using
+        PageGroup::addUserScriptToWorld.
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk): Define method header.
+
+2013-01-17  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Build with LevelDB when IndexedDB is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=103220
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: When IndexedDatabase is enabled add the leveldb convenience
+        library to the shared library link phase.
+
 2013-01-15  Zan Dobersek  <zandobersek@gmail.com>
 
         [Autotools] Add support for WebKit2-only builds

@@ -155,7 +155,7 @@ class RenderObject : public CachedImageClient {
 public:
     // Anonymous objects should pass the document as their node, and they will then automatically be
     // marked as anonymous in the constructor.
-    RenderObject(Node*);
+    explicit RenderObject(Node*);
     virtual ~RenderObject();
 
     RenderTheme* theme() const;
@@ -321,7 +321,7 @@ public:
 #endif
     virtual bool isQuote() const { return false; }
 
-#if ENABLE(DETAILS_ELEMENT)
+#if ENABLE(DETAILS_ELEMENT) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     virtual bool isDetailsMarker() const { return false; }
 #endif
     virtual bool isEmbeddedObject() const { return false; }
@@ -498,7 +498,6 @@ public:
 #endif
 
     bool isAnonymous() const { return m_bitfields.isAnonymous(); }
-    void setIsAnonymous(bool b) { m_bitfields.setIsAnonymous(b); }
     bool isAnonymousBlock() const
     {
         // This function is kept in sync with anonymous block creation conditions in
@@ -544,6 +543,8 @@ public:
     bool borderImageIsLoadedAndCanBeRendered() const;
     bool mustRepaintBackgroundOrBorder() const;
     bool hasBackground() const { return style()->hasBackground(); }
+    bool hasEntirelyFixedBackground() const;
+
     bool needsLayout() const
     {
         return m_bitfields.needsLayout() || m_bitfields.normalChildNeedsLayout() || m_bitfields.posChildNeedsLayout()
@@ -610,7 +611,7 @@ public:
     // Returns the styled node that caused the generation of this renderer.
     // This is the same as node() except for renderers of :before and :after
     // pseudo elements for which their parent node is returned.
-    Node* generatingNode() const { return isPseudoElement() ? node()->parentOrHostNode() : node(); }
+    Node* generatingNode() const { return isPseudoElement() ? node()->parentOrShadowHostNode() : node(); }
 
     Document* document() const { return m_node->document(); }
     Frame* frame() const { return document()->frame(); }
@@ -713,6 +714,15 @@ public:
     // returns the containing block level element for this element.
     RenderBlock* containingBlock() const;
 
+    bool canContainFixedPositionObjects() const
+    {
+        return isRenderView() || (hasTransform() && isRenderBlock())
+#if ENABLE(SVG)
+                || isSVGForeignObject()
+#endif
+                || isRenderFlowThread();
+    }
+
     // Convert the given local point to absolute coordinates
     // FIXME: Temporary. If UseTransforms is true, take transforms into account. Eventually localToAbsolute() will always be transform-aware.
     FloatPoint localToAbsolute(const FloatPoint& localPoint = FloatPoint(), MapCoordinatesFlags = 0) const;
@@ -723,6 +733,8 @@ public:
     {
         return localToContainerQuad(quad, 0, mode, wasFixed);
     }
+    // Convert an absolute quad to local coordinates.
+    FloatQuad absoluteToLocalQuad(const FloatQuad&, MapCoordinatesFlags mode = 0) const;
 
     // Convert a local quad into the coordinate system of container, taking transforms into account.
     FloatQuad localToContainerQuad(const FloatQuad&, const RenderLayerModelObject* repaintContainer, MapCoordinatesFlags = 0, bool* wasFixed = 0) const;
@@ -979,6 +991,8 @@ protected:
     virtual void insertedIntoTree();
     virtual void willBeRemovedFromTree();
 
+    void setDocumentForAnonymous(Document* document) { ASSERT(isAnonymous()); m_node = document; }
+
 private:
     void removeFromRenderFlowThread();
     void removeFromRenderFlowThreadRecursive(RenderFlowThread*);
@@ -1031,7 +1045,7 @@ private:
             , m_preferredLogicalWidthsDirty(false)
             , m_floating(false)
             , m_paintBackground(false)
-            , m_isAnonymous(node == node->document())
+            , m_isAnonymous(!node)
             , m_isText(false)
             , m_isBox(false)
             , m_isInline(true)

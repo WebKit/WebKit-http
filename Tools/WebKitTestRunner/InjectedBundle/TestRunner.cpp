@@ -32,13 +32,13 @@
 #include "PlatformWebView.h"
 #include "StringFunctions.h"
 #include "TestController.h"
-#include <WebCore/PageVisibilityState.h>
 #include <WebKit2/WKBundle.h>
 #include <WebKit2/WKBundleBackForwardList.h>
 #include <WebKit2/WKBundleFrame.h>
 #include <WebKit2/WKBundleFramePrivate.h>
 #include <WebKit2/WKBundleInspector.h>
 #include <WebKit2/WKBundleNodeHandlePrivate.h>
+#include <WebKit2/WKBundlePage.h>
 #include <WebKit2/WKBundlePagePrivate.h>
 #include <WebKit2/WKBundlePrivate.h>
 #include <WebKit2/WKBundleScriptWorld.h>
@@ -52,11 +52,6 @@
 #include <wtf/PassOwnArrayPtr.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
-
-#if ENABLE(WEB_INTENTS)
-#include <WebKit2/WKBundleIntent.h>
-#include <WebKit2/WKBundleIntentRequest.h>
-#endif
 
 namespace WTR {
 
@@ -551,21 +546,21 @@ void TestRunner::setDefersLoading(bool shouldDeferLoading)
 
 void TestRunner::setPageVisibility(JSStringRef state)
 {
-    WebCore::PageVisibilityState visibilityState = WebCore::PageVisibilityStateVisible;
+    WKPageVisibilityState visibilityState = kWKPageVisibilityStateVisible;
 
     if (JSStringIsEqualToUTF8CString(state, "hidden"))
-        visibilityState = WebCore::PageVisibilityStateHidden;
+        visibilityState = kWKPageVisibilityStateHidden;
     else if (JSStringIsEqualToUTF8CString(state, "prerender"))
-        visibilityState = WebCore::PageVisibilityStatePrerender;
+        visibilityState = kWKPageVisibilityStatePrerender;
     else if (JSStringIsEqualToUTF8CString(state, "preview"))
-        visibilityState = WebCore::PageVisibilityStatePreview;
+        visibilityState = kWKPageVisibilityStatePreview;
 
-    WKBundleSetPageVisibilityState(InjectedBundle::shared().bundle(), InjectedBundle::shared().page()->page(), visibilityState, /* isInitialState */ false);
+    InjectedBundle::shared().setVisibilityState(visibilityState, false);
 }
 
 void TestRunner::resetPageVisibility()
 {
-    WKBundleSetPageVisibilityState(InjectedBundle::shared().bundle(), InjectedBundle::shared().page()->page(), WebCore::PageVisibilityStateVisible, /* isInitialState */ true);
+    InjectedBundle::shared().setVisibilityState(kWKPageVisibilityStateVisible, true);
 }
 
 typedef WTF::HashMap<unsigned, JSValueRef> CallbackMap;
@@ -667,52 +662,6 @@ void TestRunner::overridePreference(JSStringRef preference, JSStringRef value)
 {
     // FIXME: handle non-boolean preferences.
     WKBundleOverrideBoolPreferenceForTestRunner(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), toWK(preference).get(), toBool(value));
-}
-
-void TestRunner::sendWebIntentResponse(JSStringRef reply)
-{
-#if ENABLE(WEB_INTENTS)
-    WKRetainPtr<WKBundleIntentRequestRef> currentRequest = InjectedBundle::shared().page()->currentIntentRequest();
-    if (!currentRequest)
-        return;
-
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
-
-    if (reply) {
-        WKRetainPtr<WKSerializedScriptValueRef> serializedData(AdoptWK, WKSerializedScriptValueCreate(context, JSValueMakeString(context, reply), 0));
-        WKBundleIntentRequestPostResult(currentRequest.get(), serializedData.get());
-    } else {
-        JSRetainPtr<JSStringRef> errorReply(JSStringCreateWithUTF8CString("ERROR"));
-        WKRetainPtr<WKSerializedScriptValueRef> serializedData(AdoptWK, WKSerializedScriptValueCreate(context, JSValueMakeString(context, errorReply.get()), 0));
-        WKBundleIntentRequestPostFailure(currentRequest.get(), serializedData.get());
-    }
-#endif
-}
-
-void TestRunner::deliverWebIntent(JSStringRef action, JSStringRef type, JSStringRef data)
-{
-#if ENABLE(WEB_INTENTS)
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
-
-    WKRetainPtr<WKStringRef> actionWK = toWK(action);
-    WKRetainPtr<WKStringRef> typeWK = toWK(type);
-    WKRetainPtr<WKSerializedScriptValueRef> dataWK(AdoptWK, WKSerializedScriptValueCreate(context, JSValueMakeString(context, data), 0));
-
-    WKRetainPtr<WKMutableDictionaryRef> intentInitDict(AdoptWK, WKMutableDictionaryCreate());
-    WKRetainPtr<WKStringRef> actionKey(AdoptWK, WKStringCreateWithUTF8CString("action"));
-    WKDictionaryAddItem(intentInitDict.get(), actionKey.get(), actionWK.get());
-
-    WKRetainPtr<WKStringRef> typeKey(AdoptWK, WKStringCreateWithUTF8CString("type"));
-    WKDictionaryAddItem(intentInitDict.get(), typeKey.get(), typeWK.get());
-
-    WKRetainPtr<WKStringRef> dataKey(AdoptWK, WKStringCreateWithUTF8CString("data"));
-    WKDictionaryAddItem(intentInitDict.get(), dataKey.get(), dataWK.get());
-
-    WKRetainPtr<WKBundleIntentRef> wkIntent(AdoptWK, WKBundleIntentCreate(intentInitDict.get()));
-    WKBundlePageDeliverIntentToFrame(InjectedBundle::shared().page()->page(), mainFrame, wkIntent.get());
-#endif
 }
 
 void TestRunner::setAlwaysAcceptCookies(bool accept)

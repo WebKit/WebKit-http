@@ -349,6 +349,11 @@ void WKPageListenForLayoutMilestones(WKPageRef pageRef, WKLayoutMilestones miles
     toImpl(pageRef)->listenForLayoutMilestones(toLayoutMilestones(milestones));
 }
 
+void WKPageSetVisibilityState(WKPageRef pageRef, WKPageVisibilityState state, bool isInitialState)
+{
+    toImpl(pageRef)->setVisibilityState(toPageVisibilityState(state), isInitialState);
+}
+
 bool WKPageHasHorizontalScrollbar(WKPageRef pageRef)
 {
     return toImpl(pageRef)->hasHorizontalScrollbar();
@@ -555,11 +560,6 @@ void WKPageSetPagePolicyClient(WKPageRef pageRef, const WKPagePolicyClient* wkCl
     toImpl(pageRef)->initializePolicyClient(wkClient);
 }
 
-void WKPageSetPageResourceLoadClient(WKPageRef pageRef, const WKPageResourceLoadClient* wkClient)
-{
-    toImpl(pageRef)->initializeResourceLoadClient(wkClient);
-}
-
 void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClient* wkClient)
 {
     toImpl(pageRef)->initializeUIClient(wkClient);
@@ -759,13 +759,6 @@ void WKPageEndPrinting(WKPageRef page)
     toImpl(page)->endPrinting();
 }
 #endif
-
-void WKPageDeliverIntentToFrame(WKPageRef page, WKFrameRef frame, WKIntentDataRef intent)
-{
-#if ENABLE(WEB_INTENTS)
-    toImpl(page)->deliverIntentToFrame(toImpl(frame), toImpl(intent));
-#endif
-}
 
 WKImageRef WKPageCreateSnapshotOfVisibleContent(WKPageRef)
 {

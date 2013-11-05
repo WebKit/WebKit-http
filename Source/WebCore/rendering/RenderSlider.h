@@ -33,7 +33,7 @@ class RenderSlider : public RenderFlexibleBox {
 public:
     static const int defaultTrackLength;
 
-    RenderSlider(HTMLInputElement*);
+    explicit RenderSlider(HTMLInputElement*);
     virtual ~RenderSlider();
 
     bool inDragMode() const;
@@ -52,7 +52,7 @@ private:
 
 inline RenderSlider* toRenderSlider(RenderObject* object)
 {
-    ASSERT(!object || object->isSlider());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSlider());
     return static_cast<RenderSlider*>(object);
 }
 

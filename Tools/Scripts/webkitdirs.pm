@@ -80,6 +80,7 @@ my $numberOfCPUs;
 my $baseProductDir;
 my @baseProductDirOption;
 my $configuration;
+my $xcodeSDK;
 my $configurationForVisualStudio;
 my $configurationProductDir;
 my $sourceDir;
@@ -302,6 +303,7 @@ sub determineArchitecture
     $architecture = "";
 
     determineBaseProductDir();
+    determineXcodeSDK();
 
     if (isGtk()) {
         determineConfigurationProductDir();
@@ -318,9 +320,15 @@ sub determineArchitecture
         if ($architecture) {
             chomp $architecture;
         } else {
-            my $supports64Bit = `sysctl -n hw.optional.x86_64`;
-            chomp $supports64Bit;
-            $architecture = 'x86_64' if $supports64Bit;
+            if (not defined $xcodeSDK or $xcodeSDK =~ /^(\/$|macosx)/) {
+                my $supports64Bit = `sysctl -n hw.optional.x86_64`;
+                chomp $supports64Bit;
+                $architecture = 'x86_64' if $supports64Bit;
+            } elsif ($xcodeSDK =~ /^iphonesimulator/) {
+                $architecture = 'i386';
+            } elsif ($xcodeSDK =~ /^iphoneos/) {
+                $architecture = 'armv7';
+            }
         }
     } elsif (isEfl() || isHaiku()) {
         my $host_processor = "";
@@ -398,6 +406,30 @@ sub argumentsForConfiguration()
     push(@args, '--chromium-android') if isChromiumAndroid();
     push(@args, '--inspector-frontend') if isInspectorFrontend();
     return @args;
+}
+
+sub determineXcodeSDK
+{
+    return if defined $xcodeSDK;
+    for (my $i = 0; $i <= $#ARGV; $i++) {
+        my $opt = $ARGV[$i];
+        if ($opt =~ /^--sdk$/i) {
+            splice(@ARGV, $i, 1);
+            $xcodeSDK = splice(@ARGV, $i, 1);
+        } elsif ($opt =~ /^--device$/i) {
+            splice(@ARGV, $i, 1);
+            $xcodeSDK = 'iphoneos.internal';
+        } elsif ($opt =~ /^--sim(ulator)?/i) {
+            splice(@ARGV, $i, 1);
+            $xcodeSDK = 'iphonesimulator';
+        }
+    }
+}
+
+sub xcodeSDK
+{
+    determineXcodeSDK();
+    return $xcodeSDK;
 }
 
 sub determineConfigurationForVisualStudio
@@ -524,7 +556,12 @@ sub XcodeOptions
     determineBaseProductDir();
     determineConfiguration();
     determineArchitecture();
-    return (@baseProductDirOption, "-configuration", $configuration, "ARCHS=$architecture", argumentsForXcode());
+    determineXcodeSDK();
+
+    my @sdkOption = ($xcodeSDK ? "SDKROOT=$xcodeSDK" : ());
+    my @architectureOption = ($architecture ? "ARCHS=$architecture" : ());
+
+    return (@baseProductDirOption, "-configuration", $configuration, @architectureOption, @sdkOption, argumentsForXcode());
 }
 
 sub XcodeOptionString
@@ -1336,7 +1373,7 @@ sub isFreeBSD()
 
 sub isARM()
 {
-    return $Config{archname} =~ /^arm-/;
+    return $Config{archname} =~ /^arm[v\-]/;
 }
 
 sub isCrossCompilation()
@@ -2251,7 +2288,7 @@ sub buildCMakeProjectOrExit($$$$@)
 sub cmakeBasedPortArguments()
 {
     return blackberryCMakeArguments() if isBlackBerry();
-    return ('-DCMAKE_WINCE_SDK="STANDARDSDK_500 (ARMV4I)"') if isWinCE();
+    return ('-G "Visual Studio 8 2005 STANDARDSDK_500 (ARMV4I)"') if isWinCE();
     return ();
 }
 

@@ -725,7 +725,8 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 
     if (scale == m_pageScaleFactor) {
         if (view && (view->scrollPosition() != origin || view->delegatesScrolling())) {
-            document->updateLayoutIgnorePendingStylesheets();
+            if (!m_settings->applyPageScaleFactorInCompositor())
+                document->updateLayoutIgnorePendingStylesheets();
             view->setScrollPosition(origin);
         }
         return;
@@ -733,20 +734,22 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 
     m_pageScaleFactor = scale;
 
-    if (document->renderer())
-        document->renderer()->setNeedsLayout(true);
+    if (!m_settings->applyPageScaleFactorInCompositor()) {
+        if (document->renderer())
+            document->renderer()->setNeedsLayout(true);
 
-    document->recalcStyle(Node::Force);
+        document->recalcStyle(Node::Force);
 
-    // Transform change on RenderView doesn't trigger repaint on non-composited contents.
-    mainFrame()->view()->invalidateRect(IntRect(LayoutRect::infiniteRect()));
+        // Transform change on RenderView doesn't trigger repaint on non-composited contents.
+        mainFrame()->view()->invalidateRect(IntRect(LayoutRect::infiniteRect()));
+    }
 
 #if USE(ACCELERATED_COMPOSITING)
     mainFrame()->deviceOrPageScaleFactorChanged();
 #endif
 
     if (view && view->scrollPosition() != origin) {
-        if (document->renderer() && document->renderer()->needsLayout() && view->didFirstLayout())
+        if (!m_settings->applyPageScaleFactorInCompositor() && document->renderer() && document->renderer()->needsLayout() && view->didFirstLayout())
             view->layout();
         view->setScrollPosition(origin);
     }
@@ -1369,42 +1372,42 @@ void Page::resetSeenMediaEngines()
 void Page::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Page);
-    info.addMember(m_chrome);
-    info.addMember(m_dragCaretController);
+    info.addMember(m_chrome, "chrome");
+    info.addMember(m_dragCaretController, "dragCaretController");
 
 #if ENABLE(DRAG_SUPPORT)
-    info.addMember(m_dragController);
+    info.addMember(m_dragController, "dragController");
 #endif
-    info.addMember(m_focusController);
+    info.addMember(m_focusController, "focusController");
 #if ENABLE(CONTEXT_MENUS)
-    info.addMember(m_contextMenuController);
+    info.addMember(m_contextMenuController, "contextMenuController");
 #endif
 #if ENABLE(INSPECTOR)
-    info.addMember(m_inspectorController);
+    info.addMember(m_inspectorController, "inspectorController");
 #endif
 #if ENABLE(POINTER_LOCK)
-    info.addMember(m_pointerLockController);
+    info.addMember(m_pointerLockController, "pointerLockController");
 #endif
-    info.addMember(m_scrollingCoordinator);
-    info.addMember(m_settings);
-    info.addMember(m_progress);
-    info.addMember(m_backForwardController);
-    info.addMember(m_mainFrame);
-    info.addMember(m_pluginData);
-    info.addMember(m_theme);
-    info.addMember(m_featureObserver);
-    info.addMember(m_groupName);
-    info.addMember(m_pagination);
-    info.addMember(m_userStyleSheetPath);
-    info.addMember(m_userStyleSheet);
-    info.addMember(m_singlePageGroup);
-    info.addMember(m_group);
-    info.addMember(m_sessionStorage);
-    info.addMember(m_relevantUnpaintedRenderObjects);
-    info.addMember(m_relevantPaintedRegion);
-    info.addMember(m_relevantUnpaintedRegion);
-    info.addMember(m_seenPlugins);
-    info.addMember(m_seenMediaEngines);
+    info.addMember(m_scrollingCoordinator, "scrollingCoordinator");
+    info.addMember(m_settings, "settings");
+    info.addMember(m_progress, "progress");
+    info.addMember(m_backForwardController, "backForwardController");
+    info.addMember(m_mainFrame, "mainFrame");
+    info.addMember(m_pluginData, "pluginData");
+    info.addMember(m_theme, "theme");
+    info.addMember(m_featureObserver, "featureObserver");
+    info.addMember(m_groupName, "groupName");
+    info.addMember(m_pagination, "pagination");
+    info.addMember(m_userStyleSheetPath, "userStyleSheetPath");
+    info.addMember(m_userStyleSheet, "userStyleSheet");
+    info.addMember(m_singlePageGroup, "singlePageGroup");
+    info.addMember(m_group, "group");
+    info.addMember(m_sessionStorage, "sessionStorage");
+    info.addMember(m_relevantUnpaintedRenderObjects, "relevantUnpaintedRenderObjects");
+    info.addMember(m_relevantPaintedRegion, "relevantPaintedRegion");
+    info.addMember(m_relevantUnpaintedRegion, "relevantUnpaintedRegion");
+    info.addMember(m_seenPlugins, "seenPlugins");
+    info.addMember(m_seenMediaEngines, "seenMediaEngines");
 
     info.ignoreMember(m_debugger);
     info.ignoreMember(m_alternativeTextClient);

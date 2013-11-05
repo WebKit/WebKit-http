@@ -142,10 +142,46 @@ static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& la
 typedef void (ProcessLauncher::*DidFinishLaunchingProcessFunction)(PlatformProcessIdentifier, CoreIPC::Connection::Identifier);
 
 #if HAVE(XPC)
-static void connectToWebProcessServiceForWebKitDevelopment(const ProcessLauncher::LaunchOptions&, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction, UUIDHolder* instanceUUID)
+
+static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment)
+{
+    switch (launchOptions.processType) {
+    case ProcessLauncher::WebProcess:
+        if (forDevelopment)
+            return "com.apple.WebKit.WebContent.Development";
+        return "com.apple.WebKit.WebContent";
+#if ENABLE(NETWORK_PROCESS)
+    case ProcessLauncher::NetworkProcess:
+        if (forDevelopment)
+            return "com.apple.WebKit.Networking.Development";
+        return "com.apple.WebKit.Networking";
+#endif
+#if ENABLE(PLUGIN_PROCESS)
+    case ProcessLauncher::PluginProcess:
+        if (forDevelopment)
+            return "com.apple.WebKit.Plugin.Development";
+
+        // FIXME: Support plugins that require an executable heap.
+        if (launchOptions.architecture == CPU_TYPE_X86)
+            return "com.apple.WebKit.Plugin.32";
+        if (launchOptions.architecture == CPU_TYPE_X86_64)
+            return "com.apple.WebKit.Plugin.64";
+
+        ASSERT_NOT_REACHED();
+        return 0;
+#endif
+#if ENABLE(SHARED_WORKER_PROCESS)
+    case ProcessLauncher::SharedWorkerProcess:
+        ASSERT_NOT_REACHED();
+        return 0;
+#endif
+    }
+}
+
+static void connectToService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction, UUIDHolder* instanceUUID)
 {
     // Create a connection to the WebKit2 XPC service.
-    xpc_connection_t connection = xpc_connection_create("com.apple.WebKit2.WebProcessServiceForWebKitDevelopment", 0);
+    xpc_connection_t connection = xpc_connection_create(serviceName(launchOptions, forDevelopment), 0);
     xpc_connection_set_instance(connection, instanceUUID->uuid);
 
     // XPC requires having an event handler, even if it is not used.
@@ -168,8 +204,19 @@ static void connectToWebProcessServiceForWebKitDevelopment(const ProcessLauncher
     xpc_dictionary_set_mach_send(bootstrapMessage, "server-port", listeningPort);
     xpc_dictionary_set_string(bootstrapMessage, "client-identifier", clientIdentifier.data());
     xpc_dictionary_set_string(bootstrapMessage, "ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String]);
-    xpc_dictionary_set_fd(bootstrapMessage, "stdout", STDOUT_FILENO);
-    xpc_dictionary_set_fd(bootstrapMessage, "stderr", STDERR_FILENO);
+
+    if (forDevelopment) {
+        xpc_dictionary_set_fd(bootstrapMessage, "stdout", STDOUT_FILENO);
+        xpc_dictionary_set_fd(bootstrapMessage, "stderr", STDERR_FILENO);
+    }
+
+    xpc_object_t extraInitializationData = xpc_dictionary_create(0, 0, 0);
+    HashMap<String, String>::const_iterator it = launchOptions.extraInitializationData.begin();
+    HashMap<String, String>::const_iterator end = launchOptions.extraInitializationData.end();
+    for (; it != end; ++it)
+        xpc_dictionary_set_string(extraInitializationData, it->key.utf8().data(), it->value.utf8().data());
+    xpc_dictionary_set_value(bootstrapMessage, "extra-initialization-data", extraInitializationData);
+    xpc_release(extraInitializationData);
 
     that->ref();
 
@@ -199,16 +246,16 @@ static void connectToWebProcessServiceForWebKitDevelopment(const ProcessLauncher
     xpc_release(bootstrapMessage);
 }
 
-static void createWebProcessServiceForWebKitDevelopment(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
+static void connectToReExecService(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
     EnvironmentVariables environmentVariables;
     addDYLDEnvironmentAdditions(launchOptions, true, environmentVariables);
 
     // Generate the uuid for the service instance we are about to create.
-    // FIXME: This UUID should be stored on the WebProcessProxy.
+    // FIXME: This UUID should be stored on the ChildProcessProxy.
     RefPtr<UUIDHolder> instanceUUID = UUIDHolder::create();
 
-    xpc_connection_t reExecConnection = xpc_connection_create("com.apple.WebKit2.WebProcessServiceForWebKitDevelopment", 0);
+    xpc_connection_t reExecConnection = xpc_connection_create(serviceName(launchOptions, true), 0);
     xpc_connection_set_instance(reExecConnection, instanceUUID->uuid);
 
     // Keep the ProcessLauncher alive while we do the re-execing (balanced in event handler).
@@ -220,7 +267,7 @@ static void createWebProcessServiceForWebKitDevelopment(const ProcessLauncher::L
     xpc_connection_set_event_handler(reExecConnection, ^(xpc_object_t event) {
         ASSERT(xpc_get_type(event) == XPC_TYPE_ERROR);
 
-        connectToWebProcessServiceForWebKitDevelopment(launchOptions, that, didFinishLaunchingProcessFunction, instanceUUID.get());
+        connectToService(launchOptions, true, that, didFinishLaunchingProcessFunction, instanceUUID.get());
 
         // Release the connection.
         xpc_release(reExecConnection);
@@ -254,63 +301,19 @@ static void createWebProcessServiceForWebKitDevelopment(const ProcessLauncher::L
     xpc_release(reExecMessage);
 }
 
-static void createWebProcessService(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
+static void createService(const ProcessLauncher::LaunchOptions& launchOptions, bool forDevelopment, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
 {
+    if (forDevelopment) {
+        connectToReExecService(launchOptions, that, didFinishLaunchingProcessFunction);
+        return;
+    }
+
     // Generate the uuid for the service instance we are about to create.
-    // FIXME: This UUID should be stored on the WebProcessProxy.
+    // FIXME: This UUID should be stored on the ChildProcessProxy.
     RefPtr<UUIDHolder> instanceUUID = UUIDHolder::create();
-
-    // Create a connection to the WebKit2 XPC service.
-    xpc_connection_t connection = xpc_connection_create("com.apple.WebKit2.WebProcessService", 0);
-    xpc_connection_set_instance(connection, instanceUUID->uuid);
-
-    // XPC requires having an event handler, even if it is not used.
-    xpc_connection_set_event_handler(connection, ^(xpc_object_t event) { });
-    xpc_connection_resume(connection);
-
-    // Create the listening port.
-    mach_port_t listeningPort;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
-    
-    // Insert a send right so we can send to it.
-    mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
-
-    NSString *bundleIdentifier = [[NSBundle mainBundle] bundleIdentifier];
-    CString clientIdentifier = bundleIdentifier ? String([[NSBundle mainBundle] bundleIdentifier]).utf8() : *_NSGetProgname();
-
-    xpc_object_t bootstrapMessage = xpc_dictionary_create(0, 0, 0);
-    xpc_dictionary_set_string(bootstrapMessage, "message-name", "bootstrap");
-    xpc_dictionary_set_mach_send(bootstrapMessage, "server-port", listeningPort);
-    xpc_dictionary_set_string(bootstrapMessage, "client-identifier", clientIdentifier.data());
-    xpc_dictionary_set_string(bootstrapMessage, "ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String]);
-
-    that->ref();
-
-    xpc_connection_send_message_with_reply(connection, bootstrapMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
-        xpc_type_t type = xpc_get_type(reply);
-        if (type == XPC_TYPE_ERROR) {
-            // We failed to launch. Release the send right.
-            mach_port_deallocate(mach_task_self(), listeningPort);
-
-            // And the receive right.
-            mach_port_mod_refs(mach_task_self(), listeningPort, MACH_PORT_RIGHT_RECEIVE, -1);
-
-            RunLoop::main()->dispatch(bind(didFinishLaunchingProcessFunction, that, 0, CoreIPC::Connection::Identifier()));
-        } else {
-            ASSERT(type == XPC_TYPE_DICTIONARY);
-            ASSERT(!strcmp(xpc_dictionary_get_string(reply, "message-name"), "process-finished-launching"));
-
-            // The process has finished launching, grab the pid from the connection.
-            pid_t processIdentifier = xpc_connection_get_pid(connection);
-
-            // We've finished launching the process, message back to the main run loop.
-            RunLoop::main()->dispatch(bind(didFinishLaunchingProcessFunction, that, processIdentifier, CoreIPC::Connection::Identifier(listeningPort, connection)));
-        }
-
-        that->deref();
-    });
-    xpc_release(bootstrapMessage);
+    connectToService(launchOptions, false, that, didFinishLaunchingProcessFunction, instanceUUID.get());
 }
+
 #endif
 
 static bool tryPreexistingProcess(const ProcessLauncher::LaunchOptions& launchOptions, ProcessLauncher* that, DidFinishLaunchingProcessFunction didFinishLaunchingProcessFunction)
@@ -377,7 +380,7 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
     NSBundle *webKit2Bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit2"];
 
     NSString *processPath = nil;
-    switch(launchOptions.processType) {
+    switch (launchOptions.processType) {
     case ProcessLauncher::WebProcess:
         processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"WebProcess.app"];
         break;
@@ -407,8 +410,35 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
     // Make a unique, per pid, per process launcher web process service name.
     CString serviceName = String::format("com.apple.WebKit.WebProcess-%d-%p", getpid(), that).utf8();
 
-    const char* args[] = { [processAppExecutablePath fileSystemRepresentation], [frameworkExecutablePath fileSystemRepresentation], "-type", ProcessLauncher::processTypeAsString(launchOptions.processType), "-servicename", serviceName.data(), "-localization", localization.data(), "-client-identifier", clientIdentifier.data(),
-        "-ui-process-name", [[[NSProcessInfo processInfo] processName] UTF8String], 0 };
+    Vector<const char*> args;
+    args.append([processAppExecutablePath fileSystemRepresentation]);
+    args.append([frameworkExecutablePath fileSystemRepresentation]);
+    args.append("-type");
+    args.append(ProcessLauncher::processTypeAsString(launchOptions.processType));
+    args.append("-servicename");
+    args.append(serviceName.data());
+    args.append("-localization");
+    args.append(localization.data());
+    args.append("-client-identifier");
+    args.append(clientIdentifier.data());
+    args.append("-ui-process-name");
+    args.append([[[NSProcessInfo processInfo] processName] UTF8String]);
+
+    HashMap<String, String>::const_iterator it = launchOptions.extraInitializationData.begin();
+    HashMap<String, String>::const_iterator end = launchOptions.extraInitializationData.end();
+    Vector<CString> temps;
+    for (; it != end; ++it) {
+        String keyPlusDash = "-" + it->key;
+        CString key(keyPlusDash.utf8().data());
+        temps.append(key);
+        args.append(key.data());
+
+        CString value(it->value.utf8().data());
+        temps.append(value);
+        args.append(value.data());
+    }
+
+    args.append(nullptr);
 
     // Register ourselves.
     kern_return_t kr = bootstrap_register2(bootstrap_port, const_cast<char*>(serviceName.data()), listeningPort, 0);
@@ -445,7 +475,7 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
     posix_spawnattr_setflags(&attr, flags);
 
     pid_t processIdentifier = 0;
-    int result = posix_spawn(&processIdentifier, args[0], 0, &attr, const_cast<char**>(args), environmentVariables.environmentPointer());
+    int result = posix_spawn(&processIdentifier, args[0], 0, &attr, const_cast<char**>(args.data()), environmentVariables.environmentPointer());
 
     posix_spawnattr_destroy(&attr);
 
@@ -477,13 +507,7 @@ void ProcessLauncher::launchProcess()
 
 #if HAVE(XPC)
     if (m_launchOptions.useXPC) {
-        if (m_launchOptions.processType == ProcessLauncher::WebProcess) {
-            if (isWebKitDevelopmentBuild)
-                createWebProcessServiceForWebKitDevelopment(m_launchOptions, this, &ProcessLauncher::didFinishLaunchingProcess);
-            else
-                createWebProcessService(m_launchOptions, this, &ProcessLauncher::didFinishLaunchingProcess);
-        } else
-            ASSERT_NOT_REACHED();
+        createService(m_launchOptions, isWebKitDevelopmentBuild, this, &ProcessLauncher::didFinishLaunchingProcess);
         return;
     }
 #endif

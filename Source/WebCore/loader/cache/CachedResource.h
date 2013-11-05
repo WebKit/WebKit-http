@@ -244,7 +244,7 @@ public:
     
     // HTTP revalidation support methods for CachedResourceLoader.
     void setResourceToRevalidate(CachedResource*);
-    void switchClientsToRevalidatedResource();
+    virtual void switchClientsToRevalidatedResource();
     void clearResourceToRevalidate();
     void updateResponseAfterRevalidation(const ResourceResponse& validatingResponse);
     
@@ -257,6 +257,8 @@ public:
     double loadFinishTime() const { return m_loadFinishTime; }
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const;
+
+    virtual bool canReuse(const ResourceRequest&) const { return true; }
 
 protected:
     virtual void checkNotify();

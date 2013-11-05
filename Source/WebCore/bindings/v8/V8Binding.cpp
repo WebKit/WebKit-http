@@ -185,7 +185,7 @@ PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value> value, v8::Isola
 {
     v8::Local<v8::Value> v8Value(v8::Local<v8::Value>::New(value));
 
-    if (V8DOMStringList::HasInstance(v8Value)) {
+    if (V8DOMStringList::HasInstance(v8Value, isolate)) {
         RefPtr<DOMStringList> ret = V8DOMStringList::toNative(v8::Handle<v8::Object>::Cast(v8Value));
         return ret.release();
     }
@@ -202,10 +202,10 @@ PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value> value, v8::Isola
     return ret.release();
 }
 
-PassRefPtr<XPathNSResolver> toXPathNSResolver(v8::Handle<v8::Value> value)
+PassRefPtr<XPathNSResolver> toXPathNSResolver(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
     RefPtr<XPathNSResolver> resolver;
-    if (V8XPathNSResolver::HasInstance(value))
+    if (V8XPathNSResolver::HasInstance(value, isolate))
         resolver = V8XPathNSResolver::toNative(v8::Handle<v8::Object>::Cast(value));
     else if (value->IsObject())
         resolver = V8CustomXPathNSResolver::create(value->ToObject());
@@ -221,7 +221,7 @@ DOMWindow* toDOMWindow(v8::Handle<v8::Context> context)
 {
     v8::Handle<v8::Object> global = context->Global();
     ASSERT(!global.IsEmpty());
-    global = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
+    global = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(context->GetIsolate()));
     ASSERT(!global.IsEmpty());
     return V8DOMWindow::toNative(global);
 }
@@ -229,11 +229,11 @@ DOMWindow* toDOMWindow(v8::Handle<v8::Context> context)
 ScriptExecutionContext* toScriptExecutionContext(v8::Handle<v8::Context> context)
 {
     v8::Handle<v8::Object> global = context->Global();
-    v8::Handle<v8::Object> windowWrapper = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
+    v8::Handle<v8::Object> windowWrapper = global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(context->GetIsolate()));
     if (!windowWrapper.IsEmpty())
         return V8DOMWindow::toNative(windowWrapper)->scriptExecutionContext();
 #if ENABLE(WORKERS)
-    v8::Handle<v8::Object> workerWrapper = global->FindInstanceInPrototypeChain(V8WorkerContext::GetTemplate());
+    v8::Handle<v8::Object> workerWrapper = global->FindInstanceInPrototypeChain(V8WorkerContext::GetTemplate(context->GetIsolate()));
     if (!workerWrapper.IsEmpty())
         return V8WorkerContext::toNative(workerWrapper)->scriptExecutionContext();
 #endif
@@ -292,7 +292,7 @@ bool handleOutOfMemory()
 
 v8::Local<v8::Value> handleMaxRecursionDepthExceeded()
 {
-    throwError(v8RangeError, "Maximum call stack size exceeded.");
+    throwError(v8RangeError, "Maximum call stack size exceeded.", v8::Isolate::GetCurrent());
     return v8::Local<v8::Value>();
 }
 

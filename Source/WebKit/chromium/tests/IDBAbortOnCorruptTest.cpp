@@ -57,19 +57,17 @@ public:
     }
     virtual void onSuccess(PassRefPtr<DOMStringList>) { }
     virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) { }
-    virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>)
+    virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&)
     {
         EXPECT_TRUE(false);
     }
     virtual void onSuccess(PassRefPtr<IDBKey>) { }
-    virtual void onSuccess(PassRefPtr<IDBTransactionBackendInterface>) { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>) { }
     virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&) { }
     virtual void onSuccess(int64_t) OVERRIDE { }
     virtual void onSuccess() OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) { };
     virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) { }
-    virtual void onBlocked() { }
 private:
     MockIDBCallbacks() : m_wasErrorCalled(false) { }
 

@@ -1055,7 +1055,7 @@ String listMarkerText(EListStyleType type, int value)
 }
 
 RenderListMarker::RenderListMarker(RenderListItem* item)
-    : RenderBox(item->document())
+    : RenderBox(0)
     , m_listItem(item)
 {
     // init RenderObject attributes
@@ -1067,6 +1067,14 @@ RenderListMarker::~RenderListMarker()
 {
     if (m_image)
         m_image->removeClient(this);
+}
+
+RenderListMarker* RenderListMarker::createAnonymous(RenderListItem* item)
+{
+    Document* document = item->document();
+    RenderListMarker* renderer = new (document->renderArena()) RenderListMarker(item);
+    renderer->setDocumentForAnonymous(document);
+    return renderer;
 }
 
 void RenderListMarker::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
@@ -1843,9 +1851,9 @@ void RenderListMarker::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) con
 {
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
     RenderBox::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_text);
-    info.addMember(m_image);
-    info.addMember(m_listItem);
+    info.addMember(m_text, "text");
+    info.addMember(m_image, "image");
+    info.addMember(m_listItem, "listItem");
 }
 
 } // namespace WebCore

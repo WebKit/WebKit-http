@@ -28,11 +28,12 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "AbstractDatabase.h"
 #include "Database.h"
+#include "DatabaseBackend.h"
 #include "DatabaseCallback.h"
 #include "DatabaseContext.h"
 #include "DatabaseSync.h"
+#include "DatabaseTask.h"
 #include "InspectorDatabaseInstrumentation.h"
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
@@ -42,7 +43,7 @@
 #include "DatabaseStrategy.h"
 #include "PlatformStrategies.h"
 #else
-#include "DBBackendServer.h"
+#include "DatabaseServer.h"
 #endif
 
 namespace WebCore {
@@ -50,6 +51,8 @@ namespace WebCore {
 DatabaseManager& DatabaseManager::manager()
 {
     static DatabaseManager* dbManager = 0;
+    // FIXME: The following is vulnerable to a race between threads. Need to
+    // implement a thread safe on-first-use static initializer.
     if (!dbManager)
         dbManager = new DatabaseManager();
 
@@ -59,11 +62,15 @@ DatabaseManager& DatabaseManager::manager()
 DatabaseManager::DatabaseManager()
     : m_client(0)
     , m_databaseIsAvailable(true)
+#if !ASSERT_DISABLED
+    , m_databaseContextRegisteredCount(0)
+    , m_databaseContextInstanceCount(0)
+#endif
 {
 #if USE(PLATFORM_STRATEGIES)
     m_server = platformStrategies()->databaseStrategy()->getDatabaseServer();
 #else
-    m_server = new DBBackend::Server;
+    m_server = new DatabaseServer;
 #endif
     ASSERT(m_server); // We should always have a server to work with.
 }
@@ -122,26 +129,96 @@ private:
     RefPtr<DatabaseCallback> m_creationCallback;
 };
 
+PassRefPtr<DatabaseContext> DatabaseManager::existingDatabaseContextFor(ScriptExecutionContext* context)
+{
+    MutexLocker locker(m_contextMapLock);
+
+    ASSERT(m_databaseContextRegisteredCount >= 0);
+    ASSERT(m_databaseContextInstanceCount >= 0);
+    ASSERT(m_databaseContextRegisteredCount <= m_databaseContextInstanceCount);
+
+    RefPtr<DatabaseContext> databaseContext = adoptRef(m_contextMap.get(context));
+    if (databaseContext) {
+        // If we're instantiating a new DatabaseContext, the new instance would
+        // carry a new refCount of 1. The client expects this and will simply
+        // adoptRef the databaseContext without ref'ing it.
+        //     However, instead of instantiating a new instance, we're reusing
+        // an existing one that corresponds to the specified ScriptExecutionContext.
+        // Hence, that new refCount need to be attributed to the reused instance
+        // to ensure that the refCount is accurate when the client adopts the ref.
+        // We do this by ref'ing the reused databaseContext before returning it.
+        databaseContext->ref();
+    }
+    return databaseContext.release();
+}
+
+PassRefPtr<DatabaseContext> DatabaseManager::databaseContextFor(ScriptExecutionContext* context)
+{
+    RefPtr<DatabaseContext> databaseContext = existingDatabaseContextFor(context);
+    if (!databaseContext)
+        databaseContext = adoptRef(new DatabaseContext(context));
+    return databaseContext.release();
+}
+
+void DatabaseManager::registerDatabaseContext(DatabaseContext* databaseContext)
+{
+    MutexLocker locker(m_contextMapLock);
+    ScriptExecutionContext* context = databaseContext->scriptExecutionContext();
+    m_contextMap.set(context, databaseContext);
+#if !ASSERT_DISABLED
+    m_databaseContextRegisteredCount++;
+#endif
+}
+
+void DatabaseManager::unregisterDatabaseContext(DatabaseContext* databaseContext)
+{
+    MutexLocker locker(m_contextMapLock);
+    ScriptExecutionContext* context = databaseContext->scriptExecutionContext();
+    ASSERT(m_contextMap.get(context));
+#if !ASSERT_DISABLED
+    m_databaseContextRegisteredCount--;
+#endif
+    m_contextMap.remove(context);
+}
+
+#if !ASSERT_DISABLED
+void DatabaseManager::didConstructDatabaseContext()
+{
+    MutexLocker lock(m_contextMapLock);
+    m_databaseContextInstanceCount++;
+}
+
+void DatabaseManager::didDestructDatabaseContext()
+{
+    MutexLocker lock(m_contextMapLock);
+    m_databaseContextInstanceCount--;
+    ASSERT(m_databaseContextRegisteredCount <= m_databaseContextInstanceCount);
+}
+#endif
+
 PassRefPtr<Database> DatabaseManager::openDatabase(ScriptExecutionContext* context,
     const String& name, const String& expectedVersion, const String& displayName,
-    unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, ExceptionCode& e)
+    unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback,
+    DatabaseError& error)
 {
+    RefPtr<DatabaseContext> databaseContext = databaseContextFor(context);
+    ASSERT(error == DatabaseError::None);
+
     if (!canEstablishDatabase(context, name, displayName, estimatedSize)) {
         LOG(StorageAPI, "Database %s for origin %s not allowed to be established", name.ascii().data(), context->securityOrigin()->toString().ascii().data());
         return 0;
     }
 
-    RefPtr<Database> database = adoptRef(new Database(context, name, expectedVersion, displayName, estimatedSize));
+    RefPtr<Database> database = adoptRef(new Database(databaseContext, name, expectedVersion, displayName, estimatedSize));
 
     String errorMessage;
-    if (!database->openAndVerifyVersion(!creationCallback, e, errorMessage)) {
+    if (!database->openAndVerifyVersion(!creationCallback, error, errorMessage)) {
         database->logErrorMessage(errorMessage);
-        DatabaseManager::manager().removeOpenDatabase(database.get());
         return 0;
     }
 
-    DatabaseManager::manager().setDatabaseDetails(context->securityOrigin(), name, displayName, estimatedSize);
-    DatabaseManager::manager().setHasOpenDatabases(context);
+    setDatabaseDetails(context->securityOrigin(), name, displayName, estimatedSize);
+    databaseContext->setHasOpenDatabases();
 
     InspectorInstrumentation::didOpenDatabase(context, database, context->securityOrigin()->host(), name, expectedVersion);
 
@@ -150,52 +227,54 @@ PassRefPtr<Database> DatabaseManager::openDatabase(ScriptExecutionContext* conte
         database->m_scriptExecutionContext->postTask(DatabaseCreationCallbackTask::create(database, creationCallback));
     }
 
-    return database;
+    return database.release();
 }
 
 PassRefPtr<DatabaseSync> DatabaseManager::openDatabaseSync(ScriptExecutionContext* context,
     const String& name, const String& expectedVersion, const String& displayName,
-    unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, ExceptionCode& ec)
+    unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, DatabaseError& error)
 {
+    RefPtr<DatabaseContext> databaseContext = databaseContextFor(context);
     ASSERT(context->isContextThread());
+    ASSERT(error == DatabaseError::None);
 
     if (!canEstablishDatabase(context, name, displayName, estimatedSize)) {
         LOG(StorageAPI, "Database %s for origin %s not allowed to be established", name.ascii().data(), context->securityOrigin()->toString().ascii().data());
         return 0;
     }
 
-    RefPtr<DatabaseSync> database = adoptRef(new DatabaseSync(context, name, expectedVersion, displayName, estimatedSize));
+    RefPtr<DatabaseSync> database = adoptRef(new DatabaseSync(databaseContext, name, expectedVersion, displayName, estimatedSize));
 
     String errorMessage;
-    if (!database->performOpenAndVerify(!creationCallback, ec, errorMessage)) {
+    if (!database->openAndVerifyVersion(!creationCallback, error, errorMessage)) {
         database->logErrorMessage(errorMessage);
-        DatabaseManager::manager().removeOpenDatabase(database.get());
         return 0;
     }
 
-    DatabaseManager::manager().setDatabaseDetails(context->securityOrigin(), name, displayName, estimatedSize);
+    setDatabaseDetails(context->securityOrigin(), name, displayName, estimatedSize);
 
     if (database->isNew() && creationCallback.get()) {
         LOG(StorageAPI, "Invoking the creation callback for database %p\n", database.get());
         creationCallback->handleEvent(database.get());
     }
 
-    return database;
+    return database.release();
 }
 
 bool DatabaseManager::hasOpenDatabases(ScriptExecutionContext* context)
 {
-    return DatabaseContext::hasOpenDatabases(context);
-}
-
-void DatabaseManager::setHasOpenDatabases(ScriptExecutionContext* context)
-{
-    DatabaseContext::from(context)->setHasOpenDatabases();
+    RefPtr<DatabaseContext> databaseContext = existingDatabaseContextFor(context);
+    if (!databaseContext)
+        return false;
+    return databaseContext->m_hasOpenDatabases;
 }
 
 void DatabaseManager::stopDatabases(ScriptExecutionContext* context, DatabaseTaskSynchronizer* synchronizer)
 {
-    DatabaseContext::stopDatabases(context, synchronizer);
+    RefPtr<DatabaseContext> databaseContext = existingDatabaseContextFor(context);
+    if (!databaseContext || !databaseContext->stopDatabases(synchronizer))
+        if (synchronizer)
+            synchronizer->taskCompleted();
 }
 
 String DatabaseManager::fullPathForDatabase(SecurityOrigin* origin, const String& name, bool createIfDoesNotExist)
@@ -260,7 +339,7 @@ void DatabaseManager::scheduleNotifyDatabaseChanged(SecurityOrigin* origin, cons
     m_server->scheduleNotifyDatabaseChanged(origin, name);
 }
 
-void DatabaseManager::databaseChanged(AbstractDatabase* database)
+void DatabaseManager::databaseChanged(DatabaseBackend* database)
 {
     m_server->databaseChanged(database);
 }
@@ -272,9 +351,11 @@ void DatabaseManager::closeDatabasesImmediately(const String& originIdentifier, 
 }
 #endif // PLATFORM(CHROMIUM)
 
-void DatabaseManager::interruptAllDatabasesForContext(const ScriptExecutionContext* context)
+void DatabaseManager::interruptAllDatabasesForContext(ScriptExecutionContext* context)
 {
-    m_server->interruptAllDatabasesForContext(context);
+    RefPtr<DatabaseContext> databaseContext = existingDatabaseContextFor(context);
+    if (databaseContext)
+        m_server->interruptAllDatabasesForContext(context);
 }
 
 bool DatabaseManager::canEstablishDatabase(ScriptExecutionContext* context, const String& name, const String& displayName, unsigned long estimatedSize)
@@ -282,22 +363,12 @@ bool DatabaseManager::canEstablishDatabase(ScriptExecutionContext* context, cons
     return m_server->canEstablishDatabase(context, name, displayName, estimatedSize);
 }
 
-void DatabaseManager::addOpenDatabase(AbstractDatabase* database)
-{
-    m_server->addOpenDatabase(database);
-}
-
-void DatabaseManager::removeOpenDatabase(AbstractDatabase* database)
-{
-    m_server->removeOpenDatabase(database);
-}
-
 void DatabaseManager::setDatabaseDetails(SecurityOrigin* origin, const String& name, const String& displayName, unsigned long estimatedSize)
 {
     m_server->setDatabaseDetails(origin, name, displayName, estimatedSize);
 }
 
-unsigned long long DatabaseManager::getMaxSizeForDatabase(const AbstractDatabase* database)
+unsigned long long DatabaseManager::getMaxSizeForDatabase(const DatabaseBackend* database)
 {
     return m_server->getMaxSizeForDatabase(database);
 }

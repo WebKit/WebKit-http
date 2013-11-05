@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ class WebApplicationCacheManager : public WebProcessSupplement, public CoreIPC::
 public:
     WebApplicationCacheManager(ChildProcess*);
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
     void deleteAllEntries();
     void setAppCacheMaximumSize(uint64_t);
@@ -50,8 +50,8 @@ private:
     void getApplicationCacheOrigins(uint64_t callbackID);
     void deleteEntriesForOrigin(const SecurityOriginData&);
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveWebApplicationCacheManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    // CoreIPC::MessageReceiver
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     ChildProcess* m_childProcess;
 };

@@ -187,6 +187,11 @@ static const char* annotationStyle =
     _pdfPlugin->notifyContentScaleFactorChanged(scaleFactor);
 }
 
+- (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeDisplayMode:(int)mode
+{
+    _pdfPlugin->notifyDisplayModeChanged(mode);
+}
+
 @end
 
 namespace WebKit {
@@ -751,6 +756,12 @@ void PDFPlugin::notifyContentScaleFactorChanged(CGFloat scaleFactor)
     updateScrollbars();
 }
 
+void PDFPlugin::notifyDisplayModeChanged(int)
+{
+    calculateSizes();
+    updateScrollbars();
+}
+
 void PDFPlugin::saveToPDF()
 {
     // FIXME: We should probably notify the user that they can't save before the document is finished loading.
@@ -926,6 +937,16 @@ bool PDFPlugin::findString(const String& target, WebCore::FindOptions options, u
     }
 
     return matchCount > 0;
+}
+
+bool PDFPlugin::performDictionaryLookupAtLocation(const WebCore::FloatPoint& point)
+{
+    PDFSelection* lookupSelection = [m_pdfLayerController.get() getSelectionForWordAtPoint:convertFromPluginToPDFView(roundedIntPoint(point))];
+
+    if ([[lookupSelection string] length])
+        [m_pdfLayerController.get() searchInDictionaryWithSelection:lookupSelection];
+
+    return true;
 }
 
 } // namespace WebKit

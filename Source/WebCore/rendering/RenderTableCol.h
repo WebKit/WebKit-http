@@ -35,7 +35,7 @@ class RenderTableCell;
 
 class RenderTableCol : public RenderBox {
 public:
-    explicit RenderTableCol(ContainerNode*);
+    explicit RenderTableCol(Element*);
 
     RenderObject* firstChild() const { ASSERT(children() == virtualChildren()); return children()->firstChild(); }
     RenderObject* lastChild() const { ASSERT(children() == virtualChildren()); return children()->lastChild(); }
@@ -43,7 +43,7 @@ public:
     const RenderObjectChildList* children() const { return &m_children; }
     RenderObjectChildList* children() { return &m_children; }
 
-    virtual void computePreferredLogicalWidths();
+    void clearPreferredLogicalWidthsDirtyBits();
 
     unsigned span() const { return m_span; }
     void setSpan(unsigned span) { m_span = span; }
@@ -85,6 +85,7 @@ private:
     virtual const char* renderName() const { return "RenderTableCol"; }
     virtual bool isRenderTableCol() const OVERRIDE { return true; }
     virtual void updateFromElement();
+    virtual void computePreferredLogicalWidths() OVERRIDE { ASSERT_NOT_REACHED(); }
 
     virtual void insertedIntoTree() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
@@ -106,13 +107,13 @@ private:
 
 inline RenderTableCol* toRenderTableCol(RenderObject* object)
 {
-    ASSERT(!object || object->isRenderTableCol());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderTableCol());
     return static_cast<RenderTableCol*>(object);
 }
 
 inline const RenderTableCol* toRenderTableCol(const RenderObject* object)
 {
-    ASSERT(!object || object->isRenderTableCol());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderTableCol());
     return static_cast<const RenderTableCol*>(object);
 }
 

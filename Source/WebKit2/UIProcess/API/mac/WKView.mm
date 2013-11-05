@@ -82,6 +82,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/WebCoreNSStringExtras.h>
+#import <WebCore/WebCoreFullScreenPlaceholderView.h>
 #import <WebCore/FileSystem.h>
 #import <WebKitSystemInterface.h>
 #import <sys/stat.h>
@@ -93,6 +94,9 @@
 #import "WKBrowsingContextGroupInternal.h"
 #import "WKProcessGroupInternal.h"
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+static BOOL windowOcclusionNotificationsAreRegistered = NO;
+#endif
 
 @interface NSApplication (WKNSApplicationDetails)
 - (void)speakString:(NSString *)string;
@@ -135,6 +139,14 @@ struct WKViewInterpretKeyEventsParameters {
 - (void)_setDrawingAreaSize:(NSSize)size;
 - (void)_setPluginComplexTextInputState:(PluginComplexTextInputState)pluginComplexTextInputState;
 - (BOOL)_shouldUseTiledDrawingArea;
+- (void)_setIsWindowOccluded:(BOOL)isWindowOccluded;
+- (void)_enableWindowOcclusionNotifications;
+- (void)_disableWindowOcclusionNotifications;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
++ (BOOL)_registerWindowOcclusionNotificationHandlers;
++ (BOOL)_unregisterWindowOcclusionNotificationHandlers;
+#endif
++ (Vector<WKView *>&)_allViews;
 @end
 
 @interface WKViewData : NSObject {
@@ -211,6 +223,7 @@ struct WKViewInterpretKeyEventsParameters {
 
     NSSize _intrinsicContentSize;
     BOOL _expandsToFitContentViaAutoLayout;
+    BOOL _isWindowOccluded;
 }
 
 @end
@@ -260,6 +273,9 @@ struct WKViewInterpretKeyEventsParameters {
 
     [_data release];
     _data = nil;
+
+    Vector<WKView *>& allViews = [WKView _allViews];
+    allViews.remove(allViews.find(self));
 
     WebContext::statistics().wkViewCount--;
 
@@ -1817,6 +1833,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
                                                      name:NSWindowDidMoveNotification object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidResize:) 
                                                      name:NSWindowDidResizeNotification object:window];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowWillOrderOffScreen:)
+                                                     name:@"NSWindowWillOrderOffScreenNotification" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOffScreen:) 
                                                      name:@"NSWindowDidOrderOffScreenNotification" object:window];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_windowDidOrderOnScreen:) 
@@ -1840,6 +1858,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidDeminiaturizeNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidMoveNotification object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowDidResizeNotification object:window];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowWillOrderOffScreenNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"NSWindowDidOrderOffScreenNotification" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"_NSWindowDidBecomeVisible" object:window];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:windowDidChangeBackingPropertiesNotification object:window];
@@ -1865,10 +1884,13 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     
     [self removeWindowObservers];
     [self addWindowObserversForWindow:window];
+    [self _disableWindowOcclusionNotifications];
 }
 
 - (void)viewDidMoveToWindow
 {
+    [self _enableWindowOcclusionNotifications];
+
     // We want to make sure to update the active state while hidden, so if the view is about to become visible, we
     // update the active state first and then make it visible. If the view is about to be hidden, we hide it first and then
     // update the active state.
@@ -1962,6 +1984,11 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     [self _updateWindowAndViewFrames];
 }
 
+- (void)_windowWillOrderOffScreen:(NSNotification *)notification
+{
+    [self _disableWindowOcclusionNotifications];
+}
+
 - (void)_windowDidOrderOffScreen:(NSNotification *)notification
 {
     [self _updateWindowVisibility];
@@ -1975,6 +2002,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 - (void)_windowDidOrderOnScreen:(NSNotification *)notification
 {
     [self _updateWindowVisibility];
+    [self _enableWindowOcclusionNotifications];
 
     // We want to make sure to update the active state while hidden, so since the view is about to become visible,
     // we update the active state first and then make it visible.
@@ -2207,6 +2235,126 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
     _data->_page->performDictionaryLookupAtLocation(FloatPoint(locationInViewCoordinates.x, locationInViewCoordinates.y));
 }
 #endif
+
+- (void)_setIsWindowOccluded:(BOOL)isWindowOccluded
+{
+    if (_data->_isWindowOccluded == isWindowOccluded)
+        return;
+    
+    _data->_isWindowOccluded = isWindowOccluded;
+    _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible);
+}
+
+- (void)_enableWindowOcclusionNotifications
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    NSWindow *window = [self window];
+    if (!window)
+        return;
+
+    NSInteger windowID = [window windowNumber];
+    if (windowID <= 0)
+        return;
+
+    if (![WKView _registerWindowOcclusionNotificationHandlers])
+        return;
+
+    bool isWindowOccluded = false;
+    if (!WKEnableWindowOcclusionNotifications(windowID, &isWindowOccluded)) {
+        WTFLogAlways("Enabling window occlusion notifications for window %ld failed.\n", windowID);
+        return;
+    }
+
+    if (isWindowOccluded)
+        [self _setIsWindowOccluded:YES];
+#endif
+}
+
+- (void)_disableWindowOcclusionNotifications
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    [self _setIsWindowOccluded:NO];
+
+    // Occlusion notifications for a given window might also be used else where in the
+    // application, hence unregister notification handlers instead.
+    Vector<WKView *>& allViews = [WKView _allViews];
+    if ((allViews.size() == 1) && (allViews[0] == self))
+        [WKView _unregisterWindowOcclusionNotificationHandlers];
+#endif
+}
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+
+static void windowBecameVisible(uint32_t, void* data, uint32_t dataLength, void*, uint32_t)
+{
+    ASSERT(dataLength == sizeof(WKWindowID));
+    NSInteger windowID = *(WKWindowID *)data;
+
+    Vector<WKView *>& allViews = [WKView _allViews];
+    for (size_t i = 0, size = allViews.size(); i < size; ++i) {
+        WKView *view = allViews[i];
+        if ([[view window] windowNumber] == windowID)
+            [view _setIsWindowOccluded:NO];
+    }
+}
+
+static void windowBecameOccluded(uint32_t, void* data, uint32_t dataLength, void*, uint32_t)
+{
+    ASSERT(dataLength == sizeof(WKWindowID));
+    NSInteger windowID = *(WKWindowID *)data;
+
+    Vector<WKView *>& allViews = [WKView _allViews];
+    for (size_t i = 0, size = allViews.size(); i < size; ++i) {
+        WKView *view = allViews[i];
+        if ([[view window] windowNumber] == windowID)
+            [view _setIsWindowOccluded:YES];
+    }
+}
+
++ (BOOL)_registerWindowOcclusionNotificationHandlers
+{
+    if (windowOcclusionNotificationsAreRegistered)
+        return YES;
+
+    if (!WKRegisterOcclusionNotificationHandler(WKOcclusionNotificationTypeWindowBecameVisible, windowBecameVisible)) {
+        WTFLogAlways("Registeration of \"Window Became Visible\" notification handler failed.\n");
+        return NO;
+    }
+    
+    if (!WKRegisterOcclusionNotificationHandler(WKOcclusionNotificationTypeWindowBecameOccluded, windowBecameOccluded)) {
+        WTFLogAlways("Registeration of \"Window Became Occluded\" notification handler failed.\n");
+        return NO;
+    }
+
+    windowOcclusionNotificationsAreRegistered = YES;
+    return YES;
+}
+
++ (BOOL)_unregisterWindowOcclusionNotificationHandlers
+{
+    if (!windowOcclusionNotificationsAreRegistered)
+        return YES;
+
+    if (!WKUnregisterOcclusionNotificationHandler(WKOcclusionNotificationTypeWindowBecameOccluded, windowBecameOccluded)) {
+        WTFLogAlways("Unregisteration of \"Window Became Occluded\" notification handler failed.\n");
+        return NO;
+    }
+
+    if (!WKUnregisterOcclusionNotificationHandler(WKOcclusionNotificationTypeWindowBecameVisible, windowBecameVisible)) {
+        WTFLogAlways("Unregisteration of \"Window Became Visible\" notification handler failed.\n");
+        return NO;
+    }
+
+    windowOcclusionNotificationsAreRegistered = NO;
+    return YES;
+}
+#endif
+
++ (Vector<WKView *>&)_allViews
+{
+    DEFINE_STATIC_LOCAL(Vector<WKView *>, vector, ());
+    return vector;
+}
 
 @end
 
@@ -2857,7 +3005,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (void)_setIntrinsicContentSize:(NSSize)intrinsicContentSize
 {
-    _data->_intrinsicContentSize = intrinsicContentSize;
+    // If the intrinsic content size is less than the minimum layout width, the content flowed to fit,
+    // so we can report that that dimension is flexible. If not, we need to report our intrinsic width
+    // so that autolayout will know to provide space for us.
+
+    NSSize intrinsicContentSizeAcknowledgingFlexibleWidth = intrinsicContentSize;
+    if (intrinsicContentSize.width < _data->_page->minimumLayoutWidth())
+        intrinsicContentSizeAcknowledgingFlexibleWidth.width = NSViewNoInstrinsicMetric;
+
+    _data->_intrinsicContentSize = intrinsicContentSizeAcknowledgingFlexibleWidth;
     [self invalidateIntrinsicContentSize];
 }
 
@@ -2895,6 +3051,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (BOOL)_suppressVisibilityUpdates
 {
     return _data->_page->suppressVisibilityUpdates();
+}
+
+- (BOOL)_isWindowOccluded
+{
+    return _data->_isWindowOccluded;
 }
 
 @end
@@ -2962,6 +3123,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         // Explicitly set the layer contents placement so AppKit will make sure that our layer has masksToBounds set to YES.
         self.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
     }
+
+    [WKView _allViews].append(self);
 
     WebContext::statistics().wkViewCount++;
 
@@ -3103,6 +3266,15 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         _data->_page->viewExposedRectChanged(enclosingIntRect([self visibleRect]));
 
     _data->_page->setMainFrameIsScrollable(!expandsToFit);
+}
+
+- (NSView*)fullScreenPlaceholderView
+{
+#if ENABLE(FULLSCREEN_API)
+    if (_data->_fullScreenWindowController && [_data->_fullScreenWindowController isFullScreen])
+        return [_data->_fullScreenWindowController webViewPlaceholder];
+#endif
+    return nil;
 }
 
 @end

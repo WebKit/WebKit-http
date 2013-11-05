@@ -53,6 +53,8 @@ my %primitiveTypeHash = ( "boolean" => 1, "void" => 1, "Date" => 1);
 
 my %stringTypeHash = ("DOMString" => 1, "AtomicString" => 1);
 
+my %enumTypeHash = ();
+
 my %nonPointerTypeHash = ("DOMTimeStamp" => 1, "CompareHow" => 1);
 
 my %svgAnimatedTypeHash = ("SVGAnimatedAngle" => 1, "SVGAnimatedBoolean" => 1,
@@ -122,6 +124,8 @@ sub ProcessDocument
 
     my $ifaceName = "CodeGenerator" . $useGenerator;
     require $ifaceName . ".pm";
+
+    %enumTypeHash = map { $_->name => $_->values } @{$useDocument->enumerations};
 
     # Dynamically load external code generation perl module
     $codeGenerator = $ifaceName->new($object, $useLayerOnTop, $preprocessor, $writeDependencies, $verbose, $targetIdlFilePath);
@@ -350,6 +354,23 @@ sub IsStringType
     return 0;
 }
 
+sub IsEnumType
+{
+    my $object = shift;
+    my $type = shift;
+
+    return 1 if exists $enumTypeHash{$type};
+    return 0;
+}
+
+sub ValidEnumValues
+{
+    my $object = shift;
+    my $type = shift;
+
+    return @{$enumTypeHash{$type}};
+}
+
 sub IsNonPointerType
 {
     my $object = shift;
@@ -397,6 +418,7 @@ sub IsRefPtrType
     return 0 if $object->GetArrayType($type);
     return 0 if $object->GetSequenceType($type);
     return 0 if $type eq "DOMString";
+    return 0 if $object->IsEnumType($type);
 
     return 1;
 }
@@ -648,6 +670,19 @@ sub GenerateConditionalString
     }
 }
 
+sub GenerateConstructorConditionalString
+{
+    my $generator = shift;
+    my $node = shift;
+
+    my $conditional = $node->extendedAttributes->{"ConstructorConditional"};
+    if ($conditional) {
+        return $generator->GenerateConditionalStringFromAttributeValue($conditional);
+    } else {
+        return "";
+    }
+}
+
 sub GenerateConditionalStringFromAttributeValue
 {
     my $generator = shift;
@@ -719,7 +754,7 @@ sub GetVisibleInterfaceName
     return $interfaceName ? $interfaceName : $interface->name;
 }
 
-sub IsSubType
+sub InheritsInterface
 {
     my $object = shift;
     my $interface = shift;
@@ -732,7 +767,26 @@ sub IsSubType
         if ($currentInterface->name eq $interfaceName) {
             $found = 1;
         }
-        return "prune" if $found;
+        return 1 if $found;
+    }, 0, 1);
+
+    return $found;
+}
+
+sub InheritsExtendedAttribute
+{
+    my $object = shift;
+    my $interface = shift;
+    my $extendedAttribute = shift;
+    my $found = 0;
+
+    return 1 if $interface->extendedAttributes->{$extendedAttribute};
+    $object->ForAllParents($interface, sub {
+        my $currentInterface = shift;
+        if ($currentInterface->extendedAttributes->{$extendedAttribute}) {
+            $found = 1;
+        }
+        return 1 if $found;
     }, 0, 1);
 
     return $found;

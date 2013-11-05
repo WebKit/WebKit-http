@@ -150,7 +150,7 @@ String UnlinkedFunctionExecutable::paramString() const
     for (size_t pos = 0; pos < parameters.size(); ++pos) {
         if (!builder.isEmpty())
             builder.appendLiteral(", ");
-        builder.append(parameters[pos].string());
+        builder.append(parameters.at(pos).string());
     }
     return builder.toString();
 }
@@ -176,6 +176,7 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(JSGlobalData* globalData, Structure* struct
     , m_putToBaseOperationCount(1)
     , m_arrayProfileCount(0)
     , m_arrayAllocationProfileCount(0)
+    , m_objectAllocationProfileCount(0)
     , m_valueProfileCount(0)
     , m_llintCallLinkInfoCount(0)
 #if ENABLE(BYTECODE_COMMENTS)

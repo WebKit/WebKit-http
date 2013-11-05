@@ -52,6 +52,8 @@ private:
 
     virtual const char* renderName() const OVERRIDE { return "RenderPartObject"; } // Lying for now to avoid breaking tests
 
+    virtual bool requiresLayer() const OVERRIDE;
+
     void layoutSeamlessly();
 
     RenderView* contentRootRenderer() const;
@@ -59,13 +61,13 @@ private:
 
 inline RenderIFrame* toRenderIFrame(RenderObject* object)
 {
-    ASSERT(!object || object->isRenderIFrame());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderIFrame());
     return static_cast<RenderIFrame*>(object);
 }
 
 inline const RenderIFrame* toRenderIFrame(const RenderObject* object)
 {
-    ASSERT(!object || object->isRenderIFrame());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderIFrame());
     return static_cast<const RenderIFrame*>(object);
 }
 

@@ -44,6 +44,8 @@ WebInspector.FileSystemWorkspaceProvider = function(isolatedFileSystemModel)
     this._isolatedFileSystemModel.mapping().addEventListener(WebInspector.FileSystemMapping.Events.FileSystemRemoved, this._fileSystemRemoved, this);
 }
 
+WebInspector.FileSystemWorkspaceProvider._scriptExtensions = ["js", "java", "cc", "cpp", "h", "cs", "py", "php"].keySet();
+
 WebInspector.FileSystemWorkspaceProvider.prototype = {
     /**
      * @param {string} uri
@@ -91,7 +93,20 @@ WebInspector.FileSystemWorkspaceProvider.prototype = {
      */
     searchInFileContent: function(uri, query, caseSensitive, isRegex, callback)
     {
-        callback([]);
+        this.requestFileContent(uri, contentCallback.bind(this));
+
+        /**
+         * @param {?string} content
+         * @param {boolean} base64Encoded
+         * @param {string} mimeType
+         */
+        function contentCallback(content, base64Encoded, mimeType)
+        {
+            var result = [];
+            if (content)
+                result = WebInspector.ContentProvider.performSearchInContent(content, query, caseSensitive, isRegex);
+            callback(result);
+        }
     },
 
     /**
@@ -107,7 +122,7 @@ WebInspector.FileSystemWorkspaceProvider.prototype = {
         if (extensionIndex !== -1)
             extension = fileName.substring(extensionIndex + 1);
         var contentType = WebInspector.resourceTypes.Other;
-        if (extension === "js")
+        if (WebInspector.FileSystemWorkspaceProvider._scriptExtensions[extension])
             return WebInspector.resourceTypes.Script;
         if (extension === "css")
             return WebInspector.resourceTypes.Stylesheet;
@@ -130,9 +145,11 @@ WebInspector.FileSystemWorkspaceProvider.prototype = {
      */
     _fileSystemRemoved: function(event)
     {
+        WebInspector.startBatchUpdate();
         var fileSystemPath = /** @type {string} */ (event.data);
         for (var uri in this._files[fileSystemPath])
             this._removeFile(fileSystemPath, uri);
+        WebInspector.endBatchUpdate();
     },
 
     /**

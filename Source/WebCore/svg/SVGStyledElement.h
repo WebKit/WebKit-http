@@ -25,15 +25,18 @@
 #include "CSSPropertyNames.h"
 #include "SVGAnimatedString.h"
 #include "SVGLocatable.h"
-#include "SVGStylable.h"
 #include <wtf/HashSet.h>
+#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
 void mapAttributeToCSSProperty(HashMap<AtomicStringImpl*, CSSPropertyID>* propertyNameToIdMap, const QualifiedName& attrName);
 
-class SVGStyledElement : public SVGElement,
-                         public SVGStylable {
+class CSSValue;
+class CSSStyleDeclaration;
+
+// FIXME(webkit.org/b/107386): SVGStyledElement should be merged into SVGElement as specified by SVG2.
+class SVGStyledElement : public SVGElement {
 public:
     virtual String title() const;
 
@@ -92,7 +95,7 @@ private:
 
 inline SVGStyledElement* toSVGStyledElement(Node* node)
 {
-    ASSERT(!node || (node->isStyledElement() && node->isSVGElement()));
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || (node->isStyledElement() && node->isSVGElement()));
     return static_cast<SVGStyledElement*>(node);
 }
 

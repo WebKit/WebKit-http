@@ -219,6 +219,9 @@ private:
     virtual void logDiagnosticMessage(const String& message, const String& description, const String& success) OVERRIDE;
 
     virtual PassRefPtr<WebCore::Image> plugInStartLabelImage(WebCore::RenderSnapshottedPlugIn::LabelSize) const OVERRIDE;
+    virtual String plugInStartLabelTitle() const OVERRIDE;
+    virtual String plugInStartLabelSubtitle() const OVERRIDE;
+    virtual String plugInExtraStyleSheet() const OVERRIDE;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

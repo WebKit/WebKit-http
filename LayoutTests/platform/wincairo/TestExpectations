@@ -1618,6 +1618,11 @@ editing/spelling/spelling-marker-description.html
 # IndexedDB is not yet enabled.
 storage/indexeddb
 http/tests/inspector/indexeddb
+http/tests/security/cross-origin-indexeddb-allowed.html
+http/tests/security/cross-origin-indexeddb.html
+http/tests/security/cross-origin-worker-indexeddb-allowed.html
+http/tests/security/cross-origin-worker-indexeddb.html
+http/tests/security/no-indexeddb-from-sandbox.html
 
 # StorageTracker is not enabled.
 storage/domstorage/localstorage/storagetracker
@@ -1732,9 +1737,17 @@ fast/events/constructors/speech-recognition-event-constructor.html
 
 # Media Stream API is not yet enabled.
 fast/mediastream
+fast/events/constructors/media-stream-event-constructor.html
 
 # Needs to be fixed at image decoder layer for Safari.
 fast/images/large-size-image-crash.html
+
+# DOM4_EVENTS_CONSTRUCTOR is not yet enabled.
+fast/events/constructors/ui-event-constructor.html
+fast/events/constructors/mouse-event-constructor.html
+fast/events/constructors/composition-event-constructor.html
+fast/events/constructors/wheel-event-constructor.html
+fast/events/constructors/keyboard-event-constructor.html
 
 # Disable until the windows WebKit API supports injecting in the top frame only.
 # https://bugs.webkit.org/show_bug.cgi?id=41800
@@ -1818,6 +1831,7 @@ inspector/profiler/heap-snapshot-summary-sorting-instances.html
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -2062,6 +2076,9 @@ fast/dom/shadow
 # ENABLE(TEMPLATE_ELEMENT) is disabled.
 fast/dom/HTMLTemplateElement
 html5lib/run-template.html
+fast/xsl/xslt-xhtml-template.xml
+fast/xpath/xpath-template-element.html
+fast/xsl/xslt-processor-template.html
 
 # CSS Regions support not yet enabled. http://webkit.org/b/57312
 fast/regions
@@ -2959,7 +2976,23 @@ webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while
 # https://bugs.webkit.org/show_bug.cgi?id=100117
 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
 
+# Enable when support drag-and-drop autoscrolling
+webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
+
 # CSS3_TEXT is disabled on Windows
 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html
 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html
 fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-decoration-line.html
+
+# Spellchecker behavior tests.
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word-with-underscores.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-should-select-single-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]

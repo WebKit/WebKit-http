@@ -60,8 +60,8 @@ namespace JSC { namespace DFG {
     macro(GetLocal, NodeResultJS) \
     macro(SetLocal, 0) \
     macro(Phantom, NodeMustGenerate | NodeDoesNotExit) \
-    macro(Nop, 0 | NodeDoesNotExit) \
-    macro(Phi, 0 | NodeDoesNotExit) \
+    macro(Nop, NodeDoesNotExit) \
+    macro(Phi, NodeDoesNotExit | NodeRelevantToOSR) \
     macro(Flush, NodeMustGenerate | NodeDoesNotExit) \
     \
     /* Get the value of a local variable, without linking into the VariableAccessData */\
@@ -165,7 +165,7 @@ namespace JSC { namespace DFG {
     macro(GlobalVarWatchpoint, NodeMustGenerate) \
     macro(PutGlobalVarCheck, NodeMustGenerate) \
     macro(CheckFunction, NodeMustGenerate) \
-    macro(InheritorIDWatchpoint, NodeMustGenerate) \
+    macro(AllocationProfileWatchpoint, NodeMustGenerate) \
     \
     /* Optimizations for array mutation. */\
     macro(ArrayPush, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
@@ -275,7 +275,7 @@ inline NodeFlags defaultFlags(NodeType op)
     FOR_EACH_DFG_OP(DFG_OP_ENUM)
 #undef DFG_OP_ENUM
     default:
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return 0;
     }
 }

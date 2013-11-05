@@ -106,11 +106,15 @@ function test2() {
     eventSender.keyDown('\t');
     shouldBe('focusedElement()', '".clear-button[value=<<CalendarClear>>]"');
     eventSender.keyDown('\t');
-    shouldBe('focusedElement()', '".year-month-button[value=<<]"');
+    shouldBe('focusedElement()', '".year-month-button"');
     eventSender.keyDown('\t', ['shiftKey']);
     shouldBe('focusedElement()', '".clear-button[value=<<CalendarClear>>]"');
 
     eventSender.keyDown('\x1B');
+    waitUntilClosing(test2AfterClosing);
+}
+
+function test2AfterClosing() {
     shouldBeNull('document.getElementById("mock-page-popup")');
     shouldBe('document.getElementById("date").value', '"1999-12-26"');
 
@@ -125,7 +129,7 @@ function testToday() {
     eventSender.keyDown('t');
     var now = new Date();
     var expectedDate = serializeDate(now.getFullYear(), now.getMonth(), now.getDate());
-    var expectedMonth = popupWindow.Month.createFromDate(now).toString();
+    var expectedMonth = (new popupWindow.Month(now.getFullYear(), now.getMonth())).toString();
     return selectedDate() === expectedDate && currentMonth() === expectedMonth;
 }
 

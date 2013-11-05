@@ -44,6 +44,10 @@ css3/filters/effect-sepia-hw.html
 # Custom filters not yet supported on Windows
 css3/filters/custom
 
+# Remove from list after enabling CANVAS_PATH
+fast/canvas/canvas-currentPath.html
+fast/canvas/canvas-path-constructors.html
+
 # Needs rebaseline after bug 97217 is fixed
 # https://bugs.webkit.org/show_bug.cgi?id=97325
 css3/masking/clip-path-circle-relative-overflow.html
@@ -1093,6 +1097,11 @@ editing/spelling/spelling-marker-description.html
 # IndexedDB is not yet enabled.
 storage/indexeddb
 http/tests/inspector/indexeddb
+http/tests/security/cross-origin-indexeddb-allowed.html
+http/tests/security/cross-origin-indexeddb.html
+http/tests/security/cross-origin-worker-indexeddb-allowed.html
+http/tests/security/cross-origin-worker-indexeddb.html
+http/tests/security/no-indexeddb-from-sandbox.html
 
 # StorageTracker is not enabled.
 storage/domstorage/localstorage/storagetracker
@@ -1205,9 +1214,17 @@ fast/events/constructors/speech-recognition-event-constructor.html
 
 # Media Stream API is not yet enabled.
 fast/mediastream
+fast/events/constructors/media-stream-event-constructor.html
 
 # Needs to be fixed at image decoder layer for Safari.
 fast/images/large-size-image-crash.html
+
+# DOM4_EVENTS_CONSTRUCTOR is not yet enabled.
+fast/events/constructors/ui-event-constructor.html
+fast/events/constructors/mouse-event-constructor.html
+fast/events/constructors/composition-event-constructor.html
+fast/events/constructors/wheel-event-constructor.html
+fast/events/constructors/keyboard-event-constructor.html
 
 # Disable until the windows WebKit API supports injecting in the top frame only.
 # https://bugs.webkit.org/show_bug.cgi?id=41800
@@ -1287,11 +1304,12 @@ inspector/profiler/heap-snapshot-summary-retainers.html
 inspector/profiler/heap-snapshot-summary-sorting-fields.html
 inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
-webkit.org/b/50485 inspector-protocol/take-heap-snapshot.html [ Skip ]
+webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -1533,6 +1551,9 @@ fast/dom/shadow
 # ENABLE(TEMPLATE_ELEMENT) is disabled.
 fast/dom/HTMLTemplateElement
 html5lib/run-template.html
+fast/xsl/xslt-xhtml-template.xml
+fast/xpath/xpath-template-element.html
+fast/xsl/xslt-processor-template.html
 
 # CSS Regions support not yet enabled. http://webkit.org/b/57312
 fast/regions
@@ -2033,6 +2054,9 @@ fast/forms/month-multiple-fields
 fast/forms/time-multiple-fields
 fast/forms/week-multiple-fields
 
+# Needs a rebaseline after WK108429 lands.
+svg/custom/text-ctm.svg
+
 # Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=84286
 fast/block/float/avoidance-rtl.html
 fast/borders/border-radius-wide-border-01.html
@@ -2506,6 +2530,13 @@ media/video-controls-captions-trackmenu-sorted.html
 media/video-controls-captions-trackmenu.html
 media/video-controls-visible-exiting-fullscreen.html
 
+# Fails on JSC platforms due to gc timing issues
+# https://bugs.webkit.org/show_bug.cgi?id=106957
+svg/dom/SVGViewSpec-invalid-ref-crash.html
+
+# Enable when support drag-and-drop autoscrolling
+webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
+
 # Device Proximity is not enabled/implemented
 proximity/add-listener-from-callback.html
 proximity/basic-operation.html
@@ -2516,3 +2547,82 @@ proximity/no-page-cache.html
 proximity/optional-event-properties.html
 proximity/updates.html
 proximity/window-property.html
+
+# Needs rebaseline after https://bugs.webkit.org/show_bug.cgi?id=9221
+webkit.org/b/9221 fast/css/resize-corner-tracking.html [ Failure ]
+webkit.org/b/9221 fast/css/resize-corner-tracking-transformed-iframe.html [ Missing ]
+
+# Temporarily skip inspector tests which are now failing on the bots due to some configuration problem
+inspector
+http/tests/inspector
+
+# Temporarily skip a bunch of failing tests on Windows bots until
+# https://bugs.webkit.org/show_bug.cgi?id=108249
+accessibility/color-well.html
+accessibility/corresponding-control-deleted-crash.html
+css2.1/t0505-c16-descendant-01-e.html
+editing/input/caret-at-the-edge-of-contenteditable.html
+editing/input/reveal-caret-of-multiline-contenteditable.html
+editing/input/reveal-caret-of-multiline-input.html
+editing/selection/extend-by-sentence-001.html
+fast/inline/drawStyledEmptyInlines.html
+fast/inline/drawStyledEmptyInlinesWithWS.html
+fast/text/capitalize-empty-generated-string.html
+fast/text/international/float-as-only-child-of-isolate-crash.html
+fast/text/whitespace/006.html
+fast/text/whitespace/007.html
+inspector-protocol/layer-tree.html
+svg/W3C-SVG-1.1-SE/painting-control-04-f.svg
+svg/W3C-SVG-1.1-SE/text-intro-02-b.svg
+svg/W3C-SVG-1.1-SE/text-intro-09-b.svg
+svg/W3C-SVG-1.1/extend-namespace-01-f.svg
+svg/batik/text/longTextOnPath.svg
+svg/batik/text/xmlSpace.svg
+svg/css/shadow-changes.svg
+svg/text/bidi-text-anchor-direction.svg
+svg/text/font-size-below-point-five.svg
+tables/mozilla/bugs/bug1188.html
+tables/mozilla/bugs/bug1318.html
+tables/mozilla/bugs/bug113235-3.html
+http/tests/inspector-enabled/console-log-before-frame-navigation.html
+http/tests/inspector-enabled/database-open.html
+http/tests/inspector-enabled/dedicated-workers-list.html
+http/tests/inspector-enabled/dom-storage-open.html
+http/tests/inspector-enabled/dynamic-scripts.html
+http/tests/inspector-enabled/injected-script-discard.html
+http/tests/misc/favicon-loads-with-icon-loading-override.html
+http/tests/security/cookies/first-party-cookie-allow-xslt.xml
+http/tests/security/cookies/third-party-cookie-blocking-main-frame.html
+media/video-transformed.html
+accessibility/heading-level.html
+accessibility/render-counter-text.html
+fast/images/style-access-during-imageChanged-crash.html
+fast/js/reentrant-caching.html
+fast/repaint/caret-with-transformation.html
+http/tests/incremental/pause-in-script-element.pl
+fast/text/international/harfbuzz-buffer-overrun.html
+compositing/filters/sw-nested-shadow-overlaps-hw-nested-shadow.html
+compositing/iframes/iframe-size-from-zero.html
+compositing/iframes/overlapped-iframe-iframe.html
+compositing/tiling/tiled-layer-resize.html
+css3/filters/custom-with-at-rule-syntax/parsing-custom-function-valid.html
+editing/input/ime-composition-clearpreedit.html
+fast/canvas/canvas-composite-alpha.html
+fast/canvas/canvas-quadratic-same-endpoint.html
+fast/events/ime-composition-events-001.html
+fast/text/international/hebrew-vowels.html
+jquery/attributes.html
+media/W3C/video/events/event_canplaythrough.html		
+
+# Spellchecker behavior tests.
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word-with-underscores.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-should-select-single-word.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]

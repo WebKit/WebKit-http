@@ -42,15 +42,12 @@ public:
 
 private:
     // CoreIPC::MessageReceiver.
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     // WebCore::GraphicsLayerClient.
     virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) OVERRIDE;
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) OVERRIDE;
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect) OVERRIDE;
-
-    // Implemented in generated RemoteLayerTreeHostMessageReceiver.cpp
-    void didReceiveRemoteLayerTreeHostMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
 
     // Message handlers.
     void commit(const RemoteLayerTreeTransaction&);

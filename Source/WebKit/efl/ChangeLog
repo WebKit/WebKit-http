@@ -1,3 +1,191 @@
+2013-02-04  Balazs Kelemen  <kbalazs@webkit.org>
+
+        [Soup] Wrap SoupSession by NetworkStorageSession
+        https://bugs.webkit.org/show_bug.cgi?id=108615
+
+        Reviewed by Alexey Proskuryakov.
+
+        Changed to hold the SoupSession pointer in a NetworkStorageSession
+        so we can pass it to WebCore. _Ewk_View_Private_Data has to be
+        changed for that reason.
+
+        * WebCoreSupport/FrameNetworkingContextEfl.cpp:
+        (WebCore::FrameNetworkingContextEfl::storageSession):
+        * WebCoreSupport/FrameNetworkingContextEfl.h:
+        (FrameNetworkingContextEfl):
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new):
+        (ewk_view_soup_session_get):
+        (ewk_view_soup_session_set):
+        (EWKPrivate::storageSession):
+        (EWKPrivate):
+        * ewk/ewk_view_private.h:
+        (EWKPrivate):
+
+2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
+
+        Fix build warning after r141473
+        https://bugs.webkit.org/show_bug.cgi?id=108782
+
+        Reviewed by Kentaro Hara.
+
+        Fix -Wunused-parameter build warning.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::getClientPasteboardDataForRange):
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::respondToChangedSelection):
+            Adding a call to the newly refactored method.
+
+2013-01-31  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r141479.
+        http://trac.webkit.org/changeset/141479
+        https://bugs.webkit.org/show_bug.cgi?id=108564
+
+        breaks chromium test (Requested by morrita on #webkit).
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::respondToChangedSelection):
+
+2013-01-31  Aurimas Liutikas  <aurimas@chromium.org>
+
+        Editor::m_compositionNode not updated on HTMLInputElement::setValue()
+        https://bugs.webkit.org/show_bug.cgi?id=107737
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::respondToChangedSelection):
+            Adding a call to the newly refactored method.
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::willWriteSelectionToPasteboard):
+        (WebCore::EditorClientEfl::getClientPasteboardDataForRange):
+        * WebCoreSupport/EditorClientEfl.h:
+
+2013-01-31  Christophe Dumez  <dchris@gmail.com>
+
+        [EFL] Disable Web Intents
+        https://bugs.webkit.org/show_bug.cgi?id=108457
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove code related to Web Intents from EFL
+        WebKit.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        * WebCoreSupport/FrameLoaderClientEfl.h:
+        (FrameLoaderClientEfl):
+        * ewk/EWebKit.h:
+        * ewk/ewk_frame.cpp:
+        * ewk/ewk_frame.h:
+        * ewk/ewk_frame_private.h:
+        * ewk/ewk_intent.cpp: Removed.
+        * ewk/ewk_intent.h: Removed.
+        * ewk/ewk_intent_private.h: Removed.
+        * ewk/ewk_intent_request.cpp: Removed.
+        * ewk/ewk_intent_request.h: Removed.
+
+2013-01-31  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r141110.
+        http://trac.webkit.org/changeset/141110
+        https://bugs.webkit.org/show_bug.cgi?id=108349
+
+        This patch broke WK2-EFL unit tests (Requested by grzegorz on
+        #webkit).
+
+        * WebCoreSupport/EditorClientEfl.h:
+
+2013-01-30  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Remove GraphicsLayer in TextureMapperLayer.
+        https://bugs.webkit.org/show_bug.cgi?id=107073
+
+        Reviewed by Noam Rosenthal.
+
+        Include GraphicsLayerTextureMapper.h to use toTextureMapperLayer().
+
+        * WebCoreSupport/AcceleratedCompositingContextEfl.cpp:
+
+2013-01-29  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL] Unified text checker implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=107682
+
+        Reviewed by Anders Carlsson.
+
+        Add an empty checkTextOfParagraph implementation for WK1-EFL
+        to do not break build when WTF_USE_UNIFIED_TEXT_CHECKING
+        is enabled.
+
+        * WebCoreSupport/EditorClientEfl.h:
+        (EditorClientEfl):
+        (WebCore::EditorClientEfl::checkTextOfParagraph):
+
+2013-01-28  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Enable debug borders and repaint counter via Settings.
+        https://bugs.webkit.org/show_bug.cgi?id=107198
+
+        Reviewed by Benjamin Poulain.
+
+        If WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS is set to 1, set
+        showDebugBorders and showRepaintCounter in Settings to true.
+
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2013-01-22  Anders Carlsson  <andersca@apple.com>
+
+        Use a platforom strategy for local storage
+        https://bugs.webkit.org/show_bug.cgi?id=107600
+
+        Reviewed by Andreas Kling.
+
+        Update for new storage strategy.
+
+        * WebCoreSupport/PlatformStrategiesEfl.cpp:
+        (PlatformStrategiesEfl::createStorageStrategy):
+        * WebCoreSupport/PlatformStrategiesEfl.h:
+        (PlatformStrategiesEfl):
+
+2013-01-22  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Adds Accessibility support to wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=107440
+
+        Reviewed by Gyuyoung Kim.
+
+        Adds possibility of focusing and retrieving accessible object.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::rootAccessibleElement):
+        (DumpRenderTreeSupportEfl::focusedAccessibleElement):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
 2013-01-15  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
 
         Unreviewed. Fix build break by r139796.

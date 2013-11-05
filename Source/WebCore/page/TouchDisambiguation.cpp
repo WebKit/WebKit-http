@@ -86,14 +86,14 @@ struct TouchTargetData {
     float score;
 };
 
-void findGoodTouchTargets(const IntRect& touchBox, Frame* mainFrame, float pageScaleFactor, Vector<IntRect>& goodTargets)
+void findGoodTouchTargets(const IntRect& touchBox, Frame* mainFrame, Vector<IntRect>& goodTargets)
 {
     goodTargets.clear();
 
     int touchPointPadding = ceil(max(touchBox.width(), touchBox.height()) * 0.5);
     // FIXME: Rect-based hit test doesn't transform the touch point size.
-    //        We have to pre-apply page scale factor here.
-    int padding = ceil(touchPointPadding / pageScaleFactor);
+    //        We have to pre-apply frame scale factor here.
+    int padding = ceil(touchPointPadding / mainFrame->frameScaleFactor());
 
     IntPoint touchPoint = touchBox.center();
     IntPoint contentsPoint = mainFrame->view()->windowToContents(touchPoint);
@@ -106,9 +106,12 @@ void findGoodTouchTargets(const IntRect& touchBox, Frame* mainFrame, float pageS
     // This heuristic avoids excessive disambiguation in that case.
     HashSet<Node*> blackList;
     for (ListHashSet<RefPtr<Node> >::const_iterator it = hitResults.begin(); it != hitResults.end(); ++it) {
+        // Ignore any Nodes that can't be clicked on.
         RenderObject* renderer = it->get()->renderer();
-        if (!renderer)
+        if (!renderer || !it->get()->willRespondToMouseClickEvents())
             continue;
+
+        // Blacklist all of the Node's containers.
         for (RenderBlock* container = renderer->containingBlock(); container; container = container->containingBlock()) {
             Node* containerNode = container->node();
             if (!containerNode)
@@ -122,7 +125,7 @@ void findGoodTouchTargets(const IntRect& touchBox, Frame* mainFrame, float pageS
     float bestScore = 0;
     for (ListHashSet<RefPtr<Node> >::const_iterator it = hitResults.begin(); it != hitResults.end(); ++it) {
         for (Node* node = it->get(); node; node = node->parentNode()) {
-            if (blackList.contains(it->get()))
+            if (blackList.contains(node))
                 continue;
             if (node->isDocumentNode() || node->hasTagName(HTMLNames::htmlTag) || node->hasTagName(HTMLNames::bodyTag))
                 break;

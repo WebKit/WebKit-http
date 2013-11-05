@@ -27,31 +27,29 @@
 #define DownloadManagerEfl_h
 
 #include "ewk_download_job_private.h"
+#include <WebKit2/WKRetainPtr.h>
 #include <wtf/HashMap.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
-
-class EwkContext;
-class EwkDownloadJob;
 
 namespace WebKit {
 
 class DownloadManagerEfl {
 public:
-    static PassOwnPtr<DownloadManagerEfl> create(EwkContext* context)
+    static PassOwnPtr<DownloadManagerEfl> create(WKContextRef context)
     {
         return adoptPtr(new DownloadManagerEfl(context));
     }
 
     ~DownloadManagerEfl();
 
-    void registerDownload(DownloadProxy*, EwkViewImpl*);
+    void registerDownloadJob(WKDownloadRef, EwkView*);
 
 private:
-    explicit DownloadManagerEfl(EwkContext*);
+    explicit DownloadManagerEfl(WKContextRef);
 
-    EwkDownloadJob* downloadJob(uint64_t id) const;
-    void unregisterDownloadJob(uint64_t id);
+    EwkDownloadJob* ewkDownloadJob(WKDownloadRef);
+    void unregisterDownloadJob(WKDownloadRef);
 
     static WKStringRef decideDestinationWithSuggestedFilename(WKContextRef, WKDownloadRef, WKStringRef filename, bool* allowOverwrite, const void* clientInfo);
     static void didReceiveResponse(WKContextRef, WKDownloadRef, WKURLResponseRef, const void* clientInfo);
@@ -61,7 +59,7 @@ private:
     static void didCancel(WKContextRef, WKDownloadRef, const void* clientInfo);
     static void didFinish(WKContextRef, WKDownloadRef, const void* clientInfo);
 
-    EwkContext* m_context;
+    WKRetainPtr<WKContextRef> m_context;
     HashMap<uint64_t, RefPtr<EwkDownloadJob> > m_downloadJobs;
 };
 

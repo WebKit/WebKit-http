@@ -1,6 +1,3 @@
-add_definitions(-DWTF_PLATFORM_WIN=1)
-set(WTF_PLATFORM_WIN 1)
-
 add_definitions(-D_HAS_EXCEPTIONS=0 -DNOMINMAX -DUNICODE)
 
 include_directories(${JAVASCRIPTCORE_DIR}/os-win32)
@@ -18,5 +15,3 @@ if (MSVC)
         set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
     endif ()
 endif ()
-
-string(REPLACE "/ENTRY:mainACRTStartup" "/ENTRY:WinMainCRTStartup" CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})

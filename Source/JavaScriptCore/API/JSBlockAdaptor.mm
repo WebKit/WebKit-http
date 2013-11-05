@@ -34,7 +34,7 @@
 #import "JSBlockAdaptor.h"
 #import "JSContextInternal.h"
 #import "JSWrapperMap.h"
-#import "JSValue.h"
+#import "JSCJSValue.h"
 #import "JSValueInternal.h"
 #import "ObjcRuntimeExtras.h"
 #import "Operations.h"
@@ -133,7 +133,7 @@ public:
 
     static ResultType typeVoid()
     {
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return 0;
     }
 

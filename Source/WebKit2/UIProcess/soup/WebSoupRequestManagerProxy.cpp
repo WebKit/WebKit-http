@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,10 +28,9 @@
 
 namespace WebKit {
 
-const AtomicString& WebSoupRequestManagerProxy::supplementName()
+const char* WebSoupRequestManagerProxy::supplementName()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebSoupRequestManagerProxy", AtomicString::ConstructFromLiteral));
-    return name;
+    return "WebSoupRequestManagerProxy";
 }
 
 PassRefPtr<WebSoupRequestManagerProxy> WebSoupRequestManagerProxy::create(WebContext* context)
@@ -72,13 +72,6 @@ void WebSoupRequestManagerProxy::refWebContextSupplement()
 void WebSoupRequestManagerProxy::derefWebContextSupplement()
 {
     APIObject::deref();
-}
-
-// CoreIPC::MessageReceiver
-
-void WebSoupRequestManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveWebSoupRequestManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebSoupRequestManagerProxy::registerURIScheme(const String& scheme)

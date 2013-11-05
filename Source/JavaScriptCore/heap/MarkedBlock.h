@@ -23,7 +23,6 @@
 #define MarkedBlock_h
 
 #include "BlockAllocator.h"
-#include "CardSet.h"
 #include "HeapBlock.h"
 
 #include "WeakSet.h"
@@ -71,19 +70,12 @@ namespace JSC {
 
     class MarkedBlock : public HeapBlock<MarkedBlock> {
     public:
-        // Ensure natural alignment for native types whilst recognizing that the smallest
-        // object the heap will commonly allocate is four words.
-        static const size_t atomSize = 4 * sizeof(void*);
-        static const size_t atomShift = 5;
+        static const size_t atomSize = 8; // bytes
         static const size_t blockSize = 64 * KB;
         static const size_t blockMask = ~(blockSize - 1); // blockSize must be a power of two.
 
-        static const size_t atomsPerBlock = blockSize / atomSize; // ~0.4% overhead
+        static const size_t atomsPerBlock = blockSize / atomSize;
         static const size_t atomMask = atomsPerBlock - 1;
-        static const int cardShift = 8; // This is log2 of bytes per card.
-        static const size_t bytesPerCard = 1 << cardShift;
-        static const int cardCount = blockSize / bytesPerCard;
-        static const int cardMask = cardCount - 1;
 
         struct FreeCell {
             FreeCell* next;
@@ -165,34 +157,6 @@ namespace JSC {
 
         bool needsSweeping();
 
-#if ENABLE(GGC)
-        void setDirtyObject(const void* atom)
-        {
-            ASSERT(MarkedBlock::blockFor(atom) == this);
-            m_cards.markCardForAtom(atom);
-        }
-
-        uint8_t* addressOfCardFor(const void* atom)
-        {
-            ASSERT(MarkedBlock::blockFor(atom) == this);
-            return &m_cards.cardForAtom(atom);
-        }
-
-        static inline size_t offsetOfCards()
-        {
-            return OBJECT_OFFSETOF(MarkedBlock, m_cards);
-        }
-
-        static inline size_t offsetOfMarks()
-        {
-            return OBJECT_OFFSETOF(MarkedBlock, m_marks);
-        }
-
-        typedef Vector<JSCell*, 32> DirtyCellVector;
-        inline void gatherDirtyCells(DirtyCellVector&);
-        template <int size> inline void gatherDirtyCellsWithSize(DirtyCellVector&);
-#endif
-
         template <typename Functor> void forEachCell(Functor&);
         template <typename Functor> void forEachLiveCell(Functor&);
         template <typename Functor> void forEachDeadCell(Functor&);
@@ -211,10 +175,6 @@ namespace JSC {
         void callDestructor(JSCell*);
         template<BlockState, SweepMode, DestructorType> FreeList specializedSweep();
         
-#if ENABLE(GGC)
-        CardSet<bytesPerCard, blockSize> m_cards;
-#endif
-
         size_t m_atomsPerCell;
         size_t m_endAtom; // This is a fuzzy end. Always test for < m_endAtom.
 #if ENABLE(PARALLEL_GC)
@@ -408,11 +368,11 @@ namespace JSC {
 
         case New:
         case FreeListed:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             return false;
         }
 
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         return false;
     }
 
@@ -465,87 +425,6 @@ namespace JSC {
     {
         return m_state == Marked;
     }
-
-#if ENABLE(GGC)
-template <int _cellSize> void MarkedBlock::gatherDirtyCellsWithSize(DirtyCellVector& dirtyCells)
-{
-    if (m_cards.testAndClear(0)) {
-        char* ptr = reinterpret_cast<char*>(&atoms()[firstAtom()]);
-        const char* end = reinterpret_cast<char*>(this) + bytesPerCard;
-        while (ptr < end) {
-            JSCell* cell = reinterpret_cast<JSCell*>(ptr);
-            if (isMarked(cell))
-                dirtyCells.append(cell);
-            ptr += _cellSize;
-        }
-    }
-    
-    const size_t cellOffset = firstAtom() * atomSize % _cellSize;
-    for (size_t i = 1; i < m_cards.cardCount; i++) {
-        if (!m_cards.testAndClear(i))
-            continue;
-        char* ptr = reinterpret_cast<char*>(this) + i * bytesPerCard + cellOffset;
-        char* end = reinterpret_cast<char*>(this) + (i + 1) * bytesPerCard;
-        
-        while (ptr < end) {
-            JSCell* cell = reinterpret_cast<JSCell*>(ptr);
-            if (isMarked(cell))
-                dirtyCells.append(cell);
-            ptr += _cellSize;
-        }
-    }
-}
-
-void MarkedBlock::gatherDirtyCells(DirtyCellVector& dirtyCells)
-{
-    COMPILE_ASSERT((int)m_cards.cardCount == (int)cardCount, MarkedBlockCardCountsMatch);
-
-    ASSERT(m_state != New && m_state != FreeListed);
-    
-    // This is an optimisation to avoid having to walk the set of marked
-    // blocks twice during GC.
-    m_state = Marked;
-    
-    if (isEmpty())
-        return;
-    
-    size_t cellSize = this->cellSize();
-    if (cellSize == 32) {
-        gatherDirtyCellsWithSize<32>(dirtyCells);
-        return;
-    }
-    if (cellSize == 64) {
-        gatherDirtyCellsWithSize<64>(dirtyCells);
-        return;
-    }
-
-    const size_t firstCellOffset = firstAtom() * atomSize % cellSize;
-    
-    if (m_cards.testAndClear(0)) {
-        char* ptr = reinterpret_cast<char*>(this) + firstAtom() * atomSize;
-        char* end = reinterpret_cast<char*>(this) + bytesPerCard;
-        while (ptr < end) {
-            JSCell* cell = reinterpret_cast<JSCell*>(ptr);
-            if (isMarked(cell))
-                dirtyCells.append(cell);
-            ptr += cellSize;
-        }
-    }
-    for (size_t i = 1; i < m_cards.cardCount; i++) {
-        if (!m_cards.testAndClear(i))
-            continue;
-        char* ptr = reinterpret_cast<char*>(this) + firstCellOffset + cellSize * ((i * bytesPerCard + cellSize - 1 - firstCellOffset) / cellSize);
-        char* end = reinterpret_cast<char*>(this) + std::min((i + 1) * bytesPerCard, m_endAtom * atomSize);
-        
-        while (ptr < end) {
-            JSCell* cell = reinterpret_cast<JSCell*>(ptr);
-            if (isMarked(cell))
-                dirtyCells.append(cell);
-            ptr += cellSize;
-        }
-    }
-}
-#endif
 
 } // namespace JSC
 

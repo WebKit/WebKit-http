@@ -29,7 +29,6 @@
 #if ENABLE(PLUGIN_PROCESS)
 
 #include "PluginProcess.h"
-#include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
 #include "MachPort.h"
@@ -46,9 +45,8 @@ struct PluginProcessCreationParameters {
     PluginProcessCreationParameters();
 
     void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder*, PluginProcessCreationParameters&);
+    static bool decode(CoreIPC::ArgumentDecoder&, PluginProcessCreationParameters&);
 
-    String pluginPath;
     PluginProcess::Type processType;
     bool supportsAsynchronousPluginInitialization;
 
@@ -56,9 +54,7 @@ struct PluginProcessCreationParameters {
     double terminationTimeout;
 
 #if PLATFORM(MAC)
-    String parentProcessName;
     CoreIPC::MachPort acceleratedCompositingPort;
-    String sandboxProfileDirectoryPath;
 #endif
 };
 

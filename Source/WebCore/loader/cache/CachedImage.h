@@ -54,7 +54,7 @@ public:
     Image* image(); // Returns the nullImage() if the image is not available yet.
     Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
     bool hasImage() const { return m_image.get(); }
-    bool currentFrameHasAlpha(const RenderObject*); // Side effect: ensures decoded image is in cache, therefore should only be called when about to draw the image.
+    bool currentFrameKnownToBeOpaque(const RenderObject*); // Side effect: ensures decoded image is in cache, therefore should only be called when about to draw the image.
 
     std::pair<Image*, float> brokenImage(float deviceScaleFactor) const; // Returns an image and the image's resolution scale factor.
     bool willPaintBrokenImage() const; 
@@ -108,6 +108,8 @@ private:
     void notifyObservers(const IntRect* changeRect = 0);
     virtual PurgePriority purgePriority() const { return PurgeFirst; }
     void checkShouldPaintBrokenImage();
+
+    virtual void switchClientsToRevalidatedResource() OVERRIDE;
 
     typedef pair<IntSize, float> SizeAndZoom;
     typedef HashMap<const CachedImageClient*, SizeAndZoom> ContainerSizeRequests;

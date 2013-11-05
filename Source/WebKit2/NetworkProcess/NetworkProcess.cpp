@@ -70,6 +70,11 @@ NetworkProcess::~NetworkProcess()
 {
 }
 
+AuthenticationManager& NetworkProcess::authenticationManager()
+{
+    return *supplement<AuthenticationManager>();
+}
+
 DownloadManager& NetworkProcess::downloadManager()
 {
     DEFINE_STATIC_LOCAL(DownloadManager, downloadManager, (this));
@@ -90,17 +95,17 @@ bool NetworkProcess::shouldTerminate()
     return false;
 }
 
-void NetworkProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
+void NetworkProcess::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    if (messageReceiverMap().dispatchMessage(connection, messageID, decoder))
+    if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
 
-    didReceiveNetworkProcessMessage(connection, messageID, decoder);
+    didReceiveNetworkProcessMessage(connection, decoder);
 }
 
-void NetworkProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void NetworkProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    messageReceiverMap().dispatchSyncMessage(connection, messageID, decoder, replyEncoder);
+    messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder);
 }
 
 void NetworkProcess::didClose(CoreIPC::Connection*)
@@ -131,7 +136,7 @@ CoreIPC::Connection* NetworkProcess::downloadProxyConnection()
 
 AuthenticationManager& NetworkProcess::downloadsAuthenticationManager()
 {
-    return *supplement<AuthenticationManager>();
+    return authenticationManager();
 }
 
 void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
@@ -216,7 +221,7 @@ void NetworkProcess::initializeProcessName(const ChildProcessInitializationParam
 {
 }
 
-void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters&)
+void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
 {
 }
 #endif

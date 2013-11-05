@@ -43,25 +43,17 @@
 
 namespace WebCore {
 
-static uint64_t generateUniqueIdentifier()
-{
-    static uint64_t uniqueIdentifier;
-    return ++uniqueIdentifier;
-}
-
 AuthenticationChallenge::AuthenticationChallenge(const ProtectionSpace& protectionSpace,
                                                  const Credential& proposedCredential,
                                                  unsigned previousFailureCount,
                                                  const ResourceResponse& response,
-                                                 const ResourceError& error,
-                                                 uint64_t identifier)
+                                                 const ResourceError& error)
     : AuthenticationChallengeBase(protectionSpace,
                                   proposedCredential,
                                   previousFailureCount,
                                   response,
                                   error)
 {
-    m_identifier = identifier;
 }
 
 AuthenticationChallenge::AuthenticationChallenge(CFURLAuthChallengeRef cfChallenge,
@@ -74,7 +66,6 @@ AuthenticationChallenge::AuthenticationChallenge(CFURLAuthChallengeRef cfChallen
     , m_authenticationClient(authenticationClient)
     , m_cfChallenge(cfChallenge)
 {
-    m_identifier = generateUniqueIdentifier();
 }
 
 AuthenticationClient* AuthenticationChallenge::authenticationClient() const
@@ -94,7 +85,9 @@ bool AuthenticationChallenge::platformCompare(const AuthenticationChallenge& a, 
 }
 
 CFURLAuthChallengeRef createCF(const AuthenticationChallenge& coreChallenge)
-{  
+{
+    // FIXME: Why not cache CFURLAuthChallengeRef in m_cfChallenge? Foundation counterpart does that.
+
     CFURLProtectionSpaceRef protectionSpace = createCF(coreChallenge.protectionSpace());
     CFURLCredentialRef credential = createCF(coreChallenge.proposedCredential());
     

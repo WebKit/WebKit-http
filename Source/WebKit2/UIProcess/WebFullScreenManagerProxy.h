@@ -35,7 +35,6 @@
 namespace CoreIPC {
 class ArgumentDecoder;
 class Connection;
-class MessageID;
 }
 
 namespace WebCore {
@@ -76,8 +75,8 @@ public:
     bool isFullScreen();
     void close();
 
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 
     void willEnterFullScreen();
     void didEnterFullScreen();
@@ -98,8 +97,8 @@ private:
     WebPageProxy* m_page;
     PlatformWebView* m_webView;
 
-    void didReceiveWebFullScreenManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
-    void didReceiveSyncWebFullScreenManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+    void didReceiveWebFullScreenManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
+    void didReceiveSyncWebFullScreenManagerProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
 };
 
 } // namespace WebKit

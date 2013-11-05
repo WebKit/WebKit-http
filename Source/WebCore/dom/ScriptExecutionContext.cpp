@@ -53,6 +53,10 @@
 #include "JSDOMWindow.h"
 #endif
 
+#if ENABLE(SQL_DATABASE)
+#include "DatabaseContext.h"
+#endif
+
 namespace WTF {
 
 template<> struct SequenceMemoryInstrumentationTraits<WebCore::ContextDestructionObserver*> {
@@ -411,14 +415,14 @@ void ScriptExecutionContext::reportMemoryUsage(MemoryObjectInfo* memoryObjectInf
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     SecurityContext::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_messagePorts);
-    info.addMember(m_destructionObservers);
-    info.addMember(m_activeDOMObjects);
-    info.addMember(m_timeouts);
-    info.addMember(m_pendingExceptions);
+    info.addMember(m_messagePorts, "messagePorts");
+    info.addMember(m_destructionObservers, "destructionObservers");
+    info.addMember(m_activeDOMObjects, "activeDOMObjects");
+    info.addMember(m_timeouts, "timeouts");
+    info.addMember(m_pendingExceptions, "pendingExceptions");
 #if ENABLE(BLOB)
-    info.addMember(m_publicURLManager);
-    info.addMember(m_fileThread);
+    info.addMember(m_publicURLManager, "publicURLManager");
+    info.addMember(m_fileThread, "fileThread");
 #endif
 }
 
@@ -439,6 +443,14 @@ JSC::JSGlobalData* ScriptExecutionContext::globalData()
 
     ASSERT_NOT_REACHED();
     return 0;
+}
+#endif
+
+#if ENABLE(SQL_DATABASE)
+void ScriptExecutionContext::setDatabaseContext(DatabaseContext* databaseContext)
+{
+    ASSERT(!m_databaseContext);
+    m_databaseContext = databaseContext;
 }
 #endif
 

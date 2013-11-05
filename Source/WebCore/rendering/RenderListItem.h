@@ -31,7 +31,7 @@ class RenderListMarker;
 
 class RenderListItem : public RenderBlock {
 public:
-    explicit RenderListItem(ContainerNode*);
+    explicit RenderListItem(Element*);
 
     int value() const { if (!m_isValueUpToDate) updateValueNow(); return m_value; }
     void updateValue();
@@ -90,7 +90,7 @@ private:
 
 inline RenderListItem* toRenderListItem(RenderObject* object)
 {
-    ASSERT(!object || object->isListItem());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isListItem());
     return static_cast<RenderListItem*>(object);
 }
 

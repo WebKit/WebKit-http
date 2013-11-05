@@ -194,11 +194,7 @@ Element::~Element()
         ElementRareData* data = elementRareData();
         data->setPseudoElement(BEFORE, 0);
         data->setPseudoElement(AFTER, 0);
-    }
-
-    if (ElementShadow* elementShadow = shadow()) {
-        elementShadow->removeAllShadowRoots();
-        elementRareData()->setShadow(nullptr);
+        data->clearShadow();
     }
 
     if (hasSyntheticAttrChildNodes())
@@ -1138,6 +1134,12 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertio
         setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 #endif
 
+    if (Element* before = pseudoElement(BEFORE))
+        before->insertedInto(insertionPoint);
+
+    if (Element* after = pseudoElement(AFTER))
+        after->insertedInto(insertionPoint);
+
     if (!insertionPoint->isInTreeScope())
         return InsertionDone;
 
@@ -1169,6 +1171,12 @@ void Element::removedFrom(ContainerNode* insertionPoint)
 #if ENABLE(SVG)
     bool wasInDocument = insertionPoint->document();
 #endif
+
+    if (Element* before = pseudoElement(BEFORE))
+        before->removedFrom(insertionPoint);
+
+    if (Element* after = pseudoElement(AFTER))
+        after->removedFrom(insertionPoint);
 
 #if ENABLE(DIALOG_ELEMENT)
     document()->removeFromTopLayer(this);
@@ -1425,20 +1433,12 @@ void Element::recalcStyle(StyleChange change)
 
 ElementShadow* Element::shadow() const
 {
-    if (!hasRareData())
-        return 0;
-
-    return elementRareData()->shadow();
+    return hasRareData() ? elementRareData()->shadow() : 0;
 }
 
 ElementShadow* Element::ensureShadow()
 {
-    if (ElementShadow* shadow = ensureElementRareData()->shadow())
-        return shadow;
-
-    ElementRareData* data = elementRareData();
-    data->setShadow(adoptPtr(new ElementShadow()));
-    return data->shadow();
+    return ensureElementRareData()->ensureShadow();
 }
 
 void Element::didAffectSelector(AffectedSelectorMask mask)
@@ -1450,7 +1450,22 @@ void Element::didAffectSelector(AffectedSelectorMask mask)
 
 PassRefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
 {
-    return ShadowRoot::create(this, ec);
+    if (alwaysCreateUserAgentShadowRoot())
+        ensureUserAgentShadowRoot();
+
+#if ENABLE(SHADOW_DOM)
+    if (RuntimeEnabledFeatures::authorShadowDOMForAnyElementEnabled())
+        return ensureShadow()->addShadowRoot(this, ShadowRoot::AuthorShadowRoot);
+#endif
+
+    // Since some elements recreates shadow root dynamically, multiple shadow
+    // subtrees won't work well in that element. Until they are fixed, we disable
+    // adding author shadow root for them.
+    if (!areAuthorShadowsAllowed()) {
+        ec = HIERARCHY_REQUEST_ERR;
+        return 0;
+    }
+    return ensureShadow()->addShadowRoot(this, ShadowRoot::AuthorShadowRoot);
 }
 
 ShadowRoot* Element::shadowRoot() const
@@ -1459,9 +1474,9 @@ ShadowRoot* Element::shadowRoot() const
     if (!elementShadow)
         return 0;
     ShadowRoot* shadowRoot = elementShadow->youngestShadowRoot();
-    if (!shadowRoot->isAccessible())
-        return 0;
-    return shadowRoot;
+    if (shadowRoot->type() == ShadowRoot::AuthorShadowRoot)
+        return shadowRoot;
+    return 0;
 }
 
 ShadowRoot* Element::userAgentShadowRoot() const
@@ -1474,6 +1489,15 @@ ShadowRoot* Element::userAgentShadowRoot() const
     }
 
     return 0;
+}
+
+ShadowRoot* Element::ensureUserAgentShadowRoot()
+{
+    if (ShadowRoot* shadowRoot = userAgentShadowRoot())
+        return shadowRoot;
+    ShadowRoot* shadowRoot = ensureShadow()->addShadowRoot(this, ShadowRoot::UserAgentShadowRoot);
+    didAddUserAgentShadowRoot(shadowRoot);
+    return shadowRoot;
 }
 
 const AtomicString& Element::shadowPseudoId() const
@@ -1840,7 +1864,7 @@ CSSStyleDeclaration *Element::style()
     return 0;
 }
 
-void Element::focus(bool restorePreviousSelection)
+void Element::focus(bool restorePreviousSelection, FocusDirection direction)
 {
     if (!inDocument())
         return;
@@ -1867,7 +1891,7 @@ void Element::focus(bool restorePreviousSelection)
         // If a focus event handler changes the focus to a different node it
         // does not make sense to continue and update appearence.
         protect = this;
-        if (!page->focusController()->setFocusedNode(this, doc->frame()))
+        if (!page->focusController()->setFocusedNode(this, doc->frame(), direction))
             return;
     }
 
@@ -2043,6 +2067,20 @@ void Element::setChildIndex(unsigned index)
     if (RenderStyle* style = renderStyle())
         style->setUnique();
     rareData->setChildIndex(index);
+}
+
+bool Element::hasFlagsSetDuringStylingOfChildren() const
+{
+    if (!hasRareData())
+        return false;
+    return rareDataChildrenAffectedByHover()
+        || rareDataChildrenAffectedByActive()
+        || rareDataChildrenAffectedByDrag()
+        || rareDataChildrenAffectedByFirstChildRules()
+        || rareDataChildrenAffectedByLastChildRules()
+        || rareDataChildrenAffectedByDirectAdjacentRules()
+        || rareDataChildrenAffectedByForwardPositionalRules()
+        || rareDataChildrenAffectedByBackwardPositionalRules();
 }
 
 bool Element::rareDataStyleAffectedByEmpty() const
@@ -2345,18 +2383,6 @@ bool Element::childShouldCreateRenderer(const NodeRenderingContext& childContext
 }
 #endif
 
-#if ENABLE(VIDEO_TRACK)
-WebVTTNodeType Element::webVTTNodeType() const
-{
-    return hasRareData() ? elementRareData()->webVTTNodeType() : WebVTTNodeTypeNone;
-}
-
-void Element::setWebVTTNodeType(WebVTTNodeType type)
-{
-    ensureElementRareData()->setWebVTTNodeType(type);
-}
-#endif
-
 #if ENABLE(FULLSCREEN_API)
 void Element::webkitRequestFullscreen()
 {
@@ -2401,6 +2427,8 @@ bool Element::isInTopLayer() const
 
 void Element::setIsInTopLayer(bool inTopLayer)
 {
+    if (isInTopLayer() == inTopLayer)
+        return;
     ensureElementRareData()->setIsInTopLayer(inTopLayer);
 
     // We must ensure a reattach occurs so the renderer is inserted in the correct sibling order under RenderView according to its
@@ -2432,7 +2460,7 @@ SpellcheckAttributeState Element::spellcheckAttributeState() const
 
 bool Element::isSpellCheckingEnabled() const
 {
-    for (const Element* element = this; element; element = element->parentOrHostElement()) {
+    for (const Element* element = this; element; element = element->parentOrShadowHostElement()) {
         switch (element->spellcheckAttributeState()) {
         case SpellcheckAttributeTrue:
             return true;
@@ -2771,8 +2799,8 @@ void Element::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     ContainerNode::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_tagName);
-    info.addMember(m_attributeData);
+    info.addMember(m_tagName, "tagName");
+    info.addMember(m_attributeData, "attributeData");
 }
 
 #if ENABLE(SVG)

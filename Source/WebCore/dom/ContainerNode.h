@@ -101,11 +101,7 @@ public:
     void parserRemoveChild(Node*);
     void parserInsertBefore(PassRefPtr<Node> newChild, Node* refChild);
 
-    // FIXME: It's not good to have two functions with such similar names, especially public functions.
-    // How do removeChildren and removeAllChildren differ?
     void removeChildren();
-    void removeAllChildren();
-
     void takeAllChildrenFrom(ContainerNode*);
 
     void cloneChildNodes(ContainerNode* clone);
@@ -113,7 +109,7 @@ public:
     virtual void attach() OVERRIDE;
     virtual void detach() OVERRIDE;
     virtual LayoutRect boundingBox() const OVERRIDE;
-    virtual void setFocus(bool = true) OVERRIDE;
+    virtual void setFocus(bool) OVERRIDE;
     virtual void setActive(bool active = true, bool pause = false) OVERRIDE;
     virtual void setHovered(bool = true) OVERRIDE;
     virtual void scheduleSetNeedsStyleRecalc(StyleChangeType = FullStyleChange) OVERRIDE;
@@ -134,13 +130,7 @@ public:
 
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const { return true; }
 
-    virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-    {
-        MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-        Node::reportMemoryUsage(memoryObjectInfo);
-        info.addMember(m_firstChild);
-        info.addMember(m_lastChild);
-    }
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 protected:
     ContainerNode(Document*, ConstructionType = CreateContainer);
@@ -154,6 +144,7 @@ protected:
     template<class GenericNode, class GenericNodeContainer>
     friend void Private::addChildNodesToDeletionQueue(GenericNode*& head, GenericNode*& tail, GenericNodeContainer*);
 
+    void removeDetachedChildren();
     void setFirstChild(Node* child) { m_firstChild = child; }
     void setLastChild(Node* child) { m_lastChild = child; }
 
@@ -178,13 +169,13 @@ bool childAttachedAllowedWhenAttachingChildren(ContainerNode*);
 
 inline ContainerNode* toContainerNode(Node* node)
 {
-    ASSERT(!node || node->isContainerNode());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isContainerNode());
     return static_cast<ContainerNode*>(node);
 }
 
 inline const ContainerNode* toContainerNode(const Node* node)
 {
-    ASSERT(!node || node->isContainerNode());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isContainerNode());
     return static_cast<const ContainerNode*>(node);
 }
 
@@ -269,7 +260,7 @@ inline bool Node::needsShadowTreeWalker() const
 {
     if (getFlag(NeedsShadowTreeWalkerFlag))
         return true;
-    ContainerNode* parent = parentOrHostNode();
+    ContainerNode* parent = parentOrShadowHostNode();
     return parent && parent->getFlag(NeedsShadowTreeWalkerFlag);
 }
 

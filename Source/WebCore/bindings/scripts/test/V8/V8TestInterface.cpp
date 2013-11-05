@@ -38,9 +38,32 @@
 #include <wtf/RefPtr.h>
 #include <wtf/UnusedParam.h>
 
+#if ENABLE(BINDING_INTEGRITY)
+#if defined(OS_WIN)
+#pragma warning(disable: 4483)
+extern "C" { extern void (*const __identifier("??_7TestInterface@WebCore@@6B@")[])(); }
+#else
+extern "C" { extern void* _ZTVN7WebCore13TestInterfaceE[]; }
+#endif
+#endif // ENABLE(BINDING_INTEGRITY)
+
 namespace WebCore {
 
-WrapperTypeInfo V8TestInterface::info = { V8TestInterface::GetTemplate, V8TestInterface::derefObject, V8TestInterface::toActiveDOMObject, 0, V8TestInterface::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
+#if ENABLE(BINDING_INTEGRITY)
+inline void checkTypeOrDieTrying(TestInterface* object)
+{
+    void* actualVTablePointer = *(reinterpret_cast<void**>(object));
+#if defined(OS_WIN)
+    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestInterface@WebCore@@6B@"));
+#else
+    void* expectedVTablePointer = &_ZTVN7WebCore13TestInterfaceE[2];
+#endif
+    if (actualVTablePointer != expectedVTablePointer)
+        CRASH();
+}
+#endif // ENABLE(BINDING_INTEGRITY)
+
+WrapperTypeInfo V8TestInterface::info = { V8TestInterface::GetTemplate, V8TestInterface::derefObject, V8TestInterface::toActiveDOMObject, 0, 0, V8TestInterface::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestInterfaceV8Internal {
 
@@ -122,7 +145,7 @@ static v8::Handle<v8::Value> supplementalNodeAttrGetter(v8::Local<v8::String> na
 static void supplementalNodeAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     TestInterface* imp = V8TestInterface::toNative(info.Holder());
-    Node* v = V8Node::HasInstance(value) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(value)) : 0;
+    Node* v = V8Node::HasInstance(value, info.GetIsolate()) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(value)) : 0;
     TestSupplemental::setSupplementalNode(imp, WTF::getPtr(v));
     return;
 }
@@ -150,7 +173,7 @@ static v8::Handle<v8::Value> supplementalMethod2Callback(const v8::Arguments& ar
     ExceptionCode ec = 0;
     {
     V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<>, strArg, MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined));
-    V8TRYCATCH(TestObj*, objArg, V8TestObj::HasInstance(MAYBE_MISSING_PARAMETER(args, 1, DefaultIsUndefined)) ? V8TestObj::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 1, DefaultIsUndefined))) : 0);
+    V8TRYCATCH(TestObj*, objArg, V8TestObj::HasInstance(MAYBE_MISSING_PARAMETER(args, 1, DefaultIsUndefined), args.GetIsolate()) ? V8TestObj::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 1, DefaultIsUndefined))) : 0);
     ScriptExecutionContext* scriptContext = getScriptExecutionContext();
     RefPtr<TestObj> result = TestSupplemental::supplementalMethod2(scriptContext, imp, strArg, objArg, ec);
     if (UNLIKELY(ec))
@@ -232,7 +255,7 @@ v8::Handle<v8::Value> V8TestInterface::constructorCallback(const v8::Arguments& 
 {
     
     if (!args.IsConstructCall())
-        return throwTypeError("DOM object constructor cannot be called as a function.");
+        return throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -256,7 +279,7 @@ v8::Handle<v8::Value> V8TestInterface::constructorCallback(const v8::Arguments& 
     return setDOMException(ec, args.GetIsolate());
 }
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestInterfaceTemplate(v8::Persistent<v8::FunctionTemplate> desc)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestInterfaceTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
 {
     desc->ReadOnlyPrototype();
 
@@ -265,7 +288,9 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestInterfaceTemplate(v8:
         V8TestInterfaceAttrs, WTF_ARRAY_LENGTH(V8TestInterfaceAttrs),
         V8TestInterfaceCallbacks, WTF_ARRAY_LENGTH(V8TestInterfaceCallbacks));
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
+#if ENABLE(TEST_INTERFACE)
     desc->SetCallHandler(V8TestInterface::constructorCallback);
+#endif // ENABLE(TEST_INTERFACE)
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
@@ -274,7 +299,7 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestInterfaceTemplate(v8:
 
     // Custom Signature 'supplementalMethod2'
     const int supplementalMethod2Argc = 2;
-    v8::Handle<v8::FunctionTemplate> supplementalMethod2Argv[supplementalMethod2Argc] = { v8::Handle<v8::FunctionTemplate>(), V8TestObj::GetRawTemplate() };
+    v8::Handle<v8::FunctionTemplate> supplementalMethod2Argv[supplementalMethod2Argc] = { v8::Handle<v8::FunctionTemplate>(), V8TestObj::GetRawTemplate(isolate) };
     v8::Handle<v8::Signature> supplementalMethod2Signature = v8::Signature::New(desc, supplementalMethod2Argc, supplementalMethod2Argv);
 #if ENABLE(Condition11) || ENABLE(Condition12)
     proto->Set(v8::String::NewSymbol("supplementalMethod2"), v8::FunctionTemplate::New(TestInterfaceV8Internal::supplementalMethod2Callback, v8Undefined(), supplementalMethod2Signature));
@@ -289,9 +314,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestInterfaceTemplate(v8:
     return desc;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetRawTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetRawTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
@@ -302,34 +329,43 @@ v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetRawTemplate()
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestInterface::GetTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestInterfaceTemplate(GetRawTemplate());
+        ConfigureV8TestInterfaceTemplate(GetRawTemplate(isolate), isolate);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
-bool V8TestInterface::HasInstance(v8::Handle<v8::Value> value)
+bool V8TestInterface::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    return GetRawTemplate()->HasInstance(value);
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return GetRawTemplate(isolate)->HasInstance(value);
 }
 
 ActiveDOMObject* V8TestInterface::toActiveDOMObject(v8::Handle<v8::Object> object)
 {
     return toNative(object);
-}      
+}
+
 
 v8::Handle<v8::Object> V8TestInterface::createWrapper(PassRefPtr<TestInterface> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     ASSERT(impl.get());
     ASSERT(DOMDataStore::getWrapper(impl.get(), isolate).IsEmpty());
+
+#if ENABLE(BINDING_INTEGRITY)
+    checkTypeOrDieTrying(impl.get());
+#endif
 
     v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
@@ -341,7 +377,6 @@ v8::Handle<v8::Object> V8TestInterface::createWrapper(PassRefPtr<TestInterface> 
         wrapperHandle.MarkIndependent();
     return wrapper;
 }
-
 void V8TestInterface::derefObject(void* object)
 {
     static_cast<TestInterface*>(object)->deref();

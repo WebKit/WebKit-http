@@ -32,6 +32,7 @@
 		0FDDBFA81666DFA300C55FEF /* StringPrintStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FDDBFA61666DFA300C55FEF /* StringPrintStream.h */; };
 		143F611F1565F0F900DB514A /* RAMSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 143F611D1565F0F900DB514A /* RAMSize.cpp */; };
 		143F61201565F0F900DB514A /* RAMSize.h in Headers */ = {isa = PBXBuildFile; fileRef = 143F611E1565F0F900DB514A /* RAMSize.h */; settings = {ATTRIBUTES = (); }; };
+		149EF16316BBFE0D000A4331 /* TriState.h in Headers */ = {isa = PBXBuildFile; fileRef = 149EF16216BBFE0D000A4331 /* TriState.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		14F3B0F715E45E4600210069 /* SaturatedArithmetic.h in Headers */ = {isa = PBXBuildFile; fileRef = 14F3B0F615E45E4600210069 /* SaturatedArithmetic.h */; settings = {ATTRIBUTES = (); }; };
 		1A6BB769162F300500DD16DB /* StreamBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 1A6BB768162F300500DD16DB /* StreamBuffer.h */; };
 		26147B0A15DDCCDC00DDB907 /* IntegerToStringConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = 26147B0815DDCCDC00DDB907 /* IntegerToStringConversion.h */; };
@@ -334,6 +335,7 @@
 		0FDDBFA61666DFA300C55FEF /* StringPrintStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StringPrintStream.h; sourceTree = "<group>"; };
 		143F611D1565F0F900DB514A /* RAMSize.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RAMSize.cpp; sourceTree = "<group>"; };
 		143F611E1565F0F900DB514A /* RAMSize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RAMSize.h; sourceTree = "<group>"; };
+		149EF16216BBFE0D000A4331 /* TriState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TriState.h; sourceTree = "<group>"; };
 		14F3B0F615E45E4600210069 /* SaturatedArithmetic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SaturatedArithmetic.h; sourceTree = "<group>"; };
 		1A6BB768162F300500DD16DB /* StreamBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StreamBuffer.h; sourceTree = "<group>"; };
 		26147B0815DDCCDC00DDB907 /* IntegerToStringConversion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IntegerToStringConversion.h; sourceTree = "<group>"; };
@@ -364,6 +366,7 @@
 		2C05385315BC819000F21B96 /* GregorianDateTime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GregorianDateTime.h; sourceTree = "<group>"; };
 		2CCD892915C0390200285083 /* GregorianDateTime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GregorianDateTime.cpp; sourceTree = "<group>"; };
 		4330F38E15745B0500AAFA8F /* URLString.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = URLString.cpp; sourceTree = "<group>"; };
+		44DEE74A152274BB00C6EC37 /* iOS.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = iOS.xcconfig; sourceTree = "<group>"; };
 		4F0321BB156AA8D1006EBAF6 /* BitArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BitArray.h; sourceTree = "<group>"; };
 		4F1B2DB5160B44AA00586559 /* MemoryInstrumentationHashSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MemoryInstrumentationHashSet.h; sourceTree = "<group>"; };
 		4F1D115315FF11BE0026E908 /* MemoryInstrumentation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MemoryInstrumentation.h; sourceTree = "<group>"; };
@@ -375,7 +378,6 @@
 		5D247B6E14689C4700E78B76 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		5D247B7014689C4700E78B76 /* DebugRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = DebugRelease.xcconfig; sourceTree = "<group>"; };
 		5D247B7314689C4700E78B76 /* WTF.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = WTF.xcconfig; sourceTree = "<group>"; };
-		5D247EB11468B01500E78B76 /* HeaderDetection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HeaderDetection.h; path = DerivedSources/WTF/HeaderDetection.h; sourceTree = BUILT_PRODUCTS_DIR; };
 		6541CAF41630DB26006D0DEC /* CopyWTFHeaders.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = CopyWTFHeaders.xcconfig; sourceTree = "<group>"; };
 		7E29C33D15FFD79B00516D61 /* ObjcRuntimeExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjcRuntimeExtras.h; sourceTree = "<group>"; };
 		8134013615B092FD001FF0B8 /* Base64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Base64.cpp; sourceTree = "<group>"; };
@@ -657,6 +659,7 @@
 				5D247B6E14689C4700E78B76 /* Base.xcconfig */,
 				6541CAF41630DB26006D0DEC /* CopyWTFHeaders.xcconfig */,
 				5D247B7014689C4700E78B76 /* DebugRelease.xcconfig */,
+				44DEE74A152274BB00C6EC37 /* iOS.xcconfig */,
 				5D247B7314689C4700E78B76 /* WTF.xcconfig */,
 			);
 			path = Configurations;
@@ -667,7 +670,6 @@
 			children = (
 				A876DBD6151816E500DADB95 /* wtf */,
 				A8A4748B151A8264004123FF /* config.h */,
-				5D247EB11468B01500E78B76 /* HeaderDetection.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -865,6 +867,7 @@
 				A8A47338151A825B004123FF /* ThreadRestrictionVerifier.h */,
 				A8A4733E151A825B004123FF /* ThreadSafeRefCounted.h */,
 				A8A4733F151A825B004123FF /* ThreadSpecific.h */,
+				149EF16216BBFE0D000A4331 /* TriState.h */,
 				A8A47341151A825B004123FF /* TypedArrayBase.h */,
 				A8A47342151A825B004123FF /* TypeTraits.cpp */,
 				A8A47343151A825B004123FF /* TypeTraits.h */,
@@ -1223,6 +1226,7 @@
 				A8A47450151A825B004123FF /* ThreadRestrictionVerifier.h in Headers */,
 				A8A47454151A825B004123FF /* ThreadSafeRefCounted.h in Headers */,
 				A8A47455151A825B004123FF /* ThreadSpecific.h in Headers */,
+				149EF16316BBFE0D000A4331 /* TriState.h in Headers */,
 				A8A47457151A825B004123FF /* TypedArrayBase.h in Headers */,
 				A8A47459151A825B004123FF /* TypeTraits.h in Headers */,
 				A8A4745C151A825B004123FF /* Uint16Array.h in Headers */,
@@ -1266,7 +1270,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5D247B6614689B8600E78B76 /* Build configuration list for PBXNativeTarget "WTF" */;
 			buildPhases = (
-				5D247E9D1468AEE200E78B76 /* Detect Available Headers */,
 				5D247B5E14689B8600E78B76 /* Sources */,
 				5D247B5F14689B8600E78B76 /* Frameworks */,
 				5D247B6014689B8600E78B76 /* Headers */,
@@ -1308,22 +1311,6 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		5D247E9D1468AEE200E78B76 /* Detect Available Headers */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"$(SDKROOT)/System/Library/CoreServices/SystemVersion.plist",
-			);
-			name = "Detect Available Headers";
-			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WTF/HeaderDetection.h",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "OUTPUT_FILE=\"${BUILT_PRODUCTS_DIR}/DerivedSources/WTF/HeaderDetection.h\"\necho \"/* This is a generated file. Do not edit. */\" > \"${OUTPUT_FILE}\"\n\nif [[ -f \"${SDKROOT}/System/Library/Frameworks/System.framework/PrivateHeaders/pthread_machdep.h\" ]]; then\n    echo \"#define HAVE_PTHREAD_MACHDEP_H 1\" >> \"${OUTPUT_FILE}\"\nfi\n";
-		};
 		65AFA1701630B977003D723C /* Copy WTF Headers */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

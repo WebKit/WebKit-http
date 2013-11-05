@@ -39,8 +39,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-RenderTableRow::RenderTableRow(ContainerNode* node)
-    : RenderBox(node)
+RenderTableRow::RenderTableRow(Element* element)
+    : RenderBox(element)
     , m_rowIndex(unsetRowIndex)
 {
     // init RenderObject attributes
@@ -246,10 +246,17 @@ void RenderTableRow::imageChanged(WrappedImagePtr, const IntRect*)
     repaint();
 }
 
+RenderTableRow* RenderTableRow::createAnonymous(Document* document)
+{
+    RenderTableRow* renderer = new (document->renderArena()) RenderTableRow(0);
+    renderer->setDocumentForAnonymous(document);
+    return renderer;
+}
+
 RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderObject* parent)
 {
+    RenderTableRow* newRow = RenderTableRow::createAnonymous(parent->document());
     RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW);
-    RenderTableRow* newRow = new (parent->renderArena()) RenderTableRow(parent->document() /* is anonymous */);
     newRow->setStyle(newStyle.release());
     return newRow;
 }
@@ -258,7 +265,7 @@ void RenderTableRow::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
     RenderBox::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_children);
+    info.addMember(m_children, "children");
 }
 
 } // namespace WebCore

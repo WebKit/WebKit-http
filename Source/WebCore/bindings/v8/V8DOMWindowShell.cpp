@@ -153,7 +153,7 @@ void V8DOMWindowShell::clearForNavigation()
     // will be protected by the security checks on the DOMWindow wrapper.
     clearDocumentProperty();
 
-    v8::Handle<v8::Object> windowWrapper = m_global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate());
+    v8::Handle<v8::Object> windowWrapper = m_global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(m_isolate));
     ASSERT(!windowWrapper.IsEmpty());
     windowWrapper->TurnOnAccessCheck();
     m_context->DetachGlobal();
@@ -246,7 +246,7 @@ bool V8DOMWindowShell::initializeIfNeeded()
         if (m_frame->document()) {
             ContentSecurityPolicy* csp = m_frame->document()->contentSecurityPolicy();
             context->AllowCodeGenerationFromStrings(csp->allowEval(0, ContentSecurityPolicy::SuppressReport));
-            context->SetErrorMessageForCodeGenerationFromStrings(deprecatedV8String(csp->evalDisabledErrorMessage()));
+            context->SetErrorMessageForCodeGenerationFromStrings(v8String(csp->evalDisabledErrorMessage(), m_isolate));
         }
     } else {
         // Using the default security token means that the canAccess is always
@@ -276,7 +276,7 @@ void V8DOMWindowShell::createContext()
 
     // Create a new environment using an empty template for the shadow
     // object. Reuse the global object if one has been created earlier.
-    v8::Persistent<v8::ObjectTemplate> globalTemplate = V8DOMWindow::GetShadowObjectTemplate();
+    v8::Persistent<v8::ObjectTemplate> globalTemplate = V8DOMWindow::GetShadowObjectTemplate(m_isolate);
     if (globalTemplate.IsEmpty())
         return;
 
@@ -354,7 +354,7 @@ void V8DOMWindowShell::updateDocumentProperty()
     // FIXME: Should we use a new Local handle here?
     v8::Context::Scope contextScope(m_context.get());
 
-    v8::Handle<v8::Value> documentWrapper = toV8(m_frame->document(), v8::Handle<v8::Object>());
+    v8::Handle<v8::Value> documentWrapper = toV8(m_frame->document(), v8::Handle<v8::Object>(), m_context.get()->GetIsolate());
     ASSERT(documentWrapper == m_document.get() || m_document.isEmpty());
     if (m_document.isEmpty())
         updateDocumentWrapper(v8::Handle<v8::Object>::Cast(documentWrapper));
@@ -453,7 +453,7 @@ void V8DOMWindowShell::namedItemAdded(HTMLDocument* document, const AtomicString
 
     ASSERT(!m_document.isEmpty());
     checkDocumentWrapper(m_document.get(), document);
-    m_document->SetAccessor(deprecatedV8String(name), getter);
+    m_document->SetAccessor(v8String(name, m_isolate), getter);
 }
 
 void V8DOMWindowShell::namedItemRemoved(HTMLDocument* document, const AtomicString& name)
@@ -471,7 +471,7 @@ void V8DOMWindowShell::namedItemRemoved(HTMLDocument* document, const AtomicStri
 
     ASSERT(!m_document.isEmpty());
     checkDocumentWrapper(m_document.get(), document);
-    m_document->Delete(deprecatedV8String(name));
+    m_document->Delete(v8String(name, m_isolate));
 }
 
 void V8DOMWindowShell::updateSecurityOrigin()

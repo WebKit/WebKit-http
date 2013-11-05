@@ -517,7 +517,7 @@ WebMouseWheelEventBuilder::WebMouseWheelEventBuilder(const Widget* widget, const
     // The 120 is from WheelEvent::initWheelEvent().
     wheelTicksX = static_cast<float>(event.wheelDeltaX()) / 120;
     wheelTicksY = static_cast<float>(event.wheelDeltaY()) / 120;
-    scrollByPage = event.granularity() == WheelEvent::Page;
+    scrollByPage = event.deltaMode() == WheelEvent::DOMDeltaPage;
 }
 
 WebKeyboardEventBuilder::WebKeyboardEventBuilder(const KeyboardEvent& event)
@@ -532,11 +532,11 @@ WebKeyboardEventBuilder::WebKeyboardEventBuilder(const KeyboardEvent& event)
         return; // Skip all other keyboard events.
 
     modifiers = getWebInputModifiers(event);
-    if (event.keyLocation() == KeyboardEvent::DOM_KEY_LOCATION_NUMPAD)
+    if (event.keyLocation() == KeyboardEvent::DOMKeyLocationNumpad)
         modifiers |= WebInputEvent::IsKeyPad;
-    else if (event.keyLocation() == KeyboardEvent::DOM_KEY_LOCATION_LEFT)
+    else if (event.keyLocation() == KeyboardEvent::DOMKeyLocationLeft)
         modifiers |= WebInputEvent::IsLeft;
-    else if (event.keyLocation() == KeyboardEvent::DOM_KEY_LOCATION_RIGHT)
+    else if (event.keyLocation() == KeyboardEvent::DOMKeyLocationRight)
         modifiers |= WebInputEvent::IsRight;
 
     timeStampSeconds = event.timeStamp() / millisPerSecond;

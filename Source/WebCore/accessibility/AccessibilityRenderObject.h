@@ -173,6 +173,7 @@ public:
     virtual void visibleChildren(AccessibilityChildrenVector&);
     virtual void tabChildren(AccessibilityChildrenVector&);
     virtual bool shouldFocusActiveDescendant() const;
+    bool shouldNotifyActiveDescendant() const;
     virtual AccessibilityObject* activeDescendant() const;
     virtual void handleActiveDescendantChanged();
     virtual void handleAriaExpandedChanged();
@@ -277,6 +278,8 @@ private:
     virtual bool ariaLiveRegionBusy() const;    
     
     bool inheritsPresentationalRole() const;
+
+    bool computeAccessibilityIsIgnored() const;
     
 #if ENABLE(MATHML)
     // All math elements return true for isMathElement().

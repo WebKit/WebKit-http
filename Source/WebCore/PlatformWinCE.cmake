@@ -38,6 +38,7 @@ list(APPEND WebCore_SOURCES
     platform/win/ContextMenuWin.cpp
     platform/win/CursorWin.cpp
     platform/win/DragDataWin.cpp
+    platform/win/DragImageWin.cpp
     platform/win/EditorWin.cpp
     platform/win/EventLoopWin.cpp
     platform/win/KeyEventWin.cpp
@@ -53,6 +54,7 @@ list(APPEND WebCore_SOURCES
     platform/win/ScrollbarThemeWin.cpp
     platform/win/SearchPopupMenuWin.cpp
     platform/win/SharedBufferWin.cpp
+    platform/win/SharedTimerWin.cpp
     platform/win/SoundWin.cpp
     platform/win/SystemInfo.cpp
     platform/win/SystemTimeWin.cpp
@@ -61,10 +63,8 @@ list(APPEND WebCore_SOURCES
     platform/win/WidgetWin.cpp
     platform/win/WheelEventWin.cpp
 
-    platform/wince/DragImageWince.cpp
     platform/wince/FileSystemWince.cpp
     platform/wince/KURLWince.cpp
-    platform/wince/SharedTimerWince.cpp
 
     platform/network/win/CredentialStorageWin.cpp
     platform/network/win/CookieJarWin.cpp
@@ -98,9 +98,9 @@ list(APPEND WebCore_SOURCES
 
     platform/text/TextEncodingDetectorNone.cpp
 
-    platform/text/win/TextCodecWin.cpp
+    platform/text/wchar/TextBreakIteratorWchar.cpp
 
-    platform/text/wince/TextBreakIteratorWince.cpp
+    platform/text/win/TextCodecWin.cpp
 )
 
 list(APPEND WebCore_LIBRARIES

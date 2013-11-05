@@ -31,19 +31,19 @@
 #include "DOMStringList.h"
 #include "EventQueue.h"
 #include "ExceptionCode.h"
+#include "HistogramSupport.h"
 #include "IDBAny.h"
 #include "IDBDatabaseCallbacks.h"
 #include "IDBDatabaseError.h"
 #include "IDBDatabaseException.h"
 #include "IDBEventDispatcher.h"
+#include "IDBHistograms.h"
 #include "IDBIndex.h"
 #include "IDBKeyPath.h"
 #include "IDBObjectStore.h"
 #include "IDBTracing.h"
 #include "IDBTransaction.h"
-#include "IDBUpgradeNeededEvent.h"
 #include "IDBVersionChangeEvent.h"
-#include "IDBVersionChangeRequest.h"
 #include "ScriptCallStack.h"
 #include "ScriptExecutionContext.h"
 #include <limits>
@@ -159,6 +159,7 @@ PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, co
 
 PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, const IDBKeyPath& keyPath, bool autoIncrement, ExceptionCode& ec)
 {
+    HistogramSupport::histogramEnumeration("WebCore.IndexedDB.FrontEndAPICalls", IDBCreateObjectStoreCall, IDBMethodsMax);
     if (!m_versionChangeTransaction) {
         ec = IDBDatabaseException::InvalidStateError;
         return 0;
@@ -197,6 +198,7 @@ PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, co
 
 void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
 {
+    HistogramSupport::histogramEnumeration("WebCore.IndexedDB.FrontEndAPICalls", IDBDeleteObjectStoreCall, IDBMethodsMax);
     if (!m_versionChangeTransaction) {
         ec = IDBDatabaseException::InvalidStateError;
         return;
@@ -219,6 +221,7 @@ void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
 
 PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* context, const Vector<String>& scope, const String& modeString, ExceptionCode& ec)
 {
+    HistogramSupport::histogramEnumeration("WebCore.IndexedDB.FrontEndAPICalls", IDBTransactionCall, IDBMethodsMax);
     if (!scope.size()) {
         ec = IDBDatabaseException::InvalidAccessError;
         return 0;
@@ -243,19 +246,10 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
         objectStoreIds.append(objectStoreId);
     }
 
-    // We need to create a new transaction synchronously. Locks are acquired asynchronously. Operations
-    // can be queued against the transaction at any point. They will start executing as soon as the
-    // appropriate locks have been acquired.
-    // Also note that each backend object corresponds to exactly one IDBTransaction object.
     int64_t transactionId = nextTransactionId();
-    RefPtr<IDBTransactionBackendInterface> transactionBackend = m_backend->createTransaction(transactionId, objectStoreIds, mode);
-    if (!transactionBackend) {
-        ASSERT(ec);
-        return 0;
-    }
+    m_backend->createTransaction(transactionId, m_databaseCallbacks, objectStoreIds, mode);
 
-    RefPtr<IDBTransaction> transaction = IDBTransaction::create(context, transactionId, transactionBackend, scope, mode, this);
-    transactionBackend->setCallbacks(transaction.get());
+    RefPtr<IDBTransaction> transaction = IDBTransaction::create(context, transactionId, scope, mode, this);
     return transaction.release();
 }
 
@@ -314,10 +308,10 @@ void IDBDatabase::onVersionChange(int64_t oldVersion, int64_t newVersion)
     if (m_closePending)
         return;
 
-    enqueueEvent(IDBUpgradeNeededEvent::create(oldVersion, newVersion, eventNames().versionchangeEvent));
+    enqueueEvent(IDBVersionChangeEvent::create(IDBAny::create(oldVersion), IDBAny::create(newVersion), eventNames().versionchangeEvent));
 }
 
-void IDBDatabase::onVersionChange(const String& version)
+void IDBDatabase::onVersionChange(const String& newVersion)
 {
     if (m_contextStopped || !scriptExecutionContext())
         return;
@@ -325,7 +319,8 @@ void IDBDatabase::onVersionChange(const String& version)
     if (m_closePending)
         return;
 
-    enqueueEvent(IDBVersionChangeEvent::create(version, eventNames().versionchangeEvent));
+    RefPtr<IDBAny> newVersionAny = newVersion.isEmpty() ? IDBAny::createNull() : IDBAny::createString(newVersion);
+    enqueueEvent(IDBVersionChangeEvent::create(version(), newVersionAny.release(), eventNames().versionchangeEvent));
 }
 
 void IDBDatabase::enqueueEvent(PassRefPtr<Event> event)

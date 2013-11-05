@@ -33,13 +33,13 @@
 
 namespace WebCore {
 
-PassOwnPtr<ScrollingTreeFixedNode> ScrollingTreeFixedNode::create(ScrollingTree* scrollingTree)
+PassOwnPtr<ScrollingTreeFixedNode> ScrollingTreeFixedNode::create(ScrollingTree* scrollingTree, ScrollingNodeID nodeID)
 {
-    return adoptPtr(new ScrollingTreeFixedNode(scrollingTree));
+    return adoptPtr(new ScrollingTreeFixedNode(scrollingTree, nodeID));
 }
 
-ScrollingTreeFixedNode::ScrollingTreeFixedNode(ScrollingTree* scrollingTree)
-    : ScrollingTreeNode(scrollingTree)
+ScrollingTreeFixedNode::ScrollingTreeFixedNode(ScrollingTree* scrollingTree, ScrollingNodeID nodeID)
+    : ScrollingTreeNode(scrollingTree, nodeID)
 {
 }
 
@@ -49,13 +49,13 @@ ScrollingTreeFixedNode::~ScrollingTreeFixedNode()
 
 void ScrollingTreeFixedNode::update(ScrollingStateNode* stateNode)
 {
-    ScrollingStateFixedNode* state = toScrollingStateFixedNode(stateNode);
+    ScrollingStateFixedNode* fixedStateNode = toScrollingStateFixedNode(stateNode);
 
-    if (state->scrollLayerDidChange())
-        m_layer = state->platformScrollLayer();
+    if (fixedStateNode->hasChangedProperty(ScrollingStateNode::ScrollLayer))
+        m_layer = fixedStateNode->platformScrollLayer();
 
-    if (stateNode->changedProperties() & ScrollingStateFixedNode::ViewportConstraints)
-        m_constraints = state->viewportConstraints();
+    if (stateNode->hasChangedProperty(ScrollingStateFixedNode::ViewportConstraints))
+        m_constraints = fixedStateNode->viewportConstraints();
 }
 
 static inline CGPoint operator*(CGPoint& a, const CGSize& b)

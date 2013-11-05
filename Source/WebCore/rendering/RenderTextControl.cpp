@@ -36,10 +36,10 @@ using namespace std;
 
 namespace WebCore {
 
-RenderTextControl::RenderTextControl(ContainerNode* node)
-    : RenderBlock(node)
+RenderTextControl::RenderTextControl(Element* element)
+    : RenderBlock(element)
 {
-    ASSERT(toTextFormControl(node));
+    ASSERT(isHTMLTextFormControlElement(element));
 }
 
 RenderTextControl::~RenderTextControl()
@@ -303,7 +303,7 @@ void RenderTextControl::addFocusRingRects(Vector<IntRect>& rects, const LayoutPo
 
 RenderObject* RenderTextControl::layoutSpecialExcludedChild(bool relayoutChildren)
 {
-    HTMLElement* placeholder = toTextFormControl(node())->placeholderElement();
+    HTMLElement* placeholder = toHTMLTextFormControlElement(node())->placeholderElement();
     RenderObject* placeholderRenderer = placeholder ? placeholder->renderer() : 0;
     if (!placeholderRenderer)
         return 0;

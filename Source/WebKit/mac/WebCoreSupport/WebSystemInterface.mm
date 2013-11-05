@@ -205,14 +205,16 @@ void InitWebCoreSystemInterface(void)
     INIT(CFURLRequestAllowAllPostCaching);
 #endif
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080 && !PLATFORM(IOS)
+#if USE(CONTENT_FILTERING)
     INIT(FilterIsManagedSession);
     INIT(FilterCreateInstance);
-    INIT(FilterRelease);
     INIT(FilterWasBlocked);
+    INIT(FilterIsBuffering);
     INIT(FilterAddData);
     INIT(FilterDataComplete);
+#endif
 
+#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     INIT(NSElasticDeltaForTimeDelta);
     INIT(NSElasticDeltaForReboundDelta);
     INIT(NSReboundDeltaForElasticDelta);

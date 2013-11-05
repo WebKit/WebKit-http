@@ -20,7 +20,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-messages -> WebPageProxy {
+messages -> WebPageProxy LegacyReceiver {
     # UI messages
     CreateNewPage(WebCore::ResourceRequest request, WebCore::WindowFeatures windowFeatures, uint32_t modifiers, int32_t mouseButton) -> (uint64_t newPageID, WebKit::WebPageCreationParameters newPageParameters)
     ShowPage()
@@ -104,14 +104,6 @@ messages -> WebPageProxy {
     DecidePolicyForNewWindowAction(uint64_t frameID, uint32_t navigationType, uint32_t modifiers, int32_t mouseButton, WebCore::ResourceRequest request, WTF::String frameName, uint64_t listenerID, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
     UnableToImplementPolicy(uint64_t frameID, WebCore::ResourceError error, WebKit::InjectedBundleUserMessageEncoder userData)  Variadic
 
-    # Intent messages
-#if ENABLE(WEB_INTENTS)
-    DidReceiveIntentForFrame(uint64_t frameID, WebKit::IntentData intent, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
-#endif
-#if ENABLE(WEB_INTENTS_TAG)
-    RegisterIntentServiceForFrame(uint64_t frameID, WebKit::IntentServiceInfo serviceInfo, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
-#endif
-
     # Progress messages
     DidChangeProgress(double value)
     DidFinishProgress()
@@ -119,9 +111,7 @@ messages -> WebPageProxy {
 
     # Frame lifetime messages
     DidCreateMainFrame(uint64_t frameID)
-    DidCreateSubframe(uint64_t frameID, uint64_t parentFrameID)
-    DidSaveFrameToPageCache(uint64_t frameID);
-    DidRestoreFrameFromPageCache(uint64_t frameID, uint64_t parentFrameID);
+    DidCreateSubframe(uint64_t frameID)
 
     # Frame load messages
     DidCommitLoadForFrame(uint64_t frameID, WTF::String mimeType, bool hasCustomRepresentation, uint32_t loadType, WebKit::PlatformCertificateInfo certificateInfo, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
@@ -144,17 +134,9 @@ messages -> WebPageProxy {
 
     FrameDidBecomeFrameSet(uint64_t frameID, bool value)
 
-    # Resource load messages
-    DidInitiateLoadForResource(uint64_t frameID, uint64_t resourceIdentifier, WebCore::ResourceRequest request, bool pageIsProvisionallyLoading)
-    DidSendRequestForResource(uint64_t frameID, uint64_t resourceIdentifier, WebCore::ResourceRequest request, WebCore::ResourceResponse redirectResponse)
-    DidReceiveResponseForResource(uint64_t frameID, uint64_t resourceIdentifier, WebCore::ResourceResponse response)
-    DidReceiveContentLengthForResource(uint64_t frameID, uint64_t resourceIdentifier, uint64_t contentLength)
-    DidFinishLoadForResource(uint64_t frameID, uint64_t resourceIdentifier)
-    DidFailLoadForResource(uint64_t frameID, uint64_t resourceIdentifier, WebCore::ResourceError error)
 #if PLATFORM(QT)
     ResolveApplicationSchemeRequest(WebKit::QtNetworkRequestData request)
 #endif
-
 
     # Custom representations
     DidFinishLoadingDataForCustomRepresentation(WTF::String suggestedFilename, CoreIPC::DataReference data)
@@ -329,4 +311,9 @@ messages -> WebPageProxy {
     SavePDFToTemporaryFolderAndOpenWithNativeApplication(WTF::String suggestedFilename, WTF::String originatingURLString, CoreIPC::DataReference data, WTF::String pdfUUID)
     OpenPDFFromTemporaryFolderWithNativeApplication(WTF::String pdfUUID)
 #endif
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+GetPluginPath(WTF::String mimeType, WTF::String urlString) -> (WTF::String pluginPath, uint32_t pluginLoadPolicy)
+#endif
+
 }

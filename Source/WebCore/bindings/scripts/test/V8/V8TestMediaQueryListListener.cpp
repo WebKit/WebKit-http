@@ -31,9 +31,32 @@
 #include "V8DOMWrapper.h"
 #include <wtf/UnusedParam.h>
 
+#if ENABLE(BINDING_INTEGRITY)
+#if defined(OS_WIN)
+#pragma warning(disable: 4483)
+extern "C" { extern void (*const __identifier("??_7TestMediaQueryListListener@WebCore@@6B@")[])(); }
+#else
+extern "C" { extern void* _ZTVN7WebCore26TestMediaQueryListListenerE[]; }
+#endif
+#endif // ENABLE(BINDING_INTEGRITY)
+
 namespace WebCore {
 
-WrapperTypeInfo V8TestMediaQueryListListener::info = { V8TestMediaQueryListListener::GetTemplate, V8TestMediaQueryListListener::derefObject, 0, 0, V8TestMediaQueryListListener::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
+#if ENABLE(BINDING_INTEGRITY)
+inline void checkTypeOrDieTrying(TestMediaQueryListListener* object)
+{
+    void* actualVTablePointer = *(reinterpret_cast<void**>(object));
+#if defined(OS_WIN)
+    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestMediaQueryListListener@WebCore@@6B@"));
+#else
+    void* expectedVTablePointer = &_ZTVN7WebCore26TestMediaQueryListListenerE[2];
+#endif
+    if (actualVTablePointer != expectedVTablePointer)
+        CRASH();
+}
+#endif // ENABLE(BINDING_INTEGRITY)
+
+WrapperTypeInfo V8TestMediaQueryListListener::info = { V8TestMediaQueryListListener::GetTemplate, V8TestMediaQueryListListener::derefObject, 0, 0, 0, V8TestMediaQueryListListener::installPerContextPrototypeProperties, 0, WrapperTypeObjectPrototype };
 
 namespace TestMediaQueryListListenerV8Internal {
 
@@ -55,7 +78,7 @@ static const V8DOMConfiguration::BatchedCallback V8TestMediaQueryListListenerCal
     {"method", TestMediaQueryListListenerV8Internal::methodCallback},
 };
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestMediaQueryListListenerTemplate(v8::Persistent<v8::FunctionTemplate> desc)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestMediaQueryListListenerTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
 {
     desc->ReadOnlyPrototype();
 
@@ -75,9 +98,11 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestMediaQueryListListene
     return desc;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetRawTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetRawTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
@@ -88,23 +113,27 @@ v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetRawTemplat
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetTemplate()
+v8::Persistent<v8::FunctionTemplate> V8TestMediaQueryListListener::GetTemplate(v8::Isolate* isolate)
 {
-    V8PerIsolateData* data = V8PerIsolateData::current();
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestMediaQueryListListenerTemplate(GetRawTemplate());
+        ConfigureV8TestMediaQueryListListenerTemplate(GetRawTemplate(isolate), isolate);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
-bool V8TestMediaQueryListListener::HasInstance(v8::Handle<v8::Value> value)
+bool V8TestMediaQueryListListener::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    return GetRawTemplate()->HasInstance(value);
+    if (!isolate)
+        isolate = v8::Isolate::GetCurrent();
+    return GetRawTemplate(isolate)->HasInstance(value);
 }
 
 
@@ -112,6 +141,10 @@ v8::Handle<v8::Object> V8TestMediaQueryListListener::createWrapper(PassRefPtr<Te
 {
     ASSERT(impl.get());
     ASSERT(DOMDataStore::getWrapper(impl.get(), isolate).IsEmpty());
+
+#if ENABLE(BINDING_INTEGRITY)
+    checkTypeOrDieTrying(impl.get());
+#endif
 
     v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
@@ -123,7 +156,6 @@ v8::Handle<v8::Object> V8TestMediaQueryListListener::createWrapper(PassRefPtr<Te
         wrapperHandle.MarkIndependent();
     return wrapper;
 }
-
 void V8TestMediaQueryListListener::derefObject(void* object)
 {
     static_cast<TestMediaQueryListListener*>(object)->deref();

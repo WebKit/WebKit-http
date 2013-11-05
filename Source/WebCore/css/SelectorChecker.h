@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 2004-2005 Allan Sandfeld Jensen (kde@carewolf.com)
  * Copyright (C) 2006, 2007 Nicholas Shanks (webkit@nickshanks.com)
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alexey Proskuryakov <ap@webkit.org>
  * Copyright (C) 2007, 2008 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
@@ -52,33 +52,32 @@ public:
 
     struct SelectorCheckingContext {
         // Initial selector constructor
-        SelectorCheckingContext(CSSSelector* selector, Element* element, VisitedMatchType visitedMatchType)
+        SelectorCheckingContext(const CSSSelector* selector, Element* element, VisitedMatchType visitedMatchType)
             : selector(selector)
             , element(element)
             , scope(0)
             , visitedMatchType(visitedMatchType)
             , pseudoStyle(NOPSEUDO)
             , elementStyle(0)
-            , elementParentStyle(0)
             , isSubSelector(false)
             , hasScrollbarPseudo(false)
             , hasSelectionPseudo(false)
         { }
 
-        CSSSelector* selector;
+        const CSSSelector* selector;
         Element* element;
         const ContainerNode* scope;
         VisitedMatchType visitedMatchType;
         PseudoId pseudoStyle;
         RenderStyle* elementStyle;
-        RenderStyle* elementParentStyle;
         bool isSubSelector;
         bool hasScrollbarPseudo;
         bool hasSelectionPseudo;
     };
 
-    bool matches(CSSSelector*, Element*, bool isFastCheckableSelector = false) const;
-    Match match(const SelectorCheckingContext&, PseudoId&) const;
+    bool matches(const CSSSelector*, Element*, bool isFastCheckableSelector = false) const;
+    template<typename SiblingTraversalStrategy>
+    Match match(const SelectorCheckingContext&, PseudoId&, const SiblingTraversalStrategy&) const;
     template<typename SiblingTraversalStrategy>
     bool checkOne(const SelectorCheckingContext&, const SiblingTraversalStrategy&) const;
 
@@ -90,8 +89,7 @@ public:
     Mode mode() const { return m_mode; }
     void setMode(Mode mode) { m_mode = mode; }
 
-    static bool tagMatches(const Element*, const CSSSelector*);
-    static bool attributeNameMatches(const Attribute*, const QualifiedName&);
+    static bool tagMatches(const Element*, const QualifiedName&);
     static bool isCommonPseudoClassSelector(const CSSSelector*);
     bool matchesFocusPseudoClass(const Element*) const;
     static bool fastCheckRightmostAttributeSelector(const Element*, const CSSSelector*);
@@ -101,7 +99,7 @@ public:
     static unsigned determineLinkMatchType(const CSSSelector*);
 
 private:
-    bool checkScrollbarPseudoClass(Document*, CSSSelector*) const;
+    bool checkScrollbarPseudoClass(Document*, const CSSSelector*) const;
     static bool isFrameFocused(const Element*);
 
     bool fastCheckRightmostSelector(const CSSSelector*, const Element*, VisitedMatchType) const;
@@ -130,22 +128,15 @@ inline bool SelectorChecker::matchesFocusPseudoClass(const Element* element) con
     return element->focused() && isFrameFocused(element);
 }
 
-inline bool SelectorChecker::tagMatches(const Element* element, const CSSSelector* selector)
+inline bool SelectorChecker::tagMatches(const Element* element, const QualifiedName& tagQName)
 {
-    if (!selector->hasTag())
+    if (tagQName == anyQName())
         return true;
-    const AtomicString& localName = selector->tag().localName();
+    const AtomicString& localName = tagQName.localName();
     if (localName != starAtom && localName != element->localName())
         return false;
-    const AtomicString& namespaceURI = selector->tag().namespaceURI();
+    const AtomicString& namespaceURI = tagQName.namespaceURI();
     return namespaceURI == starAtom || namespaceURI == element->namespaceURI();
-}
-
-inline bool SelectorChecker::attributeNameMatches(const Attribute* attribute, const QualifiedName& selectorAttributeName)
-{
-    if (selectorAttributeName.localName() != attribute->localName())
-        return false;
-    return selectorAttributeName.prefix() == starAtom || selectorAttributeName.namespaceURI() == attribute->namespaceURI();
 }
 
 inline bool SelectorChecker::checkExactAttribute(const Element* element, const QualifiedName& selectorAttributeName, const AtomicStringImpl* value)
@@ -155,7 +146,7 @@ inline bool SelectorChecker::checkExactAttribute(const Element* element, const Q
     unsigned size = element->attributeCount();
     for (unsigned i = 0; i < size; ++i) {
         const Attribute* attribute = element->attributeItem(i);
-        if (attributeNameMatches(attribute, selectorAttributeName) && (!value || attribute->value().impl() == value))
+        if (attribute->matches(selectorAttributeName) && (!value || attribute->value().impl() == value))
             return true;
     }
     return false;

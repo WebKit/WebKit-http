@@ -62,13 +62,13 @@ namespace WebCore {
     v8::Handle<v8::Value> setDOMException(int, v8::Isolate*);
 
     // Schedule a JavaScript error to be thrown.
-    v8::Handle<v8::Value> throwError(V8ErrorType, const char*, v8::Isolate* = 0);
+    v8::Handle<v8::Value> throwError(V8ErrorType, const char*, v8::Isolate*);
 
     // Schedule a JavaScript error to be thrown.
-    v8::Handle<v8::Value> throwError(v8::Local<v8::Value>, v8::Isolate* = 0);
+    v8::Handle<v8::Value> throwError(v8::Local<v8::Value>, v8::Isolate*);
 
     // A helper for throwing JavaScript TypeError.
-    v8::Handle<v8::Value> throwTypeError(const char* = 0, v8::Isolate* = 0);
+    v8::Handle<v8::Value> throwTypeError(const char*, v8::Isolate*);
 
     // A helper for throwing JavaScript TypeError for not enough arguments.
     v8::Handle<v8::Value> throwNotEnoughArgumentsError(v8::Isolate*);
@@ -145,10 +145,8 @@ namespace WebCore {
     // Return a V8 external string that shares the underlying buffer with the given
     // WebCore string. The reference counting mechanism is used to keep the
     // underlying buffer alive while the string is still live in the V8 engine.
-    inline v8::Handle<v8::String> v8String(const String& string, v8::Isolate* isolate = 0, ReturnHandleType handleType = ReturnLocalHandle)
+    inline v8::Handle<v8::String> v8String(const String& string, v8::Isolate* isolate, ReturnHandleType handleType = ReturnLocalHandle)
     {
-        if (UNLIKELY(!isolate))
-            isolate = v8::Isolate::GetCurrent();
         if (string.isNull())
             return v8::String::Empty(isolate);
         return V8PerIsolateData::from(isolate)->stringCache()->v8ExternalString(string.impl(), handleType, isolate);
@@ -176,10 +174,8 @@ namespace WebCore {
         return V8PerIsolateData::from(isolate)->stringCache()->v8ExternalString(string.impl(), handleType, isolate);
     }
 
-    inline v8::Handle<v8::Integer> v8Integer(int value, v8::Isolate* isolate = 0)
+    inline v8::Handle<v8::Integer> v8Integer(int value, v8::Isolate* isolate)
     {
-        if (UNLIKELY(!isolate))
-            isolate = v8::Isolate::GetCurrent();
         return V8PerIsolateData::from(isolate)->integerCache()->v8Integer(value, isolate);
     }
 
@@ -281,7 +277,7 @@ namespace WebCore {
     };
 
     template <class T, class V8T>
-    Vector<RefPtr<T> > toRefPtrNativeArray(v8::Handle<v8::Value> value)
+    Vector<RefPtr<T> > toRefPtrNativeArray(v8::Handle<v8::Value> value, v8::Isolate* isolate)
     {
         if (!value->IsArray())
             return Vector<RefPtr<T> >();
@@ -297,7 +293,7 @@ namespace WebCore {
                 v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(element);
                 result.append(V8T::toNative(object));
             } else {
-                throwTypeError("Invalid Array element type");
+                throwTypeError("Invalid Array element type", isolate);
                 return Vector<RefPtr<T> >();
             }
         }
@@ -334,10 +330,10 @@ namespace WebCore {
 
     // Validates that the passed object is a sequence type per WebIDL spec
     // http://www.w3.org/TR/2012/WD-WebIDL-20120207/#es-sequence
-    inline v8::Handle<v8::Value> toV8Sequence(v8::Handle<v8::Value> value, uint32_t& length)
+    inline v8::Handle<v8::Value> toV8Sequence(v8::Handle<v8::Value> value, uint32_t& length, v8::Isolate* isolate)
     {
         if (!value->IsObject()) {
-            throwTypeError();
+            throwTypeError(0, isolate);
             return v8Undefined();
         }
 
@@ -347,7 +343,7 @@ namespace WebCore {
         V8TRYCATCH(v8::Local<v8::Value>, lengthValue, object->Get(v8::String::NewSymbol("length")));
 
         if (lengthValue->IsUndefined() || lengthValue->IsNull()) {
-            throwTypeError();
+            throwTypeError(0, isolate);
             return v8Undefined();
         }
 
@@ -440,7 +436,7 @@ namespace WebCore {
     v8::Persistent<v8::FunctionTemplate> createRawTemplate();
 
     PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value>, v8::Isolate*);
-    PassRefPtr<XPathNSResolver> toXPathNSResolver(v8::Handle<v8::Value>);
+    PassRefPtr<XPathNSResolver> toXPathNSResolver(v8::Handle<v8::Value>, v8::Isolate*);
 
     v8::Handle<v8::Object> toInnerGlobalObject(v8::Handle<v8::Context>);
     DOMWindow* toDOMWindow(v8::Handle<v8::Context>);
@@ -463,6 +459,7 @@ namespace WebCore {
     // If the current context causes out of memory, JavaScript setting
     // is disabled and it returns true.
     bool handleOutOfMemory();
+    // FIXME: This should receive an Isolate.
     v8::Local<v8::Value> handleMaxRecursionDepthExceeded();
 
     void crashIfV8IsDead();

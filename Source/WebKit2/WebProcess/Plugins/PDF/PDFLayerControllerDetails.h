@@ -37,6 +37,7 @@
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeActiveAnnotation:(PDFAnnotation *)annotation;
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController clickedLinkWithURL:(NSURL *)url;
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeContentScaleFactor:(CGFloat)scaleFactor;
+- (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeDisplayMode:(int)mode;
 
 @end
 
@@ -88,6 +89,7 @@
 - (PDFSelection *)searchSelection;
 - (void)setSearchSelection:(PDFSelection *)selection;
 - (void)gotoSelection:(PDFSelection *)selection;
+- (PDFSelection *)getSelectionForWordAtPoint:(CGPoint)point;
 
 - (void)copySelection;
 - (void)selectAll;
@@ -98,5 +100,7 @@
 - (BOOL)hudEnabled;
 
 - (CGRect)boundsForAnnotation:(PDFAnnotation *)annotation;
+
+- (void)searchInDictionaryWithSelection:(PDFSelection *)selection;
 
 @end

@@ -1,6 +1,5 @@
-
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGJITCompiler.h"
+#include "DFGMinifiedID.h"
 #include "DFGVariableEvent.h"
 #include "DFGVariableEventStream.h"
 #include "DataFormat.h"
@@ -48,56 +48,60 @@ namespace JSC { namespace DFG {
 class GenerationInfo {
 public:
     GenerationInfo()
-        : m_nodeIndex(NoNode)
+        : m_node(0)
         , m_useCount(0)
         , m_registerFormat(DataFormatNone)
         , m_spillFormat(DataFormatNone)
         , m_canFill(false)
         , m_bornForOSR(false)
+        , m_isConstant(false)
     {
     }
 
-    void initConstant(NodeIndex nodeIndex, uint32_t useCount)
+    void initConstant(Node* node, uint32_t useCount)
     {
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = DataFormatNone;
         m_spillFormat = DataFormatNone;
         m_canFill = true;
         m_bornForOSR = false;
+        m_isConstant = true;
         ASSERT(m_useCount);
     }
-    void initInteger(NodeIndex nodeIndex, uint32_t useCount, GPRReg gpr)
+    void initInteger(Node* node, uint32_t useCount, GPRReg gpr)
     {
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = DataFormatInteger;
         m_spillFormat = DataFormatNone;
         m_canFill = false;
         u.gpr = gpr;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
 #if USE(JSVALUE64)
-    void initJSValue(NodeIndex nodeIndex, uint32_t useCount, GPRReg gpr, DataFormat format = DataFormatJS)
+    void initJSValue(Node* node, uint32_t useCount, GPRReg gpr, DataFormat format = DataFormatJS)
     {
         ASSERT(format & DataFormatJS);
 
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = format;
         m_spillFormat = DataFormatNone;
         m_canFill = false;
         u.gpr = gpr;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
 #elif USE(JSVALUE32_64)
-    void initJSValue(NodeIndex nodeIndex, uint32_t useCount, GPRReg tagGPR, GPRReg payloadGPR, DataFormat format = DataFormatJS)
+    void initJSValue(Node* node, uint32_t useCount, GPRReg tagGPR, GPRReg payloadGPR, DataFormat format = DataFormatJS)
     {
         ASSERT(format & DataFormatJS);
 
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = format;
         m_spillFormat = DataFormatNone;
@@ -105,61 +109,68 @@ public:
         u.v.tagGPR = tagGPR;
         u.v.payloadGPR = payloadGPR;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
 #endif
-    void initCell(NodeIndex nodeIndex, uint32_t useCount, GPRReg gpr)
+    void initCell(Node* node, uint32_t useCount, GPRReg gpr)
     {
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = DataFormatCell;
         m_spillFormat = DataFormatNone;
         m_canFill = false;
         u.gpr = gpr;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
-    void initBoolean(NodeIndex nodeIndex, uint32_t useCount, GPRReg gpr)
+    void initBoolean(Node* node, uint32_t useCount, GPRReg gpr)
     {
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = DataFormatBoolean;
         m_spillFormat = DataFormatNone;
         m_canFill = false;
         u.gpr = gpr;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
-    void initDouble(NodeIndex nodeIndex, uint32_t useCount, FPRReg fpr)
+    void initDouble(Node* node, uint32_t useCount, FPRReg fpr)
     {
         ASSERT(fpr != InvalidFPRReg);
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = DataFormatDouble;
         m_spillFormat = DataFormatNone;
         m_canFill = false;
         u.fpr = fpr;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
-    void initStorage(NodeIndex nodeIndex, uint32_t useCount, GPRReg gpr)
+    void initStorage(Node* node, uint32_t useCount, GPRReg gpr)
     {
-        m_nodeIndex = nodeIndex;
+        m_node = node;
         m_useCount = useCount;
         m_registerFormat = DataFormatStorage;
         m_spillFormat = DataFormatNone;
         m_canFill = false;
         u.gpr = gpr;
         m_bornForOSR = false;
+        m_isConstant = false;
         ASSERT(m_useCount);
     }
 
-    // Get the index of the node that produced this value.
-    NodeIndex nodeIndex() { return m_nodeIndex; }
+    // Get the node that produced this value.
+    Node* node() { return m_node; }
     
-    void noticeOSRBirth(VariableEventStream& stream, NodeIndex nodeIndex, VirtualRegister virtualRegister)
+    void noticeOSRBirth(VariableEventStream& stream, Node* node, VirtualRegister virtualRegister)
     {
-        if (m_nodeIndex != nodeIndex)
+        if (m_isConstant)
+            return;
+        if (m_node != node)
             return;
         if (!alive())
             return;
@@ -183,8 +194,8 @@ public:
         bool result = !--m_useCount;
         
         if (result && m_bornForOSR) {
-            ASSERT(m_nodeIndex != NoNode);
-            stream.appendAndLog(VariableEvent::death(m_nodeIndex));
+            ASSERT(m_node);
+            stream.appendAndLog(VariableEvent::death(MinifiedID(m_node)));
         }
         
         return result;
@@ -368,31 +379,34 @@ public:
 private:
     void appendFill(VariableEventKind kind, VariableEventStream& stream)
     {
+        ASSERT(m_bornForOSR);
+        
         if (m_registerFormat == DataFormatDouble) {
-            stream.appendAndLog(VariableEvent::fillFPR(kind, m_nodeIndex, u.fpr));
+            stream.appendAndLog(VariableEvent::fillFPR(kind, MinifiedID(m_node), u.fpr));
             return;
         }
 #if USE(JSVALUE32_64)
         if (m_registerFormat & DataFormatJS) {
-            stream.appendAndLog(VariableEvent::fillPair(kind, m_nodeIndex, u.v.tagGPR, u.v.payloadGPR));
+            stream.appendAndLog(VariableEvent::fillPair(kind, MinifiedID(m_node), u.v.tagGPR, u.v.payloadGPR));
             return;
         }
 #endif
-        stream.appendAndLog(VariableEvent::fillGPR(kind, m_nodeIndex, u.gpr, m_registerFormat));
+        stream.appendAndLog(VariableEvent::fillGPR(kind, MinifiedID(m_node), u.gpr, m_registerFormat));
     }
     
     void appendSpill(VariableEventKind kind, VariableEventStream& stream, VirtualRegister virtualRegister)
     {
-        stream.appendAndLog(VariableEvent::spill(kind, m_nodeIndex, virtualRegister, m_spillFormat));
+        stream.appendAndLog(VariableEvent::spill(kind, MinifiedID(m_node), virtualRegister, m_spillFormat));
     }
     
-    // The index of the node whose result is stored in this virtual register.
-    NodeIndex m_nodeIndex;
+    // The node whose result is stored in this virtual register.
+    Node* m_node;
     uint32_t m_useCount;
     DataFormat m_registerFormat;
     DataFormat m_spillFormat;
     bool m_canFill;
     bool m_bornForOSR;
+    bool m_isConstant;
     union {
         GPRReg gpr;
         FPRReg fpr;

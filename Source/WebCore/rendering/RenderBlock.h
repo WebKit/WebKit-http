@@ -88,8 +88,10 @@ public:
     template <class> friend struct ValueToString;
 #endif
 
-    RenderBlock(ContainerNode*);
+    explicit RenderBlock(ContainerNode*);
     virtual ~RenderBlock();
+
+    static RenderBlock* createAnonymous(Document*);
 
     RenderObject* firstChild() const { ASSERT(children() == virtualChildren()); return children()->firstChild(); }
     RenderObject* lastChild() const { ASSERT(children() == virtualChildren()); return children()->lastChild(); }
@@ -241,7 +243,7 @@ public:
 
     // Helper methods for computing line counts and heights for line counts.
     RootInlineBox* lineAtIndex(int) const;
-    int lineCount() const;
+    int lineCount(const RootInlineBox* = 0, bool* = 0) const;
     int heightForLineCount(int);
     void clearTruncation();
 
@@ -422,6 +424,7 @@ public:
     LayoutUnit endOffsetForContent() const { return !style()->isLeftToRightDirection() ? logicalLeftOffsetForContent() : logicalWidth() - logicalRightOffsetForContent(); }
     
     void setStaticInlinePositionForChild(RenderBox*, LayoutUnit blockOffset, LayoutUnit inlinePosition);
+    void updateStaticInlinePositionForChild(RenderBox*, LayoutUnit logicalTop);
 
     LayoutUnit computeStartPositionDeltaForChildAvoidingFloats(const RenderBox* child, LayoutUnit childMarginStart, RenderRegion* = 0, LayoutUnit offsetFromLogicalTopOfFirstPage = 0);
 
@@ -463,7 +466,8 @@ protected:
 
     virtual void layout();
 
-    void layoutPositionedObjects(bool relayoutChildren);
+    void layoutPositionedObjects(bool relayoutChildren, bool fixedPositionObjectsOnly = false);
+    void markFixedPositionObjectForLayoutIfNeeded(RenderObject* child);
 
     virtual void paint(PaintInfo&, const LayoutPoint&);
     virtual void paintObject(PaintInfo&, const LayoutPoint&);
@@ -685,7 +689,14 @@ private:
 #endif
     };
 
-    LayoutPoint flipFloatForWritingModeForChild(const FloatingObject*, const LayoutPoint&) const;
+    // When a float has shape outside, it needs to be handled differently at
+    // paint time and at layout time, since the coordinates of the shape
+    // (affecting layout) and the coordinates of the float itself (affecting
+    // where the content of the float is) can be in different places. This enum
+    // is used to change behavior based on that state.
+    enum FloatRenderingState { FloatLayout, FloatPaint };
+
+    LayoutPoint flipFloatForWritingModeForChild(const FloatingObject*, const LayoutPoint&, FloatRenderingState = FloatLayout) const;
 
     LayoutUnit logicalTopForFloat(const FloatingObject* child) const { return isHorizontalWritingMode() ? child->y() : child->x(); }
     LayoutUnit logicalBottomForFloat(const FloatingObject* child) const { return isHorizontalWritingMode() ? child->maxY() : child->maxX(); }
@@ -727,16 +738,30 @@ private:
             child->setHeight(logicalWidth);
     }
 
-    LayoutUnit xPositionForFloatIncludingMargin(const FloatingObject* child) const
+    LayoutUnit xPositionForFloatIncludingMargin(const FloatingObject* child, FloatRenderingState renderingState = FloatLayout) const
     {
+#if ENABLE(CSS_EXCLUSIONS)
+        ExclusionShapeOutsideInfo *shapeOutside = child->renderer()->exclusionShapeOutsideInfo();
+        if (renderingState == FloatPaint && shapeOutside)
+            return child->x() - (isHorizontalWritingMode() ? shapeOutside->shapeLogicalLeft() : shapeOutside->shapeLogicalTop());
+        // FIXME: Bug 106928 This needs to properly handle the margin for floats with shape-outside for non-paint time.
+#endif
+
         if (isHorizontalWritingMode())
             return child->x() + child->renderer()->marginLeft();
         else
             return child->x() + marginBeforeForChild(child->renderer());
     }
         
-    LayoutUnit yPositionForFloatIncludingMargin(const FloatingObject* child) const
+    LayoutUnit yPositionForFloatIncludingMargin(const FloatingObject* child, FloatRenderingState renderingState = FloatLayout) const
     {
+#if ENABLE(CSS_EXCLUSIONS)
+        ExclusionShapeOutsideInfo *shapeOutside = child->renderer()->exclusionShapeOutsideInfo();
+        if (renderingState == FloatPaint && shapeOutside)
+            return child->y() - (isHorizontalWritingMode() ? shapeOutside->shapeLogicalTop() : shapeOutside->shapeLogicalLeft());
+        // FIXME: Bug 106928 This needs to properly handle the margin for floats with shape-outside.
+#endif
+
         if (isHorizontalWritingMode())
             return child->y() + marginBeforeForChild(child->renderer());
         else
@@ -1211,13 +1236,13 @@ private:
 
 inline RenderBlock* toRenderBlock(RenderObject* object)
 { 
-    ASSERT(!object || object->isRenderBlock());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderBlock());
     return static_cast<RenderBlock*>(object);
 }
 
 inline const RenderBlock* toRenderBlock(const RenderObject* object)
 { 
-    ASSERT(!object || object->isRenderBlock());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderBlock());
     return static_cast<const RenderBlock*>(object);
 }
 

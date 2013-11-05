@@ -802,7 +802,7 @@ void InspectorDOMAgent::getEventListeners(Node* node, Vector<EventListenerInfo>&
     // Push this node as the firs element.
     ancestors.append(node);
     if (includeAncestors) {
-        for (ContainerNode* ancestor = node->parentOrHostNode(); ancestor; ancestor = ancestor->parentOrHostNode())
+        for (ContainerNode* ancestor = node->parentOrShadowHostNode(); ancestor; ancestor = ancestor->parentOrShadowHostNode())
             ancestors.append(ancestor);
     }
 
@@ -875,7 +875,10 @@ void InspectorDOMAgent::performSearch(ErrorString*, const String& whitespaceTrim
                 break;
             }
             case Node::ELEMENT_NODE: {
-                if (node->nodeName().findIgnoringCase(tagNameQuery) != notFound) {
+                if ((!startTagFound && !endTagFound && (node->nodeName().findIgnoringCase(tagNameQuery) != notFound))
+                    || (startTagFound && endTagFound && equalIgnoringCase(node->nodeName(), tagNameQuery))
+                    || (startTagFound && !endTagFound && node->nodeName().startsWith(tagNameQuery, false))
+                    || (!startTagFound && endTagFound && node->nodeName().endsWith(tagNameQuery, false))) {
                     resultCollector.add(node);
                     break;
                 }

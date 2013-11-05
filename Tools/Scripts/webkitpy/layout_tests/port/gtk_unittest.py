@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import unittest
+import unittest2 as unittest
 import sys
 import os
 
@@ -52,10 +52,10 @@ class GtkPortTest(port_testcase.PortTestCase):
 
     def test_expectations_files(self):
         port = self.make_port()
-        self.assertEquals(port.expectations_files(), ['/mock-checkout/LayoutTests/platform/gtk/TestExpectations', '/mock-checkout/LayoutTests/platform/gtk-wk1/TestExpectations'])
+        self.assertEqual(port.expectations_files(), ['/mock-checkout/LayoutTests/platform/gtk/TestExpectations', '/mock-checkout/LayoutTests/platform/gtk-wk1/TestExpectations'])
 
         port = self.make_port(options=MockOptions(webkit_test_runner=True))
-        self.assertEquals(port.expectations_files(), ['/mock-checkout/LayoutTests/platform/gtk/TestExpectations', '/mock-checkout/LayoutTests/platform/wk2/TestExpectations', '/mock-checkout/LayoutTests/platform/gtk-wk2/TestExpectations'])
+        self.assertEqual(port.expectations_files(), ['/mock-checkout/LayoutTests/platform/gtk/TestExpectations', '/mock-checkout/LayoutTests/platform/wk2/TestExpectations', '/mock-checkout/LayoutTests/platform/gtk-wk2/TestExpectations'])
 
     def test_show_results_html_file(self):
         port = self.make_port()
@@ -66,12 +66,6 @@ class GtkPortTest(port_testcase.PortTestCase):
     def test_default_timeout_ms(self):
         self.assertEqual(self.make_port(options=MockOptions(configuration='Release')).default_timeout_ms(), 6000)
         self.assertEqual(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 12000)
-
-    def assertLinesEqual(self, a, b):
-        if hasattr(self, 'assertMultiLineEqual'):
-            self.assertMultiLineEqual(a, b)
-        else:
-            self.assertEqual(a.splitlines(), b.splitlines())
 
     def test_get_crash_log(self):
         core_directory = os.environ.get('WEBKIT_CORE_DUMPS_DIRECTORY', '/path/to/coredumps')
@@ -95,8 +89,8 @@ STDERR: <empty>""" % locals()
         port._get_gdb_output = mock_empty_crash_log
         stderr, log = port._get_crash_log("DumpRenderTree", 28529, "", "", newer_than=None)
         self.assertEqual(stderr, "")
-        self.assertLinesEqual(log, mock_empty_crash_log)
+        self.assertMultiLineEqual(log, mock_empty_crash_log)
 
         stderr, log = port._get_crash_log("DumpRenderTree", 28529, "", "", newer_than=0.0)
         self.assertEqual(stderr, "")
-        self.assertLinesEqual(log, mock_empty_crash_log)
+        self.assertMultiLineEqual(log, mock_empty_crash_log)

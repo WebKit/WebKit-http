@@ -39,6 +39,7 @@ typedef struct _GstElement GstElement;
 
 namespace WebCore {
 
+class FullscreenVideoControllerGStreamer;
 class GraphicsContext;
 class IntSize;
 class IntRect;
@@ -72,13 +73,16 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
             void seek(float);
 
             void setRate(float);
+            void setPreservesPitch(bool);
 
             void setVolume(float);
+            float volume() const;
             void volumeChanged();
             void notifyPlayerOfVolumeChange();
 
             bool supportsMuting() const;
             void setMuted(bool);
+            bool muted() const;
             void muteChanged();
             void notifyPlayerOfMute();
 
@@ -92,6 +96,7 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
             float maxTimeSeekable() const;
             bool didLoadingProgress() const;
             unsigned totalBytes() const;
+            float maxTimeLoaded() const;
 
             void setVisible(bool);
             void setSize(const IntSize&);
@@ -108,6 +113,12 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
             void paint(GraphicsContext*, const IntRect&);
 
             bool hasSingleSecurityOrigin() const;
+
+#if USE(NATIVE_FULLSCREEN_VIDEO)
+            void enterFullscreen();
+            void exitFullscreen();
+            bool canEnterFullscreen() const { return true; }
+#endif
 
             bool supportsFullscreen() const;
             PlatformMedia platformMedia() const;
@@ -126,6 +137,10 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
 
             MediaPlayer::MovieLoadType movieLoadType() const;
 
+            MediaPlayer* mediaPlayer() const { return m_player; }
+
+            static KURL convertPlaybinURL(const gchar* uri);
+
         private:
             MediaPlayerPrivateGStreamer(MediaPlayer*);
 
@@ -134,15 +149,17 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
             static void getSupportedTypes(HashSet<String>&);
             static MediaPlayer::SupportsType supportsType(const String& type, const String& codecs, const KURL&);
 
+            void setPlaybinURL(KURL&);
+
             static bool isAvailable();
 
             void updateAudioSink();
+            void createAudioSink();
 
             float playbackPosition() const;
 
             void cacheDuration();
             void updateStates();
-            float maxTimeLoaded() const;
 
             void createGSTPlayBin();
             bool changePipelineState(GstState state);
@@ -158,7 +175,7 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
 
         private:
             MediaPlayer* m_player;
-            GstElement* m_playBin;
+            GRefPtr<GstElement> m_playBin;
             GstElement* m_webkitVideoSink;
             GstElement* m_videoSinkBin;
             GstElement* m_fpsSink;
@@ -189,8 +206,9 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
             bool m_delayingLoad;
             bool m_mediaDurationKnown;
             mutable float m_maxTimeLoadedAtLastDidLoadingProgress;
-#ifndef GST_API_VERSION_1
+#if USE(NATIVE_FULLSCREEN_VIDEO)
             RefPtr<GStreamerGWorld> m_gstGWorld;
+            OwnPtr<FullscreenVideoControllerGStreamer> m_fullscreenVideoController;
 #endif
             guint m_volumeTimerHandler;
             guint m_muteTimerHandler;
@@ -205,6 +223,7 @@ class MediaPlayerPrivateGStreamer : public MediaPlayerPrivateInterface {
             mutable IntSize m_videoSize;
             KURL m_url;
             bool m_originalPreloadWasAutoAndWasOverridden;
+            bool m_preservesPitch;
     };
 }
 

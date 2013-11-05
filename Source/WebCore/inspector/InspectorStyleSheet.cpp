@@ -831,7 +831,7 @@ static bool checkStyleRuleSelector(Document* document, const String& selector)
 {
     CSSSelectorList selectorList;
     createCSSParser(document)->parseSelector(selector, selectorList);
-    return selectorList.first();
+    return selectorList.isValid();
 }
 
 CSSStyleRule* InspectorStyleSheet::addRule(const String& selector, ExceptionCode& ec)
@@ -994,7 +994,7 @@ PassRefPtr<TypeBuilder::CSS::SelectorList> InspectorStyleSheet::buildObjectForSe
     else {
         selectors = TypeBuilder::Array<String>::create();
         const CSSSelectorList& selectorList = rule->styleRule()->selectorList();
-        for (CSSSelector* selector = selectorList.first(); selector; selector = CSSSelectorList::next(selector))
+        for (const CSSSelector* selector = selectorList.first(); selector; selector = CSSSelectorList::next(selector))
             selectors->addItem(selector->selectorText());
     }
     RefPtr<TypeBuilder::CSS::SelectorList> result = TypeBuilder::CSS::SelectorList::create()

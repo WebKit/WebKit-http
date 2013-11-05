@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,11 +41,10 @@ class WebMediaCacheManager : public WebProcessSupplement, public CoreIPC::Messag
 public:
     explicit WebMediaCacheManager(WebProcess*);
 
-    static const AtomicString& supplementName();
+    static const char* supplementName();
 
 private:
-    void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
-    void didReceiveWebMediaCacheManagerMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     void getHostnamesWithMediaCache(uint64_t callbackID);
     void clearCacheForHostname(const String&);

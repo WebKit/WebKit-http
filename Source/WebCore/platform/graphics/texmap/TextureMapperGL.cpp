@@ -27,7 +27,7 @@
 #include "Image.h"
 #include "LengthFunctions.h"
 #include "NotImplemented.h"
-#include "TextureMapperShaderManager.h"
+#include "TextureMapperShaderProgram.h"
 #include "Timer.h"
 #include <wtf/HashMap.h>
 #include <wtf/OwnArrayPtr.h>
@@ -85,10 +85,22 @@ public:
             return adoptRef(new SharedGLData(context));
         }
 
-        TextureMapperShaderManager textureMapperShaderManager;
+        PassRefPtr<TextureMapperShaderProgram> getShaderProgram(TextureMapperShaderProgram::Options options)
+        {
+            HashMap<TextureMapperShaderProgram::Options, RefPtr<TextureMapperShaderProgram> >::iterator it = m_programs.find(options);
+            if (it != m_programs.end())
+                return it->value;
+
+            RefPtr<TextureMapperShaderProgram> program = TextureMapperShaderProgram::create(m_context, options);
+            m_programs.add(options, program);
+            return program;
+        }
+
+        HashMap<TextureMapperShaderProgram::Options, RefPtr<TextureMapperShaderProgram> > m_programs;
+        RefPtr<GraphicsContext3D> m_context;
 
         explicit SharedGLData(GraphicsContext3D* context)
-            : textureMapperShaderManager(context)
+            : m_context(context)
         {
             glContextDataMap().add(context->platformGraphicsContext3D(), this);
         }
@@ -298,7 +310,7 @@ void TextureMapperGL::drawBorder(const Color& color, float width, const FloatRec
     if (clipStack().current().scissorBox.isEmpty())
         return;
 
-    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::SolidColor);
+    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(TextureMapperShaderProgram::SolidColor);
     m_context3D->useProgram(program->programID());
 
     float r, g, b, a;
@@ -309,10 +321,11 @@ void TextureMapperGL::drawBorder(const Color& color, float width, const FloatRec
     draw(targetRect, modelViewMatrix, program.get(), GraphicsContext3D::LINE_LOOP, color.hasAlpha() ? ShouldBlend : 0);
 }
 
-void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPoint& targetPoint, const TransformationMatrix& modelViewMatrix)
+void TextureMapperGL::drawRepaintCounter(int repaintCount, const Color& color, const FloatPoint& targetPoint, const TransformationMatrix& modelViewMatrix)
 {
+    int pointSize = 8;
 #if PLATFORM(QT)
-    QString counterString = QString::number(value);
+    QString counterString = QString::number(repaintCount);
 
     QFont font(QString::fromLatin1("Monospace"), pointSize, QFont::Bold);
     font.setStyleHint(QFont::TypeWriter);
@@ -327,7 +340,7 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
 
     QImage image(size, NativeImageQt::defaultFormatForAlphaEnabledImages());
     QPainter painter(&image);
-    painter.fillRect(sourceRect, Qt::blue); // Since we won't swap R+B for speed, this will paint red.
+    painter.fillRect(sourceRect, Color::createUnchecked(color.blue(), color.green(), color.red())); // Since we won't swap R+B when uploading a texture, paint with the swapped R+B color.
     painter.setFont(font);
     painter.setPen(Qt::white);
     painter.drawText(2, height * 0.85, counterString);
@@ -338,7 +351,7 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
     drawTexture(*texture, targetRect, modelViewMatrix, 1.0f, 0, AllEdges);
 
 #elif USE(CAIRO)
-    CString counterString = String::number(value).ascii();
+    CString counterString = String::number(repaintCount).ascii();
     // cairo_text_extents() requires a cairo_t, so dimensions need to be guesstimated.
     int width = counterString.length() * pointSize * 1.2;
     int height = pointSize * 1.5;
@@ -346,7 +359,9 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
     cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
     cairo_t* cr = cairo_create(surface);
 
-    cairo_set_source_rgb(cr, 0, 0, 1); // Since we won't swap R+B for speed, this will paint red.
+    float r, g, b, a;
+    color.getRGBA(r, g, b, a);
+    cairo_set_source_rgba(cr, b, g, r, a); // Since we won't swap R+B when uploading a texture, paint with the swapped R+B color.
     cairo_rectangle(cr, 0, 0, width, height);
     cairo_fill(cr);
 
@@ -370,7 +385,7 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
     cairo_destroy(cr);
 
 #else
-    UNUSED_PARAM(value);
+    UNUSED_PARAM(repaintCount);
     UNUSED_PARAM(pointSize);
     UNUSED_PARAM(targetPoint);
     UNUSED_PARAM(modelViewMatrix);
@@ -398,15 +413,15 @@ void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const I
         && exposedEdges == AllEdges
         && !modelViewMatrix.mapQuad(targetRect).isRectilinear();
 
-    TextureMapperShaderManager::Options options = TextureMapperShaderManager::Texture;
+    TextureMapperShaderProgram::Options options = TextureMapperShaderProgram::Texture;
     if (masked)
-        options |= TextureMapperShaderManager::Mask;
+        options |= TextureMapperShaderProgram::Mask;
     if (useRect)
-        options |= TextureMapperShaderManager::Rect;
+        options |= TextureMapperShaderProgram::Rect;
     if (opacity < 1)
-        options |= TextureMapperShaderManager::Opacity;
+        options |= TextureMapperShaderProgram::Opacity;
     if (useAntialiasing) {
-        options |= TextureMapperShaderManager::Antialiasing;
+        options |= TextureMapperShaderProgram::Antialiasing;
         flags |= ShouldAntialias;
     }
 
@@ -414,20 +429,20 @@ void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const I
         flags |= ShouldBlend;
 
     RefPtr<TextureMapperShaderProgram> program;
-    program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(options);
+    program = data().sharedGLData().getShaderProgram(options);
     drawTexturedQuadWithProgram(program.get(), texture, flags, textureSize, targetRect, modelViewMatrix, opacity, maskTexture);
 }
 
 void TextureMapperGL::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color)
 {
     Flags flags = 0;
-    TextureMapperShaderManager::Options options = TextureMapperShaderManager::SolidColor;
+    TextureMapperShaderProgram::Options options = TextureMapperShaderProgram::SolidColor;
     if (!matrix.mapQuad(rect).isRectilinear()) {
-        options |= TextureMapperShaderManager::Antialiasing;
+        options |= TextureMapperShaderProgram::Antialiasing;
         flags |= ShouldBlend | ShouldAntialias;
     }
 
-    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(options);
+    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(options);
     m_context3D->useProgram(program->programID());
 
     float r, g, b, a;
@@ -693,30 +708,30 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
 
 #if ENABLE(CSS_FILTERS)
 
-static TextureMapperShaderManager::Options optionsForFilterType(FilterOperation::OperationType type, unsigned pass)
+static TextureMapperShaderProgram::Options optionsForFilterType(FilterOperation::OperationType type, unsigned pass)
 {
     switch (type) {
     case FilterOperation::GRAYSCALE:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::GrayscaleFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::GrayscaleFilter;
     case FilterOperation::SEPIA:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::SepiaFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::SepiaFilter;
     case FilterOperation::SATURATE:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::SaturateFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::SaturateFilter;
     case FilterOperation::HUE_ROTATE:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::HueRotateFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::HueRotateFilter;
     case FilterOperation::INVERT:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::InvertFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::InvertFilter;
     case FilterOperation::BRIGHTNESS:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::BrightnessFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::BrightnessFilter;
     case FilterOperation::CONTRAST:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::ContrastFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::ContrastFilter;
     case FilterOperation::OPACITY:
-        return TextureMapperShaderManager::Texture | TextureMapperShaderManager::OpacityFilter;
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::OpacityFilter;
     case FilterOperation::BLUR:
-        return TextureMapperShaderManager::BlurFilter;
+        return TextureMapperShaderProgram::BlurFilter;
     case FilterOperation::DROP_SHADOW:
-        return TextureMapperShaderManager::AlphaBlur
-            | (pass ? TextureMapperShaderManager::ContentTexture | TextureMapperShaderManager::SolidColor: 0);
+        return TextureMapperShaderProgram::AlphaBlur
+            | (pass ? TextureMapperShaderProgram::ContentTexture | TextureMapperShaderProgram::SolidColor: 0);
     default:
         ASSERT_NOT_REACHED();
         return 0;
@@ -910,8 +925,8 @@ bool TextureMapperGL::drawUsingCustomFilter(BitmapTexture& target, const BitmapT
 void TextureMapperGL::drawFiltered(const BitmapTexture& sampler, const BitmapTexture& contentTexture, const FilterOperation& filter, int pass)
 {
     // For standard filters, we always draw the whole texture without transformations.
-    TextureMapperShaderManager::Options options = optionsForFilterType(filter.getOperationType(), pass);
-    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(options);
+    TextureMapperShaderProgram::Options options = optionsForFilterType(filter.getOperationType(), pass);
+    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(options);
     ASSERT(program);
 
     prepareFilterProgram(program.get(), filter, pass, sampler.contentSize(), static_cast<const BitmapTextureGL&>(contentTexture).id());
@@ -1110,7 +1125,7 @@ void TextureMapperGL::beginClip(const TransformationMatrix& modelViewMatrix, con
 
     data().initializeStencil();
 
-    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::SolidColor);
+    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(TextureMapperShaderProgram::SolidColor);
 
     m_context3D->useProgram(program->programID());
     m_context3D->enableVertexAttribArray(program->vertexLocation());

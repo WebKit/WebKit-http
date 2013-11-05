@@ -41,7 +41,7 @@
 #include "WebDragOperation.h"
 #include "WebInputEvent.h"
 #include "WebTask.h"
-#include "platform/WebPoint.h"
+#include <public/WebPoint.h>
 
 namespace WebKit {
 class WebDragData;
@@ -50,13 +50,13 @@ class WebView;
 
 namespace WebTestRunner {
 
-class TestDelegate;
+class WebTestDelegate;
 
 class EventSender : public CppBoundClass {
 public:
     EventSender();
 
-    void setDelegate(TestDelegate* delegate) { m_delegate = delegate; }
+    void setDelegate(WebTestDelegate* delegate) { m_delegate = delegate; }
     void setWebView(WebKit::WebView* webView) { m_webView = webView; }
 
     // Resets some static variable state.
@@ -83,6 +83,7 @@ public:
     void zoomPageOut(const CppArgumentList&, CppVariant*);
     void scalePageBy(const CppArgumentList&, CppVariant*);
 
+    void mouseDragBegin(const CppArgumentList&, CppVariant*);
     void mouseScrollBy(const CppArgumentList&, CppVariant*);
     void continuousMouseScrollBy(const CppArgumentList&, CppVariant*);
     void scheduleAsynchronousClick(const CppArgumentList&, CppVariant*);
@@ -158,6 +159,7 @@ private:
     // modifier to be passed into the generated event.
     bool needsShiftModifier(int);
 
+    void finishDragAndDrop(const WebKit::WebMouseEvent&, WebKit::WebDragOperation);
     void updateClickCountForButton(WebKit::WebMouseEvent::Button);
 
     // Compose a touch event from the current touch points and send it.
@@ -168,7 +170,7 @@ private:
 
     WebTaskList m_taskList;
 
-    TestDelegate* m_delegate;
+    WebTestDelegate* m_delegate;
     WebKit::WebView* m_webView;
 
     // Location of the touch point that initiated a gesture.

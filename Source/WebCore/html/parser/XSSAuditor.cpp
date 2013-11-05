@@ -50,6 +50,8 @@
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
 
+#include <wtf/Functional.h>
+#include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -168,13 +170,14 @@ static String fullyDecodeString(const String& string, const TextResourceDecoder*
 
 XSSAuditor::XSSAuditor(HTMLDocumentParser* parser)
     : m_parser(parser)
+    , m_documentURL(parser->document()->url())
     , m_isEnabled(false)
     , m_xssProtection(XSSProtectionEnabled)
     , m_state(Uninitialized)
     , m_shouldAllowCDATA(false)
     , m_scriptTagNestingLevel(0)
-    , m_notifyClient(true)
 {
+    ASSERT(isMainThread());
     ASSERT(m_parser);
     if (Frame* frame = parser->document()->frame()) {
         if (Settings* settings = frame->settings())
@@ -184,11 +187,14 @@ XSSAuditor::XSSAuditor(HTMLDocumentParser* parser)
     // we want to reference might not all have been constructed yet.
 }
 
-void XSSAuditor::init()
+void XSSAuditor::init(Document* document)
 {
     const size_t miniumLengthForSuffixTree = 512; // FIXME: Tune this parameter.
     const int suffixTreeDepth = 5;
 
+    ASSERT(isMainThread());
+    if (m_state == Initialized)
+        return;
     ASSERT(m_state == Uninitialized);
     m_state = Initialized;
 
@@ -197,31 +203,29 @@ void XSSAuditor::init()
 
     // In theory, the Document could have detached from the Frame after the
     // XSSAuditor was constructed.
-    if (!m_parser->document()->frame()) {
+    if (!document->frame()) {
         m_isEnabled = false;
         return;
     }
 
-    const KURL& url = m_parser->document()->url();
-
-    if (url.isEmpty()) {
+    if (m_documentURL.isEmpty()) {
         // The URL can be empty when opening a new browser window or calling window.open("").
         m_isEnabled = false;
         return;
     }
 
-    if (url.protocolIsData()) {
+    if (m_documentURL.protocolIsData()) {
         m_isEnabled = false;
         return;
     }
 
-    TextResourceDecoder* decoder = m_parser->document()->decoder();
-    m_decodedURL = fullyDecodeString(url.string(), decoder);
+    TextResourceDecoder* decoder = document->decoder();
+    m_decodedURL = fullyDecodeString(m_documentURL.string(), decoder);
     if (m_decodedURL.find(isRequiredForInjection) == notFound)
         m_decodedURL = String();
 
     String httpBodyAsString;
-    if (DocumentLoader* documentLoader = m_parser->document()->frame()->loader()->documentLoader()) {
+    if (DocumentLoader* documentLoader = document->frame()->loader()->documentLoader()) {
         DEFINE_STATIC_LOCAL(String, XSSProtectionHeader, (ASCIILiteral("X-XSS-Protection")));
         String headerValue = documentLoader->response().httpHeaderField(XSSProtectionHeader);
         String errorDetails;
@@ -230,8 +234,8 @@ void XSSAuditor::init()
         m_xssProtection = parseXSSProtectionHeader(headerValue, errorDetails, errorPosition, reportURL);
 
         if ((m_xssProtection == XSSProtectionEnabled || m_xssProtection == XSSProtectionBlockEnabled) && !reportURL.isEmpty()) {
-            m_reportURL = m_parser->document()->completeURL(reportURL);
-            if (MixedContentChecker::isMixedContent(m_parser->document()->securityOrigin(), m_reportURL)) {
+            m_reportURL = document->completeURL(reportURL);
+            if (MixedContentChecker::isMixedContent(document->securityOrigin(), m_reportURL)) {
                 errorDetails = "insecure reporting URL for secure page";
                 m_xssProtection = XSSProtectionInvalid;
                 m_reportURL = KURL();
@@ -239,7 +243,7 @@ void XSSAuditor::init()
         }
 
         if (m_xssProtection == XSSProtectionInvalid) {
-            m_parser->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
+            document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
             m_xssProtection = XSSProtectionEnabled;
         }
 
@@ -263,19 +267,16 @@ void XSSAuditor::init()
 
     if (!m_reportURL.isEmpty()) {
         // May need these for reporting later on.
-        m_originalURL = url;
+        m_originalURL = m_documentURL;
         m_originalHTTPBody = httpBodyAsString;
     }
 }
 
-void XSSAuditor::filterToken(HTMLToken& token)
+PassOwnPtr<DidBlockScriptRequest> XSSAuditor::filterToken(HTMLToken& token)
 {
-    if (m_state == Uninitialized)
-        init();
-   
     ASSERT(m_state == Initialized);
     if (!m_isEnabled || m_xssProtection == XSSProtectionDisabled)
-        return;
+        return nullptr;
 
     bool didBlockScript = false;
     if (token.type() == HTMLTokenTypes::StartTag)
@@ -288,38 +289,16 @@ void XSSAuditor::filterToken(HTMLToken& token)
     }
 
     if (didBlockScript) {
-        // FIXME: Consider using a more helpful console message.
-        DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Refused to execute a JavaScript script. Source code of script found within request.\n")));
-        m_parser->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, consoleMessage);
-
         bool didBlockEntirePage = (m_xssProtection == XSSProtectionBlockEnabled);
-        if (didBlockEntirePage)
-             m_parser->document()->frame()->loader()->stopAllLoaders();
-
-        if (m_notifyClient) {
-            m_parser->document()->frame()->loader()->client()->didDetectXSS(m_parser->document()->url(), didBlockEntirePage);
-            m_notifyClient = false;
-        }
-
+        OwnPtr<DidBlockScriptRequest> request = DidBlockScriptRequest::create(m_reportURL, m_originalURL, m_originalHTTPBody, didBlockEntirePage);
         if (!m_reportURL.isEmpty()) {
-            RefPtr<InspectorObject> reportDetails = InspectorObject::create();
-            reportDetails->setString("request-url", m_originalURL);
-            reportDetails->setString("request-body", m_originalHTTPBody);
-
-            RefPtr<InspectorObject> reportObject = InspectorObject::create();
-            reportObject->setObject("xss-report", reportDetails.release());
-
-            RefPtr<FormData> report = FormData::create(reportObject->toJSONString().utf8().data());
-            PingLoader::sendViolationReport(m_parser->document()->frame(), m_reportURL, report);
-
             m_reportURL = KURL();
             m_originalURL = String();
             m_originalHTTPBody = String();
         }
-
-        if (didBlockEntirePage)
-            m_parser->document()->frame()->navigationScheduler()->scheduleLocationChange(m_parser->document()->securityOrigin(), blankURL(), String());
+        return request.release();
     }
+    return nullptr;
 }
 
 bool XSSAuditor::filterStartToken(HTMLToken& token)
@@ -507,9 +486,9 @@ bool XSSAuditor::eraseAttributeIfInjected(HTMLToken& token, const QualifiedName&
     if (findAttributeWithName(token, attributeName, indexOfAttribute)) {
         const HTMLToken::Attribute& attribute = token.attributes().at(indexOfAttribute);
         if (isContainedInRequest(decodedSnippetForAttribute(token, attribute, treatment))) {
-            if (attributeName == srcAttr && isLikelySafeResource(String(attribute.m_value.data(), attribute.m_value.size())))
+            if (threadSafeMatch(attributeName, srcAttr) && isLikelySafeResource(String(attribute.m_value.data(), attribute.m_value.size())))
                 return false;
-            if (attributeName == http_equivAttr && !isDangerousHTTPEquiv(String(attribute.m_value.data(), attribute.m_value.size())))
+            if (threadSafeMatch(attributeName, http_equivAttr) && !isDangerousHTTPEquiv(String(attribute.m_value.data(), attribute.m_value.size())))
                 return false;
             token.eraseValueOfAttribute(indexOfAttribute);
             if (!replacementValue.isEmpty())
@@ -673,12 +652,11 @@ bool XSSAuditor::isLikelySafeResource(const String& url)
     // query string, we're more suspicious, however, because that's pretty rare
     // and the attacker might be able to trick a server-side script into doing
     // something dangerous with the query string.  
-    const KURL& documentURL = m_parser->document()->url();
-    if (documentURL.host().isEmpty())
+    if (m_documentURL.host().isEmpty())
         return false;
 
-    KURL resourceURL(documentURL, url);
-    return (documentURL.host() == resourceURL.host() && resourceURL.query().isEmpty());
+    KURL resourceURL(m_documentURL, url);
+    return (m_documentURL.host() == resourceURL.host() && resourceURL.query().isEmpty());
 }
 
 } // namespace WebCore

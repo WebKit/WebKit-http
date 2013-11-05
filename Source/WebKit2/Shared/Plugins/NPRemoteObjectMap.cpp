@@ -227,13 +227,13 @@ void NPRemoteObjectMap::pluginDestroyed(Plugin* plugin)
     }
 }
 
-void NPRemoteObjectMap::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
+void NPRemoteObjectMap::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
     NPObjectMessageReceiver* messageReceiver = m_registeredNPObjects.get(decoder.destinationID());
     if (!messageReceiver)
         return;
 
-    messageReceiver->didReceiveSyncNPObjectMessageReceiverMessage(connection, messageID, decoder, replyEncoder);
+    messageReceiver->didReceiveSyncNPObjectMessageReceiverMessage(connection, decoder, replyEncoder);
 }
 
 } // namespace WebKit

@@ -27,6 +27,7 @@
 #define CanvasRenderingContext2D_h
 
 #include "AffineTransform.h"
+#include "CanvasPathMethods.h"
 #include "CanvasRenderingContext.h"
 #include "Color.h"
 #include "ColorSpace.h"
@@ -48,6 +49,9 @@ namespace WebCore {
 class CanvasGradient;
 class CanvasPattern;
 class CanvasStyle;
+#if ENABLE(CANVAS_PATH)
+class DOMPath;
+#endif
 class FloatRect;
 class GraphicsContext;
 class HTMLCanvasElement;
@@ -58,7 +62,7 @@ class TextMetrics;
 
 typedef int ExceptionCode;
 
-class CanvasRenderingContext2D : public CanvasRenderingContext {
+class CanvasRenderingContext2D : public CanvasRenderingContext, public CanvasPathMethods {
 public:
     static PassOwnPtr<CanvasRenderingContext2D> create(HTMLCanvasElement* canvas, bool usesCSSCompatibilityParseMode, bool usesDashboardCompatibilityMode)
     {
@@ -135,21 +139,17 @@ public:
     void setFillColor(float c, float m, float y, float k, float a);
 
     void beginPath();
-    void closePath();
 
-    void moveTo(float x, float y);
-    void lineTo(float x, float y);
-    void quadraticCurveTo(float cpx, float cpy, float x, float y);
-    void bezierCurveTo(float cp1x, float cp1y, float cp2x, float cp2y, float x, float y);
-    void arcTo(float x0, float y0, float x1, float y1, float radius, ExceptionCode&);
-    void arc(float x, float y, float r, float sa, float ea, bool clockwise, ExceptionCode&);
-    void rect(float x, float y, float width, float height);
-
-    void fill();
+#if ENABLE(CANVAS_PATH)
+    PassRefPtr<DOMPath> currentPath();
+    void setCurrentPath(DOMPath*);
+#endif
+    void fill(const String& winding = "nonzero");
     void stroke();
-    void clip();
+    void clip(const String& winding = "nonzero");
 
-    bool isPointInPath(const float x, const float y);
+    bool isPointInPath(const float x, const float y, const String& winding = "nonzero");
+    bool isPointInStroke(const float x, const float y);
 
     void clearRect(float x, float y, float width, float height);
     void fillRect(float x, float y, float width, float height);
@@ -331,11 +331,12 @@ private:
     virtual bool is2d() const OVERRIDE { return true; }
     virtual bool isAccelerated() const OVERRIDE;
 
+    virtual bool isTransformInvertible() const { return state().m_invertibleCTM; }
+
 #if ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING)
     virtual PlatformLayer* platformLayer() const OVERRIDE;
 #endif
 
-    Path m_path;
     Vector<State, 1> m_stateStack;
     unsigned m_unrealizedSaveCount;
     bool m_usesCSSCompatibilityParseMode;

@@ -41,9 +41,9 @@
 #include "JIT.h"
 #include "JITStubs.h"
 #include "JSActivation.h"
+#include "JSCJSValue.h"
 #include "JSFunction.h"
 #include "JSNameScope.h"
-#include "JSValue.h"
 #include "LowLevelInterpreter.h"
 #include "Operations.h"
 #include "ReduceWhitespace.h"
@@ -231,7 +231,7 @@ NEVER_INLINE static const char* debugHookName(int debugHookID)
             return "didReachBreakpoint";
     }
 
-    ASSERT_NOT_REACHED();
+    RELEASE_ASSERT_NOT_REACHED();
     return "";
 }
 
@@ -305,7 +305,7 @@ void CodeBlock::printGetByIdOp(PrintStream& out, ExecState* exec, int location, 
         op = "string_length";
         break;
     default:
-        ASSERT_NOT_REACHED();
+        RELEASE_ASSERT_NOT_REACHED();
         op = 0;
     }
     int r0 = (++it)->u.operand;
@@ -415,7 +415,7 @@ void CodeBlock::printGetByIdCacheStatus(PrintStream& out, ExecState* exec, int l
                 out.printf("string_length");
                 break;
             default:
-                ASSERT_NOT_REACHED();
+                RELEASE_ASSERT_NOT_REACHED();
                 break;
             }
             
@@ -755,7 +755,8 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         case op_create_this: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
-            out.printf("[%4d] create_this %s, %s", location, registerName(exec, r0).data(), registerName(exec, r1).data());
+            unsigned inferredInlineCapacity = (++it)->u.operand;
+            out.printf("[%4d] create_this %s, %s, %u", location, registerName(exec, r0).data(), registerName(exec, r1).data(), inferredInlineCapacity);
             break;
         }
         case op_convert_this: {
@@ -766,7 +767,9 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         }
         case op_new_object: {
             int r0 = (++it)->u.operand;
-            out.printf("[%4d] new_object\t %s", location, registerName(exec, r0).data());
+            unsigned inferredInlineCapacity = (++it)->u.operand;
+            out.printf("[%4d] new_object\t %s, %u", location, registerName(exec, r0).data(), inferredInlineCapacity);
+            ++it; // Skip object allocation profile.
             break;
         }
         case op_new_array: {
@@ -1494,7 +1497,7 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
         }
 #if ENABLE(LLINT_C_LOOP)
         default:
-            ASSERT(false); // We should never get here.
+            RELEASE_ASSERT_NOT_REACHED();
 #endif
     }
 
@@ -1812,14 +1815,14 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     if (size_t size = unlinkedCodeBlock->numberOfValueProfiles())
         m_valueProfiles.grow(size);
 #endif
+    if (size_t size = unlinkedCodeBlock->numberOfObjectAllocationProfiles())
+        m_objectAllocationProfiles.grow(size);
     if (size_t size = unlinkedCodeBlock->numberOfResolveOperations())
         m_resolveOperations.grow(size);
     size_t putToBaseCount = unlinkedCodeBlock->numberOfPutToBaseOperations();
-    m_putToBaseOperations.reserveCapacity(putToBaseCount);
+    m_putToBaseOperations.reserveInitialCapacity(putToBaseCount);
     for (size_t i = 0; i < putToBaseCount; ++i)
-        m_putToBaseOperations.append(PutToBaseOperation(isStrictMode()));
-
-    ASSERT(m_putToBaseOperations.capacity() == putToBaseCount);
+        m_putToBaseOperations.uncheckedAppend(PutToBaseOperation(isStrictMode()));
 
     // Copy and translate the UnlinkedInstructions
     size_t instructionCount = unlinkedCodeBlock->instructions().size();
@@ -1872,6 +1875,17 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             break;
         }
 #endif
+
+        case op_new_object: {
+            int objectAllocationProfileIndex = pc[i + opLength - 1].u.operand;
+            ObjectAllocationProfile* objectAllocationProfile = &m_objectAllocationProfiles[objectAllocationProfileIndex];
+            int inferredInlineCapacity = pc[i + opLength - 2].u.operand;
+
+            instructions[i + opLength - 1] = objectAllocationProfile;
+            objectAllocationProfile->initialize(*globalData(),
+                m_ownerExecutable.get(), m_globalObject->objectPrototype(), inferredInlineCapacity);
+            break;
+        }
 
         case op_call:
         case op_call_eval: {
@@ -2111,7 +2125,7 @@ void CodeBlock::visitAggregate(SlotVisitor& visitor)
         visitor.addWeakReferenceHarvester(this);
     
 #else // ENABLE(DFG_JIT)
-    ASSERT_NOT_REACHED();
+    RELEASE_ASSERT_NOT_REACHED();
 #endif // ENABLE(DFG_JIT)
 }
 
@@ -2227,7 +2241,7 @@ void CodeBlock::finalizeUnconditionally()
             case op_get_array_length:
                 break;
             default:
-                ASSERT_NOT_REACHED();
+                RELEASE_ASSERT_NOT_REACHED();
             }
         }
 
@@ -2390,6 +2404,8 @@ void CodeBlock::stronglyVisitStrongReferences(SlotVisitor& visitor)
         visitor.append(&m_functionExprs[i]);
     for (size_t i = 0; i < m_functionDecls.size(); ++i)
         visitor.append(&m_functionDecls[i]);
+    for (unsigned i = 0; i < m_objectAllocationProfiles.size(); ++i)
+        m_objectAllocationProfiles[i].visitAggregate(visitor);
 
     updateAllPredictions(Collection);
 }
@@ -2492,7 +2508,7 @@ void CodeBlock::dumpBytecodeComments()
 
 HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset)
 {
-    ASSERT(bytecodeOffset < instructions().size());
+    RELEASE_ASSERT(bytecodeOffset < instructions().size());
 
     if (!m_rareData)
         return 0;
@@ -2510,7 +2526,7 @@ HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset)
 
 int CodeBlock::lineNumberForBytecodeOffset(unsigned bytecodeOffset)
 {
-    ASSERT(bytecodeOffset < instructions().size());
+    RELEASE_ASSERT(bytecodeOffset < instructions().size());
     return m_ownerExecutable->lineNo() + m_unlinkedCode->lineNumberForBytecodeOffset(bytecodeOffset);
 }
 
@@ -2730,11 +2746,11 @@ unsigned CodeBlock::bytecodeOffset(ExecState* exec, ReturnAddressPtr returnAddre
         && returnAddress.value() <= LLInt::getCodePtr(llint_end))
 #endif
     {
-        ASSERT(exec->codeBlock());
-        ASSERT(exec->codeBlock() == this);
-        ASSERT(JITCode::isBaselineCode(getJITType()));
+        RELEASE_ASSERT(exec->codeBlock());
+        RELEASE_ASSERT(exec->codeBlock() == this);
+        RELEASE_ASSERT(JITCode::isBaselineCode(getJITType()));
         Instruction* instruction = exec->currentVPC();
-        ASSERT(instruction);
+        RELEASE_ASSERT(instruction);
 
         instruction = adjustPCIfAtCallSite(instruction);
         return bytecodeOffset(instruction);
@@ -2753,7 +2769,7 @@ unsigned CodeBlock::bytecodeOffset(ExecState* exec, ReturnAddressPtr returnAddre
         CallReturnOffsetToBytecodeOffset* result =
             binarySearch<CallReturnOffsetToBytecodeOffset, unsigned>(
                 callIndices, callIndices.size(), callReturnOffset, getCallReturnOffset);
-        ASSERT(result->callReturnOffset == callReturnOffset);
+        RELEASE_ASSERT(result->callReturnOffset == callReturnOffset);
         return result->bytecodeOffset;
     }
 
@@ -3347,7 +3363,7 @@ bool CodeBlock::usesOpcode(OpcodeID opcodeID)
             FOR_EACH_OPCODE_ID(DEFINE_OP)
 #undef DEFINE_OP
         default:
-            ASSERT_NOT_REACHED();
+            RELEASE_ASSERT_NOT_REACHED();
             break;
         }
     }

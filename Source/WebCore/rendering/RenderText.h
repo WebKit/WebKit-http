@@ -96,7 +96,6 @@ public:
 
     virtual IntRect linesBoundingBox() const;
     LayoutRect linesVisualOverflowBoundingBox() const;
-    IntRect linesLogicalBoundingBox() const;
 
     FloatPoint firstRunOrigin() const;
     float firstRunX() const;
@@ -215,13 +214,13 @@ private:
 
 inline RenderText* toRenderText(RenderObject* object)
 { 
-    ASSERT(!object || object->isText());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isText());
     return static_cast<RenderText*>(object);
 }
 
 inline const RenderText* toRenderText(const RenderObject* object)
 { 
-    ASSERT(!object || object->isText());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isText());
     return static_cast<const RenderText*>(object);
 }
 

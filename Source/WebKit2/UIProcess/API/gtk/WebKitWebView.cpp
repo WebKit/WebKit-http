@@ -41,7 +41,6 @@
 #include "WebKitPolicyClient.h"
 #include "WebKitPrintOperationPrivate.h"
 #include "WebKitPrivate.h"
-#include "WebKitResourceLoadClient.h"
 #include "WebKitResponsePolicyDecision.h"
 #include "WebKitScriptDialogPrivate.h"
 #include "WebKitSettingsPrivate.h"
@@ -456,15 +455,13 @@ static void webkitWebViewConstructed(GObject* object)
 
     WebKitWebView* webView = WEBKIT_WEB_VIEW(object);
     WebKitWebViewPrivate* priv = webView->priv;
-    WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
+    webkitWebContextCreatePageForWebView(priv->context, webView);
 
-    webkitWebViewBaseCreateWebPage(webViewBase, webkitWebContextGetContext(priv->context), 0);
-    webkitWebViewBaseSetDownloadRequestHandler(webViewBase, webkitWebViewHandleDownloadRequest);
+    webkitWebViewBaseSetDownloadRequestHandler(WEBKIT_WEB_VIEW_BASE(webView), webkitWebViewHandleDownloadRequest);
 
     attachLoaderClientToView(webView);
     attachUIClientToView(webView);
     attachPolicyClientToView(webView);
-    attachResourceLoadClientToView(webView);
     attachFullScreenClientToView(webView);
     attachContextMenuClientToView(webView);
     attachFormClientToView(webView);
@@ -538,6 +535,8 @@ static void webkitWebViewDispose(GObject* object)
     webkitWebViewDisconnectMainResourceResponseChangedSignalHandler(webView);
     webkitWebViewDisconnectSettingsSignalHandlers(webView);
     webkitWebViewDisconnectFaviconDatabaseSignalHandlers(webView);
+
+    webkitWebContextWebViewDestroyed(webView->priv->context, webView);
 
     G_OBJECT_CLASS(webkit_web_view_parent_class)->dispose(object);
 }

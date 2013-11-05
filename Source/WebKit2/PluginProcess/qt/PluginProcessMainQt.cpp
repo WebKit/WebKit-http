@@ -27,7 +27,6 @@
 #include "config.h"
 
 #if ENABLE(PLUGIN_PROCESS)
-#include "PluginProcessMain.h"
 
 #include "NetscapePluginModule.h"
 #include "PluginProcess.h"
@@ -104,6 +103,7 @@ Q_DECL_EXPORT int PluginProcessMain(int argc, char** argv)
 
     WebKit::ChildProcessInitializationParameters parameters;
     parameters.connectionIdentifier = identifier;
+    parameters.extraInitializationData.add("plugin-path", app.arguments().at(2));
 
     WebKit::PluginProcess::shared().initialize(parameters);
 

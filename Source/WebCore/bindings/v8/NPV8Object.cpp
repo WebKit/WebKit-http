@@ -51,7 +51,7 @@ namespace WebCore {
 
 WrapperTypeInfo* npObjectTypeInfo()
 {
-    static WrapperTypeInfo typeInfo = { 0, 0, 0, 0, 0, 0, WrapperTypeObjectPrototype };
+    static WrapperTypeInfo typeInfo = { 0, 0, 0, 0, 0, 0, 0, WrapperTypeObjectPrototype };
     return &typeInfo;
 }
 
@@ -479,7 +479,7 @@ void _NPN_SetException(NPObject* npObject, const NPUTF8 *message)
     if (!npObject || npObject->_class != npScriptObjectClass) {
         // We won't be able to find a proper scope for this exception, so just throw it.
         // This is consistent with JSC, which throws a global exception all the time.
-        throwError(v8GeneralError, message);
+        throwError(v8GeneralError, message, v8::Isolate::GetCurrent());
         return;
     }
     v8::HandleScope handleScope;
@@ -490,7 +490,7 @@ void _NPN_SetException(NPObject* npObject, const NPUTF8 *message)
     v8::Context::Scope scope(context);
     ExceptionCatcher exceptionCatcher;
 
-    throwError(v8GeneralError, message);
+    throwError(v8GeneralError, message, context->GetIsolate());
 }
 
 bool _NPN_Enumerate(NPP npp, NPObject* npObject, NPIdentifier** identifier, uint32_t* count)
@@ -536,7 +536,7 @@ bool _NPN_Enumerate(NPP npp, NPObject* npObject, NPIdentifier** identifier, uint
         *count = props->Length();
         *identifier = static_cast<NPIdentifier*>(malloc(sizeof(NPIdentifier*) * *count));
         for (uint32_t i = 0; i < *count; ++i) {
-            v8::Local<v8::Value> name = props->Get(deprecatedV8Integer(i));
+            v8::Local<v8::Value> name = props->Get(v8Integer(i, context->GetIsolate()));
             (*identifier)[i] = getStringIdentifier(v8::Local<v8::String>::Cast(name));
         }
         return true;

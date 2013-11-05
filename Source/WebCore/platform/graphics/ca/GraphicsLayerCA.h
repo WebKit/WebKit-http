@@ -131,7 +131,13 @@ public:
     virtual void setMaintainsPixelAlignment(bool);
     virtual void deviceOrPageScaleFactorChanged();
 
-    void recursiveCommitChanges(const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
+    struct CommitState {
+        bool ancestorHasTransformAnimation;
+        CommitState()
+            : ancestorHasTransformAnimation(false)
+        { }
+    };
+    void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
     virtual void flushCompositingState(const FloatRect&);
     virtual void flushCompositingStateForThisLayerOnly();
@@ -208,6 +214,8 @@ private:
     bool setFilterAnimationKeyframes(const KeyframeValueList&, const Animation*, PlatformCAAnimation*, int functionIndex, int internalFilterPropertyIndex, FilterOperation::OperationType);
 #endif
 
+    bool isRunningTransformAnimation() const;
+
     bool animationIsRunning(const String& animationName) const
     {
         return m_runningAnimations.find(animationName) != m_runningAnimations.end();
@@ -221,7 +229,7 @@ private:
     FloatSize constrainedSize() const;
 
     bool requiresTiledLayer(float pageScaleFactor) const;
-    void swapFromOrToTiledLayer(bool useTiledLayer, float pageScaleFactor, const FloatPoint& positionRelativeToBase);
+    void swapFromOrToTiledLayer(bool useTiledLayer);
 
     CompositingCoordinatesOrientation defaultContentsOrientation() const;
     
@@ -314,8 +322,8 @@ private:
     void updateContentsVisibility();
     void updateContentsOpaque();
     void updateBackfaceVisibility();
-    void updateStructuralLayer(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
-    void updateLayerDrawsContent(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
+    void updateStructuralLayer();
+    void updateLayerDrawsContent(float pixelAlignmentScale);
     void updateBackgroundColor();
 
     void updateContentsImage();
@@ -326,19 +334,19 @@ private:
     void updateMaskLayer();
     void updateReplicatedLayers();
 
-    void updateLayerAnimations();
+    void updateAnimations();
     void updateContentsNeedsDisplay();
     void updateAcceleratesDrawing();
     void updateDebugBorder();
     void updateVisibleRect(const FloatRect& oldVisibleRect);
-    void updateContentsScale(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
+    void updateContentsScale(float pageScaleFactor);
     
     enum StructuralLayerPurpose {
         NoStructuralLayer = 0,
         StructuralLayerForPreserves3D,
         StructuralLayerForReplicaFlattening
     };
-    void ensureStructuralLayer(StructuralLayerPurpose, float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
+    void ensureStructuralLayer(StructuralLayerPurpose);
     StructuralLayerPurpose structuralLayerPurpose() const;
 
     void setAnimationOnLayer(PlatformCAAnimation*, AnimatedPropertyID, const String& animationName, int index, double timeOffset);

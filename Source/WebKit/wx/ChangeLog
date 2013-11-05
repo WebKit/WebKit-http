@@ -1,3 +1,42 @@
+2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
+
+        Fix build warning after r141473
+        https://bugs.webkit.org/show_bug.cgi?id=108782
+
+        Reviewed by Kentaro Hara.
+
+        Fix -Wunused-parameter build warning.
+
+        * WebKitSupport/EditorClientWx.cpp:
+        (WebCore::EditorClientWx::getClientPasteboardDataForRange):
+
+2013-01-31  Enrica Casucci  <enrica@apple.com>
+
+        WebKit2: provide new bundle APIs to allow bundle clients to be notified of pasteboard access.
+        https://bugs.webkit.org/show_bug.cgi?id=108396.
+        <rdar://problem/12920461>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Adds stub implementation for WebKit of the new EditorClient methods.
+
+        * WebKitSupport/EditorClientWx.cpp:
+        (WebCore::EditorClientWx::willWriteSelectionToPasteboard):
+        (WebCore::EditorClientWx::getClientPasteboardDataForRange):
+        * WebKitSupport/EditorClientWx.h:
+
+2013-01-24  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Objective-C API: Rename JSValue.h/APIJSValue.h to JSCJSValue.h/JSValue.h
+        https://bugs.webkit.org/show_bug.cgi?id=107327
+
+        Reviewed by Filip Pizlo.
+
+        We're renaming these two files, so we have to replace the names everywhere.
+
+        * WebFrame.cpp:
+        * WebView.cpp:
+
 2013-01-08  Mark Lam  <mark.lam@apple.com>
 
         Removed the need for the ProposedDatabase mechanism.

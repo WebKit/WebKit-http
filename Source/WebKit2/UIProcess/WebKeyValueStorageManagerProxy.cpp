@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,10 +34,9 @@
 
 namespace WebKit {
 
-const AtomicString& WebKeyValueStorageManagerProxy::supplementName()
+const char* WebKeyValueStorageManagerProxy::supplementName()
 {
-    DEFINE_STATIC_LOCAL(AtomicString, name, ("WebKeyValueStorageManagerProxy", AtomicString::ConstructFromLiteral));
-    return name;
+    return "WebKeyValueStorageManagerProxy";
 }
 
 PassRefPtr<WebKeyValueStorageManagerProxy> WebKeyValueStorageManagerProxy::create(WebContext* context)
@@ -80,13 +79,6 @@ void WebKeyValueStorageManagerProxy::refWebContextSupplement()
 void WebKeyValueStorageManagerProxy::derefWebContextSupplement()
 {
     APIObject::deref();
-}
-
-// CoreIPC::MessageReceiver
-
-void WebKeyValueStorageManagerProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageID messageID, CoreIPC::MessageDecoder& decoder)
-{
-    didReceiveWebKeyValueStorageManagerProxyMessage(connection, messageID, decoder);
 }
 
 void WebKeyValueStorageManagerProxy::getKeyValueStorageOrigins(PassRefPtr<ArrayCallback> prpCallback)

@@ -58,6 +58,12 @@ PassOwnPtr<InputType> EmailInputType::create(HTMLInputElement* element)
     return adoptPtr(new EmailInputType(element));
 }
 
+void EmailInputType::attach()
+{
+    TextFieldInputType::attach();
+    observeFeatureIfVisible(FeatureObserver::InputTypeEmail);
+}
+
 const AtomicString& EmailInputType::formControlType() const
 {
     return InputTypeNames::email();

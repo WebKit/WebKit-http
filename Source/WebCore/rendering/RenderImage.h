@@ -31,13 +31,14 @@
 namespace WebCore {
 
 class HTMLAreaElement;
-class HTMLImageElement;
 class HTMLMapElement;
 
 class RenderImage : public RenderReplaced {
 public:
-    RenderImage(ContainerNode*);
+    RenderImage(Element*);
     virtual ~RenderImage();
+
+    static RenderImage* createAnonymous(Document*);
 
     void setImageResource(PassOwnPtr<RenderImageResource>);
 
@@ -59,8 +60,6 @@ public:
     bool isGeneratedContent() const { return m_isGeneratedContent; }
 
 protected:
-    HTMLImageElement* hostImageElement() const;
-
     virtual bool needsPreferredWidthsRecalculation() const;
     virtual RenderBox* embeddedContentBox() const;
     virtual void computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio, bool& isPercentageIntrinsicSize) const;
@@ -114,13 +113,13 @@ private:
 
 inline RenderImage* toRenderImage(RenderObject* object)
 {
-    ASSERT(!object || object->isRenderImage());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderImage());
     return static_cast<RenderImage*>(object);
 }
 
 inline const RenderImage* toRenderImage(const RenderObject* object)
 {
-    ASSERT(!object || object->isRenderImage());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isRenderImage());
     return static_cast<const RenderImage*>(object);
 }
 

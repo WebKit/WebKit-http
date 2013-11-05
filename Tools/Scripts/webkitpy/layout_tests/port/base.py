@@ -580,7 +580,7 @@ class Port(object):
                         reftest_list.append((expectation, path))
             return reftest_list
 
-        return reftest_list.get(self._filesystem.join(self.layout_tests_dir(), test_name), [])  # pylint: disable-msg=E1103
+        return reftest_list.get(self._filesystem.join(self.layout_tests_dir(), test_name), [])  # pylint: disable=E1103
 
     def tests(self, paths):
         """Return the list of tests found. Both generic and platform-specific tests matching paths should be returned."""
@@ -1504,7 +1504,7 @@ class Port(object):
             "MathMLElement": ["mathml"],
             "GraphicsLayer": ["compositing"],
             "WebCoreHas3DRendering": ["animations/3d", "transforms/3d"],
-            "WebGLShader": ["fast/canvas/webgl", "compositing/webgl", "http/tests/canvas/webgl"],
+            "WebGLShader": ["fast/canvas/webgl", "compositing/webgl", "http/tests/canvas/webgl", "webgl"],
             "MHTMLArchive": ["mhtml"],
             "CSSVariableValue": ["fast/css/variables", "inspector/styles/variables"],
         }

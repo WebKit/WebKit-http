@@ -31,7 +31,8 @@
 #ifndef WebDevToolsAgent_h
 #define WebDevToolsAgent_h
 
-#include "platform/WebCommon.h"
+#include "../../../Platform/chromium/public/WebCommon.h"
+#include "../../../Platform/chromium/public/WebVector.h"
 
 namespace WebKit {
 class WebDevToolsAgentClient;
@@ -43,14 +44,17 @@ class WebURLResponse;
 class WebView;
 struct WebDevToolsMessageData;
 struct WebPoint;
+struct WebMemoryUsageInfo;
 struct WebURLError;
 
 class WebDevToolsAgent {
 public:
     // Hint for the browser on the data it should prepare for message patching.
     enum BrowserDataHint {
-        BrowserDataHintNone = 0,
-        BrowserDataHintScreenshot = 1,
+        BrowserDataHintNone,
+        BrowserDataHintScreenshot,
+        BrowserDataHintAcceptJavaScriptDialog,
+        BrowserDataHintDismissJavaScriptDialog,
     };
 
     virtual ~WebDevToolsAgent() {}
@@ -74,6 +78,8 @@ public:
 
     // Exposed for TestRunner.
     virtual void evaluateInWebInspector(long callId, const WebString& script) = 0;
+
+    virtual WebVector<WebMemoryUsageInfo> processMemoryDistribution() const = 0;
 
     class MessageDescriptor {
     public:

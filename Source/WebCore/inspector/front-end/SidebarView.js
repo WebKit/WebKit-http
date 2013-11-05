@@ -32,22 +32,21 @@
  * @param {string=} sidebarPosition
  * @param {string=} sidebarWidthSettingName
  * @param {number=} defaultSidebarWidth
+ * @param {number=} defaultSidebarHeight
  */
-WebInspector.SidebarView = function(sidebarPosition, sidebarWidthSettingName, defaultSidebarWidth)
+WebInspector.SidebarView = function(sidebarPosition, sidebarWidthSettingName, defaultSidebarWidth, defaultSidebarHeight)
 {
-    WebInspector.SplitView.call(this, true, sidebarWidthSettingName, defaultSidebarWidth || 200);
-
-    this._leftElement = this.firstElement();
-    this._rightElement = this.secondElement();
+    WebInspector.SplitView.call(this, true, sidebarWidthSettingName, defaultSidebarWidth, defaultSidebarHeight);
 
     this._minimumSidebarWidth = Preferences.minSidebarWidth;
     this._minimumMainWidthPercent = 50;
 
-    this._mainElementHidden = false;
-    this._sidebarElementHidden = false;
+    this._minimumSidebarHeight = Preferences.minSidebarHeight;
+    this._minimumMainHeightPercent = 50;
 
-    this._innerSetSidebarPosition(sidebarPosition || WebInspector.SidebarView.SidebarPosition.Left);
-    this.setSecondIsSidebar(sidebarPosition !== WebInspector.SidebarView.SidebarPosition.Left);
+    this._sidebarPosition = sidebarPosition || WebInspector.SidebarView.SidebarPosition.Start;
+    this.setSecondIsSidebar(this._sidebarPosition === WebInspector.SidebarView.SidebarPosition.End);
+    this._updateSidebarPosition(true);
 }
 
 WebInspector.SidebarView.EventTypes = {
@@ -58,25 +57,17 @@ WebInspector.SidebarView.EventTypes = {
  * @enum {string}
  */
 WebInspector.SidebarView.SidebarPosition = {
-    Left: "Left",
-    Right: "Right"
+    Start: "Start",
+    End: "End"
 }
 
 WebInspector.SidebarView.prototype = {
-    /**
-     * @return {boolean}
-     */
-    _hasLeftSidebar: function()
-    {
-        return this._sidebarPosition === WebInspector.SidebarView.SidebarPosition.Left;
-    },
-
     /**
      * @return {Element}
      */
     get mainElement()
     {
-        return this._hasLeftSidebar() ? this._rightElement : this._leftElement;
+        return this.isSidebarSecond() ? this.firstElement() : this.secondElement();
     },
 
     /**
@@ -84,23 +75,54 @@ WebInspector.SidebarView.prototype = {
      */
     get sidebarElement()
     {
-        return this._hasLeftSidebar() ? this._leftElement : this._rightElement;
+        return this.isSidebarSecond() ? this.secondElement() : this.firstElement();
     },
 
     /**
-     * @param {string} sidebarPosition
+     * @param {string} styleClass
      */
-    _innerSetSidebarPosition: function(sidebarPosition)
+    _setSidebarElementStyle: function(styleClass)
     {
-        this._sidebarPosition = sidebarPosition;
+      this.sidebarElement.removeStyleClass("split-view-sidebar-left");
+      this.sidebarElement.removeStyleClass("split-view-sidebar-right");
+      this.sidebarElement.removeStyleClass("split-view-sidebar-top");
+      this.sidebarElement.removeStyleClass("split-view-sidebar-bottom");
 
-        if (this._hasLeftSidebar()) {
-            this._leftElement.addStyleClass("split-view-sidebar-left");
-            this._rightElement.removeStyleClass("split-view-sidebar-right");
+      this.sidebarElement.addStyleClass(styleClass);
+    },
+
+    /**
+     * @param {boolean} on
+     */
+    setAutoOrientation: function(on) {
+        this._autoOrientation = on;
+    },
+
+    /**
+     * @param {boolean=} force
+     */
+    _updateSidebarPosition: function(force)
+    {
+        var verticalSplit = true;
+        if (this._autoOrientation)
+            verticalSplit = this.element.offsetHeight < this.element.offsetWidth;
+
+        if (!force && verticalSplit === this.isVertical())
+            return;
+
+        if (this._sidebarPosition === WebInspector.SidebarView.SidebarPosition.Start) {
+            if (verticalSplit)
+                this._setSidebarElementStyle("split-view-sidebar-left");
+            else
+                this._setSidebarElementStyle("split-view-sidebar-top");
         } else {
-            this._rightElement.addStyleClass("split-view-sidebar-right");
-            this._leftElement.removeStyleClass("split-view-sidebar-left");
+            if (verticalSplit)
+                this._setSidebarElementStyle("split-view-sidebar-right");
+            else
+                this._setSidebarElementStyle("split-view-sidebar-bottom");
         }
+
+        this.setVertical(verticalSplit);
     },
 
     /**
@@ -112,11 +134,27 @@ WebInspector.SidebarView.prototype = {
     },
 
     /**
+     * @param {number} height
+     */
+    setMinimumSidebarHeight: function(height)
+    {
+        this._minimumSidebarHeight = height;
+    },
+
+    /**
      * @param {number} widthPercent
      */
     setMinimumMainWidthPercent: function(widthPercent)
     {
         this._minimumMainWidthPercent = widthPercent;
+    },
+
+    /**
+     * @param {number} heightPercent
+     */
+    setMinimumMainHeightPercent: function(heightPercent)
+    {
+        this._minimumMainHeightPercent = heightPercent;
     },
 
     /**
@@ -137,6 +175,8 @@ WebInspector.SidebarView.prototype = {
 
     onResize: function()
     {
+        if (this._autoOrientation)
+            this._updateSidebarPosition();
         WebInspector.SplitView.prototype.onResize.call(this);
         this.dispatchEventToListeners(WebInspector.SidebarView.EventTypes.Resized, this.sidebarWidth());
     },
@@ -146,15 +186,17 @@ WebInspector.SidebarView.prototype = {
      */
     applyConstraints: function(size)
     {
-        return Number.constrain(size, this._minimumSidebarWidth, this.element.offsetWidth * (100 - this._minimumMainWidthPercent) / 100);
+        var minSidebarSize = this.isVertical() ? this._minimumSidebarWidth : this._minimumSidebarHeight;
+        var minMainSizePercent = this.isVertical() ? this._minimumMainWidthPercent : this._minimumMainHeightPercent;
+        return Number.constrain(size, minSidebarSize, this.totalSize() * (100 - minMainSizePercent) / 100);
     },
 
     hideMainElement: function()
     {
-        if (this._hasLeftSidebar())
-            this.showOnlyFirst();
-        else
+        if (this.isSidebarSecond())
             this.showOnlySecond();
+        else
+            this.showOnlyFirst();
     },
 
     showMainElement: function()
@@ -164,10 +206,10 @@ WebInspector.SidebarView.prototype = {
 
     hideSidebarElement: function()
     {
-        if (this._hasLeftSidebar())
-            this.showOnlySecond();
-        else
+        if (this.isSidebarSecond())
             this.showOnlyFirst();
+        else
+            this.showOnlySecond();
     },
 
     showSidebarElement: function()

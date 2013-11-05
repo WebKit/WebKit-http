@@ -32,10 +32,10 @@
 #include "AccessibilityUIElementChromium.h"
 
 #include "WebAccessibilityObject.h"
-#include "platform/WebCString.h"
-#include "platform/WebPoint.h"
-#include "platform/WebRect.h"
-#include "platform/WebString.h"
+#include <public/WebCString.h>
+#include <public/WebPoint.h>
+#include <public/WebRect.h>
+#include <public/WebString.h>
 #include <wtf/Assertions.h>
 #include <wtf/StringExtras.h>
 
@@ -169,10 +169,12 @@ string roleToString(WebAccessibilityRole role)
         return result.append("ListBoxOption");
     case WebAccessibilityRoleTableHeaderContainer:
         return result.append("TableHeaderContainer");
-    case WebAccessibilityRoleDefinitionListTerm:
-        return result.append("DefinitionListTerm");
-    case WebAccessibilityRoleDefinitionListDefinition:
-        return result.append("DefinitionListDefinition");
+    case WebAccessibilityRoleDefinition:
+        return result.append("Definition");
+    case WebAccessibilityRoleDescriptionListTerm:
+        return result.append("DescriptionListTerm");
+    case WebAccessibilityRoleDescriptionListDetail:
+        return result.append("DescriptionListDetail");
     case WebAccessibilityRoleAnnotation:
         return result.append("Annotation");
     case WebAccessibilityRoleSliderThumb:
@@ -875,7 +877,13 @@ void AccessibilityUIElement::isDecrementActionSupportedCallback(const CppArgumen
 
 void AccessibilityUIElement::parentElementCallback(const CppArgumentList&, CppVariant* result)
 {
-    result->setNull();
+    AccessibilityUIElement* parent = m_factory->getOrCreate(accessibilityObject().parentObject());
+    if (!parent) {
+        result->setNull();
+        return;
+    }
+
+    result->set(*(parent->getAsCppVariant()));
 }
 
 void AccessibilityUIElement::incrementCallback(const CppArgumentList&, CppVariant* result)

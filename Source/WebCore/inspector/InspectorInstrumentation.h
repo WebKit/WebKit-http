@@ -44,6 +44,7 @@
 #include "WebSocketFrame.h"
 #include "WebSocketHandshakeRequest.h"
 #include "WebSocketHandshakeResponse.h"
+#include <wtf/RefPtr.h>
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
@@ -61,6 +62,7 @@ class DeviceOrientationData;
 class GeolocationPosition;
 class GraphicsContext;
 class InspectorCSSAgent;
+class InspectorInstrumentation;
 class InspectorTimelineAgent;
 class InstrumentingAgents;
 class KURL;
@@ -86,7 +88,25 @@ class XMLHttpRequest;
 
 #define FAST_RETURN_IF_NO_FRONTENDS(value) if (!hasFrontends()) return value;
 
-typedef pair<InstrumentingAgents*, int> InspectorInstrumentationCookie;
+class InspectorInstrumentationCookie {
+#if ENABLE(INSPECTOR)
+public:
+    InspectorInstrumentationCookie();
+    InspectorInstrumentationCookie(InstrumentingAgents*, int);
+    InspectorInstrumentationCookie(const InspectorInstrumentationCookie&);
+    InspectorInstrumentationCookie& operator=(const InspectorInstrumentationCookie&);
+    ~InspectorInstrumentationCookie();
+
+private:
+    friend class InspectorInstrumentation;
+    InstrumentingAgents* instrumentingAgents() const { return m_instrumentingAgents.get(); }
+    bool isValid() const { return !!m_instrumentingAgents; }
+    bool hasMatchingTimelineAgentId(int id) const { return m_timelineAgentId == id; }
+
+    RefPtr<InstrumentingAgents> m_instrumentingAgents;
+    int m_timelineAgentId;
+#endif
+};
 
 class InspectorInstrumentation {
 public:
@@ -191,6 +211,12 @@ public:
     static void frameDetachedFromParent(Frame*);
     static void didCommitLoad(Frame*, DocumentLoader*);
     static void loaderDetachedFromFrame(Frame*, DocumentLoader*);
+    static void frameStartedLoading(Frame*);
+    static void frameStoppedLoading(Frame*);
+    static void frameScheduledNavigation(Frame*, double delay);
+    static void frameClearedScheduledNavigation(Frame*);
+    static InspectorInstrumentationCookie willRunJavaScriptDialog(Page*, const String& message);
+    static void didRunJavaScriptDialog(const InspectorInstrumentationCookie&);
     static void willDestroyCachedResource(CachedResource*);
 
     static InspectorInstrumentationCookie willWriteHTML(Document*, unsigned int length, unsigned int startLine);
@@ -390,6 +416,12 @@ private:
     static void frameDetachedFromParentImpl(InstrumentingAgents*, Frame*);
     static void didCommitLoadImpl(InstrumentingAgents*, Page*, DocumentLoader*);
     static void loaderDetachedFromFrameImpl(InstrumentingAgents*, DocumentLoader*);
+    static void frameStartedLoadingImpl(InstrumentingAgents*, Frame*);
+    static void frameStoppedLoadingImpl(InstrumentingAgents*, Frame*);
+    static void frameScheduledNavigationImpl(InstrumentingAgents*, Frame*, double delay);
+    static void frameClearedScheduledNavigationImpl(InstrumentingAgents*, Frame*);
+    static InspectorInstrumentationCookie willRunJavaScriptDialogImpl(InstrumentingAgents*, const String& message);
+    static void didRunJavaScriptDialogImpl(const InspectorInstrumentationCookie&);
     static void willDestroyCachedResourceImpl(CachedResource*);
 
     static InspectorInstrumentationCookie willWriteHTMLImpl(InstrumentingAgents*, unsigned int length, unsigned int startLine, Frame*);
@@ -801,7 +833,7 @@ inline void InspectorInstrumentation::didCallFunction(const InspectorInstrumenta
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didCallFunctionImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -825,7 +857,7 @@ inline void InspectorInstrumentation::didDispatchXHRReadyStateChangeEvent(const 
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didDispatchXHRReadyStateChangeEventImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -852,7 +884,7 @@ inline void InspectorInstrumentation::didDispatchEvent(const InspectorInstrument
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didDispatchEventImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -876,7 +908,7 @@ inline void InspectorInstrumentation::didHandleEvent(const InspectorInstrumentat
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didHandleEventImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -901,7 +933,7 @@ inline void InspectorInstrumentation::didDispatchEventOnWindow(const InspectorIn
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didDispatchEventOnWindowImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -926,7 +958,7 @@ inline void InspectorInstrumentation::didEvaluateScript(const InspectorInstrumen
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didEvaluateScriptImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -963,7 +995,7 @@ inline void InspectorInstrumentation::didFireTimer(const InspectorInstrumentatio
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didFireTimerImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -1019,7 +1051,7 @@ inline void InspectorInstrumentation::didLayout(const InspectorInstrumentationCo
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didLayoutImpl(cookie, root);
 #else
     UNUSED_PARAM(cookie);
@@ -1055,7 +1087,7 @@ inline void InspectorInstrumentation::didDispatchXHRLoadEvent(const InspectorIns
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didDispatchXHRLoadEventImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -1078,7 +1110,7 @@ inline void InspectorInstrumentation::didPaint(const InspectorInstrumentationCoo
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didPaintImpl(cookie, context, rect);
 #else
     UNUSED_PARAM(cookie);
@@ -1147,7 +1179,7 @@ inline void InspectorInstrumentation::didRecalculateStyle(const InspectorInstrum
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didRecalculateStyleImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -1183,7 +1215,7 @@ inline void InspectorInstrumentation::didMatchRule(const InspectorInstrumentatio
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didMatchRuleImpl(cookie, matched);
 #else
     UNUSED_PARAM(cookie);
@@ -1211,7 +1243,7 @@ inline void InspectorInstrumentation::didProcessRule(const InspectorInstrumentat
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didProcessRuleImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -1359,7 +1391,7 @@ inline void InspectorInstrumentation::didReceiveResourceData(const InspectorInst
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didReceiveResourceDataImpl(cookie);
 #else
     UNUSED_PARAM(cookie);
@@ -1383,7 +1415,8 @@ inline void InspectorInstrumentation::didReceiveResourceResponse(const Inspector
 {
 #if ENABLE(INSPECTOR)
     // Call this unconditionally so that we're able to log to console with no front-end attached.
-    didReceiveResourceResponseImpl(cookie, identifier, loader, response, resourceLoader);
+    if (cookie.isValid())
+        didReceiveResourceResponseImpl(cookie, identifier, loader, response, resourceLoader);
 #else
     UNUSED_PARAM(cookie);
     UNUSED_PARAM(identifier);
@@ -1651,6 +1684,62 @@ inline void InspectorInstrumentation::loaderDetachedFromFrame(Frame* frame, Docu
 #endif
 }
 
+inline void InspectorInstrumentation::frameStartedLoading(Frame* frame)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
+        frameStartedLoadingImpl(instrumentingAgents, frame);
+#endif
+}
+
+inline void InspectorInstrumentation::frameStoppedLoading(Frame* frame)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
+        frameStoppedLoadingImpl(instrumentingAgents, frame);
+#endif
+}
+
+inline void InspectorInstrumentation::frameScheduledNavigation(Frame* frame, double delay)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
+        frameScheduledNavigationImpl(instrumentingAgents, frame, delay);
+#endif
+}
+
+inline void InspectorInstrumentation::frameClearedScheduledNavigation(Frame* frame)
+{
+#if ENABLE(INSPECTOR)
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
+        frameClearedScheduledNavigationImpl(instrumentingAgents, frame);
+#endif
+}
+
+inline InspectorInstrumentationCookie InspectorInstrumentation::willRunJavaScriptDialog(Page* page, const String& message)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForPage(page))
+        return willRunJavaScriptDialogImpl(instrumentingAgents, message);
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(message);
+#endif
+    return InspectorInstrumentationCookie();
+}
+
+inline void InspectorInstrumentation::didRunJavaScriptDialog(const InspectorInstrumentationCookie& cookie)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (cookie.isValid())
+        didRunJavaScriptDialogImpl(cookie);
+#else
+    UNUSED_PARAM(cookie);
+#endif
+}
+
 inline void InspectorInstrumentation::willDestroyCachedResource(CachedResource* cachedResource)
 {
 #if ENABLE(INSPECTOR)
@@ -1679,7 +1768,7 @@ inline void InspectorInstrumentation::didWriteHTML(const InspectorInstrumentatio
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didWriteHTMLImpl(cookie, endLine);
 #else
     UNUSED_PARAM(cookie);
@@ -1898,7 +1987,7 @@ inline void InspectorInstrumentation::didFireAnimationFrame(const InspectorInstr
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.first)
+    if (cookie.isValid())
         didFireAnimationFrameImpl(cookie);
 #else
     UNUSED_PARAM(cookie);

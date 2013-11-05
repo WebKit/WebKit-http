@@ -51,9 +51,7 @@ AccessibilityTableCell::~AccessibilityTableCell()
 
 PassRefPtr<AccessibilityTableCell> AccessibilityTableCell::create(RenderObject* renderer)
 {
-    AccessibilityTableCell* obj = new AccessibilityTableCell(renderer);
-    obj->init();
-    return adoptRef(obj);
+    return adoptRef(new AccessibilityTableCell(renderer));
 }
 
 bool AccessibilityTableCell::accessibilityIsIgnored() const
@@ -74,6 +72,10 @@ AccessibilityObject* AccessibilityTableCell::parentTable() const
 {
     if (!m_renderer || !m_renderer->isTableCell())
         return 0;
+
+    // If the document no longer exists, we might not have an axObjectCache.
+    if (!axObjectCache())
+        return 0;
     
     // Do not use getOrCreate. parentTable() can be called while the render tree is being modified 
     // by javascript, and creating a table element may try to access the render tree while in a bad state.
@@ -85,17 +87,17 @@ AccessibilityObject* AccessibilityTableCell::parentTable() const
     
 bool AccessibilityTableCell::isTableCell() const
 {
-    AccessibilityObject* table = parentTable();
-    if (!table || !table->isAccessibilityTable())
+    AccessibilityObject* parent = parentObjectUnignored();
+    if (!parent || !parent->isTableRow())
         return false;
     
     return true;
 }
     
-AccessibilityRole AccessibilityTableCell::roleValue() const
+AccessibilityRole AccessibilityTableCell::determineAccessibilityRole()
 {
     if (!isTableCell())
-        return AccessibilityRenderObject::roleValue();
+        return AccessibilityRenderObject::determineAccessibilityRole();
     
     return CellRole;
 }

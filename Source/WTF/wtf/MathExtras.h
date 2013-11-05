@@ -294,6 +294,11 @@ inline bool isWithinIntRange(float x)
     return x > static_cast<float>(std::numeric_limits<int>::min()) && x < static_cast<float>(std::numeric_limits<int>::max());
 }
 
+template<typename T> inline bool hasOneBitSet(T value)
+{
+    return !((value - 1) & value) && value;
+}
+
 template<typename T> inline bool hasZeroOrOneBitsSet(T value)
 {
     return !((value - 1) & value);
@@ -302,6 +307,16 @@ template<typename T> inline bool hasZeroOrOneBitsSet(T value)
 template<typename T> inline bool hasTwoOrMoreBitsSet(T value)
 {
     return !hasZeroOrOneBitsSet(value);
+}
+
+template <typename T> inline unsigned getLSBSet(T value)
+{
+    unsigned result = 0;
+
+    while (value >>= 1)
+        ++result;
+
+    return result;
 }
 
 template<typename T> inline T timesThreePlusOneDividedByTwo(T value)
@@ -413,5 +428,31 @@ inline void doubleToInteger(double d, unsigned long long& value)
         }
     }
 }
+
+namespace WTF {
+
+// Be careful, this might be super slow in a hot loop.
+template<size_t exponent> inline size_t roundUpToPowerOf(size_t v)
+{
+    return round(pow(static_cast<double>(exponent), ceil(log(static_cast<double>(v)) / log(static_cast<double>(exponent)))));
+}
+
+// From http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+template<> inline size_t roundUpToPowerOf<2>(size_t v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+#if defined(__LP64__) && __LP64__
+    v |= v >> 32;
+#endif
+    v++;
+    return v;
+}
+
+} // namespace WTF
 
 #endif // #ifndef WTF_MathExtras_h

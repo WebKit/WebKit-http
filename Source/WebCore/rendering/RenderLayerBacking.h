@@ -57,7 +57,7 @@ enum CompositingLayerType {
 class RenderLayerBacking : public GraphicsLayerClient {
     WTF_MAKE_NONCOPYABLE(RenderLayerBacking); WTF_MAKE_FAST_ALLOCATED;
 public:
-    RenderLayerBacking(RenderLayer*);
+    explicit RenderLayerBacking(RenderLayer*);
     ~RenderLayerBacking();
 
     RenderLayer* owningLayer() const { return m_owningLayer; }
@@ -90,6 +90,9 @@ public:
     bool hasContentsLayer() const { return m_foregroundLayer != 0; }
     GraphicsLayer* foregroundLayer() const { return m_foregroundLayer.get(); }
 
+    GraphicsLayer* backgroundLayer() const { return m_backgroundLayer.get(); }
+    bool backgroundLayerPaintsFixedRootBackground() const { return m_backgroundLayerPaintsFixedRootBackground; }
+    
     bool hasScrollingLayer() const { return m_scrollingLayer; }
     GraphicsLayer* scrollingLayer() const { return m_scrollingLayer.get(); }
     GraphicsLayer* scrollingContentsLayer() const { return m_scrollingContentsLayer.get(); }
@@ -149,7 +152,7 @@ public:
     void adjustTileCacheCoverage();
     
     void updateDebugIndicators(bool showBorder, bool showRepaintCounter);
-    
+
     // GraphicsLayerClient interface
     virtual bool shouldUseTileCache(const GraphicsLayer*) const OVERRIDE;
     virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) OVERRIDE;
@@ -213,6 +216,10 @@ private:
     void updateDrawsContent(bool isSimpleContainer);
     void registerScrollingLayers();
     
+    void updateRootLayerConfiguration();
+
+    void setBackgroundLayerPaintsFixedRootBackground(bool);
+
     GraphicsLayerPaintingPhase paintingPhaseForPrimaryLayer() const;
     
     IntSize contentOffsetInCompostingLayer() const;
@@ -249,7 +256,6 @@ private:
     void updateBackgroundColor(bool isSimpleContainer);
     void updateContentsRect(bool isSimpleContainer);
 
-    bool containsNonEmptyRenderers() const;
     bool hasVisibleNonCompositingDescendantLayers() const;
 
     bool shouldClipCompositedBounds() const;
@@ -257,7 +263,7 @@ private:
     bool hasTileCacheFlatteningLayer() const { return (m_childContainmentLayer && m_usingTiledCacheLayer); }
     GraphicsLayer* tileCacheFlatteningLayer() const { return m_usingTiledCacheLayer ? m_childContainmentLayer.get() : 0; }
 
-    void paintIntoLayer(RenderLayer* rootLayer, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
+    void paintIntoLayer(const GraphicsLayer*, GraphicsContext*, const IntRect& paintDirtyRect, PaintBehavior, GraphicsLayerPaintingPhase);
 
     static CSSPropertyID graphicsLayerToCSSProperty(AnimatedPropertyID);
     static AnimatedPropertyID cssToGraphicsLayerProperty(CSSPropertyID);
@@ -291,6 +297,7 @@ private:
 #if ENABLE(CSS_FILTERS)
     bool m_canCompositeFilters;
 #endif
+    bool m_backgroundLayerPaintsFixedRootBackground;
 
     static bool m_creatingPrimaryGraphicsLayer;
 };

@@ -823,7 +823,8 @@ void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
 
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
-    printf("TestRunner::addUserScript not implemented.\n");
+    GOwnPtr<gchar> sourceCode(JSStringCopyUTF8CString(source));
+    DumpRenderTreeSupportGtk::addUserScript(mainFrame, sourceCode.get(), runAtStart, allFrames);
 }
 
 void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
@@ -938,7 +939,19 @@ void TestRunner::setMinimumTimerInterval(double minimumTimerInterval)
 
 void TestRunner::setTextDirection(JSStringRef direction)
 {
-    // FIXME: Implement.
+    GOwnPtr<gchar> writingDirection(JSStringCopyUTF8CString(direction));
+
+    WebKitWebView* view = webkit_web_frame_get_web_view(mainFrame);
+    ASSERT(view);
+
+    if (g_str_equal(writingDirection.get(), "auto"))
+        gtk_widget_set_direction(GTK_WIDGET(view), GTK_TEXT_DIR_NONE);
+    else if (g_str_equal(writingDirection.get(), "ltr"))
+        gtk_widget_set_direction(GTK_WIDGET(view), GTK_TEXT_DIR_LTR);
+    else if (g_str_equal(writingDirection.get(), "rtl"))
+        gtk_widget_set_direction(GTK_WIDGET(view), GTK_TEXT_DIR_RTL);
+    else
+        fprintf(stderr, "TestRunner::setTextDirection called with unknown direction: '%s'.\n", writingDirection.get());
 }
 
 void TestRunner::addChromeInputField()

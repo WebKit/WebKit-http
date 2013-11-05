@@ -44,7 +44,7 @@ enum ShouldComputePreferred { ComputeActual, ComputePreferred };
 
 class RenderBox : public RenderBoxModelObject {
 public:
-    RenderBox(ContainerNode*);
+    explicit RenderBox(ContainerNode*);
     virtual ~RenderBox();
 
     // hasAutoZIndex only returns true if the element is positioned or a flex-item since
@@ -447,8 +447,9 @@ public:
     virtual bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Node** stopNode = 0);
     bool canBeScrolledAndHasScrollableArea() const;
     virtual bool canBeProgramaticallyScrolled() const;
-    virtual void autoscroll();
+    virtual void autoscroll(const IntPoint&);
     bool canAutoscroll() const;
+    IntSize calculateAutoscrollDirection(const IntPoint& windowPoint) const;
     static RenderBox* findAutoscrollable(RenderObject*);
     virtual void stopAutoscroll() { }
     virtual void panScroll(const IntPoint&);
@@ -546,6 +547,7 @@ public:
 
     virtual bool hasRelativeDimensions() const;
     virtual bool hasRelativeLogicalHeight() const;
+    virtual bool hasViewportPercentageLogicalHeight() const;
 
     bool hasHorizontalLayoutOverflow() const
     {
@@ -583,7 +585,7 @@ public:
 #if ENABLE(CSS_EXCLUSIONS)
     ExclusionShapeOutsideInfo* exclusionShapeOutsideInfo() const
     {
-        return style()->shapeOutside() && ExclusionShapeOutsideInfo::isInfoEnabledForRenderBox(this) ? ExclusionShapeOutsideInfo::infoForRenderBox(this) : 0;
+        return style()->shapeOutside() && ExclusionShapeOutsideInfo::isEnabledFor(this) ? ExclusionShapeOutsideInfo::info(this) : 0;
     }
 #endif
 
@@ -640,6 +642,8 @@ private:
         LayoutUnit offsetFromLogicalTopOfFirstPage = 0, bool checkForPerpendicularWritingMode = true) const;
     LayoutUnit containingBlockLogicalHeightForPositioned(const RenderBoxModelObject* containingBlock, bool checkForPerpendicularWritingMode = true) const;
 
+    LayoutUnit viewLogicalHeightForPercentages() const;
+
     void computePositionedLogicalHeight(LogicalExtentComputedValues&) const;
     void computePositionedLogicalWidthUsing(SizeType, Length logicalWidth, const RenderBoxModelObject* containerBlock, TextDirection containerDirection,
                                             LayoutUnit containerLogicalWidth, LayoutUnit bordersPlusPadding,
@@ -688,13 +692,13 @@ private:
 
 inline RenderBox* toRenderBox(RenderObject* object)
 { 
-    ASSERT(!object || object->isBox());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isBox());
     return static_cast<RenderBox*>(object);
 }
 
 inline const RenderBox* toRenderBox(const RenderObject* object)
 { 
-    ASSERT(!object || object->isBox());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isBox());
     return static_cast<const RenderBox*>(object);
 }
 

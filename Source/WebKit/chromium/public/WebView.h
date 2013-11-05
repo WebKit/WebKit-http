@@ -31,11 +31,11 @@
 #ifndef WebView_h
 #define WebView_h
 
+#include "../../../Platform/chromium/public/WebString.h"
+#include "../../../Platform/chromium/public/WebVector.h"
 #include "WebDragOperation.h"
 #include "WebPageVisibilityState.h"
 #include "WebWidget.h"
-#include "platform/WebString.h"
-#include "platform/WebVector.h"
 
 namespace WebKit {
 
@@ -472,6 +472,7 @@ public:
 
     virtual void setShowPaintRects(bool) = 0;
     virtual void setShowFPSCounter(bool) = 0;
+    virtual void setContinuousPaintingEnabled(bool) = 0;
 
     // Benchmarking support -------------------------------------------------
 

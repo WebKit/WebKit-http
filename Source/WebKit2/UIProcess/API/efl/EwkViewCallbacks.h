@@ -38,19 +38,9 @@ typedef struct EwkObject Ewk_Download_Job;
 typedef struct EwkObject Ewk_File_Chooser_Request;
 typedef struct EwkObject Ewk_Form_Submission_Request;
 typedef struct EwkObject Ewk_Navigation_Policy_Decision;
-typedef struct EwkObject Ewk_Resource;
-#if ENABLE(WEB_INTENTS)
-typedef struct EwkObject Ewk_Intent;
-#endif
-#if ENABLE(WEB_INTENTS_TAG)
-typedef struct EwkObject Ewk_Intent_Service;
-#endif
 typedef struct EwkError Ewk_Error;
 
 struct Ewk_Download_Job_Error;
-struct Ewk_Resource_Request;
-struct Ewk_Resource_Load_Response;
-struct Ewk_Resource_Load_Error;
 struct Ewk_CSS_Size;
 
 namespace EwkViewCallbacks {
@@ -74,11 +64,6 @@ enum CallbackType {
     ProvisionalLoadFailed,
     ProvisionalLoadRedirect,
     ProvisionalLoadStarted,
-    ResourceLoadStarted,
-    ResourceLoadResponse,
-    ResourceLoadFailed,
-    ResourceLoadFinished,
-    ResourceRequestSent,
     StatusBarVisible,
     NavigationPolicyDecision,
     NewWindowPolicyDecision,
@@ -90,13 +75,7 @@ enum CallbackType {
     URLChanged,
     Vibrate,
     WebProcessCrashed,
-    WindowResizable,
-#if ENABLE(WEB_INTENTS)
-    IntentRequest,
-#endif
-#if ENABLE(WEB_INTENTS_TAG)
-    IntentServiceRegistration,
-#endif
+    WindowResizable
 };
 
 template <CallbackType>
@@ -197,11 +176,6 @@ DECLARE_EWK_VIEW_CALLBACK(ProvisionalLoadStarted, "load,provisional,started", vo
 DECLARE_EWK_VIEW_CALLBACK(MenuBarVisible, "menubar,visible", bool*);
 DECLARE_EWK_VIEW_CALLBACK(NavigationPolicyDecision, "policy,decision,navigation", Ewk_Navigation_Policy_Decision*);
 DECLARE_EWK_VIEW_CALLBACK(NewWindowPolicyDecision, "policy,decision,new,window", Ewk_Navigation_Policy_Decision*);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadStarted, "resource,request,new", Ewk_Resource_Request*);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadResponse, "resource,request,response", Ewk_Resource_Load_Response*);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadFailed, "resource,request,failed", Ewk_Resource_Load_Error*);
-DECLARE_EWK_VIEW_CALLBACK(ResourceLoadFinished, "resource,request,finished", Ewk_Resource*);
-DECLARE_EWK_VIEW_CALLBACK(ResourceRequestSent, "resource,request,sent", Ewk_Resource_Request*);
 DECLARE_EWK_VIEW_CALLBACK(StatusBarVisible, "statusbar,visible", bool*);
 DECLARE_EWK_VIEW_CALLBACK(TextFound, "text,found", unsigned*);
 DECLARE_EWK_VIEW_CALLBACK(TitleChange, "title,changed", const char*);
@@ -212,12 +186,6 @@ DECLARE_EWK_VIEW_CALLBACK(URLChanged, "url,changed", const char*);
 DECLARE_EWK_VIEW_CALLBACK(Vibrate, "vibrate", uint32_t*);
 DECLARE_EWK_VIEW_CALLBACK(WebProcessCrashed, "webprocess,crashed", bool*);
 DECLARE_EWK_VIEW_CALLBACK(WindowResizable, "window,resizable", bool*);
-#if ENABLE(WEB_INTENTS)
-DECLARE_EWK_VIEW_CALLBACK(IntentRequest, "intent,request,new", Ewk_Intent*);
-#endif
-#if ENABLE(WEB_INTENTS_TAG)
-DECLARE_EWK_VIEW_CALLBACK(IntentServiceRegistration, "intent,service,register", Ewk_Intent_Service*);
-#endif
 
 }
 

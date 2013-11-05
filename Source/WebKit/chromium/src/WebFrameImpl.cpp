@@ -83,8 +83,6 @@
 #include "DOMWindow.h"
 #include "DOMWindowIntents.h"
 #include "DOMWrapperWorld.h"
-#include "DeliveredIntent.h"
-#include "DeliveredIntentClientImpl.h"
 #include "DirectoryEntry.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -178,12 +176,12 @@
 #include "WebRange.h"
 #include "WebScriptSource.h"
 #include "WebSecurityOrigin.h"
+#include "WebSerializedScriptValue.h"
 #include "WebViewImpl.h"
 #include "XPathResult.h"
 #include "htmlediting.h"
 #include "markup.h"
 #include "painting/GraphicsContextBuilder.h"
-#include "platform/WebSerializedScriptValue.h"
 #include <algorithm>
 #include <public/Platform.h>
 #include <public/WebFileSystem.h>
@@ -196,6 +194,11 @@
 #include <public/WebVector.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
+
+#if ENABLE(WEB_INTENTS)
+#include "DeliveredIntent.h"
+#include "DeliveredIntentClientImpl.h"
+#endif
 
 using namespace WebCore;
 
@@ -645,6 +648,11 @@ bool WebFrameImpl::hasVisibleContent() const
     return frame()->view()->visibleWidth() > 0 && frame()->view()->visibleHeight() > 0;
 }
 
+WebRect WebFrameImpl::visibleContentRect() const
+{
+    return frame()->view()->visibleContentRect();
+}
+
 bool WebFrameImpl::hasHorizontalScrollbar() const
 {
     return frame() && frame()->view() && frame()->view()->horizontalScrollbar();
@@ -837,6 +845,9 @@ void WebFrameImpl::addMessageToConsole(const WebConsoleMessage& message)
     case WebConsoleMessage::LevelError:
         webCoreMessageLevel = ErrorMessageLevel;
         break;
+    case WebConsoleMessage::LevelDebug:
+        webCoreMessageLevel = DebugMessageLevel;
+        break;
     default:
         ASSERT_NOT_REACHED();
         return;
@@ -912,7 +923,7 @@ v8::Local<v8::Context> WebFrameImpl::mainWorldScriptContext() const
 v8::Handle<v8::Value> WebFrameImpl::createFileSystem(WebFileSystem::Type type, const WebString& name, const WebString& path)
 {
     ASSERT(frame());
-    return toV8(DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create()), v8::Handle<v8::Object>());
+    return toV8(DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create()), v8::Handle<v8::Object>(), frame()->script()->currentWorldContext()->GetIsolate());
 }
 
 v8::Handle<v8::Value> WebFrameImpl::createSerializableFileSystem(WebFileSystem::Type type, const WebString& name, const WebString& path)
@@ -920,7 +931,7 @@ v8::Handle<v8::Value> WebFrameImpl::createSerializableFileSystem(WebFileSystem::
     ASSERT(frame());
     RefPtr<DOMFileSystem> fileSystem = DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create());
     fileSystem->makeClonable();
-    return toV8(fileSystem.release(), v8::Handle<v8::Object>());
+    return toV8(fileSystem.release(), v8::Handle<v8::Object>(), frame()->script()->currentWorldContext()->GetIsolate());
 }
 
 v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type, const WebString& fileSystemName, const WebString& fileSystemPath, const WebString& filePath, bool isDirectory)
@@ -929,8 +940,8 @@ v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type, co
 
     RefPtr<DOMFileSystemBase> fileSystem = DOMFileSystem::create(frame()->document(), fileSystemName, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, fileSystemPath.utf8().data()), AsyncFileSystemChromium::create());
     if (isDirectory)
-        return toV8(DirectoryEntry::create(fileSystem, filePath), v8::Handle<v8::Object>());
-    return toV8(FileEntry::create(fileSystem, filePath), v8::Handle<v8::Object>());
+        return toV8(DirectoryEntry::create(fileSystem, filePath), v8::Handle<v8::Object>(), frame()->script()->currentWorldContext()->GetIsolate());
+    return toV8(FileEntry::create(fileSystem, filePath), v8::Handle<v8::Object>(), frame()->script()->currentWorldContext()->GetIsolate());
 }
 
 void WebFrameImpl::reload(bool ignoreCache)
@@ -1375,8 +1386,14 @@ bool WebFrameImpl::selectWordAroundCaret()
 
 void WebFrameImpl::selectRange(const WebPoint& base, const WebPoint& extent)
 {
-    VisiblePosition basePosition = visiblePositionForWindowPoint(base);
-    VisiblePosition extentPosition = visiblePositionForWindowPoint(extent);
+    IntPoint unscaledBase = base;
+    IntPoint unscaledExtent = extent;
+    if (frame()->page()->settings()->applyPageScaleFactorInCompositor()) {
+        unscaledExtent.scale(1 / view()->pageScaleFactor(), 1 / view()->pageScaleFactor());
+        unscaledBase.scale(1 / view()->pageScaleFactor(), 1 / view()->pageScaleFactor());
+    }
+    VisiblePosition basePosition = visiblePositionForWindowPoint(unscaledBase);
+    VisiblePosition extentPosition = visiblePositionForWindowPoint(unscaledExtent);
     VisibleSelection newSelection = VisibleSelection(basePosition, extentPosition);
     if (frame()->selection()->shouldChangeSelection(newSelection))
         frame()->selection()->setSelection(newSelection, CharacterGranularity);
@@ -1390,8 +1407,12 @@ void WebFrameImpl::selectRange(const WebRange& webRange)
 
 void WebFrameImpl::moveCaretSelectionTowardsWindowPoint(const WebPoint& point)
 {
+    IntPoint unscaledPoint(point);
+    if (frame()->page()->settings()->applyPageScaleFactorInCompositor())
+        unscaledPoint.scale(1 / view()->pageScaleFactor(), 1 / view()->pageScaleFactor());
+
     Element* editable = frame()->selection()->rootEditableElement();
-    IntPoint contentsPoint = frame()->view()->windowToContents(IntPoint(point));
+    IntPoint contentsPoint = frame()->view()->windowToContents(unscaledPoint);
     LayoutPoint localPoint(editable->convertFromPage(contentsPoint));
     VisiblePosition position = editable->renderer()->positionForPoint(localPoint);
     if (frame()->selection()->shouldChangeSelection(position))
@@ -1682,7 +1703,7 @@ void WebFrameImpl::scopeStringMatches(int identifier, const WebString& searchTex
                 break;
 
             searchRange->setStartAfter(
-                resultRange->startContainer()->shadowAncestorNode(), ec);
+                resultRange->startContainer()->deprecatedShadowAncestorNode(), ec);
             searchRange->setEnd(originalEndContainer, originalEndOffset, ec);
             continue;
         }
@@ -2336,7 +2357,7 @@ void WebFrameImpl::setFindEndstateFocusAndSelection()
         // example, focus links if we have found text within the link.
         Node* node = m_activeMatch->firstNode();
         if (node && node->isInShadowTree()) {
-            Node* host = node->shadowAncestorNode();
+            Node* host = node->deprecatedShadowAncestorNode();
             if (host->hasTagName(HTMLNames::inputTag) || host->hasTagName(HTMLNames::textareaTag))
                 node = host;
         }

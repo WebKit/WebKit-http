@@ -146,7 +146,7 @@ void XMLDocumentParser::enterText()
     ASSERT(m_bufferedText.size() == 0);
 #endif
     ASSERT(!m_leafTextNode);
-    m_leafTextNode = Text::create(document(), "");
+    m_leafTextNode = Text::create(m_currentNode->document(), "");
     m_currentNode->parserAppendChild(m_leafTextNode.get());
 }
 
@@ -227,11 +227,6 @@ void XMLDocumentParser::finish()
         m_finishCalled = true;
     else
         end();
-}
-
-bool XMLDocumentParser::finishWasCalled()
-{
-    return m_finishCalled;
 }
 
 void XMLDocumentParser::insertErrorMessageBlock()

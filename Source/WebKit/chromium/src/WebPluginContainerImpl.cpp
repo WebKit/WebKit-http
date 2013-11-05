@@ -473,11 +473,12 @@ void WebPluginContainerImpl::requestTouchEventType(TouchEventRequestType request
 {
     if (m_touchEventRequestType == requestType)
         return;
-    m_touchEventRequestType = requestType;
-    if (m_touchEventRequestType != TouchEventRequestTypeNone)
+    
+    if (requestType != TouchEventRequestTypeNone && m_touchEventRequestType == TouchEventRequestTypeNone)
         m_element->document()->didAddTouchEventHandler(m_element);
-    else
+    else if (requestType == TouchEventRequestTypeNone && m_touchEventRequestType != TouchEventRequestTypeNone)
         m_element->document()->didRemoveTouchEventHandler(m_element);
+    m_touchEventRequestType = requestType;
 }
 
 void WebPluginContainerImpl::setWantsWheelEvents(bool wantsWheelEvents)
@@ -776,14 +777,33 @@ void WebPluginContainerImpl::handleTouchEvent(TouchEvent* event)
     }
 }
 
+static inline bool gestureScrollHelper(ScrollbarGroup* scrollbarGroup, ScrollDirection positiveDirection, ScrollDirection negativeDirection, float delta)
+{
+    if (!delta)
+        return false;
+    float absDelta = delta > 0 ? delta : -delta;
+    return scrollbarGroup->scroll(delta < 0 ? negativeDirection : positiveDirection, ScrollByPrecisePixel, absDelta);
+}
+
 void WebPluginContainerImpl::handleGestureEvent(GestureEvent* event)
 {
     WebGestureEventBuilder webEvent(this, m_element->renderer(), *event);
     if (webEvent.type == WebInputEvent::Undefined)
         return;
     WebCursorInfo cursorInfo;
-    if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
+    if (m_webPlugin->handleInputEvent(webEvent, cursorInfo)) {
         event->setDefaultHandled();
+        return;
+    }
+
+    if (webEvent.type == WebInputEvent::GestureScrollUpdate) {
+        if (!m_scrollbarGroup)
+            return;
+        if (gestureScrollHelper(m_scrollbarGroup.get(), ScrollLeft, ScrollRight, webEvent.data.scrollUpdate.deltaX))
+            event->setDefaultHandled();
+        if (gestureScrollHelper(m_scrollbarGroup.get(), ScrollUp, ScrollDown, webEvent.data.scrollUpdate.deltaY))
+            event->setDefaultHandled();
+    }
     // FIXME: Can a plugin change the cursor from a touch-event callback?
 }
 

@@ -32,10 +32,6 @@
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
-namespace WebCore {
-class RunLoop;
-}
-
 namespace WebKit {
 
 class NetscapePluginModule;
@@ -74,17 +70,18 @@ private:
 
     // ChildProcess
     virtual void initializeProcess(const ChildProcessInitializationParameters&) OVERRIDE;
+    virtual void initializeProcessName(const ChildProcessInitializationParameters&) OVERRIDE;
+    virtual void initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&) OVERRIDE;
     virtual bool shouldTerminate() OVERRIDE;
-
     void platformInitializeProcess(const ChildProcessInitializationParameters&);
 
     // CoreIPC::Connection::Client
-    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
     virtual void didClose(CoreIPC::Connection*) OVERRIDE;
     virtual void didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference messageReceiverName, CoreIPC::StringReference messageName) OVERRIDE;
 
     // Message handlers.
-    void didReceivePluginProcessMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
+    void didReceivePluginProcessMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
     void initializePluginProcess(const PluginProcessCreationParameters&);
     void createWebProcessConnection();
     void getSitesWithData(uint64_t callbackID);
@@ -94,7 +91,6 @@ private:
     
     void setMinimumLifetime(double);
     void minimumLifetimeTimerFired();
-
     // Our web process connections.
     Vector<RefPtr<WebProcessConnection> > m_webProcessConnections;
 
@@ -107,12 +103,11 @@ private:
     bool m_supportsAsynchronousPluginInitialization;
 
     WebCore::RunLoop::Timer<PluginProcess> m_minimumLifetimeTimer;
-    
+
 #if USE(ACCELERATED_COMPOSITING) && PLATFORM(MAC)
     // The Mach port used for accelerated compositing.
     mach_port_t m_compositingRenderServerPort;
 #endif
-
 };
 
 } // namespace WebKit

@@ -44,16 +44,17 @@
 #include "EventSender.h"
 
 #include "KeyCodeMapping.h"
-#include "TestDelegate.h"
+#include "MockSpellCheck.h"
 #include "WebContextMenuData.h"
 #include "WebDragOperation.h"
 #include "WebEventSender.h"
+#include "WebTestDelegate.h"
 #include "WebTouchPoint.h"
 #include "WebView.h"
-#include "platform/WebDragData.h"
-#include "platform/WebPoint.h"
-#include "platform/WebString.h"
-#include "platform/WebVector.h"
+#include <public/WebDragData.h>
+#include <public/WebPoint.h>
+#include <public/WebString.h>
+#include <public/WebVector.h>
 #include <wtf/Deque.h>
 #include <wtf/StringExtras.h>
 
@@ -126,7 +127,7 @@ inline bool outsideMultiClickRadius(const WebPoint& a, const WebPoint& b)
 // dependent (e.g., dragging has a timeout vs selection).
 uint32 timeOffsetMs = 0;
 
-double getCurrentEventTimeSec(TestDelegate* delegate)
+double getCurrentEventTimeSec(WebTestDelegate* delegate)
 {
     return (delegate->getCurrentTimeInMillisecond() + timeOffsetMs) / 1000.0;
 }
@@ -275,6 +276,7 @@ EventSender::EventSender()
     bindMethod("mouseMoveTo", &EventSender::mouseMoveTo);
     bindMethod("mouseScrollBy", &EventSender::mouseScrollBy);
     bindMethod("mouseUp", &EventSender::mouseUp);
+    bindMethod("mouseDragBegin", &EventSender::mouseDragBegin);
     bindMethod("releaseTouchPoint", &EventSender::releaseTouchPoint);
     bindMethod("scheduleAsynchronousClick", &EventSender::scheduleAsynchronousClick);
     bindMethod("scheduleAsynchronousKeyDown", &EventSender::scheduleAsynchronousKeyDown);
@@ -468,10 +470,17 @@ void EventSender::doMouseUp(const WebMouseEvent& e)
     // If we're in a drag operation, complete it.
     if (currentDragData.isNull())
         return;
+
     WebPoint clientPoint(e.x, e.y);
     WebPoint screenPoint(e.globalX, e.globalY);
+    finishDragAndDrop(e, webview()->dragTargetDragOver(clientPoint, screenPoint, currentDragEffectsAllowed, 0));
+}
 
-    currentDragEffect = webview()->dragTargetDragOver(clientPoint, screenPoint, currentDragEffectsAllowed, 0);
+void EventSender::finishDragAndDrop(const WebMouseEvent& e, WebKit::WebDragOperation dragEffect)
+{
+    WebPoint clientPoint(e.x, e.y);
+    WebPoint screenPoint(e.globalX, e.globalY);
+    currentDragEffect = dragEffect;
     if (currentDragEffect)
         webview()->dragTargetDrop(clientPoint, screenPoint, 0);
     else
@@ -648,6 +657,12 @@ void EventSender::keyDown(const CppArgumentList& arguments, CppVariant* result)
 
     webview()->handleInputEvent(eventDown);
 
+    if (code == VKEY_ESCAPE && !currentDragData.isNull()) {
+        WebMouseEvent event;
+        initMouseEvent(WebInputEvent::MouseDown, pressedButton, lastMousePos, &event, getCurrentEventTimeSec(m_delegate));
+        finishDragAndDrop(event, WebKit::WebDragOperationNone);
+    }
+
     m_delegate->clearEditCommand();
 
     if (generateChar) {
@@ -798,7 +813,7 @@ void EventSender::replaySavedEvents()
 //   also makes sense. This function is doing such for some flags.
 // - Some test even checks actual string content. So providing it would be also helpful.
 //
-static Vector<WebString> makeMenuItemStringsFor(WebContextMenuData* contextMenu, TestDelegate* delegate)
+static Vector<WebString> makeMenuItemStringsFor(WebContextMenuData* contextMenu, WebTestDelegate* delegate)
 {
     // These constants are based on Safari's context menu because tests are made for it.
     static const char* nonEditableMenuStrings[] = { "Back", "Reload Page", "Open in Dashbaord", "<separator>", "View Source", "Save Page As", "Print Page", "Inspect Element", 0 };
@@ -814,7 +829,7 @@ static Vector<WebString> makeMenuItemStringsFor(WebContextMenuData* contextMenu,
         for (const char** item = editableMenuStrings; *item; ++item) 
             strings.append(WebString::fromUTF8(*item));
         WebVector<WebString> suggestions;
-        delegate->fillSpellingSuggestionList(contextMenu->misspelledWord, &suggestions);
+        MockSpellCheck::fillSuggestionList(contextMenu->misspelledWord, &suggestions);
         for (size_t i = 0; i < suggestions.size(); ++i) 
             strings.append(suggestions[i]);
     } else {
@@ -1028,6 +1043,15 @@ void EventSender::sendCurrentTouchEvent(const WebInputEvent::Type type)
         } else
             touchPoint->state = WebTouchPoint::StateStationary;
     }
+}
+
+void EventSender::mouseDragBegin(const CppArgumentList& arguments, CppVariant* result)
+{
+    WebMouseWheelEvent event;
+    initMouseEvent(WebInputEvent::MouseWheel, WebMouseEvent::ButtonNone, lastMousePos, &event, getCurrentEventTimeSec(m_delegate));
+    event.phase = WebMouseWheelEvent::PhaseBegan;
+    event.hasPreciseScrollingDeltas = true;
+    webview()->handleInputEvent(event);
 }
 
 void EventSender::handleMouseWheel(const CppArgumentList& arguments, CppVariant* result, bool continuous)

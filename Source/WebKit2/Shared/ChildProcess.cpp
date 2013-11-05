@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ChildProcess.h"
 
-#include "WebKit2Initialize.h"
+#include "SandboxInitializationParameters.h"
 
 #if !OS(WINDOWS)
 #include <unistd.h>
@@ -55,24 +55,24 @@ NO_RETURN static void watchdogCallback()
     _exit(EXIT_FAILURE);
 }
 
-static void didCloseOnConnectionWorkQueue(WorkQueue& workQueue, CoreIPC::Connection*)
+static void didCloseOnConnectionWorkQueue(WorkQueue* workQueue, CoreIPC::Connection*)
 {
     // If the connection has been closed and we haven't responded in the main thread for 10 seconds
     // the process will exit forcibly.
     const double watchdogDelay = 10;
 
-    workQueue.dispatchAfterDelay(bind(static_cast<void(*)()>(watchdogCallback)), watchdogDelay);
+    workQueue->dispatchAfterDelay(bind(static_cast<void(*)()>(watchdogCallback)), watchdogDelay);
 }
 
 void ChildProcess::initialize(const ChildProcessInitializationParameters& parameters)
 {
-    InitializeWebKit2();
-
     platformInitialize();
 
     initializeProcess(parameters);
     initializeProcessName(parameters);
-    initializeSandbox(parameters);
+
+    SandboxInitializationParameters sandboxParameters;
+    initializeSandbox(parameters, sandboxParameters);
     
     m_connection = CoreIPC::Connection::createClientConnection(parameters.connectionIdentifier, this, RunLoop::main());
     m_connection->setDidCloseOnConnectionWorkQueueCallback(didCloseOnConnectionWorkQueue);
@@ -85,10 +85,6 @@ void ChildProcess::initializeProcess(const ChildProcessInitializationParameters&
 }
 
 void ChildProcess::initializeProcessName(const ChildProcessInitializationParameters&)
-{
-}
-
-void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&)
 {
 }
 
@@ -144,13 +140,16 @@ void ChildProcess::terminationTimerFired()
 void ChildProcess::terminate()
 {
     m_connection->invalidate();
-    m_connection = nullptr;
 
     RunLoop::main()->stop();
 }
 
 #if !PLATFORM(MAC)
 void ChildProcess::platformInitialize()
+{
+}
+
+void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
 {
 }
 #endif
