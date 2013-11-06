@@ -38,6 +38,10 @@ class WebCookieJar;
 #include <qglobal.h>
 #endif
 
+#if PLATFORM(HAIKU)
+class BUrlContext;
+#endif
+
 #if PLATFORM(MAC)
 OBJC_CLASS NSOperationQueue;
 #endif
@@ -80,6 +84,11 @@ public:
 
 #if PLATFORM(MAC) || USE(CFNETWORK) || USE(SOUP)
     virtual NetworkStorageSession& storageSession() const = 0;
+#endif
+
+#if PLATFORM(HAIKU)
+    virtual BUrlContext* context() = 0;
+    virtual void setContext(BUrlContext*) = 0;
 #endif
 
 #if PLATFORM(QT)

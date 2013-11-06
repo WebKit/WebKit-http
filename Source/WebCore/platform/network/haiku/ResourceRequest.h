@@ -40,33 +40,28 @@ namespace WebCore {
     public:
         ResourceRequest(const String& url) 
             : ResourceRequestBase(KURL(ParsedURLString, url), UseProtocolCachePolicy)
-            , fContext(NULL)
         {
         }
 
         ResourceRequest(const KURL& url) 
             : ResourceRequestBase(url, UseProtocolCachePolicy)
-            , fContext(NULL)
         {
         }
 
         ResourceRequest(const KURL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy) 
             : ResourceRequestBase(url, policy)
-            , fContext(NULL)
         {
             setHTTPReferrer(referrer);
         }
 
         ResourceRequest()
             : ResourceRequestBase(KURL(), UseProtocolCachePolicy)
-            , fContext(NULL)
         {
         }
 
-        BUrlRequest* toNetworkRequest() const;
+        BUrlRequest* toNetworkRequest(BUrlContext*) const;
 
         void setCredentials(const char* username, const char* password);
-        void setContext(BUrlContext& context);
 
     private:
         friend class ResourceRequestBase;
@@ -79,7 +74,6 @@ namespace WebCore {
 
         BString fUsername;
         BString fPassword;
-        BUrlContext* fContext;
     };
     
     struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {

@@ -39,6 +39,7 @@ LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
     haiku/WebCoreSupport/FrameNetworkingContextHaiku.cpp
     haiku/WebCoreSupport/InspectorClientHaiku.cpp
+    haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
 
     haiku/API/WebDownload.cpp
     haiku/API/WebDownloadPrivate.cpp

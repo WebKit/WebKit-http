@@ -30,9 +30,10 @@
 
 namespace WebCore {
 
-BUrlRequest* ResourceRequest::toNetworkRequest() const
+BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context) const
 {
     BUrlRequest* request = BUrlProtocolRoster::MakeRequest(url());
+    request->SetContext(context);
 
     if(!request)
         return NULL;
@@ -65,11 +66,6 @@ void ResourceRequest::setCredentials(const char* username, const char* password)
 {
     fUsername = username;
     fPassword = password;
-}
-
-void ResourceRequest::setContext(BUrlContext& context)
-{
-    fContext = &context;
 }
 
 }

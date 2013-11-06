@@ -684,6 +684,7 @@
 #define HAVE_POSIX_MEMALIGN 1
 #define HAVE_PTHREAD_RWLOCK 1
 #define HAVE_SYS_TIME_H 1
+#define USE_SYSTEM_MALLOC 1
 
 #define ENABLE_INSPECTOR 1
 #define ENABLE_JAVASCRIPT_DEBUGGER 1
@@ -1127,7 +1128,7 @@
 #define WTF_PLATFORM_CFNETWORK Error USE_macro_should_be_used_with_CFNETWORK
 
 /* FIXME: Eventually we should enable this for all platforms and get rid of the define. */
-#if PLATFORM(IOS) || PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(IOS) || PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(EFL)
 #define WTF_USE_PLATFORM_STRATEGIES 1
 #endif
 

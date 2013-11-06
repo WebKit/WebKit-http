@@ -128,7 +128,7 @@ bool ResourceHandle::start(NetworkingContext* context)
 
     ResourceHandleInternal *d = getInternal();
 	printf("ProtocolHandler::__construct()\n");
-    d->m_urlrequest = new BUrlProtocolHandler(this, false);
+    d->m_urlrequest = new BUrlProtocolHandler(context, this, false);
     return true;
 }
 
@@ -163,7 +163,7 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
     //d->m_context = context;
     
     // haiku
-    d->m_urlrequest = new BUrlProtocolHandler(handle.get(), true);
+    d->m_urlrequest = new BUrlProtocolHandler(context, handle.get(), true);
     syncLoader.waitForCompletion();
     error = syncLoader.resourceError();
     data = syncLoader.data();

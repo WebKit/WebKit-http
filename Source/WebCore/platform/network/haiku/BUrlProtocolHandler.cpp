@@ -157,14 +157,14 @@ BFormDataIO::_NextElement()
     m_currentFile->GetSize(&m_currentFileSize);
 }
 
-BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle, bool synchronous)
+BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context, ResourceHandle* handle, bool synchronous)
     : BUrlProtocolAsynchronousListener(!synchronous)
     , m_resourceHandle(handle)
     , m_redirected(false)
     , m_responseSent(false)
     , m_responseDataSent(false)
     , m_postData(NULL)
-    , m_request(handle->firstRequest().toNetworkRequest())
+    , m_request(handle->firstRequest().toNetworkRequest(context->context()))
     , m_shouldStart(true)
     , m_shouldFinish(false)
     , m_shouldSendResponse(false)
@@ -172,6 +172,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle, bool synchronou
     , m_redirectionTries(gMaxRecursionLimit)
 {
     m_method = BString(m_resourceHandle->firstRequest().httpMethod());
+    printf("### CONTEXT INIT %p\n", context->context());
 
     start();
 }
@@ -222,8 +223,10 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
     if (m_redirected) {
+        BUrlContext* context = m_request->Context();
         delete m_request;
-        m_request = m_nextRequest.toNetworkRequest();
+        printf("### CONTEXT %p\n", context);
+        m_request = m_nextRequest.toNetworkRequest(context);
         resetState();
         start();
         return;

@@ -57,6 +57,7 @@
 #include "PageGroup.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
+#include "PlatformStrategiesHaiku.h"
 #include "PlatformWheelEvent.h"
 #include "ResourceHandle.h"
 #include "Settings.h"
@@ -130,6 +131,8 @@ BMessenger BWebPage::sDownloadListener;
 #if !LOG_DISABLED
     WebCore::initializeLoggingChannelsIfNecessary();
 #endif
+    PlatformStrategiesHaiku::initialize();
+
     ScriptController::initializeThreading();
     WTF::initializeMainThread();
     WTF::AtomicString::init();

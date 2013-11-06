@@ -33,17 +33,35 @@
 #include "NotImplemented.h"
 #include "ResourceHandle.h"
 
+#include <UrlContext.h>
+
 namespace WebCore {
 
-PassRefPtr<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame, BUrlContext& context)
+PassRefPtr<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame)
 {
-    return adoptRef(new FrameNetworkingContextHaiku(frame, context));
+    return adoptRef(new FrameNetworkingContextHaiku(frame));
 }
 
-FrameNetworkingContextHaiku::FrameNetworkingContextHaiku(Frame* frame, BUrlContext& context)
+FrameNetworkingContextHaiku::FrameNetworkingContextHaiku(Frame* frame)
     : FrameNetworkingContext(frame)
-    , m_context(context)
 {
+    m_context = new BUrlContext();
+}
+
+FrameNetworkingContextHaiku::~FrameNetworkingContextHaiku()
+{
+    delete m_context;
+}
+
+BUrlContext* FrameNetworkingContextHaiku::context()
+{
+    return m_context;
+}
+
+void FrameNetworkingContextHaiku::setContext(BUrlContext* context)
+{
+    delete m_context;
+    m_context = context;
 }
 
 uint64_t FrameNetworkingContextHaiku::initiatingPageID() const

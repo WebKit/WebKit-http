@@ -45,6 +45,8 @@ public:
         return adoptRef(new StillImage(bitmap));
     }
 
+    virtual bool currentFrameKnownToBeOpaque();
+
     virtual void destroyDecodedData(bool = true);
     virtual unsigned decodedSize() const;
 

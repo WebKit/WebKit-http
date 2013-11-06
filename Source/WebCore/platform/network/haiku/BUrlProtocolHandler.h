@@ -31,6 +31,7 @@ class BFile;
 
 namespace WebCore {
 
+class NetworkingContext;
 class ResourceHandle;
 class ResourceResponse;
 
@@ -58,7 +59,7 @@ private:
 class BUrlProtocolHandler : public BUrlProtocolAsynchronousListener
 {
 public:
-    BUrlProtocolHandler(ResourceHandle *handle, bool synchronous);
+    BUrlProtocolHandler(NetworkingContext* context, ResourceHandle *handle, bool synchronous);
     virtual ~BUrlProtocolHandler();
     void abort();
 

@@ -51,6 +51,12 @@ StillImage::~StillImage()
 }
 
 
+bool StillImage::currentFrameKnownToBeOpaque()
+{
+    color_space space = m_bitmap->ColorSpace();
+    return space != B_RGB32 && space != B_RGBA15;
+}
+
 void StillImage::destroyDecodedData(bool destroyAll)
 {
     // This is used for "large" animations to free image data.

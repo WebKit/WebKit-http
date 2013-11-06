@@ -27,48 +27,25 @@
  */
 
 #include "config.h"
-#include "CookieJar.h"
-#include <UrlContext.h>
 
 #include "Cookie.h"
 #include "KURL.h"
+#include "NetworkingContext.h"
 #include "NotImplemented.h"
-#include <wtf/HashMap.h>
-#include <wtf/text/CString.h>
+#include "PlatformCookieJar.h"
+
+#include <UrlContext.h>
 #include <stdio.h>
 
-#define TRACE_COOKIE_JAR 0
+#include <wtf/HashMap.h>
+#include <wtf/text/CString.h>
+
+#define TRACE_COOKIE_JAR 1
 
 
 namespace WebCore {
 
-static BUrlContext gDefaultContext;
-static BUrlContext* gNetworkContext = &gDefaultContext;
-
-void setNetworkContext(BUrlContext* context)
-{
-#if TRACE_COOKIE_JAR
-    printf("CookieJar: Set context %p (was %p)\n", context, gNetworkContext);
-#endif
-
-    if(gNetworkContext != &gDefaultContext)
-        delete gNetworkContext;
-
-    if (context == NULL)
-        context = &gDefaultContext;
-
-    gNetworkContext = context;
-}
-
-BUrlContext& networkContext()
-{
-#if TRACE_COOKIE_JAR
-    printf("CookieJar: Get context %p\n", gNetworkContext);
-#endif
-    return *gNetworkContext;
-}
-
-void setCookies(Document* document, const KURL& url, const String& value)
+void setCookiesFromDOM(const NetworkStorageSession& session, const KURL&, const KURL& url, const String& value)
 {
 	BNetworkCookie* heapCookie
 		= new BNetworkCookie(value, BUrl(url.string().utf8().data()));
@@ -78,18 +55,20 @@ void setCookies(Document* document, const KURL& url, const String& value)
         url.string().utf8().data());
 	printf("  from %s\n", value.utf8().data());
 #endif
-    gNetworkContext->GetCookieJar().AddCookie(heapCookie);
+    session.context()->context()->GetCookieJar().AddCookie(heapCookie);
 }
 
-String cookies(const Document* document, const KURL& url)
+String cookiesForDOM(const NetworkStorageSession& session, const KURL& firstParty,
+    const KURL& url)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Request for %s\n", url.string().utf8().data());
 #endif
-	return cookieRequestHeaderFieldValue(document, url);
+    // TODO should include HttpOnly ?
+	return cookieRequestHeaderFieldValue(session, firstParty, url);
 }
 
-String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
+String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const KURL&, const KURL& url)
 {
 	BString result;
 	BUrl hUrl(url.string().utf8().data());
@@ -100,7 +79,7 @@ String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
 
 	BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
-            gNetworkContext->GetCookieJar().GetUrlIterator(hUrl));
+            session.context()->context()->GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
         // filter out httpOnly cookies,as this method is used to get cookies
         // from JS code and these shouldn't be visible there.
@@ -112,12 +91,12 @@ String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
     return result;
 }
 
-bool cookiesEnabled(const Document* document)
+bool cookiesEnabled(const NetworkStorageSession&, const KURL&, const KURL&)
 {
     return true;
 }
 
-bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& rawCookies)
+bool getRawCookies(const NetworkStorageSession&, const KURL&, const KURL& url, Vector<Cookie>& rawCookies)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: get raw cookies for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
@@ -128,7 +107,7 @@ bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& ra
     return false; // return true when implemented
 }
 
-void deleteCookie(const Document* document, const KURL& url, const String& name)
+void deleteCookie(const NetworkStorageSession&, const KURL& url, const String& name)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: delete cookie for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());

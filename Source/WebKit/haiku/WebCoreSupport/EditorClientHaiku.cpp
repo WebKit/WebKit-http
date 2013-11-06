@@ -194,6 +194,14 @@ void EditorClientHaiku::didWriteSelectionToPasteboard()
     notImplemented();
 }
 
+void EditorClientHaiku::willWriteSelectionToPasteboard(WebCore::Range*)
+{
+}
+
+void EditorClientHaiku::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>&, Vector<RefPtr<WebCore::SharedBuffer> >&)
+{
+}
+
 void EditorClientHaiku::didSetSelectionTypesForPasteboard()
 {
     notImplemented();
