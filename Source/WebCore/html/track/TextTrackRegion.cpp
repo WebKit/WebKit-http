@@ -5,7 +5,7 @@
  * modification, are permitted provided that the following conditions are
  * met:
  *
- *     * Redistributions of source ec must retain the above copyright
+ *     * Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
  *     * Redistributions in binary form must reproduce the above
  * copyright notice, this list of conditions and the following disclaimer
@@ -34,6 +34,12 @@
 
 #include "TextTrackRegion.h"
 
+#include "ExceptionCodePlaceholder.h"
+#include "Logging.h"
+#include "WebVTTParser.h"
+#include <wtf/MathExtras.h>
+#include <wtf/text/StringBuilder.h>
+
 namespace WebCore {
 
 // The region occupies by default 100% of the width of the video viewport.
@@ -56,11 +62,17 @@ TextTrackRegion::TextTrackRegion()
     , m_regionAnchor(FloatPoint(defaultAnchorPointX, defaultAnchorPointY))
     , m_viewportAnchor(FloatPoint(defaultAnchorPointX, defaultAnchorPointY))
     , m_scroll(defaultScroll)
+    , m_track(0)
 {
 }
 
 TextTrackRegion::~TextTrackRegion()
 {
+}
+
+void TextTrackRegion::setTrack(TextTrack* track)
+{
+    m_track = track;
 }
 
 void TextTrackRegion::setId(const String& id)
@@ -175,9 +187,128 @@ void TextTrackRegion::setScroll(const AtomicString& value, ExceptionCode& ec)
     m_scroll = value == upScrollValueKeyword;
 }
 
+void TextTrackRegion::updateParametersFromRegion(TextTrackRegion* region)
+{
+    m_heightInLines = region->height();
+    m_width = region->width();
+
+    m_regionAnchor = FloatPoint(region->regionAnchorX(), region->regionAnchorY());
+    m_viewportAnchor = FloatPoint(region->viewportAnchorX(), region->viewportAnchorY());
+
+    setScroll(region->scroll(), ASSERT_NO_EXCEPTION);
+}
+
 void TextTrackRegion::setRegionSettings(const String& input)
 {
-    // FIXME(109818): Parse region header metadata.
+    m_settings = input;
+    unsigned position = 0;
+
+    while (position < input.length()) {
+        while (position < input.length() && WebVTTParser::isValidSettingDelimiter(input[position]))
+            position++;
+
+        if (position >= input.length())
+            break;
+
+        parseSetting(input, &position);
+    }
+}
+
+TextTrackRegion::RegionSetting TextTrackRegion::getSettingFromString(const String& setting)
+{
+    DEFINE_STATIC_LOCAL(const AtomicString, idKeyword, ("id", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, heightKeyword, ("height", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, widthKeyword, ("width", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, regionAnchorKeyword, ("regionanchor", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, viewportAnchorKeyword, ("viewportanchor", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(const AtomicString, scrollKeyword, ("scroll", AtomicString::ConstructFromLiteral));
+
+    if (setting == idKeyword)
+        return Id;
+    if (setting == heightKeyword)
+        return Height;
+    if (setting == widthKeyword)
+        return Width;
+    if (setting == viewportAnchorKeyword)
+        return ViewportAnchor;
+    if (setting == regionAnchorKeyword)
+        return RegionAnchor;
+    if (setting == scrollKeyword)
+        return Scroll;
+
+    return None;
+}
+
+void TextTrackRegion::parseSettingValue(RegionSetting setting, const String& value)
+{
+    DEFINE_STATIC_LOCAL(const AtomicString, scrollUpValueKeyword, ("up", AtomicString::ConstructFromLiteral));
+
+    bool isValidSetting;
+    String numberAsString;
+    int number;
+    unsigned position;
+    FloatPoint anchorPosition;
+
+    switch (setting) {
+    case Id:
+        if (value.find("-->") == notFound)
+            m_id = value;
+        break;
+    case Width:
+        number = WebVTTParser::parseFloatPercentageValue(value, isValidSetting);
+        if (isValidSetting)
+            m_width = number;
+        else
+            LOG(Media, "TextTrackRegion::parseSettingValue, invalid Width");
+        break;
+    case Height:
+        position = 0;
+
+        numberAsString = WebVTTParser::collectDigits(value, &position);
+        number = value.toInt(&isValidSetting);
+
+        if (isValidSetting && number >= 0)
+            m_heightInLines = number;
+        else
+            LOG(Media, "TextTrackRegion::parseSettingValue, invalid Height");
+        break;
+    case RegionAnchor:
+        anchorPosition = WebVTTParser::parseFloatPercentageValuePair(value, ',', isValidSetting);
+        if (isValidSetting)
+            m_regionAnchor = anchorPosition;
+        else
+            LOG(Media, "TextTrackRegion::parseSettingValue, invalid RegionAnchor");
+        break;
+    case ViewportAnchor:
+        anchorPosition = WebVTTParser::parseFloatPercentageValuePair(value, ',', isValidSetting);
+        if (isValidSetting)
+            m_viewportAnchor = anchorPosition;
+        else
+            LOG(Media, "TextTrackRegion::parseSettingValue, invalid ViewportAnchor");
+        break;
+    case Scroll:
+        if (value == scrollUpValueKeyword)
+            m_scroll = true;
+        else
+            LOG(Media, "TextTrackRegion::parseSettingValue, invalid Scroll");
+        break;
+    case None:
+        break;
+    }
+}
+
+void TextTrackRegion::parseSetting(const String& input, unsigned* position)
+{
+    String setting = WebVTTParser::collectWord(input, position);
+
+    size_t equalOffset = setting.find('=', 1);
+    if (equalOffset == notFound || !equalOffset || equalOffset == setting.length() - 1)
+        return;
+
+    RegionSetting name = getSettingFromString(setting.substring(0, equalOffset));
+    String value = setting.substring(equalOffset + 1, setting.length() - 1);
+
+    parseSettingValue(name, value);
 }
 
 } // namespace WebCore

@@ -320,8 +320,9 @@ macro(moveWordLeft) \
 macro(moveWordLeftAndModifySelection) \
 macro(moveWordRight) \
 macro(moveWordRightAndModifySelection) \
-macro(outdent) \
 macro(orderFrontSubstitutionsPanel) \
+macro(outdent) \
+macro(overWrite) \
 macro(pageDown) \
 macro(pageDownAndModifySelection) \
 macro(pageUp) \
@@ -439,8 +440,6 @@ static PageVisibilityState core(WebPageVisibilityState visibilityState)
 #endif
 @end
 
-static void patchMailRemoveAttributesMethod();
-
 NSString *WebElementDOMNodeKey =            @"WebElementDOMNode";
 NSString *WebElementFrameKey =              @"WebElementFrame";
 NSString *WebElementImageKey =              @"WebElementImage";
@@ -501,13 +500,11 @@ NSString *WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey = @"WebKitKerning
 
 static BOOL continuousSpellCheckingEnabled;
 static BOOL grammarCheckingEnabled;
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 static BOOL automaticQuoteSubstitutionEnabled;
 static BOOL automaticLinkDetectionEnabled;
 static BOOL automaticDashSubstitutionEnabled;
 static BOOL automaticTextReplacementEnabled;
 static BOOL automaticSpellingCorrectionEnabled;
-#endif
 
 @implementation WebView (AllWebViews)
 
@@ -618,24 +615,6 @@ static void WebKitInitializeApplicationCachePathIfNecessary()
     initialized = YES;
 }
 
-static bool runningLeopardMail()
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    return applicationIsAppleMail();
-#endif
-    return NO;
-}
-
-static bool coreVideoHas7228836Fix()
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    NSBundle* coreVideoFrameworkBundle = [NSBundle bundleWithPath:@"/System/Library/Frameworks/CoreVideo.framework"];
-    double version = [[coreVideoFrameworkBundle objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] doubleValue];
-    return (version >= 48);
-#endif
-    return true;
-}
-
 static bool shouldEnableLoadDeferring()
 {
     return !applicationIsAdobeInstaller();
@@ -663,20 +642,6 @@ static bool shouldEnableLoadDeferring()
     return true;
 }
 #endif
-
-static NSString *leakMailQuirksUserScriptContents()
-{
-    NSString *scriptPath = [[NSBundle bundleForClass:[WebView class]] pathForResource:@"MailQuirksUserScript" ofType:@"js"];
-    NSStringEncoding encoding;
-    return [[NSString alloc] initWithContentsOfFile:scriptPath usedEncoding:&encoding error:0];
-}
-
-- (void)_injectMailQuirksScript
-{
-    static NSString *mailQuirksScriptContents = leakMailQuirksUserScriptContents();
-    core(self)->group().addUserScriptToWorld(core([WebScriptWorld world]),
-        mailQuirksScriptContents, KURL(), Vector<String>(), Vector<String>(), InjectAtDocumentEnd, InjectInAllFrames);
-}
 
 static bool needsOutlookQuirksScript()
 {
@@ -746,7 +711,6 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
 
         WebKitInitializeStorageIfNecessary();
         WebKitInitializeApplicationCachePathIfNecessary();
-        patchMailRemoveAttributesMethod();
         
         Settings::setDefaultMinDOMTimerInterval(0.004);
         
@@ -782,6 +746,9 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
         _private->page->settings()->setShouldInjectUserScriptsInInitialEmptyDocument(true);
         [self _injectOutlookQuirksScript];
     }
+
+    if ([[NSUserDefaults standardUserDefaults] objectForKey:WebSmartInsertDeleteEnabled])
+        [self setSmartInsertDeleteEnabled:[[NSUserDefaults standardUserDefaults] boolForKey:WebSmartInsertDeleteEnabled]];
 
     [WebFrame _createMainFrameWithPage:_private->page frameName:frameName frameView:frameView];
 
@@ -835,9 +802,6 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
 #if USE(GLIB)
     [self _scheduleGlibContextIterations];
 #endif
-
-    if (runningLeopardMail())
-        [self _injectMailQuirksScript];
 }
 
 - (id)_initWithFrame:(NSRect)f frameName:(NSString *)frameName groupName:(NSString *)groupName usesDocumentViews:(BOOL)usesDocumentViews
@@ -1488,6 +1452,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setDOMPasteAllowed([preferences isDOMPasteAllowed]);
     settings->setUsesPageCache([self usesPageCache]);
     settings->setPageCacheSupportsPlugins([preferences pageCacheSupportsPlugins]);
+    settings->setBackForwardCacheExpirationInterval([preferences _backForwardCacheExpirationInterval]);
     settings->setShowsURLsInToolTips([preferences showsURLsInToolTips]);
     settings->setShowsToolTipOverTruncatedText([preferences showsToolTipOverTruncatedText]);
     settings->setDeveloperExtrasEnabled([preferences developerExtrasEnabled]);
@@ -1504,7 +1469,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setNeedsAdobeFrameReloadingQuirk([self _needsAdobeFrameReloadingQuirk]);
     settings->setTreatsAnyTextCSSLinkAsStylesheet([self _needsLinkElementTextCSSQuirk]);
     settings->setNeedsKeyboardEventDisambiguationQuirks([self _needsKeyboardEventDisambiguationQuirks]);
-    settings->setNeedsLeopardMailQuirks(runningLeopardMail());
     settings->setNeedsSiteSpecificQuirks(_private->useSiteSpecificSpoofing);
     settings->setWebArchiveDebugModeEnabled([preferences webArchiveDebugModeEnabled]);
     settings->setLocalFileContentSniffingEnabled([preferences localFileContentSniffingEnabled]);
@@ -1516,8 +1480,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     
     // FIXME: Enabling accelerated compositing when WebGL is enabled causes tests to fail on Leopard which expect HW compositing to be disabled.
     // Until we fix that, I will comment out the test (CFM)
-    settings->setAcceleratedCompositingEnabled((coreVideoHas7228836Fix() || [preferences webGLEnabled] || 
-        [preferences accelerated2dCanvasEnabled]) && [preferences acceleratedCompositingEnabled]);
+    settings->setAcceleratedCompositingEnabled([preferences acceleratedCompositingEnabled]);
     settings->setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
     settings->setCanvasUsesAcceleratedDrawing([preferences canvasUsesAcceleratedDrawing]);    
     settings->setShowDebugBorders([preferences showDebugBorders]);
@@ -1533,6 +1496,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings->setCSSCustomFilterEnabled([preferences cssCustomFilterEnabled]);
 #endif
     RuntimeEnabledFeatures::setCSSRegionsEnabled([preferences cssRegionsEnabled]);
+    RuntimeEnabledFeatures::setCSSCompositingEnabled([preferences cssCompositingEnabled]);
 #if ENABLE(IFRAME_SEAMLESS)
     RuntimeEnabledFeatures::setSeamlessIFramesEnabled([preferences seamlessIFramesEnabled]);
 #endif
@@ -1540,10 +1504,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(FULLSCREEN_API)
     settings->setFullScreenEnabled([preferences fullScreenEnabled]);
 #endif
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
-    // Asynchronous spell checking API is available for 10.6 or later.
     settings->setAsynchronousSpellCheckingEnabled([preferences asynchronousSpellCheckingEnabled]);
-#endif
     settings->setMemoryInfoEnabled([preferences memoryInfoEnabled]);
     settings->setHyperlinkAuditingEnabled([preferences hyperlinkAuditingEnabled]);
     settings->setUsePreHTML5ParserQuirks([self _needsPreHTML5ParserQuirks]);
@@ -1593,6 +1554,13 @@ static bool needsSelfRetainWhileLoadingQuirk()
     }
 
     settings->setPlugInSnapshottingEnabled([preferences plugInSnapshottingEnabled]);
+
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    settings->setHiddenPageDOMTimerThrottlingEnabled([preferences hiddenPageDOMTimerThrottlingEnabled]);
+#endif
+#if ENABLE(PAGE_VISIBILITY_API)
+    settings->setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
+#endif
 
     // We have enabled this setting in WebKit2 for the sake of some ScrollingCoordinator work.
     // To avoid possible rendering differences, we should enable it for WebKit1 too.
@@ -2090,7 +2058,7 @@ static inline IMP getMethod(id o, SEL s)
     for (HashSet<RefPtr<Widget> >::const_iterator it = children->begin(); it != end; ++it) {
         Widget* widget = (*it).get();
         if (widget->isFrameView()) {
-            [self _addScrollerDashboardRegionsForFrameView:static_cast<FrameView*>(widget) dashboardRegions:regions];
+            [self _addScrollerDashboardRegionsForFrameView:toFrameView(widget) dashboardRegions:regions];
             continue;
         }
 
@@ -2198,6 +2166,9 @@ static inline IMP getMethod(id o, SEL s)
         case WebDashboardBehaviorUseBackwardCompatibilityMode: {
             if (_private->page)
                 _private->page->settings()->setUsesDashboardBackwardCompatibilityMode(flag);
+#if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
+            RuntimeEnabledFeatures::setLegacyCSSVendorPrefixesEnabled(flag);
+#endif
             break;
         }
     }
@@ -2470,14 +2441,15 @@ static inline IMP getMethod(id o, SEL s)
 
 - (void)setSelectTrailingWhitespaceEnabled:(BOOL)flag
 {
-    _private->selectTrailingWhitespaceEnabled = flag;
-    if (flag)
-        [self setSmartInsertDeleteEnabled:false];
+    if (_private->page->settings()->selectTrailingWhitespaceEnabled() != flag) {
+        _private->page->settings()->setSelectTrailingWhitespaceEnabled(flag);
+        [self setSmartInsertDeleteEnabled:!flag];
+    }
 }
 
 - (BOOL)isSelectTrailingWhitespaceEnabled
 {
-    return _private->selectTrailingWhitespaceEnabled;
+    return _private->page->settings()->selectTrailingWhitespaceEnabled();
 }
 
 - (void)setMemoryCacheDelegateCallsEnabled:(BOOL)enabled
@@ -3167,13 +3139,11 @@ static Vector<String> toStringVector(NSArray* patterns)
 
     Font::setDefaultTypesettingFeatures([defaults boolForKey:WebKitKerningAndLigaturesEnabledByDefaultDefaultsKey] ? Kerning | Ligatures : 0);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     automaticQuoteSubstitutionEnabled = [defaults boolForKey:WebAutomaticQuoteSubstitutionEnabled];
     automaticLinkDetectionEnabled = [defaults boolForKey:WebAutomaticLinkDetectionEnabled];
     automaticDashSubstitutionEnabled = [defaults boolForKey:WebAutomaticDashSubstitutionEnabled];
     automaticTextReplacementEnabled = [defaults boolForKey:WebAutomaticTextReplacementEnabled];
     automaticSpellingCorrectionEnabled = [defaults boolForKey:WebAutomaticSpellingCorrectionEnabled];
-#endif
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     if (![defaults objectForKey:WebAutomaticTextReplacementEnabled])
@@ -3381,12 +3351,6 @@ static bool clientNeedsWebViewInitThreadWorkaround()
     // Automator workflows.
     if ([bundleIdentifier _webkit_hasCaseInsensitivePrefix:@"com.apple.Automator."])
         return true;
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    // Mail.
-    if ([bundleIdentifier _webkit_isCaseInsensitiveEqualToString:@"com.apple.Mail"])
-        return true;
-#endif
 
     return false;
 }
@@ -4709,7 +4673,6 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
             [menuItem setState:checkMark ? NSOnState : NSOffState];
         }
         return YES;
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     } else if (action == @selector(toggleAutomaticQuoteSubstitution:)) {
         BOOL checkMark = [self isAutomaticQuoteSubstitutionEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
@@ -4745,7 +4708,6 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
             [menuItem setState:checkMark ? NSOnState : NSOffState];
         }
         return YES;
-#endif
     }
     FOR_EACH_RESPONDER_SELECTOR(VALIDATE)
 
@@ -5429,17 +5391,16 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
 
 - (void)setSmartInsertDeleteEnabled:(BOOL)flag
 {
-    if (_private->smartInsertDeleteEnabled != flag) {
-        _private->smartInsertDeleteEnabled = flag;
-        [[NSUserDefaults standardUserDefaults] setBool:_private->smartInsertDeleteEnabled forKey:WebSmartInsertDeleteEnabled];
+    if (_private->page->settings()->smartInsertDeleteEnabled() != flag) {
+        _private->page->settings()->setSmartInsertDeleteEnabled(flag);
+        [[NSUserDefaults standardUserDefaults] setBool:_private->page->settings()->smartInsertDeleteEnabled() forKey:WebSmartInsertDeleteEnabled];
+        [self setSelectTrailingWhitespaceEnabled:!flag];
     }
-    if (flag)
-        [self setSelectTrailingWhitespaceEnabled:false];
 }
 
 - (BOOL)smartInsertDeleteEnabled
 {
-    return _private->smartInsertDeleteEnabled;
+    return _private->page->settings()->smartInsertDeleteEnabled();
 }
 
 - (void)setContinuousSpellCheckingEnabled:(BOOL)flag
@@ -5546,15 +5507,8 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
     
     grammarCheckingEnabled = flag;
     [[NSUserDefaults standardUserDefaults] setBool:grammarCheckingEnabled forKey:WebGrammarCheckingEnabled];    
-    
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     [[NSSpellChecker sharedSpellChecker] updatePanels];
-#else
-    NSSpellChecker *spellChecker = [NSSpellChecker sharedSpellChecker];
-    if ([spellChecker respondsToSelector:@selector(_updateGrammar)])
-        [spellChecker performSelector:@selector(_updateGrammar)];
-#endif
-    
+
     // We call _preflightSpellChecker when turning continuous spell checking on, but we don't need to do that here
     // because grammar checking only occurs on code paths that already preflight spell checking appropriately.
     
@@ -5574,50 +5528,28 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
 
 - (BOOL)isAutomaticQuoteSubstitutionEnabled
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    return NO;
-#else
     return automaticQuoteSubstitutionEnabled;
-#endif
 }
 
 - (BOOL)isAutomaticLinkDetectionEnabled
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    return NO;
-#else
     return automaticLinkDetectionEnabled;
-#endif
 }
 
 - (BOOL)isAutomaticDashSubstitutionEnabled
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    return NO;
-#else
     return automaticDashSubstitutionEnabled;
-#endif
 }
 
 - (BOOL)isAutomaticTextReplacementEnabled
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    return NO;
-#else
     return automaticTextReplacementEnabled;
-#endif
 }
 
 - (BOOL)isAutomaticSpellingCorrectionEnabled
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    return NO;
-#else
     return automaticSpellingCorrectionEnabled;
-#endif
 }
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 
 - (void)setAutomaticQuoteSubstitutionEnabled:(BOOL)flag
 {
@@ -5688,8 +5620,6 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
 {
     [self setAutomaticSpellingCorrectionEnabled:![self isAutomaticSpellingCorrectionEnabled]];
 }
-
-#endif
 
 @end
 
@@ -6204,11 +6134,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
     if (![selectedString length])
         return;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     [[NSWorkspace sharedWorkspace] showSearchResultsForQueryString:selectedString];
-#else
-    (void)HISearchWindowShow((CFStringRef)selectedString, kNilOptions);
-#endif
 }
 
 #if USE(GLIB)
@@ -6466,7 +6392,7 @@ bool LayerFlushController::flushLayers()
 - (void)_enterFullscreenForNode:(WebCore::Node*)node
 {
     ASSERT(node->hasTagName(WebCore::HTMLNames::videoTag));
-    HTMLMediaElement* videoElement = static_cast<HTMLMediaElement*>(node);
+    HTMLMediaElement* videoElement = toMediaElement(node);
 
     if (_private->fullscreenController) {
         if ([_private->fullscreenController mediaElement] == videoElement) {
@@ -6722,40 +6648,4 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
 void WebInstallMemoryPressureHandler(void)
 {
     memoryPressureHandler().install();
-}
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-
-static IMP originalRecursivelyRemoveMailAttributesImp;
-
-static id objectElementDataAttribute(DOMHTMLObjectElement *self, SEL)
-{
-    return [self getAttribute:@"data"];
-}
-
-static void recursivelyRemoveMailAttributes(DOMNode *self, SEL selector, BOOL a, BOOL b, BOOL c)
-{
-    // While inside this Mail function, change the behavior of -[DOMHTMLObjectElement data] back to what it used to be
-    // before we fixed a bug in it (see http://trac.webkit.org/changeset/30044 for that change).
-
-    // It's a little bit strange to patch a method defined by WebKit, but it helps keep this workaround self-contained.
-
-    Method methodToPatch = class_getInstanceMethod(objc_getRequiredClass("DOMHTMLObjectElement"), @selector(data));
-    IMP originalDataImp = method_setImplementation(methodToPatch, reinterpret_cast<IMP>(objectElementDataAttribute));
-    originalRecursivelyRemoveMailAttributesImp(self, selector, a, b, c);
-    method_setImplementation(methodToPatch, originalDataImp);
-}
-
-#endif
-
-static void patchMailRemoveAttributesMethod()
-{
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    if (!WKAppVersionCheckLessThan(@"com.apple.mail", -1, 4.0))
-        return;
-    Method methodToPatch = class_getInstanceMethod(objc_getRequiredClass("DOMNode"), @selector(recursivelyRemoveMailAttributes:convertObjectsToImages:convertEditableElements:));
-    if (!methodToPatch)
-        return;
-    originalRecursivelyRemoveMailAttributesImp = method_setImplementation(methodToPatch, reinterpret_cast<IMP>(recursivelyRemoveMailAttributes));
-#endif
 }

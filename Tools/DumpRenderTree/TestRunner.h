@@ -103,8 +103,6 @@ public:
     void setPluginsEnabled(bool);
     void setPopupBlockingEnabled(bool);
     void setPrivateBrowsingEnabled(bool);
-    void setSelectTrailingWhitespaceEnabled(bool);
-    void setSmartInsertDeleteEnabled(bool);
     void setTabKeyCyclesThroughElements(bool);
     void setUseDashboardCompatibilityMode(bool flag);
     void setUserStyleSheetEnabled(bool flag);
@@ -122,7 +120,7 @@ public:
     size_t webHistoryItemCount();
     int windowCount();
     
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(EFL)
     JSRetainPtr<JSStringRef> platformName() const;
 #endif
 
@@ -291,7 +289,6 @@ public:
     bool geolocationPermission() const { return m_geolocationPermission; }
 
     void setDeveloperExtrasEnabled(bool);
-    void setAsynchronousSpellCheckingEnabled(bool);
     void showWebInspector();
     void closeWebInspector();
     void evaluateInWebInspector(long callId, JSStringRef script);

@@ -20,15 +20,15 @@ function verifySpellTest(nretry)
 
 function initSpellTest(testElementId, testText, testFunction)
 {
-    if (!window.internals || !window.testRunner || !window.testRunner.setAsynchronousSpellCheckingEnabled) {
+    if (!window.internals || !window.testRunner) {
         log("FAIL Incomplete test environment");
         return;
     }
     testFunctionCallback = testFunction;
     jsTestIsAsync = true;
-    testRunner.setAsynchronousSpellCheckingEnabled(true);
-    testRunner.setSmartInsertDeleteEnabled(true);
-    testRunner.setSelectTrailingWhitespaceEnabled(false);
+    internals.settings.setAsynchronousSpellCheckingEnabled(true);
+    internals.settings.setSmartInsertDeleteEnabled(true);
+    internals.settings.setSelectTrailingWhitespaceEnabled(false);
     internals.settings.setUnifiedTextCheckerEnabled(true);
     internals.settings.setEditingBehavior("win");
     var destination = document.getElementById(testElementId);

@@ -55,7 +55,7 @@ typedef ListHashSet<RenderRegion*> RenderRegionList;
 
 class RenderFlowThread: public RenderBlock {
 public:
-    RenderFlowThread(Document*);
+    RenderFlowThread();
     virtual ~RenderFlowThread() { };
     
     virtual bool isRenderFlowThread() const { return true; }
@@ -136,10 +136,10 @@ public:
     // Check if the object is in region and the region is part of this flow thread.
     bool objectInFlowRegion(const RenderObject*, const RenderRegion*) const;
 
-    void resetRegionsOverrideLogicalContentHeight();
     void markAutoLogicalHeightRegionsForLayout();
 
     bool addForcedRegionBreak(LayoutUnit, RenderObject* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0);
+    void applyBreakAfterContent(LayoutUnit);
 
     bool pageLogicalSizeChanged() const { return m_pageLogicalSizeChanged; }
 
@@ -154,6 +154,12 @@ public:
     void collectLayerFragments(LayerFragments&, const LayoutRect& layerBoundingBox, const LayoutRect& dirtyRect);
     LayoutRect fragmentsBoundingBox(const LayoutRect& layerBoundingBox);
 
+    void setInConstrainedLayoutPhase(bool value) { m_inConstrainedLayoutPhase = value; }
+    bool inConstrainedLayoutPhase() const { return m_inConstrainedLayoutPhase; }
+
+    bool needsTwoPhasesLayout() const { return m_needsTwoPhasesLayout; }
+    void clearNeedsTwoPhasesLayout() { m_needsTwoPhasesLayout = false; }
+
 protected:
     virtual const char* renderName() const = 0;
 
@@ -161,7 +167,7 @@ protected:
     // no regions have been generated yet.
     virtual LayoutUnit initialLogicalWidth() const { return 0; };
 
-    void updateRegionsFlowThreadPortionRect();
+    void updateRegionsFlowThreadPortionRect(const RenderRegion* = 0);
     bool shouldRepaint(const LayoutRect&) const;
     bool regionInRange(const RenderRegion* targetRegion, const RenderRegion* startRegion, const RenderRegion* endRegion) const;
 
@@ -205,6 +211,28 @@ protected:
         RenderRegion* m_endRegion;
     };
 
+    typedef PODInterval<LayoutUnit, RenderRegion*> RegionInterval;
+    typedef PODIntervalTree<LayoutUnit, RenderRegion*> RegionIntervalTree;
+
+    class RegionSearchAdapter {
+    public:
+        RegionSearchAdapter(LayoutUnit offset)
+            : m_offset(offset)
+            , m_result(0)
+        {
+        }
+        
+        const LayoutUnit& lowValue() const { return m_offset; }
+        const LayoutUnit& highValue() const { return m_offset; }
+        void collectIfNeeded(const RegionInterval&);
+
+        RenderRegion* result() const { return m_result; }
+
+    private:
+        LayoutUnit m_offset;
+        RenderRegion* m_result;
+    };
+
     // A maps from RenderBox
     typedef HashMap<const RenderBox*, RenderRegionRange> RenderRegionRangeMap;
     RenderRegionRangeMap m_regionRangeMap;
@@ -215,6 +243,8 @@ protected:
 
     unsigned m_autoLogicalHeightRegionsCount;
 
+    RegionIntervalTree m_regionIntervalTree;
+
     bool m_regionsInvalidated : 1;
     bool m_regionsHaveUniformLogicalWidth : 1;
     bool m_regionsHaveUniformLogicalHeight : 1;
@@ -222,6 +252,8 @@ protected:
     bool m_hasRegionsWithStyling : 1;
     bool m_dispatchRegionLayoutUpdateEvent : 1;
     bool m_pageLogicalSizeChanged : 1;
+    bool m_inConstrainedLayoutPhase : 1;
+    bool m_needsTwoPhasesLayout : 1;
 };
 
 inline RenderFlowThread* toRenderFlowThread(RenderObject* object)
@@ -248,6 +280,17 @@ private:
     RenderFlowThread* m_renderFlowThread;
     RenderFlowThread* m_previousRenderFlowThread;
 };
+
+// These structures are used by PODIntervalTree for debugging.
+#ifndef NDEBUG
+template <> struct ValueToString<LayoutUnit> {
+    static String string(const LayoutUnit value) { return String::number(value.toFloat()); }
+};
+
+template <> struct ValueToString<RenderRegion*> {
+    static String string(const RenderRegion* value) { return String::format("%p", value); }
+};
+#endif
 
 } // namespace WebCore
 

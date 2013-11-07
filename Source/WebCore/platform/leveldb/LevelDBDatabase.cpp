@@ -28,11 +28,13 @@
 
 #if USE(LEVELDB)
 
+#include "HistogramSupport.h"
 #include "LevelDBComparator.h"
 #include "LevelDBIterator.h"
 #include "LevelDBSlice.h"
 #include "LevelDBWriteBatch.h"
 #include "Logging.h"
+#include "NotImplemented.h"
 #include <helpers/memenv/memenv.h>
 #include <leveldb/comparator.h>
 #include <leveldb/db.h>
@@ -43,11 +45,6 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(CHROMIUM)
-#include <env_idb.h>
-#endif
-
-#if !PLATFORM(CHROMIUM)
 namespace leveldb {
 
 static Env* IDBEnv()
@@ -56,7 +53,6 @@ static Env* IDBEnv()
 }
 
 }
-#endif
 
 namespace WebCore {
 
@@ -90,8 +86,8 @@ public:
     virtual const char* Name() const { return m_comparator->name(); }
 
     // FIXME: Support the methods below in the future.
-    virtual void FindShortestSeparator(std::string* start, const leveldb::Slice& limit) const { }
-    virtual void FindShortSuccessor(std::string* key) const { }
+    virtual void FindShortestSeparator(std::string* /* start */, const leveldb::Slice& /* limit */) const { }
+    virtual void FindShortSuccessor(std::string* /* key */) const { }
 
 private:
     const LevelDBComparator* m_comparator;
@@ -141,6 +137,26 @@ bool LevelDBDatabase::destroy(const String& fileName)
     return s.ok();
 }
 
+static void histogramLevelDBError(const char* histogramName, const leveldb::Status& s)
+{
+    ASSERT(!s.ok());
+    enum {
+        LevelDBNotFound,
+        LevelDBCorruption,
+        LevelDBIOError,
+        LevelDBOther,
+        LevelDBMaxError
+    };
+    int levelDBError = LevelDBOther;
+    if (s.IsNotFound())
+        levelDBError = LevelDBNotFound;
+    else if (s.IsCorruption())
+        levelDBError = LevelDBCorruption;
+    else if (s.IsIOError())
+        levelDBError = LevelDBIOError;
+    HistogramSupport::histogramEnumeration(histogramName, levelDBError, LevelDBMaxError);
+}
+
 PassOwnPtr<LevelDBDatabase> LevelDBDatabase::open(const String& fileName, const LevelDBComparator* comparator)
 {
     OwnPtr<ComparatorAdapter> comparatorAdapter = adoptPtr(new ComparatorAdapter(comparator));
@@ -149,6 +165,8 @@ PassOwnPtr<LevelDBDatabase> LevelDBDatabase::open(const String& fileName, const 
     const leveldb::Status s = openDB(comparatorAdapter.get(), leveldb::IDBEnv(), fileName, &db);
 
     if (!s.ok()) {
+        histogramLevelDBError("WebCore.IndexedDB.LevelDBOpenErrors", s);
+
         LOG_ERROR("Failed to open LevelDB database from %s: %s", fileName.ascii().data(), s.ToString().c_str());
         return nullptr;
     }
@@ -238,6 +256,7 @@ bool LevelDBDatabase::write(LevelDBWriteBatch& writeBatch)
     const leveldb::Status s = m_db->Write(writeOptions, writeBatch.m_writeBatch.get());
     if (s.ok())
         return true;
+    histogramLevelDBError("WebCore.IndexedDB.LevelDBWriteErrors", s);
     LOG_ERROR("LevelDB write failed: %s", s.ToString().c_str());
     return false;
 }

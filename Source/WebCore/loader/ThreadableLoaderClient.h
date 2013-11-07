@@ -44,17 +44,12 @@ namespace WebCore {
 
         virtual void didReceiveResponse(unsigned long /*identifier*/, const ResourceResponse&) { }
         virtual void didReceiveData(const char*, int /*dataLength*/) { }
-        virtual void didReceiveCachedMetadata(const char*, int /*dataLength*/) { }
         virtual void didFinishLoading(unsigned long /*identifier*/, double /*finishTime*/) { }
         virtual void didFail(const ResourceError&) { }
         virtual void didFailAccessControlCheck(const ResourceError& error) { didFail(error); }
         virtual void didFailRedirectCheck() { }
 
         virtual bool isDocumentThreadableLoaderClient() { return false; }
-
-#if PLATFORM(CHROMIUM)
-        virtual void didDownloadData(int /*dataLength*/) { }
-#endif
 
     protected:
         ThreadableLoaderClient() { }

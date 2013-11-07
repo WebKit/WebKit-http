@@ -907,25 +907,70 @@ void GraphicsLayerCA::flushCompositingStateForThisLayerOnly()
         client()->didCommitChangesForLayer(this);
 }
 
+bool GraphicsLayerCA::recursiveVisibleRectChangeRequiresFlush(const TransformState& state) const
+{
+    TransformState localState = state;
+    
+    // This may be called at times when layout has not been updated, so we want to avoid calling out to the client
+    // for animating transforms.
+    FloatRect visibleRect = computeVisibleRect(localState, 0);
+    if (visibleRect != m_visibleRect) {
+        if (TiledBacking* tiledBacking = this->tiledBacking()) {
+            if (tiledBacking->tilesWouldChangeForVisibleRect(visibleRect))
+                return true;
+        }
+    }
+
+    if (m_maskLayer) {
+        GraphicsLayerCA* maskLayerCA = static_cast<GraphicsLayerCA*>(m_maskLayer);
+        if (maskLayerCA->recursiveVisibleRectChangeRequiresFlush(localState))
+            return true;
+    }
+
+    const Vector<GraphicsLayer*>& childLayers = children();
+    size_t numChildren = childLayers.size();
+    
+    for (size_t i = 0; i < numChildren; ++i) {
+        GraphicsLayerCA* curChild = static_cast<GraphicsLayerCA*>(childLayers[i]);
+        if (curChild->recursiveVisibleRectChangeRequiresFlush(localState))
+            return true;
+    }
+
+    if (m_replicaLayer)
+        if (static_cast<GraphicsLayerCA*>(m_replicaLayer)->recursiveVisibleRectChangeRequiresFlush(localState))
+            return true;
+    
+    return false;
+}
+
+bool GraphicsLayerCA::visibleRectChangeRequiresFlush(const FloatRect& clipRect) const
+{
+    TransformState state(TransformState::UnapplyInverseTransformDirection, FloatQuad(clipRect));
+    return recursiveVisibleRectChangeRequiresFlush(state);
+}
+
 TiledBacking* GraphicsLayerCA::tiledBacking() const
 {
     return m_layer->tiledBacking();
 }
 
-FloatRect GraphicsLayerCA::computeVisibleRect(TransformState& state) const
+FloatRect GraphicsLayerCA::computeVisibleRect(TransformState& state, ComputeVisibleRectFlags flags) const
 {
     bool preserve3D = preserves3D() || (parent() ? parent()->preserves3D() : false);
     TransformState::TransformAccumulation accumulation = preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform;
 
     TransformationMatrix layerTransform;
     FloatPoint position = m_position;
-    if (m_client)
-        m_client->customPositionForVisibleRectComputation(this, position);
+    if (client())
+        client()->customPositionForVisibleRectComputation(this, position);
 
     layerTransform.translate(position.x(), position.y());
 
     TransformationMatrix currentTransform;
-    if (client() && client()->getCurrentTransform(this, currentTransform) && !currentTransform.isIdentity()) {
+    if (!(flags & RespectAnimatingTransforms) || !client() || !client()->getCurrentTransform(this, currentTransform))
+        currentTransform = m_transform;
+    
+    if (!currentTransform.isIdentity()) {
         FloatPoint3D absoluteAnchorPoint(anchorPoint());
         absoluteAnchorPoint.scale(size().width(), size().height(), 1);
         layerTransform.translate3d(absoluteAnchorPoint.x(), absoluteAnchorPoint.y(), absoluteAnchorPoint.z());
@@ -978,7 +1023,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
 #ifdef VISIBLE_TILE_WASH
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
     // they start to obscure useful information.
-    if ((!m_transform.isIdentity() || m_usingTiledLayer) && !m_visibleTileWashLayer) {
+    if ((!m_transform.isIdentity() || m_usingTiledBacking) && !m_visibleTileWashLayer) {
         static Color washFillColor(255, 0, 0, 50);
         static Color washBorderColor(255, 0, 0, 100);
         
@@ -1065,9 +1110,7 @@ void GraphicsLayerCA::platformCALayerDidCreateTiles(const Vector<FloatRect>& dir
     for (size_t i = 0; i < dirtyRects.size(); ++i)
         setNeedsDisplayInRect(dirtyRects[i]);
 
-    // Ensure that the layout is up to date before any individual tiles are painted by telling the client
-    // that it needs to flush its layer state, which will end up scheduling the layer flusher.
-    client()->notifyFlushRequired(this);
+    noteLayerPropertyChanged(TilesAdded);
 }
 
 float GraphicsLayerCA::platformCALayerDeviceScaleFactor()
@@ -1080,6 +1123,10 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(float pageScaleFactor, c
     if (!m_uncommittedChanges)
         return;
 
+    bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
+    if (needTiledLayer != m_usingTiledBacking)
+        swapFromOrToTiledLayer(needTiledLayer);
+
     // Need to handle Preserves3DChanged first, because it affects which layers subsequent properties are applied to
     if (m_uncommittedChanges & (Preserves3DChanged | ReplicatedLayerChanged))
         updateStructuralLayer();
@@ -1088,7 +1135,7 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(float pageScaleFactor, c
         updateGeometry(pageScaleFactor, positionRelativeToBase);
 
     if (m_uncommittedChanges & DrawsContentChanged)
-        updateLayerDrawsContent(pageScaleFactor);
+        updateLayerDrawsContent();
 
     if (m_uncommittedChanges & NameChanged)
         updateLayerNames();
@@ -1252,11 +1299,7 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
     FloatSize pixelAlignmentOffset;
     computePixelAlignment(pageScaleFactor, positionRelativeToBase, scaledPosition, scaledSize, scaledAnchorPoint, pixelAlignmentOffset);
 
-    bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
-    if (needTiledLayer != m_usingTiledLayer)
-        swapFromOrToTiledLayer(needTiledLayer);
-
-    FloatSize usedSize = m_usingTiledLayer ? constrainedSize() : scaledSize;
+    FloatSize usedSize = m_usingTiledBacking ? constrainedSize() : scaledSize;
     FloatRect adjustedBounds(m_boundsOrigin - pixelAlignmentOffset, usedSize);
 
     // Update position.
@@ -1522,12 +1565,8 @@ GraphicsLayerCA::StructuralLayerPurpose GraphicsLayerCA::structuralLayerPurpose(
     return NoStructuralLayer;
 }
 
-void GraphicsLayerCA::updateLayerDrawsContent(float pageScaleFactor)
+void GraphicsLayerCA::updateLayerDrawsContent()
 {
-    bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
-    if (needTiledLayer != m_usingTiledLayer)
-        swapFromOrToTiledLayer(needTiledLayer);
-
     if (m_drawsContent)
         m_layer->setNeedsDisplay();
     else {
@@ -2522,10 +2561,6 @@ static float clampedContentsScaleForScale(float scale)
 
 void GraphicsLayerCA::updateContentsScale(float pageScaleFactor)
 {
-    bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
-    if (needTiledLayer != m_usingTiledLayer)
-        swapFromOrToTiledLayer(needTiledLayer);
-
     float contentsScale = clampedContentsScaleForScale(pageScaleFactor * deviceScaleFactor());
     
     m_layer->setContentsScale(contentsScale);
@@ -2644,11 +2679,11 @@ bool GraphicsLayerCA::requiresTiledLayer(float pageScaleFactor) const
 void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
 {
     ASSERT(m_layer->layerType() != PlatformCALayer::LayerTypePageTiledBackingLayer);
-    ASSERT(useTiledLayer != m_usingTiledLayer);
+    ASSERT(useTiledLayer != m_usingTiledBacking);
     RefPtr<PlatformCALayer> oldLayer = m_layer;
     
     m_layer = PlatformCALayer::create(useTiledLayer ? PlatformCALayer::LayerTypeTiledBackingLayer : PlatformCALayer::LayerTypeWebLayer, this);
-    m_usingTiledLayer = useTiledLayer;
+    m_usingTiledBacking = useTiledLayer;
     
     m_layer->adoptSublayers(oldLayer.get());
 
@@ -2677,7 +2712,7 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
         | OpacityChanged
         | DebugIndicatorsChanged;
     
-    if (m_usingTiledLayer)
+    if (m_usingTiledBacking)
         m_uncommittedChanges |= VisibleRectChanged;
 
 #ifndef NDEBUG
@@ -2690,6 +2725,9 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
     
     // need to tell new layer to draw itself
     setNeedsDisplay();
+    
+    if (client())
+        client()->tiledBackingUsageChanged(this, m_usingTiledBacking);
 }
 
 GraphicsLayer::CompositingCoordinatesOrientation GraphicsLayerCA::defaultContentsOrientation() const
@@ -2886,24 +2924,7 @@ PassRefPtr<PlatformCALayer> GraphicsLayerCA::fetchCloneLayers(GraphicsLayer* rep
 
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::cloneLayer(PlatformCALayer *layer, CloneLevel cloneLevel)
 {
-    PlatformCALayer::LayerType layerType = (layer->layerType() == PlatformCALayer::LayerTypeTransformLayer) ? 
-                                                PlatformCALayer::LayerTypeTransformLayer : PlatformCALayer::LayerTypeLayer;
-    RefPtr<PlatformCALayer> newLayer = PlatformCALayer::create(layerType, this);
-    
-    newLayer->setPosition(layer->position());
-    newLayer->setBounds(layer->bounds());
-    newLayer->setAnchorPoint(layer->anchorPoint());
-    newLayer->setTransform(layer->transform());
-    newLayer->setSublayerTransform(layer->sublayerTransform());
-    newLayer->setContents(layer->contents());
-    newLayer->setMasksToBounds(layer->masksToBounds());
-    newLayer->setDoubleSided(layer->isDoubleSided());
-    newLayer->setOpaque(layer->isOpaque());
-    newLayer->setBackgroundColor(layer->backgroundColor());
-    newLayer->setContentsScale(layer->contentsScale());
-#if ENABLE(CSS_FILTERS)
-    newLayer->copyFiltersFrom(layer);
-#endif
+    RefPtr<PlatformCALayer> newLayer = layer->clone(this);
 
     if (cloneLevel == IntermediateCloneLevel) {
         newLayer->setOpacity(layer->opacity());
@@ -3029,21 +3050,36 @@ void GraphicsLayerCA::noteSublayersChanged()
     propagateLayerChangeToReplicas();
 }
 
+bool GraphicsLayerCA::canThrottleLayerFlush() const
+{
+    // Tile layers are currently plain CA layers, attached directly by TileController. They require immediate flush as they may contain garbage.
+    return !(m_uncommittedChanges & TilesAdded);
+}
+
 void GraphicsLayerCA::noteLayerPropertyChanged(LayerChangeFlags flags)
 {
-    if (!m_uncommittedChanges && m_client)
-        m_client->notifyFlushRequired(this);
+    bool hadUncommittedChanges = !!m_uncommittedChanges;
+    bool oldCanThrottleLayerFlush = canThrottleLayerFlush();
 
     m_uncommittedChanges |= flags;
+
+    bool needsFlush = !hadUncommittedChanges || oldCanThrottleLayerFlush != canThrottleLayerFlush();
+    if (needsFlush && m_client)
+        m_client->notifyFlushRequired(this);
 }
 
 double GraphicsLayerCA::backingStoreMemoryEstimate() const
 {
     if (!drawsContent())
         return 0;
-    
+
     // contentsLayer is given to us, so we don't really know anything about its contents.
-    return static_cast<double>(4 * size().width()) * size().height() * m_layer->contentsScale();
+    // FIXME: ignores layer clones.
+    
+    if (TiledBacking* tiledBacking = this->tiledBacking())
+        return tiledBacking->retainedTileBackingStoreMemory();
+
+    return 4.0 * size().width() * m_layer->contentsScale() * size().height() * m_layer->contentsScale();
 }
 
 } // namespace WebCore

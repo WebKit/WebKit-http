@@ -47,8 +47,9 @@ else:
 
 nonotify = True
 notrayicon = True
-if 'MAKEFLAGS' not in os.environ:
-    os.environ['MAKEFLAGS'] = '-j%d' % multiprocessing.cpu_count()
+
+if 'NUMBER_OF_PROCESSORS' in os.environ:
+    jobs = os.environ['NUMBER_OF_PROCESSORS']
 
 # Use system libraries while building.
 if use_lib64:
@@ -73,3 +74,7 @@ if use_lib64:
     addpath('CMAKE_LIBRARY_PATH', os.path.join(prefix, _libdir))
 
 partial_build = False
+
+# Avoid runtime conflicts with GStreamer system-wide plugins. We want
+# to use only the plugins we build in JHBuild.
+os.environ['GST_PLUGIN_SYSTEM_PATH'] = ''

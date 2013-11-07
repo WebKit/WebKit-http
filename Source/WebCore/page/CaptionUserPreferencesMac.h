@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,20 +41,26 @@ public:
     virtual ~CaptionUserPreferencesMac();
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
-    virtual bool userHasCaptionPreferences() const OVERRIDE;
+    virtual CaptionDisplayMode captionDisplayMode() const OVERRIDE;
+    virtual void setCaptionDisplayMode(CaptionDisplayMode) OVERRIDE;
+
     virtual bool userPrefersCaptions() const OVERRIDE;
-    virtual void setUserPrefersCaptions(bool) OVERRIDE;
+    virtual bool userPrefersSubtitles() const OVERRIDE;
+    
     virtual float captionFontSizeScale(bool&) const OVERRIDE;
     virtual String captionsStyleSheetOverride() const OVERRIDE;
 
-    virtual void registerForPreferencesChangedCallbacks(CaptionPreferencesChangedListener*) OVERRIDE;
+    virtual void setInterestedInCaptionPreferenceChanges() OVERRIDE;
 
-    virtual void setPreferredLanguage(String) OVERRIDE;
+    virtual void setPreferredLanguage(const String&) OVERRIDE;
     virtual Vector<String> preferredLanguages() const OVERRIDE;
 
     virtual void captionPreferencesChanged() OVERRIDE;
+
 #endif
 
+    virtual int textTrackSelectionScore(TextTrack*, HTMLMediaElement*) const OVERRIDE;
+    virtual Vector<RefPtr<TextTrack> > sortedTrackListForMenu(TextTrackList*) OVERRIDE;
     virtual String displayNameForTrack(TextTrack*) const OVERRIDE;
 
 private:

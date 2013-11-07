@@ -24,8 +24,6 @@
 #include "QtWebIconDatabaseClient.h"
 #include <QtCore/QUrl>
 #include <QtGui/QImage>
-#include <wtf/text/StringHash.h>
-#include <wtf/text/WTFString.h>
 
 using namespace WebKit;
 
@@ -38,44 +36,47 @@ QWebIconImageProvider::~QWebIconImageProvider()
 {
 }
 
-WTF::String QWebIconImageProvider::iconURLForPageURLInContext(const WTF::String &pageURL, QtWebContext* context)
+QUrl QWebIconImageProvider::iconURLForPageURLInContext(const QString &pageURL, QtWebContext* context)
 {
     QtWebIconDatabaseClient* iconDatabase = context->iconDatabase();
-    WTF::String iconURL = iconDatabase->iconForPageURL(pageURL);
 
-    if (iconURL.isEmpty())
-        return String();
+    // Verify that the image data is actually available before reporting back
+    // a url, since clients assume that the url can be used directly.
+    if (iconDatabase->iconImageForPageURL(pageURL).isNull())
+        return QUrl();
 
     QUrl url;
     url.setScheme(QStringLiteral("image"));
     url.setHost(QWebIconImageProvider::identifier());
-    // Make sure that QML doesn't show cached versions of the previous icon if the icon location changed.
-    url.setPath(QLatin1Char('/') + QString::number(WTF::StringHash::hash(iconURL)));
+    // Make sure that QML doesn't show a cached previous version of the icon after it changed.
+    url.setPath(QStringLiteral("/%1").arg(QtWebIconDatabaseClient::updateID()));
 
     // FIXME: Use QUrl::DecodedMode when landed in Qt
-    url.setFragment(QString::fromLatin1(QByteArray(QString(pageURL).toUtf8()).toBase64()));
+    url.setFragment(QString::fromLatin1(pageURL.toUtf8().toBase64()));
 
     // FIXME: We can't know when the icon url is no longer in use,
     // so we never release these icons. At some point we might want
     // to introduce expiry of icons to elevate this issue.
     iconDatabase->retainIconForPageURL(pageURL);
 
-    return url.toString(QUrl::FullyEncoded);
+    return url;
 }
 
 QImage QWebIconImageProvider::requestImage(const QString& id, QSize* size, const QSize& requestedSize)
 {
     QString pageURL = QString::fromUtf8(QByteArray::fromBase64(id.midRef(id.indexOf('#') + 1).toLatin1()));
 
-    QtWebIconDatabaseClient* iconDatabase = QtWebContext::iconDatabase();
-    if (!iconDatabase)
-        return QImage();
+    QtWebIconDatabaseClient* iconDatabase = QtWebContext::defaultContext()->iconDatabase();
+    Q_ASSERT(iconDatabase);
 
-    QImage icon = requestedSize.isValid() ? iconDatabase->iconImageForPageURL(pageURL, requestedSize) : iconDatabase->iconImageForPageURL(pageURL);
-    ASSERT(!icon.isNull());
+    QImage icon = iconDatabase->iconImageForPageURL(pageURL);
+    Q_ASSERT(!icon.isNull());
 
     if (size)
         *size = icon.size();
+
+    if (requestedSize.isValid())
+        return icon.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     return icon;
 }

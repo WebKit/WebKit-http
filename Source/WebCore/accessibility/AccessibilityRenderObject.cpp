@@ -76,6 +76,7 @@
 #include "RenderMathMLBlock.h"
 #include "RenderMathMLOperator.h"
 #include "RenderMenuList.h"
+#include "RenderSVGShape.h"
 #include "RenderText.h"
 #include "RenderTextControl.h"
 #include "RenderTextControlSingleLine.h"
@@ -87,6 +88,7 @@
 #include "SVGDocument.h"
 #include "SVGImage.h"
 #include "SVGImageChromeClient.h"
+#include "SVGNames.h"
 #include "SVGSVGElement.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
@@ -573,7 +575,7 @@ Element* AccessibilityRenderObject::anchorElement() const
     Node* node = currRenderer->node();
     for ( ; node; node = node->parentNode()) {
         if (node->hasTagName(aTag) || (node->renderer() && cache->getOrCreate(node->renderer())->isAnchor()))
-            return static_cast<Element*>(node);
+            return toElement(node);
     }
     
     return 0;
@@ -595,12 +597,12 @@ String AccessibilityRenderObject::helpText() const
     String description = accessibilityDescription();
     for (RenderObject* curr = m_renderer; curr; curr = curr->parent()) {
         if (curr->node() && curr->node()->isHTMLElement()) {
-            const AtomicString& summary = static_cast<Element*>(curr->node())->getAttribute(summaryAttr);
+            const AtomicString& summary = toElement(curr->node())->getAttribute(summaryAttr);
             if (!summary.isEmpty())
                 return summary;
             
             // The title attribute should be used as help text unless it is already being used as descriptive text.
-            const AtomicString& title = static_cast<Element*>(curr->node())->getAttribute(titleAttr);
+            const AtomicString& title = toElement(curr->node())->getAttribute(titleAttr);
             if (!title.isEmpty() && description != title)
                 return title;
         }
@@ -817,7 +819,7 @@ LayoutRect AccessibilityRenderObject::checkboxOrRadioRect() const
     if (!m_renderer)
         return LayoutRect();
     
-    HTMLLabelElement* label = labelForElement(static_cast<Element*>(m_renderer->node()));
+    HTMLLabelElement* label = labelForElement(toElement(m_renderer->node()));
     if (!label || !label->renderer())
         return boundingBoxRect();
     
@@ -833,6 +835,26 @@ LayoutRect AccessibilityRenderObject::elementRect() const
         return checkboxOrRadioRect();
     
     return boundingBoxRect();
+}
+    
+bool AccessibilityRenderObject::supportsPath() const
+{
+#if ENABLE(SVG)
+    if (m_renderer && m_renderer->isSVGShape())
+        return true;
+#endif
+    
+    return false;
+}
+    
+Path AccessibilityRenderObject::elementPath() const
+{
+#if ENABLE(SVG)
+    if (m_renderer && m_renderer->isSVGShape())
+        return toRenderSVGShape(m_renderer)->path();
+#endif
+    
+    return Path();
 }
 
 IntPoint AccessibilityRenderObject::clickPoint()
@@ -1041,32 +1063,16 @@ AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
     if (isFieldset())
         return axObjectCache()->getOrCreate(toRenderFieldset(m_renderer)->findLegend(RenderFieldset::IncludeFloatingOrOutOfFlow));
     
-    Node* element = m_renderer->node();
-    if (!element)
+    Node* node = m_renderer->node();
+    if (!node || !node->isElementNode())
         return 0;
-    HTMLLabelElement* label = labelForElement(static_cast<Element*>(element));
+    HTMLLabelElement* label = labelForElement(toElement(node));
     if (label && label->renderer())
         return axObjectCache()->getOrCreate(label);
 
     return 0;   
 }
     
-bool AccessibilityRenderObject::ariaIsHidden() const
-{
-    if (equalIgnoringCase(getAttribute(aria_hiddenAttr), "true"))
-        return true;
-    
-    // aria-hidden hides this object and any children
-    AccessibilityObject* object = parentObject();
-    while (object) {
-        if (equalIgnoringCase(object->getAttribute(aria_hiddenAttr), "true"))
-            return true;
-        object = object->parentObject();
-    }
-
-    return false;
-}
-
 bool AccessibilityRenderObject::isAllowedChildOfTree() const
 {
     // Determine if this is in a tree. If so, we apply special behavior to make it work like an AXOutline.
@@ -1089,7 +1095,7 @@ bool AccessibilityRenderObject::isAllowedChildOfTree() const
     return true;
 }
     
-AccessibilityObjectInclusion AccessibilityRenderObject::accessibilityIsIgnoredBase() const
+AccessibilityObjectInclusion AccessibilityRenderObject::defaultObjectInclusion() const
 {
     // The following cases can apply to any element that's a subclass of AccessibilityRenderObject.
     
@@ -1103,24 +1109,9 @@ AccessibilityObjectInclusion AccessibilityRenderObject::accessibilityIsIgnoredBa
         
         return IgnoreObject;
     }
-    
-    // Anything marked as aria-hidden or a child of something aria-hidden must be hidden.
-    if (ariaIsHidden())
-        return IgnoreObject;
-    
-    // Anything that is a presentational role must be hidden.
-    if (isPresentationalChildOfAriaRole())
-        return IgnoreObject;
 
-    // Allow the platform to make a decision.
-    AccessibilityObjectInclusion decision = accessibilityPlatformIncludesObject();
-    if (decision == IncludeObject)
-        return IncludeObject;
-    if (decision == IgnoreObject)
-        return IgnoreObject;
-        
-    return DefaultBehavior;
-}  
+    return AccessibilityObject::defaultObjectInclusion();
+}
 
 bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 {
@@ -1131,7 +1122,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     // Check first if any of the common reasons cause this element to be ignored.
     // Then process other use cases that need to be applied to all the various roles
     // that AccessibilityRenderObjects take on.
-    AccessibilityObjectInclusion decision = accessibilityIsIgnoredBase();
+    AccessibilityObjectInclusion decision = defaultObjectInclusion();
     if (decision == IncludeObject)
         return false;
     if (decision == IgnoreObject)
@@ -1248,7 +1239,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
             return false;
         
         if (node && node->isElementNode()) {
-            Element* elt = static_cast<Element*>(node);
+            Element* elt = toElement(node);
             const AtomicString& alt = elt->getAttribute(altAttr);
             // don't ignore an image that has an alt tag
             if (!alt.string().containsOnlyWhitespace())
@@ -1405,7 +1396,7 @@ const AtomicString& AccessibilityRenderObject::accessKey() const
         return nullAtom;
     if (!node->isElementNode())
         return nullAtom;
-    return static_cast<Element*>(node)->getAttribute(accesskeyAttr);
+    return toElement(node)->getAttribute(accesskeyAttr);
 }
 
 VisibleSelection AccessibilityRenderObject::selection() const
@@ -1491,7 +1482,7 @@ void AccessibilityRenderObject::setElementAttributeValue(const QualifiedName& at
     if (!node || !node->isElementNode())
         return;
     
-    Element* element = static_cast<Element*>(node);
+    Element* element = toElement(node);
     element->setAttribute(attributeName, (value) ? "true" : "false");        
 }
     
@@ -1627,7 +1618,7 @@ void AccessibilityRenderObject::setValue(const String& string)
 {
     if (!m_renderer || !m_renderer->node() || !m_renderer->node()->isElementNode())
         return;
-    Element* element = static_cast<Element*>(m_renderer->node());
+    Element* element = toElement(m_renderer->node());
 
     if (!m_renderer->isBoxModelObject())
         return;
@@ -2013,11 +2004,11 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForPoint(const IntPoin
         Widget* widget = toRenderWidget(renderer)->widget();
         if (!widget || !widget->isFrameView())
             break;
-        Frame* frame = static_cast<FrameView*>(widget)->frame();
+        Frame* frame = toFrameView(widget)->frame();
         if (!frame)
             break;
         renderView = frame->document()->renderView();
-        frameView = static_cast<FrameView*>(widget);
+        frameView = toFrameView(widget);
     }
     
     return innerNode->renderer()->positionForPoint(pointResult);
@@ -2188,7 +2179,7 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityHitTest(const IntPo
     
     RenderLayer* layer = toRenderBox(m_renderer)->layer();
      
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
     HitTestResult hitTestResult = HitTestResult(point);
     layer->hitTest(request, hitTestResult);
     if (!hitTestResult.innerNode())
@@ -2268,7 +2259,7 @@ AccessibilityObject* AccessibilityRenderObject::activeDescendant() const
     
     if (m_renderer->node() && !m_renderer->node()->isElementNode())
         return 0;
-    Element* element = static_cast<Element*>(m_renderer->node());
+    Element* element = toElement(m_renderer->node());
         
     const AtomicString& activeDescendantAttrStr = element->getAttribute(aria_activedescendantAttr);
     if (activeDescendantAttrStr.isNull() || activeDescendantAttrStr.isEmpty())
@@ -2321,7 +2312,7 @@ void AccessibilityRenderObject::handleAriaExpandedChanged()
 
 void AccessibilityRenderObject::handleActiveDescendantChanged()
 {
-    Element* element = static_cast<Element*>(renderer()->node());
+    Element* element = toElement(renderer()->node());
     if (!element)
         return;
     Document* doc = renderer()->document();
@@ -2362,7 +2353,7 @@ AccessibilityObject* AccessibilityRenderObject::correspondingLabelForControlElem
 
     Node* node = m_renderer->node();
     if (node && node->isHTMLElement()) {
-        HTMLLabelElement* label = labelForElement(static_cast<Element*>(node));
+        HTMLLabelElement* label = labelForElement(toElement(node));
         if (label)
             return axObjectCache()->getOrCreate(label);
     }
@@ -2491,6 +2482,8 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return ImageRole;
     if (m_renderer->isSVGRoot())
         return SVGRootRole;
+    if (node && node->hasTagName(SVGNames::gTag))
+        return GroupRole;
 #endif
 
 #if ENABLE(MATHML)
@@ -2507,6 +2500,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     
     if (node && node->hasTagName(dtTag))
         return DescriptionListTermRole;
+
+    if (node && node->hasTagName(dlTag))
+        return DescriptionListRole;
 
     if (node && (node->hasTagName(rpTag) || node->hasTagName(rtTag)))
         return AnnotationRole;
@@ -2632,7 +2628,7 @@ bool AccessibilityRenderObject::inheritsPresentationalRole() const
         
         // If native tag of the parent element matches an acceptable name, then return
         // based on its presentational status.
-        if (possibleParentTagNames->contains(static_cast<Element*>(elementNode)->tagQName()))
+        if (possibleParentTagNames->contains(toElement(elementNode)->tagQName()))
             return parent->roleValue() == PresentationalRole;
     }
     
@@ -2733,8 +2729,10 @@ void AccessibilityRenderObject::addImageMapChildren()
             areaObject->setHTMLAreaElement(static_cast<HTMLAreaElement*>(current));
             areaObject->setHTMLMapElement(map);
             areaObject->setParent(this);
-            
-            m_children.append(areaObject);
+            if (!areaObject->accessibilityIsIgnored())
+                m_children.append(areaObject);
+            else
+                axObjectCache()->remove(areaObject->axObjectID());
         }
     }
 }
@@ -2801,7 +2799,7 @@ AccessibilitySVGRoot* AccessibilityRenderObject::remoteSVGRootElement() const
     if (!doc || !doc->isSVGDocument())
         return 0;
     
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(doc)->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(doc)->rootElement();
     if (!rootElement)
         return 0;
     RenderObject* rendererRoot = rootElement->renderer();
@@ -3158,7 +3156,7 @@ void AccessibilityRenderObject::setAccessibleName(const AtomicString& name)
         domNode = m_renderer->node();
 
     if (domNode && domNode->isElementNode())
-        static_cast<Element*>(domNode)->setAttribute(aria_labelAttr, name);
+        toElement(domNode)->setAttribute(aria_labelAttr, name);
 }
     
 static bool isLinkable(const AccessibilityRenderObject& object)
@@ -3281,7 +3279,7 @@ String AccessibilityRenderObject::stringRoleForMSAA() const
     if (!node || !node->isElementNode())
         return String();
 
-    Element* element = static_cast<Element*>(node);
+    Element* element = toElement(node);
     if (!shouldReturnTagNameAsRoleForMSAA(*element))
         return String();
 
@@ -3702,6 +3700,11 @@ String AccessibilityRenderObject::mathFencedCloseString() const
         return String();
     
     return getAttribute(MathMLNames::closeAttr);
+}
+
+int AccessibilityRenderObject::mathLineThickness() const
+{
+    return getAttribute(MathMLNames::linethicknessAttr).toInt();
 }
 
 #endif

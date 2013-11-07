@@ -72,6 +72,11 @@ void ResourceRequest::updateNSURLRequest()
 
 #else
 
+CFURLRequestRef ResourceRequest::cfURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
+{
+    return [nsURLRequest(bodyPolicy) _CFURLRequest];
+}
+
 void ResourceRequest::doUpdateResourceRequest()
 {
     m_url = [m_nsRequest.get() URL];

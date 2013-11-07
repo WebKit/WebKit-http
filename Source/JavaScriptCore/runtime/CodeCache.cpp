@@ -40,14 +40,14 @@ const double CodeCacheMap::workingSetTime = 10.0;
 
 void CodeCacheMap::pruneSlowCase()
 {
-    m_minCapacity = m_size - m_sizeAtLastPrune;
+    m_minCapacity = std::max(m_size - m_sizeAtLastPrune, static_cast<int64_t>(0));
     m_sizeAtLastPrune = m_size;
     m_timeAtLastPrune = monotonicallyIncreasingTime();
 
     if (m_capacity < m_minCapacity)
         m_capacity = m_minCapacity;
 
-    while (m_size > m_capacity) {
+    while (m_size > m_capacity || !canPruneQuickly()) {
         MapType::iterator it = m_map.begin();
         m_size -= it->key.length();
         m_map.remove(it);

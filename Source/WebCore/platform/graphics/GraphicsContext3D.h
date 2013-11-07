@@ -40,7 +40,7 @@
 #include <wtf/text/WTFString.h>
 
 // FIXME: Find a better way to avoid the name confliction for NO_ERROR.
-#if ((PLATFORM(CHROMIUM) && OS(WINDOWS)) || PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS)))
+#if PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS))
 #undef NO_ERROR
 #elif PLATFORM(GTK)
 // This define is from the X11 headers, but it's used below, so we must undefine it.
@@ -52,7 +52,6 @@
 #endif
 
 #if PLATFORM(MAC)
-#include <OpenGL/OpenGL.h>
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS WebGLLayer;
@@ -70,6 +69,8 @@ typedef unsigned int GLuint;
 #endif
 
 #if PLATFORM(MAC)
+typedef struct _CGLContextObject *CGLContextObj;
+
 typedef CGLContextObj PlatformGraphicsContext3D;
 #elif PLATFORM(QT)
 typedef QOpenGLContext* PlatformGraphicsContext3D;
@@ -79,17 +80,13 @@ typedef void* PlatformGraphicsContext3D;
 typedef void* PlatformGraphicsSurface3D;
 #endif
 
-#if (PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)) && USE(SKIA)
+#if PLATFORM(BLACKBERRY) && USE(SKIA)
 class GrContext;
 #endif
 
 // These are currently the same among all implementations.
 const PlatformGraphicsContext3D NullPlatformGraphicsContext3D = 0;
 const Platform3DObject NullPlatform3DObject = 0;
-
-#if USE(CG)
-#include <CoreGraphics/CGContext.h>
-#endif
 
 namespace WebCore {
 class DrawingBuffer;
@@ -495,7 +492,7 @@ public:
     PlatformGraphicsContext3D platformGraphicsContext3D() const { return m_contextObj; }
     Platform3DObject platformTexture() const { return m_compositorTexture; }
     CALayer* platformLayer() const { return reinterpret_cast<CALayer*>(m_webGLLayer.get()); }
-#elif PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
+#elif PLATFORM(BLACKBERRY)
     PlatformGraphicsContext3D platformGraphicsContext3D() const;
     Platform3DObject platformTexture() const;
 #if USE(SKIA)
@@ -531,7 +528,7 @@ public:
 #endif
     bool makeContextCurrent();
 
-#if PLATFORM(MAC) || PLATFORM(CHROMIUM) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
     // With multisampling on, blit from multisampleFBO to regular FBO.
     void prepareTexture();
 #endif
@@ -923,8 +920,8 @@ public:
         bool extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile);
 
 #if USE(SKIA)
-        OwnPtr<NativeImageSkia> m_nativeImage;
-        NativeImageSkia* m_skiaImage;
+        RefPtr<NativeImageSkia> m_nativeImage;
+        RefPtr<NativeImageSkia> m_skiaImage;
 #elif USE(CAIRO)
         ImageSource* m_decoder;
         RefPtr<cairo_surface_t> m_imageSurface;
@@ -935,6 +932,8 @@ public:
         OwnArrayPtr<uint8_t> m_formalizedRGBA8Data;
 #elif PLATFORM(QT)
         QImage m_qtImage;
+#elif PLATFORM(BLACKBERRY)
+        Vector<unsigned> m_imageData;
 #endif
         Image* m_image;
         ImageHtmlDomSource m_imageHtmlDomSource;
@@ -1057,7 +1056,7 @@ private:
 #if PLATFORM(BLACKBERRY) || (PLATFORM(QT) && defined(QT_OPENGL_ES_2)) || ((PLATFORM(GTK) || PLATFORM(EFL)) && USE(OPENGL_ES_2))
     friend class Extensions3DOpenGLES;
     OwnPtr<Extensions3DOpenGLES> m_extensions;
-#elif !PLATFORM(CHROMIUM)
+#else
     friend class Extensions3DOpenGL;
     OwnPtr<Extensions3DOpenGL> m_extensions;
 #endif

@@ -73,7 +73,6 @@ namespace WebKit {
 
 // This simulated mouse click delay in HTMLPlugInImageElement.cpp should generally be the same or shorter than this delay.
 static const double pluginSnapshotTimerDelay = 1.1;
-static const unsigned maximumSnapshotRetries = 60;
 
 class PluginView::URLRequest : public RefCounted<URLRequest> {
 public:
@@ -570,16 +569,20 @@ void PluginView::didInitializePlugin()
     redeliverManualStream();
 
 #if PLATFORM(MAC)
-    if (m_pluginElement->displayState() < HTMLPlugInElement::PlayingWithPendingMouseClick)
+    if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting) {
+        if (frame() && !frame()->settings()->maximumPlugInSnapshotAttempts()) {
+            m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
+            return;
+        }
         m_pluginSnapshotTimer.restart();
-    else {
+    } else {
         if (m_plugin->pluginLayer()) {
             if (frame()) {
                 frame()->view()->enterCompositingMode();
                 m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
             }
         }
-        if (m_pluginElement->displayState() < HTMLPlugInElement::Playing)
+        if (m_pluginElement->displayState() == HTMLPlugInElement::RestartingWithPendingMouseClick)
             m_pluginElement->dispatchPendingMouseClick();
     }
 
@@ -706,7 +709,7 @@ void PluginView::setFrameRect(const WebCore::IntRect& rect)
 
 void PluginView::paint(GraphicsContext* context, const IntRect& /*dirtyRect*/)
 {
-    if (!m_plugin || !m_isInitialized || m_pluginElement->displayState() < HTMLPlugInElement::PlayingWithPendingMouseClick)
+    if (!m_plugin || !m_isInitialized || m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
         return;
 
     if (context->paintingDisabled()) {
@@ -1212,7 +1215,7 @@ void PluginView::invalidateRect(const IntRect& dirtyRect)
         return;
 #endif
 
-    if (m_pluginElement->displayState() < HTMLPlugInElement::PlayingWithPendingMouseClick)
+    if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
         return;
 
     RenderBoxModelObject* renderer = toRenderBoxModelObject(m_pluginElement->renderer());
@@ -1370,7 +1373,7 @@ bool PluginView::isAcceleratedCompositingEnabled()
     if (!settings)
         return false;
 
-    if (m_pluginElement->displayState() < HTMLPlugInElement::PlayingWithPendingMouseClick)
+    if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
         return false;
     return settings->acceleratedCompositingEnabled();
 }
@@ -1623,6 +1626,7 @@ void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>*)
     m_pluginElement->updateSnapshot(snapshotImage.get());
 
 #if PLATFORM(MAC)
+    unsigned maximumSnapshotRetries = frame() ? frame()->settings()->maximumPlugInSnapshotAttempts() : 0;
     if (snapshotImage && isAlmostSolidColor(static_cast<BitmapImage*>(snapshotImage.get())) && m_countSnapshotRetries < maximumSnapshotRetries) {
         ++m_countSnapshotRetries;
         m_pluginSnapshotTimer.restart();
@@ -1646,6 +1650,9 @@ bool PluginView::shouldAlwaysAutoStart() const
 
 void PluginView::pluginDidReceiveUserInteraction()
 {
+    // FIXME: Extend autostart timeout when this codepath is hit.
+    // http://webkit.org/b/113232
+
     if (frame() && !frame()->settings()->plugInSnapshottingEnabled())
         return;
 
@@ -1653,7 +1660,6 @@ void PluginView::pluginDidReceiveUserInteraction()
         return;
 
     m_didReceiveUserInteraction = true;
-    WebProcess::shared().plugInDidReceiveUserInteraction(m_pluginElement->plugInOriginHash());
 }
 
 } // namespace WebKit

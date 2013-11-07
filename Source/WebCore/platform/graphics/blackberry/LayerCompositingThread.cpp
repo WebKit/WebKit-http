@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2007, 2008, 2009 Apple Inc. All rights reserved.
  *
@@ -39,6 +39,7 @@
 #include "LayerCompositingThreadClient.h"
 #include "LayerMessage.h"
 #include "LayerRenderer.h"
+#include "LayerRendererClient.h"
 #include "LayerWebKitThread.h"
 #if ENABLE(VIDEO)
 #include "MediaPlayer.h"
@@ -181,7 +182,7 @@ FloatQuad LayerCompositingThread::getTransformedHolePunchRect() const
 
     // In order to clip we need to determine the current position of this layer, which
     // is encoded in the m_drawTransform value, which was used to initialize m_drawRect.
-    IntRect drawRect = m_layerRenderer->toWebKitDocumentCoordinates(m_drawRect);
+    IntRect drawRect = m_layerRenderer->toDocumentViewportCoordinates(m_drawRect);
 
     // Assert that in this case, where the hole punch rectangle equals the size of the layer,
     // the drawRect has the same size as the hole punch.
@@ -231,8 +232,6 @@ void LayerCompositingThread::drawTextures(double scale, const GLES2Program& prog
 
             glEnable(GL_BLEND);
             glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-            glEnableVertexAttribArray(program.positionLocation());
-            glEnableVertexAttribArray(program.texCoordLocation());
             glUniform1f(program.opacityLocation(), drawOpacity());
             glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &m_transformedBounds);
             glVertexAttribPointer(program.texCoordLocation(), 2, GL_FLOAT, GL_FALSE, 0, texcoords);
@@ -243,14 +242,20 @@ void LayerCompositingThread::drawTextures(double scale, const GLES2Program& prog
 #if ENABLE(VIDEO)
     if (m_mediaPlayer) {
         if (m_isVisible) {
-            // We need to specify the media player location in contents coordinates. The 'visibleRect'
-            // specifies the content region covered by our viewport. So we transform from our
-            // normalized device coordinates [-1, 1] to the 'visibleRect'.
-            float vrw2 = visibleRect.width() / 2.0;
-            float vrh2 = visibleRect.height() / 2.0;
-            float x = m_transformedBounds.p1().x() * vrw2 + vrw2 + visibleRect.x();
-            float y = -m_transformedBounds.p1().y() * vrh2 + vrh2 + visibleRect.y();
-            m_mediaPlayer->paint(0, IntRect((int)(x + 0.5), (int)(y + 0.5), m_bounds.width(), m_bounds.height()));
+            IntRect paintRect;
+            if (m_layerRenderer->client()->shouldChildWindowsUseDocumentCoordinates()) {
+                // We need to specify the media player location in contents coordinates. The 'visibleRect'
+                // specifies the content region covered by our viewport. So we transform from our
+                // normalized device coordinates [-1, 1] to the 'visibleRect'.
+                float vrw2 = visibleRect.width() / 2.0;
+                float vrh2 = visibleRect.height() / 2.0;
+                FloatPoint p(m_transformedBounds.p1().x() * vrw2 + vrw2 + visibleRect.x(),
+                    -m_transformedBounds.p1().y() * vrh2 + vrh2 + visibleRect.y());
+                paintRect = IntRect(roundedIntPoint(p), m_bounds);
+            } else
+                paintRect = m_layerRenderer->toWindowCoordinates(m_drawRect);
+
+            m_mediaPlayer->paint(0, paintRect);
             MediaPlayerPrivate* mpp = static_cast<MediaPlayerPrivate*>(m_mediaPlayer->platformMedia().media.qnxMediaPlayer);
             mpp->drawBufferingAnimation(m_drawTransform, program);
         }
@@ -305,8 +310,6 @@ void LayerCompositingThread::drawSurface(const TransformationMatrix& drawTransfo
         glBindTexture(GL_TEXTURE_2D, surfaceTexID);
 
         FloatQuad surfaceQuad = getTransformedRect(m_bounds, IntRect(IntPoint::zero(), m_bounds), drawTransform);
-        glEnableVertexAttribArray(program.positionLocation());
-        glEnableVertexAttribArray(program.texCoordLocation());
         glUniform1f(program.opacityLocation(), layerRendererSurface()->drawOpacity());
         glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &surfaceQuad);
 

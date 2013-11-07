@@ -124,8 +124,6 @@ class WKView;
 
 #if PLATFORM(GTK)
 typedef GtkWidget* PlatformWidget;
-#elif PLATFORM(EFL)
-typedef Evas_Object* PlatformWidget;
 #endif
 
 namespace WebKit {
@@ -231,14 +229,13 @@ private:
 };
 
 class WebPageProxy
-    : public APIObject
+    : public TypedAPIObject<APIObject::TypePage>
 #if ENABLE(INPUT_TYPE_COLOR)
     , public WebColorChooserProxy::Client
 #endif
     , public WebPopupMenuProxy::Client
     , public CoreIPC::MessageReceiver {
 public:
-    static const Type APIType = TypePage;
 
     static PassRefPtr<WebPageProxy> create(PageClient*, PassRefPtr<WebProcessProxy>, WebPageGroup*, uint64_t pageID);
     virtual ~WebPageProxy();
@@ -419,7 +416,7 @@ public:
     void setComposition(const String&, Vector<WebCore::CompositionUnderline>&, int);
     void cancelComposition();
 #endif
-#if USE(CAIRO)
+#if PLATFORM(GTK)
     PlatformWidget viewWidget();
 #endif
 #if USE(TILED_BACKING_STORE)
@@ -457,6 +454,7 @@ public:
     void setCustomTextEncodingName(const String&);
     String customTextEncodingName() const { return m_customTextEncodingName; }
 
+    bool areActiveDOMObjectsAndAnimationsSuspended() const { return m_isPageSuspended; }
     void resumeActiveDOMObjectsAndAnimations();
     void suspendActiveDOMObjectsAndAnimations();
 
@@ -655,7 +653,6 @@ public:
 
 #if PLATFORM(QT)
     void findZoomableAreaForPoint(const WebCore::IntPoint&, const WebCore::IntSize&);
-    void didReceiveMessageFromNavigatorQtObject(const String&);
 #endif
 
 #if PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(GTK)
@@ -755,6 +752,9 @@ public:
     bool mainFrameInViewSourceMode() const { return m_mainFrameInViewSourceMode; }
     void setMainFrameInViewSourceMode(bool);
 
+    bool overridePrivateBrowsingEnabled() const { return m_overridePrivateBrowsingEnabled; }
+    void setOverridePrivateBrowsingEnabled(bool);
+
     void didReceiveAuthenticationChallengeProxy(uint64_t frameID, PassRefPtr<AuthenticationChallengeProxy>);
 
     int64_t spellDocumentTag();
@@ -776,8 +776,6 @@ public:
 
 private:
     WebPageProxy(PageClient*, PassRefPtr<WebProcessProxy>, WebPageGroup*, uint64_t pageID);
-
-    virtual Type type() const { return APIType; }
 
     // CoreIPC::MessageReceiver
     virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
@@ -1242,7 +1240,8 @@ private:
     bool m_rubberBandsAtTop;
 
     bool m_mainFrameInViewSourceMode;
-
+    bool m_overridePrivateBrowsingEnabled;
+        
     unsigned m_pageCount;
 
     WebCore::IntRect m_visibleScrollerThumbRect;

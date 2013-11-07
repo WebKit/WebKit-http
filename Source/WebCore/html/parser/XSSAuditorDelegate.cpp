@@ -41,59 +41,77 @@
 
 namespace WebCore {
 
-bool XSSInfo::isSafeToSendToAnotherThread() const
-{
-    return m_reportURL.isSafeToSendToAnotherThread();
-}
-
 XSSAuditorDelegate::XSSAuditorDelegate(Document* document)
     : m_document(document)
-    , m_didNotifyClient(false)
+    , m_didSendNotifications(false)
 {
     ASSERT(isMainThread());
     ASSERT(m_document);
+}
+
+static inline String buildConsoleError(const XSSInfo& xssInfo, const String& url)
+{
+    StringBuilder message;
+    message.append("The XSS Auditor ");
+    message.append(xssInfo.m_didBlockEntirePage ? "blocked access to" : "refused to execute a script in");
+    message.append(" '");
+    message.append(url);
+    message.append("' because ");
+    message.append(xssInfo.m_didBlockEntirePage ? "the source code of a script" : "its source code");
+    message.append(" was found within the request.");
+
+    if (xssInfo.m_didSendCSPHeader)
+        message.append(" The server sent a 'Content-Security-Policy' header requesting this behavior.");
+    else if (xssInfo.m_didSendXSSProtectionHeader)
+        message.append(" The server sent an 'X-XSS-Protection' header requesting this behavior.");
+    else
+        message.append(" The auditor was enabled as the server sent neither an 'X-XSS-Protection' nor 'Content-Security-Policy' header.");
+
+    return message.toString();
+}
+
+PassRefPtr<FormData> XSSAuditorDelegate::generateViolationReport()
+{
+    ASSERT(isMainThread());
+
+    FrameLoader* frameLoader = m_document->frame()->loader();
+    String httpBody;
+    if (frameLoader->documentLoader()) {
+        if (FormData* formData = frameLoader->documentLoader()->originalRequest().httpBody())
+            httpBody = formData->flattenToString();
+    }
+
+    RefPtr<InspectorObject> reportDetails = InspectorObject::create();
+    reportDetails->setString("request-url", m_document->url().string());
+    reportDetails->setString("request-body", httpBody);
+
+    RefPtr<InspectorObject> reportObject = InspectorObject::create();
+    reportObject->setObject("xss-report", reportDetails.release());
+
+    return FormData::create(reportObject->toJSONString().utf8().data());
 }
 
 void XSSAuditorDelegate::didBlockScript(const XSSInfo& xssInfo)
 {
     ASSERT(isMainThread());
 
-    // FIXME: Consider using a more helpful console message.
-    DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Refused to execute a JavaScript script. Source code of script found within request.\n")));
-    m_document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, consoleMessage);
+    m_document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, buildConsoleError(xssInfo, m_document->url().string()));
 
     FrameLoader* frameLoader = m_document->frame()->loader();
-
     if (xssInfo.m_didBlockEntirePage)
         frameLoader->stopAllLoaders();
 
-    if (!m_didNotifyClient) {
+    if (!m_didSendNotifications) {
+        m_didSendNotifications = true;
+
         frameLoader->client()->didDetectXSS(m_document->url(), xssInfo.m_didBlockEntirePage);
-        m_didNotifyClient = true;
+
+        if (!m_reportURL.isEmpty())
+            PingLoader::sendViolationReport(m_document->frame(), m_reportURL, generateViolationReport());
     }
 
-    if (!xssInfo.m_reportURL.isEmpty()) {
-        RefPtr<InspectorObject> reportDetails = InspectorObject::create();
-        reportDetails->setString("request-url", m_document->url().string());
-
-        String httpBody;
-        if (frameLoader->documentLoader()) {
-            if (FormData* formData = frameLoader->documentLoader()->originalRequest().httpBody())
-                httpBody = formData->flattenToString();
-        }
-        reportDetails->setString("request-body", httpBody);
-
-        RefPtr<InspectorObject> reportObject = InspectorObject::create();
-        reportObject->setObject("xss-report", reportDetails.release());
-
-        RefPtr<FormData> report = FormData::create(reportObject->toJSONString().utf8().data());
-        PingLoader::sendViolationReport(m_document->frame(), xssInfo.m_reportURL, report);
-    }
-
-    if (xssInfo.m_didBlockEntirePage) {
-        m_document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, String("Entire page will be blocked."));
-        m_document->frame()->navigationScheduler()->scheduleLocationChange(m_document->securityOrigin(), String("data:text/html,<p></p>"), blankURL());
-    }
+    if (xssInfo.m_didBlockEntirePage)
+        m_document->frame()->navigationScheduler()->scheduleLocationChange(m_document->securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
 }
 
 } // namespace WebCore

@@ -36,6 +36,7 @@
 #endif
 #include "PageClientBlackBerry.h"
 #include "PlatformMouseEvent.h"
+#include "ProximityDetector.h"
 #include "ScriptSourceCode.h"
 #include "SelectionOverlay.h"
 #include "Timer.h"
@@ -59,6 +60,7 @@ class Frame;
 class GeolocationClientBlackBerry;
 class GraphicsLayerBlackBerry;
 class LayerWebKitThread;
+class NavigatorContentUtilsClientBlackBerry;
 class Node;
 class Page;
 class PluginView;
@@ -113,7 +115,7 @@ public:
     bool handleMouseEvent(WebCore::PlatformMouseEvent&);
     bool handleWheelEvent(WebCore::PlatformWheelEvent&);
 
-    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, const BlackBerry::Platform::String& method, Platform::NetworkRequest::CachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool isInitial, bool mustHandleInternally = false, bool forceDownload = false, const BlackBerry::Platform::String& overrideContentType = BlackBerry::Platform::String::emptyString(), const BlackBerry::Platform::String& suggestedSaveName = BlackBerry::Platform::String::emptyString());
+    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, const BlackBerry::Platform::String& method, Platform::NetworkRequest::CachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool isInitial, bool mustHandleInternally = false, bool needReferer = false, bool forceDownload = false, const BlackBerry::Platform::String& overrideContentType = BlackBerry::Platform::String::emptyString(), const BlackBerry::Platform::String& suggestedSaveName = BlackBerry::Platform::String::emptyString());
     void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& mimeType, const BlackBerry::Platform::String& failingURL);
     bool executeJavaScript(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
     bool executeJavaScriptInIsolatedWorld(const WebCore::ScriptSourceCode&, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
@@ -262,33 +264,6 @@ public:
     WebCore::IntPoint transformedMaximumScrollPosition() const;
     WebCore::IntSize transformedActualVisibleSize() const;
     WebCore::IntSize transformedViewportSize() const;
-    WebCore::IntRect transformedVisibleContentsRect() const;
-    WebCore::IntSize transformedContentsSize() const;
-
-    // Generic conversions of points, rects, relative to and from contents and viewport.
-    WebCore::IntPoint mapFromContentsToViewport(const WebCore::IntPoint&) const;
-    WebCore::IntPoint mapFromViewportToContents(const WebCore::IntPoint&) const;
-    WebCore::IntRect mapFromContentsToViewport(const WebCore::IntRect&) const;
-    WebCore::IntRect mapFromViewportToContents(const WebCore::IntRect&) const;
-
-    // Generic conversions of points, rects, relative to and from transformed contents and transformed viewport.
-    WebCore::IntPoint mapFromTransformedContentsToTransformedViewport(const WebCore::IntPoint&) const;
-    WebCore::IntPoint mapFromTransformedViewportToTransformedContents(const WebCore::IntPoint&) const;
-    WebCore::IntRect mapFromTransformedContentsToTransformedViewport(const WebCore::IntRect&) const;
-    WebCore::IntRect mapFromTransformedViewportToTransformedContents(const WebCore::IntRect&) const;
-
-    // Generic conversions of points, rects, and sizes to and from transformed coordinates.
-    WebCore::IntPoint mapToTransformed(const WebCore::IntPoint&) const;
-    WebCore::FloatPoint mapToTransformedFloatPoint(const WebCore::FloatPoint&) const;
-    WebCore::IntPoint mapFromTransformed(const WebCore::IntPoint&) const;
-    WebCore::FloatPoint mapFromTransformedFloatPoint(const WebCore::FloatPoint&) const;
-    WebCore::FloatRect mapFromTransformedFloatRect(const WebCore::FloatRect&) const;
-    WebCore::IntSize mapToTransformed(const WebCore::IntSize&) const;
-    WebCore::IntSize mapFromTransformed(const WebCore::IntSize&) const;
-    WebCore::IntRect mapToTransformed(const WebCore::IntRect&) const;
-    void clipToTransformedContentsRect(WebCore::IntRect&) const;
-    WebCore::IntRect mapFromTransformed(const WebCore::IntRect&) const;
-    bool transformedPointEqualsUntransformedPoint(const WebCore::IntPoint& transformedPoint, const WebCore::IntPoint& untransformedPoint);
 
     // Notification methods that deliver changes to the real geometry of the device as specified above.
     void notifyTransformChanged();
@@ -322,6 +297,7 @@ public:
 
     void selectionChanged(WebCore::Frame*);
     void setOverlayExpansionPixelHeight(int);
+    void updateSelectionScrollView(const WebCore::Node*);
 
     void updateDelegatedOverlays(bool dispatched = false);
 
@@ -372,9 +348,9 @@ public:
 
     void setScreenOrientation(int);
 
-    // Scroll and/or zoom so that the WebPage fits the new actual
-    // visible size.
-    void setViewportSize(const WebCore::IntSize& transformedActualVisibleSize, bool ensureFocusElementVisible);
+    // Scroll and/or zoom so that the WebPage fits the new actual visible size, a.k.a. visual viewport.
+    // Also sets the default layout size, a.k.a. the layout viewport.
+    bool setViewportSize(const WebCore::IntSize& transformedActualVisibleSize, const WebCore::IntSize& defaultLayoutSize, bool ensureFocusElementVisible);
 
     void scheduleDeferrableTimer(WebCore::Timer<WebPagePrivate>*, double timeOut);
     void unscheduleAllDeferrableTimers();
@@ -398,9 +374,9 @@ public:
     WebCore::GraphicsLayer* overlayLayer();
 
     // Fallback GraphicsLayerClient implementation, used for various overlay layers.
-    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) { }
+    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double) { }
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*);
-    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& inClip) { }
+    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect&) { }
 
     // WebKit thread, plumbed through from ChromeClientBlackBerry.
     void setRootLayerWebKitThread(WebCore::Frame*, WebCore::LayerWebKitThread*);
@@ -474,6 +450,9 @@ public:
 
     void animateToScaleAndDocumentScrollPosition(double destinationZoomScale, const WebCore::FloatPoint& destinationScrollPosition, bool shouldConstrainScrollingToContentEdge = true);
 
+    void updateBackgroundColor(const WebCore::Color& backgroundColor);
+    WebCore::Color documentBackgroundColor() const;
+
     WebPage* m_webPage;
     WebPageClient* m_client;
     WebCore::InspectorClientBlackBerry* m_inspectorClient;
@@ -485,6 +464,9 @@ public:
     OwnPtr<WebTapHighlight> m_tapHighlight;
     OwnPtr<WebTapHighlight> m_selectionHighlight;
     OwnPtr<SelectionOverlay> m_selectionOverlay;
+#if ENABLE(NAVIGATOR_CONTENT_UTILS)
+    OwnPtr<WebCore::NavigatorContentUtilsClientBlackBerry> m_navigatorContentUtilsClient;
+#endif
 
     bool m_visible;
     ActivationStateType m_activationState;
@@ -521,6 +503,7 @@ public:
     InputHandler* m_inputHandler;
     SelectionHandler* m_selectionHandler;
     TouchEventHandler* m_touchEventHandler;
+    ProximityDetector* m_proximityDetector;
 
 #if ENABLE(EVENT_MODE_METATAGS)
     WebCore::CursorEventMode m_cursorEventMode;
@@ -608,7 +591,6 @@ public:
     bool m_wouldSetFocused;
     bool m_wouldSetPageVisibilityState;
     bool m_cachedFocused;
-    bool m_enableQnxJavaScriptObject;
     Vector<bool> m_cachedPopupListSelecteds;
     int m_cachedPopupListSelectedIndex;
     BlackBerry::Platform::String m_cachedDateTimeInput;

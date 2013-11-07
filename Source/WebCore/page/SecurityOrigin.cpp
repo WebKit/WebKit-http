@@ -529,7 +529,7 @@ PassRefPtr<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const St
     String host = databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1);
     
     host = decodeURLEscapeSequences(host);
-    return create(KURL(KURL(), protocol + "://" + host + ":" + String::number(port)));
+    return create(KURL(KURL(), protocol + "://" + host + ":" + String::number(port) + "/"));
 }
 
 PassRefPtr<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, int port)
@@ -537,7 +537,7 @@ PassRefPtr<SecurityOrigin> SecurityOrigin::create(const String& protocol, const 
     if (port < 0 || port > MaxAllowedPort)
         createUnique();
     String decodedHost = decodeURLEscapeSequences(host);
-    return create(KURL(KURL(), protocol + "://" + host + ":" + String::number(port)));
+    return create(KURL(KURL(), protocol + "://" + host + ":" + String::number(port) + "/"));
 }
 
 String SecurityOrigin::databaseIdentifier() const 
@@ -590,6 +590,13 @@ bool SecurityOrigin::isSameSchemeHostPort(const SecurityOrigin* other) const
         return false;
 
     return true;
+}
+
+String SecurityOrigin::urlWithUniqueSecurityOrigin()
+{
+    ASSERT(isMainThread());
+    DEFINE_STATIC_LOCAL(const String, uniqueSecurityOriginURL, (ASCIILiteral("data:,")));
+    return uniqueSecurityOriginURL;
 }
 
 } // namespace WebCore

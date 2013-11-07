@@ -45,6 +45,10 @@ class HTMLMediaElement;
 class TextTrack;
 class TextTrackCue;
 class TextTrackCueList;
+#if ENABLE(WEBVTT_REGIONS)
+class TextTrackRegion;
+class TextTrackRegionList;
+#endif
 
 class TextTrackClient {
 public:
@@ -68,6 +72,9 @@ public:
         return adoptRef(new TextTrack(context, client, kind, label, language, AddTrack));
     }
     virtual ~TextTrack();
+
+    static TextTrack* captionMenuOffItem();
+    static TextTrack* captionMenuAutomaticItem();
 
     void setMediaElement(HTMLMediaElement* element) { m_mediaElement = element; }
     HTMLMediaElement* mediaElement() { return m_mediaElement; }
@@ -109,6 +116,12 @@ public:
     void removeCue(TextTrackCue*, ExceptionCode&);
     bool hasCue(TextTrackCue*);
 
+#if ENABLE(VIDEO_TRACK) && ENABLE(WEBVTT_REGIONS)
+    TextTrackRegionList* regions();
+    void addRegion(PassRefPtr<TextTrackRegion>);
+    void removeRegion(TextTrackRegion*, ExceptionCode&);
+#endif
+
     void cueWillChange(TextTrackCue*);
     void cueDidChange(TextTrackCue*);
 
@@ -118,6 +131,10 @@ public:
     TextTrackType trackType() const { return m_trackType; }
 
     virtual bool isClosedCaptions() const { return false; }
+
+    virtual bool containsOnlyForcedSubtitles() const { return false; }
+    virtual bool isMainProgramContent() const;
+    virtual bool isEasyToRead() const { return false; }
 
     int trackIndex();
     void invalidateTrackIndex();
@@ -139,17 +156,26 @@ public:
 
 protected:
     TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomicString& kind, const AtomicString& label, const AtomicString& language, TextTrackType);
+#if ENABLE(VIDEO_TRACK) && ENABLE(WEBVTT_REGIONS)
+    TextTrackRegionList* regionList();
+#endif
 
     RefPtr<TextTrackCueList> m_cues;
 
 private:
-    TextTrackCueList* ensureTextTrackCueList();
+
+#if ENABLE(VIDEO_TRACK) && ENABLE(WEBVTT_REGIONS)
+    TextTrackRegionList* ensureTextTrackRegionList();
+    RefPtr<TextTrackRegionList> m_regions;
+#endif
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     virtual TextTrack* publicTrack() OVERRIDE { return this; }
 
     RefPtr<PlatformTextTrack> m_platformTextTrack;
 #endif
+
+    TextTrackCueList* ensureTextTrackCueList();
 
     HTMLMediaElement* m_mediaElement;
     AtomicString m_kind;

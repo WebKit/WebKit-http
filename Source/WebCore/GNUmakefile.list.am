@@ -51,8 +51,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSAudioContext.h \
 	DerivedSources/WebCore/JSAudioDestinationNode.cpp \
 	DerivedSources/WebCore/JSAudioDestinationNode.h \
-	DerivedSources/WebCore/JSAudioGain.cpp \
-	DerivedSources/WebCore/JSAudioGain.h \
 	DerivedSources/WebCore/JSGainNode.cpp \
 	DerivedSources/WebCore/JSGainNode.h \
 	DerivedSources/WebCore/JSAudioListener.cpp \
@@ -113,6 +111,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSCrypto.h \
 	DerivedSources/WebCore/JSCSSCharsetRule.cpp \
 	DerivedSources/WebCore/JSCSSCharsetRule.h \
+	DerivedSources/WebCore/JSCSSFontFaceLoadEvent.cpp \
+	DerivedSources/WebCore/JSCSSFontFaceLoadEvent.h \
 	DerivedSources/WebCore/JSCSSFontFaceRule.cpp \
 	DerivedSources/WebCore/JSCSSFontFaceRule.h \
 	DerivedSources/WebCore/JSCSSHostRule.cpp \
@@ -292,6 +292,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSFloat64Array.h \
 	DerivedSources/WebCore/JSFocusEvent.cpp \
 	DerivedSources/WebCore/JSFocusEvent.h \
+	DerivedSources/WebCore/JSFontLoader.cpp \
+	DerivedSources/WebCore/JSFontLoader.h \
 	DerivedSources/WebCore/JSGamepad.cpp \
 	DerivedSources/WebCore/JSGamepad.h \
 	DerivedSources/WebCore/JSGamepadList.cpp \
@@ -671,6 +673,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSScriptProfile.h \
 	DerivedSources/WebCore/JSScriptProfileNode.cpp \
 	DerivedSources/WebCore/JSScriptProfileNode.h \
+	DerivedSources/WebCore/JSSecurityPolicyViolationEvent.cpp \
+	DerivedSources/WebCore/JSSecurityPolicyViolationEvent.h \
 	DerivedSources/WebCore/JSShadowRoot.cpp \
 	DerivedSources/WebCore/JSShadowRoot.h \
 	DerivedSources/WebCore/JSSharedWorkerContext.cpp \
@@ -715,12 +719,14 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSStorageEvent.h \
 	DerivedSources/WebCore/JSStorageInfo.cpp \
 	DerivedSources/WebCore/JSStorageInfo.h \
-	DerivedSources/WebCore/JSStorageInfoErrorCallback.cpp \
-	DerivedSources/WebCore/JSStorageInfoErrorCallback.h \
-	DerivedSources/WebCore/JSStorageInfoQuotaCallback.cpp \
-	DerivedSources/WebCore/JSStorageInfoQuotaCallback.h \
-	DerivedSources/WebCore/JSStorageInfoUsageCallback.cpp \
-	DerivedSources/WebCore/JSStorageInfoUsageCallback.h \
+	DerivedSources/WebCore/JSStorageErrorCallback.cpp \
+	DerivedSources/WebCore/JSStorageErrorCallback.h \
+	DerivedSources/WebCore/JSStorageQuota.cpp \
+	DerivedSources/WebCore/JSStorageQuota.h \
+	DerivedSources/WebCore/JSStorageQuotaCallback.cpp \
+	DerivedSources/WebCore/JSStorageQuotaCallback.h \
+	DerivedSources/WebCore/JSStorageUsageCallback.cpp \
+	DerivedSources/WebCore/JSStorageUsageCallback.h \
 	DerivedSources/WebCore/JSStringCallback.cpp \
 	DerivedSources/WebCore/JSStringCallback.h \
 	DerivedSources/WebCore/JSStyleMedia.cpp \
@@ -781,6 +787,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSWebGLBuffer.h \
 	DerivedSources/WebCore/JSWebGLCompressedTextureATC.cpp \
 	DerivedSources/WebCore/JSWebGLCompressedTextureATC.h \
+	DerivedSources/WebCore/JSWebGLCompressedTexturePVRTC.cpp \
+	DerivedSources/WebCore/JSWebGLCompressedTexturePVRTC.h \
 	DerivedSources/WebCore/JSWebGLCompressedTextureS3TC.cpp \
 	DerivedSources/WebCore/JSWebGLCompressedTextureS3TC.h \
 	DerivedSources/WebCore/JSWebGLContextAttributes.cpp \
@@ -1221,6 +1229,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/gamepad/Gamepad.idl \
 	$(WebCore)/Modules/gamepad/GamepadList.idl \
 	$(WebCore)/Modules/gamepad/NavigatorGamepad.idl \
+	$(WebCore)/Modules/geolocation/Coordinates.idl \
 	$(WebCore)/Modules/geolocation/Geolocation.idl \
 	$(WebCore)/Modules/geolocation/Geoposition.idl \
 	$(WebCore)/Modules/geolocation/NavigatorGeolocation.idl \
@@ -1275,10 +1284,13 @@ dom_binding_idls += \
 	$(WebCore)/Modules/notifications/WorkerContextNotifications.idl \
 	$(WebCore)/Modules/proximity/DeviceProximityEvent.idl \
 	$(WebCore)/Modules/quota/DOMWindowQuota.idl \
+	$(WebCore)/Modules/quota/NavigatorStorageQuota.idl \
 	$(WebCore)/Modules/quota/StorageInfo.idl \
-	$(WebCore)/Modules/quota/StorageInfoErrorCallback.idl \
-	$(WebCore)/Modules/quota/StorageInfoQuotaCallback.idl \
-	$(WebCore)/Modules/quota/StorageInfoUsageCallback.idl \
+	$(WebCore)/Modules/quota/StorageErrorCallback.idl \
+	$(WebCore)/Modules/quota/StorageQuota.idl \
+	$(WebCore)/Modules/quota/StorageQuotaCallback.idl \
+	$(WebCore)/Modules/quota/StorageUsageCallback.idl \
+	$(WebCore)/Modules/quota/WorkerNavigatorStorageQuota.idl \
 	$(WebCore)/Modules/webaudio/AudioBuffer.idl \
 	$(WebCore)/Modules/webaudio/AudioBufferCallback.idl \
 	$(WebCore)/Modules/webaudio/AudioBufferSourceNode.idl \
@@ -1286,7 +1298,6 @@ dom_binding_idls += \
 	$(WebCore)/Modules/webaudio/ChannelSplitterNode.idl \
 	$(WebCore)/Modules/webaudio/AudioContext.idl \
 	$(WebCore)/Modules/webaudio/AudioDestinationNode.idl \
-	$(WebCore)/Modules/webaudio/AudioGain.idl \
 	$(WebCore)/Modules/webaudio/GainNode.idl \
 	$(WebCore)/Modules/webaudio/AudioListener.idl \
 	$(WebCore)/Modules/webaudio/AudioNode.idl \
@@ -1329,6 +1340,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/websockets/WebSocket.idl \
 	$(WebCore)/Modules/websockets/WorkerContextWebSocket.idl \
 	$(WebCore)/css/CSSCharsetRule.idl \
+	$(WebCore)/css/CSSFontFaceLoadEvent.idl \
 	$(WebCore)/css/CSSFontFaceRule.idl \
 	$(WebCore)/css/CSSHostRule.idl \
 	$(WebCore)/css/CSSImportRule.idl \
@@ -1345,6 +1357,7 @@ dom_binding_idls += \
 	$(WebCore)/css/CSSValueList.idl \
 	$(WebCore)/css/Counter.idl \
 	$(WebCore)/css/DOMWindowCSS.idl \
+	$(WebCore)/css/FontLoader.idl \
 	$(WebCore)/css/MediaList.idl \
 	$(WebCore)/css/MediaQueryList.idl \
 	$(WebCore)/css/RGBColor.idl \
@@ -1416,6 +1429,7 @@ dom_binding_idls += \
 	$(WebCore)/dom/Range.idl \
 	$(WebCore)/dom/RangeException.idl \
 	$(WebCore)/dom/RequestAnimationFrameCallback.idl \
+	$(WebCore)/dom/SecurityPolicyViolationEvent.idl \
 	$(WebCore)/dom/ShadowRoot.idl \
 	$(WebCore)/dom/StringCallback.idl \
 	$(WebCore)/dom/Text.idl \
@@ -1555,6 +1569,7 @@ dom_binding_idls += \
 	$(WebCore)/html/canvas/WebGLActiveInfo.idl \
 	$(WebCore)/html/canvas/WebGLBuffer.idl \
 	$(WebCore)/html/canvas/WebGLCompressedTextureATC.idl \
+	$(WebCore)/html/canvas/WebGLCompressedTexturePVRTC.idl \
 	$(WebCore)/html/canvas/WebGLCompressedTextureS3TC.idl \
 	$(WebCore)/html/canvas/WebGLContextAttributes.idl \
 	$(WebCore)/html/canvas/WebGLContextEvent.idl \
@@ -1584,7 +1599,6 @@ dom_binding_idls += \
 	$(WebCore)/loader/appcache/DOMApplicationCache.idl \
 	$(WebCore)/page/BarInfo.idl \
 	$(WebCore)/page/Console.idl \
-	$(WebCore)/page/Coordinates.idl \
 	$(WebCore)/page/Crypto.idl \
 	$(WebCore)/page/DOMSecurityPolicy.idl \
 	$(WebCore)/page/DOMSelection.idl \
@@ -1846,8 +1860,11 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/gamepad/GamepadList.h \
 	Source/WebCore/Modules/gamepad/NavigatorGamepad.cpp \
 	Source/WebCore/Modules/gamepad/NavigatorGamepad.h \
+	Source/WebCore/Modules/geolocation/Coordinates.cpp \
+	Source/WebCore/Modules/geolocation/Coordinates.h \
 	Source/WebCore/Modules/geolocation/Geolocation.cpp \
 	Source/WebCore/Modules/geolocation/Geolocation.h \
+	Source/WebCore/Modules/geolocation/GeolocationClient.h \
 	Source/WebCore/Modules/geolocation/GeolocationController.cpp \
 	Source/WebCore/Modules/geolocation/GeolocationController.h \
 	Source/WebCore/Modules/geolocation/GeolocationError.h \
@@ -2011,11 +2028,18 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/proximity/DeviceProximityEvent.h \
 	Source/WebCore/Modules/quota/DOMWindowQuota.cpp \
 	Source/WebCore/Modules/quota/DOMWindowQuota.h \
+	Source/WebCore/Modules/quota/NavigatorStorageQuota.cpp \
+	Source/WebCore/Modules/quota/NavigatorStorageQuota.h \
 	Source/WebCore/Modules/quota/StorageInfo.cpp \
 	Source/WebCore/Modules/quota/StorageInfo.h \
-	Source/WebCore/Modules/quota/StorageInfoErrorCallback.h \
-	Source/WebCore/Modules/quota/StorageInfoQuotaCallback.h \
-	Source/WebCore/Modules/quota/StorageInfoUsageCallback.h \
+	Source/WebCore/Modules/quota/StorageErrorCallback.cpp \
+	Source/WebCore/Modules/quota/StorageErrorCallback.h \
+	Source/WebCore/Modules/quota/StorageQuota.cpp \
+	Source/WebCore/Modules/quota/StorageQuota.h \
+	Source/WebCore/Modules/quota/StorageQuotaCallback.h \
+	Source/WebCore/Modules/quota/StorageUsageCallback.h \
+	Source/WebCore/Modules/quota/WorkerNavigatorStorageQuota.cpp \
+	Source/WebCore/Modules/quota/WorkerNavigatorStorageQuota.h \
 	Source/WebCore/Modules/webaudio/AsyncAudioDecoder.cpp \
 	Source/WebCore/Modules/webaudio/AsyncAudioDecoder.h \
 	Source/WebCore/Modules/webaudio/AudioBasicInspectorNode.cpp \
@@ -2035,7 +2059,6 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/webaudio/AudioContext.h \
 	Source/WebCore/Modules/webaudio/AudioDestinationNode.cpp \
 	Source/WebCore/Modules/webaudio/AudioDestinationNode.h \
-	Source/WebCore/Modules/webaudio/AudioGain.h \
 	Source/WebCore/Modules/webaudio/GainNode.cpp \
 	Source/WebCore/Modules/webaudio/GainNode.h \
 	Source/WebCore/Modules/webaudio/AudioListener.cpp \
@@ -2316,7 +2339,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSCanvasRenderingContextCustom.cpp \
 	Source/WebCore/bindings/js/JSClipboardCustom.cpp \
 	Source/WebCore/bindings/js/JSConsoleCustom.cpp \
-	Source/WebCore/bindings/js/JSCoordinatesCustom.cpp \
 	Source/WebCore/bindings/js/JSCryptoCustom.cpp \
 	Source/WebCore/bindings/js/JSCustomSQLStatementErrorCallback.cpp \
 	Source/WebCore/bindings/js/JSCustomXPathNSResolver.cpp \
@@ -2399,7 +2421,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSInjectedScriptHostCustom.cpp \
 	Source/WebCore/bindings/js/JSInjectedScriptManager.cpp \
 	Source/WebCore/bindings/js/JSInspectorFrontendHostCustom.cpp \
-	Source/WebCore/bindings/js/JSScriptProcessorNodeCustom.cpp \
 	Source/WebCore/bindings/js/JSJavaScriptCallFrameCustom.cpp \
 	Source/WebCore/bindings/js/JSLazyEventListener.cpp \
 	Source/WebCore/bindings/js/JSLazyEventListener.h \
@@ -2436,6 +2457,7 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSSQLResultSetRowListCustom.cpp \
 	Source/WebCore/bindings/js/JSSQLTransactionCustom.cpp \
 	Source/WebCore/bindings/js/JSSQLTransactionSyncCustom.cpp \
+	Source/WebCore/bindings/js/JSRTCStatsResponseCustom.cpp \
 	Source/WebCore/bindings/js/JSSharedWorkerCustom.cpp \
 	Source/WebCore/bindings/js/JSStorageCustom.cpp \
 	Source/WebCore/bindings/js/JSStorageCustom.h \
@@ -2567,6 +2589,8 @@ webcore_sources += \
 	Source/WebCore/css/CSSDefaultStyleSheets.h \
 	Source/WebCore/css/CSSFontFace.cpp \
 	Source/WebCore/css/CSSFontFace.h \
+	Source/WebCore/css/CSSFontFaceLoadEvent.cpp \
+	Source/WebCore/css/CSSFontFaceLoadEvent.h \
 	Source/WebCore/css/CSSFontFaceRule.cpp \
 	Source/WebCore/css/CSSFontFaceRule.h \
 	Source/WebCore/css/CSSFontFaceSource.cpp \
@@ -2655,8 +2679,12 @@ webcore_sources += \
 	Source/WebCore/css/DashboardRegion.h \
 	Source/WebCore/css/DocumentRuleSets.cpp \
 	Source/WebCore/css/DocumentRuleSets.h \
+	Source/WebCore/css/ElementRuleCollector.cpp \
+	Source/WebCore/css/ElementRuleCollector.h \
 	Source/WebCore/css/FontFeatureValue.cpp \
 	Source/WebCore/css/FontFeatureValue.h \
+	Source/WebCore/css/FontLoader.cpp \
+	Source/WebCore/css/FontLoader.h \
 	Source/WebCore/css/FontValue.cpp \
 	Source/WebCore/css/FontValue.h \
 	Source/WebCore/css/InspectorCSSOMWrappers.cpp \
@@ -2679,6 +2707,8 @@ webcore_sources += \
 	Source/WebCore/css/MediaQueryListListener.h \
 	Source/WebCore/css/MediaQueryMatcher.cpp \
 	Source/WebCore/css/MediaQueryMatcher.h \
+	Source/WebCore/css/PageRuleCollector.cpp \
+	Source/WebCore/css/PageRuleCollector.h \
 	Source/WebCore/css/Pair.h \
 	Source/WebCore/css/PropertySetCSSStyleDeclaration.cpp \
 	Source/WebCore/css/PropertySetCSSStyleDeclaration.h \
@@ -3010,6 +3040,7 @@ webcore_sources += \
 	Source/WebCore/dom/ScriptRunner.h \
 	Source/WebCore/dom/SecurityContext.cpp \
 	Source/WebCore/dom/SecurityContext.h \
+	Source/WebCore/dom/SecurityPolicyViolationEvent.h \
 	Source/WebCore/dom/SelectorQuery.cpp \
 	Source/WebCore/dom/SelectorQuery.h \
 	Source/WebCore/dom/ShadowRoot.cpp \
@@ -3299,6 +3330,8 @@ webcore_sources += \
 	Source/WebCore/html/canvas/WebGLBuffer.h \
 	Source/WebCore/html/canvas/WebGLCompressedTextureATC.cpp \
 	Source/WebCore/html/canvas/WebGLCompressedTextureATC.h \
+	Source/WebCore/html/canvas/WebGLCompressedTexturePVRTC.cpp \
+	Source/WebCore/html/canvas/WebGLCompressedTexturePVRTC.h \
 	Source/WebCore/html/canvas/WebGLCompressedTextureS3TC.cpp \
 	Source/WebCore/html/canvas/WebGLCompressedTextureS3TC.h \
 	Source/WebCore/html/canvas/WebGLContextAttributes.cpp \
@@ -3966,6 +3999,7 @@ webcore_sources += \
 	Source/WebCore/loader/cache/CachedCSSStyleSheet.h \
 	Source/WebCore/loader/cache/CachedFont.cpp \
 	Source/WebCore/loader/cache/CachedFont.h \
+	Source/WebCore/loader/cache/CachedFontClient.h \
 	Source/WebCore/loader/cache/CachedImage.cpp \
 	Source/WebCore/loader/cache/CachedImage.h \
 	Source/WebCore/loader/cache/CachedImageClient.h \
@@ -3994,8 +4028,6 @@ webcore_sources += \
 	Source/WebCore/loader/cache/CachedXSLStyleSheet.h \
 	Source/WebCore/loader/cache/MemoryCache.h \
 	Source/WebCore/loader/cache/CachePolicy.h \
-	Source/WebCore/loader/CachedMetadata.cpp \
-	Source/WebCore/loader/CachedMetadata.h \
 	Source/WebCore/loader/CookieJar.cpp \
 	Source/WebCore/loader/CookieJar.h \
 	Source/WebCore/loader/CrossOriginAccessControl.cpp \
@@ -4052,8 +4084,6 @@ webcore_sources += \
 	Source/WebCore/loader/LinkLoaderClient.h \
 	Source/WebCore/loader/LoaderStrategy.cpp \
 	Source/WebCore/loader/LoaderStrategy.h \
-	Source/WebCore/loader/MainResourceLoader.cpp \
-	Source/WebCore/loader/MainResourceLoader.h \
 	Source/WebCore/loader/MixedContentChecker.cpp \
 	Source/WebCore/loader/MixedContentChecker.h \
 	Source/WebCore/loader/NavigationAction.cpp \
@@ -4081,6 +4111,7 @@ webcore_sources += \
 	Source/WebCore/loader/ResourceLoader.cpp \
 	Source/WebCore/loader/ResourceLoader.h \
 	Source/WebCore/loader/ResourceLoaderOptions.h \
+	Source/WebCore/loader/ResourceLoaderTypes.h \
 	Source/WebCore/loader/ResourceLoadNotifier.cpp \
 	Source/WebCore/loader/ResourceLoadNotifier.h \
 	Source/WebCore/loader/ResourceLoadScheduler.cpp \
@@ -4143,7 +4174,6 @@ webcore_sources += \
 	Source/WebCore/page/ContextMenuController.cpp \
 	Source/WebCore/page/ContextMenuController.h \
 	Source/WebCore/page/ContextMenuProvider.h \
-	Source/WebCore/page/Coordinates.h \
 	Source/WebCore/page/Crypto.cpp \
 	Source/WebCore/page/Crypto.h \
 	Source/WebCore/page/DeviceClient.h \
@@ -4189,7 +4219,6 @@ webcore_sources += \
 	Source/WebCore/page/FrameTree.h \
 	Source/WebCore/page/FrameView.cpp \
 	Source/WebCore/page/FrameView.h \
-	Source/WebCore/page/GeolocationClient.h \
 	Source/WebCore/page/GestureTapHighlighter.cpp \
 	Source/WebCore/page/GestureTapHighlighter.h \
 	Source/WebCore/page/GroupSettings.cpp \
@@ -4212,6 +4241,8 @@ webcore_sources += \
 	Source/WebCore/page/OriginAccessEntry.h \
 	Source/WebCore/page/Page.cpp \
 	Source/WebCore/page/Page.h \
+	Source/WebCore/page/PageConsole.cpp \
+	Source/WebCore/page/PageConsole.h \
 	Source/WebCore/page/PageGroup.cpp \
 	Source/WebCore/page/PageGroup.h \
 	Source/WebCore/page/PageGroupLoadDeferrer.cpp \
@@ -4302,8 +4333,6 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp \
 	Source/WebCore/platform/graphics/freetype/SimpleFontDataFreeType.cpp \
 	Source/WebCore/platform/graphics/freetype/UTF16UChar32Iterator.h \
-	Source/WebCore/platform/graphics/harfbuzz/HarfBuzzShaperBase.cpp \
-	Source/WebCore/platform/graphics/harfbuzz/HarfBuzzShaperBase.h \
 	Source/WebCore/platform/graphics/harfbuzz/HarfBuzzFace.cpp \
 	Source/WebCore/platform/graphics/harfbuzz/HarfBuzzFace.h \
 	Source/WebCore/platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp \
@@ -4322,8 +4351,6 @@ webcore_sources += \
 	Source/WebCore/plugins/DOMPlugin.h \
 	Source/WebCore/plugins/npapi.cpp \
 	Source/WebCore/plugins/npfunctions.h \
-	Source/WebCore/plugins/PlugInOriginHash.cpp \
-	Source/WebCore/plugins/PlugInOriginHash.h \
 	Source/WebCore/plugins/PluginDatabase.cpp \
 	Source/WebCore/plugins/PluginDatabase.h \
 	Source/WebCore/plugins/PluginData.cpp \
@@ -4640,7 +4667,10 @@ webcore_sources += \
 	Source/WebCore/rendering/style/StyleCachedImageSet.h \
 	Source/WebCore/rendering/style/StyleCachedShader.cpp \
 	Source/WebCore/rendering/style/StyleCachedShader.h \
+	Source/WebCore/rendering/style/StyleCustomFilterProgram.cpp \
 	Source/WebCore/rendering/style/StyleCustomFilterProgram.h \
+	Source/WebCore/rendering/style/StyleCustomFilterProgramCache.cpp \
+	Source/WebCore/rendering/style/StyleCustomFilterProgramCache.h \
 	Source/WebCore/rendering/style/StyleDashboardRegion.h \
 	Source/WebCore/rendering/style/StyleDeprecatedFlexibleBoxData.cpp \
 	Source/WebCore/rendering/style/StyleDeprecatedFlexibleBoxData.h \
@@ -4825,6 +4855,7 @@ webcore_svg_sources += \
 	Source/WebCore/css/WebKitCSSSVGDocumentValue.h \
 	Source/WebCore/loader/cache/CachedSVGDocument.cpp \
 	Source/WebCore/loader/cache/CachedSVGDocument.h \
+	Source/WebCore/loader/cache/CachedSVGDocumentClient.h \
 	Source/WebCore/loader/cache/CachedSVGDocumentReference.h \
 	Source/WebCore/platform/graphics/SVGGlyph.cpp \
 	Source/WebCore/platform/graphics/SVGGlyph.h \
@@ -5491,8 +5522,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/graphics/cairo/ImageBufferDataCairo.h \
 	Source/WebCore/platform/graphics/cairo/ImageCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/IntRectCairo.cpp \
-	Source/WebCore/platform/graphics/cairo/NativeImageCairo.cpp \
-	Source/WebCore/platform/graphics/cairo/NativeImageCairo.h \
 	Source/WebCore/platform/graphics/cairo/OwnPtrCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/OwnPtrCairo.h \
 	Source/WebCore/platform/graphics/cairo/PathCairo.cpp \
@@ -5577,7 +5606,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/graphics/filters/FilterOperation.cpp \
 	Source/WebCore/platform/graphics/filters/FilterOperations.cpp \
 	Source/WebCore/platform/graphics/filters/FilterOperations.h \
-	Source/WebCore/platform/graphics/filters/LightSource.cpp \
 	Source/WebCore/platform/graphics/filters/LightSource.h \
 	Source/WebCore/platform/graphics/filters/PointLightSource.cpp \
 	Source/WebCore/platform/graphics/filters/PointLightSource.h \
@@ -5754,22 +5782,12 @@ webcore_platform_sources += \
 	Source/WebCore/platform/gtk/ErrorsGtk.cpp \
 	Source/WebCore/platform/gtk/ErrorsGtk.h \
 	Source/WebCore/platform/gtk/GamepadsGtk.cpp \
-	Source/WebCore/platform/gtk/KURLGtk.cpp \
-	Source/WebCore/platform/gtk/LanguageGtk.cpp \
-	Source/WebCore/platform/gtk/LoggingGtk.cpp \
-	Source/WebCore/platform/gtk/MIMETypeRegistryGtk.cpp \
-	Source/WebCore/platform/gtk/SharedBufferGtk.cpp \
-	Source/WebCore/platform/gtk/UserAgentGtk.cpp \
-	Source/WebCore/platform/gtk/UserAgentGtk.h \
-	Source/WebCore/platform/gtk/TemporaryLinkStubs.cpp \
 	Source/WebCore/platform/HostWindow.h \
 	Source/WebCore/platform/KillRing.h \
 	Source/WebCore/platform/KillRingNone.cpp \
 	Source/WebCore/platform/KURL.cpp \
 	Source/WebCore/platform/KURL.h \
 	Source/WebCore/platform/KURLHash.h \
-	Source/WebCore/platform/KURLWTFURL.cpp \
-	Source/WebCore/platform/KURLWTFURLImpl.h \
 	Source/WebCore/platform/Language.cpp \
 	Source/WebCore/platform/Language.h \
 	Source/WebCore/platform/LengthBox.cpp \
@@ -5817,8 +5835,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/image-decoders/png/PNGImageDecoder.h \
 	Source/WebCore/platform/image-decoders/webp/WEBPImageDecoder.cpp \
 	Source/WebCore/platform/image-decoders/webp/WEBPImageDecoder.h \
-	Source/WebCore/platform/LayoutTestSupport.cpp \
-	Source/WebCore/platform/LayoutTestSupport.h \
 	Source/WebCore/platform/linux/GamepadDeviceLinux.cpp \
 	Source/WebCore/platform/linux/GamepadDeviceLinux.h \
 	Source/WebCore/platform/mediastream/MediaConstraints.h \
@@ -5884,8 +5900,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/HTTPParsers.h \
 	Source/WebCore/platform/network/HTTPRequest.cpp \
 	Source/WebCore/platform/network/HTTPRequest.h \
-	Source/WebCore/platform/network/HTTPValidation.cpp \
-	Source/WebCore/platform/network/HTTPValidation.h \
 	Source/WebCore/platform/network/MIMEHeader.cpp \
 	Source/WebCore/platform/network/MIMEHeader.h \
 	Source/WebCore/platform/network/NetworkingContext.h \
@@ -5902,6 +5916,7 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/ProtectionSpace.h \
 	Source/WebCore/platform/network/ResourceErrorBase.cpp \
 	Source/WebCore/platform/network/ResourceErrorBase.h \
+	Source/WebCore/platform/network/ResourceHandleClient.cpp \
 	Source/WebCore/platform/network/ResourceHandleClient.h \
 	Source/WebCore/platform/network/ResourceHandle.cpp \
 	Source/WebCore/platform/network/ResourceHandle.h \
@@ -5920,8 +5935,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/SocketStreamHandleBase.cpp \
 	Source/WebCore/platform/network/SocketStreamHandleBase.h \
 	Source/WebCore/platform/network/SocketStreamHandleClient.h \
-	Source/WebCore/platform/network/gtk/CredentialBackingStore.cpp \
-	Source/WebCore/platform/network/gtk/CredentialBackingStore.h \
 	Source/WebCore/platform/network/soup/AuthenticationChallenge.h \
 	Source/WebCore/platform/network/soup/AuthenticationChallengeSoup.cpp \
 	Source/WebCore/platform/network/soup/CookieJarSoup.cpp \
@@ -5999,7 +6012,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/ScrollView.cpp \
 	Source/WebCore/platform/ScrollView.h \
 	Source/WebCore/platform/SearchPopupMenu.h \
-	Source/WebCore/platform/SecureTextInput.h \
 	Source/WebCore/platform/SharedBuffer.cpp \
 	Source/WebCore/platform/SharedBuffer.h \
 	Source/WebCore/platform/SharedBufferChunkReader.cpp \
@@ -6018,13 +6030,11 @@ webcore_platform_sources += \
 	Source/WebCore/platform/sql/SQLValue.cpp \
 	Source/WebCore/platform/sql/SQLValue.h \
 	Source/WebCore/platform/SSLKeyGenerator.h \
-	Source/WebCore/platform/StatsCounter.h \
 	Source/WebCore/platform/SuddenTermination.h \
 	Source/WebCore/platform/Supplementable.h \
 	Source/WebCore/platform/SystemTime.h \
 	Source/WebCore/platform/text/enchant/TextCheckerEnchant.h \
 	Source/WebCore/platform/text/enchant/TextCheckerEnchant.cpp \
-	Source/WebCore/platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp \
 	Source/WebCore/platform/text/BidiContext.cpp \
 	Source/WebCore/platform/text/BidiContext.h \
 	Source/WebCore/platform/text/BidiResolver.h \
@@ -6100,8 +6110,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/UUID.cpp \
 	Source/WebCore/platform/UUID.h \
 	Source/WebCore/platform/VisitedLinkStrategy.h \
-	Source/WebCore/platform/VisitedLinks.cpp \
-	Source/WebCore/platform/VisitedLinks.h \
 	Source/WebCore/platform/Widget.cpp \
 	Source/WebCore/platform/Widget.h \
 	Source/WebCore/platform/WindowsKeyboardCodes.h
@@ -6141,7 +6149,6 @@ webcoregtk_sources += \
 	Source/WebCore/editing/atk/FrameSelectionAtk.cpp \
 	Source/WebCore/page/gtk/DragControllerGtk.cpp \
 	Source/WebCore/page/gtk/EventHandlerGtk.cpp \
-	Source/WebCore/platform/audio/gtk/AudioBusGtk.cpp \
 	Source/WebCore/platform/cairo/WidgetBackingStore.h \
 	Source/WebCore/platform/geoclue/GeolocationProviderGeoclue.h \
 	Source/WebCore/platform/geoclue/GeolocationProviderGeoclue.cpp \
@@ -6164,99 +6171,115 @@ webcoregtk_sources += \
 	Source/WebCore/platform/graphics/gstreamer/PlatformVideoWindow.h \
 	Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer.cpp \
 	Source/WebCore/platform/graphics/gstreamer/VideoSinkGStreamer.h \
-	Source/WebCore/platform/graphics/gtk/ColorGtk.cpp \
-	Source/WebCore/platform/graphics/gtk/GdkCairoUtilities.cpp \
-	Source/WebCore/platform/graphics/gtk/GdkCairoUtilities.h \
 	Source/WebCore/platform/graphics/gtk/FullscreenVideoControllerGtk.cpp \
 	Source/WebCore/platform/graphics/gtk/FullscreenVideoControllerGtk.h \
 	Source/WebCore/platform/graphics/gtk/IconGtk.cpp \
 	Source/WebCore/platform/graphics/gtk/ImageBufferGtk.cpp \
-	Source/WebCore/platform/graphics/gtk/ImageGtk.cpp \
-	Source/WebCore/platform/graphics/gtk/IntPointGtk.cpp \
-	Source/WebCore/platform/graphics/gtk/IntRectGtk.cpp \
 	Source/WebCore/platform/gtk/AsyncFileSystemGtk.cpp \
 	Source/WebCore/platform/gtk/AsyncFileSystemGtk.h \
 	Source/WebCore/platform/gtk/ClipboardGtk.cpp \
 	Source/WebCore/platform/gtk/ClipboardGtk.h \
 	Source/WebCore/platform/gtk/ClipboardUtilitiesGtk.cpp \
 	Source/WebCore/platform/gtk/ClipboardUtilitiesGtk.h \
-	Source/WebCore/platform/gtk/CompositionResults.h \
-	Source/WebCore/platform/gtk/ContextMenuGtk.cpp \
-	Source/WebCore/platform/gtk/ContextMenuItemGtk.cpp \
-	Source/WebCore/platform/gtk/CursorGtk.cpp \
-	Source/WebCore/platform/gtk/CursorGtk.h \
 	Source/WebCore/platform/gtk/DataObjectGtk.cpp \
 	Source/WebCore/platform/gtk/DataObjectGtk.h \
 	Source/WebCore/platform/gtk/DragDataGtk.cpp \
-	Source/WebCore/platform/gtk/DragIcon.cpp \
-	Source/WebCore/platform/gtk/DragIcon.h \
 	Source/WebCore/platform/gtk/DragImageGtk.cpp \
-	Source/WebCore/platform/gtk/EventLoopGtk.cpp \
-	Source/WebCore/platform/gtk/FileSystemGtk.cpp \
-	Source/WebCore/platform/gtk/GtkClickCounter.cpp \
-	Source/WebCore/platform/gtk/GtkClickCounter.h \
 	Source/WebCore/platform/gtk/GtkDragAndDropHelper.cpp \
 	Source/WebCore/platform/gtk/GtkDragAndDropHelper.h \
-	Source/WebCore/platform/gtk/GtkInputMethodFilter.cpp \
-	Source/WebCore/platform/gtk/GtkInputMethodFilter.h \
-	Source/WebCore/platform/gtk/GtkUtilities.cpp \
-	Source/WebCore/platform/gtk/GtkUtilities.h \
-	Source/WebCore/platform/gtk/GOwnPtrGtk.cpp \
-	Source/WebCore/platform/gtk/GOwnPtrGtk.h \
-	Source/WebCore/platform/gtk/GRefPtrGtk.cpp \
-	Source/WebCore/platform/gtk/GRefPtrGtk.h \
-	Source/WebCore/platform/gtk/GtkAuthenticationDialog.cpp \
-	Source/WebCore/platform/gtk/GtkAuthenticationDialog.h \
 	Source/WebCore/platform/gtk/GtkPluginWidget.cpp \
 	Source/WebCore/platform/gtk/GtkPluginWidget.h \
-	Source/WebCore/platform/gtk/GtkPopupMenu.cpp \
-	Source/WebCore/platform/gtk/GtkPopupMenu.h \
-	Source/WebCore/platform/gtk/GtkVersioning.c \
-	Source/WebCore/platform/gtk/GtkVersioning.h \
-	Source/WebCore/platform/gtk/KeyBindingTranslator.cpp \
-	Source/WebCore/platform/gtk/KeyBindingTranslator.h \
-	Source/WebCore/platform/gtk/LocalizedStringsGtk.cpp \
-	Source/WebCore/platform/gtk/MainFrameScrollbarGtk.cpp \
-	Source/WebCore/platform/gtk/MainFrameScrollbarGtk.h \
 	Source/WebCore/platform/gtk/PasteboardGtk.cpp \
 	Source/WebCore/platform/gtk/PasteboardHelper.cpp \
 	Source/WebCore/platform/gtk/PasteboardHelper.h \
-	Source/WebCore/platform/gtk/PlatformKeyboardEventGtk.cpp \
-	Source/WebCore/platform/gtk/PlatformMouseEventGtk.cpp \
-	Source/WebCore/platform/gtk/PlatformScreenGtk.cpp \
-	Source/WebCore/platform/gtk/PlatformWheelEventGtk.cpp \
 	Source/WebCore/platform/gtk/PopupMenuGtk.cpp \
 	Source/WebCore/platform/gtk/PopupMenuGtk.h \
 	Source/WebCore/platform/gtk/RenderThemeGtk.cpp \
 	Source/WebCore/platform/gtk/RenderThemeGtk.h \
 	Source/WebCore/platform/gtk/RenderThemeGtk2.cpp \
 	Source/WebCore/platform/gtk/RenderThemeGtk3.cpp \
-	Source/WebCore/platform/gtk/RunLoopGtk.cpp \
+	Source/WebCore/platform/gtk/ScrollViewGtk.cpp \
 	Source/WebCore/platform/gtk/ScrollbarThemeGtk.cpp \
 	Source/WebCore/platform/gtk/ScrollbarThemeGtk.h \
 	Source/WebCore/platform/gtk/ScrollbarThemeGtk2.cpp \
 	Source/WebCore/platform/gtk/ScrollbarThemeGtk3.cpp \
-	Source/WebCore/platform/gtk/ScrollViewGtk.cpp \
 	Source/WebCore/platform/gtk/SearchPopupMenuGtk.cpp \
 	Source/WebCore/platform/gtk/SearchPopupMenuGtk.h \
-	Source/WebCore/platform/gtk/SharedTimerGtk.cpp \
-	Source/WebCore/platform/gtk/SoundGtk.cpp \
 	Source/WebCore/platform/gtk/WidgetGtk.cpp \
 	Source/WebCore/platform/gtk/WidgetRenderingContext.cpp \
 	Source/WebCore/platform/gtk/WidgetRenderingContext.h
 
+platformgtk_sources += \
+	Source/WebCore/platform/gtk/CompositionResults.h \
+	Source/WebCore/platform/gtk/ContextMenuGtk.cpp \
+	Source/WebCore/platform/gtk/ContextMenuItemGtk.cpp \
+	Source/WebCore/platform/gtk/CursorGtk.cpp \
+	Source/WebCore/platform/gtk/CursorGtk.h \
+	Source/WebCore/platform/gtk/DragIcon.cpp \
+	Source/WebCore/platform/gtk/DragIcon.h \
+	Source/WebCore/platform/gtk/EventLoopGtk.cpp \
+	Source/WebCore/platform/gtk/FileSystemGtk.cpp \
+	Source/WebCore/platform/gtk/GOwnPtrGtk.cpp \
+	Source/WebCore/platform/gtk/GOwnPtrGtk.h \
+	Source/WebCore/platform/gtk/GRefPtrGtk.cpp \
+	Source/WebCore/platform/gtk/GRefPtrGtk.h \
+	Source/WebCore/platform/gtk/GtkAuthenticationDialog.cpp \
+	Source/WebCore/platform/gtk/GtkAuthenticationDialog.h \
+	Source/WebCore/platform/gtk/GtkClickCounter.cpp \
+	Source/WebCore/platform/gtk/GtkClickCounter.h \
+	Source/WebCore/platform/gtk/GtkInputMethodFilter.cpp \
+	Source/WebCore/platform/gtk/GtkInputMethodFilter.h \
+	Source/WebCore/platform/gtk/GtkPopupMenu.cpp \
+	Source/WebCore/platform/gtk/GtkPopupMenu.h \
+	Source/WebCore/platform/gtk/GtkUtilities.cpp \
+	Source/WebCore/platform/gtk/GtkUtilities.h \
+	Source/WebCore/platform/gtk/GtkVersioning.c \
+	Source/WebCore/platform/gtk/GtkVersioning.h \
+	Source/WebCore/platform/gtk/KURLGtk.cpp \
+	Source/WebCore/platform/gtk/KeyBindingTranslator.cpp \
+	Source/WebCore/platform/gtk/KeyBindingTranslator.h \
+	Source/WebCore/platform/gtk/LanguageGtk.cpp \
+	Source/WebCore/platform/gtk/LocalizedStringsGtk.cpp \
+	Source/WebCore/platform/gtk/LoggingGtk.cpp \
+	Source/WebCore/platform/gtk/MIMETypeRegistryGtk.cpp \
+	Source/WebCore/platform/gtk/MainFrameScrollbarGtk.cpp \
+	Source/WebCore/platform/gtk/MainFrameScrollbarGtk.h \
+	Source/WebCore/platform/gtk/PlatformKeyboardEventGtk.cpp \
+	Source/WebCore/platform/gtk/PlatformMouseEventGtk.cpp \
+	Source/WebCore/platform/gtk/PlatformScreenGtk.cpp \
+	Source/WebCore/platform/gtk/PlatformWheelEventGtk.cpp \
+	Source/WebCore/platform/gtk/RunLoopGtk.cpp \
+	Source/WebCore/platform/gtk/SharedBufferGtk.cpp \
+	Source/WebCore/platform/gtk/SharedTimerGtk.cpp \
+	Source/WebCore/platform/gtk/SoundGtk.cpp \
+	Source/WebCore/platform/gtk/TemporaryLinkStubs.cpp \
+	Source/WebCore/platform/gtk/UserAgentGtk.cpp \
+	Source/WebCore/platform/gtk/UserAgentGtk.h \
+	Source/WebCore/platform/audio/gtk/AudioBusGtk.cpp \
+	Source/WebCore/platform/graphics/gtk/ColorGtk.cpp \
+	Source/WebCore/platform/graphics/gtk/GdkCairoUtilities.cpp \
+	Source/WebCore/platform/graphics/gtk/GdkCairoUtilities.h \
+	Source/WebCore/platform/graphics/gtk/ImageGtk.cpp \
+	Source/WebCore/platform/graphics/gtk/IntPointGtk.cpp \
+	Source/WebCore/platform/graphics/gtk/IntRectGtk.cpp \
+	Source/WebCore/platform/network/gtk/CredentialBackingStore.cpp \
+	Source/WebCore/platform/network/gtk/CredentialBackingStore.h \
+	Source/WebCore/platform/text/gtk/TextBreakIteratorInternalICUGtk.cpp
+
 if TARGET_X11
 webcoregtk_sources += \
-	Source/WebCore/platform/gtk/GtkWidgetBackingStoreX11.cpp \
 	Source/WebCore/plugins/gtk/gtk2xtbin.c \
 	Source/WebCore/plugins/gtk/gtk2xtbin.h \
 	Source/WebCore/plugins/gtk/PluginPackageGtk.cpp \
 	Source/WebCore/plugins/gtk/PluginViewGtk.cpp \
 	Source/WebCore/plugins/gtk/xembed.h
+platformgtk_sources += \
+	Source/WebCore/platform/gtk/GtkWidgetBackingStoreX11.cpp
 if USE_OPENGL
 webcoregtk_sources += \
 	Source/WebCore/platform/graphics/cairo/GLContext.cpp \
-	Source/WebCore/platform/graphics/cairo/GLContext.h \
+	Source/WebCore/platform/graphics/cairo/GLContext.h
+platformgtk_sources += \
 	Source/WebCore/platform/gtk/RedirectedXCompositeWindow.cpp \
 	Source/WebCore/platform/gtk/RedirectedXCompositeWindow.h
 endif # END USE_OPENGL
@@ -6325,146 +6348,6 @@ webcoregtk_sources += \
 	Source/WebCore/platform/graphics/gstreamer/GStreamerVersioning.h
 endif
 
-# ---
-# 3D canvas (WebGL) support
-# ---
-if ENABLE_WEBGL
-webcore_built_sources += \
-	DerivedSources/ANGLE/glslang.cpp \
-	DerivedSources/ANGLE/glslang_tab.cpp \
-	DerivedSources/ANGLE/glslang_tab.h
-
-webcore_sources += \
-	Source/ThirdParty/ANGLE/include/EGL/egl.h \
-	Source/ThirdParty/ANGLE/include/EGL/eglplatform.h \
-	Source/ThirdParty/ANGLE/include/GLSLANG/ShaderLang.h \
-	Source/ThirdParty/ANGLE/include/KHR/khrplatform.h \
-	Source/ThirdParty/ANGLE/src/common/angleutils.h \
-	Source/ThirdParty/ANGLE/src/compiler/BaseTypes.h \
-	Source/ThirdParty/ANGLE/src/compiler/BuiltInFunctionEmulator.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/BuiltInFunctionEmulator.h \
-	Source/ThirdParty/ANGLE/src/compiler/CodeGenGLSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/Common.h \
-	Source/ThirdParty/ANGLE/src/compiler/Compiler.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/ConstantUnion.h \
-	Source/ThirdParty/ANGLE/src/compiler/debug.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/debug.h \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraph.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraph.h \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraphBuilder.h \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraphBuilder.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraphOutput.h \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraphOutput.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/depgraph/DependencyGraphTraverse.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/DetectDiscontinuity.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/DetectDiscontinuity.h \
-	Source/ThirdParty/ANGLE/src/compiler/DetectRecursion.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/DetectRecursion.h \
-	Source/ThirdParty/ANGLE/src/compiler/Diagnostics.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/Diagnostics.h \
-	Source/ThirdParty/ANGLE/src/compiler/DirectiveHandler.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/DirectiveHandler.h \
-	Source/ThirdParty/ANGLE/src/compiler/ExtensionBehavior.h \
-	Source/ThirdParty/ANGLE/src/compiler/ForLoopUnroll.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/ForLoopUnroll.h \
-	Source/ThirdParty/ANGLE/src/compiler/glslang.h \
-	Source/ThirdParty/ANGLE/src/compiler/HashNames.h \
-	Source/ThirdParty/ANGLE/src/compiler/InfoSink.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/InfoSink.h \
-	Source/ThirdParty/ANGLE/src/compiler/Initialize.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/InitializeDll.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/InitializeDll.h \
-	Source/ThirdParty/ANGLE/src/compiler/InitializeGlobals.h \
-	Source/ThirdParty/ANGLE/src/compiler/Initialize.h \
-	Source/ThirdParty/ANGLE/src/compiler/InitializeParseContext.h \
-	Source/ThirdParty/ANGLE/src/compiler/InitializeParseContext.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/Intermediate.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/intermediate.h \
-	Source/ThirdParty/ANGLE/src/compiler/intermOut.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/IntermTraverse.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/localintermediate.h \
-	Source/ThirdParty/ANGLE/src/compiler/MapLongVariableNames.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/MapLongVariableNames.h \
-	Source/ThirdParty/ANGLE/src/compiler/MMap.h \
-	Source/ThirdParty/ANGLE/src/compiler/osinclude.h \
-	Source/ThirdParty/ANGLE/src/compiler/ossource_posix.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/OutputESSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/OutputESSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/OutputGLSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/OutputGLSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/OutputGLSLBase.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/OutputGLSLBase.h \
-	Source/ThirdParty/ANGLE/src/compiler/OutputHLSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/OutputHLSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/parseConst.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/ParseHelper.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/ParseHelper.h \
-	Source/ThirdParty/ANGLE/src/compiler/PoolAlloc.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/PoolAlloc.h \
-	Source/ThirdParty/ANGLE/src/compiler/Pragma.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/length_limits.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/numeric_lex.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/DiagnosticsBase.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/DiagnosticsBase.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/DirectiveHandlerBase.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/DirectiveHandlerBase.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/DirectiveParser.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/DirectiveParser.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/ExpressionParser.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/ExpressionParser.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Input.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Input.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Lexer.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Lexer.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Macro.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Macro.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/MacroExpander.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/MacroExpander.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Preprocessor.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Preprocessor.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/SourceLocation.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Token.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Token.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Tokenizer.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/Tokenizer.h \
-	Source/ThirdParty/ANGLE/src/compiler/preprocessor/pp_utils.h \
-	Source/ThirdParty/ANGLE/src/compiler/QualifierAlive.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/QualifierAlive.h \
-	Source/ThirdParty/ANGLE/src/compiler/RemoveTree.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/RemoveTree.h \
-	Source/ThirdParty/ANGLE/src/compiler/RenameFunction.h \
-	Source/ThirdParty/ANGLE/src/compiler/SearchSymbol.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/SearchSymbol.h \
-	Source/ThirdParty/ANGLE/src/compiler/ShaderLang.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/ShHandle.h \
-	Source/ThirdParty/ANGLE/src/compiler/SymbolTable.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/SymbolTable.h \
-	Source/ThirdParty/ANGLE/src/compiler/VariablePacker.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/VariablePacker.h \
-	Source/ThirdParty/ANGLE/src/compiler/VersionGLSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/VersionGLSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/timing/RestrictFragmentShaderTiming.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/timing/RestrictFragmentShaderTiming.h \
-	Source/ThirdParty/ANGLE/src/compiler/timing/RestrictVertexShaderTiming.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/timing/RestrictVertexShaderTiming.h \
-	Source/ThirdParty/ANGLE/src/compiler/TranslatorESSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/TranslatorESSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/TranslatorGLSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/TranslatorGLSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/TranslatorHLSL.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/TranslatorHLSL.h \
-	Source/ThirdParty/ANGLE/src/compiler/Types.h \
-	Source/ThirdParty/ANGLE/src/compiler/UnfoldShortCircuit.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/UnfoldShortCircuit.h \
-	Source/ThirdParty/ANGLE/src/compiler/util.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/util.h \
-	Source/ThirdParty/ANGLE/src/compiler/ValidateLimitations.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/ValidateLimitations.h \
-	Source/ThirdParty/ANGLE/src/compiler/VariableInfo.cpp \
-	Source/ThirdParty/ANGLE/src/compiler/VariableInfo.h \
-	Source/ThirdParty/ANGLE/src/third_party/compiler/ArrayBoundsClamper.cpp \
-	Source/ThirdParty/ANGLE/src/third_party/compiler/ArrayBoundsClamper.h
-
 if USE_CLUTTER
 webcore_sources += \
 	Source/WebCore/platform/graphics/clutter/DrawingBufferClutter.cpp \
@@ -6478,8 +6361,6 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/cairo/GraphicsContext3DPrivate.cpp \
 	Source/WebCore/platform/graphics/cairo/GraphicsContext3DPrivate.h
 endif  # END USE_CLUTTER
-
-endif  # END ENABLE_WEBGL
 
 # ---
 # Accelerated compositing support
@@ -6560,95 +6441,3 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/texmap/TextureMapperTiledBackingStore.h
 endif  # END USE_TEXTURE_MAPPER_GL
 endif  # USE_ACCELERATED_COMPOSITING
-
-libLevelDB_la_SOURCES = \
-	Source/ThirdParty/leveldb/db/builder.cc\
-	Source/ThirdParty/leveldb/db/builder.h \
-	Source/ThirdParty/leveldb/db/c.cc \
-	Source/ThirdParty/leveldb/db/dbformat.cc \
-	Source/ThirdParty/leveldb/db/dbformat.h \
-	Source/ThirdParty/leveldb/db/db_impl.cc \
-	Source/ThirdParty/leveldb/db/db_impl.h \
-	Source/ThirdParty/leveldb/db/db_iter.cc \
-	Source/ThirdParty/leveldb/db/db_iter.h \
-	Source/ThirdParty/leveldb/db/filename.cc \
-	Source/ThirdParty/leveldb/db/filename.h \
-	Source/ThirdParty/leveldb/db/log_format.h \
-	Source/ThirdParty/leveldb/db/log_reader.cc \
-	Source/ThirdParty/leveldb/db/log_reader.h \
-	Source/ThirdParty/leveldb/db/log_writer.cc \
-	Source/ThirdParty/leveldb/db/log_writer.h \
-	Source/ThirdParty/leveldb/db/memtable.cc \
-	Source/ThirdParty/leveldb/db/memtable.h \
-	Source/ThirdParty/leveldb/db/repair.cc \
-	Source/ThirdParty/leveldb/db/skiplist.h \
-	Source/ThirdParty/leveldb/db/snapshot.h \
-	Source/ThirdParty/leveldb/db/table_cache.cc \
-	Source/ThirdParty/leveldb/db/table_cache.h \
-	Source/ThirdParty/leveldb/db/version_edit.cc \
-	Source/ThirdParty/leveldb/db/version_edit.h \
-	Source/ThirdParty/leveldb/db/version_set.cc \
-	Source/ThirdParty/leveldb/db/version_set.h \
-	Source/ThirdParty/leveldb/db/write_batch.cc \
-	Source/ThirdParty/leveldb/db/write_batch_internal.h \
-	Source/ThirdParty/leveldb/helpers/memenv/memenv.cc \
-	Source/ThirdParty/leveldb/helpers/memenv/memenv.h \
-	Source/ThirdParty/leveldb/include/leveldb/cache.h \
-	Source/ThirdParty/leveldb/include/leveldb/c.h \
-	Source/ThirdParty/leveldb/include/leveldb/comparator.h \
-	Source/ThirdParty/leveldb/include/leveldb/db.h \
-	Source/ThirdParty/leveldb/include/leveldb/env.h \
-	Source/ThirdParty/leveldb/include/leveldb/filter_policy.h \
-	Source/ThirdParty/leveldb/include/leveldb/iterator.h \
-	Source/ThirdParty/leveldb/include/leveldb/options.h \
-	Source/ThirdParty/leveldb/include/leveldb/slice.h \
-	Source/ThirdParty/leveldb/include/leveldb/status.h \
-	Source/ThirdParty/leveldb/include/leveldb/table_builder.h \
-	Source/ThirdParty/leveldb/include/leveldb/table.h \
-	Source/ThirdParty/leveldb/include/leveldb/write_batch.h \
-	Source/ThirdParty/leveldb/port/atomic_pointer.h \
-	Source/ThirdParty/leveldb/port/port_example.h \
-	Source/ThirdParty/leveldb/port/port.h \
-	Source/ThirdParty/leveldb/port/port_posix.cc \
-	Source/ThirdParty/leveldb/port/port_posix.h \
-	Source/ThirdParty/leveldb/port/thread_annotations.h \
-	Source/ThirdParty/leveldb/port/win/stdint.h \
-	Source/ThirdParty/leveldb/table/block_builder.cc \
-	Source/ThirdParty/leveldb/table/block_builder.h \
-	Source/ThirdParty/leveldb/table/block.cc \
-	Source/ThirdParty/leveldb/table/block.h \
-	Source/ThirdParty/leveldb/table/filter_block.cc \
-	Source/ThirdParty/leveldb/table/filter_block.h \
-	Source/ThirdParty/leveldb/table/format.cc \
-	Source/ThirdParty/leveldb/table/format.h \
-	Source/ThirdParty/leveldb/table/iterator.cc \
-	Source/ThirdParty/leveldb/table/iterator_wrapper.h \
-	Source/ThirdParty/leveldb/table/merger.cc \
-	Source/ThirdParty/leveldb/table/merger.h \
-	Source/ThirdParty/leveldb/table/table_builder.cc \
-	Source/ThirdParty/leveldb/table/table.cc \
-	Source/ThirdParty/leveldb/table/two_level_iterator.cc \
-	Source/ThirdParty/leveldb/table/two_level_iterator.h \
-	Source/ThirdParty/leveldb/util/arena.cc \
-	Source/ThirdParty/leveldb/util/arena.h \
-	Source/ThirdParty/leveldb/util/bloom.cc \
-	Source/ThirdParty/leveldb/util/cache.cc \
-	Source/ThirdParty/leveldb/util/coding.cc \
-	Source/ThirdParty/leveldb/util/coding.h \
-	Source/ThirdParty/leveldb/util/comparator.cc \
-	Source/ThirdParty/leveldb/util/crc32c.cc \
-	Source/ThirdParty/leveldb/util/crc32c.h \
-	Source/ThirdParty/leveldb/util/env.cc \
-	Source/ThirdParty/leveldb/util/env_posix.cc \
-	Source/ThirdParty/leveldb/util/filter_policy.cc \
-	Source/ThirdParty/leveldb/util/hash.cc \
-	Source/ThirdParty/leveldb/util/hash.h \
-	Source/ThirdParty/leveldb/util/histogram.cc \
-	Source/ThirdParty/leveldb/util/histogram.h \
-	Source/ThirdParty/leveldb/util/logging.cc \
-	Source/ThirdParty/leveldb/util/logging.h \
-	Source/ThirdParty/leveldb/util/mutexlock.h \
-	Source/ThirdParty/leveldb/util/options.cc \
-	Source/ThirdParty/leveldb/util/posix_logger.h \
-	Source/ThirdParty/leveldb/util/random.h \
-	Source/ThirdParty/leveldb/util/status.cc

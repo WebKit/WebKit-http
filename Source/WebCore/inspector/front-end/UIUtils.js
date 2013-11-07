@@ -150,111 +150,6 @@ WebInspector.GlassPane.prototype = {
     }
 }
 
-WebInspector.animateStyle = function(animations, duration, callback)
-{
-    var interval;
-    var complete = 0;
-    var hasCompleted = false;
-
-    const intervalDuration = (1000 / 30); // 30 frames per second.
-    const animationsLength = animations.length;
-    const propertyUnit = {opacity: ""};
-    const defaultUnit = "px";
-
-    function cubicInOut(t, b, c, d)
-    {
-        if ((t/=d/2) < 1) return c/2*t*t*t + b;
-        return c/2*((t-=2)*t*t + 2) + b;
-    }
-
-    // Pre-process animations.
-    for (var i = 0; i < animationsLength; ++i) {
-        var animation = animations[i];
-        var element = null, start = null, end = null, key = null;
-        for (key in animation) {
-            if (key === "element")
-                element = animation[key];
-            else if (key === "start")
-                start = animation[key];
-            else if (key === "end")
-                end = animation[key];
-        }
-
-        if (!element || !end)
-            continue;
-
-        if (!start) {
-            var computedStyle = element.ownerDocument.defaultView.getComputedStyle(element);
-            start = {};
-            for (key in end)
-                start[key] = parseInt(computedStyle.getPropertyValue(key), 10);
-            animation.start = start;
-        } else
-            for (key in start)
-                element.style.setProperty(key, start[key] + (key in propertyUnit ? propertyUnit[key] : defaultUnit));
-    }
-
-    function animateLoop()
-    {
-        if (hasCompleted)
-            return;
-        
-        // Advance forward.
-        complete += intervalDuration;
-        var next = complete + intervalDuration;
-
-        // Make style changes.
-        for (var i = 0; i < animationsLength; ++i) {
-            var animation = animations[i];
-            var element = animation.element;
-            var start = animation.start;
-            var end = animation.end;
-            if (!element || !end)
-                continue;
-
-            var style = element.style;
-            for (key in end) {
-                var endValue = end[key];
-                if (next < duration) {
-                    var startValue = start[key];
-                    var newValue = cubicInOut(complete, startValue, endValue - startValue, duration);
-                    style.setProperty(key, newValue + (key in propertyUnit ? propertyUnit[key] : defaultUnit));
-                } else
-                    style.setProperty(key, endValue + (key in propertyUnit ? propertyUnit[key] : defaultUnit));
-            }
-        }
-
-        // End condition.
-        if (complete >= duration) {
-            hasCompleted = true;
-            clearInterval(interval);
-            if (callback)
-                callback();
-        }
-    }
-
-    function forceComplete()
-    {
-        if (hasCompleted)
-            return;
-
-        complete = duration;
-        animateLoop();
-    }
-
-    function cancel()
-    {
-        hasCompleted = true;
-        clearInterval(interval);
-    }
-
-    interval = setInterval(animateLoop, intervalDuration);
-    return {
-        cancel: cancel,
-        forceComplete: forceComplete
-    };
-}
-
 WebInspector.isBeingEdited = function(element)
 {
     if (element.hasStyleClass("text-prompt") || element.nodeName === "INPUT")
@@ -324,9 +219,21 @@ WebInspector.EditingConfig.prototype = {
         this.pasteHandler = pasteHandler;
     },
 
-    setMultiline: function(multiline)
+    /**
+     * @param {string} initialValue
+     * @param {Object} mode
+     * @param {string} theme
+     * @param {boolean=} lineWrapping
+     * @param {boolean=} smartIndent
+     */
+    setMultilineOptions: function(initialValue, mode, theme, lineWrapping, smartIndent)
     {
-        this.multiline = multiline;
+        this.multiline = true;
+        this.initialValue = initialValue;
+        this.mode = mode;
+        this.theme = theme;
+        this.lineWrapping = lineWrapping;
+        this.smartIndent = smartIndent;
     },
 
     setCustomFinishHandler: function(customFinishHandler)
@@ -533,30 +440,76 @@ WebInspector.startEditing = function(element, config)
     var cancelledCallback = config.cancelHandler;
     var pasteCallback = config.pasteHandler;
     var context = config.context;
-    var oldText = getContent(element);
+    var isMultiline = config.multiline || false;
+    var oldText = isMultiline ? config.initialValue : getContent(element);
     var moveDirection = "";
+    var oldTabIndex;
+    var codeMirror;
+    var cssLoadView;
 
-    element.addStyleClass("editing");
+    function consumeCopy(e)
+    {
+        e.consume();
+    }
 
-    var oldTabIndex = element.getAttribute("tabIndex");
-    if (typeof oldTabIndex !== "number" || oldTabIndex < 0)
-        element.tabIndex = 0;
+    if (isMultiline) {
+        loadScript("CodeMirrorTextEditor.js");
+        cssLoadView = new WebInspector.CodeMirrorCSSLoadView();
+        cssLoadView.show(element);
+        WebInspector.setCurrentFocusElement(element);
+        element.addEventListener("copy", consumeCopy, true);
+        codeMirror = window.CodeMirror(element, {
+            mode: config.mode,
+            lineWrapping: config.lineWrapping,
+            smartIndent: config.smartIndent,
+            autofocus: true,
+            theme: config.theme,
+            value: oldText
+        });
+    } else {
+        element.addStyleClass("editing");
 
-    function blurEventListener() {
-        editingCommitted.call(element);
+        oldTabIndex = element.getAttribute("tabIndex");
+        if (typeof oldTabIndex !== "number" || oldTabIndex < 0)
+            element.tabIndex = 0;
+        WebInspector.setCurrentFocusElement(element);
+    }
+
+    /**
+     * @param {Event=} e
+     */
+    function blurEventListener(e) {
+        if (!isMultiline || !e || !e.relatedTarget || !e.relatedTarget.isSelfOrDescendant(element))
+            editingCommitted.call(element);
     }
 
     function getContent(element) {
+        if (isMultiline)
+            return codeMirror.getValue();
+
         if (element.tagName === "INPUT" && element.type === "text")
             return element.value;
-        else
-            return element.textContent;
+
+        return element.textContent;
     }
 
     /** @this {Element} */
     function cleanUpAfterEditing()
     {
         WebInspector.markBeingEdited(element, false);
+
+        element.removeEventListener("blur", blurEventListener, isMultiline);
+        element.removeEventListener("keydown", keyDownEventListener, true);
+        if (pasteCallback)
+            element.removeEventListener("paste", pasteEventListener, true);
+
+        WebInspector.restoreFocusFromElement(element);
+
+        if (isMultiline) {
+            element.removeEventListener("copy", consumeCopy, true);
+            cssLoadView.detach();
+            return;
+        }
 
         this.removeStyleClass("editing");
         
@@ -566,22 +519,19 @@ WebInspector.startEditing = function(element, config)
             this.tabIndex = oldTabIndex;
         this.scrollTop = 0;
         this.scrollLeft = 0;
-
-        element.removeEventListener("blur", blurEventListener, false);
-        element.removeEventListener("keydown", keyDownEventListener, true);
-        if (pasteCallback)
-            element.removeEventListener("paste", pasteEventListener, true);
-
-        WebInspector.restoreFocusFromElement(element);
     }
 
     /** @this {Element} */
     function editingCancelled()
     {
-        if (this.tagName === "INPUT" && this.type === "text")
-            this.value = oldText;
-        else
-            this.textContent = oldText;
+        if (isMultiline)
+            codeMirror.setValue(oldText);
+        else {
+            if (this.tagName === "INPUT" && this.type === "text")
+                this.value = oldText;
+            else
+                this.textContent = oldText;
+        }
 
         cleanUpAfterEditing.call(this);
 
@@ -601,11 +551,11 @@ WebInspector.startEditing = function(element, config)
         var isMetaOrCtrl = WebInspector.isMac() ?
             event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey :
             event.ctrlKey && !event.shiftKey && !event.metaKey && !event.altKey;
-        if (isEnterKey(event) && (event.isMetaOrCtrlForTest || !config.multiline || isMetaOrCtrl))
+        if (isEnterKey(event) && (event.isMetaOrCtrlForTest || !isMultiline || isMetaOrCtrl))
             return "commit";
         else if (event.keyCode === WebInspector.KeyboardShortcut.Keys.Esc.code || event.keyIdentifier === "U+001B")
             return "cancel";
-        else if (event.keyIdentifier === "U+0009") // Tab key
+        else if (!isMultiline && event.keyIdentifier === "U+0009") // Tab key
             return "move-" + (event.shiftKey ? "backward" : "forward");
     }
 
@@ -637,15 +587,15 @@ WebInspector.startEditing = function(element, config)
         handleEditingResult(result, event);
     }
 
-    element.addEventListener("blur", blurEventListener, false);
+    element.addEventListener("blur", blurEventListener, isMultiline);
     element.addEventListener("keydown", keyDownEventListener, true);
     if (pasteCallback)
         element.addEventListener("paste", pasteEventListener, true);
 
-    WebInspector.setCurrentFocusElement(element);
     return {
         cancel: editingCancelled.bind(element),
-        commit: editingCommitted.bind(element)
+        commit: editingCommitted.bind(element),
+        codeMirror: codeMirror // For testing.
     };
 }
 
@@ -1100,6 +1050,24 @@ WebInspector.invokeOnceAfterBatchUpdate = function(object, method)
         WebInspector._postUpdateHandlers.put(object, methods);
     }
     methods.put(method);
+}
+
+/**
+ * This bogus view is needed to load/unload CodeMirror-related CSS on demand.
+ *
+ * @constructor
+ * @extends {WebInspector.View}
+ */
+WebInspector.CodeMirrorCSSLoadView = function()
+{
+    WebInspector.View.call(this);
+    this.element.addStyleClass("hidden");
+    this.registerRequiredCSS("cm/codemirror.css");
+    this.registerRequiredCSS("cm/cmdevtools.css");
+}
+
+WebInspector.CodeMirrorCSSLoadView.prototype = {
+    __proto__: WebInspector.View.prototype
 }
 
 ;(function() {

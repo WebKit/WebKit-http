@@ -25,7 +25,7 @@
 
 #import <JavaScriptCore/JavaScriptCore.h>
 
-void JSSynchronousGarbageCollectForDebugging(JSContextRef);
+extern "C" void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 
 extern "C" bool _Block_has_signature(id);
 extern "C" const char * _Block_signature(id);
@@ -103,8 +103,8 @@ bool testXYZTested = false;
 @protocol TextXYZ <JSExport>
 @property int x;
 @property (readonly) int y;
-@property JSValue *onclick;
-@property JSValue *weakOnclick;
+@property (assign) JSValue *onclick;
+@property (assign) JSValue *weakOnclick;
 - (void)test:(NSString *)message;
 @end
 
@@ -133,7 +133,8 @@ bool testXYZTested = false;
 
 - (void)setOnclick:(JSValue *)value
 {
-    m_onclickHandler = [JSManagedValue managedValueWithValue:value owner:self];
+    m_onclickHandler = [JSManagedValue managedValueWithValue:value];
+    [value.context.virtualMachine addManagedReference:m_onclickHandler withOwner:self];
 }
 - (JSValue *)weakOnclick
 {
@@ -151,6 +152,93 @@ bool testXYZTested = false;
     JSValue *function = [m_onclickHandler value];
     [function callWithArguments:[NSArray array]];
 }
+- (void)dealloc
+{
+    [[m_onclickHandler value].context.virtualMachine removeManagedReference:m_onclickHandler withOwner:self];
+}
+@end
+
+@class TinyDOMNode;
+
+@protocol TinyDOMNode <JSExport>
+- (void)appendChild:(TinyDOMNode *)child;
+- (NSUInteger)numberOfChildren;
+- (TinyDOMNode *)childAtIndex:(NSUInteger)index;
+- (void)removeChildAtIndex:(NSUInteger)index;
+@end
+
+@interface TinyDOMNode : NSObject<TinyDOMNode>
++ (JSVirtualMachine *)sharedVirtualMachine;
++ (void)clearSharedVirtualMachine;
+@end
+
+@implementation TinyDOMNode {
+    NSMutableArray *m_children;
+}
+
+static JSVirtualMachine *sharedInstance = nil;
+
++ (JSVirtualMachine *)sharedVirtualMachine
+{
+    if (!sharedInstance)
+        sharedInstance = [[JSVirtualMachine alloc] init];
+    return sharedInstance;
+}
+
++ (void)clearSharedVirtualMachine
+{
+    sharedInstance = nil;
+}
+
+- (id)init
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    m_children = [[NSMutableArray alloc] initWithCapacity:0];
+
+    return self;
+}
+
+- (void)dealloc
+{
+    NSEnumerator *enumerator = [m_children objectEnumerator];
+    id nextChild;
+    while ((nextChild = [enumerator nextObject]))
+        [[TinyDOMNode sharedVirtualMachine] removeManagedReference:nextChild withOwner:self];
+
+#if !__has_feature(objc_arc)
+    [super dealloc];
+#endif
+}
+
+- (void)appendChild:(TinyDOMNode *)child
+{
+    [[TinyDOMNode sharedVirtualMachine] addManagedReference:child withOwner:self];
+    [m_children addObject:child];
+}
+
+- (NSUInteger)numberOfChildren
+{
+    return [m_children count];
+}
+
+- (TinyDOMNode *)childAtIndex:(NSUInteger)index
+{
+    if (index >= [m_children count])
+        return nil;
+    return [m_children objectAtIndex:index];
+}
+
+- (void)removeChildAtIndex:(NSUInteger)index
+{
+    if (index >= [m_children count])
+        return;
+    [[TinyDOMNode sharedVirtualMachine] removeManagedReference:[m_children objectAtIndex:index] withOwner:self];
+    [m_children removeObjectAtIndex:index];
+}
+
 @end
 
 static void checkResult(NSString *description, bool passed)
@@ -519,12 +607,60 @@ void testObjectiveCAPI()
     }
 
     @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        TestObject *testObject = [TestObject testObject];
+        context[@"testObject"] = testObject;
+        JSValue *result = [context evaluateScript:@"Function.prototype.toString.call(testObject.callback)"];
+        checkResult(@"Function.prototype.toString", !context.exception && ![result isUndefined]);
+    }
+
+    @autoreleasepool {
         JSContext *context1 = [[JSContext alloc] init];
         JSContext *context2 = [[JSContext alloc] initWithVirtualMachine:context1.virtualMachine];
         JSValue *value = [JSValue valueWithDouble:42 inContext:context2];
         context1[@"passValueBetweenContexts"] = value;
         JSValue *result = [context1 evaluateScript:@"passValueBetweenContexts"];
         checkResult(@"[value isEqualToObject:result]", [value isEqualToObject:result]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        context[@"handleTheDictionary"] = ^(NSDictionary *dict) {
+            NSDictionary *expectedDict = @{
+                @"foo" : [NSNumber numberWithInt:1],
+                @"bar" : @{
+                    @"baz": [NSNumber numberWithInt:2]
+                }
+            };
+            checkResult(@"recursively convert nested dictionaries", [dict isEqualToDictionary:expectedDict]);
+        };
+        [context evaluateScript:@"var myDict = { \
+            'foo': 1, \
+            'bar': {'baz': 2} \
+        }; \
+        handleTheDictionary(myDict);"];
+
+        context[@"handleTheArray"] = ^(NSArray *array) {
+            NSArray *expectedArray = @[@"foo", @"bar", @[@"baz"]];
+            checkResult(@"recursively convert nested arrays", [array isEqualToArray:expectedArray]);
+        };
+        [context evaluateScript:@"var myArray = ['foo', 'bar', ['baz']]; handleTheArray(myArray);"];
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        TestObject *testObject = [TestObject testObject];
+        @autoreleasepool {
+            context[@"testObject"] = testObject;
+            [context evaluateScript:@"var constructor = Object.getPrototypeOf(testObject).constructor; constructor.prototype = undefined;"];
+            [context evaluateScript:@"testObject = undefined"];
+        }
+        
+        JSSynchronousGarbageCollectForDebugging([context globalContextRef]);
+
+        @autoreleasepool {
+            context[@"testObject"] = testObject;
+        }
     }
 
     @autoreleasepool {
@@ -579,6 +715,92 @@ void testObjectiveCAPI()
             JSValue *result = [context evaluateScript:@"didClick"];
             checkResult(@"Event handler onclick doesn't fire", ![result toBool]);
         }
+    }
+
+    @autoreleasepool {
+        JSVirtualMachine *vm = [[JSVirtualMachine alloc] init];
+        TestObject *testObject = [TestObject testObject];
+        JSManagedValue *weakValue;
+        @autoreleasepool {
+            JSContext *context = [[JSContext alloc] initWithVirtualMachine:vm];
+            context[@"testObject"] = testObject;
+            weakValue = [[JSManagedValue alloc] initWithValue:context[@"testObject"]];
+        }
+
+        @autoreleasepool {
+            JSContext *context = [[JSContext alloc] initWithVirtualMachine:vm];
+            context[@"testObject"] = testObject;
+            JSSynchronousGarbageCollectForDebugging([context globalContextRef]);
+            checkResult(@"weak value == nil", ![weakValue value]);
+            checkResult(@"root is still alive", ![context[@"testObject"] isUndefined]);
+        }
+    }
+
+    @autoreleasepool {
+        JSVirtualMachine *vm = [TinyDOMNode sharedVirtualMachine];
+        JSContext *context = [[JSContext alloc] initWithVirtualMachine:vm];
+        TinyDOMNode *root = [[TinyDOMNode alloc] init];
+        TinyDOMNode *lastNode = root;
+        for (NSUInteger i = 0; i < 3; i++) {
+            TinyDOMNode *newNode = [[TinyDOMNode alloc] init];
+            [lastNode appendChild:newNode];
+            lastNode = newNode;
+        }
+
+        @autoreleasepool {
+            context[@"root"] = root;
+            context[@"getLastNodeInChain"] = ^(TinyDOMNode *head){
+                TinyDOMNode *lastNode = nil;
+                while (head) {
+                    lastNode = head;
+                    head = [lastNode childAtIndex:0];
+                }
+                return lastNode;
+            };
+            [context evaluateScript:@"getLastNodeInChain(root).myCustomProperty = 42;"];
+        }
+
+        JSSynchronousGarbageCollectForDebugging([context globalContextRef]);
+
+        JSValue *myCustomProperty = [context evaluateScript:@"getLastNodeInChain(root).myCustomProperty"];
+        checkResult(@"My custom property == 42", [myCustomProperty isNumber] && [myCustomProperty toInt32] == 42);
+
+        [TinyDOMNode clearSharedVirtualMachine];
+    }
+
+    @autoreleasepool {
+        JSVirtualMachine *vm = [TinyDOMNode sharedVirtualMachine];
+        JSContext *context = [[JSContext alloc] initWithVirtualMachine:vm];
+        TinyDOMNode *root = [[TinyDOMNode alloc] init];
+        TinyDOMNode *lastNode = root;
+        for (NSUInteger i = 0; i < 3; i++) {
+            TinyDOMNode *newNode = [[TinyDOMNode alloc] init];
+            [lastNode appendChild:newNode];
+            lastNode = newNode;
+        }
+
+        @autoreleasepool {
+            context[@"root"] = root;
+            context[@"getLastNodeInChain"] = ^(TinyDOMNode *head){
+                TinyDOMNode *lastNode = nil;
+                while (head) {
+                    lastNode = head;
+                    head = [lastNode childAtIndex:0];
+                }
+                return lastNode;
+            };
+            [context evaluateScript:@"getLastNodeInChain(root).myCustomProperty = 42;"];
+
+            [root appendChild:[root childAtIndex:0]];
+            [root removeChildAtIndex:0];
+        }
+
+        JSSynchronousGarbageCollectForDebugging([context globalContextRef]);
+
+        JSValue *myCustomProperty = [context evaluateScript:@"getLastNodeInChain(root).myCustomProperty"];
+        checkResult(@"duplicate calls to addManagedReference don't cause things to die", [myCustomProperty isNumber] && [myCustomProperty toInt32] == 42);
+
+        [TinyDOMNode clearSharedVirtualMachine];
     }
 }
 

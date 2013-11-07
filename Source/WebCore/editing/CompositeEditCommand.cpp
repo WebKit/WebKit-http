@@ -364,7 +364,7 @@ void CompositeEditCommand::insertNodeAt(PassRefPtr<Node> insertChild, const Posi
         if (child)
             insertNodeBefore(insertChild, child);
         else
-            appendNode(insertChild, toElement(refChild));
+            appendNode(insertChild, toContainerNode(refChild));
     } else if (caretMinOffset(refChild) >= offset)
         insertNodeBefore(insertChild, refChild);
     else if (refChild->isTextNode() && caretMaxOffset(refChild) > offset) {
@@ -500,9 +500,10 @@ void CompositeEditCommand::deleteTextFromNode(PassRefPtr<Text> node, unsigned of
     applyCommandToComposite(DeleteFromTextNodeCommand::create(node, offset, count));
 }
 
-void CompositeEditCommand::replaceTextInNode(PassRefPtr<Text> node, unsigned offset, unsigned count, const String& replacementText)
+void CompositeEditCommand::replaceTextInNode(PassRefPtr<Text> prpNode, unsigned offset, unsigned count, const String& replacementText)
 {
-    applyCommandToComposite(DeleteFromTextNodeCommand::create(node.get(), offset, count));
+    RefPtr<Text> node(prpNode);
+    applyCommandToComposite(DeleteFromTextNodeCommand::create(node, offset, count));
     if (!replacementText.isEmpty())
         applyCommandToComposite(InsertIntoTextNodeCommand::create(node, offset, replacementText));
 }

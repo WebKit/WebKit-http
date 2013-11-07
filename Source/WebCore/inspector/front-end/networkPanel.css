@@ -112,7 +112,7 @@
 }
 
 .network-item-view.visible {
-    display: -webkit-box;
+    display: -webkit-flex;
 }
 
 .network-item-view .tabbed-pane-header {
@@ -295,7 +295,6 @@
 
 .resource-websocket .data-grid .data {
     background-image: none;
-    font-size: 11px;
 }
 
 .resource-websocket td {

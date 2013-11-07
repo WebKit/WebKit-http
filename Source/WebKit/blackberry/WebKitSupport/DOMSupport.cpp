@@ -23,6 +23,7 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "HTMLFormElement.h"
+#include "HTMLFrameOwnerElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLTextAreaElement.h"
@@ -35,9 +36,9 @@
 #include "TextIterator.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
+#include "VisibleUnits.h"
 
 #include "htmlediting.h"
-#include "visible_units.h"
 
 #include <limits>
 
@@ -152,7 +153,7 @@ HTMLTextFormControlElement* toTextControlElement(Node* node)
     if (!(node && node->isElementNode()))
         return 0;
 
-    Element* element = static_cast<Element*>(node);
+    Element* element = toElement(node);
     if (!element->isFormControlElement())
         return 0;
 
@@ -260,7 +261,7 @@ bool isTextBasedContentEditableElement(Element* element)
     if (!element)
         return false;
 
-    if (element->isReadOnlyNode() || !element->isEnabledFormControl())
+    if (element->isReadOnlyNode() || element->isDisabledFormControl())
         return false;
 
     if (isPopupInputField(element))
@@ -596,6 +597,12 @@ bool isFixedPositionOrHasFixedPositionAncestor(RenderObject* renderer)
         if (currentRenderer->isOutOfFlowPositioned() && currentRenderer->style()->position() == FixedPosition)
             return true;
 
+        // Check if the current frame is an iframe. If so, continue checking with the iframe's owner element.
+        if (!currentRenderer->parent() && currentRenderer->isRenderView() && currentRenderer->frame() && currentRenderer->frame()->ownerElement()) {
+            currentRenderer = currentRenderer->frame()->ownerElement()->renderer();
+            continue;
+        }
+
         currentRenderer = currentRenderer->parent();
     }
 
@@ -618,7 +625,7 @@ Element* selectionContainerElement(const VisibleSelection& selection)
     if (startContainer->isInShadowTree())
         element = startContainer->shadowHost();
     else if (startContainer->isElementNode())
-        element = static_cast<Element*>(startContainer);
+        element = toElement(startContainer);
     else
         element = startContainer->parentElement();
 

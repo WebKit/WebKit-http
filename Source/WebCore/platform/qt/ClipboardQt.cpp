@@ -55,9 +55,6 @@
 #include <QStringList>
 #include <QTextCodec>
 #include <QUrl>
-#include <qdebug.h>
-
-#define methodDebug() qDebug("ClipboardQt: %s", __FUNCTION__)
 
 namespace WebCore {
 
@@ -112,7 +109,7 @@ ClipboardQt::~ClipboardQt()
 
 void ClipboardQt::clearData(const String& type)
 {
-    if (policy() != ClipboardWritable)
+    if (!canWriteData())
         return;
 
     if (m_writableData) {
@@ -131,7 +128,7 @@ void ClipboardQt::clearData(const String& type)
 
 void ClipboardQt::clearAllData()
 {
-    if (policy() != ClipboardWritable)
+    if (!canWriteData())
         return;
 
 #ifndef QT_NO_CLIPBOARD
@@ -145,25 +142,24 @@ void ClipboardQt::clearAllData()
 
 String ClipboardQt::getData(const String& type) const
 {
-
-    if (policy() != ClipboardReadable)
+    const QMimeData* data = readData();
+    if (!canReadData() || !data)
         return String();
 
-    if (isHtmlMimeType(type) && m_readableData->hasHtml())
-        return m_readableData->html();
+    if (isHtmlMimeType(type) && data->hasHtml())
+        return data->html();
 
-    if (isTextMimeType(type) && m_readableData->hasText())
-        return m_readableData->text();
+    if (isTextMimeType(type) && data->hasText())
+        return data->text();
 
-    ASSERT(m_readableData);
-    QByteArray rawData = m_readableData->data(type);
-    QString data = QTextCodec::codecForName("UTF-16")->toUnicode(rawData);
-    return data;
+    QByteArray rawData = data->data(type);
+    QString stringData = QTextCodec::codecForName("UTF-16")->toUnicode(rawData);
+    return stringData;
 }
 
 bool ClipboardQt::setData(const String& type, const String& data)
 {
-    if (policy() != ClipboardWritable)
+    if (!canWriteData())
         return false;
 
     if (!m_writableData)
@@ -184,12 +180,12 @@ bool ClipboardQt::setData(const String& type, const String& data)
 // extensions beyond IE's API
 ListHashSet<String> ClipboardQt::types() const
 {
-    if (policy() != ClipboardReadable && policy() != ClipboardTypesReadable)
+    const QMimeData* data = readData();
+    if (!canReadTypes() || !data)
         return ListHashSet<String>();
 
-    ASSERT(m_readableData);
     ListHashSet<String> result;
-    QStringList formats = m_readableData->formats();
+    QStringList formats = data->formats();
     for (int i = 0; i < formats.count(); ++i)
         result.add(formats.at(i));
     return result;
@@ -197,11 +193,12 @@ ListHashSet<String> ClipboardQt::types() const
 
 PassRefPtr<FileList> ClipboardQt::files() const
 {
-    if (policy() != ClipboardReadable || !m_readableData->hasUrls())
+    const QMimeData* data = readData();
+    if (!canReadData() || !data || !data->hasUrls())
         return FileList::create();
 
     RefPtr<FileList> fileList = FileList::create();
-    QList<QUrl> urls = m_readableData->urls();
+    QList<QUrl> urls = data->urls();
 
     for (int i = 0; i < urls.size(); i++) {
         QUrl url = urls[i];
@@ -225,7 +222,7 @@ void ClipboardQt::setDragImageElement(Node* node, const IntPoint& point)
 
 void ClipboardQt::setDragImage(CachedImage* image, Node *node, const IntPoint &loc)
 {
-    if (policy() != ClipboardImageWritable && policy() != ClipboardWritable)
+    if (!canSetDragImage())
         return;
 
     if (m_dragImage)
@@ -249,7 +246,6 @@ DragImageRef ClipboardQt::createDragImage(IntPoint& dragLoc) const
 
     return 0;
 }
-
 
 static CachedImage* getCachedImage(Element* element)
 {
@@ -316,7 +312,7 @@ void ClipboardQt::writeRange(Range* range, Frame* frame)
 
     if (!m_writableData)
         m_writableData = new QMimeData;
-    QString text = frame->editor()->selectedText();
+    QString text = frame->editor()->selectedTextForClipboard();
     text.replace(QChar(0xa0), QLatin1Char(' '));
     m_writableData->setText(text);
     m_writableData->setHtml(createMarkup(range, 0, AnnotateForInterchange, false, ResolveNonLocalURLs));
@@ -339,9 +335,16 @@ void ClipboardQt::writePlainText(const String& str)
 #endif
 }
 
+const QMimeData* ClipboardQt::readData() const
+{
+    ASSERT(!(m_readableData && m_writableData));
+    ASSERT(m_readableData || m_writableData || canWriteData());
+    return m_readableData ? m_readableData : m_writableData;
+}
+
 bool ClipboardQt::hasData()
 {
-    const QMimeData *data = m_readableData ? m_readableData : m_writableData;
+    const QMimeData *data = readData();
     if (!data)
         return false;
     return data->formats().count() > 0;
@@ -350,17 +353,14 @@ bool ClipboardQt::hasData()
 #if ENABLE(DATA_TRANSFER_ITEMS)
 PassRefPtr<DataTransferItemList> ClipboardQt::items()
 {
-
     if (!m_frame && !m_frame->document())
         return 0;
 
     RefPtr<DataTransferItemListQt> items = DataTransferItemListQt::create(this, m_frame->document()->scriptExecutionContext());
 
-    if (!m_readableData)
-        return items;
-
-    if (isForCopyAndPaste() && policy() == ClipboardReadable) {
-        const QStringList types = m_readableData->formats();
+    const QMimeData* readableData = readData();
+    if (readableData && isForCopyAndPaste() && canReadData()) {
+        const QStringList types = readableData->formats();
         for (int i = 0; i < types.count(); ++i)
             items->addPasteboardItem(types.at(i));
     }

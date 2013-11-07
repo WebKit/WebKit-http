@@ -94,8 +94,8 @@ void PageOverlay::setNeedsDisplay(const IntRect& dirtyRect)
 {
     if (m_webPage) {
         if (!m_pageOverlayShouldApplyFadeWhenPainting)
-            m_webPage->drawingArea()->setPageOverlayOpacity(m_fractionFadedIn);
-        m_webPage->drawingArea()->setPageOverlayNeedsDisplay(dirtyRect);
+            m_webPage->drawingArea()->setPageOverlayOpacity(this, m_fractionFadedIn);
+        m_webPage->drawingArea()->setPageOverlayNeedsDisplay(this, dirtyRect);
     }
 }
 
@@ -145,6 +145,12 @@ void PageOverlay::startFadeOutAnimation()
     startFadeAnimation();
 }
 
+void PageOverlay::stopFadeOutAnimation()
+{
+    m_fractionFadedIn = 1.0;
+    m_fadeAnimationTimer.stop();
+}
+
 void PageOverlay::startFadeAnimation()
 {
     m_fadeAnimationStartTime = currentTime();
@@ -168,7 +174,7 @@ void PageOverlay::fadeAnimationTimerFired()
     if (m_pageOverlayShouldApplyFadeWhenPainting)
         setNeedsDisplay();
     else
-        m_webPage->drawingArea()->setPageOverlayOpacity(m_fractionFadedIn);
+        m_webPage->drawingArea()->setPageOverlayOpacity(this, m_fractionFadedIn);
 
     if (animationProgress == 1.0) {
         m_fadeAnimationTimer.stop();

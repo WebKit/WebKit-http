@@ -84,6 +84,8 @@ namespace WebCore {
     macro(keyup) \
     macro(levelchange) \
     macro(load) \
+    macro(loading) \
+    macro(loadingdone) \
     macro(loadstart) \
     macro(message) \
     macro(mousedown) \
@@ -225,15 +227,14 @@ namespace WebCore {
     macro(connecting) \
     macro(addstream) \
     macro(removestream) \
-    macro(statechange) \
+    macro(signalingstatechange) \
     macro(removetrack) \
     macro(mute) \
     macro(unmute) \
-    macro(icechange) \
+    macro(iceconnectionstatechange) \
     macro(icecandidate) \
     macro(negotiationneeded) \
     macro(datachannel) \
-    macro(gatheringchange) \
     macro(tonechange) \
     \
     macro(show) \
@@ -256,6 +257,8 @@ namespace WebCore {
     macro(webkitprerenderstop) \
     macro(webkitprerenderload) \
     macro(webkitprerenderdomcontentloaded) \
+    \
+    macro(securitypolicyviolation) \
     \
 
 // end of DOM_EVENT_NAMES_FOR_EACH

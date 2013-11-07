@@ -163,6 +163,7 @@ svg/hixie/viewbox/preserveAspectRatio/002.xml
 editing/execCommand/copy-without-selection.html
 editing/pasteboard/copy-two-pasteboard-types-both-work.html
 editing/pasteboard/pasting-empty-html-falls-back-to-text.html
+editing/pasteboard/can-read-in-copy-and-cut-events.html
 
 # Drag & Drop doesn't work correctly in DRT <rdar://5621244>
 editing/pasteboard/drag-and-drop-objectimage-contenteditable.html
@@ -177,7 +178,6 @@ fast/events/drop-with-file-paths.html
 fast/events/dropzone-004.html
 fast/events/only-valid-drop-targets-receive-file-drop.html
 fast/events/standalone-image-drag-to-editable.html
-fast/events/drag-and-drop-autoscroll.html
 http/tests/security/clipboard/clipboard-file-access.html
 http/tests/security/drag-drop-same-unique-origin.html
 
@@ -207,6 +207,10 @@ fast/text/vertical-rl-rtl-linebreak.html [ Failure ]
 fast/events/frame-tab-focus.html
 fast/events/option-tab.html
 fast/forms/focus2.html
+
+# Unidentified crash, possibly related to linking issues?
+# https://bugs.webkit.org/show_bug.cgi?id=113220
+fast/forms/select/popup-closes-on-blur.html [ Crash ]
 
 # fast/html/keygen.html is failing on boomer <rdar://problem/5133799>
 fast/html/keygen.html
@@ -433,6 +437,10 @@ transitions/change-values-during-transition.html
 # Sometimes times out http://webkit.org/b/48457
 fast/workers/storage/use-same-database-in-page-and-workers.html
 
+webkit.org/b/106415 fast/workers/worker-close-more.html [ Pass Failure ]
+webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ]
+webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
+
 # Times out on apple-windows-3 http://webkit.org/b/48750
 fast/frames/sandboxed-iframe-storage.html
 
@@ -643,7 +651,6 @@ accessibility/onclick-handlers.html
 accessibility/aria-option-role.html
 accessibility/placeholder.html
 accessibility/plugin.html
-accessibility/radio-button-checkbox-size.html
 accessibility/radio-button-group-members.html
 accessibility/radio-button-title-label.html
 accessibility/secure-textfield-title-ui.html
@@ -695,7 +702,6 @@ editing/inserting/typing-space-to-trigger-smart-link.html
 
 # Failed as of 41995
 fast/canvas/canvas-gradient-addStop-error.html
-fast/css/ignore-text-zoom.html
 fast/dom/navigator-detached-no-crash.html
 fast/dom/HTMLDocument/hasFocus.html
 fast/events/key-events-in-input-button.html
@@ -1009,9 +1015,11 @@ fast/forms/multiple-form-submission-protection-mouse.html
 # mouseScrollBy() and continuousMouseScrollBy() are not yet implemented in the Windows EventSender API.
 fast/events/remove-child-onscroll.html
 fast/events/platform-wheelevent-in-scrolling-div.html
+fast/events/platform-wheelevent-with-delta-zero-crash.html
 fast/events/continuous-platform-wheelevent-in-scrolling-div.html
 fast/events/wheelevent-direction-inverted-from-device.html
 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html
+fast/events/wheelevent-in-text-node.html
 fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html
 fast/forms/search/search-scroll-hidden-decoration-container-crash.html
 fast/repaint/overflow-auto-in-overflow-auto-scrolled.html
@@ -1304,6 +1312,10 @@ inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
 webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 
+webkit.org/b/113787 inspector/profiler/memory-instrumentation-external-array.html [ Skip ]
+
+webkit.org/b/113787 inspector/profiler/memory-instrumentation-external-string.html [ Skip ]
+
 # New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
@@ -1358,6 +1370,9 @@ plugins/iframe-shims.html
 # Requires WebP support.
 fast/canvas/canvas-toDataURL-webp.html
 fast/images/webp-image-decoding.html
+fast/images/webp-color-profile-lossless.html
+fast/images/webp-color-profile-lossy-alpha.html
+fast/images/webp-color-profile-lossy.html
 http/tests/images/webp-partial-load.html
 http/tests/images/webp-progressive-load.html
 
@@ -1471,6 +1486,10 @@ storage/storageinfo-missing-arguments.html
 storage/storageinfo-no-callbacks.html
 storage/storageinfo-query-usage.html
 storage/storageinfo-request-quota.html
+storage/storagequota-query-usage.html
+storage/storagequota-request-quota.html
+fast/workers/worker-storagequota-query-usage.html
+fast/workers/shared-worker-storagequota-query-usage.html
 
 # Expose title direction in WebKit API
 # https://bugs.webkit.org/show_bug.cgi?id=58845
@@ -2293,6 +2312,8 @@ media/video-set-rate-from-pause.html
 media/video-src-change.html
 media/video-timeupdate-reverse-play.html
 media/W3C/video/src/src_removal_does_not_trigger_loadstart.html
+media/video-pause-empty-events.html
+media/video-play-empty-events.html
 media/video-single-valid-source.html
 media/video-source-error-no-candidate.html
 media/video-src-remove.html
@@ -2443,6 +2464,7 @@ webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
 
 webkit.org/b/100424 editing/selection/user-select-all-selection.html [ Failure ]
+webkit.org/b/100424 editing/selection/user-select-all-with-shift.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=99567
 # Not supported on Mac or Windows ports
@@ -2489,6 +2511,17 @@ fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html
 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html
 fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-decoration-line.html
+fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-decoration-color.html
+fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-underline-position.html
+fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
+
+# Needs rebaseline.
+webkit.org/b/94198 fast/dom/HTMLImageElement/image-alt-text.html [ Failure ]
+webkit.org/b/94198 fast/dom/HTMLInputElement/input-image-alt-text.html [ Failure ]
+webkit.org/b/94198 fast/encoding/utf-16-big-endian.html [ Failure ]
+webkit.org/b/94198 fast/encoding/utf-16-little-endian.html [ Failure ]
+webkit.org/b/94198 fast/forms/input-value.html [ Failure ]
+webkit.org/b/94198 tables/mozilla/collapsing_borders/bug41262-3.html [ Failure ]
 
 # ACCELERATED_OVERFLOW_SCROLLING is disabled on Windows
 compositing/overflow/scrolling-without-painting.html
@@ -2509,6 +2542,7 @@ fast/js/kde/Array.html
 webkit.org/b/103770 media/track/track-in-band.html [ Skip ]
 webkit.org/b/103770 media/track/track-in-band-cues-added-once.html [ Skip ]
 webkit.org/b/103770 media/track/track-in-band-style.html [ Skip ]
+webkit.org/b/103770 media/track/track-in-band-legacy-api.html [ Skip ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=97026
 fast/events/keydown-leftright-keys.html
@@ -2581,7 +2615,6 @@ fast/text/capitalize-empty-generated-string.html
 fast/text/international/float-as-only-child-of-isolate-crash.html
 fast/text/whitespace/006.html
 fast/text/whitespace/007.html
-inspector-protocol/layer-tree.html
 svg/W3C-SVG-1.1-SE/painting-control-04-f.svg
 svg/W3C-SVG-1.1-SE/text-intro-02-b.svg
 svg/W3C-SVG-1.1-SE/text-intro-09-b.svg
@@ -2636,27 +2669,16 @@ webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
-
-# Need rebaseline after https://bugs.webkit.org/show_bug.cgi?id=109775
-webkit.org/b/109775 media/audio-controls-rendering.html [ Failure ]
-webkit.org/b/109775 media/controls-after-reload.html [ Failure ]
-webkit.org/b/109775 media/controls-strict.html [ Failure ]
-webkit.org/b/109775 media/controls-styling-strict.html [ Failure ]
-webkit.org/b/109775 media/controls-without-preload.html [ Failure ]
-webkit.org/b/109775 media/video-controls-rendering.html [ Failure ]
-webkit.org/b/109775 media/video-display-toggle.html [ Failure ]
-webkit.org/b/109775 media/video-playing-and-pause.html [ Failure ]
+webkit.org/b/108370 editing/spelling/spellcheck-async-mutation.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spellcheck-async.html [ Skip ]
+webkit.org/b/108370 editing/spelling/spellcheck-sequencenum.html [ Skip ]
+webkit.org/b/108370 editing/style/iframe-onload-crash-mac.html [ Skip ]
 
 # Need rebaseline for https://bugs.webkit.org/show_bug.cgi?id=109994
 webkit.org/b/109994 css2.1/20110323/replaced-elements-001.htm [ Failure ]
-webkit.org/b/109994 fast/forms/button-generated-content.html [ Failure ]
-webkit.org/b/109994 fast/forms/select-baseline.html [ Failure ]
 webkit.org/b/109994 svg/custom/foreign-object-skew.svg [ Failure ]
 webkit.org/b/109994 tables/mozilla/bugs/bug92647-2.html [ Failure ]
 
-# Need rebaseline
-webkit.org/b/110654 css2.1/20110323/replaced-elements-001.htm [ Failure ]
-webkit.org/b/110654 tables/mozilla/bugs/bug92647-2.html [ Failure ]
 # New test
 webkit.org/b/110654 css3/flexbox/button.html [ Failure ]
 
@@ -2678,18 +2700,13 @@ editing/spelling/spelling-changed-text.html
 
 # Skip a bunch of tests to get EWS bots in a better state.
 accessibility
-fast/events
 fast/text/international
 inspector-protocol
 plugins
 sputnik
 fast/xsl
 http
-fast/js
-fast/events
-fast/parser
 ietestcenter
-jquery
 media/media-fragments
 media/W3C
 
@@ -2706,3 +2723,38 @@ media/track/regions-webvtt
 # https://bugs.webkit.org/show_bug.cgi?id=111606
 fast/borders/border-fit.html
 fast/repaint/border-fit-lines.html
+
+# Snapshotted plugins not enabled
+webkit.org/b/98696 plugins/snapshotting [ Skip ]
+
+webkit.org/b/112867 compositing/geometry/limit-layer-bounds-fixed.html [ Pass Failure ]
+
+webkit.org/b/112868 fast/dom/MutationObserver/database-callback-delivery.html [ Pass Failure ]
+
+webkit.org/b/112764 fast/frames/xss-auditor-handles-file-urls.html [ Failure ]
+webkit.org/b/112766 media/media-higher-prio-audio-stream.html [ Failure ]
+
+webkit.org/b/112881 fast/text/custom-font-data-crash2.html [ Crash Pass ]
+
+webkit.org/b/113012 compositing/overflow/composited-scrolling-paint-phases.html [ Pass Failure ]
+
+webkit.org/b/113075 media/video-seek-by-small-increment.html [ Pass Crash ]
+webkit.org/b/113076 media/video-volume.html [ Pass Crash ]
+
+webkit.org/b/113106 media/track/track-prefer-captions.html [ Failure ]
+
+# dumpCreateView method not implemented on Windows
+fast/loader/url-selected-user-gesture.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=113908
+css3/filters/composited-layer-bounds-after-sw-blur-animation.html
+css3/filters/composited-layer-bounds-with-composited-blur.html
+css3/filters/composited-layer-child-bounds-after-composited-to-sw-shadow-change.html
+css3/filters/composited-layer-promotion-after-outset-overlap-change-using-composited-shadow.html
+css3/filters/composited-layer-promotion-after-outset-overlap-change-using-sw-shadow.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=113946
+compositing/contents-opaque/control-layer.html
+compositing/filters/sw-layer-overlaps-hw-shadow.html
+compositing/filters/sw-shadow-overlaps-hw-layer.html
+compositing/filters/sw-shadow-overlaps-hw-shadow.html

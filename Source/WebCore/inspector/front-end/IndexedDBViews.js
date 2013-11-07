@@ -127,6 +127,9 @@ WebInspector.IDBDataView = function(model, databaseId, objectStore, index)
     this._refreshButton = new WebInspector.StatusBarButton(WebInspector.UIString("Refresh"), "refresh-storage-status-bar-item");
     this._refreshButton.addEventListener("click", this._refreshButtonClicked, this);
 
+    this._clearButton = new WebInspector.StatusBarButton(WebInspector.UIString("Clear object store"), "clear-storage-status-bar-item");
+    this._clearButton.addEventListener("click", this._clearButtonClicked, this);
+
     this._pageSize = 50;
     this._skipCount = 0;
 
@@ -140,22 +143,14 @@ WebInspector.IDBDataView.prototype = {
      */
     _createDataGrid: function()
     {
-        var columns = {};
-        columns["number"] = {};
-        columns["number"].title = WebInspector.UIString("#");
-        columns["number"].width = "50px";
-
         var keyPath = this._isIndex ? this._index.keyPath : this._objectStore.keyPath;
-        columns["key"] = {};
-        columns["key"].titleDOMFragment = this._keyColumnHeaderFragment(WebInspector.UIString("Key"), keyPath);
-        
-        if (this._isIndex) {
-            columns["primaryKey"] = {};
-            columns["primaryKey"].titleDOMFragment = this._keyColumnHeaderFragment(WebInspector.UIString("Primary key"), this._objectStore.keyPath);
-        }
 
-        columns["value"] = {};
-        columns["value"].title = WebInspector.UIString("Value");
+        var columns = [];
+        columns.push({id: "number", title: WebInspector.UIString("#"), width: "50px"});
+        columns.push({id: "key", titleDOMFragment: this._keyColumnHeaderFragment(WebInspector.UIString("Key"), keyPath)});
+        if (this._isIndex)
+            columns.push({id: "primaryKey", titleDOMFragment: this._keyColumnHeaderFragment(WebInspector.UIString("Primary key"), this._objectStore.keyPath)});
+        columns.push({id: "value", title: WebInspector.UIString("Value")});
 
         var dataGrid = new WebInspector.DataGrid(columns);
         return dataGrid;
@@ -172,7 +167,7 @@ WebInspector.IDBDataView.prototype = {
         keyColumnHeaderFragment.appendChild(document.createTextNode(prefix));
         if (keyPath === null)
             return keyColumnHeaderFragment;
-        
+
         keyColumnHeaderFragment.appendChild(document.createTextNode(" (" + WebInspector.UIString("Key path: ")));
         if (keyPath instanceof Array) {
             keyColumnHeaderFragment.appendChild(document.createTextNode("["));
@@ -306,6 +301,8 @@ WebInspector.IDBDataView.prototype = {
         var key = this._parseKey(this._keyInputElement.value);
         var pageSize = this._pageSize;
         var skipCount = this._skipCount;
+        this._refreshButton.setEnabled(false);
+        this._clearButton.setEnabled(!this._isIndex);
 
         if (!force && this._lastKey === key && this._lastPageSize === pageSize && this._lastSkipCount === skipCount)
             return;
@@ -324,6 +321,7 @@ WebInspector.IDBDataView.prototype = {
          */
         function callback(entries, hasMore)
         {
+            this._refreshButton.setEnabled(true);
             this.clear();
             this._entries = entries;
             for (var i = 0; i < entries.length; ++i) {
@@ -354,9 +352,19 @@ WebInspector.IDBDataView.prototype = {
         this._updateData(true);
     },
 
+    _clearButtonClicked: function(event)
+    {
+        function cleared() {
+            this._clearButton.setEnabled(true);
+            this._updateData(true);
+        }
+        this._clearButton.setEnabled(false);
+        this._model.clearObjectStore(this._databaseId, this._objectStore.name, cleared.bind(this));
+    },
+
     get statusBarItems()
     {
-        return [this._refreshButton.element];
+        return [this._refreshButton.element, this._clearButton.element];
     },
 
     clear: function()

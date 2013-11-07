@@ -62,7 +62,6 @@ void InitWebCoreSystemInterface(void)
     INIT(CopyNSURLResponseCertificateChain);
 #endif
     INIT(CreateCustomCFReadStream);
-    INIT(CreateNSURLConnectionDelegateProxy);
     INIT(DrawCapsLockIndicator);
     INIT(DrawBezeledTextArea);
     INIT(DrawBezeledTextFieldCell);
@@ -188,6 +187,8 @@ void InitWebCoreSystemInterface(void)
 
 #if PLATFORM(MAC)
     // FIXME: We should stop using this file in Chromium.
+
+    INIT(DestroyRenderingResources);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     INIT(CreateVMPressureDispatchOnMainQueue);

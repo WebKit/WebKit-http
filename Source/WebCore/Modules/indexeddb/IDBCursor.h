@@ -55,7 +55,7 @@ public:
     static const AtomicString& directionPrev();
     static const AtomicString& directionPrevUnique();
 
-    static IndexedDB::CursorDirection stringToDirection(const String& modeString, ScriptExecutionContext*, ExceptionCode&);
+    static IndexedDB::CursorDirection stringToDirection(const String& modeString, ExceptionCode&);
     static const AtomicString& directionToString(unsigned short mode);
 
     static PassRefPtr<IDBCursor> create(PassRefPtr<IDBCursorBackendInterface>, IndexedDB::CursorDirection, IDBRequest*, IDBAny* source, IDBTransaction*);
@@ -69,8 +69,7 @@ public:
     IDBAny* source() const;
 
     PassRefPtr<IDBRequest> update(ScriptState*, ScriptValue&, ExceptionCode&);
-    // FIXME: Make this unsigned long once webkit.org/b/96798 lands.
-    void advance(long long, ExceptionCode&);
+    void advance(unsigned long, ExceptionCode&);
     // FIXME: Try to modify the code generator so this overload is unneeded.
     void continueFunction(ScriptExecutionContext*, ExceptionCode& ec) { continueFunction(static_cast<IDBKey*>(0), ec); }
     void continueFunction(ScriptExecutionContext*, const ScriptValue& key, ExceptionCode&);

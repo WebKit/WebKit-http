@@ -41,16 +41,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-void JSAudioContext::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    JSAudioContext* thisObject = jsCast<JSAudioContext*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
-    COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
-    ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
-    Base::visitChildren(thisObject, visitor);
-    thisObject->m_impl->visitJSEventListeners(visitor);
-}
-
 EncodedJSValue JSC_HOST_CALL JSAudioContextConstructor::constructJSAudioContext(ExecState* exec)
 {
     JSAudioContextConstructor* jsConstructor = jsCast<JSAudioContextConstructor*>(exec->callee());
@@ -64,7 +54,7 @@ EncodedJSValue JSC_HOST_CALL JSAudioContextConstructor::constructJSAudioContext(
     if (!scriptExecutionContext->isDocument())
         return throwVMError(exec, createReferenceError(exec, "AudioContext constructor called in a script execution context which is not a document"));
 
-    Document* document = static_cast<Document*>(scriptExecutionContext);
+    Document* document = toDocument(scriptExecutionContext);
 
     RefPtr<AudioContext> audioContext;
     

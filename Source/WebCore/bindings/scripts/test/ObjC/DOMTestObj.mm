@@ -39,6 +39,7 @@
 #import "DOMSVGDocumentInternal.h"
 #import "DOMSVGPointInternal.h"
 #import "DOMStyleSheetInternal.h"
+#import "DOMTestEnumTypeInternal.h"
 #import "DOMTestObjInternal.h"
 #import "DOMTestObjectAConstructorInternal.h"
 #import "DOMTestObjectBConstructorInternal.h"
@@ -61,6 +62,7 @@
 #import "SVGDocument.h"
 #import "SVGStaticPropertyTearOff.h"
 #import "SerializedScriptValue.h"
+#import "TestEnumType.h"
 #import "TestObj.h"
 #import "TestObjectAConstructor.h"
 #import "TestObjectBConstructor.h"
@@ -716,6 +718,57 @@
     return IMPL->replaceableAttribute();
 }
 
+- (double)nullableDoubleAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->nullableDoubleAttribute(isNull);
+}
+
+- (int)nullableLongAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->nullableLongAttribute(isNull);
+}
+
+- (BOOL)nullableBooleanAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->nullableBooleanAttribute(isNull);
+}
+
+- (NSString *)nullableStringAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->nullableStringAttribute(isNull);
+}
+
+- (int)nullableLongSettableAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->nullableLongSettableAttribute(isNull);
+}
+
+- (void)setNullableLongSettableAttribute:(int)newNullableLongSettableAttribute
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setNullableLongSettableAttribute(newNullableLongSettableAttribute);
+}
+
+- (int)nullableStringValue
+{
+    WebCore::JSMainThreadNullState state;
+    WebCore::ExceptionCode ec = 0;
+    int result = IMPL->nullableStringValue(isNull, ec);
+    WebCore::raiseOnDOMError(ec);
+    return result;
+}
+
+- (void)setNullableStringValue:(int)newNullableStringValue
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setNullableStringValue(newNullableStringValue);
+}
+
 - (void)voidMethod
 {
     WebCore::JSMainThreadNullState state;
@@ -750,6 +803,12 @@
 {
     WebCore::JSMainThreadNullState state;
     return kit(WTF::getPtr(IMPL->objMethodWithArgs(longArg, strArg, core(objArg))));
+}
+
+- (void)methodWithEnumArg:(DOMTestEnumType *)enumArg
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->methodWithEnumArg(core(enumArg));
 }
 
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg

@@ -255,14 +255,18 @@ class PatchProcessingQueue(AbstractPatchQueue):
     # Subclasses must override.
     port_name = None
 
+    def __init__(self, options=None):
+        self._port = None  # We can't instantiate port here because tool isn't avaialble.
+        AbstractPatchQueue.__init__(self, options)
+
     # FIXME: This is a hack to map between the old port names and the new port names.
-    def _new_port_name_from_old(self, port_name):
+    def _new_port_name_from_old(self, port_name, platform):
         # The new port system has no concept of xvfb yet.
         if port_name == 'chromium-xvfb':
             return 'chromium'
         # ApplePort.determine_full_port_name asserts if the name doesn't include version.
         if port_name == 'mac':
-            return 'mac-future'
+            return 'mac-' + platform.os_version
         if port_name == 'win':
             return 'win-future'
         return port_name
@@ -275,11 +279,14 @@ class PatchProcessingQueue(AbstractPatchQueue):
         self._deprecated_port = DeprecatedPort.port(self.port_name)
         # FIXME: This violates abstraction
         self._tool._deprecated_port = self._deprecated_port
-        self._port = self._tool.port_factory.get(self._new_port_name_from_old(self.port_name))
+        self._port = self._tool.port_factory.get(self._new_port_name_from_old(self.port_name, self._tool.platform))
 
     def _upload_results_archive_for_patch(self, patch, results_archive_zip):
+        if not self._port:
+            self._port = self._tool.port_factory.get(self._new_port_name_from_old(self.port_name, self._tool.platform))
+
         bot_id = self._tool.status_server.bot_id or "bot"
-        description = "Archive of layout-test-results from %s" % bot_id
+        description = "Archive of layout-test-results from %s for %s" % (bot_id, self._port.name())
         # results_archive is a ZipFile object, grab the File object (.fp) to pass to Mechanize for uploading.
         results_archive_file = results_archive_zip.fp
         # Rewind the file object to start (since Mechanize won't do that automatically)
@@ -290,13 +297,13 @@ class PatchProcessingQueue(AbstractPatchQueue):
         comment_text = "The attached test failures were seen while running run-webkit-tests on the %s.\n" % (self.name)
         # FIXME: We could easily list the test failures from the archive here,
         # currently callers do that separately.
-        comment_text += BotInfo(self._tool).summary_text()
+        comment_text += BotInfo(self._tool, self._port.name()).summary_text()
         self._tool.bugs.add_attachment_to_bug(patch.bug_id(), results_archive_file, description, filename="layout-test-results.zip", comment_text=comment_text)
 
 
 class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTaskDelegate):
     name = "commit-queue"
-    port_name = "chromium-xvfb"
+    port_name = "mac-mountainlion"
 
     # AbstractPatchQueue methods
 

@@ -31,11 +31,6 @@
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 
-#if PLATFORM(CHROMIUM)
-#include "PageClientChromium.h"
-#include "PlatformWidget.h"
-#endif
-
 #if PLATFORM(MAC)
 #include <wtf/RetainPtr.h>
 #endif
@@ -86,10 +81,8 @@ typedef BView* PlatformWidget;
 #if PLATFORM(EFL)
 #if USE(EO)
 typedef struct _Eo Evas_Object;
-typedef struct _Eo Evas;
 #else
 typedef struct _Evas_Object Evas_Object;
-typedef struct _Evas Evas;
 #endif
 typedef Evas_Object* PlatformWidget;
 #endif
@@ -103,8 +96,6 @@ typedef PageClientBlackBerry* PlatformPageClient;
 #elif PLATFORM(EFL)
 class PageClientEfl;
 typedef PageClientEfl* PlatformPageClient;
-#elif PLATFORM(CHROMIUM)
-typedef WebCore::PageClientChromium* PlatformPageClient;
 #else
 typedef PlatformWidget PlatformPageClient;
 #endif
@@ -192,6 +183,7 @@ public:
     // FIXME: The Mac plug-in code should inherit from PluginView. When this happens PluginViewBase and PluginView can become one class.
     virtual bool isPluginViewBase() const { return false; }
     virtual bool isScrollbar() const { return false; }
+    virtual bool isScrollView() const { return false; }
 
     void removeFromParent();
     virtual void setParent(ScrollView* view);
@@ -237,17 +229,8 @@ public:
 #endif
 
 #if PLATFORM(EFL)
-    // FIXME: These should really go to PlatformWidget. They're here currently since
-    // the EFL port considers that Evas_Object (a C object) is a PlatformWidget, but
-    // encapsulating that into a C++ class will make this header clean as it should be.
-    Evas* evas() const;
-
     void setEvasObject(Evas_Object*);
-    Evas_Object* evasObject() const;
-#endif
-
-#if PLATFORM(CHROMIUM)
-    virtual bool isPluginContainer() const { return false; }
+    Evas_Object* evasObject() { return m_evasObject; }
 #endif
 
 #if PLATFORM(QT)
@@ -290,12 +273,16 @@ private:
 
     IntRect m_frame; // Not used when a native widget exists.
 
-#if PLATFORM(MAC) || PLATFORM(EFL)
+#if PLATFORM(MAC)
     WidgetPrivate* m_data;
 #endif
 
 #if PLATFORM(HAIKU)
     PlatformWidget m_topLevelPlatformWidget;	// TODO: Still needed?
+#endif
+
+#if PLATFORM(EFL)
+    Evas_Object* m_evasObject;
 #endif
 
 #if PLATFORM(QT)

@@ -32,6 +32,10 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
+namespace WebCore {
+class SharedBuffer;
+}
+
 namespace WebKit {
     
 class ShareableResource : public RefCounted<ShareableResource> {
@@ -48,6 +52,8 @@ public:
         void encode(CoreIPC::ArgumentEncoder&) const;
         static bool decode(CoreIPC::ArgumentDecoder&, Handle&);
 
+        PassRefPtr<WebCore::SharedBuffer> tryWrapInSharedBuffer() const;
+
     private:
         friend class ShareableResource;
 
@@ -56,10 +62,10 @@ public:
         unsigned m_size;
     };
 
-    // Create a shareable bitmap that uses malloced memory.
+    // Create a shareable resource that uses malloced memory.
     static PassRefPtr<ShareableResource> create(PassRefPtr<SharedMemory>, unsigned offset, unsigned size);
 
-    // Create a shareable bitmap from a handle.
+    // Create a shareable resource from a handle.
     static PassRefPtr<ShareableResource> create(const Handle&);
 
     // Create a handle.

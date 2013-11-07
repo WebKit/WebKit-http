@@ -57,18 +57,12 @@ MessagePort::~MessagePort()
         m_scriptExecutionContext->destroyedMessagePort(this);
 }
 
-// FIXME: remove this when we update the ObjC bindings (bug #28774).
 void MessagePort::postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort* port, ExceptionCode& ec)
 {
     MessagePortArray ports;
     if (port)
         ports.append(port);
     postMessage(message, &ports, ec);
-}
-
-void MessagePort::postMessage(PassRefPtr<SerializedScriptValue> message, ExceptionCode& ec)
-{
-    postMessage(message, static_cast<MessagePortArray*>(0), ec);
 }
 
 void MessagePort::postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray* ports, ExceptionCode& ec)
@@ -91,21 +85,20 @@ void MessagePort::postMessage(PassRefPtr<SerializedScriptValue> message, const M
         if (ec)
             return;
     }
-    m_entangledChannel->postMessageToRemote(MessagePortChannel::EventData::create(message, channels.release()));
+    m_entangledChannel->postMessageToRemote(message, channels.release());
 }
 
-PassOwnPtr<MessagePortChannel> MessagePort::disentangle(ExceptionCode& ec)
+PassOwnPtr<MessagePortChannel> MessagePort::disentangle()
 {
-    if (!m_entangledChannel)
-        ec = INVALID_STATE_ERR;
-    else {
-        m_entangledChannel->disentangle();
+    ASSERT(m_entangledChannel);
 
-        // We can't receive any messages or generate any events, so remove ourselves from the list of active ports.
-        ASSERT(m_scriptExecutionContext);
-        m_scriptExecutionContext->destroyedMessagePort(this);
-        m_scriptExecutionContext = 0;
-    }
+    m_entangledChannel->disentangle();
+
+    // We can't receive any messages or generate any events, so remove ourselves from the list of active ports.
+    ASSERT(m_scriptExecutionContext);
+    m_scriptExecutionContext->destroyedMessagePort(this);
+    m_scriptExecutionContext = 0;
+
     return m_entangledChannel.release();
 }
 
@@ -174,8 +167,9 @@ void MessagePort::dispatchMessages()
     // The HTML5 spec specifies that any messages sent to a document that is not fully active should be dropped, so this behavior is OK.
     ASSERT(started());
 
-    OwnPtr<MessagePortChannel::EventData> eventData;
-    while (m_entangledChannel && m_entangledChannel->tryGetMessageFromRemote(eventData)) {
+    RefPtr<SerializedScriptValue> message;
+    OwnPtr<MessagePortChannelArray> channels;
+    while (m_entangledChannel && m_entangledChannel->tryGetMessageFromRemote(message, channels)) {
 
 #if ENABLE(WORKERS)
         // close() in Worker onmessage handler should prevent next message from dispatching.
@@ -183,8 +177,8 @@ void MessagePort::dispatchMessages()
             return;
 #endif
 
-        OwnPtr<MessagePortArray> ports = MessagePort::entanglePorts(*m_scriptExecutionContext, eventData->channels());
-        RefPtr<Event> evt = MessageEvent::create(ports.release(), eventData->message());
+        OwnPtr<MessagePortArray> ports = MessagePort::entanglePorts(*m_scriptExecutionContext, channels.release());
+        RefPtr<Event> evt = MessageEvent::create(ports.release(), message.release());
 
         dispatchEvent(evt.release(), ASSERT_NO_EXCEPTION);
     }
@@ -217,7 +211,7 @@ PassOwnPtr<MessagePortChannelArray> MessagePort::disentanglePorts(const MessageP
     // Walk the incoming array - if there are any duplicate ports, or null ports or cloned ports, throw an error (per section 8.3.3 of the HTML5 spec).
     for (unsigned int i = 0; i < ports->size(); ++i) {
         MessagePort* port = (*ports)[i].get();
-        if (!port || port->isCloned() || portSet.contains(port)) {
+        if (!port || port->isNeutered() || portSet.contains(port)) {
             ec = DATA_CLONE_ERR;
             return nullptr;
         }
@@ -227,7 +221,7 @@ PassOwnPtr<MessagePortChannelArray> MessagePort::disentanglePorts(const MessageP
     // Passed-in ports passed validity checks, so we can disentangle them.
     OwnPtr<MessagePortChannelArray> portArray = adoptPtr(new MessagePortChannelArray(ports->size()));
     for (unsigned int i = 0 ; i < ports->size() ; ++i) {
-        OwnPtr<MessagePortChannel> channel = (*ports)[i]->disentangle(ASSERT_NO_EXCEPTION); // Can't generate exception here if passed above checks.
+        OwnPtr<MessagePortChannel> channel = (*ports)[i]->disentangle();
         (*portArray)[i] = channel.release();
     }
     return portArray.release();

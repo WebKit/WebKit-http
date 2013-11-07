@@ -93,7 +93,7 @@ public:
     virtual void setAccessibleName(const AtomicString&);
     
     // Provides common logic used by all elements when determining isIgnored.
-    AccessibilityObjectInclusion accessibilityIsIgnoredBase() const;
+    virtual AccessibilityObjectInclusion defaultObjectInclusion() const;
     
     virtual int layoutCount() const;
     virtual double estimatedLoadingProgress() const;
@@ -228,7 +228,6 @@ protected:
 private:
     void ariaListboxSelectedChildren(AccessibilityChildrenVector&);
     void ariaListboxVisibleChildren(AccessibilityChildrenVector&);
-    bool ariaIsHidden() const;
     bool isAllowedChildOfTree() const;
     bool hasTextAlternative() const;
     String positionalDescriptionForMSAA() const;
@@ -236,7 +235,8 @@ private:
     Element* rootEditableElementForPosition(const Position&) const;
     bool nodeIsTextControl(const Node*) const;
     virtual void setNeedsToUpdateChildren() { m_childrenDirty = true; }
-
+    virtual Path elementPath() const;
+    
     bool isTabItemSelected() const;
     LayoutRect checkboxOrRadioRect() const;
     void addRadioButtonGroupMembers(AccessibilityChildrenVector& linkedUIElements) const;
@@ -254,7 +254,8 @@ private:
     AccessibilitySVGRoot* remoteSVGRootElement() const;
     AccessibilityObject* remoteSVGElementHitTest(const IntPoint&) const;
     void offsetBoundingBoxForRemoteSVGElement(LayoutRect&) const;
-    
+    virtual bool supportsPath() const;
+
     void addHiddenChildren();
     void addTextFieldChildren();
     void addImageMapChildren();
@@ -276,7 +277,7 @@ private:
     virtual const AtomicString& ariaLiveRegionRelevant() const;
     virtual bool ariaLiveRegionAtomic() const;
     virtual bool ariaLiveRegionBusy() const;    
-    
+
     bool inheritsPresentationalRole() const;
 
 #if ENABLE(MATHML)
@@ -321,6 +322,7 @@ private:
     // Fenced components.
     virtual String mathFencedOpenString() const;
     virtual String mathFencedCloseString() const;
+    virtual int mathLineThickness() const;
 
     bool isIgnoredElementWithinMathTree() const;
 #endif

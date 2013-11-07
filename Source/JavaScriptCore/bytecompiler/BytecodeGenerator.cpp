@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -45,81 +45,6 @@
 using namespace std;
 
 namespace JSC {
-
-/*
-    The layout of a register frame looks like this:
-
-    For
-
-    function f(x, y) {
-        var v1;
-        function g() { }
-        var v2;
-        return (x) * (y);
-    }
-
-    assuming (x) and (y) generated temporaries t1 and t2, you would have
-
-    ------------------------------------
-    |  x |  y |  g | v2 | v1 | t1 | t2 | <-- value held
-    ------------------------------------
-    | -5 | -4 | -3 | -2 | -1 | +0 | +1 | <-- register index
-    ------------------------------------
-    | params->|<-locals      | temps->
-
-    Because temporary registers are allocated in a stack-like fashion, we
-    can reclaim them with a simple popping algorithm. The same goes for labels.
-    (We never reclaim parameter or local registers, because parameters and
-    locals are DontDelete.)
-
-    The register layout before a function call looks like this:
-
-    For
-
-    function f(x, y)
-    {
-    }
-
-    f(1);
-
-    >                        <------------------------------
-    <                        >  reserved: call frame  |  1 | <-- value held
-    >         >snip<         <------------------------------
-    <                        > +0 | +1 | +2 | +3 | +4 | +5 | <-- register index
-    >                        <------------------------------
-    | params->|<-locals      | temps->
-
-    The call instruction fills in the "call frame" registers. It also pads
-    missing arguments at the end of the call:
-
-    >                        <-----------------------------------
-    <                        >  reserved: call frame  |  1 |  ? | <-- value held ("?" stands for "undefined")
-    >         >snip<         <-----------------------------------
-    <                        > +0 | +1 | +2 | +3 | +4 | +5 | +6 | <-- register index
-    >                        <-----------------------------------
-    | params->|<-locals      | temps->
-
-    After filling in missing arguments, the call instruction sets up the new
-    stack frame to overlap the end of the old stack frame:
-
-                             |---------------------------------->                        <
-                             |  reserved: call frame  |  1 |  ? <                        > <-- value held ("?" stands for "undefined")
-                             |---------------------------------->         >snip<         <
-                             | -7 | -6 | -5 | -4 | -3 | -2 | -1 <                        > <-- register index
-                             |---------------------------------->                        <
-                             |                        | params->|<-locals       | temps->
-
-    That way, arguments are "copied" into the callee's stack frame for free.
-
-    If the caller supplies too many arguments, this trick doesn't work. The
-    extra arguments protrude into space reserved for locals and temporaries.
-    In that case, the call instruction makes a real copy of the call frame header,
-    along with just the arguments expected by the callee, leaving the original
-    call frame header and arguments behind. (The call instruction can't just discard
-    extra arguments, because the "arguments" object may access them later.)
-    This copying strategy ensures that all named values will be at the indices
-    expected by the callee.
-*/
 
 void Label::setLocation(unsigned location)
 {
@@ -351,7 +276,7 @@ BytecodeGenerator::BytecodeGenerator(JSGlobalData& globalData, JSScope* scope, F
     bool shouldCaptureAllTheThings = m_shouldEmitDebugHooks || codeBlock->usesEval();
 
     bool capturesAnyArgumentByName = false;
-    Vector<RegisterID*> capturedArguments;
+    Vector<RegisterID*, 0, UnsafeVectorOverflow> capturedArguments;
     if (functionBody->hasCapturedVariables() || shouldCaptureAllTheThings) {
         FunctionParameters& parameters = *functionBody->parameters();
         capturedArguments.resize(parameters.size());
@@ -516,7 +441,7 @@ BytecodeGenerator::BytecodeGenerator(JSGlobalData& globalData, JSScope* scope, E
 
     const DeclarationStacks::VarStack& varStack = evalNode->varStack();
     unsigned numVariables = varStack.size();
-    Vector<Identifier> variables;
+    Vector<Identifier, 0, UnsafeVectorOverflow> variables;
     variables.reserveCapacity(numVariables);
     for (size_t i = 0; i < numVariables; ++i)
         variables.append(*varStack[i].first);
@@ -769,7 +694,7 @@ void ALWAYS_INLINE BytecodeGenerator::rewindUnaryOp()
 PassRefPtr<Label> BytecodeGenerator::emitJump(Label* target)
 {
     size_t begin = instructions().size();
-    emitOpcode(target->isForward() ? op_jmp : op_loop);
+    emitOpcode(op_jmp);
     instructions().append(target->bind(begin, instructions().size()));
     return target;
 }
@@ -787,7 +712,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             rewindBinaryOp();
 
             size_t begin = instructions().size();
-            emitOpcode(target->isForward() ? op_jless : op_loop_if_less);
+            emitOpcode(op_jless);
             instructions().append(src1Index);
             instructions().append(src2Index);
             instructions().append(target->bind(begin, instructions().size()));
@@ -804,7 +729,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             rewindBinaryOp();
 
             size_t begin = instructions().size();
-            emitOpcode(target->isForward() ? op_jlesseq : op_loop_if_lesseq);
+            emitOpcode(op_jlesseq);
             instructions().append(src1Index);
             instructions().append(src2Index);
             instructions().append(target->bind(begin, instructions().size()));
@@ -821,7 +746,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             rewindBinaryOp();
 
             size_t begin = instructions().size();
-            emitOpcode(target->isForward() ? op_jgreater : op_loop_if_greater);
+            emitOpcode(op_jgreater);
             instructions().append(src1Index);
             instructions().append(src2Index);
             instructions().append(target->bind(begin, instructions().size()));
@@ -838,7 +763,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
             rewindBinaryOp();
 
             size_t begin = instructions().size();
-            emitOpcode(target->isForward() ? op_jgreatereq : op_loop_if_greatereq);
+            emitOpcode(op_jgreatereq);
             instructions().append(src1Index);
             instructions().append(src2Index);
             instructions().append(target->bind(begin, instructions().size()));
@@ -878,7 +803,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label* tar
 
     size_t begin = instructions().size();
 
-    emitOpcode(target->isForward() ? op_jtrue : op_loop_if_true);
+    emitOpcode(op_jtrue);
     instructions().append(cond->index());
     instructions().append(target->bind(begin, instructions().size()));
     return target;
@@ -964,7 +889,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
             rewindUnaryOp();
 
             size_t begin = instructions().size();
-            emitOpcode(target->isForward() ? op_jtrue : op_loop_if_true);
+            emitOpcode(op_jtrue);
             instructions().append(srcIndex);
             instructions().append(target->bind(begin, instructions().size()));
             return target;
@@ -1002,7 +927,7 @@ PassRefPtr<Label> BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label* ta
     }
 
     size_t begin = instructions().size();
-    emitOpcode(target->isForward() ? op_jfalse : op_loop_if_false);
+    emitOpcode(op_jfalse);
     instructions().append(cond->index());
     instructions().append(target->bind(begin, instructions().size()));
     return target;
@@ -1271,7 +1196,7 @@ ResolveResult BytecodeGenerator::resolve(const Identifier& property)
     if (property == propertyNames().arguments || !canOptimizeNonLocals())
         return ResolveResult::dynamicResolve();
 
-    if (!m_scope || m_codeType != FunctionCode)
+    if (!m_scope || m_codeType != FunctionCode || m_shouldEmitDebugHooks)
         return ResolveResult::dynamicResolve();
 
     ScopeChainIterator iter = m_scope->begin();
@@ -1737,7 +1662,7 @@ RegisterID* BytecodeGenerator::emitNewArray(RegisterID* dst, ElementNode* elemen
         }
     }
 
-    Vector<RefPtr<RegisterID>, 16> argv;
+    Vector<RefPtr<RegisterID>, 16, UnsafeVectorOverflow> argv;
     for (ElementNode* n = elements; n; n = n->next()) {
         if (n->elision())
             break;
@@ -1924,7 +1849,7 @@ RegisterID* BytecodeGenerator::emitCall(OpcodeID opcodeID, RegisterID* dst, Regi
         emitNode(callArguments.argumentRegister(argument++), n);
 
     // Reserve space for call frame.
-    Vector<RefPtr<RegisterID>, JSStack::CallFrameHeaderSize> callFrame;
+    Vector<RefPtr<RegisterID>, JSStack::CallFrameHeaderSize, UnsafeVectorOverflow> callFrame;
     for (int i = 0; i < JSStack::CallFrameHeaderSize; ++i)
         callFrame.append(newTemporary());
 
@@ -2047,7 +1972,7 @@ RegisterID* BytecodeGenerator::emitConstruct(RegisterID* dst, RegisterID* func, 
     }
 
     // Reserve space for call frame.
-    Vector<RefPtr<RegisterID>, JSStack::CallFrameHeaderSize> callFrame;
+    Vector<RefPtr<RegisterID>, JSStack::CallFrameHeaderSize, UnsafeVectorOverflow> callFrame;
     for (int i = 0; i < JSStack::CallFrameHeaderSize; ++i)
         callFrame.append(newTemporary());
 
@@ -2121,7 +2046,7 @@ void BytecodeGenerator::emitPopScope()
     m_dynamicScopeDepth--;
 }
 
-void BytecodeGenerator::emitDebugHook(DebugHookID debugHookID, int firstLine, int lastLine, int column)
+void BytecodeGenerator::emitDebugHook(DebugHookID debugHookID, int firstLine, int lastLine, int charPosition)
 {
 #if ENABLE(DEBUG_WITH_BREAKPOINT)
     if (debugHookID != DidReachBreakpoint)
@@ -2130,11 +2055,12 @@ void BytecodeGenerator::emitDebugHook(DebugHookID debugHookID, int firstLine, in
     if (!m_shouldEmitDebugHooks)
         return;
 #endif
+    emitExpressionInfo(charPosition, 0, 0);
     emitOpcode(op_debug);
     instructions().append(debugHookID);
     instructions().append(firstLine);
     instructions().append(lastLine);
-    instructions().append(column);
+    instructions().append(charPosition);
 }
 
 void BytecodeGenerator::pushFinallyContext(StatementNode* finallyBlock)
@@ -2242,7 +2168,7 @@ LabelScope* BytecodeGenerator::continueTarget(const Identifier& name)
     return 0;
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitComplexJumpScopes(Label* target, ControlFlowContext* topScope, ControlFlowContext* bottomScope)
+void BytecodeGenerator::emitComplexPopScopes(ControlFlowContext* topScope, ControlFlowContext* bottomScope)
 {
     while (topScope > bottomScope) {
         // First we count the number of dynamic scopes we need to remove to get
@@ -2256,25 +2182,14 @@ PassRefPtr<Label> BytecodeGenerator::emitComplexJumpScopes(Label* target, Contro
         }
 
         if (nNormalScopes) {
-            size_t begin = instructions().size();
-
             // We need to remove a number of dynamic scopes to get to the next
             // finally block
-            emitOpcode(op_jmp_scopes);
-            instructions().append(nNormalScopes);
+            while (nNormalScopes--)
+                emitOpcode(op_pop_scope);
 
-            // If topScope == bottomScope then there isn't actually a finally block
-            // left to emit, so make the jmp_scopes jump directly to the target label
-            if (topScope == bottomScope) {
-                instructions().append(target->bind(begin, instructions().size()));
-                return target;
-            }
-
-            // Otherwise we just use jmp_scopes to pop a group of scopes and go
-            // to the next instruction
-            RefPtr<Label> nextInsn = newLabel();
-            instructions().append(nextInsn->bind(begin, instructions().size()));
-            emitLabel(nextInsn.get());
+            // If topScope == bottomScope then there isn't a finally block left to emit.
+            if (topScope == bottomScope)
+                return;
         }
         
         Vector<ControlFlowContext> savedScopeContextStack;
@@ -2364,28 +2279,24 @@ PassRefPtr<Label> BytecodeGenerator::emitComplexJumpScopes(Label* target, Contro
             --topScope;
         }
     }
-    return emitJump(target);
 }
 
-PassRefPtr<Label> BytecodeGenerator::emitJumpScopes(Label* target, int targetScopeDepth)
+void BytecodeGenerator::emitPopScopes(int targetScopeDepth)
 {
     ASSERT(scopeDepth() - targetScopeDepth >= 0);
-    ASSERT(target->isForward());
 
     size_t scopeDelta = scopeDepth() - targetScopeDepth;
     ASSERT(scopeDelta <= m_scopeContextStack.size());
     if (!scopeDelta)
-        return emitJump(target);
+        return;
 
-    if (m_finallyDepth)
-        return emitComplexJumpScopes(target, &m_scopeContextStack.last(), &m_scopeContextStack.last() - scopeDelta);
+    if (!m_finallyDepth) {
+        while (scopeDelta--)
+            emitOpcode(op_pop_scope);
+        return;
+    }
 
-    size_t begin = instructions().size();
-
-    emitOpcode(op_jmp_scopes);
-    instructions().append(scopeDelta);
-    instructions().append(target->bind(begin, instructions().size()));
-    return target;
+    emitComplexPopScopes(&m_scopeContextStack.last(), &m_scopeContextStack.last() - scopeDelta);
 }
 
 RegisterID* BytecodeGenerator::emitGetPropertyNames(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, Label* breakTarget)

@@ -242,7 +242,7 @@ WebInspector.DOMBreakpointsSidebarPane.prototype = {
             this._removeBreakpoint(node, type);
             this._saveBreakpoints();
         }
-        contextMenu.appendItem(WebInspector.UIString("Remove Breakpoint"), removeBreakpoint.bind(this));
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Remove breakpoint" : "Remove Breakpoint"), removeBreakpoint.bind(this));
         contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Remove all DOM breakpoints" : "Remove All DOM Breakpoints"), this._removeAllBreakpoints.bind(this));
         contextMenu.show();
     },
@@ -357,6 +357,7 @@ WebInspector.DOMBreakpointsSidebarPane.Proxy = function(pane, panel)
     WebInspector.View._assert(!pane.titleElement.firstChild, "Cannot create proxy for a sidebar pane with a toolbar");
 
     WebInspector.SidebarPane.call(this, pane.title());
+    this.registerRequiredCSS("breakpointsList.css");
 
     this._wrappedPane = pane;
     this._panel = panel;

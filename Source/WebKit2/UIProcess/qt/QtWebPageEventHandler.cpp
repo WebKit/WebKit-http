@@ -271,6 +271,9 @@ void QtWebPageEventHandler::handleSingleTapEvent(const QTouchEvent::TouchPoint& 
 
 void QtWebPageEventHandler::handleDoubleTapEvent(const QTouchEvent::TouchPoint& point)
 {
+    if (!m_webView->isInteractive())
+        return;
+
     deactivateTapHighlight();
     QTransform fromItemTransform = m_webPage->transformFromItem();
     m_webPageProxy->findZoomableAreaForPoint(fromItemTransform.map(point.pos()).toPoint(), IntSize(point.rect().size().toSize()));
@@ -460,8 +463,6 @@ void QtWebPageEventHandler::handleInputEvent(const QInputEvent* event)
         switch (event->type()) {
         case QEvent::MouseButtonPress:
         case QEvent::TouchBegin:
-            ASSERT(!m_viewportController->panGestureActive());
-            ASSERT(!m_viewportController->pinchGestureActive());
             m_viewportController->touchBegin();
 
             // The page viewport controller might still be animating kinetic scrolling or a scale animation
@@ -506,7 +507,6 @@ void QtWebPageEventHandler::handleInputEvent(const QInputEvent* event)
         m_isMouseButtonPressed = false;
         break;
     case QEvent::MouseButtonDblClick:
-        ASSERT_NOT_REACHED();
         return;
     default:
         break;

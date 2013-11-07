@@ -241,7 +241,7 @@ PassRefPtr<Geolocation> Geolocation::create(ScriptExecutionContext* context)
 }
 
 Geolocation::Geolocation(ScriptExecutionContext* context)
-    : ActiveDOMObject(context, this)
+    : ActiveDOMObject(context)
     , m_allowGeolocation(Unknown)
 {
 }
@@ -253,8 +253,7 @@ Geolocation::~Geolocation()
 
 Document* Geolocation::document() const
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!scriptExecutionContext() || scriptExecutionContext()->isDocument());
-    return static_cast<Document*>(scriptExecutionContext());
+    return toDocument(scriptExecutionContext());
 }
 
 Frame* Geolocation::frame() const

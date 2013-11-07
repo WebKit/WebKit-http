@@ -33,8 +33,9 @@
  * @extends {WebInspector.View}
  * @param {boolean} expandable
  * @param {function()=} refreshCallback
+ * @param {function()=} selectedCallback
  */
-WebInspector.CookiesTable = function(expandable, refreshCallback)
+WebInspector.CookiesTable = function(expandable, refreshCallback, selectedCallback)
 {
     WebInspector.View.call(this);
     this.element.className = "fill";
@@ -42,39 +43,26 @@ WebInspector.CookiesTable = function(expandable, refreshCallback)
     var readOnly = expandable;
     this._refreshCallback = refreshCallback;
 
-    var columns = {name: {}, value: {}, domain: {}, path: {}, expires: {}, size: {}, httpOnly: {}, secure: {}};
-    columns.name.title = WebInspector.UIString("Name");
-    columns.name.sortable = true;
-    columns.name.disclosure = expandable;
-    columns.name.width = "24%";
-    columns.name.sort = "ascending";
-    columns.value.title = WebInspector.UIString("Value");
-    columns.value.sortable = true;
-    columns.value.width = "34%";
-    columns.domain.title = WebInspector.UIString("Domain");
-    columns.domain.sortable = true;
-    columns.domain.width = "7%";
-    columns.path.title = WebInspector.UIString("Path");
-    columns.path.sortable = true;
-    columns.path.width = "7%";
-    columns.expires.title = WebInspector.UIString("Expires / Max-Age");
-    columns.expires.sortable = true;
-    columns.expires.width = "7%";
-    columns.size.title = WebInspector.UIString("Size");
-    columns.size.aligned = "right";
-    columns.size.sortable = true;
-    columns.size.width = "7%";
-    columns.httpOnly.title = WebInspector.UIString("HTTP");
-    columns.httpOnly.aligned = "centered";
-    columns.httpOnly.sortable = true;
-    columns.httpOnly.width = "7%";
-    columns.secure.title = WebInspector.UIString("Secure");
-    columns.secure.aligned = "centered";
-    columns.secure.sortable = true;
-    columns.secure.width = "7%";
+    var columns = [
+        {id: "name", title: WebInspector.UIString("Name"), sortable: true, disclosure: expandable, sort: WebInspector.DataGrid.Order.Ascending, width: "24%"},
+        {id: "value", title: WebInspector.UIString("Value"), sortable: true, width: "34%"},
+        {id: "domain", title: WebInspector.UIString("Domain"), sortable: true, width: "7%"},
+        {id: "path", title: WebInspector.UIString("Path"), sortable: true, width: "7%"},
+        {id: "expires", title: WebInspector.UIString("Expires / Max-Age"), sortable: true, width: "7%"},
+        {id: "size", title: WebInspector.UIString("Size"), sortable: true, align: WebInspector.DataGrid.Align.Right, width: "7%"},
+        {id: "httpOnly", title: WebInspector.UIString("HTTP"), sortable: true, align: WebInspector.DataGrid.Align.Center, width: "7%"},
+        {id: "secure", title: WebInspector.UIString("Secure"), sortable: true, align: WebInspector.DataGrid.Align.Center, width: "7%"}
+    ];
 
-    this._dataGrid = new WebInspector.DataGrid(columns, null, readOnly ? null : this._onDeleteCookie.bind(this), refreshCallback);
-    this._dataGrid.addEventListener("sorting changed", this._rebuildTable, this);
+    if (readOnly)
+        this._dataGrid = new WebInspector.DataGrid(columns);
+    else
+        this._dataGrid = new WebInspector.DataGrid(columns, undefined, this._onDeleteCookie.bind(this), refreshCallback, this._onContextMenu.bind(this));
+
+    this._dataGrid.addEventListener(WebInspector.DataGrid.Events.SortingChanged, this._rebuildTable, this);
+
+    if (selectedCallback)
+        this._dataGrid.addEventListener(WebInspector.DataGrid.Events.SelectedNode, selectedCallback, this);
 
     this._nextSelectedCookie = /** @type {?WebInspector.Cookie} */ (null);
 
@@ -89,7 +77,31 @@ WebInspector.CookiesTable.prototype = {
             this._dataGrid.updateWidths();
     },
 
-    /*
+    /**
+     * @param {?string} domain
+     */
+    _clearAndRefresh: function(domain)
+    {
+        this.clear(domain);
+        this._refresh();
+    },
+
+    /**
+     * @param {!WebInspector.ContextMenu} contextMenu
+     * @param {WebInspector.DataGridNode} node
+     */
+    _onContextMenu: function(contextMenu, node)
+    {
+        if (node === this._dataGrid.creationNode)
+            return;
+        var cookie = node.cookie;
+        var domain = cookie.domain();
+        if (domain)
+            contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Clear all from \"%s\"" : "Clear All from \"%s\"", domain), this._clearAndRefresh.bind(this, domain));
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Clear all" : "Clear All"), this._clearAndRefresh.bind(this, null));
+    },
+
+    /**
      * @param {!Array.<!WebInspector.Cookie>} cookies
      */
     setCookies: function(cookies)
@@ -113,6 +125,20 @@ WebInspector.CookiesTable.prototype = {
     {
         var node = this._dataGrid.selectedNode;
         return node ? node.cookie : null;
+    },
+
+    /**
+     * @param {?string=} domain
+     */
+    clear: function(domain)
+    {
+        for (var i = 0, length = this._data.length; i < length; ++i) {
+            var cookies = this._data[i].cookies;
+            for (var j = 0, cookieCount = cookies.length; j < cookieCount; ++j) {
+                if (!domain || cookies[j].domain() === domain)
+                    cookies[j].remove();
+            }
+        }
     },
 
     _rebuildTable: function()
@@ -169,7 +195,7 @@ WebInspector.CookiesTable.prototype = {
      */
     _sortCookies: function(cookies)
     {
-        var sortDirection = this._dataGrid.sortOrder === "ascending" ? 1 : -1;
+        var sortDirection = this._dataGrid.isSortOrderAscending() ? 1 : -1;
 
         function compareTo(getter, cookie1, cookie2)
         {
@@ -197,7 +223,7 @@ WebInspector.CookiesTable.prototype = {
         }
 
         var comparator;
-        switch (this._dataGrid.sortColumnIdentifier) {
+        switch (this._dataGrid.sortColumnIdentifier()) {
             case "name": comparator = compareTo.bind(null, WebInspector.Cookie.prototype.name); break;
             case "value": comparator = compareTo.bind(null, WebInspector.Cookie.prototype.value); break;
             case "domain": comparator = compareTo.bind(null, WebInspector.Cookie.prototype.domain); break;
@@ -249,6 +275,11 @@ WebInspector.CookiesTable.prototype = {
         if (neighbour)
             this._nextSelectedCookie = neighbour.cookie;
         cookie.remove();
+        this._refresh();
+    },
+
+    _refresh: function()
+    {
         if (this._refreshCallback)
             this._refreshCallback();
     },

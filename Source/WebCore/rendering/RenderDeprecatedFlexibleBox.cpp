@@ -25,6 +25,7 @@
 #include "config.h"
 #include "RenderDeprecatedFlexibleBox.h"
 
+#include "FeatureObserver.h"
 #include "Font.h"
 #include "LayoutRepainter.h"
 #include "RenderLayer.h"
@@ -124,6 +125,15 @@ RenderDeprecatedFlexibleBox::RenderDeprecatedFlexibleBox(Element* element)
 {
     setChildrenInline(false); // All of our children must be block-level
     m_stretchingChildren = false;
+    if (!isAnonymous()) {
+        const KURL& url = document()->url();
+        if (url.protocolIs("chrome"))
+            FeatureObserver::observe(document(), FeatureObserver::DeprecatedFlexboxChrome);
+        else if (url.protocolIs("chrome-extension"))
+            FeatureObserver::observe(document(), FeatureObserver::DeprecatedFlexboxChromeExtension);
+        else
+            FeatureObserver::observe(document(), FeatureObserver::DeprecatedFlexboxWebContent);
+    }
 }
 
 RenderDeprecatedFlexibleBox::~RenderDeprecatedFlexibleBox()
@@ -254,7 +264,7 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
     RenderFlowThread* flowThread = flowThreadContainingBlock();
     if (logicalWidthChangedInRegions(flowThread))
         relayoutChildren = true;
-    if (updateRegionsAndExclusionsLogicalSize(flowThread))
+    if (updateRegionsAndExclusionsBeforeChildLayout(flowThread))
         relayoutChildren = true;
 
     LayoutSize previousSize = size();
@@ -286,7 +296,7 @@ void RenderDeprecatedFlexibleBox::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     layoutPositionedObjects(relayoutChildren || isRoot());
 
-    computeRegionRangeForBlock(flowThread);
+    updateRegionsAndExclusionsAfterChildLayout(flowThread);
 
     if (!isFloatingOrOutOfFlowPositioned() && height() == 0) {
         // We are a block with no border and padding and a computed height

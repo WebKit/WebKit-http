@@ -41,10 +41,6 @@
 #include "ScrollbarTheme.h"
 #include <wtf/PassOwnPtr.h>
 
-#if PLATFORM(CHROMIUM)
-#include "TraceEvent.h"
-#endif
-
 namespace WebCore {
 
 struct SameSizeAsScrollableArea {
@@ -145,10 +141,6 @@ void ScrollableArea::notifyScrollPositionChanged(const IntPoint& position)
 
 void ScrollableArea::scrollPositionChanged(const IntPoint& position)
 {
-#if PLATFORM(CHROMIUM)
-    TRACE_EVENT0("webkit", "ScrollableArea::scrollPositionChanged");
-#endif
-
     IntPoint oldPosition = scrollPosition();
     // Tell the derived class to scroll its contents.
     setScrollOffset(position);
@@ -400,7 +392,14 @@ IntPoint ScrollableArea::minimumScrollPosition() const
 
 IntPoint ScrollableArea::maximumScrollPosition() const
 {
-    return IntPoint(contentsSize().width() - visibleWidth(), contentsSize().height() - visibleHeight());
+    return IntPoint(totalContentsSize().width() - visibleWidth(), totalContentsSize().height() - visibleHeight());
+}
+
+IntSize ScrollableArea::totalContentsSize() const
+{
+    IntSize totalContentsSize = contentsSize();
+    totalContentsSize.setHeight(totalContentsSize.height() + headerHeight() + footerHeight());
+    return totalContentsSize;
 }
 
 IntRect ScrollableArea::visibleContentRect(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
@@ -421,18 +420,23 @@ IntRect ScrollableArea::visibleContentRect(VisibleContentRectIncludesScrollbars 
                    std::max(0, visibleHeight() + horizontalScrollbarHeight));
 }
 
-static int constrainedScrollPosition(int visibleContentSize, int contentsSize, int scrollPosition, int scrollOrigin)
+static int constrainedScrollPosition(int visibleContentSize, int totalContentsSize, int scrollPosition, int scrollOrigin, int headerHeight, int footerHeight)
 {
-    int maxValue = contentsSize - visibleContentSize;
+    int maxValue = totalContentsSize - visibleContentSize - footerHeight;
     if (maxValue <= 0)
         return 0;
 
     if (!scrollOrigin) {
-        if (scrollPosition <= 0)
+        if (scrollPosition <= headerHeight)
             return 0;
         if (scrollPosition > maxValue)
-            scrollPosition = maxValue;
+            scrollPosition = maxValue - headerHeight;
+        else
+            scrollPosition -= headerHeight;
     } else {
+        // FIXME: position:fixed elements are currently broken when there is a non-zero y-value in the scroll origin
+        // such as when -webkit-writing-mode:horizontal-bt; is set. But when we fix that, we need to make such
+        // pages work correctly with headers and footers as well. https://bugs.webkit.org/show_bug.cgi?id=113741
         if (scrollPosition >= 0)
             return 0;
         if (scrollPosition < -maxValue)
@@ -442,15 +446,15 @@ static int constrainedScrollPosition(int visibleContentSize, int contentsSize, i
     return scrollPosition;
 }
 
-IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin)
+IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntRect& visibleContentRect, const IntSize& totalContentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, int headerHeight, int footerHeight)
 {
-    return IntPoint(constrainedScrollPosition(visibleContentRect.width(), contentsSize.width(), scrollPosition.x(), scrollOrigin.x()),
-        constrainedScrollPosition(visibleContentRect.height(), contentsSize.height(), scrollPosition.y(), scrollOrigin.y()));
+    return IntPoint(constrainedScrollPosition(visibleContentRect.width(), totalContentsSize.width(), scrollPosition.x(), scrollOrigin.x(), 0, 0),
+        constrainedScrollPosition(visibleContentRect.height(), totalContentsSize.height(), scrollPosition.y(), scrollOrigin.y(), headerHeight, footerHeight));
 }
 
 IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntPoint& scrollPosition)
 {
-    return constrainScrollPositionForOverhang(visibleContentRect(), contentsSize(), scrollPosition, scrollOrigin());
+    return constrainScrollPositionForOverhang(visibleContentRect(), totalContentsSize(), scrollPosition, scrollOrigin(), headerHeight(), footerHeight());
 }
 
 void ScrollableArea::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const

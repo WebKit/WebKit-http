@@ -37,9 +37,9 @@
 #include "Page.h"
 #include "PasteboardHelper.h"
 #include "PlatformKeyboardEvent.h"
+#include "Settings.h"
 #include "StylePropertySet.h"
 #include "UndoStep.h"
-#include "WebKitDOMBinding.h"
 #include "WebKitDOMCSSStyleDeclarationPrivate.h"
 #include "WebKitDOMHTMLElementPrivate.h"
 #include "WebKitDOMNodePrivate.h"
@@ -360,21 +360,20 @@ void EditorClient::pageDestroyed()
     delete this;
 }
 
-void EditorClient::setSmartInsertDeleteEnabled(bool enabled)
-{
-    m_smartInsertDeleteEnabled = enabled;
-}
-
 bool EditorClient::smartInsertDeleteEnabled()
 {
-    return m_smartInsertDeleteEnabled;
+    WebCore::Page* corePage = core(m_webView);
+    if (!corePage)
+        return false;
+    return corePage->settings()->smartInsertDeleteEnabled();
 }
 
 bool EditorClient::isSelectTrailingWhitespaceEnabled()
 {
-    if (!DumpRenderTreeSupportGtk::dumpRenderTreeModeEnabled())
+    WebCore::Page* corePage = core(m_webView);
+    if (!corePage)
         return false;
-    return DumpRenderTreeSupportGtk::selectTrailingWhitespaceEnabled();
+    return corePage->settings()->selectTrailingWhitespaceEnabled();
 }
 
 void EditorClient::toggleContinuousSpellChecking()
@@ -501,7 +500,6 @@ EditorClient::EditorClient(WebKitWebView* webView)
     , m_textCheckerClient(WEBKIT_SPELL_CHECKER(webkit_get_text_checker()))
 #endif
     , m_webView(webView)
-    , m_smartInsertDeleteEnabled(false)
 {
 }
 

@@ -22,6 +22,7 @@ defineTest(detectFeatures) {
     }
 
     WEBKIT_CONFIG += use_tiled_backing_store
+    WEBKIT_CONFIG += use_cross_platform_context_menus
 
     # ------------- Prepare for feature detection -------------
 
@@ -36,6 +37,8 @@ defineTest(detectFeatures) {
     haveQtModule(printsupport): WEBKIT_CONFIG += have_qtprintsupport
     haveQtModule(widgets): WEBKIT_CONFIG += have_qstyle
     haveQtModule(testlib): WEBKIT_CONFIG += have_qttestlib
+    haveQtModule(location): WEBKIT_CONFIG += have_qtlocation
+    haveQtModule(sensors): WEBKIT_CONFIG += have_qtsensors
 
     config_libxml2: WEBKIT_CONFIG += use_libxml2
     config_libxslt: WEBKIT_CONFIG += xslt
@@ -97,21 +100,27 @@ defineTest(detectFeatures) {
     # Enable CSS shaders when CSS filters and WebGL are enabled
     enable?(css_filters):enable?(webgl): WEBKIT_CONFIG += css_shaders
 
-    # Geolocation support if QtMobility exists
-    haveQtModule(location): WEBKIT_CONFIG += geolocation
+    # Geolocation support if QtLocation exists or if we're doing a developer build (Mock implementation exists
+    # and used for layout tests)
+    have?(qtlocation)|!production_build: WEBKIT_CONFIG += geolocation
 
-    # Orientation support
-    haveQtModule(sensors): WEBKIT_CONFIG += orientation_events device_orientation
+    # Orientation support if QtSensors exists or if we're doing a developer build (Mock implementation exists
+    # and used for layout tests)
+    have?(qtsensors)|!production_build: WEBKIT_CONFIG += orientation_events device_orientation
 
     # HTML5 Media Support
     mac {
-        DARWIN_VERSION = $$split(QMAKE_HOST.version, ".")
-        DARWIN_MAJOR_VERSION = $$first(DARWIN_VERSION)
-        # QTKIT support requires 10.7 or newer
-        greaterThan(DARWIN_MAJOR_VERSION, 10) {
-            WEBKIT_CONFIG += video use_qtkit
+        QMAKE_MAC_SDK_VERSION = $$system("xcodebuild -sdk $$QMAKE_MAC_SDK -version SDKVersion 2>/dev/null")
+        haveQt(5,1):!equals(QMAKE_MACOSX_DEPLOYMENT_TARGET, $$QMAKE_MAC_SDK_VERSION) {
+            CONFIGURE_WARNINGS += "Deployment target ($$QMAKE_MACOSX_DEPLOYMENT_TARGET) doesn't match SDK ($$QMAKE_MAC_SDK_VERSION), disabling media element support"
+        } else {
+            DARWIN_VERSION = $$split(QMAKE_HOST.version, ".")
+            DARWIN_MAJOR_VERSION = $$first(DARWIN_VERSION)
+            # QTKIT support requires 10.7 or newer
+            greaterThan(DARWIN_MAJOR_VERSION, 10) {
+                WEBKIT_CONFIG += video use_qtkit
+            }
         }
-
     } else: linux-* {
         !contains(QT_CONFIG, no-pkg-config):packagesExist("glib-2.0 gio-2.0 gstreamer-1.0 gstreamer-plugins-base-1.0") {
             WEBKIT_CONFIG += video use_gstreamer
@@ -147,8 +156,6 @@ defineTest(detectFeatures) {
     enable?(touch_events): WEBKIT_CONFIG += touch_slider
 
 
-    # Minibrowser must be able to query for QtTestSupport
-    build?(qttestsupport): WEBKIT_CONFIG += have_qttestsupport
 
     # ---------------- Sanitize features -------------------
 
@@ -174,6 +181,9 @@ defineTest(santizeFeatures) {
 
     # Web Audio requires GStreamer.
     !use?(gstreamer): WEBKIT_CONFIG -= web_audio
+
+    # Minibrowser must be able to query for QtTestSupport
+    build?(qttestsupport): WEBKIT_CONFIG += have_qttestsupport
 
     export(WEBKIT_CONFIG)
 }

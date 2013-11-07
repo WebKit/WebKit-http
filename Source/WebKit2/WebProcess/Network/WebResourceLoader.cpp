@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,12 @@
 #include "DataReference.h"
 #include "Logging.h"
 #include "NetworkProcessConnection.h"
+#include "NetworkResourceLoaderMessages.h"
 #include "PlatformCertificateInfo.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebProcess.h"
+#include <WebCore/ResourceBuffer.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoader.h>
 
@@ -71,12 +73,29 @@ void WebResourceLoader::cancelResourceLoader()
     m_coreLoader->cancel();
 }
 
-void WebResourceLoader::willSendRequest(const ResourceRequest& proposedRequest, const ResourceResponse& redirectResponse, ResourceRequest& newRequest)
+void WebResourceLoader::detachFromCoreLoader()
+{
+    m_coreLoader = 0;
+}
+
+void WebResourceLoader::willSendRequest(const ResourceRequest& proposedRequest, const ResourceResponse& redirectResponse)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::willSendRequest to '%s'", proposedRequest.url().string().utf8().data());
+
+    RefPtr<WebResourceLoader> protector(this);
     
-    newRequest = proposedRequest;
+    ResourceRequest newRequest = proposedRequest;
     m_coreLoader->willSendRequest(newRequest, redirectResponse);
+    
+    if (!m_coreLoader)
+        return;
+    
+    send(Messages::NetworkResourceLoader::ContinueWillSendRequest(newRequest));
+}
+
+void WebResourceLoader::didSendData(uint64_t bytesSent, uint64_t totalBytesToBeSent)
+{
+    m_coreLoader->didSendData(bytesSent, totalBytesToBeSent);
 }
 
 void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResponse& response, const PlatformCertificateInfo& certificateInfo)
@@ -87,10 +106,10 @@ void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResp
     m_coreLoader->didReceiveResponse(responseCopy);
 }
 
-void WebResourceLoader::didReceiveData(const CoreIPC::DataReference& data, int64_t encodedDataLength, bool allAtOnce)
+void WebResourceLoader::didReceiveData(const CoreIPC::DataReference& data, int64_t encodedDataLength)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveData of size %i for '%s'", (int)data.size(), m_coreLoader->url().string().utf8().data());
-    m_coreLoader->didReceiveData(reinterpret_cast<const char*>(data.data()), data.size(), encodedDataLength, allAtOnce);
+    m_coreLoader->didReceiveData(reinterpret_cast<const char*>(data.data()), data.size(), encodedDataLength, DataPayloadBytes);
 }
 
 void WebResourceLoader::didFinishResourceLoad(double finishTime)
@@ -110,22 +129,35 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResource for '%s'", m_coreLoader->url().string().utf8().data());
 
-    RefPtr<ShareableResource> resource = ShareableResource::create(handle);
+    RefPtr<SharedBuffer> buffer = handle.tryWrapInSharedBuffer();
+    if (!buffer) {
+        LOG_ERROR("Unable to create buffer from ShareableResource sent from the network process.");
+        m_coreLoader->didFail(internalError(m_coreLoader->request().url()));
+        return;
+    }
+
+    RefPtr<WebResourceLoader> protector(this);
 
     // Only send data to the didReceiveData callback if it exists.
-    if (!resource->size()) {
-        // FIXME (NetworkProcess): Give ResourceLoader the ability to take ResourceBuffer arguments.
-        // That will allow us to pass it along to CachedResources and allow them to hang on to the shared memory behind the scenes.
-        // FIXME (NetworkProcess): Pass along the correct value for encodedDataLength.
-        m_coreLoader->didReceiveData(reinterpret_cast<const char*>(resource->data()), resource->size(), -1 /* encodedDataLength */ , true);
-    }
+    if (buffer->size())
+        m_coreLoader->didReceiveBuffer(buffer.get(), buffer->size(), DataPayloadWholeResource);
+
+    if (!m_coreLoader)
+        return;
 
     m_coreLoader->didFinishLoading(finishTime);
 }
 
-void WebResourceLoader::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace, bool& result)
+void WebResourceLoader::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
 {
-    result = m_coreLoader->canAuthenticateAgainstProtectionSpace(protectionSpace);
+    RefPtr<WebResourceLoader> protector(this);
+
+    bool result = m_coreLoader->canAuthenticateAgainstProtectionSpace(protectionSpace);
+
+    if (!m_coreLoader)
+        return;
+
+    send(Messages::NetworkResourceLoader::ContinueCanAuthenticateAgainstProtectionSpace(result));
 }
 
 } // namespace WebKit

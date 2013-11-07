@@ -145,8 +145,6 @@ public:
 
     PassRefPtr<ClientRectList> inspectorHighlightRects(Document*, ExceptionCode&);
 
-    void setBackgroundBlurOnNode(Node*, int blurLength, ExceptionCode&);
-
     unsigned markerCountForNode(Node*, const String&, ExceptionCode&);
     PassRefPtr<Range> markerRangeForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
     String markerDescriptionForNode(Node*, const String& markerType, unsigned index, ExceptionCode&);
@@ -202,6 +200,10 @@ public:
     bool hasSpellingMarker(Document*, int from, int length, ExceptionCode&);
     bool hasGrammarMarker(Document*, int from, int length, ExceptionCode&);
     bool hasAutocorrectedMarker(Document*, int from, int length, ExceptionCode&);
+    void setContinuousSpellCheckingEnabled(bool enabled, ExceptionCode&);
+
+    bool isOverwriteModeEnabled(Document*, ExceptionCode&);
+    void toggleOverwriteModeEnabled(Document*, ExceptionCode&);
 
     unsigned numberOfScrollableAreas(Document*, ExceptionCode&);
 
@@ -261,6 +263,9 @@ public:
 
     void setPageScaleFactor(float scaleFactor, int x, int y, ExceptionCode&);
 
+    void setHeaderHeight(Document*, float);
+    void setFooterHeight(Document*, float);
+
 #if ENABLE(FULLSCREEN_API)
     void webkitWillEnterFullScreenForElement(Document*, Element*);
     void webkitDidEnterFullScreenForElement(Document*, Element*);
@@ -288,6 +293,8 @@ public:
 
     String markerTextForListItem(Element*, ExceptionCode&);
 
+    void forceReload(bool endToEnd);
+
 #if ENABLE(ENCRYPTED_MEDIA_V2)
     void initializeMockCDM();
 #endif
@@ -295,7 +302,15 @@ public:
 #if ENABLE(SPEECH_SYNTHESIS)
     void enableMockSpeechSynthesizer();
 #endif
-                    
+
+    String getImageSourceURL(Element*, ExceptionCode&);
+
+#if ENABLE(VIDEO)
+    void simulateAudioInterruption(Node*);
+#endif
+
+    bool isSelectPopupVisible(Node*);
+
 private:
     explicit Internals(Document*);
     Document* contextDocument() const;

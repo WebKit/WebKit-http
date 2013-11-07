@@ -94,9 +94,13 @@ PutByIdStatus PutByIdStatus::computeFor(CodeBlock* profiledBlock, unsigned bytec
     if (!stubInfo.seen)
         return computeFromLLInt(profiledBlock, bytecodeIndex, ident);
     
+    if (stubInfo.resetByGC)
+        return PutByIdStatus(TakesSlowPath, 0, 0, 0, invalidOffset);
+
     switch (stubInfo.accessType) {
     case access_unset:
-        return computeFromLLInt(profiledBlock, bytecodeIndex, ident);
+        // If the JIT saw it but didn't optimize it, then assume that this takes slow path.
+        return PutByIdStatus(TakesSlowPath, 0, 0, 0, invalidOffset);
         
     case access_put_by_id_replace: {
         PropertyOffset offset = stubInfo.u.putByIdReplace.baseObjectStructure->get(
@@ -147,11 +151,16 @@ PutByIdStatus PutByIdStatus::computeFor(JSGlobalData& globalData, JSGlobalObject
         return PutByIdStatus(TakesSlowPath);
     
     unsigned attributes;
-    JSCell* specificValueIgnored;
-    PropertyOffset offset = structure->get(globalData, ident, attributes, specificValueIgnored);
+    JSCell* specificValue;
+    PropertyOffset offset = structure->get(globalData, ident, attributes, specificValue);
     if (isValidOffset(offset)) {
         if (attributes & (Accessor | ReadOnly))
             return PutByIdStatus(TakesSlowPath);
+        if (specificValue) {
+            // We need the PutById slow path to verify that we're storing the right value into
+            // the specialized slot.
+            return PutByIdStatus(TakesSlowPath);
+        }
         return PutByIdStatus(SimpleReplace, structure, 0, 0, offset);
     }
     

@@ -33,9 +33,7 @@
 #include "TextEncoding.h"
 #include <stdio.h>
 #include <wtf/HashMap.h>
-#if !USE(WTFURL)
 #include <wtf/HexNumber.h>
-#endif
 #include <wtf/MemoryInstrumentationString.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -66,8 +64,6 @@ static inline bool isLetterMatchIgnoringCase(UChar character, char lowercaseLett
     ASSERT(isASCIILower(lowercaseLetter));
     return (character | 0x20) == lowercaseLetter;
 }
-
-#if !USE(GOOGLEURL) && !USE(WTFURL)
 
 static const char wsScheme[] = {'w', 's'};
 static const char ftpScheme[] = {'f', 't', 'p'};
@@ -634,6 +630,16 @@ String KURL::baseAsString() const
 {
     return m_string.left(m_pathAfterLastSlash);
 }
+
+#if !PLATFORM(GTK) && !PLATFORM(QT) && !USE(CF)
+String KURL::fileSystemPath() const
+{
+    if (!isValid() || !isLocalFile())
+        return String();
+
+    return decodeURLEscapeSequences(path());
+}
+#endif
 
 #ifdef NDEBUG
 
@@ -1718,8 +1724,6 @@ void KURL::print() const
 }
 #endif
 
-#endif // !USE(GOOGLEURL) && !USE(WTFURL)
-
 String KURL::strippedForUseAsReferrer() const
 {
     KURL referrer(*this);
@@ -1905,24 +1909,12 @@ String mimeTypeFromURL(const KURL& url)
 void KURL::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this);
-#if USE(GOOGLEURL)
-    info.addMember(m_url, "url");
-#elif USE(WTFURL)
-    info.addMember(m_urlImpl, "urlImpl");
-#else // !USE(GOOGLEURL)
     info.addMember(m_string, "string");
-#endif
 }
 
 bool KURL::isSafeToSendToAnotherThread() const
 {
-#if USE(GOOGLEURL)
-    return m_url.isSafeToSendToAnotherThread();
-#elif USE(WTFURL)
-    return m_urlImpl->isSafeToSendToAnotherThread();
-#else // !USE(GOOGLEURL)
     return m_string.isSafeToSendToAnotherThread();
-#endif
 }
 
 String KURL::elidedString() const

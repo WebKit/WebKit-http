@@ -25,6 +25,7 @@
     <file>ConsolePanel.js</file>
     <file>ConsoleView.js</file>
     <file>ContentProvider.js</file>
+    <file>ContentProviderBasedProjectDelegate.js</file>
     <file>ContentProviders.js</file>
     <file>ContextMenu.js</file>
     <file>CookieItemsView.js</file>
@@ -41,6 +42,8 @@
     <file>cm/codemirror.js</file>
     <file>cm/css.js</file>
     <file>cm/htmlmixed.js</file>
+    <file>cm/closebrackets.js</file>
+    <file>cm/matchbrackets.js</file>
     <file>cm/javascript.js</file>
     <file>cm/xml.js</file>
     <file>Database.js</file>
@@ -129,10 +132,12 @@
     <file>NetworkPanelDescriptor.js</file>
     <file>NetworkRequest.js</file>
     <file>NetworkUISourceCodeProvider.js</file>
+    <file>InspectElementModeController.js</file>
     <file>Object.js</file>
     <file>ObjectPopoverHelper.js</file>
     <file>ObjectPropertiesSection.js</file>
     <file>OverridesView.js</file>
+    <file>OverviewGrid.js</file>
     <file>Panel.js</file>
     <file>PanelEnablerView.js</file>
     <file>ParsedURL.js</file>

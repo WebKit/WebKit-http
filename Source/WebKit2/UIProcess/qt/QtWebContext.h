@@ -21,41 +21,44 @@
 #ifndef QtWebContext_h
 #define QtWebContext_h
 
+#include <QScopedPointer>
 #include <QtGlobal>
 #include <WKContext.h>
-#include <wtf/OwnPtr.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include <WKRetainPtr.h>
 
 namespace WebKit {
 
-class PageClient;
 class QtDownloadManager;
 class QtWebIconDatabaseClient;
-class WebContext;
-class WebPageGroup;
-class WebPageProxy;
 
-class QtWebContext : public RefCounted<QtWebContext> {
+class QtWebContext {
 public:
     ~QtWebContext();
 
-    static PassRefPtr<QtWebContext> create(WebContext*);
-    static PassRefPtr<QtWebContext> defaultContext();
+    enum StorageType {
+        DatabaseStorage,
+        LocalStorage,
+        CookieStorage,
+        DiskCacheStorage,
+        IconDatabaseStorage
+    };
 
-    PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebPageGroup*);
+    static QtWebContext* create(WKContextRef);
+    static QtWebContext* defaultContext();
 
-    WebContext* context() { return m_context.get(); }
+    static QString preparedStoragePath(StorageType);
 
-    static QtDownloadManager* downloadManager();
-    static QtWebIconDatabaseClient* iconDatabase();
-    static void invalidateContext(WebContext*);
+    WKContextRef context() { return m_context.get(); }
+
+    QtDownloadManager* downloadManager() { return m_downloadManager.data(); }
+    QtWebIconDatabaseClient* iconDatabase() { return m_iconDatabase.data(); }
 
 private:
-    explicit QtWebContext(WebContext*);
+    explicit QtWebContext(WKContextRef);
 
-    RefPtr<WebContext> m_context;
+    WKRetainPtr<WKContextRef> m_context;
+    QScopedPointer<QtDownloadManager> m_downloadManager;
+    QScopedPointer<QtWebIconDatabaseClient> m_iconDatabase;
 };
 
 } // namespace WebKit

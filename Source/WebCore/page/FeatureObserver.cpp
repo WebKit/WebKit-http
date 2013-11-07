@@ -39,23 +39,16 @@ FeatureObserver::FeatureObserver()
 
 FeatureObserver::~FeatureObserver()
 {
-    // We always log PageDestruction so that we have a scale for the rest of the features.
-    HistogramSupport::histogramEnumeration("WebCore.FeatureObserver", PageDestruction, NumberOfFeatures);
-
     updateMeasurements();
 }
 
 void FeatureObserver::updateMeasurements()
 {
-    HistogramSupport::histogramEnumeration("WebCore.FeatureObserver", PageVisits, NumberOfFeatures);
     if (!m_featureBits)
         return;
 
-    for (unsigned i = 0; i < NumberOfFeatures; ++i) {
-        if (m_featureBits->quickGet(i))
-            HistogramSupport::histogramEnumeration("WebCore.FeatureObserver", i, NumberOfFeatures);
-    }
-
+    // Clearing feature bits is timing sensitive. Ports other than chromium do not use HistogramSupport,
+    // and pull the results on certain navigation events instead.
     m_featureBits->clearAll();
 }
 

@@ -25,13 +25,7 @@
 #include <wtf/RetainPtr.h>
 
 #if PLATFORM(MAC)
-#include "SchedulePair.h"
-#endif
-
-#if PLATFORM(CHROMIUM)
-namespace WebKit {
-class WebCookieJar;
-}
+#include <wtf/SchedulePair.h>
 #endif
 
 #if PLATFORM(QT)
@@ -71,16 +65,10 @@ public:
 
     virtual bool shouldClearReferrerOnHTTPSToHTTPRedirect() const = 0;
 
-#if PLATFORM(CHROMIUM)
-    // FIXME: Wrap WebCookieJar into a NetworkStorageSession to make the code cross-platform.
-    virtual WebKit::WebCookieJar* cookieJar() const = 0;
-#endif
-
 #if PLATFORM(MAC)
     virtual bool needsSiteSpecificQuirks() const = 0;
     virtual bool localFileContentSniffingEnabled() const = 0; // FIXME: Reconcile with ResourceHandle::forceContentSniffing().
     virtual SchedulePairHashSet* scheduledRunLoopPairs() const { return 0; }
-    virtual NSOperationQueue *scheduledOperationQueue() const { return 0; }
     virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const = 0;
     virtual ResourceError blockedError(const ResourceRequest&) const = 0;
 #endif

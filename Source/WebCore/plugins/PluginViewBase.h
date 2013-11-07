@@ -30,16 +30,11 @@
 #include "Widget.h"
 #include <wtf/text/WTFString.h>
 
-#if USE(V8)
-struct NPObject;
-#endif
-#if USE(JSC)
 namespace JSC {
     class ExecState;
     class JSGlobalObject;
     class JSObject;
 }
-#endif
 
 namespace WebCore {
 
@@ -53,12 +48,7 @@ public:
     virtual PlatformLayer* platformLayer() const { return 0; }
 #endif
 
-#if USE(V8)
-    virtual NPObject* scriptableObject() { return 0; }
-#endif
-#if USE(JSC)
     virtual JSC::JSObject* scriptObject(JSC::JSGlobalObject*) { return 0; }
-#endif
     virtual void storageBlockingStateChanged() { }
     virtual void privateBrowsingStateChanged(bool) { }
     virtual bool getFormValue(String&) { return false; }
@@ -77,12 +67,26 @@ public:
 
     virtual bool shouldAllowNavigationFromDrags() const { return false; }
 
+    virtual bool isPluginViewBase() const { return true; }
+
 protected:
     explicit PluginViewBase(PlatformWidget widget = 0) : Widget(widget) { }
-    
-private:
-    virtual bool isPluginViewBase() const { return true; }
 };
+
+inline PluginViewBase* toPluginViewBase(Widget* widget)
+{
+    ASSERT(!widget || widget->isPluginViewBase());
+    return static_cast<PluginViewBase*>(widget);
+}
+
+inline const PluginViewBase* toPluginViewBase(const Widget* widget)
+{
+    ASSERT(!widget || widget->isPluginViewBase());
+    return static_cast<const PluginViewBase*>(widget);
+}
+
+// This will catch anyone doing an unnecessary cast.
+void toPluginViewBase(const PluginViewBase*);
 
 } // namespace WebCore
 

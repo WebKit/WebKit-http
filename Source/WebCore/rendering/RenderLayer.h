@@ -49,15 +49,12 @@
 #include "ScrollableArea.h"
 #include <wtf/OwnPtr.h>
 
-#if ENABLE(CSS_FILTERS)
-#include "RenderLayerFilterInfo.h"
-#endif
-
 namespace WebCore {
 
 #if ENABLE(CSS_FILTERS)
 class FilterEffectRenderer;
 class FilterOperations;
+class RenderLayerFilterInfo;
 #endif
 class HitTestRequest;
 class HitTestResult;
@@ -770,6 +767,8 @@ public:
     virtual GraphicsLayer* layerForScrollCorner() const;
     virtual bool usesCompositedScrolling() const OVERRIDE;
     bool needsCompositedScrolling() const;
+    bool needsCompositingLayersRebuiltForClip(const RenderStyle* oldStyle, const RenderStyle* newStyle) const;
+    bool needsCompositingLayersRebuiltForOverflow(const RenderStyle* oldStyle, const RenderStyle* newStyle) const;
 #else
     bool isComposited() const { return false; }
     bool hasCompositedMask() const { return false; }
@@ -784,6 +783,10 @@ public:
 
     bool paintsWithTransform(PaintBehavior) const;
 
+    // Returns true if background phase is painted opaque in the given rect.
+    // The query rect is given in local coordinates.
+    bool backgroundIsKnownToBeOpaqueInRect(const LayoutRect&) const;
+
     bool containsDirtyOverlayScrollbars() const { return m_containsDirtyOverlayScrollbars; }
     void setContainsDirtyOverlayScrollbars(bool dirtyScrollbars) { m_containsDirtyOverlayScrollbars = dirtyScrollbars; }
 
@@ -795,19 +798,11 @@ public:
     FilterOperations computeFilterOperations(const RenderStyle*);
     bool paintsWithFilters() const;
     bool requiresFullLayerImageForFilters() const;
-    FilterEffectRenderer* filterRenderer() const 
-    {
-        RenderLayerFilterInfo* filterInfo = this->filterInfo();
-        return filterInfo ? filterInfo->renderer() : 0;
-    }
-    
-    RenderLayerFilterInfo* filterInfo() const { return hasFilterInfo() ? RenderLayerFilterInfo::filterInfoForRenderLayer(this) : 0; }
-    RenderLayerFilterInfo* ensureFilterInfo() { return RenderLayerFilterInfo::createFilterInfoForRenderLayerIfNeeded(this); }
-    void removeFilterInfoIfNeeded() 
-    {
-        if (hasFilterInfo())
-            RenderLayerFilterInfo::removeFilterInfoForRenderLayer(this); 
-    }
+    FilterEffectRenderer* filterRenderer() const;
+
+    RenderLayerFilterInfo* filterInfo() const;
+    RenderLayerFilterInfo* ensureFilterInfo();
+    void removeFilterInfoIfNeeded();
     
     bool hasFilterInfo() const { return m_hasFilterInfo; }
     void setHasFilterInfo(bool hasFilterInfo) { m_hasFilterInfo = hasFilterInfo; }
@@ -832,6 +827,7 @@ public:
         NoNotCompositedReason,
         NotCompositedForBoundsOutOfView,
         NotCompositedForNonViewContainer,
+        NotCompositedForNoVisibleContent,
     };
 
     void setViewportConstrainedNotCompositedReason(ViewportConstrainedNotCompositedReason reason) { m_viewportConstrainedNotCompositedReason = reason; }
@@ -850,6 +846,8 @@ private:
 
     void updateNormalFlowList();
 
+    // Non-auto z-index always implies stacking context here, because StyleResolver::adjustRenderStyle already adjusts z-index
+    // based on positioning and other criteria.
     bool isStackingContext(const RenderStyle* style) const { return !style->hasAutoZIndex() || isRootLayer(); }
 
     bool isDirtyStackingContainer() const { return m_zOrderListsDirty && isStackingContainer(); }
@@ -913,8 +911,6 @@ private:
     void setLastChild(RenderLayer* last) { m_last = last; }
 
     LayoutPoint renderBoxLocation() const { return renderer()->isBox() ? toRenderBox(renderer())->location() : LayoutPoint(); }
-    LayoutUnit renderBoxX() const { return renderBoxLocation().x(); }
-    LayoutUnit renderBoxY() const { return renderBoxLocation().y(); }
 
     void collectLayers(bool includeHiddenLayers, CollectLayersBehavior, OwnPtr<Vector<RenderLayer*> >&, OwnPtr<Vector<RenderLayer*> >&);
 
@@ -992,6 +988,8 @@ private:
     bool hitTestResizerInFragments(const LayerFragments&, const HitTestLocation&) const;
     RenderLayer* hitTestTransformedLayerInFragments(RenderLayer* rootLayer, RenderLayer* containerLayer, const HitTestRequest&, HitTestResult&,
         const LayoutRect& hitTestRect, const HitTestLocation&, const HitTestingTransformState* = 0, double* zOffset = 0);
+
+    bool listBackgroundIsKnownToBeOpaqueInRect(const Vector<RenderLayer*>*, const LayoutRect&) const;
 
     void computeScrollDimensions();
     bool hasHorizontalOverflow() const;
@@ -1191,10 +1189,6 @@ protected:
 #if !ASSERT_DISABLED
     bool m_layerListMutationAllowed : 1;
 #endif
-    // This is an optimization added for <table>.
-    // Currently cells do not need to update their repaint rectangles when scrolling. This also
-    // saves a lot of time when scrolling on a table.
-    const bool m_canSkipRepaintRectsUpdateOnScroll : 1;
 
 #if ENABLE(CSS_FILTERS)
     bool m_hasFilterInfo : 1;
@@ -1318,6 +1312,7 @@ private:
 };
 #endif
 
+void makeMatrixRenderable(TransformationMatrix&, bool has3DRendering);
 
 } // namespace WebCore
 

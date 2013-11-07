@@ -407,7 +407,7 @@ void ClipboardWin::clearData(const String& type)
 {
     // FIXME: Need to be able to write to the system clipboard <rdar://problem/5015941>
     ASSERT(isForDragAndDrop());
-    if (policy() != ClipboardWritable || !m_writableDataObject)
+    if (!canWriteData() || !m_writableDataObject)
         return;
 
     ClipboardDataType dataType = clipboardTypeFromMIMEType(type);
@@ -427,7 +427,7 @@ void ClipboardWin::clearAllData()
 {
     // FIXME: Need to be able to write to the system clipboard <rdar://problem/5015941>
     ASSERT(isForDragAndDrop());
-    if (policy() != ClipboardWritable)
+    if (!canWriteData())
         return;
     
     m_writableDataObject = 0;
@@ -437,7 +437,7 @@ void ClipboardWin::clearAllData()
 
 String ClipboardWin::getData(const String& type) const
 {     
-    if (policy() != ClipboardReadable || (!m_dataObject && m_dragDataMap.isEmpty()))
+    if (!canReadData() || (!m_dataObject && m_dragDataMap.isEmpty()))
         return "";
 
     ClipboardDataType dataType = clipboardTypeFromMIMEType(type);
@@ -459,7 +459,7 @@ bool ClipboardWin::setData(const String& type, const String& data)
 {
     // FIXME: Need to be able to write to the system clipboard <rdar://problem/5015941>
     ASSERT(isForDragAndDrop());
-    if (policy() != ClipboardWritable || !m_writableDataObject)
+    if (!canWriteData() || !m_writableDataObject)
         return false;
 
     ClipboardDataType winType = clipboardTypeFromMIMEType(type);
@@ -502,7 +502,7 @@ static void addMimeTypesForFormat(ListHashSet<String>& results, const FORMATETC&
 ListHashSet<String> ClipboardWin::types() const
 { 
     ListHashSet<String> results;
-    if (policy() != ClipboardReadable && policy() != ClipboardTypesReadable)
+    if (!canReadTypes())
         return results;
 
     if (!m_dataObject && m_dragDataMap.isEmpty())
@@ -540,7 +540,7 @@ PassRefPtr<FileList> ClipboardWin::files() const
     return 0;
 #else
     RefPtr<FileList> files = FileList::create();
-    if (policy() != ClipboardReadable && policy() != ClipboardTypesReadable)
+    if (!canReadData())
         return files.release();
 
     if (!m_dataObject && m_dragDataMap.isEmpty())
@@ -578,7 +578,7 @@ PassRefPtr<FileList> ClipboardWin::files() const
 
 void ClipboardWin::setDragImage(CachedImage* image, Node *node, const IntPoint &loc)
 {
-    if (policy() != ClipboardImageWritable && policy() != ClipboardWritable) 
+    if (!canSetDragImage())
         return;
         
     if (m_dragImage)
@@ -605,8 +605,12 @@ DragImageRef ClipboardWin::createDragImage(IntPoint& loc) const
 {
     HBITMAP result = 0;
     if (m_dragImage) {
+#if USE(CAIRO) || USE(CG)
         result = createDragImageFromImage(m_dragImage->image());        
         loc = m_dragLoc;
+#else
+        notImplemented();
+#endif
     } else if (m_dragImageElement) {
         Node* node = m_dragImageElement.get();
         result = node->document()->frame()->nodeImage(node);
@@ -747,7 +751,7 @@ void ClipboardWin::writeRange(Range* selectedRange, Frame* frame)
     if (medium.hGlobal && FAILED(m_writableDataObject->SetData(htmlFormat(), &medium, TRUE)))
         ::GlobalFree(medium.hGlobal);
 
-    String str = frame->editor()->selectedText();
+    String str = frame->editor()->selectedTextForClipboard();
     replaceNewlinesWithWindowsStyleNewlines(str);
     replaceNBSPWithSpace(str);
     medium.hGlobal = createGlobalData(str);

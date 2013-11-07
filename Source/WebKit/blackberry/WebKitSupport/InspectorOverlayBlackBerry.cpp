@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -47,7 +47,7 @@ void InspectorOverlay::notifyFlushRequired(const WebCore::GraphicsLayer* layer)
     m_webPage->notifyFlushRequired(layer);
 }
 
-void InspectorOverlay::paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext& context, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& inClip)
+void InspectorOverlay::paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext& context, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect&)
 {
     context.save();
     WebCore::IntPoint scrollPosition = m_webPage->focusedOrMainFrame()->view()->scrollPosition();

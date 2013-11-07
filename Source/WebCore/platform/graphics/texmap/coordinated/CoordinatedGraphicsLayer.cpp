@@ -727,6 +727,7 @@ void CoordinatedGraphicsLayer::createCanvasIfNeeded()
     if (!m_isValidCanvas) {
         m_layerState.canvasSize = m_canvasPlatformLayer->platformLayerSize();
         m_layerState.canvasToken = m_canvasPlatformLayer->graphicsSurfaceToken();
+        m_layerState.canvasSurfaceFlags = m_canvasPlatformLayer->graphicsSurfaceFlags();
         m_layerState.canvasChanged = true;
         m_isValidCanvas = true;
     }
@@ -760,8 +761,10 @@ void CoordinatedGraphicsLayer::flushCompositingStateForThisLayerOnly()
     syncCanvas();
 #endif
 
-    m_coordinator->syncLayerState(m_id, m_layerState);
-    resetLayerState();
+    if (m_layerState.hasPendingChanges()) {
+        m_coordinator->syncLayerState(m_id, m_layerState);
+        resetLayerState();
+    }
 
     // Only unset m_movingVisibleRect after we have updated the visible rect after the animation stopped.
     if (!hasActiveTransformAnimation)
@@ -797,13 +800,6 @@ void CoordinatedGraphicsLayer::releaseImageBackingIfNeeded()
 
 void CoordinatedGraphicsLayer::tiledBackingStorePaintBegin()
 {
-}
-
-void CoordinatedGraphicsLayer::setRootLayer(bool isRoot)
-{
-    m_layerState.isRootLayer = isRoot;
-    m_layerState.flagsChanged = true;
-    didChangeLayerState();
 }
 
 void CoordinatedGraphicsLayer::setVisibleContentRectTrajectoryVector(const FloatPoint& trajectoryVector)
@@ -1143,7 +1139,7 @@ bool CoordinatedGraphicsLayer::addAnimation(const KeyframeValueList& valueList, 
 {
     ASSERT(!keyframesName.isEmpty());
 
-    if (!anim || anim->isEmptyOrZeroDuration() || valueList.size() < 2 || (valueList.property() != AnimatedPropertyWebkitTransform && valueList.property() != AnimatedPropertyOpacity))
+    if (!anim || anim->isEmptyOrZeroDuration() || valueList.size() < 2 || (valueList.property() != AnimatedPropertyWebkitTransform && valueList.property() != AnimatedPropertyOpacity && valueList.property() != AnimatedPropertyWebkitFilter))
         return false;
 
     bool listsMatch = false;

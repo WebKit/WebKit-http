@@ -23,6 +23,7 @@
 #include "config.h"
 #include "qquickwebview_p.h"
 
+#include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadProxy.h"
 #include "DrawingAreaProxyImpl.h"
 #include "PageViewportControllerClientQt.h"
@@ -34,6 +35,7 @@
 #include "QtWebPageEventHandler.h"
 #include "QtWebPagePolicyClient.h"
 #include "WebBackForwardList.h"
+#include "WebContext.h"
 #include "WebFindOptions.h"
 #if ENABLE(INSPECTOR_SERVER)
 #include "WebInspectorProxy.h"
@@ -44,6 +46,7 @@
 #endif
 #include "WebPageGroup.h"
 #include "WebPreferences.h"
+#include "qglobal.h"
 #include "qquicknetworkreply_p.h"
 #include "qquicknetworkrequest_p.h"
 #include "qquickwebpage_p_p.h"
@@ -60,9 +63,11 @@
 #include <JavaScriptCore/JSBase.h>
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <QDateTime>
+#include <QMap>
 #include <QtCore/QFile>
 #include <QtQml/QJSValue>
 #include <QtQuick/QQuickView>
+#include <WKNumber.h>
 #include <WKOpenPanelResultListener.h>
 #include <WKPageGroup.h>
 #include <WKPreferences.h>
@@ -70,6 +75,7 @@
 #include <WKString.h>
 #include <WKStringQt.h>
 #include <WKURLQt.h>
+#include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/IntRect.h>
 #include <limits>
@@ -85,6 +91,9 @@ static bool s_flickableViewportEnabled = true;
 static const int kAxisLockSampleCount = 5;
 static const qreal kAxisLockVelocityThreshold = 300;
 static const qreal kAxisLockVelocityDirectionThreshold = 50;
+
+typedef QMap<WKPageRef, QQuickWebViewPrivate*> PageToViewMap;
+Q_GLOBAL_STATIC(PageToViewMap, pageToView)
 
 static inline QQuickWebViewPrivate* toQQuickWebViewPrivate(const void* clientInfo)
 {
@@ -198,6 +207,11 @@ static QQuickWebViewPrivate* createPrivateObject(QQuickWebView* publicObject)
     return new QQuickWebViewLegacyPrivate(publicObject);
 }
 
+QQuickWebViewPrivate* QQuickWebViewPrivate::get(WKPageRef page)
+{
+    return pageToView()->value(page);
+}
+
 QQuickWebViewPrivate::FlickableAxisLocker::FlickableAxisLocker()
     : m_allowedDirection(QQuickFlickable::AutoFlickDirection)
     , m_time(0), m_sampleCount(0)
@@ -273,6 +287,7 @@ QPointF QQuickWebViewPrivate::FlickableAxisLocker::adjust(const QPointF& positio
 QQuickWebViewPrivate::QQuickWebViewPrivate(QQuickWebView* viewport)
     : q_ptr(viewport)
     , experimental(new QQuickWebViewExperimental(viewport, this))
+    , context(0)
     , alertDialog(0)
     , confirmDialog(0)
     , promptDialog(0)
@@ -300,6 +315,7 @@ QQuickWebViewPrivate::QQuickWebViewPrivate(QQuickWebView* viewport)
 QQuickWebViewPrivate::~QQuickWebViewPrivate()
 {
     webPageProxy->close();
+    pageToView()->remove(webPage.get());
 }
 
 // Note: we delay this initialization to make sure that QQuickWebView has its d-ptr in-place.
@@ -309,16 +325,17 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     if (!pageGroup)
         pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(0));
 
-    context = contextRef ? QtWebContext::create(toImpl(contextRef)) : QtWebContext::defaultContext();
-    webPageProxy = context->createWebPage(&pageClient, toImpl(pageGroup.get()));
+    context = contextRef ? QtWebContext::create(contextRef) : QtWebContext::defaultContext();
+    webPageProxy = toImpl(context->context())->createWebPage(&pageClient, toImpl(pageGroup.get()));
     webPage = toAPI(webPageProxy.get());
+    pageToView()->insert(webPage.get(), this);
+
     webPageProxy->setUseFixedLayout(s_flickableViewportEnabled);
 #if ENABLE(FULLSCREEN_API)
     webPageProxy->fullScreenManager()->setWebView(q_ptr);
 #endif
 
-    QQuickWebPagePrivate* const pageViewPrivate = pageView.data()->d;
-    pageViewPrivate->initialize(webPageProxy.get());
+    pageEventHandler.reset(new QtWebPageEventHandler(webPage.get(), pageView.data(), q_ptr));
 
     {
         WKPageFindClient findClient;
@@ -367,7 +384,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     WKPreferencesSetWebGLEnabled(preferencesRef, true);
     webPageProxy->pageGroup()->preferences()->setForceCompositingMode(true);
 
-    pageClient.initialize(q_ptr, pageViewPrivate->eventHandler.data(), &undoController);
+    pageClient.initialize(q_ptr, pageEventHandler.data(), &undoController);
     webPageProxy->initializeWebPage();
     webPageProxy->registerApplicationScheme(ASCIILiteral("qrc"));
 
@@ -523,13 +540,13 @@ void QQuickWebViewPrivate::handleMouseEvent(QMouseEvent* event)
 {
     switch (event->type()) {
     case QEvent::MouseButtonPress:
-        pageView->eventHandler()->handleMousePressEvent(event);
+        pageEventHandler->handleMousePressEvent(event);
         break;
     case QEvent::MouseMove:
-        pageView->eventHandler()->handleMouseMoveEvent(event);
+        pageEventHandler->handleMouseMoveEvent(event);
         break;
     case QEvent::MouseButtonRelease:
-        pageView->eventHandler()->handleMouseReleaseEvent(event);
+        pageEventHandler->handleMouseReleaseEvent(event);
         break;
     case QEvent::MouseButtonDblClick:
         // If a MouseButtonDblClick was received then we got a MouseButtonPress before.
@@ -572,7 +589,7 @@ void QQuickWebViewPrivate::processDidCrash()
     QUrl url(KURL(WebCore::ParsedURLString, webPageProxy->urlAtProcessExit()));
     qWarning("WARNING: The web process experienced a crash on '%s'.", qPrintable(url.toString(QUrl::RemoveUserInfo)));
 
-    pageView->eventHandler()->resetGestureRecognizers();
+    pageEventHandler->resetGestureRecognizers();
 
     // Check if loading was ongoing, when process crashed.
     if (m_loadProgress > 0 && m_loadProgress < 100) {
@@ -612,7 +629,7 @@ void QQuickWebViewPrivate::handleDownloadRequest(DownloadProxy* download)
     downloadItem->d->downloadProxy = download;
 
     q->connect(downloadItem->d, SIGNAL(receivedResponse(QWebDownloadItem*)), q, SLOT(_q_onReceivedResponseFromDownload(QWebDownloadItem*)));
-    QtWebContext::downloadManager()->addDownload(download, downloadItem);
+    QtWebContext::defaultContext()->downloadManager()->addDownload(toAPI(download), downloadItem);
 }
 
 void QQuickWebViewPrivate::_q_onVisibleChanged()
@@ -627,7 +644,7 @@ void QQuickWebViewPrivate::_q_onUrlChanged()
 
 void QQuickWebViewPrivate::_q_onIconChangedForPageURL(const QString& pageUrl)
 {
-    if (pageUrl != QString(m_currentUrl))
+    if (pageUrl != m_currentUrl)
         return;
 
     updateIcon();
@@ -647,7 +664,7 @@ void QQuickWebViewPrivate::updateIcon()
     if (!provider)
         return;
 
-    WTF::String iconUrl = provider->iconURLForPageURLInContext(m_currentUrl, context.get());
+    QUrl iconUrl = provider->iconURLForPageURLInContext(m_currentUrl, context);
 
     if (iconUrl == m_iconUrl)
         return;
@@ -824,9 +841,9 @@ void QQuickWebViewPrivate::setNavigatorQtObjectEnabled(bool enabled)
     // FIXME: Currently we have to keep this information in both processes and the setting is asynchronous.
     m_navigatorQtObjectEnabled = enabled;
 
-    static String messageName("SetNavigatorQtObjectEnabled");
-    RefPtr<WebBoolean> webEnabled = WebBoolean::create(enabled);
-    webPageProxy->postMessageToInjectedBundle(messageName, webEnabled.get());
+    static WKStringRef messageName = WKStringCreateWithUTF8CString("SetNavigatorQtObjectEnabled");
+    WKRetainPtr<WKBooleanRef> wkEnabled = adoptWK(WKBooleanCreate(enabled));
+    WKPagePostMessageToInjectedBundle(webPage.get(), messageName, wkEnabled.get());
 }
 
 static WKRetainPtr<WKStringRef> readUserScript(const QUrl& url)
@@ -912,12 +929,30 @@ WebCore::IntSize QQuickWebViewPrivate::viewSize() const
 
     \sa postMessage
 */
-void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(const String& message)
+void QQuickWebViewPrivate::didReceiveMessageFromNavigatorQtObject(WKStringRef message)
 {
     QVariantMap variantMap;
-    variantMap.insert(QLatin1String("data"), QString(message));
+    variantMap.insert(QLatin1String("data"), WKStringCopyQString(message));
     variantMap.insert(QLatin1String("origin"), q_ptr->url());
     emit q_ptr->experimental()->messageReceived(variantMap);
+}
+
+CoordinatedGraphicsScene* QQuickWebViewPrivate::coordinatedGraphicsScene()
+{
+    if (webPageProxy && webPageProxy->drawingArea() && webPageProxy->drawingArea()->coordinatedLayerTreeHostProxy())
+        return webPageProxy->drawingArea()->coordinatedLayerTreeHostProxy()->coordinatedGraphicsScene();
+
+    return 0;
+}
+
+float QQuickWebViewPrivate::deviceScaleFactor()
+{
+    return webPageProxy->deviceScaleFactor();
+}
+
+void QQuickWebViewPrivate::setIntrinsicDeviceScaleFactor(float scaleFactor)
+{
+    webPageProxy->setIntrinsicDeviceScaleFactor(scaleFactor);
 }
 
 QQuickWebViewLegacyPrivate::QQuickWebViewLegacyPrivate(QQuickWebView* viewport)
@@ -980,7 +1015,7 @@ void QQuickWebViewFlickablePrivate::onComponentComplete()
     Q_Q(QQuickWebView);
     m_pageViewportControllerClient.reset(new PageViewportControllerClientQt(q, pageView.data()));
     m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), m_pageViewportControllerClient.data()));
-    pageView->eventHandler()->setViewportController(m_pageViewportControllerClient.data());
+    pageEventHandler->setViewportController(m_pageViewportControllerClient.data());
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.
     _q_onVisibleChanged();
@@ -1700,7 +1735,7 @@ void QQuickWebView::emitUrlChangeIfNeeded()
 {
     Q_D(QQuickWebView);
 
-    WTF::String activeUrl = d->webPageProxy->activeURL();
+    QString activeUrl = d->webPageProxy->activeURL();
     if (activeUrl != d->m_currentUrl) {
         d->m_currentUrl = activeUrl;
         emit urlChanged();
@@ -1728,7 +1763,7 @@ void QQuickWebView::emitUrlChangeIfNeeded()
 QUrl QQuickWebView::icon() const
 {
     Q_D(const QQuickWebView);
-    return QUrl(d->m_iconUrl);
+    return d->m_iconUrl;
 }
 
 /*!
@@ -1927,25 +1962,25 @@ void QQuickWebView::componentComplete()
 void QQuickWebView::keyPressEvent(QKeyEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleKeyPressEvent(event);
+    d->pageEventHandler->handleKeyPressEvent(event);
 }
 
 void QQuickWebView::keyReleaseEvent(QKeyEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleKeyReleaseEvent(event);
+    d->pageEventHandler->handleKeyReleaseEvent(event);
 }
 
 void QQuickWebView::inputMethodEvent(QInputMethodEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleInputMethodEvent(event);
+    d->pageEventHandler->handleInputMethodEvent(event);
 }
 
 void QQuickWebView::focusInEvent(QFocusEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleFocusInEvent(event);
+    d->pageEventHandler->handleFocusInEvent(event);
 }
 
 void QQuickWebView::itemChange(ItemChange change, const ItemChangeData &value)
@@ -1954,7 +1989,7 @@ void QQuickWebView::itemChange(ItemChange change, const ItemChangeData &value)
     if (change == ItemActiveFocusHasChanged) {
         bool focus = value.boolValue;
         if (!focus)
-            d->pageView->eventHandler()->handleFocusLost();
+            d->pageEventHandler->handleFocusLost();
     }
     QQuickFlickable::itemChange(change, value);
 }
@@ -1974,7 +2009,7 @@ void QQuickWebView::touchEvent(QTouchEvent* event)
         d->axisLocker.reset();
 
     forceActiveFocus();
-    d->pageView->eventHandler()->handleTouchEvent(event);
+    d->pageEventHandler->handleTouchEvent(event);
 }
 
 void QQuickWebView::mousePressEvent(QMouseEvent* event)
@@ -2006,50 +2041,50 @@ void QQuickWebView::mouseDoubleClickEvent(QMouseEvent* event)
 void QQuickWebView::wheelEvent(QWheelEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleWheelEvent(event);
+    d->pageEventHandler->handleWheelEvent(event);
 }
 
 void QQuickWebView::hoverEnterEvent(QHoverEvent* event)
 {
     Q_D(QQuickWebView);
     // Map HoverEnter to Move, for WebKit the distinction doesn't matter.
-    d->pageView->eventHandler()->handleHoverMoveEvent(event);
+    d->pageEventHandler->handleHoverMoveEvent(event);
 }
 
 void QQuickWebView::hoverMoveEvent(QHoverEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleHoverMoveEvent(event);
+    d->pageEventHandler->handleHoverMoveEvent(event);
 }
 
 void QQuickWebView::hoverLeaveEvent(QHoverEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleHoverLeaveEvent(event);
+    d->pageEventHandler->handleHoverLeaveEvent(event);
 }
 
 void QQuickWebView::dragMoveEvent(QDragMoveEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleDragMoveEvent(event);
+    d->pageEventHandler->handleDragMoveEvent(event);
 }
 
 void QQuickWebView::dragEnterEvent(QDragEnterEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleDragEnterEvent(event);
+    d->pageEventHandler->handleDragEnterEvent(event);
 }
 
 void QQuickWebView::dragLeaveEvent(QDragLeaveEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleDragLeaveEvent(event);
+    d->pageEventHandler->handleDragLeaveEvent(event);
 }
 
 void QQuickWebView::dropEvent(QDropEvent* event)
 {
     Q_D(QQuickWebView);
-    d->pageView->eventHandler()->handleDropEvent(event);
+    d->pageEventHandler->handleDropEvent(event);
 }
 
 bool QQuickWebView::event(QEvent* ev)
@@ -2276,7 +2311,7 @@ void QQuickWebViewPrivate::didFailToFindString(WKPageRef page, WKStringRef strin
 
     \row
     \li InternalErrorDomain
-    \li Content fails to be interpreted by QtWebKit.
+    \li Content fails to be interpreted by Qt WebKit.
 
     \row
     \li NetworkErrorDomain

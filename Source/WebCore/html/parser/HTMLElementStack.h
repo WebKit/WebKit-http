@@ -116,6 +116,8 @@ public:
     void popUntil(const AtomicString& tagName);
     void popUntil(Element*);
     void popUntilPopped(const AtomicString& tagName);
+    void popUntilPopped(const QualifiedName& tagName) { popUntilPopped(tagName.localName()); }
+
     void popUntilPopped(Element*);
     void popUntilNumberedHeaderElementPopped();
     void popUntilTableScopeMarker(); // "clear the stack back to a table context" in the spec.

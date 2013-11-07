@@ -52,6 +52,10 @@
 #define NSAccessibilityDropEffectsAttribute @"AXDropEffects"
 #endif
 
+#ifndef NSAccessibilityPathAttribute
+#define NSAccessibilityPathAttribute @"AXPath"
+#endif
+
 typedef void (*AXPostedNotificationCallback)(id element, NSString* notification, void* context);
 
 @interface NSObject (WebKitAccessibilityAdditions)
@@ -908,7 +912,7 @@ bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned location
     return false;
 }
 
-AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(AccessibilityUIElement* startElement, bool isDirectionNext, JSStringRef searchKey, JSStringRef searchText)
+AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText)
 {
     BEGIN_AX_OBJC_EXCEPTIONS
     NSMutableDictionary* parameter = [NSMutableDictionary dictionary];
@@ -916,9 +920,46 @@ AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(Acces
     [parameter setObject:[NSNumber numberWithInt:1] forKey:@"AXResultsLimit"];
     if (startElement && startElement->platformUIElement())
         [parameter setObject:(id)startElement->platformUIElement() forKey:@"AXStartElement"];
-    if (searchKey)
-        [parameter setObject:[NSString stringWithJSStringRef:searchKey] forKey:@"AXSearchKey"];
-    if (searchText)
+    if (searchKey) {
+        if (JSValueIsString(context, searchKey)) {
+            NSString *searchKeyParameter = nil;
+            JSStringRef singleSearchKey = JSValueToStringCopy(context, searchKey, 0);
+            if (singleSearchKey) {
+                searchKeyParameter = [NSString stringWithJSStringRef:singleSearchKey];
+                JSStringRelease(singleSearchKey);
+                if (searchKeyParameter)
+                    [parameter setObject:searchKeyParameter forKey:@"AXSearchKey"];
+            }
+        }
+        else if (JSValueIsObject(context, searchKey)) {
+            NSMutableArray *searchKeyParameter = nil;
+            JSObjectRef array = const_cast<JSObjectRef>(searchKey);
+            unsigned arrayLength = 0;
+            JSRetainPtr<JSStringRef> arrayLengthString(Adopt, JSStringCreateWithUTF8CString("length"));
+            JSValueRef arrayLengthValue = JSObjectGetProperty(context, array, arrayLengthString.get(), 0);
+            if (arrayLengthValue && JSValueIsNumber(context, arrayLengthValue))
+                arrayLength = static_cast<unsigned>(JSValueToNumber(context, arrayLengthValue, 0));
+            
+            for (unsigned i = 0; i < arrayLength; ++i) {
+                JSValueRef exception = 0;
+                JSValueRef value = JSObjectGetPropertyAtIndex(context, array, i, &exception);
+                if (exception)
+                    break;
+                JSStringRef singleSearchKey = JSValueToStringCopy(context, value, &exception);
+                if (exception)
+                    break;
+                if (singleSearchKey) {
+                    if (!searchKeyParameter)
+                        searchKeyParameter = [NSMutableArray array];
+                    [searchKeyParameter addObject:[NSString stringWithJSStringRef:singleSearchKey]];
+                    JSStringRelease(singleSearchKey);
+                }
+            }
+            if (searchKeyParameter)
+                [parameter setObject:searchKeyParameter forKey:@"AXSearchKey"];
+        }
+    }
+    if (searchText && JSStringGetLength(searchText))
         [parameter setObject:[NSString stringWithJSStringRef:searchText] forKey:@"AXSearchText"];
     
     id uiElement = [[m_element accessibilityAttributeValue:@"AXUIElementsForSearchPredicate" forParameter:parameter] lastObject];
@@ -1085,6 +1126,39 @@ AccessibilityUIElement AccessibilityUIElement::verticalScrollbar() const
     BEGIN_AX_OBJC_EXCEPTIONS
     return AccessibilityUIElement([m_element accessibilityAttributeValue:NSAccessibilityVerticalScrollBarAttribute]);
     END_AX_OBJC_EXCEPTIONS        
+
+    return 0;
+}
+
+JSStringRef AccessibilityUIElement::pathDescription() const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSMutableString *result = [NSMutableString stringWithString:@"\nStart Path\n"];
+    NSBezierPath *bezierPath = [m_element accessibilityAttributeValue:NSAccessibilityPathAttribute];
+    
+    NSUInteger elementCount = [bezierPath elementCount];
+    for (NSUInteger i = 0; i < elementCount; i++) {
+        switch ([bezierPath elementAtIndex:i]) {
+        case NSMoveToBezierPathElement:
+            [result appendString:@"\tMove to point\n"];
+            break;
+            
+        case NSLineToBezierPathElement:
+            [result appendString:@"\tLine to\n"];
+            break;
+            
+        case NSCurveToBezierPathElement:
+            [result appendString:@"\tCurve to\n"];
+            break;
+            
+        case NSClosePathBezierPathElement:
+            [result appendString:@"\tClose\n"];
+            break;
+        }
+    }
+    
+    return [result createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
 
     return 0;
 }

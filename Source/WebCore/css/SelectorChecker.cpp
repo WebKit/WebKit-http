@@ -126,7 +126,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
     PseudoId ignoreDynamicPseudo = NOPSEUDO;
     if (relation != CSSSelector::SubSelector) {
         // Abort if the next selector would exceed the scope.
-        if (context.element == context.scope)
+        if (context.element == context.scope && context.behaviorAtBoundary != StaysWithinTreeScope)
             return SelectorFailsCompletely;
 
         // Bail-out if this selector is irrelevant for the pseudoId
@@ -149,7 +149,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
             Match match = this->match(nextContext, ignoreDynamicPseudo, siblingTraversalStrategy);
             if (match == SelectorMatches || match == SelectorFailsCompletely)
                 return match;
-            if (nextContext.element == nextContext.scope)
+            if (nextContext.element == nextContext.scope && nextContext.behaviorAtBoundary != StaysWithinTreeScope)
                 return SelectorFailsCompletely;
         }
         return SelectorFailsCompletely;
@@ -205,7 +205,7 @@ SelectorChecker::Match SelectorChecker::match(const SelectorCheckingContext& con
     case CSSSelector::ShadowDescendant:
         {
             // If we're in the same tree-scope as the scoping element, then following a shadow descendant combinator would escape that and thus the scope.
-            if (context.scope && context.scope->treeScope() == context.element->treeScope())
+            if (context.scope && context.scope->treeScope() == context.element->treeScope() && context.behaviorAtBoundary != StaysWithinTreeScope)
                 return SelectorFailsCompletely;
             Element* shadowHostNode = context.element->shadowHost();
             if (!shadowHostNode)
@@ -607,7 +607,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context, const Sib
             break;
         case CSSSelector::PseudoEnabled:
             if (element && (element->isFormControlElement() || element->hasTagName(optionTag) || element->hasTagName(optgroupTag)))
-                return element->isEnabledFormControl();
+                return !element->isDisabledFormControl();
             break;
         case CSSSelector::PseudoFullPageMedia:
             return element && element->document() && element->document()->isMediaDocument();
@@ -616,7 +616,7 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context, const Sib
             return element && element->isDefaultButtonForForm();
         case CSSSelector::PseudoDisabled:
             if (element && (element->isFormControlElement() || element->hasTagName(optionTag) || element->hasTagName(optgroupTag)))
-                return !element->isEnabledFormControl();
+                return element->isDisabledFormControl();
             break;
         case CSSSelector::PseudoReadOnly:
             return element && element->matchesReadOnlyPseudoClass();
@@ -644,29 +644,14 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context, const Sib
                 // you can't be both checked and indeterminate. We will behave like WinIE behind the scenes and just
                 // obey the CSS spec here in the test for matching the pseudo.
                 HTMLInputElement* inputElement = element->toInputElement();
-                if (inputElement && inputElement->shouldAppearChecked() && !inputElement->isIndeterminate())
+                if (inputElement && inputElement->shouldAppearChecked() && !inputElement->shouldAppearIndeterminate())
                     return true;
                 if (element->hasTagName(optionTag) && toHTMLOptionElement(element)->selected())
                     return true;
                 break;
             }
         case CSSSelector::PseudoIndeterminate:
-            {
-                if (!element)
-                    break;
-#if ENABLE(PROGRESS_ELEMENT)
-                if (element->hasTagName(progressTag)) {
-                    HTMLProgressElement* progress = static_cast<HTMLProgressElement*>(element);
-                    if (progress && !progress->isDeterminate())
-                        return true;
-                    break;
-                }
-#endif
-                HTMLInputElement* inputElement = element->toInputElement();
-                if (inputElement && inputElement->isIndeterminate())
-                    return true;
-                break;
-            }
+            return element && element->shouldAppearIndeterminate();
         case CSSSelector::PseudoRoot:
             if (element == element->document()->documentElement())
                 return true;
@@ -733,6 +718,14 @@ bool SelectorChecker::checkOne(const SelectorCheckingContext& context, const Sib
         case CSSSelector::PseudoPastCue:
             return (element->isWebVTTElement() && toWebVTTElement(element)->isPastNode());
 #endif
+
+        case CSSSelector::PseudoScope:
+            {
+                const Node* contextualReferenceNode = !context.scope || context.behaviorAtBoundary == CrossesBoundary ? element->document()->documentElement() : context.scope;
+                if (element == contextualReferenceNode)
+                    return true;
+                break;
+            }
 
         case CSSSelector::PseudoHorizontal:
         case CSSSelector::PseudoVertical:

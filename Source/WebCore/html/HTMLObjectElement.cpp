@@ -121,9 +121,7 @@ void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         m_classId = value;
         if (renderer())
             setNeedsWidgetUpdate(true);
-    } else if (name == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, name, value));
-    else if (name == onbeforeloadAttr)
+    } else if (name == onbeforeloadAttr)
         setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, name, value));
     else
         HTMLPlugInImageElement::parseAttribute(name, value);
@@ -364,9 +362,9 @@ bool HTMLObjectElement::isURLAttribute(const Attribute& attribute) const
     return attribute.name() == dataAttr || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#') || HTMLPlugInImageElement::isURLAttribute(attribute);
 }
 
-const QualifiedName& HTMLObjectElement::imageSourceAttributeName() const
+const AtomicString& HTMLObjectElement::imageSourceURL() const
 {
-    return dataAttr;
+    return getAttribute(dataAttr);
 }
 
 void HTMLObjectElement::renderFallbackContent()
@@ -430,7 +428,7 @@ void HTMLObjectElement::updateDocNamedItem()
     Node* child = firstChild();
     while (child && isNamedItem) {
         if (child->isElementNode()) {
-            Element* element = static_cast<Element*>(child);
+            Element* element = toElement(child);
             // FIXME: Use of isRecognizedTagName is almost certainly wrong here.
             if (isRecognizedTagName(element->tagQName()) && !element->hasTagName(paramTag))
                 isNamedItem = false;
@@ -442,7 +440,7 @@ void HTMLObjectElement::updateDocNamedItem()
         child = child->nextSibling();
     }
     if (isNamedItem != wasNamedItem && document()->isHTMLDocument()) {
-        HTMLDocument* document = static_cast<HTMLDocument*>(this->document());
+        HTMLDocument* document = toHTMLDocument(this->document());
         if (isNamedItem) {
             document->addNamedItem(getNameAttribute());
             document->addExtraNamedItem(getIdAttribute());
@@ -502,7 +500,7 @@ bool HTMLObjectElement::appendFormData(FormDataList& encoding, bool)
     if (!widget || !widget->isPluginViewBase())
         return false;
     String value;
-    if (!static_cast<PluginViewBase*>(widget)->getFormValue(value))
+    if (!toPluginViewBase(widget)->getFormValue(value))
         return false;
     encoding.appendData(name(), value);
     return true;

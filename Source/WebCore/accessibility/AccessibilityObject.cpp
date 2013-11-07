@@ -77,8 +77,6 @@ AccessibilityObject::AccessibilityObject()
     , m_lastKnownIsIgnoredValue(DefaultBehavior)
 #if PLATFORM(GTK) || (PLATFORM(EFL) && HAVE(ACCESSIBILITY))
     , m_wrapper(0)
-#elif PLATFORM(CHROMIUM)
-    , m_detached(false)
 #endif
 {
 }
@@ -94,30 +92,23 @@ void AccessibilityObject::detach()
     // no children are left with dangling pointers to their parent.
     clearChildren();
 
-#if HAVE(ACCESSIBILITY) && PLATFORM(CHROMIUM)
-    m_detached = true;
-#elif HAVE(ACCESSIBILITY)
+#if HAVE(ACCESSIBILITY)
     setWrapper(0);
 #endif
 }
 
 bool AccessibilityObject::isDetached() const
 {
-#if HAVE(ACCESSIBILITY) && PLATFORM(CHROMIUM)
-    return m_detached;
-#elif HAVE(ACCESSIBILITY)
+#if HAVE(ACCESSIBILITY)
     return !wrapper();
 #else
     return true;
 #endif
 }
 
-bool AccessibilityObject::isAccessibilityObjectSearchMatch(AccessibilityObject* axObject, AccessibilitySearchCriteria* criteria)
+bool AccessibilityObject::isAccessibilityObjectSearchMatchAtIndex(AccessibilityObject* axObject, AccessibilitySearchCriteria* criteria, size_t index)
 {
-    if (!axObject || !criteria)
-        return false;
-    
-    switch (criteria->searchKey) {
+    switch (criteria->searchKeys[index]) {
     // The AnyTypeSearchKey matches any non-null AccessibilityObject.
     case AnyTypeSearchKey:
         return true;
@@ -247,6 +238,19 @@ bool AccessibilityObject::isAccessibilityObjectSearchMatch(AccessibilityObject* 
     default:
         return false;
     }
+}
+
+bool AccessibilityObject::isAccessibilityObjectSearchMatch(AccessibilityObject* axObject, AccessibilitySearchCriteria* criteria)
+{
+    if (!axObject || !criteria)
+        return false;
+    
+    size_t length = criteria->searchKeys.size();
+    for (size_t i = 0; i < length; ++i) {
+        if (isAccessibilityObjectSearchMatchAtIndex(axObject, criteria, i))
+            return true;
+    }
+    return false;
 }
 
 bool AccessibilityObject::isAccessibilityTextSearchMatch(AccessibilityObject* axObject, AccessibilitySearchCriteria* criteria)
@@ -399,7 +403,7 @@ static void appendAccessibilityObject(AccessibilityObject* object, Accessibility
         if (!widget || !widget->isFrameView())
             return;
         
-        Document* doc = static_cast<FrameView*>(widget)->frame()->document();
+        Document* doc = toFrameView(widget)->frame()->document();
         if (!doc || !doc->renderer())
             return;
         
@@ -727,7 +731,7 @@ VisiblePositionRange AccessibilityObject::paragraphForPosition(const VisiblePosi
     return VisiblePositionRange(startPosition, endPosition);
 }
 
-static VisiblePosition startOfStyleRange(const VisiblePosition visiblePos)
+static VisiblePosition startOfStyleRange(const VisiblePosition& visiblePos)
 {
     RenderObject* renderer = visiblePos.deepEquivalent().deprecatedNode()->renderer();
     RenderObject* startRenderer = renderer;
@@ -1320,7 +1324,7 @@ bool AccessibilityObject::hasAttribute(const QualifiedName& attribute) const
     if (!elementNode->isElementNode())
         return false;
     
-    Element* element = static_cast<Element*>(elementNode);
+    Element* element = toElement(elementNode);
     return element->fastHasAttribute(attribute);
 }
     
@@ -1333,7 +1337,7 @@ const AtomicString& AccessibilityObject::getAttribute(const QualifiedName& attri
     if (!elementNode->isElementNode())
         return nullAtom;
     
-    Element* element = static_cast<Element*>(elementNode);
+    Element* element = toElement(elementNode);
     return element->fastGetAttribute(attribute);
 }
     
@@ -1867,6 +1871,35 @@ bool AccessibilityObject::isButton() const
     return role == ButtonRole || role == PopUpButtonRole || role == ToggleButtonRole;
 }
 
+bool AccessibilityObject::accessibilityIsIgnoredByDefault() const
+{
+    return defaultObjectInclusion() == IgnoreObject;
+}
+
+bool AccessibilityObject::ariaIsHidden() const
+{
+    if (equalIgnoringCase(getAttribute(aria_hiddenAttr), "true"))
+        return true;
+    
+    for (AccessibilityObject* object = parentObject(); object; object = object->parentObject()) {
+        if (equalIgnoringCase(object->getAttribute(aria_hiddenAttr), "true"))
+            return true;
+    }
+    
+    return false;
+}
+
+AccessibilityObjectInclusion AccessibilityObject::defaultObjectInclusion() const
+{
+    if (ariaIsHidden())
+        return IgnoreObject;
+    
+    if (isPresentationalChildOfAriaRole())
+        return IgnoreObject;
+    
+    return accessibilityPlatformIncludesObject();
+}
+    
 bool AccessibilityObject::accessibilityIsIgnored() const
 {
     AXComputedObjectAttributeCache* attributeCache = axObjectCache()->computedObjectAttributeCache();

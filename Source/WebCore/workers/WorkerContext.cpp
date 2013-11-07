@@ -181,10 +181,9 @@ WorkerNavigator* WorkerContext::navigator() const
 
 bool WorkerContext::hasPendingActivity() const
 {
-    ActiveDOMObjectsMap& activeObjects = activeDOMObjects();
-    ActiveDOMObjectsMap::const_iterator activeObjectsEnd = activeObjects.end();
-    for (ActiveDOMObjectsMap::const_iterator iter = activeObjects.begin(); iter != activeObjectsEnd; ++iter) {
-        if (iter->key->hasPendingActivity())
+    ActiveDOMObjectsSet::const_iterator activeObjectsEnd = activeDOMObjects().end();
+    for (ActiveDOMObjectsSet::const_iterator iter = activeDOMObjects().begin(); iter != activeObjectsEnd; ++iter) {
+        if ((*iter)->hasPendingActivity())
             return true;
     }
 
@@ -247,7 +246,7 @@ void WorkerContext::importScripts(const Vector<String>& urls, ExceptionCode& ec)
 
     for (Vector<KURL>::const_iterator it = completedURLs.begin(); it != end; ++it) {
         RefPtr<WorkerScriptLoader> scriptLoader(WorkerScriptLoader::create());
-#if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY)
         scriptLoader->setTargetType(ResourceRequest::TargetIsScript);
 #endif
         scriptLoader->loadSynchronously(scriptExecutionContext(), *it, AllowCrossOriginRequests);

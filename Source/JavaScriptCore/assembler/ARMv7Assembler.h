@@ -1266,6 +1266,20 @@ public:
         m_formatter.twoWordOp5i6Imm4Reg4EncodedImm(OP_MOV_imm_T3, imm.m_value.imm4, rd, imm);
     }
     
+#if OS(LINUX) || OS(QNX)
+    static void revertJumpTo_movT3movtcmpT2(void* instructionStart, RegisterID left, RegisterID right, uintptr_t imm)
+    {
+        uint16_t* address = static_cast<uint16_t*>(instructionStart);
+        ARMThumbImmediate lo16 = ARMThumbImmediate::makeUInt16(static_cast<uint16_t>(imm));
+        ARMThumbImmediate hi16 = ARMThumbImmediate::makeUInt16(static_cast<uint16_t>(imm >> 16));
+        address[0] = twoWordOp5i6Imm4Reg4EncodedImmFirst(OP_MOV_imm_T3, lo16);
+        address[1] = twoWordOp5i6Imm4Reg4EncodedImmSecond(right, lo16);
+        address[2] = twoWordOp5i6Imm4Reg4EncodedImmFirst(OP_MOVT, hi16);
+        address[3] = twoWordOp5i6Imm4Reg4EncodedImmSecond(right, hi16);
+        address[4] = OP_CMP_reg_T2 | left;
+        cacheFlush(address, sizeof(uint16_t) * 5);
+    }
+#else
     static void revertJumpTo_movT3(void* instructionStart, RegisterID rd, ARMThumbImmediate imm)
     {
         ASSERT(imm.isValid());
@@ -1277,6 +1291,7 @@ public:
         address[1] = twoWordOp5i6Imm4Reg4EncodedImmSecond(rd, imm);
         cacheFlush(address, sizeof(uint16_t) * 2);
     }
+#endif
 
     ALWAYS_INLINE void mov(RegisterID rd, ARMThumbImmediate imm)
     {
@@ -1882,7 +1897,12 @@ public:
     {
         m_formatter.oneWordOp8Imm8(OP_NOP_T1, 0);
     }
-    
+
+    void nopw()
+    {
+        m_formatter.twoWordOp16Op16(OP_NOP_T2a, OP_NOP_T2b);
+    }
+
     AssemblerLabel labelIgnoringWatchpoints()
     {
         return m_formatter.label();
@@ -1902,7 +1922,10 @@ public:
     {
         AssemblerLabel result = m_formatter.label();
         while (UNLIKELY(static_cast<int>(result.m_offset) < m_indexOfTailOfLastWatchpoint)) {
-            nop();
+            if (UNLIKELY(static_cast<int>(result.m_offset) + 4 <= m_indexOfTailOfLastWatchpoint))
+                nopw();
+            else
+                nop();
             result = m_formatter.label();
         }
         return result;
@@ -2012,7 +2035,7 @@ public:
             offsets[ptr++] = offset;
     }
     
-    Vector<LinkRecord>& jumpsToLink()
+    Vector<LinkRecord, 0, UnsafeVectorOverflow>& jumpsToLink()
     {
         std::sort(m_jumpsToLink.begin(), m_jumpsToLink.end(), linkRecordSourceComparator);
         return m_jumpsToLink;
@@ -2160,15 +2183,31 @@ public:
     {
         ASSERT(!(bitwise_cast<uintptr_t>(instructionStart) & 1));
         ASSERT(!(bitwise_cast<uintptr_t>(to) & 1));
+
+#if OS(LINUX) || OS(QNX)
+        if (canBeJumpT4(reinterpret_cast<uint16_t*>(instructionStart), to)) {
+            uint16_t* ptr = reinterpret_cast<uint16_t*>(instructionStart) + 2;
+            linkJumpT4(ptr, to);
+            cacheFlush(ptr - 2, sizeof(uint16_t) * 2);
+        } else {
+            uint16_t* ptr = reinterpret_cast<uint16_t*>(instructionStart) + 5;
+            linkBX(ptr, to);
+            cacheFlush(ptr - 5, sizeof(uint16_t) * 5);
+        }
+#else
         uint16_t* ptr = reinterpret_cast<uint16_t*>(instructionStart) + 2;
-        
         linkJumpT4(ptr, to);
         cacheFlush(ptr - 2, sizeof(uint16_t) * 2);
+#endif
     }
     
     static ptrdiff_t maxJumpReplacementSize()
     {
+#if OS(LINUX) || OS(QNX)
+        return 10;
+#else
         return 4;
+#endif
     }
     
     static void replaceWithLoad(void* instructionStart)
@@ -2213,28 +2252,45 @@ public:
 
     unsigned debugOffset() { return m_formatter.debugOffset(); }
 
+#if OS(LINUX)
+    static inline void linuxPageFlush(uintptr_t begin, uintptr_t end)
+    {
+        asm volatile(
+            "push    {r7}\n"
+            "mov     r0, %0\n"
+            "mov     r1, %1\n"
+            "movw    r7, #0x2\n"
+            "movt    r7, #0xf\n"
+            "movs    r2, #0x0\n"
+            "svc     0x0\n"
+            "pop     {r7}\n"
+            :
+            : "r" (begin), "r" (end)
+            : "r0", "r1", "r2");
+    }
+#endif
+
     static void cacheFlush(void* code, size_t size)
     {
 #if OS(IOS)
         sys_cache_control(kCacheFunctionPrepareForExecution, code, size);
 #elif OS(LINUX)
-        uintptr_t currentPage = reinterpret_cast<uintptr_t>(code) & ~(pageSize() - 1);
-        uintptr_t lastPage = (reinterpret_cast<uintptr_t>(code) + size) & ~(pageSize() - 1);
-        do {
-            asm volatile(
-                "push    {r7}\n"
-                "mov     r0, %0\n"
-                "mov     r1, %1\n"
-                "movw    r7, #0x2\n"
-                "movt    r7, #0xf\n"
-                "movs    r2, #0x0\n"
-                "svc     0x0\n"
-                "pop     {r7}\n"
-                :
-                : "r" (currentPage), "r" (currentPage + pageSize())
-                : "r0", "r1", "r2");
-            currentPage += pageSize();
-        } while (lastPage >= currentPage);
+        size_t page = pageSize();
+        uintptr_t current = reinterpret_cast<uintptr_t>(code);
+        uintptr_t end = current + size;
+        uintptr_t firstPageEnd = (current & ~(page - 1)) + page;
+
+        if (end <= firstPageEnd) {
+            linuxPageFlush(current, end);
+            return;
+        }
+
+        linuxPageFlush(current, firstPageEnd);
+
+        for (current = firstPageEnd; current + page < end; current += page)
+            linuxPageFlush(current, current + page);
+
+        linuxPageFlush(current, end);
 #elif OS(WINCE)
         CacheRangeFlush(code, size, CACHE_SYNC_ALL);
 #elif OS(QNX)
@@ -2722,8 +2778,7 @@ private:
         AssemblerBuffer m_buffer;
     } m_formatter;
 
-    Vector<LinkRecord> m_jumpsToLink;
-    Vector<int32_t> m_offsets;
+    Vector<LinkRecord, 0, UnsafeVectorOverflow> m_jumpsToLink;
     int m_indexOfLastWatchpoint;
     int m_indexOfTailOfLastWatchpoint;
 };

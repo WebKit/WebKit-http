@@ -221,9 +221,9 @@ RenderObject* SliderThumbElement::createRenderer(RenderArena* arena, RenderStyle
     return new (arena) RenderSliderThumb(this);
 }
 
-bool SliderThumbElement::isEnabledFormControl() const
+bool SliderThumbElement::isDisabledFormControl() const
 {
-    return hostInput()->isEnabledFormControl();
+    return hostInput()->isDisabledFormControl();
 }
 
 bool SliderThumbElement::matchesReadOnlyPseudoClass() const
@@ -281,9 +281,6 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
         currentPosition = absoluteThumbOrigin.x() - absoluteSliderContentOrigin.x();
     }
     position = max<LayoutUnit>(0, min(position, trackSize));
-    if (position == currentPosition)
-        return;
-
     const Decimal ratio = Decimal::fromDouble(static_cast<double>(position) / trackSize);
     const Decimal fraction = isVertical || !isLeftToRightDirection ? Decimal(1) - ratio : ratio;
     StepRange stepRange(input->createStepRange(RejectAny));
@@ -303,8 +300,12 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
     }
 #endif
 
+    String valueString = serializeForNumberType(value);
+    if (valueString == input->value())
+        return;
+
     // FIXME: This is no longer being set from renderer. Consider updating the method name.
-    input->setValueFromRenderer(serializeForNumberType(value));
+    input->setValueFromRenderer(valueString);
     renderer()->setNeedsLayout(true);
     input->dispatchFormControlChangeEvent();
 }
@@ -339,7 +340,7 @@ void SliderThumbElement::defaultEventHandler(Event* event)
     // FIXME: Should handle this readonly/disabled check in more general way.
     // Missing this kind of check is likely to occur elsewhere if adding it in each shadow element.
     HTMLInputElement* input = hostInput();
-    if (!input || input->readOnly() || !input->isEnabledFormControl()) {
+    if (!input || input->isDisabledOrReadOnly()) {
         stopDragging();
         HTMLDivElement::defaultEventHandler(event);
         return;
@@ -370,7 +371,7 @@ void SliderThumbElement::defaultEventHandler(Event* event)
 bool SliderThumbElement::willRespondToMouseMoveEvents()
 {
     const HTMLInputElement* input = hostInput();
-    if (input && !input->readOnly() && input->isEnabledFormControl() && m_inDragMode)
+    if (input && !input->isDisabledOrReadOnly() && m_inDragMode)
         return true;
 
     return HTMLDivElement::willRespondToMouseMoveEvents();
@@ -379,7 +380,7 @@ bool SliderThumbElement::willRespondToMouseMoveEvents()
 bool SliderThumbElement::willRespondToMouseClickEvents()
 {
     const HTMLInputElement* input = hostInput();
-    if (input && !input->readOnly() && input->isEnabledFormControl())
+    if (input && !input->isDisabledOrReadOnly())
         return true;
 
     return HTMLDivElement::willRespondToMouseClickEvents();

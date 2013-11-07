@@ -432,7 +432,6 @@ enum FeatureToAnimate {
     return aRect;
 }
 
-#if !PLATFORM(CHROMIUM)
 - (CALayer *)layer
 {
     if (!_scrollbar)
@@ -445,7 +444,6 @@ enum FeatureToAnimate {
     static CALayer *dummyLayer = [[CALayer alloc] init];
     return dummyLayer;
 }
-#endif
 
 - (NSPoint)mouseLocationInScrollerForScrollerImp:(id)scrollerImp
 {
@@ -642,7 +640,7 @@ ScrollAnimatorMac::~ScrollAnimatorMac()
 static bool scrollAnimationEnabledForSystem()
 {
     NSString* scrollAnimationDefaultsKey = 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070 || PLATFORM(CHROMIUM)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070
         @"AppleScrollAnimationEnabled";
 #else
         @"NSScrollAnimationEnabled";
@@ -706,8 +704,8 @@ FloatPoint ScrollAnimatorMac::adjustScrollPositionIfNecessary(const FloatPoint& 
     if (!m_scrollableArea->constrainsScrollingToContentEdge())
         return position;
 
-    float newX = max<float>(min<float>(position.x(), m_scrollableArea->contentsSize().width() - m_scrollableArea->visibleWidth()), 0);
-    float newY = max<float>(min<float>(position.y(), m_scrollableArea->contentsSize().height() - m_scrollableArea->visibleHeight()), 0);
+    float newX = max<float>(min<float>(position.x(), m_scrollableArea->totalContentsSize().width() - m_scrollableArea->visibleWidth()), 0);
+    float newY = max<float>(min<float>(position.y(), m_scrollableArea->totalContentsSize().height() - m_scrollableArea->visibleHeight()), 0);
 
     return FloatPoint(newX, newY);
 }
@@ -1052,7 +1050,7 @@ bool ScrollAnimatorMac::pinnedInDirection(float deltaX, float deltaY)
             limitDelta.setHeight(m_scrollableArea->visibleContentRect().y() + + m_scrollableArea->scrollOrigin().y());
         } else {
             // We are trying to scroll down.  Make sure we are not pinned to the bottom
-            limitDelta.setHeight(m_scrollableArea->contentsSize().height() - (m_scrollableArea->visibleContentRect().maxY() + m_scrollableArea->scrollOrigin().y()));
+            limitDelta.setHeight(m_scrollableArea->totalContentsSize().height() - (m_scrollableArea->visibleContentRect().maxY() + m_scrollableArea->scrollOrigin().y()));
         }
     } else if (deltaX != 0) {
         if (deltaX < 0) {
@@ -1060,7 +1058,7 @@ bool ScrollAnimatorMac::pinnedInDirection(float deltaX, float deltaY)
             limitDelta.setWidth(m_scrollableArea->visibleContentRect().x() + m_scrollableArea->scrollOrigin().x());
         } else {
             // We are trying to scroll right.  Make sure we are not pinned to the right
-            limitDelta.setWidth(m_scrollableArea->contentsSize().width() - (m_scrollableArea->visibleContentRect().maxX() + m_scrollableArea->scrollOrigin().x()));
+            limitDelta.setWidth(m_scrollableArea->totalContentsSize().width() - (m_scrollableArea->visibleContentRect().maxX() + m_scrollableArea->scrollOrigin().x()));
         }
     }
     

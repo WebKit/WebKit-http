@@ -288,7 +288,7 @@ Object.defineProperty(Uint32Array.prototype, "sort", {
 var partition = {
     /**
      * @this {Array.<number>}
-     * @param {function(number,number):boolean} comparator
+     * @param {function(number,number):number} comparator
      * @param {number} left
      * @param {number} right
      * @param {number} pivotIndex
@@ -321,7 +321,7 @@ Object.defineProperty(Uint32Array.prototype, "partition", partition);
 var sortRange = {
     /**
      * @this {Array.<number>}
-     * @param {function(number,number):boolean} comparator
+     * @param {function(number,number):number} comparator
      * @param {number} leftBound
      * @param {number} rightBound
      * @param {number} k
@@ -864,6 +864,15 @@ Map.prototype = {
         return entry ? entry[1] : undefined;
     },
 
+    /**
+     * @param {Object} key
+     */
+    contains: function(key)
+    {
+        var entry = this._map[key.__identifier];
+        return !!entry;
+    },
+
     size: function()
     {
         return this._size;
@@ -970,10 +979,13 @@ var _importedScripts = {};
 /**
  * This function behavior depends on the "debug_devtools" flag value.
  * - In debug mode it loads scripts synchronously via xhr request.
- * - In release mode every occurrence of "importScript" gets replaced with
- * the script source code on the compilation phase.
+ * - In release mode every occurrence of "importScript" in the js files
+ *   that have been white listed in the build system gets replaced with
+ *   the script source code on the compilation phase.
+ *   The build system will throw an exception if it found importScript call
+ *   in other files.
  *
- * To load scripts lazily in release mode call "loasScript" function.
+ * To load scripts lazily in release mode call "loadScript" function.
  * @param {string} scriptName
  */
 function importScript(scriptName)
@@ -986,6 +998,8 @@ function importScript(scriptName)
         scriptName = scriptName.split("/").reverse()[0];
     xhr.open("GET", scriptName, false);
     xhr.send(null);
+    if (!xhr.responseText)
+        throw "empty response arrived for script '" + scriptName + "'";
     var sourceURL = WebInspector.ParsedURL.completeURL(window.location.href, scriptName); 
     window.eval(xhr.responseText + "\n//@ sourceURL=" + sourceURL);
 }

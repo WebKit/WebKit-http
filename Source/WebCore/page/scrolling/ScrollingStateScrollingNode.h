@@ -47,7 +47,7 @@ public:
 
     enum ChangedProperty {
         ViewportRect = NumStateNodeBits,
-        ContentsSize,
+        TotalContentsSize,
         FrameScaleFactor,
         NonFastScrollableRegion,
         WheelEventHandlerCount,
@@ -60,7 +60,9 @@ public:
         VerticalScrollbarMode,
         ScrollOrigin,
         RequestedScrollPosition,
-        CounterScrollingLayer
+        CounterScrollingLayer,
+        HeaderHeight,
+        FooterHeight
     };
 
     virtual bool isScrollingNode() OVERRIDE { return true; }
@@ -68,8 +70,8 @@ public:
     const IntRect& viewportRect() const { return m_viewportRect; }
     void setViewportRect(const IntRect&);
 
-    const IntSize& contentsSize() const { return m_contentsSize; }
-    void setContentsSize(const IntSize&);
+    const IntSize& totalContentsSize() const { return m_totalContentsSize; }
+    void setTotalContentsSize(const IntSize&);
 
     float frameScaleFactor() const { return m_frameScaleFactor; }
     void setFrameScaleFactor(float);
@@ -107,6 +109,12 @@ public:
     const IntPoint& scrollOrigin() const { return m_scrollOrigin; }
     void setScrollOrigin(const IntPoint&);
 
+    int headerHeight() const { return m_headerHeight; }
+    void setHeaderHeight(int);
+
+    int footerHeight() const { return m_footerHeight; }
+    void setFooterHeight(int);
+
     // This is a layer moved in the opposite direction to scrolling, for example for background-attachment:fixed
     GraphicsLayer* counterScrollingLayer() const { return m_counterScrollingLayer; }
     void setCounterScrollingLayer(GraphicsLayer*);
@@ -126,7 +134,7 @@ private:
 #endif
     
     IntRect m_viewportRect;
-    IntSize m_contentsSize;
+    IntSize m_totalContentsSize;
     
     float m_frameScaleFactor;
 
@@ -148,6 +156,9 @@ private:
 
     IntPoint m_requestedScrollPosition;
     IntPoint m_scrollOrigin;
+
+    int m_headerHeight;
+    int m_footerHeight;
 };
 
 inline ScrollingStateScrollingNode* toScrollingStateScrollingNode(ScrollingStateNode* node)

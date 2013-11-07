@@ -361,7 +361,7 @@ JSStringRef AccessibilityUIElement::stringForRange(unsigned, unsigned)
     return 0;
 }
 
-AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(AccessibilityUIElement*, bool, JSStringRef, JSStringRef)
+AccessibilityUIElement AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement*, bool, JSValueRef, JSStringRef)
 {
     notImplemented();
     return 0;
@@ -554,6 +554,21 @@ bool AccessibilityUIElement::hasPopup() const
 {
     notImplemented();
     return false;
+}
+
+void AccessibilityUIElement::scrollToMakeVisible()
+{
+    notImplemented();
+}
+
+void AccessibilityUIElement::scrollToMakeVisibleWithSubFocus(int x, int y, int width, int height)
+{
+    notImplemented();
+}
+
+void AccessibilityUIElement::scrollToGlobalPoint(int x, int y)
+{
+    notImplemented();
 }
 
 void AccessibilityUIElement::takeFocus()

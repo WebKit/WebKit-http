@@ -23,43 +23,13 @@
                 timer = setTimeout(nextStep, 100);
             }
 
-            function trackMenuList()
-            {
-                trackListElement = getTrackListElement();
-                if (!trackListElement)
-                    return;
-
-                // Track list should have a <ul> with <li> children (One of them is "Off").
-                var trackList = trackListElement.querySelector("ul");
-                if (!trackList) {
-                    failTest("Could not find a child ul element in track list menu");
-                    return;
-                }
-                var trackListItems = trackList.querySelectorAll("li");
-                if (!trackListItems) {
-                    failTest("Could not find child li elements in track list menu");
-                    return;
-                }
-
-                return trackListItems;
-            }
-
-            function selectCaptionMenuItem(index)
-            {
-                consoleWrite("- click on menu item " + index + ".");
-                var trackMenuItems = trackMenuList();
-                var selectedTrackItem = trackMenuItems[index];
-                var boundingRect = selectedTrackItem.getBoundingClientRect();
-                var x = boundingRect.left + boundingRect.width / 2;
-                var y = boundingRect.top + boundingRect.height / 2;
-                eventSender.mouseMoveTo(x, y);
-                eventSender.mouseDown();
-                eventSender.mouseUp();
-            }
-
             function trackLoaded()
             {
                 consoleWrite("EVENT(load)");
+                if (expectedLanguage == "") {
+                    failTest("'" + event.target.srclang + "' track loaded unexpectedly.");
+                    return;
+                }
                 testExpected("event.target.srclang", expectedLanguage);
                 testExpected("event.target.readyState", HTMLTrackElement.LOADED);
 
@@ -70,7 +40,7 @@
             {
                 var track = document.createElement('track');
                 track.setAttribute('kind', "captions");
-                track.src = 'data:text/vtt,'+encodeURIComponent("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nCaption 1\n");
+                track.src = 'data:text/vtt,' + encodeURIComponent("WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nCaption 1\n");
                 track.setAttribute('srclang', language);
                 track.setAttribute('onload', 'trackLoaded()');
                 if (isDefault) {
@@ -108,20 +78,17 @@
                     break;
 
                 case 3:
-                    // Clear the debug setting so it isn't considered in the track selection logic
-                    internals.settings.setShouldDisplayTrackKind('Captions', false);
-
                     consoleWrite("<br>Test 3: select 'fr' track from menu");
                     showCaptionMenu();
                     break;
 
                 case 4:
                     trackMenuItems = trackMenuList();
-                    testExpected("trackMenuItems[1].className", "");
-                    testExpected("trackMenuItems[2].className", "");
-                    testExpected("trackMenuItems[3].className", "selected");
+                    testExpected("trackMenuItems[indexOfMenuItemBeginningWith('French')].className", "");
+                    testExpected("trackMenuItems[indexOfMenuItemBeginningWith('English')].className", "");
+                    testExpected("trackMenuItems[indexOfMenuItemBeginningWith('Norwegian')].className", "selected");
 
-                    selectCaptionMenuItem(2);
+                    selectCaptionMenuItem("French");
                     expectedLanguage = 'fr';
                     break;
 
@@ -143,7 +110,8 @@
                     break;
 
                 case 7:
-                    selectCaptionMenuItem(0);
+                    selectCaptionMenuItem("Off");
+                    expectedLanguage = '';
                     createTrackElements([ 'ru', 'jp', 'en']);
                     timer = setTimeout(nextStep, 100);
                     break;

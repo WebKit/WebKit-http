@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "ewk_view.h"
+#include "ewk_view_private.h"
 
 #include "EwkView.h"
 #include "FindClientEfl.h"
@@ -34,6 +35,8 @@
 #include "ewk_context.h"
 #include "ewk_context_private.h"
 #include "ewk_favicon_database_private.h"
+#include "ewk_page_group.h"
+#include "ewk_page_group_private.h"
 #include "ewk_private.h"
 #include "ewk_settings_private.h"
 #include <Ecore_Evas.h>
@@ -86,19 +89,48 @@ Eina_Bool ewk_view_smart_class_set(Ewk_View_Smart_Class* api)
     return EwkView::initSmartClassInterface(*api);
 }
 
-Evas_Object* ewk_view_smart_add(Evas* canvas, Evas_Smart* smart, Ewk_Context* context)
+Evas_Object* EWKViewCreate(WKContextRef context, WKPageGroupRef pageGroup, Evas* canvas, Evas_Smart* smart)
 {
-    return EwkView::createEvasObject(canvas, smart, ewk_object_cast<EwkContext*>(context));
+    WKRetainPtr<WKViewRef> wkView = adoptWK(WKViewCreate(context, pageGroup));
+    WKPageSetUseFixedLayout(WKViewGetPage(wkView.get()), true);
+    if (EwkView* ewkView = EwkView::create(wkView.get(), canvas, smart))
+        return ewkView->evasObject();
+
+    return 0;
 }
 
-Evas_Object* ewk_view_add_with_context(Evas* canvas, Ewk_Context* context)
+WKViewRef EWKViewGetWKView(Evas_Object* ewkView)
 {
-    return EwkView::createEvasObject(canvas, ewk_object_cast<EwkContext*>(context));
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+
+    return impl->wkView();
+}
+
+Evas_Object* ewk_view_smart_add(Evas* canvas, Evas_Smart* smart, Ewk_Context* context, Ewk_Page_Group* pageGroup)
+{
+    EwkContext* ewkContext = ewk_object_cast<EwkContext*>(context);
+    EwkPageGroup* ewkPageGroup = ewk_object_cast<EwkPageGroup*>(pageGroup);
+
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext->wkContext(), 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkPageGroup, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkPageGroup->wkPageGroup(), 0);
+
+    return EWKViewCreate(ewkContext->wkContext(), ewkPageGroup->wkPageGroup(), canvas, smart);
 }
 
 Evas_Object* ewk_view_add(Evas* canvas)
 {
-    return ewk_view_add_with_context(canvas, ewk_context_default_get());
+    return EWKViewCreate(adoptWK(WKContextCreate()).get(), 0, canvas, 0);
+}
+
+Evas_Object* ewk_view_add_with_context(Evas* canvas, Ewk_Context* context)
+{
+    EwkContext* ewkContext = ewk_object_cast<EwkContext*>(context);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(ewkContext->wkContext(), 0);
+
+    return EWKViewCreate(ewkContext->wkContext(), 0, canvas, 0);
 }
 
 Ewk_Context* ewk_view_context_get(const Evas_Object* ewkView)
@@ -106,6 +138,13 @@ Ewk_Context* ewk_view_context_get(const Evas_Object* ewkView)
     EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
 
     return impl->ewkContext();
+}
+
+Ewk_Page_Group* ewk_view_page_group_get(const Evas_Object* ewkView)
+{
+    EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
+
+    return impl->ewkPageGroup();
 }
 
 Eina_Bool ewk_view_url_set(Evas_Object* ewkView, const char* url)
@@ -496,36 +535,59 @@ typedef struct Ewk_Page_Contents_Context Ewk_Page_Contents_Context;
 struct Ewk_Page_Contents_Context {
     Ewk_Page_Contents_Type type;
     Ewk_Page_Contents_Cb callback;
+    void* userData;
 };
 
 /**
  * @internal
  * Callback function used for ewk_view_page_contents_get().
  */
-static void ewkViewPageContentsCallback(WKDataRef wkData, WKErrorRef, void* context)
+static void ewkViewPageContentsAsMHTMLCallback(WKDataRef wkData, WKErrorRef, void* context)
 {
     EINA_SAFETY_ON_NULL_RETURN(context);
 
-    Ewk_Page_Contents_Context* contentsContext= static_cast<Ewk_Page_Contents_Context*>(context);
-    contentsContext->callback(contentsContext->type, reinterpret_cast<const char*>(WKDataGetBytes(wkData)));
+    Ewk_Page_Contents_Context* contentsContext = static_cast<Ewk_Page_Contents_Context*>(context);
+    contentsContext->callback(contentsContext->type, reinterpret_cast<const char*>(WKDataGetBytes(wkData)), contentsContext->userData);
 
     delete contentsContext;
 }
 
-Eina_Bool ewk_view_page_contents_get(const Evas_Object* ewkView, Ewk_Page_Contents_Type type, Ewk_Page_Contents_Cb callback)
+/**
+ * @internal
+ * Callback function used for ewk_view_page_contents_get().
+ */
+static void ewkViewPageContentsAsStringCallback(WKStringRef wkString, WKErrorRef, void* context)
+{
+    EINA_SAFETY_ON_NULL_RETURN(context);
+
+    Ewk_Page_Contents_Context* contentsContext = static_cast<Ewk_Page_Contents_Context*>(context);
+    contentsContext->callback(contentsContext->type, WKEinaSharedString(wkString), contentsContext->userData);
+
+    delete contentsContext;
+}
+
+Eina_Bool ewk_view_page_contents_get(const Evas_Object* ewkView, Ewk_Page_Contents_Type type, Ewk_Page_Contents_Cb callback, void* user_data)
 {
     EINA_SAFETY_ON_NULL_RETURN_VAL(callback, false);
     EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, false);
 
-    // We only support MHTML at the moment.
-    if (type != EWK_PAGE_CONTENTS_TYPE_MHTML)
-        return false;
-
     Ewk_Page_Contents_Context* context = new Ewk_Page_Contents_Context;
     context->type = type;
     context->callback = callback;
+    context->userData = user_data;
 
-    WKPageGetContentsAsMHTMLData(impl->wkPage(), false, context, ewkViewPageContentsCallback);
+    switch (context->type) {
+    case EWK_PAGE_CONTENTS_TYPE_MHTML:
+        WKPageGetContentsAsMHTMLData(impl->wkPage(), false, context, ewkViewPageContentsAsMHTMLCallback);
+        break;
+    case EWK_PAGE_CONTENTS_TYPE_STRING:
+        WKPageGetContentsAsString(impl->wkPage(), context, ewkViewPageContentsAsStringCallback);
+        break;
+    default:
+        delete context;
+        ASSERT_NOT_REACHED();
+        return false;
+    }
 
     return true;
 }

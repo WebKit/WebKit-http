@@ -10,17 +10,6 @@
 #
 {
     "DEFINITIONS": {
-        "ChromiumGraphics": {
-            "filename": r"Source/WebCore/platform/graphics/chromium/",
-        },
-        "ChromiumPublicApi": {
-            "filename": r"Source/WebKit/chromium/public/"
-                        r"|Source/Platform/chromium/public/"
-                        r"|Tools/DumpRenderTree/chromium/TestRunner/public",
-        },
-        "ChromiumTestRunner": {
-            "filename": r"Tools/DumpRenderTree/chromium/TestRunner",
-        },
         "AppleMacPublicApi": {
             "filename": r"Source/WebCore/bindings/objc/PublicDOMInterfaces.h"
         },
@@ -47,24 +36,6 @@
         },
         "WebIDL": {
             "filename": r"Source/WebCore/(?!inspector)(?!testing).*\.idl"
-        },
-        "ThreadingFiles": {
-            "filename": r"Source/JavaScriptCore/wtf/ThreadSpecific\."
-                        r"|Source/JavaScriptCore/wtf/ThreadSafeRefCounted\."
-                        r"|Source/JavaScriptCore/wtf/ThreadingPrimitives\."
-                        r"|Source/JavaScriptCore/wtf/Threading\."
-                        r"|Source/WebCore/dom/CrossThreadTask\."
-                        r"|Source/WebCore/platform/CrossThreadCopier\.",
-        },
-        "ThreadingUsage": {
-            # The intention of this regex is to detect places where people are using common threading mechanisms,
-            # so that one can look them over for common mistakes. This list is long and likely to get longer over time.
-            # Note the negative look-ahead to avoid new mentions of the files (for builds or includes).
-            "more": r"(AllowCrossThreadAccess|AtomicallyInitialize|CrossThreadCopier|CrossThreadRefCounted|Mutex|ReadWriteLock|ThreadCondition|ThreadSafeRefCounted|ThreadSpecific"
-                    r"|createCallbackTask|crossThreadString|deprecatedTurnOffVerifier|threadsafeCopy)(?!\.(h|cpp))",
-        },
-        "WatchListScript": {
-            "filename": r"Tools/Scripts/webkitpy/common/watchlist/",
         },
         "webkitpy": {
             "filename": r"Tools/Scripts/webkitpy/",
@@ -93,12 +64,6 @@
             "filename": r"Source/WebCore/platform/graphics/skia/"
                         r"|Source/WebCore/platform/graphics/filters/skia/",
         },
-        "V8Bindings": {
-            "filename": r"Source/WebCore/bindings/v8/",
-        },
-        "BindingsScripts": {
-            "filename": r"Source/WebCore/bindings/scripts/",
-        },
         "FrameLoader": {
             "more": r"FrameLoader\.(cpp|h)",
         },
@@ -119,9 +84,6 @@
         },
         "Animation": {
             "filename": r"Source/WebCore/page/animation/",
-        },
-        "StyleChecker": {
-            "filename": r"Tools/Scripts/webkitpy/style/",
         },
         "GtkWebKit2PublicAPI": {
             "filename": r"Source/WebKit2/UIProcess/API/gtk/",
@@ -363,7 +325,6 @@
             "filename": r"Source/WebCore/Modules/indexeddb"
                         r"|Source/WebCore/bindings/.*IDB.*\.(h|cpp)"
                         r"|Source/WebCore/bindings/.*SerializedScriptValue.*\.(h|cpp)"
-                        r"|Source/WebKit/chromium/.*IDB.*\.(h|cpp)"
                         r"|Source/WebCore/platform/leveldb"
                         r"|LayoutTests/storage/indexeddb"
                         r"|LayoutTests/platform/.*/storage/indexeddb",
@@ -385,9 +346,6 @@
         "ContentSecurityPolicyFiles|ContentSecurityPolicyUsage" : [ "mkwst+watchlist@chromium.org" ],
         "CoreAnimation" : [ "simon.fraser@apple.com" ],
         "CSS": [ "alexis@webkit.org", "macpherson@chromium.org", "ojan.autocc@gmail.com", "esprehn+autocc@chromium.org"],
-        "ChromiumGraphics": [ "jamesr@chromium.org", "cc-bugs@chromium.org" ],
-        "ChromiumPublicApi": [ "abarth@webkit.org", "dglazkov@chromium.org", "fishd@chromium.org", "jamesr@chromium.org", "tkent+wkapi@chromium.org" ],
-        "ChromiumTestRunner": [ "jochen@chromium.org" ],
         "DOM": [ "ojan.autocc@gmail.com", "esprehn+autocc@chromium.org" ],
         "DOMAttributes": [ "cmarcelo@webkit.org", ],
         "EFL": [ "rakuco@webkit.org", "gyuyoung.kim@samsung.com" ],
@@ -408,7 +366,7 @@
         "IndexedDB": [ "alecflett@chromium.org", "dgrogan@chromium.org", "jsbell@chromium.org" ],
         "Loader": [ "japhet@chromium.org" ],
         "MathML": [ "dbarton@mathscribe.com" ],
-        "Media": [ "feature-media-reviews@chromium.org", "eric.carlson@apple.com", "jer.noble@apple.com" ],
+        "Media": [ "eric.carlson@apple.com", "jer.noble@apple.com" ],
         "MediaStream": [ "tommyw@google.com", "hta@google.com" ],
         "NetworkInfo": [ "gyuyoung.kim@samsung.com" ],
         "OpenGL" : [ "noam@webkit.org", "dino@apple.com" ],
@@ -427,14 +385,10 @@
         "SkiaGraphics": [ "senorblanco@chromium.org", "junov@google.com" ],
         "Selectors": [ "allan.jensen@digia.com" ],
         "SoupNetwork": [ "rakuco@webkit.org", "gns@gnome.org", "mrobinson@webkit.org", "danw@gnome.org" ],
-        "StyleChecker": [ "levin@chromium.org", ],
-        "TestFailures": [ "abarth@webkit.org", "dglazkov@chromium.org", "ojan.autocc@gmail.com" ],
+        "TestFailures": [ "abarth@webkit.org", "ojan.autocc@gmail.com" ],
         "TextureMapper" : [ "noam@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org" ],
-        "ThreadingFiles|ThreadingUsage": [ "levin+threading@chromium.org", ],
         "TouchAdjustment" : [ "allan.jensen@digia.com" ],
-        "V8Bindings|BindingsScripts": [ "abarth@webkit.org", "japhet@chromium.org", "haraken@chromium.org" ],
         "WTF": [ "benjamin@webkit.org", "ojan.autocc@gmail.com", "cmarcelo@webkit.org" ],
-        "WatchListScript": [ "levin+watchlist@chromium.org", ],
         "WebGL": [ "dino@apple.com" ],
         "WebIDL": [ "abarth@webkit.org", "ojan.autocc@gmail.com", "esprehn+autocc@chromium.org" ],
         "WebInspectorAPI": [ "timothy@apple.com", "joepeck@webkit.org", "graouts@apple.com" ],
@@ -445,10 +399,6 @@
         "webkitpy": [ "abarth@webkit.org", "dpranke@chromium.org", "eric@webkit.org" ],
     },
     "MESSAGE_RULES": {
-        "ChromiumPublicApi": [ "Please wait for approval from abarth@webkit.org, dglazkov@chromium.org, "
-                               "fishd@chromium.org, jamesr@chromium.org or tkent@chromium.org before "
-                               "submitting, as this patch contains changes to the Chromium public API. "
-                               "See also https://trac.webkit.org/wiki/ChromiumWebKitAPI." ],
         "AppleMacPublicApi": [ "Please wait for approval from timothy@apple.com (or another member "
                                "of the Apple Safari Team) before submitting "
                                "because this patch contains changes to the Apple Mac "

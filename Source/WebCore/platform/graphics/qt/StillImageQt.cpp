@@ -62,9 +62,9 @@ IntSize StillImage::size() const
     return IntSize(m_pixmap->width(), m_pixmap->height());
 }
 
-NativeImagePtr StillImage::nativeImageForCurrentFrame()
+PassNativeImagePtr StillImage::nativeImageForCurrentFrame()
 {
-    return const_cast<NativeImagePtr>(m_pixmap);
+    return const_cast<PassNativeImagePtr>(m_pixmap);
 }
 
 void StillImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
@@ -80,12 +80,12 @@ void StillImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
     ctxt->setCompositeOperation(op);
 
     if (ctxt->hasShadow()) {
-        ShadowBlur* shadow = ctxt->shadowBlur();
-        GraphicsContext* shadowContext = shadow->beginShadowLayer(ctxt, normalizedDst);
+        ShadowBlur shadow(ctxt->state());
+        GraphicsContext* shadowContext = shadow.beginShadowLayer(ctxt, normalizedDst);
         if (shadowContext) {
             QPainter* shadowPainter = shadowContext->platformContext();
             shadowPainter->drawPixmap(normalizedDst, *m_pixmap, normalizedSrc);
-            shadow->endShadowLayer(ctxt);
+            shadow.endShadowLayer(ctxt);
         }
     }
 

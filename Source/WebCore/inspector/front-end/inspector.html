@@ -41,7 +41,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="treeoutline.js"></script>
     <script type="text/javascript" src="inspector.js"></script>
     <script type="text/javascript" src="UIString.js"></script>
-    <script type="text/javascript" src="UIUtils.js"></script>
     <script type="text/javascript" src="InspectorBackend.js"></script>
     <script type="text/javascript" src="InspectorBackendCommands.js"></script>
     <script type="text/javascript" src="ExtensionRegistryStub.js"></script>
@@ -49,6 +48,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="Object.js"></script>
     <script type="text/javascript" src="Settings.js"></script>
     <script type="text/javascript" src="View.js"></script>
+    <script type="text/javascript" src="UIUtils.js"></script>
     <script type="text/javascript" src="HelpScreen.js"></script>
     <script type="text/javascript" src="InspectorFrontendHostStub.js"></script>
     <script type="text/javascript" src="FileManager.js"></script>
@@ -70,6 +70,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="InspectorView.js"></script>
     <script type="text/javascript" src="AdvancedSearchController.js"></script>
     <script type="text/javascript" src="TimelineGrid.js"></script>
+    <script type="text/javascript" src="OverviewGrid.js"></script>
     <script type="text/javascript" src="ContentProvider.js"></script>
     <script type="text/javascript" src="Resource.js"></script>
     <script type="text/javascript" src="NetworkRequest.js"></script>
@@ -146,6 +147,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="IsolatedFileSystemManager.js"></script>
     <script type="text/javascript" src="FileMapping.js"></script>
     <script type="text/javascript" src="Workspace.js"></script>
+    <script type="text/javascript" src="ContentProviderBasedProjectDelegate.js"></script>
     <script type="text/javascript" src="SimpleWorkspaceProvider.js"></script>
     <script type="text/javascript" src="BreakpointManager.js"></script>
     <script type="text/javascript" src="ContentProviders.js"></script>
@@ -166,6 +168,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     <script type="text/javascript" src="CookieParser.js"></script>
     <script type="text/javascript" src="Toolbar.js"></script>
     <script type="text/javascript" src="SearchController.js"></script>
+    <script type="text/javascript" src="InspectElementModeController.js"></script>
     <script type="text/javascript" src="WorkerManager.js"></script>
     <script type="text/javascript" src="UserMetrics.js"></script>
     <script type="text/javascript" src="RuntimeModel.js"></script>
@@ -188,6 +191,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         <div class="toolbar-item close-left"><div id="close-button-left"></div></div>
         <div id="toolbar-controls">
             <div class="toolbar-item"><div id="toolbar-dropdown-arrow">&raquo;</div></div>
+            <div class="toolbar-item"><div id="toolbar-panels-menu">&equiv;</div></div>
             <div class="toolbar-item close-right"><div id="close-button-right"></div></div>
         </div>
     </div>
@@ -195,7 +199,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         <div id="floating-status-bar-container" class="status-bar"><div id="floating-status-bar-resizer"></div></div>
     </div>
     <div id="drawer"></div>
-    <div id="main-status-bar" class="status-bar">
+    <div id="main-status-bar" class="status-bar layout-boundary">
         <div id="bottom-status-bar-container">
             <div id="panel-status-bar">
                 <div id="drawer-view-anchor"></div>

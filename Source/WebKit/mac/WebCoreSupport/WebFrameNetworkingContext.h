@@ -19,6 +19,7 @@
 */
 
 #import <WebCore/FrameNetworkingContext.h>
+#import <wtf/SchedulePair.h>
 
 class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
@@ -39,7 +40,7 @@ private:
     virtual bool needsSiteSpecificQuirks() const OVERRIDE;
     virtual bool localFileContentSniffingEnabled() const OVERRIDE;
     virtual WebCore::NetworkStorageSession& storageSession() const OVERRIDE;
-    virtual WebCore::SchedulePairHashSet* scheduledRunLoopPairs() const OVERRIDE;
+    virtual WTF::SchedulePairHashSet* scheduledRunLoopPairs() const OVERRIDE;
     virtual RetainPtr<CFDataRef> sourceApplicationAuditData() const OVERRIDE;
     virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const OVERRIDE;
 };

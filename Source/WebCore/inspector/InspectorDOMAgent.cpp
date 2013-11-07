@@ -151,6 +151,26 @@ static Color parseConfigColor(const String& fieldName, InspectorObject* configOb
     return parseColor(&colorObject);
 }
 
+static bool parseQuad(const RefPtr<InspectorArray>& quadArray, FloatQuad* quad)
+{
+    if (!quadArray)
+        return false;
+    const size_t coordinatesInQuad = 8;
+    double coordinates[coordinatesInQuad];
+    if (quadArray->length() != coordinatesInQuad)
+        return false;
+    for (size_t i = 0; i < coordinatesInQuad; ++i) {
+        if (!quadArray->get(i)->asNumber(coordinates + i))
+            return false;
+    }
+    quad->setP1(FloatPoint(coordinates[0], coordinates[1]));
+    quad->setP2(FloatPoint(coordinates[2], coordinates[3]));
+    quad->setP3(FloatPoint(coordinates[4], coordinates[5]));
+    quad->setP4(FloatPoint(coordinates[6], coordinates[7]));
+
+    return true;
+}
+
 class RevalidateStyleAttributeTask {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -207,6 +227,7 @@ InspectorDOMAgent::InspectorDOMAgent(InstrumentingAgents* instrumentingAgents, I
     , m_frontend(0)
     , m_domListener(0)
     , m_lastNodeId(1)
+    , m_lastBackendNodeId(-1)
     , m_searchingForNode(false)
     , m_suppressAttributeModifiedEvent(false)
 {
@@ -378,7 +399,7 @@ Document* InspectorDOMAgent::assertDocument(ErrorString* errorString, int nodeId
         *errorString = "Document is not available";
         return 0;
     }
-    return static_cast<Document*>(node);
+    return toDocument(node);
 }
 
 Element* InspectorDOMAgent::assertElement(ErrorString* errorString, int nodeId)
@@ -471,6 +492,8 @@ void InspectorDOMAgent::discardBindings()
     m_idToNode.clear();
     releaseDanglingNodes();
     m_childrenRequested.clear();
+    m_backendIdToNode.clear();
+    m_nodeGroupToBackendIdMap.clear();
 }
 
 int InspectorDOMAgent::pushNodeToFrontend(ErrorString* errorString, int documentNodeId, Node* nodeToPush)
@@ -604,6 +627,37 @@ int InspectorDOMAgent::boundNodeId(Node* node)
     return m_documentNodeToIdMap.get(node);
 }
 
+BackendNodeId InspectorDOMAgent::backendNodeIdForNode(Node* node, const String& nodeGroup)
+{
+    if (!node)
+        return 0;
+
+    if (!m_nodeGroupToBackendIdMap.contains(nodeGroup))
+        m_nodeGroupToBackendIdMap.set(nodeGroup, NodeToBackendIdMap());
+
+    NodeToBackendIdMap& map = m_nodeGroupToBackendIdMap.find(nodeGroup)->value;
+    BackendNodeId id = map.get(node);
+    if (!id) {
+        id = --m_lastBackendNodeId;
+        map.set(node, id);
+        m_backendIdToNode.set(id, std::make_pair(node, nodeGroup));
+    }
+
+    return id;
+}
+
+void InspectorDOMAgent::releaseBackendNodeIds(ErrorString* errorString, const String& nodeGroup)
+{
+    if (m_nodeGroupToBackendIdMap.contains(nodeGroup)) {
+        NodeToBackendIdMap& map = m_nodeGroupToBackendIdMap.find(nodeGroup)->value;
+        for (NodeToBackendIdMap::iterator it = map.begin(); it != map.end(); ++it)
+            m_backendIdToNode.remove(it->value);
+        m_nodeGroupToBackendIdMap.remove(nodeGroup);
+        return;
+    }
+    *errorString = "Group name not found";
+}
+
 void InspectorDOMAgent::setAttributeValue(ErrorString* errorString, int elementId, const String& name, const String& value)
 {
     Element* element = assertEditableElement(errorString, elementId);
@@ -733,9 +787,13 @@ void InspectorDOMAgent::setOuterHTML(ErrorString* errorString, int nodeId, const
     if (!node)
         return;
 
-    Document* document = node->isDocumentNode() ? static_cast<Document*>(node) : node->ownerDocument();
-    if (!document || !document->isHTMLDocument()) {
-        *errorString = "Not an HTML document";
+    Document* document = node->isDocumentNode() ? toDocument(node) : node->ownerDocument();
+    if (!document || (!document->isHTMLDocument() && !document->isXHTMLDocument()
+#if ENABLE(SVG)
+        && !document->isSVGDocument()
+#endif
+    )) {
+        *errorString = "Not an HTML/XML document";
         return;
     }
 
@@ -1097,12 +1155,29 @@ void InspectorDOMAgent::setInspectModeEnabled(ErrorString* errorString, bool ena
     setSearchingForNode(errorString, enabled, highlightConfig ? highlightConfig->get() : 0);
 }
 
-void InspectorDOMAgent::highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor)
+void InspectorDOMAgent::highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
+{
+    OwnPtr<FloatQuad> quad = adoptPtr(new FloatQuad(FloatRect(x, y, width, height)));
+    innerHighlightQuad(quad.release(), color, outlineColor, usePageCoordinates);
+}
+
+void InspectorDOMAgent::highlightQuad(ErrorString* errorString, const RefPtr<InspectorArray>& quadArray, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
+{
+    OwnPtr<FloatQuad> quad = adoptPtr(new FloatQuad());
+    if (!parseQuad(quadArray, quad.get())) {
+        *errorString = "Invalid Quad format";
+        return;
+    }
+    innerHighlightQuad(quad.release(), color, outlineColor, usePageCoordinates);
+}
+
+void InspectorDOMAgent::innerHighlightQuad(PassOwnPtr<FloatQuad> quad, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates)
 {
     OwnPtr<HighlightConfig> highlightConfig = adoptPtr(new HighlightConfig());
     highlightConfig->content = parseColor(color);
     highlightConfig->contentOutline = parseColor(outlineColor);
-    m_overlay->highlightRect(adoptPtr(new IntRect(x, y, width, height)), *highlightConfig);
+    highlightConfig->usePageCoordinates = usePageCoordinates ? *usePageCoordinates : false;
+    m_overlay->highlightQuad(quad, *highlightConfig);
 }
 
 void InspectorDOMAgent::highlightNode(ErrorString* errorString, const RefPtr<InspectorObject>& highlightInspectorObject, const int* nodeId, const String* objectId)
@@ -1328,7 +1403,7 @@ PassRefPtr<TypeBuilder::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* n
     }
 
     if (node->isElementNode()) {
-        Element* element = static_cast<Element*>(node);
+        Element* element = toElement(node);
         value->setAttributes(buildArrayForElementAttributes(element));
         if (node->isFrameOwnerElement()) {
             HTMLFrameOwnerElement* frameOwner = static_cast<HTMLFrameOwnerElement*>(node);
@@ -1354,7 +1429,7 @@ PassRefPtr<TypeBuilder::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* n
 #endif
 
     } else if (node->isDocumentNode()) {
-        Document* document = static_cast<Document*>(node);
+        Document* document = toDocument(node);
         value->setDocumentURL(documentURLString(document));
         value->setBaseURL(documentBaseURLString(document));
         value->setXmlVersion(document->xmlVersion());
@@ -1489,7 +1564,7 @@ unsigned InspectorDOMAgent::innerChildNodeCount(Node* node)
 Node* InspectorDOMAgent::innerParentNode(Node* node)
 {
     if (node->isDocumentNode()) {
-        Document* document = static_cast<Document*>(node);
+        Document* document = toDocument(node);
         return document->ownerElement();
     }
     return node->parentNode();
@@ -1654,7 +1729,7 @@ void InspectorDOMAgent::didInvalidateStyleAttr(Node* node)
 
     if (!m_revalidateStyleAttrTask)
         m_revalidateStyleAttrTask = adoptPtr(new RevalidateStyleAttributeTask(this));
-    m_revalidateStyleAttrTask->scheduleFor(static_cast<Element*>(node));
+    m_revalidateStyleAttrTask->scheduleFor(toElement(node));
 }
 
 void InspectorDOMAgent::didPushShadowRoot(Element* host, ShadowRoot* root)
@@ -1725,6 +1800,23 @@ void InspectorDOMAgent::pushNodeByPathToFrontend(ErrorString* errorString, const
         *nodeId = pushNodePathToFrontend(node);
     else
         *errorString = "No node with given path found";
+}
+
+void InspectorDOMAgent::pushNodeByBackendIdToFrontend(ErrorString* errorString, BackendNodeId backendNodeId, int* nodeId)
+{
+    if (!m_backendIdToNode.contains(backendNodeId)) {
+        *errorString = "No node with given backend id found";
+        return;
+    }
+
+    Node* node = m_backendIdToNode.get(backendNodeId).first;
+    String nodeGroup = m_backendIdToNode.get(backendNodeId).second;
+    *nodeId = pushNodePathToFrontend(node);
+
+    if (nodeGroup == "") {
+        m_backendIdToNode.remove(backendNodeId);
+        m_nodeGroupToBackendIdMap.find(nodeGroup)->value.remove(node);
+    }
 }
 
 PassRefPtr<TypeBuilder::Runtime::RemoteObject> InspectorDOMAgent::resolveNode(Node* node, const String& objectGroup)

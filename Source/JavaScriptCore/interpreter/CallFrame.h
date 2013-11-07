@@ -68,6 +68,11 @@ namespace JSC  {
         // But they're used in many places in legacy code, so they're not going away any time soon.
 
         void clearException() { globalData().exception = JSValue(); }
+        void clearSupplementaryExceptionInfo()
+        {
+            globalData().exceptionStack = RefCountedArray<StackFrame>();
+        }
+
         JSValue exception() const { return globalData().exception; }
         bool hadException() const { return globalData().exception; }
 
@@ -90,12 +95,10 @@ namespace JSC  {
         static const HashTable* numberConstructorTable(CallFrame* callFrame) { return callFrame->globalData().numberConstructorTable; }
         static const HashTable* numberPrototypeTable(CallFrame* callFrame) { return callFrame->globalData().numberPrototypeTable; }
         static const HashTable* objectConstructorTable(CallFrame* callFrame) { return callFrame->globalData().objectConstructorTable; }
-        static const HashTable* objectPrototypeTable(CallFrame* callFrame) { return callFrame->globalData().objectPrototypeTable; }
         static const HashTable* privateNamePrototypeTable(CallFrame* callFrame) { return callFrame->globalData().privateNamePrototypeTable; }
         static const HashTable* regExpTable(CallFrame* callFrame) { return callFrame->globalData().regExpTable; }
         static const HashTable* regExpConstructorTable(CallFrame* callFrame) { return callFrame->globalData().regExpConstructorTable; }
         static const HashTable* regExpPrototypeTable(CallFrame* callFrame) { return callFrame->globalData().regExpPrototypeTable; }
-        static const HashTable* stringTable(CallFrame* callFrame) { return callFrame->globalData().stringTable; }
         static const HashTable* stringConstructorTable(CallFrame* callFrame) { return callFrame->globalData().stringConstructorTable; }
 
         static CallFrame* create(Register* callFrameBase) { return static_cast<CallFrame*>(callFrameBase); }

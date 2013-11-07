@@ -55,6 +55,7 @@ public:
     virtual bool isEmpty() const;
 
     void append(const char*, unsigned);
+    void append(SharedBuffer*);
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     void append(CFDataRef);
 #endif
@@ -63,6 +64,9 @@ public:
     unsigned getSomeData(const char*& data, unsigned position = 0) const;
     
     SharedBuffer* sharedBuffer() const;
+#if PLATFORM(MAC)
+    void tryReplaceSharedBufferContents(SharedBuffer*);
+#endif
     PassRefPtr<ResourceBuffer> copy() const;
 
     bool hasPurgeableBuffer() const;

@@ -23,7 +23,6 @@
 #include "qwebkitglobal.h"
 #include <QString>
 #include <QtQuick/QQuickImageProvider>
-#include <wtf/text/WTFString.h>
 
 namespace WebKit {
     class QtWebContext;
@@ -36,7 +35,7 @@ public:
 
     static QString identifier() { return QStringLiteral("webicon"); }
 
-    WTF::String iconURLForPageURLInContext(const WTF::String& pageURL, WebKit::QtWebContext* context);
+    QUrl iconURLForPageURLInContext(const QString& pageURL, WebKit::QtWebContext* context);
     virtual QImage requestImage(const QString& id, QSize* size, const QSize& requestedSize);
 };
 

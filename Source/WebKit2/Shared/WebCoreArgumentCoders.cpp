@@ -50,6 +50,7 @@
 #include <WebCore/UserStyleSheet.h>
 #include <WebCore/ViewportArguments.h>
 #include <WebCore/WindowFeatures.h>
+#include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
 using namespace WebCore;
@@ -387,6 +388,10 @@ void ArgumentCoder<ResourceRequest>::encode(ArgumentEncoder& encoder, const Reso
         encoder << resourceRequest.firstPartyForCookies().string();
     }
 
+#if ENABLE(CACHE_PARTITIONING)
+    encoder << resourceRequest.cachePartition();
+#endif
+
     encodePlatformData(encoder, resourceRequest);
 }
 
@@ -427,6 +432,13 @@ bool ArgumentCoder<ResourceRequest>::decode(ArgumentDecoder& decoder, ResourceRe
 
         resourceRequest = request;
     }
+
+#if ENABLE(CACHE_PARTITIONING)
+    String cachePartition;
+    if (!decoder.decode(cachePartition))
+        return false;
+    resourceRequest.setCachePartition(cachePartition);
+#endif
 
     return decodePlatformData(decoder, resourceRequest);
 }

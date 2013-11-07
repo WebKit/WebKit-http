@@ -345,6 +345,7 @@ void AccessibilityTable::addChildren()
     AXObjectCache* axCache = m_renderer->document()->axObjectCache();
 
     // Go through all the available sections to pull out the rows and add them as children.
+    table->recalcSectionsIfNeeded();
     RenderTableSection* tableSection = table->topSection();
     if (!tableSection)
         return;
@@ -541,7 +542,7 @@ AccessibilityRole AccessibilityTable::roleValue() const
     
 bool AccessibilityTable::computeAccessibilityIsIgnored() const
 {
-    AccessibilityObjectInclusion decision = accessibilityIsIgnoredBase();
+    AccessibilityObjectInclusion decision = defaultObjectInclusion();
     if (decision == IncludeObject)
         return false;
     if (decision == IgnoreObject)

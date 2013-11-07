@@ -40,29 +40,18 @@
 
 namespace WebCore {
 
+static GLPlatformSurface* m_currentDrawable = 0;
+
 PassOwnPtr<GLPlatformSurface> GLPlatformSurface::createOffScreenSurface(SurfaceAttributes attributes)
 {
+    OwnPtr<GLPlatformSurface> surface;
 #if USE(GLX)
-    OwnPtr<GLPlatformSurface> surface = adoptPtr(new GLXOffScreenSurface(attributes));
-
-    if (surface->drawable())
-        return surface.release();
+    surface = adoptPtr(new GLXOffScreenSurface(attributes));
 #else
-    UNUSED_PARAM(attributes);
+    surface = EGLOffScreenSurface::createOffScreenSurface(attributes);
 #endif
 
-    return nullptr;
-}
-
-PassOwnPtr<GLPlatformSurface> GLPlatformSurface::createTransportSurface(SurfaceAttributes attributes)
-{
-#if USE(GLX)
-    OwnPtr<GLPlatformSurface> surface = adoptPtr(new GLXTransportSurface(attributes));
-#elif USE(EGL)
-    OwnPtr<GLPlatformSurface> surface = adoptPtr(new EGLWindowTransportSurface(attributes));
-#endif
-
-    if (surface && surface->handle() && surface->drawable())
+    if (surface && surface->drawable())
         return surface.release();
 
     return nullptr;
@@ -77,6 +66,8 @@ GLPlatformSurface::GLPlatformSurface(SurfaceAttributes)
 
 GLPlatformSurface::~GLPlatformSurface()
 {
+    if (m_currentDrawable == this)
+        m_currentDrawable = 0;
 }
 
 PlatformBufferHandle GLPlatformSurface::handle() const
@@ -109,6 +100,16 @@ void GLPlatformSurface::swapBuffers()
     notImplemented();
 }
 
+bool GLPlatformSurface::isCurrentDrawable() const
+{
+    return m_currentDrawable == this;
+}
+
+void GLPlatformSurface::onMakeCurrent()
+{
+    m_currentDrawable = this;
+}
+
 void GLPlatformSurface::updateContents(const uint32_t)
 {
 }
@@ -119,6 +120,8 @@ void GLPlatformSurface::setGeometry(const IntRect&)
 
 void GLPlatformSurface::destroy()
 {
+    if (m_currentDrawable == this)
+        m_currentDrawable = 0;
 }
 
 GLPlatformSurface::SurfaceAttributes GLPlatformSurface::attributes() const

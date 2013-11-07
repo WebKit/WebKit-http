@@ -69,6 +69,16 @@ bool WKPreferencesGetJavaScriptEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->javaScriptEnabled();
 }
 
+void WKPreferencesSetJavaScriptMarkupEnabled(WKPreferencesRef preferencesRef, bool javaScriptMarkupEnabled)
+{
+    toImpl(preferencesRef)->setJavaScriptMarkupEnabled(javaScriptMarkupEnabled);
+}
+
+bool WKPreferencesGetJavaScriptMarkupEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->javaScriptMarkupEnabled();
+}
+
 void WKPreferencesSetLoadsImagesAutomatically(WKPreferencesRef preferencesRef, bool loadsImagesAutomatically)
 {
     toImpl(preferencesRef)->setLoadsImagesAutomatically(loadsImagesAutomatically);
@@ -984,6 +994,36 @@ bool WKPreferencesGetPlugInSnapshottingEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->plugInSnapshottingEnabled();
 }
 
+void WKPreferencesSetSnapshotAllPlugIns(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setSnapshotAllPlugIns(enabled);
+}
+
+bool WKPreferencesGetSnapshotAllPlugIns(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->snapshotAllPlugIns();
+}
+
+void WKPreferencesSetAutostartOriginPlugInSnapshottingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAutostartOriginPlugInSnapshottingEnabled(enabled);
+}
+
+bool WKPreferencesGetAutostartOriginPlugInSnapshottingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->autostartOriginPlugInSnapshottingEnabled();
+}
+
+void WKPreferencesSetPrimaryPlugInSnapshotDetectionEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setPrimaryPlugInSnapshotDetectionEnabled(enabled);
+}
+
+bool WKPreferencesGetPrimaryPlugInSnapshotDetectionEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->primaryPlugInSnapshotDetectionEnabled();
+}
+
 void WKPreferencesSetPDFPluginEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setPDFPluginEnabled(enabled);
@@ -1072,4 +1112,24 @@ void WKPreferencesSetShowsURLsInToolTipsEnabled(WKPreferencesRef preferencesRef,
 bool WKPreferencesGetShowsURLsInToolTipsEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->showsURLsInToolTipsEnabled();
+}
+
+void WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setHiddenPageDOMTimerThrottlingEnabled(enabled);
+}
+
+bool WKPreferencesGetHiddenPageDOMTimerThrottlingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->hiddenPageDOMTimerThrottlingEnabled();
+}
+
+void WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setHiddenPageCSSAnimationSuspensionEnabled(enabled);
+}
+
+bool WKPreferencesGetHiddenPageCSSAnimationSuspensionEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->hiddenPageCSSAnimationSuspensionEnabled();
 }

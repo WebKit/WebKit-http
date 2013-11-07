@@ -59,6 +59,8 @@ public:
 
     bool isGeneratedContent() const { return m_isGeneratedContent; }
 
+    String altText() const { return m_altText; }
+
 protected:
     virtual bool needsPreferredWidthsRecalculation() const;
     virtual RenderBox* embeddedContentBox() const;
@@ -86,7 +88,8 @@ private:
 
     virtual void paintReplaced(PaintInfo&, const LayoutPoint&);
 
-    virtual bool backgroundIsObscured() const;
+    virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const OVERRIDE;
+    virtual bool computeBackgroundIsKnownToBeObscured() OVERRIDE;
 
     virtual LayoutUnit minimumReplacedHeight() const OVERRIDE;
 

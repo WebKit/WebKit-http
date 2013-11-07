@@ -51,6 +51,8 @@ WebInspector.TabbedEditorContainer = function(delegate, settingName)
     this._delegate = delegate;
 
     this._tabbedPane = new WebInspector.TabbedPane();
+    this._tabbedPane.setTabDelegate(new WebInspector.EditorContainerTabDelegate(this));
+
     this._tabbedPane.closeableTabs = true;
     this._tabbedPane.element.id = "scripts-editor-container-tabbed-pane";
 
@@ -110,19 +112,18 @@ WebInspector.TabbedEditorContainer.prototype = {
 
     _addScrollAndSelectionListeners: function()
     {
-        console.assert(this._currentFile);
-        var sourceFrame = this._delegate.viewForFile(this._currentFile);
-        sourceFrame.addEventListener(WebInspector.SourceFrame.Events.ScrollChanged, this._scrollChanged, this);
-        sourceFrame.addEventListener(WebInspector.SourceFrame.Events.SelectionChanged, this._selectionChanged, this);
+        if (!this._currentView)
+            return;
+        this._currentView.addEventListener(WebInspector.SourceFrame.Events.ScrollChanged, this._scrollChanged, this);
+        this._currentView.addEventListener(WebInspector.SourceFrame.Events.SelectionChanged, this._selectionChanged, this);
     },
 
     _removeScrollAndSelectionListeners: function()
     {
-        if (!this._currentFile)
+        if (!this._currentView)
             return;
-        var sourceFrame = this._delegate.viewForFile(this._currentFile);
-        sourceFrame.removeEventListener(WebInspector.SourceFrame.Events.ScrollChanged, this._scrollChanged, this);
-        sourceFrame.removeEventListener(WebInspector.SourceFrame.Events.SelectionChanged, this._selectionChanged, this);
+        this._currentView.removeEventListener(WebInspector.SourceFrame.Events.ScrollChanged, this._scrollChanged, this);
+        this._currentView.removeEventListener(WebInspector.SourceFrame.Events.SelectionChanged, this._selectionChanged, this);
     },
 
     _scrollChanged: function(event)
@@ -156,6 +157,7 @@ WebInspector.TabbedEditorContainer.prototype = {
         if (userGesture)
             this._editorSelectedByUserAction();
         
+        this._currentView = this.visibleView;
         this._addScrollAndSelectionListeners();
         
         this.dispatchEventToListeners(WebInspector.TabbedEditorContainer.Events.EditorSelected, this._currentFile);
@@ -178,6 +180,50 @@ WebInspector.TabbedEditorContainer.prototype = {
     },
 
     /**
+     * @param {string} id
+     * @param {string} nextTabId
+     */
+    _maybeCloseTab: function(id, nextTabId)
+    {
+        var uiSourceCode = this._files[id];
+        var shouldPrompt = uiSourceCode.isDirty() && uiSourceCode.project().canSetFileContent();
+        // FIXME: this should be replaced with common Save/Discard/Cancel dialog.
+        if (!shouldPrompt || confirm(WebInspector.UIString("Are you sure you want to close unsaved file: %s?", uiSourceCode.name()))) {
+            uiSourceCode.resetWorkingCopy();
+            if (nextTabId)
+                this._tabbedPane.selectTab(nextTabId, true);
+            this._tabbedPane.closeTab(id, true);
+            return true;
+        }
+        return false;
+    },
+
+    /**
+     * @param {Array.<string>} ids
+     */
+    _closeTabs: function(ids)
+    {
+        var dirtyTabs = [];
+        var cleanTabs = [];
+        for (var i = 0; i < ids.length; ++i) {
+            var id = ids[i];
+            var uiSourceCode = this._files[id];
+            if (uiSourceCode.isDirty())
+                dirtyTabs.push(id);
+            else
+                cleanTabs.push(id);
+        }
+        if (dirtyTabs.length)
+            this._tabbedPane.selectTab(dirtyTabs[0], true);
+        this._tabbedPane.closeTabs(cleanTabs, true);
+        for (var i = 0; i < dirtyTabs.length; ++i) {
+            var nextTabId = i + 1 < dirtyTabs.length ? dirtyTabs[i + 1] : null;
+            if (!this._maybeCloseTab(dirtyTabs[i], nextTabId))
+                break;
+        }
+    },
+
+    /**
      * @param {WebInspector.UISourceCode} uiSourceCode
      */
     addUISourceCode: function(uiSourceCode)
@@ -197,7 +243,7 @@ WebInspector.TabbedEditorContainer.prototype = {
 
         // Select tab if this file was the last to be shown.
         if (!index) {
-            this._innerShowFile(uiSourceCode, true);
+            this._innerShowFile(uiSourceCode, false);
             return;
         }
 
@@ -205,7 +251,7 @@ WebInspector.TabbedEditorContainer.prototype = {
         var addedProjectType = uiSourceCode.project().type();
         var snippetsProjectType = WebInspector.projectTypes.Snippets;
         if (this._history.index(this._currentFile.uri()) && currentProjectType === snippetsProjectType && addedProjectType !== snippetsProjectType)
-            this._innerShowFile(uiSourceCode, true);
+            this._innerShowFile(uiSourceCode, false);
     },
 
     /**
@@ -308,6 +354,7 @@ WebInspector.TabbedEditorContainer.prototype = {
         var uiSourceCode = this._files[tabId];
         if (this._currentFile === uiSourceCode) {
             this._removeScrollAndSelectionListeners();
+            delete this._currentView;
             delete this._currentFile;
         }
         this._tabIds.remove(uiSourceCode);
@@ -423,10 +470,13 @@ WebInspector.TabbedEditorContainer.prototype = {
  */
 WebInspector.TabbedEditorContainer.HistoryItem = function(url, selectionRange, scrollLineNumber)
 {
-    this.url = url;
+    /** @const */ this.url = url;
+    /** @const */ this._isSerializable = url.length < WebInspector.TabbedEditorContainer.HistoryItem.serializableUrlLengthLimit;
     this.selectionRange = selectionRange;
     this.scrollLineNumber = scrollLineNumber;
 }
+
+WebInspector.TabbedEditorContainer.HistoryItem.serializableUrlLengthLimit = 4096;
 
 /**
  * @param {Object} serializedHistoryItem
@@ -440,10 +490,12 @@ WebInspector.TabbedEditorContainer.HistoryItem.fromObject = function (serialized
 
 WebInspector.TabbedEditorContainer.HistoryItem.prototype = {
     /**
-     * @return {Object}
+     * @return {?Object}
      */
     serializeToObject: function()
     {
+        if (!this._isSerializable)
+            return null;
         var serializedHistoryItem = {};
         serializedHistoryItem.url = this.url;
         serializedHistoryItem.selectionRange = this.selectionRange;
@@ -465,7 +517,7 @@ WebInspector.TabbedEditorContainer.History = function(items)
 }
 
 /**
- * @param {Object} serializedHistory
+ * @param {!Array.<!Object>} serializedHistory
  * @return {WebInspector.TabbedEditorContainer.History}
  */
 WebInspector.TabbedEditorContainer.History.fromObject = function(serializedHistory)
@@ -583,15 +635,41 @@ WebInspector.TabbedEditorContainer.History.prototype = {
     },
     
     /**
-     * @return {Object}
+     * @return {!Array.<!Object>}
      */
     _serializeToObject: function()
     {
         var serializedHistory = [];
-        for (var i = 0; i < this._items.length; ++i)
-            serializedHistory.push(this._items[i].serializeToObject());
+        for (var i = 0; i < this._items.length; ++i) {
+            var serializedItem = this._items[i].serializeToObject();
+            if (serializedItem)
+                serializedHistory.push(serializedItem);
+            if (serializedHistory.length === WebInspector.TabbedEditorContainer.maximalPreviouslyViewedFilesCount)
+                break;
+        }
         return serializedHistory;
     },
 
     __proto__: WebInspector.Object.prototype
+}
+
+/**
+ * @constructor
+ * @implements {WebInspector.TabbedPaneTabDelegate}
+ * @param {WebInspector.TabbedEditorContainer} editorContainer
+ */
+WebInspector.EditorContainerTabDelegate = function(editorContainer)
+{
+    this._editorContainer = editorContainer;
+}
+
+WebInspector.EditorContainerTabDelegate.prototype = {
+    /**
+     * @param {WebInspector.TabbedPane} tabbedPane
+     * @param {Array.<string>} ids
+     */
+    closeTabs: function(tabbedPane, ids)
+    {
+        this._editorContainer._closeTabs(ids);
+    }
 }

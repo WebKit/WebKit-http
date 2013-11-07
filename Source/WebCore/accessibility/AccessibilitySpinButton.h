@@ -48,8 +48,8 @@ private:
     AccessibilitySpinButton();
 
     virtual AccessibilityRole roleValue() const { return SpinButtonRole; }
-    virtual bool computeAccessibilityIsIgnored() const { return false; }
     virtual bool isSpinButton() const { return true; }
+    virtual bool isNativeSpinButton() const { return true; }
     virtual void addChildren();
     virtual LayoutRect elementRect() const;
     
@@ -72,12 +72,11 @@ private:
     virtual AccessibilityRole roleValue() const { return ButtonRole; }
     virtual bool isSpinButtonPart() const { return true; }
     virtual LayoutRect elementRect() const;
-    virtual bool computeAccessibilityIsIgnored() const { return false; }
 };
     
 inline AccessibilitySpinButton* toAccessibilitySpinButton(AccessibilityObject* object)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isSpinButton());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isNativeSpinButton());
     return static_cast<AccessibilitySpinButton*>(object);
 }
     

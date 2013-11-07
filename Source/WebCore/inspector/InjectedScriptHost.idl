@@ -46,9 +46,11 @@
     [Custom] Array getInternalProperties(in any object);
     [Custom] Array getEventListeners(in Node node);
 
+    [Custom] readonly attribute any evaluate;
+
     [Custom] DOMString databaseId(in any database);
     [Custom] DOMString storageId(in any storage);
-    [Custom] any evaluate(in DOMString text);
+
     // Only declarative scope (local, with and catch) is accepted. Returns undefined. 
     [Custom] any setFunctionVariableValue(in any functionObject, in int scopeIndex, in DOMString variableName, any newValue);
 };

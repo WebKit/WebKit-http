@@ -33,15 +33,19 @@
 #import "WebFrameInternal.h"
 #import "WebFrameView.h"
 #import "WebInspector.h"
-#import "WebInspectorPrivate.h"
 #import "WebInspectorFrontend.h"
+#import "WebInspectorPrivate.h"
 #import "WebLocalizableStringsInternal.h"
 #import "WebNodeHighlighter.h"
-#import "WebUIDelegate.h"
 #import "WebPolicyDelegate.h"
+#import "WebQuotaManager.h"
+#import "WebSecurityOriginPrivate.h"
+#import "WebUIDelegate.h"
 #import "WebViewInternal.h"
+#import <algorithm>
 #import <WebCore/Frame.h>
 #import <WebCore/InspectorController.h>
+#import <WebCore/InspectorFrontendClient.h>
 #import <WebCore/Page.h>
 #import <WebCore/ScriptValue.h>
 #import <WebCore/SoftLinking.h>
@@ -161,7 +165,7 @@ void WebInspectorClient::bringFrontendToFront()
 void WebInspectorClient::didResizeMainFrame(Frame*)
 {
     if (m_frontendClient)
-        m_frontendClient->attachAvailabilityChanged(m_frontendClient->canAttachWindow());
+        m_frontendClient->attachAvailabilityChanged(m_frontendClient->canAttachWindow() && !inspectorAttachDisabled());
 }
 
 void WebInspectorClient::highlight()
@@ -210,7 +214,7 @@ void WebInspectorFrontendClient::frontendLoaded()
                               @selector(webView:didClearInspectorWindowObject:forFrame:), [frame windowObject], frame);
 
     bool attached = [m_windowController.get() attached];
-    setAttachedWindow(attached);
+    setAttachedWindow(attached ? DOCKED_TO_BOTTOM : UNDOCKED);
 }
 
 static bool useWebKitWebInspector()
@@ -236,14 +240,6 @@ String WebInspectorFrontendClient::localizedStringsURL()
     return String();
 }
 
-String WebInspectorFrontendClient::hiddenPanels()
-{
-    NSString *hiddenPanels = [[NSUserDefaults standardUserDefaults] stringForKey:@"WebKitInspectorHiddenPanels"];
-    if (hiddenPanels)
-        return hiddenPanels;
-    return String();
-}
-
 void WebInspectorFrontendClient::bringToFront()
 {
     updateWindowTitle();
@@ -266,7 +262,7 @@ void WebInspectorFrontendClient::disconnectFromBackend()
     [m_windowController.get() destroyInspectorView:false];
 }
 
-void WebInspectorFrontendClient::attachWindow()
+void WebInspectorFrontendClient::attachWindow(DockSide)
 {
     if ([m_windowController.get() attached])
         return;
@@ -282,6 +278,11 @@ void WebInspectorFrontendClient::detachWindow()
 void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned height)
 {
     [m_windowController.get() setAttachedWindowHeight:height];
+}
+
+void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned)
+{
+    // Dock to right is not implemented in WebKit 1.
 }
 
 void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
@@ -364,7 +365,6 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
     [preferences setMinimumFontSize:0];
     [preferences setMinimumLogicalFontSize:9];
     [preferences setPlugInsEnabled:NO];
-    [preferences setSuppressesIncrementalRendering:YES];
     [preferences setTabsToLinks:NO];
     [preferences setUserStyleSheetEnabled:NO];
 
@@ -472,7 +472,7 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
     [frameView addSubview:_dockButton.get()];
 
     // Hide the dock button if we can't attach.
-    _dockButton.get().hidden = !_frontendClient->canAttachWindow();
+    _dockButton.get().hidden = !_frontendClient->canAttachWindow() || _inspectorClient->inspectorAttachDisabled();
 
     [self setWindow:window];
     [window release];
@@ -528,7 +528,7 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
 
 - (IBAction)attachWindow:(id)sender
 {
-    _frontendClient->attachWindow();
+    _frontendClient->attachWindow(InspectorFrontendClient::DOCKED_TO_BOTTOM);
 }
 
 - (IBAction)showWindow:(id)sender
@@ -541,10 +541,7 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
 
     _visible = YES;
     
-    _shouldAttach = _inspectorClient->inspectorStartsAttached();
-    
-    if (_shouldAttach && !_frontendClient->canAttachWindow())
-        _shouldAttach = NO;
+    _shouldAttach = _inspectorClient->inspectorStartsAttached() && _frontendClient->canAttachWindow() && !_inspectorClient->inspectorAttachDisabled();
 
     if (_shouldAttach) {
         WebFrameView *frameView = [[_inspectedWebView.get() mainFrame] frameView];
@@ -578,7 +575,7 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
         return;
 
     _inspectorClient->setInspectorStartsAttached(true);
-    _frontendClient->setAttachedWindow(true);
+    _frontendClient->setAttachedWindow(InspectorFrontendClient::DOCKED_TO_BOTTOM);
 
     [self close];
     [self showWindow:nil];
@@ -590,7 +587,7 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
         return;
 
     _inspectorClient->setInspectorStartsAttached(false);
-    _frontendClient->setAttachedWindow(false);
+    _frontendClient->setAttachedWindow(InspectorFrontendClient::UNDOCKED);
 
     [self close];
     [self showWindow:nil];
@@ -691,6 +688,12 @@ void WebInspectorFrontendClient::append(const String& url, const String& content
         }
         [resultListener chooseFilenames:filenames];
     }];
+}
+
+- (void)webView:(WebView *)sender frame:(WebFrame *)frame exceededDatabaseQuotaForSecurityOrigin:(WebSecurityOrigin *)origin database:(NSString *)databaseIdentifier
+{
+    id <WebQuotaManager> databaseQuotaManager = origin.databaseQuotaManager;
+    databaseQuotaManager.quota = std::max<unsigned long long>(5 * 1024 * 1024, databaseQuotaManager.usage * 1.25);
 }
 
 // MARK: -

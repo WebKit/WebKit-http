@@ -303,6 +303,11 @@ public:
     int offsetTop();
     int offsetWidth();
     int offsetHeight();
+
+    // FIXME: Replace uses of offsetParent in the platform with calls
+    // to the render layer and merge bindingsOffsetParent and offsetParent.
+    Element* bindingsOffsetParent();
+
     Element* offsetParent();
     int clientLeft();
     int clientTop();
@@ -368,12 +373,20 @@ public:
     // For exposing to DOM only.
     NamedNodeMap* attributes() const;
 
+    enum AttributeModificationReason {
+        ModifiedDirectly,
+        ModifiedByCloning
+    };
+
     // This method is called whenever an attribute is added, changed or removed.
-    virtual void attributeChanged(const QualifiedName&, const AtomicString&);
+    virtual void attributeChanged(const QualifiedName&, const AtomicString&, AttributeModificationReason = ModifiedDirectly);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) { }
 
     // Only called by the parser immediately after element construction.
-    void parserSetAttributes(const Vector<Attribute>&, FragmentScriptingPermission);
+    void parserSetAttributes(const Vector<Attribute>&);
+
+    // Remove attributes that might introduce scripting from the vector leaving the element unchanged.
+    void stripScriptingAttributes(Vector<Attribute>&) const;
 
     const ElementData* elementData() const { return m_elementData.get(); }
     UniqueElementData* ensureUniqueElementData();
@@ -447,11 +460,12 @@ public:
     virtual void accessKeyAction(bool /*sendToAnyEvent*/) { }
 
     virtual bool isURLAttribute(const Attribute&) const { return false; }
+    virtual bool isHTMLContentAttribute(const Attribute&) const { return false; }
 
     KURL getURLAttribute(const QualifiedName&) const;
     KURL getNonEmptyURLAttribute(const QualifiedName&) const;
 
-    virtual const QualifiedName& imageSourceAttributeName() const;
+    virtual const AtomicString& imageSourceURL() const;
     virtual String target() const { return String(); }
 
     virtual void focus(bool restorePreviousSelection = true, FocusDirection = FocusDirectionNone);
@@ -482,6 +496,10 @@ public:
     virtual void didBecomeFullscreenElement() { }
     virtual void willStopBeingFullscreenElement() { }
 
+#if ENABLE(VIDEO_TRACK)
+    virtual void captionPreferencesChanged() { }
+#endif
+
     bool isFinishedParsingChildren() const { return isParsingChildrenFinished(); }
     virtual void finishParsingChildren();
     virtual void beginParsingChildren();
@@ -502,6 +520,7 @@ public:
     virtual bool matchesReadOnlyPseudoClass() const;
     virtual bool matchesReadWritePseudoClass() const;
     bool webkitMatchesSelector(const String& selectors, ExceptionCode&);
+    virtual bool shouldAppearIndeterminate() const;
 
     DOMTokenList* classList();
 
@@ -525,7 +544,6 @@ public:
 #endif
 
     virtual bool isFormControlElement() const { return false; }
-    virtual bool isEnabledFormControl() const { return true; }
     virtual bool isSpinButtonElement() const { return false; }
     virtual bool isTextFormControl() const { return false; }
     virtual bool isOptionalFormControl() const { return false; }
@@ -545,6 +563,14 @@ public:
     virtual bool wasChangedSinceLastFormControlChangeEvent() const;
     virtual void setChangedSinceLastFormControlChangeEvent(bool);
     virtual void dispatchFormControlChangeEvent() { }
+
+    // Used for disabled form elements; if true, prevents mouse events from being dispatched
+    // to event listeners, and prevents DOMActivate events from being sent at all.
+    virtual bool isDisabledFormControl() const;
+
+#if ENABLE(DIALOG_ELEMENT)
+    bool isInert() const;
+#endif
 
 #if ENABLE(SVG)
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const;
@@ -607,6 +633,7 @@ protected:
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
+    virtual void removeAllEventListeners() OVERRIDE;
 
     virtual bool willRecalcStyle(StyleChange);
     virtual void didRecalcStyle(StyleChange);
@@ -637,6 +664,9 @@ private:
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) { }
     virtual bool alwaysCreateUserAgentShadowRoot() const { return false; }
 
+    // FIXME: Remove the need for Attr to call willModifyAttribute/didModifyAttribute.
+    friend class Attr;
+
     enum SynchronizationOfLazyAttribute { NotInSynchronizationOfLazyAttribute = 0, InSynchronizationOfLazyAttribute };
 
     void didAddAttribute(const QualifiedName&, const AtomicString&);
@@ -661,6 +691,7 @@ private:
     void setAttributeInternal(size_t index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void addAttributeInternal(const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void removeAttributeInternal(size_t index, SynchronizationOfLazyAttribute);
+    void attributeChangedFromParserOrByCloning(const QualifiedName&, const AtomicString&, AttributeModificationReason);
 
 #ifndef NDEBUG
     virtual void formatForDebugger(char* buffer, unsigned length) const;
@@ -711,6 +742,8 @@ private:
 
     void createRendererIfNeeded();
 
+    bool isJavaScriptURLAttribute(const Attribute&) const;
+
     RefPtr<ElementData> m_elementData;
 };
     
@@ -728,6 +761,11 @@ inline const Element* toElement(const Node* node)
 
 // This will catch anyone doing an unnecessary cast.
 void toElement(const Element*);
+
+inline bool isDisabledFormControl(const Node* node)
+{
+    return node->isElementNode() && toElement(node)->isDisabledFormControl();
+}
 
 inline bool Node::hasTagName(const QualifiedName& name) const
 {

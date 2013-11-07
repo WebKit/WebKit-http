@@ -79,11 +79,6 @@ inline HTMLMediaElement* toParentMediaElement(RenderObject* renderer) { return t
 
 MediaControlElementType mediaControlElementType(Node*);
 
-#if ENABLE(VIDEO_TRACK)
-const AtomicString& trackIndexAttributeName();
-int trackListIndexForElement(Element*);
-#endif
-
 // ----------------------------
 
 class MediaControlElement {
@@ -141,8 +136,6 @@ protected:
     explicit MediaControlTimeDisplayElement(Document*, MediaControlElementType);
 
 private:
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
-
     float m_currentValue;
 };
 

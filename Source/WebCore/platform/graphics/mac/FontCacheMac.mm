@@ -52,30 +52,17 @@ static void invalidateFontCache(void*)
     fontCache()->invalidate();
 }
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 static void fontCacheRegisteredFontsChangedNotificationCallback(CFNotificationCenterRef, void* observer, CFStringRef name, const void *, CFDictionaryRef)
 {
     ASSERT_UNUSED(observer, observer == fontCache());
     ASSERT_UNUSED(name, CFEqual(name, kCTFontManagerRegisteredFontsChangedNotification));
     invalidateFontCache(0);
 }
-#else
-static void fontCacheATSNotificationCallback(ATSFontNotificationInfoRef, void*)
-{
-    invalidateFontCache(0);
-}
-#endif
 
 void FontCache::platformInit()
 {
     wkSetUpFontCache();
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, fontCacheRegisteredFontsChangedNotificationCallback, kCTFontManagerRegisteredFontsChangedNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
-#else
-    // kCTFontManagerRegisteredFontsChangedNotification does not exist on Leopard and earlier.
-    // FIXME: Passing kATSFontNotifyOptionReceiveWhileSuspended may be an overkill and does not seem to work anyway.
-    ATSFontNotificationSubscribe(fontCacheATSNotificationCallback, kATSFontNotifyOptionReceiveWhileSuspended, 0, 0);
-#endif
 }
 
 static int toAppKitFontWeight(FontWeight fontWeight)
@@ -114,12 +101,6 @@ PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font,
         substituteFont = wkGetFontInLanguageForCharacter(nsFont, characters[0]);
     if (!substituteFont)
         return 0;
-
-#if PLATFORM(CHROMIUM)
-    // Chromium can't render AppleColorEmoji.
-    if ([[substituteFont familyName] isEqual:@"Apple Color Emoji"])
-        return 0;
-#endif
 
     // Use the family name from the AppKit-supplied substitute font, requesting the
     // traits, weight, and size we want. One way this does better than the original
@@ -216,7 +197,7 @@ void FontCache::getTraitsInFamily(const AtomicString& familyName, Vector<unsigne
     [WebFontCache getTraits:traitsMasks inFamily:familyName];
 }
 
-FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family)
+PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family)
 {
     NSFontTraitMask traits = fontDescription.italic() ? NSFontItalicTrait : 0;
     NSInteger weight = toAppKitFontWeight(fontDescription.weight());
@@ -224,7 +205,7 @@ FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontD
 
     NSFont *nsFont = [WebFontCache fontWithFamily:family traits:traits weight:weight size:size];
     if (!nsFont)
-        return 0;
+        return nullptr;
 
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
     NSFontTraitMask actualTraits = 0;
@@ -236,12 +217,8 @@ FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontD
     bool syntheticBold = isAppKitFontWeightBold(weight) && !isAppKitFontWeightBold(actualWeight);
     bool syntheticOblique = (traits & NSFontItalicTrait) && !(actualTraits & NSFontItalicTrait);
 
-    // FontPlatformData::font() can be null for the case of Chromium out-of-process font loading.
-    // In that case, we don't want to use the platformData.
     OwnPtr<FontPlatformData> platformData = adoptPtr(new FontPlatformData(platformFont, size, fontDescription.usePrinterFont(), syntheticBold, syntheticOblique, fontDescription.orientation(), fontDescription.widthVariant()));
-    if (!platformData->font())
-        return 0;
-    return platformData.leakPtr();
+    return platformData.release();
 }
 
 } // namespace WebCore

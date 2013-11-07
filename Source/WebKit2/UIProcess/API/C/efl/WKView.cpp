@@ -24,28 +24,15 @@
 #include "EwkView.h"
 #include "WKAPICast.h"
 #include "ewk_context_private.h"
+#include "ewk_page_group_private.h"
 #include <WebKit2/WKImageCairo.h>
 
 using namespace WebKit;
 
-static inline WKViewRef createWKView(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef, EwkView::ViewBehavior behavior)
+WKViewRef WKViewCreate(WKContextRef contextRef, WKPageGroupRef pageGroupRef)
 {
-    RefPtr<EwkContext> context = contextRef ? EwkContext::create(contextRef) : EwkContext::defaultContext();
-    Evas_Object* evasObject = EwkView::createEvasObject(canvas, context, pageGroupRef, behavior);
-    if (!evasObject)
-        return 0;
-
-    return static_cast<WKViewRef>(WKRetain(toEwkView(evasObject)->wkView()));
-}
-
-WKViewRef WKViewCreate(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef)
-{
-    return createWKView(canvas, contextRef, pageGroupRef, EwkView::LegacyBehavior);
-}
-
-WKViewRef WKViewCreateWithFixedLayout(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef)
-{
-    return createWKView(canvas, contextRef, pageGroupRef, EwkView::DefaultBehavior);
+    RefPtr<WebView> webView = WebView::create(toImpl(contextRef), toImpl(pageGroupRef));
+    return toAPI(webView.release().leakRef());
 }
 
 void WKViewInitialize(WKViewRef viewRef)
@@ -53,9 +40,60 @@ void WKViewInitialize(WKViewRef viewRef)
     toImpl(viewRef)->initialize();
 }
 
+WKSize WKViewGetSize(WKViewRef viewRef)
+{
+    return toAPI(toImpl(viewRef)->size());
+}
+
+void WKViewSetSize(WKViewRef viewRef, WKSize size)
+{
+    toImpl(viewRef)->setSize(toIntSize(size));
+}
+
 void WKViewSetViewClient(WKViewRef viewRef, const WKViewClient* client)
 {
     toImpl(viewRef)->initializeClient(client);
+}
+
+bool WKViewIsFocused(WKViewRef viewRef)
+{
+    return toImpl(viewRef)->isFocused();
+}
+
+void WKViewSetIsFocused(WKViewRef viewRef, bool isFocused)
+{
+    toImpl(viewRef)->setFocused(isFocused);
+}
+
+bool WKViewIsVisible(WKViewRef viewRef)
+{
+    return toImpl(viewRef)->isVisible();
+}
+
+void WKViewSetIsVisible(WKViewRef viewRef, bool isVisible)
+{
+    toImpl(viewRef)->setVisible(isVisible);
+}
+
+float WKViewGetContentScaleFactor(WKViewRef viewRef)
+{
+    return toImpl(viewRef)->contentScaleFactor();
+}
+
+void WKViewSetContentScaleFactor(WKViewRef viewRef, float scale)
+{
+    toImpl(viewRef)->setContentScaleFactor(scale);
+}
+
+WKPoint WKViewGetContentPosition(WKViewRef viewRef)
+{
+    const WebCore::FloatPoint& result = toImpl(viewRef)->contentPosition();
+    return WKPointMake(result.x(), result.y());
+}
+
+void WKViewSetContentPosition(WKViewRef viewRef, WKPoint position)
+{
+    toImpl(viewRef)->setContentPosition(WebCore::FloatPoint(position.x, position.y));
 }
 
 void WKViewSetUserViewportTranslation(WKViewRef viewRef, double tx, double ty)
@@ -69,10 +107,12 @@ WKPoint WKViewUserViewportToContents(WKViewRef viewRef, WKPoint point)
     return WKPointMake(result.x(), result.y());
 }
 
+#if USE(ACCELERATED_COMPOSITING)
 void WKViewPaintToCurrentGLContext(WKViewRef viewRef)
 {
     toImpl(viewRef)->paintToCurrentGLContext();
 }
+#endif
 
 void WKViewPaintToCairoSurface(WKViewRef viewRef, cairo_surface_t* surface)
 {
@@ -136,11 +176,6 @@ void WKViewExitFullScreen(WKViewRef viewRef)
 #else
     UNUSED_PARAM(viewRef);
 #endif
-}
-
-Evas_Object* WKViewGetEvasObject(WKViewRef viewRef)
-{
-    return toImpl(viewRef)->evasObject();
 }
 
 WKImageRef WKViewCreateSnapshot(WKViewRef viewRef)

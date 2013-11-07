@@ -47,10 +47,8 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
-#if USE(JSC)
 // FIXME: This is a layering violation.
 #include "JSDOMWindow.h"
-#endif
 
 #if ENABLE(SQL_DATABASE)
 #include "DatabaseContext.h"
@@ -180,11 +178,11 @@ bool ScriptExecutionContext::canSuspendActiveDOMObjects()
 {
     // No protection against m_activeDOMObjects changing during iteration: canSuspend() shouldn't execute arbitrary JS.
     m_iteratingActiveDOMObjects = true;
-    HashMap<ActiveDOMObject*, void*>::iterator activeObjectsEnd = m_activeDOMObjects.end();
-    for (HashMap<ActiveDOMObject*, void*>::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
-        ASSERT(iter->key->scriptExecutionContext() == this);
-        ASSERT(iter->key->suspendIfNeededCalled());
-        if (!iter->key->canSuspend()) {
+    ActiveDOMObjectsSet::iterator activeObjectsEnd = m_activeDOMObjects.end();
+    for (ActiveDOMObjectsSet::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
+        ASSERT((*iter)->scriptExecutionContext() == this);
+        ASSERT((*iter)->suspendIfNeededCalled());
+        if (!(*iter)->canSuspend()) {
             m_iteratingActiveDOMObjects = false;
             return false;
         }
@@ -197,11 +195,11 @@ void ScriptExecutionContext::suspendActiveDOMObjects(ActiveDOMObject::ReasonForS
 {
     // No protection against m_activeDOMObjects changing during iteration: suspend() shouldn't execute arbitrary JS.
     m_iteratingActiveDOMObjects = true;
-    HashMap<ActiveDOMObject*, void*>::iterator activeObjectsEnd = m_activeDOMObjects.end();
-    for (HashMap<ActiveDOMObject*, void*>::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
-        ASSERT(iter->key->scriptExecutionContext() == this);
-        ASSERT(iter->key->suspendIfNeededCalled());
-        iter->key->suspend(why);
+    ActiveDOMObjectsSet::iterator activeObjectsEnd = m_activeDOMObjects.end();
+    for (ActiveDOMObjectsSet::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
+        ASSERT((*iter)->scriptExecutionContext() == this);
+        ASSERT((*iter)->suspendIfNeededCalled());
+        (*iter)->suspend(why);
     }
     m_iteratingActiveDOMObjects = false;
     m_activeDOMObjectsAreSuspended = true;
@@ -213,11 +211,11 @@ void ScriptExecutionContext::resumeActiveDOMObjects()
     m_activeDOMObjectsAreSuspended = false;
     // No protection against m_activeDOMObjects changing during iteration: resume() shouldn't execute arbitrary JS.
     m_iteratingActiveDOMObjects = true;
-    HashMap<ActiveDOMObject*, void*>::iterator activeObjectsEnd = m_activeDOMObjects.end();
-    for (HashMap<ActiveDOMObject*, void*>::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
-        ASSERT(iter->key->scriptExecutionContext() == this);
-        ASSERT(iter->key->suspendIfNeededCalled());
-        iter->key->resume();
+    ActiveDOMObjectsSet::iterator activeObjectsEnd = m_activeDOMObjects.end();
+    for (ActiveDOMObjectsSet::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
+        ASSERT((*iter)->scriptExecutionContext() == this);
+        ASSERT((*iter)->suspendIfNeededCalled());
+        (*iter)->resume();
     }
     m_iteratingActiveDOMObjects = false;
 }
@@ -227,11 +225,11 @@ void ScriptExecutionContext::stopActiveDOMObjects()
     m_activeDOMObjectsAreStopped = true;
     // No protection against m_activeDOMObjects changing during iteration: stop() shouldn't execute arbitrary JS.
     m_iteratingActiveDOMObjects = true;
-    HashMap<ActiveDOMObject*, void*>::iterator activeObjectsEnd = m_activeDOMObjects.end();
-    for (HashMap<ActiveDOMObject*, void*>::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
-        ASSERT(iter->key->scriptExecutionContext() == this);
-        ASSERT(iter->key->suspendIfNeededCalled());
-        iter->key->stop();
+    ActiveDOMObjectsSet::iterator activeObjectsEnd = m_activeDOMObjects.end();
+    for (ActiveDOMObjectsSet::iterator iter = m_activeDOMObjects.begin(); iter != activeObjectsEnd; ++iter) {
+        ASSERT((*iter)->scriptExecutionContext() == this);
+        ASSERT((*iter)->suspendIfNeededCalled());
+        (*iter)->stop();
     }
     m_iteratingActiveDOMObjects = false;
 
@@ -247,14 +245,13 @@ void ScriptExecutionContext::suspendActiveDOMObjectIfNeeded(ActiveDOMObject* obj
         object->suspend(m_reasonForSuspendingActiveDOMObjects);
 }
 
-void ScriptExecutionContext::didCreateActiveDOMObject(ActiveDOMObject* object, void* upcastPointer)
+void ScriptExecutionContext::didCreateActiveDOMObject(ActiveDOMObject* object)
 {
     ASSERT(object);
-    ASSERT(upcastPointer);
     ASSERT(!m_inDestructor);
     if (m_iteratingActiveDOMObjects)
         CRASH();
-    m_activeDOMObjects.add(object, upcastPointer);
+    m_activeDOMObjects.add(object);
 }
 
 void ScriptExecutionContext::willDestroyActiveDOMObject(ActiveDOMObject* object)
@@ -412,7 +409,6 @@ ScriptExecutionContext::Task::~Task()
 {
 }
 
-#if USE(JSC)
 JSC::JSGlobalData* ScriptExecutionContext::globalData()
 {
      if (isDocument())
@@ -426,7 +422,6 @@ JSC::JSGlobalData* ScriptExecutionContext::globalData()
     ASSERT_NOT_REACHED();
     return 0;
 }
-#endif
 
 #if ENABLE(SQL_DATABASE)
 void ScriptExecutionContext::setDatabaseContext(DatabaseContext* databaseContext)

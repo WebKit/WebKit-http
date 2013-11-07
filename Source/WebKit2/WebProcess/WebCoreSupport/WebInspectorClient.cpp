@@ -73,8 +73,11 @@ void WebInspectorClient::highlight()
         RefPtr<PageOverlay> highlightOverlay = PageOverlay::create(this);
         m_highlightOverlay = highlightOverlay.get();
         m_page->installPageOverlay(highlightOverlay.release(), true);
-    } else
         m_highlightOverlay->setNeedsDisplay();
+    } else {
+        m_highlightOverlay->stopFadeOutAnimation();
+        m_highlightOverlay->setNeedsDisplay();
+    }
 }
 
 void WebInspectorClient::hideHighlight()

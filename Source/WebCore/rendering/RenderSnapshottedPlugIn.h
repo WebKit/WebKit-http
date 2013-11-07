@@ -26,7 +26,7 @@
 #ifndef RenderSnapshottedPlugIn_h
 #define RenderSnapshottedPlugIn_h
 
-#include "RenderBlock.h"
+#include "RenderEmbeddedObject.h"
 #include "RenderImageResource.h"
 #include "Timer.h"
 
@@ -34,7 +34,7 @@ namespace WebCore {
 
 class HTMLPlugInImageElement;
 
-class RenderSnapshottedPlugIn : public RenderBlock {
+class RenderSnapshottedPlugIn : public RenderEmbeddedObject {
 public:
     explicit RenderSnapshottedPlugIn(HTMLPlugInImageElement*);
     virtual ~RenderSnapshottedPlugIn();
@@ -50,12 +50,15 @@ private:
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const OVERRIDE;
     virtual bool isSnapshottedPlugIn() const OVERRIDE { return true; }
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
+    
+    virtual bool canHaveWidget() const OVERRIDE { return false; }
 
     void paintSnapshot(PaintInfo&, const LayoutPoint&);
 
     virtual void layout() OVERRIDE;
 
     OwnPtr<RenderImageResource> m_snapshotResource;
+    bool m_isPotentialMouseActivation;
 };
 
 inline RenderSnapshottedPlugIn* toRenderSnapshottedPlugIn(RenderObject* object)

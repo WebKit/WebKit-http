@@ -1,3 +1,289 @@
+2013-04-05  Roger Fong  <roger_fong@apple.com>
+
+        Build fix.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        [Cairo] Fix canvas drawing of SVG-based patterns and remove NativeImageCairo
+        https://bugs.webkit.org/show_bug.cgi?id=113929
+
+        Reviewed by Martin Robinson.
+
+        Remove outdated symbols now that NativeImageCairo was removed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-03  Gustavo Noronha Silva  <gustavo.noronha@collabora.com>
+
+        Should close select popup when the element loses focus
+        https://bugs.webkit.org/show_bug.cgi?id=113220
+
+        Reviewed by Kent Tamura.
+
+        * WebKit.vcproj/WebKitExports.def.in: export WebCore::HTMLNames::selectTag for Internals
+
+2013-04-02  Timothy Hatcher  <timothy@apple.com>
+
+        Provide a user default that can be used to disable docking of the Web Inspector.
+
+        The user default is "WebKit Web Inspector Setting - inspectorAttachDisabled".
+
+        https://webkit.org/b/113779
+        rdar://problem/13446021
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient::inspectorAttachDisabled): Added.
+        (WebInspectorClient::setInspectorAttachDisabled): Added.
+
+2013-03-28  Matt Falkenhagen  <falken@chromium.org>
+
+        Refactoring: Replace Element::disabled and isEnabledFormControl with isDisabledFormControl
+        https://bugs.webkit.org/show_bug.cgi?id=113273
+
+        Reviewed by Kent Tamura.
+
+        Element::disabled is about form controls and Element::isEnabledFormControl
+        is redundant with it, so replace them with a single function
+        Element::isDisabledFormControl.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLInputElement::disabled):
+
+2013-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r147044.
+        https://bugs.webkit.org/show_bug.cgi?id=113352.
+
+        Not Reviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Greening the Apple Win bot (debug build).
+        https://bugs.webkit.org/show_bug.cgi?id=113352.
+
+        Not Reviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Greening the Apple Win bot.
+        https://bugs.webkit.org/show_bug.cgi?id=113352.
+
+        Not Reviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another Windows build fix attempt after r147004.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-27  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for dock-to-right of the Web Inspector in the Mac port.
+
+        Unfortunately this requires Safari changes, so it is disabled in the nightly builds.
+
+        https://webkit.org/b/113341
+        rdar://problem/10368152
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::frontendLoaded):
+        (WebInspectorFrontendClient::attachWindow):
+        (WebInspectorFrontendClient::setAttachedWindowWidth):
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorFrontendClient):
+
+2013-03-27  Kent Tamura  <tkent@chromium.org>
+
+        Rename HTMLFormControlElement::readOnly to isReadOnly
+        https://bugs.webkit.org/show_bug.cgi?id=113297
+
+        Reviewed by Alexey Proskuryakov.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLInputElement::readOnly):
+
+2013-03-26  Hayato Ito  <hayato@chromium.org>
+
+        Allow ShadowContents in HitTests by default.
+        https://bugs.webkit.org/show_bug.cgi?id=113171
+
+        Reviewed by Dimitri Glazkov.
+
+        * WebView.cpp:
+        (WebView::gestureNotify):
+
+2013-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The second part of the build fix for r146702. This should do it.
+        I had to see the mangled name for the new signature.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix attempt after r146702.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-21  peavo@outlook.com  <peavo@outlook.com>
+
+        WinCairo build fails to link.
+        https://bugs.webkit.org/show_bug.cgi?id=112892
+
+        Reviewed by Kentaro Hara.
+
+        * WebKit.vcproj/WebKitExports.def.in: Added ENABLE(VIDEO_TRACK) guard.
+
+2013-03-20  Michael Pruett  <michael@68k.org>
+
+        [JSC] Implement EnforceRange IDL attribute for integer conversions
+        https://bugs.webkit.org/show_bug.cgi?id=112506
+
+        Reviewed by Kentaro Hara.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-20  Rouslan Solomakhin  <rouslan@chromium.org>
+
+        Copy-paste should not spellcheck when continuous spellcheck is turned off
+        https://bugs.webkit.org/show_bug.cgi?id=112464
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKit.vcproj/WebKitExports.def.in: Export WebCore::Editor::isContinuousSpellCheckingEnabled() and WebCore::Editor::toggleContinuousSpellChecking() for use by internals.
+
+2013-03-18  Roger Fong  <roger_fong@apple.com>
+
+        Fix typo on Windows following r145849 that was causing DRT to crash 100% of the time.
+
+        * WebView.cpp:
+        (WebView::setSmartInsertDeleteEnabled):
+        (WebView::setSelectTrailingWhitespaceEnabled):
+
+2013-03-15  Nate Chapin  <japhet@chromium.org>
+
+        Hide MainResourceLoader from the outside world
+        https://bugs.webkit.org/show_bug.cgi?id=109971
+
+        Reviewed by Adam Barth.
+
+        * WebFrame.cpp:
+        (WebFrame::convertMainResourceLoadToDownload):
+        * WebFrame.h:
+
+2013-03-15  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112401
+
+        Reviewed by Stephen Chenney.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * WebCoreSupport/EmbeddedWidget.cpp:
+        (EmbeddedWidget::frameRectsChanged):
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::redirectDataToPlugin):
+
+2013-03-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Add selectTrailingWhitespaceEnabled setting to WebCore::Page
+        https://bugs.webkit.org/show_bug.cgi?id=109404
+
+        Reviewed by Tony Chang.
+
+        Use new settings for smartInsertDeleteEnabled and
+        selectTrailingWhitespaceEnabled.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::smartInsertDeleteEnabled):
+        (WebEditorClient::isSelectTrailingWhitespaceEnabled):
+        * WebView.cpp:
+        (WebView::WebView):
+        (WebView::setSmartInsertDeleteEnabled):
+        (WebView::smartInsertDeleteEnabled):
+        (WebView::setSelectTrailingWhitespaceEnabled):
+        (WebView::isSelectTrailingWhitespaceEnabled):
+        * WebView.h:
+        (WebView):
+
+2013-03-14  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        Move platform-specific typedefs to PlatformMenuDescription.h
+        https://bugs.webkit.org/show_bug.cgi?id=111876
+
+        Reviewed by Caio Marcelo de Oliveira Filho.
+
+        Rename NativeMenuItem to PlatformContextMenuItem and the getter
+        function call.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::customizeMenu):
+        (WebContextMenuClient::contextMenuItemSelected):
+        * WebView.cpp:
+        (WebView::handleContextMenuEvent):
+
+2013-03-14  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112296
+
+        Reviewed by Kentaro Hara.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * WebView.cpp:
+        (WebView::enterFullscreenForNode):
+
+2013-03-13  Nate Chapin  <japhet@chromium.org>
+
+        Expose symbols for internals
+        https://bugs.webkit.org/show_bug.cgi?id=112194
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-13  Pavel Feldman  <pfeldman@chromium.org>
+
+        Web Inspector: get rid of hiddenPanels filter
+        https://bugs.webkit.org/show_bug.cgi?id=112252
+
+        Reviewed by Vsevolod Vlasov.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorFrontendClient):
+
+2013-03-12  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112164
+
+        Reviewed by Philip Rogers.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::idName):
+        (DOMHTMLElement::innerText):
+        (DOMHTMLElement::setInnerText):
+
 2013-03-11  Jochen Eisinger  <jochen@chromium.org>
 
         Rename DefinitelyProcessingUserGesture to DefinitelyProcessingNewUserGesture

@@ -338,7 +338,16 @@ storage/domstorage/localstorage/close-idle-localstorage-databases-immediately.ht
 # https://bugs.webkit.org/show_bug.cgi?id=105266
 plugins/npruntime/embed-property-iframe-equality.html
 
+# [WK2] Call Netscape Plugin's toString() and valueOf() instead of providing default implementation
+# https://bugs.webkit.org/show_bug.cgi?id=114213
+plugins/npruntime/tostring.html
+plugins/npruntime/valueof.html
+
 webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure ]
+
+# [WebKit2] WKTR's output for dumpResourceLoadCallbacks is inconsistent with DRT
+# https://bugs.webkit.org/show_bug.cgi?id=114074
+webkit.org/b/114074 fast/loader/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -374,9 +383,6 @@ http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html
 
 # WebKitTestRunner needs layoutTestController.addDisallowedURL
 plugins/get-url-that-the-resource-load-delegate-will-disallow.html
-
-# WebKitTestRunner needs layoutTestController.setSelectTrailingWhitespaceEnabled
-editing/selection/doubleclick-inline-first-last-contenteditable.html
 
 # WebKitTestRunner needs layoutTestController.pageProperty
 printing/page-rule-selection.html
@@ -497,6 +503,10 @@ editing/selection/context-menu-text-selection.html
 editing/selection/5354455-2.html
 editing/spelling/spellcheck-input-search-crash.html
 fast/events/context-nodrag.html
+
+# WKTR does not support overriding WebKitUsesPageCachePreferenceKey.
+# https://bugs.webkit.org/show_bug.cgi?id=114153
+fast/harness/use-page-cache.html
 
 # eventSender.dragMode is unimplemented in WKTR
 # Mac: https://bugs.webkit.org/show_bug.cgi?id=68552

@@ -76,9 +76,6 @@
 #include "MediaPlayerPrivateQt.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateQt
 #endif
-#elif PLATFORM(CHROMIUM)
-#include "MediaPlayerPrivateChromium.h"
-#define PlatformMediaEngineClassName MediaPlayerPrivate
 #elif PLATFORM(BLACKBERRY)
 #include "MediaPlayerPrivateBlackBerry.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivate
@@ -727,6 +724,11 @@ void MediaPlayer::paintCurrentFrameInContext(GraphicsContext* p, const IntRect& 
     m_private->paintCurrentFrameInContext(p, r);
 }
 
+bool MediaPlayer::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject texture, GC3Dint level, GC3Denum type, GC3Denum internalFormat, bool premultiplyAlpha, bool flipY)
+{
+    return m_private->copyVideoTextureToPlatformTexture(context, texture, level, type, internalFormat, premultiplyAlpha, flipY);
+}
+
 MediaPlayer::SupportsType MediaPlayer::supportsType(const ContentType& contentType, const String& keySystem, const KURL& url, const MediaPlayerSupportsTypeClient* client)
 {
     String type = contentType.type().lower();
@@ -1139,6 +1141,23 @@ void MediaPlayer::resetMediaEngines()
     installedMediaEngines(ResetEngines);
 }
 
+#if USE(GSTREAMER)
+void MediaPlayer::simulateAudioInterruption()
+{
+    if (!m_private)
+        return;
+
+    m_private->simulateAudioInterruption();
+}
+#endif
+
+String MediaPlayer::languageOfPrimaryAudioTrack() const
+{
+    if (!m_private)
+        return emptyString();
+    
+    return m_private->languageOfPrimaryAudioTrack();
+}
 }
 
 #endif

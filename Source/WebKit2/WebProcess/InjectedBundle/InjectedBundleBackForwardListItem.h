@@ -34,10 +34,8 @@ namespace WebKit {
 class ImmutableArray;
 class WebPageProxy;
 
-class InjectedBundleBackForwardListItem : public APIObject {
+class InjectedBundleBackForwardListItem : public TypedAPIObject<APIObject::TypeBundleBackForwardListItem> {
 public:
-    static const Type APIType = TypeBundleBackForwardListItem;
-
     static PassRefPtr<InjectedBundleBackForwardListItem> create(PassRefPtr<WebCore::HistoryItem> item)
     {
         if (!item)
@@ -54,13 +52,12 @@ public:
     const String& target() const { return m_item->target(); }
     bool isTargetItem() const { return m_item->isTargetItem(); }
     bool isInPageCache() const { return m_item->isInPageCache(); }
+    bool hasCachedPageExpired() const { return m_item->hasCachedPageExpired(); }
 
     PassRefPtr<ImmutableArray> children() const;
 
 private:
     InjectedBundleBackForwardListItem(PassRefPtr<WebCore::HistoryItem> item) : m_item(item) { }
-
-    virtual Type type() const { return APIType; }
 
     RefPtr<WebCore::HistoryItem> m_item;
 };

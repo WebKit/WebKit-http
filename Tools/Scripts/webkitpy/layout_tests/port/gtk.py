@@ -43,7 +43,7 @@ class GtkPort(Port):
         self._pulseaudio_sanitizer = PulseAudioSanitizer()
 
     def warn_if_bug_missing_in_test_expectations(self):
-        return True
+        return not self.get_option('webkit_test_runner')
 
     def _port_flag_for_scripts(self):
         return "--gtk"
@@ -110,6 +110,9 @@ class GtkPort(Port):
         search_paths.append(self.port_name)
         search_paths.extend(self.get_option("additional_platform_directory", []))
         return search_paths
+
+    def default_baseline_search_path(self):
+        return map(self._webkit_baseline_path, self._search_paths())
 
     def _port_specific_expectations_files(self):
         return [self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in reversed(self._search_paths())]

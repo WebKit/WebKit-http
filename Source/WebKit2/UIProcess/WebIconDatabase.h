@@ -29,6 +29,7 @@
 #include "APIObject.h"
 
 #include "Connection.h"
+#include "ShareableBitmap.h"
 #include "WebIconDatabaseClient.h"
 #include <WebCore/IconDatabaseClient.h>
 #include <WebCore/ImageSource.h>
@@ -53,10 +54,8 @@ namespace WebKit {
 
 class WebContext;
 
-class WebIconDatabase : public APIObject, public WebCore::IconDatabaseClient, private CoreIPC::MessageReceiver {
+class WebIconDatabase : public TypedAPIObject<APIObject::TypeIconDatabase>, public WebCore::IconDatabaseClient, private CoreIPC::MessageReceiver {
 public:
-    static const Type APIType = TypeIconDatabase;
-
     static PassRefPtr<WebIconDatabase> create(WebContext*);
     virtual ~WebIconDatabase();
 
@@ -68,7 +67,7 @@ public:
     void retainIconForPageURL(const String&);
     void releaseIconForPageURL(const String&);
     void setIconURLForPageURL(const String&, const String&);
-    void setIconDataForIconURL(const CoreIPC::DataReference&, const String&);
+    void setIconBitmapForIconURL(const ShareableBitmap::Handle&, const String&);
     
     void synchronousIconDataForPageURL(const String&, CoreIPC::DataReference&);
     void synchronousIconURLForPageURL(const String&, String&);
@@ -91,8 +90,6 @@ public:
 
 private:
     WebIconDatabase(WebContext*);
-
-    virtual Type type() const { return APIType; }
 
     // WebCore::IconDatabaseClient
     virtual void didImportIconURLForPageURL(const String&);

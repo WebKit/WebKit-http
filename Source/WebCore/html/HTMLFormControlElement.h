@@ -64,7 +64,7 @@ public:
     virtual void dispatchFormControlChangeEvent();
     virtual void dispatchFormControlInputEvent();
 
-    virtual bool disabled() const;
+    virtual bool isDisabledFormControl() const OVERRIDE;
 
     virtual bool isFocusable() const;
     virtual bool isEnumeratable() const { return false; }
@@ -74,7 +74,6 @@ public:
     const AtomicString& type() const { return formControlType(); }
 
     virtual const AtomicString& formControlType() const OVERRIDE = 0;
-    virtual bool isEnabledFormControl() const { return !disabled(); }
 
     virtual bool canTriggerImplicitSubmission() const { return false; }
 
@@ -94,8 +93,8 @@ public:
     void setNeedsValidityCheck();
     virtual void setCustomValidity(const String&) OVERRIDE;
 
-    bool readOnly() const { return m_readOnly; }
-    bool isDisabledOrReadOnly() const { return disabled() || m_readOnly; }
+    bool isReadOnly() const { return m_isReadOnly; }
+    bool isDisabledOrReadOnly() const { return isDisabledFormControl() || m_isReadOnly; }
 
     bool hasAutofocused() { return m_hasAutofocused; }
     void setAutofocused() { m_hasAutofocused = true; }
@@ -148,7 +147,7 @@ private:
 
     OwnPtr<ValidationMessage> m_validationMessage;
     bool m_disabled : 1;
-    bool m_readOnly : 1;
+    bool m_isReadOnly : 1;
     bool m_isRequired : 1;
     bool m_valueMatchesRenderer : 1;
 

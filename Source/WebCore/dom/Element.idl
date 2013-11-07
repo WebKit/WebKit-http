@@ -21,8 +21,6 @@
 [
     JSGenerateToNativeObject,
     JSInlineGetOwnPropertySlot,
-    V8CustomToJSObject,
-    V8SkipVTableValidation
 ] interface Element : Node {
 
     // DOM Level 1 Core
@@ -75,13 +73,13 @@
     readonly attribute long offsetTop;
     readonly attribute long offsetWidth;
     readonly attribute long offsetHeight;
-    readonly attribute Element offsetParent;
+    [ImplementedAs=bindingsOffsetParent] readonly attribute Element offsetParent;
     readonly attribute long clientLeft;
     readonly attribute long clientTop;
     readonly attribute long clientWidth;
     readonly attribute long clientHeight;
-             attribute long scrollLeft;
-             attribute long scrollTop;
+    attribute long scrollLeft;
+    attribute long scrollTop;
     readonly attribute long scrollWidth;
     readonly attribute long scrollHeight;
 
@@ -124,9 +122,10 @@
 
     // ShadowAware API
 #if defined(ENABLE_SHADOW_DOM) && ENABLE_SHADOW_DOM && defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [Reflect=pseudo, V8EnabledAtRuntime=shadowDOM, ImplementedAs=pseudo] attribute DOMString webkitPseudo;
-    [V8EnabledAtRuntime=shadowDOM, ImplementedAs=createShadowRoot] ShadowRoot webkitCreateShadowRoot() raises(DOMException);
-    [V8EnabledAtRuntime=shadowDOM, ImplementedAs=shadowRoot] readonly attribute ShadowRoot webkitShadowRoot;
+    [Reflect=pseudo, ImplementedAs=pseudo] attribute DOMString webkitPseudo;
+    [ImplementedAs=createShadowRoot] ShadowRoot webkitCreateShadowRoot() raises(DOMException);
+    [ImplementedAs=shadowRoot] readonly attribute ShadowRoot webkitShadowRoot;
+    [ImplementedAs=insertionParentForBinding] readonly attribute Node webkitInsertionParent;
 #endif
 
     // DOM 4
@@ -147,17 +146,17 @@
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     // Mozilla version
     const unsigned short ALLOW_KEYBOARD_INPUT = 1;
-    [V8EnabledAtRuntime] void webkitRequestFullScreen(in [Optional=DefaultIsUndefined] unsigned short flags);
+    void webkitRequestFullScreen(in [Optional=DefaultIsUndefined] unsigned short flags);
 
     // W3C version
-    [V8EnabledAtRuntime] void webkitRequestFullscreen();
+    void webkitRequestFullscreen();
 #endif
 
     [Conditional=POINTER_LOCK] void webkitRequestPointerLock();
 
     // CSS Regions API
-    [Conditional=CSS_REGIONS, V8EnabledAtRuntime=cssRegions] readonly attribute DOMString webkitRegionOverset;
-    [Conditional=CSS_REGIONS, V8EnabledAtRuntime=cssRegions] sequence<Range> webkitGetRegionFlowRanges();
+    [Conditional=CSS_REGIONS] readonly attribute DOMString webkitRegionOverset;
+    [Conditional=CSS_REGIONS] sequence<Range> webkitGetRegionFlowRanges();
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
     // Event handler DOM attributes
@@ -225,10 +224,10 @@
     [NotEnumerable] attribute EventListener onreset;
     [NotEnumerable] attribute EventListener onsearch;
     [NotEnumerable] attribute EventListener onselectstart;
-    [NotEnumerable,Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] attribute EventListener ontouchstart;
-    [NotEnumerable,Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] attribute EventListener ontouchmove;
-    [NotEnumerable,Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] attribute EventListener ontouchend;
-    [NotEnumerable,Conditional=TOUCH_EVENTS,V8EnabledAtRuntime=touch] attribute EventListener ontouchcancel;
+    [NotEnumerable,Conditional=TOUCH_EVENTS] attribute EventListener ontouchstart;
+    [NotEnumerable,Conditional=TOUCH_EVENTS] attribute EventListener ontouchmove;
+    [NotEnumerable,Conditional=TOUCH_EVENTS] attribute EventListener ontouchend;
+    [NotEnumerable,Conditional=TOUCH_EVENTS] attribute EventListener ontouchcancel;
     [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventListener onwebkitfullscreenchange;
     [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventListener onwebkitfullscreenerror;
 #endif

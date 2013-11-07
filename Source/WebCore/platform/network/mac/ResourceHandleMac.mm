@@ -44,82 +44,24 @@
 #import "Page.h"
 #import "ResourceError.h"
 #import "ResourceResponse.h"
-#import "SchedulePair.h"
 #import "Settings.h"
 #import "SharedBuffer.h"
 #import "SubresourceLoader.h"
+#import "WebCoreResourceHandleAsDelegate.h"
+#import "WebCoreResourceHandleAsOperationQueueDelegate.h"
+#import "SynchronousLoaderClient.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreURLResponse.h"
+#import <wtf/SchedulePair.h>
 #import <wtf/UnusedParam.h>
 #import <wtf/text/Base64.h>
 #import <wtf/text/CString.h>
 
 using namespace WebCore;
 
-@interface WebCoreResourceHandleAsDelegate : NSObject <NSURLConnectionDelegate> {
-    ResourceHandle* m_handle;
-}
-- (id)initWithHandle:(ResourceHandle*)handle;
-- (void)detachHandle;
-@end
-
-// WebCoreNSURLConnectionDelegateProxy exists so that we can cast m_proxy to it in order
-// to disambiguate the argument type in the -setDelegate: call.  This avoids a spurious
-// warning that the compiler would otherwise emit.
-@interface WebCoreNSURLConnectionDelegateProxy : NSObject <NSURLConnectionDelegate>
-- (void)setDelegate:(id<NSURLConnectionDelegate>)delegate;
-@end
-
 @interface NSURLConnection (Details)
 -(id)_initWithRequest:(NSURLRequest *)request delegate:(id)delegate usesCache:(BOOL)usesCacheFlag maxContentLength:(long long)maxContentLength startImmediately:(BOOL)startImmediately connectionProperties:(NSDictionary *)connectionProperties;
 @end
-
-@interface NSURLRequest (Details)
-- (id)_propertyForKey:(NSString *)key;
-@end
-
-class WebCoreSynchronousLoaderClient : public ResourceHandleClient {
-public:
-    static PassOwnPtr<WebCoreSynchronousLoaderClient> create()
-    {
-        return adoptPtr(new WebCoreSynchronousLoaderClient);
-    }
-
-    virtual ~WebCoreSynchronousLoaderClient();
-
-    void setAllowStoredCredentials(bool allow) { m_allowStoredCredentials = allow; }
-    NSURLResponse *response() { return m_response; }
-    NSMutableData *data() { return m_data; }
-    NSError *error() { return m_error; }
-    bool isDone() { return m_isDone; }
-
-private:
-    WebCoreSynchronousLoaderClient()
-        : m_allowStoredCredentials(false)
-        , m_response(0)
-        , m_data(0)
-        , m_error(0)
-        , m_isDone(false)
-    {
-    }
-
-    virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse& /*redirectResponse*/);
-    virtual bool shouldUseCredentialStorage(ResourceHandle*);
-    virtual void didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge&);
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int /*encodedDataLength*/);
-    virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/);
-    virtual void didFail(ResourceHandle*, const ResourceError&);
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    virtual bool canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace&);
-#endif
-
-    bool m_allowStoredCredentials;
-    NSURLResponse *m_response;
-    NSMutableData *m_data;
-    NSError *m_error;
-    bool m_isDone;
-};
 
 namespace WebCore {
 
@@ -128,6 +70,17 @@ static void applyBasicAuthorizationHeader(ResourceRequest& request, const Creden
     String authenticationHeader = "Basic " + base64Encode(String(credential.user() + ":" + credential.password()).utf8());
     request.clearHTTPAuthorization(); // FIXME: Should addHTTPHeaderField be smart enough to not build comma-separated lists in headers like Authorization?
     request.addHTTPHeaderField("Authorization", authenticationHeader);
+}
+
+static NSOperationQueue *operationQueueForAsyncClients()
+{
+    static NSOperationQueue *queue;
+    if (!queue) {
+        queue = [[NSOperationQueue alloc] init];
+        // Default concurrent operation count depends on current system workload, but delegate methods are mostly idling in IPC, so we can run as many as needed.
+        [queue setMaxConcurrentOperationCount:NSIntegerMax];
+    }
+    return queue;
 }
 
 ResourceHandleInternal::~ResourceHandleInternal()
@@ -211,16 +164,13 @@ bool ResourceHandle::start()
 
     d->m_storageSession = d->m_context->storageSession().platformSession();
 
-    ASSERT(!d->m_proxy);
-    d->m_proxy.adoptNS(wkCreateNSURLConnectionDelegateProxy());
-    [static_cast<WebCoreNSURLConnectionDelegateProxy*>(d->m_proxy.get()) setDelegate:ResourceHandle::delegate()];
-
+    // FIXME: Do not use the sync version of shouldUseCredentialStorage when the client returns true from usesAsyncCallbacks.
     bool shouldUseCredentialStorage = !client() || client()->shouldUseCredentialStorage(this);
 
     d->m_needsSiteSpecificQuirks = d->m_context->needsSiteSpecificQuirks();
 
     createNSURLConnection(
-        d->m_proxy.get(),
+        ResourceHandle::delegate(),
         shouldUseCredentialStorage,
         d->m_shouldContentSniff || d->m_context->localFileContentSniffingEnabled());
 
@@ -235,9 +185,9 @@ bool ResourceHandle::start()
         }
     }
 
-    if (NSOperationQueue *operationQueue = d->m_context->scheduledOperationQueue()) {
+    if (client() && client()->usesAsyncCallbacks()) {
         ASSERT(!scheduled);
-        [connection() setDelegateQueue:operationQueue];
+        [connection() setDelegateQueue:operationQueueForAsyncClients()];
         scheduled = true;
     }
 
@@ -297,10 +247,12 @@ void ResourceHandle::unschedule(SchedulePair* pair)
         [d->m_connection.get() unscheduleFromRunLoop:runLoop forMode:(NSString *)pair->mode()];
 }
 
-WebCoreResourceHandleAsDelegate *ResourceHandle::delegate()
+id ResourceHandle::delegate()
 {
     if (!d->m_delegate) {
-        WebCoreResourceHandleAsDelegate *delegate = [[WebCoreResourceHandleAsDelegate alloc] initWithHandle:this];
+        id <NSURLConnectionDelegate> delegate = (client() && client()->usesAsyncCallbacks()) ?
+            [[WebCoreResourceHandleAsOperationQueueDelegate alloc] initWithHandle:this]
+          : [[WebCoreResourceHandleAsDelegate alloc] initWithHandle:this];
         d->m_delegate = delegate;
         [delegate release];
     }
@@ -311,18 +263,8 @@ void ResourceHandle::releaseDelegate()
 {
     if (!d->m_delegate)
         return;
-    if (d->m_proxy)
-        [d->m_proxy.get() setDelegate:nil];
     [d->m_delegate.get() detachHandle];
     d->m_delegate = nil;
-}
-
-id ResourceHandle::releaseProxy()
-{
-    id proxy = [[d->m_proxy.get() retain] autorelease];
-    d->m_proxy = nil;
-    [proxy setDelegate:nil];
-    return proxy;
 }
 
 NSURLConnection *ResourceHandle::connection() const
@@ -344,13 +286,9 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
 {
     LOG(Network, "ResourceHandle::platformLoadResourceSynchronously:%@ allowStoredCredentials:%u", request.nsURLRequest(DoNotUpdateHTTPBody), storedCredentials);
 
-    NSError *nsError = nil;
-    NSURLResponse *nsURLResponse = nil;
-    NSData *result = nil;
-
     ASSERT(!request.isEmpty());
     
-    OwnPtr<WebCoreSynchronousLoaderClient> client = WebCoreSynchronousLoaderClient::create();
+    OwnPtr<SynchronousLoaderClient> client = SynchronousLoaderClient::create();
     client->setAllowStoredCredentials(storedCredentials == AllowStoredCredentials);
 
     RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, client.get(), false /*defersLoading*/, true /*shouldContentSniff*/));
@@ -363,7 +301,7 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     }
 
     handle->createNSURLConnection(
-        handle->delegate(), // A synchronous request cannot turn into a download, so there is no need to proxy the delegate.
+        handle->delegate(),
         storedCredentials == AllowStoredCredentials,
         handle->shouldContentSniff() || context->localFileContentSniffingEnabled());
 
@@ -373,38 +311,53 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     while (!client->isDone())
         [[NSRunLoop currentRunLoop] runMode:(NSString *)synchronousLoadRunLoopMode() beforeDate:[NSDate distantFuture]];
 
-    result = client->data();
-    nsURLResponse = client->response();
-    nsError = client->error();
+    error = client->error();
     
     [handle->connection() cancel];
 
-
-    if (!nsError)
-        response = nsURLResponse;
+    if (error.isNull())
+        response = client->response();
     else {
         response = ResourceResponse(request.url(), String(), 0, String(), String());
-        if ([nsError domain] == NSURLErrorDomain)
-            switch ([nsError code]) {
-                case NSURLErrorUserCancelledAuthentication:
-                    // FIXME: we should really return the actual HTTP response, but sendSynchronousRequest doesn't provide us with one.
-                    response.setHTTPStatusCode(401);
-                    break;
-                default:
-                    response.setHTTPStatusCode([nsError code]);
+        if (error.domain() == String(NSURLErrorDomain))
+            switch (error.errorCode()) {
+            case NSURLErrorUserCancelledAuthentication:
+                // FIXME: we should really return the actual HTTP response, but sendSynchronousRequest doesn't provide us with one.
+                response.setHTTPStatusCode(401);
+                break;
+            default:
+                response.setHTTPStatusCode(error.errorCode());
             }
         else
             response.setHTTPStatusCode(404);
     }
-    
-    data.resize([result length]);
-    memcpy(data.data(), [result bytes], [result length]);
-    
-    error = nsError;
+
+    data.swap(client->mutableData());
 }
 
 void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
+    ASSERT(!redirectResponse.isNull());
+
+    if (redirectResponse.httpStatusCode() == 307) {
+        String lastHTTPMethod = d->m_lastHTTPMethod;
+        if (!equalIgnoringCase(lastHTTPMethod, request.httpMethod())) {
+            request.setHTTPMethod(lastHTTPMethod);
+    
+            FormData* body = d->m_firstRequest.httpBody();
+            if (!equalIgnoringCase(lastHTTPMethod, "GET") && body && !body->isEmpty())
+                request.setHTTPBody(body);
+
+            String originalContentType = d->m_firstRequest.httpContentType();
+            if (!originalContentType.isEmpty())
+                request.setHTTPHeaderField("Content-Type", originalContentType);
+        }
+    }
+
+    // Should not set Referer after a redirect from a secure resource to non-secure one.
+    if (!request.url().protocolIs("https") && protocolIs(request.httpReferrer(), "https") && d->m_context->shouldClearReferrerOnHTTPSToHTTPRedirect())
+        request.clearHTTPReferrer();
+
     const KURL& url = request.url();
     d->m_user = url.user();
     d->m_pass = url.pass();
@@ -430,20 +383,56 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
         }
     }
 
-    RefPtr<ResourceHandle> protect(this);
-    client()->willSendRequest(this, request, redirectResponse);
+    if (client()->usesAsyncCallbacks()) {
+        client()->willSendRequestAsync(this, request, redirectResponse);
+    } else {
+        RefPtr<ResourceHandle> protect(this);
+        client()->willSendRequest(this, request, redirectResponse);
+
+        // Client call may not preserve the session, especially if the request is sent over IPC.
+        if (!request.isNull())
+            request.setStorageSession(d->m_storageSession.get());
+    }
+}
+
+void ResourceHandle::continueWillSendRequest(const ResourceRequest& request)
+{
+    ASSERT(client());
+    ASSERT(client()->usesAsyncCallbacks());
 
     // Client call may not preserve the session, especially if the request is sent over IPC.
-    if (!request.isNull())
-        request.setStorageSession(d->m_storageSession.get());
+    ResourceRequest newRequest = request;
+    if (!newRequest.isNull())
+        newRequest.setStorageSession(d->m_storageSession.get());
+    [(id)delegate() continueWillSendRequest:newRequest.nsURLRequest(UpdateHTTPBody)];
+}
+
+void ResourceHandle::continueDidReceiveResponse()
+{
+    ASSERT(client());
+    ASSERT(client()->usesAsyncCallbacks());
+
+    [delegate() continueDidReceiveResponse];
 }
 
 bool ResourceHandle::shouldUseCredentialStorage()
 {
-    if (client())
-        return client()->shouldUseCredentialStorage(this);
+    if (client()->usesAsyncCallbacks()) {
+        if (client())
+            client()->shouldUseCredentialStorageAsync(this);
+        else
+            continueShouldUseCredentialStorage(false);
+        return false; // Ignored by caller.
+    } else
+        return client() && client()->shouldUseCredentialStorage(this);
+}
 
-    return false;
+void ResourceHandle::continueShouldUseCredentialStorage(bool useCredentialStorage)
+{
+    ASSERT(client());
+    ASSERT(client()->usesAsyncCallbacks());
+
+    [(id)delegate() continueShouldUseCredentialStorage:useCredentialStorage];
 }
 
 void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
@@ -454,7 +443,6 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
     // we make sure that is actually present
     ASSERT(challenge.nsURLAuthenticationChallenge());
 
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // Proxy authentication is handled by CFNetwork internally. We can get here if the user cancels
     // CFNetwork authentication dialog, and we shouldn't ask the client to display another one in that case.
     if (challenge.protectionSpace().isProxy()) {
@@ -462,7 +450,6 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
         [challenge.sender() continueWithoutCredentialForAuthenticationChallenge:challenge.nsURLAuthenticationChallenge()];
         return;
     }
-#endif
 
     if (!d->m_user.isNull() && !d->m_pass.isNull()) {
         NSURLCredential *credential = [[NSURLCredential alloc] initWithUser:d->m_user
@@ -478,6 +465,7 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
         return;
     }
 
+    // FIXME: Do not use the sync version of shouldUseCredentialStorage when the client returns true from usesAsyncCallbacks.
     if (!client() || client()->shouldUseCredentialStorage(this)) {
         if (!d->m_initialCredential.isEmpty() || challenge.previousFailureCount()) {
             // The stored credential wasn't accepted, stop using it.
@@ -524,15 +512,29 @@ void ResourceHandle::didCancelAuthenticationChallenge(const AuthenticationChalle
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 bool ResourceHandle::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
 {
-    if (client())
-        return client()->canAuthenticateAgainstProtectionSpace(this, protectionSpace);
-        
-    return false;
+    if (client()->usesAsyncCallbacks()) {
+        if (client())
+            client()->canAuthenticateAgainstProtectionSpaceAsync(this, protectionSpace);
+        else
+            continueCanAuthenticateAgainstProtectionSpace(false);
+        return false; // Ignored by caller.
+    } else
+        return client() && client()->canAuthenticateAgainstProtectionSpace(this, protectionSpace);
+}
+
+void ResourceHandle::continueCanAuthenticateAgainstProtectionSpace(bool result)
+{
+    ASSERT(client());
+    ASSERT(client()->usesAsyncCallbacks());
+
+    [(id)delegate() continueCanAuthenticateAgainstProtectionSpace:result];
 }
 #endif
 
 void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
 {
+    LOG(Network, "Handle %p receivedCredential", this);
+
     ASSERT(!challenge.isNull());
     if (challenge != d->m_currentWebChallenge)
         return;
@@ -561,6 +563,8 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
 {
+    LOG(Network, "Handle %p receivedRequestToContinueWithoutCredential", this);
+
     ASSERT(!challenge.isNull());
     if (challenge != d->m_currentWebChallenge)
         return;
@@ -572,6 +576,8 @@ void ResourceHandle::receivedRequestToContinueWithoutCredential(const Authentica
 
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challenge)
 {
+    LOG(Network, "Handle %p receivedCancellation", this);
+
     if (challenge != d->m_currentWebChallenge)
         return;
 
@@ -579,322 +585,15 @@ void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challen
         client()->receivedCancellation(this, challenge);
 }
 
+void ResourceHandle::continueWillCacheResponse(NSCachedURLResponse *response)
+{
+    ASSERT(client());
+    ASSERT(client()->usesAsyncCallbacks());
+
+    [(id)delegate() continueWillCacheResponse:response];
+}
+
+
 } // namespace WebCore
-
-@implementation WebCoreResourceHandleAsDelegate
-
-- (id)initWithHandle:(ResourceHandle*)handle
-{
-    self = [self init];
-    if (!self)
-        return nil;
-    m_handle = handle;
-    return self;
-}
-
-- (void)detachHandle
-{
-    m_handle = 0;
-}
-
-- (NSURLRequest *)connection:(NSURLConnection *)connection willSendRequest:(NSURLRequest *)newRequest redirectResponse:(NSURLResponse *)redirectResponse
-{
-    UNUSED_PARAM(connection);
-
-    // the willSendRequest call may cancel this load, in which case self could be deallocated
-    RetainPtr<WebCoreResourceHandleAsDelegate> protect(self);
-
-    if (!m_handle || !m_handle->client())
-        return nil;
-    
-    // See <rdar://problem/5380697> .  This is a workaround for a behavior change in CFNetwork where willSendRequest gets called more often.
-    if (!redirectResponse)
-        return newRequest;
-
-#if !LOG_DISABLED
-    if ([redirectResponse isKindOfClass:[NSHTTPURLResponse class]])
-        LOG(Network, "Handle %p delegate connection:%p willSendRequest:%@ redirectResponse:%d, Location:<%@>", m_handle, connection, [newRequest description], static_cast<int>([(id)redirectResponse statusCode]), [[(id)redirectResponse allHeaderFields] objectForKey:@"Location"]);
-    else
-        LOG(Network, "Handle %p delegate connection:%p willSendRequest:%@ redirectResponse:non-HTTP", m_handle, connection, [newRequest description]); 
-#endif
-
-    if ([redirectResponse isKindOfClass:[NSHTTPURLResponse class]] && [(NSHTTPURLResponse *)redirectResponse statusCode] == 307) {
-        String lastHTTPMethod = m_handle->lastHTTPMethod();
-        if (!equalIgnoringCase(lastHTTPMethod, String([newRequest HTTPMethod]))) {
-            NSMutableURLRequest *mutableRequest = [newRequest mutableCopy];
-            [mutableRequest setHTTPMethod:lastHTTPMethod];
-    
-            FormData* body = m_handle->firstRequest().httpBody();
-            if (!equalIgnoringCase(lastHTTPMethod, "GET") && body && !body->isEmpty())
-                WebCore::setHTTPBody(mutableRequest, body);
-
-            String originalContentType = m_handle->firstRequest().httpContentType();
-            if (!originalContentType.isEmpty())
-                [mutableRequest setValue:originalContentType forHTTPHeaderField:@"Content-Type"];
-
-            newRequest = [mutableRequest autorelease];
-        }
-    }
-
-    ResourceRequest request = newRequest;
-
-    // Should not set Referer after a redirect from a secure resource to non-secure one.
-    if (!request.url().protocolIs("https") && protocolIs(request.httpReferrer(), "https") && m_handle->context()->shouldClearReferrerOnHTTPSToHTTPRedirect())
-        request.clearHTTPReferrer();
-
-    m_handle->willSendRequest(request, redirectResponse);
-
-    return request.nsURLRequest(UpdateHTTPBody);
-}
-
-- (BOOL)connectionShouldUseCredentialStorage:(NSURLConnection *)connection
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connectionShouldUseCredentialStorage:%p", m_handle, connection);
-
-    if (!m_handle)
-        return NO;
-
-    return m_handle->shouldUseCredentialStorage();
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didReceiveAuthenticationChallenge:%p", m_handle, connection, challenge);
-
-    if (!m_handle) {
-        [[challenge sender] cancelAuthenticationChallenge:challenge];
-        return;
-    }
-    m_handle->didReceiveAuthenticationChallenge(core(challenge));
-}
-
-- (void)connection:(NSURLConnection *)connection didCancelAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didCancelAuthenticationChallenge:%p", m_handle, connection, challenge);
-
-    if (!m_handle)
-        return;
-    m_handle->didCancelAuthenticationChallenge(core(challenge));
-}
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-- (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace
-{
-#if LOG_DISABLED
-    UNUSED_PARAM(connection);
-#endif
-
-    LOG(Network, "Handle %p delegate connection:%p canAuthenticateAgainstProtectionSpace:%p", m_handle, connection, protectionSpace);
-
-    if (!m_handle)
-        return NO;
-
-    return m_handle->canAuthenticateAgainstProtectionSpace(core(protectionSpace));
-}
-#endif
-
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)r
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didReceiveResponse:%p (HTTP status %d, reported MIMEType '%s')", m_handle, connection, r, [r respondsToSelector:@selector(statusCode)] ? [(id)r statusCode] : 0, [[r MIMEType] UTF8String]);
-
-    if (!m_handle || !m_handle->client())
-        return;
-
-    // Avoid MIME type sniffing if the response comes back as 304 Not Modified.
-    int statusCode = [r respondsToSelector:@selector(statusCode)] ? [(id)r statusCode] : 0;
-    if (statusCode != 304)
-        adjustMIMETypeIfNecessary([r _CFURLResponse]);
-
-    if ([m_handle->firstRequest().nsURLRequest(DoNotUpdateHTTPBody) _propertyForKey:@"ForceHTMLMIMEType"])
-        [r _setMIMEType:@"text/html"];
-
-    m_handle->client()->didReceiveResponse(m_handle, r);
-}
-
-#if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
-- (void)connection:(NSURLConnection *)connection didReceiveDataArray:(NSArray *)dataArray
-{
-    UNUSED_PARAM(connection);
-    LOG(Network, "Handle %p delegate connection:%p didReceiveDataArray:%p arraySize:%d", m_handle, connection, dataArray, [dataArray count]);
-
-    if (!dataArray)
-        return;
-
-    if (!m_handle || !m_handle->client())
-        return;
-
-    m_handle->handleDataArray(reinterpret_cast<CFArrayRef>(dataArray));
-    // The call to didReceiveData above can cancel a load, and if so, the delegate (self) could have been deallocated by this point.
-}
-#endif
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data lengthReceived:(long long)lengthReceived
-{
-    UNUSED_PARAM(connection);
-    UNUSED_PARAM(lengthReceived);
-
-    LOG(Network, "Handle %p delegate connection:%p didReceiveData:%p lengthReceived:%lld", m_handle, connection, data, lengthReceived);
-
-    if (!m_handle || !m_handle->client())
-        return;
-    // FIXME: If we get more than 2B bytes in a single chunk, this code won't do the right thing.
-    // However, with today's computers and networking speeds, this won't happen in practice.
-    // Could be an issue with a giant local file.
-
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
-    // -1 means we do not provide any data about transfer size to inspector so it would use
-    // Content-Length headers or content size to show transfer size.
-    m_handle->client()->didReceiveData(m_handle, (const char*)[data bytes], [data length], -1);
-}
-
-- (void)connection:(NSURLConnection *)connection willStopBufferingData:(NSData *)data
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p willStopBufferingData:%p", m_handle, connection, data);
-
-    if (!m_handle || !m_handle->client())
-        return;
-    // FIXME: If we get a resource with more than 2B bytes, this code won't do the right thing.
-    // However, with today's computers and networking speeds, this won't happen in practice.
-    // Could be an issue with a giant local file.
-    m_handle->client()->willStopBufferingData(m_handle, (const char*)[data bytes], static_cast<int>([data length]));
-}
-
-- (void)connection:(NSURLConnection *)connection didSendBodyData:(NSInteger)bytesWritten totalBytesWritten:(NSInteger)totalBytesWritten totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite
-{
-    UNUSED_PARAM(connection);
-    UNUSED_PARAM(bytesWritten);
-
-    LOG(Network, "Handle %p delegate connection:%p didSendBodyData:%d totalBytesWritten:%d totalBytesExpectedToWrite:%d", m_handle, connection, bytesWritten, totalBytesWritten, totalBytesExpectedToWrite);
-
-    if (!m_handle || !m_handle->client())
-        return;
-    m_handle->client()->didSendData(m_handle, totalBytesWritten, totalBytesExpectedToWrite);
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connectionDidFinishLoading:%p", m_handle, connection);
-
-    if (!m_handle || !m_handle->client())
-        return;
-
-    m_handle->client()->didFinishLoading(m_handle, 0);
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
-{
-    UNUSED_PARAM(connection);
-
-    LOG(Network, "Handle %p delegate connection:%p didFailWithError:%@", m_handle, connection, error);
-
-    if (!m_handle || !m_handle->client())
-        return;
-
-    m_handle->client()->didFail(m_handle, error);
-}
-
-
-- (NSCachedURLResponse *)connection:(NSURLConnection *)connection willCacheResponse:(NSCachedURLResponse *)cachedResponse
-{
-    LOG(Network, "Handle %p delegate connection:%p willCacheResponse:%p", m_handle, connection, cachedResponse);
-
-    UNUSED_PARAM(connection);
-
-    if (!m_handle || !m_handle->client())
-        return nil;
-
-    // Workaround for <rdar://problem/6300990> Caching does not respect Vary HTTP header.
-    // FIXME: WebCore cache has issues with Vary, too (bug 58797, bug 71509).
-    if ([[cachedResponse response] isKindOfClass:[NSHTTPURLResponse class]]
-        && [[(NSHTTPURLResponse *)[cachedResponse response] allHeaderFields] objectForKey:@"Vary"])
-        return nil;
-
-    NSCachedURLResponse *newResponse = m_handle->client()->willCacheResponse(m_handle, cachedResponse);
-    if (newResponse != cachedResponse)
-        return newResponse;
-    
-    return newResponse;
-}
-
-@end
-
-
-WebCoreSynchronousLoaderClient::~WebCoreSynchronousLoaderClient()
-{
-    [m_response release];
-    [m_data release];
-    [m_error release];
-}
-
-void WebCoreSynchronousLoaderClient::willSendRequest(ResourceHandle* handle, ResourceRequest& request, const ResourceResponse& /*redirectResponse*/)
-{
-    // FIXME: This needs to be fixed to follow the redirect correctly even for cross-domain requests.
-    if (!protocolHostAndPortAreEqual(handle->firstRequest().url(), request.url())) {
-        ASSERT(!m_error);
-        m_error = [[NSError alloc] initWithDomain:NSURLErrorDomain code:NSURLErrorBadServerResponse userInfo:nil];
-        m_isDone = true;
-        request = 0;
-        return;
-    }
-}
-
-bool WebCoreSynchronousLoaderClient::shouldUseCredentialStorage(ResourceHandle*)
-{
-    // FIXME: We should ask FrameLoaderClient whether using credential storage is globally forbidden.
-    return m_allowStoredCredentials;
-}
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-bool WebCoreSynchronousLoaderClient::canAuthenticateAgainstProtectionSpace(ResourceHandle*, const ProtectionSpace&)
-{
-    // FIXME: We should ask FrameLoaderClient. <http://webkit.org/b/65196>
-    return true;
-}
-#endif
-
-void WebCoreSynchronousLoaderClient::didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge& challenge)
-{
-    // FIXME: The user should be asked for credentials, as in async case.
-    [challenge.sender() continueWithoutCredentialForAuthenticationChallenge:challenge.nsURLAuthenticationChallenge()];
-}
-
-void WebCoreSynchronousLoaderClient::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
-{
-    [m_response release];
-    m_response = [response.nsURLResponse() copy];
-}
-
-void WebCoreSynchronousLoaderClient::didReceiveData(ResourceHandle*, const char* data, int length, int /*encodedDataLength*/)
-{
-    if (!m_data)
-        m_data = [[NSMutableData alloc] init];
-    [m_data appendBytes:data length:length];
-}
-
-void WebCoreSynchronousLoaderClient::didFinishLoading(ResourceHandle*, double)
-{
-    m_isDone = true;
-}
-
-void WebCoreSynchronousLoaderClient::didFail(ResourceHandle*, const ResourceError& error)
-{
-    ASSERT(!m_error);
-
-    m_error = [error copy];
-    m_isDone = true;
-}
-
 
 #endif // !USE(CFNETWORK)

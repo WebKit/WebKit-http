@@ -68,7 +68,6 @@ showRepaintCounter initial=false, setNeedsStyleRecalcInAllFrames=1
 needsKeyboardEventDisambiguationQuirks initial=false
 
 treatsAnyTextCSSLinkAsStylesheet initial=false
-needsLeopardMailQuirks initial=false
 shrinksStandaloneImagesToFit initial=true
 pageCacheSupportsPlugins initial=false
 showsURLsInToolTips initial=false
@@ -76,6 +75,7 @@ showsToolTipOverTruncatedText initial=false
 forceFTPDirectoryListings initial=false
 developerExtrasEnabled initial=false
 javaScriptExperimentsEnabled initial=false
+scriptMarkupEnabled initial=true
 needsSiteSpecificQuirks initial=false
 webArchiveDebugModeEnabled initial=false, conditional=WEB_ARCHIVE
 localFileContentSniffingEnabled initial=false
@@ -113,7 +113,6 @@ webGLErrorsToConsoleEnabled initial=true
 openGLMultisamplingEnabled initial=true
 privilegedWebGLExtensionsEnabled initial=false
 accelerated2dCanvasEnabled initial=false
-deferred2dCanvasEnabled initial=false
 antialiased2dCanvasEnabled initial=true
 loadDeferringEnabled initial=true
 webAudioEnabled initial=false
@@ -145,6 +144,7 @@ shouldDisplaySubtitles initial=false, conditional=VIDEO_TRACK
 shouldDisplayCaptions initial=false, conditional=VIDEO_TRACK
 shouldDisplayTextDescriptions initial=false, conditional=VIDEO_TRACK
 scrollingCoordinatorEnabled initial=false
+scrollAnimatorEnabled initial=true, conditional=SMOOTH_SCROLLING
 notificationsEnabled initial=true
 
 # Some apps needs isLoadingInAPISense to account for active subresource loaders.
@@ -181,6 +181,10 @@ diagnosticLoggingEnabled initial=false
 applyDeviceScaleFactorInCompositor initial=true
 applyPageScaleFactorInCompositor initial=false
 plugInSnapshottingEnabled initial=false
+snapshotAllPlugIns initial=false
+autostartOriginPlugInSnapshottingEnabled initial=true
+primaryPlugInSnapshotDetectionEnabled initial=true
+maximumPlugInSnapshotAttempts type=unsigned, initial=20
 frameFlatteningEnabled initial=false
 
 allowCustomScrollbarInMainFrame initial=true
@@ -195,4 +199,13 @@ unifiedTextCheckerEnabled initial=defaultUnifiedTextCheckerEnabled
 
 logsPageMessagesToSystemConsoleEnabled initial=false
 
-smartInsertDeleteEnabled initial=true
+backForwardCacheExpirationInterval type=double, initial=1800
+
+# Some apps could have a default video poster if it is not set.
+defaultVideoPosterURL type=String
+
+smartInsertDeleteEnabled initial=defaultSmartInsertDeleteEnabled
+selectTrailingWhitespaceEnabled initial=defaultSelectTrailingWhitespaceEnabled
+
+selectionIncludesAltImageText initial=false
+useLegacyBackgroundSizeShorthandBehavior initial=false

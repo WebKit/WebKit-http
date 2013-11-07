@@ -440,8 +440,8 @@ input[type="search"] {
 }
 
 input::-webkit-textfield-decoration-container {
-    display: -webkit-box;
-    -webkit-box-align: center;
+    display: -webkit-flex;
+    -webkit-align-items: center;
     -webkit-user-modify: read-only !important;
     content: none !important;
 }
@@ -453,7 +453,7 @@ input[type="search"]::-webkit-textfield-decoration-container {
 input::-webkit-clear-button {
     -webkit-appearance: searchfield-cancel-button;
     display: inline-block;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-modify: read-only !important;
     margin-left: 2px;
 }
@@ -461,28 +461,34 @@ input::-webkit-clear-button {
 input[type="search"]::-webkit-search-cancel-button {
     -webkit-appearance: searchfield-cancel-button;
     display: block;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-modify: read-only !important;
+    -webkit-align-self: flex-start;
+    margin: auto 0;
 }
 
 input[type="search"]::-webkit-search-decoration {
     -webkit-appearance: searchfield-decoration;
     display: block;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-modify: read-only !important;
+    -webkit-align-self: flex-start;
+    margin: auto 0;
 }
 
 input[type="search"]::-webkit-search-results-decoration {
     -webkit-appearance: searchfield-results-decoration;
     display: block;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-modify: read-only !important;
+    -webkit-align-self: flex-start;
+    margin: auto 0;
 }
 
 input[type="search"]::-webkit-search-results-button {
     -webkit-appearance: searchfield-results-button;
     display: block;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-modify: read-only !important;
 }
 
@@ -503,7 +509,7 @@ input[type="date"] {
     -webkit-padding-start: 1px;
 }
 #endif
-#if defined(ENABLE_INPUT_TYPE_DATETIME) && ENABLE_INPUT_TYPE_DATETIME
+#if defined(ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE) && ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE
 input[type="datetime"] {
     -webkit-align-items: center;
     display: -webkit-inline-flex;
@@ -558,7 +564,6 @@ input::-webkit-datetime-edit {
     -webkit-flex: 1;
     -webkit-user-modify: read-only !important;
     display: inline-block;
-    min-width: 0;
     overflow: hidden;
 }
 
@@ -644,7 +649,7 @@ input[type="date"] {
     width: 10em;
 }
 #endif
-#if defined(ENABLE_INPUT_TYPE_DATETIME) && ENABLE_INPUT_TYPE_DATETIME
+#if defined(ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE) && ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE
 input[type="datetime"] {
     -webkit-align-items: center;
     -webkit-appearance: menulist-button;
@@ -706,7 +711,7 @@ input::-webkit-inner-spin-button {
      * button in layout(). */
     height: 1.5em;
     vertical-align: top;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-select: none;
     -webkit-user-modify: read-only !important;
 }
@@ -716,8 +721,10 @@ input::-webkit-input-speech-button {
     -webkit-appearance: -webkit-input-speech-button;
     display: block;
     vertical-align: top;
-    -webkit-box-flex: 0;
+    -webkit-flex: none;
     -webkit-user-modify: read-only !important;
+    -webkit-align-self: flex-start;
+    margin: auto 0;
 }
 #endif
 
@@ -735,7 +742,7 @@ textarea {
     border: 1px solid;
     -webkit-rtl-ordering: logical;
     -webkit-user-select: text;
-    -webkit-box-orient: vertical;
+    -webkit-flex-direction: column;
     resize: auto;
     cursor: auto;
     padding: 2px;
@@ -769,7 +776,7 @@ input[type="hidden"], input[type="image"], input[type="file"] {
 }
 
 input[type="file"] {
-    -webkit-box-align: baseline;
+    -webkit-align-items: baseline;
     color: inherit;
     text-align: start !important;
 }
@@ -821,8 +828,6 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-container, input[type="range"]::-webkit-media-slider-container {
     -webkit-flex: 1;
-    min-width: 0;
-
     box-sizing: border-box;
     -webkit-user-modify: read-only !important;
     display: -webkit-flex;
@@ -831,7 +836,6 @@ input[type="range"]::-webkit-slider-container, input[type="range"]::-webkit-medi
 
 input[type="range"]::-webkit-slider-runnable-track {
     -webkit-flex: 1;
-    min-width: 0;
     -webkit-align-self: center;
 
     box-sizing: border-box;
@@ -884,7 +888,7 @@ input[type="color"] {
 }
 
 input[type="color"]::-webkit-color-swatch-wrapper {
-    display:-webkit-box;
+    display:-webkit-flex;
     padding: 4px 2px;
     box-sizing: border-box;
     -webkit-user-modify: read-only !important;
@@ -895,7 +899,7 @@ input[type="color"]::-webkit-color-swatch-wrapper {
 input[type="color"]::-webkit-color-swatch {
     background-color: #000000;
     border: 1px solid #777777;
-    -webkit-box-flex: 1;
+    -webkit-flex: 1;
     -webkit-user-modify: read-only !important;
 }
 
@@ -937,7 +941,7 @@ input::-webkit-calendar-picker-indicator:hover {
 select {
     -webkit-appearance: menulist;
     box-sizing: border-box;
-    -webkit-box-align: center;
+    -webkit-align-items: center;
     border: 1px solid;
     white-space: pre;
     -webkit-rtl-ordering: logical;
@@ -950,7 +954,7 @@ select[size],
 select[multiple],
 select[size][multiple] {
     -webkit-appearance: listbox;
-    -webkit-box-align: start;
+    -webkit-align-items: flex-start;
     border: 1px inset gray;
     border-radius: initial;
     white-space: initial;
@@ -959,7 +963,7 @@ select[size][multiple] {
 select[size="0"],
 select[size="1"] {
     -webkit-appearance: menulist;
-    -webkit-box-align: center;
+    -webkit-align-items: center;
     border: 1px solid;
     border-radius: 5px;
     white-space: pre;
@@ -992,7 +996,7 @@ output {
 }
 
 ::-webkit-validation-bubble-message {
-    display: -webkit-box;
+    display: -webkit-flex;
     position: relative;
     top: -4px;
     font: message-box;
@@ -1013,7 +1017,7 @@ output {
 }
 
 ::-webkit-validation-bubble-text-block {
-    -webkit-box-flex: 1;
+    -webkit-flex: 1;
     -webkit-user-modify: read-only !important;
 }
 

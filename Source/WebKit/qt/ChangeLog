@@ -1,3 +1,328 @@
+2013-04-09  Rafael Brandao  <rafael.lobo@openbossa.org>
+
+        [CoordinatedGraphics] serviceScriptedAnimations expects time in seconds
+        https://bugs.webkit.org/show_bug.cgi?id=112582
+
+        Reviewed by Andreas Kling.
+
+        We've been exposing different time unit for requestAnimationFrame because
+        of wrong conversion before serviceScriptedAnimations function calls.
+        Fixed it to use seconds instead of milliseconds.
+
+        * WebCoreSupport/ChromeClientQt.cpp: Remove unnecessary conversion.
+
+2013-04-08  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove HTML Notification
+        https://bugs.webkit.org/show_bug.cgi?id=114231
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::displayNotification):
+        (WebCore::NotificationPresenterClientQt::cancel):
+        (WebCore::NotificationPresenterClientQt::notificationClicked):
+        (WebCore::NotificationPresenterClientQt::removeReplacedNotificationFromQueue):
+        (WebCore::NotificationPresenterClientQt::dumpReplacedIdText):
+        (WebCore::NotificationPresenterClientQt::dumpShowText):
+
+2013-04-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Made USE(JSC) unconditional
+        https://bugs.webkit.org/show_bug.cgi?id=114058
+
+        Reviewed by Anders Carlsson.
+
+        * Api/qwebscriptworld.cpp:
+        (QWebScriptWorld::QWebScriptWorld):
+
+2013-04-04  Sze Howe Koh  <szehowe.koh@gmail.com>
+
+        [Qt] docs: Fix module name format
+        https://bugs.webkit.org/show_bug.cgi?id=113209
+
+        Reviewed by Jocelyn Turcotte.
+
+        Make QDoc-generated documentation follow the conventions at
+        http://qt-project.org/wiki/Spelling_Module_Names_in_Qt_Documentation
+
+        * Api/qwebdatabase.cpp:
+        * Api/qwebkitglobal.cpp:
+        * Api/qwebpluginfactory.cpp:
+        * Api/qwebsettings.cpp:
+        * WidgetApi/qgraphicswebview.cpp:
+        * WidgetApi/qwebframe.cpp:
+        * WidgetApi/qwebpage.cpp:
+        * WidgetApi/qwebview.cpp:
+        * docs/qtwebkit-bridge.qdoc:
+        * docs/qtwebkit-goes-mobile.qdoc:
+        * docs/qtwebkit.qdoc:
+
+2013-03-28  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        [Qt] Switch ContextMenu implementation to CROSS_PLATFORM_CONTEXT_MENU
+        https://bugs.webkit.org/show_bug.cgi?id=113535
+
+        Reviewed by Simon Hausmann.
+
+        Adjust ContextMenuClientQt and QWebPageAdapter to use CROSS_PLATFORM_CONTEXT_MENUS
+        USE flag by implementing customizeMenu() instead of getCustomMenuFromDefaultItems()
+        and by calling menu->items() instead of menu->platformDescription().
+
+        * WebCoreSupport/ContextMenuClientQt.cpp:
+        (WebCore::ContextMenuClientQt::customizeMenu):
+        * WebCoreSupport/ContextMenuClientQt.h:
+        (ContextMenuClientQt):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (descriptionForPlatformMenu):
+        (QWebPageAdapter::updatePositionDependentMenuActions):
+
+2013-03-27  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for dock-to-right of the Web Inspector in the Mac port.
+
+        Unfortunately this requires Safari changes, so it is disabled in the nightly builds.
+
+        https://webkit.org/b/113341
+        rdar://problem/10368152
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/InspectorClientQt.cpp:
+        (WebCore::InspectorFrontendClientQt::frontendLoaded):
+        (WebCore::InspectorFrontendClientQt::attachWindow):
+        (WebCore::InspectorFrontendClientQt::setAttachedWindowWidth):
+        * WebCoreSupport/InspectorClientQt.h:
+        (InspectorFrontendClientQt):
+
+2013-03-26  Hayato Ito  <hayato@chromium.org>
+
+        Allow ShadowContents in HitTests by default.
+        https://bugs.webkit.org/show_bug.cgi?id=113171
+
+        Reviewed by Dimitri Glazkov.
+
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameAdapter::hitTestContent):
+
+2013-03-26  Tony Chang  <tony@chromium.org>
+
+        Autogenerate the scrollAnimatorEnabled setting in Settings.in
+        https://bugs.webkit.org/show_bug.cgi?id=113253
+
+        Reviewed by James Robinson.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply): Update call to WebCore to use setScrollAnimatorEnabled(bool).
+
+2013-03-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Fix tst_QWebElement::render() API test
+        https://bugs.webkit.org/show_bug.cgi?id=65243
+
+        Reviewed by Jocelyn Turcotte.
+
+        Unmark the passing part of this testcase.
+
+        * tests/qwebelement/tst_qwebelement.cpp:
+        (tst_QWebElement::render):
+
+2013-03-19  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Enable kerning by default
+        https://bugs.webkit.org/show_bug.cgi?id=112704
+
+        Reviewed by Jocelyn Turcotte.
+
+        Enable default kerning when fast kerning is available.
+
+        To support layout tests that depend on kerning being off by default,
+        a method is added to DumpRenderTreeSupportQt to reset the default.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::resetDefaultTypesettingFeatures):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebKit::initializeWebKitQt):
+
+2013-03-19  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Support -webkit-font-smoothing
+        https://bugs.webkit.org/show_bug.cgi?id=106009
+
+        Reviewed by Jocelyn Turcotte.
+
+        Export an interface so DRT can also disable font-smoothing like WTR does.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setShouldUseFontSmoothing):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-03-15  Nate Chapin  <japhet@chromium.org>
+
+        Hide MainResourceLoader from the outside world
+        https://bugs.webkit.org/show_bug.cgi?id=109971
+
+        Reviewed by Adam Barth.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::convertMainResourceLoadToDownload):
+        * WebCoreSupport/FrameLoaderClientQt.h:
+        (FrameLoaderClientQt):
+
+2013-03-15  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112401
+
+        Reviewed by Stephen Chenney.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::redirectDataToPlugin):
+
+2013-03-15  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Build error with building with Qt 5.1
+        https://bugs.webkit.org/show_bug.cgi?id=112435
+
+        Reviewed by Noam Rosenthal.
+
+        QAccessibleWidget has moved to private.
+
+        * WidgetApi/qwebviewaccessible_p.h:
+
+2013-03-15  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Unreviewed trivial DRT ASSERT fix
+
+        r145805 erroneously added setController calls for device orientation/motion
+        mock clients. Those ASSERT, the controller ctor already calls setController
+        on the client.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::initializeWebCorePage):
+
+2013-03-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Add selectTrailingWhitespaceEnabled setting to WebCore::Page
+        https://bugs.webkit.org/show_bug.cgi?id=109404
+
+        Reviewed by Tony Chang.
+
+        Use new settings for smartInsertDeleteEnabled and
+        selectTrailingWhitespaceEnabled.
+
+        Remove code related to DRT as it is not needed anymore.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore::EditorClientQt::smartInsertDeleteEnabled):
+        (WebCore::EditorClientQt::toggleSmartInsertDelete):
+        (WebCore::EditorClientQt::isSelectTrailingWhitespaceEnabled):
+        (WebCore::EditorClientQt::EditorClientQt):
+        * WebCoreSupport/EditorClientQt.h:
+        (EditorClientQt):
+
+2013-03-14  Rik Cabanier  <cabanier@adobe.com>
+
+        [Qt][WK1] REGRESSION(r145784): Blend tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=112333
+
+        Reviewed by Ryosuke Niwa.
+
+        Added code to passed compositing prefence to WebCore.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+        (QWebSettings::QWebSettings):
+        * Api/qwebsettings.h:
+
+2013-03-14  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112296
+
+        Reviewed by Kentaro Hara.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::firstChild):
+        (QWebElement::lastChild):
+        (QWebElement::nextSibling):
+        (QWebElement::previousSibling):
+        (QWebElementCollection::at):
+        (QWebElementCollection::toList):
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebHitTestResultPrivate::elementForInnerNode):
+
+2013-03-14  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Improve the handling of mock geolocation, device orientation and motion clients
+
+        Reviewed by Tor Arne Vestbø.
+
+        The mock versions of these web facing features should be instantiated when
+        running in DumpRenderTree only. In order for them to work, no extra Qt modules
+        such as QtLocation are actually needed.
+
+        This patch decouples enabling device orientation/motion and geolocation from
+        the underlying Qt modules and makes them available in developer builds
+        (!production_build) and backed by mock backends when running in drt.
+
+        So if the Qt 5 modules are available, they'll be used (unless drtRun). For
+        developers the web facing features are always enabled (although requests will
+        time out) and the mock backends are enabled inside DRT, allowing for the layout
+        tests to run with less dependencies.
+
+        In addition this also enables the mock device motion client, which was
+        previously never instantiated.
+
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameAdapter::_q_orientationChanged):
+        * WebCoreSupport/QWebFrameAdapter.h:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::initializeWebCorePage):
+        * WebCoreSupport/QWebPageAdapter.h:
+        * WidgetApi/qwebframe.cpp:
+        (QWebFrame::QWebFrame):
+        * WidgetApi/qwebpage.cpp:
+        (QWebPage::setFeaturePermission):
+
+2013-03-13  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Port TestRunner::findString to shared interface
+        https://bugs.webkit.org/show_bug.cgi?id=112147
+
+        Reviewed by Jocelyn Turcotte.
+
+        Add new find options used by the DRT.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::findText):
+        * WebCoreSupport/QWebPageAdapter.h:
+        * WidgetApi/qwebpage.cpp:
+        * WidgetApi/qwebpage.h:
+
+2013-03-13  Pavel Feldman  <pfeldman@chromium.org>
+
+        Web Inspector: get rid of hiddenPanels filter
+        https://bugs.webkit.org/show_bug.cgi?id=112252
+
+        Reviewed by Vsevolod Vlasov.
+
+        * WebCoreSupport/InspectorClientQt.cpp:
+        (WebCore):
+        * WebCoreSupport/InspectorClientQt.h:
+        (InspectorFrontendClientQt):
+
 2013-03-11  Jochen Eisinger  <jochen@chromium.org>
 
         Rename DefinitelyProcessingUserGesture to DefinitelyProcessingNewUserGesture

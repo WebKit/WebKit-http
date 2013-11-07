@@ -31,6 +31,7 @@
 
 #include <wtf/DataLog.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/ProcessID.h>
 
 namespace WTF {
 
@@ -113,9 +114,9 @@ void MetaAllocatorHandle::shrink(size_t newSizeInBytes)
     m_sizeInBytes = newSizeInBytes;
 }
 
-MetaAllocator::MetaAllocator(size_t allocationGranule)
+MetaAllocator::MetaAllocator(size_t allocationGranule, size_t pageSize)
     : m_allocationGranule(allocationGranule)
-    , m_pageSize(pageSize())
+    , m_pageSize(pageSize)
     , m_bytesAllocated(0)
     , m_bytesReserved(0)
     , m_bytesCommitted(0)
@@ -449,8 +450,9 @@ void MetaAllocator::freeFreeSpaceNode(FreeSpaceNode* node)
 #if ENABLE(META_ALLOCATOR_PROFILE)
 void MetaAllocator::dumpProfile()
 {
-    dataLogF("%d: MetaAllocator(%p): num allocations = %u, num frees = %u, allocated = %lu, reserved = %lu, committed = %lu\n",
-            getpid(), this, m_numAllocations, m_numFrees, m_bytesAllocated, m_bytesReserved, m_bytesCommitted);
+    dataLogF(
+        "%d: MetaAllocator(%p): num allocations = %u, num frees = %u, allocated = %lu, reserved = %lu, committed = %lu\n",
+        getCurrentProcessID(), this, m_numAllocations, m_numFrees, m_bytesAllocated, m_bytesReserved, m_bytesCommitted);
 }
 #endif
 

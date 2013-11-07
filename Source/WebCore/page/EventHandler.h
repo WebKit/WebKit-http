@@ -131,8 +131,8 @@ public:
     void dispatchFakeMouseMoveEventSoonInQuad(const FloatQuad&);
 
     HitTestResult hitTestResultAtPoint(const LayoutPoint&,
-                                       HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active,
-                                       const LayoutSize& padding = LayoutSize());
+        HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent,
+        const LayoutSize& padding = LayoutSize());
 
     bool mousePressed() const { return m_mousePressed; }
     void setMousePressed(bool pressed) { m_mousePressed = pressed; }
@@ -147,6 +147,7 @@ public:
 #endif
 
     void scheduleHoverStateUpdate();
+    void scheduleCursorUpdate();
 
     void setResizingFrameSet(HTMLFrameSetElement*);
 
@@ -254,6 +255,7 @@ public:
 #endif
 
     bool useHandCursor(Node*, bool isOverLink, bool shiftKey);
+    void updateCursor();
 
 private:
 #if ENABLE(DRAG_SUPPORT)
@@ -280,8 +282,10 @@ private:
 #endif
     bool handleMouseReleaseEvent(const MouseEventWithHitTestResults&);
 
-    OptionalCursor selectCursor(const MouseEventWithHitTestResults&, Scrollbar*);
+    OptionalCursor selectCursor(const HitTestResult&, bool shiftKey);
+
     void hoverTimerFired(Timer<EventHandler>*);
+    void cursorUpdateTimerFired(Timer<EventHandler>*);
 
     bool logicalScrollOverflow(ScrollLogicalDirection, ScrollGranularity, Node* startingNode = 0);
     
@@ -298,7 +302,7 @@ private:
 
 #if ENABLE(TOUCH_EVENTS)
     bool dispatchSyntheticTouchEventIfEnabled(const PlatformMouseEvent&);
-    HitTestResult hitTestResultInFrame(Frame*, const LayoutPoint&, HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestResult hitTestResultInFrame(Frame*, const LayoutPoint&, HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
 #endif
 
     void invalidateClick();
@@ -416,6 +420,7 @@ private:
     bool m_panScrollButtonPressed;
 
     Timer<EventHandler> m_hoverTimer;
+    Timer<EventHandler> m_cursorUpdateTimer;
 
     OwnPtr<AutoscrollController> m_autoscrollController;
     bool m_mouseDownMayStartAutoscroll;

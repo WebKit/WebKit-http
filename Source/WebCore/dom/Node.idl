@@ -29,7 +29,6 @@
     JSGenerateToNativeObject,
     JSInlineGetOwnPropertySlot,
     ObjCPolymorphic,
-    V8DependentLifetime
 ] interface Node
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
     : Object, EventTarget
@@ -70,9 +69,9 @@
     [ObjCLegacyUnnamedParameters, Custom] Node replaceChild(in Node newChild,
                                                             in [CustomReturn] Node oldChild)
         raises(DOMException);
-    [Custom] Node               removeChild(in [CustomReturn] Node oldChild)
+    [Custom] Node removeChild(in [CustomReturn] Node oldChild)
         raises(DOMException);
-    [Custom] Node               appendChild(in [CustomReturn] Node newChild)
+    [Custom] Node appendChild(in [CustomReturn] Node newChild)
         raises(DOMException);
 
     boolean            hasChildNodes();

@@ -54,35 +54,13 @@
 namespace WebCore {
 
 Notification::Notification()
-    : ActiveDOMObject(0, this)
+    : ActiveDOMObject(0)
 {
 }
-
-#if ENABLE(LEGACY_NOTIFICATIONS)
-Notification::Notification(const KURL& url, ScriptExecutionContext* context, ExceptionCode& ec, PassRefPtr<NotificationCenter> provider)
-    : ActiveDOMObject(context, this)
-    , m_isHTML(true)
-    , m_state(Idle)
-    , m_notificationCenter(provider)
-{
-    if (m_notificationCenter->checkPermission() != NotificationClient::PermissionAllowed) {
-        ec = SECURITY_ERR;
-        return;
-    }
-
-    if (url.isEmpty() || !url.isValid()) {
-        ec = SYNTAX_ERR;
-        return;
-    }
-
-    m_notificationURL = url;
-}
-#endif
 
 #if ENABLE(LEGACY_NOTIFICATIONS)
 Notification::Notification(const String& title, const String& body, const String& iconURI, ScriptExecutionContext* context, ExceptionCode& ec, PassRefPtr<NotificationCenter> provider)
-    : ActiveDOMObject(context, this)
-    , m_isHTML(false)
+    : ActiveDOMObject(context)
     , m_title(title)
     , m_body(body)
     , m_state(Idle)
@@ -103,14 +81,12 @@ Notification::Notification(const String& title, const String& body, const String
 
 #if ENABLE(NOTIFICATIONS)
 Notification::Notification(ScriptExecutionContext* context, const String& title)
-    : ActiveDOMObject(context, this)
-    , m_isHTML(false)
+    : ActiveDOMObject(context)
     , m_title(title)
     , m_state(Idle)
     , m_taskTimer(adoptPtr(new Timer<Notification>(this, &Notification::taskTimerFired)))
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(context->isDocument());
-    m_notificationCenter = DOMWindowNotifications::webkitNotifications(static_cast<Document*>(context)->domWindow());
+    m_notificationCenter = DOMWindowNotifications::webkitNotifications(toDocument(context)->domWindow());
     
     ASSERT(m_notificationCenter->client());
     m_taskTimer->startOneShot(0);
@@ -122,13 +98,6 @@ Notification::~Notification()
 }
 
 #if ENABLE(LEGACY_NOTIFICATIONS)
-PassRefPtr<Notification> Notification::create(const KURL& url, ScriptExecutionContext* context, ExceptionCode& ec, PassRefPtr<NotificationCenter> provider) 
-{ 
-    RefPtr<Notification> notification(adoptRef(new Notification(url, context, ec, provider)));
-    notification->suspendIfNeeded();
-    return notification.release();
-}
-
 PassRefPtr<Notification> Notification::create(const String& title, const String& body, const String& iconURI, ScriptExecutionContext* context, ExceptionCode& ec, PassRefPtr<NotificationCenter> provider) 
 { 
     RefPtr<Notification> notification(adoptRef(new Notification(title, body, iconURI, context, ec, provider)));
@@ -171,9 +140,9 @@ void Notification::show()
     // prevent double-showing
     if (m_state == Idle && m_notificationCenter->client()) {
 #if ENABLE(NOTIFICATIONS)
-        if (!static_cast<Document*>(scriptExecutionContext())->page())
+        if (!toDocument(scriptExecutionContext())->page())
             return;
-        if (NotificationController::from(static_cast<Document*>(scriptExecutionContext())->page())->client()->checkPermission(scriptExecutionContext()) != NotificationClient::PermissionAllowed) {
+        if (NotificationController::from(toDocument(scriptExecutionContext())->page())->client()->checkPermission(scriptExecutionContext()) != NotificationClient::PermissionAllowed) {
             dispatchErrorEvent();
             return;
         }
@@ -259,9 +228,8 @@ void Notification::taskTimerFired(Timer<Notification>* timer)
 #if ENABLE(NOTIFICATIONS)
 const String& Notification::permission(ScriptExecutionContext* context)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(context->isDocument());
-    ASSERT(static_cast<Document*>(context)->page());
-    return permissionString(NotificationController::from(static_cast<Document*>(context)->page())->client()->checkPermission(context));
+    ASSERT(toDocument(context)->page());
+    return permissionString(NotificationController::from(toDocument(context)->page())->client()->checkPermission(context));
 }
 
 const String& Notification::permissionString(NotificationClient::Permission permission)
@@ -285,9 +253,8 @@ const String& Notification::permissionString(NotificationClient::Permission perm
 
 void Notification::requestPermission(ScriptExecutionContext* context, PassRefPtr<NotificationPermissionCallback> callback)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(context->isDocument());
-    ASSERT(static_cast<Document*>(context)->page());
-    NotificationController::from(static_cast<Document*>(context)->page())->client()->requestPermission(context, callback);
+    ASSERT(toDocument(context)->page());
+    NotificationController::from(toDocument(context)->page())->client()->requestPermission(context, callback);
 }
 #endif
 

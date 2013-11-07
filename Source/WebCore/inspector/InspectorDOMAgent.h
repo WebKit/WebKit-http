@@ -75,6 +75,7 @@ class ShadowRoot;
 struct HighlightConfig;
 
 typedef String ErrorString;
+typedef int BackendNodeId;
 
 #if ENABLE(INSPECTOR)
 
@@ -141,10 +142,14 @@ public:
     virtual void setInspectModeEnabled(ErrorString*, bool enabled, const RefPtr<InspectorObject>* highlightConfig);
     virtual void requestNode(ErrorString*, const String& objectId, int* nodeId);
     virtual void pushNodeByPathToFrontend(ErrorString*, const String& path, int* nodeId);
+    virtual void pushNodeByBackendIdToFrontend(ErrorString*, BackendNodeId, int* nodeId);
+    virtual void releaseBackendNodeIds(ErrorString*, const String& nodeGroup);
     virtual void hideHighlight(ErrorString*);
-    virtual void highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor);
+    virtual void highlightRect(ErrorString*, int x, int y, int width, int height, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates);
+    virtual void highlightQuad(ErrorString*, const RefPtr<InspectorArray>& quad, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates);
     virtual void highlightNode(ErrorString*, const RefPtr<InspectorObject>& highlightConfig, const int* nodeId, const String* objectId);
     virtual void highlightFrame(ErrorString*, const String& frameId, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor);
+
     virtual void moveTo(ErrorString*, int nodeId, int targetNodeId, const int* anchorNodeId, int* newNodeId);
     virtual void undo(ErrorString*);
     virtual void redo(ErrorString*);
@@ -177,6 +182,7 @@ public:
     Node* nodeForId(int nodeId);
     int boundNodeId(Node*);
     void setDOMListener(DOMListener*);
+    BackendNodeId backendNodeIdForNode(Node*, const String& nodeGroup);
 
     static String documentURLString(Document*);
 
@@ -235,6 +241,8 @@ private:
 
     void discardBindings();
 
+    void innerHighlightQuad(PassOwnPtr<FloatQuad>, const RefPtr<InspectorObject>* color, const RefPtr<InspectorObject>* outlineColor, const bool* usePageCoordinates);
+
     InspectorPageAgent* m_pageAgent;
     InjectedScriptManager* m_injectedScriptManager;
     InspectorOverlay* m_overlay;
@@ -242,12 +250,16 @@ private:
     InspectorFrontend::DOM* m_frontend;
     DOMListener* m_domListener;
     NodeToIdMap m_documentNodeToIdMap;
+    typedef HashMap<RefPtr<Node>, BackendNodeId> NodeToBackendIdMap;
+    HashMap<String, NodeToBackendIdMap> m_nodeGroupToBackendIdMap;
     // Owns node mappings for dangling nodes.
     Vector<OwnPtr<NodeToIdMap> > m_danglingNodeToIdMaps;
     HashMap<int, Node*> m_idToNode;
     HashMap<int, NodeToIdMap*> m_idToNodesMap;
     HashSet<int> m_childrenRequested;
+    HashMap<BackendNodeId, std::pair<Node*, String> > m_backendIdToNode;
     int m_lastNodeId;
+    BackendNodeId m_lastBackendNodeId;
     RefPtr<Document> m_document;
     typedef HashMap<String, Vector<RefPtr<Node> > > SearchResults;
     SearchResults m_searchResults;

@@ -1,3 +1,83 @@
+2013-04-02  Glenn Adams  <glenn@skynav.com>
+
+        Need japanese line layout performance test
+        https://bugs.webkit.org/show_bug.cgi?id=113811
+
+        Reviewed by Ryosuke Niwa.
+
+        Will be used by https://bugs.webkit.org/show_bug.cgi?id=105692 to test potential performance regression
+        for Japanese (and other CJK) line break changes.
+
+        * Layout/LineLayoutJapanese.html: Added.
+        * Skipped: Skip this test by default.
+
+2013-03-29  Andrei Bucur  <abucur@adobe.com>
+
+        [CSS Regions] Add performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=113303
+
+        Reviewed by Antti Koivisto.
+
+        Add simple performance tests for regions, without nested named flows: a region chain and a flow article.
+        The regions.js script is used to generate the tests and can set the following parameters: the number of regions,
+        the number of paragraphs, the regions width, height, max-height and the propability of a forced break after a paragraph.
+
+        The tests are skipped for now. They should be enabled once the regions performance is stable enough to create a baseline.
+
+        * Layout/RegionsAuto.html: Added. A few regions with a short article. The regions have auto-height and some
+        paragraphs (80%) have forced breaks after. Stress test for the auto-height algorithm.
+        * Layout/RegionsAutoMaxHeight.html: Added. A lot of regions with auto-height and max-height. Tests the impact of
+        max-height on the auto-height algorithm.
+        * Layout/RegionsFixed.html: Added. A lot of regions with a long article. Some paragraphs (50%) have forced breaks after.
+        Stress test for the regions layout algorithm.
+        * Layout/RegionsFixedShort.html: Added. A lot of short regions with a long content. Tests the impact of unforced breaks
+        on the layout speed.
+        * Layout/resources/regions.css: Added.
+        (.articleInFlow):
+        (.articleNone):
+        (.region):
+        (.contentParagraph):
+        (.breakAfter):
+        (.regionContainer):
+        * Layout/resources/regions.js: Added.
+        (.):
+        * Skipped:
+
+2013-03-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a performance tests for selecting all content in a document
+        https://bugs.webkit.org/show_bug.cgi?id=113358
+
+        Reviewed by Levi Weintraub.
+
+        Add a performance test for selecting all. We wait for paint to happen by setTimeout(~, 0).
+
+        Example outputs:
+            RESULT Interactive: SelectAll: Time= 652.6 ms
+            median= 644.5 ms, stdev= 54.6177144967 ms, min= 599.0 ms, max= 773.0 ms
+
+            RESULT Interactive: SelectAll: Time= 654.4 ms
+            median= 633.5 ms, stdev= 55.9223145368 ms, min= 600.0 ms, max= 769.0 ms
+
+            RESULT Interactive: SelectAll: Time= 657.9 ms
+            median= 640.0 ms, stdev= 54.1420159833 ms, min= 604.0 ms, max= 774.0 ms
+
+        * Interactive/SelectAll.html: Added.
+        * Skipped:
+
+2013-03-19  Alexei Filippov  <alph@chromium.org>
+
+        Web Inspector: Fix heap profiler performance tests.
+        https://bugs.webkit.org/show_bug.cgi?id=112701
+
+        Reviewed by Yury Semikhatsky.
+
+        The tests were broken by profile types refactoring.
+
+        * inspector/heap-snapshot-performance-test.js:
+        (test.performanceTest.step0):
+        (test.performanceTest.step1):
+
 2013-03-05  Eric Seidel  <eric@webkit.org>
 
         Add html-parser-threaded perf test now that the threaded parser is enabled by default

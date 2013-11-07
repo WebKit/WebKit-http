@@ -1,3 +1,262 @@
+2013-04-05  Roger Fong  <roger_fong@apple.com>
+
+        Build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-08  Jeff Rogers  <jrogers@rim.com>
+
+        [BlackBerry] Update BlackBerry JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=114065
+
+        Reviewed by Rob Buis.
+
+        Internal PR 317350
+        Remove obsolete files.
+
+        * PlatformBlackBerry.cmake:
+
+2013-04-07  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove references to Skia and V8 from CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=114130
+
+        Reviewed by Geoffrey Garen.
+
+        * PlatformBlackBerry.cmake:
+
+2013-04-06  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Remove general include directories from platform specific files
+
+        Move the include directories, which are required by all CMake ports
+        to the general CMakeLists.txt to fix the build for Windows CE port.
+
+        * CMakeLists.txt:
+        * PlatformBlackBerry.cmake:
+        * PlatformEfl.cmake:
+
+2013-04-05  Roger Fong  <roger_fong@apple.com>
+
+        More VS2010 solution makefile fixes.
+        <rdar://problem/13588964>
+
+        * WebKit.vcxproj/WebKit.make:
+
+2013-04-04  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove Webkit/chromium
+        https://bugs.webkit.org/show_bug.cgi?id=113998
+
+        Reviewed by Ryosuke Niwa.
+
+        O Knights of Ni, you are just and fair, and we will return with a shrubbery.
+
+        * chromium: Removed.
+
+2013-04-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        [Cairo] Fix canvas drawing of SVG-based patterns and remove NativeImageCairo
+        https://bugs.webkit.org/show_bug.cgi?id=113929
+
+        Reviewed by Martin Robinson.
+
+        Remove outdated symbols now that NativeImageCairo was removed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-03  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed VS2010 build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r147044.
+        https://bugs.webkit.org/show_bug.cgi?id=113352.
+
+        Not Reviewed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Greening the Apple Win bot (debug build).
+        https://bugs.webkit.org/show_bug.cgi?id=113352.
+
+        Not Reviewed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-27  Mark Lam  <mark.lam@apple.com>
+
+        Greening the Apple Win bot.
+        https://bugs.webkit.org/show_bug.cgi?id=113352.
+
+        Not Reviewed.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The second part of the build fix for r146702. This should do it.
+        I had to see the mangled name for the new signature.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix attempt after r146702.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Add custom BackForwardList client implementation
+        https://bugs.webkit.org/show_bug.cgi?id=113024
+
+        Reviewed by Rob Buis.
+
+        PR 310030
+        Internally reviewed by Joe Mason.
+
+        * PlatformBlackBerry.cmake: Add new files to compilation.
+
+2013-03-21  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Move common props files for VS2010 solution to WebKitLibraries folder and update all projects accordingly.
+
+        * WebKit.vcxproj/FeatureDefines.props: Removed.
+        * WebKit.vcxproj/FeatureDefinesCairo.props: Removed.
+        * WebKit.vcxproj/WebKit/cURL.props: Removed.
+        * WebKit.vcxproj/WinCairo.props: Removed.
+        * WebKit.vcxproj/common.props: Removed.
+        * WebKit.vcxproj/debug.props: Removed.
+        * WebKit.vcxproj/debug_wincairo.props: Removed.
+        * WebKit.vcxproj/debugsuffix.props: Removed.
+        * WebKit.vcxproj/production.props: Removed.
+        * WebKit.vcxproj/release.props: Removed.
+
+2013-03-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix after r146430.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-20  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Top-level solution change to build under VS2010.
+        https://bugs.webkit.org/show_bug.cgi?id=112861.
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/WebKit.sln: Add final set of WinCairo build
+        targets.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Add #if/def guards around some media-specific exports that
+        are not provided by the WinCairo port.
+
+2013-03-19  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Build the WebKit.dll under VS2010.
+        https://bugs.webkit.org/show_bug.cgi?id=112759
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj: Update project to
+        build WinCairo variant using new property sheets.
+        * WebKit.vcxproj/Interfaces/InterfacesDebugWinCairo.props: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesReleaseWinCairo.props: Added.
+        * WebKit.vcxproj/WebKit.sln: Update solution to use WinCairo
+        build targets for WebKit.dll-related projects.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Update project to build
+        WinCairo variant using new property sheets.
+        * WebKit.vcxproj/WebKit/cURL.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitDebugWinCairo.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitReleaseWinCairo.props: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        Update project to build WinCairo variant using new property sheets.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorDebugWinCairo.props: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorReleaseWinCairo.props: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj: Update project to
+        build WinCairo variant using new property sheets.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebugWinCairo.props: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDReleaseWinCairo.props: Added.
+        * WebKit.vcxproj/WinCairo.props: Added.
+        * WebKit.vcxproj/debug_wincairo.props: Added.
+
+2013-03-20  Eric Carlson  <eric.carlson@apple.com>
+
+        Allow ports specific text track menu
+        https://bugs.webkit.org/show_bug.cgi?id=112800
+
+        Reviewed by Dean Jackson.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add new exports.
+        * win/WebKit.vcproj/WebKitExports.def.in: Ditto.
+
+2013-03-20  Roger Fong  <roger_fong@apple.com>
+
+        AppleWin VS2010 build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-18  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Build WinCairo port under VS2010 
+        https://bugs.webkit.org/show_bug.cgi?id=112604
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/WebKit.sln: Add Debug_WinCairo and Release_WinCairo
+        build targets. No other changes in this patch.
+        * WebKit.vcxproj/FeatureDefinesCairo.props: Add parallel property
+        sheet for WinCairo version of build.
+
+2013-03-18  Roger Fong  <roger_fong@apple.com>
+
+        AppleWin VS2010 build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-14  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Improve the handling of mock geolocation, device orientation and motion clients
+
+        Reviewed by Tor Arne Vestbø.
+
+        The mock versions of these web facing features should be instantiated when
+        running in DumpRenderTree only. In order for them to work, no extra Qt modules
+        such as QtLocation are actually needed.
+
+        This patch decouples enabling device orientation/motion and geolocation from
+        the underlying Qt modules and makes them available in developer builds
+        (!production_build) and backed by mock backends when running in drt.
+
+        So if the Qt 5 modules are available, they'll be used (unless drtRun). For
+        developers the web facing features are always enabled (although requests will
+        time out) and the mock backends are enabled inside DRT, allowing for the layout
+        tests to run with less dependencies.
+
+        In addition this also enables the mock device motion client, which was
+        previously never instantiated.
+
+        * WebKit1.pri:
+        * WebKit1.pro:
+
+2013-03-13  Genevieve Mak  <gmak@rim.com>
+
+        [BlackBerry] Add Proximity Detector.
+        https://bugs.webkit.org/show_bug.cgi?id=112278
+
+        Reviewed by Rob Buis.
+
+        Internally Reviewed by Mike Lattanzio.
+        PR #243385
+
+        * PlatformBlackBerry.cmake:
+
 2013-03-08  Roger Fong  <roger_fong@apple.com>
 
         Build fix for AppleWin VS2010.

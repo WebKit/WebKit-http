@@ -47,6 +47,7 @@ function installDependenciesWithApt {
         gperf \
         gtk-doc-tools \
         intltool \
+        libatk1.0-dev \
         libenchant-dev \
         libfaad-dev \
         libgail-3-dev \
@@ -64,7 +65,7 @@ function installDependenciesWithApt {
         libpango1.0-dev \
         libpng12-dev \
         libpulse-dev \
-        librsvg2-dev
+        librsvg2-dev \
         libsecret-1-dev \
         libsqlite3-dev \
         libtheora-dev \
@@ -105,6 +106,7 @@ function installDependenciesWithYum {
         autoconf \
         automake \
         bison \
+        atk-devel \
         cairo-devel \
         enchant-devel \
         flex \

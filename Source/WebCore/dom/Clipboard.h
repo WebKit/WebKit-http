@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+    class CachedImage;
     class DataTransferItemList;
     class DragData;
     class FileList;
@@ -86,7 +87,14 @@ namespace WebCore {
         virtual bool hasData() = 0;
         
         void setAccessPolicy(ClipboardAccessPolicy);
-        ClipboardAccessPolicy policy() const { return m_policy; }
+        bool canReadTypes() const;
+        bool canReadData() const;
+        bool canWriteData() const;
+        // Note that the spec doesn't actually allow drag image modification outside the dragstart
+        // event. This capability is maintained for backwards compatiblity for ports that have
+        // supported this in the past. On many ports, attempting to set a drag image outside the
+        // dragstart operation is a no-op anyway.
+        bool canSetDragImage() const;
 
         DragOperation sourceOperation() const;
         DragOperation destinationOperation() const;
@@ -109,7 +117,8 @@ namespace WebCore {
     private:
         bool hasFileOfType(const String&) const;
         bool hasStringOfType(const String&) const;
-        
+
+        // Instead of using this member directly, prefer to use the can*() methods above.
         ClipboardAccessPolicy m_policy;
         String m_dropEffect;
         String m_effectAllowed;

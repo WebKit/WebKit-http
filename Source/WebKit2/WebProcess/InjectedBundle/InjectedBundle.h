@@ -77,10 +77,8 @@ class WebFrame;
 class WebPage;
 class WebPageGroupProxy;
 
-class InjectedBundle : public APIObject {
+class InjectedBundle : public TypedAPIObject<APIObject::TypeBundle> {
 public:
-    static const Type APIType = TypeBundle;
-
     static PassRefPtr<InjectedBundle> create(const String& path)
     {
         return adoptRef(new InjectedBundle(path));
@@ -172,13 +170,12 @@ public:
     void setSerialLoadingEnabled(bool);
     void setShadowDOMEnabled(bool);
     void setCSSRegionsEnabled(bool);
+    void setCSSCompositingEnabled(bool);
     void setSeamlessIFramesEnabled(bool);
     void dispatchPendingLoadRequests();
 
 private:
     explicit InjectedBundle(const String&);
-
-    virtual Type type() const { return APIType; }
 
     String m_path;
     PlatformBundle m_platformBundle; // This is leaked right now, since we never unload the bundle/module.

@@ -350,6 +350,10 @@ using namespace std;
 #define NSAccessibilityScrollToVisibleAction @"AXScrollToVisible"
 #endif
 
+#ifndef NSAccessibilityPathAttribute
+#define NSAccessibilityPathAttribute @"AXPath"
+#endif
+
 // Math attributes
 #define NSAccessibilityMathRootRadicandAttribute @"AXMathRootRadicand"
 #define NSAccessibilityMathRootIndexAttribute @"AXMathRootIndex"
@@ -362,6 +366,7 @@ using namespace std;
 #define NSAccessibilityMathOverAttribute @"AXMathOver"
 #define NSAccessibilityMathFencedOpenAttribute @"AXMathFencedOpen"
 #define NSAccessibilityMathFencedCloseAttribute @"AXMathFencedClose"
+#define NSAccessibilityMathLineThicknessAttribute @"AXMathLineThickness"
 
 @implementation WebAccessibilityObjectWrapper
 
@@ -924,11 +929,20 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         return nil;
     
     // All elements should get ShowMenu and ScrollToVisible.
+    // But certain earlier VoiceOver versions do not support scroll to visible, and it confuses them to see it in the list.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
+    static NSArray *defaultElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityShowMenuAction, nil];
+#else
     static NSArray *defaultElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityShowMenuAction, NSAccessibilityScrollToVisibleAction, nil];
+#endif
 
     // Action elements allow Press.
     // The order is important to VoiceOver, which expects the 'default' action to be the first action. In this case the default action should be press.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
+    static NSArray *actionElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityPressAction, NSAccessibilityShowMenuAction, nil];
+#else
     static NSArray *actionElementActions = [[NSArray alloc] initWithObjects:NSAccessibilityPressAction, NSAccessibilityShowMenuAction, NSAccessibilityScrollToVisibleAction, nil];
+#endif
 
     // Menu elements allow Press and Cancel.
     static NSArray *menuElementActions = [[actionElementActions arrayByAddingObject:NSAccessibilityCancelAction] retain];
@@ -994,9 +1008,11 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     // All objects should expose the ARIA busy attribute (ARIA 1.1 with ISSUE-538).
     [additional addObject:NSAccessibilityARIABusyAttribute];
     
-    // Popup buttons on the Mac expose the value attribute.
-    if (m_object->isPopUpButton())
+    // Popup buttons on the Mac expose the required and value attributes.
+    if (m_object->isPopUpButton()) {
         [additional addObject:NSAccessibilityValueAttribute];
+        [additional addObject:NSAccessibilityRequiredAttribute];
+    }
     
     if (m_object->ariaHasPopup())
         [additional addObject:NSAccessibilityHasPopupAttribute];
@@ -1009,6 +1025,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
     } else if (m_object->isMathFraction()) {
         [additional addObject:NSAccessibilityMathFractionNumeratorAttribute];
         [additional addObject:NSAccessibilityMathFractionDenominatorAttribute];
+        [additional addObject:NSAccessibilityMathLineThicknessAttribute];
     } else if (m_object->isMathSubscriptSuperscript()) {
         [additional addObject:NSAccessibilityMathBaseAttribute];
         [additional addObject:NSAccessibilityMathSubscriptAttribute];
@@ -1021,6 +1038,9 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache *cache, VisiblePosit
         [additional addObject:NSAccessibilityMathFencedOpenAttribute];
         [additional addObject:NSAccessibilityMathFencedCloseAttribute];
     }
+    
+    if (m_object->supportsPath())
+        [additional addObject:NSAccessibilityPathAttribute];
     
     return additional;
 }
@@ -1465,23 +1485,18 @@ static NSMutableArray* convertToNSArray(const AccessibilityObject::Accessibility
     return [self textMarkerRangeFromVisiblePositions:selection.visibleStart() endPosition:selection.visibleEnd()];
 }
 
-- (NSValue *)position
+- (CGPoint)convertPointToScreenSpace:(FloatPoint &)point
 {
-    IntRect rect = pixelSnappedIntRect(m_object->elementRect());
-    NSPoint point;
-    
     FrameView* frameView = m_object->documentFrameView();
     
     // WebKit1 code path... platformWidget() exists.
     if (frameView && frameView->platformWidget()) {
         
-        // The Cocoa accessibility API wants the lower-left corner.
-        point = NSMakePoint(rect.x(), rect.maxY());
-        
-        if (frameView) {
-            NSView* view = frameView->documentView();
-            point = [[view window] convertBaseToScreen:[view convertPoint: point toView:nil]];
-        }
+        NSPoint nsPoint = (NSPoint)point;
+        NSView* view = frameView->documentView();
+        nsPoint = [[view window] convertBaseToScreen:[view convertPoint:nsPoint toView:nil]];
+        return CGPointMake(nsPoint.x, nsPoint.y);
+
     } else {
         
         // Find the appropriate scroll view to use to convert the contents to the window.
@@ -1494,8 +1509,9 @@ static NSMutableArray* convertToNSArray(const AccessibilityObject::Accessibility
             }
         }
         
+        IntPoint intPoint = (IntPoint)point;
         if (scrollView)
-            rect = scrollView->contentsToRootView(rect);
+            intPoint = scrollView->contentsToRootView(intPoint);
         
         Page* page = m_object->page();
         
@@ -1504,13 +1520,63 @@ static NSMutableArray* convertToNSArray(const AccessibilityObject::Accessibility
         if (parent && page && page->chrome()->client()->isEmptyChromeClient())
             page = parent->page();
         
-        if (page)
-            point = page->chrome()->rootViewToScreen(rect).location();
-        else
-            point = rect.location();
+        if (page) {
+            IntRect rect = IntRect(intPoint, IntSize(0, 0));            
+            intPoint = page->chrome()->rootViewToScreen(rect).location();
+        }
+        
+        return intPoint;
     }
+}
+
+static void WebTransformCGPathToNSBezierPath(void *info, const CGPathElement *element)
+{
+    NSBezierPath *bezierPath = (NSBezierPath *)info;
+    switch (element->type) {
+    case kCGPathElementMoveToPoint:
+        [bezierPath moveToPoint:element->points[0]];
+        break;
+    case kCGPathElementAddLineToPoint:
+        [bezierPath lineToPoint:element->points[0]];
+        break;
+    case kCGPathElementAddCurveToPoint:
+        [bezierPath curveToPoint:element->points[0] controlPoint1:element->points[1] controlPoint2:element->points[2]];
+        break;
+    case kCGPathElementCloseSubpath:
+        [bezierPath closePath];
+        break;
+    default:
+        break;
+    }
+}
+
+- (NSBezierPath *)bezierPathFromPath:(CGPathRef)path
+{
+    NSBezierPath *bezierPath = [NSBezierPath bezierPath];
+    CGPathApply(path, bezierPath, WebTransformCGPathToNSBezierPath);
+    return bezierPath;
+}
+
+- (NSBezierPath *)path
+{
+    Path path = m_object->elementPath();
+    if (path.isEmpty())
+        return NULL;
     
-    return [NSValue valueWithPoint:point];
+    CGPathRef transformedPath = [self convertPathToScreenSpace:path];
+    return [self bezierPathFromPath:transformedPath];
+}
+
+- (NSValue *)position
+{
+    IntRect rect = pixelSnappedIntRect(m_object->elementRect());
+    
+    // The Cocoa accessibility API wants the lower-left corner.
+    FloatPoint floatPoint = FloatPoint(rect.x(), rect.maxY());
+
+    CGPoint cgPoint = [self convertPointToScreenSpace:floatPoint];
+    
+    return [NSValue valueWithPoint:NSMakePoint(cgPoint.x, cgPoint.y)];
 }
 
 typedef HashMap<int, NSString*> AccessibilityRoleMap;
@@ -1586,6 +1652,7 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { DefinitionRole, NSAccessibilityGroupRole },
         { DescriptionListDetailRole, NSAccessibilityGroupRole },
         { DescriptionListTermRole, NSAccessibilityGroupRole },
+        { DescriptionListRole, NSAccessibilityListRole },
         { SliderThumbRole, NSAccessibilityValueIndicatorRole },
         { LandmarkApplicationRole, NSAccessibilityGroupRole },
         { LandmarkBannerRole, NSAccessibilityGroupRole },
@@ -1681,7 +1748,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return NSAccessibilityOutlineRowSubrole;
     
     if (m_object->isList()) {
-        AccessibilityList* listObject = static_cast<AccessibilityList*>(m_object);
+        AccessibilityList* listObject = toAccessibilityList(m_object);
         if (listObject->isUnorderedList() || listObject->isOrderedList())
             return NSAccessibilityContentListSubrole;
         if (listObject->isDescriptionList())
@@ -1736,6 +1803,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return @"AXTabPanel";
         case DefinitionRole:
             return @"AXDefinition";
+        case DescriptionListRole:
+            return @"AXDescriptionList";
         case DescriptionListTermRole:
             return @"AXTerm";
         case DescriptionListDetailRole:
@@ -1871,6 +1940,14 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if (m_object->isFileUploadButton())
         return AXFileUploadButtonText();
+    
+    // Only returning for DL (not UL or OL) because description changed with HTML5 from 'definition list' to
+    // superset 'description list' and does not return the same values in AX API on some OS versions. 
+    if (m_object->isList()) {
+        AccessibilityList* listObject = toAccessibilityList(m_object);
+        if (listObject->isDescriptionList())
+            return AXDescriptionListText();
+    }
     
     // AppKit also returns AXTab for the role description for a tab item.
     if (m_object->isTabItem())
@@ -2170,8 +2247,9 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return nil;
         return (NSURL*)url;
     }
-    
-    if (m_object->isSpinButton()) {
+
+    // Only native spin buttons have increment and decrement buttons.
+    if (m_object->isNativeSpinButton()) {
         if ([attributeName isEqualToString:NSAccessibilityIncrementButtonAttribute])
             return toAccessibilitySpinButton(m_object)->incrementButton()->wrapper();
         if ([attributeName isEqualToString:NSAccessibilityDecrementButtonAttribute])
@@ -2270,6 +2348,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if ([attributeName isEqualToString: NSAccessibilityPositionAttribute])
         return [self position];
+    if ([attributeName isEqualToString:NSAccessibilityPathAttribute])
+        return [self path];
     
     if ([attributeName isEqualToString: NSAccessibilityWindowAttribute] ||
         [attributeName isEqualToString: NSAccessibilityTopLevelUIElementAttribute]) {
@@ -2650,6 +2730,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return m_object->mathFencedOpenString();
         if ([attributeName isEqualToString:NSAccessibilityMathFencedCloseAttribute])
             return m_object->mathFencedCloseString();
+        if ([attributeName isEqualToString:NSAccessibilityMathLineThicknessAttribute])
+            return [NSNumber numberWithInteger:m_object->mathLineThickness()];
     }
     
     // this is used only by DumpRenderTree for testing
@@ -3180,11 +3262,7 @@ static RenderObject* rendererForView(NSView* view)
         AccessibilitySearchDirection searchDirection = SearchDirectionNext;
         if ([[dictionary objectForKey:@"AXDirection"] isKindOfClass:[NSString self]])
             searchDirection = ([(NSString*)[dictionary objectForKey:@"AXDirection"] isEqualToString:@"AXDirectionNext"]) ? SearchDirectionNext : SearchDirectionPrevious;
-        
-        AccessibilitySearchKey searchKey = AnyTypeSearchKey;
-        if ([[dictionary objectForKey:@"AXSearchKey"] isKindOfClass:[NSString self]])
-            searchKey = accessibilitySearchKeyForString((CFStringRef)[dictionary objectForKey:@"AXSearchKey"]);
-        
+
         String searchText;
         if ([[dictionary objectForKey:@"AXSearchText"] isKindOfClass:[NSString self]])
             searchText = (CFStringRef)[dictionary objectForKey:@"AXSearchText"];
@@ -3193,7 +3271,20 @@ static RenderObject* rendererForView(NSView* view)
         if ([[dictionary objectForKey:@"AXResultsLimit"] isKindOfClass:[NSNumber self]])
             resultsLimit = [(NSNumber*)[dictionary objectForKey:@"AXResultsLimit"] unsignedIntValue];
         
-        AccessibilitySearchCriteria criteria = {startObject, searchDirection, searchKey, &searchText, resultsLimit};
+        AccessibilitySearchCriteria criteria = AccessibilitySearchCriteria(startObject, searchDirection, &searchText, resultsLimit);
+                
+        id searchKeyEntry = [dictionary objectForKey:@"AXSearchKey"];
+        if ([searchKeyEntry isKindOfClass:[NSString class]])
+            criteria.searchKeys.append(accessibilitySearchKeyForString((CFStringRef)searchKeyEntry));
+        else if ([searchKeyEntry isKindOfClass:[NSArray class]]) {
+            size_t length = static_cast<size_t>([(NSArray *)searchKeyEntry count]);
+            criteria.searchKeys.reserveInitialCapacity(length);
+            for (size_t i = 0; i < length; ++i) {
+                id searchKey = [(NSArray *)searchKeyEntry objectAtIndex:i];
+                if ([searchKey isKindOfClass:[NSString class]])
+                    criteria.searchKeys.append(accessibilitySearchKeyForString((CFStringRef)searchKey));
+            }
+        }
         
         AccessibilityObject::AccessibilityChildrenVector results;
         m_object->findMatchingObjects(&criteria, results);

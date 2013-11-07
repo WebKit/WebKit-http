@@ -159,24 +159,6 @@ void RenderFrameSet::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     }
 }
 
-bool RenderFrameSet::nodeAtPoint(const HitTestRequest& request, HitTestResult& result,
-    const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
-{
-    if (action != HitTestForeground)
-        return false;
-
-    bool inside = RenderBox::nodeAtPoint(request, result, locationInContainer, accumulatedOffset, action)
-        || m_isResizing;
-
-    if (inside && frameSet()->noResize()
-            && !request.readOnly() && !result.innerNode() && !request.touchMove()) {
-        result.setInnerNode(node());
-        result.setInnerNonSharedNode(node());
-    }
-
-    return inside || m_isChildResizing;
-}
-
 void RenderFrameSet::GridAxis::resize(int size)
 {
     m_sizes.resize(size);
@@ -422,10 +404,10 @@ void RenderFrameSet::computeEdgeInfo()
     if (!child)
         return;
 
-    int rows = frameSet()->totalRows();
-    int cols = frameSet()->totalCols();
-    for (int r = 0; r < rows; ++r) {
-        for (int c = 0; c < cols; ++c) {
+    size_t rows = m_rows.m_sizes.size();
+    size_t cols = m_cols.m_sizes.size();
+    for (size_t r = 0; r < rows; ++r) {
+        for (size_t c = 0; c < cols; ++c) {
             FrameEdgeInfo edgeInfo;
             if (child->isFrameSet())
                 edgeInfo = toRenderFrameSet(child)->edgeInfo();

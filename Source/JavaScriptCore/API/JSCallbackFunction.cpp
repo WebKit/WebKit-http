@@ -44,8 +44,8 @@ ASSERT_HAS_TRIVIAL_DESTRUCTOR(JSCallbackFunction);
 
 const ClassInfo JSCallbackFunction::s_info = { "CallbackFunction", &InternalFunction::s_info, 0, 0, CREATE_METHOD_TABLE(JSCallbackFunction) };
 
-JSCallbackFunction::JSCallbackFunction(JSGlobalObject* globalObject, JSObjectCallAsFunctionCallback callback)
-    : InternalFunction(globalObject, globalObject->callbackFunctionStructure())
+JSCallbackFunction::JSCallbackFunction(JSGlobalObject* globalObject, Structure* structure, JSObjectCallAsFunctionCallback callback)
+    : InternalFunction(globalObject, structure)
     , m_callback(callback)
 {
 }
@@ -56,16 +56,24 @@ void JSCallbackFunction::finishCreation(JSGlobalData& globalData, const String& 
     ASSERT(inherits(&s_info));
 }
 
+JSCallbackFunction* JSCallbackFunction::create(ExecState* exec, JSGlobalObject* globalObject, JSObjectCallAsFunctionCallback callback, const String& name)
+{
+    JSCallbackFunction* function = new (NotNull, allocateCell<JSCallbackFunction>(*exec->heap())) JSCallbackFunction(globalObject, globalObject->callbackFunctionStructure(), callback);
+    function->finishCreation(exec->globalData(), name);
+    return function;
+}
+
 EncodedJSValue JSCallbackFunction::call(ExecState* exec)
 {
     JSContextRef execRef = toRef(exec);
     JSObjectRef functionRef = toRef(exec->callee());
     JSObjectRef thisObjRef = toRef(exec->hostThisValue().toThisObject(exec));
 
-    int argumentCount = static_cast<int>(exec->argumentCount());
-    Vector<JSValueRef, 16> arguments(argumentCount);
-    for (int i = 0; i < argumentCount; i++)
-        arguments[i] = toRef(exec, exec->argument(i));
+    size_t argumentCount = exec->argumentCount();
+    Vector<JSValueRef, 16> arguments;
+    arguments.reserveInitialCapacity(argumentCount);
+    for (size_t i = 0; i < argumentCount; ++i)
+        arguments.uncheckedAppend(toRef(exec, exec->argument(i)));
 
     JSValueRef exception = 0;
     JSValueRef result;

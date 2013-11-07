@@ -78,7 +78,6 @@ static const char InvalidateLayout[] = "InvalidateLayout";
 static const char Layout[] = "Layout";
 static const char Paint[] = "Paint";
 static const char ScrollLayer[] = "ScrollLayer";
-static const char DecodeImage[] = "DecodeImage";
 static const char ResizeImage[] = "ResizeImage";
 static const char CompositeLayers[] = "CompositeLayers";
 
@@ -119,7 +118,13 @@ static const char WebSocketReceiveHandshakeResponse[] = "WebSocketReceiveHandsha
 static const char WebSocketDestroy[] = "WebSocketDestroy";
 
 // Event names visible to other modules.
+const char DecodeImage[] = "DecodeImage";
 const char Rasterize[] = "Rasterize";
+}
+
+void TimelineTimeConverter::reset()
+{
+    m_startOffset = monotonicallyIncreasingTime() - currentTime();
 }
 
 void InspectorTimelineAgent::pushGCEventRecords()
@@ -130,9 +135,9 @@ void InspectorTimelineAgent::pushGCEventRecords()
     GCEvents events = m_gcEvents;
     m_gcEvents.clear();
     for (GCEvents::iterator i = events.begin(); i != events.end(); ++i) {
-        RefPtr<InspectorObject> record = TimelineRecordFactory::createGenericRecord(timestampFromMicroseconds(i->startTime), m_maxCallStackDepth);
+        RefPtr<InspectorObject> record = TimelineRecordFactory::createGenericRecord(m_timeConverter.fromMonotonicallyIncreasingTime(i->startTime), m_maxCallStackDepth);
         record->setObject("data", TimelineRecordFactory::createGCEventData(i->collectedBytes));
-        record->setNumber("endTime", timestampFromMicroseconds(i->endTime));
+        record->setNumber("endTime", m_timeConverter.fromMonotonicallyIncreasingTime(i->endTime));
         addRecordToTimeline(record.release(), TimelineRecordType::GCEvent);
     }
 }
@@ -164,11 +169,13 @@ void InspectorTimelineAgent::restore()
     if (m_state->getBoolean(TimelineAgentState::timelineAgentEnabled)) {
         m_maxCallStackDepth = m_state->getLong(TimelineAgentState::timelineMaxCallStackDepth);
         ErrorString error;
-        start(&error, &m_maxCallStackDepth);
+        bool includeDomCounters = m_state->getBoolean(TimelineAgentState::includeDomCounters);
+        bool includeNativeMemoryStatistics = m_state->getBoolean(TimelineAgentState::includeNativeMemoryStatistics);
+        start(&error, &m_maxCallStackDepth, &includeDomCounters, &includeNativeMemoryStatistics);
     }
 }
 
-void InspectorTimelineAgent::start(ErrorString*, const int* maxCallStackDepth)
+void InspectorTimelineAgent::start(ErrorString*, const int* maxCallStackDepth, const bool* includeDomCounters, const bool* includeNativeMemoryStatistics)
 {
     if (!m_frontend)
         return;
@@ -178,7 +185,9 @@ void InspectorTimelineAgent::start(ErrorString*, const int* maxCallStackDepth)
     else
         m_maxCallStackDepth = 5;
     m_state->setLong(TimelineAgentState::timelineMaxCallStackDepth, m_maxCallStackDepth);
-    m_timestampOffset = currentTime() - monotonicallyIncreasingTime();
+    m_state->setBoolean(TimelineAgentState::includeDomCounters, includeDomCounters && *includeDomCounters);
+    m_state->setBoolean(TimelineAgentState::includeNativeMemoryStatistics, includeNativeMemoryStatistics && *includeNativeMemoryStatistics);
+    m_timeConverter.reset();
 
     m_instrumentingAgents->setInspectorTimelineAgent(this);
     ScriptGCEvent::addEventListener(this);
@@ -204,16 +213,6 @@ void InspectorTimelineAgent::stop(ErrorString*)
     m_state->setBoolean(TimelineAgentState::timelineAgentEnabled, false);
 }
 
-void InspectorTimelineAgent::setIncludeDomCounters(ErrorString*, bool value)
-{
-    m_state->setBoolean(TimelineAgentState::includeDomCounters, value);
-}
-
-void InspectorTimelineAgent::setIncludeNativeMemoryStatistics(ErrorString*, bool value)
-{
-    m_state->setBoolean(TimelineAgentState::includeNativeMemoryStatistics, value);
-}
-
 void InspectorTimelineAgent::canMonitorMainThread(ErrorString*, bool* result)
 {
     *result = m_client && m_client->canMonitorMainThread();
@@ -226,9 +225,6 @@ void InspectorTimelineAgent::supportsFrameInstrumentation(ErrorString*, bool* re
 
 void InspectorTimelineAgent::didBeginFrame()
 {
-#if PLATFORM(CHROMIUM)
-    TRACE_EVENT_INSTANT0("webkit", InstrumentationEvents::BeginFrame);
-#endif
     m_pendingFrameRecord = TimelineRecordFactory::createGenericRecord(timestamp(), 0);
 }
 
@@ -264,17 +260,34 @@ void InspectorTimelineAgent::didInvalidateLayout(Frame* frame)
 
 void InspectorTimelineAgent::willLayout(Frame* frame)
 {
-    pushCurrentRecord(InspectorObject::create(), TimelineRecordType::Layout, true, frame);
+    RenderObject* root = frame->view()->layoutRoot();
+    bool partialLayout = !!root;
+
+    if (!partialLayout)
+        root = frame->contentRenderer();
+
+    unsigned dirtyObjects = 0;
+    unsigned totalObjects = 0;
+    for (RenderObject* o = root; o; o = o->nextInPreOrder(root)) {
+        ++totalObjects;
+        if (o->needsLayout())
+            ++dirtyObjects;
+    }
+    pushCurrentRecord(TimelineRecordFactory::createLayoutData(dirtyObjects, totalObjects, partialLayout), TimelineRecordType::Layout, true, frame);
 }
 
 void InspectorTimelineAgent::didLayout(RenderObject* root)
 {
     if (m_recordStack.isEmpty())
         return;
-    LayoutRect rect = root->frame()->view()->contentsToRootView(root->absoluteBoundingBoxRect());
-    TimelineRecordEntry entry = m_recordStack.last();
+    TimelineRecordEntry& entry = m_recordStack.last();
     ASSERT(entry.type == TimelineRecordType::Layout);
-    TimelineRecordFactory::addRectData(entry.data.get(), rect);
+    Vector<FloatQuad> quads;
+    root->absoluteQuads(quads);
+    if (quads.size() >= 1)
+        TimelineRecordFactory::appendLayoutRoot(entry.data.get(), quads[0]);
+    else
+        ASSERT_NOT_REACHED();
     didCompleteCurrentRecord(TimelineRecordType::Layout);
 }
 
@@ -298,11 +311,13 @@ void InspectorTimelineAgent::willPaint(Frame* frame)
     pushCurrentRecord(InspectorObject::create(), TimelineRecordType::Paint, true, frame, true);
 }
 
-void InspectorTimelineAgent::didPaint(const LayoutRect& rect)
+void InspectorTimelineAgent::didPaint(RenderObject* renderer, const LayoutRect& clipRect)
 {
-    TimelineRecordEntry entry = m_recordStack.last();
+    TimelineRecordEntry& entry = m_recordStack.last();
     ASSERT(entry.type == TimelineRecordType::Paint);
-    TimelineRecordFactory::addRectData(entry.data.get(), rect);
+    FloatQuad quad;
+    localToPageQuad(*renderer, clipRect, &quad);
+    entry.data = TimelineRecordFactory::createPaintData(quad);
     didCompleteCurrentRecord(TimelineRecordType::Paint);
 }
 
@@ -540,18 +555,16 @@ void InspectorTimelineAgent::addRecordToTimeline(PassRefPtr<InspectorObject> rec
 
 void InspectorTimelineAgent::innerAddRecordToTimeline(PassRefPtr<InspectorObject> prpRecord, const String& type)
 {
-    RefPtr<InspectorObject> record(prpRecord);
-    record->setString("type", type);
+    prpRecord->setString("type", type);
+    RefPtr<TypeBuilder::Timeline::TimelineEvent> record = TypeBuilder::Timeline::TimelineEvent::runtimeCast(prpRecord);
     if (type == TimelineRecordType::Program)
         setNativeHeapStatistics(record.get());
     else
         setDOMCounters(record.get());
 
-    if (m_recordStack.isEmpty()) {
-        // FIXME: runtimeCast is a hack. We do it because we can't build TimelineEvent directly now.
-        RefPtr<TypeBuilder::Timeline::TimelineEvent> recordChecked = TypeBuilder::Timeline::TimelineEvent::runtimeCast(record.release());
-        m_frontend->eventRecorded(recordChecked.release());
-    } else {
+    if (m_recordStack.isEmpty())
+        sendEvent(record.release());
+    else {
         TimelineRecordEntry parent = m_recordStack.last();
         parent.children->pushObject(record.release());
     }
@@ -564,20 +577,27 @@ static size_t getUsedHeapSize()
     return info.usedJSHeapSize;
 }
 
-void InspectorTimelineAgent::setDOMCounters(InspectorObject* record)
+void InspectorTimelineAgent::setDOMCounters(TypeBuilder::Timeline::TimelineEvent* record)
 {
-    record->setNumber("usedHeapSize", getUsedHeapSize());
+    record->setUsedHeapSize(getUsedHeapSize());
 
     if (m_state->getBoolean(TimelineAgentState::includeDomCounters)) {
-        RefPtr<InspectorObject> counters = InspectorObject::create();
-        counters->setNumber("nodes", (m_inspectorType == PageInspector) ? InspectorCounters::counterValue(InspectorCounters::NodeCounter) : 0);
-        counters->setNumber("documents", (m_inspectorType == PageInspector) ? InspectorCounters::counterValue(InspectorCounters::DocumentCounter) : 0);
-        counters->setNumber("jsEventListeners", ThreadLocalInspectorCounters::current().counterValue(ThreadLocalInspectorCounters::JSEventListenerCounter));
-        record->setObject("counters", counters.release());
+        int documentCount = 0;
+        int nodeCount = 0;
+        if (m_inspectorType == PageInspector) {
+            documentCount = InspectorCounters::counterValue(InspectorCounters::DocumentCounter);
+            nodeCount = InspectorCounters::counterValue(InspectorCounters::NodeCounter);
+        }
+        int listenerCount = ThreadLocalInspectorCounters::current().counterValue(ThreadLocalInspectorCounters::JSEventListenerCounter);
+        RefPtr<TypeBuilder::Timeline::DOMCounters> counters = TypeBuilder::Timeline::DOMCounters::create()
+            .setDocuments(documentCount)
+            .setNodes(nodeCount)
+            .setJsEventListeners(listenerCount);
+        record->setCounters(counters.release());
     }
 }
 
-void InspectorTimelineAgent::setNativeHeapStatistics(InspectorObject* record)
+void InspectorTimelineAgent::setNativeHeapStatistics(TypeBuilder::Timeline::TimelineEvent* record)
 {
     if (!m_memoryAgent)
         return;
@@ -592,7 +612,7 @@ void InspectorTimelineAgent::setNativeHeapStatistics(InspectorObject* record)
     size_t sharedBytes = 0;
     MemoryUsageSupport::processMemorySizesInBytes(&privateBytes, &sharedBytes);
     stats->setNumber("PrivateBytes", privateBytes);
-    record->setObject("nativeHeapStatistics", stats.release());
+    record->setNativeHeapStatistics(stats.release());
 }
 
 void InspectorTimelineAgent::setFrameIdentifier(InspectorObject* record, Frame* frame)
@@ -634,7 +654,6 @@ InspectorTimelineAgent::InspectorTimelineAgent(InstrumentingAgents* instrumentin
     , m_pageAgent(pageAgent)
     , m_memoryAgent(memoryAgent)
     , m_frontend(0)
-    , m_timestampOffset(0)
     , m_id(1)
     , m_maxCallStackDepth(5)
     , m_platformInstrumentationClientInstalledAtStackDepth(0)
@@ -649,19 +668,14 @@ void InspectorTimelineAgent::appendRecord(PassRefPtr<InspectorObject> data, cons
     pushGCEventRecords();
     RefPtr<InspectorObject> record = TimelineRecordFactory::createGenericRecord(timestamp(), captureCallStack ? m_maxCallStackDepth : 0);
     record->setObject("data", data);
-    record->setString("type", type);
     setFrameIdentifier(record.get(), frame);
     addRecordToTimeline(record.release(), type);
 }
 
-void InspectorTimelineAgent::appendBackgroundThreadRecord(PassRefPtr<InspectorObject> data, const String& type, double startTime, double endTime, const String& threadName)
+void InspectorTimelineAgent::sendEvent(PassRefPtr<InspectorObject> event)
 {
-    RefPtr<InspectorObject> record = TimelineRecordFactory::createGenericRecord(timestampFromMicroseconds(startTime), 0);
-    record->setObject("data", data);
-    record->setString("type", type);
-    record->setString("thread", threadName);
-    record->setNumber("endTime", timestampFromMicroseconds(endTime));
-    RefPtr<TypeBuilder::Timeline::TimelineEvent> recordChecked = TypeBuilder::Timeline::TimelineEvent::runtimeCast(record.release());
+    // FIXME: runtimeCast is a hack. We do it because we can't build TimelineEvent directly now.
+    RefPtr<TypeBuilder::Timeline::TimelineEvent> recordChecked = TypeBuilder::Timeline::TimelineEvent::runtimeCast(event);
     m_frontend->eventRecorded(recordChecked.release());
 }
 
@@ -698,14 +712,20 @@ void InspectorTimelineAgent::clearRecordStack()
     m_id++;
 }
 
-double InspectorTimelineAgent::timestamp()
+void InspectorTimelineAgent::localToPageQuad(const RenderObject& renderer, const LayoutRect& rect, FloatQuad* quad)
 {
-    return timestampFromMicroseconds(WTF::monotonicallyIncreasingTime());
+    Frame* frame = renderer.frame();
+    FrameView* view = frame->view();
+    FloatQuad absolute = renderer.localToAbsoluteQuad(FloatQuad(rect));
+    quad->setP1(view->contentsToRootView(roundedIntPoint(absolute.p1())));
+    quad->setP2(view->contentsToRootView(roundedIntPoint(absolute.p2())));
+    quad->setP3(view->contentsToRootView(roundedIntPoint(absolute.p3())));
+    quad->setP4(view->contentsToRootView(roundedIntPoint(absolute.p4())));
 }
 
-double InspectorTimelineAgent::timestampFromMicroseconds(double microseconds)
+double InspectorTimelineAgent::timestamp()
 {
-    return (microseconds + m_timestampOffset) * 1000.0;
+    return m_timeConverter.fromMonotonicallyIncreasingTime(WTF::monotonicallyIncreasingTime());
 }
 
 Page* InspectorTimelineAgent::page()

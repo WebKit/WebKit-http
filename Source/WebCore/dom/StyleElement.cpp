@@ -142,8 +142,7 @@ void StyleElement::process(Element* e)
 void StyleElement::clearSheet()
 {
     ASSERT(m_sheet);
-    m_sheet->clearOwnerNode();
-    m_sheet = 0;
+    m_sheet.release()->clearOwnerNode();
 }
 
 void StyleElement::createSheet(Element* e, WTF::OrdinalNumber startLineNumber, const String& text)
@@ -175,7 +174,7 @@ void StyleElement::createSheet(Element* e, WTF::OrdinalNumber startLineNumber, c
             m_sheet = CSSStyleSheet::createInline(e, KURL(), document->inputEncoding());
             m_sheet->setMediaQueries(mediaQueries.release());
             m_sheet->setTitle(e->title());
-            m_sheet->contents()->parseStringAtLine(text, startLineNumber.zeroBasedInt());
+            m_sheet->contents()->parseStringAtLine(text, startLineNumber.zeroBasedInt(), m_createdByParser);
 
             m_loading = false;
         }

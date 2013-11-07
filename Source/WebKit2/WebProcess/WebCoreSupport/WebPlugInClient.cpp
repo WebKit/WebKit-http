@@ -33,7 +33,8 @@
 
 namespace WebKit {
 
-WebPlugInClient::WebPlugInClient(WebPage*)
+WebPlugInClient::WebPlugInClient(WebPage* page)
+    : m_page(page)
 {
 }
 
@@ -46,14 +47,14 @@ void WebPlugInClient::pageDestroyed()
     delete this;
 }
 
-bool WebPlugInClient::isAutoStartOrigin(unsigned plugInOriginHash)
+bool WebPlugInClient::shouldAutoStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
 {
-    return WebProcess::shared().isPlugInAutoStartOrigin(plugInOriginHash);
+    return WebProcess::shared().shouldPlugInAutoStartFromOrigin(m_page, pageOrigin, pluginOrigin, mimeType);
 }
 
-void WebPlugInClient::addAutoStartOrigin(const String& pageOrigin, unsigned plugInOriginHash)
+void WebPlugInClient::didStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
 {
-    WebProcess::shared().addPlugInAutoStartOrigin(pageOrigin, plugInOriginHash);
+    WebProcess::shared().plugInDidStartFromOrigin(pageOrigin, pluginOrigin, mimeType);
 }
 
 } // namespace WebKit

@@ -75,13 +75,11 @@ QT_END_NAMESPACE
 typedef struct _GtkSocket GtkSocket;
 #endif
 
-#if USE(JSC)
 namespace JSC {
     namespace Bindings {
         class Instance;
     }
 }
-#endif
 
 namespace WebCore {
     class Frame;
@@ -156,9 +154,7 @@ namespace WebCore {
 #if ENABLE(NETSCAPE_PLUGIN_API)
         NPObject* npObject();
 #endif
-#if USE(JSC)
         PassRefPtr<JSC::Bindings::Instance> bindingInstance();
-#endif
 
         PluginStatus status() const { return m_status; }
 
@@ -221,7 +217,7 @@ namespace WebCore {
         virtual void setParent(ScrollView*);
         virtual void setParentVisible(bool);
 
-        virtual bool isPluginView() const { return true; }
+        virtual bool isPluginView() const OVERRIDE { return true; }
 
         Frame* parentFrame() const { return m_parentFrame.get(); }
 
@@ -471,6 +467,21 @@ private:
 
         static PluginView* s_currentPluginView;
     };
+
+inline PluginView* toPluginView(Widget* widget)
+{
+    ASSERT(!widget || widget->isPluginView());
+    return static_cast<PluginView*>(widget);
+}
+
+inline const PluginView* toPluginView(const Widget* widget)
+{
+    ASSERT(!widget || widget->isPluginView());
+    return static_cast<const PluginView*>(widget);
+}
+
+// This will catch anyone doing an unnecessary cast.
+void toPluginView(const PluginView*);
 
 } // namespace WebCore
 

@@ -167,18 +167,20 @@ ArrayMode ArrayMode::refine(SpeculatedType base, SpeculatedType index, Speculate
         return withTypeAndConversion(Array::Contiguous, Array::Convert);
         
     case Array::Double:
-        if (flags & NodeUsedAsIntLocally)
+        if (flags & NodeUsedAsInt)
             return withTypeAndConversion(Array::Contiguous, Array::RageConvert);
         if (!value || isNumberSpeculation(value))
             return *this;
         return withTypeAndConversion(Array::Contiguous, Array::Convert);
         
     case Array::Contiguous:
-        if (doesConversion() && (flags & NodeUsedAsIntLocally))
+        if (doesConversion() && (flags & NodeUsedAsInt))
             return withConversion(Array::RageConvert);
         return *this;
         
     case Array::SelectUsingPredictions:
+        base &= ~SpecOther;
+        
         if (isStringSpeculation(base))
             return ArrayMode(Array::String);
         

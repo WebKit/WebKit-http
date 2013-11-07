@@ -55,19 +55,24 @@ HTMLInputCheckpoint BackgroundHTMLInputStream::createCheckpoint()
     return checkpoint;
 }
 
-void BackgroundHTMLInputStream::invalidateCheckpointsUpThrough(HTMLInputCheckpoint checkpointIndex)
+void BackgroundHTMLInputStream::invalidateCheckpointsBefore(HTMLInputCheckpoint newFirstValidCheckpointIndex)
 {
-    ASSERT(checkpointIndex < m_checkpoints.size());
-    ASSERT(checkpointIndex >= m_firstValidCheckpointIndex);
-    const Checkpoint& checkpoint = m_checkpoints[checkpointIndex];
-    ASSERT(m_firstValidSegmentIndex <= checkpoint.numberOfSegmentsAlreadyAppended);
-    for (size_t i = m_firstValidSegmentIndex; i < checkpoint.numberOfSegmentsAlreadyAppended; ++i)
-        m_segments[i] = String();
-    m_firstValidSegmentIndex = checkpoint.numberOfSegmentsAlreadyAppended;
+    ASSERT(newFirstValidCheckpointIndex < m_checkpoints.size());
+    // There is nothing to do for the first valid checkpoint.
+    if (m_firstValidCheckpointIndex == newFirstValidCheckpointIndex)
+        return;
 
-    for (size_t i = m_firstValidCheckpointIndex; i <= checkpointIndex; ++i)
+    ASSERT(newFirstValidCheckpointIndex > m_firstValidCheckpointIndex);
+    const Checkpoint& lastInvalidCheckpoint = m_checkpoints[newFirstValidCheckpointIndex - 1];
+
+    ASSERT(m_firstValidSegmentIndex <= lastInvalidCheckpoint.numberOfSegmentsAlreadyAppended);
+    for (size_t i = m_firstValidSegmentIndex; i < lastInvalidCheckpoint.numberOfSegmentsAlreadyAppended; ++i)
+        m_segments[i] = String();
+    m_firstValidSegmentIndex = lastInvalidCheckpoint.numberOfSegmentsAlreadyAppended;
+
+    for (size_t i = m_firstValidCheckpointIndex; i < newFirstValidCheckpointIndex; ++i)
         m_checkpoints[i].clear();
-    m_firstValidCheckpointIndex = checkpointIndex + 1;
+    m_firstValidCheckpointIndex = newFirstValidCheckpointIndex;
 }
 
 void BackgroundHTMLInputStream::rewindTo(HTMLInputCheckpoint checkpointIndex, const String& unparsedInput)

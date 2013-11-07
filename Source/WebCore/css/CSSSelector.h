@@ -44,7 +44,7 @@ namespace WebCore {
         /**
          * Re-create selector text from selector's data
          */
-        String selectorText() const;
+        String selectorText(const String& = "") const;
 
         // checks if the 2 selectors (including sub selectors) agree.
         bool operator==(const CSSSelector&) const;
@@ -127,6 +127,7 @@ namespace WebCore {
             PseudoNot,
             PseudoResizer,
             PseudoRoot,
+            PseudoScope,
             PseudoScrollbar,
             PseudoScrollbarBack,
             PseudoScrollbarButton,

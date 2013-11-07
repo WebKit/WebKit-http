@@ -69,8 +69,8 @@ public:
     ScrollElasticity horizontalScrollElasticity() const { return static_cast<ScrollElasticity>(m_horizontalScrollElasticity); }
 
     bool inLiveResize() const { return m_inLiveResize; }
-    void willStartLiveResize();
-    void willEndLiveResize();
+    virtual void willStartLiveResize();
+    virtual void willEndLiveResize();
 
     void contentAreaWillPaint() const;
     void mouseEnteredContentArea() const;
@@ -147,6 +147,12 @@ public:
     virtual IntSize overhangAmount() const { return IntSize(); }
     virtual IntPoint lastKnownMousePosition() const { return IntPoint(); }
 
+    virtual int headerHeight() const { return 0; }
+    virtual int footerHeight() const { return 0; }
+
+    // The totalContentsSize() is equivalent to the contentsSize() plus the header and footer heights.
+    IntSize totalContentsSize() const;
+
     virtual bool shouldSuspendScrollAnimations() const { return true; }
     virtual void scrollbarStyleChanged(int /*newStyle*/, bool /*forceUpdate*/) { }
     virtual void setVisibleScrollerThumbRect(const IntRect&) { }
@@ -167,7 +173,7 @@ public:
     // NOTE: Only called from Internals for testing.
     void setScrollOffsetFromInternals(const IntPoint&);
 
-    static IntPoint constrainScrollPositionForOverhang(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin);
+    static IntPoint constrainScrollPositionForOverhang(const IntRect& visibleContentRect, const IntSize& totalContentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, int headerHeight, int footetHeight);
     IntPoint constrainScrollPositionForOverhang(const IntPoint& scrollPosition);
 
     // Let subclasses provide a way of asking for and servicing scroll

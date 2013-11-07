@@ -206,7 +206,12 @@ LayoutRect InlineTextBox::localSelectionRect(int startPos, int endPos)
     if (respectHyphen)
         endPos = textRun.length();
 
-    LayoutRect r = enclosingIntRect(font.selectionRectForText(textRun, FloatPoint(logicalLeft(), selTop), selHeight, sPos, ePos));
+    FloatPoint startingPoint = FloatPoint(logicalLeft(), selTop);
+    LayoutRect r;
+    if (sPos || ePos != static_cast<int>(m_len))
+        r = enclosingIntRect(font.selectionRectForText(textRun, startingPoint, selHeight, sPos, ePos));
+    else // Avoid computing the font width when the entire line box is selected as an optimization.
+        r = enclosingIntRect(FloatRect(startingPoint, FloatSize(m_logicalWidth, selHeight)));
 
     LayoutUnit logicalWidth = r.width();
     if (r.x() > logicalRight())
@@ -949,7 +954,6 @@ static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorati
         strokeStyle = DashedStroke;
         break;
     case TextDecorationStyleWavy:
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=92868 - Needs platform support.
         strokeStyle = WavyStroke;
         break;
 #endif // CSS3_TEXT
@@ -957,6 +961,157 @@ static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorati
 
     return strokeStyle;
 }
+
+#if ENABLE(CSS3_TEXT)
+static int computeUnderlineOffset(const TextUnderlinePosition underlinePosition, const FontMetrics& fontMetrics, const InlineTextBox* inlineTextBox, const int textDecorationThickness)
+{
+    // Compute the gap between the font and the underline. Use at least one
+    // pixel gap, if underline is thick then use a bigger gap.
+    const int gap = max<int>(1, ceilf(textDecorationThickness / 2.0));
+
+    // According to the specification TextUnderlinePositionAuto should default to 'alphabetic' for horizontal text
+    // and to 'under Left' for vertical text (e.g. japanese). We support only horizontal text for now.
+    switch (underlinePosition) {
+    case TextUnderlinePositionAlphabetic:
+    case TextUnderlinePositionAuto:
+        return fontMetrics.ascent() + gap; // Position underline near the alphabetic baseline.
+    case TextUnderlinePositionUnder: {
+        // Position underline relative to the under edge of the lowest element's content box.
+        const float offset = inlineTextBox->root()->maxLogicalTop() - inlineTextBox->logicalTop();
+        if (offset > 0)
+            return inlineTextBox->logicalHeight() + gap + offset;
+        return inlineTextBox->logicalHeight() + gap;
+    }
+    }
+
+    ASSERT_NOT_REACHED();
+    return fontMetrics.ascent() + gap;
+}
+#endif // CSS3_TEXT
+
+#if ENABLE(CSS3_TEXT)
+static void adjustStepToDecorationLength(float& step, float& controlPointDistance, float length)
+{
+    ASSERT(step > 0);
+
+    if (length <= 0)
+        return;
+
+    unsigned stepCount = static_cast<unsigned>(length / step);
+
+    // Each Bezier curve starts at the same pixel that the previous one
+    // ended. We need to subtract (stepCount - 1) pixels when calculating the
+    // length covered to account for that.
+    float uncoveredLength = length - (stepCount * step - (stepCount - 1));
+    float adjustment = uncoveredLength / stepCount;
+    step += adjustment;
+    controlPointDistance += adjustment;
+}
+
+/*
+ * Draw one cubic Bezier curve and repeat the same pattern long the the decoration's axis.
+ * The start point (p1), controlPoint1, controlPoint2 and end point (p2) of the Bezier curve
+ * form a diamond shape:
+ *
+ *                              step
+ *                         |-----------|
+ *
+ *                   controlPoint1
+ *                         +
+ *
+ *
+ *                  . .
+ *                .     .
+ *              .         .
+ * (x1, y1) p1 +           .            + p2 (x2, y2) - <--- Decoration's axis
+ *                          .         .               |
+ *                            .     .                 |
+ *                              . .                   | controlPointDistance
+ *                                                    |
+ *                                                    |
+ *                         +                          -
+ *                   controlPoint2
+ *
+ *             |-----------|
+ *                 step
+ */
+static void strokeWavyTextDecoration(GraphicsContext* context, FloatPoint& p1, FloatPoint& p2, float strokeThickness)
+{
+    context->adjustLineToPixelBoundaries(p1, p2, strokeThickness, context->strokeStyle());
+
+    Path path;
+    path.moveTo(p1);
+
+    // Distance between decoration's axis and Bezier curve's control points.
+    // The height of the curve is based on this distance. Use a minimum of 6 pixels distance since
+    // the actual curve passes approximately at half of that distance, that is 3 pixels.
+    // The minimum height of the curve is also approximately 3 pixels. Increases the curve's height
+    // as strockThickness increases to make the curve looks better.
+    float controlPointDistance = 3 * max<float>(2, strokeThickness);
+
+    // Increment used to form the diamond shape between start point (p1), control
+    // points and end point (p2) along the axis of the decoration. Makes the
+    // curve wider as strockThickness increases to make the curve looks better.
+    float step = 2 * max<float>(2, strokeThickness);
+
+    bool isVerticalLine = (p1.x() == p2.x());
+
+    if (isVerticalLine) {
+        ASSERT(p1.x() == p2.x());
+
+        float xAxis = p1.x();
+        float y1;
+        float y2;
+
+        if (p1.y() < p2.y()) {
+            y1 = p1.y();
+            y2 = p2.y();
+        } else {
+            y1 = p2.y();
+            y2 = p1.y();
+        }
+
+        adjustStepToDecorationLength(step, controlPointDistance, y2 - y1);
+        FloatPoint controlPoint1(xAxis + controlPointDistance, 0);
+        FloatPoint controlPoint2(xAxis - controlPointDistance, 0);
+
+        for (float y = y1; y + 2 * step <= y2;) {
+            controlPoint1.setY(y + step);
+            controlPoint2.setY(y + step);
+            y += 2 * step;
+            path.addBezierCurveTo(controlPoint1, controlPoint2, FloatPoint(xAxis, y));
+        }
+    } else {
+        ASSERT(p1.y() == p2.y());
+
+        float yAxis = p1.y();
+        float x1;
+        float x2;
+
+        if (p1.x() < p2.x()) {
+            x1 = p1.x();
+            x2 = p2.x();
+        } else {
+            x1 = p2.x();
+            x2 = p1.x();
+        }
+
+        adjustStepToDecorationLength(step, controlPointDistance, x2 - x1);
+        FloatPoint controlPoint1(0, yAxis + controlPointDistance);
+        FloatPoint controlPoint2(0, yAxis - controlPointDistance);
+
+        for (float x = x1; x + 2 * step <= x2;) {
+            controlPoint1.setX(x + step);
+            controlPoint2.setX(x + step);
+            x += 2 * step;
+            path.addBezierCurveTo(controlPoint1, controlPoint2, FloatPoint(x, yAxis));
+        }
+    }
+
+    context->setShouldAntialias(true);
+    context->strokePath(path);
+}
+#endif // CSS3_TEXT
 
 void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& boxOrigin, ETextDecoration deco, TextDecorationStyle decorationStyle, const ShadowData* shadow)
 {
@@ -1034,27 +1189,64 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
         context->setStrokeStyle(textDecorationStyleToStrokeStyle(decorationStyle));
         if (deco & UNDERLINE) {
             context->setStrokeColor(underline, colorSpace);
+#if ENABLE(CSS3_TEXT)
+            TextUnderlinePosition underlinePosition = styleToUse->textUnderlinePosition();
+            const int underlineOffset = computeUnderlineOffset(underlinePosition, styleToUse->fontMetrics(), this, textDecorationThickness);
+
+            switch (decorationStyle) {
+            case TextDecorationStyleWavy: {
+                FloatPoint start(localOrigin.x(), localOrigin.y() + underlineOffset + doubleOffset);
+                FloatPoint end(localOrigin.x() + width, localOrigin.y() + underlineOffset + doubleOffset);
+                strokeWavyTextDecoration(context, start, end, textDecorationThickness);
+                break;
+            }
+            default:
+                context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + underlineOffset), width, isPrinting);
+
+                if (decorationStyle == TextDecorationStyleDouble)
+                    context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + underlineOffset + doubleOffset), width, isPrinting);
+            }
+#else
             // Leave one pixel of white between the baseline and the underline.
             context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + baseline + 1), width, isPrinting);
-#if ENABLE(CSS3_TEXT)
-            if (decorationStyle == TextDecorationStyleDouble)
-                context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + baseline + 1 + doubleOffset), width, isPrinting);
 #endif // CSS3_TEXT
         }
         if (deco & OVERLINE) {
             context->setStrokeColor(overline, colorSpace);
-            context->drawLineForText(localOrigin, width, isPrinting);
 #if ENABLE(CSS3_TEXT)
-            if (decorationStyle == TextDecorationStyleDouble)
-                context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() - doubleOffset), width, isPrinting);
+            switch (decorationStyle) {
+            case TextDecorationStyleWavy: {
+                FloatPoint start(localOrigin.x(), localOrigin.y() - doubleOffset);
+                FloatPoint end(localOrigin.x() + width, localOrigin.y() - doubleOffset);
+                strokeWavyTextDecoration(context, start, end, textDecorationThickness);
+                break;
+            }
+            default:
+#endif // CSS3_TEXT
+                context->drawLineForText(localOrigin, width, isPrinting);
+#if ENABLE(CSS3_TEXT)
+                if (decorationStyle == TextDecorationStyleDouble)
+                    context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() - doubleOffset), width, isPrinting);
+            }
 #endif // CSS3_TEXT
         }
         if (deco & LINE_THROUGH) {
             context->setStrokeColor(linethrough, colorSpace);
-            context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + 2 * baseline / 3), width, isPrinting);
 #if ENABLE(CSS3_TEXT)
-            if (decorationStyle == TextDecorationStyleDouble)
-                context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + doubleOffset + 2 * baseline / 3), width, isPrinting);
+            switch (decorationStyle) {
+            case TextDecorationStyleWavy: {
+                FloatPoint start(localOrigin.x(), localOrigin.y() + 2 * baseline / 3);
+                FloatPoint end(localOrigin.x() + width, localOrigin.y() + 2 * baseline / 3);
+                strokeWavyTextDecoration(context, start, end, textDecorationThickness);
+                break;
+            }
+            default:
+#endif // CSS3_TEXT
+                context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + 2 * baseline / 3), width, isPrinting);
+#if ENABLE(CSS3_TEXT)
+                if (decorationStyle == TextDecorationStyleDouble)
+                    context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + doubleOffset + 2 * baseline / 3), width, isPrinting);
+            }
 #endif // CSS3_TEXT
         }
     } while (shadow);
@@ -1206,7 +1398,7 @@ void InlineTextBox::paintDocumentMarkers(GraphicsContext* pt, const FloatPoint& 
 
     // Give any document markers that touch this run a chance to draw before the text has been drawn.
     // Note end() points at the last char, not one past it like endOffset and ranges do.
-    for ( ; markerIt != markers.end(); markerIt++) {
+    for ( ; markerIt != markers.end(); ++markerIt) {
         DocumentMarker* marker = *markerIt;
         
         // Paint either the background markers or the foreground markers, but not both

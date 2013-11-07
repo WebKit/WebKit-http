@@ -51,15 +51,15 @@ public:
     enum DisplayState {
         WaitingForSnapshot,
         DisplayingSnapshot,
-        PlayingWithPendingMouseClick,
+        Restarting,
+        RestartingWithPendingMouseClick,
         Playing
     };
     DisplayState displayState() const { return m_displayState; }
     virtual void setDisplayState(DisplayState state) { m_displayState = state; }
     virtual void updateSnapshot(PassRefPtr<Image>) { }
     virtual void dispatchPendingMouseClick() { }
-
-    unsigned plugInOriginHash() const { return m_plugInOriginHash; }
+    virtual bool restartedPlugin() const { return false; }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     NPObject* getNPObject();
@@ -83,12 +83,12 @@ protected:
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
     virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
 
+    virtual bool useFallbackContent() const { return false; }
+
     // Subclasses should use guardedDispatchBeforeLoadEvent instead of calling dispatchBeforeLoadEvent directly.
     bool guardedDispatchBeforeLoadEvent(const String& sourceURL);
 
     bool m_inBeforeLoadEventHandler;
-
-    unsigned m_plugInOriginHash;
 
 private:
     bool dispatchBeforeLoadEvent(const String& sourceURL); // Not implemented, generates a compile error if subclasses call this by mistake.
@@ -98,6 +98,8 @@ private:
     virtual void defaultEventHandler(Event*);
 
     virtual RenderWidget* renderWidgetForJSBindings() const = 0;
+
+    virtual bool supportsFocus() const OVERRIDE;
 
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isPluginElement() const;

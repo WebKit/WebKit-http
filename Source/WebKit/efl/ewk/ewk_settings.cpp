@@ -28,6 +28,7 @@
 #include "DatabaseManager.h"
 #include "FontCache.h"
 #include "FrameView.h"
+#include "GCController.h"
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
@@ -37,14 +38,17 @@
 #include "PageCache.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
+#include "StorageThread.h"
 #include "StorageTracker.h"
 #include "WebKitVersion.h"
+#include "WorkerThread.h"
 #include "ewk_private.h"
 #include <Eina.h>
 #include <eina_safety_checks.h>
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <wtf/FastMalloc.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringConcatenate.h>
 
@@ -79,7 +83,7 @@ static WTF::String _ewk_settings_webkit_os_version_get()
 {
     WTF::String uaOsVersion;
 #if OS(DARWIN)
-#if CPU(X86)
+#if CPU(X86) || CPU(X86_64)
     uaOsVersion = "Intel Mac OS X";
 #else
     uaOsVersion = "PPC Mac OS X";
@@ -209,11 +213,11 @@ cairo_surface_t* ewk_settings_icon_database_icon_surface_get(const char* url)
     EINA_SAFETY_ON_NULL_RETURN_VAL(url, 0);
 
     WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
-    WebCore::NativeImagePtr icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
+    RefPtr<cairo_surface_t> icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
     if (!icon)
         ERR("no icon for url %s", url);
 
-    return icon ? icon->surface() : 0;
+    return icon.get();
 }
 
 Evas_Object* ewk_settings_icon_database_icon_object_get(const char* url, Evas* canvas)
@@ -222,15 +226,14 @@ Evas_Object* ewk_settings_icon_database_icon_object_get(const char* url, Evas* c
     EINA_SAFETY_ON_NULL_RETURN_VAL(canvas, 0);
 
     WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
-    WebCore::NativeImagePtr icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
+    RefPtr<cairo_surface_t> surface = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
 
-    if (!icon) {
+    if (!surface) {
         ERR("no icon for url %s", url);
         return 0;
     }
 
-    cairo_surface_t* surface = icon->surface();
-    return surface ? WebCore::evasObjectFromCairoImageSurface(canvas, surface).leakRef() : 0;
+    return surface ? WebCore::evasObjectFromCairoImageSurface(canvas, surface.get()).leakRef() : 0;
 }
 
 void ewk_settings_object_cache_capacity_set(unsigned minDeadCapacity, unsigned maxDeadCapacity, unsigned totalCapacity)
@@ -299,6 +302,18 @@ void ewk_settings_memory_cache_clear()
 
     // Empty the Cross-Origin Preflight cache
     WebCore::CrossOriginPreflightResultCache::shared().empty();
+
+    // Drop JIT compiled code from ExecutableAllocator.
+    WebCore::gcController().discardAllCompiledCode();
+    // Garbage Collect to release the references of CachedResource from dead objects.
+    WebCore::gcController().garbageCollectNow();
+
+    // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
+    WebCore::StorageThread::releaseFastMallocFreeMemoryInAllThreads();
+#if ENABLE(WORKERS)
+    WebCore::WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
+#endif
+    WTF::releaseFastMallocFreeMemory();
 }
 
 void ewk_settings_repaint_throttling_set(double deferredRepaintDelay, double initialDeferredRepaintDelayDuringLoading, double maxDeferredRepaintDelayDuringLoading, double deferredRepaintDelayIncrementDuringLoading)

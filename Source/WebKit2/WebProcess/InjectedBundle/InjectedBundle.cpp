@@ -73,7 +73,7 @@
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/PassOwnArrayPtr.h>
 
-#if ENABLE(SHADOW_DOM) || ENABLE(CSS_REGIONS) || ENABLE(IFRAME_SEAMLESS)
+#if ENABLE(SHADOW_DOM) || ENABLE(CSS_REGIONS) || ENABLE(IFRAME_SEAMLESS) || ENABLE(CSS_COMPOSITING)
 #include <WebCore/RuntimeEnabledFeatures.h>
 #endif
 
@@ -197,6 +197,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::setCSSRegionsEnabled(enabled);
 #endif
 
+#if ENABLE(CSS_COMPOSITING)
+    if (preference == "WebKitCSSCompositingEnabled")
+        RuntimeEnabledFeatures::setCSSCompositingEnabled(enabled);
+#endif
+
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
     macro(WebKitAcceleratedCompositingEnabled, AcceleratedCompositingEnabled, acceleratedCompositingEnabled) \
@@ -230,6 +235,10 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     }
 
     FOR_EACH_OVERRIDE_BOOL_PREFERENCE(OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES)
+
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES(WebKitHiddenPageDOMTimerThrottlingEnabled, HiddenPageDOMTimerThrottlingEnabled, hiddenPageDOMTimerThrottlingEnabled)
+#endif
 
 #undef OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES
 #undef FOR_EACH_OVERRIDE_BOOL_PREFERENCE
@@ -658,6 +667,15 @@ void InjectedBundle::setCSSRegionsEnabled(bool enabled)
 {
 #if ENABLE(CSS_REGIONS)
     RuntimeEnabledFeatures::setCSSRegionsEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+#endif
+}
+
+void InjectedBundle::setCSSCompositingEnabled(bool enabled)
+{
+#if ENABLE(CSS_COMPOSITING)
+    RuntimeEnabledFeatures::setCSSCompositingEnabled(enabled);
 #else
     UNUSED_PARAM(enabled);
 #endif

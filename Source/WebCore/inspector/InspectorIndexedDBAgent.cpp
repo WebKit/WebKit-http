@@ -55,6 +55,7 @@
 #include "IDBMetadata.h"
 #include "IDBObjectStore.h"
 #include "IDBOpenDBRequest.h"
+#include "IDBPendingTransactionMonitor.h"
 #include "IDBRequest.h"
 #include "IDBTransaction.h"
 #include "InjectedScript.h"
@@ -80,6 +81,7 @@ typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::RequestDat
 typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::RequestDatabaseCallback RequestDatabaseCallback;
 typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::RequestDataCallback RequestDataCallback;
 typedef WebCore::InspectorBackendDispatcher::CallbackBase RequestCallback;
+typedef WebCore::InspectorBackendDispatcher::IndexedDBCommandHandler::ClearObjectStoreCallback ClearObjectStoreCallback;
 
 namespace WebCore {
 
@@ -189,6 +191,7 @@ public:
 
         RefPtr<IDBDatabase> idbDatabase = requestResult->idbDatabase();
         m_executableWithDatabase->execute(idbDatabase);
+        IDBPendingTransactionMonitor::deactivateNewTransactions();
         idbDatabase->close();
     }
 
@@ -199,7 +202,7 @@ private:
     RefPtr<ExecutableWithDatabase> m_executableWithDatabase;
 };
 
-void ExecutableWithDatabase::start(IDBFactory* idbFactory, SecurityOrigin* securityOrigin, const String& databaseName)
+void ExecutableWithDatabase::start(IDBFactory* idbFactory, SecurityOrigin*, const String& databaseName)
 {
     RefPtr<OpenDatabaseCallback> callback = OpenDatabaseCallback::create(this);
     ExceptionCode ec = 0;
@@ -211,10 +214,10 @@ void ExecutableWithDatabase::start(IDBFactory* idbFactory, SecurityOrigin* secur
     idbOpenDBRequest->addEventListener(eventNames().successEvent, callback, false);
 }
 
-static PassRefPtr<IDBTransaction> transactionForDatabase(ScriptExecutionContext* scriptExecutionContext, IDBDatabase* idbDatabase, const String& objectStoreName)
+static PassRefPtr<IDBTransaction> transactionForDatabase(ScriptExecutionContext* scriptExecutionContext, IDBDatabase* idbDatabase, const String& objectStoreName, const String& mode = IDBTransaction::modeReadOnly())
 {
     ExceptionCode ec = 0;
-    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(scriptExecutionContext, objectStoreName, IDBTransaction::modeReadOnly(), ec);
+    RefPtr<IDBTransaction> idbTransaction = idbDatabase->transaction(scriptExecutionContext, objectStoreName, mode, ec);
     if (ec)
         return 0;
     return idbTransaction;
@@ -621,13 +624,6 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString* errorString, con
     if (!idbFactory)
         return;
 
-#if USE(V8)
-    v8::HandleScope handleScope;
-    v8::Handle<v8::Context> context = document->frame()->script()->mainWorldContext();
-    ASSERT(!context.IsEmpty());
-    v8::Context::Scope contextScope(context);
-#endif
-
     ExceptionCode ec = 0;
     RefPtr<IDBRequest> idbRequest = idbFactory->getDatabaseNames(document, ec);
     if (ec) {
@@ -646,13 +642,6 @@ void InspectorIndexedDBAgent::requestDatabase(ErrorString* errorString, const St
     IDBFactory* idbFactory = assertIDBFactory(errorString, document);
     if (!idbFactory)
         return;
-
-#if USE(V8)
-    v8::HandleScope handleScope;
-    v8::Handle<v8::Context> context = document->frame()->script()->mainWorldContext();
-    ASSERT(!context.IsEmpty());
-    v8::Context::Scope contextScope(context);
-#endif
 
     RefPtr<DatabaseLoader> databaseLoader = DatabaseLoader::create(document, requestCallback);
     databaseLoader->start(idbFactory, document->securityOrigin(), databaseName);
@@ -676,15 +665,105 @@ void InspectorIndexedDBAgent::requestData(ErrorString* errorString, const String
         return;
     }
 
-#if USE(V8)
-    v8::HandleScope handleScope;
-    v8::Handle<v8::Context> context = document->frame()->script()->mainWorldContext();
-    ASSERT(!context.IsEmpty());
-    v8::Context::Scope contextScope(context);
-#endif
-
     RefPtr<DataLoader> dataLoader = DataLoader::create(document, requestCallback, injectedScript, objectStoreName, indexName, idbKeyRange, skipCount, pageSize);
     dataLoader->start(idbFactory, document->securityOrigin(), databaseName);
+}
+
+class ClearObjectStoreListener : public EventListener {
+    WTF_MAKE_NONCOPYABLE(ClearObjectStoreListener);
+public:
+    static PassRefPtr<ClearObjectStoreListener> create(PassRefPtr<ClearObjectStoreCallback> requestCallback)
+    {
+        return adoptRef(new ClearObjectStoreListener(requestCallback));
+    }
+
+    virtual ~ClearObjectStoreListener() { }
+
+    virtual bool operator==(const EventListener& other) OVERRIDE
+    {
+        return this == &other;
+    }
+
+    virtual void handleEvent(ScriptExecutionContext*, Event* event) OVERRIDE
+    {
+        if (!m_requestCallback->isActive())
+            return;
+        if (event->type() != eventNames().completeEvent) {
+            m_requestCallback->sendFailure("Unexpected event type.");
+            return;
+        }
+
+        m_requestCallback->sendSuccess();
+    }
+private:
+    ClearObjectStoreListener(PassRefPtr<ClearObjectStoreCallback> requestCallback)
+        : EventListener(EventListener::CPPEventListenerType)
+        , m_requestCallback(requestCallback)
+    {
+    }
+
+    RefPtr<ClearObjectStoreCallback> m_requestCallback;
+};
+
+
+class ClearObjectStore : public ExecutableWithDatabase {
+public:
+    static PassRefPtr<ClearObjectStore> create(ScriptExecutionContext* context, const String& objectStoreName, PassRefPtr<ClearObjectStoreCallback> requestCallback)
+    {
+        return adoptRef(new ClearObjectStore(context, objectStoreName, requestCallback));
+    }
+
+    ClearObjectStore(ScriptExecutionContext* context, const String& objectStoreName, PassRefPtr<ClearObjectStoreCallback> requestCallback)
+        : ExecutableWithDatabase(context)
+        , m_objectStoreName(objectStoreName)
+        , m_requestCallback(requestCallback)
+    {
+    }
+
+    virtual void execute(PassRefPtr<IDBDatabase> prpDatabase)
+    {
+        RefPtr<IDBDatabase> idbDatabase = prpDatabase;
+        if (!requestCallback()->isActive())
+            return;
+        RefPtr<IDBTransaction> idbTransaction = transactionForDatabase(context(), idbDatabase.get(), m_objectStoreName, IDBTransaction::modeReadWrite());
+        if (!idbTransaction) {
+            m_requestCallback->sendFailure("Could not get transaction");
+            return;
+        }
+        RefPtr<IDBObjectStore> idbObjectStore = objectStoreForTransaction(idbTransaction.get(), m_objectStoreName);
+        if (!idbObjectStore) {
+            m_requestCallback->sendFailure("Could not get object store");
+            return;
+        }
+
+        ExceptionCode ec = 0;
+        RefPtr<IDBRequest> idbRequest = idbObjectStore->clear(context(), ec);
+        ASSERT(!ec);
+        if (ec) {
+            m_requestCallback->sendFailure(String::format("Could not clear object store '%s': %d", m_objectStoreName.utf8().data(), ec));
+            return;
+        }
+        idbTransaction->addEventListener(eventNames().completeEvent, ClearObjectStoreListener::create(m_requestCallback), false);
+    }
+
+    virtual RequestCallback* requestCallback() { return m_requestCallback.get(); }
+private:
+    const String m_objectStoreName;
+    RefPtr<ClearObjectStoreCallback> m_requestCallback;
+};
+
+void InspectorIndexedDBAgent::clearObjectStore(ErrorString* errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, PassRefPtr<ClearObjectStoreCallback> requestCallback)
+{
+    Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
+    Document* document = assertDocument(errorString, frame);
+    if (!document)
+        return;
+    IDBFactory* idbFactory = assertIDBFactory(errorString, document);
+    if (!idbFactory)
+        return;
+
+    RefPtr<ClearObjectStore> clearObjectStore = ClearObjectStore::create(document, objectStoreName, requestCallback);
+    clearObjectStore->start(idbFactory, document->securityOrigin(), databaseName);
 }
 
 } // namespace WebCore

@@ -26,7 +26,6 @@
 #ifndef KURL_h
 #define KURL_h
 
-#include "KURLWTFURLImpl.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
@@ -49,10 +48,6 @@ QT_END_NAMESPACE
 class BUrl;
 #endif
 
-#if USE(GOOGLEURL)
-#include "KURLGooglePrivate.h"
-#endif
-
 namespace WebCore {
 
 class TextEncoding;
@@ -69,18 +64,8 @@ public:
     // KURL object, or indiscernible from such.
     // It is usually best to avoid repeatedly parsing a string, unless memory saving outweigh the possible slow-downs.
     KURL(ParsedURLStringTag, const String&);
-#if USE(GOOGLEURL)
-    explicit KURL(WTF::HashTableDeletedValueType) : m_url(WTF::HashTableDeletedValue) { }
-#elif USE(WTFURL)
-    explicit KURL(WTF::HashTableDeletedValueType) : m_urlImpl(WTF::HashTableDeletedValue) { }
-#else
     explicit KURL(WTF::HashTableDeletedValueType) : m_string(WTF::HashTableDeletedValue) { }
-#endif
-#if !USE(WTFURL)
     bool isHashTableDeletedValue() const { return string().isHashTableDeletedValue(); }
-#else
-    bool isHashTableDeletedValue() const { return m_urlImpl.isHashTableDeletedValue(); }
-#endif
 
     // Resolves the relative URL with the given base URL. If provided, the
     // TextEncoding is used to encode non-ASCII characers. The base URL can be
@@ -91,13 +76,6 @@ public:
     // the same way we treate null and empty base URLs.
     KURL(const KURL& base, const String& relative);
     KURL(const KURL& base, const String& relative, const TextEncoding&);
-
-#if USE(GOOGLEURL)
-    // For conversions from other structures that have already parsed and
-    // canonicalized the URL. The input must be exactly what KURL would have
-    // done with the same input.
-    KURL(const CString& canonicalSpec, const url_parse::Parsed&, bool isValid);
-#endif
 
     String strippedForUseAsReferrer() const;
 
@@ -126,14 +104,7 @@ public:
     bool canSetPathname() const { return isHierarchical(); }
     bool isHierarchical() const;
 
-#if USE(GOOGLEURL)
-    const String& string() const { return m_url.string(); }
-#elif USE(WTFURL)
-    // FIXME: Split this in URLString and InvalidURLString, get rid of the implicit conversions.
-    const String& string() const;
-#else
     const String& string() const { return m_string; }
-#endif
 
     String elidedString() const;
 
@@ -221,18 +192,7 @@ public:
 	operator BUrl() const;
 #endif
 
-#if USE(GOOGLEURL)
-    // Getters for the parsed structure and its corresponding 8-bit string.
-    const url_parse::Parsed& parsed() const { return m_url.m_parsed; }
-    const CString& utf8String() const { return m_url.utf8String(); }
-#endif
-
-
-#if USE(GOOGLEURL)
-    const KURL* innerURL() const { return m_url.innerURL(); }
-#else
     const KURL* innerURL() const { return 0; }
-#endif
 
 #ifndef NDEBUG
     void print() const;
@@ -244,12 +204,6 @@ public:
 private:
     void invalidate();
     static bool protocolIs(const String&, const char*);
-#if USE(GOOGLEURL)
-    friend class KURLGooglePrivate;
-    KURLGooglePrivate m_url;
-#elif USE(WTFURL)
-    RefPtr<KURLWTFURLImpl> m_urlImpl;
-#else  // !USE(GOOGLEURL)
     void init(const KURL&, const String&, const TextEncoding&);
     void copyToBuffer(Vector<char, 512>& buffer) const;
 
@@ -273,7 +227,6 @@ private:
     int m_pathEnd;
     int m_queryEnd;
     int m_fragmentEnd;
-#endif
 };
 
 bool operator==(const KURL&, const KURL&);
@@ -344,8 +297,6 @@ inline bool operator!=(const String& a, const KURL& b)
     return a != b.string();
 }
 
-#if !USE(GOOGLEURL) && !USE(WTFURL)
-
 // Inline versions of some non-GoogleURL functions so we can get inlining
 // without having to have a lot of ugly ifdefs in the class definition.
 
@@ -403,8 +354,6 @@ inline unsigned KURL::pathAfterLastSlash() const
 {
     return m_pathAfterLastSlash;
 }
-
-#endif // !USE(GOOGLEURL) && !USE(WTFURL)
 
 } // namespace WebCore
 

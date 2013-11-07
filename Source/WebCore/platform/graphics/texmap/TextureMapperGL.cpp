@@ -23,6 +23,7 @@
 #include "TextureMapperGL.h"
 
 #include "Extensions3D.h"
+#include "FilterOperations.h"
 #include "GraphicsContext.h"
 #include "Image.h"
 #include "LengthFunctions.h"
@@ -87,13 +88,11 @@ public:
 
         PassRefPtr<TextureMapperShaderProgram> getShaderProgram(TextureMapperShaderProgram::Options options)
         {
-            HashMap<TextureMapperShaderProgram::Options, RefPtr<TextureMapperShaderProgram> >::iterator it = m_programs.find(options);
-            if (it != m_programs.end())
-                return it->value;
+            HashMap<TextureMapperShaderProgram::Options, RefPtr<TextureMapperShaderProgram> >::AddResult result = m_programs.add(options, 0);
+            if (result.isNewEntry)
+                result.iterator->value = TextureMapperShaderProgram::create(m_context, options);
 
-            RefPtr<TextureMapperShaderProgram> program = TextureMapperShaderProgram::create(m_context, options);
-            m_programs.add(options, program);
-            return program;
+            return result.iterator->value;
         }
 
         HashMap<TextureMapperShaderProgram::Options, RefPtr<TextureMapperShaderProgram> > m_programs;
@@ -157,15 +156,15 @@ public:
 
 Platform3DObject TextureMapperGLData::getStaticVBO(GC3Denum target, GC3Dsizeiptr size, const void* data)
 {
-    HashMap<const void*, Platform3DObject>::iterator it = vbos.find(data);
-    if (it != vbos.end())
-        return it->value;
+    HashMap<const void*, Platform3DObject>::AddResult result = vbos.add(data, 0);
+    if (result.isNewEntry) {
+        Platform3DObject vbo = context->createBuffer();
+        context->bindBuffer(target, vbo);
+        context->bufferData(target, size, data, GraphicsContext3D::STATIC_DRAW);
+        result.iterator->value = vbo;
+    }
 
-    Platform3DObject vbo = context->createBuffer();
-    context->bindBuffer(target, vbo);
-    context->bufferData(target, size, data, GraphicsContext3D::STATIC_DRAW);
-    vbos.add(data, vbo);
-    return vbo;
+    return result.iterator->value;
 }
 
 TextureMapperGLData::~TextureMapperGLData()
@@ -614,14 +613,14 @@ static bool driverSupportsExternalTextureBGRA(GraphicsContext3D* context)
     return true;
 }
 
-static bool driverSupportsSubImage()
+static bool driverSupportsSubImage(GraphicsContext3D* context)
 {
-#if defined(TEXMAP_OPENGL_ES_2)
-    // FIXME: Implement reliable detection.
-    return false;
-#else
+    if (context->isGLES2Compliant()) {
+        static bool supportsSubImage = context->getExtensions()->supports("GL_EXT_unpack_subimage");
+        return supportsSubImage;
+    }
+
     return true;
-#endif
 }
 
 void BitmapTextureGL::didReset()
@@ -656,14 +655,16 @@ void BitmapTextureGL::didReset()
 void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, unsigned bytesPerPixel, Platform3DObject glFormat)
 {
     m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
-    if (driverSupportsSubImage()) { // For ES drivers that don't support sub-images.
+    if (driverSupportsSubImage(m_context3D.get())) { // For ES drivers that don't support sub-images.
         // Use the OpenGL sub-image extension, now that we know it's available.
         m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
         m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, sourceOffset.y());
         m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x());
     }
+
     m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, srcData);
-    if (driverSupportsSubImage()) { // For ES drivers that don't support sub-images.
+
+    if (driverSupportsSubImage(m_context3D.get())) { // For ES drivers that don't support sub-images.
         m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -681,7 +682,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
     IntPoint adjustedSourceOffset = sourceOffset;
 
     // Texture upload requires subimage buffer if driver doesn't support subimage and we don't have full image upload.
-    bool requireSubImageBuffer = !driverSupportsSubImage()
+    bool requireSubImageBuffer = !driverSupportsSubImage(m_context3D.get())
         && !(bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && adjustedSourceOffset == IntPoint::zero());
 
     // prepare temporaryData if necessary
@@ -726,7 +727,7 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
     imageData = reinterpret_cast<const char*>(qImage.constBits());
     bytesPerLine = qImage.bytesPerLine();
 #elif USE(CAIRO)
-    cairo_surface_t* surface = frameImage->surface();
+    cairo_surface_t* surface = frameImage.get();
     imageData = reinterpret_cast<const char*>(cairo_image_surface_get_data(surface));
     bytesPerLine = cairo_image_surface_get_stride(surface);
 #endif
@@ -901,14 +902,10 @@ bool TextureMapperGL::drawUsingCustomFilter(BitmapTexture& target, const BitmapT
         RefPtr<CustomFilterProgram> program = customFilter->program();
         renderer = CustomFilterRenderer::create(m_context3D, program->programType(), customFilter->parameters(), 
             customFilter->meshRows(), customFilter->meshColumns(), customFilter->meshType());
-        RefPtr<CustomFilterCompiledProgram> compiledProgram;
-        CustomFilterProgramMap::iterator iter = m_customFilterPrograms.find(program->programInfo());
-        if (iter == m_customFilterPrograms.end()) {
-            compiledProgram = CustomFilterCompiledProgram::create(m_context3D, program->vertexShaderString(), program->fragmentShaderString(), program->programType());
-            m_customFilterPrograms.set(program->programInfo(), compiledProgram);
-        } else
-            compiledProgram = iter->value;
-        renderer->setCompiledProgram(compiledProgram.release());
+        CustomFilterProgramMap::AddResult result = m_customFilterPrograms.add(program->programInfo(), 0);
+        if (result.isNewEntry)
+            result.iterator->value = CustomFilterCompiledProgram::create(m_context3D, program->vertexShaderString(), program->fragmentShaderString(), program->programType());
+        renderer->setCompiledProgram(result.iterator->value);
         break;
     }
     case FilterOperation::VALIDATED_CUSTOM: {
@@ -918,13 +915,10 @@ bool TextureMapperGL::drawUsingCustomFilter(BitmapTexture& target, const BitmapT
         renderer = CustomFilterRenderer::create(m_context3D, program->programInfo().programType(), customFilter->parameters(),
             customFilter->meshRows(), customFilter->meshColumns(), customFilter->meshType());
         RefPtr<CustomFilterCompiledProgram> compiledProgram;
-        CustomFilterProgramMap::iterator iter = m_customFilterPrograms.find(program->programInfo());
-        if (iter == m_customFilterPrograms.end()) {
-            compiledProgram = CustomFilterCompiledProgram::create(m_context3D, program->validatedVertexShader(), program->validatedFragmentShader(), program->programInfo().programType());
-            m_customFilterPrograms.set(program->programInfo(), compiledProgram);
-        } else
-            compiledProgram = iter->value;
-        renderer->setCompiledProgram(compiledProgram.release());
+        CustomFilterProgramMap::AddResult result = m_customFilterPrograms.add(program->programInfo(), 0);
+        if (result.isNewEntry)
+            result.iterator->value = CustomFilterCompiledProgram::create(m_context3D, program->validatedVertexShader(), program->validatedFragmentShader(), program->programInfo().programType());
+        renderer->setCompiledProgram(result.iterator->value);
         break;
     }
     default:

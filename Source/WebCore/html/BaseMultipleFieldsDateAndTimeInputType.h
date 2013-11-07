@@ -49,6 +49,9 @@ class BaseMultipleFieldsDateAndTimeInputType
     , protected PickerIndicatorElement::PickerIndicatorOwner
     , protected SpinButtonElement::SpinButtonOwner
     , protected ClearButtonElement::ClearButtonOwner {
+public:
+    virtual bool isValidFormat(bool hasYear, bool hasMonth, bool hasWeek, bool hasDay, bool hasAMPM, bool hasHour, bool hasMinute, bool hasSecond) const = 0;
+
 protected:
     BaseMultipleFieldsDateAndTimeInputType(HTMLInputElement*);
     virtual ~BaseMultipleFieldsDateAndTimeInputType();
@@ -105,6 +108,7 @@ private:
     virtual bool shouldUseInputMethod() const OVERRIDE FINAL;
     virtual void stepAttributeChanged() OVERRIDE FINAL;
     virtual void updateInnerTextValue() OVERRIDE FINAL;
+    virtual void valueAttributeChanged() OVERRIDE;
     virtual void listAttributeTargetChanged() OVERRIDE FINAL;
     virtual void updateClearButtonVisibility() OVERRIDE FINAL;
 

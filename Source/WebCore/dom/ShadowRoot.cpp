@@ -63,19 +63,18 @@ ShadowRoot::ShadowRoot(Document* document, ShadowRootType type)
     , m_registeredWithParentShadowRoot(false)
 {
     ASSERT(document);
-
-#if PLATFORM(CHROMIUM)
-    if (type == ShadowRoot::AuthorShadowRoot) {
-        ShadowRootUsageOriginType usageType = document->url().protocolIsInHTTPFamily() ? ShadowRootUsageOriginWeb : ShadowRootUsageOriginNotWeb;
-        HistogramSupport::histogramEnumeration("WebCore.ShadowRoot.constructor", usageType, ShadowRootUsageOriginMax);
-    }
-#endif
 }
 
 ShadowRoot::~ShadowRoot()
 {
     ASSERT(!m_prev);
     ASSERT(!m_next);
+
+    // We cannot let ContainerNode destructor call willBeDeletedFrom()
+    // for this ShadowRoot instance because TreeScope destructor
+    // clears Node::m_treeScope thus ContainerNode is no longer able
+    // to access it Document reference after that.
+    willBeDeletedFrom(documentInternal());
 
     // We must remove all of our children first before the TreeScope destructor
     // runs so we don't go through TreeScopeAdopter for each child with a
@@ -140,7 +139,7 @@ void ShadowRoot::recalcStyle(StyleChange change)
 
     for (Node* child = firstChild(); child; child = child->nextSibling()) {
         if (child->isElementNode())
-            static_cast<Element*>(child)->recalcStyle(change);
+            toElement(child)->recalcStyle(change);
         else if (child->isTextNode())
             toText(child)->recalcTextStyle(change);
     }

@@ -292,6 +292,8 @@ z-index
 -webkit-flex-wrap
 -webkit-justify-content
 -webkit-font-size-delta
+-webkit-grid-auto-columns
+-webkit-grid-auto-rows
 -webkit-grid-columns
 -webkit-grid-rows
 -webkit-grid-start
@@ -371,6 +373,7 @@ z-index
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
 -webkit-text-decoration-line
 -webkit-text-decoration-style
+-webkit-text-decoration-color
 -webkit-text-align-last
 -webkit-text-underline-position
 #endif

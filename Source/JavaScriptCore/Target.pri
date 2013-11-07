@@ -33,7 +33,6 @@ INSTALLDEPS += all
 debug_and_release: INCLUDEPATH += $$JAVASCRIPTCORE_GENERATED_SOURCES_DIR/$$targetSubDir()
 
 SOURCES += \
-    API/JSAPIWrapperObject.cpp \
     API/JSBase.cpp \
     API/JSCallbackConstructor.cpp \
     API/JSCallbackFunction.cpp \
@@ -43,6 +42,7 @@ SOURCES += \
     API/JSObjectRef.cpp \
     API/JSScriptRef.cpp \
     API/JSStringRef.cpp \
+    API/JSStringRefQt.cpp \
     API/JSValueRef.cpp \
     API/JSWeakObjectMapRefPrivate.cpp \
     API/OpaqueJSString.cpp \
@@ -105,6 +105,7 @@ SOURCES += \
     heap/MarkedBlock.cpp \
     heap/MarkedSpace.cpp \
     heap/SlotVisitor.cpp \
+    heap/SuperRegion.cpp \
     heap/VTableSpectrum.cpp \
     heap/WriteBarrierSupport.cpp \
     debugger/DebuggerActivation.cpp \
@@ -114,6 +115,7 @@ SOURCES += \
     dfg/DFGArgumentsSimplificationPhase.cpp \
     dfg/DFGArrayMode.cpp \
     dfg/DFGAssemblyHelpers.cpp \
+    dfg/DFGBackwardsPropagationPhase.cpp \
     dfg/DFGByteCodeParser.cpp \
     dfg/DFGCapabilities.cpp \
     dfg/DFGCommon.cpp \

@@ -28,8 +28,8 @@
 package CodeGeneratorJS;
 
 use strict;
-
 use constant FileNamePrefix => "JS";
+use Hasher;
 
 my $codeGenerator;
 
@@ -83,11 +83,6 @@ sub new
 
     bless($reference, $object);
     return $reference;
-}
-
-sub leftShift($$) {
-    my ($value, $distance) = @_;
-    return (($value << $distance) & 0xFFFFFFFF);
 }
 
 sub GenerateInterface
@@ -1827,6 +1822,7 @@ sub GenerateImplementation
             foreach my $attribute (@{$interface->attributes}) {
                 my $name = $attribute->signature->name;
                 my $type = $attribute->signature->type;
+                my $isNullable = $attribute->signature->isNullable;
                 $codeGenerator->AssertNotSequenceType($type);
                 my $getFunctionName = GetAttributeGetterName($interfaceName, $className, $attribute);
                 my $implGetterFunctionName = $codeGenerator->WK_lcfirst($name);
@@ -1889,6 +1885,7 @@ sub GenerateImplementation
                     }
                 } elsif (!@{$attribute->getterExceptions}) {
                     push(@implContent, "    UNUSED_PARAM(exec);\n") if !$attribute->signature->extendedAttributes->{"CallWith"};
+                    push(@implContent, "    bool isNull = false;\n") if $isNullable;
 
                     my $cacheIndex = 0;
                     if ($attribute->signature->extendedAttributes->{"CachedAttribute"}) {
@@ -1912,6 +1909,7 @@ sub GenerateImplementation
                         }
                     } else {
                         my ($functionName, @arguments) = $codeGenerator->GetterExpression(\%implIncludes, $interfaceName, $attribute);
+                        push(@arguments, "isNull") if $isNullable;
                         if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                             my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                             $implIncludes{"${implementedBy}.h"} = 1;
@@ -1933,6 +1931,11 @@ sub GenerateImplementation
                         } else {
                             push(@implContent, "    JSValue result = $jsType;\n");
                         }
+
+                        if ($isNullable) {
+                            push(@implContent, "    if (isNull)\n");
+                            push(@implContent, "        return jsNull();\n");
+                        }
                     }
 
                     push(@implContent, "    castedThis->m_" . $attribute->signature->name . ".set(exec->globalData(), castedThis, result);\n") if ($attribute->signature->extendedAttributes->{"CachedAttribute"});
@@ -1942,6 +1945,11 @@ sub GenerateImplementation
                     my @arguments = ("ec");
                     push(@implContent, "    ExceptionCode ec = 0;\n");
 
+                    if ($isNullable) {
+                        push(@implContent, "    bool isNull = false;\n");
+                        unshift(@arguments, "isNull");
+                    }
+
                     unshift(@arguments, GenerateCallWith($attribute->signature->extendedAttributes->{"CallWith"}, \@implContent, "jsUndefined()"));
 
                     if ($svgPropertyOrListPropertyType) {
@@ -1950,6 +1958,11 @@ sub GenerateImplementation
                     } else {
                         push(@implContent, "    $interfaceName* impl = static_cast<$interfaceName*>(castedThis->impl());\n");
                         push(@implContent, "    JSC::JSValue result = " . NativeToJSValue($attribute->signature, 0, $interfaceName, "impl->$implGetterFunctionName(" . join(", ", @arguments) . ")", "castedThis") . ";\n");
+                    }
+
+                    if ($isNullable) {
+                        push(@implContent, "    if (isNull)\n");
+                        push(@implContent, "        return jsNull();\n");
                     }
 
                     push(@implContent, "    setDOMException(exec, ec);\n");
@@ -2129,7 +2142,20 @@ sub GenerateImplementation
                                     }
                                 }
 
-                                my $nativeValue = JSValueToNative($attribute->signature, "value");
+                                push(@implContent, "    " . GetNativeTypeFromSignature($attribute->signature) . " nativeValue(" . JSValueToNative($attribute->signature, "value") . ");\n");
+                                push(@implContent, "    if (exec->hadException())\n");
+                                push(@implContent, "        return;\n");
+
+                                if ($codeGenerator->IsEnumType($type)) {
+                                    my @enumValues = $codeGenerator->ValidEnumValues($type);
+                                    my @enumChecks = ();
+                                    foreach my $enumValue (@enumValues) {
+                                        push(@enumChecks, "nativeValue != \"$enumValue\"");
+                                    }
+                                    push (@implContent, "    if (" . join(" && ", @enumChecks) . ")\n");
+                                    push (@implContent, "        return;\n");
+                                }
+
                                 if ($svgPropertyOrListPropertyType) {
                                     if ($svgPropertyType) {
                                         push(@implContent, "    if (impl->isReadOnly()) {\n");
@@ -2140,9 +2166,9 @@ sub GenerateImplementation
                                     }
                                     push(@implContent, "    $svgPropertyOrListPropertyType& podImpl = impl->propertyReference();\n");
                                     if ($svgPropertyOrListPropertyType eq "float") { # Special case for JSSVGNumber
-                                        push(@implContent, "    podImpl = $nativeValue;\n");
+                                        push(@implContent, "    podImpl = nativeValue;\n");
                                     } else {
-                                        push(@implContent, "    podImpl.set$implSetterFunctionName($nativeValue");
+                                        push(@implContent, "    podImpl.set$implSetterFunctionName(nativeValue");
                                         push(@implContent, ", ec") if @{$attribute->setterExceptions};
                                         push(@implContent, ");\n");
                                         push(@implContent, "    setDOMException(exec, ec);\n") if @{$attribute->setterExceptions};
@@ -2157,7 +2183,7 @@ sub GenerateImplementation
                                     }
                                 } else {
                                     my ($functionName, @arguments) = $codeGenerator->SetterExpression(\%implIncludes, $interfaceName, $attribute);
-                                    push(@arguments, $nativeValue);
+                                    push(@arguments, "nativeValue");
                                     if ($attribute->signature->extendedAttributes->{"ImplementedBy"}) {
                                         my $implementedBy = $attribute->signature->extendedAttributes->{"ImplementedBy"};
                                         $implIncludes{"${implementedBy}.h"} = 1;
@@ -2753,6 +2779,21 @@ sub GenerateParametersCheck
                 push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
             }
 
+        } elsif ($codeGenerator->IsEnumType($argType)) {
+            $implIncludes{"<runtime/Error.h>"} = 1;
+
+            my $argValue = "exec->argument($argsIndex)";
+            push(@$outputArray, "    const String ${name}(${argValue}.isEmpty() ? String() : ${argValue}.toString(exec)->value(exec));\n");
+            push(@$outputArray, "    if (exec->hadException())\n");
+            push(@$outputArray, "        return JSValue::encode(jsUndefined());\n");
+
+            my @enumValues = $codeGenerator->ValidEnumValues($argType);
+            my @enumChecks = ();
+            foreach my $enumValue (@enumValues) {
+                push(@enumChecks, "${name} != \"$enumValue\"");
+            }
+            push (@$outputArray, "    if (" . join(" && ", @enumChecks) . ")\n");
+            push (@$outputArray, "        return throwVMTypeError(exec);\n");
         } else {
             # If the "StrictTypeChecking" extended attribute is present, and the argument's type is an
             # interface type, then if the incoming value does not implement that interface, a TypeError
@@ -3053,6 +3094,7 @@ my %nativeType = (
     "DOMString" => "const String&",
     "NodeFilter" => "RefPtr<NodeFilter>",
     "SerializedScriptValue" => "RefPtr<SerializedScriptValue>",
+    "Date" => "double",
     "Dictionary" => "Dictionary",
     "any" => "ScriptValue",
     "boolean" => "bool",
@@ -3082,6 +3124,10 @@ sub GetNativeType
     my $arrayOrSequenceType = $arrayType || $sequenceType;
 
     return "Vector<" . GetNativeVectorInnerType($arrayOrSequenceType) . ">" if $arrayOrSequenceType;
+
+    if ($codeGenerator->IsEnumType($type)) {
+        return "const String";
+    }
 
     # For all other types, the native type is a pointer with same type name as the IDL type.
     return "${type}*";
@@ -3162,9 +3208,12 @@ sub JSValueToNative
     return "$value.toBoolean(exec)" if $type eq "boolean";
     return "$value.toNumber(exec)" if $type eq "double";
     return "$value.toFloat(exec)" if $type eq "float";
-    return "$value.toInt32(exec)" if $type eq "long" or $type eq "short";
-    return "$value.toUInt32(exec)" if $type eq "unsigned long" or $type eq "unsigned short";
-    return "static_cast<$type>($value.toInteger(exec))" if $type eq "long long" or $type eq "unsigned long long";
+
+    my $intConversion = $signature->extendedAttributes->{"EnforceRange"} ? "EnforceRange" : "NormalConversion";
+    return "toInt32(exec, $value, $intConversion)" if $type eq "long" or $type eq "short";
+    return "toUInt32(exec, $value, $intConversion)" if $type eq "unsigned long" or $type eq "unsigned short";
+    return "toInt64(exec, $value, $intConversion)" if $type eq "long long";
+    return "toUInt64(exec, $value, $intConversion)" if $type eq "unsigned long long";
 
     return "valueToDate(exec, $value)" if $type eq "Date";
     return "static_cast<Range::CompareHow>($value.toInt32(exec))" if $type eq "CompareHow";
@@ -3226,6 +3275,10 @@ sub JSValueToNative
         return "toNativeArray<" . GetNativeVectorInnerType($arrayOrSequenceType) . ">(exec, $value)";
     }
 
+    if ($codeGenerator->IsEnumType($type)) {
+        return "$value.isEmpty() ? String() : $value.toString(exec)->value(exec)";
+    }
+
     # Default, assume autogenerated type conversion routines
     AddToImplIncludes("JS$type.h", $conditional);
     return "to$type($value)";
@@ -3256,6 +3309,11 @@ sub NativeToJSValue
 
     if ($codeGenerator->IsPrimitiveType($type) or $type eq "DOMTimeStamp") {
         return "jsNumber($value)";
+    }
+
+    if ($codeGenerator->IsEnumType($type)) {
+        AddToImplIncludes("<runtime/JSString.h>", $conditional);
+        return "jsStringWithCache(exec, $value)";
     }
 
     if ($codeGenerator->IsStringType($type)) {
@@ -3417,7 +3475,7 @@ sub GenerateHashTable
     my $i = 0;
     foreach (@{$keys}) {
         my $depth = 0;
-        my $h = $object->GenerateHashValue($_) % $numEntries;
+        my $h = Hasher::GenerateHashValue($_) % $numEntries;
 
         while (defined($table[$h])) {
             if (defined($links[$h])) {
@@ -3486,65 +3544,6 @@ sub GenerateHashTable
     push(@implContent, "};\n\n");
     my $compactSizeMask = $numEntries - 1;
     push(@implContent, "static const HashTable $name = { $compactSize, $compactSizeMask, $nameEntries, 0 };\n");
-}
-
-# Paul Hsieh's SuperFastHash
-# http://www.azillionmonkeys.com/qed/hash.html
-sub GenerateHashValue
-{
-    my $object = shift;
-
-    my @chars = split(/ */, $_[0]);
-
-    # This hash is designed to work on 16-bit chunks at a time. But since the normal case
-    # (above) is to hash UTF-16 characters, we just treat the 8-bit chars as if they
-    # were 16-bit chunks, which should give matching results
-    
-    my $EXP2_32 = 4294967296;
-    
-    my $hash = 0x9e3779b9;
-    my $l    = scalar @chars; #I wish this was in Ruby --- Maks
-    my $rem  = $l & 1;
-    $l = $l >> 1;
-    
-    my $s = 0;
-    
-    # Main loop
-    for (; $l > 0; $l--) {
-        $hash   += ord($chars[$s]);
-        my $tmp = leftShift(ord($chars[$s+1]), 11) ^ $hash;
-        $hash   = (leftShift($hash, 16)% $EXP2_32) ^ $tmp;
-        $s += 2;
-        $hash += $hash >> 11;
-        $hash %= $EXP2_32;
-    }
-    
-    # Handle end case
-    if ($rem != 0) {
-        $hash += ord($chars[$s]);
-        $hash ^= (leftShift($hash, 11)% $EXP2_32);
-        $hash += $hash >> 17;
-    }
-    
-    # Force "avalanching" of final 127 bits
-    $hash ^= leftShift($hash, 3);
-    $hash += ($hash >> 5);
-    $hash = ($hash% $EXP2_32);
-    $hash ^= (leftShift($hash, 2)% $EXP2_32);
-    $hash += ($hash >> 15);
-    $hash = $hash% $EXP2_32;
-    $hash ^= (leftShift($hash, 10)% $EXP2_32);
-    
-    # Save 8 bits for StringImpl to use as flags.
-    $hash &= 0xffffff;
-    
-    # This avoids ever returning a hash code of 0, since that is used to
-    # signal "hash not computed yet". Setting the high bit maintains
-    # reasonable fidelity to a hash code of 0 because it is likely to yield
-    # exactly 0 when hash lookup masks out the high bits.
-    $hash = (0x80000000 >> 8) if ($hash == 0);
-    
-    return $hash;
 }
 
 sub WriteData

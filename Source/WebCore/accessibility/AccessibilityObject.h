@@ -32,6 +32,7 @@
 
 #include "FloatQuad.h"
 #include "LayoutRect.h"
+#include "Path.h"
 #include "TextIterator.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
@@ -64,8 +65,6 @@ typedef WebAccessibilityObjectWrapper AccessibilityObjectWrapper;
 #elif PLATFORM(GTK) || (PLATFORM(EFL) && HAVE(ACCESSIBILITY))
 typedef struct _AtkObject AtkObject;
 typedef struct _AtkObject AccessibilityObjectWrapper;
-#elif PLATFORM(CHROMIUM)
-// Chromium does not use a wrapper.
 #else
 class AccessibilityObjectWrapper;
 #endif
@@ -112,6 +111,7 @@ enum AccessibilityRole {
     ColumnHeaderRole,
     ComboBoxRole,
     DefinitionRole,
+    DescriptionListRole,
     DescriptionListTermRole,
     DescriptionListDetailRole,
     DirectoryRole,
@@ -312,9 +312,16 @@ enum AccessibilitySearchKey {
 struct AccessibilitySearchCriteria {
     AccessibilityObject* startObject;
     AccessibilitySearchDirection searchDirection;
-    AccessibilitySearchKey searchKey;
+    Vector<AccessibilitySearchKey> searchKeys;
     String* searchText;
     unsigned resultsLimit;
+    
+    AccessibilitySearchCriteria(AccessibilityObject* o, AccessibilitySearchDirection d, String* t, unsigned l)
+    : startObject(o)
+    , searchDirection(d)
+    , searchText(t)
+    , resultsLimit(l)
+    { }
 };
 
 struct VisiblePositionRange {
@@ -419,6 +426,7 @@ public:
     virtual bool isMenuListPopup() const { return false; }
     virtual bool isMenuListOption() const { return false; }
     virtual bool isSpinButton() const { return roleValue() == SpinButtonRole; }
+    virtual bool isNativeSpinButton() const { return false; }
     virtual bool isSpinButtonPart() const { return false; }
     virtual bool isMockObject() const { return false; }
     virtual bool isMediaControlLabel() const { return false; }
@@ -486,7 +494,9 @@ public:
     virtual Node* node() const { return 0; }
     virtual RenderObject* renderer() const { return 0; }
     virtual bool accessibilityIsIgnored() const;
-
+    virtual AccessibilityObjectInclusion defaultObjectInclusion() const;
+    bool accessibilityIsIgnoredByDefault() const;
+    
     int blockquoteLevel() const;
     virtual int headingLevel() const { return 0; }
     virtual int tableLevel() const { return 0; }
@@ -596,6 +606,8 @@ public:
     IntSize pixelSnappedSize() const { return elementRect().pixelSnappedSize(); }
     virtual IntPoint clickPoint();
     static IntRect boundingBoxForQuads(RenderObject*, const Vector<FloatQuad>&);
+    virtual Path elementPath() const { return Path(); }
+    virtual bool supportsPath() const { return false; }
     
     TextIteratorBehavior textIteratorBehaviorForTextRange() const;
     virtual PlainTextRange selectedTextRange() const { return PlainTextRange(); }
@@ -662,7 +674,7 @@ public:
     bool isDescendantOfObject(const AccessibilityObject*) const;
     bool isAncestorOfObject(const AccessibilityObject*) const;
     AccessibilityObject* firstAnonymousBlockChild() const;
-    
+
     static AccessibilityRole ariaRoleToWebCoreRole(const String&);
     bool hasAttribute(const QualifiedName&) const;
     const AtomicString& getAttribute(const QualifiedName&) const;
@@ -798,12 +810,13 @@ public:
     // Fenced components.
     virtual String mathFencedOpenString() const { return String(); }
     virtual String mathFencedCloseString() const { return String(); }
+    virtual int mathLineThickness() const { return 0; }
     
 #if HAVE(ACCESSIBILITY)
 #if PLATFORM(GTK) || PLATFORM(EFL)
     AccessibilityObjectWrapper* wrapper() const;
     void setWrapper(AccessibilityObjectWrapper*);
-#elif !PLATFORM(CHROMIUM)
+#else
     AccessibilityObjectWrapper* wrapper() const { return m_wrapper.get(); }
     void setWrapper(AccessibilityObjectWrapper* wrapper) 
     {
@@ -845,10 +858,12 @@ protected:
     virtual ScrollableArea* getScrollableAreaIfScrollable() const { return 0; }
     virtual void scrollTo(const IntPoint&) const { }
 
+    static bool isAccessibilityObjectSearchMatchAtIndex(AccessibilityObject*, AccessibilitySearchCriteria*, size_t);
     static bool isAccessibilityObjectSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool isAccessibilityTextSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool objectMatchesSearchCriteriaWithResultLimit(AccessibilityObject*, AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
     virtual AccessibilityRole buttonRoleType() const;
+    bool ariaIsHidden() const;
 
 #if PLATFORM(GTK) || (PLATFORM(EFL) && HAVE(ACCESSIBILITY))
     bool allowsTextRanges() const;
@@ -864,8 +879,6 @@ protected:
     COMPtr<AccessibilityObjectWrapper> m_wrapper;
 #elif PLATFORM(GTK) || (PLATFORM(EFL) && HAVE(ACCESSIBILITY))
     AtkObject* m_wrapper;
-#elif PLATFORM(CHROMIUM)
-    bool m_detached;
 #endif
 };
 

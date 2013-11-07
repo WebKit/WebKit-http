@@ -282,7 +282,7 @@ void RenderThemeMacShared::systemFont(int cssValueId, FontDescription& fontDescr
         NSFontManager *fontManager = [NSFontManager sharedFontManager];
         cachedDesc->setIsAbsoluteSize(true);
         cachedDesc->setGenericFamily(FontDescription::NoFamily);
-        cachedDesc->firstFamily().setFamily([font familyName]);
+        cachedDesc->firstFamily().setFamily([font webCoreFamilyName]);
         cachedDesc->setSpecifiedSize([font pointSize]);
         cachedDesc->setWeight(toFontWeight([fontManager weightOfFont:font]));
         cachedDesc->setItalic([fontManager traitsOfFont:font] & NSItalicFontMask);
@@ -689,7 +689,7 @@ void RenderThemeMacShared::setFontFromControlSize(StyleResolver*, RenderStyle* s
     fontDescription.setGenericFamily(FontDescription::SerifFamily);
 
     NSFont* font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSize]];
-    fontDescription.firstFamily().setFamily([font familyName]);
+    fontDescription.firstFamily().setFamily([font webCoreFamilyName]);
     fontDescription.setComputedSize([font pointSize] * style->effectiveZoom());
     fontDescription.setSpecifiedSize([font pointSize] * style->effectiveZoom());
 
@@ -1232,7 +1232,7 @@ void RenderThemeMacShared::adjustMenuListStyle(StyleResolver* styleResolver, Ren
 
     // Set the foreground color to black or gray when we have the aqua look.
     // Cast to RGB32 is to work around a compiler bug.
-    style->setColor(e && e->isEnabledFormControl() ? static_cast<RGBA32>(Color::black) : Color::darkGray);
+    style->setColor(e && !e->isDisabledFormControl() ? static_cast<RGBA32>(Color::black) : Color::darkGray);
 
     // Set the button's vertical size.
     setSizeFromFont(style, menuListButtonSizes());
@@ -1433,12 +1433,6 @@ bool RenderThemeMacShared::paintSliderThumb(RenderObject* o, const PaintInfo& pa
         paintInfo.context->translate(-unzoomedRect.x(), -unzoomedRect.y());
     }
 
-#if PLATFORM(CHROMIUM)
-    paintInfo.context->translate(0, unzoomedRect.y());
-    paintInfo.context->scale(FloatSize(1, -1));
-    paintInfo.context->translate(0, -(unzoomedRect.y() + unzoomedRect.height()));
-#endif
-
     [sliderThumbCell drawInteriorWithFrame:unzoomedRect inView:documentViewFor(o)];
     [sliderThumbCell setControlView:nil];
 
@@ -1550,7 +1544,7 @@ bool RenderThemeMacShared::paintSearchFieldCancelButton(RenderObject* o, const P
 
     NSSearchFieldCell* search = this->search();
 
-    if (input->isEnabledFormControl() && (input->isTextFormControl() && !static_cast<HTMLTextFormControlElement*>(input)->readOnly())) {
+    if (!input->isDisabledFormControl() && (input->isTextFormControl() && !toHTMLTextFormControlElement(input)->isReadOnly())) {
         updateActiveState([search cancelButtonCell], o);
         updatePressedState([search cancelButtonCell], o);
     }

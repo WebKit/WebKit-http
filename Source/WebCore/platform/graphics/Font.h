@@ -155,7 +155,7 @@ public:
     {
         return glyphDataAndPageForCharacter(c, mirror, variant).first;
     }
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC)
     const SimpleFontData* fontDataForCombiningCharacterSequence(const UChar*, size_t length, FontDataVariant) const;
 #endif
     std::pair<GlyphData, GlyphPage*> glyphDataAndPageForCharacter(UChar32, bool mirror, FontDataVariant = AutoVariant) const;
@@ -297,7 +297,7 @@ private:
     }
 
 #if PLATFORM(QT)
-    void initFormatForTextLayout(QTextLayout*) const;
+    void initFormatForTextLayout(QTextLayout*, const TextRun&) const;
 #endif
 
     static TypesettingFeatures s_defaultTypesettingFeatures;

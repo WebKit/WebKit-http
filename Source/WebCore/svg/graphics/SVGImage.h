@@ -51,7 +51,7 @@ public:
     FrameView* frameView() const;
 
     virtual bool isSVGImage() const { return true; }
-    virtual IntSize size() const;
+    virtual IntSize size() const OVERRIDE { return m_intrinsicSize; }
 
     virtual bool hasRelativeWidth() const;
     virtual bool hasRelativeHeight() const;
@@ -62,6 +62,10 @@ public:
 
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
+#if USE(SKIA) || USE(CAIRO)
+    virtual PassNativeImagePtr nativeImageForCurrentFrame() OVERRIDE;
+#endif
+
 private:
     friend class SVGImageChromeClient;
     friend class SVGImageForContainer;
@@ -71,6 +75,7 @@ private:
     virtual String filenameExtension() const;
 
     virtual void setContainerSize(const IntSize&);
+    IntSize containerSize() const;
     virtual bool usesContainerSize() const { return true; }
     virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio);
 
@@ -80,8 +85,6 @@ private:
     // to prune because these functions are not implemented yet.
     virtual void destroyDecodedData(bool) { }
     virtual unsigned decodedSize() const { return 0; }
-
-    virtual NativeImagePtr frameAtIndex(size_t) { return 0; }
 
     // FIXME: Implement this to be less conservative.
     virtual bool currentFrameKnownToBeOpaque() OVERRIDE { return false; }
@@ -94,6 +97,7 @@ private:
 
     OwnPtr<SVGImageChromeClient> m_chromeClient;
     OwnPtr<Page> m_page;
+    IntSize m_intrinsicSize;
 };
 }
 

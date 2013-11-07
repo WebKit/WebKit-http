@@ -135,9 +135,9 @@ void Pasteboard::clear()
     platformStrategies()->pasteboardStrategy()->setTypes(Vector<String>(), m_pasteboardName);
 }
 
-String Pasteboard::getStringSelection(Frame* frame)
+String Pasteboard::getStringSelection(Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
 {
-    String text = frame->editor()->selectedText();
+    String text = shouldSerializeSelectedTextForClipboard == IncludeImageAltTextForClipboard ? frame->editor()->selectedTextForClipboard() : frame->editor()->selectedText();
     text.replace(noBreakSpace, ' ');
     return text;
 }
@@ -175,7 +175,7 @@ PassRefPtr<SharedBuffer> Pasteboard::getDataSelection(Frame* frame, const String
     return 0;
 }
 
-void Pasteboard::writeSelectionForTypes(const Vector<String>& pasteboardTypes, bool canSmartCopyOrDelete, Frame* frame)
+void Pasteboard::writeSelectionForTypes(const Vector<String>& pasteboardTypes, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
 {
     NSAttributedString* attributedString = nil;
     RetainPtr<WebHTMLConverter> converter(AdoptNS, [[WebHTMLConverter alloc] initWithDOMRange:kit(frame->editor()->selectedRange().get())]);
@@ -208,7 +208,7 @@ void Pasteboard::writeSelectionForTypes(const Vector<String>& pasteboardTypes, b
     
     // Put plain string on the pasteboard.
     if (types.contains(String(NSStringPboardType)))
-        platformStrategies()->pasteboardStrategy()->setStringForType(getStringSelection(frame), NSStringPboardType, m_pasteboardName);
+        platformStrategies()->pasteboardStrategy()->setStringForType(getStringSelection(frame, shouldSerializeSelectedTextForClipboard), NSStringPboardType, m_pasteboardName);
     
     if (types.contains(WebSmartPastePboardType))
         platformStrategies()->pasteboardStrategy()->setBufferForType(0, WebSmartPastePboardType, m_pasteboardName);
@@ -227,9 +227,9 @@ void Pasteboard::writePlainText(const String& text, SmartReplaceOption smartRepl
         platformStrategies()->pasteboardStrategy()->setBufferForType(0, WebSmartPastePboardType, m_pasteboardName);
 }
     
-void Pasteboard::writeSelection(Range*, bool canSmartCopyOrDelete, Frame* frame)
+void Pasteboard::writeSelection(Range*, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
 {
-    writeSelectionForTypes(Vector<String>(), canSmartCopyOrDelete, frame);
+    writeSelectionForTypes(Vector<String>(), canSmartCopyOrDelete, frame, shouldSerializeSelectedTextForClipboard);
 }
 
 static void writeURLForTypes(const Vector<String>& types, const String& pasteboardName, const KURL& url, const String& titleStr, Frame* frame)
@@ -462,6 +462,30 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
     return URL;
 }
 
+static PassRefPtr<DocumentFragment> fragmentFromWebArchive(Frame* frame, PassRefPtr<LegacyWebArchive> coreArchive)
+{
+    RefPtr<ArchiveResource> mainResource = coreArchive->mainResource();
+    if (!mainResource)
+        return 0;
+
+    const String& MIMEType = mainResource->mimeType();
+    if (!frame || !frame->document())
+        return 0;
+
+    if (frame->loader()->client()->canShowMIMETypeAsHTML(MIMEType)) {
+        RetainPtr<NSString> markupString(AdoptNS, [[NSString alloc] initWithData:[mainResource->data()->createNSData() autorelease] encoding:NSUTF8StringEncoding]);
+        // FIXME: seems poor form to do this as a side effect of getting a document fragment
+        if (DocumentLoader* loader = frame->loader()->documentLoader())
+            loader->addAllArchiveResources(coreArchive.get());
+        return createFragmentFromMarkup(frame->document(), markupString.get(), mainResource->url(), DisallowScriptingAndPluginContent);
+    }
+
+    if (MIMETypeRegistry::isSupportedImageMIMEType(MIMEType))
+        return documentFragmentWithImageResource(frame, mainResource);
+
+    return 0;
+}
+
 PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefPtr<Range> context, bool allowPlainText, bool& chosePlainText)
 {
     Vector<String> types;
@@ -470,28 +494,13 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
     chosePlainText = false;
 
     if (types.contains(WebArchivePboardType)) {
-        RefPtr<LegacyWebArchive> coreArchive = LegacyWebArchive::create(KURL(), platformStrategies()->pasteboardStrategy()->bufferForType(WebArchivePboardType, m_pasteboardName).get());
-        if (coreArchive) {
-            RefPtr<ArchiveResource> mainResource = coreArchive->mainResource();
-            if (mainResource) {
-                NSString *MIMEType = mainResource->mimeType();
-                if (!frame || !frame->document())
-                    return 0;
-                if (frame->loader()->client()->canShowMIMETypeAsHTML(MIMEType)) {
-                    NSString *markupString = [[NSString alloc] initWithData:[mainResource->data()->createNSData() autorelease] encoding:NSUTF8StringEncoding];
-                    // FIXME: seems poor form to do this as a side effect of getting a document fragment
-                    if (DocumentLoader* loader = frame->loader()->documentLoader())
-                        loader->addAllArchiveResources(coreArchive.get());
-
-                    fragment = createFragmentFromMarkup(frame->document(), markupString, mainResource->url(), DisallowScriptingAndPluginContentIfNeeded);
-                    [markupString release];
-                } else if (MIMETypeRegistry::isSupportedImageMIMEType(MIMEType))
-                   fragment = documentFragmentWithImageResource(frame, mainResource);                    
+        if (RefPtr<SharedBuffer> webArchiveBuffer = platformStrategies()->pasteboardStrategy()->bufferForType(WebArchivePboardType, m_pasteboardName)) {
+            if (RefPtr<LegacyWebArchive> coreArchive = LegacyWebArchive::create(KURL(), webArchiveBuffer.get())) {
+                if ((fragment = fragmentFromWebArchive(frame, coreArchive)))
+                    return fragment.release();
             }
         }
-        if (fragment)
-            return fragment.release();
-    } 
+    }
 
     if (types.contains(String(NSFilenamesPboardType))) {
         Vector<String> paths;
@@ -522,7 +531,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
             }
         }
         if ([HTMLString length] != 0 &&
-            (fragment = createFragmentFromMarkup(frame->document(), HTMLString, "", DisallowScriptingAndPluginContentIfNeeded)))
+            (fragment = createFragmentFromMarkup(frame->document(), HTMLString, "", DisallowScriptingAndPluginContent)))
             return fragment.release();
     }
 

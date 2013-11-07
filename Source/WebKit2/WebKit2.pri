@@ -28,6 +28,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/Shared/qt \
     $$SOURCE_DIR/UIProcess \
     $$SOURCE_DIR/UIProcess/API/C \
+    $$SOURCE_DIR/UIProcess/API/C/qt \
     $$SOURCE_DIR/UIProcess/API/cpp \
     $$SOURCE_DIR/UIProcess/API/cpp/qt \
     $$SOURCE_DIR/UIProcess/API/qt \
@@ -81,4 +82,6 @@ linux-*: {
 
 have?(QTQUICK): QT += qml quick
 
-enable?(GEOLOCATION): QT += location
+have?(qtlocation):enable?(GEOLOCATION): QT += location
+
+enable?(SECCOMP_FILTERS): PKGCONFIG += libseccomp

@@ -196,18 +196,29 @@ struct Node {
         m_op = op;
         m_flags = defaultFlags(op);
     }
-    
+
     void setOpAndDefaultNonExitFlags(NodeType op)
+    {
+        ASSERT(!(m_flags & NodeHasVarArgs));
+        setOpAndDefaultNonExitFlagsUnchecked(op);
+    }
+
+    void setOpAndDefaultNonExitFlagsUnchecked(NodeType op)
     {
         m_op = op;
         m_flags = (defaultFlags(op) & ~NodeExitsForward) | (m_flags & NodeExitsForward);
     }
-    
+
     void convertToPhantom()
     {
         setOpAndDefaultNonExitFlags(Phantom);
     }
-    
+
+    void convertToPhantomUnchecked()
+    {
+        setOpAndDefaultNonExitFlagsUnchecked(Phantom);
+    }
+
     void convertToIdentity()
     {
         setOpAndDefaultNonExitFlags(Identity);
@@ -347,6 +358,12 @@ struct Node {
         m_op = GetLocal;
         m_opInfo = bitwise_cast<uintptr_t>(variable);
         children.setChild1(Edge(phi));
+    }
+    
+    void convertToToString()
+    {
+        ASSERT(m_op == ToPrimitive);
+        m_op = ToString;
     }
     
     JSCell* weakConstant()
@@ -844,6 +861,7 @@ struct Node {
         case ForwardStructureTransitionWatchpoint:
         case ArrayifyToStructure:
         case NewObject:
+        case NewStringObject:
             return true;
         default:
             return false;
@@ -1120,6 +1138,16 @@ struct Node {
         return isStringSpeculation(prediction());
     }
  
+    bool shouldSpeculateStringObject()
+    {
+        return isStringObjectSpeculation(prediction());
+    }
+    
+    bool shouldSpeculateStringOrStringObject()
+    {
+        return isStringOrStringObjectSpeculation(prediction());
+    }
+    
     bool shouldSpeculateFinalObject()
     {
         return isFinalObjectSpeculation(prediction());

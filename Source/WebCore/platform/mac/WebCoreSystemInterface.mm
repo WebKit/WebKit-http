@@ -110,7 +110,6 @@ CFReadStreamRef (*wkCreateCustomCFReadStream)(void *(*formCreate)(CFReadStreamRe
     void *context);
 void (*wkSetNSURLConnectionDefersCallbacks)(NSURLConnection *, BOOL);
 void (*wkSetNSURLRequestShouldContentSniff)(NSMutableURLRequest *, BOOL);
-id (*wkCreateNSURLConnectionDelegateProxy)(void);
 unsigned (*wkInitializeMaximumHTTPConnectionCountPerHost)(unsigned preferredConnectionCount);
 int (*wkGetHTTPPipeliningPriority)(CFURLRequestRef);
 void (*wkSetHTTPPipeliningMaximumPriority)(int priority);
@@ -191,6 +190,8 @@ CFHTTPMessageRef (*wkGetCFURLResponseHTTPResponse)(CFURLResponseRef);
 CFStringRef (*wkCopyCFURLResponseSuggestedFilename)(CFURLResponseRef);
 void (*wkSetCFURLResponseMIMEType)(CFURLResponseRef, CFStringRef mimeType);
 void (*wkSetMetadataURL)(NSString *urlString, NSString *referrer, NSString *path);
+
+void(*wkDestroyRenderingResources)(void);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 dispatch_source_t (*wkCreateVMPressureDispatchOnMainQueue)(void);

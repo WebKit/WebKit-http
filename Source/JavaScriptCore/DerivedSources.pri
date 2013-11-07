@@ -20,12 +20,10 @@ LUT_FILES += \
     runtime/NumberConstructor.cpp \
     runtime/NumberPrototype.cpp \
     runtime/ObjectConstructor.cpp \
-    runtime/ObjectPrototype.cpp \
     runtime/RegExpConstructor.cpp \
     runtime/RegExpObject.cpp \
     runtime/RegExpPrototype.cpp \
     runtime/StringConstructor.cpp \
-    runtime/StringPrototype.cpp \
 
 KEYWORDLUT_FILES += \
     parser/Keywords.table

@@ -199,8 +199,8 @@ function test()
 
     moveFocus('shadowD/shadowF/shadowG/divH', 'shadowD/shadowK/divL',
               'Old focused node and new focused node exist in separated subtrees, crossing shadow boundaries. Making sure that an event is not dispatched beyond the lowest common boundary.');
-    shouldBe('dispatchedEvent("focus")', '["shadowK(<-shadowF)(@divJ)(capturing phase)", "shadowK(<-shadowF)(@shadowK)", "divL(<-shadowF)(@divL)"]');
-    shouldBe('dispatchedEvent("blur")', '["shadowF(<-shadowK)(@divE)(capturing phase)", "shadowF(<-shadowK)(@shadowF)", "shadowG(<-shadowK)(@shadowG)", "divH(<-shadowK)(@divH)"]');
+    shouldBe('dispatchedEvent("focus")', '["shadowK(<-shadowF)(@divJ)(capturing phase)", "divL(<-shadowF)(@divL)", "shadowK(<-shadowF)(@shadowK)"]');
+    shouldBe('dispatchedEvent("blur")', '["shadowF(<-shadowK)(@divE)(capturing phase)", "divH(<-shadowK)(@divH)", "shadowG(<-shadowK)(@shadowG)", "shadowF(<-shadowK)(@shadowF)"]');
 }
 
 test();

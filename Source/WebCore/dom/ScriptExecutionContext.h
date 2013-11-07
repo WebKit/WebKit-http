@@ -35,18 +35,14 @@
 #include "ScriptState.h"
 #include "SecurityContext.h"
 #include "Supplementable.h"
+#include <runtime/JSGlobalData.h>
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/Threading.h>
 #include <wtf/text/StringHash.h>
-
-#if USE(JSC)
-#include <runtime/JSGlobalData.h>
-#endif
 
 namespace WebCore {
 
@@ -103,14 +99,14 @@ public:
     bool activeDOMObjectsAreStopped() const { return m_activeDOMObjectsAreStopped; }
 
     // Called from the constructor and destructors of ActiveDOMObject.
-    void didCreateActiveDOMObject(ActiveDOMObject*, void* upcastPointer);
+    void didCreateActiveDOMObject(ActiveDOMObject*);
     void willDestroyActiveDOMObject(ActiveDOMObject*);
 
     // Called after the construction of an ActiveDOMObject to synchronize suspend state.
     void suspendActiveDOMObjectIfNeeded(ActiveDOMObject*);
 
-    typedef const HashMap<ActiveDOMObject*, void*> ActiveDOMObjectsMap;
-    ActiveDOMObjectsMap& activeDOMObjects() const { return m_activeDOMObjects; }
+    typedef HashSet<ActiveDOMObject*> ActiveDOMObjectsSet;
+    const ActiveDOMObjectsSet& activeDOMObjects() const { return m_activeDOMObjects; }
 
     void didCreateDestructionObserver(ContextDestructionObserver*);
     void willDestroyDestructionObserver(ContextDestructionObserver*);
@@ -148,9 +144,7 @@ public:
     void removeTimeout(int timeoutId) { m_timeouts.remove(timeoutId); }
     DOMTimer* findTimeout(int timeoutId) { return m_timeouts.get(timeoutId); }
 
-#if USE(JSC)
     JSC::JSGlobalData* globalData();
-#endif
 
     // Interval is in seconds.
     void adjustMinimumTimerInterval(double oldMinimumTimerInterval);
@@ -203,7 +197,7 @@ private:
 
     HashSet<MessagePort*> m_messagePorts;
     HashSet<ContextDestructionObserver*> m_destructionObservers;
-    HashMap<ActiveDOMObject*, void*> m_activeDOMObjects;
+    ActiveDOMObjectsSet m_activeDOMObjects;
     bool m_iteratingActiveDOMObjects;
     bool m_inDestructor;
 

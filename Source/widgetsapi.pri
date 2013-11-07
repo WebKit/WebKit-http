@@ -25,11 +25,9 @@ INCLUDEPATH += \
     $$SOURCE_DIR/qt/WidgetSupport \
     $$ROOT_WEBKIT_DIR/Source/WTF/wtf/qt
 
-enable?(DEVICE_ORIENTATION)|enable?(ORIENTATION_EVENTS) {
-    QT += sensors
-}
+have?(qtsensors):if(enable?(DEVICE_ORIENTATION)|enable?(ORIENTATION_EVENTS)): QT += sensors
 
-enable?(GEOLOCATION): QT += location
+have?(qtlocation):enable?(GEOLOCATION): QT += location
 
 use?(QT_MULTIMEDIA): QT *= multimediawidgets
 
@@ -37,7 +35,7 @@ contains(CONFIG, texmap): DEFINES += WTF_USE_TEXTURE_MAPPER=1
 
 use?(PLUGIN_BACKEND_XLIB): PKGCONFIG += x11
 
-QT += network widgets
+QT += network widgets widgets-private
 have?(QTQUICK): QT += quick
 have?(QTPRINTSUPPORT): QT += printsupport
 

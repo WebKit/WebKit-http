@@ -33,6 +33,7 @@
 @class DOMNode;
 @class DOMSVGDocument;
 @class DOMSVGPoint;
+@class DOMTestEnumType;
 @class DOMTestObj;
 @class DOMTestObjectAConstructor;
 @class DOMTestObjectBConstructor;
@@ -115,6 +116,12 @@ enum {
 @property int idName;
 @property(readonly, copy) NSString *hashName;
 @property(readonly) int replaceableAttribute;
+@property(readonly) double nullableDoubleAttribute;
+@property(readonly) int nullableLongAttribute;
+@property(readonly) BOOL nullableBooleanAttribute;
+@property(readonly, copy) NSString *nullableStringAttribute;
+@property int nullableLongSettableAttribute;
+@property int nullableStringValue;
 
 - (void)voidMethod;
 - (void)voidMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
@@ -122,6 +129,7 @@ enum {
 - (int)longMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (DOMTestObj *)objMethod;
 - (DOMTestObj *)objMethodWithArgs:(int)longArg strArg:(NSString *)strArg objArg:(DOMTestObj *)objArg;
+- (void)methodWithEnumArg:(DOMTestEnumType *)enumArg;
 - (DOMTestObj *)methodThatRequiresAllArgsAndThrows:(NSString *)strArg objArg:(DOMTestObj *)objArg;
 - (void)serializedValue:(NSString *)serializedArg;
 - (void)optionsObject:(DOMDictionary *)oo ooo:(DOMDictionary *)ooo;

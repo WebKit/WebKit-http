@@ -583,7 +583,9 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitJustifyContent:
     case CSSPropertyWebkitOrder:
     case CSSPropertyWebkitFontSizeDelta:
+    case CSSPropertyWebkitGridAutoColumns:
     case CSSPropertyWebkitGridAutoFlow:
+    case CSSPropertyWebkitGridAutoRows:
     case CSSPropertyWebkitGridColumns:
     case CSSPropertyWebkitGridRows:
     case CSSPropertyWebkitGridStart:
@@ -642,6 +644,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitPerspectiveOriginY:
 #if ENABLE(CSS3_TEXT)
     case CSSPropertyWebkitTextDecorationStyle:
+    case CSSPropertyWebkitTextDecorationColor:
 #endif // CSS3_TEXT
     case CSSPropertyWebkitTransform:
     case CSSPropertyWebkitTransformOrigin:
@@ -688,6 +691,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyBaselineShift:
     case CSSPropertyDominantBaseline:
     case CSSPropertyVectorEffect:
+    case CSSPropertyBufferedRendering:
     case CSSPropertyWebkitSvgShadow:
 #endif
 #if ENABLE(DASHBOARD_SUPPORT)

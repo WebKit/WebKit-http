@@ -33,13 +33,13 @@
 #include "GraphicsLayer.h"
 #include "GraphicsLayerClient.h"
 #include "RenderLayer.h"
-#include "TransformationMatrix.h"
 
 namespace WebCore {
 
 class KeyframeList;
 class RenderLayerCompositor;
 class TiledBacking;
+class TransformationMatrix;
 
 enum CompositingLayerType {
     NormalCompositingLayer, // non-tiled layer with backing store
@@ -86,6 +86,8 @@ public:
     // Layer to get clipped by ancestor
     bool hasAncestorClippingLayer() const { return m_ancestorClippingLayer != 0; }
     GraphicsLayer* ancestorClippingLayer() const { return m_ancestorClippingLayer.get(); }
+
+    GraphicsLayer* contentsContainmentLayer() const { return m_contentsContainmentLayer.get(); }
 
     bool hasContentsLayer() const { return m_foregroundLayer != 0; }
     GraphicsLayer* foregroundLayer() const { return m_foregroundLayer.get(); }
@@ -155,6 +157,7 @@ public:
 
     // GraphicsLayerClient interface
     virtual bool shouldUseTiledBacking(const GraphicsLayer*) const OVERRIDE;
+    virtual void tiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/) OVERRIDE;
     virtual void notifyAnimationStarted(const GraphicsLayer*, double startTime) OVERRIDE;
     virtual void notifyFlushRequired(const GraphicsLayer*) OVERRIDE;
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) OVERRIDE;
@@ -197,6 +200,8 @@ public:
 private:
     void createPrimaryGraphicsLayer();
     void destroyGraphicsLayers();
+    
+    void willDestroyLayer(const GraphicsLayer*);
     
     PassOwnPtr<GraphicsLayer> createGraphicsLayer(const String&);
 

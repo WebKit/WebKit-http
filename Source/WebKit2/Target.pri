@@ -148,7 +148,6 @@ HEADERS += \
     Shared/qt/ArgumentCodersQt.h \
     Shared/qt/PlatformCertificateInfo.h \
     Shared/qt/WebEventFactoryQt.h \
-    Shared/qt/QtDefaultDataLocation.h \
     Shared/qt/QtNetworkReplyData.h \
     Shared/qt/QtNetworkRequestData.h \
     UIProcess/API/C/WKAPICast.h \
@@ -195,6 +194,7 @@ HEADERS += \
     UIProcess/API/C/WKVibration.h \
     UIProcess/API/C/WebKit2_C.h \
     UIProcess/API/C/qt/WKNativeEvent.h \
+    UIProcess/API/C/qt/WKIconDatabaseQt.h \
     UIProcess/API/cpp/WKRetainPtr.h \
     UIProcess/API/cpp/qt/WKStringQt.h \
     UIProcess/API/cpp/qt/WKURLQt.h \
@@ -505,7 +505,6 @@ SOURCES += \
     Shared/qt/ProcessExecutablePathQt.cpp \
     Shared/qt/WebCoreArgumentCodersQt.cpp \
     Shared/qt/WebEventFactoryQt.cpp \
-    Shared/qt/QtDefaultDataLocation.cpp \
     Shared/qt/QtNetworkReplyData.cpp \
     Shared/qt/QtNetworkRequestData.cpp \
     Shared/qt/WebURLRequestQt.cpp \
@@ -546,6 +545,7 @@ SOURCES += \
     UIProcess/API/C/WKResourceCacheManager.cpp \
     UIProcess/API/C/WKTextChecker.cpp \
     UIProcess/API/C/WKVibration.cpp \
+    UIProcess/API/C/qt/WKIconDatabaseQt.cpp \
     UIProcess/API/cpp/qt/WKStringQt.cpp \
     UIProcess/API/cpp/qt/WKURLQt.cpp \
     UIProcess/API/qt/raw/qrawwebview.cpp \
@@ -887,6 +887,29 @@ win32 {
         Platform/CoreIPC/BinarySemaphore.cpp
 }
 
+enable?(SECCOMP_FILTERS) {
+    HEADERS += \
+        Shared/linux/SeccompFilters/OpenSyscall.h \
+        Shared/linux/SeccompFilters/SeccompBroker.h \
+        Shared/linux/SeccompFilters/SeccompFilters.h \
+        Shared/linux/SeccompFilters/SigactionSyscall.h \
+        Shared/linux/SeccompFilters/SigprocmaskSyscall.h \
+        Shared/linux/SeccompFilters/Syscall.h \
+        Shared/linux/SeccompFilters/SyscallPolicy.h \
+        WebProcess/qt/SeccompFiltersWebProcessQt.h
+
+    SOURCES += \
+        Shared/linux/SeccompFilters/OpenSyscall.cpp \
+        Shared/linux/SeccompFilters/SeccompBroker.cpp \
+        Shared/linux/SeccompFilters/SeccompFilters.cpp \
+        Shared/linux/SeccompFilters/SigactionSyscall.cpp \
+        Shared/linux/SeccompFilters/SigprocmaskSyscall.cpp \
+        Shared/linux/SeccompFilters/Syscall.cpp \
+        Shared/linux/SeccompFilters/SyscallPolicy.cpp \
+        WebProcess/qt/SeccompFiltersWebProcessQt.cpp
+
+    DEFINES += SOURCE_DIR=\\\"$${ROOT_WEBKIT_DIR}\\\"
+}
 
 enable?(INSPECTOR_SERVER) {
     HEADERS += \
@@ -912,7 +935,7 @@ enable?(TOUCH_EVENTS) {
 }
 
 
-enable?(GEOLOCATION): QT += location
+have?(qtlocation):enable?(GEOLOCATION): QT += location
 
 use?(3D_GRAPHICS): WEBKIT += angle
 

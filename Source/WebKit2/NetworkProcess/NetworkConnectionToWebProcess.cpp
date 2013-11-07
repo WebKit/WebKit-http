@@ -33,6 +33,7 @@
 #include "NetworkProcess.h"
 #include "NetworkResourceLoadParameters.h"
 #include "NetworkResourceLoader.h"
+#include "NetworkResourceLoaderMessages.h"
 #include "RemoteNetworkingContext.h"
 #include "SyncNetworkResourceLoader.h"
 #include <WebCore/BlobData.h>
@@ -70,6 +71,13 @@ void NetworkConnectionToWebProcess::didReceiveMessage(CoreIPC::Connection* conne
         didReceiveNetworkConnectionToWebProcessMessage(connection, decoder);
         return;
     }
+
+    if (decoder.messageReceiverName() == Messages::NetworkResourceLoader::messageReceiverName()) {
+        HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader> >::iterator loaderIterator = m_networkResourceLoaders.find(decoder.destinationID());
+        if (loaderIterator != m_networkResourceLoaders.end())
+            loaderIterator->value->didReceiveNetworkResourceLoaderMessage(connection, decoder);
+        return;
+    }
     
     ASSERT_NOT_REACHED();
 }
@@ -99,6 +107,8 @@ void NetworkConnectionToWebProcess::didClose(CoreIPC::Connection*)
     NetworkBlobRegistry::shared().connectionToWebProcessDidClose(this);
 
     m_networkResourceLoaders.clear();
+    
+    NetworkProcess::shared().removeNetworkConnectionToWebProcess(this);
 }
 
 void NetworkConnectionToWebProcess::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)

@@ -4,6 +4,7 @@
  *  Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  *  Copyright (C) 2009 Google, Inc. All rights reserved.
  *  Copyright (C) 2012 Ericsson AB. All rights reserved.
+ *  Copyright (C) 2013 Michael Pruett <michael@68k.org>
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -29,8 +30,10 @@
 #include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "ScriptWrappable.h"
+#include "ScriptWrappableInlines.h"
 #include <heap/SlotVisitor.h>
 #include <heap/Weak.h>
+#include <heap/WeakInlines.h>
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
 #include <runtime/JSArray.h>
@@ -43,9 +46,7 @@
 #include <wtf/Vector.h>
 
 namespace JSC {
-
 class HashEntry;
-
 }
 
 namespace WebCore {
@@ -82,7 +83,7 @@ class DOMStringList;
     public:
         Document* document() const
         {
-            return static_cast<Document*>(scriptExecutionContext());
+            return toDocument(scriptExecutionContext());
         }
 
     protected:
@@ -243,6 +244,38 @@ class DOMStringList;
         okay = std::isfinite(number);
         return JSC::toInt32(number);
     }
+
+    enum IntegerConversionConfiguration {
+        NormalConversion,
+        EnforceRange,
+        // FIXME: Implement Clamp
+    };
+
+    int32_t toInt32EnforceRange(JSC::ExecState*, JSC::JSValue);
+    uint32_t toUInt32EnforceRange(JSC::ExecState*, JSC::JSValue);
+
+    /*
+        Convert a value to an integer as per <http://www.w3.org/TR/WebIDL/>.
+        The conversion fails if the value cannot be converted to a number or,
+        if EnforceRange is specified, the value is outside the range of the
+        destination integer type.
+    */
+    inline int32_t toInt32(JSC::ExecState* exec, JSC::JSValue value, IntegerConversionConfiguration configuration)
+    {
+        if (configuration == EnforceRange)
+            return toInt32EnforceRange(exec, value);
+        return value.toInt32(exec);
+    }
+
+    inline uint32_t toUInt32(JSC::ExecState* exec, JSC::JSValue value, IntegerConversionConfiguration configuration)
+    {
+        if (configuration == EnforceRange)
+            return toUInt32EnforceRange(exec, value);
+        return value.toUInt32(exec);
+    }
+
+    int64_t toInt64(JSC::ExecState*, JSC::JSValue, IntegerConversionConfiguration);
+    uint64_t toUInt64(JSC::ExecState*, JSC::JSValue, IntegerConversionConfiguration);
 
     // Returns a Date instance for the specified value, or null if the value is NaN or infinity.
     JSC::JSValue jsDateOrNull(JSC::ExecState*, double);

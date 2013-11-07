@@ -36,6 +36,7 @@
 #include "TextCheckerState.h"
 #include "VisitedLinkTable.h"
 #include <WebCore/LinkHash.h>
+#include <WebCore/Timer.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -125,8 +126,8 @@ public:
     void addVisitedLink(WebCore::LinkHash);
     bool isLinkVisited(WebCore::LinkHash) const;
 
-    bool isPlugInAutoStartOrigin(unsigned plugInOriginHash);
-    void addPlugInAutoStartOrigin(const String& pageOrigin, unsigned plugInOriginHash);
+    bool shouldPlugInAutoStartFromOrigin(const WebPage*, const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
+    void plugInDidStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType);
     void plugInDidReceiveUserInteraction(unsigned plugInOriginHash);
 
     bool fullKeyboardAccessEnabled() const { return m_fullKeyboardAccessEnabled; }
@@ -178,6 +179,11 @@ public:
 
     void ensurePrivateBrowsingSession();
     void destroyPrivateBrowsingSession();
+    
+    void pageDidEnterWindow(WebPage*);
+    void pageWillLeaveWindow(WebPage*);
+    
+    void nonVisibleProcessCleanupTimerFired(WebCore::Timer<WebProcess>*);
 
 private:
     WebProcess();
@@ -209,8 +215,9 @@ private:
     void visitedLinkStateChanged(const Vector<WebCore::LinkHash>& linkHashes);
     void allVisitedLinkStateChanged();
 
-    void didAddPlugInAutoStartOrigin(unsigned plugInOriginHash, double expirationTime);
-    void resetPlugInAutoStartOrigins(const HashMap<unsigned, double>& hashes);
+    bool isPlugInAutoStartOriginHash(unsigned plugInOriginHash);
+    void didAddPlugInAutoStartOriginHash(unsigned plugInOriginHash, double expirationTime);
+    void resetPlugInAutoStartOriginHashes(const HashMap<unsigned, double>& hashes);
 
     void platformSetCacheModel(CacheModel);
     void platformClearResourceCaches(ResourceCachesToClear);
@@ -278,7 +285,8 @@ private:
     VisitedLinkTable m_visitedLinkTable;
     bool m_shouldTrackVisitedLinks;
 
-    HashMap<unsigned, double> m_plugInAutoStartOrigins;
+    HashMap<unsigned, double> m_plugInAutoStartOriginHashes;
+    HashSet<String> m_plugInAutoStartOrigins;
 
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;
@@ -327,6 +335,9 @@ private:
 #if USE(SOUP)
     WebSoupRequestManager m_soupRequestManager;
 #endif
+    
+    int m_inWindowPageCount;
+    WebCore::Timer<WebProcess> m_nonVisibleProcessCleanupTimer;
 };
 
 } // namespace WebKit

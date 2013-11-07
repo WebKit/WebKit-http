@@ -38,10 +38,13 @@
 #include "QualifiedName.h"
 #include "ScriptValue.h"
 #include "Supplementable.h"
-#include <wtf/Forward.h>
+#include <wtf/HashSet.h>
+#include <wtf/ListHashSet.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/Vector.h>
+#include <wtf/text/AtomicStringHash.h>
 
 namespace WebCore {
 
@@ -52,26 +55,72 @@ class Element;
 class ScriptExecutionContext;
 class QualifiedName;
 
+class CustomElementInvocation {
+public:
+    explicit CustomElementInvocation(PassRefPtr<Element>);
+    ~CustomElementInvocation();
+
+    Element* element() const { return m_element.get(); }
+
+private:
+    RefPtr<Element> m_element;
+};
+
 class CustomElementRegistry : public RefCounted<CustomElementRegistry> , public ContextDestructionObserver {
     WTF_MAKE_NONCOPYABLE(CustomElementRegistry); WTF_MAKE_FAST_ALLOCATED;
 public:
+    class CallbackDeliveryScope {
+    public:
+        CallbackDeliveryScope() { }
+        ~CallbackDeliveryScope() { CustomElementRegistry::deliverAllLifecycleCallbacksIfNeeded(); }
+    };
+
     explicit CustomElementRegistry(Document*);
     ~CustomElementRegistry();
 
     PassRefPtr<CustomElementConstructor> registerElement(WebCore::ScriptState*, const AtomicString& name, const Dictionary& options, ExceptionCode&);
-    PassRefPtr<CustomElementConstructor> find(const QualifiedName&) const;
-    PassRefPtr<Element> createElement(const QualifiedName&) const;
+    PassRefPtr<CustomElementConstructor> findFor(Element*) const;
+    PassRefPtr<CustomElementConstructor> find(const QualifiedName& elementName, const QualifiedName& localName) const;
+    PassRefPtr<Element> createElement(const QualifiedName& localName, const AtomicString& typeExtension) const;
+
     Document* document() const;
 
-    static PassRefPtr<CustomElementConstructor> constructorOf(Element*);
-    
-private:
-    static bool isValidName(const AtomicString&);
+    void didGiveTypeExtension(Element*);
+    void didCreateElement(Element*);
 
-    typedef HashMap<QualifiedName::QualifiedNameImpl*, RefPtr<CustomElementConstructor> >ConstructorMap;
+    static void deliverAllLifecycleCallbacks();
+    static void deliverAllLifecycleCallbacksIfNeeded();
+
+private:
+    typedef HashMap<std::pair<QualifiedName, QualifiedName>, RefPtr<CustomElementConstructor> > ConstructorMap;
+    typedef HashSet<AtomicString> NameSet;
+    typedef ListHashSet<CustomElementRegistry*> InstanceSet;
+
+    static bool isValidName(const AtomicString&);
+    static InstanceSet& activeCustomElementRegistries();
+
+    void activate(const CustomElementInvocation&);
+    void deactivate();
+    void deliverLifecycleCallbacks();
 
     ConstructorMap m_constructors;
+    NameSet m_names;
+    Vector<CustomElementInvocation> m_invocations;
 };
+
+inline void CustomElementRegistry::deliverAllLifecycleCallbacksIfNeeded()
+{
+    if (!activeCustomElementRegistries().isEmpty())
+        deliverAllLifecycleCallbacks();
+    ASSERT(activeCustomElementRegistries().isEmpty());
+}
+
+inline CustomElementRegistry::InstanceSet& CustomElementRegistry::activeCustomElementRegistries()
+{
+    DEFINE_STATIC_LOCAL(InstanceSet, activeInstances, ());
+    return activeInstances;
+}
+
 
 } // namespace WebCore
 

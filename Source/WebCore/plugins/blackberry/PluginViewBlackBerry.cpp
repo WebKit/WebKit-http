@@ -43,7 +43,6 @@
 #include "NPCallbacksBlackBerry.h"
 #include "NotImplemented.h"
 #include "Page.h"
-#include "PlatformContextSkia.h"
 #include "PlatformKeyboardEvent.h"
 #include "PluginDebug.h"
 #include "PluginMainThreadScheduler.h"
@@ -101,7 +100,7 @@ void PluginView::updatePluginWidget()
         return;
 
     ASSERT(parent()->isFrameView());
-    FrameView* frameView = static_cast<FrameView*>(parent());
+    FrameView* frameView = toFrameView(parent());
 
     IntRect oldWindowRect = m_windowRect;
     IntRect oldClipRect = m_clipRect;
@@ -179,7 +178,7 @@ void PluginView::updateBuffer(const IntRect& bufferRect)
     // Update the zoom factor here, it happens right before setNPWindowIfNeeded
     // ensuring that the plugin has every opportunity to get the zoom factor before
     // it paints anything.
-    if (FrameView* frameView = static_cast<FrameView*>(parent()))
+    if (FrameView* frameView = toFrameView(parent()))
         m_private->setZoomFactor(frameView->hostWindow()->platformPageClient()->currentZoomFactor());
 
     setNPWindowIfNeeded();
@@ -224,7 +223,7 @@ void PluginView::paint(GraphicsContext* context, const IntRect& rect)
     // Update the zoom factor here, it happens right before setNPWindowIfNeeded
     // ensuring that the plugin has every opportunity to get the zoom factor before
     // it paints anything.
-    if (FrameView* frameView = static_cast<FrameView*>(parent()))
+    if (FrameView* frameView = toFrameView(parent()))
         m_private->setZoomFactor(frameView->hostWindow()->platformPageClient()->currentZoomFactor());
 
     if (context->paintingDisabled())
@@ -246,146 +245,6 @@ void PluginView::paint(GraphicsContext* context, const IntRect& rect)
     exposedRect.move(-frameRect().x(), -frameRect().y());
 
     updateBuffer(exposedRect);
-
-    PthreadReadLocker frontLock(&m_private->m_frontBufferRwLock);
-
-    BlackBerry::Platform::Graphics::Buffer* frontBuffer =
-        m_private->m_pluginBuffers[m_private->m_pluginFrontBuffer];
-
-    // Don't paint anything if there is no buffer.
-    if (!frontBuffer)
-        return;
-
-    const BlackBerry::Platform::Graphics::BackingImage* backingImage =
-        BlackBerry::Platform::Graphics::lockBufferBackingImage(frontBuffer,
-                                                            BlackBerry::Platform::Graphics::ReadAccess);
-    if (!backingImage)
-        return;
-
-    // Draw the changed buffer contents to the screen.
-    context->save();
-
-    const SkBitmap& pluginImage = *backingImage;
-    PlatformGraphicsContext* graphics = context->platformContext();
-    ASSERT(graphics);
-    SkCanvas* canvas = graphics->canvas();
-
-    // Source rectangle we will draw to the screen.
-    SkIRect skSrcRect;
-    skSrcRect.set(exposedRect.x(), exposedRect.y(),
-                  exposedRect.x() + exposedRect.width(),
-                  exposedRect.y() + exposedRect.height());
-
-    // Prepare the hole punch rectangle.
-    SkIRect unclippedHolePunchRect;
-    unclippedHolePunchRect.set(m_private->m_holePunchRect.x(),
-                               m_private->m_holePunchRect.y(),
-                               m_private->m_holePunchRect.x() + m_private->m_holePunchRect.width(),
-                               m_private->m_holePunchRect.y() + m_private->m_holePunchRect.height());
-
-    // holePunchRect is clipped.
-    SkIRect holePunchRect;
-
-    // All source rectangles are scaled by the zoom factor because the source bitmap may be a
-    // higher resolution than the 1:1 page. This allows the flash player to scale the content
-    // it is drawing to match the scale of the page.
-    double zoomFactorH = static_cast<double>(m_private->m_pluginBufferSize.width()) / static_cast<double>(frameRect().width());
-    double zoomFactorW = static_cast<double>(m_private->m_pluginBufferSize.height()) / static_cast<double>(frameRect().height());
-    double zoomFactor = (zoomFactorH + zoomFactorW) / 2.0;
-
-    // This method draws a hole if specified.
-    if (!m_private->m_holePunchRect.isEmpty()
-        && holePunchRect.intersect(unclippedHolePunchRect, skSrcRect)) {
-
-        // Draw the top chunk if needed.
-        if (holePunchRect.fTop > skSrcRect.fTop) {
-            SkIRect srcRect;
-            srcRect.set(skSrcRect.fLeft * zoomFactor, skSrcRect.fTop * zoomFactor,
-                        skSrcRect.fRight * zoomFactor, holePunchRect.fTop * zoomFactor);
-
-            SkRect dstRect;
-            dstRect.set(skSrcRect.fLeft, skSrcRect.fTop,
-                        skSrcRect.fRight, holePunchRect.fTop);
-            dstRect.offset(frameRect().x(), frameRect().y());
-
-            canvas->drawBitmapRect(pluginImage, &srcRect, dstRect);
-        }
-
-        // Draw the left chunk if needed.
-        if (holePunchRect.fLeft > skSrcRect.fLeft) {
-            SkIRect srcRect;
-            srcRect.set(skSrcRect.fLeft * zoomFactor, holePunchRect.fTop * zoomFactor,
-                        holePunchRect.fLeft * zoomFactor, holePunchRect.fBottom * zoomFactor);
-
-            SkRect dstRect;
-            dstRect.set(skSrcRect.fLeft, holePunchRect.fTop,
-                        holePunchRect.fLeft, holePunchRect.fBottom);
-            dstRect.offset(frameRect().x(), frameRect().y());
-
-            canvas->drawBitmapRect(pluginImage, &srcRect, dstRect);
-        }
-
-        // Draw the hole chunk.
-        {
-            SkPaint paint;
-            paint.setXfermodeMode(SkXfermode::kSrc_Mode);
-
-            SkIRect srcRect;
-            srcRect.set(holePunchRect.fLeft * zoomFactor, holePunchRect.fTop * zoomFactor,
-                        holePunchRect.fRight * zoomFactor, holePunchRect.fBottom * zoomFactor);
-
-            SkRect dstRect;
-            dstRect.set(holePunchRect.fLeft, holePunchRect.fTop,
-                        holePunchRect.fRight, holePunchRect.fBottom);
-            dstRect.offset(frameRect().x(), frameRect().y());
-
-            canvas->drawBitmapRect(pluginImage, &srcRect, dstRect, &paint);
-        }
-
-        // Draw the right chunk if needed.
-        if (holePunchRect.fRight < skSrcRect.fRight) {
-            SkIRect srcRect;
-            srcRect.set(holePunchRect.fRight * zoomFactor, holePunchRect.fTop * zoomFactor,
-                        skSrcRect.fRight * zoomFactor, holePunchRect.fBottom * zoomFactor);
-
-            SkRect dstRect;
-            dstRect.set(holePunchRect.fRight, holePunchRect.fTop, skSrcRect.fRight, holePunchRect.fBottom);
-            dstRect.offset(frameRect().x(), frameRect().y());
-
-            canvas->drawBitmapRect(pluginImage, &srcRect, dstRect);
-        }
-
-        // Draw the bottom chunk if needed.
-        if (holePunchRect.fBottom < skSrcRect.fBottom) {
-            SkIRect srcRect;
-            srcRect.set(skSrcRect.fLeft * zoomFactor, holePunchRect.fBottom * zoomFactor,
-                        skSrcRect.fRight * zoomFactor, skSrcRect.fBottom * zoomFactor);
-
-            SkRect dstRect;
-            dstRect.set(skSrcRect.fLeft, holePunchRect.fBottom,
-                        skSrcRect.fRight, skSrcRect.fBottom);
-            dstRect.offset(frameRect().x(), frameRect().y());
-
-            canvas->drawBitmapRect(pluginImage, &srcRect, dstRect);
-        }
-    } else {
-        SkIRect srcRect;
-        srcRect.set(skSrcRect.fLeft * zoomFactor, skSrcRect.fTop * zoomFactor,
-                    skSrcRect.fRight * zoomFactor, skSrcRect.fBottom * zoomFactor);
-
-        // Calculate the destination rectangle.
-        SkRect dstRect;
-        dstRect.set(rectClip.x(), rectClip.y(),
-                    rectClip.x() + rectClip.width(),
-                    rectClip.y() + rectClip.height());
-
-        // Don't punch a hole.
-        canvas->drawBitmapRect(pluginImage, &srcRect, dstRect);
-    }
-
-    context->restore();
-
-    BlackBerry::Platform::Graphics::releaseBufferBackingImage(frontBuffer);
 }
 
 
@@ -621,7 +480,7 @@ void PluginView::handleResumeEvent()
 
 void PluginView::handleScrollEvent()
 {
-    FrameView* frameView = static_cast<FrameView*>(parent());
+    FrameView* frameView = toFrameView(parent());
 
     // As a special case, if the frameView extent in either dimension is
     // empty, then send an on screen event. This is important for sites like
@@ -639,7 +498,7 @@ void PluginView::handleScrollEvent()
 
 IntRect PluginView::calculateClipRect() const
 {
-    FrameView* frameView = static_cast<FrameView*>(parent());
+    FrameView* frameView = toFrameView(parent());
     bool visible = frameView && isVisible();
 
     if (visible && frameView->width() && frameView->height()) {
@@ -747,7 +606,7 @@ void PluginView::handleFullScreenAllowedEvent()
     npEvent.type = NP_FullScreenReadyEvent;
     npEvent.data = 0;
 
-    if (FrameView* frameView = static_cast<FrameView*>(parent())) {
+    if (FrameView* frameView = toFrameView(parent())) {
         frameView->hostWindow()->platformPageClient()->didPluginEnterFullScreen(this, m_private->m_pluginUniquePrefix.c_str());
 
         if (!dispatchNPEvent(npEvent))
@@ -768,7 +627,7 @@ void PluginView::handleFullScreenExitEvent()
 
     dispatchNPEvent(npEvent);
 
-    if (FrameView* frameView = static_cast<FrameView*>(parent()))
+    if (FrameView* frameView = toFrameView(parent()))
         frameView->hostWindow()->platformPageClient()->didPluginExitFullScreen(this, m_private->m_pluginUniquePrefix.c_str());
 
     m_private->m_isFullScreen = false;
@@ -860,7 +719,7 @@ void PluginView::setParent(ScrollView* parentWidget)
 {
     // If parentWidget is 0, lets unregister the plugin with the current parent.
     if (m_private && (!parentWidget || parentWidget != parent())) {
-        if (FrameView* frameView = static_cast<FrameView*>(parent())) {
+        if (FrameView* frameView = toFrameView(parent())) {
             if (m_private->m_isBackgroundPlaying)
                 frameView->hostWindow()->platformPageClient()->onPluginStopBackgroundPlay(this, m_private->m_pluginUniquePrefix.c_str());
 
@@ -887,7 +746,7 @@ void PluginView::setParent(ScrollView* parentWidget)
     if (parentWidget) {
         init();
 
-        FrameView* frameView = static_cast<FrameView*>(parentWidget);
+        FrameView* frameView = toFrameView(parentWidget);
 
         if (frameView && m_private) {
             frameView->hostWindow()->platformPageClient()->registerPlugin(this, true /*shouldRegister*/);
@@ -912,7 +771,7 @@ void PluginView::setNPWindowIfNeeded()
     if (!m_private || !m_isStarted || !parent() || !m_plugin->pluginFuncs()->setwindow)
         return;
 
-    FrameView* frameView = static_cast<FrameView*>(parent());
+    FrameView* frameView = toFrameView(parent());
     if (!frameView->hostWindow()->platformPageClient()->isActive())
         return;
 
@@ -1068,7 +927,7 @@ bool PluginView::platformGetValue(NPNVariable variable, void* value, NPError* re
         return true;
 
     case NPNVRootWindowGroup: {
-        FrameView* frameView = static_cast<FrameView*>(parent());
+        FrameView* frameView = toFrameView(parent());
         if (frameView) {
             BlackBerry::Platform::Graphics::Window *window = frameView->hostWindow()->platformPageClient()->platformWindow();
             if (window) {
@@ -1086,7 +945,7 @@ bool PluginView::platformGetValue(NPNVariable variable, void* value, NPError* re
     }
 
     case NPNVBrowserWindowGroup: {
-        FrameView* frameView = static_cast<FrameView*>(parent());
+        FrameView* frameView = toFrameView(parent());
         if (frameView) {
             BlackBerry::Platform::Graphics::Window* window = frameView->hostWindow()->platformPageClient()->platformWindow();
             if (window) {
@@ -1104,7 +963,7 @@ bool PluginView::platformGetValue(NPNVariable variable, void* value, NPError* re
     }
 
     case NPNVBrowserDisplayContext: {
-        FrameView* frameView = static_cast<FrameView*>(parent());
+        FrameView* frameView = toFrameView(parent());
         if (frameView) {
             BlackBerry::Platform::Graphics::PlatformDisplayContextHandle context = BlackBerry::Platform::Graphics::platformDisplayContext();
             if (context) {
@@ -1235,7 +1094,7 @@ bool PluginView::platformStart()
 
     show();
 
-    if (FrameView* frameView = static_cast<FrameView*>(parent()))
+    if (FrameView* frameView = toFrameView(parent()))
         handleOrientationEvent(frameView->hostWindow()->platformPageClient()->orientation());
 
     if (!(m_plugin->quirks().contains(PluginQuirkDeferFirstSetWindowCall))) {
@@ -1258,7 +1117,7 @@ void PluginView::platformDestroy()
     m_private->clearVisibleRects();
 
     // This will ensure that we unregistered the plugin.
-    if (FrameView* frameView = static_cast<FrameView*>(parent())) {
+    if (FrameView* frameView = toFrameView(parent())) {
         if (m_private->m_isBackgroundPlaying)
             frameView->hostWindow()->platformPageClient()->onPluginStopBackgroundPlay(this, m_private->m_pluginUniquePrefix.c_str());
 
@@ -1350,7 +1209,7 @@ void PluginView::setBackgroundPlay(bool value)
     if (!m_private || m_private->m_isBackgroundPlaying == value)
         return;
 
-    FrameView* frameView = static_cast<FrameView*>(m_private->m_view->parent());
+    FrameView* frameView = toFrameView(m_private->m_view->parent());
     m_private->m_isBackgroundPlaying = value;
     if (m_private->m_isBackgroundPlaying)
         frameView->hostWindow()->platformPageClient()->onPluginStartBackgroundPlay(this, m_private->m_pluginUniquePrefix.c_str());

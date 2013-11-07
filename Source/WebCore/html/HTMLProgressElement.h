@@ -44,8 +44,6 @@ public:
 
     double position() const;
 
-    bool isDeterminate() const;
-    
     virtual bool canContainRangeEndPoint() const { return false; }
 
 private:
@@ -53,10 +51,8 @@ private:
     virtual ~HTMLProgressElement();
 
     virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
-
+    virtual bool shouldAppearIndeterminate() const OVERRIDE;
     virtual bool supportLabels() const OVERRIDE { return true; }
-
-    virtual bool supportsFocus() const;
 
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const OVERRIDE;
@@ -68,6 +64,7 @@ private:
 
     void didElementStateChange();
     virtual void didAddUserAgentShadowRoot(ShadowRoot*) OVERRIDE;
+    bool isDeterminate() const;
 
     ProgressValueElement* m_value;
 };

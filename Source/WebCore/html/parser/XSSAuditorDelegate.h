@@ -36,24 +36,25 @@
 namespace WebCore {
 
 class Document;
+class FormData;
 
 class XSSInfo {
 public:
-    static PassOwnPtr<XSSInfo> create(const KURL& reportURL, bool didBlockEntirePage)
+    static PassOwnPtr<XSSInfo> create(bool didBlockEntirePage, bool didSendXSSProtectionHeader, bool didSendCSPHeader)
     {
-        return adoptPtr(new XSSInfo(reportURL, didBlockEntirePage));
+        return adoptPtr(new XSSInfo(didBlockEntirePage, didSendXSSProtectionHeader, didSendCSPHeader));
     }
 
-    bool isSafeToSendToAnotherThread() const;
-
-    KURL m_reportURL;
     bool m_didBlockEntirePage;
+    bool m_didSendXSSProtectionHeader;
+    bool m_didSendCSPHeader;
     TextPosition m_textPosition;
 
 private:
-    XSSInfo(const KURL& reportURL, bool didBlockEntirePage)
-        : m_reportURL(reportURL)
-        , m_didBlockEntirePage(didBlockEntirePage)
+    XSSInfo(bool didBlockEntirePage, bool didSendXSSProtectionHeader, bool didSendCSPHeader)
+        : m_didBlockEntirePage(didBlockEntirePage)
+        , m_didSendXSSProtectionHeader(didSendXSSProtectionHeader)
+        , m_didSendCSPHeader(didSendCSPHeader)
     { }
 };
 
@@ -63,10 +64,14 @@ public:
     explicit XSSAuditorDelegate(Document*);
 
     void didBlockScript(const XSSInfo&);
+    void setReportURL(const KURL& url) { m_reportURL = url; }
 
 private:
+    PassRefPtr<FormData> generateViolationReport();
+
     Document* m_document;
-    bool m_didNotifyClient;
+    bool m_didSendNotifications;
+    KURL m_reportURL;
 };
 
 typedef Vector<OwnPtr<XSSInfo> > XSSInfoStream;

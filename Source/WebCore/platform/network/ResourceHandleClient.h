@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 Apple Computer, Inc.  All rights reserved.
+ * Copyright (C) 2013 Apple Computer, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,21 +27,11 @@
 #ifndef ResourceHandleClient_h
 #define ResourceHandleClient_h
 
-#include <wtf/CurrentTime.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include <wtf/PassRefPtr.h>
 
 #if USE(CFNETWORK)
 #include <CFNetwork/CFURLCachePriv.h>
 #include <CFNetwork/CFURLResponsePriv.h>
-#endif
-
-#if USE(SOUP)
-#include <glib.h>
-#endif
-
-#if PLATFORM(WIN) && USE(CFNETWORK)
-#include <ConditionalMacros.h>
 #endif
 
 #if PLATFORM(MAC)
@@ -48,16 +39,15 @@ OBJC_CLASS NSCachedURLResponse;
 #endif
 
 namespace WebCore {
-    class AsyncFileStream;
     class AuthenticationChallenge;
     class Credential;
-    class FileStreamClient;
     class KURL;
     class ProtectionSpace;
     class ResourceHandle;
     class ResourceError;
     class ResourceRequest;
     class ResourceResponse;
+    class SharedBuffer;
 
     enum CacheStoragePolicy {
         StorageAllowed,
@@ -67,31 +57,41 @@ namespace WebCore {
     
     class ResourceHandleClient {
     public:
-#if USE(SOUP)
-        ResourceHandleClient(): m_buffer(0) { }
+        ResourceHandleClient();
+        virtual ~ResourceHandleClient();
 
-        virtual ~ResourceHandleClient()
-        {
-            if (m_buffer) {
-                g_free(m_buffer);
-                m_buffer = 0;
-            }
-        }
-#else
-        virtual ~ResourceHandleClient() { }
-#endif
-
-        // request may be modified
+        // Request may be modified.
         virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse& /*redirectResponse*/) { }
         virtual void didSendData(ResourceHandle*, unsigned long long /*bytesSent*/, unsigned long long /*totalBytesToBeSent*/) { }
 
         virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&) { }
+        
         virtual void didReceiveData(ResourceHandle*, const char*, int, int /*encodedDataLength*/) { }
-        virtual void didReceiveCachedMetadata(ResourceHandle*, const char*, int) { }
+        virtual void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int encodedDataLength);
+        
         virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) { }
         virtual void didFail(ResourceHandle*, const ResourceError&) { }
         virtual void wasBlocked(ResourceHandle*) { }
         virtual void cannotShowURL(ResourceHandle*) { }
+
+        virtual bool usesAsyncCallbacks() { return false; }
+
+        // Client will pass an updated request using ResourceHandle::continueWillSendRequest() when ready.
+        virtual void willSendRequestAsync(ResourceHandle*, const ResourceRequest&, const ResourceResponse& redirectResponse);
+
+        // Client will call ResourceHandle::continueDidReceiveResponse() when ready.
+        virtual void didReceiveResponseAsync(ResourceHandle*, const ResourceResponse&);
+
+        // Client will pass an updated request using ResourceHandle::continueShouldUseCredentialStorage() when ready.
+        virtual void shouldUseCredentialStorageAsync(ResourceHandle*);
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+        // Client will pass an updated request using ResourceHandle::continueCanAuthenticateAgainstProtectionSpace() when ready.
+        virtual void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&);
+#endif
+#if PLATFORM(MAC)
+        // Client will pass an updated request using ResourceHandle::continueWillCacheResponse() when ready.
+        virtual void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse *);
+#endif
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
         virtual bool supportsDataArray() { return false; }
@@ -99,15 +99,7 @@ namespace WebCore {
 #endif
 
 #if USE(SOUP)
-        virtual char* getBuffer(int requestedLength, int* actualLength)
-        {
-            *actualLength = requestedLength;
-
-            if (!m_buffer)
-                m_buffer = static_cast<char*>(g_malloc(requestedLength));
-
-            return m_buffer;
-        }
+        virtual char* getBuffer(int requestedLength, int* actualLength);
 #endif
 
         virtual bool shouldUseCredentialStorage(ResourceHandle*) { return false; }
@@ -122,15 +114,12 @@ namespace WebCore {
 #if USE(CFNETWORK)
         virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef response) { return response; }
 #else
-        virtual NSCachedURLResponse* willCacheResponse(ResourceHandle*, NSCachedURLResponse* response) { return response; }
+        virtual NSCachedURLResponse *willCacheResponse(ResourceHandle*, NSCachedURLResponse *response) { return response; }
 #endif
         virtual void willStopBufferingData(ResourceHandle*, const char*, int) { }
 #endif // PLATFORM(MAC)
 #if PLATFORM(WIN) && USE(CFNETWORK)
         virtual bool shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef) { return true; }
-#endif
-#if PLATFORM(CHROMIUM)
-        virtual void didDownloadData(ResourceHandle*, int /*dataLength*/) { }
 #endif
 
 #if USE(SOUP)

@@ -243,7 +243,7 @@ bool nodeHasRole(Node* node, const String& role)
     if (!node || !node->isElementNode())
         return false;
 
-    return equalIgnoringCase(static_cast<Element*>(node)->getAttribute(roleAttr), role);
+    return equalIgnoringCase(toElement(node)->getAttribute(roleAttr), role);
 }
 
 static PassRefPtr<AccessibilityObject> createFromRenderer(RenderObject* renderer)
@@ -846,7 +846,8 @@ void AXObjectCache::startCachingComputedObjectAttributesUntilTreeMutates()
 
 void AXObjectCache::stopCachingComputedObjectAttributes()
 {
-    m_computedObjectAttributeCache.clear();
+    if (m_computedObjectAttributeCache)
+        m_computedObjectAttributeCache.clear();
 }
 
 VisiblePosition AXObjectCache::visiblePositionForTextMarkerData(TextMarkerData& textMarkerData)

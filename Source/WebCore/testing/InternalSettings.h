@@ -60,7 +60,6 @@ public:
         bool m_originalStyleScoped;
 #endif
         EditingBehaviorType m_originalEditingBehavior;
-        bool m_originalUnifiedSpellCheckerEnabled;
 #if ENABLE(TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
@@ -82,7 +81,9 @@ public:
         bool m_shouldDisplayCaptions;
         bool m_shouldDisplayTextDescriptions;
 #endif
+        String m_defaultVideoPosterURL;
         bool m_originalTimeWithoutMouseMovementBeforeHidingControls;
+        bool m_useLegacyBackgroundSizeShorthandBehavior;
     };
 
     static PassRefPtr<InternalSettings> create(Page* page)
@@ -113,8 +114,6 @@ public:
     void setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode&);
     void setResolutionOverride(int dotsPerCSSInchHorizontally, int dotsPerCSSInchVertically, ExceptionCode&);
     void setMediaTypeOverride(const String& mediaType, ExceptionCode&);
-    void setEnableScrollAnimator(bool enabled, ExceptionCode&);
-    bool scrollAnimatorEnabled(ExceptionCode&);
     void setCSSExclusionsEnabled(bool enabled, ExceptionCode&);
     void setCSSVariablesEnabled(bool enabled, ExceptionCode&);
     bool cssVariablesEnabled(ExceptionCode&);
@@ -127,7 +126,9 @@ public:
     void setLangAttributeAwareFormControlUIEnabled(bool);
     void setImagesEnabled(bool enabled, ExceptionCode&);
     void setMinimumTimerInterval(double intervalInSeconds, ExceptionCode&);
+    void setDefaultVideoPosterURL(const String& url, ExceptionCode&);
     void setTimeWithoutMouseMovementBeforeHidingControls(double time, ExceptionCode&);
+    void setUseLegacyBackgroundSizeShorthandBehavior(bool enabled, ExceptionCode&);
 
 private:
     explicit InternalSettings(Page*);

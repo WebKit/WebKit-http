@@ -37,6 +37,7 @@ class WebDOMNode;
 class WebDOMObject;
 class WebDOMSVGPoint;
 class WebDOMString;
+class WebDOMTestEnumType;
 class WebDOMTestObj;
 class WebDOMa;
 class WebDOMb;
@@ -145,6 +146,14 @@ public:
     void setId(int);
     WebDOMString hash() const;
     int replaceableAttribute() const;
+    double nullableDoubleAttribute() const;
+    int nullableLongAttribute() const;
+    bool nullableBooleanAttribute() const;
+    WebDOMString nullableStringAttribute() const;
+    int nullableLongSettableAttribute() const;
+    void setNullableLongSettableAttribute(int);
+    int nullableStringValue() const;
+    void setNullableStringValue(int);
 
     void voidMethod();
     void voidMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
@@ -152,6 +161,7 @@ public:
     int longMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
     WebDOMTestObj objMethod();
     WebDOMTestObj objMethodWithArgs(int longArg, const WebDOMString& strArg, const WebDOMTestObj& objArg);
+    void methodWithEnumArg(const WebDOMTestEnumType& enumArg);
     WebDOMTestObj methodThatRequiresAllArgsAndThrows(const WebDOMString& strArg, const WebDOMTestObj& objArg);
     void serializedValue(const WebDOMString& serializedArg);
     void optionsObject(const WebDOMDictionary& oo, const WebDOMDictionary& ooo);

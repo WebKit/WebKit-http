@@ -30,6 +30,8 @@
 #include "BasicShapes.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "RenderLayer.h"
+#include "RenderSVGImage.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceClipper.h"
 #include "RenderSVGResourceFilter.h"
@@ -59,7 +61,7 @@ SVGRenderingContext::~SVGRenderingContext()
 #if ENABLE(FILTERS)
     if (m_renderingFlags & EndFilterLayer) {
         ASSERT(m_filter);
-        m_filter->postApplyResource(static_cast<RenderSVGShape*>(m_object), m_paintInfo->context, ApplyToDefaultMode, 0, 0);
+        m_filter->postApplyResource(m_object, m_paintInfo->context, ApplyToDefaultMode, 0, 0);
         m_paintInfo->context = m_savedContext;
         m_paintInfo->rect = m_savedPaintRect;
     }
@@ -188,21 +190,34 @@ float SVGRenderingContext::calculateScreenFontSizeScalingFactor(const RenderObje
     ASSERT(renderer);
 
     AffineTransform ctm;
-    calculateTransformationToOutermostSVGCoordinateSystem(renderer, ctm);
+    calculateTransformationToOutermostCoordinateSystem(renderer, ctm);
     return narrowPrecisionToFloat(sqrt((pow(ctm.xScale(), 2) + pow(ctm.yScale(), 2)) / 2));
 }
 
-void SVGRenderingContext::calculateTransformationToOutermostSVGCoordinateSystem(const RenderObject* renderer, AffineTransform& absoluteTransform)
+void SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(const RenderObject* renderer, AffineTransform& absoluteTransform)
 {
-    const RenderObject* current = renderer;
-    ASSERT(current);
-
+    ASSERT(renderer);
     absoluteTransform = currentContentTransformation();
-    while (current) {
-        absoluteTransform = current->localToParentTransform() * absoluteTransform;
-        if (current->isSVGRoot())
+
+    // Walk up the render tree, accumulating SVG transforms.
+    while (renderer) {
+        absoluteTransform = renderer->localToParentTransform() * absoluteTransform;
+        if (renderer->isSVGRoot())
             break;
-        current = current->parent();
+        renderer = renderer->parent();
+    }
+
+    // Continue walking up the layer tree, accumulating CSS transforms.
+    RenderLayer* layer = renderer ? renderer->enclosingLayer() : 0;
+    while (layer) {
+        if (TransformationMatrix* layerTransform = layer->transform())
+            absoluteTransform = layerTransform->toAffineTransform() * absoluteTransform;
+
+        // We can stop at compositing layers, to match the backing resolution.
+        if (layer->isComposited())
+            break;
+
+        layer = layer->parent();
     }
 }
 
@@ -308,6 +323,37 @@ void SVGRenderingContext::clear2DRotation(AffineTransform& transform)
     transform.decompose(decomposition);
     decomposition.angle = 0;
     transform.recompose(decomposition);
+}
+
+bool SVGRenderingContext::bufferForeground(OwnPtr<ImageBuffer>& imageBuffer)
+{
+    ASSERT(m_paintInfo);
+    ASSERT(m_object->isSVGImage());
+    FloatRect boundingBox = m_object->objectBoundingBox();
+
+    // Invalidate an existing buffer if the scale is not correct.
+    if (imageBuffer) {
+        AffineTransform transform = m_paintInfo->context->getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
+        IntSize expandedBoundingBox = expandedIntSize(boundingBox.size());
+        IntSize bufferSize(static_cast<int>(ceil(expandedBoundingBox.width() * transform.xScale())), static_cast<int>(ceil(expandedBoundingBox.height() * transform.yScale())));
+        if (bufferSize != imageBuffer->internalSize())
+            imageBuffer.clear();
+    }
+
+    // Create a new buffer and paint the foreground into it.
+    if (!imageBuffer) {
+        if ((imageBuffer = m_paintInfo->context->createCompatibleBuffer(expandedIntSize(boundingBox.size()), true))) {
+            GraphicsContext* bufferedRenderingContext = imageBuffer->context();
+            bufferedRenderingContext->translate(-boundingBox.x(), -boundingBox.y());
+            PaintInfo bufferedInfo(*m_paintInfo);
+            bufferedInfo.context = bufferedRenderingContext;
+            toRenderSVGImage(m_object)->paintForeground(bufferedInfo);
+        } else
+            return false;
+    }
+
+    m_paintInfo->context->drawImageBuffer(imageBuffer.get(), ColorSpaceDeviceRGB, boundingBox);
+    return true;
 }
 
 }

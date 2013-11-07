@@ -107,8 +107,7 @@ WorkerThreadableLoader::MainThreadBridge::~MainThreadBridge()
 void WorkerThreadableLoader::MainThreadBridge::mainThreadCreateLoader(ScriptExecutionContext* context, MainThreadBridge* thisPtr, PassOwnPtr<CrossThreadResourceRequestData> requestData, ThreadableLoaderOptions options, const String& outgoingReferrer)
 {
     ASSERT(isMainThread());
-    ASSERT_WITH_SECURITY_IMPLICATION(context->isDocument());
-    Document* document = static_cast<Document*>(context);
+    Document* document = toDocument(context);
 
     OwnPtr<ResourceRequest> request(ResourceRequest::adopt(requestData));
     request->setHTTPReferrer(outgoingReferrer);
@@ -201,19 +200,6 @@ void WorkerThreadableLoader::MainThreadBridge::didReceiveData(const char* data, 
     OwnPtr<Vector<char> > vector = adoptPtr(new Vector<char>(dataLength)); // needs to be an OwnPtr for usage with createCallbackTask.
     memcpy(vector->data(), data, dataLength);
     m_loaderProxy.postTaskForModeToWorkerContext(createCallbackTask(&workerContextDidReceiveData, m_workerClientWrapper, vector.release()), m_taskMode);
-}
-
-static void workerContextDidReceiveCachedMetadata(ScriptExecutionContext* context, RefPtr<ThreadableLoaderClientWrapper> workerClientWrapper, PassOwnPtr<Vector<char> > vectorData)
-{
-    ASSERT_UNUSED(context, context->isWorkerContext());
-    workerClientWrapper->didReceiveCachedMetadata(vectorData->data(), vectorData->size());
-}
-
-void WorkerThreadableLoader::MainThreadBridge::didReceiveCachedMetadata(const char* data, int dataLength)
-{
-    OwnPtr<Vector<char> > vector = adoptPtr(new Vector<char>(dataLength)); // needs to be an OwnPtr for usage with createCallbackTask.
-    memcpy(vector->data(), data, dataLength);
-    m_loaderProxy.postTaskForModeToWorkerContext(createCallbackTask(&workerContextDidReceiveCachedMetadata, m_workerClientWrapper, vector.release()), m_taskMode);
 }
 
 static void workerContextDidFinishLoading(ScriptExecutionContext* context, RefPtr<ThreadableLoaderClientWrapper> workerClientWrapper, unsigned long identifier, double finishTime)

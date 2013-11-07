@@ -47,6 +47,7 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPPF
 	-I$(GENSOURCES_WEBKITDOM) \
 	-ISource/WebKit/gtk/webkit \
 	$(global_cppflags) \
+	$(platformgtk_cppflags) \
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
 	$(javascriptcore_cppflags) \
@@ -79,6 +80,7 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LDFL
 
 libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBADD := \
 	-lpthread \
+	libPlatformGtk.la \
 	libWebCore.la \
 	libWebCorePlatform.la \
 	libWebCoreModules.la \
@@ -88,6 +90,11 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBA
 if ENABLE_INDEXED_DATABASE
 libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBADD += \
 	libLevelDB.la
+endif
+
+if USE_OPENGL
+libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBADD += \
+	libANGLE.la
 endif
 
 if ENABLE_SVG
@@ -414,7 +421,6 @@ EXTRA_DIST += \
 	$(WebKit)/docs/webkitenvironment.xml \
 	$(WebKit)/docs/webkitgtk-overrides.txt \
 	$(WebKit)/webkitmarshal.list \
-	$(WebKit)/po/* \
 	$(WebKit)/resources/* \
 	$(WebKit)/tests/resources/* \
 	$(WebKit)/tests/test_utils.h
@@ -643,8 +649,3 @@ DISTCLEANFILES += \
 	$(top_builddir)/Source/WebKit/gtk/@WEBKITGTK_PC_NAME@-@WEBKITGTK_API_VERSION@.pc \
 	$(top_builddir)/Source/WebKit/gtk/org.webkitgtk-@WEBKITGTK_API_VERSION@.gschema.xml \
 	$(top_builddir)/Source/WebKit/gtk/webkit/webkitversion.h
-
-install-data-local: po-install-data-local
-installdirs-data-local: po-installdirs-data-local
-uninstall-local: po-uninstall-local
-

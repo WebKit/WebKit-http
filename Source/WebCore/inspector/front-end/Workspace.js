@@ -101,11 +101,9 @@ WebInspector.ProjectDelegate.prototype = {
     requestFileContent: function(path, callback) { },
 
     /**
-     * @param {Array.<string>} path
-     * @param {string} currentContent
-     * @param {function(?string)} callback
+     * @return {boolean}
      */
-    requestUpdatedFileContent: function(path, currentContent, callback) { },
+    canSetFileContent: function() { },
 
     /**
      * @param {Array.<string>} path
@@ -186,6 +184,7 @@ WebInspector.Project.prototype = {
             // FIXME: Implement
             return;
         }
+
         uiSourceCode = new WebInspector.UISourceCode(this, fileDescriptor.path, fileDescriptor.originURL, fileDescriptor.url, fileDescriptor.contentType, fileDescriptor.isEditable); 
         uiSourceCode.isContentScript = fileDescriptor.isContentScript;
         this._uiSourceCodes[uiSourceCode.path().join("/")] = uiSourceCode;
@@ -249,12 +248,11 @@ WebInspector.Project.prototype = {
     },
 
     /**
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     * @param {function(?string)} callback
+     * @return {boolean}
      */
-    requestUpdatedFileContent: function(uiSourceCode, callback)
+    canSetFileContent: function()
     {
-        this._projectDelegate.requestUpdatedFileContent(uiSourceCode.path(), uiSourceCode.workingCopy(), callback);
+        return this._projectDelegate.canSetFileContent();
     },
 
     /**
@@ -452,7 +450,7 @@ WebInspector.Workspace.prototype = {
         var entry = this._fileMapping.mappingEntryForURL(url);
         var fileSystemPath = entry ? this._fileSystemPathForEntry(entry) : null;
         if (!fileSystemPath) {
-            var splittedURL = WebInspector.SimpleWorkspaceProvider.splitURL(url);
+            var splittedURL = WebInspector.ParsedURL.splitURL(url);
             var projectId = WebInspector.SimpleProjectDelegate.projectId(splittedURL[0], WebInspector.projectTypes.Network);
             var path = WebInspector.SimpleWorkspaceProvider.pathForSplittedURL(splittedURL);
             var project = this.project(projectId);
@@ -481,8 +479,9 @@ WebInspector.Workspace.prototype = {
     /**
      * @param {WebInspector.UISourceCode} networkUISourceCode
      * @param {WebInspector.UISourceCode} uiSourceCode
+     * @param {WebInspector.FileSystemWorkspaceProvider} fileSystemWorkspaceProvider
      */
-    addMapping: function(networkUISourceCode, uiSourceCode)
+    addMapping: function(networkUISourceCode, uiSourceCode, fileSystemWorkspaceProvider)
     {
         var url = networkUISourceCode.url;
         var path = uiSourceCode.path();
@@ -493,7 +492,7 @@ WebInspector.Workspace.prototype = {
                 break;
             suffix = nextSuffix;
         }
-        var fileSystemPath = WebInspector.fileSystemWorkspaceProvider.fileSystemPath(uiSourceCode);
+        var fileSystemPath = fileSystemWorkspaceProvider.fileSystemPath(uiSourceCode);
         var filePath = "/" + path.join("/");
         var pathPrefix = fileSystemPath + filePath.substr(0, filePath.length - suffix.length) + "/";
         var urlPrefix = url.substr(0, url.length - suffix.length) + "/";

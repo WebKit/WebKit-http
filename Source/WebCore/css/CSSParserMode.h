@@ -67,12 +67,14 @@ public:
     bool isCSSCustomFilterEnabled;
     bool isCSSStickyPositionEnabled;
     bool isCSSRegionsEnabled;
+    bool isCSSCompositingEnabled;
     bool isCSSGridLayoutEnabled;
 #if ENABLE(CSS_VARIABLES)
     bool isCSSVariablesEnabled;
 #endif
     bool needsSiteSpecificQuirks;
     bool enforcesCSSMIMETypeInNoQuirksMode;
+    bool useLegacyBackgroundSizeShorthandBehavior;
 };
 
 bool operator==(const CSSParserContext&, const CSSParserContext&);

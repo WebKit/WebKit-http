@@ -354,11 +354,7 @@ public:
         @"0",                           WebKitPDFScaleFactorPreferenceKey,
         @"0",                           WebKitUseSiteSpecificSpoofingPreferenceKey,
         [NSNumber numberWithInt:WebKitEditableLinkDefaultBehavior], WebKitEditableLinkBehaviorPreferenceKey,
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
         [NSNumber numberWithInt:WebTextDirectionSubmenuAutomaticallyIncluded],
-#else
-        [NSNumber numberWithInt:WebTextDirectionSubmenuNeverIncluded],
-#endif
                                         WebKitTextDirectionSubmenuInclusionBehaviorPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitDOMPasteAllowedPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitUsesPageCachePreferenceKey,
@@ -378,6 +374,7 @@ public:
         // CSS Shaders also need WebGL enabled (which is disabled by default), so we can keep it enabled for now.
         [NSNumber numberWithBool:YES], WebKitCSSCustomFilterEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSRegionsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitCSSCompositingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitCSSGridLayoutEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitAcceleratedDrawingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
@@ -420,6 +417,8 @@ public:
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
         [NSNumber numberWithBool:YES],  WebKitQTKitEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
         nil];
 
 
@@ -1078,8 +1077,7 @@ public:
 
 - (NSTimeInterval)_backForwardCacheExpirationInterval
 {
-    // FIXME: There's probably no good reason to read from the standard user defaults instead of self.
-    return (NSTimeInterval)[[NSUserDefaults standardUserDefaults] floatForKey:WebKitBackForwardCacheExpirationIntervalKey];
+    return (NSTimeInterval)[self _floatValueForKey:WebKitBackForwardCacheExpirationIntervalKey];
 }
 
 - (float)PDFScaleFactor
@@ -1392,6 +1390,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setCSSRegionsEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitCSSRegionsEnabledPreferenceKey];
+}
+
+- (BOOL)cssCompositingEnabled
+{
+    return [self _boolValueForKey:WebKitCSSCompositingEnabledPreferenceKey];
+}
+
+- (void)setCSSCompositingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitCSSCompositingEnabledPreferenceKey];
 }
 
 - (BOOL)cssGridLayoutEnabled
@@ -1797,6 +1805,26 @@ static NSString *classIBCreatorID = nil;
 - (void)setPlugInSnapshottingEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitPlugInSnapshottingEnabledPreferenceKey];
+}
+
+- (BOOL)hiddenPageDOMTimerThrottlingEnabled
+{
+    return [self _boolValueForKey:WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey];
+}
+
+- (void)setHiddenPageDOMTimerThrottlingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey];
+}
+
+- (BOOL)hiddenPageCSSAnimationSuspensionEnabled
+{
+    return [self _boolValueForKey:WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey];
+}
+
+- (void)setHiddenPageCSSAnimationSuspensionEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey];
 }
 
 @end

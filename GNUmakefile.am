@@ -70,6 +70,9 @@ javascriptcore_built_sources :=
 javascriptcore_built_nosources :=
 llint_nosources :=
 offlineasm_nosources :=
+platform_webcore_cppflags :=
+platformgtk_cppflags :=
+platformgtk_sources :=
 webcore_platform_sources :=
 webcore_modules_sources :=
 webcore_svg_built_sources :=
@@ -93,6 +96,7 @@ webkitgtk_built_nosources :=
 webkit2_h_api :=
 webkit2_sources :=
 webkit2_built_sources :=
+webkit2platform_sources :=
 webkit2gtk_h_api :=
 webkit2gtk_built_sources :=
 webkit2_web_extension_h_api :=
@@ -176,6 +180,7 @@ EXTRA_DIST += \
 # Include module makefiles
 include Source/WTF/GNUmakefile.am
 include Source/JavaScriptCore/GNUmakefile.am
+include Source/Platform/GNUmakefile.am 
 include Source/WebCore/GNUmakefile.am
 include Source/WebCore/bindings/gobject/GNUmakefile.am
 include Source/WebCore/platform/gtk/po/GNUmakefile.am
@@ -186,7 +191,9 @@ include Source/WebKit2/GNUmakefile.am
 include Source/WebKit2/UIProcess/API/gtk/tests/GNUmakefile.am
 include Tools/MiniBrowser/gtk/GNUmakefile.am
 include Tools/WebKitTestRunner/GNUmakefile.am
+include Source/ThirdParty/ANGLE/GNUmakefile.am
 include Source/ThirdParty/gtest/GNUmakefile.am
+include Source/ThirdParty/leveldb/GNUmakefile.am
 include Tools/TestWebKitAPI/GNUmakefile.am
 # [GTK] Refactor the translations now that we have webkit2
 # https://bugs.webkit.org/show_bug.cgi?id=55153

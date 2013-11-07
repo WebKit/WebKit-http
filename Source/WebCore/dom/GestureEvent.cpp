@@ -29,6 +29,7 @@
 
 #include "GestureEvent.h"
 
+#include "Element.h"
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -53,7 +54,6 @@ PassRefPtr<GestureEvent> GestureEvent::create(PassRefPtr<AbstractView> view, con
         eventType = eventNames().gesturetapEvent; break;
     case PlatformEvent::GestureTapDown:
         eventType = eventNames().gesturetapdownEvent; break;
-    case PlatformEvent::GestureDoubleTap:
     case PlatformEvent::GestureTwoFingerTap:
     case PlatformEvent::GestureLongPress:
     case PlatformEvent::GesturePinchBegin:
@@ -119,7 +119,7 @@ GestureEvent* GestureEventDispatchMediator::event() const
 
 bool GestureEventDispatchMediator::dispatchEvent(EventDispatcher* dispatcher) const
 {
-    if (dispatcher->node()->disabled())
+    if (isDisabledFormControl(dispatcher->node()))
         return true;
 
     dispatcher->dispatch();

@@ -126,7 +126,7 @@ public:
     
     // GraphicsLayers buffer state, which gets pushed to the underlying platform layers
     // at specific times.
-    void scheduleLayerFlush();
+    void scheduleLayerFlush(bool canThrottle);
     void flushPendingLayerChanges(bool isFlushRoot = true);
     
     // flushPendingLayerChanges() flushes the entire GraphicsLayer tree, which can cross frame boundaries.
@@ -135,6 +135,9 @@ public:
 
     // Called when the GraphicsLayer for the given RenderLayer has flushed changes inside of flushPendingLayerChanges().
     void didFlushChangesForLayer(RenderLayer*, const GraphicsLayer*);
+
+    // Called when something outside WebKit affects the visible rect (e.g. delegated scrolling). Might schedule a layer flush.
+    void didChangeVisibleRect();
     
     // Rebuild the tree of compositing layers
     void updateCompositingLayers(CompositingUpdateType, RenderLayer* updateRoot = 0);
@@ -153,9 +156,6 @@ public:
     bool clippedByAncestor(RenderLayer*) const;
     // Whether layer's backing needs a graphics layer to clip z-order children of the given layer.
     bool clipsCompositingDescendants(const RenderLayer*) const;
-
-    // Whether the layer is fixed positioned to the view by an ancestor layer.
-    bool fixedPositionedByAncestor(const RenderLayer*) const;
 
     // Whether the given layer needs an extra 'contents' layer.
     bool needsContentsCompositingLayer(const RenderLayer*) const;
@@ -241,6 +241,8 @@ public:
     virtual float pageScaleFactor() const OVERRIDE;
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const OVERRIDE;
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) OVERRIDE;
+
+    void layerTiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/);
     
     bool keepLayersPixelAligned() const;
     bool acceleratedDrawingEnabled() const { return m_acceleratedDrawingEnabled; }
@@ -257,6 +259,8 @@ public:
 
     GraphicsLayer* updateLayerForTopOverhangArea(bool wantsLayer);
     GraphicsLayer* updateLayerForBottomOverhangArea(bool wantsLayer);
+    GraphicsLayer* updateLayerForHeader(bool wantsLayer);
+    GraphicsLayer* updateLayerForFooter(bool wantsLayer);
 #endif
 
     void updateViewportConstraintStatus(RenderLayer*);
@@ -270,14 +274,19 @@ public:
 
     bool viewHasTransparentBackground(Color* backgroundColor = 0) const;
 
+    bool hasNonMainLayersWithTiledBacking() const { return m_layersWithTiledBackingCount; }
+
     CompositingReasons reasonsForCompositing(const RenderLayer*) const;
-    
+
+    void setLayerFlushThrottlingEnabled(bool);
+    void disableLayerFlushThrottlingTemporarilyForInteraction();
+
 private:
     class OverlapMap;
 
     // GraphicsLayerClient implementation
     virtual void notifyAnimationStarted(const GraphicsLayer*, double) OVERRIDE { }
-    virtual void notifyFlushRequired(const GraphicsLayer*) OVERRIDE { scheduleLayerFlush(); }
+    virtual void notifyFlushRequired(const GraphicsLayer*) OVERRIDE;
     virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect&) OVERRIDE;
 
     virtual bool isTrackingRepaints() const OVERRIDE;
@@ -340,7 +349,7 @@ private:
     
     Page* page() const;
     TiledBacking* pageTiledBacking() const;
-
+    
     GraphicsLayerFactory* graphicsLayerFactory() const;
     ScrollingCoordinator* scrollingCoordinator() const;
 
@@ -374,6 +383,11 @@ private:
     bool requiresContentShadowLayer() const;
 #endif
 
+    void scheduleLayerFlushNow();
+    bool isThrottlingLayerFlushes() const;
+    void startLayerFlushTimerIfNeeded();
+    void layerFlushTimerFired(Timer<RenderLayerCompositor>*);
+
 #if !LOG_DISABLED
     const char* logReasonsForCompositing(const RenderLayer*);
     void logLayerInfo(const RenderLayer*, int depth);
@@ -405,6 +419,8 @@ private:
     bool m_inPostLayoutUpdate; // true when it's OK to trust layout information (e.g. layer sizes and positions)
 
     bool m_isTrackingRepaints; // Used for testing.
+    
+    unsigned m_layersWithTiledBackingCount;
 
     RootLayerAttachment m_rootLayerAttachment;
 
@@ -427,9 +443,16 @@ private:
     OwnPtr<GraphicsLayer> m_contentShadowLayer;
     OwnPtr<GraphicsLayer> m_layerForTopOverhangArea;
     OwnPtr<GraphicsLayer> m_layerForBottomOverhangArea;
+    OwnPtr<GraphicsLayer> m_layerForHeader;
+    OwnPtr<GraphicsLayer> m_layerForFooter;
 #endif
 
     OwnPtr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.
+
+    Timer<RenderLayerCompositor> m_layerFlushTimer;
+    bool m_layerFlushThrottlingEnabled;
+    bool m_layerFlushThrottlingTemporarilyDisabledForInteraction;
+    bool m_hasPendingLayerFlush;
 
 #if !LOG_DISABLED
     int m_rootLayerUpdateCount;

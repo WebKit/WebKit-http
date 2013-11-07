@@ -349,12 +349,7 @@ void MediaPlayerPrivateGStreamerBase::exitFullscreen()
 
 bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const
 {
-#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-    // See <rdar://problem/7389945>
-    return false;
-#else
     return true;
-#endif
 }
 
 PlatformMedia MediaPlayerPrivateGStreamerBase::platformMedia() const
@@ -391,6 +386,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink(GstElement* pipelin
     m_gstGWorld = GStreamerGWorld::createGWorld(pipeline);
     m_webkitVideoSink = webkitVideoSinkNew(m_gstGWorld.get());
 #else
+    UNUSED_PARAM(pipeline);
     m_webkitVideoSink = webkitVideoSinkNew();
 #endif
     m_videoSinkPad = adoptGRef(gst_element_get_static_pad(m_webkitVideoSink.get(), "sink"));

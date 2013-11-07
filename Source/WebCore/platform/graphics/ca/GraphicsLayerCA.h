@@ -142,6 +142,8 @@ public:
     virtual void flushCompositingState(const FloatRect&);
     virtual void flushCompositingStateForThisLayerOnly();
 
+    virtual bool visibleRectChangeRequiresFlush(const FloatRect& visibleRect) const OVERRIDE;
+
     virtual TiledBacking* tiledBacking() const OVERRIDE;
 
     bool allowTiledLayer() const { return m_allowTiledLayer; }
@@ -243,10 +245,16 @@ private:
 
     void computePixelAlignment(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase,
         FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset) const;
-    FloatRect computeVisibleRect(TransformState&) const;
+    enum ComputeVisibleRectFlag { RespectAnimatingTransforms = 1 << 0 };
+    typedef unsigned ComputeVisibleRectFlags;
+    FloatRect computeVisibleRect(TransformState&, ComputeVisibleRectFlags = RespectAnimatingTransforms) const;
     const FloatRect& visibleRect() const { return m_visibleRect; }
     
     FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatSize& oldSize) const;
+
+    bool recursiveVisibleRectChangeRequiresFlush(const TransformState&) const;
+
+    virtual bool canThrottleLayerFlush() const;
 
     // Used to track the path down the tree for replica layers.
     struct ReplicaState {
@@ -323,7 +331,7 @@ private:
     void updateContentsOpaque();
     void updateBackfaceVisibility();
     void updateStructuralLayer();
-    void updateLayerDrawsContent(float pixelAlignmentScale);
+    void updateLayerDrawsContent();
     void updateBackgroundColor();
 
     void updateContentsImage();
@@ -391,7 +399,8 @@ private:
         ContentsVisibilityChanged = 1 << 25,
         VisibleRectChanged = 1 << 26,
         FiltersChanged = 1 << 27,
-        DebugIndicatorsChanged = 1 << 28
+        TilesAdded = 1 < 28,
+        DebugIndicatorsChanged = 1 << 29
     };
     typedef unsigned LayerChangeFlags;
     void noteLayerPropertyChanged(LayerChangeFlags flags);

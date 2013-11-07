@@ -26,16 +26,11 @@
 #include <BlackBerryPlatformInputEvents.h>
 #include <BlackBerryPlatformString.h>
 #include <BlackBerryPlatformWebContext.h>
+#include <JavaScriptCore/JSBase.h>
 #include <imf/input_data.h>
 #include <network/NetworkRequest.h>
 #include <string>
 #include <vector>
-
-struct OpaqueJSContext;
-typedef const struct OpaqueJSContext* JSContextRef;
-
-struct OpaqueJSValue;
-typedef const struct OpaqueJSValue* JSValueRef;
 
 namespace WebCore {
 class ChromeClientBlackBerry;
@@ -93,7 +88,7 @@ public:
 
     WebPageClient* client() const;
 
-    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, bool isInitial = false);
+    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, bool isInitial = false, bool needReferer = false, bool forceDownload = false);
 
     void loadExtended(const char* url, const char* networkToken, const char* method, Platform::NetworkRequest::CachePolicy = Platform::NetworkRequest::UseProtocolCachePolicy, const char* data = 0, size_t dataLength = 0, const char* const* headers = 0, size_t headersLength = 0, bool mustHandleInternally = false);
 
@@ -142,13 +137,20 @@ public:
     void applyPendingOrientationIfNeeded();
 
     Platform::ViewportAccessor* webkitThreadViewportAccessor() const;
+
+    // Returns the size of the visual viewport.
     Platform::IntSize viewportSize() const;
-    void setViewportSize(const Platform::IntSize&, bool ensureFocusElementVisible = true);
+
+    // Sets the sizes of the visual viewport and the layout viewport.
+    void setViewportSize(const Platform::IntSize& viewportSize, const Platform::IntSize& defaultLayoutSize, bool ensureFocusElementVisible = true);
 
     void resetVirtualViewportOnCommitted(bool reset);
     void setVirtualViewportSize(const Platform::IntSize&);
 
-    // Used for default layout size unless overridden by web content or by other APIs.
+    // Returns the size of the layout viewport.
+    Platform::IntSize defaultLayoutSize() const;
+
+    // Set the size of the layout viewport, in document coordinates, independently of the visual viewport.
     void setDefaultLayoutSize(const Platform::IntSize&);
 
     bool mouseEvent(const Platform::MouseEvent&, bool* wheelDeltaAccepted = 0);
@@ -233,8 +235,7 @@ public:
     // Case sensitivity, wrapping, and highlighting all matches are also toggleable.
     bool findNextString(const char*, bool forward, bool caseSensitive, bool wrap, bool highlightAllMatches);
 
-    JSContextRef scriptContext() const;
-    JSValueRef windowObject() const;
+    JSGlobalContextRef globalContext() const;
 
     unsigned timeoutForJavaScriptExecution() const;
     void setTimeoutForJavaScriptExecution(unsigned ms);
@@ -329,6 +330,8 @@ public:
     void dispatchInspectorMessage(const BlackBerry::Platform::String& message);
     void inspectCurrentContextElement();
 
+    Platform::IntPoint adjustDocumentScrollPosition(const Platform::IntPoint& documentScrollPosition, const Platform::IntRect& documentPaddingRect);
+
     // FIXME: Needs API review on this header. See PR #120402.
     void notifyPagePause();
     void notifyPageResume();
@@ -374,8 +377,6 @@ public:
 
     void autofillTextField(const BlackBerry::Platform::String&);
 
-    void enableQnxJavaScriptObject(bool);
-
     BlackBerry::Platform::String renderTreeAsText();
 
     void updateNotificationPermission(const BlackBerry::Platform::String& requestId, bool allowed);
@@ -385,6 +386,8 @@ public:
     void notificationShown(const BlackBerry::Platform::String& notificationId);
 
     void animateToScaleAndDocumentScrollPosition(double destinationZoomScale, const BlackBerry::Platform::FloatPoint& destinationScrollPosition, bool shouldConstrainScrollingToContentEdge = true);
+
+    bool isProcessingUserGesture() const;
 
 private:
     virtual ~WebPage();

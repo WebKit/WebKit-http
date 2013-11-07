@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
@@ -70,6 +70,12 @@ namespace JSC {
         OpLogicalOr
     };
 
+    enum FallThroughMode {
+        FallThroughMeansTrue = 0,
+        FallThroughMeansFalse = 1
+    };
+    inline FallThroughMode invert(FallThroughMode fallThroughMode) { return static_cast<FallThroughMode>(!fallThroughMode); }
+
     typedef HashSet<RefPtr<StringImpl>, IdentifierRepHash> IdentifierSet;
 
     namespace DeclarationStacks {
@@ -123,15 +129,13 @@ namespace JSC {
     public:
         virtual ~Node() { }
 
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* destination = 0) = 0;
-
         int lineNo() const { return m_lineNumber; }
 
-        int columnNo() const { return m_columnNumber; }
+        int charPosition() const { return m_charPosition; }
 
     protected:
         int m_lineNumber;
-        int m_columnNumber;
+        int m_charPosition;
     };
 
     class ExpressionNode : public Node {
@@ -139,6 +143,8 @@ namespace JSC {
         ExpressionNode(const JSTokenLocation&, ResultType = ResultType::unknownType());
 
     public:
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* destination = 0) = 0;
+
         virtual bool isNumber() const { return false; }
         virtual bool isString() const { return false; }
         virtual bool isNull() const { return false; }
@@ -152,9 +158,8 @@ namespace JSC {
         virtual bool isSimpleArray() const { return false; }
         virtual bool isAdd() const { return false; }
         virtual bool isSubtract() const { return false; }
-        virtual bool hasConditionContextCodegen() const { return false; }
 
-        virtual void emitBytecodeInConditionContext(BytecodeGenerator&, Label*, Label*, bool) { RELEASE_ASSERT_NOT_REACHED(); }
+        virtual void emitBytecodeInConditionContext(BytecodeGenerator&, Label*, Label*, FallThroughMode);
 
         virtual ExpressionNode* stripUnaryPlus() { return this; }
 
@@ -169,11 +174,11 @@ namespace JSC {
         StatementNode(const JSTokenLocation&);
 
     public:
-        JS_EXPORT_PRIVATE void setLoc(int firstLine, int lastLine);
-        void setLoc(int firstLine, int lastLine, int column);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* destination = 0) = 0;
+
+        void setLoc(int firstLine, int lastLine, int charPosition);
         int firstLine() const { return lineNo(); }
         int lastLine() const { return m_lastLine; }
-        int column() const { return columnNo();}
 
         virtual bool isEmptyStatement() const { return false; }
         virtual bool isReturnNode() const { return false; }
@@ -419,7 +424,7 @@ namespace JSC {
         Type m_type;
     };
 
-    class PropertyListNode : public Node {
+    class PropertyListNode : public ExpressionNode {
     public:
         PropertyListNode(const JSTokenLocation&, PropertyNode*);
         PropertyListNode(const JSTokenLocation&, PropertyNode*, PropertyListNode*);
@@ -479,7 +484,7 @@ namespace JSC {
         const Identifier& m_ident;
     };
 
-    class ArgumentListNode : public Node {
+    class ArgumentListNode : public ExpressionNode {
     public:
         ArgumentListNode(const JSTokenLocation&, ExpressionNode*);
         ArgumentListNode(const JSTokenLocation&, ArgumentListNode*, ExpressionNode*);
@@ -584,20 +589,6 @@ namespace JSC {
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
     };
 
-    class PostfixNode : public ExpressionNode, public ThrowableExpressionData {
-    public:
-        PostfixNode(const JSTokenLocation&, ExpressionNode*, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
-
-    private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-        virtual RegisterID* emitResolve(BytecodeGenerator&, RegisterID* = 0);
-        virtual RegisterID* emitBracket(BytecodeGenerator&, RegisterID* = 0);
-        virtual RegisterID* emitDot(BytecodeGenerator&, RegisterID* = 0);
-
-        ExpressionNode* m_expr;
-        Operator m_operator;
-    };
-
     class DeleteResolveNode : public ExpressionNode, public ThrowableExpressionData {
     public:
         DeleteResolveNode(const JSTokenLocation&, const Identifier&, unsigned divot, unsigned startOffset, unsigned endOffset);
@@ -676,7 +667,7 @@ namespace JSC {
     public:
         PrefixNode(const JSTokenLocation&, ExpressionNode*, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
 
-    private:
+    protected:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
         virtual RegisterID* emitResolve(BytecodeGenerator&, RegisterID* = 0);
         virtual RegisterID* emitBracket(BytecodeGenerator&, RegisterID* = 0);
@@ -684,6 +675,17 @@ namespace JSC {
 
         ExpressionNode* m_expr;
         Operator m_operator;
+    };
+
+    class PostfixNode : public PrefixNode {
+    public:
+        PostfixNode(const JSTokenLocation&, ExpressionNode*, Operator, unsigned divot, unsigned startOffset, unsigned endOffset);
+
+    private:
+        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitResolve(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitBracket(BytecodeGenerator&, RegisterID* = 0);
+        virtual RegisterID* emitDot(BytecodeGenerator&, RegisterID* = 0);
     };
 
     class UnaryOpNode : public ExpressionNode {
@@ -734,8 +736,7 @@ namespace JSC {
     public:
         LogicalNotNode(const JSTokenLocation&, ExpressionNode*);
     private:
-        void emitBytecodeInConditionContext(BytecodeGenerator&, Label* trueTarget, Label* falseTarget, bool fallThroughMeansTrue);
-        virtual bool hasConditionContextCodegen() const { return expr()->hasConditionContextCodegen(); }
+        void emitBytecodeInConditionContext(BytecodeGenerator&, Label* trueTarget, Label* falseTarget, FallThroughMode);
     };
 
     class BinaryOpNode : public ExpressionNode {
@@ -897,8 +898,7 @@ namespace JSC {
 
     private:
         virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
-        void emitBytecodeInConditionContext(BytecodeGenerator&, Label* trueTarget, Label* falseTarget, bool fallThroughMeansTrue);
-        virtual bool hasConditionContextCodegen() const { return true; }
+        void emitBytecodeInConditionContext(BytecodeGenerator&, Label* trueTarget, Label* falseTarget, FallThroughMode);
 
         ExpressionNode* m_expr1;
         ExpressionNode* m_expr2;
@@ -1048,7 +1048,7 @@ namespace JSC {
         ConstStatementNode(const JSTokenLocation&, ConstDeclNode* next);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ConstDeclNode* m_next;
     };
@@ -1076,7 +1076,7 @@ namespace JSC {
         StatementNode* lastStatement() const;
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         virtual bool isBlock() const { return true; }
 
@@ -1088,7 +1088,7 @@ namespace JSC {
         EmptyStatementNode(const JSTokenLocation&);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         virtual bool isEmptyStatement() const { return true; }
     };
@@ -1098,7 +1098,7 @@ namespace JSC {
         DebuggerStatementNode(const JSTokenLocation&);
         
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
     };
 
     class ExprStatementNode : public StatementNode {
@@ -1110,7 +1110,7 @@ namespace JSC {
     private:
         virtual bool isExprStatement() const { return true; }
 
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr;
     };
@@ -1119,7 +1119,7 @@ namespace JSC {
     public:
         VarStatementNode(const JSTokenLocation&, ExpressionNode*);
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr;
     };
@@ -1129,7 +1129,7 @@ namespace JSC {
         IfNode(const JSTokenLocation&, ExpressionNode* condition, StatementNode* ifBlock);
 
     protected:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_condition;
         StatementNode* m_ifBlock;
@@ -1140,7 +1140,7 @@ namespace JSC {
         IfElseNode(const JSTokenLocation&, ExpressionNode* condition, StatementNode* ifBlock, StatementNode* elseBlock);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         StatementNode* m_elseBlock;
     };
@@ -1150,7 +1150,7 @@ namespace JSC {
         DoWhileNode(const JSTokenLocation&, StatementNode*, ExpressionNode*);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         StatementNode* m_statement;
         ExpressionNode* m_expr;
@@ -1161,7 +1161,7 @@ namespace JSC {
         WhileNode(const JSTokenLocation&, ExpressionNode*, StatementNode*);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr;
         StatementNode* m_statement;
@@ -1172,7 +1172,7 @@ namespace JSC {
         ForNode(const JSTokenLocation&, ExpressionNode* expr1, ExpressionNode* expr2, ExpressionNode* expr3, StatementNode*);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr1;
         ExpressionNode* m_expr2;
@@ -1186,7 +1186,7 @@ namespace JSC {
         ForInNode(JSGlobalData*, const JSTokenLocation&, const Identifier&, ExpressionNode*, ExpressionNode*, StatementNode*, int divot, int startOffset, int endOffset);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_init;
         ExpressionNode* m_lexpr;
@@ -1200,7 +1200,7 @@ namespace JSC {
         ContinueNode(const JSTokenLocation&, const Identifier&);
         
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         const Identifier& m_ident;
     };
@@ -1211,7 +1211,7 @@ namespace JSC {
         BreakNode(const JSTokenLocation&, const Identifier&);
         
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         const Identifier& m_ident;
     };
@@ -1223,7 +1223,7 @@ namespace JSC {
         ExpressionNode* value() { return m_value; }
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         virtual bool isReturnNode() const { return true; }
 
@@ -1235,7 +1235,7 @@ namespace JSC {
         WithNode(const JSTokenLocation&, ExpressionNode*, StatementNode*, uint32_t divot, uint32_t expressionLength);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr;
         StatementNode* m_statement;
@@ -1248,7 +1248,7 @@ namespace JSC {
         LabelNode(const JSTokenLocation&, const Identifier& name, StatementNode*);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         const Identifier& m_name;
         StatementNode* m_statement;
@@ -1259,7 +1259,7 @@ namespace JSC {
         ThrowNode(const JSTokenLocation&, ExpressionNode*);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr;
     };
@@ -1269,7 +1269,7 @@ namespace JSC {
         TryNode(const JSTokenLocation&, StatementNode* tryBlock, const Identifier& exceptionIdent, StatementNode* catchBlock, StatementNode* finallyBlock);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         StatementNode* m_tryBlock;
         const Identifier& m_exceptionIdent;
@@ -1295,8 +1295,8 @@ namespace JSC {
         typedef DeclarationStacks::VarStack VarStack;
         typedef DeclarationStacks::FunctionStack FunctionStack;
 
-        ScopeNode(JSGlobalData*, const JSTokenLocation&, bool inStrictContext);
-        ScopeNode(JSGlobalData*, const JSTokenLocation&, const SourceCode&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, CodeFeatures, int numConstants);
+        ScopeNode(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, bool inStrictContext);
+        ScopeNode(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, const SourceCode&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, CodeFeatures, int numConstants);
 
         using ParserArenaRefCounted::operator new;
 
@@ -1312,6 +1312,9 @@ namespace JSC {
         const SourceCode& source() const { return m_source; }
         const String& sourceURL() const { return m_source.provider()->url(); }
         intptr_t sourceID() const { return m_source.providerID(); }
+
+        int startLine() const { return m_startLineNumber; }
+        int startCharPosition() const { return m_startCharPosition;}
 
         void setFeatures(CodeFeatures features) { m_features = features; }
         CodeFeatures features() { return m_features; }
@@ -1345,6 +1348,9 @@ namespace JSC {
         void setSource(const SourceCode& source) { m_source = source; }
         ParserArena m_arena;
 
+        int m_startLineNumber;
+        int m_startCharPosition;
+
     private:
         CodeFeatures m_features;
         SourceCode m_source;
@@ -1358,27 +1364,27 @@ namespace JSC {
     class ProgramNode : public ScopeNode {
     public:
         static const bool isFunctionNode = false;
-        static PassRefPtr<ProgramNode> create(JSGlobalData*, const JSTokenLocation&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
+        static PassRefPtr<ProgramNode> create(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
 
         static const bool scopeIsFunction = false;
 
     private:
-        ProgramNode(JSGlobalData*, const JSTokenLocation&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
+        ProgramNode(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
 
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
     };
 
     class EvalNode : public ScopeNode {
     public:
         static const bool isFunctionNode = false;
-        static PassRefPtr<EvalNode> create(JSGlobalData*, const JSTokenLocation&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
+        static PassRefPtr<EvalNode> create(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
 
         static const bool scopeIsFunction = false;
 
     private:
-        EvalNode(JSGlobalData*, const JSTokenLocation&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
+        EvalNode(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
 
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
     };
 
     class FunctionParameters : public RefCounted<FunctionParameters> {
@@ -1403,13 +1409,13 @@ namespace JSC {
     class FunctionBodyNode : public ScopeNode {
     public:
         static const bool isFunctionNode = true;
-        static FunctionBodyNode* create(JSGlobalData*, const JSTokenLocation&, bool isStrictMode);
-        static PassRefPtr<FunctionBodyNode> create(JSGlobalData*, const JSTokenLocation&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
+        static FunctionBodyNode* create(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, bool isStrictMode);
+        static PassRefPtr<FunctionBodyNode> create(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
 
         FunctionParameters* parameters() const { return m_parameters.get(); }
         size_t parameterCount() const { return m_parameters->size(); }
 
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         void finishParsing(const SourceCode&, ParameterNode*, const Identifier&, FunctionNameIsInScopeToggle);
         void finishParsing(PassRefPtr<FunctionParameters>, const Identifier&, FunctionNameIsInScopeToggle);
@@ -1427,8 +1433,8 @@ namespace JSC {
         static const bool scopeIsFunction = true;
 
     private:
-        FunctionBodyNode(JSGlobalData*, const JSTokenLocation&, bool inStrictContext);
-        FunctionBodyNode(JSGlobalData*, const JSTokenLocation&, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
+        FunctionBodyNode(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, bool inStrictContext);
+        FunctionBodyNode(JSGlobalData*, const JSTokenLocation& start, const JSTokenLocation& end, SourceElements*, VarStack*, FunctionStack*, IdentifierSet&, const SourceCode&, CodeFeatures, int numConstants);
 
         Identifier m_ident;
         Identifier m_inferredName;
@@ -1458,7 +1464,7 @@ namespace JSC {
         FunctionBodyNode* body() { return m_body; }
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         FunctionBodyNode* m_body;
     };
@@ -1493,7 +1499,7 @@ namespace JSC {
     public:
         CaseBlockNode(ClauseListNode* list1, CaseClauseNode* defaultClause, ClauseListNode* list2);
 
-        RegisterID* emitBytecodeForBlock(BytecodeGenerator&, RegisterID* input, RegisterID* destination);
+        void emitBytecodeForBlock(BytecodeGenerator&, RegisterID* input, RegisterID* destination);
 
     private:
         SwitchInfo::SwitchType tryTableSwitch(Vector<ExpressionNode*, 8>& literalVector, int32_t& min_num, int32_t& max_num);
@@ -1508,7 +1514,7 @@ namespace JSC {
         SwitchNode(const JSTokenLocation&, ExpressionNode*, CaseBlockNode*);
 
     private:
-        virtual RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0);
+        virtual void emitBytecode(BytecodeGenerator&, RegisterID* = 0);
 
         ExpressionNode* m_expr;
         CaseBlockNode* m_block;

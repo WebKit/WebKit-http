@@ -193,6 +193,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)cssRegionsEnabled;
 - (void)setCSSRegionsEnabled:(BOOL)enabled;
 
+- (BOOL)cssCompositingEnabled;
+- (void)setCSSCompositingEnabled:(BOOL)enabled;
+
 - (BOOL)cssGridLayoutEnabled;
 - (void)setCSSGridLayoutEnabled:(BOOL)enabled;
 
@@ -328,5 +331,11 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (BOOL)plugInSnapshottingEnabled;
 - (void)setPlugInSnapshottingEnabled:(BOOL)enabled;
+
+- (BOOL)hiddenPageDOMTimerThrottlingEnabled;
+- (void)setHiddenPageDOMTimerThrottlingEnabled:(BOOL)flag;
+
+- (BOOL)hiddenPageCSSAnimationSuspensionEnabled;
+- (void)setHiddenPageCSSAnimationSuspensionEnabled:(BOOL)flag;
 
 @end

@@ -117,7 +117,7 @@ void TextTrackLoader::deprecatedDidReceiveCachedResource(CachedResource* resourc
 void TextTrackLoader::corsPolicyPreventedLoad()
 {
     DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Cross-origin text track load denied by Cross-Origin Resource Sharing policy.")));
-    Document* document = static_cast<Document*>(m_scriptExecutionContext);
+    Document* document = toDocument(m_scriptExecutionContext);
     document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, consoleMessage);
     m_state = Failed;
 }
@@ -126,7 +126,7 @@ void TextTrackLoader::notifyFinished(CachedResource* resource)
 {
     ASSERT(m_cachedCueData == resource);
 
-    Document* document = static_cast<Document*>(m_scriptExecutionContext);
+    Document* document = toDocument(m_scriptExecutionContext);
     if (!m_crossOriginMode.isNull()
         && !document->securityOrigin()->canRequest(resource->response().url())
         && !resource->passesAccessControlCheck(document->securityOrigin())) {
@@ -154,7 +154,7 @@ bool TextTrackLoader::load(const KURL& url, const String& crossOriginMode)
         return false;
 
     ASSERT(m_scriptExecutionContext->isDocument());
-    Document* document = static_cast<Document*>(m_scriptExecutionContext);
+    Document* document = toDocument(m_scriptExecutionContext);
     CachedResourceRequest cueRequest(ResourceRequest(document->completeURL(url)));
 
     if (!crossOriginMode.isNull()) {
@@ -188,6 +188,13 @@ void TextTrackLoader::newCuesParsed()
     m_cueLoadTimer.startOneShot(0);
 }
 
+#if ENABLE(WEBVTT_REGIONS)
+void TextTrackLoader::newRegionsParsed()
+{
+    m_client->newRegionsAvailable(this); 
+}
+#endif
+
 void TextTrackLoader::fileFailedToParse()
 {
     LOG(Media, "TextTrackLoader::fileFailedToParse");
@@ -207,6 +214,14 @@ void TextTrackLoader::getNewCues(Vector<RefPtr<TextTrackCue> >& outputCues)
         m_cueParser->getNewCues(outputCues);
 }
 
+#if ENABLE(WEBVTT_REGIONS)
+void TextTrackLoader::getNewRegions(Vector<RefPtr<TextTrackRegion> >& outputRegions)
+{
+    ASSERT(m_cueParser);
+    if (m_cueParser)
+        m_cueParser->getNewRegions(outputRegions);
+}
+#endif
 }
 
 #endif

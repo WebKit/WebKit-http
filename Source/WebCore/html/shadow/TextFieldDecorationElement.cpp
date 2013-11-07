@@ -112,10 +112,10 @@ void TextFieldDecorationElement::decorate(HTMLInputElement* input, bool visible)
     ASSERT(existingRoot);
     RefPtr<HTMLDivElement> box = HTMLDivElement::create(input->document());
     decorationRoot->appendChild(box);
-    box->setInlineStyleProperty(CSSPropertyDisplay, CSSValueWebkitBox);
-    box->setInlineStyleProperty(CSSPropertyWebkitBoxAlign, CSSValueCenter);
+    box->setInlineStyleProperty(CSSPropertyDisplay, CSSValueWebkitFlex);
+    box->setInlineStyleProperty(CSSPropertyWebkitAlignItems, CSSValueCenter);
     ASSERT(existingRoot->childNodeCount() == 1);
-    toHTMLElement(existingRoot->firstChild())->setInlineStyleProperty(CSSPropertyWebkitBoxFlex, 1.0, CSSPrimitiveValue::CSS_NUMBER);
+    toHTMLElement(existingRoot->firstChild())->setInlineStyleProperty(CSSPropertyWebkitFlexGrow, 1.0, CSSPrimitiveValue::CSS_NUMBER);
 #if ENABLE(SHADOW_DOM)
     box->appendChild(HTMLShadowElement::create(HTMLNames::shadowTag, input->document()));
 #endif
@@ -142,9 +142,9 @@ void TextFieldDecorationElement::updateImage()
         return;
     RenderImageResource* resource = toRenderImage(renderer())->imageResource();
     CachedImage* image;
-    if (hostInput()->disabled())
+    if (hostInput()->isDisabledFormControl())
         image = m_textFieldDecorator->imageForDisabledState();
-    else if (hostInput()->readOnly())
+    else if (hostInput()->isReadOnly())
         image = m_textFieldDecorator->imageForReadonlyState();
     else if (m_isInHoverState)
         image = m_textFieldDecorator->imageForHoverState();

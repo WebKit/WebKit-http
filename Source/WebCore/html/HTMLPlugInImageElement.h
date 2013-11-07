@@ -58,21 +58,32 @@ public:
 
     const String& serviceType() const { return m_serviceType; }
     const String& url() const { return m_url; }
+    const KURL& loadedUrl() const { return m_loadedUrl; }
+
+    const String loadedMimeType() const
+    {
+        String mimeType = serviceType();
+        if (mimeType.isEmpty())
+            mimeType = mimeTypeFromURL(m_loadedUrl);
+        return mimeType;
+    }
+
     bool shouldPreferPlugInsForImages() const { return m_shouldPreferPlugInsForImages; }
 
     // Public for FrameView::addWidgetToUpdate()
     bool needsWidgetUpdate() const { return m_needsWidgetUpdate; }
     void setNeedsWidgetUpdate(bool needsWidgetUpdate) { m_needsWidgetUpdate = needsWidgetUpdate; }
 
-    void userDidClickSnapshot(PassRefPtr<MouseEvent>);
+    void userDidClickSnapshot(PassRefPtr<MouseEvent>, bool forwardEvent);
     void updateSnapshotInfo();
     Image* snapshotImage() const { return m_snapshotImage.get(); }
 
     // Plug-in URL might not be the same as url() with overriding parameters.
     void subframeLoaderWillCreatePlugIn(const KURL& plugInURL);
     void subframeLoaderDidCreatePlugIn(const Widget*);
-    
+
     void setIsPrimarySnapshottedPlugIn(bool);
+    bool partOfSnapshotLabel(Node*);
 
 protected:
     HTMLPlugInImageElement(const QualifiedName& tagName, Document*, bool createdByParser, PreferPlugInsForImagesOption);
@@ -82,7 +93,8 @@ protected:
     OwnPtr<HTMLImageLoader> m_imageLoader;
     String m_serviceType;
     String m_url;
-    
+    KURL m_loadedUrl;
+
     static void updateWidgetCallback(Node*, unsigned = 0);
     virtual void attach();
     virtual void detach();
@@ -91,11 +103,14 @@ protected:
     bool wouldLoadAsNetscapePlugin(const String& url, const String& serviceType);
 
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
-    
+
     virtual void documentWillSuspendForPageCache() OVERRIDE;
     virtual void documentDidResumeFromPageCache() OVERRIDE;
 
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
+
+    void restartSnapshottedPlugIn();
+    virtual bool restartedPlugin() const OVERRIDE { return m_restartedPlugin; }
 
 private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
@@ -106,7 +121,6 @@ private:
     virtual void finishParsingChildren();
 
     void updateWidgetIfNecessary();
-    virtual bool useFallbackContent() const { return false; }
 
     virtual void updateSnapshot(PassRefPtr<Image>) OVERRIDE;
     virtual void dispatchPendingMouseClick() OVERRIDE;
@@ -114,18 +128,25 @@ private:
 
     void swapRendererTimerFired(Timer<HTMLPlugInImageElement>*);
 
+    void restartSimilarPlugIns();
+
     virtual bool isPlugInImageElement() const OVERRIDE { return true; }
+
+    void removeSnapshotTimerFired(Timer<HTMLPlugInImageElement>*);
 
     bool m_needsWidgetUpdate;
     bool m_shouldPreferPlugInsForImages;
     bool m_needsDocumentActivationCallbacks;
-    bool m_isPrimarySnapshottedPlugIn;
     RefPtr<RenderStyle> m_customStyleForPageCache;
     RefPtr<MouseEvent> m_pendingClickEventFromSnapshot;
     DeferrableOneShotTimer<HTMLPlugInImageElement> m_simulatedMouseClickTimer;
     Timer<HTMLPlugInImageElement> m_swapRendererTimer;
+    Timer<HTMLPlugInImageElement> m_removeSnapshotTimer;
     RefPtr<Image> m_snapshotImage;
+    RefPtr<Element> m_shadowContainer;
+    RefPtr<Element> m_snapshotLabel;
     bool m_createdDuringUserGesture;
+    bool m_restartedPlugin;
 };
 
 inline HTMLPlugInImageElement* toHTMLPlugInImageElement(Node* node)

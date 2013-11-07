@@ -167,12 +167,6 @@ String InspectorFrontendClientEfl::localizedStringsURL()
     return m_inspectorClient->inspectorFilesPath() + "/localizedStrings.js";
 }
 
-String InspectorFrontendClientEfl::hiddenPanels()
-{
-    notImplemented();
-    return String();
-}
-
 void InspectorFrontendClientEfl::bringToFront()
 {
     evas_object_focus_set(m_inspectorView, true);
@@ -188,7 +182,7 @@ void InspectorFrontendClientEfl::inspectedURLChanged(const String&)
     notImplemented();
 }
 
-void InspectorFrontendClientEfl::attachWindow()
+void InspectorFrontendClientEfl::attachWindow(DockSide)
 {
     notImplemented();
 }
@@ -199,6 +193,11 @@ void InspectorFrontendClientEfl::detachWindow()
 }
 
 void InspectorFrontendClientEfl::setAttachedWindowHeight(unsigned)
+{
+    notImplemented();
+}
+
+void InspectorFrontendClientEfl::setAttachedWindowWidth(unsigned)
 {
     notImplemented();
 }

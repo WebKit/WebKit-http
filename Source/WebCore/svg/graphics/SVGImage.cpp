@@ -66,7 +66,7 @@ void SVGImage::setContainerSize(const IntSize& size)
         return;
 
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return;
     RenderSVGRoot* renderer = toRenderSVGRoot(rootElement->renderer());
@@ -74,17 +74,17 @@ void SVGImage::setContainerSize(const IntSize& size)
         return;
 
     FrameView* view = frameView();
-    view->resize(this->size());
+    view->resize(this->containerSize());
 
     renderer->setContainerSize(size);
 }
 
-IntSize SVGImage::size() const
+IntSize SVGImage::containerSize() const
 {
     if (!m_page)
         return IntSize();
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return IntSize();
 
@@ -141,6 +141,25 @@ void SVGImage::drawForContainer(GraphicsContext* context, const FloatSize contai
     setImageObserver(observer);
 }
 
+#if USE(SKIA) || USE(CAIRO)
+// Passes ownership of the native image to the caller so PassNativeImagePtr needs
+// to be a smart pointer type.
+PassNativeImagePtr SVGImage::nativeImageForCurrentFrame()
+{
+    if (!m_page)
+        return 0;
+
+    OwnPtr<ImageBuffer> buffer = ImageBuffer::create(size(), 1);
+    if (!buffer) // failed to allocate image
+        return 0;
+
+    draw(buffer->context(), rect(), rect(), ColorSpaceDeviceRGB, CompositeSourceOver, BlendModeNormal);
+
+    // FIXME: WK(Bug 113657): We should use DontCopyBackingStore here.
+    return buffer->copyImage(CopyBackingStore)->nativeImageForCurrentFrame();
+}
+#endif
+
 void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize containerSize, float zoom, const FloatRect& srcRect,
     const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace colorSpace, CompositeOperator compositeOp, const FloatRect& dstRect)
 {
@@ -192,7 +211,7 @@ void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const Fl
     context->translate(destOffset.x(), destOffset.y());
     context->scale(scale);
 
-    view->resize(size());
+    view->resize(containerSize());
 
     if (view->needsLayout())
         view->layout();
@@ -213,7 +232,7 @@ RenderBox* SVGImage::embeddedContentBox() const
     if (!m_page)
         return 0;
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return 0;
     return toRenderBox(rootElement->renderer());
@@ -232,7 +251,7 @@ bool SVGImage::hasRelativeWidth() const
     if (!m_page)
         return false;
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return false;
     return rootElement->intrinsicWidth().isPercent();
@@ -243,7 +262,7 @@ bool SVGImage::hasRelativeHeight() const
     if (!m_page)
         return false;
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return false;
     return rootElement->intrinsicHeight().isPercent();
@@ -254,7 +273,7 @@ void SVGImage::computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrin
     if (!m_page)
         return;
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return;
 
@@ -274,7 +293,7 @@ void SVGImage::startAnimation(bool /* catchUpIfNecessary */)
     if (!m_page)
         return;
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return;
     rootElement->unpauseAnimations();
@@ -286,7 +305,7 @@ void SVGImage::stopAnimation()
     if (!m_page)
         return;
     Frame* frame = m_page->mainFrame();
-    SVGSVGElement* rootElement = static_cast<SVGDocument*>(frame->document())->rootElement();
+    SVGSVGElement* rootElement = toSVGDocument(frame->document())->rootElement();
     if (!rootElement)
         return;
     rootElement->pauseAnimations();
@@ -336,6 +355,9 @@ bool SVGImage::dataChanged(bool allDataReceived)
         loader->activeDocumentLoader()->writer()->begin(KURL()); // create the empty document
         loader->activeDocumentLoader()->writer()->addData(data()->data(), data()->size());
         loader->activeDocumentLoader()->writer()->end();
+
+        // Set the intrinsic size before a container size is available.
+        m_intrinsicSize = containerSize();
     }
 
     return m_page;

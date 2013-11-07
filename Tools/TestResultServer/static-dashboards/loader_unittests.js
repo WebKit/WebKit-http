@@ -31,6 +31,9 @@ module('loader');
 test('loading steps', 1, function() {
     resetGlobals();
     var loadedSteps = [];
+    g_history._handleLocationChange = function() {
+        deepEqual(loadedSteps, ['step 1', 'step 2']);
+    }
     var resourceLoader = new loader.Loader();
     function loadingStep1() {
         loadedSteps.push('step 1');
@@ -41,17 +44,10 @@ test('loading steps', 1, function() {
         resourceLoader.load();
     }
 
-    var loadingCompleteCallback = resourceLoadingComplete;
-    resourceLoadingComplete = function() {
-        deepEqual(loadedSteps, ['step 1', 'step 2']);
-    }
-
     try {
         resourceLoader._loadingSteps = [loadingStep1, loadingStep2];
         resourceLoader.load();
-    } finally {
-        resourceLoadingComplete = loadingCompleteCallback;
-    }
+    } 
 });
 
 // Total number of assertions is 1 for the deepEqual of the builder lists
@@ -87,7 +83,7 @@ test('results files loading', 11, function() {
 
 test('expectations files loading', 1, function() {
     resetGlobals();
-    parseCrossDashboardParameters();
+    g_history.parseCrossDashboardParameters();
     var expectedLoadedPlatforms = ["chromium", "chromium-android", "efl", "efl-wk1", "efl-wk2", "gtk",
                                    "gtk-wk2", "mac", "mac-lion", "mac-snowleopard", "qt", "win", "wk2"];
     var loadedPlatforms = [];
@@ -156,12 +152,20 @@ test('addBuilderLoadErrors', 1, function() {
     equal(resourceLoader._errors._messages, 'ERROR: Failed to get data from builder1,builder2.<br>ERROR: Data from staleBuilder1 is more than 1 day stale.<br>');
 });
 
-test('Loaded state set', 2, function() {
+
+test('flattenTrie', 1, function() {
     resetGlobals();
-  
-    var resourceLoader = new loader.Loader();
-    equal(false, resourceLoader.isLoadingComplete(), 'Before loading, loading is not complete');
-    resourceLoader._loadingSteps = [];
-    resourceLoader.load();
-    equal(true, resourceLoader.isLoadingComplete(), 'After loading, loading is complete');
+    var tests = {
+        'bar.html': {'results': [[100, 'F']], 'times': [[100, 0]]},
+        'foo': {
+            'bar': {
+                'baz.html': {'results': [[100, 'F']], 'times': [[100, 0]]},
+            }
+        }
+    };
+    var expectedFlattenedTests = {
+        'bar.html': {'results': [[100, 'F']], 'times': [[100, 0]]},
+        'foo/bar/baz.html': {'results': [[100, 'F']], 'times': [[100, 0]]},
+    };
+    equal(JSON.stringify(loader.Loader._flattenTrie(tests)), JSON.stringify(expectedFlattenedTests))
 });

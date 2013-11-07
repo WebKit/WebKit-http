@@ -34,6 +34,8 @@
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/LayerFlushScheduler.h>
 #include <WebCore/LayerFlushSchedulerClient.h>
+#include <WebCore/Timer.h>
+#include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS CALayer;
@@ -67,14 +69,16 @@ private:
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) OVERRIDE;
     virtual void scheduleCompositingLayerFlush() OVERRIDE;
 
-    virtual void didInstallPageOverlay() OVERRIDE;
-    virtual void didUninstallPageOverlay() OVERRIDE;
-    virtual void setPageOverlayNeedsDisplay(const WebCore::IntRect&) OVERRIDE;
+    virtual void didInstallPageOverlay(PageOverlay*) OVERRIDE;
+    virtual void didUninstallPageOverlay(PageOverlay*) OVERRIDE;
+    virtual void setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect&) OVERRIDE;
     virtual void updatePreferences(const WebPreferencesStore&) OVERRIDE;
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) OVERRIDE;
 
     virtual void setExposedRect(const WebCore::FloatRect&) OVERRIDE;
     virtual void mainFrameScrollabilityChanged(bool) OVERRIDE;
+
+    virtual void didChangeScrollOffsetForAnyFrame() OVERRIDE;
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>&) OVERRIDE;
 
@@ -100,10 +104,12 @@ private:
 
     void setRootCompositingLayer(CALayer *);
 
-    void createPageOverlayLayer();
-    void destroyPageOverlayLayer();
+    void createPageOverlayLayer(PageOverlay*);
+    void destroyPageOverlayLayer(PageOverlay*);
     WebCore::TiledBacking* mainFrameTiledBacking() const;
     void updateDebugInfoLayer(bool showLayer);
+
+    void updateIntrinsicContentSizeTimerFired(WebCore::Timer<TiledCoreAnimationDrawingArea>*);
 
     bool m_layerTreeStateIsFrozen;
     WebCore::LayerFlushScheduler m_layerFlushScheduler;
@@ -115,15 +121,18 @@ private:
 
     RetainPtr<CALayer> m_debugInfoLayer;
 
-    OwnPtr<WebCore::GraphicsLayer> m_pageOverlayLayer;
-    mutable RetainPtr<CALayer> m_pageOverlayPlatformLayer;
+    typedef HashMap<PageOverlay*, OwnPtr<WebCore::GraphicsLayer> > PageOverlayLayerMap;
+    PageOverlayLayerMap m_pageOverlayLayers;
+    mutable HashMap<const WebCore::GraphicsLayer*, RetainPtr<CALayer> > m_pageOverlayPlatformLayers;
 
     bool m_isPaintingSuspended;
     bool m_hasRootCompositingLayer;
 
     WebCore::FloatRect m_exposedRect;
+    bool m_clipsToExposedRect;
 
     WebCore::IntSize m_lastSentIntrinsicContentSize;
+    WebCore::Timer<TiledCoreAnimationDrawingArea> m_updateIntrinsicContentSizeTimer;
     bool m_inUpdateGeometry;
 };
 

@@ -168,9 +168,11 @@ PassRefPtr<IDBRequest> IDBObjectStore::put(IDBDatabaseBackendInterface::PutMode 
         return 0;
     }
 
-    RefPtr<SerializedScriptValue> serializedValue = value.serialize(state);
-    if (state->hadException()) {
-        ec = IDBDatabaseException::DataCloneError;
+    // FIXME: Expose the JS engine exception state through ScriptState.
+    bool didThrow = false;
+    RefPtr<SerializedScriptValue> serializedValue = value.serialize(state, 0, 0, didThrow);
+    if (didThrow) {
+        // Setting an explicit ExceptionCode here would defer handling the already thrown exception.
         return 0;
     }
 
@@ -320,7 +322,7 @@ private:
     {
     }
 
-    virtual void handleEvent(ScriptExecutionContext* context, Event* event)
+    virtual void handleEvent(ScriptExecutionContext*, Event* event)
     {
         ASSERT(event->type() == eventNames().successEvent);
         EventTarget* target = event->target();
@@ -504,7 +506,7 @@ PassRefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext* contex
         ec = IDBDatabaseException::TransactionInactiveError;
         return 0;
     }
-    IndexedDB::CursorDirection direction = IDBCursor::stringToDirection(directionString, context, ec);
+    IndexedDB::CursorDirection direction = IDBCursor::stringToDirection(directionString, ec);
     if (ec)
         return 0;
 

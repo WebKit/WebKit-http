@@ -55,10 +55,10 @@ typedef LPVOID HINTERNET;
 #endif
 
 #if PLATFORM(MAC)
+OBJC_CLASS NSCachedURLResponse;
 OBJC_CLASS NSData;
 OBJC_CLASS NSError;
 OBJC_CLASS NSURLConnection;
-OBJC_CLASS WebCoreResourceHandleAsDelegate;
 #ifndef __OBJC__
 typedef struct objc_object *id;
 #endif
@@ -74,8 +74,11 @@ typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 #endif
 
-namespace WebCore {
+namespace WTF {
+class SchedulePair;
+}
 
+namespace WebCore {
 class AuthenticationChallenge;
 class Credential;
 class Frame;
@@ -87,7 +90,6 @@ class ResourceHandleClient;
 class ResourceHandleInternal;
 class ResourceRequest;
 class ResourceResponse;
-class SchedulePair;
 class SharedBuffer;
 
 template <typename T> class Timer;
@@ -100,8 +102,6 @@ class ResourceHandle : public RefCounted<ResourceHandle>
 public:
     static PassRefPtr<ResourceHandle> create(NetworkingContext*, const ResourceRequest&, ResourceHandleClient*, bool defersLoading, bool shouldContentSniff);
     static void loadResourceSynchronously(NetworkingContext*, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>& data);
-
-    static void cacheMetadata(const ResourceResponse&, const Vector<char>&);
 
     virtual ~ResourceHandle();
 
@@ -123,13 +123,12 @@ public:
 #if !USE(CFNETWORK)
     void didCancelAuthenticationChallenge(const AuthenticationChallenge&);
     NSURLConnection *connection() const;
-    WebCoreResourceHandleAsDelegate *delegate();
+    id delegate();
     void releaseDelegate();
-    id releaseProxy();
 #endif
 
-    void schedule(SchedulePair*);
-    void unschedule(SchedulePair*);
+    void schedule(WTF::SchedulePair*);
+    void unschedule(WTF::SchedulePair*);
 #endif
 #if USE(CFNETWORK)
     CFURLStorageSessionRef storageSession() const;
@@ -186,10 +185,29 @@ public:
     ResourceHandleClient* client() const;
     void setClient(ResourceHandleClient*);
 
+    // Called in response to ResourceHandleClient::willSendRequestAsync().
+    void continueWillSendRequest(const ResourceRequest&);
+
+    // Called in response to ResourceHandleClient::didReceiveResponseAsync().
+    void continueDidReceiveResponse();
+
+    // Called in response to ResourceHandleClient::shouldUseCredentialStorageAsync().
+    void continueShouldUseCredentialStorage(bool);
+
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    // Called in response to ResourceHandleClient::canAuthenticateAgainstProtectionSpaceAsync().
+    void continueCanAuthenticateAgainstProtectionSpace(bool);
+#endif
+
+#if PLATFORM(MAC)
+    // Called in response to ResourceHandleClient::willCacheResponseAsync().
+    void continueWillCacheResponse(NSCachedURLResponse *);
+#endif
+
     void setDefersLoading(bool);
 
 #if PLATFORM(BLACKBERRY)
-    void pauseLoad(bool);
+    void pauseLoad(bool); // FIXME: How is this different from setDefersLoading()?
 #endif
 
     void didChangePriority(ResourceLoadPriority);

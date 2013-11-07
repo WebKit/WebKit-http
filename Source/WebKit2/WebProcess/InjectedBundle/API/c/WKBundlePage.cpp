@@ -163,6 +163,27 @@ WKArrayRef WKBundlePageCopyContextMenuItemTitles(WKBundlePageRef pageRef)
 #endif
 }
 
+WKArrayRef WKBundlePageCopyContextMenuAtPointInWindow(WKBundlePageRef pageRef, WKPoint point)
+{
+#if ENABLE(CONTEXT_MENUS)
+    WebContextMenu* contextMenu = toImpl(pageRef)->contextMenuAtPointInWindow(toIntPoint(point));
+    if (!contextMenu)
+        return 0;
+
+    const Vector<WebContextMenuItemData>& items = contextMenu->items();
+    size_t arrayLength = items.size();
+
+    RefPtr<MutableArray> menuArray = MutableArray::create();
+    menuArray->reserveCapacity(arrayLength);
+    for (unsigned i = 0; i < arrayLength; ++i)
+        menuArray->append(WebContextMenuItem::create(items[i]).get());
+    
+    return toAPI(menuArray.release().leakRef());
+#else
+    return 0;
+#endif
+}
+
 void* WKAccessibilityRootObject(WKBundlePageRef pageRef)
 {
 #if HAVE(ACCESSIBILITY)
@@ -469,22 +490,3 @@ bool WKBundlePageCanShowMIMEType(WKBundlePageRef pageRef, WKStringRef mimeTypeRe
 {
     return toImpl(pageRef)->canShowMIMEType(toWTFString(mimeTypeRef));
 }
-
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-void WKBundlePageSetViewMode(WKBundlePageRef pageRef, WKStringRef mode)
-{
-    String modeWTF = toWTFString(mode);
-    if (modeWTF == "windowed")
-        toImpl(pageRef)->setViewMode(WebCore::Page::ViewModeWindowed);
-    else if (modeWTF == "floating")
-        toImpl(pageRef)->setViewMode(WebCore::Page::ViewModeFloating);
-    else if (modeWTF == "fullscreen")
-        toImpl(pageRef)->setViewMode(WebCore::Page::ViewModeFullscreen);
-    else if (modeWTF == "maximized")
-        toImpl(pageRef)->setViewMode(WebCore::Page::ViewModeMaximized);
-    else if (modeWTF == "minimized")
-        toImpl(pageRef)->setViewMode(WebCore::Page::ViewModeMinimized);
-    else
-        ASSERT_NOT_REACHED();
-}
-#endif // ENABLE(VIEW_MODE_CSS_MEDIA)

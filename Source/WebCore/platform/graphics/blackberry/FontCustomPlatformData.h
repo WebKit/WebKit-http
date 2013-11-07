@@ -21,7 +21,6 @@
 #include "FontOrientation.h"
 #include "FontRenderingMode.h"
 #include "FontWidthVariant.h"
-#include "TextOrientation.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,7 +39,7 @@ public:
     FontCustomPlatformData(FILECHAR* fontName, PassRefPtr<SharedBuffer>);
     ~FontCustomPlatformData();
 
-    FontPlatformData fontPlatformData(int size, bool syntheticBold, bool syntheticItalic, FontOrientation = Horizontal, TextOrientation = TextOrientationVerticalRight,
+    FontPlatformData fontPlatformData(int size, bool syntheticBold, bool syntheticItalic, FontOrientation = Horizontal,
         FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
 
     static bool supportsFormat(const String&);

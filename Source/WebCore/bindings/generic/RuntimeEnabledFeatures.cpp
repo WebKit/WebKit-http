@@ -57,6 +57,7 @@ bool RuntimeEnabledFeatures::isSpeechInputEnabled = true;
 bool RuntimeEnabledFeatures::isCanvasPathEnabled = false;
 bool RuntimeEnabledFeatures::isCSSExclusionsEnabled = false;
 bool RuntimeEnabledFeatures::isCSSRegionsEnabled = false;
+bool RuntimeEnabledFeatures::isCSSCompositingEnabled = false;
 bool RuntimeEnabledFeatures::isLangAttributeAwareFormControlUIEnabled = false;
 
 #if ENABLE(SCRIPTED_SPEECH)
@@ -66,6 +67,10 @@ bool RuntimeEnabledFeatures::isScriptedSpeechEnabled = false;
 #if ENABLE(MEDIA_STREAM)
 bool RuntimeEnabledFeatures::isMediaStreamEnabled = true;
 bool RuntimeEnabledFeatures::isPeerConnectionEnabled = true;
+#endif
+
+#if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
+bool RuntimeEnabledFeatures::isLegacyCSSVendorPrefixesEnabled = false;
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -173,7 +178,7 @@ bool RuntimeEnabledFeatures::isMediaSourceEnabled = false;
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY) || PLATFORM(WIN)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(BLACKBERRY) || PLATFORM(WIN) || PLATFORM(QT)
     bool RuntimeEnabledFeatures::isVideoTrackEnabled = true;
 #else
     bool RuntimeEnabledFeatures::isVideoTrackEnabled = false;
@@ -202,12 +207,8 @@ bool RuntimeEnabledFeatures::isStyleScopedEnabled = false;
 bool RuntimeEnabledFeatures::isInputTypeDateEnabled = true;
 #endif
 
-#if ENABLE(INPUT_TYPE_DATETIME)
-#if PLATFORM(CHROMIUM) && !OS(ANDROID)
+#if ENABLE(INPUT_TYPE_DATETIME_INCOMPLETE)
 bool RuntimeEnabledFeatures::isInputTypeDateTimeEnabled = false;
-#else
-bool RuntimeEnabledFeatures::isInputTypeDateTimeEnabled = true;
-#endif
 #endif
 
 #if ENABLE(INPUT_TYPE_DATETIMELOCAL)

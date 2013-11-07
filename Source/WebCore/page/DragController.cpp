@@ -297,7 +297,7 @@ static Element* elementUnderMouse(Document* documentUnderMouse, const IntPoint& 
     float zoomFactor = frame ? frame->pageZoomFactor() : 1;
     LayoutPoint point = roundedLayoutPoint(FloatPoint(p.x() * zoomFactor, p.y() * zoomFactor));
 
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
     HitTestResult result(point);
     documentUnderMouse->renderView()->hitTest(request, result);
 
@@ -307,7 +307,7 @@ static Element* elementUnderMouse(Document* documentUnderMouse, const IntPoint& 
     if (n)
         n = n->deprecatedShadowAncestorNode();
 
-    return static_cast<Element*>(n);
+    return toElement(n);
 }
 
 bool DragController::tryDocumentDrag(DragData* dragData, DragDestinationAction actionMask, DragSession& dragSession)
@@ -371,7 +371,7 @@ bool DragController::tryDocumentDrag(DragData* dragData, DragDestinationAction a
 
         unsigned numberOfFiles = dragData->numberOfFiles();
         if (m_fileInputElementUnderMouse) {
-            if (m_fileInputElementUnderMouse->disabled())
+            if (m_fileInputElementUnderMouse->isDisabledFormControl())
                 dragSession.numberOfItemsToBeAccepted = 0;
             else if (m_fileInputElementUnderMouse->multiple())
                 dragSession.numberOfItemsToBeAccepted = numberOfFiles;
@@ -414,7 +414,7 @@ DragOperation DragController::operationForLoad(DragData* dragData)
     bool pluginDocumentAcceptsDrags = false;
 
     if (doc && doc->isPluginDocument()) {
-        const Widget* widget = static_cast<PluginDocument*>(doc)->pluginWidget();
+        const Widget* widget = toPluginDocument(doc)->pluginWidget();
         const PluginViewBase* pluginView = (widget && widget->isPluginViewBase()) ? static_cast<const PluginViewBase*>(widget) : 0;
 
         if (pluginView)
@@ -486,7 +486,7 @@ bool DragController::concludeEditDrag(DragData* dragData)
         // fileInput should be the element we hit tested for, unless it was made
         // display:none in a drop event handler.
         ASSERT(fileInput == element || !fileInput->renderer());
-        if (fileInput->disabled())
+        if (fileInput->isDisabledFormControl())
             return false;
 
         return fileInput->receiveDroppedFiles(dragData);
@@ -563,7 +563,7 @@ bool DragController::canProcessDrag(DragData* dragData)
     if (!m_page->mainFrame()->contentRenderer())
         return false;
 
-    result = m_page->mainFrame()->eventHandler()->hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
+    result = m_page->mainFrame()->eventHandler()->hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active);
 
     if (!result.innerNonSharedNode())
         return false;
@@ -747,7 +747,7 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
     if (!src->view() || !src->contentRenderer())
         return false;
 
-    HitTestResult hitTestResult = src->eventHandler()->hitTestResultAtPoint(dragOrigin, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
+    HitTestResult hitTestResult = src->eventHandler()->hitTestResultAtPoint(dragOrigin, HitTestRequest::ReadOnly | HitTestRequest::Active);
     if (!state.m_dragSrc->contains(hitTestResult.innerNode()))
         // The original node being dragged isn't under the drag origin anymore... maybe it was
         // hidden or moved out from under the cursor. Regardless, we don't want to start a drag on
@@ -785,11 +785,11 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
 
     Node* node = state.m_dragSrc.get();
 
-    Image* image = getImage(static_cast<Element*>(node));
+    Image* image = node->isElementNode() ? getImage(toElement(node)) : 0;
     if (state.m_dragType == DragSourceActionSelection) {
         if (!clipboard->hasData()) {
             if (enclosingTextFormControl(src->selection()->start()))
-                clipboard->writePlainText(src->editor()->selectedText());
+                clipboard->writePlainText(src->editor()->selectedTextForClipboard());
             else {
                 RefPtr<Range> selectionRange = src->selection()->toNormalizedRange();
                 ASSERT(selectionRange);
@@ -799,7 +799,7 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
         }
         m_client->willPerformDragSourceAction(DragSourceActionSelection, dragOrigin, clipboard);
         if (!dragImage) {
-            dragImage = createDragImageForSelection(src);
+            dragImage = dissolveDragImageToFraction(src->dragImageForSelection(), DragImageAlpha);
             dragLoc = dragLocForSelectionDrag(src);
             m_dragOffset = IntPoint(dragOrigin.x() - dragLoc.x(), dragOrigin.y() - dragLoc.y());
         }
@@ -809,7 +809,7 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
         // We shouldn't be starting a drag for an image that can't provide an extension.
         // This is an early detection for problems encountered later upon drop.
         ASSERT(!image->filenameExtension().isEmpty());
-        Element* element = static_cast<Element*>(node);
+        Element* element = toElement(node);
         if (!clipboard->hasData()) {
             m_draggingImageURL = imageURL;
             prepareClipboardForImageDrag(src, clipboard, element, linkURL, imageURL, hitTestResult.altDisplayString());
@@ -843,7 +843,7 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
 
         m_client->willPerformDragSourceAction(DragSourceActionLink, dragOrigin, clipboard);
         if (!dragImage) {
-            dragImage = createDragImageForLink(linkURL, hitTestResult.textContent(), src);
+            dragImage = createDragImageForLink(linkURL, hitTestResult.textContent(), src->settings() ? src->settings()->fontRenderingMode() : NormalRenderingMode);
             IntSize size = dragImageSize(dragImage);
             m_dragOffset = IntPoint(-size.width() / 2, -LinkDragBorderInset);
             dragLoc = IntPoint(mouseDraggedPoint.x() + m_dragOffset.x(), mouseDraggedPoint.y() + m_dragOffset.y());
@@ -867,7 +867,7 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
 void DragController::doImageDrag(Element* element, const IntPoint& dragOrigin, const IntRect& rect, Clipboard* clipboard, Frame* frame, IntPoint& dragImageOffset)
 {
     IntPoint mouseDownPoint = dragOrigin;
-    DragImageRef dragImage;
+    DragImageRef dragImage = 0;
     IntPoint origin;
 
     Image* image = getImage(element);
@@ -893,9 +893,11 @@ void DragController::doImageDrag(Element* element, const IntPoint& dragOrigin, c
         dy *= scale;
         origin.setY((int)(dy + 0.5));
     } else {
-        dragImage = createDragImageIconForCachedImage(getCachedImage(element));
-        if (dragImage)
-            origin = IntPoint(DragIconRightInset - dragImageSize(dragImage).width(), DragIconBottomInset);
+        if (CachedImage* cachedImage = getCachedImage(element)) {
+            dragImage = createDragImageIconForCachedImageFilename(cachedImage->response().suggestedFilename());
+            if (dragImage)
+                origin = IntPoint(DragIconRightInset - dragImageSize(dragImage).width(), DragIconBottomInset);
+        }
     }
 
     dragImageOffset = mouseDownPoint + origin;

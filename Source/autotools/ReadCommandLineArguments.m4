@@ -64,6 +64,13 @@ AC_ARG_ENABLE([spellcheck],
     [enable_spellcheck="yes"])
 AC_MSG_RESULT([$enable_spellcheck])
 
+AC_MSG_CHECKING([whether to enable credential storage])
+AC_ARG_ENABLE([credential_storage],
+    [AS_HELP_STRING([--enable-credential-storage],[enable support for credential storage using libsecret [default=yes]])],
+    [],
+    [enable_credential_storage="yes"])
+AC_MSG_RESULT([$enable_credential_storage])
+
 AC_ARG_ENABLE(glx, 
     AC_HELP_STRING([--enable-glx], [enable support for GLX [default=auto]]),
     [],
@@ -88,13 +95,6 @@ AC_ARG_ENABLE(video,
     [],
     [enable_video="yes"])
 AC_MSG_RESULT([$enable_video])
-
-AC_MSG_CHECKING([whether to enable XSLT support])
-AC_ARG_ENABLE(xslt, 
-    AC_HELP_STRING([--enable-xslt], [enable support for XSLT [default=yes]]),
-    [],
-    [enable_xslt="yes"])
-AC_MSG_RESULT([$enable_xslt])
 
 AC_MSG_CHECKING([whether to enable geolocation support])
 AC_ARG_ENABLE(geolocation, 

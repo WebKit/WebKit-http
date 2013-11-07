@@ -165,17 +165,7 @@ int FontPlatformData::emSizeInFontUnits() const
     if (m_emSizeInFontUnits)
         return m_emSizeInFontUnits;
 
-    // FIXME: Switch to the SkTypeface::GetUnitsPerEm API once this becomes available.
-    // https://bugs.webkit.org/show_bug.cgi?id=75961
-#if OS(ANDROID)
-    // Android doesn't currently support Skia's getAdvancedTypefaceMetrics(),
-    // but it has access to another method to replace this functionality.
     m_emSizeInFontUnits = m_typeface->getUnitsPerEm();
-#else
-    SkAdvancedTypefaceMetrics* metrics = m_typeface->getAdvancedTypefaceMetrics(SkAdvancedTypefaceMetrics::kNo_PerGlyphInfo);
-    m_emSizeInFontUnits = metrics->fEmSize;
-    metrics->unref();
-#endif
     return m_emSizeInFontUnits;
 }
 
@@ -279,16 +269,12 @@ void FontPlatformData::getRenderStyleForStrike(const char* font, int sizeAndStyl
 {
     WebKit::WebFontRenderStyle style;
 
-#if OS(ANDROID)
-    style.setDefaults();
-#else
     if (!font || !*font)
         style.setDefaults(); // It's probably a webfont. Take the system defaults.
     else if (WebKit::Platform::current()->sandboxSupport())
         WebKit::Platform::current()->sandboxSupport()->getRenderStyleForStrike(font, sizeAndStyle, &style);
     else
         WebKit::WebFontInfo::renderStyleForStrike(font, sizeAndStyle, &style);
-#endif
 
     style.toFontRenderStyle(&m_style);
 }

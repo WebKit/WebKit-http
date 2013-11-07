@@ -349,8 +349,8 @@ bool JSArray::setLengthWithArrayStorage(ExecState* exec, unsigned newLength, boo
 
         if (newLength < length) {
             // Copy any keys we might be interested in into a vector.
-            Vector<unsigned> keys;
-            keys.reserveCapacity(min(map->size(), static_cast<size_t>(length - newLength)));
+            Vector<unsigned, 0, UnsafeVectorOverflow> keys;
+            keys.reserveInitialCapacity(min(map->size(), static_cast<size_t>(length - newLength)));
             SparseArrayValueMap::const_iterator end = map->end();
             for (SparseArrayValueMap::const_iterator it = map->begin(); it != end; ++it) {
                 unsigned index = static_cast<unsigned>(it->key);
@@ -1101,7 +1101,7 @@ void JSArray::sortCompactedVector(ExecState* exec, ContiguousData<StorageType> d
     // buffer. Besides, this protects us from crashing if some objects have custom toString methods that return
     // random or otherwise changing results, effectively making compare function inconsistent.
         
-    Vector<ValueStringPair> values(relevantLength);
+    Vector<ValueStringPair, 0, UnsafeVectorOverflow> values(relevantLength);
     if (!values.begin()) {
         throwOutOfMemoryError(exec);
         return;
@@ -1247,7 +1247,7 @@ struct AVLTreeAbstractorForArrayCompare {
     typedef JSValue key;
     typedef int32_t size;
 
-    Vector<AVLTreeNodeForArrayCompare> m_nodes;
+    Vector<AVLTreeNodeForArrayCompare, 0, UnsafeVectorOverflow> m_nodes;
     ExecState* m_exec;
     JSValue m_compareFunction;
     CallType m_compareCallType;

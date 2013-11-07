@@ -29,6 +29,7 @@
 #include "APIObject.h"
 #include "DownloadProxyMap.h"
 #include "GenericCallback.h"
+#include "ImmutableArray.h"
 #include "ImmutableDictionary.h"
 #include "MessageReceiver.h"
 #include "MessageReceiverMap.h"
@@ -84,14 +85,12 @@ extern NSString *SchemeForCustomProtocolRegisteredNotificationName;
 extern NSString *SchemeForCustomProtocolUnregisteredNotificationName;
 #endif
 
-class WebContext : public APIObject, private CoreIPC::MessageReceiver
+class WebContext : public TypedAPIObject<APIObject::TypeContext>, private CoreIPC::MessageReceiver
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , private PluginInfoStoreClient
 #endif
     {
 public:
-    static const Type APIType = TypeContext;
-
     static PassRefPtr<WebContext> create(const String& injectedBundlePath);
     virtual ~WebContext();
 
@@ -266,6 +265,7 @@ public:
 
     PassRefPtr<ImmutableDictionary> plugInAutoStartOriginHashes() const;
     void setPlugInAutoStartOriginHashes(ImmutableDictionary&);
+    void setPlugInAutoStartOrigins(ImmutableArray&);
 
     // Network Process Management
 
@@ -298,11 +298,12 @@ public:
     bool ignoreTLSErrors() const { return m_ignoreTLSErrors; }
 #endif
 
+    static void setInvalidMessageCallback(void (*)(WKStringRef));
+    static void didReceiveInvalidMessage(const CoreIPC::StringReference& messageReceiverName, const CoreIPC::StringReference& messageName);
+
 private:
     WebContext(ProcessModel, const String& injectedBundlePath);
     void platformInitialize();
-
-    virtual Type type() const { return APIType; }
 
     void platformInitializeWebProcess(WebProcessCreationParameters&);
     void platformInvalidateContext();

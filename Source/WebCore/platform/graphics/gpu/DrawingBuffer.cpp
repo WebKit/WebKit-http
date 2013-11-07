@@ -43,9 +43,7 @@ namespace WebCore {
 // Global resource ceiling (expressed in terms of pixels) for DrawingBuffer creation and resize.
 // When this limit is set, DrawingBuffer::create() and DrawingBuffer::reset() calls that would
 // exceed the global cap will instead clear the buffer.
-#if PLATFORM(CHROMIUM) // Currently, this cap only exists for chromium.
-static int s_maximumResourceUsePixels = 16 * 1024 * 1024;
-#elif !PLATFORM(BLACKBERRY)
+#if !PLATFORM(BLACKBERRY)
 static int s_maximumResourceUsePixels = 0;
 #endif
 static int s_currentResourceUsePixels = 0;
@@ -196,6 +194,11 @@ bool DrawingBuffer::checkBufferIntegrity()
     if (!m_multisampleFBO)
         return true;
 
+    if (m_scissorEnabled)
+        m_context->disable(GraphicsContext3D::SCISSOR_TEST);
+
+    m_context->colorMask(true, true, true, true);
+
     m_context->bindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_multisampleFBO);
     m_context->clearColor(1.0f, 0.0f, 1.0f, 1.0f);
     m_context->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
@@ -204,6 +207,9 @@ bool DrawingBuffer::checkBufferIntegrity()
 
     unsigned char pixel[4] = {0, 0, 0, 0};
     m_context->readPixels(0, 0, 1, 1, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, &pixel);
+
+    if (m_scissorEnabled)
+        m_context->enable(GraphicsContext3D::SCISSOR_TEST);
 
     return (pixel[0] == 0xFF && pixel[1] == 0x00 && pixel[2] == 0xFF && pixel[3] == 0xFF);
 }

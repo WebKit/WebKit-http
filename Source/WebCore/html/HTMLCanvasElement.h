@@ -33,7 +33,7 @@
 #include "IntSize.h"
 #include <wtf/Forward.h>
 
-#if PLATFORM(CHROMIUM) || PLATFORM(QT)
+#if PLATFORM(QT)
 #define DefaultInterpolationQuality InterpolationMedium
 #elif USE(CG)
 #define DefaultInterpolationQuality InterpolationLow
@@ -139,6 +139,8 @@ public:
 
     float deviceScaleFactor() const { return m_deviceScaleFactor; }
 
+    virtual bool canContainRangeEndPoint() const { return false; }
+
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 private:
@@ -157,8 +159,6 @@ private:
     void clearImageBuffer() const;
 
     void setSurfaceSize(const IntSize&);
-
-    bool shouldDefer() const;
 
     bool paintsIntoCanvasBuffer() const;
 

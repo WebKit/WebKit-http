@@ -1,6 +1,6 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -120,8 +120,8 @@ public:
     // which will sometimes return a null string when vector.data() is null
     // which can only occur for vectors without inline capacity.
     // See: https://bugs.webkit.org/show_bug.cgi?id=109792
-    template<size_t inlineCapacity>
-    explicit String(const Vector<UChar, inlineCapacity>&);
+    template<size_t inlineCapacity, typename OverflowHandler>
+    explicit String(const Vector<UChar, inlineCapacity, OverflowHandler>&);
 
     // Construct a string with UTF-16 data, from a null-terminated source.
     WTF_EXPORT_STRING_API String(const UChar*);
@@ -164,8 +164,8 @@ public:
 
     static String adopt(StringBuffer<LChar>& buffer) { return StringImpl::adopt(buffer); }
     static String adopt(StringBuffer<UChar>& buffer) { return StringImpl::adopt(buffer); }
-    template<typename CharacterType, size_t inlineCapacity>
-    static String adopt(Vector<CharacterType, inlineCapacity>& vector) { return StringImpl::adopt(vector); }
+    template<typename CharacterType, size_t inlineCapacity, typename OverflowHandler>
+    static String adopt(Vector<CharacterType, inlineCapacity, OverflowHandler>& vector) { return StringImpl::adopt(vector); }
 
     bool isNull() const { return !m_impl; }
     bool isEmpty() const { return !m_impl || !m_impl->length(); }
@@ -264,6 +264,9 @@ public:
         { return m_impl ? m_impl->find(matchFunction, start) : notFound; }
     size_t find(const LChar* str, unsigned start = 0) const
         { return m_impl ? m_impl->find(str, start) : notFound; }
+
+    size_t findNextLineStart(unsigned start = 0) const
+        { return m_impl ? m_impl->findNextLineStart(start) : notFound; }
 
     // Find the last instance of a single character or string.
     size_t reverseFind(UChar c, unsigned start = UINT_MAX) const
@@ -549,8 +552,8 @@ inline void swap(String& a, String& b) { a.swap(b); }
 
 // Definitions of string operations
 
-template<size_t inlineCapacity>
-String::String(const Vector<UChar, inlineCapacity>& vector)
+template<size_t inlineCapacity, typename OverflowHandler>
+String::String(const Vector<UChar, inlineCapacity, OverflowHandler>& vector)
     : m_impl(vector.size() ? StringImpl::create(vector.data(), vector.size()) : StringImpl::empty())
 {
 }

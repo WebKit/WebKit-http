@@ -46,6 +46,7 @@
 
 namespace WebCore {
 class Event;
+class FloatQuad;
 class Frame;
 class InspectorClient;
 class InspectorFrontend;
@@ -64,7 +65,21 @@ class TimelineTraceEventProcessor;
 typedef String ErrorString;
 
 namespace TimelineRecordType {
+extern const char DecodeImage[];
 extern const char Rasterize[];
+};
+
+class TimelineTimeConverter {
+public:
+    TimelineTimeConverter()
+        : m_startOffset(0)
+    {
+    }
+    double fromMonotonicallyIncreasingTime(double time) const  { return (time - m_startOffset) * 1000.0; }
+    void reset();
+
+private:
+    double m_startOffset;
 };
 
 class InspectorTimelineAgent
@@ -87,10 +102,8 @@ public:
     virtual void clearFrontend();
     virtual void restore();
 
-    virtual void start(ErrorString*, const int* maxCallStackDepth);
+    virtual void start(ErrorString*, const int* maxCallStackDepth, const bool* includeDomCounters, const bool* includeNativeMemoryStatistics);
     virtual void stop(ErrorString*);
-    virtual void setIncludeDomCounters(ErrorString*, bool);
-    virtual void setIncludeNativeMemoryStatistics(ErrorString*, bool);
     virtual void canMonitorMainThread(ErrorString*, bool*);
     virtual void supportsFrameInstrumentation(ErrorString*, bool*);
 
@@ -117,7 +130,7 @@ public:
     void didRecalculateStyle();
 
     void willPaint(Frame*);
-    void didPaint(const LayoutRect&);
+    void didPaint(RenderObject*, const LayoutRect&);
 
     void willScroll(Frame*);
     void didScroll();
@@ -181,6 +194,7 @@ public:
     virtual void didResizeImage() OVERRIDE;
 
 private:
+    friend class TimelineRecordStack;
     friend class TimelineTraceEventProcessor;
 
     struct TimelineRecordEntry {
@@ -197,12 +211,12 @@ private:
         
     InspectorTimelineAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorMemoryAgent*, InspectorCompositeState*, InspectorType, InspectorClient*);
 
-    void appendBackgroundThreadRecord(PassRefPtr<InspectorObject> data, const String& type, double startTime, double endTime, const String& threadName);
+    void sendEvent(PassRefPtr<InspectorObject>);
     void appendRecord(PassRefPtr<InspectorObject> data, const String& type, bool captureCallStack, Frame*);
     void pushCurrentRecord(PassRefPtr<InspectorObject>, const String& type, bool captureCallStack, Frame*, bool hasLowLevelDetails = false);
 
-    void setDOMCounters(InspectorObject* record);
-    void setNativeHeapStatistics(InspectorObject* record);
+    void setDOMCounters(TypeBuilder::Timeline::TimelineEvent* record);
+    void setNativeHeapStatistics(TypeBuilder::Timeline::TimelineEvent* record);
     void setFrameIdentifier(InspectorObject* record, Frame*);
     void pushGCEventRecords();
 
@@ -215,12 +229,14 @@ private:
     void innerAddRecordToTimeline(PassRefPtr<InspectorObject>, const String& type);
     void clearRecordStack();
 
+    void localToPageQuad(const RenderObject& renderer, const LayoutRect&, FloatQuad*);
+    const TimelineTimeConverter& timeConverter() const { return m_timeConverter; }
     double timestamp();
-    double timestampFromMicroseconds(double microseconds);
     Page* page();
 
     InspectorPageAgent* m_pageAgent;
     InspectorMemoryAgent* m_memoryAgent;
+    TimelineTimeConverter m_timeConverter;
 
     InspectorFrontend::Timeline* m_frontend;
     double m_timestampOffset;

@@ -26,7 +26,6 @@
 
 #include "LayoutRect.h"
 #include "RenderLayerModelObject.h"
-#include "ShadowData.h"
 
 namespace WebCore {
 
@@ -52,6 +51,7 @@ enum ContentChangeType {
 };
 
 class KeyframeList;
+class InlineFlowBox;
 class StickyPositionViewportConstraints;
 
 // This class is the base for all objects that adhere to the CSS box model as described
@@ -128,6 +128,7 @@ public:
     LayoutUnit borderAndPaddingLogicalLeft() const { return style()->isHorizontalWritingMode() ? borderLeft() + paddingLeft() : borderTop() + paddingTop(); }
 
     LayoutUnit borderAndPaddingStart() const { return borderStart() + paddingStart(); }
+    LayoutUnit borderAndPaddingBefore() const { return borderBefore() + paddingBefore(); }
     LayoutUnit borderLogicalLeft() const { return style()->isHorizontalWritingMode() ? borderLeft() : borderTop(); }
     LayoutUnit borderLogicalRight() const { return style()->isHorizontalWritingMode() ? borderRight() : borderBottom(); }
 
@@ -238,7 +239,7 @@ protected:
 
     LayoutPoint adjustedPositionRelativeToOffsetParent(const LayoutPoint&) const;
 
-    void calculateBackgroundImageGeometry(const FillLayer*, const LayoutRect& paintRect, BackgroundImageGeometry&);
+    void calculateBackgroundImageGeometry(const FillLayer*, const LayoutRect& paintRect, BackgroundImageGeometry&, RenderObject* = 0);
     void getBorderEdgeInfo(class BorderEdge[], const RenderStyle*, bool includeLogicalLeftEdge = true, bool includeLogicalRightEdge = true) const;
     bool borderObscuresBackgroundEdge(const FloatSize& contextScale) const;
     bool borderObscuresBackground() const;

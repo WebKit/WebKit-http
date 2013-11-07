@@ -52,13 +52,15 @@ ScrollingStateScrollingNode::ScrollingStateScrollingNode(ScrollingStateTree* sta
     , m_requestedScrollPositionRepresentsProgrammaticScroll(false)
     , m_horizontalScrollbarMode(ScrollbarAuto)
     , m_verticalScrollbarMode(ScrollbarAuto)
+    , m_headerHeight(0)
+    , m_footerHeight(0)
 {
 }
 
 ScrollingStateScrollingNode::ScrollingStateScrollingNode(const ScrollingStateScrollingNode& stateNode)
     : ScrollingStateNode(stateNode)
     , m_viewportRect(stateNode.viewportRect())
-    , m_contentsSize(stateNode.contentsSize())
+    , m_totalContentsSize(stateNode.totalContentsSize())
     , m_frameScaleFactor(stateNode.frameScaleFactor())
     , m_nonFastScrollableRegion(stateNode.nonFastScrollableRegion())
     , m_wheelEventHandlerCount(stateNode.wheelEventHandlerCount())
@@ -72,6 +74,8 @@ ScrollingStateScrollingNode::ScrollingStateScrollingNode(const ScrollingStateScr
     , m_verticalScrollbarMode(stateNode.verticalScrollbarMode())
     , m_requestedScrollPosition(stateNode.requestedScrollPosition())
     , m_scrollOrigin(stateNode.scrollOrigin())
+    , m_headerHeight(stateNode.headerHeight())
+    , m_footerHeight(stateNode.footerHeight())
 {
     setCounterScrollingLayer(stateNode.counterScrollingLayer());
 }
@@ -95,13 +99,13 @@ void ScrollingStateScrollingNode::setViewportRect(const IntRect& viewportRect)
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
-void ScrollingStateScrollingNode::setContentsSize(const IntSize& contentsSize)
+void ScrollingStateScrollingNode::setTotalContentsSize(const IntSize& totalContentsSize)
 {
-    if (m_contentsSize == contentsSize)
+    if (m_totalContentsSize == totalContentsSize)
         return;
 
-    m_contentsSize = contentsSize;
-    setPropertyChanged(ContentsSize);
+    m_totalContentsSize = totalContentsSize;
+    setPropertyChanged(TotalContentsSize);
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
@@ -224,6 +228,26 @@ void ScrollingStateScrollingNode::setScrollOrigin(const IntPoint& scrollOrigin)
     m_scrollingStateTree->setHasChangedProperties(true);
 }
 
+void ScrollingStateScrollingNode::setHeaderHeight(int headerHeight)
+{
+    if (m_headerHeight == headerHeight)
+        return;
+
+    m_headerHeight = headerHeight;
+    setPropertyChanged(HeaderHeight);
+    m_scrollingStateTree->setHasChangedProperties(true);
+}
+
+void ScrollingStateScrollingNode::setFooterHeight(int footerHeight)
+{
+    if (m_footerHeight == footerHeight)
+        return;
+
+    m_footerHeight = footerHeight;
+    setPropertyChanged(FooterHeight);
+    m_scrollingStateTree->setHasChangedProperties(true);
+}
+
 void ScrollingStateScrollingNode::dumpProperties(TextStream& ts, int indent) const
 {
     ts << "(" << "Scrolling node" << "\n";
@@ -233,9 +257,9 @@ void ScrollingStateScrollingNode::dumpProperties(TextStream& ts, int indent) con
         ts << "(viewport rect " << m_viewportRect.x() << " " << m_viewportRect.y() << " " << m_viewportRect.width() << " " << m_viewportRect.height() << ")\n";
     }
 
-    if (!m_contentsSize.isEmpty()) {
+    if (!m_totalContentsSize.isEmpty()) {
         writeIndent(ts, indent + 1);
-        ts << "(contents size " << m_contentsSize.width() << " " << m_contentsSize.height() << ")\n";
+        ts << "(contents size " << m_totalContentsSize.width() << " " << m_totalContentsSize.height() << ")\n";
     }
 
     if (m_frameScaleFactor != 1) {

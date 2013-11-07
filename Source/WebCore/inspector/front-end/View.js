@@ -59,6 +59,19 @@ WebInspector.View.prototype = {
         this._isRoot = true;
     },
 
+    markAsLayoutBoundary: function()
+    {
+        this.element.addStyleClass("layout-boundary");
+    },
+
+    /**
+     * @return {?WebInspector.View}
+     */
+    parentView: function()
+    {
+        return this._parentView;
+    },
+
     isShowing: function()
     {
         return this._isShowing;
@@ -99,6 +112,8 @@ WebInspector.View.prototype = {
     _processWillShow: function()
     {
         this._loadCSSIfNeeded();
+        if (this.element.hasStyleClass("layout-boundary"))
+            this.element.style.removeProperty("height");
         this._callOnVisibleChildren(this._processWillShow);
     },
 
@@ -111,6 +126,8 @@ WebInspector.View.prototype = {
         this._notify(this.wasShown);
         this._notify(this.onResize);
         this._callOnVisibleChildren(this._processWasShown);
+        if (this.element.hasStyleClass("layout-boundary"))
+            this.element.style.height = this.element.offsetHeight + "px";
     },
 
     _processWillHide: function()
@@ -136,8 +153,12 @@ WebInspector.View.prototype = {
             return;
         if (!this.isShowing())
             return;
+        if (this.element.hasStyleClass("layout-boundary"))
+            this.element.style.removeProperty("height");
         this._notify(this.onResize);
         this._callOnVisibleChildren(this._processOnResize);
+        if (this.element.hasStyleClass("layout-boundary"))
+            this.element.style.height = this.element.offsetHeight + "px";
     },
 
     /**

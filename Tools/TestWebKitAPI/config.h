@@ -33,9 +33,7 @@
 
 #include <wtf/Platform.h>
 #include <wtf/ExportMacros.h>
-#if USE(JSC)
 #include <runtime/JSExportMacros.h>
-#endif
 
 #if defined(__APPLE__) && __APPLE__
 
@@ -70,7 +68,7 @@
 
 #include <stdint.h>
 
-#if !PLATFORM(IOS) && ((!PLATFORM(CHROMIUM) && !PLATFORM(WIN)) || (PLATFORM(GTK) && defined(BUILDING_WEBKIT2__)))
+#if !PLATFORM(IOS) && (!PLATFORM(WIN) || (PLATFORM(GTK) && defined(BUILDING_WEBKIT2__)))
 #include <WebKit2/WebKit2_C.h>
 #endif
 

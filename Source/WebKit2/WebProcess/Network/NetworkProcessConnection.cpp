@@ -33,6 +33,7 @@
 #include "WebResourceBuffer.h"
 #include "WebResourceLoadScheduler.h"
 #include "WebResourceLoaderMessages.h"
+#include <WebCore/MemoryCache.h>
 #include <WebCore/ResourceBuffer.h>
 
 #if ENABLE(NETWORK_PROCESS)
@@ -60,18 +61,11 @@ void NetworkProcessConnection::didReceiveMessage(CoreIPC::Connection* connection
         return;
     }
 
-    ASSERT_NOT_REACHED();
+    didReceiveNetworkProcessConnectionMessage(connection, decoder);
 }
 
 void NetworkProcessConnection::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    if (decoder.messageReceiverName() == Messages::WebResourceLoader::messageReceiverName()) {
-        if (WebResourceLoader* webResourceLoader = WebProcess::shared().webResourceLoadScheduler().webResourceLoaderForIdentifier(decoder.destinationID()))
-            webResourceLoader->didReceiveSyncWebResourceLoaderMessage(connection, decoder, replyEncoder);
-        
-        return;
-    }
-
     ASSERT_NOT_REACHED();
 }
 
@@ -83,6 +77,21 @@ void NetworkProcessConnection::didClose(CoreIPC::Connection*)
 
 void NetworkProcessConnection::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringReference, CoreIPC::StringReference)
 {
+}
+
+void NetworkProcessConnection::didCacheResource(const ResourceRequest& request, const ShareableResource::Handle& handle)
+{
+    CachedResource* resource = memoryCache()->resourceForRequest(request);
+    if (!resource)
+        return;
+    
+    RefPtr<SharedBuffer> buffer = handle.tryWrapInSharedBuffer();
+    if (!buffer) {
+        LOG_ERROR("Unabled to create SharedBuffer from ShareableResource handle for resource url %s", request.url().string().utf8().data());
+        return;
+    }
+
+    resource->tryReplaceEncodedData(buffer.release());
 }
 
 } // namespace WebKit

@@ -135,9 +135,15 @@ public:
     using EventTarget::dispatchEvent;
     virtual bool dispatchEvent(PassRefPtr<Event>) OVERRIDE;
 
+#if ENABLE(WEBVTT_REGIONS)
+    const String& regionId() const { return m_regionId; }
+    void setRegionId(const String&);
+#endif
+
     bool isActive();
     void setIsActive(bool);
 
+    bool hasDisplayTree() const { return m_displayTree; }
     PassRefPtr<TextTrackCueBox> getDisplayTree(const IntSize& videoSize);
     PassRefPtr<HTMLDivElement> element() const { return m_cueBackgroundBox; }
 
@@ -151,7 +157,9 @@ public:
     virtual ScriptExecutionContext* scriptExecutionContext() const;
 
     std::pair<double, double> getCSSPosition() const;
+
     int getCSSSize() const;
+    int getCSSWritingDirection() const;
     int getCSSWritingMode() const;
 
     enum WritingDirection {
@@ -168,6 +176,8 @@ public:
         End
     };
     CueAlignment getAlignment() const { return m_cueAlignment; }
+
+    virtual void videoSizeDidChange(const IntSize&) { }
 
     virtual bool operator==(const TextTrackCue&) const;
     virtual bool operator!=(const TextTrackCue& cue) const
@@ -193,15 +203,19 @@ protected:
 
     TextTrackCue(ScriptExecutionContext*, double start, double end, const String& content);
 
-    Document* ownerDocument() { return static_cast<Document*>(m_scriptExecutionContext); }
+    Document* ownerDocument() { return toDocument(m_scriptExecutionContext); }
 
     virtual PassRefPtr<TextTrackCueBox> createDisplayTree();
     PassRefPtr<TextTrackCueBox> displayTreeInternal();
 
 private:
+    void createWebVTTNodeTree();
+    void copyWebVTTNodeToDOMTree(ContainerNode* WebVTTNode, ContainerNode* root);
+
     std::pair<double, double> getPositionCoordinates() const;
     void parseSettings(const String&);
 
+    void determineTextDirection();
     void calculateDisplayParameters();
 
     void cueWillChange();
@@ -210,7 +224,17 @@ private:
     virtual void refEventTarget() { ref(); }
     virtual void derefEventTarget() { deref(); }
 
-    enum CueSetting { None, Vertical, Line, Position, Size, Align };
+    enum CueSetting {
+        None,
+        Vertical,
+        Line,
+        Position,
+        Size,
+        Align,
+#if ENABLE(WEBVTT_REGIONS)
+        RegionId
+#endif
+    };
     CueSetting settingName(const String&);
 
     String m_id;
@@ -251,9 +275,9 @@ private:
     int m_displaySize;
 
     std::pair<float, float> m_displayPosition;
-
-    void createWebVTTNodeTree();
-    void copyWebVTTNodeToDOMTree(ContainerNode* WebVTTNode, ContainerNode* root);
+#if ENABLE(WEBVTT_REGIONS)
+    String m_regionId;
+#endif
 };
 
 } // namespace WebCore

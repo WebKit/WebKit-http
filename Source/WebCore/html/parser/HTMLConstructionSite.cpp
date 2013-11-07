@@ -41,6 +41,7 @@
 #include "HTMLHtmlElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "HTMLPlugInElement.h"
 #include "HTMLScriptElement.h"
 #include "HTMLStackItem.h"
 #include "HTMLTemplateElement.h"
@@ -55,6 +56,13 @@
 namespace WebCore {
 
 using namespace HTMLNames;
+
+static inline void setAttributes(Element* element, AtomicHTMLToken* token, ParserContentPolicy parserContentPolicy)
+{
+    if (!scriptingContentIsAllowed(parserContentPolicy))
+        element->stripScriptingAttributes(token->attributes());
+    element->parserSetAttributes(token->attributes());
+}
 
 static bool hasImpliedEndTag(const HTMLStackItem* item)
 {
@@ -99,6 +107,9 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
 
 void HTMLConstructionSite::attachLater(ContainerNode* parent, PassRefPtr<Node> prpChild, bool selfClosing)
 {
+    ASSERT(scriptingContentIsAllowed(m_parserContentPolicy) || !prpChild.get()->isElementNode() || !toScriptElementIfPossible(toElement(prpChild.get())));
+    ASSERT(pluginContentIsAllowed(m_parserContentPolicy) || !prpChild->isPluginElement());
+
     HTMLConstructionSiteTask task;
     task.parent = parent;
     task.child = prpChild;
@@ -134,10 +145,10 @@ void HTMLConstructionSite::executeQueuedTasks()
     // We might be detached now.
 }
 
-HTMLConstructionSite::HTMLConstructionSite(Document* document, unsigned maximumDOMTreeDepth)
+HTMLConstructionSite::HTMLConstructionSite(Document* document, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
     : m_document(document)
     , m_attachmentRoot(document)
-    , m_fragmentScriptingPermission(AllowScriptingContent)
+    , m_parserContentPolicy(parserContentPolicy)
     , m_isParsingFragment(false)
     , m_redirectAttachToFosterParent(false)
     , m_maximumDOMTreeDepth(maximumDOMTreeDepth)
@@ -146,10 +157,10 @@ HTMLConstructionSite::HTMLConstructionSite(Document* document, unsigned maximumD
     ASSERT(m_document->isHTMLDocument() || m_document->isXHTMLDocument());
 }
 
-HTMLConstructionSite::HTMLConstructionSite(DocumentFragment* fragment, FragmentScriptingPermission scriptingPermission, unsigned maximumDOMTreeDepth)
+HTMLConstructionSite::HTMLConstructionSite(DocumentFragment* fragment, ParserContentPolicy parserContentPolicy, unsigned maximumDOMTreeDepth)
     : m_document(fragment->document())
     , m_attachmentRoot(fragment)
-    , m_fragmentScriptingPermission(scriptingPermission)
+    , m_parserContentPolicy(parserContentPolicy)
     , m_isParsingFragment(true)
     , m_redirectAttachToFosterParent(false)
     , m_maximumDOMTreeDepth(maximumDOMTreeDepth)
@@ -190,7 +201,7 @@ void HTMLConstructionSite::dispatchDocumentElementAvailableIfNeeded()
 void HTMLConstructionSite::insertHTMLHtmlStartTagBeforeHTML(AtomicHTMLToken* token)
 {
     RefPtr<HTMLHtmlElement> element = HTMLHtmlElement::create(m_document);
-    element->parserSetAttributes(token->attributes(), m_fragmentScriptingPermission);
+    setAttributes(element.get(), token, m_parserContentPolicy);
     attachLater(m_attachmentRoot, element);
     m_openElements.pushHTMLHtmlElement(HTMLStackItem::create(element, token));
 
@@ -440,12 +451,12 @@ void HTMLConstructionSite::insertScriptElement(AtomicHTMLToken* token)
     // For createContextualFragment, the specifications say to mark it parser-inserted and already-started and later unmark them.
     // However, we short circuit that logic to avoid the subtree traversal to find script elements since scripts can never see
     // those flags or effects thereof.
-    const bool parserInserted = m_fragmentScriptingPermission != AllowScriptingContentAndDoNotMarkAlreadyStarted;
+    const bool parserInserted = m_parserContentPolicy != AllowScriptingContentAndDoNotMarkAlreadyStarted;
     const bool alreadyStarted = m_isParsingFragment && parserInserted;
     RefPtr<HTMLScriptElement> element = HTMLScriptElement::create(scriptTag, ownerDocumentForCurrentNode(), parserInserted, alreadyStarted);
-    if (scriptingContentIsAllowed(m_fragmentScriptingPermission))
-        element->parserSetAttributes(token->attributes(), m_fragmentScriptingPermission);
-    attachLater(currentNode(), element);
+    setAttributes(element.get(), token, m_parserContentPolicy);
+    if (scriptingContentIsAllowed(m_parserContentPolicy))
+        attachLater(currentNode(), element);
     m_openElements.push(HTMLStackItem::create(element.release(), token));
 }
 
@@ -455,7 +466,8 @@ void HTMLConstructionSite::insertForeignElement(AtomicHTMLToken* token, const At
     notImplemented(); // parseError when xmlns or xmlns:xlink are wrong.
 
     RefPtr<Element> element = createElement(token, namespaceURI);
-    attachLater(currentNode(), element, token->selfClosing());
+    if (scriptingContentIsAllowed(m_parserContentPolicy) || !toScriptElementIfPossible(element.get()))
+        attachLater(currentNode(), element, token->selfClosing());
     if (!token->selfClosing())
         m_openElements.push(HTMLStackItem::create(element.release(), token, namespaceURI));
 }
@@ -511,7 +523,7 @@ PassRefPtr<Element> HTMLConstructionSite::createElement(AtomicHTMLToken* token, 
 {
     QualifiedName tagName(nullAtom, token->name(), namespaceURI);
     RefPtr<Element> element = ownerDocumentForCurrentNode()->createElement(tagName, true);
-    element->parserSetAttributes(token->attributes(), m_fragmentScriptingPermission);
+    setAttributes(element.get(), token, m_parserContentPolicy);
     return element.release();
 }
 
@@ -531,7 +543,7 @@ PassRefPtr<Element> HTMLConstructionSite::createHTMLElement(AtomicHTMLToken* tok
     // have to pass the current form element.  We should rework form association
     // to occur after construction to allow better code sharing here.
     RefPtr<Element> element = HTMLElementFactory::createHTMLElement(tagName, ownerDocumentForCurrentNode(), form(), true);
-    element->parserSetAttributes(token->attributes(), m_fragmentScriptingPermission);
+    setAttributes(element.get(), token, m_parserContentPolicy);
     ASSERT(element->isHTMLElement());
     return element.release();
 }
@@ -584,7 +596,7 @@ void HTMLConstructionSite::reconstructTheActiveFormattingElements()
 
 void HTMLConstructionSite::generateImpliedEndTagsWithExclusion(const AtomicString& tagName)
 {
-    while (hasImpliedEndTag(currentStackItem()) && !currentStackItem()->hasLocalName(tagName))
+    while (hasImpliedEndTag(currentStackItem()) && !currentStackItem()->matchesHTMLTag(tagName))
         m_openElements.pop();
 }
 
@@ -617,7 +629,11 @@ void HTMLConstructionSite::findFosterSite(HTMLConstructionSiteTask& task)
         ContainerNode* parent = lastTableElement->parentNode();
         // When parsing HTML fragments, we skip step 4.2 ("Let root be a new html element with no attributes") for efficiency,
         // and instead use the DocumentFragment as a root node. So we must treat the root node (DocumentFragment) as if it is a html element here.
-        if (parent && (parent->isElementNode() || (m_isParsingFragment && parent == m_openElements.rootNode()))) {
+        bool parentCanBeFosterParent = parent && (parent->isElementNode() || (m_isParsingFragment && parent == m_openElements.rootNode()));
+#if ENABLE(TEMPLATE_ELEMENT)
+        parentCanBeFosterParent = parentCanBeFosterParent || (parent && parent->isDocumentFragment() && static_cast<DocumentFragment*>(parent)->isTemplateContent());
+#endif
+        if (parentCanBeFosterParent) {
             task.parent = parent;
             task.nextChild = lastTableElement;
             return;

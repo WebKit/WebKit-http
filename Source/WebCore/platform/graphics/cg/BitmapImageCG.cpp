@@ -31,10 +31,11 @@
 #include "FloatConversion.h"
 #include "GraphicsContextCG.h"
 #include "ImageObserver.h"
+#include "SubimageCacheWithTimer.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <wtf/RetainPtr.h>
 
-#if PLATFORM(MAC) || PLATFORM(CHROMIUM)
+#if PLATFORM(MAC)
 #include "WebCoreSystemInterface.h"
 #endif
 
@@ -52,6 +53,9 @@ bool FrameData::clear(bool clearMetadata)
     m_orientation = DefaultImageOrientation;
 
     if (m_frame) {
+#if CACHE_SUBIMAGES
+        subimageCache().clearImage(m_frame);
+#endif
         CGImageRelease(m_frame);
         m_frame = 0;
         return true;

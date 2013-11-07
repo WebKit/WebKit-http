@@ -160,7 +160,7 @@ public:
 private:
     virtual void visitJSExternalString(StringImpl* string)
     {
-        m_memoryClassInfo->addMember(string, "externalString");
+        m_memoryClassInfo->addMember(string, "externalString", WTF::RetainingPointer);
     }
 
     mutable MemoryClassInfo* m_memoryClassInfo;
@@ -182,7 +182,7 @@ public:
 private:
     virtual void visitJSExternalArray(ArrayBufferView* arrayBufferView)
     {
-        m_memoryClassInfo->addMember(arrayBufferView, "externalArray");
+        m_memoryClassInfo->addMember(arrayBufferView, "externalArray", WTF::RetainingPointer);
     }
 
     mutable MemoryClassInfo* m_memoryClassInfo;

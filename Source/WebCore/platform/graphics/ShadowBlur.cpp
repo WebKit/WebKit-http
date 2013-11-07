@@ -3,6 +3,7 @@
  * Copyright (C) 2010 Sencha, Inc. All rights reserved.
  * Copyright (C) 2010 Igalia S.L. All rights reserved.
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2013 Digia Plc. and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -168,6 +169,13 @@ ScratchBuffer& ScratchBuffer::shared()
 
 static const int templateSideLength = 1;
 
+#if USE(CG)
+static float radiusToLegacyRadius(float radius)
+{
+    return radius > 8 ? 8 + 4 * sqrt((radius - 8) / 2) : radius;
+}
+#endif
+
 ShadowBlur::ShadowBlur(const FloatSize& radius, const FloatSize& offset, const Color& color, ColorSpace colorSpace)
     : m_color(color)
     , m_colorSpace(colorSpace)
@@ -176,6 +184,23 @@ ShadowBlur::ShadowBlur(const FloatSize& radius, const FloatSize& offset, const C
     , m_layerImage(0)
     , m_shadowsIgnoreTransforms(false)
 {
+    updateShadowBlurValues();
+}
+
+ShadowBlur::ShadowBlur(const GraphicsContextState& state)
+    : m_color(state.shadowColor)
+    , m_colorSpace(state.shadowColorSpace)
+    , m_blurRadius(state.shadowBlur, state.shadowBlur)
+    , m_offset(state.shadowOffset)
+    , m_layerImage(0)
+    , m_shadowsIgnoreTransforms(state.shadowsIgnoreTransforms)
+{
+#if USE(CG)
+    if (state.shadowsUseLegacyRadius) {
+        float shadowBlur = radiusToLegacyRadius(state.shadowBlur);
+        m_blurRadius = FloatSize(shadowBlur, shadowBlur);
+    }
+#endif
     updateShadowBlurValues();
 }
 
@@ -679,12 +704,17 @@ void ShadowBlur::drawInsetShadowWithTiling(GraphicsContext* graphicsContext, con
 
         blurAndColorShadowBuffer(templateSize);
     }
+    FloatSize offset = m_offset;
+    if (shadowsIgnoreTransforms()) {
+        AffineTransform transform = graphicsContext->getCTM();
+        offset.scale(1 / transform.xScale(), 1 / transform.yScale());
+    }
 
     FloatRect boundingRect = rect;
-    boundingRect.move(m_offset);
+    boundingRect.move(offset);
 
     FloatRect destHoleRect = holeRect;
-    destHoleRect.move(m_offset);
+    destHoleRect.move(offset);
     FloatRect destHoleBounds = destHoleRect;
     destHoleBounds.inflateX(edgeSize.width());
     destHoleBounds.inflateY(edgeSize.height());
@@ -736,9 +766,14 @@ void ShadowBlur::drawRectShadowWithTiling(GraphicsContext* graphicsContext, cons
 
         blurAndColorShadowBuffer(templateSize);
     }
+    FloatSize offset = m_offset;
+    if (shadowsIgnoreTransforms()) {
+        AffineTransform transform = graphicsContext->getCTM();
+        offset.scale(1 / transform.xScale(), 1 / transform.yScale());
+    }
 
     FloatRect shadowBounds = shadowedRect;
-    shadowBounds.move(m_offset.width(), m_offset.height());
+    shadowBounds.move(offset);
     shadowBounds.inflateX(edgeSize.width());
     shadowBounds.inflateY(edgeSize.height());
 
@@ -886,23 +921,5 @@ void ShadowBlur::endShadowLayer(GraphicsContext* context)
     m_layerImage = 0;
     ScratchBuffer::shared().scheduleScratchBufferPurge();
 }
-
-#if PLATFORM(QT) || USE(CAIRO)
-bool ShadowBlur::mustUseShadowBlur(GraphicsContext* context) const
-{
-    // We can't avoid ShadowBlur, since the shadow has blur.
-    if (type() == BlurShadow)
-        return true;
-    // We can avoid ShadowBlur and optimize, since we're not drawing on a
-    // canvas and box shadows are affected by the transformation matrix.
-    if (!shadowsIgnoreTransforms())
-        return false;
-    // We can avoid ShadowBlur, since there are no transformations to apply to the canvas.
-    if (context->getCTM().isIdentity())
-        return false;
-    // Otherwise, no chance avoiding ShadowBlur.
-    return true;
-}
-#endif
 
 } // namespace WebCore

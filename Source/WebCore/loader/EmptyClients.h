@@ -43,10 +43,6 @@
 #include "Page.h"
 #include "ResourceError.h"
 
-#if USE(V8)
-#include <v8.h>
-#endif
-
 /*
  This file holds empty Client stubs for use by WebCore.
  Viewless element needs to create a dummy Page->Frame->FrameView tree for use in parsing or executing JavaScript.
@@ -208,6 +204,9 @@ public:
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return false; }
     
     virtual bool isEmptyChromeClient() const { return true; }
+
+    virtual void didAssociateFormControls(const Vector<RefPtr<Element> >&) { }
+    virtual bool shouldNotifyOnFormChanges() { return false; }
 };
 
 class EmptyFrameLoaderClient : public FrameLoaderClient {
@@ -228,7 +227,7 @@ public:
     virtual void detachedFromParent2() { }
     virtual void detachedFromParent3() { }
 
-    virtual void convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest&, const ResourceResponse&) OVERRIDE { }
+    virtual void convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest&, const ResourceResponse&) OVERRIDE { }
 
     virtual void assignIdentifierToInitialRequest(unsigned long, DocumentLoader*, const ResourceRequest&) { }
     virtual bool shouldUseCredentialStorage(DocumentLoader*, unsigned long) { return false; }
@@ -363,12 +362,6 @@ public:
     virtual void didPerformFirstNavigation() const { }
 
     virtual void registerForIconNotification(bool) { }
-
-#if USE(V8)
-    virtual void didCreateScriptContext(v8::Handle<v8::Context>, int extensionGroup, int worldId) { }
-    virtual void willReleaseScriptContext(v8::Handle<v8::Context>, int worldId) { }
-    virtual bool allowScriptExtension(const String& extensionName, int extensionGroup, int worldId) { return false; }
-#endif
 
 #if PLATFORM(MAC)
     virtual RemoteAXObjectRef accessibilityRemoteObject() { return 0; }

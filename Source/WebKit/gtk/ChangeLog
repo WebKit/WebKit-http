@@ -1,3 +1,338 @@
+2013-04-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] DOM objects created wrapping a base class have incorrect GObject type
+        https://bugs.webkit.org/show_bug.cgi?id=113132
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Remove WebKitDOMBindindg.h include from several files because it's
+        been renamed and it was not actually needed.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        * WebCoreSupport/EditorClientGtk.cpp:
+        * webkit/webkithittestresult.cpp:
+
+2013-04-04  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Remove the gyp build
+        https://bugs.webkit.org/show_bug.cgi?id=113942
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * gyp/Configuration.gypi.in: Removed.
+        * gyp/Dependencies.gyp: Removed.
+        * gyp/GNUmakefile: Removed.
+        * gyp/autogen.sh: Removed.
+        * gyp/configure.ac: Removed.
+        * gyp/run-gyp: Removed.
+
+2013-04-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        [Cairo] Fix canvas drawing of SVG-based patterns and remove NativeImageCairo
+        https://bugs.webkit.org/show_bug.cgi?id=113929
+
+        Reviewed by Martin Robinson.
+
+        Update code now that PassNativeImagePtr is now a typedef to PassRefPtr<cairo_surface_t>
+        instead of NativeImageCairo*.
+
+        * webkit/webkitfavicondatabase.cpp:
+        (getIconPixbufSynchronously):
+
+2013-04-03  Alban Crequy  <alban.crequy@collabora.co.uk>
+
+        [GTK] WebKitWebNavigationAction: fix mix between dispose and finalize
+        https://bugs.webkit.org/show_bug.cgi?id=113794
+
+        Reviewed by Gustavo Noronha Silva.
+
+        WebKitWebNavigationAction's dispose function was named finalize and was calling
+        the parent class's finalise function, causing a memory corruption. Change it to
+        be a proper finalize function instead.
+
+        * webkit/webkitwebnavigationaction.cpp:
+        (webkit_web_navigation_action_class_init):
+
+2013-03-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Build GTK-specific, non-layer-violating source code into WebCore-independent libPlatformGtk.la
+        https://bugs.webkit.org/show_bug.cgi?id=112546
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: The GtkVersioning.c file has moved back under Source/WebCore/platform.
+
+2013-03-26  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [gyp] Improve support for rerunning gyp automatically
+        https://bugs.webkit.org/show_bug.cgi?id=113360
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add support for automatically rerunning gyp when input file changes are detected
+        while running make.
+
+        * gyp/GNUmakefile: Added. A wrapper that invokes the generated makefile.
+        * gyp/autogen.sh: Add a symlink to the wrapper script.
+        * gyp/configure.ac: "Freeze" the TOPLEVEL_DIRECTORY command-line argument so that
+        run-gyp reads it properly when configure is run independently of autogen.sh.
+        * gyp/run-gyp: Prevent generation of auto-regeneration rules in gyp. They are buggy.
+
+2013-03-27  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for dock-to-right of the Web Inspector in the Mac port.
+
+        Unfortunately this requires Safari changes, so it is disabled in the nightly builds.
+
+        https://webkit.org/b/113341
+        rdar://problem/10368152
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        (WebKit::InspectorFrontendClient::attachWindow):
+        (WebKit::InspectorFrontendClient::setAttachedWindowWidth):
+        * WebCoreSupport/InspectorClientGtk.h:
+        (InspectorFrontendClient):
+
+2013-03-26  Hayato Ito  <hayato@chromium.org>
+
+        Allow ShadowContents in HitTests by default.
+        https://bugs.webkit.org/show_bug.cgi?id=113171
+
+        Reviewed by Dimitri Glazkov.
+
+        * webkit/webkitwebinspector.cpp:
+        (webkit_web_inspector_inspect_coordinates):
+        * webkit/webkitwebview.cpp:
+        (prepareMouseEventForFrame):
+        (webkit_web_view_get_hit_test_result):
+
+2013-03-26  Tony Chang  <tony@chromium.org>
+
+        Autogenerate the scrollAnimatorEnabled setting in Settings.in
+        https://bugs.webkit.org/show_bug.cgi?id=113253
+
+        Reviewed by James Robinson.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings): Update call to WebCore to use setScrollAnimatorEnabled(bool).
+        (webkit_web_view_settings_notify): Update call to WebCore to use setScrollAnimatorEnabled(bool).
+
+2013-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][Regression] webkit_dom_html_table_element_insert_row returns value that doesn't pass WEBKIT_DOM_IS_HTML_TABLE_ROW_ELEMENT macro
+        https://bugs.webkit.org/show_bug.cgi?id=111714
+
+        Reviewed by Martin Robinson.
+
+        Add test that checks webkit_dom_html_table_element_insert_row() to
+        also preproduce this issue.
+
+        * tests/testdomdocument.c:
+        (test_dom_document_insert_row):
+        (main):
+
+2013-03-22  Gustavo Noronha Silva  <gns@gnome.org>
+
+        Trivial fixes to the gyp-build autogen.sh script.
+
+        Reviewed by Martin Robinson (mrobinson).
+
+        * gyp/autogen.sh: add /bin/sh -e as hashbang, so stricter shells will be happy to
+        run the script; deal with automake exiting with an error code because there is no
+        Makefile.am for it to work on.
+
+2013-03-19  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add support for building the WebCore bindings to the gyp build
+        https://bugs.webkit.org/show_bug.cgi?id=112638
+
+        Reviewed by Nico Weber.
+
+        * gyp/Configuration.gypi.in: Added options for enabling SVG and setting the location of
+        the WebCore derived sources.
+        * gyp/run-gyp: Include the gyp scripts directory on the Python path and make the WebCoreGTK
+        gyp file the default for the build.
+
+2013-03-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [gyp] Expose a few more compiler defines for the gyp build
+        https://bugs.webkit.org/show_bug.cgi?id=113109
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * gyp/Configuration.gypi.in: Expose the version number string and data
+        directory to the gyp build as command-line arguments.
+
+2013-03-22  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [gyp] Feature defines are not space separated
+        https://bugs.webkit.org/show_bug.cgi?id=113108
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * gyp/configure.ac: Properly export feature defines for gyp during
+        configure phase.
+
+2013-03-22  Mario Sanchez Prada  <mario.prada@samsung.com>
+
+        [GTK] Include the right GL header for GLES2
+        https://bugs.webkit.org/show_bug.cgi?id=113034
+
+        Reviewed by Martin Robinson.
+
+        Include GLES2/gl2.h when using GLES2.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+
+2013-03-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Build ANGLE sources into a separate library from libWebCore.la
+        https://bugs.webkit.org/show_bug.cgi?id=112778
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Add libLevelDB.la to the libwebkitgtk library if using the OpenGL accelerated backend.
+
+2013-03-17  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Fix and improve dist hooks for translations
+        https://bugs.webkit.org/show_bug.cgi?id=112519
+
+        Reviewed by Carlos Garcia Campos.
+
+        * GNUmakefile.am: removed left-over translation files from EXTRA_DIST
+
+2013-03-15  Nate Chapin  <japhet@chromium.org>
+
+        Hide MainResourceLoader from the outside world
+        https://bugs.webkit.org/show_bug.cgi?id=109971
+
+        Reviewed by Adam Barth.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::convertMainResourceLoadToDownload):
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+        (FrameLoaderClient):
+
+2013-03-15  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112401
+
+        Reviewed by Stephen Chenney.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::redirectDataToPlugin):
+
+2013-03-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Add selectTrailingWhitespaceEnabled setting to WebCore::Page
+        https://bugs.webkit.org/show_bug.cgi?id=109404
+
+        Reviewed by Tony Chang.
+
+        Use new settings for smartInsertDeleteEnabled and
+        selectTrailingWhitespaceEnabled.
+
+        Remove code related to DRT as it is not needed anymore.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+        * WebCoreSupport/EditorClientGtk.cpp:
+        (WebKit::EditorClient::smartInsertDeleteEnabled):
+        (WebKit::EditorClient::isSelectTrailingWhitespaceEnabled):
+        (WebKit::EditorClient::EditorClient):
+        * WebCoreSupport/EditorClientGtk.h:
+        (EditorClient):
+
+2013-03-14  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112296
+
+        Reviewed by Kentaro Hara.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_query_tooltip):
+
+2013-03-13  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK][Introspection] Fix of gtk doc annotation warnings
+        https://bugs.webkit.org/show_bug.cgi?id=109182
+
+        Reviewed by Martin Robinson.
+
+        Fixed some gtk doc annotation warnings that appears during
+        compiling. Also some white characters were removed and some restyling
+        was done - all the g_signal_new in webkit directory have now the same
+        style. 
+
+
+        * webkit/webkitdownload.cpp:
+        (webkit_download_class_init):
+        * webkit/webkitfavicondatabase.cpp:
+        (webkit_favicon_database_class_init):
+        * webkit/webkitgeolocationpolicydecision.cpp:
+        * webkit/webkitglobals.cpp:
+        * webkit/webkithittestresult.h:
+        * webkit/webkiticondatabase.cpp:
+        (webkit_icon_database_class_init):
+        * webkit/webkitsecurityorigin.cpp:
+        * webkit/webkitsecurityorigin.h:
+        * webkit/webkitsoupauthdialog.cpp:
+        * webkit/webkitspellchecker.cpp:
+        * webkit/webkitviewportattributes.cpp:
+        (webkit_viewport_attributes_class_init):
+        * webkit/webkitwebdatabase.cpp:
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_class_init):
+        * webkit/webkitwebframe.h:
+        * webkit/webkitwebinspector.cpp:
+        (webkit_web_inspector_class_init):
+        * webkit/webkitwebnavigationaction.cpp:
+        (webkit_web_navigation_action_class_init):
+        * webkit/webkitwebplugindatabase.cpp:
+        * webkit/webkitwebpolicydecision.cpp:
+        * webkit/webkitwebresource.cpp:
+        (webkit_web_resource_class_init):
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_class_init):
+        (webkit_web_view_apply_zoom_level):
+        * webkit/webkitwebwindowfeatures.cpp:
+        (webkit_web_window_features_equal):
+
+2013-03-13  Pavel Feldman  <pfeldman@chromium.org>
+
+        Web Inspector: get rid of hiddenPanels filter
+        https://bugs.webkit.org/show_bug.cgi?id=112252
+
+        Reviewed by Vsevolod Vlasov.
+
+        * WebCoreSupport/InspectorClientGtk.cpp:
+        * WebCoreSupport/InspectorClientGtk.h:
+        (InspectorFrontendClient):
+
+2013-03-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Set up the libPlatformGtk.la library
+        https://bugs.webkit.org/show_bug.cgi?id=111738
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Reference platformgtk_cppflags variable, libPlatformGtk.la along with webcoregtk_cppflags variable, libWebCoreGtk.la.
+        Adjust the path to GtkVersioning.c, the file has moved under Source/Platform.
+
 2013-03-07  Zan Dobersek  <zdobersek@igalia.com>
 
         [GTK] Limit the supported compilers to GCC >= 4.7 and Clang >= 3.0

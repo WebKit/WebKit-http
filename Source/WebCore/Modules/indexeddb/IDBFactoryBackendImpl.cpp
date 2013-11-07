@@ -33,6 +33,7 @@
 #include "IDBBackingStore.h"
 #include "IDBDatabaseBackendImpl.h"
 #include "IDBDatabaseException.h"
+#include "IDBTracing.h"
 #include "IDBTransactionCoordinator.h"
 #include "SecurityOrigin.h"
 #include <wtf/UnusedParam.h>
@@ -82,6 +83,7 @@ void IDBFactoryBackendImpl::removeIDBDatabaseBackend(const String& uniqueIdentif
 
 void IDBFactoryBackendImpl::getDatabaseNames(PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
+    IDB_TRACE("IDBFactoryBackendImpl::getDatabaseNames");
     RefPtr<IDBBackingStore> backingStore = openBackingStore(securityOrigin, dataDirectory);
     if (!backingStore) {
         callbacks->onError(IDBDatabaseError::create(IDBDatabaseException::UnknownError, "Internal error opening backing store for indexedDB.webkitGetDatabaseNames."));
@@ -99,6 +101,7 @@ void IDBFactoryBackendImpl::getDatabaseNames(PassRefPtr<IDBCallbacks> callbacks,
 
 void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<SecurityOrigin> securityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
+    IDB_TRACE("IDBFactoryBackendImpl::deleteDatabase");
     const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
 
     IDBDatabaseBackendMap::iterator it = m_databaseBackendMap.find(uniqueIdentifier);
@@ -128,17 +131,28 @@ void IDBFactoryBackendImpl::deleteDatabase(const String& name, PassRefPtr<IDBCal
 PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<SecurityOrigin> securityOrigin, const String& dataDirectory)
 {
     const String fileIdentifier = computeFileIdentifier(securityOrigin.get());
+    const bool openInMemory = dataDirectory.isEmpty();
 
     IDBBackingStoreMap::iterator it2 = m_backingStoreMap.find(fileIdentifier);
-    if (it2 != m_backingStoreMap.end()) {
-        if (it2->value.get())
-            return it2->value.get();
-    }
+    if (it2 != m_backingStoreMap.end() && it2->value.get())
+        return it2->value.get();
 
-    RefPtr<IDBBackingStore> backingStore = IDBBackingStore::open(securityOrigin.get(), dataDirectory, fileIdentifier);
+    RefPtr<IDBBackingStore> backingStore;
+    if (openInMemory)
+        backingStore = IDBBackingStore::openInMemory(securityOrigin.get(), fileIdentifier);
+    else
+        backingStore = IDBBackingStore::open(securityOrigin.get(), dataDirectory, fileIdentifier);
+
     if (backingStore) {
         cleanWeakMap(m_backingStoreMap);
         m_backingStoreMap.set(fileIdentifier, backingStore->createWeakPtr());
+        // If an in-memory database, bind lifetime to this factory instance.
+        if (openInMemory)
+            m_sessionOnlyBackingStores.add(backingStore);
+
+        // All backing stores associated with this factory should be of the same type.
+        ASSERT(m_sessionOnlyBackingStores.isEmpty() || openInMemory);
+
         return backingStore.release();
     }
 
@@ -147,6 +161,7 @@ PassRefPtr<IDBBackingStore> IDBFactoryBackendImpl::openBackingStore(PassRefPtr<S
 
 void IDBFactoryBackendImpl::open(const String& name, int64_t version, int64_t transactionId, PassRefPtr<IDBCallbacks> callbacks, PassRefPtr<IDBDatabaseCallbacks> databaseCallbacks, PassRefPtr<SecurityOrigin> prpSecurityOrigin, ScriptExecutionContext*, const String& dataDirectory)
 {
+    IDB_TRACE("IDBFactoryBackendImpl::open");
     RefPtr<SecurityOrigin> securityOrigin = prpSecurityOrigin;
     const String uniqueIdentifier = computeUniqueIdentifier(name, securityOrigin.get());
 

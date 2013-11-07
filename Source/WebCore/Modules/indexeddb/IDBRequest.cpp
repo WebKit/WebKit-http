@@ -68,7 +68,7 @@ PassRefPtr<IDBRequest> IDBRequest::create(ScriptExecutionContext* context, PassR
 }
 
 IDBRequest::IDBRequest(ScriptExecutionContext* context, PassRefPtr<IDBAny> source, IDBDatabaseBackendInterface::TaskType taskType, IDBTransaction* transaction)
-    : ActiveDOMObject(context, this)
+    : ActiveDOMObject(context)
     , m_result(0)
     , m_errorCode(0)
     , m_contextStopped(false)
@@ -371,16 +371,23 @@ void IDBRequest::onSuccess(PassRefPtr<SharedBuffer> valueBuffer, PassRefPtr<IDBK
 
 void IDBRequest::onSuccess(int64_t value)
 {
+    IDB_TRACE("IDBRequest::onSuccess(int64_t)");
+    if (!shouldEnqueueEvent())
+        return;
     return onSuccessInternal(SerializedScriptValue::numberValue(value));
 }
 
 void IDBRequest::onSuccess()
 {
+    IDB_TRACE("IDBRequest::onSuccess()");
+    if (!shouldEnqueueEvent())
+        return;
     return onSuccessInternal(SerializedScriptValue::undefinedValue());
 }
 
 void IDBRequest::onSuccessInternal(PassRefPtr<SerializedScriptValue> value)
 {
+    ASSERT(!m_contextStopped);
     DOMRequestState::Scope scope(m_requestState);
     return onSuccessInternal(deserializeIDBValue(requestState(), value));
 }
@@ -413,12 +420,11 @@ bool IDBRequest::hasPendingActivity() const
     // FIXME: In an ideal world, we should return true as long as anyone has a or can
     //        get a handle to us and we have event listeners. This is order to handle
     //        user generated events properly.
-    return m_hasPendingActivity;
+    return m_hasPendingActivity && !m_contextStopped;
 }
 
 void IDBRequest::stop()
 {
-    ActiveDOMObject::stop();
     if (m_contextStopped)
         return;
 

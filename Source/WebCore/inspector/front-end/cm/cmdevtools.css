@@ -5,7 +5,26 @@
 .CodeMirror {
   line-height: 1.2em !important;
   height: 100% !important;
+  background-color: transparent !important;
 }
+
+.CodeMirror .source-frame-eval-expression {
+  outline: 0px;
+  border: 1px solid rgb(163, 41, 34);
+  border-left-width: 0px;
+  border-right-width: 0px;
+}
+
+.CodeMirror .source-frame-eval-expression-end {
+  border-right-width: 1px;
+  margin-right: -1px;
+}
+
+.CodeMirror .source-frame-eval-expression-start {
+  border-left-width: 1px;
+  margin-left: -1px;
+}
+
 
 .CodeMirror-linenumber {
   padding-top: 1px !important;
@@ -31,18 +50,42 @@
 .cm-breakpoint-disabled {
   opacity: 0.5;
 }
+
+.CodeMirror-matchingbracket {
+  border-bottom: 1px solid black;
+  color: black !important;
+}
+
+.CodeMirror-nonmatchingbracket {
+  color: black !important;
+}
+
 .cm-breakpoint-conditional {
   -webkit-border-image: url(Images/breakpointConditionalBorder.png) 1 14 1 2;
 }
+
 .cm-execution-line {
     background-color: rgb(171, 191, 254) !important;
     outline: 1px solid rgb(64, 115, 244);
 }
 
 .cm-token-highlight {
+    position: relative;
+}
+
+.cm-token-highlight:before {
+    position: absolute;
     border: 1px solid gray;
     border-radius: 3px;
-    margin: -1px;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    content: "";
+}
+
+.cm-line-with-selection .cm-column-with-selection:before {
+    border: 0px;
 }
 
 .cm-s-web-inspector-js span.cm-keyword {color: rgb(170, 13, 145);}
@@ -60,6 +103,7 @@
 .cm-s-web-inspector-css span.cm-string-2 {color: rgb(7, 144, 154);}
 .cm-s-web-inspector-css span.cm-link {color: rgb(7, 144, 154);}
 .cm-s-web-inspector-css span.cm-variable {color: rgb(200, 0, 0);}
+.cm-s-web-inspector-css span.cm-property {color: rgb(200, 0, 0);}
 
 .cm-s-web-inspector-html span.cm-meta {color: rgb(192, 192, 192);}
 .cm-s-web-inspector-html span.cm-comment {color: rgb(35, 110, 37);}

@@ -49,7 +49,8 @@ public:
 
     virtual ~TextTrackRegion();
 
-    TextTrack* track() const { return 0; }
+    TextTrack* track() const { return m_track; }
+    void setTrack(TextTrack*);
 
     const String& id() const { return m_id; }
     void setId(const String&);
@@ -75,6 +76,8 @@ public:
     const AtomicString scroll() const;
     void setScroll(const AtomicString&, ExceptionCode&);
 
+    void updateParametersFromRegion(TextTrackRegion*);
+
     const String& regionSettings() const { return m_settings; }
     void setRegionSettings(const String&);
 
@@ -91,6 +94,11 @@ private:
         Scroll
     };
 
+    RegionSetting getSettingFromString(const String&);
+
+    void parseSettingValue(RegionSetting, const String&);
+    void parseSetting(const String&, unsigned*);
+
     String m_id;
     String m_settings;
 
@@ -101,6 +109,12 @@ private:
     FloatPoint m_viewportAnchor;
 
     bool m_scroll;
+
+    // The member variable track can be a raw pointer as it will never
+    // reference a destroyed TextTrack, as this member variable
+    // is cleared in the TextTrack destructor and it is generally
+    // set/reset within the addRegion and removeRegion methods.
+    TextTrack* m_track;
 };
 
 } // namespace WebCore

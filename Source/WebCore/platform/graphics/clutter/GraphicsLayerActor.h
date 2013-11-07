@@ -81,7 +81,6 @@ void graphicsLayerActorRemoveAll(GraphicsLayerActor*);
 cairo_surface_t* graphicsLayerActorGetSurface(GraphicsLayerActor*);
 void graphicsLayerActorSetSurface(GraphicsLayerActor*, cairo_surface_t*);
 void graphicsLayerActorInvalidateRectangle(GraphicsLayerActor*, const WebCore::FloatRect&);
-void graphicsLayerActorSetTransform(GraphicsLayerActor*, const CoglMatrix*);
 void graphicsLayerActorSetAnchorPoint(GraphicsLayerActor*, float, float, float);
 void graphicsLayerActorGetAnchorPoint(GraphicsLayerActor*, float*, float*, float*);
 void graphicsLayerActorSetScrollPosition(GraphicsLayerActor*, float, float); 
@@ -90,11 +89,14 @@ float graphicsLayerActorGetTranslateX(GraphicsLayerActor*);
 void graphicsLayerActorSetTranslateY(GraphicsLayerActor*, float);
 float graphicsLayerActorGetTranslateY(GraphicsLayerActor*);
 gint graphicsLayerActorGetnChildren(GraphicsLayerActor*);
+void graphicsLayerActorRemoveFromSuperLayer(GraphicsLayerActor*);
 WebCore::GraphicsLayerClutter::LayerType graphicsLayerActorGetLayerType(GraphicsLayerActor*);
 void graphicsLayerActorSetLayerType(GraphicsLayerActor*, WebCore::GraphicsLayerClutter::LayerType);
+void graphicsLayerActorReplaceSublayer(GraphicsLayerActor*, ClutterActor*, ClutterActor*);
 void graphicsLayerActorSetSublayers(GraphicsLayerActor*, WebCore::GraphicsLayerActorList&);
 gboolean graphicsLayerActorGetDrawsContent(GraphicsLayerActor*);
-void graphicsLayerActorSetDrawsContent(GraphicsLayerActor*, gboolean drawsContent);
+void graphicsLayerActorSetDrawsContent(GraphicsLayerActor*, bool drawsContent);
+void graphicsLayerActorSetFlatten(GraphicsLayerActor*, bool flatten);
 
 WebCore::PlatformClutterAnimation* graphicsLayerActorGetAnimationForKey(GraphicsLayerActor*, const String);
 

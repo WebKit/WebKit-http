@@ -106,9 +106,13 @@ class MediaControlTimelineContainerElement : public MediaControlDivElement {
 public:
     static PassRefPtr<MediaControlTimelineContainerElement> create(Document*);
 
+    void setTimeDisplaysHidden(bool);
+
 private:
     explicit MediaControlTimelineContainerElement(Document*);
     virtual const AtomicString& shadowPseudoId() const OVERRIDE;
+
+    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) OVERRIDE;
 };
 
 // ----------------------------
@@ -303,7 +307,6 @@ public:
     virtual bool willRespondToMouseClickEvents() OVERRIDE { return true; }
 
     void updateDisplay();
-    void resetTrackListMenu() { m_trackListHasChanged = true; }
 
 private:
     MediaControlClosedCaptionsTrackListElement(Document*, MediaControls*);
@@ -315,8 +318,11 @@ private:
 
     typedef Vector<RefPtr<Element> > TrackMenuItems;
     TrackMenuItems m_menuItems;
+#if ENABLE(VIDEO_TRACK)
+    typedef HashMap<RefPtr<Element>, RefPtr<TextTrack> > MenuItemToTrackMap;
+    MenuItemToTrackMap m_menuToTrackMap;
+#endif
     MediaControls* m_controls;
-    bool m_trackListHasChanged;
 };
 
 // ----------------------------

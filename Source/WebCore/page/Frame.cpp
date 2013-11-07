@@ -35,10 +35,10 @@
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
 #include "CachedCSSStyleSheet.h"
+#include "CachedResourceLoader.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DOMWindow.h"
-#include "CachedResourceLoader.h"
 #include "DocumentType.h"
 #include "EditorClient.h"
 #include "Event.h"
@@ -60,7 +60,9 @@
 #include "HitTestResult.h"
 #include "ImageBuffer.h"
 #include "InspectorInstrumentation.h"
+#include "JSDOMWindowShell.h"
 #include "Logging.h"
+#include "MathMLNames.h"
 #include "MediaFeatureNames.h"
 #include "Navigator.h"
 #include "NodeList.h"
@@ -75,6 +77,7 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGNames.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
@@ -87,11 +90,13 @@
 #include "UserTypingGestureIndicator.h"
 #include "VisibleUnits.h"
 #include "WebKitFontFamilyNames.h"
+#include "XLinkNames.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include "htmlediting.h"
 #include "markup.h"
 #include "npruntime_impl.h"
+#include "runtime_root.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -99,15 +104,6 @@
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
 #endif
-
-#if USE(JSC)
-#include "JSDOMWindowShell.h"
-#include "runtime_root.h"
-#endif
-
-#include "MathMLNames.h"
-#include "SVGNames.h"
-#include "XLinkNames.h"
 
 #if ENABLE(SVG)
 #include "SVGDocument.h"
@@ -224,11 +220,6 @@ Frame::~Frame()
     HashSet<FrameDestructionObserver*>::iterator stop = m_destructionObservers.end();
     for (HashSet<FrameDestructionObserver*>::iterator it = m_destructionObservers.begin(); it != stop; ++it)
         (*it)->frameDestroyed();
-
-    if (m_view) {
-        m_view->hide();
-        m_view->clearFrame();
-    }
 }
 
 bool Frame::inScope(TreeScope* scope) const
@@ -298,8 +289,6 @@ void Frame::setDocument(PassRefPtr<Document> newDoc)
     m_doc = newDoc;
     ASSERT(!m_doc || m_doc->domWindow());
     ASSERT(!m_doc || m_doc->domWindow()->frame() == this);
-
-    selection()->updateSecureKeyboardEntryIfActive();
 
     if (m_doc && !m_doc->attached())
         m_doc->attach();
@@ -422,7 +411,7 @@ String Frame::searchForLabelsBeforeElement(const Vector<String>& labels, Element
     Node* n;
     for (n = NodeTraversal::previous(element); n && lengthSearched < charsSearchedThreshold; n = NodeTraversal::previous(n)) {
         if (n->hasTagName(formTag)
-            || (n->isHTMLElement() && static_cast<Element*>(n)->isFormControlElement()))
+            || (n->isHTMLElement() && toElement(n)->isFormControlElement()))
         {
             // We hit another form element or the start of the form - bail out
             break;
@@ -634,7 +623,7 @@ Frame* Frame::frameForWidget(const Widget* widget)
     // Assume all widgets are either a FrameView or owned by a RenderWidget.
     // FIXME: That assumption is not right for scroll bars!
     ASSERT_WITH_SECURITY_IMPLICATION(widget->isFrameView());
-    return static_cast<const FrameView*>(widget)->frame();
+    return toFrameView(widget)->frame();
 }
 
 void Frame::clearTimers(FrameView *view, Document *document)
@@ -704,7 +693,7 @@ void Frame::disconnectOwnerElement()
 {
     if (m_ownerElement) {
         if (Document* doc = document())
-            doc->clearAXObjectCache();
+            doc->topDocument()->clearAXObjectCache();
         m_ownerElement->clearContentFrame();
         if (m_page)
             m_page->decrementSubframeCount();
@@ -727,7 +716,7 @@ String Frame::displayStringModifiedByEncoding(const String& str) const
 
 VisiblePosition Frame::visiblePositionForPoint(const IntPoint& framePoint)
 {
-    HitTestResult result = eventHandler()->hitTestResultAtPoint(framePoint, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
+    HitTestResult result = eventHandler()->hitTestResultAtPoint(framePoint, HitTestRequest::ReadOnly | HitTestRequest::Active);
     Node* node = result.innerNonSharedNode();
     if (!node)
         return VisiblePosition();
@@ -931,7 +920,7 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
     // Respect SVGs zoomAndPan="disabled" property in standalone SVG documents.
     // FIXME: How to handle compound documents + zoomAndPan="disabled"? Needs SVG WG clarification.
     if (document->isSVGDocument()) {
-        if (!static_cast<SVGDocument*>(document)->zoomAndPanEnabled())
+        if (!toSVGDocument(document)->zoomAndPanEnabled())
             return;
     }
 #endif
@@ -1014,6 +1003,8 @@ void Frame::deviceOrPageScaleFactorChanged()
     RenderView* root = contentRenderer();
     if (root && root->compositor())
         root->compositor()->deviceOrPageScaleFactorChanged();
+
+    m_page->chrome()->client()->deviceOrPageScaleFactorChanged();
 }
 #endif
 void Frame::notifyChromeClientWheelEventHandlerCountChanged() const

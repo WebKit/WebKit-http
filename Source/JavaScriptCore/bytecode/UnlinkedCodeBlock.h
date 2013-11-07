@@ -38,7 +38,6 @@
 #include "RegExp.h"
 #include "SpecialPointer.h"
 #include "SymbolTable.h"
-#include "Weak.h"
 
 #include <wtf/RefCountedArray.h>
 #include <wtf/Vector.h>
@@ -658,7 +657,7 @@ public:
 
     const Identifier& variable(unsigned index) { return m_variables[index]; }
     unsigned numVariables() { return m_variables.size(); }
-    void adoptVariables(Vector<Identifier>& variables)
+    void adoptVariables(Vector<Identifier, 0, UnsafeVectorOverflow>& variables)
     {
         ASSERT(m_variables.isEmpty());
         m_variables.swap(variables);
@@ -670,7 +669,7 @@ private:
     {
     }
 
-    Vector<Identifier> m_variables;
+    Vector<Identifier, 0, UnsafeVectorOverflow> m_variables;
 
 public:
     static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue proto)

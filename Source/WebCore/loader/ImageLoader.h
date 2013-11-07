@@ -23,9 +23,9 @@
 #ifndef ImageLoader_h
 #define ImageLoader_h
 
-#include "CachedImage.h"
 #include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
+#include "Timer.h"
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -68,6 +68,8 @@ public:
     static void dispatchPendingBeforeLoadEvents();
     static void dispatchPendingLoadEvents();
     static void dispatchPendingErrorEvents();
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     virtual void notifyFinished(CachedResource*);

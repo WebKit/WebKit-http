@@ -51,6 +51,7 @@
 #include "Node.h"
 #include "NodeList.h"
 #include "RenderRegion.h"
+#include "SVGStyleElement.h"
 #include "StylePropertySet.h"
 #include "StylePropertyShorthand.h"
 #include "StyleResolver.h"
@@ -958,11 +959,11 @@ PassRefPtr<TypeBuilder::CSS::SelectorProfile> InspectorCSSAgent::stopSelectorPro
     return result.release();
 }
 
-void InspectorCSSAgent::willMatchRule(StyleRule* rule, StyleResolver* styleResolver)
+void InspectorCSSAgent::willMatchRule(StyleRule* rule, InspectorCSSOMWrappers& inspectorCSSOMWrappers, DocumentStyleSheetCollection* styleSheetCollection)
 {
 //    printf("InspectorCSSAgent::willMatchRule %s\n", rule->selectorList().selectorsText().utf8().data());
     if (m_currentSelectorProfile)
-        m_currentSelectorProfile->startSelector(styleResolver->inspectorCSSOMWrappers().getWrapperForRuleInSheets(rule, styleResolver->document()->styleSheetCollection()));
+        m_currentSelectorProfile->startSelector(inspectorCSSOMWrappers.getWrapperForRuleInSheets(rule, styleSheetCollection));
 }
 
 void InspectorCSSAgent::didMatchRule(bool matched)
@@ -1058,6 +1059,9 @@ InspectorStyleSheet* InspectorCSSAgent::viaInspectorStyleSheet(Document* documen
         return 0;
     }
 
+    if (!document->isHTMLDocument() && !document->isSVGDocument())
+        return 0;
+
     RefPtr<InspectorStyleSheet> inspectorStyleSheet = m_documentToInspectorStyleSheet.get(document);
     if (inspectorStyleSheet || !createIfAbsent)
         return inspectorStyleSheet.get();
@@ -1082,12 +1086,14 @@ InspectorStyleSheet* InspectorCSSAgent::viaInspectorStyleSheet(Document* documen
     if (ec)
         return 0;
 
-    HTMLElement* htmlElement = toHTMLElement(styleElement.get());
-    if (!htmlElement || !htmlElement->hasTagName(HTMLNames::styleTag))
-        return 0;
+    CSSStyleSheet* cssStyleSheet = 0;
+    if (styleElement->isHTMLElement())
+        cssStyleSheet = static_cast<HTMLStyleElement*>(styleElement.get())->sheet();
+#if ENABLE(SVG)
+    else if (styleElement->isSVGElement())
+        cssStyleSheet = static_cast<SVGStyleElement*>(styleElement.get())->sheet();
+#endif
 
-    HTMLStyleElement* htmlStyleElement = static_cast<HTMLStyleElement*>(htmlElement);
-    CSSStyleSheet* cssStyleSheet = htmlStyleElement->sheet();
     if (!cssStyleSheet)
         return 0;
 

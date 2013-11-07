@@ -105,7 +105,6 @@
 #import <WebCore/IconDatabase.h>
 #import <WebCore/LoaderNSURLExtras.h>
 #import <WebCore/MIMETypeRegistry.h>
-#import <WebCore/MainResourceLoader.h>
 #import <WebCore/MouseEvent.h>
 #import <WebCore/Page.h>
 #import <WebCore/PluginViewBase.h>
@@ -184,7 +183,7 @@ static void applyAppleDictionaryApplicationQuirkNonInlinePart(WebFrameLoaderClie
     if (!head)
         return;
     for (Node* c = head->firstChild(); c; c = c->nextSibling()) {
-        if (c->hasTagName(scriptTag) && static_cast<Element*>(c)->getAttribute(srcAttr) == "MainPageJavaScript.js") {
+        if (c->hasTagName(scriptTag) && toElement(c)->getAttribute(srcAttr) == "MainPageJavaScript.js") {
             document->setFrameElementsShouldIgnoreScrolling(true);
             return;
         }
@@ -273,9 +272,9 @@ void WebFrameLoaderClient::detachedFromParent3()
     m_webFrame->_private->webFrameView = nil;
 }
 
-void WebFrameLoaderClient::convertMainResourceLoadToDownload(MainResourceLoader* mainResourceLoader, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest& request, const ResourceResponse& response)
 {
-    ResourceHandle* handle = mainResourceLoader->loader()->handle();
+    ResourceHandle* handle = documentLoader->mainResourceLoader()->handle();
 
 #if USE(CFNETWORK)
     ASSERT([WebDownload respondsToSelector:@selector(_downloadWithLoadingCFURLConnection:request:response:delegate:proxy:)]);
@@ -291,15 +290,12 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(MainResourceLoader*
     handle->releaseConnectionForDownload();
     CFRelease(connection);
 #else
-    id proxy = handle->releaseProxy();
-    ASSERT(proxy);
-    
     WebView *webView = getWebView(m_webFrame.get());
     [WebDownload _downloadWithLoadingConnection:handle->connection()
                                                                 request:request.nsURLRequest(UpdateHTTPBody)
                                                                response:response.nsURLResponse()
                                                                delegate:[webView downloadDelegate]
-                                                                  proxy:proxy];
+                                                                  proxy:nil];
 #endif
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -51,9 +51,9 @@ public:
     void paintWebFrame(WebCore::GraphicsContext&);
 
 #if USE(ACCELERATED_COMPOSITING)
-    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double time) { }
+    virtual void notifyAnimationStarted(const WebCore::GraphicsLayer*, double) { }
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*);
-    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& inClip);
+    virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect&);
 #endif
 
 private:

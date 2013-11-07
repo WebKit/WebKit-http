@@ -61,9 +61,9 @@ void Pasteboard::writeClipboard(Clipboard*)
     notImplemented();
 }
 
-void Pasteboard::writeSelection(Range* selectedRange, bool, Frame* frame)
+void Pasteboard::writeSelection(Range* selectedRange, bool, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
 {
-    WTF::String text = frame->editor()->selectedText();
+    WTF::String text = shouldSerializeSelectedTextForClipboard == IncludeImageAltTextForClipboard ? frame->editor()->selectedTextForClipboard() : frame->editor()->selectedText();
     WTF::String html = createMarkup(selectedRange, 0, AnnotateForInterchange);
     WTF::String url = frame->document()->url().string();
 
@@ -97,7 +97,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
     RefPtr<DocumentFragment> fragment;
     if (!html.isEmpty()) {
         String url = BlackBerry::Platform::Clipboard::readURL();
-        if (fragment = createFragmentFromMarkup(frame->document(), html, url, DisallowScriptingAndPluginContentIfNeeded))
+        if (fragment = createFragmentFromMarkup(frame->document(), html, url, DisallowScriptingAndPluginContent))
             return fragment.release();
     }
 

@@ -28,6 +28,7 @@
 #include "PlatformClutterLayerClient.h"
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
+#include "TransformationMatrix.h"
 #include <wtf/text/CString.h>
 
 using namespace WebCore;
@@ -41,11 +42,11 @@ struct _GraphicsLayerActorPrivate {
     gboolean allocating;
 
     RefPtr<cairo_surface_t> surface;
-    CoglMatrix* matrix;
 
     PlatformClutterLayerClient* layerClient;
 
-    gboolean drawsContent;
+    bool flatten;
+    bool drawsContent;
 
     float scrollX;
     float scrollY;
@@ -103,6 +104,8 @@ static void graphics_layer_actor_init(GraphicsLayerActor* self)
 
     clutter_actor_set_reactive(CLUTTER_ACTOR(self), FALSE);
 
+    self->priv->flatten = true;
+
     // Default used by GraphicsLayer.
     graphicsLayerActorSetAnchorPoint(self, 0.5, 0.5, 0.0);
 
@@ -149,9 +152,6 @@ static void graphicsLayerActorDispose(GObject* object)
     GraphicsLayerActorPrivate* priv = layer->priv;
 
     priv->surface.clear();
-
-    if (priv->matrix)
-        cogl_matrix_free(priv->matrix);
 
     G_OBJECT_CLASS(graphics_layer_actor_parent_class)->dispose(object);
 }
@@ -206,30 +206,12 @@ static void graphicsLayerActorApplyTransform(ClutterActor* actor, CoglMatrix* ma
     if (translateX || translateY)
         cogl_matrix_translate(matrix, translateX, translateY, 0);
 
-    CLUTTER_ACTOR_CLASS(graphics_layer_actor_parent_class)->apply_transform(actor, matrix);
+    CoglMatrix modelViewTransform = TransformationMatrix();
+    CLUTTER_ACTOR_CLASS(graphics_layer_actor_parent_class)->apply_transform(actor, &modelViewTransform);
 
-    if (priv->matrix) {
-        float width = 0, height = 0;
-        clutter_actor_get_size(actor, &width, &height);
-        if (width <= 1.0 || height <= 1.0)
-            return;
-
-        // The pivot of actor is a normalized value, so we need an actual anchor position
-        // in actor's local coordinate system for translating.
-        float anchorX = 0, anchorY = 0, anchorZ = 0;
-        graphicsLayerActorGetAnchorPoint(GRAPHICS_LAYER_ACTOR(actor), &anchorX, &anchorY, &anchorZ);
-        anchorX *= width;
-        anchorY *= height;
-
-        // CSS3 tranform-style can be changed on the fly, 
-        // so we have to copy priv->matrix in order to recover z-axis. 
-        CoglMatrix* localMatrix = cogl_matrix_copy(priv->matrix);
-
-        cogl_matrix_translate(matrix, anchorX, anchorY, anchorZ);
-        cogl_matrix_multiply(matrix, matrix, localMatrix);
-        cogl_matrix_translate(matrix, -anchorX, -anchorY, -anchorZ);
-        cogl_matrix_free(localMatrix);
-    }
+    if (priv->flatten)
+        modelViewTransform = TransformationMatrix(&modelViewTransform).to2dTransform();
+    cogl_matrix_multiply(matrix, matrix, &modelViewTransform);
 }
 
 static void graphicsLayerActorPaint(ClutterActor* actor)
@@ -289,7 +271,7 @@ static void graphicsLayerActorUpdateTexture(GraphicsLayerActor* layer)
         // Nothing needs a texture, remove the one we have, if any.
         if (!priv->drawsContent && !priv->surface) {
             g_signal_handlers_disconnect_by_func(canvas, reinterpret_cast<void*>(graphicsLayerActorDraw), layer);
-            g_object_unref(canvas);
+            clutter_actor_set_content(actor, 0);
         }
         return;
     }
@@ -326,7 +308,11 @@ static void drawLayerContents(ClutterActor* actor, GraphicsContext& context)
 GraphicsLayerActor* graphicsLayerActorNew(GraphicsLayerClutter::LayerType type)
 {
     GraphicsLayerActor* layer = GRAPHICS_LAYER_ACTOR(g_object_new(GRAPHICS_LAYER_TYPE_ACTOR, 0));
-    layer->priv->layerType = type;
+    GraphicsLayerActorPrivate* priv = layer->priv;
+
+    priv->layerType = type;
+    if (priv->layerType == GraphicsLayerClutter::LayerTypeTransformLayer)
+        priv->flatten = false;
 
     return layer;
 }
@@ -380,26 +366,6 @@ void graphicsLayerActorInvalidateRectangle(GraphicsLayerActor* layer, const Floa
 
     // FIXME: Need to invalidate a specific area?
     clutter_content_invalidate(canvas);
-}
-
-void graphicsLayerActorSetTransform(GraphicsLayerActor* layer, const CoglMatrix* matrix) 
-{
-    bool needToRedraw = false;
-
-    GraphicsLayerActorPrivate* priv = layer->priv;
-    if (priv->matrix) {
-        cogl_matrix_free(priv->matrix);
-        needToRedraw = true;
-    }
-
-    if (matrix && !cogl_matrix_is_identity(matrix)) {
-        priv->matrix = cogl_matrix_copy(matrix);
-        needToRedraw = true;
-    } else
-        priv->matrix = 0;
-
-    if (needToRedraw)
-        clutter_actor_queue_redraw(CLUTTER_ACTOR(layer));
 }
 
 void graphicsLayerActorSetAnchorPoint(GraphicsLayerActor* layer, float x, float y, float z)
@@ -470,10 +436,27 @@ void graphicsLayerActorSetSublayers(GraphicsLayerActor* layer, GraphicsLayerActo
         return;
     }
 
+    ClutterActor* newParentActor = CLUTTER_ACTOR(layer);
     for (size_t i = 0; i < subLayers.size(); ++i) {
-        ClutterActor* layerActor = CLUTTER_ACTOR(subLayers[i].get());
-        clutter_actor_add_child(CLUTTER_ACTOR(layer), layerActor);
+        ClutterActor* childActor = CLUTTER_ACTOR(subLayers[i].get());
+        ClutterActor* oldParentActor = clutter_actor_get_parent(childActor);
+        if (oldParentActor) {
+            if (oldParentActor == newParentActor)
+                continue;
+            clutter_actor_remove_child(oldParentActor, childActor);
+        }
+        clutter_actor_add_child(newParentActor, childActor);
     }
+}
+
+void graphicsLayerActorRemoveFromSuperLayer(GraphicsLayerActor* layer)
+{
+    ClutterActor* actor = CLUTTER_ACTOR(layer);
+    ClutterActor* parentActor = clutter_actor_get_parent(actor);
+    if (!parentActor)
+        return;
+
+    clutter_actor_remove_child(parentActor, actor);
 }
 
 GraphicsLayerClutter::LayerType graphicsLayerActorGetLayerType(GraphicsLayerActor* layer)
@@ -514,7 +497,7 @@ float graphicsLayerActorGetTranslateY(GraphicsLayerActor* layer)
     return priv->translateY;
 }
 
-void graphicsLayerActorSetDrawsContent(GraphicsLayerActor* layer, gboolean drawsContent)
+void graphicsLayerActorSetDrawsContent(GraphicsLayerActor* layer, bool drawsContent)
 {
     GraphicsLayerActorPrivate* priv = layer->priv;
 
@@ -529,6 +512,15 @@ void graphicsLayerActorSetDrawsContent(GraphicsLayerActor* layer, gboolean draws
 gboolean graphicsLayerActorGetDrawsContent(GraphicsLayerActor* layer)
 {
     return layer->priv->drawsContent;
+}
+
+void graphicsLayerActorSetFlatten(GraphicsLayerActor* layer, bool flatten)
+{
+    GraphicsLayerActorPrivate* priv = layer->priv;
+    if (flatten == priv->flatten)
+        return;
+
+    priv->flatten = flatten;
 }
 
 WebCore::PlatformClutterAnimation* graphicsLayerActorGetAnimationForKey(GraphicsLayerActor* layer, const String key)

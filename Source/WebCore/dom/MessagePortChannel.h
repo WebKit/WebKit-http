@@ -58,9 +58,6 @@ namespace WebCore {
     public:
         static void createChannel(PassRefPtr<MessagePort>, PassRefPtr<MessagePort>);
 
-        // Creates a new wrapper for the passed channel.
-        static PassOwnPtr<MessagePortChannel> create(PassRefPtr<PlatformMessagePortChannel>);
-
         // Entangles the channel with a port (called when a port has been cloned, after the clone has been marshaled to its new owning thread and is ready to receive messages).
         // Returns false if the entanglement failed because the port was closed.
         bool entangleIfOpen(MessagePort*);
@@ -77,32 +74,16 @@ namespace WebCore {
         // Returns true if the proxy currently contains messages for this port.
         bool hasPendingActivity();
 
-        class EventData {
-            WTF_MAKE_NONCOPYABLE(EventData); WTF_MAKE_FAST_ALLOCATED;
-        public:
-            static PassOwnPtr<EventData> create(PassRefPtr<SerializedScriptValue>, PassOwnPtr<MessagePortChannelArray>);
-
-            PassRefPtr<SerializedScriptValue> message() { return m_message; }
-            PassOwnPtr<MessagePortChannelArray> channels() { return m_channels.release(); }
-
-        private:
-            EventData(PassRefPtr<SerializedScriptValue> message, PassOwnPtr<MessagePortChannelArray>);
-            RefPtr<SerializedScriptValue> m_message;
-            OwnPtr<MessagePortChannelArray> m_channels;
-        };
-
         // Sends a message and optional cloned port to the remote port.
-        void postMessageToRemote(PassOwnPtr<EventData>);
+        void postMessageToRemote(PassRefPtr<SerializedScriptValue>, PassOwnPtr<MessagePortChannelArray>);
 
         // Extracts a message from the message queue for this port.
-        bool tryGetMessageFromRemote(OwnPtr<EventData>&);
+        bool tryGetMessageFromRemote(RefPtr<SerializedScriptValue>&, OwnPtr<MessagePortChannelArray>&);
 
         // Returns the entangled port if run by the same thread (see MessagePort::locallyEntangledPort() for more details).
         MessagePort* locallyEntangledPort(const ScriptExecutionContext*);
 
         ~MessagePortChannel();
-
-        PlatformMessagePortChannel* channel() const { return m_channel.get(); }
 
     private:
         explicit MessagePortChannel(PassRefPtr<PlatformMessagePortChannel>);

@@ -1,3 +1,4 @@
+
 # Copied from mac-wk2/Skipped and removed Mac specific tests.
 #
 # Copyright (C) 2010 Apple Inc. All rights reserved.
@@ -145,6 +146,8 @@ webkit.org/b/108643 printing/standards-percentage-heights.html [ Skip ]
 # [Qt][Wk2] REGRESSION(r141039): It made compositing/layer-creation/fixed-position-no-content.html fails on Qt.
 webkit.org/b/108646 compositing/layer-creation/fixed-position-no-content.html [ Skip ]
 
+# [Qt][WK2] WTR doesn't dump pixels in a way that's consistent with other ports
+webkit.org/b/113320 fast/css/font-face-woff.html [ Skip ]
 ########################################
 
 # NOT YET TRACKED BY BUG REPORTS
@@ -377,10 +380,16 @@ webkit.org/b/101165 compositing/repaint/invalidations-on-composited-layers.html
 webkit.org/b/109291 compositing/iframes/iframe-composited-scrolling.html
 webkit.org/b/109291 compositing/layer-creation/fixed-position-in-view-dynamic.html
 
+webkit.org/b/112675 compositing/layer-creation/fixed-position-change-out-of-view-in-view.html [ Skip ]
+
 # [Qt] [WK2] Some fullscreen layout tests are timing out on the bot
 # https://bugs.webkit.org/show_bug.cgi?id=92543
 fullscreen/video-controls-timeline.html
 fullscreen/full-screen-iframe-legacy.html
+
+webkit.org/b/112146 fullscreen/video-controls-drag.html [ Skip ]
+
+webkit.org/b/112128 fullscreen/full-screen-table-section.html [ Skip ]
 
 # [Qt][WK2] http/tests/security/xss-DENIED-xsl-document-securityOrigin.xml crashes
 # https://bugs.webkit.org/show_bug.cgi?id=80209
@@ -712,10 +721,6 @@ fast/dom/shadow/wheel-event-on-input-in-shadow-dom.html
 # [Qt][WK2] REGRESSION(r132907): It made animations/negative-delay.html flaky
 webkit.org/b/100769 animations/negative-delay.html [ Failure Pass ]
 webkit.org/b/100769 transitions/negative-delay.html [ Failure Pass ]
-
-# [Qt] Text on scaled layer is blurry
-webkit.org/b/101491 compositing/text-on-scaled-layer.html [ ImageOnlyFailure ]
-webkit.org/b/101491 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 
 # [Qt][WK2] New compositing/overflow/* tests fails, because ENABLE_ACCELERATED_OVERFLOW_SCROLLING is disabled
 webkit.org/b/102678 compositing/overflow/updating-scrolling-content.html

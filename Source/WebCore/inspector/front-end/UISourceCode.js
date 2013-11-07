@@ -216,21 +216,44 @@ WebInspector.UISourceCode.prototype = {
 
     checkContentUpdated: function()
     {
-        this._project.requestUpdatedFileContent(this, updatedContentLoaded.bind(this));
+        if (!this._project.canSetFileContent())
+            return;
+        if (this._checkingContent)
+            return;
+        this._checkingContent = true;
+        this._project.requestFileContent(this, contentLoaded.bind(this));
 
-        function updatedContentLoaded(updatedContent)
+        function contentLoaded(updatedContent)
         {
-            if (typeof updatedContent !== "string")
+            if (updatedContent === null) {
+                var workingCopy = this.workingCopy();
+                this._commitContent("", false);
+                this.setWorkingCopy(workingCopy);
+                delete this._checkingContent;
                 return;
+            }
+            if (typeof this._lastAcceptedContent === "string" && this._lastAcceptedContent === updatedContent) {
+                delete this._checkingContent;
+                return;
+            }
+            if (this._content === updatedContent) {
+                delete this._lastAcceptedContent;
+                delete this._checkingContent;
+                return;
+            }
 
             if (!this.isDirty()) {
-                this.addRevision(updatedContent);
+                this._commitContent(updatedContent, false);
+                delete this._checkingContent;
                 return;
             }
 
             var shouldUpdate = window.confirm(WebInspector.UIString("This file was changed externally. Would you like to reload it?"));
             if (shouldUpdate)
-                this.addRevision(updatedContent);
+                this._commitContent(updatedContent, false);
+            else
+                this._lastAcceptedContent = updatedContent;
+            delete this._checkingContent;
         }
     },
 
@@ -244,9 +267,11 @@ WebInspector.UISourceCode.prototype = {
 
     /**
      * @param {string} content
+     * @param {boolean} shouldSetContentInProject
      */
-    _commitContent: function(content)
+    _commitContent: function(content, shouldSetContentInProject)
     {
+        delete this._lastAcceptedContent;
         this._content = content;
         this._contentLoaded = true;
         
@@ -264,7 +289,8 @@ WebInspector.UISourceCode.prototype = {
             WebInspector.fileManager.save(this._url, this._content, false);
             WebInspector.fileManager.close(this._url);
         }
-        this._project.setFileContent(this, this._content, function() { });
+        if (shouldSetContentInProject)
+            this._project.setFileContent(this, this._content, function() { });
     },
 
     /**
@@ -272,7 +298,7 @@ WebInspector.UISourceCode.prototype = {
      */
     addRevision: function(content)
     {
-        this._commitContent(content);
+        this._commitContent(content, true);
     },
 
     _restoreRevisionHistory: function()
@@ -380,6 +406,11 @@ WebInspector.UISourceCode.prototype = {
         return this._content;
     },
 
+    resetWorkingCopy: function()
+    {
+        this.setWorkingCopy(this._content);
+    },
+
     /**
      * @param {string} newWorkingCopy
      */
@@ -405,7 +436,7 @@ WebInspector.UISourceCode.prototype = {
             return;
         }
 
-        this._commitContent(this._workingCopy);
+        this._commitContent(this._workingCopy, true);
         callback(null);
 
         WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
@@ -646,8 +677,12 @@ WebInspector.UISourceCode.prototype = {
      */
     setSourceMapping: function(sourceMapping)
     {
+        var wasIdentity = this._sourceMapping ? this._sourceMapping.isIdentity() : true;
         this._sourceMapping = sourceMapping;
-        this.dispatchEventToListeners(WebInspector.UISourceCode.Events.SourceMappingChanged, null);
+        var data = {}
+        data.isIdentity = sourceMapping ? sourceMapping.isIdentity() : true;
+        data.identityHasChanged = data.isIdentity !== wasIdentity;
+        this.dispatchEventToListeners(WebInspector.UISourceCode.Events.SourceMappingChanged, data);
     },
 
     __proto__: WebInspector.Object.prototype

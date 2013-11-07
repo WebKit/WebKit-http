@@ -52,7 +52,7 @@ Element* AccessibilityMenuListOption::actionElement() const
     
 bool AccessibilityMenuListOption::isEnabled() const
 {
-    // disabled() returns true if the parent <select> element is disabled,
+    // isDisabledFormControl() returns true if the parent <select> element is disabled,
     // which we don't want.
     return !static_cast<HTMLOptionElement*>(m_element.get())->ownElementDisabled();
 }
@@ -98,7 +98,7 @@ bool AccessibilityMenuListOption::canSetSelectedAttribute() const
 
 bool AccessibilityMenuListOption::computeAccessibilityIsIgnored() const
 {
-    return accessibilityPlatformIncludesObject() != IncludeObject;
+    return accessibilityIsIgnoredByDefault();
 }
 
 LayoutRect AccessibilityMenuListOption::elementRect() const

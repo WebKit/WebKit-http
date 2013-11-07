@@ -115,6 +115,7 @@ case "$host" in
     *-*-mingw*)
         UNICODE_CFLAGS=""
         UNICODE_LIBS="-licui18n -licuuc"
+        AC_CHECK_HEADERS([unicode/uchar.h], [], [AC_MSG_ERROR([Could not find ICU headers.])])
         ;;
     *)
         AC_PATH_PROG(icu_config, icu-config, no)
@@ -359,9 +360,11 @@ PKG_CHECK_MODULES([LIBSOUP], [libsoup-2.4 >= libsoup_required_version])
 AC_SUBST([LIBSOUP_CFLAGS])
 AC_SUBST([LIBSOUP_LIBS])
 
-PKG_CHECK_MODULES([LIBSECRET], [libsecret-1])
-AC_SUBST([LIBSECRET_CFLAGS])
-AC_SUBST([LIBSECRET_LIBS])
+if test "$enable_credential_storage" = "yes"; then
+    PKG_CHECK_MODULES([LIBSECRET], [libsecret-1])
+    AC_SUBST([LIBSECRET_CFLAGS])
+    AC_SUBST([LIBSECRET_LIBS])
+fi
 
 # Check if FreeType/FontConfig are available.
 if test "$with_target" = "directfb"; then
@@ -388,12 +391,9 @@ if (test "$sqlite3_found" = "no"); then
     AC_MSG_ERROR([SQLite3 is required for the Database related features])
 fi
 
-# Check if libxslt is available.
-if test "$enable_xslt" = "yes"; then
-    PKG_CHECK_MODULES([LIBXSLT],[libxslt >= libxslt_required_version])
-    AC_SUBST([LIBXSLT_CFLAGS])
-    AC_SUBST([LIBXSLT_LIBS])
-fi
+PKG_CHECK_MODULES([LIBXSLT],[libxslt >= libxslt_required_version])
+AC_SUBST([LIBXSLT_CFLAGS])
+AC_SUBST([LIBXSLT_LIBS])
 
 # Check if geoclue is available.
 if test "$enable_geolocation" = "yes"; then
@@ -441,7 +441,7 @@ fi
 
 if test "$with_acceleration_backend" = "opengl"; then
     if test "$enable_gles2" = "yes"; then
-        acceleration_backend_description+= "(gles2"
+        acceleration_backend_description+="(gles2"
         OPENGL_LIBS="-lGLESv2"
     else
         acceleration_backend_description+="(gl"

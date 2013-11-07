@@ -59,6 +59,7 @@ namespace WebCore {
     class Navigator;
     class Node;
     class Page;
+    class PageConsole;
     class Performance;
     class PostMessageTimer;
     class ScheduledAction;
@@ -233,12 +234,13 @@ namespace WebCore {
         PassRefPtr<WebKitPoint> webkitConvertPointFromNodeToPage(Node*, const WebKitPoint*) const;        
 
         Console* console() const;
+        PageConsole* pageConsole() const;
 
         void printErrorMessage(const String&);
         String crossDomainAccessErrorMessage(DOMWindow* activeWindow);
 
         void postMessage(PassRefPtr<SerializedScriptValue> message, const MessagePortArray*, const String& targetOrigin, DOMWindow* source, ExceptionCode&);
-        // FIXME: remove this when we update the ObjC bindings (bug #28774).
+        // Needed for Objective-C bindings (see bug 28774).
         void postMessage(PassRefPtr<SerializedScriptValue> message, MessagePort*, const String& targetOrigin, DOMWindow* source, ExceptionCode&);
         void postMessageTimerFired(PassOwnPtr<PostMessageTimer>);
         void dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTargetOrigin, PassRefPtr<Event>, PassRefPtr<ScriptCallStack>);

@@ -119,7 +119,7 @@ bool RenderSVGResourceClipper::pathOnlyClipping(GraphicsContext* context, const 
             return false;
         if (!childNode->isSVGElement() || !toSVGElement(childNode)->isStyledTransformable())
             continue;
-        SVGStyledTransformableElement* styled = static_cast<SVGStyledTransformableElement*>(childNode);
+        SVGStyledTransformableElement* styled = toSVGStyledTransformableElement(childNode);
         RenderStyle* style = renderer->style();
         if (!style || style->display() == NONE || style->visibility() != VISIBLE)
              continue;
@@ -169,7 +169,7 @@ bool RenderSVGResourceClipper::applyClippingToContext(RenderObject* object, cons
     }
 
     AffineTransform absoluteTransform;
-    SVGRenderingContext::calculateTransformationToOutermostSVGCoordinateSystem(object, absoluteTransform);
+    SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(object, absoluteTransform);
 
     if (shouldCreateClipData && !repaintRect.isEmpty()) {
         if (!SVGRenderingContext::createImageBuffer(repaintRect, absoluteTransform, clipperData->clipMaskImage, ColorSpaceDeviceRGB, Unaccelerated))
@@ -312,7 +312,7 @@ bool RenderSVGResourceClipper::hitTestClipContent(const FloatRect& objectBoundin
             continue;
         IntPoint hitPoint;
         HitTestResult result(hitPoint);
-        if (renderer->nodeAtFloatPoint(HitTestRequest(HitTestRequest::SVGClipContent), result, point, HitTestForeground))
+        if (renderer->nodeAtFloatPoint(HitTestRequest(HitTestRequest::SVGClipContent | HitTestRequest::DisallowShadowContent), result, point, HitTestForeground))
             return true;
     }
 

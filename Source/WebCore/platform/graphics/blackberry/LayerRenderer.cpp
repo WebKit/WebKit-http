@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
 #if USE(ACCELERATED_COMPOSITING)
 
 #include "LayerRenderer.h"
+#include "LayerRendererClient.h"
 
 #include "LayerCompositingThread.h"
 #include "LayerFilterRenderer.h"
@@ -142,18 +143,17 @@ static Vector<LayerCompositingThread*> rawPtrVectorFromRefPtrVector(const Vector
     return sublayerList;
 }
 
-PassOwnPtr<LayerRenderer> LayerRenderer::create(GLES2Context* context)
+PassOwnPtr<LayerRenderer> LayerRenderer::create(LayerRendererClient* client)
 {
-    return adoptPtr(new LayerRenderer(context));
+    return adoptPtr(new LayerRenderer(client));
 }
 
-LayerRenderer::LayerRenderer(GLES2Context* context)
-    : m_scale(1.0)
+LayerRenderer::LayerRenderer(LayerRendererClient* client)
+    : m_client(client)
+    , m_scale(1.0)
     , m_animationTime(-numeric_limits<double>::infinity())
     , m_fbo(0)
     , m_currentLayerRendererSurface(0)
-    , m_clearSurfaceOnDrawLayers(true)
-    , m_context(context)
     , m_isRobustnessSupported(false)
     , m_needsCommit(false)
     , m_stencilCleared(false)
@@ -291,10 +291,6 @@ void LayerRenderer::setViewport(const IntRect& targetRect, const IntRect& clipRe
 #endif
     glScissor(m_scissorRect.x(), m_scissorRect.y(), m_scissorRect.width(), m_scissorRect.height());
 
-    if (m_clearSurfaceOnDrawLayers) {
-        glClearColor(0, 0, 0, 0);
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
     m_stencilCleared = false;
 }
 
@@ -352,7 +348,7 @@ void LayerRenderer::compositeLayers(const TransformationMatrix& matrix, LayerCom
     if (m_layersLockingTextureResources.size())
         glFinish();
 
-    m_context->swapBuffers();
+    m_client->context()->swapBuffers();
 
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_STENCIL_TEST);
@@ -403,8 +399,6 @@ void LayerRenderer::compositeBuffer(const TransformationMatrix& transform, const
         const GLES2Program& program = useProgram(LayerProgramRGBA);
         glUniform1f(program.opacityLocation(), opacity);
 
-        glEnableVertexAttribArray(program.positionLocation());
-        glEnableVertexAttribArray(program.texCoordLocation());
         glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &vertices);
         glVertexAttribPointer(program.texCoordLocation(), 2, GL_FLOAT, GL_FALSE, 0, texcoords);
 
@@ -431,7 +425,6 @@ void LayerRenderer::drawColor(const TransformationMatrix& transform, const Float
     } else
         glDisable(GL_BLEND);
 
-    glEnableVertexAttribArray(program.positionLocation());
     glUniform4f(m_colorColorLocation, color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0, color.alpha() / 255.0);
     glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &vertices);
 
@@ -548,31 +541,43 @@ IntRect LayerRenderer::toOpenGLWindowCoordinates(const FloatRect& r) const
     return IntRect(glRound(r.x() * vw2 + ox), glRound(r.y() * vh2 + oy), glRound(r.width() * vw2), glRound(r.height() * vh2));
 }
 
+static FloatRect toPixelCoordinates(const FloatRect& rect, const IntRect& viewport, int surfaceHeight)
+{
+    float vw2 = viewport.width() / 2.0;
+    float vh2 = viewport.height() / 2.0;
+    float ox = viewport.x() + vw2;
+    float oy = surfaceHeight - (viewport.y() + vh2);
+    return FloatRect(rect.x() * vw2 + ox, -(rect.y() + rect.height()) * vh2 + oy, rect.width() * vw2, rect.height() * vh2);
+}
+
 // Transform normalized device coordinates to window coordinates as WebKit understands them.
 //
 // The OpenGL surface may be larger than the WebKit window, and OpenGL window coordinates
 // have origin in bottom left while WebKit window coordinates origin is in top left.
 // The viewport is setup to cover the upper portion of the larger OpenGL surface.
-IntRect LayerRenderer::toWebKitWindowCoordinates(const FloatRect& r) const
+IntRect LayerRenderer::toWindowCoordinates(const FloatRect& rect) const
 {
-    float vw2 = m_viewport.width() / 2.0;
-    float vh2 = m_viewport.height() / 2.0;
-    float ox = m_viewport.x() + vw2;
-    float oy = m_context->surfaceSize().height() - (m_viewport.y() + vh2);
-    return enclosingIntRect(FloatRect(r.x() * vw2 + ox, -(r.y()+r.height()) * vh2 + oy, r.width() * vw2, r.height() * vh2));
+    return enclosingIntRect(toPixelCoordinates(rect, m_viewport, m_client->context()->surfaceSize().height()));
 }
 
-// Similar to toWebKitWindowCoordinates except that this also takes any zoom into account.
-IntRect LayerRenderer::toWebKitDocumentCoordinates(const FloatRect& r) const
+IntRect LayerRenderer::toPixelViewportCoordinates(const FloatRect& rect) const
 {
-    // The zoom is the ratio between visibleRect (or layoutRect) and dstRect parameters which are passed to drawLayers
-    float zoom = m_visibleRect.width() / m_viewport.width();
-    // Could assert here that it doesn't matter whether we choose width or height in the above statement:
-    // because both rectangles should have very similar shapes (subject only to pixel rounding error).
+    // The clip rect defines the web page's pixel viewport (to use ViewportAccessor terminology),
+    // not to be confused with the GL viewport. So translate from window coordinates to pixel
+    // viewport coordinates.
+    int surfaceHeight = m_client->context()->surfaceSize().height();
+    FloatRect pixelViewport = toPixelCoordinates(m_clipRect, m_viewport, surfaceHeight);
+    FloatRect result = toPixelCoordinates(rect, m_viewport, surfaceHeight);
+    result.move(-pixelViewport.x(), -pixelViewport.y());
+    return enclosingIntRect(result);
+}
 
-    IntRect result = toWebKitWindowCoordinates(r);
-    result.scale(zoom);
-    return result;
+IntRect LayerRenderer::toDocumentViewportCoordinates(const FloatRect& rect) const
+{
+    // Similar to toPixelViewportCoordinates except that this also takes any zoom into account.
+    FloatRect result = toPixelViewportCoordinates(rect);
+    result.scale(1 / m_scale);
+    return enclosingIntRect(result);
 }
 
 // Draws a debug border around the layer's bounds.
@@ -594,8 +599,8 @@ void LayerRenderer::drawDebugBorder(LayerCompositingThread* layer)
     } else
         glDisable(GL_BLEND);
 
-    useProgram(ColorProgram);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
+    const GLES2Program& program = useProgram(ColorProgram);
+    glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
     glUniform4f(m_colorColorLocation, borderColor.red() / 255.0, borderColor.green() / 255.0, borderColor.blue() / 255.0, 1);
 
     glLineWidth(std::max(1.0f, layer->borderWidth()));
@@ -605,13 +610,13 @@ void LayerRenderer::drawDebugBorder(LayerCompositingThread* layer)
 // Clears a rectangle inside the layer's bounds.
 void LayerRenderer::drawHolePunchRect(LayerCompositingThread* layer)
 {
-    useProgram(ColorProgram);
+    const GLES2Program& program = useProgram(ColorProgram);
     glUniform4f(m_colorColorLocation, 0, 0, 0, 0);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_ONE, GL_ZERO);
     FloatQuad hole = layer->getTransformedHolePunchRect();
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, &hole);
+    glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &hole);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     checkGLError();
 }
@@ -688,18 +693,23 @@ void LayerRenderer::updateLayersRecursive(LayerCompositingThread* layer, const T
         FloatRect visibleRect = m_visibleRect;
         for (LayerCompositingThread* curr = layer->superlayer(); curr; curr = curr->superlayer()) {
 
-            // If we reach a container for fixed position layers, and it has its override's position set, it means it is a scrollable iframe
-            if (curr->isContainerForFixedPositionLayers() && curr->override()->isPositionSet()) {
+            if (curr->isContainerForFixedPositionLayers()) {
                 layoutRect = curr->frameVisibleRect();
                 contentsSize = curr->frameContentsSize();
 
-                // Inverted logic of
-                // FloatPoint layerPosition(-scrollPosition.x() + anchor.x() * bounds.width(),
-                //                          -scrollPosition.y() + anchor.y() * bounds.height());
-                FloatPoint scrollPosition(
-                    -(curr->override()->position().x() - (curr->anchorPoint().x() * curr->bounds().width())),
-                    -(curr->override()->position().y() - (curr->anchorPoint().y() * curr->bounds().height())));
-                visibleRect = FloatRect(scrollPosition, layoutRect.size());
+                // If we reach a container for fixed position layers, and it has its override's position set, it means it is a scrollable iframe
+                // currently being scrolled. Otherwise, use the WebKit-thread scroll position stored in frameVisibleRect().
+                if (curr->override()->isPositionSet()) {
+                    // Inverted logic of
+                    // FloatPoint layerPosition(-scrollPosition.x() + anchor.x() * bounds.width(),
+                    //                          -scrollPosition.y() + anchor.y() * bounds.height());
+                    FloatPoint scrollPosition(
+                        -(curr->override()->position().x() - (curr->anchorPoint().x() * curr->bounds().width())),
+                        -(curr->override()->position().y() - (curr->anchorPoint().y() * curr->bounds().height())));
+                    visibleRect = FloatRect(scrollPosition, layoutRect.size());
+                } else
+                    visibleRect = layoutRect;
+
                 break;
             }
         }
@@ -797,7 +807,7 @@ void LayerRenderer::updateLayersRecursive(LayerCompositingThread* layer, const T
 #endif
 
     if (layer->needsTexture() && layerVisible) {
-        IntRect dirtyRect = toWebKitWindowCoordinates(intersection(layer->getDrawRect(), clipRect));
+        IntRect dirtyRect = toWindowCoordinates(intersection(layer->getDrawRect(), clipRect));
         m_lastRenderingResults.addDirtyRect(dirtyRect);
     }
 
@@ -943,9 +953,9 @@ void LayerRenderer::compositeLayersRecursive(LayerCompositingThread* layer, int 
         glStencilOp(GL_KEEP, GL_INCR, GL_INCR);
 
         updateScissorIfNeeded(clipRect);
-        useProgram(ColorProgram);
+        const GLES2Program& program = useProgram(ColorProgram);
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
+        glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
@@ -986,9 +996,9 @@ void LayerRenderer::compositeLayersRecursive(LayerCompositingThread* layer, int 
         glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
 
         updateScissorIfNeeded(clipRect);
-        useProgram(ColorProgram);
+        const GLES2Program& program = useProgram(ColorProgram);
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
+        glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
@@ -1017,7 +1027,7 @@ void LayerRenderer::updateScissorIfNeeded(const FloatRect& clipRect)
 
 bool LayerRenderer::makeContextCurrent()
 {
-    bool ret = m_context->makeCurrent();
+    bool ret = m_client->context()->makeCurrent();
     if (ret && m_isRobustnessSupported) {
         if (m_glGetGraphicsResetStatusEXT() != GL_NO_ERROR) {
             BlackBerry::Platform::logAlways(BlackBerry::Platform::LogLevelCritical, "Robust OpenGL context has been reset. Aborting.");
@@ -1196,6 +1206,10 @@ const GLES2Program& LayerRenderer::useProgram(ProgramIndex index)
         return program;
 
     glUseProgram(program.m_program);
+
+    glEnableVertexAttribArray(program.positionLocation());
+    if (index != ColorProgram)
+        glEnableVertexAttribArray(program.texCoordLocation());
 
     return program;
 }

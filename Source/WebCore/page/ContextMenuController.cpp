@@ -799,7 +799,7 @@ void ContextMenuController::populate()
     if (!node)
         return;
 #if PLATFORM(GTK)
-    if (!m_hitTestResult.isContentEditable() && (node->isElementNode() && static_cast<Element*>(node)->isFormControlElement()))
+    if (!m_hitTestResult.isContentEditable() && (node->isElementNode() && toElement(node)->isFormControlElement()))
         return;
 #endif
     Frame* frame = node->document()->frame();
@@ -956,7 +956,7 @@ void ContextMenuController::populate()
                         appendItem(IgnoreGrammarItem, m_contextMenu.get());
                     appendItem(*separatorItem(), m_contextMenu.get());
                     haveContextMenuItemsForMisspellingOrGrammer = true;
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+#if PLATFORM(MAC)
                 } else {
                     // If the string was autocorrected, generate a contextual menu item allowing it to be changed back.
                     String replacedString = m_hitTestResult.replacedString();

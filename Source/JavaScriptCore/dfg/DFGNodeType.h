@@ -181,6 +181,7 @@ namespace JSC { namespace DFG {
     /* Optimizations for string access */ \
     macro(StringCharCodeAt, NodeResultInt32) \
     macro(StringCharAt, NodeResultJS) \
+    macro(StringFromCharCode, NodeResultJS) \
     \
     /* Nodes for comparison operations. */\
     macro(CompareLess, NodeResultBoolean | NodeMustGenerate | NodeMightClobber) \
@@ -222,7 +223,9 @@ namespace JSC { namespace DFG {
     macro(TypeOf, NodeResultJS) \
     macro(LogicalNot, NodeResultBoolean) \
     macro(ToPrimitive, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
-    macro(StrCat, NodeResultJS | NodeMustGenerate | NodeHasVarArgs | NodeClobbersWorld) \
+    macro(ToString, NodeResultJS | NodeMustGenerate | NodeMightClobber) \
+    macro(NewStringObject, NodeResultJS) \
+    macro(MakeRope, NodeResultJS) \
     \
     /* Nodes used for activations. Activation support works by having it anchored at */\
     /* epilgoues via TearOffActivation, and all CreateActivation nodes kept alive by */\

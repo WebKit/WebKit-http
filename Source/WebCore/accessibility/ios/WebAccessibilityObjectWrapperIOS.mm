@@ -44,6 +44,7 @@
 #import "Range.h"
 #import "RenderView.h"
 #import "RuntimeApplicationChecksIOS.h"
+#import "SVGNames.h"
 #import "TextIterator.h"
 #import "WAKScrollView.h"
 #import "WAKView.h"
@@ -367,6 +368,22 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return NSNotFound;
 }
 
+- (CGPathRef)_accessibilityPath
+{
+    if (![self _prepareAccessibilityCall])
+        return NULL;
+
+    if (!m_object->supportsPath())
+        return NULL;
+    
+    Path path = m_object->elementPath();
+    if (path.isEmpty())
+        return NULL;
+    
+    Path transformedPath = [self convertPathToScreenSpace:path];
+    return transformedPath.platformPath();
+}
+
 - (NSString *)accessibilityLanguage
 {
     if (![self _prepareAccessibilityCall])
@@ -544,6 +561,18 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return traits;
 }
 
+- (BOOL)isSVGGroupElement
+{
+    // If an SVG group element has a title, it should be an accessible element on iOS.
+#if ENABLE(SVG)
+    Node* node = m_object->node();
+    if (node && node->hasTagName(SVGNames::gTag) && [[self accessibilityLabel] length] > 0)
+        return YES;
+#endif
+    
+    return NO;
+}
+
 - (BOOL)determineIsAccessibilityElement
 {
     if (!m_object)
@@ -601,7 +630,9 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
             if ([self containsUnnaturallySegmentedChildren] || ![self accessibilityElementCount])
                 return true;
             return false;
-
+        case GroupRole:
+            if ([self isSVGGroupElement])
+                return true;
         // All other elements are ignored on the iphone.
         default:
         case UnknownRole:
@@ -609,7 +640,6 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case ScrollAreaRole:
         case TableRole:
         case ApplicationRole:
-        case GroupRole:
         case RadioGroupRole:
         case ListRole:
         case ListBoxRole:
@@ -658,8 +688,15 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return NO;
     if (m_object->roleValue() == PopUpButtonRole)
         return NO;
+    if (m_object->isFileUploadButton())
+        return NO;
 
     return YES;
+}
+
+- (BOOL)fileUploadButtonReturnsValueInTitle
+{
+    return NO;
 }
 
 - (NSString *)accessibilityLabel
@@ -916,7 +953,29 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return (NSURL*)url;
 }
 
-- (CGRect)_convertIntRectToScreenCoordinates:(IntRect)rect
+- (CGPoint)convertPointToScreenSpace:(FloatPoint &)point
+{
+    if (!m_object)
+        return CGPointZero;
+    
+    CGPoint cgPoint = CGPointMake(point.x(), point.y());
+    
+    FrameView* frameView = m_object->documentFrameView();
+    if (frameView) {
+        WAKView* view = frameView->documentView();
+        cgPoint = [view convertPoint:cgPoint toView:nil];
+    }
+    
+    // we need the web document view to give us our final screen coordinates
+    // because that can take account of the scroller
+    id webDocument = [self _accessibilityWebDocumentView];
+    if (webDocument)
+        cgPoint = [webDocument convertPoint:cgPoint toView:nil];
+    
+    return cgPoint;
+}
+
+- (CGRect)convertRectToScreenSpace:(IntRect &)rect
 {
     if (!m_object)
         return CGRectZero;
@@ -959,7 +1018,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return CGPointZero;
     
     IntRect rect = pixelSnappedIntRect(m_object->boundingBoxRect());
-    CGRect cgRect = [self _convertIntRectToScreenCoordinates:rect];
+    CGRect cgRect = [self convertRectToScreenSpace:rect];
     return CGPointMake(CGRectGetMidX(cgRect), CGRectGetMidY(cgRect));
 }
 
@@ -969,7 +1028,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return CGRectZero;
     
     IntRect rect = pixelSnappedIntRect(m_object->elementRect());
-    return [self _convertIntRectToScreenCoordinates:rect];
+    return [self convertRectToScreenSpace:rect];
 }
 
 // Checks whether a link contains only static text and images (and has been divided unnaturally by <spans> and other nefarious mechanisms).
@@ -1858,7 +1917,7 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
         return CGRectZero;
 
     IntRect rect = m_object->boundsForVisiblePositionRange(VisiblePositionRange([startMarker visiblePosition], [endMarker visiblePosition]));
-    return [self _convertIntRectToScreenCoordinates:rect];
+    return [self convertRectToScreenSpace:rect];
 }
 
 - (WebAccessibilityTextMarker *)textMarkerForPoint:(CGPoint)point
@@ -2002,6 +2061,14 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return m_object->roleValue() == DocumentMathRole;
 }
 
+- (NSInteger)accessibilityMathLineThickness
+{
+    if (![self _prepareAccessibilityCall])
+        return 0;
+
+    return m_object->mathLineThickness();
+}
+
 - (NSString *)accessibilityMathType
 {
     if (m_object->roleValue() == MathElementRole) {
@@ -2040,6 +2107,11 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     }
     
     return nil;
+}
+
+- (CGPoint)accessibilityClickPoint
+{
+    return m_object->clickPoint();
 }
 
 // These are used by DRT so that it can know when notifications are sent.

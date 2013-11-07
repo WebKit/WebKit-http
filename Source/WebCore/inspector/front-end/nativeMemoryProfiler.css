@@ -29,12 +29,12 @@
  */
 
 .memory-pie-chart-container {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
+    display: -webkit-flex;
+    -webkit-flex-direction: column;
 }
 
 .memory-pie-chart {
-    -webkit-box-flex: 1;
+    -webkit-flex: 1;
 }
 
 .memory-blocks-list .swatch {
@@ -73,13 +73,8 @@
     border: none;
 }
 
-.native-snapshot-view .data-grid table {
-    font-size: 11px;
-}
-
 .native-snapshot-view .data-grid td {
     height: 14px;
-    line-height: 14px;
     padding: 1px 4px;
 }
 

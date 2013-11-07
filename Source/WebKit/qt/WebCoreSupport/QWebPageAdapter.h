@@ -111,7 +111,10 @@ public:
         FindBackward = 1,
         FindCaseSensitively = 2,
         FindWrapsAroundDocument = 4,
-        HighlightAllOccurrences = 8
+        HighlightAllOccurrences = 8,
+        FindAtWordBeginningsOnly = 16,
+        TreatMedialCapitalAsWordBeginning = 32,
+        FindBeginsInSelection = 64
     };
 
     // valid values matching those from ScrollTypes.h
@@ -295,7 +298,7 @@ public:
     QString contextMenuItemTagForAction(MenuAction, bool* checkable) const;
 
     QStringList supportedContentTypes() const;
-#if ENABLE(GEOLOCATION)
+#if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
     void setGeolocationEnabledForFrame(QWebFrameAdapter*, bool);
 #endif
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)

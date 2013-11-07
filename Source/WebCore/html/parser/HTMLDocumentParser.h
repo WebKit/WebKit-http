@@ -76,7 +76,7 @@ public:
     // Exposed for HTMLParserScheduler
     void resumeParsingAfterYield();
 
-    static void parseDocumentFragment(const String&, DocumentFragment*, Element* contextElement, FragmentScriptingPermission = AllowScriptingContent);
+    static void parseDocumentFragment(const String&, DocumentFragment*, Element* contextElement, ParserContentPolicy = AllowScriptingContent);
 
     HTMLTokenizer* tokenizer() const { return m_tokenizer.get(); }
 
@@ -105,16 +105,16 @@ protected:
     virtual void finish() OVERRIDE;
 
     HTMLDocumentParser(HTMLDocument*, bool reportErrors);
-    HTMLDocumentParser(DocumentFragment*, Element* contextElement, FragmentScriptingPermission);
+    HTMLDocumentParser(DocumentFragment*, Element* contextElement, ParserContentPolicy);
 
     HTMLTreeBuilder* treeBuilder() const { return m_treeBuilder.get(); }
 
     void forcePlaintextForTextDocument();
 
 private:
-    static PassRefPtr<HTMLDocumentParser> create(DocumentFragment* fragment, Element* contextElement, FragmentScriptingPermission permission)
+    static PassRefPtr<HTMLDocumentParser> create(DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
     {
-        return adoptRef(new HTMLDocumentParser(fragment, contextElement, permission));
+        return adoptRef(new HTMLDocumentParser(fragment, contextElement, parserContentPolicy));
     }
 
     // DocumentParser
@@ -143,8 +143,8 @@ private:
 #if ENABLE(THREADED_HTML_PARSER)
     void startBackgroundParser();
     void stopBackgroundParser();
-    void validateSpeculations();
-    void didFailSpeculation(PassOwnPtr<HTMLToken>, PassOwnPtr<HTMLTokenizer>);
+    void validateSpeculations(PassOwnPtr<ParsedChunk> lastChunk);
+    void discardSpeculationsAndResumeFrom(PassOwnPtr<ParsedChunk> lastChunk, PassOwnPtr<HTMLToken>, PassOwnPtr<HTMLTokenizer>);
     void processParsedChunkFromBackgroundParser(PassOwnPtr<ParsedChunk>);
     void pumpPendingSpeculations();
 #endif
@@ -196,7 +196,9 @@ private:
     XSSAuditorDelegate m_xssAuditorDelegate;
 
 #if ENABLE(THREADED_HTML_PARSER)
-    OwnPtr<ParsedChunk> m_currentChunk;
+    // FIXME: m_lastChunkBeforeScript, m_tokenizer, m_token, and m_input should be combined into a single state object
+    // so they can be set and cleared together and passed between threads together.
+    OwnPtr<ParsedChunk> m_lastChunkBeforeScript;
     Deque<OwnPtr<ParsedChunk> > m_speculations;
     WeakPtrFactory<HTMLDocumentParser> m_weakFactory;
     WeakPtr<BackgroundHTMLParser> m_backgroundParser;

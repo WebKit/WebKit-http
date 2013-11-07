@@ -153,6 +153,7 @@ namespace WebCore {
     String AXImageMapText();
     String AXHeadingText();
     String AXDefinitionText();
+    String AXDescriptionListText();
     String AXDescriptionListTermText();
     String AXDescriptionListDetailText();
     String AXFooterRoleDescriptionText();
@@ -266,19 +267,25 @@ namespace WebCore {
 
 #if ENABLE(VIDEO_TRACK)
     String textTrackSubtitlesText();
-    String textTrackOffText();
+    String textTrackOffMenuItemText();
+    String textTrackAutomaticMenuItemText(const String& language);
     String textTrackNoLabelText();
+#if PLATFORM(MAC)
+    String textTrackCountryAndLanguageMenuItemText(const String& title, const String& country, const String& language);
+    String textTrackLanguageMenuItemText(const String& title, const String& language);
+    String closedCaptionTrackMenuItemText(const String&);
+    String sdhTrackMenuItemText(const String&);
+    String easyReaderTrackMenuItemText(const String&);
+#endif
 #endif
 
     String snapshottedPlugInLabelTitle();
     String snapshottedPlugInLabelSubtitle();
 
-#if !PLATFORM(CHROMIUM)
 #define WEB_UI_STRING(string, description) WebCore::localizedString(string)
 #define WEB_UI_STRING_KEY(string, key, description) WebCore::localizedString(key)
 
     String localizedString(const char* key);
-#endif
 
 } // namespace WebCore
 

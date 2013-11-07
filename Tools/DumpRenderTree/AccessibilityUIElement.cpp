@@ -24,9 +24,14 @@
  */
 
 #include "config.h"
+
+#if HAVE(ACCESSIBILITY)
+
 #include "AccessibilityUIElement.h"
 
+#include <JavaScriptCore/JSObjectRef.h>
 #include <JavaScriptCore/JSRetainPtr.h>
+#include <limits.h>
 
 // Static Functions
 
@@ -201,22 +206,21 @@ static JSValueRef uiElementForSearchPredicateCallback(JSContextRef context, JSOb
 {
     AccessibilityUIElement* startElement = 0;
     bool isDirectionNext = true;
-    JSStringRef searchKey = 0;
+    JSValueRef searchKey = 0;
     JSStringRef searchText = 0;
     if (argumentCount == 4) {
         JSObjectRef startElementObject = JSValueToObject(context, arguments[0], exception);
         if (startElementObject)
             startElement = toAXElement(startElementObject);
-        isDirectionNext = JSValueToBoolean(context, arguments[1]);
-        if (JSValueIsString(context, arguments[2]))
-            searchKey = JSValueToStringCopy(context, arguments[2], exception);
+        isDirectionNext = JSValueToBoolean(context, arguments[1]);      
+        
+        searchKey = arguments[2];
+        
         if (JSValueIsString(context, arguments[3]))
             searchText = JSValueToStringCopy(context, arguments[3], exception);
     }
-    
-    JSObjectRef resultObject = AccessibilityUIElement::makeJSAccessibilityUIElement(context, toAXElement(thisObject)->uiElementForSearchPredicate(startElement, isDirectionNext, searchKey, searchText));
-    if (searchKey)
-        JSStringRelease(searchKey);
+    JSObjectRef resultObject = AccessibilityUIElement::makeJSAccessibilityUIElement(context, toAXElement(thisObject)->uiElementForSearchPredicate(context, startElement, isDirectionNext, searchKey, searchText));
+
     if (searchText)
         JSStringRelease(searchText);
     
@@ -851,6 +855,12 @@ static JSValueRef getInsertionPointLineNumberCallback(JSContextRef context, JSOb
     return JSValueMakeNumber(context, toAXElement(thisObject)->insertionPointLineNumber());
 }
 
+static JSValueRef getPathDescriptionCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
+{
+    JSRetainPtr<JSStringRef> pathDescription(Adopt, toAXElement(thisObject)->pathDescription());
+    return JSValueMakeString(context, pathDescription.get());
+}
+
 static JSValueRef getSelectedTextRangeCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
 {
     JSRetainPtr<JSStringRef> selectedTextRange(Adopt, toAXElement(thisObject)->selectedTextRange());
@@ -1083,6 +1093,10 @@ AccessibilityUIElement AccessibilityUIElement::verticalScrollbar() const { retur
 AccessibilityUIElement AccessibilityUIElement::uiElementAttributeValue(JSStringRef) const { return 0; }
 #endif
 
+#if !PLATFORM(MAC) && !PLATFORM(IOS)
+JSStringRef AccessibilityUIElement::pathDescription() const { return 0; }
+#endif
+
 #if !PLATFORM(WIN)
 bool AccessibilityUIElement::isEqual(AccessibilityUIElement* otherElement)
 {
@@ -1201,6 +1215,7 @@ JSClassRef AccessibilityUIElement::getJSClass()
         { "intValue", getIntValueCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "minValue", getMinValueCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "maxValue", getMaxValueCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "pathDescription", getPathDescriptionCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "childrenCount", getChildrenCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "rowCount", rowCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "columnCount", columnCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -1345,3 +1360,4 @@ JSClassRef AccessibilityUIElement::getJSClass()
     static JSClassRef accessibilityUIElementClass = JSClassCreate(&classDefinition);
     return accessibilityUIElementClass;
 }
+#endif

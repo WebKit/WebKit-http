@@ -124,6 +124,10 @@ body.inactive .heap-snapshot-sidebar-tree-item.wait.selected .icon {
     text-align: right;
 }
 
+.heap-snapshot-view .data-grid div.heap-snapshot-multiple-values {
+    float: right;
+}
+
 .heap-snapshot-view .data-grid span.percent-column {
     color: grey;
     width: 32px;
@@ -210,6 +214,7 @@ body.inactive .heap-snapshot-sidebar-tree-item.wait.selected .icon {
     width: 200px;
     height: 18px;
     font-size: 11px;
+    font-family: inherit;
     padding: 2px;
     margin: 2px 10px;
     background-color: white;
@@ -223,10 +228,6 @@ body.inactive .heap-snapshot-sidebar-tree-item.wait.selected .icon {
     background-position: right center, center;
     cursor: row-resize;
     height: 23px;
-    font: -webkit-small-control;
-    font-weight: bold;
-    color: rgb(48, 48, 48);
-    text-shadow: rgba(255, 255, 255, 0.75) 0 1px 0;
     display: block;
     position: absolute;
     left: 0;

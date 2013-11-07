@@ -48,7 +48,6 @@ list(APPEND WebCore_SOURCES
     bindings/js/JSCanvasRenderingContextCustom.cpp
     bindings/js/JSClipboardCustom.cpp
     bindings/js/JSConsoleCustom.cpp
-    bindings/js/JSCoordinatesCustom.cpp
     bindings/js/JSCryptoCustom.cpp
     bindings/js/JSCustomXPathNSResolver.cpp
     bindings/js/JSDictionary.cpp
@@ -261,7 +260,12 @@ if (ENABLE_WEB_AUDIO)
         bindings/js/JSBiquadFilterNodeCustom.cpp
         bindings/js/JSOscillatorNodeCustom.cpp
         bindings/js/JSPannerNodeCustom.cpp
-        bindings/js/JSScriptProcessorNodeCustom.cpp
+    )
+endif ()
+
+if (ENABLE_MEDIA_STREAM)
+    list(APPEND WebCore_SOURCES
+        bindings/js/JSRTCStatsResponseCustom.cpp
     )
 endif ()
 

@@ -218,7 +218,7 @@ String HitTestResult::title(TextDirection& dir) const
     // For <area> tags in image maps, walk the tree for the <area>, not the <img> using it.
     for (Node* titleNode = m_innerNode.get(); titleNode; titleNode = titleNode->parentNode()) {
         if (titleNode->isElementNode()) {
-            String title = static_cast<Element*>(titleNode)->title();
+            String title = toElement(titleNode)->title();
             if (!title.isEmpty()) {
                 if (RenderObject* renderer = titleNode->renderer())
                     dir = renderer->style()->direction();
@@ -319,8 +319,8 @@ KURL HitTestResult::absoluteImageURL() const
         || m_innerNonSharedNode->hasTagName(SVGNames::imageTag)
 #endif
        ) {
-        Element* element = static_cast<Element*>(m_innerNonSharedNode.get());
-        urlString = element->getAttribute(element->imageSourceAttributeName());
+        Element* element = toElement(m_innerNonSharedNode.get());
+        urlString = element->imageSourceURL();
     } else
         return KURL();
 
@@ -335,7 +335,7 @@ KURL HitTestResult::absolutePDFURL() const
     if (!m_innerNonSharedNode->hasTagName(embedTag) && !m_innerNonSharedNode->hasTagName(objectTag))
         return KURL();
 
-    HTMLPlugInImageElement* element = static_cast<HTMLPlugInImageElement*>(m_innerNonSharedNode.get());
+    HTMLPlugInImageElement* element = toHTMLPlugInImageElement(m_innerNonSharedNode.get());
     KURL url = m_innerNonSharedNode->document()->completeURL(stripLeadingAndTrailingHTMLSpaces(element->url()));
     if (!url.isValid())
         return KURL();
@@ -512,6 +512,11 @@ bool HitTestResult::isLiveLink() const
     return false;
 }
 
+bool HitTestResult::isOverLink() const
+{
+    return m_innerURLElement && m_innerURLElement->isLink();
+}
+
 String HitTestResult::titleDisplayString() const
 {
     if (!m_innerURLElement)
@@ -556,7 +561,7 @@ bool HitTestResult::addNodeToRectBasedTestResult(Node* node, const HitTestReques
     if (!node)
         return true;
 
-    if (!request.allowsShadowContent())
+    if (request.disallowsShadowContent())
         node = node->document()->ancestorInThisScope(node);
 
     mutableRectBasedTestResult().add(node);
@@ -576,7 +581,7 @@ bool HitTestResult::addNodeToRectBasedTestResult(Node* node, const HitTestReques
     if (!node)
         return true;
 
-    if (!request.allowsShadowContent())
+    if (request.disallowsShadowContent())
         node = node->document()->ancestorInThisScope(node);
 
     mutableRectBasedTestResult().add(node);

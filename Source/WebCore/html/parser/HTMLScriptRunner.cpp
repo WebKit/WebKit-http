@@ -29,6 +29,7 @@
 #include "Attribute.h"
 #include "CachedScript.h"
 #include "CachedResourceLoader.h"
+#include "CustomElementRegistry.h"
 #include "Element.h"
 #include "Event.h"
 #include "Frame.h"
@@ -128,12 +129,16 @@ void HTMLScriptRunner::executePendingScriptAndDispatchEvent(PendingScript& pendi
     if (pendingScript.cachedScript() && pendingScript.watchingForLoad())
         stopWatchingForLoad(pendingScript);
 
-    if (!isExecutingScript())
+    if (!isExecutingScript()) {
+#if ENABLE(CUSTOM_ELEMENTS)
+        CustomElementRegistry::deliverAllLifecycleCallbacks();
+#endif
         MutationObserver::deliverAllMutations();
+    }
 
     // Clear the pending script before possible rentrancy from executeScript()
     RefPtr<Element> element = pendingScript.releaseElementAndClear();
-    if (ScriptElement* scriptElement = toScriptElement(element.get())) {
+    if (ScriptElement* scriptElement = toScriptElementIfPossible(element.get())) {
         NestingLevelIncrementer nestingLevelIncrementer(m_scriptNestingLevel);
         IgnoreDestructiveWriteCountIncrementer ignoreDestructiveWriteCountIncrementer(m_document);
         if (errorOccurred)
@@ -262,7 +267,7 @@ bool HTMLScriptRunner::requestPendingScript(PendingScript& pendingScript, Elemen
     ASSERT(!pendingScript.element());
     pendingScript.setElement(script);
     // This should correctly return 0 for empty or invalid srcValues.
-    CachedScript* cachedScript = toScriptElement(script)->cachedScript().get();
+    CachedScript* cachedScript = toScriptElementIfPossible(script)->cachedScript().get();
     if (!cachedScript) {
         notImplemented(); // Dispatch error event.
         return false;
@@ -278,7 +283,7 @@ void HTMLScriptRunner::runScript(Element* script, const TextPosition& scriptStar
     ASSERT(m_document);
     ASSERT(!hasParserBlockingScript());
     {
-        ScriptElement* scriptElement = toScriptElement(script);
+        ScriptElement* scriptElement = toScriptElementIfPossible(script);
 
         // This contains both and ASSERTION and a null check since we should not
         // be getting into the case of a null script element, but seem to be from
@@ -292,8 +297,12 @@ void HTMLScriptRunner::runScript(Element* script, const TextPosition& scriptStar
         // every script element, even if it's not ready to execute yet. There's
         // unfortuantely no obvious way to tell if prepareScript is going to
         // execute the script from out here.
-        if (!isExecutingScript())
+        if (!isExecutingScript()) {
+#if ENABLE(CUSTOM_ELEMENTS)
+            CustomElementRegistry::deliverAllLifecycleCallbacks();
+#endif
             MutationObserver::deliverAllMutations();
+        }
 
         InsertionPointRecord insertionPointRecord(m_host->inputStream());
         NestingLevelIncrementer nestingLevelIncrementer(m_scriptNestingLevel);

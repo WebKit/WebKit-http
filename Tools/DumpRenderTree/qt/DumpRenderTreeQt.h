@@ -41,12 +41,14 @@
 #endif
 
 #include "DumpRenderTreeSupportQt.h"
+#include "TestRunner.h"
 #include <qgraphicsview.h>
 #include <qgraphicswebview.h>
 #include <qwebframe.h>
 #include <qwebinspector.h>
 #include <qwebpage.h>
 #include <qwebview.h>
+#include <wtf/RefPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QUrl;
@@ -62,8 +64,6 @@ class EventSender;
 class TextInputController;
 class GCController;
 
-namespace WebCore {
-
 class WebPage;
 class NetworkAccessManager;
 
@@ -73,6 +73,8 @@ Q_OBJECT
 public:
     DumpRenderTree();
     virtual ~DumpRenderTree();
+
+    static DumpRenderTree* instance();
 
     // Initialize in single-file mode.
     void open(const QUrl& url);
@@ -87,6 +89,7 @@ public:
     void resetToConsistentStateBeforeTesting(const QUrl&);
 
     TestRunnerQt *testRunner() const { return m_controller; }
+    TestRunner *jscTestRunner() const { return m_jscController.get(); }
     EventSender *eventSender() const { return m_eventSender; }
     TextInputController *textInputController() const { return m_textInputController; }
     QString persistentStoragePath() const { return m_persistentStoragePath; }
@@ -144,6 +147,7 @@ private:
     QString dumpBackForwardList(QWebPage* page);
     QString dumpFrameScrollPosition(QWebFrame* frame);
     TestRunnerQt *m_controller;
+    RefPtr<TestRunner> m_jscController;
 
     bool m_dumpPixelsForCurrentTest;
     bool m_dumpPixelsForAllTests;
@@ -234,7 +238,5 @@ public:
 private:
     QGraphicsWebView* m_item;
 };
-
-}
 
 #endif

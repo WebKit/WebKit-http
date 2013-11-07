@@ -108,9 +108,6 @@ public:
     virtual void updateGlobalHistoryRedirectLinks() { notImplemented(); }
     virtual bool shouldGoToHistoryItem(HistoryItem*) const;
     virtual bool shouldStopLoadingForHistoryItem(HistoryItem*) const;
-    virtual void dispatchDidAddBackForwardItem(HistoryItem*) const;
-    virtual void dispatchDidRemoveBackForwardItem(HistoryItem*) const;
-    virtual void dispatchDidChangeBackForwardIndex() const;
     virtual void dispatchWillUpdateApplicationCache(const ResourceRequest&);
     virtual void dispatchDidLoadFromApplicationCache(const ResourceRequest&);
     virtual void didDisplayInsecureContent() { notImplemented(); }
@@ -145,7 +142,7 @@ public:
     virtual void didSaveToPageCache();
     virtual void didRestoreFromPageCache();
     virtual void dispatchDidBecomeFrameset(bool) { }
-    virtual void convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest&, const ResourceResponse&);
+    virtual void convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest&, const ResourceResponse&);
     virtual PassRefPtr<Frame> createFrame(const KURL&, const String&, HTMLFrameOwnerElement*, const String&, bool, int, int);
     virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool);
     virtual void redirectDataToPlugin(Widget*);
@@ -186,9 +183,6 @@ private:
     void receivedData(const char*, int, const String&);
     void didFinishOrFailLoading(const ResourceError&);
     bool isMainFrame() const;
-
-    void invalidateBackForwardList() const;
-    void notifyBackForwardListChanged() const;
 
     PolicyAction decidePolicyForExternalLoad(const ResourceRequest &, bool isFragmentScroll);
     void delayPolicyCheckUntilFragmentExists(const String& fragment, FramePolicyFunction);

@@ -80,6 +80,7 @@
 #include "ewk_context_menu.h"
 #include "ewk_download_job.h"
 #include "ewk_error.h"
+#include "ewk_page_group.h"
 #include "ewk_popup_menu.h"
 #include "ewk_security_origin.h"
 #include "ewk_settings.h"
@@ -101,7 +102,8 @@ typedef enum {
 
 /// Enum values containing page contents type values.
 typedef enum {
-    EWK_PAGE_CONTENTS_TYPE_MHTML
+    EWK_PAGE_CONTENTS_TYPE_MHTML,
+    EWK_PAGE_CONTENTS_TYPE_STRING
 } Ewk_Page_Contents_Type;
 
 typedef struct Ewk_View_Smart_Data Ewk_View_Smart_Data;
@@ -280,8 +282,9 @@ typedef enum {
  *
  * @param type type of the contents
  * @param data string buffer of the contents
+ * @param user_data user data will be passed when ewk_view_page_contents_get is called
  */
-typedef void (*Ewk_Page_Contents_Cb)(Ewk_Page_Contents_Type type, const char *data);
+typedef void (*Ewk_Page_Contents_Cb)(Ewk_Page_Contents_Type type, const char *data, void *user_data);
 
 /**
  * Sets the smart class APIs, enabling view to be inherited.
@@ -316,10 +319,11 @@ EAPI Eina_Bool ewk_view_smart_class_set(Ewk_View_Smart_Class *api);
  * @param e canvas object where to create the view object
  * @param smart Evas_Smart object. Its type should be EWK_VIEW_TYPE_STR
  * @param context Ewk_Context object which is used for initializing
+ * @param pageGroup Ewk_Page_Group object which is used for initializing
  *
  * @return view object on success or @c NULL on failure
  */
-EAPI Evas_Object *ewk_view_smart_add(Evas *e, Evas_Smart *smart, Ewk_Context *context);
+EAPI Evas_Object *ewk_view_smart_add(Evas *e, Evas_Smart *smart, Ewk_Context *context, Ewk_Page_Group *pageGroup);
 
 /**
  * Creates a new EFL WebKit view object.
@@ -348,6 +352,15 @@ EAPI Evas_Object *ewk_view_add_with_context(Evas *e, Ewk_Context *context);
  * @return the Ewk_Context of this view or @c NULL on failure
  */
 EAPI Ewk_Context *ewk_view_context_get(const Evas_Object *o);
+
+/**
+ * Gets the Ewk_Page_Group of this view.
+ *
+ * @param o the view object to get the Ewk_Page_Group
+ *
+ * @return the Ewk_Page_Group of this view or @c NULL on failure
+ */
+EAPI Ewk_Page_Group *ewk_view_page_group_get(const Evas_Object *o);
 
 /**
  * Asks the object to load the given URL.
@@ -810,10 +823,11 @@ EAPI void ewk_view_draws_page_background_set(Evas_Object *o, Eina_Bool enabled);
  * @param o view object to get the page contents
  * @param type type of the page contents
  * @param callback callback function to be called when the operation is finished
+ * @param user_data user data to be passed to the callback function
  *
  * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
  */
-EAPI Eina_Bool ewk_view_page_contents_get(const Evas_Object *o, Ewk_Page_Contents_Type type, Ewk_Page_Contents_Cb callback);
+EAPI Eina_Bool ewk_view_page_contents_get(const Evas_Object *o, Ewk_Page_Contents_Type type, Ewk_Page_Contents_Cb callback, void *user_data);
 
 /**
  * Sets the source mode as EINA_TRUE to display the web source code

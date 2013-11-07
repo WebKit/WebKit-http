@@ -31,8 +31,8 @@
 namespace WebCore {
 
 class FlowThreadController;
-class RenderWidget;
 class RenderQuote;
+class RenderWidget;
 
 #if USE(ACCELERATED_COMPOSITING)
 class RenderLayerCompositor;
@@ -207,10 +207,6 @@ public:
     bool checkTwoPassLayoutForAutoHeightRegions() const;
     FlowThreadController* flowThreadController();
 
-    enum RenderViewLayoutPhase { RenderViewNormalLayout, ConstrainedFlowThreadsLayoutInAutoLogicalHeightRegions };
-    bool normalLayoutPhase() const { return m_layoutPhase == RenderViewNormalLayout; }
-    bool constrainedFlowThreadsLayoutPhase() const { return m_layoutPhase == ConstrainedFlowThreadsLayoutInAutoLogicalHeightRegions; }
-
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
     IntervalArena* intervalArena();
@@ -245,7 +241,6 @@ private:
     bool shouldRepaint(const LayoutRect&) const;
 
     // These functions may only be accessed by LayoutStateMaintainer.
-    void pushLayoutState(RenderFlowThread*, bool regionsChanged);
     bool pushLayoutState(RenderBox* renderer, const LayoutSize& offset, LayoutUnit pageHeight = 0, bool pageHeightChanged = false, ColumnInfo* colInfo = 0)
     {
         // We push LayoutState even if layoutState is disabled because it stores layoutDelta too.
@@ -340,7 +335,6 @@ private:
 
     RenderQuote* m_renderQuoteHead;
     unsigned m_renderCounterCount;
-    RenderViewLayoutPhase m_layoutPhase;
 };
 
 inline RenderView* toRenderView(RenderObject* object)

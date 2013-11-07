@@ -115,7 +115,7 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     this.sidebarPanes.xhrBreakpoints = new WebInspector.XHRBreakpointsSidebarPane();
     this.sidebarPanes.eventListenerBreakpoints = new WebInspector.EventListenerBreakpointsSidebarPane();
 
-    if (InspectorFrontendHost.canInspectWorkers() && !WebInspector.WorkerManager.isWorkerFrontend()) {
+    if (Capabilities.canInspectWorkers && !WebInspector.WorkerManager.isWorkerFrontend()) {
         WorkerAgent.enable();
         this.sidebarPanes.workerList = new WebInspector.WorkersSidebarPane(WebInspector.workerManager);
     }
@@ -145,7 +145,10 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     this._toggleFormatSourceButton.addEventListener("click", this._toggleFormatSource, this);
 
     this._scriptViewStatusBarItemsContainer = document.createElement("div");
-    this._scriptViewStatusBarItemsContainer.style.display = "inline-block";
+    this._scriptViewStatusBarItemsContainer.className = "inline-block";
+
+    this._scriptViewStatusBarTextContainer = document.createElement("div");
+    this._scriptViewStatusBarTextContainer.className = "inline-block";
 
     this._installDebuggerSidebarController();
 
@@ -194,8 +197,7 @@ WebInspector.ScriptsPanel.prototype = {
      */
     statusBarText: function()
     {
-        var sourceFrame = this.visibleView;
-        return sourceFrame ? sourceFrame.statusBarText() : null;
+        return this._scriptViewStatusBarTextContainer;
     },
 
     defaultFocusedElement: function()
@@ -369,12 +371,16 @@ WebInspector.ScriptsPanel.prototype = {
     _updateScriptViewStatusBarItems: function()
     {
         this._scriptViewStatusBarItemsContainer.removeChildren();
+        this._scriptViewStatusBarTextContainer.removeChildren();
 
         var sourceFrame = this.visibleView;
         if (sourceFrame) {
             var statusBarItems = sourceFrame.statusBarItems() || [];
             for (var i = 0; i < statusBarItems.length; ++i)
                 this._scriptViewStatusBarItemsContainer.appendChild(statusBarItems[i]);
+            var statusBarText = sourceFrame.statusBarText();
+            if (statusBarText)
+                this._scriptViewStatusBarTextContainer.appendChild(statusBarText);
         }
     },
 
@@ -493,7 +499,7 @@ WebInspector.ScriptsPanel.prototype = {
         if (!sourceFrame)
             return;
         this._sourceFramesByUISourceCode.remove(uiSourceCode);
-        sourceFrame.detach();
+        sourceFrame.dispose();
     },
 
     _clearCurrentExecutionLine: function()
@@ -674,7 +680,11 @@ WebInspector.ScriptsPanel.prototype = {
         WebInspector.settings.pauseOnExceptionStateString.set(nextStateMap[this._pauseOnExceptionButton.state]);
     },
 
-    _togglePause: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _togglePause: function(event)
     {
         if (this._paused) {
             this._paused = false;
@@ -687,12 +697,17 @@ WebInspector.ScriptsPanel.prototype = {
         }
 
         this._clearInterface();
+        return true;
     },
 
-    _stepOverClicked: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _stepOverClicked: function(event)
     {
         if (!this._paused)
-            return;
+            return true;
 
         this._paused = false;
         this._stepping = true;
@@ -700,12 +715,17 @@ WebInspector.ScriptsPanel.prototype = {
         this._clearInterface();
 
         DebuggerAgent.stepOver();
+        return true;
     },
 
-    _stepIntoClicked: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _stepIntoClicked: function(event)
     {
         if (!this._paused)
-            return;
+            return true;
 
         this._paused = false;
         this._stepping = true;
@@ -713,12 +733,17 @@ WebInspector.ScriptsPanel.prototype = {
         this._clearInterface();
 
         DebuggerAgent.stepInto();
+        return true;
     },
 
-    _stepOutClicked: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _stepOutClicked: function(event)
     {
         if (!this._paused)
-            return;
+            return true;
 
         this._paused = false;
         this._stepping = true;
@@ -726,6 +751,7 @@ WebInspector.ScriptsPanel.prototype = {
         this._clearInterface();
 
         DebuggerAgent.stepOut();
+        return true;
     },
 
     _toggleBreakpointsClicked: function(event)
@@ -748,7 +774,11 @@ WebInspector.ScriptsPanel.prototype = {
         }
     },
 
-    _evaluateSelectionInConsole: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _evaluateSelectionInConsole: function(event)
     {
         var selection = window.getSelection();
         if (selection.type !== "Range" || selection.isCollapsed)
@@ -814,7 +844,7 @@ WebInspector.ScriptsPanel.prototype = {
     /**
      * @param {string} buttonId
      * @param {string} buttonTitle
-     * @param {function(Event)} handler
+     * @param {function(Event=):boolean} handler
      * @param {!Array.<!WebInspector.KeyboardShortcut.Descriptor>} shortcuts
      */
     _createButtonAndRegisterShortcuts: function(buttonId, buttonTitle, handler, shortcuts)
@@ -943,10 +973,12 @@ WebInspector.ScriptsPanel.prototype = {
         for (var i = 0; i < uiSourceCodes.length; ++i)
             uiSourceCodes[i].setFormatted(this._toggleFormatSourceButton.toggled);
 
+        var currentFile = this._editorContainer.currentFile();
+
         WebInspector.notifications.dispatchEventToListeners(WebInspector.UserMetrics.UserAction, {
             action: WebInspector.UserMetrics.UserActionNames.TogglePrettyPrint,
             enabled: this._toggleFormatSourceButton.toggled,
-            url: this._editorContainer.currentFile().originURL()
+            url: currentFile ? currentFile.originURL() : null
         });
     },
 
@@ -955,6 +987,9 @@ WebInspector.ScriptsPanel.prototype = {
         this.sidebarPanes.watchExpressions.addExpression(expression);
     },
 
+    /**
+     * @return {boolean}
+     */
     _toggleBreakpoint: function()
     {
         var sourceFrame = this.visibleView;
@@ -969,7 +1004,11 @@ WebInspector.ScriptsPanel.prototype = {
         return false;
     },
 
-    _showOutlineDialog: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _showOutlineDialog: function(event)
     {
         var uiSourceCode = this._editorContainer.currentFile();
         if (!uiSourceCode)
@@ -1123,7 +1162,7 @@ WebInspector.ScriptsPanel.prototype = {
          */
         function mapFileSystemToNetwork(networkUISourceCode)
         {
-            this._workspace.addMapping(networkUISourceCode, uiSourceCode);
+            this._workspace.addMapping(networkUISourceCode, uiSourceCode, WebInspector.fileSystemWorkspaceProvider);
         }
     },
 
@@ -1148,7 +1187,7 @@ WebInspector.ScriptsPanel.prototype = {
          */
         function mapNetworkToFileSystem(uiSourceCode)
         {
-            this._workspace.addMapping(networkUISourceCode, uiSourceCode);
+            this._workspace.addMapping(networkUISourceCode, uiSourceCode, WebInspector.fileSystemWorkspaceProvider);
         }
     },
 
@@ -1161,9 +1200,9 @@ WebInspector.ScriptsPanel.prototype = {
         if (uiSourceCode.project().type() === WebInspector.projectTypes.FileSystem) {
             var hasMappings = !!uiSourceCode.url;
             if (!hasMappings)
-                contextMenu.appendItem(WebInspector.UIString("Map to network resource..."), this._mapFileSystemToNetwork.bind(this, uiSourceCode));
+                contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Map to network resource\u2026" : "Map to Network Resource\u2026"), this._mapFileSystemToNetwork.bind(this, uiSourceCode));
             else
-                contextMenu.appendItem(WebInspector.UIString("Remove network mapping"), this._removeNetworkMapping.bind(this, uiSourceCode));
+                contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Remove network mapping" : "Remove Network Mapping"), this._removeNetworkMapping.bind(this, uiSourceCode));
         }
 
         if (uiSourceCode.project().type() === WebInspector.projectTypes.Network) {
@@ -1178,7 +1217,7 @@ WebInspector.ScriptsPanel.prototype = {
             if (!this._workspace.projects().filter(filterProject).length)
                 return;
             if (this._workspace.uiSourceCodeForURL(uiSourceCode.url) === uiSourceCode)
-                contextMenu.appendItem(WebInspector.UIString("Map to file system resource..."), this._mapNetworkToFileSystem.bind(this, uiSourceCode));
+                contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Map to file system resource\u2026" : "Map to File System Resource\u2026"), this._mapNetworkToFileSystem.bind(this, uiSourceCode));
         }
     },
 
@@ -1192,7 +1231,7 @@ WebInspector.ScriptsPanel.prototype = {
             return;
 
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ (target);
-        contextMenu.appendItem(WebInspector.UIString("Local modifications..."), this._showLocalHistory.bind(this, uiSourceCode));
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Local modifications\u2026" : "Local Modifications\u2026"), this._showLocalHistory.bind(this, uiSourceCode));
 
         if (WebInspector.isolatedFileSystemManager.supportsFileSystems() && WebInspector.experimentsSettings.fileSystemProject.isEnabled())
             this._appendUISourceCodeMappingItems(contextMenu, uiSourceCode);
@@ -1230,7 +1269,7 @@ WebInspector.ScriptsPanel.prototype = {
             DebuggerAgent.getFunctionDetails(remoteObject.objectId, didGetDetails.bind(this));
         }
 
-        contextMenu.appendItem(WebInspector.UIString("Show function definition"), revealFunction.bind(this));
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Show function definition" : "Show Function Definition"), revealFunction.bind(this));
     },
 
     showGoToSourceDialog: function()
@@ -1282,6 +1321,7 @@ WebInspector.ScriptsPanel.prototype = {
             group2.addPane(this.sidebarPanes.domBreakpoints);
             group2.addPane(this.sidebarPanes.xhrBreakpoints);
             group2.addPane(this.sidebarPanes.eventListenerBreakpoints);
+            group2.addPane(this.sidebarPanes.workerList);
 
             this.sidebarPaneView.firstElement().appendChild(this.debugToolbar);
         }

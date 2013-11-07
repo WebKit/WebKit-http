@@ -107,16 +107,13 @@ bool Settings::gUsesOverlayScrollbars = false;
 bool Settings::gShouldUseHighResolutionTimers = true;
 #endif
     
-#if USE(JSC)
 bool Settings::gShouldRespectPriorityInCSSAttributeSetters = false;
-#endif
 
 // NOTEs
-//  1) EditingMacBehavior comprises Tiger, Leopard, SnowLeopard and iOS builds, as well QtWebKit and Chromium when built on Mac;
+//  1) EditingMacBehavior comprises Tiger, Leopard, SnowLeopard and iOS builds, as well as QtWebKit when built on Mac;
 //  2) EditingWindowsBehavior comprises Win32 and WinCE builds, as well as QtWebKit and Chromium when built on Windows;
-//  3) EditingUnixBehavior comprises all unix-based systems, but Darwin/MacOS/Android (and then abusing the terminology);
-//  4) EditingAndroidBehavior comprises Android builds.
-// 99) MacEditingBehavior is used a fallback.
+//  3) EditingUnixBehavior comprises all unix-based systems, but Darwin/MacOS (and then abusing the terminology);
+// 99) MacEditingBehavior is used as a fallback.
 static EditingBehaviorType editingBehaviorTypeForPlatform()
 {
     return
@@ -124,8 +121,6 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
     EditingMacBehavior
 #elif OS(WINDOWS)
     EditingWindowsBehavior
-#elif OS(ANDROID)
-    EditingAndroidBehavior
 #elif OS(UNIX)
     EditingUnixBehavior
 #else
@@ -137,10 +132,12 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
 
 static const double defaultIncrementalRenderingSuppressionTimeoutInSeconds = 5;
 #if USE(UNIFIED_TEXT_CHECKING)
-static const double defaultUnifiedTextCheckerEnabled = true;
+static const bool defaultUnifiedTextCheckerEnabled = true;
 #else
-static const double defaultUnifiedTextCheckerEnabled = false;
+static const bool defaultUnifiedTextCheckerEnabled = false;
 #endif
+static const bool defaultSmartInsertDeleteEnabled = true;
+static const bool defaultSelectTrailingWhitespaceEnabled = false;
 
 Settings::Settings(Page* page)
     : m_page(0)
@@ -176,9 +173,6 @@ Settings::Settings(Page* page)
     , m_showTiledScrollingIndicator(false)
     , m_tiledBackingStoreEnabled(false)
     , m_dnsPrefetchingEnabled(false)
-#if ENABLE(SMOOTH_SCROLLING)
-    , m_scrollAnimatorEnabled(true)
-#endif
 #if ENABLE(TOUCH_EVENTS)
     , m_touchEventEmulationEnabled(false)
 #endif
@@ -186,6 +180,12 @@ Settings::Settings(Page* page)
     , m_aggressiveTileRetentionEnabled(false)
     , m_timeWithoutMouseMovementBeforeHidingControls(3)
     , m_setImageLoadingSettingsTimer(this, &Settings::imageLoadingSettingsTimerFired)
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    , m_hiddenPageDOMTimerThrottlingEnabled(false)
+#endif
+#if ENABLE(PAGE_VISIBILITY_API)
+    , m_hiddenPageCSSAnimationSuspensionEnabled(false)
+#endif
 {
     // A Frame may not have been created yet, so we initialize the AtomicString
     // hash before trying to use it.
@@ -590,7 +590,6 @@ bool Settings::usesOverlayScrollbars()
     return gUsesOverlayScrollbars;
 }
 
-#if USE(JSC)
 void Settings::setShouldRespectPriorityInCSSAttributeSetters(bool flag)
 {
     gShouldRespectPriorityInCSSAttributeSetters = flag;
@@ -599,6 +598,25 @@ void Settings::setShouldRespectPriorityInCSSAttributeSetters(bool flag)
 bool Settings::shouldRespectPriorityInCSSAttributeSetters()
 {
     return gShouldRespectPriorityInCSSAttributeSetters;
+}
+
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+void Settings::setHiddenPageDOMTimerThrottlingEnabled(bool flag)
+{
+    if (m_hiddenPageDOMTimerThrottlingEnabled == flag)
+        return;
+    m_hiddenPageDOMTimerThrottlingEnabled = flag;
+    m_page->hiddenPageDOMTimerThrottlingStateChanged();
+}
+#endif
+
+#if ENABLE(PAGE_VISIBILITY_API)
+void Settings::setHiddenPageCSSAnimationSuspensionEnabled(bool flag)
+{
+    if (m_hiddenPageCSSAnimationSuspensionEnabled == flag)
+        return;
+    m_hiddenPageCSSAnimationSuspensionEnabled = flag;
+    m_page->hiddenPageCSSAnimationSuspensionStateChanged();
 }
 #endif
 

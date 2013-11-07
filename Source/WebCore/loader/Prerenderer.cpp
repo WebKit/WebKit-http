@@ -60,7 +60,7 @@ PassOwnPtr<Prerenderer> Prerenderer::create(Document* document)
 }
 
 Prerenderer::Prerenderer(Document* document)
-    : ActiveDOMObject(document, this)
+    : ActiveDOMObject(document)
     , m_initializedClient(false)
     , m_client(0)
 {
@@ -130,7 +130,7 @@ void Prerenderer::resume()
 Document* Prerenderer::document()
 {
     ASSERT(scriptExecutionContext()->isDocument());
-    return static_cast<Document*>(scriptExecutionContext());
+    return toDocument(scriptExecutionContext());
 }
 
 PrerendererClient* Prerenderer::client()

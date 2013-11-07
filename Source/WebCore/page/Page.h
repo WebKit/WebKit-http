@@ -43,7 +43,7 @@
 #endif
 
 #if PLATFORM(MAC)
-#include "SchedulePair.h"
+#include <wtf/SchedulePair.h>
 #endif
 
 namespace JSC {
@@ -74,6 +74,7 @@ class InspectorClient;
 class InspectorController;
 class MediaCanStartListener;
 class Node;
+class PageConsole;
 class PageGroup;
 class PlugInClient;
 class PluginData;
@@ -378,7 +379,20 @@ public:
     void sawMediaEngine(const String& engineName);
     void resetSeenMediaEngines();
 
+    PageConsole* console() { return m_console.get(); }
+
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    void hiddenPageDOMTimerThrottlingStateChanged();
+#endif
+#if ENABLE(PAGE_VISIBILITY_API)
+    void hiddenPageCSSAnimationSuspensionStateChanged();
+#endif
+
     void reportMemoryUsage(MemoryObjectInfo*) const;
+
+#if ENABLE(VIDEO_TRACK)
+    void captionPreferencesChanged();
+#endif
 
 private:
     void initGroup();
@@ -500,6 +514,7 @@ private:
     AlternativeTextClient* m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended;
+    OwnPtr<PageConsole> m_console;
 
     HashSet<String> m_seenPlugins;
     HashSet<String> m_seenMediaEngines;

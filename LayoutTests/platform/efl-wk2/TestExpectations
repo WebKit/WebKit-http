@@ -72,11 +72,9 @@ webkit.org/b/109417 webgl/conformance/misc/type-conversion-test.html [ Crash ]
 webkit.org/b/109941 webgl/conformance/textures/origin-clean-conformance.html [ Crash ]
 webkit.org/b/109945 webgl/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
 webkit.org/b/109945 webgl/conformance/glsl/misc/shader-with-non-reserved-words.html [ Crash Failure ]
-webkit.org/b/109945 webgl/conformance/ogles/GL/swizzlers/swizzlers_113_to_120.html [ Crash ]
 webkit.org/b/109945 webgl/conformance/reading/read-pixels-test.html [ Crash Failure ]
 webkit.org/b/109945 webgl/conformance/uniforms/gl-uniform-arrays.html [ Crash Failure ]
 webkit.org/b/109945 webgl/conformance/uniforms/uniform-default-values.html [ Crash ]
-webkit.org/b/109945 webgl/conformance/ogles/GL/swizzlers/swizzlers_081_to_088.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
@@ -85,6 +83,7 @@ webkit.org/b/109945 webgl/conformance/ogles/GL/swizzlers/swizzlers_081_to_088.ht
 webkit.org/b/97560 http/tests/inspector/extensions-useragent.html [ Failure Pass ]
 webkit.org/b/97560 inspector/extensions/extensions-api.html [ Failure Pass ]
 webkit.org/b/97560 inspector/extensions/extensions-audits.html [ Failure Pass ]
+webkit.org/b/111612 animations/animation-delay-changed.html [ Failure Pass ]
 
 Bug(EFL) editing/deleting/4875189.html [ Crash Pass ]
 Bug(EFL) editing/selection/first-letter-selection-crash.html [ Crash Pass ]
@@ -157,6 +156,8 @@ Bug(EFL) fast/layers/no-clipping-overflow-hidden-hardware-acceleration.html [ Im
 Bug(EFL) fast/events/domactivate-sets-underlying-click-event-as-handled.html [ Failure Pass ]
 Bug(EFL) http/tests/inspector/change-iframe-src.html [ Failure Pass ]
 Bug(EFL) http/tests/loading/fire-error-event-empty-404-script.html [ Crash Failure Pass ]
+Bug(EFL) fast/js/create-lots-of-workers.html [ Crash Failure Pass ]
+Bug(EFL) media/track/track-element-load-event.html [ Crash Failure Pass ]
 
 webkit.org/b/98761 svg/text/selection-tripleclick.svg [ Failure Pass ]
 
@@ -190,6 +191,14 @@ webkit.org/b/101417 fast/dom/shadow/shadowdom-for-object-only-shadow.html [ Imag
 # Also flaky at least on GTK+
 webkit.org/b/72698 media/audio-garbage-collect.html
 
+# Audio sample mismatch
+Bug(EFL) webaudio/codec-tests/wav/24bit-22khz-resample.html [ Failure ]
+Bug(EFL) webaudio/oscillator-custom.html [ Failure ]
+Bug(EFL) webaudio/oscillator-sawtooth.html [ Failure ]
+Bug(EFL) webaudio/oscillator-sine.html [ Failure ]
+Bug(EFL) webaudio/oscillator-square.html [ Failure ]
+Bug(EFL) webaudio/oscillator-triangle.html [ Failure ]
+
 # window.internals does not reset font family mappings (done in other tests), leading to these failures
 webkit.org/b/102370 fast/writing-mode/japanese-ruby-horizontal-bt.html [ Failure Pass ]
 webkit.org/b/102370 fast/writing-mode/japanese-ruby-vertical-lr.html [ Failure Pass ]
@@ -197,6 +206,11 @@ webkit.org/b/102370 fast/writing-mode/japanese-ruby-vertical-rl.html [ Failure P
 webkit.org/b/102370 fast/text/international/002.html [ Failure Pass ]
 
 webkit.org/b/102204 http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Crash Pass ]
+
+webkit.org/b/95428 media/video-controls-captions.html [ Failure ]
+webkit.org/b/113106 media/track/track-prefer-captions.html [ Failure ]
+
+webkit.org/b/113513 inspector/styles/paste-property.html [ Failure ]
 
 # Flaky on Debug bot. See also webkit.org/b/102190
 webkit.org/b/103043 fast/events/overflow-scroll-fake-mouse-move.html [ Failure Pass ]
@@ -241,76 +255,52 @@ webkit.org/b/108355 storage/websql/sql-error-codes.html [ Crash Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Missing EFL's accessibility functions
-accessibility/accessibility-node-memory-management.html [ Failure ]
-accessibility/accessibility-node-reparent.html [ Failure ]
-accessibility/aria-describedby-on-input.html [ Failure ]
-accessibility/aria-help.html [ Failure ]
-accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
-accessibility/aria-invalid.html [ Failure ]
-accessibility/aria-link-supports-press.html [ Failure ]
-accessibility/aria-readonly.html [ Failure ]
-accessibility/aria-scrollbar-role.html [ Failure ]
-accessibility/aria-text-role.html [ Failure ]
-accessibility/aria-used-on-image-maps.html [ Failure ]
-accessibility/button-press-action.html [ Failure ]
-accessibility/canvas-accessibilitynodeobject.html [ Failure ]
-accessibility/canvas-fallback-content-2.html [ Failure ]
-accessibility/canvas-fallback-content.html [ Failure ]
-accessibility/disabled-controls-not-focusable.html [ Failure ]
-Bug(EFL) accessibility/heading-level.html [ Failure ]
-accessibility/ignore-spacer-elements.html [ Failure ]
-accessibility/inline-continuations.html [ Failure ]
-accessibility/label-for-control-hittest.html [ Failure ]
-accessibility/language-attribute.html [ Failure ]
-accessibility/loading-iframe-sends-notification.html [ Failure ]
-accessibility/onclick-handlers.html [ Failure ]
-accessibility/placeholder.html [ Failure ]
-accessibility/secure-textfield-title-ui.html [ Failure ]
-accessibility/selection-states.html [ Failure ]
-accessibility/spinbutton-value.html [ Failure ]
-accessibility/svg-bounds.html [ Failure ]
-accessibility/svg-remote-element.html [ Failure ]
-accessibility/textarea-insertion-point-line-number.html [ Failure ]
-accessibility/textarea-line-for-index.html [ Failure ]
-accessibility/textarea-selected-text-range.html [ Failure ]
-accessibility/textbox-role-reports-selection.html [ Failure ]
-accessibility/th-as-title-ui.html [ Failure ]
-accessibility/transformed-element.html [ Failure ]
-accessibility/visible-elements.html [ Failure ]
+webkit.org/b/112025 accessibility/accessibility-node-memory-management.html [ Failure ]
+webkit.org/b/112026 accessibility/accessibility-node-reparent.html [ Failure ]
+webkit.org/b/112027 accessibility/aria-describedby-on-input.html [ Failure ]
+webkit.org/b/112028 accessibility/aria-help.html [ Failure ]
+webkit.org/b/111984 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
+webkit.org/b/111986 accessibility/aria-invalid.html [ Failure ]
+webkit.org/b/111987 accessibility/aria-link-supports-press.html [ Failure ]
+webkit.org/b/111988 accessibility/aria-readonly.html [ Failure ]
+webkit.org/b/111991 accessibility/aria-text-role.html [ Failure ]
+webkit.org/b/111992 accessibility/aria-used-on-image-maps.html [ Failure ]
+webkit.org/b/111993 accessibility/button-press-action.html [ Failure ]
+webkit.org/b/111994 accessibility/canvas-accessibilitynodeobject.html [ Failure ]
+webkit.org/b/111996 accessibility/canvas-fallback-content-2.html [ Failure ]
+webkit.org/b/111999 accessibility/disabled-controls-not-focusable.html [ Failure ]
+webkit.org/b/112000 accessibility/heading-level.html [ Failure ]
+webkit.org/b/112002 accessibility/inline-continuations.html [ Failure ]
+webkit.org/b/112029 accessibility/label-for-control-hittest.html [ Failure ]
+webkit.org/b/112030 accessibility/language-attribute.html [ Failure ]
+webkit.org/b/112003 accessibility/loading-iframe-sends-notification.html [ Failure ]
+webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
+webkit.org/b/112031 accessibility/placeholder.html [ Failure ]
+webkit.org/b/112006 accessibility/secure-textfield-title-ui.html [ Failure ]
+webkit.org/b/112007 accessibility/selection-states.html [ Failure ]
+webkit.org/b/112008 accessibility/spinbutton-value.html [ Failure ]
+webkit.org/b/112012 accessibility/svg-bounds.html [ Failure ]
+webkit.org/b/112013 accessibility/svg-remote-element.html [ Failure ]
+webkit.org/b/112014 accessibility/textarea-insertion-point-line-number.html [ Failure ]
+webkit.org/b/112015 accessibility/textarea-line-for-index.html [ Failure ]
+webkit.org/b/112016 accessibility/textarea-selected-text-range.html [ Failure ]
+webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure ]
+webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
+webkit.org/b/112020 accessibility/transformed-element.html [ Failure ]
+webkit.org/b/112021 accessibility/visible-elements.html [ Failure ]
 
-accessibility/title-ui-element-correctness.html [ Crash ]
+webkit.org/b/112019 accessibility/title-ui-element-correctness.html [ Crash ]
 
-accessibility/adjacent-continuations-cause-assertion-failure.html [ Skip ]
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
-accessibility/aria-checkbox-text.html [ Skip ]
-accessibility/aria-combobox.html [ Skip ]
-accessibility/aria-fallback-roles.html [ Skip ]
-accessibility/aria-labelledby-overrides-aria-label.html [ Skip ]
-accessibility/aria-menubar-menuitems.html [ Skip ]
-accessibility/aria-option-role.html [ Skip ]
-accessibility/aria-roles.html [ Skip ]
-accessibility/aria-tables.html [ Skip ]
-accessibility/aria-toggle-button-with-title.html [ Skip ]
-accessibility/canvas-description-and-role.html [ Skip ]
 accessibility/color-well.html [ Skip ]
 accessibility/deleting-iframe-destroys-axcache.html [ Skip ]
-accessibility/div-within-anchors-causes-crash.html [ Skip ]
-accessibility/image-link.html [ Skip ]
-accessibility/image-map1.html [ Skip ]
-accessibility/image-map2.html [ Skip ]
-accessibility/img-alt-tag-only-whitespace.html [ Skip ]
 accessibility/img-fallsback-to-title.html [ Skip ]
 accessibility/internal-link-anchors2.html [ Skip ]
-accessibility/legend.html [ Skip ]
 accessibility/lists.html [ Skip ]
 accessibility/media-element.html [ Skip ]
-accessibility/menu-list-sends-change-notification.html [ Skip ]
 accessibility/multiselect-list-reports-active-option.html [ Skip ]
-accessibility/notification-listeners.html [ Skip ]
-accessibility/platform-name.html [ Skip ]
 accessibility/plugin.html [ Skip ]
 accessibility/radio-button-group-members.html [ Skip ]
-accessibility/svg-image.html [ Skip ]
 accessibility/table-attributes.html [ Skip ]
 accessibility/table-detection.html [ Skip ]
 accessibility/table-one-cell.html [ Skip ]
@@ -415,13 +405,12 @@ webkit.org/b/98740 plugins/npruntime/delete-plugin-within-setProperty.html [ Fai
 webkit.org/b/99561 http/tests/plugins/plugin-document-has-focus.html [ Failure ]
 webkit.org/b/99562 http/tests/plugins/post-url-file.html [ Failure ]
 
-# Asserting after r135816.
-webkit.org/b/103432 [ Debug ] http/tests/inspector/network/network-xhr-replay.html [ Crash ]
-
 # Comparison of two javascript objects in C++ is failing.
 webkit.org/b/98739 plugins/npruntime/embed-property-equality.html [ Failure ]
 
 # EFL's EventSender contextClick should return objects that implements click() method
+webkit.org/b/98410 editing/pasteboard/can-read-in-copy-and-cut-events.html [ Failure ]
+webkit.org/b/98410 editing/pasteboard/can-read-in-dragstart-event.html [ Failure ]
 webkit.org/b/98410 editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
 webkit.org/b/98410 media/context-menu-actions.html [ Failure ]
 
@@ -429,10 +418,6 @@ webkit.org/b/102201 fast/dom/Window/open-window-min-size.html [ Failure ]
 
 # Regression(r142112): Several compositing tests started failing.
 webkit.org/b/109431 compositing/iframes/iframe-composited-scrolling.html [ Failure ]
-webkit.org/b/109431 compositing/layer-creation/fixed-position-in-view-dynamic.html [ Failure ]
-webkit.org/b/109431 compositing/layer-creation/fixed-position-out-of-view-dynamic.html [ Failure ]
-webkit.org/b/109431 compositing/layer-creation/fixed-position-out-of-view-scroll-reason.html [ Failure ]
-webkit.org/b/109431 compositing/layer-creation/no-compositing-for-fixed-position-under-transform.html [ Failure ]
 
 # New test introduced in r143073 that never passed on WK2 EFL.
 webkit.org/b/110054 compositing/geometry/limit-layer-bounds-fixed.html [ Failure ]
@@ -469,7 +454,7 @@ webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-v
 webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Failure ]
 webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Failure ]
 webkit.org/b/109435 webgl/conformance/textures/texture-mips.html [ Failure ]
-webkit.org/b/109435 webgl/conformance/textures/texture-size-limit.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/texture-size-limit.html [ Failure Crash ]
 
 # Remaining websocket failures.
 webkit.org/b/111976 http/tests/websocket/tests/hybi/broken-utf8.html [ Crash Pass ]

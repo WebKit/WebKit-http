@@ -115,7 +115,7 @@ namespace WebCore {
         // Returns a caller-owned pointer to the underlying native image data.
         // (Actual use: This pointer will be owned by BitmapImage and freed in
         // FrameData::clear()).
-        NativeImagePtr asNewNativeImage() const;
+        PassNativeImagePtr asNewNativeImage() const;
 
         bool hasAlpha() const;
         const IntRect& originalFrameRect() const { return m_originalFrameRect; }
@@ -141,30 +141,11 @@ namespace WebCore {
         inline PixelData* getAddr(int x, int y)
         {
 #if USE(SKIA)
-            return m_bitmap.bitmap().getAddr32(x, y);
+            return m_bitmap->bitmap().getAddr32(x, y);
 #else
             return m_bytes + (y * width()) + x;
 #endif
         }
-
-#if PLATFORM(CHROMIUM)
-        void setSkBitmap(const SkBitmap& bitmap)
-        {
-            m_bitmap = NativeImageSkia(bitmap, 1);
-        }
-
-        const SkBitmap& getSkBitmap() const
-        {
-            return m_bitmap.bitmap();
-        }
-
-        void setMemoryAllocator(SkBitmap::Allocator* allocator)
-        {
-            m_allocator = allocator;
-        }
-
-        SkBitmap::Allocator* allocator() const { return m_allocator; }
-#endif
 
         // Use fix point multiplier instead of integer division or floating point math.
         // This multipler produces exactly the same result for all values in range 0 - 255.
@@ -202,7 +183,7 @@ namespace WebCore {
         int width() const
         {
 #if USE(SKIA)
-            return m_bitmap.bitmap().width();
+            return m_bitmap->bitmap().width();
 #else
             return m_size.width();
 #endif
@@ -211,14 +192,14 @@ namespace WebCore {
         int height() const
         {
 #if USE(SKIA)
-            return m_bitmap.bitmap().height();
+            return m_bitmap->bitmap().height();
 #else
             return m_size.height();
 #endif
         }
 
 #if USE(SKIA)
-        NativeImageSkia m_bitmap;
+        RefPtr<NativeImageSkia> m_bitmap;
         SkBitmap::Allocator* m_allocator;
 #else
         Vector<PixelData> m_backingStore;

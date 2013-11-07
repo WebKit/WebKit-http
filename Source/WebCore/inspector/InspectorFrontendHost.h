@@ -64,12 +64,12 @@ public:
     void setZoomFactor(float);
     void inspectedURLChanged(const String&);
 
-    void setAttachedWindowHeight(unsigned height);
+    void setAttachedWindowHeight(unsigned);
+    void setAttachedWindowWidth(unsigned);
     void moveWindowBy(float x, float y) const;
     void setInjectedScriptForOrigin(const String& origin, const String& script);
 
     String localizedStringsURL();
-    String hiddenPanels();
 
     void copyText(const String& text);
     void openInNewTab(const String& url);
@@ -77,8 +77,6 @@ public:
     void save(const String& url, const String& content, bool forceSaveAs);
     void append(const String& url, const String& content);
     void close(const String& url);
-
-    bool canInspectWorkers();
 
     // Called from [Custom] implementations.
     void showContextMenu(Event*, const Vector<ContextMenuItem>& items);
@@ -95,6 +93,10 @@ public:
 #endif
 
     bool isUnderTest();
+
+    bool canInspectWorkers();
+    bool canSaveAs();
+    String hiddenPanels();
 
 private:
 #if ENABLE(CONTEXT_MENUS)

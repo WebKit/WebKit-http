@@ -59,7 +59,7 @@ PassRefPtr<IDBDatabase> IDBDatabase::create(ScriptExecutionContext* context, Pas
 }
 
 IDBDatabase::IDBDatabase(ScriptExecutionContext* context, PassRefPtr<IDBDatabaseBackendInterface> backend, PassRefPtr<IDBDatabaseCallbacks> callbacks)
-    : ActiveDOMObject(context, this)
+    : ActiveDOMObject(context)
     , m_backend(backend)
     , m_closePending(false)
     , m_contextStopped(false)
@@ -159,6 +159,7 @@ PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, co
 
 PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, const IDBKeyPath& keyPath, bool autoIncrement, ExceptionCode& ec)
 {
+    IDB_TRACE("IDBDatabase::createObjectStore");
     HistogramSupport::histogramEnumeration("WebCore.IndexedDB.FrontEndAPICalls", IDBCreateObjectStoreCall, IDBMethodsMax);
     if (!m_versionChangeTransaction) {
         ec = IDBDatabaseException::InvalidStateError;
@@ -198,6 +199,7 @@ PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, co
 
 void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
 {
+    IDB_TRACE("IDBDatabase::deleteObjectStore");
     HistogramSupport::histogramEnumeration("WebCore.IndexedDB.FrontEndAPICalls", IDBDeleteObjectStoreCall, IDBMethodsMax);
     if (!m_versionChangeTransaction) {
         ec = IDBDatabaseException::InvalidStateError;
@@ -221,13 +223,14 @@ void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
 
 PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* context, const Vector<String>& scope, const String& modeString, ExceptionCode& ec)
 {
+    IDB_TRACE("IDBDatabase::transaction");
     HistogramSupport::histogramEnumeration("WebCore.IndexedDB.FrontEndAPICalls", IDBTransactionCall, IDBMethodsMax);
     if (!scope.size()) {
         ec = IDBDatabaseException::InvalidAccessError;
         return 0;
     }
 
-    IndexedDB::TransactionMode mode = IDBTransaction::stringToMode(modeString, context, ec);
+    IndexedDB::TransactionMode mode = IDBTransaction::stringToMode(modeString, ec);
     if (ec)
         return 0;
 
@@ -269,6 +272,7 @@ void IDBDatabase::forceClose()
 
 void IDBDatabase::close()
 {
+    IDB_TRACE("IDBDatabase::close");
     if (m_closePending)
         return;
 
@@ -301,25 +305,15 @@ void IDBDatabase::closeConnection()
 
 void IDBDatabase::onVersionChange(int64_t oldVersion, int64_t newVersion)
 {
+    IDB_TRACE("IDBDatabase::onVersionChange");
     if (m_contextStopped || !scriptExecutionContext())
         return;
 
     if (m_closePending)
         return;
 
-    enqueueEvent(IDBVersionChangeEvent::create(IDBAny::create(oldVersion), IDBAny::create(newVersion), eventNames().versionchangeEvent));
-}
-
-void IDBDatabase::onVersionChange(const String& newVersion)
-{
-    if (m_contextStopped || !scriptExecutionContext())
-        return;
-
-    if (m_closePending)
-        return;
-
-    RefPtr<IDBAny> newVersionAny = newVersion.isEmpty() ? IDBAny::createNull() : IDBAny::createString(newVersion);
-    enqueueEvent(IDBVersionChangeEvent::create(version(), newVersionAny.release(), eventNames().versionchangeEvent));
+    RefPtr<IDBAny> newVersionAny = newVersion == IDBDatabaseMetadata::NoIntVersion ? IDBAny::createNull() : IDBAny::create(newVersion);
+    enqueueEvent(IDBVersionChangeEvent::create(IDBAny::create(oldVersion), newVersionAny.release(), eventNames().versionchangeEvent));
 }
 
 void IDBDatabase::enqueueEvent(PassRefPtr<Event> event)
@@ -358,12 +352,11 @@ bool IDBDatabase::hasPendingActivity() const
 {
     // The script wrapper must not be collected before the object is closed or
     // we can't fire a "versionchange" event to let script manually close the connection.
-    return !m_closePending && !m_eventTargetData.eventListenerMap.isEmpty();
+    return !m_closePending && !m_eventTargetData.eventListenerMap.isEmpty() && !m_contextStopped;
 }
 
 void IDBDatabase::stop()
 {
-    ActiveDOMObject::stop();
     // Stop fires at a deterministic time, so we need to call close in it.
     close();
 

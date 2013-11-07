@@ -220,7 +220,7 @@ namespace JSC {
         {
             if (!m_rareData)
                 return 1;
-            Vector<CallReturnOffsetToBytecodeOffset>& callIndices = m_rareData->m_callReturnIndexVector;
+            Vector<CallReturnOffsetToBytecodeOffset, 0, UnsafeVectorOverflow>& callIndices = m_rareData->m_callReturnIndexVector;
             if (!callIndices.size())
                 return 1;
             RELEASE_ASSERT(index < m_rareData->m_callReturnIndexVector.size());
@@ -437,7 +437,7 @@ namespace JSC {
         JITCode::JITType getJITType() const { return m_jitCode.jitType(); }
         ExecutableMemoryHandle* executableMemory() { return getJITCode().getExecutableMemory(); }
         virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex) = 0;
-        virtual void jettison() = 0;
+        void jettison();
         enum JITCompilationResult { AlreadyCompiled, CouldNotCompile, CompiledSuccessfully };
         JITCompilationResult jitCompile(ExecState* exec)
         {
@@ -748,7 +748,7 @@ namespace JSC {
         bool hasExpressionInfo() { return m_unlinkedCode->hasExpressionInfo(); }
 
 #if ENABLE(JIT)
-        Vector<CallReturnOffsetToBytecodeOffset>& callReturnIndexVector()
+        Vector<CallReturnOffsetToBytecodeOffset, 0, UnsafeVectorOverflow>& callReturnIndexVector()
         {
             createRareDataIfNecessary();
             return m_rareData->m_callReturnIndexVector;
@@ -762,7 +762,7 @@ namespace JSC {
             return m_rareData->m_inlineCallFrames;
         }
         
-        Vector<CodeOriginAtCallReturnOffset>& codeOrigins()
+        Vector<CodeOriginAtCallReturnOffset, 0, UnsafeVectorOverflow>& codeOrigins()
         {
             createRareDataIfNecessary();
             return m_rareData->m_codeOrigins;
@@ -776,6 +776,13 @@ namespace JSC {
         
         bool codeOriginForReturn(ReturnAddressPtr, CodeOrigin&);
         
+        bool canGetCodeOrigin(unsigned index)
+        {
+            if (!m_rareData)
+                return false;
+            return m_rareData->m_codeOrigins.size() > index;
+        }
+        
         CodeOrigin codeOrigin(unsigned index)
         {
             RELEASE_ASSERT(m_rareData);
@@ -787,6 +794,8 @@ namespace JSC {
             ASSERT(JITCode::isBaselineCode(getJITType()));
             return m_exitProfile.add(site);
         }
+        
+        bool hasExitSite(const DFG::FrequentExitSite& site) const { return m_exitProfile.hasExitSite(site); }
 
         DFG::ExitProfile& exitProfile() { return m_exitProfile; }
         
@@ -1049,9 +1058,16 @@ namespace JSC {
     protected:
 #if ENABLE(JIT)
         virtual bool jitCompileImpl(ExecState*) = 0;
+        virtual void jettisonImpl() = 0;
 #endif
         virtual void visitWeakReferences(SlotVisitor&);
         virtual void finalizeUnconditionally();
+
+#if ENABLE(DFG_JIT)
+        void tallyFrequentExitSites();
+#else
+        void tallyFrequentExitSites() { }
+#endif
 
     private:
         friend class DFGCodeBlocks;
@@ -1062,11 +1078,6 @@ namespace JSC {
         ClosureCallStubRoutine* findClosureCallForReturnPC(ReturnAddressPtr);
 #endif
         
-#if ENABLE(DFG_JIT)
-        void tallyFrequentExitSites();
-#else
-        void tallyFrequentExitSites() { }
-#endif
 #if ENABLE(VALUE_PROFILER)
         void updateAllPredictionsAndCountLiveness(OperationInProgress, unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles);
 #endif
@@ -1143,6 +1154,7 @@ namespace JSC {
 
 #if ENABLE(JIT)
         void resetStubInternal(RepatchBuffer&, StructureStubInfo&);
+        void resetStubDuringGCInternal(RepatchBuffer&, StructureStubInfo&);
 #endif
         WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
         int m_numParameters;
@@ -1271,11 +1283,11 @@ namespace JSC {
             EvalCodeCache m_evalCodeCache;
 
 #if ENABLE(JIT)
-            Vector<CallReturnOffsetToBytecodeOffset> m_callReturnIndexVector;
+            Vector<CallReturnOffsetToBytecodeOffset, 0, UnsafeVectorOverflow> m_callReturnIndexVector;
 #endif
 #if ENABLE(DFG_JIT)
             SegmentedVector<InlineCallFrame, 4> m_inlineCallFrames;
-            Vector<CodeOriginAtCallReturnOffset> m_codeOrigins;
+            Vector<CodeOriginAtCallReturnOffset, 0, UnsafeVectorOverflow> m_codeOrigins;
 #endif
         };
 #if COMPILER(MSVC)
@@ -1318,7 +1330,7 @@ namespace JSC {
 #if ENABLE(JIT)
     protected:
         virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex);
-        virtual void jettison();
+        virtual void jettisonImpl();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
         virtual DFG::CapabilityLevel canCompileWithDFGInternal();
@@ -1343,7 +1355,7 @@ namespace JSC {
 #if ENABLE(JIT)
     protected:
         virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex);
-        virtual void jettison();
+        virtual void jettisonImpl();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
         virtual DFG::CapabilityLevel canCompileWithDFGInternal();
@@ -1368,7 +1380,7 @@ namespace JSC {
 #if ENABLE(JIT)
     protected:
         virtual JSObject* compileOptimized(ExecState*, JSScope*, unsigned bytecodeIndex);
-        virtual void jettison();
+        virtual void jettisonImpl();
         virtual bool jitCompileImpl(ExecState*);
         virtual CodeBlock* replacement();
         virtual DFG::CapabilityLevel canCompileWithDFGInternal();
@@ -1389,7 +1401,7 @@ namespace JSC {
             return baselineCodeBlockForInlineCallFrame(codeOrigin.inlineCallFrame);
         return baselineCodeBlock;
     }
-    
+
     inline int CodeBlock::argumentIndexAfterCapture(size_t argument)
     {
         if (argument >= static_cast<size_t>(symbolTable()->parameterCount()))

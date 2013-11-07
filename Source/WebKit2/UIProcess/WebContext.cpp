@@ -449,6 +449,26 @@ void WebContext::willStopUsingPrivateBrowsing()
     }
 }
 
+void (*s_invalidMessageCallback)(WKStringRef messageName);
+
+void WebContext::setInvalidMessageCallback(void (*invalidMessageCallback)(WKStringRef messageName))
+{
+    s_invalidMessageCallback = invalidMessageCallback;
+}
+
+void WebContext::didReceiveInvalidMessage(const CoreIPC::StringReference& messageReceiverName, const CoreIPC::StringReference& messageName)
+{
+    if (!s_invalidMessageCallback)
+        return;
+
+    StringBuilder messageNameStringBuilder;
+    messageNameStringBuilder.append(messageReceiverName.data(), messageReceiverName.size());
+    messageNameStringBuilder.append(".");
+    messageNameStringBuilder.append(messageName.data(), messageName.size());
+
+    s_invalidMessageCallback(toAPI(WebString::create(messageNameStringBuilder.toString()).get()));
+}
+
 WebProcessProxy* WebContext::ensureSharedWebProcess()
 {
     ASSERT(m_processModel == ProcessModelSharedSecondaryProcess);
@@ -526,7 +546,8 @@ WebProcessProxy* WebContext::createNewWebProcess()
     parameters.usesNetworkProcess = m_usesNetworkProcess;
 #endif
 
-    parameters.plugInAutoStartOrigins = m_plugInAutoStartProvider.autoStartOriginsCopy();
+    parameters.plugInAutoStartOriginHashes = m_plugInAutoStartProvider.autoStartOriginHashesCopy();
+    copyToVector(m_plugInAutoStartProvider.autoStartOrigins(), parameters.plugInAutoStartOrigins);
 
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);
@@ -1133,6 +1154,8 @@ void WebContext::requestNetworkingStatistics(StatisticsRequest* request)
     uint64_t requestID = request->addOutstandingRequest();
     m_statisticsRequests.set(requestID, request);
     m_networkProcess->send(Messages::NetworkProcess::GetNetworkProcessStatistics(requestID), 0);
+#else
+    UNUSED_PARAM(request);
 #endif
 }
 
@@ -1165,7 +1188,7 @@ void WebContext::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
 
 void WebContext::addPlugInAutoStartOriginHash(const String& pageOrigin, unsigned plugInOriginHash)
 {
-    m_plugInAutoStartProvider.addAutoStartOrigin(pageOrigin, plugInOriginHash);
+    m_plugInAutoStartProvider.addAutoStartOriginHash(pageOrigin, plugInOriginHash);
 }
 
 void WebContext::plugInDidReceiveUserInteraction(unsigned plugInOriginHash)
@@ -1180,7 +1203,12 @@ PassRefPtr<ImmutableDictionary> WebContext::plugInAutoStartOriginHashes() const
 
 void WebContext::setPlugInAutoStartOriginHashes(ImmutableDictionary& dictionary)
 {
-    return m_plugInAutoStartProvider.setAutoStartOriginsTable(dictionary);
+    m_plugInAutoStartProvider.setAutoStartOriginsTable(dictionary);
+}
+
+void WebContext::setPlugInAutoStartOrigins(ImmutableArray& array)
+{
+    m_plugInAutoStartProvider.setAutoStartOriginsArray(array);
 }
 
 #if ENABLE(CUSTOM_PROTOCOLS)
@@ -1198,6 +1226,9 @@ void WebContext::unregisterSchemeForCustomProtocol(const String& scheme)
 #if ENABLE(NETSCAPE_PLUGIN_API)
 void WebContext::pluginInfoStoreDidLoadPlugins(PluginInfoStore* store)
 {
+#ifdef NDEBUG
+    UNUSED_PARAM(store);
+#endif
     ASSERT(store == &m_pluginInfoStore);
 
     Vector<RefPtr<APIObject> > pluginArray;

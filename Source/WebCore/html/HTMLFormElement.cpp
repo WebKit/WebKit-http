@@ -139,6 +139,8 @@ bool HTMLFormElement::rendererIsNeeded(const NodeRenderingContext& context)
 Node::InsertionNotificationRequest HTMLFormElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
+    if (insertionPoint->inDocument())
+        this->document()->didAssociateFormControl(this);
     return InsertionDone;
 }
 
@@ -205,13 +207,11 @@ void HTMLFormElement::submitImplicitly(Event* event, bool fromImplicitSubmission
 
 static inline HTMLFormControlElement* submitElementFromEvent(const Event* event)
 {
-    Node* targetNode = event->target()->toNode();
-    if (!targetNode || !targetNode->isElementNode())
-        return 0;
-    Element* targetElement = static_cast<Element*>(targetNode);
-    if (!targetElement->isFormControlElement())
-        return 0;
-    return static_cast<HTMLFormControlElement*>(targetElement);
+    for (Node* node = event->target()->toNode(); node; node = node->parentNode()) {
+        if (node->isElementNode() && toElement(node)->isFormControlElement())
+            return static_cast<HTMLFormControlElement*>(node);
+    }
+    return 0;
 }
 
 bool HTMLFormElement::validateInteractively(Event* event)
@@ -456,10 +456,7 @@ void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomicStri
             document()->registerForPageCacheSuspensionCallbacks(this);
         else
             document()->unregisterForPageCacheSuspensionCallbacks(this);
-    } else if (name == onsubmitAttr)
-        setAttributeEventListener(eventNames().submitEvent, createAttributeEventListener(this, name, value));
-    else if (name == onresetAttr)
-        setAttributeEventListener(eventNames().resetEvent, createAttributeEventListener(this, name, value));
+    }
 #if ENABLE(REQUEST_AUTOCOMPLETE)
     else if (name == onautocompleteAttr)
         setAttributeEventListener(eventNames().autocompleteEvent, createAttributeEventListener(this, name, value));

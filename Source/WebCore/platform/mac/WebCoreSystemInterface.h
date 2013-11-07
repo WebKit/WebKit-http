@@ -136,7 +136,6 @@ extern CFReadStreamRef (*wkCreateCustomCFReadStream)(void *(*formCreate)(CFReadS
 extern CFStringRef (*wkCopyCFLocalizationPreferredName)(CFStringRef);
 extern NSString* (*wkCopyNSURLResponseStatusLine)(NSURLResponse*);
 extern CFArrayRef (*wkCopyNSURLResponseCertificateChain)(NSURLResponse*);
-extern id (*wkCreateNSURLConnectionDelegateProxy)(void);
 extern void (*wkDrawBezeledTextFieldCell)(NSRect, BOOL enabled);
 extern void (*wkDrawTextFieldCellFocusRing)(NSTextFieldCell*, NSRect);
 extern void (*wkDrawCapsLockIndicator)(CGContextRef, CGRect);
@@ -306,6 +305,8 @@ extern CFURLRef (*wkGetCFURLResponseURL)(CFURLResponseRef);
 extern CFHTTPMessageRef (*wkGetCFURLResponseHTTPResponse)(CFURLResponseRef);
 extern CFStringRef (*wkCopyCFURLResponseSuggestedFilename)(CFURLResponseRef);
 extern void (*wkSetCFURLResponseMIMEType)(CFURLResponseRef, CFStringRef mimeType);
+
+extern void(*wkDestroyRenderingResources)(void);
 
 #if USE(CFNETWORK)
 extern CFHTTPCookieStorageRef (*wkGetDefaultHTTPCookieStorage)();

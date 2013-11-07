@@ -31,14 +31,20 @@
 
 namespace WebCore {
 
-RenderMultiColumnFlowThread::RenderMultiColumnFlowThread(Document* document)
-    : RenderFlowThread(document)
+RenderMultiColumnFlowThread::RenderMultiColumnFlowThread()
 {
     setFlowThreadState(InsideInFlowThread);
 }
 
 RenderMultiColumnFlowThread::~RenderMultiColumnFlowThread()
 {
+}
+
+RenderMultiColumnFlowThread* RenderMultiColumnFlowThread::createAnonymous(Document* document)
+{
+    RenderMultiColumnFlowThread* renderer = new (document->renderArena()) RenderMultiColumnFlowThread();
+    renderer->setDocumentForAnonymous(document);
+    return renderer;
 }
 
 const char* RenderMultiColumnFlowThread::renderName() const

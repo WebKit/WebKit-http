@@ -84,7 +84,7 @@ typedef Vector<CueInterval> CueList;
 
 class HTMLMediaElement : public HTMLElement, public MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface
 #if ENABLE(VIDEO_TRACK)
-    , private TextTrackClient, private CaptionPreferencesChangedListener
+    , private TextTrackClient
 #endif
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     , public PlatformTextTrackMenuClient
@@ -113,8 +113,9 @@ public:
 
     enum DelayedActionType {
         LoadMediaResource = 1 << 0,
-        LoadTextTrackResource = 1 << 1,
-        TextTrackChangesNotification = 1 << 2
+        ConfigureTextTracks = 1 << 1,
+        TextTrackChangesNotification = 1 << 2,
+        ConfigureTextTrackDisplay = 1 << 3,
     };
     void scheduleDelayedAction(DelayedActionType);
     
@@ -268,12 +269,8 @@ public:
     void configureTextTracks();
     void configureTextTrackGroup(const TrackGroup&);
 
-    void toggleTrackAtIndex(int index, bool exclusive = true);
-    static int textTracksOffIndex() { return -1; }
-    static int textTracksIndexNotFound() { return -2; }
+    void setSelectedTextTrack(TextTrack*);
 
-    bool userPrefersCaptions() const;
-    bool userIsInterestedInThisTrackKind(String) const;
     bool textTracksAreReady() const;
     void configureTextTrackDisplay();
     void updateTextTrackDisplay();
@@ -365,7 +362,6 @@ protected:
     virtual void finishParsingChildren();
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual void attach() OVERRIDE;
-    virtual void detach() OVERRIDE;
 
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
@@ -699,7 +695,9 @@ private:
     bool m_tracksAreReady : 1;
     bool m_haveVisibleTextTrack : 1;
     bool m_processingPreferenceChange : 1;
+
     float m_lastTextTrackUpdateTime;
+    CaptionUserPreferences::CaptionDisplayMode m_captionDisplayMode;
 
     RefPtr<TextTrackList> m_textTracks;
     Vector<RefPtr<TextTrack> > m_textTracksWhenResourceSelectionBegan;
@@ -708,7 +706,6 @@ private:
 
     CueList m_currentlyActiveCues;
     int m_ignoreTrackDisplayUpdate;
-    bool m_disableCaptions;
 #endif
 
 #if ENABLE(WEB_AUDIO)

@@ -255,6 +255,9 @@
     <ClCompile Include="..\heap\SlotVisitor.cpp">
       <Filter>heap</Filter>
     </ClCompile>
+    <ClCompile Include="..\heap\SuperRegion.cpp">
+      <Filter>heap</Filter>
+    </ClCompile>
     <ClCompile Include="..\heap\VTableSpectrum.cpp">
       <Filter>heap</Filter>
     </ClCompile>
@@ -750,9 +753,6 @@
     <ClCompile Include="..\runtime\PropertyTable.cpp">
       <Filter>runtime</Filter>
     </ClCompile>
-    <ClCompile Include="..\API\JSAPIWrapperObject.cpp">
-      <Filter>API</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\API\APICast.h">
@@ -1073,6 +1073,12 @@
     <ClInclude Include="..\heap\Handle.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\HandleBlock.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\HandleBlockInlines.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\HandleSet.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -1136,6 +1142,9 @@
     <ClInclude Include="..\heap\PassWeak.h">
       <Filter>heap</Filter>
     </ClInclude>
+    <ClInclude Include="..\heap\Region.h">
+      <Filter>heap</Filter>
+    </ClInclude>
     <ClInclude Include="..\heap\SlotVisitor.h">
       <Filter>heap</Filter>
     </ClInclude>
@@ -1146,6 +1155,9 @@
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\StrongInlines.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClInclude Include="..\heap\SuperRegion.h">
       <Filter>heap</Filter>
     </ClInclude>
     <ClInclude Include="..\heap\TinyBloomFilter.h">

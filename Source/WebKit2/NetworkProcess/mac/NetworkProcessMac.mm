@@ -29,7 +29,9 @@
 #if ENABLE(NETWORK_PROCESS)
 
 #import "NetworkProcessCreationParameters.h"
+#import "NetworkResourceLoader.h"
 #import "PlatformCertificateInfo.h"
+#import "ResourceCachesToClear.h"
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
 #import "StringUtilities.h"
@@ -44,6 +46,12 @@
 
 #if USE(SECURITY_FRAMEWORK)
 #import "SecItemShim.h"
+#endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+typedef struct _CFURLCache* CFURLCacheRef;
+extern "C" CFURLCacheRef CFURLCacheCopySharedURLCache();
+extern "C" void _CFURLCacheSetMinSizeForVMCachedResource(CFURLCacheRef, CFIndex);
 #endif
 
 using namespace WebCore;
@@ -120,6 +128,14 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     if (!parameters.httpProxy.isNull() || !parameters.httpsProxy.isNull())
         overrideSystemProxies(parameters.httpProxy, parameters.httpsProxy);
 #endif
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    RetainPtr<CFURLCacheRef> cache = adoptCF(CFURLCacheCopySharedURLCache());
+    if (!cache)
+        return;
+
+    _CFURLCacheSetMinSizeForVMCachedResource(cache.get(), NetworkResourceLoader::fileBackedResourceMinimumSize());
+#endif
 }
 
 static uint64_t memorySize()
@@ -184,6 +200,29 @@ void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameter
     sandboxParameters.setOverrideSandboxProfilePath([webkit2Bundle pathForResource:@"com.apple.WebKit.NetworkProcess" ofType:@"sb"]);
 
     ChildProcess::initializeSandbox(parameters, sandboxParameters);
+}
+
+void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)
+{
+    ResourceCachesToClear resourceCachesToClear = static_cast<ResourceCachesToClear>(cachesToClear);
+    if (resourceCachesToClear == InMemoryResourceCachesOnly)
+        return;
+
+    if (!m_clearCacheDispatchGroup)
+        m_clearCacheDispatchGroup = dispatch_group_create();
+
+    dispatch_group_async(m_clearCacheDispatchGroup, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        [[NSURLCache sharedURLCache] removeAllCachedResponses];
+    });
+}
+
+void NetworkProcess::platformTerminate()
+{
+    if (m_clearCacheDispatchGroup) {
+        dispatch_group_wait(m_clearCacheDispatchGroup, DISPATCH_TIME_FOREVER);
+        dispatch_release(m_clearCacheDispatchGroup);
+        m_clearCacheDispatchGroup = 0;
+    }
 }
 
 } // namespace WebKit

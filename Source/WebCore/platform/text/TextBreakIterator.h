@@ -27,50 +27,48 @@
 
 namespace WebCore {
 
-    class TextBreakIterator;
+class TextBreakIterator;
 
-    // Note: The returned iterator is good only until you get another iterator, with the exception of acquireLineBreakIterator.
+// Note: The returned iterator is good only until you get another iterator, with the exception of acquireLineBreakIterator.
 
-    // This is similar to character break iterator in most cases, but is subject to
-    // platform UI conventions. One notable example where this can be different
-    // from character break iterator is Thai prepend characters, see bug 24342.
-    // Use this for insertion point and selection manipulations.
-    TextBreakIterator* cursorMovementIterator(const UChar*, int length);
+// This is similar to character break iterator in most cases, but is subject to
+// platform UI conventions. One notable example where this can be different
+// from character break iterator is Thai prepend characters, see bug 24342.
+// Use this for insertion point and selection manipulations.
+TextBreakIterator* cursorMovementIterator(const UChar*, int length);
 
-    TextBreakIterator* wordBreakIterator(const UChar*, int length);
-    TextBreakIterator* acquireLineBreakIterator(const LChar*, int length, const AtomicString& locale);
-    TextBreakIterator* acquireLineBreakIterator(const UChar*, int length, const AtomicString& locale);
-    void releaseLineBreakIterator(TextBreakIterator*);
-    TextBreakIterator* sentenceBreakIterator(const UChar*, int length);
+TextBreakIterator* wordBreakIterator(const UChar*, int length);
+TextBreakIterator* acquireLineBreakIterator(const LChar*, int length, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength);
+TextBreakIterator* acquireLineBreakIterator(const UChar*, int length, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength);
+void releaseLineBreakIterator(TextBreakIterator*);
+TextBreakIterator* sentenceBreakIterator(const UChar*, int length);
 
-    int textBreakFirst(TextBreakIterator*);
-    int textBreakLast(TextBreakIterator*);
-    int textBreakNext(TextBreakIterator*);
-    int textBreakPrevious(TextBreakIterator*);
-    int textBreakCurrent(TextBreakIterator*);
-    int textBreakPreceding(TextBreakIterator*, int);
-    int textBreakFollowing(TextBreakIterator*, int);
-    bool isTextBreak(TextBreakIterator*, int);
-    bool isWordTextBreak(TextBreakIterator*);
+int textBreakFirst(TextBreakIterator*);
+int textBreakLast(TextBreakIterator*);
+int textBreakNext(TextBreakIterator*);
+int textBreakPrevious(TextBreakIterator*);
+int textBreakCurrent(TextBreakIterator*);
+int textBreakPreceding(TextBreakIterator*, int);
+int textBreakFollowing(TextBreakIterator*, int);
+bool isTextBreak(TextBreakIterator*, int);
+bool isWordTextBreak(TextBreakIterator*);
 
-    const int TextBreakDone = -1;
+const int TextBreakDone = -1;
 
 class LazyLineBreakIterator {
 public:
     LazyLineBreakIterator()
         : m_iterator(0)
-        , m_lastCharacter(0)
-        , m_secondToLastCharacter(0)
     {
+        resetPriorContext();
     }
 
     LazyLineBreakIterator(String string, const AtomicString& locale = AtomicString())
         : m_string(string)
         , m_locale(locale)
         , m_iterator(0)
-        , m_lastCharacter(0)
-        , m_secondToLastCharacter(0)
     {
+        resetPriorContext();
     }
 
     ~LazyLineBreakIterator()
@@ -81,51 +79,75 @@ public:
 
     String string() const { return m_string; }
 
-    UChar lastCharacter() const { return m_lastCharacter; }
-    UChar secondToLastCharacter() const { return m_secondToLastCharacter; }
-    void setLastTwoCharacters(UChar last, UChar secondToLast)
+    UChar lastCharacter() const
     {
-        m_lastCharacter = last;
-        m_secondToLastCharacter = secondToLast;
+        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        return m_priorContext[1];
     }
-    void updateLastTwoCharacters(UChar last)
+    UChar secondToLastCharacter() const
     {
-        m_secondToLastCharacter = m_lastCharacter;
-        m_lastCharacter = last;
+        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        return m_priorContext[0];
     }
-    void resetLastTwoCharacters()
+    void setPriorContext(UChar last, UChar secondToLast)
     {
-        m_lastCharacter = 0;
-        m_secondToLastCharacter = 0;
+        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        m_priorContext[0] = secondToLast;
+        m_priorContext[1] = last;
     }
-
-    TextBreakIterator* get()
+    void updatePriorContext(UChar last)
+    {
+        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        m_priorContext[0] = m_priorContext[1];
+        m_priorContext[1] = last;
+    }
+    void resetPriorContext()
+    {
+        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        m_priorContext[0] = 0;
+        m_priorContext[1] = 0;
+    }
+    unsigned priorContextLength() const
+    {
+        unsigned priorContextLength = 0;
+        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        if (m_priorContext[1]) {
+            ++priorContextLength;
+            if (m_priorContext[0])
+                ++priorContextLength;
+        }
+        return priorContextLength;
+    }
+    // Obtain text break iterator, possibly previously cached, where this iterator is (or has been)
+    // initialized to use the previously stored string as the primary breaking context and using
+    // previously stored prior context if non-empty.
+    TextBreakIterator* get(unsigned priorContextLength)
     {
         if (!m_iterator) {
+            ASSERT(priorContextLength <= priorContextCapacity);
+            const UChar* priorContext = priorContextLength ? &m_priorContext[priorContextCapacity - priorContextLength] : 0;
             if (m_string.is8Bit())
-                m_iterator = acquireLineBreakIterator(m_string.characters8(), m_string.length(), m_locale);
+                m_iterator = acquireLineBreakIterator(m_string.characters8(), m_string.length(), m_locale, priorContext, priorContextLength);
             else
-                m_iterator = acquireLineBreakIterator(m_string.characters16(), m_string.length(), m_locale);
+                m_iterator = acquireLineBreakIterator(m_string.characters16(), m_string.length(), m_locale, priorContext, priorContextLength);
         }
         return m_iterator;
     }
-
-    void reset(String string, const AtomicString& locale)
+    void resetStringAndReleaseIterator(String string, const AtomicString& locale)
     {
         if (m_iterator)
             releaseLineBreakIterator(m_iterator);
-
         m_string = string;
         m_locale = locale;
         m_iterator = 0;
     }
 
 private:
+    static const unsigned priorContextCapacity = 2;
     String m_string;
     AtomicString m_locale;
     TextBreakIterator* m_iterator;
-    UChar m_lastCharacter;
-    UChar m_secondToLastCharacter;
+    UChar m_priorContext[priorContextCapacity];
 };
 
 // Iterates over "extended grapheme clusters", as defined in UAX #29.

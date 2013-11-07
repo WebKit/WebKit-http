@@ -61,10 +61,12 @@ class Document;
 class Element;
 class EventContext;
 class DocumentLoader;
+class DocumentStyleSheetCollection;
 class DeviceOrientationData;
 class GeolocationPosition;
 class GraphicsContext;
 class InspectorCSSAgent;
+class InspectorCSSOMWrappers;
 class InspectorInstrumentation;
 class InspectorTimelineAgent;
 class InstrumentingAgents;
@@ -72,6 +74,7 @@ class KURL;
 class Node;
 class PseudoElement;
 class RenderLayer;
+class RenderLayerBacking;
 class RenderObject;
 class ResourceRequest;
 class ResourceResponse;
@@ -167,14 +170,14 @@ public:
     static void didDispatchXHRLoadEvent(const InspectorInstrumentationCookie&);
     static void willScrollLayer(Frame*);
     static void didScrollLayer(Frame*);
-    static InspectorInstrumentationCookie willPaint(Frame*);
-    static void didPaint(const InspectorInstrumentationCookie&, GraphicsContext*, const LayoutRect&);
+    static void willPaint(RenderObject*);
+    static void didPaint(RenderObject*, GraphicsContext*, const LayoutRect&);
     static void willComposite(Page*);
     static void didComposite(Page*);
     static InspectorInstrumentationCookie willRecalculateStyle(Document*);
     static void didRecalculateStyle(const InspectorInstrumentationCookie&);
     static void didScheduleStyleRecalculation(Document*);
-    static InspectorInstrumentationCookie willMatchRule(Document*, StyleRule*, StyleResolver*);
+    static InspectorInstrumentationCookie willMatchRule(Document*, StyleRule*, InspectorCSSOMWrappers&, DocumentStyleSheetCollection*);
     static void didMatchRule(const InspectorInstrumentationCookie&, bool matched);
     static InspectorInstrumentationCookie willProcessRule(Document*, StyleRule*, StyleResolver*);
     static void didProcessRule(const InspectorInstrumentationCookie&);
@@ -371,12 +374,12 @@ private:
     static void didDispatchXHRLoadEventImpl(const InspectorInstrumentationCookie&);
     static void willScrollLayerImpl(InstrumentingAgents*, Frame*);
     static void didScrollLayerImpl(InstrumentingAgents*);
-    static InspectorInstrumentationCookie willPaintImpl(InstrumentingAgents*, Frame*);
-    static void didPaintImpl(const InspectorInstrumentationCookie&, GraphicsContext*, const LayoutRect&);
+    static void willPaintImpl(InstrumentingAgents*, RenderObject*);
+    static void didPaintImpl(InstrumentingAgents*, RenderObject*, GraphicsContext*, const LayoutRect&);
     static InspectorInstrumentationCookie willRecalculateStyleImpl(InstrumentingAgents*, Frame*);
     static void didRecalculateStyleImpl(const InspectorInstrumentationCookie&);
     static void didScheduleStyleRecalculationImpl(InstrumentingAgents*, Document*);
-    static InspectorInstrumentationCookie willMatchRuleImpl(InstrumentingAgents*, StyleRule*, StyleResolver*);
+    static InspectorInstrumentationCookie willMatchRuleImpl(InstrumentingAgents*, StyleRule*, InspectorCSSOMWrappers&, DocumentStyleSheetCollection*);
     static void didMatchRuleImpl(const InspectorInstrumentationCookie&, bool matched);
     static InspectorInstrumentationCookie willProcessRuleImpl(InstrumentingAgents*, StyleRule*, StyleResolver*);
     static void didProcessRuleImpl(const InspectorInstrumentationCookie&);
@@ -481,6 +484,8 @@ private:
     static InstrumentingAgents* instrumentingAgentsForFrame(Frame*);
     static InstrumentingAgents* instrumentingAgentsForContext(ScriptExecutionContext*);
     static InstrumentingAgents* instrumentingAgentsForDocument(Document*);
+    static InstrumentingAgents* instrumentingAgentsForRenderer(RenderObject*);
+
 #if ENABLE(WORKERS)
     static InstrumentingAgents* instrumentingAgentsForWorkerContext(WorkerContext*);
     static InstrumentingAgents* instrumentingAgentsForNonDocumentContext(ScriptExecutionContext*);
@@ -1099,26 +1104,25 @@ inline void InspectorInstrumentation::didDispatchXHRLoadEvent(const InspectorIns
 #endif
 }
 
-inline InspectorInstrumentationCookie InspectorInstrumentation::willPaint(Frame* frame)
-{
-#if ENABLE(INSPECTOR)
-    FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
-        return willPaintImpl(instrumentingAgents, frame);
-#else
-    UNUSED_PARAM(frame);
-#endif
-    return InspectorInstrumentationCookie();
-}
-
-inline void InspectorInstrumentation::didPaint(const InspectorInstrumentationCookie& cookie, GraphicsContext* context, const LayoutRect& rect)
+inline void InspectorInstrumentation::willPaint(RenderObject* renderer)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (cookie.isValid())
-        didPaintImpl(cookie, context, rect);
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForRenderer(renderer))
+        return willPaintImpl(instrumentingAgents, renderer);
 #else
-    UNUSED_PARAM(cookie);
+    UNUSED_PARAM(renderer);
+#endif
+}
+
+inline void InspectorInstrumentation::didPaint(RenderObject* renderer, GraphicsContext* context, const LayoutRect& rect)
+{
+#if ENABLE(INSPECTOR)
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForRenderer(renderer))
+        didPaintImpl(instrumentingAgents, renderer, context, rect);
+#else
+    UNUSED_PARAM(renderer);
     UNUSED_PARAM(context);
     UNUSED_PARAM(rect);
 #endif
@@ -1180,16 +1184,17 @@ inline void InspectorInstrumentation::didScheduleStyleRecalculation(Document* do
 #endif
 }
 
-inline InspectorInstrumentationCookie InspectorInstrumentation::willMatchRule(Document* document, StyleRule* rule, StyleResolver* styleResolver)
+inline InspectorInstrumentationCookie InspectorInstrumentation::willMatchRule(Document* document, StyleRule* rule, InspectorCSSOMWrappers& inspectorCSSOMWrappers, DocumentStyleSheetCollection* styleSheetCollection)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(document))
-        return willMatchRuleImpl(instrumentingAgents, rule, styleResolver);
+        return willMatchRuleImpl(instrumentingAgents, rule, inspectorCSSOMWrappers, styleSheetCollection);
 #else
     UNUSED_PARAM(document);
     UNUSED_PARAM(rule);
-    UNUSED_PARAM(styleResolver);
+    UNUSED_PARAM(inspectorCSSOMWrappers);
+    UNUSED_PARAM(styleSheetCollection);
 #endif
     return InspectorInstrumentationCookie();
 }
@@ -2053,7 +2058,7 @@ inline InstrumentingAgents* InspectorInstrumentation::instrumentingAgentsForCont
     if (!context)
         return 0;
     if (context->isDocument())
-        return instrumentingAgentsForPage(static_cast<Document*>(context)->page());
+        return instrumentingAgentsForPage(toDocument(context)->page());
 #if ENABLE(WORKERS)
     return instrumentingAgentsForNonDocumentContext(context);
 #else

@@ -39,6 +39,7 @@
 #include "PreciseJumpTargets.h"
 #include "PutByIdStatus.h"
 #include "ResolveGlobalStatus.h"
+#include "StringConstructor.h"
 #include <wtf/CommaPrinter.h>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
@@ -120,9 +121,8 @@ namespace JSC { namespace DFG {
 // This class is used to compile the dataflow graph from a CodeBlock.
 class ByteCodeParser {
 public:
-    ByteCodeParser(ExecState* exec, Graph& graph)
-        : m_exec(exec)
-        , m_globalData(&graph.m_globalData)
+    ByteCodeParser(Graph& graph)
+        : m_globalData(&graph.m_globalData)
         , m_codeBlock(graph.m_codeBlock)
         , m_profiledBlock(graph.m_profiledBlock)
         , m_graph(graph)
@@ -139,7 +139,6 @@ public:
         , m_preservedVars(m_codeBlock->m_numVars)
         , m_parameterSlots(0)
         , m_numPassedVarArgs(0)
-        , m_globalResolveNumber(0)
         , m_inlineStackTop(0)
         , m_haveBuiltOperandMaps(false)
         , m_emptyJSValueIndex(UINT_MAX)
@@ -164,6 +163,7 @@ private:
     // Handle calls. This resolves issues surrounding inlining and intrinsics.
     void handleCall(Interpreter*, Instruction* currentInstruction, NodeType op, CodeSpecializationKind);
     void emitFunctionChecks(const CallLinkStatus&, Node* callTarget, int registerOffset, CodeSpecializationKind);
+    void emitArgumentPhantoms(int registerOffset, int argumentCountIncludingThis, CodeSpecializationKind);
     // Handle inlining. Return true if it succeeded, false if we need to plant a call.
     bool handleInlining(bool usesResult, Node* callTargetNode, int resultOperand, const CallLinkStatus&, int registerOffset, int argumentCountIncludingThis, unsigned nextOffset, CodeSpecializationKind);
     // Handle setting the result of an intrinsic.
@@ -191,13 +191,6 @@ private:
     // Link block successors.
     void linkBlock(BasicBlock*, Vector<BlockIndex>& possibleTargets);
     void linkBlocks(Vector<UnlinkedBlock>& unlinkedBlocks, Vector<BlockIndex>& possibleTargets);
-    // Link GetLocal & SetLocal nodes, to ensure live values are generated.
-    enum PhiStackType {
-        LocalPhiStack,
-        ArgumentPhiStack
-    };
-    template<PhiStackType stackType>
-    void processPhiStack();
     
     VariableAccessData* newVariableAccessData(int operand, bool isCaptured)
     {
@@ -297,13 +290,15 @@ private:
             variable = node->variableAccessData();
             variable->mergeIsCaptured(isCaptured);
             
-            switch (node->op()) {
-            case GetLocal:
-                return node;
-            case SetLocal:
-                return node->child1().node();
-            default:
-                break;
+            if (!isCaptured) {
+                switch (node->op()) {
+                case GetLocal:
+                    return node;
+                case SetLocal:
+                    return node->child1().node();
+                default:
+                    break;
+                }
             }
         } else {
             m_preservedVars.set(operand);
@@ -693,8 +688,6 @@ private:
         return value.isBoolean() || value.isUndefinedOrNull();
     }
     
-    // These methods create a node and add it to the graph. If nodes of this type are
-    // 'mustGenerate' then the node  will implicitly be ref'ed to ensure generation.
     Node* addToGraph(NodeType op, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
     {
         Node* result = m_graph.addNode(
@@ -715,10 +708,8 @@ private:
     {
         Node* result = m_graph.addNode(
             SpecNone, op, currentCodeOrigin(), info, Edge(child1), Edge(child2), Edge(child3));
-        if (op == Phi)
-            m_currentBlock->phis.append(result);
-        else
-            m_currentBlock->append(result);
+        ASSERT(op != Phi);
+        m_currentBlock->append(result);
         return result;
     }
     Node* addToGraph(NodeType op, OpInfo info1, OpInfo info2, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
@@ -741,13 +732,6 @@ private:
         
         m_numPassedVarArgs = 0;
         
-        return result;
-    }
-
-    Node* insertPhiNode(OpInfo info, BasicBlock* block)
-    {
-        Node* result = m_graph.addNode(SpecNone, Phi, currentCodeOrigin(), info);
-        block->phis.append(result);
         return result;
     }
 
@@ -958,7 +942,6 @@ private:
     
     void buildOperandMapsIfNecessary();
     
-    ExecState* m_exec;
     JSGlobalData* m_globalData;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
@@ -1017,24 +1000,7 @@ private:
     unsigned m_parameterSlots;
     // The number of var args passed to the next var arg node.
     unsigned m_numPassedVarArgs;
-    // The index in the global resolve info.
-    unsigned m_globalResolveNumber;
 
-    struct PhiStackEntry {
-        PhiStackEntry(BasicBlock* block, Node* phi, unsigned varNo)
-            : m_block(block)
-            , m_phi(phi)
-            , m_varNo(varNo)
-        {
-        }
-
-        BasicBlock* m_block;
-        Node* m_phi;
-        unsigned m_varNo;
-    };
-    Vector<PhiStackEntry, 16> m_argumentPhiStack;
-    Vector<PhiStackEntry, 16> m_localPhiStack;
-    
     HashMap<ConstantBufferKey, unsigned> m_constantBufferCache;
     
     struct InlineStackEntry {
@@ -1204,9 +1170,14 @@ void ByteCodeParser::handleCall(Interpreter* interpreter, Instruction* currentIn
     }
 
     if (InternalFunction* function = callLinkStatus.internalFunction()) {
-        if (handleConstantInternalFunction(usesResult, resultOperand, function, registerOffset, argumentCountIncludingThis, prediction, kind))
+        if (handleConstantInternalFunction(usesResult, resultOperand, function, registerOffset, argumentCountIncludingThis, prediction, kind)) {
+            // This phantoming has to be *after* the code for the intrinsic, to signify that
+            // the inputs must be kept alive whatever exits the intrinsic may do.
+            addToGraph(Phantom, callTarget);
+            emitArgumentPhantoms(registerOffset, argumentCountIncludingThis, kind);
             return;
-            
+        }
+        
         // Can only handle this using the generic call handler.
         addCall(interpreter, currentInstruction, op);
         return;
@@ -1217,18 +1188,19 @@ void ByteCodeParser::handleCall(Interpreter* interpreter, Instruction* currentIn
         emitFunctionChecks(callLinkStatus, callTarget, registerOffset, kind);
             
         if (handleIntrinsic(usesResult, resultOperand, intrinsic, registerOffset, argumentCountIncludingThis, prediction)) {
-            // Need to keep all inputs alive for OSR, and need to ensure that we get
-            // backwards propagation of NodeUsedAsValue. Note that inlining doesn't
-            // need to do this because it already Flushes the arguments, which has a
-            // similar effect.
+            // This phantoming has to be *after* the code for the intrinsic, to signify that
+            // the inputs must be kept alive whatever exits the intrinsic may do.
             addToGraph(Phantom, callTarget);
-            for (int i = 0; i < argumentCountIncludingThis; ++i)
-                addToGraph(Phantom, get(registerOffset + argumentToOperand(i)));
-            
+            emitArgumentPhantoms(registerOffset, argumentCountIncludingThis, kind);
+            if (m_graph.m_compilation)
+                m_graph.m_compilation->noticeInlinedCall();
             return;
         }
-    } else if (handleInlining(usesResult, callTarget, resultOperand, callLinkStatus, registerOffset, argumentCountIncludingThis, nextOffset, kind))
+    } else if (handleInlining(usesResult, callTarget, resultOperand, callLinkStatus, registerOffset, argumentCountIncludingThis, nextOffset, kind)) {
+        if (m_graph.m_compilation)
+            m_graph.m_compilation->noticeInlinedCall();
         return;
+    }
     
     addCall(interpreter, currentInstruction, op);
 }
@@ -1257,6 +1229,12 @@ void ByteCodeParser::emitFunctionChecks(const CallLinkStatus& callLinkStatus, No
         addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(callLinkStatus.structure())), callTarget);
         addToGraph(CheckExecutable, OpInfo(callLinkStatus.executable()), callTarget, thisArgument);
     }
+}
+
+void ByteCodeParser::emitArgumentPhantoms(int registerOffset, int argumentCountIncludingThis, CodeSpecializationKind kind)
+{
+    for (int i = kind == CodeForCall ? 0 : 1; i < argumentCountIncludingThis; ++i)
+        addToGraph(Phantom, get(registerOffset + argumentToOperand(i)));
 }
 
 bool ByteCodeParser::handleInlining(bool usesResult, Node* callTargetNode, int resultOperand, const CallLinkStatus& callLinkStatus, int registerOffset, int argumentCountIncludingThis, unsigned nextOffset, CodeSpecializationKind kind)
@@ -1586,6 +1564,18 @@ bool ByteCodeParser::handleIntrinsic(bool usesResult, int resultOperand, Intrins
             set(resultOperand, charCode);
         return true;
     }
+    case FromCharCodeIntrinsic: {
+        if (argumentCountIncludingThis != 2)
+            return false;
+
+        int indexOperand = registerOffset + argumentToOperand(1);
+        Node* charCode = addToGraph(StringFromCharCode, getToInt32(indexOperand));
+
+        if (usesResult)
+            set(resultOperand, charCode);
+
+        return true;
+    }
 
     case RegExpExecIntrinsic: {
         if (argumentCountIncludingThis != 2)
@@ -1626,7 +1616,6 @@ bool ByteCodeParser::handleConstantInternalFunction(
     // is good enough.
     
     UNUSED_PARAM(prediction); // Remove this once we do more things.
-    UNUSED_PARAM(kind); // Remove this once we do more things.
     
     if (function->classInfo() == &ArrayConstructor::s_info) {
         if (argumentCountIncludingThis == 2) {
@@ -1641,6 +1630,19 @@ bool ByteCodeParser::handleConstantInternalFunction(
         setIntrinsicResult(
             usesResult, resultOperand,
             addToGraph(Node::VarArg, NewArray, OpInfo(ArrayWithUndecided), OpInfo(0)));
+        return true;
+    } else if (function->classInfo() == &StringConstructor::s_info) {
+        Node* result;
+        
+        if (argumentCountIncludingThis <= 1)
+            result = cellConstant(m_globalData->smallStrings.emptyString());
+        else
+            result = addToGraph(ToString, get(registerOffset + argumentToOperand(1)));
+        
+        if (kind == CodeForConstruct)
+            result = addToGraph(NewStringObject, OpInfo(function->globalObject()->stringObjectStructure()), result);
+        
+        setIntrinsicResult(usesResult, resultOperand, result);
         return true;
     }
     
@@ -1680,7 +1682,8 @@ void ByteCodeParser::handleGetById(
     const GetByIdStatus& getByIdStatus)
 {
     if (!getByIdStatus.isSimple()
-        || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache)) {
+        || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache)
+        || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadWeakConstantCache)) {
         set(destinationOperand,
             addToGraph(
                 getByIdStatus.makesCalls() ? GetByIdFlush : GetById,
@@ -1694,6 +1697,8 @@ void ByteCodeParser::handleGetById(
     // execution if it doesn't have a prediction, so we do it manually.
     if (prediction == SpecNone)
         addToGraph(ForceOSRExit);
+    else if (m_graph.m_compilation)
+        m_graph.m_compilation->noticeInlinedGetById();
     
     Node* originalBaseForBaselineJIT = base;
                 
@@ -2329,9 +2334,31 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_strcat: {
             int startOperand = currentInstruction[2].u.operand;
             int numOperands = currentInstruction[3].u.operand;
-            for (int operandIdx = startOperand; operandIdx < startOperand + numOperands; ++operandIdx)
-                addVarArgChild(get(operandIdx));
-            set(currentInstruction[1].u.operand, addToGraph(Node::VarArg, StrCat, OpInfo(0), OpInfo(0)));
+#if CPU(X86)
+            // X86 doesn't have enough registers to compile MakeRope with three arguments.
+            // Rather than try to be clever, we just make MakeRope dumber on this processor.
+            const unsigned maxRopeArguments = 2;
+#else
+            const unsigned maxRopeArguments = 3;
+#endif
+            Node* operands[AdjacencyList::Size];
+            unsigned indexInOperands = 0;
+            for (unsigned i = 0; i < AdjacencyList::Size; ++i)
+                operands[i] = 0;
+            for (int operandIdx = startOperand; operandIdx < startOperand + numOperands; ++operandIdx) {
+                if (indexInOperands == maxRopeArguments) {
+                    operands[0] = addToGraph(MakeRope, operands[0], operands[1], operands[2]);
+                    for (unsigned i = 1; i < AdjacencyList::Size; ++i)
+                        operands[i] = 0;
+                    indexInOperands = 1;
+                }
+                
+                ASSERT(indexInOperands < AdjacencyList::Size);
+                ASSERT(indexInOperands < maxRopeArguments);
+                operands[indexInOperands++] = addToGraph(ToString, get(operandIdx));
+            }
+            set(currentInstruction[1].u.operand,
+                addToGraph(MakeRope, operands[0], operands[1], operands[2]));
             NEXT_OPCODE(op_strcat);
         }
 
@@ -2550,10 +2577,15 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 m_inlineStackTop->m_profiledBlock,
                 m_currentIndex,
                 m_codeBlock->identifier(identifierNumber));
-            if (!putByIdStatus.isSet())
+            bool canCountAsInlined = true;
+            if (!putByIdStatus.isSet()) {
                 addToGraph(ForceOSRExit);
+                canCountAsInlined = false;
+            }
             
-            bool hasExitSite = m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache);
+            bool hasExitSite =
+                m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCache)
+                || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadWeakConstantCache);
             
             if (!hasExitSite && putByIdStatus.isSimpleReplace()) {
                 addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(putByIdStatus.oldStructure())), base);
@@ -2639,7 +2671,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                     addToGraph(PutByIdDirect, OpInfo(identifierNumber), base, value);
                 else
                     addToGraph(PutById, OpInfo(identifierNumber), base, value);
+                canCountAsInlined = false;
             }
+            
+            if (canCountAsInlined && m_graph.m_compilation)
+                m_graph.m_compilation->noticeInlinedPutById();
 
             NEXT_OPCODE(op_put_by_id);
         }
@@ -2688,14 +2724,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_jmp);
         }
 
-        case op_loop: {
-            unsigned relativeOffset = currentInstruction[1].u.operand;
-            addToGraph(Jump, OpInfo(m_currentIndex + relativeOffset));
-            LAST_OPCODE(op_loop);
-        }
-
-        case op_jtrue:
-        case op_loop_if_true: {
+        case op_jtrue: {
             unsigned relativeOffset = currentInstruction[2].u.operand;
             Node* condition = get(currentInstruction[1].u.operand);
             if (canFold(condition)) {
@@ -2714,8 +2743,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_jtrue);
         }
 
-        case op_jfalse:
-        case op_loop_if_false: {
+        case op_jfalse: {
             unsigned relativeOffset = currentInstruction[2].u.operand;
             Node* condition = get(currentInstruction[1].u.operand);
             if (canFold(condition)) {
@@ -2750,8 +2778,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_jneq_null);
         }
 
-        case op_jless:
-        case op_loop_if_less: {
+        case op_jless: {
             unsigned relativeOffset = currentInstruction[3].u.operand;
             Node* op1 = get(currentInstruction[1].u.operand);
             Node* op2 = get(currentInstruction[2].u.operand);
@@ -2777,8 +2804,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_jless);
         }
 
-        case op_jlesseq:
-        case op_loop_if_lesseq: {
+        case op_jlesseq: {
             unsigned relativeOffset = currentInstruction[3].u.operand;
             Node* op1 = get(currentInstruction[1].u.operand);
             Node* op2 = get(currentInstruction[2].u.operand);
@@ -2804,8 +2830,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_jlesseq);
         }
 
-        case op_jgreater:
-        case op_loop_if_greater: {
+        case op_jgreater: {
             unsigned relativeOffset = currentInstruction[3].u.operand;
             Node* op1 = get(currentInstruction[1].u.operand);
             Node* op2 = get(currentInstruction[2].u.operand);
@@ -2831,8 +2856,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_jgreater);
         }
 
-        case op_jgreatereq:
-        case op_loop_if_greatereq: {
+        case op_jgreatereq: {
             unsigned relativeOffset = currentInstruction[3].u.operand;
             Node* op1 = get(currentInstruction[1].u.operand);
             Node* op2 = get(currentInstruction[2].u.operand);
@@ -3698,9 +3722,6 @@ bool ByteCodeParser::parse()
 
     linkBlocks(inlineStackEntry.m_unlinkedBlocks, inlineStackEntry.m_blockLinkingTargets);
     m_graph.determineReachability();
-#if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-    dataLogF("Processing local variable phis.\n");
-#endif
     
     ASSERT(m_preservedVars.size());
     size_t numberOfLocals = 0;
@@ -3730,7 +3751,7 @@ bool ByteCodeParser::parse()
     return true;
 }
 
-bool parse(ExecState* exec, Graph& graph)
+bool parse(ExecState*, Graph& graph)
 {
     SamplingRegion samplingRegion("DFG Parsing");
 #if DFG_DEBUG_LOCAL_DISBALE
@@ -3738,7 +3759,7 @@ bool parse(ExecState* exec, Graph& graph)
     UNUSED_PARAM(graph);
     return false;
 #else
-    return ByteCodeParser(exec, graph).parse();
+    return ByteCodeParser(graph).parse();
 #endif
 }
 

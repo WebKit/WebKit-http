@@ -82,11 +82,6 @@ RenderProgress* HTMLProgressElement::renderProgress() const
     return static_cast<RenderProgress*>(renderObject);
 }
 
-bool HTMLProgressElement::supportsFocus() const
-{
-    return HTMLElement::supportsFocus() && !disabled();
-}
-
 void HTMLProgressElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == valueAttr)
@@ -171,6 +166,11 @@ void HTMLProgressElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     bar->appendChild(m_value, ASSERT_NO_EXCEPTION);
 
     inner->appendChild(bar, ASSERT_NO_EXCEPTION);
+}
+
+bool HTMLProgressElement::shouldAppearIndeterminate() const
+{
+    return !isDeterminate();
 }
 
 } // namespace

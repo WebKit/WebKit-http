@@ -250,6 +250,7 @@ Heap::Heap(JSGlobalData* globalData, HeapType heapType)
     , m_bytesAllocated(0)
     , m_bytesAbandoned(0)
     , m_operationInProgress(NoOperation)
+    , m_blockAllocator()
     , m_objectSpace(this)
     , m_storageSpace(this)
     , m_machineThreads(this)
@@ -362,12 +363,12 @@ void Heap::markProtectedObjects(HeapRootVisitor& heapRootVisitor)
         heapRootVisitor.visit(&it->key);
 }
 
-void Heap::pushTempSortVector(Vector<ValueStringPair>* tempVector)
+void Heap::pushTempSortVector(Vector<ValueStringPair, 0, UnsafeVectorOverflow>* tempVector)
 {
     m_tempSortingVectors.append(tempVector);
 }
 
-void Heap::popTempSortVector(Vector<ValueStringPair>* tempVector)
+void Heap::popTempSortVector(Vector<ValueStringPair, 0, UnsafeVectorOverflow>* tempVector)
 {
     ASSERT_UNUSED(tempVector, tempVector == m_tempSortingVectors.last());
     m_tempSortingVectors.removeLast();
@@ -375,11 +376,11 @@ void Heap::popTempSortVector(Vector<ValueStringPair>* tempVector)
 
 void Heap::markTempSortVectors(HeapRootVisitor& heapRootVisitor)
 {
-    typedef Vector<Vector<ValueStringPair>* > VectorOfValueStringVectors;
+    typedef Vector<Vector<ValueStringPair, 0, UnsafeVectorOverflow>* > VectorOfValueStringVectors;
 
     VectorOfValueStringVectors::iterator end = m_tempSortingVectors.end();
     for (VectorOfValueStringVectors::iterator it = m_tempSortingVectors.begin(); it != end; ++it) {
-        Vector<ValueStringPair>* tempSortingVector = *it;
+        Vector<ValueStringPair, 0, UnsafeVectorOverflow>* tempSortingVector = *it;
 
         Vector<ValueStringPair>::iterator vectorEnd = tempSortingVector->end();
         for (Vector<ValueStringPair>::iterator vectorIt = tempSortingVector->begin(); vectorIt != vectorEnd; ++vectorIt) {

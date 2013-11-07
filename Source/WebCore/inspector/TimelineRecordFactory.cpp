@@ -35,6 +35,7 @@
 #include "TimelineRecordFactory.h"
 
 #include "Event.h"
+#include "FloatQuad.h"
 #include "InspectorValues.h"
 #include "IntRect.h"
 #include "LayoutRect.h"
@@ -56,6 +57,14 @@ PassRefPtr<InspectorObject> TimelineRecordFactory::createGenericRecord(double st
         if (stackTrace && stackTrace->size())
             record->setValue("stackTrace", stackTrace->buildInspectorArray());
     }
+    return record.release();
+}
+
+PassRefPtr<InspectorObject> TimelineRecordFactory::createBackgroundRecord(double startTime, const String& threadName)
+{
+    RefPtr<InspectorObject> record = InspectorObject::create();
+    record->setNumber("startTime", startTime);
+    record->setString("thread", threadName);
     return record.release();
 }
 
@@ -169,6 +178,15 @@ PassRefPtr<InspectorObject> TimelineRecordFactory::createReceiveResourceData(con
     data->setNumber("encodedDataLength", length);
     return data.release();
 }
+
+PassRefPtr<InspectorObject> TimelineRecordFactory::createLayoutData(unsigned dirtyObjects, unsigned totalObjects, bool partialLayout)
+{
+    RefPtr<InspectorObject> data = InspectorObject::create();
+    data->setNumber("dirtyObjects", dirtyObjects);
+    data->setNumber("totalObjects", totalObjects);
+    data->setBoolean("partialLayout", partialLayout);
+    return data.release();
+}
     
 PassRefPtr<InspectorObject> TimelineRecordFactory::createDecodeImageData(const String& imageType)
 {
@@ -205,20 +223,30 @@ PassRefPtr<InspectorObject> TimelineRecordFactory::createAnimationFrameData(int 
     return data.release();
 }
 
-void TimelineRecordFactory::addRectData(InspectorObject* data, const LayoutRect& rect)
+static PassRefPtr<InspectorArray> createQuad(const FloatQuad& quad)
 {
-    data->setNumber("x", rect.x());
-    data->setNumber("y", rect.y());
-    data->setNumber("width", rect.width());
-    data->setNumber("height", rect.height());
+    RefPtr<InspectorArray> array = InspectorArray::create();
+    array->pushNumber(quad.p1().x());
+    array->pushNumber(quad.p1().y());
+    array->pushNumber(quad.p2().x());
+    array->pushNumber(quad.p2().y());
+    array->pushNumber(quad.p3().x());
+    array->pushNumber(quad.p3().y());
+    array->pushNumber(quad.p4().x());
+    array->pushNumber(quad.p4().y());
+    return array.release();
 }
 
-PassRefPtr<InspectorObject> TimelineRecordFactory::createRasterData(double totalCPUTime, int threadsUsed)
+PassRefPtr<InspectorObject> TimelineRecordFactory::createPaintData(const FloatQuad& quad)
 {
     RefPtr<InspectorObject> data = InspectorObject::create();
-    data->setNumber("totalCPUTime", totalCPUTime);
-    data->setNumber("threadsUsed", threadsUsed);
+    data->setArray("clip", createQuad(quad));
     return data.release();
+}
+
+void TimelineRecordFactory::appendLayoutRoot(InspectorObject* data, const FloatQuad& quad)
+{
+    data->setArray("root", createQuad(quad));
 }
 
 } // namespace WebCore

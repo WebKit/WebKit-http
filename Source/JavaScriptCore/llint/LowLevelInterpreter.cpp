@@ -117,6 +117,17 @@ static double Ints2Double(uint32_t lo, uint32_t hi)
     u.ival64 = (static_cast<uint64_t>(hi) << 32) | lo;
     return u.dval;
 }
+
+static void Double2Ints(double val, uint32_t& lo, uint32_t& hi)
+{
+    union {
+        double dval;
+        uint64_t ival64;
+    } u;
+    u.dval = val;
+    hi = static_cast<uint32_t>(u.ival64 >> 32);
+    lo = static_cast<uint32_t>(u.ival64);
+}
 #endif // USE(JSVALUE32_64)
 
 } // namespace LLint
@@ -297,12 +308,10 @@ JSValue CLoop::execute(CallFrame* callFrame, OpcodeID bootstrapOpcodeId,
     CLoopRegister rRetVPC;
     CLoopDoubleRegister d0, d1;
 
-#if COMPILER(MSVC)
     // Keep the compiler happy. We don't really need this, but the compiler
     // will complain. This makes the warning go away.
     t0.i = 0;
     t1.i = 0;
-#endif
 
     // Instantiate the pseudo JIT stack frame used by the LLINT C Loop backend:
     JITStackFrame jitStackFrame;

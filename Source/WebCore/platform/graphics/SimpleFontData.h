@@ -45,7 +45,7 @@
 #include "WebCoreSystemInterface.h"
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN))
+#if PLATFORM(MAC) || (PLATFORM(WX) && OS(DARWIN))
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -151,7 +151,7 @@ public:
     float adjustedSpaceWidth() const { return m_adjustedSpaceWidth; }
     void setSpaceWidth(float spaceWidth) { m_spaceWidth = spaceWidth; }
 
-#if USE(CG) || USE(CAIRO) || PLATFORM(WX) || USE(SKIA_ON_MAC_CHROMIUM)
+#if USE(CG) || USE(CAIRO) || PLATFORM(WX)
     float syntheticBoldOffset() const { return m_syntheticBoldOffset; }
 #endif
 
@@ -185,7 +185,7 @@ public:
     virtual String description() const;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC)
     const SimpleFontData* getCompositeFontReferenceFontData(NSFont *key) const;
     NSFont* getNSFont() const { return m_platformData.font(); }
 #elif (PLATFORM(WX) && OS(DARWIN)) 
@@ -193,25 +193,28 @@ public:
     NSFont* getNSFont() const { return m_platformData.nsFont(); }
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN))
+#if PLATFORM(MAC) || (PLATFORM(WX) && OS(DARWIN))
     CFDictionaryRef getCFStringAttributes(TypesettingFeatures, FontOrientation) const;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN)) || USE(HARFBUZZ)
+#if PLATFORM(MAC) || (PLATFORM(WX) && OS(DARWIN)) || USE(HARFBUZZ)
     bool canRenderCombiningCharacterSequence(const UChar*, size_t) const;
 #endif
 
     bool applyTransforms(GlyphBufferGlyph* glyphs, GlyphBufferAdvance* advances, size_t glyphCount, TypesettingFeatures typesettingFeatures) const
     {
-#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 1080
+        wkCTFontTransformOptions options = (typesettingFeatures & Kerning ? wkCTFontTransformApplyPositioning : 0) | (typesettingFeatures & Ligatures ? wkCTFontTransformApplyShaping : 0);
+        return wkCTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
+#elif PLATFORM(QT) && QT_VERSION >= 0x050100
+        QRawFont::LayoutFlags flags = (typesettingFeatures & Kerning) ? QRawFont::KernedAdvances : QRawFont::SeparateAdvances;
+        return m_platformData.rawFont().advancesForGlyphIndexes(glyphs, advances, glyphCount, flags);
+#else
         UNUSED_PARAM(glyphs);
         UNUSED_PARAM(advances);
         UNUSED_PARAM(glyphCount);
         UNUSED_PARAM(typesettingFeatures);
         return false;
-#else
-    wkCTFontTransformOptions options = (typesettingFeatures & Kerning ? wkCTFontTransformApplyPositioning : 0) | (typesettingFeatures & Ligatures ? wkCTFontTransformApplyShaping : 0);
-    return wkCTFontTransformGlyphs(m_platformData.ctFont(), glyphs, reinterpret_cast<CGSize*>(advances), glyphCount, options);
 #endif
     }
 
@@ -246,9 +249,8 @@ private:
     
     void initCharWidths();
 
-    void commonInit();
-
     PassRefPtr<SimpleFontData> createScaledFontData(const FontDescription&, float scaleFactor) const;
+    PassRefPtr<SimpleFontData> platformCreateScaledFontData(const FontDescription&, float scaleFactor) const;
 
 #if (PLATFORM(WIN) && !OS(WINCE)) \
     || (OS(WINDOWS) && PLATFORM(WX))
@@ -298,7 +300,7 @@ private:
         RefPtr<SimpleFontData> brokenIdeograph;
         RefPtr<SimpleFontData> verticalRightOrientation;
         RefPtr<SimpleFontData> uprightOrientation;
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC)
         mutable RetainPtr<CFMutableDictionaryRef> compositeFontReferences;
 #endif
         
@@ -311,15 +313,15 @@ private:
 
     mutable OwnPtr<DerivedFontData> m_derivedFontData;
 
-#if USE(CG) || USE(CAIRO) || PLATFORM(WX) || USE(SKIA_ON_MAC_CHROMIUM)
+#if USE(CG) || USE(CAIRO) || PLATFORM(WX)
     float m_syntheticBoldOffset;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN))
+#if PLATFORM(MAC) || (PLATFORM(WX) && OS(DARWIN))
     mutable HashMap<unsigned, RetainPtr<CFDictionaryRef> > m_CFStringAttributes;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || (PLATFORM(WX) && OS(DARWIN)) || USE(HARFBUZZ)
+#if PLATFORM(MAC) || (PLATFORM(WX) && OS(DARWIN)) || USE(HARFBUZZ)
     mutable OwnPtr<HashMap<String, bool> > m_combiningCharacterSequenceSupport;
 #endif
 
@@ -364,7 +366,7 @@ ALWAYS_INLINE float SimpleFontData::widthForGlyph(Glyph glyph) const
         width = m_fontData->widthForSVGGlyph(glyph, m_platformData.size());
 #if ENABLE(OPENTYPE_VERTICAL)
     else if (m_verticalData)
-#if USE(CG) || USE(CAIRO) || PLATFORM(WX) || USE(SKIA_ON_MAC_CHROMIUM)
+#if USE(CG) || USE(CAIRO) || PLATFORM(WX)
         width = m_verticalData->advanceHeight(this, glyph) + m_syntheticBoldOffset;
 #else
         width = m_verticalData->advanceHeight(this, glyph);

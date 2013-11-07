@@ -254,7 +254,7 @@ void XMLDocumentParser::notifyFinished(CachedResource* unusedResource)
     RefPtr<Element> e = m_scriptElement;
     m_scriptElement = 0;
 
-    ScriptElement* scriptElement = toScriptElement(e.get());
+    ScriptElement* scriptElement = toScriptElementIfPossible(e.get());
     ASSERT(scriptElement);
 
     // JavaScript can detach this parser, make sure it's kept alive even if detached.
@@ -286,7 +286,7 @@ void XMLDocumentParser::pauseParsing()
     m_parserPaused = true;
 }
 
-bool XMLDocumentParser::parseDocumentFragment(const String& chunk, DocumentFragment* fragment, Element* contextElement, FragmentScriptingPermission scriptingPermission)
+bool XMLDocumentParser::parseDocumentFragment(const String& chunk, DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
 {
     if (!chunk.length())
         return true;
@@ -299,7 +299,7 @@ bool XMLDocumentParser::parseDocumentFragment(const String& chunk, DocumentFragm
         return true;
     }
 
-    RefPtr<XMLDocumentParser> parser = XMLDocumentParser::create(fragment, contextElement, scriptingPermission);
+    RefPtr<XMLDocumentParser> parser = XMLDocumentParser::create(fragment, contextElement, parserContentPolicy);
     bool wellFormed = parser->appendFragmentSource(chunk);
     // Do not call finish().  Current finish() and doEnd() implementations touch the main Document/loader
     // and can cause crashes in the fragment case.

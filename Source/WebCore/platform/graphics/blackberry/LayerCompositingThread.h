@@ -120,6 +120,7 @@ class LayerCompositingThread : public ThreadSafeRefCounted<LayerCompositingThrea
 public:
     static PassRefPtr<LayerCompositingThread> create(LayerType, LayerCompositingThreadClient*);
 
+    LayerCompositingThreadClient* client() const { return m_client; }
     void setClient(LayerCompositingThreadClient* client) { m_client = client; }
 
     // Thread safe
@@ -157,6 +158,7 @@ public:
     LayerCompositingThread* superlayer() const { return m_superlayer; }
 
     // The layer renderer must be set if the layer has been rendered
+    LayerRenderer* layerRenderer() const { return m_layerRenderer; }
     void setLayerRenderer(LayerRenderer*);
 
     void setDrawTransform(double scale, const TransformationMatrix&);

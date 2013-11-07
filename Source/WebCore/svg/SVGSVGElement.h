@@ -135,6 +135,8 @@ public:
     SVGZoomAndPanType zoomAndPan() const { return m_zoomAndPan; }
     void setZoomAndPan(unsigned short zoomAndPan) { m_zoomAndPan = SVGZoomAndPan::parseFromNumber(zoomAndPan); }
 
+    bool hasEmptyViewBox() { return hasAttribute(SVGNames::viewBoxAttr) && viewBoxIsValid() && viewBox().isEmpty(); }
+
 protected:
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
@@ -194,9 +196,9 @@ private:
 
 inline SVGSVGElement* toSVGSVGElement(Node* node)
 {
-    SVGElement* element = node && node->isSVGElement() ? toSVGElement(node) : 0;
-    ASSERT_WITH_SECURITY_IMPLICATION(!element || element->isSVGSVGElement());
-    return static_cast<SVGSVGElement*>(element);
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || toSVGElement(node)->isSVGSVGElement());
+    return static_cast<SVGSVGElement*>(node);
 }
 
 } // namespace WebCore

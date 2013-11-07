@@ -33,13 +33,6 @@
 
 #if ENABLE(RUBBER_BANDING)
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-@interface NSProcessInfo (ScrollAnimatorMacExt)
-- (NSTimeInterval)systemUptime;
-@end
-#endif
-
-#if ENABLE(RUBBER_BANDING)
 static NSTimeInterval systemUptime()
 {
     if ([[NSProcessInfo processInfo] respondsToSelector:@selector(systemUptime)])
@@ -62,7 +55,6 @@ static NSTimeInterval systemUptime()
     }
     return 0;
 }
-#endif
 
 
 namespace WebCore {
@@ -71,7 +63,7 @@ static const float scrollVelocityZeroingTimeout = 0.10f;
 static const float rubberbandDirectionLockStretchRatio = 1;
 static const float rubberbandMinimumRequiredDeltaBeforeStretch = 10;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070 || PLATFORM(CHROMIUM)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1070
 static const float rubberbandStiffness = 20;
 static const float rubberbandAmplitude = 0.31f;
 static const float rubberbandPeriod = 1.6f;

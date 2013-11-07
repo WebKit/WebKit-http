@@ -35,6 +35,7 @@
 #include <wtf/ListHashSet.h>
 
 #if ENABLE(CSS_EXCLUSIONS)
+#include "ExclusionShapeInsideInfo.h"
 #include "ExclusionShapeValue.h"
 #endif
 
@@ -54,7 +55,6 @@ class LineInfo;
 class RenderRubyRun;
 #if ENABLE(CSS_EXCLUSIONS)
 class BasicShape;
-class ExclusionShapeInsideInfo;
 #endif
 class TextLayout;
 class WordMeasurement;
@@ -165,66 +165,66 @@ public:
 
     // Versions that can compute line offsets with the region and page offset passed in. Used for speed to avoid having to
     // compute the region all over again when you already know it.
-    LayoutUnit availableLogicalWidthForLine(LayoutUnit position, bool firstLine, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const
+    LayoutUnit availableLogicalWidthForLine(LayoutUnit position, bool shouldIndentText, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const
     {
-        return max<LayoutUnit>(0, logicalRightOffsetForLine(position, firstLine, region, offsetFromLogicalTopOfFirstPage, logicalHeight)
-            - logicalLeftOffsetForLine(position, firstLine, region, offsetFromLogicalTopOfFirstPage, logicalHeight));
+        return max<LayoutUnit>(0, logicalRightOffsetForLine(position, shouldIndentText, region, offsetFromLogicalTopOfFirstPage, logicalHeight)
+            - logicalLeftOffsetForLine(position, shouldIndentText, region, offsetFromLogicalTopOfFirstPage, logicalHeight));
     }
-    LayoutUnit logicalRightOffsetForLine(LayoutUnit position, bool firstLine, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const 
+    LayoutUnit logicalRightOffsetForLine(LayoutUnit position, bool shouldIndentText, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const 
     {
-        return logicalRightOffsetForLine(position, logicalRightOffsetForContent(region, offsetFromLogicalTopOfFirstPage), firstLine, 0, logicalHeight);
+        return logicalRightOffsetForLine(position, logicalRightOffsetForContent(region, offsetFromLogicalTopOfFirstPage), shouldIndentText, 0, logicalHeight);
     }
-    LayoutUnit logicalLeftOffsetForLine(LayoutUnit position, bool firstLine, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const 
+    LayoutUnit logicalLeftOffsetForLine(LayoutUnit position, bool shouldIndentText, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const 
     {
-        return logicalLeftOffsetForLine(position, logicalLeftOffsetForContent(region, offsetFromLogicalTopOfFirstPage), firstLine, 0, logicalHeight);
+        return logicalLeftOffsetForLine(position, logicalLeftOffsetForContent(region, offsetFromLogicalTopOfFirstPage), shouldIndentText, 0, logicalHeight);
     }
-    LayoutUnit startOffsetForLine(LayoutUnit position, bool firstLine, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const
+    LayoutUnit startOffsetForLine(LayoutUnit position, bool shouldIndentText, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const
     {
-        return style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, firstLine, region, offsetFromLogicalTopOfFirstPage, logicalHeight)
-            : logicalWidth() - logicalRightOffsetForLine(position, firstLine, region, offsetFromLogicalTopOfFirstPage, logicalHeight);
+        return style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, shouldIndentText, region, offsetFromLogicalTopOfFirstPage, logicalHeight)
+            : logicalWidth() - logicalRightOffsetForLine(position, shouldIndentText, region, offsetFromLogicalTopOfFirstPage, logicalHeight);
     }
-    LayoutUnit endOffsetForLine(LayoutUnit position, bool firstLine, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const
+    LayoutUnit endOffsetForLine(LayoutUnit position, bool shouldIndentText, RenderRegion* region, LayoutUnit offsetFromLogicalTopOfFirstPage, LayoutUnit logicalHeight = 0) const
     {
-        return !style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, firstLine, region, offsetFromLogicalTopOfFirstPage, logicalHeight)
-            : logicalWidth() - logicalRightOffsetForLine(position, firstLine, region, offsetFromLogicalTopOfFirstPage, logicalHeight);
+        return !style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, shouldIndentText, region, offsetFromLogicalTopOfFirstPage, logicalHeight)
+            : logicalWidth() - logicalRightOffsetForLine(position, shouldIndentText, region, offsetFromLogicalTopOfFirstPage, logicalHeight);
     }
 
-    LayoutUnit availableLogicalWidthForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const
+    LayoutUnit availableLogicalWidthForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const
     {
-        return availableLogicalWidthForLine(position, firstLine, regionAtBlockOffset(position), offsetFromLogicalTopOfFirstPage(), logicalHeight);
+        return availableLogicalWidthForLine(position, shouldIndentText, regionAtBlockOffset(position), offsetFromLogicalTopOfFirstPage(), logicalHeight);
     }
-    LayoutUnit logicalRightOffsetForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const 
+    LayoutUnit logicalRightOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const 
     {
-        return logicalRightOffsetForLine(position, logicalRightOffsetForContent(position), firstLine, 0, logicalHeight);
+        return logicalRightOffsetForLine(position, logicalRightOffsetForContent(position), shouldIndentText, 0, logicalHeight);
     }
-    LayoutUnit logicalLeftOffsetForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const 
+    LayoutUnit logicalLeftOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const 
     {
-        return logicalLeftOffsetForLine(position, logicalLeftOffsetForContent(position), firstLine, 0, logicalHeight);
+        return logicalLeftOffsetForLine(position, logicalLeftOffsetForContent(position), shouldIndentText, 0, logicalHeight);
     }
-    LayoutUnit pixelSnappedLogicalLeftOffsetForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const 
+    LayoutUnit pixelSnappedLogicalLeftOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const 
     {
-        return roundToInt(logicalLeftOffsetForLine(position, firstLine, logicalHeight));
+        return roundToInt(logicalLeftOffsetForLine(position, shouldIndentText, logicalHeight));
     }
-    LayoutUnit pixelSnappedLogicalRightOffsetForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const 
+    LayoutUnit pixelSnappedLogicalRightOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const 
     {
         // FIXME: Multicolumn layouts break carrying over subpixel values to the logical right offset because the lines may be shifted
         // by a subpixel value for all but the first column. This can lead to the actual pixel snapped width of the column being off
         // by one pixel when rendered versus layed out, which can result in the line being clipped. For now, we have to floor.
         // https://bugs.webkit.org/show_bug.cgi?id=105461
-        return floorToInt(logicalRightOffsetForLine(position, firstLine, logicalHeight));
+        return floorToInt(logicalRightOffsetForLine(position, shouldIndentText, logicalHeight));
     }
-    LayoutUnit startOffsetForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const
+    LayoutUnit startOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const
     {
-        return style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, firstLine, logicalHeight)
-            : logicalWidth() - logicalRightOffsetForLine(position, firstLine, logicalHeight);
+        return style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, shouldIndentText, logicalHeight)
+            : logicalWidth() - logicalRightOffsetForLine(position, shouldIndentText, logicalHeight);
     }
-    LayoutUnit endOffsetForLine(LayoutUnit position, bool firstLine, LayoutUnit logicalHeight = 0) const
+    LayoutUnit endOffsetForLine(LayoutUnit position, bool shouldIndentText, LayoutUnit logicalHeight = 0) const
     {
-        return !style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, firstLine, logicalHeight)
-            : logicalWidth() - logicalRightOffsetForLine(position, firstLine, logicalHeight);
+        return !style()->isLeftToRightDirection() ? logicalLeftOffsetForLine(position, shouldIndentText, logicalHeight)
+            : logicalWidth() - logicalRightOffsetForLine(position, shouldIndentText, logicalHeight);
     }
 
-    LayoutUnit startAlignedOffsetForLine(LayoutUnit position, bool firstLine);
+    LayoutUnit startAlignedOffsetForLine(LayoutUnit position, bool shouldIndentText);
     LayoutUnit textIndentOffset() const;
 
     virtual VisiblePosition positionForPoint(const LayoutPoint&);
@@ -446,8 +446,27 @@ public:
 #endif
 
 #if ENABLE(CSS_EXCLUSIONS)
-    ExclusionShapeInsideInfo* exclusionShapeInsideInfo() const;
-    ExclusionShapeInsideInfo* layoutExclusionShapeInsideInfo() const;
+    ExclusionShapeInsideInfo* ensureExclusionShapeInsideInfo()
+    {
+        if (!m_rareData || !m_rareData->m_shapeInsideInfo)
+            setExclusionShapeInsideInfo(ExclusionShapeInsideInfo::createInfo(this));
+        return m_rareData->m_shapeInsideInfo.get();
+    }
+
+    enum ExclusionShapeStatus { ShapePresent, ShapePresentOrRemoved };
+    ExclusionShapeInsideInfo* exclusionShapeInsideInfo(ExclusionShapeStatus exclusionShapeStatus = ShapePresent) const
+    {
+        if (!m_rareData || !m_rareData->m_shapeInsideInfo)
+            return 0;
+        return ExclusionShapeInsideInfo::isEnabledFor(this) || (exclusionShapeStatus == ShapePresentOrRemoved) ? m_rareData->m_shapeInsideInfo.get() : 0;
+    }
+    void setExclusionShapeInsideInfo(PassOwnPtr<ExclusionShapeInsideInfo> value)
+    {
+        if (!m_rareData)
+            m_rareData = adoptPtr(new RenderBlockRareData(this));
+        m_rareData->m_shapeInsideInfo = value;
+    }
+    ExclusionShapeInsideInfo* layoutExclusionShapeInsideInfo(ExclusionShapeStatus = ShapePresent) const;
     bool allowsExclusionShapeInsideInfoSharing() const { return !isInline() && !isFloating(); }
 #endif
 
@@ -507,7 +526,8 @@ protected:
 
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
-    virtual void computePreferredLogicalWidths();
+    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
+    virtual void computePreferredLogicalWidths() OVERRIDE;
 
     virtual int firstLineBoxBaseline() const;
     virtual int inlineBlockBaseline(LineDirectionMode) const OVERRIDE;
@@ -531,7 +551,7 @@ protected:
     virtual bool hasLineIfEmpty() const;
     
     bool simplifiedLayout();
-    void simplifiedNormalFlowLayout();
+    virtual void simplifiedNormalFlowLayout();
 
     void setDesiredColumnCountAndWidth(int, LayoutUnit);
 
@@ -558,7 +578,8 @@ protected:
     }
 #endif
 
-    bool updateRegionsAndExclusionsLogicalSize(RenderFlowThread*);
+    bool updateRegionsAndExclusionsBeforeChildLayout(RenderFlowThread*);
+    void updateRegionsAndExclusionsAfterChildLayout(RenderFlowThread*);
     void computeRegionRangeForBlock(RenderFlowThread*);
 
     void updateBlockChildDirtyBitsBeforeLayout(bool relayoutChildren, RenderBox*);
@@ -597,7 +618,7 @@ private:
     virtual LayoutUnit collapsedMarginBefore() const { return maxPositiveMarginBefore() - maxNegativeMarginBefore(); }
     virtual LayoutUnit collapsedMarginAfter() const { return maxPositiveMarginAfter() - maxNegativeMarginAfter(); }
 
-    virtual void repaintOverhangingFloats(bool paintAllDescendants);
+    virtual void repaintOverhangingFloats(bool paintAllDescendants) OVERRIDE;
 
     void layoutBlockChildren(bool relayoutChildren, LayoutUnit& maxFloatLogicalBottom);
     void layoutInlineChildren(bool relayoutChildren, LayoutUnit& repaintLogicalTop, LayoutUnit& repaintLogicalBottom);
@@ -884,8 +905,9 @@ private:
 
     virtual bool isPointInOverflowControl(HitTestResult&, const LayoutPoint& locationInContainer, const LayoutPoint& accumulatedOffset);
 
-    void computeInlinePreferredLogicalWidths();
-    void computeBlockPreferredLogicalWidths();
+    // FIXME: Make this method const so we can remove the const_cast in computeIntrinsicLogicalWidths.
+    void computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth);
+    void computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const;
 
     // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
     // children.
@@ -1214,10 +1236,6 @@ public:
         friend void RenderBlock::createFloatingObjects();
     };
 
-protected:
-
-    OwnPtr<FloatingObjects> m_floatingObjects;
-
     // Allocated only when some of these fields have non-default values
     struct RenderBlockRareData {
         WTF_MAKE_NONCOPYABLE(RenderBlockRareData); WTF_MAKE_FAST_ALLOCATED;
@@ -1258,11 +1276,17 @@ protected:
         RootInlineBox* m_lineGridBox;
 
         RootInlineBox* m_lineBreakToAvoidWidow;
+#if ENABLE(CSS_EXCLUSIONS)
+        OwnPtr<ExclusionShapeInsideInfo> m_shapeInsideInfo;
+#endif
         bool m_shouldBreakAtLineToAvoidWidow : 1;
         bool m_discardMarginBefore : 1;
         bool m_discardMarginAfter : 1;
      };
 
+protected:
+
+    OwnPtr<FloatingObjects> m_floatingObjects;
     OwnPtr<RenderBlockRareData> m_rareData;
 
     RenderObjectChildList m_children;

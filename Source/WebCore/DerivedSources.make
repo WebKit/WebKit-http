@@ -91,6 +91,7 @@ BINDING_IDLS = \
     $(WebCore)/Modules/filesystem/Metadata.idl \
     $(WebCore)/Modules/filesystem/MetadataCallback.idl \
     $(WebCore)/Modules/filesystem/WorkerContextFileSystem.idl \
+    $(WebCore)/Modules/geolocation/Coordinates.idl \
     $(WebCore)/Modules/geolocation/Geolocation.idl \
     $(WebCore)/Modules/geolocation/Geoposition.idl \
     $(WebCore)/Modules/geolocation/NavigatorGeolocation.idl \
@@ -118,10 +119,13 @@ BINDING_IDLS = \
     $(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
     $(WebCore)/Modules/notifications/WorkerContextNotifications.idl \
     $(WebCore)/Modules/quota/DOMWindowQuota.idl \
+    $(WebCore)/Modules/quota/NavigatorStorageQuota.idl \
     $(WebCore)/Modules/quota/StorageInfo.idl \
-    $(WebCore)/Modules/quota/StorageInfoErrorCallback.idl \
-    $(WebCore)/Modules/quota/StorageInfoQuotaCallback.idl \
-    $(WebCore)/Modules/quota/StorageInfoUsageCallback.idl \
+    $(WebCore)/Modules/quota/StorageErrorCallback.idl \
+    $(WebCore)/Modules/quota/StorageQuota.idl \
+    $(WebCore)/Modules/quota/StorageQuotaCallback.idl \
+    $(WebCore)/Modules/quota/StorageUsageCallback.idl \
+    $(WebCore)/Modules/quota/WorkerNavigatorStorageQuota.idl \
     $(WebCore)/Modules/speech/DOMWindowSpeechSynthesis.idl \
     $(WebCore)/Modules/speech/SpeechSynthesis.idl \
     $(WebCore)/Modules/speech/SpeechSynthesisEvent.idl \
@@ -134,7 +138,6 @@ BINDING_IDLS = \
     $(WebCore)/Modules/webaudio/ChannelSplitterNode.idl \
     $(WebCore)/Modules/webaudio/AudioContext.idl \
     $(WebCore)/Modules/webaudio/AudioDestinationNode.idl \
-    $(WebCore)/Modules/webaudio/AudioGain.idl \
     $(WebCore)/Modules/webaudio/GainNode.idl \
     $(WebCore)/Modules/webaudio/AudioListener.idl \
     $(WebCore)/Modules/webaudio/AudioNode.idl \
@@ -177,6 +180,7 @@ BINDING_IDLS = \
     $(WebCore)/Modules/websockets/WebSocket.idl \
     $(WebCore)/Modules/websockets/WorkerContextWebSocket.idl \
     $(WebCore)/css/CSSCharsetRule.idl \
+    $(WebCore)/css/CSSFontFaceLoadEvent.idl \
     $(WebCore)/css/CSSFontFaceRule.idl \
     $(WebCore)/css/CSSHostRule.idl \
     $(WebCore)/css/CSSImportRule.idl \
@@ -194,6 +198,7 @@ BINDING_IDLS = \
     $(WebCore)/css/CSSValueList.idl \
     $(WebCore)/css/Counter.idl \
     $(WebCore)/css/DOMWindowCSS.idl \
+    $(WebCore)/css/FontLoader.idl \
     $(WebCore)/css/MediaList.idl \
     $(WebCore)/css/MediaQueryList.idl \
     $(WebCore)/css/MediaQueryListListener.idl \
@@ -409,6 +414,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \
     $(WebCore)/html/canvas/WebGLBuffer.idl \
     $(WebCore)/html/canvas/WebGLCompressedTextureATC.idl \
+    $(WebCore)/html/canvas/WebGLCompressedTexturePVRTC.idl \
     $(WebCore)/html/canvas/WebGLCompressedTextureS3TC.idl \
     $(WebCore)/html/canvas/WebGLContextAttributes.idl \
     $(WebCore)/html/canvas/WebGLContextEvent.idl \
@@ -438,7 +444,6 @@ BINDING_IDLS = \
     $(WebCore)/page/AbstractView.idl \
     $(WebCore)/page/BarInfo.idl \
     $(WebCore)/page/Console.idl \
-    $(WebCore)/page/Coordinates.idl \
     $(WebCore)/page/Crypto.idl \
     $(WebCore)/page/DOMSecurityPolicy.idl \
     $(WebCore)/page/DOMSelection.idl \
@@ -822,7 +827,7 @@ UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocess
 
 # --------
 
-WebKitFontFamilyNames.cpp WebKitFontFamilyNames.h : dom/make_names.pl css/WebKitFontFamilyNames.in
+WebKitFontFamilyNames.cpp WebKitFontFamilyNames.h : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm css/WebKitFontFamilyNames.in
 	perl -I $(WebCore)/bindings/scripts $< --fonts $(WebCore)/css/WebKitFontFamilyNames.in
 
 # HTML tag and attribute names
@@ -869,22 +874,22 @@ endif
 
 ifdef HTML_FLAGS
 
-HTMLElementFactory.cpp HTMLNames.cpp : dom/make_names.pl html/HTMLTagNames.in html/HTMLAttributeNames.in
+HTMLElementFactory.cpp HTMLNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm html/HTMLTagNames.in html/HTMLAttributeNames.in
 	perl -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --factory --wrapperFactory --extraDefines "$(HTML_FLAGS)"
 
 else
 
-HTMLElementFactory.cpp HTMLNames.cpp : dom/make_names.pl html/HTMLTagNames.in html/HTMLAttributeNames.in
+HTMLElementFactory.cpp HTMLNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm html/HTMLTagNames.in html/HTMLAttributeNames.in
 	perl -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/html/HTMLTagNames.in --attrs $(WebCore)/html/HTMLAttributeNames.in --factory --wrapperFactory
 
 endif
 
 JSHTMLElementWrapperFactory.cpp : HTMLNames.cpp
 
-XMLNSNames.cpp : dom/make_names.pl xml/xmlnsattrs.in
+XMLNSNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm xml/xmlnsattrs.in
 	perl -I $(WebCore)/bindings/scripts $< --attrs $(WebCore)/xml/xmlnsattrs.in
 
-XMLNames.cpp : dom/make_names.pl xml/xmlattrs.in
+XMLNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm xml/xmlattrs.in
 	perl -I $(WebCore)/bindings/scripts $< --attrs $(WebCore)/xml/xmlattrs.in
 
 # --------
@@ -903,18 +908,18 @@ endif
 
 ifdef SVG_FLAGS
 
-SVGElementFactory.cpp SVGNames.cpp : dom/make_names.pl svg/svgtags.in svg/svgattrs.in
+SVGElementFactory.cpp SVGNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/svgtags.in svg/svgattrs.in
 	perl -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/svg/svgtags.in --attrs $(WebCore)/svg/svgattrs.in --extraDefines "$(SVG_FLAGS)" --factory --wrapperFactory
 else
 
-SVGElementFactory.cpp SVGNames.cpp : dom/make_names.pl svg/svgtags.in svg/svgattrs.in
+SVGElementFactory.cpp SVGNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/svgtags.in svg/svgattrs.in
 	perl -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/svg/svgtags.in --attrs $(WebCore)/svg/svgattrs.in --factory --wrapperFactory
 
 endif
 
 JSSVGElementWrapperFactory.cpp : SVGNames.cpp
 
-XLinkNames.cpp : dom/make_names.pl svg/xlinkattrs.in
+XLinkNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm svg/xlinkattrs.in
 	perl -I $(WebCore)/bindings/scripts $< --attrs $(WebCore)/svg/xlinkattrs.in
 
 # --------
@@ -934,7 +939,7 @@ ExceptionCodeDescription.cpp ExceptionCodeDescription.h ExceptionHeaders.h Excep
 
 # MathML tag and attribute names, and element factory
 
-MathMLElementFactory.cpp MathMLNames.cpp : dom/make_names.pl mathml/mathtags.in mathml/mathattrs.in
+MathMLElementFactory.cpp MathMLNames.cpp : dom/make_names.pl bindings/scripts/Hasher.pm bindings/scripts/StaticString.pm mathml/mathtags.in mathml/mathattrs.in
 	perl -I $(WebCore)/bindings/scripts $< --tags $(WebCore)/mathml/mathtags.in --attrs $(WebCore)/mathml/mathattrs.in --factory --wrapperFactory
 
 # --------

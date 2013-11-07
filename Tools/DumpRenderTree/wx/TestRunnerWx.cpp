@@ -151,11 +151,6 @@ void TestRunner::setWindowIsKey(bool windowIsKey)
     // FIXME: implement
 }
 
-void TestRunner::setSmartInsertDeleteEnabled(bool flag)
-{
-    // FIXME: implement
-}
-
 void TestRunner::setWaitToDump(bool waitUntilDone)
 {
     static const int timeoutSeconds = 10;
@@ -284,11 +279,6 @@ void TestRunner::setDomainRelaxationForbiddenForURLScheme(bool, JSStringRef)
 }
 
 void TestRunner::setAppCacheMaximumSize(unsigned long long size)
-{
-    // FIXME: implement
-}
-
-void TestRunner::setSelectTrailingWhitespaceEnabled(bool flag)
 {
     // FIXME: implement
 }
@@ -458,11 +448,6 @@ void TestRunner::authenticateSession(JSStringRef, JSStringRef, JSStringRef)
 
 void TestRunner::abortModal()
 {
-}
-
-void TestRunner::setAsynchronousSpellCheckingEnabled(bool)
-{
-    // FIXME: Implement this.
 }
 
 bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRef optionsArray)

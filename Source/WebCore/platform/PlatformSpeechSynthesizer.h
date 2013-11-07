@@ -48,12 +48,12 @@ class PlatformSpeechSynthesisUtterance;
 
 class PlatformSpeechSynthesizerClient {
 public:
-    virtual void didStartSpeaking(const PlatformSpeechSynthesisUtterance*) = 0;
-    virtual void didFinishSpeaking(const PlatformSpeechSynthesisUtterance*) = 0;
-    virtual void didPauseSpeaking(const PlatformSpeechSynthesisUtterance*) = 0;
-    virtual void didResumeSpeaking(const PlatformSpeechSynthesisUtterance*) = 0;
-    virtual void speakingErrorOccurred(const PlatformSpeechSynthesisUtterance*) = 0;
-    virtual void boundaryEventOccurred(const PlatformSpeechSynthesisUtterance*, SpeechBoundary, unsigned charIndex) = 0;
+    virtual void didStartSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
+    virtual void didFinishSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
+    virtual void didPauseSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
+    virtual void didResumeSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
+    virtual void speakingErrorOccurred(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
+    virtual void boundaryEventOccurred(PassRefPtr<PlatformSpeechSynthesisUtterance>, SpeechBoundary, unsigned charIndex) = 0;
     virtual void voicesDidChange() = 0;
 protected:
     virtual ~PlatformSpeechSynthesizerClient() { }
@@ -63,23 +63,25 @@ class PlatformSpeechSynthesizer {
 public:
     static PassOwnPtr<PlatformSpeechSynthesizer> create(PlatformSpeechSynthesizerClient*);
 
-    virtual ~PlatformSpeechSynthesizer() { }
+    virtual ~PlatformSpeechSynthesizer();
     
     const Vector<RefPtr<PlatformSpeechSynthesisVoice> >& voiceList() const { return m_voiceList; }
-    virtual void speak(const PlatformSpeechSynthesisUtterance&);
+    virtual void speak(PassRefPtr<PlatformSpeechSynthesisUtterance>);
     virtual void pause();
     virtual void resume();
     virtual void cancel();
     
     PlatformSpeechSynthesizerClient* client() const { return m_speechSynthesizerClient; }
-    
+
+    void setVoiceList(Vector<RefPtr<PlatformSpeechSynthesisVoice> >&);
+
 protected:
+    virtual void initializeVoiceList();
     explicit PlatformSpeechSynthesizer(PlatformSpeechSynthesizerClient*);
     Vector<RefPtr<PlatformSpeechSynthesisVoice> > m_voiceList;
     
 private:
     PlatformSpeechSynthesizerClient* m_speechSynthesizerClient;
-    virtual void initializeVoiceList();
     
 #if PLATFORM(MAC)
     RetainPtr<WebSpeechSynthesisWrapper> m_platformSpeechWrapper;

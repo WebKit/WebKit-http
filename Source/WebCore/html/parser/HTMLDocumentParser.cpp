@@ -83,7 +83,7 @@ HTMLDocumentParser::HTMLDocumentParser(HTMLDocument* document, bool reportErrors
     , m_token(m_options.useThreading ? nullptr : adoptPtr(new HTMLToken))
     , m_tokenizer(m_options.useThreading ? nullptr : HTMLTokenizer::create(m_options))
     , m_scriptRunner(HTMLScriptRunner::create(document, this))
-    , m_treeBuilder(HTMLTreeBuilder::create(this, document, reportErrors, m_options))
+    , m_treeBuilder(HTMLTreeBuilder::create(this, document, parserContentPolicy(), reportErrors, m_options))
     , m_parserScheduler(HTMLParserScheduler::create(this))
     , m_xssAuditorDelegate(document)
 #if ENABLE(THREADED_HTML_PARSER)
@@ -100,12 +100,12 @@ HTMLDocumentParser::HTMLDocumentParser(HTMLDocument* document, bool reportErrors
 
 // FIXME: Member variables should be grouped into self-initializing structs to
 // minimize code duplication between these constructors.
-HTMLDocumentParser::HTMLDocumentParser(DocumentFragment* fragment, Element* contextElement, FragmentScriptingPermission scriptingPermission)
-    : ScriptableDocumentParser(fragment->document())
+HTMLDocumentParser::HTMLDocumentParser(DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
+    : ScriptableDocumentParser(fragment->document(), parserContentPolicy)
     , m_options(fragment->document())
     , m_token(adoptPtr(new HTMLToken))
     , m_tokenizer(HTMLTokenizer::create(m_options))
-    , m_treeBuilder(HTMLTreeBuilder::create(this, fragment, contextElement, scriptingPermission, m_options))
+    , m_treeBuilder(HTMLTreeBuilder::create(this, fragment, contextElement, this->parserContentPolicy(), m_options))
     , m_xssAuditorDelegate(fragment->document())
 #if ENABLE(THREADED_HTML_PARSER)
     , m_weakFactory(this)
@@ -261,6 +261,8 @@ void HTMLDocumentParser::resumeParsingAfterYield()
 
 void HTMLDocumentParser::runScriptsForPausedTreeBuilder()
 {
+    ASSERT(scriptingContentIsAllowed(parserContentPolicy()));
+
     TextPosition scriptStartPosition = TextPosition::belowRangePosition();
     RefPtr<Element> scriptElement = m_treeBuilder->takeScriptToProcess(scriptStartPosition);
     // We will not have a scriptRunner when parsing a DocumentFragment.
@@ -328,8 +330,20 @@ void HTMLDocumentParser::didReceiveParsedChunkFromBackgroundParser(PassOwnPtr<Pa
     InspectorInstrumentation::didWriteHTML(cookie, lineNumber().zeroBasedInt());
 }
 
-void HTMLDocumentParser::validateSpeculations()
+void HTMLDocumentParser::validateSpeculations(PassOwnPtr<ParsedChunk> chunk)
 {
+    ASSERT(chunk);
+    if (isWaitingForScripts()) {
+        // We're waiting on a network script, just save the chunk, we'll get
+        // a second validateSpeculations call after the script completes.
+        // This call should have been made immediately after runScriptsForPausedTreeBuilder
+        // which may have started a network load and left us waiting.
+        ASSERT(!m_lastChunkBeforeScript);
+        m_lastChunkBeforeScript = chunk;
+        return;
+    }
+
+    ASSERT(!m_lastChunkBeforeScript);
     OwnPtr<HTMLTokenizer> tokenizer = m_tokenizer.release();
     OwnPtr<HTMLToken> token = m_token.release();
 
@@ -339,31 +353,23 @@ void HTMLDocumentParser::validateSpeculations()
         return;
     }
 
-    if (!m_currentChunk) {
-        // If there is no m_currentChunk, we must have already called didFailSpeculation
-        // for this chunk.
-        // FIXME: In this case, we're losing whatever state has been changed since
-        // we called didFailSpeculation. See https://bugs.webkit.org/show_bug.cgi?id=110546
-        return;
-    }
-
     // Currently we're only smart enough to reuse the speculation buffer if the tokenizer
     // both starts and ends in the DataState. That state is simplest because the HTMLToken
     // is always in the Uninitialized state. We should consider whether we can reuse the
     // speculation buffer in other states, but we'd likely need to do something more
     // sophisticated with the HTMLToken.
-    if (m_currentChunk->tokenizerState == HTMLTokenizer::DataState
+    if (chunk->tokenizerState == HTMLTokenizer::DataState
         && tokenizer->state() == HTMLTokenizer::DataState
         && m_input.current().isEmpty()
-        && m_currentChunk->treeBuilderState == HTMLTreeBuilderSimulator::stateFor(m_treeBuilder.get())) {
+        && chunk->treeBuilderState == HTMLTreeBuilderSimulator::stateFor(m_treeBuilder.get())) {
         ASSERT(token->isUninitialized());
         return;
     }
 
-    didFailSpeculation(token.release(), tokenizer.release());
+    discardSpeculationsAndResumeFrom(chunk, token.release(), tokenizer.release());
 }
 
-void HTMLDocumentParser::didFailSpeculation(PassOwnPtr<HTMLToken> token, PassOwnPtr<HTMLTokenizer> tokenizer)
+void HTMLDocumentParser::discardSpeculationsAndResumeFrom(PassOwnPtr<ParsedChunk> lastChunkBeforeScript, PassOwnPtr<HTMLToken> token, PassOwnPtr<HTMLTokenizer> tokenizer)
 {
     m_weakFactory.revokeAll();
     m_speculations.clear();
@@ -373,30 +379,31 @@ void HTMLDocumentParser::didFailSpeculation(PassOwnPtr<HTMLToken> token, PassOwn
     checkpoint->token = token;
     checkpoint->tokenizer = tokenizer;
     checkpoint->treeBuilderState = HTMLTreeBuilderSimulator::stateFor(m_treeBuilder.get());
-    checkpoint->inputCheckpoint = m_currentChunk->inputCheckpoint;
-    checkpoint->preloadScannerCheckpoint = m_currentChunk->preloadScannerCheckpoint;
+    checkpoint->inputCheckpoint = lastChunkBeforeScript->inputCheckpoint;
+    checkpoint->preloadScannerCheckpoint = lastChunkBeforeScript->preloadScannerCheckpoint;
     checkpoint->unparsedInput = m_input.current().toString().isolatedCopy();
-    m_input.current().clear();
-    m_currentChunk.clear();
+    m_input.current().clear(); // FIXME: This should be passed in instead of cleared.
 
     ASSERT(checkpoint->unparsedInput.isSafeToSendToAnotherThread());
     HTMLParserThread::shared()->postTask(bind(&BackgroundHTMLParser::resumeFrom, m_backgroundParser, checkpoint.release()));
 }
 
-void HTMLDocumentParser::processParsedChunkFromBackgroundParser(PassOwnPtr<ParsedChunk> chunk)
+void HTMLDocumentParser::processParsedChunkFromBackgroundParser(PassOwnPtr<ParsedChunk> popChunk)
 {
     // ASSERT that this object is both attached to the Document and protected.
     ASSERT(refCount() >= 2);
     ASSERT(shouldUseThreading());
     ASSERT(!m_tokenizer);
     ASSERT(!m_token);
+    ASSERT(!m_lastChunkBeforeScript);
 
     ActiveParserSession session(contextForParsingSession());
+    OwnPtr<ParsedChunk> chunk(popChunk);
+    OwnPtr<CompactHTMLTokenStream> tokens = chunk->tokens.release();
 
-    m_currentChunk = chunk;
-    OwnPtr<CompactHTMLTokenStream> tokens = m_currentChunk->tokens.release();
+    HTMLParserThread::shared()->postTask(bind(&BackgroundHTMLParser::startedChunkWithCheckpoint, m_backgroundParser, chunk->inputCheckpoint));
 
-    for (XSSInfoStream::const_iterator it = m_currentChunk->xssInfos.begin(); it != m_currentChunk->xssInfos.end(); ++it) {
+    for (XSSInfoStream::const_iterator it = chunk->xssInfos.begin(); it != chunk->xssInfos.end(); ++it) {
         m_textPosition = (*it)->m_textPosition;
         m_xssAuditorDelegate.didBlockScript(**it); 
         if (isStopped())
@@ -428,7 +435,7 @@ void HTMLDocumentParser::processParsedChunkFromBackgroundParser(PassOwnPtr<Parse
         if (isWaitingForScripts()) {
             ASSERT(it + 1 == tokens->end()); // The </script> is assumed to be the last token of this bunch.
             runScriptsForPausedTreeBuilder();
-            validateSpeculations();
+            validateSpeculations(chunk.release());
             break;
         }
 
@@ -455,36 +462,24 @@ void HTMLDocumentParser::pumpPendingSpeculations()
     // m_tokenizer and m_token don't have state that invalidates m_speculations.
     ASSERT(!m_tokenizer);
     ASSERT(!m_token);
+    ASSERT(!m_lastChunkBeforeScript);
 
     // FIXME: Pass in current input length.
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willWriteHTML(document(), lineNumber().zeroBasedInt());
 
     double startTime = currentTime();
-    HTMLInputCheckpoint lastCheckpointPassed = 0;
 
     while (!m_speculations.isEmpty()) {
-        OwnPtr<ParsedChunk> chunk = m_speculations.takeFirst();
-        lastCheckpointPassed = chunk->inputCheckpoint;
-        processParsedChunkFromBackgroundParser(chunk.release());
+        processParsedChunkFromBackgroundParser(m_speculations.takeFirst());
 
-        // Processing a chunk can call document.write, causing us to invalidate any remaining speculations.
-        if (m_speculations.isEmpty() || isStopped()) {
-            // We're aborting these speculations, so don't tell the parser we've passed a checkpoint (its already cleared its checkpoints).
-            lastCheckpointPassed = 0;
-            break;
-        }
-
-        if (isWaitingForScripts())
+        if (isWaitingForScripts() || isStopped())
             break;
 
-        if (currentTime() - startTime > parserTimeLimit) {
+        if (currentTime() - startTime > parserTimeLimit && !m_speculations.isEmpty()) {
             m_parserScheduler->scheduleForResume();
             break;
         }
     }
-
-    if (lastCheckpointPassed)
-        HTMLParserThread::shared()->postTask(bind(&BackgroundHTMLParser::passedCheckpoint, m_backgroundParser, lastCheckpointPassed));
 
     InspectorInstrumentation::didWriteHTML(cookie, lineNumber().zeroBasedInt());
 }
@@ -534,7 +529,7 @@ void HTMLDocumentParser::pumpTokenizer(SynchronousMode mode)
     // much we parsed as part of didWriteHTML instead of willWriteHTML.
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willWriteHTML(document(), m_input.current().currentLine().zeroBasedInt());
 
-    m_xssAuditor.init(document());
+    m_xssAuditor.init(document(), &m_xssAuditorDelegate);
 
     while (canTakeNextToken(mode, session) && !session.needsYield) {
         if (!isParsingFragment())
@@ -675,7 +670,7 @@ void HTMLDocumentParser::startBackgroundParser()
     config->options = m_options;
     config->parser = m_weakFactory.createWeakPtr();
     config->xssAuditor = adoptPtr(new XSSAuditor);
-    config->xssAuditor->init(document());
+    config->xssAuditor->init(document(), &m_xssAuditorDelegate);
     config->preloadScanner = adoptPtr(new TokenPreloadScanner(document()->url().copy()));
 
     ASSERT(config->xssAuditor->isSafeToSendToAnotherThread());
@@ -886,7 +881,8 @@ void HTMLDocumentParser::resumeParsingAfterScriptExecution()
 
 #if ENABLE(THREADED_HTML_PARSER)
     if (m_haveBackgroundParser) {
-        validateSpeculations();
+        validateSpeculations(m_lastChunkBeforeScript.release());
+        ASSERT(!m_lastChunkBeforeScript);
         // processParsedChunkFromBackgroundParser can cause this parser to be detached from the Document,
         // but we need to ensure it isn't deleted yet.
         RefPtr<HTMLDocumentParser> protect(this);
@@ -958,9 +954,9 @@ void HTMLDocumentParser::executeScriptsWaitingForStylesheets()
         resumeParsingAfterScriptExecution();
 }
 
-void HTMLDocumentParser::parseDocumentFragment(const String& source, DocumentFragment* fragment, Element* contextElement, FragmentScriptingPermission scriptingPermission)
+void HTMLDocumentParser::parseDocumentFragment(const String& source, DocumentFragment* fragment, Element* contextElement, ParserContentPolicy parserContentPolicy)
 {
-    RefPtr<HTMLDocumentParser> parser = HTMLDocumentParser::create(fragment, contextElement, scriptingPermission);
+    RefPtr<HTMLDocumentParser> parser = HTMLDocumentParser::create(fragment, contextElement, parserContentPolicy);
     parser->insert(source); // Use insert() so that the parser will not yield.
     parser->finish();
     ASSERT(!parser->processingData()); // Make sure we're done. <rdar://problem/3963151>

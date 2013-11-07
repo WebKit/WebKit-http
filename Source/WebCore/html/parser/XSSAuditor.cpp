@@ -51,6 +51,7 @@
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
 #include "XLinkNames.h"
+#include "XSSAuditorDelegate.h"
 
 #if ENABLE(SVG)
 #include "SVGNames.h"
@@ -88,7 +89,7 @@ static bool isRequiredForInjection(UChar c)
 
 static bool isTerminatingCharacter(UChar c)
 {
-    return (c == '&' || c == '/' || c == '"' || c == '\'' || c == '<' || c == '>');
+    return (c == '&' || c == '/' || c == '"' || c == '\'' || c == '<' || c == '>' || c == ',');
 }
 
 static bool isHTMLQuote(UChar c)
@@ -216,6 +217,8 @@ static bool semicolonSeparatedValueContainsJavaScriptURL(const String& value)
 XSSAuditor::XSSAuditor()
     : m_isEnabled(false)
     , m_xssProtection(ContentSecurityPolicy::FilterReflectedXSS)
+    , m_didSendValidCSPHeader(false)
+    , m_didSendValidXSSProtectionHeader(false)
     , m_state(Uninitialized)
     , m_scriptTagNestingLevel(0)
     , m_encoding(UTF8Encoding())
@@ -224,7 +227,7 @@ XSSAuditor::XSSAuditor()
     // we want to reference might not all have been constructed yet.
 }
 
-void XSSAuditor::init(Document* document)
+void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
 {
     const size_t miniumLengthForSuffixTree = 512; // FIXME: Tune this parameter.
     const int suffixTreeDepth = 5;
@@ -280,6 +283,7 @@ void XSSAuditor::init(Document* document)
 
         // Process the X-XSS-Protection header, then mix in the CSP header's value.
         ContentSecurityPolicy::ReflectedXSSDisposition xssProtectionHeader = parseXSSProtectionHeader(headerValue, errorDetails, errorPosition, reportURL);
+        m_didSendValidXSSProtectionHeader = xssProtectionHeader != ContentSecurityPolicy::ReflectedXSSUnset && xssProtectionHeader != ContentSecurityPolicy::ReflectedXSSInvalid;
         if ((xssProtectionHeader == ContentSecurityPolicy::FilterReflectedXSS || xssProtectionHeader == ContentSecurityPolicy::BlockReflectedXSS) && !reportURL.isEmpty()) {
             xssProtectionReportURL = document->completeURL(reportURL);
             if (MixedContentChecker::isMixedContent(document->securityOrigin(), xssProtectionReportURL)) {
@@ -291,9 +295,13 @@ void XSSAuditor::init(Document* document)
         if (xssProtectionHeader == ContentSecurityPolicy::ReflectedXSSInvalid)
             document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Error parsing header X-XSS-Protection: " + headerValue + ": "  + errorDetails + " at character position " + String::format("%u", errorPosition) + ". The default protections will be applied.");
 
-        m_xssProtection = combineXSSProtectionHeaderAndCSP(xssProtectionHeader, document->contentSecurityPolicy()->reflectedXSSDisposition());
-        m_reportURL = xssProtectionReportURL; // FIXME: Combine the two report URLs in some reasonable way.
+        ContentSecurityPolicy::ReflectedXSSDisposition cspHeader = document->contentSecurityPolicy()->reflectedXSSDisposition();
+        m_didSendValidCSPHeader = cspHeader != ContentSecurityPolicy::ReflectedXSSUnset && cspHeader != ContentSecurityPolicy::ReflectedXSSInvalid;
 
+        m_xssProtection = combineXSSProtectionHeaderAndCSP(xssProtectionHeader, cspHeader);
+        // FIXME: Combine the two report URLs in some reasonable way.
+        if (auditorDelegate)
+            auditorDelegate->setReportURL(xssProtectionReportURL.copy());
         FormData* httpBody = documentLoader->originalRequest().httpBody();
         if (httpBody && !httpBody->isEmpty()) {
             httpBodyAsString = httpBody->flattenToString();
@@ -331,8 +339,7 @@ PassOwnPtr<XSSInfo> XSSAuditor::filterToken(const FilterTokenRequest& request)
 
     if (didBlockScript) {
         bool didBlockEntirePage = (m_xssProtection == ContentSecurityPolicy::BlockReflectedXSS);
-        OwnPtr<XSSInfo> xssInfo = XSSInfo::create(m_reportURL, didBlockEntirePage);
-        m_reportURL = KURL();
+        OwnPtr<XSSInfo> xssInfo = XSSInfo::create(didBlockEntirePage, m_didSendValidXSSProtectionHeader, m_didSendValidCSPHeader);
         return xssInfo.release();
     }
     return nullptr;
@@ -723,8 +730,7 @@ bool XSSAuditor::isSafeToSendToAnotherThread() const
     return m_documentURL.isSafeToSendToAnotherThread()
         && m_decodedURL.isSafeToSendToAnotherThread()
         && m_decodedHTTPBody.isSafeToSendToAnotherThread()
-        && m_cachedDecodedSnippet.isSafeToSendToAnotherThread()
-        && m_reportURL.isSafeToSendToAnotherThread();
+        && m_cachedDecodedSnippet.isSafeToSendToAnotherThread();
 }
 
 } // namespace WebCore

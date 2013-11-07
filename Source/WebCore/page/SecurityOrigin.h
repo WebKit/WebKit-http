@@ -150,6 +150,7 @@ public:
     bool canAccessLocalStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); };
     bool canAccessSharedWorkers(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
     bool canAccessPluginStorage(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
+    bool canAccessApplicationCache(const SecurityOrigin* topOrigin) const { return canAccessStorage(topOrigin); }
     bool canAccessCookies() const { return !isUnique(); }
     bool canAccessPasswordManager() const { return !isUnique(); }
     bool canAccessFileSystem() const { return !isUnique(); }
@@ -208,6 +209,8 @@ public:
     // This method checks for equality, ignoring the value of document.domain
     // (and whether it was set) but considering the host. It is used for postMessage.
     bool isSameSchemeHostPort(const SecurityOrigin*) const;
+
+    static String urlWithUniqueSecurityOrigin();
 
 private:
     SecurityOrigin();

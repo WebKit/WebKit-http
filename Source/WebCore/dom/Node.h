@@ -40,12 +40,10 @@
 #include <wtf/ListHashSet.h>
 #include <wtf/text/AtomicString.h>
 
-#if USE(JSC)
 namespace JSC {
     class JSGlobalData;
     class SlotVisitor;
 }
-#endif
 
 // This needs to be here because Document.h also depends on it.
 #define DUMP_NODE_STATISTICS 0
@@ -176,6 +174,7 @@ public:
     static StyleChange diff(const RenderStyle*, const RenderStyle*, Document*);
 
     virtual ~Node();
+    void willBeDeletedFrom(Document*);
 
     // DOM methods & attributes for Node
 
@@ -194,6 +193,10 @@ public:
     Node* lastChild() const;
     bool hasAttributes() const;
     NamedNodeMap* attributes() const;
+    Node* pseudoAwareNextSibling() const;
+    Node* pseudoAwarePreviousSibling() const;
+    Node* pseudoAwareFirstChild() const;
+    Node* pseudoAwareLastChild() const;
 
     virtual KURL baseURI() const;
     
@@ -259,6 +262,8 @@ public:
     bool isDocumentFragment() const { return getFlag(IsDocumentFragmentFlag); }
     bool isShadowRoot() const { return isDocumentFragment() && isTreeScope(); }
     bool isInsertionPoint() const { return getFlag(NeedsShadowTreeWalkerFlag) && isInsertionPointNode(); }
+    // Returns Node rather than InsertionPoint. Should be used only for language bindings.
+    Node* insertionParentForBinding() const;
 
     bool needsShadowTreeWalker() const;
     bool needsShadowTreeWalkerSlow() const;
@@ -299,7 +304,7 @@ public:
     // Returns the enclosing event parent node (or self) that, when clicked, would trigger a navigation.
     Node* enclosingLinkEventParentOrSelf();
 
-    bool isBlockFlow() const;
+    bool isBlockFlowElement() const;
 
     // These low-level calls give the caller responsibility for maintaining the integrity of the tree.
     void setPreviousSibling(Node* previous) { m_previous = previous; }
@@ -413,10 +418,6 @@ public:
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
     virtual Node* focusDelegate();
-
-#if ENABLE(DIALOG_ELEMENT)
-    bool isInert() const;
-#endif
 
     enum UserSelectAllTreatment {
         UserSelectAllDoesNotAffectEditability,
@@ -662,10 +663,6 @@ public:
 
     // Perform the default action for an event.
     virtual void defaultEventHandler(Event*);
-
-    // Used for disabled form elements; if true, prevents mouse events from being dispatched
-    // to event listeners, and prevents DOMActivate events from being sent at all.
-    virtual bool disabled() const;
 
     using TreeShared<Node>::ref;
     using TreeShared<Node>::deref;

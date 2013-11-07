@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,6 +23,8 @@
 
 #include "LayerCompositingThread.h"
 #include "LayerRenderer.h"
+#include "LayerRendererClient.h"
+#include "WebPageCompositor.h"
 
 #include <BlackBerryPlatformAnimationFrameRateController.h>
 #include <BlackBerryPlatformGLES2Context.h>
@@ -41,7 +43,10 @@ class WebPageCompositorClient;
 class WebPagePrivate;
 
 // This class may only be used on the compositing thread. So it does not need to be threadsaferefcounted.
-class WebPageCompositorPrivate : public RefCounted<WebPageCompositorPrivate>, public Platform::AnimationFrameRateClient {
+class WebPageCompositorPrivate
+    : public RefCounted<WebPageCompositorPrivate>
+    , public WebCore::LayerRendererClient
+    , public Platform::AnimationFrameRateClient {
 public:
     static PassRefPtr<WebPageCompositorPrivate> create(WebPagePrivate* page, WebPageCompositorClient* client)
     {
@@ -51,11 +56,12 @@ public:
     ~WebPageCompositorPrivate();
 
     // Public API
+    void setChildWindowPlacement(WebPageCompositor::ChildWindowPlacement placement) { m_childWindowPlacement = placement; }
     void prepareFrame(double animationTime);
     void render(const WebCore::IntRect& targetRect,
                 const WebCore::IntRect& clipRect,
                 const WebCore::TransformationMatrix&,
-                const WebCore::FloatRect& contents, // This is public API, thus takes transformed contents
+                const WebCore::FloatRect& documentContents,
                 const WebCore::FloatRect& viewport);
 
     Platform::Graphics::GLES2Context* context() const { return m_context; }
@@ -102,8 +108,16 @@ protected:
     WebPageCompositorPrivate(WebPagePrivate*, WebPageCompositorClient*);
 
 private:
-    void animationFrameChanged();
     void compositeLayers(const WebCore::TransformationMatrix&);
+    void attachOverlays() { attachOverlays(m_compositingThreadOverlayLayer.get(), m_webPage); }
+    void detachOverlays() { attachOverlays(m_compositingThreadOverlayLayer.get(), 0); }
+    static void attachOverlays(WebCore::LayerCompositingThread* overlayRoot, WebPagePrivate*);
+
+    // LayerRendererClient
+    virtual bool shouldChildWindowsUseDocumentCoordinates();
+
+    // AnimationFrameRateClient
+    virtual void animationFrameChanged();
 
     WebPageCompositorClient* m_client;
     WebPagePrivate* m_webPage;
@@ -117,6 +131,7 @@ private:
     WebCore::LayerRenderingResults m_lastCompositingResults;
     WebCore::Color m_backgroundColor;
     bool m_drawsRootLayer;
+    WebPageCompositor::ChildWindowPlacement m_childWindowPlacement;
 };
 
 } // namespace WebKit

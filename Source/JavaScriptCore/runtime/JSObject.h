@@ -565,6 +565,8 @@ public:
     void putDirect(JSGlobalData& globalData, PropertyOffset offset, JSValue value) { locationForOffset(offset)->set(globalData, this, value); }
     void putDirectUndefined(PropertyOffset offset) { locationForOffset(offset)->setUndefined(); }
 
+    void putDirectNativeFunction(ExecState*, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
+
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
 
     bool isGlobalObject() const;
@@ -1448,6 +1450,20 @@ inline int offsetRelativeToBase(PropertyOffset offset)
 }
 
 COMPILE_ASSERT(!(sizeof(JSObject) % sizeof(WriteBarrierBase<Unknown>)), JSObject_inline_storage_has_correct_alignment);
+
+// Helper for defining native functions, if you're not using a static hash table.
+// Use this macro from within finishCreation() methods in prototypes. This assumes
+// you've defined variables called exec, globalObject, and globalData, and they
+// have the expected meanings.
+#define JSC_NATIVE_INTRINSIC_FUNCTION(jsName, cppName, attributes, length, intrinsic) \
+    putDirectNativeFunction(\
+        exec, globalObject, Identifier(exec, (jsName)), (length), cppName, \
+        (intrinsic), (attributes))
+
+// As above, but this assumes that the function you're defining doesn't have an
+// intrinsic.
+#define JSC_NATIVE_FUNCTION(jsName, cppName, attributes, length) \
+    JSC_NATIVE_INTRINSIC_FUNCTION(jsName, cppName, (attributes), (length), NoIntrinsic)
 
 } // namespace JSC
 

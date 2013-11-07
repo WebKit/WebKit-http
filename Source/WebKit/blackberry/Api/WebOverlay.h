@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -48,6 +48,9 @@ class WebPage;
  * the WebKit or the compositing thread. This means that overlays can be
  * on either of these threads, but each instance must only be used on the
  * thread where it was created. The only exception is the override mechanism.
+ *
+ * Note that WebKit thread usage of WebOverlay is obsolete and will be removed
+ * soon.
  *
  * The WebOverlayOverride object returned by WebOverlay::override() can be used
  * to override the values of specific properties from the UI thread.
@@ -98,6 +101,12 @@ public:
     void addAnimation(const WebAnimation&);
     void removeAnimation(const BlackBerry::Platform::String& name);
 
+    // Returns the rectangle occupied by this overlay, in pixels, relative to the current viewport
+    // Can be used for hit testing (noting though, that the overlay may have transparent pixels that
+    // cause it not to occupy the whole rectangle, for example when the overlay draws an image with
+    // alpha channel). Not implemented for WebKit-thread overlays.
+    Platform::IntRect pixelViewportRect() const;
+
     WebOverlay* parent() const;
     bool addChild(WebOverlay*);
     void removeFromParent();
@@ -109,7 +118,7 @@ public:
     // Will result in a future call to WebOverlayClient::drawContents, if the layer draws custom contents.
     void invalidate();
 
-    // The client can be used to draw layer contents using Skia.
+    // The client can be used to draw layer contents.
     void setClient(WebOverlayClient*);
 
     // Must be called on UI thread.

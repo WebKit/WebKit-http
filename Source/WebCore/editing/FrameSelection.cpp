@@ -57,7 +57,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RenderedPosition.h"
-#include "SecureTextInput.h"
 #include "Settings.h"
 #include "SpatialNavigation.h"
 #include "StylePropertySet.h"
@@ -338,8 +337,9 @@ void FrameSelection::setSelection(const VisibleSelection& newSelection, SetSelec
 
         revealSelection(alignment, RevealExtent);
     }
-
+#if HAVE(ACCESSIBILITY)
     notifyAccessibilityForSelectionChange();
+#endif
     m_frame->document()->enqueueDocumentEvent(Event::create(eventNames().selectionchangeEvent, false, false));
 }
 
@@ -354,7 +354,7 @@ static bool removingNodeRemovesPosition(Node* node, const Position& position)
     if (!node->isElementNode())
         return false;
 
-    Element* element = static_cast<Element*>(node);
+    Element* element = toElement(node);
     return element->containsIncludingShadowDOM(position.anchorNode());
 }
 
@@ -1542,8 +1542,7 @@ bool FrameSelection::contains(const LayoutPoint& point)
     if (!document->renderer()) 
         return false;
     
-    HitTestRequest request(HitTestRequest::ReadOnly |
-                           HitTestRequest::Active);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowShadowContent);
     HitTestResult result(point);
     document->renderView()->hitTest(request, result);
     Node* innerNode = result.innerNode();
@@ -1711,29 +1710,11 @@ void FrameSelection::focusedOrActiveStateChanged()
             if (renderer && renderer->style()->hasAppearance())
                 renderer->theme()->stateChanged(renderer, FocusState);
     }
-
-    // Secure keyboard entry is set by the active frame.
-    if (m_frame->document()->useSecureKeyboardEntryWhenActive())
-        setUseSecureKeyboardEntry(activeAndFocused);
 }
 
 void FrameSelection::pageActivationChanged()
 {
     focusedOrActiveStateChanged();
-}
-
-void FrameSelection::updateSecureKeyboardEntryIfActive()
-{
-    if (m_frame->document() && isFocusedAndActive())
-        setUseSecureKeyboardEntry(m_frame->document()->useSecureKeyboardEntryWhenActive());
-}
-
-void FrameSelection::setUseSecureKeyboardEntry(bool enable)
-{
-    if (enable)
-        enableSecureTextInput();
-    else
-        disableSecureTextInput();
 }
 
 void FrameSelection::setFocused(bool flag)
@@ -1888,7 +1869,7 @@ void FrameSelection::setFocusedNodeIfNeeded()
             // We don't want to set focus on a subframe when selecting in a parent frame,
             // so add the !isFrameElement check here. There's probably a better way to make this
             // work in the long term, but this is the safest fix at this time.
-            if (target && target->isMouseFocusable() && !isFrameElement(target)) {
+            if (target->isMouseFocusable() && !isFrameElement(target)) {
                 m_frame->page()->focusController()->setFocusedNode(target, m_frame);
                 return;
             }

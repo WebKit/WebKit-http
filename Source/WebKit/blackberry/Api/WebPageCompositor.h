@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -39,13 +39,22 @@ public:
 
     WebPageCompositorClient* client() const;
 
+    // Child windows may be positioned in document coordinates if the
+    // BlackBerry::Platform::Window::virtualRect() of the parent window is kept
+    // in sync with the document visible content rect.
+    //
+    // Otherwise, the default is to position child windows using window
+    // coordinates.
+    enum ChildWindowPlacement { WindowCoordinates, DocumentCoordinates };
+    void setChildWindowPlacement(ChildWindowPlacement);
+
     void prepareFrame(Platform::Graphics::GLES2Context*, double animationTime);
 
     void render(Platform::Graphics::GLES2Context*,
                 const Platform::IntRect& targetRect,
                 const Platform::IntRect& clipRect,
                 const Platform::TransformationMatrix&,
-                const Platform::FloatRect& contents,
+                const Platform::FloatRect& documentContents,
                 const Platform::FloatRect& viewport);
 
     void cleanup(Platform::Graphics::GLES2Context*);

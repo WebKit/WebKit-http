@@ -125,6 +125,7 @@ my (
     $requestAnimationFrameSupport,
     $resourceTimingSupport,
     $scriptedSpeechSupport,
+    $seccompFiltersSupport,
     $shadowDOMSupport,
     $sharedWorkersSupport,
     $sqlDatabaseSupport,
@@ -137,6 +138,7 @@ my (
     $templateElementSupport,
     $textAutosizingSupport,
     $tiledBackingStoreSupport,
+    $threadedHTMLParserSupport,
     $touchEventsSupport,
     $touchSliderSupport,
     $touchIconLoadingSupport,
@@ -284,7 +286,7 @@ my @features = (
       define => "ENABLE_IFRAME_SEAMLESS", default => 1, value => \$iframeSeamlessSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
-      define => "ENABLE_INDEXED_DATABASE", default => isGtk(), value => \$indexedDatabaseSupport },
+      define => "ENABLE_INDEXED_DATABASE", default => (isGtk() || isEfl()), value => \$indexedDatabaseSupport },
 
     { option => "input-speech", desc => "Toggle Input Speech support",
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
@@ -295,8 +297,8 @@ my @features = (
     { option => "input-type-date", desc => "Toggle Input Type Date support",
       define => "ENABLE_INPUT_TYPE_DATE", default => 0, value => \$inputTypeDateSupport },
 
-    { option => "input-type-datetime", desc => "Toggle Input Type Datetime support",
-      define => "ENABLE_INPUT_TYPE_DATETIME", default => 0, value => \$inputTypeDatetimeSupport },
+    { option => "input-type-datetime", desc => "Toggle broken Input Type Datetime support",
+      define => "ENABLE_INPUT_TYPE_DATETIME_INCOMPLETE", default => 0, value => \$inputTypeDatetimeSupport },
 
     { option => "input-type-datetimelocal", desc => "Toggle Input Type Datetimelocal support",
       define => "ENABLE_INPUT_TYPE_DATETIMELOCAL", default => 0, value => \$inputTypeDatetimelocalSupport },
@@ -400,6 +402,9 @@ my @features = (
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
       define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isBlackBerry()), value => \$requestAnimationFrameSupport },
 
+    { option => "seccomp-filters", desc => "Toggle Seccomp Filter sandbox",
+      define => "ENABLE_SECCOMP_FILTERS", default => 0, value => \$seccompFiltersSupport },
+
     { option => "scripted-speech", desc => "Toggle Scripted Speech support",
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
 
@@ -421,14 +426,11 @@ my @features = (
     { option => "svg", desc => "Toggle SVG support",
       define => "ENABLE_SVG", default => 1, value => \$svgSupport },
 
-    { option => "svg-dom-objc-bindings", desc => "Toggle SVG DOM ObjC Bindings support",
-      define => "ENABLE_SVG_DOM_OBJC_BINDINGS", default => isAppleMacWebKit(), value => \$svgDOMObjCBindingsSupport },
-
     { option => "svg-fonts", desc => "Toggle SVG Fonts support",
       define => "ENABLE_SVG_FONTS", default => 1, value => \$svgFontsSupport },
 
     { option => "system-malloc", desc => "Toggle system allocator instead of TCmalloc",
-      define => "USE_SYSTEM_MALLOC", default => (isWinCE() || isHaiku()), value => \$systemMallocSupport },
+      define => "USE_SYSTEM_MALLOC", default => (isBlackBerry() || isWinCE() || isHaiku()), value => \$systemMallocSupport },
 
     { option => "template-element", desc => "Toggle HTMLTemplateElement support",
       define => "ENABLE_TEMPLATE_ELEMENT", default => (isEfl() || isGtk()), value => \$templateElementSupport },
@@ -438,6 +440,9 @@ my @features = (
 
     { option => "tiled-backing-store", desc => "Toggle Tiled Backing Store support",
       define => "WTF_USE_TILED_BACKING_STORE", default => (isQt() || isEfl()), value => \$tiledBackingStoreSupport },
+
+    { option => "threaded-html-parser", desc => "Toggle threaded HTML parser support",
+      define => "ENABLE_THREADED_HTML_PARSER", default => isChromium(), value => \$threadedHTMLParserSupport },
 
     { option => "touch-events", desc => "Toggle Touch Events support",
       define => "ENABLE_TOUCH_EVENTS", default => (isQt() || isBlackBerry() || isEfl()), value => \$touchEventsSupport },
@@ -464,7 +469,7 @@ my @features = (
       define => "ENABLE_WEBGL", default => (isAppleMacWebKit() || isGtk() || isEfl()), value => \$webglSupport },
 
     { option => "web-audio", desc => "Toggle Web Audio support",
-      define => "ENABLE_WEB_AUDIO", default => (isEfl()), value => \$webAudioSupport },
+      define => "ENABLE_WEB_AUDIO", default => (isEfl() || isGtk()), value => \$webAudioSupport },
 
     { option => "web-sockets", desc => "Toggle Web Sockets support",
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },

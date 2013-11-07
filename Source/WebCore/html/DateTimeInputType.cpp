@@ -29,7 +29,7 @@
  */
 
 #include "config.h"
-#if ENABLE(INPUT_TYPE_DATETIME)
+#if ENABLE(INPUT_TYPE_DATETIME_INCOMPLETE)
 #include "DateTimeInputType.h"
 
 #include "DateComponents.h"
@@ -163,6 +163,11 @@ void DateTimeInputType::setupLayoutParameters(DateTimeEditElement::LayoutParamet
     layoutParameters.placeholderForDay = placeholderForDayOfMonthField();
     layoutParameters.placeholderForMonth = placeholderForMonthField();
     layoutParameters.placeholderForYear = placeholderForYearField();
+}
+
+bool DateTimeInputType::isValidFormat(bool hasYear, bool hasMonth, bool hasWeek, bool hasDay, bool hasAMPM, bool hasHour, bool hasMinute, bool hasSecond) const
+{
+    return hasYear && hasMonth && hasDay && hasAMPM && hasHour && hasMinute;
 }
 #endif
 

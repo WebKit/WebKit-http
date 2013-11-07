@@ -93,7 +93,6 @@ void LiveNodeListBase::invalidateIdNameCacheMaps() const
 void LiveNodeListBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    NodeList::reportMemoryUsage(memoryObjectInfo);
     info.addMember(m_ownerNode, "ownerNode");
     info.addWeakPointer(m_cachedItem);
 }
@@ -120,7 +119,7 @@ Node* LiveNodeList::namedItem(const AtomicString& elementId) const
     for (unsigned i = 0; i < length; i++) {
         Node* node = item(i);
         // FIXME: This should probably be using getIdAttribute instead of idForStyleResolution.
-        if (node->hasID() && static_cast<Element*>(node)->idForStyleResolution() == elementId)
+        if (node->hasID() && toElement(node)->idForStyleResolution() == elementId)
             return node;
     }
 

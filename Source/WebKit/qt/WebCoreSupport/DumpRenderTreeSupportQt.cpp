@@ -38,6 +38,7 @@
 #include "EditorClientQt.h"
 #include "Element.h"
 #include "FocusController.h"
+#include "Font.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoaderClientQt.h"
@@ -326,18 +327,6 @@ void DumpRenderTreeSupportQt::setAuthorAndUserStylesEnabled(QWebPageAdapter* ada
     adapter->page->settings()->setAuthorAndUserStylesEnabled(value);
 }
 
-void DumpRenderTreeSupportQt::setSmartInsertDeleteEnabled(QWebPageAdapter *adapter, bool enabled)
-{
-    static_cast<EditorClientQt*>(adapter->page->editorClient())->setSmartInsertDeleteEnabled(enabled);
-}
-
-
-void DumpRenderTreeSupportQt::setSelectTrailingWhitespaceEnabled(QWebPageAdapter *adapter, bool enabled)
-{
-    static_cast<EditorClientQt*>(adapter->page->editorClient())->setSelectTrailingWhitespaceEnabled(enabled);
-}
-
-
 void DumpRenderTreeSupportQt::executeCoreCommandByName(QWebPageAdapter* adapter, const QString& name, const QString& value)
 {
     adapter->page->focusController()->focusedOrMainFrame()->editor()->command(name).execute(value);
@@ -346,32 +335,6 @@ void DumpRenderTreeSupportQt::executeCoreCommandByName(QWebPageAdapter* adapter,
 bool DumpRenderTreeSupportQt::isCommandEnabled(QWebPageAdapter *adapter, const QString& name)
 {
     return adapter->page->focusController()->focusedOrMainFrame()->editor()->command(name).isEnabled();
-}
-
-bool DumpRenderTreeSupportQt::findString(QWebPageAdapter *adapter, const QString& string, const QStringList& optionArray)
-{
-    // 1. Parse the options from the array
-    WebCore::FindOptions options = 0;
-    const int optionCount = optionArray.size();
-    for (int i = 0; i < optionCount; ++i) {
-        const QString& option = optionArray.at(i);
-        if (option == QLatin1String("CaseInsensitive"))
-            options |= WebCore::CaseInsensitive;
-        else if (option == QLatin1String("AtWordStarts"))
-            options |= WebCore::AtWordStarts;
-        else if (option == QLatin1String("TreatMedialCapitalAsWordStart"))
-            options |= WebCore::TreatMedialCapitalAsWordStart;
-        else if (option == QLatin1String("Backwards"))
-            options |= WebCore::Backwards;
-        else if (option == QLatin1String("WrapAround"))
-            options |= WebCore::WrapAround;
-        else if (option == QLatin1String("StartInSelection"))
-            options |= WebCore::StartInSelection;
-    }
-
-    // 2. find the string
-    WebCore::Frame* frame = adapter->page->focusController()->focusedOrMainFrame();
-    return frame && frame->editor()->findString(string, options);
 }
 
 QVariantList DumpRenderTreeSupportQt::selectedRange(QWebPageAdapter *adapter)
@@ -910,6 +873,11 @@ void DumpRenderTreeSupportQt::setSeamlessIFramesEnabled(bool enabled)
 #endif
 }
 
+void DumpRenderTreeSupportQt::setShouldUseFontSmoothing(bool enabled)
+{
+    WebCore::Font::setShouldUseSmoothing(enabled);
+}
+
 QString DumpRenderTreeSupportQt::frameRenderTreeDump(QWebFrameAdapter* adapter)
 {
     if (adapter->frame->view() && adapter->frame->view()->layoutPending())
@@ -923,6 +891,11 @@ void DumpRenderTreeSupportQt::clearNotificationPermissions()
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebCore::NotificationPresenterClientQt::notificationPresenter()->clearCachedPermissions();
 #endif
+}
+
+void DumpRenderTreeSupportQt::disableDefaultTypesettingFeatures()
+{
+    WebCore::Font::setDefaultTypesettingFeatures(0);
 }
 
 void DumpRenderTreeSupportQt::getJSWindowObject(QWebFrameAdapter* adapter, JSContextRef* context, JSObjectRef* object)

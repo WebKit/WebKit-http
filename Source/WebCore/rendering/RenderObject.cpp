@@ -829,10 +829,15 @@ static bool mustRepaintFillLayers(const RenderObject* renderer, const FillLayer*
     if (!layer->xPosition().isZero() || !layer->yPosition().isZero())
         return true;
 
-    if (layer->size().type == SizeLength) {
-        if (layer->size().size.width().isPercent() || layer->size().size.height().isPercent())
+    EFillSizeType sizeType = layer->sizeType();
+
+    if (sizeType == Contain || sizeType == Cover)
+        return true;
+    
+    if (sizeType == SizeLength) {
+        if (layer->sizeLength().width().isPercent() || layer->sizeLength().height().isPercent())
             return true;
-    } else if (layer->size().type == Contain || layer->size().type == Cover || img->usesImageContainerSize())
+    } else if (img->usesImageContainerSize())
         return true;
 
     return false;
@@ -1111,7 +1116,7 @@ void RenderObject::addPDFURLRect(GraphicsContext* context, const LayoutRect& rec
     Node* n = node();
     if (!n || !n->isLink() || !n->isElementNode())
         return;
-    const AtomicString& href = static_cast<Element*>(n)->getAttribute(hrefAttr);
+    const AtomicString& href = toElement(n)->getAttribute(hrefAttr);
     if (href.isNull())
         return;
     context->setURLForRect(n->document()->completeURL(href), pixelSnappedIntRect(rect));
@@ -1510,14 +1515,6 @@ bool RenderObject::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* repa
     return false;
 }
 
-void RenderObject::repaintDuringLayoutIfMoved(const LayoutRect&)
-{
-}
-
-void RenderObject::repaintOverhangingFloats(bool)
-{
-}
-
 bool RenderObject::checkForRepaintDuringLayout() const
 {
     return !document()->view()->needsFullRepaint() && !hasLayer() && everHadLayout();
@@ -1873,8 +1870,10 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
             if (visibilityChanged)
                 document()->setAnnotatedRegionsDirty(true);
 #endif
-            if (visibilityChanged && AXObjectCache::accessibilityEnabled())
-                document()->axObjectCache()->childrenChanged(parent());
+            if (visibilityChanged) {
+                if (AXObjectCache* cache = document()->existingAXObjectCache())
+                    cache->childrenChanged(parent());
+            }
 
             // Keep layer hierarchy visibility bits up to date if visibility changes.
             if (m_style->visibility() != newStyle->visibility()) {
@@ -1911,7 +1910,7 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
             clearPositionedState();
         }
         setHorizontalWritingMode(true);
-        setPaintBackground(false);
+        setHasBoxDecorations(false);
         setHasOverflowClip(false);
         setHasTransform(false);
         setHasReflection(false);
@@ -2004,7 +2003,7 @@ void RenderObject::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
 
     if (oldStyle && !areCursorsEqual(oldStyle, style())) {
         if (Frame* frame = this->frame())
-            frame->eventHandler()->dispatchFakeMouseMoveEventSoon();
+            frame->eventHandler()->scheduleCursorUpdate();
     }
 }
 
@@ -2295,7 +2294,7 @@ RespectImageOrientationEnum RenderObject::shouldRespectImageOrientation() const
     // Respect the image's orientation if it's being used as a full-page image or it's
     // an <img> and the setting to respect it everywhere is set.
     return
-#if USE(CG) || PLATFORM(CHROMIUM) || USE(CAIRO)
+#if USE(CG) || USE(CAIRO) || PLATFORM(BLACKBERRY)
         // This can only be enabled for ports which honor the orientation flag in their drawing code.
         document()->isImageDocument() ||
 #endif
@@ -2417,15 +2416,15 @@ void RenderObject::willBeDestroyed()
 
     // For accessibility management, notify the parent of the imminent change to its child set.
     // We do it now, before remove(), while the parent pointer is still available.
-    if (AXObjectCache::accessibilityEnabled())
-        document()->axObjectCache()->childrenChanged(this->parent());
+    if (AXObjectCache* cache = document()->existingAXObjectCache())
+        cache->childrenChanged(this->parent());
 
     remove();
 
     // The remove() call above may invoke axObjectCache()->childrenChanged() on the parent, which may require the AX render
     // object for this renderer. So we remove the AX render object now, after the renderer is removed.
-    if (AXObjectCache::accessibilityEnabled())
-        document()->axObjectCache()->remove(this);
+    if (AXObjectCache* cache = document()->existingAXObjectCache())
+        cache->remove(this);
 
 #ifndef NDEBUG
     if (!documentBeingDestroyed() && view() && view()->hasRenderNamedFlowThreads()) {
@@ -2556,9 +2555,9 @@ void RenderObject::destroyAndCleanupAnonymousWrappers()
 
     RenderObject* destroyRoot = this;
     for (RenderObject* destroyRootParent = destroyRoot->parent(); destroyRootParent && destroyRootParent->isAnonymous(); destroyRoot = destroyRootParent, destroyRootParent = destroyRootParent->parent()) {
-        // Currently we only remove anonymous cells' wrapper but we should remove all unneeded
+        // Currently we only remove anonymous cells' and table sections' wrappers but we should remove all unneeded
         // wrappers. See http://webkit.org/b/52123 as an example where this is needed.
-        if (!destroyRootParent->isTableCell())
+        if (!destroyRootParent->isTableCell() && !destroyRootParent->isTableSection())
             break;
 
         if (destroyRootParent->firstChild() != this || destroyRootParent->lastChild() != this)
@@ -2804,6 +2803,12 @@ PassRefPtr<RenderStyle> RenderObject::getUncachedPseudoStyle(const PseudoStyleRe
 static Color decorationColor(RenderStyle* style)
 {
     Color result;
+#if ENABLE(CSS3_TEXT)
+    // Check for text decoration color first.
+    result = style->visitedDependentColor(CSSPropertyWebkitTextDecorationColor);
+    if (result.isValid())
+        return result;
+#endif // CSS3_TEXT
     if (style->textStrokeWidth() > 0) {
         // Prefer stroke color if possible but not if it's fully transparent.
         result = style->visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
@@ -2996,42 +3001,46 @@ void RenderObject::imageChanged(CachedImage* image, const IntRect* rect)
     imageChanged(static_cast<WrappedImagePtr>(image), rect);
 }
 
-RenderBoxModelObject* RenderObject::offsetParent() const
+Element* RenderObject::offsetParent() const
 {
-    // If any of the following holds true return null and stop this algorithm:
-    // A is the root element.
-    // A is the HTML body element.
-    // The computed value of the position property for element A is fixed.
-    if (isRoot() || isBody() || (isOutOfFlowPositioned() && style()->position() == FixedPosition))
+    if (isRoot() || isBody())
+        return 0;
+
+    if (isOutOfFlowPositioned() && style()->position() == FixedPosition)
         return 0;
 
     // If A is an area HTML element which has a map HTML element somewhere in the ancestor
     // chain return the nearest ancestor map HTML element and stop this algorithm.
     // FIXME: Implement!
-    
-    // Return the nearest ancestor element of A for which at least one of the following is
-    // true and stop this algorithm if such an ancestor is found:
-    //     * The computed value of the position property is not static.
-    //     * It is the HTML body element.
-    //     * The computed value of the position property of A is static and the ancestor
-    //       is one of the following HTML elements: td, th, or table.
-    //     * Our own extension: if there is a difference in the effective zoom
 
-    bool skipTables = isPositioned();
-    float currZoom = style()->effectiveZoom();
-    RenderObject* curr = parent();
-    while (curr && (!curr->node() || (!curr->isPositioned() && !curr->isBody()))) {
-        Node* element = curr->node();
-        if (!skipTables && element && (element->hasTagName(tableTag) || element->hasTagName(tdTag) || element->hasTagName(thTag)))
+    // FIXME: Figure out the right behavior for elements inside a flow thread.
+    // https://bugs.webkit.org/show_bug.cgi?id=113276
+
+    float effectiveZoom = style()->effectiveZoom();
+    Node* node = 0;
+    for (RenderObject* ancestor = parent(); ancestor; ancestor = ancestor->parent()) {
+        node = ancestor->node();
+
+        // Spec: http://www.w3.org/TR/cssom-view/#offset-attributes
+
+        if (!node)
+            continue;
+
+        if (ancestor->isPositioned())
             break;
 
-        float newZoom = curr->style()->effectiveZoom();
-        if (currZoom != newZoom)
+        if (node->hasTagName(HTMLNames::bodyTag))
             break;
-        currZoom = newZoom;
-        curr = curr->parent();
+
+        if (!isPositioned() && (node->hasTagName(tableTag) || node->hasTagName(tdTag) || node->hasTagName(thTag)))
+            break;
+
+        // Webkit specific extension where offsetParent stops at zoom level changes.
+        if (effectiveZoom != ancestor->style()->effectiveZoom())
+            break;
     }
-    return curr && curr->isBoxModelObject() ? toRenderBoxModelObject(curr) : 0;
+
+    return node && node->isElementNode() ? toElement(node) : 0;
 }
 
 VisiblePosition RenderObject::createVisiblePosition(int offset, EAffinity affinity)

@@ -190,6 +190,7 @@ static const CSSPropertyID computedProperties[] = {
 #if ENABLE(CSS3_TEXT)
     CSSPropertyWebkitTextDecorationLine,
     CSSPropertyWebkitTextDecorationStyle,
+    CSSPropertyWebkitTextDecorationColor,
     CSSPropertyWebkitTextAlignLast,
     CSSPropertyWebkitTextUnderlinePosition,
 #endif // CSS3_TEXT
@@ -285,7 +286,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitFontKerning,
     CSSPropertyWebkitFontSmoothing,
     CSSPropertyWebkitFontVariantLigatures,
+    CSSPropertyWebkitGridAutoColumns,
     CSSPropertyWebkitGridAutoFlow,
+    CSSPropertyWebkitGridAutoRows,
     CSSPropertyWebkitGridColumns,
     CSSPropertyWebkitGridRows,
     CSSPropertyWebkitGridStart,
@@ -379,6 +382,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitWrapThrough,
 #endif
 #if ENABLE(SVG)
+    CSSPropertyBufferedRendering,
     CSSPropertyClipPath,
     CSSPropertyClipRule,
     CSSPropertyMask,
@@ -1038,7 +1042,7 @@ static PassRefPtr<CSSValue> valueForGridTrackBreadth(const Length& trackBreadth,
     return zoomAdjustedPixelValueForLength(trackBreadth, style);
 }
 
-static PassRefPtr<CSSValue> valueForGridTrackMinMax(const GridTrackSize& trackSize, const RenderStyle* style, RenderView* renderView)
+static PassRefPtr<CSSValue> valueForGridTrackSize(const GridTrackSize& trackSize, const RenderStyle* style, RenderView* renderView)
 {
     switch (trackSize.type()) {
     case LengthTrackSizing:
@@ -1053,21 +1057,16 @@ static PassRefPtr<CSSValue> valueForGridTrackMinMax(const GridTrackSize& trackSi
     return 0;
 }
 
-static PassRefPtr<CSSValue> valueForGridTrackGroup(const Vector<GridTrackSize>& trackSizes, const RenderStyle* style, RenderView* renderView)
-{
-    RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-    for (size_t i = 0; i < trackSizes.size(); ++i)
-        list->append(valueForGridTrackMinMax(trackSizes[i], style, renderView));
-    return list.release();
-}
-
 static PassRefPtr<CSSValue> valueForGridTrackList(const Vector<GridTrackSize>& trackSizes, const RenderStyle* style, RenderView *renderView)
 {
     // Handle the 'none' case here.
     if (!trackSizes.size())
         return cssValuePool().createIdentifierValue(CSSValueNone);
 
-    return valueForGridTrackGroup(trackSizes, style, renderView);
+    RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+    for (size_t i = 0; i < trackSizes.size(); ++i)
+        list->append(valueForGridTrackSize(trackSizes[i], style, renderView));
+    return list.release();
 }
 
 static PassRefPtr<CSSValue> valueForGridPosition(const GridPosition& position)
@@ -1931,8 +1930,12 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             }
             return list.release();
         }
+        case CSSPropertyWebkitGridAutoColumns:
+            return valueForGridTrackSize(style->gridAutoColumns(), style.get(), m_node->document()->renderView());
         case CSSPropertyWebkitGridAutoFlow:
             return cssValuePool().createValue(style->gridAutoFlow());
+        case CSSPropertyWebkitGridAutoRows:
+            return valueForGridTrackSize(style->gridAutoRows(), style.get(), m_node->document()->renderView());
         case CSSPropertyWebkitGridColumns:
             return valueForGridTrackList(style->gridColumns(), style.get(), m_node->document()->renderView());
         case CSSPropertyWebkitGridRows:
@@ -2154,6 +2157,8 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return renderTextDecorationFlagsToCSSValue(style->textDecoration());
         case CSSPropertyWebkitTextDecorationStyle:
             return renderTextDecorationStyleFlagsToCSSValue(style->textDecorationStyle());
+        case CSSPropertyWebkitTextDecorationColor:
+            return currentColorOrValidColor(style.get(), style->textDecorationColor());
         case CSSPropertyWebkitTextAlignLast:
             return cssValuePool().createValue(style->textAlignLast());
         case CSSPropertyWebkitTextUnderlinePosition:
@@ -2187,8 +2192,18 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
                 return list.release();
             }
             }
-        case CSSPropertyTextIndent:
-            return zoomAdjustedPixelValueForLength(style->textIndent(), style.get());
+        case CSSPropertyTextIndent: {
+            RefPtr<CSSValue> textIndent = zoomAdjustedPixelValueForLength(style->textIndent(), style.get());
+#if ENABLE(CSS3_TEXT)
+            if (style->textIndentLine() == TextIndentEachLine) {
+                RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+                list->append(textIndent.release());
+                list->append(cssValuePool().createIdentifierValue(CSSValueWebkitEachLine));
+                return list.release();
+            }
+#endif
+            return textIndent.release();
+        }
         case CSSPropertyTextShadow:
             return valueForShadow(style->textShadow(), propertyID, style.get());
         case CSSPropertyTextRendering:
@@ -2807,6 +2822,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
 #endif
 
 #if ENABLE(SVG)
+        case CSSPropertyBufferedRendering:
         case CSSPropertyClipPath:
         case CSSPropertyClipRule:
         case CSSPropertyMask:

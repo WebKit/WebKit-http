@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,7 +44,6 @@
 #include "JSActivation.h"
 #include "JSAPIValueWrapper.h"
 #include "JSArray.h"
-#include "JSClassRef.h"
 #include "JSFunction.h"
 #include "JSLock.h"
 #include "JSNameScope.h"
@@ -61,7 +60,9 @@
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
 #include "UnlinkedCodeBlock.h"
+#include <wtf/ProcessID.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
 
@@ -93,12 +94,10 @@ extern const HashTable mathTable;
 extern const HashTable numberConstructorTable;
 extern const HashTable numberPrototypeTable;
 JS_EXPORTDATA extern const HashTable objectConstructorTable;
-extern const HashTable objectPrototypeTable;
 extern const HashTable privateNamePrototypeTable;
 extern const HashTable regExpTable;
 extern const HashTable regExpConstructorTable;
 extern const HashTable regExpPrototypeTable;
-extern const HashTable stringTable;
 extern const HashTable stringConstructorTable;
 
 // Note: Platform.h will enforce that ENABLE(ASSEMBLER) is true if either
@@ -155,12 +154,10 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     , numberConstructorTable(fastNew<HashTable>(JSC::numberConstructorTable))
     , numberPrototypeTable(fastNew<HashTable>(JSC::numberPrototypeTable))
     , objectConstructorTable(fastNew<HashTable>(JSC::objectConstructorTable))
-    , objectPrototypeTable(fastNew<HashTable>(JSC::objectPrototypeTable))
     , privateNamePrototypeTable(fastNew<HashTable>(JSC::privateNamePrototypeTable))
     , regExpTable(fastNew<HashTable>(JSC::regExpTable))
     , regExpConstructorTable(fastNew<HashTable>(JSC::regExpConstructorTable))
     , regExpPrototypeTable(fastNew<HashTable>(JSC::regExpPrototypeTable))
-    , stringTable(fastNew<HashTable>(JSC::stringTable))
     , stringConstructorTable(fastNew<HashTable>(JSC::stringConstructorTable))
     , identifierTable(globalDataType == Default ? wtfThreadData().currentIdentifierTable() : createIdentifierTable())
     , propertyNames(new CommonIdentifiers(this))
@@ -186,7 +183,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
 #if CPU(X86) && ENABLE(JIT)
     , m_timeoutCount(512)
 #endif
-    , m_newStringsSinceLastHashConst(0)
+    , m_newStringsSinceLastHashCons(0)
 #if ENABLE(ASSEMBLER)
     , m_canUseAssembler(enableAssembler(executableAllocator))
 #endif
@@ -252,8 +249,18 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
 
     LLInt::Data::performAssertions(*this);
     
-    if (Options::enableProfiler())
+    if (Options::enableProfiler()) {
         m_perBytecodeProfiler = adoptPtr(new Profiler::Database(*this));
+
+        StringPrintStream pathOut;
+#if !OS(WINCE)
+        const char* profilerPath = getenv("JSC_PROFILER_PATH");
+        if (profilerPath)
+            pathOut.print(profilerPath, "/");
+#endif
+        pathOut.print("JSCProfile-", getCurrentProcessID(), "-", m_perBytecodeProfiler->databaseID(), ".json");
+        m_perBytecodeProfiler->registerToSaveAtExit(pathOut.toCString().data());
+    }
 
 #if ENABLE(DFG_JIT)
     if (canUseJIT())
@@ -286,12 +293,10 @@ JSGlobalData::~JSGlobalData()
     numberConstructorTable->deleteTable();
     numberPrototypeTable->deleteTable();
     objectConstructorTable->deleteTable();
-    objectPrototypeTable->deleteTable();
     privateNamePrototypeTable->deleteTable();
     regExpTable->deleteTable();
     regExpConstructorTable->deleteTable();
     regExpPrototypeTable->deleteTable();
-    stringTable->deleteTable();
     stringConstructorTable->deleteTable();
 
     fastDelete(const_cast<HashTable*>(arrayConstructorTable));
@@ -306,15 +311,11 @@ JSGlobalData::~JSGlobalData()
     fastDelete(const_cast<HashTable*>(numberConstructorTable));
     fastDelete(const_cast<HashTable*>(numberPrototypeTable));
     fastDelete(const_cast<HashTable*>(objectConstructorTable));
-    fastDelete(const_cast<HashTable*>(objectPrototypeTable));
     fastDelete(const_cast<HashTable*>(privateNamePrototypeTable));
     fastDelete(const_cast<HashTable*>(regExpTable));
     fastDelete(const_cast<HashTable*>(regExpConstructorTable));
     fastDelete(const_cast<HashTable*>(regExpPrototypeTable));
-    fastDelete(const_cast<HashTable*>(stringTable));
     fastDelete(const_cast<HashTable*>(stringConstructorTable));
-
-    opaqueJSClassData.clear();
 
     delete emptyList;
 

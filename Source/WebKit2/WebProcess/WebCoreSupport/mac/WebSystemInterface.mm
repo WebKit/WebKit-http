@@ -53,7 +53,6 @@ void InitWebCoreSystemInterface(void)
         INIT(CopyNSURLResponseCertificateChain);
         INIT(CreateCTLineWithUniCharProvider);
         INIT(CreateCustomCFReadStream);
-        INIT(CreateNSURLConnectionDelegateProxy);
         INIT(DrawBezeledTextArea);
         INIT(DrawBezeledTextFieldCell);
         INIT(DrawCapsLockIndicator);
@@ -160,6 +159,8 @@ void InitWebCoreSystemInterface(void)
         INIT(SetCFURLResponseMIMEType);
 
         INIT(CreateVMPressureDispatchOnMainQueue);
+
+        INIT(DestroyRenderingResources);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
         INIT(ExecutableWasLinkedOnOrBeforeLion);

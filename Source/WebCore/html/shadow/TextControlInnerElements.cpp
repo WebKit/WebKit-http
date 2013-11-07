@@ -38,6 +38,7 @@
 #include "MouseEvent.h"
 #include "Page.h"
 #include "RenderSearchField.h"
+#include "RenderTextControl.h"
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "SpeechInput.h"
@@ -49,6 +50,21 @@
 namespace WebCore {
 
 using namespace HTMLNames;
+
+TextControlInnerContainer::TextControlInnerContainer(Document* document)
+    : HTMLDivElement(divTag, document)
+{
+}
+
+PassRefPtr<TextControlInnerContainer> TextControlInnerContainer::create(Document* document)
+{
+    return adoptRef(new TextControlInnerContainer(document));
+}
+    
+RenderObject* TextControlInnerContainer::createRenderer(RenderArena* arena, RenderStyle*)
+{
+    return new (arena) RenderTextControlInnerContainer(this);
+}
 
 TextControlInnerElement::TextControlInnerElement(Document* document)
     : HTMLDivElement(divTag, document)
@@ -333,7 +349,7 @@ void InputFieldSpeechButtonElement::defaultEventHandler(Event* event)
 bool InputFieldSpeechButtonElement::willRespondToMouseClickEvents()
 {
     const HTMLInputElement* input = static_cast<HTMLInputElement*>(shadowHost());
-    if (input && !input->disabled() && !input->readOnly())
+    if (input && !input->isDisabledOrReadOnly())
         return true;
 
     return HTMLDivElement::willRespondToMouseClickEvents();
@@ -370,7 +386,7 @@ void InputFieldSpeechButtonElement::setRecognitionResult(int, const SpeechInputR
     // remove the input element from DOM. To make sure it remains valid until we finish our work
     // here, we take a temporary reference.
     RefPtr<HTMLInputElement> input(static_cast<HTMLInputElement*>(shadowHost()));
-    if (!input || input->disabled() || input->readOnly())
+    if (!input || input->isDisabledOrReadOnly())
         return;
 
     RefPtr<InputFieldSpeechButtonElement> holdRefButton(this);

@@ -42,6 +42,8 @@ ScrollingTreeScrollingNode::ScrollingTreeScrollingNode(ScrollingTree* scrollingT
     , m_hasEnabledVerticalScrollbar(false)
     , m_horizontalScrollbarMode(ScrollbarAuto)
     , m_verticalScrollbarMode(ScrollbarAuto)
+    , m_headerHeight(0)
+    , m_footerHeight(0)
 {
 }
 
@@ -56,8 +58,8 @@ void ScrollingTreeScrollingNode::updateBeforeChildren(ScrollingStateNode* stateN
     if (state->hasChangedProperty(ScrollingStateScrollingNode::ViewportRect))
         m_viewportRect = state->viewportRect();
 
-    if (state->hasChangedProperty(ScrollingStateScrollingNode::ContentsSize))
-        m_contentsSize = state->contentsSize();
+    if (state->hasChangedProperty(ScrollingStateScrollingNode::TotalContentsSize))
+        m_totalContentsSize = state->totalContentsSize();
 
     if (state->hasChangedProperty(ScrollingStateScrollingNode::FrameScaleFactor))
         m_frameScaleFactor = state->frameScaleFactor();
@@ -85,6 +87,12 @@ void ScrollingTreeScrollingNode::updateBeforeChildren(ScrollingStateNode* stateN
 
     if (state->hasChangedProperty(ScrollingStateScrollingNode::ScrollOrigin))
         m_scrollOrigin = state->scrollOrigin();
+
+    if (state->hasChangedProperty(ScrollingStateScrollingNode::HeaderHeight))
+        m_headerHeight = state->headerHeight();
+
+    if (state->hasChangedProperty(ScrollingStateScrollingNode::FooterHeight))
+        m_footerHeight = state->footerHeight();
 }
 
 } // namespace WebCore

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -444,8 +444,8 @@ public:
     static unsigned dataOffset() { return OBJECT_OFFSETOF(StringImpl, m_data8); }
     static PassRefPtr<StringImpl> createWithTerminatingNullCharacter(const StringImpl&);
 
-    template<typename CharType, size_t inlineCapacity>
-    static PassRefPtr<StringImpl> adopt(Vector<CharType, inlineCapacity>& vector)
+    template<typename CharType, size_t inlineCapacity, typename OverflowHandler>
+    static PassRefPtr<StringImpl> adopt(Vector<CharType, inlineCapacity, OverflowHandler>& vector)
     {
         if (size_t size = vector.size()) {
             ASSERT(vector.data());
@@ -518,10 +518,10 @@ public:
     bool hasTerminatingNullCharacter() const { return m_hashAndFlags & s_hashFlagHasTerminatingNullCharacter; }
 
     bool isAtomic() const { return m_hashAndFlags & s_hashFlagIsAtomic; }
-    void setIsAtomic(bool isIdentifier)
+    void setIsAtomic(bool isAtomic)
     {
         ASSERT(!isStatic());
-        if (isIdentifier)
+        if (isAtomic)
             m_hashAndFlags |= s_hashFlagIsAtomic;
         else
             m_hashAndFlags &= ~s_hashFlagIsAtomic;
@@ -690,12 +690,14 @@ public:
     size_t find(UChar character, unsigned start = 0);
     WTF_EXPORT_STRING_API size_t find(CharacterMatchFunctionPtr, unsigned index = 0);
     size_t find(const LChar*, unsigned index = 0);
-    ALWAYS_INLINE size_t find(const char* s, unsigned index = 0) { return find(reinterpret_cast<const LChar*>(s), index); };
+    ALWAYS_INLINE size_t find(const char* s, unsigned index = 0) { return find(reinterpret_cast<const LChar*>(s), index); }
     WTF_EXPORT_STRING_API size_t find(StringImpl*);
     WTF_EXPORT_STRING_API size_t find(StringImpl*, unsigned index);
     size_t findIgnoringCase(const LChar*, unsigned index = 0);
-    ALWAYS_INLINE size_t findIgnoringCase(const char* s, unsigned index = 0) { return findIgnoringCase(reinterpret_cast<const LChar*>(s), index); };
+    ALWAYS_INLINE size_t findIgnoringCase(const char* s, unsigned index = 0) { return findIgnoringCase(reinterpret_cast<const LChar*>(s), index); }
     WTF_EXPORT_STRING_API size_t findIgnoringCase(StringImpl*, unsigned index = 0);
+
+    WTF_EXPORT_STRING_API size_t findNextLineStart(unsigned index = UINT_MAX);
 
     WTF_EXPORT_STRING_API size_t reverseFind(UChar, unsigned index = UINT_MAX);
     WTF_EXPORT_STRING_API size_t reverseFind(StringImpl*, unsigned index = UINT_MAX);
@@ -705,7 +707,7 @@ public:
     WTF_EXPORT_STRING_API bool startsWith(UChar) const;
     WTF_EXPORT_STRING_API bool startsWith(const char*, unsigned matchLength, bool caseSensitive) const;
     template<unsigned matchLength>
-    bool startsWith(const char (&prefix)[matchLength], bool caseSensitive = true) const { return startsWith(prefix, matchLength - 1, caseSensitive); };
+    bool startsWith(const char (&prefix)[matchLength], bool caseSensitive = true) const { return startsWith(prefix, matchLength - 1, caseSensitive); }
 
     WTF_EXPORT_STRING_API bool endsWith(StringImpl*, bool caseSensitive = true);
     WTF_EXPORT_STRING_API bool endsWith(UChar) const;
@@ -771,6 +773,32 @@ private:
 #ifdef STRING_STATS
     WTF_EXPORTDATA static StringStats m_stringStats;
 #endif
+
+public:
+    struct StaticASCIILiteral {
+        // These member variables must match the layout of StringImpl.
+        unsigned m_refCount;
+        unsigned m_length;
+        const LChar* m_data8;
+        void* m_buffer;
+        unsigned m_hashAndFlags;
+
+        // These values mimic ConstructFromLiteral.
+        static const unsigned s_initialRefCount = s_refCountIncrement;
+        static const unsigned s_initialFlags = s_hashFlag8BitBuffer | BufferInternal | s_hashFlagHasTerminatingNullCharacter;
+        static const unsigned s_hashShift = s_flagCount;
+    };
+
+#ifndef NDEBUG
+    void assertHashIsCorrect()
+    {
+        ASSERT(hasHash());
+        ASSERT(existingHash() == StringHasher::computeHashAndMaskTop8Bits(characters8(), length()));
+    }
+#endif
+
+private:
+    // These member variables must match the layout of StaticASCIILiteral.
     unsigned m_refCount;
     unsigned m_length;
     union {
@@ -788,6 +816,20 @@ private:
     mutable unsigned m_hashAndFlags;
 };
 
+COMPILE_ASSERT(sizeof(StringImpl) == sizeof(StringImpl::StaticASCIILiteral), StringImpl_should_match_its_StaticASCIILiteral);
+
+#if !ASSERT_DISABLED
+// StringImpls created from StaticASCIILiteral will ASSERT
+// in the generic ValueCheck<T>::checkConsistency
+// as they are not allocated by fastMalloc.
+// We don't currently have any way to detect that case
+// so we ignore the consistency check for all StringImpl*.
+template<> struct
+ValueCheck<StringImpl*> {
+    static void checkConsistency(const StringImpl*) { }
+};
+#endif
+
 template <>
 ALWAYS_INLINE const LChar* StringImpl::getCharacters<LChar>() const { return characters8(); }
 
@@ -802,6 +844,7 @@ inline bool equal(const StringImpl* a, const char* b, unsigned length) { return 
 inline bool equal(const LChar* a, StringImpl* b) { return equal(b, a); }
 inline bool equal(const char* a, StringImpl* b) { return equal(b, reinterpret_cast<const LChar*>(a)); }
 WTF_EXPORT_STRING_API bool equal(const StringImpl*, const UChar*, unsigned);
+WTF_EXPORT_STRING_API bool equalNonNull(const StringImpl* a, const StringImpl* b);
 
 // Do comparisons 8 or 4 bytes-at-a-time on architectures where it's safe.
 #if CPU(X86_64)
@@ -917,6 +960,94 @@ ALWAYS_INLINE bool equal(const UChar* a, const UChar* b, unsigned length)
     
     return true;
 }
+#elif PLATFORM(IOS) && WTF_ARM_ARCH_AT_LEAST(7)
+ALWAYS_INLINE bool equal(const LChar* a, const LChar* b, unsigned length)
+{
+    bool isEqual = false;
+    uint32_t aValue;
+    uint32_t bValue;
+    asm("subs   %[length], #4\n"
+        "blo    2f\n"
+
+        "0:\n" // Label 0 = Start of loop over 32 bits.
+        "ldr    %[aValue], [%[a]], #4\n"
+        "ldr    %[bValue], [%[b]], #4\n"
+        "cmp    %[aValue], %[bValue]\n"
+        "bne    66f\n"
+        "subs   %[length], #4\n"
+        "bhs    0b\n"
+
+        // At this point, length can be:
+        // -0: 00000000000000000000000000000000 (0 bytes left)
+        // -1: 11111111111111111111111111111111 (3 bytes left)
+        // -2: 11111111111111111111111111111110 (2 bytes left)
+        // -3: 11111111111111111111111111111101 (1 byte left)
+        // -4: 11111111111111111111111111111100 (length was 0)
+        // The pointers are at the correct position.
+        "2:\n" // Label 2 = End of loop over 32 bits, check for pair of characters.
+        "tst    %[length], #2\n"
+        "beq    1f\n"
+        "ldrh   %[aValue], [%[a]], #2\n"
+        "ldrh   %[bValue], [%[b]], #2\n"
+        "cmp    %[aValue], %[bValue]\n"
+        "bne    66f\n"
+
+        "1:\n" // Label 1 = Check for a single character left.
+        "tst    %[length], #1\n"
+        "beq    42f\n"
+        "ldrb   %[aValue], [%[a]]\n"
+        "ldrb   %[bValue], [%[b]]\n"
+        "cmp    %[aValue], %[bValue]\n"
+        "bne    66f\n"
+
+        "42:\n" // Label 42 = Success.
+        "mov    %[isEqual], #1\n"
+        "66:\n" // Label 66 = End without changing isEqual to 1.
+        : [length]"+r"(length), [isEqual]"+r"(isEqual), [a]"+r"(a), [b]"+r"(b), [aValue]"+r"(aValue), [bValue]"+r"(bValue)
+        :
+        :
+        );
+    return isEqual;
+}
+
+ALWAYS_INLINE bool equal(const UChar* a, const UChar* b, unsigned length)
+{
+    bool isEqual = false;
+    uint32_t aValue;
+    uint32_t bValue;
+    asm("subs   %[length], #2\n"
+        "blo    1f\n"
+
+        "0:\n" // Label 0 = Start of loop over 32 bits.
+        "ldr    %[aValue], [%[a]], #4\n"
+        "ldr    %[bValue], [%[b]], #4\n"
+        "cmp    %[aValue], %[bValue]\n"
+        "bne    66f\n"
+        "subs   %[length], #2\n"
+        "bhs    0b\n"
+
+        // At this point, length can be:
+        // -0: 00000000000000000000000000000000 (0 bytes left)
+        // -1: 11111111111111111111111111111111 (1 character left, 2 bytes)
+        // -2: 11111111111111111111111111111110 (length was zero)
+        // The pointers are at the correct position.
+        "1:\n" // Label 1 = Check for a single character left.
+        "tst    %[length], #1\n"
+        "beq    42f\n"
+        "ldrh   %[aValue], [%[a]]\n"
+        "ldrh   %[bValue], [%[b]]\n"
+        "cmp    %[aValue], %[bValue]\n"
+        "bne    66f\n"
+
+        "42:\n" // Label 42 = Success.
+        "mov    %[isEqual], #1\n"
+        "66:\n" // Label 66 = End without changing isEqual to 1.
+        : [length]"+r"(length), [isEqual]"+r"(isEqual), [a]"+r"(a), [b]"+r"(b), [aValue]"+r"(aValue), [bValue]"+r"(bValue)
+        :
+        :
+        );
+    return isEqual;
+}
 #else
 ALWAYS_INLINE bool equal(const LChar* a, const LChar* b, unsigned length)
 {
@@ -959,9 +1090,9 @@ ALWAYS_INLINE bool equal(const UChar* a, const LChar* b, unsigned length)
     return true;
 }
 
-WTF_EXPORT_STRING_API bool equalIgnoringCase(StringImpl*, StringImpl*);
-WTF_EXPORT_STRING_API bool equalIgnoringCase(StringImpl*, const LChar*);
-inline bool equalIgnoringCase(const LChar* a, StringImpl* b) { return equalIgnoringCase(b, a); }
+WTF_EXPORT_STRING_API bool equalIgnoringCase(const StringImpl*, const StringImpl*);
+WTF_EXPORT_STRING_API bool equalIgnoringCase(const StringImpl*, const LChar*);
+inline bool equalIgnoringCase(const LChar* a, const StringImpl* b) { return equalIgnoringCase(b, a); }
 WTF_EXPORT_STRING_API bool equalIgnoringCase(const LChar*, const LChar*, unsigned);
 WTF_EXPORT_STRING_API bool equalIgnoringCase(const UChar*, const LChar*, unsigned);
 inline bool equalIgnoringCase(const UChar* a, const char* b, unsigned length) { return equalIgnoringCase(a, reinterpret_cast<const LChar*>(b), length); }
@@ -973,6 +1104,7 @@ inline bool equalIgnoringCase(const UChar* a, const UChar* b, int length)
     ASSERT(length >= 0);
     return !Unicode::umemcasecmp(a, b, length);
 }
+WTF_EXPORT_STRING_API bool equalIgnoringCaseNonNull(const StringImpl*, const StringImpl*);
 
 WTF_EXPORT_STRING_API bool equalIgnoringNullity(StringImpl*, StringImpl*);
 
@@ -1019,7 +1151,54 @@ inline size_t find(const UChar* characters, unsigned length, CharacterMatchFunct
     return notFound;
 }
 
-template <typename CharacterType>
+template<typename CharacterType>
+inline size_t findNextLineStart(const CharacterType* characters, unsigned length, unsigned index = 0)
+{
+    while (index < length) {
+        CharacterType c = characters[index++];
+        if ((c != '\n') && (c != '\r'))
+            continue;
+
+        // There can only be a start of a new line if there are more characters
+        // beyond the current character.
+        if (index < length) {
+            // The 3 common types of line terminators are 1. \r\n (Windows), 
+            // 2. \r (old MacOS) and 3. \n (Unix'es).
+
+            if (c == '\n')
+                return index; // Case 3: just \n.
+
+            CharacterType c2 = characters[index];
+            if (c2 != '\n')
+                return index; // Case 2: just \r.
+
+            // Case 1: \r\n.
+            // But, there's only a start of a new line if there are more
+            // characters beyond the \r\n.
+            if (++index < length)
+                return index; 
+        }
+    }
+    return notFound;
+}
+
+template<typename CharacterType>
+inline size_t reverseFindLineTerminator(const CharacterType* characters, unsigned length, unsigned index = UINT_MAX)
+{
+    if (!length)
+        return notFound;
+    if (index >= length)
+        index = length - 1;
+    CharacterType c = characters[index];
+    while ((c != '\n') && (c != '\r')) {
+        if (!index--)
+            return notFound;
+        c = characters[index];
+    }
+    return index;
+}
+
+template<typename CharacterType>
 inline size_t reverseFind(const CharacterType* characters, unsigned length, CharacterType matchCharacter, unsigned index = UINT_MAX)
 {
     if (!length)
@@ -1160,6 +1339,7 @@ template<> struct DefaultHash<RefPtr<StringImpl> > {
 
 using WTF::StringImpl;
 using WTF::equal;
+using WTF::equalNonNull;
 using WTF::TextCaseSensitivity;
 using WTF::TextCaseSensitive;
 using WTF::TextCaseInsensitive;

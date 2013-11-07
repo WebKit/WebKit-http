@@ -52,6 +52,7 @@ DoNotCheckConstants
 DoNotCheckSecurity
 DoNotCheckSecurityOnGetter
 DoNotCheckSecurityOnSetter
+EnforceRange
 EventTarget
 ExtendsDOMGlobalObject
 GenerateIsReachable=ImplDocument|ImplElementRoot|ImplOwnerNodeRoot
@@ -127,7 +128,9 @@ V8EnabledPerContext=*
 V8GenerateIsReachable=ImplDocument|ImplElementRoot|ImplOwnerRoot|ImplOwnerNodeRoot
 V8NoWrapperCache
 V8MeasureAs=*
+V8PerWorldBindings
 V8ReadOnly
 V8SkipVTableValidation
 V8Unforgeable
 V8WrapAsFunction
+V8DeliverCustomElementCallbacks

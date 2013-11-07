@@ -55,6 +55,8 @@ using std::isnan;
 void testObjectiveCAPI(void);
 #endif
 
+extern void JSSynchronousGarbageCollectForDebugging(JSContextRef);
+
 static JSGlobalContextRef context;
 int failed;
 static void assertEqualsAsBoolean(JSValueRef value, bool expectedValue)

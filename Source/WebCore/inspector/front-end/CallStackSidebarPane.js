@@ -68,22 +68,35 @@ WebInspector.CallStackSidebarPane.prototype = {
         }
     },
 
-    _selectNextCallFrameOnStack: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _selectNextCallFrameOnStack: function(event)
     {
         var index = this._selectedCallFrameIndex();
         if (index == -1)
-            return;
+            return true;
         this._selectedPlacardByIndex(index + 1);
+        return true;
     },
 
-    _selectPreviousCallFrameOnStack: function()
+    /**
+     * @param {Event=} event
+     * @return {boolean}
+     */
+    _selectPreviousCallFrameOnStack: function(event)
     {
         var index = this._selectedCallFrameIndex();
         if (index == -1)
-            return;
+            return true;
         this._selectedPlacardByIndex(index - 1);
+        return true;
     },
 
+    /**
+     * @param {number} index
+     */
     _selectedPlacardByIndex: function(index)
     {
         if (index < 0 || index >= this.placards.length)
@@ -91,6 +104,9 @@ WebInspector.CallStackSidebarPane.prototype = {
         this._placardSelected(this.placards[index])
     },
 
+    /**
+     * @return {number}
+     */
     _selectedCallFrameIndex: function()
     {
         if (!this._model.selectedCallFrame())
@@ -117,7 +133,7 @@ WebInspector.CallStackSidebarPane.prototype = {
     },
 
     /**
-     * @param {function(!Array.<!WebInspector.KeyboardShortcut.Descriptor>, function(KeyboardEvent))} registerShortcutDelegate
+     * @param {function(!Array.<!WebInspector.KeyboardShortcut.Descriptor>, function(Event=):boolean)} registerShortcutDelegate
      */
     registerShortcuts: function(registerShortcutDelegate)
     {
@@ -183,10 +199,10 @@ WebInspector.CallStackSidebarPane.Placard.prototype = {
         var contextMenu = new WebInspector.ContextMenu(event);
 
         if (WebInspector.debuggerModel.canSetScriptSource()) {
-            contextMenu.appendItem(WebInspector.UIString("Restart Frame"), this._restartFrame.bind(this));
+            contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Restart frame" : "Restart Frame"), this._restartFrame.bind(this));
             contextMenu.appendSeparator();
         }
-        contextMenu.appendItem(WebInspector.UIString("Copy Stack Trace"), this._pane._copyStackTrace.bind(this._pane));
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Copy stack trace" : "Copy Stack Trace"), this._pane._copyStackTrace.bind(this._pane));
 
         contextMenu.show();
     },

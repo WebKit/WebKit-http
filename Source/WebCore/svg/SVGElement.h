@@ -97,9 +97,9 @@ public:
  
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
 
-    static void synchronizeRequiredFeatures(void* contextElement);
-    static void synchronizeRequiredExtensions(void* contextElement);
-    static void synchronizeSystemLanguage(void* contextElement);
+    static void synchronizeRequiredFeatures(SVGElement* contextElement);
+    static void synchronizeRequiredExtensions(SVGElement* contextElement);
+    static void synchronizeSystemLanguage(SVGElement* contextElement);
 
     virtual void synchronizeRequiredFeatures() { }
     virtual void synchronizeRequiredExtensions() { }
@@ -126,7 +126,7 @@ protected:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
     virtual void finishParsingChildren();
-    virtual void attributeChanged(const QualifiedName&, const AtomicString&) OVERRIDE;
+    virtual void attributeChanged(const QualifiedName&, const AtomicString&, AttributeModificationReason = ModifiedDirectly) OVERRIDE;
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const OVERRIDE;
     
     virtual void removedFrom(ContainerNode*) OVERRIDE;

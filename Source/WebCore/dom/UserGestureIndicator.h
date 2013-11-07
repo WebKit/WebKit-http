@@ -32,8 +32,11 @@
 
 namespace WebCore {
 
+class UserGestureIndicator;
+
 enum ProcessingUserGestureState {
     DefinitelyProcessingNewUserGesture,
+    DefinitelyProcessingUserGesture,
     PossiblyProcessingUserGesture,
     DefinitelyNotProcessingUserGesture
 };
@@ -41,11 +44,23 @@ enum ProcessingUserGestureState {
 class UserGestureToken : public RefCounted<UserGestureToken> {
 public:
     virtual ~UserGestureToken() { }
+    virtual bool hasGestures() const = 0;
 };
 
+class UserGestureIndicatorDisabler {
+    WTF_MAKE_NONCOPYABLE(UserGestureIndicatorDisabler);
+public:
+    UserGestureIndicatorDisabler();
+    ~UserGestureIndicatorDisabler();
+
+private:
+    ProcessingUserGestureState m_savedState;
+    UserGestureIndicator* m_savedIndicator;
+};
 
 class UserGestureIndicator {
     WTF_MAKE_NONCOPYABLE(UserGestureIndicator);
+    friend class UserGestureIndicatorDisabler;
 public:
     static bool processingUserGesture();
     static bool consumeUserGesture();

@@ -49,8 +49,6 @@
 #include <BlackBerryPlatformViewportAccessor.h>
 #include <BlackBerryPlatformWindow.h>
 
-#include <SkImageDecoder.h>
-
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NotFound.h>
@@ -438,16 +436,12 @@ void BackingStorePrivate::repaint(const Platform::IntRect& windowRect,
      // Now this method will be called from WebPagePrivate::repaint().
 
     if (contentChanged && !windowRect.isEmpty()) {
-        // This windowRect is in untransformed coordinates relative to the viewport, but
-        // it needs to be transformed coordinates relative to the transformed contents.
-        Platform::IntRect rect = m_webPage->d->mapToTransformed(m_client->mapFromViewportToContents(windowRect));
-        rect.inflate(1 /*dx*/, 1 /*dy*/); // Account for anti-aliasing of previous rendering runs.
+        // This windowRect is in document coordinates relative to the viewport,
+        // but we need it in pixel contents coordinates.
+        const Platform::ViewportAccessor* viewportAccessor = m_webPage->webkitThreadViewportAccessor();
+        Platform::IntRect rect = viewportAccessor->roundToPixelFromDocumentContents(viewportAccessor->documentContentsFromViewport(windowRect));
+        rect.intersect(viewportAccessor->pixelContentsRect());
 
-        // FIXME: This should not explicitely depend on WebCore::.
-        WebCore::IntRect tmpRect = rect;
-        m_client->clipToTransformedContentsRect(tmpRect);
-
-        rect = tmpRect;
         if (rect.isEmpty())
             return;
 
@@ -477,9 +471,10 @@ void BackingStorePrivate::slowScroll(const Platform::IntSize& delta, const Platf
 
     scrollingStartedHelper(delta);
 
-    // This windowRect is in untransformed coordinates relative to the viewport, but
-    // it needs to be transformed coordinates relative to the transformed contents.
-    Platform::IntRect rect = m_webPage->d->mapToTransformed(m_client->mapFromViewportToContents(windowRect));
+    // This windowRect is in document coordinates relative to the viewport,
+    // but we need it in pixel contents coordinates.
+    const Platform::ViewportAccessor* viewportAccessor = m_webPage->webkitThreadViewportAccessor();
+    const Platform::IntRect rect = viewportAccessor->roundToPixelFromDocumentContents(viewportAccessor->documentContentsFromViewport(windowRect));
 
     if (immediate)
         renderAndBlitImmediately(rect);
@@ -596,13 +591,16 @@ Platform::IntRect BackingStorePrivate::expandedContentsRect() const
 
 Platform::IntRect BackingStorePrivate::visibleContentsRect() const
 {
-    return intersection(m_client->transformedVisibleContentsRect(),
-                        Platform::IntRect(Platform::IntPoint(0, 0), m_client->transformedContentsSize()));
+    const Platform::ViewportAccessor* viewportAccessor = m_webPage->webkitThreadViewportAccessor();
+    Platform::IntRect rect = viewportAccessor->pixelViewportRect();
+    rect.intersect(viewportAccessor->pixelContentsRect());
+    return rect;
 }
 
 Platform::IntRect BackingStorePrivate::unclippedVisibleContentsRect() const
 {
-    return m_client->transformedVisibleContentsRect();
+    const Platform::ViewportAccessor* viewportAccessor = m_webPage->webkitThreadViewportAccessor();
+    return viewportAccessor->pixelViewportRect();
 }
 
 bool BackingStorePrivate::shouldMoveLeft(const Platform::IntRect& backingStoreRect) const
@@ -1064,12 +1062,7 @@ TileIndexList BackingStorePrivate::render(const TileIndexList& tileIndexList)
         TileBuffer* backBuffer = SurfacePool::globalSurfacePool()->takeBackBuffer();
         ASSERT(backBuffer);
 
-        // If the tile has been created, but this is the first time we are painting on it
-        // then it hasn't been given a default background yet so that we can save time during
-        // startup. That's why we are doing it here instead...
-        if (!backBuffer->backgroundPainted())
-            backBuffer->paintBackground();
-
+        backBuffer->paintBackground();
         backBuffer->setLastRenderScale(currentScale);
         backBuffer->setLastRenderOrigin(tileOrigin);
         backBuffer->clearRenderedRegion();
@@ -1086,7 +1079,7 @@ TileIndexList BackingStorePrivate::render(const TileIndexList& tileIndexList)
         const Platform::FloatPoint documentDirtyRectOrigin = viewportAccessor->toDocumentContents(dirtyRect.location(), currentScale);
         const Platform::IntRect dstRect(dirtyRect.location() - tileOrigin, dirtyRect.size());
 
-        if (!renderContents(nativeBuffer, dstRect, currentScale, documentDirtyRectOrigin))
+        if (!renderContents(nativeBuffer, dstRect, currentScale, documentDirtyRectOrigin, RenderRootLayer))
             continue;
 
         // Add the newly rendered region to the tile so it can keep track for blits.
@@ -1223,6 +1216,18 @@ void BackingStorePrivate::blitVisibleContents(bool force)
         dstRect.toString().c_str(), documentSrcRect.toString().c_str(), viewportAccessor->scale());
 #endif
 
+    BlackBerry::Platform::Graphics::Buffer* dstBuffer = buffer();
+    ASSERT(dstBuffer);
+    if (dstBuffer) {
+        // On the GPU, clearing is free and allows for optimizations,
+        // so we always want to do this first for the whole surface.
+        // Don't call clearWindow() as we don't want to add it to the posted rect.
+        BlackBerry::Platform::Graphics::clearBuffer(dstBuffer,
+            m_webPageBackgroundColor.red(), m_webPageBackgroundColor.green(),
+            m_webPageBackgroundColor.blue(), m_webPageBackgroundColor.alpha());
+    } else
+        Platform::logAlways(Platform::LogLevelWarn, "Empty window buffer, can't blit contents.");
+
 #if DEBUG_CHECKERBOARD
     bool blitCheckered = false;
 #endif
@@ -1236,7 +1241,9 @@ void BackingStorePrivate::blitVisibleContents(bool force)
         TileMap currentMap = geometry->tileMap();
         double currentScale = geometry->scale();
 
-        const Platform::IntRect transformedContentsRect = Platform::IntRect(Platform::IntPoint(0, 0), m_client->transformedContentsSize());
+        const Platform::IntRect transformedContentsRect = currentScale == viewportAccessor->scale()
+            ? viewportAccessor->pixelContentsRect()
+            : viewportAccessor->roundFromDocumentContents(viewportAccessor->documentContentsRect(), currentScale);
 
         // For blitting backingstore tiles, we need the srcRect to be specified
         // in backingstore tile pixel coordinates. If our viewport accessor is
@@ -1405,12 +1412,15 @@ void BackingStorePrivate::blitVisibleContents(bool force)
 }
 
 #if USE(ACCELERATED_COMPOSITING)
-void BackingStorePrivate::compositeContents(WebCore::LayerRenderer* layerRenderer, const WebCore::TransformationMatrix& transform, const WebCore::FloatRect& contents, bool contentsOpaque)
+void BackingStorePrivate::compositeContents(WebCore::LayerRenderer* layerRenderer, const WebCore::TransformationMatrix& transform, const WebCore::FloatRect& documentContents, bool contentsOpaque)
 {
-    const Platform::IntRect transformedContentsRect = Platform::IntRect(Platform::IntPoint(0, 0), m_client->transformedContentsSize());
-    Platform::IntRect transformedContents = enclosingIntRect(m_webPage->d->m_transformationMatrix->mapRect(contents));
-    transformedContents.intersect(transformedContentsRect);
-    if (transformedContents.isEmpty())
+    Platform::ViewportAccessor* viewportAccessor = m_webPage->client()->userInterfaceViewportAccessor();
+    if (!viewportAccessor)
+        return;
+
+    Platform::IntRect pixelContents = viewportAccessor->roundToPixelFromDocumentContents(documentContents);
+    pixelContents.intersect(viewportAccessor->pixelContentsRect());
+    if (pixelContents.isEmpty())
         return;
 
     if (!isActive())
@@ -1423,18 +1433,18 @@ void BackingStorePrivate::compositeContents(WebCore::LayerRenderer* layerRendere
     TileMap currentMap = geometry->tileMap();
     Vector<TileBuffer*> compositedTiles;
 
-    Platform::IntRectRegion transformedContentsRegion = transformedContents;
+    Platform::IntRectRegion pixelContentsRegion = pixelContents;
     Platform::IntRectRegion backingStoreRegion = geometry->backingStoreRect();
-    Platform::IntRectRegion checkeredRegion
-        = Platform::IntRectRegion::subtractRegions(transformedContentsRegion, backingStoreRegion);
+    Platform::IntRectRegion clearRegion = Platform::IntRectRegion::subtractRegions(pixelContentsRegion, backingStoreRegion);
 
-    // Blit checkered to those parts that are not covered by the backingStoreRect.
-    std::vector<Platform::IntRect> checkeredRects = checkeredRegion.rects();
-    for (size_t i = 0; i < checkeredRects.size(); ++i)
-        layerRenderer->drawCheckerboardPattern(transform, m_webPage->d->mapFromTransformedFloatRect(WebCore::IntRect(checkeredRects.at(i))));
+    // Clear those parts that are not covered by the backingStoreRect.
+    Color clearColor(Color::white);
+    std::vector<Platform::IntRect> clearRects = clearRegion.rects();
+    for (size_t i = 0; i < clearRects.size(); ++i)
+        layerRenderer->drawColor(transform, viewportAccessor->documentFromPixelContents(clearRects.at(i)), clearColor);
 
     // Get the list of tile rects that makeup the content.
-    TileRectList tileRectList = mapFromPixelContentsToTiles(transformedContents, geometry);
+    TileRectList tileRectList = mapFromPixelContentsToTiles(pixelContents, geometry);
     for (size_t i = 0; i < tileRectList.size(); ++i) {
         TileRect tileRect = tileRectList[i];
         TileIndex index = tileRect.first;
@@ -1442,10 +1452,10 @@ void BackingStorePrivate::compositeContents(WebCore::LayerRenderer* layerRendere
         TileBuffer* tileBuffer = currentMap.get(index);
 
         if (!tileBuffer || !geometry->isTileCorrespondingToBuffer(index, tileBuffer))
-            layerRenderer->drawCheckerboardPattern(transform, m_webPage->d->mapFromTransformedFloatRect(Platform::FloatRect(dirtyRect)));
+            layerRenderer->drawColor(transform, viewportAccessor->documentFromPixelContents(dirtyRect), clearColor);
         else {
             Platform::IntPoint tileOrigin = tileBuffer->lastRenderOrigin();
-            Platform::FloatRect tileDocumentContentsRect = m_webPage->d->mapFromTransformedFloatRect(Platform::FloatRect(tileBuffer->pixelContentsRect()));
+            Platform::FloatRect tileDocumentContentsRect = viewportAccessor->documentFromPixelContents(tileBuffer->pixelContentsRect());
 
             layerRenderer->compositeBuffer(transform, tileDocumentContentsRect, tileBuffer->nativeBuffer(), contentsOpaque, 1.0f);
             compositedTiles.append(tileBuffer);
@@ -1456,7 +1466,7 @@ void BackingStorePrivate::compositeContents(WebCore::LayerRenderer* layerRendere
             for (size_t i = 0; i < notRenderedRects.size(); ++i) {
                 Platform::IntRect tileSurfaceRect = notRenderedRects.at(i);
                 tileSurfaceRect.move(-tileOrigin.x(), -tileOrigin.y());
-                layerRenderer->drawCheckerboardPattern(transform, m_webPage->d->mapFromTransformedFloatRect(Platform::FloatRect(tileSurfaceRect)));
+                layerRenderer->drawColor(transform, viewportAccessor->documentFromPixelContents(tileSurfaceRect), clearColor);
             }
         }
     }
@@ -1793,7 +1803,8 @@ int BackingStorePrivate::minimumNumberOfTilesHigh() const
 
 Platform::IntSize BackingStorePrivate::expandedContentsSize() const
 {
-    return m_client->transformedContentsSize().expandedTo(m_client->transformedViewportSize());
+    const Platform::ViewportAccessor* viewportAccessor = m_webPage->webkitThreadViewportAccessor();
+    return m_client->transformedViewportSize().expandedTo(viewportAccessor->pixelContentsSize());
 }
 
 int BackingStorePrivate::tileWidth()
@@ -1808,11 +1819,11 @@ int BackingStorePrivate::tileHeight()
 
 Platform::IntSize BackingStorePrivate::tileSize()
 {
-    static Platform::IntSize tileSize = Platform::Settings::instance()->tileSize(Platform::BackingStoreTileUsage);
+    static Platform::IntSize tileSize = Platform::Settings::instance()->tileSize();
     return tileSize;
 }
 
-bool BackingStorePrivate::renderContents(BlackBerry::Platform::Graphics::Buffer* targetBuffer, const Platform::IntRect& dstRect, double scale, const Platform::FloatPoint& documentRenderOrigin) const
+bool BackingStorePrivate::renderContents(BlackBerry::Platform::Graphics::Buffer* targetBuffer, const Platform::IntRect& dstRect, double scale, const Platform::FloatPoint& documentRenderOrigin, LayersToRender layersToRender) const
 {
 #if DEBUG_BACKINGSTORE
     Platform::logAlways(Platform::LogLevelCritical,
@@ -1892,7 +1903,10 @@ bool BackingStorePrivate::renderContents(BlackBerry::Platform::Graphics::Buffer*
         }
 
         // Let WebCore render the page contents into the drawing surface.
-        m_client->frame()->view()->paintContents(&graphicsContext, renderedRect);
+        if (layersToRender == RenderRootLayer)
+            m_client->frame()->view()->paintContents(&graphicsContext, renderedRect);
+        else
+            m_client->frame()->view()->paintContentsForSnapshot(&graphicsContext, renderedRect, FrameView::ExcludeSelection, FrameView::DocumentCoordinates);
 
         graphicsContext.restore();
     }
@@ -2310,7 +2324,7 @@ bool BackingStore::drawContents(Platform::Graphics::Buffer* buffer, const Platfo
 
     d->requestLayoutIfNeeded();
 
-    return d->renderContents(buffer, dstRect, scale, documentScrollPosition);
+    return d->renderContents(buffer, dstRect, scale, documentScrollPosition, BackingStorePrivate::RenderAllLayers);
 }
 
 }

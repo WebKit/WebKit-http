@@ -1,13 +1,4 @@
 Layer tree when the fixed elements are out-of-view (should be blank):
-(GraphicsLayer
-  (bounds 800.00 600.00)
-  (children 1
-    (GraphicsLayer
-      (bounds 800.00 600.00)
-      (contentsOpaque 1)
-    )
-  )
-)
 Layer tree when the fixed elements are in-view (both fixed elements should have layers):
 (GraphicsLayer
   (bounds 800.00 600.00)
@@ -31,13 +22,4 @@ Layer tree when the fixed elements are in-view (both fixed elements should have 
   )
 )
 Layer tree when the fixed elements are out-of-view again (should be blank):
-(GraphicsLayer
-  (bounds 800.00 600.00)
-  (children 1
-    (GraphicsLayer
-      (bounds 800.00 600.00)
-      (contentsOpaque 1)
-    )
-  )
-)
 

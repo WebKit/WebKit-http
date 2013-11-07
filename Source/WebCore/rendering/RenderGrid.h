@@ -51,24 +51,6 @@ private:
 
     LayoutUnit computePreferredTrackWidth(const Length&, size_t) const;
 
-    struct GridCoordinate {
-        // HashMap requires a default constuctor.
-        GridCoordinate()
-            : columnIndex(0)
-            , rowIndex(0)
-        {
-        }
-
-        GridCoordinate(size_t row, size_t column)
-            : columnIndex(column)
-            , rowIndex(row)
-        {
-        }
-
-        size_t columnIndex;
-        size_t rowIndex;
-    };
-
     struct GridSpan {
         GridSpan(size_t initialPosition, size_t finalPosition)
             : initialPositionIndex(initialPosition)
@@ -81,6 +63,24 @@ private:
         size_t finalPositionIndex;
     };
 
+    struct GridCoordinate {
+        // HashMap requires a default constuctor.
+        GridCoordinate()
+            : columns(0, 0)
+            , rows(0, 0)
+        {
+        }
+
+        GridCoordinate(const GridSpan& r, const GridSpan& c)
+            : columns(c)
+            , rows(r)
+        {
+        }
+
+        GridSpan columns;
+        GridSpan rows;
+    };
+
     class GridIterator;
     enum TrackSizingDirection { ForColumns, ForRows };
     void computedUsedBreadthOfGridTracks(TrackSizingDirection, Vector<GridTrack>& columnTracks, Vector<GridTrack>& rowTracks);
@@ -91,6 +91,7 @@ private:
 
     void growGrid(TrackSizingDirection);
     void insertItemIntoGrid(RenderBox*, size_t rowTrack, size_t columnTrack);
+    void insertItemIntoGrid(RenderBox*, const GridCoordinate&);
     void placeItemsOnGrid();
     void placeSpecifiedMajorAxisItemsOnGrid(Vector<RenderBox*>);
     void placeAutoMajorAxisItemsOnGrid(Vector<RenderBox*>);
@@ -104,10 +105,11 @@ private:
     typedef LayoutUnit (RenderGrid::* SizingFunction)(RenderBox*, TrackSizingDirection, Vector<GridTrack>&);
     typedef LayoutUnit (GridTrack::* AccumulatorGetter)() const;
     typedef void (GridTrack::* AccumulatorGrowFunction)(LayoutUnit);
-    void resolveContentBasedTrackSizingFunctionsForItems(TrackSizingDirection, Vector<GridTrack>& columnTracks, Vector<GridTrack>& rowTracks, size_t, SizingFunction, AccumulatorGetter, AccumulatorGrowFunction);
+    typedef bool (GridTrackSize::* FilterFunction)() const;
+    void resolveContentBasedTrackSizingFunctionsForItems(TrackSizingDirection, Vector<GridTrack>& columnTracks, Vector<GridTrack>& rowTracks, RenderBox*, FilterFunction, SizingFunction, AccumulatorGetter, AccumulatorGrowFunction);
     void distributeSpaceToTracks(Vector<GridTrack*>&, Vector<GridTrack*>* tracksForGrowthAboveMaxBreadth, AccumulatorGetter, AccumulatorGrowFunction, LayoutUnit& availableLogicalSpace);
 
-    const GridTrackSize& gridTrackSize(TrackSizingDirection, size_t);
+    const GridTrackSize& gridTrackSize(TrackSizingDirection, size_t) const;
     size_t maximumIndexInDirection(TrackSizingDirection) const;
 
     LayoutUnit logicalContentHeightForChild(RenderBox*, Vector<GridTrack>&);
@@ -116,6 +118,7 @@ private:
     LayoutPoint findChildLogicalPosition(RenderBox*, const Vector<GridTrack>& columnTracks, const Vector<GridTrack>& rowTracks);
     GridCoordinate cachedGridCoordinate(const RenderBox*) const;
 
+    GridSpan resolveGridPositionsFromAutoPlacementPosition(const RenderBox*, TrackSizingDirection, size_t) const;
     PassOwnPtr<GridSpan> resolveGridPositionsFromStyle(const RenderBox*, TrackSizingDirection) const;
     enum GridPositionSide {
         StartSide,

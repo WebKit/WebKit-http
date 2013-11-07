@@ -465,9 +465,9 @@ def cloopEmitOpAndBranch(operands, operator, type, conditionTest)
 
     $asm.putc "{"
     $asm.putc "    #{tempType} temp = #{op2} #{operator} #{op1};"
+    $asm.putc "    #{op2} = temp;"
     $asm.putc "    if (temp #{conditionTest})"
     $asm.putc "        goto  #{operands[2].cLabel};"
-    $asm.putc "    #{op2} = temp;"
     $asm.putc "}"
 end
 
@@ -533,10 +533,10 @@ def cloopEmitOpAndBranchIfOverflow(operands, operator, type)
         raise "Unimplemented opeartor"
     end
 
-    $asm.putc "    if #{overflowTest} {"
-    $asm.putc "        goto #{operands[2].cLabel};"
-    $asm.putc "    }"
+    $asm.putc "    bool didOverflow = #{overflowTest};"
     $asm.putc "    #{operands[1].clValue(type)} = #{operands[1].clValue(type)} #{operator} #{operands[0].clValue(type)};"
+    $asm.putc "    if (didOverflow)"
+    $asm.putc "        goto #{operands[2].cLabel};"
     $asm.putc "}"
 end
 
@@ -1025,7 +1025,7 @@ class Instruction
         # 32-bit instruction: f2dii dblOp int32LoOp int32HiOp (based on ARMv7)
         # Encode a 64-bit double into 2 32-bit ints (low and high).
         when "fd2ii"
-            $asm.putc "Double2Ints(#{operands[0].clValue(:double)}, #{operands[1].clValue}, #{operands[2].clValue});"
+            $asm.putc "Double2Ints(#{operands[0].clValue(:double)}, #{operands[1].clValue(:uint32)}, #{operands[2].clValue(:uint32)});"
 
         # 64-bit instruction: fq2d int64Op dblOp (based on X64)
         # Copy a bit-encoded double in a 64-bit int register to a double register.

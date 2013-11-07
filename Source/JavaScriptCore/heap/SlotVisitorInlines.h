@@ -31,6 +31,7 @@
 #include "Options.h"
 #include "SlotVisitor.h"
 #include "Weak.h"
+#include "WeakInlines.h"
 
 namespace JSC {
 
@@ -119,6 +120,16 @@ inline bool SlotVisitor::containsOpaqueRoot(void* root)
 #else
     return m_opaqueRoots.contains(root);
 #endif
+}
+
+inline TriState SlotVisitor::containsOpaqueRootTriState(void* root)
+{
+    if (m_opaqueRoots.contains(root))
+        return TrueTriState;
+    MutexLocker locker(m_shared.m_opaqueRootsLock);
+    if (m_shared.m_opaqueRoots.contains(root))
+        return TrueTriState;
+    return MixedTriState;
 }
 
 inline int SlotVisitor::opaqueRootCount()

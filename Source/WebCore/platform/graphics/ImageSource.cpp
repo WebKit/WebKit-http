@@ -35,10 +35,6 @@
 #include "NotImplemented.h"
 #include "PlatformMemoryInstrumentation.h"
 
-#if PLATFORM(CHROMIUM)
-#include "DeferredImageDecoder.h"
-#endif
-
 namespace WebCore {
 
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
@@ -141,7 +137,7 @@ size_t ImageSource::frameCount() const
     return m_decoder ? m_decoder->frameCount() : 0;
 }
 
-NativeImagePtr ImageSource::createFrameAtIndex(size_t index)
+PassNativeImagePtr ImageSource::createFrameAtIndex(size_t index)
 {
     if (!m_decoder)
         return 0;

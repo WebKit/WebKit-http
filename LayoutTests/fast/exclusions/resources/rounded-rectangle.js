@@ -1,6 +1,29 @@
 if (window.internals)
     window.internals.settings.setCSSExclusionsEnabled(true);
 
+function defined(value) { return typeof value !== "undefined"; }
+
+function convertToRoundedRect(dimensions) {
+    if (defined(dimensions.shapeCenterX) && defined(dimensions.shapeCenterY)) {
+        if (defined(dimensions.shapeRadius)) {
+            // Convert a circle.
+            dimensions.shapeX = dimensions.shapeCenterX - dimensions.shapeRadius;
+            dimensions.shapeY = dimensions.shapeCenterY - dimensions.shapeRadius;
+            dimensions.shapeWidth = dimensions.shapeRadius * 2;
+            dimensions.shapeHeight = dimensions.shapeRadius * 2;
+            dimensions.shapeRadiusX = dimensions.shapeRadius;
+            dimensions.shapeRadiusY = dimensions.shapeRadius;
+        } else {
+            // Convert an ellipse.
+            dimensions.shapeX = dimensions.shapeCenterX - dimensions.shapeRadiusX;
+            dimensions.shapeY = dimensions.shapeCenterY - dimensions.shapeRadiusY;
+            dimensions.shapeWidth = dimensions.shapeRadiusX * 2;
+            dimensions.shapeHeight = dimensions.shapeRadiusY * 2;
+        }
+    }
+    // Otherwise, we have a rounded rect, so no conversion is needed.
+}
+
 function xFromEllipseCenter(yFromEllipseCenter, radiusX, radiusY) {
     return radiusX * Math.sqrt(1 - Math.pow(yFromEllipseCenter / radiusY, 2));
 }
@@ -14,6 +37,23 @@ function xInset(dimensions, lineTop, lineBottom) {
     } else {
         var yFromEllipseCenter = Math.max((dimensions.shapeRadiusY - lineTop), lineBottom - (dimensions.shapeHeight - dimensions.shapeRadiusY));
         left = dimensions.shapeRadiusX - xFromEllipseCenter(yFromEllipseCenter, dimensions.shapeRadiusX, dimensions.shapeRadiusY);
+    }
+    return left;
+}
+
+function xOutset(dimensions, lineTop, lineBottom) {
+    var left = 0;
+    if (lineBottom > dimensions.shapeHeight)
+        lineBottom = dimensions.shapeHeight;
+    if (lineTop < dimensions.shapeHeight && (lineTop < dimensions.shapeRadiusY || lineBottom > dimensions.shapeHeight - dimensions.shapeRadiusY)) {
+        var yFromEllipseCenter;
+        if (lineBottom < dimensions.shapeRadiusY) {
+            yFromEllipseCenter = lineBottom - dimensions.shapeRadiusY;
+            left = dimensions.shapeRadiusX - xFromEllipseCenter(yFromEllipseCenter, dimensions.shapeRadiusX, dimensions.shapeRadiusY);
+        } else if (lineTop > dimensions.shapeHeight - dimensions.shapeRadiusY) {
+            yFromEllipseCenter = lineTop - (dimensions.shapeHeight - dimensions.shapeRadiusY);
+            left = dimensions.shapeRadiusX - xFromEllipseCenter(yFromEllipseCenter, dimensions.shapeRadiusX, dimensions.shapeRadiusY);
+        }
     }
     return left;
 }
@@ -111,4 +151,74 @@ function generateShapeElement(elementId, stylesheet, dimensions, lineHeight) {
 
     var element = document.getElementById(elementId);
     element.appendChild(p);
+}
+
+function generateShapeOutsideOnFloat(elementId, stylesheet, dimensions, floatValue, lineHeight) {
+    if (defined(dimensions.shapeCenterX) && defined(dimensions.shapeCenterY)) { // circle or ellipse
+        if (defined(dimensions.shapeRadius)) {
+            stylesheet.insertRule("#" + elementId + " { "
+                + "-webkit-shape-outside: circle("
+                + dimensions.shapeCenterX + "px, "
+                + dimensions.shapeCenterY + "px, "
+                + dimensions.shapeRadius + "px); "
+                + "float: " + floatValue + "; }");
+        } else {
+            stylesheet.insertRule("#" + elementId + " { "
+                + "-webkit-shape-outside: ellipse("
+                + dimensions.shapeCenterX + "px, "
+                + dimensions.shapeCenterY + "px, "
+                + dimensions.shapeRadiusX + "px, "
+                + dimensions.shapeRadiusY + "px); "
+                + "float: " + floatValue + "; }");
+        }
+    } else {
+        stylesheet.insertRule("#" + elementId + " { "
+            + "-webkit-shape-outside: rectangle("
+            + dimensions.shapeX + "px, "
+            + dimensions.shapeY + "px, "
+            + dimensions.shapeWidth + "px, "
+            + dimensions.shapeHeight + "px, "
+            + dimensions.shapeRadiusX + "px, "
+            + dimensions.shapeRadiusY + "px); "
+            + "float: " + floatValue + "; }");
+    }
+    convertToRoundedRect(dimensions);
+    simulateShapeOutline(elementId, stylesheet, dimensions);
+}
+
+// Note that this does not attempt to simulate where the float content would be
+// if the shape's X and Y are not 0.
+function generateSimulatedShapeOutsideOnFloat(elementId, stylesheet, dimensions, floatValue, lineHeight) {
+    convertToRoundedRect(dimensions);
+
+    var simpleRectangle = dimensions.shapeRadiusX == 0 || dimensions.shapeRadiusY == 0;
+    var floatHeight = simpleRectangle ? dimensions.shapeHeight : lineHeight;
+
+    stylesheet.insertRule("#" + elementId + " { float: " + floatValue + " }");
+    stylesheet.insertRule("." + elementId + "-float { "
+            + "height: " + floatHeight + "px; " 
+            + "float: " + floatValue + ";"
+            + "clear: " + floatValue + "; }");
+
+    var element = document.getElementById(elementId);
+    var simulationHTML = "";
+
+    for (var y = 0; y < dimensions.shapeHeight; y+= floatHeight) {
+        var outset = simpleRectangle ? 0 : xOutset(dimensions, y, y + lineHeight);
+
+        var width = dimensions.shapeWidth - outset;
+
+        simulationHTML += '<div class="' + elementId + '-float" style="width:' + width + 'px"></div>\n';
+    }
+
+    element.insertAdjacentHTML('afterend', simulationHTML);
+    // For simulating, we ignore the x and y values, since we're not attempting
+    // to draw the float's content in the right place, we just want to simulate
+    // the shape's effect.
+    if (floatValue == "right")
+        dimensions.shapeX = -dimensions.shapeWidth;
+    else 
+        dimensions.shapeX = 0;
+    dimensions.shapeY = 0;
+    simulateShapeOutline(elementId, stylesheet, dimensions);
 }

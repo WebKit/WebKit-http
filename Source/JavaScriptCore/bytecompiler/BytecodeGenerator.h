@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -76,7 +76,7 @@ namespace JSC {
 
         RefPtr<RegisterID> m_profileHookRegister;
         ArgumentsNode* m_argumentsNode;
-        Vector<RefPtr<RegisterID>, 8> m_argv;
+        Vector<RefPtr<RegisterID>, 8, UnsafeVectorOverflow> m_argv;
     };
 
     struct FinallyContext {
@@ -334,33 +334,47 @@ namespace JSC {
         LabelScopePtr newLabelScope(LabelScope::Type, const Identifier* = 0);
         PassRefPtr<Label> newLabel();
 
-        // The emitNode functions are just syntactic sugar for calling
-        // Node::emitCode. These functions accept a 0 for the register,
-        // meaning that the node should allocate a register, or ignoredResult(),
-        // meaning that the node need not put the result in a register.
-        // Other emit functions do not accept 0 or ignoredResult().
-        RegisterID* emitNode(RegisterID* dst, Node* n)
+        void emitNode(RegisterID* dst, StatementNode* n)
         {
             // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
             ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
             addLineInfo(n->lineNo());
-            return m_stack.isSafeToRecurse()
-                ? n->emitBytecode(*this, dst)
-                : emitThrowExpressionTooDeepException();
+            if (!m_stack.isSafeToRecurse()) {
+                emitThrowExpressionTooDeepException();
+                return;
+            }
+            n->emitBytecode(*this, dst);
         }
 
-        RegisterID* emitNode(Node* n)
+        void emitNode(StatementNode* n)
+        {
+            emitNode(0, n);
+        }
+
+        RegisterID* emitNode(RegisterID* dst, ExpressionNode* n)
+        {
+            // Node::emitCode assumes that dst, if provided, is either a local or a referenced temporary.
+            ASSERT(!dst || dst == ignoredResult() || !dst->isTemporary() || dst->refCount());
+            addLineInfo(n->lineNo());
+            if (!m_stack.isSafeToRecurse())
+                return emitThrowExpressionTooDeepException();
+            return n->emitBytecode(*this, dst);
+        }
+
+        RegisterID* emitNode(ExpressionNode* n)
         {
             return emitNode(0, n);
         }
 
-        void emitNodeInConditionContext(ExpressionNode* n, Label* trueTarget, Label* falseTarget, bool fallThroughMeansTrue)
+        void emitNodeInConditionContext(ExpressionNode* n, Label* trueTarget, Label* falseTarget, FallThroughMode fallThroughMode)
         {
             addLineInfo(n->lineNo());
-            if (m_stack.isSafeToRecurse())
-                n->emitBytecodeInConditionContext(*this, trueTarget, falseTarget, fallThroughMeansTrue);
-            else
+            if (!m_stack.isSafeToRecurse()) {
                 emitThrowExpressionTooDeepException();
+                return;
+            }
+
+            n->emitBytecodeInConditionContext(*this, trueTarget, falseTarget, fallThroughMode);
         }
 
         void emitExpressionInfo(unsigned divot, unsigned startOffset, unsigned endOffset)
@@ -374,7 +388,7 @@ namespace JSC {
             } else if (startOffset > ExpressionRangeInfo::MaxOffset) {
                 // If the start offset is out of bounds we clear both offsets
                 // so we only get the divot marker.  Error message will have to be reduced
-                // to line and column number.
+                // to line and charPosition number.
                 startOffset = 0;
                 endOffset = 0;
             } else if (endOffset > ExpressionRangeInfo::MaxOffset) {
@@ -486,7 +500,7 @@ namespace JSC {
         PassRefPtr<Label> emitJumpIfFalse(RegisterID* cond, Label* target);
         PassRefPtr<Label> emitJumpIfNotFunctionCall(RegisterID* cond, Label* target);
         PassRefPtr<Label> emitJumpIfNotFunctionApply(RegisterID* cond, Label* target);
-        PassRefPtr<Label> emitJumpScopes(Label* target, int targetScopeDepth);
+        void emitPopScopes(int targetScopeDepth);
 
         RegisterID* emitGetPropertyNames(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, Label* breakTarget);
         RegisterID* emitNextPropertyName(RegisterID* dst, RegisterID* base, RegisterID* i, RegisterID* size, RegisterID* iter, Label* target);
@@ -511,7 +525,7 @@ namespace JSC {
         RegisterID* emitPushWithScope(RegisterID* scope);
         void emitPopScope();
 
-        void emitDebugHook(DebugHookID, int firstLine, int lastLine, int column);
+        void emitDebugHook(DebugHookID, int firstLine, int lastLine, int charPosition);
 
         int scopeDepth() { return m_dynamicScopeDepth + m_finallyDepth; }
         bool hasFinaliser() { return m_finallyDepth != 0; }
@@ -562,7 +576,7 @@ namespace JSC {
         ALWAYS_INLINE void rewindBinaryOp();
         ALWAYS_INLINE void rewindUnaryOp();
 
-        PassRefPtr<Label> emitComplexJumpScopes(Label* target, ControlFlowContext* topScope, ControlFlowContext* bottomScope);
+        void emitComplexPopScopes(ControlFlowContext* topScope, ControlFlowContext* bottomScope);
 
         typedef HashMap<double, JSValue> NumberMap;
         typedef HashMap<StringImpl*, JSString*, IdentifierRepHash> IdentifierStringMap;
@@ -642,7 +656,7 @@ namespace JSC {
         RegisterID* emitInitLazyRegister(RegisterID*);
 
     public:
-        Vector<UnlinkedInstruction>& instructions() { return m_instructions; }
+        Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow>& instructions() { return m_instructions; }
 
         SharedSymbolTable& symbolTable() { return *m_symbolTable; }
 
@@ -677,7 +691,7 @@ namespace JSC {
         void createActivationIfNecessary();
         RegisterID* createLazyRegisterIfNecessary(RegisterID*);
         
-        Vector<UnlinkedInstruction> m_instructions;
+        Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow> m_instructions;
 
         bool m_shouldEmitDebugHooks;
         bool m_shouldEmitProfileHooks;
@@ -707,7 +721,7 @@ namespace JSC {
         int m_dynamicScopeDepth;
         CodeType m_codeType;
 
-        Vector<ControlFlowContext> m_scopeContextStack;
+        Vector<ControlFlowContext, 0, UnsafeVectorOverflow> m_scopeContextStack;
         Vector<SwitchInfo> m_switchContextStack;
         Vector<ForInContext> m_forInContextStack;
         Vector<TryContext> m_tryContextStack;

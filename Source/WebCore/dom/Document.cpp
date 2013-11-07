@@ -42,7 +42,6 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Comment.h"
-#include "Console.h"
 #include "ContentSecurityPolicy.h"
 #include "ContextFeatures.h"
 #include "CookieJar.h"
@@ -74,6 +73,7 @@
 #include "ExceptionCodePlaceholder.h"
 #include "FlowThreadController.h"
 #include "FocusController.h"
+#include "FontLoader.h"
 #include "FormController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -110,7 +110,6 @@
 #include "InspectorInstrumentation.h"
 #include "Language.h"
 #include "Logging.h"
-#include "MainResourceLoader.h"
 #include "MediaCanStartListener.h"
 #include "MediaQueryList.h"
 #include "MediaQueryMatcher.h"
@@ -124,6 +123,7 @@
 #include "NodeTraversal.h"
 #include "NodeWithIndex.h"
 #include "Page.h"
+#include "PageConsole.h"
 #include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "PlatformKeyboardEvent.h"
@@ -139,6 +139,7 @@
 #include "RenderTextControl.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
+#include "ResourceLoader.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
@@ -244,8 +245,8 @@
 #include "DOMSecurityPolicy.h"
 #endif
 
-#if PLATFORM(CHROMIUM)
-#include "TraceEvent.h"
+#if ENABLE(VIDEO_TRACK)
+#include "CaptionUserPreferences.h"
 #endif
 
 using namespace std;
@@ -452,7 +453,6 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     , m_createRenderers(true)
     , m_inPageCache(false)
     , m_accessKeyMapValid(false)
-    , m_useSecureKeyboardEntryWhenActive(false)
     , m_isXHTML(isXHTML)
     , m_isHTML(isHTML)
     , m_isViewSource(false)
@@ -488,6 +488,10 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
 #if ENABLE(TEMPLATE_ELEMENT)
     , m_templateDocumentHost(0)
 #endif
+#if ENABLE(FONT_LOAD_EVENTS)
+    , m_fontloader(0)
+#endif
+    , m_didAssociateFormControlsTimer(this, &Document::didAssociateFormControlsTimerFired)
 {
     m_printing = false;
     m_paginatedForScreen = false;
@@ -620,7 +624,8 @@ Document::~Document()
 
     m_renderArena.clear();
 
-    clearAXObjectCache();
+    if (this == topDocument())
+        clearAXObjectCache();
 
     m_decoder = 0;
 
@@ -834,6 +839,41 @@ PassRefPtr<Element> Document::createElement(const AtomicString& name, ExceptionC
 }
 
 #if ENABLE(CUSTOM_ELEMENTS)
+PassRefPtr<Element> Document::createElement(const AtomicString& localName, const AtomicString& typeExtension, ExceptionCode& ec)
+{
+    if (!isValidName(localName)) {
+        ec = INVALID_CHARACTER_ERR;
+        return 0;
+    }
+
+    if (m_registry) {
+        if (PassRefPtr<Element> created = m_registry->createElement(QualifiedName(nullAtom, localName, xhtmlNamespaceURI), typeExtension))
+            return created;
+    }
+
+    return setTypeExtension(createElement(localName, ec), typeExtension);
+}
+
+PassRefPtr<Element> Document::createElementNS(const AtomicString& namespaceURI, const String& qualifiedName, const AtomicString& typeExtension, ExceptionCode& ec)
+{
+    String prefix, localName;
+    if (!parseQualifiedName(qualifiedName, prefix, localName, ec))
+        return 0;
+
+    QualifiedName qName(prefix, localName, namespaceURI);
+    if (!hasValidNamespaceForElements(qName)) {
+        ec = NAMESPACE_ERR;
+        return 0;
+    }
+
+    if (m_registry) {
+        if (PassRefPtr<Element> created = m_registry->createElement(qName, typeExtension))
+            return created;
+    }
+
+    return setTypeExtension(createElementNS(namespaceURI, qualifiedName, ec), typeExtension);
+}
+
 PassRefPtr<CustomElementConstructor> Document::registerElement(WebCore::ScriptState* state, const AtomicString& name, ExceptionCode& ec)
 {
     return registerElement(state, name, Dictionary(), ec);
@@ -851,9 +891,11 @@ PassRefPtr<CustomElementConstructor> Document::registerElement(WebCore::ScriptSt
     return m_registry->registerElement(state, name, options, ec);
 }
 
-PassRefPtr<CustomElementRegistry> Document::registry() const
+void Document::didCreateCustomElement(Element* element, CustomElementConstructor* constructor)
 {
-    return m_registry;
+    // m_registry is cleared Document::dispose() and can be null here.
+    if (m_registry)
+        m_registry->didCreateElement(element);
 }
 #endif // ENABLE(CUSTOM_ELEMENTS)
 
@@ -938,7 +980,7 @@ PassRefPtr<Node> Document::importNode(Node* importedNode, bool deep, ExceptionCo
     case COMMENT_NODE:
         return createComment(importedNode->nodeValue());
     case ELEMENT_NODE: {
-        Element* oldElement = static_cast<Element*>(importedNode);
+        Element* oldElement = toElement(importedNode);
         // FIXME: The following check might be unnecessary. Is it possible that
         // oldElement has mismatched prefix/namespace?
         if (!hasValidNamespaceForElements(oldElement->tagQName())) {
@@ -1124,6 +1166,11 @@ bool Document::cssStickyPositionEnabled() const
 bool Document::cssRegionsEnabled() const
 {
     return RuntimeEnabledFeatures::cssRegionsEnabled(); 
+}
+
+bool Document::cssCompositingEnabled() const
+{
+    return RuntimeEnabledFeatures::cssCompositingEnabled();
 }
 
 bool Document::cssGridLayoutEnabled() const
@@ -1771,10 +1818,6 @@ void Document::recalcStyle(StyleChange change)
     if (m_inStyleRecalc)
         return; // Guard against re-entrancy. -dwh
 
-#if PLATFORM(CHROMIUM)
-    TRACE_EVENT0("webkit", "Document::recalcStyle");
-#endif
-
     // FIXME: We should update style on our ancestor chain before proceeding (especially for seamless),
     // however doing so currently causes several tests to crash, as Frame::setDocument calls Document::attach
     // before setting the DOMWindow on the Frame, or the SecurityOrigin on the document. The attach, in turn
@@ -1822,7 +1865,7 @@ void Document::recalcStyle(StyleChange change)
         for (Node* n = firstChild(); n; n = n->nextSibling()) {
             if (!n->isElementNode())
                 continue;
-            Element* element = static_cast<Element*>(n);
+            Element* element = toElement(n);
             if (change >= Inherit || element->childNeedsStyleRecalc() || element->needsStyleRecalc())
                 element->recalcStyle(change);
         }
@@ -2160,23 +2203,40 @@ void Document::resumeActiveDOMObjects()
 
 void Document::clearAXObjectCache()
 {
+    ASSERT(topDocument() == this);
     // Clear the cache member variable before calling delete because attempts
     // are made to access it during destruction.
-    topDocument()->m_axObjectCache.release();
+    m_axObjectCache.clear();
 }
 
-bool Document::axObjectCacheExists() const
+AXObjectCache* Document::existingAXObjectCache() const
 {
-    return topDocument()->m_axObjectCache;
+    if (!AXObjectCache::accessibilityEnabled())
+        return 0;
+
+    // If the renderer is gone then we are in the process of destruction.
+    // This method will be called before m_frame = 0.
+    if (!topDocument()->renderer())
+        return 0;
+
+    return topDocument()->m_axObjectCache.get();
 }
 
 AXObjectCache* Document::axObjectCache() const
 {
+    if (!AXObjectCache::accessibilityEnabled())
+        return 0;
+    
     // The only document that actually has a AXObjectCache is the top-level
     // document.  This is because we need to be able to get from any WebCoreAXObject
     // to any other WebCoreAXObject on the same page.  Using a single cache allows
     // lookups across nested webareas (i.e. multiple documents).
     Document* topDocument = this->topDocument();
+
+    // If the document has already been detached, do not make a new axObjectCache.
+    if (!topDocument->renderer())
+        return 0;
+
     ASSERT(topDocument == this || !m_axObjectCache);
     if (!topDocument->m_axObjectCache)
         topDocument->m_axObjectCache = adoptPtr(new AXObjectCache(topDocument));
@@ -2459,7 +2519,7 @@ void Document::implicitClose()
 
     m_processingLoadEvent = false;
 
-#if PLATFORM(MAC) || PLATFORM(CHROMIUM)
+#if PLATFORM(MAC)
     if (f && renderObject && AXObjectCache::accessibilityEnabled()) {
         // The AX cache may have been cleared at this point, but we need to make sure it contains an
         // AX object to send the notification to. getOrCreate will make sure that an valid AX object
@@ -2636,7 +2696,7 @@ void Document::updateBaseURL()
         // The documentURI attribute is read-only from JavaScript, but writable from Objective C, so we need to retain
         // this fallback behavior. We use a null base URL, since the documentURI attribute is an arbitrary string
         // and DOM 3 Core does not specify how it should be resolved.
-        m_baseURL = KURL(KURL(), documentURI());
+        m_baseURL = KURL(ParsedURLString, documentURI());
     }
     selectorQueryCache()->invalidate();
 
@@ -2695,7 +2755,7 @@ void Document::processBaseElement()
         if (!strippedHref.isEmpty())
             baseElementURL = KURL(url(), strippedHref);
     }
-    if (m_baseElementURL != baseElementURL) {
+    if (m_baseElementURL != baseElementURL && contentSecurityPolicy()->allowBaseURI(baseElementURL)) {
         m_baseElementURL = baseElementURL;
         updateBaseURL();
     }
@@ -2864,7 +2924,7 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
         // FIXME: make setCookie work on XML documents too; e.g. in case of <html:meta .....>
         if (isHTMLDocument()) {
             // Exception (for sandboxed documents) ignored.
-            static_cast<HTMLDocument*>(this)->setCookie(content, IGNORE_EXCEPTION);
+            toHTMLDocument(this)->setCookie(content, IGNORE_EXCEPTION);
         }
     } else if (equalIgnoringCase(equiv, "content-language"))
         setContentLanguage(content);
@@ -2879,7 +2939,10 @@ void Document::processHttpEquiv(const String& equiv, const String& content)
             if (frameLoader->shouldInterruptLoadForXFrameOptions(content, url(), requestIdentifier)) {
                 String message = "Refused to display '" + url().elidedString() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
                 frameLoader->stopAllLoaders();
-                frame->navigationScheduler()->scheduleLocationChange(securityOrigin(), blankURL(), String());
+                // Stopping the loader isn't enough, as we're already parsing the document; to honor the header's
+                // intent, we must navigate away from the possibly partially-rendered document to a location that
+                // doesn't inherit the parent's SecurityOrigin.
+                frame->navigationScheduler()->scheduleLocationChange(securityOrigin(), SecurityOrigin::urlWithUniqueSecurityOrigin(), String());
                 addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message, requestIdentifier);
             }
         }
@@ -3327,7 +3390,7 @@ bool Document::setFocusedNode(PassRefPtr<Node> prpNewFocusedNode, FocusDirection
 
         // Dispatch a change event for text fields or textareas that have been edited
         if (oldFocusedNode->isElementNode()) {
-            Element* element = static_cast<Element*>(oldFocusedNode.get());
+            Element* element = toElement(oldFocusedNode.get());
             if (element->wasChangedSinceLastFormControlChangeEvent())
                 element->dispatchFormControlChangeEvent();
         }
@@ -3425,10 +3488,6 @@ bool Document::setFocusedNode(PassRefPtr<Node> prpNewFocusedNode, FocusDirection
         }
     }
 
-#if PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(CHROMIUM)
-    if (!focusChangeBlocked && m_focusedNode && AXObjectCache::accessibilityEnabled())
-        axObjectCache()->handleFocusedUIElementChanged(oldFocusedNode.get(), newFocusedNode.get());
-#endif
     if (!focusChangeBlocked)
         page()->chrome()->focusedNodeChanged(m_focusedNode.get());
 
@@ -3506,29 +3565,6 @@ void Document::updateRangesAfterChildrenChanged(ContainerNode* container)
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
             (*it)->nodeChildrenChanged(container);
-    }
-}
-
-void Document::nodeChildrenWillBeRemoved(ContainerNode* container)
-{
-    if (!m_ranges.isEmpty()) {
-        HashSet<Range*>::const_iterator end = m_ranges.end();
-        for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
-            (*it)->nodeChildrenWillBeRemoved(container);
-    }
-
-    HashSet<NodeIterator*>::const_iterator nodeIteratorsEnd = m_nodeIterators.end();
-    for (HashSet<NodeIterator*>::const_iterator it = m_nodeIterators.begin(); it != nodeIteratorsEnd; ++it) {
-        for (Node* n = container->firstChild(); n; n = n->nextSibling())
-            (*it)->nodeWillBeRemoved(n);
-    }
-
-    if (Frame* frame = this->frame()) {
-        for (Node* n = container->firstChild(); n; n = n->nextSibling()) {
-            frame->eventHandler()->nodeWillBeRemoved(n);
-            frame->selection()->nodeWillBeRemoved(n);
-            frame->page()->dragCaretController()->nodeWillBeRemoved(n);
-        }
     }
 }
 
@@ -4145,6 +4181,28 @@ void Document::unregisterForPrivateBrowsingStateChangedCallbacks(Element* e)
     m_privateBrowsingStateChangedElements.remove(e);
 }
 
+#if ENABLE(VIDEO_TRACK)
+void Document::registerForCaptionPreferencesChangedCallbacks(Element* e)
+{
+    if (page())
+        page()->group().captionPreferences()->setInterestedInCaptionPreferenceChanges();
+
+    m_captionPreferencesChangedElements.add(e);
+}
+
+void Document::unregisterForCaptionPreferencesChangedCallbacks(Element* e)
+{
+    m_captionPreferencesChangedElements.remove(e);
+}
+
+void Document::captionPreferencesChanged()
+{
+    HashSet<Element*>::iterator end = m_captionPreferencesChangedElements.end();
+    for (HashSet<Element*>::iterator it = m_captionPreferencesChangedElements.begin(); it != end; ++it)
+        (*it)->captionPreferencesChanged();
+}
+#endif
+
 void Document::setShouldCreateRenderers(bool f)
 {
     m_createRenderers = f;
@@ -4518,33 +4576,16 @@ const Vector<IconURL>& Document::iconURLs(int iconTypesMask)
     return m_iconURLs;
 }
 
-void Document::addIconURL(const String& url, const String& mimeType, const String& sizes, IconType iconType)
+void Document::addIconURL(const String& url, const String&, const String&, IconType iconType)
 {
     if (url.isEmpty())
         return;
 
-    // FIXME - <rdar://problem/4727645> - At some point in the future, we might actually honor the "mimeType"
-    IconURL newURL(KURL(ParsedURLString, url), sizes, mimeType, iconType);
-
-    if (Frame* f = frame()) {
-        IconURL iconURL = f->loader()->icon()->iconURL(iconType);
-        if (iconURL == newURL)
-            f->loader()->didChangeIcons(iconType);
-    }
-}
-
-void Document::setUseSecureKeyboardEntryWhenActive(bool usesSecureKeyboard)
-{
-    if (m_useSecureKeyboardEntryWhenActive == usesSecureKeyboard)
+    Frame* f = frame();
+    if (!f)
         return;
 
-    m_useSecureKeyboardEntryWhenActive = usesSecureKeyboard;
-    m_frame->selection()->updateSecureKeyboardEntryIfActive();
-}
-
-bool Document::useSecureKeyboardEntryWhenActive() const
-{
-    return m_useSecureKeyboardEntryWhenActive;
+    f->loader()->didChangeIcons(iconType);
 }
 
 static bool isEligibleForSeamless(Document* parent, Document* child)
@@ -4712,7 +4753,7 @@ void Document::updateFocusAppearanceTimerFired(Timer<Document>*)
 
     updateLayout();
 
-    Element* element = static_cast<Element*>(node);
+    Element* element = toElement(node);
     if (element->isFocusable())
         element->updateFocusAppearance(m_updateFocusAppearanceRestoresSelection);
 }
@@ -4779,10 +4820,8 @@ void Document::addConsoleMessage(MessageSource source, MessageLevel level, const
         return;
     }
 
-    if (DOMWindow* window = domWindow()) {
-        if (Console* console = window->console())
-            console->addMessage(source, level, message, requestIdentifier, this);
-    }
+    if (Page* page = this->page())
+        page->console()->addMessage(source, level, message, requestIdentifier, this);
 }
 
 void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, PassRefPtr<ScriptCallStack> callStack, ScriptState* state, unsigned long requestIdentifier)
@@ -4792,10 +4831,8 @@ void Document::addMessage(MessageSource source, MessageLevel level, const String
         return;
     }
 
-    if (DOMWindow* window = domWindow()) {
-        if (Console* console = window->console())
-            console->addMessage(source, level, message, sourceURL, lineNumber, callStack, state, requestIdentifier);
-    }
+    if (Page* page = this->page())
+        page->console()->addMessage(source, level, message, sourceURL, lineNumber, callStack, state, requestIdentifier);
 }
 
 const SecurityOrigin* Document::topOrigin() const
@@ -5364,6 +5401,8 @@ void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
     RefPtr<Document> protectDocument(this);
     Deque<RefPtr<Node> > changeQueue;
     m_fullScreenChangeEventTargetQueue.swap(changeQueue);
+    Deque<RefPtr<Node> > errorQueue;
+    m_fullScreenErrorEventTargetQueue.swap(errorQueue);
 
     while (!changeQueue.isEmpty()) {
         RefPtr<Node> node = changeQueue.takeFirst();
@@ -5381,9 +5420,6 @@ void Document::fullScreenChangeDelayTimerFired(Timer<Document>*)
         node->dispatchEvent(Event::create(eventNames().webkitfullscreenchangeEvent, true, false));
     }
 
-    Deque<RefPtr<Node> > errorQueue;
-    m_fullScreenErrorEventTargetQueue.swap(errorQueue);
-    
     while (!errorQueue.isEmpty()) {
         RefPtr<Node> node = errorQueue.takeFirst();
         if (!node)
@@ -5755,7 +5791,7 @@ Node* eventTargetNodeForDocument(Document* doc)
         return 0;
     Node* node = doc->focusedNode();
     if (!node && doc->isPluginDocument()) {
-        PluginDocument* pluginDocument = static_cast<PluginDocument*>(doc);
+        PluginDocument* pluginDocument = toPluginDocument(doc);
         node =  pluginDocument->pluginNode();
     }
     if (!node && doc->isHTMLDocument())
@@ -6085,5 +6121,36 @@ Document* Document::ensureTemplateDocument()
     return m_templateDocument.get();
 }
 #endif
+
+#if ENABLE(FONT_LOAD_EVENTS)
+PassRefPtr<FontLoader> Document::fontloader()
+{
+    if (!m_fontloader)
+        m_fontloader = FontLoader::create(this);
+    return m_fontloader;
+}
+#endif
+
+void Document::didAssociateFormControl(Element* element)
+{
+    if (!frame() || !frame()->page() || !frame()->page()->chrome()->client()->shouldNotifyOnFormChanges())
+        return;
+    m_associatedFormControls.add(element);
+    if (!m_didAssociateFormControlsTimer.isActive())
+        m_didAssociateFormControlsTimer.startOneShot(0);
+}
+
+void Document::didAssociateFormControlsTimerFired(Timer<Document>* timer)
+{
+    ASSERT_UNUSED(timer, timer == &m_didAssociateFormControlsTimer);
+    if (!frame() || !frame()->page())
+        return;
+
+    Vector<RefPtr<Element> > associatedFormControls;
+    copyToVector(m_associatedFormControls, associatedFormControls);
+
+    frame()->page()->chrome()->client()->didAssociateFormControls(associatedFormControls);
+    m_associatedFormControls.clear();
+}
 
 } // namespace WebCore

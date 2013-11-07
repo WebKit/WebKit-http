@@ -243,7 +243,7 @@ void TextFieldInputType::createShadowSubtree()
     }
 
     ShadowRoot* shadowRoot = element()->userAgentShadowRoot();
-    m_container = HTMLDivElement::create(document);
+    m_container = TextControlInnerContainer::create(document);
     m_container->setPseudo(AtomicString("-webkit-textfield-decoration-container", AtomicString::ConstructFromLiteral));
     shadowRoot->appendChild(m_container, IGNORE_EXCEPTION);
 
@@ -314,6 +314,13 @@ void TextFieldInputType::destroyShadowSubtree()
         m_innerSpinButton->removeSpinButtonOwner();
     m_innerSpinButton.clear();
     m_container.clear();
+}
+
+void TextFieldInputType::attributeChanged()
+{
+    // FIXME: Updating the inner text on any attribute update should
+    // be unnecessary. We should figure out what attributes affect.
+    updateInnerTextValue();
 }
 
 void TextFieldInputType::disabledAttributeChanged()

@@ -169,8 +169,7 @@ namespace WebCore {
 #endif
 #if PLATFORM(MAC) && !USE(CFNETWORK)
         RetainPtr<NSURLConnection> m_connection;
-        RetainPtr<WebCoreResourceHandleAsDelegate> m_delegate;
-        RetainPtr<id> m_proxy;
+        RetainPtr<id> m_delegate;
 #endif
 #if PLATFORM(MAC)
         bool m_startWhenScheduled;

@@ -272,11 +272,6 @@ void TestRunner::setWindowIsKey(bool)
     notImplemented();
 }
 
-void TestRunner::setSmartInsertDeleteEnabled(bool flag)
-{
-    DumpRenderTreeSupportEfl::setSmartInsertDeleteEnabled(browser->mainView(), flag);
-}
-
 static Eina_Bool waitToDumpWatchdogFired(void*)
 {
     waitToDumpWatchdog = 0;
@@ -419,11 +414,6 @@ void TestRunner::setIconDatabaseEnabled(bool enabled)
 
     if (ecore_file_mkpath(databasePath.utf8().data()))
         ewk_settings_icon_database_path_set(databasePath.utf8().data());
-}
-
-void TestRunner::setSelectTrailingWhitespaceEnabled(bool flag)
-{
-    DumpRenderTreeSupportEfl::setSelectTrailingWhitespaceEnabled(browser->mainView(), flag);
 }
 
 void TestRunner::setPopupBlockingEnabled(bool flag)
@@ -689,11 +679,6 @@ void TestRunner::setDeveloperExtrasEnabled(bool enabled)
     ewk_view_setting_enable_developer_extras_set(browser->mainView(), enabled);
 }
 
-void TestRunner::setAsynchronousSpellCheckingEnabled(bool)
-{
-    notImplemented();
-}
-
 void TestRunner::showWebInspector()
 {
     ewk_view_inspector_show(browser->mainView());
@@ -852,4 +837,10 @@ void TestRunner::setStorageDatabaseIdleInterval(double)
 void TestRunner::closeIdleLocalStorageDatabases()
 {
     notImplemented();
+}
+
+JSRetainPtr<JSStringRef> TestRunner::platformName() const
+{
+    JSRetainPtr<JSStringRef> platformName(Adopt, JSStringCreateWithUTF8CString("efl"));
+    return platformName;
 }

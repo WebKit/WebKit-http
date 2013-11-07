@@ -152,9 +152,7 @@ enable?(NETSCAPE_PLUGIN_API) {
     }
 }
 
-enable?(ORIENTATION_EVENTS)|enable?(DEVICE_ORIENTATION) {
-    QT += sensors
-}
+have?(qtsensors):if(enable?(ORIENTATION_EVENTS)|enable?(DEVICE_ORIENTATION)): QT += sensors
 
 use?(QT_MOBILITY_SYSTEMINFO) {
      CONFIG *= mobility
@@ -191,19 +189,26 @@ enable?(VIDEO) {
         DARWIN_VERSION = $$split(QMAKE_HOST.version, ".")
         DARWIN_MAJOR_VERSION = $$first(DARWIN_VERSION)
 
-        # We first check if a specific SDK is set to be used for the build.
-        contains(QMAKE_MAC_SDK, ".*MacOSX10.7.sdk.*") {
-            SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
-        } else:contains(QMAKE_MAC_SDK, ".*MacOSX10.8.sdk.*") {
-            SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
-        }
-
-        # If the previous check did not yield a result, we resort to the Darwin version.
-        isEmpty(SYSTEM_LIBRARY_PATH) {
-            equals(DARWIN_MAJOR_VERSION, "11") {
+        haveQt(5,1) {
+            equals(QMAKE_MAC_SDK_VERSION, 10.7): \
                 SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
-            } else:equals(DARWIN_MAJOR_VERSION, "12") {
+            else:equals(QMAKE_MAC_SDK_VERSION, 10.8): \
                 SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
+        } else {
+            # We first check if a specific SDK is set to be used for the build.
+            contains(QMAKE_MAC_SDK, ".*MacOSX10.7.sdk.*") {
+                SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
+            } else:contains(QMAKE_MAC_SDK, ".*MacOSX10.8.sdk.*") {
+                SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
+            }
+
+            # If the previous check did not yield a result, we resort to the Darwin version.
+            isEmpty(SYSTEM_LIBRARY_PATH) {
+                equals(DARWIN_MAJOR_VERSION, "11") {
+                    SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceLion.a
+                } else:equals(DARWIN_MAJOR_VERSION, "12") {
+                    SYSTEM_LIBRARY_PATH = $${ROOT_WEBKIT_DIR}/WebKitLibraries/libWebKitSystemInterfaceMountainLion.a
+                }
             }
         }
         LIBS += $$SYSTEM_LIBRARY_PATH
@@ -241,7 +246,7 @@ use?(3D_GRAPHICS) {
             }
         }
     } else {
-        contains(QT_CONFIG, opengles2): LIBS += -lEGL
+        contains(QT_CONFIG, opengles2): CONFIG += egl
     }
 }
 
@@ -274,6 +279,11 @@ have?(sqlite3) {
 use?(libjpeg): LIBS += -ljpeg
 use?(libpng): LIBS += -lpng
 use?(webp): LIBS += -lwebp
+
+enable?(opencl) {
+    LIBS += -lOpenCL
+    INCLUDEPATH += $$SOURCE_DIR/platform/graphics/gpu/opencl
+}
 
 mac {
     LIBS += -framework Carbon -framework AppKit -framework IOKit
@@ -321,12 +331,6 @@ mac {
 unix:!mac:*-g++*:QMAKE_CXXFLAGS += -fdata-sections
 unix:!mac:*-g++*:QMAKE_LFLAGS += -Wl,--gc-sections
 linux*-g++*:QMAKE_LFLAGS += $$QMAKE_LFLAGS_NOUNDEF
-
-contains(DEFINES, ENABLE_OPENCL=1) {
-    LIBS += -lOpenCL
-
-    INCLUDEPATH += $$SOURCE_DIR/platform/graphics/gpu/opencl
-}
 
 enable_fast_mobile_scrolling: DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1
 

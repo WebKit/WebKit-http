@@ -2640,6 +2640,8 @@ plugins/npruntime/plugin-scriptable-object-invoke-default.html
 plugins/npruntime/remove-property.html
 plugins/npruntime/round-trip-npobject.html
 plugins/npruntime/throw-exception.html
+plugins/npruntime/tostring.html
+plugins/npruntime/valueof.html
 plugins/object-embed-plugin-scripting.html
 plugins/get-url-notify-with-url-that-fails-to-load.html
 plugins/get-url-with-javascript-url.html
@@ -5705,7 +5707,6 @@ webkit.org/b/73766 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFail
 webkit.org/b/82886 inspector/styles/override-screen-size.html [ Skip ]
 
 webkit.org/b/83906 ietestcenter/css3/grid/grid-column-001.htm [ ImageOnlyFailure ]
-webkit.org/b/83907 ietestcenter/css3/grid/grid-column-002.htm [ ImageOnlyFailure ]
 webkit.org/b/83909 ietestcenter/css3/grid/grid-column-003.htm [ ImageOnlyFailure ]
 webkit.org/b/83912 ietestcenter/css3/grid/grid-items-002.htm [ ImageOnlyFailure ]
 webkit.org/b/83913 ietestcenter/css3/grid/grid-items-003.htm [ ImageOnlyFailure ]
@@ -5796,6 +5797,7 @@ webkit.org/b/89052 fast/css/image-orientation
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
+webkit.org/b/112755 fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
 
 # Needs rebaseline after bug 86441
 # failing new tests

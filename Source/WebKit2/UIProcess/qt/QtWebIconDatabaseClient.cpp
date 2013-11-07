@@ -20,18 +20,21 @@
 #include "config.h"
 #include "QtWebIconDatabaseClient.h"
 
-#include "Image.h"
-#include "KURL.h"
-#include "SharedBuffer.h"
-#include "WKURLQt.h"
-#include "WebContext.h"
-#include "WebIconDatabase.h"
+#include "QtWebContext.h"
 #include <QtCore/QHash>
 #include <QtCore/QObject>
 #include <QtCore/QUrl>
 #include <QtGui/QImage>
+#include <WKContext.h>
+#include <WKContextPrivate.h>
+#include <WKIconDatabaseQt.h>
+#include <WKRetainPtr.h>
+#include <WKStringQt.h>
+#include <WKURLQt.h>
 
 namespace WebKit {
+
+static unsigned s_updateId = 0;
 
 static inline QtWebIconDatabaseClient* toQtWebIconDatabaseClient(const void* clientInfo)
 {
@@ -39,70 +42,51 @@ static inline QtWebIconDatabaseClient* toQtWebIconDatabaseClient(const void* cli
     return reinterpret_cast<QtWebIconDatabaseClient*>(const_cast<void*>(clientInfo));
 }
 
-QtWebIconDatabaseClient::QtWebIconDatabaseClient(WebContext *context)
+QtWebIconDatabaseClient::QtWebIconDatabaseClient(WKContextRef context)
 {
-    // The setter calls the getter here as it triggers the startup of the icon database.
-    if (!context->iconDatabase()->isOpen())
-        context->setIconDatabasePath(context->iconDatabasePath());
-    m_iconDatabase = context->iconDatabase();
+    m_iconDatabase = WKContextGetIconDatabase(context);
 
     WKIconDatabaseClient iconDatabaseClient;
     memset(&iconDatabaseClient, 0, sizeof(WKIconDatabaseClient));
     iconDatabaseClient.version = kWKIconDatabaseClientCurrentVersion;
     iconDatabaseClient.clientInfo = this;
     iconDatabaseClient.didChangeIconForPageURL = didChangeIconForPageURL;
-    WKIconDatabaseSetIconDatabaseClient(toAPI(m_iconDatabase.get()), &iconDatabaseClient);
+    WKIconDatabaseSetIconDatabaseClient(m_iconDatabase, &iconDatabaseClient);
+    // Triggers the startup of the icon database.
+    WKRetainPtr<WKStringRef> path = adoptWK(WKStringCreateWithQString(QtWebContext::preparedStoragePath(QtWebContext::IconDatabaseStorage)));
+    WKContextSetIconDatabasePath(context, path.get());
 }
 
 QtWebIconDatabaseClient::~QtWebIconDatabaseClient()
 {
-    m_iconDatabase->close();
-    WKIconDatabaseSetIconDatabaseClient(toAPI(m_iconDatabase.get()), 0);
+    WKIconDatabaseClose(m_iconDatabase);
+    WKIconDatabaseSetIconDatabaseClient(m_iconDatabase, 0);
+}
+
+unsigned QtWebIconDatabaseClient::updateID()
+{
+    return s_updateId;
 }
 
 void QtWebIconDatabaseClient::didChangeIconForPageURL(WKIconDatabaseRef, WKURLRef pageURL, const void* clientInfo)
 {
-    emit toQtWebIconDatabaseClient(clientInfo)->iconChangedForPageURL(toImpl(pageURL)->string());
+    ++s_updateId;
+    emit toQtWebIconDatabaseClient(clientInfo)->iconChangedForPageURL(WKURLCopyQString(pageURL));
 }
 
-WTF::String QtWebIconDatabaseClient::iconForPageURL(const WTF::String& pageURL)
+QImage QtWebIconDatabaseClient::iconImageForPageURL(const QString& pageURL)
 {
-    String iconURL;
-    m_iconDatabase->synchronousIconURLForPageURL(pageURL, iconURL);
-
-    if (iconURL.isEmpty())
-        return String();
-
-    // Verify that the image data is actually available before reporting back
-    // a url, since clients assume that the url can be used directly.
-    WebCore::Image* iconImage = m_iconDatabase->imageForPageURL(pageURL);
-    if (!iconImage || iconImage->isNull())
-        return String();
-
-    return iconURL;
+    return WKIconDatabaseTryGetQImageForURL(m_iconDatabase, adoptWK(WKURLCreateWithQString(pageURL)).get());
 }
 
-QImage QtWebIconDatabaseClient::iconImageForPageURL(const WTF::String& pageURL, const QSize& iconSize)
+void QtWebIconDatabaseClient::retainIconForPageURL(const QString& pageURL)
 {
-    MutexLocker locker(m_imageLock);
-
-    WebCore::IntSize size(iconSize.width(), iconSize.height());
-
-    QPixmap* nativeImage = m_iconDatabase->nativeImageForPageURL(pageURL, size);
-    if (!nativeImage)
-        return QImage();
-
-    return nativeImage->toImage();
+    WKIconDatabaseRetainIconForURL(m_iconDatabase, adoptWK(WKURLCreateWithQString(pageURL)).get());
 }
 
-void QtWebIconDatabaseClient::retainIconForPageURL(const String& pageURL)
+void QtWebIconDatabaseClient::releaseIconForPageURL(const QString& pageURL)
 {
-    m_iconDatabase->retainIconForPageURL(pageURL);
-}
-
-void QtWebIconDatabaseClient::releaseIconForPageURL(const String& pageURL)
-{
-    m_iconDatabase->releaseIconForPageURL(pageURL);
+    WKIconDatabaseReleaseIconForURL(m_iconDatabase, adoptWK(WKURLCreateWithQString(pageURL)).get());
 }
 
 } // namespace WebKit

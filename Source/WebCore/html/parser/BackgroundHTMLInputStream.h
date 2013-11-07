@@ -50,7 +50,9 @@ public:
     // point all outstanding checkpoints are invalidated.
     HTMLInputCheckpoint createCheckpoint();
     void rewindTo(HTMLInputCheckpoint, const String& unparsedInput);
-    void invalidateCheckpointsUpThrough(HTMLInputCheckpoint);
+    void invalidateCheckpointsBefore(HTMLInputCheckpoint);
+
+    size_t outstandingCheckpointCount() const { return m_checkpoints.size() - m_firstValidCheckpointIndex; }
 
 private:
     struct Checkpoint {

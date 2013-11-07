@@ -37,9 +37,14 @@ PassRefPtr<SpeechSynthesisUtterance> SpeechSynthesisUtterance::create(ScriptExec
 
 SpeechSynthesisUtterance::SpeechSynthesisUtterance(ScriptExecutionContext* context, const String& text)
     : ContextDestructionObserver(context)
-    , m_platformUtterance(PlatformSpeechSynthesisUtterance(this))
+    , m_platformUtterance(PlatformSpeechSynthesisUtterance::create(this))
 {
-    m_platformUtterance.setText(text);
+    m_platformUtterance->setText(text);
+}
+
+SpeechSynthesisUtterance::~SpeechSynthesisUtterance()
+{
+    m_platformUtterance->setClient(0);
 }
     
 ScriptExecutionContext* SpeechSynthesisUtterance::scriptExecutionContext() const
@@ -59,12 +64,15 @@ SpeechSynthesisVoice* SpeechSynthesisUtterance::voice() const
 
 void SpeechSynthesisUtterance::setVoice(SpeechSynthesisVoice* voice)
 {
+    if (!voice)
+        return;
+    
     // Cache our own version of the SpeechSynthesisVoice so that we don't have to do some lookup
     // to go from the platform voice back to the speech synthesis voice in the read property.
     m_voice = voice;
     
     if (voice)
-        m_platformUtterance.setVoice(voice->platformVoice());
+        m_platformUtterance->setVoice(voice->platformVoice());
 }
 
 } // namespace WebCore

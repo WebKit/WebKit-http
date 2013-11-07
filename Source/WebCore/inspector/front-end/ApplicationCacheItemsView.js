@@ -196,24 +196,20 @@ WebInspector.ApplicationCacheItemsView.prototype = {
 
     _createDataGrid: function()
     {
-        var columns = { 0: {}, 1: {}, 2: {} };
-        columns[0].title = WebInspector.UIString("Resource");
-        columns[0].sort = "ascending";
-        columns[0].sortable = true;
-        columns[1].title = WebInspector.UIString("Type");
-        columns[1].sortable = true;
-        columns[2].title = WebInspector.UIString("Size");
-        columns[2].aligned = "right";
-        columns[2].sortable = true;
+        var columns = [
+            {title: WebInspector.UIString("Resource"), sort: WebInspector.DataGrid.Order.Ascending, sortable: true},
+            {title: WebInspector.UIString("Type"), sortable: true},
+            {title: WebInspector.UIString("Size"), align: WebInspector.DataGrid.Align.Right, sortable: true}
+        ];
         this._dataGrid = new WebInspector.DataGrid(columns);
         this._dataGrid.show(this.element);
-        this._dataGrid.addEventListener("sorting changed", this._populateDataGrid, this);
+        this._dataGrid.addEventListener(WebInspector.DataGrid.Events.SortingChanged, this._populateDataGrid, this);
     },
 
     _populateDataGrid: function()
     {
         var selectedResource = this._dataGrid.selectedNode ? this._dataGrid.selectedNode.resource : null;
-        var sortDirection = this._dataGrid.sortOrder === "ascending" ? 1 : -1;
+        var sortDirection = this._dataGrid.isSortOrderAscending() ? 1 : -1;
 
         function numberCompare(field, resource1, resource2)
         {
@@ -225,7 +221,7 @@ WebInspector.ApplicationCacheItemsView.prototype = {
         }
 
         var comparator;
-        switch (parseInt(this._dataGrid.sortColumnIdentifier, 10)) {
+        switch (parseInt(this._dataGrid.sortColumnIdentifier(), 10)) {
             case 0: comparator = localeCompare.bind(this, "name"); break;
             case 1: comparator = localeCompare.bind(this, "type"); break;
             case 2: comparator = numberCompare.bind(this, "size"); break;

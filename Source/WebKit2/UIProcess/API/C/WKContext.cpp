@@ -366,6 +366,18 @@ void WKContextSetPlugInAutoStartOriginHashes(WKContextRef contextRef, WKDictiona
     toImpl(contextRef)->setPlugInAutoStartOriginHashes(*toImpl(dictionaryRef));
 }
 
+void WKContextSetPlugInAutoStartOrigins(WKContextRef contextRef, WKArrayRef arrayRef)
+{
+    if (!arrayRef)
+        return;
+    toImpl(contextRef)->setPlugInAutoStartOrigins(*toImpl(arrayRef));
+}
+
+void WKContextSetInvalidMessageFunction(WKContextInvalidMessageFunction invalidMessageFunction)
+{
+    WebContext::setInvalidMessageCallback(invalidMessageFunction);
+}
+
 // Deprecated functions.
 void _WKContextSetAdditionalPluginsDirectory(WKContextRef context, WKStringRef pluginsDirectory)
 {

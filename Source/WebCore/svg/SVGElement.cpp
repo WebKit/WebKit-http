@@ -253,7 +253,7 @@ const HashSet<SVGElementInstance*>& SVGElement::instancesForElement() const
 bool SVGElement::getBoundingBox(FloatRect& rect, SVGLocatable::StyleUpdateStrategy styleUpdateStrategy)
 {
     if (isStyledLocatable()) {
-        rect = static_cast<SVGStyledLocatableElement*>(this)->getBBox(styleUpdateStrategy);
+        rect = toSVGStyledLocatableElement(this)->getBBox(styleUpdateStrategy);
         return true;
     }
     if (hasTagName(SVGNames::textTag)) {
@@ -530,7 +530,7 @@ bool SVGElement::childShouldCreateRenderer(const NodeRenderingContext& childCont
     return false;
 }
 
-void SVGElement::attributeChanged(const QualifiedName& name, const AtomicString& newValue)
+void SVGElement::attributeChanged(const QualifiedName& name, const AtomicString& newValue, AttributeModificationReason)
 {
     StyledElement::attributeChanged(name, newValue);
 
@@ -562,22 +562,22 @@ SVGAttributeToPropertyMap& SVGElement::localAttributeToPropertyMap()
     return emptyMap;
 }
 
-void SVGElement::synchronizeRequiredFeatures(void* contextElement)
+void SVGElement::synchronizeRequiredFeatures(SVGElement* contextElement)
 {
     ASSERT(contextElement);
-    static_cast<SVGElement*>(contextElement)->synchronizeRequiredFeatures();
+    contextElement->synchronizeRequiredFeatures();
 }
 
-void SVGElement::synchronizeRequiredExtensions(void* contextElement)
+void SVGElement::synchronizeRequiredExtensions(SVGElement* contextElement)
 {
     ASSERT(contextElement);
-    static_cast<SVGElement*>(contextElement)->synchronizeRequiredExtensions();
+    contextElement->synchronizeRequiredExtensions();
 }
 
-void SVGElement::synchronizeSystemLanguage(void* contextElement)
+void SVGElement::synchronizeSystemLanguage(SVGElement* contextElement)
 {
     ASSERT(contextElement);
-    static_cast<SVGElement*>(contextElement)->synchronizeSystemLanguage();
+    contextElement->synchronizeSystemLanguage();
 }
 
 PassRefPtr<RenderStyle> SVGElement::customStyleForRenderer()

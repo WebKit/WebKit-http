@@ -194,6 +194,12 @@ void InspectorFrontendHost::setAttachedWindowHeight(unsigned height)
         m_client->changeAttachedWindowHeight(height);
 }
 
+void InspectorFrontendHost::setAttachedWindowWidth(unsigned width)
+{
+    if (m_client)
+        m_client->changeAttachedWindowWidth(width);
+}
+
 void InspectorFrontendHost::moveWindowBy(float x, float y) const
 {
     if (m_client)
@@ -209,11 +215,6 @@ void InspectorFrontendHost::setInjectedScriptForOrigin(const String& origin, con
 String InspectorFrontendHost::localizedStringsURL()
 {
     return m_client ? m_client->localizedStringsURL() : "";
-}
-
-String InspectorFrontendHost::hiddenPanels()
-{
-    return m_client ? m_client->hiddenPanels() : "";
 }
 
 void InspectorFrontendHost::copyText(const String& text)
@@ -248,17 +249,6 @@ void InspectorFrontendHost::append(const String& url, const String& content)
 
 void InspectorFrontendHost::close(const String&)
 {
-}
-
-bool InspectorFrontendHost::canInspectWorkers()
-{
-#if ENABLE(WORKERS)
-    if (m_client)
-        return m_client->canInspectWorkers();
-    return false;
-#else
-    return false;
-#endif
 }
 
 void InspectorFrontendHost::sendMessageToBackend(const String& message)
@@ -335,6 +325,21 @@ PassRefPtr<DOMFileSystem> InspectorFrontendHost::isolatedFileSystem(const String
 bool InspectorFrontendHost::isUnderTest()
 {
     return m_client && m_client->isUnderTest();
+}
+
+bool InspectorFrontendHost::canSaveAs()
+{
+    return false;
+}
+
+bool InspectorFrontendHost::canInspectWorkers()
+{
+    return false;
+}
+
+String InspectorFrontendHost::hiddenPanels()
+{
+    return "";
 }
 
 } // namespace WebCore

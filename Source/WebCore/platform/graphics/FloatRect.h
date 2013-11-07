@@ -30,11 +30,11 @@
 #include "FloatPoint.h"
 #include <wtf/Vector.h>
 
-#if USE(CG) || USE(SKIA_ON_MAC_CHROMIUM)
+#if USE(CG)
 typedef struct CGRect CGRect;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))
+#if PLATFORM(MAC)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGRect NSRect;
 #else
@@ -199,13 +199,12 @@ public:
     operator BlackBerry::Platform::FloatRect() const;
 #endif
 
-#if USE(CG) || USE(SKIA_ON_MAC_CHROMIUM)
+#if USE(CG)
     FloatRect(const CGRect&);
     operator CGRect() const;
 #endif
 
-#if (PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN))) \
-        && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
+#if PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     FloatRect(const NSRect&);
     operator NSRect() const;
 #endif

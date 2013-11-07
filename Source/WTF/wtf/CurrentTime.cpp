@@ -55,7 +55,7 @@
 #include <sys/time.h>
 #endif
 
-#if PLATFORM(GTK)
+#if USE(GLIB) && !PLATFORM(EFL)
 #include <glib.h>
 #endif
 
@@ -68,8 +68,6 @@
 #endif
 
 namespace WTF {
-
-#if !PLATFORM(CHROMIUM)
 
 #if OS(WINDOWS)
 
@@ -228,7 +226,7 @@ double currentTime()
 
 #endif // USE(QUERY_PERFORMANCE_COUNTER)
 
-#elif PLATFORM(GTK)
+#elif USE(GLIB) && !PLATFORM(EFL)
 
 // Note: GTK on Windows will pick up the PLATFORM(WIN) implementation above which provides
 // better accuracy compared with Windows implementation of g_get_current_time:
@@ -304,7 +302,7 @@ double monotonicallyIncreasingTime()
     return ecore_time_get();
 }
 
-#elif PLATFORM(GTK)
+#elif USE(GLIB) && !PLATFORM(EFL) && !PLATFORM(QT)
 
 double monotonicallyIncreasingTime()
 {
@@ -343,7 +341,5 @@ double monotonicallyIncreasingTime()
 }
 
 #endif
-
-#endif // !PLATFORM(CHROMIUM)
 
 } // namespace WTF

@@ -54,8 +54,18 @@ enum ContentTypeOptionsDisposition {
 };
 #endif
 
+enum XFrameOptionsDisposition {
+    XFrameOptionsNone,
+    XFrameOptionsDeny,
+    XFrameOptionsSameOrigin,
+    XFrameOptionsAllowAll,
+    XFrameOptionsInvalid,
+    XFrameOptionsConflict
+};
+
 ContentDispositionType contentDispositionType(const String&);
-bool isRFC2616Token(const String&);
+bool isValidHTTPHeaderValue(const String&);
+bool isValidHTTPToken(const String&);
 bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& delay, String& url);
 double parseDate(const String&);
 String filenameFromHTTPContentDisposition(const String&); 
@@ -64,6 +74,7 @@ String extractCharsetFromMediaType(const String&);
 void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, unsigned int& charsetLen, unsigned int start = 0);
 ContentSecurityPolicy::ReflectedXSSDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL);
 String extractReasonPhraseFromHTTPStatusLine(const String&);
+XFrameOptionsDisposition parseXFrameOptionsHeader(const String&);
 
 // -1 could be set to one of the return parameters to indicate the value is not specified.
 bool parseRange(const String&, long long& rangeOffset, long long& rangeEnd, long long& rangeSuffixLength);

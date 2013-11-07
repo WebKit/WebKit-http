@@ -37,6 +37,10 @@
 #include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
 
+namespace WebCore {
+class CoordinatedGraphicsScene;
+}
+
 namespace WebKit {
 class DownloadProxy;
 class DrawingAreaProxy;
@@ -44,6 +48,7 @@ class QtDialogRunner;
 class PageViewportControllerClientQt;
 class QtWebContext;
 class QtWebError;
+class QtWebPageEventHandler;
 class QtWebPagePolicyClient;
 class WebPageProxy;
 }
@@ -65,6 +70,7 @@ class QQuickWebViewPrivate {
 
 public:
     static QQuickWebViewPrivate* get(QQuickWebView* q) { return q->d_ptr.data(); }
+    static QQuickWebViewPrivate* get(WKPageRef);
 
     virtual ~QQuickWebViewPrivate();
 
@@ -124,12 +130,17 @@ public:
 
     // PageClient.
     WebCore::IntSize viewSize() const;
-    void didReceiveMessageFromNavigatorQtObject(const String& message);
     virtual void pageDidRequestScroll(const QPoint& pos) { }
     void processDidCrash();
     void didRelaunchProcess();
     PassOwnPtr<WebKit::DrawingAreaProxy> createDrawingAreaProxy();
     void handleDownloadRequest(WebKit::DownloadProxy*);
+
+    void didReceiveMessageFromNavigatorQtObject(WKStringRef message);
+
+    WebCore::CoordinatedGraphicsScene* coordinatedGraphicsScene();
+    float deviceScaleFactor();
+    void setIntrinsicDeviceScaleFactor(float);
 
 protected:
     class FlickableAxisLocker {
@@ -165,7 +176,6 @@ protected:
     static void didChangeBackForwardList(WKPageRef, WKBackForwardListItemRef, WKArrayRef, const void *clientInfo);
 
     QQuickWebViewPrivate(QQuickWebView* viewport);
-    RefPtr<WebKit::QtWebContext> context;
     RefPtr<WebKit::WebPageProxy> webPageProxy;
     WKRetainPtr<WKPageRef> webPage;
     WKRetainPtr<WKPageGroupRef> pageGroup;
@@ -179,8 +189,10 @@ protected:
     QScopedPointer<WebKit::QtWebPageUIClient> pageUIClient;
 
     QScopedPointer<QQuickWebPage> pageView;
+    QScopedPointer<WebKit::QtWebPageEventHandler> pageEventHandler;
     QQuickWebView* q_ptr;
     QQuickWebViewExperimental* experimental;
+    WebKit::QtWebContext* context;
 
     FlickableAxisLocker axisLocker;
 
@@ -202,9 +214,9 @@ protected:
     bool m_navigatorQtObjectEnabled;
     bool m_renderToOffscreenBuffer;
     bool m_allowAnyHTTPSCertificateForLocalHost;
-    WTF::String m_iconUrl;
+    QUrl m_iconUrl;
     int m_loadProgress;
-    WTF::String m_currentUrl;
+    QString m_currentUrl;
 };
 
 class QQuickWebViewLegacyPrivate : public QQuickWebViewPrivate {

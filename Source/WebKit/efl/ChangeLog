@@ -1,3 +1,225 @@
+2013-04-09  Ed Bartosh  <bartosh@gmail.com>
+
+        [EFL] --minimal build fails with error: `setSeamlessIFramesEnabled' is not a member of `WebCore::RuntimeEnabledFeatures'
+        https://bugs.webkit.org/show_bug.cgi?id=113951
+
+        Reviewed by Laszlo Gombos.
+
+        Wrapped code related to iframe seamless into #if ENABLE(IFRAME_SEAMLESS)
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::setSeamlessIFramesEnabled):
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2013-04-08  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] rendering was broken when scrolled ewk_view_single
+        https://bugs.webkit.org/show_bug.cgi?id=114135
+
+        Reviewed by Gyuyoung Kim.
+
+        ewk_view_single use memcpy() to copy previous buffer for scrolling, but
+        memcpy() should not be used when source buffer and destination buffer are
+        overwrapped.
+
+        * ewk/ewk_view_single.cpp:
+        (_ewk_view_screen_move):
+
+2013-04-07  Ed Bartosh  <bartosh@gmail.com>
+
+        [EFL] --minimal build fails with error: expected `;' before `return'
+        https://bugs.webkit.org/show_bug.cgi?id=113953
+
+        Unreviewed.
+
+        * ewk/ewk_security_origin.cpp:
+        (ewk_security_origin_web_database_quota_get): Added missing semicolon.
+
+2013-04-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Made USE(JSC) unconditional
+        https://bugs.webkit.org/show_bug.cgi?id=114058
+
+        Reviewed by Anders Carlsson.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_script_execute):
+
+2013-04-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        [Cairo] Fix canvas drawing of SVG-based patterns and remove NativeImageCairo
+        https://bugs.webkit.org/show_bug.cgi?id=113929
+
+        Reviewed by Martin Robinson.
+
+        Update code now that PassNativeImagePtr is now a typedef to PassRefPtr<cairo_surface_t>
+        instead of NativeImageCairo*.
+
+        * ewk/ewk_history.cpp:
+        (ewk_history_item_icon_surface_get):
+        (ewk_history_item_icon_object_add):
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_icon_database_icon_surface_get):
+        (ewk_settings_icon_database_icon_object_get):
+
+2013-03-31  Kangil Han  <kangil.han@samsung.com>
+
+        [EFL] Remove unused stdio.h includes
+        https://bugs.webkit.org/show_bug.cgi?id=113655
+
+        Reviewed by Andreas Kling.
+
+        We do not have to include unused header file.
+
+        * ewk/ewk_tiled_backing_store.cpp:
+        * ewk/ewk_tiled_matrix.cpp:
+        * ewk/ewk_tiled_model.cpp:
+        (tile_account):
+
+2013-03-27  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for dock-to-right of the Web Inspector in the Mac port.
+
+        Unfortunately this requires Safari changes, so it is disabled in the nightly builds.
+
+        https://webkit.org/b/113341
+        rdar://problem/10368152
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        (WebCore::InspectorFrontendClientEfl::attachWindow):
+        (WebCore::InspectorFrontendClientEfl::setAttachedWindowWidth):
+        * WebCoreSupport/InspectorClientEfl.h:
+        (InspectorFrontendClientEfl):
+
+2013-03-26  Hayato Ito  <hayato@chromium.org>
+
+        Allow ShadowContents in HitTests by default.
+        https://bugs.webkit.org/show_bug.cgi?id=113171
+
+        Reviewed by Dimitri Glazkov.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_hit_test_new):
+
+2013-03-20  Jose Lejin PJ  <jose.lejin@gmail.com>
+
+        ewk_settings_memory_cache_clear should clear JS garbage and release FastMalloc's free pages to OS
+        https://bugs.webkit.org/show_bug.cgi?id=112536
+
+        Reviewed by Gyuyoung Kim.
+
+        Added changes to clear JS garbage and release FastMalloc's free pages to OS
+        while calling ewk_settings_memory_cache_clear API. 
+
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_memory_cache_clear):
+
+2013-03-20  JungJik Lee  <jungjik.lee@samsung.com>
+
+        [EFL] Disable REQUEST_ANIMATION_FRAME_TIMER to render a new animation frame.
+        https://bugs.webkit.org/show_bug.cgi?id=112114
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add dummy functions for WK1.
+
+        Example test case: ManualTests/animation/transition-on-and-offscreen-animation.html
+
+        * WebCoreSupport/ChromeClientEfl.cpp: Add dummy functions for WK1.
+        (WebCore):
+        (WebCore::ChromeClientEfl::scheduleAnimation):
+        (WebCore::ChromeClientEfl::serviceScriptedAnimations):
+        * WebCoreSupport/ChromeClientEfl.h:
+        (ChromeClientEfl):
+
+2013-03-15  Nate Chapin  <japhet@chromium.org>
+
+        Hide MainResourceLoader from the outside world
+        https://bugs.webkit.org/show_bug.cgi?id=109971
+
+        Reviewed by Adam Barth.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::convertMainResourceLoadToDownload):
+        * WebCoreSupport/FrameLoaderClientEfl.h:
+        (FrameLoaderClientEfl):
+
+2013-03-15  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112401
+
+        Reviewed by Stephen Chenney.
+
+        to* helper functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::redirectDataToPlugin):
+
+2013-03-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Add selectTrailingWhitespaceEnabled setting to WebCore::Page
+        https://bugs.webkit.org/show_bug.cgi?id=109404
+
+        Reviewed by Tony Chang.
+
+        Use new settings for smartInsertDeleteEnabled and
+        selectTrailingWhitespaceEnabled.
+
+        Remove code related to DRT as it is not needed anymore.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::smartInsertDeleteEnabled):
+        (WebCore::EditorClientEfl::isSelectTrailingWhitespaceEnabled):
+        (WebCore::EditorClientEfl::EditorClientEfl):
+        * WebCoreSupport/EditorClientEfl.h:
+        (EditorClientEfl):
+
+2013-03-14  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        [EFL] Use CROSS_PLATFORM_CONTEXT_MENU
+        https://bugs.webkit.org/show_bug.cgi?id=111877
+
+        Reviewed by Caio Marcelo de Oliveira Filho.
+
+        Adjust ContextMenuClient to use the CROSS_PLATFORM_CONTEXT_MENUS USE flag
+        by implementing customizeMenu() instead of getCustomMenuFromDefaultItems()
+        and by calling coreMenu->items() instead of coreMenu->platformDescription().
+
+        * WebCoreSupport/ContextMenuClientEfl.cpp:
+        (WebCore::ContextMenuClientEfl::customizeMenu):
+        * WebCoreSupport/ContextMenuClientEfl.h:
+        (ContextMenuClientEfl):
+        * ewk/ewk_contextmenu.cpp:
+        (ewk_context_menu_new):
+
+2013-03-14  Jonathan Liu  <net147@gmail.com>
+
+        Fix detection of Intel Mac OS X platform on Intel Mac 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=112312
+
+        Reviewed by Simon Hausmann.
+
+        * ewk/ewk_settings.cpp:
+        (_ewk_settings_webkit_os_version_get):
+
+2013-03-13  Pavel Feldman  <pfeldman@chromium.org>
+
+        Web Inspector: get rid of hiddenPanels filter
+        https://bugs.webkit.org/show_bug.cgi?id=112252
+
+        Reviewed by Vsevolod Vlasov.
+
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        * WebCoreSupport/InspectorClientEfl.h:
+        (InspectorFrontendClientEfl):
+
 2013-03-06  Krzysztof Czech  <k.czech@samsung.com>
 
         [EFL] Missing implementation of AccessibilityControllerEfl and AccessibilityUIElementEfl files

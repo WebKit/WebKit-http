@@ -56,7 +56,7 @@ Pasteboard::Pasteboard()
 {
 }
 
-void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame)
+void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard shouldSerializeSelectedTextForClipboard)
 {
     PasteboardHelper* helper = PasteboardHelper::defaultPasteboardHelper();
     GtkClipboard* clipboard = helper->getCurrentClipboard(frame);
@@ -64,7 +64,7 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
     DataObjectGtk* dataObject = DataObjectGtk::forClipboard(clipboard);
     dataObject->clearAll();
 
-    dataObject->setText(frame->editor()->selectedText());
+    dataObject->setText(shouldSerializeSelectedTextForClipboard == IncludeImageAltTextForClipboard ? frame->editor()->selectedTextForClipboard() : frame->editor()->selectedText());
     dataObject->setMarkup(createMarkup(selectedRange, 0, AnnotateForInterchange, false, ResolveNonLocalURLs));
     helper->writeClipboardContents(clipboard, canSmartCopyOrDelete ? PasteboardHelper::IncludeSmartPaste : PasteboardHelper::DoNotIncludeSmartPaste);
 }
@@ -100,14 +100,14 @@ static KURL getURLForImageNode(Node* node)
     // FIXME: Later this code should be shared with Chromium somehow. Chances are all platforms want it.
     AtomicString urlString;
     if (node->hasTagName(HTMLNames::imgTag) || node->hasTagName(HTMLNames::inputTag))
-        urlString = static_cast<Element*>(node)->getAttribute(HTMLNames::srcAttr);
+        urlString = toElement(node)->getAttribute(HTMLNames::srcAttr);
 #if ENABLE(SVG)
     else if (node->hasTagName(SVGNames::imageTag))
-        urlString = static_cast<Element*>(node)->getAttribute(XLinkNames::hrefAttr);
+        urlString = toElement(node)->getAttribute(XLinkNames::hrefAttr);
 #endif
     else if (node->hasTagName(HTMLNames::embedTag) || node->hasTagName(HTMLNames::objectTag)) {
-        Element* element = static_cast<Element*>(node);
-        urlString = element->getAttribute(element->imageSourceAttributeName());
+        Element* element = toElement(node);
+        urlString = element->imageSourceURL();
     }
     return urlString.isEmpty() ? KURL() : node->document()->completeURL(stripLeadingAndTrailingHTMLSpaces(urlString));
 }
@@ -134,7 +134,7 @@ void Pasteboard::writeImage(Node* node, const KURL&, const String& title)
     if (!url.isEmpty()) {
         dataObject->setURL(url, title);
 
-        dataObject->setMarkup(createMarkup(static_cast<Element*>(node), IncludeNode, 0, ResolveAllURLs));
+        dataObject->setMarkup(createMarkup(toElement(node), IncludeNode, 0, ResolveAllURLs));
     }
 
     GRefPtr<GdkPixbuf> pixbuf = adoptGRef(image->getGdkPixbuf());
@@ -172,7 +172,7 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
     chosePlainText = false;
 
     if (dataObject->hasMarkup()) {
-        RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(frame->document(), dataObject->markup(), "", DisallowScriptingAndPluginContentIfNeeded);
+        RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(frame->document(), dataObject->markup(), "", DisallowScriptingAndPluginContent);
         if (fragment)
             return fragment.release();
     }

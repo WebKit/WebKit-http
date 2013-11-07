@@ -43,6 +43,7 @@
 #import "WebPreferencesStore.h"
 #import "WebProcess.h"
 #import <PDFKit/PDFKit.h>
+#import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
@@ -100,12 +101,17 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
         inspector->setInspectorUsesWebKitUserInterface(store.getBoolValueForKey(WebPreferencesKey::inspectorUsesWebKitUserInterfaceKey()));
 
     BOOL omitPDFSupport = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitOmitPDFSupport"];
-    if (!pdfPluginEnabled() && !omitPDFSupport) {
+    if (!shouldUsePDFPlugin() && !omitPDFSupport) {
         // We want to use a PDF view in the UI process for PDF MIME types.
         HashSet<String, CaseFoldingHash> mimeTypes = pdfAndPostScriptMIMETypes();
         for (HashSet<String, CaseFoldingHash>::iterator it = mimeTypes.begin(); it != mimeTypes.end(); ++it)
             m_mimeTypesWithCustomRepresentations.add(*it);
     }
+}
+
+bool WebPage::shouldUsePDFPlugin() const
+{
+    return pdfPluginEnabled() && classFromPDFKit(@"PDFLayerController");
 }
 
 typedef HashMap<String, String> SelectorNameMap;
@@ -751,7 +757,7 @@ void WebPage::shouldDelayWindowOrderingEvent(const WebKit::WebMouseEvent& event,
         return;
 
 #if ENABLE(DRAG_SUPPORT)
-    HitTestResult hitResult = frame->eventHandler()->hitTestResultAtPoint(frame->view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
+    HitTestResult hitResult = frame->eventHandler()->hitTestResultAtPoint(frame->view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active);
     if (hitResult.isSelected())
         result = frame->eventHandler()->eventMayStartDrag(platform(event));
 #endif
@@ -764,7 +770,7 @@ void WebPage::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEvent& ev
     if (!frame)
         return;
     
-    HitTestResult hitResult = frame->eventHandler()->hitTestResultAtPoint(frame->view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
+    HitTestResult hitResult = frame->eventHandler()->hitTestResultAtPoint(frame->view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active);
     frame->eventHandler()->setActivationEventNumber(eventNumber);
 #if ENABLE(DRAG_SUPPORT)
     if (hitResult.isSelected())
@@ -796,7 +802,7 @@ void WebPage::setTopOverhangImage(PassRefPtr<WebImage> image)
     layer->setPosition(FloatPoint(0, -image->size().height()));
 
     RetainPtr<CGImageRef> cgImage = image->bitmap()->makeCGImageCopy();
-    layer->platformLayer().contents =(id)cgImage.get();
+    layer->platformLayer().contents = (id)cgImage.get();
 }
 
 void WebPage::setBottomOverhangImage(PassRefPtr<WebImage> image)
@@ -812,7 +818,51 @@ void WebPage::setBottomOverhangImage(PassRefPtr<WebImage> image)
     layer->setSize(image->size());
     
     RetainPtr<CGImageRef> cgImage = image->bitmap()->makeCGImageCopy();
-    layer->platformLayer().contents =(id)cgImage.get();
+    layer->platformLayer().contents = (id)cgImage.get();
+}
+
+CALayer *WebPage::getHeaderLayer() const
+{
+    return m_headerLayer.get();
+}
+
+void WebPage::setHeaderLayerWithHeight(CALayer *layer, int height)
+{
+    FrameView* frameView = m_mainFrame->coreFrame()->view();
+    if (!frameView)
+        return;
+
+    frameView->setHeaderHeight(height);
+
+    m_headerLayer = layer;
+    GraphicsLayer* parentLayer = frameView->setWantsLayerForHeader(m_headerLayer);
+    if (!parentLayer)
+        return;
+
+    m_headerLayer.get().bounds = CGRectMake(0, 0, parentLayer->size().width(), parentLayer->size().height());
+    [parentLayer->platformLayer() addSublayer:m_headerLayer.get()];
+}
+
+CALayer *WebPage::getFooterLayer() const
+{
+    return m_footerLayer.get();
+}
+
+void WebPage::setFooterLayerWithHeight(CALayer *layer, int height)
+{
+    FrameView* frameView = m_mainFrame->coreFrame()->view();
+    if (!frameView)
+        return;
+
+    frameView->setFooterHeight(height);
+
+    m_footerLayer = layer;
+    GraphicsLayer* parentLayer = frameView->setWantsLayerForFooter(m_footerLayer);
+    if (!parentLayer)
+        return;
+
+    m_footerLayer.get().bounds = CGRectMake(0, 0, parentLayer->size().width(), parentLayer->size().height());
+    [parentLayer->platformLayer() addSublayer:m_footerLayer.get()];
 }
 
 void WebPage::computePagesForPrintingPDFDocument(uint64_t frameID, const PrintInfo& printInfo, Vector<IntRect>& resultPageRects)

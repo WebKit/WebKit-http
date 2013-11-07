@@ -128,7 +128,7 @@ public:
     virtual void getCompositingBordersVisible(ErrorString*, bool* out_param);
     virtual void setCompositingBordersVisible(ErrorString*, bool);
     virtual void captureScreenshot(ErrorString*, String* data);
-    virtual void handleJavaScriptDialog(ErrorString*, bool accept);
+    virtual void handleJavaScriptDialog(ErrorString*, bool accept, const String* promptText);
 
     // Geolocation override helpers.
     GeolocationPosition* overrideGeolocationPosition(GeolocationPosition*);
@@ -207,6 +207,7 @@ private:
     HashMap<DocumentLoader*, String> m_loaderToIdentifier;
     bool m_enabled;
     bool m_isFirstLayoutAfterOnLoad;
+    bool m_originalScriptExecutionDisabled;
     bool m_geolocationOverridden;
     bool m_ignoreScriptsEnabledNotification;
     RefPtr<GeolocationPosition> m_geolocationPosition;

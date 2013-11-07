@@ -163,6 +163,16 @@ WebInspector.IndexedDBModel.prototype = {
     },
 
     /**
+     * @param {WebInspector.IndexedDBModel.DatabaseId} databaseId
+     * @param {string} objectStoreName
+     * @param {function()} callback
+     */
+    clearObjectStore: function(databaseId, objectStoreName, callback)
+    {
+        IndexedDBAgent.clearObjectStore(databaseId.securityOrigin, databaseId.name, objectStoreName, callback);
+    },
+
+    /**
      * @param {WebInspector.Event} event
      */
     _securityOriginAdded: function(event)
@@ -289,7 +299,7 @@ WebInspector.IndexedDBModel.prototype = {
             if (!this._databaseNamesBySecurityOrigin[databaseId.securityOrigin])
                 return;
             var databaseModel = new WebInspector.IndexedDBModel.Database(databaseId, databaseWithObjectStores.version, databaseWithObjectStores.intVersion);
-            this._databases.put(databaseId, databaseModel); 
+            this._databases.put(databaseId, databaseModel);
             for (var i = 0; i < databaseWithObjectStores.objectStores.length; ++i) {
                 var objectStore = databaseWithObjectStores.objectStores[i];
                 var objectStoreIDBKeyPath = WebInspector.IndexedDBModel.idbKeyPathFromKeyPath(objectStore.keyPath);
@@ -344,7 +354,7 @@ WebInspector.IndexedDBModel.prototype = {
      * @param {webkitIDBKeyRange} idbKeyRange
      * @param {number} skipCount
      * @param {number} pageSize
-     * @param {function(Array.<IndexedDBAgent.DataEntry>, boolean)} callback
+     * @param {function(Array.<WebInspector.IndexedDBModel.Entry>, boolean)} callback
      */
     _requestData: function(databaseId, databaseName, objectStoreName, indexName, idbKeyRange, skipCount, pageSize, callback)
     {
@@ -359,7 +369,7 @@ WebInspector.IndexedDBModel.prototype = {
                 console.error("IndexedDBAgent error: " + error);
                 return;
             }
-            
+
             if (!this._databaseNamesBySecurityOrigin[databaseId.securityOrigin])
                 return;
             var entries = [];

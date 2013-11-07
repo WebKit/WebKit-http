@@ -38,6 +38,7 @@
 #include "FrameDestructionObserver.h"
 #include "FrameSelection.h"
 #include "TextChecking.h"
+#include "TextIterator.h"
 #include "VisibleSelection.h"
 #include "WritingDirection.h"
 
@@ -244,6 +245,9 @@ public:
     void markMisspellingsAndBadGrammar(const VisibleSelection& spellingSelection, bool markGrammar, const VisibleSelection& grammarSelection);
     void markAndReplaceFor(PassRefPtr<SpellCheckRequest>, const Vector<TextCheckingResult>&);
 
+    bool isOverwriteModeEnabled() const { return m_overwriteModeEnabled; }
+    void toggleOverwriteModeEnabled() { m_overwriteModeEnabled = !m_overwriteModeEnabled; }
+
 #if USE(APPKIT)
     void uppercaseWord();
     void lowercaseWord();
@@ -355,6 +359,7 @@ public:
     Node* findEventTargetFrom(const VisibleSelection& selection) const;
 
     String selectedText() const;
+    String selectedTextForClipboard() const;
     bool findString(const String&, FindOptions);
     // FIXME: Switch callers over to the FindOptions version and retire this one.
     bool findString(const String&, bool forward, bool caseFlag, bool wrapFlag, bool startInSelection);
@@ -431,6 +436,7 @@ private:
     VisibleSelection m_mark;
     bool m_areMarkedTextMatchesHighlighted;
     EditorParagraphSeparator m_defaultParagraphSeparator;
+    bool m_overwriteModeEnabled;
 
     bool canDeleteRange(Range*) const;
     bool canSmartReplaceWithPasteboard(Pasteboard*);
@@ -441,6 +447,8 @@ private:
     void revealSelectionAfterEditingOperation(const ScrollAlignment& = ScrollAlignment::alignCenterIfNeeded, RevealExtentOption = DoNotRevealExtent);
     void markMisspellingsOrBadGrammar(const VisibleSelection&, bool checkSpelling, RefPtr<Range>& firstMisspellingRange);
     TextCheckingTypeMask resolveTextCheckingTypeMask(TextCheckingTypeMask);
+
+    String selectedText(TextIteratorBehavior) const;
 
     void selectComposition();
     enum SetCompositionMode { ConfirmComposition, CancelComposition };

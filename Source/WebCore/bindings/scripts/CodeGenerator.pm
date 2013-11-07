@@ -95,6 +95,7 @@ my %svgTypeWithWritablePropertiesNeedingTearOff = (
 
 # Cache of IDL file pathnames.
 my $idlFiles;
+my $cachedInterfaces = {};
 
 # Default constructor
 sub new
@@ -174,7 +175,6 @@ sub ForAllParents
     my $interface = shift;
     my $beforeRecursion = shift;
     my $afterRecursion = shift;
-    my $parentsOnly = shift;
 
     my $recurse;
     $recurse = sub {
@@ -182,7 +182,7 @@ sub ForAllParents
 
         for (@{$currentInterface->parents}) {
             my $interfaceName = $_;
-            my $parentInterface = $object->ParseInterface($interfaceName, $parentsOnly);
+            my $parentInterface = $object->ParseInterface($interfaceName);
 
             if ($beforeRecursion) {
                 &$beforeRecursion($parentInterface) eq 'prune' and next;
@@ -225,7 +225,7 @@ sub AddMethodsConstantsAndAttributesFromParentInterfaces
                 $object->ForAllParents($currentInterface, sub {
                     my $currentInterface = shift;
                     push(@$parents, $currentInterface->name);
-                }, undef, 1);
+                }, undef);
             }
 
             # Prune the recursion here.
@@ -289,9 +289,12 @@ sub ParseInterface
 {
     my $object = shift;
     my $interfaceName = shift;
-    my $parentsOnly = shift;
 
     return undef if $interfaceName eq 'Object';
+
+    if (exists $cachedInterfaces->{$interfaceName}) {
+        return $cachedInterfaces->{$interfaceName};
+    }
 
     # Step #1: Find the IDL file associated with 'interface'
     my $filename = $object->IDLFileForInterface($interfaceName)
@@ -301,10 +304,13 @@ sub ParseInterface
 
     # Step #2: Parse the found IDL file (in quiet mode).
     my $parser = IDLParser->new(1);
-    my $document = $parser->Parse($filename, $defines, $preprocessor, $parentsOnly);
+    my $document = $parser->Parse($filename, $defines, $preprocessor);
 
     foreach my $interface (@{$document->interfaces}) {
-        return $interface if $interface->name eq $interfaceName;
+        if ($interface->name eq $interfaceName) {
+            $cachedInterfaces->{$interfaceName} = $interface;
+            return $interface;
+        }
     }
 
     die("Could NOT find interface definition for $interfaceName in $filename");
@@ -769,7 +775,7 @@ sub InheritsInterface
             $found = 1;
         }
         return 1 if $found;
-    }, 0, 1);
+    }, 0);
 
     return $found;
 }
@@ -788,7 +794,7 @@ sub InheritsExtendedAttribute
             $found = 1;
         }
         return 1 if $found;
-    }, 0, 1);
+    }, 0);
 
     return $found;
 }

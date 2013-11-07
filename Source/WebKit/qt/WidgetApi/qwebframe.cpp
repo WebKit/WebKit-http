@@ -209,7 +209,7 @@ QWebFrame::QWebFrame(QWebPage *parentPage)
     d->q = this;
     d->init(/*page adapter*/ parentPage->handle());
 
-#if ENABLE(ORIENTATION_EVENTS)
+#if ENABLE(ORIENTATION_EVENTS) && HAVE(QTSENSORS)
     connect(&d->m_orientation, SIGNAL(readingChanged()), this, SLOT(_q_orientationChanged()));
     d->m_orientation.start();
 #endif
@@ -222,7 +222,7 @@ QWebFrame::QWebFrame(QWebFrame* parent, QWebFrameData* frameData)
     d->page = parent->d->page;
     d->q = this;
     d->init(parent->d->pageAdapter, frameData);
-#if ENABLE(ORIENTATION_EVENTS)
+#if ENABLE(ORIENTATION_EVENTS) && HAVE(QTSENSORS)
     connect(&d->m_orientation, SIGNAL(readingChanged()), this, SLOT(_q_orientationChanged()));
     d->m_orientation.start();
 #endif
@@ -242,7 +242,7 @@ QWebFrame::~QWebFrame()
 
     Qt properties will be exposed as JavaScript properties and slots as
     JavaScript methods.
-    The interaction between C++ and JavaScript is explained in the documentation of the \l{The QtWebKit Bridge}{QtWebKit bridge}.
+    The interaction between C++ and JavaScript is explained in the documentation of the \l{The Qt WebKit Bridge}{Qt WebKit bridge}.
 
     If you want to ensure that your QObjects remain accessible after loading a
     new URL, you should add them in a slot connected to the

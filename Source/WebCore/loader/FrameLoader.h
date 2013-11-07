@@ -137,11 +137,6 @@ public:
     // FIXME: clear() is trying to do too many things. We should break it down into smaller functions (ideally with fewer raw Boolean parameters).
     void clear(Document* newDocument, bool clearWindowProperties = true, bool clearScriptObjects = true, bool clearFrameView = true);
 
-#if PLATFORM(CHROMIUM)
-    void didAccessInitialDocument();
-    void didAccessInitialDocumentTimerFired(Timer<FrameLoader>*);
-#endif
-
     bool isLoading() const;
     bool frameHasLoaded() const;
 
@@ -186,7 +181,7 @@ public:
     void didLayout(LayoutMilestones);
     void didFirstLayout();
 
-    void loadedResourceFromMemoryCache(CachedResource*);
+    void loadedResourceFromMemoryCache(CachedResource*, ResourceRequest& newRequest);
     void tellClientAboutPastMemoryCacheLoads();
 
     void checkLoadComplete();
@@ -285,6 +280,10 @@ public:
     PageDismissalType pageDismissalEventBeingDispatched() const { return m_pageDismissalEventBeingDispatched; }
 
     NetworkingContext* networkingContext() const;
+
+    void loadProgressingStatusChanged();
+
+    const KURL& previousURL() const { return m_previousURL; }
 
     void reportMemoryUsage(MemoryObjectInfo*) const;
 
@@ -435,10 +434,6 @@ private:
     Frame* m_opener;
     HashSet<Frame*> m_openedFrames;
 
-#if PLATFORM(CHROMIUM)
-    bool m_didAccessInitialDocument;
-    Timer<FrameLoader> m_didAccessInitialDocumentTimer;
-#endif
     bool m_didPerformFirstNavigation;
     bool m_loadingFromCachedPage;
     bool m_suppressOpenerInNewFrame;
@@ -447,7 +442,7 @@ private:
 
     RefPtr<FrameNetworkingContext> m_networkingContext;
 
-    KURL m_previousUrl;
+    KURL m_previousURL;
     RefPtr<HistoryItem> m_requestedHistoryItem;
 };
 

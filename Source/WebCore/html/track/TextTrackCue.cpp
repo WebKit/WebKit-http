@@ -119,9 +119,8 @@ void TextTrackCueBox::applyCSSProperties(const IntSize&)
     //  the 'unicode-bidi' property must be set to 'plaintext'
     setInlineStyleProperty(CSSPropertyUnicodeBidi, CSSValueWebkitPlaintext);
 
-    // FIXME: Determine the text direction using the BIDI algorithm. http://wkb.ug/79749
     // the 'direction' property must be set to direction
-    setInlineStyleProperty(CSSPropertyDirection, CSSValueLtr);
+    setInlineStyleProperty(CSSPropertyDirection, m_cue->getCSSWritingDirection());
 
     // the 'writing-mode' property must be set to writing-mode
     setInlineStyleProperty(CSSPropertyWebkitWritingMode, m_cue->getCSSWritingMode(), false);
@@ -202,8 +201,9 @@ TextTrackCue::TextTrackCue(ScriptExecutionContext* context, double start, double
     , m_isActive(false)
     , m_pauseOnExit(false)
     , m_snapToLines(true)
-    , m_cueBackgroundBox(HTMLDivElement::create(static_cast<Document*>(context)))
+    , m_cueBackgroundBox(HTMLDivElement::create(toDocument(context)))
     , m_displayTreeShouldChange(true)
+    , m_displayDirection(CSSValueLtr)
 {
     ASSERT(m_scriptExecutionContext->isDocument());
 
@@ -534,6 +534,18 @@ bool TextTrackCue::dispatchEvent(PassRefPtr<Event> event)
     return EventTarget::dispatchEvent(event);
 }
 
+#if ENABLE(WEBVTT_REGIONS)
+void TextTrackCue::setRegionId(const String& regionId)
+{
+    if (m_regionId == regionId)
+        return;
+
+    cueWillChange();
+    m_regionId = regionId;
+    cueDidChange();
+}
+#endif
+
 bool TextTrackCue::isActive()
 {
     return m_isActive && track() && track()->mode() != TextTrack::disabledKeyword();
@@ -584,11 +596,58 @@ int TextTrackCue::calculateComputedLinePosition()
     return n;
 }
 
+static bool isCueParagraphSeparator(UChar character)
+{
+    // Within a cue, paragraph boundaries are only denoted by Type B characters,
+    // such as U+000A LINE FEED (LF), U+0085 NEXT LINE (NEL), and U+2029 PARAGRAPH SEPARATOR.
+    return WTF::Unicode::category(character) & WTF::Unicode::Separator_Paragraph;
+}
+
+void TextTrackCue::determineTextDirection()
+{
+    DEFINE_STATIC_LOCAL(const String, rtTag, (ASCIILiteral("rt")));
+    createWebVTTNodeTree();
+
+    // Apply the Unicode Bidirectional Algorithm's Paragraph Level steps to the
+    // concatenation of the values of each WebVTT Text Object in nodes, in a
+    // pre-order, depth-first traversal, excluding WebVTT Ruby Text Objects and
+    // their descendants.
+    StringBuilder paragraphBuilder;
+    for (Node* node = m_webVTTNodeTree->firstChild(); node; node = NodeTraversal::next(node, m_webVTTNodeTree.get())) {
+        if (!node->isTextNode() || node->localName() == rtTag)
+            continue;
+
+        paragraphBuilder.append(node->nodeValue());
+    }
+
+    String paragraph = paragraphBuilder.toString();
+    if (!paragraph.length())
+        return;
+
+    for (size_t i = 0; i < paragraph.length(); ++i) {
+        UChar current = paragraph[i];
+        if (!current || isCueParagraphSeparator(current))
+            return;
+
+        if (UChar current = paragraph[i]) {
+            WTF::Unicode::Direction charDirection = WTF::Unicode::direction(current);
+            if (charDirection == WTF::Unicode::LeftToRight) {
+                m_displayDirection = CSSValueLtr;
+                return;
+            }
+            if (charDirection == WTF::Unicode::RightToLeft
+                || charDirection == WTF::Unicode::RightToLeftArabic) {
+                m_displayDirection = CSSValueRtl;
+                return;
+            }
+        }
+    }
+}
+
 void TextTrackCue::calculateDisplayParameters()
 {
-    // FIXME(BUG 79749): Determine the text direction using the BIDI algorithm.
     // Steps 10.2, 10.3
-    m_displayDirection = CSSValueLtr;
+    determineTextDirection();
 
     // 10.4 If the text track cue writing direction is horizontal, then let
     // block-flow be 'tb'. Otherwise, if the text track cue writing direction is
@@ -815,6 +874,9 @@ TextTrackCue::CueSetting TextTrackCue::settingName(const String& name)
     DEFINE_STATIC_LOCAL(const String, positionKeyword, (ASCIILiteral("position")));
     DEFINE_STATIC_LOCAL(const String, sizeKeyword, (ASCIILiteral("size")));
     DEFINE_STATIC_LOCAL(const String, alignKeyword, (ASCIILiteral("align")));
+#if ENABLE(WEBVTT_REGIONS)
+    DEFINE_STATIC_LOCAL(const String, regionIdKeyword, (ASCIILiteral("region")));
+#endif
 
     if (name == verticalKeyword)
         return Vertical;
@@ -826,6 +888,10 @@ TextTrackCue::CueSetting TextTrackCue::settingName(const String& name)
         return Size;
     else if (name == alignKeyword)
         return Align;
+#if ENABLE(WEBVTT_REGIONS)
+    else if (name == regionIdKeyword)
+        return RegionId;
+#endif
 
     return None;
 }
@@ -1019,6 +1085,11 @@ void TextTrackCue::setCueSettings(const String& input)
                 m_cueAlignment = End;
             }
             break;
+#if ENABLE(WEBVTT_REGIONS)
+        case RegionId:
+            m_regionId = WebVTTParser::collectWord(input, &position);
+            break;
+#endif
         case None:
             break;
         }
@@ -1026,6 +1097,21 @@ void TextTrackCue::setCueSettings(const String& input)
 NextSetting:
         position = endOfSetting;
     }
+#if ENABLE(WEBVTT_REGIONS)
+    // If cue's line position is not auto or cue's size is not 100 or cue's
+    // writing direction is not horizontal, but cue's region identifier is not
+    // the empty string, let cue's region identifier be the empty string.
+    if (m_regionId.isEmpty())
+        return;
+
+    if (m_linePosition != undefinedPosition || m_cueSize != 100 || m_writingDirection != Horizontal)
+        m_regionId = emptyString();
+#endif
+}
+
+int TextTrackCue::getCSSWritingDirection() const
+{
+    return m_displayDirection;
 }
 
 int TextTrackCue::getCSSWritingMode() const

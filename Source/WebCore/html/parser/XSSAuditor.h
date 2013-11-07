@@ -39,6 +39,7 @@ class Document;
 class HTMLDocumentParser;
 class HTMLSourceTracker;
 class XSSInfo;
+class XSSAuditorDelegate;
 
 struct FilterTokenRequest {
     FilterTokenRequest(HTMLToken& token, HTMLSourceTracker& sourceTracker, bool shouldAllowCDATA)
@@ -57,7 +58,7 @@ class XSSAuditor {
 public:
     XSSAuditor();
 
-    void init(Document*);
+    void init(Document*, XSSAuditorDelegate*);
     PassOwnPtr<XSSInfo> filterToken(const FilterTokenRequest&);
     bool isSafeToSendToAnotherThread() const;
 
@@ -103,7 +104,10 @@ private:
 
     KURL m_documentURL;
     bool m_isEnabled;
+
     ContentSecurityPolicy::ReflectedXSSDisposition m_xssProtection;
+    bool m_didSendValidCSPHeader;
+    bool m_didSendValidXSSProtectionHeader;
 
     String m_decodedURL;
     String m_decodedHTTPBody;
@@ -112,7 +116,6 @@ private:
     State m_state;
     String m_cachedDecodedSnippet;
     unsigned m_scriptTagNestingLevel;
-    KURL m_reportURL;
     TextEncoding m_encoding;
 };
 

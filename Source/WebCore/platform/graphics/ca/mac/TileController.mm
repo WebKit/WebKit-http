@@ -306,6 +306,35 @@ void TileController::setVisibleRect(const FloatRect& visibleRect)
     revalidateTiles();
 }
 
+bool TileController::tilesWouldChangeForVisibleRect(const FloatRect& newVisibleRect) const
+{
+    FloatRect visibleRect = newVisibleRect;
+
+    if (m_clipsToExposedRect)
+        visibleRect.intersect(m_exposedRect);
+
+    if (visibleRect.isEmpty() || bounds().isEmpty())
+        return false;
+        
+    FloatRect currentTileCoverageRect = computeTileCoverageRect(m_visibleRect, newVisibleRect);
+    FloatRect scaledRect(currentTileCoverageRect);
+    scaledRect.scale(m_scale);
+    IntRect currentCoverageRectInTileCoords(enclosingIntRect(scaledRect));
+
+    IntSize newTileSize = tileSizeForCoverageRect(currentTileCoverageRect);
+    bool tileSizeChanged = newTileSize != m_tileSize;
+    if (tileSizeChanged)
+        return true;
+
+    TileIndex topLeft;
+    TileIndex bottomRight;
+    getTileIndexRangeForRect(currentCoverageRectInTileCoords, topLeft, bottomRight);
+
+    IntRect coverageRect = rectForTileIndex(topLeft);
+    coverageRect.unite(rectForTileIndex(bottomRight));
+    return coverageRect != m_primaryTileCoverageRect;
+}
+
 void TileController::setExposedRect(const FloatRect& exposedRect)
 {
     if (m_exposedRect == exposedRect)
@@ -417,9 +446,9 @@ void TileController::getTileIndexRangeForRect(const IntRect& rect, TileIndex& to
     bottomRight.setY(max(bottomYRatio - 1, 0));
 }
 
-FloatRect TileController::computeTileCoverageRect(const FloatRect& previousVisibleRect) const
+FloatRect TileController::computeTileCoverageRect(const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect) const
 {
-    FloatRect visibleRect = m_visibleRect;
+    FloatRect visibleRect = currentVisibleRect;
 
     if (m_clipsToExposedRect)
         visibleRect.intersect(m_exposedRect);
@@ -591,7 +620,7 @@ void TileController::revalidateTiles(TileValidationPolicyFlags foregroundValidat
     
     TileValidationPolicyFlags validationPolicy = m_isInWindow ? foregroundValidationPolicy : backgroundValidationPolicy;
     
-    FloatRect tileCoverageRect = computeTileCoverageRect(m_visibleRectAtLastRevalidate);
+    FloatRect tileCoverageRect = computeTileCoverageRect(m_visibleRectAtLastRevalidate, m_visibleRect);
     FloatRect scaledRect(tileCoverageRect);
     scaledRect.scale(m_scale);
     IntRect coverageRectInTileCoords(enclosingIntRect(scaledRect));
@@ -876,6 +905,22 @@ IntRect TileController::tileGridExtent() const
 
     // Return index of top, left tile and the number of tiles across and down.
     return IntRect(topLeft.x(), topLeft.y(), bottomRight.x() - topLeft.x() + 1, bottomRight.y() - topLeft.y() + 1);
+}
+
+double TileController::retainedTileBackingStoreMemory() const
+{
+    double totalBytes = 0;
+    
+    for (TileMap::const_iterator it = m_tiles.begin(), end = m_tiles.end(); it != end; ++it) {
+        const TileInfo& tileInfo = it->value;
+        if ([tileInfo.layer.get() superlayer]) {
+            CGRect bounds = [tileInfo.layer.get() bounds];
+            double contentsScale = [tileInfo.layer.get() contentsScale];
+            totalBytes += 4 * bounds.size.width * contentsScale * bounds.size.height * contentsScale;
+        }
+    }
+
+    return totalBytes;
 }
 
 // Return the rect in layer coords, not tile coords.

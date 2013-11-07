@@ -33,6 +33,7 @@
 #include "ClassList.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
+#include "CustomElementRegistry.h"
 #include "DOMTokenList.h"
 #include "DatasetDOMStringMap.h"
 #include "Document.h"
@@ -536,12 +537,19 @@ int Element::offsetHeight()
     return 0;
 }
 
+Element* Element::bindingsOffsetParent()
+{
+    Element* element = offsetParent();
+    if (!element || !element->isInShadowTree())
+        return element;
+    return element->containingShadowRoot()->type() == ShadowRoot::UserAgentShadowRoot ? 0 : element;
+}
+
 Element* Element::offsetParent()
 {
     document()->updateLayoutIgnorePendingStylesheets();
-    if (RenderObject* rend = renderer())
-        if (RenderObject* offsetParent = rend->offsetParent())
-            return static_cast<Element*>(offsetParent->node());
+    if (RenderObject* renderer = this->renderer())
+        return renderer->offsetParent();
     return 0;
 }
 
@@ -670,7 +678,7 @@ IntRect Element::boundsInRootViewSpace()
 #if ENABLE(SVG)
     if (isSVGElement() && renderer()) {
         // Get the bounding rectangle from the SVG model.
-        SVGElement* svgElement = static_cast<SVGElement*>(this);
+        SVGElement* svgElement = toSVGElement(this);
         FloatRect localRect;
         if (svgElement->getBoundingBox(localRect))
             quads.append(renderer()->localToAbsoluteQuad(localRect));
@@ -718,7 +726,7 @@ PassRefPtr<ClientRect> Element::getBoundingClientRect()
 #if ENABLE(SVG)
     if (isSVGElement() && renderer() && !renderer()->isSVGRoot()) {
         // Get the bounding rectangle from the SVG model.
-        SVGElement* svgElement = static_cast<SVGElement*>(this);
+        SVGElement* svgElement = toSVGElement(this);
         FloatRect localRect;
         if (svgElement->getBoundingBox(localRect))
             quads.append(renderer()->localToAbsoluteQuad(localRect));
@@ -809,10 +817,13 @@ inline void Element::setAttributeInternal(size_t index, const QualifiedName& nam
         willModifyAttribute(name, attributeItem(index)->value(), newValue);
 
     if (newValue != attributeItem(index)->value()) {
-        ensureUniqueElementData()->attributeItem(index)->setValue(newValue);
-
+        // If there is an Attr node hooked to this attribute, the Attr::setValue() call below
+        // will write into the ElementData.
+        // FIXME: Refactor this so it makes some sense.
         if (RefPtr<Attr> attrNode = inSynchronizationOfLazyAttribute ? 0 : attrIfExists(name))
-            attrNode->recreateTextChildAfterAttributeValueChanged();
+            attrNode->setValue(newValue);
+        else
+            ensureUniqueElementData()->attributeItem(index)->setValue(newValue);
     }
 
     if (!inSynchronizationOfLazyAttribute)
@@ -836,7 +847,7 @@ static bool checkNeedsStyleInvalidationForIdChange(const AtomicString& oldId, co
     return false;
 }
 
-void Element::attributeChanged(const QualifiedName& name, const AtomicString& newValue)
+void Element::attributeChanged(const QualifiedName& name, const AtomicString& newValue, AttributeModificationReason)
 {
     if (ElementShadow* parentElementShadow = shadowOfParentForDistribution(this)) {
         if (shouldInvalidateDistributionWhenAttributeChanged(parentElementShadow, name, newValue))
@@ -875,8 +886,19 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ne
     if (shouldInvalidateStyle)
         setNeedsStyleRecalc();
 
-    if (AXObjectCache::accessibilityEnabled())
-        document()->axObjectCache()->handleAttributeChanged(name, this);
+    if (AXObjectCache* cache = document()->existingAXObjectCache())
+        cache->handleAttributeChanged(name, this);
+}
+
+inline void Element::attributeChangedFromParserOrByCloning(const QualifiedName& name, const AtomicString& newValue, AttributeModificationReason reason)
+{
+#if ENABLE(CUSTOM_ELEMENTS)
+    if (name == isAttr) {
+        if (CustomElementRegistry* registry = document()->registry())
+            registry->didGiveTypeExtension(this);
+    }
+#endif
+    attributeChanged(name, newValue, reason);
 }
 
 template <typename CharacterType>
@@ -1011,57 +1033,50 @@ bool Element::shouldInvalidateDistributionWhenAttributeChanged(ElementShadow* el
 // It is a simple solution that has the advantage of not requiring any
 // code or configuration change if a new event handler is defined.
 
-static bool isEventHandlerAttribute(const QualifiedName& name)
+static inline bool isEventHandlerAttribute(const Attribute& attribute)
 {
-    return name.namespaceURI().isNull() && name.localName().startsWith("on");
+    return attribute.name().namespaceURI().isNull() && attribute.name().localName().startsWith("on");
 }
 
-// FIXME: Share code with Element::isURLAttribute.
-static bool isAttributeToRemove(const QualifiedName& name, const AtomicString& value)
+bool Element::isJavaScriptURLAttribute(const Attribute& attribute) const
 {
-    return (name.localName() == hrefAttr.localName() || name.localName() == nohrefAttr.localName()
-        || name == srcAttr || name == actionAttr || name == formactionAttr) && protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(value));
+    return isURLAttribute(attribute) && protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(attribute.value()));
 }
 
-void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, FragmentScriptingPermission scriptingPermission)
+void Element::stripScriptingAttributes(Vector<Attribute>& attributeVector) const
+{
+    size_t destination = 0;
+    for (size_t source = 0; source < attributeVector.size(); ++source) {
+        if (isEventHandlerAttribute(attributeVector[source])
+            || isJavaScriptURLAttribute(attributeVector[source])
+            || isHTMLContentAttribute(attributeVector[source]))
+            continue;
+
+        if (source != destination)
+            attributeVector[destination] = attributeVector[source];
+
+        ++destination;
+    }
+    attributeVector.shrink(destination);
+}
+
+void Element::parserSetAttributes(const Vector<Attribute>& attributeVector)
 {
     ASSERT(!inDocument());
     ASSERT(!parentNode());
-
     ASSERT(!m_elementData);
 
     if (attributeVector.isEmpty())
         return;
 
-    Vector<Attribute> filteredAttributes = attributeVector;
-
-    // If the element is created as result of a paste or drag-n-drop operation
-    // we want to remove all the script and event handlers.
-    if (!scriptingContentIsAllowed(scriptingPermission)) {
-        size_t i = 0;
-        while (i < filteredAttributes.size()) {
-            Attribute& attribute = filteredAttributes[i];
-            if (isEventHandlerAttribute(attribute.name())) {
-                filteredAttributes.remove(i);
-                continue;
-            }
-
-            if (isAttributeToRemove(attribute.name(), attribute.value()))
-                attribute.setValue(emptyAtom);
-            i++;
-        }
-    }
-
     if (document() && document()->sharedObjectPool())
-        m_elementData = document()->sharedObjectPool()->cachedShareableElementDataWithAttributes(filteredAttributes);
+        m_elementData = document()->sharedObjectPool()->cachedShareableElementDataWithAttributes(attributeVector);
     else
-        m_elementData = ShareableElementData::createWithAttributes(filteredAttributes);
+        m_elementData = ShareableElementData::createWithAttributes(attributeVector);
 
-    // Iterate over the set of attributes we already have on the stack in case
-    // attributeChanged mutates m_elementData.
-    // FIXME: Find a way so we don't have to do this.
-    for (unsigned i = 0; i < filteredAttributes.size(); ++i)
-        attributeChanged(filteredAttributes[i].name(), filteredAttributes[i].value());
+    // Use attributeVector instead of m_elementData because attributeChanged might modify m_elementData.
+    for (unsigned i = 0; i < attributeVector.size(); ++i)
+        attributeChangedFromParserOrByCloning(attributeVector[i].name(), attributeVector[i].value(), ModifiedDirectly);
 }
 
 bool Element::hasAttributes() const
@@ -1121,9 +1136,9 @@ KURL Element::baseURI() const
     return KURL(parentBase, baseAttribute);
 }
 
-const QualifiedName& Element::imageSourceAttributeName() const
+const AtomicString& Element::imageSourceURL() const
 {
-    return srcAttr;
+    return getAttribute(srcAttr);
 }
 
 bool Element::rendererIsNeeded(const NodeRenderingContext& context)
@@ -1151,6 +1166,25 @@ bool Element::wasChangedSinceLastFormControlChangeEvent() const
 void Element::setChangedSinceLastFormControlChangeEvent(bool)
 {
 }
+
+bool Element::isDisabledFormControl() const
+{
+#if ENABLE(DIALOG_ELEMENT)
+    // FIXME: disabled and inert are separate concepts in the spec, but now we treat them as the same.
+    // For example, an inert, non-disabled form control should not be grayed out.
+    if (isInert())
+        return true;
+#endif
+    return false;
+}
+
+#if ENABLE(DIALOG_ELEMENT)
+bool Element::isInert() const
+{
+    Element* dialog = document()->activeModalDialog();
+    return dialog && !containsIncludingShadowDOM(dialog) && !dialog->containsIncludingShadowDOM(this);
+}
+#endif
 
 Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertionPoint)
 {
@@ -1439,7 +1473,7 @@ void Element::recalcStyle(StyleChange change)
         } 
         if (!n->isElementNode()) 
             continue;
-        Element* element = static_cast<Element*>(n);
+        Element* element = toElement(n);
         bool childRulesChanged = element->needsStyleRecalc() && element->styleChangeType() == FullStyleChange;
         if ((forceCheckOfNextElementSibling || forceCheckOfAnyElementSibling))
             element->setNeedsStyleRecalc();
@@ -1648,6 +1682,13 @@ void Element::childrenChanged(bool changedByParser, Node* beforeChange, Node* af
 
     if (ElementShadow * shadow = this->shadow())
         shadow->invalidateDistribution();
+}
+
+void Element::removeAllEventListeners()
+{
+    ContainerNode::removeAllEventListeners();
+    if (ElementShadow* shadow = this->shadow())
+        shadow->removeAllEventListeners();
 }
 
 void Element::beginParsingChildren()
@@ -2190,7 +2231,7 @@ AtomicString Element::computeInheritedLanguage() const
     // The language property is inherited, so we iterate over the parents to find the first language.
     do {
         if (n->isElementNode()) {
-            if (const ElementData* elementData = static_cast<const Element*>(n)->elementData()) {
+            if (const ElementData* elementData = toElement(n)->elementData()) {
                 // Spec: xml:lang takes precedence -- http://www.w3.org/TR/xhtml1/#C_7
                 if (const Attribute* attribute = elementData->getAttributeItem(XMLNames::langAttr))
                     value = attribute->value();
@@ -2199,7 +2240,7 @@ AtomicString Element::computeInheritedLanguage() const
             }
         } else if (n->isDocumentNode()) {
             // checking the MIME content-language
-            value = static_cast<const Document*>(n)->contentLanguage();
+            value = toDocument(n)->contentLanguage();
         }
 
         n = n->parentNode();
@@ -2302,7 +2343,7 @@ Element* Element::lastElementChild() const
     Node* n = lastChild();
     while (n && !n->isElementNode())
         n = n->previousSibling();
-    return static_cast<Element*>(n);
+    return toElement(n);
 }
 
 unsigned Element::childElementCount() const
@@ -2337,6 +2378,11 @@ bool Element::webkitMatchesSelector(const String& selector, ExceptionCode& ec)
     if (!selectorQuery)
         return false;
     return selectorQuery->matches(this);
+}
+
+bool Element::shouldAppearIndeterminate() const
+{
+    return false;
 }
 
 DOMTokenList* Element::classList()
@@ -2682,10 +2728,10 @@ void Element::updateNamedItemRegistration(const AtomicString& oldName, const Ato
         return;
 
     if (!oldName.isEmpty())
-        static_cast<HTMLDocument*>(document())->removeNamedItem(oldName);
+        toHTMLDocument(document())->removeNamedItem(oldName);
 
     if (!newName.isEmpty())
-        static_cast<HTMLDocument*>(document())->addNamedItem(newName);
+        toHTMLDocument(document())->addNamedItem(newName);
 }
 
 void Element::updateExtraNamedItemRegistration(const AtomicString& oldId, const AtomicString& newId)
@@ -2694,10 +2740,10 @@ void Element::updateExtraNamedItemRegistration(const AtomicString& oldId, const 
         return;
 
     if (!oldId.isEmpty())
-        static_cast<HTMLDocument*>(document())->removeExtraNamedItem(oldId);
+        toHTMLDocument(document())->removeExtraNamedItem(oldId);
 
     if (!newId.isEmpty())
-        static_cast<HTMLDocument*>(document())->addExtraNamedItem(newId);
+        toHTMLDocument(document())->addExtraNamedItem(newId);
 }
 
 PassRefPtr<HTMLCollection> Element::ensureCachedHTMLCollection(CollectionType type)
@@ -2845,7 +2891,7 @@ void Element::cloneAttributesFromElement(const Element& other)
 
     for (unsigned i = 0; i < m_elementData->length(); ++i) {
         const Attribute* attribute = const_cast<const ElementData*>(m_elementData.get())->attributeItem(i);
-        attributeChanged(attribute->name(), attribute->value());
+        attributeChangedFromParserOrByCloning(attribute->name(), attribute->value(), ModifiedByCloning);
     }
 }
 

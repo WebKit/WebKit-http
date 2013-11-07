@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009, 2012 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009, 2012, 2013 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Eric Seidel (eric@webkit.org)
  *
  *  This library is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 #include "CopyVisitorInlines.h"
 #include "DatePrototype.h"
 #include "ErrorConstructor.h"
+#include "Executable.h"
 #include "GetterSetter.h"
 #include "IndexingHeaderInlines.h"
 #include "JSFunction.h"
@@ -571,6 +572,7 @@ ArrayStorage* JSObject::enterDictionaryIndexingModeWhenArrayStorageAlreadyExists
 void JSObject::enterDictionaryIndexingMode(JSGlobalData& globalData)
 {
     switch (structure()->indexingType()) {
+    case ALL_BLANK_INDEXING_TYPES:
     case ALL_UNDECIDED_INDEXING_TYPES:
     case ALL_INT32_INDEXING_TYPES:
     case ALL_DOUBLE_INDEXING_TYPES:
@@ -1504,13 +1506,13 @@ void JSObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNa
         }
         
         if (SparseArrayValueMap* map = storage->m_sparseMap.get()) {
-            Vector<unsigned> keys;
-            keys.reserveCapacity(map->size());
+            Vector<unsigned, 0, UnsafeVectorOverflow> keys;
+            keys.reserveInitialCapacity(map->size());
             
             SparseArrayValueMap::const_iterator end = map->end();
             for (SparseArrayValueMap::const_iterator it = map->begin(); it != end; ++it) {
                 if (mode == IncludeDontEnumProperties || !(it->value.attributes & DontEnum))
-                    keys.append(static_cast<unsigned>(it->key));
+                    keys.uncheckedAppend(static_cast<unsigned>(it->key));
             }
             
             std::sort(keys.begin(), keys.end());
@@ -1530,7 +1532,10 @@ void JSObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNa
 void JSObject::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     getClassPropertyNames(exec, object->classInfo(), propertyNames, mode, object->staticFunctionsReified());
+    size_t preStructurePropertyNamesCount = propertyNames.size();
     object->structure()->getPropertyNamesFromStructure(exec->globalData(), propertyNames, mode);
+    size_t numCacheableSlots = preStructurePropertyNamesCount ? 0 : propertyNames.size();
+    propertyNames.setNumCacheableSlots(numCacheableSlots);
 }
 
 double JSObject::toNumber(ExecState* exec) const
@@ -2200,6 +2205,16 @@ bool JSObject::putDirectIndexBeyondVectorLength(ExecState* exec, unsigned i, JSV
         RELEASE_ASSERT_NOT_REACHED();
         return false;
     }
+}
+
+void JSObject::putDirectNativeFunction(ExecState* exec, JSGlobalObject* globalObject, const PropertyName& propertyName, unsigned functionLength, NativeFunction nativeFunction, Intrinsic intrinsic, unsigned attributes)
+{
+    StringImpl* name = propertyName.publicName();
+    ASSERT(name);
+    
+    JSFunction* function =
+        JSFunction::create(exec, globalObject, functionLength, name, nativeFunction, intrinsic);
+    putDirect(exec->globalData(), propertyName, function, attributes);
 }
 
 ALWAYS_INLINE unsigned JSObject::getNewVectorLength(unsigned currentVectorLength, unsigned currentLength, unsigned desiredLength)

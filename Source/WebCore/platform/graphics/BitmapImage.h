@@ -113,7 +113,7 @@ class BitmapImage : public Image {
     friend class GeneratorGeneratedImage;
     friend class GraphicsContext;
 public:
-    static PassRefPtr<BitmapImage> create(NativeImagePtr nativeImage, ImageObserver* observer = 0)
+    static PassRefPtr<BitmapImage> create(PassNativeImagePtr nativeImage, ImageObserver* observer = 0)
     {
         return adoptRef(new BitmapImage(nativeImage, observer));
     }
@@ -169,10 +169,6 @@ public:
     virtual bool getHBITMAPOfSize(HBITMAP, LPSIZE);
 #endif
 
-#if USE(CAIRO)
-    static PassRefPtr<BitmapImage> create(cairo_surface_t*);
-#endif
-
 #if PLATFORM(GTK)
     virtual GdkPixbuf* getGdkPixbuf();
 #endif
@@ -186,7 +182,8 @@ public:
     virtual Evas_Object* getEvasObject(Evas*);
 #endif
 
-    virtual NativeImagePtr nativeImageForCurrentFrame();
+    virtual PassNativeImagePtr nativeImageForCurrentFrame() OVERRIDE;
+
     virtual bool currentFrameKnownToBeOpaque() OVERRIDE;
 
     ImageOrientation currentFrameOrientation();
@@ -207,7 +204,7 @@ protected:
       Certain     // The repetition count is known to be correct.
     };
 
-    BitmapImage(NativeImagePtr, ImageObserver* = 0);
+    BitmapImage(PassNativeImagePtr, ImageObserver* = 0);
     BitmapImage(ImageObserver* = 0);
 #if PLATFORM(WX)
     BitmapImage(const wxBitmap&);
@@ -217,7 +214,7 @@ protected:
     virtual void drawFrameMatchingSourceSize(GraphicsContext*, const FloatRect& dstRect, const IntSize& srcSize, ColorSpace styleColorSpace, CompositeOperator);
 #endif
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode);
-#if USE(CG) || PLATFORM(CHROMIUM) || USE(CAIRO)
+#if USE(CG) || USE(CAIRO) || PLATFORM(BLACKBERRY)
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, RespectImageOrientationEnum) OVERRIDE;
 #endif
 
@@ -228,7 +225,7 @@ protected:
 
     size_t currentFrame() const { return m_currentFrame; }
     virtual size_t frameCount();
-    NativeImagePtr frameAtIndex(size_t);
+    PassNativeImagePtr frameAtIndex(size_t);
     bool frameIsCompleteAtIndex(size_t);
     float frameDurationAtIndex(size_t);
     bool frameHasAlphaAtIndex(size_t);

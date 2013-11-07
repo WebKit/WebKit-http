@@ -38,6 +38,7 @@
 #include "InlineTextBox.h"
 #include "NodeTraversal.h"
 #include "Range.h"
+#include "RenderImage.h"
 #include "RenderTableCell.h"
 #include "RenderTableRow.h"
 #include "RenderTextControl.h"
@@ -246,30 +247,6 @@ static void setUpFullyClippedStack(BitStack& stack, Node* node)
 
 // --------
 
-TextIterator::TextIterator()
-    : m_startContainer(0)
-    , m_startOffset(0)
-    , m_endContainer(0)
-    , m_endOffset(0)
-    , m_positionNode(0)
-    , m_textCharacters(0)
-    , m_textLength(0)
-    , m_remainingTextBox(0)
-    , m_firstLetterText(0)
-    , m_lastCharacter(0)
-    , m_sortedTextBoxesPosition(0)
-    , m_emitsCharactersBetweenAllVisiblePositions(false)
-    , m_entersTextControls(false)
-    , m_emitsTextWithoutTranscoding(false)
-    , m_emitsOriginalText(false)
-    , m_handledFirstLetter(false)
-    , m_ignoresStyleVisibility(false)
-    , m_emitsObjectReplacementCharacters(false)
-    , m_stopsOnFormControls(false)
-    , m_shouldStop(false)
-{
-}
-
 TextIterator::TextIterator(const Range* r, TextIteratorBehavior behavior)
     : m_startContainer(0)
     , m_startOffset(0)
@@ -290,6 +267,7 @@ TextIterator::TextIterator(const Range* r, TextIteratorBehavior behavior)
     , m_emitsObjectReplacementCharacters(behavior & TextIteratorEmitsObjectReplacementCharacters)
     , m_stopsOnFormControls(behavior & TextIteratorStopsOnFormControls)
     , m_shouldStop(false)
+    , m_emitsImageAltText(behavior & TextIteratorEmitsImageAltText)
 {
     if (!r)
         return;
@@ -408,10 +386,10 @@ void TextIterator::advance()
                     m_handledNode = handleTextNode();
                 else if (renderer && (renderer->isImage() || renderer->isWidget() ||
                          (renderer->node() && renderer->node()->isElementNode() &&
-                          (static_cast<Element*>(renderer->node())->isFormControlElement()
-                          || static_cast<Element*>(renderer->node())->hasTagName(legendTag)
-                          || static_cast<Element*>(renderer->node())->hasTagName(meterTag)
-                          || static_cast<Element*>(renderer->node())->hasTagName(progressTag)))))
+                          (toElement(renderer->node())->isFormControlElement()
+                          || toElement(renderer->node())->hasTagName(legendTag)
+                          || toElement(renderer->node())->hasTagName(meterTag)
+                          || toElement(renderer->node())->hasTagName(progressTag)))))
                     m_handledNode = handleReplacedElement();
                 else
                     m_handledNode = handleNonTextNode();
@@ -712,10 +690,18 @@ bool TextIterator::handleReplacedElement()
     m_positionOffsetBaseNode = m_node;
     m_positionStartOffset = 0;
     m_positionEndOffset = 1;
-
     m_textCharacters = 0;
-    m_textLength = 0;
 
+    if (m_emitsImageAltText && renderer->isImage() && renderer->isRenderImage()) {
+        m_text = toRenderImage(renderer)->altText();
+        if (!m_text.isEmpty()) {
+            m_textLength = m_text.length();
+            m_lastCharacter = m_text[m_textLength - 1];
+            return true;
+        }
+    }
+
+    m_textLength = 0;
     m_lastCharacter = 0;
 
     return true;
@@ -747,14 +733,13 @@ static bool shouldEmitTabBeforeNode(Node* node)
     return t && (t->cellBefore(rc) || t->cellAbove(rc));
 }
 
-static bool shouldEmitNewlineForNode(Node* node)
+static bool shouldEmitNewlineForNode(Node* node, bool emitsOriginalText)
 {
-    // br elements are represented by a single newline.
-    RenderObject* r = node->renderer();
-    if (!r)
-        return node->hasTagName(brTag);
-        
-    return r->isBR();
+    RenderObject* renderer = node->renderer();
+
+    if (renderer ? !renderer->isBR() : !node->hasTagName(brTag))
+        return false;
+    return emitsOriginalText || !(node->isInShadowTree() && node->shadowHost()->toInputElement());
 }
 
 static bool shouldEmitNewlinesBeforeAndAfterNode(Node* node)
@@ -956,7 +941,7 @@ void TextIterator::representNodeOffsetZero()
 
 bool TextIterator::handleNonTextNode()
 {
-    if (shouldEmitNewlineForNode(m_node))
+    if (shouldEmitNewlineForNode(m_node, m_emitsOriginalText))
         emitCharacter('\n', m_node->parentNode(), m_node, 0, 1);
     else if (m_emitsCharactersBetweenAllVisiblePositions && m_node->renderer() && m_node->renderer()->isHR())
         emitCharacter(' ', m_node->parentNode(), m_node, 0, 1);
@@ -1089,30 +1074,6 @@ Node* TextIterator::node() const
 
 // --------
 
-SimplifiedBackwardsTextIterator::SimplifiedBackwardsTextIterator()
-    : m_node(0)
-    , m_offset(0)
-    , m_handledNode(false)
-    , m_handledChildren(false)
-    , m_startNode(0)
-    , m_startOffset(0)
-    , m_endNode(0)
-    , m_endOffset(0)
-    , m_positionNode(0)
-    , m_positionStartOffset(0)
-    , m_positionEndOffset(0)
-    , m_textCharacters(0)
-    , m_textLength(0)
-    , m_lastTextNode(0)
-    , m_lastCharacter(0)
-    , m_singleCharacterBuffer(0)
-    , m_havePassedStartNode(false)
-    , m_shouldHandleFirstLetter(false)
-    , m_stopsOnFormControls(false)
-    , m_shouldStop(false)
-{
-}
-
 SimplifiedBackwardsTextIterator::SimplifiedBackwardsTextIterator(const Range* r, TextIteratorBehavior behavior)
     : m_node(0)
     , m_offset(0)
@@ -1134,6 +1095,7 @@ SimplifiedBackwardsTextIterator::SimplifiedBackwardsTextIterator(const Range* r,
     , m_shouldHandleFirstLetter(false)
     , m_stopsOnFormControls(behavior & TextIteratorStopsOnFormControls)
     , m_shouldStop(false)
+    , m_emitsOriginalText(false)
 {
     ASSERT(behavior == TextIteratorDefaultBehavior || behavior == TextIteratorStopsOnFormControls);
 
@@ -1342,7 +1304,7 @@ bool SimplifiedBackwardsTextIterator::handleNonTextNode()
 {    
     // We can use a linefeed in place of a tab because this simple iterator is only used to
     // find boundaries, not actual content.  A linefeed breaks words, sentences, and paragraphs.
-    if (shouldEmitNewlineForNode(m_node) || shouldEmitNewlineAfterNode(m_node) || shouldEmitTabBeforeNode(m_node)) {
+    if (shouldEmitNewlineForNode(m_node, m_emitsOriginalText) || shouldEmitNewlineAfterNode(m_node) || shouldEmitTabBeforeNode(m_node)) {
         unsigned index = m_node->nodeIndex();
         // The start of this emitted range is wrong. Ensuring correctness would require
         // VisiblePositions and so would be slow. previousBoundary expects this.
@@ -1353,7 +1315,7 @@ bool SimplifiedBackwardsTextIterator::handleNonTextNode()
 
 void SimplifiedBackwardsTextIterator::exitNode()
 {
-    if (shouldEmitNewlineForNode(m_node) || shouldEmitNewlineBeforeNode(m_node) || shouldEmitTabBeforeNode(m_node)) {
+    if (shouldEmitNewlineForNode(m_node, m_emitsOriginalText) || shouldEmitNewlineBeforeNode(m_node) || shouldEmitTabBeforeNode(m_node)) {
         // The start of this emitted range is wrong. Ensuring correctness would require
         // VisiblePositions and so would be slow. previousBoundary expects this.
         emitCharacter('\n', m_node, 0, 0);
@@ -1391,13 +1353,6 @@ PassRefPtr<Range> SimplifiedBackwardsTextIterator::range() const
 }
 
 // --------
-
-CharacterIterator::CharacterIterator()
-    : m_offset(0)
-    , m_runOffset(0)
-    , m_atBreak(true)
-{
-}
 
 CharacterIterator::CharacterIterator(const Range* r, TextIteratorBehavior behavior)
     : m_offset(0)
@@ -1498,13 +1453,6 @@ static PassRefPtr<Range> characterSubrange(CharacterIterator& it, int offset, in
         end->endContainer(), end->endOffset());
 }
 
-BackwardsCharacterIterator::BackwardsCharacterIterator()
-    : m_offset(0)
-    , m_runOffset(0)
-    , m_atBreak(true)
-{
-}
-
 BackwardsCharacterIterator::BackwardsCharacterIterator(const Range* range, TextIteratorBehavior behavior)
     : m_offset(0)
     , m_runOffset(0)
@@ -1572,12 +1520,6 @@ void BackwardsCharacterIterator::advance(int count)
 }
 
 // --------
-
-WordAwareIterator::WordAwareIterator()
-    : m_previousText(0)
-    , m_didLookAhead(false)
-{
-}
 
 WordAwareIterator::WordAwareIterator(const Range* r)
     : m_previousText(0)
@@ -2571,17 +2513,6 @@ String plainText(const Range* r, TextIteratorBehavior defaultBehavior, bool isDi
         r->ownerDocument()->displayStringModifiedByEncoding(result);
 
     return result;
-}
-
-static inline bool isAllCollapsibleWhitespace(const String& string)
-{
-    const UChar* characters = string.characters();
-    unsigned length = string.length();
-    for (unsigned i = 0; i < length; ++i) {
-        if (!isCollapsibleWhitespace(characters[i]))
-            return false;
-    }
-    return true;
 }
 
 static PassRefPtr<Range> collapsedToBoundary(const Range* range, bool forward)

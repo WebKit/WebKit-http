@@ -55,10 +55,8 @@ class InjectedBundleRangeHandle;
 class InjectedBundleScriptWorld;
 class WebPage;
 
-class WebFrame : public APIObject {
+class WebFrame : public TypedAPIObject<APIObject::TypeBundleFrame> {
 public:
-    static const Type APIType = TypeBundleFrame;
-
     static PassRefPtr<WebFrame> createMainFrame(WebPage*);
     static PassRefPtr<WebFrame> createSubframe(WebPage*, const String& frameName, WebCore::HTMLFrameOwnerElement*);
     ~WebFrame();
@@ -76,7 +74,7 @@ public:
     void didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyAction, uint64_t downloadID);
 
     void startDownload(const WebCore::ResourceRequest&);
-    void convertMainResourceLoadToDownload(WebCore::MainResourceLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
+    void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
     String source() const;
     String contentsAsString() const;
@@ -146,8 +144,6 @@ private:
     WebFrame();
 
     void init(WebPage*, const String& frameName, WebCore::HTMLFrameOwnerElement*);
-
-    virtual Type type() const { return APIType; }
 
     WebCore::Frame* m_coreFrame;
 

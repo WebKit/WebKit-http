@@ -33,6 +33,7 @@
 #include "FrameView.h"
 #include "Node.h"
 #include "Page.h"
+#include "Settings.h"
 #include "VisitedLinkState.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/RefCountedLeakCounter.h>
@@ -51,9 +52,11 @@ PassRefPtr<CachedPage> CachedPage::create(Page* page)
 
 CachedPage::CachedPage(Page* page)
     : m_timeStamp(currentTime())
+    , m_expirationTime(m_timeStamp + page->settings()->backForwardCacheExpirationInterval())
     , m_cachedMainFrame(CachedFrame::create(page->mainFrame()))
     , m_needStyleRecalcForVisitedLinks(false)
     , m_needsFullStyleRecalc(false)
+    , m_needsCaptionPreferencesChanged(false)
 {
 #ifndef NDEBUG
     cachedPageCounter.increment();
@@ -83,7 +86,7 @@ void CachedPage::restore(Page* page)
     Document* focusedDocument = page->focusController()->focusedOrMainFrame()->document();
     if (Node* node = focusedDocument->focusedNode()) {
         if (node->isElementNode())
-            static_cast<Element*>(node)->updateFocusAppearance(true);
+            toElement(node)->updateFocusAppearance(true);
     }
 
     if (m_needStyleRecalcForVisitedLinks) {
@@ -93,6 +96,11 @@ void CachedPage::restore(Page* page)
 
     if (m_needsFullStyleRecalc)
         page->setNeedsRecalcStyleInAllFrames();
+
+#if ENABLE(VIDEO_TRACK)
+    if (m_needsCaptionPreferencesChanged)
+        page->captionPreferencesChanged();
+#endif
 
     clear();
 }
@@ -112,6 +120,11 @@ void CachedPage::destroy()
         m_cachedMainFrame->destroy();
 
     m_cachedMainFrame = 0;
+}
+
+bool CachedPage::hasExpired() const
+{
+    return currentTime() > m_expirationTime;
 }
 
 } // namespace WebCore

@@ -42,7 +42,6 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformWheelEvent.h"
 #include "RenderWidget.h"
-#include "Scrollbar.h"
 
 namespace WebCore {
 
@@ -94,7 +93,7 @@ bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widge
     if (!widget->isFrameView())
         return false;
 
-    return static_cast<FrameView*>(widget)->frame()->eventHandler()->handleWheelEvent(event);
+    return toFrameView(widget)->frame()->eventHandler()->handleWheelEvent(event);
 }
 
 #if ENABLE(DRAG_SUPPORT)

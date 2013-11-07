@@ -394,9 +394,8 @@ static void restartedCallback(SoupMessage*, gpointer data)
     if (!handle || handle->cancelledOrClientless())
         return;
 
-    ResourceHandleInternal* d = handle->getInternal();
-
 #if ENABLE(WEB_TIMING)
+    ResourceHandleInternal* d = handle->getInternal();
     ResourceResponse& redirectResponse = d->m_response;
     redirectResponse.setResourceLoadTiming(ResourceLoadTiming::create());
     redirectResponse.resourceLoadTiming()->requestTime = monotonicallyIncreasingTime();
@@ -420,7 +419,7 @@ static bool shouldRedirect(ResourceHandle* handle)
 
 static bool shouldRedirectAsGET(SoupMessage* message, KURL& newURL, bool crossOrigin)
 {
-    if (message->method == SOUP_METHOD_GET)
+    if (message->method == SOUP_METHOD_GET || message->method == SOUP_METHOD_HEAD)
         return false;
 
     if (!newURL.protocolIsInHTTPFamily())

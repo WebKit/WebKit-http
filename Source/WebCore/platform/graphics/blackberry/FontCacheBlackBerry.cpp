@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 Alp Toker <alp@atoker.com>
+ * Copyright (C) 2009-2010, Google Inc. All rights reserved.
  * Copyright (C) 2010 Igalia S.L.
  * Copyright (C) 2012, 2013 Research In Motion Limited. All rights reserved.
  *
@@ -30,13 +31,13 @@
 #include "ITypeUtils.h"
 #include "Logging.h"
 #include "NotImplemented.h"
-#include "PlatformSupport.h"
 #include "SimpleFontData.h"
 
 #include <BlackBerryPlatformGraphicsContext.h>
 #include <fontconfig/fontconfig.h>
 #include <fs_api.h>
 #include <unicode/locid.h>
+#include <unistd.h>
 #include <wtf/Assertions.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
@@ -50,13 +51,103 @@ void FontCache::platformInit()
         CRASH();
 }
 
-const SimpleFontData* FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
+void FontCache::getFontFamilyForCharacters(const UChar* characters, size_t numCharacters, const char*, const FontDescription& description, SimpleFontFamily* family)
+{
+    FcCharSet* cset = FcCharSetCreate();
+    for (size_t i = 0; i < numCharacters; ++i) {
+        if (U16_IS_SURROGATE(characters[i])
+            && U16_IS_SURROGATE_LEAD(characters[i])
+            && i != numCharacters - 1
+            && U16_IS_TRAIL(characters[i + 1])) {
+            FcCharSetAddChar(cset, U16_GET_SUPPLEMENTARY(characters[i], characters[i+1]));
+            i++;
+        } else
+            FcCharSetAddChar(cset, characters[i]);
+    }
+    FcPattern* pattern = FcPatternCreate();
+
+    FcValue fcvalue;
+    fcvalue.type = FcTypeCharSet;
+    fcvalue.u.c = cset;
+    FcPatternAdd(pattern, FC_CHARSET, fcvalue, FcFalse);
+
+    fcvalue.type = FcTypeBool;
+    fcvalue.u.b = FcTrue;
+    FcPatternAdd(pattern, FC_SCALABLE, fcvalue, FcFalse);
+
+    fcvalue.type = FcTypeInteger;
+    fcvalue.u.i = (description.weight() >= FontWeightBold) ? FC_WEIGHT_BOLD : FC_WEIGHT_NORMAL;
+    FcPatternAdd(pattern, FC_WEIGHT, fcvalue, FcFalse);
+
+    fcvalue.type = FcTypeInteger;
+    fcvalue.u.i = (description.italic() == FontItalicOn) ? FC_SLANT_ITALIC : FC_SLANT_ROMAN;
+    FcPatternAdd(pattern, FC_SLANT, fcvalue, FcFalse);
+
+    FcConfigSubstitute(0, pattern, FcMatchPattern);
+    FcDefaultSubstitute(pattern);
+
+    FcResult result;
+    FcFontSet* fontSet = FcFontSort(0, pattern, 0, 0, &result);
+    FcPatternDestroy(pattern);
+    FcCharSetDestroy(cset);
+
+    if (!fontSet) {
+        family->name = String();
+        family->isBold = false;
+        family->isItalic = false;
+        return;
+    }
+
+    // Older versions of fontconfig have a bug where they cannot select
+    // only scalable fonts so we have to manually filter the results.
+    for (int i = 0; i < fontSet->nfont; ++i) {
+        FcPattern* current = fontSet->fonts[i];
+        FcBool isScalable;
+
+        if (FcPatternGetBool(current, FC_SCALABLE, 0, &isScalable) != FcResultMatch
+            || !isScalable)
+            continue;
+
+        // fontconfig can also return fonts which are unreadable
+        FcChar8* cFilename;
+        if (FcPatternGetString(current, FC_FILE, 0, &cFilename) != FcResultMatch)
+            continue;
+
+        if (access(reinterpret_cast<char*>(cFilename), R_OK))
+            continue;
+
+        FcChar8* familyName;
+        if (FcPatternGetString(current, FC_FAMILY, 0, &familyName) == FcResultMatch) {
+            const char* charFamily = reinterpret_cast<char*>(familyName);
+            family->name = String::fromUTF8(charFamily, strlen(charFamily));
+        }
+
+        int weight;
+        if (FcPatternGetInteger(current, FC_WEIGHT, 0, &weight) == FcResultMatch)
+            family->isBold = weight >= FC_WEIGHT_BOLD;
+        else
+            family->isBold = false;
+
+        int slant;
+        if (FcPatternGetInteger(current, FC_SLANT, 0, &slant) == FcResultMatch)
+            family->isItalic = slant != FC_SLANT_ROMAN;
+        else
+            family->isItalic = false;
+
+        FcFontSetDestroy(fontSet);
+        return;
+    }
+
+    FcFontSetDestroy(fontSet);
+}
+
+PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
 {
     icu::Locale locale = icu::Locale::getDefault();
-    PlatformSupport::FontFamily family;
-    PlatformSupport::getFontFamilyForCharacters(characters, length, locale.getLanguage(), font.fontDescription(), &family);
+    FontCache::SimpleFontFamily family;
+    FontCache::getFontFamilyForCharacters(characters, length, locale.getLanguage(), font.fontDescription(), &family);
     if (family.name.isEmpty())
-        return 0;
+        return nullptr;
 
     AtomicString atomicFamily(family.name);
     // Changes weight and/or italic of given FontDescription depends on
@@ -80,19 +171,19 @@ const SimpleFontData* FontCache::getFontDataForCharacters(const Font& font, cons
 
     FontPlatformData* substitutePlatformData = getCachedFontPlatformData(description, atomicFamily, DoNotRetain);
     if (!substitutePlatformData)
-        return 0;
+        return nullptr;
     FontPlatformData platformData = FontPlatformData(*substitutePlatformData);
     platformData.setFakeBold(shouldSetFakeBold);
     platformData.setFakeItalic(shouldSetFakeItalic);
     return getCachedFontData(&platformData, DoNotRetain);
 }
 
-SimpleFontData* FontCache::getSimilarFontPlatformData(const Font& font)
+PassRefPtr<SimpleFontData> FontCache::getSimilarFontPlatformData(const Font& font)
 {
     return 0;
 }
 
-SimpleFontData* FontCache::getLastResortFallbackFont(const FontDescription& description, ShouldRetain)
+PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescription& description, ShouldRetain)
 {
     DEFINE_STATIC_LOCAL(const AtomicString, sansStr, ("Sans"));
     DEFINE_STATIC_LOCAL(const AtomicString, serifStr, ("Serif"));
@@ -178,7 +269,7 @@ int fontWeightToFontconfigWeight(FontWeight weight)
     }
 }
 
-FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family)
+PassOwnPtr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family)
 {
     // The CSS font matching algorithm (http://www.w3.org/TR/css3-fonts/#font-matching-algorithm)
     // says that we must find an exact match for font family, slant (italic or oblique can be used)
@@ -186,15 +277,15 @@ FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontD
     FcPattern* pattern = FcPatternCreate();
     String familyNameString(getFamilyNameStringFromFontDescriptionAndFamily(fontDescription, family));
     if (!FcPatternAddString(pattern, FC_FAMILY, reinterpret_cast<const FcChar8*>(familyNameString.utf8().data())))
-        return 0;
+        return nullptr;
 
     bool italic = fontDescription.italic();
     if (!FcPatternAddInteger(pattern, FC_SLANT, italic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN))
-        return 0;
+        return nullptr;
     if (!FcPatternAddInteger(pattern, FC_WEIGHT, fontWeightToFontconfigWeight(fontDescription.weight())))
-        return 0;
+        return nullptr;
     if (!FcPatternAddDouble(pattern, FC_PIXEL_SIZE, fontDescription.computedPixelSize()))
-        return 0;
+        return nullptr;
 
     // The strategy is originally from Skia (src/ports/SkFontHost_fontconfig.cpp):
 
@@ -212,7 +303,7 @@ FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontD
     FcPattern* resultPattern = FcFontMatch(0, pattern, &fontConfigResult);
     FcPatternDestroy(pattern);
     if (!resultPattern) // No match.
-        return 0;
+        return nullptr;
 
     FcChar8* fontConfigFamilyNameAfterMatching;
     FcPatternGetString(resultPattern, FC_FAMILY, 0, &fontConfigFamilyNameAfterMatching);
@@ -225,7 +316,7 @@ FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontD
         && !(equalIgnoringCase(familyNameString, "sans") || equalIgnoringCase(familyNameString, "sans-serif")
             || equalIgnoringCase(familyNameString, "serif") || equalIgnoringCase(familyNameString, "monospace")
             || equalIgnoringCase(familyNameString, "fantasy") || equalIgnoringCase(familyNameString, "cursive")))
-        return 0;
+        return nullptr;
 
     int fontWeight;
     FcPatternGetInteger(resultPattern, FC_WEIGHT, 0, &fontWeight);
@@ -244,10 +335,10 @@ FontPlatformData* FontCache::createFontPlatformData(const FontDescription& fontD
     memset(name, 0, MAX_FONT_NAME_LEN+1);
     // fprintf(stderr, "FS_load_font %s: ", fontFileName);
     if (FS_load_font(BlackBerry::Platform::Graphics::getIType(), reinterpret_cast<FILECHAR*>(fontFileName), 0, 0, MAX_FONT_NAME_LEN, name) != SUCCESS)
-        return 0;
+        return nullptr;
     // fprintf(stderr, " %s\n", name);
 
-    return new FontPlatformData(name, fontDescription.computedSize(), shouldFakeBold, shouldFakeItalic, fontDescription.orientation(), fontDescription.textOrientation());
+    return adoptPtr(new FontPlatformData(name, fontDescription.computedSize(), shouldFakeBold, shouldFakeItalic, fontDescription.orientation()));
 }
 
 } // namespace WebCore

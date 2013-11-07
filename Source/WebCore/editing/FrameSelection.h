@@ -227,8 +227,6 @@ public:
     // Painting.
     void updateAppearance();
 
-    void updateSecureKeyboardEntryIfActive();
-
 #ifndef NDEBUG
     void formatForDebugger(char* buffer, unsigned length) const;
     void showTreeForThis() const;
@@ -278,14 +276,14 @@ private:
     VisiblePosition modifyMovingBackward(TextGranularity);
 
     LayoutUnit lineDirectionPointForBlockDirectionNavigation(EPositionType);
-    
+
+#if HAVE(ACCESSIBILITY)
     void notifyAccessibilityForSelectionChange();
+#endif
 
     void focusedOrActiveStateChanged();
 
     void caretBlinkTimerFired(Timer<FrameSelection>*);
-
-    void setUseSecureKeyboardEntry(bool);
 
     void setCaretVisibility(CaretVisibility);
 
@@ -329,10 +327,12 @@ inline void FrameSelection::setTypingStyle(PassRefPtr<EditingStyle> style)
     m_typingStyle = style;
 }
 
-#if !(PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(CHROMIUM) || PLATFORM(EFL))
+#if !(PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(EFL))
+#if HAVE(ACCESSIBILITY)
 inline void FrameSelection::notifyAccessibilityForSelectionChange()
 {
 }
+#endif
 #endif
 
 } // namespace WebCore

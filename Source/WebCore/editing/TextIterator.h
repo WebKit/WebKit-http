@@ -44,7 +44,8 @@ enum TextIteratorBehavior {
     TextIteratorIgnoresStyleVisibility = 1 << 3,
     TextIteratorEmitsObjectReplacementCharacters = 1 << 4,
     TextIteratorEmitsOriginalText = 1 << 5,
-    TextIteratorStopsOnFormControls = 1 << 6
+    TextIteratorStopsOnFormControls = 1 << 6,
+    TextIteratorEmitsImageAltText = 1 << 7,
 };
     
 // FIXME: Can't really answer this question correctly without knowing the white-space mode.
@@ -85,9 +86,8 @@ private:
 
 class TextIterator {
 public:
-    TextIterator();
-    ~TextIterator();
     explicit TextIterator(const Range*, TextIteratorBehavior = TextIteratorDefaultBehavior);
+    ~TextIterator();
 
     bool atEnd() const { return !m_positionNode || m_shouldStop; }
     void advance();
@@ -193,6 +193,8 @@ private:
     bool m_stopsOnFormControls;
     // Used when m_stopsOnFormControls is set to determine if the iterator should keep advancing.
     bool m_shouldStop;
+
+    bool m_emitsImageAltText;
 };
 
 // Iterates through the DOM range, returning all the text, and 0-length boundaries
@@ -200,7 +202,6 @@ private:
 // chunks so as to optimize for performance of the iteration.
 class SimplifiedBackwardsTextIterator {
 public:
-    SimplifiedBackwardsTextIterator();
     explicit SimplifiedBackwardsTextIterator(const Range*, TextIteratorBehavior = TextIteratorDefaultBehavior);
     
     bool atEnd() const { return !m_positionNode || m_shouldStop; }
@@ -260,13 +261,15 @@ private:
 
     // Used when m_stopsOnFormControls is set to determine if the iterator should keep advancing.
     bool m_shouldStop;
+
+    // Used in pasting inside password field.
+    bool m_emitsOriginalText;
 };
 
 // Builds on the text iterator, adding a character position so we can walk one
 // character at a time, or faster, as needed. Useful for searching.
 class CharacterIterator {
 public:
-    CharacterIterator();
     explicit CharacterIterator(const Range*, TextIteratorBehavior = TextIteratorDefaultBehavior);
     
     void advance(int numCharacters);
@@ -291,7 +294,6 @@ private:
     
 class BackwardsCharacterIterator {
 public:
-    BackwardsCharacterIterator();
     explicit BackwardsCharacterIterator(const Range*, TextIteratorBehavior = TextIteratorDefaultBehavior);
 
     void advance(int);
@@ -312,7 +314,6 @@ private:
 // meaning they never end split up a word.  This is useful for spellcheck or (perhaps one day) searching.
 class WordAwareIterator {
 public:
-    WordAwareIterator();
     explicit WordAwareIterator(const Range*);
     ~WordAwareIterator();
 

@@ -426,7 +426,7 @@ bool ReplaceSelectionCommand::shouldMergeEnd(bool selectionEndWasEndOfParagraph)
 
 static bool isMailPasteAsQuotationNode(const Node* node)
 {
-    return node && node->hasTagName(blockquoteTag) && node->isElementNode() && static_cast<const Element*>(node)->getAttribute(classAttr) == ApplePasteAsQuotation;
+    return node && node->hasTagName(blockquoteTag) && node->isElementNode() && toElement(node)->getAttribute(classAttr) == ApplePasteAsQuotation;
 }
 
 static bool isHeaderElement(const Node* a)
@@ -444,7 +444,7 @@ static bool isHeaderElement(const Node* a)
 
 static bool haveSameTagName(Node* a, Node* b)
 {
-    return a && b && a->isElementNode() && b->isElementNode() && static_cast<Element*>(a)->tagName() == static_cast<Element*>(b)->tagName();
+    return a && b && a->isElementNode() && b->isElementNode() && toElement(a)->tagName() == toElement(b)->tagName();
 }
 
 bool ReplaceSelectionCommand::shouldMerge(const VisiblePosition& source, const VisiblePosition& destination)
@@ -486,7 +486,7 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
         if (inlineStyle) {
             if (element->isHTMLElement()) {
                 Vector<QualifiedName> attributes;
-                HTMLElement* htmlElement = static_cast<HTMLElement*>(element);
+                HTMLElement* htmlElement = toHTMLElement(element);
 
                 if (newInlineStyle->conflictsWithImplicitStyleOfElement(htmlElement)) {
                     // e.g. <b style="font-weight: normal;"> is converted to <span style="font-weight: normal;">
@@ -625,8 +625,8 @@ void ReplaceSelectionCommand::makeInsertedContentRoundTrippableWithHTMLTreeBuild
         if (!node->isHTMLElement())
             continue;
 
-        if (isProhibitedParagraphChild(static_cast<const HTMLElement*>(node.get())->localName())) {
-            if (HTMLElement* paragraphElement = static_cast<HTMLElement*>(enclosingNodeWithTag(positionInParentBeforeNode(node.get()), pTag)))
+        if (isProhibitedParagraphChild(toHTMLElement(node.get())->localName())) {
+            if (HTMLElement* paragraphElement = toHTMLElement(enclosingNodeWithTag(positionInParentBeforeNode(node.get()), pTag)))
                 moveNodeOutOfAncestor(node, paragraphElement);
         }
 
@@ -736,7 +736,7 @@ static bool handleStyleSpansBeforeInsertion(ReplacementFragment& fragment, const
 
     // FIXME: This string comparison is a naive way of comparing two styles.
     // We should be taking the diff and check that the diff is empty.
-    if (styleText != static_cast<Element*>(wrappingStyleSpan)->getAttribute(styleAttr))
+    if (styleText != toElement(wrappingStyleSpan)->getAttribute(styleAttr))
         return false;
 
     fragment.removeNodePreservingChildren(wrappingStyleSpan);
@@ -842,11 +842,11 @@ void ReplaceSelectionCommand::mergeEndIfNeeded()
 static Node* enclosingInline(Node* node)
 {
     while (ContainerNode* parent = node->parentNode()) {
-        if (parent->isBlockFlow() || parent->hasTagName(bodyTag))
+        if (parent->isBlockFlowElement() || parent->hasTagName(bodyTag))
             return node;
         // Stop if any previous sibling is a block.
         for (Node* sibling = node->previousSibling(); sibling; sibling = sibling->previousSibling()) {
-            if (sibling->isBlockFlow())
+            if (sibling->isBlockFlowElement())
                 return node;
         }
         node = parent;
@@ -1211,7 +1211,7 @@ void ReplaceSelectionCommand::doApply()
         mergeEndIfNeeded();
 
     if (Node* mailBlockquote = enclosingNodeOfType(positionAtStartOfInsertedContent().deepEquivalent(), isMailPasteAsQuotationNode))
-        removeNodeAttribute(static_cast<Element*>(mailBlockquote), classAttr);
+        removeNodeAttribute(toElement(mailBlockquote), classAttr);
 
     if (shouldPerformSmartReplace())
         addSpacesForSmartReplace();
@@ -1444,8 +1444,6 @@ Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<HTMLElement> prpList
     }
     if (isStart || isMiddle)
         lastNode = lastNode->previousSibling();
-    if (isMiddle)
-        insertNodeAfter(createListItemElement(document()), lastNode);
     return lastNode;
 }
 

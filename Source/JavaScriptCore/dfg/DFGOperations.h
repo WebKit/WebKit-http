@@ -82,11 +82,17 @@ typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EZ)(ExecState*, int32_t);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EZIcfZ)(ExecState*, int32_t, InlineCallFrame*, int32_t);
 typedef EncodedJSValue DFG_OPERATION (*J_DFGOperation_EZZ)(ExecState*, int32_t, int32_t);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_E)(ExecState*);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_EZ)(ExecState*, int32_t);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_EC)(ExecState*, JSCell*);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_EIcf)(ExecState*, InlineCallFrame*);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_EJ)(ExecState*, EncodedJSValue);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_EJssSt)(ExecState*, JSString*, Structure*);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_EJssJss)(ExecState*, JSString*, JSString*);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_EJssJssJss)(ExecState*, JSString*, JSString*, JSString*);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_EOZ)(ExecState*, JSObject*, int32_t);
 typedef JSCell* DFG_OPERATION (*C_DFGOperation_ESt)(ExecState*, Structure*);
+typedef JSCell* DFG_OPERATION (*C_DFGOperation_EZ)(ExecState*, int32_t);
 typedef double DFG_OPERATION (*D_DFGOperation_DD)(double, double);
 typedef double DFG_OPERATION (*D_DFGOperation_ZZ)(int32_t, int32_t);
 typedef double DFG_OPERATION (*D_DFGOperation_EJ)(ExecState*, EncodedJSValue);
@@ -120,6 +126,7 @@ typedef char* DFG_OPERATION (*P_DFGOperation_EStPS)(ExecState*, Structure*, void
 typedef char* DFG_OPERATION (*P_DFGOperation_EStSS)(ExecState*, Structure*, size_t, size_t);
 typedef char* DFG_OPERATION (*P_DFGOperation_EStZ)(ExecState*, Structure*, int32_t);
 typedef StringImpl* DFG_OPERATION (*Str_DFGOperation_EJss)(ExecState*, JSString*);
+JSCell* DFG_OPERATION operationStringFromCharCode(ExecState*, int32_t)  WTF_INTERNAL; 
 
 // These routines are provide callbacks out to C++ implementations of operations too complex to JIT.
 JSCell* DFG_OPERATION operationNewObject(ExecState*, Structure*) WTF_INTERNAL;
@@ -142,7 +149,6 @@ EncodedJSValue DFG_OPERATION operationResolveBase(ExecState*, Identifier*, Resol
 EncodedJSValue DFG_OPERATION operationResolveBaseStrictPut(ExecState*, Identifier*, ResolveOperations*, PutToBaseOperation*) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationResolveGlobal(ExecState*, ResolveOperation*, JSGlobalObject*, Identifier*) WTF_INTERNAL;
 EncodedJSValue DFG_OPERATION operationToPrimitive(ExecState*, EncodedJSValue) WTF_INTERNAL;
-EncodedJSValue DFG_OPERATION operationStrCat(ExecState*, void*, size_t) WTF_INTERNAL;
 char* DFG_OPERATION operationNewArray(ExecState*, Structure*, void*, size_t) WTF_INTERNAL;
 char* DFG_OPERATION operationNewArrayBuffer(ExecState*, Structure*, size_t, size_t) WTF_INTERNAL;
 char* DFG_OPERATION operationNewEmptyArray(ExecState*, Structure*) WTF_INTERNAL;
@@ -180,6 +186,11 @@ size_t DFG_OPERATION operationCompareLessEq(ExecState*, EncodedJSValue encodedOp
 size_t DFG_OPERATION operationCompareGreater(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 size_t DFG_OPERATION operationCompareGreaterEq(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 size_t DFG_OPERATION operationCompareEq(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+#if USE(JSVALUE64)
+EncodedJSValue DFG_OPERATION operationCompareStringEq(ExecState*, JSCell* left, JSCell* right) WTF_INTERNAL;
+#else
+size_t DFG_OPERATION operationCompareStringEq(ExecState*, JSCell* left, JSCell* right) WTF_INTERNAL;
+#endif
 size_t DFG_OPERATION operationCompareStrictEqCell(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 size_t DFG_OPERATION operationCompareStrictEq(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 char* DFG_OPERATION operationVirtualCall(ExecState*) WTF_INTERNAL;
@@ -212,6 +223,11 @@ char* DFG_OPERATION operationEnsureContiguous(ExecState*, JSCell*);
 char* DFG_OPERATION operationRageEnsureContiguous(ExecState*, JSCell*);
 char* DFG_OPERATION operationEnsureArrayStorage(ExecState*, JSCell*);
 StringImpl* DFG_OPERATION operationResolveRope(ExecState*, JSString*);
+JSCell* DFG_OPERATION operationNewStringObject(ExecState*, JSString*, Structure*);
+JSCell* DFG_OPERATION operationToStringOnCell(ExecState*, JSCell*);
+JSCell* DFG_OPERATION operationToString(ExecState*, EncodedJSValue);
+JSCell* DFG_OPERATION operationMakeRope2(ExecState*, JSString*, JSString*);
+JSCell* DFG_OPERATION operationMakeRope3(ExecState*, JSString*, JSString*, JSString*);
 
 // This method is used to lookup an exception hander, keyed by faultLocation, which is
 // the return location from one of the calls out to one of the helper operations above.

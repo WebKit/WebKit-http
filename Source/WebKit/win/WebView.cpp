@@ -365,7 +365,6 @@ WebView::WebView()
     , m_isBeingDestroyed(false)
     , m_paintCount(0)
     , m_hasSpellCheckerDocumentTag(false)
-    , m_smartInsertDeleteEnabled(false)
     , m_didClose(false)
     , m_inIMEComposition(0)
     , m_toolTipHwnd(0)
@@ -373,7 +372,6 @@ WebView::WebView()
     , m_topLevelParent(0)
     , m_deleteBackingStoreTimerActive(false)
     , m_transparent(false)
-    , m_selectTrailingWhitespaceEnabled(false)
     , m_lastPanX(0)
     , m_lastPanY(0)
     , m_xOverpan(0)
@@ -1369,12 +1367,12 @@ bool WebView::handleContextMenuEvent(WPARAM wParam, LPARAM lParam)
         m_uiDelegate->hasCustomMenuImplementation(&hasCustomMenus);
 
     if (hasCustomMenus)
-        m_uiDelegate->trackCustomPopupMenu((IWebView*)this, (OLE_HANDLE)(ULONG64)coreMenu->nativeMenu(), &point);
+        m_uiDelegate->trackCustomPopupMenu((IWebView*)this, (OLE_HANDLE)(ULONG64)coreMenu->platformContextMenu(), &point);
     else {
         // Surprisingly, TPM_RIGHTBUTTON means that items are selectable with either the right OR left mouse button
         UINT flags = TPM_RIGHTBUTTON | TPM_TOPALIGN | TPM_VERPOSANIMATION | TPM_HORIZONTAL
             | TPM_LEFTALIGN | TPM_HORPOSANIMATION;
-        ::TrackPopupMenuEx(coreMenu->nativeMenu(), flags, point.x, point.y, m_viewWindow, 0);
+        ::TrackPopupMenuEx(coreMenu->platformContextMenu(), flags, point.x, point.y, m_viewWindow, 0);
     }
 
     return true;
@@ -1553,7 +1551,7 @@ bool WebView::gestureNotify(WPARAM wParam, LPARAM lParam)
 
     bool hitScrollbar = false;
     POINT gestureBeginPoint = {gn->ptsLocation.x, gn->ptsLocation.y};
-    HitTestRequest request(HitTestRequest::ReadOnly);
+    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::DisallowShadowContent);
     for (Frame* childFrame = m_page->mainFrame(); childFrame; childFrame = EventHandler::subframeForTargetNode(m_gestureTargetNode.get())) {
         FrameView* frameView = childFrame->view();
         if (!frameView)
@@ -4082,32 +4080,34 @@ HRESULT STDMETHODCALLTYPE WebView::typingStyle(
 HRESULT STDMETHODCALLTYPE WebView::setSmartInsertDeleteEnabled( 
         /* [in] */ BOOL flag)
 {
-    m_smartInsertDeleteEnabled = !!flag;
-    if (m_smartInsertDeleteEnabled)
-        setSelectTrailingWhitespaceEnabled(false);
+    if (m_page->settings()->smartInsertDeleteEnabled() != !!flag) {
+        m_page->settings()->setSmartInsertDeleteEnabled(!!flag);
+        setSelectTrailingWhitespaceEnabled(!flag);
+    }
     return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::smartInsertDeleteEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    *enabled = m_smartInsertDeleteEnabled ? TRUE : FALSE;
+    *enabled = m_page->settings()->smartInsertDeleteEnabled() ? TRUE : FALSE;
     return S_OK;
 }
  
 HRESULT STDMETHODCALLTYPE WebView::setSelectTrailingWhitespaceEnabled( 
         /* [in] */ BOOL flag)
 {
-    m_selectTrailingWhitespaceEnabled = !!flag;
-    if (m_selectTrailingWhitespaceEnabled)
-        setSmartInsertDeleteEnabled(false);
+    if (m_page->settings()->selectTrailingWhitespaceEnabled() != !!flag) {
+        m_page->settings()->setSelectTrailingWhitespaceEnabled(!!flag);
+        setSmartInsertDeleteEnabled(!flag);
+    }
     return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::isSelectTrailingWhitespaceEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    *enabled = m_selectTrailingWhitespaceEnabled ? TRUE : FALSE;
+    *enabled = m_page->settings()->selectTrailingWhitespaceEnabled() ? TRUE : FALSE;
     return S_OK;
 }
 
@@ -6197,7 +6197,7 @@ void WebView::enterFullscreenForNode(Node* node)
         return;
 
 #if ENABLE(VIDEO)
-    if (!static_cast<Element*>(node)->isMediaElement())
+    if (!toElement(node)->isMediaElement())
         return;
     HTMLMediaElement* videoElement = static_cast<HTMLMediaElement*>(node);
 

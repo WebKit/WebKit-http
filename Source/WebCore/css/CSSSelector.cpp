@@ -215,6 +215,7 @@ PseudoId CSSSelector::pseudoId(PseudoType type)
     case PseudoLang:
     case PseudoNot:
     case PseudoRoot:
+    case PseudoScope:
     case PseudoScrollbarBack:
     case PseudoScrollbarForward:
     case PseudoWindowInactive:
@@ -341,6 +342,7 @@ static HashMap<AtomicStringImpl*, CSSSelector::PseudoType>* nameToPseudoTypeMap(
 #endif
     DEFINE_STATIC_LOCAL(AtomicString, inRange, ("in-range", AtomicString::ConstructFromLiteral));
     DEFINE_STATIC_LOCAL(AtomicString, outOfRange, ("out-of-range", AtomicString::ConstructFromLiteral));
+    DEFINE_STATIC_LOCAL(AtomicString, scope, ("scope", AtomicString::ConstructFromLiteral));
 
     static HashMap<AtomicStringImpl*, CSSSelector::PseudoType>* nameToPseudoType = 0;
     if (!nameToPseudoType) {
@@ -395,6 +397,7 @@ static HashMap<AtomicStringImpl*, CSSSelector::PseudoType>* nameToPseudoTypeMap(
         nameToPseudoType->set(optional.impl(), CSSSelector::PseudoOptional);
         nameToPseudoType->set(required.impl(), CSSSelector::PseudoRequired);
         nameToPseudoType->set(resizer.impl(), CSSSelector::PseudoResizer);
+        nameToPseudoType->set(scope.impl(), CSSSelector::PseudoScope);
         nameToPseudoType->set(scrollbar.impl(), CSSSelector::PseudoScrollbar);
         nameToPseudoType->set(scrollbarButton.impl(), CSSSelector::PseudoScrollbarButton);
         nameToPseudoType->set(scrollbarCorner.impl(), CSSSelector::PseudoScrollbarCorner);
@@ -520,6 +523,7 @@ void CSSSelector::extractPseudoType() const
     case PseudoRequired:
     case PseudoReadOnly:
     case PseudoReadWrite:
+    case PseudoScope:
     case PseudoValid:
     case PseudoInvalid:
     case PseudoIndeterminate:
@@ -604,7 +608,7 @@ bool CSSSelector::operator==(const CSSSelector& other) const
     return true;
 }
 
-String CSSSelector::selectorText() const
+String CSSSelector::selectorText(const String& rightSide) const
 {
     StringBuilder str;
 
@@ -705,28 +709,26 @@ String CSSSelector::selectorText() const
     }
 
     if (const CSSSelector* tagHistory = cs->tagHistory()) {
-        String tagHistoryText = tagHistory->selectorText();
         switch (cs->relation()) {
         case CSSSelector::Descendant:
-            return tagHistoryText + " " + str.toString();
+            return tagHistory->selectorText(" " + str.toString() + rightSide);
         case CSSSelector::Child:
-            return tagHistoryText + " > " + str.toString();
+            return tagHistory->selectorText(" > " + str.toString() + rightSide);
         case CSSSelector::DirectAdjacent:
-            return tagHistoryText + " + " + str.toString();
+            return tagHistory->selectorText(" + " + str.toString() + rightSide);
         case CSSSelector::IndirectAdjacent:
-            return tagHistoryText + " ~ " + str.toString();
+            return tagHistory->selectorText(" ~ " + str.toString() + rightSide);
         case CSSSelector::SubSelector:
             ASSERT_NOT_REACHED();
         case CSSSelector::ShadowDescendant:
-            return tagHistoryText + str.toString();
+            return tagHistory->selectorText(str.toString() + rightSide);
 #if ENABLE(SHADOW_DOM)
         case CSSSelector::ShadowDistributed:
-            return tagHistoryText + "::-webkit-distributed(" + str.toString() + ")";
+            return tagHistory->selectorText("::-webkit-distributed(" + str.toString() + rightSide + ")");
 #endif
         }
     }
-
-    return str.toString();
+    return str.toString() + rightSide;
 }
 
 void CSSSelector::setAttribute(const QualifiedName& value)

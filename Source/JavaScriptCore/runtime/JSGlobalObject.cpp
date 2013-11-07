@@ -69,6 +69,7 @@
 #include "NativeErrorPrototype.h"
 #include "NumberConstructor.h"
 #include "NumberPrototype.h"
+#include "ObjCCallbackFunction.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
 #include "Operations.h"
@@ -230,7 +231,10 @@ void JSGlobalObject::reset(JSValue prototype)
     m_argumentsStructure.set(exec->globalData(), this, Arguments::createStructure(exec->globalData(), this, m_objectPrototype.get()));
     m_callbackConstructorStructure.set(exec->globalData(), this, JSCallbackConstructor::createStructure(exec->globalData(), this, m_objectPrototype.get()));
     m_callbackObjectStructure.set(exec->globalData(), this, JSCallbackObject<JSDestructibleObject>::createStructure(exec->globalData(), this, m_objectPrototype.get()));
+#if JSC_OBJC_API_ENABLED
+    m_objcCallbackFunctionStructure.set(exec->globalData(), this, ObjCCallbackFunction::createStructure(exec->globalData(), this, m_functionPrototype.get()));
     m_objcWrapperObjectStructure.set(exec->globalData(), this, JSCallbackObject<JSAPIWrapperObject>::createStructure(exec->globalData(), this, m_objectPrototype.get()));
+#endif
 
     m_arrayPrototype.set(exec->globalData(), this, ArrayPrototype::create(exec, this, ArrayPrototype::createStructure(exec->globalData(), this, m_objectPrototype.get())));
     
@@ -513,7 +517,10 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_callbackConstructorStructure);
     visitor.append(&thisObject->m_callbackFunctionStructure);
     visitor.append(&thisObject->m_callbackObjectStructure);
+#if JSC_OBJC_API_ENABLED
+    visitor.append(&thisObject->m_objcCallbackFunctionStructure);
     visitor.append(&thisObject->m_objcWrapperObjectStructure);
+#endif
     visitor.append(&thisObject->m_dateStructure);
     visitor.append(&thisObject->m_nullPrototypeObjectStructure);
     visitor.append(&thisObject->m_errorStructure);
@@ -590,6 +597,8 @@ DynamicGlobalObjectScope::DynamicGlobalObjectScope(JSGlobalData& globalData, JSG
         // to observe time zone changes.
         globalData.resetDateCache();
     }
+    // Clear the exception stack between entries
+    globalData.exceptionStack = RefCountedArray<StackFrame>();
 }
 
 void slowValidateCell(JSGlobalObject* globalObject)

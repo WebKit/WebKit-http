@@ -28,6 +28,8 @@
 
 #include "CSSStyleDeclaration.h"
 #include <wtf/HashMap.h>
+#include <wtf/OwnPtr.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -90,6 +92,7 @@ public:
     {
         return adoptRef(new StyleRuleCSSStyleDeclaration(propertySet, parentRule));
     }
+    virtual ~StyleRuleCSSStyleDeclaration();
 
     void clearParentRule() { m_parentRule = 0; }
     
@@ -102,7 +105,6 @@ public:
 
 private:
     StyleRuleCSSStyleDeclaration(StylePropertySet*, CSSRule*);
-    virtual ~StyleRuleCSSStyleDeclaration();
 
     virtual CSSStyleSheet* parentStyleSheet() const OVERRIDE;
 

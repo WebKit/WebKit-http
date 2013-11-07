@@ -40,7 +40,6 @@
 #include "HTMLSourceElement.h"
 #include "HTMLVideoElement.h"
 #include "KeyboardEvent.h"
-#include "MainResourceLoader.h"
 #include "NodeList.h"
 #include "RawDataDocumentParser.h"
 #include "ScriptController.h"
@@ -106,7 +105,7 @@ void MediaDocumentParser::createDocumentStructure()
     if (!frame)
         return;
 
-    frame->loader()->activeDocumentLoader()->mainResourceLoader()->setDataBufferingPolicy(DoNotBufferData);
+    frame->loader()->activeDocumentLoader()->setMainResourceDataBufferingPolicy(DoNotBufferData);
 }
 
 void MediaDocumentParser::appendBytes(DocumentWriter*, const char*, size_t)
@@ -167,7 +166,6 @@ void MediaDocument::defaultEventHandler(Event* event)
     if (!targetNode)
         return;
 
-#if !PLATFORM(CHROMIUM)
     if (HTMLVideoElement* video = ancestorVideoElement(targetNode)) {
         if (event->type() == eventNames().clickEvent) {
             if (!video->canPlay()) {
@@ -181,7 +179,6 @@ void MediaDocument::defaultEventHandler(Event* event)
             }
         }
     }
-#endif
 
     if (event->type() == eventNames().keydownEvent && event->isKeyboardEvent()) {
         HTMLVideoElement* video = descendentVideoElement(targetNode);

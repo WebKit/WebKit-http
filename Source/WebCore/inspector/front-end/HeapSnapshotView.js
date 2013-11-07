@@ -100,7 +100,7 @@ WebInspector.HeapSnapshotView = function(parent, profile)
     this.retainmentView.show(this.element);
     this.retainmentDataGrid.reset();
 
-    this.dataGrid = this.constructorsDataGrid;
+    this.dataGrid = /** @type {WebInspector.HeapSnapshotSortableDataGrid} */ (this.constructorsDataGrid);
     this.currentView = this.constructorsView;
 
     this.viewSelectElement = document.createElement("select");
@@ -686,6 +686,7 @@ WebInspector.HeapSnapshotView.prototype = {
         this.viewsContainer.style.bottom = (height + this.retainmentViewHeader.clientHeight) + "px";
         this.retainmentView.element.style.height = height + "px";
         this.retainmentViewHeader.style.bottom = height + "px";
+        this.currentView.doResize();
     },
 
     _updateBaseOptions: function()

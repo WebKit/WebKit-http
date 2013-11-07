@@ -379,6 +379,8 @@ private:
                 // We must assume that the PutByVal will clobber the location we're getting from.
                 // FIXME: We can do better; if we know that the PutByVal is accessing an array of a
                 // different type than the GetByVal, then we know that they won't clobber each other.
+                // ... except of course for typed arrays, where all typed arrays clobber all other
+                // typed arrays!  An Int32Array can alias a Float64Array for example, and so on.
                 return 0;
             }
             case PutStructure:
@@ -566,7 +568,6 @@ private:
             case NewFunctionExpression:
             case CreateActivation:
             case TearOffActivation:
-            case StrCat:
             case ToPrimitive:
             case NewRegexp:
             case NewArrayBuffer:
@@ -576,6 +577,9 @@ private:
             case AllocatePropertyStorage:
             case ReallocatePropertyStorage:
             case TypeOf:
+            case ToString:
+            case NewStringObject:
+            case MakeRope:
                 return 0;
                 
             case GetIndexedPropertyStorage:
@@ -965,7 +969,7 @@ private:
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
             dataLog("   Eliminating edge @", m_currentNode->index(), " -> @", edge->index());
 #endif
-            node->children.removeEdgeFromBag(i--);
+            node->children.removeEdge(i--);
             m_changed = true;
         }
     }
@@ -1028,11 +1032,11 @@ private:
 #endif
         
         // NOTE: there are some nodes that we deliberately don't CSE even though we
-        // probably could, like StrCat and ToPrimitive. That's because there is no
+        // probably could, like MakeRope and ToPrimitive. That's because there is no
         // evidence that doing CSE on these nodes would result in a performance
         // progression. Hence considering these nodes in CSE would just mean that this
         // code does more work with no win. Of course, we may want to reconsider this,
-        // since StrCat is trivially CSE-able. It's not trivially doable for
+        // since MakeRope is trivially CSE-able. It's not trivially doable for
         // ToPrimitive, but we could change that with some speculations if we really
         // needed to.
         

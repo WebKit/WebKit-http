@@ -48,16 +48,12 @@ class SharedBuffer;
 
 #if USE(CG)
 typedef CGImageSourceRef NativeImageDecoderPtr;
-#elif !PLATFORM(CHROMIUM)
+#else
 class ImageDecoder;
 typedef ImageDecoder* NativeImageDecoderPtr;
 #endif
 
-#if PLATFORM(CHROMIUM)
-class DeferredImageDecoder;
-typedef DeferredImageDecoder NativeImageDecoder;
-typedef DeferredImageDecoder* NativeImageDecoderPtr;
-#elif USE(CG)
+#if USE(CG)
 #define NativeImageDecoder ImageDecoder
 #else
 typedef ImageDecoder NativeImageDecoder;
@@ -149,7 +145,7 @@ public:
 
     // Callers should not call this after calling clear() with a higher index;
     // see comments on clear() above.
-    NativeImagePtr createFrameAtIndex(size_t);
+    PassNativeImagePtr createFrameAtIndex(size_t);
 
     float frameDurationAtIndex(size_t);
     bool frameHasAlphaAtIndex(size_t); // Whether or not the frame actually used any alpha.

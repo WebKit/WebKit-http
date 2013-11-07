@@ -367,6 +367,13 @@ private:
     unsigned m_currentOffset;
 };
 
+static inline void setAttributes(Element* element, Vector<Attribute>& attributeVector, ParserContentPolicy parserContentPolicy)
+{
+    if (!scriptingContentIsAllowed(parserContentPolicy))
+        element->stripScriptingAttributes(attributeVector);
+    element->parserSetAttributes(attributeVector);
+}
+
 static void switchToUTF16(xmlParserCtxtPtr ctxt)
 {
     // Hack around libxml2's lack of encoding overide support by manually
@@ -563,12 +570,11 @@ XMLDocumentParser::XMLDocumentParser(Document* document, FrameView* frameView)
     , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(false)
-    , m_scriptingPermission(AllowScriptingContent)
 {
 }
 
-XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parentElement, FragmentScriptingPermission scriptingPermission)
-    : ScriptableDocumentParser(fragment->document())
+XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parentElement, ParserContentPolicy parserContentPolicy)
+    : ScriptableDocumentParser(fragment->document(), parserContentPolicy)
     , m_view(0)
     , m_context(0)
     , m_pendingCallbacks(PendingCallbacks::create())
@@ -587,7 +593,6 @@ XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parent
     , m_pendingScript(0)
     , m_scriptStartPosition(TextPosition::belowRangePosition())
     , m_parsingFragment(true)
-    , m_scriptingPermission(scriptingPermission)
 {
     fragment->ref();
 
@@ -599,7 +604,7 @@ XMLDocumentParser::XMLDocumentParser(DocumentFragment* fragment, Element* parent
         ContainerNode* n = parentElement->parentNode();
         if (!n || !n->isElementNode())
             break;
-        parentElement = static_cast<Element*>(n);
+        parentElement = toElement(n);
     }
 
     if (elemStack.isEmpty())
@@ -700,7 +705,7 @@ struct _xmlSAX2Namespace {
 };
 typedef struct _xmlSAX2Namespace xmlSAX2Namespace;
 
-static inline void handleNamespaceAttributes(Vector<Attribute, 8>& prefixedAttributes, const xmlChar** libxmlNamespaces, int nb_namespaces, ExceptionCode& ec)
+static inline void handleNamespaceAttributes(Vector<Attribute>& prefixedAttributes, const xmlChar** libxmlNamespaces, int nb_namespaces, ExceptionCode& ec)
 {
     xmlSAX2Namespace* namespaces = reinterpret_cast<xmlSAX2Namespace*>(libxmlNamespaces);
     for (int i = 0; i < nb_namespaces; i++) {
@@ -726,7 +731,7 @@ struct _xmlSAX2Attributes {
 };
 typedef struct _xmlSAX2Attributes xmlSAX2Attributes;
 
-static inline void handleElementAttributes(Vector<Attribute, 8>& prefixedAttributes, const xmlChar** libxmlAttributes, int nb_attributes, ExceptionCode& ec)
+static inline void handleElementAttributes(Vector<Attribute>& prefixedAttributes, const xmlChar** libxmlAttributes, int nb_attributes, ExceptionCode& ec)
 {
     xmlSAX2Attributes* attributes = reinterpret_cast<xmlSAX2Attributes*>(libxmlAttributes);
     for (int i = 0; i < nb_attributes; i++) {
@@ -797,17 +802,17 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
         return;
     }
 
-    Vector<Attribute, 8> prefixedAttributes;
+    Vector<Attribute> prefixedAttributes;
     ExceptionCode ec = 0;
     handleNamespaceAttributes(prefixedAttributes, libxmlNamespaces, nb_namespaces, ec);
     if (ec) {
-        newElement->parserSetAttributes(prefixedAttributes, m_scriptingPermission);
+        setAttributes(newElement.get(), prefixedAttributes, parserContentPolicy());
         stopParsing();
         return;
     }
 
     handleElementAttributes(prefixedAttributes, libxmlAttributes, nb_attributes, ec);
-    newElement->parserSetAttributes(prefixedAttributes, m_scriptingPermission);
+    setAttributes(newElement.get(), prefixedAttributes, parserContentPolicy());
     if (ec) {
         stopParsing();
         return;
@@ -815,12 +820,13 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
 
     newElement->beginParsingChildren();
 
-    ScriptElement* scriptElement = toScriptElement(newElement.get());
+    ScriptElement* scriptElement = toScriptElementIfPossible(newElement.get());
     if (scriptElement)
         m_scriptStartPosition = textPosition();
 
     m_currentNode->parserAppendChild(newElement.get());
 
+    const ContainerNode* currentNode = m_currentNode;
 #if ENABLE(TEMPLATE_ELEMENT)
     if (newElement->hasTagName(HTMLNames::templateTag))
         pushCurrentNode(toHTMLTemplateElement(newElement.get())->content());
@@ -830,7 +836,7 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
     pushCurrentNode(newElement.get());
 #endif
 
-    if (m_view && !newElement->attached())
+    if (m_view && currentNode->attached() && !newElement->attached())
         newElement->attach();
 
     if (newElement->hasTagName(HTMLNames::htmlTag))
@@ -863,7 +869,7 @@ void XMLDocumentParser::endElementNs()
     if (hackAroundLibXMLEntityParsingBug() && context()->depth <= depthTriggeringEntityExpansion())
         setDepthTriggeringEntityExpansion(-1);
 
-    if (!scriptingContentIsAllowed(m_scriptingPermission) && n->isElementNode() && toScriptElement(static_cast<Element*>(n.get()))) {
+    if (!scriptingContentIsAllowed(parserContentPolicy()) && n->isElementNode() && toScriptElementIfPossible(toElement(n.get()))) {
         popCurrentNode();
         n->remove(IGNORE_EXCEPTION);
         return;
@@ -874,7 +880,7 @@ void XMLDocumentParser::endElementNs()
         return;
     }
 
-    Element* element = static_cast<Element*>(n.get());
+    Element* element = toElement(n.get());
 
     // The element's parent may have already been removed from document.
     // Parsing continues in this case, but scripts aren't executed.
@@ -883,7 +889,7 @@ void XMLDocumentParser::endElementNs()
         return;
     }
 
-    ScriptElement* scriptElement = toScriptElement(element);
+    ScriptElement* scriptElement = toScriptElementIfPossible(element);
     if (!scriptElement) {
         popCurrentNode();
         return;
@@ -1291,7 +1297,9 @@ static void externalSubsetHandler(void* closure, const xmlChar*, const xmlChar* 
         || (extId == "-//W3C//DTD XHTML Basic 1.0//EN")
         || (extId == "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN")
         || (extId == "-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN")
-        || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.0//EN"))
+        || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.0//EN")
+        || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.1//EN")
+        || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.2//EN"))
         getParser(closure)->setIsXHTMLDocument(true); // controls if we replace entities or not.
 }
 

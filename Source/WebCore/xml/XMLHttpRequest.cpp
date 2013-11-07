@@ -38,9 +38,10 @@
 #include "File.h"
 #include "HTMLDocument.h"
 #include "HTTPParsers.h"
-#include "HTTPValidation.h"
 #include "HistogramSupport.h"
 #include "InspectorInstrumentation.h"
+#include "JSDOMBinding.h"
+#include "JSDOMWindow.h"
 #include "MemoryCache.h"
 #include "ParsedContentType.h"
 #include "ResourceError.h"
@@ -57,6 +58,9 @@
 #include "XMLHttpRequestProgressEvent.h"
 #include "XMLHttpRequestUpload.h"
 #include "markup.h"
+#include <heap/Strong.h>
+#include <runtime/JSLock.h>
+#include <runtime/Operations.h>
 #include <wtf/ArrayBuffer.h>
 #include <wtf/ArrayBufferView.h>
 #include <wtf/RefCountedLeakCounter.h>
@@ -66,14 +70,6 @@
 
 #if ENABLE(RESOURCE_TIMING)
 #include "CachedResourceRequestInitiators.h"
-#endif
-
-#if USE(JSC)
-#include "JSDOMBinding.h"
-#include "JSDOMWindow.h"
-#include <heap/Strong.h>
-#include <runtime/JSLock.h>
-#include <runtime/Operations.h>
 #endif
 
 namespace WebCore {
@@ -180,7 +176,7 @@ PassRefPtr<XMLHttpRequest> XMLHttpRequest::create(ScriptExecutionContext* contex
 }
 
 XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext* context, PassRefPtr<SecurityOrigin> securityOrigin)
-    : ActiveDOMObject(context, this)
+    : ActiveDOMObject(context)
     , m_async(true)
     , m_includeCredentials(false)
 #if ENABLE(XHR_TIMEOUT)
@@ -379,7 +375,7 @@ void XMLHttpRequest::setResponseType(const String& responseType, ExceptionCode& 
     else if (responseType == "arraybuffer")
         m_responseTypeCode = ResponseTypeArrayBuffer;
     else
-        logConsoleError(scriptExecutionContext(), "XMLHttpRequest.responseType \"" + responseType + "\" is not supported.");
+        ASSERT_NOT_REACHED();
 }
 
 String XMLHttpRequest::responseType()
@@ -769,7 +765,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
 
     ResourceRequest request(m_url);
     request.setHTTPMethod(m_method);
-#if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY)
     request.setTargetType(ResourceRequest::TargetIsXHR);
 #endif
 
@@ -937,7 +933,6 @@ void XMLHttpRequest::abortError()
 
 void XMLHttpRequest::dropProtection()
 {
-#if USE(JSC)
     // The XHR object itself holds on to the responseText, and
     // thus has extra cost even independent of any
     // responseText or responseXML objects it has handed
@@ -947,7 +942,6 @@ void XMLHttpRequest::dropProtection()
     JSC::JSGlobalData* globalData = scriptExecutionContext()->globalData();
     JSC::JSLockHolder lock(globalData);
     globalData->heap.reportExtraMemoryCost(m_responseBuilder.length() * 2);
-#endif
 
     unsetPendingActivity(this);
 }
@@ -1326,7 +1320,6 @@ EventTargetData* XMLHttpRequest::ensureEventTargetData()
 void XMLHttpRequest::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    ScriptWrappable::reportMemoryUsage(memoryObjectInfo);
     ActiveDOMObject::reportMemoryUsage(memoryObjectInfo);
     info.addMember(m_upload, "upload");
     info.addMember(m_url, "url");

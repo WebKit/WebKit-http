@@ -48,19 +48,25 @@ public:
     DocumentLoader* documentLoader() const { return m_cachedMainFrame->documentLoader(); }
 
     double timeStamp() const { return m_timeStamp; }
+    bool hasExpired() const;
     
     CachedFrame* cachedMainFrame() { return m_cachedMainFrame.get(); }
 
     void markForVistedLinkStyleRecalc() { m_needStyleRecalcForVisitedLinks = true; }
     void markForFullStyleRecalc() { m_needsFullStyleRecalc = true; }
+#if ENABLE(VIDEO_TRACK)
+    void markForCaptionPreferencesChanged() { m_needsCaptionPreferencesChanged = true; }
+#endif
 
 private:
     CachedPage(Page*);
 
     double m_timeStamp;
+    double m_expirationTime;
     RefPtr<CachedFrame> m_cachedMainFrame;
     bool m_needStyleRecalcForVisitedLinks;
     bool m_needsFullStyleRecalc;
+    bool m_needsCaptionPreferencesChanged;
 };
 
 } // namespace WebCore

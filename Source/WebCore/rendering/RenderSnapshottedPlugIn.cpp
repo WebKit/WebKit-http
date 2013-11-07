@@ -44,8 +44,9 @@
 namespace WebCore {
 
 RenderSnapshottedPlugIn::RenderSnapshottedPlugIn(HTMLPlugInImageElement* element)
-    : RenderBlock(element)
+    : RenderEmbeddedObject(element)
     , m_snapshotResource(RenderImageResource::create())
+    , m_isPotentialMouseActivation(false)
 {
     m_snapshotResource->initialize(this);
 }
@@ -66,7 +67,7 @@ void RenderSnapshottedPlugIn::layout()
     StackStats::LayoutCheckPoint layoutCheckPoint;
     LayoutSize oldSize = contentBoxRect().size();
 
-    RenderBlock::layout();
+    RenderEmbeddedObject::layout();
 
     LayoutSize newSize = contentBoxRect().size();
     if (newSize == oldSize)
@@ -88,11 +89,24 @@ void RenderSnapshottedPlugIn::updateSnapshot(PassRefPtr<Image> image)
 
 void RenderSnapshottedPlugIn::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (paintInfo.phase == PaintPhaseForeground && plugInImageElement()->displayState() < HTMLPlugInElement::PlayingWithPendingMouseClick) {
+    if (paintInfo.phase == PaintPhaseForeground && plugInImageElement()->displayState() < HTMLPlugInElement::Restarting) {
         paintSnapshot(paintInfo, paintOffset);
     }
 
-    RenderBlock::paint(paintInfo, paintOffset);
+    PaintPhase newPhase = (paintInfo.phase == PaintPhaseChildOutlines) ? PaintPhaseOutline : paintInfo.phase;
+    newPhase = (newPhase == PaintPhaseChildBlockBackgrounds) ? PaintPhaseChildBlockBackground : newPhase;
+
+    PaintInfo paintInfoForChild(paintInfo);
+    paintInfoForChild.phase = newPhase;
+    paintInfoForChild.updatePaintingRootForChildren(this);
+
+    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+        LayoutPoint childPoint = flipForWritingModeForChild(child, paintOffset);
+        if (!child->hasSelfPaintingLayer() && !child->isFloating())
+            child->paint(paintInfoForChild, childPoint);
+    }
+
+    RenderEmbeddedObject::paint(paintInfo, paintOffset);
 }
 
 void RenderSnapshottedPlugIn::paintSnapshot(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -127,11 +141,11 @@ void RenderSnapshottedPlugIn::paintSnapshot(PaintInfo& paintInfo, const LayoutPo
 
 CursorDirective RenderSnapshottedPlugIn::getCursor(const LayoutPoint& point, Cursor& overrideCursor) const
 {
-    if (plugInImageElement()->displayState() < HTMLPlugInElement::PlayingWithPendingMouseClick) {
+    if (plugInImageElement()->displayState() < HTMLPlugInElement::Restarting) {
         overrideCursor = handCursor();
         return SetCursor;
     }
-    return RenderBlock::getCursor(point, overrideCursor);
+    return RenderEmbeddedObject::getCursor(point, overrideCursor);
 }
 
 void RenderSnapshottedPlugIn::handleEvent(Event* event)
@@ -141,17 +155,28 @@ void RenderSnapshottedPlugIn::handleEvent(Event* event)
 
     MouseEvent* mouseEvent = static_cast<MouseEvent*>(event);
 
-    if (event->type() == eventNames().clickEvent) {
-        if (mouseEvent->button() != LeftButton)
-            return;
+    // If we're a snapshotted plugin, we want to make sure we activate on
+    // clicks even if the page is preventing our default behaviour. Otherwise
+    // we can never restart. One we do restart, then the page will happily
+    // block the new plugin in the normal renderer. All this means we have to
+    // be on the lookout for a mouseup event that comes after a mousedown
+    // event. The code below is not completely foolproof, but the worst that
+    // could happen is that a snapshotted plugin restarts.
 
-        plugInImageElement()->setDisplayState(HTMLPlugInElement::PlayingWithPendingMouseClick);
-        plugInImageElement()->userDidClickSnapshot(mouseEvent);
+    if (event->type() == eventNames().mouseoutEvent)
+        m_isPotentialMouseActivation = false;
+
+    if (mouseEvent->button() != LeftButton)
+        return;
+
+    if (event->type() == eventNames().clickEvent || (m_isPotentialMouseActivation && event->type() == eventNames().mouseupEvent)) {
+        m_isPotentialMouseActivation = false;
+        bool clickWasOnLabel = plugInImageElement()->partOfSnapshotLabel(event->target()->toNode());
+        plugInImageElement()->setDisplayState(clickWasOnLabel ? HTMLPlugInElement::Restarting : HTMLPlugInElement::RestartingWithPendingMouseClick);
+        plugInImageElement()->userDidClickSnapshot(mouseEvent, !clickWasOnLabel);
         event->setDefaultHandled();
     } else if (event->type() == eventNames().mousedownEvent) {
-        if (mouseEvent->button() != LeftButton)
-            return;
-
+        m_isPotentialMouseActivation = true;
         event->setDefaultHandled();
     }
 }

@@ -385,6 +385,12 @@ String AXDefinitionText()
     return String();
 }
 
+String AXDescriptionListText()
+{
+    notImplemented();
+    return String();
+}
+
 String AXDescriptionListTermText()
 {
     notImplemented();
@@ -722,6 +728,26 @@ String validationMessageBadInputForNumberText()
     notImplemented();
     return validationMessageTypeMismatchText();
 }
+
+#if ENABLE(VIDEO_TRACK)
+String textTrackSubtitlesText()
+{
+    notImplemented();
+    return String();
+}
+
+String textTrackOffText()
+{
+    notImplemented();
+    return String();
+}
+
+String textTrackNoLabelText()
+{
+    notImplemented();
+    return String();
+}
+#endif
 
 String snapshottedPlugInLabelTitle()
 {

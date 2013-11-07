@@ -49,9 +49,8 @@ static const char* inspectorFilesBasePath()
     if (environmentPath && g_file_test(environmentPath, G_FILE_TEST_IS_DIR))
         return environmentPath;
 
-    static const char* inspectorFilesPath = DATA_DIR""G_DIR_SEPARATOR_S
-                                            "webkitgtk-"WEBKITGTK_API_VERSION_STRING""G_DIR_SEPARATOR_S
-                                            "webinspector"G_DIR_SEPARATOR_S;
+    static const char* inspectorFilesPath = DATA_DIR G_DIR_SEPARATOR_S "webkitgtk-" WEBKITGTK_API_VERSION_STRING
+        G_DIR_SEPARATOR_S "webinspector" G_DIR_SEPARATOR_S;
     return inspectorFilesPath;
 }
 
@@ -126,6 +125,11 @@ void WebInspectorProxy::platformDidClose()
     m_inspectorView = 0;
 }
 
+void WebInspectorProxy::platformHide()
+{
+    notImplemented();
+}
+
 void WebInspectorProxy::platformBringToFront()
 {
     if (m_client.bringToFront(this))
@@ -174,6 +178,12 @@ unsigned WebInspectorProxy::platformInspectedWindowHeight()
     return allocation.height;
 }
 
+unsigned WebInspectorProxy::platformInspectedWindowWidth()
+{
+    notImplemented();
+    return 0;
+}
+
 void WebInspectorProxy::platformAttach()
 {
     GRefPtr<GtkWidget> inspectorView = m_inspectorView;
@@ -220,6 +230,11 @@ void WebInspectorProxy::platformSetAttachedWindowHeight(unsigned height)
 
     m_client.didChangeAttachedHeight(this, height);
     webkitWebViewBaseSetInspectorViewHeight(WEBKIT_WEB_VIEW_BASE(m_page->viewWidget()), height);
+}
+
+void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned)
+{
+    notImplemented();
 }
 
 void WebInspectorProxy::platformAttachAvailabilityChanged(bool)

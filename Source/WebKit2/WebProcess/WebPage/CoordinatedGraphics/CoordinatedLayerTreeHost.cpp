@@ -99,7 +99,6 @@ CoordinatedLayerTreeHost::CoordinatedLayerTreeHost(WebPage* webPage)
     // Create a root layer.
     m_rootLayer = GraphicsLayer::create(this, this);
     CoordinatedGraphicsLayer* coordinatedRootLayer = toCoordinatedGraphicsLayer(m_rootLayer.get());
-    coordinatedRootLayer->setRootLayer(true);
 #ifndef NDEBUG
     m_rootLayer->setName("CoordinatedLayerTreeHost root layer");
 #endif
@@ -253,26 +252,31 @@ void CoordinatedLayerTreeHost::sizeDidChange(const WebCore::IntSize& newSize)
     scheduleLayerFlush();
 }
 
-void CoordinatedLayerTreeHost::didInstallPageOverlay()
+void CoordinatedLayerTreeHost::didInstallPageOverlay(PageOverlay* pageOverlay)
 {
+    ASSERT(!m_pageOverlay);
+    m_pageOverlay = pageOverlay;
+
     createPageOverlayLayer();
     scheduleLayerFlush();
 }
 
-void CoordinatedLayerTreeHost::didUninstallPageOverlay()
+void CoordinatedLayerTreeHost::didUninstallPageOverlay(PageOverlay*)
 {
+    m_pageOverlay = 0;
+
     destroyPageOverlayLayer();
     scheduleLayerFlush();
 }
 
-void CoordinatedLayerTreeHost::setPageOverlayNeedsDisplay(const WebCore::IntRect& rect)
+void CoordinatedLayerTreeHost::setPageOverlayNeedsDisplay(PageOverlay*, const WebCore::IntRect& rect)
 {
     ASSERT(m_pageOverlayLayer);
     m_pageOverlayLayer->setNeedsDisplayInRect(rect);
     scheduleLayerFlush();
 }
 
-void CoordinatedLayerTreeHost::setPageOverlayOpacity(float value)
+void CoordinatedLayerTreeHost::setPageOverlayOpacity(PageOverlay*, float value)
 {
     ASSERT(m_pageOverlayLayer);
     m_pageOverlayLayer->setOpacity(value);
@@ -502,7 +506,7 @@ void CoordinatedLayerTreeHost::syncDisplayState()
 {
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER) && !USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     // Make sure that any previously registered animation callbacks are being executed before we flush the layers.
-    m_webPage->corePage()->mainFrame()->view()->serviceScriptedAnimations(convertSecondsToDOMTimeStamp(currentTime()));
+    m_webPage->corePage()->mainFrame()->view()->serviceScriptedAnimations(currentTime());
 #endif
 
     m_webPage->layoutIfNeeded();
@@ -618,7 +622,7 @@ void CoordinatedLayerTreeHost::paintContents(const WebCore::GraphicsLayer* graph
     if (graphicsLayer == m_pageOverlayLayer) {
         // Overlays contain transparent contents and won't clear the context as part of their rendering, so we do it here.
         graphicsContext.clearRect(clipRect);
-        m_webPage->drawPageOverlay(graphicsContext, clipRect);
+        m_webPage->drawPageOverlay(m_pageOverlay.get(), graphicsContext, clipRect);
         return;
     }
 }

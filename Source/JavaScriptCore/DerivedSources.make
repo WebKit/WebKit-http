@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2006, 2007, 2008, 2009, 2011, 2013 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -50,13 +50,11 @@ all : \
     NumberConstructor.lut.h \
     NumberPrototype.lut.h \
     ObjectConstructor.lut.h \
-    ObjectPrototype.lut.h \
     RegExpConstructor.lut.h \
     RegExpPrototype.lut.h \
     RegExpJitTables.h \
     RegExpObject.lut.h \
     StringConstructor.lut.h \
-    StringPrototype.lut.h \
     docs/bytecode.html \
     udis86_itab.h \
 #

@@ -30,6 +30,10 @@ static const char DEFAULT_URL[] = "http://www.google.com/";
 static const char APP_NAME[] = "EFL MiniBrowser";
 static const int TOOL_BAR_ICON_SIZE = 24;
 static const int TOOL_BAR_BUTTON_SIZE = 32;
+static const int SEARCH_FIELD_SIZE = 200;
+static const int SEARCH_BUTTON_SIZE = 25;
+static const int MAX_SEARCH_COUNT = 100;
+static const int DEFAULT_SEARCH_FLAGS = EWK_FIND_OPTIONS_SHOW_HIGHLIGHT | EWK_FIND_OPTIONS_CASE_INSENSITIVE | EWK_FIND_OPTIONS_WRAP_AROUND;
 static const double TOOLTIP_DELAY_SECONDS = 1.0;
 
 #define info(format, args...)       \
@@ -91,6 +95,16 @@ typedef struct _Browser_Window {
     Evas_Object *url_bar;
     Evas_Object *back_button;
     Evas_Object *forward_button;
+    struct {
+        Evas_Object *elm_menu;
+        Ewk_Popup_Menu *ewk_menu;
+    } popup;
+    struct {
+        Evas_Object *search_bar;
+        Evas_Object *search_field;
+        Evas_Object *backward_button;
+        Evas_Object *forward_button;
+    } search;
     int current_zoom_level; 
     Tooltip_Information tooltip;
 } Browser_Window;
@@ -263,6 +277,37 @@ static void window_close(Browser_Window *window)
 }
 
 static void
+search_box_show(Browser_Window *window)
+{
+    evas_object_size_hint_min_set(window->search.search_bar, SEARCH_FIELD_SIZE + 2 * SEARCH_BUTTON_SIZE, SEARCH_BUTTON_SIZE);
+
+    evas_object_show(window->search.search_bar);
+    evas_object_show(window->search.search_field);
+    evas_object_show(window->search.backward_button);
+    evas_object_show(window->search.forward_button);
+
+    /* Grab focus from the view */
+    evas_object_focus_set(window->ewk_view, EINA_FALSE);
+    elm_object_focus_set(window->search.search_field, EINA_TRUE);
+}
+
+static void
+search_box_hide(Browser_Window *window)
+{
+    ewk_view_text_find_highlight_clear(window->ewk_view);
+
+    evas_object_size_hint_min_set(window->search.search_bar, SEARCH_FIELD_SIZE + 2 * SEARCH_BUTTON_SIZE, 0);
+    evas_object_hide(window->search.search_bar);
+    evas_object_hide(window->search.search_field);
+    evas_object_hide(window->search.backward_button);
+    evas_object_hide(window->search.forward_button);
+
+    /* Give focus back to the view */
+    elm_object_focus_set(window->search.search_field, EINA_FALSE);
+    evas_object_focus_set(window->ewk_view, EINA_TRUE);
+}
+
+static void
 on_key_down(void *user_data, Evas *e, Evas_Object *ewk_view, void *event_info)
 {
     Browser_Window *window = (Browser_Window *)user_data;
@@ -316,8 +361,13 @@ on_key_down(void *user_data, Evas *e, Evas_Object *ewk_view, void *event_info)
     } else if (!strcmp(ev->key, "i") && ctrlPressed) {
         info("Show Inspector (Ctrl+i) was pressed.\n");
         ewk_view_inspector_show(ewk_view);
+    } else if (!strcmp(ev->key, "f") && ctrlPressed) {
+        info("Show Search Box (Ctrl+f) was pressed.\n");
+        search_box_show(window);
     } else if (!strcmp(ev->key, "Escape")) {
-        if (elm_win_fullscreen_get(window->elm_window))
+        if (evas_object_visible_get(window->search.search_bar))
+            search_box_hide(window);
+        else if (elm_win_fullscreen_get(window->elm_window))
             ewk_view_fullscreen_exit(ewk_view);
     } else if (ctrlPressed && (!strcmp(ev->key, "minus") || !strcmp(ev->key, "KP_Subtract"))) {
         if (zoom_level_set(ewk_view, window->current_zoom_level - 1))
@@ -397,6 +447,8 @@ on_url_changed(void *user_data, Evas_Object *ewk_view, void *event_info)
     elm_entry_entry_set(window->url_bar, url);
 
     free(url);
+
+    search_box_hide(window);
 }
 
 static void
@@ -615,6 +667,41 @@ on_url_bar_clicked(void *user_data, Evas_Object *url_bar, void *event_info)
 }
 
 static void
+on_search_field_aborted(void *user_data, Evas_Object *search_field, void *event_info)
+{
+    Browser_Window *window = (Browser_Window *)user_data;
+    search_box_hide(window);
+
+    /* Give focus back to the view */
+    view_focus_set(window, EINA_TRUE);
+}
+
+static void
+on_search_field_activated(void *user_data, Evas_Object *search_field, void *event_info)
+{
+    Browser_Window *window = (Browser_Window *)user_data;
+
+    const char *markup_text = elm_entry_entry_get(search_field);
+    char *text = elm_entry_markup_to_utf8(markup_text);
+    ewk_view_text_find(window->ewk_view, text, DEFAULT_SEARCH_FLAGS, MAX_SEARCH_COUNT);
+    free(text);
+
+    /* Grab focus from the view */
+    evas_object_focus_set(window->ewk_view, EINA_FALSE);
+    elm_object_focus_set(search_field, EINA_TRUE);
+}
+
+static void
+on_search_field_clicked(void *user_data, Evas_Object *search_field, void *event_info)
+{
+    Browser_Window *window = (Browser_Window *)user_data;
+
+    /* Grab focus from the view */
+    evas_object_focus_set(window->ewk_view, EINA_FALSE);
+    elm_object_focus_set(search_field, EINA_TRUE);
+}
+
+static void
 on_back_button_clicked(void *user_data, Evas_Object *back_button, void *event_info)
 {
     Browser_Window *window = (Browser_Window *)user_data;
@@ -632,6 +719,26 @@ on_forward_button_clicked(void *user_data, Evas_Object *forward_button, void *ev
     ewk_view_forward(window->ewk_view);
     /* Update forward button state */
     elm_object_disabled_set(forward_button, !ewk_view_forward_possible(window->ewk_view));
+}
+
+static void
+on_search_backward_button_clicked(void *user_data, Evas_Object *search_backward_button, void *event_info)
+{
+    Browser_Window *window = (Browser_Window *)user_data;
+
+    char *text = elm_entry_markup_to_utf8(elm_entry_entry_get(window->search.search_field));
+    ewk_view_text_find(window->ewk_view, text, DEFAULT_SEARCH_FLAGS | EWK_FIND_OPTIONS_BACKWARDS, MAX_SEARCH_COUNT);
+    free(text);
+}
+
+static void
+on_search_forward_button_clicked(void *user_data, Evas_Object *search_forward_button, void *event_info)
+{
+    Browser_Window *window = (Browser_Window *)user_data;
+
+    char *text = elm_entry_markup_to_utf8(elm_entry_entry_get(window->search.search_field));
+    ewk_view_text_find(window->ewk_view, text, DEFAULT_SEARCH_FLAGS, MAX_SEARCH_COUNT);
+    free(text);
 }
 
 static void
@@ -781,6 +888,95 @@ on_javascript_prompt(Ewk_View_Smart_Data *smartData, const char *message, const 
     return prompt_text;
 }
 
+static void
+on_popup_menu_discarded(void *user_data, Evas_Object *obj, void *event_info)
+{
+    // The user clicked outside the menu to discard it.
+    info("Popup menu was discarded.\n");
+    Browser_Window *window = (Browser_Window *)user_data;
+    ewk_popup_menu_close(window->popup.ewk_menu);
+}
+
+static void
+on_popup_menu_item_clicked(void *user_data, Evas_Object *obj, void *event_info)
+{
+    Browser_Window *window = (Browser_Window *)user_data;
+    Elm_Object_Item *item = (Elm_Object_Item *)event_info;
+
+    info("Selected popup menu index: %u\n", elm_menu_item_index_get(item));
+    ewk_popup_menu_selected_index_set(window->popup.ewk_menu, elm_menu_item_index_get(item));
+
+    // Close popup menu.
+    ewk_popup_menu_close(window->popup.ewk_menu);
+}
+
+static void
+popup_menu_populate(Evas_Object *elm_menu, Ewk_Popup_Menu *ewk_menu, void *user_data)
+{
+    const Eina_List* ewk_items = ewk_popup_menu_items_get(ewk_menu);
+
+    void *data;
+    const Eina_List *l;
+    EINA_LIST_FOREACH(ewk_items, l, data) {
+        Ewk_Popup_Menu_Item *ewk_item = (Ewk_Popup_Menu_Item *)data;
+        switch (ewk_popup_menu_item_type_get(ewk_item)) {
+        case EWK_POPUP_MENU_SEPARATOR:
+            elm_menu_item_separator_add(elm_menu, NULL);
+            break;
+        case EWK_POPUP_MENU_ITEM:
+            if (ewk_popup_menu_item_is_label_get(ewk_item)) {
+                Elm_Object_Item *item = elm_menu_item_add(elm_menu, NULL, NULL, ewk_popup_menu_item_text_get(ewk_item), NULL, NULL);
+                elm_object_item_disabled_set(item, EINA_TRUE);
+            } else {
+                Elm_Object_Item *item = elm_menu_item_add(elm_menu, NULL, NULL, ewk_popup_menu_item_text_get(ewk_item), on_popup_menu_item_clicked, user_data);
+                const char *tooltip_text = ewk_popup_menu_item_tooltip_get(ewk_item);
+                if (tooltip_text && tooltip_text[0] != '\0')
+                    elm_object_item_tooltip_text_set(item, tooltip_text);
+                elm_object_item_disabled_set(item, !ewk_popup_menu_item_enabled_get(ewk_item));
+                elm_menu_item_selected_set(item, ewk_popup_menu_item_selected_get(ewk_item));
+            }
+            break;
+        default:
+            info("Unrecognized popup menu item type!\n");
+            break;
+        }
+    }
+}
+
+static Eina_Bool
+on_popup_menu_show(Ewk_View_Smart_Data *smartData, Eina_Rectangle rect, Ewk_Text_Direction text_direction, double page_scale_factor, Ewk_Popup_Menu *ewk_menu)
+{
+    Browser_Window *window = window_find_with_ewk_view(smartData->self);
+
+    if (window->popup.elm_menu)
+        evas_object_del(window->popup.elm_menu);
+
+    window->popup.elm_menu = elm_menu_add(window->elm_window);
+    window->popup.ewk_menu = ewk_menu;
+    evas_object_smart_callback_add(window->popup.elm_menu, "clicked", on_popup_menu_discarded, window);
+
+    popup_menu_populate(window->popup.elm_menu, ewk_menu, window);
+
+    info("Showing popup menu at (%d, %d)\n", rect.x, rect.y);
+    elm_menu_move(window->popup.elm_menu, rect.x, rect.y);
+    evas_object_show(window->popup.elm_menu);
+
+    return EINA_TRUE;
+}
+
+static Eina_Bool
+on_popup_menu_hide(Ewk_View_Smart_Data *smartData)
+{
+    Browser_Window *window = window_find_with_ewk_view(smartData->self);
+
+    if (!window->popup.elm_menu)
+        return EINA_FALSE;
+
+    elm_menu_close(window->popup.elm_menu);
+
+    return EINA_TRUE;
+}
+
 static Eina_Bool on_window_geometry_get(Ewk_View_Smart_Data *sd, Evas_Coord *x, Evas_Coord *y, Evas_Coord *width, Evas_Coord *height)
 {
     Browser_Window *window = window_find_with_ewk_view(sd->self);
@@ -811,6 +1007,7 @@ on_fullscreen_accept(void *user_data, Evas_Object *obj, void *event_info)
     PermissionData *permission_data = (PermissionData *)user_data;
 
     evas_object_del(permission_data->permission_popup);
+    evas_object_focus_set(permission_data->ewk_view, EINA_TRUE);
     free(permission_data);
 }
 
@@ -821,6 +1018,7 @@ on_fullscreen_deny(void *user_data, Evas_Object *obj, void *event_info)
 
     ewk_view_fullscreen_exit(permission_data->ewk_view);
     evas_object_del(permission_data->permission_popup);
+    evas_object_focus_set(permission_data->ewk_view, EINA_TRUE);
     free(permission_data);
 }
 
@@ -1082,7 +1280,7 @@ create_toolbar_button(Evas_Object *elm_window, const char *icon_name)
 
 static Browser_Window *window_create(Evas_Object *opener, const char *url, int width, int height, Eina_Bool view_mode)
 {
-    Browser_Window *window = malloc(sizeof(Browser_Window));
+    Browser_Window *window = calloc(1, sizeof(Browser_Window));
     if (!window) {
         info("ERROR: could not create browser window.\n");
         return NULL;
@@ -1169,6 +1367,46 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
     elm_box_pack_end(horizontal_layout, home_button);
     evas_object_show(home_button);
 
+    /* Create Search bar */
+    window->search.search_bar = elm_box_add(window->elm_window);
+    elm_box_horizontal_set(window->search.search_bar, EINA_TRUE);
+    evas_object_size_hint_min_set(window->search.search_bar, SEARCH_FIELD_SIZE + 2 * SEARCH_BUTTON_SIZE, 0);
+    evas_object_size_hint_align_set(window->search.search_bar, 0.0, EVAS_HINT_FILL);
+    elm_box_pack_end(vertical_layout, window->search.search_bar);
+
+    /* Create Search field */
+    window->search.search_field = elm_entry_add(window->elm_window);
+    elm_entry_scrollable_set(window->search.search_field, EINA_TRUE);
+    elm_entry_scrollbar_policy_set(window->search.search_field, ELM_SCROLLER_POLICY_OFF, ELM_SCROLLER_POLICY_OFF);
+    elm_entry_single_line_set(window->search.search_field, EINA_TRUE);
+    elm_entry_cnp_mode_set(window->search.search_field, ELM_CNP_MODE_PLAINTEXT);
+    elm_entry_text_style_user_push(window->search.search_field, "DEFAULT='font_size=14'");
+    evas_object_smart_callback_add(window->search.search_field, "activated", on_search_field_activated, window);
+    evas_object_smart_callback_add(window->search.search_field, "changed", on_search_field_activated, window);
+    evas_object_smart_callback_add(window->search.search_field, "aborted", on_search_field_aborted, window);
+    evas_object_smart_callback_add(window->search.search_field, "clicked", on_search_field_clicked, window);
+    evas_object_size_hint_weight_set(window->search.search_field, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+    evas_object_size_hint_align_set(window->search.search_field, EVAS_HINT_FILL, EVAS_HINT_FILL);
+    elm_box_pack_end(window->search.search_bar, window->search.search_field);
+
+    /* Create Search backward button */
+    window->search.backward_button = create_toolbar_button(window->elm_window, "arrow_up");
+    evas_object_smart_callback_add(window->search.backward_button, "clicked", on_search_backward_button_clicked, window);
+    elm_object_disabled_set(window->search.backward_button, EINA_FALSE);
+    evas_object_size_hint_weight_set(window->search.backward_button, 0.0, EVAS_HINT_EXPAND);
+    evas_object_size_hint_align_set(window->search.backward_button, 1.0, 0.5);
+    evas_object_size_hint_min_set(window->search.backward_button, SEARCH_BUTTON_SIZE, SEARCH_BUTTON_SIZE);
+    elm_box_pack_end(window->search.search_bar, window->search.backward_button);
+
+    /* Create Search forwardward button */
+    window->search.forward_button = create_toolbar_button(window->elm_window, "arrow_down");
+    evas_object_smart_callback_add(window->search.forward_button, "clicked", on_search_forward_button_clicked, window);
+    elm_object_disabled_set(window->search.forward_button, EINA_FALSE);
+    evas_object_size_hint_weight_set(window->search.forward_button, 0.0, EVAS_HINT_EXPAND);
+    evas_object_size_hint_align_set(window->search.forward_button, 1.0, 0.5);
+    evas_object_size_hint_min_set(window->search.forward_button, SEARCH_BUTTON_SIZE, SEARCH_BUTTON_SIZE);
+    elm_box_pack_end(window->search.search_bar, window->search.forward_button);
+
     /* Create ewk_view */
     Ewk_View_Smart_Class *ewkViewClass = miniBrowserViewSmartClass();
     ewkViewClass->run_javascript_alert = on_javascript_alert;
@@ -1180,6 +1418,8 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
     ewkViewClass->fullscreen_exit = on_fullscreen_exit;
     ewkViewClass->window_create = on_window_create;
     ewkViewClass->window_close = on_window_close;
+    ewkViewClass->popup_menu_show = on_popup_menu_show;
+    ewkViewClass->popup_menu_hide = on_popup_menu_hide;
 
     Evas *evas = evas_object_evas_get(window->elm_window);
     if (legacy_behavior_enabled) {
@@ -1187,10 +1427,11 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
         window->ewk_view = (Evas_Object*)WKViewCreate(evas, 0, 0);
     } else {
         Evas_Smart *smart = evas_smart_class_new(&ewkViewClass->sc);
-        Ewk_Context* context = opener ? ewk_view_context_get(opener) : ewk_context_default_get();
-        window->ewk_view = ewk_view_smart_add(evas, smart, context);
+        Ewk_Context *context = opener ? ewk_view_context_get(opener) : ewk_context_default_get();
+        Ewk_Page_Group *pageGroup = opener ? ewk_view_page_group_get(opener) : ewk_page_group_create("");
+        window->ewk_view = ewk_view_smart_add(evas, smart, context, pageGroup);
     }
-    ewk_view_theme_set(window->ewk_view, THEME_DIR "/default.edj");
+    ewk_view_theme_set(window->ewk_view, TEST_THEME_DIR "/default.edj");
     if (device_pixel_ratio)
         ewk_view_device_pixel_ratio_set(window->ewk_view, (float)device_pixel_ratio);
     ewk_view_source_mode_set(window->ewk_view, view_mode);
@@ -1227,7 +1468,7 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
 
     evas_object_size_hint_weight_set(window->ewk_view, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
     evas_object_size_hint_align_set(window->ewk_view, EVAS_HINT_FILL, EVAS_HINT_FILL);
-    elm_box_pack_end(vertical_layout, window->ewk_view);
+    elm_box_pack_before(vertical_layout, window->ewk_view, window->search.search_bar);
     evas_object_show(window->ewk_view);
 
     if (url && strcmp(url, "about:blank")) // Do not reset 'about:blank' as it would erase all previous document modifications.
@@ -1235,6 +1476,7 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
 
     evas_object_resize(window->elm_window, width ? width : window_width, height ? height : window_height);
     evas_object_show(window->elm_window);
+    search_box_hide(window);
 
     view_focus_set(window, EINA_TRUE);
 

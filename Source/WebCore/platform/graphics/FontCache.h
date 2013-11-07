@@ -107,8 +107,6 @@ public:
 
 #if PLATFORM(WIN)
     PassRefPtr<SimpleFontData> fontDataFromDescriptionAndLogFont(const FontDescription&, ShouldRetain, const LOGFONT&, AtomicString& outFontFamilyName);
-#elif PLATFORM(CHROMIUM) && OS(WINDOWS)
-    PassRefPtr<SimpleFontData> fontDataFromDescriptionAndLogFont(const FontDescription&, ShouldRetain, const LOGFONT&, wchar_t* outFontFamilyName);
 #endif
 
 #if ENABLE(OPENTYPE_VERTICAL)
@@ -125,7 +123,11 @@ public:
         bool isBold;
         bool isItalic;
     };
+#if PLATFORM(BLACKBERRY)
+    static void getFontFamilyForCharacters(const UChar* characters, size_t numCharacters, const char* preferredLocale, const FontDescription&, SimpleFontFamily*);
+#else
     static void getFontFamilyForCharacters(const UChar* characters, size_t numCharacters, const char* preferredLocale, SimpleFontFamily*);
+#endif
 
 private:
     FontCache();
@@ -146,14 +148,14 @@ private:
 
     // These methods are implemented by each platform.
     PassRefPtr<SimpleFontData> getSimilarFontPlatformData(const Font&);
-    FontPlatformData* createFontPlatformData(const FontDescription&, const AtomicString& family);
+    PassOwnPtr<FontPlatformData> createFontPlatformData(const FontDescription&, const AtomicString& family);
 
     PassRefPtr<SimpleFontData> getCachedFontData(const FontPlatformData*, ShouldRetain = Retain);
 
     // Don't purge if this count is > 0;
     int m_purgePreventCount;
 
-#if PLATFORM(MAC) || (PLATFORM(CHROMIUM) && OS(DARWIN)) || OS(ANDROID)
+#if PLATFORM(MAC)
     friend class ComplexTextController;
 #endif
     friend class SimpleFontData; // For getCachedFontData(const FontPlatformData*)

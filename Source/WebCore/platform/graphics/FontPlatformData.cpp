@@ -27,10 +27,6 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(CHROMIUM) && OS(DARWIN)
-#include "HarfBuzzFace.h"
-#endif
-
 using namespace std;
 
 namespace WebCore {
@@ -112,7 +108,7 @@ FontPlatformData::FontPlatformData(float size, bool syntheticBold, bool syntheti
 {
 }
 
-#if OS(DARWIN) && (USE(CG) || USE(SKIA_ON_MAC_CHROMIUM))
+#if OS(DARWIN) && USE(CG)
 FontPlatformData::FontPlatformData(CGFontRef cgFont, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant)
     : m_syntheticBold(syntheticBold)
     , m_syntheticOblique(syntheticOblique)

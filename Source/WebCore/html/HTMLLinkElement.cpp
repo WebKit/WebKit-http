@@ -137,8 +137,6 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
         m_relAttribute = LinkRelAttribute(value);
         process();
     } else if (name == hrefAttr) {
-        String url = stripLeadingAndTrailingHTMLSpaces(value);
-        m_url = url.isEmpty() ? KURL() : document()->completeURL(url);
         process();
     } else if (name == typeAttr) {
         m_type = value;
@@ -153,10 +151,6 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
         setDisabledState(!value.isNull());
     else if (name == onbeforeloadAttr)
         setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, name, value));
-    else if (name == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, name, value));
-    else if (name == onerrorAttr)
-        setAttributeEventListener(eventNames().errorEvent, createAttributeEventListener(this, name, value));
     else {
         if (name == titleAttr && m_sheet)
             m_sheet->setTitle(value);
@@ -167,7 +161,7 @@ void HTMLLinkElement::parseAttribute(const QualifiedName& name, const AtomicStri
 bool HTMLLinkElement::shouldLoadLink()
 {
     RefPtr<Document> originalDocument = document();
-    if (!dispatchBeforeLoadEvent(m_url))
+    if (!dispatchBeforeLoadEvent(getNonEmptyURLAttribute(hrefAttr)))
         return false;
     // A beforeload handler might have removed us from the document or changed the document.
     if (!inDocument() || document() != originalDocument)
@@ -183,14 +177,15 @@ void HTMLLinkElement::process()
     }
 
     String type = m_type.lower();
+    KURL url = getNonEmptyURLAttribute(hrefAttr);
 
-    if (!m_linkLoader.loadLink(m_relAttribute, type, m_sizes->toString(), m_url, document()))
+    if (!m_linkLoader.loadLink(m_relAttribute, type, m_sizes->toString(), url, document()))
         return;
 
     bool acceptIfTypeContainsTextCSS = document()->page() && document()->page()->settings() && document()->page()->settings()->treatsAnyTextCSSLinkAsStylesheet();
 
     if (m_disabledState != Disabled && (m_relAttribute.m_isStyleSheet || (acceptIfTypeContainsTextCSS && type.contains("text/css")))
-        && document()->frame() && m_url.isValid()) {
+        && document()->frame() && url.isValid()) {
         
         String charset = getAttribute(charsetAttr);
         if (charset.isEmpty() && document()->frame())
@@ -222,7 +217,7 @@ void HTMLLinkElement::process()
 
         // Load stylesheets that are not needed for the rendering immediately with low priority.
         ResourceLoadPriority priority = blocking ? ResourceLoadPriorityUnresolved : ResourceLoadPriorityVeryLow;
-        CachedResourceRequest request(ResourceRequest(document()->completeURL(m_url)), charset, priority);
+        CachedResourceRequest request(ResourceRequest(document()->completeURL(url)), charset, priority);
         request.setInitiator(this);
         m_cachedSheet = document()->cachedResourceLoader()->requestCSSStyleSheet(request);
         
@@ -421,7 +416,7 @@ void HTMLLinkElement::startLoadingDynamicSheet()
 
 bool HTMLLinkElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute.name() == hrefAttr || HTMLElement::isURLAttribute(attribute);
+    return attribute.name().localName() == hrefAttr || HTMLElement::isURLAttribute(attribute);
 }
 
 KURL HTMLLinkElement::href() const

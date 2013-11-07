@@ -1051,6 +1051,13 @@ QWebInspector* QWebPagePrivate::getOrCreateInspector()
    was reached and the text was not found.
    \value HighlightAllOccurrences Highlights all existing occurrences of a specific string.
        (This value was introduced in 4.6.)
+   \value FindAtWordBeginningsOnly Searches for the sub-string only at the beginnings of words.
+       (This value was introduced in 5.2.)
+   \value TreatMedialCapitalAsWordBeginning Treats a capital letter occurring anywhere in the middle of a word
+   as the beginning of a new word.
+       (This value was introduced in 5.2.)
+   \value FindBeginsInSelection Begin searching inside the text selection first.
+       (This value was introduced in 5.2.)
 */
 
 /*!
@@ -1596,7 +1603,7 @@ void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, Permissio
 #endif
         break;
     case Geolocation:
-#if ENABLE(GEOLOCATION)
+#if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
         if (policy != PermissionUnknown)
             d->setGeolocationEnabledForFrame(frame->d, (policy == PermissionGrantedByUser));
 #endif
@@ -1675,7 +1682,7 @@ static void collectChildFrames(QWebFrame* frame, QList<QWebFrame*>& list)
 
 /*!
     This function can be called to trigger the specified \a action.
-    It is also called by QtWebKit if the user triggers the action, for example
+    It is also called by Qt WebKit if the user triggers the action, for example
     through a context menu item.
 
     If \a action is a checkable action then \a checked specified whether the action

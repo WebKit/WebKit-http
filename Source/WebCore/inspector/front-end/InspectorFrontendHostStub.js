@@ -78,6 +78,10 @@ WebInspector.InspectorFrontendHostStub.prototype = {
     {
     },
 
+    setAttachedWindowWidth: function(width)
+    {
+    },
+
     moveWindowBy: function(x, y)
     {
     },
@@ -93,11 +97,6 @@ WebInspector.InspectorFrontendHostStub.prototype = {
     localizedStringsURL: function()
     {
         return undefined;
-    },
-
-    hiddenPanels: function()
-    {
-        return WebInspector.queryParamsObject["hiddenPanels"] || "";
     },
 
     inspectedURLChanged: function(url)
@@ -219,11 +218,6 @@ WebInspector.InspectorFrontendHostStub.prototype = {
 
     setZoomFactor: function(zoom)
     {
-    },
-
-    canInspectWorkers: function()
-    {
-        return true;
     },
 
     isUnderTest: function()

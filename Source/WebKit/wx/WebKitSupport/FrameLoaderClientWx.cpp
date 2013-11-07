@@ -535,7 +535,7 @@ void FrameLoaderClientWx::setTitle(const StringWithDirection& title, const KURL&
 static String agentOS()
 {
 #if OS(DARWIN)
-#if CPU(X86)
+#if CPU(X86) || CPU(X86_64)
     return "Intel Mac OS X";
 #else
     return "PPC Mac OS X";
@@ -712,7 +712,7 @@ WTF::PassRefPtr<DocumentLoader> FrameLoaderClientWx::createDocumentLoader(const 
     return DocumentLoader::create(request, substituteData);
 }
 
-void FrameLoaderClientWx::convertMainResourceLoadToDownload(WebCore::MainResourceLoader*, const ResourceRequest&, const ResourceResponse&)
+void FrameLoaderClientWx::convertMainResourceLoadToDownload(WebCore::DocumentLoader*, const ResourceRequest&, const ResourceResponse&)
 {
     notImplemented();
 }
@@ -898,7 +898,7 @@ PassRefPtr<Widget> FrameLoaderClientWx::createPlugin(const IntSize& size, HTMLPl
 
 void FrameLoaderClientWx::redirectDataToPlugin(Widget* pluginWidget)
 {
-    m_pluginView = static_cast<PluginView*>(pluginWidget);
+    m_pluginView = toPluginView(pluginWidget);
     if (pluginWidget)
         m_hasSentResponseToPlugin = false;
 }

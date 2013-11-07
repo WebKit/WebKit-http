@@ -52,13 +52,13 @@
 #include <WebCore/JSCSSStyleDeclaration.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/JSRange.h>
-#include <WebCore/MainResourceLoader.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/NodeTraversal.h>
 #include <WebCore/Page.h>
 #include <WebCore/PluginDocument.h>
 #include <WebCore/RenderTreeAsText.h>
 #include <WebCore/ResourceBuffer.h>
+#include <WebCore/ResourceLoader.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/TextIterator.h>
 #include <WebCore/TextResourceDecoder.h>
@@ -247,7 +247,7 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request)
     WebProcess::shared().downloadManager().startDownload(policyDownloadID, request);
 }
 
-void WebFrame::convertMainResourceLoadToDownload(MainResourceLoader* mainResourceLoader, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest& request, const ResourceResponse& response)
 {
     ASSERT(m_policyDownloadID);
 
@@ -261,7 +261,7 @@ void WebFrame::convertMainResourceLoadToDownload(MainResourceLoader* mainResourc
     }
 #endif
 
-    WebProcess::shared().downloadManager().convertHandleToDownload(policyDownloadID, mainResourceLoader->loader()->handle(), request, response);
+    WebProcess::shared().downloadManager().convertHandleToDownload(policyDownloadID, documentLoader->mainResourceLoader()->handle(), request, response);
 }
 
 String WebFrame::source() const 
@@ -539,7 +539,7 @@ PassRefPtr<InjectedBundleHitTestResult> WebFrame::hitTest(const IntPoint point) 
     if (!m_coreFrame)
         return 0;
 
-    return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler()->hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping));
+    return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler()->hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent));
 }
 
 bool WebFrame::getDocumentBackgroundColor(double* red, double* green, double* blue, double* alpha)
@@ -571,7 +571,7 @@ bool WebFrame::containsAnyFormElements() const
     for (Node* node = document->documentElement(); node; node = NodeTraversal::next(node)) {
         if (!node->isElementNode())
             continue;
-        if (static_cast<Element*>(node)->hasTagName(HTMLNames::formTag))
+        if (toElement(node)->hasTagName(HTMLNames::formTag))
             return true;
     }
     return false;

@@ -116,7 +116,6 @@ PassOwnPtr<ExclusionShape> ExclusionShape::createExclusionShape(const BasicShape
         FloatRect logicalBounds = physicalRectToLogical(bounds, logicalBoxHeight, writingMode);
 
         exclusionShape = createExclusionRectangle(logicalBounds, physicalSizeToLogical(cornerRadii, writingMode));
-        exclusionShape->m_boundingBox = logicalBounds;
         break;
     }
 
@@ -124,11 +123,10 @@ PassOwnPtr<ExclusionShape> ExclusionShape::createExclusionShape(const BasicShape
         const BasicShapeCircle* circle = static_cast<const BasicShapeCircle*>(basicShape);
         float centerX = floatValueForLength(circle->centerX(), boxWidth);
         float centerY = floatValueForLength(circle->centerY(), boxHeight);
-        float radius =  floatValueForLength(circle->radius(), std::max(boxHeight, boxWidth));
+        float radius = floatValueForLength(circle->radius(), std::min(boxHeight, boxWidth));
         FloatPoint logicalCenter = physicalPointToLogical(FloatPoint(centerX, centerY), logicalBoxHeight, writingMode);
 
         exclusionShape = createExclusionCircle(logicalCenter, radius);
-        exclusionShape->m_boundingBox = FloatRect(logicalCenter.x() - radius, logicalCenter.y() - radius, radius * 2, radius * 2);
         break;
     }
 
@@ -142,7 +140,6 @@ PassOwnPtr<ExclusionShape> ExclusionShape::createExclusionShape(const BasicShape
         FloatSize logicalRadii = physicalSizeToLogical(FloatSize(radiusX, radiusY), writingMode);
 
         exclusionShape = createExclusionEllipse(logicalCenter, logicalRadii);
-        exclusionShape->m_boundingBox = FloatRect(logicalCenter - logicalRadii, logicalRadii + logicalRadii);
         break;
     }
 
@@ -151,20 +148,15 @@ PassOwnPtr<ExclusionShape> ExclusionShape::createExclusionShape(const BasicShape
         const Vector<Length>& values = polygon->values();
         size_t valuesSize = values.size();
         ASSERT(!(valuesSize % 2));
-        FloatRect boundingBox;
         Vector<FloatPoint>* vertices = new Vector<FloatPoint>(valuesSize / 2);
         for (unsigned i = 0; i < valuesSize; i += 2) {
             FloatPoint vertex(
                 floatValueForLength(values.at(i), boxWidth),
                 floatValueForLength(values.at(i + 1), boxHeight));
             (*vertices)[i / 2] = physicalPointToLogical(vertex, logicalBoxHeight, writingMode);
-            if (!i)
-                boundingBox.setLocation(vertex);
-            else
-                boundingBox.extend(vertex);
         }
+
         exclusionShape = createExclusionPolygon(adoptPtr(vertices), polygon->windRule());
-        exclusionShape->m_boundingBox = boundingBox;
         break;
     }
 

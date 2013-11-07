@@ -33,8 +33,6 @@
 
 namespace WebCore {
 
-class RenderSVGRect;
-
 // Animated property definitions
 DEFINE_ANIMATED_LENGTH(SVGRectElement, SVGNames::xAttr, X, x)
 DEFINE_ANIMATED_LENGTH(SVGRectElement, SVGNames::yAttr, Y, y)
@@ -140,7 +138,7 @@ void SVGRectElement::svgAttributeChanged(const QualifiedName& attrName)
     if (SVGTests::handleAttributeChange(this, attrName))
         return;
 
-    RenderSVGRect* renderer = static_cast<RenderSVGRect*>(this->renderer());
+    RenderSVGShape* renderer = toRenderSVGShape(this->renderer());
     if (!renderer)
         return;
 

@@ -225,7 +225,7 @@ public:
     // and adjusting for page scale.
     IntSize scrollOffsetForFixedPosition() const;
     // Static function can be called from another thread.
-    static IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame);
+    static IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& totalContentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, int headerHeight, int footerHeight);
 
     bool fixedElementsLayoutRelativeToFrame() const;
 
@@ -235,6 +235,8 @@ public:
     void flushDeferredRepaints();
     void startDeferredRepaintTimer(double delay);
     void resetDeferredRepaintDelay();
+
+    void updateLayerFlushThrottlingInAllFrames(bool isLoadProgressing);
 
     void beginDisableRepaints();
     void endDisableRepaints();
@@ -340,6 +342,7 @@ public:
     static void setRepaintThrottlingDeferredRepaintDelayIncrementDuringLoading(double p);
 
     virtual IntPoint lastKnownMousePosition() const;
+    bool shouldSetCursor() const;
 
     virtual bool scrollbarsCanBeActive() const OVERRIDE;
 
@@ -402,7 +405,16 @@ public:
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* setWantsLayerForTopOverHangArea(bool) const;
     GraphicsLayer* setWantsLayerForBottomOverHangArea(bool) const;
+    GraphicsLayer* setWantsLayerForHeader(bool) const;
+    GraphicsLayer* setWantsLayerForFooter(bool) const;
 #endif
+
+    virtual int headerHeight() const OVERRIDE { return m_headerHeight; }
+    void setHeaderHeight(int);
+    virtual int footerHeight() const OVERRIDE { return m_footerHeight; }
+    void setFooterHeight(int);
+
+    virtual void willEndLiveResize() OVERRIDE;
 
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
@@ -417,7 +429,7 @@ private:
     void reset();
     void init();
 
-    virtual bool isFrameView() const;
+    virtual bool isFrameView() const OVERRIDE { return true; }
 
     friend class RenderWidget;
     bool useSlowRepaints(bool considerOverlap = true) const;
@@ -470,6 +482,10 @@ private:
 #endif
 #endif
 
+    void scheduleResizeEvent();
+    void sendResizeEvent();
+    void delayedResizeEventTimerFired(Timer<FrameView>*);
+
     void updateScrollableAreaSet();
 
     virtual void notifyPageThatContentAreaWillPaint() const;
@@ -515,6 +531,8 @@ private:
     unsigned m_slowRepaintObjectCount;
     int m_borderX;
     int m_borderY;
+
+    Timer<FrameView> m_delayedResizeEventTimer;
 
     Timer<FrameView> m_layoutTimer;
     bool m_delayedLayout;
@@ -595,6 +613,9 @@ private:
     OwnPtr<ScrollableAreaSet> m_scrollableAreas;
     OwnPtr<ViewportConstrainedObjectSet> m_viewportConstrainedObjects;
 
+    int m_headerHeight;
+    int m_footerHeight;
+
     static double s_normalDeferredRepaintDelay;
     static double s_initialDeferredRepaintDelayDuringLoading;
     static double s_maxDeferredRepaintDelayDuringLoading;
@@ -642,6 +663,21 @@ inline LayoutUnit FrameView::mapFromCSSToLayoutUnits(int value)
 {
     return value * m_frame->pageZoomFactor() * m_frame->frameScaleFactor();
 }
+
+inline FrameView* toFrameView(Widget* widget)
+{
+    ASSERT(!widget || widget->isFrameView());
+    return static_cast<FrameView*>(widget);
+}
+
+inline const FrameView* toFrameView(const Widget* widget)
+{
+    ASSERT(!widget || widget->isFrameView());
+    return static_cast<const FrameView*>(widget);
+}
+
+// This will catch anyone doing an unnecessary cast.
+void toFrameView(const FrameView*);
 
 } // namespace WebCore
 

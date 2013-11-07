@@ -102,9 +102,9 @@ void RenderWidget::willBeDestroyed()
     if (RenderView* v = view())
         v->removeWidget(this);
     
-    if (AXObjectCache::accessibilityEnabled()) {
-        document()->axObjectCache()->childrenChanged(this->parent());
-        document()->axObjectCache()->remove(this);
+    if (AXObjectCache* cache = document()->existingAXObjectCache()) {
+        cache->childrenChanged(this->parent());
+        cache->remove(this);
     }
 
     setWidget(0);
@@ -262,7 +262,7 @@ void RenderWidget::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintO
         paintInfo.context->translate(-widgetPaintOffset);
 
     if (m_widget->isFrameView()) {
-        FrameView* frameView = static_cast<FrameView*>(m_widget.get());
+        FrameView* frameView = toFrameView(m_widget.get());
         bool runOverlapTests = !frameView->useSlowRepaintsIfNotOverlapped() || frameView->hasCompositedContentIncludingDescendants();
         if (paintInfo.overlapTestRequests && runOverlapTests) {
             ASSERT(!paintInfo.overlapTestRequests->contains(this));
@@ -330,7 +330,7 @@ void RenderWidget::setOverlapTestResult(bool isOverlapped)
 {
     ASSERT(m_widget);
     ASSERT(m_widget->isFrameView());
-    static_cast<FrameView*>(m_widget.get())->setIsOverlapped(isOverlapped);
+    toFrameView(m_widget.get())->setIsOverlapped(isOverlapped);
 }
 
 void RenderWidget::deref(RenderArena *arena)
@@ -349,7 +349,7 @@ void RenderWidget::updateWidgetPosition()
     // if the frame bounds got changed, or if view needs layout (possibly indicating
     // content size is wrong) we have to do a layout to set the right widget size
     if (m_widget && m_widget->isFrameView()) {
-        FrameView* frameView = static_cast<FrameView*>(m_widget.get());
+        FrameView* frameView = toFrameView(m_widget.get());
         // Check the frame's page to make sure that the frame isn't in the process of being destroyed.
         if ((boundsChanged || frameView->needsLayout()) && frameView->frame()->page())
             frameView->layout();

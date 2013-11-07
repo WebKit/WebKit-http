@@ -798,7 +798,7 @@ static WebMediaStreamDescriptor toWebMediaStreamDescriptor(MediaStreamDescriptor
     for (size_t i = 0; i < d->numberOfVideoComponents(); i++)
         videoSources.push_back(toWebMediaStreamSource(d->videoComponent(i)->source()));
 
-    return WebMediaStreamDescriptor(d->label().utf8().data(), audioSources, videoSources);
+    return WebMediaStreamDescriptor(d->id().utf8().data(), audioSources, videoSources);
 }
 
 WebMediaStreamDescriptor MediaPlayerPrivate::lookupMediaStream(const BlackBerry::Platform::String& url)
@@ -933,7 +933,7 @@ void MediaPlayerPrivate::drawBufferingAnimation(const TransformationMatrix& matr
 
         // Rotate the buffering indicator so that it takes 1 second to do 1 revolution.
         timespec time;
-        clock_gettime(CLOCK_REALTIME, &time);
+        clock_gettime(CLOCK_MONOTONIC, &time);
         renderMatrix.rotate(time.tv_nsec / 1000000000.0 * 360.0);
 
         static bool initialized = false;

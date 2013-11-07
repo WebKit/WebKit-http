@@ -54,6 +54,7 @@
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
+#include <wtf/RefCountedArray.h>
 #include <wtf/SimpleStats.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/ThreadSpecific.h>
@@ -61,9 +62,6 @@
 #if ENABLE(REGEXP_TRACING)
 #include <wtf/ListHashSet.h>
 #endif
-
-struct OpaqueJSClass;
-struct OpaqueJSClassContextData;
 
 namespace JSC {
 
@@ -84,6 +82,7 @@ namespace JSC {
     class RegExpCache;
     class SourceProvider;
     class SourceProviderCache;
+    struct StackFrame;
     class Stringifier;
     class Structure;
 #if ENABLE(REGEXP_TRACING)
@@ -132,8 +131,8 @@ namespace JSC {
 #endif
     struct ScratchBuffer {
         ScratchBuffer()
-            : m_activeLength(0)
         {
+            u.m_activeLength = 0;
         }
 
         static ScratchBuffer* create(size_t size)
@@ -144,12 +143,15 @@ namespace JSC {
         }
 
         static size_t allocationSize(size_t bufferSize) { return sizeof(ScratchBuffer) + bufferSize; }
-        void setActiveLength(size_t activeLength) { m_activeLength = activeLength; }
-        size_t activeLength() const { return m_activeLength; };
-        size_t* activeLengthPtr() { return &m_activeLength; };
+        void setActiveLength(size_t activeLength) { u.m_activeLength = activeLength; }
+        size_t activeLength() const { return u.m_activeLength; };
+        size_t* activeLengthPtr() { return &u.m_activeLength; };
         void* dataBuffer() { return m_buffer; }
 
-        size_t m_activeLength;
+        union {
+            size_t m_activeLength;
+            double pad; // Make sure m_buffer is double aligned.
+        } u;
 #if CPU(MIPS) && (defined WTF_MIPS_ARCH_REV && WTF_MIPS_ARCH_REV == 2)
         void* m_buffer[0] __attribute__((aligned(8)));
 #else
@@ -223,12 +225,10 @@ namespace JSC {
         const HashTable* numberConstructorTable;
         const HashTable* numberPrototypeTable;
         const HashTable* objectConstructorTable;
-        const HashTable* objectPrototypeTable;
         const HashTable* privateNamePrototypeTable;
         const HashTable* regExpTable;
         const HashTable* regExpConstructorTable;
         const HashTable* regExpPrototypeTable;
-        const HashTable* stringTable;
         const HashTable* stringConstructorTable;
         
         Strong<Structure> structureStructure;
@@ -330,6 +330,7 @@ namespace JSC {
         Terminator terminator;
 
         JSValue exception;
+        RefCountedArray<StackFrame> exceptionStack;
 
         const ClassInfo* const jsArrayClassInfo;
         const ClassInfo* const jsFinalObjectClassInfo;
@@ -367,8 +368,6 @@ namespace JSC {
 
         void gatherConservativeRoots(ConservativeRoots&);
 #endif
-
-        HashMap<OpaqueJSClass*, OwnPtr<OpaqueJSClassContextData> > opaqueJSClassData;
 
         JSGlobalObject* dynamicGlobalObject;
 
@@ -419,12 +418,12 @@ namespace JSC {
         unsigned m_timeoutCount;
 #endif
 
-        unsigned m_newStringsSinceLastHashConst;
+        unsigned m_newStringsSinceLastHashCons;
 
-        static const unsigned s_minNumberOfNewStringsToHashConst = 100;
+        static const unsigned s_minNumberOfNewStringsToHashCons = 100;
 
-        bool haveEnoughNewStringsToHashConst() { return m_newStringsSinceLastHashConst > s_minNumberOfNewStringsToHashConst; }
-        void resetNewStringsSinceLastHashConst() { m_newStringsSinceLastHashConst = 0; }
+        bool haveEnoughNewStringsToHashCons() { return m_newStringsSinceLastHashCons > s_minNumberOfNewStringsToHashCons; }
+        void resetNewStringsSinceLastHashCons() { m_newStringsSinceLastHashCons = 0; }
 
 #define registerTypedArrayFunction(type, capitalizedType) \
         void registerTypedArrayDescriptor(const capitalizedType##Array*, const TypedArrayDescriptor& descriptor) \

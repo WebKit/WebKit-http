@@ -43,6 +43,7 @@
 #endif
 
 #if USE(GRAPHICS_SURFACE)
+#include "GraphicsSurface.h"
 #include "GraphicsSurfaceToken.h"
 #endif
 
@@ -103,7 +104,6 @@ struct CoordinatedGraphicsLayerState {
             bool backfaceVisible : 1;
             bool masksToBounds : 1;
             bool preserves3D : 1;
-            bool isRootLayer: 1;
             bool fixedToViewport : 1;
             bool showDebugBorders : 1;
             bool showRepaintCounter : 1;
@@ -120,7 +120,6 @@ struct CoordinatedGraphicsLayerState {
         , backfaceVisible(true)
         , masksToBounds(false)
         , preserves3D(false)
-        , isRootLayer(false)
         , fixedToViewport(false)
         , showDebugBorders(false)
         , showRepaintCounter(false)
@@ -164,9 +163,15 @@ struct CoordinatedGraphicsLayerState {
     IntSize canvasSize;
     GraphicsSurfaceToken canvasToken;
     uint32_t canvasFrontBuffer;
+    GraphicsSurface::Flags canvasSurfaceFlags;
 #endif
 
     IntSize committedScrollOffset;
+
+    bool hasPendingChanges() const
+    {
+        return changeMask || tilesToUpdate.size() || tilesToRemove.size() || tilesToCreate.size();
+    }
 };
 
 struct CoordinatedGraphicsState {

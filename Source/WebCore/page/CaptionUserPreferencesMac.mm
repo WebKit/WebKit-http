@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #import "CoreText/CoreText.h"
 #import "DOMWrapperWorld.h"
 #import "FloatConversion.h"
+#import "HTMLMediaElement.h"
 #import "KURL.h"
 #import "Language.h"
 #import "LocalizedStrings.h"
@@ -41,7 +42,9 @@
 #import "PageGroup.h"
 #import "SoftLinking.h"
 #import "TextTrackCue.h"
+#import "TextTrackList.h"
 #import "UserStyleSheetTypes.h"
+#import <wtf/NonCopyingSort.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/text/StringBuilder.h>
 
@@ -57,8 +60,8 @@
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(MediaAccessibility)
 
-SOFT_LINK(MediaAccessibility, MACaptionAppearanceGetShowCaptions, bool, (MACaptionAppearanceDomain domain), (domain))
-SOFT_LINK(MediaAccessibility, MACaptionAppearanceSetShowCaptions, void, (MACaptionAppearanceDomain domain, bool showCaptions), (domain, showCaptions))
+SOFT_LINK(MediaAccessibility, MACaptionAppearanceGetDisplayType, MACaptionAppearanceDisplayType, (MACaptionAppearanceDomain domain), (domain))
+SOFT_LINK(MediaAccessibility, MACaptionAppearanceSetDisplayType, void, (MACaptionAppearanceDomain domain, MACaptionAppearanceDisplayType displayType), (domain, displayType))
 SOFT_LINK(MediaAccessibility, MACaptionAppearanceCopyForegroundColor, CGColorRef, (MACaptionAppearanceDomain domain, MACaptionAppearanceBehavior *behavior), (domain, behavior))
 SOFT_LINK(MediaAccessibility, MACaptionAppearanceCopyBackgroundColor, CGColorRef, (MACaptionAppearanceDomain domain, MACaptionAppearanceBehavior *behavior), (domain, behavior))
 SOFT_LINK(MediaAccessibility, MACaptionAppearanceCopyWindowColor, CGColorRef, (MACaptionAppearanceDomain domain, MACaptionAppearanceBehavior *behavior), (domain, behavior))
@@ -71,6 +74,7 @@ SOFT_LINK(MediaAccessibility, MACaptionAppearanceGetRelativeCharacterSize, CGFlo
 SOFT_LINK(MediaAccessibility, MACaptionAppearanceGetTextEdgeStyle, MACaptionAppearanceTextEdgeStyle, (MACaptionAppearanceDomain domain, MACaptionAppearanceBehavior *behavior), (domain, behavior))
 SOFT_LINK(MediaAccessibility, MACaptionAppearanceAddSelectedLanguage, bool, (MACaptionAppearanceDomain domain, CFStringRef language), (domain, language));
 SOFT_LINK(MediaAccessibility, MACaptionAppearanceCopySelectedLanguages, CFArrayRef, (MACaptionAppearanceDomain domain), (domain));
+SOFT_LINK(MediaAccessibility, MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics,  CFArrayRef, (MACaptionAppearanceDomain domain), (domain));
 
 SOFT_LINK_POINTER(MediaAccessibility, kMAXCaptionAppearanceSettingsChangedNotification, CFStringRef)
 #define kMAXCaptionAppearanceSettingsChangedNotification getkMAXCaptionAppearanceSettingsChangedNotification()
@@ -111,36 +115,79 @@ CaptionUserPreferencesMac::~CaptionUserPreferencesMac()
 }
 
 #if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
-bool CaptionUserPreferencesMac::userPrefersCaptions() const
+
+CaptionUserPreferences::CaptionDisplayMode CaptionUserPreferencesMac::captionDisplayMode() const
 {
     if (testingMode() || !MediaAccessibilityLibrary())
-        return CaptionUserPreferences::userPrefersCaptions();
+        return CaptionUserPreferences::captionDisplayMode();
 
-    return MACaptionAppearanceGetShowCaptions(kMACaptionAppearanceDomainUser);
+    MACaptionAppearanceDisplayType displayType = MACaptionAppearanceGetDisplayType(kMACaptionAppearanceDomainUser);
+    switch (displayType) {
+    case kMACaptionAppearanceDisplayTypeForcedOnly:
+        return ForcedOnly;
+        break;
+
+    case kMACaptionAppearanceDisplayTypeAutomatic:
+        return Automatic;
+        break;
+
+    case kMACaptionAppearanceDisplayTypeAlwaysOn:
+        return AlwaysOn;
+        break;
+    }
+
+    ASSERT_NOT_REACHED();
+    return ForcedOnly;
 }
-
-void CaptionUserPreferencesMac::setUserPrefersCaptions(bool preference)
+    
+void CaptionUserPreferencesMac::setCaptionDisplayMode(CaptionUserPreferences::CaptionDisplayMode mode)
 {
     if (testingMode() || !MediaAccessibilityLibrary()) {
-        CaptionUserPreferences::setUserPrefersCaptions(preference);
+        CaptionUserPreferences::setCaptionDisplayMode(mode);
         return;
     }
 
-    MACaptionAppearanceSetShowCaptions(kMACaptionAppearanceDomainUser, preference);
+    MACaptionAppearanceDisplayType displayType = kMACaptionAppearanceDisplayTypeForcedOnly;
+    switch (mode) {
+        case Automatic:
+            displayType = kMACaptionAppearanceDisplayTypeAutomatic;
+            break;
+        case ForcedOnly:
+            displayType = kMACaptionAppearanceDisplayTypeForcedOnly;
+            break;
+        case AlwaysOn:
+            displayType = kMACaptionAppearanceDisplayTypeAlwaysOn;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+            break;
+    }
+
+    MACaptionAppearanceSetDisplayType(kMACaptionAppearanceDomainUser, displayType);
 }
 
-bool CaptionUserPreferencesMac::userHasCaptionPreferences() const
+bool CaptionUserPreferencesMac::userPrefersCaptions() const
 {
-    if (testingMode() || !MediaAccessibilityLibrary())
-        return CaptionUserPreferences::userHasCaptionPreferences();
-
-    return true;
+    bool captionSetting = CaptionUserPreferences::userPrefersCaptions();
+    if (captionSetting || testingMode() || !MediaAccessibilityLibrary())
+        return captionSetting;
+    
+    RetainPtr<CFArrayRef> captioningMediaCharacteristics(AdoptCF, MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics(kMACaptionAppearanceDomainUser));
+    return captioningMediaCharacteristics && CFArrayGetCount(captioningMediaCharacteristics.get());
 }
 
-void CaptionUserPreferencesMac::registerForPreferencesChangedCallbacks(CaptionPreferencesChangedListener* listener)
+bool CaptionUserPreferencesMac::userPrefersSubtitles() const
 {
-    CaptionUserPreferences::registerForPreferencesChangedCallbacks(listener);
+    bool subtitlesSetting = CaptionUserPreferences::userPrefersSubtitles();
+    if (subtitlesSetting || testingMode() || !MediaAccessibilityLibrary())
+        return subtitlesSetting;
+    
+    RetainPtr<CFArrayRef> captioningMediaCharacteristics(AdoptCF, MACaptionAppearanceCopyPreferredCaptioningMediaCharacteristics(kMACaptionAppearanceDomainUser));
+    return !(captioningMediaCharacteristics && CFArrayGetCount(captioningMediaCharacteristics.get()));
+}
 
+void CaptionUserPreferencesMac::setInterestedInCaptionPreferenceChanges()
+{
     if (!MediaAccessibilityLibrary())
         return;
 
@@ -157,7 +204,7 @@ void CaptionUserPreferencesMac::registerForPreferencesChangedCallbacks(CaptionPr
 
 void CaptionUserPreferencesMac::captionPreferencesChanged()
 {
-    if (havePreferenceChangeListeners())
+    if (m_listeningForPreferenceChanges)
         updateCaptionStyleSheetOveride();
 
     CaptionUserPreferences::captionPreferencesChanged();
@@ -458,7 +505,7 @@ void CaptionUserPreferencesMac::updateCaptionStyleSheetOveride()
              Vector<String>(), InjectInAllFrames, UserStyleAuthorLevel, InjectInExistingDocuments);
 }
 
-void CaptionUserPreferencesMac::setPreferredLanguage(String language)
+void CaptionUserPreferencesMac::setPreferredLanguage(const String& language)
 {
     if (testingMode() || !MediaAccessibilityLibrary()) {
         CaptionUserPreferences::setPreferredLanguage(language);
@@ -501,40 +548,258 @@ Vector<String> CaptionUserPreferencesMac::preferredLanguages() const
 
     return userPreferredLanguages;
 }
-#endif
+#endif  // HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
+
+static String languageIdentifier(const String& languageCode)
+{
+    if (languageCode.isEmpty())
+        return languageCode;
+
+    String lowercaseLanguageCode = languageCode.lower();
+
+    // Need 2U here to disambiguate String::operator[] from operator(NSString*, int)[] in a production build.
+    if (lowercaseLanguageCode.length() >= 3 && (lowercaseLanguageCode[2U] == '_' || lowercaseLanguageCode[2U] == '-'))
+        lowercaseLanguageCode.truncate(2);
+
+    return lowercaseLanguageCode;
+}
+
+static String trackDisplayName(TextTrack* track)
+{
+    if (track == TextTrack::captionMenuOffItem())
+        return textTrackOffMenuItemText();
+    if (track == TextTrack::captionMenuAutomaticItem()) {
+        String preferredLanguageDisplayName = displayNameForLanguageLocale(languageIdentifier(defaultLanguage()));
+        return textTrackAutomaticMenuItemText(preferredLanguageDisplayName);
+    }
+
+    StringBuilder displayName;
+    String label = track->label();
+    String trackLanguageIdentifier = track->language();
+
+    RetainPtr<CFLocaleRef> currentLocale(AdoptCF, CFLocaleCopyCurrent());
+    RetainPtr<CFStringRef> localeIdentifier(AdoptCF, CFLocaleCreateCanonicalLocaleIdentifierFromString(kCFAllocatorDefault, trackLanguageIdentifier.createCFString().get()));
+    RetainPtr<CFStringRef> languageCF(AdoptCF, CFLocaleCopyDisplayNameForPropertyValue(currentLocale.get(), kCFLocaleLanguageCode, localeIdentifier.get()));
+    String language = languageCF.get();
+    if (!label.isEmpty()) {
+        if (language.isEmpty() || label.contains(language))
+            displayName.append(label);
+        else {
+            RetainPtr<CFDictionaryRef> localeDict(AdoptCF, CFLocaleCreateComponentsFromLocaleIdentifier(kCFAllocatorDefault, localeIdentifier.get()));
+            if (localeDict) {
+                CFStringRef countryCode = 0;
+                String countryName;
+                
+                CFDictionaryGetValueIfPresent(localeDict.get(), kCFLocaleCountryCode, (const void **)&countryCode);
+                if (countryCode) {
+                    RetainPtr<CFStringRef> countryNameCF(AdoptCF, CFLocaleCopyDisplayNameForPropertyValue(currentLocale.get(), kCFLocaleCountryCode, countryCode));
+                    countryName = countryNameCF.get();
+                }
+                
+                if (!countryName.isEmpty())
+                    displayName.append(textTrackCountryAndLanguageMenuItemText(label, countryName, language));
+                else
+                    displayName.append(textTrackLanguageMenuItemText(label, language));
+            }
+        }
+    } else {
+        String languageAndLocale = CFLocaleCopyDisplayNameForPropertyValue(currentLocale.get(), kCFLocaleIdentifier, trackLanguageIdentifier.createCFString().get());
+        if (!languageAndLocale.isEmpty())
+            displayName.append(languageAndLocale);
+        else if (!language.isEmpty())
+            displayName.append(language);
+        else
+            displayName.append(localeIdentifier.get());
+    }
+    
+    if (displayName.isEmpty())
+        displayName.append(textTrackNoLabelText());
+    
+    if (track->isEasyToRead())
+        return easyReaderTrackMenuItemText(displayName.toString());
+    
+    if (track->kind() != track->captionsKeyword())
+        return displayName.toString();
+    
+    if (track->isClosedCaptions())
+        return closedCaptionTrackMenuItemText(displayName.toString());
+    
+    return sdhTrackMenuItemText(displayName.toString());
+}
 
 String CaptionUserPreferencesMac::displayNameForTrack(TextTrack* track) const
 {
-    String label = track->label();
-    String language = track->language();
-    String preferredLanguage = defaultLanguage();
-    StringBuilder displayName;
-
-    if (label.isEmpty() && language.isEmpty()) {
-        displayName.append(textTrackNoLabelText());
-        return displayName.toString();
-    }
-
-    if (!label.isEmpty())
-        displayName.append(label);
-
-    AtomicString localeDisplayName = displayNameForLanguageLocale(language);
-    if (!label.contains(localeDisplayName)) {
-        if (displayName.length() > 0)
-            displayName.append(" ");
-        displayName.append(localeDisplayName);
-    }
-
-    if (track->kind() == track->captionsKeyword()) {
-        if (track->isClosedCaptions())
-            displayName.append(" CC");
-        else
-            displayName.append(" SDH");
-    }
-
-    return displayName.toString();
+    return trackDisplayName(track);
 }
 
+int CaptionUserPreferencesMac::textTrackSelectionScore(TextTrack* track, HTMLMediaElement* mediaElement) const
+{
+    CaptionDisplayMode displayMode = captionDisplayMode();
+    if (displayMode == ForcedOnly)
+        return 0;
+    if (displayMode == AlwaysOn && (!userPrefersSubtitles() && !userPrefersCaptions()))
+        return 0;
+    if (track->kind() != TextTrack::captionsKeyword() && track->kind() != TextTrack::subtitlesKeyword())
+        return 0;
+    if (track->containsOnlyForcedSubtitles())
+        return 0;
+    if (!track->isMainProgramContent())
+        return 0;
+
+    Vector<String> userPreferredCaptionLanguages = preferredLanguages();
+
+    if (displayMode == Automatic) {
+
+        // Only enable a text track if the current audio track is not in the user's preferred language.
+        if (!mediaElement || !mediaElement->player())
+            return 0;
+
+        String audioTrackLanguage = mediaElement->player()->languageOfPrimaryAudioTrack();
+
+        if (audioTrackLanguage.isEmpty())
+            return 0;
+
+        Vector<String> languages;
+        languages.append(defaultLanguage());
+        size_t offset = indexOfBestMatchingLanguageInList(audioTrackLanguage, languages);
+        if (!offset)
+            return 0;
+
+        userPreferredCaptionLanguages = languages;
+    }
+
+    int trackScore = 0;
+
+    if (userPrefersCaptions()) {
+        // When the user prefers accessiblity tracks, rank is SDH, then CC, then subtitles.
+        if (track->kind() == track->subtitlesKeyword())
+            trackScore = 1;
+        else if (track->isClosedCaptions())
+            trackScore = 2;
+        else
+            trackScore = 3;
+    } else {
+        // When the user prefers translation tracks, rank is subtitles, then SDH, then CC tracks.
+        if (track->kind() == track->subtitlesKeyword())
+            trackScore = 3;
+        else if (!track->isClosedCaptions())
+            trackScore = 2;
+        else
+            trackScore = 1;
+    }
+
+    return trackScore + textTrackLanguageSelectionScore(track, userPreferredCaptionLanguages);
+}
+
+static bool textTrackCompare(const RefPtr<TextTrack>& a, const RefPtr<TextTrack>& b)
+{
+    String preferredLanguageDisplayName = displayNameForLanguageLocale(languageIdentifier(defaultLanguage()));
+    String aLanguageDisplayName = displayNameForLanguageLocale(languageIdentifier(a->language()));
+    String bLanguageDisplayName = displayNameForLanguageLocale(languageIdentifier(b->language()));
+
+    // Tracks in the user's preferred language are always at the top of the menu.
+    bool aIsPreferredLanguage = !codePointCompare(aLanguageDisplayName, preferredLanguageDisplayName);
+    bool bIsPreferredLanguage = !codePointCompare(bLanguageDisplayName, preferredLanguageDisplayName);
+    if ((aIsPreferredLanguage || bIsPreferredLanguage) && (aIsPreferredLanguage != bIsPreferredLanguage))
+        return aIsPreferredLanguage;
+
+    // Tracks not in the user's preferred language sort first by language ...
+    if (codePointCompare(aLanguageDisplayName, bLanguageDisplayName))
+        return codePointCompare(aLanguageDisplayName, bLanguageDisplayName) < 0;
+
+    // ... but when tracks have the same language, main program content sorts next highest ...
+    bool aIsMainContent = a->isMainProgramContent();
+    bool bIsMainContent = b->isMainProgramContent();
+    if ((aIsMainContent || bIsMainContent) && (aIsMainContent != bIsMainContent))
+        return aIsMainContent;
+
+    // ... and main program trakcs sort higher than CC tracks ...
+    bool aIsCC = a->isClosedCaptions();
+    bool bIsCC = b->isClosedCaptions();
+    if ((aIsCC || bIsCC) && (aIsCC != bIsCC)) {
+        if (aIsCC)
+            return aIsMainContent;
+        return bIsMainContent;
+    }
+
+    // ... and tracks of the same type and language sort by the menu item text.
+    return codePointCompare(trackDisplayName(a.get()), trackDisplayName(b.get())) < 0;
+}
+
+Vector<RefPtr<TextTrack> > CaptionUserPreferencesMac::sortedTrackListForMenu(TextTrackList* trackList)
+{
+    ASSERT(trackList);
+
+    Vector<RefPtr<TextTrack> > tracksForMenu;
+    HashSet<String> languagesIncluded;
+    bool prefersAccessibilityTracks = userPrefersCaptions();
+
+    for (unsigned i = 0, length = trackList->length(); i < length; ++i) {
+        TextTrack* track = trackList->item(i);
+        String language = displayNameForLanguageLocale(track->language());
+
+        if (track->isEasyToRead()) {
+            if (!language.isEmpty())
+                languagesIncluded.add(language);
+            tracksForMenu.append(track);
+            continue;
+        }
+
+        if (track->containsOnlyForcedSubtitles())
+            continue;
+
+        if (!language.isEmpty() && track->isMainProgramContent()) {
+            bool isAccessibilityTrack = track->kind() == track->captionsKeyword();
+            if (prefersAccessibilityTracks) {
+                // In the first pass, include only caption tracks if the user prefers accessibility tracks.
+                if (!isAccessibilityTrack) {
+                    LOG(Media, "CaptionUserPreferencesMac::sortedTrackListForMenu - skipping %s because it is NOT an accessibility track", language.utf8().data());
+                    continue;
+                }
+            } else {
+                // In the first pass, only include the first non-CC or SDH track with each language if the user prefers translation tracks.
+                if (isAccessibilityTrack) {
+                    LOG(Media, "CaptionUserPreferencesMac::sortedTrackListForMenu - skipping %s because it is an accessibility track", language.utf8().data());
+                    continue;
+                }
+                if (languagesIncluded.contains(language)) {
+                    LOG(Media, "CaptionUserPreferencesMac::sortedTrackListForMenu - skipping %s because it is not the first with this language", language.utf8().data());
+                    continue;
+                }
+            }
+        }
+
+        if (!language.isEmpty())
+            languagesIncluded.add(language);
+        tracksForMenu.append(track);
+    }
+
+    // Now that we have filtered for the user's accessibility/translation preference, add  all tracks with a unique language without regard to track type.
+    for (unsigned i = 0, length = trackList->length(); i < length; ++i) {
+        TextTrack* track = trackList->item(i);
+        String language = displayNameForLanguageLocale(track->language());
+
+        // All candidates with no languge were added the first time through.
+        if (language.isEmpty())
+            continue;
+
+        if (track->containsOnlyForcedSubtitles())
+            continue;
+ 
+        if (!languagesIncluded.contains(language) && track->isMainProgramContent()) {
+            languagesIncluded.add(language);
+            tracksForMenu.append(track);
+        }
+    }
+
+    nonCopyingSort(tracksForMenu.begin(), tracksForMenu.end(), textTrackCompare);
+
+    tracksForMenu.insert(0, TextTrack::captionMenuOffItem());
+    tracksForMenu.insert(1, TextTrack::captionMenuAutomaticItem());
+
+    return tracksForMenu;
+}
+    
 }
 
 #endif // ENABLE(VIDEO_TRACK)

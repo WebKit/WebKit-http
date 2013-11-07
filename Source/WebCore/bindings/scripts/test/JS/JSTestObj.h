@@ -161,6 +161,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethod(JSC::ExecS
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionObjMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithSequenceArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodReturningSequence(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithEnumArg(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodThatRequiresAllArgsAndThrows(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionSerializedValue(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionOptionsObject(JSC::ExecState*);
@@ -339,6 +340,14 @@ void setJSTestObjId(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjHash(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 JSC::JSValue jsTestObjReplaceableAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 void setJSTestObjReplaceableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
+JSC::JSValue jsTestObjNullableDoubleAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjNullableLongAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjNullableBooleanAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjNullableStringAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+JSC::JSValue jsTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjNullableLongSettableAttribute(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
+JSC::JSValue jsTestObjNullableStringValue(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
+void setJSTestObjNullableStringValue(JSC::ExecState*, JSC::JSObject*, JSC::JSValue);
 JSC::JSValue jsTestObjConstructor(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 // Constants
 

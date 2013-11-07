@@ -26,7 +26,7 @@
 #ifndef CSSFontFaceSource_h
 #define CSSFontFaceSource_h
 
-#include "CachedFont.h"
+#include "CachedFontClient.h"
 #include "CachedResourceHandle.h"
 #include "Timer.h"
 #include <wtf/HashMap.h>
@@ -43,7 +43,6 @@ class SimpleFontData;
 class SVGFontElement;
 class SVGFontFaceElement;
 #endif
-
 
 class CSSFontFaceSource : public CachedFontClient {
 public:
@@ -68,6 +67,11 @@ public:
     void setSVGFontFaceElement(PassRefPtr<SVGFontFaceElement>);
     bool isSVGFontFaceSource() const;
     void setHasExternalSVGFont(bool value) { m_hasExternalSVGFont = value; }
+#endif
+
+#if ENABLE(FONT_LOAD_EVENTS)
+    bool isDecodeError() const;
+    bool ensureFontData();
 #endif
 
 private:

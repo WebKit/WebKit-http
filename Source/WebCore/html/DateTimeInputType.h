@@ -31,7 +31,7 @@
 #ifndef DateTimeInputType_h
 #define DateTimeInputType_h
 
-#if ENABLE(INPUT_TYPE_DATETIME)
+#if ENABLE(INPUT_TYPE_DATETIME_INCOMPLETE)
 #include "BaseChooserOnlyDateAndTimeInputType.h"
 #include "BaseDateAndTimeInputType.h"
 #include "BaseMultipleFieldsDateAndTimeInputType.h"
@@ -64,6 +64,7 @@ private:
     // BaseMultipleFieldsDateAndTimeInputType functions
     virtual String formatDateTimeFieldsState(const DateTimeFieldsState&) const OVERRIDE FINAL;
     virtual void setupLayoutParameters(DateTimeEditElement::LayoutParameters&, const DateComponents&) const OVERRIDE FINAL;
+    virtual bool isValidFormat(bool hasYear, bool hasMonth, bool hasWeek, bool hasDay, bool hasAMPM, bool hasHour, bool hasMinute, bool hasSecond) const;
 #endif
 };
 

@@ -19,7 +19,6 @@
 #include "config.h"
 #include "DragImage.h"
 
-#include "CachedImage.h"
 #include "Image.h"
 #include "RefPtrCairo.h"
 #include <cairo.h>
@@ -79,11 +78,10 @@ DragImageRef dissolveDragImageToFraction(DragImageRef image, float fraction)
 
 DragImageRef createDragImageFromImage(Image* image, RespectImageOrientationEnum)
 {
-    NativeImageCairo* nativeImage = image->nativeImageForCurrentFrame();
-    return nativeImage ? cairo_surface_reference(nativeImage->surface()) : 0;
+    return image->nativeImageForCurrentFrame().leakRef();
 }
 
-DragImageRef createDragImageIconForCachedImage(CachedImage*)
+DragImageRef createDragImageIconForCachedImageFilename(const String&)
 {
     return 0;
 }

@@ -25,7 +25,6 @@
 #include "CachedResource.h"
 
 #include "MemoryCache.h"
-#include "CachedMetadata.h"
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
 #include "CachedResourceHandle.h"
@@ -152,7 +151,7 @@ static ResourceLoadPriority defaultPriorityForResourceType(CachedResource::Type 
     return ResourceLoadPriorityLow;
 }
 
-#if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY)
 static ResourceRequest::TargetType cachedResourceTypeToTargetType(CachedResource::Type type)
 {
     switch (type) {
@@ -311,7 +310,7 @@ void CachedResource::load(CachedResourceLoader* cachedResourceLoader, const Reso
     m_options = options;
     m_loading = true;
 
-#if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
+#if PLATFORM(BLACKBERRY)
     if (m_resourceRequest.targetType() == ResourceRequest::TargetIsUnspecified)
         m_resourceRequest.setTargetType(cachedResourceTypeToTargetType(type()));
 #endif
@@ -459,34 +458,6 @@ void CachedResource::responseReceived(const ResourceResponse& response)
     String encoding = response.textEncodingName();
     if (!encoding.isNull())
         setEncoding(encoding);
-}
-
-void CachedResource::setSerializedCachedMetadata(const char* data, size_t size)
-{
-    // We only expect to receive cached metadata from the platform once.
-    // If this triggers, it indicates an efficiency problem which is most
-    // likely unexpected in code designed to improve performance.
-    ASSERT(!m_cachedMetadata);
-
-    m_cachedMetadata = CachedMetadata::deserialize(data, size);
-}
-
-void CachedResource::setCachedMetadata(unsigned dataTypeID, const char* data, size_t size)
-{
-    // Currently, only one type of cached metadata per resource is supported.
-    // If the need arises for multiple types of metadata per resource this could
-    // be enhanced to store types of metadata in a map.
-    ASSERT(!m_cachedMetadata);
-
-    m_cachedMetadata = CachedMetadata::create(dataTypeID, data, size);
-    ResourceHandle::cacheMetadata(m_response, m_cachedMetadata->serialize());
-}
-
-CachedMetadata* CachedResource::cachedMetadata(unsigned dataTypeID) const
-{
-    if (!m_cachedMetadata || m_cachedMetadata->dataTypeID() != dataTypeID)
-        return 0;
-    return m_cachedMetadata.get();
 }
 
 void CachedResource::stopLoading()
@@ -952,7 +923,6 @@ void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_loader, "loader");
     info.addMember(m_response, "response");
     info.addMember(m_data, "data");
-    info.addMember(m_cachedMetadata, "cachedMetadata");
     info.addMember(m_nextInAllResourcesList, "nextInAllResourcesList");
     info.addMember(m_prevInAllResourcesList, "prevInAllResourcesList");
     info.addMember(m_nextInLiveResourcesList, "nextInLiveResourcesList");
@@ -968,5 +938,20 @@ void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     if (m_purgeableData && !m_purgeableData->wasPurged())
         info.addRawBuffer(m_purgeableData.get(), m_purgeableData->size(), "PurgeableData", "purgeableData");
 }
+
+#if PLATFORM(MAC)
+void CachedResource::tryReplaceEncodedData(PassRefPtr<SharedBuffer> newBuffer)
+{
+    if (!m_data)
+        return;
+    
+    // Because the disk cache is asynchronous and racey with regards to the data we might be asked to replace,
+    // we need to verify that the new buffer has the same contents as our old buffer.
+    if (m_data->size() != newBuffer->size() || memcmp(m_data->data(), newBuffer->data(), m_data->size()))
+        return;
+
+    m_data->tryReplaceSharedBufferContents(newBuffer.get());
+}
+#endif
 
 }

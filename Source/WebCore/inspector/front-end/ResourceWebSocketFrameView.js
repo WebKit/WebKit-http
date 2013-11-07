@@ -27,11 +27,11 @@ WebInspector.ResourceWebSocketFrameView = function(resource)
     this.resource = resource;
     this.element.removeChildren();
 
-    var dataGrid = new WebInspector.DataGrid({
-        data: {title: WebInspector.UIString("Data"), sortable: false},
-        length: {title: WebInspector.UIString("Length"), sortable: false, aligned: "right", width: "50px"},
-        time: {title: WebInspector.UIString("Time"), width: "70px"}
-    });
+    var dataGrid = new WebInspector.DataGrid([
+        {id: "data", title: WebInspector.UIString("Data"), sortable: false},
+        {id: "length", title: WebInspector.UIString("Length"), sortable: false, alig: WebInspector.DataGrid.Align.Right, width: "50px"},
+        {id: "time", title: WebInspector.UIString("Time"), width: "70px"}
+    ]);
 
     var frames = this.resource.frames();
     for (var i = 0; i < frames.length; i++) {
@@ -40,7 +40,7 @@ WebInspector.ResourceWebSocketFrameView = function(resource)
         var date = new Date(payload.time * 1000);
         var row = {
             data: "",
-            length: payload.payloadData.length.toString(),
+            length: typeof payload.payloadData === "undefined" ? payload.errorMessage.length.toString() : payload.payloadData.length.toString(),
             time: date.toLocaleTimeString()
         };
 

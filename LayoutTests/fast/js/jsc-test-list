@@ -21,6 +21,7 @@ fast/js/array-reduce
 fast/js/array-reduceRight
 fast/js/array-reset-large-index
 fast/js/array-slow-put
+fast/js/array-sort-small-sparse-array-with-large-length
 fast/js/array-sort-numericCompare
 fast/js/array-sort-reentrance
 fast/js/array-splice
@@ -82,6 +83,9 @@ fast/js/dfg-arguments-osr-exit-multiple-blocks
 fast/js/dfg-arguments-osr-exit-multiple-blocks-before-exit
 fast/js/dfg-arguments-out-of-bounds
 fast/js/dfg-arguments-unexpected-escape
+fast/js/dfg-arith-add-overflow-check-elimination-tower-of-large-numbers
+fast/js/dfg-arith-add-overflow-check-elimination-predicted-but-not-proven-int
+fast/js/dfg-array-dead
 fast/js/dfg-arrayify-elimination
 fast/js/dfg-arrayify-when-late-prevent-extensions
 fast/js/dfg-arrayify-when-prevent-extensions
@@ -93,7 +97,9 @@ fast/js/dfg-array-push-slow-put
 fast/js/dfg-bool-to-int32-reuse
 fast/js/dfg-branch-logical-not-peephole-around-osr-exit
 fast/js/dfg-branch-not-fail
+fast/js/dfg-captured-var-get-local
 fast/js/dfg-cfa-merge-with-dead-use-at-tail
+fast/js/dfg-cfa-prove-put-by-id-simple-when-storing-to-specialized-function
 fast/js/dfg-cfg-simplify-eliminate-set-local-type-check-then-branch-not-null
 fast/js/dfg-cfg-simplify-eliminate-set-local-type-check-then-branch-not-null-and-decrement
 fast/js/dfg-cfg-simplify-eliminate-set-local-type-check-then-typeof
@@ -123,6 +129,7 @@ fast/js/dfg-double-vote-fuzz
 fast/js/dfg-ensure-array-storage-on-string
 fast/js/dfg-ensure-contiguous-on-string
 fast/js/dfg-exception
+fast/js/dfg-float32-array-nan
 fast/js/dfg-float32array
 fast/js/dfg-float64array
 fast/js/dfg-flush-get-local
@@ -178,6 +185,7 @@ fast/js/dfg-negative-array-index
 fast/js/dfg-obvious-constant-cfa
 fast/js/dfg-osr-entry-hoisted-clobbered-structure-check
 fast/js/dfg-other-branch
+fast/js/dfg-phantom-base
 fast/js/dfg-phantom-get-local
 fast/js/dfg-post-inc-then-exit
 fast/js/dfg-proto-access-inline-osr-exit
@@ -190,6 +198,20 @@ fast/js/dfg-side-effect-assignment-osr-exit
 fast/js/dfg-sqrt-backwards-propagation
 fast/js/dfg-string-stricteq
 fast/js/dfg-tear-off-arguments-not-activation
+fast/js/dfg-to-string-bad-toString
+fast/js/dfg-to-string-bad-valueOf
+fast/js/dfg-to-string-int-or-string
+fast/js/dfg-to-string-int
+fast/js/dfg-to-string-on-cell
+fast/js/dfg-to-string-on-value
+fast/js/dfg-to-string-side-effect
+fast/js/dfg-to-string-side-effect-clobbers-toString
+fast/js/dfg-to-string-toString-becomes-bad-with-check-structure
+fast/js/dfg-to-string-toString-becomes-bad-with-dictionary-string-prototype
+fast/js/dfg-to-string-toString-becomes-bad
+fast/js/dfg-to-string-toString-in-string
+fast/js/dfg-to-string-valueOf-becomes-bad
+fast/js/dfg-to-string-valueOf-in-string
 fast/js/dfg-uint16array
 fast/js/dfg-uint32-to-number-in-middle-of-copy-propagation
 fast/js/dfg-uint32-to-number-on-captured-variable
@@ -257,6 +279,7 @@ fast/js/integer-extremes
 fast/js/interpreter-no-activation
 fast/js/invalid-callframe-during-unwind
 fast/js/isPrototypeOf
+fast/js/jit-float32-array-nan
 fast/js/js-continue-break-restrictions
 fast/js/JSON-parse-reviver
 fast/js/JSON-stringify-replacer

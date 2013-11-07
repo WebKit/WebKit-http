@@ -46,10 +46,6 @@
 #endif
 #endif
 
-#if PLATFORM(CHROMIUM)
-#include "VisitedLinks.h"
-#endif
-
 namespace WebCore {
 
 static unsigned getUniqueIdentifier()
@@ -195,17 +191,12 @@ void PageGroup::removePage(Page* page)
 
 bool PageGroup::isLinkVisited(LinkHash visitedLinkHash)
 {
-#if PLATFORM(CHROMIUM)
-    // Use Chromium's built-in visited link database.
-    return VisitedLinks::isLinkVisited(visitedLinkHash);
-#else
     if (!m_visitedLinksPopulated) {
         m_visitedLinksPopulated = true;
         ASSERT(!m_pages.isEmpty());
         (*m_pages.begin())->chrome()->client()->populateVisitedLinks();
     }
     return m_visitedLinkHashes.contains(visitedLinkHash);
-#endif
 }
 
 void PageGroup::addVisitedLinkHash(LinkHash hash)
@@ -217,10 +208,8 @@ void PageGroup::addVisitedLinkHash(LinkHash hash)
 inline void PageGroup::addVisitedLink(LinkHash hash)
 {
     ASSERT(shouldTrackVisitedLinks);
-#if !PLATFORM(CHROMIUM)
     if (!m_visitedLinkHashes.add(hash).isNewEntry)
         return;
-#endif
     Page::visitedStateChanged(this, hash);
     pageCache()->markPagesForVistedLinkStyleRecalc();
 }
@@ -417,6 +406,13 @@ void PageGroup::invalidatedInjectedStyleSheetCacheInAllFrames()
 }
 
 #if ENABLE(VIDEO_TRACK)
+void PageGroup::captionPreferencesChanged()
+{
+    for (HashSet<Page*>::iterator i = m_pages.begin(); i != m_pages.end(); ++i)
+        (*i)->captionPreferencesChanged();
+    pageCache()->markPagesForCaptionPreferencesChanged();
+}
+
 CaptionUserPreferences* PageGroup::captionPreferences()
 {
     if (!m_captionPreferences)

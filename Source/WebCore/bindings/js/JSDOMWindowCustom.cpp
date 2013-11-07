@@ -25,39 +25,17 @@
 #include "Frame.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
-#include "History.h"
-#include "JSArrayBuffer.h"
-#include "JSDataView.h"
 #include "JSEvent.h"
 #include "JSEventListener.h"
-#include "JSEventSource.h"
-#include "JSFloat32Array.h"
-#include "JSFloat64Array.h"
 #include "JSHTMLAudioElement.h"
 #include "JSHTMLCollection.h"
 #include "JSHTMLOptionElement.h"
-#include "JSHistory.h"
 #include "JSImageConstructor.h"
-#include "JSInt16Array.h"
-#include "JSInt32Array.h"
-#include "JSInt8Array.h"
-#include "JSLocation.h"
-#include "JSMessageChannel.h"
 #include "JSMessagePortCustom.h"
-#include "JSUint16Array.h"
-#include "JSUint32Array.h"
-#include "JSUint8Array.h"
-#include "JSUint8ClampedArray.h"
-#include "JSWebKitCSSMatrix.h"
-#include "JSWebKitPoint.h"
-#include "JSXMLHttpRequest.h"
-#include "JSXSLTProcessor.h"
 #include "Location.h"
-#include "MediaPlayer.h"
 #include "ScheduledAction.h"
 #include "Settings.h"
 #include "SharedWorkerRepository.h"
-#include <runtime/JSFunction.h>
 
 #if ENABLE(WORKERS)
 #include "JSWorker.h"
@@ -260,7 +238,7 @@ bool JSDOMWindow::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName
     Document* document = thisObject->impl()->frame()->document();
     if (document->isHTMLDocument()) {
         AtomicStringImpl* atomicPropertyName = findAtomicString(propertyName);
-        if (atomicPropertyName && (static_cast<HTMLDocument*>(document)->hasNamedItem(atomicPropertyName) || document->hasElementWithId(atomicPropertyName))) {
+        if (atomicPropertyName && (toHTMLDocument(document)->hasNamedItem(atomicPropertyName) || document->hasElementWithId(atomicPropertyName))) {
             slot.setCustom(thisObject, namedItemGetter);
             return true;
         }
@@ -336,7 +314,7 @@ bool JSDOMWindow::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec, unsig
     Document* document = thisObject->impl()->frame()->document();
     if (document->isHTMLDocument()) {
         AtomicStringImpl* atomicPropertyName = findAtomicString(propertyName);
-        if (atomicPropertyName && (static_cast<HTMLDocument*>(document)->hasNamedItem(atomicPropertyName) || document->hasElementWithId(atomicPropertyName))) {
+        if (atomicPropertyName && (toHTMLDocument(document)->hasNamedItem(atomicPropertyName) || document->hasElementWithId(atomicPropertyName))) {
             slot.setCustom(thisObject, namedItemGetter);
             return true;
         }
@@ -407,7 +385,7 @@ bool JSDOMWindow::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, Pr
     Document* document = thisObject->impl()->frame()->document();
     if (document->isHTMLDocument()) {
         AtomicStringImpl* atomicPropertyName = findAtomicString(propertyName);
-        if (atomicPropertyName && (static_cast<HTMLDocument*>(document)->hasNamedItem(atomicPropertyName) || document->hasElementWithId(atomicPropertyName))) {
+        if (atomicPropertyName && (toHTMLDocument(document)->hasNamedItem(atomicPropertyName) || document->hasElementWithId(atomicPropertyName))) {
             PropertySlot slot;
             slot.setCustom(thisObject, namedItemGetter);
             descriptor.setDescriptor(slot.getValue(exec, propertyName), ReadOnly | DontDelete | DontEnum);
