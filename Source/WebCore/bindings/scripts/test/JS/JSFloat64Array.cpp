@@ -259,7 +259,7 @@ EncodedJSValue JSC_HOST_CALL jsFloat64ArrayPrototypeFunctionFoo(ExecState* exec)
     Float64Array* impl = static_cast<Float64Array*>(castedThis->impl());
     if (exec->argumentCount() < 1)
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    Float32Array* array(toFloat32Array(MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined)));
+    Float32Array* array(toFloat32Array(exec->argument(0)));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
@@ -282,7 +282,7 @@ JSValue JSFloat64Array::getByIndex(ExecState*, unsigned index)
 {
     ASSERT_GC_OBJECT_INHERITS(this, &s_info);
     double result = static_cast<Float64Array*>(impl())->item(index);
-    if (isnan(result))
+    if (std::isnan(result))
         return jsNaN();
     return JSValue(result);
 }

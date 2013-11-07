@@ -26,6 +26,7 @@
 #include "DocumentWriter.h"
 #include "HTMLOptionElement.h"
 #include "HTMLSelectElement.h"
+#include "NotImplemented.h"
 #include "Page.h"
 #include "PagePopup.h"
 #include "PopupPicker.h"
@@ -151,9 +152,9 @@ String SelectPopupClient::htmlSource()
     return m_source;
 }
 
-Localizer& SelectPopupClient::localizer()
+Locale& SelectPopupClient::locale()
 {
-    return m_element->document()->getCachedLocalizer();
+    return m_element->document()->getCachedLocale();
 }
 
 void SelectPopupClient::setValueAndClosePopup(int, const String& stringValue)
@@ -193,6 +194,11 @@ void SelectPopupClient::setValueAndClosePopup(int, const String& stringValue)
         m_element->renderer()->repaint();
 
     m_notifyChangeTimer.startOneShot(0);
+}
+
+void SelectPopupClient::setValue(const String&)
+{
+    notImplemented();
 }
 
 void SelectPopupClient::didClosePopup()

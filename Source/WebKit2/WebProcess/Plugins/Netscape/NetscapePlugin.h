@@ -41,6 +41,7 @@
 namespace WebCore {
     class HTTPHeaderMap;
     class ProtectionSpace;
+    class SharedBuffer;
 }
 
 namespace WebKit {
@@ -152,6 +153,7 @@ private:
 
     const char* userAgent();
 
+    void platformPreInitialize();
     bool platformPostInitialize();
     void platformDestroy();
     bool platformInvalidate(const WebCore::IntRect&);
@@ -247,9 +249,11 @@ private:
     // converted (if the transformation matrix isn't invertible).
     bool convertFromRootView(const WebCore::IntPoint& pointInRootViewCoordinates, WebCore::IntPoint& pointInPluginCoordinates);
 
-    virtual bool getResourceData(const unsigned char*& /* bytes */, unsigned& /* length */) const OVERRIDE { return false; }
+    virtual PassRefPtr<WebCore::SharedBuffer> liveResourceData() const OVERRIDE;
 
     virtual bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) OVERRIDE { return false; }
+
+    virtual String getSelectionString() const OVERRIDE { return String(); }
 
     void updateNPNPrivateMode();
 

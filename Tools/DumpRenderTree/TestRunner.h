@@ -56,7 +56,6 @@ public:
     bool callShouldCloseOnWebView();
     JSStringRef copyDecodedHostName(JSStringRef name);
     JSStringRef copyEncodedHostName(JSStringRef name);
-    void deliverWebIntent(JSStringRef action, JSStringRef type, JSStringRef data);
     void dispatchPendingLoadRequests();
     void display();
     void displayInvalidatedRegion();
@@ -67,7 +66,6 @@ public:
     long long applicationCacheDiskUsageForOrigin(JSStringRef name);
     bool isCommandEnabled(JSStringRef name);
     void keepWebHistory();
-    JSValueRef computedStyleIncludingVisitedInfo(JSContextRef, JSValueRef);
     void notifyDone();
     int numberOfPendingGeolocationPermissionRequests();
     void overridePreference(JSStringRef key, JSStringRef value);
@@ -81,14 +79,12 @@ public:
     void queueNonLoadingScript(JSStringRef script);
     void queueReload();
     void removeAllVisitedLinks();
-    void sendWebIntentResponse(JSStringRef response);
     void setAcceptsEditing(bool);
     void setAllowUniversalAccessFromFileURLs(bool);
     void setAllowFileAccessFromFileURLs(bool);
     void setAppCacheMaximumSize(unsigned long long quota);
     void setApplicationCacheOriginQuota(unsigned long long);
     void setAuthorAndUserStylesEnabled(bool);
-    void setAutofilled(JSContextRef, JSValueRef nodeObject, bool autofilled);
     void setCacheModel(int);
     void setCustomPolicyDelegate(bool setDelegate, bool permissive);
     void setDatabaseQuota(unsigned long long quota);
@@ -116,7 +112,6 @@ public:
     void setValueForUser(JSContextRef, JSValueRef nodeObject, JSStringRef value);
     void setViewModeMediaFeature(JSStringRef);
     void setXSSAuditorEnabled(bool flag);
-    void setFrameFlatteningEnabled(bool);
     void setSpatialNavigationEnabled(bool);
     void setScrollbarPolicy(JSStringRef orientation, JSStringRef policy);
     void startSpeechInput(JSContextRef inputElement);
@@ -125,7 +120,6 @@ public:
 
     void waitForPolicyDelegate();
     size_t webHistoryItemCount();
-    unsigned workerThreadCount() const;
     int windowCount();
     
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN)
@@ -140,8 +134,6 @@ public:
     void denyWebNotificationPermission(JSStringRef origin);
     void removeAllWebNotificationPermissions();
     void simulateWebNotificationClick(JSValueRef notification);
-
-    bool elementDoesAutoCompleteForElementWithId(JSStringRef id);
 
     bool dumpAsAudio() const { return m_dumpAsAudio; }
     void setDumpAsAudio(bool dumpAsAudio) { m_dumpAsAudio = dumpAsAudio; }
@@ -287,10 +279,6 @@ public:
 
     const std::string& encodedAudioData() const { return m_encodedAudioData; }
     void setEncodedAudioData(const std::string& encodedAudioData) { m_encodedAudioData = encodedAudioData; }
-    
-    bool pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId);
-    bool pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId);
-    unsigned numberOfActiveAnimations() const;
 
     void addOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef destinationProtocol, JSStringRef destinationHost, bool allowDestinationSubdomains);
     void removeOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef destinationProtocol, JSStringRef destinationHost, bool allowDestinationSubdomains);
@@ -335,8 +323,6 @@ public:
     // Simulate a request an embedding application could make, populating per-session credential storage.
     void authenticateSession(JSStringRef url, JSStringRef username, JSStringRef password);
 
-    JSRetainPtr<JSStringRef> markerTextForListItem(JSContextRef, JSValueRef nodeObject) const;
-
     JSValueRef originsWithLocalStorage(JSContextRef);
     void deleteAllLocalStorage();
     void deleteLocalStorageForOrigin(JSStringRef originIdentifier);
@@ -349,8 +335,6 @@ public:
 
     static const unsigned maxViewWidth;
     static const unsigned maxViewHeight;
-
-    void setMinimumTimerInterval(double);
 
     void setTextDirection(JSStringRef);
     const std::string& titleTextDirection() const { return m_titleTextDirection; }

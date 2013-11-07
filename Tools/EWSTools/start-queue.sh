@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2012 Google Inc. All rights reserved.
+# Copyright (c) 2013 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -11,9 +11,6 @@
 # copyright notice, this list of conditions and the following disclaimer
 # in the documentation and/or other materials provided with the
 # distribution.
-#     * Neither the name of Google Inc. nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -27,16 +24,28 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if [[ $# -lt 3 ]]; then
-    echo "Usage: start-queue-loop.sh QUEUE_NAME BOT_ID RESET_AFTER_ITERATION [QUEUE_PARAMS]"
+USAGE="Usage: start-queue-loop.sh [OPTIONS] QUEUE_NAME BOT_ID RESET_AFTER_ITERATION
+       -r RESET_SCRIPT    A bash script to be run every cycle just before the queue starts up again.
+       -p QUEUE_PARAMS    Additional parameters to be given to the queue's execution command."
+
+while getopts "r:p:" FLAG
+do
+    case $FLAG in
+    r) RESET_SCRIPT=$OPTARG;;
+    p) QUEUE_PARAMS=$OPTARG;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+if [[ "$#" -ne 3 ]]; then
+    echo "$USAGE"
     exit 1
 fi
 
 QUEUE_NAME=$1
 BOT_ID=$2
 RESET_AFTER_ITERATION=$3
-shift 3
-QUEUE_PARAMS="$@"
 
 cd /mnt/git/webkit-$QUEUE_NAME
 while :
@@ -50,7 +59,7 @@ do
 
     # This somewhat quirky sequence of steps seems to clear up all the broken
     # git situations we've gotten ourself into in the past.
-    git clean -f # Remove any left-over layout test results, added files, etc.
+    git clean -f -d # Remove any left-over layout test results, added files, etc.
     git rebase --abort # If we got killed during a git rebase, we need to clean up.
     git fetch origin # Avoid updating the working copy to a stale revision.
     git checkout origin/master -f
@@ -65,6 +74,11 @@ do
     # run it before running webkit-patch to avoid stale .pyc files
     # preventing webkit-patch from launching.
     ./Tools/Scripts/test-webkitpy
+
+    # Run the given reset script.
+    if [[ -n "$RESET_SCRIPT" ]]; then
+        bash "$RESET_SCRIPT"
+    fi
 
     # We use --exit-after-iteration to pick up any changes to webkit-patch, including
     # changes to the committers.py file.

@@ -45,12 +45,12 @@ const unsigned renderBufferSize = 128;
 const size_t fifoSize = 8192;
 
 // Factory method: Chromium-implementation
-PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
+PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String& inputDeviceId, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
 {
-    return adoptPtr(new AudioDestinationChromium(callback, numberOfInputChannels, numberOfOutputChannels, sampleRate));
+    return adoptPtr(new AudioDestinationChromium(callback, inputDeviceId, numberOfInputChannels, numberOfOutputChannels, sampleRate));
 }
 
-AudioDestinationChromium::AudioDestinationChromium(AudioIOCallback& callback, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
+AudioDestinationChromium::AudioDestinationChromium(AudioIOCallback& callback, const String& inputDeviceId, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
     : m_callback(callback)
     , m_numberOfOutputChannels(numberOfOutputChannels)
     , m_inputBus(numberOfInputChannels, renderBufferSize)
@@ -66,7 +66,7 @@ AudioDestinationChromium::AudioDestinationChromium(AudioIOCallback& callback, un
     if (m_callbackBufferSize + renderBufferSize > fifoSize)
         return;
 
-    m_audioDevice = adoptPtr(WebKit::Platform::current()->createAudioDevice(m_callbackBufferSize, numberOfInputChannels, numberOfOutputChannels, sampleRate, this));
+    m_audioDevice = adoptPtr(WebKit::Platform::current()->createAudioDevice(m_callbackBufferSize, numberOfInputChannels, numberOfOutputChannels, sampleRate, this, inputDeviceId));
     ASSERT(m_audioDevice);
 
     // Create a FIFO to handle the possibility of the callback size
@@ -114,6 +114,11 @@ float AudioDestination::hardwareSampleRate()
     return static_cast<float>(WebKit::Platform::current()->audioHardwareSampleRate());
 }
 
+unsigned long AudioDestination::maxChannelCount()
+{
+    return static_cast<float>(WebKit::Platform::current()->audioHardwareOutputChannels());
+}
+
 void AudioDestinationChromium::render(const WebKit::WebVector<float*>& sourceData, const WebKit::WebVector<float*>& audioData, size_t numberOfFrames)
 {
     bool isNumberOfChannelsGood = audioData.size() == m_numberOfOutputChannels;
@@ -137,8 +142,8 @@ void AudioDestinationChromium::render(const WebKit::WebVector<float*>& sourceDat
         m_inputFifo->push(&wrapperBus);
     }
 
-    m_renderBus.setChannelMemory(0, audioData[0], numberOfFrames);
-    m_renderBus.setChannelMemory(1, audioData[1], numberOfFrames);
+    for (unsigned i = 0; i < m_numberOfOutputChannels; ++i)
+        m_renderBus.setChannelMemory(i, audioData[i], numberOfFrames);
 
     m_fifo->consume(&m_renderBus, numberOfFrames);
 }

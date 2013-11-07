@@ -21,7 +21,7 @@
 #define CoordinatedGraphicsScene_h
 
 #if USE(COORDINATED_GRAPHICS)
-#include "CoordinatedLayerInfo.h"
+#include "CoordinatedGraphicsState.h"
 #include "CoordinatedSurface.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
@@ -32,19 +32,23 @@
 #include "RunLoop.h"
 #include "TextureMapper.h"
 #include "TextureMapperBackingStore.h"
+#include "TextureMapperFPSCounter.h"
+#include "TextureMapperLayer.h"
 #include "Timer.h"
 #include <wtf/Functional.h>
 #include <wtf/HashSet.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 
+#if USE(GRAPHICS_SURFACE)
+#include "TextureMapperSurfaceBackingStore.h"
+#endif
+
 namespace WebCore {
 
 class CoordinatedBackingStore;
-class CoordinatedLayerInfo;
 class CustomFilterProgram;
 class CustomFilterProgramInfo;
-class TextureMapperLayer;
 
 class CoordinatedGraphicsSceneClient {
 public:
@@ -55,74 +59,45 @@ public:
     virtual void purgeBackingStores() = 0;
     virtual void renderNextFrame() = 0;
     virtual void updateViewport() = 0;
+    virtual void commitScrollOffset(uint32_t layerID, const IntSize& offset) = 0;
 };
 
-class CoordinatedGraphicsScene : public ThreadSafeRefCounted<CoordinatedGraphicsScene>, public GraphicsLayerClient {
+class CoordinatedGraphicsScene : public ThreadSafeRefCounted<CoordinatedGraphicsScene>, public GraphicsLayerClient, public TextureMapperLayer::ScrollingClient {
 public:
-    struct TileUpdate {
-        IntRect sourceRect;
-        IntRect tileRect;
-        uint32_t atlasID;
-        IntPoint offset;
-        TileUpdate(const IntRect& source, const IntRect& tile, uint32_t atlas, const IntPoint& newOffset)
-            : sourceRect(source)
-            , tileRect(tile)
-            , atlasID(atlas)
-            , offset(newOffset)
-        {
-        }
-    };
     explicit CoordinatedGraphicsScene(CoordinatedGraphicsSceneClient*);
     virtual ~CoordinatedGraphicsScene();
     void paintToCurrentGLContext(const TransformationMatrix&, float, const FloatRect&, TextureMapper::PaintFlags = 0);
-#if PLATFORM(QT)
-    void paintToGraphicsContext(QPainter*);
-#elif USE(CAIRO)
-    void paintToGraphicsContext(cairo_t*);
-#endif
-    void setContentsSize(const FloatSize&);
-    void setVisibleContentsRect(const FloatRect&);
-    void didChangeScrollPosition(const FloatPoint& position);
-#if USE(GRAPHICS_SURFACE)
-    void createCanvas(CoordinatedLayerID, const IntSize&, PassRefPtr<GraphicsSurface>);
-    void syncCanvas(CoordinatedLayerID, uint32_t frontBuffer);
-    void destroyCanvas(CoordinatedLayerID);
-#endif
-    void setLayerRepaintCount(CoordinatedLayerID, int value);
-
+    void paintToGraphicsContext(PlatformGraphicsContext*);
+    void setScrollPosition(const FloatPoint&);
     void detach();
     void appendUpdate(const Function<void()>&);
+
+    WebCore::TextureMapperLayer* findScrollableContentsLayerAt(const WebCore::FloatPoint&);
+
+    virtual void commitScrollOffset(uint32_t layerID, const IntSize& offset);
 
     // The painting thread must lock the main thread to use below two methods, because two methods access members that the main thread manages. See m_client.
     // Currently, QQuickWebPage::updatePaintNode() locks the main thread before calling both methods.
     void purgeGLResources();
     void setActive(bool);
 
+    void commitSceneState(const CoordinatedGraphicsState&);
+
     void createLayers(const Vector<CoordinatedLayerID>&);
     void deleteLayers(const Vector<CoordinatedLayerID>&);
-    void setRootLayerID(CoordinatedLayerID);
-    void setLayerChildren(CoordinatedLayerID, const Vector<CoordinatedLayerID>&);
-    void setLayerState(CoordinatedLayerID, const CoordinatedLayerInfo&);
-#if ENABLE(CSS_FILTERS)
-    void setLayerFilters(CoordinatedLayerID, const FilterOperations&);
-#endif
+
 #if ENABLE(CSS_SHADERS)
     void injectCachedCustomFilterPrograms(const FilterOperations& filters) const;
     void createCustomFilterProgram(int id, const CustomFilterProgramInfo&);
     void removeCustomFilterProgram(int id);
 #endif
 
-    void createTile(CoordinatedLayerID, uint32_t tileID, float scale);
-    void removeTile(CoordinatedLayerID, uint32_t tileID);
-    void updateTile(CoordinatedLayerID, uint32_t tileID, const TileUpdate&);
     void createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface>);
     void removeUpdateAtlas(uint32_t atlasID);
-    void flushLayerChanges();
     void createImageBacking(CoordinatedImageBackingID);
     void updateImageBacking(CoordinatedImageBackingID, PassRefPtr<CoordinatedSurface>);
     void clearImageBackingContents(CoordinatedImageBackingID);
     void removeImageBacking(CoordinatedImageBackingID);
-    void setLayerAnimations(CoordinatedLayerID, const GraphicsLayerAnimations&);
     void setAnimationsLocked(bool);
     void setBackgroundColor(const Color&);
     void setDrawsBackground(bool enable) { m_setDrawsBackground = enable; }
@@ -132,6 +107,23 @@ public:
 #endif
 
 private:
+    void setRootLayerID(CoordinatedLayerID);
+    void setLayerState(CoordinatedLayerID, const CoordinatedGraphicsLayerState&);
+    void setLayerChildrenIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void updateTilesIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void createTilesIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void removeTilesIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+#if ENABLE(CSS_FILTERS)
+    void setLayerFiltersIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+#endif
+    void setLayerAnimationsIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+#if USE(GRAPHICS_SURFACE)
+    void createCanvasIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void syncCanvasIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void destroyCanvasIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+#endif
+    void setLayerRepaintCountIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+
     GraphicsLayer* layerByID(CoordinatedLayerID id)
     {
         ASSERT(m_layers.contains(id));
@@ -170,8 +162,7 @@ private:
     void removeBackingStoreIfNeeded(GraphicsLayer*);
     void resetBackingStoreSizeToLayerSize(GraphicsLayer*);
 
-    FloatSize m_contentsSize;
-    FloatRect m_visibleContentsRect;
+    void dispatchCommitScrollOffset(uint32_t layerID, const IntSize& offset);
 
     // Render queue can be accessed ony from main thread or updatePaintNode call stack!
     Vector<Function<void()> > m_renderQueue;
@@ -189,7 +180,7 @@ private:
     HashSet<RefPtr<CoordinatedBackingStore> > m_backingStoresWithPendingBuffers;
 
 #if USE(GRAPHICS_SURFACE)
-    typedef HashMap<CoordinatedLayerID, RefPtr<TextureMapperSurfaceBackingStore> > SurfaceBackingStoreMap;
+    typedef HashMap<GraphicsLayer*, RefPtr<TextureMapperSurfaceBackingStore> > SurfaceBackingStoreMap;
     SurfaceBackingStoreMap m_surfaceBackingStores;
 #endif
 
@@ -207,8 +198,8 @@ private:
     typedef HashMap<CoordinatedLayerID, GraphicsLayer*> LayerRawPtrMap;
     LayerRawPtrMap m_fixedLayers;
     CoordinatedLayerID m_rootLayerID;
+    FloatPoint m_scrollPosition;
     FloatPoint m_renderedContentsScrollPosition;
-    FloatPoint m_pendingRenderedContentsScrollPosition;
     bool m_animationsLocked;
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     bool m_animationFrameRequested;
@@ -220,6 +211,8 @@ private:
     typedef HashMap<int, RefPtr<CustomFilterProgram> > CustomFilterProgramMap;
     CustomFilterProgramMap m_customFilterPrograms;
 #endif
+
+    TextureMapperFPSCounter m_fpsCounter;
 };
 
 } // namespace WebCore

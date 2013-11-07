@@ -26,9 +26,147 @@
 #include "config.h"
 #include "StorageManager.h"
 
+#include "SecurityOriginData.h"
+#include "StorageAreaProxyMessages.h"
 #include "StorageManagerMessages.h"
+#include "WebProcessProxy.h"
+#include "WorkQueue.h"
+#include <WebCore/SecurityOriginHash.h>
+#include <WebCore/StorageMap.h>
+
+using namespace WebCore;
 
 namespace WebKit {
+
+class StorageManager::StorageArea : public ThreadSafeRefCounted<StorageManager::StorageArea> {
+public:
+    static PassRefPtr<StorageArea> create(unsigned quotaInBytes);
+    ~StorageArea();
+
+    void addListener(CoreIPC::Connection*, uint64_t storageAreaID);
+    void removeListener(CoreIPC::Connection*, uint64_t storageAreaID);
+
+    void setItem(CoreIPC::Connection*, uint64_t storageAreaID, const String& key, const String& value, const String& urlString, bool& quotaException);
+
+private:
+    explicit StorageArea(unsigned quotaInBytes);
+
+    void dispatchEvents(CoreIPC::Connection*, uint64_t storageAreaID, const String& key, const String& oldValue, const String& newValue, const String& urlString) const;
+
+    RefPtr<StorageMap> m_storageMap;
+    HashSet<std::pair<RefPtr<CoreIPC::Connection>, uint64_t> > m_eventListeners;
+};
+
+PassRefPtr<StorageManager::StorageArea> StorageManager::StorageArea::create(unsigned quotaInBytes)
+{
+    return adoptRef(new StorageArea(quotaInBytes));
+}
+
+StorageManager::StorageArea::StorageArea(unsigned quotaInBytes)
+    : m_storageMap(StorageMap::create(quotaInBytes))
+{
+}
+
+StorageManager::StorageArea::~StorageArea()
+{
+    ASSERT(m_eventListeners.isEmpty());
+}
+
+void StorageManager::StorageArea::addListener(CoreIPC::Connection* connection, uint64_t storageAreaID)
+{
+    ASSERT(!m_eventListeners.contains(std::make_pair(connection, storageAreaID)));
+    m_eventListeners.add(std::make_pair(connection, storageAreaID));
+}
+
+void StorageManager::StorageArea::removeListener(CoreIPC::Connection* connection, uint64_t storageAreaID)
+{
+    ASSERT(m_eventListeners.contains(std::make_pair(connection, storageAreaID)));
+    m_eventListeners.remove(std::make_pair(connection, storageAreaID));
+}
+
+void StorageManager::StorageArea::setItem(CoreIPC::Connection* connection, uint64_t storageAreaID, const String& key, const String& value, const String& urlString, bool& quotaException)
+{
+    ASSERT(m_storageMap->hasOneRef());
+
+    String oldValue;
+    m_storageMap->setItem(key, value, oldValue, quotaException);
+
+    if (!quotaException)
+        dispatchEvents(connection, storageAreaID, key, oldValue, value, urlString);
+}
+
+void StorageManager::StorageArea::dispatchEvents(CoreIPC::Connection* connection, uint64_t storageAreaID, const String& key, const String& oldValue, const String& newValue, const String& urlString) const
+{
+    for (HashSet<std::pair<RefPtr<CoreIPC::Connection>, uint64_t> >::const_iterator it = m_eventListeners.begin(), end = m_eventListeners.end(); it != end; ++it) {
+        if (it->first == connection && it->second == storageAreaID) {
+            // We don't want to dispatch events to the storage area that originated the event.
+            continue;
+        }
+
+        it->first->send(Messages::StorageAreaProxy::DispatchStorageEvent(key, oldValue, newValue, urlString), it->second);
+    }
+}
+
+class StorageManager::SessionStorageNamespace : public ThreadSafeRefCounted<SessionStorageNamespace> {
+public:
+    static PassRefPtr<SessionStorageNamespace> create(CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
+    ~SessionStorageNamespace();
+
+    bool isEmpty() const { return m_storageAreaMap.isEmpty(); }
+
+    CoreIPC::Connection* allowedConnection() const { return m_allowedConnection.get(); }
+    void setAllowedConnection(CoreIPC::Connection*);
+
+    PassRefPtr<StorageArea> getOrCreateStorageArea(PassRefPtr<SecurityOrigin>);
+
+    void cloneTo(SessionStorageNamespace& newSessionStorageNamespace);
+
+private:
+    SessionStorageNamespace(CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
+
+    RefPtr<CoreIPC::Connection> m_allowedConnection;
+    unsigned m_quotaInBytes;
+
+    HashMap<RefPtr<SecurityOrigin>, RefPtr<StorageArea> > m_storageAreaMap;
+};
+
+PassRefPtr<StorageManager::SessionStorageNamespace> StorageManager::SessionStorageNamespace::create(CoreIPC::Connection* allowedConnection, unsigned quotaInBytes)
+{
+    return adoptRef(new SessionStorageNamespace(allowedConnection, quotaInBytes));
+}
+
+StorageManager::SessionStorageNamespace::SessionStorageNamespace(CoreIPC::Connection* allowedConnection, unsigned quotaInBytes)
+    : m_allowedConnection(allowedConnection)
+    , m_quotaInBytes(quotaInBytes)
+{
+}
+
+StorageManager::SessionStorageNamespace::~SessionStorageNamespace()
+{
+}
+
+void StorageManager::SessionStorageNamespace::setAllowedConnection(CoreIPC::Connection* allowedConnection)
+{
+    ASSERT(!allowedConnection || !m_allowedConnection);
+
+    m_allowedConnection = allowedConnection;
+}
+
+PassRefPtr<StorageManager::StorageArea> StorageManager::SessionStorageNamespace::getOrCreateStorageArea(PassRefPtr<SecurityOrigin> securityOrigin)
+{
+    HashMap<RefPtr<SecurityOrigin>, RefPtr<StorageArea> >::AddResult result = m_storageAreaMap.add(securityOrigin, 0);
+    if (result.isNewEntry)
+        result.iterator->value = StorageArea::create(m_quotaInBytes);
+
+    return result.iterator->value;
+}
+
+void StorageManager::SessionStorageNamespace::cloneTo(SessionStorageNamespace& newSessionStorageNamespace)
+{
+    ASSERT(newSessionStorageNamespace.isEmpty());
+
+    // FIXME: Implement.
+}
 
 PassRefPtr<StorageManager> StorageManager::create()
 {
@@ -36,6 +174,7 @@ PassRefPtr<StorageManager> StorageManager::create()
 }
 
 StorageManager::StorageManager()
+    : m_queue(WorkQueue::create("com.apple.WebKit.StorageManager"))
 {
 }
 
@@ -43,18 +182,139 @@ StorageManager::~StorageManager()
 {
 }
 
-void StorageManager::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
+void StorageManager::createSessionStorageNamespace(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes)
 {
-    if (decoder.messageReceiverName() == Messages::StorageManager::messageReceiverName())
-        didReceiveStorageManagerMessageOnConnectionWorkQueue(connection, decoder, didHandleMessage);
+    m_queue->dispatch(bind(&StorageManager::createSessionStorageNamespaceInternal, this, storageNamespaceID, RefPtr<CoreIPC::Connection>(allowedConnection), quotaInBytes));
 }
 
-void StorageManager::createStorageArea(CoreIPC::Connection*, uint64_t /* storageAreaID */, uint64_t /* storageNamespaceID */, const SecurityOriginData&)
+void StorageManager::destroySessionStorageNamespace(uint64_t storageNamespaceID)
 {
+    m_queue->dispatch(bind(&StorageManager::destroySessionStorageNamespaceInternal, this, storageNamespaceID));
 }
 
-void StorageManager::destroyStorageArea(CoreIPC::Connection*, uint64_t)
+void StorageManager::setAllowedSessionStorageNamespaceConnection(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection)
 {
+    m_queue->dispatch(bind(&StorageManager::setAllowedSessionStorageNamespaceConnectionInternal, this, storageNamespaceID, RefPtr<CoreIPC::Connection>(allowedConnection)));
+}
+
+void StorageManager::cloneSessionStorageNamespace(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID)
+{
+    m_queue->dispatch(bind(&StorageManager::cloneSessionStorageNamespaceInternal, this, storageNamespaceID, newStorageNamespaceID));
+}
+
+void StorageManager::processWillOpenConnection(WebProcessProxy* webProcessProxy)
+{
+    webProcessProxy->connection()->addWorkQueueMessageReceiver(Messages::StorageManager::messageReceiverName(), m_queue.get(), this);
+}
+
+void StorageManager::processWillCloseConnection(WebProcessProxy* webProcessProxy)
+{
+    webProcessProxy->connection()->removeWorkQueueMessageReceiver(Messages::StorageManager::messageReceiverName());
+}
+
+void StorageManager::createStorageArea(CoreIPC::Connection* connection, uint64_t storageAreaID, uint64_t storageNamespaceID, const SecurityOriginData& securityOriginData)
+{
+    std::pair<RefPtr<CoreIPC::Connection>, uint64_t> connectionAndStorageAreaIDPair(connection, storageAreaID);
+
+    // FIXME: This should be a message check.
+    ASSERT((HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> >::isValidKey(connectionAndStorageAreaIDPair)));
+
+    HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> >::AddResult result = m_storageAreas.add(connectionAndStorageAreaIDPair, 0);
+
+    // FIXME: This should be a message check.
+    ASSERT(result.isNewEntry);
+
+    if (!storageNamespaceID) {
+        // FIXME: This is a local storage namespace. Do something.
+        ASSERT_NOT_REACHED();
+    }
+
+    ASSERT((HashMap<uint64_t, RefPtr<SessionStorageNamespace> >::isValidKey(storageNamespaceID)));
+    SessionStorageNamespace* sessionStorageNamespace = m_sessionStorageNamespaces.get(storageNamespaceID).get();
+
+    // FIXME: These should be message checks.
+    ASSERT(sessionStorageNamespace);
+    ASSERT(connection == sessionStorageNamespace->allowedConnection());
+
+    RefPtr<StorageArea> storageArea = sessionStorageNamespace->getOrCreateStorageArea(securityOriginData.securityOrigin());
+    storageArea->addListener(connection, storageAreaID);
+
+    result.iterator->value = storageArea.release();
+}
+
+void StorageManager::destroyStorageArea(CoreIPC::Connection* connection, uint64_t storageAreaID)
+{
+    std::pair<RefPtr<CoreIPC::Connection>, uint64_t> connectionAndStorageAreaIDPair(connection, storageAreaID);
+
+    // FIXME: This should be a message check.
+    ASSERT((HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> >::isValidKey(connectionAndStorageAreaIDPair)));
+
+    HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> >::iterator it = m_storageAreas.find(connectionAndStorageAreaIDPair);
+
+    // FIXME: This should be a message check.
+    ASSERT(it != m_storageAreas.end());
+
+    it->value->removeListener(connection, storageAreaID);
+
+    m_storageAreas.remove(connectionAndStorageAreaIDPair);
+}
+
+void StorageManager::getValues(CoreIPC::Connection*, uint64_t, HashMap<String, String>&)
+{
+    // FIXME: Implement this.
+}
+
+void StorageManager::setItem(CoreIPC::Connection* connection, uint64_t storageAreaID, const String& key, const String& value, const String& urlString)
+{
+    StorageArea* storageArea = findStorageArea(connection, storageAreaID);
+
+    // FIXME: This should be a message check.
+    ASSERT(storageArea);
+
+    bool quotaError;
+    storageArea->setItem(connection, storageAreaID, key, value, urlString, quotaError);
+    connection->send(Messages::StorageAreaProxy::DidSetItem(key, quotaError), storageAreaID);
+}
+
+void StorageManager::createSessionStorageNamespaceInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes)
+{
+    ASSERT(!m_sessionStorageNamespaces.contains(storageNamespaceID));
+
+    m_sessionStorageNamespaces.set(storageNamespaceID, SessionStorageNamespace::create(allowedConnection, quotaInBytes));
+}
+
+void StorageManager::destroySessionStorageNamespaceInternal(uint64_t storageNamespaceID)
+{
+    ASSERT(m_sessionStorageNamespaces.contains(storageNamespaceID));
+
+    m_sessionStorageNamespaces.remove(storageNamespaceID);
+}
+
+void StorageManager::setAllowedSessionStorageNamespaceConnectionInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection)
+{
+    ASSERT(m_sessionStorageNamespaces.contains(storageNamespaceID));
+
+    m_sessionStorageNamespaces.get(storageNamespaceID)->setAllowedConnection(allowedConnection);
+}
+
+void StorageManager::cloneSessionStorageNamespaceInternal(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID)
+{
+    SessionStorageNamespace* sessionStorageNamespace = m_sessionStorageNamespaces.get(storageNamespaceID).get();
+    ASSERT(sessionStorageNamespace);
+
+    SessionStorageNamespace* newSessionStorageNamespace = m_sessionStorageNamespaces.get(newStorageNamespaceID).get();
+    ASSERT(newSessionStorageNamespace);
+
+    sessionStorageNamespace->cloneTo(*newSessionStorageNamespace);
+}
+
+StorageManager::StorageArea* StorageManager::findStorageArea(CoreIPC::Connection* connection, uint64_t storageAreaID) const
+{
+    std::pair<CoreIPC::Connection*, uint64_t> connectionAndStorageAreaIDPair(connection, storageAreaID);
+    if (!HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> >::isValidKey(connectionAndStorageAreaIDPair))
+        return 0;
+
+    return m_storageAreas.get(connectionAndStorageAreaIDPair).get();
 }
 
 } // namespace WebKit

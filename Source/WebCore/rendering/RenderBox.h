@@ -49,7 +49,7 @@ public:
 
     // hasAutoZIndex only returns true if the element is positioned or a flex-item since
     // position:static elements that are not flex-items get their z-index coerced to auto.
-    virtual bool requiresLayer() const OVERRIDE { return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasOverflowClip() || hasTransform() || hasHiddenBackface() || hasReflection() || style()->specifiesColumns() || !style()->hasAutoZIndex(); }
+    virtual bool requiresLayer() const OVERRIDE { return isRoot() || isPositioned() || createsGroup() || hasClipPath() || hasOverflowClip() || hasTransform() || hasHiddenBackface() || hasReflection() || style()->specifiesColumns() || !style()->hasAutoZIndex() || (style()->shapeOutside() && isFloating()); }
 
     // Use this with caution! No type checking is done!
     RenderBox* firstChildBox() const;
@@ -162,7 +162,7 @@ public:
 
     // Bounds of the outline box in absolute coords. Respects transforms
     virtual LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* /*repaintContainer*/, const RenderGeometryMap*) const OVERRIDE;
-    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint&);
+    virtual void addFocusRingRects(Vector<IntRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) OVERRIDE;
 
     // Use this with caution! No type checking is done!
     RenderBox* previousSiblingBox() const;
@@ -294,9 +294,6 @@ public:
     virtual void paint(PaintInfo&, const LayoutPoint&);
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
-    LayoutUnit minIntrinsicLogicalWidth() const;
-    LayoutUnit maxIntrinsicLogicalWidth() const;
-
     virtual LayoutUnit minPreferredLogicalWidth() const;
     virtual LayoutUnit maxPreferredLogicalWidth() const;
 
@@ -321,6 +318,7 @@ public:
     void setOverrideContainingBlockContentLogicalWidth(LayoutUnit);
     void setOverrideContainingBlockContentLogicalHeight(LayoutUnit);
     void clearContainingBlockOverrideSize();
+    void clearOverrideContainingBlockContentLogicalHeight();
 
     virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const;
     
@@ -328,8 +326,6 @@ public:
     LayoutUnit adjustBorderBoxLogicalHeightForBoxSizing(LayoutUnit height) const;
     LayoutUnit adjustContentBoxLogicalWidthForBoxSizing(LayoutUnit width) const;
     LayoutUnit adjustContentBoxLogicalHeightForBoxSizing(LayoutUnit height) const;
-
-    virtual void borderFitAdjust(LayoutRect&) const { } // Shrink the box in which the border paints if border-fit is set.
 
     struct ComputedMarginValues {
         ComputedMarginValues()
@@ -400,7 +396,7 @@ public:
 
     bool stretchesToViewport() const
     {
-        return document()->inQuirksMode() && style()->logicalHeight().isAuto() && !isFloatingOrOutOfFlowPositioned() && (isRoot() || isBody()) && !document()->shouldDisplaySeamlesslyWithParent();
+        return document()->inQuirksMode() && style()->logicalHeight().isAuto() && !isFloatingOrOutOfFlowPositioned() && (isRoot() || isBody()) && !document()->shouldDisplaySeamlesslyWithParent() && !isInline();
     }
 
     virtual LayoutSize intrinsicSize() const { return LayoutSize(); }
@@ -410,7 +406,6 @@ public:
     // Whether or not the element shrinks to its intrinsic width (rather than filling the width
     // of a containing block).  HTML4 buttons, <select>s, <input>s, legends, and floating/compact elements do this.
     bool sizesLogicalWidthToFitContent(SizeType) const;
-    virtual bool stretchesToMinIntrinsicLogicalWidth() const { return false; }
 
     LayoutUnit shrinkLogicalWidthToAvoidFloats(LayoutUnit childMarginStart, LayoutUnit childMarginEnd, const RenderBlock* cb, RenderRegion*, LayoutUnit offsetFromLogicalTopOfFirstPage) const;
 
@@ -612,6 +607,8 @@ protected:
 #endif
 
     void computePositionedLogicalWidth(LogicalExtentComputedValues&, RenderRegion* = 0, LayoutUnit offsetFromLogicalTopOfFirstPage = 0) const;
+
+    LayoutUnit computeIntrinsicLogicalWidthUsing(Length logicalWidthLength, LayoutUnit availableLogicalWidth, LayoutUnit borderAndPadding) const;
     
     virtual bool shouldComputeSizeAsReplaced() const { return isReplaced() && !isInlineBlockOrInlineTable(); }
 
@@ -656,6 +653,9 @@ private:
 
     void computePositionedLogicalHeightReplaced(LogicalExtentComputedValues&) const;
     void computePositionedLogicalWidthReplaced(LogicalExtentComputedValues&) const;
+
+    LayoutUnit fillAvailableMeasure(LayoutUnit availableLogicalWidth) const;
+    LayoutUnit fillAvailableMeasure(LayoutUnit availableLogicalWidth, LayoutUnit& marginStart, LayoutUnit& marginEnd) const;
 
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const;
 

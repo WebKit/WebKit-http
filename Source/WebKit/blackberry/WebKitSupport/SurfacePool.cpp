@@ -56,7 +56,6 @@ SurfacePool* SurfacePool::globalSurfacePool()
 
 SurfacePool::SurfacePool()
     : m_numberOfFrontBuffers(0)
-    , m_tileRenderingSurface(0)
     , m_initialized(false)
     , m_buffersSuspended(false)
     , m_hasFenceExtension(false)
@@ -86,10 +85,8 @@ void SurfacePool::initialize(const Platform::IntSize& tileSize)
         }
     }
 
-    m_tileRenderingSurface = Platform::Graphics::drawingSurface();
-
     if (!m_numberOfFrontBuffers)
-        return; // we only use direct rendering when 0 tiles are specified.
+        return; // We completely disable tile rendering when 0 tiles are specified.
 
     const unsigned numberOfBackBuffers = Platform::Settings::instance()->numberOfBackingStoreBackBuffers();
     const unsigned numberOfPoolTiles = m_numberOfFrontBuffers + numberOfBackBuffers; // back buffer
@@ -128,21 +125,9 @@ PlatformGraphicsContext* SurfacePool::createPlatformGraphicsContext(Platform::Gr
     return new WebCore::PlatformContextSkia(drawable);
 }
 
-PlatformGraphicsContext* SurfacePool::lockTileRenderingSurface() const
+void SurfacePool::destroyPlatformGraphicsContext(PlatformGraphicsContext* platformGraphicsContext) const
 {
-    if (!m_tileRenderingSurface)
-        return 0;
-
-    return createPlatformGraphicsContext(Platform::Graphics::lockBufferDrawable(m_tileRenderingSurface));
-}
-
-void SurfacePool::releaseTileRenderingSurface(PlatformGraphicsContext* context) const
-{
-    if (!m_tileRenderingSurface)
-        return;
-
-    delete context;
-    Platform::Graphics::releaseBufferDrawable(m_tileRenderingSurface);
+    delete platformGraphicsContext;
 }
 
 unsigned SurfacePool::numberOfAvailableBackBuffers() const

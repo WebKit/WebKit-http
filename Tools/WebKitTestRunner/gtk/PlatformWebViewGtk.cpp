@@ -33,10 +33,11 @@
 
 namespace WTR {
 
-PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKDictionaryRef /*options*/)
+PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKDictionaryRef options)
     : m_view(WKViewCreate(context, pageGroup))
     , m_window(gtk_window_new(GTK_WINDOW_POPUP))
     , m_windowIsKey(true)
+    , m_options(options)
 {
     gtk_container_add(GTK_CONTAINER(m_window), GTK_WIDGET(m_view));
 
@@ -56,7 +57,7 @@ PlatformWebView::~PlatformWebView()
 
 void PlatformWebView::resizeTo(unsigned width, unsigned height)
 {
-    GtkAllocation size = { 0, 0, width, height };
+    GtkAllocation size = { 0, 0, static_cast<int>(width), static_cast<int>(height) };
     gtk_widget_size_allocate(m_window, &size);
     gtk_window_resize(GTK_WINDOW(m_window), width, height);
 

@@ -47,7 +47,8 @@ WebInspector.CanvasProfileView = function(profile)
     var replayImageContainer = this._splitView.firstElement();
     replayImageContainer.id = "canvas-replay-image-container";
     this._replayImageElement = replayImageContainer.createChild("image", "canvas-replay-image");
-    this._debugInfoElement = replayImageContainer.createChild("div");
+    this._debugInfoElement = replayImageContainer.createChild("div", "canvas-debug-info hidden");
+    this._spinnerIcon = replayImageContainer.createChild("img", "canvas-spinner-icon hidden");
 
     var replayInfoContainer = this._splitView.secondElement();
     var controlsContainer = replayInfoContainer.createChild("div", "status-bar");
@@ -76,6 +77,7 @@ WebInspector.CanvasProfileView = function(profile)
     columns[1].title = WebInspector.UIString("Call");
     columns[1].sortable = true;
     columns[1].width = "75%";
+    columns[1].disclosure = true;
     columns[2].title = WebInspector.UIString("Location");
     columns[2].sortable = true;
     columns[2].width = "20%";
@@ -85,11 +87,8 @@ WebInspector.CanvasProfileView = function(profile)
     this._logGrid.show(logGridContainer);
     this._logGrid.addEventListener(WebInspector.DataGrid.Events.SelectedNode, this._replayTraceLog.bind(this));
 
-    /** @type {!Array.<WebInspector.DataGridNode>} */
-    this._logGridNodes = [];
-
     this._splitView.show(this.element);
-    this._requestTraceLog();
+    this._requestTraceLog(0);
 }
 
 /**
@@ -101,7 +100,6 @@ WebInspector.CanvasProfileView.TraceLogPollingInterval = 500;
 WebInspector.CanvasProfileView.prototype = {
     dispose: function()
     {
-        this._logGridNodes = [];
         this._linkifier.reset();
     },
 
@@ -178,10 +176,7 @@ WebInspector.CanvasProfileView.prototype = {
         if (!selectedNode)
             return;
         var nextNode = forward ? selectedNode.traverseNextNode(false) : selectedNode.traversePreviousNode(false);
-        if (nextNode)
-            nextNode.revealAndSelect();
-        else
-            selectedNode.reveal();
+        (nextNode || selectedNode).revealAndSelect();
     },
 
     /**
@@ -189,19 +184,26 @@ WebInspector.CanvasProfileView.prototype = {
      */
     _onReplayDrawingCallClick: function(forward)
     {
-        var callNode = this._logGrid.selectedNode;
-        if (!callNode)
+        var selectedNode = this._logGrid.selectedNode;
+        if (!selectedNode)
             return;
-        var index = callNode.index;
-        do {
-            var nextIndex = forward ? index + 1 : index - 1;
-            var nextCallNode = this._logGridNodes[nextIndex];
-            if (!nextCallNode)
-                break;
-            index = nextIndex;
-            callNode = nextCallNode;
-        } while (!callNode.call.isDrawingCall);
-        callNode.revealAndSelect();
+        var nextNode = selectedNode;
+        while (nextNode) {
+            var sibling = forward ? nextNode.nextSibling : nextNode.previousSibling;
+            if (sibling) {
+                nextNode = sibling;
+                if (nextNode.hasChildren || nextNode.call.isDrawingCall)
+                    break;
+            } else {
+                nextNode = nextNode.parent;
+                if (!forward)
+                    break;
+            }
+        }
+        if (!nextNode && forward)
+            this._onReplayLastStepClick();
+        else
+            (nextNode || selectedNode).revealAndSelect();
     },
 
     _onReplayFirstStepClick: function()
@@ -213,10 +215,16 @@ WebInspector.CanvasProfileView.prototype = {
 
     _onReplayLastStepClick: function()
     {
-        var children = this._logGrid.rootNode().children;
-        var lastNode = children[children.length - 1];
-        if (lastNode)
-            lastNode.revealAndSelect();
+        var lastNode = this._logGrid.rootNode().children.peekLast();
+        if (!lastNode)
+            return;
+        while (lastNode.expanded) {
+            var lastChild = lastNode.children.peekLast();
+            if (!lastChild)
+                break;
+            lastNode = lastChild;
+        }
+        lastNode.revealAndSelect();
     },
 
     /**
@@ -224,30 +232,19 @@ WebInspector.CanvasProfileView.prototype = {
      */
     _enableWaitIcon: function(enable)
     {
-        function showWaitIcon()
-        {
-            this._replayImageElement.addStyleClass("wait");
-            this._debugInfoElement.addStyleClass("hidden");
-            delete this._showWaitIconTimer;
-        }
-
-        if (enable && this._replayImageElement.src && !this._showWaitIconTimer)
-            this._showWaitIconTimer = setTimeout(showWaitIcon.bind(this), 250);
-        else {
-            if (this._showWaitIconTimer) {
-                clearTimeout(this._showWaitIconTimer);
-                delete this._showWaitIconTimer;
-            }
-            this._replayImageElement.enableStyleClass("wait", enable);
-            this._debugInfoElement.enableStyleClass("hidden", enable);
-        }
+        this._spinnerIcon.enableStyleClass("hidden", !enable);
+        this._debugInfoElement.enableStyleClass("hidden", enable);
     },
 
     _replayTraceLog: function()
     {
-        var callNode = this._logGrid.selectedNode;
-        if (!callNode)
+        if (this._pendingReplayTraceLogEvent)
             return;
+        var index = this._selectedCallIndex();
+        if (index === -1 || index === this._lastReplayCallIndex)
+            return;
+        this._lastReplayCallIndex = index;
+        this._pendingReplayTraceLogEvent = true;
         var time = Date.now();
         /**
          * @param {?Protocol.Error} error
@@ -255,8 +252,12 @@ WebInspector.CanvasProfileView.prototype = {
          */
         function didReplayTraceLog(error, resourceState)
         {
-            if (callNode !== this._logGrid.selectedNode)
+            delete this._pendingReplayTraceLogEvent;
+
+            if (index !== this._selectedCallIndex()) {
+                this._replayTraceLog();
                 return;
+            }
 
             this._enableWaitIcon(false);
             if (error)
@@ -270,7 +271,7 @@ WebInspector.CanvasProfileView.prototype = {
             this._onReplayContextChanged();
         }
         this._enableWaitIcon(true);
-        CanvasAgent.replayTraceLog(this._traceLogId, callNode.index, didReplayTraceLog.bind(this));
+        CanvasAgent.replayTraceLog(this._traceLogId, index, didReplayTraceLog.bind(this));
     },
 
     /**
@@ -282,27 +283,31 @@ WebInspector.CanvasProfileView.prototype = {
         this._enableWaitIcon(false);
         if (error || !traceLog)
             return;
-        var lastNode = null;
+        var callNodes = [];
         var calls = traceLog.calls;
+        var index = traceLog.startOffset;
         for (var i = 0, n = calls.length; i < n; ++i) {
             var call = calls[i];
             this._requestReplayContextInfo(call.contextId);
-            var index = traceLog.startOffset + i;
-            var gridNode = this._createCallNode(index, call);
-            this._logGrid.rootNode().appendChild(gridNode);
-            lastNode = gridNode;
+            var gridNode = this._createCallNode(index++, call);
+            callNodes.push(gridNode);
         }
-        if (lastNode)
-            lastNode.revealAndSelect();
+        this._appendCallNodes(callNodes);
         if (traceLog.alive)
-            setTimeout(this._requestTraceLog.bind(this), WebInspector.CanvasProfileView.TraceLogPollingInterval);
+            setTimeout(this._requestTraceLog.bind(this, index), WebInspector.CanvasProfileView.TraceLogPollingInterval);
+        else
+            this._flattenSingleFrameNode();
         this._profile._updateCapturingStatus(traceLog);
+        this._onReplayLastStepClick(); // Automatically replay the last step.
     },
 
-    _requestTraceLog: function()
+    /**
+     * @param {number} offset
+     */
+    _requestTraceLog: function(offset)
     {
         this._enableWaitIcon(true);
-        CanvasAgent.getTraceLog(this._traceLogId, this._logGridNodes.length, undefined, this._didReceiveTraceLog.bind(this));
+        CanvasAgent.getTraceLog(this._traceLogId, offset, undefined, this._didReceiveTraceLog.bind(this));
     },
 
     /**
@@ -326,6 +331,119 @@ WebInspector.CanvasProfileView.prototype = {
             this._replayContextSelector.createOption(resourceInfo.description, WebInspector.UIString("Show screenshot of this context's canvas."), contextId);
         }
         CanvasAgent.getResourceInfo(contextId, didReceiveResourceInfo.bind(this));
+    },
+
+    /**
+     * @return {number}
+     */
+    _selectedCallIndex: function()
+    {
+        var node = this._logGrid.selectedNode;
+        return node ? this._peekLastRecursively(node).index : -1;
+    },
+
+    /**
+     * @param {!WebInspector.DataGridNode} node
+     * @return {!WebInspector.DataGridNode}
+     */
+    _peekLastRecursively: function(node)
+    {
+        var lastChild;
+        while ((lastChild = node.children.peekLast()))
+            node = /** @type {!WebInspector.DataGridNode} */ (lastChild);
+        return node;
+    },
+
+    /**
+     * @param {!Array.<!WebInspector.DataGridNode>} callNodes
+     */
+    _appendCallNodes: function(callNodes)
+    {
+        var rootNode = this._logGrid.rootNode();
+        var frameNode = /** @type {WebInspector.DataGridNode} */ (rootNode.children.peekLast());
+        if (frameNode && this._peekLastRecursively(frameNode).call.isFrameEndCall)
+            frameNode = null;
+        for (var i = 0, n = callNodes.length; i < n; ++i) {
+            if (!frameNode) {
+                var index = rootNode.children.length;
+                var data = {};
+                data[0] = "";
+                data[1] = "Frame #" + (index + 1);
+                data[2] = "";
+                frameNode = new WebInspector.DataGridNode(data);
+                frameNode.selectable = true;
+                rootNode.appendChild(frameNode);
+            }
+            var nextFrameCallIndex = i + 1;
+            while (nextFrameCallIndex < n && !callNodes[nextFrameCallIndex - 1].call.isFrameEndCall)
+                ++nextFrameCallIndex;
+            this._appendCallNodesToFrameNode(frameNode, callNodes, i, nextFrameCallIndex);
+            i = nextFrameCallIndex - 1;
+            frameNode = null;
+        }
+    },
+
+    /**
+     * @param {!WebInspector.DataGridNode} frameNode
+     * @param {!Array.<!WebInspector.DataGridNode>} callNodes
+     * @param {number} fromIndex
+     * @param {number} toIndex not inclusive
+     */
+    _appendCallNodesToFrameNode: function(frameNode, callNodes, fromIndex, toIndex)
+    {
+        var self = this;
+        function appendDrawCallGroup()
+        {
+            var index = self._drawCallGroupsCount || 0;
+            var data = {};
+            data[0] = "";
+            data[1] = "Draw call group #" + (index + 1);
+            data[2] = "";
+            var node = new WebInspector.DataGridNode(data);
+            node.selectable = true;
+            self._drawCallGroupsCount = index + 1;
+            frameNode.appendChild(node);
+            return node;
+        }
+
+        function splitDrawCallGroup(drawCallGroup)
+        {
+            var splitIndex = 0;
+            var splitNode;
+            while ((splitNode = drawCallGroup.children[splitIndex])) {
+                if (splitNode.call.isDrawingCall)
+                    break;
+                ++splitIndex;
+            }
+            var newDrawCallGroup = appendDrawCallGroup();
+            var lastNode;
+            while ((lastNode = drawCallGroup.children[splitIndex + 1]))
+                newDrawCallGroup.appendChild(lastNode);
+            return newDrawCallGroup;
+        }
+
+        var drawCallGroup = frameNode.children.peekLast();
+        var groupHasDrawCall = false;
+        if (drawCallGroup) {
+            for (var i = 0, n = drawCallGroup.children.length; i < n; ++i) {
+                if (drawCallGroup.children[i].call.isDrawingCall) {
+                    groupHasDrawCall = true;
+                    break;
+                }
+            }
+        } else
+            drawCallGroup = appendDrawCallGroup();
+
+        for (var i = fromIndex; i < toIndex; ++i) {
+            var node = callNodes[i];
+            drawCallGroup.appendChild(node);
+            if (node.call.isDrawingCall) {
+                if (groupHasDrawCall)
+                    drawCallGroup = splitDrawCallGroup(drawCallGroup);
+                else
+                    groupHasDrawCall = true;
+            }
+        }
     },
 
     /**
@@ -361,8 +479,18 @@ WebInspector.CanvasProfileView.prototype = {
         node.index = index;
         node.selectable = true;
         node.call = call;
-        this._logGridNodes[index] = node;
         return node;
+    },
+
+    _flattenSingleFrameNode: function()
+    {
+        var rootNode = this._logGrid.rootNode();
+        if (rootNode.children.length !== 1)
+            return;
+        var frameNode = rootNode.children[0];
+        while (frameNode.children[0])
+            rootNode.appendChild(frameNode.children[0]);
+        rootNode.removeChild(frameNode);
     },
 
     __proto__: WebInspector.View.prototype
@@ -431,41 +559,33 @@ WebInspector.CanvasProfileType.prototype = {
 
     /**
      * @override
-     * @param {WebInspector.ProfilesPanel} profilesPanel
      * @return {boolean}
      */
-    buttonClicked: function(profilesPanel)
+    buttonClicked: function()
     {
         if (this._recording) {
             this._recording = false;
             this._stopFrameCapturing();
         } else if (this._isSingleFrameMode()) {
             this._recording = false;
-            this._runSingleFrameCapturing(profilesPanel);
+            this._runSingleFrameCapturing();
         } else {
             this._recording = true;
-            this._startFrameCapturing(profilesPanel);
+            this._startFrameCapturing();
         }
-        profilesPanel.setRecordingProfile(WebInspector.CanvasProfileType.TypeId, this._recording);
         return this._recording;
     },
 
-    /**
-     * @param {WebInspector.ProfilesPanel} profilesPanel
-     */
-    _runSingleFrameCapturing: function(profilesPanel)
+    _runSingleFrameCapturing: function()
     {
         var frameId = this._selectedFrameId();
-        CanvasAgent.captureFrame(frameId, this._didStartCapturingFrame.bind(this, profilesPanel, frameId));
+        CanvasAgent.captureFrame(frameId, this._didStartCapturingFrame.bind(this, frameId));
     },
 
-    /**
-     * @param {WebInspector.ProfilesPanel} profilesPanel
-     */
-    _startFrameCapturing: function(profilesPanel)
+    _startFrameCapturing: function()
     {
         var frameId = this._selectedFrameId();
-        CanvasAgent.startCapturing(frameId, this._didStartCapturingFrame.bind(this, profilesPanel, frameId));
+        CanvasAgent.startCapturing(frameId, this._didStartCapturingFrame.bind(this, frameId));
     },
 
     _stopFrameCapturing: function()
@@ -483,19 +603,18 @@ WebInspector.CanvasProfileType.prototype = {
     },
 
     /**
-     * @param {WebInspector.ProfilesPanel} profilesPanel
      * @param {string|undefined} frameId
      * @param {?Protocol.Error} error
      * @param {CanvasAgent.TraceLogId} traceLogId
      */
-    _didStartCapturingFrame: function(profilesPanel, frameId, error, traceLogId)
+    _didStartCapturingFrame: function(frameId, error, traceLogId)
     {
         if (error || this._lastProfileHeader && this._lastProfileHeader.traceLogId() === traceLogId)
             return;
         var profileHeader = new WebInspector.CanvasProfileHeader(this, WebInspector.UIString("Trace Log %d", this._nextProfileUid), this._nextProfileUid, traceLogId, frameId);
         ++this._nextProfileUid;
         this._lastProfileHeader = profileHeader;
-        profilesPanel.addProfileHeader(profileHeader);
+        this.addProfile(profileHeader);
         profileHeader._updateCapturingStatus();
     },
 
@@ -521,9 +640,21 @@ WebInspector.CanvasProfileType.prototype = {
     /**
      * @override
      */
-    reset: function()
+    _reset: function()
     {
+        WebInspector.ProfileType.prototype._reset.call(this);
         this._nextProfileUid = 1;
+    },
+
+    /**
+     * @override
+     * @param {!WebInspector.ProfileHeader} profile
+     */
+    removeProfile: function(profile)
+    {
+        WebInspector.ProfileType.prototype.removeProfile.call(this, profile);
+        if (this._recording && profile === this._lastProfileHeader)
+            this._recording = false;
     },
 
     setRecordingProfile: function(isProfiling)
@@ -534,7 +665,7 @@ WebInspector.CanvasProfileType.prototype = {
     /**
      * @override
      * @param {string=} title
-     * @return {WebInspector.ProfileHeader}
+     * @return {!WebInspector.ProfileHeader}
      */
     createTemporaryProfile: function(title)
     {
@@ -545,7 +676,7 @@ WebInspector.CanvasProfileType.prototype = {
     /**
      * @override
      * @param {ProfilerAgent.ProfileHeader} profile
-     * @return {WebInspector.ProfileHeader}
+     * @return {!WebInspector.ProfileHeader}
      */
     createProfile: function(profile)
     {
@@ -768,10 +899,13 @@ WebInspector.CanvasProfileHeader.prototype = {
     /**
      * @override
      */
-    reset: function()
+    dispose: function()
     {
-        if (this._traceLogId)
+        if (this._traceLogId) {
             CanvasAgent.dropTraceLog(this._traceLogId);
+            clearTimeout(this._requestStatusTimer);
+            this._alive = false;
+        }
     },
 
     /**

@@ -55,26 +55,25 @@ v8::Handle<v8::String> V8HiddenPropertyName::name() \
 
 V8_HIDDEN_PROPERTIES(V8_DEFINE_HIDDEN_PROPERTY);
 
-v8::Handle<v8::String> V8HiddenPropertyName::hiddenReferenceName(const char* name, unsigned length, V8HiddenPropertyCreationType type)
+static v8::Handle<v8::String> hiddenReferenceName(const char* name, unsigned length)
 {
     ASSERT(length);
     Vector<char, 64> prefixedName;
     prefixedName.append(V8_HIDDEN_PROPERTY_PREFIX, sizeof(V8_HIDDEN_PROPERTY_PREFIX) - 1);
     prefixedName.append(name, length);
-    switch (type) {
-    case NewSymbol:
-        return v8::String::NewSymbol(prefixedName.data(), static_cast<int>(prefixedName.size()));
-    case NewString:
-        return v8::String::New(prefixedName.data(), static_cast<int>(prefixedName.size()));
-    }
-    ASSERT_NOT_REACHED();
-    return v8::Handle<v8::String>();
+    return v8::String::NewSymbol(prefixedName.data(), static_cast<int>(prefixedName.size()));
+}
+
+void V8HiddenPropertyName::setNamedHiddenReference(v8::Handle<v8::Object> parent, const char* name, v8::Handle<v8::Value> child)
+{
+    ASSERT(name);
+    parent->SetHiddenValue(hiddenReferenceName(name, strlen(name)), child);
 }
 
 v8::Persistent<v8::String> V8HiddenPropertyName::createString(const char* key)
 {
     v8::HandleScope scope;
-    return v8::Persistent<v8::String>::New(v8::String::NewSymbol(key));
+    return v8::Persistent<v8::String>::New(v8::Isolate::GetCurrent(), v8::String::NewSymbol(key));
 }
 
 }  // namespace WebCore

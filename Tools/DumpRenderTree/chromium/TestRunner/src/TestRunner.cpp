@@ -33,16 +33,20 @@
 #include "config.h"
 #include "TestRunner.h"
 
-#include "WebAnimationController.h"
+#include "MockWebSpeechInputController.h"
+#include "MockWebSpeechRecognizer.h"
+#include "NotificationPresenter.h"
+#include "TestInterfaces.h"
 #include "WebBindings.h"
+#include "WebDataSource.h"
 #include "WebDeviceOrientation.h"
+#include "WebDeviceOrientationClientMock.h"
 #include "WebDocument.h"
 #include "WebElement.h"
 #include "WebFindOptions.h"
 #include "WebFrame.h"
+#include "WebGeolocationClientMock.h"
 #include "WebInputElement.h"
-#include "WebIntent.h"
-#include "WebIntentRequest.h"
 #include "WebPermissions.h"
 #include "WebPreferences.h"
 #include "WebScriptSource.h"
@@ -52,15 +56,16 @@
 #include "WebSurroundingText.h"
 #include "WebTask.h"
 #include "WebTestDelegate.h"
+#include "WebTestProxy.h"
 #include "WebView.h"
-#include "WebWorkerInfo.h"
 #include "v8/include/v8.h"
+#include <limits>
+#include <memory>
 #include <public/WebData.h>
 #include <public/WebPoint.h>
-#include <wtf/OwnArrayPtr.h>
-#include <wtf/text/WTFString.h>
+#include <public/WebURLResponse.h>
 
-#if OS(LINUX) || OS(ANDROID)
+#if defined(__linux__) || defined(ANDROID)
 #include "linux/WebFontRendering.h"
 #endif
 
@@ -71,34 +76,22 @@ namespace WebTestRunner {
 
 namespace {
 
-class EmptyWebDeliveredIntentClient : public WebDeliveredIntentClient {
-public:
-    EmptyWebDeliveredIntentClient() { }
-    ~EmptyWebDeliveredIntentClient() { }
-
-    virtual void postResult(const WebSerializedScriptValue& data) const { }
-    virtual void postFailure(const WebSerializedScriptValue& data) const { }
-    virtual void destroy() { }
-};
-
 class InvokeCallbackTask : public WebMethodTask<TestRunner> {
 public:
-    InvokeCallbackTask(TestRunner* object, PassOwnArrayPtr<CppVariant> callbackArguments, uint32_t numberOfArguments)
+    InvokeCallbackTask(TestRunner* object, auto_ptr<CppVariant> callbackArguments)
         : WebMethodTask<TestRunner>(object)
         , m_callbackArguments(callbackArguments)
-        , m_numberOfArguments(numberOfArguments)
     {
     }
 
     virtual void runIfValid()
     {
         CppVariant invokeResult;
-        m_callbackArguments[0].invokeDefault(m_callbackArguments.get(), m_numberOfArguments, invokeResult);
+        m_callbackArguments->invokeDefault(m_callbackArguments.get(), 1, invokeResult);
     }
 
 private:
-    OwnArrayPtr<CppVariant> m_callbackArguments;
-    uint32_t m_numberOfArguments;
+    auto_ptr<CppVariant> m_callbackArguments;
 };
 
 }
@@ -113,7 +106,7 @@ void TestRunner::WorkQueue::processWorkSoon()
     if (m_controller->topLoadingFrame())
         return;
 
-    if (!m_queue.isEmpty()) {
+    if (!m_queue.empty()) {
         // We delay processing queued work to avoid recursion problems.
         m_controller->m_delegate->postTask(new WorkQueueTask(this));
     } else if (!m_controller->m_waitUntilDone)
@@ -123,9 +116,10 @@ void TestRunner::WorkQueue::processWorkSoon()
 void TestRunner::WorkQueue::processWork()
 {
     // Quit doing work once a load is in progress.
-    while (!m_queue.isEmpty()) {
-        bool startedLoad = m_queue.first()->run(m_controller->m_delegate, m_controller->m_webView);
-        delete m_queue.takeFirst();
+    while (!m_queue.empty()) {
+        bool startedLoad = m_queue.front()->run(m_controller->m_delegate, m_controller->m_webView);
+        delete m_queue.front();
+        m_queue.pop_front();
         if (startedLoad)
             return;
     }
@@ -137,8 +131,10 @@ void TestRunner::WorkQueue::processWork()
 void TestRunner::WorkQueue::reset()
 {
     m_frozen = false;
-    while (!m_queue.isEmpty())
-        delete m_queue.takeFirst();
+    while (!m_queue.empty()) {
+        delete m_queue.front();
+        m_queue.pop_front();
+    }
 }
 
 void TestRunner::WorkQueue::addWork(WorkItem* work)
@@ -147,17 +143,21 @@ void TestRunner::WorkQueue::addWork(WorkItem* work)
         delete work;
         return;
     }
-    m_queue.append(work);
+    m_queue.push_back(work);
 }
 
 
-TestRunner::TestRunner()
+TestRunner::TestRunner(TestInterfaces* interfaces)
     : m_testIsRunning(false)
+    , m_closeRemainingWindows(false)
     , m_workQueue(this)
+    , m_testInterfaces(interfaces)
     , m_delegate(0)
     , m_webView(0)
-    , m_intentClient(adoptPtr(new EmptyWebDeliveredIntentClient))
-    , m_webPermissions(adoptPtr(new WebPermissions))
+    , m_webPermissions(new WebPermissions)
+#if ENABLE_NOTIFICATIONS
+    , m_notificationPresenter(new NotificationPresenter)
+#endif
 {
     // Initialize the map that associates methods of this class with the names
     // they will use when called by JavaScript. The actual binding of those
@@ -182,10 +182,6 @@ TestRunner::TestRunner()
     bindMethod("setTabKeyCyclesThroughElements", &TestRunner::setTabKeyCyclesThroughElements);
     bindMethod("execCommand", &TestRunner::execCommand);
     bindMethod("isCommandEnabled", &TestRunner::isCommandEnabled);
-    bindMethod("pauseAnimationAtTimeOnElementWithId", &TestRunner::pauseAnimationAtTimeOnElementWithId);
-    bindMethod("pauseTransitionAtTimeOnElementWithId", &TestRunner::pauseTransitionAtTimeOnElementWithId);
-    bindMethod("elementDoesAutoCompleteForElementWithId", &TestRunner::elementDoesAutoCompleteForElementWithId);
-    bindMethod("numberOfActiveAnimations", &TestRunner::numberOfActiveAnimations);
     bindMethod("callShouldCloseOnWebView", &TestRunner::callShouldCloseOnWebView);
     bindMethod("setDomainRelaxationForbiddenForURLScheme", &TestRunner::setDomainRelaxationForbiddenForURLScheme);
     bindMethod("evaluateScriptInIsolatedWorldAndReturnValue", &TestRunner::evaluateScriptInIsolatedWorldAndReturnValue);
@@ -199,9 +195,7 @@ TestRunner::TestRunner()
     bindMethod("addUserScript", &TestRunner::addUserScript);
     bindMethod("addUserStyleSheet", &TestRunner::addUserStyleSheet);
     bindMethod("startSpeechInput", &TestRunner::startSpeechInput);
-    bindMethod("markerTextForListItem", &TestRunner::markerTextForListItem);
     bindMethod("findString", &TestRunner::findString);
-    bindMethod("setAutofilled", &TestRunner::setAutofilled);
     bindMethod("setValueForUser", &TestRunner::setValueForUser);
     bindMethod("enableFixedLayoutMode", &TestRunner::enableFixedLayoutMode);
     bindMethod("setFixedLayoutSize", &TestRunner::setFixedLayoutSize);
@@ -216,13 +210,11 @@ TestRunner::TestRunner()
     bindMethod("setSmartInsertDeleteEnabled", &TestRunner::setSmartInsertDeleteEnabled);
     bindMethod("setSelectTrailingWhitespaceEnabled", &TestRunner::setSelectTrailingWhitespaceEnabled);
     bindMethod("setMockDeviceOrientation", &TestRunner::setMockDeviceOrientation);
-#if ENABLE(POINTER_LOCK)
     bindMethod("didAcquirePointerLock", &TestRunner::didAcquirePointerLock);
     bindMethod("didLosePointerLock", &TestRunner::didLosePointerLock);
     bindMethod("didNotAcquirePointerLock", &TestRunner::didNotAcquirePointerLock);
     bindMethod("setPointerLockWillRespondAsynchronously", &TestRunner::setPointerLockWillRespondAsynchronously);
     bindMethod("setPointerLockWillFailSynchronously", &TestRunner::setPointerLockWillFailSynchronously);
-#endif
 
     // The following modify WebPreferences.
     bindMethod("setUserStyleSheetEnabled", &TestRunner::setUserStyleSheetEnabled);
@@ -236,7 +228,6 @@ TestRunner::TestRunner()
     bindMethod("overridePreference", &TestRunner::overridePreference);
     bindMethod("setPluginsEnabled", &TestRunner::setPluginsEnabled);
     bindMethod("setAsynchronousSpellCheckingEnabled", &TestRunner::setAsynchronousSpellCheckingEnabled);
-    bindMethod("setMinimumTimerInterval", &TestRunner::setMinimumTimerInterval);
     bindMethod("setTouchDragDropEnabled", &TestRunner::setTouchDragDropEnabled);
 
     // The following modify the state of the TestRunner.
@@ -273,13 +264,9 @@ TestRunner::TestRunner()
     bindMethod("setWillSendRequestClearHeader", &TestRunner::setWillSendRequestClearHeader);
     bindMethod("setWillSendRequestReturnsNull", &TestRunner::setWillSendRequestReturnsNull);
     bindMethod("setWillSendRequestReturnsNullOnRedirect", &TestRunner::setWillSendRequestReturnsNullOnRedirect);
+    bindMethod("dumpResourceRequestPriorities", &TestRunner::dumpResourceRequestPriorities);
 
-#if ENABLE(WEB_INTENTS)
     // The following methods interact with the WebTestProxy.
-    bindMethod("sendWebIntentResponse", &TestRunner::sendWebIntentResponse);
-    bindMethod("deliverWebIntent", &TestRunner::deliverWebIntent);
-#endif
-
     // The following methods interact with the WebTestDelegate.
     bindMethod("showWebInspector", &TestRunner::showWebInspector);
     bindMethod("closeWebInspector", &TestRunner::closeWebInspector);
@@ -295,24 +282,19 @@ TestRunner::TestRunner()
     bindMethod("setGeolocationPermission", &TestRunner::setGeolocationPermission);
     bindMethod("setMockGeolocationPositionUnavailableError", &TestRunner::setMockGeolocationPositionUnavailableError);
     bindMethod("setMockGeolocationPosition", &TestRunner::setMockGeolocationPosition);
-#if ENABLE(NOTIFICATIONS)
+#if ENABLE_NOTIFICATIONS
     bindMethod("grantWebNotificationPermission", &TestRunner::grantWebNotificationPermission);
     bindMethod("simulateLegacyWebNotificationClick", &TestRunner::simulateLegacyWebNotificationClick);
 #endif
-#if ENABLE(INPUT_SPEECH)
     bindMethod("addMockSpeechInputResult", &TestRunner::addMockSpeechInputResult);
     bindMethod("setMockSpeechInputDumpRect", &TestRunner::setMockSpeechInputDumpRect);
-#endif
-#if ENABLE(SCRIPTED_SPEECH)
     bindMethod("addMockSpeechRecognitionResult", &TestRunner::addMockSpeechRecognitionResult);
     bindMethod("setMockSpeechRecognitionError", &TestRunner::setMockSpeechRecognitionError);
     bindMethod("wasMockSpeechRecognitionAborted", &TestRunner::wasMockSpeechRecognitionAborted);
-#endif
     bindMethod("display", &TestRunner::display);
     bindMethod("displayInvalidatedRegion", &TestRunner::displayInvalidatedRegion);
 
     // Properties.
-    bindProperty("workerThreadCount", &TestRunner::workerThreadCount);
     bindProperty("globalFlag", &m_globalFlag);
     bindProperty("titleTextDirection", &m_titleTextDirection);
     bindProperty("platformName", &m_platformName);
@@ -322,11 +304,9 @@ TestRunner::TestRunner()
 
     // The following are stubs.
     bindMethod("dumpDatabaseCallbacks", &TestRunner::notImplemented);
-#if ENABLE(NOTIFICATIONS)
     bindMethod("denyWebNotificationPermission", &TestRunner::notImplemented);
     bindMethod("removeAllWebNotificationPermissions", &TestRunner::notImplemented);
     bindMethod("simulateWebNotificationClick", &TestRunner::notImplemented);
-#endif
     bindMethod("setIconDatabaseEnabled", &TestRunner::notImplemented);
     bindMethod("setScrollbarPolicy", &TestRunner::notImplemented);
     bindMethod("clearAllApplicationCaches", &TestRunner::notImplemented);
@@ -360,6 +340,15 @@ void TestRunner::setDelegate(WebTestDelegate* delegate)
 {
     m_delegate = delegate;
     m_webPermissions->setDelegate(delegate);
+#if ENABLE_NOTIFICATIONS
+    m_notificationPresenter->setDelegate(delegate);
+#endif
+}
+
+void TestRunner::setWebView(WebView* webView, WebTestProxyBase* proxy)
+{
+    m_webView = webView;
+    m_proxy = proxy;
 }
 
 void TestRunner::reset()
@@ -367,7 +356,7 @@ void TestRunner::reset()
     if (m_webView) {
         m_webView->setZoomLevel(false, 0);
         m_webView->setTabKeyCyclesThroughElements(true);
-#if !OS(DARWIN) && !OS(WINDOWS) // Actually, TOOLKIT_GTK
+#if !defined(__APPLE__) && !defined(WIN32) // Actually, TOOLKIT_GTK
         // (Constants copied because we can't depend on the header that defined
         // them from this file.)
         m_webView->setSelectionColors(0xff1e90ff, 0xff000000, 0xffc8c8c8, 0xff323232);
@@ -382,7 +371,7 @@ void TestRunner::reset()
     m_policyDelegateShouldNotifyDone = false;
 
     WebSecurityPolicy::resetOriginAccessWhitelists();
-#if OS(LINUX) || OS(ANDROID)
+#if defined(__linux__) || defined(ANDROID)
     WebFontRendering::setSubpixelPositioning(false);
 #endif
 
@@ -421,11 +410,12 @@ void TestRunner::reset()
     m_shouldBlockRedirects = false;
     m_willSendRequestShouldReturnNull = false;
     m_smartInsertDeleteEnabled = true;
-#if OS(WINDOWS)
+#ifdef WIN32
     m_selectTrailingWhitespaceEnabled = true;
 #else
     m_selectTrailingWhitespaceEnabled = false;
 #endif
+    m_shouldDumpResourcePriorities = false;
 
     m_httpHeadersToClear.clear();
 
@@ -438,6 +428,12 @@ void TestRunner::reset()
     m_userStyleSheetLocation = WebURL();
 
     m_webPermissions->reset();
+
+#if ENABLE_NOTIFICATIONS
+    m_notificationPresenter->reset();
+#endif
+    m_pointerLocked = false;
+    m_pointerLockPlannedResult = PointerLockWillSucceed;
 
     m_taskList.revokeAll();
     m_workQueue.reset();
@@ -459,8 +455,22 @@ bool TestRunner::shouldDumpEditingCallbacks() const
     return m_dumpEditingCallbacks;
 }
 
-bool TestRunner::shouldDumpAsText() const
+void TestRunner::checkResponseMimeType()
 {
+    // Text output: the test page can request different types of output
+    // which we handle here.
+    if (!m_dumpAsText) {
+        string mimeType = m_webView->mainFrame()->dataSource()->response().mimeType().utf8();
+        if (mimeType == "text/plain") {
+            m_dumpAsText = true;
+            m_generatePixelResults = false;
+        }
+    }
+}
+
+bool TestRunner::shouldDumpAsText()
+{
+    checkResponseMimeType();
     return m_dumpAsText;
 }
 
@@ -469,8 +479,9 @@ void TestRunner::setShouldDumpAsText(bool value)
     m_dumpAsText = value;
 }
 
-bool TestRunner::shouldGeneratePixelResults() const
+bool TestRunner::shouldGeneratePixelResults()
 {
+    checkResponseMimeType();
     return m_generatePixelResults;
 }
 
@@ -623,6 +634,8 @@ void TestRunner::setTopLoadingFrame(WebFrame* frame, bool clear)
 {
     if (frame->top()->view() != m_webView)
         return;
+    if (!m_testIsRunning)
+        return;
     if (clear) {
         m_topLoadingFrame = 0;
         locationChangeDone();
@@ -637,7 +650,7 @@ WebFrame* TestRunner::topLoadingFrame() const
 
 void TestRunner::policyDelegateDone()
 {
-    ASSERT(m_waitUntilDone);
+    WEBKIT_ASSERT(m_waitUntilDone);
     m_delegate->testFinished();
     m_waitUntilDone = false;
 }
@@ -670,6 +683,78 @@ bool TestRunner::isSmartInsertDeleteEnabled() const
 bool TestRunner::isSelectTrailingWhitespaceEnabled() const
 {
     return m_selectTrailingWhitespaceEnabled;
+}
+
+bool TestRunner::shouldDumpResourcePriorities() const
+{
+    return m_shouldDumpResourcePriorities;
+}
+
+#if ENABLE_NOTIFICATIONS
+WebNotificationPresenter* TestRunner::notificationPresenter() const
+{
+    return m_notificationPresenter.get();
+}
+#endif
+
+bool TestRunner::requestPointerLock()
+{
+    switch (m_pointerLockPlannedResult) {
+    case PointerLockWillSucceed:
+        m_delegate->postDelayedTask(new HostMethodTask(this, &TestRunner::didAcquirePointerLockInternal), 0);
+        return true;
+    case PointerLockWillRespondAsync:
+        WEBKIT_ASSERT(!m_pointerLocked);
+        return true;
+    case PointerLockWillFailSync:
+        WEBKIT_ASSERT(!m_pointerLocked);
+        return false;
+    default:
+        WEBKIT_ASSERT_NOT_REACHED();
+        return false;
+    }
+}
+
+void TestRunner::requestPointerUnlock()
+{
+    m_delegate->postDelayedTask(new HostMethodTask(this, &TestRunner::didLosePointerLockInternal), 0);
+}
+
+bool TestRunner::isPointerLocked()
+{
+    return m_pointerLocked;
+}
+
+void TestRunner::didAcquirePointerLockInternal()
+{
+    m_pointerLocked = true;
+    m_webView->didAcquirePointerLock();
+
+    // Reset planned result to default.
+    m_pointerLockPlannedResult = PointerLockWillSucceed;
+}
+
+void TestRunner::didNotAcquirePointerLockInternal()
+{
+    WEBKIT_ASSERT(!m_pointerLocked);
+    m_pointerLocked = false;
+    m_webView->didNotAcquirePointerLock();
+
+    // Reset planned result to default.
+    m_pointerLockPlannedResult = PointerLockWillSucceed;
+}
+
+void TestRunner::didLosePointerLockInternal()
+{
+    bool wasLocked = m_pointerLocked;
+    m_pointerLocked = false;
+    if (wasLocked)
+        m_webView->didLosePointerLock();
+}
+
+void TestRunner::showDevTools()
+{
+    m_delegate->showDevTools();
 }
 
 void TestRunner::waitUntilDone(const CppArgumentList&, CppVariant* result)
@@ -864,7 +949,7 @@ void TestRunner::locationChangeDone()
 
 void TestRunner::windowCount(const CppArgumentList&, CppVariant* result)
 {
-    result->set(static_cast<int>(m_delegate->windowCount()));
+    result->set(static_cast<int>(m_testInterfaces->windowList().size()));
 }
 
 void TestRunner::setCloseRemainingWindowsWhenComplete(const CppArgumentList& arguments, CppVariant* result)
@@ -1059,102 +1144,6 @@ void TestRunner::isCommandEnabled(const CppArgumentList& arguments, CppVariant* 
     result->set(rv);
 }
 
-bool TestRunner::pauseAnimationAtTimeOnElementWithId(const WebString& animationName, double time, const WebString& elementId)
-{
-    WebFrame* webFrame = m_webView->mainFrame();
-    if (!webFrame)
-        return false;
-
-    WebAnimationController* controller = webFrame->animationController();
-    if (!controller)
-        return false;
-
-    WebElement element = webFrame->document().getElementById(elementId);
-    if (element.isNull())
-        return false;
-    return controller->pauseAnimationAtTime(element, animationName, time);
-}
-
-bool TestRunner::pauseTransitionAtTimeOnElementWithId(const WebString& propertyName, double time, const WebString& elementId)
-{
-    WebFrame* webFrame = m_webView->mainFrame();
-    if (!webFrame)
-        return false;
-
-    WebAnimationController* controller = webFrame->animationController();
-    if (!controller)
-        return false;
-
-    WebElement element = webFrame->document().getElementById(elementId);
-    if (element.isNull())
-        return false;
-    return controller->pauseTransitionAtTime(element, propertyName, time);
-}
-
-bool TestRunner::elementDoesAutoCompleteForElementWithId(const WebString& elementId)
-{
-    WebFrame* webFrame = m_webView->mainFrame();
-    if (!webFrame)
-        return false;
-
-    WebElement element = webFrame->document().getElementById(elementId);
-    if (element.isNull() || !element.hasTagName("input"))
-        return false;
-
-    WebInputElement inputElement = element.to<WebInputElement>();
-    return inputElement.autoComplete();
-}
-
-int TestRunner::numberOfActiveAnimations()
-{
-    WebFrame* webFrame = m_webView->mainFrame();
-    if (!webFrame)
-        return -1;
-
-    WebAnimationController* controller = webFrame->animationController();
-    if (!controller)
-        return -1;
-
-    return controller->numberOfActiveAnimations();
-}
-
-void TestRunner::pauseAnimationAtTimeOnElementWithId(const CppArgumentList& arguments, CppVariant* result)
-{
-    result->set(false);
-    if (arguments.size() > 2 && arguments[0].isString() && arguments[1].isNumber() && arguments[2].isString()) {
-        WebString animationName = cppVariantToWebString(arguments[0]);
-        double time = arguments[1].toDouble();
-        WebString elementId = cppVariantToWebString(arguments[2]);
-        result->set(pauseAnimationAtTimeOnElementWithId(animationName, time, elementId));
-    }
-}
-
-void TestRunner::pauseTransitionAtTimeOnElementWithId(const CppArgumentList& arguments, CppVariant* result)
-{
-    result->set(false);
-    if (arguments.size() > 2 && arguments[0].isString() && arguments[1].isNumber() && arguments[2].isString()) {
-        WebString propertyName = cppVariantToWebString(arguments[0]);
-        double time = arguments[1].toDouble();
-        WebString elementId = cppVariantToWebString(arguments[2]);
-        result->set(pauseTransitionAtTimeOnElementWithId(propertyName, time, elementId));
-    }
-}
-
-void TestRunner::elementDoesAutoCompleteForElementWithId(const CppArgumentList& arguments, CppVariant* result)
-{
-    if (arguments.size() != 1 || !arguments[0].isString()) {
-        result->set(false);
-        return;
-    }
-    WebString elementId = cppVariantToWebString(arguments[0]);
-    result->set(elementDoesAutoCompleteForElementWithId(elementId));
-}
-
-void TestRunner::numberOfActiveAnimations(const CppArgumentList&, CppVariant* result)
-{
-    result->set(numberOfActiveAnimations());
-}
-
 void TestRunner::callShouldCloseOnWebView(const CppArgumentList&, CppVariant* result)
 {
     result->set(m_webView->dispatchBeforeUnloadEvent());
@@ -1333,15 +1322,6 @@ void TestRunner::startSpeechInput(const CppArgumentList& arguments, CppVariant* 
     input->startSpeechInput();
 }
 
-void TestRunner::markerTextForListItem(const CppArgumentList& args, CppVariant* result)
-{
-    WebElement element;
-    if (!WebBindings::getElement(args[0].value.objectValue, &element))
-        result->setNull();
-    else
-        result->set(element.document().frame()->markerTextForListItem(element).utf8());
-}
-
 void TestRunner::findString(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() < 1 || !arguments[0].isString())
@@ -1350,7 +1330,7 @@ void TestRunner::findString(const CppArgumentList& arguments, CppVariant* result
     WebFindOptions findOptions;
     bool wrapAround = false;
     if (arguments.size() >= 2) {
-        Vector<std::string> optionsArray = arguments[1].toStringVector();
+        vector<string> optionsArray = arguments[1].toStringVector();
         findOptions.matchCase = true;
 
         for (size_t i = 0; i < optionsArray.size(); ++i) {
@@ -1368,23 +1348,6 @@ void TestRunner::findString(const CppArgumentList& arguments, CppVariant* result
     WebFrame* frame = m_webView->mainFrame();
     const bool findResult = frame->find(0, cppVariantToWebString(arguments[0]), findOptions, wrapAround, 0);
     result->set(findResult);
-}
-
-void TestRunner::setAutofilled(const CppArgumentList& arguments, CppVariant* result)
-{
-    result->setNull();
-    if (arguments.size() != 2 || !arguments[1].isBool())
-        return;
-
-    WebElement element;
-    if (!WebBindings::getElement(arguments[0].value.objectValue, &element))
-        return;
-
-    WebInputElement* input = toWebInputElement(&element);
-    if (!input)
-        return;
-
-    input->setAutofilled(arguments[1].value.boolValue);
 }
 
 void TestRunner::setValueForUser(const CppArgumentList& arguments, CppVariant* result)
@@ -1430,7 +1393,7 @@ void TestRunner::selectionAsMarkup(const CppArgumentList& arguments, CppVariant*
 
 void TestRunner::setTextSubpixelPositioning(const CppArgumentList& arguments, CppVariant* result)
 {
-#if OS(LINUX) || OS(ANDROID)
+#if defined(__linux__) || defined(ANDROID)
     // Since FontConfig doesn't provide a variable to control subpixel positioning, we'll fall back
     // to setting it globally for all fonts.
     if (arguments.size() > 0 && arguments[0].isBool())
@@ -1518,6 +1481,12 @@ void TestRunner::setSelectTrailingWhitespaceEnabled(const CppArgumentList& argum
     result->setNull();
 }
 
+void TestRunner::dumpResourceRequestPriorities(const CppArgumentList& arguments, CppVariant* result)
+{
+    m_shouldDumpResourcePriorities = true;
+    result->setNull();
+}
+
 void TestRunner::enableAutoResizeMode(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() != 4) {
@@ -1567,10 +1536,10 @@ void TestRunner::setMockDeviceOrientation(const CppArgumentList& arguments, CppV
     if (arguments[4].toBoolean())
         orientation.setGamma(arguments[5].toDouble());
 
-    // Note that we only call setOrientation on the main page's mock since this is all that the
-    // tests require. If necessary, we could get a list of WebViewHosts from the TestShell and
+    // Note that we only call setOrientation on the main page's mock since this
+    // tests require. If necessary, we could get a list of WebViewHosts from th
     // call setOrientation on each DeviceOrientationClientMock.
-    m_delegate->setDeviceOrientation(orientation);
+    m_proxy->deviceOrientationClientMock()->setOrientation(orientation);
 }
 
 void TestRunner::setUserStyleSheetEnabled(const CppArgumentList& arguments, CppVariant* result)
@@ -1699,7 +1668,7 @@ void TestRunner::overridePreference(const CppArgumentList& arguments, CppVariant
     else if (key == "WebKitShouldRespectImageOrientation")
         prefs->shouldRespectImageOrientation = cppVariantToBool(value);
     else if (key == "WebKitWebAudioEnabled")
-        ASSERT(cppVariantToBool(value));
+        WEBKIT_ASSERT(cppVariantToBool(value));
     else {
         string message("Invalid name for preference: ");
         message.append(key);
@@ -1726,15 +1695,6 @@ void TestRunner::setAsynchronousSpellCheckingEnabled(const CppArgumentList& argu
     result->setNull();
 }
 
-void TestRunner::setMinimumTimerInterval(const CppArgumentList& arguments, CppVariant* result)
-{
-    if (arguments.size() > 0 && arguments[0].isNumber()) {
-        m_delegate->preferences()->minimumTimerInterval = arguments[0].toDouble();
-        m_delegate->applyPreferences();
-    }
-    result->setNull();
-}
-
 void TestRunner::setTouchDragDropEnabled(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() > 0 && arguments[0].isBool()) {
@@ -1744,51 +1704,9 @@ void TestRunner::setTouchDragDropEnabled(const CppArgumentList& arguments, CppVa
     result->setNull();
 }
 
-void TestRunner::sendWebIntentResponse(const CppArgumentList& arguments, CppVariant* result)
-{
-    v8::HandleScope scope;
-    v8::Local<v8::Context> ctx = m_webView->mainFrame()->mainWorldScriptContext();
-    result->set(m_webView->mainFrame()->selectionAsMarkup().utf8());
-    v8::Context::Scope cscope(ctx);
-
-    WebIntentRequest* request = m_delegate->currentWebIntentRequest();
-    if (request->isNull())
-        return;
-
-    if (arguments.size() == 1) {
-        WebCString reply = cppVariantToWebString(arguments[0]).utf8();
-        v8::Handle<v8::Value> v8value = v8::String::New(reply.data(), reply.length());
-        request->postResult(WebSerializedScriptValue::serialize(v8value));
-    } else {
-        v8::Handle<v8::Value> v8value = v8::String::New("ERROR");
-        request->postFailure(WebSerializedScriptValue::serialize(v8value));
-    }
-    result->setNull();
-}
-
-void TestRunner::deliverWebIntent(const CppArgumentList& arguments, CppVariant* result)
-{
-    if (arguments.size() <  3)
-        return;
-
-    v8::HandleScope scope;
-    v8::Local<v8::Context> ctx = m_webView->mainFrame()->mainWorldScriptContext();
-    result->set(m_webView->mainFrame()->selectionAsMarkup().utf8());
-    v8::Context::Scope cscope(ctx);
-
-    WebString action = cppVariantToWebString(arguments[0]);
-    WebString type = cppVariantToWebString(arguments[1]);
-    WebCString data = cppVariantToWebString(arguments[2]).utf8();
-    WebSerializedScriptValue serializedData = WebSerializedScriptValue::serialize(v8::String::New(data.data(), data.length()));
-
-    WebIntent intent = WebIntent::create(action, type, serializedData.toString(), WebVector<WebString>(), WebVector<WebString>());
-
-    m_webView->mainFrame()->deliverIntent(intent, 0, m_intentClient.get());
-}
-
 void TestRunner::showWebInspector(const CppArgumentList&, CppVariant* result)
 {
-    m_delegate->showDevTools();
+    showDevTools();
     result->setNull();
 }
 
@@ -1829,7 +1747,7 @@ void TestRunner::setAlwaysAcceptCookies(const CppArgumentList& arguments, CppVar
 void TestRunner::setWindowIsKey(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() > 0 && arguments[0].isBool())
-        m_delegate->setFocus(arguments[0].value.boolValue);
+        m_delegate->setFocus(m_proxy, arguments[0].value.boolValue);
     result->setNull();
 }
 
@@ -1849,11 +1767,12 @@ void TestRunner::setBackingScaleFactor(const CppArgumentList& arguments, CppVari
 
     float value = arguments[0].value.doubleValue;
     m_delegate->setDeviceScaleFactor(value);
+    m_proxy->discardBackingStore();
 
-    OwnArrayPtr<CppVariant> callbackArguments = adoptArrayPtr(new CppVariant[1]);
-    callbackArguments[0].set(arguments[1]);
+    auto_ptr<CppVariant> callbackArguments(new CppVariant());
+    callbackArguments->set(arguments[1]);
     result->setNull();
-    m_delegate->postTask(new InvokeCallbackTask(this, callbackArguments.release(), 1));
+    m_delegate->postTask(new InvokeCallbackTask(this, callbackArguments));
 }
 
 void TestRunner::setPOSIXLocale(const CppArgumentList& arguments, CppVariant* result)
@@ -1865,7 +1784,7 @@ void TestRunner::setPOSIXLocale(const CppArgumentList& arguments, CppVariant* re
 
 void TestRunner::numberOfPendingGeolocationPermissionRequests(const CppArgumentList& arguments, CppVariant* result)
 {
-    result->set(m_delegate->numberOfPendingGeolocationPermissionRequests());
+    result->set(m_proxy->geolocationClientMock()->numberOfPendingPermissionRequests());
 }
 
 // FIXME: For greater test flexibility, we should be able to set each page's geolocation mock individually.
@@ -1875,7 +1794,9 @@ void TestRunner::setGeolocationPermission(const CppArgumentList& arguments, CppV
     result->setNull();
     if (arguments.size() < 1 || !arguments[0].isBool())
         return;
-    m_delegate->setGeolocationPermission(arguments[0].toBoolean());
+    const vector<WebTestProxyBase*>& windowList = m_testInterfaces->windowList();
+    for (unsigned i = 0; i < windowList.size(); ++i)
+        windowList.at(i)->geolocationClientMock()->setPermission(arguments[0].toBoolean());
 }
 
 void TestRunner::setMockGeolocationPosition(const CppArgumentList& arguments, CppVariant* result)
@@ -1883,7 +1804,9 @@ void TestRunner::setMockGeolocationPosition(const CppArgumentList& arguments, Cp
     result->setNull();
     if (arguments.size() < 3 || !arguments[0].isNumber() || !arguments[1].isNumber() || !arguments[2].isNumber())
         return;
-    m_delegate->setMockGeolocationPosition(arguments[0].toDouble(), arguments[1].toDouble(), arguments[2].toDouble());
+    const vector<WebTestProxyBase*>& windowList = m_testInterfaces->windowList();
+    for (unsigned i = 0; i < windowList.size(); ++i)
+        windowList.at(i)->geolocationClientMock()->setPosition(arguments[0].toDouble(), arguments[1].toDouble(), arguments[2].toDouble());
 }
 
 void TestRunner::setMockGeolocationPositionUnavailableError(const CppArgumentList& arguments, CppVariant* result)
@@ -1891,17 +1814,19 @@ void TestRunner::setMockGeolocationPositionUnavailableError(const CppArgumentLis
     result->setNull();
     if (arguments.size() != 1 || !arguments[0].isString())
         return;
-    m_delegate->setMockGeolocationPositionUnavailableError(arguments[0].toString());
+    const vector<WebTestProxyBase*>& windowList = m_testInterfaces->windowList();
+    for (unsigned i = 0; i < windowList.size(); ++i)
+        windowList.at(i)->geolocationClientMock()->setPositionUnavailableError(WebString::fromUTF8(arguments[0].toString()));
 }
 
-#if ENABLE(NOTIFICATIONS)
+#if ENABLE_NOTIFICATIONS
 void TestRunner::grantWebNotificationPermission(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() != 1 || !arguments[0].isString()) {
         result->set(false);
         return;
     }
-    m_delegate->grantWebNotificationPermission(arguments[0].toString());
+    m_notificationPresenter->grantPermission(WebString::fromUTF8(arguments[0].toString()));
     result->set(true);
 }
 
@@ -1911,18 +1836,19 @@ void TestRunner::simulateLegacyWebNotificationClick(const CppArgumentList& argum
         result->set(false);
         return;
     }
-    result->set(m_delegate->simulateLegacyWebNotificationClick(arguments[0].toString()));
+    result->set(m_notificationPresenter->simulateClick(WebString::fromUTF8(arguments[0].toString())));
 }
 #endif
 
-#if ENABLE(INPUT_SPEECH)
 void TestRunner::addMockSpeechInputResult(const CppArgumentList& arguments, CppVariant* result)
 {
     result->setNull();
     if (arguments.size() < 3 || !arguments[0].isString() || !arguments[1].isNumber() || !arguments[2].isString())
         return;
 
-    m_delegate->addMockSpeechInputResult(arguments[0].toString(), arguments[1].toDouble(), arguments[2].toString());
+#if ENABLE_INPUT_SPEECH
+    m_proxy->speechInputControllerMock()->addMockRecognitionResult(WebString::fromUTF8(arguments[0].toString()), arguments[1].toDouble(), WebString::fromUTF8(arguments[2].toString()));
+#endif
 }
 
 void TestRunner::setMockSpeechInputDumpRect(const CppArgumentList& arguments, CppVariant* result)
@@ -1931,18 +1857,18 @@ void TestRunner::setMockSpeechInputDumpRect(const CppArgumentList& arguments, Cp
     if (arguments.size() < 1 || !arguments[0].isBool())
         return;
 
-    m_delegate->setMockSpeechInputDumpRect(arguments[0].toBoolean());
-}
+#if ENABLE_INPUT_SPEECH
+    m_proxy->speechInputControllerMock()->setDumpRect(arguments[0].toBoolean());
 #endif
+}
 
-#if ENABLE(SCRIPTED_SPEECH)
 void TestRunner::addMockSpeechRecognitionResult(const CppArgumentList& arguments, CppVariant* result)
 {
     result->setNull();
     if (arguments.size() < 2 || !arguments[0].isString() || !arguments[1].isNumber())
         return;
 
-    m_delegate->addMockSpeechRecognitionResult(arguments[0].toString(), arguments[1].toDouble());
+    m_proxy->speechRecognizerMock()->addMockResult(WebString::fromUTF8(arguments[0].toString()), arguments[1].toDouble());
 }
 
 void TestRunner::setMockSpeechRecognitionError(const CppArgumentList& arguments, CppVariant* result)
@@ -1951,24 +1877,23 @@ void TestRunner::setMockSpeechRecognitionError(const CppArgumentList& arguments,
     if (arguments.size() != 2 || !arguments[0].isString() || !arguments[1].isString())
         return;
 
-    m_delegate->setMockSpeechRecognitionError(arguments[0].toString(), arguments[1].toString());
+    m_proxy->speechRecognizerMock()->setError(WebString::fromUTF8(arguments[0].toString()), WebString::fromUTF8(arguments[1].toString()));
 }
 
 void TestRunner::wasMockSpeechRecognitionAborted(const CppArgumentList&, CppVariant* result)
 {
-    result->set(m_delegate->wasMockSpeechRecognitionAborted());
+    result->set(m_proxy->speechRecognizerMock()->wasAborted());
 }
-#endif
 
 void TestRunner::display(const CppArgumentList& arguments, CppVariant* result)
 {
-    m_delegate->display();
+    m_proxy->display();
     result->setNull();
 }
 
 void TestRunner::displayInvalidatedRegion(const CppArgumentList& arguments, CppVariant* result)
 {
-    m_delegate->displayInvalidatedRegion();
+    m_proxy->displayInvalidatedRegion();
     result->setNull();
 }
 
@@ -2073,11 +1998,6 @@ void TestRunner::dumpResourceResponseMIMETypes(const CppArgumentList&, CppVarian
     result->setNull();
 }
 
-void TestRunner::workerThreadCount(CppVariant* result)
-{
-    result->set(static_cast<int>(WebWorkerInfo::dedicatedWorkerCount()));
-}
-
 // Need these conversions because the format of the value for booleans
 // may vary - for example, on mac "1" and "0" are used for boolean.
 bool TestRunner::cppVariantToBool(const CppVariant& value)
@@ -2138,36 +2058,34 @@ void TestRunner::notImplemented(const CppArgumentList&, CppVariant* result)
     result->setNull();
 }
 
-#if ENABLE(POINTER_LOCK)
 void TestRunner::didAcquirePointerLock(const CppArgumentList&, CppVariant* result)
 {
-    m_delegate->didAcquirePointerLock();
+    didAcquirePointerLockInternal();
     result->setNull();
 }
 
 void TestRunner::didNotAcquirePointerLock(const CppArgumentList&, CppVariant* result)
 {
-    m_delegate->didNotAcquirePointerLock();
+    didNotAcquirePointerLockInternal();
     result->setNull();
 }
 
 void TestRunner::didLosePointerLock(const CppArgumentList&, CppVariant* result)
 {
-    m_delegate->didLosePointerLock();
+    didLosePointerLockInternal();
     result->setNull();
 }
 
 void TestRunner::setPointerLockWillRespondAsynchronously(const CppArgumentList&, CppVariant* result)
 {
-    m_delegate->setPointerLockWillRespondAsynchronously();
+    m_pointerLockPlannedResult = PointerLockWillRespondAsync;
     result->setNull();
 }
 
 void TestRunner::setPointerLockWillFailSynchronously(const CppArgumentList&, CppVariant* result)
 {
-    m_delegate->setPointerLockWillFailSynchronously();
+    m_pointerLockPlannedResult = PointerLockWillFailSync;
     result->setNull();
 }
-#endif
 
 }

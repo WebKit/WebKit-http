@@ -358,6 +358,11 @@ enum TextDecorationStyle {
 enum TextAlignLast {
     TextAlignLastAuto, TextAlignLastStart, TextAlignLastEnd, TextAlignLastLeft, TextAlignLastRight, TextAlignLastCenter, TextAlignLastJustify
 };
+
+enum TextUnderlinePosition {
+    // FIXME: Implement support for 'under left' and 'under right' values.
+    TextUnderlinePositionAuto = 0x1, TextUnderlinePositionAlphabetic = 0x2, TextUnderlinePositionUnder = 0x4
+};
 #endif // CSS3_TEXT
 
 enum EPageBreak {
@@ -417,6 +422,13 @@ enum ECursor {
     CURSOR_COPY,
     CURSOR_NONE
 };
+
+#if ENABLE(CURSOR_VISIBILITY)
+enum CursorVisibility {
+    CursorVisibilityAuto,
+    CursorVisibilityAutoHide,
+};
+#endif
 
 // The order of this enum must match the order of the display values in CSSValueKeywords.in.
 enum EDisplay {
@@ -486,6 +498,8 @@ enum WrapFlow { WrapFlowAuto, WrapFlowBoth, WrapFlowStart, WrapFlowEnd, WrapFlow
 enum WrapThrough { WrapThroughWrap, WrapThroughNone };
 
 enum RubyPosition { RubyPositionBefore, RubyPositionAfter };
+
+enum GridAutoFlow { AutoFlowNone, AutoFlowColumn, AutoFlowRow };
 
 #if ENABLE(DRAGGABLE_REGION)
 enum DraggableRegionMode { DraggableRegionNone, DraggableRegionDrag, DraggableRegionNoDrag };

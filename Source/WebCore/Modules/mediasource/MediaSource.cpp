@@ -35,6 +35,7 @@
 
 #include "ContentType.h"
 #include "Event.h"
+#include "SourceBufferPrivate.h"
 #include "TimeRanges.h"
 #include <wtf/Uint8Array.h>
 
@@ -50,7 +51,6 @@ PassRefPtr<MediaSource> MediaSource::create(ScriptExecutionContext* context)
 MediaSource::MediaSource(ScriptExecutionContext* context)
     : ActiveDOMObject(context, this)
     , m_readyState(closedKeyword())
-    , m_player(0)
     , m_asyncEventQueue(GenericEventQueue::create(this))
 {
     m_sourceBuffers = SourceBufferList::create(scriptExecutionContext(), m_asyncEventQueue.get());
@@ -88,12 +88,12 @@ SourceBufferList* MediaSource::activeSourceBuffers()
 
 double MediaSource::duration() const
 {
-    return m_readyState == closedKeyword() ? std::numeric_limits<float>::quiet_NaN() : m_player->duration();
+    return m_readyState == closedKeyword() ? std::numeric_limits<float>::quiet_NaN() : m_private->duration();
 }
 
 void MediaSource::setDuration(double duration, ExceptionCode& ec)
 {
-    if (duration < 0.0 || isnan(duration)) {
+    if (duration < 0.0 || std::isnan(duration)) {
         ec = INVALID_ACCESS_ERR;
         return;
     }
@@ -101,7 +101,7 @@ void MediaSource::setDuration(double duration, ExceptionCode& ec)
         ec = INVALID_STATE_ERR;
         return;
     }
-    m_player->sourceSetDuration(duration);
+    m_private->setDuration(duration);
 }
 
 SourceBuffer* MediaSource::addSourceBuffer(const String& type, ExceptionCode& ec)
@@ -126,34 +126,31 @@ SourceBuffer* MediaSource::addSourceBuffer(const String& type, ExceptionCode& ec
 
     // 4. If the readyState attribute is not in the "open" state then throw an
     // INVALID_STATE_ERR exception and abort these steps.
-    if (!m_player || m_readyState != openKeyword()) {
+    if (!m_private || m_readyState != openKeyword()) {
         ec = INVALID_STATE_ERR;
         return 0;
     }
 
     // 5. Create a new SourceBuffer object and associated resources.
-    String id = m_sourceBuffers->generateUniqueId();
-    if (id == emptyString()) {
-        ec = QUOTA_EXCEEDED_ERR;
-        return 0;
-    }
+    OwnPtr<SourceBufferPrivate> sourceBufferPrivate;
+    switch (m_private->addSourceBuffer(contentType.type(), codecs, &sourceBufferPrivate)) {
+    case MediaSourcePrivate::Ok: {
+        ASSERT(sourceBufferPrivate);
+        RefPtr<SourceBuffer> buffer = SourceBuffer::create(sourceBufferPrivate.release(), this);
 
-    RefPtr<SourceBuffer> buffer = SourceBuffer::create(id, this);
-
-    switch (m_player->sourceAddId(buffer->id(), contentType.type(), codecs)) {
-    case MediaPlayer::Ok:
         // 6. Add the new object to sourceBuffers and fire a addsourcebuffer on that object.
         m_sourceBuffers->add(buffer);
         m_activeSourceBuffers->add(buffer);
         // 7. Return the new object to the caller.
         return buffer.get();
-    case MediaPlayer::NotSupported:
+    }
+    case MediaSourcePrivate::NotSupported:
         // 2 (cont). If type contains a MIME type ... that is not supported with the types 
         // specified for the other SourceBuffer objects in sourceBuffers, then throw
         // a NOT_SUPPORTED_ERR exception and abort these steps.
         ec = NOT_SUPPORTED_ERR;
         return 0;
-    case MediaPlayer::ReachedIdLimit:
+    case MediaSourcePrivate::ReachedIdLimit:
         // 3 (cont). If the user agent can't handle any more SourceBuffer objects then throw 
         // a QUOTA_EXCEEDED_ERR exception and abort these steps.
         ec = QUOTA_EXCEEDED_ERR;
@@ -176,7 +173,7 @@ void MediaSource::removeSourceBuffer(SourceBuffer* buffer, ExceptionCode& ec)
 
     // 2. If sourceBuffers is empty then throw an INVALID_STATE_ERR exception and
     // abort these steps.
-    if (!m_player || !m_sourceBuffers->length()) {
+    if (!m_private || !m_sourceBuffers->length()) {
         ec = INVALID_STATE_ERR;
         return;
     }
@@ -192,7 +189,6 @@ void MediaSource::removeSourceBuffer(SourceBuffer* buffer, ExceptionCode& ec)
 
     // 7. Destroy all resources for sourceBuffer.
     m_activeSourceBuffers->remove(buffer);
-    m_player->sourceRemoveId(buffer->id());
 
     // 4. Remove track information from audioTracks, videoTracks, and textTracks for all tracks 
     // associated with sourceBuffer and fire a simple event named change on the modified lists.
@@ -220,7 +216,7 @@ void MediaSource::setReadyState(const String& state)
     if (m_readyState == closedKeyword()) {
         m_sourceBuffers->clear();
         m_activeSourceBuffers->clear();
-        m_player = 0;
+        m_private.clear();
         scheduleEvent(eventNames().webkitsourcecloseEvent);
         return;
     }
@@ -241,19 +237,19 @@ void MediaSource::endOfStream(const String& error, ExceptionCode& ec)
     // 3.1 http://dvcs.w3.org/hg/html-media/raw-file/tip/media-source/media-source.html#dom-endofstream
     // 1. If the readyState attribute is not in the "open" state then throw an
     // INVALID_STATE_ERR exception and abort these steps.
-    if (!m_player || m_readyState != openKeyword()) {
+    if (!m_private || m_readyState != openKeyword()) {
         ec = INVALID_STATE_ERR;
         return;
     }
 
-    MediaPlayer::EndOfStreamStatus eosStatus = MediaPlayer::EosNoError;
+    MediaSourcePrivate::EndOfStreamStatus eosStatus = MediaSourcePrivate::EosNoError;
 
     if (error.isNull() || error.isEmpty())
-        eosStatus = MediaPlayer::EosNoError;
+        eosStatus = MediaSourcePrivate::EosNoError;
     else if (error == "network")
-        eosStatus = MediaPlayer::EosNetworkError;
+        eosStatus = MediaSourcePrivate::EosNetworkError;
     else if (error == "decode")
-        eosStatus = MediaPlayer::EosDecodeError;
+        eosStatus = MediaSourcePrivate::EosDecodeError;
     else {
         ec = INVALID_ACCESS_ERR;
         return;
@@ -261,63 +257,15 @@ void MediaSource::endOfStream(const String& error, ExceptionCode& ec)
 
     // 2. Change the readyState attribute value to "ended".
     setReadyState(endedKeyword());
-    m_player->sourceEndOfStream(eosStatus);
+    m_private->endOfStream(eosStatus);
 }
 
-PassRefPtr<TimeRanges> MediaSource::buffered(const String& id, ExceptionCode& ec) const
+void MediaSource::setPrivateAndOpen(PassOwnPtr<MediaSourcePrivate> mediaSourcePrivate)
 {
-    if (!m_player || m_readyState == closedKeyword()) {
-        ec = INVALID_STATE_ERR;
-        return 0;
-    }
-
-    return m_player->sourceBuffered(id);
-}
-
-void MediaSource::append(const String& id, PassRefPtr<Uint8Array> data, ExceptionCode& ec)
-{
-    if (!data.get()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    if (!m_player || m_readyState == closedKeyword()) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
-
-    if (m_readyState == endedKeyword())
-        setReadyState(openKeyword());
-
-    if (!m_player->sourceAppend(id, data->data(), data->length())) {
-        ec = SYNTAX_ERR;
-        return;
-    }
-}
-
-void MediaSource::abort(const String& id, ExceptionCode& ec)
-{
-    if (!m_player || m_readyState != openKeyword()) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
-
-    if (!m_player->sourceAbort(id))
-        ASSERT_NOT_REACHED();
-}
-
-bool MediaSource::setTimestampOffset(const String& id, double offset, ExceptionCode& ec)
-{
-    if (!m_player || m_readyState == closedKeyword()) {
-        ec = INVALID_STATE_ERR;
-        return false;
-    }
-
-    if (!m_player->sourceSetTimestampOffset(id, offset)) {
-        ec = INVALID_STATE_ERR;
-        return false;
-    }
-    return true;
+    ASSERT(mediaSourcePrivate);
+    ASSERT(!m_private);
+    m_private = mediaSourcePrivate;
+    setReadyState(openKeyword());
 }
 
 const AtomicString& MediaSource::interfaceName() const
@@ -332,13 +280,13 @@ ScriptExecutionContext* MediaSource::scriptExecutionContext() const
 
 bool MediaSource::hasPendingActivity() const
 {
-    return m_player || m_asyncEventQueue->hasPendingEvents()
+    return m_private || m_asyncEventQueue->hasPendingEvents()
         || ActiveDOMObject::hasPendingActivity();
 }
 
 void MediaSource::stop()
 {
-    m_player = 0;
+    m_private.clear();
     m_asyncEventQueue->cancelAllEvents();
 }
 

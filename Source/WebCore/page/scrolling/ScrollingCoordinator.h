@@ -64,9 +64,6 @@ class ViewportConstraints;
 class ScrollingTree;
 #endif
 
-IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition,
-    const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame);
-
 enum SetOrSyncScrollingLayerPosition {
     SetScrollingLayerPosition,
     SyncScrollingLayerPosition
@@ -127,6 +124,10 @@ public:
     virtual void syncChildPositions(const LayoutRect&) { }
     virtual String scrollingStateTreeAsText() const;
     virtual bool isRubberBandInProgress() const { return false; }
+    virtual bool rubberBandsAtBottom() const { return false; }
+    virtual void setRubberBandsAtBottom(bool) { }
+    virtual bool rubberBandsAtTop() const { return false; }
+    virtual void setRubberBandsAtTop(bool) { }
 
     // Generated a unique id for scroll layers.
     ScrollingNodeID uniqueScrollLayerID();
@@ -148,9 +149,9 @@ public:
 
     // These virtual functions are currently unique to Chromium's WebLayer approach. Their meaningful
     // implementations are in ScrollingCoordinatorChromium.
-    virtual void frameViewHorizontalScrollbarLayerDidChange(FrameView*, GraphicsLayer*) { }
-    virtual void frameViewVerticalScrollbarLayerDidChange(FrameView*, GraphicsLayer*) { }
-    virtual void scrollableAreaScrollLayerDidChange(ScrollableArea*, GraphicsLayer*) { }
+    virtual void willDestroyScrollableArea(ScrollableArea*) { }
+    virtual void scrollableAreaScrollLayerDidChange(ScrollableArea*) { }
+    virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea*, ScrollbarOrientation) { }
     virtual void setLayerIsContainerForFixedPositionLayers(GraphicsLayer*, bool) { }
     virtual void setLayerIsFixedToContainerLayer(GraphicsLayer*, bool) { }
     virtual void touchEventTargetRectsDidChange(const Document*) { }
@@ -166,6 +167,12 @@ public:
 
 protected:
     explicit ScrollingCoordinator(Page*);
+
+#if USE(ACCELERATED_COMPOSITING)
+    static GraphicsLayer* scrollLayerForScrollableArea(ScrollableArea*);
+    static GraphicsLayer* horizontalScrollbarLayerForScrollableArea(ScrollableArea*);
+    static GraphicsLayer* verticalScrollbarLayerForScrollableArea(ScrollableArea*);
+#endif
 
     unsigned computeCurrentWheelEventHandlerCount();
     GraphicsLayer* scrollLayerForFrameView(FrameView*);

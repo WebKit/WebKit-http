@@ -14,20 +14,21 @@ function handleLoad()
 function test()
 {
     WebInspector.showPanel("profiles");
-    ProfilerAgent.takeHeapSnapshot(step0);
+    HeapProfilerAgent.takeHeapSnapshot(step0);
 
     function step0()
     {
-        var profiles = WebInspector.panels.profiles.getProfiles("HEAP");
-        WebInspector.panels.profiles.showProfile(profiles[profiles.length - 1]);
-        InspectorTest.addSniffer(WebInspector.panels.profiles, "_finishHeapSnapshot", step1);
+        var heapProfileType =  WebInspector.panels.profiles.getProfileType("HEAP");
+        var profiles = heapProfileType.getProfiles();
+        WebInspector.panels.profiles._showProfile(profiles[profiles.length - 1]);
+        InspectorTest.addSniffer(heapProfileType, "finishHeapSnapshot", step1);
     }
 
     function step1(uid)
     {
-        InspectorTest.addResult("_finishHeapSnapshot " + uid);
+        InspectorTest.addResult("finishHeapSnapshot " + uid);
         var panel = WebInspector.panels.profiles;
-        var profile = panel._profilesIdMap[panel._makeKey(uid, WebInspector.HeapSnapshotProfileType.TypeId)];
+        var profile = panel.getProfile(WebInspector.HeapSnapshotProfileType.TypeId, uid);
         profile.load(step2.bind(this));
     }
 
@@ -42,7 +43,7 @@ function test()
                 bodyWrapperIds.push(it.node.id);
         }
         for (var i = 0; i < bodyWrapperIds.length; i++)
-            ProfilerAgent.getObjectByHeapObjectId(bodyWrapperIds[i], undefined, didGetObjectByHeapObjectId);
+            HeapProfilerAgent.getObjectByHeapObjectId(bodyWrapperIds[i], undefined, didGetObjectByHeapObjectId);
 
         var resolvedObjectsCount = 0;
         var remoteObjects = [];
@@ -69,7 +70,7 @@ function test()
             if (++didGetOwnPropertiesCount !== remoteObjects.length)
                 return;
 
-            ProfilerAgent.clearProfiles(done);
+            HeapProfilerAgent.clearProfiles(done);
             WebInspector.panels.profiles._reset();
         }
     }

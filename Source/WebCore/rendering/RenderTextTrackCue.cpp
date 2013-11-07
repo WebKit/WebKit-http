@@ -30,6 +30,7 @@
 #include "RenderTextTrackCue.h"
 
 #include "TextTrackCue.h"
+#include "TextTrackCueGeneric.h"
 
 namespace WebCore {
 
@@ -45,10 +46,15 @@ void RenderTextTrackCue::layout()
     RenderBlock::layout();
 
     LayoutStateMaintainer statePusher(view(), this, locationOffset(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
-    if (m_cue->snapToLines())
-        repositionCueSnapToLinesSet();
-    else
-        repositionCueSnapToLinesNotSet();
+    
+    if (m_cue->cueType()== TextTrackCue::WebVTT) {
+        if (m_cue->snapToLines())
+            repositionCueSnapToLinesSet();
+        else
+            repositionCueSnapToLinesNotSet();
+    } else
+        repositionGenericCue();
+
     statePusher.pop();
 }
 
@@ -117,7 +123,7 @@ void RenderTextTrackCue::placeBoxInDefaultPosition(LayoutUnit position, bool& sw
 
 bool RenderTextTrackCue::isOutside() const
 {
-    return !containingBlock()->absoluteBoundingBoxRect().contains(absoluteBoundingBoxRect());
+    return !containingBlock()->absoluteBoundingBoxRect().contains(absoluteContentBox());
 }
 
 bool RenderTextTrackCue::isOverlapping() const
@@ -219,6 +225,43 @@ void RenderTextTrackCue::repositionCueSnapToLinesSet()
 
         // 19. Jump back to the step labeled step loop.
     }
+
+    // Acommodate extra top and bottom padding, border or margin.
+    // Note: this is supported only for internal UA styling, not through the cue selector.
+    if (hasInlineDirectionBordersPaddingOrMargin()) {
+        IntRect containerRect = containingBlock()->absoluteBoundingBoxRect();
+        IntRect cueRect = absoluteBoundingBoxRect();
+
+        int topOverflow = cueRect.y() - containerRect.y();
+        int bottomOverflow = containerRect.y() + containerRect.height() - cueRect.y() - cueRect.height();
+
+        int adjustment = 0;
+        if (topOverflow < 0)
+            adjustment = -topOverflow;
+        else if (bottomOverflow < 0)
+            adjustment = bottomOverflow;
+
+        if (adjustment)
+            setY(y() + adjustment);
+    }
+}
+
+void RenderTextTrackCue::repositionGenericCue()
+{
+    TextTrackCueGeneric* cue = static_cast<TextTrackCueGeneric*>(m_cue);
+    if (!cue->useDefaultPosition())
+        return;
+
+    ASSERT(firstChild());
+
+    InlineFlowBox* firstLineBox = toRenderInline(firstChild())->firstLineBox();
+    if (!firstLineBox)
+        return;
+
+    LayoutUnit parentWidth = containingBlock()->logicalWidth();
+    LayoutUnit width = firstLineBox->width();
+    LayoutUnit right = (parentWidth / 2) - (width / 2);
+    setX(right);
 }
 
 void RenderTextTrackCue::repositionCueSnapToLinesNotSet()

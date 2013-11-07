@@ -24,6 +24,7 @@
 #include "GraphicsLayerClient.h"
 #include "Image.h"
 #include "TextureMapperLayer.h"
+#include "TextureMapperTiledBackingStore.h"
 #include "Timer.h"
 
 namespace WebCore {
@@ -32,6 +33,9 @@ class GraphicsLayerTextureMapper : public GraphicsLayer {
 public:
     explicit GraphicsLayerTextureMapper(GraphicsLayerClient*);
     virtual ~GraphicsLayerTextureMapper();
+
+    void setScrollClient(TextureMapperLayer::ScrollingClient* client) { m_layer->setScrollClient(client); }
+    void setID(uint32_t id) { m_layer->setID(id); }
 
     // reimps from GraphicsLayer.h
     virtual void setNeedsDisplay();
@@ -80,6 +84,10 @@ public:
 
     TextureMapperLayer* layer() const { return m_layer.get(); }
 
+    void didCommitScrollOffset(const IntSize&);
+    void setIsScrollable(bool);
+    bool isScrollable() const { return m_isScrollable; }
+
 #if ENABLE(CSS_FILTERS)
     virtual bool setFilters(const FilterOperations&);
 #endif
@@ -103,7 +111,6 @@ private:
     void updateBackingStoreIfNeeded();
     void prepareBackingStoreIfNeeded();
     bool shouldHaveBackingStore() const;
-    void animationStartedTimerFired(Timer<GraphicsLayerTextureMapper>*);
 
     // This set of flags help us defer which properties of the layer have been
     // modified by the compositor, so we can know what to look for in the next flush.
@@ -142,7 +149,11 @@ private:
         DebugVisualsChange =        (1L << 24),
         RepaintCountChange =        (1L << 25),
 
-        FixedToViewporChange =      (1L << 26)
+        FixedToViewporChange =      (1L << 26),
+        AnimationStarted =          (1L << 27),
+
+        CommittedScrollOffsetChange =     (1L << 28),
+        IsScrollableChange =              (1L << 29)
     };
     void notifyChange(ChangeMask);
 
@@ -163,7 +174,10 @@ private:
     TextureMapperPlatformLayer* m_contentsLayer;
     FloatRect m_needsDisplayRect;
     GraphicsLayerAnimations m_animations;
-    Timer<GraphicsLayerTextureMapper> m_animationStartedTimer;
+    double m_animationStartTime;
+
+    IntSize m_committedScrollOffset;
+    bool m_isScrollable;
 };
 
 inline static GraphicsLayerTextureMapper* toGraphicsLayerTextureMapper(GraphicsLayer* layer)

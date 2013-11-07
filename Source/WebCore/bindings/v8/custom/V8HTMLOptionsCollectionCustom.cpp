@@ -45,7 +45,8 @@
 
 namespace WebCore {
 
-static v8::Handle<v8::Value> getNamedItems(HTMLOptionsCollection* collection, const AtomicString& name, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+template<typename HolderContainer>
+static v8::Handle<v8::Value> getNamedItems(HTMLOptionsCollection* collection, const AtomicString& name, const HolderContainer& holder)
 {
     Vector<RefPtr<Node> > namedItems;
     collection->namedItems(name, namedItems);
@@ -54,9 +55,9 @@ static v8::Handle<v8::Value> getNamedItems(HTMLOptionsCollection* collection, co
         return v8Undefined();
 
     if (namedItems.size() == 1)
-        return toV8(namedItems.at(0).release(), creationContext, isolate);
+        return toV8Fast(namedItems.at(0).release(), holder, collection);
 
-    return toV8(V8NamedNodesCollection::create(namedItems), creationContext, isolate);
+    return toV8Fast(V8NamedNodesCollection::create(namedItems), holder, collection);
 }
 
 v8::Handle<v8::Value> V8HTMLOptionsCollection::namedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
@@ -67,28 +68,28 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::namedPropertyGetter(v8::Local<v8:
         return v8Undefined();
 
     HTMLOptionsCollection* imp = V8HTMLOptionsCollection::toNative(info.Holder());
-    return getNamedItems(imp, toWebCoreAtomicString(name), info.Holder(), info.GetIsolate());
+    return getNamedItems(imp, toWebCoreAtomicString(name), info);
 }
 
-v8::Handle<v8::Value> V8HTMLOptionsCollection::namedItemCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLOptionsCollection::namedItemMethodCustom(const v8::Arguments& args)
 {
     HTMLOptionsCollection* imp = V8HTMLOptionsCollection::toNative(args.Holder());
-    v8::Handle<v8::Value> result = getNamedItems(imp, toWebCoreString(args[0]), args.Holder(), args.GetIsolate());
+    v8::Handle<v8::Value> result = getNamedItems(imp, toWebCoreString(args[0]), args);
 
     if (result.IsEmpty())
-        return v8::Undefined(args.GetIsolate());
+        return v8Null(args.GetIsolate());
 
     return result;
 }
 
-v8::Handle<v8::Value> V8HTMLOptionsCollection::removeCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLOptionsCollection::removeMethodCustom(const v8::Arguments& args)
 {
     HTMLOptionsCollection* imp = V8HTMLOptionsCollection::toNative(args.Holder());
-    HTMLSelectElement* base = static_cast<HTMLSelectElement*>(imp->ownerNode());
+    HTMLSelectElement* base = toHTMLSelectElement(imp->ownerNode());
     return removeElement(base, args);
 }
 
-v8::Handle<v8::Value> V8HTMLOptionsCollection::addCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLOptionsCollection::addMethodCustom(const v8::Arguments& args)
 {
     if (!V8HTMLOptionElement::HasInstance(args[0], args.GetIsolate()))
         return setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
@@ -113,13 +114,13 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::addCallback(const v8::Arguments& 
     return v8::Undefined();
 }
 
-void V8HTMLOptionsCollection::lengthAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
+void V8HTMLOptionsCollection::lengthAttrSetterCustom(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     HTMLOptionsCollection* imp = V8HTMLOptionsCollection::toNative(info.Holder());
     double v = value->NumberValue();
     unsigned newLength = 0;
     ExceptionCode ec = 0;
-    if (!isnan(v) && !isinf(v)) {
+    if (!std::isnan(v) && !std::isinf(v)) {
         if (v < 0.0)
             ec = INDEX_SIZE_ERR;
         else if (v > static_cast<double>(UINT_MAX))
@@ -141,13 +142,13 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::indexedPropertyGetter(uint32_t in
     if (!result)
         return v8Undefined();
 
-    return toV8(result.release(), info.Holder(), info.GetIsolate());
+    return toV8Fast(result.release(), info, collection);
 }
 
 v8::Handle<v8::Value> V8HTMLOptionsCollection::indexedPropertySetter(uint32_t index, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
     HTMLOptionsCollection* collection = V8HTMLOptionsCollection::toNative(info.Holder());
-    HTMLSelectElement* base = static_cast<HTMLSelectElement*>(collection->ownerNode());
+    HTMLSelectElement* base = toHTMLSelectElement(collection->ownerNode());
     return toOptionsCollectionSetter(index, value, base, info.GetIsolate());
 }
 

@@ -33,6 +33,7 @@
 #import "PluginProcessMessages.h"
 #import "WebKitSystemInterface.h"
 #import <WebCore/FileSystem.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <spawn.h>
 #import <wtf/text/CString.h>
 
@@ -124,14 +125,18 @@ static bool shouldUseXPC()
         return [value boolValue];
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    return false;
+    // FIXME: Temporary workaround for <rdar://problem/13236883>
+    if (applicationIsSafari())
+        return false;
+
+    return true;
 #else
     return false;
 #endif
 }
 #endif
 
-void PluginProcessProxy::platformInitializeLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginModuleInfo& pluginInfo)
+void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginModuleInfo& pluginInfo)
 {
     launchOptions.architecture = pluginInfo.pluginArchitecture;
     launchOptions.executableHeap = PluginProcessProxy::pluginNeedsExecutableHeap(pluginInfo);
@@ -162,7 +167,7 @@ void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationPa
 
 bool PluginProcessProxy::getPluginProcessSerialNumber(ProcessSerialNumber& pluginProcessSerialNumber)
 {
-    pid_t pluginProcessPID = m_processLauncher->processIdentifier();
+    pid_t pluginProcessPID = processIdentifier();
 #if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"

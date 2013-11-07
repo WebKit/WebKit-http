@@ -78,6 +78,8 @@ fast/js/dfg-arguments-alias
 fast/js/dfg-arguments-cross-code-origin
 fast/js/dfg-arguments-mixed-alias
 fast/js/dfg-arguments-osr-exit
+fast/js/dfg-arguments-osr-exit-multiple-blocks
+fast/js/dfg-arguments-osr-exit-multiple-blocks-before-exit
 fast/js/dfg-arguments-out-of-bounds
 fast/js/dfg-arguments-unexpected-escape
 fast/js/dfg-arrayify-elimination
@@ -89,8 +91,12 @@ fast/js/dfg-array-pop-value-clearing
 fast/js/dfg-array-push-bad-time
 fast/js/dfg-array-push-slow-put
 fast/js/dfg-bool-to-int32-reuse
+fast/js/dfg-branch-logical-not-peephole-around-osr-exit
 fast/js/dfg-branch-not-fail
 fast/js/dfg-cfa-merge-with-dead-use-at-tail
+fast/js/dfg-cfg-simplify-eliminate-set-local-type-check-then-branch-not-null
+fast/js/dfg-cfg-simplify-eliminate-set-local-type-check-then-branch-not-null-and-decrement
+fast/js/dfg-cfg-simplify-eliminate-set-local-type-check-then-typeof
 fast/js/dfg-cfg-simplify-phantom-get-local-on-same-block-set-local
 fast/js/dfg-cfg-simplify-redundant-dead-get-local
 fast/js/dfg-check-two-structures
@@ -98,6 +104,10 @@ fast/js/dfg-check-structure-elimination-for-non-cell
 fast/js/dfg-constant-fold-first-local-read-after-block-merge
 fast/js/dfg-constant-fold-uncaptured-variable-that-is-later-captured
 fast/js/dfg-convert-this-dom-window
+fast/js/dfg-convert-this-object-then-exit-on-other
+fast/js/dfg-convert-this-other-then-exit-on-object
+fast/js/dfg-convert-this-polymorphic-object-then-exit-on-other
+fast/js/dfg-convert-this-polymorphic-object-then-exit-on-string
 fast/js/dfg-create-inlined-arguments-in-closure-inline
 fast/js/dfg-cse-cfa-discrepancy
 fast/js/dfg-cse-dead-get-scoped-var
@@ -105,7 +115,9 @@ fast/js/dfg-dead-min-one-arg
 fast/js/dfg-dead-min-two-args
 fast/js/dfg-dead-redundant-get-array-length
 fast/js/dfg-dead-speculation
+fast/js/dfg-dead-unreachable-code-with-chain-of-dead-unchecked-nodes
 fast/js/dfg-dead-variable-on-exit
+fast/js/dfg-double-addition-simplify-to-int.html
 fast/js/dfg-double-use-of-post-simplification-double-prediction
 fast/js/dfg-double-vote-fuzz
 fast/js/dfg-ensure-array-storage-on-string
@@ -167,7 +179,7 @@ fast/js/dfg-obvious-constant-cfa
 fast/js/dfg-osr-entry-hoisted-clobbered-structure-check
 fast/js/dfg-other-branch
 fast/js/dfg-phantom-get-local
-fast/js/dfg-poison-fuzz
+fast/js/dfg-post-inc-then-exit
 fast/js/dfg-proto-access-inline-osr-exit
 fast/js/dfg-proven-sqrt-backwards-propagation
 fast/js/dfg-put-by-id-prototype-check
@@ -187,6 +199,7 @@ fast/js/dfg-uint32array-overflow-values
 fast/js/dfg-uint32array
 fast/js/dfg-uint8array
 fast/js/dfg-uint8clampedarray
+fast/js/dfg-value-to-int32-with-side-effects
 fast/js/dfg-weak-js-constant-silent-fill
 fast/js/dictionary-no-cache
 fast/js/dictionary-prototype-caching
@@ -206,6 +219,7 @@ fast/js/exception-try-finally-scope-error
 fast/js/exception-with-handler-inside-eval-with-dynamic-scope
 fast/js/excessive-comma-usage
 fast/js/finally-codegen-failure
+fast/js/flatten-dictionary-structure-from-which-all-properties-were-deleted
 fast/js/for-in-avoid-duplicates
 fast/js/for-in-cached
 fast/js/for-in-exeception

@@ -65,7 +65,7 @@ WebInspector.DatabaseQueryView.prototype = {
      * @param {Element} proxyElement
      * @param {Range} wordRange
      * @param {boolean} force
-     * @param {function(Array.<string>, number=)} completionsReadyCallback
+     * @param {function(!Array.<string>, number=)} completionsReadyCallback
      */
     completions: function(proxyElement, wordRange, force, completionsReadyCallback)
     {
@@ -145,7 +145,7 @@ WebInspector.DatabaseQueryView.prototype = {
         var trimmedQuery = query.trim();
 
         if (dataGrid) {
-            dataGrid.element.addStyleClass("inline");
+            dataGrid.renderInline();
             this._appendViewQueryResult(trimmedQuery, dataGrid);
             dataGrid.autoSizeColumns(5);
         }

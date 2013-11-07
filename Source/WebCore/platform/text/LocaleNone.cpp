@@ -42,6 +42,7 @@ private:
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
     virtual String dateFormat() OVERRIDE;
     virtual String monthFormat() OVERRIDE;
+    virtual String shortMonthFormat() OVERRIDE;
     virtual String timeFormat() OVERRIDE;
     virtual String shortTimeFormat() OVERRIDE;
     virtual String dateTimeFormatWithSeconds() OVERRIDE;
@@ -95,6 +96,11 @@ String LocaleNone::dateFormat()
 }
 
 String LocaleNone::monthFormat()
+{
+    return ASCIILiteral("yyyy-MM");
+}
+
+String LocaleNone::shortMonthFormat()
 {
     return ASCIILiteral("yyyy-MM");
 }

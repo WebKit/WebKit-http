@@ -35,7 +35,6 @@
 #include "InjectedBundleUserMessageCoders.h"
 #include "PlatformCertificateInfo.h"
 #include "PluginView.h"
-#include "StringPairVector.h"
 #include "WebBackForwardListProxy.h"
 #include "WebContextMessages.h"
 #include "WebCoreArgumentCoders.h"
@@ -58,6 +57,7 @@
 #include <WebCore/FormState.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/HTMLAppletElement.h>
 #include <WebCore/HTMLFormElement.h>
@@ -384,8 +384,9 @@ void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
         return;
 
 #if ENABLE(FULLSCREEN_API)
-    if (m_frame->coreFrame()->document()->webkitIsFullScreen())
-        webPage->fullScreenManager()->close();
+    Element* documentElement = m_frame->coreFrame()->document()->documentElement();
+    if (documentElement && documentElement->containsFullScreenElement())
+        webPage->fullScreenManager()->exitFullScreenForElement(webPage->fullScreenManager()->element());
 #endif
 
     webPage->findController().hideFindUI();
@@ -443,12 +444,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad()
 
     webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), response.mimeType(), m_frameHasCustomRepresentation, m_frame->coreFrame()->loader()->loadType(), PlatformCertificateInfo(response), InjectedBundleUserMessageEncoder(userData.get())));
 
-    // Only restore the scale factor for standard frame loads (of the main frame).
-    if (m_frame->isMainFrame() && m_frame->coreFrame()->loader()->loadType() == FrameLoadTypeStandard) {
-        Page* page = m_frame->coreFrame()->page();
-        if (page && page->pageScaleFactor() != 1)
-            webPage->scalePage(1, IntPoint());
-    }
+    webPage->didCommitLoad(m_frame);
 }
 
 void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
@@ -523,6 +519,8 @@ void WebFrameLoaderClient::dispatchDidFinishLoad()
     // If we have a load listener, notify it.
     if (WebFrame::LoadListener* loadListener = m_frame->loadListener())
         loadListener->didFinishLoad(m_frame);
+
+    webPage->didFinishLoad(m_frame);
 }
 
 void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
@@ -759,9 +757,8 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, 
 
 
     uint64_t listenerID = m_frame->setUpPolicyListener(function);
-    StringPairVector valuesVector(values);
 
-    webPage->send(Messages::WebPageProxy::WillSubmitForm(m_frame->frameID(), sourceFrame->frameID(), valuesVector, listenerID, InjectedBundleUserMessageEncoder(userData.get())));
+    webPage->send(Messages::WebPageProxy::WillSubmitForm(m_frame->frameID(), sourceFrame->frameID(), values, listenerID, InjectedBundleUserMessageEncoder(userData.get())));
 }
 
 void WebFrameLoaderClient::revertToProvisionalState(DocumentLoader*)
@@ -1131,7 +1128,7 @@ void WebFrameLoaderClient::restoreViewState()
     // FIXME: This should not be necessary. WebCore should be correctly invalidating
     // the view on restores from the back/forward cache.
     if (m_frame == m_frame->page()->mainWebFrame())
-        m_frame->page()->drawingArea()->setNeedsDisplay(m_frame->page()->bounds());
+        m_frame->page()->drawingArea()->setNeedsDisplay();
 }
 
 void WebFrameLoaderClient::provisionalLoadStarted()
@@ -1356,8 +1353,11 @@ PassRefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& p
 {
     RefPtr<Widget> plugin = createPlugin(pluginSize, appletElement, KURL(), paramNames, paramValues, appletElement->serviceType(), false);
     if (!plugin) {
-        if (WebPage* webPage = m_frame->page())
-            webPage->send(Messages::WebPageProxy::DidFailToInitializePlugin(appletElement->serviceType()));
+        if (WebPage* webPage = m_frame->page()) {
+            String frameURLString = m_frame->coreFrame()->loader()->documentLoader()->responseURL().string();
+            String pageURLString = webPage->corePage()->mainFrame()->loader()->documentLoader()->responseURL().string();
+            webPage->send(Messages::WebPageProxy::DidFailToInitializePlugin(appletElement->serviceType(), frameURLString, pageURLString));
+        }
     }
     return plugin.release();
 }

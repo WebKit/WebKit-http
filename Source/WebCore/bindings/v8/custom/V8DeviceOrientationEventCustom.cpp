@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8DeviceOrientationEvent::alphaAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8DeviceOrientationEvent::alphaAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Object> holder = info.Holder();
     DeviceOrientationEvent* imp = V8DeviceOrientationEvent::toNative(holder);
@@ -44,7 +44,7 @@ v8::Handle<v8::Value> V8DeviceOrientationEvent::alphaAccessorGetter(v8::Local<v8
     return v8::Number::New(imp->orientation()->alpha());
 }
 
-v8::Handle<v8::Value> V8DeviceOrientationEvent::betaAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8DeviceOrientationEvent::betaAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Object> holder = info.Holder();
     DeviceOrientationEvent* imp = V8DeviceOrientationEvent::toNative(holder);
@@ -53,7 +53,7 @@ v8::Handle<v8::Value> V8DeviceOrientationEvent::betaAccessorGetter(v8::Local<v8:
     return v8::Number::New(imp->orientation()->beta());
 }
 
-v8::Handle<v8::Value> V8DeviceOrientationEvent::gammaAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8DeviceOrientationEvent::gammaAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Object> holder = info.Holder();
     DeviceOrientationEvent* imp = V8DeviceOrientationEvent::toNative(holder);
@@ -62,7 +62,7 @@ v8::Handle<v8::Value> V8DeviceOrientationEvent::gammaAccessorGetter(v8::Local<v8
     return v8::Number::New(imp->orientation()->gamma());
 }
 
-v8::Handle<v8::Value> V8DeviceOrientationEvent::absoluteAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8DeviceOrientationEvent::absoluteAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Object> holder = info.Holder();
     DeviceOrientationEvent* imp = V8DeviceOrientationEvent::toNative(holder);
@@ -71,7 +71,7 @@ v8::Handle<v8::Value> V8DeviceOrientationEvent::absoluteAccessorGetter(v8::Local
     return v8::Boolean::New(imp->orientation()->absolute());
 }
 
-v8::Handle<v8::Value> V8DeviceOrientationEvent::initDeviceOrientationEventCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8DeviceOrientationEvent::initDeviceOrientationEventMethodCustom(const v8::Arguments& args)
 {
     DeviceOrientationEvent* imp = V8DeviceOrientationEvent::toNative(args.Holder());
     V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<>, type, args[0]);

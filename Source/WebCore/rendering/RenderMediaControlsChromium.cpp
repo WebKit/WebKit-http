@@ -214,13 +214,13 @@ static bool paintMediaSlider(RenderObject* object, const PaintInfo& paintInfo, c
     RefPtr<TimeRanges> bufferedTimeRanges = mediaElement->buffered();
     float duration = mediaElement->duration();
     float currentTime = mediaElement->currentTime();
-    if (isnan(duration) || isinf(duration) || !duration || isnan(currentTime))
+    if (std::isnan(duration) || std::isinf(duration) || !duration || std::isnan(currentTime))
         return true;
 
     for (unsigned i = 0; i < bufferedTimeRanges->length(); ++i) {
         float start = bufferedTimeRanges->start(i, ASSERT_NO_EXCEPTION);
         float end = bufferedTimeRanges->end(i, ASSERT_NO_EXCEPTION);
-        if (isnan(start) || isnan(end) || start > currentTime || end < currentTime)
+        if (std::isnan(start) || std::isnan(end) || start > currentTime || end < currentTime)
             continue;
         int startPosition = int(start * rect.width() / duration);
         int currentPosition = int(currentTime * rect.width() / duration);
@@ -279,7 +279,7 @@ static bool paintMediaVolumeSlider(RenderObject* object, const PaintInfo& paintI
 
     // Calculate volume position for white background rectangle.
     float volume = mediaElement->volume();
-    if (isnan(volume) || volume < 0)
+    if (std::isnan(volume) || volume < 0)
         return true;
     if (volume > 1)
         volume = 1;
@@ -327,7 +327,7 @@ static bool paintMediaFullscreenButton(RenderObject* object, const PaintInfo& pa
     return paintMediaButton(paintInfo.context, rect, mediaFullscreenButton);
 }
 
-static bool paintMediaClosedCaptionsButton(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
+static bool paintMediaToggleClosedCaptionsButton(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
 {
     HTMLMediaElement* mediaElement = toParentMediaElement(object);
     if (!mediaElement)
@@ -353,7 +353,7 @@ bool RenderMediaControlsChromium::paintMediaControlsPart(MediaControlElementType
     case MediaPlayButton:
         return paintMediaPlayButton(object, paintInfo, rect);
     case MediaShowClosedCaptionsButton:
-        return paintMediaClosedCaptionsButton(object, paintInfo, rect);
+        return paintMediaToggleClosedCaptionsButton(object, paintInfo, rect);
     case MediaSlider:
         return paintMediaSlider(object, paintInfo, rect);
     case MediaSliderThumb:
@@ -421,9 +421,9 @@ void RenderMediaControlsChromium::adjustMediaSliderThumbSize(RenderStyle* style)
 
 static String formatChromiumMediaControlsTime(float time, float duration)
 {
-    if (!isfinite(time))
+    if (!std::isfinite(time))
         time = 0;
-    if (!isfinite(duration))
+    if (!std::isfinite(duration))
         duration = 0;
     int seconds = static_cast<int>(fabsf(time));
     int hours = seconds / (60 * 60);

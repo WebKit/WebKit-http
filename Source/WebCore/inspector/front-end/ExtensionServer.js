@@ -231,13 +231,12 @@ WebInspector.ExtensionServer.prototype = {
         var panel = WebInspector.panel(message.panel);
         if (!panel)
             return this._status.E_NOTFOUND(message.panel);
-        if (!panel.sidebarElement || !panel.sidebarPanes)
+        if (!panel.addExtensionSidebarPane)
             return this._status.E_NOTSUPPORTED();
         var id = message.id;
         var sidebar = new WebInspector.ExtensionSidebarPane(message.title, message.id);
         this._clientObjects[id] = sidebar;
-        panel.sidebarPanes[id] = sidebar;
-        sidebar.show(panel.sidebarElement);
+        panel.addExtensionSidebarPane(id, sidebar);
 
         return this._status.OK();
     },
@@ -311,11 +310,8 @@ WebInspector.ExtensionServer.prototype = {
         var options = /** @type ExtensionReloadOptions */ (message.options || {});
         NetworkAgent.setUserAgentOverride(typeof options.userAgent === "string" ? options.userAgent : "");
         var injectedScript;
-        if (options.injectedScript) {
-            // Wrap client script into anonymous function, return another anonymous function that
-            // returns empty object for compatibility with InjectedScriptManager on the backend.
-            injectedScript = "((function(){" + options.injectedScript + "})(),function(){return {}})";
-        }
+        if (options.injectedScript)
+            injectedScript = "(function(){" + options.injectedScript + "})()";
         PageAgent.reload(!!options.ignoreCache, injectedScript);
         return this._status.OK();
     },
@@ -329,16 +325,13 @@ WebInspector.ExtensionServer.prototype = {
          */
         function callback(error, resultPayload, wasThrown)
         {
-            var result = {};
-            if (error) {
-                result.isException = true;
-                result.value = error.toString();
-            }  else if (wasThrown) {
-                result.isException = true;
-                result.value = resultPayload.description;
-            } else {
-                result.value = resultPayload.value;
-            }
+            var result;
+            if (error)
+                result = this._status.E_PROTOCOLERROR(error.toString());
+            else if (wasThrown)
+                result = { isException: true, value: resultPayload.description };
+            else
+                result = { value: resultPayload.value };
       
             this._dispatchCallback(message.requestId, port, result);
         }
@@ -442,7 +435,7 @@ WebInspector.ExtensionServer.prototype = {
             if (!resources[contentProvider.contentURL()])
                 resources[contentProvider.contentURL()] = this._makeResource(contentProvider);
         }
-        var uiSourceCodes = WebInspector.workspace.project(WebInspector.projectNames.Network).uiSourceCodes();
+        var uiSourceCodes = WebInspector.workspace.uiSourceCodesForProjectType(WebInspector.projectTypes.Network);
         uiSourceCodes.forEach(pushResourceData.bind(this));
         WebInspector.resourceTreeModel.forAllResources(pushResourceData.bind(this));
         return Object.values(resources);
@@ -819,6 +812,7 @@ WebInspector.ExtensionStatus = function()
     this.E_BADARGTYPE = makeStatus.bind(null, "E_BADARGTYPE", "Invalid type for argument %s: got %s, expected %s");
     this.E_NOTFOUND = makeStatus.bind(null, "E_NOTFOUND", "Object not found: %s");
     this.E_NOTSUPPORTED = makeStatus.bind(null, "E_NOTSUPPORTED", "Object does not support requested operation: %s");
+    this.E_PROTOCOLERROR = makeStatus.bind(null, "E_PROTOCOLERROR", "Inspector protocol error: %s");
     this.E_FAILED = makeStatus.bind(null, "E_FAILED", "Operation failed: %s");
 }
 

@@ -26,9 +26,12 @@
 #include "config.h"
 #import "JavaScriptCore.h"
 
-#if JS_OBJC_API_ENABLED
+#if JSC_OBJC_API_ENABLED
 
 #import "APICast.h"
+#import "APIShims.h"
+#import "JSAPIWrapperObject.h"
+#import "JSCallbackObject.h"
 #import "JSContextInternal.h"
 #import "JSWrapperMap.h"
 #import "ObjCCallbackFunction.h"
@@ -36,7 +39,7 @@
 #import "Operations.h"
 #import "WeakGCMap.h"
 #import <wtf/TCSpinLock.h>
-#import "wtf/Vector.h"
+#import <wtf/Vector.h>
 
 @class JSObjCClassInfo;
 
@@ -48,7 +51,8 @@
 
 static void wrapperFinalize(JSObjectRef object)
 {
-    [(id)JSObjectGetPrivate(object) release];
+    JSC::JSAPIWrapperObject* wrapperObject = JSC::jsCast<JSC::JSAPIWrapperObject*>(toJS(object));
+    [(id)wrapperObject->wrappedObject() release];
 }
 
 // All wrapper objects and constructor objects derive from this type, so we can detect & unwrap Objective-C instances/Classes.
@@ -74,7 +78,7 @@ static JSClassRef wrapperClass()
 // All semicolons are removed, lowercase letters following a semicolon are capitalized.
 static NSString *selectorToPropertyName(const char* start)
 {
-    // Use 'index' to check for colons, if there are non, this is easy!
+    // Use 'index' to check for colons, if there are none, this is easy!
     const char* firstColon = index(start, ':');
     if (!firstColon)
         return [NSString stringWithUTF8String:start];
@@ -114,17 +118,31 @@ done:
     return result;
 }
 
-// Make an object that is in all ways are completely vanilla JavaScript object,
+static JSObjectRef makeWrapper(JSContextRef ctx, JSClassRef jsClass, id wrappedObject)
+{
+    JSC::ExecState* exec = toJS(ctx);
+    JSC::APIEntryShim entryShim(exec);
+
+    ASSERT(jsClass);
+    JSC::JSCallbackObject<JSC::JSAPIWrapperObject>* object = JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::create(exec, exec->lexicalGlobalObject(), exec->lexicalGlobalObject()->objcWrapperObjectStructure(), jsClass, 0);
+    object->setWrappedObject(wrappedObject);
+    if (JSC::JSObject* prototype = jsClass->prototype(exec))
+        object->setPrototype(exec->globalData(), prototype);
+
+    return toRef(object);
+}
+
+// Make an object that is in all ways a completely vanilla JavaScript object,
 // other than that it has a native brand set that will be displayed by the default
-// Object.prototype.toString comversion.
-static JSValue *createObjectWithCustomBrand(JSContext *context, NSString *brand, JSClassRef parentClass = 0, void* privateData = 0)
+// Object.prototype.toString conversion.
+static JSValue *createObjectWithCustomBrand(JSContext *context, NSString *brand, JSClassRef parentClass = 0, Class cls = 0)
 {
     JSClassDefinition definition;
     definition = kJSClassDefinitionEmpty;
     definition.className = [brand UTF8String];
     definition.parentClass = parentClass;
     JSClassRef classRef = JSClassCreate(&definition);
-    JSObjectRef result = JSObjectMake(contextInternalContext(context), classRef, privateData);
+    JSObjectRef result = makeWrapper([context globalContextRef], classRef, cls);
     JSClassRelease(classRef);
     return [[JSValue alloc] initWithValue:result inContext:context];
 }
@@ -162,8 +180,8 @@ inline void putNonEnumerable(JSValue *base, NSString *propertyName, JSValue *val
 
 // This method will iterate over the set of required methods in the protocol, and:
 //  * Determine a property name (either via a renameMap or default conversion).
-//  * If an accessorMap is provided, and conatins a this name, store the method in the map.
-//  * Otherwise, if the object doesn't already conatin a property with name, create it.
+//  * If an accessorMap is provided, and contains this name, store the method in the map.
+//  * Otherwise, if the object doesn't already contain a property with name, create it.
 static void copyMethodsToObject(JSContext *context, Class objcClass, Protocol *protocol, BOOL isInstanceMethod, JSValue *object, NSMutableDictionary *accessorMethods = nil)
 {
     NSMutableDictionary *renameMap = createRenameMap(protocol, isInstanceMethod);
@@ -343,7 +361,7 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     ASSERT(!m_constructor || !m_prototype);
     ASSERT((m_class == [NSObject class]) == !superClassInfo);
     if (!superClassInfo) {
-        JSContextRef cContext = contextInternalContext(m_context);
+        JSContextRef cContext = [m_context globalContextRef];
         JSValue *constructor = m_context[@"Object"];
         if (!m_constructor)
             m_constructor = toJS(JSValueToObject(cContext, valueInternalValue(constructor), 0));
@@ -368,7 +386,7 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
         else
             constructor = createObjectWithCustomBrand(m_context, [NSString stringWithFormat:@"%sConstructor", className], wrapperClass(), [m_class retain]);
 
-        JSContextRef cContext = contextInternalContext(m_context);
+        JSContextRef cContext = [m_context globalContextRef];
         m_prototype = toJS(JSValueToObject(cContext, valueInternalValue(prototype), 0));
         m_constructor = toJS(JSValueToObject(cContext, valueInternalValue(constructor), 0));
 
@@ -382,7 +400,7 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
         });
 
         // Set [Prototype].
-        prototype[@"__proto__"] = [JSValue valueWithValue:toRef(superClassInfo->m_prototype.get()) inContext:m_context];
+        JSObjectSetPrototype([m_context globalContextRef], toRef(m_prototype.get()), toRef(superClassInfo->m_prototype.get()));
 
         [constructor release];
         [prototype release];
@@ -407,8 +425,8 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
         [self reallocateConstructorAndOrPrototype];
     ASSERT(!!m_prototype);
 
-    JSObjectRef wrapper = JSObjectMake(contextInternalContext(m_context), m_classRef, [object retain]);
-    JSObjectSetPrototype(contextInternalContext(m_context), wrapper, toRef(m_prototype.get()));
+    JSObjectRef wrapper = makeWrapper([m_context globalContextRef], m_classRef, [object retain]);
+    JSObjectSetPrototype([m_context globalContextRef], wrapper, toRef(m_prototype.get()));
     return [JSValue valueWithValue:wrapper inContext:m_context];
 }
 
@@ -425,7 +443,8 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
 @implementation JSWrapperMap {
     JSContext *m_context;
     NSMutableDictionary *m_classMap;
-    JSC::WeakGCMap<id, JSC::JSObject> m_cachedWrappers;
+    JSC::WeakGCMap<id, JSC::JSObject> m_cachedJSWrappers;
+    NSMapTable *m_cachedObjCWrappers;
 }
 
 - (id)initWithContext:(JSContext *)context
@@ -434,6 +453,10 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     if (!self)
         return nil;
 
+    NSPointerFunctionsOptions keyOptions = NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality;
+    NSPointerFunctionsOptions valueOptions = NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPersonality;
+    m_cachedObjCWrappers = [[NSMapTable alloc] initWithKeyOptions:keyOptions valueOptions:valueOptions capacity:0];
+    
     m_context = context;
     m_classMap = [[NSMutableDictionary alloc] init];
     return self;
@@ -454,16 +477,16 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     if (JSObjCClassInfo* classInfo = (JSObjCClassInfo*)m_classMap[cls])
         return classInfo;
 
-    // Skip internal classes begining with '_' - just copy link to the parent class's info.
+    // Skip internal classes beginning with '_' - just copy link to the parent class's info.
     if ('_' == *class_getName(cls))
         return m_classMap[cls] = [self classInfoForClass:class_getSuperclass(cls)];
 
     return m_classMap[cls] = [[[JSObjCClassInfo alloc] initWithContext:m_context forClass:cls superClassInfo:[self classInfoForClass:class_getSuperclass(cls)]] autorelease];
 }
 
-- (JSValue *)wrapperForObject:(id)object
+- (JSValue *)jsWrapperForObject:(id)object
 {
-    JSC::JSObject* jsWrapper = m_cachedWrappers.get(object);
+    JSC::JSObject* jsWrapper = m_cachedJSWrappers.get(object);
     if (jsWrapper)
         return [JSValue valueWithValue:toRef(jsWrapper) inContext:m_context];
 
@@ -478,11 +501,21 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=105891
     // This general approach to wrapper caching is pretty effective, but there are a couple of problems:
     // (1) For immortal objects JSValues will effectively leak and this results in error output being logged - we should avoid adding associated objects to immortal objects.
-    // (2) A long lived object may rack up many JSValues. When the contexts are released these will unproctect the associated JavaScript objects,
+    // (2) A long lived object may rack up many JSValues. When the contexts are released these will unprotect the associated JavaScript objects,
     //     but still, would probably nicer if we made it so that only one associated object was required, broadcasting object dealloc.
-    JSC::ExecState* exec = toJS(contextInternalContext(m_context));
+    JSC::ExecState* exec = toJS([m_context globalContextRef]);
     jsWrapper = toJS(exec, valueInternalValue(wrapper)).toObject(exec);
-    m_cachedWrappers.set(object, jsWrapper);
+    m_cachedJSWrappers.set(object, jsWrapper);
+    return wrapper;
+}
+
+- (JSValue *)objcWrapperForJSValueRef:(JSValueRef)value
+{
+    JSValue *wrapper = static_cast<JSValue *>(NSMapGet(m_cachedObjCWrappers, value));
+    if (!wrapper) {
+        wrapper = [[[JSValue alloc] initWithValue:value inContext:m_context] autorelease];
+        NSMapInsert(m_cachedObjCWrappers, value, wrapper);
+    }
     return wrapper;
 }
 
@@ -496,7 +529,7 @@ id tryUnwrapObjcObject(JSGlobalContextRef context, JSValueRef value)
     JSObjectRef object = JSValueToObject(context, value, &exception);
     ASSERT(!exception);
     if (JSValueIsObjectOfClass(context, object, wrapperClass()))
-        return (id)JSObjectGetPrivate(object);
+        return (id)JSC::jsCast<JSC::JSAPIWrapperObject*>(toJS(object))->wrappedObject();
     if (id target = tryUnwrapBlock(context, object))
         return target;
     return nil;

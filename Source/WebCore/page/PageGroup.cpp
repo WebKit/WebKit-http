@@ -39,7 +39,7 @@
 #include "StorageNamespace.h"
 
 #if ENABLE(VIDEO_TRACK)
-#if PLATFORM(MAC)
+#if (PLATFORM(MAC) && !PLATFORM(IOS)) || HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
 #include "CaptionUserPreferencesMac.h"
 #else
 #include "CaptionUserPreferences.h"
@@ -420,40 +420,13 @@ void PageGroup::invalidatedInjectedStyleSheetCacheInAllFrames()
 CaptionUserPreferences* PageGroup::captionPreferences()
 {
     if (!m_captionPreferences)
-#if PLATFORM(MAC)
+#if (PLATFORM(MAC) && !PLATFORM(IOS)) || HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
         m_captionPreferences = CaptionUserPreferencesMac::create(this);
 #else
         m_captionPreferences = CaptionUserPreferences::create(this);
 #endif
 
     return m_captionPreferences.get();
-}
-    
-void PageGroup::registerForCaptionPreferencesChangedCallbacks(CaptionPreferencesChangedListener* listener)
-{
-    captionPreferences()->registerForCaptionPreferencesChangedCallbacks(listener);
-}
-
-void PageGroup::unregisterForCaptionPreferencesChangedCallbacks(CaptionPreferencesChangedListener* listener)
-{
-    if (!m_captionPreferences)
-        return;
-    captionPreferences()->unregisterForCaptionPreferencesChangedCallbacks(listener);
-}
-    
-bool PageGroup::userPrefersCaptions()
-{
-    return captionPreferences()->userPrefersCaptions();
-}
-
-bool PageGroup::userHasCaptionPreferences()
-{
-    return captionPreferences()->userPrefersCaptions();
-}
-
-float PageGroup::captionFontSizeScale()
-{
-    return captionPreferences()->captionFontSizeScale();
 }
 
 #endif

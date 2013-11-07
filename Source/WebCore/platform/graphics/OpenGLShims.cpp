@@ -84,6 +84,8 @@ static void* lookupOpenGLFunctionAddress(const char* functionName, bool* success
     fullFunctionName = functionName;
     fullFunctionName.append("ANGLE");
     target = getProcAddress(fullFunctionName.utf8().data());
+    if (target)
+        return target;
 
     fullFunctionName = functionName;
     fullFunctionName.append("APPLE");
@@ -127,6 +129,7 @@ bool initializeOpenGLShims()
     ASSIGN_FUNCTION_TABLE_ENTRY(glBindBuffer, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glBindFramebuffer, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glBindRenderbuffer, success);
+    ASSIGN_FUNCTION_TABLE_ENTRY_EXT(glBindVertexArray);
     ASSIGN_FUNCTION_TABLE_ENTRY(glBlendColor, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glBlendEquation, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glBlendEquationSeparate, success);
@@ -148,6 +151,7 @@ bool initializeOpenGLShims()
     ASSIGN_FUNCTION_TABLE_ENTRY(glDeleteProgram, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glDeleteRenderbuffers, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glDeleteShader, success);
+    ASSIGN_FUNCTION_TABLE_ENTRY_EXT(glDeleteVertexArrays);
     ASSIGN_FUNCTION_TABLE_ENTRY(glDetachShader, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glDisableVertexAttribArray, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glEnableVertexAttribArray, success);
@@ -157,6 +161,7 @@ bool initializeOpenGLShims()
     ASSIGN_FUNCTION_TABLE_ENTRY(glGenerateMipmap, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glGenFramebuffers, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glGenRenderbuffers, success);
+    ASSIGN_FUNCTION_TABLE_ENTRY_EXT(glGenVertexArrays);
     ASSIGN_FUNCTION_TABLE_ENTRY(glGetActiveAttrib, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glGetActiveUniform, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glGetAttachedShaders, success);
@@ -180,6 +185,7 @@ bool initializeOpenGLShims()
     ASSIGN_FUNCTION_TABLE_ENTRY(glIsProgram, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glIsRenderbuffer, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glIsShader, success);
+    ASSIGN_FUNCTION_TABLE_ENTRY_EXT(glIsVertexArray);
     ASSIGN_FUNCTION_TABLE_ENTRY(glLinkProgram, success);
     ASSIGN_FUNCTION_TABLE_ENTRY(glRenderbufferStorage, success);
     // In GLES2 there are optional ANGLE and APPLE extensions for glRenderbufferStorageMultisample.

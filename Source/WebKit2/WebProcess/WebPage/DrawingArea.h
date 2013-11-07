@@ -60,8 +60,9 @@ public:
     
     void didReceiveDrawingAreaMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
 
-    virtual void setNeedsDisplay(const WebCore::IntRect&) = 0;
-    virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset) = 0;
+    virtual void setNeedsDisplay() = 0;
+    virtual void setNeedsDisplayInRect(const WebCore::IntRect&) = 0;
+    virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) = 0;
 
     // FIXME: These should be pure virtual.
     virtual void pageBackgroundTransparencyChanged() { }
@@ -83,7 +84,7 @@ public:
     virtual void updatePreferences(const WebPreferencesStore&) { }
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) { }
 
-    virtual void setExposedRect(const WebCore::IntRect&) { }
+    virtual void setExposedRect(const WebCore::FloatRect&) { }
     virtual void mainFrameScrollabilityChanged(bool) { }
 
 #if USE(ACCELERATED_COMPOSITING)

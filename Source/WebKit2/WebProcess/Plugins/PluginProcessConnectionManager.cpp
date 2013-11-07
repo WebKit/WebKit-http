@@ -31,6 +31,7 @@
 #include "ArgumentDecoder.h"
 #include "ArgumentEncoder.h"
 #include "PluginProcessConnection.h"
+#include "PluginProcessConnectionManagerMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
 #include "WebProcessProxyMessages.h"
@@ -41,12 +42,23 @@
 
 namespace WebKit {
 
+PassRefPtr<PluginProcessConnectionManager> PluginProcessConnectionManager::create()
+{
+    return adoptRef(new PluginProcessConnectionManager);
+}
+
 PluginProcessConnectionManager::PluginProcessConnectionManager()
+    : m_queue(WorkQueue::create("com.apple.WebKit.PluginProcessConnectionManager"))
 {
 }
 
 PluginProcessConnectionManager::~PluginProcessConnectionManager()
 {
+}
+
+void PluginProcessConnectionManager::initializeConnection(CoreIPC::Connection* connection)
+{
+    connection->addWorkQueueMessageReceiver(Messages::PluginProcessConnectionManager::messageReceiverName(), m_queue.get(), this);
 }
 
 PluginProcessConnection* PluginProcessConnectionManager::getPluginProcessConnection(const String& pluginPath, PluginProcess::Type processType)
@@ -101,10 +113,10 @@ void PluginProcessConnectionManager::removePluginProcessConnection(PluginProcess
     m_pluginProcessConnections.remove(vectorIndex);
 }
 
-void PluginProcessConnectionManager::pluginProcessCrashed(const String& pluginPath, PluginProcess::Type processType)
+void PluginProcessConnectionManager::pluginProcessCrashed(const String& pluginPath, uint32_t opaquePluginType)
 {
     MutexLocker locker(m_pathsAndConnectionsMutex);
-    CoreIPC::Connection* connection = m_pathsAndConnections.get(std::make_pair(pluginPath, processType)).get();
+    CoreIPC::Connection* connection = m_pathsAndConnections.get(std::make_pair(pluginPath, static_cast<PluginProcess::Type>(opaquePluginType))).get();
 
     // It's OK for connection to be null here; it will happen if this web process doesn't know
     // anything about the plug-in process.

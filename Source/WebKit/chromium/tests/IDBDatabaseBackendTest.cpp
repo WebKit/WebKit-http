@@ -24,6 +24,9 @@
  */
 
 #include "config.h"
+
+#include "IDBDatabase.h"
+
 #include "IDBBackingStore.h"
 #include "IDBCursorBackendInterface.h"
 #include "IDBDatabaseBackendImpl.h"
@@ -31,6 +34,8 @@
 #include "IDBFactoryBackendImpl.h"
 #include "IDBFakeBackingStore.h"
 #include "IDBTransactionBackendImpl.h"
+#include "IndexedDB.h"
+#include "SharedBuffer.h"
 #include "WebIDBDatabaseCallbacksImpl.h"
 #include "WebIDBDatabaseImpl.h"
 
@@ -68,18 +73,18 @@ public:
     }
     virtual void onError(PassRefPtr<IDBDatabaseError>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<DOMStringList>) OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { }
+    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>) OVERRIDE { }
     virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&) OVERRIDE
     {
         m_wasSuccessDBCalled = true;
     }
     virtual void onSuccess(PassRefPtr<IDBKey>) OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<SerializedScriptValue>) OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&) OVERRIDE { };
+    virtual void onSuccess(PassRefPtr<SharedBuffer>) OVERRIDE { }
+    virtual void onSuccess(PassRefPtr<SharedBuffer>, PassRefPtr<IDBKey>, const IDBKeyPath&) OVERRIDE { };
     virtual void onSuccess(int64_t) OVERRIDE { }
     virtual void onSuccess() OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) OVERRIDE { };
-    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) OVERRIDE { }
+    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>) OVERRIDE { };
+    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SharedBuffer> >&) OVERRIDE { }
 private:
     MockIDBCallbacks()
         : m_wasSuccessDBCalled(false) { }
@@ -150,10 +155,10 @@ public:
     virtual void abort(int64_t transactionId, PassRefPtr<IDBDatabaseError>) OVERRIDE { }
     virtual void commit(int64_t transactionId) OVERRIDE { }
 
-    virtual void openCursor(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange>, unsigned short direction, bool keyOnly, TaskType, PassRefPtr<IDBCallbacks>) OVERRIDE { }
+    virtual void openCursor(int64_t transactionId, int64_t objectStoreId, int64_t indexId, PassRefPtr<IDBKeyRange>, IndexedDB::CursorDirection, bool keyOnly, TaskType, PassRefPtr<IDBCallbacks>) OVERRIDE { }
     virtual void count(int64_t objectStoreId, int64_t indexId, int64_t transactionId, PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>) OVERRIDE { }
     virtual void get(int64_t objectStoreId, int64_t indexId, int64_t transactionId, PassRefPtr<IDBKeyRange>, bool keyOnly, PassRefPtr<IDBCallbacks>) OVERRIDE { }
-    virtual void put(int64_t transactionId, int64_t objectStoreId, Vector<uint8_t>*, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE { }
+    virtual void put(int64_t transactionId, int64_t objectStoreId, PassRefPtr<SharedBuffer>, PassRefPtr<IDBKey>, PutMode, PassRefPtr<IDBCallbacks>, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE { }
     virtual void setIndexKeys(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKey> prpPrimaryKey, const Vector<int64_t>& indexIds, const Vector<IndexKeys>&) OVERRIDE { }
     virtual void setIndexesReady(int64_t transactionId, int64_t objectStoreId, const Vector<int64_t>& indexIds) OVERRIDE { }
     virtual void deleteRange(int64_t transactionId, int64_t objectStoreId, PassRefPtr<IDBKeyRange>, PassRefPtr<IDBCallbacks>) OVERRIDE { }

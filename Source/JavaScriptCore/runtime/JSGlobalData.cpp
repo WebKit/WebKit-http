@@ -57,6 +57,7 @@
 #include "ParserArena.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
+#include "SourceProviderCache.h"
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
 #include "UnlinkedCodeBlock.h"
@@ -186,7 +187,6 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     , m_timeoutCount(512)
 #endif
     , m_newStringsSinceLastHashConst(0)
-    , m_apiData(0)
 #if ENABLE(ASSEMBLER)
     , m_canUseAssembler(enableAssembler(executableAllocator))
 #endif
@@ -232,6 +232,7 @@ JSGlobalData::JSGlobalData(GlobalDataType globalDataType, HeapType heapType)
     unlinkedProgramCodeBlockStructure.set(*this, UnlinkedProgramCodeBlock::createStructure(*this, 0, jsNull()));
     unlinkedEvalCodeBlockStructure.set(*this, UnlinkedEvalCodeBlock::createStructure(*this, 0, jsNull()));
     unlinkedFunctionCodeBlockStructure.set(*this, UnlinkedFunctionCodeBlock::createStructure(*this, 0, jsNull()));
+    propertyTableStructure.set(*this, PropertyTable::createStructure(*this, 0, jsNull()));
     smallStrings.initializeCommonStrings(*this);
 
     wtfThreadData().setCurrentIdentifierTable(existingEntryIdentifierTable);
@@ -454,6 +455,19 @@ void JSGlobalData::dumpSampleData(ExecState* exec)
 #if ENABLE(ASSEMBLER)
     ExecutableAllocator::dumpProfile();
 #endif
+}
+
+SourceProviderCache* JSGlobalData::addSourceProviderCache(SourceProvider* sourceProvider)
+{
+    SourceProviderCacheMap::AddResult addResult = sourceProviderCacheMap.add(sourceProvider, 0);
+    if (addResult.isNewEntry)
+        addResult.iterator->value = adoptRef(new SourceProviderCache);
+    return addResult.iterator->value.get();
+}
+
+void JSGlobalData::clearSourceProviderCaches()
+{
+    sourceProviderCacheMap.clear();
 }
 
 struct StackPreservingRecompiler : public MarkedBlock::VoidFunctor {

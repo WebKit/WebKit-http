@@ -216,6 +216,12 @@ void callMemberFunction(const Arguments2<P1, P2>& args, PassRefPtr<R> delayedRep
     (object->*function)(args.argument1, args.argument2, delayedReply);
 }
 
+template<typename C, typename MF, typename P1, typename P2, typename P3, typename P4, typename P5, typename P6, typename P7, typename P8, typename R>
+void callMemberFunction(const Arguments8<P1, P2, P3, P4, P5, P6, P7, P8>& args, PassRefPtr<R> delayedReply, C* object, MF function)
+{
+    (object->*function)(args.argument1, args.argument2, args.argument3, args.argument4, args.argument5, args.argument6, args.argument7, args.argument8, delayedReply);
+}
+
 // Dispatch functions with connection parameter.
 template<typename C, typename MF>
 void callMemberFunction(Connection* connection, const Arguments0&, C* object, MF function)
@@ -245,6 +251,12 @@ template<typename C, typename MF, typename P1, typename P2, typename P3, typenam
 void callMemberFunction(Connection* connection, const Arguments4<P1, P2, P3, P4>& args, C* object, MF function)
 {
     (object->*function)(connection, args.argument1, args.argument2, args.argument3, args.argument4);
+}
+
+template<typename C, typename MF, typename P1, typename R1>
+void callMemberFunction(Connection* connection, const Arguments1<P1>& args, Arguments1<R1>& replyArgs, C* object, MF function)
+{
+    (object->*function)(connection, args.argument1, replyArgs.argument1);
 }
 
 // Variadic dispatch functions.
@@ -341,7 +353,19 @@ void handleMessage(MessageDecoder& decoder, MessageEncoder& replyEncoder, C* obj
 }
 
 template<typename T, typename C, typename MF>
-void handleMessageOnConnectionQueue(Connection* connection, MessageDecoder& decoder, C* object, MF function)
+void handleMessage(Connection* connection, MessageDecoder& decoder, MessageEncoder& replyEncoder, C* object, MF function)
+{
+    typename T::DecodeType::ValueType arguments;
+    if (!decoder.decode(arguments))
+        return;
+
+    typename T::Reply::ValueType replyArguments;
+    callMemberFunction(connection, arguments, replyArguments, object, function);
+    replyEncoder << replyArguments;
+}
+
+template<typename T, typename C, typename MF>
+void handleMessage(Connection* connection, MessageDecoder& decoder, C* object, MF function)
 {
     typename T::DecodeType::ValueType arguments;
     if (!decoder.decode(arguments))

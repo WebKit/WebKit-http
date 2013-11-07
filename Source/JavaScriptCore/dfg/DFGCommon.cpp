@@ -39,5 +39,89 @@ void NodePointerTraits::dump(Node* value, PrintStream& out)
 
 } } // namespace JSC::DFG
 
+namespace WTF {
+
+using namespace JSC::DFG;
+
+void printInternal(PrintStream& out, OptimizationFixpointState state)
+{
+    switch (state) {
+    case BeforeFixpoint:
+        out.print("BeforeFixpoint");
+        break;
+    case FixpointNotConverged:
+        out.print("FixpointNotConverged");
+        break;
+    case FixpointConverged:
+        out.print("FixpointConverged");
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
+void printInternal(PrintStream& out, GraphForm form)
+{
+    switch (form) {
+    case LoadStore:
+        out.print("LoadStore");
+        break;
+    case ThreadedCPS:
+        out.print("ThreadedCPS");
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
+void printInternal(PrintStream& out, UnificationState state)
+{
+    switch (state) {
+    case LocallyUnified:
+        out.print("LocallyUnified");
+        break;
+    case GloballyUnified:
+        out.print("GloballyUnified");
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
+void printInternal(PrintStream& out, RefCountState state)
+{
+    switch (state) {
+    case EverythingIsLive:
+        out.print("EverythingIsLive");
+        break;
+    case ExactRefCount:
+        out.print("ExactRefCount");
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
+void printInternal(PrintStream& out, ProofStatus status)
+{
+    switch (status) {
+    case IsProved:
+        out.print("IsProved");
+        break;
+    case NeedsCheck:
+        out.print("NeedsCheck");
+        break;
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        break;
+    }
+}
+
+} // namespace WTF
+
 #endif // ENABLE(DFG_JIT)
 

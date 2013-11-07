@@ -55,12 +55,12 @@
 #include <wtf/Threading.h>
 
 #include "FrameLoaderClientImpl.h"
-#include "PlatformMessagePortChannel.h"
-#include "WebFileSystemCallbacks.h"
+#include "PlatformMessagePortChannelChromium.h"
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebPermissionClient.h"
 #include "WebViewImpl.h"
+#include <public/WebFileSystemCallbacks.h>
 #include <public/WebMessagePortChannel.h>
 #include <public/WebString.h>
 #include <public/WebURL.h>

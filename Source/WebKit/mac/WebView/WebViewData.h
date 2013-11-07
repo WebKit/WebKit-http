@@ -188,7 +188,7 @@ private:
     WebFullScreenController *newFullscreenController;
 #endif
 
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
     CFRunLoopObserverRef glibRunLoopObserver;
 #endif
     id<WebGeolocationProvider> _geolocationProvider;
@@ -205,5 +205,7 @@ private:
 #if USE(DICTATION_ALTERNATIVES)
     OwnPtr<WebCore::AlternativeTextUIController> m_alternativeTextUIController;
 #endif
+
+    RetainPtr<NSData> sourceApplicationAuditData;
 }
 @end

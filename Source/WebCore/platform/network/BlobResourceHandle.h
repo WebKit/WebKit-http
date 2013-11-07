@@ -50,20 +50,17 @@ struct BlobDataItem;
 
 class BlobResourceHandle : public FileStreamClient, public ResourceHandle  {
 public:
-    static PassRefPtr<BlobResourceHandle> create(PassRefPtr<BlobStorageData> blobData, const ResourceRequest& request, ResourceHandleClient* client, bool async = true)
-    {
-        return adoptRef(new BlobResourceHandle(blobData, request, client, async));
-    }
+    static PassRefPtr<BlobResourceHandle> createAsync(BlobStorageData*, const ResourceRequest&, ResourceHandleClient*);
 
-    static void loadResourceSynchronously(PassRefPtr<BlobStorageData> blobData, const ResourceRequest& request, ResourceError& error, ResourceResponse& response, Vector<char>& data);
+    static void loadResourceSynchronously(BlobStorageData* blobData, const ResourceRequest& request, ResourceError& error, ResourceResponse& response, Vector<char>& data);
 
     // FileStreamClient methods.
-    virtual void didGetSize(long long);
-    virtual void didOpen(bool);
-    virtual void didRead(int);
+    virtual void didGetSize(long long) OVERRIDE;
+    virtual void didOpen(bool) OVERRIDE;
+    virtual void didRead(int) OVERRIDE;
 
     // ResourceHandle methods.
-    virtual void cancel();
+    virtual void cancel() OVERRIDE;
 
     void start();
     int readSync(char*, int);

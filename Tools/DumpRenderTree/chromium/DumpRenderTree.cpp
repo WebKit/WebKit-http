@@ -31,7 +31,7 @@
 #include "config.h"
 #include "DumpRenderTree.h"
 
-#include "MockWebKitPlatformSupport.h"
+#include "MockPlatform.h"
 #include "TestShell.h"
 #include "webkit/support/webkit_support.h"
 #include <public/WebCompositorSupport.h>
@@ -67,6 +67,7 @@ static const char optionEnableAcceleratedOverflowScroll[] = "--enable-accelerate
 static const char optionUseGraphicsContext3DImplementation[] = "--use-graphics-context-3d-implementation=";
 static const char optionEnablePerTilePainting[] = "--enable-per-tile-painting";
 static const char optionEnableDeferredImageDecoding[] = "--enable-deferred-image-decoding";
+static const char optionDisableThreadedHTMLParser[] = "--disable-threaded-html-parser";
 
 static const char optionStressOpt[] = "--stress-opt";
 static const char optionStressDeopt[] = "--stress-deopt";
@@ -79,15 +80,18 @@ class WebKitSupportTestEnvironment {
 public:
     WebKitSupportTestEnvironment()
     {
-        m_mockPlatform = MockWebKitPlatformSupport::create();
+        m_mockPlatform = MockPlatform::create();
         webkit_support::SetUpTestEnvironment(m_mockPlatform.get());
     }
     ~WebKitSupportTestEnvironment()
     {
         webkit_support::TearDownTestEnvironment();
     }
+
+    MockPlatform* mockPlatform() { return m_mockPlatform.get(); }
+
 private:
-    OwnPtr<MockWebKitPlatformSupport> m_mockPlatform;
+    OwnPtr<MockPlatform> m_mockPlatform;
 };
 
 static void runTest(TestShell& shell, TestParams& params, const string& inputLine, const bool forceDumpPixels)
@@ -134,6 +138,7 @@ int main(int argc, char* argv[])
     bool softwareCompositingEnabled = false;
     bool threadedCompositingEnabled = false;
     bool forceCompositingMode = false;
+    bool threadedHTMLParser = true;
     bool accelerated2DCanvasEnabled = false;
     bool deferred2DCanvasEnabled = false;
     bool acceleratedPaintingEnabled = false;
@@ -178,6 +183,8 @@ int main(int argc, char* argv[])
             threadedCompositingEnabled = true;
         else if (argument == optionForceCompositingMode)
             forceCompositingMode = true;
+        else if (argument == optionDisableThreadedHTMLParser)
+            threadedHTMLParser = false;
         else if (argument == optionEnableAccelerated2DCanvas)
             accelerated2DCanvasEnabled = true;
         else if (argument == optionEnableDeferred2DCanvas)
@@ -233,6 +240,7 @@ int main(int argc, char* argv[])
         shell.setSoftwareCompositingEnabled(softwareCompositingEnabled);
         shell.setThreadedCompositingEnabled(threadedCompositingEnabled);
         shell.setForceCompositingMode(forceCompositingMode);
+        shell.setThreadedHTMLParser(threadedHTMLParser);
         shell.setAccelerated2dCanvasEnabled(accelerated2DCanvasEnabled);
         shell.setDeferred2dCanvasEnabled(deferred2DCanvasEnabled);
         shell.setAcceleratedPaintingEnabled(acceleratedPaintingEnabled);
@@ -247,7 +255,7 @@ int main(int argc, char* argv[])
             // 0x20000000ms is big enough for the purpose to avoid timeout in debugging.
             shell.setLayoutTestTimeout(0x20000000);
         }
-        shell.initialize();
+        shell.initialize(testEnvironment.mockPlatform());
         if (serverMode && !tests.size()) {
 #if OS(ANDROID)
             // Send a signal to host to indicate DRT is ready to process commands.
@@ -283,9 +291,6 @@ int main(int argc, char* argv[])
         // here we help purify reports.
         shell.resetTestController();
     }
-
-    // Shutdown WebCompositor after TestShell is destructed properly.
-    WebKit::Platform::current()->compositorSupport()->shutdown();
 
     return EXIT_SUCCESS;
 }

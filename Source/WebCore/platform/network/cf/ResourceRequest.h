@@ -80,18 +80,26 @@ namespace WebCore {
 #endif
         }
 
-
-        CFURLRequestRef cfURLRequest() const;
+        CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const;
 #else
         ResourceRequest(NSURLRequest *nsRequest)
             : ResourceRequestBase()
-            , m_nsRequest(nsRequest) { }
+            , m_nsRequest(nsRequest)
+        {
+        }
 
+        void updateFromDelegatePreservingOldHTTPBody(const ResourceRequest&);
 #endif
 
 #if PLATFORM(MAC)
         void applyWebArchiveHackForMail();
-        NSURLRequest *nsURLRequest() const;
+        NSURLRequest *nsURLRequest(HTTPBodyUpdatePolicy) const;
+#endif
+
+#if ENABLE(CACHE_PARTITIONING)
+        static String partitionName(const String& domain);
+        const String& cachePartition() const { return m_cachePartition.isNull() ? emptyString() : m_cachePartition; }
+        void setCachePartition(const String& cachePartition) { m_cachePartition = partitionName(cachePartition); }
 #endif
 
 #if PLATFORM(MAC) || USE(CFNETWORK)
@@ -110,9 +118,11 @@ namespace WebCore {
 
         void doUpdatePlatformRequest();
         void doUpdateResourceRequest();
+        void doUpdatePlatformHTTPBody();
+        void doUpdateResourceHTTPBody();
 
-        PassOwnPtr<CrossThreadResourceRequestData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData> data) const { return data; }
-        void doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>) { }
+        PassOwnPtr<CrossThreadResourceRequestData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData>) const;
+        void doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>);
 
 #if USE(CFNETWORK)
         RetainPtr<CFURLRequestRef> m_cfRequest;
@@ -120,11 +130,17 @@ namespace WebCore {
 #if PLATFORM(MAC)
         RetainPtr<NSURLRequest> m_nsRequest;
 #endif
+#if ENABLE(CACHE_PARTITIONING)
+        String m_cachePartition;
+#endif
 
         static bool s_httpPipeliningEnabled;
     };
 
     struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {
+#if ENABLE(CACHE_PARTITIONING)
+        String m_cachePartition;
+#endif
     };
 
 } // namespace WebCore

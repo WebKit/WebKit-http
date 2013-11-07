@@ -142,7 +142,8 @@ void ChromeClient::setWindowRect(const FloatRect& rect)
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
     if (widgetIsOnscreenToplevelWindow(window)) {
         gtk_window_move(GTK_WINDOW(window), intrect.x(), intrect.y());
-        gtk_window_resize(GTK_WINDOW(window), intrect.width(), intrect.height());
+        if (!intrect.isEmpty())
+            gtk_window_resize(GTK_WINDOW(window), intrect.width(), intrect.height());
     }
 }
 
@@ -1070,7 +1071,7 @@ ChromeClient::CompositingTriggerFlags ChromeClient::allowedCompositingTriggers()
         return false;
 #if USE(CLUTTER)
     // Currently, we only support CSS 3D Transforms.
-    return ThreeDTransformTrigger;
+    return ThreeDTransformTrigger | AnimationTrigger;
 #else
     return AllTriggers;
 #endif

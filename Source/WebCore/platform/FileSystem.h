@@ -152,6 +152,12 @@ enum FileSeekOrigin {
     SeekFromEnd
 };
 
+enum FileLockMode {
+    LockShared = 1,
+    LockExclusive = 2,
+    LockNonBlocking = 4
+};
+
 #if OS(WINDOWS)
 static const char PlatformFilePathSeparator = '\\';
 #else
@@ -182,7 +188,7 @@ CString fileSystemRepresentation(const String&);
 inline bool isHandleValid(const PlatformFileHandle& handle) { return handle != invalidPlatformFileHandle; }
 
 inline double invalidFileTime() { return std::numeric_limits<double>::quiet_NaN(); }
-inline bool isValidFileTime(double time) { return isfinite(time); }
+inline bool isValidFileTime(double time) { return std::isfinite(time); }
 
 // Prefix is what the filename should be prefixed with, not the full path.
 String openTemporaryFile(const String& prefix, PlatformFileHandle&);
@@ -195,6 +201,10 @@ bool truncateFile(PlatformFileHandle, long long offset);
 int writeToFile(PlatformFileHandle, const char* data, int length);
 // Returns number of bytes actually written if successful, -1 otherwise.
 int readFromFile(PlatformFileHandle, char* data, int length);
+#if USE(FILE_LOCK)
+bool lockFile(PlatformFileHandle, FileLockMode);
+bool unlockFile(PlatformFileHandle);
+#endif
 
 // Functions for working with loadable modules.
 bool unloadModule(PlatformModule);

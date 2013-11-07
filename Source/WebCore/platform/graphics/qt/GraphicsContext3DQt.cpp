@@ -66,7 +66,7 @@ public:
     ~GraphicsContext3DPrivate();
 
 #if USE(ACCELERATED_COMPOSITING)
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity, BitmapTexture* mask);
+    virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
 #endif
 #if USE(GRAPHICS_SURFACE)
     virtual IntSize platformLayerSize() const;
@@ -155,14 +155,14 @@ void GraphicsContext3DPrivate::createOffscreenBuffers()
     if (m_context->m_attrs.antialias) {
         glGenFramebuffers(1, &m_context->m_multisampleFBO);
         glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_multisampleFBO);
-        m_context->m_boundFBO = m_context->m_multisampleFBO;
+        m_context->m_state.boundFBO = m_context->m_multisampleFBO;
         glGenRenderbuffers(1, &m_context->m_multisampleColorBuffer);
         if (m_context->m_attrs.stencil || m_context->m_attrs.depth)
             glGenRenderbuffers(1, &m_context->m_multisampleDepthStencilBuffer);
     } else {
         // Bind canvas FBO.
         glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_fbo);
-        m_context->m_boundFBO = m_context->m_fbo;
+        m_context->m_state.boundFBO = m_context->m_fbo;
 #if USE(OPENGL_ES_2)
         if (m_context->m_attrs.depth)
             glGenRenderbuffers(1, &m_context->m_depthBuffer);
@@ -194,6 +194,10 @@ void GraphicsContext3DPrivate::initializeANGLE()
     if (extensions->supports("GL_ARB_texture_rectangle"))
         ANGLEResources.ARB_texture_rectangle = 1;
 
+    GC3Dint range[2], precision;
+    m_context->getShaderPrecisionFormat(GraphicsContext3D::FRAGMENT_SHADER, GraphicsContext3D::HIGH_FLOAT, range, &precision);
+    ANGLEResources.FragmentPrecisionHigh = (range[0] || range[1] || precision);
+
     m_context->m_compiler.setResources(ANGLEResources);
 }
 
@@ -209,7 +213,7 @@ static inline quint32 swapBgrToRgb(quint32 pixel)
 }
 
 #if USE(ACCELERATED_COMPOSITING)
-void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, BitmapTexture* mask)
+void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     m_context->markLayerComposited();
     blitMultisampleFramebufferAndRestoreContext();
@@ -231,7 +235,7 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
         currentContext->makeCurrent(currentSurface);
 
         TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
-        m_graphicsSurface->paintToTextureMapper(texmapGL, targetRect, matrix, opacity, mask);
+        m_graphicsSurface->paintToTextureMapper(texmapGL, targetRect, matrix, opacity);
 #endif
         return;
     }
@@ -252,7 +256,7 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
     makeCurrentIfNeeded();
     glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_fbo);
     glReadPixels(/* x */ 0, /* y */ 0, width, height, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, imagePixels);
-    glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_boundFBO);
+    glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_state.boundFBO);
 
     // OpenGL gives us ABGR on 32 bits, and with the origin at the bottom left
     // We need RGB32 or ARGB32_PM, with the origin at the top left.
@@ -318,7 +322,7 @@ void GraphicsContext3DPrivate::blitMultisampleFramebuffer() const
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER_EXT, m_context->m_fbo);
     glBlitFramebuffer(0, 0, m_context->m_currentWidth, m_context->m_currentHeight, 0, 0, m_context->m_currentWidth, m_context->m_currentHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 #endif
-    glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_boundFBO);
+    glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_state.boundFBO);
 }
 
 void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext() const
@@ -384,9 +388,6 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_depthStencilBuffer(0)
     , m_layerComposited(false)
     , m_internalColorFormat(0)
-    , m_boundFBO(0)
-    , m_activeTexture(GL_TEXTURE0)
-    , m_boundTexture0(0)
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)

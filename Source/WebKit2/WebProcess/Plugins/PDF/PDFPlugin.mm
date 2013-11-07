@@ -48,6 +48,7 @@
 #import <WebCore/FocusController.h>
 #import <WebCore/FormState.h>
 #import <WebCore/Frame.h>
+#import <WebCore/FrameLoader.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/HTMLElement.h>
@@ -83,6 +84,10 @@ static const char* annotationStyle =
 "textarea.annotation { "
 "    resize: none; "
 "}";
+
+// In non-continuous modes, a single scroll event with a magnitude of >= 20px
+// will jump to the next or previous page, to match PDFKit behavior.
+static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 
 @interface WKPDFPluginScrollbarLayer : CALayer
 {
@@ -159,10 +164,10 @@ static const char* annotationStyle =
 
 - (void)performWebSearch:(NSString *)string
 {
-    // FIXME: Implement.
+    _pdfPlugin->performWebSearch(string);
 }
 
-- (void)openWithPreview
+- (void)openWithNativeApplication
 {
     _pdfPlugin->openWithNativeApplication();
 }
@@ -190,6 +195,11 @@ static const char* annotationStyle =
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeDisplayMode:(int)mode
 {
     _pdfPlugin->notifyDisplayModeChanged(mode);
+}
+
+- (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeSelection:(PDFSelection *)selection
+{
+    _pdfPlugin->notifySelectionChanged(selection);
 }
 
 @end
@@ -289,7 +299,7 @@ void PDFPlugin::pdfDocumentDidLoad()
 {
     addArchiveResource();
     
-    RetainPtr<PDFDocument> document(AdoptNS, [[pdfDocumentClass() alloc] initWithData:(NSData *)data().get()]);
+    RetainPtr<PDFDocument> document(AdoptNS, [[pdfDocumentClass() alloc] initWithData:rawData()]);
 
     setPDFDocument(document);
 
@@ -297,7 +307,7 @@ void PDFPlugin::pdfDocumentDidLoad()
     m_pdfLayerController.get().document = document.get();
 
     updatePageAndDeviceScaleFactors();
-    
+
     if (handlesPageScaleFactor())
         pluginView()->setPageScaleFactor([m_pdfLayerController.get() contentScaleFactor], IntPoint());
 
@@ -769,8 +779,8 @@ void PDFPlugin::saveToPDF()
     if (!pdfDocument())
         return;
 
-    RetainPtr<CFMutableDataRef> cfData = data();
-    webFrame()->page()->savePDFToFileInDownloadsFolder(suggestedFilename(), webFrame()->url(), CFDataGetBytePtr(cfData.get()), CFDataGetLength(cfData.get()));
+    NSData *data = liveData();
+    webFrame()->page()->savePDFToFileInDownloadsFolder(suggestedFilename(), webFrame()->url(), static_cast<const unsigned char *>([data bytes]), [data length]);
 }
 
 void PDFPlugin::openWithNativeApplication()
@@ -781,12 +791,12 @@ void PDFPlugin::openWithNativeApplication()
         if (!pdfDocument())
             return;
 
-        RetainPtr<CFMutableDataRef> cfData = data();
+        NSData *data = liveData();
 
         m_temporaryPDFUUID = WebCore::createCanonicalUUIDString();
         ASSERT(m_temporaryPDFUUID);
 
-        webFrame()->page()->savePDFToTemporaryFolderAndOpenWithNativeApplication(suggestedFilename(), webFrame()->url(), CFDataGetBytePtr(cfData.get()), CFDataGetLength(cfData.get()), m_temporaryPDFUUID);
+        webFrame()->page()->savePDFToTemporaryFolderAndOpenWithNativeApplication(suggestedFilename(), webFrame()->url(), static_cast<const unsigned char *>([data bytes]), [data length], m_temporaryPDFUUID);
         return;
     }
 
@@ -947,6 +957,70 @@ bool PDFPlugin::performDictionaryLookupAtLocation(const WebCore::FloatPoint& poi
         [m_pdfLayerController.get() searchInDictionaryWithSelection:lookupSelection];
 
     return true;
+}
+
+void PDFPlugin::focusNextAnnotation()
+{
+    [m_pdfLayerController.get() activateNextAnnotation:false];
+}
+
+void PDFPlugin::focusPreviousAnnotation()
+{
+    [m_pdfLayerController.get() activateNextAnnotation:true];
+}
+
+void PDFPlugin::notifySelectionChanged(PDFSelection *)
+{
+    webFrame()->page()->didChangeSelection();
+}
+
+String PDFPlugin::getSelectionString() const
+{
+    return [[m_pdfLayerController.get() currentSelection] string];
+}
+
+void PDFPlugin::performWebSearch(NSString *string)
+{
+    webFrame()->page()->send(Messages::WebPageProxy::SearchTheWeb(string));
+}
+
+bool PDFPlugin::handleWheelEvent(const WebWheelEvent& event)
+{
+    PDFDisplayMode displayMode = [m_pdfLayerController.get() displayMode];
+
+    if (displayMode == kPDFDisplaySinglePageContinuous || displayMode == kPDFDisplayTwoUpContinuous)
+        return SimplePDFPlugin::handleWheelEvent(event);
+
+    NSUInteger currentPageIndex = [m_pdfLayerController.get() currentPageIndex];
+    bool inFirstPage = currentPageIndex == 0;
+    bool inLastPage = [m_pdfLayerController.get() lastPageIndex] == currentPageIndex;
+
+    bool atScrollTop = scrollPosition().y() == 0;
+    bool atScrollBottom = scrollPosition().y() == maximumScrollPosition().y();
+
+    bool inMomentumScroll = event.momentumPhase() != WebWheelEvent::PhaseNone;
+
+    int scrollMagnitudeThresholdForPageFlip = defaultScrollMagnitudeThresholdForPageFlip;
+
+    // Imprecise input devices should have a lower threshold so that "clicky" scroll wheels can flip pages.
+    if (!event.hasPreciseScrollingDeltas())
+        scrollMagnitudeThresholdForPageFlip = 0;
+
+    if (atScrollBottom && !inLastPage && event.delta().height() < 0) {
+        if (event.delta().height() <= -scrollMagnitudeThresholdForPageFlip && !inMomentumScroll)
+            [m_pdfLayerController.get() gotoNextPage];
+        return true;
+    } else if (atScrollTop && !inFirstPage && event.delta().height() > 0) {
+        if (event.delta().height() >= scrollMagnitudeThresholdForPageFlip && !inMomentumScroll) {
+            [CATransaction begin];
+            [m_pdfLayerController.get() gotoPreviousPage];
+            scrollToOffsetWithoutAnimation(maximumScrollPosition());
+            [CATransaction commit];
+        }
+        return true;
+    }
+
+    return SimplePDFPlugin::handleWheelEvent(event);
 }
 
 } // namespace WebKit

@@ -44,7 +44,7 @@ public:
     public:
         explicit Wrapper(PassRefPtr<ThisType> wrapped) : m_wrapped(wrapped) { }
         virtual ~Wrapper() { m_wrapped->hostDestroyed();  }
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || defined(ADDRESS_SANITIZER)
         virtual bool isRefCountedWrapper() const OVERRIDE { return true; }
 #endif
         ThisType* wrapped() const { return m_wrapped.get(); }
@@ -63,7 +63,7 @@ public:
         Supplement<T>* found = host->requireSupplement(key);
         if (!found)
             return 0;
-        ASSERT(found->isRefCountedWrapper());
+        ASSERT_WITH_SECURITY_IMPLICATION(found->isRefCountedWrapper());
         return static_cast<Wrapper*>(found)->wrapped();
     }
 };

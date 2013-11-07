@@ -58,7 +58,6 @@
 #include "FrameView.h"
 #include "Geolocation.h"
 #include "GraphicsLayerChromium.h"
-#include "GraphicsLayerFactory.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HitTestResult.h"
@@ -113,20 +112,6 @@
 
 using namespace WebCore;
 
-namespace {
-
-class GraphicsLayerFactoryChromium : public GraphicsLayerFactory {
-public:
-    virtual ~GraphicsLayerFactoryChromium() { }
-
-    virtual PassOwnPtr<GraphicsLayer> createGraphicsLayer(GraphicsLayerClient* client) OVERRIDE
-    {
-        return adoptPtr(new GraphicsLayerChromium(client));
-    }
-};
-
-} // namespace
-
 namespace WebKit {
 
 // Converts a WebCore::PopupContainerType to a WebKit::WebPopupType.
@@ -161,9 +146,6 @@ ChromeClientImpl::ChromeClientImpl(WebViewImpl* webView)
 #if ENABLE(PAGE_POPUP)
     , m_pagePopupDriver(webView)
 #endif
-#if USE(ACCELERATED_COMPOSITING)
-    , m_graphicsLayerFactory(adoptPtr(new GraphicsLayerFactoryChromium))
-#endif
 {
 }
 
@@ -189,19 +171,17 @@ void ChromeClientImpl::setWindowRect(const FloatRect& r)
 
 FloatRect ChromeClientImpl::windowRect()
 {
-    if (m_webView->client()) {
-        // On Chrome for Android, rootWindowRect is in physical screen pixels
-        // instead of density independent (UI) pixels, and must be scaled down.
-        FloatRect rect = FloatRect(m_webView->client()->rootWindowRect());
-        if (!m_webView->page()->settings()->applyDeviceScaleFactorInCompositor())
-            rect.scale(1 / m_webView->client()->screenInfo().deviceScaleFactor);
-        return rect;
+    WebRect rect;
+    if (m_webView->client())
+        rect = m_webView->client()->rootWindowRect();
+    else {
+        // These numbers will be fairly wrong. The window's x/y coordinates will
+        // be the top left corner of the screen and the size will be the content
+        // size instead of the window size.
+        rect.width = m_webView->size().width;
+        rect.height = m_webView->size().height;
     }
-
-    // These numbers will be fairly wrong. The window's x/y coordinates will
-    // be the top left corner of the screen and the size will be the content
-    // size instead of the window size.
-    return FloatRect(0, 0, m_webView->size().width, m_webView->size().height);
+    return FloatRect(rect);
 }
 
 FloatRect ChromeClientImpl::pageRect()
@@ -641,7 +621,7 @@ void ChromeClientImpl::setToolTip(const String& tooltipText, TextDirection dir)
 void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArguments& arguments) const
 {
 #if ENABLE(VIEWPORT)
-    if (!m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
+    if (!m_webView->settings()->viewportEnabled() || !m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
         return;
 
     IntSize viewportSize = m_webView->dipSize();
@@ -651,21 +631,15 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     if (!viewportSize.width() || !viewportSize.height())
         return;
 
-    ViewportAttributes computed;
-    if (m_webView->settings()->viewportEnabled()) {
-        computed = arguments.resolve(viewportSize, viewportSize, m_webView->page()->settings()->layoutFallbackWidth());
-    } else {
-        // If viewport tag is disabled but fixed layout is still enabled, (for
-        // example, on Android WebView with UseWideViewport false), compute
-        // based on the default viewport arguments.
-        computed = ViewportArguments().resolve(viewportSize, viewportSize, viewportSize.width());
-    }
+    ViewportAttributes computed = arguments.resolve(viewportSize, viewportSize, m_webView->page()->settings()->layoutFallbackWidth());
     restrictScaleFactorToInitialScaleIfNotUserScalable(computed);
 
     if (m_webView->ignoreViewportTagMaximumScale()) {
         computed.maximumScale = max(computed.maximumScale, m_webView->maxPageScaleFactor);
         computed.userScalable = true;
     }
+    if (arguments.zoom == ViewportArguments::ValueAuto && !m_webView->settingsImpl()->initializeAtMinimumPageScale())
+        computed.initialScale = 1.0f;
     if (!m_webView->settingsImpl()->applyDeviceScaleFactorInCompositor())
         computed.initialScale *= deviceScaleFactor;
 
@@ -682,10 +656,12 @@ void ChromeClientImpl::print(Frame* frame)
         m_webView->client()->printPage(WebFrameImpl::fromFrame(frame));
 }
 
+#if ENABLE(SQL_DATABASE)
 void ChromeClientImpl::exceededDatabaseQuota(Frame* frame, const String& databaseName, DatabaseDetails)
 {
     // Chromium users cannot currently change the default quota
 }
+#endif
 
 void ChromeClientImpl::reachedMaxAppCacheSize(int64_t spaceNeeded)
 {
@@ -797,7 +773,7 @@ void ChromeClientImpl::popupOpened(PopupContainer* popupContainer,
     // to interact via the keyboard with an invisible popup.
     if (popupContainer->popupType() == PopupContainer::Suggestion) {
         FrameView* view = m_webView->page()->mainFrame()->view();
-        IntRect visibleRect = view->visibleContentRect(true /* include scrollbars */);
+        IntRect visibleRect = view->visibleContentRect(ScrollableArea::IncludeScrollbars);
         // |bounds| is in screen coordinates, so make sure to convert it to
         // content coordinates prior to comparing to |visibleRect|.
         IntRect screenRect = bounds;
@@ -941,7 +917,7 @@ bool ChromeClientImpl::paintCustomOverhangArea(GraphicsContext* context, const I
 #if USE(ACCELERATED_COMPOSITING)
 GraphicsLayerFactory* ChromeClientImpl::graphicsLayerFactory() const
 {
-    return m_graphicsLayerFactory.get();
+    return m_webView->graphicsLayerFactory();
 }
 
 void ChromeClientImpl::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graphicsLayer)
@@ -1095,11 +1071,11 @@ bool ChromeClientImpl::shouldRunModalDialogDuringPageDismissal(const DialogType&
 {
     const char* kDialogs[] = {"alert", "confirm", "prompt", "showModalDialog"};
     int dialog = static_cast<int>(dialogType);
-    ASSERT(0 <= dialog && dialog < static_cast<int>(arraysize(kDialogs)));
+    ASSERT_WITH_SECURITY_IMPLICATION(0 <= dialog && dialog < static_cast<int>(arraysize(kDialogs)));
 
     const char* kDismissals[] = {"beforeunload", "pagehide", "unload"};
     int dismissal = static_cast<int>(dismissalType) - 1; // Exclude NoDismissal.
-    ASSERT(0 <= dismissal && dismissal < static_cast<int>(arraysize(kDismissals)));
+    ASSERT_WITH_SECURITY_IMPLICATION(0 <= dismissal && dismissal < static_cast<int>(arraysize(kDismissals)));
 
     WebKit::Platform::current()->histogramEnumeration("Renderer.ModalDialogsDuringPageDismissal", dismissal * arraysize(kDialogs) + dialog, arraysize(kDialogs) * arraysize(kDismissals));
 

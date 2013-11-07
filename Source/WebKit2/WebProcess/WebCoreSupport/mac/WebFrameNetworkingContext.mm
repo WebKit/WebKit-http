@@ -21,6 +21,7 @@
 #import "config.h"
 #import "WebFrameNetworkingContext.h"
 
+#import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoaderClient.h>
 #import <WebCore/Page.h>
 #import <WebCore/ResourceError.h>
@@ -50,6 +51,11 @@ bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
 SchedulePairHashSet* WebFrameNetworkingContext::scheduledRunLoopPairs() const
 {
     return frame() && frame()->page() ? frame()->page()->scheduledRunLoopPairs() : 0;
+}
+
+RetainPtr<CFDataRef> WebFrameNetworkingContext::sourceApplicationAuditData() const
+{
+    return nil;
 }
 
 ResourceError WebFrameNetworkingContext::blockedError(const ResourceRequest& request) const

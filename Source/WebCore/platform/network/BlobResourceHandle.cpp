@@ -40,7 +40,6 @@
 #include "FileSystem.h"
 #include "HTTPParsers.h"
 #include "KURL.h"
-#include "NetworkingContext.h"
 #include "ResourceError.h"
 #include "ResourceHandleClient.h"
 #include "ResourceRequest.h"
@@ -71,6 +70,7 @@ enum {
     securityError = 2,
     rangeError = 3,
     notReadableError = 4,
+    methodNotAllowed = 5
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -82,10 +82,10 @@ class BlobResourceSynchronousLoader : public ResourceHandleClient {
 public:
     BlobResourceSynchronousLoader(ResourceError&, ResourceResponse&, Vector<char>&);
 
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int /*encodedDataLength*/);
-    virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/);
-    virtual void didFail(ResourceHandle*, const ResourceError&);
+    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&) OVERRIDE;
+    virtual void didReceiveData(ResourceHandle*, const char*, int, int /*encodedDataLength*/) OVERRIDE;
+    virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) OVERRIDE;
+    virtual void didFail(ResourceHandle*, const ResourceError&) OVERRIDE;
 
 private:
     ResourceError& m_error;
@@ -133,16 +133,29 @@ void BlobResourceSynchronousLoader::didFail(ResourceHandle*, const ResourceError
 ///////////////////////////////////////////////////////////////////////////////
 // BlobResourceHandle
 
-// static
-void BlobResourceHandle::loadResourceSynchronously(PassRefPtr<BlobStorageData> blobData, const ResourceRequest& request, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+PassRefPtr<BlobResourceHandle> BlobResourceHandle::createAsync(BlobStorageData* blobData, const ResourceRequest& request, ResourceHandleClient* client)
 {
+    // FIXME: Should probably call didFail() instead of blocking the load without explanation.
+    if (!equalIgnoringCase(request.httpMethod(), "GET"))
+        return 0;
+
+    return adoptRef(new BlobResourceHandle(blobData, request, client, true));
+}
+
+void BlobResourceHandle::loadResourceSynchronously(BlobStorageData* blobData, const ResourceRequest& request, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+{
+    if (!equalIgnoringCase(request.httpMethod(), "GET")) {
+        error = ResourceError(webKitBlobResourceDomain, methodNotAllowed, response.url(), "Request method must be GET");
+        return;
+    }
+
     BlobResourceSynchronousLoader loader(error, response, data);
-    RefPtr<BlobResourceHandle> handle = BlobResourceHandle::create(blobData, request, &loader, false);
+    RefPtr<BlobResourceHandle> handle = adoptRef(new BlobResourceHandle(blobData, request, &loader, false));
     handle->start();
 }
 
 BlobResourceHandle::BlobResourceHandle(PassRefPtr<BlobStorageData> blobData, const ResourceRequest& request, ResourceHandleClient* client, bool async)
-    : ResourceHandle(request, client, false, false)
+    : ResourceHandle(0, request, client, false, false)
     , m_blobData(blobData)
     , m_async(async)
     , m_errorCode(0)
@@ -155,9 +168,9 @@ BlobResourceHandle::BlobResourceHandle(PassRefPtr<BlobStorageData> blobData, con
     , m_sizeItemCount(0)
     , m_readItemCount(0)
     , m_fileOpened(false)
-{    
+{
     if (m_async)
-        m_asyncStream = client->createAsyncFileStream(this);
+        m_asyncStream = AsyncFileStream::create(this);
     else
         m_stream = FileStream::create();
 }
@@ -574,7 +587,7 @@ void BlobResourceHandle::notifyResponseOnError()
 {
     ASSERT(m_errorCode);
 
-    ResourceResponse response(firstRequest().url(), String(), 0, String(), String());
+    ResourceResponse response(firstRequest().url(), "text/plain", 0, String(), String());
     switch (m_errorCode) {
     case rangeError:
         response.setHTTPStatusCode(httpRequestedRangeNotSatisfiable);
@@ -636,4 +649,3 @@ void BlobResourceHandle::notifyFinish()
 } // namespace WebCore
 
 #endif // ENABLE(BLOB)
-

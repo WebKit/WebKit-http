@@ -26,7 +26,11 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>WebKitEntryPoint</key>
+	<string>PluginServiceInitializer</string>
 	<key>LSUIElement</key>
+	<true/>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 	<key>XPCService</key>
 	<dict>
@@ -34,6 +38,8 @@
 		<string>Application</string>
 		<key>RunLoopType</key>
 		<string>_NSApplicationMain</string>
+		<key>JoinExistingSession</key>
+		<true/>
 		<key>_MultipleInstances</key>
 		<true/>
 	</dict>

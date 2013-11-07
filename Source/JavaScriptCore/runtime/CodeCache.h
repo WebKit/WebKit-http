@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,10 @@
 
 #include "CodeSpecializationKind.h"
 #include "ParserModes.h"
+#include "SourceCode.h"
 #include "Strong.h"
 #include "WeakRandom.h"
-
+#include <wtf/CurrentTime.h>
 #include <wtf/FixedArray.h>
 #include <wtf/Forward.h>
 #include <wtf/PassOwnPtr.h>
@@ -42,6 +43,7 @@ namespace JSC {
 class EvalExecutable;
 class FunctionBodyNode;
 class Identifier;
+class JSScope;
 class ProgramExecutable;
 class UnlinkedCodeBlock;
 class UnlinkedEvalCodeBlock;
@@ -53,93 +55,204 @@ struct ParserError;
 class SourceCode;
 class SourceProvider;
 
-template <typename KeyType, typename EntryType, int CacheSize> class CacheMap {
-    typedef typename HashMap<KeyType, unsigned>::iterator iterator;
+class SourceCodeKey {
 public:
-    CacheMap()
-        : m_randomGenerator((static_cast<uint32_t>(randomNumber() * std::numeric_limits<uint32_t>::max())))
+    enum CodeType { EvalType, ProgramType, FunctionType };
+
+    SourceCodeKey()
     {
     }
-    const EntryType* find(const KeyType& key)
+
+    SourceCodeKey(const SourceCode& sourceCode, const String& name, CodeType codeType, JSParserStrictness jsParserStrictness)
+        : m_sourceCode(sourceCode)
+        , m_name(name)
+        , m_flags((codeType << 1) | jsParserStrictness)
+        , m_hash(string().impl()->hash())
     {
-        iterator result = m_map.find(key);
-        if (result == m_map.end())
-            return 0;
-        return &m_data[result->value].second;
     }
-    void add(const KeyType& key, const EntryType& value)
+
+    SourceCodeKey(WTF::HashTableDeletedValueType)
+        : m_sourceCode(WTF::HashTableDeletedValue)
     {
-        iterator result = m_map.find(key);
-        if (result != m_map.end()) {
-            m_data[result->value].second = value;
-            return;
+    }
+
+    bool isHashTableDeletedValue() const { return m_sourceCode.isHashTableDeletedValue(); }
+
+    unsigned hash() const { return m_hash; }
+
+    size_t length() const { return m_sourceCode.length(); }
+
+    bool isNull() const { return m_sourceCode.isNull(); }
+
+    // To save memory, we compute our string on demand. It's expected that source
+    // providers cache their strings to make this efficient.
+    String string() const { return m_sourceCode.toString(); }
+
+    bool operator==(const SourceCodeKey& other) const
+    {
+        return m_hash == other.m_hash
+            && length() == other.length()
+            && m_flags == other.m_flags
+            && m_name == other.m_name
+            && string() == other.string();
+    }
+
+private:
+    SourceCode m_sourceCode;
+    String m_name;
+    unsigned m_flags;
+    unsigned m_hash;
+};
+
+struct SourceCodeKeyHash {
+    static unsigned hash(const SourceCodeKey& key) { return key.hash(); }
+    static bool equal(const SourceCodeKey& a, const SourceCodeKey& b) { return a == b; }
+    static const bool safeToCompareToEmptyOrDeleted = false;
+};
+
+struct SourceCodeKeyHashTraits : SimpleClassHashTraits<SourceCodeKey> {
+    static const bool hasIsEmptyValueFunction = true;
+    static bool isEmptyValue(const SourceCodeKey& sourceCodeKey) { return sourceCodeKey.isNull(); }
+};
+
+struct SourceCodeValue {
+    SourceCodeValue()
+    {
+    }
+
+    SourceCodeValue(JSGlobalData& globalData, JSCell* cell, int64_t age)
+        : cell(globalData, cell)
+        , age(age)
+    {
+    }
+
+    Strong<JSCell> cell;
+    int64_t age;
+};
+
+class CodeCacheMap {
+public:
+    typedef HashMap<SourceCodeKey, SourceCodeValue, SourceCodeKeyHash, SourceCodeKeyHashTraits> MapType;
+    typedef MapType::iterator iterator;
+    typedef MapType::AddResult AddResult;
+
+    CodeCacheMap()
+        : m_size(0)
+        , m_sizeAtLastPrune(0)
+        , m_timeAtLastPrune(monotonicallyIncreasingTime())
+        , m_minCapacity(0)
+        , m_capacity(0)
+        , m_age(0)
+    {
+    }
+
+    AddResult add(const SourceCodeKey& key, const SourceCodeValue& value)
+    {
+        prune();
+
+        AddResult addResult = m_map.add(key, value);
+        if (addResult.isNewEntry) {
+            m_size += key.length();
+            m_age += key.length();
+            return addResult;
         }
-        size_t newIndex = m_randomGenerator.getUint32() % CacheSize;
-        if (m_data[newIndex].second)
-            m_map.remove(m_data[newIndex].first);
-        m_map.add(key, newIndex);
-        m_data[newIndex].first = key;
-        m_data[newIndex].second = value;
-        RELEASE_ASSERT(m_map.size() <= CacheSize);
+
+        int64_t age = m_age - addResult.iterator->value.age;
+        if (age > m_capacity) {
+            // A requested object is older than the cache's capacity. We can
+            // infer that requested objects are subject to high eviction probability,
+            // so we grow the cache to improve our hit rate.
+            m_capacity += recencyBias * oldObjectSamplingMultiplier * key.length();
+        } else if (age < m_capacity / 2) {
+            // A requested object is much younger than the cache's capacity. We can
+            // infer that requested objects are subject to low eviction probability,
+            // so we shrink the cache to save memory.
+            m_capacity -= recencyBias * key.length();
+            if (m_capacity < m_minCapacity)
+                m_capacity = m_minCapacity;
+        }
+
+        addResult.iterator->value.age = m_age;
+        m_age += key.length();
+        return addResult;
+    }
+
+    void remove(iterator it)
+    {
+        m_size -= it->key.length();
+        m_map.remove(it);
     }
 
     void clear()
     {
+        m_size = 0;
+        m_age = 0;
         m_map.clear();
-        for (size_t i = 0; i < CacheSize; i++) {
-            m_data[i].first = KeyType();
-            m_data[i].second = EntryType();
-        }
     }
 
+    int64_t age() { return m_age; }
 
 private:
-    HashMap<KeyType, unsigned> m_map;
-    FixedArray<std::pair<KeyType, EntryType>, CacheSize> m_data;
-    WeakRandom m_randomGenerator;
+    // This constant factor biases cache capacity toward allowing a minimum
+    // working set to enter the cache before it starts evicting.
+    static const double workingSetTime;
+    static const int64_t workingSetMax = 16000000;
+
+    // This constant factor biases cache capacity toward recent activity. We
+    // want to adapt to changing workloads.
+    static const int64_t recencyBias = 4;
+
+    // This constant factor treats a sampled event for one old object as if it
+    // happened for many old objects. Most old objects are evicted before we can
+    // sample them, so we need to extrapolate from the ones we do sample.
+    static const int64_t oldObjectSamplingMultiplier = 32;
+
+    void pruneSlowCase();
+    void prune()
+    {
+        if (m_size <= m_capacity)
+            return;
+
+        if (monotonicallyIncreasingTime() - m_timeAtLastPrune < workingSetTime
+            && m_size - m_sizeAtLastPrune < workingSetMax)
+                return;
+
+        pruneSlowCase();
+    }
+
+    MapType m_map;
+    int64_t m_size;
+    int64_t m_sizeAtLastPrune;
+    double m_timeAtLastPrune;
+    int64_t m_minCapacity;
+    int64_t m_capacity;
+    int64_t m_age;
 };
 
+// Caches top-level code such as <script>, eval(), new Function, and JSEvaluateScript().
 class CodeCache {
 public:
     static PassOwnPtr<CodeCache> create() { return adoptPtr(new CodeCache); }
 
     UnlinkedProgramCodeBlock* getProgramCodeBlock(JSGlobalData&, ProgramExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
-    UnlinkedEvalCodeBlock* getEvalCodeBlock(JSGlobalData&, EvalExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
-    UnlinkedFunctionCodeBlock* getFunctionCodeBlock(JSGlobalData&, UnlinkedFunctionExecutable*, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, ParserError&);
+    UnlinkedEvalCodeBlock* getEvalCodeBlock(JSGlobalData&, JSScope*, EvalExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
     UnlinkedFunctionExecutable* getFunctionExecutableFromGlobalCode(JSGlobalData&, const Identifier&, const SourceCode&, ParserError&);
-    void usedFunctionCode(JSGlobalData&, UnlinkedFunctionCodeBlock*);
     ~CodeCache();
 
     void clear()
     {
         m_sourceCode.clear();
-        m_globalFunctions.clear();
-        m_recentlyUsedFunctions.clear();
     }
-
-    enum CodeType { EvalType, ProgramType, FunctionCallType, FunctionConstructType };
-    typedef std::pair<String, unsigned> SourceCodeKey;
-    typedef std::pair<String, String> FunctionKey;
 
 private:
     CodeCache();
 
-    UnlinkedFunctionCodeBlock* generateFunctionCodeBlock(JSGlobalData&, UnlinkedFunctionExecutable*, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, ParserError&);
+    template <class UnlinkedCodeBlockType, class ExecutableType> 
+    UnlinkedCodeBlockType* getCodeBlock(JSGlobalData&, JSScope*, ExecutableType*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
 
-    template <class UnlinkedCodeBlockType, class ExecutableType> inline UnlinkedCodeBlockType* getCodeBlock(JSGlobalData&, ExecutableType*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
-    SourceCodeKey makeSourceCodeKey(const SourceCode&, CodeType, JSParserStrictness);
-    FunctionKey makeFunctionKey(const SourceCode&, const String&);
-
-    enum {
-        MaxRootEntries = 1024, // Top-level code such as <script>, eval(), JSEvaluateScript(), etc.
-        MaxChildFunctionEntries = MaxRootEntries * 8 // Sampling shows that each root holds about 6 functions. 8 is enough to usually cache all the child functions for each top-level entry.
-    };
-
-    CacheMap<SourceCodeKey, Strong<UnlinkedCodeBlock>, MaxRootEntries> m_sourceCode;
-    CacheMap<FunctionKey, Strong<UnlinkedFunctionExecutable>, MaxRootEntries> m_globalFunctions;
-    CacheMap<UnlinkedFunctionCodeBlock*, Strong<UnlinkedFunctionCodeBlock>, MaxChildFunctionEntries> m_recentlyUsedFunctions;
+    CodeCacheMap m_sourceCode;
 };
 
 }
 
-#endif
+#endif // CodeCache_h

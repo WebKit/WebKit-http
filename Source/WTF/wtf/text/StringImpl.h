@@ -354,6 +354,12 @@ public:
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> create(const UChar*, unsigned length);
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> create(const LChar*, unsigned length);
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> create8BitIfPossible(const UChar*, unsigned length);
+    template<size_t inlineCapacity>
+    static PassRefPtr<StringImpl> create8BitIfPossible(const Vector<UChar, inlineCapacity>& vector)
+    {
+        return create8BitIfPossible(vector.data(), vector.size());
+    }
+
     ALWAYS_INLINE static PassRefPtr<StringImpl> create(const char* s, unsigned length) { return create(reinterpret_cast<const LChar*>(s), length); }
     WTF_EXPORT_STRING_API static PassRefPtr<StringImpl> create(const LChar*);
     ALWAYS_INLINE static PassRefPtr<StringImpl> create(const char* s) { return create(reinterpret_cast<const LChar*>(s)); }
@@ -636,7 +642,7 @@ public:
 
     UChar operator[](unsigned i) const
     {
-        ASSERT(i < m_length);
+        ASSERT_WITH_SECURITY_IMPLICATION(i < m_length);
         if (is8Bit())
             return m_data8[i];
         return m_data16[i];

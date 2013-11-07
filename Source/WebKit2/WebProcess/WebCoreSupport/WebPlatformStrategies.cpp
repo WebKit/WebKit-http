@@ -53,6 +53,7 @@
 #include <wtf/Atomics.h>
 
 #if ENABLE(NETWORK_PROCESS)
+#include "BlobRegistryProxy.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
 #include "WebResourceLoadScheduler.h"
@@ -234,7 +235,7 @@ void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context
 
     CoreIPC::DataReference dataReference;
 
-    NetworkResourceLoadParameters loadParameters(resourceLoadIdentifier, 0, 0, request, ResourceLoadPriorityHighest, SniffContent, storedCredentials, context->storageSession().isPrivateBrowsingSession());
+    NetworkResourceLoadParameters loadParameters(resourceLoadIdentifier, 0, 0, request, ResourceLoadPriorityHighest, SniffContent, storedCredentials, context->storageSession().isPrivateBrowsingSession(), context->shouldClearReferrerOnHTTPSToHTTPRedirect());
     if (!WebProcess::shared().networkConnection()->connection()->sendSync(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad(loadParameters), Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::Reply(error, response, dataReference), 0)) {
         response = ResourceResponse();
         error = internalError(request.url());
@@ -247,6 +248,14 @@ void WebPlatformStrategies::loadResourceSynchronously(NetworkingContext* context
     memcpy(data.data(), dataReference.data(), dataReference.size());
 }
 
+#if ENABLE(BLOB)
+BlobRegistry* WebPlatformStrategies::createBlobRegistry()
+{
+    if (!WebProcess::shared().usesNetworkProcess())
+        return LoaderStrategy::createBlobRegistry();
+    return new BlobRegistryProxy;    
+}
+#endif
 #endif
 
 // PluginStrategy
@@ -271,23 +280,6 @@ void WebPlatformStrategies::getPluginInfo(const WebCore::Page*, Vector<WebCore::
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-static BlockingResponseMap<Vector<WebCore::PluginInfo> >& responseMap()
-{
-    AtomicallyInitializedStatic(BlockingResponseMap<Vector<WebCore::PluginInfo> >&, responseMap = *new BlockingResponseMap<Vector<WebCore::PluginInfo> >);
-    return responseMap;
-}
-
-void handleDidGetPlugins(uint64_t requestID, const Vector<WebCore::PluginInfo>& plugins)
-{
-    responseMap().didReceiveResponse(requestID, adoptPtr(new Vector<WebCore::PluginInfo>(plugins)));
-}
-
-static uint64_t generateRequestID()
-{
-    static int uniqueID;
-    return atomicIncrement(&uniqueID);
-}
-
 void WebPlatformStrategies::populatePluginCache()
 {
     if (m_pluginCacheIsPopulated)
@@ -296,11 +288,9 @@ void WebPlatformStrategies::populatePluginCache()
     ASSERT(m_cachedPlugins.isEmpty());
     
     // FIXME: Should we do something in case of error here?
-    uint64_t requestID = generateRequestID();
-    WebProcess::shared().connection()->send(Messages::WebProcessProxy::GetPlugins(requestID, m_shouldRefreshPlugins), 0);
+    if (!WebProcess::shared().connection()->sendSync(Messages::WebProcessProxy::GetPlugins(m_shouldRefreshPlugins), Messages::WebProcessProxy::GetPlugins::Reply(m_cachedPlugins), 0))
+        return;
 
-    m_cachedPlugins = *responseMap().waitForResponse(requestID);
-    
     m_shouldRefreshPlugins = false;
     m_pluginCacheIsPopulated = true;
 }

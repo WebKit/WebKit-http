@@ -69,19 +69,19 @@ unsigned AutofillPopupMenuClient::getSuggestionsCount() const
 
 WebString AutofillPopupMenuClient::getSuggestion(unsigned listIndex) const
 {
-    ASSERT(listIndex < m_names.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(listIndex < m_names.size());
     return m_names[listIndex];
 }
 
 WebString AutofillPopupMenuClient::getLabel(unsigned listIndex) const
 {
-    ASSERT(listIndex < m_labels.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(listIndex < m_labels.size());
     return m_labels[listIndex];
 }
 
 WebString AutofillPopupMenuClient::getIcon(unsigned listIndex) const
 {
-    ASSERT(listIndex < m_icons.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(listIndex < m_icons.size());
     return m_icons[listIndex];
 }
 
@@ -90,7 +90,7 @@ void AutofillPopupMenuClient::removeSuggestionAtIndex(unsigned listIndex)
     if (!canRemoveSuggestionAtIndex(listIndex))
         return;
 
-    ASSERT(listIndex < m_names.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(listIndex < m_names.size());
 
     m_names.remove(listIndex);
     m_labels.remove(listIndex);
@@ -109,7 +109,7 @@ void AutofillPopupMenuClient::valueChanged(unsigned listIndex, bool fireEvents)
     if (!webView)
         return;
 
-    ASSERT(listIndex < m_names.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(listIndex < m_names.size());
 
     if (m_useLegacyBehavior) {
         for (size_t i = 0; i < m_itemIDs.size(); ++i) {
@@ -134,7 +134,7 @@ void AutofillPopupMenuClient::selectionChanged(unsigned listIndex, bool fireEven
     if (!webView)
         return;
 
-    ASSERT(listIndex < m_names.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(listIndex < m_names.size());
 
     webView->autofillClient()->didSelectAutofillSuggestion(WebNode(getTextField()),
                                                            m_names[listIndex],
@@ -289,19 +289,19 @@ void AutofillPopupMenuClient::initialize(
     // The direction of text in popup menu is set the same as the direction of
     // the input element: textField.
     m_regularStyle = adoptPtr(new PopupMenuStyle(Color::black, Color::white, regularFont, true, false,
-                                                 Length(WebCore::Fixed), textField->renderer()->style()->direction(),
-                                                 textField->renderer()->style()->unicodeBidi() == Override,
-                                                 PopupMenuStyle::AutofillPopup));
+        Length(WebCore::Fixed), textField->renderer()->style()->direction(),
+        textField->renderer()->style()->unicodeBidi() == Override,
+        PopupMenuStyle::CustomBackgroundColor, PopupMenuStyle::AutofillPopup));
 
     FontDescription warningFontDescription = regularFont.fontDescription();
     warningFontDescription.setItalic(true);
     Font warningFont(warningFontDescription, regularFont.letterSpacing(), regularFont.wordSpacing());
     warningFont.update(regularFont.fontSelector());
     m_warningStyle = adoptPtr(new PopupMenuStyle(Color::darkGray, m_regularStyle->backgroundColor(), warningFont,
-                                                 m_regularStyle->isVisible(), m_regularStyle->isDisplayNone(),
-                                                 m_regularStyle->textIndent(), m_regularStyle->textDirection(),
-                                                 m_regularStyle->hasTextDirectionOverride(),
-                                                 PopupMenuStyle::AutofillPopup));
+        m_regularStyle->isVisible(), m_regularStyle->isDisplayNone(),
+        m_regularStyle->textIndent(), m_regularStyle->textDirection(),
+        m_regularStyle->hasTextDirectionOverride(),
+        PopupMenuStyle::CustomBackgroundColor, PopupMenuStyle::AutofillPopup));
 }
 
 void AutofillPopupMenuClient::setSuggestions(const WebVector<WebString>& names,

@@ -54,19 +54,20 @@ WebInspector.Popover.prototype = {
     /**
      * @param {Element} element
      * @param {Element} anchor
-     * @param {number=} preferredWidth
-     * @param {number=} preferredHeight
+     * @param {?number=} preferredWidth
+     * @param {?number=} preferredHeight
+     * @param {?WebInspector.Popover.Orientation=} arrowDirection
      */
-    show: function(element, anchor, preferredWidth, preferredHeight)
+    show: function(element, anchor, preferredWidth, preferredHeight, arrowDirection)
     {
-        this._innerShow(null, element, anchor, preferredWidth, preferredHeight);
+        this._innerShow(null, element, anchor, preferredWidth, preferredHeight, arrowDirection);
     },
 
     /**
      * @param {WebInspector.View} view
      * @param {Element} anchor
-     * @param {number=} preferredWidth
-     * @param {number=} preferredHeight
+     * @param {?number=} preferredWidth
+     * @param {?number=} preferredHeight
      */
     showView: function(view, anchor, preferredWidth, preferredHeight)
     {
@@ -77,10 +78,11 @@ WebInspector.Popover.prototype = {
      * @param {WebInspector.View?} view
      * @param {Element} contentElement
      * @param {Element} anchor
-     * @param {number=} preferredWidth
-     * @param {number=} preferredHeight
+     * @param {?number=} preferredWidth
+     * @param {?number=} preferredHeight
+     * @param {?WebInspector.Popover.Orientation=} arrowDirection
      */
-    _innerShow: function(view, contentElement, anchor, preferredWidth, preferredHeight)
+    _innerShow: function(view, contentElement, anchor, preferredWidth, preferredHeight, arrowDirection)
     {
         if (this._disposed)
             return;
@@ -103,7 +105,7 @@ WebInspector.Popover.prototype = {
         else
             this._contentDiv.appendChild(this.contentElement);
 
-        this._positionElement(anchor, preferredWidth, preferredHeight);
+        this._positionElement(anchor, preferredWidth, preferredHeight, arrowDirection);
 
         if (this._popoverHelper) {
             contentElement.addEventListener("mousemove", this._popoverHelper._killHidePopoverTimer.bind(this._popoverHelper), true);
@@ -135,7 +137,7 @@ WebInspector.Popover.prototype = {
         this._contentDiv.addStyleClass("fixed-height");
     },
 
-    _positionElement: function(anchorElement, preferredWidth, preferredHeight)
+    _positionElement: function(anchorElement, preferredWidth, preferredHeight, arrowDirection)
     {
         const borderWidth = 25;
         const scrollerWidth = this._hasFixedHeight ? 0 : 11;
@@ -155,9 +157,9 @@ WebInspector.Popover.prototype = {
         var roomAbove = anchorBox.y;
         var roomBelow = totalHeight - anchorBox.y - anchorBox.height;
 
-        if (roomAbove > roomBelow) {
+        if ((roomAbove > roomBelow) || (arrowDirection === WebInspector.Popover.Orientation.Bottom)) {
             // Positioning above the anchor.
-            if (anchorBox.y > newElementPosition.height + arrowHeight + borderRadius)
+            if ((anchorBox.y > newElementPosition.height + arrowHeight + borderRadius) || (arrowDirection === WebInspector.Popover.Orientation.Bottom))
                 newElementPosition.y = anchorBox.y - newElementPosition.height - arrowHeight;
             else {
                 newElementPosition.y = borderRadius;
@@ -167,11 +169,11 @@ WebInspector.Popover.prototype = {
                     newElementPosition.height = preferredHeight;
                 }
             }
-            verticalAlignment = "bottom";
+            verticalAlignment = WebInspector.Popover.Orientation.Bottom;
         } else {
             // Positioning below the anchor.
             newElementPosition.y = anchorBox.y + anchorBox.height + arrowHeight;
-            if (newElementPosition.y + newElementPosition.height + arrowHeight - borderWidth >= totalHeight) {
+            if ((newElementPosition.y + newElementPosition.height + arrowHeight - borderWidth >= totalHeight) && (arrowDirection !== WebInspector.Popover.Orientation.Top)) {
                 newElementPosition.height = totalHeight - anchorBox.y - anchorBox.height - borderRadius * 2 - arrowHeight;
                 if (this._hasFixedHeight && newElementPosition.height < preferredHeight) {
                     newElementPosition.y = totalHeight - preferredHeight - borderRadius;
@@ -179,7 +181,7 @@ WebInspector.Popover.prototype = {
                 }
             }
             // Align arrow.
-            verticalAlignment = "top";
+            verticalAlignment = WebInspector.Popover.Orientation.Top;
         }
 
         var horizontalAlignment;
@@ -199,7 +201,7 @@ WebInspector.Popover.prototype = {
             newElementPosition.width = totalWidth - borderRadius * 2;
             newElementPosition.height += scrollerWidth;
             horizontalAlignment = "left";
-            if (verticalAlignment === "bottom")
+            if (verticalAlignment === WebInspector.Popover.Orientation.Bottom)
                 newElementPosition.y -= scrollerWidth;
             // Position arrow accurately.
             this._popupArrowElement.style.left = Math.max(0, anchorBox.x - borderRadius * 2 - arrowOffset) + "px";
@@ -355,5 +357,91 @@ WebInspector.PopoverHelper.prototype = {
             // Discard pending command.
             this._resetHoverTimer();
         }
+    }
+}
+
+/** @enum {string} */
+WebInspector.Popover.Orientation = {
+    Top: "top",
+    Bottom: "bottom"
+}
+
+/**
+ * @constructor
+ * @param {string} title
+ */
+WebInspector.PopoverContentHelper = function(title)
+{
+    this._contentTable = document.createElement("table");
+    var titleCell = this._createCell(WebInspector.UIString("%s - Details", title), "popover-details-title");
+    titleCell.colSpan = 2;
+    var titleRow = document.createElement("tr");
+    titleRow.appendChild(titleCell);
+    this._contentTable.appendChild(titleRow);
+}
+
+WebInspector.PopoverContentHelper.prototype = {
+    contentTable: function()
+    {
+        return this._contentTable;
+    },
+
+    /**
+     * @param {string=} styleName
+     */
+    _createCell: function(content, styleName)
+    {
+        var text = document.createElement("label");
+        text.appendChild(document.createTextNode(content));
+        var cell = document.createElement("td");
+        cell.className = "popover-details";
+        if (styleName)
+            cell.className += " " + styleName;
+        cell.textContent = content;
+        return cell;
+    },
+
+    appendTextRow: function(title, content)
+    {
+        var row = document.createElement("tr");
+        row.appendChild(this._createCell(title, "popover-details-row-title"));
+        row.appendChild(this._createCell(content, "popover-details-row-data"));
+        this._contentTable.appendChild(row);
+    },
+
+    /**
+     * @param {string=} titleStyle
+     */
+    appendElementRow: function(title, content, titleStyle)
+    {
+        var row = document.createElement("tr");
+        var titleCell = this._createCell(title, "popover-details-row-title");
+        if (titleStyle)
+            titleCell.addStyleClass(titleStyle);
+        row.appendChild(titleCell);
+        var cell = document.createElement("td");
+        cell.className = "details";
+        cell.appendChild(content);
+        row.appendChild(cell);
+        this._contentTable.appendChild(row);
+    },
+
+    appendStackTrace: function(title, stackTrace, callFrameLinkifier)
+    {
+        this.appendTextRow("", "");
+        var framesTable = document.createElement("table");
+        for (var i = 0; i < stackTrace.length; ++i) {
+            var stackFrame = stackTrace[i];
+            var row = document.createElement("tr");
+            row.className = "details";
+            row.appendChild(this._createCell(stackFrame.functionName ? stackFrame.functionName : WebInspector.UIString("(anonymous function)"), "function-name"));
+            row.appendChild(this._createCell(" @ "));
+            var linkCell = document.createElement("td");
+            var urlElement = callFrameLinkifier(stackFrame);
+            linkCell.appendChild(urlElement);
+            row.appendChild(linkCell);
+            framesTable.appendChild(row);
+        }
+        this.appendElementRow(title, framesTable, "popover-stacktrace-title");
     }
 }

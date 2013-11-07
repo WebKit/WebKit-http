@@ -19,6 +19,7 @@ Applications outside of WebKit depend on the stability of the mapping of these t
     Paint : "Paint"
     ParseHTML : "ParseHTML"
     Program : "Program"
+    Rasterize : "Rasterize"
     RecalculateStyles : "RecalculateStyles"
     RequestAnimationFrame : "RequestAnimationFrame"
     ResizeImage : "ResizeImage"
@@ -36,6 +37,10 @@ Applications outside of WebKit depend on the stability of the mapping of these t
     TimerFire : "TimerFire"
     TimerInstall : "TimerInstall"
     TimerRemove : "TimerRemove"
+    WebSocketCreate : "WebSocketCreate"
+    WebSocketDestroy : "WebSocketDestroy"
+    WebSocketReceiveHandshakeResponse : "WebSocketReceiveHandshakeResponse"
+    WebSocketSendHandshakeRequest : "WebSocketSendHandshakeRequest"
     XHRLoad : "XHRLoad"
     XHRReadyStateChange : "XHRReadyStateChange"
 }

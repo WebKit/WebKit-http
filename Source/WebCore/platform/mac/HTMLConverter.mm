@@ -27,6 +27,7 @@
 #import "HTMLConverter.h"
 
 #import "ArchiveResource.h"
+#import "CachedImage.h"
 #import "ColorMac.h"
 #import "Document.h"
 #import "DocumentLoader.h"
@@ -38,6 +39,7 @@
 #import "Element.h"
 #import "Font.h"
 #import "Frame.h"
+#import "FrameLoader.h"
 #import "HTMLNames.h"
 #import "HTMLParserIdioms.h"
 #import "LoaderNSURLExtras.h"
@@ -1674,17 +1676,16 @@ static NSInteger _colCompare(id block1, id block2, void *)
 
     for (TextIterator it(range); !it.atEnd(); it.advance()) {
         RefPtr<Range> currentTextRange = it.range();
-        ExceptionCode ec = 0;
-        Node* startContainer = currentTextRange->startContainer(ec);
-        Node* endContainer = currentTextRange->endContainer(ec);
-        int startOffset = currentTextRange->startOffset(ec);
-        int endOffset = currentTextRange->endOffset(ec);
+        Node* startContainer = currentTextRange->startContainer();
+        Node* endContainer = currentTextRange->endContainer();
+        int startOffset = currentTextRange->startOffset();
+        int endOffset = currentTextRange->endOffset();
         
         if (startContainer == endContainer && (startOffset == endOffset - 1)) {
             Node* node = startContainer->childNode(startOffset);
             if (node && node->hasTagName(imgTag)) {
-                NSFileWrapper *fileWrapper = fileWrapperForElement(static_cast<Element*>(node));
-                NSTextAttachment *attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper];
+                NSFileWrapper* fileWrapper = fileWrapperForElement(toElement(node));
+                NSTextAttachment* attachment = [[NSTextAttachment alloc] initWithFileWrapper:fileWrapper];
                 [string appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
                 [attachment release];
             }

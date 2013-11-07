@@ -34,6 +34,7 @@
 
 #include "AXObjectCache.h"
 #include "ElementShadow.h"
+#include "ExceptionCodePlaceholder.h"
 #include "HTMLDivElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
@@ -119,7 +120,7 @@ void RangeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBe
 
 bool RangeInputType::typeMismatchFor(const String& value) const
 {
-    return !value.isEmpty() && !isfinite(parseToDoubleForNumberType(value));
+    return !value.isEmpty() && !std::isfinite(parseToDoubleForNumberType(value));
 }
 
 bool RangeInputType::supportsRequired() const
@@ -242,9 +243,8 @@ void RangeInputType::handleKeydownEvent(KeyboardEvent* event)
 
     if (newValue != current) {
         EventQueueScope scope;
-        ExceptionCode ec;
         TextFieldEventBehavior eventBehavior = DispatchChangeEvent;
-        setValueAsDecimal(newValue, eventBehavior, ec);
+        setValueAsDecimal(newValue, eventBehavior, IGNORE_EXCEPTION);
 
         if (AXObjectCache::accessibilityEnabled())
             element()->document()->axObjectCache()->postNotification(element(), AXObjectCache::AXValueChanged, true);
@@ -261,11 +261,10 @@ void RangeInputType::createShadowSubtree()
     Document* document = element()->document();
     RefPtr<HTMLDivElement> track = HTMLDivElement::create(document);
     track->setPseudo(AtomicString("-webkit-slider-runnable-track", AtomicString::ConstructFromLiteral));
-    ExceptionCode ec = 0;
-    track->appendChild(SliderThumbElement::create(document), ec);
+    track->appendChild(SliderThumbElement::create(document), IGNORE_EXCEPTION);
     RefPtr<HTMLElement> container = SliderContainerElement::create(document);
-    container->appendChild(track.release(), ec);
-    element()->userAgentShadowRoot()->appendChild(container.release(), ec);
+    container->appendChild(track.release(), IGNORE_EXCEPTION);
+    element()->userAgentShadowRoot()->appendChild(container.release(), IGNORE_EXCEPTION);
 }
 
 RenderObject* RangeInputType::createRenderer(RenderArena* arena, RenderStyle*) const

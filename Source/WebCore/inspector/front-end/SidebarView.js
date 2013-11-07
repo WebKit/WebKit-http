@@ -46,7 +46,6 @@ WebInspector.SidebarView = function(sidebarPosition, sidebarWidthSettingName, de
 
     this._sidebarPosition = sidebarPosition || WebInspector.SidebarView.SidebarPosition.Start;
     this.setSecondIsSidebar(this._sidebarPosition === WebInspector.SidebarView.SidebarPosition.End);
-    this._updateSidebarPosition(true);
 }
 
 WebInspector.SidebarView.EventTypes = {
@@ -62,69 +61,6 @@ WebInspector.SidebarView.SidebarPosition = {
 }
 
 WebInspector.SidebarView.prototype = {
-    /**
-     * @return {Element}
-     */
-    get mainElement()
-    {
-        return this.isSidebarSecond() ? this.firstElement() : this.secondElement();
-    },
-
-    /**
-     * @return {Element}
-     */
-    get sidebarElement()
-    {
-        return this.isSidebarSecond() ? this.secondElement() : this.firstElement();
-    },
-
-    /**
-     * @param {string} styleClass
-     */
-    _setSidebarElementStyle: function(styleClass)
-    {
-      this.sidebarElement.removeStyleClass("split-view-sidebar-left");
-      this.sidebarElement.removeStyleClass("split-view-sidebar-right");
-      this.sidebarElement.removeStyleClass("split-view-sidebar-top");
-      this.sidebarElement.removeStyleClass("split-view-sidebar-bottom");
-
-      this.sidebarElement.addStyleClass(styleClass);
-    },
-
-    /**
-     * @param {boolean} on
-     */
-    setAutoOrientation: function(on) {
-        this._autoOrientation = on;
-    },
-
-    /**
-     * @param {boolean=} force
-     */
-    _updateSidebarPosition: function(force)
-    {
-        var verticalSplit = true;
-        if (this._autoOrientation)
-            verticalSplit = this.element.offsetHeight < this.element.offsetWidth;
-
-        if (!force && verticalSplit === this.isVertical())
-            return;
-
-        if (this._sidebarPosition === WebInspector.SidebarView.SidebarPosition.Start) {
-            if (verticalSplit)
-                this._setSidebarElementStyle("split-view-sidebar-left");
-            else
-                this._setSidebarElementStyle("split-view-sidebar-top");
-        } else {
-            if (verticalSplit)
-                this._setSidebarElementStyle("split-view-sidebar-right");
-            else
-                this._setSidebarElementStyle("split-view-sidebar-bottom");
-        }
-
-        this.setVertical(verticalSplit);
-    },
-
     /**
      * @param {number} width
      */
@@ -175,8 +111,6 @@ WebInspector.SidebarView.prototype = {
 
     onResize: function()
     {
-        if (this._autoOrientation)
-            this._updateSidebarPosition();
         WebInspector.SplitView.prototype.onResize.call(this);
         this.dispatchEventToListeners(WebInspector.SidebarView.EventTypes.Resized, this.sidebarWidth());
     },

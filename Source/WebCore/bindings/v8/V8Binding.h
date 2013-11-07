@@ -73,6 +73,11 @@ namespace WebCore {
     // A helper for throwing JavaScript TypeError for not enough arguments.
     v8::Handle<v8::Value> throwNotEnoughArgumentsError(v8::Isolate*);
 
+    inline v8::Handle<v8::Value> argumentOrNull(const v8::Arguments& args, int index)
+    {
+        return index >= args.Length() ? v8::Local<v8::Value>() : args[index];
+    }
+
     // A fast accessor for v8::Null(isolate). isolate must not be 0.
     // If isolate can be 0, use v8NullWithCheck().
     inline v8::Handle<v8::Value> v8Null(v8::Isolate* isolate)
@@ -152,12 +157,6 @@ namespace WebCore {
         return V8PerIsolateData::from(isolate)->stringCache()->v8ExternalString(string.impl(), handleType, isolate);
     }
 
-    // FIXME: All call sites of this method should use v8String().
-    inline v8::Handle<v8::String> deprecatedV8String(const String& string)
-    {
-        return v8String(string, v8::Isolate::GetCurrent());
-    }
-
     inline v8::Handle<v8::Value> v8StringOrNull(const String& string, v8::Isolate* isolate, ReturnHandleType handleType = ReturnLocalHandle)
     {
         ASSERT(isolate);
@@ -177,12 +176,6 @@ namespace WebCore {
     inline v8::Handle<v8::Integer> v8Integer(int value, v8::Isolate* isolate)
     {
         return V8PerIsolateData::from(isolate)->integerCache()->v8Integer(value, isolate);
-    }
-
-    // FIXME: All call sites of this method should use v8Integer().
-    inline v8::Handle<v8::Integer> deprecatedV8Integer(int value)
-    {
-        return v8Integer(value, v8::Isolate::GetCurrent());
     }
 
     inline v8::Handle<v8::Integer> v8UnsignedInteger(unsigned value, v8::Isolate* isolate)
@@ -250,6 +243,38 @@ namespace WebCore {
 
     v8::Handle<v8::Value> v8Array(PassRefPtr<DOMStringList>, v8::Isolate*);
 
+    // Convert a value to a 32-bit integer. The conversion fails if the
+    // value cannot be converted to an integer or converts to nan or to an infinity.
+    int toInt32(v8::Handle<v8::Value>, bool& ok);
+
+    // Convert a value to a 32-bit integer assuming the conversion cannot fail.
+    inline int toInt32(v8::Handle<v8::Value> value)
+    {
+        bool ok;
+        return toInt32(value, ok);
+    }
+
+    // Convert a value to a 32-bit unsigned integer. The conversion fails if the
+    // value cannot be converted to an unsigned integer or converts to nan or to an infinity.
+    uint32_t toUInt32(v8::Handle<v8::Value>, bool& ok);
+
+    // Convert a value to a 32-bit unsigned integer assuming the conversion cannot fail.
+    inline uint32_t toUInt32(v8::Handle<v8::Value> value)
+    {
+        bool ok;
+        return toUInt32(value, ok);
+    }
+
+    inline float toFloat(v8::Local<v8::Value> value)
+    {
+        return static_cast<float>(value->NumberValue());
+    }
+
+    inline long long toInt64(v8::Local<v8::Value> value)
+    {
+        return static_cast<long long>(value->IntegerValue());
+    }
+
     template<class T> struct NativeValueTraits;
 
     template<>
@@ -257,6 +282,14 @@ namespace WebCore {
         static inline String nativeValue(const v8::Handle<v8::Value>& value)
         {
             return toWebCoreString(value);
+        }
+    };
+
+    template<>
+    struct NativeValueTraits<unsigned> {
+        static inline unsigned nativeValue(const v8::Handle<v8::Value>& value)
+        {
+            return toUInt32(value);
         }
     };
 
@@ -289,7 +322,7 @@ namespace WebCore {
         for (size_t i = 0; i < length; ++i) {
             v8::Handle<v8::Value> element = array->Get(i);
 
-            if (V8T::HasInstance(element)) {
+            if (V8T::HasInstance(element, isolate)) {
                 v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(element);
                 result.append(V8T::toNative(object));
             } else {
@@ -355,38 +388,6 @@ namespace WebCore {
 
     PassRefPtr<NodeFilter> toNodeFilter(v8::Handle<v8::Value>);
 
-    // Convert a value to a 32-bit integer.  The conversion fails if the
-    // value cannot be converted to an integer or converts to nan or to an infinity.
-    int toInt32(v8::Handle<v8::Value> value, bool& ok);
-
-    // Convert a value to a 32-bit integer assuming the conversion cannot fail.
-    inline int toInt32(v8::Handle<v8::Value> value)
-    {
-        bool ok;
-        return toInt32(value, ok);
-    }
-
-    // Convert a value to a 32-bit unsigned integer.  The conversion fails if the
-    // value cannot be converted to an unsigned integer or converts to nan or to an infinity.
-    uint32_t toUInt32(v8::Handle<v8::Value> value, bool& ok);
-
-    // Convert a value to a 32-bit unsigned integer assuming the conversion cannot fail.
-    inline uint32_t toUInt32(v8::Handle<v8::Value> value)
-    {
-        bool ok;
-        return toUInt32(value, ok);
-    }
-
-    inline float toFloat(v8::Local<v8::Value> value)
-    {
-        return static_cast<float>(value->NumberValue());
-    }
-
-    inline long long toInt64(v8::Local<v8::Value> value)
-    {
-        return static_cast<long long>(value->IntegerValue());
-    }
-
     inline bool isUndefinedOrNull(v8::Handle<v8::Value> value)
     {
         return value->IsNull() || value->IsUndefined();
@@ -430,10 +431,10 @@ namespace WebCore {
     inline v8::Handle<v8::Value> v8DateOrNull(double value, v8::Isolate* isolate)
     {
         ASSERT(isolate);
-        return isfinite(value) ? v8::Date::New(value) : v8NullWithCheck(isolate);
+        return std::isfinite(value) ? v8::Date::New(value) : v8NullWithCheck(isolate);
     }
 
-    v8::Persistent<v8::FunctionTemplate> createRawTemplate();
+    v8::Persistent<v8::FunctionTemplate> createRawTemplate(v8::Isolate*);
 
     PassRefPtr<DOMStringList> toDOMStringList(v8::Handle<v8::Value>, v8::Isolate*);
     PassRefPtr<XPathNSResolver> toXPathNSResolver(v8::Handle<v8::Value>, v8::Isolate*);
@@ -444,16 +445,18 @@ namespace WebCore {
 
     // Returns the context associated with a ScriptExecutionContext.
     v8::Local<v8::Context> toV8Context(ScriptExecutionContext*, const WorldContextHandle&);
+    v8::Local<v8::Context> toV8Context(ScriptExecutionContext*, DOMWrapperWorld*);
 
     // Returns the frame object of the window object associated with
     // a context, if the window is currently being displayed in the Frame.
     Frame* toFrameIfNotDetached(v8::Handle<v8::Context>);
 
-    inline DOMWrapperWorld* worldForEnteredContextIfIsolated()
+    inline DOMWrapperWorld* isolatedWorldForEnteredContext()
     {
-        if (!v8::Context::InContext())
+        v8::Handle<v8::Context> context = v8::Context::GetEntered();
+        if (context.IsEmpty())
             return 0;
-        return DOMWrapperWorld::isolated(v8::Context::GetEntered());
+        return DOMWrapperWorld::isolatedWorld(context);
     }
 
     // If the current context causes out of memory, JavaScript setting
@@ -463,6 +466,9 @@ namespace WebCore {
     v8::Local<v8::Value> handleMaxRecursionDepthExceeded();
 
     void crashIfV8IsDead();
+
+    WrapperWorldType worldType(v8::Isolate*);
+    WrapperWorldType worldTypeInMainThread(v8::Isolate*);
 
 } // namespace WebCore
 

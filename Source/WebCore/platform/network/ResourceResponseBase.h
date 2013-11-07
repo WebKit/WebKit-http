@@ -68,7 +68,8 @@ public:
     const String& textEncodingName() const;
     void setTextEncodingName(const String& name);
 
-    // FIXME should compute this on the fly
+    // FIXME: Should compute this on the fly.
+    // There should not be a setter exposed, as suggested file name is determined based on other headers in a manner that WebCore does not necessarily know about.
     const String& suggestedFilename() const;
     void setSuggestedFilename(const String&);
 
@@ -81,13 +82,14 @@ public:
     String httpHeaderField(const AtomicString& name) const;
     String httpHeaderField(const char* name) const;
     void setHTTPHeaderField(const AtomicString& name, const String& value);
+    void addHTTPHeaderField(const AtomicString& name, const String& value);
     const HTTPHeaderMap& httpHeaderFields() const;
 
     bool isMultipart() const { return mimeType() == "multipart/x-mixed-replace"; }
 
     bool isAttachment() const;
     
-    // FIXME: These are used by PluginStream on some platforms. Calculations may differ from just returning plain Last-odified header.
+    // FIXME: These are used by PluginStream on some platforms. Calculations may differ from just returning plain Last-Modified header.
     // Leaving it for now but this should go away in favor of generic solution.
     void setLastModifiedDate(time_t);
     time_t lastModifiedDate() const; 
@@ -169,6 +171,7 @@ protected:
 private:
     const ResourceResponse& asResourceResponse() const;
     void parseCacheControlDirectives() const;
+    void updateHeaderParsedState(const AtomicString& name);
 
     mutable bool m_haveParsedCacheControlHeader : 1;
     mutable bool m_haveParsedAgeHeader : 1;

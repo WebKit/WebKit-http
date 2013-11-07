@@ -43,6 +43,7 @@ void WebPageCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << pageGroupData;
     encoder << drawsBackground;
     encoder << drawsTransparentBackground;
+    encoder << underlayColor;
     encoder << areMemoryCacheClientCallsEnabled;
     encoder << useFixedLayout;
     encoder << fixedLayoutSize;
@@ -60,7 +61,6 @@ void WebPageCreationParameters::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << mayStartMediaWhenInWindow;
 
 #if PLATFORM(MAC)
-    encoder << isSmartInsertDeleteEnabled;
     encoder.encodeEnum(layerHostingMode);
     encoder << colorSpace;
 #endif
@@ -87,6 +87,8 @@ bool WebPageCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, WebPag
     if (!decoder.decode(parameters.drawsBackground))
         return false;
     if (!decoder.decode(parameters.drawsTransparentBackground))
+        return false;
+    if (!decoder.decode(parameters.underlayColor))
         return false;
     if (!decoder.decode(parameters.areMemoryCacheClientCallsEnabled))
         return false;
@@ -120,8 +122,6 @@ bool WebPageCreationParameters::decode(CoreIPC::ArgumentDecoder& decoder, WebPag
         return false;
 
 #if PLATFORM(MAC)
-    if (!decoder.decode(parameters.isSmartInsertDeleteEnabled))
-        return false;
     if (!decoder.decodeEnum(parameters.layerHostingMode))
         return false;
     if (!decoder.decode(parameters.colorSpace))

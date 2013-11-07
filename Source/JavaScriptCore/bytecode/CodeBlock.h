@@ -38,7 +38,6 @@
 #include "CodeBlockHash.h"
 #include "CodeOrigin.h"
 #include "CodeType.h"
-#include "Comment.h"
 #include "CompactJITCodeMap.h"
 #include "DFGCodeBlocks.h"
 #include "DFGCommon.h"
@@ -62,7 +61,6 @@
 #include "LLIntCallLinkInfo.h"
 #include "LazyOperandValueProfile.h"
 #include "LineInfo.h"
-#include "Nodes.h"
 #include "ProfilerCompilation.h"
 #include "RegExpObject.h"
 #include "ResolveOperation.h"
@@ -78,30 +76,6 @@
 #include <wtf/SegmentedVector.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
-
-// Set ENABLE_BYTECODE_COMMENTS to 1 to enable recording bytecode generator
-// comments for the bytecodes that it generates. This will allow
-// CodeBlock::dumpBytecode() to provide some contextual info about the bytecodes.
-//
-// The way this comment system works is as follows:
-// 1. The BytecodeGenerator calls prependComment() with a constant comment
-//    string in .text. The string must not be a stack or heap allocated
-//    string.
-// 2. When the BytecodeGenerator's emitOpcode() is called, the last
-//    prepended comment will be recorded with the PC of the opcode being
-//    emitted. This comment is being recorded in the CodeBlock's
-//    m_bytecodeComments.
-// 3. When CodeBlock::dumpBytecode() is called, it will pair up the comments with
-//    their corresponding bytecodes based on the bytecode and comment's
-//    PC. If a matching pair is found, the comment will be printed after
-//    the bytecode. If not, no comment is printed.
-//
-// NOTE: Enabling this will consume additional memory at runtime to store
-// the comments. Since these comments are only useful for VM debugging
-// (as opposed to app debugging), this feature is to be disabled by default,
-// and can be enabled as needed for VM development use only.
-
-#define ENABLE_BYTECODE_COMMENTS 0
 
 namespace JSC {
 
@@ -201,39 +175,9 @@ namespace JSC {
             return index >= m_numVars;
         }
 
-        void dumpBytecodeCommentAndNewLine(PrintStream&, int location);
-#if ENABLE(BYTECODE_COMMENTS)
-        const char* commentForBytecodeOffset(PrintStream&, unsigned bytecodeOffset);
-        void dumpBytecodeComments(PrintStream&);
-#endif
-
         HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset);
         int lineNumberForBytecodeOffset(unsigned bytecodeOffset);
         void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot, int& startOffset, int& endOffset);
-
-        uint32_t addResolve()
-        {
-            m_resolveOperations.grow(m_resolveOperations.size() + 1);
-            return m_resolveOperations.size() - 1;
-        }
-        uint32_t addPutToBase()
-        {
-            m_putToBaseOperations.append(PutToBaseOperation(isStrictMode()));
-            return m_putToBaseOperations.size() - 1;
-        }
-
-        ResolveOperations* resolveOperations(uint32_t i)
-        {
-            return &m_resolveOperations[i];
-        }
-
-        PutToBaseOperation* putToBaseOperation(uint32_t i)
-        {
-            return &m_putToBaseOperations[i];
-        }
-
-        size_t numberOfResolveOperations() const { return m_resolveOperations.size(); }
-        size_t numberOfPutToBaseOperations() const { return m_putToBaseOperations.size(); }
 
 #if ENABLE(JIT)
 
@@ -468,10 +412,6 @@ namespace JSC {
         RefCountedArray<Instruction>& instructions() { return m_instructions; }
         const RefCountedArray<Instruction>& instructions() const { return m_instructions; }
         
-#if ENABLE(BYTECODE_COMMENTS)
-        Vector<Comment>& bytecodeComments() { return m_bytecodeComments; }
-#endif
-
         size_t predictedMachineCodeSize();
         
         bool usesOpcode(OpcodeID);
@@ -592,7 +532,7 @@ namespace JSC {
         {
             return needsFullScopeChain() && codeType() != GlobalCode;
         }
-        
+
         bool isCaptured(int operand, InlineCallFrame* inlineCallFrame = 0) const
         {
             if (operandIsArgument(operand))
@@ -665,12 +605,7 @@ namespace JSC {
         }
 
         unsigned numberOfValueProfiles() { return m_valueProfiles.size(); }
-        ValueProfile* valueProfile(int index)
-        {
-            ValueProfile* result = &m_valueProfiles[index];
-            ASSERT(result->m_bytecodeOffset != -1);
-            return result;
-        }
+        ValueProfile* valueProfile(int index) { return &m_valueProfiles[index]; }
         ValueProfile* valueProfileForBytecodeOffset(int bytecodeOffset)
         {
             ValueProfile* result = binarySearch<ValueProfile, int>(
@@ -882,22 +817,8 @@ namespace JSC {
         ALWAYS_INLINE bool isConstantRegisterIndex(int index) const { return index >= FirstConstantRegisterIndex; }
         ALWAYS_INLINE JSValue getConstant(int index) const { return m_constantRegisters[index - FirstConstantRegisterIndex].get(); }
 
-        unsigned addFunctionDecl(FunctionExecutable* n)
-        {
-            unsigned size = m_functionDecls.size();
-            m_functionDecls.append(WriteBarrier<FunctionExecutable>());
-            m_functionDecls.last().set(m_globalObject->globalData(), m_ownerExecutable.get(), n);
-            return size;
-        }
         FunctionExecutable* functionDecl(int index) { return m_functionDecls[index].get(); }
         int numberOfFunctionDecls() { return m_functionDecls.size(); }
-        unsigned addFunctionExpr(FunctionExecutable* n)
-        {
-            unsigned size = m_functionExprs.size();
-            m_functionExprs.append(WriteBarrier<FunctionExecutable>());
-            m_functionExprs.last().set(m_globalObject->globalData(), m_ownerExecutable.get(), n);
-            return size;
-        }
         FunctionExecutable* functionExpr(int index) { return m_functionExprs[index].get(); }
 
         RegExp* regexp(int index) const { return m_unlinkedCode->regexp(index); }
@@ -1234,9 +1155,11 @@ namespace JSC {
         int m_activationRegister;
 
         bool m_isStrictMode;
+        bool m_needsActivation;
 
         RefPtr<SourceProvider> m_source;
         unsigned m_sourceOffset;
+        unsigned m_codeType;
 
 #if ENABLE(LLINT)
         SegmentedVector<LLIntCallLinkInfo, 8> m_llintCallLinkInfos;
@@ -1534,11 +1457,6 @@ namespace JSC {
     }
 #endif
     
-    inline JSValue Structure::prototypeForLookup(CodeBlock* codeBlock) const
-    {
-        return prototypeForLookup(codeBlock->globalObject());
-    }
-
 } // namespace JSC
 
 #endif // CodeBlock_h

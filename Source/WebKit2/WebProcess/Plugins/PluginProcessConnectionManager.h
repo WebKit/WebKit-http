@@ -38,27 +38,32 @@
 
 // Manages plug-in process connections for the given web process.
 
-namespace CoreIPC {
-    class Connection;
-}
-
 namespace WebKit {
 
 class PluginProcessConnection;
         
-class PluginProcessConnectionManager {
-    WTF_MAKE_NONCOPYABLE(PluginProcessConnectionManager);
+class PluginProcessConnectionManager : public CoreIPC::Connection::WorkQueueMessageReceiver {
 public:
-    PluginProcessConnectionManager();
+    static PassRefPtr<PluginProcessConnectionManager> create();
     ~PluginProcessConnectionManager();
+
+    void initializeConnection(CoreIPC::Connection*);
 
     PluginProcessConnection* getPluginProcessConnection(const String& pluginPath, PluginProcess::Type);
     void removePluginProcessConnection(PluginProcessConnection*);
 
-    // Called on the web process connection work queue.
-    void pluginProcessCrashed(const String& pluginPath, PluginProcess::Type);
+    void didReceivePluginProcessConnectionManagerMessageOnConnectionWorkQueue(CoreIPC::Connection*, OwnPtr<CoreIPC::MessageDecoder>&);
 
 private:
+    PluginProcessConnectionManager();
+
+    // CoreIPC::Connection::WorkQueueMessageReceiver.
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+
+    void pluginProcessCrashed(const String& pluginPath, uint32_t opaquePluginType);
+
+    RefPtr<WorkQueue> m_queue;
+
     Vector<RefPtr<PluginProcessConnection> > m_pluginProcessConnections;
 
     Mutex m_pathsAndConnectionsMutex;

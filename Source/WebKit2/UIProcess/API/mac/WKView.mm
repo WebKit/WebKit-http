@@ -91,8 +91,8 @@
 
 /* API internals. */
 #import "WKBrowsingContextControllerInternal.h"
-#import "WKBrowsingContextGroupInternal.h"
-#import "WKProcessGroupInternal.h"
+#import "WKBrowsingContextGroupPrivate.h"
+#import "WKProcessGroupPrivate.h"
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 static BOOL windowOcclusionNotificationsAreRegistered = NO;
@@ -208,6 +208,9 @@ struct WKViewInterpretKeyEventsParameters {
     NSRect _windowBottomCornerIntersectionRect;
     
     unsigned _frameSizeUpdatesDisabledCount;
+    unsigned _viewInWindowChangesDeferredCount;
+
+    BOOL _viewInWindowChangeWasDeferred;
 
     // Whether the containing window of the WKView has a valid backing store.
     // The window server invalidates the backing store whenever the window is resized or minimized.
@@ -224,6 +227,7 @@ struct WKViewInterpretKeyEventsParameters {
     NSSize _intrinsicContentSize;
     BOOL _expandsToFitContentViaAutoLayout;
     BOOL _isWindowOccluded;
+    BOOL _windowOcclusionDetectionEnabled;
 }
 
 @end
@@ -382,7 +386,7 @@ struct WKViewInterpretKeyEventsParameters {
 
     if (![self frameSizeUpdatesDisabled]) {
         if (_data->_expandsToFitContentViaAutoLayout)
-            _data->_page->viewExposedRectChanged(enclosingIntRect([self visibleRect]));
+            _data->_page->viewExposedRectChanged([self visibleRect]);
         [self _setDrawingAreaSize:size];
     }
 }
@@ -396,9 +400,9 @@ struct WKViewInterpretKeyEventsParameters {
     NSRect viewFrameInWindowCoordinates = [self convertRect:[self frame] toView:nil];
     NSPoint accessibilityPosition = [[self accessibilityAttributeValue:NSAccessibilityPositionAttribute] pointValue];
     
-    _data->_page->windowAndViewFramesChanged(enclosingIntRect(windowFrameInScreenCoordinates), enclosingIntRect(viewFrameInWindowCoordinates), IntPoint(accessibilityPosition));
+    _data->_page->windowAndViewFramesChanged(windowFrameInScreenCoordinates, viewFrameInWindowCoordinates, accessibilityPosition);
     if (_data->_expandsToFitContentViaAutoLayout)
-        _data->_page->viewExposedRectChanged(enclosingIntRect([self visibleRect]));
+        _data->_page->viewExposedRectChanged([self visibleRect]);
 }
 
 - (void)renewGState
@@ -596,13 +600,22 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (id)validRequestorForSendType:(NSString *)sendType returnType:(NSString *)returnType
 {
-    BOOL isValidSendType = !sendType || ([PasteboardTypes::forSelection() containsObject:sendType] && !_data->_page->editorState().selectionIsNone);
+    EditorState editorState = _data->_page->editorState();
+    BOOL isValidSendType = NO;
+
+    if (sendType && !editorState.selectionIsNone) {
+        if (editorState.isInPlugin)
+            isValidSendType = [sendType isEqualToString:NSStringPboardType];
+        else
+            isValidSendType = [PasteboardTypes::forSelection() containsObject:sendType];
+    }
+
     BOOL isValidReturnType = NO;
     if (!returnType)
         isValidReturnType = YES;
-    else if ([PasteboardTypes::forEditing() containsObject:returnType] && _data->_page->editorState().isContentEditable) {
+    else if ([PasteboardTypes::forEditing() containsObject:returnType] && editorState.isContentEditable) {
         // We can insert strings in any editable context.  We can insert other types, like images, only in rich edit contexts.
-        isValidReturnType = _data->_page->editorState().isContentRichlyEditable || [returnType isEqualToString:NSStringPboardType];
+        isValidReturnType = editorState.isContentRichlyEditable || [returnType isEqualToString:NSStringPboardType];
     }
     if (isValidSendType && isValidReturnType)
         return self;
@@ -1898,7 +1911,13 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         _data->_windowHasValidBackingStore = NO;
         [self _updateWindowVisibility];
         _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive);
-        _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible | WebPageProxy::ViewIsInWindow);
+
+        if ([self isDeferringViewInWindowChanges]) {
+            _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible);
+            _data->_viewInWindowChangeWasDeferred = YES;
+        } else
+            _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible | WebPageProxy::ViewIsInWindow);
+
         [self _updateWindowAndViewFrames];
 
         if (!_data->_flagsChangedEventMonitor) {
@@ -1912,7 +1931,12 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     } else {
         [self _updateWindowVisibility];
         _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible);
-        _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive | WebPageProxy::ViewIsInWindow);
+
+        if ([self isDeferringViewInWindowChanges]) {
+            _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive);
+            _data->_viewInWindowChangeWasDeferred = YES;
+        } else
+            _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive | WebPageProxy::ViewIsInWindow);
 
         [NSEvent removeMonitor:_data->_flagsChangedEventMonitor];
         _data->_flagsChangedEventMonitor = nil;
@@ -2248,6 +2272,9 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
 - (void)_enableWindowOcclusionNotifications
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    if (![self windowOcclusionDetectionEnabled])
+        return;
+
     NSWindow *window = [self window];
     if (!window)
         return;
@@ -2306,13 +2333,18 @@ static void windowBecameOccluded(uint32_t, void* data, uint32_t dataLength, void
     Vector<WKView *>& allViews = [WKView _allViews];
     for (size_t i = 0, size = allViews.size(); i < size; ++i) {
         WKView *view = allViews[i];
-        if ([[view window] windowNumber] == windowID)
+        if ([[view window] windowNumber] == windowID && [view windowOcclusionDetectionEnabled])
             [view _setIsWindowOccluded:YES];
     }
 }
 
 + (BOOL)_registerWindowOcclusionNotificationHandlers
 {
+    // Disable window occlusion notifications for App Store until <rdar://problem/13255270> is resolved.
+    static bool isAppStore = [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.appstore"];
+    if (isAppStore)
+        return NO;
+
     if (windowOcclusionNotificationsAreRegistered)
         return YES;
 
@@ -3114,6 +3146,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_expandsToFitContentViaAutoLayout = NO;
 
     _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
+    _data->_windowOcclusionDetectionEnabled = YES;
 
     [self _registerDraggedTypes];
 
@@ -3202,7 +3235,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     
     if (!(--_data->_frameSizeUpdatesDisabledCount)) {
         if (_data->_expandsToFitContentViaAutoLayout)
-            _data->_page->viewExposedRectChanged(enclosingIntRect([self visibleRect]));
+            _data->_page->viewExposedRectChanged([self visibleRect]);
         [self _setDrawingAreaSize:[self frame].size];
     }
 }
@@ -3263,9 +3296,23 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_page->setMinimumLayoutWidth(minimumLayoutWidth);
 
     if (expandsToFit)
-        _data->_page->viewExposedRectChanged(enclosingIntRect([self visibleRect]));
+        _data->_page->viewExposedRectChanged([self visibleRect]);
 
     _data->_page->setMainFrameIsScrollable(!expandsToFit);
+}
+
+- (NSColor *)underlayColor
+{
+    Color webColor = _data->_page->underlayColor();
+    if (!webColor.isValid())
+        return nil;
+
+    return nsColor(webColor);
+}
+
+- (void)setUnderlayColor:(NSColor *)underlayColor
+{
+    _data->_page->setUnderlayColor(colorFromNSColor(underlayColor));
 }
 
 - (NSView*)fullScreenPlaceholderView
@@ -3275,6 +3322,47 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return [_data->_fullScreenWindowController webViewPlaceholder];
 #endif
     return nil;
+}
+
+- (void)beginDeferringViewInWindowChanges
+{
+    _data->_viewInWindowChangesDeferredCount++;
+}
+
+- (void)endDeferringViewInWindowChanges
+{
+    if (!_data->_viewInWindowChangesDeferredCount) {
+        NSLog(@"endDeferringViewInWindowChanges was called without a matching beginDeferringViewInWindowChanges!");
+        return;
+    }
+
+    --_data->_viewInWindowChangesDeferredCount;
+
+    if (!_data->_viewInWindowChangesDeferredCount && _data->_viewInWindowChangeWasDeferred) {
+        _data->_page->viewStateDidChange(WebPageProxy::ViewIsInWindow);
+        _data->_viewInWindowChangeWasDeferred = NO;
+    }
+}
+
+- (BOOL)isDeferringViewInWindowChanges
+{
+    return _data->_viewInWindowChangesDeferredCount;
+}
+
+- (BOOL)windowOcclusionDetectionEnabled
+{
+    return _data->_windowOcclusionDetectionEnabled;
+}
+
+- (void)setWindowOcclusionDetectionEnabled:(BOOL)flag
+{
+    if (_data->_windowOcclusionDetectionEnabled == flag)
+        return;
+    _data->_windowOcclusionDetectionEnabled = flag;
+    if (flag)
+        [self _enableWindowOcclusionNotifications];
+    else
+        [self _disableWindowOcclusionNotifications];
 }
 
 @end

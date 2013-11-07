@@ -156,27 +156,6 @@ static CString idName(int id0, const Identifier& ident)
     return makeString(ident.string(), "(@id", String::number(id0), ")").utf8();
 }
 
-void CodeBlock::dumpBytecodeCommentAndNewLine(PrintStream& out, int location)
-{
-#if ENABLE(DFG_JIT)
-    Vector<FrequentExitSite> exitSites = exitProfile().exitSitesFor(location);
-    if (!exitSites.isEmpty()) {
-        out.print(" !! frequent exits: ");
-        CommaPrinter comma;
-        for (unsigned i = 0; i < exitSites.size(); ++i)
-            out.print(comma, exitSites[i].kind());
-    }
-#endif // ENABLE(DFG_JIT)
-#if ENABLE(BYTECODE_COMMENTS)
-    const char* comment = commentForBytecodeOffset(location);
-    if (comment)
-        out.printf("\t\t ; %s", comment);
-#else
-    UNUSED_PARAM(location);
-#endif
-    out.print("\n");
-}
-
 CString CodeBlock::registerName(ExecState* exec, int r) const
 {
     if (r == missingThisObjectMarker())
@@ -1001,6 +980,21 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
             dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
+        case op_get_scoped_var: {
+            int r0 = (++it)->u.operand;
+            int index = (++it)->u.operand;
+            int skipLevels = (++it)->u.operand;
+            out.printf("[%4d] get_scoped_var\t %s, %d, %d", location, registerName(exec, r0).data(), index, skipLevels);
+            dumpValueProfiling(out, it, hasPrintedProfiling);
+            break;
+        }
+        case op_put_scoped_var: {
+            int index = (++it)->u.operand;
+            int skipLevels = (++it)->u.operand;
+            int r0 = (++it)->u.operand;
+            out.printf("[%4d] put_scoped_var\t %d, %d, %s", location, index, skipLevels, registerName(exec, r0).data());
+            break;
+        }
         case op_init_global_const_nop: {
             out.printf("[%4d] init_global_const_nop\t", location);
             it++;
@@ -1506,7 +1500,18 @@ void CodeBlock::dumpBytecode(PrintStream& out, ExecState* exec, const Instructio
     dumpRareCaseProfile(out, "special fast case: ", specialFastCaseProfileForBytecodeOffset(location), hasPrintedProfiling);
 #endif
     
-    dumpBytecodeCommentAndNewLine(out, location);
+#if ENABLE(DFG_JIT)
+    Vector<FrequentExitSite> exitSites = exitProfile().exitSitesFor(location);
+    if (!exitSites.isEmpty()) {
+        out.print(" !! frequent exits: ");
+        CommaPrinter comma;
+        for (unsigned i = 0; i < exitSites.size(); ++i)
+            out.print(comma, exitSites[i].kind());
+    }
+#else // ENABLE(DFG_JIT)
+    UNUSED_PARAM(location);
+#endif // ENABLE(DFG_JIT)
+    out.print("\n");
 }
 
 void CodeBlock::dumpBytecode(PrintStream& out, unsigned bytecodeOffset)
@@ -1654,8 +1659,10 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_argumentsRegister(other.m_argumentsRegister)
     , m_activationRegister(other.m_activationRegister)
     , m_isStrictMode(other.m_isStrictMode)
+    , m_needsActivation(other.m_needsActivation)
     , m_source(other.m_source)
     , m_sourceOffset(other.m_sourceOffset)
+    , m_codeType(other.m_codeType)
     , m_identifiers(other.m_identifiers)
     , m_constantRegisters(other.m_constantRegisters)
     , m_functionDecls(other.m_functionDecls)
@@ -1665,9 +1672,6 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other)
     , m_reoptimizationRetryCounter(0)
     , m_resolveOperations(other.m_resolveOperations)
     , m_putToBaseOperations(other.m_putToBaseOperations)
-#if ENABLE(BYTECODE_COMMENTS)
-    , m_bytecodeCommentIterator(0)
-#endif
 #if ENABLE(JIT)
     , m_canCompileWithDFGState(DFG::CapabilityLevelNotSet)
 #endif
@@ -1700,15 +1704,14 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
     , m_argumentsRegister(unlinkedCodeBlock->argumentsRegister())
     , m_activationRegister(unlinkedCodeBlock->activationRegister())
     , m_isStrictMode(unlinkedCodeBlock->isStrictMode())
+    , m_needsActivation(unlinkedCodeBlock->needsFullScopeChain())
     , m_source(sourceProvider)
     , m_sourceOffset(sourceOffset)
+    , m_codeType(unlinkedCodeBlock->codeType())
     , m_alternative(alternative)
     , m_osrExitCounter(0)
     , m_optimizationDelayCounter(0)
     , m_reoptimizationRetryCounter(0)
-#if ENABLE(BYTECODE_COMMENTS)
-    , m_bytecodeCommentIterator(0)
-#endif
 {
     m_globalData->startedCompiling(this);
 
@@ -1720,7 +1723,8 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
 #endif
     setIdentifiers(unlinkedCodeBlock->identifiers());
     setConstantRegisters(unlinkedCodeBlock->constantRegisters());
-
+    if (unlinkedCodeBlock->usesGlobalObject())
+        m_constantRegisters[unlinkedCodeBlock->globalObjectRegister()].set(*m_globalData, ownerExecutable, globalObject);
     m_functionDecls.grow(unlinkedCodeBlock->numberOfFunctionDecls());
     for (size_t count = unlinkedCodeBlock->numberOfFunctionDecls(), i = 0; i < count; ++i) {
         UnlinkedFunctionExecutable* unlinkedExecutable = unlinkedCodeBlock->functionDecl(i);
@@ -1819,10 +1823,11 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
         m_objectAllocationProfiles.grow(size);
     if (size_t size = unlinkedCodeBlock->numberOfResolveOperations())
         m_resolveOperations.grow(size);
-    size_t putToBaseCount = unlinkedCodeBlock->numberOfPutToBaseOperations();
-    m_putToBaseOperations.reserveInitialCapacity(putToBaseCount);
-    for (size_t i = 0; i < putToBaseCount; ++i)
-        m_putToBaseOperations.uncheckedAppend(PutToBaseOperation(isStrictMode()));
+    if (size_t putToBaseCount = unlinkedCodeBlock->numberOfPutToBaseOperations()) {
+        m_putToBaseOperations.reserveInitialCapacity(putToBaseCount);
+        for (size_t i = 0; i < putToBaseCount; ++i)
+            m_putToBaseOperations.uncheckedAppend(PutToBaseOperation(isStrictMode()));
+    }
 
     // Copy and translate the UnlinkedInstructions
     size_t instructionCount = unlinkedCodeBlock->instructions().size();
@@ -1847,10 +1852,6 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             // fallthrough
         }
         case op_convert_this:
-        case op_resolve:
-        case op_resolve_base:
-        case op_resolve_with_base:
-        case op_resolve_with_this:
         case op_get_by_id:
         case op_call_put_result:
         case op_get_callee: {
@@ -1875,7 +1876,59 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             break;
         }
 #endif
-
+        case op_resolve_base:
+        case op_resolve_base_to_global:
+        case op_resolve_base_to_global_dynamic:
+        case op_resolve_base_to_scope:
+        case op_resolve_base_to_scope_with_top_scope_check: {
+            instructions[i + 4].u.resolveOperations = &m_resolveOperations[pc[i + 4].u.operand];
+            instructions[i + 5].u.putToBaseOperation = &m_putToBaseOperations[pc[i + 5].u.operand];
+#if ENABLE(DFG_JIT)
+            ValueProfile* profile = &m_valueProfiles[pc[i + opLength - 1].u.operand];
+            ASSERT(profile->m_bytecodeOffset == -1);
+            profile->m_bytecodeOffset = i;
+            ASSERT((opLength - 1) > 5);
+            instructions[i + opLength - 1] = profile;
+#endif
+            break;
+        }
+        case op_resolve_global_property:
+        case op_resolve_global_var:
+        case op_resolve_scoped_var:
+        case op_resolve_scoped_var_on_top_scope:
+        case op_resolve_scoped_var_with_top_scope_check: {
+            instructions[i + 3].u.resolveOperations = &m_resolveOperations[pc[i + 3].u.operand];
+            break;
+        }
+        case op_put_to_base:
+        case op_put_to_base_variable: {
+            instructions[i + 4].u.putToBaseOperation = &m_putToBaseOperations[pc[i + 4].u.operand];
+            break;
+        }
+        case op_resolve: {
+#if ENABLE(DFG_JIT)
+            ValueProfile* profile = &m_valueProfiles[pc[i + opLength - 1].u.operand];
+            ASSERT(profile->m_bytecodeOffset == -1);
+            profile->m_bytecodeOffset = i;
+            ASSERT((opLength - 1) > 3);
+            instructions[i + opLength - 1] = profile;
+#endif
+            instructions[i + 3].u.resolveOperations = &m_resolveOperations[pc[i + 3].u.operand];
+            break;
+        }
+        case op_resolve_with_base:
+        case op_resolve_with_this: {
+            instructions[i + 4].u.resolveOperations = &m_resolveOperations[pc[i + 4].u.operand];
+            if (pc[i].u.opcode != op_resolve_with_this)
+                instructions[i + 5].u.putToBaseOperation = &m_putToBaseOperations[pc[i + 5].u.operand];
+#if ENABLE(DFG_JIT)
+            ValueProfile* profile = &m_valueProfiles[pc[i + opLength - 1].u.operand];
+            ASSERT(profile->m_bytecodeOffset == -1);
+            profile->m_bytecodeOffset = i;
+            instructions[i + opLength - 1] = profile;
+#endif
+            break;
+        }
         case op_new_object: {
             int objectAllocationProfileIndex = pc[i + opLength - 1].u.operand;
             ObjectAllocationProfile* objectAllocationProfile = &m_objectAllocationProfiles[objectAllocationProfileIndex];
@@ -1884,6 +1937,16 @@ CodeBlock::CodeBlock(ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlin
             instructions[i + opLength - 1] = objectAllocationProfile;
             objectAllocationProfile->initialize(*globalData(),
                 m_ownerExecutable.get(), m_globalObject->objectPrototype(), inferredInlineCapacity);
+            break;
+        }
+
+        case op_get_scoped_var: {
+#if ENABLE(DFG_JIT)
+            ValueProfile* profile = &m_valueProfiles[pc[i + opLength - 1].u.operand];
+            ASSERT(profile->m_bytecodeOffset == -1);
+            profile->m_bytecodeOffset = i;
+            instructions[i + opLength - 1] = profile;
+#endif
             break;
         }
 
@@ -2429,82 +2492,6 @@ void CodeBlock::stronglyVisitWeakReferences(SlotVisitor& visitor)
         visitor.append(&m_dfgData->weakReferences[i]);
 #endif    
 }
-
-#if ENABLE(BYTECODE_COMMENTS)
-// Finds the comment string for the specified bytecode offset/PC is available. 
-const char* CodeBlock::commentForBytecodeOffset(unsigned bytecodeOffset)
-{
-    ASSERT(bytecodeOffset < instructions().size());
-
-    Vector<Comment>& comments = m_bytecodeComments;
-    size_t numberOfComments = comments.size();
-    const char* result = 0;
-
-    if (!numberOfComments)
-        return 0; // No comments to match with.
-
-    // The next match is most likely the next comment in the list.
-    // Do a quick check to see if that is a match first.
-    // m_bytecodeCommentIterator should already be pointing to the
-    // next comment we should check.
-
-    ASSERT(m_bytecodeCommentIterator < comments.size());
-
-    size_t i = m_bytecodeCommentIterator;
-    size_t commentPC = comments[i].pc;
-    if (commentPC == bytecodeOffset) {
-        // We've got a match. All done!
-        m_bytecodeCommentIterator = i;
-        result = comments[i].string;
-    } else if (commentPC > bytecodeOffset) {
-        // The current comment is already greater than the requested PC.
-        // Start searching from the first comment.
-        i = 0;
-    } else {
-        // Otherwise, the current comment's PC is less than the requested PC.
-        // Hence, we can just start searching from the next comment in the
-        // list.
-        i++;
-    }
-
-    // If the result is still not found, do a linear search in the range
-    // that we've determined above.
-    if (!result) {
-        for (; i < comments.size(); ++i) {
-            commentPC = comments[i].pc;
-            if (commentPC == bytecodeOffset) {
-                result = comments[i].string;
-                break;
-            }
-            if (comments[i].pc > bytecodeOffset) {
-                // The current comment PC is already past the requested
-                // bytecodeOffset. Hence, there are no more possible
-                // matches. Just fail.
-                break;
-            }
-        }
-    }
-
-    // Update the iterator to point to the next comment.
-    if (++i >= numberOfComments) {
-        // At most point to the last comment entry. This ensures that the
-        // next time we call this function, the quick checks will at least
-        // have one entry to check and can fail fast if appropriate.
-        i = numberOfComments - 1;
-    }
-    m_bytecodeCommentIterator = i;
-    return result;
-}
-
-void CodeBlock::dumpBytecodeComments()
-{
-    Vector<Comment>& comments = m_bytecodeComments;
-    printf("Comments for codeblock %p: size %lu\n", this, comments.size());
-    for (size_t i = 0; i < comments.size(); ++i)
-        printf("     pc %lu : '%s'\n", comments[i].pc, comments[i].string);
-    printf("End of comments for codeblock %p\n", this);
-}
-#endif // ENABLE_BYTECODE_COMMENTS
 
 HandlerInfo* CodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset)
 {
@@ -3277,7 +3264,7 @@ void CodeBlock::tallyFrequentExitSites()
             continue;
         
 #if DFG_ENABLE(DEBUG_VERBOSE)
-        dataLog("OSR exit #", i, " (bc#", exit.m_codeOrigin.bytecodeIndex, ", @", exit.m_nodeIndex, ", ", exit.m_kind, ") for ", *this, " occurred frequently: counting as frequent exit site.\n");
+        dataLog("OSR exit #", i, " (bc#", exit.m_codeOrigin.bytecodeIndex, ", ", exit.m_kind, ") for ", *this, " occurred frequently: counting as frequent exit site.\n");
 #endif
     }
 }

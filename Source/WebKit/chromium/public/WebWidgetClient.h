@@ -66,14 +66,19 @@ public:
     virtual void didActivateCompositor(int inputHandlerIdentifier) { }
     virtual void didDeactivateCompositor() { }
 
-    // Attempt to initialize compositing for this widget using the given
-    // parameters. If this is successful, layerTreeView() will return a valid
-    // WebLayerTreeView. If not, nothing happens.
-    virtual void initializeLayerTreeView(WebLayerTreeViewClient*, const WebLayer& rootLayer, const WebLayerTreeView::Settings&) { }
+    // Attempt to initialize compositing for this widget. If this is successful,
+    // layerTreeView() will return a valid WebLayerTreeView.
+    virtual void initializeLayerTreeView() { }
 
     // Return a compositing view used for this widget. This is owned by the
     // WebWidgetClient.
     virtual WebLayerTreeView* layerTreeView() { return 0; }
+
+    // Sometimes the WebWidget enters a state where it will generate a sequence
+    // of invalidations that should not, by themselves, trigger the compositor
+    // to schedule a new frame. This call indicates to the embedder that it
+    // should suppress compositor scheduling temporarily.
+    virtual void suppressCompositorScheduling(bool enable) { }
 
     // Indicates to the embedder that the compositor is about to begin a
     // frame. This is primarily to signal to flow control mechanisms that a
@@ -94,9 +99,6 @@ public:
     // Called for compositing mode when swapbuffers has been posted in the GPU
     // process.
     virtual void didCompleteSwapBuffers() { }
-
-    // Called when a call to WebWidget::composite is required
-    virtual void scheduleComposite() { }
 
     // Called when a call to WebWidget::animate is required
     virtual void scheduleAnimation() { }

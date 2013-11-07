@@ -27,6 +27,8 @@
 #include "DragController.h"
 
 #if ENABLE(DRAG_SUPPORT)
+
+#include "CachedImage.h"
 #include "Clipboard.h"
 #include "ClipboardAccessPolicy.h"
 #include "CachedResourceLoader.h"
@@ -36,10 +38,12 @@
 #include "DragClient.h"
 #include "DragData.h"
 #include "DragSession.h"
+#include "DragState.h"
 #include "Editor.h"
 #include "EditorClient.h"
 #include "Element.h"
 #include "EventHandler.h"
+#include "ExceptionCodePlaceholder.h"
 #include "FloatRect.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
@@ -144,10 +148,9 @@ static PassRefPtr<DocumentFragment> documentFragmentFromDragData(DragData* dragD
                         title = url;
                 }
                 RefPtr<Node> anchorText = document->createTextNode(title);
-                ExceptionCode ec;
-                anchor->appendChild(anchorText, ec);
+                anchor->appendChild(anchorText, IGNORE_EXCEPTION);
                 RefPtr<DocumentFragment> fragment = document->createDocumentFragment();
-                fragment->appendChild(anchor, ec);
+                fragment->appendChild(anchor, IGNORE_EXCEPTION);
                 return fragment.get();
             }
         }
@@ -439,8 +442,7 @@ bool DragController::dispatchTextInputEventFor(Frame* innerFrame, DragData* drag
     ASSERT(m_page->dragCaretController()->hasCaret());
     String text = m_page->dragCaretController()->isContentRichlyEditable() ? "" : dragData->asPlainText(innerFrame);
     Node* target = innerFrame->editor()->findEventTargetFrom(m_page->dragCaretController()->caretPosition());
-    ExceptionCode ec = 0;
-    return target->dispatchEvent(TextEvent::createForDrop(innerFrame->document()->domWindow(), text), ec);
+    return target->dispatchEvent(TextEvent::createForDrop(innerFrame->document()->domWindow(), text), IGNORE_EXCEPTION);
 }
 
 bool DragController::concludeEditDrag(DragData* dragData)
@@ -561,7 +563,7 @@ bool DragController::canProcessDrag(DragData* dragData)
     if (!m_page->mainFrame()->contentRenderer())
         return false;
 
-    result = m_page->mainFrame()->eventHandler()->hitTestResultAtPoint(point, true);
+    result = m_page->mainFrame()->eventHandler()->hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
 
     if (!result.innerNonSharedNode())
         return false;
@@ -701,9 +703,7 @@ static void prepareClipboardForImageDrag(Frame* source, Clipboard* clipboard, El
 {
     if (node->isContentRichlyEditable()) {
         RefPtr<Range> range = source->document()->createRange();
-        ExceptionCode ec = 0;
-        range->selectNode(node, ec);
-        ASSERT(!ec);
+        range->selectNode(node, ASSERT_NO_EXCEPTION);
         source->selection()->setSelection(VisibleSelection(range.get(), DOWNSTREAM));
     }
     clipboard->declareAndWriteDragImage(node, !linkURL.isEmpty() ? linkURL : imageURL, label, source);
@@ -747,7 +747,7 @@ bool DragController::startDrag(Frame* src, const DragState& state, DragOperation
     if (!src->view() || !src->contentRenderer())
         return false;
 
-    HitTestResult hitTestResult = src->eventHandler()->hitTestResultAtPoint(dragOrigin, true);
+    HitTestResult hitTestResult = src->eventHandler()->hitTestResultAtPoint(dragOrigin, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
     if (!state.m_dragSrc->contains(hitTestResult.innerNode()))
         // The original node being dragged isn't under the drag origin anymore... maybe it was
         // hidden or moved out from under the cursor. Regardless, we don't want to start a drag on

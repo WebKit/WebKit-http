@@ -101,7 +101,6 @@ HEADERS += \
     Shared/SecurityOriginData.h \
     Shared/SessionState.h \
     Shared/StatisticsData.h \
-    Shared/StringPairVector.h \
     Shared/UpdateInfo.h \
     Shared/UserMessageCoders.h \
     Shared/VisitedLinkTable.h \
@@ -230,8 +229,10 @@ HEADERS += \
     UIProcess/Plugins/PluginProcessManager.h \
     UIProcess/ProcessModel.h \
     UIProcess/ResponsivenessTimer.h \
+    UIProcess/StatisticsRequest.h \
     UIProcess/Storage/StorageManager.h \
     UIProcess/TextChecker.h \
+    UIProcess/TextCheckerCompletion.h \
     UIProcess/VisitedLinkProvider.h \
     UIProcess/WebApplicationCacheManagerProxy.h \
     UIProcess/WebBackForwardList.h \
@@ -563,6 +564,7 @@ SOURCES += \
     UIProcess/FindIndicator.cpp \
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp \
     UIProcess/GeolocationPermissionRequestProxy.cpp \
+    UIProcess/TextCheckerCompletion.cpp \
     UIProcess/Launcher/ProcessLauncher.cpp \
     UIProcess/Launcher/qt/ProcessLauncherQt.cpp \
     UIProcess/Notifications/NotificationPermissionRequest.cpp \
@@ -579,6 +581,7 @@ SOURCES += \
     UIProcess/Plugins/qt/PluginProcessProxyQt.cpp \
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp \
     UIProcess/ResponsivenessTimer.cpp \
+    UIProcess/StatisticsRequest.cpp \
     UIProcess/Storage/StorageManager.cpp \
     UIProcess/VisitedLinkProvider.cpp \
     UIProcess/WebApplicationCacheManagerProxy.cpp \
@@ -701,6 +704,8 @@ SOURCES += \
     WebProcess/Plugins/PluginProxy.cpp \
     WebProcess/Plugins/PluginProcessConnection.cpp \
     WebProcess/Plugins/PluginProcessConnectionManager.cpp \
+    WebProcess/Storage/StorageAreaProxy.cpp \
+    WebProcess/Storage/StorageNamespaceProxy.cpp \
     WebProcess/Storage/WebKeyValueStorageManager.cpp \
     WebProcess/WebCoreSupport/WebBatteryClient.cpp \
     WebProcess/WebCoreSupport/WebChromeClient.cpp \
@@ -785,8 +790,6 @@ have?(QTQUICK) {
         UIProcess/qt/QtDialogRunner.h \
         UIProcess/qt/QtDownloadManager.h \
         UIProcess/qt/QtPageClient.h \
-        UIProcess/qt/QtWebPageFindClient.h \
-        UIProcess/qt/QtWebPageLoadClient.h \
         UIProcess/qt/QtWebPagePolicyClient.h \
         UIProcess/qt/QtWebPageSGNode.h \
         UIProcess/qt/QtWebPageUIClient.h \
@@ -813,8 +816,6 @@ have?(QTQUICK) {
         UIProcess/qt/QtDialogRunner.cpp \
         UIProcess/qt/QtDownloadManager.cpp \
         UIProcess/qt/QtPageClient.cpp \
-        UIProcess/qt/QtWebPageFindClient.cpp \
-        UIProcess/qt/QtWebPageLoadClient.cpp \
         UIProcess/qt/QtWebPagePolicyClient.cpp \
         UIProcess/qt/QtWebPageSGNode.cpp \
         UIProcess/qt/QtWebPageEventHandler.cpp \

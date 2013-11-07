@@ -29,19 +29,19 @@
 #if ENABLE(NETWORK_PROCESS)
 
 #include "MessageSender.h"
-#include "NetworkConnectionToWebProcess.h"
 #include "SchedulableLoader.h"
 #include <WebCore/ResourceHandleClient.h>
 #include <WebCore/ResourceLoaderOptions.h>
-#include <WebCore/ResourceRequest.h>
 
 namespace WebCore {
 class ResourceBuffer;
 class ResourceHandle;
+class ResourceRequest;
 }
 
 namespace WebKit {
 
+class NetworkConnectionToWebProcess;
 class RemoteNetworkingContext;
 
 class NetworkResourceLoader : public SchedulableLoader, public WebCore::ResourceHandleClient, public CoreIPC::MessageSender<NetworkResourceLoader> {
@@ -90,10 +90,6 @@ public:
 #endif
     virtual void willStopBufferingData(WebCore::ResourceHandle*, const char*, int) OVERRIDE;
 #endif // PLATFORM(MAC)
-
-#if ENABLE(BLOB)
-    virtual WebCore::AsyncFileStream* createAsyncFileStream(WebCore::FileStreamClient*) OVERRIDE;
-#endif
 
 private:
     NetworkResourceLoader(const NetworkResourceLoadParameters&, NetworkConnectionToWebProcess*);

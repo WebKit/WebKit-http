@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -87,6 +88,7 @@
 #include "TreeScope.h"
 #include "TypeConversions.h"
 #include "ViewportArguments.h"
+#include "WorkerThread.h"
 #include <wtf/text/StringBuffer.h>
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -124,6 +126,22 @@
 #include "GraphicsLayer.h"
 #include "GraphicsLayerChromium.h"
 #include "RenderLayerBacking.h"
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+#include "CDM.h"
+#include "MockCDM.h"
+#endif
+
+#if ENABLE(VIDEO_TRACK)
+#include "CaptionUserPreferences.h"
+#include "PageGroup.h"
+#endif
+
+#if ENABLE(SPEECH_SYNTHESIS)
+#include "DOMWindowSpeechSynthesis.h"
+#include "PlatformSpeechSynthesizerMock.h"
+#include "SpeechSynthesis.h"
 #endif
 
 namespace WebCore {
@@ -248,11 +266,18 @@ void Internals::resetToConsistentState(Page* page)
     if (page->inspectorController())
         page->inspectorController()->setProfilerEnabled(false);
 #endif
+#if ENABLE(VIDEO_TRACK) && !PLATFORM(WIN)
+    page->group().captionPreferences()->setTestingMode(false);
+#endif
 }
 
 Internals::Internals(Document* document)
     : ContextDestructionObserver(document)
 {
+#if ENABLE(VIDEO_TRACK) && !PLATFORM(WIN)
+    if (document && document->page())
+        document->page()->group().captionPreferences()->setTestingMode(true);
+#endif
 }
 
 Document* Internals::contextDocument() const
@@ -276,6 +301,15 @@ InternalSettings* Internals::settings() const
     if (!page)
         return 0;
     return InternalSettings::from(page);
+}
+
+unsigned Internals::workerThreadCount() const
+{
+#if ENABLE(WORKERS)
+    return WorkerThread::workerThreadCount();
+#else
+    return 0;
+#endif
 }
 
 String Internals::address(Node* node)
@@ -406,6 +440,52 @@ bool Internals::hasSelectorForPseudoClassInShadow(Element* host, const String& p
     return false;
 }
 
+unsigned Internals::numberOfActiveAnimations() const
+{
+    Frame* contextFrame = frame();
+    if (AnimationController* controller = contextFrame->animation())
+        return controller->numberOfActiveAnimations(contextFrame->document());
+    return 0;
+}
+
+void Internals::suspendAnimations(Document* document, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    AnimationController* controller = document->frame()->animation();
+    if (!controller)
+        return;
+
+    controller->suspendAnimations();
+}
+
+void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    AnimationController* controller = document->frame()->animation();
+    if (!controller)
+        return;
+
+    controller->resumeAnimations();
+}
+
+bool Internals::pauseAnimationAtTimeOnElement(const String& animationName, double pauseTime, Element* element, ExceptionCode& ec)
+{
+    if (!element || pauseTime < 0) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+    AnimationController* controller = frame()->animation();
+    return controller->pauseAnimationAtTime(element->renderer(), AtomicString(animationName), pauseTime);
+}
+
 bool Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element* element, const String& pseudoId, ExceptionCode& ec)
 {
     if (!element || pauseTime < 0) {
@@ -425,6 +505,16 @@ bool Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName,
     }
 
     return frame()->animation()->pauseAnimationAtTime(pseudoElement->renderer(), AtomicString(animationName), pauseTime);
+}
+
+bool Internals::pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element* element, ExceptionCode& ec)
+{
+    if (!element || pauseTime < 0) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+    AnimationController* controller = frame()->animation();
+    return controller->pauseTransitionAtTime(element->renderer(), propertyName, pauseTime);
 }
 
 bool Internals::pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element* element, const String& pseudoId, ExceptionCode& ec)
@@ -568,6 +658,17 @@ size_t Internals::numberOfScopedHTMLStyleChildren(const Node* scope, ExceptionCo
 
     ec = INVALID_ACCESS_ERR;
     return 0;
+}
+
+PassRefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Node* node, ExceptionCode& ec) const
+{
+    if (!node) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+
+    bool allowVisitedStyle = true;
+    return CSSComputedStyleDeclaration::create(node, allowVisitedStyle);
 }
 
 Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::ensureShadowRoot(Element* host, ExceptionCode& ec)
@@ -744,6 +845,20 @@ void Internals::setFormControlStateOfPreviousHistoryItem(const Vector<String>& s
         ec = INVALID_ACCESS_ERR;
 }
 
+#if ENABLE(SPEECH_SYNTHESIS)
+void Internals::enableMockSpeechSynthesizer()
+{
+    Document* document = contextDocument();
+    if (!document || !document->domWindow())
+        return;
+    SpeechSynthesis* synthesis = DOMWindowSpeechSynthesis::speechSynthesis(document->domWindow());
+    if (!synthesis)
+        return;
+    
+    synthesis->setPlatformSynthesizer(PlatformSpeechSynthesizerMock::create(synthesis));
+}
+#endif
+    
 void Internals::setEnableMockPagePopup(bool enabled, ExceptionCode& ec)
 {
 #if ENABLE(PAGE_POPUP)
@@ -990,6 +1105,20 @@ bool Internals::wasLastChangeUserEdit(Element* textField, ExceptionCode& ec)
     return false;
 }
 
+bool Internals::elementShouldAutoComplete(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+
+    if (HTMLInputElement* inputElement = element->toInputElement())
+        return inputElement->shouldAutocomplete();
+
+    ec = INVALID_NODE_TYPE_ERR;
+    return false;
+}
+
 String Internals::suggestedValue(Element* element, ExceptionCode& ec)
 {
     if (!element) {
@@ -1036,6 +1165,16 @@ void Internals::setEditingValue(Element* element, const String& value, Exception
     }
 
     inputElement->setEditingValue(value);
+}
+
+void Internals::setAutofilled(Element* element, bool enabled, ExceptionCode& ec)
+{
+    HTMLInputElement* inputElement = element->toInputElement();
+    if (!inputElement) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    inputElement->setAutofilled(enabled);
 }
 
 void Internals::scrollElementToRect(Element* element, long x, long y, long w, long h, ExceptionCode& ec)
@@ -1295,24 +1434,38 @@ PassRefPtr<ClientRectList> Internals::touchEventTargetClientRects(Document* docu
 #endif
 
 PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int x, int y, unsigned topPadding, unsigned rightPadding,
-    unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, ExceptionCode& ec) const
+    unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent, bool allowChildFrameContent, ExceptionCode& ec) const
 {
     if (!document || !document->frame() || !document->frame()->view()) {
         ec = INVALID_ACCESS_ERR;
         return 0;
     }
 
-    return document->nodesFromRect(x, y, topPadding, rightPadding, bottomPadding, leftPadding, ignoreClipping, allowShadowContent);
+    HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active;
+    if (ignoreClipping)
+        hitType |= HitTestRequest::IgnoreClipping;
+    if (allowShadowContent)
+        hitType |= HitTestRequest::AllowShadowContent;
+    if (allowChildFrameContent)
+        hitType |= HitTestRequest::AllowChildFrameContent;
+
+    return document->nodesFromRect(x, y, topPadding, rightPadding, bottomPadding, leftPadding, hitType);
 }
 
 void Internals::emitInspectorDidBeginFrame()
 {
-    InspectorInstrumentation::didBeginFrame(contextDocument()->frame()->page());
+#if ENABLE(INSPECTOR)
+    InspectorController* inspectorController = contextDocument()->frame()->page()->inspectorController();
+    inspectorController->didBeginFrame();
+#endif
 }
 
 void Internals::emitInspectorDidCancelFrame()
 {
-    InspectorInstrumentation::didCancelFrame(contextDocument()->frame()->page());
+#if ENABLE(INSPECTOR)
+    InspectorController* inspectorController = contextDocument()->frame()->page()->inspectorController();
+    inspectorController->didCancelFrame();
+#endif
 }
 
 void Internals::setBatteryStatus(Document* document, const String& eventType, bool charging, double chargingTime, double dischargingTime, double level, ExceptionCode& ec)
@@ -1502,34 +1655,6 @@ bool Internals::isPageBoxVisible(Document* document, int pageNumber, ExceptionCo
     return document->isPageBoxVisible(pageNumber);
 }
 
-void Internals::suspendAnimations(Document* document, ExceptionCode& ec) const
-{
-    if (!document || !document->frame()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    AnimationController* controller = document->frame()->animation();
-    if (!controller)
-        return;
-
-    controller->suspendAnimations();
-}
-
-void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
-{
-    if (!document || !document->frame()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    AnimationController* controller = document->frame()->animation();
-    if (!controller)
-        return;
-
-    controller->resumeAnimations();
-}
-
 String Internals::layerTreeAsText(Document* document, ExceptionCode& ec) const
 {
     return layerTreeAsText(document, 0, ec);
@@ -1549,6 +1674,8 @@ String Internals::layerTreeAsText(Document* document, unsigned flags, ExceptionC
         layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
     if (flags & LAYER_TREE_INCLUDES_REPAINT_RECTS)
         layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
+    if (flags & LAYER_TREE_INCLUDES_PAINTING_PHASES)
+        layerTreeFlags |= LayerTreeFlagsIncludePaintingPhases;
 
     return document->frame()->layerTreeAsText(layerTreeFlags);
 }
@@ -1655,9 +1782,9 @@ int Internals::pageNumber(Element* element, float pageWidth, float pageHeight)
     return PrintContext::pageNumberForElement(element, FloatSize(pageWidth, pageHeight));
 }
 
-Vector<String> Internals::iconURLs(Document* document) const
+Vector<String> Internals::iconURLs(Document* document, int iconTypesMask) const
 {
-    Vector<IconURL> iconURLs = document->iconURLs();
+    Vector<IconURL> iconURLs = document->iconURLs(iconTypesMask);
     Vector<String> array;
 
     Vector<IconURL>::const_iterator iter(iconURLs.begin());
@@ -1665,6 +1792,16 @@ Vector<String> Internals::iconURLs(Document* document) const
         array.append(iter->m_iconURL.string());
 
     return array;
+}
+
+Vector<String> Internals::shortcutIconURLs(Document* document) const
+{
+    return iconURLs(document, Favicon);
+}
+
+Vector<String> Internals::allIconURLs(Document* document) const
+{
+    return iconURLs(document, Favicon | TouchIcon | TouchPrecomposedIcon);
 }
 
 int Internals::numberOfPages(float pageWidth, float pageHeight)
@@ -1902,6 +2039,22 @@ PassRefPtr<SerializedScriptValue> Internals::deserializeBuffer(PassRefPtr<ArrayB
 void Internals::setUsesOverlayScrollbars(bool enabled)
 {
     WebCore::Settings::setUsesOverlayScrollbars(enabled);
+}
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+void Internals::initializeMockCDM()
+{
+    CDM::registerCDMFactory(MockCDM::create, MockCDM::supportsKeySytem);
+}
+#endif
+
+String Internals::markerTextForListItem(Element* element, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return String();
+    }
+    return WebCore::markerTextForListItem(element);
 }
 
 }

@@ -30,7 +30,6 @@
 #include "config.h"
 #include "ResourceHandle.h"
 
-#include "BlobRegistry.h"
 #include "CachedResourceLoader.h"
 #include "Frame.h"
 #include "FrameNetworkingContext.h"
@@ -115,11 +114,11 @@ ResourceHandle::~ResourceHandle()
         cancel();
 }
 
-bool ResourceHandle::start(NetworkingContext* context)
+bool ResourceHandle::start()
 {
     // If NetworkingContext is invalid then we are no longer attached to a Page,
     // this must be an attempted load from an unload event handler, so let's just block it.
-    if (context && !context->isValid())
+    if (d->m_context && !d->m_context->isValid())
         return false;
 
     if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
@@ -131,7 +130,6 @@ bool ResourceHandle::start(NetworkingContext* context)
         d->m_firstRequest.setURL(urlWithCredentials);
     }
 
-    getInternal()->m_context = context;
     ResourceHandleInternal *d = getInternal();
     d->m_job = new QNetworkReplyHandler(this, QNetworkReplyHandler::AsynchronousLoad, d->m_defersLoading);
     return true;
@@ -150,16 +148,10 @@ bool ResourceHandle::loadsBlocked()
     return false;
 }
 
-void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
-#if ENABLE(BLOB)
-    if (request.url().protocolIs("blob")) {
-        blobRegistry().loadResourceSynchronously(request, error, response, data);
-        return;
-    }
-#endif
     WebCoreSynchronousLoader syncLoader(error, response, data);
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(request, &syncLoader, true, false));
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false));
 
     ResourceHandleInternal* d = handle->getInternal();
     if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
@@ -170,7 +162,6 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
         urlWithCredentials.setPass(d->m_pass);
         d->m_firstRequest.setURL(urlWithCredentials);
     }
-    d->m_context = context;
 
     // starting in deferred mode gives d->m_job the chance of being set before sending the request.
     d->m_job = new QNetworkReplyHandler(handle.get(), QNetworkReplyHandler::SynchronousLoad, true);

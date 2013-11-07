@@ -211,6 +211,8 @@ public:
     PassRefPtr<AccessibilityUIElement> horizontalScrollbar() const;
     PassRefPtr<AccessibilityUIElement> verticalScrollbar() const;
 
+    void scrollToMakeVisible();
+    
     // Text markers.
     PassRefPtr<AccessibilityTextMarkerRange> textMarkerRangeForElement(AccessibilityUIElement*);    
     PassRefPtr<AccessibilityTextMarkerRange> textMarkerRangeForMarkers(AccessibilityTextMarker* startMarker, AccessibilityTextMarker* endMarker);
@@ -226,6 +228,9 @@ public:
     int indexForTextMarker(AccessibilityTextMarker*);
     bool isTextMarkerValid(AccessibilityTextMarker*);
     PassRefPtr<AccessibilityTextMarker> textMarkerForIndex(int);
+
+    // Returns an ordered list of supported actions for an element.
+    JSRetainPtr<JSStringRef> supportedActions() const;
 
     // Notifications
     // Function callback should take one argument, the name of the notification.

@@ -200,6 +200,13 @@ public:
     }
 #endif
     
+#if CPU(MIPS)
+    void poke(FPRegisterID src, int index = 0)
+    {
+        ASSERT(!(index & 1));
+        storeDouble(src, addressForPoke(index));
+    }
+#endif
 
     // Backwards banches, these are currently all implemented using existing forwards branch mechanisms.
     void branchPtr(RelationalCondition cond, RegisterID op1, TrustedImmPtr imm, Label target)
@@ -847,7 +854,7 @@ public:
     bool shouldBlindDouble(double value)
     {
         // Don't trust NaN or +/-Infinity
-        if (!isfinite(value))
+        if (!std::isfinite(value))
             return shouldConsiderBlinding();
 
         // Try to force normalisation, and check that there's no change
@@ -869,7 +876,7 @@ public:
     
     bool shouldBlind(ImmPtr imm)
     { 
-#if !defined(NDEBUG)
+#if ENABLE(FORCED_JIT_BLINDING)
         UNUSED_PARAM(imm);
         // Debug always blind all constants, if only so we know
         // if we've broken blinding during patch development.
@@ -927,8 +934,8 @@ public:
     }
 
     bool shouldBlind(Imm64 imm)
-    { 
-#if !defined(NDEBUG)
+    {
+#if ENABLE(FORCED_JIT_BLINDING)
         UNUSED_PARAM(imm);
         // Debug always blind all constants, if only so we know
         // if we've broken blinding during patch development.
@@ -1066,8 +1073,8 @@ public:
 
 #if ENABLE(JIT_CONSTANT_BLINDING)
     bool shouldBlind(Imm32 imm)
-    { 
-#if !defined(NDEBUG)
+    {
+#if ENABLE(FORCED_JIT_BLINDING)
         UNUSED_PARAM(imm);
         // Debug always blind all constants, if only so we know
         // if we've broken blinding during patch development.

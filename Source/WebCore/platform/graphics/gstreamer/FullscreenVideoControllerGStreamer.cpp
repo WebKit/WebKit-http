@@ -29,7 +29,7 @@
 
 #include "GStreamerGWorld.h"
 #include "MediaPlayer.h"
-#include "MediaPlayerPrivateGStreamer.h"
+#include "MediaPlayerPrivateGStreamerBase.h"
 #include <gst/gst.h>
 #include <wtf/text/CString.h>
 
@@ -48,7 +48,7 @@ void playerMuteChangedCallback(GObject *element, GParamSpec *pspec, FullscreenVi
     controller->muteChanged();
 }
 
-PassOwnPtr<FullscreenVideoControllerGStreamer> FullscreenVideoControllerGStreamer::create(MediaPlayerPrivateGStreamer* player)
+PassOwnPtr<FullscreenVideoControllerGStreamer> FullscreenVideoControllerGStreamer::create(MediaPlayerPrivateGStreamerBase* player)
 {
 #if PLATFORM(GTK)
    return adoptPtr(new FullscreenVideoControllerGtk(player));
@@ -57,7 +57,7 @@ PassOwnPtr<FullscreenVideoControllerGStreamer> FullscreenVideoControllerGStreame
 #endif
 }
 
-FullscreenVideoControllerGStreamer::FullscreenVideoControllerGStreamer(MediaPlayerPrivateGStreamer* player)
+FullscreenVideoControllerGStreamer::FullscreenVideoControllerGStreamer(MediaPlayerPrivateGStreamerBase* player)
     : m_player(player)
     , m_client(player->mediaPlayer()->mediaPlayerClient())
     , m_gstreamerGWorld(player->platformMedia().media.gstreamerGWorld)
@@ -79,11 +79,11 @@ void FullscreenVideoControllerGStreamer::enterFullscreen()
     if (!m_gstreamerGWorld->enterFullscreen())
         return;
 
+    initializeWindow();
+
     GstElement* pipeline = m_gstreamerGWorld->pipeline();
     m_playerVolumeSignalHandler = g_signal_connect(pipeline, "notify::volume", G_CALLBACK(playerVolumeChangedCallback), this);
     m_playerMuteSignalHandler = g_signal_connect(pipeline, "notify::mute", G_CALLBACK(playerMuteChangedCallback), this);
-
-    initializeWindow();
 }
 
 void FullscreenVideoControllerGStreamer::exitFullscreen()
@@ -136,7 +136,7 @@ void FullscreenVideoControllerGStreamer::setVolume(float volume)
 
 String FullscreenVideoControllerGStreamer::timeToString(float time)
 {
-    if (!isfinite(time))
+    if (!std::isfinite(time))
         time = 0;
     int seconds = fabsf(time);
     int hours = seconds / (60 * 60);

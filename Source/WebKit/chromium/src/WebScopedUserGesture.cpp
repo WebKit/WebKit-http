@@ -32,12 +32,19 @@
 #include "WebScopedUserGesture.h"
 
 #include "UserGestureIndicator.h"
+#include "WebUserGestureToken.h"
 
 namespace WebKit {
 
 void WebScopedUserGesture::initialize()
 {
-    m_indicator.reset(new WebCore::UserGestureIndicator(WebCore::DefinitelyProcessingUserGesture));
+    m_indicator.reset(new WebCore::UserGestureIndicator(WebCore::DefinitelyProcessingNewUserGesture));
+}
+
+void WebScopedUserGesture::initializeWithToken(const WebUserGestureToken& token)
+{
+    if (!token.isNull())
+        m_indicator.reset(new WebCore::UserGestureIndicator(token));
 }
 
 void WebScopedUserGesture::reset()

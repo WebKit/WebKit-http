@@ -77,6 +77,7 @@ list(APPEND WebCore_SOURCES
     platform/image-encoders/skia/JPEGImageEncoder.cpp
     platform/posix/FileSystemPOSIX.cpp
     platform/posix/SharedBufferPOSIX.cpp
+    platform/text/LocaleNone.cpp
     platform/text/TextBreakIteratorICU.cpp
     platform/text/TextCodecICU.cpp
     platform/text/TextEncodingDetectorICU.cpp
@@ -373,3 +374,8 @@ add_custom_command(
     COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/make-file-arrays.py --out-h=${DERIVED_SOURCES_WEBCORE_DIR}/PopupPicker.h --out-cpp=${DERIVED_SOURCES_WEBCORE_DIR}/PopupPicker.cpp ${WebCore_POPUP_CSS_AND_JS}
 )
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/PopupPicker.cpp)
+
+set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> <LINK_FLAGS> cruT <TARGET> <OBJECTS>")
+set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> <LINK_FLAGS> ruT <TARGET> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> <LINK_FLAGS> cruT <TARGET> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> <LINK_FLAGS> ruT <TARGET> <OBJECTS>")

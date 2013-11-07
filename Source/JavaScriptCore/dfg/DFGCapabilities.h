@@ -48,7 +48,7 @@ bool mightInlineFunctionForClosureCall(CodeBlock*);
 bool mightInlineFunctionForConstruct(CodeBlock*);
 
 // Opcode checking.
-inline bool canInlineResolveOperations(OpcodeID opcode, ResolveOperations* operations)
+inline bool canInlineResolveOperations(ResolveOperations* operations)
 {
     for (unsigned i = 0; i < operations->size(); i++) {
         switch (operations->data()[i].m_operation) {
@@ -65,18 +65,9 @@ inline bool canInlineResolveOperations(OpcodeID opcode, ResolveOperations* opera
             continue;
 
         case ResolveOperation::Fail:
-            switch (opcode) {
-            case op_resolve_base_to_global_dynamic:
-            case op_resolve_base_to_scope_with_top_scope_check:
-            case op_resolve_base_to_global:
-            case op_resolve_base_to_scope:
-                CRASH();
-            case op_resolve_with_base:
-            case op_resolve_with_this:
-                return false;
-            default:
-                continue;
-            }
+            // Fall-back resolves don't know how to deal with the ExecState* having a different
+            // global object (and scope) than the inlined code that is invoking that resolve.
+            return false;
 
         case ResolveOperation::SkipTopScopeNode:
             // We don't inline code blocks that create activations. Creation of
@@ -202,7 +193,7 @@ inline CapabilityLevel canCompileOpcode(OpcodeID opcodeID, CodeBlock*, Instructi
         return CanCompile;
         
     case op_call_varargs:
-        return ShouldProfile;
+        return MayInline;
 
     case op_resolve:
     case op_resolve_global_property:
@@ -210,6 +201,10 @@ inline CapabilityLevel canCompileOpcode(OpcodeID opcodeID, CodeBlock*, Instructi
     case op_resolve_scoped_var:
     case op_resolve_scoped_var_on_top_scope:
     case op_resolve_scoped_var_with_top_scope_check:
+        return CanCompile;
+
+    case op_get_scoped_var:
+    case op_put_scoped_var:
         return CanCompile;
 
     case op_resolve_base_to_global:
@@ -235,7 +230,7 @@ inline bool canInlineOpcode(OpcodeID opcodeID, CodeBlock* codeBlock, Instruction
     case op_resolve_scoped_var:
     case op_resolve_scoped_var_on_top_scope:
     case op_resolve_scoped_var_with_top_scope_check:
-        return canInlineResolveOperations(opcodeID, codeBlock->resolveOperations(pc[3].u.operand));
+        return canInlineResolveOperations(pc[3].u.resolveOperations);
 
     case op_resolve_base_to_global:
     case op_resolve_base_to_global_dynamic:
@@ -244,8 +239,12 @@ inline bool canInlineOpcode(OpcodeID opcodeID, CodeBlock* codeBlock, Instruction
     case op_resolve_base:
     case op_resolve_with_base:
     case op_resolve_with_this:
-        return canInlineResolveOperations(opcodeID, codeBlock->resolveOperations(pc[4].u.operand));
-        
+        return canInlineResolveOperations(pc[4].u.resolveOperations);
+
+    case op_get_scoped_var:
+    case op_put_scoped_var:
+        return !codeBlock->needsFullScopeChain();
+
     // Inlining doesn't correctly remap regular expression operands.
     case op_new_regexp:
         

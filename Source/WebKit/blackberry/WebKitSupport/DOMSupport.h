@@ -22,6 +22,7 @@
 #include "IntPoint.h"
 #include "IntRect.h"
 
+#include <BlackBerryPlatformInputEvents.h>
 #include <wtf/Vector.h>
 
 namespace WTF {
@@ -90,14 +91,19 @@ WebCore::IntPoint convertPointToFrame(const WebCore::Frame* sourceFrame, const W
 static const WebCore::IntPoint InvalidPoint = WebCore::IntPoint(-1, -1);
 
 WebCore::VisibleSelection visibleSelectionForClosestActualWordStart(const WebCore::VisibleSelection&);
+WebCore::VisibleSelection visibleSelectionForFocusedBlock(WebCore::Element*);
+int offsetFromStartOfBlock(const WebCore::VisiblePosition offset);
 
 WebCore::Frame* incrementFrame(WebCore::Frame* curr, bool forward, bool wrapFlag);
 
 PassRefPtr<WebCore::Range> trimWhitespaceFromRange(PassRefPtr<WebCore::Range>);
 PassRefPtr<WebCore::Range> trimWhitespaceFromRange(WebCore::VisiblePosition startPosition, WebCore::VisiblePosition endPosition);
-bool isEmptyRangeOrAllSpaces(WebCore::VisiblePosition, WebCore::VisiblePosition);
+bool isRangeTextAllWhitespace(WebCore::VisiblePosition startPosition, WebCore::VisiblePosition endPosition);
 
 bool isFixedPositionOrHasFixedPositionAncestor(WebCore::RenderObject*);
+
+WebCore::Element* selectionContainerElement(const WebCore::VisibleSelection&);
+BlackBerry::Platform::RequestedHandlePosition elementHandlePositionAttribute(const WebCore::Element*);
 
 } // DOMSupport
 } // WebKit

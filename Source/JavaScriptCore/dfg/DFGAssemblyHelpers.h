@@ -93,6 +93,23 @@ public:
     }
 #endif
 
+#if CPU(MIPS)
+    ALWAYS_INLINE void preserveReturnAddressAfterCall(RegisterID reg)
+    {
+        move(returnAddressRegister, reg);
+    }
+
+    ALWAYS_INLINE void restoreReturnAddressBeforeReturn(RegisterID reg)
+    {
+        move(reg, returnAddressRegister);
+    }
+
+    ALWAYS_INLINE void restoreReturnAddressBeforeReturn(Address address)
+    {
+        loadPtr(address, returnAddressRegister);
+    }
+#endif
+
     void emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, GPRReg to)
     {
         loadPtr(Address(GPRInfo::callFrameRegister, entry * sizeof(Register)), to);
@@ -193,7 +210,7 @@ public:
         move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
         storePtr(TrustedImmPtr(scratchSize), GPRInfo::regT0);
 
-#if CPU(X86_64) || CPU(ARM)
+#if CPU(X86_64) || CPU(ARM) || CPU(MIPS)
         move(TrustedImmPtr(buffer), GPRInfo::argumentGPR2);
         move(TrustedImmPtr(argument), GPRInfo::argumentGPR1);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
@@ -300,12 +317,6 @@ public:
     JSGlobalObject* globalObjectFor(CodeOrigin codeOrigin)
     {
         return codeBlock()->globalObjectFor(codeOrigin);
-    }
-    
-    JSObject* globalThisObjectFor(CodeOrigin codeOrigin)
-    {
-        JSGlobalObject* object = globalObjectFor(codeOrigin);
-        return object->methodTable()->toThisObject(object, 0);
     }
     
     bool strictModeFor(CodeOrigin codeOrigin)

@@ -24,8 +24,12 @@ defineReplace(toEvaluatablePath) {
     return($$replace(1, \\\\, \\\\\\\\))
 }
 
-defineReplace(activeBuildConfig) {
-    CONFIG(debug, debug|release): return(debug)
+defineReplace(targetSubDir) {
+    # The paths to the elements of the thin archive are stored
+    # relative to the archive itself, thus we have to prevent
+    # qmake from moving the archive after creation.
+    gnu_thin_archives: return()
+    else: CONFIG(debug, debug|release): return(debug)
     else: return(release)
 }
 
@@ -199,6 +203,25 @@ defineTest(haveQtModule) {
     return(false)
 }
 
+defineTest(programExistsInPath) {
+    win_cmd_shell: program = $${1}.exe
+    else: program = $$1
+
+    PATH = "$$(PATH)"
+    paths=$$split(PATH, $$QMAKE_DIRLIST_SEP)
+
+    GNUTOOLS_DIR=$$[QT_HOST_DATA]/../gnuwin32/bin
+    exists($$GNUTOOLS_DIR): paths += $$GNUTOOLS_DIR
+
+    for(p, paths): exists($$p/$$program):return(true)
+    return(false)
+}
+
+defineTest(addReasonForSkippingBuild) {
+    skipBuildReason = "$$skipBuildReason$${EOL}    * $$1"
+    export(skipBuildReason)
+}
+
 defineTest(prependEach) {
     unset(variable)
     unset(prefix)
@@ -245,7 +268,7 @@ defineTest(linkAgainstLibrary) {
 
     target = $$resolveFinalLibraryName($$target)
 
-    path = $$replace(source_dir, $$re_escape($${ROOT_WEBKIT_DIR}), $${ROOT_BUILD_DIR})/$$activeBuildConfig()
+    path = $$replace(source_dir, $$re_escape($${ROOT_WEBKIT_DIR}), $${ROOT_BUILD_DIR})/$$targetSubDir()
 
     force_static_libs_as_shared {
             LIBS += -L$${ROOT_BUILD_DIR}/lib -l$$target

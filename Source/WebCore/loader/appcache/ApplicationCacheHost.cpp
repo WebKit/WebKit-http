@@ -37,6 +37,7 @@
 #include "InspectorInstrumentation.h"
 #include "MainResourceLoader.h"
 #include "ProgressEvent.h"
+#include "ResourceHandle.h"
 #include "ResourceLoader.h"
 #include "ResourceRequest.h"
 #include "Settings.h"
@@ -308,14 +309,12 @@ void ApplicationCacheHost::dispatchDOMEvent(EventID id, int total, int done)
 {
     if (m_domApplicationCache) {
         const AtomicString& eventType = DOMApplicationCache::toEventType(id);
-        ExceptionCode ec = 0;
         RefPtr<Event> event;
         if (id == PROGRESS_EVENT)
             event = ProgressEvent::create(eventType, true, done, total);
         else
             event = Event::create(eventType, false, false);
-        m_domApplicationCache->dispatchEvent(event, ec);
-        ASSERT(!ec);
+        m_domApplicationCache->dispatchEvent(event, ASSERT_NO_EXCEPTION);
     }
 }
 

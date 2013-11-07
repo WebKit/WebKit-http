@@ -48,7 +48,8 @@ public:
     enum EditingBehavior {
         EditingBehaviorMac,
         EditingBehaviorWin,
-        EditingBehaviorUnix
+        EditingBehaviorUnix,
+        EditingBehaviorAndroid
     };
 
     virtual bool scrollAnimatorEnabled() const = 0;
@@ -115,6 +116,7 @@ public:
     virtual void setGestureTapHighlightEnabled(bool) = 0;
     virtual void setHyperlinkAuditingEnabled(bool) = 0;
     virtual void setImagesEnabled(bool) = 0;
+    virtual void setInitializeAtMinimumPageScale(bool) = 0;
     virtual void setInteractiveFormValidationEnabled(bool) = 0;
     virtual void setJavaEnabled(bool) = 0;
     virtual void setJavaScriptCanAccessClipboard(bool) = 0;
@@ -160,6 +162,7 @@ public:
     virtual void setTextAutosizingEnabled(bool) = 0;
     virtual void setTextAutosizingFontScaleFactor(float) = 0;
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded() = 0;
+    virtual void setThreadedHTMLParser(bool) = 0;
     virtual void setTouchDragDropEnabled(bool) = 0;
     virtual void setUnifiedTextCheckerEnabled(bool) = 0;
     virtual void setUnsafePluginPastingEnabled(bool) = 0;

@@ -29,6 +29,7 @@
 #include <QVector>
 
 typedef const struct OpaqueJSContext* JSContextRef;
+typedef struct OpaqueJSValue* JSObjectRef;
 
 namespace WebCore {
 class Text;
@@ -99,9 +100,6 @@ public:
     static QVariantList firstRectForCharacterRange(QWebPageAdapter*, int location, int length);
     static void confirmComposition(QWebPageAdapter*, const char* text);
 
-    static bool pauseAnimation(QWebFrameAdapter*, const QString& name, double time, const QString& elementId);
-    static bool pauseTransitionOfProperty(QWebFrameAdapter*, const QString& name, double time, const QString& elementId);
-
     static void setDomainRelaxationForbiddenForURLScheme(bool forbidden, const QString& scheme);
     static void setFrameFlatteningEnabled(QWebPageAdapter*, bool);
     static void setCaretBrowsingEnabled(QWebPageAdapter*, bool value);
@@ -110,7 +108,6 @@ public:
 
     static void garbageCollectorCollect();
     static void garbageCollectorCollectOnAlternateThread(bool waitUntilDone);
-    static void setAutofilled(const QWebElement&, bool enabled);
     static void setValueForUser(const QWebElement&, const QString& value);
     static int javaScriptObjectsCount();
     static void clearScriptWorlds();
@@ -124,9 +121,7 @@ public:
     static void webPageSetGroupName(QWebPageAdapter*, const QString& groupName);
     static void clearFrameName(QWebFrameAdapter*);
     static void overwritePluginDirectories();
-    static int numberOfActiveAnimations(QWebFrameAdapter*);
     static bool hasDocumentElement(QWebFrameAdapter*);
-    static bool elementDoesAutoCompleteForElementWithId(QWebFrameAdapter*, const QString& elementId);
     static void setWindowsBehaviorAsEditingBehavior(QWebPageAdapter*);
 
     static void clearAllApplicationCaches();
@@ -142,11 +137,6 @@ public:
     static void setMockGeolocationPosition(QWebPageAdapter*, double latitude, double longitude, double accuracy);
     static void setMockGeolocationPositionUnavailableError(QWebPageAdapter*, const QString& message);
     static int numberOfPendingGeolocationPermissionRequests(QWebPageAdapter*);
-
-    static int workerThreadCount();
-
-    static QString markerTextForListItem(const QWebElement& listItem);
-    static QVariantMap computedStyleIncludingVisitedInfo(const QWebElement&);
 
     static void dumpFrameLoader(bool);
     static void dumpProgressFinishedCallback(bool);
@@ -188,9 +178,6 @@ public:
     static void addURLToRedirect(const QString& origin, const QString& destination);
     static QStringList contextMenu(QWebPageAdapter*);
 
-    static double defaultMinimumTimerInterval(); // Not really tied to WebView
-    static void setMinimumTimerInterval(QWebPageAdapter*, double);
-
     static QUrl mediaContentUrlByElementId(QWebFrameAdapter*, const QString& elementId);
     static void setAlternateHtml(QWebFrameAdapter*, const QString& html, const QUrl& baseUrl, const QUrl& failingUrl);
 
@@ -218,6 +205,8 @@ public:
 
     static QString frameRenderTreeDump(QWebFrameAdapter*);
     static void clearNotificationPermissions();
+
+    static void getJSWindowObject(QWebFrameAdapter*, JSContextRef*, JSObjectRef*);
 };
 
 #endif

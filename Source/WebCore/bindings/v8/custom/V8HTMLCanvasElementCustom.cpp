@@ -48,7 +48,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8HTMLCanvasElement::getContextCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLCanvasElement::getContextMethodCustom(const v8::Arguments& args)
 {
     v8::Handle<v8::Object> holder = args.Holder();
     HTMLCanvasElement* imp = V8HTMLCanvasElement::toNative(holder);
@@ -85,7 +85,7 @@ v8::Handle<v8::Value> V8HTMLCanvasElement::getContextCallback(const v8::Argument
     if (!result)
         return v8Null(args.GetIsolate());
     else if (result->is2d()) {
-        v8::Handle<v8::Value> v8Result = toV8(static_cast<CanvasRenderingContext2D*>(result), args.Holder(), args.GetIsolate());
+        v8::Handle<v8::Value> v8Result = toV8Fast(static_cast<CanvasRenderingContext2D*>(result), args, imp);
         if (InspectorInstrumentation::canvasAgentEnabled(imp->document())) {
             ScriptState* scriptState = ScriptState::forContext(v8::Context::GetCurrent());
             ScriptObject context(scriptState, v8::Handle<v8::Object>::Cast(v8Result));
@@ -97,7 +97,7 @@ v8::Handle<v8::Value> V8HTMLCanvasElement::getContextCallback(const v8::Argument
     }
 #if ENABLE(WEBGL)
     else if (result->is3d()) {
-        v8::Handle<v8::Value> v8Result = toV8(static_cast<WebGLRenderingContext*>(result), args.Holder(), args.GetIsolate());
+        v8::Handle<v8::Value> v8Result = toV8Fast(static_cast<WebGLRenderingContext*>(result), args, imp);
         if (InspectorInstrumentation::canvasAgentEnabled(imp->document())) {
             ScriptState* scriptState = ScriptState::forContext(v8::Context::GetCurrent());
             ScriptObject glContext(scriptState, v8::Handle<v8::Object>::Cast(v8Result));
@@ -112,7 +112,7 @@ v8::Handle<v8::Value> V8HTMLCanvasElement::getContextCallback(const v8::Argument
     return v8Null(args.GetIsolate());
 }
 
-v8::Handle<v8::Value> V8HTMLCanvasElement::toDataURLCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLCanvasElement::toDataURLMethodCustom(const v8::Arguments& args)
 {
     v8::Handle<v8::Object> holder = args.Holder();
     HTMLCanvasElement* canvas = V8HTMLCanvasElement::toNative(holder);

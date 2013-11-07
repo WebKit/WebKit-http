@@ -47,9 +47,6 @@ public:
     static PassRefPtr<Scrollbar> createCustomScrollbar(ScrollableArea*, ScrollbarOrientation, Node*, Frame* owningFrame = 0);
     virtual ~RenderScrollbar();
 
-    static ScrollbarPart partForStyleResolve();
-    static RenderScrollbar* scrollbarForStyleResolve();
-
     RenderBox* owningRenderer() const;
 
     void paintPart(GraphicsContext*, ScrollbarPart, const IntRect&);
@@ -92,7 +89,7 @@ private:
 
 inline RenderScrollbar* toRenderScrollbar(ScrollbarThemeClient* scrollbar)
 {
-    ASSERT(!scrollbar || scrollbar->isCustomScrollbar());
+    ASSERT_WITH_SECURITY_IMPLICATION(!scrollbar || scrollbar->isCustomScrollbar());
     return static_cast<RenderScrollbar*>(scrollbar);
 }
 

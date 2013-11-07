@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
 
-#include "BlobRegistry.h"
 #include "Logging.h"
 #include "NetworkingContext.h"
 #include "ResourceHandleClient.h"
@@ -53,8 +52,21 @@ void ResourceHandle::registerBuiltinConstructor(const AtomicString& protocol, Re
     builtinResourceHandleConstructorMap().add(protocol, constructor);
 }
 
-ResourceHandle::ResourceHandle(const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff)
-    : d(adoptPtr(new ResourceHandleInternal(this, request, client, defersLoading, shouldContentSniff && shouldContentSniffURL(request.url()))))
+typedef HashMap<AtomicString, ResourceHandle::BuiltinSynchronousLoader> BuiltinResourceHandleSynchronousLoaderMap;
+static BuiltinResourceHandleSynchronousLoaderMap& builtinResourceHandleSynchronousLoaderMap()
+{
+    ASSERT(isMainThread());
+    DEFINE_STATIC_LOCAL(BuiltinResourceHandleSynchronousLoaderMap, map, ());
+    return map;
+}
+
+void ResourceHandle::registerBuiltinSynchronousLoader(const AtomicString& protocol, ResourceHandle::BuiltinSynchronousLoader loader)
+{
+    builtinResourceHandleSynchronousLoaderMap().add(protocol, loader);
+}
+
+ResourceHandle::ResourceHandle(NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff)
+    : d(adoptPtr(new ResourceHandleInternal(this, context, request, client, defersLoading, shouldContentSniff && shouldContentSniffURL(request.url()))))
 {
     if (!request.url().isValid()) {
         scheduleFailure(InvalidURLFailure);
@@ -74,12 +86,12 @@ PassRefPtr<ResourceHandle> ResourceHandle::create(NetworkingContext* context, co
     if (protocolMapItem != builtinResourceHandleConstructorMap().end())
         return protocolMapItem->value(request, client);
 
-    RefPtr<ResourceHandle> newHandle(adoptRef(new ResourceHandle(request, client, defersLoading, shouldContentSniff)));
+    RefPtr<ResourceHandle> newHandle(adoptRef(new ResourceHandle(context, request, client, defersLoading, shouldContentSniff)));
 
     if (newHandle->d->m_scheduledFailureType != NoFailure)
         return newHandle.release();
 
-    if (newHandle->start(context))
+    if (newHandle->start())
         return newHandle.release();
 
     return 0;
@@ -113,6 +125,18 @@ void ResourceHandle::fireFailure(Timer<ResourceHandle>*)
     ASSERT_NOT_REACHED();
 }
 
+void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+{
+    BuiltinResourceHandleSynchronousLoaderMap::iterator protocolMapItem = builtinResourceHandleSynchronousLoaderMap().find(request.url().protocol());
+
+    if (protocolMapItem != builtinResourceHandleSynchronousLoaderMap().end()) {
+        protocolMapItem->value(context, request, storedCredentials, error, response, data);
+        return;
+    }
+
+    platformLoadResourceSynchronously(context, request, storedCredentials, error, response, data);
+}
+
 ResourceHandleClient* ResourceHandle::client() const
 {
     return d->m_client;
@@ -126,6 +150,11 @@ void ResourceHandle::setClient(ResourceHandleClient* client)
 ResourceRequest& ResourceHandle::firstRequest()
 {
     return d->m_firstRequest;
+}
+
+NetworkingContext* ResourceHandle::context() const
+{
+    return d->m_context.get();
 }
 
 const String& ResourceHandle::lastHTTPMethod() const

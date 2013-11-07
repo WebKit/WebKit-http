@@ -55,6 +55,7 @@ namespace WebCore {
     class IntRect;
     class IntSize;
     class Scrollbar;
+    class SharedBuffer;
 }
 
 namespace WebKit {
@@ -263,9 +264,11 @@ public:
 
     virtual bool shouldAlwaysAutoStart() const { return false; }
 
-    virtual bool getResourceData(const unsigned char*& bytes, unsigned& length) const = 0;
+    virtual PassRefPtr<WebCore::SharedBuffer> liveResourceData() const = 0;
 
     virtual bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&) = 0;
+
+    virtual String getSelectionString() const = 0;
 
 protected:
     Plugin();

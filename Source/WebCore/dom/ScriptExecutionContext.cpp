@@ -34,7 +34,6 @@
 #include "ErrorEvent.h"
 #include "EventListener.h"
 #include "EventTarget.h"
-#include "FileThread.h"
 #include "MessagePort.h"
 #include "PublicURLManager.h"
 #include "Settings.h"
@@ -103,7 +102,7 @@ void ScriptExecutionContext::AddConsoleMessageTask::performTask(ScriptExecutionC
 ScriptExecutionContext::ScriptExecutionContext()
     : m_iteratingActiveDOMObjects(false)
     , m_inDestructor(false)
-    , m_sequentialID(0)
+    , m_circularSequentialID(0)
     , m_inDispatchErrorEvent(false)
     , m_activeDOMObjectsAreSuspended(false)
     , m_reasonForSuspendingActiveDOMObjects(static_cast<ActiveDOMObject::ReasonForSuspension>(-1))
@@ -127,10 +126,6 @@ ScriptExecutionContext::~ScriptExecutionContext()
         (*iter)->contextDestroyed();
     }
 #if ENABLE(BLOB)
-    if (m_fileThread) {
-        m_fileThread->stop();
-        m_fileThread = 0;
-    }
     if (m_publicURLManager)
         m_publicURLManager->contextDestroyed();
 #endif
@@ -349,27 +344,15 @@ bool ScriptExecutionContext::dispatchErrorEvent(const String& errorMessage, int 
     return errorEvent->defaultPrevented();
 }
 
-int ScriptExecutionContext::newUniqueID()
+int ScriptExecutionContext::circularSequentialID()
 {
-    ++m_sequentialID;
-    // FIXME: We prevent wraparound from becoming negative with a simple solution which
-    // ensures the result has a correct range, but without fully guaranteeing uniqueness.
-    if (m_sequentialID <= 0)
-        m_sequentialID = 1;
-    return m_sequentialID;
+    ++m_circularSequentialID;
+    if (m_circularSequentialID <= 0)
+        m_circularSequentialID = 1;
+    return m_circularSequentialID;
 }
 
 #if ENABLE(BLOB)
-FileThread* ScriptExecutionContext::fileThread()
-{
-    if (!m_fileThread) {
-        m_fileThread = FileThread::create();
-        if (!m_fileThread->start())
-            m_fileThread = 0;
-    }
-    return m_fileThread.get();
-}
-
 PublicURLManager& ScriptExecutionContext::publicURLManager()
 {
     if (!m_publicURLManager)
@@ -422,7 +405,6 @@ void ScriptExecutionContext::reportMemoryUsage(MemoryObjectInfo* memoryObjectInf
     info.addMember(m_pendingExceptions, "pendingExceptions");
 #if ENABLE(BLOB)
     info.addMember(m_publicURLManager, "publicURLManager");
-    info.addMember(m_fileThread, "fileThread");
 #endif
 }
 

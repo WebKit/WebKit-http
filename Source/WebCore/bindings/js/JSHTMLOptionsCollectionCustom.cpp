@@ -65,7 +65,8 @@ JSValue JSHTMLOptionsCollection::nameGetter(ExecState* exec, JSValue slotBase, P
 
 JSValue JSHTMLOptionsCollection::namedItem(ExecState* exec)
 {
-    return getNamedItems(exec, this, Identifier(exec, exec->argument(0).toString(exec)->value(exec)));
+    JSValue value = getNamedItems(exec, this, Identifier(exec, exec->argument(0).toString(exec)->value(exec)));
+    return value.isUndefined() ? jsNull() : value;
 }
 
 void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
@@ -74,7 +75,7 @@ void JSHTMLOptionsCollection::setLength(ExecState* exec, JSValue value)
     ExceptionCode ec = 0;
     unsigned newLength = 0;
     double lengthValue = value.toNumber(exec);
-    if (!isnan(lengthValue) && !isinf(lengthValue)) {
+    if (!std::isnan(lengthValue) && !std::isinf(lengthValue)) {
         if (lengthValue < 0.0)
             ec = INDEX_SIZE_ERR;
         else if (lengthValue > static_cast<double>(UINT_MAX))

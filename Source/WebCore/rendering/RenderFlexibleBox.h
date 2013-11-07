@@ -40,6 +40,8 @@ public:
     RenderFlexibleBox(Element*);
     virtual ~RenderFlexibleBox();
 
+    static RenderFlexibleBox* createAnonymous(Document*);
+
     virtual const char* renderName() const OVERRIDE;
 
     virtual bool isFlexibleBox() const OVERRIDE { return true; }
@@ -58,6 +60,8 @@ public:
 protected:
     virtual void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const OVERRIDE;
     virtual void computePreferredLogicalWidths() OVERRIDE;
+
+    virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
 private:
     enum FlexSign {
@@ -141,7 +145,7 @@ private:
     void updateAutoMarginsInMainAxis(RenderBox* child, LayoutUnit autoMarginOffset);
     bool hasAutoMarginsInCrossAxis(RenderBox* child) const;
     bool updateAutoMarginsInCrossAxis(RenderBox* child, LayoutUnit availableAlignmentSpace);
-    void repositionLogicalHeightDependentFlexItems(Vector<LineContext>&, LayoutUnit& oldClientAfterEdge);
+    void repositionLogicalHeightDependentFlexItems(Vector<LineContext>&);
     void appendChildFrameRects(ChildFrameRects&);
     void repaintChildrenDuringLayoutIfMoved(const ChildFrameRects&);
 

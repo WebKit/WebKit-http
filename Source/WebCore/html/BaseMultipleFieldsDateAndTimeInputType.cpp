@@ -36,6 +36,7 @@
 #include "DateComponents.h"
 #include "DateTimeFieldsState.h"
 #include "ElementShadow.h"
+#include "FocusController.h"
 #include "FormController.h"
 #include "HTMLDataListElement.h"
 #include "HTMLInputElement.h"
@@ -85,6 +86,7 @@ void BaseMultipleFieldsDateAndTimeInputType::editControlValueChanged()
         input->dispatchFormControlChangeEvent();
     }
     input->notifyFormStateChanged();
+    input->updateClearButtonVisibility();
 }
 
 bool BaseMultipleFieldsDateAndTimeInputType::hasCustomFocusLogic() const
@@ -161,6 +163,7 @@ BaseMultipleFieldsDateAndTimeInputType::BaseMultipleFieldsDateAndTimeInputType(H
     : BaseDateAndTimeInputType(element)
     , m_dateTimeEditElement(0)
     , m_spinButtonElement(0)
+    , m_clearButton(0)
     , m_pickerIndicatorElement(0)
     , m_pickerIndicatorIsVisible(false)
     , m_pickerIndicatorIsAlwaysVisible(false)
@@ -171,6 +174,8 @@ BaseMultipleFieldsDateAndTimeInputType::~BaseMultipleFieldsDateAndTimeInputType(
 {
     if (m_spinButtonElement)
         m_spinButtonElement->removeSpinButtonOwner();
+    if (m_clearButton)
+        m_clearButton->removeClearButtonOwner();
     if (m_dateTimeEditElement)
         m_dateTimeEditElement->removeEditControlOwner();
     if (m_pickerIndicatorElement)
@@ -188,6 +193,24 @@ void BaseMultipleFieldsDateAndTimeInputType::blur()
         m_dateTimeEditElement->blurByOwner();
 }
 
+PassRefPtr<RenderStyle> BaseMultipleFieldsDateAndTimeInputType::customStyleForRenderer(PassRefPtr<RenderStyle> originalStyle)
+{
+    EDisplay originalDisplay = originalStyle->display();
+    EDisplay newDisplay = originalDisplay;
+    if (originalDisplay == INLINE || originalDisplay == INLINE_BLOCK)
+        newDisplay = INLINE_FLEX;
+    else if (originalDisplay == BLOCK)
+        newDisplay = FLEX;
+    TextDirection contentDirection = element()->locale().isRTL() ? RTL : LTR;
+    if (originalStyle->direction() == contentDirection && originalDisplay == newDisplay)
+        return originalStyle;
+
+    RefPtr<RenderStyle> style = RenderStyle::clone(originalStyle.get());
+    style->setDirection(contentDirection);
+    style->setDisplay(newDisplay);
+    return style.release();
+}
+
 void BaseMultipleFieldsDateAndTimeInputType::createShadowSubtree()
 {
     ASSERT(element()->shadow());
@@ -199,6 +222,10 @@ void BaseMultipleFieldsDateAndTimeInputType::createShadowSubtree()
     m_dateTimeEditElement = dateTimeEditElement.get();
     container->appendChild(m_dateTimeEditElement);
     updateInnerTextValue();
+
+    RefPtr<ClearButtonElement> clearButton = ClearButtonElement::create(document, *this);
+    m_clearButton = clearButton.get();
+    container->appendChild(clearButton);
 
     RefPtr<SpinButtonElement> spinButton = SpinButtonElement::create(document, *this);
     m_spinButtonElement = spinButton.get();
@@ -229,6 +256,10 @@ void BaseMultipleFieldsDateAndTimeInputType::destroyShadowSubtree()
         m_spinButtonElement->removeSpinButtonOwner();
         m_spinButtonElement = 0;
     }
+    if (m_clearButton) {
+        m_clearButton->removeClearButtonOwner();
+        m_clearButton = 0;
+    }
     if (m_dateTimeEditElement) {
         m_dateTimeEditElement->removeEditControlOwner();
         m_dateTimeEditElement = 0;
@@ -240,9 +271,16 @@ void BaseMultipleFieldsDateAndTimeInputType::destroyShadowSubtree()
     BaseDateAndTimeInputType::destroyShadowSubtree();
 }
 
-void BaseMultipleFieldsDateAndTimeInputType::focus(bool, FocusDirection)
+void BaseMultipleFieldsDateAndTimeInputType::handleFocusEvent(Node* oldFocusedNode, FocusDirection direction)
 {
-    if (m_dateTimeEditElement)
+    if (!m_dateTimeEditElement)
+        return;
+    if (direction == FocusDirectionBackward) {
+        if (element()->document()->page())
+            element()->document()->page()->focusController()->advanceFocus(direction, 0);
+    } else if (direction == FocusDirectionNone) {
+        m_dateTimeEditElement->focusByOwner(oldFocusedNode);
+    } else
         m_dateTimeEditElement->focusByOwner();
 }
 
@@ -261,8 +299,15 @@ void BaseMultipleFieldsDateAndTimeInputType::forwardEvent(Event* event)
 void BaseMultipleFieldsDateAndTimeInputType::disabledAttributeChanged()
 {
     m_spinButtonElement->releaseCapture();
+    m_clearButton->releaseCapture();
     if (m_dateTimeEditElement)
         m_dateTimeEditElement->disabledStateChanged();
+}
+
+void BaseMultipleFieldsDateAndTimeInputType::requiredAttributeChanged()
+{
+    m_clearButton->releaseCapture();
+    updateClearButtonVisibility();
 }
 
 void BaseMultipleFieldsDateAndTimeInputType::handleKeydownEvent(KeyboardEvent* event)
@@ -283,19 +328,14 @@ bool BaseMultipleFieldsDateAndTimeInputType::hasBadInput() const
     return element()->value().isEmpty() && m_dateTimeEditElement && m_dateTimeEditElement->anyEditableFieldsHaveValues();
 }
 
-bool BaseMultipleFieldsDateAndTimeInputType::isFocusableByClickOnLabel() const
+bool BaseMultipleFieldsDateAndTimeInputType::isKeyboardFocusable(KeyboardEvent*) const
 {
     return element()->isTextFormControlFocusable();
 }
 
-bool BaseMultipleFieldsDateAndTimeInputType::isKeyboardFocusable(KeyboardEvent*) const
-{
-    return false;
-}
-
 bool BaseMultipleFieldsDateAndTimeInputType::isMouseFocusable() const
 {
-    return false;
+    return element()->isTextFormControlFocusable();
 }
 
 AtomicString BaseMultipleFieldsDateAndTimeInputType::localeIdentifier() const
@@ -311,6 +351,7 @@ void BaseMultipleFieldsDateAndTimeInputType::minOrMaxAttributeChanged()
 void BaseMultipleFieldsDateAndTimeInputType::readonlyAttributeChanged()
 {
     m_spinButtonElement->releaseCapture();
+    m_clearButton->releaseCapture();
     if (m_dateTimeEditElement)
         m_dateTimeEditElement->readOnlyStateChanged();
 }
@@ -341,11 +382,6 @@ void BaseMultipleFieldsDateAndTimeInputType::setValue(const String& sanitizedVal
     }
 }
 
-bool BaseMultipleFieldsDateAndTimeInputType::shouldApplyLocaleDirection() const
-{
-    return true;
-}
-
 bool BaseMultipleFieldsDateAndTimeInputType::shouldUseInputMethod() const
 {
     return false;
@@ -370,10 +406,15 @@ void BaseMultipleFieldsDateAndTimeInputType::updateInnerTextValue()
 
     setupLayoutParameters(layoutParameters, date);
 
+    const AtomicString pattern = m_dateTimeEditElement->fastGetAttribute(HTMLNames::patternAttr);
+    if (!pattern.isEmpty())
+        layoutParameters.dateTimeFormat = pattern;
+
     if (hasValue)
         m_dateTimeEditElement->setValueAsDate(layoutParameters, date);
     else
         m_dateTimeEditElement->setEmptyValue(layoutParameters, date);
+    updateClearButtonVisibility();
 }
 
 #if ENABLE(DATALIST_ELEMENT)
@@ -427,6 +468,34 @@ bool BaseMultipleFieldsDateAndTimeInputType::shouldHaveSecondField(const DateCom
     return date.second() || date.millisecond()
         || !stepRange.minimum().remainder(static_cast<int>(msPerMinute)).isZero()
         || !stepRange.step().remainder(static_cast<int>(msPerMinute)).isZero();
+}
+
+void BaseMultipleFieldsDateAndTimeInputType::focusAndSelectClearButtonOwner()
+{
+    element()->focus();
+}
+
+bool BaseMultipleFieldsDateAndTimeInputType::shouldClearButtonRespondToMouseEvents()
+{
+    return !element()->isDisabledOrReadOnly() && !element()->isRequired();
+}
+
+void BaseMultipleFieldsDateAndTimeInputType::clearValue()
+{
+    RefPtr<HTMLInputElement> input(element());
+    input->setValue("", DispatchInputAndChangeEvent);
+    input->updateClearButtonVisibility();
+}
+
+void BaseMultipleFieldsDateAndTimeInputType::updateClearButtonVisibility()
+{
+    if (!m_clearButton)
+        return;
+
+    if (element()->isRequired() || !m_dateTimeEditElement->anyEditableFieldsHaveValues())
+        m_clearButton->setInlineStyleProperty(CSSPropertyVisibility, CSSValueHidden);
+    else
+        m_clearButton->removeInlineStyleProperty(CSSPropertyVisibility);
 }
 
 } // namespace WebCore

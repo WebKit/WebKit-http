@@ -126,9 +126,7 @@ String DateTimeNumericFieldElement::formatValue(int value) const
 
 void DateTimeNumericFieldElement::handleKeyboardEvent(KeyboardEvent* keyboardEvent)
 {
-    if (isReadOnly())
-        return;
-
+    ASSERT(!isDisabled());
     if (keyboardEvent->type() != eventNames().keypressEvent)
         return;
 
@@ -174,7 +172,7 @@ int DateTimeNumericFieldElement::maximum() const
 
 void DateTimeNumericFieldElement::setEmptyValue(EventBehavior eventBehavior)
 {
-    if (isReadOnly())
+    if (isDisabled())
         return;
 
     m_hasValue = false;

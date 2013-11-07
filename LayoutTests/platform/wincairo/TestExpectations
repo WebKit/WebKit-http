@@ -258,7 +258,6 @@ fast/dom/Document/CaretRangeFromPoint/basic.html
 fast/dom/Document/CaretRangeFromPoint/hittest-relative-to-viewport.html
 fast/dom/Element/class-attribute-whitespace.html 
 fast/dom/Element/getBoundingClientRect.html
-fast/dom/Element/id-in-deletebutton.html 
 fast/dom/Element/null-offset-parent.html 
 fast/dom/HTMLDocument/frameless-location-bugzilla10837.html 
 fast/dom/HTMLElement/bdo.html 
@@ -529,7 +528,6 @@ transitions/svg-text-shadow-transition.html
 
 http/tests/cache
 http/tests/canvas/philip/tests
-http/tests/cookies
 http/tests/css
 http/tests/history
 http/tests/incremental
@@ -1033,10 +1031,6 @@ fast/loader/create-frame-in-DOMContentLoaded.html
 # Times out <rdar://problem/9304941>
 http/tests/multipart/invalid-image-data-standalone.html
 
-# Sometimes fail <rdar://problem/9349921>
-http/tests/cookies/simple-cookies-expired.html
-http/tests/cookies/simple-cookies-max-age.html
-
 ################################################################################
 ####################### No bugs filed about the below yet#######################
 ################################################################################
@@ -1092,8 +1086,6 @@ fast/table/frame-and-rules.html
 fast/table/giantCellspacing.html
 
 # Not investigated yet
-editing/deleting/5408255.html
-editing/deleting/deletionUI-single-instance.html
 editing/pasteboard/input-field-1.html
 editing/selection/contains-boundaries.html
 editing/undo/5378473.html
@@ -1171,6 +1163,7 @@ accessibility/spinbutton-value.html
 accessibility/svg-remote-element.html
 accessibility/table-attributes.html
 accessibility/table-cell-spans.html
+accessibility/table-cell-for-column-and-row-crash.html
 accessibility/table-cells.html
 accessibility/table-detection.html
 accessibility/table-modification-crash.html
@@ -1748,6 +1741,7 @@ fast/events/constructors/mouse-event-constructor.html
 fast/events/constructors/composition-event-constructor.html
 fast/events/constructors/wheel-event-constructor.html
 fast/events/constructors/keyboard-event-constructor.html
+fast/events/constructors/focus-event-constructor.html
 
 # Disable until the windows WebKit API supports injecting in the top frame only.
 # https://bugs.webkit.org/show_bug.cgi?id=41800
@@ -1832,6 +1826,7 @@ inspector/profiler/heap-snapshot-summary-sorting-instances.html
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-replay-log-grid.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -2075,7 +2070,8 @@ fast/dom/shadow
 
 # ENABLE(TEMPLATE_ELEMENT) is disabled.
 fast/dom/HTMLTemplateElement
-html5lib/run-template.html
+html5lib/generated/run-template-data.html
+html5lib/generated/run-template-write.html
 fast/xsl/xslt-xhtml-template.xml
 fast/xpath/xpath-template-element.html
 fast/xsl/xslt-processor-template.html
@@ -2149,9 +2145,6 @@ fast/events/platform-wheelevent-paging-y-in-non-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-non-scrolling-page.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
-
-# Web Intents is not yet enabled.
-webintents/
 
 # Pointer Lock is not implemented.
 pointer-lock/
@@ -2524,6 +2517,9 @@ fast/multicol/span/clone-flexbox.html
 # https://bugs.webkit.org/show_bug.cgi?id=85558
 http/tests/security/contentSecurityPolicy/1.1
 
+# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
+http/tests/security/contentTypeOptions
+
 # Skip tests in fast/text/shaping
 fast/text/shaping
 
@@ -2781,11 +2777,6 @@ http/tests/security/xss-DENIED-window-open-javascript-url-with-spaces.html
 http/tests/security/xss-DENIED-window-open-parent.html
 http/tests/security/xss-DENIED-xsl-document-securityOrigin.xml
 
-# Flaky http/tests/cookie tests
-# https://bugs.webkit.org/show_bug.cgi?id=95805
-http/tests/cookies/multiple-cookies.html
-http/tests/cookies/single-quoted-value.html
-
 # Flaky media/video tests
 # https://bugs.webkit.org/show_bug.cgi?id=95806
 media/video-aspect-ratio.html
@@ -2910,9 +2901,10 @@ css3/flexbox/flexbox-baseline.html
 #https://bugs.webkit.org/show_bug.cgi?id=99878
 css3/flexbox/flexbox-baseline-margins.html
 
-# css3-conditionals support is not yet enabled. http://webkit.org/b/86146 http://webkit.org/b/104822
+# css3-conditionals support is not yet enabled. http://webkit.org/b/86146 http://webkit.org/b/104822 http://webkit.org/b/100324
 css3/supports.html
 css3/supports-cssom.html
+css3/supports-dom-api.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=98169
 http/tests/inspector/stacktraces
@@ -2996,3 +2988,6 @@ webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
+
+# Need support for ResourceHandle::didChangePriority and DRT support
+webkit.org/b/?????? http/tests/loading/promote-img-preload-priority.html [ Failure ]

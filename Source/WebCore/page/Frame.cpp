@@ -41,6 +41,7 @@
 #include "CachedResourceLoader.h"
 #include "DocumentType.h"
 #include "EditorClient.h"
+#include "Event.h"
 #include "EventNames.h"
 #include "FloatQuad.h"
 #include "FocusController.h"
@@ -77,19 +78,21 @@
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
+#include "ScrollingCoordinator.h"
 #include "Settings.h"
 #include "StylePropertySet.h"
 #include "TextIterator.h"
 #include "TextResourceDecoder.h"
 #include "UserContentURLPattern.h"
 #include "UserTypingGestureIndicator.h"
+#include "VisibleUnits.h"
 #include "WebKitFontFamilyNames.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include "htmlediting.h"
 #include "markup.h"
 #include "npruntime_impl.h"
-#include "visible_units.h"
+#include <wtf/PassOwnPtr.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 
@@ -630,7 +633,7 @@ Frame* Frame::frameForWidget(const Widget* widget)
 
     // Assume all widgets are either a FrameView or owned by a RenderWidget.
     // FIXME: That assumption is not right for scroll bars!
-    ASSERT(widget->isFrameView());
+    ASSERT_WITH_SECURITY_IMPLICATION(widget->isFrameView());
     return static_cast<const FrameView*>(widget)->frame();
 }
 
@@ -690,6 +693,9 @@ void Frame::willDetachPage()
     if (page() && page()->focusController()->focusedFrame() == this)
         page()->focusController()->setFocusedFrame(0);
 
+    if (page() && page()->scrollingCoordinator() && m_view)
+        page()->scrollingCoordinator()->willDestroyScrollableArea(m_view.get());
+
     script()->clearScriptObjects();
     script()->updatePlatformScriptObjects();
 }
@@ -721,7 +727,7 @@ String Frame::displayStringModifiedByEncoding(const String& str) const
 
 VisiblePosition Frame::visiblePositionForPoint(const IntPoint& framePoint)
 {
-    HitTestResult result = eventHandler()->hitTestResultAtPoint(framePoint, true);
+    HitTestResult result = eventHandler()->hitTestResultAtPoint(framePoint, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowShadowContent);
     Node* node = result.innerNonSharedNode();
     if (!node)
         return VisiblePosition();
@@ -743,7 +749,7 @@ Document* Frame::documentAtPoint(const IntPoint& point)
     HitTestResult result = HitTestResult(pt);
 
     if (contentRenderer())
-        result = eventHandler()->hitTestResultAtPoint(pt, false);
+        result = eventHandler()->hitTestResultAtPoint(pt);
     return result.innerNode() ? result.innerNode()->document() : 0;
 }
 
@@ -1079,7 +1085,7 @@ DragImageRef Frame::nodeImage(Node* node)
     m_view->setPaintBehavior(state.paintBehavior | PaintBehaviorFlattenCompositingLayers);
 
     // When generating the drag image for an element, ignore the document background.
-    m_view->setBaseBackgroundColor(colorWithOverrideAlpha(Color::white, 1.0));
+    m_view->setBaseBackgroundColor(Color::transparent);
     m_doc->updateLayout();
     m_view->setNodeToDraw(node); // Enable special sub-tree drawing mode.
 

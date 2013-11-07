@@ -29,10 +29,10 @@
 #include "EwkView.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NotImplemented.h"
-#include "PageClientBase.h"
 #include "WebKitVersion.h"
 #include "WebPageMessages.h"
 #include "WebProcessProxy.h"
+#include "WebView.h"
 
 #include <sys/utsname.h>
 
@@ -40,7 +40,7 @@ namespace WebKit {
 
 Evas_Object* WebPageProxy::viewWidget()
 {
-    return static_cast<PageClientBase*>(m_pageClient)->view()->view();
+    return static_cast<WebView*>(m_pageClient)->evasObject();
 }
 
 String WebPageProxy::standardUserAgent(const String& /*applicationNameForUserAgent*/)
@@ -82,6 +82,9 @@ void WebPageProxy::loadRecentSearches(const String&, Vector<String>&)
 
 void WebPageProxy::setThemePath(const String& themePath)
 {
+    if (!isValid())
+        return;
+
     process()->send(Messages::WebPage::SetThemePath(themePath), m_pageID, 0);
 }
 
@@ -122,6 +125,11 @@ void WebPageProxy::cancelComposition()
         return;
 
     process()->send(Messages::WebPage::CancelComposition(), m_pageID, 0);
+}
+
+void WebPageProxy::initializeUIPopupMenuClient(const WKPageUIPopupMenuClient* client)
+{
+    m_uiPopupMenuClient.initialize(client);
 }
 
 } // namespace WebKit

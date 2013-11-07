@@ -50,16 +50,16 @@ my (
     $canvasProxySupport,
     $channelMessagingSupport,
     $cspNextSupport,
-    $css3BackgroundSupport,
     $css3ConditionalRulesSupport,
     $css3TextSupport,
+    $css3TextLineBreakSupport,
     $cssBoxDecorationBreakSupport,
     $cssDeviceAdaptation,
     $cssExclusionsSupport,
     $cssFiltersSupport,
-    $cssHierarchiesSupport,
     $cssImageOrientationSupport,
     $cssImageResolutionSupport,
+    $cssImageSetSupport,
     $cssRegionsSupport,
     $cssShadersSupport,
     $cssStickyPositionSupport,
@@ -77,6 +77,7 @@ my (
     $downloadAttributeSupport,
     $fileSystemSupport,
     $filtersSupport,
+    $fontLoadEventsSupport,
     $ftpDirSupport,
     $fullscreenAPISupport,
     $gamepadSupport,
@@ -84,7 +85,6 @@ my (
     $highDPICanvasSupport,
     $icondatabaseSupport,
     $iframeSeamlessSupport,
-    $imageResizerSupport,
     $indexedDatabaseSupport,
     $inputSpeechSupport,
     $inputTypeColorSupport,
@@ -110,9 +110,9 @@ my (
     $mhtmlSupport,
     $microdataSupport,
     $mouseCursorScaleSupport,
-    $mutationObserversSupport,
     $netscapePluginAPISupport,
     $networkInfoSupport,
+    $nosniffSupport,
     $notificationsSupport,
     $orientationEventsSupport,
     $pageVisibilityAPISupport,
@@ -146,19 +146,16 @@ my (
     $videoTrackSupport,
     $webglSupport,
     $webAudioSupport,
-    $webIntentsSupport,
-    $webIntentsTagSupport,
     $webSocketsSupport,
     $webTimingSupport,
     $workersSupport,
-    $xhrResponseBlobSupport,
     $xhrTimeoutSupport,
     $xsltSupport,
 );
 
 my @features = (
     { option => "3d-rendering", desc => "Toggle 3D Rendering support",
-      define => "ENABLE_3D_RENDERING", default => (isAppleMacWebKit() || isQt()), value => \$threeDRenderingSupport },
+      define => "ENABLE_3D_RENDERING", default => (isAppleMacWebKit() || isQt() || isGtk() || isEfl()), value => \$threeDRenderingSupport },
 
     { option => "accelerated-2d-canvas", desc => "Toggle Accelerated 2D Canvas support",
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => 0, value => \$accelerated2DCanvasSupport },
@@ -170,7 +167,7 @@ my @features = (
       define => "ENABLE_BLOB", default => (isAppleMacWebKit() || isGtk() || isChromium() || isBlackBerry() || isEfl()), value => \$blobSupport },
 
     { option => "canvas-path", desc => "Toggle Canvas Path support",
-      define => "ENABLE_CANVAS_PATH", default => 0, value => \$canvasPathSupport },
+      define => "ENABLE_CANVAS_PATH", default => 1, value => \$canvasPathSupport },
 
     { option => "canvas-proxy", desc => "Toggle CanvasProxy support",
       define => "ENABLE_CANVAS_PROXY", default => 0, value => \$canvasProxySupport },
@@ -196,6 +193,9 @@ my @features = (
     { option => "css3-text", desc => "Toggle CSS3 Text support",
       define => "ENABLE_CSS3_TEXT", default => (isEfl() || isGtk()), value => \$css3TextSupport },
 
+    { option => "css3-text-line-break", desc => "Toggle CSS3 Text Line Break support",
+      define => "ENABLE_CSS3_TEXT_LINE_BREAK", default => 0, value => \$css3TextLineBreakSupport },
+
     { option => "css-box-decoration-break", desc => "Toggle CSS box-decoration-break support",
       define => "ENABLE_CSS_BOX_DECORATION_BREAK", default => 1, value => \$cssBoxDecorationBreakSupport },
 
@@ -204,6 +204,9 @@ my @features = (
 
     { option => "css-image-resolution", desc => "Toggle CSS image-resolution support",
       define => "ENABLE_CSS_IMAGE_RESOLUTION", default => (isBlackBerry() || isGtk()), value => \$cssImageResolutionSupport },
+
+    { option => "css-image-set", desc => "Toggle CSS image-set support",
+      define => "ENABLE_CSS_IMAGE_SET", default => (isEfl() || isGtk()), value => \$cssImageSetSupport },
 
     { option => "css-regions", desc => "Toggle CSS Regions support",
       define => "ENABLE_CSS_REGIONS", default => 1, value => \$cssRegionsSupport },
@@ -221,7 +224,7 @@ my @features = (
       define => "ENABLE_CSS_TRANSFORMS_ANIMATIONS_UNPREFIXED", default => 1, value => \$cssAnimationsTransformsUnprefixedSupport },
 
     { option => "css-variables", desc => "Toggle CSS Variable support",
-      define => "ENABLE_CSS_VARIABLES", default => (isBlackBerry() || isEfl()), value => \$cssVariablesSupport },
+      define => "ENABLE_CSS_VARIABLES", default => (isBlackBerry() || isEfl() || isGtk()), value => \$cssVariablesSupport },
 
     { option => "custom-scheme-handler", desc => "Toggle Custom Scheme Handler support",
       define => "ENABLE_CUSTOM_SCHEME_HANDLER", default => (isBlackBerry() || isEfl()), value => \$customSchemeHandlerSupport },
@@ -245,7 +248,7 @@ my @features = (
       define => "ENABLE_DIRECTORY_UPLOAD", default => 0, value => \$directoryUploadSupport },
 
     { option => "dom4-events-constructor", desc => "Expose DOM4 Events constructors",
-      define => "ENABLE_DOM4_EVENTS_CONSTRUCTOR", default => isAppleWebKit(), value => \$dom4EventsConstructor },
+      define => "ENABLE_DOM4_EVENTS_CONSTRUCTOR", default => (isAppleWebKit() || isGtk()), value => \$dom4EventsConstructor },
 
     { option => "download-attribute", desc => "Toggle Download Attribute support",
       define => "ENABLE_DOWNLOAD_ATTRIBUTE", default => (isBlackBerry() || isEfl()), value => \$downloadAttributeSupport },
@@ -255,6 +258,9 @@ my @features = (
 
     { option => "filters", desc => "Toggle Filters support",
       define => "ENABLE_FILTERS", default => (isAppleWebKit() || isGtk() || isQt() || isEfl() || isBlackBerry()), value => \$filtersSupport },
+
+    { option => "font-load-events", desc => "Toggle Font Load Events support",
+      define => "ENABLE_FONT_LOAD_EVENTS", default => 0, value => \$fontLoadEventsSupport },
 
     { option => "ftpdir", desc => "Toggle FTP Directory support",
       define => "ENABLE_FTPDIR", default => !isWinCE(), value => \$ftpDirSupport },
@@ -326,7 +332,7 @@ my @features = (
       define => "ENABLE_LINK_PRERENDER", default => 0, value => \$linkPrerenderSupport },
 
     { option => "mathml", desc => "Toggle MathML support",
-      define => "ENABLE_MATHML", default => 1, value => \$mathmlSupport },
+      define => "ENABLE_MATHML", default => !isBlackBerry(), value => \$mathmlSupport },
 
     { option => "media-capture", desc => "Toggle Media Capture support",
       define => "ENABLE_MEDIA_CAPTURE", default => isEfl(), value => \$mediaCaptureSupport },
@@ -360,6 +366,9 @@ my @features = (
 
     { option => "network-info", desc => "Toggle Network Info support",
       define => "ENABLE_NETWORK_INFO", default => (isEfl() || isBlackBerry()), value => \$networkInfoSupport },
+
+    { option => "nosniff", desc => "Toggle support for 'X-Content-Type-Options: nosniff'",
+      define => "ENABLE_NOSNIFF", default => 0, value => \$nosniffSupport },
 
     { option => "notifications", desc => "Toggle Notifications support",
       define => "ENABLE_NOTIFICATIONS", default => isBlackBerry(), value => \$notificationsSupport },
@@ -457,12 +466,6 @@ my @features = (
     { option => "web-audio", desc => "Toggle Web Audio support",
       define => "ENABLE_WEB_AUDIO", default => (isEfl()), value => \$webAudioSupport },
 
-    { option => "web-intents", desc => "Toggle Web Intents support",
-      define => "ENABLE_WEB_INTENTS", default => 0, value => \$webIntentsSupport },
-
-    { option => "web-intents-tag", desc => "Toggle Web Intents Tag support",
-      define => "ENABLE_WEB_INTENTS_TAG", default => 0, value => \$webIntentsTagSupport },
-
     { option => "web-sockets", desc => "Toggle Web Sockets support",
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },
 
@@ -471,9 +474,6 @@ my @features = (
 
     { option => "workers", desc => "Toggle Workers support",
       define => "ENABLE_WORKERS", default => (isAppleWebKit() || isGtk() || isBlackBerry() || isEfl()), value => \$workersSupport },
-
-    { option => "xhr-response-blob", desc => "Toggle XHR Response BLOB support",
-      define => "ENABLE_XHR_RESPONSE_BLOB", default => isBlackBerry(), value => \$xhrResponseBlobSupport },
 
     { option => "xhr-timeout", desc => "Toggle XHR Timeout support",
       define => "ENABLE_XHR_TIMEOUT", default => (isEfl() || isGtk() || isAppleMacWebKit()), value => \$xhrTimeoutSupport },

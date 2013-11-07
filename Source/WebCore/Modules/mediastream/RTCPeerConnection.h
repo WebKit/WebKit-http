@@ -38,7 +38,6 @@
 #include "EventTarget.h"
 #include "ExceptionBase.h"
 #include "MediaStream.h"
-#include "MediaStreamList.h"
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnectionHandler.h"
 #include "RTCPeerConnectionHandlerClient.h"
@@ -50,6 +49,7 @@ namespace WebCore {
 class MediaConstraints;
 class MediaStreamTrack;
 class RTCConfiguration;
+class RTCDTMFSender;
 class RTCDataChannel;
 class RTCErrorCallback;
 class RTCSessionDescription;
@@ -85,17 +85,21 @@ public:
 
     String iceConnectionState() const;
 
-    MediaStreamList* localStreams() const;
+    MediaStreamVector getLocalStreams() const;
 
-    MediaStreamList* remoteStreams() const;
+    MediaStreamVector getRemoteStreams() const;
 
-    void addStream(const PassRefPtr<MediaStream>, const Dictionary& mediaConstraints, ExceptionCode&);
+    MediaStream* getStreamById(const String& streamId);
 
-    void removeStream(MediaStream*, ExceptionCode&);
+    void addStream(PassRefPtr<MediaStream>, const Dictionary& mediaConstraints, ExceptionCode&);
+
+    void removeStream(PassRefPtr<MediaStream>, ExceptionCode&);
 
     void getStats(PassRefPtr<RTCStatsCallback> successCallback, PassRefPtr<MediaStreamTrack> selector);
 
     PassRefPtr<RTCDataChannel> createDataChannel(String label, const Dictionary& dataChannelDict, ExceptionCode&);
+
+    PassRefPtr<RTCDTMFSender> createDTMFSender(PassRefPtr<MediaStreamTrack>, ExceptionCode&);
 
     void close(ExceptionCode&);
 
@@ -134,6 +138,7 @@ private:
     static PassRefPtr<RTCConfiguration> parseConfiguration(const Dictionary& configuration, ExceptionCode&);
     void scheduleDispatchEvent(PassRefPtr<Event>);
     void scheduledEventTimerFired(Timer<RTCPeerConnection>*);
+    bool hasLocalStreamWithTrackId(const String& trackId);
 
     // EventTarget implementation.
     virtual EventTargetData* eventTargetData();
@@ -150,8 +155,8 @@ private:
     IceGatheringState m_iceGatheringState;
     IceConnectionState m_iceConnectionState;
 
-    RefPtr<MediaStreamList> m_localStreams;
-    RefPtr<MediaStreamList> m_remoteStreams;
+    MediaStreamVector m_localStreams;
+    MediaStreamVector m_remoteStreams;
 
     Vector<RefPtr<RTCDataChannel> > m_dataChannels;
 

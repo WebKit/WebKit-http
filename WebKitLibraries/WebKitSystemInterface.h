@@ -1,6 +1,6 @@
 /*      
     WebKitSystemInterface.h
-    Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+    Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
 
     Public header file.
 */
@@ -90,6 +90,7 @@ AXUIElementRef WKCreateAXUIElementRef(id element);
 void WKUnregisterUniqueIdForElement(id element);
 
 BOOL WKShouldBlockPlugin(NSString *bundleIdentifier, NSString *bundleVersionString);
+BOOL WKIsPluginUpdateAvailable(NSString *bundleIdentifier);
 
 // Remote Accessibility API.
 void WKAXRegisterRemoteApp(void);
@@ -340,14 +341,6 @@ WKSoftwareCARendererRef WKSoftwareCARendererCreate(uint32_t contextID);
 void WKSoftwareCARendererDestroy(WKSoftwareCARendererRef);
 void WKSoftwareCARendererRender(WKSoftwareCARendererRef, CGContextRef, CGRect);
 
-typedef struct __WKCARemoteLayerClientRef *WKCARemoteLayerClientRef;
-
-WKCARemoteLayerClientRef WKCARemoteLayerClientMakeWithServerPort(mach_port_t port);
-void WKCARemoteLayerClientInvalidate(WKCARemoteLayerClientRef);
-uint32_t WKCARemoteLayerClientGetClientId(WKCARemoteLayerClientRef);
-void WKCARemoteLayerClientSetLayer(WKCARemoteLayerClientRef, CALayer *);
-CALayer *WKCARemoteLayerClientGetLayer(WKCARemoteLayerClientRef);
-
 typedef struct __WKCAContextRef *WKCAContextRef;
 
 WKCAContextRef WKCAContextMakeRemoteWithServerPort(mach_port_t port);
@@ -482,41 +475,6 @@ CGFloat WKNSElasticDeltaForReboundDelta(CGFloat delta);
 CGFloat WKNSReboundDeltaForElasticDelta(CGFloat delta);
 #endif
 
-typedef enum {
-    WKCaptionFontStyleDefault = 0,
-    WKCaptionFontStyleMonospacedWithSerif,
-    WKCaptionFontStyleProportionalWithSerif,
-    WKCaptionFontStyleMonospacedWithoutSerif,
-    WKCaptionFontStyleProportionalWithoutSerif,
-    WKCaptionFontStyleCasual,
-    WKCaptionFontStyleCursive,
-    WKCaptionFontStyleSmallCapital,
-    WKCaptionFontStyleMax
-} WKCaptionFontStyle;
-
-typedef enum {
-    WKCaptionTextEdgeStyleUndefined = 0,
-    WKCaptionTextEdgeStyleNone,
-    WKCaptionTextEdgeStyleRaised,
-    WKCaptionTextEdgeStyleDepressed,
-    WKCaptionTextEdgeStyleUniform,
-    WKCaptionTextEdgeStyleDropShadow,
-    WKCaptionTextEdgeStyleMax
-} WKCaptionTextEdgeStyle;
-
-bool WKCaptionAppearanceHasUserPreferences(void);
-bool WKCaptionAppearanceShowCaptionsWhenAvailable(void);
-CGColorRef WKCaptionAppearanceCopyForegroundColor(void);
-CGColorRef WKCaptionAppearanceCopyBackgroundColor(void);
-CGColorRef WKCaptionAppearanceCopyWindowColor(void);
-bool WKCaptionAppearanceGetForegroundOpacity(CGFloat*);
-bool WKCaptionAppearanceGetBackgroundOpacity(CGFloat*);
-bool WKCaptionAppearanceGetWindowOpacity(CGFloat*);
-CGFontRef WKCaptionAppearanceCopyFontForStyle(int fontStyle);
-bool WKCaptionAppearanceGetRelativeCharacterSize(CGFloat*);
-int WKCaptionAppearanceGetTextEdgeStyle(void);
-CFStringRef WKCaptionAppearanceGetSettingsChangedNotification(void);
-
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 typedef enum {
     WKOcclusionNotificationTypeApplicationBecameVisible,
@@ -533,18 +491,21 @@ bool WKRegisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclu
 bool WKUnregisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclusionNotificationHandler);
 bool WKEnableWindowOcclusionNotifications(NSInteger windowID, bool *outCurrentOcclusionState);
 
-enum {
-    WKProcessAssertionTypeVisible = (1UL << 10)
-};
-
-typedef NSUInteger WKProcessAssertionTypes;
-id WKNSProcessInfoProcessAssertionWithTypes(WKProcessAssertionTypes);
+extern const NSSystemBehaviors WKProcessSuppressionSystemBehaviors;
 #endif
 
 bool WKIsJavaPlugInActive(void);
 void WKActivateJavaPlugIn(void);
 
 void WKCFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+bool WKIsPublicSuffix(NSString *domain);
+
+CFArrayRef WKCFURLCacheCopyAllHostNamesInPersistentStoreForPartition(CFStringRef partition);
+void WKCFURLCacheDeleteHostNamesInPersistentStoreForPartition(CFArrayRef hostArray, CFStringRef partition);
+CFStringRef WKCachePartitionKey(void);
+#endif
 
 #ifdef __cplusplus
 }

@@ -1839,6 +1839,18 @@
     <ClCompile Include="..\Modules\webdatabase\DatabaseBackend.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendBase.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendContext.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\DatabaseBackendSync.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\DatabaseBase.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\DatabaseContext.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
@@ -1863,10 +1875,7 @@
     <ClCompile Include="..\Modules\webdatabase\DOMWindowWebDatabase.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\OriginQuotaManager.cpp">
-      <Filter>Modules\webdatabase</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\webdatabase\OriginUsageRecord.cpp">
+    <ClCompile Include="..\Modules\webdatabase\OriginLock.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLException.cpp">
@@ -1881,16 +1890,28 @@
     <ClCompile Include="..\Modules\webdatabase\SQLStatement.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\SQLStatementBackend.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLStatementSync.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransaction.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\SQLTransactionBackend.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\SQLTransactionBackendSync.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionClient.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionCoordinator.cpp">
+      <Filter>Modules\webdatabase</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Modules\webdatabase\SQLTransactionStateMachine.cpp">
       <Filter>Modules\webdatabase</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\webdatabase\SQLTransactionSync.cpp">
@@ -3217,9 +3238,6 @@
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\BlobData.cpp">
-      <Filter>platform\network</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\network\BlobRegistryImpl.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\BlobResourceHandle.cpp">
@@ -5118,13 +5136,13 @@
     <ClCompile Include="..\editing\UnlinkCommand.cpp">
       <Filter>editing</Filter>
     </ClCompile>
-    <ClCompile Include="..\editing\visible_units.cpp">
-      <Filter>editing</Filter>
-    </ClCompile>
     <ClCompile Include="..\editing\VisiblePosition.cpp">
       <Filter>editing</Filter>
     </ClCompile>
     <ClCompile Include="..\editing\VisibleSelection.cpp">
+      <Filter>editing</Filter>
+    </ClCompile>
+    <ClCompile Include="..\editing\VisibleUnits.cpp">
       <Filter>editing</Filter>
     </ClCompile>
     <ClCompile Include="..\editing\WrapContentsInDummySpanCommand.cpp">
@@ -5682,6 +5700,9 @@
     <ClCompile Include="..\html\parser\XSSAuditorDelegate.cpp">
       <Filter>html\parser</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\shadow\ClearButtonElement.cpp">
+      <Filter>html\shadow</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\shadow\ContentDistributor.cpp">
       <Filter>html\shadow</Filter>
     </ClCompile>
@@ -5877,9 +5898,6 @@
     <ClCompile Include="..\bindings\js\JSDedicatedWorkerContextCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDesktopNotificationsCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSDeviceMotionEventCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -6031,9 +6049,6 @@
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSNodeListCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSNotificationCustom.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
     <ClCompile Include="..\bindings\js\JSPluginElementFunctions.cpp">
@@ -6459,9 +6474,6 @@
     <ClCompile Include="..\inspector\InspectorDOMStorageAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
-    <ClCompile Include="..\inspector\InspectorDOMStorageResource.cpp">
-      <Filter>inspector</Filter>
-    </ClCompile>
     <ClCompile Include="..\inspector\InspectorFileSystemAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
@@ -6469,6 +6481,9 @@
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorFrontendHost.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\InspectorHeapProfilerAgent.cpp">
       <Filter>inspector</Filter>
     </ClCompile>
     <ClCompile Include="..\inspector\InspectorHistory.cpp">
@@ -6798,6 +6813,21 @@
     </ClCompile>
     <ClCompile Include="..\html\canvas\DataView.cpp">
       <Filter>html\canvas</Filter>
+    </ClCompile>
+    <ClCompile Include="..\html\parser\HTMLResourcePreloader.cpp">
+      <Filter>html\parser</Filter>
+    </ClCompile>
+    <ClCompile Include="..\page\CaptionUserPreferences.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
+    <ClCompile Include="..\svg\graphics\SVGImageForContainer.cpp">
+      <Filter>rendering\svg\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\inspector\TimelineTraceEventProcessor.cpp">
+      <Filter>inspector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\rendering\HitTestLocation.cpp">
+      <Filter>rendering</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -8448,6 +8478,15 @@
     <ClInclude Include="..\Modules\webdatabase\AbstractDatabaseServer.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatement.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\AbstractSQLStatementBackend.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\ChangeVersionData.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\ChangeVersionWrapper.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
@@ -8458,6 +8497,21 @@
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\DatabaseBackend.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendBase.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendContext.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\DatabaseBackendSync.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\DatabaseBase.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\DatabaseBasicTypes.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\DatabaseCallback.h">
@@ -8490,10 +8544,7 @@
     <ClInclude Include="..\Modules\webdatabase\DOMWindowWebDatabase.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\OriginQuotaManager.h">
-      <Filter>Modules\webdatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\webdatabase\OriginUsageRecord.h">
+    <ClInclude Include="..\Modules\webdatabase\OriginLock.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLCallbackWrapper.h">
@@ -8514,6 +8565,9 @@
     <ClInclude Include="..\Modules\webdatabase\SQLStatement.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\SQLStatementBackend.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLStatementCallback.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
@@ -8526,6 +8580,12 @@
     <ClInclude Include="..\Modules\webdatabase\SQLTransaction.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackend.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\SQLTransactionBackendSync.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionCallback.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
@@ -8536,6 +8596,12 @@
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionErrorCallback.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\SQLTransactionState.h">
+      <Filter>Modules\webdatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Modules\webdatabase\SQLTransactionStateMachine.h">
       <Filter>Modules\webdatabase</Filter>
     </ClInclude>
     <ClInclude Include="..\Modules\webdatabase\SQLTransactionSync.h">
@@ -9274,6 +9340,9 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\MemoryUsageSupport.h">
+      <Filter>platform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\platform\MainThreadTask.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\MIMETypeRegistry.h">
@@ -11268,12 +11337,6 @@
     <ClInclude Include="..\xml\XSLTUnicodeSort.h">
       <Filter>xml</Filter>
     </ClInclude>
-    <ClInclude Include="..\xml\parser\MarkupTokenBase.h">
-      <Filter>xml\parser</Filter>
-    </ClInclude>
-    <ClInclude Include="..\xml\parser\MarkupTokenizerBase.h">
-      <Filter>xml\parser</Filter>
-    </ClInclude>
     <ClInclude Include="..\xml\parser\MarkupTokenizerInlines.h">
       <Filter>xml\parser</Filter>
     </ClInclude>
@@ -11991,13 +12054,13 @@
     <ClInclude Include="..\editing\UnlinkCommand.h">
       <Filter>editing</Filter>
     </ClInclude>
-    <ClInclude Include="..\editing\visible_units.h">
-      <Filter>editing</Filter>
-    </ClInclude>
     <ClInclude Include="..\editing\VisiblePosition.h">
       <Filter>editing</Filter>
     </ClInclude>
     <ClInclude Include="..\editing\VisibleSelection.h">
+      <Filter>editing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\editing\VisibleUnits.h">
       <Filter>editing</Filter>
     </ClInclude>
     <ClInclude Include="..\editing\WrapContentsInDummySpanCommand.h">
@@ -12492,6 +12555,9 @@
     <ClInclude Include="..\html\WeekInputType.h">
       <Filter>html</Filter>
     </ClInclude>
+    <ClInclude Include="..\html\parser\AtomicHTMLToken.h">
+      <Filter>html\parser</Filter>
+    </ClInclude>
     <ClInclude Include="..\html\parser\BackgroundHTMLParser.h">
       <Filter>html\parser</Filter>
     </ClInclude>
@@ -12558,13 +12624,13 @@
     <ClInclude Include="..\html\parser\HTMLTokenizer.h">
       <Filter>html\parser</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\parser\HTMLTokenTypes.h">
-      <Filter>html\parser</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\parser\HTMLTreeBuilder.h">
       <Filter>html\parser</Filter>
     </ClInclude>
     <ClInclude Include="..\html\parser\HTMLViewSourceParser.h">
+      <Filter>html\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\parser\InputStreamPreprocessor.h">
       <Filter>html\parser</Filter>
     </ClInclude>
     <ClInclude Include="..\html\parser\NestingLevelIncrementer.h">
@@ -12581,6 +12647,9 @@
     </ClInclude>
     <ClInclude Include="..\html\parser\XSSAuditorDelegate.h">
       <Filter>html\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\html\shadow\ClearButtonElement.h">
+      <Filter>html\shadow</Filter>
     </ClInclude>
     <ClInclude Include="..\html\shadow\ContentDistributor.h">
       <Filter>html\shadow</Filter>
@@ -13719,9 +13788,6 @@
     <ClInclude Include="..\inspector\InspectorDOMStorageAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
-    <ClInclude Include="..\inspector\InspectorDOMStorageResource.h">
-      <Filter>inspector</Filter>
-    </ClInclude>
     <ClInclude Include="..\inspector\InspectorFileSystemAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
@@ -13735,6 +13801,9 @@
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorFrontendHost.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\InspectorHeapProfilerAgent.h">
       <Filter>inspector</Filter>
     </ClInclude>
     <ClInclude Include="..\inspector\InspectorHistory.h">
@@ -14267,6 +14336,18 @@
     <ClInclude Include="..\html\canvas\DataView.h">
       <Filter>html\canvas</Filter>
     </ClInclude>
+    <ClInclude Include="..\html\parser\HTMLResourcePreloader.h">
+      <Filter>html\parser</Filter>
+    </ClInclude>
+    <ClInclude Include="..\svg\graphics\SVGImageForContainer.h">
+      <Filter>rendering\svg\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inspector\TimelineTraceEventProcessor.h">
+      <Filter>inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="..\rendering\HitTestLocation.h">
+      <Filter>rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\css\CSSGrammar.y.in">
@@ -14573,6 +14654,9 @@
       <Filter>inspector\front-end</Filter>
     </None>
     <None Include="..\inspector\front-end\FilteredItemSelectionDialog.js">
+      <Filter>inspector\front-end</Filter>
+    </None>
+    <None Include="..\inspector\front-end\FlameChart.js">
       <Filter>inspector\front-end</Filter>
     </None>
     <None Include="..\inspector\front-end\FontView.js">

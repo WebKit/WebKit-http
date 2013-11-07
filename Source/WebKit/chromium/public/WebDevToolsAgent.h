@@ -53,8 +53,6 @@ public:
     enum BrowserDataHint {
         BrowserDataHintNone,
         BrowserDataHintScreenshot,
-        BrowserDataHintAcceptJavaScriptDialog,
-        BrowserDataHintDismissJavaScriptDialog,
     };
 
     virtual ~WebDevToolsAgent() {}
@@ -76,6 +74,11 @@ public:
     virtual void inspectElementAt(const WebPoint&) = 0;
     virtual void setProcessId(long) = 0;
 
+    virtual void didBeginFrame() = 0;
+    virtual void didCancelFrame() = 0;
+    virtual void willComposite() = 0;
+    virtual void didComposite() = 0;
+    
     // Exposed for TestRunner.
     virtual void evaluateInWebInspector(long callId, const WebString& script) = 0;
 

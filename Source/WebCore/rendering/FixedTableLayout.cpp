@@ -77,8 +77,9 @@ FixedTableLayout::FixedTableLayout(RenderTable* table)
 {
 }
 
-int FixedTableLayout::calcWidthArray(int)
+int FixedTableLayout::calcWidthArray()
 {
+    // FIXME: We might want to wait until we have all of the first row before computing for the first time.
     int usedWidth = 0;
 
     // iterate over all <col> elements
@@ -175,27 +176,17 @@ int FixedTableLayout::calcWidthArray(int)
     return usedWidth;
 }
 
-void FixedTableLayout::computePreferredLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth)
+void FixedTableLayout::computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth)
 {
-    // FIXME: This entire calculation is incorrect for both minwidth and maxwidth.
-    
-    // we might want to wait until we have all of the first row before
-    // layouting for the first time.
+    minWidth = maxWidth = calcWidthArray();
+}
 
-    // only need to calculate the minimum width as the sum of the
-    // cols/cells with a fixed width.
-    //
-    // The maximum width is max(minWidth, tableWidth).
-    int bordersPaddingAndSpacing = m_table->bordersPaddingAndSpacingInRowDirection();
+void FixedTableLayout::applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const
+{
+    Length tableLogicalWidth = m_table->style()->logicalWidth();
+    if (tableLogicalWidth.isFixed() && tableLogicalWidth.isPositive())
+        minWidth = maxWidth = max<int>(minWidth, tableLogicalWidth.value() - m_table->bordersPaddingAndSpacingInRowDirection());
 
-    int tableLogicalWidth = m_table->style()->logicalWidth().isFixed() ? m_table->style()->logicalWidth().value() - bordersPaddingAndSpacing : 0;
-    int mw = calcWidthArray(tableLogicalWidth) + bordersPaddingAndSpacing;
-
-    minWidth = max(mw, tableLogicalWidth);
-    maxWidth = minWidth;
-
-    // This quirk is very similar to one that exists in RenderBlock::calcBlockPrefWidths().
-    // Here's the example for this one:
     /*
         <table style="width:100%; background-color:red"><tr><td>
             <table style="background-color:blue"><tr><td>
@@ -220,7 +211,7 @@ void FixedTableLayout::layout()
     // FIXME: It is possible to be called without having properly updated our internal representation.
     // This means that our preferred logical widths were not recomputed as expected.
     if (nEffCols != m_width.size()) {
-        calcWidthArray(tableLogicalWidth);
+        calcWidthArray();
         // FIXME: Table layout shouldn't modify our table structure (but does due to columns and column-groups).
         nEffCols = m_table->numEffCols();
     }

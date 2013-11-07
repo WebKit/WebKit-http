@@ -29,7 +29,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "Dictionary.h"
-#include "ScriptValue.h" 
+#include "ScriptValue.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -37,8 +37,7 @@ namespace WebCore {
 class DOMRequestState;
 class IDBKey;
 class IDBKeyPath;
-
-PassRefPtr<IDBKey> createIDBKeyFromValue(JSC::ExecState*, JSC::JSValue);
+class SharedBuffer;
 
 IDBKeyPath idbKeyPathFromValue(JSC::ExecState*, JSC::JSValue);
 
@@ -46,6 +45,7 @@ bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey>, ScriptVal
 PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState*, const ScriptValue&, const IDBKeyPath&);
 bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const ScriptValue&, const IDBKeyPath&);
 ScriptValue deserializeIDBValue(DOMRequestState*, PassRefPtr<SerializedScriptValue>);
+ScriptValue deserializeIDBValueBuffer(DOMRequestState*, PassRefPtr<SharedBuffer>);
 ScriptValue idbKeyToScriptValue(DOMRequestState*, PassRefPtr<IDBKey>);
 PassRefPtr<IDBKey> scriptValueToIDBKey(DOMRequestState*, const ScriptValue&);
 

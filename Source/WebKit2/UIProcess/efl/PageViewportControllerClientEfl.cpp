@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
+ * Copyright (C) 2013 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,13 +27,8 @@
 #include "config.h"
 #include "PageViewportControllerClientEfl.h"
 
-#if USE(TILED_BACKING_STORE)
-
-#include "CoordinatedLayerTreeHostProxy.h"
 #include "EwkView.h"
 #include "PageViewportController.h"
-#include "TransformationMatrix.h"
-#include <WebCore/CoordinatedGraphicsScene.h>
 
 using namespace WebCore;
 
@@ -45,33 +41,9 @@ PageViewportControllerClientEfl::PageViewportControllerClientEfl(EwkView* view)
     ASSERT(m_view);
 }
 
-PageViewportControllerClientEfl::~PageViewportControllerClientEfl()
+void PageViewportControllerClientEfl::didChangeContentsSize(const WebCore::IntSize&)
 {
-}
-
-DrawingAreaProxy* PageViewportControllerClientEfl::drawingArea() const
-{
-    return m_view->page()->drawingArea();
-}
-
-void PageViewportControllerClientEfl::setRendererActive(bool active)
-{
-    drawingArea()->coordinatedLayerTreeHostProxy()->coordinatedGraphicsScene()->setActive(active);
-}
-
-void PageViewportControllerClientEfl::updateViewportSize()
-{
-    ASSERT(m_controller);
-    FloatSize size = m_view->size();
-    // The viewport controller expects sizes in UI units, and not raw device units.
-    size.scale(1 / m_controller->deviceScaleFactor());
-    m_controller->didChangeViewportSize(size);
-}
-
-void PageViewportControllerClientEfl::didChangeContentsSize(const WebCore::IntSize& contentsSize)
-{
-    drawingArea()->coordinatedLayerTreeHostProxy()->setContentsSize(contentsSize);
-    m_view->update();
+    m_view->scheduleUpdateDisplay();
 }
 
 void PageViewportControllerClientEfl::setViewportPosition(const WebCore::FloatPoint& contentsPoint)
@@ -80,7 +52,6 @@ void PageViewportControllerClientEfl::setViewportPosition(const WebCore::FloatPo
 
     FloatPoint pos(contentsPoint);
     pos.scale(m_view->pageScaleFactor(), m_view->pageScaleFactor());
-    pos.scale(m_view->deviceScaleFactor(), m_view->deviceScaleFactor());
     m_view->setPagePosition(pos);
 
     m_controller->didChangeContentsVisibility(m_contentPosition, m_view->pageScaleFactor());
@@ -91,15 +62,9 @@ void PageViewportControllerClientEfl::setPageScaleFactor(float newScale)
     m_view->setPageScaleFactor(newScale);
 }
 
-void PageViewportControllerClientEfl::didResumeContent()
-{
-    ASSERT(m_controller);
-    m_controller->didChangeContentsVisibility(m_contentPosition, m_view->pageScaleFactor());
-}
-
 void PageViewportControllerClientEfl::didChangeVisibleContents()
 {
-    m_view->update();
+    m_view->scheduleUpdateDisplay();
 }
 
 void PageViewportControllerClientEfl::didChangeViewportAttributes()
@@ -112,5 +77,3 @@ void PageViewportControllerClientEfl::setController(PageViewportController* cont
 }
 
 } // namespace WebKit
-#endif // USE(TILED_BACKING_STORE)
-

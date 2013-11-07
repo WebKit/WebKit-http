@@ -259,7 +259,7 @@ void SVGAnimationElement::beginElement()
 
 void SVGAnimationElement::beginElementAt(float offset)
 {
-    if (isnan(offset))
+    if (std::isnan(offset))
         return;
     SMILTime elapsed = this->elapsed();
     addBeginTime(elapsed, elapsed + offset, SMILTimeWithOrigin::ScriptOrigin);
@@ -272,7 +272,7 @@ void SVGAnimationElement::endElement()
 
 void SVGAnimationElement::endElementAt(float offset)
 {
-    if (isnan(offset))
+    if (std::isnan(offset))
         return;
     SMILTime elapsed = this->elapsed();
     addEndTime(elapsed, elapsed + offset, SMILTimeWithOrigin::ScriptOrigin);
@@ -354,7 +354,7 @@ bool SVGAnimationElement::isAccumulated() const
 bool SVGAnimationElement::isTargetAttributeCSSProperty(SVGElement* targetElement, const QualifiedName& attributeName)
 {
     ASSERT(targetElement);
-    if (!targetElement->isStyled())
+    if (!targetElement->isSVGStyledElement())
         return false;
 
     return SVGStyledElement::isAnimatableCSSProperty(attributeName);
@@ -385,6 +385,10 @@ void SVGAnimationElement::calculateKeyTimesForCalcModePaced()
     ASSERT(valuesCount >= 1);
     if (valuesCount == 1)
         return;
+
+    // FIXME, webkit.org/b/109010: m_keyTimes should not be modified in this function.
+    m_keyTimes.clear();
+
     Vector<float> keyTimesForPaced;
     float totalDistance = 0;
     keyTimesForPaced.append(0);
@@ -405,7 +409,7 @@ void SVGAnimationElement::calculateKeyTimesForCalcModePaced()
     keyTimesForPaced[keyTimesForPaced.size() - 1] = 1;
 
     // Use key times calculated based on pacing instead of the user provided ones.
-    m_keyTimes.swap(keyTimesForPaced);
+    m_keyTimes = keyTimesForPaced;
 }
 
 static inline double solveEpsilon(double duration) { return 1 / (200 * duration); }
@@ -427,7 +431,7 @@ unsigned SVGAnimationElement::calculateKeyTimesIndex(float percent) const
 float SVGAnimationElement::calculatePercentForSpline(float percent, unsigned splineIndex) const
 {
     ASSERT(calcMode() == CalcModeSpline);
-    ASSERT(splineIndex < m_keySplines.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(splineIndex < m_keySplines.size());
     UnitBezier bezier = m_keySplines[splineIndex];
     SMILTime duration = simpleDuration();
     if (!duration.isFinite())
@@ -631,7 +635,7 @@ void SVGAnimationElement::updateAnimation(float percent, unsigned repeatCount, S
 void SVGAnimationElement::computeCSSPropertyValue(SVGElement* element, CSSPropertyID id, String& value)
 {
     ASSERT(element);
-    ASSERT(element->isStyled());
+    ASSERT(element->isSVGStyledElement());
 
     // Don't include any properties resulting from CSS Transitions/Animations or SMIL animations, as we want to retrieve the "base value".
     element->setUseOverrideComputedStyle(true);
@@ -649,8 +653,8 @@ void SVGAnimationElement::adjustForInheritance(SVGElement* targetElement, const 
     if (!parent || !parent->isSVGElement())
         return;
 
-    SVGElement* svgParent = static_cast<SVGElement*>(parent);
-    if (!svgParent->isStyled())
+    SVGElement* svgParent = toSVGElement(parent);
+    if (!svgParent->isSVGStyledElement())
         return;
     computeCSSPropertyValue(svgParent, cssPropertyID(attributeName.localName()), value);
 }
@@ -660,7 +664,7 @@ static bool inheritsFromProperty(SVGElement* targetElement, const QualifiedName&
     ASSERT(targetElement);
     DEFINE_STATIC_LOCAL(const AtomicString, inherit, ("inherit", AtomicString::ConstructFromLiteral));
     
-    if (value.isEmpty() || value != inherit || !targetElement->isStyled())
+    if (value.isEmpty() || value != inherit || !targetElement->isSVGStyledElement())
         return false;
     return SVGStyledElement::isAnimatableCSSProperty(attributeName);
 }

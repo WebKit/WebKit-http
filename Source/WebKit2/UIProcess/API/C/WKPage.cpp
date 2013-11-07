@@ -394,6 +394,27 @@ bool WKPageIsPinnedToBottomSide(WKPageRef pageRef)
     return toImpl(pageRef)->isPinnedToBottomSide();
 }
 
+
+bool WKPageRubberBandsAtBottom(WKPageRef pageRef)
+{
+    return toImpl(pageRef)->rubberBandsAtBottom();
+}
+
+void WKPageSetRubberBandsAtBottom(WKPageRef pageRef, bool rubberBandsAtBottom)
+{
+    toImpl(pageRef)->setRubberBandsAtBottom(rubberBandsAtBottom);
+}
+
+bool WKPageRubberBandsAtTop(WKPageRef pageRef)
+{
+    return toImpl(pageRef)->rubberBandsAtTop();
+}
+
+void WKPageSetRubberBandsAtTop(WKPageRef pageRef, bool rubberBandsAtTop)
+{
+    toImpl(pageRef)->setRubberBandsAtTop(rubberBandsAtTop);
+}
+
 void WKPageSetPaginationMode(WKPageRef pageRef, WKPaginationMode paginationMode)
 {
     Pagination::Mode mode;
@@ -793,4 +814,52 @@ void WKPageSetMayStartMediaWhenInWindow(WKPageRef pageRef, bool mayStartMedia)
 void WKPageSetInvalidMessageFunction(WKPageInvalidMessageFunction)
 {
     // FIXME: Remove this function when doing so won't break WebKit nightlies.
+}
+
+WKStringRef WKPageGetPluginInformationBundleIdentifierKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationBundleIdentifierKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationBundleVersionKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationBundleVersionKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationDisplayNameKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationDisplayNameKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationFrameURLKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationFrameURLKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationMIMETypeKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationMIMETypeKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationPageURLKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationPageURLKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationPluginspageAttributeURLKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationPluginspageAttributeURLKey()).leakRef();
+    return toAPI(key);
+}
+
+WKStringRef WKPageGetPluginInformationPluginURLKey()
+{
+    static WebString* key = WebString::create(WebPageProxy::pluginInformationPluginURLKey()).leakRef();
+    return toAPI(key);
 }

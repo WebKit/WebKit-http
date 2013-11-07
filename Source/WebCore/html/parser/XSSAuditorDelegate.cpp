@@ -29,14 +29,22 @@
 #include "Console.h"
 #include "DOMWindow.h"
 #include "Document.h"
+#include "DocumentLoader.h"
 #include "FormData.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClient.h"
+#include "HTMLParserIdioms.h"
 #include "InspectorValues.h"
 #include "PingLoader.h"
 #include "SecurityOrigin.h"
 
 namespace WebCore {
+
+bool XSSInfo::isSafeToSendToAnotherThread() const
+{
+    return m_reportURL.isSafeToSendToAnotherThread();
+}
 
 XSSAuditorDelegate::XSSAuditorDelegate(Document* document)
     : m_document(document)
@@ -46,36 +54,46 @@ XSSAuditorDelegate::XSSAuditorDelegate(Document* document)
     ASSERT(m_document);
 }
 
-void XSSAuditorDelegate::didBlockScript(PassOwnPtr<DidBlockScriptRequest> request)
+void XSSAuditorDelegate::didBlockScript(const XSSInfo& xssInfo)
 {
     ASSERT(isMainThread());
 
     // FIXME: Consider using a more helpful console message.
     DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Refused to execute a JavaScript script. Source code of script found within request.\n")));
-    m_document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, consoleMessage);
+    m_document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, consoleMessage);
 
-    if (request->m_didBlockEntirePage)
-        m_document->frame()->loader()->stopAllLoaders();
+    FrameLoader* frameLoader = m_document->frame()->loader();
+
+    if (xssInfo.m_didBlockEntirePage)
+        frameLoader->stopAllLoaders();
 
     if (!m_didNotifyClient) {
-        m_document->frame()->loader()->client()->didDetectXSS(m_document->url(), request->m_didBlockEntirePage);
+        frameLoader->client()->didDetectXSS(m_document->url(), xssInfo.m_didBlockEntirePage);
         m_didNotifyClient = true;
     }
 
-    if (!request->m_reportURL.isEmpty()) {
+    if (!xssInfo.m_reportURL.isEmpty()) {
         RefPtr<InspectorObject> reportDetails = InspectorObject::create();
-        reportDetails->setString("request-url", request->m_originalURL);
-        reportDetails->setString("request-body", request->m_originalHTTPBody);
+        reportDetails->setString("request-url", m_document->url().string());
+
+        String httpBody;
+        if (frameLoader->documentLoader()) {
+            if (FormData* formData = frameLoader->documentLoader()->originalRequest().httpBody())
+                httpBody = formData->flattenToString();
+        }
+        reportDetails->setString("request-body", httpBody);
 
         RefPtr<InspectorObject> reportObject = InspectorObject::create();
         reportObject->setObject("xss-report", reportDetails.release());
 
         RefPtr<FormData> report = FormData::create(reportObject->toJSONString().utf8().data());
-        PingLoader::sendViolationReport(m_document->frame(), request->m_reportURL, report);
+        PingLoader::sendViolationReport(m_document->frame(), xssInfo.m_reportURL, report);
     }
 
-    if (request->m_didBlockEntirePage)
-        m_document->frame()->navigationScheduler()->scheduleLocationChange(m_document->securityOrigin(), blankURL(), String());
+    if (xssInfo.m_didBlockEntirePage) {
+        m_document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, String("Entire page will be blocked."));
+        m_document->frame()->navigationScheduler()->scheduleLocationChange(m_document->securityOrigin(), String("data:text/html,<p></p>"), blankURL());
+    }
 }
 
 } // namespace WebCore

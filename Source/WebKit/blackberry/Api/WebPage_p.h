@@ -142,10 +142,10 @@ public:
     WebCore::IntPoint calculateReflowedScrollPosition(const WebCore::FloatPoint& anchorOffset, double inverseScale);
     void setTextReflowAnchorPoint(const Platform::IntPoint& focalPoint);
 
-    void restoreHistoryViewState(Platform::IntSize contentsSize, Platform::IntPoint scrollPosition, double scale, bool shouldReflowBlock);
+    void restoreHistoryViewState(const WebCore::IntPoint& scrollPosition, double scale, bool shouldReflowBlock);
 
-    // Perform actual zoom for block zoom.
-    void zoomBlock();
+    // Perform actual zoom for after zoom animation.
+    void zoomAnimationFinished(double finalScale, const WebCore::FloatPoint& finalDocumentScrollPosition, bool shouldConstrainScrollingToContentEdge);
 
     // Called by the backing store as well as the method below.
     void requestLayoutIfNeeded() const;
@@ -321,6 +321,7 @@ public:
 #endif
 
     void selectionChanged(WebCore::Frame*);
+    void setOverlayExpansionPixelHeight(int);
 
     void updateDelegatedOverlays(bool dispatched = false);
 
@@ -421,7 +422,6 @@ public:
     void releaseLayerResourcesCompositingThread();
     void suspendRootLayerCommit();
     void resumeRootLayerCommit();
-    void blitVisibleContents();
 
     void scheduleCompositingRun();
 #endif
@@ -472,6 +472,8 @@ public:
     NotificationManager& notificationManager() { return m_notificationManager; };
 #endif
 
+    void animateToScaleAndDocumentScrollPosition(double destinationZoomScale, const WebCore::FloatPoint& destinationScrollPosition, bool shouldConstrainScrollingToContentEdge = true);
+
     WebPage* m_webPage;
     WebPageClient* m_client;
     WebCore::InspectorClientBlackBerry* m_inspectorClient;
@@ -481,6 +483,7 @@ public:
     WebSettings* m_webSettings;
     WebCookieJar* m_cookieJar;
     OwnPtr<WebTapHighlight> m_tapHighlight;
+    OwnPtr<WebTapHighlight> m_selectionHighlight;
     OwnPtr<SelectionOverlay> m_selectionOverlay;
 
     bool m_visible;
@@ -541,16 +544,13 @@ public:
     double m_maximumScale;
     bool m_forceRespectViewportArguments;
 
-    // Block zoom animation data.
-    WebCore::FloatPoint m_finalBlockPoint;
-    WebCore::FloatPoint m_finalBlockPointReflowOffset;
-    double m_blockZoomFinalScale;
+    // Block zoom & zoom/scroll animation data.
+    WebCore::FloatPoint m_finalAnimationDocumentScrollPositionReflowOffset;
     RefPtr<WebCore::Node> m_currentPinchZoomNode;
     WebCore::FloatPoint m_anchorInNodeRectRatio;
     RefPtr<WebCore::Node> m_currentBlockZoomNode;
     RefPtr<WebCore::Node> m_currentBlockZoomAdjustedNode;
     bool m_shouldReflowBlock;
-    bool m_shouldConstrainScrollingToContentEdge;
 
     double m_lastUserEventTimestamp; // Used to detect user scrolling.
 
@@ -582,7 +582,7 @@ public:
 
     int m_pendingOrientation;
 
-    RefPtr<WebCore::Node> m_fullscreenVideoNode;
+    RefPtr<WebCore::Node> m_fullscreenNode;
     RefPtr<WebCore::PluginView> m_fullScreenPluginView;
 
     typedef HashMap<const WebCore::Frame*, BackingStoreClient*> BackingStoreClientForFrameMap;

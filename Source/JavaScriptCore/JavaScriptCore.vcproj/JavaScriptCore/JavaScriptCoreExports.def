@@ -25,6 +25,7 @@ EXPORTS
     ??0RefCountedLeakCounter@WTF@@QAE@PBD@Z
     ??0RegExpObject@JSC@@IAE@PAVJSGlobalObject@1@PAVStructure@1@PAVRegExp@1@@Z
     ??0SHA1@WTF@@QAE@XZ
+    ??0SourceProvider@JSC@@QAE@ABVString@WTF@@ABVTextPosition@3@@Z
     ??0StringObject@JSC@@IAE@AAVJSGlobalData@1@PAVStructure@1@@Z
     ??0StringPrintStream@WTF@@QAE@XZ
     ??0Structure@JSC@@AAE@AAVJSGlobalData@1@PAVJSGlobalObject@1@VJSValue@1@ABVTypeInfo@1@PBUClassInfo@1@EI@Z
@@ -46,6 +47,7 @@ EXPORTS
     ??1MemoryInstrumentation@WTF@@UAE@XZ
     ??1Mutex@WTF@@QAE@XZ
     ??1RefCountedLeakCounter@WTF@@QAE@XZ
+    ??1SourceProvider@JSC@@UAE@XZ
     ??1SourceProviderCache@JSC@@QAE@XZ
     ??1StringPrintStream@WTF@@UAE@XZ
     ??1ThreadCondition@WTF@@QAE@XZ
@@ -53,6 +55,7 @@ EXPORTS
     ??1WTFThreadData@WTF@@QAE@XZ
     ??8MediaTime@WTF@@QBE_NABV01@@Z 
     ??8WTF@@YA_NABVCString@0@0@Z
+    ??8WTF@@YA_NABVCString@0@PBD@Z
     ??GMediaTime@WTF@@QBE?AV01@ABV01@@Z 
     ??HMediaTime@WTF@@QBE?AV01@ABV01@@Z 
     ??MMediaTime@WTF@@QBE_NABV01@@Z 
@@ -93,7 +96,6 @@ EXPORTS
     ?bufferLengthForStringDecimal@DecimalNumber@WTF@@QBEIXZ
     ?bufferLengthForStringExponential@DecimalNumber@WTF@@QBEIXZ
     ?byteCompile@Yarr@JSC@@YA?AV?$PassOwnPtr@UBytecodePattern@Yarr@JSC@@@WTF@@AAUYarrPattern@12@PAVBumpPointerAllocator@4@@Z
-    ?byteSize@SourceProviderCache@JSC@@QBEIXZ
     ?calculatedFunctionName@DebuggerCallFrame@JSC@@QBE?AVString@WTF@@XZ
     ?calculateDSTOffset@WTF@@YANNN@Z
     ?calculateStringHashAndLengthFromUTF8MaskingTop8Bits@Unicode@WTF@@YAIPBD0AAI1@Z
@@ -102,7 +104,7 @@ EXPORTS
     ?callHostFunctionAsConstructor@JSC@@YI_JPAVExecState@1@@Z
     ?callOnMainThread@WTF@@YAXP6AXPAX@Z0@Z
     ?callOnMainThreadAndWait@WTF@@YAXP6AXPAX@Z0@Z
-    ?callReportObjectInfo@MemoryInstrumentation@WTF@@CAXPAVMemoryObjectInfo@2@PBXPBDI@Z
+    ?callReportObjectInfo@MemoryClassInfo@WTF@@SAXPAVMemoryObjectInfo@2@PBXPBD2I@Z
     ?cancelCallOnMainThread@WTF@@YAXP6AXPAX@Z0@Z
     ?canShrink@StringBuilder@WTF@@QBE_NXZ
     ?capacity@Heap@JSC@@QAEIXZ
@@ -232,6 +234,7 @@ EXPORTS
     ?getCallableObjectSlow@JSC@@YAPAVJSCell@1@PAV21@@Z
     ?getCallData@JSCell@JSC@@SA?AW4CallType@2@PAV12@AATCallData@2@@Z
     ?getConstructData@JSCell@JSC@@SA?AW4ConstructType@2@PAV12@AATConstructData@2@@Z
+    ?getID@SourceProvider@JSC@@AAEXXZ
     ?getObject@JSCell@JSC@@QAEPAVJSObject@2@XZ
     ?getObjectType@MemoryInstrumentation@WTF@@CAPBDPAVMemoryObjectInfo@2@@Z
     ?getOwnNonIndexPropertyNames@JSObject@JSC@@SAXPAV12@PAVExecState@2@AAVPropertyNameArray@2@W4EnumerationMode@2@@Z
@@ -265,7 +268,7 @@ EXPORTS
     ?indefiniteTime@MediaTime@WTF@@SAABV12@XZ 
     ?init@AtomicString@WTF@@SAXXZ
     ?init@JSGlobalObject@JSC@@AAEXPAVJSObject@2@@Z
-    ?init@MemoryClassInfo@WTF@@AAEXPBXPBDI@Z
+    ?init@MemoryClassInfo@WTF@@AAEXPBXPBD1I@Z
     ?initialize@double_conversion@WTF@@YAXXZ
     ?initializeMainThread@WTF@@YAXXZ
     ?initializeThreading@JSC@@YAXXZ

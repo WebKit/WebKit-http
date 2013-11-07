@@ -24,6 +24,7 @@
 
 #include "FloatQuad.h"
 #include "FloatRect.h"
+#include "HitTestLocation.h"
 #include "HitTestRequest.h"
 #include "LayoutRect.h"
 #include "TextDirection.h"
@@ -44,62 +45,6 @@ class KURL;
 class Node;
 class RenderRegion;
 class Scrollbar;
-
-// FIXME: HitTestLocation should be moved to a separate file.
-class HitTestLocation {
-public:
-
-    HitTestLocation();
-    HitTestLocation(const LayoutPoint&);
-    HitTestLocation(const FloatPoint&);
-    HitTestLocation(const FloatPoint&, const FloatQuad&);
-    // Pass non-zero padding values to perform a rect-based hit test.
-    HitTestLocation(const LayoutPoint& centerPoint, unsigned topPadding, unsigned rightPadding, unsigned bottomPadding, unsigned leftPadding);
-    // Make a copy the HitTestLocation in a new region by applying given offset to internal point and area.
-    HitTestLocation(const HitTestLocation&, const LayoutSize& offset, RenderRegion* = 0);
-    HitTestLocation(const HitTestLocation&);
-    ~HitTestLocation();
-    HitTestLocation& operator=(const HitTestLocation&);
-
-    const LayoutPoint& point() const { return m_point; }
-    IntPoint roundedPoint() const { return roundedIntPoint(m_point); }
-
-    RenderRegion* region() const { return m_region; }
-
-    // Rect-based hit test related methods.
-    bool isRectBasedTest() const { return m_isRectBased; }
-    bool isRectilinear() const { return m_isRectilinear; }
-    IntRect boundingBox() const { return m_boundingBox; }
-
-    static IntRect rectForPoint(const LayoutPoint&, unsigned topPadding, unsigned rightPadding, unsigned bottomPadding, unsigned leftPadding);
-    int topPadding() const { return roundedPoint().y() - m_boundingBox.y(); }
-    int rightPadding() const { return m_boundingBox.maxX() - roundedPoint().x() - 1; }
-    int bottomPadding() const { return m_boundingBox.maxY() - roundedPoint().y() - 1; }
-    int leftPadding() const { return roundedPoint().x() - m_boundingBox.x(); }
-
-    bool intersects(const LayoutRect&) const;
-    bool intersects(const FloatRect&) const;
-
-    const FloatPoint& transformedPoint() const { return m_transformedPoint; }
-    const FloatQuad& transformedRect() const { return m_transformedRect; }
-
-private:
-    template<typename RectType>
-    bool intersectsRect(const RectType&) const;
-    void move(const LayoutSize& offset);
-
-    // This is cached forms of the more accurate point and area below.
-    LayoutPoint m_point;
-    IntRect m_boundingBox;
-
-    FloatPoint m_transformedPoint;
-    FloatQuad m_transformedRect;
-
-    RenderRegion* m_region; // The region we're inside.
-
-    bool m_isRectBased;
-    bool m_isRectilinear;
-};
 
 class HitTestResult {
 public:
@@ -125,12 +70,11 @@ public:
     bool isRectBasedTest() const { return m_hitTestLocation.isRectBasedTest(); }
 
     // The hit-tested point in the coordinates of the main frame.
-    const LayoutPoint& pointInMainFrame() const { return m_pointInMainFrame; }
+    const LayoutPoint& pointInMainFrame() const { return m_hitTestLocation.point(); }
     IntPoint roundedPointInMainFrame() const { return roundedIntPoint(pointInMainFrame()); }
-    void setPointInMainFrame(const LayoutPoint& p) { m_pointInMainFrame = p; }
 
     // The hit-tested point in the coordinates of the innerNode frame, the frame containing innerNode.
-    const LayoutPoint& pointInInnerNodeFrame() const { return m_hitTestLocation.point(); }
+    const LayoutPoint& pointInInnerNodeFrame() const { return m_pointInInnerNodeFrame; }
     IntPoint roundedPointInInnerNodeFrame() const { return roundedIntPoint(pointInInnerNodeFrame()); }
     Frame* innerNodeFrame() const;
 
@@ -203,7 +147,7 @@ private:
 
     RefPtr<Node> m_innerNode;
     RefPtr<Node> m_innerNonSharedNode;
-    LayoutPoint m_pointInMainFrame; // The hit-tested point in main-frame coordinates.
+    LayoutPoint m_pointInInnerNodeFrame; // The hit-tested point in innerNode frame coordinates.
     LayoutPoint m_localPoint; // A point in the local coordinate space of m_innerNonSharedNode's renderer. Allows us to efficiently
                               // determine where inside the renderer we hit on subsequent operations.
     RefPtr<Element> m_innerURLElement;

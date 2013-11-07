@@ -17,7 +17,7 @@ function test()
     var partSize = sourceStringified.length >> 3;
 
     function injectMockProfile(overrideGetProfile, callback) {
-        var dispatcher = InspectorBackend._domainDispatchers["Profiler"];
+        var dispatcher = InspectorBackend._domainDispatchers["HeapProfiler"];
         var panel = WebInspector.panels.profiles;
         panel._reset();
 
@@ -28,7 +28,7 @@ function test()
             maxJSObjectId: 6
         });
 
-        var profileHeader = panel._profiles[0];
+        var profileHeader = panel.getProfileType("HEAP").getProfiles()[0];
 
         function getHeapSnapshotMock(uid) {
             for (var i = 0, l = sourceStringified.length; i < l; i += partSize)
@@ -39,13 +39,13 @@ function test()
         function snapshotLoaded()
         {
             if (overrideGetProfile)
-                InspectorTest.override(ProfilerAgent, "getHeapSnapshot", getHeapSnapshotMock);
+                InspectorTest.override(HeapProfilerAgent, "getHeapSnapshot", getHeapSnapshotMock);
             callback(profileHeader);
         }
         InspectorTest.addSniffer(profileHeader, "_snapshotReceived", snapshotLoaded);
 
-        InspectorTest.override(ProfilerAgent, "getHeapSnapshot", getHeapSnapshotMock);
-        panel.showProfile(profileHeader);
+        InspectorTest.override(HeapProfilerAgent, "getHeapSnapshot", getHeapSnapshotMock);
+        panel._showProfile(profileHeader);
     }
 
     InspectorTest.runTestSuite([

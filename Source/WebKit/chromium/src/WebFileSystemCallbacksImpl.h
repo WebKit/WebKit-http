@@ -32,8 +32,8 @@
 #define WebFileSystemCallbacksImpl_h
 
 #include "FileSystemType.h"
-#include "WebFileSystemCallbacks.h"
 #include <public/WebFileSystem.h>
+#include <public/WebFileSystemCallbacks.h>
 #include <public/WebVector.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>

@@ -172,7 +172,7 @@ InspectorTest.startProfilerTest = function(callback)
     function profilerEnabled()
     {
         InspectorTest.addResult("Profiler was enabled.");
-        // We mock out ProfilerAgent -- as DRT runs in single-process mode, Inspector
+        // We mock out HeapProfilerAgent -- as DRT runs in single-process mode, Inspector
         // and test share the same heap. Taking a snapshot takes too long for a test,
         // so we provide synthetic snapshots.
         InspectorTest._panelReset = InspectorTest.override(WebInspector.panels.profiles, "_reset", function(){}, true);
@@ -722,7 +722,7 @@ InspectorTest.takeAndOpenSnapshot = function(generator, callback)
     var snapshot = generator();
     var profileType = WebInspector.panels.profiles.getProfileType(WebInspector.HeapSnapshotProfileType.TypeId);
     var profile = profileType.createProfile({
-        title: UserInitiatedProfileName + "." + uid,
+        title: WebInspector.ProfilesPanelDescriptor.UserInitiatedProfileName + "." + uid,
         uid: uid,
         maxJSObjectId: snapshot.maxJSObjectId
     });
@@ -732,13 +732,13 @@ InspectorTest.takeAndOpenSnapshot = function(generator, callback)
         snapshot.snapshot.typeId = "HEAP";
         snapshot.snapshot.title = profile.title;
         snapshot.snapshot.uid = profile.uid;
-        WebInspector.panels.profiles._addHeapSnapshotChunk(uid, JSON.stringify(snapshot));
-        WebInspector.panels.profiles._finishHeapSnapshot(uid);
+        profileType.addHeapSnapshotChunk(uid, JSON.stringify(snapshot));
+        profileType.finishHeapSnapshot(uid);
     }
-    InspectorTest.override(ProfilerAgent, "getHeapSnapshot", pushGeneratedSnapshot);
+    InspectorTest.override(HeapProfilerAgent, "getHeapSnapshot", pushGeneratedSnapshot);
     InspectorTest._takeAndOpenSnapshotCallback = callback;
-    WebInspector.panels.profiles.addProfileHeader(profile);
-    WebInspector.panels.profiles.showProfile(profile);
+    profileType.addProfile(profile);
+    WebInspector.panels.profiles._showProfile(profile);
 };
 
 InspectorTest.viewColumns = function()

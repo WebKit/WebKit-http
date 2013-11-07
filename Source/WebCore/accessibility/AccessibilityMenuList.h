@@ -49,7 +49,7 @@ private:
 
     virtual bool isMenuList() const { return true; }
     virtual AccessibilityRole roleValue() const { return PopUpButtonRole; }
-    virtual bool accessibilityIsIgnored() const { return false; }
+    virtual bool computeAccessibilityIsIgnored() const { return false; }
     virtual bool canSetFocusAttribute() const;
 
     virtual void addChildren();
@@ -58,7 +58,7 @@ private:
 
 inline AccessibilityMenuList* toAccessibilityMenuList(AccessibilityObject* object)
 {
-    ASSERT(!object || object->isMenuList());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isMenuList());
     return static_cast<AccessibilityMenuList*>(object);
 }
 

@@ -26,6 +26,7 @@
 #include "config.h"
 
 #import "APICast.h"
+#import "APIShims.h"
 #import "JSContextInternal.h"
 #import "JSGlobalObject.h"
 #import "JSValueInternal.h"
@@ -37,7 +38,7 @@
 #import "StrongInlines.h"
 #import <wtf/HashSet.h>
 
-#if JS_OBJC_API_ENABLED
+#if JSC_OBJC_API_ENABLED
 
 @implementation JSContext {
     JSVirtualMachine *m_virtualMachine;
@@ -47,6 +48,11 @@
 }
 
 @synthesize exceptionHandler;
+
+- (JSGlobalContextRef)globalContextRef
+{
+    return m_context;
+}
 
 - (id)init
 {
@@ -67,7 +73,8 @@
         context.exception = exceptionValue;
     };
 
-    toJS(m_context)->lexicalGlobalObject()->m_apiData = self;
+    [m_virtualMachine addContext:self forGlobalContextRef:m_context];
+
     return self;
 }
 
@@ -167,14 +174,29 @@
 
 @implementation JSContext(Internal)
 
-JSGlobalContextRef contextInternalContext(JSContext *context)
+- (id)initWithGlobalContextRef:(JSGlobalContextRef)context
 {
-    return context->m_context;
+    self = [super init];
+    if (!self)
+        return nil;
+
+    JSC::JSGlobalObject* globalObject = toJS(context)->lexicalGlobalObject();
+    m_virtualMachine = [[JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&globalObject->globalData())] retain];
+    ASSERT(m_virtualMachine);
+    m_context = JSGlobalContextRetain(context);
+    m_wrapperMap = [[JSWrapperMap alloc] initWithContext:self];
+
+    self.exceptionHandler = ^(JSContext *context, JSValue *exceptionValue) {
+        context.exception = exceptionValue;
+    };
+
+    [m_virtualMachine addContext:self forGlobalContextRef:m_context];
+
+    return self;
 }
 
 - (void)dealloc
 {
-    toJS(m_context)->lexicalGlobalObject()->m_apiData = 0;
     [m_wrapperMap release];
     JSGlobalContextRelease(m_context);
     [m_virtualMachine release];
@@ -220,11 +242,26 @@ JSGlobalContextRef contextInternalContext(JSContext *context)
     [self release];
 }
 
-- (JSValue *)wrapperForObject:(id)object
+- (JSValue *)wrapperForObjCObject:(id)object
 {
     // Lock access to m_wrapperMap
     JSC::JSLockHolder lock(toJS(m_context));
-    return [m_wrapperMap wrapperForObject:object];
+    return [m_wrapperMap jsWrapperForObject:object];
+}
+
+- (JSValue *)wrapperForJSObject:(JSValueRef)value
+{
+    JSC::JSLockHolder lock(toJS(m_context));
+    return [m_wrapperMap objcWrapperForJSValueRef:value];
+}
+
++ (JSContext *)contextWithGlobalContextRef:(JSGlobalContextRef)globalContext
+{
+    JSVirtualMachine *virtualMachine = [JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&toJS(globalContext)->globalData())];
+    JSContext *context = [virtualMachine contextForGlobalContextRef:globalContext];
+    if (!context)
+        context = [[[JSContext alloc] initWithGlobalContextRef:globalContext] autorelease];
+    return context;
 }
 
 @end

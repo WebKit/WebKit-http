@@ -1,3 +1,368 @@
+2013-03-11  Jochen Eisinger  <jochen@chromium.org>
+
+        Rename DefinitelyProcessingUserGesture to DefinitelyProcessingNewUserGesture
+        https://bugs.webkit.org/show_bug.cgi?id=111959
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle):
+
+2013-03-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r144547.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-03  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r144567.
+        http://trac.webkit.org/changeset/144567
+        https://bugs.webkit.org/show_bug.cgi?id=111266
+
+        Does not compile on apple-win (Requested by abarth on
+        #webkit).
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        That was a wrong fix. Revert r144569.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r144567.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-02  Benjamin Poulain  <benjamin@webkit.org>
+
+        Export a missing symbol after r144547.
+
+        Unreviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Redo r144538 (after r144530).
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+
+2013-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Yet another build fix attempt after r144530.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+
+2013-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix attempt after r144530.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+
+2013-03-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add a missing symbol after r144524.
+
+        Unreviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't add a body to platform request until necessary
+        https://bugs.webkit.org/show_bug.cgi?id=110900
+
+        Reviewed by Brady Eidson.
+
+        WebKit1 behavior is unchanged, body is added on every conversion.
+
+        * WebDownloadCFNet.cpp:
+        (WebDownload::init):
+        (WebDownload::initWithRequest):
+        (WebDownload::willSendRequest):
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::cfRequest):
+        (WebMutableURLRequest::mutableCopy):
+        * WebView.cpp:
+        (WebView::canHandleRequest):
+
+2013-02-26  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed AppleWin build fix.
+
+        * WebKit.vcproj/WebKitExportGeneratorCommon.vsprops:
+
+2013-02-24  Alexey Proskuryakov  <ap@apple.com>
+
+        Clarify meaning of default default encoding localizable string
+        https://bugs.webkit.org/show_bug.cgi?id=110714
+
+        Reviewed by Eric Carlson.
+
+        * WebPreferences.cpp: Updated a comment.
+
+2013-02-24  Benjamin Poulain  <benjamin@webkit.org>
+
+        REGRESSION(r143837): Broke build on AppleWin http://build.webkit.org/builders/Apple%20Win%20Release%20%28Build%29.
+        https://bugs.webkit.org/show_bug.cgi?id=110713
+
+        Unreviewed.
+
+        * WebKit.vcproj/WebKitExports.def.in: Add the missing symbol after r143837.
+
+2013-02-21  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r143536.
+        http://trac.webkit.org/changeset/143536
+        https://bugs.webkit.org/show_bug.cgi?id=110523
+
+        Causing a bunch of tests to fail on Windows, requires
+        rebaselining (Requested by rfong on #webkit).
+
+        * WebKitClassFactory.cpp:
+        (WebKitClassFactory::WebKitClassFactory):
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebView::notifyPreferencesChanged):
+
+2013-02-20  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Remove references to SAFARI_THEME from Windows Solution.
+        <rdar://problem/13258710>
+
+        * WebKitClassFactory.cpp:
+        * WebView.cpp:
+
+2013-02-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r143338.
+        http://trac.webkit.org/changeset/143338
+        https://bugs.webkit.org/show_bug.cgi?id=110301
+
+        False alarm, no need to export the symbol (Requested by
+        aandrey on #webkit).
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-19  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, force file to recompile to fix win build.
+
+        * WebView.cpp:
+
+2013-02-19  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, fix the Windows build after r143398.
+        Add new setters to the export list.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-19  Andrey Adaikin  <aandrey@chromium.org>
+
+        Unreviewed, adding external symbol ?didBeginFrame@InspectorCanvasAgent@WebCore@@QAEXXZ.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-19  Andrey Adaikin  <aandrey@chromium.org>
+
+        Unreviewed, Web Inspector: follow up to r143328 fixing Win Debug Build
+        https://bugs.webkit.org/show_bug.cgi?id=110227
+
+        Adding external symbol ?didBeginFrame@InspectorCanvasAgent@WebCore@@QAEXXZ.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up the boolean argument to visibleContentRect
+        https://bugs.webkit.org/show_bug.cgi?id=110167
+
+        Reviewed by Simon Fraser.
+
+        Replace the boolean argument to visibleContentRect() with
+        an enum.
+
+        * WebFrame.cpp:
+        (WebFrame::visibleContentRect):
+        (WebFrame::frameBounds):
+
+2013-02-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Stop placing std::isfinite and std::signbit inside the global scope
+        https://bugs.webkit.org/show_bug.cgi?id=109817
+
+        Reviewed by Darin Adler.
+
+        Prefix calls to the isfinite and signbit methods with std:: as the two
+        methods are no longer being imported into the global scope.
+
+        * FullscreenVideoController.cpp:
+        (timeToString):
+
+2013-02-15  Rik Cabanier  <cabanier@adobe.com>
+
+        Add platform support for -webkit-background-blend-mode to CG context
+        https://bugs.webkit.org/show_bug.cgi?id=108549
+
+        Reviewed by Dean Jackson.
+
+        Fixed build issue.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-15  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Julien Chaffraix.
+
+        Update calls to new API.
+
+        * WebActionPropertyBag.cpp:
+        (WebActionPropertyBag::Read):
+        * WebKit.vcproj/WebKitExports.def.in:
+        * WebView.cpp:
+        (WebView::handleContextMenuEvent):
+        (WebView::elementAtPoint):
+
+2013-02-14  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style native for .sln, .vcproj, and .vsprops files.
+        https://bugs.webkit.org/show_bug.cgi?id=96934
+
+        * WebKit.vcproj/WebKit.sln: Modified property svn:eol-style.
+        * WebKit.vcproj/WebKit.submit.sln: Modified property svn:eol-style.
+        * WebKit.vcproj/WebKitCFLite.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorCommon.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorDebug.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorDebugAll.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorDebugCairoCFLite.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorProduction.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorRelease.vsprops: Added property svn:eol-style.
+        * WebKit.vcproj/WebKitExportGeneratorReleaseCairoCFLite.vsprops: Added property svn:eol-style.
+
+2013-02-14  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style CRLF for .sln files.
+
+        * WebKit.vcproj/WebKit.sln: Modified property svn:eol-style.
+        * WebKit.vcproj/WebKit.submit.sln: Modified property svn:eol-style.
+
+2013-02-14  Andrey Kosyakov  <caseq@chromium.org>
+
+        Web Inspector: expose did{Begin,Cancel}Frame() and {will,did}Composite() on WebDebToolsAgent
+        https://bugs.webkit.org/show_bug.cgi?id=109192
+
+        Reviewed by Pavel Feldman.
+
+        * WebKit.vcproj/WebKit.sln: Modified property svn:eol-style.
+        * WebKit.vcproj/WebKit.submit.sln: Modified property svn:eol-style.
+
+2013-02-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disable delete button controller on non-Mac ports and delete EditorClient::shouldShowDeleteInterface
+        https://bugs.webkit.org/show_bug.cgi?id=109534
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient):
+
+2013-02-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        Build fix for Windows after r142509
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move workerThreadCount from TestRunner to WebCore Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109239
+
+        Reviewed by Darin Adler.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-07  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Corrections the exports definition file.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-05  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed build fix.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-05  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Get rid of redundant exports in export definitions file.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-01  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Copy some resource files for VS2010 solution.
+        https://bugs.webkit.org/show_bug.cgi?id=106989.
+
+        * WebKit.resources/WebKit.rc: Added.
+        * WebKit.resources/deleteButton.png: Added.
+        * WebKit.resources/deleteButtonPressed.png: Added.
+        * WebKit.resources/fsVideoAudioVolumeHigh.png: Added.
+        * WebKit.resources/fsVideoAudioVolumeLow.png: Added.
+        * WebKit.resources/fsVideoExitFullscreen.png: Added.
+        * WebKit.resources/fsVideoPause.png: Added.
+        * WebKit.resources/fsVideoPlay.png: Added.
+        * WebKit.resources/missingImage.png: Added.
+        * WebKit.resources/nullplugin.png: Added.
+        * WebKit.resources/panEastCursor.png: Added.
+        * WebKit.resources/panIcon.png: Added.
+        * WebKit.resources/panNorthCursor.png: Added.
+        * WebKit.resources/panNorthEastCursor.png: Added.
+        * WebKit.resources/panNorthWestCursor.png: Added.
+        * WebKit.resources/panSouthCursor.png: Added.
+        * WebKit.resources/panSouthEastCursor.png: Added.
+        * WebKit.resources/panSouthWestCursor.png: Added.
+        * WebKit.resources/panWestCursor.png: Added.
+        * WebKit.resources/searchCancel.png: Added.
+        * WebKit.resources/searchCancelPressed.png: Added.
+        * WebKit.resources/searchMagnifier.png: Added.
+        * WebKit.resources/searchMagnifierResults.png: Added.
+        * WebKit.resources/textAreaResizeCorner.png: Added.
+        * WebKit.resources/verticalTextCursor.png: Added.
+        * WebKit.resources/zoomInCursor.png: Added.
+        * WebKit.resources/zoomOutCursor.png: Added.
+
+2013-02-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        Kill suspendAnimation(), resumeAnimation() and numberOfActiveAnimations() from DRT/WTR; use Internals
+        https://bugs.webkit.org/show_bug.cgi?id=108741
+
+        Reviewed by Tony Chang.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-02-04  Enrica Casucci  <enrica@apple.com>
+
+        Add specific EditActions for Bold and Italic commands.
+        https://bugs.webkit.org/show_bug.cgi?id=108842.
+        <rdar://problem/13098252>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (undoNameForEditAction):
+
 2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
 
         Fix build warning after r141473

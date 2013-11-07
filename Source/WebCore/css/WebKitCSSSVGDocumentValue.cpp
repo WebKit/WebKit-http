@@ -31,6 +31,7 @@
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "CachedResourceRequestInitiators.h"
+#include "CachedSVGDocument.h"
 #include "Document.h"
 #include "WebCoreMemoryInstrumentation.h"
 
@@ -65,6 +66,11 @@ CachedSVGDocument* WebKitCSSSVGDocumentValue::load(CachedResourceLoader* loader)
 String WebKitCSSSVGDocumentValue::customCssText() const
 {
     return quoteCSSStringIfNeeded(m_url);
+}
+
+bool WebKitCSSSVGDocumentValue::equals(const WebKitCSSSVGDocumentValue& other) const
+{
+    return m_url == other.m_url;
 }
 
 void WebKitCSSSVGDocumentValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const

@@ -41,6 +41,15 @@ extern "C" { extern void* _ZTVN7WebCore13TestExceptionE[]; }
 namespace WebCore {
 
 #if ENABLE(BINDING_INTEGRITY)
+// This checks if a DOM object that is about to be wrapped is valid.
+// Specifically, it checks that a vtable of the DOM object is equal to
+// a vtable of an expected class.
+// Due to a dangling pointer, the DOM object you are wrapping might be
+// already freed or realloced. If freed, the check will fail because
+// a free list pointer should be stored at the head of the DOM object.
+// If realloced, the check will fail because the vtable of the DOM object
+// differs from the expected vtable (unless the same class of DOM object
+// is realloced on the slot).
 inline void checkTypeOrDieTrying(TestException* object)
 {
     void* actualVTablePointer = *(reinterpret_cast<void**>(object));
@@ -66,21 +75,26 @@ static v8::Handle<v8::Value> nameAttrGetter(v8::Local<v8::String> name, const v8
     return v8String(imp->name(), info.GetIsolate(), ReturnUnsafeHandle);
 }
 
+static v8::Handle<v8::Value> nameAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestExceptionV8Internal::nameAttrGetter(name, info);
+}
+
 } // namespace TestExceptionV8Internal
 
 static const V8DOMConfiguration::BatchedAttribute V8TestExceptionAttrs[] = {
     // Attribute 'name' (Type: 'readonly attribute' ExtAttr: '')
-    {"name", TestExceptionV8Internal::nameAttrGetter, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    {"name", TestExceptionV8Internal::nameAttrGetterCallback, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
 };
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestExceptionTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestExceptionTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate, WrapperWorldType worldType)
 {
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestException", v8::Persistent<v8::FunctionTemplate>(), V8TestException::internalFieldCount,
         V8TestExceptionAttrs, WTF_ARRAY_LENGTH(V8TestExceptionAttrs),
-        0, 0);
+        0, 0, isolate);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     
 
@@ -91,23 +105,19 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestExceptionTemplate(v8:
 
 v8::Persistent<v8::FunctionTemplate> V8TestException::GetRawTemplate(v8::Isolate* isolate)
 {
-    if (!isolate)
-        isolate = v8::Isolate::GetCurrent();
     V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
-    v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate();
+    v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate(isolate);
     data->rawTemplateMap().add(&info, templ);
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestException::GetTemplate(v8::Isolate* isolate)
+v8::Persistent<v8::FunctionTemplate> V8TestException::GetTemplate(v8::Isolate* isolate, WrapperWorldType worldType)
 {
-    if (!isolate)
-        isolate = v8::Isolate::GetCurrent();
     V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
@@ -115,15 +125,13 @@ v8::Persistent<v8::FunctionTemplate> V8TestException::GetTemplate(v8::Isolate* i
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestExceptionTemplate(GetRawTemplate(isolate), isolate);
+        ConfigureV8TestExceptionTemplate(GetRawTemplate(isolate), isolate, worldType);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
 bool V8TestException::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    if (!isolate)
-        isolate = v8::Isolate::GetCurrent();
     return GetRawTemplate(isolate)->HasInstance(value);
 }
 
@@ -137,14 +145,12 @@ v8::Handle<v8::Object> V8TestException::createWrapper(PassRefPtr<TestException> 
     checkTypeOrDieTrying(impl.get());
 #endif
 
-    v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
+    v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get(), isolate);
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
 
-    installPerContextProperties(wrapper, impl.get());
-    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::associateObjectWithWrapper(impl, &info, wrapper, isolate);
-    if (!hasDependentLifetime)
-        wrapperHandle.MarkIndependent();
+    installPerContextProperties(wrapper, impl.get(), isolate);
+    V8DOMWrapper::associateObjectWithWrapper(impl, &info, wrapper, isolate, hasDependentLifetime ? WrapperConfiguration::Dependent : WrapperConfiguration::Independent);
     return wrapper;
 }
 void V8TestException::derefObject(void* object)

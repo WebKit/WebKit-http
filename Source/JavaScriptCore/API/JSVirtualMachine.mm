@@ -27,23 +27,83 @@
 
 #import "JavaScriptCore.h"
 
-#if JS_OBJC_API_ENABLED
+#if JSC_OBJC_API_ENABLED
 
 #import "APICast.h"
 #import "JSVirtualMachineInternal.h"
 
+static NSMapTable *globalWrapperCache = 0;
+
+static Mutex& wrapperCacheLock()
+{
+    DEFINE_STATIC_LOCAL(Mutex, mutex, ());
+    return mutex;
+}
+
+static void initWrapperCache()
+{
+    ASSERT(!globalWrapperCache);
+    NSPointerFunctionsOptions keyOptions = NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality;
+    NSPointerFunctionsOptions valueOptions = NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPersonality;
+    globalWrapperCache = [[NSMapTable alloc] initWithKeyOptions:keyOptions valueOptions:valueOptions capacity:0];
+}
+
+static NSMapTable *wrapperCache()
+{
+    if (!globalWrapperCache)
+        initWrapperCache();
+    return globalWrapperCache;
+}
+
+@interface JSVMWrapperCache : NSObject
++ (void)addWrapper:(JSVirtualMachine *)wrapper forJSContextGroupRef:(JSContextGroupRef)group;
++ (JSVirtualMachine *)wrapperForJSContextGroupRef:(JSContextGroupRef)group;
+@end
+
+@implementation JSVMWrapperCache
+
++ (void)addWrapper:(JSVirtualMachine *)wrapper forJSContextGroupRef:(JSContextGroupRef)group
+{
+    MutexLocker locker(wrapperCacheLock());
+    NSMapInsert(wrapperCache(), group, wrapper);
+}
+
++ (JSVirtualMachine *)wrapperForJSContextGroupRef:(JSContextGroupRef)group
+{
+    MutexLocker locker(wrapperCacheLock());
+    return static_cast<JSVirtualMachine *>(NSMapGet(wrapperCache(), group));
+}
+
+@end
+
 @implementation JSVirtualMachine {
     JSContextGroupRef m_group;
+    NSMapTable *m_contextCache;
 }
 
 - (id)init
 {
+    JSContextGroupRef group = JSContextGroupCreate();
+    self = [self initWithContextGroupRef:group];
+    // The extra JSContextGroupRetain is balanced here.
+    JSContextGroupRelease(group);
+    return self;
+}
+
+- (id)initWithContextGroupRef:(JSContextGroupRef)group
+{
     self = [super init];
     if (!self)
         return nil;
-
-    m_group = JSContextGroupCreate();
-    toJS(m_group)->m_apiData = self;
+    
+    m_group = JSContextGroupRetain(group);
+    
+    NSPointerFunctionsOptions keyOptions = NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality;
+    NSPointerFunctionsOptions valueOptions = NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPersonality;
+    m_contextCache = [[NSMapTable alloc] initWithKeyOptions:keyOptions valueOptions:valueOptions capacity:0];
+   
+    [JSVMWrapperCache addWrapper:self forJSContextGroupRef:group];
+ 
     return self;
 }
 
@@ -53,7 +113,6 @@
 
 - (void)dealloc
 {
-    toJS(m_group)->m_apiData = 0;
     JSContextGroupRelease(m_group);
     [super dealloc];
 }
@@ -63,7 +122,26 @@ JSContextGroupRef getGroupFromVirtualMachine(JSVirtualMachine *virtualMachine)
     return virtualMachine->m_group;
 }
 
++ (JSVirtualMachine *)virtualMachineWithContextGroupRef:(JSContextGroupRef)group
+{
+    JSVirtualMachine *virtualMachine = [JSVMWrapperCache wrapperForJSContextGroupRef:group];
+    if (!virtualMachine)
+        virtualMachine = [[[JSVirtualMachine alloc] initWithContextGroupRef:group] autorelease];
+    return virtualMachine;
+}
+
+- (JSContext *)contextForGlobalContextRef:(JSGlobalContextRef)globalContext
+{
+    return static_cast<JSContext *>(NSMapGet(m_contextCache, globalContext));
+}
+
+- (void)addContext:(JSContext *)wrapper forGlobalContextRef:(JSGlobalContextRef)globalContext
+{
+    NSMapInsert(m_contextCache, globalContext, wrapper);
+}
+
 @end
+
 
 #endif
 

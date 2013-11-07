@@ -28,27 +28,27 @@
 #ifndef SelectorChecker_h
 #define SelectorChecker_h
 
-#include "Attribute.h"
 #include "CSSSelector.h"
 #include "InspectorInstrumentation.h"
 #include "SpaceSplitString.h"
-#include "StyledElement.h"
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class CSSSelector;
+class Element;
+class RenderScrollbar;
 class RenderStyle;
 
 class SelectorChecker {
     WTF_MAKE_NONCOPYABLE(SelectorChecker);
 public:
-    explicit SelectorChecker(Document*);
-
     enum Match { SelectorMatches, SelectorFailsLocally, SelectorFailsAllSiblings, SelectorFailsCompletely };
     enum VisitedMatchType { VisitedMatchDisabled, VisitedMatchEnabled };
     enum Mode { ResolvingStyle = 0, CollectingRules, QueryingRules, SharingRules };
+    explicit SelectorChecker(Document*, Mode);
+    enum BehaviorAtBoundary { DoesNotCrossBoundary, CrossesBoundary };
 
     struct SelectorCheckingContext {
         // Initial selector constructor
@@ -57,53 +57,51 @@ public:
             , element(element)
             , scope(0)
             , visitedMatchType(visitedMatchType)
-            , pseudoStyle(NOPSEUDO)
+            , pseudoId(NOPSEUDO)
             , elementStyle(0)
+            , scrollbar(0)
+            , scrollbarPart(NoPart)
             , isSubSelector(false)
             , hasScrollbarPseudo(false)
             , hasSelectionPseudo(false)
+            , behaviorAtBoundary(DoesNotCrossBoundary)
         { }
 
         const CSSSelector* selector;
         Element* element;
         const ContainerNode* scope;
         VisitedMatchType visitedMatchType;
-        PseudoId pseudoStyle;
+        PseudoId pseudoId;
         RenderStyle* elementStyle;
+        RenderScrollbar* scrollbar;
+        ScrollbarPart scrollbarPart;
         bool isSubSelector;
         bool hasScrollbarPseudo;
         bool hasSelectionPseudo;
+        BehaviorAtBoundary behaviorAtBoundary;
     };
 
-    bool matches(const CSSSelector*, Element*, bool isFastCheckableSelector = false) const;
     template<typename SiblingTraversalStrategy>
     Match match(const SelectorCheckingContext&, PseudoId&, const SiblingTraversalStrategy&) const;
     template<typename SiblingTraversalStrategy>
     bool checkOne(const SelectorCheckingContext&, const SiblingTraversalStrategy&) const;
 
-    static bool isFastCheckableSelector(const CSSSelector*);
-    bool fastCheck(const CSSSelector*, const Element*) const;
-
     bool strictParsing() const { return m_strictParsing; }
 
     Mode mode() const { return m_mode; }
-    void setMode(Mode mode) { m_mode = mode; }
 
     static bool tagMatches(const Element*, const QualifiedName&);
     static bool isCommonPseudoClassSelector(const CSSSelector*);
-    bool matchesFocusPseudoClass(const Element*) const;
-    static bool fastCheckRightmostAttributeSelector(const Element*, const CSSSelector*);
+    static bool matchesFocusPseudoClass(const Element*);
     static bool checkExactAttribute(const Element*, const QualifiedName& selectorAttributeName, const AtomicStringImpl* value);
 
     enum LinkMatchMask { MatchLink = 1, MatchVisited = 2, MatchAll = MatchLink | MatchVisited };
     static unsigned determineLinkMatchType(const CSSSelector*);
 
 private:
-    bool checkScrollbarPseudoClass(Document*, const CSSSelector*) const;
-    static bool isFrameFocused(const Element*);
+    bool checkScrollbarPseudoClass(const SelectorCheckingContext&, Document*, const CSSSelector*) const;
 
-    bool fastCheckRightmostSelector(const CSSSelector*, const Element*, VisitedMatchType) const;
-    bool commonPseudoClassSelectorMatches(const Element*, const CSSSelector*, VisitedMatchType) const;
+    static bool isFrameFocused(const Element*);
 
     bool m_strictParsing;
     bool m_documentIsHTML;
@@ -119,13 +117,6 @@ inline bool SelectorChecker::isCommonPseudoClassSelector(const CSSSelector* sele
         || pseudoType == CSSSelector::PseudoAnyLink
         || pseudoType == CSSSelector::PseudoVisited
         || pseudoType == CSSSelector::PseudoFocus;
-}
-
-inline bool SelectorChecker::matchesFocusPseudoClass(const Element* element) const
-{
-    if (InspectorInstrumentation::forcePseudoState(const_cast<Element*>(element), CSSSelector::PseudoFocus))
-        return true;
-    return element->focused() && isFrameFocused(element);
 }
 
 inline bool SelectorChecker::tagMatches(const Element* element, const QualifiedName& tagQName)
@@ -150,14 +141,6 @@ inline bool SelectorChecker::checkExactAttribute(const Element* element, const Q
             return true;
     }
     return false;
-}
-
-inline bool SelectorChecker::fastCheckRightmostAttributeSelector(const Element* element, const CSSSelector* selector)
-{
-    if (selector->m_match == CSSSelector::Exact || selector->m_match == CSSSelector::Set)
-        return checkExactAttribute(element, selector->attribute(), selector->value().impl());
-    ASSERT(!selector->isAttributeSelector());
-    return true;
 }
 
 }

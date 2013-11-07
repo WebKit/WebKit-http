@@ -116,7 +116,6 @@
 #import <WebCore/BackForwardListImpl.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/ColorMac.h>
-#import <WebCore/CSSComputedStyleDeclaration.h>
 #import <WebCore/Cursor.h>
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/Document.h>
@@ -170,6 +169,7 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/Settings.h>
+#import <WebCore/StylePropertySet.h>
 #import <WebCore/SystemVersionMac.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/ThreadCheck.h>
@@ -200,7 +200,7 @@
 #import <WebKit/WebDashboardRegion.h>
 #endif
 
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
 #import <glib.h>
 #endif
 
@@ -434,7 +434,7 @@ static PageVisibilityState core(WebPageVisibilityState visibilityState)
 + (void)_preflightSpellChecker;
 - (BOOL)_continuousCheckingAllowed;
 - (NSResponder *)_responderForResponderOperations;
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
 - (void)_clearGlibLoopObserver;
 #endif
 @end
@@ -740,7 +740,6 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
         // of the initialization code which may depend on the strategies.
         WebPlatformStrategies::initialize();
 
-        [WebHistoryItem initWindowWatcherIfNecessary];
 #if ENABLE(SQL_DATABASE)
         WebKitInitializeDatabasesIfNecessary();
 #endif
@@ -833,7 +832,7 @@ static bool shouldRespectPriorityInCSSAttributeSetters()
     if (!WebKitLinkedOnOrAfter(WEBKIT_FIRST_VERSION_WITHOUT_CONTENT_SNIFFING_FOR_FILE_URLS))
         ResourceHandle::forceContentSniffing();
 
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
     [self _scheduleGlibContextIterations];
 #endif
 
@@ -1148,7 +1147,7 @@ static bool fastDocumentTeardownEnabled()
     }
 #endif
     
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
     [self _clearGlibLoopObserver];
 #endif
 
@@ -1659,6 +1658,9 @@ static inline IMP getMethod(id o, SEL s)
     cache->didPushStateWithinPageForFrameFunc = getMethod(delegate, @selector(webView:didPushStateWithinPageForFrame:));
     cache->didReplaceStateWithinPageForFrameFunc = getMethod(delegate, @selector(webView:didReplaceStateWithinPageForFrame:));
     cache->didPopStateWithinPageForFrameFunc = getMethod(delegate, @selector(webView:didPopStateWithinPageForFrame:));
+#if JSC_OBJC_API_ENABLED
+    cache->didCreateJavaScriptContextForFrameFunc = getMethod(delegate, @selector(webView:didCreateJavaScriptContext:forFrame:));
+#endif
     cache->didClearWindowObjectForFrameFunc = getMethod(delegate, @selector(webView:didClearWindowObject:forFrame:));
     cache->didClearWindowObjectForFrameInScriptWorldFunc = getMethod(delegate, @selector(webView:didClearWindowObjectForFrame:inScriptWorld:));
     cache->didClearInspectorWindowObjectForFrameFunc = getMethod(delegate, @selector(webView:didClearInspectorWindowObject:forFrame:));
@@ -3073,17 +3075,6 @@ static Vector<String> toStringVector(NSArray* patterns)
     resourceLoadScheduler()->setSerialLoadingEnabled(serialize);
 }
 
-+ (double)_defaultMinimumTimerInterval
-{
-    return Settings::defaultMinDOMTimerInterval();
-}
-
-- (void)_setMinimumTimerInterval:(double)intervalInSeconds
-{
-    if (_private->page)
-        _private->page->settings()->setMinDOMTimerInterval(intervalInSeconds);
-}
-
 + (BOOL)_HTTPPipeliningEnabled
 {
     return ResourceRequest::httpPipeliningEnabled();
@@ -3092,6 +3083,19 @@ static Vector<String> toStringVector(NSArray* patterns)
 + (void)_setHTTPPipeliningEnabled:(BOOL)enabled
 {
     ResourceRequest::setHTTPPipeliningEnabled(enabled);
+}
+
+- (void)_setSourceApplicationAuditData:(NSData *)sourceApplicationAuditData
+{
+    if (_private->sourceApplicationAuditData == sourceApplicationAuditData)
+        return;
+
+    _private->sourceApplicationAuditData = adoptNS([sourceApplicationAuditData copy]);
+}
+
+- (NSData *)_sourceApplicationAuditData
+{
+    return _private->sourceApplicationAuditData.get();
 }
 
 @end
@@ -3621,6 +3625,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     } else {
         _private->page->setCanStartMedia(false);
         _private->page->willMoveOffscreen();
+        _private->page->setIsInWindow(false);
     }
         
     if (window != [self window]) {
@@ -3641,6 +3646,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     if ([self window]) {
         _private->page->setCanStartMedia(true);
         _private->page->didMoveOnscreen();
+        _private->page->setIsInWindow(true);
     }
     
     _private->page->setDeviceScaleFactor([self _deviceScaleFactor]);
@@ -4925,7 +4931,7 @@ static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *stri
     return coreFrame->loader()->shouldClose();
 }
 
-static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSValue jsValue)
+static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue jsValue)
 {
     NSAppleEventDescriptor* aeDesc = 0;
     if (jsValue.isBoolean())
@@ -4944,7 +4950,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSValue jsValu
         if (object->inherits(&DateInstance::s_info)) {
             DateInstance* date = static_cast<DateInstance*>(object);
             double ms = date->internalNumber();
-            if (!isnan(ms)) {
+            if (!std::isnan(ms)) {
                 CFAbsoluteTime utcSeconds = ms / 1000 - kCFAbsoluteTimeIntervalSince1970;
                 LongDateTime ldt;
                 if (noErr == UCConvertCFAbsoluteTimeToLongDateTime(utcSeconds, &ldt))
@@ -4966,7 +4972,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSValue jsValu
                 return aeDesc;
             }
         }
-        JSValue primitive = object->toPrimitive(exec);
+        JSC::JSValue primitive = object->toPrimitive(exec);
         if (exec->hadException()) {
             exec->clearException();
             return [NSAppleEventDescriptor nullDescriptor];
@@ -4986,7 +4992,7 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSValue jsValu
         return nil;
     if (!coreFrame->document())
         return nil;
-    JSValue result = coreFrame->script()->executeScript(script, true).jsValue();
+    JSC::JSValue result = coreFrame->script()->executeScript(script, true).jsValue();
     if (!result) // FIXME: pass errors
         return 0;
     JSLockHolder lock(coreFrame->script()->globalObject(mainThreadNormalWorld())->globalExec());
@@ -6205,7 +6211,7 @@ static inline uint64_t roundUpToPowerOf2(uint64_t num)
 #endif
 }
 
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
 - (void)_clearGlibLoopObserver
 {
     if (!_private->glibRunLoopObserver)
@@ -6523,7 +6529,7 @@ bool LayerFlushController::flushLayers()
 }
 #endif
 
-#if ENABLE(GLIB_SUPPORT)
+#if USE(GLIB)
 
 static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity, void*)
 {
@@ -6698,25 +6704,6 @@ static void glibContextIterationCallback(CFRunLoopObserverRef, CFRunLoopActivity
     return 0;
 #endif
 }
-@end
-
-@implementation WebView (WebViewPrivateStyleInfo)
-
-- (JSValueRef)_computedStyleIncludingVisitedInfo:(JSContextRef)context forElement:(JSValueRef)value
-{
-    ExecState* exec = toJS(context);
-    JSLockHolder lock(exec);
-    if (!value)
-        return JSValueMakeUndefined(context);
-    JSValue jsValue = toJS(exec, value);
-    if (!jsValue.inherits(&JSElement::s_info))
-        return JSValueMakeUndefined(context);
-    JSElement* jsElement = static_cast<JSElement*>(asObject(jsValue));
-    Element* element = jsElement->impl();
-    RefPtr<CSSComputedStyleDeclaration> style = CSSComputedStyleDeclaration::create(element, true);
-    return toRef(exec, toJS(exec, jsElement->globalObject(), style.get()));
-}
-
 @end
 
 @implementation WebView (WebViewFullScreen)

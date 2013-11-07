@@ -34,11 +34,12 @@ class FixedTableLayout : public TableLayout {
 public:
     FixedTableLayout(RenderTable*);
 
-    virtual void computePreferredLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth);
+    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) OVERRIDE;
+    virtual void applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const OVERRIDE;
     virtual void layout();
 
 private:
-    int calcWidthArray(int tableWidth);
+    int calcWidthArray();
 
     Vector<Length> m_width;
 };

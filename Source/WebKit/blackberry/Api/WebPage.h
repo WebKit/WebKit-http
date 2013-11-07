@@ -80,6 +80,8 @@ class WebViewportArguments;
 
 enum JavaScriptDataType { JSUndefined = 0, JSNull, JSBoolean, JSNumber, JSString, JSObject, JSException, JSDataTypeMax };
 
+enum SelectionExpansionType { Word = 0, Sentence, Paragraph, NextParagraph };
+
 enum ActivationStateType { ActivationActive, ActivationInactive, ActivationStandby };
 
 enum TargetDetectionStrategy {PointBased, RectBased, FocusBased};
@@ -99,7 +101,7 @@ public:
 
     void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& contentType = "text/html", const BlackBerry::Platform::String& failingURL = BlackBerry::Platform::String::emptyString());
 
-    void convertMainResourceLoadToDownload(const Platform::NetworkRequest&);
+    void download(const Platform::NetworkRequest&);
 
     bool executeJavaScript(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
 
@@ -190,7 +192,7 @@ public:
     InRegionScroller* inRegionScroller() const;
 
     bool blockZoom(const Platform::IntPoint& documentTargetPoint);
-    void blockZoomAnimationFinished();
+    void zoomAnimationFinished(double finalScale, const Platform::FloatPoint& finalDocumentScrollPosition, bool shouldConstrainScrollingToContentEdge);
     void resetBlockZoom();
     bool isAtInitialZoom() const;
     bool isMaxZoomed() const;
@@ -211,6 +213,10 @@ public:
     void assignFocus(Platform::FocusDirection);
 
     void setFocused(bool);
+
+    void focusNextField();
+    void focusPreviousField();
+    void submitForm();
 
     void clearBrowsingData();
     void clearHistory();
@@ -253,9 +259,13 @@ public:
     void spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t*);
     void spellCheckingRequestCancelled(int32_t transactionId);
 
+    bool isInputMode() const;
     void setDocumentSelection(const Platform::IntPoint& documentStartPoint, const Platform::IntPoint& documentEndPoint);
     void setDocumentCaretPosition(const Platform::IntPoint&);
-    void selectAtDocumentPoint(const Platform::IntPoint&);
+    void selectAtDocumentPoint(const Platform::IntPoint&, SelectionExpansionType = Word);
+    void expandSelection(bool isScrollStarted);
+    void setOverlayExpansionPixelHeight(int);
+    void setParagraphExpansionPixelScrollMargin(const Platform::IntSize&);
     void selectionCancelled();
     bool selectionContainsDocumentPoint(const Platform::IntPoint&);
 
@@ -344,6 +354,7 @@ public:
     void resetUserViewportArguments();
 
     WebTapHighlight* tapHighlight() const;
+    WebTapHighlight* selectionHighlight() const;
 
     // Adds an overlay that can be modified on the WebKit thread, and
     // whose attributes can be overridden on the compositing thread.
@@ -372,6 +383,8 @@ public:
     void notificationClosed(const BlackBerry::Platform::String& notificationId);
     void notificationError(const BlackBerry::Platform::String& notificationId);
     void notificationShown(const BlackBerry::Platform::String& notificationId);
+
+    void animateToScaleAndDocumentScrollPosition(double destinationZoomScale, const BlackBerry::Platform::FloatPoint& destinationScrollPosition, bool shouldConstrainScrollingToContentEdge = true);
 
 private:
     virtual ~WebPage();

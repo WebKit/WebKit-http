@@ -34,10 +34,9 @@
 #include "IDBDatabaseError.h"
 #include "IDBDatabaseException.h"
 #include "IDBKeyRange.h"
-#include "IDBRequest.h"
 #include "IDBTracing.h"
 #include "IDBTransactionBackendImpl.h"
-#include "SerializedScriptValue.h"
+#include "SharedBuffer.h"
 
 namespace WebCore {
 
@@ -101,7 +100,7 @@ private:
     RefPtr<IDBCallbacks> m_callbacks;
 };
 
-IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, CursorType cursorType, IDBDatabaseBackendInterface::TaskType taskType, IDBTransactionBackendImpl* transaction, int64_t objectStoreId)
+IDBCursorBackendImpl::IDBCursorBackendImpl(PassRefPtr<IDBBackingStore::Cursor> cursor, IndexedDB::CursorType cursorType, IDBDatabaseBackendInterface::TaskType taskType, IDBTransactionBackendImpl* transaction, int64_t objectStoreId)
     : m_taskType(taskType)
     , m_cursorType(cursorType)
     , m_database(transaction->database())
@@ -138,7 +137,7 @@ void IDBCursorBackendImpl::CursorAdvanceOperation::perform(IDBTransactionBackend
     IDB_TRACE("CursorAdvanceOperation");
     if (!m_cursor->m_cursor || !m_cursor->m_cursor->advance(m_count)) {
         m_cursor->m_cursor = 0;
-        m_callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
+        m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
         return;
     }
 
@@ -150,7 +149,7 @@ void IDBCursorBackendImpl::CursorIterationOperation::perform(IDBTransactionBacke
     IDB_TRACE("CursorIterationOperation");
     if (!m_cursor->m_cursor || !m_cursor->m_cursor->continueFunction(m_key.get())) {
         m_cursor->m_cursor = 0;
-        m_callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
+        m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
         return;
     }
 
@@ -160,7 +159,7 @@ void IDBCursorBackendImpl::CursorIterationOperation::perform(IDBTransactionBacke
 void IDBCursorBackendImpl::deleteFunction(PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode&)
 {
     IDB_TRACE("IDBCursorBackendImpl::delete");
-    ASSERT(m_transaction->mode() != IDBTransaction::READ_ONLY);
+    ASSERT(m_transaction->mode() != IndexedDB::TransactionReadOnly);
     RefPtr<IDBKeyRange> keyRange = IDBKeyRange::create(m_cursor->primaryKey());
     m_database->deleteRange(m_transaction->id(), m_objectStoreId, keyRange.release(), prpCallbacks);
 }
@@ -178,7 +177,7 @@ void IDBCursorBackendImpl::CursorPrefetchIterationOperation::perform(IDBTransact
 
     Vector<RefPtr<IDBKey> > foundKeys;
     Vector<RefPtr<IDBKey> > foundPrimaryKeys;
-    Vector<RefPtr<SerializedScriptValue> > foundValues;
+    Vector<RefPtr<SharedBuffer> > foundValues;
 
     if (m_cursor->m_cursor)
         m_cursor->m_savedCursor = m_cursor->m_cursor->clone();
@@ -196,12 +195,12 @@ void IDBCursorBackendImpl::CursorPrefetchIterationOperation::perform(IDBTransact
         foundPrimaryKeys.append(m_cursor->m_cursor->primaryKey());
 
         switch (m_cursor->m_cursorType) {
-        case KeyOnly:
-            foundValues.append(SerializedScriptValue::create());
+        case IndexedDB::CursorKeyOnly:
+            foundValues.append(SharedBuffer::create());
             break;
-        case KeyAndValue:
-            sizeEstimate += m_cursor->m_cursor->value().size();
-            foundValues.append(SerializedScriptValue::createFromWireBytes(m_cursor->m_cursor->value()));
+        case IndexedDB::CursorKeyAndValue:
+            sizeEstimate += m_cursor->m_cursor->value()->size();
+            foundValues.append(m_cursor->m_cursor->value());
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -214,7 +213,7 @@ void IDBCursorBackendImpl::CursorPrefetchIterationOperation::perform(IDBTransact
     }
 
     if (!foundKeys.size()) {
-        m_callbacks->onSuccess(static_cast<SerializedScriptValue*>(0));
+        m_callbacks->onSuccess(static_cast<SharedBuffer*>(0));
         return;
     }
 

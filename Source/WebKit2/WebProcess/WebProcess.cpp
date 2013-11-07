@@ -27,9 +27,11 @@
 #include "WebProcess.h"
 
 #include "AuthenticationManager.h"
+#include "EventDispatcher.h"
 #include "InjectedBundle.h"
 #include "InjectedBundleUserMessageCoders.h"
 #include "Logging.h"
+#include "PluginProcessConnectionManager.h"
 #include "StatisticsData.h"
 #include "WebApplicationCacheManager.h"
 #include "WebConnectionToUIProcess.h"
@@ -61,6 +63,7 @@
 #include <WebCore/Font.h>
 #include <WebCore/FontCache.h>
 #include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/GCController.h>
 #include <WebCore/GlyphPageTreeNode.h>
 #include <WebCore/IconDatabase.h>
@@ -136,7 +139,8 @@ WebProcess& WebProcess::shared()
 }
 
 WebProcess::WebProcess()
-    : m_inDidClose(false)
+    : m_eventDispatcher(EventDispatcher::create())
+    , m_inDidClose(false)
     , m_shouldTrackVisitedLinks(true)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
@@ -163,7 +167,7 @@ WebProcess::WebProcess()
     , m_webResourceLoadScheduler(new WebResourceLoadScheduler)
 #endif
 #if ENABLE(PLUGIN_PROCESS)
-    , m_pluginProcessConnectionManager(new PluginProcessConnectionManager)
+    , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
 #if USE(SOUP)
     , m_soupRequestManager(this)
@@ -208,11 +212,15 @@ void WebProcess::initializeConnection(CoreIPC::Connection* connection)
     ChildProcess::initializeConnection(connection);
 
     connection->setShouldExitOnSyncMessageSendFailure(true);
-    connection->addQueueClient(&m_eventDispatcher);
-    connection->addQueueClient(this);
+
+    m_eventDispatcher->initializeConnection(connection);
+
+#if ENABLE(PLUGIN_PROCESS)
+    m_pluginProcessConnectionManager->initializeConnection(connection);
+#endif
 
 #if USE(SECURITY_FRAMEWORK)
-    connection->addQueueClient(&SecItemShim::shared());
+    SecItemShim::shared().initializeConnection(connection);
 #endif
 
     m_webConnection = WebConnectionToUIProcess::create(this);
@@ -634,14 +642,6 @@ void WebProcess::didReceiveInvalidMessage(CoreIPC::Connection*, CoreIPC::StringR
     // we'll let it slide.
 }
 
-void WebProcess::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
-{
-    if (decoder.messageReceiverName() == Messages::WebProcess::messageReceiverName()) {
-        didReceiveWebProcessMessageOnConnectionWorkQueue(connection, decoder, didHandleMessage);
-        return;
-    }
-}
-
 WebFrame* WebProcess::webFrame(uint64_t frameID) const
 {
     return m_frameMap.get(frameID);
@@ -766,6 +766,11 @@ bool WebProcess::isPlugInAutoStartOrigin(unsigned plugInOriginHash)
 
 void WebProcess::addPlugInAutoStartOrigin(const String& pageOrigin, unsigned plugInOriginHash)
 {
+    if (pageOrigin.isEmpty()) {
+        LOG(Plugins, "Not adding empty page origin");
+        return;
+    }
+
     if (isPlugInAutoStartOrigin(plugInOriginHash)) {
         LOG(Plugins, "Hash %x already exists as auto-start origin (request for %s)", plugInOriginHash, pageOrigin.utf8().data());
         return;
@@ -904,7 +909,7 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
     // Get WebCore memory cache statistics
     getWebCoreMemoryCacheStatistics(data.webCoreCacheStatistics);
     
-    parentProcessConnection()->send(Messages::WebContext::DidGetWebCoreStatistics(data, callbackID), 0);
+    parentProcessConnection()->send(Messages::WebContext::DidGetStatistics(data, callbackID), 0);
 }
 
 void WebProcess::garbageCollectJavaScriptObjects()
@@ -969,14 +974,6 @@ WebResourceLoadScheduler& WebProcess::webResourceLoadScheduler()
 {
     return *m_webResourceLoadScheduler;
 }
-
-#endif
-
-#if ENABLE(PLUGIN_PROCESS)
-void WebProcess::pluginProcessCrashed(CoreIPC::Connection*, const String& pluginPath, uint32_t processType)
-{
-    m_pluginProcessConnectionManager->pluginProcessCrashed(pluginPath, static_cast<PluginProcess::Type>(processType));
-}
 #endif
 
 void WebProcess::downloadRequest(uint64_t downloadID, uint64_t initiatingPageID, const ResourceRequest& request)
@@ -1040,16 +1037,6 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
             page->unmarkAllBadGrammar();
     }
 }
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-void WebProcess::didGetPlugins(CoreIPC::Connection*, uint64_t requestID, const Vector<WebCore::PluginInfo>& plugins)
-{
-#if USE(PLATFORM_STRATEGIES)
-    // Pass this to WebPlatformStrategies.cpp.
-    handleDidGetPlugins(requestID, plugins);
-#endif
-}
-#endif // ENABLE(PLUGIN_PROCESS)
 
 #if !PLATFORM(MAC)
 void WebProcess::initializeProcessName(const ChildProcessInitializationParameters&)

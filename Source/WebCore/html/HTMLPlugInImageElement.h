@@ -25,11 +25,13 @@
 
 #include "RenderStyle.h"
 #include <wtf/OwnPtr.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
 class HTMLImageLoader;
 class FrameLoader;
+class Image;
 class MouseEvent;
 class Widget;
 
@@ -37,7 +39,7 @@ enum PluginCreationOption {
     CreateAnyWidgetType,
     CreateOnlyNonNetscapePlugins,
 };
-    
+
 enum PreferPlugInsForImagesOption {
     ShouldPreferPlugInsForImages,
     ShouldNotPreferPlugInsForImages
@@ -50,6 +52,8 @@ public:
 
     RenderEmbeddedObject* renderEmbeddedObject() const;
 
+    virtual void setDisplayState(DisplayState) OVERRIDE;
+
     virtual void updateWidget(PluginCreationOption) = 0;
 
     const String& serviceType() const { return m_serviceType; }
@@ -61,10 +65,14 @@ public:
     void setNeedsWidgetUpdate(bool needsWidgetUpdate) { m_needsWidgetUpdate = needsWidgetUpdate; }
 
     void userDidClickSnapshot(PassRefPtr<MouseEvent>);
+    void updateSnapshotInfo();
+    Image* snapshotImage() const { return m_snapshotImage.get(); }
 
     // Plug-in URL might not be the same as url() with overriding parameters.
     void subframeLoaderWillCreatePlugIn(const KURL& plugInURL);
     void subframeLoaderDidCreatePlugIn(const Widget*);
+    
+    void setIsPrimarySnapshottedPlugIn(bool);
 
 protected:
     HTMLPlugInImageElement(const QualifiedName& tagName, Document*, bool createdByParser, PreferPlugInsForImagesOption);
@@ -92,23 +100,52 @@ protected:
 private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual bool willRecalcStyle(StyleChange);
-    
+
+    void didAddUserAgentShadowRoot(ShadowRoot*) OVERRIDE;
+
     virtual void finishParsingChildren();
 
     void updateWidgetIfNecessary();
     virtual bool useFallbackContent() const { return false; }
-    
+
     virtual void updateSnapshot(PassRefPtr<Image>) OVERRIDE;
     virtual void dispatchPendingMouseClick() OVERRIDE;
     void simulatedMouseClickTimerFired(DeferrableOneShotTimer<HTMLPlugInImageElement>*);
 
+    void swapRendererTimerFired(Timer<HTMLPlugInImageElement>*);
+
+    virtual bool isPlugInImageElement() const OVERRIDE { return true; }
+
     bool m_needsWidgetUpdate;
     bool m_shouldPreferPlugInsForImages;
     bool m_needsDocumentActivationCallbacks;
+    bool m_isPrimarySnapshottedPlugIn;
     RefPtr<RenderStyle> m_customStyleForPageCache;
     RefPtr<MouseEvent> m_pendingClickEventFromSnapshot;
     DeferrableOneShotTimer<HTMLPlugInImageElement> m_simulatedMouseClickTimer;
+    Timer<HTMLPlugInImageElement> m_swapRendererTimer;
+    RefPtr<Image> m_snapshotImage;
+    bool m_createdDuringUserGesture;
 };
+
+inline HTMLPlugInImageElement* toHTMLPlugInImageElement(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isPluginElement());
+    HTMLPlugInElement* plugInElement = static_cast<HTMLPlugInElement*>(node);
+    ASSERT_WITH_SECURITY_IMPLICATION(plugInElement->isPlugInImageElement());
+    return static_cast<HTMLPlugInImageElement*>(plugInElement);
+}
+
+inline const HTMLPlugInImageElement* toHTMLPlugInImageElement(const Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isPluginElement());
+    const HTMLPlugInElement* plugInElement = static_cast<const HTMLPlugInElement*>(node);
+    ASSERT_WITH_SECURITY_IMPLICATION(plugInElement->isPlugInImageElement());
+    return static_cast<const HTMLPlugInImageElement*>(plugInElement);
+}
+
+// This will catch anyone doing an unnecessary cast.
+void toHTMLPlugInImageElement(const HTMLPlugInImageElement*);
 
 } // namespace WebCore
 

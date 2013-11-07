@@ -29,6 +29,7 @@
  */
 
 #include "config.h"
+#if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorInputType.h"
 
 #include "CSSPropertyNames.h"
@@ -45,11 +46,8 @@
 #include "RenderView.h"
 #include "ScriptController.h"
 #include "ShadowRoot.h"
-
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/WTFString.h>
-
-#if ENABLE(INPUT_TYPE_COLOR)
 
 namespace WebCore {
 
@@ -126,11 +124,8 @@ void ColorInputType::createShadowSubtree()
     wrapperElement->setPseudo(AtomicString("-webkit-color-swatch-wrapper", AtomicString::ConstructFromLiteral));
     RefPtr<HTMLDivElement> colorSwatch = HTMLDivElement::create(document);
     colorSwatch->setPseudo(AtomicString("-webkit-color-swatch", AtomicString::ConstructFromLiteral));
-    ExceptionCode ec = 0;
-    wrapperElement->appendChild(colorSwatch.release(), ec);
-    ASSERT(!ec);
-    element()->userAgentShadowRoot()->appendChild(wrapperElement.release(), ec);
-    ASSERT(!ec);
+    wrapperElement->appendChild(colorSwatch.release(), ASSERT_NO_EXCEPTION);
+    element()->userAgentShadowRoot()->appendChild(wrapperElement.release(), ASSERT_NO_EXCEPTION);
     
     updateColorSwatch();
 }

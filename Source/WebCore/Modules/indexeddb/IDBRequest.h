@@ -42,11 +42,7 @@
 #include "IDBAny.h"
 #include "IDBCallbacks.h"
 #include "IDBCursor.h"
-#include "IDBCursorBackendInterface.h"
 #include "ScriptWrappable.h"
-#if USE(V8)
-#include "WorldContextHandle.h"
-#endif
 
 namespace WebCore {
 
@@ -81,7 +77,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
 
     void markEarlyDeath();
-    void setCursorDetails(IDBCursorBackendInterface::CursorType, IDBCursor::Direction);
+    void setCursorDetails(IndexedDB::CursorType, IndexedDB::CursorDirection);
     void setPendingCursor(PassRefPtr<IDBCursor>);
     void finishCursor();
     void abort();
@@ -89,14 +85,14 @@ public:
     // IDBCallbacks
     virtual void onError(PassRefPtr<IDBDatabaseError>);
     virtual void onSuccess(PassRefPtr<DOMStringList>);
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue>);
+    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>);
     virtual void onSuccess(PassRefPtr<IDBKey>);
-    virtual void onSuccess(PassRefPtr<SerializedScriptValue>);
-    virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&);
+    virtual void onSuccess(PassRefPtr<SharedBuffer>);
+    virtual void onSuccess(PassRefPtr<SharedBuffer>, PassRefPtr<IDBKey>, const IDBKeyPath&);
     virtual void onSuccess(int64_t);
     virtual void onSuccess();
-    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SerializedScriptValue>);
-    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) { ASSERT_NOT_REACHED(); } // Not implemented. Callback should not reach the renderer side.
+    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey> primaryKey, PassRefPtr<SharedBuffer>);
+    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SharedBuffer> >&) { ASSERT_NOT_REACHED(); } // Not implemented. Callback should not reach the renderer side.
 
     // ActiveDOMObject
     virtual bool hasPendingActivity() const OVERRIDE;
@@ -123,6 +119,7 @@ protected:
     IDBRequest(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBDatabaseBackendInterface::TaskType, IDBTransaction*);
     void enqueueEvent(PassRefPtr<Event>);
     virtual bool shouldEnqueueEvent() const;
+    void onSuccessInternal(PassRefPtr<SerializedScriptValue>);
     void onSuccessInternal(const ScriptValue&);
 
     RefPtr<IDBAny> m_result;
@@ -151,8 +148,8 @@ private:
     Vector<RefPtr<Event> > m_enqueuedEvents;
 
     // Only used if the result type will be a cursor.
-    IDBCursorBackendInterface::CursorType m_cursorType;
-    IDBCursor::Direction m_cursorDirection;
+    IndexedDB::CursorType m_cursorType;
+    IndexedDB::CursorDirection m_cursorDirection;
     bool m_cursorFinished;
     RefPtr<IDBCursor> m_pendingCursor;
     RefPtr<IDBKey> m_cursorKey;

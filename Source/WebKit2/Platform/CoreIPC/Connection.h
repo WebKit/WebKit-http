@@ -92,12 +92,7 @@ public:
         virtual ~Client() { }
     };
 
-    class QueueClient {
-    public:
-        virtual void didReceiveMessageOnConnectionWorkQueue(Connection*, MessageDecoder&, bool& didHandleMessage) = 0;
-
-    protected:
-        virtual ~QueueClient() { }
+    class WorkQueueMessageReceiver : public MessageReceiver, public ThreadSafeRefCounted<WorkQueueMessageReceiver> {
     };
 
 #if OS(DARWIN)
@@ -161,11 +156,11 @@ public:
     // In the future we might want a more generic way to handle sync or async messages directly
     // on the work queue, for example if we want to handle them on some other thread we could avoid
     // handling the message on the client thread first.
-    typedef void (*DidCloseOnConnectionWorkQueueCallback)(WorkQueue*, Connection*);
+    typedef void (*DidCloseOnConnectionWorkQueueCallback)(Connection*);
     void setDidCloseOnConnectionWorkQueueCallback(DidCloseOnConnectionWorkQueueCallback callback);
 
-    void addQueueClient(QueueClient*);
-    void removeQueueClient(QueueClient*);
+    void addWorkQueueMessageReceiver(StringReference messageReceiverName, WorkQueue*, WorkQueueMessageReceiver*);
+    void removeWorkQueueMessageReceiver(StringReference messageReceiverName);
 
     bool open();
     void invalidate();
@@ -205,9 +200,10 @@ private:
     void processIncomingMessage(PassOwnPtr<MessageDecoder>);
     void processIncomingSyncReply(PassOwnPtr<MessageDecoder>);
 
-    void addQueueClientOnWorkQueue(QueueClient*);
-    void removeQueueClientOnWorkQueue(QueueClient*);
-    
+    void addWorkQueueMessageReceiverOnConnectionWorkQueue(StringReference messageReceiverName, WorkQueue*, WorkQueueMessageReceiver*);
+    void removeWorkQueueMessageReceiverOnConnectionWorkQueue(StringReference messageReceiverName);
+    void dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver*, MessageDecoder*);
+
     bool canSendOutgoingMessages() const;
     bool platformCanSendOutgoingMessages() const;
     void sendOutgoingMessages();
@@ -237,7 +233,7 @@ private:
     RefPtr<WorkQueue> m_connectionQueue;
     WebCore::RunLoop* m_clientRunLoop;
 
-    Vector<QueueClient*> m_connectionQueueClients;
+    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver> > > m_workQueueMessageReceivers;
 
     unsigned m_inDispatchMessageCount;
     unsigned m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount;

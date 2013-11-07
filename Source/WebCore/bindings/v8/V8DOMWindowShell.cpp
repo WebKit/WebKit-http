@@ -32,10 +32,14 @@
 #include "V8DOMWindowShell.h"
 
 #include "ContentSecurityPolicy.h"
+#include "DOMWrapperWorld.h"
 #include "DateExtension.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClient.h"
+#include "HTMLCollection.h"
+#include "HTMLIFrameElement.h"
 #include "InspectorInstrumentation.h"
 #include "Page.h"
 #include "RuntimeEnabledFeatures.h"
@@ -45,6 +49,7 @@
 #include "V8DOMWindow.h"
 #include "V8Document.h"
 #include "V8GCForContextDispose.h"
+#include "V8HTMLCollection.h"
 #include "V8HTMLDocument.h"
 #include "V8HiddenPropertyName.h"
 #include "V8Initializer.h"
@@ -153,7 +158,7 @@ void V8DOMWindowShell::clearForNavigation()
     // will be protected by the security checks on the DOMWindow wrapper.
     clearDocumentProperty();
 
-    v8::Handle<v8::Object> windowWrapper = m_global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(m_isolate));
+    v8::Handle<v8::Object> windowWrapper = m_global->FindInstanceInPrototypeChain(V8DOMWindow::GetTemplate(m_isolate, worldTypeInMainThread(m_isolate)));
     ASSERT(!windowWrapper.IsEmpty());
     windowWrapper->TurnOnAccessCheck();
     m_context->DetachGlobal();
@@ -208,12 +213,12 @@ bool V8DOMWindowShell::initializeIfNeeded()
     if (m_context.isEmpty())
         return false;
 
+    m_world->setIsolatedWorldField(m_context.get());
+
     bool isMainWorld = m_world->isMainWorld();
 
     v8::Local<v8::Context> context = v8::Local<v8::Context>::New(m_context.get());
     v8::Context::Scope contextScope(context);
-
-    m_world->setIsolatedWorldField(m_context.get());
 
     if (m_global.isEmpty()) {
         m_global.set(context->Global());
@@ -310,12 +315,13 @@ void V8DOMWindowShell::createContext()
 
 bool V8DOMWindowShell::installDOMWindow()
 {
+    DOMWrapperWorld::setInitializingWindow(true);
     DOMWindow* window = m_frame->document()->domWindow();
     v8::Local<v8::Object> windowWrapper = V8ObjectConstructor::newInstance(V8PerContextData::from(m_context.get())->constructorForType(&V8DOMWindow::info));
     if (windowWrapper.IsEmpty())
         return false;
 
-    V8DOMWindow::installPerContextProperties(windowWrapper, window);
+    V8DOMWindow::installPerContextProperties(windowWrapper, window, m_isolate);
 
     V8DOMWrapper::setNativeInfo(v8::Handle<v8::Object>::Cast(windowWrapper->GetPrototype()), &V8DOMWindow::info, window);
 
@@ -335,7 +341,8 @@ bool V8DOMWindowShell::installDOMWindow()
     v8::Handle<v8::Object> innerGlobalObject = toInnerGlobalObject(m_context.get());
     V8DOMWrapper::setNativeInfo(innerGlobalObject, &V8DOMWindow::info, window);
     innerGlobalObject->SetPrototype(windowWrapper);
-    V8DOMWrapper::associateObjectWithWrapper(PassRefPtr<DOMWindow>(window), &V8DOMWindow::info, windowWrapper, m_isolate);
+    V8DOMWrapper::associateObjectWithWrapper(PassRefPtr<DOMWindow>(window), &V8DOMWindow::info, windowWrapper, m_isolate, WrapperConfiguration::Dependent);
+    DOMWrapperWorld::setInitializingWindow(false);
     return true;
 }
 
@@ -395,7 +402,11 @@ void V8DOMWindowShell::setSecurityToken()
     // Note: we can't use the HTTPOrigin if it was set from the DOM.
     SecurityOrigin* origin = document->securityOrigin();
     String token;
-    if (!origin->domainWasSetInDOM())
+    // We stick with an empty token if document.domain was modified or if we
+    // are in the initial empty document, so that we can do a full canAccess
+    // check in those cases.
+    if (!origin->domainWasSetInDOM()
+        && !m_frame->loader()->stateMachine()->isDisplayingInitialEmptyDocument())
         token = document->securityOrigin()->toString();
 
     // An empty or "null" token means we always have to call
@@ -426,13 +437,32 @@ void V8DOMWindowShell::updateDocument()
     updateSecurityOrigin();
 }
 
+static v8::Handle<v8::Value> getNamedProperty(HTMLDocument* htmlDocument, const AtomicString& key, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+{
+    if (!htmlDocument->hasNamedItem(key.impl()) && !htmlDocument->hasExtraNamedItem(key.impl()))
+        return v8Undefined();
+
+    RefPtr<HTMLCollection> items = htmlDocument->documentNamedItems(key);
+    if (items->isEmpty())
+        return v8Undefined();
+
+    if (items->hasExactlyOneItem()) {
+        Node* node = items->item(0);
+        Frame* frame = 0;
+        if (node->hasTagName(HTMLNames::iframeTag) && (frame = static_cast<HTMLIFrameElement*>(node)->contentFrame()))
+            return toV8(frame->document()->domWindow(), creationContext, isolate);
+        return toV8(node, creationContext, isolate);
+    }
+    return toV8(items.release(), creationContext, isolate);
+}
+
 static v8::Handle<v8::Value> getter(v8::Local<v8::String> property, const v8::AccessorInfo& info)
 {
     // FIXME: Consider passing AtomicStringImpl directly.
     AtomicString name = toWebCoreAtomicString(property);
     HTMLDocument* htmlDocument = V8HTMLDocument::toNative(info.Holder());
     ASSERT(htmlDocument);
-    v8::Handle<v8::Value> result = V8HTMLDocument::getNamedProperty(htmlDocument, name, info.Holder(), info.GetIsolate());
+    v8::Handle<v8::Value> result = getNamedProperty(htmlDocument, name, info.Holder(), info.GetIsolate());
     if (!result.IsEmpty())
         return result;
     v8::Handle<v8::Value> prototype = info.Holder()->GetPrototype();

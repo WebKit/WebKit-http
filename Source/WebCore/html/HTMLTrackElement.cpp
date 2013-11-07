@@ -24,7 +24,6 @@
  */
 
 #include "config.h"
-
 #if ENABLE(VIDEO_TRACK)
 #include "HTMLTrackElement.h"
 
@@ -36,8 +35,8 @@
 #include "RuntimeEnabledFeatures.h"
 #include "ScriptCallStack.h"
 #include "ScriptEventListener.h"
-using namespace std;
 
+using namespace std;
 
 namespace WebCore {
 
@@ -263,8 +262,6 @@ bool HTMLTrackElement::canLoadUrl(const KURL& url)
 
 void HTMLTrackElement::didCompleteLoad(LoadableTextTrack*, LoadStatus status)
 {
-    ExceptionCode ec = 0;
-
     // 4.8.10.12.3 Sourcing out-of-band text tracks (continued)
     
     // 4. Download: ...
@@ -277,7 +274,7 @@ void HTMLTrackElement::didCompleteLoad(LoadableTextTrack*, LoadStatus status)
 
     if (status == Failure) {
         setReadyState(HTMLTrackElement::TRACK_ERROR);
-        dispatchEvent(Event::create(eventNames().errorEvent, false, false), ec);
+        dispatchEvent(Event::create(eventNames().errorEvent, false, false), IGNORE_EXCEPTION);
         return;
     }
 
@@ -288,7 +285,7 @@ void HTMLTrackElement::didCompleteLoad(LoadableTextTrack*, LoadStatus status)
 
     //     2. If the file was successfully processed, fire a simple event named load at the 
     //        track element.
-    dispatchEvent(Event::create(eventNames().loadEvent, false, false), ec);
+    dispatchEvent(Event::create(eventNames().loadEvent, false, false), IGNORE_EXCEPTION);
 }
 
 // NOTE: The values in the TextTrack::ReadinessState enum must stay in sync with those in HTMLTrackElement::ReadyState.

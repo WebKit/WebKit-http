@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8Clipboard::typesAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8Clipboard::typesAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     Clipboard* clipboard = V8Clipboard::toNative(info.Holder());
 
@@ -60,7 +60,7 @@ v8::Handle<v8::Value> V8Clipboard::typesAccessorGetter(v8::Local<v8::String> nam
     return result;
 }
 
-v8::Handle<v8::Value> V8Clipboard::clearDataCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8Clipboard::clearDataMethodCustom(const v8::Arguments& args)
 {
     Clipboard* clipboard = V8Clipboard::toNative(args.Holder());
 
@@ -77,7 +77,7 @@ v8::Handle<v8::Value> V8Clipboard::clearDataCallback(const v8::Arguments& args)
     return v8::Undefined();
 }
 
-v8::Handle<v8::Value> V8Clipboard::setDragImageCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8Clipboard::setDragImageMethodCustom(const v8::Arguments& args)
 {
     Clipboard* clipboard = V8Clipboard::toNative(args.Holder());
 

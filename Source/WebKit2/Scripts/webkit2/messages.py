@@ -24,9 +24,9 @@ import collections
 import re
 from webkit2 import parser
 
+WANTS_CONNECTION_ATTRIBUTE = 'WantsConnection'
 LEGACY_RECEIVER_ATTRIBUTE = 'LegacyReceiver'
 DELAYED_ATTRIBUTE = 'Delayed'
-DISPATCH_ON_CONNECTION_QUEUE_ATTRIBUTE = 'DispatchOnConnectionQueue'
 VARIADIC_ATTRIBUTE = 'Variadic'
 
 _license_header = """/*
@@ -188,6 +188,7 @@ def struct_or_class(namespace, type):
         'WebKit::DrawingAreaInfo',
         'WebKit::EditorState',
         'WebKit::NetworkProcessCreationParameters',
+        'WebKit::OfflineStorageProcessCreationParameters',
         'WebKit::PlatformPopupMenuData',
         'WebKit::PluginCreationParameters',
         'WebKit::PluginProcessCreationParameters',
@@ -304,18 +305,17 @@ def handler_function(receiver, message):
 
 def async_message_statement(receiver, message):
     dispatch_function_args = ['decoder', 'this', '&%s' % handler_function(receiver, message)]
+
     dispatch_function = 'handleMessage'
     if message.has_attribute(VARIADIC_ATTRIBUTE):
         dispatch_function += 'Variadic'
-    if message.has_attribute(DISPATCH_ON_CONNECTION_QUEUE_ATTRIBUTE):
-        dispatch_function += 'OnConnectionQueue'
+
+    if message.has_attribute(WANTS_CONNECTION_ATTRIBUTE):
         dispatch_function_args.insert(0, 'connection')
-        
+
     result = []
     result.append('    if (decoder.messageName() == Messages::%s::%s::name()) {\n' % (receiver.name, message.name))
     result.append('        CoreIPC::%s<Messages::%s::%s>(%s);\n' % (dispatch_function, receiver.name, message.name, ', '.join(dispatch_function_args)))
-    if message.has_attribute(DISPATCH_ON_CONNECTION_QUEUE_ATTRIBUTE):
-        result.append('        didHandleMessage = true;\n')
     result.append('        return;\n')
     result.append('    }\n')
     return surround_in_condition(''.join(result), message.condition)
@@ -328,20 +328,46 @@ def sync_message_statement(receiver, message):
     if message.has_attribute(VARIADIC_ATTRIBUTE):
         dispatch_function += 'Variadic'
 
+    wants_connection = message.has_attribute(DELAYED_ATTRIBUTE) or message.has_attribute(WANTS_CONNECTION_ATTRIBUTE)
+
     result = []
     result.append('    if (decoder.messageName() == Messages::%s::%s::name()) {\n' % (receiver.name, message.name))
-    result.append('        CoreIPC::%s<Messages::%s::%s>(%sdecoder, %sreplyEncoder, this, &%s);\n' % (dispatch_function, receiver.name, message.name, 'connection, ' if message.has_attribute(DELAYED_ATTRIBUTE) else '', '' if message.has_attribute(DELAYED_ATTRIBUTE) else '*', handler_function(receiver, message)))
+    result.append('        CoreIPC::%s<Messages::%s::%s>(%sdecoder, %sreplyEncoder, this, &%s);\n' % (dispatch_function, receiver.name, message.name, 'connection, ' if wants_connection else '', '' if message.has_attribute(DELAYED_ATTRIBUTE) else '*', handler_function(receiver, message)))
     result.append('        return;\n')
     result.append('    }\n')
     return surround_in_condition(''.join(result), message.condition)
 
 
+def class_template_headers(template_string):
+    template_string = template_string.strip()
+
+    class_template_types = {
+        # FIXME: Remove the unprefixed versions.
+        'Vector': {'headers': ['<wtf/Vector.h>'], 'argument_coder_headers': ['"ArgumentCoders.h"']},
+        'HashMap': {'headers': ['<wtf/HashMap.h>'], 'argument_coder_headers': ['"ArgumentCoders.h"']},
+
+        'WTF::Vector': {'headers': ['<wtf/Vector.h>'], 'argument_coder_headers': ['"ArgumentCoders.h"']},
+        'WTF::HashMap': {'headers': ['<wtf/HashMap.h>'], 'argument_coder_headers': ['"ArgumentCoders.h"']},
+        'std::pair': {'headers': ['<utility>'], 'argument_coder_headers': ['"ArgumentCoders.h"']},
+    }
+
+    match = re.match('(?P<template_name>.+?)<(?P<parameter_string>.+)>', template_string)
+    if not match:
+        return {'header_infos':[], 'types':[template_string]}
+    header_infos = [class_template_types[match.groupdict()['template_name']]]
+    types = []
+
+    for parameter in parser.split_parameters_string(match.groupdict()['parameter_string']):
+        parameter_header_infos_and_types = class_template_headers(parameter)
+
+        header_infos += parameter_header_infos_and_types['header_infos'];
+        types += parameter_header_infos_and_types['types']
+
+    return {'header_infos':header_infos, 'types':types}
+
+
 def argument_coder_headers_for_type(type):
-    # Check for Vector.
-    match = re.search(r'Vector<(.+)>', type)
-    if match:
-        element_type = match.groups()[0].strip()
-        return ['"ArgumentCoders.h"'] + argument_coder_headers_for_type(element_type)
+    header_infos_and_types = class_template_headers(type)
 
     special_cases = {
         'WTF::String': '"ArgumentCoders.h"',
@@ -349,35 +375,36 @@ def argument_coder_headers_for_type(type):
         'WebKit::WebContextUserMessageEncoder': '"WebContextUserMessageCoders.h"',
     }
 
-    if type in special_cases:
-        return [special_cases[type]]
+    headers = []
+    for header_info in header_infos_and_types['header_infos']:
+        headers += header_info['argument_coder_headers']
 
-    split = type.split('::')
-    if len(split) < 2:
-        return []
-    if split[0] == 'WebCore':
-        return ['"WebCoreArgumentCoders.h"']
+    for type in header_infos_and_types['types']:
+        if type in special_cases:
+            headers.append(special_cases[type])
+            continue
 
-    return []
+        split = type.split('::')
+        if len(split) < 2:
+            continue
+        if split[0] == 'WebCore':
+            headers.append('"WebCoreArgumentCoders.h"')
 
+    return headers
 
 def headers_for_type(type):
-    # Check for Vector.
-    match = re.search(r'Vector<(.+)>', type)
-    if match:
-        element_type = match.groups()[0].strip()
-        return ['<wtf/Vector.h>'] + headers_for_type(element_type)
+    header_infos_and_types = class_template_headers(type)
 
     special_cases = {
         'WTF::String': ['<wtf/text/WTFString.h>'],
         'WebCore::CompositionUnderline': ['<WebCore/Editor.h>'],
-        'WebCore::CoordinatedLayerID': ['<WebCore/CoordinatedLayerInfo.h>'],
         'WebCore::GrammarDetail': ['<WebCore/TextCheckerClient.h>'],
         'WebCore::GraphicsLayerAnimations': ['<WebCore/GraphicsLayerAnimation.h>'],
         'WebCore::KeyframeValueList': ['<WebCore/GraphicsLayer.h>'],
         'WebCore::KeypressCommand': ['<WebCore/KeyboardEvent.h>'],
         'WebCore::FileChooserSettings': ['<WebCore/FileChooser.h>'],
         'WebCore::PluginInfo': ['<WebCore/PluginData.h>'],
+        'WebCore::TextCheckingRequestData': ['<WebCore/TextChecking.h>'],
         'WebCore::TextCheckingResult': ['<WebCore/TextCheckerClient.h>'],
         'WebCore::ViewportAttributes': ['<WebCore/ViewportArguments.h>'],
         'WebKit::InjectedBundleUserMessageEncoder': [],
@@ -388,18 +415,28 @@ def headers_for_type(type):
         'WebKit::WebTouchEvent': ['"WebEvent.h"'],
         'WebKit::WebWheelEvent': ['"WebEvent.h"'],
     }
-    if type in special_cases:
-        return special_cases[type]
 
-    # We assume that we must include a header for a type iff it has a scope
-    # resolution operator (::).
-    split = type.split('::')
-    if len(split) < 2:
-        return []
-    if split[0] == 'WebKit' or split[0] == 'CoreIPC':
-        return ['"%s.h"' % split[1]]
-    return ['<%s/%s.h>' % tuple(split)]
+    headers = []
+    for header_info in header_infos_and_types['header_infos']:
+        headers += header_info['headers']
 
+    for type in header_infos_and_types['types']:
+        if type in special_cases:
+            headers += special_cases[type]
+            continue
+
+        # We assume that we must include a header for a type iff it has a scope
+        # resolution operator (::).
+        split = type.split('::')
+        if len(split) < 2:
+            continue
+
+        if split[0] == 'WebKit' or split[0] == 'CoreIPC':
+            headers.append('"%s.h"' % split[1])
+        else:
+            headers.append('<%s/%s.h>' % tuple(split))
+
+    return headers
 
 def generate_message_handler(file):
     receiver = parser.parse(file)
@@ -499,7 +536,7 @@ def generate_message_handler(file):
             result.append('bool %s::DelayedReply::send(%s)\n' % (message.name, ', '.join([' '.join(x) for x in send_parameters])))
             result.append('{\n')
             result.append('    ASSERT(m_encoder);\n')
-            result += ['    m_encoder->encode(%s);\n' % x.name for x in message.reply_parameters]
+            result += ['    *m_encoder << %s;\n' % x.name for x in message.reply_parameters]
             result.append('    bool result = m_connection->sendSyncReply(m_encoder.release());\n')
             result.append('    m_connection = nullptr;\n')
             result.append('    return result;\n')
@@ -513,40 +550,19 @@ def generate_message_handler(file):
 
     result.append('namespace WebKit {\n\n')
 
-    async_dispatch_on_connection_queue_messages = []
-    sync_dispatch_on_connection_queue_messages = []
     async_messages = []
     sync_messages = []
     for message in receiver.messages:
         if message.reply_parameters is not None:
-            if message.has_attribute(DISPATCH_ON_CONNECTION_QUEUE_ATTRIBUTE):
-                sync_dispatch_on_connection_queue_messages.append(message)
-            else:
-                sync_messages.append(message)
+            sync_messages.append(message)
         else:
-            if message.has_attribute(DISPATCH_ON_CONNECTION_QUEUE_ATTRIBUTE):
-                async_dispatch_on_connection_queue_messages.append(message)
-            else:
-                async_messages.append(message)
-
-    if async_dispatch_on_connection_queue_messages:
-        result.append('void %s::didReceive%sMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)\n' % (receiver.name, receiver.name))
-        result.append('{\n')
-        result.append('#if COMPILER(MSVC)\n')
-        result.append('#pragma warning(push)\n')
-        result.append('#pragma warning(disable: 4065)\n')
-        result.append('#endif\n')
-        result += [async_message_statement(receiver, message) for message in async_dispatch_on_connection_queue_messages]
-        result.append('#if COMPILER(MSVC)\n')
-        result.append('#pragma warning(pop)\n')
-        result.append('#endif\n')
-        result.append('}\n\n')
+            async_messages.append(message)
 
     if async_messages:
         if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE):
             result.append('void %s::didReceive%sMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder& decoder)\n' % (receiver.name, receiver.name))
         else:
-            result.append('void %s::didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder& decoder)\n' % (receiver.name))
+            result.append('void %s::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)\n' % (receiver.name))
 
         result.append('{\n')
         result += [async_message_statement(receiver, message) for message in async_messages]
@@ -558,7 +574,7 @@ def generate_message_handler(file):
         if receiver.has_attribute(LEGACY_RECEIVER_ATTRIBUTE):
             result.append('void %s::didReceiveSync%sMessage(CoreIPC::Connection*%s, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name, receiver.name, ' connection' if sync_delayed_messages else ''))
         else:
-            result.append('void %s::didReceiveSyncMessage(CoreIPC::Connection*%s, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name, ' connection' if sync_delayed_messages else ''))
+            result.append('void %s::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)\n' % (receiver.name))
         result.append('{\n')
         result += [sync_message_statement(receiver, message) for message in sync_messages]
         result.append('    ASSERT_NOT_REACHED();\n')

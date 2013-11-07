@@ -106,6 +106,7 @@ Programs_DumpRenderTree_CPPFLAGS = \
 	$(global_cppflags) \
 	-DTOP_LEVEL_DIR=\"${shell pwd}/${srcdir}\" \
 	-I$(srcdir)/Tools/DumpRenderTree \
+	-I$(srcdir)/Tools/DumpRenderTree/atk \
 	-I$(srcdir)/Tools/DumpRenderTree/cairo \
 	-I$(srcdir)/Tools/DumpRenderTree/gtk \
 	-I$(srcdir)/Source/WebKit/gtk \
@@ -145,10 +146,12 @@ Programs_DumpRenderTree_SOURCES = \
 	Tools/DumpRenderTree/WorkQueue.h \
 	Tools/DumpRenderTree/WorkQueueItem.h \
 	Tools/DumpRenderTree/config.h \
+	Tools/DumpRenderTree/atk/AccessibilityCallbacks.h \
+	Tools/DumpRenderTree/atk/AccessibilityCallbacksAtk.cpp \
+    	Tools/DumpRenderTree/atk/AccessibilityControllerAtk.cpp \
+	Tools/DumpRenderTree/atk/AccessibilityUIElementAtk.cpp \
 	Tools/DumpRenderTree/cairo/PixelDumpSupportCairo.cpp \
 	Tools/DumpRenderTree/cairo/PixelDumpSupportCairo.h \
-	Tools/DumpRenderTree/gtk/AccessibilityCallbacks.h \
-	Tools/DumpRenderTree/gtk/AccessibilityCallbacks.cpp \
 	Tools/DumpRenderTree/gtk/AccessibilityControllerGtk.cpp \
 	Tools/DumpRenderTree/gtk/AccessibilityUIElementGtk.cpp \
 	Tools/DumpRenderTree/gtk/DumpRenderTree.cpp \
@@ -300,6 +303,7 @@ check-local:
 
 EXTRA_DIST += \
 	Tools/gtk/common.py \
+	Tools/gtk/generate-feature-defines-files \
 	Tools/gtk/generate-gtkdoc \
 	Tools/gtk/gtkdoc.py \
 	Tools/jhbuild/jhbuildutils.py \
@@ -312,26 +316,26 @@ docs: docs-build.stamp
 .PHONY : docs
 DISTCLEANFILES += docs-build.stamp
 
-if ENABLE_WEBKIT2
-docs-build.stamp: \
-	Source/WebKit/gtk/docs/webkitenvironment.xml \
-	Source/WebKit/gtk/docs/webkitgtk-docs.sgml \
-	Source/WebKit/gtk/docs/webkitgtk-sections.txt \
+docs_build_stamp_list = \
+	Source/WebKit/gtk/docs/webkitenvironment.xml
+
+if ENABLE_WEBKIT1
+docs_build_stamp_list += \
 	libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	Source/WebKit/gtk/docs/webkitgtk-docs.sgml \
+	Source/WebKit/gtk/docs/webkitgtk-sections.txt
+endif
+
+if ENABLE_WEBKIT2
+docs_build_stamp_list += \
 	libwebkit2gtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
 	Source/WebKit2/UIProcess/API/gtk/docs/webkit2gtk-docs.sgml \
 	Source/WebKit2/UIProcess/API/gtk/docs/webkit2gtk-sections.txt
-	$(srcdir)/Tools/gtk/generate-gtkdoc
-	@touch docs-build.stamp
-else
-docs-build.stamp: \
-	libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
-	Source/WebKit/gtk/docs/webkitenvironment.xml \
-	Source/WebKit/gtk/docs/webkitgtk-docs.sgml \
-	Source/WebKit/gtk/docs/webkitgtk-sections.txt
-	$(srcdir)/Tools/gtk/generate-gtkdoc
-	@touch docs-build.stamp
 endif
+
+docs-build.stamp: $(doc_build_stamp_list)
+	CC=$(CC) $(srcdir)/Tools/gtk/generate-gtkdoc
+	@touch docs-build.stamp
 
 clean-local: doc-clean-local
 doc-clean-local:

@@ -30,11 +30,9 @@
 
 /**
  * @constructor
- * @param {WebInspector.FileSystemMapping} fileSystemMapping
  */
-WebInspector.FileMapping = function(fileSystemMapping)
+WebInspector.FileMapping = function()
 {
-    this._fileSystemMapping = fileSystemMapping;
     this._mappingEntriesSetting = WebInspector.settings.createSetting("fileMappingEntries", []);
     /** @type {Array.<WebInspector.FileMapping.Entry>} */
     this._entries = [];
@@ -43,71 +41,31 @@ WebInspector.FileMapping = function(fileSystemMapping)
 
 WebInspector.FileMapping.prototype = {
     /**
-     * @param {WebInspector.FileMapping.Entry} entry
      * @param {string} url
-     * @return {boolean}
+     * @return {?WebInspector.FileMapping.Entry}
      */
-    _entryMatchesURL: function(entry, url)
-    {
-        return url.startsWith(entry.urlPrefix);
-    },
-    
-    /**
-     * @param {WebInspector.FileMapping.Entry} entry
-     * @return {?string}
-     */
-    _entryURIPrefix: function(entry)
-    {
-        return this._fileSystemMapping.uriForPath(entry.pathPrefix);
-    },
-    
-    /**
-     * @param {string} url
-     * @return {boolean}
-     */
-    hasMappingForURL: function(url)
-    {
-        return !!this._innerURIForURL(url);
-    },
-    
-    /**
-     * @param {string} url
-     * @return {?string}
-     */
-    _innerURIForURL: function(url)
+    mappingEntryForURL: function(url)
     {
         for (var i = 0; i < this._entries.length; ++i) {
             var entry = this._entries[i];
-            var uriPrefix = this._entryURIPrefix(entry);
-            if (uriPrefix && this._entryMatchesURL(entry, url))
-                return uriPrefix + url.substring(entry.urlPrefix.length);
+            if (url.startsWith(entry.urlPrefix))
+                return entry;
         }
         return null;
     },
-    
+
     /**
-     * @param {string} url
-     * @return {string}
+     * @param {string} path
+     * @return {?WebInspector.FileMapping.Entry}
      */
-    uriForURL: function(url)
-    {
-        // FIXME: FileMapping should be network project aware. It should return correct uri for network project uiSourceCodes.
-        return this._innerURIForURL(url) || url;
-    },
-    
-    /**
-     * @param {string} uri
-     * @return {string}
-     */
-    urlForURI: function(uri)
+    mappingEntryForPath: function(path)
     {
         for (var i = 0; i < this._entries.length; ++i) {
             var entry = this._entries[i];
-            var uriPrefix = this._entryURIPrefix(entry);
-            if (uriPrefix && uri.startsWith(uriPrefix))
-                return entry.urlPrefix + uri.substring(uriPrefix.length);
+            if (path.startsWith(entry.pathPrefix))
+                return entry;
         }
-        return "";
+        return null;
     },
 
     /**

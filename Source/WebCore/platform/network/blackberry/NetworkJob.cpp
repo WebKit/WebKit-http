@@ -235,12 +235,27 @@ void NetworkJob::handleNotifyStatusReceived(int status, const String& message)
 
 void NetworkJob::notifyHeadersReceived(const BlackBerry::Platform::NetworkRequest::HeaderList& headers)
 {
+    bool cookiesEnabled = m_frame && m_frame->loader() && m_frame->loader()->client()
+        && static_cast<FrameLoaderClientBlackBerry*>(m_frame->loader()->client())->cookiesEnabled();
+
     BlackBerry::Platform::NetworkRequest::HeaderList::const_iterator endIt = headers.end();
     for (BlackBerry::Platform::NetworkRequest::HeaderList::const_iterator it = headers.begin(); it != endIt; ++it) {
+
+        // Handle Set-Cookie headers immediately, even if loading is being deferred, since any request
+        // created while loading is deferred should include all cookies received. (This especially
+        // affects Set-Cookie headers sent with a 401 response - often this causes an auth dialog to be
+        // opened, which defers loading, but the followup request using the credentials from the dialog
+        // needs to include the cookie.)
+        //
+        // This is safe because handleSetCookieHeader only updates the cookiejar, it doesn't call back
+        // into the loader.
+        String keyString(it->first);
+        if (cookiesEnabled && equalIgnoringCase(keyString, "set-cookie"))
+            handleSetCookieHeader(it->second);
+
         if (shouldDeferLoading())
             m_deferredData.deferHeaderReceived(it->first, it->second);
         else {
-            String keyString(it->first);
             String valueString;
             if (equalIgnoringCase(keyString, "Location")) {
                 // Location, like all headers, is supposed to be Latin-1. But some sites (wikipedia) send it in UTF-8.
@@ -270,7 +285,7 @@ void NetworkJob::notifyMultipartHeaderReceived(const char* key, const char* valu
         handleNotifyMultipartHeaderReceived(key, value);
 }
 
-void NetworkJob::notifyAuthReceived(NetworkRequest::AuthType authType, NetworkRequest::AuthProtocol authProtocol, NetworkRequest::AuthScheme authScheme, const char* realm, AuthResult result, bool requireCredentials)
+void NetworkJob::notifyAuthReceived(NetworkRequest::AuthType authType, NetworkRequest::AuthProtocol authProtocol, NetworkRequest::AuthScheme authScheme, const char* realm, AuthResult result)
 {
     ProtectionSpaceServerType serverType;
     switch (authType) {
@@ -354,8 +369,19 @@ void NetworkJob::notifyAuthReceived(NetworkRequest::AuthType authType, NetworkRe
         }
         storeCredentials();
     }
-    if (result != AuthResultSuccess)
-        m_newJobWithCredentialsStarted = sendRequestWithCredentials(serverType, scheme, realm, requireCredentials);
+    if (result != AuthResultSuccess) {
+        switch (sendRequestWithCredentials(serverType, scheme, realm, result != AuthResultRetry)) {
+        case SendRequestSucceeded:
+            m_newJobWithCredentialsStarted = true;
+            break;
+        case SendRequestCancelled:
+            streamFailedToGetCredentials(authType, authProtocol, authScheme);
+            // fall through
+        case SendRequestWaiting:
+            m_newJobWithCredentialsStarted = false;
+            break;
+        }
+    }
 }
 
 void NetworkJob::notifyStringHeaderReceived(const String& key, const String& value)
@@ -377,9 +403,6 @@ void NetworkJob::handleNotifyHeaderReceived(const String& key, const String& val
         m_contentType = value.lower();
     else if (lowerKey == "content-disposition")
         m_contentDisposition = value;
-    else if (lowerKey == "set-cookie" && m_frame && m_frame->loader() && m_frame->loader()->client()
-        && static_cast<FrameLoaderClientBlackBerry*>(m_frame->loader()->client())->cookiesEnabled())
-        handleSetCookieHeader(value);
     else if (equalIgnoringCase(key, BlackBerry::Platform::NetworkRequest::HEADER_BLACKBERRY_FTP))
         handleFTPHeader(value);
 
@@ -407,14 +430,14 @@ void NetworkJob::handleNotifyMultipartHeaderReceived(const String& key, const St
             bool needsCopyfromOriginalResponse = true;
             int replaceHeadersIndex = 0;
             while (BlackBerry::Platform::MultipartStream::replaceHeaders[replaceHeadersIndex]) {
-                if (it->first.lower() == BlackBerry::Platform::MultipartStream::replaceHeaders[replaceHeadersIndex]) {
+                if (it->key.lower() == BlackBerry::Platform::MultipartStream::replaceHeaders[replaceHeadersIndex]) {
                     needsCopyfromOriginalResponse = false;
                     break;
                 }
                 replaceHeadersIndex++;
             }
             if (needsCopyfromOriginalResponse)
-                m_multipartResponse->setHTTPHeaderField(it->first, it->second);
+                m_multipartResponse->setHTTPHeaderField(it->key, it->value);
         }
 
         m_multipartResponse->setIsMultipartPayload(true);
@@ -601,7 +624,7 @@ bool NetworkJob::retryAsFTPDirectory()
     return startNewJobWithRequest(newRequest);
 }
 
-bool NetworkJob::startNewJobWithRequest(ResourceRequest& newRequest, bool increaseRedirectCount)
+bool NetworkJob::startNewJobWithRequest(ResourceRequest& newRequest, bool increaseRedirectCount, bool rereadCookies)
 {
     // m_frame can be null if this is a PingLoader job (See NetworkJob::initialize).
     // In this case we don't start new request.
@@ -629,7 +652,8 @@ bool NetworkJob::startNewJobWithRequest(ResourceRequest& newRequest, bool increa
         m_streamFactory,
         m_frame,
         m_deferLoadingCount,
-        increaseRedirectCount ? m_redirectCount + 1 : m_redirectCount);
+        increaseRedirectCount ? m_redirectCount + 1 : m_redirectCount,
+        rereadCookies);
     return true;
 }
 
@@ -672,7 +696,7 @@ bool NetworkJob::handleRedirect()
     m_handle->getInternal()->m_proxyWebChallenge.nullify();
     m_handle->getInternal()->m_hostWebChallenge.nullify();
 
-    return startNewJobWithRequest(newRequest, true);
+    return startNewJobWithRequest(newRequest, /* increaseRedirectCount */ true, /* rereadCookies */ true);
 }
 
 void NetworkJob::sendResponseIfNeeded()
@@ -778,15 +802,15 @@ bool NetworkJob::handleFTPHeader(const String& header)
     return true;
 }
 
-bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, ProtectionSpaceAuthenticationScheme scheme, const String& realm, bool requireCredentials)
+NetworkJob::SendRequestResult NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, ProtectionSpaceAuthenticationScheme scheme, const String& realm, bool requireCredentials)
 {
     ASSERT(m_handle);
     if (!m_handle)
-        return false;
+        return SendRequestCancelled;
 
     KURL newURL = m_response.url();
     if (!newURL.isValid())
-        return false;
+        return SendRequestCancelled;
 
     // IMPORTANT: if a new source of credentials is added to this method, be sure to handle it in
     // purgeCredentials as well!
@@ -827,6 +851,7 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
 
     // We've got the scheme and realm. Now we need a username and password.
     Credential credential;
+
     if (!requireCredentials) {
         // Don't overwrite any existing credentials with the empty credential
         updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()), /* allowOverwrite */ false);
@@ -845,7 +870,7 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
             // and parsed, so if we cancel the authentication challenge when loading the main
             // resource, we should also cancel loading the favicon when it starts to
             // load. If not we will receive another challenge which may confuse the user.
-            return false;
+            return SendRequestCancelled;
         }
 
         // CredentialStore is empty. Ask the user via dialog.
@@ -863,10 +888,10 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
         // Before asking the user for credentials, we check if the URL contains that.
         if (username.isEmpty() && password.isEmpty()) {
             if (m_handle->firstRequest().targetType() != ResourceRequest::TargetIsMainFrame && BlackBerry::Platform::Settings::instance()->isChromeProcess())
-                return false;
+                return SendRequestCancelled;
 
             if (!m_frame || !m_frame->page())
-                return false;
+                return SendRequestCancelled;
 
             // DO overwrite any existing credentials with the empty credential
             updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()));
@@ -876,7 +901,7 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
 
             AuthenticationChallengeManager::instance()->authenticationChallenge(newURL, protectionSpace,
                 Credential(), this, m_frame->page()->chrome()->client()->platformPageClient());
-            return false;
+            return SendRequestWaiting;
         }
 
         credential = Credential(username, password, CredentialPersistenceForSession);
@@ -885,7 +910,7 @@ bool NetworkJob::sendRequestWithCredentials(ProtectionSpaceServerType type, Prot
     }
 
     notifyChallengeResult(newURL, protectionSpace, AuthenticationChallengeSuccess, credential);
-    return m_newJobWithCredentialsStarted;
+    return m_newJobWithCredentialsStarted ? SendRequestSucceeded : SendRequestCancelled;
 }
 
 void NetworkJob::storeCredentials()
@@ -971,7 +996,8 @@ void NetworkJob::purgeCredentials(AuthenticationChallenge& challenge)
     CredentialStorage::remove(challenge.protectionSpace());
     challenge.setStored(false);
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-    credentialBackingStore().removeLogin(m_response.url(), challenge.protectionSpace());
+    if (challenge.proposedCredential() == credentialBackingStore().getLogin(challenge.protectionSpace()))
+        credentialBackingStore().removeLogin(challenge.protectionSpace(), challenge.proposedCredential().user());
 #endif
 }
 
@@ -999,15 +1025,21 @@ void NetworkJob::notifyChallengeResult(const KURL& url, const ProtectionSpace& p
         updateDeferLoadingCount(-1);
     }
 
-    if (result != AuthenticationChallengeSuccess)
+    if (result != AuthenticationChallengeSuccess) {
+        NetworkRequest::AuthType authType;
+        NetworkRequest::AuthProtocol authProtocol;
+        NetworkRequest::AuthScheme authScheme;
+        protectionSpaceToPlatformAuth(protectionSpace, authType, authProtocol, authScheme);
+        streamFailedToGetCredentials(authType, authProtocol, authScheme);
         return;
+    }
 
     updateCurrentWebChallenge(AuthenticationChallenge(protectionSpace, credential, 0, m_response, ResourceError()), /* allowOverwrite */ false);
 
     ResourceRequest newRequest = m_handle->firstRequest();
     newRequest.setURL(url);
     newRequest.setMustHandleInternally(true);
-    m_newJobWithCredentialsStarted = startNewJobWithRequest(newRequest);
+    m_newJobWithCredentialsStarted = startNewJobWithRequest(newRequest, /* increaseRedirectCount */ false, /* rereadCookies */ true);
 }
 
 void NetworkJob::frameDestroyed()
@@ -1034,6 +1066,11 @@ void NetworkJob::updateCurrentWebChallenge(const AuthenticationChallenge& challe
         if (allowOverwrite || !m_handle->getInternal()->m_hostWebChallenge.hasCredentials())
             m_handle->getInternal()->m_hostWebChallenge = challenge;
     }
+}
+
+const BlackBerry::Platform::String NetworkJob::mimeType() const
+{
+    return m_response.mimeType();
 }
 
 } // namespace WebCore

@@ -59,6 +59,9 @@ void NetworkProcess::initializeProcessName(const ChildProcessInitializationParam
     if (!parameters.uiProcessName.isNull()) {
         NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Networking", "visible name of the network process. The argument is the application name."), (NSString *)parameters.uiProcessName];
         WKSetVisibleApplicationName((CFStringRef)applicationName);
+
+        // Having a window server connection in this process would result in spin logs (<rdar://problem/13239119>).
+        shutdownWindowServerConnection();
     }
 }
 
@@ -103,11 +106,10 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 
     if (!m_diskCacheDirectory.isNull()) {
         SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);
-        NSUInteger cacheMemoryCapacity = parameters.nsURLCacheMemoryCapacity;
-        NSUInteger cacheDiskCapacity = parameters.nsURLCacheDiskCapacity;
-
-        RetainPtr<NSURLCache> parentProcessURLCache(AdoptNS, [[NSURLCache alloc] initWithMemoryCapacity:cacheMemoryCapacity diskCapacity:cacheDiskCapacity diskPath:parameters.diskCacheDirectory]);
-        [NSURLCache setSharedURLCache:parentProcessURLCache.get()];
+        [NSURLCache setSharedURLCache:adoptNS([[NSURLCache alloc]
+            initWithMemoryCapacity:parameters.nsURLCacheMemoryCapacity
+            diskCapacity:parameters.nsURLCacheDiskCapacity
+            diskPath:parameters.diskCacheDirectory]).get()];
     }
 
 #if USE(SECURITY_FRAMEWORK)

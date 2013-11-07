@@ -114,9 +114,12 @@ public:
 
     // These do not. FIXME: This is too messy, we can do better.
     bool setProperty(CSSPropertyID, int identifier, bool important = false);
+    void appendPrefixingVariantProperty(const CSSProperty&);
+    void setPrefixingVariantProperty(const CSSProperty&);
     void setProperty(const CSSProperty&, CSSProperty* slot = 0);
     
     bool removeProperty(CSSPropertyID, String* returnText = 0);
+    void removePrefixedOrUnprefixedProperty(CSSPropertyID);
 
     void parseDeclaration(const String& styleDeclaration, StyleSheetContents* contextStyleSheet);
 
@@ -200,7 +203,7 @@ private:
     void appendFontLonghandValueIfExplicit(CSSPropertyID, StringBuilder& result, String& value) const;
 
     bool removeShorthandProperty(CSSPropertyID);
-    bool propertyMatches(const PropertyReference&) const;
+    bool propertyMatches(CSSPropertyID, const CSSValue*) const;
 
     int findPropertyIndex(CSSPropertyID) const;
     CSSProperty* findMutableCSSPropertyWithID(CSSPropertyID);

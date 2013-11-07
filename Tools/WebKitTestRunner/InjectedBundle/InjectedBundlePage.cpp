@@ -368,7 +368,6 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
         0, /*toolbarsAreVisible*/
         didReachApplicationCacheOriginQuota,
         didExceedDatabaseQuota,
-        0, /*plugInStartLabelImage*/
         0, /*plugInStartLabelTitle*/
         0, /*plugInStartLabelSubtitle*/
         0, /*plugInExtraStyleSheet*/
@@ -815,6 +814,10 @@ static void dumpDescendantFramesText(WKBundleFrameRef frame, StringBuilder& stri
     for (size_t i = 0; i < size; ++i) {
         WKBundleFrameRef subframe = static_cast<WKBundleFrameRef>(WKArrayGetItemAtIndex(childFrames.get(), i));
         WKRetainPtr<WKStringRef> subframeName(AdoptWK, WKBundleFrameCopyName(subframe));
+
+        // DumpRenderTree ignores empty frames, so do the same thing here.
+        if (!hasDocumentElement(subframe))
+            continue;
 
         stringBuilder.appendLiteral("\n--------\nFrame: '");
         stringBuilder.append(toWTFString(subframeName));

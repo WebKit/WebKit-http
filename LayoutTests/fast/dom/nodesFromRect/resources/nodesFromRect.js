@@ -1,7 +1,38 @@
 /*
  * Contributors:
  *     * Antonio Gomes <tonikitoo@webkit.org>
- **/
+ *     * Allan Sandfeld Jensen <allan.jensen@digia.com>
+**/
+
+function nodeToString(node) {
+    var str = "";
+    if (node.nodeType == Node.ELEMENT_NODE) {
+        str += node.nodeName;
+        if (node.id)
+            str += '#' + node.id;
+        else if (node.class)
+            str += '.' + node.class;
+    } else if (node.nodeType == Node.TEXT_NODE) {
+        str += "'" + node.data + "'";
+    } else if (node.nodeType == Node.DOCUMENT_NODE) {
+        str += "#document";
+    }
+    return str;
+}
+
+function nodeListToString(nodes) {
+    var nodeString = "";
+
+    for (var i = 0; i < nodes.length; i++) {
+        var str = nodeToString(nodes[i]);
+        if (!str)
+            continue;
+        nodeString += str;
+        if (i + 1 < nodes.length)
+            nodeString += ", ";
+    }
+    return nodeString;
+}
 
 function check(x, y, topPadding, rightPadding, bottomPadding, leftPadding, list, doc)
 {
@@ -11,7 +42,7 @@ function check(x, y, topPadding, rightPadding, bottomPadding, leftPadding, list,
   if (!doc)
     doc = document;
 
-  var nodes = internals.nodesFromRect(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding, true /* ignoreClipping */, false /* allow shadow content */);
+  var nodes = internals.nodesFromRect(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding, true /* ignoreClipping */, false /* allow shadow content */, false /* allow child-frame content */);
   if (!nodes)
     return;
 
@@ -20,7 +51,8 @@ function check(x, y, topPadding, rightPadding, bottomPadding, leftPadding, list,
               "[" + x + "," + y + "], " +
               "[" + topPadding + "," + rightPadding +
               "," + bottomPadding + "," + leftPadding +
-              "]: '" + list.length + "' vs '" + nodes.length + "'");
+              "]: '" + list.length + "' vs '" + nodes.length +
+              "', found: " + nodeListToString(nodes));
     return;
   }
 
@@ -29,7 +61,8 @@ function check(x, y, topPadding, rightPadding, bottomPadding, leftPadding, list,
       testFailed("Unexpected node #" + i + " for rect " +
                 "[" + x + "," + y + "], " +
                 "[" + topPadding + "," + rightPadding +
-                "," + bottomPadding + "," + leftPadding + "]" + " - " + nodes[i]);
+                "," + bottomPadding + "," + leftPadding + "]" +
+                " - " + nodeToString(nodes[i]));
       return;
     }
   }
@@ -45,7 +78,7 @@ function checkShadowContent(x, y, topPadding, rightPadding, bottomPadding, leftP
   if (!doc)
     doc = document;
 
-  var nodes = internals.nodesFromRect(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding, true /* ignoreClipping */, true /* allowShadowContent */);
+  var nodes = internals.nodesFromRect(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding, true /* ignoreClipping */, true /* allowShadowContent */, false /* allow child-frame content */);
   if (!nodes)
     return;
 
@@ -93,33 +126,31 @@ function checkRect(left, top, width, height, expectedNodeString, doc)
     }
 }
 
-function nodesFromRectAsString(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding)
+function checkPoint(left, top, expectedNodeString, doc)
 {
-    var nodeString = "";
-    var nodes = internals.nodesFromRect(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding, true /* ignoreClipping */, false /* allow shadow content */);
-    if (!nodes)
-        return nodeString;
+    if (!window.internals)
+        return;
 
-    for (var i = 0; i < nodes.length; i++) {
-        if (nodes[i].nodeType == 1) {
-            nodeString += nodes[i].nodeName;
-            if (nodes[i].id)
-                nodeString += '#' + nodes[i].id;
-            else if (nodes[i].class) {
-                nodeString += '.' + nodes[i].class;
-            }
-        } else if (nodes[i].nodeType == 3) {
-            nodeString += "'" + nodes[i].data + "'";
-        } else {
-            continue;
-        }
-        if (i + 1 < nodes.length) {
-            nodeString += ", ";
-        }
+    if (!doc)
+        doc = document;
+
+    var nodeString = nodesFromRectAsString(doc, left, top, 0, 0, 0, 0);
+
+    if (nodeString == expectedNodeString) {
+        testPassed("Correct node found for point");
+    } else {
+        testFailed("NodesFromRect should be [" + expectedNodeString + "] was [" + nodeString + "]");
     }
-    return nodeString;
 }
 
+function nodesFromRectAsString(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding)
+{
+    var nodes = internals.nodesFromRect(doc, x, y, topPadding, rightPadding, bottomPadding, leftPadding, true /* ignoreClipping */, false /* allow shadow content */, true /* allow child-frame content */);
+    if (!nodes)
+        return "";
+
+    return nodeListToString(nodes);
+}
 
 function getCenterFor(element)
 {

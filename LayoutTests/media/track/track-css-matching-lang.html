@@ -8,8 +8,9 @@
         <script src=../media-controls.js></script>
 
         <style>
-        ::cue(c[lang="ru"]) { color: red; }
-        ::cue(c[lang="en"]) { color: green; }
+        ::cue(:lang(ru)) { color: lime; }
+        ::cue(lang[lang="en"]) { color: purple; }
+        ::cue(c[lang="ru"]) { color: red; } /* Shouldn't work, no attribute 'lang' for 'c'. */
         </style>
 
         <script>
@@ -18,14 +19,14 @@
         var seekedCount = 0;
         var seekTimes = [0.1];
 
-        var info = [["rgb(0, 128, 0)", "rgb(255, 0, 0)", "rgb(0, 128, 0)"]];
+        var info = [["rgb(128, 0, 128)", "rgb(0, 255, 0)", "rgb(128, 0, 128)"]];
 
         function seeked()
         {
             if (testEnded)
                 return;
 
-            cueNode = textTrackDisplayElement(video, 'all-nodes').firstElementChild.firstElementChild;
+            cueNode = textTrackDisplayElement(video, 'cue').firstElementChild.firstElementChild;
             testExpected("getComputedStyle(cueNode).color", info[seekedCount][0]);
             cueNode = cueNode.firstElementChild.firstElementChild;
             testExpected("getComputedStyle(cueNode).color", info[seekedCount][1]);
@@ -42,7 +43,7 @@
 
         function loaded()
         {
-            consoleWrite("Test that cues are being matched properly by the lang attribute.");
+            consoleWrite("Test that cues are being matched properly by the lang attribute and :lang() pseudo class.");
             findMediaElement();
             video.src = findMediaFile('video', '../content/test');
             video.id = "testvideo";

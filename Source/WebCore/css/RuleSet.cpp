@@ -36,6 +36,7 @@
 #include "MediaQueryEvaluator.h"
 #include "SecurityOrigin.h"
 #include "SelectorChecker.h"
+#include "SelectorCheckerFastPath.h"
 #include "SelectorFilter.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
@@ -122,7 +123,7 @@ static inline PropertyWhitelistType determinePropertyWhitelistType(const AddRule
         return PropertyWhitelistRegion;
 #if ENABLE(VIDEO_TRACK)
     for (const CSSSelector* component = selector; component; component = component->tagHistory()) {
-        if (component->pseudoType() == CSSSelector::PseudoCue || (component->m_match != CSSSelector::Tag && component->value() == TextTrackCue::cueShadowPseudoId()))
+        if (component->pseudoType() == CSSSelector::PseudoCue || (component->m_match == CSSSelector::PseudoElement && component->value() == TextTrackCue::cueShadowPseudoId()))
             return PropertyWhitelistCue;
     }
 #else
@@ -135,7 +136,7 @@ RuleData::RuleData(StyleRule* rule, unsigned selectorIndex, unsigned position, A
     : m_rule(rule)
     , m_selectorIndex(selectorIndex)
     , m_position(position)
-    , m_hasFastCheckableSelector((addRuleFlags & RuleCanUseFastCheckSelector) && SelectorChecker::isFastCheckableSelector(selector()))
+    , m_hasFastCheckableSelector((addRuleFlags & RuleCanUseFastCheckSelector) && SelectorCheckerFastPath::canUse(selector()))
     , m_specificity(selector()->specificity())
     , m_hasMultipartSelector(!!selector()->tagHistory())
     , m_hasRightmostSelectorMatchingHTMLBasedOnRuleHash(isSelectorMatchingHTMLBasedOnRuleHash(selector()))
@@ -307,9 +308,25 @@ void RuleSet::addChildRules(const Vector<RefPtr<StyleRuleBase> >& rules, const M
     for (unsigned i = 0; i < rules.size(); ++i) {
         StyleRuleBase* rule = rules[i].get();
 
-        if (rule->isStyleRule())
-            addStyleRule(static_cast<StyleRule*>(rule), addRuleFlags);
-        else if (rule->isPageRule())
+        if (rule->isStyleRule()) {
+            StyleRule* styleRule = static_cast<StyleRule*>(rule);
+#if ENABLE(SHADOW_DOM)
+            if (!scope)
+                addStyleRule(styleRule, addRuleFlags);
+            else {
+                const CSSSelectorList& selectorList = styleRule->selectorList();
+                for (size_t selectorIndex = 0; selectorIndex != notFound; selectorIndex = selectorList.indexOfNextSelectorAfter(selectorIndex)) {
+                    if (selectorList.hasShadowDistributedAt(selectorIndex))
+                        resolver->ruleSets().shadowDistributedRules().addRule(styleRule, selectorIndex, const_cast<ContainerNode*>(scope), addRuleFlags);
+                    else
+                        addRule(styleRule, selectorIndex, addRuleFlags);
+                }
+            }
+#else
+            addStyleRule(styleRule, addRuleFlags);
+#endif
+
+        } else if (rule->isPageRule())
             addPageRule(static_cast<StyleRulePage*>(rule));
         else if (rule->isMediaRule()) {
             StyleRuleMedia* mediaRule = static_cast<StyleRuleMedia*>(rule);

@@ -137,11 +137,15 @@ void ConsoleMessage::autogenerateMetadata(bool canGenerateCallStack, ScriptState
 static TypeBuilder::Console::ConsoleMessage::Source::Enum messageSourceValue(MessageSource source)
 {
     switch (source) {
-    case HTMLMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Html;
     case XMLMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Xml;
     case JSMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Javascript;
     case NetworkMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Network;
     case ConsoleAPIMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Console_api;
+    case StorageMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Storage;
+    case AppCacheMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Appcache;
+    case RenderingMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Rendering;
+    case CSSMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Css;
+    case SecurityMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Security;
     case OtherMessageSource: return TypeBuilder::Console::ConsoleMessage::Source::Other;
     }
     return TypeBuilder::Console::ConsoleMessage::Source::Other;
@@ -154,12 +158,15 @@ static TypeBuilder::Console::ConsoleMessage::Type::Enum messageTypeValue(Message
     case ClearMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Clear;
     case DirMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Dir;
     case DirXMLMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Dirxml;
+    case TableMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Table;
     case TraceMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Trace;
     case StartGroupMessageType: return TypeBuilder::Console::ConsoleMessage::Type::StartGroup;
     case StartGroupCollapsedMessageType: return TypeBuilder::Console::ConsoleMessage::Type::StartGroupCollapsed;
     case EndGroupMessageType: return TypeBuilder::Console::ConsoleMessage::Type::EndGroup;
     case AssertMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Assert;
     case TimingMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Timing;
+    case ProfileMessageType: return TypeBuilder::Console::ConsoleMessage::Type::Profile;
+    case ProfileEndMessageType: return TypeBuilder::Console::ConsoleMessage::Type::ProfileEnd;
     }
     return TypeBuilder::Console::ConsoleMessage::Type::Log;
 }
@@ -167,11 +174,10 @@ static TypeBuilder::Console::ConsoleMessage::Type::Enum messageTypeValue(Message
 static TypeBuilder::Console::ConsoleMessage::Level::Enum messageLevelValue(MessageLevel level)
 {
     switch (level) {
-    case TipMessageLevel: return TypeBuilder::Console::ConsoleMessage::Level::Tip;
+    case DebugMessageLevel: return TypeBuilder::Console::ConsoleMessage::Level::Debug;
     case LogMessageLevel: return TypeBuilder::Console::ConsoleMessage::Level::Log;
     case WarningMessageLevel: return TypeBuilder::Console::ConsoleMessage::Level::Warning;
     case ErrorMessageLevel: return TypeBuilder::Console::ConsoleMessage::Level::Error;
-    case DebugMessageLevel: return TypeBuilder::Console::ConsoleMessage::Level::Debug;
     }
     return TypeBuilder::Console::ConsoleMessage::Level::Log;
 }
@@ -193,13 +199,24 @@ void ConsoleMessage::addToFrontend(InspectorFrontend::Console* frontend, Injecte
         InjectedScript injectedScript = injectedScriptManager->injectedScriptFor(m_arguments->globalState());
         if (!injectedScript.hasNoValue()) {
             RefPtr<TypeBuilder::Array<TypeBuilder::Runtime::RemoteObject> > jsonArgs = TypeBuilder::Array<TypeBuilder::Runtime::RemoteObject>::create();
-            for (unsigned i = 0; i < m_arguments->argumentCount(); ++i) {
-                RefPtr<TypeBuilder::Runtime::RemoteObject> inspectorValue = injectedScript.wrapObject(m_arguments->argumentAt(i), "console", generatePreview);
+            if (m_type == TableMessageType && generatePreview && m_arguments->argumentCount()) {
+                ScriptValue table = m_arguments->argumentAt(0);
+                ScriptValue columns = m_arguments->argumentCount() > 1 ? m_arguments->argumentAt(1) : ScriptValue();
+                RefPtr<TypeBuilder::Runtime::RemoteObject> inspectorValue = injectedScript.wrapTable(table, columns);
                 if (!inspectorValue) {
                     ASSERT_NOT_REACHED();
                     return;
                 }
                 jsonArgs->addItem(inspectorValue);
+            } else {
+                for (unsigned i = 0; i < m_arguments->argumentCount(); ++i) {
+                    RefPtr<TypeBuilder::Runtime::RemoteObject> inspectorValue = injectedScript.wrapObject(m_arguments->argumentAt(i), "console", generatePreview);
+                    if (!inspectorValue) {
+                        ASSERT_NOT_REACHED();
+                        return;
+                    }
+                    jsonArgs->addItem(inspectorValue);
+                }
             }
             jsonObj->setParameters(jsonArgs);
         }

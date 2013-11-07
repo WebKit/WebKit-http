@@ -393,7 +393,8 @@ fieldset {
     -webkit-padding-start: 0.75em;
     -webkit-padding-end: 0.75em;
     -webkit-padding-after: 0.625em;
-    border: 2px groove ThreeDFace
+    border: 2px groove ThreeDFace;
+    min-width: -webkit-min-content;
 }
 
 button {
@@ -447,6 +448,14 @@ input::-webkit-textfield-decoration-container {
 
 input[type="search"]::-webkit-textfield-decoration-container {
     direction: ltr;
+}
+
+input::-webkit-clear-button {
+    -webkit-appearance: searchfield-cancel-button;
+    display: inline-block;
+    -webkit-box-flex: 0;
+    -webkit-user-modify: read-only !important;
+    margin-left: 2px;
 }
 
 input[type="search"]::-webkit-search-cancel-button {
@@ -557,7 +566,7 @@ input::-webkit-datetime-edit-fields-wrapper {
     -webkit-user-modify: read-only !important;
     display: inline-block;
     padding: 1px 0;
-    white-space: nowrap;
+    white-space: pre;
 }
 
 /* If you update padding, border, or margin in the following ruleset, update
@@ -593,15 +602,15 @@ input::-webkit-datetime-edit-year-field:focus {
     outline: none;
 }
 
-input::-webkit-datetime-edit-year-field[readonly],
-input::-webkit-datetime-edit-month-field[readonly],
-input::-webkit-datetime-edit-week-field[readonly],
-input::-webkit-datetime-edit-day-field[readonly],
-input::-webkit-datetime-edit-ampm-field[readonly],
-input::-webkit-datetime-edit-hour-field[readonly],
-input::-webkit-datetime-edit-millisecond-field[readonly],
-input::-webkit-datetime-edit-minute-field[readonly],
-input::-webkit-datetime-edit-second-field[readonly] {
+input::-webkit-datetime-edit-year-field[disabled],
+input::-webkit-datetime-edit-month-field[disabled],
+input::-webkit-datetime-edit-week-field[disabled],
+input::-webkit-datetime-edit-day-field[disabled],
+input::-webkit-datetime-edit-ampm-field[disabled],
+input::-webkit-datetime-edit-hour-field[disabled],
+input::-webkit-datetime-edit-millisecond-field[disabled],
+input::-webkit-datetime-edit-minute-field[disabled],
+input::-webkit-datetime-edit-second-field[disabled] {
     color: GrayText;
 }
 
@@ -792,7 +801,7 @@ input[type="file"]::-webkit-file-upload-button {
 }
 
 input[type="button"], input[type="submit"], input[type="reset"], input[type="file"]::-webkit-file-upload-button, button {
-    -webkit-box-align: center;
+    -webkit-align-items: flex-start;
     text-align: center;
     cursor: default;
     color: ButtonText;
@@ -913,6 +922,7 @@ input[type="color"][list]::-webkit-color-swatch {
 
 #if defined(ENABLE_CALENDAR_PICKER) && ENABLE_CALENDAR_PICKER
 input::-webkit-calendar-picker-indicator {
+    display: inline-block;
     width: 0.66em;
     height: 0.66em;
     padding: 0.17em 0.34em;

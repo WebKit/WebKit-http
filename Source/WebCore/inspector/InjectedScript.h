@@ -34,6 +34,7 @@
 #include "InjectedScriptBase.h"
 #include "InjectedScriptManager.h"
 #include "InspectorTypeBuilder.h"
+#include "ScriptArguments.h"
 #include "ScriptObject.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -80,6 +81,7 @@ public:
                              RefPtr<TypeBuilder::Runtime::RemoteObject>* result,
                              TypeBuilder::OptOutput<bool>* wasThrown);
     void restartFrame(ErrorString*, const ScriptValue& callFrames, const String& callFrameId, RefPtr<InspectorObject>* result);
+    void setVariableValue(ErrorString*, const ScriptValue& callFrames, const String* callFrameIdOpt, const String* functionObjectIdOpt, int scopeNumber, const String& variableName, const String& newValueStr);
     void getFunctionDetails(ErrorString*, const String& functionId, RefPtr<TypeBuilder::Debugger::FunctionDetails>* result);
     void getProperties(ErrorString*, const String& objectId, bool ownProperties, RefPtr<TypeBuilder::Array<TypeBuilder::Runtime::PropertyDescriptor> >* result);
     void getInternalProperties(ErrorString*, const String& objectId, RefPtr<TypeBuilder::Array<TypeBuilder::Runtime::InternalPropertyDescriptor> >* result);
@@ -91,6 +93,7 @@ public:
 #endif
 
     PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapObject(const ScriptValue&, const String& groupName, bool generatePreview = false) const;
+    PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapTable(const ScriptValue& table, const ScriptValue& columns) const;
     PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapNode(Node*, const String& groupName);
     ScriptValue findObjectById(const String& objectId) const;
 

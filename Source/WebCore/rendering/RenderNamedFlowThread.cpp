@@ -26,6 +26,7 @@
 #include "config.h"
 #include "RenderNamedFlowThread.h"
 
+#include "ExceptionCodePlaceholder.h"
 #include "FlowThreadController.h"
 #include "InlineTextBox.h"
 #include "InspectorInstrumentation.h"
@@ -249,7 +250,6 @@ void RenderNamedFlowThread::addRegionToThread(RenderRegion* renderRegion)
 void RenderNamedFlowThread::removeRegionFromThread(RenderRegion* renderRegion)
 {
     ASSERT(renderRegion);
-    m_regionRangeMap.clear();
 
     if (renderRegion->parentNamedFlowThread()) {
         if (!renderRegion->isValid()) {
@@ -477,7 +477,6 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, cons
         if (!contentNode->renderer())
             continue;
 
-        ExceptionCode ignoredException;
         RefPtr<Range> range = Range::create(contentNode->document());
         bool foundStartPosition = false;
         bool startsAboveRegion = true;
@@ -516,16 +515,16 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, cons
             if (!boxIntersectsRegion(logicalTopForRenderer, logicalBottomForRenderer, logicalTopForRegion, logicalBottomForRegion)) {
                 if (foundStartPosition) {
                     if (!startsAboveRegion) {
-                        if (range->intersectsNode(node, ignoredException))
-                            range->setEndBefore(node, ignoredException);
-                        rangeObjects.append(range->cloneRange(ignoredException));
+                        if (range->intersectsNode(node, IGNORE_EXCEPTION))
+                            range->setEndBefore(node, IGNORE_EXCEPTION);
+                        rangeObjects.append(range->cloneRange(IGNORE_EXCEPTION));
                         range = Range::create(contentNode->document());
                         startsAboveRegion = true;
                     } else
                         skipOverOutsideNodes = true;
                 }
                 if (skipOverOutsideNodes)
-                    range->setStartAfter(node, ignoredException);
+                    range->setStartAfter(node, IGNORE_EXCEPTION);
                 foundStartPosition = false;
                 continue;
             }
@@ -552,7 +551,7 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, cons
                 // the range is closed.
                 if (startsAboveRegion) {
                     startsAboveRegion = false;
-                    range->setStartBefore(node, ignoredException);
+                    range->setStartBefore(node, IGNORE_EXCEPTION);
                 }
             }
             skipOverOutsideNodes  = false;
@@ -586,7 +585,7 @@ void RenderNamedFlowThread::getRanges(Vector<RefPtr<Range> >& rangeObjects, cons
                 // for elements that ends inside the region, set the end position to be after them
                 // allow this end position to be changed only by other elements that are not descendants of the current end node
                 if (endsBelowRegion || (!endsBelowRegion && !node->isDescendantOf(lastEndNode))) {
-                    range->setEndAfter(node, ignoredException);
+                    range->setEndAfter(node, IGNORE_EXCEPTION);
                     endsBelowRegion = false;
                     lastEndNode = node;
                 }

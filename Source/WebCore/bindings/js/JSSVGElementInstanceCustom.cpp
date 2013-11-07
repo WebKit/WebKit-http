@@ -31,6 +31,7 @@
 #include "JSSVGElementInstance.h"
 
 #include "JSEventTarget.h"
+#include "JSNodeCustom.h"
 
 namespace WebCore {
 

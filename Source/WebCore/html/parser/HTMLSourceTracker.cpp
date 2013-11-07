@@ -34,30 +34,30 @@ HTMLSourceTracker::HTMLSourceTracker()
 {
 }
 
-void HTMLSourceTracker::start(const HTMLInputStream& input, HTMLTokenizer* tokenizer, HTMLToken& token)
+void HTMLSourceTracker::start(SegmentedString& currentInput, HTMLTokenizer* tokenizer, HTMLToken& token)
 {
-    if (token.type() == HTMLTokenTypes::Uninitialized) {
+    if (token.type() == HTMLToken::Uninitialized) {
         m_previousSource.clear();
         if (tokenizer->numberOfBufferedCharacters())
             m_previousSource = tokenizer->bufferedCharacters();
     } else
         m_previousSource.append(m_currentSource);
 
-    m_currentSource = input.current();
+    m_currentSource = currentInput;
     token.setBaseOffset(m_currentSource.numberOfCharactersConsumed() - m_previousSource.length());
 }
 
-void HTMLSourceTracker::end(const HTMLInputStream& input, HTMLTokenizer* tokenizer, HTMLToken& token)
+void HTMLSourceTracker::end(SegmentedString& currentInput, HTMLTokenizer* tokenizer, HTMLToken& token)
 {
     m_cachedSourceForToken = String();
 
     // FIXME: This work should really be done by the HTMLTokenizer.
-    token.end(input.current().numberOfCharactersConsumed() - tokenizer->numberOfBufferedCharacters());
+    token.end(currentInput.numberOfCharactersConsumed() - tokenizer->numberOfBufferedCharacters());
 }
 
 String HTMLSourceTracker::sourceForToken(const HTMLToken& token)
 {
-    if (token.type() == HTMLTokenTypes::EndOfFile)
+    if (token.type() == HTMLToken::EndOfFile)
         return String(); // Hides the null character we use to mark the end of file.
 
     if (!m_cachedSourceForToken.isEmpty())

@@ -235,14 +235,23 @@ void ResourceLoader::willSendRequest(ResourceRequest& request, const ResourceRes
 
     ASSERT(!m_reachedTerminalState);
 
+    // We need a resource identifier for all requests, even if FrameLoader is never going to see it (such as with CORS preflight requests).
+    bool createdResourceIdentifier = false;
+    if (!m_identifier) {
+        m_identifier = m_frame->page()->progress()->createUniqueIdentifier();
+        createdResourceIdentifier = true;
+    }
+
     if (m_options.sendLoadCallbacks == SendCallbacks) {
-        if (!m_identifier) {
-            m_identifier = m_frame->page()->progress()->createUniqueIdentifier();
+        if (createdResourceIdentifier)
             frameLoader()->notifier()->assignIdentifierToInitialRequest(m_identifier, documentLoader(), request);
-        }
 
         frameLoader()->notifier()->willSendRequest(this, request, redirectResponse);
     }
+#if ENABLE(INSPECTOR)
+    else
+        InspectorInstrumentation::willSendRequest(m_frame.get(), m_identifier, m_frame->loader()->documentLoader(), request, redirectResponse);
+#endif
 
     if (!redirectResponse.isNull()) {
 #if USE(PLATFORM_STRATEGIES)
@@ -353,6 +362,14 @@ void ResourceLoader::didFail(const ResourceError& error)
     }
 
     releaseResources();
+}
+
+void ResourceLoader::didChangePriority(ResourceLoadPriority loadPriority)
+{
+    if (handle()) {
+        frameLoader()->client()->dispatchDidChangeResourcePriority(identifier(), loadPriority);
+        handle()->didChangePriority(loadPriority);
+    }
 }
 
 void ResourceLoader::cancel()
@@ -527,14 +544,6 @@ void ResourceLoader::receivedCancellation(const AuthenticationChallenge&)
 {
     cancel();
 }
-
-#if ENABLE(BLOB)
-AsyncFileStream* ResourceLoader::createAsyncFileStream(FileStreamClient* client)
-{
-    // It is OK to simply return a pointer since AsyncFileStream::create adds an extra ref.
-    return AsyncFileStream::create(m_frame->document()->scriptExecutionContext(), client).get();
-}
-#endif
 
 void ResourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {

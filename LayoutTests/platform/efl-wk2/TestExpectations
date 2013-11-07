@@ -17,7 +17,12 @@
 
 # 4. FLAKY TESTS
 
-# 5. FAILING TESTS
+# 5. PASSING TESTS WITH INCORRECT EXPECTATIONS
+#    * Test cases that are passing with their generated incorrect expectations.
+#    * It should be checked if the test fails. Remove the line if the test result is correct
+#      otherwise update with new incorrect one.
+
+# 6. FAILING TESTS
 #    * Interim failures that are moved here for further investigation as a result of daily
 #      gardening. They should be analysed quickly and either resolved or moved to 1).
 #    * Remaining failures that are moved here until further investigation after
@@ -60,6 +65,18 @@ webkit.org/b/102651 [ Debug ] networkinformation/basic-all-types-of-events.html 
 webkit.org/b/102651 [ Debug ] networkinformation/updates.html [ Crash ]
 webkit.org/b/102651 [ Debug ] networkinformation/add-listener-from-callback.html [ Crash ]
 webkit.org/b/102651 [ Debug ] networkinformation/basic-operation.html [ Crash ]
+
+# WebGL test cases crashing in WebCore::GraphicsContext3D::readPixels().
+webkit.org/b/109417 webgl/conformance/textures/texture-attachment-formats.html [ Crash ]
+webkit.org/b/109417 webgl/conformance/misc/type-conversion-test.html [ Crash ]
+webkit.org/b/109941 webgl/conformance/textures/origin-clean-conformance.html [ Crash ]
+webkit.org/b/109945 webgl/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
+webkit.org/b/109945 webgl/conformance/glsl/misc/shader-with-non-reserved-words.html [ Crash Failure ]
+webkit.org/b/109945 webgl/conformance/ogles/GL/swizzlers/swizzlers_113_to_120.html [ Crash ]
+webkit.org/b/109945 webgl/conformance/reading/read-pixels-test.html [ Crash Failure ]
+webkit.org/b/109945 webgl/conformance/uniforms/gl-uniform-arrays.html [ Crash Failure ]
+webkit.org/b/109945 webgl/conformance/uniforms/uniform-default-values.html [ Crash ]
+webkit.org/b/109945 webgl/conformance/ogles/GL/swizzlers/swizzlers_081_to_088.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
@@ -207,70 +224,62 @@ webkit.org/b/103883 css3/selectors3/xml/css3-modsel-1.xml [ Failure Pass ]
 webkit.org/b/103883 css3/selectors3/xhtml/css3-modsel-1.xml [ Failure Pass ]
 
 # Assertion failure and incorrect results on our port after r140999 (webkit.org/b/106142)
-webkit.org/b/108257 compositing/overflow/automatically-opt-into-composited-scrolling.html [ Crash Failure ]
-webkit.org/b/108257 compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Crash Failure ]
-webkit.org/b/108257 compositing/overflow/clip-content-under-overflow-controls.html [ Crash Pass ]
+webkit.org/b/108257 compositing/overflow/automatically-opt-into-composited-scrolling.html [ Failure ]
+webkit.org/b/108257 compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Failure ]
 
 # Asserts when destroying WebCore::Database (possibly because r141207)
 webkit.org/b/108355 fast/js/caller-property.html [ Crash Pass ]
 webkit.org/b/108355 storage/websql/close-during-stress-test.html [ Crash Pass ]
 webkit.org/b/108355 storage/websql/sql-error-codes.html [ Crash Pass ]
 
-webkit.org/b/108058 [ Debug ] fast/dom/DOMImplementation/createDocument-with-used-doctype.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-10.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-20.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-30.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-40.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-50.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-60.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-70.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-80.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-90.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-100.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-110.html [ Crash Pass ]
-webkit.org/b/108058 [ Debug ] fast/encoding/parser-tests-120.html [ Crash Pass ]
-
+#////////////////////////////////////////////////////////////////////////////////////////
+# PASSING TESTS WITH INCORRECT EXPECTATIONS
+#////////////////////////////////////////////////////////////////////////////////////////
+ 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Missing EFL's accessibility functions
-accessibility/accessibility-node-memory-management.html [ Skip ]
-accessibility/accessibility-node-reparent.html [ Skip ]
-accessibility/aria-describedby-on-input.html [ Skip ]
-accessibility/aria-help.html [ Skip ]
-accessibility/aria-hidden-updates-alldescendants.html [ Skip ]
-accessibility/aria-invalid.html [ Skip ]
-accessibility/aria-link-supports-press.html [ Skip ]
-accessibility/aria-readonly.html [ Skip ]
-accessibility/aria-scrollbar-role.html [ Skip ]
-accessibility/aria-text-role.html [ Skip ]
-accessibility/aria-used-on-image-maps.html [ Skip ]
-accessibility/button-press-action.html [ Skip ]
-accessibility/canvas-accessibilitynodeobject.html [ Skip ]
-accessibility/canvas-fallback-content-2.html [ Skip ]
-accessibility/canvas-fallback-content.html [ Skip ]
-accessibility/disabled-controls-not-focusable.html [ Skip ]
-accessibility/ignore-spacer-elements.html [ Skip ]
-accessibility/inline-continuations.html [ Skip ]
-accessibility/label-for-control-hittest.html [ Skip ]
-accessibility/language-attribute.html [ Skip ]
-accessibility/loading-iframe-sends-notification.html [ Skip ]
-accessibility/onclick-handlers.html [ Skip ]
-accessibility/placeholder.html [ Skip ]
-accessibility/secure-textfield-title-ui.html [ Skip ]
-accessibility/selection-states.html [ Skip ]
-accessibility/spinbutton-value.html [ Skip ]
-accessibility/svg-remote-element.html [ Skip ]
-accessibility/textarea-insertion-point-line-number.html [ Skip ]
-accessibility/textarea-line-for-index.html [ Skip ]
-accessibility/textarea-selected-text-range.html [ Skip ]
-accessibility/textbox-role-reports-selection.html [ Skip ]
-accessibility/th-as-title-ui.html [ Skip ]
-accessibility/title-ui-element-correctness.html [ Skip ]
-accessibility/transformed-element.html [ Skip ]
-accessibility/visible-elements.html [ Skip ]
+accessibility/accessibility-node-memory-management.html [ Failure ]
+accessibility/accessibility-node-reparent.html [ Failure ]
+accessibility/aria-describedby-on-input.html [ Failure ]
+accessibility/aria-help.html [ Failure ]
+accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
+accessibility/aria-invalid.html [ Failure ]
+accessibility/aria-link-supports-press.html [ Failure ]
+accessibility/aria-readonly.html [ Failure ]
+accessibility/aria-scrollbar-role.html [ Failure ]
+accessibility/aria-text-role.html [ Failure ]
+accessibility/aria-used-on-image-maps.html [ Failure ]
+accessibility/button-press-action.html [ Failure ]
+accessibility/canvas-accessibilitynodeobject.html [ Failure ]
+accessibility/canvas-fallback-content-2.html [ Failure ]
+accessibility/canvas-fallback-content.html [ Failure ]
+accessibility/disabled-controls-not-focusable.html [ Failure ]
+Bug(EFL) accessibility/heading-level.html [ Failure ]
+accessibility/ignore-spacer-elements.html [ Failure ]
+accessibility/inline-continuations.html [ Failure ]
+accessibility/label-for-control-hittest.html [ Failure ]
+accessibility/language-attribute.html [ Failure ]
+accessibility/loading-iframe-sends-notification.html [ Failure ]
+accessibility/onclick-handlers.html [ Failure ]
+accessibility/placeholder.html [ Failure ]
+accessibility/secure-textfield-title-ui.html [ Failure ]
+accessibility/selection-states.html [ Failure ]
+accessibility/spinbutton-value.html [ Failure ]
+accessibility/svg-bounds.html [ Failure ]
+accessibility/svg-remote-element.html [ Failure ]
+accessibility/textarea-insertion-point-line-number.html [ Failure ]
+accessibility/textarea-line-for-index.html [ Failure ]
+accessibility/textarea-selected-text-range.html [ Failure ]
+accessibility/textbox-role-reports-selection.html [ Failure ]
+accessibility/th-as-title-ui.html [ Failure ]
+accessibility/transformed-element.html [ Failure ]
+accessibility/visible-elements.html [ Failure ]
+
+accessibility/title-ui-element-correctness.html [ Crash ]
+
 accessibility/adjacent-continuations-cause-assertion-failure.html [ Skip ]
 accessibility/aria-checkbox-sends-notification.html [ Skip ]
 accessibility/aria-checkbox-text.html [ Skip ]
@@ -283,6 +292,7 @@ accessibility/aria-roles.html [ Skip ]
 accessibility/aria-tables.html [ Skip ]
 accessibility/aria-toggle-button-with-title.html [ Skip ]
 accessibility/canvas-description-and-role.html [ Skip ]
+accessibility/color-well.html [ Skip ]
 accessibility/deleting-iframe-destroys-axcache.html [ Skip ]
 accessibility/div-within-anchors-causes-crash.html [ Skip ]
 accessibility/image-link.html [ Skip ]
@@ -300,7 +310,6 @@ accessibility/notification-listeners.html [ Skip ]
 accessibility/platform-name.html [ Skip ]
 accessibility/plugin.html [ Skip ]
 accessibility/radio-button-group-members.html [ Skip ]
-accessibility/svg-bounds.html [ Skip ]
 accessibility/svg-image.html [ Skip ]
 accessibility/table-attributes.html [ Skip ]
 accessibility/table-detection.html [ Skip ]
@@ -308,8 +317,6 @@ accessibility/table-one-cell.html [ Skip ]
 accessibility/table-sections.html [ Skip ]
 accessibility/table-with-aria-role.html [ Skip ]
 accessibility/table-with-rules.html [ Skip ]
-Bug(EFL) accessibility/heading-level.html [ Failure ]
-accessibility/color-well.html [ Skip ]
 
 # WebKitTestRunner needs an implementation for testRunner.titleTextDirection
 webkit.org/b/93470 fast/dom/title-directionality-removeChild.html [ Failure ]
@@ -320,7 +327,13 @@ Bug(EFL) fast/events/touch/basic-single-touch-events.html [ Failure ]
 
 # Needs grammar checking
 Bug(EFL) editing/spelling/grammar-edit-word.html [ Failure ]
+Bug(EFL) editing/spelling/grammar-markers.html [ Failure ]
+Bug(EFL) editing/spelling/grammar-markers-hidpi.html [ Failure ]
+Bug(EFL) editing/spelling/grammar-paste.html [ Failure ]
 Bug(EFL) editing/spelling/markers.html [ Failure ]
+
+# EFL's text checker doesn't support the text replacement feature.
+Bug(EFL) editing/spelling/spelling-marker-description.html [ Failure ]
 
 # Fails because MutationObservers are not notified at end-of-task.
 webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure ]
@@ -364,9 +377,6 @@ webkit.org/b/98744 plugins/reloadplugins-and-pages.html [ Failure ]
 # Plugin test timeout.
 webkit.org/b/98743 plugins/evaluate-js-after-removing-plugin-element.html [ Failure ]
 
-# Plugin failure related to NPP_URLNotify.
-webkit.org/b/98742 plugins/get-targeted-javascript-url.html [ Failure ]
-
 # Reloading a Netscape plugin that accesses its own DOM element is failing.
 webkit.org/b/82020 plugins/netscape-dom-access-and-reload.html [ Failure ]
 
@@ -389,9 +399,6 @@ webkit.org/b/107018 svg/transforms/transformed-text-fill-pattern.html [ ImageOnl
 webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure Pass ]
 
 webkit.org/b/104656 compositing/repaint/clipped-layer-size-change.html [ ImageOnlyFailure Pass ]
-
-# New compositing test introduced in r137828 that is failing on WK2 EFL.
-webkit.org/b/94743 compositing/overflow/automatically-opt-into-composited-scrolling.html [ Failure ]
 
 # NPP_SetWindow is not called during plugin destruction on X11.
 webkit.org/b/63261 plugins/npp-set-window-called-during-destruction.html [ Failure ]
@@ -420,11 +427,62 @@ webkit.org/b/98410 media/context-menu-actions.html [ Failure ]
 
 webkit.org/b/102201 fast/dom/Window/open-window-min-size.html [ Failure ]
 
-# Likely failing because of an old version of libsoup in the jhbuild.
-webkit.org/b/106407 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Failure ]
-webkit.org/b/106407 http/tests/security/401-logout/401-logout.php [ Failure ]
-webkit.org/b/106407 http/tests/xmlhttprequest/failed-auth.html [ Failure ]
-webkit.org/b/106407 http/tests/xmlhttprequest/remember-bad-password.html [ Failure ]
+# Regression(r142112): Several compositing tests started failing.
+webkit.org/b/109431 compositing/iframes/iframe-composited-scrolling.html [ Failure ]
+webkit.org/b/109431 compositing/layer-creation/fixed-position-in-view-dynamic.html [ Failure ]
+webkit.org/b/109431 compositing/layer-creation/fixed-position-out-of-view-dynamic.html [ Failure ]
+webkit.org/b/109431 compositing/layer-creation/fixed-position-out-of-view-scroll-reason.html [ Failure ]
+webkit.org/b/109431 compositing/layer-creation/no-compositing-for-fixed-position-under-transform.html [ Failure ]
+
+# New test introduced in r143073 that never passed on WK2 EFL.
+webkit.org/b/110054 compositing/geometry/limit-layer-bounds-fixed.html [ Failure ]
+
+# Several new Khronos WebGL conformance tests are failing on WK2 EFL.
+webkit.org/b/109435 webgl/conformance/context/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/context/premultiplyalpha-test.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/extensions/oes-element-index-uint.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/extensions/oes-texture-float-with-video.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/extensions/oes-texture-float.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/renderbuffers/framebuffer-state-restoration.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/texture-size-cube-maps.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/canvas/drawingbuffer-test.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/context/context-creation-and-destruction.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/glsl/functions/glsl-function-sin.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/glsl/functions/glsl-function-smoothstep-float.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/glsl/literals/float_literal.vert.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/glsl/misc/shader-with-global-variable-precision-mismatch.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/glsl/misc/shaders-with-varyings.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/more/functions/bufferDataBadArgs.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/more/functions/readPixelsBadArgs.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/more/functions/texImage2DHTML.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/more/functions/texSubImage2DHTML.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/more/functions/uniformfArrayLen1.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/programs/gl-bind-attrib-location-long-names-test.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/programs/program-test.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/renderbuffers/framebuffer-object-attachment.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/rendering/gl-scissor-test.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/rendering/multisample-corruption.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/rendering/point-size.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/copy-tex-image-2d-formats.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/texture-mips.html [ Failure ]
+webkit.org/b/109435 webgl/conformance/textures/texture-size-limit.html [ Failure ]
+
+# Remaining websocket failures.
+webkit.org/b/111976 http/tests/websocket/tests/hybi/broken-utf8.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/close.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/close-on-unload-and-force-gc.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/extensions.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/handshake-challenge-randomness.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/multiple-subprotocols.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/simple.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/url-with-credential.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/url-no-trailing-slash.html [ Crash Pass ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html [ Crash ]
+webkit.org/b/111976 http/tests/websocket/tests/hybi/zero-length-text.html [ Crash ]
 
 # Most probably failures are result of delay in scrolling caused by 'delegated scrolling' usage.
 webkit.org/b/107286 fast/css/sticky/sticky-margins.html [ ImageOnlyFailure ]

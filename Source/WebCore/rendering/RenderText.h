@@ -45,12 +45,6 @@ public:
 
     virtual PassRefPtr<StringImpl> originalText() const;
 
-    void updateTextIfNeeded()
-    {
-        if (preferredLogicalWidthsDirty())
-            updateText();
-    }
-
     void extractTextBox(InlineTextBox*);
     void attachTextBox(InlineTextBox*);
     void removeTextBox(InlineTextBox*);
@@ -72,11 +66,11 @@ public:
 
     virtual VisiblePosition positionForPoint(const LayoutPoint&);
 
-    bool is8Bit() const { return m_is8Bit; }
-    const LChar* characters8() const { ASSERT(m_is8Bit); return m_data.characters8; }
-    const UChar* characters16() const { ASSERT(!m_is8Bit); return m_data.characters16; }
+    bool is8Bit() const { return m_text.is8Bit(); }
+    const LChar* characters8() const { return m_text.impl()->characters8(); }
+    const UChar* characters16() const { return m_text.impl()->characters16(); }
     const UChar* characters() const { return m_text.characters(); }
-    UChar characterAt(unsigned i) const { return m_is8Bit ? characters8()[i] : characters16()[i]; }
+    UChar characterAt(unsigned i) const { return is8Bit() ? characters8()[i] : characters16()[i]; }
     UChar operator[](unsigned i) const { return characterAt(i); }
     unsigned textLength() const { return m_text.length(); } // non virtual implementation of length()
     void positionLineBox(InlineBox*);
@@ -152,7 +146,6 @@ protected:
     virtual void styleWillChange(StyleDifference, const RenderStyle*) { }
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
-    virtual void updateText() { }
     virtual void setTextInternal(PassRefPtr<StringImpl>);
     virtual UChar previousCharacter() const;
     
@@ -191,7 +184,6 @@ private:
                            // just dirtying everything when character data is modified (e.g., appended/inserted
                            // or removed).
     bool m_containsReversedText : 1;
-    bool m_is8Bit : 1;
     bool m_isAllASCII : 1;
     bool m_canUseSimpleFontCodePath : 1;
     mutable bool m_knownToHaveNoOverflowAndNoFallbackFonts : 1;
@@ -203,10 +195,6 @@ private:
     float m_endMinWidth;
 
     String m_text;
-    union {
-        const LChar* characters8;
-        const UChar* characters16;
-    } m_data;
 
     InlineTextBox* m_firstTextBox;
     InlineTextBox* m_lastTextBox;

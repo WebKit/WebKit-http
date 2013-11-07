@@ -418,6 +418,16 @@ bool WKPreferencesGetAcceleratedCompositingEnabled(WKPreferencesRef preferencesR
     return toImpl(preferencesRef)->acceleratedCompositingEnabled();
 }
 
+void WKPreferencesSetAcceleratedCompositingForOverflowScrollEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setAcceleratedCompositingForOverflowScrollEnabled(flag);
+}
+
+bool WKPreferencesGetAcceleratedCompositingForOverflowScrollEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->acceleratedCompositingForOverflowScrollEnabled();
+}
+
 void WKPreferencesSetCompositingBordersVisible(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setCompositingBordersVisible(flag);
@@ -656,6 +666,16 @@ void WKPreferencesSetFullScreenEnabled(WKPreferencesRef preferencesRef, bool ena
 bool WKPreferencesGetFullScreenEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->fullScreenEnabled();
+}
+
+void WKPreferencesSetAsynchronousSpellCheckingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAsynchronousSpellCheckingEnabled(enabled);
+}
+
+bool WKPreferencesGetAsynchronousSpellCheckingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->asynchronousSpellCheckingEnabled();
 }
 
 void WKPreferencesSetAVFoundationEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1032,4 +1052,24 @@ void WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(WKPreferencesR
 bool WKPreferencesGetPageVisibilityBasedProcessSuppressionEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->pageVisibilityBasedProcessSuppressionEnabled();
+}
+
+void WKPreferencesSetSmartInsertDeleteEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setSmartInsertDeleteEnabled(enabled);
+}
+
+bool WKPreferencesGetSmartInsertDeleteEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->smartInsertDeleteEnabled();
+}
+
+void WKPreferencesSetShowsURLsInToolTipsEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setShowsURLsInToolTipsEnabled(enabled);
+}
+
+bool WKPreferencesGetShowsURLsInToolTipsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->showsURLsInToolTipsEnabled();
 }

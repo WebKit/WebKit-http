@@ -168,7 +168,16 @@ void LayerTreeHostGtk::invalidate()
     m_isValid = false;
 }
 
-void LayerTreeHostGtk::setNonCompositedContentsNeedDisplay(const IntRect& rect)
+void LayerTreeHostGtk::setNonCompositedContentsNeedDisplay()
+{
+    m_nonCompositedContentLayer->setNeedsDisplay();
+    if (m_pageOverlayLayer)
+        m_pageOverlayLayer->setNeedsDisplay();
+
+    scheduleLayerFlush();
+}
+
+void LayerTreeHostGtk::setNonCompositedContentsNeedDisplayInRect(const IntRect& rect)
 {
     m_nonCompositedContentLayer->setNeedsDisplayInRect(rect);
     if (m_pageOverlayLayer)
@@ -177,9 +186,9 @@ void LayerTreeHostGtk::setNonCompositedContentsNeedDisplay(const IntRect& rect)
     scheduleLayerFlush();
 }
 
-void LayerTreeHostGtk::scrollNonCompositedContents(const IntRect& scrollRect, const IntSize& scrollOffset)
+void LayerTreeHostGtk::scrollNonCompositedContents(const IntRect& scrollRect)
 {
-    setNonCompositedContentsNeedDisplay(scrollRect);
+    setNonCompositedContentsNeedDisplayInRect(scrollRect);
 }
 
 void LayerTreeHostGtk::sizeDidChange(const IntSize& newSize)

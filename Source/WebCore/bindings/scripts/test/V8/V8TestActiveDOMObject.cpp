@@ -43,6 +43,15 @@ extern "C" { extern void* _ZTVN7WebCore19TestActiveDOMObjectE[]; }
 namespace WebCore {
 
 #if ENABLE(BINDING_INTEGRITY)
+// This checks if a DOM object that is about to be wrapped is valid.
+// Specifically, it checks that a vtable of the DOM object is equal to
+// a vtable of an expected class.
+// Due to a dangling pointer, the DOM object you are wrapping might be
+// already freed or realloced. If freed, the check will fail because
+// a free list pointer should be stored at the head of the DOM object.
+// If realloced, the check will fail because the vtable of the DOM object
+// differs from the expected vtable (unless the same class of DOM object
+// is realloced on the slot).
 inline void checkTypeOrDieTrying(TestActiveDOMObject* object)
 {
     void* actualVTablePointer = *(reinterpret_cast<void**>(object));
@@ -68,32 +77,59 @@ static v8::Handle<v8::Value> excitingAttrAttrGetter(v8::Local<v8::String> name, 
     return v8Integer(imp->excitingAttr(), info.GetIsolate());
 }
 
-static v8::Handle<v8::Value> excitingFunctionCallback(const v8::Arguments& args)
+static v8::Handle<v8::Value> excitingAttrAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestActiveDOMObjectV8Internal::excitingAttrAttrGetter(name, info);
+}
+
+bool indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
+{
+    TestActiveDOMObject* imp =  V8TestActiveDOMObject::toNative(host);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame(), DoNotReportSecurityError);
+}
+
+bool namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
+{
+    TestActiveDOMObject* imp =  V8TestActiveDOMObject::toNative(host);
+    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame(), DoNotReportSecurityError);
+}
+
+static v8::Handle<v8::Value> excitingFunctionMethod(const v8::Arguments& args)
 {
     if (args.Length() < 1)
         return throwNotEnoughArgumentsError(args.GetIsolate());
     TestActiveDOMObject* imp = V8TestActiveDOMObject::toNative(args.Holder());
     if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame()))
         return v8Undefined();
-    V8TRYCATCH(Node*, nextChild, V8Node::HasInstance(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined), args.GetIsolate()) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined))) : 0);
+    V8TRYCATCH(Node*, nextChild, V8Node::HasInstance(args[0], args.GetIsolate()) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[0])) : 0);
     imp->excitingFunction(nextChild);
     return v8Undefined();
 }
 
-static v8::Handle<v8::Value> postMessageCallback(const v8::Arguments& args)
+static v8::Handle<v8::Value> excitingFunctionMethodCallback(const v8::Arguments& args)
+{
+    return TestActiveDOMObjectV8Internal::excitingFunctionMethod(args);
+}
+
+static v8::Handle<v8::Value> postMessageMethod(const v8::Arguments& args)
 {
     if (args.Length() < 1)
         return throwNotEnoughArgumentsError(args.GetIsolate());
     TestActiveDOMObject* imp = V8TestActiveDOMObject::toNative(args.Holder());
-    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<>, message, MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined));
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<>, message, args[0]);
     imp->postMessage(message);
     return v8Undefined();
 }
 
+static v8::Handle<v8::Value> postMessageMethodCallback(const v8::Arguments& args)
+{
+    return TestActiveDOMObjectV8Internal::postMessageMethod(args);
+}
+
 static v8::Handle<v8::Value> postMessageAttrGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
-    static v8::Persistent<v8::FunctionTemplate> privateTemplate = v8::Persistent<v8::FunctionTemplate>::New(v8::FunctionTemplate::New(TestActiveDOMObjectV8Internal::postMessageCallback, v8Undefined(), v8::Signature::New(V8TestActiveDOMObject::GetRawTemplate(info.GetIsolate()))));
-    v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(V8TestActiveDOMObject::GetTemplate(info.GetIsolate()));
+    static v8::Persistent<v8::FunctionTemplate> privateTemplate = v8::Persistent<v8::FunctionTemplate>::New(info.GetIsolate(), v8::FunctionTemplate::New(TestActiveDOMObjectV8Internal::postMessageMethodCallback, v8Undefined(), v8::Signature::New(V8TestActiveDOMObject::GetRawTemplate(info.GetIsolate()))));
+    v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(V8TestActiveDOMObject::GetTemplate(info.GetIsolate(), worldType(info.GetIsolate())));
     if (holder.IsEmpty()) {
         // can only reach here by 'object.__proto__.func', and it should passed
         // domain security check already
@@ -101,7 +137,7 @@ static v8::Handle<v8::Value> postMessageAttrGetter(v8::Local<v8::String> name, c
     }
     TestActiveDOMObject* imp = V8TestActiveDOMObject::toNative(holder);
     if (!BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), imp->frame(), DoNotReportSecurityError)) {
-        static v8::Persistent<v8::FunctionTemplate> sharedTemplate = v8::Persistent<v8::FunctionTemplate>::New(v8::FunctionTemplate::New(TestActiveDOMObjectV8Internal::postMessageCallback, v8Undefined(), v8::Signature::New(V8TestActiveDOMObject::GetRawTemplate(info.GetIsolate()))));
+        static v8::Persistent<v8::FunctionTemplate> sharedTemplate = v8::Persistent<v8::FunctionTemplate>::New(info.GetIsolate(), v8::FunctionTemplate::New(TestActiveDOMObjectV8Internal::postMessageMethodCallback, v8Undefined(), v8::Signature::New(V8TestActiveDOMObject::GetRawTemplate(info.GetIsolate()))));
         return sharedTemplate->GetFunction();
     }
 
@@ -112,9 +148,14 @@ static v8::Handle<v8::Value> postMessageAttrGetter(v8::Local<v8::String> name, c
     return privateTemplate->GetFunction();
 }
 
+static v8::Handle<v8::Value> postMessageAttrGetterCallback(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+{
+    return TestActiveDOMObjectV8Internal::postMessageAttrGetter(name, info);
+}
+
 static void TestActiveDOMObjectDomainSafeFunctionSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
 {
-    v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(V8TestActiveDOMObject::GetTemplate(info.GetIsolate()));
+    v8::Handle<v8::Object> holder = info.This()->FindInstanceInPrototypeChain(V8TestActiveDOMObject::GetTemplate(info.GetIsolate(), worldType(info.GetIsolate())));
     if (holder.IsEmpty())
         return;
     TestActiveDOMObject* imp = V8TestActiveDOMObject::toNative(holder);
@@ -128,32 +169,32 @@ static void TestActiveDOMObjectDomainSafeFunctionSetter(v8::Local<v8::String> na
 
 static const V8DOMConfiguration::BatchedAttribute V8TestActiveDOMObjectAttrs[] = {
     // Attribute 'excitingAttr' (Type: 'readonly attribute' ExtAttr: '')
-    {"excitingAttr", TestActiveDOMObjectV8Internal::excitingAttrAttrGetter, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
+    {"excitingAttr", TestActiveDOMObjectV8Internal::excitingAttrAttrGetterCallback, 0, 0 /* no data */, static_cast<v8::AccessControl>(v8::DEFAULT), static_cast<v8::PropertyAttribute>(v8::None), 0 /* on instance */},
 };
 
-static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestActiveDOMObjectTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate)
+static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestActiveDOMObjectTemplate(v8::Persistent<v8::FunctionTemplate> desc, v8::Isolate* isolate, WrapperWorldType worldType)
 {
     desc->ReadOnlyPrototype();
 
     v8::Local<v8::Signature> defaultSignature;
     defaultSignature = V8DOMConfiguration::configureTemplate(desc, "TestActiveDOMObject", v8::Persistent<v8::FunctionTemplate>(), V8TestActiveDOMObject::internalFieldCount,
         V8TestActiveDOMObjectAttrs, WTF_ARRAY_LENGTH(V8TestActiveDOMObjectAttrs),
-        0, 0);
+        0, 0, isolate);
     UNUSED_PARAM(defaultSignature); // In some cases, it will not be used.
     v8::Local<v8::ObjectTemplate> instance = desc->InstanceTemplate();
     v8::Local<v8::ObjectTemplate> proto = desc->PrototypeTemplate();
     UNUSED_PARAM(instance); // In some cases, it will not be used.
     UNUSED_PARAM(proto); // In some cases, it will not be used.
-    instance->SetAccessCheckCallbacks(V8TestActiveDOMObject::namedSecurityCheck, V8TestActiveDOMObject::indexedSecurityCheck, v8::External::New(&V8TestActiveDOMObject::info));
+    instance->SetAccessCheckCallbacks(TestActiveDOMObjectV8Internal::namedSecurityCheck, TestActiveDOMObjectV8Internal::indexedSecurityCheck, v8::External::New(&V8TestActiveDOMObject::info));
 
     // Custom Signature 'excitingFunction'
     const int excitingFunctionArgc = 1;
     v8::Handle<v8::FunctionTemplate> excitingFunctionArgv[excitingFunctionArgc] = { V8Node::GetRawTemplate(isolate) };
     v8::Handle<v8::Signature> excitingFunctionSignature = v8::Signature::New(desc, excitingFunctionArgc, excitingFunctionArgv);
-    proto->Set(v8::String::NewSymbol("excitingFunction"), v8::FunctionTemplate::New(TestActiveDOMObjectV8Internal::excitingFunctionCallback, v8Undefined(), excitingFunctionSignature));
+    proto->Set(v8::String::NewSymbol("excitingFunction"), v8::FunctionTemplate::New(TestActiveDOMObjectV8Internal::excitingFunctionMethodCallback, v8Undefined(), excitingFunctionSignature));
 
     // Function 'postMessage' (ExtAttr: 'DoNotCheckSecurity')
-    proto->SetAccessor(v8::String::NewSymbol("postMessage"), TestActiveDOMObjectV8Internal::postMessageAttrGetter, TestActiveDOMObjectV8Internal::TestActiveDOMObjectDomainSafeFunctionSetter, v8Undefined(), v8::ALL_CAN_READ, static_cast<v8::PropertyAttribute>(v8::DontDelete));
+    proto->SetAccessor(v8::String::NewSymbol("postMessage"), TestActiveDOMObjectV8Internal::postMessageAttrGetterCallback, TestActiveDOMObjectV8Internal::TestActiveDOMObjectDomainSafeFunctionSetter, v8Undefined(), v8::ALL_CAN_READ, static_cast<v8::PropertyAttribute>(v8::DontDelete));
 
     // Custom toString template
     desc->Set(v8::String::NewSymbol("toString"), V8PerIsolateData::current()->toStringTemplate());
@@ -162,23 +203,19 @@ static v8::Persistent<v8::FunctionTemplate> ConfigureV8TestActiveDOMObjectTempla
 
 v8::Persistent<v8::FunctionTemplate> V8TestActiveDOMObject::GetRawTemplate(v8::Isolate* isolate)
 {
-    if (!isolate)
-        isolate = v8::Isolate::GetCurrent();
     V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->rawTemplateMap().find(&info);
     if (result != data->rawTemplateMap().end())
         return result->value;
 
     v8::HandleScope handleScope;
-    v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate();
+    v8::Persistent<v8::FunctionTemplate> templ = createRawTemplate(isolate);
     data->rawTemplateMap().add(&info, templ);
     return templ;
 }
 
-v8::Persistent<v8::FunctionTemplate> V8TestActiveDOMObject::GetTemplate(v8::Isolate* isolate)
+v8::Persistent<v8::FunctionTemplate> V8TestActiveDOMObject::GetTemplate(v8::Isolate* isolate, WrapperWorldType worldType)
 {
-    if (!isolate)
-        isolate = v8::Isolate::GetCurrent();
     V8PerIsolateData* data = V8PerIsolateData::from(isolate);
     V8PerIsolateData::TemplateMap::iterator result = data->templateMap().find(&info);
     if (result != data->templateMap().end())
@@ -186,15 +223,13 @@ v8::Persistent<v8::FunctionTemplate> V8TestActiveDOMObject::GetTemplate(v8::Isol
 
     v8::HandleScope handleScope;
     v8::Persistent<v8::FunctionTemplate> templ =
-        ConfigureV8TestActiveDOMObjectTemplate(GetRawTemplate(isolate), isolate);
+        ConfigureV8TestActiveDOMObjectTemplate(GetRawTemplate(isolate), isolate, worldType);
     data->templateMap().add(&info, templ);
     return templ;
 }
 
 bool V8TestActiveDOMObject::HasInstance(v8::Handle<v8::Value> value, v8::Isolate* isolate)
 {
-    if (!isolate)
-        isolate = v8::Isolate::GetCurrent();
     return GetRawTemplate(isolate)->HasInstance(value);
 }
 
@@ -208,14 +243,12 @@ v8::Handle<v8::Object> V8TestActiveDOMObject::createWrapper(PassRefPtr<TestActiv
     checkTypeOrDieTrying(impl.get());
 #endif
 
-    v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get());
+    v8::Handle<v8::Object> wrapper = V8DOMWrapper::createWrapper(creationContext, &info, impl.get(), isolate);
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
 
-    installPerContextProperties(wrapper, impl.get());
-    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::associateObjectWithWrapper(impl, &info, wrapper, isolate);
-    if (!hasDependentLifetime)
-        wrapperHandle.MarkIndependent();
+    installPerContextProperties(wrapper, impl.get(), isolate);
+    V8DOMWrapper::associateObjectWithWrapper(impl, &info, wrapper, isolate, hasDependentLifetime ? WrapperConfiguration::Dependent : WrapperConfiguration::Independent);
     return wrapper;
 }
 void V8TestActiveDOMObject::derefObject(void* object)

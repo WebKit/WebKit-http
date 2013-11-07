@@ -46,6 +46,7 @@
 #include "WorkerContext.h"
 #include "WorkerObjectProxy.h"
 #include "WorkerThread.h"
+#include "WrapperTypeInfo.h"
 #include <v8.h>
 
 #if PLATFORM(CHROMIUM)
@@ -63,7 +64,7 @@ WorkerScriptController::WorkerScriptController(WorkerContext* workerContext)
 {
     m_isolate->Enter();
     V8PerIsolateData* data = V8PerIsolateData::create(m_isolate);
-    m_domDataStore = adoptPtr(new DOMDataStore(DOMDataStore::Worker));
+    m_domDataStore = adoptPtr(new DOMDataStore(WorkerWorld));
     data->setDOMDataStore(m_domDataStore.get());
 
     V8Initializer::initializeWorker(m_isolate);
@@ -127,7 +128,7 @@ bool WorkerScriptController::initializeContextIfNeeded()
         return false;
     }
 
-    V8DOMWrapper::associateObjectWithWrapper(PassRefPtr<WorkerContext>(m_workerContext), contextType, jsWorkerContext, m_isolate);
+    V8DOMWrapper::associateObjectWithWrapper(PassRefPtr<WorkerContext>(m_workerContext), contextType, jsWorkerContext, m_isolate, WrapperConfiguration::Dependent);
 
     // Insert the object instance as the prototype of the shadow object.
     v8::Handle<v8::Object> globalObject = v8::Handle<v8::Object>::Cast(m_context->Global()->GetPrototype());
@@ -151,12 +152,13 @@ ScriptValue WorkerScriptController::evaluate(const String& script, const String&
         m_disableEvalPending = String();
     }
 
+    v8::Isolate* isolate = m_context->GetIsolate();
     v8::Context::Scope scope(m_context.get());
 
     v8::TryCatch block;
 
-    v8::Handle<v8::String> scriptString = v8String(script, m_context->GetIsolate());
-    v8::Handle<v8::Script> compiledScript = ScriptSourceCode::compileScript(scriptString, fileName, scriptStartPosition);
+    v8::Handle<v8::String> scriptString = v8String(script, isolate);
+    v8::Handle<v8::Script> compiledScript = ScriptSourceCode::compileScript(scriptString, fileName, scriptStartPosition, 0, isolate);
     v8::Local<v8::Value> result = ScriptRunner::runCompiledScript(compiledScript, m_workerContext);
 
     if (!block.CanContinue()) {
@@ -171,7 +173,7 @@ ScriptValue WorkerScriptController::evaluate(const String& script, const String&
         state->lineNumber = message->GetLineNumber();
         state->sourceURL = toWebCoreString(message->GetScriptResourceName());
         if (m_workerContext->sanitizeScriptError(state->errorMessage, state->lineNumber, state->sourceURL))
-            state->exception = throwError(v8GeneralError, state->errorMessage.utf8().data(), m_context->GetIsolate());
+            state->exception = throwError(v8GeneralError, state->errorMessage.utf8().data(), isolate);
         else
             state->exception = ScriptValue(block.Exception());
 
@@ -248,7 +250,7 @@ WorkerScriptController* WorkerScriptController::controllerForContext()
         return 0;
     v8::Handle<v8::Context> context = v8::Context::GetCurrent();
     v8::Handle<v8::Object> global = context->Global();
-    global = global->FindInstanceInPrototypeChain(V8WorkerContext::GetTemplate(context->GetIsolate()));
+    global = global->FindInstanceInPrototypeChain(V8WorkerContext::GetTemplate(context->GetIsolate(), WorkerWorld));
     // Return 0 if the current executing context is not the worker context.
     if (global.IsEmpty())
         return 0;

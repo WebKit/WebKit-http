@@ -28,7 +28,10 @@
 #if defined(__LP64__) && defined(__clang__)
 
 #import "WKDOMRange.h"
+#import "WKDOMRangePrivate.h"
 
+#import "InjectedBundleRangeHandle.h"
+#import "WKBundleAPICast.h"
 #import "WKDOMInternals.h"
 #import <WebCore/Document.h>
 
@@ -143,6 +146,16 @@
     Vector<WebCore::IntRect> rects;
     _impl->textRects(rects);
     return WebKit::toNSArray(rects);
+}
+
+@end
+
+@implementation WKDOMRange (WKPrivate)
+
+- (WKBundleRangeHandleRef)_copyBundleRangeHandleRef
+{
+    RefPtr<WebKit::InjectedBundleRangeHandle> rangeHandle = WebKit::InjectedBundleRangeHandle::getOrCreate(_impl.get());
+    return toAPI(rangeHandle.release().leakRef());
 }
 
 @end

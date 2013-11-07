@@ -36,6 +36,24 @@
 
 namespace JSC {
 
+const double CodeCacheMap::workingSetTime = 10.0;
+
+void CodeCacheMap::pruneSlowCase()
+{
+    m_minCapacity = m_size - m_sizeAtLastPrune;
+    m_sizeAtLastPrune = m_size;
+    m_timeAtLastPrune = monotonicallyIncreasingTime();
+
+    if (m_capacity < m_minCapacity)
+        m_capacity = m_minCapacity;
+
+    while (m_size > m_capacity) {
+        MapType::iterator it = m_map.begin();
+        m_size -= it->key.length();
+        m_map.remove(it);
+    }
+}
+
 CodeCache::CodeCache()
 {
 }
@@ -44,113 +62,79 @@ CodeCache::~CodeCache()
 {
 }
 
-CodeCache::SourceCodeKey CodeCache::makeSourceCodeKey(const SourceCode& source, CodeCache::CodeType type, JSParserStrictness strictness)
-{
-    return std::make_pair(source.toString(), (type << 1) | strictness);
-}
-
 template <typename T> struct CacheTypes { };
 
 template <> struct CacheTypes<UnlinkedProgramCodeBlock> {
     typedef JSC::ProgramNode RootNode;
-    static const CodeCache::CodeType codeType = CodeCache::ProgramType;
+    static const SourceCodeKey::CodeType codeType = SourceCodeKey::ProgramType;
 };
 
 template <> struct CacheTypes<UnlinkedEvalCodeBlock> {
     typedef JSC::EvalNode RootNode;
-    static const CodeCache::CodeType codeType = CodeCache::EvalType;
+    static const SourceCodeKey::CodeType codeType = SourceCodeKey::EvalType;
 };
 
 template <class UnlinkedCodeBlockType, class ExecutableType>
-UnlinkedCodeBlockType* CodeCache::getCodeBlock(JSGlobalData& globalData, ExecutableType* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
+UnlinkedCodeBlockType* CodeCache::getCodeBlock(JSGlobalData& globalData, JSScope* scope, ExecutableType* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
 {
-    SourceCodeKey key = makeSourceCodeKey(source, CacheTypes<UnlinkedCodeBlockType>::codeType, strictness);
-    bool storeInCache = false;
-    if (debuggerMode == DebuggerOff && profilerMode == ProfilerOff) {
-        const Strong<UnlinkedCodeBlock>* result = m_sourceCode.find(key);
-        if (result) {
-            UnlinkedCodeBlockType* unlinkedCode = jsCast<UnlinkedCodeBlockType*>(result->get());
-            unsigned firstLine = source.firstLine() + unlinkedCode->firstLine();
-            executable->recordParse(unlinkedCode->codeFeatures(), unlinkedCode->hasCapturedVariables(), firstLine, firstLine + unlinkedCode->lineCount());
-            return unlinkedCode;
-        }
-        storeInCache = true;
+    SourceCodeKey key = SourceCodeKey(source, String(), CacheTypes<UnlinkedCodeBlockType>::codeType, strictness);
+    CodeCacheMap::AddResult addResult = m_sourceCode.add(key, SourceCodeValue());
+    bool canCache = debuggerMode == DebuggerOff && profilerMode == ProfilerOff;
+    if (!addResult.isNewEntry && canCache) {
+        UnlinkedCodeBlockType* unlinkedCode = jsCast<UnlinkedCodeBlockType*>(addResult.iterator->value.cell.get());
+        unsigned firstLine = source.firstLine() + unlinkedCode->firstLine();
+        executable->recordParse(unlinkedCode->codeFeatures(), unlinkedCode->hasCapturedVariables(), firstLine, firstLine + unlinkedCode->lineCount());
+        return unlinkedCode;
     }
 
     typedef typename CacheTypes<UnlinkedCodeBlockType>::RootNode RootNode;
     RefPtr<RootNode> rootNode = parse<RootNode>(&globalData, source, 0, Identifier(), strictness, JSParseProgramCode, error);
-    if (!rootNode)
+    if (!rootNode) {
+        m_sourceCode.remove(addResult.iterator);
         return 0;
+    }
     executable->recordParse(rootNode->features(), rootNode->hasCapturedVariables(), rootNode->lineNo(), rootNode->lastLine());
 
     UnlinkedCodeBlockType* unlinkedCode = UnlinkedCodeBlockType::create(&globalData, executable->executableInfo());
     unlinkedCode->recordParse(rootNode->features(), rootNode->hasCapturedVariables(), rootNode->lineNo() - source.firstLine(), rootNode->lastLine() - rootNode->lineNo());
-    OwnPtr<BytecodeGenerator> generator(adoptPtr(new BytecodeGenerator(globalData, rootNode.get(), unlinkedCode, debuggerMode, profilerMode)));
+    OwnPtr<BytecodeGenerator> generator(adoptPtr(new BytecodeGenerator(globalData, scope, rootNode.get(), unlinkedCode, debuggerMode, profilerMode)));
     error = generator->generate();
     rootNode->destroyData();
-    if (error.m_type != ParserError::ErrorNone)
+    if (error.m_type != ParserError::ErrorNone) {
+        m_sourceCode.remove(addResult.iterator);
         return 0;
+    }
 
-    if (storeInCache)
-        m_sourceCode.add(key, Strong<UnlinkedCodeBlock>(globalData, unlinkedCode));
+    if (!canCache) {
+        m_sourceCode.remove(addResult.iterator);
+        return unlinkedCode;
+    }
 
+    addResult.iterator->value = SourceCodeValue(globalData, unlinkedCode, m_sourceCode.age());
     return unlinkedCode;
 }
 
 UnlinkedProgramCodeBlock* CodeCache::getProgramCodeBlock(JSGlobalData& globalData, ProgramExecutable* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
 {
-    return getCodeBlock<UnlinkedProgramCodeBlock>(globalData, executable, source, strictness, debuggerMode, profilerMode, error);
+    return getCodeBlock<UnlinkedProgramCodeBlock>(globalData, 0, executable, source, strictness, debuggerMode, profilerMode, error);
 }
 
-UnlinkedEvalCodeBlock* CodeCache::getEvalCodeBlock(JSGlobalData& globalData, EvalExecutable* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
+UnlinkedEvalCodeBlock* CodeCache::getEvalCodeBlock(JSGlobalData& globalData, JSScope* scope, EvalExecutable* executable, const SourceCode& source, JSParserStrictness strictness, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
 {
-    return getCodeBlock<UnlinkedEvalCodeBlock>(globalData, executable, source, strictness, debuggerMode, profilerMode, error);
-}
-
-UnlinkedFunctionCodeBlock* CodeCache::generateFunctionCodeBlock(JSGlobalData& globalData, UnlinkedFunctionExecutable* executable, const SourceCode& source, CodeSpecializationKind kind, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
-{
-    RefPtr<FunctionBodyNode> body = parse<FunctionBodyNode>(&globalData, source, executable->parameters(), executable->name(), executable->isInStrictContext() ? JSParseStrict : JSParseNormal, JSParseFunctionCode, error);
-
-    if (!body) {
-        ASSERT(error.m_type != ParserError::ErrorNone);
-        return 0;
-    }
-
-    if (executable->forceUsesArguments())
-        body->setUsesArguments();
-    body->finishParsing(executable->parameters(), executable->name(), executable->functionNameIsInScopeToggle());
-    executable->recordParse(body->features(), body->hasCapturedVariables(), body->lineNo(), body->lastLine());
-    
-    UnlinkedFunctionCodeBlock* result = UnlinkedFunctionCodeBlock::create(&globalData, FunctionCode, ExecutableInfo(body->needsActivation(), body->usesEval(), body->isStrictMode(), kind == CodeForConstruct));
-    OwnPtr<BytecodeGenerator> generator(adoptPtr(new BytecodeGenerator(globalData, body.get(), result, debuggerMode, profilerMode)));
-    error = generator->generate();
-    body->destroyData();
-    if (error.m_type != ParserError::ErrorNone)
-        return 0;
-    m_recentlyUsedFunctions.add(result, Strong<UnlinkedFunctionCodeBlock>(globalData, result));
-    return result;
-}
-
-UnlinkedFunctionCodeBlock* CodeCache::getFunctionCodeBlock(JSGlobalData& globalData, UnlinkedFunctionExecutable* executable, const SourceCode& source, CodeSpecializationKind kind, DebuggerMode debuggerMode, ProfilerMode profilerMode, ParserError& error)
-{
-    return generateFunctionCodeBlock(globalData, executable, source, kind, debuggerMode, profilerMode, error);
-}
-
-CodeCache::FunctionKey CodeCache::makeFunctionKey(const SourceCode& source, const String& name)
-{
-    return FunctionKey(source.toString(), name);
+    return getCodeBlock<UnlinkedEvalCodeBlock>(globalData, scope, executable, source, strictness, debuggerMode, profilerMode, error);
 }
 
 UnlinkedFunctionExecutable* CodeCache::getFunctionExecutableFromGlobalCode(JSGlobalData& globalData, const Identifier& name, const SourceCode& source, ParserError& error)
 {
-    FunctionKey key = makeFunctionKey(source, name.string());
-    const Strong<UnlinkedFunctionExecutable>* result = m_globalFunctions.find(key);
-    if (result)
-        return result->get();
+    SourceCodeKey key = SourceCodeKey(source, name.string(), SourceCodeKey::FunctionType, JSParseNormal);
+    CodeCacheMap::AddResult addResult = m_sourceCode.add(key, SourceCodeValue());
+    if (!addResult.isNewEntry)
+        return jsCast<UnlinkedFunctionExecutable*>(addResult.iterator->value.cell.get());
 
     RefPtr<ProgramNode> program = parse<ProgramNode>(&globalData, source, 0, Identifier(), JSParseNormal, JSParseProgramCode, error);
     if (!program) {
         ASSERT(error.m_type != ParserError::ErrorNone);
+        m_sourceCode.remove(addResult.iterator);
         return 0;
     }
 
@@ -168,13 +152,8 @@ UnlinkedFunctionExecutable* CodeCache::getFunctionExecutableFromGlobalCode(JSGlo
     UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&globalData, source, body);
     functionExecutable->m_nameValue.set(globalData, functionExecutable, jsString(&globalData, name.string()));
 
-    m_globalFunctions.add(key, Strong<UnlinkedFunctionExecutable>(globalData, functionExecutable));
+    addResult.iterator->value = SourceCodeValue(globalData, functionExecutable, m_sourceCode.age());
     return functionExecutable;
-}
-
-void CodeCache::usedFunctionCode(JSGlobalData& globalData, UnlinkedFunctionCodeBlock* codeBlock)
-{
-    m_recentlyUsedFunctions.add(codeBlock, Strong<UnlinkedFunctionCodeBlock>(globalData, codeBlock));
 }
 
 }

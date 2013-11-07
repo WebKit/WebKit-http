@@ -62,6 +62,15 @@ InjectedScriptHost.prototype.clearConsoleMessages = function() { }
 InjectedScriptHost.prototype.inspectedObject = function(index) { }
 /**
  * @param {*} object
+ * @return {number}
+ */
+InjectedScriptHost.prototype.objectId = function(object) { }
+/**
+ * @param {*} object
+ */
+InjectedScriptHost.prototype.releaseObjectId = function(object) { }
+/**
+ * @param {*} object
  */
 InjectedScriptHost.prototype.databaseId = function(object) { }
 /**
@@ -82,6 +91,13 @@ InjectedScriptHost.prototype.getEventListeners = function(object) { }
  */
 InjectedScriptHost.prototype.evaluate = function(expression) { }
 
+/**
+ * @param {function(...)} fun
+ * @param {number} scopeNumber
+ * @param {string} variableName
+ * @param {*} newValue
+ */
+InjectedScriptHost.prototype.setFunctionVariableValue = function(fun, scopeNumber, variableName, newValue) { }
 
 /**
  * @constructor
@@ -104,6 +120,13 @@ function JavaScriptCallFrame()
 JavaScriptCallFrame.prototype.scopeType = function(index) { }
 
 JavaScriptCallFrame.prototype.restart = function() { }
+
+/**
+ * @param {number} scopeNumber
+ * @param {string} variableName
+ * @param {*} newValue
+ */
+JavaScriptCallFrame.prototype.setVariableValue = function(scopeNumber, variableName, newValue) {}
 
 /**
  * @constructor

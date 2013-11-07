@@ -27,11 +27,14 @@
 #include "config.h"
 #include "HTMLTreeBuilder.h"
 
+#include "AtomicHTMLToken.h"
 #include "Comment.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
 #include "Element.h"
 #include "Frame.h"
+#include "FrameLoader.h"
+#include "FrameLoaderClient.h"
 #include "HTMLDocument.h"
 #include "HTMLElementFactory.h"
 #include "HTMLFormElement.h"
@@ -44,13 +47,7 @@
 #include "HTMLToken.h"
 #include "HTMLTokenizer.h"
 #include "LocalizedStrings.h"
-#if ENABLE(MATHML)
-#include "MathMLNames.h"
-#endif
 #include "NotImplemented.h"
-#if ENABLE(SVG)
-#include "SVGNames.h"
-#endif
 #include "Settings.h"
 #include "Text.h"
 #include <wtf/UnusedParam.h>
@@ -209,7 +206,7 @@ void HTMLConstructionSite::mergeAttributesFromTokenIntoElement(AtomicHTMLToken* 
 
     for (unsigned i = 0; i < token->attributes().size(); ++i) {
         const Attribute& tokenAttribute = token->attributes().at(i);
-        if (!element->attributeData() || !element->getAttributeItem(tokenAttribute.name()))
+        if (!element->elementData() || !element->getAttributeItem(tokenAttribute.name()))
             element->setAttribute(tokenAttribute.name(), tokenAttribute.value());
     }
 }
@@ -339,7 +336,7 @@ void HTMLConstructionSite::finishedParsing()
 
 void HTMLConstructionSite::insertDoctype(AtomicHTMLToken* token)
 {
-    ASSERT(token->type() == HTMLTokenTypes::DOCTYPE);
+    ASSERT(token->type() == HTMLToken::DOCTYPE);
 
     const String& publicId = String::adopt(token->publicIdentifier());
     const String& systemId = String::adopt(token->systemIdentifier());
@@ -364,19 +361,19 @@ void HTMLConstructionSite::insertDoctype(AtomicHTMLToken* token)
 
 void HTMLConstructionSite::insertComment(AtomicHTMLToken* token)
 {
-    ASSERT(token->type() == HTMLTokenTypes::Comment);
+    ASSERT(token->type() == HTMLToken::Comment);
     attachLater(currentNode(), Comment::create(ownerDocumentForCurrentNode(), token->comment()));
 }
 
 void HTMLConstructionSite::insertCommentOnDocument(AtomicHTMLToken* token)
 {
-    ASSERT(token->type() == HTMLTokenTypes::Comment);
+    ASSERT(token->type() == HTMLToken::Comment);
     attachLater(m_attachmentRoot, Comment::create(m_document, token->comment()));
 }
 
 void HTMLConstructionSite::insertCommentOnHTMLHtmlElement(AtomicHTMLToken* token)
 {
-    ASSERT(token->type() == HTMLTokenTypes::Comment);
+    ASSERT(token->type() == HTMLToken::Comment);
     ContainerNode* parent = m_openElements.rootNode();
     attachLater(parent, Comment::create(parent->document(), token->comment()));
 }
@@ -395,6 +392,8 @@ void HTMLConstructionSite::insertHTMLBodyElement(AtomicHTMLToken* token)
     RefPtr<Element> body = createHTMLElement(token);
     attachLater(currentNode(), body);
     m_openElements.pushHTMLBodyElement(HTMLStackItem::create(body.release(), token));
+    if (Frame* frame = m_document->frame())
+        frame->loader()->client()->dispatchWillInsertBody();
 }
 
 void HTMLConstructionSite::insertHTMLFormElement(AtomicHTMLToken* token, bool isDemoted)
@@ -416,7 +415,7 @@ void HTMLConstructionSite::insertHTMLElement(AtomicHTMLToken* token)
 
 void HTMLConstructionSite::insertSelfClosingHTMLElement(AtomicHTMLToken* token)
 {
-    ASSERT(token->type() == HTMLTokenTypes::StartTag);
+    ASSERT(token->type() == HTMLToken::StartTag);
     // Normally HTMLElementStack is responsible for calling finishParsingChildren,
     // but self-closing elements are never in the element stack so the stack
     // doesn't get a chance to tell them that we're done parsing their children.
@@ -452,7 +451,7 @@ void HTMLConstructionSite::insertScriptElement(AtomicHTMLToken* token)
 
 void HTMLConstructionSite::insertForeignElement(AtomicHTMLToken* token, const AtomicString& namespaceURI)
 {
-    ASSERT(token->type() == HTMLTokenTypes::StartTag);
+    ASSERT(token->type() == HTMLToken::StartTag);
     notImplemented(); // parseError when xmlns or xmlns:xlink are wrong.
 
     RefPtr<Element> element = createElement(token, namespaceURI);
@@ -540,11 +539,13 @@ PassRefPtr<Element> HTMLConstructionSite::createHTMLElement(AtomicHTMLToken* tok
 PassRefPtr<HTMLStackItem> HTMLConstructionSite::createElementFromSavedToken(HTMLStackItem* item)
 {
     RefPtr<Element> element;
+    // NOTE: Moving from item -> token -> item copies the Attribute vector twice!
+    AtomicHTMLToken fakeToken(HTMLToken::StartTag, item->localName(), item->attributes());
     if (item->namespaceURI() == HTMLNames::xhtmlNamespaceURI)
-        element = createHTMLElement(item->token());
+        element = createHTMLElement(&fakeToken);
     else
-        element = createElement(item->token(), item->namespaceURI());
-    return HTMLStackItem::create(element.release(), item->token(), item->namespaceURI());
+        element = createElement(&fakeToken, item->namespaceURI());
+    return HTMLStackItem::create(element.release(), &fakeToken, item->namespaceURI());
 }
 
 bool HTMLConstructionSite::indexOfFirstUnopenFormattingElement(unsigned& firstUnopenElementIndex) const

@@ -32,10 +32,8 @@
 #define WebViewHost_h
 
 #include "TestNavigationController.h"
-#include "WebAccessibilityNotification.h"
 #include "WebCursorInfo.h"
 #include "WebFrameClient.h"
-#include "WebIntentRequest.h"
 #include "WebPrerendererClient.h"
 #include "WebTask.h"
 #include "WebTestDelegate.h"
@@ -46,23 +44,13 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-class MockWebSpeechInputController;
-class MockWebSpeechRecognizer;
 class SkCanvas;
 class TestShell;
-class WebUserMediaClientMock;
 
 namespace WebKit {
 class WebFrame;
-class WebDeviceOrientationClient;
-class WebDeviceOrientationClientMock;
-class WebGeolocationClient;
-class WebGeolocationClientMock;
-class WebGeolocationServiceMock;
 class WebSerializedScriptValue;
 class WebSharedWorkerClient;
-class WebSpeechInputController;
-class WebSpeechInputListener;
 class WebURL;
 struct WebRect;
 struct WebURLError;
@@ -70,6 +58,7 @@ struct WebWindowFeatures;
 }
 
 namespace webkit_support {
+class DRTLayerTreeViewClient;
 class MediaStreamUtil;
 class TestMediaStreamClient;
 }
@@ -91,27 +80,11 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     void reset();
     void setPendingExtraData(PassOwnPtr<TestShellExtraData>);
 
-    void paintRect(const WebKit::WebRect&);
-    void paintInvalidatedRegion();
-    void paintPagesWithBoundaries();
-    SkCanvas* canvas();
-    void displayRepaintMask();
-
     TestNavigationController* navigationController() { return m_navigationController.get(); }
 
     void closeWidget();
 
-#if ENABLE(INPUT_SPEECH)
-    MockWebSpeechInputController* speechInputControllerMock() { return m_speechInputControllerMock.get(); }
-#endif
-
-#if ENABLE(SCRIPTED_SPEECH)
-    MockWebSpeechRecognizer* mockSpeechRecognizer() { return m_mockSpeechRecognizer.get(); }
-#endif
-
     // WebTestDelegate.
-    virtual WebKit::WebContextMenuData* lastContextMenuData() const OVERRIDE;
-    virtual void clearContextMenuData() OVERRIDE;
     virtual void setEditCommand(const std::string& name, const std::string& value) OVERRIDE;
     virtual void clearEditCommand() OVERRIDE;
     virtual void setGamepadData(const WebKit::WebGamepads&) OVERRIDE;
@@ -125,12 +98,7 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual WebKit::WebURL rewriteLayoutTestsURL(const std::string&) OVERRIDE;
     virtual WebTestRunner::WebPreferences* preferences() OVERRIDE;
     virtual void applyPreferences() OVERRIDE;
-#if ENABLE(WEB_INTENTS)
-    virtual void setCurrentWebIntentRequest(const WebKit::WebIntentRequest&) OVERRIDE;
-    virtual WebKit::WebIntentRequest* currentWebIntentRequest() OVERRIDE;
-#endif
     virtual std::string makeURLErrorDescription(const WebKit::WebURLError&) OVERRIDE;
-    virtual std::string normalizeLayoutTestURL(const std::string&) OVERRIDE;
     virtual void setClientWindowRect(const WebKit::WebRect&) OVERRIDE;
     virtual void showDevTools() OVERRIDE;
     virtual void closeDevTools() OVERRIDE;
@@ -138,48 +106,21 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual void clearAllDatabases() OVERRIDE;
     virtual void setDatabaseQuota(int) OVERRIDE;
     virtual void setDeviceScaleFactor(float) OVERRIDE;
-    virtual void setFocus(bool) OVERRIDE;
+    virtual void setFocus(WebTestRunner::WebTestProxyBase*, bool) OVERRIDE;
     virtual void setAcceptAllCookies(bool) OVERRIDE;
     virtual std::string pathToLocalResource(const std::string& url) OVERRIDE;
     virtual void setLocale(const std::string&) OVERRIDE;
-    virtual void setDeviceOrientation(WebKit::WebDeviceOrientation&) OVERRIDE;
-#if ENABLE(POINTER_LOCK)
-    virtual void didAcquirePointerLock() OVERRIDE;
-    virtual void didNotAcquirePointerLock() OVERRIDE;
-    virtual void didLosePointerLock() OVERRIDE;
-    virtual void setPointerLockWillRespondAsynchronously() OVERRIDE { m_pointerLockPlannedResult = PointerLockWillRespondAsync; }
-    virtual void setPointerLockWillFailSynchronously() OVERRIDE { m_pointerLockPlannedResult = PointerLockWillFailSync; }
-#endif
-    virtual int numberOfPendingGeolocationPermissionRequests() OVERRIDE;
-    virtual void setGeolocationPermission(bool) OVERRIDE;
-    virtual void setMockGeolocationPosition(double, double, double) OVERRIDE;
-    virtual void setMockGeolocationPositionUnavailableError(const std::string&) OVERRIDE;
-#if ENABLE(NOTIFICATIONS)
-    virtual void grantWebNotificationPermission(const std::string&) OVERRIDE;
-    virtual bool simulateLegacyWebNotificationClick(const std::string&) OVERRIDE;
-#endif
-#if ENABLE(INPUT_SPEECH)
-    virtual void addMockSpeechInputResult(const std::string&, double, const std::string&) OVERRIDE;
-    virtual void setMockSpeechInputDumpRect(bool) OVERRIDE;
-#endif
-#if ENABLE(SCRIPTED_SPEECH)
-    virtual void addMockSpeechRecognitionResult(const std::string&, double) OVERRIDE;
-    virtual void setMockSpeechRecognitionError(const std::string&, const std::string&) OVERRIDE;
-    virtual bool wasMockSpeechRecognitionAborted() OVERRIDE;
-#endif
-    virtual void display() OVERRIDE;
-    virtual void displayInvalidatedRegion() OVERRIDE;
     virtual void testFinished() OVERRIDE;
     virtual void testTimedOut() OVERRIDE;
     virtual bool isBeingDebugged() OVERRIDE;
     virtual int layoutTestTimeout() OVERRIDE;
     virtual void closeRemainingWindows() OVERRIDE;
     virtual int navigationEntryCount() OVERRIDE;
-    virtual int windowCount() OVERRIDE;
     virtual void goToOffset(int) OVERRIDE;
     virtual void reload() OVERRIDE;
     virtual void loadURLForFrame(const WebKit::WebURL&, const std::string& frameName) OVERRIDE;
     virtual bool allowExternalPages() OVERRIDE;
+    virtual void captureHistoryForWindow(WebTestRunner::WebTestProxyBase*, WebKit::WebVector<WebKit::WebHistoryItem>*, size_t* currentEntryIndex) OVERRIDE;
 
     // NavigationHost
     virtual bool navigate(const TestNavigationEntry&, bool reload);
@@ -192,7 +133,6 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual WebKit::WebWidget* createPopupMenu(WebKit::WebPopupType);
     virtual WebKit::WebWidget* createPopupMenu(const WebKit::WebPopupMenuInfo&);
     virtual WebKit::WebStorageNamespace* createSessionStorageNamespace(unsigned quota);
-    virtual WebKit::WebCompositorOutputSurface* createOutputSurface();
     virtual void didAddMessageToConsole(const WebKit::WebConsoleMessage&, const WebKit::WebString& sourceName, unsigned sourceLine);
     virtual void didStartLoading();
     virtual void didStopLoading();
@@ -214,25 +154,10 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual void navigateBackForwardSoon(int offset);
     virtual int historyBackListCount();
     virtual int historyForwardListCount();
-#if ENABLE(NOTIFICATIONS)
-    virtual WebKit::WebNotificationPresenter* notificationPresenter();
-#endif
-    virtual WebKit::WebGeolocationClient* geolocationClient();
-#if ENABLE(INPUT_SPEECH)
-    virtual WebKit::WebSpeechInputController* speechInputController(WebKit::WebSpeechInputListener*);
-#endif
-#if ENABLE(SCRIPTED_SPEECH)
-    virtual WebKit::WebSpeechRecognizer* speechRecognizer() OVERRIDE;
-#endif
-    virtual WebKit::WebDeviceOrientationClient* deviceOrientationClient() OVERRIDE;
-#if ENABLE(MEDIA_STREAM)
-    virtual WebKit::WebUserMediaClient* userMediaClient();
-#endif
-    virtual void printPage(WebKit::WebFrame*);
 
     // WebKit::WebWidgetClient
     virtual void didAutoResize(const WebKit::WebSize& newSize);
-    virtual void initializeLayerTreeView(WebKit::WebLayerTreeViewClient*, const WebKit::WebLayer& rootLayer, const WebKit::WebLayerTreeView::Settings&);
+    virtual void initializeLayerTreeView();
     virtual WebKit::WebLayerTreeView* layerTreeView();
     virtual void scheduleAnimation();
     virtual void didFocus();
@@ -248,11 +173,6 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
     virtual WebKit::WebRect rootWindowRect();
     virtual WebKit::WebRect windowResizerRect();
     virtual WebKit::WebScreenInfo screenInfo();
-#if ENABLE(POINTER_LOCK)
-    virtual bool requestPointerLock();
-    virtual void requestPointerUnlock();
-    virtual bool isPointerLocked();
-#endif
 
     // WebKit::WebFrameClient
     virtual WebKit::WebPlugin* createPlugin(WebKit::WebFrame*, const WebKit::WebPluginParams&);
@@ -279,13 +199,11 @@ class WebViewHost : public WebKit::WebViewClient, public WebKit::WebFrameClient,
         WebKit::WebFrame* sourceFrame, WebKit::WebFrame* targetFrame, 
         WebKit::WebSecurityOrigin target, WebKit::WebDOMMessageEvent);
 
-    WebKit::WebDeviceOrientationClientMock* deviceOrientationClientMock();
-
-    // Geolocation client mocks for DRTTestRunner
-    WebKit::WebGeolocationClientMock* geolocationClientMock();
-
     // Pending task list, Note taht the method is referred from WebMethodTask class.
     WebTestRunner::WebTaskList* taskList() { return &m_taskList; }
+
+    // Exposed for WebTestProxy.
+    void scheduleComposite() { }
 
 private:
 
@@ -318,11 +236,10 @@ private:
     void printFrameDescription(WebKit::WebFrame*);
 
     bool hasWindow() const { return m_hasWindow; }
-    void resetScrollRect();
-    void discardBackingStore();
+
+    void updateViewportSize();
 
 #if ENABLE(MEDIA_STREAM)
-    WebUserMediaClientMock* userMediaClientMock();
     webkit_support::TestMediaStreamClient* testMediaStreamClient();
 #endif
 
@@ -354,27 +271,11 @@ private:
     std::string m_editCommandName;
     std::string m_editCommandValue;
 
-    // Painting.
-    OwnPtr<SkCanvas> m_canvas;
-    WebKit::WebRect m_paintRect;
-    bool m_isPainting;
 
     OwnPtr<WebKit::WebContextMenuData> m_lastContextMenuData;
 
-    // Geolocation
-    OwnPtr<WebKit::WebGeolocationClientMock> m_geolocationClientMock;
-
-    OwnPtr<WebKit::WebDeviceOrientationClientMock> m_deviceOrientationClientMock;
-#if ENABLE(INPUT_SPEECH)
-    OwnPtr<MockWebSpeechInputController> m_speechInputControllerMock;
-#endif
-
-#if ENABLE(SCRIPTED_SPEECH)
-    OwnPtr<MockWebSpeechRecognizer> m_mockSpeechRecognizer;
-#endif
 
 #if ENABLE(MEDIA_STREAM)
-    OwnPtr<WebUserMediaClientMock> m_userMediaClientMock;
     OwnPtr<webkit_support::TestMediaStreamClient> m_testMediaStreamClient;
 #endif
 
@@ -383,20 +284,7 @@ private:
     WebTestRunner::WebTaskList m_taskList;
     Vector<WebKit::WebWidget*> m_popupmenus;
 
-#if ENABLE(POINTER_LOCK)
-    bool m_pointerLocked;
-    enum {
-        PointerLockWillSucceed,
-        PointerLockWillRespondAsync,
-        PointerLockWillFailSync
-    } m_pointerLockPlannedResult;
-#endif
-
-#if ENABLE(WEB_INTENTS)
-    // For web intents: holds the current request, if any.
-    WebKit::WebIntentRequest m_currentRequest;
-#endif
-
+    OwnPtr<webkit_support::DRTLayerTreeViewClient> m_layerTreeViewClient;
     OwnPtr<WebKit::WebLayerTreeView> m_layerTreeView;
 };
 

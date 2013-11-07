@@ -32,6 +32,7 @@
 
 #include "ApplicationCacheHost.h"
 #include "BackForwardController.h"
+#include "CachedRawResource.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "Console.h"
@@ -39,6 +40,7 @@
 #include "Document.h"
 #include "DocumentLoadTiming.h"
 #include "DocumentLoader.h"
+#include "FeatureObserver.h"
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -207,7 +209,12 @@ bool MainResourceLoader::isPostOrRedirectAfterPost(const ResourceRequest& newReq
 
 PassRefPtr<ResourceBuffer> MainResourceLoader::resourceData()
 {
-    return m_resource ? m_resource->resourceBuffer() : 0;
+    ASSERT(!m_resource || !m_substituteData.isValid());
+    if (m_resource)
+        return m_resource->resourceBuffer();
+    if (m_substituteData.isValid())
+        return ResourceBuffer::create(m_substituteData.content()->data(), m_substituteData.content()->size());
+    return 0;
 }
 
 void MainResourceLoader::redirectReceived(CachedResource* resource, ResourceRequest& request, const ResourceResponse& redirectResponse)
@@ -239,7 +246,7 @@ void MainResourceLoader::willSendRequest(ResourceRequest& newRequest, const Reso
         // then block the redirect.
         RefPtr<SecurityOrigin> redirectingOrigin = SecurityOrigin::create(redirectResponse.url());
         if (!redirectingOrigin->canDisplay(newRequest.url())) {
-            FrameLoader::reportLocalLoadFailed(m_documentLoader->frame(), newRequest.url().string());
+            FrameLoader::reportLocalLoadFailed(m_documentLoader->frame(), newRequest.url().elidedString());
             cancel();
             return;
         }
@@ -358,7 +365,7 @@ void MainResourceLoader::continueAfterContentPolicy(PolicyAction contentPolicy, 
     if (!m_documentLoader->isStopping() && m_substituteData.isValid()) {
         if (m_substituteData.content()->size())
             dataReceived(0, m_substituteData.content()->data(), m_substituteData.content()->size());
-        if (!m_documentLoader->isStopping())
+        if (m_documentLoader->isLoadingMainResource())
             didFinishLoading(0);
     }
 }
@@ -403,8 +410,8 @@ void MainResourceLoader::responseReceived(CachedResource* resource, const Resour
         String content = it->value;
         if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, r.url(), identifier())) {
             InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_documentLoader->frame(), documentLoader(), identifier(), r);
-            String message = "Refused to display '" + r.url().string() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
-            m_documentLoader->frame()->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, message, identifier());
+            String message = "Refused to display '" + r.url().elidedString() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
+            m_documentLoader->frame()->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message, identifier());
 
             cancel();
             return;
@@ -422,8 +429,10 @@ void MainResourceLoader::responseReceived(CachedResource* resource, const Resour
         m_resource->clear();
     }
     
-    if (r.isMultipart())
+    if (r.isMultipart()) {
+        FeatureObserver::observe(m_documentLoader->frame()->document(), FeatureObserver::MultipartMainResource);
         m_loadingMultipartContent = true;
+    }
         
     // The additional processing can do anything including possibly removing the last
     // reference to this object; one example of this is 3266216.
@@ -714,8 +723,8 @@ bool MainResourceLoader::defersLoading() const
 
 void MainResourceLoader::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
 {
-    ASSERT(m_resource);
-    m_resource->setDataBufferingPolicy(dataBufferingPolicy);
+    if (m_resource)
+        m_resource->setDataBufferingPolicy(dataBufferingPolicy);
 }
 
 ResourceLoader* MainResourceLoader::loader() const

@@ -45,6 +45,7 @@
 #import <WebCore/GeolocationPosition.h>
 #import <WebKit/DOMDocument.h>
 #import <WebKit/DOMElement.h>
+#import <WebKit/DOMHTMLInputElementPrivate.h>
 #import <WebKit/WebApplicationCache.h>
 #import <WebKit/WebBackForwardList.h>
 #import <WebKit/WebCoreStatistics.h>
@@ -73,7 +74,6 @@
 #import <WebKit/WebTypesInternal.h>
 #import <WebKit/WebView.h>
 #import <WebKit/WebViewPrivate.h>
-#import <WebKit/WebWorkersPrivate.h>
 #import <wtf/CurrentTime.h>
 #import <wtf/HashMap.h>
 #import <wtf/RetainPtr.h>
@@ -274,21 +274,6 @@ void TestRunner::keepWebHistory()
     }
 }
 
-JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, JSValueRef value)
-{   
-    return [[mainFrame webView] _computedStyleIncludingVisitedInfo:context forElement:value];
-}
-
-JSRetainPtr<JSStringRef> TestRunner::markerTextForListItem(JSContextRef context, JSValueRef nodeObject) const
-{
-    DOMElement *element = [DOMElement _DOMElementFromJSContext:context value:nodeObject];
-    if (!element)
-        return JSRetainPtr<JSStringRef>();
-
-    JSRetainPtr<JSStringRef> markerText(Adopt, JSStringCreateWithCFString((CFStringRef)[element _markerTextForListItem]));
-    return markerText;
-}
-
 int TestRunner::numberOfPendingGeolocationPermissionRequests()
 {
     return [[[mainFrame webView] UIDelegate] numberOfPendingGeolocationPermissionRequests];
@@ -297,11 +282,6 @@ int TestRunner::numberOfPendingGeolocationPermissionRequests()
 size_t TestRunner::webHistoryItemCount()
 {
     return [[[WebHistory optionalSharedHistory] allItems] count];
-}
-
-unsigned TestRunner::workerThreadCount() const
-{
-    return [WebWorkersPrivate workerThreadCount];
 }
 
 JSRetainPtr<JSStringRef> TestRunner::platformName() const
@@ -425,15 +405,6 @@ void TestRunner::setAuthorAndUserStylesEnabled(bool flag)
     [[[mainFrame webView] preferences] setAuthorAndUserStylesEnabled:flag];
 }
 
-void TestRunner::setAutofilled(JSContextRef context, JSValueRef nodeObject, bool autofilled)
-{
-    DOMElement *element = [DOMElement _DOMElementFromJSContext:context value:nodeObject];
-    if (!element || ![element isKindOfClass:[DOMHTMLInputElement class]])
-        return;
-
-    [(DOMHTMLInputElement *)element _setAutofilled:autofilled];
-}
-
 void TestRunner::setCustomPolicyDelegate(bool setDelegate, bool permissive)
 {
     if (setDelegate) {
@@ -553,11 +524,6 @@ void TestRunner::setXSSAuditorEnabled(bool enabled)
     [[[mainFrame webView] preferences] setXSSAuditorEnabled:enabled];
 }
 
-void TestRunner::setFrameFlatteningEnabled(bool enabled)
-{
-    [[[mainFrame webView] preferences] setFrameFlatteningEnabled:enabled];
-}
-
 void TestRunner::setSpatialNavigationEnabled(bool enabled)
 {
     [[[mainFrame webView] preferences] setSpatialNavigationEnabled:enabled];
@@ -622,7 +588,7 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JS
         return;
 
     RetainPtr<CFStringRef> valueCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, value));
-    [(DOMHTMLInputElement *)element _setValueForUser:(NSString *)valueCF.get()];
+    [(DOMHTMLInputElement *)element setValueForUser:(NSString *)valueCF.get()];
 }
 
 void TestRunner::setViewModeMediaFeature(JSStringRef mode)
@@ -695,20 +661,6 @@ void TestRunner::setWaitToDump(bool waitUntilDone)
 int TestRunner::windowCount()
 {
     return CFArrayGetCount(openWindowsRef);
-}
-
-bool TestRunner::elementDoesAutoCompleteForElementWithId(JSStringRef jsString)
-{
-    RetainPtr<CFStringRef> idCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, jsString));
-    NSString *idNS = (NSString *)idCF.get();
-    
-    DOMElement *element = [[mainFrame DOMDocument] getElementById:idNS];
-    id rep = [[mainFrame dataSource] representation];
-    
-    if ([rep class] == [WebHTMLRepresentation class])
-        return [(WebHTMLRepresentation *)rep elementDoesAutoComplete:element];
-
-    return false;
 }
 
 void TestRunner::execCommand(JSStringRef name, JSStringRef value)
@@ -785,31 +737,6 @@ bool TestRunner::isCommandEnabled(JSStringRef name)
     if (![validator respondsToSelector:@selector(validateUserInterfaceItem:)])
         return true;
     return [validator validateUserInterfaceItem:target.get()];
-}
-
-bool TestRunner::pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId)
-{
-    RetainPtr<CFStringRef> idCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, elementId));
-    NSString *idNS = (NSString *)idCF.get();
-    RetainPtr<CFStringRef> nameCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, animationName));
-    NSString *nameNS = (NSString *)nameCF.get();
-    
-    return [mainFrame _pauseAnimation:nameNS onNode:[[mainFrame DOMDocument] getElementById:idNS] atTime:time];
-}
-
-bool TestRunner::pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId)
-{
-    RetainPtr<CFStringRef> idCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, elementId));
-    NSString *idNS = (NSString *)idCF.get();
-    RetainPtr<CFStringRef> nameCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, propertyName));
-    NSString *nameNS = (NSString *)nameCF.get();
-    
-    return [mainFrame _pauseTransitionOfProperty:nameNS onNode:[[mainFrame DOMDocument] getElementById:idNS] atTime:time];
-}
-
-unsigned TestRunner::numberOfActiveAnimations() const
-{
-    return [mainFrame _numberOfActiveAnimations];
 }
 
 void TestRunner::waitForPolicyDelegate()
@@ -1105,11 +1032,6 @@ void TestRunner::setSerializeHTTPLoads(bool serialize)
     [WebView _setLoadResourcesSerially:serialize];
 }
 
-void TestRunner::setMinimumTimerInterval(double minimumTimerInterval)
-{
-    [[mainFrame webView] _setMinimumTimerInterval:minimumTimerInterval];
-}
-
 void TestRunner::setTextDirection(JSStringRef directionName)
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
@@ -1173,16 +1095,6 @@ void TestRunner::setPageVisibility(const char* newVisibility)
         [webView _setVisibilityState:WebPageVisibilityStatePrerender isInitialState:NO];
     else if (!strcmp(newVisibility, "preview"))
         [webView _setVisibilityState:WebPageVisibilityStatePreview isInitialState:NO];
-}
-
-void TestRunner::sendWebIntentResponse(JSStringRef)
-{
-    // FIXME: Implement.
-}
-
-void TestRunner::deliverWebIntent(JSStringRef, JSStringRef, JSStringRef)
-{
-    // FIXME: Implement.
 }
 
 void TestRunner::grantWebNotificationPermission(JSStringRef jsOrigin)

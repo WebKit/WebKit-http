@@ -242,9 +242,13 @@ void FormData::appendKeyValuePairItems(const FormDataList& list, const TextEncod
                                 name = generatedFileName;
                         }
                     }
+
+                    // If a filename is passed in FormData.append(), use it instead of the file blob's name.
+                    if (!value.filename().isNull())
+                        name = value.filename();
                 } else {
                     // For non-file blob, use the filename if it is passed in FormData.append().
-                    if (!value.filename().isEmpty())
+                    if (!value.filename().isNull())
                         name = value.filename();
                     else
                         name = "blob";
@@ -322,9 +326,15 @@ String FormData::flattenToString() const
 #if ENABLE(BLOB)
 static void appendBlobResolved(FormData* formData, const KURL& url)
 {
-    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(KURL(ParsedURLString, url));
-    if (!blobData)
+    if (!blobRegistry().isBlobRegistryImpl()) {
+        LOG_ERROR("Tried to resolve a blob without a usable registry");
         return;
+    }
+    BlobStorageData* blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(KURL(ParsedURLString, url));
+    if (!blobData) {
+        LOG_ERROR("Could not get blob data from a registry");
+        return;
+    }
 
     BlobDataItemList::const_iterator it = blobData->items().begin();
     const BlobDataItemList::const_iterator itend = blobData->items().end();

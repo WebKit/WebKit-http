@@ -32,15 +32,10 @@
 #include "AccessibilityRenderObject.h"
 #include <wtf/Forward.h>
 
-#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
-#define ACCESSIBILITY_TABLES 0
-#else
-#define ACCESSIBILITY_TABLES 1
-#endif
-
 namespace WebCore {
 
 class AccessibilityTableCell;
+class RenderTableSection;
     
 class AccessibilityTable : public AccessibilityRenderObject {
 
@@ -58,8 +53,6 @@ public:
     virtual AccessibilityRole roleValue() const;
     virtual bool isAriaTable() const { return false; }
     
-    virtual bool accessibilityIsIgnored() const;
-    
     virtual void addChildren();
     virtual void clearChildren();
     
@@ -75,7 +68,7 @@ public:
     
     // all the cells in the table
     void cells(AccessibilityChildrenVector&);
-    virtual AccessibilityTableCell* cellForColumnAndRow(unsigned column, unsigned row);
+    AccessibilityTableCell* cellForColumnAndRow(unsigned column, unsigned row);
     
     void columnHeaders(AccessibilityChildrenVector&);
     void rowHeaders(AccessibilityChildrenVector&);
@@ -88,15 +81,16 @@ protected:
     AccessibilityChildrenVector m_columns;
 
     RefPtr<AccessibilityObject> m_headerContainer;
-    mutable bool m_isAccessibilityTable;
+    bool m_isAccessibilityTable;
 
     bool hasARIARole() const;
-    bool isTableExposableThroughAccessibility() const;
+    virtual bool isTableExposableThroughAccessibility() const;
+    virtual bool computeAccessibilityIsIgnored() const;
 };
     
 inline AccessibilityTable* toAccessibilityTable(AccessibilityObject* object)
 {
-    ASSERT(!object || object->isAccessibilityTable());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isAccessibilityTable());
     return static_cast<AccessibilityTable*>(object);
 }
     

@@ -28,8 +28,10 @@
 #include "PseudoElement.h"
 
 #include "ContentData.h"
+#include "InspectorInstrumentation.h"
 #include "NodeRenderingContext.h"
 #include "RenderObject.h"
+#include "RenderQuote.h"
 
 namespace WebCore {
 
@@ -59,7 +61,14 @@ PseudoElement::PseudoElement(Element* parent, PseudoId pseudoId)
 {
     ASSERT(pseudoId != NOPSEUDO);
     setParentOrShadowHostNode(parent);
-    setHasCustomCallbacks();
+    setHasCustomStyleCallbacks();
+}
+
+PseudoElement::~PseudoElement()
+{
+#if USE(ACCELERATED_COMPOSITING)
+    InspectorInstrumentation::pseudoElementDestroyed(document()->page(), this);
+#endif
 }
 
 PassRefPtr<RenderStyle> PseudoElement::customStyleForRenderer()
@@ -82,9 +91,11 @@ void PseudoElement::attach()
 
     for (const ContentData* content = style->contentData(); content; content = content->next()) {
         RenderObject* child = content->createRenderer(document(), style);
-        if (renderer->isChildAllowed(child, style))
+        if (renderer->isChildAllowed(child, style)) {
             renderer->addChild(child);
-        else
+            if (child->isQuote())
+                toRenderQuote(child)->attachQuote();
+        } else
             child->destroy();
     }
 }

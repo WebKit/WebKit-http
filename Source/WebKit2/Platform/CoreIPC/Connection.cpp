@@ -254,27 +254,60 @@ void Connection::setShouldExitOnSyncMessageSendFailure(bool shouldExitOnSyncMess
     m_shouldExitOnSyncMessageSendFailure = shouldExitOnSyncMessageSendFailure;
 }
 
-void Connection::addQueueClient(QueueClient* queueClient)
+void Connection::addWorkQueueMessageReceiver(StringReference messageReceiverName, WorkQueue* workQueue, WorkQueueMessageReceiver* workQueueMessageReceiver)
 {
-    m_connectionQueue->dispatch(WTF::bind(&Connection::addQueueClientOnWorkQueue, this, queueClient));
+    ASSERT(RunLoop::current() == m_clientRunLoop);
+    ASSERT(!m_isConnected);
+
+    m_connectionQueue->dispatch(bind(&Connection::addWorkQueueMessageReceiverOnConnectionWorkQueue, this, messageReceiverName, RefPtr<WorkQueue>(workQueue), RefPtr<WorkQueueMessageReceiver>(workQueueMessageReceiver)));
 }
 
-void Connection::removeQueueClient(QueueClient* queueClient)
+void Connection::removeWorkQueueMessageReceiver(StringReference messageReceiverName)
 {
-    m_connectionQueue->dispatch(WTF::bind(&Connection::removeQueueClientOnWorkQueue, this, queueClient));
+    ASSERT(RunLoop::current() == m_clientRunLoop);
+
+    m_connectionQueue->dispatch(bind(&Connection::removeWorkQueueMessageReceiverOnConnectionWorkQueue, this, messageReceiverName));
 }
 
-void Connection::addQueueClientOnWorkQueue(QueueClient* queueClient)
+void Connection::addWorkQueueMessageReceiverOnConnectionWorkQueue(StringReference messageReceiverName, WorkQueue* workQueue, WorkQueueMessageReceiver* workQueueMessageReceiver)
 {
-    ASSERT(!m_connectionQueueClients.contains(queueClient));
-    m_connectionQueueClients.append(queueClient);
+    ASSERT(!m_workQueueMessageReceivers.contains(messageReceiverName));
+    m_workQueueMessageReceivers.add(messageReceiverName, std::make_pair(workQueue, workQueueMessageReceiver));
 }
 
-void Connection::removeQueueClientOnWorkQueue(QueueClient* queueClient)
+void Connection::removeWorkQueueMessageReceiverOnConnectionWorkQueue(StringReference messageReceiverName)
 {
-    size_t index = m_connectionQueueClients.find(queueClient);
-    ASSERT(index != notFound);
-    m_connectionQueueClients.remove(index);
+    ASSERT(m_workQueueMessageReceivers.contains(messageReceiverName));
+    m_workQueueMessageReceivers.remove(messageReceiverName);
+}
+
+void Connection::dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver* workQueueMessageReceiver, MessageDecoder* incomingMessageDecoder)
+{
+    OwnPtr<MessageDecoder> decoder = adoptPtr(incomingMessageDecoder);
+
+    if (!decoder->isSyncMessage()) {
+        workQueueMessageReceiver->didReceiveMessage(this, *decoder);
+        return;
+    }
+
+    uint64_t syncRequestID = 0;
+    if (!decoder->decode(syncRequestID) || !syncRequestID) {
+        // We received an invalid sync message.
+        // FIXME: Handle this.
+        decoder->markInvalid();
+        return;
+    }
+
+    OwnPtr<MessageEncoder> replyEncoder = MessageEncoder::create("IPC", "SyncMessageReply", syncRequestID);
+
+    // Hand off both the decoder and encoder to the work queue message receiver.
+    workQueueMessageReceiver->didReceiveSyncMessage(this, *decoder, replyEncoder);
+
+    // FIXME: If the message was invalid, we should send back a SyncMessageError.
+    ASSERT(!decoder->isInvalid());
+
+    if (replyEncoder)
+        sendSyncReply(replyEncoder.release());
 }
 
 void Connection::setDidCloseOnConnectionWorkQueueCallback(DidCloseOnConnectionWorkQueueCallback callback)
@@ -313,7 +346,7 @@ PassOwnPtr<MessageEncoder> Connection::createSyncMessageEncoder(StringReference 
     // Encode the sync request ID.
     COMPILE_ASSERT(sizeof(m_syncRequestID) == sizeof(int64_t), CanUseAtomicIncrement);
     syncRequestID = atomicIncrement(reinterpret_cast<int64_t volatile*>(&m_syncRequestID));
-    encoder->encode(syncRequestID);
+    *encoder << syncRequestID;
 
     return encoder.release();
 }
@@ -579,6 +612,13 @@ void Connection::processIncomingMessage(PassOwnPtr<MessageDecoder> incomingMessa
         return;
     }
 
+    // Check if any work queue message receivers are interested in this message.
+    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver> > >::const_iterator it = m_workQueueMessageReceivers.find(message->messageReceiverName());
+    if (it != m_workQueueMessageReceivers.end()) {
+        it->value.first->dispatch(bind(&Connection::dispatchWorkQueueMessageReceiverMessage, this, it->value.second, message.release().leakPtr()));
+        return;
+    }
+
     // Check if this is a sync message or if it's a message that should be dispatched even when waiting for
     // a sync reply. If it is, and we're waiting for a sync reply this message needs to be dispatched.
     // If we don't we'll end up with a deadlock where both sync message senders are stuck waiting for a reply.
@@ -595,17 +635,6 @@ void Connection::processIncomingMessage(PassOwnPtr<MessageDecoder> incomingMessa
             ASSERT(it->value);
         
             m_waitForMessageCondition.signal();
-            return;
-        }
-    }
-
-    // Hand off the message to the connection queue clients.
-    for (size_t i = 0; i < m_connectionQueueClients.size(); ++i) {
-        bool didHandleMessage = false;
-
-        m_connectionQueueClients[i]->didReceiveMessageOnConnectionWorkQueue(this, *message, didHandleMessage);
-        if (didHandleMessage) {
-            // A connection queue client handled the message, our work here is done.
             return;
         }
     }
@@ -637,7 +666,7 @@ void Connection::connectionDidClose()
     }
 
     if (m_didCloseOnConnectionWorkQueueCallback)
-        m_didCloseOnConnectionWorkQueueCallback(m_connectionQueue.get(), this);
+        m_didCloseOnConnectionWorkQueueCallback(this);
 
     m_clientRunLoop->dispatch(WTF::bind(&Connection::dispatchConnectionDidClose, this));
 }
@@ -648,7 +677,6 @@ void Connection::dispatchConnectionDidClose()
     // then the client will be null here.
     if (!m_client)
         return;
-
 
     // Because we define a connection as being "valid" based on wheter it has a null client, we null out
     // the client before calling didClose here. Otherwise, sendSync will try to send a message to the connection and

@@ -371,9 +371,6 @@ webkit_web_view_run_javascript_from_gresource_finish (WebKitWebView             
 WEBKIT_API WebKitWebResource *
 webkit_web_view_get_main_resource                    (WebKitWebView             *web_view);
 
-WEBKIT_API GList *
-webkit_web_view_get_subresources                     (WebKitWebView             *web_view);
-
 WEBKIT_API WebKitWebInspector *
 webkit_web_view_get_inspector                        (WebKitWebView             *web_view);
 
@@ -416,6 +413,11 @@ webkit_web_view_set_view_mode                        (WebKitWebView             
 
 WEBKIT_API WebKitViewMode
 webkit_web_view_get_view_mode                        (WebKitWebView             *web_view);
+
+WEBKIT_API gboolean
+webkit_web_view_get_tls_info                         (WebKitWebView             *web_view,
+                                                      GTlsCertificate          **certificate,
+                                                      GTlsCertificateFlags      *errors);
 
 G_END_DECLS
 

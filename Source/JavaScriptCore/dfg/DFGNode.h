@@ -91,19 +91,18 @@ struct Node {
         : codeOrigin(codeOrigin)
         , children(children)
         , m_virtualRegister(InvalidVirtualRegister)
-        , m_refCount(0)
+        , m_refCount(1)
         , m_prediction(SpecNone)
     {
         setOpAndDefaultFlags(op);
-        ASSERT(!!(m_flags & NodeHasVarArgs) == (children.kind() == AdjacencyList::Variable));
     }
     
     // Construct a node with up to 3 children, no immediate value.
-    Node(NodeType op, CodeOrigin codeOrigin, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
+    Node(NodeType op, CodeOrigin codeOrigin, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
         : codeOrigin(codeOrigin)
         , children(AdjacencyList::Fixed, child1, child2, child3)
         , m_virtualRegister(InvalidVirtualRegister)
-        , m_refCount(0)
+        , m_refCount(1)
         , m_prediction(SpecNone)
     {
         setOpAndDefaultFlags(op);
@@ -111,11 +110,11 @@ struct Node {
     }
 
     // Construct a node with up to 3 children and an immediate value.
-    Node(NodeType op, CodeOrigin codeOrigin, OpInfo imm, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
+    Node(NodeType op, CodeOrigin codeOrigin, OpInfo imm, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
         : codeOrigin(codeOrigin)
         , children(AdjacencyList::Fixed, child1, child2, child3)
         , m_virtualRegister(InvalidVirtualRegister)
-        , m_refCount(0)
+        , m_refCount(1)
         , m_opInfo(imm.m_value)
         , m_prediction(SpecNone)
     {
@@ -124,11 +123,11 @@ struct Node {
     }
 
     // Construct a node with up to 3 children and two immediate values.
-    Node(NodeType op, CodeOrigin codeOrigin, OpInfo imm1, OpInfo imm2, Node* child1 = 0, Node* child2 = 0, Node* child3 = 0)
+    Node(NodeType op, CodeOrigin codeOrigin, OpInfo imm1, OpInfo imm2, Edge child1 = Edge(), Edge child2 = Edge(), Edge child3 = Edge())
         : codeOrigin(codeOrigin)
         , children(AdjacencyList::Fixed, child1, child2, child3)
         , m_virtualRegister(InvalidVirtualRegister)
-        , m_refCount(0)
+        , m_refCount(1)
         , m_opInfo(imm1.m_value)
         , m_opInfo2(safeCast<unsigned>(imm2.m_value))
         , m_prediction(SpecNone)
@@ -142,7 +141,7 @@ struct Node {
         : codeOrigin(codeOrigin)
         , children(AdjacencyList::Variable, firstChild, numChildren)
         , m_virtualRegister(InvalidVirtualRegister)
-        , m_refCount(0)
+        , m_refCount(1)
         , m_opInfo(imm1.m_value)
         , m_opInfo2(safeCast<unsigned>(imm2.m_value))
         , m_prediction(SpecNone)
@@ -197,6 +196,22 @@ struct Node {
         m_op = op;
         m_flags = defaultFlags(op);
     }
+    
+    void setOpAndDefaultNonExitFlags(NodeType op)
+    {
+        m_op = op;
+        m_flags = (defaultFlags(op) & ~NodeExitsForward) | (m_flags & NodeExitsForward);
+    }
+    
+    void convertToPhantom()
+    {
+        setOpAndDefaultNonExitFlags(Phantom);
+    }
+    
+    void convertToIdentity()
+    {
+        setOpAndDefaultNonExitFlags(Identity);
+    }
 
     bool mustGenerate()
     {
@@ -226,6 +241,16 @@ struct Node {
         return op() == WeakJSConstant;
     }
     
+    bool isStronglyProvedConstantIn(InlineCallFrame* inlineCallFrame)
+    {
+        return isConstant() && codeOrigin.inlineCallFrame == inlineCallFrame;
+    }
+    
+    bool isStronglyProvedConstantIn(const CodeOrigin& codeOrigin)
+    {
+        return isStronglyProvedConstantIn(codeOrigin.inlineCallFrame);
+    }
+    
     bool isPhantomArguments()
     {
         return op() == PhantomArguments;
@@ -252,18 +277,22 @@ struct Node {
     void convertToConstant(unsigned constantNumber)
     {
         m_op = JSConstant;
-        if (m_flags & NodeMustGenerate)
-            m_refCount--;
         m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
         m_opInfo = constantNumber;
+        children.reset();
+    }
+    
+    void convertToWeakConstant(JSCell* cell)
+    {
+        m_op = WeakJSConstant;
+        m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
+        m_opInfo = bitwise_cast<uintptr_t>(cell);
         children.reset();
     }
     
     void convertToGetLocalUnlinked(VirtualRegister local)
     {
         m_op = GetLocalUnlinked;
-        if (m_flags & NodeMustGenerate)
-            m_refCount--;
         m_flags &= ~(NodeMustGenerate | NodeMightClobber | NodeClobbersWorld);
         m_opInfo = local;
         children.reset();
@@ -284,24 +313,40 @@ struct Node {
         convertToStructureTransitionWatchpoint(structureSet().singletonStructure());
     }
     
-    void convertToGetByOffset(unsigned storageAccessDataIndex, Node* storage)
+    void convertToGetByOffset(unsigned storageAccessDataIndex, Edge storage)
     {
         ASSERT(m_op == GetById || m_op == GetByIdFlush);
         m_opInfo = storageAccessDataIndex;
-        children.setChild1(Edge(storage));
+        children.setChild1(storage);
         m_op = GetByOffset;
         m_flags &= ~NodeClobbersWorld;
     }
     
-    void convertToPutByOffset(unsigned storageAccessDataIndex, Node* storage)
+    void convertToPutByOffset(unsigned storageAccessDataIndex, Edge storage)
     {
         ASSERT(m_op == PutById || m_op == PutByIdDirect);
         m_opInfo = storageAccessDataIndex;
         children.setChild3(children.child2());
         children.setChild2(children.child1());
-        children.setChild1(Edge(storage));
+        children.setChild1(storage);
         m_op = PutByOffset;
         m_flags &= ~NodeClobbersWorld;
+    }
+    
+    void convertToPhantomLocal()
+    {
+        ASSERT(m_op == Phantom && (child1()->op() == Phi || child1()->op() == SetLocal || child1()->op() == SetArgument));
+        m_op = PhantomLocal;
+        m_opInfo = child1()->m_opInfo; // Copy the variableAccessData.
+        children.setChild1(Edge());
+    }
+    
+    void convertToGetLocal(VariableAccessData* variable, Node* phi)
+    {
+        ASSERT(m_op == GetLocalUnlinked);
+        m_op = GetLocal;
+        m_opInfo = bitwise_cast<uintptr_t>(variable);
+        children.setChild1(Edge(phi));
     }
     
     JSCell* weakConstant()
@@ -350,14 +395,31 @@ struct Node {
         return isConstant() && valueOfJSConstant(codeBlock).isBoolean();
     }
     
+    bool containsMovHint()
+    {
+        switch (op()) {
+        case SetLocal:
+        case MovHint:
+        case MovHintAndCheck:
+        case ZombieHint:
+            return true;
+        default:
+            return false;
+        }
+    }
+    
     bool hasVariableAccessData()
     {
         switch (op()) {
         case GetLocal:
         case SetLocal:
+        case MovHint:
+        case MovHintAndCheck:
+        case ZombieHint:
         case Phi:
         case SetArgument:
         case Flush:
+        case PhantomLocal:
             return true;
         default:
             return false;
@@ -915,15 +977,20 @@ struct Node {
     {
         switch (op()) {
         case SetLocal:
+        case MovHint:
+        case ZombieHint:
+        case MovHintAndCheck:
         case Int32ToDouble:
+        case ForwardInt32ToDouble:
         case ValueToInt32:
         case UInt32ToNumber:
         case DoubleAsInt32:
         case PhantomArguments:
             return true;
-        case Phantom:
         case Nop:
             return false;
+        case Phantom:
+            return child1().useKindUnchecked() != UntypedUse || child2().useKindUnchecked() != UntypedUse || child3().useKindUnchecked() != UntypedUse;
         default:
             return shouldGenerate();
         }
@@ -932,12 +999,6 @@ struct Node {
     unsigned refCount()
     {
         return m_refCount;
-    }
-
-    Node* ref()
-    {
-        m_refCount++;
-        return this;
     }
 
     unsigned postfixRef()
@@ -955,19 +1016,7 @@ struct Node {
         m_refCount = refCount;
     }
     
-    void deref()
-    {
-        ASSERT(m_refCount);
-        --m_refCount;
-    }
-    
-    unsigned postfixDeref()
-    {
-        ASSERT(m_refCount);
-        return m_refCount--;
-    }
-    
-    Edge child1()
+    Edge& child1()
     {
         ASSERT(!(m_flags & NodeHasVarArgs));
         return children.child1();
@@ -981,13 +1030,13 @@ struct Node {
         return children.child1Unchecked();
     }
 
-    Edge child2()
+    Edge& child2()
     {
         ASSERT(!(m_flags & NodeHasVarArgs));
         return children.child2();
     }
 
-    Edge child3()
+    Edge& child3()
     {
         ASSERT(!(m_flags & NodeHasVarArgs));
         return children.child3();
@@ -1003,6 +1052,17 @@ struct Node {
     {
         ASSERT(m_flags & NodeHasVarArgs);
         return children.numChildren();
+    }
+    
+    UseKind binaryUseKind()
+    {
+        ASSERT(child1().useKind() == child2().useKind());
+        return child1().useKind();
+    }
+    
+    bool isBinaryUseKind(UseKind useKind)
+    {
+        return child1().useKind() == useKind && child2().useKind() == useKind;
     }
     
     SpeculatedType prediction()
@@ -1065,16 +1125,6 @@ struct Node {
         return isFinalObjectSpeculation(prediction());
     }
     
-    bool shouldSpeculateNonStringCell()
-    {
-        return isNonStringCellSpeculation(prediction());
-    }
-
-    bool shouldSpeculateNonStringCellOrOther()
-    {
-        return isNonStringCellOrOtherSpeculation(prediction());
-    }
-
     bool shouldSpeculateFinalObjectOrOther()
     {
         return isFinalObjectOrOtherSpeculation(prediction());
@@ -1145,6 +1195,11 @@ struct Node {
         return isObjectSpeculation(prediction());
     }
     
+    bool shouldSpeculateObjectOrOther()
+    {
+        return isObjectOrOtherSpeculation(prediction());
+    }
+
     bool shouldSpeculateCell()
     {
         return isCellSpeculation(prediction());
@@ -1216,8 +1271,8 @@ struct Node {
     AdjacencyList children;
 
 private:
-    uint16_t m_op; // real type is NodeType
-    NodeFlags m_flags;
+    unsigned m_op : 10; // real type is NodeType
+    unsigned m_flags : 22;
     // The virtual register number (spill location) associated with this .
     VirtualRegister m_virtualRegister;
     // The number of uses of the result of this operation (+1 for 'must generate' nodes, which have side-effects).

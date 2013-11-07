@@ -91,13 +91,14 @@ public:
         CSS_COUNTER = 23,
         CSS_RECT = 24,
         CSS_RGBCOLOR = 25,
-        // From CSS Values and Units. Viewport-percentage Lengths (vw/vh/vmin).
+        // From CSS Values and Units. Viewport-percentage Lengths (vw/vh/vmin/vmax).
         CSS_VW = 26,
         CSS_VH = 27,
         CSS_VMIN = 28,
-        CSS_DPPX = 29,
-        CSS_DPI = 30,
-        CSS_DPCM = 31,
+        CSS_VMAX = 29,
+        CSS_DPPX = 30,
+        CSS_DPI = 31,
+        CSS_DPCM = 32,
         CSS_PAIR = 100, // We envision this being exposed as a means of getting computed style values for pairs (border-spacing/radius, background-position, etc.)
 #if ENABLE(DASHBOARD_SUPPORT)
         CSS_DASHBOARD_REGION = 101, // FIXME: Dashboard region should not be a primitive value.
@@ -115,22 +116,23 @@ public:
         // These are from CSS3 Values and Units, but that isn't a finished standard yet
         CSS_TURN = 107,
         CSS_REMS = 108,
+        CSS_CHS = 109,
 
         // This is used internally for counter names (as opposed to counter values)
-        CSS_COUNTER_NAME = 109,
+        CSS_COUNTER_NAME = 110,
 
         // This is used by the CSS Exclusions draft
-        CSS_SHAPE = 110,
+        CSS_SHAPE = 111,
 
         // Used by border images.
-        CSS_QUAD = 111,
+        CSS_QUAD = 112,
 
-        CSS_CALC = 112,
-        CSS_CALC_PERCENTAGE_WITH_NUMBER = 113,
-        CSS_CALC_PERCENTAGE_WITH_LENGTH = 114,
+        CSS_CALC = 113,
+        CSS_CALC_PERCENTAGE_WITH_NUMBER = 114,
+        CSS_CALC_PERCENTAGE_WITH_LENGTH = 115,
 
 #if ENABLE(CSS_VARIABLES)
-        CSS_VARIABLE_NAME = 115,
+        CSS_VARIABLE_NAME = 116,
 #endif
     };
 
@@ -161,13 +163,16 @@ public:
     bool isFontIndependentLength() const { return m_primitiveUnitType >= CSS_PX && m_primitiveUnitType <= CSS_PC; }
     bool isFontRelativeLength() const
     {
-        return m_primitiveUnitType == CSS_EMS || m_primitiveUnitType == CSS_EXS || m_primitiveUnitType == CSS_REMS;
+        return m_primitiveUnitType == CSS_EMS
+            || m_primitiveUnitType == CSS_EXS
+            || m_primitiveUnitType == CSS_REMS
+            || m_primitiveUnitType == CSS_CHS;
     }
     bool isIdent() const { return m_primitiveUnitType == CSS_IDENT; }
     bool isLength() const
     {
         unsigned short type = primitiveType();
-        return (type >= CSS_EMS && type <= CSS_PC) || type == CSS_REMS;
+        return (type >= CSS_EMS && type <= CSS_PC) || type == CSS_REMS || type == CSS_CHS;
     }
     bool isNumber() const { return primitiveType() == CSS_NUMBER; }
     bool isPercentage() const { return primitiveType() == CSS_PERCENTAGE; }
@@ -188,7 +193,7 @@ public:
 #if ENABLE(CSS_VARIABLES)
     bool isVariableName() const { return primitiveType() == CSS_VARIABLE_NAME; }
 #endif
-    bool isViewportPercentageLength() const { return m_primitiveUnitType >= CSS_VW && m_primitiveUnitType <= CSS_VMIN; }
+    bool isViewportPercentageLength() const { return m_primitiveUnitType >= CSS_VW && m_primitiveUnitType <= CSS_VMAX; }
 
     static PassRefPtr<CSSPrimitiveValue> createIdentifier(int identifier) { return adoptRef(new CSSPrimitiveValue(identifier)); }
     static PassRefPtr<CSSPrimitiveValue> createColor(unsigned rgbValue) { return adoptRef(new CSSPrimitiveValue(rgbValue)); }
@@ -314,6 +319,8 @@ public:
     
     PassRefPtr<CSSPrimitiveValue> cloneForCSSOM() const;
     void setCSSOMSafe() { m_isCSSOMSafe = true; }
+
+    bool equals(const CSSPrimitiveValue&) const;
 
     void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 

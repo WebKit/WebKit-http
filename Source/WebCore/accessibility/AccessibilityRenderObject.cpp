@@ -90,8 +90,8 @@
 #include "SVGSVGElement.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
+#include "VisibleUnits.h"
 #include "htmlediting.h"
-#include "visible_units.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -1122,35 +1122,12 @@ AccessibilityObjectInclusion AccessibilityRenderObject::accessibilityIsIgnoredBa
     return DefaultBehavior;
 }  
 
-bool AccessibilityRenderObject::accessibilityIsIgnored() const
+bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 {
 #ifndef NDEBUG
     ASSERT(m_initialized);
 #endif
 
-    AXComputedObjectAttributeCache* attributeCache = axObjectCache()->computedObjectAttributeCache();
-    if (attributeCache) {
-        AccessibilityObjectInclusion ignored = attributeCache->getIgnored(axObjectID());
-        switch (ignored) {
-        case IgnoreObject:
-            return true;
-        case IncludeObject:
-            return false;
-        case DefaultBehavior:
-            break;
-        }
-    }
-
-    bool result = computeAccessibilityIsIgnored();
-
-    if (attributeCache)
-        attributeCache->setIgnored(axObjectID(), result ? IgnoreObject : IncludeObject);
-
-    return result;
-}
-
-bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
-{
     // Check first if any of the common reasons cause this element to be ignored.
     // Then process other use cases that need to be applied to all the various roles
     // that AccessibilityRenderObjects take on.
@@ -1392,10 +1369,9 @@ PlainTextRange AccessibilityRenderObject::ariaSelectedTextRange() const
     if (!node)
         return PlainTextRange();
     
-    ExceptionCode ec = 0;
     VisibleSelection visibleSelection = selection();
     RefPtr<Range> currentSelectionRange = visibleSelection.toNormalizedRange();
-    if (!currentSelectionRange || !currentSelectionRange->intersectsNode(node, ec))
+    if (!currentSelectionRange || !currentSelectionRange->intersectsNode(node, IGNORE_EXCEPTION))
         return PlainTextRange();
     
     int start = indexForVisiblePosition(visibleSelection.start());
@@ -1864,12 +1840,11 @@ VisiblePosition AccessibilityRenderObject::visiblePositionForIndex(int index) co
     if (index <= 0)
         return VisiblePosition(firstPositionInOrBeforeNode(node), DOWNSTREAM);
     
-    ExceptionCode ec = 0;
     RefPtr<Range> range = Range::create(m_renderer->document());
-    range->selectNodeContents(node, ec);
+    range->selectNodeContents(node, IGNORE_EXCEPTION);
     CharacterIterator it(range.get());
     it.advance(index - 1);
-    return VisiblePosition(Position(it.range()->endContainer(ec), it.range()->endOffset(ec), Position::PositionIsOffsetInAnchor), UPSTREAM);
+    return VisiblePosition(Position(it.range()->endContainer(), it.range()->endOffset(), Position::PositionIsOffsetInAnchor), UPSTREAM);
 }
     
 int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& pos) const
@@ -1890,10 +1865,9 @@ int AccessibilityRenderObject::indexForVisiblePosition(const VisiblePosition& po
     if (indexPosition.isNull() || highestEditableRoot(indexPosition, HasEditableAXRole) != node)
         return 0;
     
-    ExceptionCode ec = 0;
     RefPtr<Range> range = Range::create(m_renderer->document());
-    range->setStart(node, 0, ec);
-    range->setEnd(indexPosition, ec);
+    range->setStart(node, 0, IGNORE_EXCEPTION);
+    range->setEnd(indexPosition, IGNORE_EXCEPTION);
 
 #if PLATFORM(GTK)
     // We need to consider replaced elements for GTK, as they will be
@@ -2585,6 +2559,10 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 
     if (node && node->hasTagName(addressTag))
         return LandmarkContentInfoRole;
+
+    // The HTML element should not be exposed as an element. That's what the RenderView element does.
+    if (node && node->hasTagName(htmlTag))
+        return IgnoredRole;
 
     // There should only be one banner/contentInfo per page. If header/footer are being used within an article or section
     // then it should not be exposed as whole page's banner/contentInfo

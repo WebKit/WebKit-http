@@ -8,6 +8,7 @@ CloseEvent
 CompositionEvent
 CustomEvent
 ErrorEvent
+FocusEvent
 HashChangeEvent
 KeyboardEvent
 KeyboardEvents interfaceName=KeyboardEvent
@@ -34,6 +35,7 @@ MediaStreamEvent conditional=MEDIA_STREAM
 MediaStreamTrackEvent conditional=MEDIA_STREAM
 RTCIceCandidateEvent conditional=MEDIA_STREAM
 RTCDataChannelEvent conditional=MEDIA_STREAM
+RTCDTMFToneChangeEvent conditional=MEDIA_STREAM
 SpeechInputEvent conditional=INPUT_SPEECH
 SpeechRecognitionError conditional=SCRIPTED_SPEECH
 SpeechRecognitionEvent conditional=SCRIPTED_SPEECH
@@ -50,5 +52,7 @@ DeviceOrientationEvent conditional=DEVICE_ORIENTATION
 DeviceProximityEvent conditional=PROXIMITY_EVENTS
 OrientationEvent interfaceName=Event, conditional=ORIENTATION_EVENTS
 MediaKeyEvent conditional=ENCRYPTED_MEDIA
+MediaKeyMessageEvent conditional=ENCRYPTED_MEDIA_V2
+MediaKeyNeededEvent conditional=ENCRYPTED_MEDIA_V2
 TrackEvent conditional=VIDEO_TRACK
 AutocompleteErrorEvent conditional=REQUEST_AUTOCOMPLETE

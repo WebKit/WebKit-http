@@ -29,6 +29,7 @@
  */
 
 #include "config.h"
+#if ENABLE(INPUT_TYPE_TIME)
 #include "TimeInputType.h"
 
 #include "DateComponents.h"
@@ -39,8 +40,6 @@
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
 #include <wtf/PassOwnPtr.h>
-
-#if ENABLE(INPUT_TYPE_TIME)
 
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeFieldsState.h"
@@ -92,7 +91,7 @@ Decimal TimeInputType::defaultValueForStepUp() const
     DateComponents date;
     date.setMillisecondsSinceMidnight(current);
     double milliseconds = date.millisecondsSinceEpoch();
-    ASSERT(isfinite(milliseconds));
+    ASSERT(std::isfinite(milliseconds));
     return Decimal::fromDouble(milliseconds);
 }
 
@@ -166,6 +165,10 @@ void TimeInputType::setupLayoutParameters(DateTimeEditElement::LayoutParameters&
         layoutParameters.dateTimeFormat = layoutParameters.locale.shortTimeFormat();
         layoutParameters.fallbackDateTimeFormat = "HH:mm";
     }
+    if (!parseToDateComponents(element()->fastGetAttribute(minAttr), &layoutParameters.minimum))
+        layoutParameters.minimum = DateComponents();
+    if (!parseToDateComponents(element()->fastGetAttribute(maxAttr), &layoutParameters.maximum))
+        layoutParameters.maximum = DateComponents();
 }
 #endif
 

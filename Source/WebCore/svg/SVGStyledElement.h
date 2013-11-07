@@ -65,7 +65,7 @@ protected:
 
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForPresentationAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStylePropertySet*) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&) OVERRIDE;
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
@@ -79,7 +79,7 @@ protected:
     virtual bool selfHasRelativeLengths() const { return false; }
 
 private:
-    virtual bool isStyled() const { return true; }
+    virtual bool isSVGStyledElement() const OVERRIDE { return true; }
 
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;

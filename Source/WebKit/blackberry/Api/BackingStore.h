@@ -20,7 +20,6 @@
 #define BackingStore_h
 
 #include "BlackBerryGlobal.h"
-#include <BlackBerryPlatformGraphics.h>
 #include <BlackBerryPlatformMisc.h>
 
 namespace WebCore {
@@ -34,6 +33,11 @@ class IntRect;
 namespace BlackBerry {
 namespace Platform {
 class IntRect;
+class FloatPoint;
+
+namespace Graphics {
+class Buffer;
+}
 }
 }
 
@@ -57,6 +61,9 @@ public:
     void suspendBackingStoreUpdates();
     void resumeBackingStoreUpdates();
 
+    void suspendGeometryUpdates();
+    void resumeGeometryUpdates();
+
     void suspendScreenUpdates();
     void resumeScreenUpdates(BackingStore::ResumeUpdateOperation);
 
@@ -69,12 +76,10 @@ public:
     bool hasBlitJobs() const;
     void blitOnIdle();
 
-    bool isDirectRenderingToWindow() const;
-
     void acquireBackingStoreMemory();
     void releaseOwnedBackingStoreMemory();
 
-    void drawContents(Platform::Graphics::Drawable*, const Platform::IntRect& /*contentsRect*/, const Platform::IntSize& /*destinationSize*/);
+    bool drawContents(BlackBerry::Platform::Graphics::Buffer*, const BlackBerry::Platform::IntRect& dstRect, double scale, const BlackBerry::Platform::FloatPoint& documentScrollPosition);
 
 private:
     friend class BlackBerry::WebKit::BackingStoreClient;

@@ -50,6 +50,7 @@ class SpellCheckRequest;
 class TextCheckingRequest;
 class VisiblePosition;
 class VisibleSelection;
+class SuggestionBoxHandler;
 }
 
 namespace BlackBerry {
@@ -96,6 +97,10 @@ public:
     void cancelSelection();
 
     void setInputValue(const WTF::String&);
+
+    void focusNextField();
+    void focusPreviousField();
+    void submitForm();
 
     void setDelayKeyboardVisibilityChange(bool value);
     void processPendingKeyboardVisibilityChange();
@@ -154,6 +159,7 @@ public:
     void callRequestCheckingFor(PassRefPtr<WebCore::SpellCheckRequest>);
     void setSystemSpellCheckStatus(bool enabled) { m_spellCheckStatusConfirmed = true; m_globalSpellCheckStatus = enabled; }
 
+    void elementTouched(WebCore::Element*);
     void restoreViewState();
 
 private:
@@ -215,11 +221,22 @@ private:
     bool shouldSpellCheckElement(const WebCore::Element*) const;
     bool didSpellCheckWord() const { return m_didSpellCheckWord; }
 
+    void updateFormState();
+
     bool shouldNotifyWebView(const Platform::KeyboardEvent&);
+
+    void showTextInputTypeSuggestionBox(bool allowEmptyPrefix = false);
+    void hideTextInputTypeSuggestionBox();
+
+    bool isNavigationKey(unsigned character) const;
 
     WebPagePrivate* m_webPage;
 
     RefPtr<WebCore::Element> m_currentFocusElement;
+    RefPtr<WebCore::Element> m_previousFocusableTextElement;
+    RefPtr<WebCore::Element> m_nextFocusableTextElement;
+
+    bool m_hasSubmitButton;
     bool m_inputModeEnabled;
 
     bool m_processingChange;
@@ -238,7 +255,7 @@ private:
     int32_t m_processingTransactionId;
 
     bool m_shouldNotifyWebView;
-    unsigned short m_expectedKeyUpChar;
+    unsigned m_expectedKeyUpChar;
 
     imf_sp_text_t m_spellCheckingOptionsRequest;
     WebCore::IntSize m_screenOffset;
@@ -246,6 +263,8 @@ private:
     SpellingHandler* m_spellingHandler;
     bool m_spellCheckStatusConfirmed;
     bool m_globalSpellCheckStatus;
+
+    OwnPtr<WebCore::SuggestionBoxHandler> m_suggestionDropdownBoxHandler;
 
     DISABLE_COPY(InputHandler);
 };

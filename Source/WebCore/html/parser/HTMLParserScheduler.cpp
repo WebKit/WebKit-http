@@ -37,7 +37,7 @@
 static const int defaultParserChunkSize = 4096;
 
 // defaultParserTimeLimit is the seconds the parser will run in one write() call
-// before yielding.  Inline <script> execution can cause it to excede the limit.
+// before yielding. Inline <script> execution can cause it to exceed the limit.
 // FIXME: We would like this value to be 0.2.
 static const double defaultParserTimeLimit = 0.500;
 
@@ -59,6 +59,38 @@ static int parserChunkSize(Page* page)
     if (page && page->hasCustomHTMLTokenizerChunkSize())
         return page->customHTMLTokenizerChunkSize();
     return defaultParserChunkSize;
+}
+
+ActiveParserSession::ActiveParserSession(Document* document)
+    : m_document(document)
+{
+    if (!m_document)
+        return;
+    m_document->incrementActiveParserCount();
+}
+
+ActiveParserSession::~ActiveParserSession()
+{
+    if (!m_document)
+        return;
+    m_document->decrementActiveParserCount();
+}
+
+PumpSession::PumpSession(unsigned& nestingLevel, Document* document)
+    : NestingLevelIncrementer(nestingLevel)
+    , ActiveParserSession(document)
+    // Setting processedTokens to INT_MAX causes us to check for yields
+    // after any token during any parse where yielding is allowed.
+    // At that time we'll initialize startTime.
+    , processedTokens(INT_MAX)
+    , startTime(0)
+    , needsYield(false)
+    , didSeeScript(false)
+{
+}
+
+PumpSession::~PumpSession()
+{
 }
 
 HTMLParserScheduler::HTMLParserScheduler(HTMLDocumentParser* parser)

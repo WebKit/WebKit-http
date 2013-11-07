@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+ * Copyright (C) 2013 Digia Plc and/or its subsidiary(-ies).
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -31,8 +32,6 @@
 #include "QtWebError.h"
 #include "QtWebIconDatabaseClient.h"
 #include "QtWebPageEventHandler.h"
-#include "QtWebPageFindClient.h"
-#include "QtWebPageLoadClient.h"
 #include "QtWebPagePolicyClient.h"
 #include "WebBackForwardList.h"
 #include "WebFindOptions.h"
@@ -66,8 +65,11 @@
 #include <QtQuick/QQuickView>
 #include <WKOpenPanelResultListener.h>
 #include <WKPageGroup.h>
+#include <WKPreferences.h>
 #include <WKSerializedScriptValue.h>
 #include <WKString.h>
+#include <WKStringQt.h>
+#include <WKURLQt.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/IntRect.h>
 #include <limits>
@@ -83,6 +85,12 @@ static bool s_flickableViewportEnabled = true;
 static const int kAxisLockSampleCount = 5;
 static const qreal kAxisLockVelocityThreshold = 300;
 static const qreal kAxisLockVelocityDirectionThreshold = 50;
+
+static inline QQuickWebViewPrivate* toQQuickWebViewPrivate(const void* clientInfo)
+{
+    ASSERT(clientInfo);
+    return reinterpret_cast<QQuickWebViewPrivate*>(const_cast<void*>(clientInfo));
+}
 
 struct JSCallbackClosure {
     QPointer<QObject> receiver;
@@ -303,6 +311,7 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
 
     context = contextRef ? QtWebContext::create(toImpl(contextRef)) : QtWebContext::defaultContext();
     webPageProxy = context->createWebPage(&pageClient, toImpl(pageGroup.get()));
+    webPage = toAPI(webPageProxy.get());
     webPageProxy->setUseFixedLayout(s_flickableViewportEnabled);
 #if ENABLE(FULLSCREEN_API)
     webPageProxy->fullScreenManager()->setWebView(q_ptr);
@@ -311,23 +320,52 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     QQuickWebPagePrivate* const pageViewPrivate = pageView.data()->d;
     pageViewPrivate->initialize(webPageProxy.get());
 
-    pageFindClient.reset(new QtWebPageFindClient(toAPI(webPageProxy.get()), q_ptr));
-    pageLoadClient.reset(new QtWebPageLoadClient(toAPI(webPageProxy.get()), q_ptr));
-    pagePolicyClient.reset(new QtWebPagePolicyClient(toAPI(webPageProxy.get()), q_ptr));
-    pageUIClient.reset(new QtWebPageUIClient(toAPI(webPageProxy.get()), q_ptr));
-    navigationHistory = adoptPtr(QWebNavigationHistoryPrivate::createHistory(toAPI(webPageProxy.get())));
+    {
+        WKPageFindClient findClient;
+        memset(&findClient, 0, sizeof(WKPageFindClient));
+        findClient.version = kWKPageFindClientCurrentVersion;
+        findClient.clientInfo = this;
+        findClient.didFindString = didFindString;
+        findClient.didFailToFindString = didFailToFindString;
+        WKPageSetPageFindClient(webPage.get(), &findClient);
+    }
+
+    {
+        WKPageLoaderClient loadClient;
+        memset(&loadClient, 0, sizeof(WKPageLoaderClient));
+        loadClient.version = kWKPageLoaderClientCurrentVersion;
+        loadClient.clientInfo = this;
+        loadClient.didStartProvisionalLoadForFrame = didStartProvisionalLoadForFrame;
+        loadClient.didReceiveServerRedirectForProvisionalLoadForFrame = didReceiveServerRedirectForProvisionalLoadForFrame;
+        loadClient.didFailProvisionalLoadWithErrorForFrame = didFailLoad;
+        loadClient.didCommitLoadForFrame = didCommitLoadForFrame;
+        loadClient.didFinishLoadForFrame = didFinishLoadForFrame;
+        loadClient.didFailLoadWithErrorForFrame = didFailLoad;
+        loadClient.didSameDocumentNavigationForFrame = didSameDocumentNavigationForFrame;
+        loadClient.didReceiveTitleForFrame = didReceiveTitleForFrame;
+        loadClient.didStartProgress = didStartProgress;
+        loadClient.didChangeProgress = didChangeProgress;
+        loadClient.didFinishProgress = didFinishProgress;
+        loadClient.didChangeBackForwardList = didChangeBackForwardList;
+        WKPageSetPageLoaderClient(webPage.get(), &loadClient);
+    }
+
+    pagePolicyClient.reset(new QtWebPagePolicyClient(webPage.get(), q_ptr));
+    pageUIClient.reset(new QtWebPageUIClient(webPage.get(), q_ptr));
+    navigationHistory = adoptPtr(QWebNavigationHistoryPrivate::createHistory(webPage.get()));
 
     QtWebIconDatabaseClient* iconDatabase = context->iconDatabase();
     QObject::connect(iconDatabase, SIGNAL(iconChangedForPageURL(QString)), q_ptr, SLOT(_q_onIconChangedForPageURL(QString)));
 
     // Any page setting should preferrable be set before creating the page.
-    webPageProxy->pageGroup()->preferences()->setAcceleratedCompositingEnabled(true);
-    webPageProxy->pageGroup()->preferences()->setForceCompositingMode(true);
+    WKPreferencesRef preferencesRef = WKPageGroupGetPreferences(pageGroup.get());
+    WKPreferencesSetAcceleratedCompositingEnabled(preferencesRef, true);
     bool showDebugVisuals = qgetenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1";
-    webPageProxy->pageGroup()->preferences()->setCompositingBordersVisible(showDebugVisuals);
-    webPageProxy->pageGroup()->preferences()->setCompositingRepaintCountersVisible(showDebugVisuals);
-    webPageProxy->pageGroup()->preferences()->setFrameFlatteningEnabled(true);
-    webPageProxy->pageGroup()->preferences()->setWebGLEnabled(true);
+    WKPreferencesSetCompositingBordersVisible(preferencesRef, showDebugVisuals);
+    WKPreferencesSetCompositingRepaintCountersVisible(preferencesRef, showDebugVisuals);
+    WKPreferencesSetFrameFlatteningEnabled(preferencesRef, true);
+    WKPreferencesSetWebGLEnabled(preferencesRef, true);
+    webPageProxy->pageGroup()->preferences()->setForceCompositingMode(true);
 
     pageClient.initialize(q_ptr, pageViewPrivate->eventHandler.data(), &undoController);
     webPageProxy->initializeWebPage();
@@ -338,12 +376,128 @@ void QQuickWebViewPrivate::initialize(WKContextRef contextRef, WKPageGroupRef pa
     q_ptr->setFlag(QQuickItem::ItemAcceptsDrops, true);
 }
 
-void QQuickWebViewPrivate::loadDidStop()
+void QQuickWebViewPrivate::didStartProvisionalLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef, const void* clientInfo)
 {
-    Q_Q(QQuickWebView);
-    ASSERT(!q->loading());
-    QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadStoppedStatus);
+    if (!WKFrameIsMainFrame(frame))
+        return;
+
+    WKRetainPtr<WKURLRef> url  = adoptWK(WKFrameCopyProvisionalURL(frame));
+
+    QQuickWebView* const q = toQQuickWebViewPrivate(clientInfo)->q_func();
+
+    q->emitUrlChangeIfNeeded();
+    QWebLoadRequest loadRequest(WKURLCopyQUrl(url.get()), QQuickWebView::LoadStartedStatus);
     emit q->loadingChanged(&loadRequest);
+}
+
+void QQuickWebViewPrivate::didReceiveServerRedirectForProvisionalLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef, const void* clientInfo)
+{
+    if (!WKFrameIsMainFrame(frame))
+        return;
+
+    toQQuickWebViewPrivate(clientInfo)->q_func()->emitUrlChangeIfNeeded();
+}
+
+void QQuickWebViewPrivate::didFailLoad(WKPageRef, WKFrameRef frame, WKErrorRef errorRef, WKTypeRef, const void* clientInfo)
+{
+    if (!WKFrameIsMainFrame(frame))
+        return;
+
+    QQuickWebView* const q = toQQuickWebViewPrivate(clientInfo)->q_func();
+    ASSERT(!q->loading());
+
+    QtWebError error(errorRef);
+    if (error.isCancellation()) {
+        QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadStoppedStatus);
+        emit q->loadingChanged(&loadRequest);
+        return;
+    }
+
+    int errorCode = error.errorCode();
+    if (errorCode == kWKErrorCodeFrameLoadInterruptedByPolicyChange && errorCode == kWKErrorCodePlugInWillHandleLoad) {
+        QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadSucceededStatus);
+        q->emitUrlChangeIfNeeded();
+        emit q->loadingChanged(&loadRequest);
+        return;
+    }
+
+    // We set the unreachable url unconditionally so that the current
+    // active url of the webview when the loadingChanged signal is
+    // emitted reflects the failed url, not the previously committed
+    // url. This also ensures that if the user does not do a loadHtml
+    // with an error page and and unreachable url as a reponse to the
+    // failed load, we can still detect the failed url for reloads.
+    // We need to find a way to do this via the C API or find another
+    // way to do this.
+    toImpl(frame)->setUnreachableURL(error.url());
+    q->emitUrlChangeIfNeeded();
+    QWebLoadRequest loadRequest(error.url(), QQuickWebView::LoadFailedStatus, error.description(), static_cast<QQuickWebView::ErrorDomain>(error.type()), errorCode);
+    emit q->loadingChanged(&loadRequest);
+}
+
+void QQuickWebViewPrivate::didCommitLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef, const void* clientInfo)
+{
+    if (!WKFrameIsMainFrame(frame))
+        return;
+    QQuickWebViewPrivate* d = toQQuickWebViewPrivate(clientInfo);
+
+    PageViewportController* pageViewportController = d->viewportController();
+    if (pageViewportController)
+        pageViewportController->didCommitLoad();
+
+    QQuickWebView* const q = d->q_func();
+    ASSERT(q->loading());
+    d->m_betweenLoadCommitAndFirstFrame = true;
+    emit q->navigationHistoryChanged();
+    emit q->titleChanged();
+}
+
+void QQuickWebViewPrivate::didFinishLoadForFrame(WKPageRef, WKFrameRef frame, WKTypeRef, const void* clientInfo)
+{
+    if (!WKFrameIsMainFrame(frame))
+        return;
+
+    QQuickWebView* const q = toQQuickWebViewPrivate(clientInfo)->q_func();
+    ASSERT(!q->loading());
+
+    QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadSucceededStatus);
+    emit q->loadingChanged(&loadRequest);
+}
+
+void QQuickWebViewPrivate::didSameDocumentNavigationForFrame(WKPageRef, WKFrameRef frame, WKSameDocumentNavigationType type, WKTypeRef userData, const void* clientInfo)
+{
+    if (!WKFrameIsMainFrame(frame))
+        return;
+    QQuickWebView* const q = toQQuickWebViewPrivate(clientInfo)->q_func();
+    q->emitUrlChangeIfNeeded();
+    emit q->navigationHistoryChanged();
+}
+
+void QQuickWebViewPrivate::didReceiveTitleForFrame(WKPageRef, WKStringRef title, WKFrameRef frame, WKTypeRef, const void* clientInfo)
+{
+    if (!WKFrameIsMainFrame(frame))
+        return;
+    emit toQQuickWebViewPrivate(clientInfo)->q_func()->titleChanged();
+}
+
+void QQuickWebViewPrivate::didStartProgress(WKPageRef, const void* clientInfo)
+{
+    toQQuickWebViewPrivate(clientInfo)->loadProgressDidChange(0);
+}
+
+void QQuickWebViewPrivate::didChangeProgress(WKPageRef page, const void* clientInfo)
+{
+    toQQuickWebViewPrivate(clientInfo)->loadProgressDidChange(WKPageGetEstimatedProgress(page) * 100);
+}
+
+void QQuickWebViewPrivate::didFinishProgress(WKPageRef, const void* clientInfo)
+{
+    toQQuickWebViewPrivate(clientInfo)->loadProgressDidChange(100);
+}
+
+void QQuickWebViewPrivate::didChangeBackForwardList(WKPageRef, WKBackForwardListItemRef, WKArrayRef, const void *clientInfo)
+{
+    toQQuickWebViewPrivate(clientInfo)->navigationHistory->d->reset();
 }
 
 void QQuickWebViewPrivate::setTransparentBackground(bool enable)
@@ -356,48 +510,6 @@ bool QQuickWebViewPrivate::transparentBackground() const
     return webPageProxy->drawsTransparentBackground();
 }
 
-void QQuickWebViewPrivate::provisionalLoadDidStart(const WTF::String& url)
-{
-    Q_Q(QQuickWebView);
-
-    q->emitUrlChangeIfNeeded();
-
-    QWebLoadRequest loadRequest(QString(url), QQuickWebView::LoadStartedStatus);
-    emit q->loadingChanged(&loadRequest);
-}
-
-void QQuickWebViewPrivate::didReceiveServerRedirectForProvisionalLoad(const WTF::String&)
-{
-    Q_Q(QQuickWebView);
-
-    q->emitUrlChangeIfNeeded();
-}
-
-void QQuickWebViewPrivate::loadDidCommit()
-{
-    Q_Q(QQuickWebView);
-    ASSERT(q->loading());
-
-    m_betweenLoadCommitAndFirstFrame = true;
-    emit q->navigationHistoryChanged();
-    emit q->titleChanged();
-}
-
-void QQuickWebViewPrivate::didSameDocumentNavigation()
-{
-    Q_Q(QQuickWebView);
-
-    q->emitUrlChangeIfNeeded();
-    emit q->navigationHistoryChanged();
-}
-
-void QQuickWebViewPrivate::titleDidChange()
-{
-    Q_Q(QQuickWebView);
-
-    emit q->titleChanged();
-}
-
 void QQuickWebViewPrivate::loadProgressDidChange(int loadProgress)
 {
     Q_Q(QQuickWebView);
@@ -405,29 +517,6 @@ void QQuickWebViewPrivate::loadProgressDidChange(int loadProgress)
     m_loadProgress = loadProgress;
 
     emit q->loadProgressChanged();
-}
-
-void QQuickWebViewPrivate::backForwardListDidChange()
-{
-    navigationHistory->d->reset();
-}
-
-void QQuickWebViewPrivate::loadDidSucceed()
-{
-    Q_Q(QQuickWebView);
-    ASSERT(!q->loading());
-
-    QWebLoadRequest loadRequest(q->url(), QQuickWebView::LoadSucceededStatus);
-    emit q->loadingChanged(&loadRequest);
-}
-
-void QQuickWebViewPrivate::loadDidFail(const QtWebError& error)
-{
-    Q_Q(QQuickWebView);
-    ASSERT(!q->loading());
-
-    QWebLoadRequest loadRequest(error.url(), QQuickWebView::LoadFailedStatus, error.description(), static_cast<QQuickWebView::ErrorDomain>(error.type()), error.errorCode());
-    emit q->loadingChanged(&loadRequest);
 }
 
 void QQuickWebViewPrivate::handleMouseEvent(QMouseEvent* event)
@@ -498,10 +587,13 @@ void QQuickWebViewPrivate::didRelaunchProcess()
 {
     qWarning("WARNING: The web process has been successfully restarted.");
 
-    webPageProxy->drawingArea()->setSize(viewSize(), IntSize());
+    if (DrawingAreaProxy *drawingArea = webPageProxy->drawingArea()) {
+        drawingArea->setSize(viewSize(), IntSize());
 
-    updateViewportSize();
-    updateUserScripts();
+        updateViewportSize();
+        updateUserScripts();
+        updateSchemeDelegates();
+    }
 }
 
 PassOwnPtr<DrawingAreaProxy> QQuickWebViewPrivate::createDrawingAreaProxy()
@@ -782,6 +874,17 @@ void QQuickWebViewPrivate::updateUserScripts()
     }
 }
 
+void QQuickWebViewPrivate::updateSchemeDelegates()
+{
+    webPageProxy->registerApplicationScheme(ASCIILiteral("qrc"));
+
+    QQmlListProperty<QQuickUrlSchemeDelegate> schemes = experimental->schemeDelegates();
+    for (int i = 0, numSchemes = experimental->schemeDelegates_Count(&schemes); i < numSchemes; ++i) {
+        QQuickUrlSchemeDelegate* scheme = experimental->schemeDelegates_At(&schemes, i);
+        webPageProxy->registerApplicationScheme(scheme->scheme());
+    }
+}
+
 QPointF QQuickWebViewPrivate::contentPos() const
 {
     Q_Q(const QQuickWebView);
@@ -839,23 +942,25 @@ void QQuickWebViewLegacyPrivate::updateViewportSize()
 
     pageView->setContentsSize(viewportSize);
 
-    // The fixed layout is handled by the FrameView and the drawing area doesn't behave differently
-    // whether its fixed or not. We still need to tell the drawing area which part of it
-    // has to be rendered on tiles, and in desktop mode it's all of it.
-    webPageProxy->drawingArea()->setSize(viewportSize.toSize(), IntSize());
-    // The backing store scale factor should already be set to the device pixel ratio
-    // of the underlying window, thus we set the effective scale to 1 here.
-    webPageProxy->drawingArea()->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize)), FloatPoint());
+    if (DrawingAreaProxy *drawingArea = webPageProxy->drawingArea()) {
+        // The fixed layout is handled by the FrameView and the drawing area doesn't behave differently
+        // whether its fixed or not. We still need to tell the drawing area which part of it
+        // has to be rendered on tiles, and in desktop mode it's all of it.
+        drawingArea->setSize(viewportSize.toSize(), IntSize());
+        // The backing store scale factor should already be set to the device pixel ratio
+        // of the underlying window, thus we set the effective scale to 1 here.
+        drawingArea->setVisibleContentsRect(FloatRect(FloatPoint(), FloatSize(viewportSize)), FloatPoint());
+    }
 }
 
 qreal QQuickWebViewLegacyPrivate::zoomFactor() const
 {
-    return webPageProxy->pageZoomFactor();
+    return WKPageGetPageZoomFactor(webPage.get());
 }
 
 void QQuickWebViewLegacyPrivate::setZoomFactor(qreal factor)
 {
-    webPageProxy->setPageZoomFactor(factor);
+    WKPageSetPageZoomFactor(webPage.get(), factor);
 }
 
 QQuickWebViewFlickablePrivate::QQuickWebViewFlickablePrivate(QQuickWebView* viewport)
@@ -1010,9 +1115,9 @@ bool QQuickWebViewExperimental::flickableViewportEnabled()
 void QQuickWebViewExperimental::postMessage(const QString& message)
 {
     Q_D(QQuickWebView);
-    static String messageName("MessageToNavigatorQtObject");
-    RefPtr<WebString> contents = WebString::create(String(message));
-    d->webPageProxy->postMessageToInjectedBundle(messageName, contents.get());
+    static WKStringRef messageName = WKStringCreateWithUTF8CString("MessageToNavigatorQtObject");
+    WKRetainPtr<WKStringRef> contents = adoptWK(WKStringCreateWithQString(message));
+    WKPagePostMessageToInjectedBundle(d->webPage.get(), messageName, contents.get());
 }
 
 QQmlComponent* QQuickWebViewExperimental::alertDialog() const
@@ -1181,16 +1286,19 @@ void QQuickWebViewExperimental::setColorChooser(QQmlComponent* colorChooser)
 QString QQuickWebViewExperimental::userAgent() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->userAgent();
+    WKRetainPtr<WKStringRef> ua = adoptWK(WKPageCopyCustomUserAgent(d->webPage.get()));
+    return WKStringCopyQString(ua.get());
 }
 
 void QQuickWebViewExperimental::setUserAgent(const QString& userAgent)
 {
     Q_D(QQuickWebView);
-    if (userAgent == QString(d->webPageProxy->userAgent()))
+    WKRetainPtr<WKStringRef> newUserAgent = adoptWK(WKStringCreateWithQString(userAgent));
+    WKRetainPtr<WKStringRef> currentUserAgent = adoptWK(WKPageCopyCustomUserAgent(d->webPage.get()));
+    if (WKStringIsEqual(newUserAgent.get(), currentUserAgent.get()))
         return;
 
-    d->webPageProxy->setUserAgent(userAgent);
+    WKPageSetCustomUserAgent(d->webPage.get(), newUserAgent.get());
     emit userAgentChanged();
 }
 
@@ -1257,27 +1365,31 @@ void QQuickWebViewExperimental::evaluateJavaScript(const QString& script, const 
     closure->receiver = this;
     closure->value = value;
 
-    d_ptr->webPageProxy.get()->runJavaScriptInMainFrame(script, ScriptValueCallback::create(closure, javaScriptCallback));
+    WKRetainPtr<WKStringRef> scriptString = adoptWK(WKStringCreateWithQString(script));
+    WKPageRunJavaScriptInMainFrame(d_ptr->webPage.get(), scriptString.get(), closure, javaScriptCallback);
 }
 
 void QQuickWebViewExperimental::findText(const QString& string, FindFlags options)
 {
     Q_D(QQuickWebView);
     if (string.isEmpty()) {
-        d->webPageProxy->hideFindUI();
+        WKPageHideFindUI(d->webPage.get());
         return;
     }
-    WebKit::FindOptions wkOptions = WebKit::FindOptionsCaseInsensitive;
-    if (options & FindCaseSensitively)
-        wkOptions = static_cast<WebKit::FindOptions>(wkOptions & ~WebKit::FindOptionsCaseInsensitive);
-    if (options & FindBackward)
-        wkOptions = static_cast<WebKit::FindOptions>(wkOptions | FindOptionsBackwards);
-    if (options & FindWrapsAroundDocument)
-        wkOptions = static_cast<WebKit::FindOptions>(wkOptions | FindOptionsWrapAround);
-    if (options & FindHighlightAllOccurrences)
-        wkOptions = static_cast<WebKit::FindOptions>(wkOptions | FindOptionsShowHighlight);
 
-    d->webPageProxy->findString(string, wkOptions, std::numeric_limits<unsigned>::max() - 1);
+    WKFindOptions wkOptions = kWKFindOptionsCaseInsensitive;
+    if (options & FindCaseSensitively)
+        wkOptions = wkOptions & ~kWKFindOptionsCaseInsensitive;
+    if (options & FindBackward)
+        wkOptions |= kWKFindOptionsBackwards;
+    if (options & FindWrapsAroundDocument)
+        wkOptions |= kWKFindOptionsWrapAround;
+    if (options & FindHighlightAllOccurrences)
+        wkOptions |= kWKFindOptionsShowHighlight;
+
+    WKRetainPtr<WKStringRef> str = adoptWK(WKStringCreateWithQString(string));
+
+    WKPageFindString(d->webPage.get(), str.get(), wkOptions, std::numeric_limits<unsigned>::max() - 1);
 }
 
 QList<QUrl> QQuickWebViewExperimental::userScripts() const
@@ -1501,7 +1613,7 @@ QQuickWebPage* QQuickWebView::page()
 void QQuickWebView::goBack()
 {
     Q_D(QQuickWebView);
-    d->webPageProxy->goBack();
+    WKPageGoBack(d->webPage.get());
 }
 
 /*!
@@ -1513,7 +1625,7 @@ void QQuickWebView::goBack()
 void QQuickWebView::goForward()
 {
     Q_D(QQuickWebView);
-    d->webPageProxy->goForward();
+    WKPageGoForward(d->webPage.get());
 }
 
 /*!
@@ -1524,7 +1636,7 @@ void QQuickWebView::goForward()
 void QQuickWebView::stop()
 {
     Q_D(QQuickWebView);
-    d->webPageProxy->stopLoading();
+    WKPageStopLoading(d->webPage.get());
 }
 
 /*!
@@ -1549,8 +1661,7 @@ void QQuickWebView::reload()
         return;
     }
 
-    const bool reloadFromOrigin = true;
-    d->webPageProxy->reload(reloadFromOrigin);
+    WKPageReloadFromOrigin(d->webPage.get());
 }
 
 /*!
@@ -1579,7 +1690,8 @@ void QQuickWebView::setUrl(const QUrl& url)
     if (url.isEmpty())
         return;
 
-    d->webPageProxy->loadURL(url.toString());
+    WKRetainPtr<WKURLRef> u = adoptWK(WKURLCreateWithQUrl(url));
+    WKPageLoadURL(d->webPage.get(), u.get());
     emitUrlChangeIfNeeded();
 }
 
@@ -1640,7 +1752,7 @@ int QQuickWebView::loadProgress() const
 bool QQuickWebView::canGoBack() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->canGoBack();
+    return WKPageCanGoBack(d->webPage.get());
 }
 
 /*!
@@ -1652,7 +1764,7 @@ bool QQuickWebView::canGoBack() const
 bool QQuickWebView::canGoForward() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->canGoForward();
+    return WKPageCanGoForward(d->webPage.get());
 }
 
 /*!
@@ -1663,8 +1775,8 @@ bool QQuickWebView::canGoForward() const
 bool QQuickWebView::loading() const
 {
     Q_D(const QQuickWebView);
-    RefPtr<WebKit::WebFrameProxy> mainFrame = d->webPageProxy->mainFrame();
-    return mainFrame && !(WebFrameProxy::LoadStateFinished == mainFrame->loadState());
+    WKFrameRef mainFrame = WKPageGetMainFrame(d->webPage.get());
+    return mainFrame && !(kWKFrameLoadStateFinished == WKFrameGetFrameLoadState(mainFrame));
 }
 
 /*!
@@ -1715,7 +1827,8 @@ QRectF QQuickWebView::mapRectFromWebContent(const QRectF& rectInCSSCoordinates) 
 QString QQuickWebView::title() const
 {
     Q_D(const QQuickWebView);
-    return d->webPageProxy->pageTitle();
+    WKRetainPtr<WKStringRef> t = adoptWK(WKPageCopyTitle(d->webPage.get()));
+    return WKStringCopyQString(t.get());
 }
 
 QVariant QQuickWebView::inputMethodQuery(Qt::InputMethodQuery property) const
@@ -1948,7 +2061,7 @@ bool QQuickWebView::event(QEvent* ev)
 WKPageRef QQuickWebView::pageRef() const
 {
     Q_D(const QQuickWebView);
-    return toAPI(d->webPageProxy.get());
+    return d->webPage.get();
 }
 
 QPointF QQuickWebView::contentPos() const
@@ -2015,10 +2128,14 @@ void QQuickWebView::handleFlickableMouseRelease(const QPointF& position, qint64 
 void QQuickWebView::loadHtml(const QString& html, const QUrl& baseUrl, const QUrl& unreachableUrl)
 {
     Q_D(QQuickWebView);
+    WKRetainPtr<WKStringRef> htmlRef = adoptWK(WKStringCreateWithQString(html));
+    WKRetainPtr<WKURLRef> baseUrlRef = adoptWK(WKURLCreateWithQUrl(baseUrl));
+    WKRetainPtr<WKURLRef> unreachableUrlRef = adoptWK(WKURLCreateWithQUrl(unreachableUrl));
+
     if (unreachableUrl.isValid())
-        d->webPageProxy->loadAlternateHTMLString(html, baseUrl.toString(), unreachableUrl.toString());
+        WKPageLoadAlternateHTMLString(d->webPage.get(), htmlRef.get(), baseUrlRef.get(), unreachableUrlRef.get());
     else
-        d->webPageProxy->loadHTMLString(html, baseUrl.toString());
+        WKPageLoadHTMLString(d->webPage.get(), htmlRef.get(), baseUrlRef.get());
 }
 
 qreal QQuickWebView::zoomFactor() const
@@ -2042,7 +2159,8 @@ void QQuickWebView::runJavaScriptInMainFrame(const QString &script, QObject *rec
     closure->receiver = receiver;
     closure->method = method;
 
-    d->webPageProxy.get()->runJavaScriptInMainFrame(script, ScriptValueCallback::create(closure, javaScriptCallback));
+    WKRetainPtr<WKStringRef> scriptString = adoptWK(WKStringCreateWithQString(script));
+    WKPageRunJavaScriptInMainFrame(d->webPage.get(), scriptString.get(), closure, javaScriptCallback);
 }
 
 bool QQuickWebView::allowAnyHTTPSCertificateForLocalHost() const
@@ -2057,10 +2175,15 @@ void QQuickWebView::setAllowAnyHTTPSCertificateForLocalHost(bool allow)
     d->m_allowAnyHTTPSCertificateForLocalHost = allow;
 }
 
-void QQuickWebViewPrivate::didFindString(unsigned matchCount)
+void QQuickWebViewPrivate::didFindString(WKPageRef, WKStringRef, unsigned matchCount, const void* clientInfo)
 {
-    Q_Q(QQuickWebView);
+    QQuickWebView* q = toQQuickWebViewPrivate(clientInfo)->q_ptr;
     emit q->experimental()->textFound(matchCount);
+}
+
+void QQuickWebViewPrivate::didFailToFindString(WKPageRef page, WKStringRef string, const void* clientInfo)
+{
+    QQuickWebViewPrivate::didFindString(page, string, 0, clientInfo);
 }
 
 /*!

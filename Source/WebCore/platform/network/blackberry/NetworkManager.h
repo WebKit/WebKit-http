@@ -23,6 +23,7 @@
 #include "ResourceHandle.h"
 
 #include <BlackBerryPlatformSingleton.h>
+#include <network/NetworkRequest.h>
 #include <wtf/Vector.h>
 
 namespace BlackBerry {
@@ -36,6 +37,8 @@ namespace WebCore {
 
 class Frame;
 class NetworkJob;
+
+void protectionSpaceToPlatformAuth(const ProtectionSpace&, BlackBerry::Platform::NetworkRequest::AuthType&, BlackBerry::Platform::NetworkRequest::AuthProtocol&, BlackBerry::Platform::NetworkRequest::AuthScheme&);
 
 class NetworkManager : public BlackBerry::Platform::ThreadUnsafeSingleton<NetworkManager> {
     SINGLETON_DEFINITION_THREADUNSAFE(NetworkManager)
@@ -54,7 +57,7 @@ private:
 
     NetworkJob* findJobForHandle(PassRefPtr<ResourceHandle>);
     void deleteJob(NetworkJob*);
-    bool startJob(int playerId, const String& pageGroupName, PassRefPtr<ResourceHandle>, const ResourceRequest&, BlackBerry::Platform::NetworkStreamFactory*, Frame*, int deferLoadingCount = 0, int redirectCount = 0);
+    bool startJob(int playerId, const String& pageGroupName, PassRefPtr<ResourceHandle>, const ResourceRequest&, BlackBerry::Platform::NetworkStreamFactory*, Frame*, int deferLoadingCount = 0, int redirectCount = 0, bool rereadCookies = false);
 
     Vector<NetworkJob*> m_jobs;
     KURL m_initialURL;

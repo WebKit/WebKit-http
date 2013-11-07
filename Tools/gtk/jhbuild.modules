@@ -17,6 +17,7 @@
       <dep package="glib"/>
       <dep package="glib-networking"/>
       <dep package="gnome-icon-theme"/>
+      <dep package="gnome-icon-theme-symbolic"/>
       <dep package="gnome-themes-standard"/>
       <dep package="libsoup"/>
       <dep package="at-spi2-core"/>
@@ -29,12 +30,14 @@
     </dependencies>
   </metamodule>
 
+  <include href="jhbuild-optional.modules"/>
+
   <repository type="tarball" name="ftp.gnu.org"
       href="ftp://ftp.gnu.org/gnu/"/>
   <repository type="git" name="github.com"
       href="git://github.com"/>
-  <repository type="tarball" name="sourceware.org"
-      href="ftp://sourceware.org"/>
+  <repository type="tarball" name="sourceware.org-mirror"
+      href="ftp://mirrors.kernel.org/sources.redhat.com/"/>
   <repository type="tarball" name="ftp.gnome.org"
       href="http://ftp.gnome.org"/>
   <repository type="git" name="git.gnome.org"
@@ -90,18 +93,18 @@
   </tarball>
 
  <autotools id="harfbuzz" autogen-sh="configure">
-   <branch module="software/harfbuzz/release/harfbuzz-0.9.6.tar.bz2" version="0.9.6"
-           checkoutdir="harfbuzz-0.9.6"
+   <branch module="software/harfbuzz/release/harfbuzz-0.9.7.tar.bz2" version="0.9.7"
+           checkoutdir="harfbuzz-0.9.7"
            repo="freedesktop.org"
-           hash="sha256:394a849d6061993018754b0cc04110891ad215e3df3f6953b75dcc55a11f9d9b"
-           md5sum="f3a100a0512c185b211a0deb4790c34c">
+           hash="sha256:bd2999859f8828461fedae23e4af52d926ac32a73245f03ae2d2065205e9cf25"
+           md5sum="db5382728a912352633d3be2e2a1d988">
      <patch file="harfbuzz-icu-detection-fix.patch" strip="1" />
    </branch>
  </autotools>
 
   <autotools id="libffi" autogen-sh="configure">
-    <branch module="/pub/libffi/libffi-3.0.10.tar.gz" version="3.0.10"
-             repo="sourceware.org"
+    <branch module="libffi/libffi-3.0.10.tar.gz" version="3.0.10"
+             repo="sourceware.org-mirror"
              hash="sha256:f01eb9027e9eb56aeaeef636649877756d475d714ef8b47f627f65bc5f3b492f"
              md5sum="79390673f5d07a8fb342bc09b5055b6f"/>
   </autotools>
@@ -188,6 +191,17 @@
             repo="ftp.gnome.org"
             hash="sha256:a7f0a8b17e91ac338fdbc01ac59a8738e9c1e201de492c070d43aacf291a8959"
             md5sum="40be1e5a6eae11181311a6fc432cf892">
+    </branch>
+  </autotools>
+
+  <autotools id="gnome-icon-theme-symbolic" autogen-sh="configure">
+    <dependencies>
+      <dep package="gtk+"/>
+    </dependencies>
+    <branch module="pub/GNOME/sources/gnome-icon-theme-symbolic/3.2/gnome-icon-theme-symbolic-3.2.1.tar.xz" version="3.2.1"
+            repo="ftp.gnome.org"
+            hash="sha256:a558af2f87f761f00421f49c1addd2149b70228158e09327fa861219ac1a63cb"
+            md5sum="94137d3c256f2cc80298a9bef15d68c4">
     </branch>
   </autotools>
 

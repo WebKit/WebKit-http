@@ -28,31 +28,18 @@
 
 #if ENABLE(SHARED_WORKER_PROCESS)
 
-#import "SharedWorkerProcessProxyMessages.h"
-#import "SharedWorkerProcessCreationParameters.h"
 #import <WebCore/LocalizedStrings.h>
 #import <WebKitSystemInterface.h>
-#import <dlfcn.h>
-#import <objc/runtime.h>
-#import <sysexits.h>
-#import <wtf/HashSet.h>
-
-// We have to #undef __APPLE_API_PRIVATE to prevent sandbox.h from looking for a header file that does not exist (<rdar://problem/9679211>). 
-#undef __APPLE_API_PRIVATE
-#import <sandbox.h>
-
-#define SANDBOX_NAMED_EXTERNAL 0x0003
-extern "C" int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf);
 
 namespace WebKit {
 
-void SharedWorkerProcess::platformInitializeSharedWorkerProcess(const SharedWorkerProcessCreationParameters& parameters)
+void SharedWorkerProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
 {
-    NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("Shared Web Worker (%@ Internet plug-in)",
-        "visible name of the plug-in host process. The argument is the application name."),
-        (NSString *)parameters.parentProcessName];
-    
+    NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Shared Worker", "Visible name of the shared worker process. The argument is the application name."), (NSString *)parameters.uiProcessName];
     WKSetVisibleApplicationName((CFStringRef)applicationName);
+
+    // Having a window server connection in this process would result in spin logs (<rdar://problem/13239119>).
+    shutdownWindowServerConnection();
 }
 
 } // namespace WebKit

@@ -66,8 +66,9 @@
     readonly attribute DOMString iceGatheringState;
     readonly attribute DOMString iceConnectionState;
 
-    readonly attribute MediaStreamList localStreams;
-    readonly attribute MediaStreamList remoteStreams;
+    sequence<MediaStream> getLocalStreams();
+    sequence<MediaStream> getRemoteStreams();
+    MediaStream getStreamById(DOMString streamId);
 
     [StrictTypeChecking] void addStream(in MediaStream stream, in [Optional] Dictionary mediaConstraints)
         raises(DOMException);
@@ -77,6 +78,9 @@
     void getStats(in [Callback] RTCStatsCallback successCallback, in [Optional=DefaultIsUndefined] MediaStreamTrack selector);
 
     RTCDataChannel createDataChannel(in [TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString label, in [Optional] Dictionary options)
+         raises(DOMException);
+
+    RTCDTMFSender createDTMFSender(in MediaStreamTrack track)
          raises(DOMException);
 
     void close()

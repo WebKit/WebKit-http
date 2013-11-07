@@ -37,12 +37,9 @@
 #include "config.h"
 #include "CredentialTransformData.h"
 
-#include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
-#include "HTMLNames.h"
 #include "KURL.h"
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -111,6 +108,14 @@ bool locateSpecificPasswords(Vector<HTMLInputElement*>& passwords, HTMLInputElem
 
 } // namespace
 
+CredentialTransformData::CredentialTransformData()
+    : m_userNameElement(0)
+    , m_passwordElement(0)
+    , m_oldPasswordElement(0)
+    , m_isValid(false)
+{
+}
+
 CredentialTransformData::CredentialTransformData(HTMLFormElement* form, bool isForSaving)
     : m_userNameElement(0)
     , m_passwordElement(0)
@@ -137,33 +142,22 @@ CredentialTransformData::CredentialTransformData(HTMLFormElement* form, bool isF
     if (!isForSaving && m_oldPasswordElement)
         return;
 
-    m_url = stripURL(fullOrigin);
+    KURL url = stripURL(fullOrigin);
     m_action = stripURL(fullAction);
-    m_protectionSpace = ProtectionSpace(m_url.host(), m_url.port(), ProtectionSpaceServerHTTP, "Form", ProtectionSpaceAuthenticationSchemeHTMLForm);
+    m_protectionSpace = ProtectionSpace(url.host(), url.port(), ProtectionSpaceServerHTTP, "Form", ProtectionSpaceAuthenticationSchemeHTMLForm);
     m_credential = Credential(m_userNameElement->value(), m_passwordElement->value(), CredentialPersistencePermanent);
 
     m_isValid = true;
 }
 
-CredentialTransformData::CredentialTransformData(const KURL& url, const ProtectionSpace& protectionSpace, const Credential& credential)
-    : m_url(url)
-    , m_protectionSpace(protectionSpace)
+CredentialTransformData::CredentialTransformData(const ProtectionSpace& protectionSpace, const Credential& credential)
+    : m_protectionSpace(protectionSpace)
     , m_credential(credential)
     , m_userNameElement(0)
     , m_passwordElement(0)
     , m_oldPasswordElement(0)
     , m_isValid(true)
 {
-}
-
-KURL CredentialTransformData::url() const
-{
-    if (!m_isValid)
-        return KURL();
-
-    if (m_protectionSpace.authenticationScheme() == ProtectionSpaceAuthenticationSchemeHTMLForm)
-        return m_action;
-    return m_url;
 }
 
 Credential CredentialTransformData::credential() const
@@ -197,7 +191,7 @@ bool CredentialTransformData::findPasswordFormFields(HTMLFormElement* form)
         if (!formElements[i]->isFormControlElement())
             continue;
         HTMLFormControlElement* formElement = static_cast<HTMLFormControlElement*>(formElements[i]);
-        if (!formElement->hasLocalName(HTMLNames::inputTag))
+        if (!formElement->hasTagName(HTMLNames::inputTag))
             continue;
 
         HTMLInputElement* inputElement = formElement->toInputElement();
@@ -219,7 +213,7 @@ bool CredentialTransformData::findPasswordFormFields(HTMLFormElement* form)
             if (!formElements[i]->isFormControlElement())
                 continue;
             HTMLFormControlElement* formElement = static_cast<HTMLFormControlElement*>(formElements[i]);
-            if (!formElement->hasLocalName(HTMLNames::inputTag))
+            if (!formElement->hasTagName(HTMLNames::inputTag))
                 continue;
 
             HTMLInputElement* inputElement = formElement->toInputElement();

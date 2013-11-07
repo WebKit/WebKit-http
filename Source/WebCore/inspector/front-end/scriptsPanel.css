@@ -62,15 +62,6 @@
     border-bottom: 1px solid rgb(202, 202, 202);
 }
 
-#scripts-debug-sidebar-contents {
-    position: absolute;
-    top: 22px;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    overflow: auto;
-}
-
 #scripts-editor-toolbar {
     position: relative;
     margin-top: -1px;
@@ -273,6 +264,11 @@ button.status-bar-item.scripts-debugger-show-hide-button {
     border: none;
 }
 
+.split-view-horizontal button.status-bar-item.scripts-debugger-show-hide-button,
+.split-view-horizontal #scripts-debug-sidebar-resizer-widget {
+    display: none;
+}
+
 button.status-bar-item.scripts-debugger-show-hide-button:active {
     top: 1px;
 }
@@ -306,4 +302,27 @@ button.status-bar-item.scripts-debugger-show-hide-button.toggled-hidden:active {
 
 .status-bar-item.scripts-debugger-show-hide-button.toggled-hidden > .glyph {
     -webkit-mask-position: -16px -16px;
+}
+
+div.sidebar-pane-stack#scripts-debug-sidebar-contents, #scripts-sidebar-stack-pane {
+    top: 23px;
+    overflow: auto;
+}
+
+.workers-list > li {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-left: 1em;
+    font-size: 12px;
+}
+
+a.worker-item {
+    color: rgb(33%, 33%, 33%);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+a.worker-item:hover {
+    color: rgb(15%, 15%, 15%);
 }

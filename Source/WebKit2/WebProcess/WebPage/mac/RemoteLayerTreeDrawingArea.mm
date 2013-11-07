@@ -47,11 +47,15 @@ RemoteLayerTreeDrawingArea::~RemoteLayerTreeDrawingArea()
 {
 }
 
-void RemoteLayerTreeDrawingArea::setNeedsDisplay(const IntRect&)
+void RemoteLayerTreeDrawingArea::setNeedsDisplay()
 {
 }
 
-void RemoteLayerTreeDrawingArea::scroll(const IntRect& scrollRect, const IntSize& scrollOffset)
+void RemoteLayerTreeDrawingArea::setNeedsDisplayInRect(const IntRect&)
+{
+}
+
+void RemoteLayerTreeDrawingArea::scroll(const IntRect& scrollRect, const IntSize& scrollDelta)
 {
 }
 

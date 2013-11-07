@@ -111,13 +111,13 @@ void SandboxExtension::HandleArray::allocate(size_t size)
 
 SandboxExtension::Handle& SandboxExtension::HandleArray::operator[](size_t i)
 {
-    ASSERT(i < m_size);    
+    ASSERT_WITH_SECURITY_IMPLICATION(i < m_size); 
     return m_data[i];
 }
 
 const SandboxExtension::Handle& SandboxExtension::HandleArray::operator[](size_t i) const
 {
-    ASSERT(i < m_size);
+    ASSERT_WITH_SECURITY_IMPLICATION(i < m_size);
     return m_data[i];
 }
 
@@ -214,8 +214,11 @@ void SandboxExtension::createHandle(const String& path, Type type, Handle& handl
 {
     ASSERT(!handle.m_sandboxExtension);
 
-    CString standardizedPath = resolveSymlinksInPath([[(NSString *)path stringByStandardizingPath] fileSystemRepresentation]);
+    // FIXME: Do we need both resolveSymlinksInPath() and -stringByStandardizingPath?
+    CString standardizedPath = resolveSymlinksInPath(fileSystemRepresentation([(NSString *)path stringByStandardizingPath]));
     handle.m_sandboxExtension = WKSandboxExtensionCreate(standardizedPath.data(), wkSandboxExtensionType(type));
+    if (!handle.m_sandboxExtension)
+        WTFLogAlways("Could not create a sandbox extension for '%s'", path.utf8().data());
 }
 
 void SandboxExtension::createHandleForReadWriteDirectory(const String& path, SandboxExtension::Handle& handle)
@@ -250,6 +253,7 @@ String SandboxExtension::createHandleForTemporaryFile(const String& prefix, Type
     handle.m_sandboxExtension = WKSandboxExtensionCreate(fileSystemRepresentation(path.data()).data(), wkSandboxExtensionType(type));
 
     if (!handle.m_sandboxExtension) {
+        WTFLogAlways("Could not create a sandbox extension for temporary file '%s'", path.data());
         return String();
     }
     return String(path.data());
@@ -257,6 +261,7 @@ String SandboxExtension::createHandleForTemporaryFile(const String& prefix, Type
 
 SandboxExtension::SandboxExtension(const Handle& handle)
     : m_sandboxExtension(handle.m_sandboxExtension)
+    , m_useCount(0)
 {
     handle.m_sandboxExtension = 0;
 }
@@ -266,24 +271,27 @@ SandboxExtension::~SandboxExtension()
     if (!m_sandboxExtension)
         return;
 
-    WKSandboxExtensionInvalidate(m_sandboxExtension);
+    ASSERT(!m_useCount);
     WKSandboxExtensionDestroy(m_sandboxExtension);
 }
 
-bool SandboxExtension::invalidate()
+bool SandboxExtension::revoke()
 {
     ASSERT(m_sandboxExtension);
+    ASSERT(m_useCount);
+    
+    if (--m_useCount)
+        return true;
 
-    bool result = WKSandboxExtensionInvalidate(m_sandboxExtension);
-    WKSandboxExtensionDestroy(m_sandboxExtension);
-    m_sandboxExtension = 0;
-
-    return result;
+    return WKSandboxExtensionInvalidate(m_sandboxExtension);
 }
 
 bool SandboxExtension::consume()
 {
     ASSERT(m_sandboxExtension);
+
+    if (m_useCount++)
+        return true;
 
     return WKSandboxExtensionConsume(m_sandboxExtension);
 }
@@ -303,7 +311,8 @@ bool SandboxExtension::consumePermanently()
 
 bool SandboxExtension::consumePermanently(const Handle& handle)
 {
-    ASSERT(handle.m_sandboxExtension);
+    if (!handle.m_sandboxExtension)
+        return false;
 
     bool result = WKSandboxExtensionConsume(handle.m_sandboxExtension);
     

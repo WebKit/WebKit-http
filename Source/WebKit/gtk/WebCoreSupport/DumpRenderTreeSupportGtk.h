@@ -63,26 +63,17 @@ public:
     static void addUserScript(WebKitWebFrame*, const char*, bool, bool);
     static void addUserStyleSheet(WebKitWebFrame*, const char* sourceCode, bool allFrames);
     static guint getPendingUnloadEventCount(WebKitWebFrame*);
-    static bool pauseAnimation(WebKitWebFrame*, const char* name, double time, const char* element);
-    static bool pauseTransition(WebKitWebFrame*, const char* name, double time, const char* element);
-    static WTF::CString markerTextForListItem(WebKitWebFrame*, JSContextRef, JSValueRef nodeObject);
-    static unsigned int numberOfActiveAnimations(WebKitWebFrame*);
     static void clearMainFrameName(WebKitWebFrame*);
     static AtkObject* getFocusedAccessibleElement(WebKitWebFrame*);
     static AtkObject* getRootAccessibleElement(WebKitWebFrame*);
     static void layoutFrame(WebKitWebFrame*);
-    static void setAutofilled(JSContextRef, JSValueRef, bool);
     static void setValueForUser(JSContextRef, JSValueRef, JSStringRef);
     static bool shouldClose(WebKitWebFrame*);
-    static bool elementDoesAutoCompleteForElementWithId(WebKitWebFrame*, JSStringRef);
-    static JSValueRef computedStyleIncludingVisitedInfo(JSContextRef, JSValueRef);
 
     // WebKitWebView
     static void executeCoreCommandByName(WebKitWebView*, const gchar* name, const gchar* value);
     static bool isCommandEnabled(WebKitWebView*, const gchar* name);
     static bool findString(WebKitWebView*, const gchar*, WebKitFindOptions);
-    static double defaultMinimumTimerInterval(); // Not really tied to WebView
-    static void setMinimumTimerInterval(WebKitWebView*, double);
     static void rectangleForSelection(WebKitWebFrame*, cairo_rectangle_int_t*);
     static void scalePageBy(WebKitWebView*, float, float, float);
     static void setDefersLoading(WebKitWebView*, bool);
@@ -108,7 +99,6 @@ public:
     static void whiteListAccessFromOrigin(const gchar* sourceOrigin, const gchar* destinationProtocol, const gchar* destinationHost, bool allowDestinationSubdomains);
     static void removeWhiteListAccessFromOrigin(const char* sourceOrigin, const char* destinationProtocol, const char* destinationHost, bool allowDestinationSubdomains);
     static void resetOriginAccessWhiteLists();
-    static unsigned int workerThreadCount();
 
     static void resetGeolocationClientMock(WebKitWebView*);
     static void setMockGeolocationPermission(WebKitWebView*, bool allowed);

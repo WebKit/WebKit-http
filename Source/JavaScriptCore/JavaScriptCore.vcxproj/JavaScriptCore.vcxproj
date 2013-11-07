@@ -1,8 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="DebugSuffix|Win32">
+      <Configuration>DebugSuffix</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Production|Win32">
+      <Configuration>Production</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
@@ -22,7 +30,17 @@
     <CharacterSet>Unicode</CharacterSet>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
@@ -34,14 +52,33 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="JavaScriptCoreDebug.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="JavaScriptCoreDebug.props" />
+    <Import Project="..\..\WebKit\WebKit.vcxproj\debugsuffix.props" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="JavaScriptCoreRelease.props" />
+    <Import Project="JavaScriptCoreProduction.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Production|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="JavaScriptCoreProduction.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Production|Win32'" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+    </ClCompile>
+    <Link />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">
     <ClCompile>
       <PrecompiledHeader>
       </PrecompiledHeader>
@@ -54,8 +91,18 @@
       </PrecompiledHeader>
     </ClCompile>
     <Link />
+    <Link />
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+    </ClCompile>
+    <Link />
+    <Link />
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\API\JSAPIWrapperObject.cpp" />
     <ClCompile Include="..\API\JSBase.cpp" />
     <ClCompile Include="..\API\JSCallbackConstructor.cpp" />
     <ClCompile Include="..\API\JSCallbackFunction.cpp" />
@@ -166,6 +213,7 @@
     <ClCompile Include="..\parser\Nodes.cpp" />
     <ClCompile Include="..\parser\Parser.cpp" />
     <ClCompile Include="..\parser\ParserArena.cpp" />
+    <ClCompile Include="..\parser\SourceProvider.cpp" />
     <ClCompile Include="..\parser\SourceProviderCache.cpp" />
     <ClCompile Include="..\profiler\LegacyProfiler.cpp" />
     <ClCompile Include="..\profiler\Profile.cpp" />
@@ -258,6 +306,7 @@
     <ClCompile Include="..\runtime\PropertyDescriptor.cpp" />
     <ClCompile Include="..\runtime\PropertyNameArray.cpp" />
     <ClCompile Include="..\runtime\PropertySlot.cpp" />
+    <ClCompile Include="..\runtime\PropertyTable.cpp" />
     <ClCompile Include="..\runtime\PrototypeMap.cpp" />
     <ClCompile Include="..\runtime\RegExp.cpp" />
     <ClCompile Include="..\runtime\RegExpCache.cpp" />
@@ -276,6 +325,7 @@
     <ClCompile Include="..\runtime\StringRecursionChecker.cpp" />
     <ClCompile Include="..\runtime\Structure.cpp" />
     <ClCompile Include="..\runtime\StructureChain.cpp" />
+    <ClCompile Include="..\runtime\StructureRareData.cpp" />
     <ClCompile Include="..\runtime\SymbolTable.cpp" />
     <ClCompile Include="..\runtime\TimeoutChecker.cpp" />
     <ClCompile Include="..\tools\CodeProfile.cpp" />
@@ -309,6 +359,7 @@
     <ClInclude Include="..\API\APICast.h" />
     <ClInclude Include="..\API\JavaScript.h" />
     <ClInclude Include="..\API\JavaScriptCore.h" />
+    <ClInclude Include="..\API\JSAPIWrapperObject.h" />
     <ClInclude Include="..\API\JSBase.h" />
     <ClInclude Include="..\API\JSBasePrivate.h" />
     <ClInclude Include="..\API\JSCallbackConstructor.h" />
@@ -651,6 +702,8 @@
     <ClInclude Include="..\runtime\StringRecursionChecker.h" />
     <ClInclude Include="..\runtime\Structure.h" />
     <ClInclude Include="..\runtime\StructureChain.h" />
+    <ClInclude Include="..\runtime\StructureRareData.h" />
+    <ClInclude Include="..\runtime\StructureRareDataInlines.h" />
     <ClInclude Include="..\runtime\StructureTransitionTable.h" />
     <ClInclude Include="..\runtime\SymbolTable.h" />
     <ClInclude Include="..\runtime\Terminator.h" />
@@ -677,7 +730,6 @@
     <None Include="copy-files.cmd">
       <FileType>Document</FileType>
     </None>
-    <None Include="JavaScriptCoreExports.def" />
     <None Include="JavaScriptCorePostBuild.cmd">
       <FileType>Document</FileType>
     </None>

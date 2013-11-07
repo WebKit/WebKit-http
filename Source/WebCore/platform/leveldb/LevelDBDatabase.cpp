@@ -75,13 +75,6 @@ static LevelDBSlice makeLevelDBSlice(const leveldb::Slice& s)
     return LevelDBSlice(s.data(), s.data() + s.size());
 }
 
-static Vector<char> makeVector(const std::string& s)
-{
-    Vector<char> res;
-    res.append(s.c_str(), s.length());
-    return res;
-}
-
 class ComparatorAdapter : public leveldb::Comparator {
 public:
     ComparatorAdapter(const LevelDBComparator* comparator)
@@ -133,6 +126,8 @@ static leveldb::Status openDB(leveldb::Comparator* comparator, leveldb::Env* env
     options.comparator = comparator;
     options.create_if_missing = true;
     options.paranoid_checks = true;
+    // 20 max_open_files is the minimum LevelDB allows.
+    options.max_open_files = 20;
     options.env = env;
 
     return leveldb::DB::Open(options, path.utf8().data(), db);
@@ -225,7 +220,8 @@ bool LevelDBDatabase::safeGet(const LevelDBSlice& key, Vector<char>& value, bool
     const leveldb::Status s = m_db->Get(readOptions, makeSlice(key), &result);
     if (s.ok()) {
         found = true;
-        value = makeVector(result);
+        value.clear();
+        value.append(result.c_str(), result.length());
         return true;
     }
     if (s.IsNotFound())

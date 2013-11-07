@@ -57,7 +57,8 @@ namespace WebCore {
 // GraphicsContext3DPrivate
 
 GraphicsContext3DPrivate::GraphicsContext3DPrivate(PassOwnPtr<WebKit::WebGraphicsContext3D> webContext, bool preserveDrawingBuffer)
-    : m_impl(webContext)
+    : m_impl(webContext.get())
+    , m_ownedWebContext(webContext)
     , m_initializedAvailableExtensions(false)
     , m_layerComposited(false)
     , m_preserveDrawingBuffer(preserveDrawingBuffer)
@@ -66,12 +67,22 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(PassOwnPtr<WebKit::WebGraphic
 {
 }
 
+GraphicsContext3DPrivate::GraphicsContext3DPrivate(WebKit::WebGraphicsContext3D* webContext, GrContext* grContext, bool preserveDrawingBuffer)
+    : m_impl(webContext)
+    , m_initializedAvailableExtensions(false)
+    , m_layerComposited(false)
+    , m_preserveDrawingBuffer(preserveDrawingBuffer)
+    , m_resourceSafety(ResourceSafetyUnknown)
+    , m_grContext(grContext)
+{
+}
+
+
 GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
 {
-    if (m_grContext) {
-        m_impl->setMemoryAllocationChangedCallbackCHROMIUM(0);
-        m_grContext->contextDestroyed();
-        GrSafeUnref(m_grContext);
+    if (m_ownedGrContext) {
+        m_ownedWebContext->setMemoryAllocationChangedCallbackCHROMIUM(0);
+        m_ownedGrContext->contextDestroyed();
     }
 }
 
@@ -80,6 +91,15 @@ PassRefPtr<GraphicsContext3D> GraphicsContext3DPrivate::createGraphicsContextFro
     RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(GraphicsContext3D::Attributes(), 0));
 
     OwnPtr<GraphicsContext3DPrivate> priv = adoptPtr(new GraphicsContext3DPrivate(webContext, preserveDrawingBuffer));
+    context->m_private = priv.release();
+    return context.release();
+}
+
+PassRefPtr<GraphicsContext3D> GraphicsContext3DPrivate::createGraphicsContextFromExternalWebContextAndGrContext(WebKit::WebGraphicsContext3D* webContext, GrContext* grContext, bool preserveDrawingBuffer)
+{
+    RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(GraphicsContext3D::Attributes(), 0));
+
+    OwnPtr<GraphicsContext3DPrivate> priv = adoptPtr(new GraphicsContext3DPrivate(webContext, grContext, preserveDrawingBuffer));
     context->m_private = priv.release();
     return context.release();
 }
@@ -114,17 +134,36 @@ private:
     GrContext* m_context;
 };
 
+namespace {
+void bindWebGraphicsContext3DGLContextCallback(const GrGLInterface* interface)
+{
+    reinterpret_cast<WebKit::WebGraphicsContext3D*>(interface->fCallbackData)->makeContextCurrent();
+}
+}
+
 GrContext* GraphicsContext3DPrivate::grContext()
 {
-    if (!m_grContext) {
-        SkAutoTUnref<GrGLInterface> interface(m_impl->createGrGLInterface());
-        m_grContext = GrContext::Create(kOpenGL_Shaders_GrEngine, reinterpret_cast<GrPlatform3DContext>(interface.get()));
-        if (m_grContext) {
-            m_grContext->setTextureCacheLimits(maxGaneshTextureCacheCount, maxGaneshTextureCacheBytes);
-            m_grContextMemoryAllocationCallbackAdapter = adoptPtr(new GrMemoryAllocationChangedCallbackAdapter(m_grContext));
-            m_impl->setMemoryAllocationChangedCallbackCHROMIUM(m_grContextMemoryAllocationCallbackAdapter.get());
-        }
-    }
+    if (m_grContext)
+        return m_grContext;
+    if (!m_ownedWebContext)
+        return 0;
+
+    SkAutoTUnref<GrGLInterface> interface(m_ownedWebContext->createGrGLInterface());
+    if (!interface)
+        return 0;
+
+    interface->fCallback = bindWebGraphicsContext3DGLContextCallback;
+    interface->fCallbackData = reinterpret_cast<GrGLInterfaceCallbackData>(m_ownedWebContext.get());
+
+    m_ownedGrContext.reset(GrContext::Create(kOpenGL_GrBackend, reinterpret_cast<GrBackendContext>(interface.get())));
+    m_grContext = m_ownedGrContext;
+    if (!m_grContext)
+        return 0;
+
+    m_grContext->setTextureCacheLimits(maxGaneshTextureCacheCount, maxGaneshTextureCacheBytes);
+    m_grContextMemoryAllocationCallbackAdapter = adoptPtr(new GrMemoryAllocationChangedCallbackAdapter(m_grContext));
+    m_ownedWebContext->setMemoryAllocationChangedCallbackCHROMIUM(m_grContextMemoryAllocationCallbackAdapter.get());
+
     return m_grContext;
 }
 
@@ -211,8 +250,10 @@ private:
 
 void GraphicsContext3DPrivate::setContextLostCallback(PassOwnPtr<GraphicsContext3D::ContextLostCallback> callback)
 {
-    m_contextLostCallbackAdapter = adoptPtr(new GraphicsContext3DContextLostCallbackAdapter(callback));
-    m_impl->setContextLostCallback(m_contextLostCallbackAdapter.get());
+    if (m_ownedWebContext) {
+        m_contextLostCallbackAdapter = adoptPtr(new GraphicsContext3DContextLostCallbackAdapter(callback));
+        m_ownedWebContext->setContextLostCallback(m_contextLostCallbackAdapter.get());
+    }
 }
 
 class GraphicsContext3DErrorMessageCallbackAdapter : public WebKit::WebGraphicsContext3D::WebGraphicsErrorMessageCallback {
@@ -232,8 +273,10 @@ private:
 
 void GraphicsContext3DPrivate::setErrorMessageCallback(PassOwnPtr<GraphicsContext3D::ErrorMessageCallback> callback)
 {
-    m_errorMessageCallbackAdapter = adoptPtr(new GraphicsContext3DErrorMessageCallbackAdapter(callback));
-    m_impl->setErrorMessageCallback(m_errorMessageCallbackAdapter.get());
+    if (m_ownedWebContext) {
+        m_errorMessageCallbackAdapter = adoptPtr(new GraphicsContext3DErrorMessageCallbackAdapter(callback));
+        m_ownedWebContext->setErrorMessageCallback(m_errorMessageCallbackAdapter.get());
+    }
 }
 
 Extensions3D* GraphicsContext3DPrivate::getExtensions()

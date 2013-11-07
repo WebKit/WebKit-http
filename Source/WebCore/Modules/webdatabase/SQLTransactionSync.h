@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,49 +34,19 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "DatabaseBasicTypes.h"
-#include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include "SQLTransactionBackendSync.h"
 
 namespace WebCore {
 
-class DatabaseSync;
-class SQLResultSet;
-class SQLTransactionClient;
-class SQLTransactionSyncCallback;
-class SQLValue;
-class SQLiteTransaction;
-
 // Instances of this class should be created and used only on the worker's context thread.
-class SQLTransactionSync : public RefCounted<SQLTransactionSync> {
+class SQLTransactionSync : public SQLTransactionBackendSync {
 public:
     static PassRefPtr<SQLTransactionSync> create(DatabaseSync*, PassRefPtr<SQLTransactionSyncCallback>, bool readOnly = false);
 
-    ~SQLTransactionSync();
-
-    PassRefPtr<SQLResultSet> executeSQL(const String& sqlStatement, const Vector<SQLValue>& arguments, ExceptionCode&);
-
-    DatabaseSync* database() { return m_database.get(); }
-    bool isReadOnly() const { return m_readOnly; }
-
-    ExceptionCode begin();
-    ExceptionCode execute();
-    ExceptionCode commit();
-    void rollback();
+    static SQLTransactionSync* from(SQLTransactionBackendSync*);
 
 private:
     SQLTransactionSync(DatabaseSync*, PassRefPtr<SQLTransactionSyncCallback>, bool readOnly);
-
-    RefPtr<DatabaseSync> m_database;
-    RefPtr<SQLTransactionSyncCallback> m_callback;
-    bool m_readOnly;
-    bool m_hasVersionMismatch;
-
-    bool m_modifiedDatabase;
-    OwnPtr<SQLTransactionClient> m_transactionClient;
-    OwnPtr<SQLiteTransaction> m_sqliteTransaction;
 };
 
 } // namespace WebCore

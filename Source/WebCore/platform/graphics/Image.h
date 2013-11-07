@@ -128,7 +128,7 @@ public:
     virtual void destroyDecodedData(bool destroyAll = true) = 0;
     virtual unsigned decodedSize() const = 0;
 
-    SharedBuffer* data() { return m_data.get(); }
+    SharedBuffer* data() { return m_encodedImageData.get(); }
 
     // Animation begins whenever someone draws the image, so startAnimation() is not normally called.
     // It will automatically pause once all observers no longer want to render the image anywhere.
@@ -176,7 +176,7 @@ public:
 #endif
 
     virtual void drawPattern(GraphicsContext*, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                             const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator, const FloatRect& destRect);
+        const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
 
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     FloatRect adjustSourceRectForDownSampling(const FloatRect& srcRect, const IntSize& scaledSize) const;
@@ -199,7 +199,8 @@ protected:
 #endif
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode) = 0;
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode, RespectImageOrientationEnum);
-    void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, ColorSpace styleColorSpace, CompositeOperator);
+    void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatPoint& srcPoint, const FloatSize& tileSize, ColorSpace styleColorSpace,
+        CompositeOperator , BlendMode);
     void drawTiled(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, ColorSpace styleColorSpace, CompositeOperator);
 
     // Supporting tiled drawing
@@ -207,7 +208,7 @@ protected:
     virtual Color solidColor() const { return Color(); }
     
 private:
-    RefPtr<SharedBuffer> m_data; // The encoded raw data for the image. 
+    RefPtr<SharedBuffer> m_encodedImageData;
     ImageObserver* m_imageObserver;
 };
 

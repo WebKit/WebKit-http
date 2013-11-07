@@ -25,6 +25,7 @@
 #include "SQLiteDatabase.h"
 
 #include <BlackBerryPlatformMisc.h>
+#include <wtf/OwnPtr.h>
 
 namespace BlackBerry {
 namespace Platform {
@@ -34,7 +35,6 @@ class CertMgrWrapper;
 
 namespace WebCore {
 
-class KURL;
 class ProtectionSpace;
 
 class CredentialBackingStore {
@@ -43,15 +43,13 @@ public:
 
     ~CredentialBackingStore();
     bool open(const String& dbPath);
-    bool addLogin(const KURL&, const ProtectionSpace&, const Credential&);
-    bool updateLogin(const KURL&, const ProtectionSpace&, const Credential&);
-    bool hasLogin(const KURL&, const ProtectionSpace&);
+    bool addLogin(const ProtectionSpace&, const Credential&);
+    bool updateLogin(const ProtectionSpace&, const Credential&);
+    bool hasLogin(const ProtectionSpace&);
     Credential getLogin(const ProtectionSpace&);
-    Credential getLogin(const KURL&);
-    bool removeLogin(const KURL&, const ProtectionSpace&);
-    bool addNeverRemember(const KURL&, const ProtectionSpace&);
+    bool removeLogin(const ProtectionSpace&, const String& username);
+    bool addNeverRemember(const ProtectionSpace&);
     bool hasNeverRemember(const ProtectionSpace&);
-    KURL getNeverRemember(const ProtectionSpace&);
     bool removeNeverRemember(const ProtectionSpace&);
     bool clearLogins();
     bool clearNeverRemember();
@@ -64,18 +62,16 @@ private:
     BlackBerry::Platform::CertMgrWrapper* certMgrWrapper();
 
     SQLiteDatabase m_database;
-    SQLiteStatement* m_addLoginStatement;
-    SQLiteStatement* m_updateLoginStatement;
-    SQLiteStatement* m_hasLoginStatement;
-    SQLiteStatement* m_getLoginStatement;
-    SQLiteStatement* m_getLoginByURLStatement;
-    SQLiteStatement* m_removeLoginStatement;
-    SQLiteStatement* m_addNeverRememberStatement;
-    SQLiteStatement* m_hasNeverRememberStatement;
-    SQLiteStatement* m_getNeverRememberStatement;
-    SQLiteStatement* m_removeNeverRememberStatement;
+    OwnPtr<SQLiteStatement> m_addLoginStatement;
+    OwnPtr<SQLiteStatement> m_updateLoginStatement;
+    OwnPtr<SQLiteStatement> m_hasLoginStatement;
+    OwnPtr<SQLiteStatement> m_getLoginStatement;
+    OwnPtr<SQLiteStatement> m_removeLoginStatement;
+    OwnPtr<SQLiteStatement> m_addNeverRememberStatement;
+    OwnPtr<SQLiteStatement> m_hasNeverRememberStatement;
+    OwnPtr<SQLiteStatement> m_removeNeverRememberStatement;
 
-    BlackBerry::Platform::CertMgrWrapper* m_certMgrWrapper;
+    OwnPtr<BlackBerry::Platform::CertMgrWrapper> m_certMgrWrapper;
 
     DISABLE_COPY(CredentialBackingStore)
 };

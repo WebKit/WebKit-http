@@ -33,6 +33,7 @@
 #include "FloatConversion.h"
 #include "FloatRect.h"
 #include "GraphicsLayerFactory.h"
+#include "PlatformCAFilters.h"
 #include "PlatformCALayer.h"
 #include "RotateTransformOperation.h"
 #include "ScaleTransformOperation.h"
@@ -227,9 +228,9 @@ static String propertyIdToString(AnimatedPropertyID property)
     return "";
 }
 
-static String animationIdentifier(const String& animationName, AnimatedPropertyID property, int index)
+static String animationIdentifier(const String& animationName, AnimatedPropertyID property, int index, int subIndex)
 {
-    return animationName + '_' + String::number(property) + '_' + String::number(index);
+    return animationName + '_' + String::number(property) + '_' + String::number(index) + '_' + String::number(subIndex);
 }
 
 static bool animationHasStepsTimingFunction(const KeyframeValueList& valueList, const Animation* anim)
@@ -275,13 +276,13 @@ GraphicsLayerCA::GraphicsLayerCA(GraphicsLayerClient* client)
     : GraphicsLayer(client)
     , m_contentsLayerPurpose(NoContentsLayer)
     , m_allowTiledLayer(true)
-    , m_isPageTileCacheLayer(false)
+    , m_isPageTiledBackingLayer(false)
     , m_uncommittedChanges(0)
 {
     PlatformCALayer::LayerType layerType = PlatformCALayer::LayerTypeWebLayer;
-    if (client && client->shouldUseTileCache(this)) {
-        layerType = PlatformCALayer::LayerTypePageTileCacheLayer;
-        m_isPageTileCacheLayer = true;
+    if (client && client->shouldUseTiledBacking(this)) {
+        layerType = PlatformCALayer::LayerTypePageTiledBackingLayer;
+        m_isPageTiledBackingLayer = true;
     }
 
     m_layer = PlatformCALayer::create(layerType, this);
@@ -497,7 +498,7 @@ void GraphicsLayerCA::moveOrCopyAnimations(MoveOrCopy operation, PlatformCALayer
                     || currAnimation.m_property == AnimatedPropertyWebkitFilter
 #endif
                 )
-                moveOrCopyLayerAnimation(operation, animationIdentifier(currAnimation.m_name, currAnimation.m_property, currAnimation.m_index), fromLayer, toLayer);
+                moveOrCopyLayerAnimation(operation, animationIdentifier(currAnimation.m_name, currAnimation.m_property, currAnimation.m_index, currAnimation.m_subIndex), fromLayer, toLayer);
         }
     }
 }
@@ -896,9 +897,14 @@ void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect)
 void GraphicsLayerCA::flushCompositingStateForThisLayerOnly()
 {
     float pageScaleFactor;
+    bool hadChanges = m_uncommittedChanges;
+
     FloatPoint offset = computePositionRelativeToBase(pageScaleFactor);
     commitLayerChangesBeforeSublayers(pageScaleFactor, offset, m_visibleRect);
     commitLayerChangesAfterSublayers();
+
+    if (hadChanges && client())
+        client()->didCommitChangesForLayer(this);
 }
 
 TiledBacking* GraphicsLayerCA::tiledBacking() const
@@ -912,7 +918,11 @@ FloatRect GraphicsLayerCA::computeVisibleRect(TransformState& state) const
     TransformState::TransformAccumulation accumulation = preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform;
 
     TransformationMatrix layerTransform;
-    layerTransform.translate(m_position.x(), m_position.y());
+    FloatPoint position = m_position;
+    if (m_client)
+        m_client->customPositionForVisibleRectComputation(this, position);
+
+    layerTransform.translate(position.x(), position.y());
 
     TransformationMatrix currentTransform;
     if (client() && client()->getCurrentTransform(this, currentTransform) && !currentTransform.isIdentity()) {
@@ -1026,7 +1036,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
 
     commitLayerChangesAfterSublayers();
 
-    if (affectedByTransformAnimation && client() && m_layer->layerType() == PlatformCALayer::LayerTypeTileCacheLayer)
+    if (affectedByTransformAnimation && client() && m_layer->layerType() == PlatformCALayer::LayerTypeTiledBackingLayer)
         client()->notifyFlushBeforeDisplayRefresh(this);
 
     if (hadChanges && client())
@@ -1035,9 +1045,9 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
 
 bool GraphicsLayerCA::platformCALayerShowRepaintCounter(PlatformCALayer* platformLayer) const
 {
-    // The repaint counters are painted into the TileCache tiles (which have no corresponding platform layer),
-    // so we don't want to overpaint the repaint counter when called with the TileCache's own layer.
-    if (m_isPageTileCacheLayer && platformLayer)
+    // The repaint counters are painted into the TileController tiles (which have no corresponding platform layer),
+    // so we don't want to overpaint the repaint counter when called with the TileController's own layer.
+    if (m_isPageTiledBackingLayer && platformLayer)
         return false;
     
     return isShowingRepaintCounter();
@@ -1050,7 +1060,7 @@ void GraphicsLayerCA::platformCALayerPaintContents(GraphicsContext& context, con
 
 void GraphicsLayerCA::platformCALayerDidCreateTiles(const Vector<FloatRect>& dirtyRects)
 {
-    ASSERT(m_layer->usesTileCacheLayer());
+    ASSERT(m_layer->usesTiledBackingLayer());
 
     for (size_t i = 0; i < dirtyRects.size(); ++i)
         setNeedsDisplayInRect(dirtyRects[i]);
@@ -1605,14 +1615,14 @@ FloatRect GraphicsLayerCA::adjustTiledLayerVisibleRect(TiledBacking* tiledBackin
 
 void GraphicsLayerCA::updateVisibleRect(const FloatRect& oldVisibleRect)
 {
-    if (!m_layer->usesTileCacheLayer())
+    if (!m_layer->usesTiledBackingLayer())
         return;
 
     FloatRect tileArea = m_visibleRect;
-    if (m_layer->layerType() == PlatformCALayer::LayerTypeTileCacheLayer)
+    if (m_layer->layerType() == PlatformCALayer::LayerTypeTiledBackingLayer)
         tileArea = adjustTiledLayerVisibleRect(tiledBacking(), oldVisibleRect, m_sizeAtLastVisibleRectUpdate);
 
-    tiledBacking()->setVisibleRect(enclosingIntRect(tileArea));
+    tiledBacking()->setVisibleRect(tileArea);
 
     m_sizeAtLastVisibleRectUpdate = m_size;
 }
@@ -1796,10 +1806,10 @@ void GraphicsLayerCA::updateAnimations()
                 const LayerPropertyAnimation& currAnimation = animations[i];
                 switch (processingInfo.action) {
                 case Remove:
-                    removeCAAnimationFromLayer(currAnimation.m_property, currAnimationName, currAnimation.m_index);
+                    removeCAAnimationFromLayer(currAnimation.m_property, currAnimationName, currAnimation.m_index, currAnimation.m_subIndex);
                     break;
                 case Pause:
-                    pauseCAAnimationOnLayer(currAnimation.m_property, currAnimationName, currAnimation.m_index, processingInfo.timeOffset);
+                    pauseCAAnimationOnLayer(currAnimation.m_property, currAnimationName, currAnimation.m_index, currAnimation.m_subIndex, processingInfo.timeOffset);
                     break;
                 }
             }
@@ -1815,7 +1825,7 @@ void GraphicsLayerCA::updateAnimations()
     if ((numAnimations = m_uncomittedAnimations.size())) {
         for (size_t i = 0; i < numAnimations; ++i) {
             const LayerPropertyAnimation& pendingAnimation = m_uncomittedAnimations[i];
-            setAnimationOnLayer(pendingAnimation.m_animation.get(), pendingAnimation.m_property, pendingAnimation.m_name, pendingAnimation.m_index, pendingAnimation.m_timeOffset);
+            setAnimationOnLayer(pendingAnimation.m_animation.get(), pendingAnimation.m_property, pendingAnimation.m_name, pendingAnimation.m_index, pendingAnimation.m_subIndex, pendingAnimation.m_timeOffset);
             
             AnimationsMap::iterator it = m_runningAnimations.find(pendingAnimation.m_name);
             if (it == m_runningAnimations.end()) {
@@ -1847,14 +1857,14 @@ bool GraphicsLayerCA::isRunningTransformAnimation() const
     return false;
 }
 
-void GraphicsLayerCA::setAnimationOnLayer(PlatformCAAnimation* caAnim, AnimatedPropertyID property, const String& animationName, int index, double timeOffset)
+void GraphicsLayerCA::setAnimationOnLayer(PlatformCAAnimation* caAnim, AnimatedPropertyID property, const String& animationName, int index, int subIndex, double timeOffset)
 {
     PlatformCALayer* layer = animatedLayer(property);
     
     if (timeOffset)
         caAnim->setBeginTime(CACurrentMediaTime() - timeOffset);
 
-    String animationID = animationIdentifier(animationName, property, index);
+    String animationID = animationIdentifier(animationName, property, index, subIndex);
 
     layer->removeAnimationForKey(animationID);
     layer->addAnimationForKey(animationID, caAnim);
@@ -1886,11 +1896,11 @@ static void bug7311367Workaround(PlatformCALayer* transformLayer, const Transfor
     transformLayer->setTransform(caTransform);
 }
 
-bool GraphicsLayerCA::removeCAAnimationFromLayer(AnimatedPropertyID property, const String& animationName, int index)
+bool GraphicsLayerCA::removeCAAnimationFromLayer(AnimatedPropertyID property, const String& animationName, int index, int subIndex)
 {
     PlatformCALayer* layer = animatedLayer(property);
 
-    String animationID = animationIdentifier(animationName, property, index);
+    String animationID = animationIdentifier(animationName, property, index, subIndex);
 
     if (!layer->animationForKey(animationID))
         return false;
@@ -1911,11 +1921,11 @@ bool GraphicsLayerCA::removeCAAnimationFromLayer(AnimatedPropertyID property, co
     return true;
 }
 
-void GraphicsLayerCA::pauseCAAnimationOnLayer(AnimatedPropertyID property, const String& animationName, int index, double timeOffset)
+void GraphicsLayerCA::pauseCAAnimationOnLayer(AnimatedPropertyID property, const String& animationName, int index, int subIndex, double timeOffset)
 {
     PlatformCALayer* layer = animatedLayer(property);
 
-    String animationID = animationIdentifier(animationName, property, index);
+    String animationID = animationIdentifier(animationName, property, index, subIndex);
 
     RefPtr<PlatformCAAnimation> curAnim = layer->animationForKey(animationID);
     if (!curAnim)
@@ -1981,7 +1991,7 @@ bool GraphicsLayerCA::createAnimationFromKeyframes(const KeyframeValueList& valu
     if (!valuesOK)
         return false;
 
-    m_uncomittedAnimations.append(LayerPropertyAnimation(caAnimation, animationName, valueList.property(), animationIndex, timeOffset));
+    m_uncomittedAnimations.append(LayerPropertyAnimation(caAnimation, animationName, valueList.property(), animationIndex, 0, timeOffset));
 
     return true;
 }
@@ -2005,7 +2015,7 @@ bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& val
     if (!validMatrices)
         return false;
 
-    m_uncomittedAnimations.append(LayerPropertyAnimation(caAnimation, animationName, valueList.property(), animationIndex, timeOffset));
+    m_uncomittedAnimations.append(LayerPropertyAnimation(caAnimation, animationName, valueList.property(), animationIndex, 0, timeOffset));
     return true;
 }
 
@@ -2067,7 +2077,7 @@ bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& val
     bool isKeyframe = valueList.size() > 2;
     
     FilterOperation::OperationType filterOp = operation->getOperationType();
-    int numAnimatedProperties = PlatformCAAnimation::numAnimatedFilterProperties(filterOp);
+    int numAnimatedProperties = PlatformCAFilters::numAnimatedFilterProperties(filterOp);
     
     // Each filter might need to animate multiple properties, each with their own keyPath. The keyPath is always of the form:
     //
@@ -2079,7 +2089,7 @@ bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& val
     for (int internalFilterPropertyIndex = 0; internalFilterPropertyIndex < numAnimatedProperties; ++internalFilterPropertyIndex) {
         bool valuesOK;
         RefPtr<PlatformCAAnimation> caAnimation;
-        String keyPath = String::format("filters.filter_%d.%s", animationIndex, PlatformCAAnimation::animatedFilterPropertyName(filterOp, internalFilterPropertyIndex));
+        String keyPath = String::format("filters.filter_%d.%s", animationIndex, PlatformCAFilters::animatedFilterPropertyName(filterOp, internalFilterPropertyIndex));
         
         if (isKeyframe) {
             caAnimation = createKeyframeAnimation(animation, keyPath, false);
@@ -2091,7 +2101,7 @@ bool GraphicsLayerCA::appendToUncommittedAnimations(const KeyframeValueList& val
         
         ASSERT(valuesOK);
 
-        m_uncomittedAnimations.append(LayerPropertyAnimation(caAnimation, animationName, valueList.property(), animationIndex, timeOffset));
+        m_uncomittedAnimations.append(LayerPropertyAnimation(caAnimation, animationName, valueList.property(), animationIndex, internalFilterPropertyIndex, timeOffset));
     }
 
     return true;
@@ -2551,7 +2561,7 @@ void GraphicsLayerCA::setDebugBackgroundColor(const Color& color)
 
 void GraphicsLayerCA::getDebugBorderInfo(Color& color, float& width) const
 {
-    if (m_isPageTileCacheLayer) {
+    if (m_isPageTiledBackingLayer) {
         color = Color(0, 0, 128, 128); // tile cache layer: dark blue
         width = 0.5;
         return;
@@ -2624,7 +2634,7 @@ FloatSize GraphicsLayerCA::constrainedSize() const
 
 bool GraphicsLayerCA::requiresTiledLayer(float pageScaleFactor) const
 {
-    if (!m_drawsContent || !m_allowTiledLayer || m_isPageTileCacheLayer)
+    if (!m_drawsContent || !m_allowTiledLayer || m_isPageTiledBackingLayer)
         return false;
 
     // FIXME: catch zero-size height or width here (or earlier)?
@@ -2633,11 +2643,11 @@ bool GraphicsLayerCA::requiresTiledLayer(float pageScaleFactor) const
 
 void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
 {
-    ASSERT(m_layer->layerType() != PlatformCALayer::LayerTypePageTileCacheLayer);
+    ASSERT(m_layer->layerType() != PlatformCALayer::LayerTypePageTiledBackingLayer);
     ASSERT(useTiledLayer != m_usingTiledLayer);
     RefPtr<PlatformCALayer> oldLayer = m_layer;
     
-    m_layer = PlatformCALayer::create(useTiledLayer ? PlatformCALayer::LayerTypeTileCacheLayer : PlatformCALayer::LayerTypeWebLayer, this);
+    m_layer = PlatformCALayer::create(useTiledLayer ? PlatformCALayer::LayerTypeTiledBackingLayer : PlatformCALayer::LayerTypeWebLayer, this);
     m_usingTiledLayer = useTiledLayer;
     
     m_layer->adoptSublayers(oldLayer.get());
@@ -2647,9 +2657,9 @@ void GraphicsLayerCA::swapFromOrToTiledLayer(bool useTiledLayer)
         m_layer->appendSublayer(m_visibleTileWashLayer.get());
 #endif
 
-    // FIXME: Skip this step if we don't have a superlayer. This is problably a benign
-    // case that happens while restructuring the layer tree.
-    ASSERT(oldLayer->superlayer());
+    // Skip this step if we don't have a superlayer. This is probably a benign
+    // case that happens while restructuring the layer tree, and also occurs with
+    // WebKit2 page overlays, which can become tiled but are out-of-tree.
     if (oldLayer->superlayer())
         oldLayer->superlayer()->replaceSublayer(oldLayer.get(), m_layer.get());
 

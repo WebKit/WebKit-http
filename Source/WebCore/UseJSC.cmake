@@ -121,7 +121,6 @@ list(APPEND WebCore_SOURCES
     bindings/js/JSNodeFilterCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
     bindings/js/JSNodeListCustom.cpp
-    bindings/js/JSNotificationCustom.cpp
     bindings/js/JSPluginElementFunctions.cpp
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSProcessingInstructionCustom.cpp
@@ -234,13 +233,6 @@ if (ENABLE_SHARED_WORKERS)
     )
 endif ()
 
-if (ENABLE_NOTIFICATIONS)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSDesktopNotificationsCustom.cpp
-        bindings/js/JSNotificationCustom.cpp
-    )
-endif ()
-
 if (ENABLE_FILE_SYSTEM)
     list(APPEND WebCore_SOURCES
         bindings/js/JSEntryCustom.cpp
@@ -270,12 +262,6 @@ if (ENABLE_WEB_AUDIO)
         bindings/js/JSOscillatorNodeCustom.cpp
         bindings/js/JSPannerNodeCustom.cpp
         bindings/js/JSScriptProcessorNodeCustom.cpp
-    )
-endif ()
-
-if (ENABLE_WEB_INTENTS)
-    list(APPEND WebCore_SOURCES
-        bindings/js/JSIntentConstructor.cpp
     )
 endif ()
 

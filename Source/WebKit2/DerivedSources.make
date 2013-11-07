@@ -32,6 +32,7 @@ VPATH = \
     $(WebKit2)/Shared/Authentication \
     $(WebKit2)/Shared/Network/CustomProtocols \
     $(WebKit2)/SharedWorkerProcess \
+    $(WebKit2)/OfflineStorageProcess \
     $(WebKit2)/WebProcess/ApplicationCache \
     $(WebKit2)/WebProcess/Cookies \
     $(WebKit2)/WebProcess/FullScreen \
@@ -69,9 +70,11 @@ MESSAGE_RECEIVERS = \
     NetworkProcessConnection \
     NetworkProcessProxy \
     NPObjectMessageReceiver \
+    OfflineStorageProcess \
     PluginControllerProxy \
     PluginProcess \
     PluginProcessConnection \
+    PluginProcessConnectionManager \
     PluginProcessProxy \
     PluginProxy \
     SharedWorkerProcess \
@@ -86,6 +89,7 @@ MESSAGE_RECEIVERS = \
     RemoteLayerTreeHost \
     SecItemShim \
     SecItemShimProxy \
+    StorageAreaProxy \
     WebContext \
     WebDatabaseManager \
     WebDatabaseManagerProxy \
@@ -144,7 +148,15 @@ ifeq ($(OS),MACOS)
 
 FRAMEWORK_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(FRAMEWORK_SEARCH_PATHS) | perl -e 'print "-F " . join(" -F ", split(" ", <>));')
 HEADER_FLAGS = $(shell echo $(BUILT_PRODUCTS_DIR) $(HEADER_SEARCH_PATHS) | perl -e 'print "-I" . join(" -I", split(" ", <>));')
+
+# Some versions of clang incorrectly strip out // comments in c89 code.
+# Use -traditional as a workaround, but only when needed since that causes
+# other problems with later versions of clang.
+ifeq ($(shell echo '//x' | $(CC) -E -P -x c -std=c89 - | grep x),)
 TEXT_PREPROCESSOR_FLAGS=-E -P -x c -traditional -w
+else
+TEXT_PREPROCESSOR_FLAGS=-E -P -x c -std=c89 -w
+endif
 
 ifneq ($(SDKROOT),)
 	SDK_FLAGS=-isysroot $(SDKROOT)

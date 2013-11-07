@@ -45,27 +45,25 @@ SVGSVGElement* SVGDocument::rootElement() const
 {
     Element* elem = documentElement();
     if (elem && elem->hasTagName(SVGNames::svgTag))
-        return static_cast<SVGSVGElement*>(elem);
+        return toSVGSVGElement(elem);
 
     return 0;
 }
 
 void SVGDocument::dispatchZoomEvent(float prevScale, float newScale)
 {
-    ExceptionCode ec = 0;
-    RefPtr<SVGZoomEvent> event = static_pointer_cast<SVGZoomEvent>(createEvent("SVGZoomEvents", ec));
+    RefPtr<SVGZoomEvent> event = static_pointer_cast<SVGZoomEvent>(createEvent("SVGZoomEvents", IGNORE_EXCEPTION));
     event->initEvent(eventNames().zoomEvent, true, false);
     event->setPreviousScale(prevScale);
     event->setNewScale(newScale);
-    rootElement()->dispatchEvent(event.release(), ec);
+    rootElement()->dispatchEvent(event.release(), IGNORE_EXCEPTION);
 }
 
 void SVGDocument::dispatchScrollEvent()
 {
-    ExceptionCode ec = 0;
-    RefPtr<Event> event = createEvent("SVGEvents", ec);
+    RefPtr<Event> event = createEvent("SVGEvents", IGNORE_EXCEPTION);
     event->initEvent(eventNames().scrollEvent, true, false);
-    rootElement()->dispatchEvent(event.release(), ec);
+    rootElement()->dispatchEvent(event.release(), IGNORE_EXCEPTION);
 }
 
 bool SVGDocument::zoomAndPanEnabled() const
@@ -99,7 +97,7 @@ void SVGDocument::updatePan(const FloatPoint& pos) const
 bool SVGDocument::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
 {
     if (childContext.node()->hasTagName(SVGNames::svgTag))
-        return static_cast<SVGSVGElement*>(childContext.node())->isValid();
+        return toSVGSVGElement(childContext.node())->isValid();
     return true;
 }
 

@@ -31,7 +31,6 @@
 #include "DOMStringList.h"
 #include "IDBAny.h"
 #include "IDBBindingUtilities.h"
-#include "IDBCursorBackendInterface.h"
 #include "IDBCursorWithValue.h"
 #include "IDBDatabase.h"
 #include "IDBDatabaseException.h"
@@ -43,11 +42,12 @@
 #include "IDBTransaction.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
+#include "SharedBuffer.h"
 #include <wtf/UnusedParam.h>
 
 namespace WebCore {
 
-static const unsigned short defaultDirection = IDBCursor::NEXT;
+static const unsigned short defaultDirection = IndexedDB::CursorNext;
 
 IDBObjectStore::IDBObjectStore(const IDBObjectStoreMetadata& metadata, IDBTransaction* transaction)
     : m_metadata(metadata)
@@ -230,7 +230,11 @@ PassRefPtr<IDBRequest> IDBObjectStore::put(IDBDatabaseBackendInterface::PutMode 
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, source, m_transaction.get());
     Vector<uint8_t> valueBytes = serializedValue->toWireBytes();
-    backendDB()->put(m_transaction->id(), id(), &valueBytes, key.release(), static_cast<IDBDatabaseBackendInterface::PutMode>(putMode), request, indexIds, indexKeys);
+    // This is a hack to account for disagreements about whether SerializedScriptValue should deal in Vector<uint8_t> or Vector<char>.
+    // See https://lists.webkit.org/pipermail/webkit-dev/2013-February/023682.html
+    Vector<char>* valueBytesSigned = reinterpret_cast<Vector<char>*>(&valueBytes);
+    RefPtr<SharedBuffer> valueBuffer = SharedBuffer::adoptVector(*valueBytesSigned);
+    backendDB()->put(m_transaction->id(), id(), valueBuffer, key.release(), static_cast<IDBDatabaseBackendInterface::PutMode>(putMode), request, indexIds, indexKeys);
     return request.release();
 }
 
@@ -322,9 +326,7 @@ private:
         EventTarget* target = event->target();
         IDBRequest* request = static_cast<IDBRequest*>(target);
 
-        ExceptionCode ec = 0;
-        RefPtr<IDBAny> cursorAny = request->result(ec);
-        ASSERT(!ec);
+        RefPtr<IDBAny> cursorAny = request->result(ASSERT_NO_EXCEPTION);
         RefPtr<IDBCursorWithValue> cursor;
         if (cursorAny->type() == IDBAny::IDBCursorWithValueType)
             cursor = cursorAny->idbCursorWithValue();
@@ -332,8 +334,7 @@ private:
         Vector<int64_t, 1> indexIds;
         indexIds.append(m_indexMetadata.id);
         if (cursor) {
-            cursor->continueFunction(static_cast<IDBKey*>(0), ec);
-            ASSERT(!ec);
+            cursor->continueFunction(static_cast<IDBKey*>(0), ASSERT_NO_EXCEPTION);
 
             RefPtr<IDBKey> primaryKey = cursor->idbPrimaryKey();
             ScriptValue value = cursor->value();
@@ -467,6 +468,7 @@ PassRefPtr<IDBIndex> IDBObjectStore::index(const String& name, ExceptionCode& ec
 
 void IDBObjectStore::deleteIndex(const String& name, ExceptionCode& ec)
 {
+    IDB_TRACE("IDBObjectStore::deleteIndex");
     if (!m_transaction->isVersionChange() || m_deleted) {
         ec = IDBDatabaseException::InvalidStateError;
         return;
@@ -483,9 +485,9 @@ void IDBObjectStore::deleteIndex(const String& name, ExceptionCode& ec)
 
     backendDB()->deleteIndex(m_transaction->id(), id(), indexId);
 
+    m_metadata.indexes.remove(indexId);
     IDBIndexMap::iterator it = m_indexMap.find(name);
     if (it != m_indexMap.end()) {
-        m_metadata.indexes.remove(it->value->id());
         it->value->markDeleted();
         m_indexMap.remove(name);
     }
@@ -502,12 +504,12 @@ PassRefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext* contex
         ec = IDBDatabaseException::TransactionInactiveError;
         return 0;
     }
-    IDBCursor::Direction direction = IDBCursor::stringToDirection(directionString, context, ec);
+    IndexedDB::CursorDirection direction = IDBCursor::stringToDirection(directionString, context, ec);
     if (ec)
         return 0;
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    request->setCursorDetails(IDBCursorBackendInterface::KeyAndValue, direction);
+    request->setCursorDetails(IndexedDB::CursorKeyAndValue, direction);
 
     backendDB()->openCursor(m_transaction->id(), id(), IDBIndexMetadata::InvalidId, range, direction, false, static_cast<IDBDatabaseBackendInterface::TaskType>(taskType), request);
     return request.release();

@@ -29,7 +29,6 @@
 #include "ChromeClientBlackBerry.h"
 #include "ClientExtension.h"
 #include "CookieManager.h"
-#include "CredentialBackingStore.h"
 #include "CredentialManager.h"
 #include "CredentialTransformData.h"
 #include "DumpRenderTreeClient.h"
@@ -58,7 +57,6 @@
 #include "PluginDatabase.h"
 #include "PluginView.h"
 #include "ProgressTracker.h"
-#include "ProtectionSpace.h"
 #include "ScopePointer.h"
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
 #include "Settings.h"
@@ -663,7 +661,8 @@ void FrameLoaderClientBlackBerry::dispatchDidFinishLoad()
     }
 
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-    if (m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled()
+    if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled()
+        && m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled()
         && !m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled())
         credentialManager().autofillPasswordForms(m_frame->document()->forms());
 #endif
@@ -772,17 +771,25 @@ void FrameLoaderClientBlackBerry::dispatchWillSubmitForm(FramePolicyFunction fun
 {
     // FIXME: Stub.
     (m_frame->loader()->policyChecker()->*function)(PolicyUse);
+#if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
+    if (m_formCredentials.isValid())
+        credentialManager().saveCredentialIfConfirmed(m_webPagePrivate, m_formCredentials);
+#endif
 }
 
 void FrameLoaderClientBlackBerry::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prpFormState)
 {
+#if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
+    m_formCredentials = CredentialTransformData();
+#endif
     if (!m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled()) {
-        if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled())
+        if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled()) {
             m_webPagePrivate->m_autofillManager->saveTextFields(prpFormState->form());
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-        if (m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled())
-            credentialManager().saveCredentialIfConfirmed(m_webPagePrivate, CredentialTransformData(prpFormState->form(), true));
+            if (m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled())
+                m_formCredentials = CredentialTransformData(prpFormState->form(), true);
 #endif
+        }
     }
 }
 
@@ -1111,7 +1118,6 @@ void FrameLoaderClientBlackBerry::restoreViewState()
     // that, and the worst thing that could happen is that
     // HistoryController::restoreScrollPositionAndViewState calls
     // setScrollPosition with the the same point, which is a NOOP.
-    IntSize contentsSize = currentItem->contentsSize();
     IntPoint scrollPosition = currentItem->scrollPoint();
     if (m_webPagePrivate->m_userPerformedManualScroll)
         scrollPosition = m_webPagePrivate->scrollPosition();
@@ -1155,7 +1161,7 @@ void FrameLoaderClientBlackBerry::restoreViewState()
 
     // It is not safe to render the page at this point. So we post a message instead. Messages have higher priority than timers.
     BlackBerry::Platform::webKitThreadMessageClient()->dispatchMessage(BlackBerry::Platform::createMethodCallMessage(
-        &WebPagePrivate::restoreHistoryViewState, m_webPagePrivate, contentsSize, scrollPosition, scale, viewState.shouldReflowBlock));
+        &WebPagePrivate::restoreHistoryViewState, m_webPagePrivate, scrollPosition, scale, viewState.shouldReflowBlock));
 }
 
 PolicyAction FrameLoaderClientBlackBerry::decidePolicyForExternalLoad(const ResourceRequest& request, bool isFragmentScroll)
@@ -1224,7 +1230,7 @@ void FrameLoaderClientBlackBerry::startDownload(const ResourceRequest& request, 
     m_webPagePrivate->load(request.url().string(), BlackBerry::Platform::String::emptyString(), "GET", NetworkRequest::UseProtocolCachePolicy, 0, 0, 0, 0, false, false, true, "", suggestedName);
 }
 
-void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(MainResourceLoader* mainResourceLoader, const ResourceRequest&, const ResourceRequest&, const ResourceResponse& r)
+void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(MainResourceLoader* mainResourceLoader, const ResourceRequest&, const ResourceResponse& r)
 {
     BlackBerry::Platform::FilterStream* stream = NetworkManager::instance()->streamForHandle(mainResourceLoader->loader()->handle());
     ASSERT(stream);

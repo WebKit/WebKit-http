@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+class BlobRegistry;
 class NetworkingContext;
 class ResourceError;
 class ResourceLoadScheduler;
@@ -44,6 +45,10 @@ public:
     virtual ResourceLoadScheduler* resourceLoadScheduler();
 
     virtual void loadResourceSynchronously(NetworkingContext*, unsigned long identifier, const ResourceRequest&, StoredCredentials, ResourceError&, ResourceResponse&, Vector<char>& data);
+
+#if ENABLE(BLOB)
+    virtual BlobRegistry* createBlobRegistry();
+#endif
 
 protected:
     virtual ~LoaderStrategy()

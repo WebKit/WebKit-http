@@ -24,6 +24,7 @@
 #include "Document.h"
 #include "DocumentWriter.h"
 #include "HTMLInputElement.h"
+#include "NotImplemented.h"
 #include "Page.h"
 #include "PagePopup.h"
 #include "PopupPicker.h"
@@ -83,9 +84,9 @@ String ColorPickerClient::htmlSource() const
     return m_source;
 }
 
-Localizer& ColorPickerClient::localizer()
+Locale& ColorPickerClient::locale()
 {
-    return m_element->document()->getCachedLocalizer();
+    return m_element->document()->getCachedLocale();
 }
 
 void ColorPickerClient::setValueAndClosePopup(int, const String& value)
@@ -96,6 +97,11 @@ void ColorPickerClient::setValueAndClosePopup(int, const String& value)
     if (value != cancelValue)
         m_element->setValue(value);
     closePopup();
+}
+
+void ColorPickerClient::setValue(const String&)
+{
+    notImplemented();
 }
 
 void ColorPickerClient::didClosePopup()

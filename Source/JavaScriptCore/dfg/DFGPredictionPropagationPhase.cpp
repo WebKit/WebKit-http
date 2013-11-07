@@ -43,6 +43,9 @@ public:
     
     bool run()
     {
+        ASSERT(m_graph.m_form == ThreadedCPS);
+        ASSERT(m_graph.m_unificationState == GloballyUnified);
+        
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         m_count = 0;
 #endif
@@ -178,9 +181,6 @@ private:
 
     void propagate(Node* node)
     {
-        if (!node->shouldGenerate())
-            return;
-        
         NodeType op = node->op();
         NodeFlags flags = node->flags() & NodeBackPropMask;
 
@@ -203,7 +203,13 @@ private:
             if (prediction)
                 changed |= mergePrediction(prediction);
             
-            changed |= variableAccessData->mergeFlags(flags & ~NodeUsedAsIntLocally);
+            // Assume conservatively that a SetLocal implies that the value may flow through a loop,
+            // and so we would have overflow leading to the program "observing" numbers even if all
+            // users of the value are doing toInt32. It might be worthwhile to revisit this at some
+            // point and actually check if the data flow involves loops, but right now I don't think
+            // we have evidence that this would be beneficial for benchmarks.
+            
+            changed |= variableAccessData->mergeFlags((flags & ~NodeUsedAsIntLocally) | NodeUsedAsNumber);
             break;
         }
             
@@ -211,12 +217,7 @@ private:
             VariableAccessData* variableAccessData = node->variableAccessData();
             changed |= variableAccessData->predict(node->child1()->prediction());
 
-            // Assume conservatively that a SetLocal implies that the value may flow through a loop,
-            // and so we would have overflow leading to the program "observing" numbers even if all
-            // users of the value are doing toInt32. It might be worthwhile to revisit this at some
-            // point and actually check if the data flow involves loops, but right now I don't think
-            // we have evidence that this would be beneficial for benchmarks.
-            changed |= node->child1()->mergeFlags(variableAccessData->flags() | NodeUsedAsNumber);
+            changed |= node->child1()->mergeFlags(variableAccessData->flags());
             break;
         }
             
@@ -505,7 +506,9 @@ private:
         case CompareGreater:
         case CompareGreaterEq:
         case CompareEq:
+        case CompareEqConstant:
         case CompareStrictEq:
+        case CompareStrictEqConstant:
         case InstanceOf:
         case IsUndefined:
         case IsBoolean:
@@ -587,8 +590,8 @@ private:
         case ConvertThis: {
             SpeculatedType prediction = node->child1()->prediction();
             if (prediction) {
-                if (prediction & ~SpecObjectMask) {
-                    prediction &= SpecObjectMask;
+                if (prediction & ~SpecObject) {
+                    prediction &= SpecObject;
                     prediction = mergeSpeculations(prediction, SpecObjectOther);
                 }
                 changed |= mergePrediction(prediction);
@@ -683,16 +686,16 @@ private:
             if (child) {
                 if (isObjectSpeculation(child)) {
                     // I'd love to fold this case into the case below, but I can't, because
-                    // removing SpecObjectMask from something that only has an object
+                    // removing SpecObject from something that only has an object
                     // prediction and nothing else means we have an ill-formed SpeculatedType
                     // (strong predict-none). This should be killed once we remove all traces
                     // of static (aka weak) predictions.
                     changed |= mergePrediction(SpecString);
-                } else if (child & SpecObjectMask) {
+                } else if (child & SpecObject) {
                     // Objects get turned into strings. So if the input has hints of objectness,
                     // the output will have hinsts of stringiness.
                     changed |= mergePrediction(
-                        mergeSpeculations(child & ~SpecObjectMask, SpecString));
+                        mergeSpeculations(child & ~SpecObject, SpecString));
                 } else
                     changed |= mergePrediction(child);
             }
@@ -706,8 +709,6 @@ private:
         }
             
         case CreateArguments: {
-            // At this stage we don't try to predict whether the arguments are ours or
-            // someone else's. We could, but we don't, yet.
             changed |= setPrediction(SpecArguments);
             break;
         }
@@ -722,6 +723,7 @@ private:
         case PutByValAlias:
         case GetArrayLength:
         case Int32ToDouble:
+        case ForwardInt32ToDouble:
         case DoubleAsInt32:
         case GetLocalUnlinked:
         case GetMyArgumentsLength:
@@ -731,7 +733,10 @@ private:
         case CheckArray:
         case Arrayify:
         case ArrayifyToStructure:
-        case Identity: {
+        case Identity:
+        case MovHint:
+        case MovHintAndCheck:
+        case ZombieHint: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             CRASH();
@@ -799,7 +804,6 @@ private:
         case PutStructure:
         case TearOffActivation:
         case TearOffArguments:
-        case CheckNumber:
         case CheckArgumentsNotCreated:
         case GlobalVarWatchpoint:
         case GarbageValue:
@@ -812,6 +816,7 @@ private:
         case InlineStart:
         case Nop:
         case CountExecution:
+        case PhantomLocal:
             break;
             
         case LastNodeType:
@@ -1016,19 +1021,13 @@ private:
             VariableAccessData* variableAccessData = &m_graph.m_variableAccessData[i];
             if (!variableAccessData->isRoot())
                 continue;
-            if (operandIsArgument(variableAccessData->local())
-                || variableAccessData->isCaptured())
-                continue;
             m_changed |= variableAccessData->tallyVotesForShouldUseDoubleFormat();
         }
         for (unsigned i = 0; i < m_graph.m_argumentPositions.size(); ++i)
-            m_changed |= m_graph.m_argumentPositions[i].mergeArgumentAwareness();
+            m_changed |= m_graph.m_argumentPositions[i].mergeArgumentPredictionAwareness();
         for (unsigned i = 0; i < m_graph.m_variableAccessData.size(); ++i) {
             VariableAccessData* variableAccessData = &m_graph.m_variableAccessData[i];
             if (!variableAccessData->isRoot())
-                continue;
-            if (operandIsArgument(variableAccessData->local())
-                || variableAccessData->isCaptured())
                 continue;
             m_changed |= variableAccessData->makePredictionForDoubleFormat();
         }

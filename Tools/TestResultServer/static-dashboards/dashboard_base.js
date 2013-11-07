@@ -32,7 +32,6 @@
 //
 // The calling page is expected to implement the following "abstract"
 // functions/objects:
-var g_pageLoadStartTime = Date.now();
 var g_resourceLoader;
 
 // Generates the contents of the dashboard. The page should override this with
@@ -155,6 +154,7 @@ var TEST_TYPES = [
     'androidwebview_instrumentation_tests',
     'chromiumtestshell_instrumentation_tests',
     'contentshell_instrumentation_tests',
+    'cc_unittests'
 ];
 
 var RELOAD_REQUIRING_PARAMETERS = ['showAllRuns', 'group', 'testType'];
@@ -218,40 +218,6 @@ function $(id)
     return document.getElementById(id);
 }
 
-function stringContains(a, b)
-{
-    return a.indexOf(b) != -1;
-}
-
-function caseInsensitiveContains(a, b)
-{
-    return a.match(new RegExp(b, 'i'));
-}
-
-function startsWith(a, b)
-{
-    return a.indexOf(b) == 0;
-}
-
-function endsWith(a, b)
-{
-    return a.lastIndexOf(b) == a.length - b.length;
-}
-
-function isValidName(str)
-{
-    return str.match(/[A-Za-z0-9\-\_,]/);
-}
-
-function trimString(str)
-{
-    return str.replace(/^\s+|\s+$/g, '');
-}
-
-function collapseWhitespace(str)
-{
-    return str.replace(/\s+/g, ' ');
-}
 
 function validateParameter(state, key, value, validateFn)
 {
@@ -336,14 +302,9 @@ function parseParameters()
     }
 
     parseDashboardSpecificParameters();
-    parseParameter(queryHashAsMap(), 'builder');
-
     var dashboardSpecificDiffState = diffStates(oldDashboardSpecificState, g_currentState);
 
     fillMissingValues(g_currentState, g_defaultDashboardSpecificStateValues);
-
-    if (!g_crossDashboardState.useTestData)
-        fillMissingValues(g_currentState, {'builder': currentBuilderGroup().defaultBuilder()});
 
     // FIXME: dashboard_base shouldn't know anything about specific dashboard specific keys.
     if (dashboardSpecificDiffState.builder)
@@ -419,6 +380,8 @@ function currentBuilderGroupCategory()
     case 'chromiumtestshell_instrumentation_tests':
     case 'contentshell_instrumentation_tests':
         return CHROMIUM_INSTRUMENTATION_TESTS_BUILDER_GROUPS;
+    case 'cc_unittests':
+        return CC_UNITTEST_BUILDER_GROUPS;
     default:
         return CHROMIUM_GTESTS_BUILDER_GROUPS;
     }
@@ -469,51 +432,16 @@ function flattenTrie(trie, prefix)
 
 function isTreeMap()
 {
-    return endsWith(window.location.pathname, 'treemap.html');
+    return string.endsWith(window.location.pathname, 'treemap.html');
 }
 
 function isFlakinessDashboard()
 {
-    return endsWith(window.location.pathname, 'flakiness_dashboard.html');
+    return string.endsWith(window.location.pathname, 'flakiness_dashboard.html');
 }
 
-// String of error messages to display to the user.
-var g_errorMessages = '';
-
-// Record a new error message.
-// @param {string} errorMsg The message to show to the user.
-function addError(errorMsg)
+function resourceLoadingComplete()
 {
-    g_errorMessages += errorMsg + '<br>';
-}
-
-
-// If there are errors, show big and red UI for errors so as to be noticed.
-function showErrors()
-{
-    var errors = $('errors');
-
-    if (!g_errorMessages) {
-        if (errors)
-            errors.parentNode.removeChild(errors);
-        return;
-    }
-
-    if (!errors) {
-        errors = document.createElement('H2');
-        errors.style.color = 'red';
-        errors.id = 'errors';
-        document.body.appendChild(errors);
-    }
-
-    errors.innerHTML = g_errorMessages;
-}
-
-function resourceLoadingComplete(errorMsgs)
-{
-    if (errorMsgs)
-        addError(errorMsgs)
-
     handleLocationChange();
 }
 
@@ -540,7 +468,7 @@ function invalidateQueryParameters(queryParamsAsState) {
     for (var key in queryParamsAsState) {
         if (key in CROSS_DB_INVALIDATING_PARAMETERS)
             delete g_crossDashboardState[CROSS_DB_INVALIDATING_PARAMETERS[key]];
-        if (key in DB_SPECIFIC_INVALIDATING_PARAMETERS)
+        if (DB_SPECIFIC_INVALIDATING_PARAMETERS && key in DB_SPECIFIC_INVALIDATING_PARAMETERS)
             delete g_currentState[DB_SPECIFIC_INVALIDATING_PARAMETERS[key]];
     }
 }
@@ -585,43 +513,6 @@ function joinParameters(stateObject)
     return state.join('&');
 }
 
-function logTime(msg, startTime)
-{
-    console.log(msg + ': ' + (Date.now() - startTime));
-}
-
-function hidePopup()
-{
-    var popup = $('popup');
-    if (popup)
-        popup.parentNode.removeChild(popup);
-}
-
-function showPopup(target, html)
-{
-    var popup = $('popup');
-    if (!popup) {
-        popup = document.createElement('div');
-        popup.id = 'popup';
-        document.body.appendChild(popup);
-    }
-
-    // Set html first so that we can get accurate size metrics on the popup.
-    popup.innerHTML = html;
-
-    var targetRect = target.getBoundingClientRect();
-
-    var x = Math.min(targetRect.left - 10, document.documentElement.clientWidth - popup.offsetWidth);
-    x = Math.max(0, x);
-    popup.style.left = x + document.body.scrollLeft + 'px';
-
-    var y = targetRect.top + targetRect.height;
-    if (y + popup.offsetHeight > document.documentElement.clientHeight)
-        y = targetRect.top - popup.offsetHeight;
-    y = Math.max(0, y);
-    popup.style.top = y + document.body.scrollTop + 'px';
-}
-
 // Create a new function with some of its arguements
 // pre-filled.
 // Taken from goog.partial in the Closure library.
@@ -641,7 +532,7 @@ function partial(fn, var_args)
     };
 };
 
-// Returns the appropriate expectatiosn map for the current testType.
+// Returns the appropriate expectations map for the current testType.
 function expectationsMap()
 {
     return isLayoutTestResults() ? LAYOUT_TEST_EXPECTATIONS_MAP_ : GTEST_EXPECTATIONS_MAP_;
@@ -655,126 +546,6 @@ function toggleQueryParameter(param)
 function queryParameterValue(parameter)
 {
     return g_currentState[parameter] || g_crossDashboardState[parameter];
-}
-
-function checkboxHTML(queryParameter, label, isChecked, opt_extraJavaScript)
-{
-    var js = opt_extraJavaScript || '';
-    return '<label style="padding-left: 2em">' +
-        '<input type="checkbox" onchange="toggleQueryParameter(\'' + queryParameter + '\');' + js + '" ' +
-            (isChecked ? 'checked' : '') + '>' + label +
-        '</label> ';
-}
-
-function selectHTML(label, queryParameter, options)
-{
-    var html = '<label style="padding-left: 2em">' + label + ': ' +
-        '<select onchange="setQueryParameter(\'' + queryParameter + '\', this[this.selectedIndex].value)">';
-
-    for (var i = 0; i < options.length; i++) {
-        var value = options[i];
-        html += '<option value="' + value + '" ' +
-            (queryParameterValue(queryParameter) == value ? 'selected' : '') +
-            '>' + value + '</option>'
-    }
-    html += '</select></label> ';
-    return html;
-}
-
-// Returns the HTML for the select element to switch to different testTypes.
-function htmlForTestTypeSwitcher(opt_noBuilderMenu, opt_extraHtml, opt_includeNoneBuilder)
-{
-    var html = '<div style="border-bottom:1px dashed">';
-    html += '' +
-        htmlForDashboardLink('Stats', 'aggregate_results.html') +
-        htmlForDashboardLink('Timeline', 'timeline_explorer.html') +
-        htmlForDashboardLink('Results', 'flakiness_dashboard.html') +
-        htmlForDashboardLink('Treemap', 'treemap.html');
-
-    html += selectHTML('Test type', 'testType', TEST_TYPES);
-
-    if (!opt_noBuilderMenu) {
-        var buildersForMenu = Object.keys(currentBuilders());
-        if (opt_includeNoneBuilder)
-            buildersForMenu.unshift('--------------');
-        html += selectHTML('Builder', 'builder', buildersForMenu);
-    }
-
-    html += selectHTML('Group', 'group',
-        Object.keys(currentBuilderGroupCategory()));
-
-    if (!isTreeMap())
-        html += checkboxHTML('showAllRuns', 'Show all runs', g_crossDashboardState.showAllRuns);
-
-    if (opt_extraHtml)
-        html += opt_extraHtml;
-    return html + '</div>';
-}
-
-function loadDashboard(fileName)
-{
-    var pathName = window.location.pathname;
-    pathName = pathName.substring(0, pathName.lastIndexOf('/') + 1);
-    window.location = pathName + fileName + window.location.hash;
-}
-
-function htmlForTopLink(html, onClick, isSelected)
-{
-    var cssText = isSelected ? 'font-weight: bold;' : 'color:blue;text-decoration:underline;cursor:pointer;';
-    cssText += 'margin: 0 5px;';
-    return '<span style="' + cssText + '" onclick="' + onClick + '">' + html + '</span>';
-}
-
-function htmlForDashboardLink(html, fileName)
-{
-    var pathName = window.location.pathname;
-    var currentFileName = pathName.substring(pathName.lastIndexOf('/') + 1);
-    var isSelected = currentFileName == fileName;
-    var onClick = 'loadDashboard(\'' + fileName + '\')';
-    return htmlForTopLink(html, onClick, isSelected);
-}
-
-function revisionLink(results, index, key, singleUrlTemplate, rangeUrlTemplate)
-{
-    var currentRevision = parseInt(results[key][index], 10);
-    var previousRevision = parseInt(results[key][index + 1], 10);
-
-    function singleUrl()
-    {
-        return singleUrlTemplate.replace('<rev>', currentRevision);
-    }
-
-    function rangeUrl()
-    {
-        return rangeUrlTemplate.replace('<rev1>', currentRevision).replace('<rev2>', previousRevision + 1);
-    }
-
-    if (currentRevision == previousRevision)
-        return 'At <a href="' + singleUrl() + '">r' + currentRevision    + '</a>';
-    else if (currentRevision - previousRevision == 1)
-        return '<a href="' + singleUrl() + '">r' + currentRevision    + '</a>';
-    else
-        return '<a href="' + rangeUrl() + '">r' + (previousRevision + 1) + ' to r' + currentRevision + '</a>';
-}
-
-function chromiumRevisionLink(results, index)
-{
-    return revisionLink(
-        results,
-        index,
-        CHROME_REVISIONS_KEY,
-        'http://src.chromium.org/viewvc/chrome?view=rev&revision=<rev>',
-        'http://build.chromium.org/f/chromium/perf/dashboard/ui/changelog.html?url=/trunk/src&range=<rev2>:<rev1>&mode=html');
-}
-
-function webKitRevisionLink(results, index)
-{
-    return revisionLink(
-        results,
-        index,
-        WEBKIT_REVISIONS_KEY,
-        'http://trac.webkit.org/changeset/<rev>',
-        'http://trac.webkit.org/log/trunk/?rev=<rev1>&stop_rev=<rev2>&limit=100&verbose=on');
 }
 
 // "Decompresses" the RLE-encoding of test results so that we can query it
@@ -873,17 +644,7 @@ function decompressResults(builderResults)
     };
 }
 
-document.addEventListener('mousedown', function(e) {
-    // Clear the open popup, unless the click was inside the popup.
-    var popup = $('popup');
-    if (popup && e.target != popup && !(popup.compareDocumentPosition(e.target) & 16))
-        hidePopup();
-}, false);
-
 window.addEventListener('load', function() {
-    // This doesn't seem totally accurate as there is a race between
-    // onload firing and the last script tag being executed.
-    logTime('Time to load JS', g_pageLoadStartTime);
     g_resourceLoader = new loader.Loader();
     g_resourceLoader.load();
 }, false);

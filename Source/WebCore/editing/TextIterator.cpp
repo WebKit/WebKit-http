@@ -28,6 +28,7 @@
 #include "TextIterator.h"
 
 #include "Document.h"
+#include "ExceptionCodePlaceholder.h"
 #include "Font.h"
 #include "Frame.h"
 #include "HTMLElement.h"
@@ -45,7 +46,7 @@
 #include "TextBoundaries.h"
 #include "TextBreakIterator.h"
 #include "VisiblePosition.h"
-#include "visible_units.h"
+#include "VisibleUnits.h"
 #include <wtf/text/CString.h>
 #include <wtf/unicode/CharacterNames.h>
 
@@ -465,7 +466,7 @@ void TextIterator::advance()
 
 UChar TextIterator::characterAt(unsigned index) const
 {
-    ASSERT(index < static_cast<unsigned>(length()));
+    ASSERT_WITH_SECURITY_IMPLICATION(index < static_cast<unsigned>(length()));
     if (!(index < static_cast<unsigned>(length())))
         return 0;
 
@@ -1418,10 +1419,8 @@ PassRefPtr<Range> CharacterIterator::range() const
             Node* n = r->startContainer();
             ASSERT(n == r->endContainer());
             int offset = r->startOffset() + m_runOffset;
-            ExceptionCode ec = 0;
-            r->setStart(n, offset, ec);
-            r->setEnd(n, offset + 1, ec);
-            ASSERT(!ec);
+            r->setStart(n, offset, ASSERT_NO_EXCEPTION);
+            r->setEnd(n, offset + 1, ASSERT_NO_EXCEPTION);
         }
     }
     return r.release();
@@ -1526,10 +1525,8 @@ PassRefPtr<Range> BackwardsCharacterIterator::range() const
             Node* n = r->startContainer();
             ASSERT(n == r->endContainer());
             int offset = r->endOffset() - m_runOffset;
-            ExceptionCode ec = 0;
-            r->setStart(n, offset - 1, ec);
-            r->setEnd(n, offset, ec);
-            ASSERT(!ec);
+            r->setStart(n, offset - 1, ASSERT_NO_EXCEPTION);
+            r->setEnd(n, offset, ASSERT_NO_EXCEPTION);
         }
     }
     return r.release();
@@ -2277,7 +2274,7 @@ nextMatch:
     }
 
     size_t matchedLength = usearch_getMatchedLength(searcher);
-    ASSERT(matchStart + matchedLength <= size);
+    ASSERT_WITH_SECURITY_IMPLICATION(matchStart + matchedLength <= size);
 
     // If this match is "bad", move on to the next match.
     if (isBadMatch(m_buffer.data() + matchStart, matchedLength) || ((m_options & AtWordStarts) && !isWordStartMatch(matchStart, matchedLength))) {
@@ -2440,11 +2437,8 @@ PassRefPtr<Range> TextIterator::rangeFromLocationAndLength(ContainerNode* scope,
     if (rangeLocation == 0 && rangeLength == 0 && it.atEnd()) {
         textRunRange = it.range();
         
-        ExceptionCode ec = 0;
-        resultRange->setStart(textRunRange->startContainer(), 0, ec);
-        ASSERT(!ec);
-        resultRange->setEnd(textRunRange->startContainer(), 0, ec);
-        ASSERT(!ec);
+        resultRange->setStart(textRunRange->startContainer(), 0, ASSERT_NO_EXCEPTION);
+        resultRange->setEnd(textRunRange->startContainer(), 0, ASSERT_NO_EXCEPTION);
         
         return resultRange.release();
     }
@@ -2466,17 +2460,12 @@ PassRefPtr<Range> TextIterator::rangeFromLocationAndLength(ContainerNode* scope,
                 it.advance();
                 if (!it.atEnd()) {
                     RefPtr<Range> range = it.range();
-                    ExceptionCode ec = 0;
-                    textRunRange->setEnd(range->startContainer(), range->startOffset(), ec);
-                    ASSERT(!ec);
+                    textRunRange->setEnd(range->startContainer(), range->startOffset(), ASSERT_NO_EXCEPTION);
                 } else {
                     Position runStart = textRunRange->startPosition();
                     Position runEnd = VisiblePosition(runStart).next().deepEquivalent();
-                    if (runEnd.isNotNull()) {
-                        ExceptionCode ec = 0;
-                        textRunRange->setEnd(runEnd.containerNode(), runEnd.computeOffsetInContainerNode(), ec);
-                        ASSERT(!ec);
-                    }
+                    if (runEnd.isNotNull())
+                        textRunRange->setEnd(runEnd.containerNode(), runEnd.computeOffsetInContainerNode(), ASSERT_NO_EXCEPTION);
                 }
             }
         }
@@ -2544,9 +2533,8 @@ bool TextIterator::getLocationAndLengthFromRange(Node* scope, const Range* range
     RefPtr<Range> testRange = Range::create(scope->document(), scope, 0, range->startContainer(), range->startOffset());
     ASSERT(testRange->startContainer() == scope);
     location = TextIterator::rangeLength(testRange.get());
-    
-    ExceptionCode ec;
-    testRange->setEnd(range->endContainer(), range->endOffset(), ec);
+
+    testRange->setEnd(range->endContainer(), range->endOffset(), IGNORE_EXCEPTION);
     ASSERT(testRange->startContainer() == scope);
     length = TextIterator::rangeLength(testRange.get()) - location;
     return true;
@@ -2598,11 +2586,8 @@ static inline bool isAllCollapsibleWhitespace(const String& string)
 
 static PassRefPtr<Range> collapsedToBoundary(const Range* range, bool forward)
 {
-    ExceptionCode ec = 0;
-    RefPtr<Range> result = range->cloneRange(ec);
-    ASSERT(!ec);
-    result->collapse(!forward, ec);
-    ASSERT(!ec);
+    RefPtr<Range> result = range->cloneRange(ASSERT_NO_EXCEPTION);
+    result->collapse(!forward, ASSERT_NO_EXCEPTION);
     return result.release();
 }
 
@@ -2616,8 +2601,7 @@ static size_t findPlainText(CharacterIterator& it, const String& target, FindOpt
     if (buffer.needsMoreContext()) {
         RefPtr<Range> startRange = it.range();
         RefPtr<Range> beforeStartRange = startRange->ownerDocument()->createRange();
-        ExceptionCode ec = 0;
-        beforeStartRange->setEnd(startRange->startContainer(), startRange->startOffset(), ec);
+        beforeStartRange->setEnd(startRange->startContainer(), startRange->startOffset(), IGNORE_EXCEPTION);
         for (SimplifiedBackwardsTextIterator backwardsIterator(beforeStartRange.get()); !backwardsIterator.atEnd(); backwardsIterator.advance()) {
             buffer.prependContext(backwardsIterator.characters(), backwardsIterator.length());
             if (!buffer.needsMoreContext())

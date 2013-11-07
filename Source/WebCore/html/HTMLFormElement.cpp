@@ -261,7 +261,7 @@ bool HTMLFormElement::validateInteractively(Event* event)
                 continue;
             String message("An invalid form control with name='%name' is not focusable.");
             message.replace("%name", unhandledAssociatedElement->name());
-            document()->addConsoleMessage(HTMLMessageSource, ErrorMessageLevel, message);
+            document()->addConsoleMessage(RenderingMessageSource, ErrorMessageLevel, message);
         }
     }
     return false;
@@ -562,7 +562,7 @@ void HTMLFormElement::removeFormElement(FormAssociatedElement* e)
         if (m_associatedElements[index] == e)
             break;
     }
-    ASSERT(index < m_associatedElements.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(index < m_associatedElements.size());
     if (index < m_associatedElementsBeforeIndex)
         --m_associatedElementsBeforeIndex;
     if (index < m_associatedElementsAfterIndex)

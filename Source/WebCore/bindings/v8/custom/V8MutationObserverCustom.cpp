@@ -41,22 +41,22 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8MutationObserver::constructorCallbackCustom(const v8::Arguments& args)
+v8::Handle<v8::Value> V8MutationObserver::constructorCustom(const v8::Arguments& args)
 {
     if (args.Length() < 1)
         return throwNotEnoughArgumentsError(args.GetIsolate());
 
     v8::Local<v8::Value> arg = args[0];
-    if (!arg->IsObject())
-        return setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
+    if (!arg->IsFunction())
+        return throwTypeError("Callback argument must be a function", args.GetIsolate());
 
     ScriptExecutionContext* context = getScriptExecutionContext();
     v8::Handle<v8::Object> wrapper = args.Holder();
 
-    RefPtr<MutationCallback> callback = V8MutationCallback::create(arg, context, wrapper);
+    RefPtr<MutationCallback> callback = V8MutationCallback::create(v8::Handle<v8::Function>::Cast(arg), context, wrapper, args.GetIsolate());
     RefPtr<MutationObserver> observer = MutationObserver::create(callback.release());
 
-    V8DOMWrapper::associateObjectWithWrapper(observer.release(), &info, wrapper, args.GetIsolate());
+    V8DOMWrapper::associateObjectWithWrapper(observer.release(), &info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 }
 

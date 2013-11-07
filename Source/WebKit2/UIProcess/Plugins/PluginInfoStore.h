@@ -29,13 +29,23 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "PluginModuleInfo.h"
-#include <wtf/ThreadingPrimitives.h>
 
 namespace WebCore {
     class KURL;
 }
 
 namespace WebKit {
+
+class PluginInfoStore;
+
+class PluginInfoStoreClient {
+    WTF_MAKE_NONCOPYABLE(PluginInfoStoreClient);
+public:
+    virtual ~PluginInfoStoreClient() { }
+    virtual void pluginInfoStoreDidLoadPlugins(PluginInfoStore*) = 0;
+protected:
+    PluginInfoStoreClient() { }
+};
 
 class PluginInfoStore {
     WTF_MAKE_NONCOPYABLE(PluginInfoStore);
@@ -58,6 +68,9 @@ public:
 
     static PluginModuleLoadPolicy policyForPlugin(const PluginModuleInfo&);
     static bool reactivateInactivePlugin(const PluginModuleInfo&);
+
+    void setClient(PluginInfoStoreClient* client) { m_client = client; }
+    PluginInfoStoreClient* client() const { return m_client; }
 
 private:
     PluginModuleInfo findPluginForMIMEType(const String& mimeType) const;
@@ -89,8 +102,7 @@ private:
     Vector<String> m_additionalPluginsDirectories;
     Vector<PluginModuleInfo> m_plugins;
     bool m_pluginListIsUpToDate;
-
-    mutable Mutex m_pluginsLock;
+    PluginInfoStoreClient* m_client;
 };
     
 } // namespace WebKit

@@ -82,6 +82,7 @@ InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLa
         m_scrollPosition = m_webPage->mapToTransformed(view->scrollPosition());
         m_contentsSize = m_webPage->mapToTransformed(view->contentsSize());
         m_viewportSize = m_webPage->mapToTransformed(view->visibleContentRect(false /*includeScrollbars*/)).size();
+        m_documentViewportRect = view->frameRect();
 
         m_scrollsHorizontally = view->contentsWidth() > view->visibleWidth();
         m_scrollsVertically = view->contentsHeight() > view->visibleHeight();
@@ -105,6 +106,7 @@ InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLa
         m_scrollPosition = m_webPage->mapToTransformed(scrollableArea->scrollPosition());
         m_contentsSize = m_webPage->mapToTransformed(scrollableArea->contentsSize());
         m_viewportSize = m_webPage->mapToTransformed(scrollableArea->visibleContentRect(false /*includeScrollbars*/)).size();
+        m_documentViewportRect = enclosingIntRect(box->absoluteClippedOverflowRect());
 
         m_scrollsHorizontally = box->scrollWidth() != box->clientWidth();
         m_scrollsVertically = box->scrollHeight() != box->clientHeight();

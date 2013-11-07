@@ -76,13 +76,13 @@ void convertV8ObjectToNPVariant(v8::Local<v8::Value> object, NPObject* owner, NP
     }
 }
 
-v8::Handle<v8::Value> convertNPVariantToV8Object(const NPVariant* variant, NPObject* npobject)
+v8::Handle<v8::Value> convertNPVariantToV8Object(const NPVariant* variant, NPObject* npobject, v8::Isolate* isolate)
 {
     NPVariantType type = variant->type;
 
     switch (type) {
     case NPVariantType_Int32:
-        return deprecatedV8Integer(NPVARIANT_TO_INT32(*variant));
+        return v8Integer(NPVARIANT_TO_INT32(*variant), isolate);
     case NPVariantType_Double:
         return v8::Number::New(NPVARIANT_TO_DOUBLE(*variant));
     case NPVariantType_Bool:
@@ -98,7 +98,7 @@ v8::Handle<v8::Value> convertNPVariantToV8Object(const NPVariant* variant, NPObj
     case NPVariantType_Object: {
         NPObject* obj = NPVARIANT_TO_OBJECT(*variant);
         if (obj->_class == npScriptObjectClass)
-            return reinterpret_cast<V8NPObject*>(obj)->v8Object;
+            return v8::Local<v8::Value>::New(reinterpret_cast<V8NPObject*>(obj)->v8Object);
         return createV8ObjectForNPObject(obj, npobject);
     }
     default:

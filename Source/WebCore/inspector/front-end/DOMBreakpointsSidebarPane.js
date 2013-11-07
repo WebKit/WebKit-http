@@ -262,7 +262,7 @@ WebInspector.DOMBreakpointsSidebarPane.prototype = {
         var element = this._breakpointElements[breakpointId];
         if (!element)
             return;
-        this.expanded = true;
+        this.expand();
         element.addStyleClass("breakpoint-hit");
         this._highlightedElement = element;
     },
@@ -325,7 +325,74 @@ WebInspector.DOMBreakpointsSidebarPane.prototype = {
         }
     },
 
+    /**
+     * @param {WebInspector.Panel} panel
+     */
+    createProxy: function(panel)
+    {
+        var proxy = new WebInspector.DOMBreakpointsSidebarPane.Proxy(this, panel);
+        if (!this._proxies)
+            this._proxies = [];
+        this._proxies.push(proxy);
+        return proxy;
+    },
+
+    onContentReady: function()
+    {
+        for (var i = 0; i != this._proxies.length; i++)
+            this._proxies[i].onContentReady();
+    },
+
     __proto__: WebInspector.NativeBreakpointsSidebarPane.prototype
+}
+
+/**
+ * @constructor
+ * @extends {WebInspector.SidebarPane}
+ * @param {WebInspector.DOMBreakpointsSidebarPane} pane
+ * @param {WebInspector.Panel} panel
+ */
+WebInspector.DOMBreakpointsSidebarPane.Proxy = function(pane, panel)
+{
+    WebInspector.View._assert(!pane.titleElement.firstChild, "Cannot create proxy for a sidebar pane with a toolbar");
+
+    WebInspector.SidebarPane.call(this, pane.title());
+
+    this._wrappedPane = pane;
+    this._panel = panel;
+
+    this.bodyElement.removeSelf();
+    this.bodyElement = this._wrappedPane.bodyElement;
+}
+
+WebInspector.DOMBreakpointsSidebarPane.Proxy.prototype = {
+    expand: function()
+    {
+        this._wrappedPane.expand();
+    },
+
+    onContentReady: function()
+    {
+        if (!this._panel.isShowing())
+            return;
+
+        this._reattachBody();
+        WebInspector.SidebarPane.prototype.onContentReady.call(this);
+    },
+
+    wasShown: function()
+    {
+        WebInspector.SidebarPane.prototype.wasShown.call(this);
+        this._reattachBody();
+    },
+
+    _reattachBody: function()
+    {
+        if (this.bodyElement.parentNode !== this.element)
+            this.element.appendChild(this.bodyElement);
+    },
+
+    __proto__: WebInspector.SidebarPane.prototype
 }
 
 /**

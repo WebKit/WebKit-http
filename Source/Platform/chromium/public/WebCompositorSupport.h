@@ -61,16 +61,10 @@ public:
     // prior to calling initialize.
     virtual void initialize(WebThread*) { }
 
-    // Returns whether the compositor was initialized with threading enabled.
-    virtual bool isThreadingEnabled() { return false; }
-
     // Shuts down the compositor. This must be called when all compositor data
     // types have been deleted. No compositor classes or methods should be used
     // after shutdown.
     virtual void shutdown() { }
-
-    // May return 0 if initialization fails.
-    virtual WebLayerTreeView* createLayerTreeView(WebLayerTreeViewClient*, const WebLayer& root, const WebLayerTreeView::Settings&) { return 0; }
 
     // Creates an output surface for the compositor backed by a 3d context.
     virtual WebCompositorOutputSurface* createOutputSurfaceFor3D(WebKit::WebGraphicsContext3D*) { return 0; }
@@ -106,6 +100,7 @@ public:
     virtual WebTransformAnimationCurve* createTransformAnimationCurve() { return 0; }
 
     virtual WebTransformOperations* createTransformOperations() { return 0; }
+
 
 protected:
     virtual ~WebCompositorSupport() { }

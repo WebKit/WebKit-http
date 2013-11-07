@@ -41,6 +41,7 @@
 #import <JavaScriptCore/APICast.h>
 #import <WebCore/Document.h>
 #import <WebCore/Frame.h>
+#import <WebCore/FrameLoader.h>
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/HTMLParserIdioms.h>
 #import <WebCore/JSElement.h>
@@ -70,11 +71,6 @@ using namespace JSC;
     ExecState* exec = toJS(context);
     JSLockHolder lock(exec);
     return kit(toElement(toJS(exec, value)));
-}
-
-- (NSString *)_markerTextForListItem
-{
-    return WebCore::markerTextForListItem(core(self));
 }
 
 @end
@@ -239,11 +235,6 @@ bool WebFrameFilter::shouldIncludeSubframe(Frame* frame) const
 - (void)_setAutofilled:(BOOL)autofilled
 {
     static_cast<HTMLInputElement*>(core((DOMElement *)self))->setAutofilled(autofilled);
-}
-
-- (void)_setValueForUser:(NSString *)value
-{
-    static_cast<HTMLInputElement*>(core((DOMElement *)self))->setValueForUser(value);
 }
 
 @end

@@ -38,6 +38,11 @@ using namespace WebCore;
 
 namespace WebKit {
 
+WebMediaStreamTrack::WebMediaStreamTrack(PassRefPtr<WebCore::MediaStreamComponent> mediaStreamComponent)
+    : m_private(mediaStreamComponent)
+{
+}
+
 WebMediaStreamTrack::WebMediaStreamTrack(WebCore::MediaStreamComponent* mediaStreamComponent)
     : m_private(mediaStreamComponent)
 {
@@ -52,6 +57,11 @@ WebMediaStreamTrack& WebMediaStreamTrack::operator=(WebCore::MediaStreamComponen
 void WebMediaStreamTrack::initialize(const WebMediaStreamSource& source)
 {
     m_private = MediaStreamComponent::create(source);
+}
+
+void WebMediaStreamTrack::initialize(const WebString& id, const WebMediaStreamSource& source)
+{
+    m_private = MediaStreamComponent::create(id, source);
 }
 
 void WebMediaStreamTrack::reset()

@@ -112,8 +112,9 @@ void XMLDocumentParser::insert(const SegmentedString&)
     ASSERT_NOT_REACHED();
 }
 
-void XMLDocumentParser::append(const SegmentedString& source)
+void XMLDocumentParser::append(PassRefPtr<StringImpl> inputSource)
 {
+    SegmentedString source(inputSource);
     if (m_sawXSLTransform || !m_sawFirstElement)
         m_originalSourceForTransform.append(source);
 
@@ -167,8 +168,7 @@ void XMLDocumentParser::exitText()
         return;
 
 #if !USE(QXMLSTREAM)
-    ExceptionCode ec = 0;
-    m_leafTextNode->appendData(toString(m_bufferedText.data(), m_bufferedText.size()), ec);
+    m_leafTextNode->appendData(toString(m_bufferedText.data(), m_bufferedText.size()), IGNORE_EXCEPTION);
     Vector<xmlChar> empty;
     m_bufferedText.swap(empty);
 #endif

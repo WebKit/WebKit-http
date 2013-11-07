@@ -104,6 +104,8 @@ svg/custom/use-events-crash.svg
 # <https://bugs.webkit.org/show_bug.cgi?id=69946>
 editing/pasteboard/drag-drop-iframe-refresh-crash.html
 
+webkit.org/b/111439 fast/events/wheelevent-in-text-node.html [ Skip ]
+
 # WebKit2 needs layoutTestController.overridePreference
 # <https://bugs.webkit.org/show_bug.cgi?id=42197>
 # Get accelerated compositing working with webkit2
@@ -134,6 +136,14 @@ fast/dom/StyleSheet/detached-stylesheet-without-wrapper.html
 # [Qt] REGRESSION(r140229) fast/css/sticky/sticky-top-zoomed.html test fails
 # https://bugs.webkit.org/show_bug.cgi?id=105390
 fast/css/sticky/sticky-top-zoomed.html
+
+# [Qt][Wk2] New printing tests fail on Qt since r141459.
+webkit.org/b/108643 printing/quirks-percentage-height-body.html [ Skip ]
+webkit.org/b/108643 printing/quirks-percentage-height.html [ Skip ]
+webkit.org/b/108643 printing/standards-percentage-heights.html [ Skip ]
+
+# [Qt][Wk2] REGRESSION(r141039): It made compositing/layer-creation/fixed-position-no-content.html fails on Qt.
+webkit.org/b/108646 compositing/layer-creation/fixed-position-no-content.html [ Skip ]
 
 ########################################
 
@@ -362,6 +372,10 @@ webkit.org/b/100490 compositing/tiling/tile-cache-zoomed.html
 
 # [Qt][WK2]New compositing/repaint/invalidations-on-composited-layers.html fails
 webkit.org/b/101165 compositing/repaint/invalidations-on-composited-layers.html
+
+# [Qt][Wk2] REGGRESSION (r142112): It made compositing tests fail.
+webkit.org/b/109291 compositing/iframes/iframe-composited-scrolling.html
+webkit.org/b/109291 compositing/layer-creation/fixed-position-in-view-dynamic.html
 
 # [Qt] [WK2] Some fullscreen layout tests are timing out on the bot
 # https://bugs.webkit.org/show_bug.cgi?id=92543
@@ -598,9 +612,6 @@ webkit.org/b/98897 fast/dynamic/containing-block-change.html [ ImageOnlyFailure 
 webkit.org/b/98897 fast/frames/inline-object-inside-frameset.html [ ImageOnlyFailure ]
 webkit.org/b/98897 fast/repaint/textarea-set-disabled.html [ ImageOnlyFailure ]
 
-# Will need rebaselining after bug 98527 fixed
-webkit.org/b/98994 http/tests/loading/text-content-type-with-binary-extension.html [ Failure ]
-
 # [Qt] some tests fail after unskipped in r131044
 # https://bugs.webkit.org/show_bug.cgi?id=99034
 http/tests/cookies/third-party-cookie-relaxing.html
@@ -646,7 +657,6 @@ webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
 webkit.org/b/99306 animations/3d/state-at-end-event-transform.html [ ImageOnlyFailure ]
 webkit.org/b/99306 animations/additive-transform-animations.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/absolute-position-changed-in-composited-layer.html [ ImageOnlyFailure ]
-webkit.org/b/99306 compositing/checkerboard.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/culling/filter-occlusion-alpha-large.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/culling/filter-occlusion-alpha.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/fixed-position-scroll-offset-history-restore.html [ ImageOnlyFailure ]
@@ -659,87 +669,39 @@ webkit.org/b/99306 compositing/geometry/fixed-position-transform-composited-page
 webkit.org/b/99306 compositing/geometry/fixed-position-transform-composited-page-scale.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/geometry/horizontal-scroll-composited.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/geometry/vertical-scroll-composited.html [ ImageOnlyFailure ]
-webkit.org/b/99306 compositing/geometry/video-fixed-scrolling.html [ ImageOnlyFailure ]
-webkit.org/b/99306 compositing/images/content-image-change.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/images/direct-pdf-image.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/layer-creation/fixed-position-and-transform.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/layer-creation/fixed-position-scroll.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/layer-creation/fixed-position-under-transform.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/overflow/fixed-position-ancestor-clip.html [ ImageOnlyFailure ]
-webkit.org/b/99306 compositing/overflow/overflow-scaled-descendant-overlapping.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/reflections/masked-reflection-on-composited.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/rtl/rtl-fixed-overflow-scrolled.html [ ImageOnlyFailure ]
-webkit.org/b/99306 compositing/scaling/tiled-layer-recursion.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/transitions/singular-scale-transition.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/effect-combined-hw.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/effect-opacity-hw.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/filter-change-repaint.html [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/filtered-compositing-descendant.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/dynamic/anchor-lock.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/events/scale-and-scroll-iframe-body.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/events/scale-and-scroll-iframe-window.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/events/scale-and-scroll-window.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/frames/flattening/iframe-flattening-out-of-view-scroll-and-relayout.html [ ImageOnlyFailure ]
+webkit.org/b/99306 fast/multicol/newmulticol/column-rules-fixed-height.html [ Skip ]
 webkit.org/b/99306 fast/multicol/pagination-h-horizontal-bt.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-h-horizontal-tb.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-h-vertical-rl.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-v-horizontal-bt.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-v-horizontal-tb.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-v-vertical-lr.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-v-vertical-rl.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/multicol/scrolling-overflow.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-child-move-after-scroll.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-child-of-transformed-move-after-scroll.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-in-page-scale.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-move-after-scroll.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-right-bottom-in-page-scale.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-right-in-page-scale.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-scale.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-scroll-simple.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-table-cell.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-table-overflow-zindex.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-table-overflow.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/repaint-during-scroll.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/scale-page-shrink.html [ ImageOnlyFailure ]
 webkit.org/b/99306 http/tests/images/png-partial-load-no-alpha.html [ ImageOnlyFailure ]
-webkit.org/b/99306 svg/as-image/image-respects-pageScaleFactor.html [ ImageOnlyFailure ]
 webkit.org/b/99306 svg/custom/dasharrayOrigin.svg [ ImageOnlyFailure ]
 webkit.org/b/99306 svg/custom/invalid-dasharray.svg [ ImageOnlyFailure ]
-webkit.org/b/99306 svg/custom/scrolling-embedded-svg-file-image-repaint-problem.html [ ImageOnlyFailure ]
-webkit.org/b/99306 transforms/2d/transform-fixed-container.html [ ImageOnlyFailure ]
 webkit.org/b/99306 transforms/3d/general/transform-origin-z-change.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/absolute-position-changed-with-composited-parent-layer.html [ ImageOnlyFailure ]
-webkit.org/b/99306 compositing/culling/tile-occlusion-boundaries.html [ ImageOnlyFailure ]
 webkit.org/b/99306 compositing/geometry/fixed-position.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css2.1/20110323/abspos-containing-block-initial-001.htm [ ImageOnlyFailure ]
 webkit.org/b/99306 css3/filters/effect-brightness-clamping-hw.html [ ImageOnlyFailure ]
 webkit.org/b/99306 editing/selection/select-missing-image.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/block/positioning/rtl-fixed-positioning.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/inflow-sticky.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/replaced-sticky.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-as-positioning-container.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-both-sides.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-left.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-margins.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-overflowing.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-side-margins.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-top-margins.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/events/reveal-link-when-focused.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/events/scale-and-scroll-body.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/frames/flattening/iframe-flattening-out-of-view-and-scroll.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/frames/frame-set-rotation-hit.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/frames/frame-set-scaling-hit.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/frames/transparent-scrollbar.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/pagination-h-vertical-lr.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/multicol/shrink-to-column-height-for-pagination.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/multicol/vertical-rl/rule-style.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/overflow/paged-x-with-column-gap.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/repaint/fixed-child-of-fixed-move-after-scroll.html [ ImageOnlyFailure ]
 webkit.org/b/99306 fast/replaced/border-radius-clip.html [ ImageOnlyFailure ]
 webkit.org/b/99306 transitions/opacity-transition-zindex.html [ ImageOnlyFailure ]
-webkit.org/b/99306 fast/backgrounds/background-clip-text-on-body.html [ ImageOnlyFailure ]
+webkit.org/b/99306 svg/as-background-image/tiled-background-image.html [ Skip ]
 webkit.org/b/99306 svg/filters/feImage-reference-svg-primitive.svg [ ImageOnlyFailure ] # Reni said this is actually a know svg issue with feImage.
 webkit.org/b/99306 svg/custom/use-instanceRoot-event-bubbling.xhtml [ ImageOnlyFailure ]
 
@@ -759,14 +721,13 @@ webkit.org/b/101491 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 webkit.org/b/102678 compositing/overflow/updating-scrolling-content.html
 webkit.org/b/102678 compositing/overflow/scrolling-without-painting.html
 
+webkit.org/b/108257 compositing/overflow/automatically-opt-into-composited-scrolling.html [ Skip ]
+
 # [Qt][WK2] New fast/events/mouse-cursor.html fails
 webkit.org/b/103122 fast/events/mouse-cursor.html
 
 # [Qt][WK2] new fast/dom/Geolocation/cached-position-iframe.html fails since it was introduced in r136164
 webkit.org/b/103876 fast/dom/Geolocation/cached-position-iframe.html
-
-# [Qt][WK2] compositing/overflow/automatically-opt-into-composited-scrolling.html makes other tests fail
-webkit.org/b/105173 compositing/overflow/automatically-opt-into-composited-scrolling.html
 
 # [Qt][WK2] The new compositing/repaint/resize-repaint.html fails
 webkit.org/b/105182 compositing/repaint/resize-repaint.html
@@ -776,3 +737,14 @@ webkit.org/b/105182 compositing/repaint/resize-repaint.html
 svg/text/select-textLength-spacing-stretch-1.svg
 svg/text/select-x-list-with-tspans-1.svg
 svg/text/select-x-list-1.svg
+
+# Missing TextChecker::requestCheckingOfString() implementation for Qt.
+editing/spelling/grammar-markers.html
+editing/spelling/grammar-paste.html
+editing/spelling/grammar-markers-hidpi.html
+editing/spelling/spellcheck-async-mutation.html
+editing/spelling/spellcheck-async-remove-frame.html
+editing/spelling/spellcheck-async.html
+editing/spelling/spellcheck-queue.html
+editing/spelling/spellcheck-sequencenum.html
+editing/spelling/spelling-marker-description.html

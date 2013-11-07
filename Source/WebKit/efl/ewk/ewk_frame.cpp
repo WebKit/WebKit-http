@@ -29,6 +29,7 @@
 #include "EventHandler.h"
 #include "FocusController.h"
 #include "FrameLoadRequest.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClientEfl.h"
 #include "FrameView.h"
 #include "HTMLCollection.h"
@@ -37,6 +38,7 @@
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
 #include "HistoryItem.h"
+#include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "IntSize.h"
 #include "KURL.h"
@@ -134,13 +136,13 @@ static inline void _ewk_frame_debug(Evas_Object* ewkFrame)
     evas_object_color_get(clip, &contentRed, &contentGreen, &contentBlue, &contentAlpha);
     evas_object_geometry_get(clip, &contentX, &contentY, &contentWidth, &contentHeight);
 
-    fprintf(stderr, "%p: type=%s name=%s, visible=%d, color=%02x%02x%02x%02x, %d,%d+%dx%d, clipper=%p (%d, %02x%02x%02x%02x, %d,%d+%dx%d)\n",
+    EINA_LOG_DBG("%p: type=%s name=%s, visible=%d, color=%02x%02x%02x%02x, %d,%d+%dx%d, clipper=%p (%d, %02x%02x%02x%02x, %d,%d+%dx%d)\n",
             ewkFrame, evas_object_type_get(ewkFrame), evas_object_name_get(ewkFrame), evas_object_visible_get(ewkFrame),
             red, green, blue, alpha, x, y, width, height,
             clip, evas_object_visible_get(clip), contentRed, contentGreen, contentBlue, contentAlpha, contentX, contentY, contentWidth, contentHeight);
     parent = evas_object_smart_parent_get(ewkFrame);
     if (!parent)
-        fprintf(stderr, "\n");
+        EINA_LOG_ERR("could not get parent object.\n");
     else
         _ewk_frame_debug(parent);
 }
@@ -691,8 +693,8 @@ Ewk_Hit_Test* ewk_frame_hit_test_new(const Evas_Object* ewkFrame, int x, int y)
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame->contentRenderer(), 0);
 
     WebCore::HitTestResult result = smartData->frame->eventHandler()->hitTestResultAtPoint
-                                        (view->windowToContents(WebCore::IntPoint(x, y)),
-                                        /*allowShadowContent*/ false, /*ignoreClipping*/ true);
+                                        (view->windowToContents(WebCore::IntPoint(x, y)), 
+                                        WebCore::HitTestRequest::ReadOnly | WebCore::HitTestRequest::Active | WebCore::HitTestRequest::IgnoreClipping);
 
     if (result.scrollbar())
         return 0;
@@ -819,7 +821,7 @@ Eina_Bool ewk_frame_visible_content_geometry_get(const Evas_Object* ewkFrame, Ei
     EWK_FRAME_SD_GET_OR_RETURN(ewkFrame, smartData, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame, false);
     EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->frame->view(), false);
-    WebCore::IntRect rect = smartData->frame->view()->visibleContentRect(includeScrollbars);
+    WebCore::IntRect rect = smartData->frame->view()->visibleContentRect(includeScrollbars ? WebCore::ScrollableArea::IncludeScrollbars : WebCore::ScrollableArea::ExcludeScrollbars);
     if (x)
         *x = rect.x();
     if (y)

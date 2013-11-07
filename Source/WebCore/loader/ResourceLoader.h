@@ -88,6 +88,7 @@ public:
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
     virtual void didReceiveDataArray(CFArrayRef dataArray);
 #endif
+    void didChangePriority(ResourceLoadPriority);
 
     virtual bool shouldUseCredentialStorage();
     virtual void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
@@ -132,9 +133,6 @@ public:
 #if PLATFORM(CHROMIUM)
     virtual void didDownloadData(ResourceHandle*, int);
     virtual void didDownloadData(int);
-#endif
-#if ENABLE(BLOB)
-    virtual AsyncFileStream* createAsyncFileStream(FileStreamClient*);
 #endif
 
     const KURL& url() const { return m_request.url(); } 

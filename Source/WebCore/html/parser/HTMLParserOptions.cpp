@@ -28,6 +28,7 @@
 
 #include "Document.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "Settings.h"
 
 namespace WebCore {
@@ -43,7 +44,8 @@ HTMLParserOptions::HTMLParserOptions(Document* document)
 #if ENABLE(THREADED_HTML_PARSER)
     // We force the main-thread parser for about:blank, javascript: and data: urls for compatibility
     // with historical synchronous loading/parsing behavior of those schemes.
-    useThreading = settings && settings->threadedHTMLParser() && !document->url().isBlankURL() && !document->url().protocolIsData();
+    useThreading = settings && settings->threadedHTMLParser() && !document->url().isBlankURL()
+        && (settings->useThreadedHTMLParserForDataURLs() || !document->url().protocolIsData());
 #else
     useThreading = false;
 #endif

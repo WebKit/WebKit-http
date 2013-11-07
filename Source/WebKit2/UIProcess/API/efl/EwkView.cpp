@@ -22,27 +22,31 @@
 #include "EwkView.h"
 
 #include "ContextMenuClientEfl.h"
-#include "CoordinatedLayerTreeHostProxy.h"
 #include "EflScreenUtilities.h"
 #include "FindClientEfl.h"
 #include "FormClientEfl.h"
 #include "InputMethodContextEfl.h"
-#include "PageClientBase.h"
-#include "PageClientDefaultImpl.h"
-#include "PageClientLegacyImpl.h"
+#include "NativeWebKeyboardEvent.h"
+#include "NativeWebMouseEvent.h"
+#include "NativeWebWheelEvent.h"
 #include "PageLoadClientEfl.h"
 #include "PagePolicyClientEfl.h"
 #include "PageUIClientEfl.h"
+#include "PageViewportController.h"
+#include "PageViewportControllerClientEfl.h"
 #include "SnapshotImageGL.h"
+#include "ViewClientEfl.h"
 #include "WKDictionary.h"
 #include "WKGeometry.h"
 #include "WKNumber.h"
+#include "WKPageGroup.h"
+#include "WKPopupItem.h"
 #include "WKString.h"
+#include "WKView.h"
 #include "WebContext.h"
 #include "WebImage.h"
 #include "WebPageGroup.h"
 #include "WebPageProxy.h"
-#include "WebPopupMenuProxyEfl.h"
 #include "WebPreferences.h"
 #include "ewk_back_forward_list_private.h"
 #include "ewk_color_picker_private.h"
@@ -55,15 +59,16 @@
 #include "ewk_security_origin_private.h"
 #include "ewk_settings_private.h"
 #include "ewk_view.h"
-#include "ewk_view_private.h"
 #include "ewk_window_features_private.h"
 #include <Ecore_Evas.h>
 #include <Ecore_X.h>
 #include <Edje.h>
+#include <Evas_GL.h>
 #include <WebCore/CairoUtilitiesEfl.h>
-#include <WebCore/CoordinatedGraphicsScene.h>
 #include <WebCore/Cursor.h>
+#include <WebCore/PlatformContextCairo.h>
 #include <WebKit2/WKImageCairo.h>
+#include <wtf/MathExtras.h>
 
 #if ENABLE(VIBRATION)
 #include "VibrationClientEfl.h"
@@ -73,64 +78,173 @@
 #include "WebFullScreenManagerProxy.h"
 #endif
 
-#if USE(ACCELERATED_COMPOSITING)
-#include <Evas_GL.h>
-#endif
-
 using namespace EwkViewCallbacks;
 using namespace WebCore;
 using namespace WebKit;
 
+static const char smartClassName[] = "EWK2_View";
 static const int defaultCursorSize = 16;
 
-typedef HashMap<WKPageRef, Evas_Object*> PageViewMap;
+// Auxiliary functions.
 
-static inline PageViewMap& pageViewMap()
+static inline void smartDataChanged(Ewk_View_Smart_Data* smartData)
 {
-    DEFINE_STATIC_LOCAL(PageViewMap, map, ());
-    return map;
+    ASSERT(smartData);
+
+    if (smartData->changed.any)
+        return;
+
+    smartData->changed.any = true;
+    evas_object_smart_changed(smartData->self);
 }
 
-void EwkView::addToPageViewMap(EwkView* view)
+static Evas_Smart* defaultSmartClassInstance()
 {
-    PageViewMap::AddResult result = pageViewMap().add(view->wkPage(), view->view());
-    ASSERT_UNUSED(result, result.isNewEntry);
+    static Ewk_View_Smart_Class api = EWK_VIEW_SMART_CLASS_INIT_NAME_VERSION(smartClassName);
+    static Evas_Smart* smart = 0;
+
+    if (!smart) {
+        EwkView::initSmartClassInterface(api);
+        smart = evas_smart_class_new(&api.sc);
+    }
+
+    return smart;
 }
 
-void EwkView::removeFromPageViewMap(EwkView* view)
+static inline Ewk_View_Smart_Data* toSmartData(Evas_Object* evasObject)
 {
-    ASSERT(pageViewMap().contains(view->wkPage()));
-    pageViewMap().remove(view->wkPage());
+    ASSERT(evasObject);
+    ASSERT(isEwkViewEvasObject(evasObject));
+
+    return static_cast<Ewk_View_Smart_Data*>(evas_object_smart_data_get(evasObject));
 }
 
-const Evas_Object* EwkView::viewFromPageViewMap(const WKPageRef page)
+static inline EwkView* toEwkView(const Ewk_View_Smart_Data* smartData)
 {
-    ASSERT(page);
+    ASSERT(smartData);
+    ASSERT(smartData->priv);
 
-    return pageViewMap().get(page);
+    return smartData->priv;
 }
 
-EwkView::EwkView(Evas_Object* evasObject, PassRefPtr<EwkContext> context, PassRefPtr<WebPageGroup> pageGroup, ViewBehavior behavior)
+// EwkViewEventHandler implementation.
+
+template <Evas_Callback_Type EventType>
+class EwkViewEventHandler {
+public:
+    static void subscribe(Evas_Object* evasObject)
+    {
+        evas_object_event_callback_add(evasObject, EventType, handleEvent, toSmartData(evasObject));
+    }
+
+    static void unsubscribe(Evas_Object* evasObject)
+    {
+        evas_object_event_callback_del(evasObject, EventType, handleEvent);
+    }
+
+    static void handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo);
+};
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_MOUSE_DOWN>::handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->mouse_down)
+        smartData->api->mouse_down(smartData, static_cast<Evas_Event_Mouse_Down*>(eventInfo));
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_MOUSE_UP>::handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->mouse_up)
+        smartData->api->mouse_up(smartData, static_cast<Evas_Event_Mouse_Up*>(eventInfo));
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_MOUSE_MOVE>::handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->mouse_move)
+        smartData->api->mouse_move(smartData, static_cast<Evas_Event_Mouse_Move*>(eventInfo));
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_FOCUS_IN>::handleEvent(void* data, Evas*, Evas_Object*, void*)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->focus_in)
+        smartData->api->focus_in(smartData);
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_FOCUS_OUT>::handleEvent(void* data, Evas*, Evas_Object*, void*)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->focus_out)
+        smartData->api->focus_out(smartData);
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_MOUSE_WHEEL>::handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->mouse_wheel)
+        smartData->api->mouse_wheel(smartData, static_cast<Evas_Event_Mouse_Wheel*>(eventInfo));
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_KEY_DOWN>::handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->key_down)
+        smartData->api->key_down(smartData, static_cast<Evas_Event_Key_Down*>(eventInfo));
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_KEY_UP>::handleEvent(void* data, Evas*, Evas_Object*, void* eventInfo)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    if (smartData->api->key_up)
+        smartData->api->key_up(smartData, static_cast<Evas_Event_Key_Up*>(eventInfo));
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_SHOW>::handleEvent(void* data, Evas*, Evas_Object*, void*)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+    toEwkView(smartData)->page()->viewStateDidChange(WebPageProxy::ViewIsVisible);
+}
+
+template <>
+void EwkViewEventHandler<EVAS_CALLBACK_HIDE>::handleEvent(void* data, Evas*, Evas_Object*, void*)
+{
+    Ewk_View_Smart_Data* smartData = static_cast<Ewk_View_Smart_Data*>(data);
+
+    // We need to pass ViewIsVisible here. viewStateDidChange() itself is responsible for actually setting the visibility to Visible or Hidden
+    // depending on what WebPageProxy::isViewVisible() returns, this simply triggers the process.
+    toEwkView(smartData)->page()->viewStateDidChange(WebPageProxy::ViewIsVisible);
+}
+
+// EwkView implementation.
+
+EwkView::EwkView(Evas_Object* evasObject, PassRefPtr<EwkContext> context, WKPageGroupRef pageGroup, ViewBehavior behavior)
     : m_evasObject(evasObject)
     , m_context(context)
-#if USE(ACCELERATED_COMPOSITING)
     , m_pendingSurfaceResize(false)
-#endif
-    , m_pageClient(behavior == DefaultBehavior ? PageClientDefaultImpl::create(this) : PageClientLegacyImpl::create(this))
-    , m_pageProxy(toImpl(m_context->wkContext())->createWebPage(m_pageClient.get(), pageGroup.get()))
+    , m_webView(adoptRef(new WebView(toImpl(m_context->wkContext()), toImpl(pageGroup), this)))
     , m_pageLoadClient(PageLoadClientEfl::create(this))
     , m_pagePolicyClient(PagePolicyClientEfl::create(this))
     , m_pageUIClient(PageUIClientEfl::create(this))
     , m_contextMenuClient(ContextMenuClientEfl::create(this))
     , m_findClient(FindClientEfl::create(this))
     , m_formClient(FormClientEfl::create(this))
+    , m_viewClient(ViewClientEfl::create(this))
 #if ENABLE(VIBRATION)
     , m_vibrationClient(VibrationClientEfl::create(this))
 #endif
-    , m_backForwardList(EwkBackForwardList::create(toAPI(m_pageProxy->backForwardList())))
-#if USE(TILED_BACKING_STORE)
+    , m_backForwardList(EwkBackForwardList::create(WKPageGetBackForwardList(wkPage())))
     , m_pageScaleFactor(1)
-#endif
     , m_settings(EwkSettings::create(this))
     , m_cursorIdentifier(0)
     , m_mouseEventsEnabled(false)
@@ -139,38 +253,37 @@ EwkView::EwkView(Evas_Object* evasObject, PassRefPtr<EwkContext> context, PassRe
 #endif
     , m_displayTimer(this, &EwkView::displayTimerFired)
     , m_inputMethodContext(InputMethodContextEfl::create(this, smartData()->base.evas))
-    , m_isHardwareAccelerated(true)
-    , m_setDrawsBackground(false)
+    , m_pageViewportControllerClient(PageViewportControllerClientEfl::create(this))
+    , m_pageViewportController(adoptPtr(new PageViewportController(page(), m_pageViewportControllerClient.get())))
+    , m_isAccelerated(true)
 {
     ASSERT(m_evasObject);
     ASSERT(m_context);
-    ASSERT(m_pageProxy);
 
-#if USE(COORDINATED_GRAPHICS)
-    m_pageProxy->pageGroup()->preferences()->setAcceleratedCompositingEnabled(true);
-    m_pageProxy->pageGroup()->preferences()->setForceCompositingMode(true);
-    char* debugVisualsEnvironment = getenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS");
-    bool showDebugVisuals = debugVisualsEnvironment && !strcmp(debugVisualsEnvironment, "1");
-    m_pageProxy->pageGroup()->preferences()->setCompositingBordersVisible(showDebugVisuals);
-    m_pageProxy->pageGroup()->preferences()->setCompositingRepaintCountersVisible(showDebugVisuals);
-#if ENABLE(WEBGL)
-    m_pageProxy->pageGroup()->preferences()->setWebGLEnabled(true);
-#endif
-    if (behavior == DefaultBehavior)
-        m_pageProxy->setUseFixedLayout(true);
-#endif
+    m_evasGL = adoptPtr(evas_gl_new(evas_object_evas_get(m_evasObject)));
+    if (m_evasGL)
+        m_evasGLContext = EvasGLContext::create(m_evasGL.get());
 
-    m_pageProxy->initializeWebPage();
+    if (!m_evasGLContext) {
+        WARN("Failed to create Evas_GL, falling back to software mode.");
+        m_isAccelerated = false;
+    }
 
-#if ENABLE(FULLSCREEN_API)
-    m_pageProxy->fullScreenManager()->setWebView(m_evasObject);
-    m_pageProxy->pageGroup()->preferences()->setFullScreenEnabled(true);
-#endif
-#if ENABLE(WEB_AUDIO)
-    m_pageProxy->pageGroup()->preferences()->setWebAudioEnabled(true);
-#endif
+    WKViewInitialize(wkView());
 
-    m_pageProxy->pageGroup()->preferences()->setOfflineWebApplicationCacheEnabled(true);
+    WKPageSetUseFixedLayout(wkPage(), behavior == DefaultBehavior);
+
+    WKPageGroupRef wkPageGroup = WKPageGetPageGroup(wkPage());
+    WKPreferencesRef wkPreferences = WKPageGroupGetPreferences(wkPageGroup);
+
+    WKPreferencesSetWebGLEnabled(wkPreferences, true);
+    WKPreferencesSetFullScreenEnabled(wkPreferences, true);
+    WKPreferencesSetWebAudioEnabled(wkPreferences, true);
+    WKPreferencesSetOfflineWebApplicationCacheEnabled(wkPreferences, true);
+#if ENABLE(SPELLCHECK)
+    WKPreferencesSetAsynchronousSpellCheckingEnabled(wkPreferences, true);
+#endif
+    WKPreferencesSetInteractiveFormValidationEnabled(wkPreferences, true);
 
     // Enable mouse events by default
     setMouseEventsEnabled(true);
@@ -179,45 +292,92 @@ EwkView::EwkView(Evas_Object* evasObject, PassRefPtr<EwkContext> context, PassRe
     EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
     ASSERT(iconDatabase);
 
-    iconDatabase->watchChanges(IconChangeCallbackData(EwkView::onFaviconChanged, this));
-
-    EwkView::addToPageViewMap(this);
+    iconDatabase->watchChanges(IconChangeCallbackData(EwkView::handleFaviconChanged, this));
 }
 
 EwkView::~EwkView()
 {
-    m_pageProxy->close();
-
     // Unregister icon change callback.
     EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
     ASSERT(iconDatabase);
 
-    iconDatabase->unwatchChanges(EwkView::onFaviconChanged);
-
-    EwkView::removeFromPageViewMap(this);
+    iconDatabase->unwatchChanges(EwkView::handleFaviconChanged);
 }
 
-Ewk_View_Smart_Data* EwkView::smartData() const
+Evas_Object* EwkView::createEvasObject(Evas* canvas, Evas_Smart* smart, PassRefPtr<EwkContext> context, WKPageGroupRef pageGroupRef, ViewBehavior behavior)
 {
-    return static_cast<Ewk_View_Smart_Data*>(evas_object_smart_data_get(m_evasObject));
+    EINA_SAFETY_ON_NULL_RETURN_VAL(canvas, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(smart, 0);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(context, 0);
+
+    Evas_Object* evasObject = evas_object_smart_add(canvas, smart);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(evasObject, 0);
+
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    if (!smartData) {
+        evas_object_del(evasObject);
+        return 0;
+    }
+
+    ASSERT(!smartData->priv);
+
+    // Default WebPageGroup is created in WebContext constructor if the pageGroupRef is 0,
+    // so we do not need to create it here.
+    smartData->priv = new EwkView(evasObject, context, pageGroupRef, behavior);
+    return evasObject;
 }
 
-EwkView* EwkView::fromEvasObject(const Evas_Object* view)
+Evas_Object* EwkView::createEvasObject(Evas* canvas, PassRefPtr<EwkContext> context, WKPageGroupRef pageGroupRef, ViewBehavior behavior)
 {
-    ASSERT(view);
-    Ewk_View_Smart_Data* sd = static_cast<Ewk_View_Smart_Data*>(evas_object_smart_data_get(view));
-    ASSERT(sd);
-    ASSERT(sd->priv);
-    return sd->priv;
+    return createEvasObject(canvas, defaultSmartClassInstance(), context, pageGroupRef, behavior);
 }
 
-/**
- * @internal
- * Retrieves the internal WKPage for this view.
- */
-WKPageRef EwkView::wkPage()
+bool EwkView::initSmartClassInterface(Ewk_View_Smart_Class& api)
 {
-    return toAPI(m_pageProxy.get());
+    if (api.version != EWK_VIEW_SMART_CLASS_VERSION) {
+        EINA_LOG_CRIT("Ewk_View_Smart_Class %p is version %lu while %lu was expected.",
+            &api, api.version, EWK_VIEW_SMART_CLASS_VERSION);
+        return false;
+    }
+
+    if (!parentSmartClass.add)
+        evas_object_smart_clipped_smart_set(&parentSmartClass);
+
+    evas_object_smart_clipped_smart_set(&api.sc);
+
+    // Set Evas_Smart_Class callbacks.
+    api.sc.add = handleEvasObjectAdd;
+    api.sc.del = handleEvasObjectDelete;
+    api.sc.move = handleEvasObjectMove;
+    api.sc.resize = handleEvasObjectResize;
+    api.sc.show = handleEvasObjectShow;
+    api.sc.hide = handleEvasObjectHide;
+    api.sc.color_set = handleEvasObjectColorSet;
+    api.sc.calculate = handleEvasObjectCalculate;
+    api.sc.data = smartClassName; // It is used for type checking.
+
+    // Set Ewk_View_Smart_Class callbacks.
+    api.focus_in = handleEwkViewFocusIn;
+    api.focus_out = handleEwkViewFocusOut;
+    api.mouse_wheel = handleEwkViewMouseWheel;
+    api.mouse_down = handleEwkViewMouseDown;
+    api.mouse_up = handleEwkViewMouseUp;
+    api.mouse_move = handleEwkViewMouseMove;
+    api.key_down = handleEwkViewKeyDown;
+    api.key_up = handleEwkViewKeyUp;
+
+    return true;
+}
+
+const Evas_Object* EwkView::toEvasObject(WKPageRef page)
+{
+    ASSERT(page);
+    return toImpl(page)->viewWidget();
+}
+
+WKPageRef EwkView::wkPage() const
+{
+    return WKViewGetPage(wkView());
 }
 
 void EwkView::setCursor(const Cursor& cursor)
@@ -297,33 +457,39 @@ void EwkView::setCursor(const Cursor& cursor)
 void EwkView::setDeviceScaleFactor(float scale)
 {
     page()->setIntrinsicDeviceScaleFactor(scale);
+
+    // Update internal viewport size after device-scale change.
+    setDeviceSize(deviceSize());
 }
 
 float EwkView::deviceScaleFactor() const
 {
-    return m_pageProxy->deviceScaleFactor();
+    return WKPageGetBackingScaleFactor(wkPage());
 }
 
-AffineTransform EwkView::transformFromScene() const
+void EwkView::setDeviceSize(const IntSize& deviceSize)
 {
-    AffineTransform transform;
+    m_deviceSize = deviceSize;
 
-#if USE(TILED_BACKING_STORE)
-    // Note that we apply both page and device scale factors.
-    transform.scale(1 / pageScaleFactor());
-    transform.scale(1 / deviceScaleFactor());
-    transform.translate(pagePosition().x(), pagePosition().y());
-#endif
+    DrawingAreaProxy* drawingArea = page()->drawingArea();
+    if (!drawingArea)
+        return;
 
-    Ewk_View_Smart_Data* sd = smartData();
-    transform.translate(-sd->view.x, -sd->view.y);
-
-    return transform;
+    drawingArea->setSize(size(), IntSize());
+    webView()->updateViewportSize();
 }
 
-AffineTransform EwkView::transformToScene() const
+IntSize EwkView::size() const
 {
-    return transformFromScene().inverse();
+    // WebPage expects a size in UI units, and not raw device units.
+    FloatSize uiSize = m_deviceSize;
+    uiSize.scale(1 / deviceScaleFactor());
+    return roundedIntSize(uiSize);
+}
+
+IntSize EwkView::deviceSize() const
+{
+    return m_deviceSize;
 }
 
 AffineTransform EwkView::transformToScreen() const
@@ -339,12 +505,10 @@ AffineTransform EwkView::transformToScreen() const
     Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(sd->base.evas);
 
     Ecore_X_Window window;
-#if USE(ACCELERATED_COMPOSITING)
     window = ecore_evas_gl_x11_window_get(ecoreEvas);
     // Fallback to software mode if necessary.
     if (!window)
-#endif
-    window = ecore_evas_software_x11_window_get(ecoreEvas); // Returns 0 if none.
+        window = ecore_evas_software_x11_window_get(ecoreEvas); // Returns 0 if none.
 
     int x, y; // x, y are relative to parent (in a reparenting window manager).
     while (window) {
@@ -361,85 +525,48 @@ AffineTransform EwkView::transformToScreen() const
     return transform;
 }
 
-#if USE(COORDINATED_GRAPHICS)
-CoordinatedGraphicsScene* EwkView::coordinatedGraphicsScene()
+inline Ewk_View_Smart_Data* EwkView::smartData() const
 {
-    DrawingAreaProxy* drawingArea = page()->drawingArea();
-    if (!drawingArea)
-        return 0;
-
-    WebKit::CoordinatedLayerTreeHostProxy* coordinatedLayerTreeHostProxy = drawingArea->coordinatedLayerTreeHostProxy();
-    if (!coordinatedLayerTreeHostProxy)
-        return 0;
-
-    return coordinatedLayerTreeHostProxy->coordinatedGraphicsScene();
+    return toSmartData(m_evasObject);
 }
-#endif
 
 void EwkView::displayTimerFired(Timer<EwkView>*)
 {
-#if USE(COORDINATED_GRAPHICS)
     Ewk_View_Smart_Data* sd = smartData();
 
     if (m_pendingSurfaceResize) {
         // Create a GL surface here so that Evas has no chance of painting to an empty GL surface.
-        if (!createGLSurface(IntSize(sd->view.w, sd->view.h)))
+        if (!createGLSurface())
             return;
 
         m_pendingSurfaceResize = false;
     }
 
-    evas_gl_make_current(m_evasGL.get(), m_evasGLSurface->surface(), m_evasGLContext->context());
-
-    // We are supposed to clip to the actual viewport, nothing less.
-    IntRect viewport(sd->view.x, sd->view.y, sd->view.w, sd->view.h);
-
-    CoordinatedGraphicsScene* scene = coordinatedGraphicsScene();
-    if (!scene)
-        return;
-
-    scene->setActive(true);
-    scene->setDrawsBackground(m_setDrawsBackground);
-    if (m_isHardwareAccelerated) {
-        scene->paintToCurrentGLContext(transformToScene().toTransformationMatrix(), /* opacity */ 1, viewport);
-        // sd->image is tied to a native surface. The native surface is in the parent's coordinates,
-        // so we need to account for the viewport position when calling evas_object_image_data_update_add.
-        evas_object_image_data_update_add(sd->image, viewport.x(), viewport.y(), viewport.width(), viewport.height());
-    } else {
+    if (!m_isAccelerated) {
         RefPtr<cairo_surface_t> surface = createSurfaceForImage(sd->image);
         if (!surface)
             return;
 
-        RefPtr<cairo_t> graphicsContext = adoptRef(cairo_create(surface.get()));
-        cairo_translate(graphicsContext.get(), - pagePosition().x(), - pagePosition().y());
-        cairo_scale(graphicsContext.get(), pageScaleFactor(), pageScaleFactor());
-        cairo_scale(graphicsContext.get(), deviceScaleFactor(), deviceScaleFactor());
-        scene->paintToGraphicsContext(graphicsContext.get());
-        evas_object_image_data_update_add(sd->image, 0, 0, viewport.width(), viewport.height());
+        WKViewPaintToCairoSurface(wkView(), surface.get());
+        evas_object_image_data_update_add(sd->image, 0, 0, sd->view.w, sd->view.h);
+        return;
     }
-#endif
+
+    evas_gl_make_current(m_evasGL.get(), m_evasGLSurface->surface(), m_evasGLContext->context());
+
+    WKViewPaintToCurrentGLContext(wkView());
+
+    // sd->image is tied to a native surface, which is in the parent's coordinates.
+    evas_object_image_data_update_add(sd->image, sd->view.x, sd->view.y, sd->view.w, sd->view.h);
 }
 
-void EwkView::update(const IntRect& rect)
+void EwkView::scheduleUpdateDisplay()
 {
-    Ewk_View_Smart_Data* sd = smartData();
-#if USE(COORDINATED_GRAPHICS)
-    // Coordinated graphices needs to schedule an full update, not
-    // repainting of a region. Update in the event loop.
-    UNUSED_PARAM(rect);
-
-    // Guard for zero sized viewport.
-    if (!(sd->view.w && sd->view.h))
+    if (m_deviceSize.isEmpty())
         return;
 
     if (!m_displayTimer.isActive())
         m_displayTimer.startOneShot(0);
-#else
-    if (!sd->image)
-        return;
-
-    evas_object_image_data_update_add(sd->image, rect.x(), rect.y(), rect.width(), rect.height());
-#endif
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -451,7 +578,7 @@ void EwkView::enterFullScreen()
 {
     Ewk_View_Smart_Data* sd = smartData();
 
-    RefPtr<EwkSecurityOrigin> origin = EwkSecurityOrigin::create(KURL(ParsedURLString, String::fromUTF8(m_url)));
+    RefPtr<EwkSecurityOrigin> origin = EwkSecurityOrigin::create(m_url);
 
     if (!sd->api->fullscreen_enter || !sd->api->fullscreen_enter(sd, origin.get())) {
         Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(sd->base.evas);
@@ -497,24 +624,6 @@ void EwkView::setWindowGeometry(const WKRect& rect)
     }
 }
 
-void EwkView::setImageData(void* imageData, const IntSize& size)
-{
-    Ewk_View_Smart_Data* sd = smartData();
-    if (!imageData || !sd->image)
-        return;
-
-    evas_object_resize(sd->image, size.width(), size.height());
-    evas_object_image_size_set(sd->image, size.width(), size.height());
-    evas_object_image_data_copy_set(sd->image, imageData);
-}
-
-IntSize EwkView::size() const
-{
-    int width, height;
-    evas_object_geometry_get(m_evasObject, 0, 0, &width, &height);
-    return IntSize(width, height);
-}
-
 bool EwkView::isFocused() const
 {
     return evas_object_focus_get(m_evasObject);
@@ -527,7 +636,7 @@ bool EwkView::isVisible() const
 
 const char* EwkView::title() const
 {
-    m_title = m_pageProxy->pageTitle().utf8().data();
+    m_title = WKEinaSharedString(AdoptWK, WKPageCopyTitle(wkPage()));
 
     return m_title;
 }
@@ -550,24 +659,26 @@ void EwkView::setThemePath(const char* theme)
 {
     if (m_theme != theme) {
         m_theme = theme;
-        m_pageProxy->setThemePath(theme);
+        WKRetainPtr<WKStringRef> wkTheme = adoptWK(WKStringCreateWithUTF8CString(theme));
+        WKViewSetThemePath(wkView(), wkTheme.get());
     }
 }
 
 const char* EwkView::customTextEncodingName() const
 {
-    String customEncoding = m_pageProxy->customTextEncodingName();
-    if (customEncoding.isEmpty())
+    WKRetainPtr<WKStringRef> customEncoding = adoptWK(WKPageCopyCustomTextEncodingName(wkPage()));
+    if (WKStringIsEmpty(customEncoding.get()))
         return 0;
 
-    m_customEncoding = customEncoding.utf8().data();
+    m_customEncoding = WKEinaSharedString(customEncoding.get());
 
     return m_customEncoding;
 }
 
 void EwkView::setCustomTextEncodingName(const String& encoding)
 {
-    m_pageProxy->setCustomTextEncodingName(encoding);
+    WKRetainPtr<WKStringRef> wkEncoding = adoptWK(toCopiedAPI(encoding));
+    WKPageSetCustomTextEncodingName(wkPage(), wkEncoding.get());
 }
 
 void EwkView::setMouseEventsEnabled(bool enabled)
@@ -577,18 +688,22 @@ void EwkView::setMouseEventsEnabled(bool enabled)
 
     m_mouseEventsEnabled = enabled;
     if (enabled) {
-        Ewk_View_Smart_Data* sd = smartData();
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_DOWN, onMouseDown, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_UP, onMouseUp, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_MOVE, onMouseMove, sd);
+        EwkViewEventHandler<EVAS_CALLBACK_MOUSE_DOWN>::subscribe(m_evasObject);
+        EwkViewEventHandler<EVAS_CALLBACK_MOUSE_UP>::subscribe(m_evasObject);
+        EwkViewEventHandler<EVAS_CALLBACK_MOUSE_MOVE>::subscribe(m_evasObject);
     } else {
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_DOWN, onMouseDown);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_UP, onMouseUp);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_MOVE, onMouseMove);
+        EwkViewEventHandler<EVAS_CALLBACK_MOUSE_DOWN>::unsubscribe(m_evasObject);
+        EwkViewEventHandler<EVAS_CALLBACK_MOUSE_UP>::unsubscribe(m_evasObject);
+        EwkViewEventHandler<EVAS_CALLBACK_MOUSE_MOVE>::unsubscribe(m_evasObject);
     }
 }
 
 #if ENABLE(TOUCH_EVENTS)
+void EwkView::feedTouchEvent(Ewk_Touch_Event_Type type, const Eina_List* points, const Evas_Modifier* modifiers)
+{
+    page()->handleTouchEvent(NativeWebTouchEvent(type, points, modifiers, webView()->transformFromScene(), transformToScreen(), ecore_time_get()));
+}
+
 void EwkView::setTouchEventsEnabled(bool enabled)
 {
     if (m_touchEventsEnabled == enabled)
@@ -603,70 +718,29 @@ void EwkView::setTouchEventsEnabled(bool enabled)
         // supports the touch events.
         // See https://bugs.webkit.org/show_bug.cgi?id=97785 for details.
         Ewk_View_Smart_Data* sd = smartData();
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_DOWN, onTouchDown, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_UP, onTouchUp, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_MOVE, onTouchMove, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MULTI_DOWN, onTouchDown, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MULTI_UP, onTouchUp, sd);
-        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MULTI_MOVE, onTouchMove, sd);
+        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_DOWN, handleTouchDown, sd);
+        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_UP, handleTouchUp, sd);
+        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MOUSE_MOVE, handleTouchMove, sd);
+        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MULTI_DOWN, handleTouchDown, sd);
+        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MULTI_UP, handleTouchUp, sd);
+        evas_object_event_callback_add(m_evasObject, EVAS_CALLBACK_MULTI_MOVE, handleTouchMove, sd);
     } else {
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_DOWN, onTouchDown);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_UP, onTouchUp);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_MOVE, onTouchMove);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_DOWN, onTouchDown);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_UP, onTouchUp);
-        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_MOVE, onTouchMove);
+        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_DOWN, handleTouchDown);
+        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_UP, handleTouchUp);
+        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MOUSE_MOVE, handleTouchMove);
+        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_DOWN, handleTouchDown);
+        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_UP, handleTouchUp);
+        evas_object_event_callback_del(m_evasObject, EVAS_CALLBACK_MULTI_MOVE, handleTouchMove);
     }
 }
 #endif
 
-/**
- * @internal
- * Update the view's favicon and emits a "icon,changed" signal if it has
- * changed.
- *
- * This function is called whenever the URL has changed or when the icon for
- * the current page URL has changed.
- */
-void EwkView::informIconChange()
+bool EwkView::createGLSurface()
 {
-    EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
-    ASSERT(iconDatabase);
-
-    m_faviconURL = ewk_favicon_database_icon_url_get(iconDatabase, m_url);
-    smartCallback<IconChanged>().call();
-}
-
-#if USE(ACCELERATED_COMPOSITING)
-bool EwkView::createGLSurface(const IntSize& viewSize)
-{
-    if (!m_isHardwareAccelerated)
+    if (!m_isAccelerated)
         return true;
 
-    if (!m_evasGL) {
-        Evas* evas = evas_object_evas_get(m_evasObject);
-        m_evasGL = adoptPtr(evas_gl_new(evas));
-        if (!m_evasGL) {
-            WARN("Failed to create Evas_GL, falling back to software mode.");
-            m_isHardwareAccelerated = false;
-#if ENABLE(WEBGL)
-            m_pageProxy->pageGroup()->preferences()->setWebGLEnabled(false);
-#endif
-            return false;
-        }
-    }
-
-    if (!m_evasGLContext) {
-        m_evasGLContext = EvasGLContext::create(m_evasGL.get());
-        if (!m_evasGLContext) {
-            WARN("Failed to create GLContext.");
-            return false;
-        }
-    }
-
-    Ewk_View_Smart_Data* sd = smartData();
-
-    Evas_GL_Config evasGLConfig = {
+    static Evas_GL_Config evasGLConfig = {
         EVAS_GL_RGBA_8888,
         EVAS_GL_DEPTH_BIT_8,
         EVAS_GL_STENCIL_NONE,
@@ -674,47 +748,26 @@ bool EwkView::createGLSurface(const IntSize& viewSize)
         EVAS_GL_MULTISAMPLE_NONE
     };
 
-    // Replaces if non-null, and frees existing surface after (OwnPtr).
-    m_evasGLSurface = EvasGLSurface::create(m_evasGL.get(), &evasGLConfig, viewSize);
+    // Recreate to current size: Replaces if non-null, and frees existing surface after (OwnPtr).
+    m_evasGLSurface = EvasGLSurface::create(m_evasGL.get(), &evasGLConfig, deviceSize());
     if (!m_evasGLSurface)
         return false;
 
     Evas_Native_Surface nativeSurface;
     evas_gl_native_surface_get(m_evasGL.get(), m_evasGLSurface->surface(), &nativeSurface);
-    evas_object_image_native_surface_set(sd->image, &nativeSurface);
+    evas_object_image_native_surface_set(smartData()->image, &nativeSurface);
 
     evas_gl_make_current(m_evasGL.get(), m_evasGLSurface->surface(), m_evasGLContext->context());
 
     Evas_GL_API* gl = evas_gl_api_get(m_evasGL.get());
-    gl->glViewport(0, 0, viewSize.width() + sd->view.x, viewSize.height() + sd->view.y);
+
+    const WKPoint& boundsEnd = WKViewUserViewportToContents(wkView(), WKPointMake(deviceSize().width(), deviceSize().height()));
+    gl->glViewport(0, 0, boundsEnd.x, boundsEnd.y);
     gl->glClearColor(1.0, 1.0, 1.0, 0);
     gl->glClear(GL_COLOR_BUFFER_BIT);
 
     return true;
 }
-
-bool EwkView::enterAcceleratedCompositingMode()
-{
-    coordinatedGraphicsScene()->setActive(true);
-
-    if (!m_isHardwareAccelerated)
-        return true;
-
-    if (!m_evasGLSurface) {
-        if (!createGLSurface(size())) {
-            WARN("Failed to create GLSurface.");
-            return false;
-        }
-    }
-
-    return true;
-}
-
-bool EwkView::exitAcceleratedCompositingMode()
-{
-    return true;
-}
-#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
 /**
@@ -791,12 +844,15 @@ void EwkView::hideContextMenu()
     m_contextMenu.clear();
 }
 
-void EwkView::requestPopupMenu(WebPopupMenuProxyEfl* popupMenuProxy, const IntRect& rect, TextDirection textDirection, double pageScaleFactor, const Vector<WebPopupItem>& items, int32_t selectedIndex)
+COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_RIGHT_TO_LEFT, kWKPopupItemTextDirectionRTL);
+COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_LEFT_TO_RIGHT, kWKPopupItemTextDirectionLTR);
+
+void EwkView::requestPopupMenu(WKPopupMenuListenerRef popupMenuListener, const WKRect& rect, WKPopupItemTextDirection textDirection, double pageScaleFactor, WKArrayRef items, int32_t selectedIndex)
 {
     Ewk_View_Smart_Data* sd = smartData();
     ASSERT(sd->api);
 
-    ASSERT(popupMenuProxy);
+    ASSERT(popupMenuListener);
 
     if (!sd->api->popup_menu_show)
         return;
@@ -804,9 +860,12 @@ void EwkView::requestPopupMenu(WebPopupMenuProxyEfl* popupMenuProxy, const IntRe
     if (m_popupMenu)
         closePopupMenu();
 
-    m_popupMenu = EwkPopupMenu::create(this, popupMenuProxy, items, selectedIndex);
+    m_popupMenu = EwkPopupMenu::create(this, popupMenuListener, items, selectedIndex);
 
-    sd->api->popup_menu_show(sd, rect, static_cast<Ewk_Text_Direction>(textDirection), pageScaleFactor, m_popupMenu.get());
+    Eina_Rectangle einaRect;
+    EINA_RECTANGLE_SET(&einaRect, rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
+
+    sd->api->popup_menu_show(sd, einaRect, static_cast<Ewk_Text_Direction>(textDirection), pageScaleFactor, m_popupMenu.get());
 }
 
 void EwkView::closePopupMenu()
@@ -894,19 +953,25 @@ unsigned long long EwkView::informDatabaseQuotaReached(const String& databaseNam
  */
 void EwkView::informURLChange()
 {
-    String activeURL = m_pageProxy->activeURL();
-    if (activeURL.isEmpty())
+    WKRetainPtr<WKURLRef> wkActiveURL = adoptWK(WKPageCopyActiveURL(wkPage()));
+    WKRetainPtr<WKStringRef> wkURLString = wkActiveURL ? adoptWK(WKURLCopyString(wkActiveURL.get())) : adoptWK(WKStringCreateWithUTF8CString(""));
+
+    if (WKStringIsEqualToUTF8CString(wkURLString.get(), m_url))
         return;
 
-    CString rawActiveURL = activeURL.utf8();
-    if (m_url == rawActiveURL.data())
-        return;
-
-    m_url = rawActiveURL.data();
+    m_url = WKEinaSharedString(wkURLString.get());
     smartCallback<URLChanged>().call(m_url);
 
     // Update the view's favicon.
-    informIconChange();
+    smartCallback<FaviconChanged>().call();
+}
+
+Evas_Object* EwkView::createFavicon() const
+{
+    EwkFaviconDatabase* iconDatabase = m_context->faviconDatabase();
+    ASSERT(iconDatabase);
+
+    return ewk_favicon_database_icon_get(iconDatabase, m_url, smartData()->base.evas);
 }
 
 EwkWindowFeatures* EwkView::windowFeatures()
@@ -931,7 +996,7 @@ WKPageRef EwkView::createNewPage(PassRefPtr<EwkUrlRequest> request, WKDictionary
     if (!newEwkView)
         return 0;
 
-    EwkView* newViewImpl = EwkView::fromEvasObject(newEwkView);
+    EwkView* newViewImpl = toEwkView(newEwkView);
     ASSERT(newViewImpl);
 
     newViewImpl->m_windowFeatures = ewkWindowFeatures;
@@ -950,31 +1015,205 @@ void EwkView::close()
     sd->api->window_close(sd);
 }
 
-void EwkView::onMouseDown(void* data, Evas*, Evas_Object*, void* eventInfo)
+void EwkView::handleEvasObjectAdd(Evas_Object* evasObject)
 {
-    Evas_Event_Mouse_Down* downEvent = static_cast<Evas_Event_Mouse_Down*>(eventInfo);
-    Ewk_View_Smart_Data* sd = static_cast<Ewk_View_Smart_Data*>(data);
-    EINA_SAFETY_ON_NULL_RETURN(sd->api);
-    EINA_SAFETY_ON_NULL_RETURN(sd->api->mouse_down);
-    sd->api->mouse_down(sd, downEvent);
+    const Evas_Smart* smart = evas_object_smart_smart_get(evasObject);
+    const Evas_Smart_Class* smartClass = evas_smart_class_get(smart);
+    const Ewk_View_Smart_Class* api = reinterpret_cast<const Ewk_View_Smart_Class*>(smartClass);
+    ASSERT(api);
+
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+
+    if (!smartData) {
+        // Allocating with 'calloc' as the API contract is that it should be deleted with 'free()'.
+        smartData = static_cast<Ewk_View_Smart_Data*>(calloc(1, sizeof(Ewk_View_Smart_Data)));
+        evas_object_smart_data_set(evasObject, smartData);
+    }
+
+    smartData->self = evasObject;
+    smartData->api = api;
+
+    parentSmartClass.add(evasObject);
+
+    smartData->priv = 0; // Will be initialized further.
+
+    // Create evas_object_image to draw web contents.
+    smartData->image = evas_object_image_add(smartData->base.evas);
+    evas_object_image_alpha_set(smartData->image, false);
+    evas_object_image_filled_set(smartData->image, true);
+    evas_object_smart_member_add(smartData->image, evasObject);
+    evas_object_show(smartData->image);
+
+    EwkViewEventHandler<EVAS_CALLBACK_FOCUS_IN>::subscribe(evasObject);
+    EwkViewEventHandler<EVAS_CALLBACK_FOCUS_OUT>::subscribe(evasObject);
+    EwkViewEventHandler<EVAS_CALLBACK_MOUSE_WHEEL>::subscribe(evasObject);
+    EwkViewEventHandler<EVAS_CALLBACK_KEY_DOWN>::subscribe(evasObject);
+    EwkViewEventHandler<EVAS_CALLBACK_KEY_UP>::subscribe(evasObject);
+    EwkViewEventHandler<EVAS_CALLBACK_SHOW>::subscribe(evasObject);
+    EwkViewEventHandler<EVAS_CALLBACK_HIDE>::subscribe(evasObject);
 }
 
-void EwkView::onMouseUp(void* data, Evas*, Evas_Object*, void* eventInfo)
+void EwkView::handleEvasObjectDelete(Evas_Object* evasObject)
 {
-    Evas_Event_Mouse_Up* upEvent = static_cast<Evas_Event_Mouse_Up*>(eventInfo);
-    Ewk_View_Smart_Data* sd = static_cast<Ewk_View_Smart_Data*>(data);
-    EINA_SAFETY_ON_NULL_RETURN(sd->api);
-    EINA_SAFETY_ON_NULL_RETURN(sd->api->mouse_up);
-    sd->api->mouse_up(sd, upEvent);
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    if (smartData) {
+        ASSERT(smartData->priv); // smartData->priv is EwkView instance.
+        delete smartData->priv;
+    }
+
+    parentSmartClass.del(evasObject);
 }
 
-void EwkView::onMouseMove(void* data, Evas*, Evas_Object*, void* eventInfo)
+void EwkView::handleEvasObjectResize(Evas_Object* evasObject, Evas_Coord width, Evas_Coord height)
 {
-    Evas_Event_Mouse_Move* moveEvent = static_cast<Evas_Event_Mouse_Move*>(eventInfo);
-    Ewk_View_Smart_Data* sd = static_cast<Ewk_View_Smart_Data*>(data);
-    EINA_SAFETY_ON_NULL_RETURN(sd->api);
-    EINA_SAFETY_ON_NULL_RETURN(sd->api->mouse_move);
-    sd->api->mouse_move(sd, moveEvent);
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    ASSERT(smartData);
+
+    evas_object_resize(smartData->image, width, height);
+    evas_object_image_size_set(smartData->image, width, height);
+    evas_object_image_fill_set(smartData->image, 0, 0, width, height);
+
+    smartData->changed.size = true;
+    smartDataChanged(smartData);
+}
+
+void EwkView::handleEvasObjectMove(Evas_Object* evasObject, Evas_Coord /*x*/, Evas_Coord /*y*/)
+{
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    ASSERT(smartData);
+
+    smartData->changed.position = true;
+    smartDataChanged(smartData);
+}
+
+void EwkView::handleEvasObjectCalculate(Evas_Object* evasObject)
+{
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    ASSERT(smartData);
+
+    EwkView* self = toEwkView(smartData);
+
+    smartData->changed.any = false;
+
+    Evas_Coord x, y, width, height;
+    evas_object_geometry_get(evasObject, &x, &y, &width, &height);
+
+    if (smartData->changed.position) {
+        smartData->changed.position = false;
+        smartData->view.x = x;
+        smartData->view.y = y;
+        evas_object_move(smartData->image, x, y);
+        WKViewSetUserViewportTranslation(self->wkView(), x, y);
+    }
+
+    if (smartData->changed.size) {
+        smartData->changed.size = false;
+        smartData->view.w = width;
+        smartData->view.h = height;
+
+        self->setDeviceSize(IntSize(width, height));
+        self->setNeedsSurfaceResize();
+    }
+}
+
+void EwkView::handleEvasObjectShow(Evas_Object* evasObject)
+{
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    ASSERT(smartData);
+
+    if (evas_object_clipees_get(smartData->base.clipper))
+        evas_object_show(smartData->base.clipper);
+    evas_object_show(smartData->image);
+}
+
+void EwkView::handleEvasObjectHide(Evas_Object* evasObject)
+{
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    ASSERT(smartData);
+
+    evas_object_hide(smartData->base.clipper);
+    evas_object_hide(smartData->image);
+}
+
+void EwkView::handleEvasObjectColorSet(Evas_Object* evasObject, int red, int green, int blue, int alpha)
+{
+    Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
+    ASSERT(smartData);
+
+    EwkView* view = toEwkView(smartData);
+    ASSERT(view);
+
+    alpha = clampTo(alpha, 0, 255);
+    red = clampTo(red, 0, alpha);
+    green = clampTo(green, 0, alpha);
+    blue = clampTo(blue, 0, alpha);
+
+    evas_object_image_alpha_set(smartData->image, alpha < 255);
+    WKViewSetDrawsBackground(view->wkView(), red || green || blue);
+    WKViewSetDrawsTransparentBackground(view->wkView(), alpha < 255);
+
+    parentSmartClass.color_set(evasObject, red, green, blue, alpha);
+}
+
+Eina_Bool EwkView::handleEwkViewFocusIn(Ewk_View_Smart_Data* smartData)
+{
+    toEwkView(smartData)->page()->viewStateDidChange(WebPageProxy::ViewIsFocused | WebPageProxy::ViewWindowIsActive);
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewFocusOut(Ewk_View_Smart_Data* smartData)
+{
+    toEwkView(smartData)->page()->viewStateDidChange(WebPageProxy::ViewIsFocused | WebPageProxy::ViewWindowIsActive);
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewMouseWheel(Ewk_View_Smart_Data* smartData, const Evas_Event_Mouse_Wheel* wheelEvent)
+{
+    EwkView* self = toEwkView(smartData);
+    self->page()->handleWheelEvent(NativeWebWheelEvent(wheelEvent, self->webView()->transformFromScene(), self->transformToScreen()));
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewMouseDown(Ewk_View_Smart_Data* smartData, const Evas_Event_Mouse_Down* downEvent)
+{
+    EwkView* self = toEwkView(smartData);
+    self->page()->handleMouseEvent(NativeWebMouseEvent(downEvent, self->webView()->transformFromScene(), self->transformToScreen()));
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewMouseUp(Ewk_View_Smart_Data* smartData, const Evas_Event_Mouse_Up* upEvent)
+{
+    EwkView* self = toEwkView(smartData);
+    self->page()->handleMouseEvent(NativeWebMouseEvent(upEvent, self->webView()->transformFromScene(), self->transformToScreen()));
+
+    if (InputMethodContextEfl* inputMethodContext = self->inputMethodContext())
+        inputMethodContext->handleMouseUpEvent(upEvent);
+
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewMouseMove(Ewk_View_Smart_Data* smartData, const Evas_Event_Mouse_Move* moveEvent)
+{
+    EwkView* self = toEwkView(smartData);
+    self->page()->handleMouseEvent(NativeWebMouseEvent(moveEvent, self->webView()->transformFromScene(), self->transformToScreen()));
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewKeyDown(Ewk_View_Smart_Data* smartData, const Evas_Event_Key_Down* downEvent)
+{
+    bool isFiltered = false;
+    EwkView* self = toEwkView(smartData);
+    if (InputMethodContextEfl* inputMethodContext = self->inputMethodContext())
+        inputMethodContext->handleKeyDownEvent(downEvent, &isFiltered);
+
+    self->page()->handleKeyboardEvent(NativeWebKeyboardEvent(downEvent, isFiltered));
+    return true;
+}
+
+Eina_Bool EwkView::handleEwkViewKeyUp(Ewk_View_Smart_Data* smartData, const Evas_Event_Key_Up* upEvent)
+{
+    toEwkView(smartData)->page()->handleKeyboardEvent(NativeWebKeyboardEvent(upEvent));
+    return true;
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -995,67 +1234,98 @@ void EwkView::feedTouchEvents(Ewk_Touch_Event_Type type)
         points = eina_list_append(points, point);
     }
 
-    ewk_view_feed_touch_event(m_evasObject, type, points, evas_key_modifier_get(sd->base.evas));
+    feedTouchEvent(type, points, evas_key_modifier_get(sd->base.evas));
 
     void* data;
     EINA_LIST_FREE(points, data)
         delete static_cast<Ewk_Touch_Point*>(data);
 }
 
-void EwkView::onTouchDown(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
+void EwkView::handleTouchDown(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
 {
-    EwkView* view = EwkView::fromEvasObject(ewkView);
-    view->feedTouchEvents(EWK_TOUCH_START);
+    toEwkView(ewkView)->feedTouchEvents(EWK_TOUCH_START);
 }
 
-void EwkView::onTouchUp(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
+void EwkView::handleTouchUp(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
 {
-    EwkView* view = EwkView::fromEvasObject(ewkView);
-    view->feedTouchEvents(EWK_TOUCH_END);
+    toEwkView(ewkView)->feedTouchEvents(EWK_TOUCH_END);
 }
 
-void EwkView::onTouchMove(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
+void EwkView::handleTouchMove(void* /* data */, Evas* /* canvas */, Evas_Object* ewkView, void* /* eventInfo */)
 {
-    EwkView* view = EwkView::fromEvasObject(ewkView);
-    view->feedTouchEvents(EWK_TOUCH_MOVE);
+    toEwkView(ewkView)->feedTouchEvents(EWK_TOUCH_MOVE);
 }
 #endif
 
-void EwkView::onFaviconChanged(const char* pageURL, void* eventInfo)
+void EwkView::handleFaviconChanged(const char* pageURL, void* eventInfo)
 {
     EwkView* view = static_cast<EwkView*>(eventInfo);
 
     if (!view->url() || strcasecmp(view->url(), pageURL))
         return;
 
-    view->informIconChange();
+    view->smartCallback<FaviconChanged>().call();
 }
 
 PassRefPtr<cairo_surface_t> EwkView::takeSnapshot()
 {
     // Suspend all animations before taking the snapshot.
-    m_pageProxy->suspendActiveDOMObjectsAndAnimations();
+    WKViewSuspendActiveDOMObjectsAndAnimations(wkView());
 
     // Wait for the pending repaint events to be processed.
     while (m_displayTimer.isActive())
         ecore_main_loop_iterate();
 
     Ewk_View_Smart_Data* sd = smartData();
-#if USE(ACCELERATED_COMPOSITING)
-    if (!m_isHardwareAccelerated) {
-#endif
+    if (!m_isAccelerated) {
         RefPtr<cairo_surface_t> snapshot = createSurfaceForImage(sd->image);
         // Resume all animations.
-        m_pageProxy->resumeActiveDOMObjectsAndAnimations();
+        WKViewResumeActiveDOMObjectsAndAnimations(wkView());
 
         return snapshot.release();
-#if USE(ACCELERATED_COMPOSITING)
     }
 
     RefPtr<cairo_surface_t> snapshot = getImageSurfaceFromFrameBuffer(0, 0, sd->view.w, sd->view.h);
     // Resume all animations.
-    m_pageProxy->resumeActiveDOMObjectsAndAnimations();
+    WKViewResumeActiveDOMObjectsAndAnimations(wkView());
 
     return snapshot.release();
-#endif
+}
+
+Evas_Smart_Class EwkView::parentSmartClass = EVAS_SMART_CLASS_INIT_NULL;
+
+// Free Ewk View functions.
+
+EwkView* toEwkView(const Evas_Object* evasObject)
+{
+    ASSERT(evasObject);
+    ASSERT(isEwkViewEvasObject(evasObject));
+
+    return toEwkView(static_cast<Ewk_View_Smart_Data*>(evas_object_smart_data_get(evasObject)));
+}
+
+bool isEwkViewEvasObject(const Evas_Object* evasObject)
+{
+    ASSERT(evasObject);
+
+    const char* evasObjectType = evas_object_type_get(evasObject);
+    const Evas_Smart* evasSmart = evas_object_smart_smart_get(evasObject);
+    if (!evasSmart) {
+        EINA_LOG_CRIT("%p (%s) is not a smart object!", evasObject, evasObjectType ? evasObjectType : "(null)");
+        return false;
+    }
+
+    const Evas_Smart_Class* smartClass = evas_smart_class_get(evasSmart);
+    if (!smartClass) {
+        EINA_LOG_CRIT("%p (%s) is not a smart class object!", evasObject, evasObjectType ? evasObjectType : "(null)");
+        return false;
+    }
+
+    if (smartClass->data != smartClassName) {
+        EINA_LOG_CRIT("%p (%s) is not of an ewk_view (need %p, got %p)!", evasObject, evasObjectType ? evasObjectType : "(null)",
+            smartClassName, smartClass->data);
+        return false;
+    }
+
+    return true;
 }

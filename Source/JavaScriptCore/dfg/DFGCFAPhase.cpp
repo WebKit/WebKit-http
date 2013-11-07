@@ -45,6 +45,10 @@ public:
     
     bool run()
     {
+        ASSERT(m_graph.m_form == ThreadedCPS);
+        ASSERT(m_graph.m_unificationState == GloballyUnified);
+        ASSERT(m_graph.m_refCountState == EverythingIsLive);
+        
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
         m_count = 0;
 #endif
@@ -88,11 +92,9 @@ private:
         dataLogF("\n");
 #endif
         for (unsigned i = 0; i < block->size(); ++i) {
-            Node* node = block->at(i);
-            if (!node->shouldGenerate())
-                continue;
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
-            dataLogF("      %s @%u: ", Graph::opName(m_graph[nodeIndex].op()), node->index());
+            Node* node = block->at(i);
+            dataLogF("      %s @%u: ", Graph::opName(node->op()), node->index());
             m_state.dump(WTF::dataFile());
             dataLogF("\n");
 #endif

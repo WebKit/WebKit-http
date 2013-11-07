@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,6 +59,7 @@
 #include <WebCore/PageVisibilityState.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
+#include <WebCore/TextChecking.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
 #include <wtf/HashMap.h>
 #include <wtf/OwnPtr.h>
@@ -97,6 +98,8 @@
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSObject;
 OBJC_CLASS WKAccessibilityWebPageObject;
+
+#define ENABLE_PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC 1
 #endif
 
 namespace CoreIPC {
@@ -116,8 +119,10 @@ namespace WebCore {
     class ResourceResponse;
     class ResourceRequest;
     class SharedBuffer;
+    class TextCheckingRequest;
     class VisibleSelection;
     struct KeypressCommand;
+    struct TextCheckingResult;
 }
 
 namespace WebKit {
@@ -214,6 +219,8 @@ public:
 
     void didStartPageTransition();
     void didCompletePageTransition();
+    void didCommitLoad(WebFrame*);
+    void didFinishLoad(WebFrame*);
     void show();
     String userAgent() const { return m_userAgent; }
     WebCore::IntRect windowResizerRect() const;
@@ -277,6 +284,8 @@ public:
     WebCore::Frame* mainFrame() const; // May return 0.
     WebCore::FrameView* mainFrameView() const; // May return 0.
 
+    PassRefPtr<WebCore::Range> currentSelectionAsRange();
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PassRefPtr<Plugin> createPlugin(WebFrame*, WebCore::HTMLPlugInElement*, const Plugin::Parameters&);
 #endif
@@ -296,13 +305,17 @@ public:
     void clearMainFrameName();
     void sendClose();
 
+    void sendSetWindowFrame(const WebCore::FloatRect&);
+
     double textZoomFactor() const;
     void setTextZoomFactor(double);
     double pageZoomFactor() const;
     void setPageZoomFactor(double);
     void setPageAndTextZoomFactors(double pageZoomFactor, double textZoomFactor);
     void windowScreenDidChange(uint64_t);
+#if ENABLE(VIEW_MODE_CSS_MEDIA)
     void setViewMode(WebCore::Page::ViewMode);
+#endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
     void scalePage(double scale, const WebCore::IntPoint& origin);
     double pageScaleFactor() const;
@@ -315,6 +328,9 @@ public:
 
     void setSuppressScrollbarAnimations(bool);
 
+    void setRubberBandsAtBottom(bool);
+    void setRubberBandsAtTop(bool);
+
     void setPaginationMode(uint32_t /* WebCore::Pagination::Mode */);
     void setPaginationBehavesLikeColumns(bool);
     void setPageLength(double);
@@ -324,6 +340,9 @@ public:
 
     bool drawsBackground() const { return m_drawsBackground; }
     bool drawsTransparentBackground() const { return m_drawsTransparentBackground; }
+
+    void setUnderlayColor(const WebCore::Color& color) { m_underlayColor = color; }
+    WebCore::Color underlayColor() const { return m_underlayColor; }
 
     void stopLoading();
     void stopLoadingFrame(uint64_t frameID);
@@ -343,8 +362,13 @@ public:
 
     bool windowIsVisible() const { return m_windowIsVisible; }
     void updatePluginsActiveAndFocusedState();
-    const WebCore::IntRect& windowFrameInScreenCoordinates() const { return m_windowFrameInScreenCoordinates; }
-    const WebCore::IntRect& viewFrameInWindowCoordinates() const { return m_viewFrameInWindowCoordinates; }
+    const WebCore::FloatRect& windowFrameInScreenCoordinates() const { return m_windowFrameInScreenCoordinates; }
+    const WebCore::FloatRect& viewFrameInWindowCoordinates() const { return m_viewFrameInWindowCoordinates; }
+
+    bool hasCachedWindowFrame() const { return m_hasCachedWindowFrame; }
+
+    void setTopOverhangImage(PassRefPtr<WebImage>);
+    void setBottomOverhangImage(PassRefPtr<WebImage>);
 #endif
 
     bool windowIsFocused() const;
@@ -374,10 +398,7 @@ public:
 #if USE(TILED_BACKING_STORE)
     void pageDidRequestScroll(const WebCore::IntPoint&);
     void setFixedVisibleContentRect(const WebCore::IntRect&);
-    void resizeToContentsIfNeeded();
     void sendViewportAttributesChanged();
-    void setViewportSize(const WebCore::IntSize&);
-    WebCore::IntSize viewportSize() const { return m_viewportSize; }
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
@@ -427,10 +448,12 @@ public:
     void cancelComposition();
 #endif
 
+    void didChangeSelection();
+
 #if PLATFORM(MAC)
     void registerUIProcessAccessibilityTokens(const CoreIPC::DataReference& elemenToken, const CoreIPC::DataReference& windowToken);
     WKAccessibilityWebPageObject* accessibilityRemoteObject();
-    WebCore::IntPoint accessibilityPosition() const { return m_accessibilityPosition; }    
+    const WebCore::FloatPoint& accessibilityPosition() const { return m_accessibilityPosition; }
     
     void sendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
 
@@ -480,8 +503,10 @@ public:
     void speak(const String&);
     void stopSpeaking();
 
-    bool isSmartInsertDeleteEnabled() const { return m_isSmartInsertDeleteEnabled; }
 #endif
+
+    bool isSmartInsertDeleteEnabled();
+    void setSmartInsertDeleteEnabled(bool);
 
     void replaceSelectionWithText(WebCore::Frame*, const String&);
     void clearSelection();
@@ -605,6 +630,17 @@ public:
     void setMinimumLayoutWidth(double);
     double minimumLayoutWidth() const { return m_minimumLayoutWidth; }
 
+    bool canShowMIMEType(const String& MIMEType) const;
+
+    void addTextCheckingRequest(uint64_t requestID, PassRefPtr<WebCore::TextCheckingRequest>);
+    void didFinishCheckingText(uint64_t requestID, const Vector<WebCore::TextCheckingResult>&);
+    void didCancelCheckingText(uint64_t requestID);
+
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+    void determinePrimarySnapshottedPlugIn();
+    void resetPrimarySnapshottedPlugIn();
+#endif
+
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
 
@@ -713,7 +749,7 @@ private:
     void performDictionaryLookupForRange(DictionaryPopupInfo::Type, WebCore::Frame*, WebCore::Range*, NSDictionary *options);
 
     void setWindowIsVisible(bool windowIsVisible);
-    void windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInScreenCoordinates, const WebCore::IntRect& viewFrameInWindowCoordinates, const WebCore::IntPoint& accessibilityViewCoordinates);
+    void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates, const WebCore::FloatPoint& accessibilityViewCoordinates);
 
     RetainPtr<PDFDocument> pdfDocumentForPrintingFrame(WebCore::Frame*);
     void computePagesForPrintingPDFDocument(uint64_t frameID, const PrintInfo&, Vector<WebCore::IntRect>& resultPageRects);
@@ -721,7 +757,7 @@ private:
     void drawPagesToPDFFromPDFDocument(CGContextRef, PDFDocument *, const PrintInfo&, uint32_t first, uint32_t count);
 #endif
 
-    void viewExposedRectChanged(const WebCore::IntRect& exposedRect);
+    void viewExposedRectChanged(const WebCore::FloatRect& exposedRect);
     void setMainFrameIsScrollable(bool);
 
     void unapplyEditCommand(uint64_t commandID);
@@ -768,10 +804,6 @@ private:
     void capitalizeWord();
 #endif
 
-#if PLATFORM(MAC)
-    void setSmartInsertDeleteEnabled(bool isSmartInsertDeleteEnabled) { m_isSmartInsertDeleteEnabled = isSmartInsertDeleteEnabled; }
-#endif
-
 #if ENABLE(CONTEXT_MENUS)
     void didSelectItemFromActiveContextMenu(const WebContextMenuItemData&);
 #endif
@@ -784,6 +816,9 @@ private:
     void setMainFrameInViewSourceMode(bool);
 
     static bool platformCanHandleRequest(const WebCore::ResourceRequest&);
+
+    static PluginView* focusedPluginViewForFrame(WebCore::Frame*);
+    static PluginView* pluginViewForFrame(WebCore::Frame*);
 
     OwnPtr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
@@ -798,10 +833,14 @@ private:
 
     HashSet<PluginView*> m_pluginViews;
 
+    HashMap<uint64_t, RefPtr<WebCore::TextCheckingRequest> > m_pendingTextCheckingRequestMap;
+
     bool m_useFixedLayout;
 
     bool m_drawsBackground;
     bool m_drawsTransparentBackground;
+
+    WebCore::Color m_underlayColor;
 
     bool m_isInRedo;
     bool m_isClosed;
@@ -816,23 +855,26 @@ private:
 
     bool m_mainFrameIsScrollable;
 
+#if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
+    bool m_didFindPrimarySnapshottedPlugin;
+#endif
+
 #if PLATFORM(MAC)
     bool m_pdfPluginEnabled;
+
+    bool m_hasCachedWindowFrame;
 
     // Whether the containing window is visible or not.
     bool m_windowIsVisible;
 
-    // Whether smart insert/delete is enabled or not.
-    bool m_isSmartInsertDeleteEnabled;
-
     // The frame of the containing window in screen coordinates.
-    WebCore::IntRect m_windowFrameInScreenCoordinates;
+    WebCore::FloatRect m_windowFrameInScreenCoordinates;
 
     // The frame of the view in window coordinates.
-    WebCore::IntRect m_viewFrameInWindowCoordinates;
+    WebCore::FloatRect m_viewFrameInWindowCoordinates;
 
     // The accessibility position of the view.
-    WebCore::IntPoint m_accessibilityPosition;
+    WebCore::FloatPoint m_accessibilityPosition;
     
     // The layer hosting mode.
     LayerHostingMode m_layerHostingMode;
@@ -870,10 +912,6 @@ private:
     InjectedBundlePageFullScreenClient m_fullScreenClient;
 #endif
     InjectedBundlePageDiagnosticLoggingClient m_logDiagnosticMessageClient;
-
-#if USE(TILED_BACKING_STORE)
-    WebCore::IntSize m_viewportSize;
-#endif
 
     FindController m_findController;
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(QT)

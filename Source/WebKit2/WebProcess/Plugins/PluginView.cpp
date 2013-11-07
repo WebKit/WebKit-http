@@ -44,11 +44,13 @@
 #include <WebCore/FocusController.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameLoaderClient.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HostWindow.h>
+#include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/Page.h>
@@ -481,12 +483,12 @@ void PluginView::setDeviceScaleFactor(float scaleFactor)
     m_plugin->contentsScaleFactorChanged(scaleFactor);
 }
 
-void PluginView::windowAndViewFramesChanged(const IntRect& windowFrameInScreenCoordinates, const IntRect& viewFrameInWindowCoordinates)
+void PluginView::windowAndViewFramesChanged(const FloatRect& windowFrameInScreenCoordinates, const FloatRect& viewFrameInWindowCoordinates)
 {
     if (!m_isInitialized || !m_plugin)
         return;
 
-    m_plugin->windowAndViewFramesChanged(windowFrameInScreenCoordinates, viewFrameInWindowCoordinates);
+    m_plugin->windowAndViewFramesChanged(enclosingIntRect(windowFrameInScreenCoordinates), enclosingIntRect(viewFrameInWindowCoordinates));
 }
 
 bool PluginView::sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier, const String& textInput)
@@ -549,7 +551,10 @@ void PluginView::initializePlugin()
 void PluginView::didFailToInitializePlugin()
 {
     m_plugin = 0;
-    m_webPage->send(Messages::WebPageProxy::DidFailToInitializePlugin(m_parameters.mimeType));
+
+    String frameURLString = frame()->loader()->documentLoader()->responseURL().string();
+    String pageURLString = m_webPage->corePage()->mainFrame()->loader()->documentLoader()->responseURL().string();
+    m_webPage->send(Messages::WebPageProxy::DidFailToInitializePlugin(m_parameters.mimeType, frameURLString, pageURLString));
 }
 
 void PluginView::didInitializePlugin()
@@ -735,6 +740,11 @@ void PluginView::frameRectsChanged()
     viewGeometryDidChange();
 }
 
+void PluginView::clipRectChanged()
+{
+    viewGeometryDidChange();
+}
+
 void PluginView::setParent(ScrollView* scrollView)
 {
     Widget::setParent(scrollView);
@@ -745,12 +755,26 @@ void PluginView::setParent(ScrollView* scrollView)
 
 unsigned PluginView::countFindMatches(const String& target, WebCore::FindOptions options, unsigned maxMatchCount)
 {
+    if (!m_isInitialized || !m_plugin)
+        return 0;
+
     return m_plugin->countFindMatches(target, options, maxMatchCount);
 }
 
 bool PluginView::findString(const String& target, WebCore::FindOptions options, unsigned maxMatchCount)
 {
+    if (!m_isInitialized || !m_plugin)
+        return false;
+
     return m_plugin->findString(target, options, maxMatchCount);
+}
+
+String PluginView::getSelectionString() const
+{
+    if (!m_isInitialized || !m_plugin)
+        return String();
+
+    return m_plugin->getSelectionString();
 }
 
 PassOwnPtr<WebEvent> PluginView::createWebEvent(MouseEvent* event) const
@@ -879,12 +903,12 @@ bool PluginView::shouldAllowNavigationFromDrags() const
     return m_plugin->shouldAllowNavigationFromDrags();
 }
 
-bool PluginView::getResourceData(const unsigned char*& bytes, unsigned& length) const
+PassRefPtr<SharedBuffer> PluginView::liveResourceData() const
 {
     if (!m_isInitialized || !m_plugin)
-        return false;
+        return 0;
 
-    return m_plugin->getResourceData(bytes, length);
+    return m_plugin->liveResourceData();
 }
 
 bool PluginView::performDictionaryLookupAtLocation(const WebCore::FloatPoint& point)
@@ -1320,7 +1344,7 @@ bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVari
     // protect the plug-in view from destruction.
     NPRuntimeObjectMap::PluginProtector pluginProtector(&m_npRuntimeObjectMap);
 
-    UserGestureIndicator gestureIndicator(allowPopups ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(allowPopups ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
     return m_npRuntimeObjectMap.evaluate(npObject, scriptString, result);
 }
 #endif
@@ -1606,14 +1630,17 @@ void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>*)
     }
 #endif
 
-    destroyPluginAndReset();
-    m_plugin = 0;
+    m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
 }
 
 bool PluginView::shouldAlwaysAutoStart() const
 {
     if (!m_plugin)
         return PluginViewBase::shouldAlwaysAutoStart();
+
+    if (MIMETypeRegistry::isJavaAppletMIMEType(m_parameters.mimeType))
+        return true;
+
     return m_plugin->shouldAlwaysAutoStart();
 }
 

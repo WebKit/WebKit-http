@@ -248,11 +248,21 @@ sub SkipFunction {
         return 1;
     }
 
+    # This is for DataTransferItemList.idl add(File) method
+    if ($functionName eq "webkit_dom_data_transfer_item_list_add" &&
+        @{$function->parameters} == 1) {
+        return 1;
+    }
+
     if ($function->signature->name eq "timeEnd") {
         return 1;
     }
 
     if ($codeGenerator->GetSequenceType($functionReturnType)) {
+        return 1;
+    }
+
+    if ($function->signature->name eq "supports" && @{$function->parameters} == 1) {
         return 1;
     }
 
@@ -751,7 +761,16 @@ sub GenerateHeader {
     @hPrefix = split("\r", $licenceTemplate);
     push(@hPrefix, "\n");
 
-    #Header guard
+    # Force single header include.
+    my $headerCheck = << "EOF";
+#if !defined(__WEBKITDOM_H_INSIDE__) && !defined(BUILDING_WEBKIT)
+#error "Only <webkitdom/webkitdom.h> can be included directly."
+#endif
+
+EOF
+    push(@hPrefix, $headerCheck);
+
+    # Header guard
     my $guard = $className . "_h";
 
     @hPrefixGuard = << "EOF";
@@ -863,7 +882,7 @@ sub GenerateFunction {
 
         my $paramIsGDOMType = IsGDOMClassType($paramIDLType);
         if ($paramIsGDOMType) {
-            if ($paramIDLType ne "DOMObject") {
+            if ($paramIDLType ne "any") {
                 $implIncludes{"WebKitDOM${paramIDLType}Private.h"} = 1;
             }
         }
@@ -873,7 +892,7 @@ sub GenerateFunction {
         push(@callImplParams, $paramName);
     }
 
-    if ($returnType ne "void" && $returnValueIsGDOMType && $functionSigType ne "DOMObject") {
+    if ($returnType ne "void" && $returnValueIsGDOMType && $functionSigType ne "any") {
         if ($functionSigType ne "EventTarget") {
             $implIncludes{"WebKitDOM${functionSigType}Private.h"} = 1;
         } else {
@@ -1088,7 +1107,7 @@ EOF
     }
 
     if ($returnType ne "void" && !$functionHasCustomReturn) {
-        if ($functionSigType ne "DOMObject") {
+        if ($functionSigType ne "any") {
             if ($returnValueIsGDOMType) {
                 push(@cBody, "    return WebKit::kit(gobjectResult.get());\n");
             } else {
@@ -1363,6 +1382,7 @@ sub Generate {
     $implIncludes{"${className}Private.h"} = 1;
     $implIncludes{"JSMainThreadExecState.h"} = 1;
     $implIncludes{"ExceptionCode.h"} = 1;
+    $implIncludes{"CSSImportRule.h"} = 1;
 
     $hdrIncludes{"webkitdom/${parentClassName}.h"} = 1;
 

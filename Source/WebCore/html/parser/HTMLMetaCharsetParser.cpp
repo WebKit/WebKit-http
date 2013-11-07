@@ -106,8 +106,8 @@ bool HTMLMetaCharsetParser::processMeta()
     const HTMLToken::AttributeList& tokenAttributes = m_token.attributes();
     AttributeList attributes;
     for (HTMLToken::AttributeList::const_iterator iter = tokenAttributes.begin(); iter != tokenAttributes.end(); ++iter) {
-        String attributeName = StringImpl::create8BitIfPossible(iter->m_name.data(), iter->m_name.size());
-        String attributeValue = StringImpl::create8BitIfPossible(iter->m_value.data(), iter->m_value.size());
+        String attributeName = StringImpl::create8BitIfPossible(iter->name);
+        String attributeValue = StringImpl::create8BitIfPossible(iter->value);
         attributes.append(std::make_pair(attributeName, attributeValue));
     }
 
@@ -176,9 +176,9 @@ bool HTMLMetaCharsetParser::checkForMetaCharset(const char* data, size_t length)
     m_input.append(SegmentedString(m_assumedCodec->decode(data, length)));
 
     while (m_tokenizer->nextToken(m_input, m_token)) {
-        bool end = m_token.type() == HTMLTokenTypes::EndTag;
-        if (end || m_token.type() == HTMLTokenTypes::StartTag) {
-            AtomicString tagName(m_token.name().data(), m_token.name().size());
+        bool end = m_token.type() == HTMLToken::EndTag;
+        if (end || m_token.type() == HTMLToken::StartTag) {
+            AtomicString tagName(m_token.name());
             if (!end) {
                 m_tokenizer->updateStateFor(tagName);
                 if (tagName == metaTag && processMeta()) {

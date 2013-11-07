@@ -31,71 +31,35 @@
 #ifndef WebTestRunner_h
 #define WebTestRunner_h
 
-#include "WebKit/chromium/public/WebTextDirection.h"
-#include <set>
-#include <string>
-
 namespace WebKit {
 class WebArrayBufferView;
 class WebPermissionClient;
-class WebFrame;
 }
 
 namespace WebTestRunner {
 
-class TestRunner;
-
 class WebTestRunner {
 public:
-#if WEBTESTRUNNER_IMPLEMENTATION
-    explicit WebTestRunner(TestRunner*);
-#endif
+    // Returns a mock WebPermissionClient that is used for layout tests. An
+    // embedder should use this for all WebViews it creates.
+    virtual WebKit::WebPermissionClient* webPermissions() const = 0;
 
-    virtual bool shouldDumpEditingCallbacks() const;
-    virtual bool shouldDumpAsText() const;
-    virtual void setShouldDumpAsText(bool);
-    virtual bool shouldGeneratePixelResults() const;
-    virtual void setShouldGeneratePixelResults(bool);
-    virtual bool shouldDumpChildFrameScrollPositions() const;
-    virtual bool shouldDumpChildFramesAsText() const;
-    virtual bool shouldDumpAsAudio() const;
-    virtual const WebKit::WebArrayBufferView* audioData() const;
-    virtual bool shouldDumpFrameLoadCallbacks() const;
-    virtual void setShouldDumpFrameLoadCallbacks(bool);
-    virtual bool shouldDumpUserGestureInFrameLoadCallbacks() const;
-    virtual bool stopProvisionalFrameLoads() const;
-    virtual bool shouldDumpTitleChanges() const;
-    virtual bool shouldDumpCreateView() const;
-    virtual bool canOpenWindows() const;
-    virtual bool shouldDumpResourceLoadCallbacks() const;
-    virtual bool shouldDumpResourceRequestCallbacks() const;
-    virtual bool shouldDumpResourceResponseMIMETypes() const;
-    virtual WebKit::WebPermissionClient* webPermissions() const;
-    virtual bool shouldDumpStatusCallbacks() const;
-    virtual bool shouldDumpProgressFinishedCallback() const;
-    virtual bool shouldDumpBackForwardList() const;
-    virtual bool deferMainResourceDataLoad() const;
-    virtual bool shouldDumpSelectionRect() const;
-    virtual bool testRepaint() const;
-    virtual bool sweepHorizontally() const;
-    virtual bool isPrinting() const;
-    virtual bool shouldStayOnPageAfterHandlingBeforeUnload() const;
-    virtual void setTitleTextDirection(WebKit::WebTextDirection);
-    virtual const std::set<std::string>* httpHeadersToClear() const;
-    virtual bool shouldBlockRedirects() const;
-    virtual bool willSendRequestShouldReturnNull() const;
-    virtual void setTopLoadingFrame(WebKit::WebFrame*, bool);
-    virtual WebKit::WebFrame* topLoadingFrame() const;
-    virtual void policyDelegateDone();
-    virtual bool policyDelegateEnabled() const;
-    virtual bool policyDelegateIsPermissive() const;
-    virtual bool policyDelegateShouldNotifyDone() const;
-    virtual bool shouldInterceptPostMessage() const;
-    virtual bool isSmartInsertDeleteEnabled() const;
-    virtual bool isSelectTrailingWhitespaceEnabled() const;
+    // After WebTestDelegate::testFinished was invoked, the following methods
+    // can be used to determine what kind of dump the main WebTestProxy can
+    // provide.
 
-private:
-    TestRunner* m_private;
+    // If true, WebTestDelegate::audioData returns an audio dump and no text
+    // or pixel results are available.
+    virtual bool shouldDumpAsAudio() const = 0;
+    virtual const WebKit::WebArrayBufferView* audioData() const = 0;
+
+    // Returns true if the call to WebTestProxy::captureTree will invoke
+    // WebTestDelegate::captureHistoryForWindow.
+    virtual bool shouldDumpBackForwardList() const = 0;
+
+    // Returns true if WebTestProxy::capturePixels should be invoked after
+    // capturing text results.
+    virtual bool shouldGeneratePixelResults() = 0;
 };
 
 }

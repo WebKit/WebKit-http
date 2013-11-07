@@ -37,6 +37,9 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
+    UIProcess/API/C/efl/WKPageEfl.cpp
+    UIProcess/API/C/efl/WKPopupItem.cpp
+    UIProcess/API/C/efl/WKPopupMenuListener.cpp
     UIProcess/API/C/efl/WKView.cpp
 
     UIProcess/API/cpp/efl/WKEinaSharedString.cpp
@@ -89,9 +92,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/FormClientEfl.cpp
     UIProcess/efl/InputMethodContextEfl.cpp
     UIProcess/efl/NetworkInfoProvider.cpp
-    UIProcess/efl/PageClientBase.cpp
-    UIProcess/efl/PageClientLegacyImpl.cpp
-    UIProcess/efl/PageClientDefaultImpl.cpp
     UIProcess/efl/PageLoadClientEfl.cpp
     UIProcess/efl/PagePolicyClientEfl.cpp
     UIProcess/efl/PageUIClientEfl.cpp
@@ -99,14 +99,19 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/RequestManagerClientEfl.cpp
     UIProcess/efl/TextCheckerEfl.cpp
     UIProcess/efl/VibrationClientEfl.cpp
+    UIProcess/efl/ViewClientEfl.cpp
     UIProcess/efl/WebContextEfl.cpp
     UIProcess/efl/WebContextMenuProxyEfl.cpp
     UIProcess/efl/WebFullScreenManagerProxyEfl.cpp
     UIProcess/efl/WebInspectorProxyEfl.cpp
     UIProcess/efl/WebPageProxyEfl.cpp
-    UIProcess/efl/WebPopupMenuProxyEfl.cpp
+    UIProcess/efl/WebPopupItemEfl.cpp
+    UIProcess/efl/WebPopupMenuListenerEfl.cpp
     UIProcess/efl/WebPreferencesEfl.cpp
     UIProcess/efl/WebProcessProxyEfl.cpp
+    UIProcess/efl/WebUIPopupMenuClient.cpp
+    UIProcess/efl/WebView.cpp
+    UIProcess/efl/WebViewClient.cpp
 
     UIProcess/InspectorServer/efl/WebInspectorServerEfl.cpp
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
@@ -179,8 +184,11 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WTF_DIR}/wtf/efl/"
     "${WTF_DIR}/wtf/gobject"
     ${CAIRO_INCLUDE_DIRS}
-    ${ECORE_INCLUDE_DIRS}
     ${ECORE_EVAS_INCLUDE_DIRS}
+    ${ECORE_IMF_EVAS_INCLUDE_DIRS}
+    ${ECORE_IMF_INCLUDE_DIRS}
+    ${ECORE_INCLUDE_DIRS}
+    ${ECORE_X_INCLUDE_DIRS}
     ${EDJE_INCLUDE_DIRS}
     ${EFREET_INCLUDE_DIRS}
     ${EINA_INCLUDE_DIRS}
@@ -366,6 +374,7 @@ target_link_libraries(ewk2UnitTestUtils ${EWK2UnitTests_LIBRARIES})
 # The "ewk" on the test name needs to be suffixed with "2", otherwise it
 # will clash with tests from the WebKit 1 test suite.
 set(EWK2UnitTests_BINARIES
+    test_ewk2_auth_request
     test_ewk2_back_forward_list
     test_ewk2_color_picker
     test_ewk2_context

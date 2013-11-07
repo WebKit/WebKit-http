@@ -81,7 +81,6 @@
 #include "DOMFileSystem.h"
 #include "DOMUtilitiesPrivate.h"
 #include "DOMWindow.h"
-#include "DOMWindowIntents.h"
 #include "DOMWrapperWorld.h"
 #include "DirectoryEntry.h"
 #include "Document.h"
@@ -120,7 +119,7 @@
 #include "Page.h"
 #include "PageOverlay.h"
 #include "Performance.h"
-#include "PlatformMessagePortChannel.h"
+#include "PlatformMessagePortChannelChromium.h"
 #include "PluginDocument.h"
 #include "PrintContext.h"
 #include "RenderBox.h"
@@ -153,12 +152,10 @@
 #include "V8DirectoryEntry.h"
 #include "V8FileEntry.h"
 #include "V8GCController.h"
-#include "WebAnimationControllerImpl.h"
 #include "WebConsoleMessage.h"
 #include "WebDOMEvent.h"
 #include "WebDOMEventListener.h"
 #include "WebDataSourceImpl.h"
-#include "WebDeliveredIntentClient.h"
 #include "WebDevToolsAgentPrivate.h"
 #include "WebDocument.h"
 #include "WebFindOptions.h"
@@ -167,7 +164,6 @@
 #include "WebHistoryItem.h"
 #include "WebIconURL.h"
 #include "WebInputElement.h"
-#include "WebIntent.h"
 #include "WebNode.h"
 #include "WebPerformance.h"
 #include "WebPlugin.h"
@@ -194,11 +190,6 @@
 #include <public/WebVector.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
-
-#if ENABLE(WEB_INTENTS)
-#include "DeliveredIntent.h"
-#include "DeliveredIntentClientImpl.h"
-#endif
 
 using namespace WebCore;
 
@@ -583,12 +574,12 @@ long long WebFrameImpl::identifier() const
     return m_identifier;
 }
 
-WebVector<WebIconURL> WebFrameImpl::iconURLs(int iconTypes) const
+WebVector<WebIconURL> WebFrameImpl::iconURLs(int iconTypesMask) const
 {
     // The URL to the icon may be in the header. As such, only
     // ask the loader for the icon if it's finished loading.
     if (frame()->loader()->state() == FrameStateComplete)
-        return frame()->loader()->icon()->urlsForTypes(iconTypes);
+        return frame()->loader()->icon()->urlsForTypes(iconTypesMask);
     return WebVector<WebIconURL>();
 }
 
@@ -758,7 +749,7 @@ WebFrame* WebFrameImpl::findChildByExpression(const WebString& xpath) const
     Node* node = xpathResult->iterateNext(ec);
     if (!node || !node->isFrameOwnerElement())
         return 0;
-    HTMLFrameOwnerElement* frameElement = static_cast<HTMLFrameOwnerElement*>(node);
+    HTMLFrameOwnerElement* frameElement = toFrameOwnerElement(node);
     return fromFrame(frameElement->contentFrame());
 }
 
@@ -767,11 +758,6 @@ WebDocument WebFrameImpl::document() const
     if (!frame() || !frame()->document())
         return WebDocument();
     return WebDocument(frame()->document());
-}
-
-WebAnimationController* WebFrameImpl::animationController()
-{
-    return &m_animationController;
 }
 
 WebPerformance WebFrameImpl::performance() const
@@ -833,8 +819,8 @@ void WebFrameImpl::addMessageToConsole(const WebConsoleMessage& message)
 
     MessageLevel webCoreMessageLevel;
     switch (message.level) {
-    case WebConsoleMessage::LevelTip:
-        webCoreMessageLevel = TipMessageLevel;
+    case WebConsoleMessage::LevelDebug:
+        webCoreMessageLevel = DebugMessageLevel;
         break;
     case WebConsoleMessage::LevelLog:
         webCoreMessageLevel = LogMessageLevel;
@@ -844,9 +830,6 @@ void WebFrameImpl::addMessageToConsole(const WebConsoleMessage& message)
         break;
     case WebConsoleMessage::LevelError:
         webCoreMessageLevel = ErrorMessageLevel;
-        break;
-    case WebConsoleMessage::LevelDebug:
-        webCoreMessageLevel = DebugMessageLevel;
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -879,7 +862,7 @@ v8::Handle<v8::Value> WebFrameImpl::executeScriptAndReturnValue(const WebScriptS
     // tests pass. If this isn't needed in non-test situations, we should
     // consider removing this code and changing the tests.
     // http://code.google.com/p/chromium/issues/detail?id=86397
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(DefinitelyProcessingNewUserGesture);
 
     TextPosition position(OrdinalNumber::fromOneBasedInt(source.startLine), OrdinalNumber::first());
     return frame()->script()->executeScript(ScriptSourceCode(source.code, source.url, position)).v8Value();
@@ -1124,16 +1107,6 @@ unsigned WebFrameImpl::unloadListenerCount() const
     return frame()->document()->domWindow()->pendingUnloadEventListeners();
 }
 
-bool WebFrameImpl::isProcessingUserGesture() const
-{
-    return ScriptController::processingUserGesture();
-}
-
-bool WebFrameImpl::consumeUserGesture() const
-{
-    return UserGestureIndicator::consumeUserGesture();
-}
-
 bool WebFrameImpl::willSuppressOpenerInNewFrame() const
 {
     return frame()->loader()->suppressOpenerInNewFrame();
@@ -1195,7 +1168,7 @@ size_t WebFrameImpl::characterIndexForPoint(const WebPoint& webPoint) const
         return notFound;
 
     IntPoint point = frame()->view()->windowToContents(webPoint);
-    HitTestResult result = frame()->eventHandler()->hitTestResultAtPoint(point, false);
+    HitTestResult result = frame()->eventHandler()->hitTestResultAtPoint(point);
     RefPtr<Range> range = frame()->rangeForPoint(result.roundedPointInInnerNodeFrame());
     if (!range)
         return notFound;
@@ -1310,11 +1283,13 @@ void WebFrameImpl::replaceMisspelledRange(const WebString& text)
     Vector<DocumentMarker*> markers = frame()->document()->markers()->markersInRange(caretRange.get(), DocumentMarker::Spelling | DocumentMarker::Grammar);
     if (markers.size() < 1 || markers[0]->startOffset() >= markers[0]->endOffset())
         return;
-    RefPtr<Range> markerRange = TextIterator::rangeFromLocationAndLength(frame()->selection()->rootEditableElementOrDocumentElement(), markers[0]->startOffset(), markers[0]->endOffset() - markers[0]->startOffset());
-    if (!markerRange.get() || !frame()->selection()->shouldChangeSelection(markerRange.get()))
+    RefPtr<Range> markerRange = Range::create(caretRange->ownerDocument(), caretRange->startContainer(), markers[0]->startOffset(), caretRange->endContainer(), markers[0]->endOffset());
+    if (!markerRange)
+        return;
+    if (!frame()->selection()->shouldChangeSelection(markerRange.get()))
         return;
     frame()->selection()->setSelection(markerRange.get(), CharacterGranularity);
-    frame()->editor()->replaceSelectionWithText(text, false, true);
+    frame()->editor()->replaceSelectionWithText(text, false, false);
 }
 
 bool WebFrameImpl::hasSelection() const
@@ -1412,6 +1387,9 @@ void WebFrameImpl::moveCaretSelectionTowardsWindowPoint(const WebPoint& point)
         unscaledPoint.scale(1 / view()->pageScaleFactor(), 1 / view()->pageScaleFactor());
 
     Element* editable = frame()->selection()->rootEditableElement();
+    if (!editable)
+        return;
+
     IntPoint contentsPoint = frame()->view()->windowToContents(unscaledPoint);
     LayoutPoint localPoint(editable->convertFromPage(contentsPoint));
     VisiblePosition position = editable->renderer()->positionForPoint(localPoint);
@@ -2036,7 +2014,7 @@ int WebFrameImpl::nearestFindMatch(const FloatPoint& point, float& distanceSquar
 
 int WebFrameImpl::selectFindMatch(unsigned index, WebRect* selectionRect)
 {
-    ASSERT(index < m_findMatchesCache.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(index < m_findMatchesCache.size());
 
     RefPtr<Range> range = m_findMatchesCache[index].m_range;
     if (!range->boundaryPointsValid() || !range->startContainer()->inDocument())
@@ -2081,32 +2059,6 @@ int WebFrameImpl::selectFindMatch(unsigned index, WebRect* selectionRect)
         *selectionRect = activeMatchRect;
 
     return ordinalOfFirstMatchForFrame(this) + m_activeMatchIndexInCurrentFrame + 1;
-}
-
-void WebFrameImpl::deliverIntent(const WebIntent& intent, WebMessagePortChannelArray* ports, WebDeliveredIntentClient* intentClient)
-{
-#if ENABLE(WEB_INTENTS)
-    OwnPtr<WebCore::DeliveredIntentClient> client(adoptPtr(new DeliveredIntentClientImpl(intentClient)));
-
-    WebSerializedScriptValue intentData = WebSerializedScriptValue::fromString(intent.data());
-    const WebCore::Intent* webcoreIntent = intent;
-
-    // See PlatformMessagePortChannel.cpp
-    OwnPtr<MessagePortChannelArray> channels;
-    if (ports && ports->size()) {
-        channels = adoptPtr(new MessagePortChannelArray(ports->size()));
-        for (size_t i = 0; i < ports->size(); ++i) {
-            RefPtr<PlatformMessagePortChannel> platformChannel = PlatformMessagePortChannel::create((*ports)[i]);
-            (*ports)[i]->setClient(platformChannel.get());
-            (*channels)[i] = MessagePortChannel::create(platformChannel);
-        }
-    }
-    OwnPtr<MessagePortArray> portArray = WebCore::MessagePort::entanglePorts(*(frame()->document()), channels.release());
-
-    RefPtr<DeliveredIntent> deliveredIntent = DeliveredIntent::create(frame(), client.release(), intent.action(), intent.type(), intentData, portArray.release(), webcoreIntent->extras());
-
-    DOMWindowIntents::from(frame()->document()->domWindow())->deliver(deliveredIntent.release());
-#endif
 }
 
 WebString WebFrameImpl::contentAsText(size_t maxChars) const
@@ -2199,7 +2151,6 @@ WebFrameImpl::WebFrameImpl(WebFrameClient* client)
     , m_nextInvalidateAfter(0)
     , m_findMatchMarkersVersion(0)
     , m_findMatchRectsAreValid(false)
-    , m_animationController(this)
     , m_identifier(generateFrameIdentifier())
     , m_inSameDocumentHistoryLoad(false)
 {
@@ -2321,7 +2272,7 @@ WebFrameImpl* WebFrameImpl::fromFrameOwnerElement(Element* element)
     // FIXME: Why do we check specifically for <iframe> and <frame> here? Why can't we get the WebFrameImpl from an <object> element, for example.
     if (!element || !element->isFrameOwnerElement() || (!element->hasTagName(HTMLNames::iframeTag) && !element->hasTagName(HTMLNames::frameTag)))
         return 0;
-    HTMLFrameOwnerElement* frameElement = static_cast<HTMLFrameOwnerElement*>(element);
+    HTMLFrameOwnerElement* frameElement = toFrameOwnerElement(element);
     return fromFrame(frameElement->contentFrame());
 }
 

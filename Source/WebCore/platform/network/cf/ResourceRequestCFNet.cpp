@@ -29,6 +29,10 @@
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+#include "PublicSuffix.h"
+#endif
+
 #if USE(CFNETWORK)
 #include "FormDataStreamCFNet.h"
 #include <CFNetwork/CFURLRequestPriv.h>
@@ -99,9 +103,9 @@ static CFArrayRef copyContentDispositionEncodingFallbackArray(CFURLRequestRef re
     return function(request);
 }
 
-CFURLRequestRef ResourceRequest::cfURLRequest() const
+CFURLRequestRef ResourceRequest::cfURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
 {
-    updatePlatformRequest();
+    updatePlatformRequest(bodyPolicy);
 
     return m_cfRequest.get();
 }
@@ -146,9 +150,7 @@ void ResourceRequest::doUpdatePlatformRequest()
 #endif
 
     setHeaderFields(cfRequest, httpHeaderFields());
-    RefPtr<FormData> formData = httpBody();
-    if (formData && !formData->isEmpty())
-        WebCore::setHTTPBody(cfRequest, formData);
+
     CFURLRequestSetShouldHandleHTTPCookies(cfRequest, allowCookies());
 
     unsigned fallbackCount = m_responseContentDispositionEncodingFallbackArray.size();
@@ -167,6 +169,42 @@ void ResourceRequest::doUpdatePlatformRequest()
             CFURLRequestSetHTTPCookieStorage(cfRequest, cookieStorage.get());
         CFURLRequestSetHTTPCookieStorageAcceptPolicy(cfRequest, CFURLRequestGetHTTPCookieStorageAcceptPolicy(m_cfRequest.get()));
         CFURLRequestSetSSLProperties(cfRequest, CFURLRequestGetSSLProperties(m_cfRequest.get()));
+    }
+
+    m_cfRequest.adoptCF(cfRequest);
+#if PLATFORM(MAC)
+    updateNSURLRequest();
+#endif
+}
+
+void ResourceRequest::doUpdatePlatformHTTPBody()
+{
+    CFMutableURLRequestRef cfRequest;
+
+    RetainPtr<CFURLRef> url(AdoptCF, ResourceRequest::url().createCFURL());
+    RetainPtr<CFURLRef> firstPartyForCookies(AdoptCF, ResourceRequest::firstPartyForCookies().createCFURL());
+    if (m_cfRequest) {
+        cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
+        CFURLRequestSetURL(cfRequest, url.get());
+        CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
+        CFURLRequestSetCachePolicy(cfRequest, (CFURLRequestCachePolicy)cachePolicy());
+        CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
+    } else
+        cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
+
+    RefPtr<FormData> formData = httpBody();
+    if (formData && !formData->isEmpty())
+        WebCore::setHTTPBody(cfRequest, formData);
+
+    if (RetainPtr<CFReadStreamRef> bodyStream = adoptCF(CFURLRequestCopyHTTPRequestBodyStream(cfRequest))) {
+        // For streams, provide a Content-Length to avoid using chunked encoding, and to get accurate total length in callbacks.
+        RetainPtr<CFStringRef> lengthString = adoptCF(static_cast<CFStringRef>(CFReadStreamCopyProperty(bodyStream.get(), formDataStreamLengthPropertyName())));
+        if (lengthString) {
+            CFURLRequestSetHTTPHeaderFieldValue(cfRequest, CFSTR("Content-Length"), lengthString.get());
+            // Since resource request is already marked updated, we need to keep it up to date too.
+            ASSERT(m_resourceRequestUpdated);
+            m_httpHeaderFields.set("Content-Length", lengthString.get());
+        }
     }
 
     m_cfRequest.adoptCF(cfRequest);
@@ -217,9 +255,27 @@ void ResourceRequest::doUpdateResourceRequest()
                 m_responseContentDispositionEncodingFallbackArray.append(CFStringConvertEncodingToIANACharSetName(encoding));
         }
     }
-
-    m_httpBody = httpBodyFromRequest(m_cfRequest.get());
 }
+
+void ResourceRequest::doUpdateResourceHTTPBody()
+{
+    if (!m_cfRequest) {
+        m_httpBody = 0;
+        return;
+    }
+
+    if (RetainPtr<CFDataRef> bodyData = adoptCF(CFURLRequestCopyHTTPRequestBody(m_cfRequest.get())))
+        m_httpBody = FormData::create(CFDataGetBytePtr(bodyData.get()), CFDataGetLength(bodyData.get()));
+    else if (RetainPtr<CFReadStreamRef> bodyStream = adoptCF(CFURLRequestCopyHTTPRequestBodyStream(m_cfRequest.get()))) {
+        FormData* formData = httpBodyFromStream(bodyStream.get());
+        // There is no FormData object if a client provided a custom data stream.
+        // We shouldn't be looking at http body after client callbacks.
+        ASSERT(formData);
+        if (formData)
+            m_httpBody = formData;
+    }
+}
+
 
 void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 {
@@ -237,7 +293,7 @@ void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 void ResourceRequest::applyWebArchiveHackForMail()
 {
     // Hack because Mail checks for this property to detect data / archive loads
-    _CFURLRequestSetProtocolProperty(cfURLRequest(), CFSTR("WebDataRequest"), CFSTR(""));
+    _CFURLRequestSetProtocolProperty(cfURLRequest(DoNotUpdateHTTPBody), CFSTR("WebDataRequest"), CFSTR(""));
 }
 #endif
 
@@ -251,6 +307,39 @@ bool ResourceRequest::httpPipeliningEnabled()
 void ResourceRequest::setHTTPPipeliningEnabled(bool flag)
 {
     s_httpPipeliningEnabled = flag;
+}
+
+#if ENABLE(CACHE_PARTITIONING)
+String ResourceRequest::partitionName(const String& domain)
+{
+    if (domain.isNull())
+        return emptyString();
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    String highLevel = topPrivatelyControlledDomain(domain);
+    if (highLevel.isNull())
+        return emptyString();
+    return highLevel;
+#else
+    return domain;
+#endif
+}
+#endif
+
+PassOwnPtr<CrossThreadResourceRequestData> ResourceRequest::doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData> data) const
+{
+#if ENABLE(CACHE_PARTITIONING)
+    data->m_cachePartition = m_cachePartition;
+#endif
+    return data;
+}
+
+void ResourceRequest::doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData> data)
+{
+#if ENABLE(CACHE_PARTITIONING)
+    m_cachePartition = data->m_cachePartition;
+#else
+    UNUSED_PARAM(data);
+#endif
 }
 
 unsigned initializeMaximumHTTPConnectionCountPerHost()

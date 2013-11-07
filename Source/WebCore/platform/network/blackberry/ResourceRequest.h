@@ -106,7 +106,7 @@ public:
     void setMustHandleInternally(bool mustHandleInternally) { m_mustHandleInternally = mustHandleInternally; }
     bool mustHandleInternally() const { return m_mustHandleInternally; }
 
-    void initializePlatformRequest(BlackBerry::Platform::NetworkRequest&, bool cookiesEnabled, bool isInitial = false, bool isRedirect = false) const;
+    void initializePlatformRequest(BlackBerry::Platform::NetworkRequest&, bool cookiesEnabled, bool isInitial = false, bool rereadCookies = false) const;
     void setForceDownload(bool forceDownload) { m_forceDownload = forceDownload; }
     bool forceDownload() const { return m_forceDownload; }
     void setSuggestedSaveName(const String& name) { m_suggestedSaveName = name; }
@@ -135,6 +135,8 @@ private:
 
     void doUpdatePlatformRequest() { }
     void doUpdateResourceRequest() { }
+    void doUpdatePlatformHTTPBody() { }
+    void doUpdateResourceHTTPBody() { }
 
     PassOwnPtr<CrossThreadResourceRequestData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData>) const;
     void doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>);

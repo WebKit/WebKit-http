@@ -77,6 +77,11 @@
                 '<@(TestWebKitAPI_files)',
             ],
             'conditions': [
+                ['component!="shared_library"', {
+                    'sources': [
+		        '../Tests/WebCore/HeapGraphSerializerTest.cpp'
+                    ],
+                }],
                 ['inside_chromium_build==1 and component=="shared_library"', {
                     'sources': [
                         # To satisfy linking of WTF::currentTime() etc. in shared library configuration,
@@ -101,7 +106,7 @@
                 'target_name': 'TestWebKitAPI_apk',
                 'type': 'none',
                 'dependencies': [
-                    '<(chromium_src_dir)/base/base.gyp:base',
+                    '<(chromium_src_dir)/base/base.gyp:base_java',
                     'TestWebKitAPI',
                 ],
                 'variables': {

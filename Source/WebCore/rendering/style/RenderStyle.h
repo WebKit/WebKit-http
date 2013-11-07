@@ -166,6 +166,9 @@ protected:
                 && (_text_transform == other._text_transform)
                 && (_text_decorations == other._text_decorations)
                 && (_cursor_style == other._cursor_style)
+#if ENABLE(CURSOR_VISIBILITY)
+                && (m_cursorVisibility == other.m_cursorVisibility)
+#endif
                 && (_direction == other._direction)
                 && (_white_space == other._white_space)
                 && (_border_collapse == other._border_collapse)
@@ -188,6 +191,9 @@ protected:
         unsigned _text_transform : 2; // ETextTransform
         unsigned _text_decorations : ETextDecorationBits;
         unsigned _cursor_style : 6; // ECursor
+#if ENABLE(CURSOR_VISIBILITY)
+        unsigned m_cursorVisibility : 1; // CursorVisibility
+#endif
         unsigned _direction : 1; // TextDirection
         unsigned _white_space : 3; // EWhiteSpace
         // 32 bits
@@ -293,6 +299,9 @@ protected:
         inherited_flags._text_transform = initialTextTransform();
         inherited_flags._text_decorations = initialTextDecoration();
         inherited_flags._cursor_style = initialCursor();
+#if ENABLE(CURSOR_VISIBILITY)
+        inherited_flags.m_cursorVisibility = initialCursorVisibility();
+#endif
         inherited_flags._direction = initialDirection();
         inherited_flags._white_space = initialWhiteSpace();
         inherited_flags._border_collapse = initialBorderCollapse();
@@ -377,6 +386,8 @@ public:
     bool hasBorder() const { return surround->border.hasBorder(); }
     bool hasPadding() const { return surround->padding.nonZero(); }
     bool hasOffset() const { return surround->offset.nonZero(); }
+    bool hasMarginBeforeQuirk() const { return marginBefore().quirk(); }
+    bool hasMarginAfterQuirk() const { return marginAfter().quirk(); }
 
     bool hasBackgroundImage() const { return m_background->background().hasImage(); }
     bool hasFixedBackgroundImage() const { return m_background->background().hasFixedImage(); }
@@ -409,20 +420,8 @@ public:
     }
 
 #if ENABLE(CSS_FILTERS)
-    void getFilterOutsets(int& top, int& right, int& bottom, int& left) const
-    {
-        if (hasFilter())
-            filter().getOutsets(top, right, bottom, left);
-        else {
-            top = 0;
-            right = 0;
-            bottom = 0;
-            left = 0;
-        }
-    }
     bool hasFilterOutsets() const { return hasFilter() && filter().hasOutsets(); }
-#else
-    bool hasFilterOutsets() const { return false; }
+    FilterOutsets filterOutsets() const { return hasFilter() ? filter().outsets() : FilterOutsets(); }
 #endif
 
     Order rtlOrdering() const { return static_cast<Order>(inherited_flags.m_rtlOrdering); }
@@ -433,6 +432,7 @@ public:
     bool hasAnyPublicPseudoStyles() const;
     bool hasPseudoStyle(PseudoId pseudo) const;
     void setHasPseudoStyle(PseudoId pseudo);
+    bool hasUniquePseudoStyle() const;
 
     // attribute getter methods
 
@@ -460,6 +460,14 @@ public:
     EPosition position() const { return static_cast<EPosition>(noninherited_flags._position); }
     bool hasOutOfFlowPosition() const { return position() == AbsolutePosition || position() == FixedPosition; }
     bool hasInFlowPosition() const { return position() == RelativePosition || position() == StickyPosition; }
+    bool hasPaintOffset() const
+    {
+        bool paintOffset = hasInFlowPosition();
+#if ENABLE(CSS_EXCLUSIONS)
+        paintOffset = paintOffset || (isFloating() && shapeOutside());
+#endif
+        return paintOffset;
+    }
     bool hasViewportConstrainedPosition() const { return position() == FixedPosition || position() == StickyPosition; }
     EFloat floating() const { return static_cast<EFloat>(noninherited_flags._floating); }
 
@@ -567,6 +575,7 @@ public:
 #if ENABLE(CSS3_TEXT)
     TextDecorationStyle textDecorationStyle() const { return static_cast<TextDecorationStyle>(rareNonInheritedData->m_textDecorationStyle); }
     TextAlignLast textAlignLast() const { return static_cast<TextAlignLast>(rareInheritedData->m_textAlignLast); }
+    TextUnderlinePosition textUnderlinePosition() const { return static_cast<TextUnderlinePosition>(rareInheritedData->m_textUnderlinePosition); }
 #else
     TextDecorationStyle textDecorationStyle() const { return TextDecorationStyleSolid; }
 #endif // CSS3_TEXT
@@ -701,6 +710,9 @@ public:
     Length paddingEnd() const { return surround->padding.end(writingMode(), direction()); }
 
     ECursor cursor() const { return static_cast<ECursor>(inherited_flags._cursor_style); }
+#if ENABLE(CURSOR_VISIBILITY)
+    CursorVisibility cursorVisibility() const { return static_cast<CursorVisibility>(inherited_flags.m_cursorVisibility); }
+#endif
 
     CursorList* cursors() const { return rareInheritedData->cursorData.get(); }
 
@@ -764,9 +776,12 @@ public:
 
     const Vector<GridTrackSize>& gridColumns() const { return rareNonInheritedData->m_grid->m_gridColumns; }
     const Vector<GridTrackSize>& gridRows() const { return rareNonInheritedData->m_grid->m_gridRows; }
+    GridAutoFlow gridAutoFlow() const { return rareNonInheritedData->m_grid->m_gridAutoFlow; }
 
-    const GridPosition& gridItemColumn() const { return rareNonInheritedData->m_gridItem->m_gridColumn; }
-    const GridPosition& gridItemRow() const { return rareNonInheritedData->m_gridItem->m_gridRow; }
+    const GridPosition& gridItemStart() const { return rareNonInheritedData->m_gridItem->m_gridStart; }
+    const GridPosition& gridItemEnd() const { return rareNonInheritedData->m_gridItem->m_gridEnd; }
+    const GridPosition& gridItemBefore() const { return rareNonInheritedData->m_gridItem->m_gridBefore; }
+    const GridPosition& gridItemAfter() const { return rareNonInheritedData->m_gridItem->m_gridAfter; }
 
     const ShadowData* boxShadow() const { return rareNonInheritedData->m_boxShadow.get(); }
     void getBoxShadowExtent(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const { getShadowExtent(boxShadow(), top, right, bottom, left); }
@@ -911,7 +926,6 @@ public:
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     bool useTouchOverflowScrolling() const { return rareInheritedData->useTouchOverflowScrolling; }
 #endif
-    bool textSizeAdjust() const { return rareInheritedData->textSizeAdjust; }
     ETextSecurity textSecurity() const { return static_cast<ETextSecurity>(rareInheritedData->textSecurity); }
 
     WritingMode writingMode() const { return static_cast<WritingMode>(inherited_flags.m_writingMode); }
@@ -970,6 +984,24 @@ public:
     void setWidth(Length v) { SET_VAR(m_box, m_width, v); }
     void setHeight(Length v) { SET_VAR(m_box, m_height, v); }
 
+    void setLogicalWidth(Length v)
+    {
+        if (isHorizontalWritingMode()) {
+            SET_VAR(m_box, m_width, v);
+        } else {
+            SET_VAR(m_box, m_height, v);
+        }
+    }
+
+    void setLogicalHeight(Length v)
+    {
+        if (isHorizontalWritingMode()) {
+            SET_VAR(m_box, m_height, v);
+        } else {
+            SET_VAR(m_box, m_width, v);
+        }
+    }
+
     void setMinWidth(Length v) { SET_VAR(m_box, m_minWidth, v); }
     void setMaxWidth(Length v) { SET_VAR(m_box, m_maxWidth, v); }
     void setMinHeight(Length v) { SET_VAR(m_box, m_minHeight, v); }
@@ -1019,10 +1051,10 @@ public:
     void setBackgroundSizeLength(LengthSize s) { SET_VAR(m_background, m_background.m_sizeLength, s); }
     
     void setBorderImage(const NinePieceImage& b) { SET_VAR(surround, border.m_image, b); }
-    void setBorderImageSource(PassRefPtr<StyleImage> v) { surround.access()->border.m_image.setImage(v); }
-    void setBorderImageSlices(LengthBox slices) { surround.access()->border.m_image.setImageSlices(slices); }
-    void setBorderImageWidth(LengthBox slices) { surround.access()->border.m_image.setBorderSlices(slices); }
-    void setBorderImageOutset(LengthBox outset) { surround.access()->border.m_image.setOutset(outset); }
+    void setBorderImageSource(PassRefPtr<StyleImage>);
+    void setBorderImageSlices(LengthBox);
+    void setBorderImageWidth(LengthBox);
+    void setBorderImageOutset(LengthBox);
 
     void setBorderTopLeftRadius(LengthSize s) { SET_VAR(surround, border.m_topLeft, s); }
     void setBorderTopRightRadius(LengthSize s) { SET_VAR(surround, border.m_topRight, s); }
@@ -1106,6 +1138,7 @@ public:
 #if ENABLE(CSS3_TEXT)
     void setTextDecorationStyle(TextDecorationStyle v) { SET_VAR(rareNonInheritedData, m_textDecorationStyle, v); }
     void setTextAlignLast(TextAlignLast v) { SET_VAR(rareInheritedData, m_textAlignLast, v); }
+    void setTextUnderlinePosition(TextUnderlinePosition v) { SET_VAR(rareInheritedData, m_textUnderlinePosition, v); }
 #endif // CSS3_TEXT
     void setDirection(TextDirection v) { inherited_flags._direction = v; }
     void setLineHeight(Length specifiedLineHeight);
@@ -1194,6 +1227,10 @@ public:
     void setCursorList(PassRefPtr<CursorList>);
     void clearCursorList();
 
+#if ENABLE(CURSOR_VISIBILITY)
+    void setCursorVisibility(CursorVisibility c) { inherited_flags.m_cursorVisibility = c; }
+#endif
+
     void setInsideLink(EInsideLink insideLink) { inherited_flags._insideLink = insideLink; }
     void setIsLink(bool b) { noninherited_flags.setIsLink(b); }
 
@@ -1252,8 +1289,11 @@ public:
     void setJustifyContent(EJustifyContent p) { SET_VAR(rareNonInheritedData, m_justifyContent, p); }
     void setGridColumns(const Vector<GridTrackSize>& lengths) { SET_VAR(rareNonInheritedData.access()->m_grid, m_gridColumns, lengths); }
     void setGridRows(const Vector<GridTrackSize>& lengths) { SET_VAR(rareNonInheritedData.access()->m_grid, m_gridRows, lengths); }
-    void setGridItemColumn(const GridPosition& columnPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridColumn, columnPosition); }
-    void setGridItemRow(const GridPosition& rowPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridRow, rowPosition); }
+    void setGridAutoFlow(GridAutoFlow flow) { SET_VAR(rareNonInheritedData.access()->m_grid, m_gridAutoFlow, flow); }
+    void setGridItemStart(const GridPosition& startPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridStart, startPosition); }
+    void setGridItemEnd(const GridPosition& endPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridEnd, endPosition); }
+    void setGridItemBefore(const GridPosition& beforePosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridBefore, beforePosition); }
+    void setGridItemAfter(const GridPosition& afterPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridAfter, afterPosition); }
 
     void setMarqueeIncrement(const Length& f) { SET_VAR(rareNonInheritedData.access()->m_marquee, increment, f); }
     void setMarqueeSpeed(int f) { SET_VAR(rareNonInheritedData.access()->m_marquee, speed, f); }
@@ -1373,7 +1413,6 @@ public:
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     void setUseTouchOverflowScrolling(bool v) { SET_VAR(rareInheritedData, useTouchOverflowScrolling, v); }
 #endif
-    bool setTextSizeAdjust(bool);
     void setTextSecurity(ETextSecurity aTextSecurity) { SET_VAR(rareInheritedData, textSecurity, aTextSecurity); }
 
 #if ENABLE(SVG)
@@ -1421,6 +1460,13 @@ public:
         rareNonInheritedData.access()->m_shapeInside = value;
     }
     ExclusionShapeValue* shapeInside() const { return rareNonInheritedData->m_shapeInside.get(); }
+    ExclusionShapeValue* resolvedShapeInside() const
+    {
+        ExclusionShapeValue* shapeInside = this->shapeInside();
+        if (shapeInside && shapeInside->type() == ExclusionShapeValue::OUTSIDE)
+            return shapeOutside();
+        return shapeInside;
+    }
 
     void setShapeOutside(PassRefPtr<ExclusionShapeValue> value)
     {
@@ -1430,7 +1476,7 @@ public:
     }
     ExclusionShapeValue* shapeOutside() const { return rareNonInheritedData->m_shapeOutside.get(); }
 
-    static ExclusionShapeValue* initialShapeInside() { return 0; }
+    static ExclusionShapeValue* initialShapeInside();
     static ExclusionShapeValue* initialShapeOutside() { return 0; }
 
     void setClipPath(PassRefPtr<ClipPathOperation> operation)
@@ -1542,6 +1588,9 @@ public:
     static short initialHorizontalBorderSpacing() { return 0; }
     static short initialVerticalBorderSpacing() { return 0; }
     static ECursor initialCursor() { return CURSOR_AUTO; }
+#if ENABLE(CURSOR_VISIBILITY)
+    static CursorVisibility initialCursorVisibility() { return CursorVisibilityAuto; }
+#endif
     static Color initialColor() { return Color::black; }
     static StyleImage* initialListStyleImage() { return 0; }
     static unsigned initialBorderWidth() { return 3; }
@@ -1564,6 +1613,7 @@ public:
 #if ENABLE(CSS3_TEXT)
     static TextDecorationStyle initialTextDecorationStyle() { return TextDecorationStyleSolid; }
     static TextAlignLast initialTextAlignLast() { return TextAlignLastAuto; }
+    static TextUnderlinePosition initialTextUnderlinePosition() { return TextUnderlinePositionAuto; }
 #endif // CSS3_TEXT
     static float initialZoom() { return 1.0f; }
     static int initialOutlineOffset() { return 0; }
@@ -1653,9 +1703,10 @@ public:
     static Vector<GridTrackSize> initialGridColumns() { return Vector<GridTrackSize>(); }
     static Vector<GridTrackSize> initialGridRows() { return Vector<GridTrackSize>(); }
 
+    static GridAutoFlow initialGridAutoFlow() { return AutoFlowNone; }
+
     // 'auto' is the default.
-    static GridPosition initialGridItemColumn() { return GridPosition(); }
-    static GridPosition initialGridItemRow() { return GridPosition(); }
+    static GridPosition initialGridPosition() { return GridPosition(); }
 
     static unsigned initialTabSize() { return 8; }
 
@@ -1672,7 +1723,6 @@ public:
 
     // Keep these at the end.
     static LineClampValue initialLineClamp() { return LineClampValue(); }
-    static bool initialTextSizeAdjust() { return true; }
     static ETextSecurity initialTextSecurity() { return TSNONE; }
 #if ENABLE(TOUCH_EVENTS)
     static Color initialTapHighlightColor();
@@ -1806,14 +1856,6 @@ inline bool RenderStyle::setEffectiveZoom(float f)
     if (compareEqual(rareInheritedData->m_effectiveZoom, f))
         return false;
     rareInheritedData.access()->m_effectiveZoom = f;
-    return true;
-}
-
-inline bool RenderStyle::setTextSizeAdjust(bool b)
-{
-    if (compareEqual(rareInheritedData->textSizeAdjust, b))
-        return false;
-    rareInheritedData.access()->textSizeAdjust = b;
     return true;
 }
 

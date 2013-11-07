@@ -36,12 +36,16 @@
 #include "DFGByteCodeParser.h"
 #include "DFGCFAPhase.h"
 #include "DFGCFGSimplificationPhase.h"
+#include "DFGCPSRethreadingPhase.h"
 #include "DFGCSEPhase.h"
 #include "DFGConstantFoldingPhase.h"
+#include "DFGDCEPhase.h"
 #include "DFGFixupPhase.h"
 #include "DFGJITCompiler.h"
+#include "DFGPredictionInjectionPhase.h"
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGStructureCheckHoistingPhase.h"
+#include "DFGUnificationPhase.h"
 #include "DFGValidate.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
 #include "Operations.h"
@@ -72,7 +76,7 @@ inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlo
     if (!Options::useDFGJIT())
         return false;
     
-    if (verboseCompilationEnabled())
+    if (logCompilationChanges())
         dataLog("DFG compiling ", *codeBlock, ", number of instructions = ", codeBlock->instructionCount(), "\n");
     
     // Derive our set of must-handle values. The compilation must be at least conservative
@@ -102,9 +106,6 @@ inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlo
     if (!parse(exec, dfg))
         return false;
     
-    if (compileMode == CompileFunction)
-        dfg.predictArgumentTypes();
-    
     // By this point the DFG bytecode parser will have potentially mutated various tables
     // in the CodeBlock. This is a good time to perform an early shrink, which is more
     // powerful than a late one. It's safe to do so because we haven't generated any code
@@ -113,29 +114,32 @@ inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlo
 
     if (validationEnabled())
         validate(dfg);
+    
+    performCPSRethreading(dfg);
+    performUnification(dfg);
+    performPredictionInjection(dfg);
+    
+    if (validationEnabled())
+        validate(dfg);
+    
     performPredictionPropagation(dfg);
     performFixup(dfg);
     performStructureCheckHoisting(dfg);
-    unsigned cnt = 1;
+    
     dfg.m_fixpointState = FixpointNotConverged;
-    for (;; ++cnt) {
-        if (verboseCompilationEnabled())
-            dataLogF("DFG beginning optimization fixpoint iteration #%u.\n", cnt);
-        bool changed = false;
-        performCFA(dfg);
-        changed |= performConstantFolding(dfg);
-        changed |= performArgumentsSimplification(dfg);
-        changed |= performCFGSimplification(dfg);
-        changed |= performCSE(dfg);
-        if (!changed)
-            break;
-        dfg.resetExitStates();
-        performFixup(dfg);
-    }
-    dfg.m_fixpointState = FixpointConverged;
+
     performCSE(dfg);
-    if (verboseCompilationEnabled())
-        dataLogF("DFG optimization fixpoint converged in %u iterations.\n", cnt);
+    performArgumentsSimplification(dfg);
+    performCPSRethreading(dfg); // This should usually be a no-op since CSE rarely dethreads, and arguments simplification rarely does anything.
+    performCFA(dfg);
+    performConstantFolding(dfg);
+    performCFGSimplification(dfg);
+
+    dfg.m_fixpointState = FixpointConverged;
+
+    performStoreElimination(dfg);
+    performCPSRethreading(dfg);
+    performDCE(dfg);
     performVirtualRegisterAllocation(dfg);
 
     GraphDumpMode modeForFinalValidate = DumpGraph;

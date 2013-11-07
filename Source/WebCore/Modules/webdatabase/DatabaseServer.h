@@ -45,6 +45,10 @@ public:
 
     virtual String fullPathForDatabase(SecurityOrigin*, const String& name, bool createIfDoesNotExist);
 
+    virtual PassRefPtr<DatabaseBackendBase> openDatabase(RefPtr<DatabaseBackendContext>&, DatabaseType,
+        const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize,
+        bool setVersionInNewDatabase, DatabaseError&, String& errorMessage, OpenAttempt);
+
 #if !PLATFORM(CHROMIUM)
     virtual bool hasEntryForOrigin(SecurityOrigin*);
     virtual void origins(Vector<RefPtr<SecurityOrigin> >& result);
@@ -60,20 +64,16 @@ public:
     virtual bool deleteOrigin(SecurityOrigin*);
     virtual bool deleteDatabase(SecurityOrigin*, const String& name);
 
-    // From a secondary thread, must be thread safe with its data
-    virtual void scheduleNotifyDatabaseChanged(SecurityOrigin*, const String& name);
-    virtual void databaseChanged(DatabaseBackend*);
-
 #else // PLATFORM(CHROMIUM)
     virtual void closeDatabasesImmediately(const String& originIdentifier, const String& name);
 #endif // PLATFORM(CHROMIUM)
 
-    virtual void interruptAllDatabasesForContext(const ScriptExecutionContext*);
+    virtual void interruptAllDatabasesForContext(const DatabaseBackendContext*);
 
-    virtual bool canEstablishDatabase(ScriptExecutionContext*, const String& name, const String& displayName, unsigned long estimatedSize);
-
-    virtual void setDatabaseDetails(SecurityOrigin*, const String& name, const String& displayName, unsigned long estimatedSize);
-    virtual unsigned long long getMaxSizeForDatabase(const DatabaseBackend*);
+protected:
+    virtual PassRefPtr<DatabaseBackendBase> createDatabase(RefPtr<DatabaseBackendContext>&, DatabaseType,
+        const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize,
+        bool setVersionInNewDatabase, DatabaseError&, String& errorMessage);
 };
 
 } // namespace WebCore

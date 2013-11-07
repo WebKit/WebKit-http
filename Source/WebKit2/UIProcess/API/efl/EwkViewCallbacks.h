@@ -28,8 +28,9 @@
 
 #include "WKEinaSharedString.h"
 #include "ewk_private.h"
+#include "ewk_view.h"
 #include <Evas.h>
-#include <WebCore/IntSize.h>
+#include <WebKit2/WKGeometry.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -39,9 +40,6 @@ typedef struct EwkObject Ewk_File_Chooser_Request;
 typedef struct EwkObject Ewk_Form_Submission_Request;
 typedef struct EwkObject Ewk_Navigation_Policy_Decision;
 typedef struct EwkError Ewk_Error;
-
-struct Ewk_Download_Job_Error;
-struct Ewk_CSS_Size;
 
 namespace EwkViewCallbacks {
 
@@ -56,7 +54,7 @@ enum CallbackType {
     DownloadJobRequested,
     FileChooserRequest,
     NewFormSubmissionRequest,
-    IconChanged,
+    FaviconChanged,
     LoadError,
     LoadFinished,
     LoadProgress,
@@ -141,9 +139,9 @@ struct CallBack <callbackType, Ewk_CSS_Size*> : public EvasObjectHolder {
         evas_object_smart_callback_call(m_object, CallBackInfo<callbackType>::name(), size);
     }
 
-    void call(const WebCore::IntSize& arg)
+    void call(const WKSize& arg)
     {
-        Ewk_CSS_Size size = { arg.width(), arg.height() };
+        Ewk_CSS_Size size = { arg.width, arg.height };
         call(&size);
     }
 };
@@ -166,7 +164,7 @@ DECLARE_EWK_VIEW_CALLBACK(DownloadJobFinished, "download,finished", Ewk_Download
 DECLARE_EWK_VIEW_CALLBACK(DownloadJobRequested, "download,request", Ewk_Download_Job*);
 DECLARE_EWK_VIEW_CALLBACK(FileChooserRequest, "file,chooser,request", Ewk_File_Chooser_Request*);
 DECLARE_EWK_VIEW_CALLBACK(NewFormSubmissionRequest, "form,submission,request", Ewk_Form_Submission_Request*);
-DECLARE_EWK_VIEW_CALLBACK(IconChanged, "icon,changed", void);
+DECLARE_EWK_VIEW_CALLBACK(FaviconChanged, "favicon,changed", void);
 DECLARE_EWK_VIEW_CALLBACK(LoadError, "load,error", Ewk_Error*);
 DECLARE_EWK_VIEW_CALLBACK(LoadFinished, "load,finished", void);
 DECLARE_EWK_VIEW_CALLBACK(LoadProgress, "load,progress", double*);

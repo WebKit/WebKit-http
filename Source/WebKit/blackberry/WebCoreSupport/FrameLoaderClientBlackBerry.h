@@ -19,6 +19,7 @@
 #ifndef FrameLoaderClientBlackBerry_h
 #define FrameLoaderClientBlackBerry_h
 
+#include "CredentialTransformData.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
@@ -144,7 +145,7 @@ public:
     virtual void didSaveToPageCache();
     virtual void didRestoreFromPageCache();
     virtual void dispatchDidBecomeFrameset(bool) { }
-    virtual void convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest&, const ResourceRequest&, const ResourceResponse&);
+    virtual void convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest&, const ResourceResponse&);
     virtual PassRefPtr<Frame> createFrame(const KURL&, const String&, HTMLFrameOwnerElement*, const String&, bool, int, int);
     virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool);
     virtual void redirectDataToPlugin(Widget*);
@@ -218,6 +219,9 @@ private:
     bool m_cancelLoadOnNextData;
 
     bool m_wasProvisionalLoadTriggeredByUserGesture;
+#if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
+    CredentialTransformData m_formCredentials;
+#endif
 };
 
 } // WebCore

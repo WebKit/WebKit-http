@@ -31,7 +31,6 @@
 #include "GLDefs.h"
 #include "IntRect.h"
 #include <wtf/Noncopyable.h>
-#include <wtf/PassOwnPtr.h>
 
 // Encapsulates a surface that can be rendered to with GL, hiding platform
 // specific management.
@@ -41,47 +40,57 @@ class GLPlatformSurface {
     WTF_MAKE_NONCOPYABLE(GLPlatformSurface);
 
 public:
+    enum Attributes {
+        Default = 0x00, // No Alpha channel. Only R,G,B values set.
+        SupportAlpha = 0x01,
+        DoubleBuffered = 0x04
+    };
+
+    typedef int SurfaceAttributes;
     // Creates a GL surface used for offscreen rendering.
-    static PassOwnPtr<GLPlatformSurface> createOffscreenSurface();
+    static PassOwnPtr<GLPlatformSurface> createOffScreenSurface(SurfaceAttributes = GLPlatformSurface::Default);
 
     // Creates a GL surface used for offscreen rendering. The results can be transported
     // to the UI process for display.
-    static PassOwnPtr<GLPlatformSurface> createTransportSurface();
+    static PassOwnPtr<GLPlatformSurface> createTransportSurface(SurfaceAttributes = GLPlatformSurface::Default);
 
     virtual ~GLPlatformSurface();
 
     const IntRect& geometry() const;
 
     // Get the underlying platform specific buffer handle.
+    // The handle will be null if surface doesn't support
+    // buffer sharing.
     PlatformBufferHandle handle() const;
 
     PlatformDrawable drawable() const;
 
     PlatformDisplay sharedDisplay() const;
 
+    virtual SurfaceAttributes attributes() const;
+
     virtual void swapBuffers();
 
-    // Convenience Function to update surface backbuffer with texture contents, restore current FBO and Texture.
+    // Convenience Function to update surface backbuffer with texture contents.
+    // Note that the function doesn't track or restore any GL states.
     // Function does the following(in order):
     // a) Blits texture contents to back buffer.
     // b) Calls Swap Buffers.
-    // c) Sets current FBO as bindFboId.
-    virtual void updateContents(const uint32_t texture, const GLuint bindFboId, const uint32_t bindTexture);
+    virtual void updateContents(const uint32_t);
 
-    virtual void setGeometry(const IntRect& newRect);
+    virtual void setGeometry(const IntRect&);
 
     virtual PlatformSurfaceConfig configuration();
 
     virtual void destroy();
 
 protected:
-    GLPlatformSurface();
-    bool m_restoreNeeded;
-    IntRect m_rect;
-    GLuint m_fboId;
+    GLPlatformSurface(SurfaceAttributes);
+
     PlatformDisplay m_sharedDisplay;
     PlatformDrawable m_drawable;
     PlatformBufferHandle m_bufferHandle;
+    IntRect m_rect;
 };
 
 }
@@ -89,3 +98,4 @@ protected:
 #endif
 
 #endif
+

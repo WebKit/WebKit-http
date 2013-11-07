@@ -27,7 +27,6 @@
 #include "EditCommand.h"
 
 #include "CompositeEditCommand.h"
-#include "DeleteButtonController.h"
 #include "Document.h"
 #include "Editor.h"
 #include "Element.h"
@@ -46,7 +45,7 @@ EditCommand::EditCommand(Document* document)
 {
     ASSERT(m_document);
     ASSERT(m_document->frame());
-    setStartingSelection(avoidIntersectionWithNode(m_document->frame()->selection()->selection(), m_document->frame()->editor()->deleteButtonController()->containerElement()));
+    setStartingSelection(m_document->frame()->editor()->avoidIntersectionWithDeleteButtonController(m_document->frame()->selection()->selection()));
     setEndingSelection(m_startingSelection);
 }
 

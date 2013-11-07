@@ -71,7 +71,7 @@ public:
 
     void setStatusText(WebPageProxy*, const String&);
     void mouseDidMoveOverElement(WebPageProxy*, const WebHitTestResult::Data&, WebEvent::Modifiers, APIObject*);
-    void unavailablePluginButtonClicked(WebPageProxy*, WKPluginUnavailabilityReason, const String& mimeType, const String& url, const String& pluginsPageURL);
+    void unavailablePluginButtonClicked(WebPageProxy*, WKPluginUnavailabilityReason, const String& mimeType, const String& pluginBundleIdentifier, const String& pluginBundleVersion, const String& displayName, const String& pluginURLString, const String& pluginspageAttributeURLString, const String& frameURLString, const String& pageURLString);
     
     bool implementsDidNotHandleKeyEvent() const;
     void didNotHandleKeyEvent(WebPageProxy*, const NativeWebKeyboardEvent&);
@@ -121,8 +121,6 @@ public:
     bool showColorPicker(WebPageProxy*, const String&, WebColorPickerResultListenerProxy*);
     bool hideColorPicker(WebPageProxy*);
 #endif
-
-    bool shouldInstantiatePlugin(WebPageProxy*, const String& identifier, const String& displayName);
 };
 
 } // namespace WebKit

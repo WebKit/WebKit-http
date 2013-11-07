@@ -184,11 +184,6 @@ void TestRunner::setXSSAuditorEnabled(bool enabled)
     // FIXME: implement
 }
 
-void TestRunner::setFrameFlatteningEnabled(bool enabled)
-{
-    // FIXME: implement
-}
-
 void TestRunner::setAllowUniversalAccessFromFileURLs(bool enabled)
 {
     // FIXME: implement
@@ -204,11 +199,6 @@ void TestRunner::setAuthorAndUserStylesEnabled(bool flag)
     // FIXME: implement
 }
 
-void TestRunner::setAutofilled(JSContextRef, JSValueRef element, bool isAutofilled)
-{
-    // FIXME: implement
-}
-
 void TestRunner::setPopupBlockingEnabled(bool popupBlockingEnabled)
 {
     // FIXME: implement
@@ -217,12 +207,6 @@ void TestRunner::setPopupBlockingEnabled(bool popupBlockingEnabled)
 void TestRunner::setPluginsEnabled(bool flag)
 {
     // FIXME: Implement
-}
-
-bool TestRunner::elementDoesAutoCompleteForElementWithId(JSStringRef id) 
-{
-    // FIXME: implement
-    return false;
 }
 
 void TestRunner::execCommand(JSStringRef name, JSStringRef value)
@@ -304,27 +288,9 @@ void TestRunner::setAppCacheMaximumSize(unsigned long long size)
     // FIXME: implement
 }
 
-unsigned TestRunner::numberOfActiveAnimations() const
-{
-    // FIXME: implement
-    return 0;
-}
-
-unsigned TestRunner::workerThreadCount() const
-{
-    // FIXME: implement
-    return 0;
-}
-
 void TestRunner::setSelectTrailingWhitespaceEnabled(bool flag)
 {
     // FIXME: implement
-}
-
-bool TestRunner::pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId)
-{
-    // FIXME: implement
-    return false;
 }
 
 void TestRunner::setMockDeviceOrientation(bool canProvideAlpha, double alpha, bool canProvideBeta, double beta, bool canProvideGamma, double gamma)
@@ -378,12 +344,6 @@ void TestRunner::startSpeechInput(JSContextRef inputElement)
 void TestRunner::setIconDatabaseEnabled(bool iconDatabaseEnabled)
 {
     // FIXME: implement
-}
-
-bool TestRunner::pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId)
-{
-    // FIXME: implement
-    return false;
 }
 
 void TestRunner::setCacheModel(int)
@@ -492,16 +452,6 @@ bool TestRunner::callShouldCloseOnWebView()
     return false;
 }
 
-JSRetainPtr<JSStringRef> TestRunner::markerTextForListItem(JSContextRef context, JSValueRef nodeObject) const
-{
-    return 0;
-}
-
-JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef, JSValueRef)
-{
-    return 0;
-}
-
 void TestRunner::authenticateSession(JSStringRef, JSStringRef, JSStringRef)
 {
 }
@@ -524,11 +474,6 @@ bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRe
 void TestRunner::setSerializeHTTPLoads(bool)
 {
     // FIXME: Implement.
-}
-
-void TestRunner::setMinimumTimerInterval(double interval)
-{
-
 }
 
 void TestRunner::syncLocalStorage()
@@ -594,16 +539,6 @@ void TestRunner::setPageVisibility(const char*)
 }
 
 void TestRunner::setAutomaticLinkDetectionEnabled(bool)
-{
-    // FIXME: Implement this.
-}
-
-void TestRunner::sendWebIntentResponse(JSStringRef)
-{
-    // FIXME: Implement this.
-}
-
-void TestRunner::deliverWebIntent(JSStringRef, JSStringRef, JSStringRef)
 {
     // FIXME: Implement this.
 }

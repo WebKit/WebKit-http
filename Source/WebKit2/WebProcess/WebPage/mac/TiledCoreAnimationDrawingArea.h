@@ -30,6 +30,7 @@
 
 #include "DrawingArea.h"
 #include "LayerTreeContext.h"
+#include <WebCore/FloatRect.h>
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/LayerFlushScheduler.h>
 #include <WebCore/LayerFlushSchedulerClient.h>
@@ -55,8 +56,9 @@ private:
     TiledCoreAnimationDrawingArea(WebPage*, const WebPageCreationParameters&);
 
     // DrawingArea
-    virtual void setNeedsDisplay(const WebCore::IntRect&) OVERRIDE;
-    virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollOffset) OVERRIDE;
+    virtual void setNeedsDisplay() OVERRIDE;
+    virtual void setNeedsDisplayInRect(const WebCore::IntRect&) OVERRIDE;
+    virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) OVERRIDE;
 
     virtual void forceRepaint() OVERRIDE;
     virtual bool forceRepaintAsync(uint64_t callbackID) OVERRIDE;
@@ -71,7 +73,7 @@ private:
     virtual void updatePreferences(const WebPreferencesStore&) OVERRIDE;
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) OVERRIDE;
 
-    virtual void setExposedRect(const WebCore::IntRect&) OVERRIDE;
+    virtual void setExposedRect(const WebCore::FloatRect&) OVERRIDE;
     virtual void mainFrameScrollabilityChanged(bool) OVERRIDE;
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(const Function<void ()>&) OVERRIDE;
@@ -81,6 +83,7 @@ private:
     virtual void notifyFlushRequired(const WebCore::GraphicsLayer*) OVERRIDE;
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect) OVERRIDE;
     virtual float deviceScaleFactor() const OVERRIDE;
+    virtual void didCommitChangesForLayer(const WebCore::GraphicsLayer*) const OVERRIDE;
 
     // WebCore::LayerFlushSchedulerClient
     virtual bool flushLayers() OVERRIDE;
@@ -113,10 +116,12 @@ private:
     RetainPtr<CALayer> m_debugInfoLayer;
 
     OwnPtr<WebCore::GraphicsLayer> m_pageOverlayLayer;
+    mutable RetainPtr<CALayer> m_pageOverlayPlatformLayer;
 
     bool m_isPaintingSuspended;
+    bool m_hasRootCompositingLayer;
 
-    WebCore::IntRect m_exposedRect;
+    WebCore::FloatRect m_exposedRect;
 
     WebCore::IntSize m_lastSentIntrinsicContentSize;
     bool m_inUpdateGeometry;

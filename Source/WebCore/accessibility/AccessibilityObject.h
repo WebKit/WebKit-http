@@ -485,7 +485,7 @@ public:
     
     virtual Node* node() const { return 0; }
     virtual RenderObject* renderer() const { return 0; }
-    virtual bool accessibilityIsIgnored() const  { return true; }
+    virtual bool accessibilityIsIgnored() const;
 
     int blockquoteLevel() const;
     virtual int headingLevel() const { return 0; }
@@ -514,6 +514,11 @@ public:
     AccessibilitySortDirection sortDirection() const;
     virtual bool canvasHasFallbackContent() const { return false; }
     bool supportsRangeValue() const;
+
+    bool supportsARIASetSize() const;
+    bool supportsARIAPosInSet() const;
+    int ariaSetSize() const;
+    int ariaPosInSet() const;
     
     // ARIA drag and drop
     virtual bool supportsARIADropping() const { return false; }
@@ -748,8 +753,8 @@ public:
     // Scroll this object to a given point in global coordinates of the top-level window.
     virtual void scrollToGlobalPoint(const IntPoint&) const;
 
-    bool cachedIsIgnoredValue();
-    void setCachedIsIgnoredValue(bool);
+    bool lastKnownIsIgnoredValue();
+    void setLastKnownIsIgnoredValue(bool);
 
     // Fires a children changed notification on the parent if the isIgnored value changed.
     void notifyIfIgnoredValueChanged();
@@ -832,8 +837,10 @@ protected:
     AccessibilityChildrenVector m_children;
     mutable bool m_haveChildren;
     AccessibilityRole m_role;
-    AccessibilityObjectInclusion m_cachedIsIgnoredValue;
-    
+    AccessibilityObjectInclusion m_lastKnownIsIgnoredValue;
+
+    virtual bool computeAccessibilityIsIgnored() const { return true; }
+
     // If this object itself scrolls, return its ScrollableArea.
     virtual ScrollableArea* getScrollableAreaIfScrollable() const { return 0; }
     virtual void scrollTo(const IntPoint&) const { }

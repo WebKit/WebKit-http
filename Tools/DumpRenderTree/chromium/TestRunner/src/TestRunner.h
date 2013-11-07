@@ -34,50 +34,67 @@
 #define TestRunner_h
 
 #include "CppBoundClass.h"
+#include "TestCommon.h"
 #include "WebArrayBufferView.h"
-#include "WebDeliveredIntentClient.h"
 #include "WebTask.h"
+#include "WebTestRunner.h"
 #include "WebTextDirection.h"
+#include <deque>
+#include <memory>
 #include <public/WebURL.h>
 #include <set>
 #include <string>
-#include <wtf/Deque.h>
 
 namespace WebKit {
 class WebArrayBufferView;
+class WebNotificationPresenter;
 class WebPermissionClient;
 class WebView;
 }
 
 namespace WebTestRunner {
 
+class NotificationPresenter;
+class TestInterfaces;
 class WebPermissions;
 class WebTestDelegate;
+class WebTestProxyBase;
 
-class TestRunner : public CppBoundClass {
+class TestRunner : public WebTestRunner, public CppBoundClass {
 public:
-    TestRunner();
+    explicit TestRunner(TestInterfaces*);
     virtual ~TestRunner();
 
     void setDelegate(WebTestDelegate*);
-    void setWebView(WebKit::WebView* webView) { m_webView = webView; }
+    void setWebView(WebKit::WebView*, WebTestProxyBase*);
 
     void reset();
 
     WebTaskList* taskList() { return &m_taskList; }
 
     void setTestIsRunning(bool);
-    bool shouldDumpEditingCallbacks() const;
-    bool shouldDumpAsText() const;
-    void setShouldDumpAsText(bool);
-    bool shouldGeneratePixelResults() const;
-    void setShouldGeneratePixelResults(bool);
+
+    // WebTestRunner implementation.
+    virtual bool shouldGeneratePixelResults() OVERRIDE;
+    virtual bool shouldDumpAsAudio() const OVERRIDE;
+    virtual const WebKit::WebArrayBufferView* audioData() const OVERRIDE;
+    virtual bool shouldDumpBackForwardList() const OVERRIDE;
+    virtual WebKit::WebPermissionClient* webPermissions() const OVERRIDE;
+
+    // Methods used by WebTestProxyBase.
+    bool shouldDumpSelectionRect() const;
+    bool testRepaint() const;
+    bool sweepHorizontally() const;
+    bool isPrinting() const;
+    bool shouldDumpAsText();
     bool shouldDumpChildFrameScrollPositions() const;
     bool shouldDumpChildFramesAsText() const;
-    bool shouldDumpAsAudio() const;
-    const WebKit::WebArrayBufferView* audioData() const;
-    bool shouldDumpFrameLoadCallbacks() const;
+    void showDevTools();
+    void setShouldDumpAsText(bool);
+    void setShouldGeneratePixelResults(bool);
     void setShouldDumpFrameLoadCallbacks(bool);
+    bool shouldDumpEditingCallbacks() const;
+    bool shouldDumpFrameLoadCallbacks() const;
     bool shouldDumpUserGestureInFrameLoadCallbacks() const;
     bool stopProvisionalFrameLoads() const;
     bool shouldDumpTitleChanges() const;
@@ -86,15 +103,9 @@ public:
     bool shouldDumpResourceLoadCallbacks() const;
     bool shouldDumpResourceRequestCallbacks() const;
     bool shouldDumpResourceResponseMIMETypes() const;
-    WebKit::WebPermissionClient* webPermissions() const;
     bool shouldDumpStatusCallbacks() const;
     bool shouldDumpProgressFinishedCallback() const;
-    bool shouldDumpBackForwardList() const;
     bool deferMainResourceDataLoad() const;
-    bool shouldDumpSelectionRect() const;
-    bool testRepaint() const;
-    bool sweepHorizontally() const;
-    bool isPrinting() const;
     bool shouldStayOnPageAfterHandlingBeforeUnload() const;
     void setTitleTextDirection(WebKit::WebTextDirection);
     const std::set<std::string>* httpHeadersToClear() const;
@@ -109,6 +120,13 @@ public:
     bool shouldInterceptPostMessage() const;
     bool isSmartInsertDeleteEnabled() const;
     bool isSelectTrailingWhitespaceEnabled() const;
+    bool shouldDumpResourcePriorities() const;
+#if ENABLE_NOTIFICATIONS
+    WebKit::WebNotificationPresenter* notificationPresenter() const;
+#endif
+    bool requestPointerLock();
+    void requestPointerUnlock();
+    bool isPointerLocked();
 
     // A single item in the work queue.
     class WorkItem {
@@ -136,7 +154,7 @@ private:
         void addWork(WorkItem*);
 
         void setFrozen(bool frozen) { m_frozen = frozen; }
-        bool isEmpty() { return m_queue.isEmpty(); }
+        bool isEmpty() { return m_queue.empty(); }
         WebTaskList* taskList() { return &m_taskList; }
 
     private:
@@ -148,7 +166,7 @@ private:
         };
 
         WebTaskList m_taskList;
-        Deque<WorkItem*> m_queue;
+        std::deque<WorkItem*> m_queue;
         bool m_frozen;
         TestRunner* m_controller;
     };
@@ -196,10 +214,6 @@ private:
     // Checks if an internal command is currently available.
     void isCommandEnabled(const CppArgumentList&, CppVariant*);
 
-    void pauseAnimationAtTimeOnElementWithId(const CppArgumentList&, CppVariant*);
-    void pauseTransitionAtTimeOnElementWithId(const CppArgumentList&, CppVariant*);
-    void elementDoesAutoCompleteForElementWithId(const CppArgumentList&, CppVariant*);
-    void numberOfActiveAnimations(const CppArgumentList&, CppVariant*);
     void callShouldCloseOnWebView(const CppArgumentList&, CppVariant*);
     void setDomainRelaxationForbiddenForURLScheme(const CppArgumentList&, CppVariant*);
     void evaluateScriptInIsolatedWorldAndReturnValue(const CppArgumentList&, CppVariant*);
@@ -224,12 +238,7 @@ private:
 
     void startSpeechInput(const CppArgumentList&, CppVariant*);
 
-    void markerTextForListItem(const CppArgumentList&, CppVariant*);
     void findString(const CppArgumentList&, CppVariant*);
-
-    // Expects the first argument to be an input element and the second argument to be a boolean.
-    // Forwards the setAutofilled() call to the element.
-    void setAutofilled(const CppArgumentList&, CppVariant*);
 
     // Expects the first argument to be an input element and the second argument to be a string value.
     // Forwards the setValueForUser() call to the element.
@@ -271,13 +280,11 @@ private:
     // DeviceOrientation related functions
     void setMockDeviceOrientation(const CppArgumentList&, CppVariant*);
 
-#if ENABLE(POINTER_LOCK)
     void didAcquirePointerLock(const CppArgumentList&, CppVariant*);
     void didNotAcquirePointerLock(const CppArgumentList&, CppVariant*);
     void didLosePointerLock(const CppArgumentList&, CppVariant*);
     void setPointerLockWillFailSynchronously(const CppArgumentList&, CppVariant*);
     void setPointerLockWillRespondAsynchronously(const CppArgumentList&, CppVariant*);
-#endif
 
     ///////////////////////////////////////////////////////////////////////////
     // Methods modifying WebPreferences.
@@ -305,7 +312,6 @@ private:
     // Changes asynchronous spellchecking flag on the settings.
     void setAsynchronousSpellCheckingEnabled(const CppArgumentList&, CppVariant*);
 
-    void setMinimumTimerInterval(const CppArgumentList&, CppVariant*);
     void setTouchDragDropEnabled(const CppArgumentList&, CppVariant*);
 
     ///////////////////////////////////////////////////////////////////////////
@@ -413,15 +419,13 @@ private:
     // Causes WillSendRequest to return an empty request.
     void setWillSendRequestReturnsNull(const CppArgumentList&, CppVariant*);
 
+    // This function sets a flag that tells the test_shell to dump a descriptive
+    // line for each resource load's priority and any time that priority
+    // changes. It takes no arguments, and ignores any that may be present.
+    void dumpResourceRequestPriorities(const CppArgumentList&, CppVariant*);
+
     ///////////////////////////////////////////////////////////////////////////
     // Methods interacting with the WebTestProxy
-
-    // Expects one string argument for sending successful result, zero
-    // arguments for sending a failure result.
-    void sendWebIntentResponse(const CppArgumentList&, CppVariant*);
-
-    // Cause the web intent to be delivered to this context.
-    void deliverWebIntent(const CppArgumentList&, CppVariant*);
 
     ///////////////////////////////////////////////////////////////////////////
     // Methods forwarding to the WebTestDelegate
@@ -462,7 +466,7 @@ private:
     void setMockGeolocationPosition(const CppArgumentList&, CppVariant*);
     void setMockGeolocationPositionUnavailableError(const CppArgumentList&, CppVariant*);
 
-#if ENABLE(NOTIFICATIONS)
+#if ENABLE_NOTIFICATIONS
     // Grants permission for desktop notifications to an origin
     void grantWebNotificationPermission(const CppArgumentList&, CppVariant*);
     // Simulates a click on a desktop notification.
@@ -470,22 +474,14 @@ private:
 #endif
 
     // Speech input related functions.
-#if ENABLE(INPUT_SPEECH)
     void addMockSpeechInputResult(const CppArgumentList&, CppVariant*);
     void setMockSpeechInputDumpRect(const CppArgumentList&, CppVariant*);
-#endif
-#if ENABLE(SCRIPTED_SPEECH)
     void addMockSpeechRecognitionResult(const CppArgumentList&, CppVariant*);
     void setMockSpeechRecognitionError(const CppArgumentList&, CppVariant*);
     void wasMockSpeechRecognitionAborted(const CppArgumentList&, CppVariant*);
-#endif
 
     void display(const CppArgumentList&, CppVariant*);
     void displayInvalidatedRegion(const CppArgumentList&, CppVariant*);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Properties
-    void workerThreadCount(CppVariant*);
 
     //////////////////////////////////////////////////////////////////////////
     // Fallback and stub methods
@@ -502,6 +498,7 @@ private:
 
     ///////////////////////////////////////////////////////////////////////////
     // Internal helpers
+    void checkResponseMimeType();
     void completeNotifyDone(bool isTimeout);
     class NotifyDoneTimedOutTask: public WebMethodTask<TestRunner> {
     public:
@@ -509,10 +506,23 @@ private:
         virtual void runIfValid() { m_object->completeNotifyDone(true); }
     };
 
-    bool pauseAnimationAtTimeOnElementWithId(const WebKit::WebString& animationName, double time, const WebKit::WebString& elementId);
-    bool pauseTransitionAtTimeOnElementWithId(const WebKit::WebString& propertyName, double time, const WebKit::WebString& elementId);
-    bool elementDoesAutoCompleteForElementWithId(const WebKit::WebString&);
-    int numberOfActiveAnimations();
+    class HostMethodTask : public WebMethodTask<TestRunner> {
+    public:
+        typedef void (TestRunner::*CallbackMethodType)();
+        HostMethodTask(TestRunner* object, CallbackMethodType callback)
+            : WebMethodTask<TestRunner>(object)
+            , m_callback(callback)
+        { }
+
+        virtual void runIfValid() { (m_object->*m_callback)(); }
+
+    private:
+        CallbackMethodType m_callback;
+    };
+    void didAcquirePointerLockInternal();
+    void didNotAcquirePointerLockInternal();
+    void didLosePointerLockInternal();
+
     bool cppVariantToBool(const CppVariant&);
     int32_t cppVariantToInt32(const CppVariant&);
     WebKit::WebString cppVariantToWebString(const CppVariant&);
@@ -662,6 +672,8 @@ private:
 
     bool m_selectTrailingWhitespaceEnabled;
 
+    bool m_shouldDumpResourcePriorities;
+
     std::set<std::string> m_httpHeadersToClear;
 
     // WAV audio data is stored here.
@@ -670,17 +682,27 @@ private:
     // Used for test timeouts.
     WebTaskList m_taskList;
 
+    TestInterfaces* m_testInterfaces;
     WebTestDelegate* m_delegate;
     WebKit::WebView* m_webView;
+    WebTestProxyBase* m_proxy;
 
     // This is non-0 IFF a load is in progress.
     WebKit::WebFrame* m_topLoadingFrame;
 
-    // Mock object for testing delivering web intents.
-    OwnPtr<WebKit::WebDeliveredIntentClient> m_intentClient;
-
     // WebPermissionClient mock object.
-    OwnPtr<WebPermissions> m_webPermissions;
+    std::auto_ptr<WebPermissions> m_webPermissions;
+
+#if ENABLE_NOTIFICATIONS
+    std::auto_ptr<NotificationPresenter> m_notificationPresenter;
+#endif
+
+    bool m_pointerLocked;
+    enum {
+        PointerLockWillSucceed,
+        PointerLockWillRespondAsync,
+        PointerLockWillFailSync,
+    } m_pointerLockPlannedResult;
 };
 
 }

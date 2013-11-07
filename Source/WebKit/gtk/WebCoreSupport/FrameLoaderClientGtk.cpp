@@ -1020,6 +1020,8 @@ void FrameLoaderClient::dispatchDidFinishLoading(WebCore::DocumentLoader* loader
     g_signal_emit_by_name(webResource, "load-finished");
     g_signal_emit_by_name(m_frame, "resource-load-finished", webResource);
     g_signal_emit_by_name(webView, "resource-load-finished", m_frame, webResource);
+
+    webkitWebViewRemoveSubresource(webView, identifierString.get());
 }
 
 void FrameLoaderClient::dispatchDidFailLoading(WebCore::DocumentLoader* loader, unsigned long identifier, const ResourceError& error)
@@ -1042,6 +1044,8 @@ void FrameLoaderClient::dispatchDidFailLoading(WebCore::DocumentLoader* loader, 
     g_signal_emit_by_name(webResource, "load-failed", webError.get());
     g_signal_emit_by_name(m_frame, "resource-load-failed", webResource, webError.get());
     g_signal_emit_by_name(webView, "resource-load-failed", m_frame, webResource, webError.get());
+
+    webkitWebViewRemoveSubresource(webView, identifierString.get());
 }
 
 bool FrameLoaderClient::dispatchDidLoadResourceFromMemoryCache(WebCore::DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int length)

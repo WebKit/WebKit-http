@@ -1,3 +1,802 @@
+2013-03-11  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r145462.
+        http://trac.webkit.org/changeset/145462
+        https://bugs.webkit.org/show_bug.cgi?id=112097
+
+        Compilation failure in PluginView.cpp (Requested by jamesr_ on
+        #webkit).
+
+        * WebView/WebView.mm:
+        (-[WebView _enterFullscreenForNode:WebCore::]):
+
+2013-03-11  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_casts with to* functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112072
+
+        Reviewed by Philip Rogers.
+
+        to* functions are preferred over static_cast calls since they
+        help to catch bad casts easily on the testing infrastructure.
+
+        * WebView/WebView.mm:
+        (-[WebView _enterFullscreenForNode:WebCore::]):
+
+2013-03-11  Jochen Eisinger  <jochen@chromium.org>
+
+        Rename DefinitelyProcessingUserGesture to DefinitelyProcessingNewUserGesture
+        https://bugs.webkit.org/show_bug.cgi?id=111959
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView sendEvent:isDrawRect:]):
+
+2013-03-11  Abhishek Arya  <inferno@chromium.org>
+
+        Replace static_cast with to* helper functions.
+        https://bugs.webkit.org/show_bug.cgi?id=112045
+
+        Reviewed by Eric Seidel.
+
+        * WebView/WebRenderLayer.mm:
+        (+[WebRenderLayer nameForLayer:]):
+
+2013-03-11  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix.  Remove stray brace which crept into r145409.
+
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController performClose:]):
+
+2013-01-30  Jer Noble  <jer.noble@apple.com>
+
+        Mac: Cmd-w should close full screen window.
+        https://bugs.webkit.org/show_bug.cgi?id=108406
+
+        Reviewed by Darin Adler.
+
+        Allow the user to close the full screen window with Cmd-w by making the full screen window
+        closable, and by intercepting performClose:.
+
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController init]): Create a closable full screen window.
+        (-[WebFullScreenController performClose:]): When we receive a close request in full screen mode,
+            animate out of full screen.
+
+2013-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Add didFocusTextField:inFrame to WebFormDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=111804
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::focusedNodeChanged):
+        * WebView/WebFormDelegate.h:
+        * WebView/WebFormDelegate.m:
+        (-[WebFormDelegate didFocusTextField:inFrame:]):
+
+2013-03-04  Jer Noble  <jer.noble@apple.com>
+
+        Default mouse cursor behavior should be auto-hide for full screen video with custom controls
+        https://bugs.webkit.org/show_bug.cgi?id=107601
+
+        Reviewed by Beth Dakin.
+
+        Enable the CURSOR_VISIBILITY feature.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-03-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Removed some dead code in the page cache
+        https://bugs.webkit.org/show_bug.cgi?id=111525
+
+        Reviewed by Alexey Proskuryakov.
+
+        Page cache autorelease doesn't exist anymore, so there's no need to keep
+        around these olds hacks.
+
+        This fixes <rdar://problem/4886761> Fix bizarre WebWindowWatcher policy in WebHistoryItem.
+
+        * History/WebHistoryItem.mm:
+        (+[WebHistoryItem _releaseAllPendingPageCaches]):
+        * History/WebHistoryItemInternal.h:
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics autoreleasedPageCount]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2013-03-06  Dmitry Zvorygin  <zvorygin@chromium.org>
+
+        Introduce new message sources for logging.
+        https://bugs.webkit.org/show_bug.cgi?id=110968
+
+        Reviewed by Pavel Feldman.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebView/WebUIDelegatePrivate.h:
+
+2013-03-05  Kent Tamura  <tkent@chromium.org>
+
+        Rename WebCore/editing/visible_units.* to VisibleUnits.*
+        https://bugs.webkit.org/show_bug.cgi?id=111426
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebFrame.mm:
+
+2013-03-05  James Robinson  <jamesr@chromium.org>
+
+        ContainerNode::setActive should not sleep for 100ms on platforms that do not implement synchronous repaint(true) semantics
+        https://bugs.webkit.org/show_bug.cgi?id=87054
+
+        Reviewed by Darin Adler.
+
+        The Mac WebKit1 port supports immediate invalidations.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::supportsImmediateInvalidation):
+
+2013-03-05  David Kilzer  <ddkilzer@apple.com>
+
+        BUILD FIX (r144698): Only enable SPEECH_SYNTHESIS for Mac
+        <http://webkit.org/b/106742>
+
+        Fixes the following build failures:
+
+            Undefined symbols for architecture i386:
+              "__ZTVN7WebCore25PlatformSpeechSynthesizerE", referenced from:
+                  __ZN7WebCore25PlatformSpeechSynthesizerC2EPNS_31PlatformSpeechSynthesizerClientE in PlatformSpeechSynthesizer.o
+              NOTE: a missing vtable usually means the first non-inline virtual member function has no definition.
+              "__ZN7WebCore25PlatformSpeechSynthesizer19initializeVoiceListEv", referenced from:
+                  __ZN7WebCore25PlatformSpeechSynthesizerC2EPNS_31PlatformSpeechSynthesizerClientE in PlatformSpeechSynthesizer.o
+            ld: symbol(s) not found for architecture i386
+
+        * Configurations/FeatureDefines.xcconfig:
+        - Only set ENABLE_SPEECH_SYNTHESIS for the macosx platform.
+
+2013-03-04  David Kilzer  <ddkilzer@apple.com>
+
+        BUILD FIX (r144662): Import JSBase.h in WebFrameLoadDelegate.h
+        <http://webkit.org/b/111269>
+
+        Fixes the following build failure:
+
+            In file included from Source/WebKit/ios/DefaultDelegates/WebDefaultFrameLoadDelegate.m:11:
+            In file included from Source/WebKit/mac/WebView/WebFrameLoadDelegatePrivate.h:29:
+            Source/WebKit/mac/WebView/WebFrameLoadDelegate.h:41:5: error: 'JSC_OBJC_API_ENABLED' is not defined, evaluates to 0 [-Werror,-Wundef]
+            #if JSC_OBJC_API_ENABLED
+                ^
+            Source/WebKit/mac/WebView/WebFrameLoadDelegate.h:207:5: error: 'JSC_OBJC_API_ENABLED' is not defined, evaluates to 0 [-Werror,-Wundef]
+            #if JSC_OBJC_API_ENABLED
+                ^
+            2 errors generated.
+
+        * WebView/WebFrameLoadDelegate.h: Include JSBase.h.
+
+2013-03-04  Chris Fleizach  <cfleizach@apple.com>
+
+        Support WebSpeech - Speech Synthesis
+        https://bugs.webkit.org/show_bug.cgi?id=106742
+
+        Reviewed by Simon Fraser.
+
+        Enable speech synthesis for the Mac.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-03-04  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Remove contextInternalContext from JSContextInternal.h
+        https://bugs.webkit.org/show_bug.cgi?id=111356
+
+        Reviewed by Geoffrey Garen.
+
+        We don't need it any more since we have globalContextRef in JSContext.
+
+        * WebView/WebScriptWorld.mm:
+        (+[WebScriptWorld scriptWorldForJavaScriptContext:]):
+
+2013-03-04  Laszlo Gombos  <l.gombos@samsung.com>
+
+        JSC_OBJC_API_ENABLED should be removed from FeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=111269
+
+        Reviewed by Mark Hahnenberg.
+
+        Include JavaScriptCore/JSBase.h for the definition of JSC_OBJC_API_ENABLED.
+
+        * WebView/WebDelegateImplementationCaching.h:
+
+2013-03-04  Kunihiko Sakamoto  <ksakamoto@chromium.org>
+
+        Add build flag for FontLoader
+        https://bugs.webkit.org/show_bug.cgi?id=111289
+
+        Reviewed by Benjamin Poulain.
+
+        Add ENABLE_FONT_LOAD_EVENTS build flag (disabled by default).
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-03-03  Benjamin Poulain  <benjamin@webkit.org>
+
+        [Mac] Get rid of a useless method from DOMHTMLInputElement
+        https://bugs.webkit.org/show_bug.cgi?id=111279
+
+        Reviewed by Sam Weinig.
+
+        * DOM/WebDOMOperations.mm:
+        * DOM/WebDOMOperationsPrivate.h:
+        setValueForUser: is already privately exposed by DOMHTMLInputElement,
+        no need to have it twice.
+
+2013-03-03  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed attempted build fix. Adds back some includes removed in
+        http://trac.webkit.org/changeset/144565.
+
+        * DOM/WebDOMOperations.mm:
+        * Misc/WebNSPasteboardExtras.mm:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebRenderNode.mm:
+
+2013-03-03  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed rollout of http://trac.webkit.org/r144530
+        As described in https://bugs.webkit.org/show_bug.cgi?id=111167 and
+        https://bugs.webkit.org/show_bug.cgi?id=111035, this patch caused a
+        large number of ASSERTs in chromium-win.
+
+        * DOM/WebDOMOperations.mm:
+        * Misc/WebNSPasteboardExtras.mm:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebRenderNode.mm:
+
+2013-02-18  Darin Adler  <darin@apple.com>
+
+        Cut down the number of source files that depend on Clipboard.h
+        https://bugs.webkit.org/show_bug.cgi?id=110030
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPDFView.mm: Add include of Clipboard.h since we use it
+        here and the world no longer includes it everywhere.
+
+2013-03-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move computedStyleIncludingVisitedInfo from TestRunner to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109772
+
+        Reviewed by Andreas Kling.
+
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+
+2013-03-02  David Kilzer  <ddkilzer@apple.com>
+
+        BUILD FIX (r143637): Predeclare JSContext as an Objective-C class
+        <http://webkit.org/b/106059>
+
+        Fixes the following build failure:
+
+            In file included from Source/WebKit/ios/DefaultDelegates/WebDefaultFrameLoadDelegate.m:11:
+            In file included from Source/WebKit/mac/WebView/WebFrameLoadDelegatePrivate.h:29:
+            Source/WebKit/mac/WebView/WebFrameLoadDelegate.h:215:64: error: expected a type
+            - (void)webView:(WebView *)webView didCreateJavaScriptContext:(JSContext *)context forFrame:(WebFrame *)frame;
+                                                                           ^
+            1 error generated.
+
+        * WebView/WebFrameLoadDelegate.h: Add @class JSContext
+        declaration.
+
+2013-02-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Reduce amount of rebuilding when touching networking headers
+        https://bugs.webkit.org/show_bug.cgi?id=111035
+
+        Reviewed by Eric Seidel.
+
+        Adding includes that are now necessary because WebCore headers don't have them
+        any more.
+
+        * DOM/WebDOMOperations.mm:
+        * Misc/WebNSPasteboardExtras.mm:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebRenderNode.mm:
+
+2013-03-01  Jason Anderssen  <janderssen@gmail.com>
+
+        Move markerTextForListItem from TestRunner to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=110939
+
+        Reviewed by Benjamin Poulain.
+
+        * DOM/WebDOMOperations.mm:
+        * DOM/WebDOMOperationsPrivate.h:
+
+2013-02-28  Sam Weinig  <sam@webkit.org>
+
+        Add SPI for marking a WebView as doing things on behalf of another process
+        https://bugs.webkit.org/show_bug.cgi?id=111125
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext):
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::sourceApplicationAuditData):
+        * WebView/WebView.mm:
+        (-[WebView _setSourceApplicationAuditData:]):
+        (-[WebView _sourceApplicationAuditData]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+        * WebView/WebViewPrivate.h:
+        Add SPI for setting a source application for a WebView.
+
+2013-03-01  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r144422 and r144424.
+        http://trac.webkit.org/changeset/144422
+        http://trac.webkit.org/changeset/144424
+        https://bugs.webkit.org/show_bug.cgi?id=111167
+
+        Caused over 20 tests to fail assertion on Chromium Win port as
+        ASSERTION FAILED: m_platformRequestUpdated (Requested by
+        toyoshim on #webkit).
+
+        * DOM/WebDOMOperations.mm:
+        * Misc/WebNSPasteboardExtras.mm:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebRenderNode.mm:
+
+2013-02-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Reduce amount of rebuilding when touching networking headers
+        https://bugs.webkit.org/show_bug.cgi?id=111035
+
+        Reviewed by Eric Seidel.
+
+        Adding includes that are now necessary because WebCore headers don't have them
+        any more.
+
+        * DOM/WebDOMOperations.mm:
+        * Misc/WebNSPasteboardExtras.mm:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        * WebView/WebRenderLayer.mm:
+        * WebView/WebRenderNode.mm:
+
+2013-02-27  John Bauman  <jbauman@chromium.org>
+
+        Plugin in iframe may not display
+        https://bugs.webkit.org/show_bug.cgi?id=109879
+
+        Reviewed by Simon Fraser.
+
+        Ensure NetscapePluginWidget informs the plugin view of the cliprect change directly.
+
+        * Plugins/WebBaseNetscapePluginView.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (NetscapePluginWidget::clipRectChanged):
+
+2013-02-26  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't add a body to platform request until necessary
+        https://bugs.webkit.org/show_bug.cgi?id=110900
+
+        Reviewed by Brady Eidson.
+
+        WebKit1 behavior is unchanged, body is added on every conversion.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+        (WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache):
+        (WebFrameLoaderClient::assignIdentifierToInitialRequest):
+        (WebFrameLoaderClient::dispatchWillSendRequest):
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::updateGlobalHistory):
+        (WebFrameLoaderClient::canHandleRequest):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource initialRequest]):
+        (-[WebDataSource request]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2013-02-27  Glenn Adams  <glenn@skynav.com>
+
+        Add ENABLE_CSS3_TEXT_LINE_BREAK flag.
+        https://bugs.webkit.org/show_bug.cgi?id=110944
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-02-26  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix; use correct macro for platform name in FeatureDefines.xcconfig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-02-26  Dmitry Zvorygin  <zvorygin@chromium.org>
+
+        Merged Tip and Debug log levels for web console.
+        https://bugs.webkit.org/show_bug.cgi?id=109919
+
+        Reviewed by Pavel Feldman.
+
+        In every component either TIP or DEBUG level was used for reporting,
+        but not both. This patch is prerequisite for Web Inspector console log filtering.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (stringForMessageLevel):
+        * WebView/WebUIDelegatePrivate.h:
+
+
+2013-02-21  Jeffrey Pfau  <jpfau@apple.com>
+
+        Optionally partition cache to prevent using cache for tracking
+        https://bugs.webkit.org/show_bug.cgi?id=110269
+
+        Reviewed by Maciej Stachowiak.
+
+        Update WKSI bindings and add feature defines.
+
+        * Configurations/FeatureDefines.xcconfig: Add defines for cache partitioning and public suffix list usage
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2013-02-25  Jer Noble  <jer.noble@apple.com>
+
+        Normalize ENABLE_ENCRYPTED_MEDIA definitions across all FeatureDefines files.
+        https://bugs.webkit.org/show_bug.cgi?id=110806
+
+        Reviewed by Alexey Proskuryakov.
+    
+        Ensure both ENCRYPTED_MEDIA and ENCRYPTED_MEDIA_V2 are enabled on macosx_1090.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-02-25  Andreas Kling  <akling@apple.com>
+
+        Reduce amount of code that includes StylePropertySet.h
+        <http://webkit.org/b/101149>
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebView/WebFrame.mm:
+        * WebView/WebView.mm:
+
+2013-02-24  Andreas Kling  <akling@apple.com>
+
+        Reduce include graph of JSDOMBinding.h
+        <http://webkit.org/b/110709>
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebHTMLView.mm:
+
+2013-02-21  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Allow to retrieve the request data from abstract TextCheckingRequest to be accessible for WK2
+        https://bugs.webkit.org/show_bug.cgi?id=110208
+
+        Reviewed by Hajime Morrita.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::didCheckSucceed):
+        (WebEditorClient::requestCheckingOfString):
+        Extract the request data as it is the member of 'TextCheckingRequest'.
+
+2013-02-19  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Objective-C API: Need a way to use the Objective-C JavaScript API with WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=106059
+
+        Reviewed by Geoffrey Garen.
+
+        Addition of appropriate delegate callbacks and support to the WebKit API.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebDelegateImplementationCaching.h:
+        (WebFrameLoadDelegateImplementationCache):
+        * WebView/WebFrame.h:
+        * WebView/WebFrame.mm:
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:forceUserGesture:]):
+        (-[WebFrame _stringByEvaluatingJavaScriptFromString:withGlobalObject:inScriptWorld:]):
+        (-[WebFrame _javaScriptContextForScriptWorld:]):
+        (-[WebFrame javaScriptContext]):
+        * WebView/WebFrameLoadDelegate.h:
+        * WebView/WebFramePrivate.h:
+        * WebView/WebScriptDebugDelegate.mm:
+        (-[WebScriptCallFrame _convertValueToObjcValue:JSC::]):
+        (-[WebScriptCallFrame exception]):
+        (-[WebScriptCallFrame evaluateWebScript:]):
+        * WebView/WebScriptWorld.h:
+        * WebView/WebScriptWorld.mm:
+        (+[WebScriptWorld scriptWorldForJavaScriptContext:]):
+        * WebView/WebView.mm:
+        (-[WebView _cacheFrameLoadDelegateImplementations]):
+        (aeDescFromJSValue):
+        (-[WebView aeDescByEvaluatingJavaScriptFromString:]):
+        (-[WebView _computedStyleIncludingVisitedInfo:forElement:]):
+
+2013-02-20  Dirk Schulze  <krit@webkit.org>
+
+        Enable CANVAS_PATH flag
+        https://bugs.webkit.org/show_bug.cgi?id=108508
+
+        Reviewed by Simon Fraser.
+
+        Enable CANVAS_PATH flag on trunk.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-02-19  Tim Horton  <timothy_horton@apple.com>
+
+        Clarify isInWindow vs. isVisible path through to RenderLayerCompositor
+        https://bugs.webkit.org/show_bug.cgi?id=110261
+        <rdar://problem/13196122>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (-[WebView viewWillMoveToWindow:]):
+        (-[WebView viewDidMoveToWindow]):
+        Use Page::setIsInWindow in addition to willMoveOffscreen/didMoveOnscreen.
+
+2013-02-18  Anders Carlsson  <andersca@apple.com>
+
+        Add a DefaultHash for RefPtr<SecurityOrigin>
+        https://bugs.webkit.org/show_bug.cgi?id=110170
+
+        Reviewed by Andreas Kling.
+
+        Remove all explicit uses of SecurityOriginHash.
+
+        * WebCoreSupport/WebApplicationCache.mm:
+        (+[WebApplicationCache originsWithCache]):
+
+2013-02-15  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] remove wkCaptionAppearance from WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=109996
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2013-02-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r143088.
+        http://trac.webkit.org/changeset/143088
+        https://bugs.webkit.org/show_bug.cgi?id=110000
+
+        Breaks the build (Requested by dgorbik on #webkit).
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2013-02-15  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] remove wkCaptionAppearance from WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=109996
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2013-02-15  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Julien Chaffraix.
+
+        Update calls to new API.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+        * WebView/WebFrame.mm:
+        (-[WebFrame elementAtPoint:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView elementAtPoint:allowShadowContent:]):
+
+2013-02-14  David Kilzer  <ddkilzer@apple.com>
+
+        [Mac] Clean up WARNING_CFLAGS
+        <http://webkit.org/b/109747>
+        <rdar://problem/13208373>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig: Use
+        GCC_WARN_64_TO_32_BIT_CONVERSION to enable and disable
+        -Wshorten-64-to-32 rather than WARNING_CFLAGS.
+
+2013-02-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        The 'global isinf/isnan' compiler quirk required when using clang with libstdc++
+        https://bugs.webkit.org/show_bug.cgi?id=109325
+
+        Reviewed by Anders Carlsson.
+
+        Prefix calls to the isinf and isnan methods with std::, declaring we want to use the
+        two methods as they're provided by the C++ standard library being used.
+
+        * tests/DecimalTest.cpp:
+        (TEST_F):
+
+2013-02-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] Enable PAGE_VISIBILITY_API
+        https://bugs.webkit.org/show_bug.cgi?id=109399
+
+        Reviewed by David Kilzer.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-02-12  David Kilzer  <ddkilzer@apple.com>
+
+        BUILD FIX (r142576): WK1 build fails when ENABLE(DELETION_UI) is off
+        <https://bugs.webkit.org/show_bug.cgi?id=109534>
+
+        Fixes the following build failure:
+
+            WebEditorClient.mm:243:23: error: out-of-line definition of 'shouldShowDeleteInterface' does not match any declaration in 'WebEditorClient'
+            bool WebEditorClient::shouldShowDeleteInterface(HTMLElement* element)
+                                  ^~~~~~~~~~~~~~~~~~~~~~~~~
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::shouldShowDeleteInterface): Protect with
+        ENABLE(DELETION_UI) macro.
+
+2013-02-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disable delete button controller on non-Mac ports and delete EditorClient::shouldShowDeleteInterface
+        https://bugs.webkit.org/show_bug.cgi?id=109534
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2013-02-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        Kill TestRunner::setMinimumTimerInterval; implement the feature with InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=109349
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+
+2013-02-10  Dan Bernstein  <mitz@apple.com>
+
+        Added *.pdf to EXCLUDED_SOURCE_FILE_NAMES_iphoneos.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * Configurations/WebKit.xcconfig:
+
+2013-02-10  Jae Hyun Park  <jae.park08@gmail.com>
+
+        Rename ENABLE(GLIB_SUPPORT) to USE(GLIB)
+        https://bugs.webkit.org/show_bug.cgi?id=104266
+
+        Reviewed by Philippe Normand.
+
+        Using USE(GLIB) instead of ENABLE(GLIB_SUPPORT) is more consistent with
+        the existing macro naming conventions.
+
+        From Platform.h
+        USE() - use a particular third-party library or optional OS service
+        ENABLE() - turn on a specific feature of WebKit
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _close]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewInternal.h:
+
+2013-02-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move workerThreadCount from TestRunner to WebCore Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109239
+
+        Reviewed by Darin Adler.
+
+        Get rid of WebWorkersPrivate, which was only needed for DRT.
+
+        * WebKit.exp:
+        * Workers/WebWorkersPrivate.h: Removed.
+        * Workers/WebWorkersPrivate.mm: Removed.
+
+2013-02-07  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r142212.
+        http://trac.webkit.org/changeset/142212
+        https://bugs.webkit.org/show_bug.cgi?id=109255
+
+        Causes ASSERT(!m_installed) on launch (Requested by smfr on
+        #webkit).
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (WebInstallMemoryPressureHandler):
+
+2013-02-06  Gavin Barraclough  <barraclough@apple.com>
+
+        PluginProcess should quit immediately if idle in response to low-memory notifications
+        https://bugs.webkit.org/show_bug.cgi?id=109103
+        <rdar://problem/12679827>
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+            - MemoryPressureHandler::install is now called via MemoryPressureHandler::initialize.
+        (WebInstallMemoryPressureHandler):
+            - MemoryPressureHandler::install is now called via MemoryPressureHandler::initialize.
+
+2013-02-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move pauseAnimation/pauseTransition from TestRunner to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109107
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebFrame.mm:
+        * WebView/WebFramePrivate.h:
+
+2013-02-06  Mike West  <mkwst@chromium.org>
+
+        Add an ENABLE_NOSNIFF feature flag.
+        https://bugs.webkit.org/show_bug.cgi?id=109029
+
+        Reviewed by Jochen Eisinger.
+
+        This new flag will control the behavior of 'X-Content-Type-Options: nosniff'
+        when processing script and other resource types.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-02-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        Kill suspendAnimation(), resumeAnimation() and numberOfActiveAnimations() from DRT/WTR; use Internals
+        https://bugs.webkit.org/show_bug.cgi?id=108741
+
+        Reviewed by Tony Chang.
+
+        * WebView/WebFrame.mm:
+        * WebView/WebFramePrivate.h:
+
+2013-02-04  Enrica Casucci  <enrica@apple.com>
+
+        Add specific EditActions for Bold and Italic commands.
+        https://bugs.webkit.org/show_bug.cgi?id=108842.
+        <rdar://problem/13098252>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
 2013-02-03  David Kilzer  <ddkilzer@apple.com>
 
         Upstream ENABLE_PDFKIT_PLUGIN settting

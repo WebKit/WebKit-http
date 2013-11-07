@@ -31,7 +31,6 @@
 #ifndef WebFrameImpl_h
 #define WebFrameImpl_h
 
-#include "WebAnimationControllerImpl.h"
 #include "WebFrame.h"
 
 #include "Frame.h"
@@ -51,15 +50,14 @@ class KURL;
 class Node;
 class Range;
 class SubstituteData;
+struct FrameLoadRequest;
 struct WindowFeatures;
 }
 
 namespace WebKit {
 class ChromePrintContext;
 class WebDataSourceImpl;
-class WebDeliveredIntentClient;
 class WebInputElement;
-class WebIntent;
 class WebFrameClient;
 class WebPerformance;
 class WebPluginContainerImpl;
@@ -80,7 +78,7 @@ public:
     virtual WebString assignedName() const;
     virtual void setName(const WebString&);
     virtual long long identifier() const;
-    virtual WebVector<WebIconURL> iconURLs(int iconTypes) const;
+    virtual WebVector<WebIconURL> iconURLs(int iconTypesMask) const;
     virtual WebSize scrollOffset() const;
     virtual void setScrollOffset(const WebSize&);
     virtual WebSize minimumScrollOffset() const;
@@ -106,7 +104,6 @@ public:
     virtual WebFrame* findChildByName(const WebString&) const;
     virtual WebFrame* findChildByExpression(const WebString&) const;
     virtual WebDocument document() const;
-    virtual WebAnimationController* animationController();
     virtual WebPerformance performance() const;
     virtual NPObject* windowObject() const;
     virtual void bindToWindowObject(const WebString& name, NPObject*);
@@ -166,8 +163,6 @@ public:
     virtual WebURLLoader* createAssociatedURLLoader(const WebURLLoaderOptions&);
     virtual void commitDocumentData(const char* data, size_t length);
     virtual unsigned unloadListenerCount() const;
-    virtual bool isProcessingUserGesture() const;
-    virtual bool consumeUserGesture() const;
     virtual bool willSuppressOpenerInNewFrame() const;
     virtual void replaceSelection(const WebString&);
     virtual void insertText(const WebString&);
@@ -234,8 +229,6 @@ public:
     virtual void dispatchMessageEventWithOriginCheck(
         const WebSecurityOrigin& intendedTargetOrigin,
         const WebDOMEvent&);
-
-    virtual void deliverIntent(const WebIntent&, WebMessagePortChannelArray*, WebDeliveredIntentClient*);
 
     virtual WebString contentAsText(size_t maxChars) const;
     virtual WebString contentAsMarkup() const;
@@ -495,9 +488,6 @@ private:
     // Valid between calls to BeginPrint() and EndPrint(). Containts the print
     // information. Is used by PrintPage().
     OwnPtr<ChromePrintContext> m_printContext;
-
-    // Keeps a reference to the frame's WebAnimationController.
-    WebAnimationControllerImpl m_animationController;
 
     // The identifier of this frame.
     long long m_identifier;

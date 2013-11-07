@@ -1,3 +1,7 @@
+.CodeMirror * {
+  -webkit-box-sizing: content-box;
+}
+
 .CodeMirror {
   line-height: 1.2em !important;
   height: 100% !important;
@@ -33,6 +37,12 @@
 .cm-execution-line {
     background-color: rgb(171, 191, 254) !important;
     outline: 1px solid rgb(64, 115, 244);
+}
+
+.cm-token-highlight {
+    border: 1px solid gray;
+    border-radius: 3px;
+    margin: -1px;
 }
 
 .cm-s-web-inspector-js span.cm-keyword {color: rgb(170, 13, 145);}

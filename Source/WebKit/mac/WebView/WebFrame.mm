@@ -53,6 +53,7 @@
 #import "WebScriptWorldInternal.h"
 #import "WebViewInternal.h"
 #import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/JSContextInternal.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/AccessibilityObject.h>
 #import <WebCore/AnimationController.h>
@@ -89,11 +90,12 @@
 #import <WebCore/ScriptValue.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SmartReplace.h>
+#import <WebCore/StylePropertySet.h>
 #import <WebCore/TextIterator.h>
 #import <WebCore/ThreadCheck.h>
+#import <WebCore/VisibleUnits.h>
 #import <WebCore/htmlediting.h>
 #import <WebCore/markup.h>
-#import <WebCore/visible_units.h>
 #import <WebKitSystemInterface.h>
 #import <runtime/JSLock.h>
 #import <runtime/JSObject.h>
@@ -106,7 +108,6 @@ using namespace HTMLNames;
 
 using JSC::JSGlobalObject;
 using JSC::JSLock;
-using JSC::JSValue;
 
 /*
 Here is the current behavior matrix for four types of navigations:
@@ -580,7 +581,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     ASSERT(_private->coreFrame->document());
     RetainPtr<WebFrame> protect(self); // Executing arbitrary JavaScript can destroy the frame.
     
-    JSValue result = _private->coreFrame->script()->executeScript(string, forceUserGesture).jsValue();
+    JSC::JSValue result = _private->coreFrame->script()->executeScript(string, forceUserGesture).jsValue();
 
     if (!_private->coreFrame) // In case the script removed our frame from the page.
         return @"";
@@ -926,53 +927,6 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 }
 #endif
 
-- (BOOL)_pauseAnimation:(NSString*)name onNode:(DOMNode *)node atTime:(NSTimeInterval)time
-{
-    Frame* frame = core(self);
-    if (!frame)
-        return false;
-
-    AnimationController* controller = frame->animation();
-    if (!controller)
-        return false;
-
-    Node* coreNode = core(node);
-    if (!coreNode || !coreNode->renderer())
-        return false;
-
-    return controller->pauseAnimationAtTime(coreNode->renderer(), name, time);
-}
-
-- (BOOL)_pauseTransitionOfProperty:(NSString*)name onNode:(DOMNode*)node atTime:(NSTimeInterval)time
-{
-    Frame* frame = core(self);
-    if (!frame)
-        return false;
-
-    AnimationController* controller = frame->animation();
-    if (!controller)
-        return false;
-
-    Node* coreNode = core(node);
-    if (!coreNode || !coreNode->renderer())
-        return false;
-
-    return controller->pauseTransitionAtTime(coreNode->renderer(), name, time);
-}
-
-- (unsigned) _numberOfActiveAnimations
-{
-    Frame* frame = core(self);
-    if (!frame)
-        return false;
-
-    AnimationController* controller = frame->animation();
-    if (!controller)
-        return false;
-
-    return controller->numberOfActiveAnimations(frame->document());
-}
-
 - (void)_replaceSelectionWithFragment:(DOMDocumentFragment *)fragment selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace matchStyle:(BOOL)matchStyle
 {
     if (_private->coreFrame->selection()->isNone() || !fragment)
@@ -1106,7 +1060,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     ASSERT(frame->document());
     RetainPtr<WebFrame> webFrame(kit(frame)); // Running arbitrary JavaScript can destroy the frame.
 
-    JSValue result = frame->script()->executeScriptInWorld(core(world), string, true).jsValue();
+    JSC::JSValue result = frame->script()->executeScriptInWorld(core(world), string, true).jsValue();
 
     if (!webFrame->_private->coreFrame) // In case the script removed our frame from the page.
         return @"";
@@ -1132,6 +1086,16 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return 0;
     return toGlobalRef(coreFrame->script()->globalObject(coreWorld)->globalExec());
 }
+
+#if JSC_OBJC_API_ENABLED
+- (JSContext *)_javaScriptContextForScriptWorld:(WebScriptWorld *)world
+{
+    JSGlobalContextRef globalContextRef = [self _globalContextForScriptWorld:world];
+    if (!globalContextRef)
+        return 0;
+    return [JSContext contextWithGlobalContextRef:globalContextRef];
+}
+#endif
 
 - (void)setAllowsScrollersToOverlapContent:(BOOL)flag
 {
@@ -1263,7 +1227,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return nil;
-    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler()->hitTestResultAtPoint(IntPoint(point), false, true)] autorelease];
+    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler()->hitTestResultAtPoint(IntPoint(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping)] autorelease];
 }
 
 @end
@@ -1412,7 +1376,7 @@ static NSURL *createUniqueWebDataURL()
     ResourceRequest request([baseURL absoluteURL]);
 
     // hack because Mail checks for this property to detect data / archive loads
-    [NSURLProtocol setProperty:@"" forKey:@"WebDataRequest" inRequest:(NSMutableURLRequest *)request.nsURLRequest()];
+    [NSURLProtocol setProperty:@"" forKey:@"WebDataRequest" inRequest:(NSMutableURLRequest *)request.nsURLRequest(UpdateHTTPBody)];
 
     SubstituteData substituteData(WebCore::SharedBuffer::wrapNSData(data), MIMEType, encodingName, [unreachableURL absoluteURL], responseURL);
 
@@ -1517,5 +1481,15 @@ static NSURL *createUniqueWebDataURL()
         return 0;
     return toGlobalRef(coreFrame->script()->globalObject(mainThreadNormalWorld())->globalExec());
 }
+
+#if JSC_OBJC_API_ENABLED
+- (JSContext *)javaScriptContext
+{
+    Frame* coreFrame = _private->coreFrame;
+    if (!coreFrame)
+        return 0;
+    return coreFrame->script()->javaScriptContext();
+}
+#endif
 
 @end

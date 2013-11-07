@@ -50,6 +50,10 @@
     color: rgb(200, 0, 180);
 }
 
+.webkit-javascript-undef {
+    color: rgb(123, 123, 123);
+}
+
 .webkit-javascript-comment {
     color: rgb(0, 116, 0);
 }
@@ -68,6 +72,32 @@
 
 .webkit-javascript-ident {
     color: black;
+}
+
+.webkit-whitespace-1::before {
+    content: "·";
+}
+
+.webkit-whitespace-2::before {
+    content: "··";
+}
+
+.webkit-whitespace-4::before {
+    content: "····";
+}
+
+.webkit-whitespace-8::before {
+    content: "········";
+}
+
+.webkit-whitespace-16::before {
+    content: "················";
+}
+
+.webkit-whitespace::before {
+    position: absolute;
+    pointer-events: none;
+    color: rgb(175, 175, 175);
 }
 
 .webkit-html-comment {

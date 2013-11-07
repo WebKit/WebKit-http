@@ -29,6 +29,9 @@
 #if ENABLE(VIDEO)
 #include "MediaControls.h"
 
+#include "ExceptionCodePlaceholder.h"
+#include "Settings.h"
+
 namespace WebCore {
 
 MediaControls::MediaControls(Document* document)
@@ -90,7 +93,7 @@ void MediaControls::reset()
     updateCurrentTimeDisplay();
 
     float duration = m_mediaController->duration();
-    if (isfinite(duration) || page->theme()->hasOwnDisabledStateHandlingFor(MediaSliderPart)) {
+    if (std::isfinite(duration) || page->theme()->hasOwnDisabledStateHandlingFor(MediaSliderPart)) {
         m_timeline->setDuration(duration);
         m_timeline->setPosition(m_mediaController->currentTime());
     }
@@ -217,8 +220,7 @@ void MediaControls::updateCurrentTimeDisplay()
     if (!page)
         return;
 
-    ExceptionCode ec;
-    m_currentTimeDisplay->setInnerText(page->theme()->formatMediaControlsTime(now), ec);
+    m_currentTimeDisplay->setInnerText(page->theme()->formatMediaControlsTime(now), IGNORE_EXCEPTION);
     m_currentTimeDisplay->setCurrentValue(now);
 }
 
@@ -343,7 +345,7 @@ void MediaControls::startHideFullscreenControlsTimer()
     if (!page)
         return;
 
-    m_hideFullscreenControlsTimer.startOneShot(page->theme()->timeWithoutMouseMovementBeforeHidingControls());
+    m_hideFullscreenControlsTimer.startOneShot(page->settings()->timeWithoutMouseMovementBeforeHidingControls());
 }
 
 void MediaControls::stopHideFullscreenControlsTimer()
@@ -380,10 +382,7 @@ void MediaControls::createTextTrackDisplay()
         m_textDisplayContainer->setMediaController(m_mediaController);
 
     // Insert it before the first controller element so it always displays behind the controls.
-    ExceptionCode ec;
-    insertBefore(textDisplayContainer, m_panel, ec, true);
-    textDisplayContainer->createSubtrees(document());
-    textDisplayContainer.release();
+    insertBefore(textDisplayContainer.release(), m_panel, IGNORE_EXCEPTION, AttachLazily);
 }
 
 void MediaControls::showTextTrackDisplay()
@@ -406,6 +405,12 @@ void MediaControls::updateTextTrackDisplay()
         createTextTrackDisplay();
 
     m_textDisplayContainer->updateDisplay();
+}
+    
+void MediaControls::textTrackPreferencesChanged()
+{
+    if (m_textDisplayContainer)
+        m_textDisplayContainer->updateSizes(true);
 }
 #endif
 

@@ -403,12 +403,12 @@ IntPoint ScrollableArea::maximumScrollPosition() const
     return IntPoint(contentsSize().width() - visibleWidth(), contentsSize().height() - visibleHeight());
 }
 
-IntRect ScrollableArea::visibleContentRect(bool includeScrollbars) const
+IntRect ScrollableArea::visibleContentRect(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
     int verticalScrollbarWidth = 0;
     int horizontalScrollbarHeight = 0;
 
-    if (includeScrollbars) {
+    if (scrollbarInclusion == IncludeScrollbars) {
         if (Scrollbar* verticalBar = verticalScrollbar())
             verticalScrollbarWidth = !verticalBar->isOverlayScrollbar() ? verticalBar->width() : 0;
         if (Scrollbar* horizontalBar = horizontalScrollbar())
@@ -419,6 +419,38 @@ IntRect ScrollableArea::visibleContentRect(bool includeScrollbars) const
                    scrollPosition().y(),
                    std::max(0, visibleWidth() + verticalScrollbarWidth),
                    std::max(0, visibleHeight() + horizontalScrollbarHeight));
+}
+
+static int constrainedScrollPosition(int visibleContentSize, int contentsSize, int scrollPosition, int scrollOrigin)
+{
+    int maxValue = contentsSize - visibleContentSize;
+    if (maxValue <= 0)
+        return 0;
+
+    if (!scrollOrigin) {
+        if (scrollPosition <= 0)
+            return 0;
+        if (scrollPosition > maxValue)
+            scrollPosition = maxValue;
+    } else {
+        if (scrollPosition >= 0)
+            return 0;
+        if (scrollPosition < -maxValue)
+            scrollPosition = -maxValue;
+    }
+
+    return scrollPosition;
+}
+
+IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin)
+{
+    return IntPoint(constrainedScrollPosition(visibleContentRect.width(), contentsSize.width(), scrollPosition.x(), scrollOrigin.x()),
+        constrainedScrollPosition(visibleContentRect.height(), contentsSize.height(), scrollPosition.y(), scrollOrigin.y()));
+}
+
+IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntPoint& scrollPosition)
+{
+    return constrainScrollPositionForOverhang(visibleContentRect(), contentsSize(), scrollPosition, scrollOrigin());
 }
 
 void ScrollableArea::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const

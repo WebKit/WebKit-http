@@ -695,9 +695,22 @@ void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification
     scheduleMainThreadNotification(Notification(type, finished));
 }
 
+#if !LOG_DISABLED
+static const char* notificationName(MediaPlayerPrivateAVFoundation::Notification& notification)
+{
+#define DEFINE_TYPE_STRING_CASE(type) case MediaPlayerPrivateAVFoundation::Notification::type: return #type;
+    switch (notification.type()) {
+        FOR_EACH_MEDIAPLAYERPRIVATEAVFOUNDATION_NOTIFICATION_TYPE(DEFINE_TYPE_STRING_CASE)
+        default: return "";
+    }
+#undef DEFINE_TYPE_STRING_CASE
+}
+#endif // !LOG_DISABLED
+    
+
 void MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(Notification notification)
 {
-    LOG(Media, "MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(%p) - notification %d", this, static_cast<int>(notification.type()));
+    LOG(Media, "MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification(%p) - notification %s", this, notificationName(notification));
     m_queueMutex.lock();
 
     // It is important to always process the properties in the order that we are notified, 
@@ -744,7 +757,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
             return;
     }
 
-    LOG(Media, "MediaPlayerPrivateAVFoundation::dispatchNotification(%p) - dispatching %d", this, static_cast<int>(notification.type()));
+    LOG(Media, "MediaPlayerPrivateAVFoundation::dispatchNotification(%p) - dispatching %s", this, notificationName(notification));
 
     switch (notification.type()) {
     case Notification::ItemDidPlayToEndTime:
@@ -816,15 +829,6 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
 }
 
 #if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
-void MediaPlayerPrivateAVFoundation::addGenericCue(InbandTextTrackPrivateAVF* track, GenericCueData* cueData)
-{
-    if (!track->client())
-        return;
-
-    LOG(Media, "MediaPlayerPrivateAVFoundation::addGenericCue(%p) - adding cue for time %.2f", this, cueData->startTime());
-    track->client()->addGenericCue(track, cueData);
-}
-
 void MediaPlayerPrivateAVFoundation::configureInbandTracks()
 {
     RefPtr<InbandTextTrackPrivateAVF> trackToEnable;

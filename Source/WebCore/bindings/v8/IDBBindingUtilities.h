@@ -38,13 +38,13 @@ class DOMRequestState;
 class IDBKey;
 class IDBKeyPath;
 class SerializedScriptValue;
-
-PassRefPtr<IDBKey> createIDBKeyFromValue(v8::Handle<v8::Value>);
+class SharedBuffer;
 
 bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey>, ScriptValue&, const IDBKeyPath&);
 PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState*, const ScriptValue&, const IDBKeyPath&);
 bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const ScriptValue&, const IDBKeyPath&);
 ScriptValue deserializeIDBValue(DOMRequestState*, PassRefPtr<SerializedScriptValue>);
+ScriptValue deserializeIDBValueBuffer(DOMRequestState*, PassRefPtr<SharedBuffer>);
 ScriptValue idbKeyToScriptValue(DOMRequestState*, PassRefPtr<IDBKey>);
 PassRefPtr<IDBKey> scriptValueToIDBKey(DOMRequestState*, const ScriptValue&);
 

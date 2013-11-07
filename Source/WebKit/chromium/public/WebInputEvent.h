@@ -115,6 +115,7 @@ public:
         GestureScrollBegin,
         GestureScrollEnd,
         GestureScrollUpdate,
+        GestureScrollUpdateWithoutPropagation,
         GestureFlingStart,
         GestureFlingCancel,
         GestureTap,
@@ -222,6 +223,7 @@ public:
         return type == GestureScrollBegin
             || type == GestureScrollEnd
             || type == GestureScrollUpdate
+            || type == GestureScrollUpdateWithoutPropagation
             || type == GestureFlingStart
             || type == GestureFlingCancel
             || type == GesturePinchBegin
@@ -365,6 +367,9 @@ public:
     float wheelTicksX;
     float wheelTicksY;
 
+    float accelerationRatioX;
+    float accelerationRatioY;
+
     // See comment at the top of the file for why an int is used here.
     int scrollByPage;
 
@@ -379,6 +384,8 @@ public:
         , deltaY(0.0f)
         , wheelTicksX(0.0f)
         , wheelTicksY(0.0f)
+        , accelerationRatioX(1.0f)
+        , accelerationRatioY(1.0f)
         , scrollByPage(false)
         , hasPreciseScrollingDeltas(false)
         , phase(PhaseNone)
@@ -405,23 +412,23 @@ public:
     union {
         struct {
             int tapCount;
-            int width;
-            int height;
+            float width;
+            float height;
         } tap;
 
         struct {
-            int width;
-            int height;
+            float width;
+            float height;
         } tapDown;
 
         struct {
-            int width;
-            int height;
+            float width;
+            float height;
         } longPress;
 
         struct {
-            int firstFingerWidth;
-            int firstFingerHeight;
+            float firstFingerWidth;
+            float firstFingerHeight;
         } twoFingerTap;
 
         struct {
@@ -434,14 +441,12 @@ public:
         struct {
             float velocityX;
             float velocityY;
-            // FIXME: Remove this when Chromium uses the top-level field.
-            SourceDevice sourceDevice;
         } flingStart;
 
         struct {
             float scale;
         } pinchUpdate;
-    } data; 
+    } data;
 
     WebGestureEvent(unsigned sizeParam = sizeof(WebGestureEvent))
         : WebInputEvent(sizeParam)
@@ -450,7 +455,7 @@ public:
         , globalX(0)
         , globalY(0)
     {
-      memset(&data, 0, sizeof(data)); 
+        memset(&data, 0, sizeof(data));
     }
 };
 

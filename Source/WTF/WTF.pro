@@ -61,6 +61,7 @@ HEADERS += \
     ExportMacros.h \
     FastAllocBase.h \
     FastMalloc.h \
+    FeatureDefines.h \
     FilePrintStream.h \
     FixedArray.h \
     Float32Array.h \
@@ -196,6 +197,7 @@ SOURCES += \
     ArrayBuffer.cpp \
     ArrayBufferView.cpp \
     Assertions.cpp \
+    Atomics.cpp \
     BitVector.cpp \
     CryptographicallyRandomNumber.cpp \
     CurrentTime.cpp \

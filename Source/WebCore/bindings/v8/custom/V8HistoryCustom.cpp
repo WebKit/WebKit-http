@@ -41,7 +41,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8History::stateAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8History::stateAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     History* history = V8History::toNative(info.Holder());
 
@@ -57,7 +57,7 @@ v8::Handle<v8::Value> V8History::stateAccessorGetter(v8::Local<v8::String> name,
     return value;
 }
 
-v8::Handle<v8::Value> V8History::pushStateCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8History::pushStateMethodCustom(const v8::Arguments& args)
 {
     bool didThrow = false;
     RefPtr<SerializedScriptValue> historyState = SerializedScriptValue::create(args[0], 0, 0, didThrow, args.GetIsolate());
@@ -65,7 +65,7 @@ v8::Handle<v8::Value> V8History::pushStateCallback(const v8::Arguments& args)
         return v8::Undefined();
 
     V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, title, args[1]);
-    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, url, MAYBE_MISSING_PARAMETER(args, 2, DefaultIsNullString));
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, url, argumentOrNull(args, 2));
 
     ExceptionCode ec = 0;
     History* history = V8History::toNative(args.Holder());
@@ -74,7 +74,7 @@ v8::Handle<v8::Value> V8History::pushStateCallback(const v8::Arguments& args)
     return setDOMException(ec, args.GetIsolate());
 }
 
-v8::Handle<v8::Value> V8History::replaceStateCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8History::replaceStateMethodCustom(const v8::Arguments& args)
 {
     bool didThrow = false;
     RefPtr<SerializedScriptValue> historyState = SerializedScriptValue::create(args[0], 0, 0, didThrow, args.GetIsolate());
@@ -82,25 +82,13 @@ v8::Handle<v8::Value> V8History::replaceStateCallback(const v8::Arguments& args)
         return v8::Undefined();
 
     V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, title, args[1]);
-    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, url, MAYBE_MISSING_PARAMETER(args, 2, DefaultIsNullString));
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, url, argumentOrNull(args, 2));
 
     ExceptionCode ec = 0;
     History* history = V8History::toNative(args.Holder());
     history->stateObjectAdded(historyState.release(), title, url, History::StateObjectReplace, ec);
     args.Holder()->DeleteHiddenValue(V8HiddenPropertyName::state());
     return setDOMException(ec, args.GetIsolate());
-}
-
-bool V8History::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
-{
-    History* history = V8History::toNative(host);
-    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), history->frame(), DoNotReportSecurityError);
-}
-
-bool V8History::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
-{
-    History* history = V8History::toNative(host);
-    return BindingSecurity::shouldAllowAccessToFrame(BindingState::instance(), history->frame(), DoNotReportSecurityError);
 }
 
 } // namespace WebCore

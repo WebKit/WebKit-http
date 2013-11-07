@@ -116,7 +116,8 @@ JSValue JSHTMLAllCollection::item(ExecState* exec)
 
 JSValue JSHTMLAllCollection::namedItem(ExecState* exec)
 {
-    return getNamedItems(exec, this, Identifier(exec, exec->argument(0).toString(exec)->value(exec)));
+    JSValue value = getNamedItems(exec, this, Identifier(exec, exec->argument(0).toString(exec)->value(exec)));
+    return value.isUndefined() ? jsNull() : value;
 }
 
 } // namespace WebCore

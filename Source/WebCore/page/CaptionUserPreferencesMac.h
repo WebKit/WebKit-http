@@ -40,31 +40,42 @@ public:
     static PassOwnPtr<CaptionUserPreferencesMac> create(PageGroup* group) { return adoptPtr(new CaptionUserPreferencesMac(group)); }
     virtual ~CaptionUserPreferencesMac();
 
-    virtual bool userPrefersCaptions() const OVERRIDE;
+#if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
     virtual bool userHasCaptionPreferences() const OVERRIDE;
-    virtual float captionFontSizeScale() const OVERRIDE;
+    virtual bool userPrefersCaptions() const OVERRIDE;
+    virtual void setUserPrefersCaptions(bool) OVERRIDE;
+    virtual float captionFontSizeScale(bool&) const OVERRIDE;
     virtual String captionsStyleSheetOverride() const OVERRIDE;
-    virtual void registerForCaptionPreferencesChangedCallbacks(CaptionPreferencesChangedListener*) OVERRIDE;
-    virtual void unregisterForCaptionPreferencesChangedCallbacks(CaptionPreferencesChangedListener*) OVERRIDE;
 
-    void captionPreferencesChanged();
+    virtual void registerForPreferencesChangedCallbacks(CaptionPreferencesChangedListener*) OVERRIDE;
+
+    virtual void setPreferredLanguage(String) OVERRIDE;
+    virtual Vector<String> preferredLanguages() const OVERRIDE;
+
+    virtual void captionPreferencesChanged() OVERRIDE;
+#endif
+
+    virtual String displayNameForTrack(TextTrack*) const OVERRIDE;
 
 private:
     CaptionUserPreferencesMac(PageGroup*);
 
-    Color captionsWindowColor() const;
-    Color captionsBackgroundColor() const;
-    Color captionsTextColor() const;
-    String captionsDefaultFont() const;
+#if HAVE(MEDIA_ACCESSIBILITY_FRAMEWORK)
+    String captionsWindowCSS() const;
+    String captionsBackgroundCSS() const;
+    String captionsTextColorCSS() const;
+    Color captionsTextColor(bool&) const;
+    String captionsDefaultFontCSS() const;
     Color captionsEdgeColorForTextColor(const Color&) const;
-    String captionsTextEdgeStyle() const;
-    String cssPropertyWithTextEdgeColor(CSSPropertyID, const String&, const Color&) const;
-    String cssColorProperty(CSSPropertyID, const Color&) const;
+    String windowRoundedCornerRadiusCSS() const;
+    String captionsTextEdgeCSS() const;
+    String cssPropertyWithTextEdgeColor(CSSPropertyID, const String&, const Color&, bool) const;
+    String colorPropertyCSS(CSSPropertyID, const Color&, bool) const;
 
     void updateCaptionStyleSheetOveride();
 
-    HashSet<CaptionPreferencesChangedListener*> m_captionPreferenceChangeListeners;
     bool m_listeningForPreferenceChanges;
+#endif
 };
     
 }

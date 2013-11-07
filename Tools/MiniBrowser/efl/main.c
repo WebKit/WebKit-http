@@ -44,6 +44,7 @@ static char *evas_engine_name = NULL;
 static Eina_Bool encoding_detector_enabled = EINA_FALSE;
 static Eina_Bool frame_flattening_enabled = EINA_FALSE;
 static Eina_Bool local_storage_enabled = EINA_TRUE;
+static Eina_Bool fullscreen_enabled = EINA_FALSE;
 static int window_width = 800;
 static int window_height = 600;
 /* Default value of device_pixel_ratio is '0' so that we don't set custom device
@@ -132,6 +133,8 @@ static const Ecore_Getopt options = {
             ('f', "flattening", "frame flattening.", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('l', "local-storage", "HTML5 local storage support (enabled by default).", EINA_TRUE),
+        ECORE_GETOPT_STORE_DEF_BOOL
+            ('F', "full-screen", "start in full-screen.", EINA_FALSE),
         ECORE_GETOPT_VERSION
             ('V', "version"),
         ECORE_GETOPT_COPYRIGHT
@@ -536,12 +539,8 @@ on_download_failed(void *user_data, Evas_Object *ewk_view, void *event_info)
 }
 
 static void
-on_favicon_received(const char *page_url, Evas_Object *icon, void *event_info)
+update_view_favicon(Browser_Window *window, Evas_Object *icon)
 {
-    Browser_Window *window = (Browser_Window *)event_info;
-    if (strcmp(page_url, ewk_view_url_get(window->ewk_view)))
-        return;
-
     /* Remove previous icon from URL bar */
     Evas_Object *old_icon = elm_object_part_content_unset(window->url_bar, "icon");
     if (old_icon) {
@@ -562,16 +561,15 @@ on_favicon_received(const char *page_url, Evas_Object *icon, void *event_info)
 }
 
 static void
-on_view_icon_changed(void *user_data, Evas_Object *ewk_view, void *event_info)
+on_view_favicon_changed(void *user_data, Evas_Object *ewk_view, void *event_info)
 {
     Browser_Window *window = (Browser_Window *)user_data;
-    /* Retrieve the view's favicon */
-    Ewk_Context *context = ewk_view_context_get(ewk_view);
-    Ewk_Favicon_Database *icon_database = ewk_context_favicon_database_get(context);
 
-    const char *page_url = ewk_view_url_get(ewk_view);
-    Evas *evas = evas_object_evas_get(ewk_view);
-    ewk_favicon_database_async_icon_get(icon_database, page_url, evas, on_favicon_received, window);
+    Evas_Object* favicon = ewk_view_favicon_get(ewk_view);
+    update_view_favicon(window, favicon);
+
+    if (favicon)
+        evas_object_unref(favicon);
 }
 
 static int
@@ -1206,6 +1204,7 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
     ewk_settings_frame_flattening_enabled_set(settings, frame_flattening_enabled);
     ewk_settings_local_storage_enabled_set(settings, local_storage_enabled);
     info("HTML5 local storage is %s for this view.\n", local_storage_enabled ? "enabled" : "disabled");
+    elm_win_fullscreen_set(window->elm_window, fullscreen_enabled);
     ewk_settings_developer_extras_enabled_set(settings, EINA_TRUE);
     ewk_settings_preferred_minimum_contents_width_set(settings, 0);
 
@@ -1214,7 +1213,7 @@ static Browser_Window *window_create(Evas_Object *opener, const char *url, int w
     evas_object_smart_callback_add(window->ewk_view, "download,finished", on_download_finished, window);
     evas_object_smart_callback_add(window->ewk_view, "download,request", on_download_request, window);
     evas_object_smart_callback_add(window->ewk_view, "file,chooser,request", on_file_chooser_request, window);
-    evas_object_smart_callback_add(window->ewk_view, "icon,changed", on_view_icon_changed, window);
+    evas_object_smart_callback_add(window->ewk_view, "favicon,changed", on_view_favicon_changed, window);
     evas_object_smart_callback_add(window->ewk_view, "load,error", on_error, window);
     evas_object_smart_callback_add(window->ewk_view, "load,progress", on_progress, window);
     evas_object_smart_callback_add(window->ewk_view, "title,changed", on_title_changed, window);
@@ -1288,6 +1287,7 @@ elm_main(int argc, char *argv[])
         ECORE_GETOPT_VALUE_BOOL(encoding_detector_enabled),
         ECORE_GETOPT_VALUE_BOOL(frame_flattening_enabled),
         ECORE_GETOPT_VALUE_BOOL(local_storage_enabled),
+        ECORE_GETOPT_VALUE_BOOL(fullscreen_enabled),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
@@ -1341,3 +1341,4 @@ elm_main(int argc, char *argv[])
     return quit(EINA_TRUE, NULL);
 }
 ELM_MAIN()
+

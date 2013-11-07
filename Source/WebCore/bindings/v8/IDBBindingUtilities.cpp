@@ -33,13 +33,14 @@
 #include "IDBKeyPath.h"
 #include "IDBTracing.h"
 #include "SerializedScriptValue.h"
+#include "SharedBuffer.h"
 #include "V8Binding.h"
 #include <wtf/MathExtras.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-static v8::Handle<v8::Value> idbKeyToV8Value(IDBKey* key, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+static v8::Handle<v8::Value> idbKeyToV8Value(IDBKey* key, v8::Isolate* isolate)
 {
     if (!key) {
         // This should be undefined, not null.
@@ -62,7 +63,7 @@ static v8::Handle<v8::Value> idbKeyToV8Value(IDBKey* key, v8::Handle<v8::Object>
         {
             v8::Local<v8::Array> array = v8::Array::New(key->array().size());
             for (size_t i = 0; i < key->array().size(); ++i)
-                array->Set(i, idbKeyToV8Value(key->array()[i].get(), creationContext, isolate));
+                array->Set(i, idbKeyToV8Value(key->array()[i].get(), isolate));
             return array;
         }
     }
@@ -75,11 +76,11 @@ static const size_t maximumDepth = 2000;
 
 static PassRefPtr<IDBKey> createIDBKeyFromValue(v8::Handle<v8::Value> value, Vector<v8::Handle<v8::Array> >& stack)
 {
-    if (value->IsNumber() && !isnan(value->NumberValue()))
+    if (value->IsNumber() && !std::isnan(value->NumberValue()))
         return IDBKey::createNumber(value->NumberValue());
     if (value->IsString())
         return IDBKey::createString(toWebCoreString(value));
-    if (value->IsDate() && !isnan(value->NumberValue()))
+    if (value->IsDate() && !std::isnan(value->NumberValue()))
         return IDBKey::createDate(value->NumberValue());
     if (value->IsArray()) {
         v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(value);
@@ -133,14 +134,14 @@ static bool setValue(v8::Handle<v8::Value>& v8Object, T indexOrName, const v8::H
     return object->Set(indexOrName, v8Value);
 }
 
-static bool get(v8::Handle<v8::Value>& object, const String& keyPathElement, v8::Handle<v8::Value>& result)
+static bool get(v8::Handle<v8::Value>& object, const String& keyPathElement, v8::Handle<v8::Value>& result, v8::Isolate* isolate)
 {
     if (object->IsString() && keyPathElement == "length") {
         int32_t length = v8::Handle<v8::String>::Cast(object)->Length();
         result = v8::Number::New(length);
         return true;
     }
-    return object->IsObject() && getValueFrom(deprecatedV8String(keyPathElement), result);
+    return object->IsObject() && getValueFrom(v8String(keyPathElement, isolate), result);
 }
 
 static bool canSet(v8::Handle<v8::Value>& object, const String& keyPathElement)
@@ -148,25 +149,25 @@ static bool canSet(v8::Handle<v8::Value>& object, const String& keyPathElement)
     return object->IsObject();
 }
 
-static bool set(v8::Handle<v8::Value>& object, const String& keyPathElement, const v8::Handle<v8::Value>& v8Value)
+static bool set(v8::Handle<v8::Value>& object, const String& keyPathElement, const v8::Handle<v8::Value>& v8Value, v8::Isolate* isolate)
 {
-    return canSet(object, keyPathElement) && setValue(object, deprecatedV8String(keyPathElement), v8Value);
+    return canSet(object, keyPathElement) && setValue(object, v8String(keyPathElement, isolate), v8Value);
 }
 
-static v8::Handle<v8::Value> getNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index)
+static v8::Handle<v8::Value> getNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index, v8::Isolate* isolate)
 {
     v8::Handle<v8::Value> currentValue(rootValue);
     ASSERT(index <= keyPathElements.size());
     for (size_t i = 0; i < index; ++i) {
         v8::Handle<v8::Value> parentValue(currentValue);
-        if (!get(parentValue, keyPathElements[i], currentValue))
+        if (!get(parentValue, keyPathElements[i], currentValue, isolate))
             return v8Undefined();
     }
 
     return currentValue;
 }
 
-static bool canInjectNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index)
+static bool canInjectNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index, v8::Isolate* isolate)
 {
     if (!rootValue->IsObject())
         return false;
@@ -177,14 +178,14 @@ static bool canInjectNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const V
     for (size_t i = 0; i < index; ++i) {
         v8::Handle<v8::Value> parentValue(currentValue);
         const String& keyPathElement = keyPathElements[i];
-        if (!get(parentValue, keyPathElement, currentValue))
+        if (!get(parentValue, keyPathElement, currentValue, isolate))
             return canSet(parentValue, keyPathElement);
     }
     return true;
 }
 
 
-static v8::Handle<v8::Value> ensureNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index)
+static v8::Handle<v8::Value> ensureNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, const Vector<String>& keyPathElements, size_t index, v8::Isolate* isolate)
 {
     v8::Handle<v8::Value> currentValue(rootValue);
 
@@ -192,9 +193,9 @@ static v8::Handle<v8::Value> ensureNthValueOnKeyPath(v8::Handle<v8::Value>& root
     for (size_t i = 0; i < index; ++i) {
         v8::Handle<v8::Value> parentValue(currentValue);
         const String& keyPathElement = keyPathElements[i];
-        if (!get(parentValue, keyPathElement, currentValue)) {
+        if (!get(parentValue, keyPathElement, currentValue, isolate)) {
             v8::Handle<v8::Object> object = v8::Object::New();
-            if (!set(parentValue, keyPathElement, object))
+            if (!set(parentValue, keyPathElement, object, isolate))
                 return v8Undefined();
             currentValue = object;
         }
@@ -203,7 +204,7 @@ static v8::Handle<v8::Value> ensureNthValueOnKeyPath(v8::Handle<v8::Value>& root
     return currentValue;
 }
 
-static PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue& value, const String& keyPath)
+static PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue& value, const String& keyPath, v8::Isolate* isolate)
 {
     Vector<String> keyPathElements;
     IDBKeyPathParseError error;
@@ -213,25 +214,26 @@ static PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValu
 
     v8::HandleScope handleScope;
     v8::Handle<v8::Value> v8Value(value.v8Value());
-    v8::Handle<v8::Value> v8Key(getNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size()));
+    v8::Handle<v8::Value> v8Key(getNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size(), isolate));
     if (v8Key.IsEmpty())
         return 0;
     return createIDBKeyFromValue(v8Key);
 }
 
-PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState*, const ScriptValue& value, const IDBKeyPath& keyPath)
+PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState* state, const ScriptValue& value, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("createIDBKeyFromScriptValueAndKeyPath");
     ASSERT(!keyPath.isNull());
     ASSERT(v8::Context::InContext());
 
 
+    v8::Isolate* isolate = state ? state->context()->GetIsolate() : v8::Isolate::GetCurrent();
     v8::HandleScope handleScope;
     if (keyPath.type() == IDBKeyPath::ArrayType) {
         IDBKey::KeyArray result;
         const Vector<String>& array = keyPath.array();
         for (size_t i = 0; i < array.size(); ++i) {
-            RefPtr<IDBKey> key = createIDBKeyFromScriptValueAndKeyPath(value, array[i]);
+            RefPtr<IDBKey> key = createIDBKeyFromScriptValueAndKeyPath(value, array[i], isolate);
             if (!key)
                 return 0;
             result.append(key);
@@ -240,16 +242,31 @@ PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState*, const
     }
 
     ASSERT(keyPath.type() == IDBKeyPath::StringType);
-    return createIDBKeyFromScriptValueAndKeyPath(value, keyPath.string());
+    return createIDBKeyFromScriptValueAndKeyPath(value, keyPath.string(), isolate);
 }
 
-ScriptValue deserializeIDBValue(DOMRequestState* state, PassRefPtr<SerializedScriptValue> prpValue)
+ScriptValue deserializeIDBValue(DOMRequestState*, PassRefPtr<SerializedScriptValue> prpValue)
 {
     ASSERT(v8::Context::InContext());
     v8::HandleScope handleScope;
     RefPtr<SerializedScriptValue> serializedValue = prpValue;
     if (serializedValue)
         return ScriptValue(serializedValue->deserialize());
+    return ScriptValue(v8::Null());
+}
+
+ScriptValue deserializeIDBValueBuffer(DOMRequestState*, PassRefPtr<SharedBuffer> prpBuffer)
+{
+    ASSERT(v8::Context::InContext());
+    v8::HandleScope handleScope;
+    RefPtr<SharedBuffer> buffer = prpBuffer;
+    if (buffer) {
+        // FIXME: The extra copy here can be eliminated by allowing SerializedScriptValue to take a raw const char* or const uint8_t*.
+        Vector<uint8_t> value;
+        value.append(buffer->data(), buffer->size());
+        RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::createFromWireBytes(value);
+        return ScriptValue(serializedValue->deserialize());
+    }
     return ScriptValue(v8::Null());
 }
 
@@ -267,19 +284,20 @@ bool injectIDBKeyIntoScriptValue(DOMRequestState* state, PassRefPtr<IDBKey> key,
     if (!keyPathElements.size())
         return 0;
 
+    v8::Isolate* isolate = state ? state->context()->GetIsolate() : v8::Isolate::GetCurrent();
     v8::HandleScope handleScope;
     v8::Handle<v8::Value> v8Value(value.v8Value());
-    v8::Handle<v8::Value> parent(ensureNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size() - 1));
+    v8::Handle<v8::Value> parent(ensureNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size() - 1, isolate));
     if (parent.IsEmpty())
         return false;
 
-    if (!set(parent, keyPathElements.last(), idbKeyToV8Value(key.get(), v8::Handle<v8::Object>(), state->context()->GetIsolate())))
+    if (!set(parent, keyPathElements.last(), idbKeyToV8Value(key.get(), isolate), isolate))
         return false;
 
     return true;
 }
 
-bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const ScriptValue& scriptValue, const IDBKeyPath& keyPath)
+bool canInjectIDBKeyIntoScriptValue(DOMRequestState* state, const ScriptValue& scriptValue, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("canInjectIDBKeyIntoScriptValue");
     ASSERT(keyPath.type() == IDBKeyPath::StringType);
@@ -292,14 +310,14 @@ bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const ScriptValue& scriptV
         return false;
 
     v8::Handle<v8::Value> v8Value(scriptValue.v8Value());
-    return canInjectNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size() - 1);
+    return canInjectNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size() - 1, state->context()->GetIsolate());
 }
 
 ScriptValue idbKeyToScriptValue(DOMRequestState* state, PassRefPtr<IDBKey> key)
 {
     ASSERT(v8::Context::InContext());
     v8::HandleScope handleScope;
-    v8::Handle<v8::Value> v8Value(idbKeyToV8Value(key.get(), v8::Handle<v8::Object>(), state->context()->GetIsolate()));
+    v8::Handle<v8::Value> v8Value(idbKeyToV8Value(key.get(), state->context()->GetIsolate()));
     return ScriptValue(v8Value);
 }
 

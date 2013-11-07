@@ -246,7 +246,6 @@ typedef WKBundlePageUIElementVisibility (*WKBundlePageMenuBarIsVisibleCallback)(
 typedef WKBundlePageUIElementVisibility (*WKBundlePageToolbarsAreVisibleCallback)(WKBundlePageRef page, const void *clientInfo);
 typedef void (*WKBundlePageReachedAppCacheOriginQuotaCallback)(WKBundlePageRef page, WKSecurityOriginRef origin, int64_t totalBytesNeeded, const void *clientInfo);
 typedef uint64_t (*WKBundlePageExceededDatabaseQuotaCallback)(WKBundlePageRef page, WKSecurityOriginRef origin, WKStringRef databaseName, WKStringRef databaseDisplayName, uint64_t currentQuotaBytes, uint64_t currentOriginUsageBytes, uint64_t currentDatabaseUsageBytes, uint64_t expectedUsageBytes, const void *clientInfo);
-typedef WKImageRef (*WKBundlePagePlugInStartLabelImageCallback)(WKBundlePageLabelSize size, const void *clientInfo);
 typedef WKStringRef (*WKBundlePagePlugInCreateStartLabelTitleCallback)(const void *clientInfo);
 typedef WKStringRef (*WKBundlePagePlugInCreateStartLabelSubtitleCallback)(const void *clientInfo);
 typedef WKStringRef (*WKBundlePagePlugInCreateExtraStyleSheetCallback)(const void *clientInfo);
@@ -274,7 +273,6 @@ struct WKBundlePageUIClient {
 
     // Version 2.
     WKBundlePageExceededDatabaseQuotaCallback                           didExceedDatabaseQuota;
-    WKBundlePagePlugInStartLabelImageCallback                           plugInStartLabelImage;
     WKBundlePagePlugInCreateStartLabelTitleCallback                     createPlugInStartLabelTitle;
     WKBundlePagePlugInCreateStartLabelSubtitleCallback                  createPlugInStartLabelSubtitle;
     WKBundlePagePlugInCreateExtraStyleSheetCallback                     createPlugInExtraStyleSheet;
@@ -327,6 +325,7 @@ typedef void (*WKBundlePageTextDidChangeInTextAreaCallback)(WKBundlePageRef page
 typedef bool (*WKBundlePageShouldPerformActionInTextFieldCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlInputElementHandle, WKInputFieldActionType actionType, WKBundleFrameRef frame, const void* clientInfo);
 typedef void (*WKBundlePageWillSubmitFormCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlFormElementHandle, WKBundleFrameRef frame, WKBundleFrameRef sourceFrame, WKDictionaryRef values, WKTypeRef* userData, const void* clientInfo);
 typedef void (*WKBundlePageWillSendSubmitEventCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlFormElementHandle, WKBundleFrameRef frame, WKBundleFrameRef sourceFrame, WKDictionaryRef values, const void* clientInfo);
+typedef void (*WKBundlePageDidFocusTextFieldCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlInputElementHandle, WKBundleFrameRef frame, const void* clientInfo);
 
 struct WKBundlePageFormClient {
     int                                                                 version;
@@ -342,10 +341,13 @@ struct WKBundlePageFormClient {
     
     // Version 1.
     WKBundlePageWillSendSubmitEventCallback                             willSendSubmitEvent;
+
+    // version 2.
+    WKBundlePageDidFocusTextFieldCallback                               didFocusTextField;
 };
 typedef struct WKBundlePageFormClient WKBundlePageFormClient;
 
-enum { kWKBundlePageFormClientCurrentVersion = 1 };
+enum { kWKBundlePageFormClientCurrentVersion = 2 };
 
 // ContextMenu client
 typedef void (*WKBundlePageGetContextMenuFromDefaultContextMenuCallback)(WKBundlePageRef page, WKBundleHitTestResultRef hitTestResult, WKArrayRef defaultMenu, WKArrayRef* newMenu, WKTypeRef* userData, const void* clientInfo);
@@ -426,6 +428,9 @@ WK_EXPORT void WKBundlePageUninstallPageOverlay(WKBundlePageRef page, WKBundlePa
 
 WK_EXPORT void WKBundlePageInstallPageOverlayWithAnimation(WKBundlePageRef page, WKBundlePageOverlayRef pageOverlay);
 WK_EXPORT void WKBundlePageUninstallPageOverlayWithAnimation(WKBundlePageRef page, WKBundlePageOverlayRef pageOverlay);
+
+WK_EXPORT void WKBundlePageSetTopOverhangImage(WKBundlePageRef page, WKImageRef image);
+WK_EXPORT void WKBundlePageSetBottomOverhangImage(WKBundlePageRef page, WKImageRef image);
 
 WK_EXPORT bool WKBundlePageHasLocalDataForURL(WKBundlePageRef page, WKURLRef url);
 WK_EXPORT bool WKBundlePageCanHandleRequest(WKURLRequestRef request);

@@ -32,7 +32,9 @@
 
 #include "JSMutationObserver.h"
 
+#include "ExceptionCode.h"
 #include "JSMutationCallback.h"
+#include "JSNodeCustom.h"
 #include "MutationObserver.h"
 #include <runtime/Error.h>
 #include <runtime/PrivateName.h>
@@ -47,10 +49,9 @@ EncodedJSValue JSC_HOST_CALL JSMutationObserverConstructor::constructJSMutationO
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
 
     JSObject* object = exec->argument(0).getObject();
-    if (!object) {
-        setDOMException(exec, TYPE_MISMATCH_ERR);
-        return JSValue::encode(jsUndefined());
-    }
+    CallData callData;
+    if (!object || object->methodTable()->getCallData(object, callData) == CallTypeNone)
+        return throwVMError(exec, createTypeError(exec, "Callback argument must be a function"));
 
     JSMutationObserverConstructor* jsConstructor = jsCast<JSMutationObserverConstructor*>(exec->callee());
     RefPtr<JSMutationCallback> callback = JSMutationCallback::create(object, jsConstructor->globalObject());

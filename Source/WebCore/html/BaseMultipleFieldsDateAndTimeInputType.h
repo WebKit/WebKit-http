@@ -31,9 +31,10 @@
 #ifndef BaseMultipleFieldsDateAndTimeInputType_h
 #define BaseMultipleFieldsDateAndTimeInputType_h
 
+#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "BaseDateAndTimeInputType.h"
 
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#include "ClearButtonElement.h"
 #include "DateTimeEditElement.h"
 #include "PickerIndicatorElement.h"
 #include "SpinButtonElement.h"
@@ -46,7 +47,8 @@ class BaseMultipleFieldsDateAndTimeInputType
     : public BaseDateAndTimeInputType
     , protected DateTimeEditElement::EditControlOwner
     , protected PickerIndicatorElement::PickerIndicatorOwner
-    , protected SpinButtonElement::SpinButtonOwner {
+    , protected SpinButtonElement::SpinButtonOwner
+    , protected ClearButtonElement::ClearButtonOwner {
 protected:
     BaseMultipleFieldsDateAndTimeInputType(HTMLInputElement*);
     virtual ~BaseMultipleFieldsDateAndTimeInputType();
@@ -75,30 +77,36 @@ private:
     virtual void pickerIndicatorChooseValue(const String&) OVERRIDE FINAL;
     virtual bool setupDateTimeChooserParameters(DateTimeChooserParameters&) OVERRIDE FINAL;
 
+    // ClearButtonElement::ClearButtonOwner functions.
+    virtual void focusAndSelectClearButtonOwner() OVERRIDE;
+    virtual bool shouldClearButtonRespondToMouseEvents() OVERRIDE;
+    virtual void clearValue() OVERRIDE;
+
     // InputType functions
     virtual String badInputText() const OVERRIDE;
     virtual void blur() OVERRIDE FINAL;
+    virtual PassRefPtr<RenderStyle> customStyleForRenderer(PassRefPtr<RenderStyle>) OVERRIDE;
     virtual void createShadowSubtree() OVERRIDE FINAL;
     virtual void destroyShadowSubtree() OVERRIDE FINAL;
     virtual void disabledAttributeChanged() OVERRIDE FINAL;
-    virtual void focus(bool restorePreviousSelection, FocusDirection) OVERRIDE FINAL;
     virtual void forwardEvent(Event*) OVERRIDE FINAL;
+    virtual void handleFocusEvent(Node* oldFocusedNode, FocusDirection) OVERRIDE;
     virtual void handleKeydownEvent(KeyboardEvent*) OVERRIDE FINAL;
     virtual bool hasBadInput() const OVERRIDE;
     virtual bool hasCustomFocusLogic() const OVERRIDE FINAL;
-    virtual bool isFocusableByClickOnLabel() const OVERRIDE;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE FINAL;
     virtual bool isMouseFocusable() const OVERRIDE FINAL;
     virtual void minOrMaxAttributeChanged() OVERRIDE FINAL;
     virtual void readonlyAttributeChanged() OVERRIDE FINAL;
+    virtual void requiredAttributeChanged() OVERRIDE FINAL;
     virtual void restoreFormControlState(const FormControlState&) OVERRIDE FINAL;
     virtual FormControlState saveFormControlState() const OVERRIDE FINAL;
     virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior) OVERRIDE FINAL;
-    virtual bool shouldApplyLocaleDirection() const OVERRIDE;
     virtual bool shouldUseInputMethod() const OVERRIDE FINAL;
     virtual void stepAttributeChanged() OVERRIDE FINAL;
     virtual void updateInnerTextValue() OVERRIDE FINAL;
     virtual void listAttributeTargetChanged() OVERRIDE FINAL;
+    virtual void updateClearButtonVisibility() OVERRIDE FINAL;
 
     void showPickerIndicator();
     void hidePickerIndicator();
@@ -106,6 +114,7 @@ private:
 
     DateTimeEditElement* m_dateTimeEditElement;
     SpinButtonElement* m_spinButtonElement;
+    ClearButtonElement* m_clearButton;
     PickerIndicatorElement* m_pickerIndicatorElement;
     bool m_pickerIndicatorIsVisible;
     bool m_pickerIndicatorIsAlwaysVisible;
@@ -114,4 +123,4 @@ private:
 } // namespace WebCore
 
 #endif
-#endif // TimeInputType_h
+#endif // BaseMultipleFieldsDateAndTimeInputType_h

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -75,11 +76,13 @@ public:
         bool m_originalUsesOverlayScrollbars;
         bool m_langAttributeAwareFormControlUIEnabled;
         bool m_imagesEnabled;
+        double m_minimumTimerInterval;
 #if ENABLE(VIDEO_TRACK)
         bool m_shouldDisplaySubtitles;
         bool m_shouldDisplayCaptions;
         bool m_shouldDisplayTextDescriptions;
 #endif
+        bool m_originalTimeWithoutMouseMovementBeforeHidingControls;
     };
 
     static PassRefPtr<InternalSettings> create(Page* page)
@@ -123,6 +126,8 @@ public:
     void setStorageBlockingPolicy(const String&, ExceptionCode&);
     void setLangAttributeAwareFormControlUIEnabled(bool);
     void setImagesEnabled(bool enabled, ExceptionCode&);
+    void setMinimumTimerInterval(double intervalInSeconds, ExceptionCode&);
+    void setTimeWithoutMouseMovementBeforeHidingControls(double time, ExceptionCode&);
 
 private:
     explicit InternalSettings(Page*);

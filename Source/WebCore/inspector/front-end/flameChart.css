@@ -1,0 +1,9 @@
+.flame-chart {
+    height: 100%;
+    overflow: hidden;
+}
+
+.flame-chart .item-anchor {
+    position: absolute;
+    z-index: -100;
+}

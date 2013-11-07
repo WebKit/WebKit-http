@@ -138,8 +138,7 @@ WebInspector.ResourceScriptMapping.prototype = {
         // FIXME: workaround for script.isDynamicScript() being unreliable.
         if (!script.isInlineScript() && this._inlineScriptsForSourceURL[script.sourceURL])
             return null;
-        var uri = WebInspector.fileMapping.uriForURL(script.sourceURL);
-        return this._workspace.uiSourceCodeForURI(uri);
+        return this._workspace.uiSourceCodeForURL(script.sourceURL);
     },
 
     /**
@@ -226,6 +225,7 @@ WebInspector.ResourceScriptMapping.prototype = {
 
 /**
  * @interface
+ * @extends {WebInspector.EventTarget}
  */
 WebInspector.ScriptFile = function()
 {
@@ -248,20 +248,6 @@ WebInspector.ScriptFile.prototype = {
      * @return {boolean}
      */
     isDivergingFromVM: function() { return false; },
-
-    /**
-     * @param {string} eventType
-     * @param {function(WebInspector.Event)} listener
-     * @param {Object=} thisObject
-     */
-    addEventListener: function(eventType, listener, thisObject) { },
-
-    /**
-     * @param {string} eventType
-     * @param {function(WebInspector.Event)} listener
-     * @param {Object=} thisObject
-     */
-    removeEventListener: function(eventType, listener, thisObject) { }
 }
 
 /**

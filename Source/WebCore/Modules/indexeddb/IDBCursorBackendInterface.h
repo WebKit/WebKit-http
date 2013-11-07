@@ -33,22 +33,15 @@
 
 namespace WebCore {
 
-class IDBAny;
 class IDBCallbacks;
 class IDBKey;
 class IDBRequest;
-class SerializedScriptValue;
 
 typedef int ExceptionCode;
 
 class IDBCursorBackendInterface : public RefCounted<IDBCursorBackendInterface> {
 public:
     virtual ~IDBCursorBackendInterface() {}
-
-    enum CursorType {
-        KeyAndValue = 0,
-        KeyOnly
-    };
 
     virtual void advance(unsigned long count, PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;
     virtual void continueFunction(PassRefPtr<IDBKey> key, PassRefPtr<IDBCallbacks>, ExceptionCode&) = 0;

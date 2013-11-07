@@ -229,6 +229,10 @@ public:
     WEBKIT_EXPORT static double zoomLevelToZoomFactor(double zoomLevel);
     WEBKIT_EXPORT static double zoomFactorToZoomLevel(double factor);
 
+    // Sets the initial page scale to the given factor. This scale setting overrides
+    // page scale set in the page's viewport meta tag.
+    virtual void setInitialPageScaleOverride(float) = 0;
+
     // Gets the scale factor of the page, where 1.0 is the normal size, > 1.0
     // is scaled up, < 1.0 is scaled down.
     virtual float pageScaleFactor() const = 0;
@@ -407,6 +411,9 @@ public:
 
     virtual void performCustomContextMenuAction(unsigned action) = 0;
 
+    // Shows a context menu for the currently focused element.
+    virtual void showContextMenu() = 0;
+
 
     // Popup menu ----------------------------------------------------------
 
@@ -453,12 +460,6 @@ public:
     // to suspend script callbacks and resource loads.
     WEBKIT_EXPORT static void willEnterModalLoop();
     WEBKIT_EXPORT static void didExitModalLoop();
-
-    // GPU acceleration support --------------------------------------------
-
-    // Context that's in the compositor's share group, but is not the compositor context itself.
-    // Can be used for allocating resources that the compositor will later access.
-    virtual WebGraphicsContext3D* sharedGraphicsContext3D() = 0;
 
     // Called to inform the WebView that a wheel fling animation was started externally (for instance
     // by the compositor) but must be completed by the WebView.

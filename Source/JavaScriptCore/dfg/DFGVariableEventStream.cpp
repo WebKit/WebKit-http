@@ -161,7 +161,7 @@ void VariableEventStream::reconstruct(
             iter->value.update(event);
             break;
         }
-        case MovHint:
+        case MovHintEvent:
             if (operandSources.hasOperand(event.operand()))
                 operandSources.setOperand(event.operand(), ValueSource(event.id()));
             break;
@@ -243,6 +243,7 @@ void VariableEventStream::reconstruct(
                         continue;
                     switch (node->op()) {
                     case Int32ToDouble:
+                    case ForwardInt32ToDouble:
                         int32ToDoubleID = id;
                         break;
                     case ValueToInt32:

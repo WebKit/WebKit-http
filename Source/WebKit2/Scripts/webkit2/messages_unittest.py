@@ -66,13 +66,14 @@ messages -> WebPage LegacyReceiver {
 
     CreatePlugin(uint64_t pluginInstanceID, WebKit::Plugin::Parameters parameters) -> (bool result)
     RunJavaScriptAlert(uint64_t frameID, WTF::String message) -> ()
-    GetPlugins(bool refresh) -> (Vector<WebCore::PluginInfo> plugins) DispatchOnConnectionQueue
+    GetPlugins(bool refresh) -> (Vector<WebCore::PluginInfo> plugins)
     GetPluginProcessConnection(WTF::String pluginPath) -> (CoreIPC::Connection::Handle connectionHandle) Delayed
 
-    TestMultipleAttributes() -> () DispatchOnConnectionQueue Delayed
-    TestConnectionQueue(uint64_t pluginID) DispatchOnConnectionQueue
+    TestMultipleAttributes() -> () WantsConnection Delayed
 
     TestParameterAttributes([AttributeOne AttributeTwo] uint64_t foo, double bar, [AttributeThree] double baz)
+
+    TemplateTest(WTF::HashMap<String, std::pair<String, uint64_t> > a)
 
 #if PLATFORM(MAC)
     DidCreateWebProcessConnection(CoreIPC::MachPort connectionIdentifier)
@@ -199,18 +200,18 @@ _expected_results = {
             'conditions': (None),
         },
         {
-            'name': 'TestConnectionQueue',
-            'parameters': (
-                ('uint64_t', 'pluginID'),
-            ),
-            'conditions': (None),
-        },
-        {
             'name': 'TestParameterAttributes',
             'parameters': (
                 ('uint64_t', 'foo', ('AttributeOne', 'AttributeTwo')),
                 ('double', 'bar'),
                 ('double', 'baz', ('AttributeThree',)),
+            ),
+            'conditions': (None),
+        },
+        {
+            'name': 'TemplateTest',
+            'parameters': (
+                ('WTF::HashMap<String, std::pair<String, uint64_t> >', 'a'),
             ),
             'conditions': (None),
         },
@@ -320,6 +321,8 @@ _expected_header = """/*
 #include "StringReference.h"
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/PluginData.h>
+#include <utility>
+#include <wtf/HashMap.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 
@@ -511,18 +514,6 @@ struct TestMultipleAttributes : CoreIPC::Arguments0 {
     typedef CoreIPC::Arguments0 DecodeType;
 };
 
-struct TestConnectionQueue : CoreIPC::Arguments1<uint64_t> {
-    static CoreIPC::StringReference receiverName() { return messageReceiverName(); }
-    static CoreIPC::StringReference name() { return CoreIPC::StringReference("TestConnectionQueue"); }
-    static const bool isSync = false;
-
-    typedef CoreIPC::Arguments1<uint64_t> DecodeType;
-    explicit TestConnectionQueue(uint64_t pluginID)
-        : CoreIPC::Arguments1<uint64_t>(pluginID)
-    {
-    }
-};
-
 struct TestParameterAttributes : CoreIPC::Arguments3<uint64_t, double, double> {
     static CoreIPC::StringReference receiverName() { return messageReceiverName(); }
     static CoreIPC::StringReference name() { return CoreIPC::StringReference("TestParameterAttributes"); }
@@ -531,6 +522,18 @@ struct TestParameterAttributes : CoreIPC::Arguments3<uint64_t, double, double> {
     typedef CoreIPC::Arguments3<uint64_t, double, double> DecodeType;
     TestParameterAttributes(uint64_t foo, double bar, double baz)
         : CoreIPC::Arguments3<uint64_t, double, double>(foo, bar, baz)
+    {
+    }
+};
+
+struct TemplateTest : CoreIPC::Arguments1<const WTF::HashMap<String, std::pair<String, uint64_t> >&> {
+    static CoreIPC::StringReference receiverName() { return messageReceiverName(); }
+    static CoreIPC::StringReference name() { return CoreIPC::StringReference("TemplateTest"); }
+    static const bool isSync = false;
+
+    typedef CoreIPC::Arguments1<const WTF::HashMap<String, std::pair<String, uint64_t> >&> DecodeType;
+    explicit TemplateTest(const WTF::HashMap<String, std::pair<String, uint64_t> >& a)
+        : CoreIPC::Arguments1<const WTF::HashMap<String, std::pair<String, uint64_t> >&>(a)
     {
     }
 };
@@ -651,6 +654,8 @@ _expected_receiver_implementation = """/*
 #include <WebCore/KeyboardEvent.h>
 #endif
 #include <WebCore/PluginData.h>
+#include <utility>
+#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -672,7 +677,7 @@ GetPluginProcessConnection::DelayedReply::~DelayedReply()
 bool GetPluginProcessConnection::DelayedReply::send(const CoreIPC::Connection::Handle& connectionHandle)
 {
     ASSERT(m_encoder);
-    m_encoder->encode(connectionHandle);
+    *m_encoder << connectionHandle;
     bool result = m_connection->sendSyncReply(m_encoder.release());
     m_connection = nullptr;
     return result;
@@ -702,22 +707,6 @@ bool TestMultipleAttributes::DelayedReply::send()
 } // namespace Messages
 
 namespace WebKit {
-
-void WebPage::didReceiveWebPageMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
-{
-#if COMPILER(MSVC)
-#pragma warning(push)
-#pragma warning(disable: 4065)
-#endif
-    if (decoder.messageName() == Messages::WebPage::TestConnectionQueue::name()) {
-        CoreIPC::handleMessageOnConnectionQueue<Messages::WebPage::TestConnectionQueue>(connection, decoder, this, &WebPage::testConnectionQueue);
-        didHandleMessage = true;
-        return;
-    }
-#if COMPILER(MSVC)
-#pragma warning(pop)
-#endif
-}
 
 void WebPage::didReceiveWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder& decoder)
 {
@@ -755,6 +744,10 @@ void WebPage::didReceiveWebPageMessage(CoreIPC::Connection*, CoreIPC::MessageDec
         CoreIPC::handleMessage<Messages::WebPage::TestParameterAttributes>(decoder, this, &WebPage::testParameterAttributes);
         return;
     }
+    if (decoder.messageName() == Messages::WebPage::TemplateTest::name()) {
+        CoreIPC::handleMessage<Messages::WebPage::TemplateTest>(decoder, this, &WebPage::templateTest);
+        return;
+    }
 #if PLATFORM(MAC)
     if (decoder.messageName() == Messages::WebPage::DidCreateWebProcessConnection::name()) {
         CoreIPC::handleMessage<Messages::WebPage::DidCreateWebProcessConnection>(decoder, this, &WebPage::didCreateWebProcessConnection);
@@ -786,8 +779,16 @@ void WebPage::didReceiveSyncWebPageMessage(CoreIPC::Connection* connection, Core
         CoreIPC::handleMessage<Messages::WebPage::RunJavaScriptAlert>(decoder, *replyEncoder, this, &WebPage::runJavaScriptAlert);
         return;
     }
+    if (decoder.messageName() == Messages::WebPage::GetPlugins::name()) {
+        CoreIPC::handleMessage<Messages::WebPage::GetPlugins>(decoder, *replyEncoder, this, &WebPage::getPlugins);
+        return;
+    }
     if (decoder.messageName() == Messages::WebPage::GetPluginProcessConnection::name()) {
         CoreIPC::handleMessageDelayed<Messages::WebPage::GetPluginProcessConnection>(connection, decoder, replyEncoder, this, &WebPage::getPluginProcessConnection);
+        return;
+    }
+    if (decoder.messageName() == Messages::WebPage::TestMultipleAttributes::name()) {
+        CoreIPC::handleMessageDelayed<Messages::WebPage::TestMultipleAttributes>(connection, decoder, replyEncoder, this, &WebPage::testMultipleAttributes);
         return;
     }
 #if PLATFORM(MAC)

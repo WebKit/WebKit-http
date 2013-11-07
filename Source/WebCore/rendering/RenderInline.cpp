@@ -212,13 +212,14 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
     RenderStyle* parentStyle = parent()->style();
     RenderInline* parentRenderInline = parent()->isRenderInline() ? toRenderInline(parent()) : 0;
     bool checkFonts = document()->inNoQuirksMode();
+    RenderFlowThread* flowThread = flowThreadContainingBlock();
     bool alwaysCreateLineBoxes = (parentRenderInline && parentRenderInline->alwaysCreateLineBoxes())
         || (parentRenderInline && parentStyle->verticalAlign() != BASELINE)
         || style()->verticalAlign() != BASELINE
         || style()->textEmphasisMark() != TextEmphasisMarkNone
         || (checkFonts && (!parentStyle->font().fontMetrics().hasIdenticalAscentDescentAndLineGap(style()->font().fontMetrics())
         || parentStyle->lineHeight() != style()->lineHeight()))
-        || (inRenderFlowThread() && enclosingRenderFlowThread()->hasRegionsWithStyling());
+        || (flowThread && flowThread->hasRegionsWithStyling());
 
     if (!alwaysCreateLineBoxes && checkFonts && document()->styleSheetCollection()->usesFirstLineRules()) {
         // Have to check the first line style as well.
@@ -335,7 +336,7 @@ RenderInline* RenderInline::clone() const
 {
     RenderInline* cloneInline = new (renderArena()) RenderInline(node());
     cloneInline->setStyle(style());
-    cloneInline->setInRenderFlowThread(inRenderFlowThread());
+    cloneInline->setFlowThreadState(flowThreadState());
     return cloneInline;
 }
 
@@ -1012,7 +1013,7 @@ LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObj
             break;
         }
         if (inlineFlow->style()->hasInFlowPosition() && inlineFlow->hasLayer())
-            repaintRect.move(toRenderInline(inlineFlow)->layer()->offsetForInFlowPosition());
+            repaintRect.move(toRenderInline(inlineFlow)->layer()->paintOffset());
     }
 
     LayoutUnit outlineSize = style()->outlineSize();
@@ -1059,7 +1060,7 @@ void RenderInline::computeRectForRepaint(const RenderLayerModelObject* repaintCo
         if (v->layoutStateEnabled() && !repaintContainer) {
             LayoutState* layoutState = v->layoutState();
             if (style()->hasInFlowPosition() && layer())
-                rect.move(layer()->offsetForInFlowPosition());
+                rect.move(layer()->paintOffset());
             rect.move(layoutState->m_paintOffset);
             if (layoutState->m_clipped)
                 rect.intersect(layoutState->m_clipRect);
@@ -1092,7 +1093,7 @@ void RenderInline::computeRectForRepaint(const RenderLayerModelObject* repaintCo
         // is translated, but the render box isn't, so we need to do this to get the
         // right dirty rect. Since this is called from RenderObject::setStyle, the relative or sticky position
         // flag on the RenderObject has been cleared, so use the one on the style().
-        topLeft += layer()->offsetForInFlowPosition();
+        topLeft += layer()->paintOffset();
     }
     
     // FIXME: We ignore the lightweight clipping rect that controls use, since if |o| is in mid-layout,
@@ -1144,7 +1145,7 @@ void RenderInline::mapLocalToContainer(const RenderLayerModelObject* repaintCont
             LayoutState* layoutState = v->layoutState();
             LayoutSize offset = layoutState->m_paintOffset;
             if (style()->hasInFlowPosition() && layer())
-                offset += layer()->offsetForInFlowPosition();
+                offset += layer()->paintOffset();
             transformState.move(offset);
             return;
         }
@@ -1376,7 +1377,7 @@ void RenderInline::imageChanged(WrappedImagePtr, const IntRect*)
     repaint();
 }
 
-void RenderInline::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset)
+void RenderInline::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer)
 {
     AbsoluteRectsGeneratorContext context(rects, additionalOffset);
     generateLineBoxRects(context);
@@ -1386,22 +1387,22 @@ void RenderInline::addFocusRingRects(Vector<IntRect>& rects, const LayoutPoint& 
             FloatPoint pos(additionalOffset);
             // FIXME: This doesn't work correctly with transforms.
             if (curr->hasLayer()) 
-                pos = curr->localToAbsolute();
+                pos = curr->localToContainerPoint(FloatPoint(), paintContainer);
             else if (curr->isBox())
                 pos.move(toRenderBox(curr)->locationOffset());
-            curr->addFocusRingRects(rects, flooredIntPoint(pos));
+            curr->addFocusRingRects(rects, flooredIntPoint(pos), paintContainer);
         }
     }
 
     if (continuation()) {
         if (continuation()->isInline())
-            continuation()->addFocusRingRects(rects, flooredLayoutPoint(additionalOffset + continuation()->containingBlock()->location() - containingBlock()->location()));
+            continuation()->addFocusRingRects(rects, flooredLayoutPoint(additionalOffset + continuation()->containingBlock()->location() - containingBlock()->location()), paintContainer);
         else
-            continuation()->addFocusRingRects(rects, flooredLayoutPoint(additionalOffset + toRenderBox(continuation())->location() - containingBlock()->location()));
+            continuation()->addFocusRingRects(rects, flooredLayoutPoint(additionalOffset + toRenderBox(continuation())->location() - containingBlock()->location()), paintContainer);
     }
 }
 
-void RenderInline::paintOutline(GraphicsContext* graphicsContext, const LayoutPoint& paintOffset)
+void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     if (!hasOutline())
         return;
@@ -1410,10 +1411,11 @@ void RenderInline::paintOutline(GraphicsContext* graphicsContext, const LayoutPo
     if (styleToUse->outlineStyleIsAuto() || hasOutlineAnnotation()) {
         if (!theme()->supportsFocusRing(styleToUse)) {
             // Only paint the focus ring by hand if the theme isn't able to draw the focus ring.
-            paintFocusRing(graphicsContext, paintOffset, styleToUse);
+            paintFocusRing(paintInfo, paintOffset, styleToUse);
         }
     }
 
+    GraphicsContext* graphicsContext = paintInfo.context;
     if (graphicsContext->paintingDisabled())
         return;
 

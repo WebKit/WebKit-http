@@ -57,6 +57,7 @@ class DOMEditor;
 class Document;
 class Element;
 class Event;
+class InspectorClient;
 class InspectorFrontend;
 class InspectorHistory;
 class InspectorOverlay;
@@ -102,9 +103,9 @@ public:
         virtual void didModifyDOMAttr(Element*) = 0;
     };
 
-    static PassOwnPtr<InspectorDOMAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorCompositeState* inspectorState, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay)
+    static PassOwnPtr<InspectorDOMAgent> create(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorCompositeState* inspectorState, InjectedScriptManager* injectedScriptManager, InspectorOverlay* overlay, InspectorClient* client)
     {
-        return adoptPtr(new InspectorDOMAgent(instrumentingAgents, pageAgent, inspectorState, injectedScriptManager, overlay));
+        return adoptPtr(new InspectorDOMAgent(instrumentingAgents, pageAgent, inspectorState, injectedScriptManager, overlay, client));
     }
 
     static String toErrorString(const ExceptionCode&);
@@ -131,7 +132,7 @@ public:
     virtual void getOuterHTML(ErrorString*, int nodeId, WTF::String* outerHTML);
     virtual void setOuterHTML(ErrorString*, int nodeId, const String& outerHTML);
     virtual void setNodeValue(ErrorString*, int nodeId, const String& value);
-    virtual void getEventListenersForNode(ErrorString*, int nodeId, RefPtr<TypeBuilder::Array<TypeBuilder::DOM::EventListener> >& listenersArray);
+    virtual void getEventListenersForNode(ErrorString*, int nodeId, const WTF::String* objectGroup, RefPtr<TypeBuilder::Array<TypeBuilder::DOM::EventListener> >& listenersArray);
     virtual void performSearch(ErrorString*, const String& whitespaceTrimmedQuery, String* searchId, int* resultCount);
     virtual void getSearchResults(ErrorString*, const String& searchId, int fromIndex, int toIndex, RefPtr<TypeBuilder::Array<int> >&);
     virtual void discardSearchResults(ErrorString*, const String& searchId);
@@ -149,6 +150,7 @@ public:
     virtual void redo(ErrorString*);
     virtual void markUndoableState(ErrorString*);
     virtual void focus(ErrorString*, int nodeId);
+    virtual void setFileInputFiles(ErrorString*, int nodeId, const RefPtr<InspectorArray>& files);
 
     void getEventListeners(Node*, Vector<EventListenerInfo>& listenersArray, bool includeAncestors);
 
@@ -169,6 +171,7 @@ public:
     void didInvalidateStyleAttr(Node*);
     void didPushShadowRoot(Element* host, ShadowRoot*);
     void willPopShadowRoot(Element* host, ShadowRoot*);
+    void frameDocumentUpdated(Frame*);
 
     int pushNodeToFrontend(ErrorString*, int documentNodeId, Node*);
     Node* nodeForId(int nodeId);
@@ -201,10 +204,9 @@ public:
 
     // Methods called from other agents.
     InspectorPageAgent* pageAgent() { return m_pageAgent; }
-    int pushNodePathForRenderLayerToFrontend(const RenderLayer*);
 
 private:
-    InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorCompositeState*, InjectedScriptManager*, InspectorOverlay*);
+    InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorCompositeState*, InjectedScriptManager*, InspectorOverlay*, InspectorClient*);
 
     void setSearchingForNode(ErrorString*, bool enabled, InspectorObject* highlightConfig);
     PassOwnPtr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString*, InspectorObject* highlightInspectorObject);
@@ -227,7 +229,7 @@ private:
     PassRefPtr<TypeBuilder::DOM::Node> buildObjectForNode(Node*, int depth, NodeToIdMap*);
     PassRefPtr<TypeBuilder::Array<String> > buildArrayForElementAttributes(Element*);
     PassRefPtr<TypeBuilder::Array<TypeBuilder::DOM::Node> > buildArrayForContainerChildren(Node* container, int depth, NodeToIdMap* nodesMap);
-    PassRefPtr<TypeBuilder::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, const AtomicString& eventType, Node*);
+    PassRefPtr<TypeBuilder::DOM::EventListener> buildObjectForEventListener(const RegisteredEventListener&, const AtomicString& eventType, Node*, const String* objectGroupId);
 
     Node* nodeForPath(const String& path);
 
@@ -236,6 +238,7 @@ private:
     InspectorPageAgent* m_pageAgent;
     InjectedScriptManager* m_injectedScriptManager;
     InspectorOverlay* m_overlay;
+    InspectorClient* m_client;
     InspectorFrontend::DOM* m_frontend;
     DOMListener* m_domListener;
     NodeToIdMap m_documentNodeToIdMap;

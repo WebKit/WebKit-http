@@ -43,6 +43,7 @@ class GeoTrackerListener;
 class IntRectRegion;
 class NetworkRequest;
 class NetworkStreamFactory;
+struct SelectionDetails;
 class ViewportAccessor;
 class WebUserMediaRequest;
 
@@ -138,6 +139,7 @@ public:
     virtual void setPageTitle(const unsigned short* title, unsigned titleLength) = 0;
 
     virtual Platform::Graphics::Window* window() const = 0;
+    virtual void postToSurface(const Platform::IntRect&) = 0;
 
     virtual void notifyPixelContentRendered(const Platform::IntRect&) = 0;
 
@@ -147,12 +149,13 @@ public:
     virtual void inputSelectionChanged(unsigned selectionStart, unsigned selectionEnd) = 0;
     virtual void inputLearnText(wchar_t* text, int length) = 0;
 
+    virtual void showFormControls(bool visible, bool previousActive = false, bool nextActive = false) = 0;
     virtual void showVirtualKeyboard(bool) = 0;
 
     virtual void requestSpellingCheckingOptions(imf_sp_text_t&, const BlackBerry::Platform::IntRect& documentCaretRect, const BlackBerry::Platform::IntSize& screenOffset, const bool shouldMoveDialog) = 0;
     virtual int32_t checkSpellingOfStringAsync(wchar_t* text, const unsigned length) = 0;
 
-    virtual void notifySelectionDetailsChanged(const Platform::IntRect& documentStartRect, const Platform::IntRect& documentEndRect, const Platform::IntRectRegion& documentRegion, bool overrideTouchHandling = false) = 0;
+    virtual void notifySelectionDetailsChanged(const BlackBerry::Platform::SelectionDetails&) = 0;
     virtual void cancelSelectionVisuals() = 0;
     virtual void notifySelectionHandlesReversed() = 0;
     virtual void notifyCaretChanged(const Platform::IntRect& documentCaretRect, bool userTouchTriggered, bool isSingleLineInput = false, const Platform::IntRect& singleLineDocumentBoundingBox = Platform::IntRect(), bool textFieldIsEmpty = false) = 0;
@@ -200,10 +203,10 @@ public:
 
     virtual BlackBerry::Platform::ViewportAccessor* userInterfaceViewportAccessor() const = 0;
 
-    virtual void animateBlockZoom(double finalScale, const Platform::FloatPoint& finalDocumentScrollPosition) = 0;
+    virtual void animateToScaleAndDocumentScrollPosition(double finalScale, const Platform::FloatPoint& finalDocumentScrollPosition, bool shouldConstrainScrollingToContentEdge) = 0;
 
     virtual void setPreventsScreenIdleDimming(bool noDimming) = 0;
-    virtual bool authenticationChallenge(const unsigned short* realm, unsigned realmLength, BlackBerry::Platform::String& username, BlackBerry::Platform::String& password) = 0;
+    virtual bool authenticationChallenge(const unsigned short* realm, unsigned realmLength, BlackBerry::Platform::String& username, BlackBerry::Platform::String& password, BlackBerry::Platform::String& requestURL, bool isProxy) = 0;
     virtual SaveCredentialType notifyShouldSaveCredential(bool isNew) = 0;
     virtual void syncProxyCredential(const BlackBerry::Platform::String& username, const BlackBerry::Platform::String& password) = 0;
     virtual void notifyPopupAutofillDialog(const std::vector<BlackBerry::Platform::String>&) = 0;
@@ -235,8 +238,6 @@ public:
 
     virtual int fullscreenSetWindowRect(const BlackBerry::Platform::IntRect& newWindowScreenRect) = 0;
 
-    virtual void drawVerticalScrollbar() = 0;
-    virtual void drawHorizontalScrollbar() = 0;
     virtual void populateCustomHeaders(Platform::NetworkRequest&) = 0;
 
     virtual void notifyWillUpdateApplicationCache() = 0;
@@ -278,6 +279,8 @@ public:
     virtual void cancelNotification(const BlackBerry::Platform::String& /*id*/) = 0;
     virtual void clearNotifications(const std::vector<BlackBerry::Platform::String>& /*notificationIds*/) = 0;
     virtual void notificationDestroyed(const BlackBerry::Platform::String& /*notificationId*/) = 0;
+    virtual void startSelectionScroll() = 0;
+    virtual void stopExpandingSelection() = 0;
 };
 } // namespace WebKit
 } // namespace BlackBerry

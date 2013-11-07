@@ -109,6 +109,7 @@ public:
     virtual void setGestureTapHighlightEnabled(bool);
     virtual void setHyperlinkAuditingEnabled(bool);
     virtual void setImagesEnabled(bool);
+    virtual void setInitializeAtMinimumPageScale(bool);
     virtual void setInteractiveFormValidationEnabled(bool);
     virtual void setJavaEnabled(bool);
     virtual void setJavaScriptCanAccessClipboard(bool);
@@ -158,6 +159,7 @@ public:
     virtual void setTextAutosizingFontScaleFactor(float);
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded();
     virtual void setTouchDragDropEnabled(bool);
+    virtual void setThreadedHTMLParser(bool);
     virtual void setUnifiedTextCheckerEnabled(bool);
     virtual void setUnsafePluginPastingEnabled(bool);
     virtual void setUserStyleSheetLocation(const WebURL&);
@@ -178,6 +180,7 @@ public:
     bool renderVSyncNotificationEnabled() const { return m_renderVSyncNotificationEnabled; }
     bool applyDeviceScaleFactorInCompositor() const;
     bool applyPageScaleFactorInCompositor() const;
+    bool initializeAtMinimumPageScale() const { return m_initializeAtMinimumPageScale; }
     bool autoZoomFocusedNodeToLegibleScale() const { return m_autoZoomFocusedNodeToLegibleScale; }
     bool gestureTapHighlightEnabled() const { return m_gestureTapHighlightEnabled; }
     bool doubleTapToZoomEnabled() const { return m_doubleTapToZoomEnabled; }
@@ -195,6 +198,7 @@ private:
     bool m_renderVSyncEnabled;
     bool m_renderVSyncNotificationEnabled;
     bool m_viewportEnabled;
+    bool m_initializeAtMinimumPageScale;
     bool m_gestureTapHighlightEnabled;
     bool m_autoZoomFocusedNodeToLegibleScale;
     bool m_deferredImageDecodingEnabled;

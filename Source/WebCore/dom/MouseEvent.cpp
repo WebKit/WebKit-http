@@ -23,8 +23,10 @@
 #include "config.h"
 #include "MouseEvent.h"
 
+#include "Clipboard.h"
 #include "EventDispatcher.h"
 #include "EventNames.h"
+#include "EventRetargeter.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "HTMLIFrameElement.h"
@@ -64,6 +66,39 @@ PassRefPtr<MouseEvent> MouseEvent::create(const AtomicString& eventType, PassRef
 #endif
         event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(), event.button(),
         relatedTarget, 0, false);
+}
+
+PassRefPtr<MouseEvent> MouseEvent::create(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<AbstractView> view,
+    int detail, int screenX, int screenY, int pageX, int pageY,
+#if ENABLE(POINTER_LOCK)
+    int movementX, int movementY,
+#endif
+    bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button,
+    PassRefPtr<EventTarget> relatedTarget)
+
+{
+    return MouseEvent::create(type, canBubble, cancelable, view,
+        detail, screenX, screenY, pageX, pageY,
+#if ENABLE(POINTER_LOCK)
+        movementX, movementY,
+#endif
+        ctrlKey, altKey, shiftKey, metaKey, button, relatedTarget, 0, false);
+}
+
+PassRefPtr<MouseEvent> MouseEvent::create(const AtomicString& type, bool canBubble, bool cancelable, PassRefPtr<AbstractView> view,
+    int detail, int screenX, int screenY, int pageX, int pageY,
+#if ENABLE(POINTER_LOCK)
+    int movementX, int movementY,
+#endif
+    bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button,
+    PassRefPtr<EventTarget> relatedTarget, PassRefPtr<Clipboard> clipboard, bool isSimulated)
+{
+    return adoptRef(new MouseEvent(type, canBubble, cancelable, view,
+        detail, screenX, screenY, pageX, pageY,
+#if ENABLE(POINTER_LOCK)
+        movementX, movementY,
+#endif
+        ctrlKey, altKey, shiftKey, metaKey, button, relatedTarget, clipboard, isSimulated));
 }
 
 MouseEvent::MouseEvent()
@@ -261,8 +296,8 @@ MouseEvent* MouseEventDispatchMediator::event() const
 bool MouseEventDispatchMediator::dispatchEvent(EventDispatcher* dispatcher) const
 {
     if (isSyntheticMouseEvent()) {
-        dispatcher->adjustRelatedTarget(event(), event()->relatedTarget());
-        return dispatcher->dispatchEvent(event());
+        EventRetargeter::adjustForMouseEvent(dispatcher->node(), *event(),  dispatcher->eventPath());
+        return dispatcher->dispatch();
     }
 
     if (dispatcher->node()->disabled()) // Don't even send DOM events for disabled controls..
@@ -274,9 +309,9 @@ bool MouseEventDispatchMediator::dispatchEvent(EventDispatcher* dispatcher) cons
     ASSERT(!event()->target() || event()->target() != event()->relatedTarget());
 
     EventTarget* relatedTarget = event()->relatedTarget();
-    dispatcher->adjustRelatedTarget(event(), relatedTarget);
+    EventRetargeter::adjustForMouseEvent(dispatcher->node(), *event(),  dispatcher->eventPath());
 
-    dispatcher->dispatchEvent(event());
+    dispatcher->dispatch();
     bool swallowEvent = event()->defaultHandled() || event()->defaultPrevented();
 
     if (event()->type() != eventNames().clickEvent || event()->detail() != 2)

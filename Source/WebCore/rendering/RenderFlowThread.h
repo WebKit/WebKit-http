@@ -39,6 +39,8 @@
 
 namespace WebCore {
 
+struct LayerFragment;
+typedef Vector<LayerFragment, 1> LayerFragments;
 class RenderFlowThread;
 class RenderStyle;
 class RenderRegion;
@@ -84,7 +86,8 @@ public:
     bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
     void checkRegionsWithStyling();
 
-    void invalidateRegions() { m_regionsInvalidated = true; setNeedsLayout(true); }
+    void validateRegions();
+    void invalidateRegions();
     bool hasValidRegionInfo() const { return !m_regionsInvalidated && !m_regionList.isEmpty(); }
 
     static PassRefPtr<RenderStyle> createFlowThreadStyle(RenderStyle* parentStyle);
@@ -93,11 +96,16 @@ public:
 
     void repaintRectangleInRegions(const LayoutRect&, bool immediate) const;
 
-    LayoutUnit pageLogicalTopForOffset(LayoutUnit) const;
-    LayoutUnit pageLogicalWidthForOffset(LayoutUnit) const;
-    LayoutUnit pageLogicalHeightForOffset(LayoutUnit) const;
-    LayoutUnit pageRemainingLogicalHeightForOffset(LayoutUnit, PageBoundaryRule = IncludePageBoundary) const;
-    RenderRegion* regionAtBlockOffset(LayoutUnit, bool extendLastRegion = false) const;
+    LayoutUnit pageLogicalTopForOffset(LayoutUnit);
+    LayoutUnit pageLogicalWidthForOffset(LayoutUnit);
+    LayoutUnit pageLogicalHeightForOffset(LayoutUnit);
+    LayoutUnit pageRemainingLogicalHeightForOffset(LayoutUnit, PageBoundaryRule = IncludePageBoundary);
+    
+    enum RegionAutoGenerationPolicy {
+        AllowRegionAutoGeneration,
+        DisallowRegionAutoGeneration,
+    };
+    RenderRegion* regionAtBlockOffset(LayoutUnit, bool extendLastRegion = false, RegionAutoGenerationPolicy = AllowRegionAutoGeneration);
 
     bool regionsHaveUniformLogicalWidth() const { return m_regionsHaveUniformLogicalWidth; }
     bool regionsHaveUniformLogicalHeight() const { return m_regionsHaveUniformLogicalHeight; }
@@ -133,7 +141,7 @@ public:
 
     bool addForcedRegionBreak(LayoutUnit, RenderObject* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0);
 
-    bool pageLogicalHeightChanged() const { return m_pageLogicalHeightChanged; }
+    bool pageLogicalSizeChanged() const { return m_pageLogicalSizeChanged; }
 
     bool hasAutoLogicalHeightRegions() const { ASSERT(isAutoLogicalHeightRegionsCountConsistent()); return m_autoLogicalHeightRegionsCount; }
     void incrementAutoLogicalHeightRegions();
@@ -143,8 +151,15 @@ public:
     bool isAutoLogicalHeightRegionsCountConsistent() const;
 #endif
 
+    void collectLayerFragments(LayerFragments&, const LayoutRect& layerBoundingBox, const LayoutRect& dirtyRect);
+    LayoutRect fragmentsBoundingBox(const LayoutRect& layerBoundingBox);
+
 protected:
     virtual const char* renderName() const = 0;
+
+    // Overridden by columns/pages to set up an initial logical width of the page width even when
+    // no regions have been generated yet.
+    virtual LayoutUnit initialLogicalWidth() const { return 0; };
 
     void updateRegionsFlowThreadPortionRect();
     bool shouldRepaint(const LayoutRect&) const;
@@ -159,6 +174,8 @@ protected:
     virtual void dispatchRegionLayoutUpdateEvent() { m_dispatchRegionLayoutUpdateEvent = false; }
 
     void initializeRegionsOverrideLogicalContentHeight(RenderRegion* = 0);
+
+    virtual void autoGenerateRegionsToBlockOffset(LayoutUnit) { };
 
     RenderRegionList m_regionList;
 
@@ -204,7 +221,7 @@ protected:
     bool m_overset : 1;
     bool m_hasRegionsWithStyling : 1;
     bool m_dispatchRegionLayoutUpdateEvent : 1;
-    bool m_pageLogicalHeightChanged : 1;
+    bool m_pageLogicalSizeChanged : 1;
 };
 
 inline RenderFlowThread* toRenderFlowThread(RenderObject* object)
@@ -229,6 +246,7 @@ public:
     ~CurrentRenderFlowThreadMaintainer();
 private:
     RenderFlowThread* m_renderFlowThread;
+    RenderFlowThread* m_previousRenderFlowThread;
 };
 
 } // namespace WebCore

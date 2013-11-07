@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +34,7 @@
     boolean isLoadingFromMemoryCache(in DOMString url);
 
     unsigned long numberOfScopedHTMLStyleChildren(in Node scope) raises(DOMException);
+    CSSStyleDeclaration computedStyleIncludingVisitedInfo(in Node node) raises(DOMException);
 
 #if defined(ENABLE_SHADOW_DOM) && ENABLE_SHADOW_DOM
     ShadowRoot ensureShadowRoot(in Element host) raises (DOMException);
@@ -66,7 +68,15 @@
     boolean hasSelectorForAttributeInShadow(in Element host, in DOMString attributeName) raises (DOMException);
     boolean hasSelectorForPseudoClassInShadow(in Element host, in DOMString pseudoClass) raises (DOMException);
 
+    // CSS Animation testing.
+    unsigned long numberOfActiveAnimations();
+    void suspendAnimations(in Document document) raises (DOMException);
+    void resumeAnimations(in Document document) raises (DOMException);
+    boolean pauseAnimationAtTimeOnElement(in DOMString animationName, in double pauseTime, in Element element) raises (DOMException);
     boolean pauseAnimationAtTimeOnPseudoElement(in DOMString animationName, in double pauseTime, in Element element, in DOMString pseudoId) raises (DOMException);
+
+    // CSS Transition testing.
+    boolean pauseTransitionAtTimeOnElement(in DOMString propertyName, in double pauseTime, in Element element) raises (DOMException);
     boolean pauseTransitionAtTimeOnPseudoElement(in DOMString property, in double pauseTime, in Element element, in DOMString pseudoId) raises (DOMException);
 
     Node nextSiblingByWalker(in Node node) raises(DOMException);
@@ -113,9 +123,11 @@
                                        in long availableHeight) raises(DOMException);
 
     boolean wasLastChangeUserEdit(in Element textField) raises (DOMException);
+    boolean elementShouldAutoComplete(in Element inputElement) raises (DOMException);
     DOMString suggestedValue(in Element inputElement) raises (DOMException);
     void setSuggestedValue(in Element inputElement, in DOMString value) raises (DOMException);
     void setEditingValue(in Element inputElement, in DOMString value) raises (DOMException);
+    void setAutofilled(in Element inputElement, in boolean enabled) raises(DOMException);
 
     void paintControlTints(in Document document) raises (DOMException);
 
@@ -149,7 +161,7 @@
 
     NodeList nodesFromRect(in Document document, in long x, in long y,
         in unsigned long topPadding, in unsigned long rightPadding, in unsigned long bottomPadding, in unsigned long leftPadding,
-        in boolean ignoreClipping, in boolean allowShadowContent) raises (DOMException);
+        in boolean ignoreClipping, in boolean allowShadowContent, in boolean allowChildFrameContent) raises (DOMException);
 
     void emitInspectorDidBeginFrame();
     void emitInspectorDidCancelFrame();
@@ -163,14 +175,13 @@
     boolean isPageBoxVisible(in Document document, in long pageNumber) raises (DOMException);
 
     readonly attribute InternalSettings settings;
-
-    void suspendAnimations(in Document document) raises (DOMException);
-    void resumeAnimations(in Document document) raises (DOMException);
+    readonly attribute unsigned long workerThreadCount;
 
     // Flags for layerTreeAsText.
     const unsigned short LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1;
     const unsigned short LAYER_TREE_INCLUDES_TILE_CACHES = 2;
     const unsigned short LAYER_TREE_INCLUDES_REPAINT_RECTS = 4;
+    const unsigned short LAYER_TREE_INCLUDES_PAINTING_PHASES = 8;
     DOMString layerTreeAsText(in Document document, in [Optional] unsigned short flags) raises (DOMException);
 
     DOMString scrollingStateTreeAsText(in Document document) raises (DOMException);
@@ -208,7 +219,8 @@
 
     DOMString counterValue(in Element element);
     long pageNumber(in Element element, in [Optional] float pageWidth, in [Optional] float pageHeight);
-    DOMString[] iconURLs(in Document document);
+    DOMString[] shortcutIconURLs(in Document document);
+    DOMString[] allIconURLs(in Document document);
     long numberOfPages(in [Optional] double pageWidthInPixels, in [Optional] double pageHeightInPixels);
     DOMString pageProperty(in DOMString propertyName, in long pageNumber) raises (DOMException);
     DOMString pageSizeAndMarginsInPixels(in long pageIndex, in long width, in long height, in long marginTop, in long marginRight, in long marginBottom, in long marginLeft) raises (DOMException);
@@ -238,8 +250,14 @@
     // Returns a string with information about the mouse cursor used at the specified client location.
     DOMString getCurrentCursorInfo(in Document document) raises (DOMException);
 
+    DOMString markerTextForListItem(in Element element) raises (DOMException);
+
     SerializedScriptValue deserializeBuffer(in ArrayBuffer buffer);
     ArrayBuffer serializeObject(in SerializedScriptValue obj);
 
     void setUsesOverlayScrollbars(in boolean enabled);
+
+    [Conditional=ENCRYPTED_MEDIA_V2] void initializeMockCDM();
+
+    [Conditional=SPEECH_SYNTHESIS] void enableMockSpeechSynthesizer();
 };

@@ -29,6 +29,7 @@
  */
 
 #include "config.h"
+#if ENABLE(INPUT_TYPE_MONTH)
 #include "MonthInputType.h"
 
 #include "DateComponents.h"
@@ -39,8 +40,6 @@
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
 #include <wtf/PassOwnPtr.h>
-
-#if ENABLE(INPUT_TYPE_MONTH)
 
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 #include "DateTimeFieldsState.h"
@@ -83,7 +82,7 @@ double MonthInputType::valueAsDate() const
     if (!parseToDateComponents(element()->value(), &date))
         return DateComponents::invalidMilliseconds();
     double msec = date.millisecondsSinceEpoch();
-    ASSERT(isfinite(msec));
+    ASSERT(std::isfinite(msec));
     return msec;
 }
 
@@ -106,7 +105,7 @@ Decimal MonthInputType::defaultValueForStepUp() const
     DateComponents date;
     date.setMillisecondsSinceEpochForMonth(current);
     double months = date.monthsSinceEpoch();
-    ASSERT(isfinite(months));
+    ASSERT(std::isfinite(months));
     return Decimal::fromDouble(months);
 }
 
@@ -127,7 +126,7 @@ Decimal MonthInputType::parseToNumber(const String& src, const Decimal& defaultV
     if (!parseToDateComponents(src, &date))
         return defaultValue;
     double months = date.monthsSinceEpoch();
-    ASSERT(isfinite(months));
+    ASSERT(std::isfinite(months));
     return Decimal::fromDouble(months);
 }
 

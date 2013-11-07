@@ -42,7 +42,6 @@
 #include "Settings.h"
 #include "WorkQueue.h"
 #include "WorkQueueItem.h"
-#include "WorkerThread.h"
 
 #include <JavaScriptCore/APICast.h>
 #include <SharedPointer.h>
@@ -318,13 +317,6 @@ int TestRunner::windowCount()
     return 0;
 }
 
-bool TestRunner::elementDoesAutoCompleteForElementWithId(JSStringRef id)
-{
-    UNUSED_PARAM(id);
-    notImplemented();
-    return false;
-}
-
 void TestRunner::setWaitToDump(bool waitToDump)
 {
     // Change from 30s to 35s because some test cases in multipart need 30 seconds,
@@ -339,75 +331,6 @@ void TestRunner::setWindowIsKey(bool windowIsKey)
 {
     m_windowIsKey = windowIsKey;
     notImplemented();
-}
-
-bool TestRunner::pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId)
-{
-    if (!mainFrame)
-        return false;
-
-    int nameLen = JSStringGetMaximumUTF8CStringSize(animationName);
-    int idLen = JSStringGetMaximumUTF8CStringSize(elementId);
-    OwnArrayPtr<char> name = adoptArrayPtr(new char[nameLen]);
-    OwnArrayPtr<char> eId = adoptArrayPtr(new char[idLen]);
-
-    JSStringGetUTF8CString(animationName, name.get(), nameLen);
-    JSStringGetUTF8CString(elementId, eId.get(), idLen);
-
-    WebCore::AnimationController* animationController = mainFrame->animation();
-    if (!animationController)
-        return false;
-
-    WebCore::Node* node = mainFrame->document()->getElementById(eId.get());
-    if (!node || !node->renderer())
-        return false;
-
-    return animationController->pauseAnimationAtTime(node->renderer(), name.get(), time);
-}
-
-bool TestRunner::pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId)
-{
-    if (!mainFrame)
-        return false;
-
-    int nameLen = JSStringGetMaximumUTF8CStringSize(propertyName);
-    int idLen = JSStringGetMaximumUTF8CStringSize(elementId);
-    OwnArrayPtr<char> name = adoptArrayPtr(new char[nameLen]);
-    OwnArrayPtr<char> eId = adoptArrayPtr(new char[idLen]);
-
-    JSStringGetUTF8CString(propertyName, name.get(), nameLen);
-    JSStringGetUTF8CString(elementId, eId.get(), idLen);
-
-    WebCore::AnimationController* animationController = mainFrame->animation();
-    if (!animationController)
-        return false;
-
-    WebCore::Node* node = mainFrame->document()->getElementById(eId.get());
-    if (!node || !node->renderer())
-        return false;
-
-    return animationController->pauseTransitionAtTime(node->renderer(), name.get(), time);
-}
-
-unsigned TestRunner::numberOfActiveAnimations() const
-{
-    if (!mainFrame)
-        return false;
-
-    WebCore::AnimationController* animationController = mainFrame->animation();
-    if (!animationController)
-        return false;
-
-    return animationController->numberOfActiveAnimations(mainFrame->document());
-}
-
-unsigned TestRunner::workerThreadCount() const
-{
-#if ENABLE_WORKERS
-    return WebCore::WorkerThread::workerThreadCount();
-#else
-    return 0;
-#endif
 }
 
 void TestRunner::removeAllVisitedLinks()
@@ -445,15 +368,15 @@ void TestRunner::setAlwaysAcceptCookies(bool alwaysAcceptCookies)
     notImplemented();
 }
 
-void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy)
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
 {
-    DumpRenderTreeSupport::setMockGeolocationPosition(BlackBerry::WebKit::DumpRenderTree::currentInstance()->page(), latitude, longitude, accuracy);
+    DumpRenderTreeSupport::setMockGeolocationPosition(BlackBerry::WebKit::DumpRenderTree::currentInstance()->page(), latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
 }
 
-void TestRunner::setMockGeolocationError(int code, JSStringRef message)
+void TestRunner::setMockGeolocationPositionUnavailableError(JSStringRef message)
 {
     String messageStr = jsStringRefToWebCoreString(message);
-    DumpRenderTreeSupport::setMockGeolocationError(BlackBerry::WebKit::DumpRenderTree::currentInstance()->page(), code, messageStr);
+    DumpRenderTreeSupport::setMockGeolocationPositionUnavailableError(BlackBerry::WebKit::DumpRenderTree::currentInstance()->page(), messageStr);
 }
 
 void TestRunner::showWebInspector()
@@ -523,11 +446,6 @@ bool TestRunner::callShouldCloseOnWebView()
     return false;
 }
 
-void TestRunner::setFrameFlatteningEnabled(bool enable)
-{
-    BlackBerry::WebKit::DumpRenderTree::currentInstance()->page()->settings()->setFrameFlatteningEnabled(enable);
-}
-
 void TestRunner::setSpatialNavigationEnabled(bool enable)
 {
     notImplemented();
@@ -580,27 +498,6 @@ void TestRunner::setJavaScriptCanAccessClipboard(bool flag)
     BlackBerry::WebKit::DumpRenderTree::currentInstance()->page()->setJavaScriptCanAccessClipboard(flag);
 }
 
-JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSContextRef context, JSValueRef value)
-{
-    return DumpRenderTreeSupport::computedStyleIncludingVisitedInfo(context, value);
-}
-
-JSRetainPtr<JSStringRef> TestRunner::layerTreeAsText() const
-{
-    notImplemented();
-    return 0;
-}
-
-JSRetainPtr<JSStringRef> TestRunner::markerTextForListItem(JSContextRef context, JSValueRef nodeObject) const
-{
-    WebCore::Element* element = toElement(toJS(toJS(context), nodeObject));
-    if (!element)
-        return 0;
-
-    JSRetainPtr<JSStringRef> markerText(Adopt, JSStringCreateWithUTF8CString(WebCore::markerTextForListItem(element).utf8().data()));
-    return markerText;
-}
-
 void TestRunner::setPluginsEnabled(bool flag)
 {
     notImplemented();
@@ -648,11 +545,6 @@ void TestRunner::setSerializeHTTPLoads(bool)
     notImplemented();
 }
 
-void TestRunner::setMinimumTimerInterval(double)
-{
-    notImplemented();
-}
-
 void TestRunner::setTextDirection(JSStringRef)
 {
     notImplemented();
@@ -694,19 +586,6 @@ void TestRunner::deleteAllLocalStorage()
 void TestRunner::setAsynchronousSpellCheckingEnabled(bool)
 {
     notImplemented();
-}
-
-void TestRunner::setAutofilled(JSContextRef context, JSValueRef nodeObject, bool autofilled)
-{
-    JSC::ExecState* exec = toJS(context);
-    WebCore::Element* element = toElement(toJS(exec, nodeObject));
-    if (!element)
-        return;
-    WebCore::HTMLInputElement* inputElement = element->toInputElement();
-    if (!inputElement)
-        return;
-
-    inputElement->setAutofilled(autofilled);
 }
 
 int TestRunner::numberOfPendingGeolocationPermissionRequests()
@@ -835,16 +714,6 @@ void TestRunner::setPageVisibility(const char*)
 }
 
 void TestRunner::setAutomaticLinkDetectionEnabled(bool)
-{
-    notImplemented();
-}
-
-void TestRunner::sendWebIntentResponse(JSStringRef)
-{
-    notImplemented();
-}
-
-void TestRunner::deliverWebIntent(JSStringRef, JSStringRef, JSStringRef)
 {
     notImplemented();
 }

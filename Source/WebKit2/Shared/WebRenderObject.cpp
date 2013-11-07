@@ -29,6 +29,7 @@
 #include "WebPage.h"
 #include "WebString.h"
 #include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameLoaderClient.h>
 #include <WebCore/RenderText.h>
 #include <WebCore/RenderView.h>
@@ -64,11 +65,10 @@ WebRenderObject::WebRenderObject(RenderObject* renderer, bool shouldIncludeDesce
             m_elementTagName = element->tagName();
             m_elementID = element->getIdAttribute();
             if (element->isStyledElement() && element->hasClass()) {
-                StyledElement* styledElement = static_cast<StyledElement*>(element);
-                if (size_t classNameCount = styledElement->classNames().size()) {
+                if (size_t classNameCount = element->classNames().size()) {
                     m_elementClassNames = MutableArray::create();
                     for (size_t i = 0; i < classNameCount; ++i)
-                        m_elementClassNames->append(WebString::create(styledElement->classNames()[i]).get());
+                        m_elementClassNames->append(WebString::create(element->classNames()[i]).get());
                 }
             }
         }

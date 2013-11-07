@@ -185,7 +185,8 @@ public:
     // Helper for software compositing path. Reads back the frame buffer into
     // the memory region pointed to by "pixels" with size "bufferSize". It is
     // expected that the storage for "pixels" covers (4 * width * height) bytes.
-    // Returns true on success.
+    // The RGBA channels are packed into "pixels" using SkBitmap's byte
+    // ordering. Returns true on success.
     virtual bool readBackFramebuffer(unsigned char* pixels, size_t bufferSize, WebGLId framebuffer, int width, int height) = 0;
 
     // Returns the id of the texture which is used for storing the contents of
@@ -471,8 +472,13 @@ public:
     // GL_CHROMIUM_async_pixel_transfers
     virtual void asyncTexImage2DCHROMIUM(WGC3Denum target, WGC3Dint level, WGC3Denum internalformat, WGC3Dsizei width, WGC3Dsizei height, WGC3Dint border, WGC3Denum format, WGC3Denum type, const void* pixels) { }
     virtual void asyncTexSubImage2DCHROMIUM(WGC3Denum target, WGC3Dint level, WGC3Dint xoffset, WGC3Dint yoffset, WGC3Dsizei width, WGC3Dsizei height, WGC3Denum format, WGC3Denum type, const void* pixels) { }
+    virtual void waitAsyncTexImage2DCHROMIUM(WGC3Denum) { }
 
-    GrGLInterface* createGrGLInterface();
+    // GL_EXT_draw_buffers
+    virtual void drawBuffersEXT(WGC3Dsizei n, const WGC3Denum* bufs) { }
+
+    // FIXME: Make implementations of this class override this method instead and then remove onCreateGrGLInterface().
+    virtual GrGLInterface* createGrGLInterface() { return onCreateGrGLInterface(); }
 
 protected:
     virtual GrGLInterface* onCreateGrGLInterface() { return 0; }

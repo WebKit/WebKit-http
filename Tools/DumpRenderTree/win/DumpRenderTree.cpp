@@ -865,7 +865,6 @@ static void resetDefaultsToConsistentValues(IWebPreferences* preferences)
         prefsPrivate->setShouldPaintNativeControls(FALSE); // FIXME - need to make DRT pass with Windows native controls <http://bugs.webkit.org/show_bug.cgi?id=25592>
         prefsPrivate->setJavaScriptCanAccessClipboard(TRUE);
         prefsPrivate->setXSSAuditorEnabled(FALSE);
-        prefsPrivate->setFrameFlatteningEnabled(FALSE);
         prefsPrivate->setOfflineWebApplicationCacheEnabled(TRUE);
         prefsPrivate->setLoadsSiteIconsIgnoringImageLoadingPreference(FALSE);
     }
@@ -907,10 +906,6 @@ static void resetWebViewToConsistentStateBeforeTesting()
     COMPtr<IWebViewPrivate> webViewPrivate(Query, webView);
     if (!webViewPrivate)
         return;
-
-    double minimumInterval = 0;
-    if (SUCCEEDED(webViewPrivate->defaultMinimumTimerInterval(&minimumInterval)))
-        webViewPrivate->setMinimumTimerInterval(minimumInterval);
 
     HWND viewWindow;
     if (SUCCEEDED(webViewPrivate->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))) && viewWindow)

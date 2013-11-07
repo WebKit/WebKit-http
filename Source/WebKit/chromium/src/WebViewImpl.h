@@ -53,7 +53,6 @@
 #include <public/WebFloatQuad.h>
 #include <public/WebGestureCurveTarget.h>
 #include <public/WebLayer.h>
-#include <public/WebLayerTreeViewClient.h>
 #include <public/WebPoint.h>
 #include <public/WebRect.h>
 #include <public/WebSize.h>
@@ -105,6 +104,7 @@ class WebActiveGestureAnimation;
 class WebCompositorImpl;
 class WebDevToolsAgentClient;
 class WebDevToolsAgentPrivate;
+class WebDocument;
 class WebFrameImpl;
 class WebGestureEvent;
 class WebHelperPluginImpl;
@@ -120,7 +120,6 @@ class WebTouchEvent;
 class WebViewBenchmarkSupport;
 
 class WebViewImpl : public WebView
-    , public WebLayerTreeViewClient
     , public RefCounted<WebViewImpl>
     , public WebGestureCurveTarget
 #if ENABLE(PAGE_POPUP)
@@ -144,15 +143,16 @@ public:
     virtual void willExitFullScreen();
     virtual void didExitFullScreen();
     virtual void animate(double);
-    virtual void layout(); // Also implements WebLayerTreeViewClient::layout()
+    virtual void layout();
     virtual void enterForceCompositingMode(bool enable) OVERRIDE;
     virtual void paint(WebCanvas*, const WebRect&, PaintOptions = ReadbackFromCompositorIfAvailable);
     virtual bool isTrackingRepaints() const OVERRIDE;
     virtual void themeChanged();
-    virtual void composite(bool finish);
     virtual void setNeedsRedraw();
     virtual bool handleInputEvent(const WebInputEvent&);
     virtual bool hasTouchEventHandlersAt(const WebPoint&);
+    virtual WebInputHandler* createInputHandler() OVERRIDE;
+    virtual void applyScrollAndScale(const WebSize&, float);
     virtual void mouseCaptureLost();
     virtual void setFocus(bool enable);
     virtual bool setComposition(
@@ -172,6 +172,7 @@ public:
     virtual WebColor backgroundColor() const;
     virtual bool selectionBounds(WebRect& anchor, WebRect& focus) const;
     virtual bool selectionTextDirection(WebTextDirection& start, WebTextDirection& end) const;
+    virtual bool isSelectionAnchorFirst() const;
     virtual bool caretOrSelectionRange(size_t* location, size_t* length);
     virtual void setTextDirection(WebTextDirection direction);
     virtual bool isAcceleratedCompositingActive() const;
@@ -180,8 +181,7 @@ public:
     virtual void didNotAcquirePointerLock();
     virtual void didLosePointerLock();
     virtual void didChangeWindowResizerRect();
-    virtual void instrumentBeginFrame();
-    virtual void instrumentCancelFrame();
+    virtual void didExitCompositingMode();
 
     // WebView methods:
     virtual void initializeMainFrame(WebFrameClient*);
@@ -221,6 +221,7 @@ public:
     virtual double setZoomLevel(bool textOnly, double zoomLevel);
     virtual void zoomLimitsChanged(double minimumZoomLevel,
                                    double maximumZoomLevel);
+    virtual void setInitialPageScaleOverride(float);
     virtual float pageScaleFactor() const;
     virtual bool isPageScaleFactorSet() const;
     virtual void setPageScaleFactorPreservingScrollOffset(float);
@@ -302,6 +303,7 @@ public:
                                     unsigned inactiveBackgroundColor,
                                     unsigned inactiveForegroundColor);
     virtual void performCustomContextMenuAction(unsigned action);
+    virtual void showContextMenu();
     virtual void addPageOverlay(WebPageOverlay*, int /* zOrder */);
     virtual void removePageOverlay(WebPageOverlay*);
 #if ENABLE(BATTERY_STATUS)
@@ -310,23 +312,9 @@ public:
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&);
     virtual WebViewBenchmarkSupport* benchmarkSupport();
     virtual void setShowPaintRects(bool);
+    virtual void setShowDebugBorders(bool);
     virtual void setShowFPSCounter(bool);
     virtual void setContinuousPaintingEnabled(bool);
-
-    // WebLayerTreeViewClient
-    virtual void willBeginFrame();
-    virtual void didBeginFrame();
-    virtual void updateAnimations(double monotonicFrameBeginTime);
-    virtual void applyScrollAndScale(const WebSize&, float);
-    virtual WebCompositorOutputSurface* createOutputSurface() OVERRIDE;
-    virtual void didRecreateOutputSurface(bool success) OVERRIDE;
-    virtual WebInputHandler* createInputHandler() OVERRIDE;
-    virtual void willCommit();
-    virtual void didCommit();
-    virtual void didCommitAndDrawFrame();
-    virtual void didCompleteSwapBuffers();
-    virtual void scheduleComposite();
-    virtual void createFontAtlas(SkBitmap&, WebRect[128], int&);
 
     // WebViewImpl
 
@@ -401,13 +389,13 @@ public:
     void mouseDoubleClick(const WebMouseEvent&);
 
     bool detectContentOnTouch(const WebPoint&);
-    void startPageScaleAnimation(const WebCore::IntPoint& targetPosition, bool useAnchor, float newScale, double durationInSeconds);
+    bool startPageScaleAnimation(const WebCore::IntPoint& targetPosition, bool useAnchor, float newScale, double durationInSeconds);
 
     void numberOfWheelEventHandlersChanged(unsigned);
     void hasTouchEventHandlers(bool);
 
     // WebGestureCurveTarget implementation for fling.
-    virtual void scrollBy(const WebPoint&);
+    virtual void scrollBy(const WebFloatSize&);
 
     // Handles context menu events orignated via the the keyboard. These
     // include the VK_APPS virtual key and the Shift+F10 combine. Code is
@@ -457,7 +445,6 @@ public:
     }
 
     WebCore::IntSize dipSize() const;
-    WebCore::IntSize layoutSize() const;
     WebCore::IntSize scaledSize(float) const;
 
     // Set the disposition for how this webview is to be initially shown.
@@ -527,7 +514,8 @@ public:
 
     void hideAutofillPopup();
 
-    WebHelperPluginImpl* createHelperPlugin(const String& pluginType);
+    // Creates a Helper Plugin of |pluginType| for |hostDocument|.
+    WebHelperPluginImpl* createHelperPlugin(const String& pluginType, const WebDocument& hostDocument);
 
     // Returns the input event we're currently processing. This is used in some
     // cases where the WebCore DOM event doesn't have the information we need.
@@ -546,12 +534,11 @@ public:
     NonCompositedContentHost* nonCompositedContentHost();
     void setBackgroundColor(const WebCore::Color&);
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() const;
+    void registerForAnimations(WebLayer*);
 #endif
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     void scheduleAnimation();
 #endif
-
-    virtual WebGraphicsContext3D* sharedGraphicsContext3D();
 
     virtual void setVisibilityState(WebPageVisibilityState, bool);
 
@@ -575,13 +562,17 @@ public:
 
 #if ENABLE(GESTURE_EVENTS)
     void computeScaleAndScrollForHitRect(const WebRect& hitRect, AutoZoomType, float& scale, WebPoint& scroll, bool& isAnchor);
-    WebCore::Node* bestTouchLinkNode(const WebGestureEvent& touchEvent);
-    void enableTouchHighlight(const WebGestureEvent& touchEvent);
+    WebCore::Node* bestTapNode(const WebCore::PlatformGestureEvent& tapEvent);
+    void enableTapHighlight(const WebCore::PlatformGestureEvent& tapEvent);
     void computeScaleAndScrollForFocusedNode(WebCore::Node* focusedNode, float& scale, WebCore::IntPoint& scroll, bool& needAnimation);
 #endif
     void animateZoomAroundPoint(const WebCore::IntPoint&, AutoZoomType);
 
-    void shouldUseAnimateDoubleTapTimeZeroForTesting(bool);
+    void enableFakeDoubleTapAnimationForTesting(bool);
+    bool fakeDoubleTapAnimationPendingForTesting() const { return m_doubleTapZoomPending; }
+    WebCore::IntPoint fakeDoubleTapTargetPositionForTesting() const { return m_fakeDoubleTapTargetPosition; }
+    float fakeDoubleTapPageScaleFactorForTesting() const { return m_fakeDoubleTapPageScaleFactor; }
+    bool fakeDoubleTapUseAnchorForTesting() const { return m_fakeDoubleTapUseAnchor; }
 
     void enterFullScreenForElement(WebCore::Element*);
     void exitFullScreenForElement(WebCore::Element*);
@@ -753,6 +744,7 @@ private:
     float m_pageDefinedMaximumPageScaleFactor;
     float m_minimumPageScaleFactor;
     float m_maximumPageScaleFactor;
+    float m_initialPageScaleFactorOverride;
     float m_initialPageScaleFactor;
     bool m_ignoreViewportTagMaximumScale;
     bool m_pageScaleFactorIsSet;
@@ -761,11 +753,16 @@ private:
     float m_savedPageScaleFactor; // 0 means that no page scale factor is saved.
     WebCore::IntSize m_savedScrollOffset;
 
-    // Whether the current scale was achieved by zooming in with double tap.
-    bool m_doubleTapZoomInEffect;
+    // The scale moved to by the latest double tap zoom, if any.
+    float m_doubleTapZoomPageScaleFactor;
+    // Have we sent a double-tap zoom and not yet heard back the scale?
+    bool m_doubleTapZoomPending;
 
     // Used for testing purposes.
-    bool m_shouldUseDoubleTapTimeZero;
+    bool m_enableFakeDoubleTapAnimationForTesting;
+    WebCore::IntPoint m_fakeDoubleTapTargetPosition;
+    float m_fakeDoubleTapPageScaleFactor;
+    bool m_fakeDoubleTapUseAnchor;
 
     bool m_contextMenuAllowed;
 
@@ -851,6 +848,7 @@ private:
     WebLayerTreeView* m_layerTreeView;
     WebLayer* m_rootLayer;
     WebCore::GraphicsLayer* m_rootGraphicsLayer;
+    OwnPtr<WebCore::GraphicsLayerFactory> m_graphicsLayerFactory;
     bool m_isAcceleratedCompositingActive;
     bool m_layerTreeViewCommitsDeferred;
     bool m_compositorCreationFailed;
@@ -891,10 +889,9 @@ private:
 #endif
     OwnPtr<ValidationMessageClientImpl> m_validationMessage;
 
-    bool m_suppressInvalidations;
-
     bool m_showFPSCounter;
     bool m_showPaintRects;
+    bool m_showDebugBorders;
     bool m_continuousPaintingEnabled;
 };
 

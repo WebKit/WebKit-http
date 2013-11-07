@@ -60,12 +60,19 @@ WebInspector.Panel.prototype = {
 
     wasShown: function()
     {
+        var panelStatusBar = document.getElementById("panel-status-bar")
+        var drawerViewAnchor = document.getElementById("drawer-view-anchor");
         var statusBarItems = this.statusBarItems;
         if (statusBarItems) {
             this._statusBarItemContainer = document.createElement("div");
             for (var i = 0; i < statusBarItems.length; ++i)
                 this._statusBarItemContainer.appendChild(statusBarItems[i]);
-            document.getElementById("panel-status-bar").appendChild(this._statusBarItemContainer);
+            panelStatusBar.insertBefore(this._statusBarItemContainer, drawerViewAnchor);
+        }
+        var statusBarText = this.statusBarText();
+        if (statusBarText) {
+            this._statusBarTextElement = statusBarText;
+            panelStatusBar.appendChild(statusBarText);
         }
 
         this.focus();
@@ -76,6 +83,10 @@ WebInspector.Panel.prototype = {
         if (this._statusBarItemContainer && this._statusBarItemContainer.parentNode)
             this._statusBarItemContainer.parentNode.removeChild(this._statusBarItemContainer);
         delete this._statusBarItemContainer;
+
+        if (this._statusBarTextElement && this._statusBarTextElement.parentNode)
+            this._statusBarTextElement.parentNode.removeChild(this._statusBarTextElement);
+        delete this._statusBarTextElement;
     },
 
     reset: function()
@@ -240,15 +251,13 @@ WebInspector.Panel.prototype = {
     {
         var shortcutKey = WebInspector.KeyboardShortcut.makeKeyFromEvent(event);
         var handler = this._shortcuts[shortcutKey];
-        if (handler) {
-            handler(event);
+        if (handler && handler(event))
             event.handled = true;
-        }
     },
 
     /**
      * @param {!Array.<!WebInspector.KeyboardShortcut.Descriptor>} keys
-     * @param {function(KeyboardEvent)} handler
+     * @param {function(KeyboardEvent):boolean} handler
      */
     registerShortcuts: function(keys, handler)
     {
@@ -317,7 +326,7 @@ WebInspector.PanelDescriptor.prototype = {
         if (this._panel)
             return this._panel;
         if (this._scriptName)
-            importScript(this._scriptName);
+            loadScript(this._scriptName);
         this._panel = new WebInspector[this._className];
         return this._panel;
     },

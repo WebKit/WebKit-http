@@ -25,6 +25,7 @@
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "Page.h"
 #include "ScriptSourceCode.h"
@@ -41,7 +42,7 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
     if (m_frame->document() && m_frame->document()->isSandboxed(SandboxScripts)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
         if (reason == AboutToExecuteScript)
-            m_frame->document()->addConsoleMessage(HTMLMessageSource, ErrorMessageLevel, "Blocked script execution in '" + m_frame->document()->url().string() + "' because the document's frame is sandboxed and the 'allow-scripts' permission is not set."); 
+            m_frame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked script execution in '" + m_frame->document()->url().elidedString() + "' because the document's frame is sandboxed and the 'allow-scripts' permission is not set.");
         return false;
     }
 
@@ -59,7 +60,7 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
 
 ScriptValue ScriptController::executeScript(const String& script, bool forceUserGesture)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
     return executeScript(ScriptSourceCode(script, m_frame->document()->url()));
 }
 

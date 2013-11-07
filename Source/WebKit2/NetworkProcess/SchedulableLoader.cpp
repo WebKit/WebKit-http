@@ -28,6 +28,13 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
+#include "NetworkBlobRegistry.h"
+#include "NetworkConnectionToWebProcess.h"
+#include "NetworkResourceLoadParameters.h"
+#include <WebCore/FormData.h>
+
+using namespace WebCore;
+
 namespace WebKit {
 
 SchedulableLoader::SchedulableLoader(const NetworkResourceLoadParameters& parameters, NetworkConnectionToWebProcess* connection)
@@ -40,12 +47,31 @@ SchedulableLoader::SchedulableLoader(const NetworkResourceLoadParameters& parame
     , m_allowStoredCredentials(parameters.allowStoredCredentials())
     , m_inPrivateBrowsingMode(parameters.inPrivateBrowsingMode())
     , m_connection(connection)
+    , m_shouldClearReferrerOnHTTPSToHTTPRedirect(parameters.shouldClearReferrerOnHTTPSToHTTPRedirect())
 {
     for (size_t i = 0, count = parameters.requestBodySandboxExtensions().size(); i < count; ++i) {
         if (RefPtr<SandboxExtension> extension = SandboxExtension::create(parameters.requestBodySandboxExtensions()[i]))
             m_requestBodySandboxExtensions.append(extension);
     }
-    m_resourceSandboxExtension = SandboxExtension::create(parameters.resourceSandboxExtension());
+
+#if ENABLE(BLOB)
+    if (m_request.httpBody()) {
+        const Vector<FormDataElement>& elements = m_request.httpBody()->elements();
+        for (size_t i = 0, count = elements.size(); i < count; ++i) {
+            if (elements[i].m_type == FormDataElement::encodedBlob) {
+                Vector<RefPtr<SandboxExtension> > blobElementExtensions = NetworkBlobRegistry::shared().sandboxExtensions(elements[i].m_url);
+                m_requestBodySandboxExtensions.append(blobElementExtensions);
+            }
+        }
+    }
+
+    if (m_request.url().protocolIs("blob")) {
+        ASSERT(!SandboxExtension::create(parameters.resourceSandboxExtension()));
+        m_resourceSandboxExtensions = NetworkBlobRegistry::shared().sandboxExtensions(m_request.url());
+    } else
+#endif
+    if (RefPtr<SandboxExtension> resourceSandboxExtension = SandboxExtension::create(parameters.resourceSandboxExtension()))
+        m_resourceSandboxExtensions.append(resourceSandboxExtension);
 }
 
 SchedulableLoader::~SchedulableLoader()
@@ -55,9 +81,7 @@ SchedulableLoader::~SchedulableLoader()
 
 void SchedulableLoader::connectionToWebProcessDidClose()
 {
-    m_connection = 0;
-
-    // FIXME (NetworkProcess): Cancel the load. The request may be long-living, so we don't want it to linger around after all clients are gone.
+    // FIXME (NetworkProcess): <rdar://problem/12890500>: Cancel the load. The request may be long-living, so we don't want it to linger around after all clients are gone.
 }
 
 void SchedulableLoader::consumeSandboxExtensions()
@@ -65,17 +89,17 @@ void SchedulableLoader::consumeSandboxExtensions()
     for (size_t i = 0, count = m_requestBodySandboxExtensions.size(); i < count; ++i)
         m_requestBodySandboxExtensions[i]->consume();
 
-    if (m_resourceSandboxExtension)
-        m_resourceSandboxExtension->consume();
+    for (size_t i = 0, count = m_resourceSandboxExtensions.size(); i < count; ++i)
+        m_resourceSandboxExtensions[i]->consume();
 }
 
 void SchedulableLoader::invalidateSandboxExtensions()
 {
     for (size_t i = 0, count = m_requestBodySandboxExtensions.size(); i < count; ++i)
-        m_requestBodySandboxExtensions[i]->invalidate();
+        m_requestBodySandboxExtensions[i]->revoke();
 
-    if (m_resourceSandboxExtension)
-        m_resourceSandboxExtension->invalidate();
+    for (size_t i = 0, count = m_resourceSandboxExtensions.size(); i < count; ++i)
+        m_resourceSandboxExtensions[i]->revoke();
 }
 
 } // namespace WebKit

@@ -53,9 +53,9 @@ public:
 
     // TextureMapper implementation
     virtual void drawBorder(const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) OVERRIDE;
-    virtual void drawRepaintCounter(int repaintCount, const Color&, const FloatPoint&, const TransformationMatrix&) OVERRIDE;
-    virtual void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges) OVERRIDE;
-    virtual void drawTexture(Platform3DObject texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges = AllEdges);
+    virtual void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) OVERRIDE;
+    virtual void drawTexture(const BitmapTexture&, const FloatRect&, const TransformationMatrix&, float opacity, unsigned exposedEdges) OVERRIDE;
+    virtual void drawTexture(Platform3DObject texture, Flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, unsigned exposedEdges = AllEdges);
     virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) OVERRIDE;
 
     virtual void bindSurface(BitmapTexture* surface) OVERRIDE;
@@ -89,20 +89,36 @@ private:
 
     class ClipStack {
     public:
+        ClipStack()
+            : clipStateDirty(false)
+        { }
+
         void push();
         void pop();
         void apply(GraphicsContext3D*);
+        void applyIfNeeded(GraphicsContext3D*);
         inline ClipState& current() { return clipState; }
-        void init(const IntRect&);
+        void reset(const IntRect&);
+        void intersect(const IntRect&);
+        void setStencilIndex(int);
+        inline int getStencilIndex() const
+        {
+            return clipState.stencilIndex;
+        }
+        inline bool isCurrentScissorBoxEmpty() const
+        {
+            return clipState.scissorBox.isEmpty();
+        }
 
     private:
         ClipState clipState;
         Vector<ClipState> clipStack;
+        bool clipStateDirty;
     };
 
     TextureMapperGL();
 
-    void drawTexturedQuadWithProgram(TextureMapperShaderProgram*, uint32_t texture, Flags, const IntSize&, const FloatRect&, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture);
+    void drawTexturedQuadWithProgram(TextureMapperShaderProgram*, uint32_t texture, Flags, const IntSize&, const FloatRect&, const TransformationMatrix& modelViewMatrix, float opacity);
     void draw(const FloatRect&, const TransformationMatrix& modelViewMatrix, TextureMapperShaderProgram*, GC3Denum drawingMode, Flags);
 
     void drawUnitRect(TextureMapperShaderProgram*, GC3Denum drawingMode);

@@ -20,7 +20,6 @@
 #include "config.h"
 #include "DumpRenderTreeSupport.h"
 
-#include "CSSComputedStyleDeclaration.h"
 #include "DeviceOrientationClientMock.h"
 #include "DeviceOrientationController.h"
 #include "DeviceOrientationData.h"
@@ -111,30 +110,15 @@ void DumpRenderTreeSupport::setMockGeolocationPermission(WebPage* webPage, bool 
     mockClient->setPermission(allowed);
 }
 
-void DumpRenderTreeSupport::setMockGeolocationPosition(WebPage* webPage, double latitude, double longitude, double accuracy)
+void DumpRenderTreeSupport::setMockGeolocationPosition(WebPage* webPage, double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
 {
     GeolocationClientMock* mockClient = toGeolocationClientMock(GeolocationController::from(corePage(webPage))->client());
-    mockClient->setPosition(GeolocationPosition::create(currentTime(), latitude, longitude, accuracy));
+    mockClient->setPosition(GeolocationPosition::create(currentTime(), latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed));
 }
 
 void DumpRenderTreeSupport::scalePageBy(WebPage* webPage, float scaleFactor, float x, float y)
 {
     corePage(webPage)->setPageScaleFactor(scaleFactor, IntPoint(x, y));
-}
-
-JSValueRef DumpRenderTreeSupport::computedStyleIncludingVisitedInfo(JSContextRef context, JSValueRef value)
-{
-    ExecState* exec = toJS(context);
-    JSLockHolder lock(exec);
-    if (!value)
-        return JSValueMakeUndefined(context);
-    JSValue jsValue = toJS(exec, value);
-    if (!jsValue.inherits(&JSElement::s_info))
-        return JSValueMakeUndefined(context);
-    JSElement* jsElement = static_cast<JSElement*>(asObject(jsValue));
-    Element* element = jsElement->impl();
-    RefPtr<CSSComputedStyleDeclaration> style = CSSComputedStyleDeclaration::create(element, true);
-    return toRef(exec, toJS(exec, jsElement->globalObject(), style.get()));
 }
 
 #if ENABLE(DEVICE_ORIENTATION)

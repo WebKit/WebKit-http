@@ -57,22 +57,26 @@ namespace JSC {
 #if CPU(X86_64)
         static const RegisterID returnValueRegister = X86Registers::eax;
         static const RegisterID cachedResultRegister = X86Registers::eax;
+#if !OS(WINDOWS)
         static const RegisterID firstArgumentRegister = X86Registers::edi;
-        
+#else
+        static const RegisterID firstArgumentRegister = X86Registers::ecx;
+#endif
+
 #if ENABLE(VALUE_PROFILER)
         static const RegisterID bucketCounterRegister = X86Registers::r10;
 #endif
-        
+
         static const RegisterID timeoutCheckRegister = X86Registers::r12;
         static const RegisterID callFrameRegister = X86Registers::r13;
         static const RegisterID tagTypeNumberRegister = X86Registers::r14;
         static const RegisterID tagMaskRegister = X86Registers::r15;
-        
+
         static const RegisterID regT0 = X86Registers::eax;
         static const RegisterID regT1 = X86Registers::edx;
         static const RegisterID regT2 = X86Registers::ecx;
         static const RegisterID regT3 = X86Registers::ebx;
-        
+
         static const FPRegisterID fpRegT0 = X86Registers::xmm0;
         static const FPRegisterID fpRegT1 = X86Registers::xmm1;
         static const FPRegisterID fpRegT2 = X86Registers::xmm2;
@@ -125,6 +129,10 @@ namespace JSC {
         static const RegisterID cachedResultRegister = MIPSRegisters::v0;
         static const RegisterID firstArgumentRegister = MIPSRegisters::a0;
         
+#if ENABLE(VALUE_PROFILER)
+        static const RegisterID bucketCounterRegister = MIPSRegisters::s3;
+#endif
+
         // regT0 must be v0 for returning a 32-bit value.
         static const RegisterID regT0 = MIPSRegisters::v0;
         

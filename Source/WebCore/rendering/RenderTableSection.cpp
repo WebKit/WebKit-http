@@ -263,7 +263,7 @@ void RenderTableSection::addCell(RenderTableCell* cell, RenderTableRow* row)
 int RenderTableSection::calcRowLogicalHeight()
 {
 #ifndef NDEBUG
-    setNeedsLayoutIsForbidden(true);
+    SetLayoutNeededForbiddenScope layoutForbiddenScope(this);
 #endif
 
     ASSERT(!needsLayout());
@@ -319,8 +319,7 @@ int RenderTableSection::calcRowLogicalHeight()
                 m_rowPos[r + 1] = max(m_rowPos[r + 1], m_rowPos[cellStartRow] + cellLogicalHeight);
 
                 // Find out the baseline. The baseline is set on the first row in a rowspan.
-                EVerticalAlign va = cell->style()->verticalAlign();
-                if (va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH) {
+                if (cell->isBaselineAligned()) {
                     LayoutUnit baselinePosition = cell->cellBaselinePosition();
                     if (baselinePosition > cell->borderBefore() + cell->paddingBefore()) {
                         m_grid[cellStartRow].baseline = max(m_grid[cellStartRow].baseline, baselinePosition);
@@ -338,10 +337,6 @@ int RenderTableSection::calcRowLogicalHeight()
         m_rowPos[r + 1] += m_grid[r].rowRenderer ? spacing : 0;
         m_rowPos[r + 1] = max(m_rowPos[r + 1], m_rowPos[r]);
     }
-
-#ifndef NDEBUG
-    setNeedsLayoutIsForbidden(false);
-#endif
 
     ASSERT(!needsLayout());
 
@@ -492,7 +487,7 @@ int RenderTableSection::distributeExtraLogicalHeightToRows(int extraLogicalHeigh
 void RenderTableSection::layoutRows()
 {
 #ifndef NDEBUG
-    setNeedsLayoutIsForbidden(true);
+    SetLayoutNeededForbiddenScope layoutForbiddenScope(this);
 #endif
 
     ASSERT(!needsLayout());
@@ -587,8 +582,7 @@ void RenderTableSection::layoutRows()
                 cell->layoutIfNeeded();
 
                 // If the baseline moved, we may have to update the data for our row. Find out the new baseline.
-                EVerticalAlign va = cell->style()->verticalAlign();
-                if (va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH) {
+                if (cell->isBaselineAligned()) {
                     LayoutUnit baseline = cell->cellBaselinePosition();
                     if (baseline > cell->borderBefore() + cell->paddingBefore())
                         m_grid[r].baseline = max(m_grid[r].baseline, baseline);
@@ -637,10 +631,6 @@ void RenderTableSection::layoutRows()
             }
         }
     }
-
-#ifndef NDEBUG
-    setNeedsLayoutIsForbidden(false);
-#endif
 
     ASSERT(!needsLayout());
 
@@ -925,7 +915,7 @@ void RenderTableSection::paint(PaintInfo& paintInfo, const LayoutPoint& paintOff
         popContentsClip(paintInfo, phase, adjustedPaintOffset);
 
     if ((phase == PaintPhaseOutline || phase == PaintPhaseSelfOutline) && style()->visibility() == VISIBLE)
-        paintOutline(paintInfo.context, LayoutRect(adjustedPaintOffset, size()));
+        paintOutline(paintInfo, LayoutRect(adjustedPaintOffset, size()));
 }
 
 static inline bool compareCellPositions(RenderTableCell* elem1, RenderTableCell* elem2)

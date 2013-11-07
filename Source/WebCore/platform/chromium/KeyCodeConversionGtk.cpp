@@ -88,6 +88,12 @@ int windowsKeyCodeForKeyEvent(unsigned keycode)
         return VKEY_RIGHT; // (27) RIGHT ARROW key
     case GDK_KP_Down:
         return VKEY_DOWN; // (28) DOWN ARROW key
+    case GDK_KP_Begin:
+        return VKEY_CLEAR; // (12) CLEAR key
+    case GDK_KP_Insert:
+        return VKEY_INSERT; // (45) INS key
+    case GDK_KP_Delete:
+        return VKEY_DELETE; // (46) DEL key
 
     case GDK_BackSpace:
         return VKEY_BACK; // (08) BACKSPACE key
@@ -112,8 +118,11 @@ int windowsKeyCodeForKeyEvent(unsigned keycode)
     case GDK_Menu:
         return VKEY_APPS;  // (5D) Applications key (Natural keyboard)
     case GDK_Alt_L:
+    case GDK_Meta_L:
         return VKEY_LMENU; // (A4) Left ALT key
     case GDK_Alt_R:
+    case GDK_Meta_R:
+    case GDK_ISO_Level3_Shift:
         return VKEY_RMENU; // (A5) Right ALT key
 
     case GDK_Pause:
@@ -278,10 +287,8 @@ int windowsKeyCodeForKeyEvent(unsigned keycode)
     case GDK_z:
     case GDK_Z:
         return VKEY_Z; //  (5A) Z key case 'z': case 'Z': return 0x5A;
-    case GDK_Meta_L:
     case GDK_Super_L:
         return VKEY_LWIN; // (5B) Left Windows key (Microsoft Natural keyboard)
-    case GDK_Meta_R:
     case GDK_Super_R:
         return VKEY_RWIN; // (5C) Right Windows key (Natural keyboard)
         // VKEY_SLEEP (5F) Computer Sleep key

@@ -162,9 +162,11 @@ namespace Private {
             ASSERT(!n->m_deletionHasBegun);
 
             next = n->nextSibling();
-            n->setPreviousSibling(0);
             n->setNextSibling(0);
             n->setParentOrShadowHostNode(0);
+            container->setFirstChild(next);
+            if (next)
+                next->setPreviousSibling(0);
 
             if (!n->refCount()) {
 #ifndef NDEBUG
@@ -184,7 +186,6 @@ namespace Private {
             }
         }
 
-        container->setFirstChild(0);
         container->setLastChild(0);
     }
 
@@ -290,9 +291,7 @@ inline void ChildFrameDisconnector::collectFrameOwners(Node* root)
     if (!root->connectedSubframeCount())
         return;
 
-    // FIXME: This should just check isElementNode() to avoid the virtual call
-    // and we should not depend on hasCustomCallbacks().
-    if (root->hasCustomCallbacks() && root->isFrameOwnerElement())
+    if (root->isHTMLElement() && root->isFrameOwnerElement())
         m_frameOwners.append(toFrameOwnerElement(root));
 
     for (Node* child = root->firstChild(); child; child = child->nextSibling())

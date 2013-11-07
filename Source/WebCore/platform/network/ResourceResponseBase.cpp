@@ -156,7 +156,9 @@ void ResourceResponseBase::setURL(const KURL& url)
     lazyInit(CommonFieldsOnly);
     m_isNull = false;
 
-    m_url = url; 
+    m_url = url;
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 const String& ResourceResponseBase::mimeType() const
@@ -171,7 +173,10 @@ void ResourceResponseBase::setMimeType(const String& mimeType)
     lazyInit(CommonFieldsOnly);
     m_isNull = false;
 
-    m_mimeType = mimeType; 
+    // FIXME: MIME type is determined by HTTP Content-Type header. We should update the header, so that it doesn't disagree with m_mimeType.
+    m_mimeType = mimeType;
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 long long ResourceResponseBase::expectedContentLength() const 
@@ -186,7 +191,10 @@ void ResourceResponseBase::setExpectedContentLength(long long expectedContentLen
     lazyInit(CommonFieldsOnly);
     m_isNull = false;
 
+    // FIXME: Content length is determined by HTTP Content-Length header. We should update the header, so that it doesn't disagree with m_expectedContentLength.
     m_expectedContentLength = expectedContentLength; 
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 const String& ResourceResponseBase::textEncodingName() const
@@ -201,7 +209,10 @@ void ResourceResponseBase::setTextEncodingName(const String& encodingName)
     lazyInit(CommonFieldsOnly);
     m_isNull = false;
 
-    m_textEncodingName = encodingName; 
+    // FIXME: Text encoding is determined by HTTP Content-Type header. We should update the header, so that it doesn't disagree with m_textEncodingName.
+    m_textEncodingName = encodingName;
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 // FIXME should compute this on the fly
@@ -217,7 +228,10 @@ void ResourceResponseBase::setSuggestedFilename(const String& suggestedName)
     lazyInit(AllFields);
     m_isNull = false;
 
+    // FIXME: Suggested file name is calculated based on other headers. There should not be a setter for it.
     m_suggestedFilename = suggestedName; 
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 int ResourceResponseBase::httpStatusCode() const
@@ -232,6 +246,8 @@ void ResourceResponseBase::setHTTPStatusCode(int statusCode)
     lazyInit(CommonFieldsOnly);
 
     m_httpStatusCode = statusCode;
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 const String& ResourceResponseBase::httpStatusText() const 
@@ -246,6 +262,8 @@ void ResourceResponseBase::setHTTPStatusText(const String& statusText)
     lazyInit(CommonAndUncommonFields);
 
     m_httpStatusText = statusText; 
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 String ResourceResponseBase::httpHeaderField(const AtomicString& name) const
@@ -276,16 +294,15 @@ String ResourceResponseBase::httpHeaderField(const char* name) const
     return m_httpHeaderFields.get(name); 
 }
 
-void ResourceResponseBase::setHTTPHeaderField(const AtomicString& name, const String& value)
+void ResourceResponseBase::updateHeaderParsedState(const AtomicString& name)
 {
-    lazyInit(CommonAndUncommonFields);
-
     DEFINE_STATIC_LOCAL(const AtomicString, ageHeader, ("age", AtomicString::ConstructFromLiteral));
     DEFINE_STATIC_LOCAL(const AtomicString, cacheControlHeader, ("cache-control", AtomicString::ConstructFromLiteral));
     DEFINE_STATIC_LOCAL(const AtomicString, dateHeader, ("date", AtomicString::ConstructFromLiteral));
     DEFINE_STATIC_LOCAL(const AtomicString, expiresHeader, ("expires", AtomicString::ConstructFromLiteral));
     DEFINE_STATIC_LOCAL(const AtomicString, lastModifiedHeader, ("last-modified", AtomicString::ConstructFromLiteral));
     DEFINE_STATIC_LOCAL(const AtomicString, pragmaHeader, ("pragma", AtomicString::ConstructFromLiteral));
+
     if (equalIgnoringCase(name, ageHeader))
         m_haveParsedAgeHeader = false;
     else if (equalIgnoringCase(name, cacheControlHeader) || equalIgnoringCase(name, pragmaHeader))
@@ -296,8 +313,28 @@ void ResourceResponseBase::setHTTPHeaderField(const AtomicString& name, const St
         m_haveParsedExpiresHeader = false;
     else if (equalIgnoringCase(name, lastModifiedHeader))
         m_haveParsedLastModifiedHeader = false;
+}
+
+void ResourceResponseBase::setHTTPHeaderField(const AtomicString& name, const String& value)
+{
+    lazyInit(CommonAndUncommonFields);
+
+    updateHeaderParsedState(name);
 
     m_httpHeaderFields.set(name, value);
+
+    // FIXME: Should invalidate or update platform response if present.
+}
+
+void ResourceResponseBase::addHTTPHeaderField(const AtomicString& name, const String& value)
+{
+    lazyInit(CommonAndUncommonFields);
+
+    updateHeaderParsedState(name);
+
+    HTTPHeaderMap::AddResult result = m_httpHeaderFields.add(name, value);
+    if (!result.isNewEntry)
+        result.iterator->value.append(", " + value);
 }
 
 const HTTPHeaderMap& ResourceResponseBase::httpHeaderFields() const
@@ -341,7 +378,7 @@ void ResourceResponseBase::parseCacheControlDirectives() const
             else if (equalIgnoringCase(directives[i].first, mustRevalidateDirective))
                 m_cacheControlContainsMustRevalidate = true;
             else if (equalIgnoringCase(directives[i].first, maxAgeDirective)) {
-                if (!isnan(m_cacheControlMaxAge)) {
+                if (!std::isnan(m_cacheControlMaxAge)) {
                     // First max-age directive wins if there are multiple ones.
                     continue;
                 }
@@ -411,7 +448,7 @@ static double parseDateValueInHeader(const HTTPHeaderMap& headers, const AtomicS
     // Sunday, 06-Nov-94 08:49:37 GMT ; RFC 850, obsoleted by RFC 1036
     // Sun Nov  6 08:49:37 1994       ; ANSI C's asctime() format
     double dateInMilliseconds = parseDate(headerValue);
-    if (!isfinite(dateInMilliseconds))
+    if (!std::isfinite(dateInMilliseconds))
         return std::numeric_limits<double>::quiet_NaN();
     return dateInMilliseconds / 1000;
 }
@@ -487,6 +524,8 @@ void ResourceResponseBase::setLastModifiedDate(time_t lastModifiedDate)
     lazyInit(CommonAndUncommonFields);
 
     m_lastModifiedDate = lastModifiedDate;
+
+    // FIXME: Should invalidate or update platform response if present.
 }
 
 time_t ResourceResponseBase::lastModifiedDate() const

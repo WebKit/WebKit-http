@@ -59,6 +59,7 @@ editing/selection/doubleclick-beside-cr-span.html
 editing/selection/doubleclick-whitespace-crash.html
 editing/selection/doubleclick-whitespace-img-crash.html
 editing/selection/doubleclick-whitespace.html
+editing/selection/drag-list-item.html
 editing/selection/drag-select-1.html
 editing/selection/drag-select-rapidly.html
 editing/selection/drag-start-event-client-x-y.html
@@ -262,9 +263,6 @@ webkit.org/b/96580 css3/filters/custom/filter-fallback-to-software.html [ ImageO
 webkit.org/b/96832 fast/loader/images-enabled-unset-can-block-image-and-can-reload-in-place.html [ Failure ]
 webkit.org/b/96832 fast/loader/display-image-unset-can-block-image-and-can-reload-in-place.html [ Failure ]
 
-# Will need rebaselining after bug 98527 fixed
-webkit.org/b/98527 http/tests/loading/text-content-type-with-binary-extension.html [ Failure ]
-
 # Causes next test to crash
 webkit.org/b/98960 fast/parser/document-open-in-unload.html [ Skip ]
 
@@ -295,6 +293,10 @@ webkit.org/b/105998 [ MountainLion Debug ] fast/css/sticky/sticky-both-sides.htm
 
 webkit.org/b/93552 inspector/device-orientation-success.html [ Failure ]
 
+webkit.org/b/107935 compositing/overflow/do-not-paint-outline-into-composited-scrolling-contents.html [ Missing ]
+webkit.org/b/107935 compositing/overflow/paint-neg-z-order-descendants-into-scrolling-contents-layer.html [ Missing ]
+webkit.org/b/107935 compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Failure ]
+
 webkit.org/b/106405 http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials.html [ Failure ]
 webkit.org/b/106405 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Failure ]
 webkit.org/b/106405 http/tests/loading/basic-credentials-sent-automatically.html [ Failure ]
@@ -314,12 +316,27 @@ webkit.org/b/108507 printing/standards-percentage-heights.html [ Skip ]
 
 webkit.org/b/107356 fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
 
+webkit.org/b/109890 [ Debug ] platform/mac-wk2/plugins/destroy-during-async-npp-new.html [ Crash ]
+
+webkit.org/b/111815 http/tests/security/cross-frame-access-put.html [ Failure ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
 
 ########################################
 ### START OF (2) Classified failures without bug reports (yet)
+
+# Missing TextChecker::requestCheckingOfString() implementation for Mac.
+editing/spelling/grammar-markers.html
+editing/spelling/grammar-paste.html
+editing/spelling/grammar-markers-hidpi.html
+editing/spelling/spellcheck-async-mutation.html
+editing/spelling/spellcheck-async-remove-frame.html
+editing/spelling/spellcheck-async.html
+editing/spelling/spellcheck-queue.html
+editing/spelling/spellcheck-sequencenum.html
+editing/spelling/spelling-marker-description.html
 
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################

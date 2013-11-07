@@ -1,3 +1,39 @@
+2013-02-26  Dmitry Zvorygin  <zvorygin@chromium.org>
+
+        Merged Tip and Debug log levels for web console.
+        https://bugs.webkit.org/show_bug.cgi?id=109919
+
+        Reviewed by Pavel Feldman.
+
+        In every component either TIP or DEBUG level was used for reporting,
+        but not both. This patch is prerequisite for Web Inspector console log filtering.
+
+        * WebView.h:
+
+2013-02-15  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Julien Chaffraix.
+
+        Update calls to new API.
+
+        * WebFrame.cpp:
+        (WebKit::WebFrame::HitTest):
+
+2013-02-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disable delete button controller on non-Mac ports and delete EditorClient::shouldShowDeleteInterface
+        https://bugs.webkit.org/show_bug.cgi?id=109534
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitSupport/EditorClientWx.cpp:
+        (WebCore):
+        * WebKitSupport/EditorClientWx.h:
+        (EditorClientWx):
+
 2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
 
         Fix build warning after r141473

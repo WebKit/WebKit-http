@@ -58,6 +58,9 @@ fast/css/image-set-parsing-invalid.html
 fast/css/cursor-parsing-image-set.html
 fast/events/mouse-cursor-image-set.html
 
+# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
+http/tests/security/contentTypeOptions
+
 # https://bugs.webkit.org/show_bug.cgi?id=77645
 css3/filters/filtered-compositing-descendant.html
 
@@ -571,8 +574,6 @@ fast/table/frame-and-rules.html
 fast/table/giantCellspacing.html
 
 # Not investigated yet
-editing/deleting/5408255.html
-editing/deleting/deletionUI-single-instance.html
 editing/pasteboard/input-field-1.html
 editing/selection/contains-boundaries.html
 editing/undo/5378473.html
@@ -649,6 +650,7 @@ accessibility/secure-textfield-title-ui.html
 accessibility/spinbutton-value.html
 accessibility/svg-remote-element.html
 accessibility/table-attributes.html
+accessibility/table-cell-for-column-and-row-crash.html
 accessibility/table-cell-spans.html
 accessibility/table-cells.html
 accessibility/table-detection.html
@@ -922,12 +924,6 @@ fast/js/constructor-length.html
 # Need to add functionality to DumpRenderTree to handle error pages
 fast/history/back-forward-reset-after-error-handling.html
 
-# Need to implement computedStyleWithVisitedInfo
-fast/history/multiple-classes-visited.html
-fast/history/nested-visited-test.html
-fast/history/self-is-visited.html
-fast/history/sibling-visited-test.html
-
 # ACCELERATED_COMPOSITING tests that have incorrect layout
 compositing/webgl/webgl-background-color.html
 compositing/webgl/webgl-reflection.html
@@ -1017,6 +1013,7 @@ fast/events/continuous-platform-wheelevent-in-scrolling-div.html
 fast/events/wheelevent-direction-inverted-from-device.html
 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html
 fast/events/wheelevent-in-vertical-scrollbar-in-rtl.html
+fast/forms/search/search-scroll-hidden-decoration-container-crash.html
 fast/repaint/overflow-auto-in-overflow-auto-scrolled.html
 fast/repaint/overflow-scroll-in-overflow-scroll-scrolled.html
 fast/repaint/table-overflow-auto-in-overflow-auto-scrolled.html
@@ -1225,6 +1222,7 @@ fast/events/constructors/mouse-event-constructor.html
 fast/events/constructors/composition-event-constructor.html
 fast/events/constructors/wheel-event-constructor.html
 fast/events/constructors/keyboard-event-constructor.html
+fast/events/constructors/focus-event-constructor.html
 
 # Disable until the windows WebKit API supports injecting in the top frame only.
 # https://bugs.webkit.org/show_bug.cgi?id=41800
@@ -1310,6 +1308,7 @@ webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
+webkit.org/b/73936 inspector/profiler/canvas2d/canvas-replay-log-grid.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -1526,6 +1525,7 @@ http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
 http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
 inspector/profiler/webgl
 fast/images/webgl-teximage2d.html
+webgl
 
 # Tests that require ENABLE(DOWNLOAD_ATTRIBUTE).
 fast/dom/HTMLAnchorElement/anchor-nodownload.html
@@ -1550,7 +1550,8 @@ fast/dom/shadow
 
 # ENABLE(TEMPLATE_ELEMENT) is disabled.
 fast/dom/HTMLTemplateElement
-html5lib/run-template.html
+html5lib/generated/run-template-data.html
+html5lib/generated/run-template-write.html
 fast/xsl/xslt-xhtml-template.xml
 fast/xpath/xpath-template-element.html
 fast/xsl/xslt-processor-template.html
@@ -1646,9 +1647,6 @@ fast/events/platform-wheelevent-paging-y-in-non-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-non-scrolling-page.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
-
-# Web Intents is not yet enabled.
-webintents/
 
 # Pointer Lock is not implemented.
 pointer-lock/
@@ -1828,9 +1826,6 @@ inspector/styles/override-screen-size.html
 # Interferes with the other requestAnimationFrame tests
 # https://bugs.webkit.org/show_bug.cgi?id=85689
 fast/animation/request-animation-frame-disabled.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=86000
-http/tests/security/referrer-policy-redirect-link.html
 
 # Inspector only supports evaluation in content script world with v8, see https://bugs.webkit.org/show_bug.cgi?id=85709
 inspector/extensions/extensions-eval-content-script.html 
@@ -2298,6 +2293,15 @@ media/video-set-rate-from-pause.html
 media/video-src-change.html
 media/video-timeupdate-reverse-play.html
 media/W3C/video/src/src_removal_does_not_trigger_loadstart.html
+media/video-single-valid-source.html
+media/video-source-error-no-candidate.html
+media/video-src-remove.html
+media/video-size-intrinsic-scale.html
+media/video-source-media.html
+media/video-source-load.html
+media/video-source-moved.html
+media/video-seeking.html
+media/video-src-empty.html
 
 # Interactive form validation not enabled on Windows
 fast/forms/number/number-interactive-validation-required.html
@@ -2379,6 +2383,8 @@ http/tests/inspector/network/network-xhr-replay.html
 
 #AX role needs to be updated on Windows, many test cases involve AX role crash or fail
 accessibility/svg-bounds.html
+accessibility/html-html-element-is-ignored.html
+accessibility/loading-iframe-updates-axtree.html
 
 #https://bugs.webkit.org/show_bug.cgi?id=97485
 http/tests/security/sandboxed-iframe-form-top.html
@@ -2412,9 +2418,10 @@ css3/flexbox/flexbox-baseline.html
 #https://bugs.webkit.org/show_bug.cgi?id=99878
 css3/flexbox/flexbox-baseline-margins.html
 
-# css3-conditionals support is not yet enabled. http://webkit.org/b/86146 http://webkit.org/b/104822
+# css3-conditionals support is not yet enabled. http://webkit.org/b/86146 http://webkit.org/b/104822 http://webkit.org/b/100324
 css3/supports.html
 css3/supports-cssom.html
+css3/supports-dom-api.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=98169
 http/tests/inspector/stacktraces
@@ -2501,6 +2508,7 @@ fast/js/kde/Array.html
 # No support for exposing in-band text tracks
 webkit.org/b/103770 media/track/track-in-band.html [ Skip ]
 webkit.org/b/103770 media/track/track-in-band-cues-added-once.html [ Skip ]
+webkit.org/b/103770 media/track/track-in-band-style.html [ Skip ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=97026
 fast/events/keydown-leftright-keys.html
@@ -2525,9 +2533,11 @@ media/track/track-cue-rendering-snap-to-lines-not-set.html
 media/track/track-cue-rendering-vertical.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=106477
+media/track/track-user-preferences.html
 media/video-controls-captions-trackmenu-localized.html
 media/video-controls-captions-trackmenu-sorted.html
 media/video-controls-captions-trackmenu.html
+media/video-controls-captions-trackmenu-hide-on-click.html
 media/video-controls-visible-exiting-fullscreen.html
 
 # Fails on JSC platforms due to gc timing issues
@@ -2626,3 +2636,73 @@ webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
+
+# Need rebaseline after https://bugs.webkit.org/show_bug.cgi?id=109775
+webkit.org/b/109775 media/audio-controls-rendering.html [ Failure ]
+webkit.org/b/109775 media/controls-after-reload.html [ Failure ]
+webkit.org/b/109775 media/controls-strict.html [ Failure ]
+webkit.org/b/109775 media/controls-styling-strict.html [ Failure ]
+webkit.org/b/109775 media/controls-without-preload.html [ Failure ]
+webkit.org/b/109775 media/video-controls-rendering.html [ Failure ]
+webkit.org/b/109775 media/video-display-toggle.html [ Failure ]
+webkit.org/b/109775 media/video-playing-and-pause.html [ Failure ]
+
+# Need rebaseline for https://bugs.webkit.org/show_bug.cgi?id=109994
+webkit.org/b/109994 css2.1/20110323/replaced-elements-001.htm [ Failure ]
+webkit.org/b/109994 fast/forms/button-generated-content.html [ Failure ]
+webkit.org/b/109994 fast/forms/select-baseline.html [ Failure ]
+webkit.org/b/109994 svg/custom/foreign-object-skew.svg [ Failure ]
+webkit.org/b/109994 tables/mozilla/bugs/bug92647-2.html [ Failure ]
+
+# Need rebaseline
+webkit.org/b/110654 css2.1/20110323/replaced-elements-001.htm [ Failure ]
+webkit.org/b/110654 tables/mozilla/bugs/bug92647-2.html [ Failure ]
+# New test
+webkit.org/b/110654 css3/flexbox/button.html [ Failure ]
+
+# Need support for ResourceHandle::didChangePriority and DRT support
+webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failure ]
+
+# Disable storage tests
+fast/workers/storage/
+storage/
+
+# Disable document.register tests, ENABLE_CUSTOM_ELEMENT disabled
+fast/dom/custom
+
+# bugs.webkit.org/show_bug.cgi?id=111235
+css3/filters/custom-with-at-rule-syntax
+
+# bugs.webkit.org/show_bug.cgi?id=110447
+editing/spelling/spelling-changed-text.html
+
+# Skip a bunch of tests to get EWS bots in a better state.
+accessibility
+fast/events
+fast/text/international
+inspector-protocol
+plugins
+sputnik
+fast/xsl
+http
+fast/js
+fast/events
+fast/parser
+ietestcenter
+jquery
+media/media-fragments
+media/W3C
+
+# Test fails because webkit-image-set is not implemented on Windows
+# The test unfortunately outputs system specific information on assertion failure
+cssom/cssvalue-comparison.html
+
+# CURSOR_VISIBILITY is not enabled on win
+webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Failure ]
+
+# WEBVTT_REGIONS is not enabled on win
+media/track/regions-webvtt
+
+# https://bugs.webkit.org/show_bug.cgi?id=111606
+fast/borders/border-fit.html
+fast/repaint/border-fit-lines.html

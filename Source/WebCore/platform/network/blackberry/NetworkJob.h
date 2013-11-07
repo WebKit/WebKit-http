@@ -77,8 +77,7 @@ public:
         BlackBerry::Platform::NetworkRequest::AuthProtocol,
         BlackBerry::Platform::NetworkRequest::AuthScheme,
         const char* realm,
-        AuthResult,
-        bool requireCredentials);
+        AuthResult);
     // notifyStringHeaderReceived exists only to resolve ambiguity between char* and String parameters
     void notifyStringHeaderReceived(const String& key, const String& value);
     void handleNotifyHeaderReceived(const String& key, const String& value);
@@ -91,6 +90,7 @@ public:
     virtual void notifyClose(int status);
     void handleNotifyClose(int status);
     virtual int status() const { return m_extendedStatusCode; }
+    virtual const BlackBerry::Platform::String mimeType() const;
 
     virtual void notifyChallengeResult(const KURL&, const ProtectionSpace&, AuthenticationChallengeResult, const Credential&);
 
@@ -123,7 +123,7 @@ private:
 
     bool retryAsFTPDirectory();
 
-    bool startNewJobWithRequest(ResourceRequest& newRequest, bool increasRedirectCount = false);
+    bool startNewJobWithRequest(ResourceRequest& newRequest, bool increasRedirectCount = false, bool rereadCookies = false);
 
     bool handleRedirect();
 
@@ -137,7 +137,12 @@ private:
 
     // The server needs authentication credentials. Search in the CredentialStorage
     // or prompt the user via dialog, then resend the request with the credentials.
-    bool sendRequestWithCredentials(ProtectionSpaceServerType, ProtectionSpaceAuthenticationScheme, const String& realm, bool requireCredentials = true);
+    enum SendRequestResult {
+        SendRequestSucceeded,
+        SendRequestCancelled,
+        SendRequestWaiting
+    };
+    SendRequestResult sendRequestWithCredentials(ProtectionSpaceServerType, ProtectionSpaceAuthenticationScheme, const String& realm, bool requireCredentials = true);
 
     void storeCredentials();
     void storeCredentials(AuthenticationChallenge&);

@@ -344,9 +344,21 @@ void RenderQueue::addToRegularQueue(const Platform::IntRectRegion& region)
 
 void RenderQueue::addToScrollZoomQueue(const TileIndexList& addedTiles, TileIndexList* alreadyQueuedTiles)
 {
+    Platform::IntRect contentsRect = m_parent->expandedContentsRect();
     for (size_t i = 0; i < addedTiles.size(); ++i) {
         if (alreadyQueuedTiles->contains(addedTiles[i]))
             continue;
+
+        Platform::IntRect tileRect(m_parent->frontState()->originOfTile(addedTiles[i]), m_parent->tileSize());
+        if (!contentsRect.intersects(tileRect)) {
+#if DEBUG_RENDER_QUEUE
+                Platform::logAlways(Platform::LogLevelCritical,
+                    "RenderQueue::addToScrollZoomQueue tile at %s outside of expanded contents rect %s, ignoring.",
+                    tileRect.toString().c_str(),
+                    contentsRect.toString().c_str());
+#endif
+            continue;
+        }
 
 #if DEBUG_RENDER_QUEUE
         Platform::logAlways(Platform::LogLevelCritical,
@@ -615,7 +627,6 @@ void RenderQueue::renderRegularRenderJobs(bool allAtOnceIfPossible)
         m_currentRegularRenderJobsBatch.clear();
     }
 
-    bool shouldDirectRenderingToWindow = m_parent->shouldDirectRenderingToWindow();
     Platform::IntRect contentsRect = m_parent->expandedContentsRect();
 
     // Start new batch if needed.
@@ -624,12 +635,10 @@ void RenderQueue::renderRegularRenderJobs(bool allAtOnceIfPossible)
         m_regularRenderJobsRegion = Platform::IntRectRegion::intersectRegions(m_regularRenderJobsRegion, contentsRect);
 
         // Split the current regular render job region into tiles.
-        if (!shouldDirectRenderingToWindow) {
-            // Discard regions outside of the region covered by these tiles.
-            // They'll be rendered when the geometry changes.
-            m_regularRenderJobsRegion = Platform::IntRectRegion::intersectRegions(m_regularRenderJobsRegion, m_parent->frontState()->backingStoreRect());
-            m_currentRegularRenderJobsBatch = tileIndexesIntersectingRegion(m_regularRenderJobsRegion, m_parent->frontState());
-        }
+        // Discard regions outside of the region covered by these tiles.
+        // They'll be rendered when the geometry changes.
+        m_regularRenderJobsRegion = Platform::IntRectRegion::intersectRegions(m_regularRenderJobsRegion, m_parent->frontState()->backingStoreRect());
+        m_currentRegularRenderJobsBatch = tileIndexesIntersectingRegion(m_regularRenderJobsRegion, m_parent->frontState());
 
         // Create a region object that will be checked when adding new rects before
         // this batch has been completed.
@@ -653,9 +662,7 @@ void RenderQueue::renderRegularRenderJobs(bool allAtOnceIfPossible)
     TileIndexList completedJobs;
     TileIndexList tilesToRender;
 
-    unsigned numberOfAvailableBackBuffers = shouldDirectRenderingToWindow
-        ? 0
-        : SurfacePool::globalSurfacePool()->numberOfAvailableBackBuffers();
+    unsigned numberOfAvailableBackBuffers = SurfacePool::globalSurfacePool()->numberOfAvailableBackBuffers();
 
     while (!outstandingJobs->isEmpty() && numberOfAvailableBackBuffers) {
         // Render as many tiles at once as we can handle.
@@ -738,16 +745,7 @@ void RenderQueue::renderRegularRenderJobs(bool allAtOnceIfPossible)
             break; // We can do the rest next time.
     }
 
-    Platform::IntRectRegion renderedRegion;
-
-    if (shouldDirectRenderingToWindow) {
-        // Try rendering once, if we're suspended there will be another
-        // full-screen update later on anyways.
-        renderedRegion = m_parent->renderDirectToWindow(m_currentRegularRenderJobsBatchRegion.extents());
-        m_currentRegularRenderJobsBatchRegion = Platform::IntRectRegion();
-    } else {
-        renderedRegion = tileRegion(completedJobs, m_parent->frontState());
-    }
+    const Platform::IntRectRegion renderedRegion = tileRegion(completedJobs, m_parent->frontState());
 
     m_regularRenderJobsNotRenderedRegion = Platform::IntRectRegion::unionRegions(m_regularRenderJobsNotRenderedRegion, regionNotRenderedThisTime);
     m_currentRegularRenderJobsBatchRegion = Platform::IntRectRegion::subtractRegions(m_currentRegularRenderJobsBatchRegion, regionNotRenderedThisTime);
@@ -799,12 +797,9 @@ void RenderQueue::renderScrollZoomJobs(TileIndexList* outstandingJobs, TileIndex
     double elapsed;
 #endif
 
-    bool shouldDirectRenderingToWindow = m_parent->shouldDirectRenderingToWindow();
     Platform::IntRect contentsRect = m_parent->expandedContentsRect();
 
-    unsigned numberOfAvailableBackBuffers = shouldDirectRenderingToWindow
-        ? 0
-        : SurfacePool::globalSurfacePool()->numberOfAvailableBackBuffers();
+    unsigned numberOfAvailableBackBuffers = SurfacePool::globalSurfacePool()->numberOfAvailableBackBuffers();
 
     // If we take multiple turns to render, we sort to make them appear in the right order.
     if (!allAtOnceIfPossible && outstandingJobs->size() > numberOfAvailableBackBuffers)
@@ -868,15 +863,6 @@ void RenderQueue::renderScrollZoomJobs(TileIndexList* outstandingJobs, TileIndex
 
         if (!allAtOnceIfPossible)
             break; // We can do the rest next time.
-    }
-
-    if (shouldDirectRenderingToWindow) {
-        // In direct rendering mode, any zoom or scroll job would require a
-        // full-screen update.
-        Platform::IntRect visibleContentsRect = m_parent->visibleContentsRect();
-        Platform::IntRect renderedRect = m_parent->renderDirectToWindow(visibleContentsRect);
-        if (!renderedRect.isEmpty())
-            outstandingJobs->clear();
     }
 
 #if DEBUG_RENDER_QUEUE

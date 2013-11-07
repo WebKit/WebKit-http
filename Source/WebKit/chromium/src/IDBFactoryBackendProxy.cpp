@@ -53,7 +53,6 @@
 #include "WorkerLoaderProxy.h"
 #include "WorkerScriptController.h"
 #include "WorkerThread.h"
-#include "platform/WebKitPlatformSupport.h"
 #include <public/WebVector.h>
 
 
@@ -75,10 +74,8 @@ PassRefPtr<IDBFactoryBackendInterface> IDBFactoryBackendProxy::create()
 
 IDBFactoryBackendProxy::IDBFactoryBackendProxy()
 {
-    if (s_webIDBFactory)
-        m_webIDBFactory = s_webIDBFactory;
-    else
-        m_webIDBFactory = webKitPlatformSupport()->idbFactory();
+    ASSERT(s_webIDBFactory);
+    m_webIDBFactory = s_webIDBFactory;
 }
 
 IDBFactoryBackendProxy::~IDBFactoryBackendProxy()
@@ -163,7 +160,7 @@ private:
 bool IDBFactoryBackendProxy::allowIndexedDB(ScriptExecutionContext* context, const String& name, const WebSecurityOrigin& origin, PassRefPtr<IDBCallbacks> callbacks)
 {
     bool allowed;
-    ASSERT(context->isDocument() || context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isDocument() || context->isWorkerContext());
     if (context->isDocument()) {
         Document* document = static_cast<Document*>(context);
         WebFrameImpl* webFrame = WebFrameImpl::fromFrame(document->frame());
@@ -182,9 +179,9 @@ bool IDBFactoryBackendProxy::allowIndexedDB(ScriptExecutionContext* context, con
         // Either the bridge returns, or the queue gets terminated.
         if (runLoop.runInMode(workerContext, mode) == MessageQueueTerminated) {
             bridge->cancel();
-            allowed = false;
-        } else
-            allowed = bridge->result();
+            return false;
+        }
+        allowed = bridge->result();
     }
 
     if (!allowed)
@@ -195,7 +192,7 @@ bool IDBFactoryBackendProxy::allowIndexedDB(ScriptExecutionContext* context, con
 
 static WebFrameImpl* getWebFrame(ScriptExecutionContext* context)
 {
-    ASSERT(context->isDocument() || context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isDocument() || context->isWorkerContext());
     if (context->isDocument()) {
         Document* document = static_cast<Document*>(context);
         return WebFrameImpl::fromFrame(document->frame());

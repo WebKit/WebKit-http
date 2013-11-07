@@ -33,10 +33,10 @@
 
 #include "../../../Platform/chromium/public/WebCanvas.h"
 #include "../../../Platform/chromium/public/WebFileSystem.h"
+#include "../../../Platform/chromium/public/WebMessagePortChannel.h"
 #include "../../../Platform/chromium/public/WebReferrerPolicy.h"
 #include "../../../Platform/chromium/public/WebURL.h"
 #include "WebIconURL.h"
-#include "WebMessagePortChannel.h"
 #include "WebNode.h"
 #include "WebURLLoaderOptions.h"
 
@@ -55,16 +55,13 @@ template <class T> class Local;
 
 namespace WebKit {
 
-class WebAnimationController;
 class WebData;
 class WebDataSource;
-class WebDeliveredIntentClient;
 class WebDocument;
 class WebElement;
 class WebFormElement;
 class WebHistoryItem;
 class WebInputElement;
-class WebIntent;
 class WebPerformance;
 class WebRange;
 class WebSecurityOrigin;
@@ -133,10 +130,10 @@ public:
     virtual long long identifier() const = 0;
 
     // The urls of the given combination types of favicon (if any) specified by
-    // the document loaded in this frame. The iconTypes is a bit-mask of
+    // the document loaded in this frame. The iconTypesMask is a bit-mask of
     // WebIconURL::Type values, used to select from the available set of icon
     // URLs
-    virtual WebVector<WebIconURL> iconURLs(int iconTypes) const = 0;
+    virtual WebVector<WebIconURL> iconURLs(int iconTypesMask) const = 0;
 
 
     // Geometry -----------------------------------------------------------
@@ -221,8 +218,6 @@ public:
     // Content ------------------------------------------------------------
 
     virtual WebDocument document() const = 0;
-
-    virtual WebAnimationController* animationController() = 0;
 
     virtual WebPerformance performance() const = 0;
 
@@ -406,12 +401,6 @@ public:
 
     // Returns the number of registered unload listeners.
     virtual unsigned unloadListenerCount() const = 0;
-
-    // Returns true if a user gesture is currently being processed.
-    virtual bool isProcessingUserGesture() const = 0;
-
-    // Returns true if a consumable gesture exists and has been successfully consumed.
-    virtual bool consumeUserGesture() const = 0;
 
     // Returns true if this frame is in the process of opening a new frame
     // with a suppressed opener.
@@ -632,14 +621,6 @@ public:
     virtual void dispatchMessageEventWithOriginCheck(
         const WebSecurityOrigin& intendedTargetOrigin,
         const WebDOMEvent&) = 0;
-
-
-    // Web Intents ---------------------------------------------------------
-
-    // Called on a target service page to deliver an intent to the window.
-    // The ports are any transferred ports that accompany the intent as a result
-    // of MessagePort transfer.
-    virtual void deliverIntent(const WebIntent&, WebMessagePortChannelArray* ports, WebDeliveredIntentClient*) = 0;
 
 
     // Utility -------------------------------------------------------------

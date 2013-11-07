@@ -27,6 +27,7 @@
 #include "Pasteboard.h"
 
 #include "BitmapInfo.h"
+#include "CachedImage.h"
 #include "ClipboardUtilitiesWin.h"
 #include "Document.h"
 #include "DocumentFragment.h"
@@ -118,10 +119,9 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
 
     // Put CF_HTML format on the pasteboard 
     if (::OpenClipboard(m_owner)) {
-        ExceptionCode ec = 0;
         Vector<char> data;
         markupToCFHTML(createMarkup(selectedRange, 0, AnnotateForInterchange),
-            selectedRange->startContainer(ec)->document()->url().string(), data);
+            selectedRange->startContainer()->document()->url().string(), data);
         HGLOBAL cbData = createGlobalData(data);
         if (!::SetClipboardData(HTMLClipboardFormat, cbData))
             ::GlobalFree(cbData);

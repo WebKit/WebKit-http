@@ -83,7 +83,6 @@ public:
     virtual void frameWillDetachPage(Frame*) { }
 
     virtual bool shouldDeleteRange(Range*);
-    virtual bool shouldShowDeleteInterface(HTMLElement*);
     virtual bool smartInsertDeleteEnabled();
     void setSmartInsertDeleteEnabled(bool);
     virtual bool isSelectTrailingWhitespaceEnabled();
@@ -151,6 +150,9 @@ public:
     virtual void willSetInputMethodState();
     virtual void setInputMethodState(bool enabled);
     virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) { }
+#if USE(UNIFIED_TEXT_CHECKING)
+    virtual void checkTextOfParagraph(const UChar*, int, TextCheckingTypeMask, Vector<TextCheckingResult>&) { }
+#endif
     virtual TextCheckerClient* textChecker() { return this; }
 
 private:

@@ -93,6 +93,18 @@ TestSuite.prototype.assertTrue = function(value, opt_message)
 
 
 /**
+ * HasKey assertion tests that object has given key.
+ * @param {Object} object
+ * @param {string} key
+ */
+TestSuite.prototype.assertHasKey = function(object, key)
+{
+    if (!object.hasOwnProperty(key))
+        this.fail("Expected object to contain key '" + key + "'");
+};
+
+
+/**
  * Contains assertion tests that string contains substring.
  * @param {string} string Outer.
  * @param {string} substring Inner.
@@ -294,6 +306,54 @@ TestSuite.prototype.testContentScriptIsPresent = function()
 
 
 /**
+ * Tests renderer process memory size obtained and passed to inspector
+ * successfully.
+ */
+TestSuite.prototype.testRendererProcessNativeMemorySize = function()
+{
+    var test = this;
+    var KB = 1024;
+    var MB = KB * KB;
+    var arraySize = 20000000;
+    var initialSize;
+
+    function checkFuzzyValue(value, expected, allowedDelta)
+    {
+        var relativeDiff = Math.abs(value - expected) / expected;
+        if (relativeDiff > allowedDelta)
+            test.fail("Value (" + value + ") differs from expected (" + expected + ") by more than " + (allowedDelta * 100) + "%.");
+    }
+
+    function step1(error, memoryBlock)
+    {
+        test.assertTrue(!error, "An error has occurred: " + error);
+        test.assertTrue(memoryBlock.size > 1 * MB && memoryBlock.size < 1500 * MB, "Unfeasible process size: " + memoryBlock.size + " bytes.");
+
+        initialSize = memoryBlock.size;
+
+        test.evaluateInConsole_("var a = new Uint8Array(" + arraySize + ");", function() {});
+
+        MemoryAgent.getProcessMemoryDistribution(false, step2);
+    }
+
+    function step2(error, memoryBlock)
+    {
+        test.assertTrue(!error, "An error has occurred: " + error);
+        var deltaBytes = memoryBlock.size - initialSize;
+        // Checks that the process size has grown approximately by
+        // the size of the allocated array (within 10% confidence interval).
+        checkFuzzyValue(deltaBytes, arraySize, 0.1);
+
+        test.releaseControl();
+    }
+
+    MemoryAgent.getProcessMemoryDistribution(false, step1);
+
+    this.takeControl();
+};
+
+
+/**
  * Tests that scripts are not duplicaed on Scripts tab switch.
  */
 TestSuite.prototype.testNoScriptDuplicatesOnPanelSwitch = function()
@@ -327,9 +387,9 @@ TestSuite.prototype.testNoScriptDuplicatesOnPanelSwitch = function()
     function checkNoDuplicates() {
         var uiSourceCodes = test.nonAnonymousUISourceCodes_();
         for (var i = 0; i < uiSourceCodes.length; i++) {
-            var scriptName = uiSourceCodes[i].fileName;
+            var scriptName = uiSourceCodes[i].url;
             for (var j = i + 1; j < uiSourceCodes.length; j++)
-                test.assertTrue(scriptName !== uiSourceCodes[j].fileName, "Found script duplicates: " + test.uiSourceCodesToString_(uiSourceCodes));
+                test.assertTrue(scriptName !== uiSourceCodes[j].url, "Found script duplicates: " + test.uiSourceCodesToString_(uiSourceCodes));
         }
     }
 
@@ -554,28 +614,51 @@ TestSuite.prototype.testPauseInSharedWorkerInitialization = function()
     this.takeControl();
 };
 
+/**
+ * Tests that timeline receives frame signals.
+ */
+TestSuite.prototype.testTimelineFrames = function()
+{
+    var test = this;
+
+    function step1()
+    {
+        test.recordTimeline(onTimelineRecorded);
+        test.evaluateInConsole_("runTest()", function(){});
+    }
+
+    function onTimelineRecorded(records)
+    {
+        var frameCount = 0;
+        var recordsInFrame = {};
+
+        for (var i = 0; i < records.length; ++i) {
+            var record = records[i];
+            if (record.type !== "BeginFrame") {
+                recordsInFrame[record.type] = (recordsInFrame[record.type] || 0) + 1;
+                continue;
+            }
+            if (!frameCount++)
+                continue;
+            
+            test.assertHasKey(recordsInFrame, "FireAnimationFrame");
+            test.assertHasKey(recordsInFrame, "Layout");
+            test.assertHasKey(recordsInFrame, "RecalculateStyles");
+            test.assertHasKey(recordsInFrame, "Paint");
+            recordsInFrame = {};
+        }
+        test.assertTrue(frameCount >= 5, "Not enough frames");
+        test.releaseControl();
+    }
+
+    step1();
+    test.takeControl();
+}
 
 // Regression test for http://webk.it/97466
 TestSuite.prototype.testPageOverlayUpdate = function()
 {
     var test = this;
-    var records = [];
-    var dispatchOnRecordType = {}
-
-    function addRecord(event)
-    {
-        innerAddRecord(event.data);
-    }
-
-    function innerAddRecord(record)
-    {
-        records.push(record);
-        if (typeof dispatchOnRecordType[record.type] === "function")
-            dispatchOnRecordType[record.type](record);
-
-        if (record.children)
-            record.children.forEach(innerAddRecord);
-    }
 
     function populatePage()
     {
@@ -591,9 +674,6 @@ TestSuite.prototype.testPageOverlayUpdate = function()
 
     function step1()
     {
-        WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded, addRecord);
-        WebInspector.timelineManager.start();
-
         test.evaluateInConsole_(populatePage.toString() + "; populatePage();" +
                                 "inspect(document.getElementById('div1'))", function() {});
         WebInspector.notifications.addEventListener(WebInspector.ElementsTreeOutline.Events.SelectedNodeChanged, step2);
@@ -602,6 +682,7 @@ TestSuite.prototype.testPageOverlayUpdate = function()
     function step2()
     {
         WebInspector.notifications.removeEventListener(WebInspector.ElementsTreeOutline.Events.SelectedNodeChanged, step2);
+        test.recordTimeline(onTimelineRecorded);
         setTimeout(step3, 500);
     }
 
@@ -614,15 +695,12 @@ TestSuite.prototype.testPageOverlayUpdate = function()
     function step4()
     {
         WebInspector.notifications.removeEventListener(WebInspector.ElementsTreeOutline.Events.SelectedNodeChanged, step4);
-        dispatchOnRecordType.TimeStamp = step5;
-        test.evaluateInConsole_("console.timeStamp('ready')", function() {});
+        test.stopTimeline();
     }
 
-    function step5()
+    function onTimelineRecorded(records)
     {
         var types = {};
-        WebInspector.timelineManager.stop();
-        WebInspector.timelineManager.removeEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded, addRecord);
         for (var i = 0; i < records.length; ++i)
             types[records[i].type] = (types[records[i].type] || 0) + 1;
 
@@ -637,6 +715,48 @@ TestSuite.prototype.testPageOverlayUpdate = function()
 
     step1();
     this.takeControl();
+}
+
+
+/**
+ * Records timeline till console.timeStamp("ready"), invokes callback with resulting records.
+ * @param {function(Array.<Object>)} callback
+ */
+TestSuite.prototype.recordTimeline = function(callback)
+{
+    var records = [];
+    var dispatchOnRecordType = {}
+
+    WebInspector.timelineManager.addEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded, addRecord);
+    WebInspector.timelineManager.start();
+
+    function addRecord(event)
+    {
+        innerAddRecord(event.data);
+    }
+
+    function innerAddRecord(record)
+    {
+        records.push(record);
+        if (record.type === "TimeStamp" && record.data.message === "ready")
+            done();
+
+        if (record.children)
+            record.children.forEach(innerAddRecord);
+    }
+
+    function done()
+    {
+        WebInspector.timelineManager.stop();
+        WebInspector.timelineManager.removeEventListener(WebInspector.TimelineManager.EventTypes.TimelineEventRecorded, addRecord);
+        callback(records);
+    }
+}
+
+
+TestSuite.prototype.stopTimeline = function()
+{
+    this.evaluateInConsole_("console.timeStamp('ready')", function() {});
 }
 
 TestSuite.prototype.waitForTestResultsInConsole = function()
@@ -717,7 +837,7 @@ TestSuite.prototype.uiSourceCodesToString_ = function(uiSourceCodes)
 {
     var names = [];
     for (var i = 0; i < uiSourceCodes.length; i++)
-        names.push('"' + uiSourceCodes[i].fileName + '"');
+        names.push('"' + uiSourceCodes[i].url + '"');
     return names.join(",");
 };
 
@@ -778,7 +898,7 @@ TestSuite.prototype._scriptsAreParsed = function(expected)
     var missing = expected.slice(0);
     for (var i = 0; i < uiSourceCodes.length; ++i) {
         for (var j = 0; j < missing.length; ++j) {
-            if (uiSourceCodes[i].parsedURL.lastPathComponent.search(missing[j]) !== -1) {
+            if (uiSourceCodes[i].name().search(missing[j]) !== -1) {
                 missing.splice(j, 1);
                 break;
             }

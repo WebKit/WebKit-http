@@ -34,6 +34,7 @@
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
+#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
@@ -864,8 +865,7 @@ void XMLDocumentParser::endElementNs()
 
     if (!scriptingContentIsAllowed(m_scriptingPermission) && n->isElementNode() && toScriptElement(static_cast<Element*>(n.get()))) {
         popCurrentNode();
-        ExceptionCode ec;
-        n->remove(ec);
+        n->remove(IGNORE_EXCEPTION);
         return;
     }
 
@@ -1444,7 +1444,10 @@ void XMLDocumentParser::resumeParsing()
     // Then, write any pending data
     SegmentedString rest = m_pendingSrc;
     m_pendingSrc.clear();
-    append(rest);
+    // There is normally only one string left, so toString() shouldn't copy.
+    // In any case, the XML parser runs on the main thread and it's OK if
+    // the passed string has more than one reference.
+    append(rest.toString().impl());
 
     // Finally, if finish() has been called and write() didn't result
     // in any further callbacks being queued, call end()

@@ -126,7 +126,7 @@ bool CSSCursorImageValue::updateIfSVGCursorIsUsed(Element* element)
         if (cachedImageURL() != element->document()->completeURL(cursorElement->href()))
             clearCachedImage();
 
-        SVGElement* svgElement = static_cast<SVGElement*>(element);
+        SVGElement* svgElement = toSVGElement(element);
         m_referencedElements.add(svgElement);
         svgElement->setCursorImageValue(this);
         cursorElement->addClient(svgElement);
@@ -216,6 +216,12 @@ void CSSCursorImageValue::removeReferencedElement(SVGElement* element)
     m_referencedElements.remove(element);
 }
 #endif
+
+bool CSSCursorImageValue::equals(const CSSCursorImageValue& other) const
+{
+    return m_hasHotSpot ? other.m_hasHotSpot && m_hotSpot == other.m_hotSpot : !other.m_hasHotSpot
+        && compareCSSValuePtr(m_imageValue, other.m_imageValue);
+}
 
 void CSSCursorImageValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {

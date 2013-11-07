@@ -33,6 +33,7 @@
 #include "CrossOriginAccessControl.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
 #include "KURL.h"
@@ -68,7 +69,49 @@ template<> struct SequenceMemoryInstrumentationTraits<WebCore::CachedResourceCli
 using namespace WTF;
 
 namespace WebCore {
-    
+
+// These response headers are not copied from a revalidated response to the
+// cached response headers. For compatibility, this list is based on Chromium's
+// net/http/http_response_headers.cc.
+const char* const headersToIgnoreAfterRevalidation[] = {
+    "allow",
+    "connection",
+    "etag",
+    "expires",
+    "keep-alive",
+    "last-modified"
+    "proxy-authenticate",
+    "proxy-connection",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+    "www-authenticate",
+    "x-frame-options",
+    "x-xss-protection",
+};
+
+// Some header prefixes mean "Don't copy this header from a 304 response.".
+// Rather than listing all the relevant headers, we can consolidate them into
+// this list, also grabbed from Chromium's net/http/http_response_headers.cc.
+const char* const headerPrefixesToIgnoreAfterRevalidation[] = {
+    "content-",
+    "x-content-",
+    "x-webkit-"
+};
+
+static inline bool shouldUpdateHeaderAfterRevalidation(const AtomicString& header)
+{
+    for (size_t i = 0; i < WTF_ARRAY_LENGTH(headersToIgnoreAfterRevalidation); i++) {
+        if (header == headersToIgnoreAfterRevalidation[i])
+            return false;
+    }
+    for (size_t i = 0; i < WTF_ARRAY_LENGTH(headerPrefixesToIgnoreAfterRevalidation); i++) {
+        if (header.startsWith(headerPrefixesToIgnoreAfterRevalidation[i]))
+            return false;
+    }
+    return true;
+}
+
 static ResourceLoadPriority defaultPriorityForResourceType(CachedResource::Type type)
 {
     switch (type) {
@@ -205,7 +248,7 @@ CachedResource::~CachedResource()
     ASSERT(canDelete());
     ASSERT(!inCache());
     ASSERT(!m_deleted);
-    ASSERT(url().isNull() || memoryCache()->resourceForURL(KURL(ParsedURLString, url())) != this);
+    ASSERT(url().isNull() || memoryCache()->resourceForRequest(resourceRequest()) != this);
 
 #ifndef NDEBUG
     m_deleted = true;
@@ -283,8 +326,8 @@ void CachedResource::load(CachedResourceLoader* cachedResourceLoader, const Reso
         const String& lastModified = resourceToRevalidate->response().httpHeaderField("Last-Modified");
         const String& eTag = resourceToRevalidate->response().httpHeaderField("ETag");
         if (!lastModified.isEmpty() || !eTag.isEmpty()) {
-            ASSERT(cachedResourceLoader->cachePolicy() != CachePolicyReload);
-            if (cachedResourceLoader->cachePolicy() == CachePolicyRevalidate)
+            ASSERT(cachedResourceLoader->cachePolicy(type()) != CachePolicyReload);
+            if (cachedResourceLoader->cachePolicy(type()) == CachePolicyRevalidate)
                 m_resourceRequest.setHTTPHeaderField("Cache-Control", "max-age=0");
             if (!lastModified.isEmpty())
                 m_resourceRequest.setHTTPHeaderField("If-Modified-Since", lastModified);
@@ -380,9 +423,9 @@ double CachedResource::currentAge() const
     // RFC2616 13.2.3
     // No compensation for latency as that is not terribly important in practice
     double dateValue = m_response.date();
-    double apparentAge = isfinite(dateValue) ? std::max(0., m_responseTimestamp - dateValue) : 0;
+    double apparentAge = std::isfinite(dateValue) ? std::max(0., m_responseTimestamp - dateValue) : 0;
     double ageValue = m_response.age();
-    double correctedReceivedAge = isfinite(ageValue) ? std::max(apparentAge, ageValue) : apparentAge;
+    double correctedReceivedAge = std::isfinite(ageValue) ? std::max(apparentAge, ageValue) : apparentAge;
     double residentTime = currentTime() - m_responseTimestamp;
     return correctedReceivedAge + residentTime;
 }
@@ -395,15 +438,15 @@ double CachedResource::freshnessLifetime() const
 
     // RFC2616 13.2.4
     double maxAgeValue = m_response.cacheControlMaxAge();
-    if (isfinite(maxAgeValue))
+    if (std::isfinite(maxAgeValue))
         return maxAgeValue;
     double expiresValue = m_response.expires();
     double dateValue = m_response.date();
-    double creationTime = isfinite(dateValue) ? dateValue : m_responseTimestamp;
-    if (isfinite(expiresValue))
+    double creationTime = std::isfinite(dateValue) ? dateValue : m_responseTimestamp;
+    if (std::isfinite(expiresValue))
         return expiresValue - creationTime;
     double lastModifiedValue = m_response.lastModified();
-    if (isfinite(lastModifiedValue))
+    if (std::isfinite(lastModifiedValue))
         return (creationTime - lastModifiedValue) * 0.1;
     // If no cache headers are present, the specification leaves the decision to the UA. Other browsers seem to opt for 0.
     return 0;
@@ -728,19 +771,22 @@ void CachedResource::switchClientsToRevalidatedResource()
     }
     m_switchingClientsToRevalidatedResource = false;
 }
-    
+
 void CachedResource::updateResponseAfterRevalidation(const ResourceResponse& validatingResponse)
 {
     m_responseTimestamp = currentTime();
 
-    DEFINE_STATIC_LOCAL(const AtomicString, contentHeaderPrefix, ("content-", AtomicString::ConstructFromLiteral));
     // RFC2616 10.3.5
     // Update cached headers from the 304 response
     const HTTPHeaderMap& newHeaders = validatingResponse.httpHeaderFields();
     HTTPHeaderMap::const_iterator end = newHeaders.end();
     for (HTTPHeaderMap::const_iterator it = newHeaders.begin(); it != end; ++it) {
-        // Don't allow 304 response to update content headers, these can't change but some servers send wrong values.
-        if (it->key.startsWith(contentHeaderPrefix, false))
+        // Entity headers should not be sent by servers when generating a 304
+        // response; misconfigured servers send them anyway. We shouldn't allow
+        // such headers to update the original request. We'll base this on the
+        // list defined by RFC2616 7.1, with a few additions for extension headers
+        // we care about.
+        if (!shouldUpdateHeaderAfterRevalidation(it->key))
             continue;
         m_response.setHTTPHeaderField(it->key, it->value);
     }
@@ -871,8 +917,8 @@ void CachedResource::setLoadPriority(ResourceLoadPriority loadPriority)
     if (loadPriority == m_loadPriority)
         return;
     m_loadPriority = loadPriority;
-    if (m_loader && m_loader->handle())
-        m_loader->handle()->didChangePriority(loadPriority);
+    if (m_loader)
+        m_loader->didChangePriority(loadPriority);
 }
 
 
@@ -898,7 +944,7 @@ void CachedResource::CachedResourceCallback::timerFired(Timer<CachedResourceCall
 void CachedResource::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResource);
-    memoryObjectInfo->setName(url().string());
+    memoryObjectInfo->setName(url().string().utf8().data());
     info.addMember(m_resourceRequest, "resourceRequest");
     info.addMember(m_fragmentIdentifierForRequest, "fragmentIdentifierForRequest");
     info.addMember(m_clients, "clients");

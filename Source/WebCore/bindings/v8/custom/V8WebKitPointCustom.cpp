@@ -39,25 +39,25 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8WebKitPoint::constructorCallbackCustom(const v8::Arguments& args)
+v8::Handle<v8::Value> V8WebKitPoint::constructorCustom(const v8::Arguments& args)
 {
     float x = 0;
     float y = 0;
     if (args.Length() > 1) {
         if (!args[0]->IsUndefined()) {
             x = toFloat(args[0]);
-            if (isnan(x))
+            if (std::isnan(x))
                 x = 0;
         }
         if (!args[1]->IsUndefined()) {
             y = toFloat(args[1]);
-            if (isnan(y))
+            if (std::isnan(y))
                 y = 0;
         }
     }
     RefPtr<WebKitPoint> point = WebKitPoint::create(x, y);
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::associateObjectWithWrapper(point.release(), &info, wrapper, args.GetIsolate());
+    V8DOMWrapper::associateObjectWithWrapper(point.release(), &info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 }
 

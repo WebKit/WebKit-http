@@ -39,7 +39,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8DOMFormData::constructorCallbackCustom(const v8::Arguments& args)
+v8::Handle<v8::Value> V8DOMFormData::constructorCustom(const v8::Arguments& args)
 {
     HTMLFormElement* form = 0;
     if (args.Length() > 0 && V8HTMLFormElement::HasInstance(args[0], args.GetIsolate()))
@@ -47,11 +47,11 @@ v8::Handle<v8::Value> V8DOMFormData::constructorCallbackCustom(const v8::Argumen
     RefPtr<DOMFormData> domFormData = DOMFormData::create(form);
 
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::associateObjectWithWrapper(domFormData.release(), &info, wrapper, args.GetIsolate());
+    V8DOMWrapper::associateObjectWithWrapper(domFormData.release(), &info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 }
 
-v8::Handle<v8::Value> V8DOMFormData::appendCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8DOMFormData::appendMethodCustom(const v8::Arguments& args)
 {
     if (args.Length() < 2)
         return throwError(v8SyntaxError, "Not enough arguments", args.GetIsolate());

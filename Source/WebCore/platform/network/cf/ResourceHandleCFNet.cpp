@@ -184,7 +184,7 @@ static CFURLRequestRef willSendRequest(CFURLConnectionRef conn, CFURLRequestRef 
         request = cfRequest;
 
     // Should not set Referer after a redirect from a secure resource to non-secure one.
-    if (!request.url().protocolIs("https") && protocolIs(request.httpReferrer(), "https"))
+    if (!request.url().protocolIs("https") && protocolIs(request.httpReferrer(), "https") && handle->context()->shouldClearReferrerOnHTTPSToHTTPRedirect())
         request.clearHTTPReferrer();
 
     handle->willSendRequest(request, cfRedirectResponse);
@@ -192,7 +192,7 @@ static CFURLRequestRef willSendRequest(CFURLConnectionRef conn, CFURLRequestRef 
     if (request.isNull())
         return 0;
 
-    cfRequest = request.cfURLRequest();
+    cfRequest = request.cfURLRequest(UpdateHTTPBody);
 
     CFRetain(cfRequest);
     return cfRequest;
@@ -218,7 +218,7 @@ static void didReceiveResponse(CFURLConnectionRef conn, CFURLResponseRef cfRespo
     if (statusCode != 304)
         adjustMIMETypeIfNecessary(cfResponse);
 
-    if (_CFURLRequestCopyProtocolPropertyForKey(handle->firstRequest().cfURLRequest(), CFSTR("ForceHTMLMIMEType")))
+    if (_CFURLRequestCopyProtocolPropertyForKey(handle->firstRequest().cfURLRequest(DoNotUpdateHTTPBody), CFSTR("ForceHTMLMIMEType")))
         wkSetCFURLResponseMIMEType(cfResponse, CFSTR("text/html"));
 #else
     if (!CFURLResponseGetMIMEType(cfResponse)) {
@@ -379,38 +379,7 @@ ResourceHandle::~ResourceHandle()
     LOG(Network, "CFNet - Destroying job %p (%s)", this, d->m_firstRequest.url().string().utf8().data());
 }
 
-static CFDictionaryRef createConnectionProperties(bool shouldUseCredentialStorage)
-{
-    static const CFStringRef webKitPrivateSessionCF = CFSTR("WebKitPrivateSession");
-    static const CFStringRef _kCFURLConnectionSessionID = CFSTR("_kCFURLConnectionSessionID");
-    static const CFStringRef kCFURLConnectionSocketStreamProperties = CFSTR("kCFURLConnectionSocketStreamProperties");
-
-    CFDictionaryRef sessionID = shouldUseCredentialStorage ?
-        CFDictionaryCreate(0, 0, 0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks) :
-        CFDictionaryCreate(0, (const void**)&_kCFURLConnectionSessionID, (const void**)&webKitPrivateSessionCF, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-
-    CFDictionaryRef propertiesDictionary = CFDictionaryCreate(0, (const void**)&kCFURLConnectionSocketStreamProperties, (const void**)&sessionID, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-
-    CFRelease(sessionID);
-    return propertiesDictionary;
-}
-
-static bool shouldRelaxThirdPartyCookiePolicy(NetworkingContext* context, const KURL& url)
-{
-    // If a URL already has cookies, then we'll relax the 3rd party cookie policy and accept new cookies.
-
-    RetainPtr<CFHTTPCookieStorageRef> cfCookieStorage = context->storageSession().cookieStorage();
-    CFHTTPCookieStorageAcceptPolicy cookieAcceptPolicy = CFHTTPCookieStorageGetCookieAcceptPolicy(cfCookieStorage.get());
-
-    if (cookieAcceptPolicy != CFHTTPCookieStorageAcceptPolicyOnlyFromMainDocumentDomain)
-        return false;
-
-    RetainPtr<CFURLRef> cfURL = adoptCF(url.createCFURL());
-    RetainPtr<CFArrayRef> cookies = adoptCF(CFHTTPCookieStorageCopyCookiesForURL(cfCookieStorage.get(), cfURL.get(), false));
-    return CFArrayGetCount(cookies.get());
-}
-
-void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool shouldRelaxThirdPartyCookiePolicy, bool shouldContentSniff)
+void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff)
 {
     if ((!d->m_user.isEmpty() || !d->m_pass.isEmpty()) && !firstRequest().url().protocolIsInHTTPFamily()) {
         // Credentials for ftp can only be passed in URL, the didReceiveAuthenticationChallenge delegate call won't be made.
@@ -420,10 +389,7 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         firstRequest().setURL(urlWithCredentials);
     }
 
-    if (shouldRelaxThirdPartyCookiePolicy)
-        firstRequest().setFirstPartyForCookies(firstRequest().url());
-
-    // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication, 
+    // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication,
     // try and reuse the credential preemptively, as allowed by RFC 2617.
     if (shouldUseCredentialStorage && firstRequest().url().protocolIsInHTTPFamily()) {
         if (d->m_user.isEmpty() && d->m_pass.isEmpty()) {
@@ -443,7 +409,7 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         applyBasicAuthorizationHeader(firstRequest(), d->m_initialCredential);
     }
 
-    RetainPtr<CFMutableURLRequestRef> request = adoptCF(CFURLRequestCreateMutableCopy(kCFAllocatorDefault, firstRequest().cfURLRequest()));
+    RetainPtr<CFMutableURLRequestRef> request = adoptCF(CFURLRequestCreateMutableCopy(kCFAllocatorDefault, firstRequest().cfURLRequest(UpdateHTTPBody)));
     wkSetRequestStorageSession(d->m_storageSession.get(), request.get());
     
     if (!shouldContentSniff)
@@ -491,26 +457,39 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         0
 #endif
     };
-    RetainPtr<CFDictionaryRef> connectionProperties(AdoptCF, createConnectionProperties(shouldUseCredentialStorage));
 
-    d->m_connection.adoptCF(CFURLConnectionCreateWithProperties(0, request.get(), reinterpret_cast<CFURLConnectionClient*>(&client), connectionProperties.get()));
+    CFMutableDictionaryRef streamProperties  = CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    if (!shouldUseCredentialStorage)
+        CFDictionarySetValue(streamProperties, CFSTR("_kCFURLConnectionSessionID"), CFSTR("WebKitPrivateSession"));
+
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090)
+    RetainPtr<CFDataRef> sourceApplicationAuditData = d->m_context->sourceApplicationAuditData();
+    if (sourceApplicationAuditData)
+        CFDictionarySetValue(streamProperties, CFSTR("kCFStreamPropertySourceApplication"), sourceApplicationAuditData.get());
+#endif
+
+    static const CFStringRef kCFURLConnectionSocketStreamProperties = CFSTR("kCFURLConnectionSocketStreamProperties");
+    RetainPtr<CFDictionaryRef> propertiesDictionary = adoptCF(CFDictionaryCreate(0, (const void**)&kCFURLConnectionSocketStreamProperties, (const void**)&streamProperties, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    CFRelease(streamProperties);
+
+    d->m_connection.adoptCF(CFURLConnectionCreateWithProperties(0, request.get(), reinterpret_cast<CFURLConnectionClient*>(&client), propertiesDictionary.get()));
 }
 
-bool ResourceHandle::start(NetworkingContext* context)
+bool ResourceHandle::start()
 {
-    if (!context)
+    if (!d->m_context)
         return false;
 
     // If NetworkingContext is invalid then we are no longer attached to a Page,
     // this must be an attempted load from an unload handler, so let's just block it.
-    if (!context->isValid())
+    if (!d->m_context->isValid())
         return false;
 
-    d->m_storageSession = context->storageSession().platformSession();
+    d->m_storageSession = d->m_context->storageSession().platformSession();
 
     bool shouldUseCredentialStorage = !client() || client()->shouldUseCredentialStorage(this);
 
-    createCFURLConnection(shouldUseCredentialStorage, shouldRelaxThirdPartyCookiePolicy(context, firstRequest().url()), d->m_shouldContentSniff);
+    createCFURLConnection(shouldUseCredentialStorage, d->m_shouldContentSniff);
 
 #if PLATFORM(WIN)
     CFURLConnectionScheduleWithCurrentMessageQueue(d->m_connection.get());
@@ -727,9 +706,9 @@ CFStringRef ResourceHandle::synchronousLoadRunLoopMode()
     return CFSTR("WebCoreSynchronousLoaderRunLoopMode");
 }
 
-void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& vector)
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& vector)
 {
-    LOG(Network, "ResourceHandle::loadResourceSynchronously:%s allowStoredCredentials:%u", request.url().string().utf8().data(), storedCredentials);
+    LOG(Network, "ResourceHandle::platformLoadResourceSynchronously:%s allowStoredCredentials:%u", request.url().string().utf8().data(), storedCredentials);
 
     ASSERT(!request.isEmpty());
 
@@ -739,7 +718,7 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
     OwnPtr<WebCoreSynchronousLoaderClient> client = WebCoreSynchronousLoaderClient::create(response, error);
     client->setAllowStoredCredentials(storedCredentials == AllowStoredCredentials);
 
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(request, client.get(), false /*defersLoading*/, true /*shouldContentSniff*/));
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, client.get(), false /*defersLoading*/, true /*shouldContentSniff*/));
 
     handle->d->m_storageSession = context->storageSession().platformSession();
 
@@ -748,7 +727,7 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
         return;
     }
 
-    handle->createCFURLConnection(storedCredentials == AllowStoredCredentials, shouldRelaxThirdPartyCookiePolicy(context, request.url()), ResourceHandle::shouldContentSniffURL(request.url()));
+    handle->createCFURLConnection(storedCredentials == AllowStoredCredentials, ResourceHandle::shouldContentSniffURL(request.url()));
 
     CFURLConnectionScheduleWithRunLoop(handle->connection(), CFRunLoopGetCurrent(), synchronousLoadRunLoopMode());
     CFURLConnectionScheduleDownloadWithRunLoop(handle->connection(), CFRunLoopGetCurrent(), synchronousLoadRunLoopMode());
@@ -924,4 +903,3 @@ void ResourceHandle::handleDataArray(CFArrayRef dataArray)
 #endif
 
 } // namespace WebCore
-

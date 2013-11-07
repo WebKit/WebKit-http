@@ -42,8 +42,6 @@ CONFIG(release, debug|release): DEFINES *= NDEBUG
 
 DEFINES += $$configDefines()
 
-DEPENDPATH += $$OUT_PWD
-
 INCLUDEPATH += \
     $${ROOT_WEBKIT_DIR}/Source \
     $${ROOT_BUILD_DIR}/Source/include \
@@ -51,7 +49,7 @@ INCLUDEPATH += \
 
 CONFIG -= warn_on
 
-*-g++*: QMAKE_CXXFLAGS = \
+!compiling_thirdparty_code:*-g++*: QMAKE_CXXFLAGS = \
     -Wall \
     -Wextra \
     -Wreturn-type \
@@ -269,7 +267,14 @@ contains(TEMPLATE, lib) {
     # system already takes care of this for the top level QtWebKit library.
     !qt_install_module:debug_and_release: TARGET = $$qtLibraryTarget($$TARGET)
 
-    isEmpty(DESTDIR): DESTDIR = $$activeBuildConfig()
+    gnu_thin_archives {
+        # Replace the hardcoded archiver command line
+        # options to use GNU ar's thin archive format.
+        AR_COMMAND = $$split(QMAKE_AR, " ")
+        QMAKE_AR = $$member(AR_COMMAND, 0) cruT
+    }
+
+    isEmpty(DESTDIR): DESTDIR = $$targetSubDir()
 
     DEFINES += QT_ASCII_CAST_WARNINGS
 

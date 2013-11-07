@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "WebFullScreenManagerProxy.h"
+#include "WebFullScreenManagerProxyMessages.h"
 
 #if ENABLE(FULLSCREEN_API)
 
@@ -37,6 +38,7 @@ namespace WebKit {
 
 void WebFullScreenManagerProxy::invalidate()
 {
+    m_page->process()->removeMessageReceiver(Messages::WebFullScreenManagerProxy::messageReceiverName(), m_page->pageID());
     m_webView = 0;
 }
 
@@ -57,7 +59,7 @@ void WebFullScreenManagerProxy::enterFullScreen()
         return;
 
     willEnterFullScreen();
-    EwkView::fromEvasObject(m_webView)->enterFullScreen();
+    toEwkView(m_webView)->enterFullScreen();
     didEnterFullScreen();
 }
 
@@ -68,7 +70,7 @@ void WebFullScreenManagerProxy::exitFullScreen()
 
 
     willExitFullScreen();
-    EwkView::fromEvasObject(m_webView)->exitFullScreen();
+    toEwkView(m_webView)->exitFullScreen();
     didExitFullScreen();
 }
 

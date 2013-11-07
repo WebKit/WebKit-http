@@ -49,6 +49,7 @@ namespace WebCore {
     class ResourceError;
     class ResourceRequest;
     class ResourceResponse;
+    class TextCheckingRequestData;
     class UserStyleSheet;
     class UserScript;
     struct CompositionUnderline;
@@ -161,12 +162,6 @@ template<> struct ArgumentCoder<WebCore::ResourceRequest> {
 };
 
 template<> struct ArgumentCoder<WebCore::ResourceResponse> {
-#if PLATFORM(MAC)
-    static const bool kShouldSerializeWebCoreData = false;
-#else
-    static const bool kShouldSerializeWebCoreData = true;
-#endif
-
     static void encode(ArgumentEncoder&, const WebCore::ResourceResponse&);
     static bool decode(ArgumentDecoder&, WebCore::ResourceResponse&);
     static void encodePlatformData(ArgumentEncoder&, const WebCore::ResourceResponse&);
@@ -231,6 +226,11 @@ template<> struct ArgumentCoder<WebCore::FileChooserSettings> {
 template<> struct ArgumentCoder<WebCore::GrammarDetail> {
     static void encode(ArgumentEncoder&, const WebCore::GrammarDetail&);
     static bool decode(ArgumentDecoder&, WebCore::GrammarDetail&);
+};
+
+template<> struct ArgumentCoder<WebCore::TextCheckingRequestData> {
+    static void encode(ArgumentEncoder&, const WebCore::TextCheckingRequestData&);
+    static bool decode(ArgumentDecoder&, WebCore::TextCheckingRequestData&);
 };
 
 template<> struct ArgumentCoder<WebCore::TextCheckingResult> {

@@ -265,7 +265,7 @@ bool ResourceHandle::onRequestComplete()
     return false;
 }
 
-bool ResourceHandle::start(NetworkingContext* context)
+bool ResourceHandle::start()
 {
     if (firstRequest().url().isLocalFile() || firstRequest().url().protocolIsData()) {
         ref(); // balanced by deref in fileLoadTimer
@@ -277,7 +277,7 @@ bool ResourceHandle::start(NetworkingContext* context)
     }
 
     if (!d->m_internetHandle)
-        d->m_internetHandle = asynchronousInternetHandle(context->userAgent());
+        d->m_internetHandle = asynchronousInternetHandle(d->m_context->userAgent());
 
     if (!d->m_internetHandle)
         return false;
@@ -414,15 +414,15 @@ void ResourceHandle::cancel()
         d->m_fileLoadTimer.stop();
 }
 
-void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials storedCredentials, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     UNUSED_PARAM(storedCredentials);
 
     WebCoreSynchronousLoader syncLoader(error, response, data, request.httpUserAgent());
-    ResourceHandle handle(request, &syncLoader, true, false);
+    ResourceHandle handle(context, request, &syncLoader, true, false);
 
     handle.setSynchronousInternetHandle(syncLoader.internetHandle());
-    handle.start(context);
+    handle.start();
 }
 
 void ResourceHandle::setSynchronousInternetHandle(HINTERNET internetHandle)

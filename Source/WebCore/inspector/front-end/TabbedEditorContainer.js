@@ -170,18 +170,8 @@ WebInspector.TabbedEditorContainer.prototype = {
         const maxDisplayNameLength = 30;
         const minDisplayQueryParamLength = 5;
 
-        var title;
-        var parsedURL = uiSourceCode.parsedURL;
-        if (!parsedURL.isValid)
-            title = parsedURL.url ? parsedURL.url.trimMiddle(maxDisplayNameLength) : WebInspector.UIString("(program)");
-        else {
-            var maxDisplayQueryParamLength = Math.max(minDisplayQueryParamLength, maxDisplayNameLength - parsedURL.lastPathComponent.length);
-            var displayQueryParams = parsedURL.queryParams ? "?" + parsedURL.queryParams.trimEnd(maxDisplayQueryParamLength - 1) : "";
-            var displayLastPathComponent = parsedURL.lastPathComponent.trimMiddle(maxDisplayNameLength - displayQueryParams.length);
-            var displayName = displayLastPathComponent + displayQueryParams;
-            title = displayName || WebInspector.UIString("(program)");
-        }
-        
+        var title = uiSourceCode.name();
+        title = title ? title.trimMiddle(maxDisplayNameLength) : WebInspector.UIString("(program)");
         if (uiSourceCode.isDirty())
             title += "*";
         return title;
@@ -202,8 +192,19 @@ WebInspector.TabbedEditorContainer.prototype = {
 
         var tabId = this._tabIds.get(uiSourceCode) || this._appendFileTab(uiSourceCode, false);
 
+        if (!this._currentFile)
+            return;
+
         // Select tab if this file was the last to be shown.
-        if (!index)
+        if (!index) {
+            this._innerShowFile(uiSourceCode, true);
+            return;
+        }
+
+        var currentProjectType = this._currentFile.project().type();
+        var addedProjectType = uiSourceCode.project().type();
+        var snippetsProjectType = WebInspector.projectTypes.Snippets;
+        if (this._history.index(this._currentFile.uri()) && currentProjectType === snippetsProjectType && addedProjectType !== snippetsProjectType)
             this._innerShowFile(uiSourceCode, true);
     },
 
@@ -491,8 +492,10 @@ WebInspector.TabbedEditorContainer.History.prototype = {
     _rebuildItemIndex: function()
     {
         this._itemsIndex = {};
-        for (var i = 0; i < this._items.length; ++i)
+        for (var i = 0; i < this._items.length; ++i) {
+            console.assert(!this._itemsIndex.hasOwnProperty(this._items[i].url));
             this._itemsIndex[this._items[i].url] = i;
+        }
     },
 
     /**

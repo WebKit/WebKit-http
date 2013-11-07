@@ -50,6 +50,12 @@ iframe.contentWindow.document.close();
 var write = iframe.contentWindow.document.lastChild.lastChild.lastChild !== null;
 var ignoreTitle = iframe.contentWindow.document.getElementsByTagName("title")[0] !== undefined;
 
+if (window.forceDataURLs)
+    write = false;
+
+if (!write && window.internals && internals.settings.setUseThreadedHTMLParserForDataURLs)
+    internals.settings.setUseThreadedHTMLParserForDataURLs(true);
+
 window.onload = function()
 {
     stat.data = "Running";

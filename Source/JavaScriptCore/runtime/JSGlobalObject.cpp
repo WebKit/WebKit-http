@@ -47,9 +47,9 @@
 #include "FunctionPrototype.h"
 #include "GetterSetter.h"
 #include "Interpreter.h"
+#include "JSAPIWrapperObject.h"
 #include "JSActivation.h"
 #include "JSBoundFunction.h"
-#include "JSCJSValueInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
@@ -71,6 +71,8 @@
 #include "NumberPrototype.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
+#include "Operations.h"
+#include "ParserError.h"
 #include "RegExpConstructor.h"
 #include "RegExpMatchesArray.h"
 #include "RegExpObject.h"
@@ -115,7 +117,6 @@ JSGlobalObject::JSGlobalObject(JSGlobalData& globalData, Structure* structure, c
     , m_weakRandom(Options::forceWeakRandomSeed() ? Options::forcedWeakRandomSeed() : static_cast<unsigned>(randomNumber() * (std::numeric_limits<unsigned>::max() + 1.0)))
     , m_evalEnabled(true)
     , m_globalObjectMethodTable(globalObjectMethodTable ? globalObjectMethodTable : &s_globalObjectMethodTable)
-    , m_apiData(0)
 {
 }
 
@@ -229,6 +230,7 @@ void JSGlobalObject::reset(JSValue prototype)
     m_argumentsStructure.set(exec->globalData(), this, Arguments::createStructure(exec->globalData(), this, m_objectPrototype.get()));
     m_callbackConstructorStructure.set(exec->globalData(), this, JSCallbackConstructor::createStructure(exec->globalData(), this, m_objectPrototype.get()));
     m_callbackObjectStructure.set(exec->globalData(), this, JSCallbackObject<JSDestructibleObject>::createStructure(exec->globalData(), this, m_objectPrototype.get()));
+    m_objcWrapperObjectStructure.set(exec->globalData(), this, JSCallbackObject<JSAPIWrapperObject>::createStructure(exec->globalData(), this, m_objectPrototype.get()));
 
     m_arrayPrototype.set(exec->globalData(), this, ArrayPrototype::create(exec, this, ArrayPrototype::createStructure(exec->globalData(), this, m_objectPrototype.get())));
     
@@ -511,6 +513,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(&thisObject->m_callbackConstructorStructure);
     visitor.append(&thisObject->m_callbackFunctionStructure);
     visitor.append(&thisObject->m_callbackObjectStructure);
+    visitor.append(&thisObject->m_objcWrapperObjectStructure);
     visitor.append(&thisObject->m_dateStructure);
     visitor.append(&thisObject->m_nullPrototypeObjectStructure);
     visitor.append(&thisObject->m_errorStructure);
@@ -614,13 +617,13 @@ UnlinkedProgramCodeBlock* JSGlobalObject::createProgramCodeBlock(CallFrame* call
     return unlinkedCode;
 }
 
-UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, EvalExecutable* executable, JSObject** exception)
+UnlinkedEvalCodeBlock* JSGlobalObject::createEvalCodeBlock(CallFrame* callFrame, JSScope* scope, EvalExecutable* executable, JSObject** exception)
 {
     ParserError error;
     JSParserStrictness strictness = executable->isStrictMode() ? JSParseStrict : JSParseNormal;
     DebuggerMode debuggerMode = hasDebugger() ? DebuggerOn : DebuggerOff;
     ProfilerMode profilerMode = hasProfiler() ? ProfilerOn : ProfilerOff;
-    UnlinkedEvalCodeBlock* unlinkedCode = globalData().codeCache()->getEvalCodeBlock(globalData(), executable, executable->source(), strictness, debuggerMode, profilerMode, error);
+    UnlinkedEvalCodeBlock* unlinkedCode = globalData().codeCache()->getEvalCodeBlock(globalData(), scope, executable, executable->source(), strictness, debuggerMode, profilerMode, error);
 
     if (hasDebugger())
         debugger()->sourceParsed(callFrame, executable->source().provider(), error.m_line, error.m_message);

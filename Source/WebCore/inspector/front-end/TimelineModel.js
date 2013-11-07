@@ -56,6 +56,7 @@ WebInspector.TimelineModel.RecordType = {
     InvalidateLayout: "InvalidateLayout",
     Layout: "Layout",
     Paint: "Paint",
+    Rasterize: "Rasterize",
     ScrollLayer: "ScrollLayer",
     DecodeImage: "DecodeImage",
     ResizeImage: "ResizeImage",
@@ -89,7 +90,12 @@ WebInspector.TimelineModel.RecordType = {
 
     RequestAnimationFrame: "RequestAnimationFrame",
     CancelAnimationFrame: "CancelAnimationFrame",
-    FireAnimationFrame: "FireAnimationFrame"
+    FireAnimationFrame: "FireAnimationFrame",
+
+    WebSocketCreate : "WebSocketCreate",
+    WebSocketSendHandshakeRequest : "WebSocketSendHandshakeRequest",
+    WebSocketReceiveHandshakeResponse : "WebSocketReceiveHandshakeResponse",
+    WebSocketDestroy : "WebSocketDestroy",
 }
 
 WebInspector.TimelineModel.Events = {

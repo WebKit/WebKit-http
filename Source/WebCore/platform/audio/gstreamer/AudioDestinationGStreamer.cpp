@@ -43,8 +43,10 @@ gboolean messageCallback(GstBus*, GstMessage* message, AudioDestinationGStreamer
     return destination->handleMessage(message);
 }
 
-PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
+PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback, const String&, unsigned numberOfInputChannels, unsigned numberOfOutputChannels, float sampleRate)
 {
+    // FIXME: make use of inputDeviceId as appropriate.
+
     // FIXME: Add support for local/live audio input.
     if (numberOfInputChannels)
         LOG(Media, "AudioDestination::create(%u, %u, %f) - unhandled input channels", numberOfInputChannels, numberOfOutputChannels, sampleRate);
@@ -59,6 +61,13 @@ PassOwnPtr<AudioDestination> AudioDestination::create(AudioIOCallback& callback,
 float AudioDestination::hardwareSampleRate()
 {
     return 44100;
+}
+
+unsigned long AudioDestination::maxChannelCount()
+{
+    // FIXME: query the default audio hardware device to return the actual number
+    // of channels of the device. Also see corresponding FIXME in create().
+    return 0;
 }
 
 #ifndef GST_API_VERSION_1

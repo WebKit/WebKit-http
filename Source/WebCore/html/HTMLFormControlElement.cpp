@@ -63,7 +63,7 @@ HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Doc
     , m_hasAutofocused(false)
 {
     setForm(form ? form : findFormAncestor());
-    setHasCustomCallbacks();
+    setHasCustomStyleCallbacks();
 }
 
 HTMLFormControlElement::~HTMLFormControlElement()
@@ -72,7 +72,10 @@ HTMLFormControlElement::~HTMLFormControlElement()
 
 String HTMLFormControlElement::formEnctype() const
 {
-    return FormSubmission::Attributes::parseEncodingType(fastGetAttribute(formenctypeAttr));
+    const AtomicString& formEnctypeAttr = fastGetAttribute(formenctypeAttr);
+    if (formEnctypeAttr.isNull())
+        return emptyString();
+    return FormSubmission::Attributes::parseEncodingType(formEnctypeAttr);
 }
 
 void HTMLFormControlElement::setFormEnctype(const String& value)
@@ -177,7 +180,7 @@ static bool shouldAutofocus(HTMLFormControlElement* element)
         return false;
     if (element->document()->isSandboxed(SandboxAutomaticFeatures)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        element->document()->addConsoleMessage(HTMLMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set.");
+        element->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked autofocusing on a form control because the form's frame is sandboxed and the 'allow-scripts' permission is not set.");
         return false;
     }
     if (element->hasAutofocused())
@@ -278,7 +281,9 @@ bool HTMLFormControlElement::disabled() const
 
     if (m_ancestorDisabledState == AncestorDisabledStateUnknown)
         updateAncestorDisabledState();
-    return m_ancestorDisabledState == AncestorDisabledStateDisabled;
+    if (m_ancestorDisabledState == AncestorDisabledStateDisabled)
+        return true;
+    return HTMLElement::disabled();
 }
 
 bool HTMLFormControlElement::isRequired() const

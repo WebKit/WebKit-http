@@ -43,12 +43,14 @@
 #include "WebView.h"
 #include "WebViewClient.h"
 
+#include <functional>
 #include <gtest/gtest.h>
 #include <list>
+#include <public/Platform.h>
 #include <public/WebPrerender.h>
 #include <public/WebPrerenderingSupport.h>
 #include <public/WebString.h>
-#include <webkit/support/webkit_support.h>
+#include <public/WebUnitTestSupport.h>
 #include <wtf/OwnPtr.h>
 
 using namespace WebKit;
@@ -181,7 +183,7 @@ public:
 
     ~PrerenderingTest()
     {
-        webkit_support::UnregisterAllMockedURLs();
+        Platform::current()->unitTestSupport()->unregisterAllMockedURLs();
         if (m_webView)
             close();
     }
@@ -195,13 +197,12 @@ public:
         m_webView->setPrerendererClient(&m_prerendererClient);
 
         FrameTestHelpers::loadFrame(m_webView->mainFrame(), std::string(baseURL) + fileName);
-        webkit_support::ServeAsynchronousMockedRequests();
+        Platform::current()->unitTestSupport()->serveAsynchronousMockedRequests();
     }
 
     void navigateAway()
     {
         FrameTestHelpers::loadFrame(m_webView->mainFrame(), "about:blank");
-        //        webkit_support::RunAllPendingMessages();
     }
 
     void close()

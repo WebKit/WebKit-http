@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-static String keyIdentifierForBlackBerryCharacter(unsigned short character)
+static String keyIdentifierForBlackBerryCharacter(unsigned character)
 {
     switch (character) {
     case KEYCODE_RETURN:
@@ -111,9 +111,9 @@ static String keyIdentifierForBlackBerryCharacter(unsigned short character)
     }
 }
 
-static int windowsKeyCodeForBlackBerryCharacter(unsigned short character)
+static int windowsKeyCodeForBlackBerryKeycode(unsigned keycode)
 {
-    switch (character) {
+    switch (keycode) {
     case KEYCODE_RETURN:
     case KEYCODE_KP_ENTER:
         return VK_RETURN; // (0D) Return key
@@ -357,7 +357,7 @@ static int windowsKeyCodeForBlackBerryCharacter(unsigned short character)
     }
 }
 
-unsigned short adjustCharacterFromOS(unsigned short character)
+unsigned adjustCharacterFromOS(unsigned character)
 {
     // Use windows key character as ASCII value when possible to enhance readability.
     switch (character) {
@@ -439,15 +439,23 @@ static inline PlatformKeyboardEvent::Type toWebCorePlatformKeyboardEventType(con
 }
 
 PlatformKeyboardEvent::PlatformKeyboardEvent(const BlackBerry::Platform::KeyboardEvent& event)
-    : PlatformEvent(toWebCorePlatformKeyboardEventType(event.type()), event.shiftActive() || (event.character() == KEYCODE_BACK_TAB), event.ctrlActive(), event.altActive(), false, currentTime())
+    : PlatformEvent(toWebCorePlatformKeyboardEventType(event.type()), event.shiftActive() || (event.character() == KEYCODE_BACK_TAB), event.ctrlActive(), event.altActive(), event.metaActive(), currentTime())
     , m_keyIdentifier(keyIdentifierForBlackBerryCharacter(event.character()))
-    , m_windowsVirtualKeyCode(windowsKeyCodeForBlackBerryCharacter(event.character()))
+    , m_windowsVirtualKeyCode(windowsKeyCodeForBlackBerryKeycode(event.keycode() ? event.keycode() : event.character())) // if keycode isn't valid, use character as it's unconverted.
     , m_autoRepeat(false)
     , m_isKeypad(false)
     , m_unmodifiedCharacter(event.character())
 {
-    unsigned short character = adjustCharacterFromOS(event.character());
-    m_text = String(&character, 1);
+    unsigned character = adjustCharacterFromOS(event.character());
+    UChar utf16[3] = {0};
+    int destLength = 0;
+    UErrorCode ec = U_ZERO_ERROR;
+    u_strFromUTF32(utf16, 3, &destLength, reinterpret_cast<UChar32*>(&character), 1, &ec);
+    if (ec) {
+        BBLOG(BlackBerry::Platform::LogLevelCritical, "PlatformKeyboardEvent::PlatformKeyboardEvent Error converting 0x%x to string ec (%d).", character, ec);
+        return;
+    }
+    m_text = String(utf16, destLength);
     m_unmodifiedText = m_text;
 
     if (event.character() == KEYCODE_BACK_TAB)

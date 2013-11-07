@@ -227,7 +227,7 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
         return 0;
     }
 
-    IDBTransaction::Mode mode = IDBTransaction::stringToMode(modeString, context, ec);
+    IndexedDB::TransactionMode mode = IDBTransaction::stringToMode(modeString, context, ec);
     if (ec)
         return 0;
 
@@ -262,9 +262,8 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
 
 void IDBDatabase::forceClose()
 {
-    ExceptionCode ec = 0;
     for (TransactionMap::const_iterator::Values it = m_transactions.begin().values(), end = m_transactions.end().values(); it != end; ++it)
-        (*it)->abort(ec);
+        (*it)->abort(IGNORE_EXCEPTION);
     this->close();
 }
 
@@ -353,6 +352,13 @@ int64_t IDBDatabase::findObjectStoreId(const String& name) const
         }
     }
     return IDBObjectStoreMetadata::InvalidId;
+}
+
+bool IDBDatabase::hasPendingActivity() const
+{
+    // The script wrapper must not be collected before the object is closed or
+    // we can't fire a "versionchange" event to let script manually close the connection.
+    return !m_closePending && !m_eventTargetData.eventListenerMap.isEmpty();
 }
 
 void IDBDatabase::stop()

@@ -125,6 +125,9 @@ public:
     WEBKIT_EXPORT static void enableShadowDOM(bool);
     WEBKIT_EXPORT static bool isShadowDOMEnabled();
 
+    WEBKIT_EXPORT static void enableCustomDOMElements(bool);
+    WEBKIT_EXPORT static bool isCustomDOMElementsEnabled();
+
     WEBKIT_EXPORT static void enableStyleScoped(bool);
     WEBKIT_EXPORT static bool isStyleScopedEnabled();
 
@@ -149,6 +152,9 @@ public:
     WEBKIT_EXPORT static void enableDialogElement(bool);
     WEBKIT_EXPORT static bool isDialogElementEnabled();
 
+    WEBKIT_EXPORT static void enableCanvasPath(bool);
+    WEBKIT_EXPORT static bool isCanvasPathEnabled();
+    
     WEBKIT_EXPORT static void enableCSSExclusions(bool);
     WEBKIT_EXPORT static bool isCSSExclusionsEnabled();
 
@@ -158,14 +164,19 @@ public:
     WEBKIT_EXPORT static void enableCSSRegions(bool);
     WEBKIT_EXPORT static bool isCSSRegionsEnabled();
 
+    WEBKIT_EXPORT static void enableFontLoadEvents(bool);
+    WEBKIT_EXPORT static bool isFontLoadEventsEnabled();
+
     WEBKIT_EXPORT static void enableExperimentalContentSecurityPolicyFeatures(bool);
     WEBKIT_EXPORT static bool isExperimentalContentSecurityPolicyFeaturesEnabled();
 
     WEBKIT_EXPORT static void enableSeamlessIFrames(bool);
     WEBKIT_EXPORT static bool areSeamlessIFramesEnabled();
 
-    WEBKIT_EXPORT static void enableWebIntents(bool);
-    WEBKIT_EXPORT static bool isWebIntentsEnabled();
+    // If the flag is set, we use WebViewClient::showValidationMessage and
+    // hideVlidationMessage for interactive form validation.
+    WEBKIT_EXPORT static void enableNativeValidationMessage(bool);
+    WEBKIT_EXPORT static bool isNativeValidationMessageEnabled();
 
 private:
     WebRuntimeFeatures();

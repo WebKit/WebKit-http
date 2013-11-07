@@ -26,8 +26,7 @@
 #ifndef RenderSnapshottedPlugIn_h
 #define RenderSnapshottedPlugIn_h
 
-#include "RenderEmbeddedObject.h"
-
+#include "RenderBlock.h"
 #include "RenderImageResource.h"
 #include "Timer.h"
 
@@ -35,23 +34,14 @@ namespace WebCore {
 
 class HTMLPlugInImageElement;
 
-class RenderSnapshottedPlugIn : public RenderEmbeddedObject {
+class RenderSnapshottedPlugIn : public RenderBlock {
 public:
     explicit RenderSnapshottedPlugIn(HTMLPlugInImageElement*);
     virtual ~RenderSnapshottedPlugIn();
 
-    enum LabelSize {
-        LabelSizeSmall,
-        LabelSizeLarge,
-        NoLabel,
-    };
-
     void updateSnapshot(PassRefPtr<Image>);
 
     void handleEvent(Event*);
-    void showLabelDelayTimerFired(Timer<RenderSnapshottedPlugIn>*);
-
-    void setShouldShowLabelAutomatically(bool = true);
 
 private:
     HTMLPlugInImageElement* plugInImageElement() const;
@@ -60,30 +50,12 @@ private:
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const OVERRIDE;
     virtual bool isSnapshottedPlugIn() const OVERRIDE { return true; }
     virtual void paint(PaintInfo&, const LayoutPoint&) OVERRIDE;
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
-    void paintReplacedSnapshot(PaintInfo&, const LayoutPoint&);
-    void paintReplacedSnapshotWithLabel(PaintInfo&, const LayoutPoint&);
-    void paintSnapshot(Image*, PaintInfo&, const LayoutPoint&);
-    void repaintLabel();
+    void paintSnapshot(PaintInfo&, const LayoutPoint&);
 
-    LayoutRect tryToFitStartLabel(LabelSize, const LayoutRect& contentBox) const;
-    Image* startLabelImage(LabelSize) const;
-
-    enum ShowReason {
-        UserMousedOver,
-        ShouldShowAutomatically
-    };
-
-    void resetDelayTimer(ShowReason);
+    virtual void layout() OVERRIDE;
 
     OwnPtr<RenderImageResource> m_snapshotResource;
-    bool m_shouldShowLabel;
-    bool m_shouldShowLabelAutomatically;
-    bool m_showedLabelOnce;
-    ShowReason m_showReason;
-    Timer<RenderSnapshottedPlugIn> m_showLabelDelayTimer;
-    OwnPtr<RenderImageResource> m_snapshotResourceForLabel;
 };
 
 inline RenderSnapshottedPlugIn* toRenderSnapshottedPlugIn(RenderObject* object)

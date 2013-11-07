@@ -30,6 +30,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTMLIFrameElement.h"
 #include "HitTestResult.h"
 #include "Page.h"
 #include "RenderGeometryMap.h"
@@ -91,12 +92,7 @@ bool RenderView::hitTest(const HitTestRequest& request, HitTestResult& result)
 
 bool RenderView::hitTest(const HitTestRequest& request, const HitTestLocation& location, HitTestResult& result)
 {
-    bool inside = layer()->hitTest(request, location, result);
-
-    // Next set up the correct :hover/:active state along the new chain.
-    document()->updateHoverActiveState(request, result);
-
-    return inside;
+    return layer()->hitTest(request, location, result);
 }
 
 void RenderView::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit, LogicalExtentComputedValues& computedValues) const
@@ -144,6 +140,71 @@ void RenderView::checkLayoutState(const LayoutState& state)
     ASSERT(m_layoutState == &state);
 }
 #endif
+
+static RenderBox* enclosingSeamlessRenderer(Document* doc)
+{
+    if (!doc)
+        return 0;
+    Element* ownerElement = doc->seamlessParentIFrame();
+    if (!ownerElement)
+        return 0;
+    return ownerElement->renderBox();
+}
+
+void RenderView::addChild(RenderObject* newChild, RenderObject* beforeChild)
+{
+    // Seamless iframes are considered part of an enclosing render flow thread from the parent document. This is necessary for them to look
+    // up regions in the parent document during layout.
+    if (newChild && !newChild->isRenderFlowThread()) {
+        RenderBox* seamlessBox = enclosingSeamlessRenderer(document());
+        if (seamlessBox && seamlessBox->flowThreadContainingBlock())
+            newChild->setFlowThreadState(seamlessBox->flowThreadState());
+    }
+    RenderBlock::addChild(newChild, beforeChild);
+}
+
+bool RenderView::initializeLayoutState(LayoutState& state)
+{
+    bool isSeamlessAncestorInFlowThread = false;
+
+    // FIXME: May be better to push a clip and avoid issuing offscreen repaints.
+    state.m_clipped = false;
+    
+    // Check the writing mode of the seamless ancestor. It has to match our document's writing mode, or we won't inherit any
+    // pagination information.
+    RenderBox* seamlessAncestor = enclosingSeamlessRenderer(document());
+    LayoutState* seamlessLayoutState = seamlessAncestor ? seamlessAncestor->view()->layoutState() : 0;
+    bool shouldInheritPagination = seamlessLayoutState && !m_pageLogicalHeight && seamlessAncestor->style()->writingMode() == style()->writingMode();
+    
+    state.m_pageLogicalHeight = shouldInheritPagination ? seamlessLayoutState->m_pageLogicalHeight : m_pageLogicalHeight;
+    state.m_pageLogicalHeightChanged = shouldInheritPagination ? seamlessLayoutState->m_pageLogicalHeightChanged : m_pageLogicalHeightChanged;
+    state.m_isPaginated = state.m_pageLogicalHeight;
+    if (state.m_isPaginated && shouldInheritPagination) {
+        // Set up the correct pagination offset. We can use a negative offset in order to push the top of the RenderView into its correct place
+        // on a page. We can take the iframe's offset from the logical top of the first page and make the negative into the pagination offset within the child
+        // view.
+        bool isFlipped = seamlessAncestor->style()->isFlippedBlocksWritingMode();
+        LayoutSize layoutOffset = seamlessLayoutState->layoutOffset();
+        LayoutSize iFrameOffset(layoutOffset.width() + seamlessAncestor->x() + (!isFlipped ? seamlessAncestor->borderLeft() + seamlessAncestor->paddingLeft() :
+            seamlessAncestor->borderRight() + seamlessAncestor->paddingRight()),
+            layoutOffset.height() + seamlessAncestor->y() + (!isFlipped ? seamlessAncestor->borderTop() + seamlessAncestor->paddingTop() :
+            seamlessAncestor->borderBottom() + seamlessAncestor->paddingBottom()));
+        
+        LayoutSize offsetDelta = seamlessLayoutState->m_pageOffset - iFrameOffset;
+        state.m_pageOffset = offsetDelta;
+        
+        // Set the current render flow thread to point to our ancestor. This will allow the seamless document to locate the correct
+        // regions when doing a layout.
+        if (seamlessAncestor->flowThreadContainingBlock()) {
+            flowThreadController()->setCurrentRenderFlowThread(seamlessAncestor->view()->flowThreadController()->currentRenderFlowThread());
+            isSeamlessAncestorInFlowThread = true;
+        }
+    }
+
+    // FIXME: We need to make line grids and exclusions work with seamless iframes as well here. Basically all layout state information needs
+    // to propagate here and not just pagination information.
+    return isSeamlessAncestorInFlowThread;
+}
 
 // The algorithm to layout the flow thread content in auto height regions has to make sure
 // that when a two-pass layout is needed, the auto height regions always start the first
@@ -203,11 +264,8 @@ void RenderView::layout()
         return;
 
     LayoutState state;
-    // FIXME: May be better to push a clip and avoid issuing offscreen repaints.
-    state.m_clipped = false;
-    state.m_pageLogicalHeight = m_pageLogicalHeight;
-    state.m_pageLogicalHeightChanged = m_pageLogicalHeightChanged;
-    state.m_isPaginated = state.m_pageLogicalHeight;
+    bool isSeamlessAncestorInFlowThread = initializeLayoutState(state);
+
     m_pageLogicalHeightChanged = false;
     m_layoutState = &state;
 
@@ -222,6 +280,9 @@ void RenderView::layout()
 #endif
     m_layoutState = 0;
     setNeedsLayout(false);
+    
+    if (isSeamlessAncestorInFlowThread)
+        flowThreadController()->setCurrentRenderFlowThread(0);
 }
 
 void RenderView::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
@@ -610,7 +671,7 @@ void RenderView::setSelection(RenderObject* start, int startPos, RenderObject* e
         m_selectionEnd == end && m_selectionEndPos == endPos)
         return;
 
-    if ((start && end) && (start->enclosingRenderFlowThread() != end->enclosingRenderFlowThread()))
+    if ((start && end) && (start->flowThreadContainingBlock() != end->flowThreadContainingBlock()))
         return;
 
     // Record the old selected objects.  These will be used later
@@ -1011,19 +1072,11 @@ RenderLayerCompositor* RenderView::compositor()
 }
 #endif
 
-void RenderView::didMoveOnscreen()
+void RenderView::setIsInWindow(bool isInWindow)
 {
 #if USE(ACCELERATED_COMPOSITING)
     if (m_compositor)
-        m_compositor->didMoveOnscreen();
-#endif
-}
-
-void RenderView::willMoveOffscreen()
-{
-#if USE(ACCELERATED_COMPOSITING)
-    if (m_compositor)
-        m_compositor->willMoveOffscreen();
+        m_compositor->setIsInWindow(isInWindow);
 #endif
 }
 
@@ -1087,6 +1140,44 @@ void RenderView::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
     info.addMember(m_intervalArena, "intervalArena");
     info.addWeakPointer(m_renderQuoteHead);
     info.addMember(m_legacyPrinting, "legacyPrinting");
+}
+
+FragmentationDisabler::FragmentationDisabler(RenderObject* root)
+{
+    RenderView* renderView = root->view();
+    ASSERT(renderView);
+
+    LayoutState* layoutState = renderView->layoutState();
+
+    m_root = root;
+    m_fragmenting = layoutState && layoutState->isPaginated();
+    m_flowThreadState = m_root->flowThreadState();
+#ifndef NDEBUG
+    m_layoutState = layoutState;
+#endif
+
+    if (layoutState)
+        layoutState->m_isPaginated = false;
+        
+    if (m_flowThreadState != RenderObject::NotInsideFlowThread)
+        m_root->setFlowThreadStateIncludingDescendants(RenderObject::NotInsideFlowThread);
+}
+
+FragmentationDisabler::~FragmentationDisabler()
+{
+    RenderView* renderView = m_root->view();
+    ASSERT(renderView);
+
+    LayoutState* layoutState = renderView->layoutState();
+#ifndef NDEBUG
+    ASSERT(m_layoutState == layoutState);
+#endif
+
+    if (layoutState)
+        layoutState->m_isPaginated = m_fragmenting;
+        
+    if (m_flowThreadState != RenderObject::NotInsideFlowThread)
+        m_root->setFlowThreadStateIncludingDescendants(m_flowThreadState);
 }
 
 } // namespace WebCore

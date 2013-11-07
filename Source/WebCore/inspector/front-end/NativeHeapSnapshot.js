@@ -35,6 +35,9 @@
 WebInspector.NativeHeapSnapshot = function(profile)
 {
     WebInspector.HeapSnapshot.call(this, profile);
+    this._nodeObjectType = this._metaNode.type_strings["object"];
+    this._edgeWeakType = this._metaNode.type_strings["weak"];
+    this._edgeElementType = this._metaNode.type_strings["property"];
 }
 
 WebInspector.NativeHeapSnapshot.prototype = {
@@ -66,6 +69,24 @@ WebInspector.NativeHeapSnapshot.prototype = {
         return null;
     },
 
+    images: function()
+    {
+        var aggregatesByClassName = this.aggregates(false, "allObjects");
+        var images = aggregatesByClassName["WebCore::CachedImage"];
+        var result = [];
+        if (!images)
+            return result;
+        var node = this.rootNode();
+        for (var i = 0; i < images.idxs.length; i++) {
+            node.nodeIndex = images.idxs[i];
+            result.push({
+                name: node.name(),
+                size: node.retainedSize(),
+            });
+        }
+        return result;
+    },
+
     __proto__: WebInspector.HeapSnapshot.prototype
 };
 
@@ -88,19 +109,31 @@ WebInspector.NativeHeapSnapshotNode.prototype = {
 
     classIndex: function()
     {
-        var snapshot = this._snapshot;
-        return snapshot._nodes[this.nodeIndex + snapshot._nodeNameOffset];
+        return this._snapshot._nodes[this.nodeIndex + this._snapshot._nodeTypeOffset];
     },
 
     id: function()
     {
-        return this.nodeIndex;
+        return this._snapshot._nodes[this.nodeIndex + this._snapshot._nodeIdOffset];
     },
 
     name: function()
     {
-        var name = this._snapshot._strings[this._snapshot._nodes[this.nodeIndex + 2]];
-        return this.className() + ": " + name;
+        return this._snapshot._strings[this._snapshot._nodes[this.nodeIndex + this._snapshot._nodeNameOffset]];;
+    },
+
+    serialize: function()
+    {
+        return {
+            id: this.id(),
+            name: this.className(),
+            displayName: this.name(),
+            distance: this.distance(),
+            nodeIndex: this.nodeIndex,
+            retainedSize: this.retainedSize(),
+            selfSize: this.selfSize(),
+            type: this._snapshot._nodeObjectType
+       };
     },
 
     isHidden: function()

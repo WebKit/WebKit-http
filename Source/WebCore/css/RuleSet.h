@@ -69,7 +69,7 @@ public:
     unsigned specificity() const { return m_specificity; }
     unsigned linkMatchType() const { return m_linkMatchType; }
     bool hasDocumentSecurityOrigin() const { return m_hasDocumentSecurityOrigin; }
-    PropertyWhitelistType propertyWhitelistType() const { return static_cast<PropertyWhitelistType>(m_propertyWhitelistType); }
+    PropertyWhitelistType propertyWhitelistType(bool isMatchingUARules = false) const { return isMatchingUARules ? PropertyWhitelistNone : static_cast<PropertyWhitelistType>(m_propertyWhitelistType); }
     // Try to balance between memory usage (there can be lots of RuleData objects) and good filtering performance.
     static const unsigned maximumIdentifierCount = 4;
     const unsigned* descendantSelectorIdentifierHashes() const { return m_descendantSelectorIdentifierHashes; }
@@ -78,10 +78,10 @@ public:
 
 private:
     StyleRule* m_rule;
-    unsigned m_selectorIndex : 12;
+    unsigned m_selectorIndex : 13;
     // This number was picked fairly arbitrarily. We can probably lower it if we need to.
     // Some simple testing showed <100,000 RuleData's on large sites.
-    unsigned m_position : 19;
+    unsigned m_position : 18;
     unsigned m_hasFastCheckableSelector : 1;
     unsigned m_specificity : 24;
     unsigned m_hasMultipartSelector : 1;

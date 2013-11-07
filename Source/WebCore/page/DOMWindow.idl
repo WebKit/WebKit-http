@@ -40,6 +40,7 @@
     JSLegacyParent=JSDOMWindowBase,
     V8CustomToJSObject,
     V8NoWrapperCache,
+    V8CustomIndexedGetter,
     InterfaceName=Window
 ] interface DOMWindow {
     // DOM Level 0
@@ -74,8 +75,8 @@
                             in DOMString name,
                             in [Optional] DOMString options);
 
-    [Custom] DOMObject showModalDialog(in DOMString url,
-                                       in [Optional] DOMObject dialogArgs,
+    [Custom] any showModalDialog(in DOMString url,
+                                       in [Optional] any dialogArgs,
                                        in [Optional] DOMString featureArgs);
 
     void alert(in [Optional=DefaultIsUndefined] DOMString message);
@@ -180,9 +181,7 @@
 
     // cross-document messaging
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [DoNotCheckSecurity, Custom] void postMessage(in SerializedScriptValue message, in DOMString targetOrigin)
-        raises(DOMException);
-    [DoNotCheckSecurity, Custom] void postMessage(in SerializedScriptValue message, in DOMString targetOrigin, in Array messagePorts)
+    [DoNotCheckSecurity, Custom] void postMessage(in SerializedScriptValue message, in DOMString targetOrigin, in [Optional] Array messagePorts)
         raises(DOMException);
 #else
     // There's no good way to expose an array via the ObjC bindings, so for now just allow passing in a single port.
@@ -195,14 +194,9 @@
 #endif
 
     // Timers
-    [Custom] long setTimeout(in [Optional=DefaultIsUndefined] TimeoutHandler handler, 
-                             in [Optional=DefaultIsUndefined] long timeout);
-    // [Custom] long setTimeout(in TimeoutHandler handler, in long timeout, arguments...);
-    // [Custom] long setTimeout(in DOMString code, in long timeout);
+    [Custom] long setTimeout(in any handler, in [Optional=DefaultIsUndefined] long timeout);
     void clearTimeout(in [Optional=DefaultIsUndefined] long handle);
-    [Custom] long setInterval(in TimeoutHandler handler, in long timeout);
-    // [Custom] long setInterval(in TimeoutHandler handler, in long timeout, arguments...);
-    // [Custom] long setInterval(in DOMString code, in long timeout);
+    [Custom] long setInterval(in any handler, in [Optional=DefaultIsUndefined] long timeout);
     void clearInterval(in [Optional=DefaultIsUndefined] long handle);
 
 #if defined(ENABLE_REQUEST_ANIMATION_FRAME) && ENABLE_REQUEST_ANIMATION_FRAME
@@ -218,6 +212,8 @@
         raises(DOMException);
     DOMString btoa(in [TreatNullAs=NullString,Optional=DefaultIsUndefined] DOMString string)
         raises(DOMException);
+
+    attribute [Replaceable,Conditional=CSS3_CONDITIONAL_RULES] DOMWindowCSS CSS;
 
     // Events
     attribute EventListener onabort;
@@ -335,6 +331,7 @@
     attribute WebKitCSSTransformValueConstructor WebKitCSSTransformValue;
 
 #if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
+    attribute WebKitCSSFilterRuleConstructor WebKitCSSFilterRule;
     attribute WebKitCSSMixFunctionValueConstructor WebKitCSSMixFunctionValue;
 #endif
 
@@ -396,7 +393,7 @@
     attribute NotationConstructor Notation;
     attribute EntityConstructor Entity;
     attribute EntityReferenceConstructor EntityReference;
-    [Conditional=CANVAS_PATH] attribute DOMPathConstructor Path;
+    [Conditional=CANVAS_PATH, V8EnabledAtRuntime=canvasPath] attribute DOMPathConstructor Path;
     attribute ProcessingInstructionConstructor ProcessingInstruction;
     [Conditional=SHADOW_DOM, V8EnabledAtRuntime=shadowDOM] attribute ShadowRootConstructor WebKitShadowRoot;
     [Conditional=SHADOW_DOM, V8EnabledAtRuntime=shadowDOM] attribute HTMLContentElementConstructor HTMLContentElement;
@@ -484,14 +481,18 @@
     [JSCustomGetter, CustomConstructor] attribute HTMLImageElementConstructorConstructor Image; // Usable with new operator
     [JSCustomGetter] attribute HTMLOptionElementConstructorConstructor Option; // Usable with new operator
 
-    [Conditional=ENCRYPTED_MEDIA, V8EnabledAtRuntime=encryptedMedia] attribute MediaKeyErrorConstructor MediaKeyError;
     [Conditional=ENCRYPTED_MEDIA, V8EnabledAtRuntime=encryptedMedia] attribute MediaKeyEventConstructor MediaKeyEvent;
+    attribute [Conditional=ENCRYPTED_MEDIA_V2, V8EnabledAtRuntime=encryptedMedia] MediaKeysConstructor MediaKeys;
+    attribute [Conditional=ENCRYPTED_MEDIA_V2|ENCRYPTED_MEDIA, V8EnabledAtRuntime=encryptedMedia] MediaKeyErrorConstructor MediaKeyError;
+    attribute [Conditional=ENCRYPTED_MEDIA_V2, V8EnabledAtRuntime=encryptedMedia] MediaKeyMessageEventConstructor MediaKeyMessageEvent;
+    attribute [Conditional=ENCRYPTED_MEDIA_V2, V8EnabledAtRuntime=encryptedMedia] MediaKeyNeededEventConstructor MediaKeyNeededEvent;
 
     [Conditional=VIDEO_TRACK, V8EnabledAtRuntime=webkitVideoTrack] attribute HTMLTrackElementConstructor HTMLTrackElement;
     [Conditional=VIDEO_TRACK, V8EnabledAtRuntime=webkitVideoTrack] attribute TextTrackConstructor TextTrack;
     [Conditional=VIDEO_TRACK, V8EnabledAtRuntime=webkitVideoTrack] attribute TextTrackCueConstructor TextTrackCue; // Usable with the new operator
     [Conditional=VIDEO_TRACK, V8EnabledAtRuntime=webkitVideoTrack] attribute TextTrackCueListConstructor TextTrackCueList;
     [Conditional=VIDEO_TRACK, V8EnabledAtRuntime=webkitVideoTrack] attribute TextTrackListConstructor TextTrackList;
+    [Conditional=VIDEO_TRACK & WEBVTT_REGIONS, V8EnabledAtRuntime=webkitVideoTrack] attribute TextTrackRegionConstructor TextTrackRegion; // Usable with the new operator
     [Conditional=VIDEO_TRACK, V8EnabledAtRuntime=webkitVideoTrack] attribute TrackEventConstructor TrackEvent;
 
     [JSCustomGetter, Conditional=VIDEO, V8EnabledAtRuntime] attribute HTMLAudioElementConstructorConstructor Audio; // Usable with the new operator
@@ -502,8 +503,6 @@
     [Conditional=VIDEO, V8EnabledAtRuntime] attribute TimeRangesConstructor TimeRanges;
     [Conditional=VIDEO, V8EnabledAtRuntime] attribute HTMLSourceElementConstructor HTMLSourceElement;
     [Conditional=VIDEO, V8EnabledAtRuntime] attribute MediaControllerConstructor MediaController;
-
-    [Conditional=WEB_INTENTS_TAG] attribute HTMLIntentElementConstructor HTMLIntentElement;
 
     attribute CanvasPatternConstructor CanvasPattern;
     attribute CanvasGradientConstructor CanvasGradient;
@@ -544,6 +543,7 @@
     attribute CompositionEventConstructor CompositionEvent;
     attribute CustomEventConstructor CustomEvent;
     attribute ErrorEventConstructor ErrorEvent;
+    attribute FocusEventConstructor FocusEvent;
     attribute HashChangeEventConstructor HashChangeEvent;
     attribute KeyboardEventConstructor KeyboardEvent;
     attribute MessageEventConstructor MessageEvent;
@@ -793,7 +793,8 @@
     [Conditional=BLOB] attribute DOMURLConstructor URL;
     [Conditional=BLOB] attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
 
-    attribute MutationObserverConstructor WebKitMutationObserver;
+    attribute MutationObserverConstructor WebKitMutationObserver; // FIXME: Add metrics to determine when we can remove this.
+    attribute MutationObserverConstructor MutationObserver;
 
     [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] attribute MediaSourceConstructor WebKitMediaSource;
     [Conditional=MEDIA_SOURCE, V8EnabledAtRuntime=mediaSource] attribute SourceBufferConstructor WebKitSourceBuffer;

@@ -109,6 +109,8 @@ public:
     virtual void canOverrideDeviceMetrics(ErrorString*, bool*);
     virtual void setDeviceMetricsOverride(ErrorString*, int width, int height, double fontScaleFactor, bool fitWindow);
     virtual void setShowPaintRects(ErrorString*, bool show);
+    virtual void canShowDebugBorders(ErrorString*, bool*);
+    virtual void setShowDebugBorders(ErrorString*, bool show);
     virtual void canShowFPSCounter(ErrorString*, bool*);
     virtual void setShowFPSCounter(ErrorString*, bool show);
     virtual void canContinuouslyPaint(ErrorString*, bool*);
@@ -154,6 +156,7 @@ public:
     void didLayout();
     void didScroll();
     void didRecalculateStyle();
+    void scriptsEnabled(bool isEnabled);
 
     // Inspector Controller API
     virtual void setFrontend(InspectorFrontend*);
@@ -170,12 +173,14 @@ public:
     String frameId(Frame*);
     bool hasIdForFrame(Frame*) const;
     String loaderId(DocumentLoader*);
+    Frame* findFrameWithSecurityOrigin(const String& originRawString);
     Frame* assertFrame(ErrorString*, const String& frameId);
     String scriptPreprocessor() { return m_scriptPreprocessor; }
     static DocumentLoader* assertDocumentLoader(ErrorString*, Frame*);
 
 private:
     InspectorPageAgent(InstrumentingAgents*, Page*, InspectorAgent*, InspectorCompositeState*, InjectedScriptManager*, InspectorClient*, InspectorOverlay*);
+    bool deviceMetricsChanged(int width, int height, double fontScaleFactor, bool fitWindow);
     void updateViewMetrics(int, int, double, bool);
 #if ENABLE(TOUCH_EVENTS)
     void updateTouchEventEmulationInPage(bool);
@@ -203,6 +208,7 @@ private:
     bool m_enabled;
     bool m_isFirstLayoutAfterOnLoad;
     bool m_geolocationOverridden;
+    bool m_ignoreScriptsEnabledNotification;
     RefPtr<GeolocationPosition> m_geolocationPosition;
     RefPtr<GeolocationPosition> m_platformGeolocationPosition;
     RefPtr<DeviceOrientationData> m_deviceOrientation;

@@ -51,6 +51,7 @@
 #include <WebCore/ApplicationCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GCController.h>
 #include <WebCore/GeolocationClient.h>
@@ -69,7 +70,6 @@
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
 #include <WebCore/UserGestureIndicator.h>
-#include <WebCore/WorkerThread.h>
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/PassOwnArrayPtr.h>
 
@@ -203,6 +203,7 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitCanvasUsesAcceleratedDrawing, CanvasUsesAcceleratedDrawing, canvasUsesAcceleratedDrawing) \
     macro(WebKitCSSCustomFilterEnabled, CSSCustomFilterEnabled, cssCustomFilterEnabled) \
     macro(WebKitCSSGridLayoutEnabled, CSSGridLayoutEnabled, cssGridLayoutEnabled) \
+    macro(WebKitFrameFlatteningEnabled, FrameFlatteningEnabled, frameFlatteningEnabled) \
     macro(WebKitJavaEnabled, JavaEnabled, javaEnabled) \
     macro(WebKitJavaScriptEnabled, ScriptEnabled, javaScriptEnabled) \
     macro(WebKitLoadSiteIconsKey, LoadsSiteIconsIgnoringImageLoadingSetting, loadsSiteIconsIgnoringImageLoadingPreference) \
@@ -346,6 +347,13 @@ void InjectedBundle::resetOriginAccessWhitelists()
     SecurityPolicy::resetOriginAccessWhitelists();
 }
 
+void InjectedBundle::setAsynchronousSpellCheckingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings()->setAsynchronousSpellCheckingEnabled(enabled);
+}
+
 void InjectedBundle::clearAllDatabases()
 {
 #if ENABLE(SQL_DATABASE)
@@ -398,12 +406,12 @@ void InjectedBundle::resetApplicationCacheOriginQuota(const String& originString
 
 PassRefPtr<ImmutableArray> InjectedBundle::originsWithApplicationCache()
 {
-    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash> origins;
+    HashSet<RefPtr<SecurityOrigin> > origins;
     cacheStorage().getOriginsWithCache(origins);
     Vector< RefPtr<APIObject> > originsVector;
 
-    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash>::iterator it = origins.begin();
-    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash>::iterator end = origins.end();
+    HashSet<RefPtr<SecurityOrigin> >::iterator it = origins.begin();
+    HashSet<RefPtr<SecurityOrigin> >::iterator end = origins.end();
     for ( ; it != end; ++it)
         originsVector.append(WebString::create((*it)->databaseIdentifier()));
 
@@ -579,27 +587,11 @@ void InjectedBundle::didReceiveMessageToPage(WebPage* page, const String& messag
     m_client.didReceiveMessageToPage(this, page, messageName, messageBody);
 }
 
-size_t InjectedBundle::workerThreadCount()
-{
-#if ENABLE(WORKERS)
-    return WebCore::WorkerThread::workerThreadCount();
-#else
-    return 0;
-#endif
-}
-
 void InjectedBundle::setUserStyleSheetLocation(WebPageGroupProxy* pageGroup, const String& location)
 {
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings()->setUserStyleSheetLocation(KURL(KURL(), location));
-}
-
-void InjectedBundle::setMinimumTimerInterval(WebPageGroupProxy* pageGroup, double seconds)
-{
-    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
-    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
-        (*iter)->settings()->setMinDOMTimerInterval(seconds);
 }
 
 void InjectedBundle::setWebNotificationPermission(WebPage* page, const String& originString, bool allowed)

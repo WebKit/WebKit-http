@@ -21,11 +21,16 @@
 #include "PlatformContextSkia.h"
 #include "RenderView.h"
 #include "TimeRanges.h"
+#include "UUID.h"
 #include "WebAudioSourceProvider.h"
+#include "WebDocument.h"
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebHelperPluginImpl.h"
 #include "WebMediaPlayer.h"
+#include "WebMediaSourceClient.h"
+#include "WebMediaSourceImpl.h"
+#include "WebSourceBuffer.h"
 #include "WebViewImpl.h"
 #include <public/Platform.h>
 #include <public/WebCString.h>
@@ -48,6 +53,113 @@
 using namespace WebCore;
 
 namespace WebKit {
+
+// FIXME: Remove this class once the Chromium code implements its own
+// version of WebMediaPlayer::load(WebURL, WebMediaSource, CORSMode).
+// https://bugs.webkit.org/show_bug.cgi?id=110371
+class WebMediaSourceClientImpl : public WebMediaSourceClient {
+public:
+    explicit WebMediaSourceClientImpl(WebMediaPlayer*);
+    virtual ~WebMediaSourceClientImpl();
+
+    // WebMediaSourceClient methods.
+    virtual AddStatus addSourceBuffer(const WebString& type, const WebVector<WebString>& codecs, WebSourceBuffer**);
+    virtual double duration();
+    virtual void setDuration(double);
+    virtual void endOfStream(EndOfStreamStatus);
+
+private:
+    WebMediaPlayer* m_webMediaPlayer;
+};
+
+// FIXME: Remove this class once the Chromium code implements its own
+// version of WebMediaPlayer::load(WebURL, WebMediaSource, CORSMode).
+// https://bugs.webkit.org/show_bug.cgi?id=110371
+class WebSourceBufferImpl : public WebSourceBuffer {
+public:
+    WebSourceBufferImpl(WebMediaPlayer*, const WebString& id);
+
+    // WebSourceBuffer methods.
+    virtual WebTimeRanges buffered();
+    virtual void append(const unsigned char* data, unsigned length);
+    virtual void abort();
+    virtual bool setTimestampOffset(double);
+    virtual void removedFromMediaSource();
+
+private:
+    WebMediaPlayer* m_webMediaPlayer;
+    WebString m_id;
+};
+
+WebMediaSourceClientImpl::WebMediaSourceClientImpl(WebMediaPlayer* webMediaPlayer)
+    : m_webMediaPlayer(webMediaPlayer)
+{
+}
+
+WebMediaSourceClientImpl::~WebMediaSourceClientImpl()
+{
+}
+
+WebMediaSourceClient::AddStatus WebMediaSourceClientImpl::addSourceBuffer(const WebString& type, const WebVector<WebString>& codecs,
+    WebSourceBuffer** sourceBuffer)
+{
+    WebString id = WebCore::createCanonicalUUIDString();
+    WebMediaSourceClient::AddStatus result = static_cast<WebMediaSourceClient::AddStatus>(m_webMediaPlayer->sourceAddId(id, type, codecs));
+    if (result == WebMediaSourceClient::AddStatusOk)
+        *sourceBuffer = new WebSourceBufferImpl(m_webMediaPlayer, id);
+
+    return result;
+}
+
+double WebMediaSourceClientImpl::duration()
+{
+    return m_webMediaPlayer->duration();
+}
+
+void WebMediaSourceClientImpl::setDuration(double duration)
+{
+    return m_webMediaPlayer->sourceSetDuration(duration);
+}
+
+void WebMediaSourceClientImpl::endOfStream(EndOfStreamStatus status)
+{
+    m_webMediaPlayer->sourceEndOfStream(static_cast<WebMediaPlayer::EndOfStreamStatus>(status));
+}
+
+WebSourceBufferImpl::WebSourceBufferImpl(WebMediaPlayer* webMediaPlayer, const WebString& id)
+    : m_webMediaPlayer(webMediaPlayer)
+    , m_id(id)
+{
+}
+
+WebTimeRanges WebSourceBufferImpl::buffered()
+{
+    return m_webMediaPlayer->sourceBuffered(m_id);
+}
+
+void WebSourceBufferImpl::append(const unsigned char* data, unsigned length)
+{
+    m_webMediaPlayer->sourceAppend(m_id, data, length);
+}
+
+void WebSourceBufferImpl::abort()
+{
+    m_webMediaPlayer->sourceAbort(m_id);
+}
+
+bool WebSourceBufferImpl::setTimestampOffset(double offset)
+{
+    return m_webMediaPlayer->sourceSetTimestampOffset(m_id, offset);
+}
+
+void WebSourceBufferImpl::removedFromMediaSource()
+{
+    if (!m_webMediaPlayer)
+        return;
+
+    m_webMediaPlayer->sourceRemoveId(m_id);
+    m_webMediaPlayer = 0;
+}
 
 static PassOwnPtr<WebMediaPlayer> createWebMediaPlayer(WebMediaPlayerClient* client, const WebURL& url, Frame* frame)
 {
@@ -100,12 +212,21 @@ WebMediaPlayerClientImpl::~WebMediaPlayerClientImpl()
     if (m_webMediaPlayer)
         m_webMediaPlayer->setStreamTextureClient(0);
 #endif
-    if (m_helperPlugin)
-        closeHelperPlugin();
+
 #if USE(ACCELERATED_COMPOSITING)
     if (m_videoLayer)
         GraphicsLayerChromium::unregisterContentsLayer(m_videoLayer->layer());
 #endif
+
+    // Explicitly destroy the WebMediaPlayer to allow verification of tear down.
+    m_webMediaPlayer.clear();
+
+    // FIXME(ddorwin): Uncomment the ASSERT and remove the closeHelperPlugin()
+    // call after fixing http://crbug.com/173755.
+    // Ensure the m_webMediaPlayer destroyed any WebHelperPlugin used.
+    // ASSERT(!m_helperPlugin);
+    if (m_helperPlugin)
+        closeHelperPlugin();
 }
 
 void WebMediaPlayerClientImpl::networkStateChanged()
@@ -209,22 +330,27 @@ WebMediaPlayer::Preload WebMediaPlayerClientImpl::preload() const
     return static_cast<WebMediaPlayer::Preload>(m_preload);
 }
 
+// FIXME: Remove this and sourceURL() once the Chromium code implements
+// its own version of WebMediaPlayer::load(WebURL, WebMediaSource, CORSMode).
+// https://bugs.webkit.org/show_bug.cgi?id=110371
 void WebMediaPlayerClientImpl::sourceOpened()
 {
 #if ENABLE(MEDIA_SOURCE)
-    ASSERT(m_mediaPlayer);
-    m_mediaPlayer->sourceOpened();
+    ASSERT(m_webMediaPlayer);
+    if (m_mediaSource) {
+        OwnPtr<WebMediaSource> mediaSource = adoptPtr(new WebMediaSourceImpl(m_mediaSource));
+        mediaSource->open(new WebMediaSourceClientImpl(m_webMediaPlayer.get()));
+    }
 #endif
 }
 
 WebKit::WebURL WebMediaPlayerClientImpl::sourceURL() const
 {
 #if ENABLE(MEDIA_SOURCE)
-    ASSERT(m_mediaPlayer);
-    return KURL(ParsedURLString, m_mediaPlayer->sourceURL());
-#else
-    return KURL();
+    if (m_mediaSource)
+        return m_url;
 #endif
+    return KURL();
 }
 
 void WebMediaPlayerClientImpl::keyAdded(const WebString& keySystem, const WebString& sessionId)
@@ -281,8 +407,9 @@ void WebMediaPlayerClientImpl::keyNeeded(const WebString& keySystem, const WebSt
 WebPlugin* WebMediaPlayerClientImpl::createHelperPlugin(const WebString& pluginType, WebFrame* frame)
 {
     ASSERT(!m_helperPlugin);
+
     WebViewImpl* webView = static_cast<WebViewImpl*>(frame->view());
-    m_helperPlugin = webView->createHelperPlugin(pluginType);
+    m_helperPlugin = webView->createHelperPlugin(pluginType, frame->document());
     if (!m_helperPlugin)
         return 0;
 
@@ -313,8 +440,24 @@ void WebMediaPlayerClientImpl::disableAcceleratedCompositing()
 
 void WebMediaPlayerClientImpl::load(const String& url)
 {
-    m_url = url;
+    m_url = KURL(ParsedURLString, url);
+#if ENABLE(MEDIA_SOURCE)
+    m_mediaSource = 0;
+#endif
+    loadRequested();
+}
 
+#if ENABLE(MEDIA_SOURCE)
+void WebMediaPlayerClientImpl::load(const String& url, PassRefPtr<WebCore::MediaSource> mediaSource)
+{
+    m_url = KURL(ParsedURLString, url);
+    m_mediaSource = mediaSource;
+    loadRequested();
+}
+#endif
+
+void WebMediaPlayerClientImpl::loadRequested()
+{
     MutexLocker locker(m_webMediaPlayerMutex);
     if (m_preload == MediaPlayer::None) {
 #if ENABLE(WEB_AUDIO)
@@ -333,15 +476,21 @@ void WebMediaPlayerClientImpl::loadInternal()
 #endif
 
     Frame* frame = static_cast<HTMLMediaElement*>(m_mediaPlayer->mediaPlayerClient())->document()->frame();
-    m_webMediaPlayer = createWebMediaPlayer(this, KURL(ParsedURLString, m_url), frame);
+    m_webMediaPlayer = createWebMediaPlayer(this, m_url, frame);
     if (m_webMediaPlayer) {
 #if ENABLE(WEB_AUDIO)
         // Make sure if we create/re-create the WebMediaPlayer that we update our wrapper.
         m_audioSourceProvider.wrap(m_webMediaPlayer->audioSourceProvider());
 #endif
-        m_webMediaPlayer->load(
-            KURL(ParsedURLString, m_url),
-            static_cast<WebMediaPlayer::CORSMode>(m_mediaPlayer->mediaPlayerClient()->mediaPlayerCORSMode()));
+
+        WebMediaPlayer::CORSMode corsMode = static_cast<WebMediaPlayer::CORSMode>(m_mediaPlayer->mediaPlayerClient()->mediaPlayerCORSMode());
+#if ENABLE(MEDIA_SOURCE)
+        if (m_mediaSource) {
+            m_webMediaPlayer->load(m_url, new WebMediaSourceImpl(m_mediaSource), corsMode);
+            return;
+        }
+#endif
+        m_webMediaPlayer->load(m_url, corsMode);
     }
 }
 
@@ -395,70 +544,6 @@ void WebMediaPlayerClientImpl::exitFullscreen()
 bool WebMediaPlayerClientImpl::canEnterFullscreen() const
 {
     return m_webMediaPlayer && m_webMediaPlayer->canEnterFullscreen();
-}
-#endif
-
-#if ENABLE(MEDIA_SOURCE)
-WebCore::MediaPlayer::AddIdStatus WebMediaPlayerClientImpl::sourceAddId(const String& id, const String& type, const Vector<String>& codecs)
-{
-    if (!m_webMediaPlayer)
-        return WebCore::MediaPlayer::NotSupported;
-
-    return static_cast<WebCore::MediaPlayer::AddIdStatus>(m_webMediaPlayer->sourceAddId(id, type, codecs));
-}
-
-bool WebMediaPlayerClientImpl::sourceRemoveId(const String& id)
-{
-    if (!m_webMediaPlayer)
-        return false;
-
-    return m_webMediaPlayer->sourceRemoveId(id);
-}
-
-PassRefPtr<TimeRanges> WebMediaPlayerClientImpl::sourceBuffered(const String& id)
-{
-    if (!m_webMediaPlayer)
-        return TimeRanges::create();
-
-    WebTimeRanges webRanges = m_webMediaPlayer->sourceBuffered(id);
-    RefPtr<TimeRanges> ranges = TimeRanges::create();
-    for (size_t i = 0; i < webRanges.size(); ++i)
-        ranges->add(webRanges[i].start, webRanges[i].end);
-    return ranges.release();
-}
-
-bool WebMediaPlayerClientImpl::sourceAppend(const String& id, const unsigned char* data, unsigned length)
-{
-    if (m_webMediaPlayer)
-        return m_webMediaPlayer->sourceAppend(id, data, length);
-    return false;
-}
-
-bool WebMediaPlayerClientImpl::sourceAbort(const String& id)
-{
-    if (!m_webMediaPlayer)
-        return false;
-
-    return m_webMediaPlayer->sourceAbort(id);
-}
-
-void WebMediaPlayerClientImpl::sourceSetDuration(double duration)
-{
-    if (m_webMediaPlayer)
-        m_webMediaPlayer->sourceSetDuration(duration);
-}
-
-void WebMediaPlayerClientImpl::sourceEndOfStream(WebCore::MediaPlayer::EndOfStreamStatus status)
-{
-    if (m_webMediaPlayer)
-        m_webMediaPlayer->sourceEndOfStream(static_cast<WebMediaPlayer::EndOfStreamStatus>(status));
-}
-
-bool WebMediaPlayerClientImpl::sourceSetTimestampOffset(const String& id, double offset)
-{
-    if (!m_webMediaPlayer)
-        return false;
-    return m_webMediaPlayer->sourceSetTimestampOffset(id, offset);
 }
 #endif
 

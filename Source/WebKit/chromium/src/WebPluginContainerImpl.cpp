@@ -186,7 +186,7 @@ void WebPluginContainerImpl::handleEvent(Event* event)
         return;
 
     const WebInputEvent* currentInputEvent = WebViewImpl::currentInputEvent();
-    UserGestureIndicator gestureIndicator(currentInputEvent && WebInputEvent::isUserGestureEventType(currentInputEvent->type) ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(currentInputEvent && WebInputEvent::isUserGestureEventType(currentInputEvent->type) ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
 
     RefPtr<WebPluginContainerImpl> protector(this);
     // The events we pass are defined at:
@@ -219,6 +219,11 @@ void WebPluginContainerImpl::frameRectsChanged()
 void WebPluginContainerImpl::widgetPositionsUpdated()
 {
     Widget::widgetPositionsUpdated();
+    reportGeometry();
+}
+
+void WebPluginContainerImpl::clipRectChanged()
+{
     reportGeometry();
 }
 
@@ -440,7 +445,7 @@ void WebPluginContainerImpl::loadFrameRequest(const WebURLRequest& request, cons
     }
 
     FrameLoadRequest frameRequest(frame->document()->securityOrigin(), request.toResourceRequest(), target);
-    UserGestureIndicator gestureIndicator(request.hasUserGesture() ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(request.hasUserGesture() ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
     frame->loader()->loadFrameRequest(frameRequest, false, false, 0, 0, MaybeSendReferrer);
 }
 
@@ -462,7 +467,7 @@ bool WebPluginContainerImpl::isRectTopmost(const WebRect& rect)
     LayoutPoint center = documentRect.center();
     // Make the rect we're checking (the point surrounded by padding rects) contained inside the requested rect. (Note that -1/2 is 0.)
     LayoutSize padding((documentRect.width() - 1) / 2, (documentRect.height() - 1) / 2);
-    HitTestResult result = frame->eventHandler()->hitTestResultAtPoint(center, false, false, DontHitTestScrollbars, HitTestRequest::ReadOnly | HitTestRequest::Active, padding);
+    HitTestResult result = frame->eventHandler()->hitTestResultAtPoint(center, HitTestRequest::ReadOnly | HitTestRequest::Active, padding);
     const HitTestResult::NodeSet& nodes = result.rectBasedTestResult();
     if (nodes.size() != 1)
         return false;
@@ -796,7 +801,7 @@ void WebPluginContainerImpl::handleGestureEvent(GestureEvent* event)
         return;
     }
 
-    if (webEvent.type == WebInputEvent::GestureScrollUpdate) {
+    if (webEvent.type == WebInputEvent::GestureScrollUpdate || webEvent.type == WebInputEvent::GestureScrollUpdateWithoutPropagation) {
         if (!m_scrollbarGroup)
             return;
         if (gestureScrollHelper(m_scrollbarGroup.get(), ScrollLeft, ScrollRight, webEvent.data.scrollUpdate.deltaX))

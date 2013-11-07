@@ -66,7 +66,7 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderObject* object, unsign
         return 0;
 
     if (m_shouldCollectPatternAttributes) {
-        patternElement->updateAnimatedSVGAttribute(anyQName());
+        patternElement->synchronizeAnimatedSVGAttribute(anyQName());
 
         m_attributes = PatternAttributes();
         patternElement->collectPatternAttributes(m_attributes);
@@ -269,7 +269,7 @@ PassOwnPtr<ImageBuffer> RenderSVGResourcePattern::createTileImage(const PatternA
 
     // Draw the content into the ImageBuffer.
     for (Node* node = attributes.patternContentElement()->firstChild(); node; node = node->nextSibling()) {
-        if (!node->isSVGElement() || !static_cast<SVGElement*>(node)->isStyled() || !node->renderer())
+        if (!node->isSVGElement() || !toSVGElement(node)->isSVGStyledElement() || !node->renderer())
             continue;
         if (node->renderer()->needsLayout())
             return nullptr;

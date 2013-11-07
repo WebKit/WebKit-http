@@ -85,6 +85,7 @@ namespace WebCore {
         PassRefPtr<ResourceBuffer> mainResourceData() const;
         
         DocumentWriter* writer() const { return &m_writer; }
+        Document* document() const;
 
         const ResourceRequest& originalRequest() const;
         const ResourceRequest& originalRequestCopy() const;
@@ -114,7 +115,7 @@ namespace WebCore {
         void stopLoading();
         void setCommitted(bool committed) { m_committed = committed; }
         bool isCommitted() const { return m_committed; }
-        bool isLoading() const { return isLoadingMainResource() || !m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty(); }
+        bool isLoading() const;
         void receivedData(const char*, int);
         void setupForReplace();
         void finishedLoading();
@@ -234,8 +235,8 @@ namespace WebCore {
                 m_resourcesClientKnowsAbout.add(url);
         }
         bool haveToldClientAboutLoad(const String& url) { return m_resourcesClientKnowsAbout.contains(url); }
-        void recordMemoryCacheLoadForFutureClientNotification(const String& url);
-        void takeMemoryCacheLoadsForClientNotification(Vector<String>& loads);
+        void recordMemoryCacheLoadForFutureClientNotification(const ResourceRequest&);
+        void takeMemoryCacheLoadsForClientNotification(Vector<ResourceRequest>& loads);
 
         DocumentLoadTiming* timing() { return &m_documentLoadTiming; }
         void resetTiming() { m_documentLoadTiming = DocumentLoadTiming(); }
@@ -247,6 +248,7 @@ namespace WebCore {
         ApplicationCacheHost* applicationCacheHost() const { return m_applicationCacheHost.get(); }
 
         virtual void reportMemoryUsage(MemoryObjectInfo*) const;
+        void checkLoadComplete();
 
     protected:
         DocumentLoader(const ResourceRequest&, const SubstituteData&);
@@ -257,7 +259,6 @@ namespace WebCore {
         void commitIfReady();
         void setMainDocumentError(const ResourceError&);
         void commitLoad(const char*, int);
-        void checkLoadComplete();
         void clearMainResourceLoader();
         
         bool maybeCreateArchive();
@@ -344,7 +345,7 @@ namespace WebCore {
 #endif
 
         HashSet<String> m_resourcesClientKnowsAbout;
-        Vector<String> m_resourcesLoadedFromMemoryCacheForClientNotification;
+        Vector<ResourceRequest> m_resourcesLoadedFromMemoryCacheForClientNotification;
         
         String m_clientRedirectSourceForHistory;
         bool m_didCreateGlobalHistoryEntry;
@@ -358,12 +359,12 @@ namespace WebCore {
         OwnPtr<ApplicationCacheHost> m_applicationCacheHost;
     };
 
-    inline void DocumentLoader::recordMemoryCacheLoadForFutureClientNotification(const String& url)
+    inline void DocumentLoader::recordMemoryCacheLoadForFutureClientNotification(const ResourceRequest& request)
     {
-        m_resourcesLoadedFromMemoryCacheForClientNotification.append(url);
+        m_resourcesLoadedFromMemoryCacheForClientNotification.append(request);
     }
 
-    inline void DocumentLoader::takeMemoryCacheLoadsForClientNotification(Vector<String>& loadsSet)
+    inline void DocumentLoader::takeMemoryCacheLoadsForClientNotification(Vector<ResourceRequest>& loadsSet)
     {
         loadsSet.swap(m_resourcesLoadedFromMemoryCacheForClientNotification);
         m_resourcesLoadedFromMemoryCacheForClientNotification.clear();

@@ -31,13 +31,16 @@ enum MessageType {
     LogMessageType,
     DirMessageType,
     DirXMLMessageType,
+    TableMessageType,
     TraceMessageType,
     StartGroupMessageType,
     StartGroupCollapsedMessageType,
     EndGroupMessageType,
     ClearMessageType,
     AssertMessageType,
-    TimingMessageType
+    TimingMessageType,
+    ProfileMessageType,
+    ProfileEndMessageType
 };
 
 } // namespace WebCore

@@ -61,8 +61,10 @@ namespace WebCore {
         {
         }
 
+        void updateFromDelegatePreservingOldHTTPBody(const ResourceRequest& delegateProvidedRequest) { *this = delegateProvidedRequest; }
+
         // Needed for compatibility.
-        CFURLRequestRef cfURLRequest() const { return 0; }
+        CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const { return 0; }
 
         // The following two stubs are for compatibility with CFNetwork, and are not used.
         static bool httpPipeliningEnabled() { return false; }
@@ -71,8 +73,10 @@ namespace WebCore {
     private:
         friend class ResourceRequestBase;
 
-        void doUpdatePlatformRequest() {}
-        void doUpdateResourceRequest() {}
+        void doUpdatePlatformRequest() { }
+        void doUpdateResourceRequest() { }
+        void doUpdatePlatformHTTPBody() { }
+        void doUpdateResourceHTTPBody() { }
 
         PassOwnPtr<CrossThreadResourceRequestData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData> data) const { return data; }
         void doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>) { }

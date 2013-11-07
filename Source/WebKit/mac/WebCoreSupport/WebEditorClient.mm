@@ -62,6 +62,7 @@
 #import <WebCore/PlatformKeyboardEvent.h>
 #import <WebCore/RunLoop.h>
 #import <WebCore/SpellChecker.h>
+#import <WebCore/StylePropertySet.h>
 #import <WebCore/UndoStep.h>
 #import <WebCore/UserTypingGestureIndicator.h>
 #import <WebCore/WebCoreObjCExtras.h>
@@ -222,11 +223,13 @@ bool WebEditorClient::shouldDeleteRange(Range* range)
         shouldDeleteDOMRange:kit(range)];
 }
 
+#if ENABLE(DELETION_UI)
 bool WebEditorClient::shouldShowDeleteInterface(HTMLElement* element)
 {
     return [[m_webView _editingDelegateForwarder] webView:m_webView
         shouldShowDeleteInterfaceForElement:kit(element)];
 }
+#endif
 
 bool WebEditorClient::smartInsertDeleteEnabled()
 {
@@ -519,6 +522,8 @@ static NSString* undoNameForEditAction(EditAction editAction)
         case EditActionFormatBlock: return UI_STRING_KEY_INTERNAL("Formatting", "Format Block (Undo action name)", "Undo action name");
         case EditActionIndent: return UI_STRING_KEY_INTERNAL("Indent", "Indent (Undo action name)", "Undo action name");
         case EditActionOutdent: return UI_STRING_KEY_INTERNAL("Outdent", "Outdent (Undo action name)", "Undo action name");
+        case EditActionBold: return UI_STRING_KEY_INTERNAL("Bold", "Bold (Undo action name)", "Undo action name");
+        case EditActionItalics: return UI_STRING_KEY_INTERNAL("Italics", "Italics (Undo action name)", "Undo action name");
     }
     return nil;
 }
@@ -968,8 +973,8 @@ void WebEditorClient::setInputMethodState(bool)
 
 void WebEditorClient::didCheckSucceed(int sequence, NSArray* results)
 {
-    ASSERT_UNUSED(sequence, sequence == m_textCheckingRequest->sequence());
-    m_textCheckingRequest->didSucceed(core(results, m_textCheckingRequest->mask()));
+    ASSERT_UNUSED(sequence, sequence == m_textCheckingRequest->data().sequence());
+    m_textCheckingRequest->didSucceed(core(results, m_textCheckingRequest->data().mask()));
     m_textCheckingRequest.clear();
 }
 
@@ -979,10 +984,10 @@ void WebEditorClient::requestCheckingOfString(PassRefPtr<WebCore::TextCheckingRe
     ASSERT(!m_textCheckingRequest);
     m_textCheckingRequest = request;
 
-    int sequence = m_textCheckingRequest->sequence();
-    NSRange range = NSMakeRange(0, m_textCheckingRequest->text().length());
+    int sequence = m_textCheckingRequest->data().sequence();
+    NSRange range = NSMakeRange(0, m_textCheckingRequest->data().text().length());
     NSRunLoop* currentLoop = [NSRunLoop currentRunLoop];
-    [[NSSpellChecker sharedSpellChecker] requestCheckingOfString:m_textCheckingRequest->text() range:range types:NSTextCheckingAllSystemTypes options:0 inSpellDocumentWithTag:0
+    [[NSSpellChecker sharedSpellChecker] requestCheckingOfString:m_textCheckingRequest->data().text() range:range types:NSTextCheckingAllSystemTypes options:0 inSpellDocumentWithTag:0
                                          completionHandler:^(NSInteger, NSArray* results, NSOrthography*, NSInteger) {
             [currentLoop performSelector:@selector(perform) 
                                   target:[[[WebEditorSpellCheckResponder alloc] initWithClient:this sequence:sequence results:results] autorelease]

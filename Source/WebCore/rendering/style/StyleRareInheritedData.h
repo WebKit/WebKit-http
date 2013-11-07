@@ -91,7 +91,6 @@ public:
     unsigned overflowWrap : 1; // EOverflowWrap
     unsigned nbspMode : 1; // ENBSPMode
     unsigned lineBreak : 3; // LineBreak
-    unsigned textSizeAdjust : 1; // An Apple extension.
     unsigned resize : 2; // EResize
     unsigned userSelect : 2; // EUserSelect
     unsigned colorSpace : 1; // ColorSpace
@@ -118,6 +117,7 @@ public:
 #endif
 #if ENABLE(CSS3_TEXT)
     unsigned m_textAlignLast : 3; // TextAlignLast
+    unsigned m_textUnderlinePosition : 3; // TextUnderlinePosition
 #endif // CSS3_TEXT
     unsigned m_rubyPosition : 1; // RubyPosition
 

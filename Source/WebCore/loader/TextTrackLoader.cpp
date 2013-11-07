@@ -103,7 +103,8 @@ void TextTrackLoader::processNewCueData(CachedResource* resource)
     }
 }
 
-void TextTrackLoader::didReceiveData(CachedResource* resource)
+// FIXME: This is a very unusual pattern, no other CachedResourceClient does this. Refactor to use notifyFinished() instead.
+void TextTrackLoader::deprecatedDidReceiveCachedResource(CachedResource* resource)
 {
     ASSERT(m_cachedCueData == resource);
     
@@ -117,7 +118,7 @@ void TextTrackLoader::corsPolicyPreventedLoad()
 {
     DEFINE_STATIC_LOCAL(String, consoleMessage, (ASCIILiteral("Cross-origin text track load denied by Cross-Origin Resource Sharing policy.")));
     Document* document = static_cast<Document*>(m_scriptExecutionContext);
-    document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, consoleMessage);
+    document->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, consoleMessage);
     m_state = Failed;
 }
 

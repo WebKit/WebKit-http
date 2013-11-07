@@ -28,7 +28,10 @@
 
 #if ENABLE(THREADED_HTML_PARSER)
 
-#include "HTMLTokenTypes.h"
+#include "HTMLIdentifier.h"
+#include "HTMLToken.h"
+#include <wtf/OwnPtr.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -37,41 +40,37 @@
 
 namespace WebCore {
 
-class HTMLToken;
-
-class CompactAttribute {
-public:
-    CompactAttribute(const String& name, const String& value)
-        : m_name(name)
-        , m_value(value)
-    {
-    }
-
-    const String& name() const { return m_name; }
-    const String& value() const { return m_value; }
-
-private:
-    String m_name;
-    String m_value;
-};
+class QualifiedName;
 
 class CompactHTMLToken {
 public:
+    struct Attribute {
+        Attribute(const HTMLIdentifier& name, const String& value)
+            : name(name)
+            , value(value)
+        {
+        }
+
+        HTMLIdentifier name;
+        String value;
+    };
+
     CompactHTMLToken(const HTMLToken*, const TextPosition&);
 
     bool isSafeToSendToAnotherThread() const;
 
-    HTMLTokenTypes::Type type() const { return static_cast<HTMLTokenTypes::Type>(m_type); }
-    const String& data() const { return m_data; }
+    HTMLToken::Type type() const { return static_cast<HTMLToken::Type>(m_type); }
+    const HTMLIdentifier& data() const { return m_data; }
     bool selfClosing() const { return m_selfClosing; }
     bool isAll8BitData() const { return m_isAll8BitData; }
-    const Vector<CompactAttribute>& attributes() const { return m_attributes; }
+    const Vector<Attribute>& attributes() const { return m_attributes; }
+    const Attribute* getAttributeItem(const QualifiedName&) const;
     const TextPosition& textPosition() const { return m_textPosition; }
 
     // There is only 1 DOCTYPE token per document, so to avoid increasing the
     // size of CompactHTMLToken, we just use the m_attributes vector.
-    const String& publicIdentifier() const { return m_attributes[0].name(); }
-    const String& systemIdentifier() const { return m_attributes[0].value(); }
+    const HTMLIdentifier& publicIdentifier() const { return m_attributes[0].name; }
+    const String& systemIdentifier() const { return m_attributes[0].value; }
     bool doctypeForcesQuirks() const { return m_doctypeForcesQuirks; }
 
 private:
@@ -80,8 +79,8 @@ private:
     unsigned m_isAll8BitData : 1;
     unsigned m_doctypeForcesQuirks: 1;
 
-    String m_data; // "name", "characters", or "data" depending on m_type
-    Vector<CompactAttribute> m_attributes;
+    HTMLIdentifier m_data; // "name", "characters", or "data" depending on m_type
+    Vector<Attribute> m_attributes;
     TextPosition m_textPosition;
 };
 

@@ -50,6 +50,7 @@
 #include "JSInterfaceJIT.h"
 #include "LegacyProfiler.h"
 #include "Opcode.h"
+#include "ResultType.h"
 #include "UnusedPointer.h"
 #include <bytecode/SamplingTool.h>
 
@@ -391,6 +392,8 @@ namespace JSC {
 #if ENABLE(DFG_JIT)
             // Force profiling to be enabled during stub generation.
             jit.m_canBeOptimized = true;
+            jit.m_canBeOptimizedOrInlined = true;
+            jit.m_shouldEmitProfiling = true;
 #endif // ENABLE(DFG_JIT)
             return jit.privateCompilePatchGetArrayLength(returnAddress);
         }
@@ -558,7 +561,7 @@ namespace JSC {
         static const int sequenceGetByIdHotPathInstructionSpace = 36;
         static const int sequenceGetByIdHotPathConstantSpace = 4;
         // sequenceGetByIdSlowCase
-        static const int sequenceGetByIdSlowCaseInstructionSpace = 64;
+        static const int sequenceGetByIdSlowCaseInstructionSpace = 80;
         static const int sequenceGetByIdSlowCaseConstantSpace = 4;
         // sequencePutById
         static const int sequencePutByIdInstructionSpace = 36;
@@ -753,6 +756,8 @@ namespace JSC {
         void emit_op_to_primitive(Instruction*);
         void emit_op_unexpected_load(Instruction*);
         void emit_op_urshift(Instruction*);
+        void emit_op_get_scoped_var(Instruction*);
+        void emit_op_put_scoped_var(Instruction*);
 
         void emitSlow_op_add(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_bitand(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -894,12 +899,14 @@ namespace JSC {
 
 #if ENABLE(DFG_JIT)
         bool canBeOptimized() { return m_canBeOptimized; }
+        bool canBeOptimizedOrInlined() { return m_canBeOptimizedOrInlined; }
         bool shouldEmitProfiling() { return m_shouldEmitProfiling; }
 #else
         bool canBeOptimized() { return false; }
+        bool canBeOptimizedOrInlined() { return false; }
         // Enables use of value profiler with tiered compilation turned off,
         // in which case all code gets profiled.
-        bool shouldEmitProfiling() { return true; }
+        bool shouldEmitProfiling() { return false; }
 #endif
 
         Interpreter* m_interpreter;
@@ -946,6 +953,7 @@ namespace JSC {
 
 #if ENABLE(VALUE_PROFILER)
         bool m_canBeOptimized;
+        bool m_canBeOptimizedOrInlined;
         bool m_shouldEmitProfiling;
 #endif
     } JIT_CLASS_ALIGNMENT;

@@ -57,6 +57,8 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMDOMTokenList.cpp \
 	DerivedSources/webkitdom/WebKitDOMDOMTokenListPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMDOMWindow.cpp \
+	DerivedSources/webkitdom/WebKitDOMDOMWindowCSS.cpp \
+	DerivedSources/webkitdom/WebKitDOMDOMWindowCSSPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMDOMWindowPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMElement.cpp \
 	DerivedSources/webkitdom/WebKitDOMElementPrivate.h \
@@ -393,6 +395,7 @@ webkitgtk_gdom_built_h_api += \
 	DerivedSources/webkitdom/WebKitDOMBarInfo.h \
 	DerivedSources/webkitdom/WebKitDOMConsole.h \
 	DerivedSources/webkitdom/WebKitDOMCustom.h \
+	DerivedSources/webkitdom/WebKitDOMDOMWindowCSS.h \
 	DerivedSources/webkitdom/WebKitDOMDOMWindow.h \
 	DerivedSources/webkitdom/WebKitDOMDOMSelection.h \
 	DerivedSources/webkitdom/WebKitDOMEventTarget.h \
@@ -515,11 +518,11 @@ libWebCoreDOM_la_SOURCES = \
 	Source/WebCore/bindings/gobject/WebKitHTMLElementWrapperFactory.h
 
 libWebCoreDOM_la_CXXFLAGS = \
-	$(SYMBOL_VISIBILITY_INLINES) \
+	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
 
 libWebCoreDOM_la_CFLAGS = \
-	$(SYMBOL_VISIBILITY) \
+	-fvisibility=hidden \
 	$(global_cflags)
 
 libWebCoreDOM_la_CPPFLAGS = \

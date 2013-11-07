@@ -25,15 +25,15 @@
 
 #include "config.h"
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if ENABLE(VIDEO) && ((USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)) || PLATFORM(IOS))
 
 #include "InbandTextTrackPrivateAVF.h"
 
 #include "InbandTextTrackPrivateClient.h"
 #include "Logging.h"
-#include "MediaPlayerPrivateAVFoundation.h"
 #include "SoftLinking.h"
 #include <CoreMedia/CoreMedia.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -57,6 +57,8 @@ SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextVerticalLayout_RightToLeft, CFStrin
 SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextMarkupAttribute_BaseFontSizePercentageRelativeToVideoHeight, CFStringRef)
 SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextMarkupAttribute_RelativeFontSize, CFStringRef)
 SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextMarkupAttribute_FontFamilyName, CFStringRef)
+SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextMarkupAttribute_ForegroundColorARGB, CFStringRef)
+SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextMarkupAttribute_BackgroundColorARGB, CFStringRef)
 
 #define kCMTextMarkupAttribute_Alignment getkCMTextMarkupAttribute_Alignment()
 #define kCMTextMarkupAlignmentType_Start getkCMTextMarkupAlignmentType_Start()
@@ -74,13 +76,19 @@ SOFT_LINK_POINTER_OPTIONAL(CoreMedia, kCMTextMarkupAttribute_FontFamilyName, CFS
 #define kCMTextMarkupAttribute_BaseFontSizePercentageRelativeToVideoHeight getkCMTextMarkupAttribute_BaseFontSizePercentageRelativeToVideoHeight()
 #define kCMTextMarkupAttribute_RelativeFontSize getkCMTextMarkupAttribute_RelativeFontSize()
 #define kCMTextMarkupAttribute_FontFamilyName getkCMTextMarkupAttribute_FontFamilyName()
+#define kCMTextMarkupAttribute_ForegroundColorARGB getkCMTextMarkupAttribute_ForegroundColorARGB()
+#define kCMTextMarkupAttribute_BackgroundColorARGB getkCMTextMarkupAttribute_BackgroundColorARGB()
 
 using namespace std;
 
 namespace WebCore {
 
-InbandTextTrackPrivateAVF::InbandTextTrackPrivateAVF(MediaPlayerPrivateAVFoundation* player)
-    : m_player(player)
+AVFInbandTrackParent::~AVFInbandTrackParent()
+{
+}
+
+InbandTextTrackPrivateAVF::InbandTextTrackPrivateAVF(AVFInbandTrackParent* owner)
+    : m_owner(owner)
     , m_index(0)
     , m_havePartialCue(false)
     , m_hasBeenReported(false)
@@ -90,6 +98,26 @@ InbandTextTrackPrivateAVF::InbandTextTrackPrivateAVF(MediaPlayerPrivateAVFoundat
 InbandTextTrackPrivateAVF::~InbandTextTrackPrivateAVF()
 {
     disconnect();
+}
+
+static bool makeRGBA32FromARGBCFArray(CFArrayRef colorArray, RGBA32& color)
+{
+    if (CFArrayGetCount(colorArray) < 4)
+        return false;
+
+    float componentArray[4];
+    for (int i = 0; i < 4; i++) {
+        CFNumberRef value = static_cast<CFNumberRef>(CFArrayGetValueAtIndex(colorArray, i));
+        if (CFGetTypeID(value) != CFNumberGetTypeID())
+            return false;
+
+        float component;
+        CFNumberGetValue(value, kCFNumberFloatType, &component);
+        componentArray[i] = component;
+    }
+
+    color = makeRGBA32FromFloats(componentArray[1] * 255, componentArray[2] * 255, componentArray[3] * 255, componentArray[0] * 255);
+    return true;
 }
 
 void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attributedString, GenericCueData* cueData)
@@ -267,6 +295,28 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
                 cueData->setFontName(valueString);
                 continue;
             }
+            
+            if (CFStringCompare(key, kCMTextMarkupAttribute_ForegroundColorARGB, 0) == kCFCompareEqualTo) {
+                CFArrayRef arrayValue = static_cast<CFArrayRef>(value);
+                if (CFGetTypeID(arrayValue) != CFArrayGetTypeID())
+                    continue;
+                
+                RGBA32 color;
+                if (!makeRGBA32FromARGBCFArray(arrayValue, color))
+                    continue;
+                cueData->setForegroundColor(color);
+            }
+            
+            if (CFStringCompare(key, kCMTextMarkupAttribute_BackgroundColorARGB, 0) == kCFCompareEqualTo) {
+                CFArrayRef arrayValue = static_cast<CFArrayRef>(value);
+                if (CFGetTypeID(arrayValue) != CFArrayGetTypeID())
+                    continue;
+                
+                RGBA32 color;
+                if (!makeRGBA32FromARGBCFArray(arrayValue, color))
+                    continue;
+                cueData->setBackgroundColor(color);
+            }
         }
 
         content.append(tagStart);
@@ -280,7 +330,7 @@ void InbandTextTrackPrivateAVF::processCueAttributes(CFAttributedStringRef attri
 
 void InbandTextTrackPrivateAVF::processCue(CFArrayRef attributedStrings, double time)
 {
-    if (!m_player)
+    if (!client())
         return;
     
     if (m_havePartialCue) {
@@ -306,13 +356,17 @@ void InbandTextTrackPrivateAVF::processCue(CFArrayRef attributedStrings, double 
                 if (cueData->position() >= 0 && cueData->size() > 0)
                     cueData->setPosition(cueData->position() - cueData->size() / 2);
                 
-                m_player->addGenericCue(this, cueData);
+                LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - adding cue for time %.2f", this, cueData->startTime());
+                client()->addGenericCue(this, cueData);
             }
         } else
             LOG(Media, "InbandTextTrackPrivateAVF::processCue negative length cue(s) ignored: start=%.2f, end=%.2f\n", m_currentCueStartTime, m_currentCueEndTime);
 
         resetCueValues();
     }
+
+    if (!attributedStrings)
+        return;
 
     CFIndex count = CFArrayGetCount(attributedStrings);
     if (!count)
@@ -333,7 +387,7 @@ void InbandTextTrackPrivateAVF::processCue(CFArrayRef attributedStrings, double 
 
 void InbandTextTrackPrivateAVF::disconnect()
 {
-    m_player = 0;
+    m_owner = 0;
     m_index = 0;
 }
 
@@ -350,7 +404,7 @@ void InbandTextTrackPrivateAVF::resetCueValues()
 
 void InbandTextTrackPrivateAVF::setMode(InbandTextTrackPrivate::Mode newMode)
 {
-    if (!m_player)
+    if (!m_owner)
         return;
 
     InbandTextTrackPrivate::Mode oldMode = mode();
@@ -359,9 +413,9 @@ void InbandTextTrackPrivateAVF::setMode(InbandTextTrackPrivate::Mode newMode)
     if (oldMode == newMode)
         return;
 
-    m_player->trackModeChanged();
+    m_owner->trackModeChanged();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#endif // ENABLE(VIDEO) && ((USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)) || PLATFORM(IOS))

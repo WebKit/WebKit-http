@@ -90,15 +90,15 @@ public:
         return styleWidth;
     }
 
-    LayoutUnit logicalHeightForRowSizing() const
+    int logicalHeightForRowSizing() const
     {
         // FIXME: This function does too much work, and is very hot during table layout!
-        LayoutUnit adjustedLogicalHeight = logicalHeight() - (intrinsicPaddingBefore() + intrinsicPaddingAfter());
-        LayoutUnit styleLogicalHeight = valueForLength(style()->logicalHeight(), 0, view());
+        int adjustedLogicalHeight = pixelSnappedLogicalHeight() - (intrinsicPaddingBefore() + intrinsicPaddingAfter());
+        int styleLogicalHeight = valueForLength(style()->logicalHeight(), 0, view());
         // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
         // Call computedCSSPadding* directly to avoid including implicitPadding.
         if (!document()->inQuirksMode() && style()->boxSizing() != BORDER_BOX)
-            styleLogicalHeight += computedCSSPaddingBefore() + computedCSSPaddingAfter() + borderBefore() + borderAfter();
+            styleLogicalHeight += (computedCSSPaddingBefore() + computedCSSPaddingAfter()).floor() + borderBefore() + borderAfter();
         return max(styleLogicalHeight, adjustedLogicalHeight);
     }
 
@@ -125,6 +125,11 @@ public:
     void paintBackgroundsBehindCell(PaintInfo&, const LayoutPoint&, RenderObject* backgroundObject);
 
     LayoutUnit cellBaselinePosition() const;
+    bool isBaselineAligned() const 
+    { 
+        EVerticalAlign va = style()->verticalAlign();
+        return va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH; 
+    }
 
     void computeIntrinsicPadding(int rowHeight);
     void clearIntrinsicPadding() { setIntrinsicPadding(0, 0); }

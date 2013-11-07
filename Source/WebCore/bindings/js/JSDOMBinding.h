@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009, 2013 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  *  Copyright (C) 2009 Google, Inc. All rights reserved.
  *  Copyright (C) 2012 Ericsson AB. All rights reserved.
@@ -24,18 +24,11 @@
 #define JSDOMBinding_h
 
 #include "BindingState.h"
-#include "CSSImportRule.h"
-#include "CSSStyleDeclaration.h"
-#include "CSSStyleSheet.h"
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWrapper.h"
 #include "DOMWrapperWorld.h"
 #include "Document.h"
-#include "Element.h"
-#include "MediaList.h"
 #include "ScriptWrappable.h"
-#include "StylePropertySet.h"
-#include "StyledElement.h"
 #include <heap/SlotVisitor.h>
 #include <heap/Weak.h>
 #include <runtime/Error.h>
@@ -58,13 +51,6 @@ class HashEntry;
 namespace WebCore {
 
 class DOMStringList;
-
-enum ParameterDefaultPolicy {
-    DefaultIsUndefined,
-    DefaultIsNullString
-};
-
-#define MAYBE_MISSING_PARAMETER(exec, index, policy) (((policy) == DefaultIsNullString && (index) >= (exec)->argumentCount()) ? (JSValue()) : ((exec)->argument(index)))
 
     class CachedScript;
     class Frame;
@@ -213,52 +199,9 @@ enum ParameterDefaultPolicy {
         return createWrapper<WrapperClass>(exec, globalObject, domObject);
     }
 
-    inline void* root(Node* node)
+    inline JSC::JSValue argumentOrNull(JSC::ExecState* exec, unsigned index)
     {
-        if (node->inDocument())
-            return node->document();
-
-        while (node->parentOrShadowHostNode())
-            node = node->parentOrShadowHostNode();
-        return node;
-    }
-
-    inline void* root(StyleSheet*);
-
-    inline void* root(CSSRule* rule)
-    {
-        if (rule->parentRule())
-            return root(rule->parentRule());
-        if (rule->parentStyleSheet())
-            return root(rule->parentStyleSheet());
-        return rule;
-    }
-
-    inline void* root(StyleSheet* styleSheet)
-    {
-        if (styleSheet->ownerRule())
-            return root(styleSheet->ownerRule());
-        if (styleSheet->ownerNode())
-            return root(styleSheet->ownerNode());
-        return styleSheet;
-    }
-
-    inline void* root(CSSStyleDeclaration* style)
-    {
-        if (CSSRule* parentRule = style->parentRule())
-            return root(parentRule);
-        if (CSSStyleSheet* styleSheet = style->parentStyleSheet())
-            return root(styleSheet);
-        return style;
-    }
-
-    inline void* root(MediaList* mediaList)
-    {
-        if (CSSRule* parentRule = mediaList->parentRule())
-            return root(parentRule);
-        if (CSSStyleSheet* parentStyleSheet = mediaList->parentStyleSheet())
-            return root(parentStyleSheet);
-        return mediaList;
+        return index >= exec->argumentCount() ? JSC::JSValue() : exec->argument(index);
     }
 
     const JSC::HashTable* getHashTableForGlobalData(JSC::JSGlobalData&, const JSC::HashTable* staticTable);
@@ -297,7 +240,7 @@ enum ParameterDefaultPolicy {
     inline int32_t finiteInt32Value(JSC::JSValue value, JSC::ExecState* exec, bool& okay)
     {
         double number = value.toNumber(exec);
-        okay = isfinite(number);
+        okay = std::isfinite(number);
         return JSC::toInt32(number);
     }
 

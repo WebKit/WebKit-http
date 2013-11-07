@@ -43,7 +43,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8MessageChannel::constructorCallbackCustom(const v8::Arguments& args)
+v8::Handle<v8::Value> V8MessageChannel::constructorCustom(const v8::Arguments& args)
 {
     ScriptExecutionContext* context = getScriptExecutionContext();
 
@@ -54,10 +54,10 @@ v8::Handle<v8::Value> V8MessageChannel::constructorCallbackCustom(const v8::Argu
     // Create references from the MessageChannel wrapper to the two
     // MessagePort wrappers to make sure that the MessagePort wrappers
     // stay alive as long as the MessageChannel wrapper is around.
-    V8DOMWrapper::setNamedHiddenReference(wrapper, "port1", toV8(obj->port1(), args.Holder(), args.GetIsolate()));
-    V8DOMWrapper::setNamedHiddenReference(wrapper, "port2", toV8(obj->port2(), args.Holder(), args.GetIsolate()));
+    V8HiddenPropertyName::setNamedHiddenReference(wrapper, "port1", toV8(obj->port1(), args.Holder(), args.GetIsolate()));
+    V8HiddenPropertyName::setNamedHiddenReference(wrapper, "port2", toV8(obj->port2(), args.Holder(), args.GetIsolate()));
 
-    V8DOMWrapper::associateObjectWithWrapper(obj.release(), &info, wrapper, args.GetIsolate());
+    V8DOMWrapper::associateObjectWithWrapper(obj.release(), &info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 }
 

@@ -73,8 +73,10 @@ MESSAGE_RECEIVERS = \
     PluginControllerProxy.messages.in \
     PluginProcess.messages.in \
     PluginProcessConnection.messages.in \
+    PluginProcessConnectionManager.messages.in \
     PluginProcessProxy.messages.in \
     PluginProxy.messages.in \
+    StorageAreaProxy.messages.in \
     StorageManager.messages.in \
     WebApplicationCacheManager.messages.in \
     WebApplicationCacheManagerProxy.messages.in \

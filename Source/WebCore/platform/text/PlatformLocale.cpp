@@ -99,7 +99,7 @@ void DateTimeStringBuilder::visitField(DateTimeFormat::FieldType fieldType, int 
         // Always use padding width of 4 so it matches DateTimeEditElement.
         appendNumber(m_date.fullYear(), 4);
         return;
-    case DateTimeFormat::FieldTypeMonth:    
+    case DateTimeFormat::FieldTypeMonth:
         if (numberOfPatternCharacters == 3)
             m_builder.append(m_localizer.shortMonthLabels()[m_date.month()]);
         else if (numberOfPatternCharacters == 4)
@@ -305,10 +305,8 @@ String Locale::convertFromLocalizedNumber(const String& localized)
     bool isNegative;
     unsigned startIndex;
     unsigned endIndex;
-    if (!detectSignAndGetDigitRange(input, isNegative, startIndex, endIndex)) {
-        // Input is broken. Returning an invalid number string.
-        return "*";
-    }
+    if (!detectSignAndGetDigitRange(input, isNegative, startIndex, endIndex))
+        return input;
 
     StringBuilder builder;
     builder.reserveCapacity(input.length());
@@ -317,13 +315,12 @@ String Locale::convertFromLocalizedNumber(const String& localized)
     for (unsigned i = startIndex; i < endIndex;) {
         unsigned symbolIndex = matchedDecimalSymbolIndex(input, i);
         if (symbolIndex >= DecimalSymbolsSize)
-            return "*";
+            return input;
         if (symbolIndex == DecimalSeparatorIndex)
             builder.append('.');
-        else if (symbolIndex == GroupSeparatorIndex) {
-            // Ignore group separators.
-
-        } else
+        else if (symbolIndex == GroupSeparatorIndex)
+            return input;
+        else
             builder.append(static_cast<UChar>('0' + symbolIndex));
     }
     return builder.toString();
@@ -357,7 +354,7 @@ String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
         builder.build(dateFormat());
         break;
     case DateComponents::Month:
-        builder.build(monthFormat());
+        builder.build(formatType == FormatTypeShort ? shortMonthFormat() : monthFormat());
         break;
     case DateComponents::Week:    
 #if ENABLE(INPUT_TYPE_WEEK)

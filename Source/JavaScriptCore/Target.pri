@@ -30,9 +30,10 @@ include(yarr/yarr.pri)
 
 INSTALLDEPS += all
 
-debug_and_release: INCLUDEPATH += $$JAVASCRIPTCORE_GENERATED_SOURCES_DIR/$$activeBuildConfig()
+debug_and_release: INCLUDEPATH += $$JAVASCRIPTCORE_GENERATED_SOURCES_DIR/$$targetSubDir()
 
 SOURCES += \
+    API/JSAPIWrapperObject.cpp \
     API/JSBase.cpp \
     API/JSCallbackConstructor.cpp \
     API/JSCallbackFunction.cpp \
@@ -68,6 +69,7 @@ SOURCES += \
     bytecode/MethodOfGettingAValueProfile.cpp \
     bytecode/Opcode.cpp \
     bytecode/PolymorphicPutByIdList.cpp \
+    bytecode/PreciseJumpTargets.cpp \
     bytecode/PutByIdStatus.cpp \
     bytecode/ReduceWhitespace.cpp \
     bytecode/ResolveGlobalStatus.cpp \
@@ -117,8 +119,10 @@ SOURCES += \
     dfg/DFGCommon.cpp \
     dfg/DFGCFAPhase.cpp \
     dfg/DFGCFGSimplificationPhase.cpp \
+    dfg/DFGCPSRethreadingPhase.cpp \
     dfg/DFGConstantFoldingPhase.cpp \
     dfg/DFGCSEPhase.cpp \
+    dfg/DFGDCEPhase.cpp \
     dfg/DFGDisassembler.cpp \
     dfg/DFGDominators.cpp \
     dfg/DFGDriver.cpp \
@@ -139,12 +143,15 @@ SOURCES += \
     dfg/DFGOSRExitJumpPlaceholder.cpp \
     dfg/DFGPhase.cpp \
     dfg/DFGPredictionPropagationPhase.cpp \
+    dfg/DFGPredictionInjectionPhase.cpp \
     dfg/DFGRepatch.cpp \
     dfg/DFGSpeculativeJIT.cpp \
     dfg/DFGSpeculativeJIT32_64.cpp \
     dfg/DFGSpeculativeJIT64.cpp \
     dfg/DFGStructureCheckHoistingPhase.cpp \
     dfg/DFGThunks.cpp \
+    dfg/DFGUnificationPhase.cpp \
+    dfg/DFGUseKind.cpp \
     dfg/DFGValueSource.cpp \
     dfg/DFGVariableAccessDataDump.cpp \
     dfg/DFGVariableEvent.cpp \
@@ -189,6 +196,7 @@ SOURCES += \
     parser/Nodes.cpp \
     parser/ParserArena.cpp \
     parser/Parser.cpp \
+    parser/SourceProvider.cpp \
     parser/SourceProviderCache.cpp \
     profiler/ProfilerBytecode.cpp \
     profiler/ProfilerBytecode.h \
@@ -292,6 +300,7 @@ SOURCES += \
     runtime/PropertyDescriptor.cpp \
     runtime/PropertyNameArray.cpp \
     runtime/PropertySlot.cpp \
+    runtime/PropertyTable.cpp \
     runtime/PrototypeMap.cpp \
     runtime/RegExpConstructor.cpp \
     runtime/RegExpCachedResult.cpp \
@@ -327,6 +336,19 @@ linux-*:if(isEqual(QT_ARCH, "i386")|isEqual(QT_ARCH, "x86_64")) {
         disassembler/udis86/udis86_syn-att.c \
         disassembler/udis86/udis86_syn-intel.c \
         disassembler/udis86/udis86_syn.c \
+}
+
+win32:!win32-g++*:isEqual(QT_ARCH, "x86_64"):{
+    asm_compiler.commands = ml64 /c
+    asm_compiler.commands +=  /Fo ${QMAKE_FILE_OUT} ${QMAKE_FILE_IN}
+    asm_compiler.output = ${QMAKE_VAR_OBJECTS_DIR}${QMAKE_FILE_BASE}$${first(QMAKE_EXT_OBJ)}
+    asm_compiler.input = ASM_SOURCES
+    asm_compiler.variable_out = OBJECTS
+    asm_compiler.name = compiling[asm] ${QMAKE_FILE_IN}
+    silent:asm_compiler.commands = @echo compiling[asm] ${QMAKE_FILE_IN} && $$asm_compiler.commands
+    QMAKE_EXTRA_COMPILERS += asm_compiler
+
+    ASM_SOURCES += jit/JITStubsMSVC64.asm
 }
 
 HEADERS += $$files(*.h, true)

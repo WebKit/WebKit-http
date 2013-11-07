@@ -29,14 +29,17 @@
 
 #include "CompactHTMLToken.h"
 
+#include "HTMLParserIdioms.h"
 #include "HTMLToken.h"
+#include "QualifiedName.h"
+#include "XSSAuditorDelegate.h"
 
 namespace WebCore {
 
 struct SameSizeAsCompactHTMLToken  {
     unsigned bitfields;
-    String name;
-    Vector<CompactAttribute> vector;
+    HTMLIdentifier data;
+    Vector<Attribute> vector;
     TextPosition textPosition;
 };
 
@@ -49,64 +52,57 @@ CompactHTMLToken::CompactHTMLToken(const HTMLToken* token, const TextPosition& t
     , m_textPosition(textPosition)
 {
     switch (m_type) {
-    case HTMLTokenTypes::Uninitialized:
+    case HTMLToken::Uninitialized:
         ASSERT_NOT_REACHED();
         break;
-    case HTMLTokenTypes::DOCTYPE: {
-        m_data = String(token->name().data(), token->name().size());
+    case HTMLToken::DOCTYPE: {
+        m_data = HTMLIdentifier(token->name(), Likely8Bit);
         // There is only 1 DOCTYPE token per document, so to avoid increasing the
         // size of CompactHTMLToken, we just use the m_attributes vector.
-        String publicIdentifier(token->publicIdentifier().data(), token->publicIdentifier().size());
-        String systemIdentifier(token->systemIdentifier().data(), token->systemIdentifier().size());
-        m_attributes.append(CompactAttribute(publicIdentifier, systemIdentifier));
+        m_attributes.append(Attribute(HTMLIdentifier(token->publicIdentifier(), Likely8Bit), String(token->systemIdentifier())));
         m_doctypeForcesQuirks = token->forceQuirks();
         break;
     }
-    case HTMLTokenTypes::EndOfFile:
+    case HTMLToken::EndOfFile:
         break;
-    case HTMLTokenTypes::StartTag:
+    case HTMLToken::StartTag:
         m_attributes.reserveInitialCapacity(token->attributes().size());
-        for (Vector<AttributeBase>::const_iterator it = token->attributes().begin(); it != token->attributes().end(); ++it)
-            m_attributes.append(CompactAttribute(String(it->m_name.data(), it->m_name.size()), String(it->m_value.data(), it->m_value.size())));
+        for (Vector<HTMLToken::Attribute>::const_iterator it = token->attributes().begin(); it != token->attributes().end(); ++it)
+            m_attributes.append(Attribute(HTMLIdentifier(it->name, Likely8Bit), StringImpl::create8BitIfPossible(it->value)));
         // Fall through!
-    case HTMLTokenTypes::EndTag:
+    case HTMLToken::EndTag:
         m_selfClosing = token->selfClosing();
         // Fall through!
-    case HTMLTokenTypes::Comment:
-    case HTMLTokenTypes::Character:
-        if (token->isAll8BitData()) {
-            m_data = String::make8BitFrom16BitSource(token->data().data(), token->data().size());
-            m_isAll8BitData = true;
-        } else
-            m_data = String(token->data().data(), token->data().size());
+    case HTMLToken::Comment:
+    case HTMLToken::Character: {
+        m_isAll8BitData = token->isAll8BitData();
+        m_data = HTMLIdentifier(token->data(), token->isAll8BitData() ? Force8Bit : Force16Bit);
         break;
+    }
     default:
         ASSERT_NOT_REACHED();
         break;
     }
 }
 
-static bool isStringSafeToSendToAnotherThread(const String& string)
+const CompactHTMLToken::Attribute* CompactHTMLToken::getAttributeItem(const QualifiedName& name) const
 {
-    StringImpl* impl = string.impl();
-    if (!impl)
-        return true;
-    if (impl->hasOneRef())
-        return true;
-    if (string.isEmpty())
-        return true;
-    return false;
+    for (unsigned i = 0; i < m_attributes.size(); ++i) {
+        if (threadSafeMatch(m_attributes.at(i).name, name))
+            return &m_attributes.at(i);
+    }
+    return 0;
 }
 
 bool CompactHTMLToken::isSafeToSendToAnotherThread() const
 {
-    for (Vector<CompactAttribute>::const_iterator it = m_attributes.begin(); it != m_attributes.end(); ++it) {
-        if (!isStringSafeToSendToAnotherThread(it->name()))
+    for (Vector<Attribute>::const_iterator it = m_attributes.begin(); it != m_attributes.end(); ++it) {
+        if (!it->name.isSafeToSendToAnotherThread())
             return false;
-        if (!isStringSafeToSendToAnotherThread(it->value()))
+        if (!it->value.isSafeToSendToAnotherThread())
             return false;
     }
-    return isStringSafeToSendToAnotherThread(m_data);
+    return m_data.isSafeToSendToAnotherThread();
 }
 
 }

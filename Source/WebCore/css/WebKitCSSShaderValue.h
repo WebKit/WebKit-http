@@ -45,10 +45,15 @@ public:
     static PassRefPtr<WebKitCSSShaderValue> create(const String& url) { return adoptRef(new WebKitCSSShaderValue(url)); }
     ~WebKitCSSShaderValue();
 
+    const String& format() const { return m_format; }
+    void setFormat(const String& format) { m_format = format; }
+
     StyleCachedShader* cachedShader(CachedResourceLoader*);
     StyleShader* cachedOrPendingShader();
 
     String customCssText() const;
+
+    bool equals(const WebKitCSSShaderValue&) const;
 
     void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
@@ -56,6 +61,7 @@ private:
     WebKitCSSShaderValue(const String& url);
 
     String m_url;
+    String m_format;
     RefPtr<StyleShader> m_shader;
     bool m_accessedShader;
 };

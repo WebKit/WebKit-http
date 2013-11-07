@@ -58,7 +58,7 @@ DateTimeSymbolicFieldElement::DateTimeSymbolicFieldElement(Document* document, F
 {
     ASSERT(!symbols.isEmpty());
     ASSERT(m_minimumIndex >= 0);
-    ASSERT(m_maximumIndex < static_cast<int>(m_symbols.size()));
+    ASSERT_WITH_SECURITY_IMPLICATION(m_maximumIndex < static_cast<int>(m_symbols.size()));
     ASSERT(m_minimumIndex <= m_maximumIndex);
 }
 
@@ -102,7 +102,7 @@ void DateTimeSymbolicFieldElement::initialize(const AtomicString& pseudo, const 
 
 void DateTimeSymbolicFieldElement::setEmptyValue(EventBehavior eventBehavior)
 {
-    if (isReadOnly())
+    if (isDisabled())
         return;
     m_selectedIndex = invalidIndex;
     updateVisibleValue(eventBehavior);

@@ -1,3 +1,304 @@
+2013-03-11  Jochen Eisinger  <jochen@chromium.org>
+
+        Rename DefinitelyProcessingUserGesture to DefinitelyProcessingNewUserGesture
+        https://bugs.webkit.org/show_bug.cgi?id=111959
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        (WebCore::NotificationPresenterClientQt::notificationClicked):
+
+2013-03-08  Arunprasad Rajkumar  <arunprasadr@nds.com>
+
+        [Qt] QWebSettings::clearMemoryCaches should release FastMalloc's free pages to OS
+        https://bugs.webkit.org/show_bug.cgi?id=111605
+
+        Reviewed by Jocelyn Turcotte.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettings::clearMemoryCaches):
+
+2013-03-07  Arunprasad Rajkumar  <arunprasadr@nds.com>
+
+        [Qt] QWebSettings::clearMemoryCaches should clear JS garbage
+        https://bugs.webkit.org/show_bug.cgi?id=111094
+
+        Reviewed by Jocelyn Turcotte.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettings::clearMemoryCaches):
+
+2013-03-06  Benjamin Poulain  <benjamin@webkit.org>
+
+        WebKitTestRunner needs layoutTestController.elementDoesAutoCompleteForElementWithId
+        https://bugs.webkit.org/show_bug.cgi?id=42696
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-03-06  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Illegal narrowing in tst_qwebhistory
+        https://bugs.webkit.org/show_bug.cgi?id=111562
+
+        Reviewed by Jocelyn Turcotte.
+
+        The bytearray in tst_QWebHistory::restoreIncompatibleVersion1 has integer
+        values higher than 127 assigned into an array of signed chars. This causes
+        compiler errors in C++11 since it assigns constants (>127) that does not
+        fit the destination (-128 to 127)
+
+        * tests/qwebhistory/tst_qwebhistory.cpp:
+        (tst_QWebHistory::restoreIncompatibleVersion1):
+
+2013-03-03  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed attempted build fix. Adds back some includes removed in
+        http://trac.webkit.org/changeset/144565.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+
+2013-03-03  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed rollout of http://trac.webkit.org/r144530
+        As described in https://bugs.webkit.org/show_bug.cgi?id=111167 and
+        https://bugs.webkit.org/show_bug.cgi?id=111035, this patch caused a
+        large number of ASSERTs in chromium-win.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+
+2013-03-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move computedStyleIncludingVisitedInfo from TestRunner to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109772
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Reduce amount of rebuilding when touching networking headers
+        https://bugs.webkit.org/show_bug.cgi?id=111035
+
+        Reviewed by Eric Seidel.
+
+        Adding includes that are now necessary because WebCore headers don't have them
+        any more.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+
+2013-03-01  Jason Anderssen  <janderssen@gmail.com>
+
+        Move markerTextForListItem from TestRunner to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=110939
+
+        Reviewed by Benjamin Poulain.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-03-01  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r144422 and r144424.
+        http://trac.webkit.org/changeset/144422
+        http://trac.webkit.org/changeset/144424
+        https://bugs.webkit.org/show_bug.cgi?id=111167
+
+        Caused over 20 tests to fail assertion on Chromium Win port as
+        ASSERTION FAILED: m_platformRequestUpdated (Requested by
+        toyoshim on #webkit).
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+
+2013-02-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Reduce amount of rebuilding when touching networking headers
+        https://bugs.webkit.org/show_bug.cgi?id=111035
+
+        Reviewed by Eric Seidel.
+
+        Adding includes that are now necessary because WebCore headers don't have them
+        any more.
+
+        * WebCoreSupport/NotificationPresenterClientQt.cpp:
+        * WebCoreSupport/QWebPageAdapter.cpp:
+
+2013-02-24  Andreas Kling  <akling@apple.com>
+
+        StyledElement: Don't expose a mutable direct interface to the inline style.
+        <http://webkit.org/b/110711>
+
+        Reviewed by Antti Koivisto.
+
+        QWebElement::styleProperty() is a read-only method, so rewrite it to use StyledElement::inlineStyle().
+
+        * Api/qwebelement.cpp:
+        (QWebElement::styleProperty):
+
+2013-02-23  Jason Anderssen  <janderssen@gmail.com>
+
+        Move setAutofilled from TestRunner to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=110521
+
+        Reviewed by Benjamin Poulain.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-21  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] Replace QWebPageAdaptor::TouchAdjuster
+        https://bugs.webkit.org/show_bug.cgi?id=110226
+
+        Reviewed by Antonio Gomes.
+
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::adjustPointForClicking):
+        * WebCoreSupport/QWebPageAdapter.h:
+
+2013-02-15  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Simplify hitTestResultAtPoint and nodesFromRect APIs
+        https://bugs.webkit.org/show_bug.cgi?id=95720
+
+        Reviewed by Julien Chaffraix.
+
+        Update calls to new API.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction):
+        * WebCoreSupport/QWebFrameAdapter.cpp:
+        (QWebFrameAdapter::hitTestContent):
+        * WebCoreSupport/QWebPageAdapter.cpp:
+        (QWebPageAdapter::TouchAdjuster::findCandidatePointForTouch):
+        (QWebPageAdapter::handleSoftwareInputPanel):
+        (QWebPageAdapter::updatePositionDependentMenuActions):
+
+2013-02-15  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Port GCController to JSC C API
+        https://bugs.webkit.org/show_bug.cgi?id=109690
+
+        Reviewed by Benjamin Poulain.
+
+        Add hooks to retrieve JSContextRef and window object.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::getJSWindowObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-13  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        [Qt] window.open passes height and width parameters even if not defined in a page
+        https://bugs.webkit.org/show_bug.cgi?id=107705
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Test that minimum size is applied only when the requested size is too small,
+        not when default is requested.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage):
+        (TestPage):
+        (TestPage::TestPage):
+        (TestPage::createWindow):
+        (TestPage::slotGeometryChangeRequested):
+        (tst_QWebPage::openWindowDefaultSize):
+
+2013-02-12  Huang Dongsung  <luxtella@company100.net>
+
+        [TexMap] Apply frames-per-second debug counter to WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=109540
+
+        Reviewed by Noam Rosenthal.
+
+        Make TextureMapperLayerClientQt use TextureMapperFPSCounter.
+
+        * WebCoreSupport/TextureMapperLayerClientQt.cpp:
+        (TextureMapperLayerClientQt::renderCompositedLayers):
+        * WebCoreSupport/TextureMapperLayerClientQt.h:
+        (TextureMapperLayerClientQt):
+
+2013-02-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Disable delete button controller on non-Mac ports and delete EditorClient::shouldShowDeleteInterface
+        https://bugs.webkit.org/show_bug.cgi?id=109534
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/EditorClientQt.cpp:
+        (WebCore):
+        * WebCoreSupport/EditorClientQt.h:
+        (EditorClientQt):
+
+2013-02-11  Benjamin Poulain  <benjamin@webkit.org>
+
+        Kill TestRunner::setMinimumTimerInterval; implement the feature with InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=109349
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move workerThreadCount from TestRunner to WebCore Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109239
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-07  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move pauseAnimation/pauseTransition from TestRunner to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109107
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-04  Benjamin Poulain  <bpoulain@apple.com>
+
+        Kill suspendAnimation(), resumeAnimation() and numberOfActiveAnimations() from DRT/WTR; use Internals
+        https://bugs.webkit.org/show_bug.cgi?id=108741
+
+        Reviewed by Tony Chang.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2013-02-04  Enrica Casucci  <enrica@apple.com>
+
+        Add specific EditActions for Bold and Italic commands.
+        https://bugs.webkit.org/show_bug.cgi?id=108842.
+        <rdar://problem/13098252>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/UndoStepQt.cpp:
+        (undoNameForEditAction):
+
+2013-02-04  Abhishek Arya  <inferno@chromium.org>
+
+        Add ASSERT_WITH_SECURITY_IMPLICATION to detect bad cast in DOM, CSS, etc.
+        https://bugs.webkit.org/show_bug.cgi?id=108688
+
+        Reviewed by Eric Seidel.
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+
 2013-02-03  KwangYong Choi  <ky0.choi@samsung.com>
 
         Fix build warning after r141473

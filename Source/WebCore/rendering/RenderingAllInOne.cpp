@@ -34,6 +34,7 @@
 #include "FixedTableLayout.cpp"
 #include "HitTestingTransformState.cpp"
 #include "HitTestResult.cpp"
+#include "HitTestLocation.cpp"
 #include "InlineBox.cpp"
 #include "InlineFlowBox.cpp"
 #include "InlineTextBox.cpp"
@@ -122,3 +123,4 @@
 #include "RootInlineBox.cpp"
 #include "ScrollBehavior.cpp"
 #include "break_lines.cpp"
+

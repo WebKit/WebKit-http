@@ -59,6 +59,7 @@
 #include "SkMatrix44.h"
 #include "SkiaImageFilterBuilder.h"
 #include "SystemTime.h"
+#include "TransformSkMatrix44Conversions.h"
 #include <public/Platform.h>
 #include <public/WebAnimation.h>
 #include <public/WebCompositorSupport.h>
@@ -68,7 +69,6 @@
 #include <public/WebFloatRect.h>
 #include <public/WebImageLayer.h>
 #include <public/WebSize.h>
-#include <public/WebTransformationMatrix.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
 #include <wtf/MemoryInstrumentationHashMap.h>
@@ -704,12 +704,12 @@ void GraphicsLayerChromium::updateAnchorPoint()
 
 void GraphicsLayerChromium::updateTransform()
 {
-    platformLayer()->setTransform(WebTransformationMatrix(m_transform));
+    platformLayer()->setTransform(TransformSkMatrix44Conversions::convert(m_transform));
 }
 
 void GraphicsLayerChromium::updateChildrenTransform()
 {
-    platformLayer()->setSublayerTransform(WebTransformationMatrix(m_childrenTransform));
+    platformLayer()->setSublayerTransform(TransformSkMatrix44Conversions::convert(m_childrenTransform));
 }
 
 void GraphicsLayerChromium::updateMasksToBounds()

@@ -22,9 +22,9 @@
 #include "config.h"
 #include "DateInstance.h"
 
-#include "JSCJSValueInlines.h"
 #include "JSDateMath.h"
 #include "JSGlobalObject.h"
+#include "Operations.h"
 #include <math.h>
 #include <wtf/MathExtras.h>
 
@@ -61,7 +61,7 @@ void DateInstance::destroy(JSCell* cell)
 const GregorianDateTime* DateInstance::calculateGregorianDateTime(ExecState* exec) const
 {
     double milli = internalNumber();
-    if (isnan(milli))
+    if (std::isnan(milli))
         return 0;
 
     if (!m_data)
@@ -77,7 +77,7 @@ const GregorianDateTime* DateInstance::calculateGregorianDateTime(ExecState* exe
 const GregorianDateTime* DateInstance::calculateGregorianDateTimeUTC(ExecState* exec) const
 {
     double milli = internalNumber();
-    if (isnan(milli))
+    if (std::isnan(milli))
         return 0;
 
     if (!m_data)

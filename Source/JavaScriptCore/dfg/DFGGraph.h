@@ -60,27 +60,27 @@ struct StorageAccessData {
 
 struct ResolveGlobalData {
     unsigned identifierNumber;
-    unsigned resolveOperationsIndex;
-    unsigned putToBaseOperationIndex;
+    ResolveOperations* resolveOperations;
+    PutToBaseOperation* putToBaseOperation;
     unsigned resolvePropertyIndex;
 };
 
 struct ResolveOperationData {
     unsigned identifierNumber;
-    unsigned resolveOperationsIndex;
-    unsigned putToBaseOperationIndex;
+    ResolveOperations* resolveOperations;
+    PutToBaseOperation* putToBaseOperation;
 };
 
 struct PutToBaseOperationData {
-    unsigned putToBaseOperationIndex;
+    PutToBaseOperation* putToBaseOperation;
 };
 
 enum AddSpeculationMode {
     DontSpeculateInteger,
-    SpeculateIntegerButAlwaysWatchOverflow,
+    SpeculateIntegerAndTruncateConstants,
     SpeculateInteger
 };
-    
+
 
 //
 // === Graph ===
@@ -92,105 +92,88 @@ public:
     Graph(JSGlobalData&, CodeBlock*, unsigned osrEntryBytecodeIndex, const Operands<JSValue>& mustHandleValues);
     ~Graph();
     
-    // Mark a node as being referenced.
-    Node* ref(Node* node)
+    void changeChild(Edge& edge, Node* newNode)
     {
-        // If the value (before incrementing) was at refCount zero then we need to ref its children.
-        if (!node->postfixRef())
-            refChildren(node);
-        return node;
-    }
-    Edge ref(Edge nodeUse)
-    {
-        ref(nodeUse.node());
-        return nodeUse;
-    }
-    
-    void deref(Node* node)
-    {
-#if !ASSERT_DISABLED
-        if (!node->refCount())
-            dump();
-#endif
-        if (node->postfixDeref() == 1)
-            derefChildren(node);
-    }
-    void deref(Edge nodeUse)
-    {
-        deref(nodeUse.node());
-    }
-    
-    // When a node's refCount goes from 0 to 1, it must (logically) recursively ref all of its children, and vice versa.
-    void refChildren(Node*);
-    void derefChildren(Node*);
-
-    void changeChild(Edge& edge, Node* newNode, bool changeRef = true)
-    {
-        if (changeRef) {
-            ref(newNode);
-            deref(edge.node());
-        }
         edge.setNode(newNode);
     }
     
-    void changeEdge(Edge& edge, Edge newEdge, bool changeRef = true)
+    void changeEdge(Edge& edge, Edge newEdge)
     {
-        if (changeRef) {
-            ref(newEdge);
-            deref(edge);
-        }
         edge = newEdge;
     }
     
-    void compareAndSwap(Edge& edge, Node* oldNode, Node* newNode, bool changeRef)
+    void compareAndSwap(Edge& edge, Node* oldNode, Node* newNode)
     {
         if (edge.node() != oldNode)
             return;
-        changeChild(edge, newNode, changeRef);
+        changeChild(edge, newNode);
     }
     
-    void compareAndSwap(Edge& edge, Edge oldEdge, Edge newEdge, bool changeRef)
+    void compareAndSwap(Edge& edge, Edge oldEdge, Edge newEdge)
     {
         if (edge != oldEdge)
             return;
-        changeEdge(edge, newEdge, changeRef);
+        changeEdge(edge, newEdge);
     }
     
     void clearAndDerefChild(Node* node, unsigned index)
     {
         if (!node->children.child(index))
             return;
-        deref(node->children.child(index));
         node->children.setChild(index, Edge());
     }
     void clearAndDerefChild1(Node* node) { clearAndDerefChild(node, 0); }
     void clearAndDerefChild2(Node* node) { clearAndDerefChild(node, 1); }
     void clearAndDerefChild3(Node* node) { clearAndDerefChild(node, 2); }
     
+    void performSubstitution(Node* node)
+    {
+        if (node->flags() & NodeHasVarArgs) {
+            for (unsigned childIdx = node->firstChild(); childIdx < node->firstChild() + node->numChildren(); childIdx++)
+                performSubstitutionForEdge(m_varArgChildren[childIdx]);
+        } else {
+            performSubstitutionForEdge(node->child1());
+            performSubstitutionForEdge(node->child2());
+            performSubstitutionForEdge(node->child3());
+        }
+    }
+    
+    void performSubstitutionForEdge(Edge& child)
+    {
+        // Check if this operand is actually unused.
+        if (!child)
+            return;
+        
+        // Check if there is any replacement.
+        Node* replacement = child->replacement;
+        if (!replacement)
+            return;
+        
+        child.setNode(replacement);
+        
+        // There is definitely a replacement. Assert that the replacement does not
+        // have a replacement.
+        ASSERT(!child->replacement);
+    }
+    
 #define DFG_DEFINE_ADD_NODE(templatePre, templatePost, typeParams, valueParamsComma, valueParams, valueArgs) \
-    templatePre typeParams templatePost Node* addNode(RefChildrenMode refChildrenMode, RefNodeMode refNodeMode, SpeculatedType type valueParamsComma valueParams) \
+    templatePre typeParams templatePost Node* addNode(SpeculatedType type valueParamsComma valueParams) \
     { \
         Node* node = new (m_allocator) Node(valueArgs); \
         node->predict(type); \
-        if (node->flags() & NodeMustGenerate) \
-            node->ref(); \
-        if (refNodeMode == RefNode) \
-            node->ref(); \
-        if (refChildrenMode == RefChildren) \
-            refChildren(node); \
         return node; \
     }
     DFG_VARIADIC_TEMPLATE_FUNCTION(DFG_DEFINE_ADD_NODE)
 #undef DFG_DEFINE_ADD_NODE
 
-    // Call this if you've modified the reference counts of nodes that deal with
-    // local variables. This is necessary because local variable references can form
-    // cycles, and hence reference counting is not enough. This will reset the
-    // reference counts according to reachability.
-    void collectGarbage();
+    void dethread();
     
     void convertToConstant(Node* node, unsigned constantNumber)
     {
+        if (node->op() == GetLocal)
+            dethread();
+        else
+            ASSERT(!node->hasVariableAccessData());
         node->convertToConstant(constantNumber);
     }
     
@@ -351,8 +334,6 @@ public:
 
     static const char *opName(NodeType);
     
-    void predictArgumentTypes();
-    
     StructureSet* addStructureSet(const StructureSet& structureSet)
     {
         ASSERT(structureSet.size());
@@ -369,6 +350,12 @@ public:
     JSGlobalObject* globalObjectFor(CodeOrigin codeOrigin)
     {
         return m_codeBlock->globalObjectFor(codeOrigin);
+    }
+    
+    JSObject* globalThisObjectFor(CodeOrigin codeOrigin)
+    {
+        JSGlobalObject* object = globalObjectFor(codeOrigin);
+        return object->methodTable()->toThisObject(object, 0);
     }
     
     ExecutableBase* executableFor(InlineCallFrame* inlineCallFrame)
@@ -468,15 +455,6 @@ public:
         return m_codeBlock->usesArguments();
     }
     
-    bool isCreatedThisArgument(int operand)
-    {
-        if (!operandIsArgument(operand))
-            return false;
-        if (operandToArgument(operand))
-            return false;
-        return m_codeBlock->specializationKind() == CodeForConstruct;
-    }
-    
     unsigned numSuccessors(BasicBlock* block)
     {
         return block->last()->numSuccessors();
@@ -492,9 +470,7 @@ public:
     
     bool isPredictedNumerical(Node* node)
     {
-        SpeculatedType left = node->child1()->prediction();
-        SpeculatedType right = node->child2()->prediction();
-        return isNumberSpeculation(left) && isNumberSpeculation(right);
+        return isNumerical(node->child1().useKind()) && isNumerical(node->child2().useKind());
     }
     
     // Note that a 'true' return does not actually mean that the ByVal access clobbers nothing.
@@ -634,19 +610,19 @@ public:
             if (node->flags() & NodeHasVarArgs) {
                 for (unsigned childIdx = node->firstChild(); childIdx < node->firstChild() + node->numChildren(); ++childIdx) {
                     if (!!m_varArgChildren[childIdx])
-                        compareAndSwap(m_varArgChildren[childIdx], oldThing, newThing, node->shouldGenerate());
+                        compareAndSwap(m_varArgChildren[childIdx], oldThing, newThing);
                 }
                 continue;
             }
             if (!node->child1())
                 continue;
-            compareAndSwap(node->children.child1(), oldThing, newThing, node->shouldGenerate());
+            compareAndSwap(node->children.child1(), oldThing, newThing);
             if (!node->child2())
                 continue;
-            compareAndSwap(node->children.child2(), oldThing, newThing, node->shouldGenerate());
+            compareAndSwap(node->children.child2(), oldThing, newThing);
             if (!node->child3())
                 continue;
-            compareAndSwap(node->children.child3(), oldThing, newThing, node->shouldGenerate());
+            compareAndSwap(node->children.child3(), oldThing, newThing);
         }
     }
     
@@ -718,6 +694,9 @@ public:
     Operands<JSValue> m_mustHandleValues;
     
     OptimizationFixpointState m_fixpointState;
+    GraphForm m_form;
+    UnificationState m_unificationState;
+    RefCountState m_refCountState;
 private:
     
     void handleSuccessor(Vector<BlockIndex, 16>& worklist, BlockIndex blockIndex, BlockIndex successorIndex);
@@ -741,7 +720,7 @@ private:
         if (doubleImmediate < -twoToThe48 || doubleImmediate > twoToThe48)
             return DontSpeculateInteger;
         
-        return nodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateIntegerButAlwaysWatchOverflow : DontSpeculateInteger;
+        return nodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateIntegerAndTruncateConstants : DontSpeculateInteger;
     }
     
     bool mulImmediateShouldSpeculateInteger(Node* mul, Node* variable, Node* immediate)
@@ -789,6 +768,36 @@ inline BlockIndex Graph::blockIndexForBytecodeOffset(Vector<BlockIndex>& linking
 {
     return *binarySearch<BlockIndex, unsigned>(linkingTargets, linkingTargets.size(), bytecodeBegin, GetBytecodeBeginForBlock(*this));
 }
+
+#define DFG_NODE_DO_TO_CHILDREN(graph, node, thingToDo) do {            \
+        Node* _node = (node);                                           \
+        if (_node->flags() & NodeHasVarArgs) {                          \
+            for (unsigned _childIdx = _node->firstChild();              \
+                _childIdx < _node->firstChild() + _node->numChildren(); \
+                _childIdx++) {                                          \
+                if (!!(graph).m_varArgChildren[_childIdx])              \
+                    thingToDo(_node, (graph).m_varArgChildren[_childIdx]); \
+            }                                                           \
+        } else {                                                        \
+            if (!_node->child1()) {                                     \
+                ASSERT(                                                 \
+                    !_node->child2()                                    \
+                    && !_node->child3());                               \
+                break;                                                  \
+            }                                                           \
+            thingToDo(_node, _node->child1());                          \
+                                                                        \
+            if (!_node->child2()) {                                     \
+                ASSERT(!_node->child3());                               \
+                break;                                                  \
+            }                                                           \
+            thingToDo(_node, _node->child2());                          \
+                                                                        \
+            if (!_node->child3())                                       \
+                break;                                                  \
+            thingToDo(_node, _node->child3());                          \
+        }                                                               \
+    } while (false)
 
 } } // namespace JSC::DFG
 

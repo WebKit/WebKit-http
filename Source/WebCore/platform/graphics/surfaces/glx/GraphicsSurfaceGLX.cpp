@@ -1,5 +1,6 @@
 /*
  Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies)
+ Copyright (C) 2013 Intel Corporation.
 
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
@@ -30,19 +31,15 @@
 #include <QGuiApplication>
 #include <QOpenGLContext>
 #include <qpa/qplatformnativeinterface.h>
-#elif PLATFORM(EFL)
-#include <GL/gl.h>
-#endif
-
 #include <GL/glext.h>
 #include <GL/glx.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/Xcomposite.h>
-#include <X11/extensions/Xrender.h>
+#else
+#include <opengl/GLDefs.h>
+#endif
+
+#include "GLXConfigSelector.h"
 
 namespace WebCore {
-
-static long X11OverrideRedirect = 1L << 9;
 
 static PFNGLXBINDTEXIMAGEEXTPROC pGlXBindTexImageEXT = 0;
 static PFNGLXRELEASETEXIMAGEEXTPROC pGlXReleaseTexImageEXT = 0;
@@ -52,153 +49,7 @@ static PFNGLGENFRAMEBUFFERSPROC pGlGenFramebuffers = 0;
 static PFNGLDELETEFRAMEBUFFERSPROC pGlDeleteFramebuffers = 0;
 static PFNGLFRAMEBUFFERTEXTURE2DPROC pGlFramebufferTexture2D = 0;
 
-// Used for handling XError.
-static bool validOperation = true;
-static int handleXPixmapCreationError(Display*, XErrorEvent* event)
-{
-    if (event->error_code == BadMatch || event->error_code == BadWindow || event->error_code == BadAlloc) {
-        validOperation = false;
-
-        switch (event->error_code) {
-        case BadMatch:
-            LOG_ERROR("BadMatch.");
-            break;
-        case BadWindow:
-            LOG_ERROR("BadWindow.");
-            break;
-        case BadAlloc:
-            LOG_ERROR("BadAlloc.");
-            break;
-        default:
-            break;
-        }
-    }
-
-    return 0;
-}
-
-static int attributes[] = {
-    GLX_LEVEL, 0,
-    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-    GLX_RENDER_TYPE,   GLX_RGBA_BIT,
-    GLX_RED_SIZE,      1,
-    GLX_GREEN_SIZE,    1,
-    GLX_BLUE_SIZE,     1,
-    GLX_ALPHA_SIZE,    1,
-    GLX_DEPTH_SIZE,    1,
-    GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
-    GLX_DOUBLEBUFFER,  True,
-    None
-};
-
-class ScopedXPixmapCreationErrorHandler {
-
-public:
-    ScopedXPixmapCreationErrorHandler(Display* display)
-        : m_display(display)
-    {
-        // XSync must be called to ensure that current errors are handled by the original handler.
-        XSync(m_display, false);
-        m_previousErrorHandler = XSetErrorHandler(handleXPixmapCreationError);
-    }
-
-    ~ScopedXPixmapCreationErrorHandler()
-    {
-        // Restore the original handler.
-        XSetErrorHandler(m_previousErrorHandler);
-    }
-
-    bool isValidOperation() const
-    {
-        validOperation = true;
-        // XSync is needed to catch possible errors as they are generated asynchronously.
-        XSync(m_display, false);
-        return validOperation;
-    }
-
-private:
-    XErrorHandler m_previousErrorHandler;
-    Display* m_display;
-};
-
-// FIXME: Take X11WindowResources and GLXConfigSelector into use.
-class OffScreenRootWindow {
-public:
-    OffScreenRootWindow()
-    {
-        ++m_refCount;
-    }
-
-    Window getXWindow()
-    {
-        if (!m_window) {
-            Display* dpy = display();
-            m_window = XCreateSimpleWindow(dpy, XDefaultRootWindow(dpy), -1, -1, 1, 1, 0, BlackPixel(dpy, 0), WhitePixel(dpy, 0));
-            XSetWindowAttributes attributes;
-            attributes.override_redirect = true;
-            XChangeWindowAttributes(dpy, m_window, X11OverrideRedirect, &attributes);
-            // Map window to the screen
-            XMapWindow(dpy, m_window);
-        }
-
-        return m_window;
-    }
-
-private:
-    struct DisplayConnection {
-        DisplayConnection()
-        {
-            m_display = XOpenDisplay(0);
-        }
-
-        ~DisplayConnection()
-        {
-            XCloseDisplay(m_display);
-        }
-
-        Display* display() { return m_display; }
-    private:
-        Display* m_display;
-    };
-
-public:
-    static Display* display()
-    {
-        // Display connection will only be broken at program shutdown.
-        static DisplayConnection displayConnection;
-        return displayConnection.display();
-    }
-
-    ~OffScreenRootWindow()
-    {
-        if (--m_refCount)
-            return;
-
-        if (m_window) {
-            XUnmapWindow(display(), m_window);
-            XDestroyWindow(display(), m_window);
-            m_window = 0;
-        }
-    }
-
-private:
-    static int m_refCount;
-    static Window m_window;
-};
-
-int OffScreenRootWindow::m_refCount = 0;
-Window OffScreenRootWindow::m_window = 0;
-
-static const int glxSpec[] = {
-    // The specification is a set key value pairs stored in a simple array.
-    GLX_LEVEL,                          0,
-    GLX_DRAWABLE_TYPE,                  GLX_PIXMAP_BIT | GLX_WINDOW_BIT,
-    GLX_BIND_TO_TEXTURE_TARGETS_EXT,    GLX_TEXTURE_2D_BIT_EXT,
-    GLX_BIND_TO_TEXTURE_RGBA_EXT,       TRUE,
-    0
-};
-
-static const int glxAttributes[] = {
+static int glxAttributes[] = {
     GLX_TEXTURE_FORMAT_EXT,
     GLX_TEXTURE_FORMAT_RGBA_EXT,
     GLX_TEXTURE_TARGET_EXT,
@@ -206,20 +57,23 @@ static const int glxAttributes[] = {
     0
 };
 
+static bool isMesaGLX()
+{
+    static bool isMesa = !!strstr(glXGetClientString(X11Helper::nativeDisplay(), GLX_VENDOR), "Mesa");
+    return isMesa;
+}
+
 struct GraphicsSurfacePrivate {
     GraphicsSurfacePrivate(const PlatformGraphicsContext3D shareContext = 0)
-        : m_offScreenWindow(adoptPtr(new OffScreenRootWindow()))
-        , m_xPixmap(0)
+        : m_xPixmap(0)
         , m_glxPixmap(0)
         , m_surface(0)
         , m_glxSurface(0)
         , m_glContext(0)
         , m_detachedContext(0)
         , m_detachedSurface(0)
-        , m_fbConfig(0)
-        , m_textureIsYInverted(false)
-        , m_hasAlpha(false)
         , m_isReceiver(false)
+        , m_texture(0)
     {
         GLXContext shareContextObject = 0;
 
@@ -234,16 +88,17 @@ struct GraphicsSurfacePrivate {
         UNUSED_PARAM(shareContext);
 #endif
 
-        int numReturned;
-        GLXFBConfig* fbConfigs = glXChooseFBConfig(display(), DefaultScreen(display()), attributes, &numReturned);
+        GLPlatformSurface::SurfaceAttributes sharedSurfaceAttributes = GLPlatformSurface::DoubleBuffered |
+            GLPlatformSurface::SupportAlpha;
+        m_configSelector = adoptPtr(new GLXConfigSelector(sharedSurfaceAttributes));
 
-        // Make sure that we choose a configuration that supports an alpha mask.
-        m_fbConfig = findFBConfigWithAlpha(fbConfigs, numReturned);
-
-        XFree(fbConfigs);
+        if (!m_configSelector->surfaceContextConfig()) {
+            clear();
+            return;
+        }
 
         // Create a GLX context for OpenGL rendering
-        m_glContext = glXCreateNewContext(display(), m_fbConfig, GLX_RGBA_TYPE, shareContextObject, true);
+        m_glContext = glXCreateNewContext(display(), m_configSelector->surfaceContextConfig(), GLX_RGBA_TYPE, shareContextObject, true);
     }
 
     GraphicsSurfacePrivate(uint32_t winId)
@@ -254,11 +109,10 @@ struct GraphicsSurfacePrivate {
         , m_glContext(0)
         , m_detachedContext(0)
         , m_detachedSurface(0)
-        , m_fbConfig(0)
-        , m_textureIsYInverted(false)
-        , m_hasAlpha(false)
         , m_isReceiver(true)
-    { }
+        , m_texture(0)
+    {
+    }
 
     ~GraphicsSurfacePrivate()
     {
@@ -267,30 +121,25 @@ struct GraphicsSurfacePrivate {
 
     uint32_t createSurface(const IntSize& size)
     {
-        XVisualInfo* visualInfo = glXGetVisualFromFBConfig(display(), m_fbConfig);
-        if (!visualInfo)
+        if (!display() || !m_configSelector)
             return 0;
 
-        Colormap cmap = XCreateColormap(display(), m_offScreenWindow->getXWindow(), visualInfo->visual, AllocNone);
+        GLXFBConfig config = m_configSelector->surfaceContextConfig();
+        OwnPtrX11<XVisualInfo> visInfo(m_configSelector->visualInfo(config));
 
-        XSetWindowAttributes a;
-        a.background_pixel = WhitePixel(display(), 0);
-        a.border_pixel = BlackPixel(display(), 0);
-        a.colormap = cmap;
-        m_surface = XCreateWindow(display(), m_offScreenWindow->getXWindow(), 0, 0, size.width(), size.height(),
-            0, visualInfo->depth, InputOutput, visualInfo->visual,
-            CWBackPixel | CWBorderPixel | CWColormap, &a);
-        XSetWindowBackgroundPixmap(display(), m_surface, 0);
-        XCompositeRedirectWindow(display(), m_surface, CompositeRedirectManual);
-        m_glxSurface = glXCreateWindow(display(), m_fbConfig, m_surface, 0);
-        XFree(visualInfo);
-
-        // Make sure the XRender Extension is available.
-        int eventBasep, errorBasep;
-        if (!XRenderQueryExtension(display(), &eventBasep, &errorBasep))
+        if (!visInfo.get()) {
+            clear();
             return 0;
+        }
 
-        XMapWindow(display(), m_surface);
+        X11Helper::createOffScreenWindow(&m_surface, *visInfo.get(), size);
+
+        if (!m_surface) {
+            clear();
+            return 0;
+        }
+
+        m_glxSurface = glXCreateWindow(display(), config, m_surface, 0);
         return m_surface;
     }
 
@@ -304,35 +153,33 @@ struct GraphicsSurfacePrivate {
         if (attr.map_state == IsUnmapped || attr.map_state == IsUnviewable)
             return;
 
-        ScopedXPixmapCreationErrorHandler handler(display());
+        ScopedXPixmapCreationErrorHandler handler;
         m_size = IntSize(attr.width, attr.height);
 
         XRenderPictFormat* format = XRenderFindVisualFormat(display(), attr.visual);
-        m_hasAlpha = (format->type == PictTypeDirect && format->direct.alphaMask);
-
-        int numberOfConfigs;
-        GLXFBConfig* configs = glXChooseFBConfig(display(), XDefaultScreen(display()), glxSpec, &numberOfConfigs);
-
-        // If origin window has alpha then find config with alpha.
-        GLXFBConfig& config = m_hasAlpha ? findFBConfigWithAlpha(configs, numberOfConfigs) : configs[0];
-
+        bool hasAlpha = (format->type == PictTypeDirect && format->direct.alphaMask);
         m_xPixmap = XCompositeNameWindowPixmap(display(), winId);
-        m_glxPixmap = glXCreatePixmap(display(), config, m_xPixmap, glxAttributes);
+        glxAttributes[1] = (format->depth == 32 && hasAlpha) ? GLX_TEXTURE_FORMAT_RGBA_EXT : GLX_TEXTURE_FORMAT_RGB_EXT;
+
+        GLPlatformSurface::SurfaceAttributes sharedSurfaceAttributes = GLPlatformSurface::Default;
+        if (hasAlpha)
+            sharedSurfaceAttributes = GLPlatformSurface::SupportAlpha;
+
+        if (!m_configSelector)
+            m_configSelector = adoptPtr(new GLXConfigSelector(sharedSurfaceAttributes));
+
+        m_glxPixmap = glXCreatePixmap(display(), m_configSelector->surfaceClientConfig(format->depth, XVisualIDFromVisual(attr.visual)), m_xPixmap, glxAttributes);
 
         if (!handler.isValidOperation())
             clear();
         else {
             uint inverted = 0;
             glXQueryDrawable(display(), m_glxPixmap, GLX_Y_INVERTED_EXT, &inverted);
-            m_textureIsYInverted = !!inverted;
+            m_flags = !!inverted ? TextureMapperGL::ShouldFlipTexture : 0;
+
+            if (hasAlpha)
+                m_flags |= TextureMapperGL::ShouldBlend;
         }
-
-        XFree(configs);
-    }
-
-    bool textureIsYInverted()
-    {
-        return m_textureIsYInverted;
     }
 
     void makeCurrent()
@@ -352,10 +199,17 @@ struct GraphicsSurfacePrivate {
 
     void swapBuffers()
     {
-        // The buffers are being switched on the writing side, the reading side just reads
-        // whatever texture the XWindow contains.
-        if (m_isReceiver)
+        if (isReceiver()) {
+            if (isMesaGLX() && textureID()) {
+                glBindTexture(GL_TEXTURE_2D, textureID());
+                // Mesa doesn't re-bind texture to the front buffer on glXSwapBufer
+                // Manually release previous lock and rebind texture to surface to ensure frame updates.
+                pGlXReleaseTexImageEXT(display(), glxPixmap(), GLX_FRONT_EXT);
+                pGlXBindTexImageEXT(display(), glxPixmap(), GLX_FRONT_EXT, 0);
+            }
+
             return;
+        }
 
         GLXContext glContext = glXGetCurrentContext();
 
@@ -400,7 +254,7 @@ struct GraphicsSurfacePrivate {
         doneCurrent();
     }
 
-    Display* display() const { return OffScreenRootWindow::display(); }
+    Display* display() const { return X11Helper::nativeDisplay(); }
 
     GLXPixmap glxPixmap() const
     {
@@ -420,27 +274,40 @@ struct GraphicsSurfacePrivate {
     }
 
     bool isReceiver() const { return m_isReceiver; }
-private:
-    GLXFBConfig& findFBConfigWithAlpha(GLXFBConfig* fbConfigs, int numberOfConfigs)
+
+    TextureMapperGL::Flags flags() const { return m_flags; }
+
+    Window surface() const { return m_surface; }
+
+    GLuint textureID() const
     {
-        for (int i = 0; i < numberOfConfigs; ++i) {
-            XVisualInfo* visualInfo = glXGetVisualFromFBConfig(display(), fbConfigs[i]);
-            if (!visualInfo)
-                continue;
+        if (m_texture) 
+            return m_texture;
 
-            XRenderPictFormat* format = XRenderFindVisualFormat(display(), visualInfo->visual);
-            XFree(visualInfo);
+        GLXPixmap pixmap = glxPixmap();
+        if (!pixmap)
+            return 0;
 
-            if (format && format->direct.alphaMask > 0)
-                return fbConfigs[i];
-        }
+        GLuint texture;
+        glGenTextures(1, &texture);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        pGlXBindTexImageEXT(display(), pixmap, GLX_FRONT_EXT, 0);
+        const_cast<GraphicsSurfacePrivate*>(this)->m_texture = texture;
 
-        // Return 1st config as a fallback with no alpha support.
-        return fbConfigs[0];
+        return texture;
     }
-
+private:
     void clear()
     {
+        if (m_texture) {
+            pGlXReleaseTexImageEXT(display(), glxPixmap(), GLX_FRONT_EXT);
+            glDeleteTextures(1, &m_texture);
+        }
+
         if (m_glxPixmap) {
             glXDestroyPixmap(display(), m_glxPixmap);
             m_glxPixmap = 0;
@@ -461,21 +328,23 @@ private:
             glXDestroyContext(display(), m_glContext);
             m_glContext = 0;
         }
+
+        if (m_configSelector)
+            m_configSelector = nullptr;
     }
 
-    OwnPtr<OffScreenRootWindow> m_offScreenWindow;
     IntSize m_size;
     Pixmap m_xPixmap;
     GLXPixmap m_glxPixmap;
-    Window m_surface;
+    uint32_t m_surface;
     Window m_glxSurface;
     GLXContext m_glContext;
     GLXContext m_detachedContext;
     GLXDrawable m_detachedSurface;
-    GLXFBConfig m_fbConfig;
-    bool m_textureIsYInverted;
-    bool m_hasAlpha;
+    OwnPtr<GLXConfigSelector> m_configSelector;
     bool m_isReceiver;
+    TextureMapperGL::Flags m_flags;
+    GLuint m_texture;
 };
 
 static bool resolveGLMethods()
@@ -498,26 +367,12 @@ static bool resolveGLMethods()
 
 GraphicsSurfaceToken GraphicsSurface::platformExport()
 {
-    return GraphicsSurfaceToken(m_platformSurface);
+    return GraphicsSurfaceToken(m_private->surface());
 }
 
 uint32_t GraphicsSurface::platformGetTextureID()
 {
-    if (!m_texture) {
-        GLXPixmap pixmap = m_private->glxPixmap();
-        if (!pixmap)
-            return 0;
-
-        glGenTextures(1, &m_texture);
-        glBindTexture(GL_TEXTURE_2D, m_texture);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        pGlXBindTexImageEXT(m_private->display(), pixmap, GLX_FRONT_EXT, 0);
-    }
-
-    return m_texture;
+    return m_private->textureID();
 }
 
 void GraphicsSurface::platformCopyToGLTexture(uint32_t /*target*/, uint32_t /*id*/, const IntRect& /*targetRect*/, const IntPoint& /*offset*/)
@@ -530,7 +385,7 @@ void GraphicsSurface::platformCopyFromTexture(uint32_t texture, const IntRect& s
     m_private->copyFromTexture(texture, sourceRect);
 }
 
-void GraphicsSurface::platformPaintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity, BitmapTexture* mask)
+void GraphicsSurface::platformPaintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& transform, float opacity)
 {
     IntSize size = m_private->size();
     if (size.isEmpty())
@@ -539,13 +394,10 @@ void GraphicsSurface::platformPaintToTextureMapper(TextureMapper* textureMapper,
     if (!texture)
         return;
 
-    TextureMapperGL::Flags flags = m_private->textureIsYInverted() ? TextureMapperGL::ShouldFlipTexture : 0;
-    flags |= TextureMapperGL::ShouldBlend;
-
     FloatRect rectOnContents(FloatPoint::zero(), size);
     TransformationMatrix adjustedTransform = transform;
     adjustedTransform.multiply(TransformationMatrix::rectToRect(rectOnContents, targetRect));
-    static_cast<TextureMapperGL*>(textureMapper)->drawTexture(texture, flags, size, rectOnContents, adjustedTransform, opacity, mask);
+    static_cast<TextureMapperGL*>(textureMapper)->drawTexture(texture, m_private->flags(), size, rectOnContents, adjustedTransform, opacity);
 }
 
 uint32_t GraphicsSurface::platformFrontBuffer() const
@@ -555,15 +407,6 @@ uint32_t GraphicsSurface::platformFrontBuffer() const
 
 uint32_t GraphicsSurface::platformSwapBuffers()
 {
-    if (m_private->isReceiver() && platformGetTextureID()) {
-        glBindTexture(GL_TEXTURE_2D, platformGetTextureID());
-        // Release previous lock and rebind texture to surface to get frame update.
-        pGlXReleaseTexImageEXT(m_private->display(), m_private->glxPixmap(), GLX_FRONT_EXT);
-        pGlXBindTexImageEXT(m_private->display(), m_private->glxPixmap(), GLX_FRONT_EXT, 0);
-
-        return 0;
-    }
-
     m_private->swapBuffers();
     return 0;
 }
@@ -587,7 +430,7 @@ PassRefPtr<GraphicsSurface> GraphicsSurface::platformCreate(const IntSize& size,
     if (!resolveGLMethods())
         return PassRefPtr<GraphicsSurface>();
 
-    surface->m_platformSurface = surface->m_private->createSurface(size);
+    surface->m_private->createSurface(size);
 
     return surface;
 }
@@ -601,9 +444,8 @@ PassRefPtr<GraphicsSurface> GraphicsSurface::platformImport(const IntSize& size,
         return PassRefPtr<GraphicsSurface>();
 
     RefPtr<GraphicsSurface> surface = adoptRef(new GraphicsSurface(size, flags));
-    surface->m_platformSurface = token.frontBufferHandle;
 
-    surface->m_private = new GraphicsSurfacePrivate(surface->m_platformSurface);
+    surface->m_private = new GraphicsSurfacePrivate(token.frontBufferHandle);
     if (!resolveGLMethods())
         return PassRefPtr<GraphicsSurface>();
 
@@ -623,11 +465,6 @@ void GraphicsSurface::platformUnlock()
 
 void GraphicsSurface::platformDestroy()
 {
-    if (m_texture) {
-        pGlXReleaseTexImageEXT(m_private->display(), m_private->glxPixmap(), GLX_FRONT_EXT);
-        glDeleteTextures(1, &m_texture);
-    }
-
     delete m_private;
     m_private = 0;
 }

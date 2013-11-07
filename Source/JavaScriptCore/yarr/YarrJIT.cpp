@@ -87,10 +87,20 @@ class YarrGenerator : private MacroAssembler {
     static const RegisterID returnRegister = X86Registers::eax;
     static const RegisterID returnRegister2 = X86Registers::edx;
 #elif CPU(X86_64)
+#if !OS(WINDOWS)
     static const RegisterID input = X86Registers::edi;
     static const RegisterID index = X86Registers::esi;
     static const RegisterID length = X86Registers::edx;
     static const RegisterID output = X86Registers::ecx;
+#else
+    // If the return value doesn't fit in 64bits, its destination is pointed by rcx and the parameters are shifted.
+    // http://msdn.microsoft.com/en-us/library/7572ztz4.aspx
+    COMPILE_ASSERT(sizeof(MatchResult) > sizeof(void*), MatchResult_does_not_fit_in_64bits);
+    static const RegisterID input = X86Registers::edx;
+    static const RegisterID index = X86Registers::r8;
+    static const RegisterID length = X86Registers::r9;
+    static const RegisterID output = X86Registers::r10;
+#endif
 
     static const RegisterID regT0 = X86Registers::eax;
     static const RegisterID regT1 = X86Registers::ebx;
@@ -2315,11 +2325,11 @@ class YarrGenerator : private MacroAssembler {
         m_ops.append(alternativeBeginOpCode);
         m_ops.last().m_previousOp = notFound;
         m_ops.last().m_term = term;
-        Vector<PatternAlternative*>& alternatives =  term->parentheses.disjunction->m_alternatives;
+        Vector<OwnPtr<PatternAlternative> >& alternatives =  term->parentheses.disjunction->m_alternatives;
         for (unsigned i = 0; i < alternatives.size(); ++i) {
             size_t lastOpIndex = m_ops.size() - 1;
 
-            PatternAlternative* nestedAlternative = alternatives[i];
+            PatternAlternative* nestedAlternative = alternatives[i].get();
             opCompileAlternative(nestedAlternative);
 
             size_t thisOpIndex = m_ops.size();
@@ -2366,11 +2376,11 @@ class YarrGenerator : private MacroAssembler {
         m_ops.append(OpSimpleNestedAlternativeBegin);
         m_ops.last().m_previousOp = notFound;
         m_ops.last().m_term = term;
-        Vector<PatternAlternative*>& alternatives =  term->parentheses.disjunction->m_alternatives;
+        Vector<OwnPtr<PatternAlternative> >& alternatives =  term->parentheses.disjunction->m_alternatives;
         for (unsigned i = 0; i < alternatives.size(); ++i) {
             size_t lastOpIndex = m_ops.size() - 1;
 
-            PatternAlternative* nestedAlternative = alternatives[i];
+            PatternAlternative* nestedAlternative = alternatives[i].get();
             opCompileAlternative(nestedAlternative);
 
             size_t thisOpIndex = m_ops.size();
@@ -2440,7 +2450,7 @@ class YarrGenerator : private MacroAssembler {
     // to return the failing result.
     void opCompileBody(PatternDisjunction* disjunction)
     {
-        Vector<PatternAlternative*>& alternatives =  disjunction->m_alternatives;
+        Vector<OwnPtr<PatternAlternative> >& alternatives = disjunction->m_alternatives;
         size_t currentAlternativeIndex = 0;
 
         // Emit the 'once through' alternatives.
@@ -2450,7 +2460,7 @@ class YarrGenerator : private MacroAssembler {
 
             do {
                 size_t lastOpIndex = m_ops.size() - 1;
-                PatternAlternative* alternative = alternatives[currentAlternativeIndex];
+                PatternAlternative* alternative = alternatives[currentAlternativeIndex].get();
                 opCompileAlternative(alternative);
 
                 size_t thisOpIndex = m_ops.size();
@@ -2485,7 +2495,7 @@ class YarrGenerator : private MacroAssembler {
         m_ops.last().m_previousOp = notFound;
         do {
             size_t lastOpIndex = m_ops.size() - 1;
-            PatternAlternative* alternative = alternatives[currentAlternativeIndex];
+            PatternAlternative* alternative = alternatives[currentAlternativeIndex].get();
             ASSERT(!alternative->onceThrough());
             opCompileAlternative(alternative);
 
@@ -2514,6 +2524,13 @@ class YarrGenerator : private MacroAssembler {
         push(X86Registers::ebp);
         move(stackPointerRegister, X86Registers::ebp);
         push(X86Registers::ebx);
+        // The ABI doesn't guarantee the upper bits are zero on unsigned arguments, so clear them ourselves.
+        zeroExtend32ToPtr(index, index);
+        zeroExtend32ToPtr(length, length);
+#if OS(WINDOWS)
+        if (compileMode == IncludeSubpatterns)
+            loadPtr(Address(X86Registers::ebp, 6 * sizeof(void*)), output);
+#endif
 #elif CPU(X86)
         push(X86Registers::ebp);
         move(stackPointerRegister, X86Registers::ebp);
@@ -2552,6 +2569,12 @@ class YarrGenerator : private MacroAssembler {
     void generateReturn()
     {
 #if CPU(X86_64)
+#if OS(WINDOWS)
+        // Store the return value in the allocated space pointed by rcx.
+        store64(returnRegister, Address(X86Registers::ecx));
+        store64(returnRegister2, Address(X86Registers::ecx, sizeof(void*)));
+        move(X86Registers::ecx, returnRegister);
+#endif
         pop(X86Registers::ebx);
         pop(X86Registers::ebp);
 #elif CPU(X86)

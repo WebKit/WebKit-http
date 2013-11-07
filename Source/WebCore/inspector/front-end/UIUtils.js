@@ -71,7 +71,7 @@ WebInspector._elementDragStart = function(elementDragStart, elementDrag, element
     WebInspector._elementEndDraggingEventListener = elementDragEnd;
     WebInspector._mouseOutWhileDraggingTargetDocument = targetDocument;
 
-    targetDocument.addEventListener("mousemove", WebInspector._elementDraggingEventListener, true);
+    targetDocument.addEventListener("mousemove", WebInspector._elementDragMove, true);
     targetDocument.addEventListener("mouseup", WebInspector._elementDragEnd, true);
     targetDocument.addEventListener("mouseout", WebInspector._mouseOutWhileDragging, true);
 
@@ -94,10 +94,16 @@ WebInspector._unregisterMouseOutWhileDragging = function()
     delete WebInspector._mouseOutWhileDraggingTargetDocument;
 }
 
-WebInspector._elementDragEnd = function(event)
+WebInspector._elementDragMove = function(event)
+{
+    if (WebInspector._elementDraggingEventListener(event))
+        WebInspector._cancelDragEvents(event);
+}
+
+WebInspector._cancelDragEvents = function(event)
 {
     var targetDocument = event.target.ownerDocument;
-    targetDocument.removeEventListener("mousemove", WebInspector._elementDraggingEventListener, true);
+    targetDocument.removeEventListener("mousemove", WebInspector._elementDragMove, true);
     targetDocument.removeEventListener("mouseup", WebInspector._elementDragEnd, true);
     WebInspector._unregisterMouseOutWhileDragging();
 
@@ -106,11 +112,16 @@ WebInspector._elementDragEnd = function(event)
     if (WebInspector._elementDraggingGlassPane)
         WebInspector._elementDraggingGlassPane.dispose();
 
-    var elementDragEnd = WebInspector._elementEndDraggingEventListener;
-
     delete WebInspector._elementDraggingGlassPane;
     delete WebInspector._elementDraggingEventListener;
     delete WebInspector._elementEndDraggingEventListener;
+}
+
+WebInspector._elementDragEnd = function(event)
+{
+    var elementDragEnd = WebInspector._elementEndDraggingEventListener;
+
+    WebInspector._cancelDragEvents(event);
 
     event.preventDefault();
     if (elementDragEnd)
@@ -126,11 +137,14 @@ WebInspector.GlassPane = function()
     this.element.style.cssText = "position:absolute;top:0;bottom:0;left:0;right:0;background-color:transparent;z-index:1000;";
     this.element.id = "glass-pane-for-drag";
     document.body.appendChild(this.element);
+    WebInspector._glassPane = this;
 }
 
 WebInspector.GlassPane.prototype = {
     dispose: function()
     {
+        delete WebInspector._glassPane;
+        WebInspector.inspectorView.focus();
         if (this.element.parentElement)
             this.element.parentElement.removeChild(this.element);
     }
@@ -850,6 +864,8 @@ WebInspector._isTextEditingElement = function(element)
 
 WebInspector.setCurrentFocusElement = function(x)
 {
+    if (WebInspector._glassPane && x && !WebInspector._glassPane.element.isAncestor(x))
+        return;
     if (WebInspector._currentFocusElement !== x)
         WebInspector._previousFocusElement = WebInspector._currentFocusElement;
     WebInspector._currentFocusElement = x;

@@ -38,6 +38,7 @@
 #include "Element.h"
 #include "FocusController.h"
 #include "Frame.h"
+#include "FrameLoadRequest.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameTree.h"
@@ -154,6 +155,11 @@ void PluginView::setFrameRect(const IntRect& rect)
 }
 
 void PluginView::frameRectsChanged()
+{
+    updatePluginWidget();
+}
+
+void PluginView::clipRectChanged()
 {
     updatePluginWidget();
 }

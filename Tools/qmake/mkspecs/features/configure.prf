@@ -109,8 +109,17 @@ defineTest(finalizeConfigure) {
         error(Done computing defaults)
     }
 
-    # Sanity check that would prevent us from building the whole project altogether.
-    !mac:!contains(QT_CONFIG,icu): error("To build QtWebKit with Qt 5 you need to build Qt 5 with libICU support. Check for ICU support being mentioned in qtbase/config.summary.")
+    # Sanity checks that would prevent us from building the whole project altogether.
+    !mac:!contains(QT_CONFIG,icu) {
+        addReasonForSkippingBuild("ICU is required. To build QtWebKit with Qt 5 you need to build Qt 5 with libICU support. Check for ICU support being mentioned in qtbase/config.summary.")
+    }
+    production_build:blackberry {
+        addReasonForSkippingBuild("Build not supported on BB10 yet.")
+    }
+    requiredPrograms = gperf python perl bison ruby flex
+    for(program, requiredPrograms): \
+        !programExistsInPath($$program): \
+            addReasonForSkippingBuild("Missing $$program from PATH")
 
     # Detect changes to the configuration. Changes need a clean build.
     webkit_configured {
@@ -207,6 +216,7 @@ defineTest(finalizeConfigure) {
         log(All-in-one files .............. $$configEnabled(use_all_in_one_files)$$EOL)
         log(GNUmake ....................... $$configEnabled(GNUmake)$$EOL)
         log(Static libs as shared ......... $$configEnabled(force_static_libs_as_shared)$$EOL)
+        log(Static libs as thin archives .. $$configEnabled(gnu_thin_archives)$$EOL)
         log(Production build .............. $$configEnabled(production_build)$$EOL)
         log($$EOL)
 
@@ -226,7 +236,13 @@ defineTest(finalizeConfigure) {
             }
         }
 
-        log("$${EOL}WebKit is now configured for building. Just run 'make'.$${EOL}$${EOL}")
+        !isEmpty(skipBuildReason) {
+            log("$${EOL}The WebKit build was disabled for the following reasons: $$skipBuildReason $${EOL}$${EOL}")
+            SUBDIRS=
+            export(SUBDIRS)
+        } else {
+            log("$${EOL}WebKit is now configured for building. Just run 'make'.$${EOL}$${EOL}")
+        }
 
         configuration_changed {
             log(WARNING: The configuration was changed since the last build:$${EOL}$${EOL})

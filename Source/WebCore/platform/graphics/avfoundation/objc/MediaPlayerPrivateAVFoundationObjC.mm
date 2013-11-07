@@ -186,6 +186,16 @@ static const char *boolString(bool val)
 }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+typedef HashMap<MediaPlayer*, MediaPlayerPrivateAVFoundationObjC*> PlayerToPrivateMapType;
+static PlayerToPrivateMapType& playerToPrivateMap()
+{
+    DEFINE_STATIC_LOCAL(PlayerToPrivateMapType, map, ());
+    return map;
+};
+#endif
+
+
 PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateAVFoundationObjC::create(MediaPlayer* player)
 { 
     return adoptPtr(new MediaPlayerPrivateAVFoundationObjC(player));
@@ -194,7 +204,7 @@ PassOwnPtr<MediaPlayerPrivateInterface> MediaPlayerPrivateAVFoundationObjC::crea
 void MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
         registrar(create, getSupportedTypes, extendedSupportsType, 0, 0, 0);
 #else
         registrar(create, getSupportedTypes, supportsType, 0, 0, 0);
@@ -206,17 +216,26 @@ MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC(MediaPlay
     , m_objcObserver(AdoptNS, [[WebCoreAVFMovieObserver alloc] initWithCallback:this])
     , m_videoFrameHasDrawn(false)
     , m_haveCheckedPlayability(false)
-#if ENABLE(ENCRYPTED_MEDIA)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     , m_loaderDelegate(AdoptNS, [[WebCoreAVFLoaderDelegate alloc] initWithCallback:this])
 #endif
 #if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
     , m_currentTrack(0)
 #endif
 {
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    playerToPrivateMap().set(player, this);
+#endif
 }
 
 MediaPlayerPrivateAVFoundationObjC::~MediaPlayerPrivateAVFoundationObjC()
 {
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    playerToPrivateMap().remove(player());
+#endif
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    [[m_avAsset.get() resourceLoader] setDelegate:nil queue:0];
+#endif
     cancelLoad();
 }
 
@@ -437,6 +456,22 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerItem()
     if (m_avPlayer)
         [m_avPlayer.get() replaceCurrentItemWithPlayerItem:m_avPlayerItem.get()];
 
+#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+    const NSTimeInterval legibleOutputAdvanceInterval = 2;
+
+    m_legibleOutput = adoptNS([[AVPlayerItemLegibleOutput alloc] initWithMediaSubtypesForNativeRepresentation:[NSArray array]]);
+    [m_legibleOutput.get() setSuppressesPlayerRendering:YES];
+
+    // We enabled automatic media selection because we want alternate audio tracks to be enabled/disabled automatically,
+    // but set the selected legible track to nil so text tracks will not be automatically configured.
+    [m_avPlayerItem.get() selectMediaOption:nil inMediaSelectionGroup:[m_avAsset.get() mediaSelectionGroupForMediaCharacteristic:AVMediaCharacteristicLegible]];
+
+    [m_legibleOutput.get() setDelegate:m_objcObserver.get() queue:dispatch_get_main_queue()];
+    [m_legibleOutput.get() setAdvanceIntervalForDelegateInvocation:legibleOutputAdvanceInterval];
+    [m_legibleOutput.get() setTextStylingResolution:AVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly];
+    [m_avPlayerItem.get() addOutput:m_legibleOutput.get()];
+#endif
+
     setDelayCallbacks(false);
 }
 
@@ -595,8 +630,12 @@ void MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(bool closedCap
     if (!metaDataAvailable())
         return;
 
+#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+    UNUSED_PARAM(closedCaptionsVisible);
+#else
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::setClosedCaptionsVisible(%p) - setting to %s", this, boolString(closedCaptionsVisible));
     [m_avPlayer.get() setClosedCaptionDisplayEnabled:closedCaptionsVisible];
+#endif
 }
 
 void MediaPlayerPrivateAVFoundationObjC::updateRate()
@@ -815,7 +854,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
     return [AVURLAsset isPlayableExtendedMIMEType:typeString] ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;;
 }
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
 static bool keySystemIsSupported(const String& keySystem)
 {
     if (equalIgnoringCase(keySystem, "com.apple.lskd") || equalIgnoringCase(keySystem, "com.apple.lskd.1_0"))
@@ -850,20 +889,24 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
     String scheme = [[[avRequest request] URL] scheme];
     String keyURI = [[[avRequest request] URL] absoluteString];
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     if (scheme == "skd") {
         // Create an initData with the following layout:
         // [4 bytes: keyURI size], [keyURI size bytes: keyURI]
         unsigned keyURISize = keyURI.length() * sizeof(UChar);
         RefPtr<ArrayBuffer> initDataBuffer = ArrayBuffer::create(4 + keyURISize, 1);
         RefPtr<DataView> initDataView = DataView::create(initDataBuffer, 0, initDataBuffer->byteLength());
-        ExceptionCode ec = 0;
-        initDataView->setUint32(0, keyURISize, true, ec);
+        initDataView->setUint32(0, keyURISize, true, IGNORE_EXCEPTION);
 
         RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer, 4, keyURI.length());
         keyURIArray->setRange(keyURI.characters(), keyURI.length() / sizeof(unsigned char), 0);
 
+#if ENABLE(ENCRYPTED_MEDIA)
         if (!player()->keyNeeded("com.apple.lskd", emptyString(), static_cast<const unsigned char*>(initDataBuffer->data()), initDataBuffer->byteLength()))
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+        RefPtr<Uint8Array> initData = Uint8Array::create(initDataBuffer, 0, initDataBuffer->byteLength());
+        if (!player()->keyNeeded(initData.get()))
+#endif
             return false;
 
         m_keyURIToRequestMap.set(keyURI, avRequest);
@@ -904,22 +947,6 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
     if (!m_avAsset)
         return;
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
-    if (m_avPlayerItem && !m_legibleOutput) {
-        m_legibleOutput = adoptNS([[AVPlayerItemLegibleOutput alloc] initWithMediaSubtypesForNativeRepresentation:[NSArray array]]);
-        [m_legibleOutput.get() setSuppressesPlayerRendering:YES];
-
-        // We enabled automatic media selection because we want alternate audio tracks to be enabled/disabled automatically,
-        // but set the selected legible track to nil so text tracks will not be automatically configured.
-        [m_avPlayerItem.get() selectMediaOption:nil inMediaSelectionGroup:[m_avAsset.get() mediaSelectionGroupForMediaCharacteristic:AVMediaCharacteristicLegible]];
-
-        [m_legibleOutput.get() setDelegate:m_objcObserver.get() queue:dispatch_get_main_queue()];
-        [m_legibleOutput.get() setAdvanceIntervalForDelegateInvocation:NSTimeIntervalSince1970];
-        [m_legibleOutput.get() setTextStylingResolution:AVPlayerItemLegibleOutputTextStylingResolutionSourceAndRulesOnly];
-        [m_avPlayerItem.get() addOutput:m_legibleOutput.get()];
-    }
-#endif
-
     bool hasCaptions = false;
 
     // This is called whenever the tracks collection changes so cache hasVideo and hasAudio since we are
@@ -929,7 +956,9 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
         // prior to becoming ready to play.
         setHasVideo([[m_avAsset.get() tracksWithMediaCharacteristic:AVMediaCharacteristicVisual] count]);
         setHasAudio([[m_avAsset.get() tracksWithMediaCharacteristic:AVMediaCharacteristicAudible] count]);
+#if !HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
         hasCaptions = [[m_avAsset.get() tracksWithMediaType:AVMediaTypeClosedCaption] count];
+#endif
     } else {
         bool hasVideo = false;
         bool hasAudio = false;
@@ -941,8 +970,10 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
                     hasVideo = true;
                 else if ([[assetTrack mediaType] isEqualToString:AVMediaTypeAudio])
                     hasAudio = true;
+#if !HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
                 else if ([[assetTrack mediaType] isEqualToString:AVMediaTypeClosedCaption])
                     hasCaptions = true;
+#endif
             }
         }
         setHasVideo(hasVideo);
@@ -950,7 +981,7 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
     }
 
 #if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
-    if (!hasCaptions) {
+    if (!hasCaptions && m_legibleOutput) {
         AVMediaSelectionGroupType *legibleGroup = [m_avAsset.get() mediaSelectionGroupForMediaCharacteristic:AVMediaCharacteristicLegible];
         hasCaptions = [[AVMediaSelectionGroup playableMediaSelectionOptionsFromArray:[legibleGroup options]] count];
     }
@@ -1109,9 +1140,8 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext* c
 
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-
-static bool extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, String& keyURI, String& keyID, RefPtr<Uint8Array>& certificate)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+bool MediaPlayerPrivateAVFoundationObjC::extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, String& keyURI, String& keyID, RefPtr<Uint8Array>& certificate)
 {
     // initData should have the following layout:
     // [4 bytes: keyURI length][N bytes: keyURI][4 bytes: contentID length], [N bytes: contentID], [4 bytes: certificate length][N bytes: certificate]
@@ -1160,7 +1190,9 @@ static bool extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, S
 
     return true;
 }
+#endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
 MediaPlayer::MediaKeyException MediaPlayerPrivateAVFoundationObjC::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength)
 {
     if (!keySystemIsSupported(keySystem))
@@ -1234,6 +1266,18 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateAVFoundationObjC::cancelKeyRequ
 
     m_sessionIDToRequestMap.remove(sessionID);
     return MediaPlayer::NoError;
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+RetainPtr<AVAssetResourceLoadingRequest> MediaPlayerPrivateAVFoundationObjC::takeRequestForPlayerAndKeyURI(MediaPlayer* player, const String& keyURI)
+{
+    MediaPlayerPrivateAVFoundationObjC* _this = playerToPrivateMap().get(player);
+    if (!_this)
+        return nullptr;
+
+    return _this->m_keyURIToRequestMap.take(keyURI);
+
 }
 #endif
 

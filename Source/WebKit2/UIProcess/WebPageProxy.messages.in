@@ -20,7 +20,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-messages -> WebPageProxy LegacyReceiver {
+messages -> WebPageProxy {
     # UI messages
     CreateNewPage(WebCore::ResourceRequest request, WebCore::WindowFeatures windowFeatures, uint32_t modifiers, int32_t mouseButton) -> (uint64_t newPageID, WebKit::WebPageCreationParameters newPageParameters)
     ShowPage()
@@ -30,7 +30,7 @@ messages -> WebPageProxy LegacyReceiver {
     RunJavaScriptPrompt(uint64_t frameID, WTF::String message, WTF::String defaultValue) -> (WTF::String result)
     ShouldInterruptJavaScript() -> (bool shouldInterupt)
     MouseDidMoveOverElement(WebKit::WebHitTestResult::Data hitTestResultData, uint32_t modifiers, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
-    UnavailablePluginButtonClicked(uint32_t pluginUnavailabilityReason, WTF::String mimeType, WTF::String url, WTF::String pluginsPageURL)
+    UnavailablePluginButtonClicked(uint32_t pluginUnavailabilityReason, WTF::String mimeType, WTF::String pluginURLString, WTF::String pluginspageAttributeURLString, WTF::String frameURLString, WTF::String pageURLString)
     DidChangeViewportProperties(WebCore::ViewportAttributes attributes)
     DidReceiveEvent(uint32_t type, bool handled)
     StopResponsivenessTimer()
@@ -65,8 +65,8 @@ messages -> WebPageProxy LegacyReceiver {
     DidChangeScrollbarsForMainFrame(bool hasHorizontalScrollbar, bool hasVerticalScrollbar)
     DidChangeScrollOffsetPinningForMainFrame(bool pinnedToLeftSide, bool pinnedToRightSide, bool pinnedToTopSide, bool pinnedToBottomSide)
     DidChangePageCount(unsigned pageCount);
-    DidFailToInitializePlugin(WTF::String mimeType)
-    DidBlockInsecurePluginVersion(WTF::String mimeType, WTF::String urlString)
+    DidFailToInitializePlugin(WTF::String mimeType, WTF::String frameURLString, WTF::String pageURLString)
+    DidBlockInsecurePluginVersion(WTF::String mimeType, WTF::String pluginURLString, WTF::String frameURLString, WTF::String pageURLString)
     SetCanShortCircuitHorizontalWheelEvents(bool canShortCircuitHorizontalWheelEvents)
 
 #if PLATFORM(EFL)
@@ -142,7 +142,7 @@ messages -> WebPageProxy LegacyReceiver {
     DidFinishLoadingDataForCustomRepresentation(WTF::String suggestedFilename, CoreIPC::DataReference data)
 
     # Forms messages
-    WillSubmitForm(uint64_t frameID, uint64_t sourceFrameID, WebKit::StringPairVector textFieldValues, uint64_t listenerID, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
+    WillSubmitForm(uint64_t frameID, uint64_t sourceFrameID, WTF::Vector<std::pair<WTF::String, WTF::String> > textFieldValues, uint64_t listenerID, WebKit::InjectedBundleUserMessageEncoder userData) Variadic
 
     # Callback messages
     VoidCallback(uint64_t callbackID)
@@ -212,7 +212,7 @@ messages -> WebPageProxy LegacyReceiver {
     DidReceiveAuthenticationChallenge(uint64_t frameID, WebCore::AuthenticationChallenge challenge, uint64_t challengeID)
 
     # Database messages
-    ExceededDatabaseQuota(uint64_t frameID, WTF::String originIdentifier, WTF::String databaseName, WTF::String databaseDisplayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage) -> (uint64_t newQuota)
+    ExceededDatabaseQuota(uint64_t frameID, WTF::String originIdentifier, WTF::String databaseName, WTF::String databaseDisplayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage) -> (uint64_t newQuota) Delayed
 
     # Geolocation messages
     RequestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, WTF::String originIdentifier)
@@ -233,6 +233,7 @@ messages -> WebPageProxy LegacyReceiver {
     GetGuessesForWord(WTF::String word, WTF::String context) -> (Vector<WTF::String> guesses)
     LearnWord(WTF::String word);
     IgnoreWord(WTF::String word);
+    RequestCheckingOfString(uint64_t requestID, WebCore::TextCheckingRequestData request)
 
     # Drag and drop messages
 #if ENABLE(DRAG_SUPPORT)
@@ -270,6 +271,8 @@ messages -> WebPageProxy LegacyReceiver {
 
     # Spotlight
     SearchWithSpotlight(WTF::String string)
+
+    SearchTheWeb(WTF::String string)
 #endif
 
 #if PLATFORM(MAC)
@@ -313,7 +316,7 @@ messages -> WebPageProxy LegacyReceiver {
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-GetPluginPath(WTF::String mimeType, WTF::String urlString) -> (WTF::String pluginPath, uint32_t pluginLoadPolicy)
+    GetPluginPath(WTF::String mimeType, WTF::String urlString, WTF::String frameURLString, WTF::String pageURLString) -> (WTF::String pluginPath, uint32_t pluginLoadPolicy)
 #endif
 
 }

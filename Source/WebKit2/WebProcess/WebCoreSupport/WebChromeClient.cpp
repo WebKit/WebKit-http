@@ -50,13 +50,16 @@
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ColorChooser.h>
 #include <WebCore/DatabaseManager.h>
+#include <WebCore/DocumentLoader.h>
 #include <WebCore/FileChooser.h>
 #include <WebCore/FileIconLoader.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
+#include <WebCore/HTMLInputElement.h>
 #include <WebCore/HTMLNames.h>
+#include <WebCore/HTMLParserIdioms.h>
 #include <WebCore/HTMLPlugInImageElement.h>
 #include <WebCore/Icon.h>
 #include <WebCore/NotImplemented.h>
@@ -104,11 +107,16 @@ void WebChromeClient::chromeDestroyed()
 
 void WebChromeClient::setWindowRect(const FloatRect& windowFrame)
 {
-    m_page->send(Messages::WebPageProxy::SetWindowFrame(windowFrame));
+    m_page->sendSetWindowFrame(windowFrame);
 }
 
 FloatRect WebChromeClient::windowRect()
 {
+#if PLATFORM(MAC)
+    if (m_page->hasCachedWindowFrame())
+        return m_page->windowFrameInScreenCoordinates();
+#endif
+
     FloatRect newWindowFrame;
 
     if (!WebProcess::shared().connection()->sendSync(Messages::WebPageProxy::GetWindowFrame(), Messages::WebPageProxy::GetWindowFrame::Reply(newWindowFrame), m_page->pageID()))
@@ -119,11 +127,7 @@ FloatRect WebChromeClient::windowRect()
 
 FloatRect WebChromeClient::pageRect()
 {
-#if USE(TILED_BACKING_STORE)
-    return FloatRect(FloatPoint(), m_page->viewportSize());
-#else
     return FloatRect(FloatPoint(), m_page->size());
-#endif
 }
 
 void WebChromeClient::focus()
@@ -154,9 +158,19 @@ void WebChromeClient::takeFocus(FocusDirection direction)
     m_page->send(Messages::WebPageProxy::TakeFocus(direction));
 }
 
-void WebChromeClient::focusedNodeChanged(Node*)
+void WebChromeClient::focusedNodeChanged(Node* node)
 {
-    notImplemented();
+    if (!node)
+        return;
+    if (!node->hasTagName(inputTag))
+        return;
+
+    HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(node);
+    if (!inputElement->isText())
+        return;
+
+    WebFrame* webFrame = static_cast<WebFrameLoaderClient*>(node->document()->frame()->loader()->client())->webFrame();
+    m_page->injectedBundleFormClient().didFocusTextField(m_page, inputElement, webFrame);
 }
 
 void WebChromeClient::focusedFrameChanged(Frame* frame)
@@ -390,7 +404,7 @@ void WebChromeClient::invalidateContentsAndRootView(const IntRect& rect, bool)
             return;
     }
 
-    m_page->drawingArea()->setNeedsDisplay(rect);
+    m_page->drawingArea()->setNeedsDisplayInRect(rect);
 }
 
 void WebChromeClient::invalidateContentsForSlowScroll(const IntRect& rect, bool)
@@ -401,13 +415,17 @@ void WebChromeClient::invalidateContentsForSlowScroll(const IntRect& rect, bool)
     }
 
     m_page->pageDidScroll();
-    m_page->drawingArea()->setNeedsDisplay(rect);
+#if USE(COORDINATED_GRAPHICS)
+    m_page->drawingArea()->scroll(rect, IntSize());
+#else
+    m_page->drawingArea()->setNeedsDisplayInRect(rect);
+#endif
 }
 
-void WebChromeClient::scroll(const IntSize& scrollOffset, const IntRect& scrollRect, const IntRect& clipRect)
+void WebChromeClient::scroll(const IntSize& scrollDelta, const IntRect& scrollRect, const IntRect& clipRect)
 {
     m_page->pageDidScroll();
-    m_page->drawingArea()->scroll(intersection(scrollRect, clipRect), scrollOffset);
+    m_page->drawingArea()->scroll(intersection(scrollRect, clipRect), scrollDelta);
 }
 
 #if USE(TILED_BACKING_STORE)
@@ -446,15 +464,10 @@ void WebChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) con
     if (frame->page()->mainFrame() != frame)
         return;
 
-#if PLATFORM(QT) || (PLATFORM(EFL) && USE(TILED_BACKING_STORE))
-    if (m_page->useFixedLayout()) {
-        // The below method updates the size().
-        m_page->resizeToContentsIfNeeded();
-        m_page->drawingArea()->layerTreeHost()->sizeDidChange(m_page->size());
-    }
+#if USE(COORDINATED_GRAPHICS)
+    if (m_page->useFixedLayout())
+        m_page->drawingArea()->layerTreeHost()->sizeDidChange(size);
 
-    m_page->send(Messages::WebPageProxy::DidChangeContentsSize(m_page->size()));
-#elif PLATFORM(EFL)
     m_page->send(Messages::WebPageProxy::DidChangeContentsSize(size));
 #endif
 
@@ -506,7 +519,13 @@ void WebChromeClient::unavailablePluginButtonClicked(Element* element, RenderEmb
 
     HTMLPlugInImageElement* pluginElement = static_cast<HTMLPlugInImageElement*>(element);
 
-    m_page->send(Messages::WebPageProxy::UnavailablePluginButtonClicked(pluginUnavailabilityReason, pluginElement->serviceType(), pluginElement->url(), pluginElement->getAttribute(pluginspageAttr)));
+    String frameURLString = pluginElement->document()->frame()->loader()->documentLoader()->responseURL().string();
+    String pageURLString = m_page->mainFrame()->loader()->documentLoader()->responseURL().string();
+    String pluginURLString = pluginElement->document()->completeURL(pluginElement->url()).string();
+    KURL pluginspageAttributeURL = element->document()->completeURL(stripLeadingAndTrailingHTMLSpaces(pluginElement->getAttribute(pluginspageAttr)));
+    if (!pluginspageAttributeURL.protocolIsInHTTPFamily())
+        pluginspageAttributeURL = KURL();
+    m_page->send(Messages::WebPageProxy::UnavailablePluginButtonClicked(pluginUnavailabilityReason, pluginElement->serviceType(), pluginURLString, pluginspageAttributeURL.string(), frameURLString, pageURLString));
 }
 
 void WebChromeClient::scrollbarsModeDidChange() const
@@ -787,6 +806,11 @@ bool WebChromeClient::shouldRubberBandInDirection(WebCore::ScrollDirection direc
     return true;
 }
 
+Color WebChromeClient::underlayColor() const
+{
+    return m_page->underlayColor();
+}
+
 void WebChromeClient::numWheelEventHandlersChanged(unsigned count)
 {
     m_page->numWheelEventHandlersChanged(count);
@@ -798,11 +822,6 @@ void WebChromeClient::logDiagnosticMessage(const String& message, const String& 
         return;
 
     m_page->injectedBundleDiagnosticLoggingClient().logDiagnosticMessage(m_page, message, description, success);
-}
-
-PassRefPtr<Image> WebChromeClient::plugInStartLabelImage(RenderSnapshottedPlugIn::LabelSize size) const
-{
-    return m_page->injectedBundleUIClient().plugInStartLabelImage(size)->bitmap()->createImage();
 }
 
 String WebChromeClient::plugInStartLabelTitle() const

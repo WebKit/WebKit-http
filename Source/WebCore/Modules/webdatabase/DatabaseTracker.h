@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 
 #if ENABLE(SQL_DATABASE)
 
+#include "DatabaseError.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/StringHash.h>
@@ -39,21 +40,20 @@
 #if !PLATFORM(CHROMIUM)
 #include "DatabaseDetails.h"
 #include "SQLiteDatabase.h"
+#include "SecurityOriginHash.h"
 #include <wtf/OwnPtr.h>
 #endif // !PLATFORM(CHROMIUM)
 
 namespace WebCore {
 
-class DatabaseBackend;
-class ScriptExecutionContext;
+class DatabaseBackendBase;
+class DatabaseBackendContext;
+class OriginLock;
 class SecurityOrigin;
-
-struct SecurityOriginHash;
 
 #if !PLATFORM(CHROMIUM)
 class DatabaseManagerClient;
 
-struct SecurityOriginTraits;
 #endif // !PLATFORM(CHROMIUM)
 
 class DatabaseTracker {
@@ -70,21 +70,24 @@ public:
     // m_databaseGuard and m_openDatabaseMapGuard currently don't overlap.
     // notificationMutex() is currently independent of the other locks.
 
-    bool canEstablishDatabase(ScriptExecutionContext*, const String& name, const String& displayName, unsigned long estimatedSize);
+    bool canEstablishDatabase(DatabaseBackendContext*, const String& name, const String& displayName, unsigned long estimatedSize, DatabaseError&);
+    bool retryCanEstablishDatabase(DatabaseBackendContext*, const String& name, const String& displayName, unsigned long estimatedSize, DatabaseError&);
+
     void setDatabaseDetails(SecurityOrigin*, const String& name, const String& displayName, unsigned long estimatedSize);
     String fullPathForDatabase(SecurityOrigin*, const String& name, bool createIfDoesNotExist = true);
 
-    void addOpenDatabase(DatabaseBackend*);
-    void removeOpenDatabase(DatabaseBackend*);
-    void getOpenDatabases(SecurityOrigin*, const String& name, HashSet<RefPtr<DatabaseBackend> >* databases);
+    void addOpenDatabase(DatabaseBackendBase*);
+    void removeOpenDatabase(DatabaseBackendBase*);
+    void getOpenDatabases(SecurityOrigin*, const String& name, HashSet<RefPtr<DatabaseBackendBase> >* databases);
 
-    unsigned long long getMaxSizeForDatabase(const DatabaseBackend*);
-    void databaseChanged(DatabaseBackend*);
+    unsigned long long getMaxSizeForDatabase(const DatabaseBackendBase*);
 
-    void interruptAllDatabasesForContext(const ScriptExecutionContext*);
+    void interruptAllDatabasesForContext(const DatabaseBackendContext*);
 
 private:
     explicit DatabaseTracker(const String& databasePath);
+
+    bool hasAdequateQuotaForOrigin(SecurityOrigin*, unsigned long estimatedSize, DatabaseError&);
 
 #if !PLATFORM(CHROMIUM)
 public:
@@ -100,6 +103,7 @@ public:
     unsigned long long usageForOrigin(SecurityOrigin*);
     unsigned long long quotaForOrigin(SecurityOrigin*);
     void setQuota(SecurityOrigin*, unsigned long long);
+    PassRefPtr<OriginLock> originLockFor(SecurityOrigin*);
 
     void deleteAllDatabases();
     bool deleteOrigin(SecurityOrigin*);
@@ -112,40 +116,45 @@ public:
 
     bool hasEntryForOrigin(SecurityOrigin*);
 
-    void doneCreatingDatabase(DatabaseBackend*);
+    void doneCreatingDatabase(DatabaseBackendBase*);
 
 private:
     bool hasEntryForOriginNoLock(SecurityOrigin* origin);
     String fullPathForDatabaseNoLock(SecurityOrigin*, const String& name, bool createIfDoesNotExist);
     bool databaseNamesForOriginNoLock(SecurityOrigin* origin, Vector<String>& resultVector);
-    unsigned long long usageForOriginNoLock(SecurityOrigin* origin);
     unsigned long long quotaForOriginNoLock(SecurityOrigin* origin);
 
     String trackerDatabasePath() const;
-    void openTrackerDatabase(bool createIfDoesNotExist);
+
+    enum TrackerCreationAction {
+        DontCreateIfDoesNotExist,
+        CreateIfDoesNotExist
+    };
+    void openTrackerDatabase(TrackerCreationAction);
 
     String originPath(SecurityOrigin*) const;
 
     bool hasEntryForDatabase(SecurityOrigin*, const String& databaseIdentifier);
 
     bool addDatabase(SecurityOrigin*, const String& name, const String& path);
-    void populateOriginsIfNeeded();
 
     bool deleteDatabaseFile(SecurityOrigin*, const String& name);
 
-    typedef HashSet<DatabaseBackend*> DatabaseSet;
+    void deleteOriginLockFor(SecurityOrigin*);
+
+    typedef HashSet<DatabaseBackendBase*> DatabaseSet;
     typedef HashMap<String, DatabaseSet*> DatabaseNameMap;
-    typedef HashMap<RefPtr<SecurityOrigin>, DatabaseNameMap*, SecurityOriginHash> DatabaseOriginMap;
+    typedef HashMap<RefPtr<SecurityOrigin>, DatabaseNameMap*> DatabaseOriginMap;
 
     Mutex m_openDatabaseMapGuard;
     mutable OwnPtr<DatabaseOriginMap> m_openDatabaseMap;
 
-    // This lock protects m_database, m_quotaMap, m_databaseDirectoryPath, m_originsBeingDeleted, m_beingCreated, and m_beingDeleted.
+    // This lock protects m_database, m_originLockMap, m_databaseDirectoryPath, m_originsBeingDeleted, m_beingCreated, and m_beingDeleted.
     Mutex m_databaseGuard;
     SQLiteDatabase m_database;
 
-    typedef HashMap<RefPtr<SecurityOrigin>, unsigned long long, SecurityOriginHash> QuotaMap;
-    mutable OwnPtr<QuotaMap> m_quotaMap;
+    typedef HashMap<String, RefPtr<OriginLock> > OriginLockMap;
+    OriginLockMap m_originLockMap;
 
     String m_databaseDirectoryPath;
 
@@ -155,20 +164,20 @@ private:
     typedef HashMap<RefPtr<SecurityOrigin>, NameCountMap*, SecurityOriginHash> CreateSet;
     CreateSet m_beingCreated;
     typedef HashSet<String> NameSet;
-    HashMap<RefPtr<SecurityOrigin>, NameSet*, SecurityOriginHash> m_beingDeleted;
-    HashSet<RefPtr<SecurityOrigin>, SecurityOriginHash> m_originsBeingDeleted;
-    bool canCreateDatabase(SecurityOrigin *origin, const String& name);
-    void recordCreatingDatabase(SecurityOrigin *origin, const String& name);
-    void doneCreatingDatabase(SecurityOrigin *origin, const String& name);
-    bool creatingDatabase(SecurityOrigin *origin, const String& name);
-    bool canDeleteDatabase(SecurityOrigin *origin, const String& name);
-    void recordDeletingDatabase(SecurityOrigin *origin, const String& name);
-    void doneDeletingDatabase(SecurityOrigin *origin, const String& name);
-    bool deletingDatabase(SecurityOrigin *origin, const String& name);
-    bool canDeleteOrigin(SecurityOrigin *origin);
-    bool deletingOrigin(SecurityOrigin *origin);
-    void recordDeletingOrigin(SecurityOrigin *origin);
-    void doneDeletingOrigin(SecurityOrigin *origin);
+    HashMap<RefPtr<SecurityOrigin>, NameSet*> m_beingDeleted;
+    HashSet<RefPtr<SecurityOrigin> > m_originsBeingDeleted;
+    bool isDeletingDatabaseOrOriginFor(SecurityOrigin*, const String& name);
+    void recordCreatingDatabase(SecurityOrigin*, const String& name);
+    void doneCreatingDatabase(SecurityOrigin*, const String& name);
+    bool creatingDatabase(SecurityOrigin*, const String& name);
+    bool canDeleteDatabase(SecurityOrigin*, const String& name);
+    void recordDeletingDatabase(SecurityOrigin*, const String& name);
+    void doneDeletingDatabase(SecurityOrigin*, const String& name);
+    bool isDeletingDatabase(SecurityOrigin*, const String& name);
+    bool canDeleteOrigin(SecurityOrigin*);
+    bool isDeletingOrigin(SecurityOrigin*);
+    void recordDeletingOrigin(SecurityOrigin*);
+    void doneDeletingOrigin(SecurityOrigin*);
 
     static void scheduleForNotification();
     static void notifyDatabasesChanged(void*);
@@ -176,16 +185,16 @@ private:
 public:
     void closeDatabasesImmediately(const String& originIdentifier, const String& name);
 
-    void prepareToOpenDatabase(DatabaseBackend*);
-    void failedToOpenDatabase(DatabaseBackend*);
+    void prepareToOpenDatabase(DatabaseBackendBase*);
+    void failedToOpenDatabase(DatabaseBackendBase*);
 
 private:
-    typedef HashSet<DatabaseBackend*> DatabaseSet;
+    typedef HashSet<DatabaseBackendBase*> DatabaseSet;
     typedef HashMap<String, DatabaseSet*> DatabaseNameMap;
     typedef HashMap<String, DatabaseNameMap*> DatabaseOriginMap;
     class CloseOneDatabaseImmediatelyTask;
 
-    void closeOneDatabaseImmediately(const String& originIdentifier, const String& name, DatabaseBackend*);
+    void closeOneDatabaseImmediately(const String& originIdentifier, const String& name, DatabaseBackendBase*);
 
     Mutex m_openDatabaseMapGuard;
     mutable OwnPtr<DatabaseOriginMap> m_openDatabaseMap;

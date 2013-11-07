@@ -31,10 +31,12 @@
 #ifndef TestInterfaces_h
 #define TestInterfaces_h
 
-#include <wtf/OwnPtr.h>
+#include <memory>
+#include <vector>
 
 namespace WebKit {
 class WebFrame;
+class WebURL;
 class WebView;
 }
 
@@ -46,28 +48,42 @@ class GamepadController;
 class TestRunner;
 class TextInputController;
 class WebTestDelegate;
+class WebTestProxyBase;
 
 class TestInterfaces {
 public:
     TestInterfaces();
     ~TestInterfaces();
 
-    void setWebView(WebKit::WebView*);
+    void setWebView(WebKit::WebView*, WebTestProxyBase*);
     void setDelegate(WebTestDelegate*);
     void bindTo(WebKit::WebFrame*);
     void resetAll();
     void setTestIsRunning(bool);
+    void configureForTestWithURL(const WebKit::WebURL&, bool generatePixels);
+
+    void windowOpened(WebTestProxyBase*);
+    void windowClosed(WebTestProxyBase*);
 
     AccessibilityController* accessibilityController();
     EventSender* eventSender();
     TestRunner* testRunner();
+    WebKit::WebView* webView();
+    WebTestDelegate* delegate();
+    WebTestProxyBase* proxy();
+    const std::vector<WebTestProxyBase*>& windowList();
 
 private:
-    OwnPtr<AccessibilityController> m_accessibilityController;
-    OwnPtr<EventSender> m_eventSender;
-    OwnPtr<GamepadController> m_gamepadController;
-    OwnPtr<TextInputController> m_textInputController;
-    OwnPtr<TestRunner> m_testRunner;
+    std::auto_ptr<AccessibilityController> m_accessibilityController;
+    std::auto_ptr<EventSender> m_eventSender;
+    std::auto_ptr<GamepadController> m_gamepadController;
+    std::auto_ptr<TextInputController> m_textInputController;
+    std::auto_ptr<TestRunner> m_testRunner;
+    WebKit::WebView* m_webView;
+    WebTestDelegate* m_delegate;
+    WebTestProxyBase* m_proxy;
+
+    std::vector<WebTestProxyBase*> m_windowList;
 };
 
 }

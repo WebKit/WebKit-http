@@ -35,19 +35,19 @@
 #include "DatabaseTask.h"
 #include "Document.h"
 #include "FrameLoadRequest.h"
+#include "FrameLoader.h"
 #include "GroupSettings.h"
 #include "KURL.h"
 #include "MessageEvent.h"
 #include "MessagePortChannel.h"
 #include "Page.h"
 #include "PageGroup.h"
-#include "PlatformMessagePortChannel.h"
+#include "PlatformMessagePortChannelChromium.h"
 #include "SecurityOrigin.h"
 #include "ScriptExecutionContext.h"
 #include "SharedWorkerContext.h"
 #include "SharedWorkerThread.h"
 #include "WebDataSourceImpl.h"
-#include "WebFileError.h"
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebRuntimeFeatures.h"
@@ -59,6 +59,7 @@
 #include "WorkerInspectorController.h"
 #include "WorkerLoaderProxy.h"
 #include "WorkerThread.h"
+#include <public/WebFileError.h>
 #include <public/WebMessagePortChannel.h>
 #include <public/WebString.h>
 #include <public/WebURL.h>
@@ -357,9 +358,9 @@ void WebSharedWorkerImpl::connectTask(ScriptExecutionContext* context, PassOwnPt
     // Wrap the passed-in channel in a MessagePort, and send it off via a connect event.
     RefPtr<MessagePort> port = MessagePort::create(*context);
     port->entangle(channel);
-    ASSERT(context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerContext());
     WorkerContext* workerContext = static_cast<WorkerContext*>(context);
-    ASSERT(workerContext->isSharedWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(workerContext->isSharedWorkerContext());
     workerContext->dispatchEvent(createConnectEvent(port));
 }
 
@@ -396,7 +397,7 @@ void WebSharedWorkerImpl::pauseWorkerContextOnStart()
 
 static void resumeWorkerContextTask(ScriptExecutionContext* context, bool)
 {
-    ASSERT(context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerContext());
     static_cast<WorkerContext*>(context)->workerInspectorController()->resume();
 }
 
@@ -409,7 +410,7 @@ void WebSharedWorkerImpl::resumeWorkerContext()
 
 static void connectToWorkerContextInspectorTask(ScriptExecutionContext* context, bool)
 {
-    ASSERT(context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerContext());
     static_cast<WorkerContext*>(context)->workerInspectorController()->connectFrontend();
 }
 
@@ -420,7 +421,7 @@ void WebSharedWorkerImpl::attachDevTools()
 
 static void reconnectToWorkerContextInspectorTask(ScriptExecutionContext* context, const String& savedState)
 {
-    ASSERT(context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerContext());
     WorkerInspectorController* ic = static_cast<WorkerContext*>(context)->workerInspectorController();
     ic->restoreInspectorStateFromCookie(savedState);
     ic->resume();
@@ -433,7 +434,7 @@ void WebSharedWorkerImpl::reattachDevTools(const WebString& savedState)
 
 static void disconnectFromWorkerContextInspectorTask(ScriptExecutionContext* context, bool)
 {
-    ASSERT(context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerContext());
     static_cast<WorkerContext*>(context)->workerInspectorController()->disconnectFrontend();
 }
 
@@ -444,7 +445,7 @@ void WebSharedWorkerImpl::detachDevTools()
 
 static void dispatchOnInspectorBackendTask(ScriptExecutionContext* context, const String& message)
 {
-    ASSERT(context->isWorkerContext());
+    ASSERT_WITH_SECURITY_IMPLICATION(context->isWorkerContext());
     static_cast<WorkerContext*>(context)->workerInspectorController()->dispatchMessageFromFrontend(message);
 }
 

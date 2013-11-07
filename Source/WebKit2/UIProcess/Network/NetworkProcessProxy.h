@@ -29,8 +29,6 @@
 #if ENABLE(NETWORK_PROCESS)
 
 #include "ChildProcessProxy.h"
-#include "Connection.h"
-#include "MessageReceiverMap.h"
 #include "ProcessLauncher.h"
 #include "WebProcessProxyMessages.h"
 #include <wtf/Deque.h>
@@ -50,7 +48,7 @@ class DownloadProxyMap;
 class WebContext;
 struct NetworkProcessCreationParameters;
 
-class NetworkProcessProxy : public RefCounted<NetworkProcessProxy>, public ChildProcessProxy {
+class NetworkProcessProxy : public ChildProcessProxy {
 public:
     static PassRefPtr<NetworkProcessProxy> create(WebContext*);
     ~NetworkProcessProxy();
@@ -66,9 +64,12 @@ public:
 private:
     NetworkProcessProxy(WebContext*);
 
+    // ChildProcessProxy
     virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&) OVERRIDE;
-    void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&);
+    virtual void connectionWillOpen(CoreIPC::Connection*) OVERRIDE;
+    virtual void connectionWillClose(CoreIPC::Connection*) OVERRIDE;
 
+    void platformGetLaunchOptions(ProcessLauncher::LaunchOptions&);
     void networkProcessCrashedOrFailedToLaunch();
 
     // CoreIPC::Connection::Client
@@ -90,7 +91,6 @@ private:
     unsigned m_numPendingConnectionRequests;
     Deque<RefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> > m_pendingConnectionReplies;
 
-    CoreIPC::MessageReceiverMap m_messageReceiverMap;
     OwnPtr<DownloadProxyMap> m_downloadProxyMap;
 
 #if ENABLE(CUSTOM_PROTOCOLS)

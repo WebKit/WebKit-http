@@ -2,6 +2,7 @@
  * CSS Media Query Evaluator
  *
  * Copyright (C) 2006 Kimmo Kinnunen <kimmo.t.kinnunen@nokia.com>.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -478,9 +479,12 @@ static bool heightMediaFeatureEval(CSSValue* value, RenderStyle* style, Frame* f
     FrameView* view = frame->view();
 
     if (value) {
+        int height = view->layoutHeight();
+        if (RenderView* renderView = frame->document()->renderView())
+            height = adjustForAbsoluteZoom(height, renderView);
         RenderStyle* rootStyle = frame->document()->documentElement()->renderStyle();
         int length;
-        return computeLength(value, !frame->document()->inQuirksMode(), style, rootStyle, length) && compareValue(view->layoutHeight(), length, op);
+        return computeLength(value, !frame->document()->inQuirksMode(), style, rootStyle, length) && compareValue(height, length, op);
     }
 
     return view->layoutHeight() != 0;
@@ -491,9 +495,12 @@ static bool widthMediaFeatureEval(CSSValue* value, RenderStyle* style, Frame* fr
     FrameView* view = frame->view();
 
     if (value) {
+        int width = view->layoutWidth();
+        if (RenderView* renderView = frame->document()->renderView())
+            width = adjustForAbsoluteZoom(width, renderView);
         RenderStyle* rootStyle = frame->document()->documentElement()->renderStyle();
         int length;
-        return computeLength(value, !frame->document()->inQuirksMode(), style, rootStyle, length) && compareValue(view->layoutWidth(), length, op);
+        return computeLength(value, !frame->document()->inQuirksMode(), style, rootStyle, length) && compareValue(width, length, op);
     }
 
     return view->layoutWidth() != 0;
@@ -655,6 +662,7 @@ static bool transform_3dMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* f
     return returnValueIfNoParameter;
 }
 
+#if ENABLE(VIEW_MODE_CSS_MEDIA)
 static bool view_modeMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame, MediaFeaturePrefix op)
 {
     UNUSED_PARAM(op);
@@ -687,6 +695,7 @@ static bool view_modeMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* fram
 
     return result;
 }
+#endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 
 enum PointerDeviceType { TouchPointer, MousePointer, NoPointer, UnknownPointer };
 

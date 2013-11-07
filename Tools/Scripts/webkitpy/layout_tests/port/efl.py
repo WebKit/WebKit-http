@@ -57,12 +57,18 @@ class EflPort(Port):
 
     def setup_environ_for_server(self, server_name=None):
         env = super(EflPort, self).setup_environ_for_server(server_name)
+
         # If DISPLAY environment variable is unset in the system
         # e.g. on build bot, remove DISPLAY variable from the dictionary
         if not 'DISPLAY' in os.environ:
             del env['DISPLAY']
+
         env['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
         env['TEST_RUNNER_PLUGIN_PATH'] = self._build_path('lib')
+
+        # Silence GIO warnings about using the "memory" GSettings backend.
+        env['GSETTINGS_BACKEND'] = 'memory'
+
         if self.webprocess_cmd_prefix:
             env['WEB_PROCESS_CMD_PREFIX'] = self.webprocess_cmd_prefix
 
@@ -112,7 +118,7 @@ class EflPort(Port):
     def default_baseline_search_path(self):
         return map(self._webkit_baseline_path, self._search_paths())
 
-    def expectations_files(self):
+    def _port_specific_expectations_files(self):
         # FIXME: We should be able to use the default algorithm here.
         return list(reversed([self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in self._search_paths()]))
 

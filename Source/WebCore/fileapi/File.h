@@ -91,7 +91,7 @@ public:
     const String& path() const { return m_path; }
     const String& name() const { return m_name; }
 
-    // This may return NaN (which is converted to null Date in javascript layer) if getFileModificationTime() platform call has failed or the information is not available.
+    // This returns the current date and time if the file's last modifiecation date is not known (per spec: http://www.w3.org/TR/FileAPI/#dfn-lastModifiedDate).
     double lastModifiedDate() const;
 
 #if ENABLE(DIRECTORY_UPLOAD)
@@ -136,13 +136,13 @@ private:
 
 inline File* toFile(Blob* blob)
 {
-    ASSERT(!blob || blob->isFile());
+    ASSERT_WITH_SECURITY_IMPLICATION(!blob || blob->isFile());
     return static_cast<File*>(blob);
 }
 
 inline const File* toFile(const Blob* blob)
 {
-    ASSERT(!blob || blob->isFile());
+    ASSERT_WITH_SECURITY_IMPLICATION(!blob || blob->isFile());
     return static_cast<const File*>(blob);
 }
 

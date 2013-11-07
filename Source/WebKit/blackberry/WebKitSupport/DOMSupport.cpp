@@ -27,6 +27,7 @@
 #include "HTMLNames.h"
 #include "HTMLTextAreaElement.h"
 #include "Node.h"
+#include "NodeTraversal.h"
 #include "Range.h"
 #include "RenderObject.h"
 #include "RenderText.h"
@@ -74,7 +75,7 @@ void visibleTextQuads(const Range& range, Vector<FloatQuad>& quads, bool useSele
         return;
 
     Node* stopNode = range.pastLastNode();
-    for (Node* node = range.firstNode(); node && node != stopNode; node = node->traverseNextNode()) {
+    for (Node* node = range.firstNode(); node && node != stopNode; node = NodeTraversal::next(node)) {
         RenderObject* r = node->renderer();
         if (!r || !r->isText())
             continue;
@@ -508,6 +509,46 @@ VisibleSelection visibleSelectionForClosestActualWordStart(const VisibleSelectio
     return selection;
 }
 
+int offsetFromStartOfBlock(const VisiblePosition offset)
+{
+    RefPtr<Range> range = makeRange(startOfBlock(offset), offset);
+    if (!range)
+        return -1;
+
+    return range->text().latin1().length();
+}
+
+VisibleSelection visibleSelectionForFocusedBlock(Element* element)
+{
+    int textLength = inputElementText(element).length();
+
+    if (DOMSupport::toTextControlElement(element)) {
+        RenderTextControl* textRender = toRenderTextControl(element->renderer());
+        if (!textRender)
+            return VisibleSelection();
+
+        VisiblePosition startPosition = textRender->visiblePositionForIndex(0);
+        VisiblePosition endPosition;
+
+        if (textLength)
+            endPosition = textRender->visiblePositionForIndex(textLength);
+        else
+            endPosition = startPosition;
+        return VisibleSelection(startPosition, endPosition);
+    }
+
+    // Must be content editable, generate the range.
+    RefPtr<Range> selectionRange = TextIterator::rangeFromLocationAndLength(element, 0, textLength);
+
+    if (!selectionRange)
+        return VisibleSelection();
+
+    if (!textLength)
+        return VisibleSelection(selectionRange->startPosition(), DOWNSTREAM);
+
+    return VisibleSelection(selectionRange->startPosition(), selectionRange->endPosition());
+}
+
 // This function is copied from WebCore/page/Page.cpp.
 Frame* incrementFrame(Frame* curr, bool forward, bool wrapFlag)
 {
@@ -523,7 +564,7 @@ PassRefPtr<Range> trimWhitespaceFromRange(PassRefPtr<Range> range)
 
 PassRefPtr<Range> trimWhitespaceFromRange(VisiblePosition startPosition, VisiblePosition endPosition)
 {
-    if (isEmptyRangeOrAllSpaces(startPosition, endPosition))
+    if (startPosition == endPosition || isRangeTextAllWhitespace(startPosition, endPosition))
         return 0;
 
     while (isWhitespace(startPosition.characterAfter()))
@@ -535,11 +576,8 @@ PassRefPtr<Range> trimWhitespaceFromRange(VisiblePosition startPosition, Visible
     return makeRange(startPosition, endPosition);
 }
 
-bool isEmptyRangeOrAllSpaces(VisiblePosition startPosition, VisiblePosition endPosition)
+bool isRangeTextAllWhitespace(VisiblePosition startPosition, VisiblePosition endPosition)
 {
-    if (startPosition == endPosition)
-        return true;
-
     while (isWhitespace(startPosition.characterAfter())) {
         startPosition = startPosition.next();
 
@@ -562,6 +600,50 @@ bool isFixedPositionOrHasFixedPositionAncestor(RenderObject* renderer)
     }
 
     return false;
+}
+
+Element* selectionContainerElement(const VisibleSelection& selection)
+{
+    if (!selection.isRange())
+        return 0;
+
+    Node* startContainer = 0;
+    if (selection.firstRange())
+        startContainer = selection.firstRange()->startContainer();
+
+    if (!startContainer)
+        return 0;
+
+    Element* element = 0;
+    if (startContainer->isInShadowTree())
+        element = startContainer->shadowHost();
+    else if (startContainer->isElementNode())
+        element = static_cast<Element*>(startContainer);
+    else
+        element = startContainer->parentElement();
+
+    return element;
+}
+
+BlackBerry::Platform::RequestedHandlePosition elementHandlePositionAttribute(const WebCore::Element* element)
+{
+    BlackBerry::Platform::RequestedHandlePosition position = BlackBerry::Platform::SmartPlacement;
+    if (!element)
+        return position;
+
+    DEFINE_STATIC_LOCAL(QualifiedName, qualifiedAttrNameForHandlePosition, (nullAtom, "data-blackberry-text-selection-handle-position", nullAtom));
+    AtomicString attributeString;
+    if (element->fastHasAttribute(qualifiedAttrNameForHandlePosition))
+        attributeString = element->fastGetAttribute(qualifiedAttrNameForHandlePosition);
+
+    if (attributeString.isNull() || attributeString.isEmpty())
+        return position;
+
+    if (equalIgnoringCase(attributeString, "above"))
+        position = BlackBerry::Platform::Above;
+    else if (equalIgnoringCase(attributeString, "below"))
+        position = BlackBerry::Platform::Below;
+    return position;
 }
 
 } // DOMSupport

@@ -30,9 +30,9 @@
 
 #include "EwkView.h"
 #include "WebProcessProxy.h"
+#include "ewk_context_private.h"
 #include "ewk_settings.h"
 #include "ewk_view.h"
-#include "ewk_view_private.h"
 #include <WebCore/EflInspectorUtilities.h>
 #include <WebCore/NotImplemented.h>
 #include <wtf/text/CString.h>
@@ -87,25 +87,31 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
 {
     ASSERT(m_page);
 
-#if USE(ACCELERATED_COMPOSITING) && defined HAVE_ECORE_X
+#ifdef HAVE_ECORE_X
     const char* engine = "opengl_x11";
     m_inspectorWindow = ecore_evas_new(engine, 0, 0, initialWindowWidth, initialWindowHeight, 0);
 
     // Gracefully fall back to software if evas_gl engine is not available.
     if (!m_inspectorWindow)
 #endif
-        m_inspectorWindow = ecore_evas_new(0, 0, 0, initialWindowWidth, initialWindowHeight, 0);
+    m_inspectorWindow = ecore_evas_new(0, 0, 0, initialWindowWidth, initialWindowHeight, 0);
     if (!m_inspectorWindow)
         return 0;
 
-    m_inspectorView = ewk_view_base_add(ecore_evas_get(m_inspectorWindow), toAPI(page()->process()->context()), toAPI(inspectorPageGroup()), EwkView::LegacyBehavior);
-    EwkView* inspectorViewImpl = EwkView::fromEvasObject(m_inspectorView);
-    inspectorViewImpl->setThemePath(TEST_THEME_DIR "/default.edj");
+    // FIXME: Refactor to use WKViewRef.
+    WKContextRef contextRef = toAPI(page()->process()->context());
+    m_inspectorView = EwkView::createEvasObject(ecore_evas_get(m_inspectorWindow), EwkContext::create(contextRef), toAPI(inspectorPageGroup()), EwkView::LegacyBehavior);
+    if (!m_inspectorView)
+        return 0;
 
-    Ewk_Settings* settings = inspectorViewImpl->settings();
+    EwkView* ewkView = toEwkView(m_inspectorView);
+    ASSERT(ewkView);
+    ewkView->setThemePath(TEST_THEME_DIR "/default.edj");
+
+    Ewk_Settings* settings = ewkView->settings();
     ewk_settings_file_access_from_file_urls_allowed_set(settings, true);
 
-    return inspectorViewImpl->page();
+    return ewkView->page();
 }
 
 void WebInspectorProxy::platformOpen()

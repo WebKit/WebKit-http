@@ -28,6 +28,7 @@
 
 #include "APICast.h"
 #include "APIShims.h"
+#include "JSAPIWrapperObject.h"
 #include "JSCallbackObject.h"
 
 #include <runtime/JSCJSValue.h>
@@ -148,6 +149,8 @@ bool JSValueIsObjectOfClass(JSContextRef ctx, JSValueRef value, JSClassRef jsCla
             return jsCast<JSCallbackObject<JSGlobalObject>*>(o)->inherits(jsClass);
         if (o->inherits(&JSCallbackObject<JSDestructibleObject>::s_info))
             return jsCast<JSCallbackObject<JSDestructibleObject>*>(o)->inherits(jsClass);
+        if (o->inherits(&JSCallbackObject<JSAPIWrapperObject>::s_info))
+            return jsCast<JSCallbackObject<JSAPIWrapperObject>*>(o)->inherits(jsClass);
     }
     return false;
 }
@@ -231,7 +234,7 @@ JSValueRef JSValueMakeNumber(JSContextRef ctx, double value)
     // Our JSValue representation relies on a standard bit pattern for NaN. NaNs
     // generated internally to JavaScriptCore naturally have that representation,
     // but an external NaN might not.
-    if (isnan(value))
+    if (std::isnan(value))
         value = QNaN;
 
     return toRef(exec, jsNumber(value));

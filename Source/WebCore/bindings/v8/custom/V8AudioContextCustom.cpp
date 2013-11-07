@@ -41,7 +41,7 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8AudioContext::constructorCallbackCustom(const v8::Arguments& args)
+v8::Handle<v8::Value> V8AudioContext::constructorCustom(const v8::Arguments& args)
 {
     Document* document = currentDocument(BindingState::instance());
 
@@ -73,7 +73,7 @@ v8::Handle<v8::Value> V8AudioContext::constructorCallbackCustom(const v8::Argume
     
     // Transform the holder into a wrapper object for the audio context.
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::associateObjectWithWrapper(audioContext.release(), &info, wrapper, args.GetIsolate());
+    V8DOMWrapper::associateObjectWithWrapper(audioContext.release(), &info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     
     return wrapper;
 }

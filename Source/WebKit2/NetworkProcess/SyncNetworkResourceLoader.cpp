@@ -32,6 +32,7 @@
 #include "NetworkProcess.h"
 #include "RemoteNetworkingContext.h"
 #include <WebCore/ResourceError.h>
+#include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceResponse.h>
 #include <wtf/MainThread.h>
 
@@ -59,7 +60,7 @@ void SyncNetworkResourceLoader::start()
     Vector<char> data;
     
     // FIXME (NetworkProcess): Create RemoteNetworkingContext with actual settings.
-    RefPtr<RemoteNetworkingContext> networkingContext = RemoteNetworkingContext::create(false, false, inPrivateBrowsingMode());
+    RefPtr<RemoteNetworkingContext> networkingContext = RemoteNetworkingContext::create(false, false, inPrivateBrowsingMode(), shouldClearReferrerOnHTTPSToHTTPRedirect());
 
     consumeSandboxExtensions();
 

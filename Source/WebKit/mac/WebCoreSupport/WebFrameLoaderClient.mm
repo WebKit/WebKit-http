@@ -74,6 +74,7 @@
 #import "WebUIDelegate.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
+#import <JavaScriptCore/JSContextInternal.h>
 #import <WebCore/AuthenticationCF.h>
 #import <WebCore/AuthenticationMac.h>
 #import <WebCore/BackForwardController.h>
@@ -117,6 +118,7 @@
 #import <WebCore/ScriptController.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/WebCoreObjCExtras.h>
+#import <WebCore/WebScriptObjectPrivate.h>
 #import <WebCore/Widget.h>
 #import <WebKit/DOMElement.h>
 #import <WebKit/DOMHTMLFormElement.h>
@@ -280,7 +282,7 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(MainResourceLoader*
     WebView *webView = getWebView(m_webFrame.get());
     CFURLConnectionRef connection = handle->connection();
     [WebDownload _downloadWithLoadingCFURLConnection:connection
-                                                                     request:request.cfURLRequest()
+                                                                     request:request.cfURLRequest(UpdateHTTPBody)
                                                                     response:response.cfURLResponse()
                                                                     delegate:[webView downloadDelegate]
                                                                        proxy:nil];
@@ -294,7 +296,7 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(MainResourceLoader*
     
     WebView *webView = getWebView(m_webFrame.get());
     [WebDownload _downloadWithLoadingConnection:handle->connection()
-                                                                request:request.nsURLRequest()
+                                                                request:request.nsURLRequest(UpdateHTTPBody)
                                                                response:response.nsURLResponse()
                                                                delegate:[webView downloadDelegate]
                                                                   proxy:proxy];
@@ -310,7 +312,7 @@ bool WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache(DocumentLoader
     if (!implementations->didLoadResourceFromMemoryCacheFunc)
         return false;
 
-    CallResourceLoadDelegate(implementations->didLoadResourceFromMemoryCacheFunc, webView, @selector(webView:didLoadResourceFromMemoryCache:response:length:fromDataSource:), request.nsURLRequest(), response.nsURLResponse(), length, dataSource(loader));
+    CallResourceLoadDelegate(implementations->didLoadResourceFromMemoryCacheFunc, webView, @selector(webView:didLoadResourceFromMemoryCache:response:length:fromDataSource:), request.nsURLRequest(UpdateHTTPBody), response.nsURLResponse(), length, dataSource(loader));
     return true;
 }
 
@@ -322,7 +324,7 @@ void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identi
     id object = nil;
     BOOL shouldRelease = NO;
     if (implementations->identifierForRequestFunc)
-        object = CallResourceLoadDelegate(implementations->identifierForRequestFunc, webView, @selector(webView:identifierForInitialRequest:fromDataSource:), request.nsURLRequest(), dataSource(loader));
+        object = CallResourceLoadDelegate(implementations->identifierForRequestFunc, webView, @selector(webView:identifierForInitialRequest:fromDataSource:), request.nsURLRequest(UpdateHTTPBody), dataSource(loader));
     else {
         object = [[NSObject alloc] init];
         shouldRelease = YES;
@@ -344,7 +346,7 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsig
     if (redirectResponse.isNull())
         static_cast<WebDocumentLoaderMac*>(loader)->increaseLoadCount(identifier);
 
-    NSURLRequest *currentURLRequest = request.nsURLRequest();
+    NSURLRequest *currentURLRequest = request.nsURLRequest(UpdateHTTPBody);
     NSURLRequest *newURLRequest = currentURLRequest;
     if (implementations->willSendRequestFunc)
         newURLRequest = (NSURLRequest *)CallResourceLoadDelegate(implementations->willSendRequestFunc, webView, @selector(webView:resource:willSendRequest:redirectResponse:fromDataSource:), [webView _objectForIdentifier:identifier], currentURLRequest, redirectResponse.nsURLResponse(), dataSource(loader));
@@ -722,7 +724,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(FramePolicyFunction f
 
     [[webView _policyDelegateForwarder] webView:webView
                         decidePolicyForMIMEType:response.mimeType()
-                                        request:request.nsURLRequest()
+                                        request:request.nsURLRequest(UpdateHTTPBody)
                                           frame:m_webFrame.get()
                                decisionListener:setUpPolicyListener(function).get()];
 }
@@ -733,7 +735,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(FramePolicyFun
     WebView *webView = getWebView(m_webFrame.get());
     [[webView _policyDelegateForwarder] webView:webView
             decidePolicyForNewWindowAction:actionDictionary(action, formState)
-                                   request:request.nsURLRequest()
+                                   request:request.nsURLRequest(UpdateHTTPBody)
                               newFrameName:frameName
                           decisionListener:setUpPolicyListener(function).get()];
 }
@@ -744,7 +746,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(FramePolicyFu
     WebView *webView = getWebView(m_webFrame.get());
     [[webView _policyDelegateForwarder] webView:webView
                 decidePolicyForNavigationAction:actionDictionary(action, formState)
-                                        request:request.nsURLRequest()
+                                        request:request.nsURLRequest(UpdateHTTPBody)
                                           frame:m_webFrame.get()
                                decisionListener:setUpPolicyListener(function).get()];
 }
@@ -868,7 +870,7 @@ void WebFrameLoaderClient::updateGlobalHistory()
         if (implementations->navigatedFunc) {
             WebNavigationData *data = [[WebNavigationData alloc] initWithURLString:loader->urlForHistory()
                                                                              title:nilOrNSString(loader->title().string())
-                                                                   originalRequest:loader->originalRequestCopy().nsURLRequest()
+                                                                   originalRequest:loader->originalRequestCopy().nsURLRequest(UpdateHTTPBody)
                                                                           response:loader->response().nsURLResponse()
                                                                  hasSubstituteData:loader->substituteData().isValid()
                                                               clientRedirectSource:loader->clientRedirectSourceForHistory()];
@@ -1024,7 +1026,7 @@ bool WebFrameLoaderClient::canHandleRequest(const ResourceRequest& request) cons
     Frame* frame = core(m_webFrame.get());
     Page* page = frame->page();
     BOOL forMainFrame = page && page->mainFrame() == frame;
-    return [WebView _canHandleRequest:request.nsURLRequest() forMainFrame:forMainFrame];
+    return [WebView _canHandleRequest:request.nsURLRequest(UpdateHTTPBody) forMainFrame:forMainFrame];
 }
 
 bool WebFrameLoaderClient::canShowMIMEType(const String& MIMEType) const
@@ -1344,7 +1346,7 @@ NSDictionary *WebFrameLoaderClient::actionDictionary(const NavigationAction& act
 
     if (const MouseEvent* mouseEvent = findMouseEvent(event)) {
         WebElementDictionary *element = [[WebElementDictionary alloc]
-            initWithHitTestResult:core(m_webFrame.get())->eventHandler()->hitTestResultAtPoint(mouseEvent->absoluteLocation(), false)];
+            initWithHitTestResult:core(m_webFrame.get())->eventHandler()->hitTestResultAtPoint(mouseEvent->absoluteLocation())];
         [result setObject:element forKey:WebActionElementKey];
         [element release];
 
@@ -1581,6 +1583,12 @@ public:
             [(WebBaseNetscapePluginView *)platformWidget() handleMouseExited:currentNSEvent];
         else if (event->type() == eventNames().contextmenuEvent)
             event->setDefaultHandled(); // We don't know if the plug-in has handled mousedown event by displaying a context menu, so we never want WebKit to show a default one.
+    }
+
+    virtual void clipRectChanged()
+    {
+        // Changing the clip rect doesn't affect the view hierarchy, so the plugin must be told about the change directly.
+        [(WebBaseNetscapePluginView *)platformWidget() updateAndSetWindow];
     }
 
 private:
@@ -1950,7 +1958,14 @@ void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* 
     Frame *frame = core(m_webFrame.get());
     ScriptController *script = frame->script();
 
+#if JSC_OBJC_API_ENABLED
+    if (implementations->didCreateJavaScriptContextForFrameFunc) {
+        CallFrameLoadDelegate(implementations->didCreateJavaScriptContextForFrameFunc, webView, @selector(webView:didCreateJavaScriptContext:forFrame:),
+            script->javaScriptContext(), m_webFrame.get());
+    } else if (implementations->didClearWindowObjectForFrameFunc) {
+#else
     if (implementations->didClearWindowObjectForFrameFunc) {
+#endif
         CallFrameLoadDelegate(implementations->didClearWindowObjectForFrameFunc, webView, @selector(webView:didClearWindowObject:forFrame:),
             script->windowScriptObject(), m_webFrame.get());
     } else if (implementations->windowScriptObjectAvailableFunc) {

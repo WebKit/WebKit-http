@@ -33,7 +33,6 @@
 #include "PopupMenu.h"
 #include "PopupMenuClient.h"
 #include "RenderEmbeddedObject.h"
-#include "RenderSnapshottedPlugIn.h"
 #include "ScrollTypes.h"
 #include "SearchPopupMenu.h"
 #include "WebCoreKeyboardUIMode.h"
@@ -154,9 +153,10 @@ public:
     virtual IntRect windowResizerRect() const = 0;
 
     // Methods used by HostWindow.
-    virtual void invalidateRootView(const IntRect&, bool) = 0;
-    virtual void invalidateContentsAndRootView(const IntRect&, bool) = 0;
-    virtual void invalidateContentsForSlowScroll(const IntRect&, bool) = 0;
+    virtual bool supportsImmediateInvalidation() { return false; }
+    virtual void invalidateRootView(const IntRect&, bool immediate) = 0;
+    virtual void invalidateContentsAndRootView(const IntRect&, bool immediate) = 0;
+    virtual void invalidateContentsForSlowScroll(const IntRect&, bool immediate) = 0;
     virtual void scroll(const IntSize&, const IntRect&, const IntRect&) = 0;
 #if USE(TILED_BACKING_STORE)
     virtual void delegatedScrollRequested(const IntPoint&) = 0;
@@ -186,6 +186,8 @@ public:
 
     virtual void print(Frame*) = 0;
     virtual bool shouldRubberBandInDirection(ScrollDirection) const = 0;
+
+    virtual Color underlayColor() const { return Color(); }
 
 #if ENABLE(SQL_DATABASE)
     virtual void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails) = 0;
@@ -373,7 +375,6 @@ public:
 
     virtual bool isEmptyChromeClient() const { return false; }
 
-    virtual PassRefPtr<Image> plugInStartLabelImage(RenderSnapshottedPlugIn::LabelSize) const { return 0; }
     virtual String plugInStartLabelTitle() const { return String(); }
     virtual String plugInStartLabelSubtitle() const { return String(); }
     virtual String plugInExtraStyleSheet() const { return String(); }

@@ -111,8 +111,10 @@ PassRefPtr<CSSValue> CSSParserValue::createCSSValue()
     case CSSPrimitiveValue::CSS_VW:
     case CSSPrimitiveValue::CSS_VH:
     case CSSPrimitiveValue::CSS_VMIN:
+    case CSSPrimitiveValue::CSS_VMAX:
     case CSSPrimitiveValue::CSS_TURN:
     case CSSPrimitiveValue::CSS_REMS:
+    case CSSPrimitiveValue::CSS_CHS:
         return CSSPrimitiveValue::create(fValue, primitiveUnit);
     case CSSPrimitiveValue::CSS_UNKNOWN:
     case CSSPrimitiveValue::CSS_DIMENSION:
@@ -146,6 +148,9 @@ PassRefPtr<CSSValue> CSSParserValue::createCSSValue()
 
 CSSParserSelector::CSSParserSelector()
     : m_selector(adoptPtr(fastNew<CSSSelector>()))
+#if ENABLE(SHADOW_DOM)
+    , m_functionArgumentSelector(0)
+#endif
 {
 }
 

@@ -27,20 +27,24 @@
 #ifndef CSSPreloadScanner_h
 #define CSSPreloadScanner_h
 
+#include "HTMLResourcePreloader.h"
+#include "HTMLToken.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-class Document;
-class HTMLToken;
+class HTMLIdentifier;
 
 class CSSPreloadScanner {
     WTF_MAKE_NONCOPYABLE(CSSPreloadScanner);
 public:
-    explicit CSSPreloadScanner(Document*);
+    CSSPreloadScanner();
+    ~CSSPreloadScanner();
 
     void reset();
-    void scan(const HTMLToken&);
+
+    void scan(const HTMLToken::DataVector&, PreloadRequestStream&);
+    void scan(const HTMLIdentifier&, PreloadRequestStream&);
 
 private:
     enum State {
@@ -56,14 +60,18 @@ private:
         DoneParsingImportRules,
     };
 
-    inline void tokenize(UChar c);
+    template<typename Char>
+    void scanCommon(const Char* begin, const Char* end, PreloadRequestStream&);
+
+    inline void tokenize(UChar);
     void emitRule();
 
     State m_state;
     StringBuilder m_rule;
     StringBuilder m_ruleValue;
 
-    Document* m_document;
+    // Only non-zero during scan()
+    PreloadRequestStream* m_requests;
 };
 
 }

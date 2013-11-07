@@ -72,7 +72,7 @@ public:
     void setWindowIsVisible(bool);
     void setWindowIsFocused(bool);
     void setDeviceScaleFactor(float);
-    void windowAndViewFramesChanged(const WebCore::IntRect& windowFrameInScreenCoordinates, const WebCore::IntRect& viewFrameInWindowCoordinates);
+    void windowAndViewFramesChanged(const WebCore::FloatRect& windowFrameInScreenCoordinates, const WebCore::FloatRect& viewFrameInWindowCoordinates);
     bool sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
     void setLayerHostingMode(LayerHostingMode);
     RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return m_plugin->pdfDocumentForPrinting(); }
@@ -97,9 +97,11 @@ public:
     unsigned countFindMatches(const String& target, WebCore::FindOptions, unsigned maxMatchCount);
     bool findString(const String& target, WebCore::FindOptions, unsigned maxMatchCount);
 
+    String getSelectionString() const;
+
     bool shouldAllowScripting();
 
-    bool getResourceData(const unsigned char*& bytes, unsigned& length) const;
+    PassRefPtr<WebCore::SharedBuffer> liveResourceData() const;
     bool performDictionaryLookupAtLocation(const WebCore::FloatPoint&);
 
 private:
@@ -160,6 +162,7 @@ private:
     virtual void show();
     virtual void hide();
     virtual bool transformsAffectFrameRect();
+    virtual void clipRectChanged() OVERRIDE;
 
     // WebCore::MediaCanStartListener
     virtual void mediaCanStart();

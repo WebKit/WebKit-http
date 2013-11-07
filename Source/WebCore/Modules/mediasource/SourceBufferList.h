@@ -57,10 +57,6 @@ public:
     bool remove(SourceBuffer*);
     void clear();
 
-    // Generates an id for adding a new SourceBuffer. Returns an empty string
-    // if this SourceBufferList is full.
-    String generateUniqueId();
-
     // EventTarget interface
     virtual const AtomicString& interfaceName() const OVERRIDE;
     virtual ScriptExecutionContext* scriptExecutionContext() const OVERRIDE;
@@ -75,7 +71,6 @@ protected:
 private:
     SourceBufferList(ScriptExecutionContext*, GenericEventQueue*);
 
-    bool contains(size_t id) const;
     void createAndFireEvent(const AtomicString&);
 
     virtual void refEventTarget() OVERRIDE { ref(); }
@@ -86,7 +81,6 @@ private:
     GenericEventQueue* m_asyncEventQueue;
 
     Vector<RefPtr<SourceBuffer> > m_list;
-    size_t m_lastSourceBufferId;
 };
 
 } // namespace WebCore

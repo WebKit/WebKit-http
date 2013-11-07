@@ -163,6 +163,16 @@ void InspectorClientImpl::setShowPaintRects(bool show)
     m_inspectedWebView->setShowPaintRects(show);
 }
 
+bool InspectorClientImpl::canShowDebugBorders()
+{
+    return true;
+}
+
+void InspectorClientImpl::setShowDebugBorders(bool show)
+{
+    m_inspectedWebView->setShowDebugBorders(show);
+}
+
 bool InspectorClientImpl::canShowFPSCounter()
 {
     if (m_inspectedWebView->page())
@@ -216,6 +226,17 @@ bool InspectorClientImpl::handleJavaScriptDialog(bool accept)
     if (WebDevToolsAgentImpl* agent = devToolsAgent())
         return agent->handleJavaScriptDialog(accept);
     return false;
+}
+
+bool InspectorClientImpl::canSetFileInputFiles()
+{
+    return true;
+}
+
+void InspectorClientImpl::setTraceEventCallback(TraceEventCallback callback)
+{
+    if (WebDevToolsAgentImpl* agent = devToolsAgent())
+        agent->setTraceEventCallback(callback);
 }
 
 WebDevToolsAgentImpl* InspectorClientImpl::devToolsAgent()

@@ -136,7 +136,7 @@ inline JSValue::JSValue(unsigned long long i)
 inline JSValue::JSValue(double d)
 {
     const int32_t asInt32 = static_cast<int32_t>(d);
-    if (asInt32 != d || (!asInt32 && signbit(d))) { // true for -0.0
+    if (asInt32 != d || (!asInt32 && std::signbit(d))) { // true for -0.0
         *this = JSValue(EncodeAsDouble, d);
         return;
     }
@@ -791,6 +791,17 @@ inline bool JSValue::strictEqual(ExecState* exec, JSValue v1, JSValue v2)
         return v1 == v2;
 
     return strictEqualSlowCaseInline(exec, v1, v2);
+}
+
+inline TriState JSValue::pureToBoolean() const
+{
+    if (isInt32())
+        return asInt32() ? TrueTriState : FalseTriState;
+    if (isDouble())
+        return (asDouble() > 0.0 || asDouble() < 0.0) ? TrueTriState : FalseTriState; // false for NaN
+    if (isCell())
+        return MixedTriState;
+    return isTrue() ? TrueTriState : FalseTriState;
 }
 
 } // namespace JSC

@@ -35,8 +35,8 @@
 #include "NodeTraversal.h"
 #include "RenderObject.h"
 #include "Text.h"
+#include "VisibleUnits.h"
 #include "htmlediting.h"
-#include "visible_units.h"
 
 namespace WebCore {
 
@@ -227,7 +227,7 @@ void InsertParagraphSeparatorCommand::doApply()
             // into an unquoted area. We then don't want the newline within the blockquote or else it will also be quoted.
             if (m_pasteBlockqutoeIntoUnquotedArea) {
                 if (Node* highestBlockquote = highestEnclosingNodeOfType(canonicalPos, &isMailBlockquote))
-                    startBlock = static_cast<Element*>(highestBlockquote);
+                    startBlock = toElement(highestBlockquote);
             }
 
             // Most of the time we want to stay at the nesting level of the startBlock (e.g., when nesting within lists).  However,

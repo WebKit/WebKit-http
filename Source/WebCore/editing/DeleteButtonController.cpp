@@ -34,6 +34,7 @@
 #include "DeleteButton.h"
 #include "Document.h"
 #include "Editor.h"
+#include "EditorClient.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "htmlediting.h"
@@ -50,6 +51,8 @@
 namespace WebCore {
 
 using namespace HTMLNames;
+
+#if ENABLE(DELETION_UI)
 
 const char* const DeleteButtonController::containerElementIdentifier = "WebKit-Editing-Delete-Container";
 const char* const DeleteButtonController::buttonElementIdentifier = "WebKit-Editing-Delete-Button";
@@ -155,10 +158,8 @@ static HTMLElement* enclosingDeletableElement(const VisibleSelection& selection)
     if (!range)
         return 0;
 
-    ExceptionCode ec = 0;
-    Node* container = range->commonAncestorContainer(ec);
+    Node* container = range->commonAncestorContainer(ASSERT_NO_EXCEPTION);
     ASSERT(container);
-    ASSERT(ec == 0);
 
     // The enclosingNodeOfType function only works on nodes that are editable
     // (which is strange, given its name).
@@ -234,7 +235,7 @@ void DeleteButtonController::createDeletionUI()
 
     ExceptionCode ec = 0;
     container->appendChild(outline.get(), ec);
-    ASSERT(ec == 0);
+    ASSERT(!ec);
     if (ec)
         return;
 
@@ -266,7 +267,7 @@ void DeleteButtonController::createDeletionUI()
     button->setCachedImage(new CachedImage(buttonImage.get()));
 
     container->appendChild(button.get(), ec);
-    ASSERT(ec == 0);
+    ASSERT(!ec);
     if (ec)
         return;
 
@@ -282,7 +283,8 @@ void DeleteButtonController::show(HTMLElement* element)
     if (!enabled() || !element || !element->inDocument() || !isDeletableElement(element))
         return;
 
-    if (!m_frame->editor()->shouldShowDeleteInterface(element))
+    EditorClient* client = m_frame->editor()->client();
+    if (!client || !client->shouldShowDeleteInterface(element))
         return;
 
     // we rely on the renderer having current information, so we should update the layout if needed
@@ -300,7 +302,7 @@ void DeleteButtonController::show(HTMLElement* element)
 
     ExceptionCode ec = 0;
     m_target->appendChild(m_containerElement.get(), ec);
-    ASSERT(ec == 0);
+    ASSERT(!ec);
     if (ec) {
         hide();
         return;
@@ -322,9 +324,8 @@ void DeleteButtonController::hide()
     m_outlineElement = 0;
     m_buttonElement = 0;
 
-    ExceptionCode ec = 0;
     if (m_containerElement && m_containerElement->parentNode())
-        m_containerElement->parentNode()->removeChild(m_containerElement.get(), ec);
+        m_containerElement->parentNode()->removeChild(m_containerElement.get(), IGNORE_EXCEPTION);
 
     if (m_target) {
         if (m_wasStaticPositioned)
@@ -394,5 +395,6 @@ void DeleteButtonController::deleteTarget()
     applyCommand(RemoveTargetCommand::create(m_frame->document(), m_target));
     m_frame->selection()->setSelection(VisiblePosition(pos));
 }
+#endif
 
 } // namespace WebCore

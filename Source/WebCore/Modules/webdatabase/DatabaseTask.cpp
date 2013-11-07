@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #if ENABLE(SQL_DATABASE)
 
 #include "Database.h"
+#include "DatabaseBackend.h"
 #include "Logging.h"
 
 namespace WebCore {
@@ -59,7 +60,7 @@ void DatabaseTaskSynchronizer::taskCompleted()
     m_synchronousMutex.unlock();
 }
 
-DatabaseTask::DatabaseTask(Database* database, DatabaseTaskSynchronizer* synchronizer)
+DatabaseTask::DatabaseTask(DatabaseBackend* database, DatabaseTaskSynchronizer* synchronizer)
     : m_database(database)
     , m_synchronizer(synchronizer)
 #if !LOG_DISABLED
@@ -98,7 +99,7 @@ void DatabaseTask::performTask()
 // *** DatabaseOpenTask ***
 // Opens the database file and verifies the version matches the expected version.
 
-Database::DatabaseOpenTask::DatabaseOpenTask(Database* database, bool setVersionInNewDatabase, DatabaseTaskSynchronizer* synchronizer, DatabaseError& error, String& errorMessage, bool& success)
+DatabaseBackend::DatabaseOpenTask::DatabaseOpenTask(DatabaseBackend* database, bool setVersionInNewDatabase, DatabaseTaskSynchronizer* synchronizer, DatabaseError& error, String& errorMessage, bool& success)
     : DatabaseTask(database, synchronizer)
     , m_setVersionInNewDatabase(setVersionInNewDatabase)
     , m_error(error)
@@ -108,7 +109,7 @@ Database::DatabaseOpenTask::DatabaseOpenTask(Database* database, bool setVersion
     ASSERT(synchronizer); // A task with output parameters is supposed to be synchronous.
 }
 
-void Database::DatabaseOpenTask::doPerformTask()
+void DatabaseBackend::DatabaseOpenTask::doPerformTask()
 {
     String errorMessage;
     m_success = database()->performOpenAndVerify(m_setVersionInNewDatabase, m_error, errorMessage);
@@ -117,7 +118,7 @@ void Database::DatabaseOpenTask::doPerformTask()
 }
 
 #if !LOG_DISABLED
-const char* Database::DatabaseOpenTask::debugTaskName() const
+const char* DatabaseBackend::DatabaseOpenTask::debugTaskName() const
 {
     return "DatabaseOpenTask";
 }
@@ -126,18 +127,18 @@ const char* Database::DatabaseOpenTask::debugTaskName() const
 // *** DatabaseCloseTask ***
 // Closes the database.
 
-Database::DatabaseCloseTask::DatabaseCloseTask(Database* database, DatabaseTaskSynchronizer* synchronizer)
+DatabaseBackend::DatabaseCloseTask::DatabaseCloseTask(DatabaseBackend* database, DatabaseTaskSynchronizer* synchronizer)
     : DatabaseTask(database, synchronizer)
 {
 }
 
-void Database::DatabaseCloseTask::doPerformTask()
+void DatabaseBackend::DatabaseCloseTask::doPerformTask()
 {
-    database()->close();
+    Database::from(database())->close();
 }
 
 #if !LOG_DISABLED
-const char* Database::DatabaseCloseTask::debugTaskName() const
+const char* DatabaseBackend::DatabaseCloseTask::debugTaskName() const
 {
     return "DatabaseCloseTask";
 }
@@ -146,20 +147,35 @@ const char* Database::DatabaseCloseTask::debugTaskName() const
 // *** DatabaseTransactionTask ***
 // Starts a transaction that will report its results via a callback.
 
-Database::DatabaseTransactionTask::DatabaseTransactionTask(PassRefPtr<SQLTransaction> transaction)
-    : DatabaseTask(transaction->database(), 0)
+DatabaseBackend::DatabaseTransactionTask::DatabaseTransactionTask(PassRefPtr<SQLTransactionBackend> transaction)
+    : DatabaseTask(Database::from(transaction->database()), 0)
     , m_transaction(transaction)
+    , m_didPerformTask(false)
 {
 }
 
-void Database::DatabaseTransactionTask::doPerformTask()
+DatabaseBackend::DatabaseTransactionTask::~DatabaseTransactionTask()
 {
-    if (m_transaction->performNextStep())
-        m_transaction->database()->inProgressTransactionCompleted();
+    // If the task is being destructed without the transaction ever being run,
+    // then we must either have an error or an interruption. Give the
+    // transaction a chance to clean up since it may not have been able to
+    // run to its clean up state.
+
+    // Transaction phase 2 cleanup. See comment on "What happens if a
+    // transaction is interrupted?" at the top of SQLTransactionBackend.cpp.
+
+    if (!m_didPerformTask)
+        m_transaction->notifyDatabaseThreadIsShuttingDown();
+}
+
+void DatabaseBackend::DatabaseTransactionTask::doPerformTask()
+{
+    m_transaction->performNextStep();
+    m_didPerformTask = true;
 }
 
 #if !LOG_DISABLED
-const char* Database::DatabaseTransactionTask::debugTaskName() const
+const char* DatabaseBackend::DatabaseTransactionTask::debugTaskName() const
 {
     return "DatabaseTransactionTask";
 }
@@ -168,20 +184,20 @@ const char* Database::DatabaseTransactionTask::debugTaskName() const
 // *** DatabaseTableNamesTask ***
 // Retrieves a list of all tables in the database - for WebInspector support.
 
-Database::DatabaseTableNamesTask::DatabaseTableNamesTask(Database* database, DatabaseTaskSynchronizer* synchronizer, Vector<String>& names)
+DatabaseBackend::DatabaseTableNamesTask::DatabaseTableNamesTask(DatabaseBackend* database, DatabaseTaskSynchronizer* synchronizer, Vector<String>& names)
     : DatabaseTask(database, synchronizer)
     , m_tableNames(names)
 {
     ASSERT(synchronizer); // A task with output parameters is supposed to be synchronous.
 }
 
-void Database::DatabaseTableNamesTask::doPerformTask()
+void DatabaseBackend::DatabaseTableNamesTask::doPerformTask()
 {
-    m_tableNames = database()->performGetTableNames();
+    m_tableNames = Database::from(database())->performGetTableNames();
 }
 
 #if !LOG_DISABLED
-const char* Database::DatabaseTableNamesTask::debugTaskName() const
+const char* DatabaseBackend::DatabaseTableNamesTask::debugTaskName() const
 {
     return "DatabaseTableNamesTask";
 }

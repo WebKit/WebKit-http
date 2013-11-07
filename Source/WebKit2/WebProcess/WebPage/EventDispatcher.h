@@ -46,11 +46,9 @@ class WebWheelEvent;
 class WebGestureEvent;
 #endif
 
-class EventDispatcher : public CoreIPC::Connection::QueueClient {
-    WTF_MAKE_NONCOPYABLE(EventDispatcher);
-
+class EventDispatcher : public CoreIPC::Connection::WorkQueueMessageReceiver {
 public:
-    EventDispatcher();
+    static PassRefPtr<EventDispatcher> create();
     ~EventDispatcher();
 
 #if ENABLE(THREADED_SCROLLING)
@@ -58,17 +56,18 @@ public:
     void removeScrollingTreeForPage(WebPage*);
 #endif
 
-private:
-    // CoreIPC::Connection::QueueClient
-    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage) OVERRIDE;
+    void initializeConnection(CoreIPC::Connection*);
 
-    // Implemented in generated EventDispatcherMessageReceiver.cpp
-    void didReceiveEventDispatcherMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage);
+private:
+    EventDispatcher();
+
+    // CoreIPC::Connection::WorkQueueMessageReceiver.
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
     // Message handlers
-    void wheelEvent(CoreIPC::Connection*, uint64_t pageID, const WebWheelEvent&, bool canGoBack, bool canGoForward);
+    void wheelEvent(uint64_t pageID, const WebWheelEvent&, bool canGoBack, bool canGoForward);
 #if ENABLE(GESTURE_EVENTS)
-    void gestureEvent(CoreIPC::Connection*, uint64_t pageID, const WebGestureEvent&);
+    void gestureEvent(uint64_t pageID, const WebGestureEvent&);
 #endif
 
     // This is called on the main thread.
@@ -79,7 +78,11 @@ private:
 
 #if ENABLE(THREADED_SCROLLING)
     void sendDidReceiveEvent(uint64_t pageID, const WebEvent&, bool didHandleEvent);
+#endif
 
+    RefPtr<WorkQueue> m_queue;
+
+#if ENABLE(THREADED_SCROLLING)
     Mutex m_scrollingTreesMutex;
     HashMap<uint64_t, RefPtr<WebCore::ScrollingTree> > m_scrollingTrees;
 #endif

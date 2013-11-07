@@ -39,11 +39,14 @@
 #include "CSSValueKeywords.h"
 #include "ChildListMutationScope.h"
 #include "ContextFeatures.h"
+#if ENABLE(DELETION_UI)
 #include "DeleteButtonController.h"
+#endif
 #include "DocumentFragment.h"
 #include "DocumentType.h"
 #include "Editor.h"
 #include "ExceptionCode.h"
+#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "HTMLBodyElement.h"
 #include "HTMLElement.h"
@@ -53,15 +56,16 @@
 #include "MarkupAccumulator.h"
 #include "NodeTraversal.h"
 #include "Range.h"
+#include "RenderBlock.h"
 #include "RenderObject.h"
 #include "Settings.h"
 #include "StylePropertySet.h"
 #include "StyleResolver.h"
 #include "TextIterator.h"
 #include "VisibleSelection.h"
+#include "VisibleUnits.h"
 #include "XMLNSNames.h"
 #include "htmlediting.h"
-#include "visible_units.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -254,15 +258,14 @@ String StyledMarkupAccumulator::renderedText(const Node* node, const Range* rang
     if (!node->isTextNode())
         return String();
 
-    ExceptionCode ec;
     const Text* textNode = static_cast<const Text*>(node);
     unsigned startOffset = 0;
     unsigned endOffset = textNode->length();
 
-    if (range && node == range->startContainer(ec))
-        startOffset = range->startOffset(ec);
-    if (range && node == range->endContainer(ec))
-        endOffset = range->endOffset(ec);
+    if (range && node == range->startContainer())
+        startOffset = range->startOffset();
+    if (range && node == range->endContainer())
+        endOffset = range->endOffset();
 
     Position start = createLegacyEditingPosition(const_cast<Node*>(node), startOffset);
     Position end = createLegacyEditingPosition(const_cast<Node*>(node), endOffset);
@@ -275,11 +278,10 @@ String StyledMarkupAccumulator::stringValueForRange(const Node* node, const Rang
         return node->nodeValue();
 
     String str = node->nodeValue();
-    ExceptionCode ec;
-    if (node == range->endContainer(ec))
-        str.truncate(range->endOffset(ec));
-    if (node == range->startContainer(ec))
-        str.remove(0, range->startOffset(ec));
+    if (node == range->endContainer())
+        str.truncate(range->endOffset());
+    if (node == range->startContainer())
+        str.remove(0, range->startOffset());
     return str;
 }
 
@@ -291,7 +293,7 @@ void StyledMarkupAccumulator::appendElement(StringBuilder& out, Element* element
     const unsigned length = element->hasAttributes() ? element->attributeCount() : 0;
     const bool shouldAnnotateOrForceInline = element->isHTMLElement() && (shouldAnnotate() || addDisplayInline);
     const bool shouldOverrideStyleAttr = shouldAnnotateOrForceInline || shouldApplyWrappingStyle(element);
-    for (unsigned int i = 0; i < length; i++) {
+    for (unsigned i = 0; i < length; ++i) {
         const Attribute* attribute = element->attributeItem(i);
         // We'll handle the style attribute separately, below.
         if (attribute->name() == styleAttr && shouldOverrideStyleAttr)
@@ -506,14 +508,21 @@ static bool isElementPresentational(const Node* node)
 
 static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterchange shouldAnnotate)
 {
-    ExceptionCode ec;
-    Node* commonAncestor = range->commonAncestorContainer(ec);
+    Node* commonAncestor = range->commonAncestorContainer(IGNORE_EXCEPTION);
     ASSERT(commonAncestor);
     Node* specialCommonAncestor = 0;
     if (shouldAnnotate == AnnotateForInterchange) {
         // Include ancestors that aren't completely inside the range but are required to retain 
         // the structure and appearance of the copied markup.
         specialCommonAncestor = ancestorToRetainStructureAndAppearance(commonAncestor);
+
+        if (Node* parentListNode = enclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isListItem)) {
+            if (WebCore::areRangesEqual(VisibleSelection::selectionFromContentsOfNode(parentListNode).toNormalizedRange().get(), range)) {
+                specialCommonAncestor = parentListNode->parentNode();
+                while (specialCommonAncestor && !isListElement(specialCommonAncestor))
+                    specialCommonAncestor = specialCommonAncestor->parentNode();
+            }
+        }
 
         // Retain the Mail quote level by including all ancestor mail block quotes.
         if (Node* highestMailBlockquote = highestEnclosingNodeOfType(firstPositionInOrBeforeNode(range->firstNode()), isMailBlockquote, CanCrossEditingBoundary))
@@ -522,7 +531,7 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
 
     Node* checkAncestor = specialCommonAncestor ? specialCommonAncestor : commonAncestor;
     if (checkAncestor->renderer()) {
-        Node* newSpecialCommonAncestor = highestEnclosingNodeOfType(firstPositionInNode(checkAncestor), &isElementPresentational);
+        Node* newSpecialCommonAncestor = highestEnclosingNodeOfType(firstPositionInNode(checkAncestor), &isElementPresentational, CanCrossEditingBoundary, checkAncestor->renderer()->containingBlock()->node());
         if (newSpecialCommonAncestor)
             specialCommonAncestor = newSpecialCommonAncestor;
     }
@@ -544,37 +553,20 @@ static Node* highestAncestorToWrapMarkup(const Range* range, EAnnotateForInterch
 
 // FIXME: Shouldn't we omit style info when annotate == DoNotAnnotateForInterchange? 
 // FIXME: At least, annotation and style info should probably not be included in range.markupString()
-String createMarkup(const Range* range, Vector<Node*>* nodes, EAnnotateForInterchange shouldAnnotate, bool convertBlocksToInlines, EAbsoluteURLs shouldResolveURLs)
+static String createMarkupInternal(Document* document, const Range* range, const Range* updatedRange, Vector<Node*>* nodes,
+    EAnnotateForInterchange shouldAnnotate, bool convertBlocksToInlines, EAbsoluteURLs shouldResolveURLs)
 {
+    ASSERT(document);
+    ASSERT(range);
+    ASSERT(updatedRange);
     DEFINE_STATIC_LOCAL(const String, interchangeNewlineString, (ASCIILiteral("<br class=\"" AppleInterchangeNewline "\">")));
 
-    if (!range)
-        return "";
-
-    Document* document = range->ownerDocument();
-    if (!document)
-        return "";
-
-    // Disable the delete button so it's elements are not serialized into the markup,
-    // but make sure neither endpoint is inside the delete user interface.
-    Frame* frame = document->frame();
-    DeleteButtonController* deleteButton = frame ? frame->editor()->deleteButtonController() : 0;
-    RefPtr<Range> updatedRange = avoidIntersectionWithNode(range, deleteButton ? deleteButton->containerElement() : 0);
-    if (!updatedRange)
-        return "";
-
-    if (deleteButton)
-        deleteButton->disable();
-
-    ExceptionCode ec = 0;
-    bool collapsed = updatedRange->collapsed(ec);
-    ASSERT(!ec);
+    bool collapsed = updatedRange->collapsed(ASSERT_NO_EXCEPTION);
     if (collapsed)
-        return "";
-    Node* commonAncestor = updatedRange->commonAncestorContainer(ec);
-    ASSERT(!ec);
+        return emptyString();
+    Node* commonAncestor = updatedRange->commonAncestorContainer(ASSERT_NO_EXCEPTION);
     if (!commonAncestor)
-        return "";
+        return emptyString();
 
     document->updateLayoutIgnorePendingStylesheets();
 
@@ -583,31 +575,22 @@ String createMarkup(const Range* range, Vector<Node*>* nodes, EAnnotateForInterc
     // FIXME: Do this for all fully selected blocks, not just the body.
     if (body && areRangesEqual(VisibleSelection::selectionFromContentsOfNode(body).toNormalizedRange().get(), range))
         fullySelectedRoot = body;
-    Node* specialCommonAncestor = highestAncestorToWrapMarkup(updatedRange.get(), shouldAnnotate);
-    StyledMarkupAccumulator accumulator(nodes, shouldResolveURLs, shouldAnnotate, updatedRange.get(), specialCommonAncestor);
+    Node* specialCommonAncestor = highestAncestorToWrapMarkup(updatedRange, shouldAnnotate);
+    StyledMarkupAccumulator accumulator(nodes, shouldResolveURLs, shouldAnnotate, updatedRange, specialCommonAncestor);
     Node* pastEnd = updatedRange->pastLastNode();
 
     Node* startNode = updatedRange->firstNode();
     VisiblePosition visibleStart(updatedRange->startPosition(), VP_DEFAULT_AFFINITY);
     VisiblePosition visibleEnd(updatedRange->endPosition(), VP_DEFAULT_AFFINITY);
     if (shouldAnnotate == AnnotateForInterchange && needInterchangeNewlineAfter(visibleStart)) {
-        if (visibleStart == visibleEnd.previous()) {
-            if (deleteButton)
-                deleteButton->enable();
+        if (visibleStart == visibleEnd.previous())
             return interchangeNewlineString;
-        }
 
         accumulator.appendString(interchangeNewlineString);
         startNode = visibleStart.next().deepEquivalent().deprecatedNode();
 
-        ExceptionCode ec = 0;
-        if (pastEnd && Range::compareBoundaryPoints(startNode, 0, pastEnd, 0, ec) >= 0) {
-            ASSERT(!ec);
-            if (deleteButton)
-                deleteButton->enable();
+        if (pastEnd && Range::compareBoundaryPoints(startNode, 0, pastEnd, 0, ASSERT_NO_EXCEPTION) >= 0)
             return interchangeNewlineString;
-        }
-        ASSERT(!ec);
     }
 
     Node* lastClosed = accumulator.serializeNodes(startNode, pastEnd);
@@ -653,10 +636,36 @@ String createMarkup(const Range* range, Vector<Node*>* nodes, EAnnotateForInterc
     if (shouldAnnotate == AnnotateForInterchange && needInterchangeNewlineAfter(visibleEnd.previous()))
         accumulator.appendString(interchangeNewlineString);
 
-    if (deleteButton)
-        deleteButton->enable();
-
     return accumulator.takeResults();
+}
+
+String createMarkup(const Range* range, Vector<Node*>* nodes, EAnnotateForInterchange shouldAnnotate, bool convertBlocksToInlines, EAbsoluteURLs shouldResolveURLs)
+{
+    if (!range)
+        return emptyString();
+
+    Document* document = range->ownerDocument();
+    if (!document)
+        return emptyString();
+
+    const Range* updatedRange = range;
+
+#if ENABLE(DELETION_UI)
+    // Disable the delete button so it's elements are not serialized into the markup,
+    // but make sure neither endpoint is inside the delete user interface.
+    Frame* frame = document->frame();
+    DeleteButtonControllerDisableScope deleteButtonControllerDisableScope(frame);
+
+    RefPtr<Range> updatedRangeRef;
+    if (frame) {
+        updatedRangeRef = frame->editor()->avoidIntersectionWithDeleteButtonController(range);
+        updatedRange = updatedRangeRef.get();
+        if (!updatedRange)
+            return emptyString();
+    }
+#endif
+
+    return createMarkupInternal(document, range, updatedRange, nodes, shouldAnnotate, convertBlocksToInlines, shouldResolveURLs);
 }
 
 PassRefPtr<DocumentFragment> createFragmentFromMarkup(Document* document, const String& markup, const String& baseURL, FragmentScriptingPermission scriptingPermission)
@@ -695,7 +704,6 @@ static bool findNodesSurroundingContext(Document* document, RefPtr<Node>& nodeBe
 
 static void trimFragment(DocumentFragment* fragment, Node* nodeBeforeContext, Node* nodeAfterContext)
 {
-    ExceptionCode ec = 0;
     RefPtr<Node> next;
     for (RefPtr<Node> node = fragment->firstChild(); node; node = next) {
         if (nodeBeforeContext->isDescendantOf(node.get())) {
@@ -704,7 +712,7 @@ static void trimFragment(DocumentFragment* fragment, Node* nodeBeforeContext, No
         }
         next = NodeTraversal::nextSkippingChildren(node.get());
         ASSERT(!node->contains(nodeAfterContext));
-        node->parentNode()->removeChild(node.get(), ec);
+        node->parentNode()->removeChild(node.get(), ASSERT_NO_EXCEPTION);
         if (nodeBeforeContext == node)
             break;
     }
@@ -712,8 +720,7 @@ static void trimFragment(DocumentFragment* fragment, Node* nodeBeforeContext, No
     ASSERT(nodeAfterContext->parentNode());
     for (RefPtr<Node> node = nodeAfterContext; node; node = next) {
         next = NodeTraversal::nextSkippingChildren(node.get());
-        node->parentNode()->removeChild(node.get(), ec);
-        ASSERT(!ec);
+        node->parentNode()->removeChild(node.get(), ASSERT_NO_EXCEPTION);
     }
 }
 
@@ -743,19 +750,16 @@ PassRefPtr<DocumentFragment> createFragmentFromMarkupWithContext(Document* docum
         positionAfterNode(nodeBeforeContext.get()).parentAnchoredEquivalent(),
         positionBeforeNode(nodeAfterContext.get()).parentAnchoredEquivalent());
 
-    ExceptionCode ec = 0;
-    Node* commonAncestor = range->commonAncestorContainer(ec);
-    ASSERT(!ec);
+    Node* commonAncestor = range->commonAncestorContainer(ASSERT_NO_EXCEPTION);
     Node* specialCommonAncestor = ancestorToRetainStructureAndAppearanceWithNoRenderer(commonAncestor);
 
     // When there's a special common ancestor outside of the fragment, we must include it as well to
     // preserve the structure and appearance of the fragment. For example, if the fragment contains
     // TD, we need to include the enclosing TABLE tag as well.
     RefPtr<DocumentFragment> fragment = DocumentFragment::create(document);
-    if (specialCommonAncestor) {
-        fragment->appendChild(specialCommonAncestor, ec);
-        ASSERT(!ec);
-    } else
+    if (specialCommonAncestor)
+        fragment->appendChild(specialCommonAncestor, ASSERT_NO_EXCEPTION);
+    else
         fragment->takeAllChildrenFrom(static_cast<ContainerNode*>(commonAncestor));
 
     trimFragment(fragment.get(), nodeBeforeContext.get(), nodeAfterContext.get());
@@ -769,12 +773,13 @@ String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>*
         return "";
 
     HTMLElement* deleteButtonContainerElement = 0;
+#if ENABLE(DELETION_UI)
     if (Frame* frame = node->document()->frame()) {
         deleteButtonContainerElement = frame->editor()->deleteButtonController()->containerElement();
         if (node->isDescendantOf(deleteButtonContainerElement))
             return "";
     }
-
+#endif
     MarkupAccumulator accumulator(nodes, shouldResolveURLs);
     return accumulator.serializeNodes(const_cast<Node*>(node), deleteButtonContainerElement, childrenOnly, tagNamesToSkip);
 }
@@ -783,10 +788,8 @@ static void fillContainerFromString(ContainerNode* paragraph, const String& stri
 {
     Document* document = paragraph->document();
 
-    ExceptionCode ec = 0;
     if (string.isEmpty()) {
-        paragraph->appendChild(createBlockPlaceholderElement(document), ec);
-        ASSERT(!ec);
+        paragraph->appendChild(createBlockPlaceholderElement(document), ASSERT_NO_EXCEPTION);
         return;
     }
 
@@ -803,24 +806,20 @@ static void fillContainerFromString(ContainerNode* paragraph, const String& stri
         // append the non-tab textual part
         if (!s.isEmpty()) {
             if (!tabText.isEmpty()) {
-                paragraph->appendChild(createTabSpanElement(document, tabText), ec);
-                ASSERT(!ec);
+                paragraph->appendChild(createTabSpanElement(document, tabText), ASSERT_NO_EXCEPTION);
                 tabText = emptyString();
             }
             RefPtr<Node> textNode = document->createTextNode(stringWithRebalancedWhitespace(s, first, i + 1 == numEntries));
-            paragraph->appendChild(textNode.release(), ec);
-            ASSERT(!ec);
+            paragraph->appendChild(textNode.release(), ASSERT_NO_EXCEPTION);
         }
 
         // there is a tab after every entry, except the last entry
         // (if the last character is a tab, the list gets an extra empty entry)
         if (i + 1 != numEntries)
             tabText.append('\t');
-        else if (!tabText.isEmpty()) {
-            paragraph->appendChild(createTabSpanElement(document, tabText), ec);
-            ASSERT(!ec);
-        }
-        
+        else if (!tabText.isEmpty())
+            paragraph->appendChild(createTabSpanElement(document, tabText), ASSERT_NO_EXCEPTION);
+
         first = false;
     }
 }
@@ -858,16 +857,13 @@ PassRefPtr<DocumentFragment> createFragmentFromText(Range* context, const String
     string.replace("\r\n", "\n");
     string.replace('\r', '\n');
 
-    ExceptionCode ec = 0;
     RenderObject* renderer = styleNode->renderer();
     if (renderer && renderer->style()->preserveNewline()) {
-        fragment->appendChild(document->createTextNode(string), ec);
-        ASSERT(!ec);
+        fragment->appendChild(document->createTextNode(string), ASSERT_NO_EXCEPTION);
         if (string.endsWith('\n')) {
             RefPtr<Element> element = createBreakElement(document);
             element->setAttribute(classAttr, AppleInterchangeNewline);            
-            fragment->appendChild(element.release(), ec);
-            ASSERT(!ec);
+            fragment->appendChild(element.release(), ASSERT_NO_EXCEPTION);
         }
         return fragment.release();
     }
@@ -909,8 +905,7 @@ PassRefPtr<DocumentFragment> createFragmentFromText(Range* context, const String
                 element = createDefaultParagraphElement(document);
             fillContainerFromString(element.get(), s);
         }
-        fragment->appendChild(element.release(), ec);
-        ASSERT(!ec);
+        fragment->appendChild(element.release(), ASSERT_NO_EXCEPTION);
     }
     return fragment.release();
 }
@@ -920,24 +915,19 @@ PassRefPtr<DocumentFragment> createFragmentFromNodes(Document *document, const V
     if (!document)
         return 0;
 
+#if ENABLE(DELETION_UI)
     // disable the delete button so it's elements are not serialized into the markup
-    if (document->frame())
-        document->frame()->editor()->deleteButtonController()->disable();
+    DeleteButtonControllerDisableScope(document->frame());
+#endif
 
     RefPtr<DocumentFragment> fragment = document->createDocumentFragment();
 
-    ExceptionCode ec = 0;
     size_t size = nodes.size();
     for (size_t i = 0; i < size; ++i) {
         RefPtr<Element> element = createDefaultParagraphElement(document);
-        element->appendChild(nodes[i], ec);
-        ASSERT(!ec);
-        fragment->appendChild(element.release(), ec);
-        ASSERT(!ec);
+        element->appendChild(nodes[i], ASSERT_NO_EXCEPTION);
+        fragment->appendChild(element.release(), ASSERT_NO_EXCEPTION);
     }
-
-    if (document->frame())
-        document->frame()->editor()->deleteButtonController()->enable();
 
     return fragment.release();
 }
@@ -1044,18 +1034,13 @@ PassRefPtr<DocumentFragment> createFragmentForTransformToFragment(const String& 
 
 static inline void removeElementPreservingChildren(PassRefPtr<DocumentFragment> fragment, HTMLElement* element)
 {
-    ExceptionCode ignoredExceptionCode;
-
     RefPtr<Node> nextChild;
     for (RefPtr<Node> child = element->firstChild(); child; child = nextChild) {
         nextChild = child->nextSibling();
-        element->removeChild(child.get(), ignoredExceptionCode);
-        ASSERT(!ignoredExceptionCode);
-        fragment->insertBefore(child, element, ignoredExceptionCode);
-        ASSERT(!ignoredExceptionCode);
+        element->removeChild(child.get(), ASSERT_NO_EXCEPTION);
+        fragment->insertBefore(child, element, ASSERT_NO_EXCEPTION);
     }
-    fragment->removeChild(element, ignoredExceptionCode);
-    ASSERT(!ignoredExceptionCode);
+    fragment->removeChild(element, ASSERT_NO_EXCEPTION);
 }
 
 PassRefPtr<DocumentFragment> createContextualFragment(const String& markup, HTMLElement* element, FragmentScriptingPermission scriptingPermission, ExceptionCode& ec)

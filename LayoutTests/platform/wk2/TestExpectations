@@ -6,13 +6,13 @@
 # are met:
 #
 # 1.  Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer. 
+#     notice, this list of conditions and the following disclaimer.
 # 2.  Redistributions in binary form must reproduce the above copyright
 #     notice, this list of conditions and the following disclaimer in the
-#     documentation and/or other materials provided with the distribution. 
+#     documentation and/or other materials provided with the distribution.
 # 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
 #     its contributors may be used to endorse or promote products derived
-#     from this software without specific prior written permission. 
+#     from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -58,7 +58,7 @@ platform/mac/accessibility/iframe-with-title-correct-hierarchy.html
 # Some compositing tests flakey
 # <https://bugs.webkit.org/show_bug.cgi?id=48354>
 compositing/iframes/iframe-size-from-zero.html
-compositing/iframes/iframe-src-change.html 
+compositing/iframes/iframe-src-change.html
 
 # Flakey on Snow Leopard Intel WebKit2 Release Tests
 # <https://bugs.webkit.org/show_bug.cgi?id=57638>
@@ -78,7 +78,7 @@ http/tests/inspector/extensions-headers.html
 http/tests/inspector/extensions-network-redirect.html
 
 # Inspector only supports evaluation in content script world with v8, see https://bugs.webkit.org/show_bug.cgi?id=85709
-inspector/extensions/extensions-eval-content-script.html 
+inspector/extensions/extensions-eval-content-script.html
 inspector/extensions/extensions-audits-content-script.html
 
 # A bunch of inspector tests time out on Lion Intel Debug WebKit2 testers.
@@ -176,9 +176,9 @@ platform/mac/fast/text/justified-text-rect.html
 
 # WebKitTestRunner needs to support needsDeletionUI mechanism to show deletion UI
 # <https://bugs.webkit.org/show_bug.cgi?id=42535>
-fast/dom/Element/id-in-deletebutton.html
-editing/deleting/5408255.html
-editing/deleting/deletionUI-single-instance.html
+platform/mac/editing/deleting/id-in-deletebutton.html
+platform/mac/editing/deleting/deletionUI-click-on-delete-button.html
+platform/mac/editing/deleting/deletionUI-single-instance.html
 platform/mac/editing/deleting/deletionUI-borders.html
 platform/mac/editing/deleting/deletionUI-differing-background.html
 platform/mac/editing/deleting/deletionUI-minimum-size.html
@@ -220,10 +220,6 @@ printing/setPrinting.html
 printing/single-line-must-not-be-split-into-two-pages.html
 printing/simultaneous-position-float-change.html
 printing/width-overflow.html
-
-# WebKitTestRunner needs layoutTestController.elementDoesAutoCompleteForElementWithId
-# <https://bugs.webkit.org/show_bug.cgi?id=42696>
-security/set-form-autocomplete-attribute.html
 
 # WebKitTestRunner needs layoutTestController.setWillSendRequestClearHeader
 # <https://bugs.webkit.org/show_bug.cgi?id=42699>
@@ -280,12 +276,6 @@ fast/forms/validation-message-on-radio.html
 fast/forms/validation-message-on-range.html
 fast/forms/validation-message-on-textarea.html
 
-# Misbehaving computedStyleIncludingVisitedInfo or keepWebHistory API in WebKitTestRunner
-# http://webkit.org/b/58334
-fast/history/nested-visited-test.html
-fast/history/self-is-visited.html
-fast/history/sibling-visited-test.html
-fast/loader/stateobjects/state-url-sets-links-visited.html
 platform/mac/accessibility/search-predicate.html
 
 # [WK2] CSP reporting doesn't work
@@ -308,14 +298,6 @@ editing/pasteboard/drag-files-to-editable-element.html
 # https://bugs.webkit.org/show_bug.cgi?id=63806
 http/tests/cache/history-only-cached-subresource-loads-max-age-https.html
 
-# [WK2] New tests introduced in 100895 fail
-# https://bugs.webkit.org/show_bug.cgi?id=73913
-http/tests/security/referrer-policy-https-always.html
-http/tests/security/referrer-policy-https-origin.html
-http/tests/security/referrer-policy-redirect.html
-http/tests/security/referrer-policy-https-never.html
-http/tests/security/referrer-policy-https-default.html
-
 # Frame::findString does nothing on pages that prevent selection
 # https://bugs.webkit.org/show_bug.cgi?id=40361
 editing/text-iterator/findString-selection-disabled.html
@@ -334,14 +316,10 @@ fast/selectors/selection-window-inactive.html
 # autoZoomPageToFitWidth().
 inspector/styles/override-screen-size.html
 
-# The network stack unconditionally strips the header on transitions from
-# secure to insecure. It should take the referrer policy into account instead.
-# https://bugs.webkit.org/show_bug.cgi?id=86000
-http/tests/security/referrer-policy-redirect-link.html
-
 # css3-conditionals support is not yet enabled.
 webkit.org/b/86146 css3/supports.html
 webkit.org/b/104822 css3/supports-cssom.html
+webkit.org/b/100324 css3/supports-dom-api.html
 
 # Text Autosizing is not yet enabled.
 # https://bugs.webkit.org/show_bug.cgi?id=84186
@@ -384,9 +362,6 @@ http/tests/misc/link-rel-icon-beforeload.html
 
 # WebKitTestRunner should dump text/plain content as text
 http/tests/incremental/slow-utf8-text.pl
-
-# WebKitTestRunner needs layoutTestController.setSmartInsertDeleteEnabled
-editing/deleting/smart-editing-disabled.html
 
 # WebKitTestRunner needs plainText.plainText
 editing/text-iterator/basic-iteration.html
@@ -516,10 +491,6 @@ storage/domstorage/localstorage/storagetracker/storage-tracker-5-delete-one.html
 storage/domstorage/localstorage/storagetracker/storage-tracker-6-create.html
 storage/domstorage/localstorage/storagetracker/storage-tracker-7-usage.html
 
-# WebKitTestRunner needs layoutTestController.setAutofilled
-fast/forms/input-autofilled.html
-fast/forms/reset-autofilled.html
-
 # WebKitTestRunner needs eventSender.contextClick()
 # https://bugs.webkit.org/show_bug.cgi?id=86881
 editing/selection/context-menu-text-selection.html
@@ -530,6 +501,7 @@ fast/events/context-nodrag.html
 # eventSender.dragMode is unimplemented in WKTR
 # Mac: https://bugs.webkit.org/show_bug.cgi?id=68552
 # Qt: https://bugs.webkit.org/show_bug.cgi?id=69946
+fast/events/controlclick-no-onclick.html
 fast/events/moving-text-should-fire-drop-and-dragend-events.html
 fast/events/moving-text-should-fire-drop-and-dragend-events-2.html
 editing/pasteboard/drag-drop-url-with-style.html
@@ -552,18 +524,6 @@ fast/block/lineboxcontain/block-font.html
 fast/block/lineboxcontain/block-glyphs.html
 fast/block/lineboxcontain/font.html
 
-# [WK2] WTR needs an implementation of setAsynchronousSpellCheckingEnabled.
-# https://bugs.webkit.org/show_bug.cgi?id=81042
-editing/spelling/grammar-markers.html
-editing/spelling/grammar-paste.html
-editing/spelling/grammar-markers-hidpi.html
-editing/spelling/spellcheck-async-mutation.html
-editing/spelling/spellcheck-async-remove-frame.html
-editing/spelling/spellcheck-async.html
-editing/spelling/spellcheck-queue.html
-editing/spelling/spellcheck-sequencenum.html
-editing/spelling/spelling-marker-description.html
-
 # WTR needs an implementation of setAutomaticLinkDetectionEnabled.
 # https://bugs.webkit.org/show_bug.cgi?id=87162
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
@@ -575,6 +535,9 @@ http/tests/security/video-cross-origin-readback.html
 # Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
 # https://bugs.webkit.org/show_bug.cgi?id=85558
 http/tests/security/contentSecurityPolicy/1.1
+
+# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
+http/tests/security/contentTypeOptions
 
 # Unexpected redirection happens.
 http/tests/loading/redirect-methods.html
@@ -668,9 +631,6 @@ http/tests/security/cross-frame-access-history-get.html
 http/tests/security/cross-frame-access-location-get.html
 http/tests/security/cross-frame-access-protocol-explicit-domain.html
 http/tests/security/cross-frame-access-protocol.html
-
-# Wrong color for visited link
-fast/history/multiple-classes-visited.html
 
 # Flaky tests (slow)
 fast/workers/storage/interrupt-database.html
@@ -905,8 +865,10 @@ http/tests/local/fileapi/file-last-modified.html
 http/tests/local/fileapi/send-dragged-file.html
 http/tests/local/formdata/form-data-with-unknown-file-extension.html
 http/tests/local/formdata/send-form-data-constructed-from-form.html
+http/tests/local/formdata/send-form-data-with-filename.html
 http/tests/local/formdata/send-form-data-with-sliced-file.html
 http/tests/local/formdata/send-form-data.html
+http/tests/local/formdata/send-form-data-with-empty-file-filename.html
 http/tests/local/formdata/upload-events.html
 http/tests/security/clipboard/clipboard-file-access.html
 media/video-src-blob.html

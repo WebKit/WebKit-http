@@ -34,6 +34,7 @@
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
 #include "IntRect.h"
+#include "LayoutRepainter.h"
 #include "PaintInfo.h"
 #include "Range.h"
 #include "RenderBoxRegionInfo.h"
@@ -41,10 +42,12 @@
 #include "RenderView.h"
 #include "StyleResolver.h"
 
+using namespace std;
+
 namespace WebCore {
 
 RenderRegion::RenderRegion(Element* element, RenderFlowThread* flowThread)
-    : RenderReplaced(element, IntSize())
+    : RenderBlock(element)
     , m_flowThread(flowThread)
     , m_parentNamedFlowThread(0)
     , m_isValid(false)
@@ -104,14 +107,14 @@ LayoutRect RenderRegion::overflowRectForFlowThreadPortion(LayoutRect flowThreadP
     if (m_flowThread->isHorizontalWritingMode()) {
         LayoutUnit minY = isFirstPortion ? (flowThreadOverflow.y() - outlineSize) : flowThreadPortionRect.y();
         LayoutUnit maxY = isLastPortion ? max(flowThreadPortionRect.maxY(), flowThreadOverflow.maxY()) + outlineSize : flowThreadPortionRect.maxY();
-        LayoutUnit minX = clipX ? flowThreadPortionRect.x() : (flowThreadOverflow.x() - outlineSize);
-        LayoutUnit maxX = clipX ? flowThreadPortionRect.maxX() : (flowThreadOverflow.maxX() + outlineSize);
+        LayoutUnit minX = clipX ? flowThreadPortionRect.x() : min(flowThreadPortionRect.x(), flowThreadOverflow.x() - outlineSize);
+        LayoutUnit maxX = clipX ? flowThreadPortionRect.maxX() : max(flowThreadPortionRect.maxX(), (flowThreadOverflow.maxX() + outlineSize));
         clipRect = LayoutRect(minX, minY, maxX - minX, maxY - minY);
     } else {
         LayoutUnit minX = isFirstPortion ? (flowThreadOverflow.x() - outlineSize) : flowThreadPortionRect.x();
         LayoutUnit maxX = isLastPortion ? max(flowThreadPortionRect.maxX(), flowThreadOverflow.maxX()) + outlineSize : flowThreadPortionRect.maxX();
-        LayoutUnit minY = clipY ? flowThreadPortionRect.y() : (flowThreadOverflow.y() - outlineSize);
-        LayoutUnit maxY = clipY ? flowThreadPortionRect.maxY() : (flowThreadOverflow.maxY() + outlineSize);
+        LayoutUnit minY = clipY ? flowThreadPortionRect.y() : min(flowThreadPortionRect.y(), (flowThreadOverflow.y() - outlineSize));
+        LayoutUnit maxY = clipY ? flowThreadPortionRect.maxY() : max(flowThreadPortionRect.y(), (flowThreadOverflow.maxY() + outlineSize));
         clipRect = LayoutRect(minX, minY, maxX - minX, maxY - minY);
     }
 
@@ -135,10 +138,18 @@ bool RenderRegion::isLastRegion() const
     return m_flowThread->lastRegion() == this;
 }
 
-void RenderRegion::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
+void RenderRegion::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
+    if (style()->visibility() != VISIBLE)
+        return;
+
+    RenderBlock::paintObject(paintInfo, paintOffset);
+
     // Delegate painting of content in region to RenderFlowThread.
-    if (!m_flowThread || !isValid())
+    // RenderFlowThread is a self painting layer (being a positioned object) who is painting its children, the collected objects.
+    // Since we do not want to paint the flow thread content multiple times (for each painting phase of the region object),
+    // we allow the flow thread painting only for the selection and the foreground phase.
+    if (!m_flowThread || !isValid() || (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection))
         return;
 
     setRegionObjectsRegionStyle();
@@ -221,9 +232,16 @@ void RenderRegion::updateRegionHasAutoLogicalHeightFlag()
     }
 }
 
+bool RenderRegion::shouldHaveAutoLogicalHeight() const
+{
+    bool hasSpecifiedEndpointsForHeight = style()->logicalTop().isSpecified() && style()->logicalBottom().isSpecified();
+    bool hasAnchoredEndpointsForHeight = isOutOfFlowPositioned() && hasSpecifiedEndpointsForHeight;
+    return style()->logicalHeight().isAuto() && !hasAnchoredEndpointsForHeight;
+}
+    
 void RenderRegion::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    RenderReplaced::styleDidChange(diff, oldStyle);
+    RenderBlock::styleDidChange(diff, oldStyle);
 
     // If the region is not attached to any thread, there is no need to check
     // whether the region has region styling since no content will be displayed
@@ -237,10 +255,11 @@ void RenderRegion::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
     updateRegionHasAutoLogicalHeightFlag();
 }
 
-void RenderRegion::layout()
+void RenderRegion::layoutBlock(bool relayoutChildren, LayoutUnit)
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
-    RenderReplaced::layout();
+    RenderBlock::layoutBlock(relayoutChildren);
+
     if (m_flowThread && isValid()) {
         LayoutRect oldRegionRect(flowThreadPortionRect());
         if (!isHorizontalWritingMode())
@@ -249,7 +268,7 @@ void RenderRegion::layout()
         if (view()->checkTwoPassLayoutForAutoHeightRegions() && hasAutoLogicalHeight())
             view()->flowThreadController()->setNeedsTwoPassLayoutForAutoHeightRegions(true);
 
-        if (oldRegionRect.width() != pageLogicalWidth() || oldRegionRect.height() != pageLogicalHeight()) {
+        if (!isRenderRegionSet() && (oldRegionRect.width() != pageLogicalWidth() || oldRegionRect.height() != pageLogicalHeight())) {
             m_flowThread->invalidateRegions();
             if (view()->checkTwoPassLayoutForAutoHeightRegions())
                 view()->flowThreadController()->setNeedsTwoPassLayoutForAutoHeightRegions(true);
@@ -483,14 +502,14 @@ void RenderRegion::restoreRegionObjectsOriginalStyle()
 
 void RenderRegion::insertedIntoTree()
 {
-    RenderReplaced::insertedIntoTree();
+    RenderBlock::insertedIntoTree();
 
     attachRegion();
 }
 
 void RenderRegion::willBeRemovedFromTree()
 {
-    RenderReplaced::willBeRemovedFromTree();
+    RenderBlock::willBeRemovedFromTree();
 
     detachRegion();
 }
@@ -522,7 +541,7 @@ void RenderRegion::computeChildrenStyleInRegion(const RenderObject* object)
             childStyleInRegion = it->value.style;
             objectRegionStyleCached = true;
         } else {
-            if (child->isAnonymous())
+            if (child->isAnonymous() || child->isInFlowRenderFlowThread())
                 childStyleInRegion = RenderStyle::createAnonymousStyleWithDisplay(object->style(), child->style()->display());
             else if (child->isText())
                 childStyleInRegion = RenderStyle::clone(object->style());
@@ -538,9 +557,7 @@ void RenderRegion::computeChildrenStyleInRegion(const RenderObject* object)
 
 void RenderRegion::setObjectStyleInRegion(RenderObject* object, PassRefPtr<RenderStyle> styleInRegion, bool objectRegionStyleCached)
 {
-    ASSERT(object->inRenderFlowThread());
-    if (!object->inRenderFlowThread())
-        return;
+    ASSERT(object->flowThreadContainingBlock());
 
     RefPtr<RenderStyle> objectOriginalStyle = object->style();
     object->setStyleInternal(styleInRegion);
@@ -570,44 +587,29 @@ void RenderRegion::clearObjectStyleInRegion(const RenderObject* object)
         clearObjectStyleInRegion(child);
 }
 
-// FIXME: when RenderRegion will inherit from RenderBlock instead of RenderReplaced,
-// we should overwrite computePreferredLogicalWidths ( see https://bugs.webkit.org/show_bug.cgi?id=74132 )
-LayoutUnit RenderRegion::minPreferredLogicalWidth() const
+void RenderRegion::computePreferredLogicalWidths()
 {
-    if (!m_flowThread || !m_isValid)
-        return RenderReplaced::minPreferredLogicalWidth();
+    ASSERT(preferredLogicalWidthsDirty());
+    if (!m_flowThread || !m_isValid) {
+        RenderBlock::computePreferredLogicalWidths();
+        return;
+    }
 
-    // FIXME: Currently, the code handles only the <length> case for min-width. It should also support other values, like percentage, calc
-    // or viewport relative.
+    // FIXME: Currently, the code handles only the <length> case for min-width/max-width.
+    // It should also support other values, like percentage, calc or viewport relative.
+    m_minPreferredLogicalWidth = m_flowThread->minPreferredLogicalWidth();
+    m_maxPreferredLogicalWidth = m_flowThread->maxPreferredLogicalWidth();
+
     RenderStyle* styleToUse = style();
-    LayoutUnit minPreferredLogicalWidth = m_flowThread->minPreferredLogicalWidth();
+    if (styleToUse->logicalMaxWidth().isFixed()) {
+        m_minPreferredLogicalWidth = std::min(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(styleToUse->logicalMaxWidth().value()));
+        m_maxPreferredLogicalWidth = std::min(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(styleToUse->logicalMaxWidth().value()));
+    }
 
-    if (styleToUse->logicalMinWidth().isFixed() && styleToUse->logicalMinWidth().value() > 0)
-        minPreferredLogicalWidth = std::max(minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(styleToUse->logicalMinWidth().value()));
-
-    if (styleToUse->logicalMaxWidth().isFixed())
-        minPreferredLogicalWidth = std::min(minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(styleToUse->logicalMaxWidth().value()));
-
-    return minPreferredLogicalWidth + borderAndPaddingLogicalWidth();
-}
-
-LayoutUnit RenderRegion::maxPreferredLogicalWidth() const
-{
-    if (!m_flowThread || !m_isValid)
-        return RenderReplaced::maxPreferredLogicalWidth();
-
-    // FIXME: Currently, the code handles only the <length> case for max-width. It should also support other values, like percentage, calc
-    // or viewport relative.
-    RenderStyle* styleToUse = style();
-    LayoutUnit maxPreferredLogicalWidth = m_flowThread->maxPreferredLogicalWidth();
-
-    if (styleToUse->logicalMinWidth().isFixed() && styleToUse->logicalMinWidth().value() > 0)
-        maxPreferredLogicalWidth = std::max(maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(styleToUse->logicalMinWidth().value()));
-
-    if (styleToUse->logicalMaxWidth().isFixed())
-        maxPreferredLogicalWidth = std::min(maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(styleToUse->logicalMaxWidth().value()));
-
-    return maxPreferredLogicalWidth + borderAndPaddingLogicalWidth();
+    LayoutUnit borderAndPadding = borderAndPaddingLogicalWidth();
+    m_minPreferredLogicalWidth += borderAndPadding;
+    m_maxPreferredLogicalWidth += borderAndPadding;
+    setPreferredLogicalWidthsDirty(false);
 }
 
 void RenderRegion::getRanges(Vector<RefPtr<Range> >& rangeObjects) const
@@ -618,7 +620,7 @@ void RenderRegion::getRanges(Vector<RefPtr<Range> >& rangeObjects) const
 
 void RenderRegion::updateLogicalHeight()
 {
-    RenderReplaced::updateLogicalHeight();
+    RenderBlock::updateLogicalHeight();
 
     if (!hasAutoLogicalHeight())
         return;

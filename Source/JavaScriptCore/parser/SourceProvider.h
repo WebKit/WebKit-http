@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,11 @@
 #ifndef SourceProvider_h
 #define SourceProvider_h
 
-#include "SourceProviderCache.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/UnusedParam.h>
 #include <wtf/text/TextPosition.h>
+#include <wtf/text/WTFString.h>
 
 namespace JSC {
 
@@ -41,20 +41,9 @@ namespace JSC {
     public:
         static const intptr_t nullID = 1;
         
-        SourceProvider(const String& url, const TextPosition& startPosition, SourceProviderCache* cache = 0)
-            : m_url(url)
-            , m_startPosition(startPosition)
-            , m_validated(false)
-            , m_cache(cache ? cache : new SourceProviderCache)
-            , m_cacheOwned(!cache)
-        {
-        }
+        JS_EXPORT_PRIVATE SourceProvider(const String& url, const TextPosition& startPosition);
 
-        virtual ~SourceProvider()
-        {
-            if (m_cacheOwned)
-                delete m_cache;
-        }
+        JS_EXPORT_PRIVATE virtual ~SourceProvider();
 
         virtual const String& source() const = 0;
         String getRange(int start, int end) const
@@ -69,23 +58,22 @@ namespace JSC {
             ASSERT(this);
             if (!this) // Be defensive in release mode.
                 return nullID;
-            return reinterpret_cast<intptr_t>(this);
+            if (!m_id)
+                getID();
+            return m_id;
         }
 
         bool isValid() const { return m_validated; }
         void setValid() { m_validated = true; }
 
-        SourceProviderCache* cache() const { return m_cache; }
-        void notifyCacheSizeChanged(int delta) { if (!m_cacheOwned) cacheSizeChanged(delta); }
-        
     private:
-        virtual void cacheSizeChanged(int delta) { UNUSED_PARAM(delta); }
+
+        JS_EXPORT_PRIVATE void getID();
 
         String m_url;
         TextPosition m_startPosition;
-        bool m_validated;
-        SourceProviderCache* m_cache;
-        bool m_cacheOwned;
+        bool m_validated : 1;
+        uintptr_t m_id : sizeof(uintptr_t) * 8 - 1;
     };
 
     class StringSourceProvider : public SourceProvider {

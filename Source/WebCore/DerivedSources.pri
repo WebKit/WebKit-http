@@ -202,6 +202,7 @@ IDL_BINDINGS += \
     $$PWD/css/CSSSupportsRule.idl \
     $$PWD/css/CSSValue.idl \
     $$PWD/css/CSSValueList.idl \
+    $$PWD/css/DOMWindowCSS.idl \
     $$PWD/css/MediaList.idl \
     $$PWD/css/MediaQueryList.idl \
     $$PWD/css/Rect.idl \
@@ -248,6 +249,7 @@ IDL_BINDINGS += \
     $$PWD/dom/EventException.idl \
 #    $$PWD/dom/EventListener.idl \
     $$PWD/dom/EventTarget.idl \
+    $$PWD/dom/FocusEvent.idl \
     $$PWD/dom/HashChangeEvent.idl \
     $$PWD/dom/KeyboardEvent.idl \
     $$PWD/dom/MouseEvent.idl \
@@ -307,13 +309,16 @@ IDL_BINDINGS += \
     $$PWD/html/canvas/CanvasRenderingContext.idl \
     $$PWD/html/canvas/CanvasRenderingContext2D.idl \
     $$PWD/html/canvas/DOMPath.idl \
+    $$PWD/html/canvas/EXTDrawBuffers.idl \
     $$PWD/html/canvas/EXTTextureFilterAnisotropic.idl \
     $$PWD/html/canvas/OESStandardDerivatives.idl \
     $$PWD/html/canvas/OESTextureFloat.idl \
+    $$PWD/html/canvas/OESTextureHalfFloat.idl \
     $$PWD/html/canvas/OESVertexArrayObject.idl \
     $$PWD/html/canvas/OESElementIndexUint.idl \
     $$PWD/html/canvas/WebGLActiveInfo.idl \
     $$PWD/html/canvas/WebGLBuffer.idl \
+    $$PWD/html/canvas/WebGLCompressedTextureATC.idl \
     $$PWD/html/canvas/WebGLCompressedTextureS3TC.idl \
     $$PWD/html/canvas/WebGLContextAttributes.idl \
     $$PWD/html/canvas/WebGLContextEvent.idl \

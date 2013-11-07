@@ -29,7 +29,7 @@
 #include "ImageDecoder.h"
 #include <wtf/OwnPtr.h>
 
-struct GIFImageReader;
+class GIFImageReader;
 
 namespace WebCore {
 
@@ -56,8 +56,7 @@ namespace WebCore {
         virtual void clearFrameBufferCache(size_t clearBeforeFrame);
 
         // Callbacks from the GIF reader.
-        void decodingHalted(unsigned bytesLeft);
-        bool haveDecodedRow(unsigned frameIndex, unsigned char* rowBuffer, unsigned char* rowEnd, unsigned rowNumber, unsigned repeatCount, bool writeTransparentPixels);
+        bool haveDecodedRow(unsigned frameIndex, const Vector<unsigned char>& rowBuffer, size_t width, size_t rowNumber, unsigned repeatCount, bool writeTransparentPixels);
         bool frameComplete(unsigned frameIndex, unsigned frameDuration, ImageFrame::FrameDisposalMethod disposalMethod);
         void gifComplete();
 
@@ -77,7 +76,6 @@ namespace WebCore {
         bool m_currentBufferSawAlpha;
         mutable int m_repetitionCount;
         OwnPtr<GIFImageReader> m_reader;
-        unsigned m_readOffset;
     };
 
 } // namespace WebCore

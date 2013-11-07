@@ -31,13 +31,14 @@
 - (void)writeItemsToPasteboard:(NSArray *)items withTypes:(NSArray *)types;
 - (void)showDefinitionForAttributedString:(NSAttributedString *)string atPoint:(CGPoint)point;
 - (void)performWebSearch:(NSString *)string;
-- (void)openWithPreview;
+- (void)openWithNativeApplication;
 - (void)saveToPDF;
 
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeActiveAnnotation:(PDFAnnotation *)annotation;
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController clickedLinkWithURL:(NSURL *)url;
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeContentScaleFactor:(CGFloat)scaleFactor;
 - (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeDisplayMode:(int)mode;
+- (void)pdfLayerController:(PDFLayerController *)pdfLayerController didChangeSelection:(PDFSelection *)selection;
 
 @end
 
@@ -52,7 +53,8 @@
 
 - (void)setFrameSize:(CGSize)size;
 
-- (void)setDisplayMode:(int)mode;
+- (PDFDisplayMode)displayMode;
+- (void)setDisplayMode:(PDFDisplayMode)mode;
 - (void)setDisplaysPageBreaks:(BOOL)pageBreaks;
 
 - (CGFloat)contentScaleFactor;
@@ -91,6 +93,11 @@
 - (void)gotoSelection:(PDFSelection *)selection;
 - (PDFSelection *)getSelectionForWordAtPoint:(CGPoint)point;
 
+- (NSUInteger)lastPageIndex;
+- (NSUInteger)currentPageIndex;
+- (void)gotoNextPage;
+- (void)gotoPreviousPage;
+
 - (void)copySelection;
 - (void)selectAll;
 
@@ -100,6 +107,7 @@
 - (BOOL)hudEnabled;
 
 - (CGRect)boundsForAnnotation:(PDFAnnotation *)annotation;
+- (void)activateNextAnnotation:(BOOL)previous;
 
 - (void)searchInDictionaryWithSelection:(PDFSelection *)selection;
 

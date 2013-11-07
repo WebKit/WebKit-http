@@ -92,6 +92,10 @@ class TagNodeList;
 class PlatformGestureEvent;
 #endif
 
+#if ENABLE(TOUCH_EVENTS)
+class TouchEvent;
+#endif
+
 #if ENABLE(MICRODATA)
 class HTMLPropertiesCollection;
 class PropertyNodeList;
@@ -123,6 +127,11 @@ protected:
 
 private:
     RenderObject* m_renderer;
+};
+
+enum AttachBehavior {
+    AttachNow,
+    AttachLazily,
 };
 
 class Node : public EventTarget, public ScriptWrappable, public TreeShared<Node> {
@@ -193,10 +202,10 @@ public:
     // These should all actually return a node, but this is only important for language bindings,
     // which will already know and hold a ref on the right node to return. Returning bool allows
     // these methods to be more efficient since they don't need to return a ref
-    bool insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode&, bool shouldLazyAttach = false);
-    bool replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode&, bool shouldLazyAttach = false);
+    bool insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode&, AttachBehavior = AttachNow);
+    bool replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode&, AttachBehavior = AttachNow);
     bool removeChild(Node* child, ExceptionCode&);
-    bool appendChild(PassRefPtr<Node> newChild, ExceptionCode&, bool shouldLazyAttach = false);
+    bool appendChild(PassRefPtr<Node> newChild, ExceptionCode&, AttachBehavior = AttachNow);
 
     void remove(ExceptionCode&);
     bool hasChildNodes() const { return firstChild(); }
@@ -220,8 +229,6 @@ public:
     Node* lastDescendant() const;
     Node* firstDescendant() const;
 
-    virtual bool isActiveNode() const { return false; }
-    
     // Other methods (not part of DOM)
 
     bool isElementNode() const { return getFlag(IsElementFlag); }
@@ -233,7 +240,7 @@ public:
     bool isPseudoElement() const { return pseudoId() != NOPSEUDO; }
     bool isBeforePseudoElement() const { return pseudoId() == BEFORE; }
     bool isAfterPseudoElement() const { return pseudoId() == AFTER; }
-    PseudoId pseudoId() const { return (isElementNode() && hasCustomCallbacks()) ? customPseudoId() : NOPSEUDO; }
+    PseudoId pseudoId() const { return (isElementNode() && hasCustomStyleCallbacks()) ? customPseudoId() : NOPSEUDO; }
 
     virtual bool isMediaControlElement() const { return false; }
     virtual bool isMediaControls() const { return false; }
@@ -248,7 +255,7 @@ public:
     virtual bool isInsertionPointNode() const { return false; }
 
     bool isDocumentNode() const;
-    bool isTreeScope() const;
+    bool isTreeScope() const { return treeScope()->rootNode() == this; }
     bool isDocumentFragment() const { return getFlag(IsDocumentFragmentFlag); }
     bool isShadowRoot() const { return isDocumentFragment() && isTreeScope(); }
     bool isInsertionPoint() const { return getFlag(NeedsShadowTreeWalkerFlag) && isInsertionPointNode(); }
@@ -259,7 +266,7 @@ public:
     void resetNeedsShadowTreeWalker() { setFlag(needsShadowTreeWalkerSlow(), NeedsShadowTreeWalkerFlag); }
 
     bool inNamedFlow() const { return getFlag(InNamedFlowFlag); }
-    bool hasCustomCallbacks() const { return getFlag(HasCustomCallbacksFlag); }
+    bool hasCustomStyleCallbacks() const { return getFlag(HasCustomStyleCallbacksFlag); }
 
     bool hasSyntheticAttrChildNodes() const { return getFlag(HasSyntheticAttrChildNodesFlag); }
     void setHasSyntheticAttrChildNodes(bool flag) { setFlag(flag, HasSyntheticAttrChildNodesFlag); }
@@ -380,8 +387,10 @@ public:
     bool hasEventTargetData() const { return getFlag(HasEventTargetDataFlag); }
     void setHasEventTargetData(bool flag) { setFlag(flag, HasEventTargetDataFlag); }
 
+#if USE(V8)
     bool isV8CollectableDuringMinorGC() const { return getFlag(V8CollectableDuringMinorGCFlag); }
     void setV8CollectableDuringMinorGC(bool flag) { setFlag(flag, V8CollectableDuringMinorGCFlag); }
+#endif
 
     enum ShouldSetAttached {
         SetAttached,
@@ -404,6 +413,10 @@ public:
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
     virtual Node* focusDelegate();
+
+#if ENABLE(DIALOG_ELEMENT)
+    bool isInert() const;
+#endif
 
     enum UserSelectAllTreatment {
         UserSelectAllDoesNotAffectEditability,
@@ -635,6 +648,10 @@ public:
 #if ENABLE(GESTURE_EVENTS)
     bool dispatchGestureEvent(const PlatformGestureEvent&);
 #endif
+#if ENABLE(TOUCH_EVENTS)
+    bool dispatchTouchEvent(PassRefPtr<TouchEvent>);
+#endif
+
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
@@ -715,10 +732,12 @@ private:
 
         InNamedFlowFlag = 1 << 19,
         HasSyntheticAttrChildNodesFlag = 1 << 20,
-        HasCustomCallbacksFlag = 1 << 21,
+        HasCustomStyleCallbacksFlag = 1 << 21,
         HasScopedHTMLStyleChildFlag = 1 << 22,
         HasEventTargetDataFlag = 1 << 23,
+#if USE(V8)
         V8CollectableDuringMinorGCFlag = 1 << 24,
+#endif
         NeedsShadowTreeWalkerFlag = 1 << 25,
         IsInShadowTreeFlag = 1 << 26,
 
@@ -742,20 +761,13 @@ protected:
         CreateShadowRoot = CreateContainer | IsDocumentFragmentFlag | NeedsShadowTreeWalkerFlag | IsInShadowTreeFlag,
         CreateDocumentFragment = CreateContainer | IsDocumentFragmentFlag,
         CreateStyledElement = CreateElement | IsStyledElementFlag, 
-        CreateHTMLElement = CreateStyledElement | IsHTMLFlag, 
-        CreateFrameOwnerElement = CreateHTMLElement | HasCustomCallbacksFlag,
+        CreateHTMLElement = CreateStyledElement | IsHTMLFlag,
         CreateSVGElement = CreateStyledElement | IsSVGFlag,
         CreateDocument = CreateContainer | InDocumentFlag,
         CreateInsertionPoint = CreateHTMLElement | NeedsShadowTreeWalkerFlag,
         CreateEditingText = CreateText | HasNameOrIsEditingTextFlag,
     };
     Node(Document*, ConstructionType);
-
-    virtual PseudoId customPseudoId() const
-    {
-        ASSERT(hasCustomCallbacks());
-        return NOPSEUDO;
-    }
 
     virtual void didMoveToNewDocument(Document* oldDocument);
     
@@ -769,13 +781,19 @@ protected:
 
     void clearEventTargetData();
 
-    void setHasCustomCallbacks() { setFlag(true, HasCustomCallbacksFlag); }
+    void setHasCustomStyleCallbacks() { setFlag(true, HasCustomStyleCallbacksFlag); }
 
     Document* documentInternal() const { return treeScope()->documentScope(); }
     void setTreeScope(TreeScope* scope) { m_treeScope = scope; }
 
 private:
     friend class TreeShared<Node>;
+
+    virtual PseudoId customPseudoId() const
+    {
+        ASSERT(hasCustomStyleCallbacks());
+        return NOPSEUDO;
+    }
 
     void removedLastRef();
     bool hasTreeSharedParent() const { return !!parentOrShadowHostNode(); }

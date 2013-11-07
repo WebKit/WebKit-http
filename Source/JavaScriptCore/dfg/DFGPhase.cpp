@@ -36,8 +36,8 @@ void Phase::beginPhase()
 {
     if (!shouldDumpGraphAtEachPhase())
         return;
-    dataLogF("Beginning DFG phase %s.\n", m_name);
-    dataLogF("Graph before %s:\n", m_name);
+    dataLog("Beginning DFG phase ", m_name, ".\n");
+    dataLog("Before ", m_name, ":\n");
     m_graph.dump();
 }
 

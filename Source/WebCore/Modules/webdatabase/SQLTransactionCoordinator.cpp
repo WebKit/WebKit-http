@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,8 +34,9 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "Database.h"
-#include "SQLTransaction.h"
+#include "DatabaseBackend.h"
+#include "SQLTransactionBackend.h"
+#include "SecurityOrigin.h"
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -42,11 +44,16 @@
 
 namespace WebCore {
 
-static String getDatabaseIdentifier(SQLTransaction* transaction)
+static String getDatabaseIdentifier(SQLTransactionBackend* transaction)
 {
-    Database* database = transaction->database();
+    DatabaseBackend* database = transaction->database();
     ASSERT(database);
-    return database->stringIdentifier();
+    return database->securityOrigin()->databaseIdentifier();
+}
+
+SQLTransactionCoordinator::SQLTransactionCoordinator()
+    : m_isShuttingDown(false)
+{
 }
 
 void SQLTransactionCoordinator::processPendingTransactions(CoordinationInfo& info)
@@ -54,7 +61,7 @@ void SQLTransactionCoordinator::processPendingTransactions(CoordinationInfo& inf
     if (info.activeWriteTransaction || info.pendingTransactions.isEmpty())
         return;
 
-    RefPtr<SQLTransaction> firstPendingTransaction = info.pendingTransactions.first();
+    RefPtr<SQLTransactionBackend> firstPendingTransaction = info.pendingTransactions.first();
     if (firstPendingTransaction->isReadOnly()) {
         do {
             firstPendingTransaction = info.pendingTransactions.takeFirst();
@@ -68,8 +75,10 @@ void SQLTransactionCoordinator::processPendingTransactions(CoordinationInfo& inf
     }
 }
 
-void SQLTransactionCoordinator::acquireLock(SQLTransaction* transaction)
+void SQLTransactionCoordinator::acquireLock(SQLTransactionBackend* transaction)
 {
+    ASSERT(!m_isShuttingDown);
+
     String dbIdentifier = getDatabaseIdentifier(transaction);
 
     CoordinationInfoMap::iterator coordinationInfoIterator = m_coordinationInfoMap.find(dbIdentifier);
@@ -83,9 +92,9 @@ void SQLTransactionCoordinator::acquireLock(SQLTransaction* transaction)
     processPendingTransactions(info);
 }
 
-void SQLTransactionCoordinator::releaseLock(SQLTransaction* transaction)
+void SQLTransactionCoordinator::releaseLock(SQLTransactionBackend* transaction)
 {
-    if (m_coordinationInfoMap.isEmpty())
+    if (m_isShuttingDown)
         return;
 
     String dbIdentifier = getDatabaseIdentifier(transaction);
@@ -107,17 +116,33 @@ void SQLTransactionCoordinator::releaseLock(SQLTransaction* transaction)
 
 void SQLTransactionCoordinator::shutdown()
 {
+    // Prevent releaseLock() from accessing / changing the coordinationInfo
+    // while we're shutting down.
+    m_isShuttingDown = true;
+
     // Notify all transactions in progress that the database thread is shutting down
     for (CoordinationInfoMap::iterator coordinationInfoIterator = m_coordinationInfoMap.begin();
          coordinationInfoIterator != m_coordinationInfoMap.end(); ++coordinationInfoIterator) {
         CoordinationInfo& info = coordinationInfoIterator->value;
+
+        // Clean up transactions that have reached "lockAcquired":
+        // Transaction phase 4 cleanup. See comment on "What happens if a
+        // transaction is interrupted?" at the top of SQLTransactionBackend.cpp.
         if (info.activeWriteTransaction)
             info.activeWriteTransaction->notifyDatabaseThreadIsShuttingDown();
-        for (HashSet<RefPtr<SQLTransaction> >::iterator activeReadTransactionsIterator =
+        for (HashSet<RefPtr<SQLTransactionBackend> >::iterator activeReadTransactionsIterator =
                      info.activeReadTransactions.begin();
              activeReadTransactionsIterator != info.activeReadTransactions.end();
              ++activeReadTransactionsIterator) {
             (*activeReadTransactionsIterator)->notifyDatabaseThreadIsShuttingDown();
+        }
+
+        // Clean up transactions that have NOT reached "lockAcquired":
+        // Transaction phase 3 cleanup. See comment on "What happens if a
+        // transaction is interrupted?" at the top of SQLTransactionBackend.cpp.
+        while (!info.pendingTransactions.isEmpty()) {
+            RefPtr<SQLTransactionBackend> transaction = info.pendingTransactions.first();
+            transaction->notifyDatabaseThreadIsShuttingDown();
         }
     }
 

@@ -62,10 +62,6 @@ class MessagePort;
 class PublicURLManager;
 #endif
 
-#if ENABLE(BLOB)
-class FileThread;
-#endif
-
 class ScriptExecutionContext : public SecurityContext, public Supplementable<ScriptExecutionContext> {
 public:
     ScriptExecutionContext();
@@ -145,20 +141,15 @@ public:
 
     virtual void postTask(PassOwnPtr<Task>) = 0; // Executes the task on context's thread asynchronously.
 
-    // Creates a unique id for setTimeout, setInterval or navigator.geolocation.watchPosition.
-    int newUniqueID();
+    // Gets the next id in a circular sequence from 1 to 2^31-1.
+    int circularSequentialID();
 
-    void addTimeout(int timeoutId, DOMTimer* timer) { ASSERT(!m_timeouts.contains(timeoutId)); m_timeouts.set(timeoutId, timer); }
+    bool addTimeout(int timeoutId, DOMTimer* timer) { return m_timeouts.add(timeoutId, timer).isNewEntry; }
     void removeTimeout(int timeoutId) { m_timeouts.remove(timeoutId); }
     DOMTimer* findTimeout(int timeoutId) { return m_timeouts.get(timeoutId); }
 
 #if USE(JSC)
     JSC::JSGlobalData* globalData();
-#endif
-
-#if ENABLE(BLOB)
-    FileThread* fileThread();
-    void stopFileThread();
 #endif
 
     // Interval is in seconds.
@@ -216,7 +207,7 @@ private:
     bool m_iteratingActiveDOMObjects;
     bool m_inDestructor;
 
-    int m_sequentialID;
+    int m_circularSequentialID;
     typedef HashMap<int, DOMTimer*> TimeoutMap;
     TimeoutMap m_timeouts;
 
@@ -230,7 +221,6 @@ private:
 
 #if ENABLE(BLOB)
     OwnPtr<PublicURLManager> m_publicURLManager;
-    RefPtr<FileThread> m_fileThread;
 #endif
 
 #if ENABLE(SQL_DATABASE)

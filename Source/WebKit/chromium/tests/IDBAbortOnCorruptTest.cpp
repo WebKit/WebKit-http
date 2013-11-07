@@ -31,6 +31,8 @@
 #include "IDBDatabaseCallbacks.h"
 #include "IDBFactoryBackendImpl.h"
 #include "IDBFakeBackingStore.h"
+#include "IDBKey.h"
+#include "IndexedDB.h"
 #include "SecurityOrigin.h"
 #include <gtest/gtest.h>
 #include <wtf/Vector.h>
@@ -56,18 +58,18 @@ public:
         m_wasErrorCalled = true;
     }
     virtual void onSuccess(PassRefPtr<DOMStringList>) { }
-    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) { }
+    virtual void onSuccess(PassRefPtr<IDBCursorBackendInterface>, PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>) { }
     virtual void onSuccess(PassRefPtr<IDBDatabaseBackendInterface>, const IDBDatabaseMetadata&)
     {
         EXPECT_TRUE(false);
     }
     virtual void onSuccess(PassRefPtr<IDBKey>) { }
-    virtual void onSuccess(PassRefPtr<SerializedScriptValue>) { }
-    virtual void onSuccess(PassRefPtr<SerializedScriptValue>, PassRefPtr<IDBKey>, const IDBKeyPath&) { }
+    virtual void onSuccess(PassRefPtr<SharedBuffer>) OVERRIDE { }
+    virtual void onSuccess(PassRefPtr<SharedBuffer>, PassRefPtr<IDBKey>, const IDBKeyPath&) OVERRIDE { }
     virtual void onSuccess(int64_t) OVERRIDE { }
     virtual void onSuccess() OVERRIDE { }
-    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SerializedScriptValue>) { };
-    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SerializedScriptValue> >&) { }
+    virtual void onSuccess(PassRefPtr<IDBKey>, PassRefPtr<IDBKey>, PassRefPtr<SharedBuffer>) OVERRIDE { };
+    virtual void onSuccessWithPrefetch(const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<IDBKey> >&, const Vector<RefPtr<SharedBuffer> >&) OVERRIDE { }
 private:
     MockIDBCallbacks() : m_wasErrorCalled(false) { }
 

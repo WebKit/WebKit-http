@@ -38,7 +38,6 @@
 #include "SearchPopupMenu.h"
 #include "WebNavigationPolicy.h"
 #include <public/WebColor.h>
-#include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
@@ -137,8 +136,10 @@ public:
     virtual void setToolTip(const WTF::String& tooltipText, WebCore::TextDirection);
     virtual void dispatchViewportPropertiesDidChange(const WebCore::ViewportArguments&) const;
     virtual void print(WebCore::Frame*);
+#if ENABLE(SQL_DATABASE)
     virtual void exceededDatabaseQuota(
         WebCore::Frame*, const WTF::String& databaseName, WebCore::DatabaseDetails);
+#endif
     virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
     virtual void reachedApplicationCacheOriginQuota(WebCore::SecurityOrigin*, int64_t totalSpaceNeeded);
 #if ENABLE(DRAGGABLE_REGION)
@@ -250,12 +251,9 @@ private:
 #if ENABLE(PAGE_POPUP)
     WebCore::PagePopupDriver* m_pagePopupDriver;
 #endif
-
-#if USE(ACCELERATED_COMPOSITING)
-    OwnPtr<WebCore::GraphicsLayerFactory> m_graphicsLayerFactory;
-#endif
 };
 
+#if ENABLE(NAVIGATOR_CONTENT_UTILS)
 class NavigatorContentUtilsClientImpl : public WebCore::NavigatorContentUtilsClient {
 public:
     static PassOwnPtr<NavigatorContentUtilsClientImpl> create(WebViewImpl*);
@@ -268,6 +266,7 @@ private:
 
     WebViewImpl* m_webView;
 };
+#endif
 
 } // namespace WebKit
 

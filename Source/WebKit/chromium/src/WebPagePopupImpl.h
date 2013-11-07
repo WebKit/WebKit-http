@@ -69,8 +69,6 @@ private:
     // WebWidget functions
     virtual WebSize size() OVERRIDE;
     virtual void animate(double) OVERRIDE;
-    virtual void setCompositorSurfaceReady() OVERRIDE;
-    virtual void composite(bool) OVERRIDE;
     virtual void layout() OVERRIDE;
     virtual void paint(WebCanvas*, const WebRect&, PaintOptions = ReadbackFromCompositorIfAvailable) OVERRIDE;
     virtual void resize(const WebSize&) OVERRIDE;
@@ -87,7 +85,7 @@ private:
 
     explicit WebPagePopupImpl(WebWidgetClient*);
     bool initializePage();
-    void destoryPage();
+    void destroyPage();
 
     WebWidgetClient* m_widgetClient;
     WebRect m_windowRectInScreen;

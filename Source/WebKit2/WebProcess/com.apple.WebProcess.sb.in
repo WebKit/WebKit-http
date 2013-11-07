@@ -49,9 +49,9 @@
 
        ;; System and user preferences
        (literal "/Library/Preferences/.GlobalPreferences.plist")
-       (regex #"^/Library/Managed Preferences/[^/]+/com\.apple\.networkConnect\.plist$")
        (home-literal "/Library/Preferences/.GlobalPreferences.plist")
        (home-regex #"/Library/Preferences/ByHost/\.GlobalPreferences\.")
+       (home-regex #"/Library/Preferences/ByHost/com\.apple\.HIToolbox\.")
        (home-regex #"/Library/Preferences/ByHost/com\.apple\.networkConnect\.")
        (home-literal "/Library/Preferences/com.apple.ATS.plist")
        (home-literal "/Library/Preferences/com.apple.DownloadAssessment.plist")
@@ -98,10 +98,11 @@
 (read-write-and-issue-extensions (extension "com.apple.app-sandbox.read-write"))
 (allow mach-lookup (extension "com.apple.app-sandbox.mach")) ;; FIXME: Should be removed when <rdar://problem/13066206> is fixed.
 
-;; Writable preferences and temporary files
-(allow file*
-       (home-regex #"/Library/Preferences/ByHost/com\.apple\.HIToolbox\.")
-       (home-regex #"/Library/Preferences/com\.apple\.WebProcess\."))
+;; MediaAccessibility
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+(allow file-read* (home-literal "/Library/Preferences/com.apple.mediaaccessibility.plist"))
+(allow file-read* file-write* (home-literal "/Library/Preferences/com.apple.mediaaccessibility.public.plist"))
+#endif
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
 (if (positive? (string-length (param "DARWIN_USER_CACHE_DIR")))
@@ -162,6 +163,7 @@
        (global-name "com.apple.ocspd")
        (global-name "com.apple.SecurityServer"))
 (allow file-read* file-write* (home-subpath "/Library/Keychains")) ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
+(allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.
 (allow file-read*
        (subpath "/Library/Keychains")
        (subpath "/private/var/db/mds")
@@ -247,9 +249,3 @@
        (global-name "com.apple.coreservices.appleevents")
        (global-name "com.apple.pasteboard.1")
        (global-name "com.apple.speech.recognitionserver"))
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-;; FIXME: This should be removed, see <rdar://problem/12976385>.
-(deny file-write-create (with no-log)
-       (home-literal "/Library/Caches/com.apple.WebKit2.WebProcessService"))
-#endif

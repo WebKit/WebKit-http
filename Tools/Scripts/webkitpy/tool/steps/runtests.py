@@ -71,6 +71,15 @@ class RunTests(AbstractStep):
                 _log.info("Running JavaScriptCore tests")
                 self._tool.executive.run_and_throw_if_fail(javascriptcore_tests_command, quiet=True, cwd=self._tool.scm().checkout_root)
 
+        bindings_tests_command = self._tool.deprecated_port().run_bindings_tests_command()
+        if bindings_tests_command:
+            _log.info("Running bindings generation tests")
+            args = bindings_tests_command
+            try:
+                self._tool.executive.run_and_throw_if_fail(args, cwd=self._tool.scm().checkout_root)
+            except ScriptError, e:
+                _log.info("Error running run-bindings-tests: %s" % e.message_with_output())
+
         webkit_unit_tests_command = self._tool.deprecated_port().run_webkit_unit_tests_command()
         if webkit_unit_tests_command:
             _log.info("Running WebKit unit tests")
@@ -90,19 +99,14 @@ class RunTests(AbstractStep):
                 "--exit-after-n-failures=%s" % self.NON_INTERACTIVE_FAILURE_LIMIT_COUNT,
             ])
 
-            try:
-                if self._options.build_style == "release":
-                    args.append("--release")
-                elif self._options.build_style == "debug":
-                    args.append("--debug")
-            except:
-                pass
-
             # old-run-webkit-tests does not support --skip-failing-tests
             # Using --quiet one Windows fails when we try to use /dev/null, disabling for now until we find a fix
             if sys.platform != "cygwin":
                 args.append("--quiet")
                 args.append("--skip-failing-tests")
+            else:
+                args.append("--no-build");
+                args.append("--release");
 
         if self._options.quiet:
             args.append("--quiet")

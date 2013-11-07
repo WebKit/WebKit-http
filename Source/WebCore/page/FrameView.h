@@ -38,11 +38,9 @@
 
 namespace WebCore {
 
-class Color;
 class Element;
 class Event;
 class FloatSize;
-class Frame;
 class FrameActionScheduler;
 class KURL;
 class Node;
@@ -79,6 +77,8 @@ public:
     Frame* frame() const { return m_frame.get(); }
     void clearFrame();
 
+    RenderView* renderView() const { return m_frame ? m_frame->contentRenderer() : 0; }
+
     int mapFromLayoutToCSSUnits(LayoutUnit);
     LayoutUnit mapFromCSSToLayoutUnits(int);
 
@@ -111,6 +111,7 @@ public:
 
     bool needsLayout() const;
     void setNeedsLayout();
+    void setViewportConstrainedObjectsNeedLayout();
 
     bool needsFullRepaint() const { return m_doFullRepaint; }
 
@@ -153,6 +154,7 @@ public:
 
     void didMoveOnscreen();
     void willMoveOffscreen();
+    void setIsInWindow(bool);
 
     void resetScrollbars();
     void resetScrollbarsAndClearContentsSize();
@@ -222,6 +224,8 @@ public:
     // Functions for querying the current scrolled position, negating the effects of overhang
     // and adjusting for page scale.
     IntSize scrollOffsetForFixedPosition() const;
+    // Static function can be called from another thread.
+    static IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame);
 
     bool fixedElementsLayoutRelativeToFrame() const;
 
@@ -254,8 +258,8 @@ public:
     bool safeToPropagateScrollToParent() const { return m_safeToPropagateScrollToParent; }
     void setSafeToPropagateScrollToParent(bool isSafe) { m_safeToPropagateScrollToParent = isSafe; }
 
-    void addWidgetToUpdate(RenderEmbeddedObject*);
-    void removeWidgetToUpdate(RenderEmbeddedObject*);
+    void addWidgetToUpdate(RenderObject*);
+    void removeWidgetToUpdate(RenderObject*);
 
     virtual void paintContents(GraphicsContext*, const IntRect& damageRect);
     void setPaintBehavior(PaintBehavior);
@@ -393,6 +397,13 @@ public:
     void setInitialViewportSize(const IntSize& size) { m_initialViewportSize = size; }
 #endif
 
+    virtual bool isActive() const OVERRIDE;
+
+#if ENABLE(RUBBER_BANDING)
+    GraphicsLayer* setWantsLayerForTopOverHangArea(bool) const;
+    GraphicsLayer* setWantsLayerForBottomOverHangArea(bool) const;
+#endif
+
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
     virtual void scrollContentsSlowPath(const IntRect& updateRect);
@@ -442,7 +453,6 @@ private:
 
     // ScrollableArea interface
     virtual void invalidateScrollbarRect(Scrollbar*, const IntRect&) OVERRIDE;
-    virtual bool isActive() const OVERRIDE;
     virtual void getTickmarks(Vector<IntRect>&) const OVERRIDE;
     virtual void scrollTo(const IntSize&) OVERRIDE;
     virtual void setVisibleScrollerThumbRect(const IntRect&) OVERRIDE;
@@ -451,6 +461,7 @@ private:
     virtual bool scrollAnimatorEnabled() const OVERRIDE;
 #if USE(ACCELERATED_COMPOSITING)
     virtual bool usesCompositedScrolling() const OVERRIDE;
+    virtual GraphicsLayer* layerForScrolling() const OVERRIDE;
     virtual GraphicsLayer* layerForHorizontalScrollbar() const OVERRIDE;
     virtual GraphicsLayer* layerForVerticalScrollbar() const OVERRIDE;
     virtual GraphicsLayer* layerForScrollCorner() const OVERRIDE;
@@ -470,7 +481,7 @@ private:
     double adjustedDeferredRepaintDelay() const;
 
     bool updateWidgets();
-    void updateWidget(RenderEmbeddedObject*);
+    void updateWidget(RenderObject*);
     void scrollToAnchor();
     void scrollPositionChanged();
 
@@ -482,8 +493,6 @@ private:
 
     bool doLayoutWithFrameFlattening(bool allowSubtree);
 
-    void setViewportConstrainedObjectsNeedLayout();
-
     virtual AXObjectCache* axObjectCache() const;
     void notifyWidgetsInAllFrames(WidgetNotification);
     void removeFromAXObjectCache();
@@ -493,8 +502,8 @@ private:
     LayoutSize m_size;
     LayoutSize m_margins;
     
-    typedef HashSet<RenderEmbeddedObject*> RenderEmbeddedObjectSet;
-    OwnPtr<RenderEmbeddedObjectSet> m_widgetUpdateSet;
+    typedef HashSet<RenderObject*> RenderObjectSet;
+    OwnPtr<RenderObjectSet> m_widgetUpdateSet;
     RefPtr<Frame> m_frame;
 
     bool m_doFullRepaint;

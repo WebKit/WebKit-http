@@ -99,13 +99,27 @@ void CString::copyBufferIfNeeded()
     memcpy(m_buffer->mutableData(), buffer->data(), length + 1);
 }
 
+bool CString::isSafeToSendToAnotherThread() const
+{
+    return !m_buffer || m_buffer->hasOneRef();
+}
+
 bool operator==(const CString& a, const CString& b)
 {
     if (a.isNull() != b.isNull())
         return false;
     if (a.length() != b.length())
         return false;
-    return !strncmp(a.data(), b.data(), min(a.length(), b.length()));
+    return !memcmp(a.data(), b.data(), a.length());
+}
+
+bool operator==(const CString& a, const char* b)
+{
+    if (a.isNull() != !b)
+        return false;
+    if (!b)
+        return true;
+    return !strcmp(a.data(), b);
 }
 
 } // namespace WTF

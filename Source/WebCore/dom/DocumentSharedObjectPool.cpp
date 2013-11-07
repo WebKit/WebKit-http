@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,19 +27,18 @@
 #include "config.h"
 #include "DocumentSharedObjectPool.h"
 
-#include "Attribute.h"
-#include "ElementAttributeData.h"
+#include "Element.h"
 
 namespace WebCore {
 
-class ImmutableElementAttributeDataCacheKey {
+class ShareableElementDataCacheKey {
 public:
-    ImmutableElementAttributeDataCacheKey(const Attribute* attributes, unsigned attributeCount)
+    ShareableElementDataCacheKey(const Attribute* attributes, unsigned attributeCount)
         : m_attributes(attributes)
         , m_attributeCount(attributeCount)
     { }
 
-    bool operator!=(const ImmutableElementAttributeDataCacheKey& other) const
+    bool operator!=(const ShareableElementDataCacheKey& other) const
     {
         if (m_attributeCount != other.m_attributeCount)
             return true;
@@ -56,40 +55,40 @@ private:
     unsigned m_attributeCount;
 };
 
-class ImmutableElementAttributeDataCacheEntry {
+class ShareableElementDataCacheEntry {
 public:
-    ImmutableElementAttributeDataCacheEntry(const ImmutableElementAttributeDataCacheKey& k, PassRefPtr<ElementAttributeData> v)
+    ShareableElementDataCacheEntry(const ShareableElementDataCacheKey& k, PassRefPtr<ShareableElementData> v)
         : key(k)
         , value(v)
     { }
 
-    ImmutableElementAttributeDataCacheKey key;
-    RefPtr<ElementAttributeData> value;
+    ShareableElementDataCacheKey key;
+    RefPtr<ShareableElementData> value;
 };
 
-PassRefPtr<ElementAttributeData> DocumentSharedObjectPool::cachedImmutableElementAttributeData(const Vector<Attribute>& attributes)
+PassRefPtr<ShareableElementData> DocumentSharedObjectPool::cachedShareableElementDataWithAttributes(const Vector<Attribute>& attributes)
 {
     ASSERT(!attributes.isEmpty());
 
-    ImmutableElementAttributeDataCacheKey cacheKey(attributes.data(), attributes.size());
+    ShareableElementDataCacheKey cacheKey(attributes.data(), attributes.size());
     unsigned cacheHash = cacheKey.hash();
 
-    ImmutableElementAttributeDataCache::iterator cacheIterator = m_immutableElementAttributeDataCache.add(cacheHash, nullptr).iterator;
+    ShareableElementDataCache::iterator cacheIterator = m_shareableElementDataCache.add(cacheHash, nullptr).iterator;
     if (cacheIterator->value && cacheIterator->value->key != cacheKey)
         cacheHash = 0;
 
-    RefPtr<ElementAttributeData> attributeData;
+    RefPtr<ShareableElementData> elementData;
     if (cacheHash && cacheIterator->value)
-        attributeData = cacheIterator->value->value;
+        elementData = cacheIterator->value->value;
     else
-        attributeData = ElementAttributeData::createImmutable(attributes);
+        elementData = ShareableElementData::createWithAttributes(attributes);
 
     if (!cacheHash || cacheIterator->value)
-        return attributeData.release();
+        return elementData.release();
 
-    cacheIterator->value = adoptPtr(new ImmutableElementAttributeDataCacheEntry(ImmutableElementAttributeDataCacheKey(attributeData->immutableAttributeArray(), attributeData->length()), attributeData));
+    cacheIterator->value = adoptPtr(new ShareableElementDataCacheEntry(ShareableElementDataCacheKey(elementData->m_attributeArray, elementData->length()), elementData));
 
-    return attributeData.release();
+    return elementData.release();
 }
 
 DocumentSharedObjectPool::DocumentSharedObjectPool()

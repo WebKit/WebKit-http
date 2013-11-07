@@ -82,6 +82,8 @@ namespace JSC {
     class NativeExecutable;
     class ParserArena;
     class RegExpCache;
+    class SourceProvider;
+    class SourceProviderCache;
     class Stringifier;
     class Structure;
 #if ENABLE(REGEXP_TRACING)
@@ -141,14 +143,18 @@ namespace JSC {
             return result;
         }
 
-        static size_t allocationSize(size_t bufferSize) { return sizeof(size_t) + bufferSize; }
+        static size_t allocationSize(size_t bufferSize) { return sizeof(ScratchBuffer) + bufferSize; }
         void setActiveLength(size_t activeLength) { m_activeLength = activeLength; }
         size_t activeLength() const { return m_activeLength; };
         size_t* activeLengthPtr() { return &m_activeLength; };
         void* dataBuffer() { return m_buffer; }
 
         size_t m_activeLength;
+#if CPU(MIPS) && (defined WTF_MIPS_ARCH_REV && WTF_MIPS_ARCH_REV == 2)
+        void* m_buffer[0] __attribute__((aligned(8)));
+#else
         void* m_buffer[0];
+#endif
     };
 #if COMPILER(MSVC)
 #pragma warning(pop)
@@ -250,6 +256,7 @@ namespace JSC {
         Strong<Structure> unlinkedProgramCodeBlockStructure;
         Strong<Structure> unlinkedEvalCodeBlockStructure;
         Strong<Structure> unlinkedFunctionCodeBlockStructure;
+        Strong<Structure> propertyTableStructure;
 
         IdentifierTable* identifierTable;
         CommonIdentifiers* propertyNames;
@@ -299,9 +306,14 @@ namespace JSC {
         bool canUseRegExpJIT() { return false; } // interpreter only
 #endif
 
+        SourceProviderCache* addSourceProviderCache(SourceProvider*);
+        void clearSourceProviderCaches();
+
         PrototypeMap prototypeMap;
 
         OwnPtr<ParserArena> parserArena;
+        typedef HashMap<RefPtr<SourceProvider>, RefPtr<SourceProviderCache> > SourceProviderCacheMap;
+        SourceProviderCacheMap sourceProviderCacheMap;
         OwnPtr<Keywords> keywords;
         Interpreter* interpreter;
 #if ENABLE(JIT)
@@ -467,8 +479,6 @@ namespace JSC {
         CodeCache* codeCache() { return m_codeCache.get(); }
 
         JS_EXPORT_PRIVATE void discardAllCode();
-
-        void *m_apiData;
 
     private:
         friend class LLIntOffsetsExtractor;

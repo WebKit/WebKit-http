@@ -48,11 +48,12 @@ namespace WebCore {
 v8::Handle<v8::Value> V8HTMLSelectElement::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
 {
     ASSERT(V8DOMWrapper::maybeDOMWrapper(info.Holder()));
-    RefPtr<Node> result = V8HTMLSelectElement::toNative(info.Holder())->item(index);
+    HTMLSelectElement* select = V8HTMLSelectElement::toNative(info.Holder());
+    RefPtr<Node> result = select->item(index);
     if (!result)
         return v8Undefined();
 
-    return toV8(result.release(), info.Holder(), info.GetIsolate());
+    return toV8Fast(result.release(), info, select);
 }
 
 v8::Handle<v8::Value> V8HTMLSelectElement::indexedPropertySetter(uint32_t index, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
@@ -61,7 +62,7 @@ v8::Handle<v8::Value> V8HTMLSelectElement::indexedPropertySetter(uint32_t index,
     return toOptionsCollectionSetter(index, value, select, info.GetIsolate());
 }
 
-v8::Handle<v8::Value> V8HTMLSelectElement::removeCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLSelectElement::removeMethodCustom(const v8::Arguments& args)
 {
     HTMLSelectElement* imp = V8HTMLSelectElement::toNative(args.Holder());
     return removeElement(imp, args);

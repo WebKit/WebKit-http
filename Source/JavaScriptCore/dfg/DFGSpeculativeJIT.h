@@ -54,7 +54,6 @@ class SpeculateCellOperand;
 class SpeculateBooleanOperand;
 
 enum GeneratedOperandType { GeneratedOperandTypeUnknown, GeneratedOperandInteger, GeneratedOperandDouble, GeneratedOperandJSValue};
-enum SpeculationDirection { ForwardSpeculation, BackwardSpeculation };
 
 // === SpeculativeJIT ===
 //
@@ -122,14 +121,13 @@ public:
         }
     }
     
-    GPRReg fillInteger(Node*, DataFormat& returnFormat);
-    FPRReg fillDouble(Node*);
+    GPRReg fillInteger(Edge, DataFormat& returnFormat);
 #if USE(JSVALUE64)
-    GPRReg fillJSValue(Node*);
+    GPRReg fillJSValue(Edge);
 #elif USE(JSVALUE32_64)
-    bool fillJSValue(Node*, GPRReg&, GPRReg&, FPRReg&);
+    bool fillJSValue(Edge, GPRReg&, GPRReg&, FPRReg&);
 #endif
-    GPRReg fillStorage(Node*);
+    GPRReg fillStorage(Edge);
 
     // lock and unlock GPR & FPR registers.
     void lock(GPRReg reg)
@@ -297,11 +295,11 @@ public:
 
     // Called by the speculative operand types, below, to fill operand to
     // machine registers, implicitly generating speculation checks as needed.
-    GPRReg fillSpeculateInt(Node*, DataFormat& returnFormat, SpeculationDirection);
-    GPRReg fillSpeculateIntStrict(Node*);
-    FPRReg fillSpeculateDouble(Node*, SpeculationDirection);
-    GPRReg fillSpeculateCell(Node*, SpeculationDirection);
-    GPRReg fillSpeculateBoolean(Node*, SpeculationDirection);
+    GPRReg fillSpeculateInt(Edge, DataFormat& returnFormat);
+    GPRReg fillSpeculateIntStrict(Edge);
+    FPRReg fillSpeculateDouble(Edge);
+    GPRReg fillSpeculateCell(Edge);
+    GPRReg fillSpeculateBoolean(Edge);
     GeneratedOperandType checkGeneratedTypeForToInt32(Node*);
 
     void addSlowPathGenerator(PassOwnPtr<SlowPathGenerator>);
@@ -309,7 +307,6 @@ public:
     
     void compile(Node*);
     void noticeOSRBirth(Node*);
-    void compileMovHint(Node*);
     void compile(BasicBlock&);
 
     void checkArgumentTypes();
@@ -525,16 +522,12 @@ public:
         }
     }
     
-    bool isStrictInt32(Node*);
+    bool isKnownInteger(Node* node) { return !(m_state.forNode(node).m_type & ~SpecInt32); }
+    bool isKnownCell(Node* node) { return !(m_state.forNode(node).m_type & ~SpecCell); }
     
-    bool isKnownInteger(Node*);
-    bool isKnownNumeric(Node*);
-    bool isKnownCell(Node*);
-    
-    bool isKnownNotInteger(Node*);
-    bool isKnownNotNumber(Node*);
-
-    bool isKnownNotCell(Node*);
+    bool isKnownNotInteger(Node* node) { return !(m_state.forNode(node).m_type & SpecInt32); }
+    bool isKnownNotNumber(Node* node) { return !(m_state.forNode(node).m_type & SpecNumber); }
+    bool isKnownNotCell(Node* node) { return !(m_state.forNode(node).m_type & SpecCell); }
     
     // Checks/accessors for constant values.
     bool isConstant(Node* node) { return m_jit.graph().isConstant(node); }
@@ -546,12 +539,6 @@ public:
     bool isFunctionConstant(Node* node) { return m_jit.graph().isFunctionConstant(node); }
     int32_t valueOfInt32Constant(Node* node) { return m_jit.graph().valueOfInt32Constant(node); }
     double valueOfNumberConstant(Node* node) { return m_jit.graph().valueOfNumberConstant(node); }
-    int32_t valueOfNumberConstantAsInt32(Node* node)
-    {
-        if (isInt32Constant(node))
-            return valueOfInt32Constant(node);
-        return JSC::toInt32(valueOfNumberConstant(node));
-    }
 #if USE(JSVALUE32_64)
     void* addressOfDoubleConstant(Node* node) { return m_jit.addressOfDoubleConstant(node); }
 #endif
@@ -568,16 +555,6 @@ public:
     Identifier* identifier(unsigned index)
     {
         return &m_jit.codeBlock()->identifier(index);
-    }
-
-    ResolveOperations* resolveOperations(unsigned index)
-    {
-        return m_jit.codeBlock()->resolveOperations(index);
-    }
-
-    PutToBaseOperation* putToBaseOperation(unsigned index)
-    {
-        return m_jit.codeBlock()->putToBaseOperation(index);
     }
 
     // Spill all VirtualRegisters back to the JSStack.
@@ -704,8 +681,10 @@ public:
         return lastNode->op() == Branch && lastNode->child1() == m_currentNode ? block->size() - 1 : UINT_MAX;
     }
     
-    void nonSpeculativeValueToNumber(Node*);
-    void nonSpeculativeValueToInt32(Node*);
+    void compileMovHint(Node*);
+    void compileMovHintAndCheck(Node*);
+    void compileInlineStart(Node*);
+
     void nonSpeculativeUInt32ToNumber(Node*);
 
 #if USE(JSVALUE64)
@@ -1259,7 +1238,7 @@ public:
 
 // EncodedJSValue in JSVALUE32_64 is a 64-bit integer. When being compiled in ARM EABI, it must be aligned even-numbered register (r0, r2 or [sp]).
 // To avoid assemblies from using wrong registers, let's occupy r1 or r3 with a dummy argument when necessary.
-#if COMPILER_SUPPORTS(EABI) && CPU(ARM)
+#if (COMPILER_SUPPORTS(EABI) && CPU(ARM)) || CPU(MIPS)
 #define EABI_32BIT_DUMMY_ARG      TrustedImm32(0),
 #else
 #define EABI_32BIT_DUMMY_ARG
@@ -1709,7 +1688,7 @@ public:
     }
 #endif
     
-#if !defined(NDEBUG) && !CPU(ARM)
+#if !defined(NDEBUG) && !CPU(ARM) && !CPU(MIPS)
     void prepareForExternalCall()
     {
         // We're about to call out to a "native" helper function. The helper
@@ -2041,9 +2020,9 @@ public:
     void compileObjectEquality(Node*);
     void compileObjectToObjectOrOtherEquality(Edge leftChild, Edge rightChild);
     void compileValueAdd(Node*);
-    void compileNonStringCellOrOtherLogicalNot(Edge value, bool needSpeculationCheck);
+    void compileObjectOrOtherLogicalNot(Edge value);
     void compileLogicalNot(Node*);
-    void emitNonStringCellOrOtherBranch(Edge value, BlockIndex taken, BlockIndex notTaken, bool needSpeculationCheck);
+    void emitObjectOrOtherBranch(Edge value, BlockIndex taken, BlockIndex notTaken);
     void emitBranch(Node*);
     
     void compileIntegerCompare(Node*, MacroAssembler::RelationalCondition);
@@ -2089,6 +2068,8 @@ public:
     void compileArithMul(Node*);
 #if CPU(X86) || CPU(X86_64)
     void compileIntegerArithDivForX86(Node*);
+#elif CPU(APPLE_ARMV7S)
+    void compileIntegerArithDivForARMv7s(Node*);
 #endif
     void compileArithMod(Node*);
     void compileSoftModulo(Node*);
@@ -2162,19 +2143,23 @@ public:
 #elif USE(JSVALUE32_64)
     JITCompiler::Jump convertToDouble(JSValueOperand&, FPRReg result);
 #endif
+    
+    // Add a backward speculation check.
+    void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail);
+    void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, const MacroAssembler::JumpList& jumpsToFail);
 
     // Add a speculation check without additional recovery.
     void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail);
     void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail);
     // Add a speculation check without additional recovery, and with a promise to supply a jump later.
-    OSRExitJumpPlaceholder speculationCheck(ExitKind, JSValueSource, Node*);
-    OSRExitJumpPlaceholder speculationCheck(ExitKind, JSValueSource, Edge);
+    OSRExitJumpPlaceholder backwardSpeculationCheck(ExitKind, JSValueSource, Node*);
+    OSRExitJumpPlaceholder backwardSpeculationCheck(ExitKind, JSValueSource, Edge);
     // Add a set of speculation checks without additional recovery.
     void speculationCheck(ExitKind, JSValueSource, Node*, const MacroAssembler::JumpList& jumpsToFail);
     void speculationCheck(ExitKind, JSValueSource, Edge, const MacroAssembler::JumpList& jumpsToFail);
     // Add a speculation check with additional recovery.
-    void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
-    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
+    void backwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
+    void backwardSpeculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
     // Use this like you would use speculationCheck(), except that you don't pass it a jump
     // (because you don't have to execute a branch; that's kind of the whole point), and you
     // must register the returned Watchpoint with something relevant. In general, this should
@@ -2193,27 +2178,40 @@ public:
     // that you've ensured that there exists a MovHint prior to your use of forwardSpeculationCheck().
     void forwardSpeculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const ValueRecovery& = ValueRecovery());
     void forwardSpeculationCheck(ExitKind, JSValueSource, Node*, const MacroAssembler::JumpList& jumpsToFail, const ValueRecovery& = ValueRecovery());
-    void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, SpeculationDirection);
-    void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&, SpeculationDirection);
+    void speculationCheck(ExitKind, JSValueSource, Node*, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
+    void speculationCheck(ExitKind, JSValueSource, Edge, MacroAssembler::Jump jumpToFail, const SpeculationRecovery&);
     // Called when we statically determine that a speculation will fail.
     void terminateSpeculativeExecution(ExitKind, JSValueRegs, Node*);
     void terminateSpeculativeExecution(ExitKind, JSValueRegs, Edge);
-    void terminateSpeculativeExecution(ExitKind, JSValueRegs, Node*, SpeculationDirection);
-    // Issue a forward speculation watchpoint, which will exit to the next instruction rather
-    // than the current one.
-    JumpReplacementWatchpoint* forwardSpeculationWatchpoint(ExitKind = UncountableWatchpoint);
-    JumpReplacementWatchpoint* speculationWatchpoint(ExitKind, SpeculationDirection);
+    
+    // Helpers for performing type checks on an edge stored in the given registers.
+    bool needsTypeCheck(Edge edge, SpeculatedType typesPassedThrough) { return m_state.forNode(edge).m_type & ~typesPassedThrough; }
+    void backwardTypeCheck(JSValueSource, Edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail);
+    void typeCheck(JSValueSource, Edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail);
+    void forwardTypeCheck(JSValueSource, Edge, SpeculatedType typesPassedThrough, MacroAssembler::Jump jumpToFail, const ValueRecovery&);
+
+    void speculateInt32(Edge);
+    void speculateNumber(Edge);
+    void speculateRealNumber(Edge);
+    void speculateBoolean(Edge);
+    void speculateCell(Edge);
+    void speculateObject(Edge);
+    void speculateObjectOrOther(Edge);
+    void speculateString(Edge);
+    void speculateNotCell(Edge);
+    void speculateOther(Edge);
+    void speculate(Node*, Edge);
     
     const TypedArrayDescriptor* typedArrayDescriptor(ArrayMode);
     
-    JITCompiler::Jump jumpSlowForUnwantedArrayMode(GPRReg tempWithIndexingTypeReg, ArrayMode, IndexingType, bool invert);
-    JITCompiler::JumpList jumpSlowForUnwantedArrayMode(GPRReg tempWithIndexingTypeReg, ArrayMode, bool invert = false);
+    JITCompiler::Jump jumpSlowForUnwantedArrayMode(GPRReg tempWithIndexingTypeReg, ArrayMode, IndexingType);
+    JITCompiler::JumpList jumpSlowForUnwantedArrayMode(GPRReg tempWithIndexingTypeReg, ArrayMode);
     void checkArray(Node*);
     void arrayify(Node*, GPRReg baseReg, GPRReg propertyReg);
     void arrayify(Node*);
     
     template<bool strict>
-    GPRReg fillSpeculateIntInternal(Node*, DataFormat& returnFormat, SpeculationDirection);
+    GPRReg fillSpeculateIntInternal(Edge, DataFormat& returnFormat);
     
     // It is possible, during speculative generation, to reach a situation in which we
     // can statically determine a speculation will fail (for example, when two nodes
@@ -2263,6 +2261,10 @@ public:
     // The current node being generated.
     BlockIndex m_block;
     Node* m_currentNode;
+    SpeculationDirection m_speculationDirection;
+#if !ASSERT_DISABLED
+    bool m_canExit;
+#endif
     unsigned m_indexInBlock;
     // Virtual and physical register maps.
     Vector<GenerationInfo, 32> m_generationInfo;
@@ -2296,7 +2298,7 @@ public:
     
     bool m_isCheckingArgumentTypes;
     
-    Vector<SlowPathGenerator*, 8> m_slowPathGenerators; // doesn't use OwnPtr<> because I don't want to include DFGSlowPathGenerator.h
+    Vector<OwnPtr<SlowPathGenerator>, 8> m_slowPathGenerators;
     Vector<SilentRegisterSavePlan> m_plans;
     
     ValueRecovery computeValueRecoveryFor(const ValueSource&);
@@ -2310,7 +2312,7 @@ public:
 
 // === Operand types ===
 //
-// IntegerOperand, DoubleOperand and JSValueOperand.
+// IntegerOperand and JSValueOperand.
 //
 // These classes are used to lock the operands to a node into machine
 // registers. These classes implement of pattern of locking a value
@@ -2321,17 +2323,17 @@ public:
 
 class IntegerOperand {
 public:
-    explicit IntegerOperand(SpeculativeJIT* jit, Edge use)
+    explicit IntegerOperand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_gprOrInvalid(InvalidGPRReg)
 #ifndef NDEBUG
         , m_format(DataFormatNone)
 #endif
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == KnownInt32Use);
+        if (jit->isFilled(edge.node()))
             gpr();
     }
 
@@ -2341,9 +2343,14 @@ public:
         m_jit->unlock(m_gprOrInvalid);
     }
 
+    Edge edge() const
+    {
+        return m_edge;
+    }
+    
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
 
     DataFormat format()
@@ -2356,77 +2363,27 @@ public:
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillInteger(node(), m_format);
+            m_gprOrInvalid = m_jit->fillInteger(m_edge, m_format);
         return m_gprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     GPRReg m_gprOrInvalid;
     DataFormat m_format;
 };
 
-class DoubleOperand {
-public:
-    explicit DoubleOperand(SpeculativeJIT* jit, Edge use)
-        : m_jit(jit)
-        , m_node(use.node())
-        , m_fprOrInvalid(InvalidFPRReg)
-    {
-        ASSERT(m_jit);
-        
-        // This is counter-intuitive but correct. DoubleOperand is intended to
-        // be used only when you're a node that is happy to accept an untyped
-        // value, but will special-case for doubles (using DoubleOperand) if the
-        // value happened to already be represented as a double. The implication
-        // is that you will not try to force the value to become a double if it
-        // is not one already.
-        ASSERT(use.useKind() != DoubleUse);
-        
-        if (jit->isFilledDouble(m_node))
-            fpr();
-    }
-
-    ~DoubleOperand()
-    {
-        ASSERT(m_fprOrInvalid != InvalidFPRReg);
-        m_jit->unlock(m_fprOrInvalid);
-    }
-
-    Node* node() const
-    {
-        return m_node;
-    }
-
-    FPRReg fpr()
-    {
-        if (m_fprOrInvalid == InvalidFPRReg)
-            m_fprOrInvalid = m_jit->fillDouble(node());
-        return m_fprOrInvalid;
-    }
-    
-    void use()
-    {
-        m_jit->use(m_node);
-    }
-
-private:
-    SpeculativeJIT* m_jit;
-    Node* m_node;
-    FPRReg m_fprOrInvalid;
-};
-
 class JSValueOperand {
 public:
-    explicit JSValueOperand(SpeculativeJIT* jit, Edge use)
+    explicit JSValueOperand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
 #if USE(JSVALUE64)
         , m_gprOrInvalid(InvalidGPRReg)
 #elif USE(JSVALUE32_64)
@@ -2434,14 +2391,14 @@ public:
 #endif
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == UntypedUse);
 #if USE(JSVALUE64)
-        if (jit->isFilled(m_node))
+        if (jit->isFilled(node()))
             gpr();
 #elif USE(JSVALUE32_64)
         m_register.pair.tagGPR = InvalidGPRReg;
         m_register.pair.payloadGPR = InvalidGPRReg;
-        if (jit->isFilled(m_node))
+        if (jit->isFilled(node()))
             fill();
 #endif
     }
@@ -2462,17 +2419,22 @@ public:
         }
 #endif
     }
+    
+    Edge edge() const
+    {
+        return m_edge;
+    }
 
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
 
 #if USE(JSVALUE64)
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillJSValue(node());
+            m_gprOrInvalid = m_jit->fillJSValue(m_edge);
         return m_gprOrInvalid;
     }
     JSValueRegs jsValueRegs()
@@ -2485,7 +2447,7 @@ public:
     void fill()
     {
         if (m_register.pair.tagGPR == InvalidGPRReg && m_register.pair.payloadGPR == InvalidGPRReg)
-            m_isDouble = !m_jit->fillJSValue(node(), m_register.pair.tagGPR, m_register.pair.payloadGPR, m_register.fpr);
+            m_isDouble = !m_jit->fillJSValue(m_edge, m_register.pair.tagGPR, m_register.pair.payloadGPR, m_register.fpr);
     }
 
     GPRReg tagGPR()
@@ -2517,12 +2479,12 @@ public:
 
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
 #if USE(JSVALUE64)
     GPRReg m_gprOrInvalid;
 #elif USE(JSVALUE32_64)
@@ -2539,14 +2501,14 @@ private:
 
 class StorageOperand {
 public:
-    explicit StorageOperand(SpeculativeJIT* jit, Edge use)
+    explicit StorageOperand(SpeculativeJIT* jit, Edge edge)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_gprOrInvalid(InvalidGPRReg)
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT(edge.useKind() == UntypedUse || edge.useKind() == KnownCellUse);
+        if (jit->isFilled(node()))
             gpr();
     }
     
@@ -2556,26 +2518,31 @@ public:
         m_jit->unlock(m_gprOrInvalid);
     }
     
+    Edge edge() const
+    {
+        return m_edge;
+    }
+    
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
     
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillStorage(node());
+            m_gprOrInvalid = m_jit->fillStorage(edge());
         return m_gprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
     
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     GPRReg m_gprOrInvalid;
 };
 
@@ -2627,8 +2594,6 @@ private:
 class FPRTemporary {
 public:
     FPRTemporary(SpeculativeJIT*);
-    FPRTemporary(SpeculativeJIT*, DoubleOperand&);
-    FPRTemporary(SpeculativeJIT*, DoubleOperand&, DoubleOperand&);
     FPRTemporary(SpeculativeJIT*, SpeculateDoubleOperand&);
     FPRTemporary(SpeculativeJIT*, SpeculateDoubleOperand&, SpeculateDoubleOperand&);
 #if USE(JSVALUE32_64)
@@ -2709,18 +2674,17 @@ private:
 
 class SpeculateIntegerOperand {
 public:
-    explicit SpeculateIntegerOperand(SpeculativeJIT* jit, Edge use, SpeculationDirection direction = BackwardSpeculation)
+    explicit SpeculateIntegerOperand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_gprOrInvalid(InvalidGPRReg)
 #ifndef NDEBUG
         , m_format(DataFormatNone)
 #endif
-        , m_direction(direction)
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || (edge.useKind() == Int32Use || edge.useKind() == KnownInt32Use));
+        if (jit->isFilled(node()))
             gpr();
     }
 
@@ -2729,10 +2693,15 @@ public:
         ASSERT(m_gprOrInvalid != InvalidGPRReg);
         m_jit->unlock(m_gprOrInvalid);
     }
+    
+    Edge edge() const
+    {
+        return m_edge;
+    }
 
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
 
     DataFormat format()
@@ -2745,33 +2714,32 @@ public:
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillSpeculateInt(node(), m_format, m_direction);
+            m_gprOrInvalid = m_jit->fillSpeculateInt(edge(), m_format);
         return m_gprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     GPRReg m_gprOrInvalid;
     DataFormat m_format;
-    SpeculationDirection m_direction;
 };
 
 class SpeculateStrictInt32Operand {
 public:
-    explicit SpeculateStrictInt32Operand(SpeculativeJIT* jit, Edge use)
+    explicit SpeculateStrictInt32Operand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_gprOrInvalid(InvalidGPRReg)
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || (edge.useKind() == Int32Use || edge.useKind() == KnownInt32Use));
+        if (jit->isFilled(node()))
             gpr();
     }
 
@@ -2780,41 +2748,45 @@ public:
         ASSERT(m_gprOrInvalid != InvalidGPRReg);
         m_jit->unlock(m_gprOrInvalid);
     }
+    
+    Edge edge() const
+    {
+        return m_edge;
+    }
 
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
 
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillSpeculateIntStrict(node());
+            m_gprOrInvalid = m_jit->fillSpeculateIntStrict(edge());
         return m_gprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     GPRReg m_gprOrInvalid;
 };
 
 class SpeculateDoubleOperand {
 public:
-    explicit SpeculateDoubleOperand(SpeculativeJIT* jit, Edge use, SpeculationDirection direction = BackwardSpeculation)
+    explicit SpeculateDoubleOperand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_fprOrInvalid(InvalidFPRReg)
-        , m_direction(direction)
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() == DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || (edge.useKind() == NumberUse || edge.useKind() == KnownNumberUse || edge.useKind() == RealNumberUse));
+        if (jit->isFilled(node()))
             fpr();
     }
 
@@ -2823,42 +2795,45 @@ public:
         ASSERT(m_fprOrInvalid != InvalidFPRReg);
         m_jit->unlock(m_fprOrInvalid);
     }
+    
+    Edge edge() const
+    {
+        return m_edge;
+    }
 
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
 
     FPRReg fpr()
     {
         if (m_fprOrInvalid == InvalidFPRReg)
-            m_fprOrInvalid = m_jit->fillSpeculateDouble(node(), m_direction);
+            m_fprOrInvalid = m_jit->fillSpeculateDouble(edge());
         return m_fprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     FPRReg m_fprOrInvalid;
-    SpeculationDirection m_direction;
 };
 
 class SpeculateCellOperand {
 public:
-    explicit SpeculateCellOperand(SpeculativeJIT* jit, Edge use, SpeculationDirection direction = BackwardSpeculation)
+    explicit SpeculateCellOperand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_gprOrInvalid(InvalidGPRReg)
-        , m_direction(direction)
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || (edge.useKind() == CellUse || edge.useKind() == KnownCellUse || edge.useKind() == ObjectUse || edge.useKind() == StringUse));
+        if (jit->isFilled(node()))
             gpr();
     }
 
@@ -2867,42 +2842,45 @@ public:
         ASSERT(m_gprOrInvalid != InvalidGPRReg);
         m_jit->unlock(m_gprOrInvalid);
     }
+    
+    Edge edge() const
+    {
+        return m_edge;
+    }
 
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
 
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillSpeculateCell(node(), m_direction);
+            m_gprOrInvalid = m_jit->fillSpeculateCell(edge());
         return m_gprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     GPRReg m_gprOrInvalid;
-    SpeculationDirection m_direction;
 };
 
 class SpeculateBooleanOperand {
 public:
-    explicit SpeculateBooleanOperand(SpeculativeJIT* jit, Edge use, SpeculationDirection direction = BackwardSpeculation)
+    explicit SpeculateBooleanOperand(SpeculativeJIT* jit, Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
         : m_jit(jit)
-        , m_node(use.node())
+        , m_edge(edge)
         , m_gprOrInvalid(InvalidGPRReg)
-        , m_direction(direction)
     {
         ASSERT(m_jit);
-        ASSERT(use.useKind() != DoubleUse);
-        if (jit->isFilled(m_node))
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == BooleanUse);
+        if (jit->isFilled(node()))
             gpr();
     }
     
@@ -2912,29 +2890,39 @@ public:
         m_jit->unlock(m_gprOrInvalid);
     }
     
+    Edge edge() const
+    {
+        return m_edge;
+    }
+    
     Node* node() const
     {
-        return m_node;
+        return edge().node();
     }
     
     GPRReg gpr()
     {
         if (m_gprOrInvalid == InvalidGPRReg)
-            m_gprOrInvalid = m_jit->fillSpeculateBoolean(node(), m_direction);
+            m_gprOrInvalid = m_jit->fillSpeculateBoolean(edge());
         return m_gprOrInvalid;
     }
     
     void use()
     {
-        m_jit->use(m_node);
+        m_jit->use(node());
     }
 
 private:
     SpeculativeJIT* m_jit;
-    Node* m_node;
+    Edge m_edge;
     GPRReg m_gprOrInvalid;
-    SpeculationDirection m_direction;
 };
+
+#define DFG_TYPE_CHECK(source, edge, typesPassedThrough, jumpToFail) do { \
+        if (!needsTypeCheck((edge), (typesPassedThrough)))              \
+            break;                                                      \
+        typeCheck((source), (edge), (typesPassedThrough), (jumpToFail)); \
+    } while (0)
 
 } } // namespace JSC::DFG
 

@@ -27,6 +27,7 @@
 #endif
 #include <stdint.h>
 #include <wtf/Alignment.h>
+#include <wtf/StdLibExtras.h>
 #include <wtf/unicode/Unicode.h>
 
 namespace WTF {
@@ -85,7 +86,7 @@ inline bool charactersAreAllASCII(const CharacterType* characters, size_t length
     const CharacterType* wordEnd = alignToMachineWord(end);
     const size_t loopIncrement = sizeof(MachineWord) / sizeof(CharacterType);
     while (characters < wordEnd) {
-        allCharBits |= *(reinterpret_cast<const MachineWord*>(characters));
+        allCharBits |= *(reinterpret_cast_ptr<const MachineWord*>(characters));
         characters += loopIncrement;
     }
 
@@ -138,9 +139,8 @@ inline void copyLCharsFromUCharSource(LChar* destination, const UChar* source, s
     if (length >= (2 * memoryAccessSize) - 1) {
         // Prefix: align dst on 64 bits.
         const uintptr_t memoryAccessMask = memoryAccessSize - 1;
-        do {
+        while (!isAlignedTo<memoryAccessMask>(destination))
             *destination++ = static_cast<LChar>(*source++);
-        } while (!isAlignedTo<memoryAccessMask>(destination));
 
         // Vector interleaved unpack, we only store the lower 8 bits.
         const uintptr_t lengthLeft = end - destination;

@@ -61,17 +61,22 @@ void RoundedRect::Radii::scale(float factor)
 
 void RoundedRect::Radii::expand(int topWidth, int bottomWidth, int leftWidth, int rightWidth)
 {
-    m_topLeft.setWidth(max<int>(0, m_topLeft.width() + leftWidth));
-    m_topLeft.setHeight(max<int>(0, m_topLeft.height() + topWidth));
-
-    m_topRight.setWidth(max<int>(0, m_topRight.width() + rightWidth));
-    m_topRight.setHeight(max<int>(0, m_topRight.height() + topWidth));
-
-    m_bottomLeft.setWidth(max<int>(0, m_bottomLeft.width() + leftWidth));
-    m_bottomLeft.setHeight(max<int>(0, m_bottomLeft.height() + bottomWidth));
-
-    m_bottomRight.setWidth(max<int>(0, m_bottomRight.width() + rightWidth));
-    m_bottomRight.setHeight(max<int>(0, m_bottomRight.height() + bottomWidth));
+    if (m_topLeft.width() > 0 && m_topLeft.height() > 0) {
+        m_topLeft.setWidth(max<int>(0, m_topLeft.width() + leftWidth));
+        m_topLeft.setHeight(max<int>(0, m_topLeft.height() + topWidth));
+    }
+    if (m_topRight.width() > 0 && m_topRight.height() > 0) {
+        m_topRight.setWidth(max<int>(0, m_topRight.width() + rightWidth));
+        m_topRight.setHeight(max<int>(0, m_topRight.height() + topWidth));
+    }
+    if (m_bottomLeft.width() > 0 && m_bottomLeft.height() > 0) {
+        m_bottomLeft.setWidth(max<int>(0, m_bottomLeft.width() + leftWidth));
+        m_bottomLeft.setHeight(max<int>(0, m_bottomLeft.height() + bottomWidth));
+    }
+    if (m_bottomRight.width() > 0 && m_bottomRight.height() > 0) {
+        m_bottomRight.setWidth(max<int>(0, m_bottomRight.width() + rightWidth));
+        m_bottomRight.setHeight(max<int>(0, m_bottomRight.height() + bottomWidth));
+    }
 }
 
 void RoundedRect::inflateWithRadii(int size)
@@ -166,10 +171,14 @@ void RoundedRect::adjustRadii()
 {
     int maxRadiusWidth = std::max(m_radii.topLeft().width() + m_radii.topRight().width(), m_radii.bottomLeft().width() + m_radii.bottomRight().width());
     int maxRadiusHeight = std::max(m_radii.topLeft().height() + m_radii.bottomLeft().height(), m_radii.topRight().height() + m_radii.bottomRight().height());
-    if (maxRadiusWidth > maxRadiusHeight)
-        m_radii.scale(static_cast<float>(m_rect.width()) / maxRadiusWidth);
-    else
-        m_radii.scale(static_cast<float>(m_rect.height()) / maxRadiusHeight);
+
+    if (maxRadiusWidth <= 0 || maxRadiusHeight <= 0) {
+        m_radii.scale(0.0f);
+        return;
+    }
+    float widthRatio = static_cast<float>(m_rect.width()) / maxRadiusWidth;
+    float heightRatio = static_cast<float>(m_rect.height()) / maxRadiusHeight;
+    m_radii.scale(widthRatio < heightRatio ? widthRatio : heightRatio);
 }
 
 } // namespace WebCore

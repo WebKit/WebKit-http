@@ -58,10 +58,9 @@ WebInspector.displayNameForURL = function(url)
     if (resource)
         return resource.displayName;
 
-    var uri = WebInspector.fileMapping.uriForURL(url);
-    var uiSourceCode = WebInspector.workspace.uiSourceCodeForURI(uri);
+    var uiSourceCode = WebInspector.workspace.uiSourceCodeForURL(url);
     if (uiSourceCode)
-        return uiSourceCode.parsedURL.displayName;
+        return uiSourceCode.displayName();
 
     if (!WebInspector.inspectedPageURL)
         return url.trimURL("");
@@ -75,7 +74,11 @@ WebInspector.displayNameForURL = function(url)
             return url.substring(index);
     }
 
-    return parsedURL ? url.trimURL(parsedURL.host) : url;
+    if (!parsedURL)
+        return url;
+
+    var displayName = url.trimURL(parsedURL.host);
+    return displayName === "/" ? parsedURL.host + "/" : displayName;
 }
 
 /**
@@ -120,16 +123,6 @@ WebInspector.linkifyStringAsFragmentWithCustomLinkifier = function(string, linki
     return container;
 }
 
-WebInspector._linkifierPlugins = [];
-
-/**
- * @param {function(string):string} plugin
- */
-WebInspector.registerLinkifierPlugin = function(plugin)
-{
-    WebInspector._linkifierPlugins.push(plugin);
-}
-
 /**
  * @param {string} string
  * @return {DocumentFragment}
@@ -144,9 +137,6 @@ WebInspector.linkifyStringAsFragment = function(string)
      */
     function linkifier(title, url, lineNumber)
     {
-        for (var i = 0; i < WebInspector._linkifierPlugins.length; ++i)
-            title = WebInspector._linkifierPlugins[i](title);
-
         var isExternal = !WebInspector.resourceForURL(url);
         var urlNode = WebInspector.linkifyURLAsNode(url, title, undefined, isExternal);
         if (typeof(lineNumber) !== "undefined") {
@@ -213,7 +203,6 @@ WebInspector.linkifyResourceAsNode = function(url, lineNumber, classes, tooltipT
 {
     var linkText = WebInspector.formatLinkText(url, lineNumber);
     var anchor = WebInspector.linkifyURLAsNode(url, linkText, classes, false, tooltipText);
-    anchor.preferredPanel = "resources";
     anchor.lineNumber = lineNumber;
     return anchor;
 }

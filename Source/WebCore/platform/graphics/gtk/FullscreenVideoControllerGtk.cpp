@@ -28,7 +28,7 @@
 #include "GStreamerGWorld.h"
 #include "GtkVersioning.h"
 #include "MediaPlayer.h"
-#include "MediaPlayerPrivateGStreamer.h"
+#include "MediaPlayerPrivateGStreamerBase.h"
 
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
@@ -124,13 +124,14 @@ static void volumeValueChanged(GtkScaleButton *button, gdouble value, Fullscreen
 }
 
 
-FullscreenVideoControllerGtk::FullscreenVideoControllerGtk(MediaPlayerPrivateGStreamer* player)
+FullscreenVideoControllerGtk::FullscreenVideoControllerGtk(MediaPlayerPrivateGStreamerBase* player)
     : FullscreenVideoControllerGStreamer(player)
     , m_hudTimeoutId(0)
     , m_progressBarUpdateId(0)
     , m_seekLock(false)
     , m_window(0)
     , m_hudWindow(0)
+    , m_volumeButton(0)
     , m_keyPressSignalId(0)
     , m_destroySignalId(0)
     , m_isActiveSignalId(0)
@@ -332,6 +333,9 @@ void FullscreenVideoControllerGtk::playStateChanged()
 
 void FullscreenVideoControllerGtk::volumeChanged()
 {
+    if (!m_volumeButton)
+        return;
+
     g_signal_handler_block(m_volumeButton, m_volumeUpdateId);
     gtk_scale_button_set_value(GTK_SCALE_BUTTON(m_volumeButton), m_player->volume());
     g_signal_handler_unblock(m_volumeButton, m_volumeUpdateId);
@@ -339,6 +343,9 @@ void FullscreenVideoControllerGtk::volumeChanged()
 
 void FullscreenVideoControllerGtk::muteChanged()
 {
+    if (!m_volumeButton)
+        return;
+
     g_signal_handler_block(m_volumeButton, m_volumeUpdateId);
     gtk_scale_button_set_value(GTK_SCALE_BUTTON(m_volumeButton), m_player->muted() ? 0 : m_player->volume());
     g_signal_handler_unblock(m_volumeButton, m_volumeUpdateId);

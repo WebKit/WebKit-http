@@ -27,6 +27,7 @@
 #define InjectedBundleRangeHandle_h
 
 #include "APIObject.h"
+#include <JavaScriptCore/JSBase.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
@@ -42,6 +43,7 @@ class InjectedBundleRangeHandle : public APIObject {
 public:
     static const Type APIType = TypeBundleRangeHandle;
 
+    static PassRefPtr<InjectedBundleRangeHandle> getOrCreate(JSContextRef, JSObjectRef);
     static PassRefPtr<InjectedBundleRangeHandle> getOrCreate(WebCore::Range*);
 
     virtual ~InjectedBundleRangeHandle();

@@ -180,9 +180,11 @@ int TestController::getCustomTimeout()
     return m_timeout;
 }
 
-WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WKDictionaryRef, WKEventModifiers, WKEventMouseButton, const void*)
+WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WKDictionaryRef, WKEventModifiers, WKEventMouseButton, const void* clientInfo)
 {
-    PlatformWebView* view = new PlatformWebView(WKPageGetContext(oldPage), WKPageGetPageGroup(oldPage));
+    PlatformWebView* parentView = static_cast<PlatformWebView*>(const_cast<void*>(clientInfo));
+
+    PlatformWebView* view = new PlatformWebView(WKPageGetContext(oldPage), WKPageGetPageGroup(oldPage), parentView->options());
     WKPageRef newPage = view->page();
 
     view->resizeTo(800, 600);
@@ -232,10 +234,10 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         createOtherPage,
         0, // mouseDidMoveOverElement
         0, // decidePolicyForNotificationPermissionRequest
-        0, // unavailablePluginButtonClicked
+        0, // unavailablePluginButtonClicked_deprecatedForUseWithV1
         0, // showColorPicker
         0, // hideColorPicker
-        0, // shouldInstantiatePlugin
+        0, // unavailablePluginButtonClicked
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient);
 
@@ -423,10 +425,10 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
         createOtherPage,
         0, // mouseDidMoveOverElement
         decidePolicyForNotificationPermissionRequest, // decidePolicyForNotificationPermissionRequest
-        unavailablePluginButtonClicked,
+        0, // unavailablePluginButtonClicked_deprecatedForUseWithV1
         0, // showColorPicker
         0, // hideColorPicker
-        0, // shouldInstantiatePlugin
+        unavailablePluginButtonClicked,
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient);
 
@@ -462,10 +464,12 @@ void TestController::createWebViewWithOptions(WKDictionaryRef options)
         0, // didNewFirstVisuallyNonEmptyLayout
         0, // willGoToBackForwardListItem
         0, // interactionOccurredWhileProcessUnresponsive
-        0, // pluginDidFail
+        0, // pluginDidFail_deprecatedForUseWithV1
         0, // didReceiveIntentForFrame
         0, // registerIntentServiceForFrame
         0, // didLayout
+        0, // pluginLoadPolicy
+        0, // pluginDidFail
     };
     WKPageSetPageLoaderClient(m_mainWebView->page(), &pageLoaderClient);
 
@@ -565,6 +569,7 @@ bool TestController::resetStateToConsistentValues()
 #endif
     WKPreferencesSetScreenFontSubstitutionEnabled(preferences, true);
     WKPreferencesSetInspectorUsesWebKitUserInterface(preferences, true);
+    WKPreferencesSetAsynchronousSpellCheckingEnabled(preferences, false);
 #if !PLATFORM(MAC)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
@@ -1179,7 +1184,7 @@ void TestController::decidePolicyForNotificationPermissionRequest(WKPageRef, WKS
     WKNotificationPermissionRequestAllow(request);
 }
 
-void TestController::unavailablePluginButtonClicked(WKPageRef, WKPluginUnavailabilityReason, WKStringRef, WKStringRef, WKStringRef, const void*)
+void TestController::unavailablePluginButtonClicked(WKPageRef, WKPluginUnavailabilityReason, WKDictionaryRef, const void*)
 {
     printf("MISSING PLUGIN BUTTON PRESSED\n");
 }

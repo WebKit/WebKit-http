@@ -28,44 +28,42 @@
 
 #if USE(ACCELERATED_COMPOSITING) && USE(GLX)
 
-#include "GLPlatformSurface.h"
+#include "GLTransportSurface.h"
 #include "GLXConfigSelector.h"
-#include "X11WindowResources.h"
+#include "X11Helper.h"
 
 namespace WebCore {
 
-#if USE(GRAPHICS_SURFACE)
-class GLXTransportSurface : public GLPlatformSurface {
+class GLXTransportSurface : public GLTransportSurface {
 
 public:
-    GLXTransportSurface();
+    GLXTransportSurface(SurfaceAttributes);
     virtual ~GLXTransportSurface();
     virtual PlatformSurfaceConfig configuration() OVERRIDE;
     virtual void swapBuffers() OVERRIDE;
     virtual void setGeometry(const IntRect&) OVERRIDE;
+    virtual GLPlatformSurface::SurfaceAttributes attributes() const OVERRIDE;
     virtual void destroy() OVERRIDE;
 
 private:
     void initialize();
-    OwnPtr<X11OffScreenWindow> m_nativeResource;
     OwnPtr<GLXConfigSelector> m_configSelector;
 };
-#endif
 
-class GLXPBuffer : public GLPlatformSurface {
+class GLXOffScreenSurface : public GLPlatformSurface {
 
 public:
-    GLXPBuffer();
-    virtual ~GLXPBuffer();
+    GLXOffScreenSurface(SurfaceAttributes);
+    virtual ~GLXOffScreenSurface();
     virtual PlatformSurfaceConfig configuration() OVERRIDE;
-    virtual void setGeometry(const IntRect&) OVERRIDE;
     virtual void destroy() OVERRIDE;
 
 private:
-    void initialize();
+    void initialize(SurfaceAttributes);
     void freeResources();
-    OwnPtr<X11OffScreenWindow> m_nativeResource;
     OwnPtr<GLXConfigSelector> m_configSelector;
+    Pixmap m_pixmap;
+    GLXPixmap m_glxPixmap;
 };
 
 }

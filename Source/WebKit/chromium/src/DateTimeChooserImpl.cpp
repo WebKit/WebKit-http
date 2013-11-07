@@ -138,6 +138,7 @@ void DateTimeChooserImpl::writeDocument(WebCore::DocumentWriter& writer)
     addProperty("clearLabel", Platform::current()->queryLocalizedString(WebLocalizedString::CalendarClear), writer);
     addProperty("weekLabel", Platform::current()->queryLocalizedString(WebLocalizedString::WeekNumberLabel), writer);
     addProperty("weekStartDay", m_locale->firstDayOfWeek(), writer);
+    addProperty("shortMonthLabels", m_locale->shortMonthLabels(), writer);
     addProperty("dayLabels", m_locale->weekDayShortLabels(), writer);
     addProperty("isLocaleRTL", m_locale->isRTL(), writer);
     addProperty("isRTL", m_parameters.isAnchorElementRTL, writer);
@@ -169,7 +170,17 @@ void DateTimeChooserImpl::setValueAndClosePopup(int numValue, const String& stri
 {
     RefPtr<DateTimeChooserImpl> protector(this);
     if (numValue >= 0)
-        m_client->didChooseValue(stringValue);
+        setValue(stringValue);
+    endChooser();
+}
+
+void DateTimeChooserImpl::setValue(const String& value)
+{
+    m_client->didChooseValue(value);
+}
+
+void DateTimeChooserImpl::closePopup()
+{
     endChooser();
 }
 

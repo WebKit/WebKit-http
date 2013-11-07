@@ -32,14 +32,13 @@
 #include "RotateTransformOperation.h"
 #include "ScrollableArea.h"
 #include "TranslateTransformOperation.h"
-#include "WebLayerTreeViewTestCommon.h"
 #include <gtest/gtest.h>
 #include <public/Platform.h>
 #include <public/WebCompositorSupport.h>
 #include <public/WebFloatAnimationCurve.h>
 #include <public/WebGraphicsContext3D.h>
 #include <public/WebLayerTreeView.h>
-#include <public/WebTransformationMatrix.h>
+#include <public/WebUnitTestSupport.h>
 #include <wtf/PassOwnPtr.h>
 
 using namespace WebCore;
@@ -62,7 +61,9 @@ public:
         Platform::current()->compositorSupport()->initialize(0);
         m_graphicsLayer = adoptPtr(new GraphicsLayerChromium(&m_client));
         m_platformLayer = m_graphicsLayer->platformLayer();
-        m_layerTreeView = adoptPtr(Platform::current()->compositorSupport()->createLayerTreeView(&m_layerTreeViewClient, *m_platformLayer, WebLayerTreeView::Settings()));
+        m_layerTreeView = adoptPtr(Platform::current()->unitTestSupport()->createLayerTreeViewForTesting(WebUnitTestSupport::TestViewTypeUnitTest));
+        ASSERT(m_layerTreeView);
+        m_layerTreeView->setRootLayer(*m_platformLayer);
         m_layerTreeView->setViewportSize(WebSize(1, 1), WebSize(1, 1));
     }
 
@@ -74,16 +75,10 @@ public:
     }
 
 protected:
-    static void expectTranslateX(double translateX, const WebTransformationMatrix& matrix)
-    {
-        EXPECT_FLOAT_EQ(translateX, matrix.m41());
-    }
-
     WebLayer* m_platformLayer;
     OwnPtr<GraphicsLayerChromium> m_graphicsLayer;
 
 private:
-    MockWebLayerTreeViewClient m_layerTreeViewClient;
     OwnPtr<WebLayerTreeView> m_layerTreeView;
     MockGraphicsLayerClient m_client;
 };

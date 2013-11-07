@@ -35,6 +35,10 @@
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+#include "PlatformTextTrack.h"
+#endif
+
 namespace WebCore {
 
 class HTMLMediaElement;
@@ -53,7 +57,11 @@ public:
     virtual void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>) = 0;
 };
 
-class TextTrack : public TrackBase {
+class TextTrack : public TrackBase
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+    , public PlatformTextTrackClient
+#endif
+    {
 public:
     static PassRefPtr<TextTrack> create(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& label, const AtomicString& language)
     {
@@ -109,6 +117,8 @@ public:
     enum TextTrackType { TrackElement, AddTrack, InBand };
     TextTrackType trackType() const { return m_trackType; }
 
+    virtual bool isClosedCaptions() const { return false; }
+
     int trackIndex();
     void invalidateTrackIndex();
 
@@ -123,6 +133,10 @@ public:
 
     void removeAllCues();
 
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+    PassRefPtr<PlatformTextTrack> platformTextTrack();
+#endif
+
 protected:
     TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomicString& kind, const AtomicString& label, const AtomicString& language, TextTrackType);
 
@@ -130,6 +144,13 @@ protected:
 
 private:
     TextTrackCueList* ensureTextTrackCueList();
+
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+    virtual TextTrack* publicTrack() OVERRIDE { return this; }
+
+    RefPtr<PlatformTextTrack> m_platformTextTrack;
+#endif
+
     HTMLMediaElement* m_mediaElement;
     AtomicString m_kind;
     AtomicString m_label;

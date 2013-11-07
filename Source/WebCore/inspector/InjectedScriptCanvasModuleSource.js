@@ -1847,7 +1847,7 @@ WebGLRenderingContextResource.prototype = {
     addExtension: function(name)
     {
         // FIXME: Wrap OES_vertex_array_object extension.
-        this._extensions[name] = true;
+        this._extensions[name.toLowerCase()] = true;
     },
 
     /**
@@ -1925,6 +1925,8 @@ WebGLRenderingContextResource.prototype = {
             if (replayContext)
                 break;
         }
+
+        console.assert(replayContext, "Failed to create a WebGLRenderingContext for the replay.");
 
         var gl = /** @type {!WebGLRenderingContext} */ (Resource.wrappedObject(replayContext));
         this.setWrappedObject(gl);
@@ -2720,6 +2722,8 @@ function TraceLog()
     this._replayableCalls = [];
     /** @type {!Cache} */
     this._replayablesCache = new Cache();
+    /** @type {!Object.<number, boolean>} */
+    this._frameEndCallIndexes = {};
 }
 
 TraceLog.prototype = {
@@ -2762,6 +2766,22 @@ TraceLog.prototype = {
     addCall: function(call)
     {
         this._replayableCalls.push(call.toReplayable(this._replayablesCache));
+    },
+
+    addFrameEndMark: function()
+    {
+        var index = this._replayableCalls.length - 1;
+        if (index >= 0)
+            this._frameEndCallIndexes[index] = true;
+    },
+
+    /**
+     * @param {number} index
+     * @return {boolean}
+     */
+    isFrameEndCallAt: function(index)
+    {
+        return !!this._frameEndCallIndexes[index];
     }
 }
 
@@ -2898,6 +2918,18 @@ ResourceTrackingManager.prototype = {
             return;
         this._capturing = false;
         this._stopCapturingOnFrameEnd = false;
+        if (this._lastTraceLog)
+            this._lastTraceLog.addFrameEndMark();
+    },
+
+    /**
+     * @param {!TraceLog} traceLog
+     */
+    dropTraceLog: function(traceLog)
+    {
+        this.stopCapturing(traceLog);
+        if (this._lastTraceLog === traceLog)
+            this._lastTraceLog = null;
     },
 
     captureFrame: function()
@@ -2931,23 +2963,15 @@ ResourceTrackingManager.prototype = {
         if (!this._capturing)
             return;
         this._lastTraceLog.addCall(call);
-        if (this._stopCapturingOnFrameEnd && this._lastTraceLog.size() === 1) {
-            this._stopCapturingOnFrameEnd = false;
-            this._setZeroTimeouts(this.stopCapturing.bind(this, this._lastTraceLog));
-        }
     },
 
-    /**
-     * @param {function()} callback
-     */
-    _setZeroTimeouts: function(callback)
+    markFrameEnd: function()
     {
-        // We need a fastest async callback, whatever fires first.
-        // Usually a postMessage should be faster than a setTimeout(0).
-        var channel = new MessageChannel();
-        channel.port1.onmessage = callback;
-        channel.port2.postMessage("");
-        inspectedWindow.setTimeout(callback, 0);
+        if (!this._lastTraceLog)
+            return;
+        this._lastTraceLog.addFrameEndMark();
+        if (this._stopCapturingOnFrameEnd && this._lastTraceLog.size())
+            this.stopCapturing(this._lastTraceLog);
     }
 }
 
@@ -3005,6 +3029,11 @@ InjectedCanvasModule.prototype = {
         return this._callStartCapturingFunction(this._manager.startCapturing);
     },
 
+    markFrameEnd: function()
+    {
+        this._manager.markFrameEnd();
+    },
+
     /**
      * @param {function(this:ResourceTrackingManager)} func
      * @return {CanvasAgent.TraceLogId}
@@ -3040,7 +3069,9 @@ InjectedCanvasModule.prototype = {
      */
     dropTraceLog: function(id)
     {
-        this.stopCapturing(id);
+        var traceLog = this._traceLogs[id];
+        if (traceLog)
+            this._manager.dropTraceLog(traceLog);
         delete this._traceLogs[id];
         delete this._traceLogPlayers[id];
     },
@@ -3056,6 +3087,9 @@ InjectedCanvasModule.prototype = {
         var traceLog = this._traceLogs[id];
         if (!traceLog)
             return "Error: Trace log with the given ID not found.";
+
+        // Ensure last call ends a frame.
+        traceLog.addFrameEndMark();
 
         var replayableCalls = traceLog.replayableCalls();
         if (typeof startOffset !== "number")
@@ -3085,6 +3119,7 @@ InjectedCanvasModule.prototype = {
             item.sourceURL = callFrame.sourceURL;
             item.lineNumber = callFrame.lineNumber;
             item.columnNumber = callFrame.columnNumber;
+            item.isFrameEndCall = traceLog.isFrameEndCallAt(i);
             result.calls.push(item);
         }
         return result;

@@ -54,6 +54,14 @@ void RenderTableRow::willBeRemovedFromTree()
     section()->setNeedsCellRecalc();
 }
 
+static bool borderWidthChanged(const RenderStyle* oldStyle, const RenderStyle* newStyle)
+{
+    return oldStyle->borderLeftWidth() != newStyle->borderLeftWidth()
+        || oldStyle->borderTopWidth() != newStyle->borderTopWidth()
+        || oldStyle->borderRightWidth() != newStyle->borderRightWidth()
+        || oldStyle->borderBottomWidth() != newStyle->borderBottomWidth();
+}
+
 void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     ASSERT(style()->display() == TABLE_ROW);
@@ -69,6 +77,17 @@ void RenderTableRow::styleDidChange(StyleDifference diff, const RenderStyle* old
         RenderTable* table = this->table();
         if (table && !table->selfNeedsLayout() && !table->normalChildNeedsLayout() && oldStyle && oldStyle->border() != style()->border())
             table->invalidateCollapsedBorders();
+        
+        if (table && oldStyle && diff == StyleDifferenceLayout && needsLayout() && table->collapseBorders() && borderWidthChanged(oldStyle, style())) {
+            // If the border width changes on a row, we need to make sure the cells in the row know to lay out again.
+            // This only happens when borders are collapsed, since they end up affecting the border sides of the cell
+            // itself.
+            for (RenderBox* childBox = firstChildBox(); childBox; childBox = childBox->nextSiblingBox()) {
+                if (!childBox->isTableCell())
+                    continue;
+                childBox->setChildNeedsLayout(true, MarkOnlyThis);
+            }
+        }
     }
 }
 
@@ -219,7 +238,7 @@ void RenderTableRow::paintOutlineForRowIfNeeded(PaintInfo& paintInfo, const Layo
     LayoutPoint adjustedPaintOffset = paintOffset + location();
     PaintPhase paintPhase = paintInfo.phase;
     if ((paintPhase == PaintPhaseOutline || paintPhase == PaintPhaseSelfOutline) && style()->visibility() == VISIBLE)
-        paintOutline(paintInfo.context, LayoutRect(adjustedPaintOffset, size()));
+        paintOutline(paintInfo, LayoutRect(adjustedPaintOffset, size()));
 }
 
 void RenderTableRow::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)

@@ -35,8 +35,12 @@
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcessCreationParameters.h"
+#include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
 #include "RemoteNetworkingContext.h"
+#include "SchedulableLoader.h"
+#include "StatisticsData.h"
+#include "WebContextMessages.h"
 #include "WebCookieManager.h"
 #include <WebCore/InitializeLogging.h>
 #include <WebCore/ResourceRequest.h>
@@ -61,6 +65,8 @@ NetworkProcess::NetworkProcess()
     : m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
 {
+    NetworkProcessPlatformStrategies::initialize();
+
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
     addSupplement<CustomProtocolManager>();
@@ -110,7 +116,7 @@ void NetworkProcess::didReceiveSyncMessage(CoreIPC::Connection* connection, Core
 
 void NetworkProcess::didClose(CoreIPC::Connection*)
 {
-    // The UIProcess just crashed.
+    // The UIProcess just exited.
     RunLoop::current()->stop();
 }
 
@@ -163,7 +169,7 @@ void NetworkProcess::initializeConnection(CoreIPC::Connection* connection)
     ChildProcess::initializeConnection(connection);
 
 #if USE(SECURITY_FRAMEWORK)
-    connection->addQueueClient(&SecItemShim::shared());
+    SecItemShim::shared().initializeConnection(connection);
 #endif
 }
 
@@ -214,6 +220,22 @@ void NetworkProcess::setCacheModel(uint32_t cm)
         m_cacheModel = cacheModel;
         platformSetCacheModel(cacheModel);
     }
+}
+
+void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
+{
+    NetworkResourceLoadScheduler& scheduler = NetworkProcess::shared().networkResourceLoadScheduler();
+
+    StatisticsData data;
+
+    data.statisticsNumbers.set("HostsPendingCount", scheduler.hostsPendingCount());
+    data.statisticsNumbers.set("HostsActiveCount", scheduler.hostsActiveCount());
+    data.statisticsNumbers.set("LoadsPendingCount", scheduler.loadsPendingCount());
+    data.statisticsNumbers.set("LoadsActiveCount", scheduler.loadsActiveCount());
+    data.statisticsNumbers.set("DownloadsActiveCount", shared().downloadManager().activeDownloadCount());
+    data.statisticsNumbers.set("OutstandingAuthenticationChallengesCount", shared().authenticationManager().outstandingAuthenticationChallengeCount());
+
+    parentProcessConnection()->send(Messages::WebContext::DidGetStatistics(data, callbackID), 0);
 }
 
 #if !PLATFORM(MAC)

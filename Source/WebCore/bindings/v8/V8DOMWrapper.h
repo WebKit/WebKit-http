@@ -53,31 +53,23 @@ namespace WebCore {
         static bool maybeDOMWrapper(v8::Handle<v8::Value>);
 #endif
 
-        static v8::Local<v8::Object> createWrapper(v8::Handle<v8::Object> creationContext, WrapperTypeInfo*, void*);
+        static v8::Local<v8::Object> createWrapper(v8::Handle<v8::Object> creationContext, WrapperTypeInfo*, void*, v8::Isolate*);
 
         template<typename T>
-        static inline v8::Persistent<v8::Object> associateObjectWithWrapper(PassRefPtr<T>, WrapperTypeInfo*, v8::Handle<v8::Object>, v8::Isolate*);
+        static inline v8::Handle<v8::Object> associateObjectWithWrapper(PassRefPtr<T>, WrapperTypeInfo*, v8::Handle<v8::Object>, v8::Isolate*, WrapperConfiguration::Lifetime);
         static inline void setNativeInfo(v8::Handle<v8::Object>, WrapperTypeInfo*, void*);
         static inline void clearNativeInfo(v8::Handle<v8::Object>, WrapperTypeInfo*);
-        static inline void setWrapperClass(void*, v8::Persistent<v8::Object>);
-        static inline void setWrapperClass(Node*, v8::Persistent<v8::Object>);
 
         static bool isDOMWrapper(v8::Handle<v8::Value>);
         static bool isWrapperOfType(v8::Handle<v8::Value>, WrapperTypeInfo*);
 
-        // FIXME: Why is this function in V8DOMWrapper?
-        static void setNamedHiddenReference(v8::Handle<v8::Object> parent, const char* name, v8::Handle<v8::Value> child);
+#if ENABLE(CUSTOM_ELEMENTS)
+        // Used for V8WrapAsFunction, which is used only by CUSTOM_ELEMENTS
+        static v8::Handle<v8::Function> toFunction(v8::Handle<v8::Value>);
+        static v8::Handle<v8::Function> toFunction(v8::Handle<v8::Object>, const AtomicString& name, v8::Isolate*);
+        static v8::Handle<v8::Object> fromFunction(v8::Handle<v8::Object>);
+#endif // ENABLE(CUSTOM_ELEMENTS)
     };
-
-    inline void V8DOMWrapper::setWrapperClass(void*, v8::Persistent<v8::Object> wrapper)
-    {
-        wrapper.SetWrapperClassId(v8DOMObjectClassId);
-    }
-
-    inline void V8DOMWrapper::setWrapperClass(Node*, v8::Persistent<v8::Object> wrapper)
-    {
-        wrapper.SetWrapperClassId(v8DOMNodeClassId);
-    }
 
     inline void V8DOMWrapper::setNativeInfo(v8::Handle<v8::Object> wrapper, WrapperTypeInfo* type, void* object)
     {
@@ -97,14 +89,13 @@ namespace WebCore {
     }
 
     template<typename T>
-    inline v8::Persistent<v8::Object> V8DOMWrapper::associateObjectWithWrapper(PassRefPtr<T> object, WrapperTypeInfo* type, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate)
+    inline v8::Handle<v8::Object> V8DOMWrapper::associateObjectWithWrapper(PassRefPtr<T> object, WrapperTypeInfo* type, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate, WrapperConfiguration::Lifetime lifetime)
     {
         setNativeInfo(wrapper, type, object.get());
-        v8::Persistent<v8::Object> wrapperHandle = v8::Persistent<v8::Object>::New(wrapper);
-        ASSERT(maybeDOMWrapper(wrapperHandle));
-        setWrapperClass(object.get(), wrapperHandle);
-        DOMDataStore::setWrapper(object.leakRef(), wrapperHandle, isolate);
-        return wrapperHandle;
+        ASSERT(maybeDOMWrapper(wrapper));
+        WrapperConfiguration configuration = buildWrapperConfiguration(object.get(), lifetime);
+        DOMDataStore::setWrapper(object.leakRef(), wrapper, isolate, configuration);
+        return wrapper;
     }
 
 }

@@ -68,6 +68,8 @@ loader.Loader = function()
     this._buildersThatFailedToLoad = [];
     this._staleBuilders = [];
     this._loadingComplete = false;
+    this._errors = new ui.Errors();
+
 }
 
 loader.Loader.prototype = {
@@ -79,15 +81,20 @@ loader.Loader.prototype = {
     {
         return this._loadingComplete;
     },
+    showErrors: function() 
+    {
+        this._errors.show();
+    },
     _loadNext: function()
     {
         var loadingStep = this._loadingSteps.shift();
         if (!loadingStep) {
             this._loadingComplete = true;
+            this._addErrors();
             // FIXME(jparent): Loader should not know about global
             // functions, should use a callback or dispatch load
             // event instead.
-            resourceLoadingComplete(this._getLoadingErrorMessages());
+            resourceLoadingComplete();
             return;
         }
         loadingStep.apply(this);
@@ -180,17 +187,6 @@ loader.Loader.prototype = {
         // data that isn't there.
         delete currentBuilders()[builderName];
 
-        // Change the default builder name if it has been deleted.
-        if (g_defaultDashboardSpecificStateValues.builder == builderName) {
-            var defaultBuilderName = currentBuilderGroup().defaultBuilder();
-            g_defaultDashboardSpecificStateValues.builder = defaultBuilderName;
-            if (!defaultBuilderName) {
-                var error = 'No tests results found for ' + g_crossDashboardState.testType + '. Reload the page to try fetching it again.';
-                console.error(error);
-                addError(error);
-            }
-       }
-
         // Proceed as if the resource had loaded.
         this._handleResourceLoad();
     },
@@ -240,16 +236,13 @@ loader.Loader.prototype = {
                         console.error('Could not load expectations file for ' + platformName);
                     }, platformWithExpectations));
     },
-    _getLoadingErrorMessages: function()
+    _addErrors: function()
     {
-        var errorMsgs = '';
         if (this._buildersThatFailedToLoad.length)
-            errorMsgs += 'ERROR: Failed to get data from ' + this._buildersThatFailedToLoad.toString() + '.<br>';
+            this._errors.addError('ERROR: Failed to get data from ' + this._buildersThatFailedToLoad.toString() +'.');
 
         if (this._staleBuilders.length)
-            errorMsgs +='ERROR: Data from ' + this._staleBuilders.toString() + ' is more than 1 day stale.<br>';
-
-        return errorMsgs;
+            this._errors.addError('ERROR: Data from ' + this._staleBuilders.toString() + ' is more than 1 day stale.');
     }
 }
 

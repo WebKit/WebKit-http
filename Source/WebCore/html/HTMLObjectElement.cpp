@@ -26,6 +26,7 @@
 
 #include "Attribute.h"
 #include "CSSValueKeywords.h"
+#include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "EventNames.h"
@@ -87,12 +88,12 @@ bool HTMLObjectElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLPlugInImageElement::isPresentationAttribute(name);
 }
 
-void HTMLObjectElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
 {
-    if (attribute.name() == borderAttr)
-        applyBorderAttributeToStyle(attribute, style);
+    if (name == borderAttr)
+        applyBorderAttributeToStyle(value, style);
     else
-        HTMLPlugInImageElement::collectStyleForPresentationAttribute(attribute, style);
+        HTMLPlugInImageElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
 void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

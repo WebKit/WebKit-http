@@ -40,6 +40,7 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HistogramSupport.h"
 #include "InspectorInstrumentation.h"
@@ -263,7 +264,7 @@ v8::Local<v8::Value> ScriptController::compileAndRunScript(const ScriptSourceCod
         tryCatch.SetVerbose(true);
 
         // Compile the script.
-        v8::Handle<v8::String> code = deprecatedV8String(source.source());
+        v8::Handle<v8::String> code = v8String(source.source(), m_isolate);
 #if PLATFORM(CHROMIUM)
         TRACE_EVENT_BEGIN0("v8", "v8.compile");
 #endif
@@ -271,7 +272,7 @@ v8::Local<v8::Value> ScriptController::compileAndRunScript(const ScriptSourceCod
 
         // NOTE: For compatibility with WebCore, ScriptSourceCode's line starts at
         // 1, whereas v8 starts at 0.
-        v8::Handle<v8::Script> script = ScriptSourceCode::compileScript(code, source.url(), source.startPosition(), scriptData.get());
+        v8::Handle<v8::Script> script = ScriptSourceCode::compileScript(code, source.url(), source.startPosition(), scriptData.get(), m_isolate);
 #if PLATFORM(CHROMIUM)
         TRACE_EVENT_END0("v8", "v8.compile");
         TRACE_EVENT0("v8", "v8.run");
@@ -418,7 +419,7 @@ void ScriptController::evaluateInIsolatedWorld(int worldID, const Vector<ScriptS
 
 bool ScriptController::shouldBypassMainWorldContentSecurityPolicy()
 {
-    if (DOMWrapperWorld* world = worldForEnteredContextIfIsolated())
+    if (DOMWrapperWorld* world = isolatedWorldForEnteredContext())
         return world->isolatedWorldHasContentSecurityPolicy();
     return false;
 }
@@ -446,7 +447,7 @@ v8::Local<v8::Context> ScriptController::currentWorldContext()
         return contextForWorld(this, mainThreadNormalWorld());
 
     v8::Handle<v8::Context> context = v8::Context::GetEntered();
-    DOMWrapperWorld* isolatedWorld = DOMWrapperWorld::isolated(context);
+    DOMWrapperWorld* isolatedWorld = DOMWrapperWorld::isolatedWorld(context);
     if (!isolatedWorld)
         return contextForWorld(this, mainThreadNormalWorld());
 

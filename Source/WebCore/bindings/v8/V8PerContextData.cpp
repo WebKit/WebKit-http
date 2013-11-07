@@ -39,13 +39,14 @@ namespace WebCore {
 void V8PerContextData::dispose()
 {
     v8::HandleScope handleScope;
+    v8::Isolate* isolate = m_context->GetIsolate();
     m_context->SetAlignedPointerInEmbedderData(v8ContextPerContextDataIndex, 0);
 
     {
         WrapperBoilerplateMap::iterator it = m_wrapperBoilerplates.begin();
         for (; it != m_wrapperBoilerplates.end(); ++it) {
             v8::Persistent<v8::Object> wrapper = it->value;
-            wrapper.Dispose();
+            wrapper.Dispose(isolate);
             wrapper.Clear();
         }
         m_wrapperBoilerplates.clear();
@@ -55,7 +56,7 @@ void V8PerContextData::dispose()
         ConstructorMap::iterator it = m_constructorMap.begin();
         for (; it != m_constructorMap.end(); ++it) {
             v8::Persistent<v8::Function> wrapper = it->value;
-            wrapper.Dispose();
+            wrapper.Dispose(isolate);
             wrapper.Clear();
         }
         m_constructorMap.clear();
@@ -102,7 +103,7 @@ v8::Local<v8::Object> V8PerContextData::createWrapperFromCacheSlowCase(WrapperTy
     v8::Local<v8::Function> function = constructorForType(type);
     v8::Local<v8::Object> instance = V8ObjectConstructor::newInstance(function);
     if (!instance.IsEmpty()) {
-        m_wrapperBoilerplates.set(type, v8::Persistent<v8::Object>::New(instance));
+        m_wrapperBoilerplates.set(type, v8::Persistent<v8::Object>::New(m_context->GetIsolate(), instance));
         return instance->Clone();
     }
     return v8::Local<v8::Object>();
@@ -114,7 +115,7 @@ v8::Local<v8::Function> V8PerContextData::constructorForTypeSlowCase(WrapperType
     ASSERT(!m_objectPrototype.isEmpty());
 
     v8::Context::Scope scope(m_context);
-    v8::Handle<v8::FunctionTemplate> functionTemplate = type->getTemplate();
+    v8::Handle<v8::FunctionTemplate> functionTemplate = type->getTemplate(m_context->GetIsolate(), worldType(m_context->GetIsolate()));
     // Getting the function might fail if we're running out of stack or memory.
     v8::TryCatch tryCatch;
     v8::Local<v8::Function> function = functionTemplate->GetFunction();
@@ -125,12 +126,15 @@ v8::Local<v8::Function> V8PerContextData::constructorForTypeSlowCase(WrapperType
     v8::Local<v8::Value> prototypeValue = function->Get(v8::String::NewSymbol("prototype"));
     if (!prototypeValue.IsEmpty() && prototypeValue->IsObject()) {
         v8::Local<v8::Object> prototypeObject = v8::Local<v8::Object>::Cast(prototypeValue);
-        type->installPerContextPrototypeProperties(prototypeObject);
+        if (prototypeObject->InternalFieldCount() == v8PrototypeInternalFieldcount
+            && type->wrapperTypePrototype == WrapperTypeObjectPrototype)
+            prototypeObject->SetAlignedPointerInInternalField(v8PrototypeTypeIndex, type);
+        type->installPerContextPrototypeProperties(prototypeObject, m_context->GetIsolate());
         if (type->wrapperTypePrototype == WrapperTypeErrorPrototype)
             prototypeObject->SetPrototype(m_errorPrototype.get());
     }
 
-    m_constructorMap.set(type, v8::Persistent<v8::Function>::New(function));
+    m_constructorMap.set(type, v8::Persistent<v8::Function>::New(m_context->GetIsolate(), function));
 
     return function;
 }

@@ -1,13 +1,9 @@
-include $(srcdir)/Source/WebCore/GNUmakefile.features.am
 include $(srcdir)/Source/WebCore/GNUmakefile.list.am
 
 WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSPropertyNames.in
 WEBCORE_CSS_VALUE_KEYWORDS := $(WebCore)/css/CSSValueKeywords.in
 
 webcore_cppflags += \
-	-DWTF_USE_FREETYPE=1 \
-	-DWTF_USE_HARFBUZZ=1 \
-	-DWTF_USE_WEBP=1 \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/src \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include/GLSLANG \
@@ -114,9 +110,6 @@ webcore_cppflags += \
 
 webcoregtk_cppflags += \
 	-DWEBKITGTK_API_VERSION_STRING=\"@WEBKITGTK_API_VERSION@\" \
-	-DWTF_USE_FREETYPE=1 \
-	-DWTF_USE_HARFBUZZ_NG=1 \
-	-DWTF_USE_SOUP=1 \
 	-I$(srcdir)/Source/WebCore/accessibility/atk \
 	-I$(srcdir)/Source/WebCore/loader/gtk \
 	-I$(srcdir)/Source/WebCore/page/gtk \
@@ -143,80 +136,11 @@ webcoregtk_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/graphics/win
 endif # END TARGET_WIN32
 
-# ----
-# Gamepad support
-# ---
-if ENABLE_GAMEPAD
-feature_defines_overrides += ENABLE_GAMEPAD=1
-else
-feature_defines_overrides += ENABLE_GAMEPAD=0
-endif # END ENABLE_GAMEPAD
-
-# ----
-# Video Support
-# ----
-if ENABLE_VIDEO
-feature_defines_overrides += ENABLE_VIDEO=1
-if USE_GSTREAMER
-if ENABLE_DEBUG
-webcore_cppflags += -DGST_DISABLE_DEPRECATED
-endif # END ENABLE_DEBUG
-webcore_cppflags += -DWTF_USE_NATIVE_FULLSCREEN_VIDEO=1
-endif # END USE_GSTREAMER
-else
-feature_defines_overrides += ENABLE_VIDEO=0 ENABLE_VIDEO_TRACK=0
-endif # END ENABLE_VIDEO
-
-# ----
-# Filters
-# ----
-if ENABLE_CSS_FILTERS
-feature_defines_overrides += ENABLE_CSS_FILTERS=1
-else
-feature_defines_overrides += ENABLE_CSS_FILTERS=0
-endif # END ENABLE_CSS_FILTERS
-
-# ----
-# Media Stream Support
-# ----
-if ENABLE_MEDIA_STREAM
-feature_defines_overrides += ENABLE_MEDIA_STREAM=1
-else
-feature_defines_overrides += ENABLE_MEDIA_STREAM=0
-endif # END ENABLE_MEDIA_STREAM
-
 # XPath grammar
 $(GENSOURCES_WEBCORE)/XPathGrammar.h: $(GENSOURCES_WEBCORE)/XPathGrammar.cpp
 $(GENSOURCES_WEBCORE)/XPathGrammar.cpp: $(WebCore)/xml/XPathGrammar.y
 	$(AM_V_GEN)
 	$(AM_V_at)perl $(WebCore)/css/makegrammar.pl --outputDir $(GENSOURCES_WEBCORE) --bison "$(BISON)" --symbolsPrefix xpathyy $<
-
-# ----
-# XSLT Support
-# ----
-if ENABLE_XSLT
-feature_defines_overrides += ENABLE_XSLT=1
-else
-feature_defines_overrides += ENABLE_XSLT=0
-endif # END ENABLE_XSLT
-
-# ----
-# Shaders
-# ----
-if ENABLE_CSS_SHADERS
-feature_defines_overrides += ENABLE_CSS_SHADERS=1
-else
-feature_defines_overrides += ENABLE_CSS_SHADERS=0
-endif # END ENABLE_CSS_SHADERS
-
-# ----
-# Geolocation
-# ----
-if ENABLE_GEOLOCATION
-feature_defines_overrides += ENABLE_GEOLOCATION=1
-else
-feature_defines_overrides += ENABLE_GEOLOCATION=0
-endif # END ENABLE_GEOLOCATION
 
 # MathML tag and attribute names, and element factory
 DerivedSources/WebCore/MathMLElementFactory.h: DerivedSources/WebCore/MathMLElementFactory.cpp
@@ -237,11 +161,11 @@ libWebCoreSVG_la_SOURCES = \
 	$(webcore_svg_sources)
 
 libWebCoreSVG_la_CXXFLAGS = \
-	$(SYMBOL_VISIBILITY_INLINES) \
+	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
 
 libWebCoreSVG_la_CFLAGS = \
-	$(SYMBOL_VISIBILITY) \
+	-fvisibility=hidden \
 	$(global_cflags)
 
 libWebCoreSVG_la_CPPFLAGS = \
@@ -257,18 +181,10 @@ libWebCoreSVG_la_CPPFLAGS = \
 	$(LIBSOUP_CFLAGS) \
 	$(UNICODE_CFLAGS)
 
-feature_defines_overrides += ENABLE_SVG=1
 WEBCORE_CSS_PROPERTY_NAMES += $(WebCore)/css/SVGCSSPropertyNames.in
 WEBCORE_CSS_VALUE_KEYWORDS += $(WebCore)/css/SVGCSSValueKeywords.in
-# SVG Features
-if ENABLE_SVG_FONTS
-feature_defines_overrides += ENABLE_SVG_FONTS=1
-else
-feature_defines_overrides += ENABLE_SVG_FONTS=0
-endif
-else
-feature_defines_overrides += ENABLE_SVG=0 ENABLE_SVG_FONTS=0
-endif # END ENABLE_SVG
+
+endif # END_ENABLE_SVG
 
 # SVG tag and attribute names (need to pass an extra flag if svg experimental features are enabled)
 DerivedSources/WebCore/SVGNames.cpp: DerivedSources/WebCore/SVGElementFactory.cpp
@@ -281,37 +197,6 @@ DerivedSources/WebCore/SVGElementFactory.cpp: $(WebCore)/dom/make_names.pl $(Web
 DerivedSources/WebCore/XLinkNames.h: DerivedSources/WebCore/XLinkNames.cpp
 DerivedSources/WebCore/XLinkNames.cpp : $(WebCore)/dom/make_names.pl $(WebCore)/svg/xlinkattrs.in
 	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $< --attrs $(WebCore)/svg/xlinkattrs.in --outputDir "$(GENSOURCES_WEBCORE)"
-
-# ----
-# Web Audio Support
-# ----
-if ENABLE_WEB_AUDIO
-feature_defines_overrides += ENABLE_WEB_AUDIO=1
-else
-feature_defines_overrides += ENABLE_WEB_AUDIO=0
-endif
-
-if USE_WEBAUDIO_GSTREAMER
-webcore_cppflags += -DWTF_USE_WEBAUDIO_GSTREAMER=1
-endif
-
-# ---
-# 3D canvas (WebGL) support
-# ---
-if ENABLE_WEBGL
-feature_defines_overrides += ENABLE_WEBGL=1
-else
-feature_defines_overrides += ENABLE_WEBGL=0
-endif  # END ENABLE_WEBGL
-
-# ---
-# Accelerated compositing support
-# ---
-if USE_ACCELERATED_COMPOSITING
-feature_defines_overrides += ENABLE_3D_RENDERING=1
-else
-feature_defines_overrides += ENABLE_3D_RENDERING=0
-endif  # END USE_ACCELERATED_COMPOSITING
 
 if USE_TEXTURE_MAPPER_CAIRO
 webcore_cppflags += \
@@ -329,41 +214,12 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/graphics/clutter
 endif  # END USE_CLUTTER
 
-# ---
-# Spell check support
-# ---
-if ENABLE_SPELLCHECK
-feature_defines_overrides += ENABLE_SPELLCHECK=1
-else
-feature_defines_overrides += ENABLE_SPELLCHECK=0
-endif  # END ENABLE_SPELLCHECK
-
 if ENABLE_INDEXED_DATABASE
 webcore_cppflags += \
 	-DWTF_USE_LEVELDB=1 \
 	-I$(srcdir)/Source/ThirdParty/leveldb \
 	-I$(srcdir)/Source/ThirdParty/leveldb/include
 endif
-
-# Fill the feature_defines variable with all the defines, making it possible
-# to override the default define value (as set in feature_defines_defaults)
-# through adding the feature define with the desired value to either
-# feature_defines_unstable or feature_defines_overrides.
-feature_defines += $(strip $(foreach bare_define, \
-	$(foreach define,$(feature_defines_defaults), \
-		$(foreach fvalue,0 1, \
-			$(if $(findstring =$(fvalue),$(define)),$(patsubst %=$(fvalue),%,$(define))) \
-		) \
-	), \
-	$(if $(findstring $(bare_define)=, $(feature_defines_overrides)), \
-		$(filter $(bare_define)=%,$(feature_defines_overrides)), \
-		$(filter $(bare_define)=%,$(feature_defines_defaults)) \
-	) \
-))
-
-# Add the feature defines to webcore_cppflags in macro form.
-webcore_cppflags += $(foreach define,$(feature_defines),-D$(define))
-
 
 $(WEBCORE_CSS_PROPERTY_NAMES): $(srcdir)/configure.ac $(srcdir)/Source/WebCore/GNUmakefile.am
 
@@ -586,7 +442,7 @@ endif
 # Artificial dependency to try to force a relink of the WebCore libraries
 # When their makefiles change.
 webcore_lib_for_dep = libWebCore.la
-$(webcore_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source/WebCore/GNUmakefile.list.am
+$(webcore_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source/WebCore/GNUmakefile.list.am $(srcdir)/Source/autotools/symbols.filter
 
 webcoremodules_lib_for_dep = libWebcoreModules.la
 $(webcoremodules_lib_for_dep): $(srcdir)/Source/WebCore/GNUmakefile.am $(srcdir)/Source/WebCore/GNUmakefile.list.am
@@ -607,11 +463,11 @@ libWebCore_la_SOURCES = \
 	$(webcore_sources)
 
 libWebCore_la_CXXFLAGS = \
-	$(SYMBOL_VISIBILITY_INLINES) \
+	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
 
 libWebCore_la_CFLAGS = \
-	$(SYMBOL_VISIBILITY) \
+	-fvisibility=hidden \
 	$(global_cflags)
 
 libWebCore_la_CPPFLAGS = \
@@ -673,10 +529,10 @@ endif
 libWebCorePlatform_la_SOURCES = \
 	$(webcore_platform_sources)
 libWebCorePlatform_la_CXXFLAGS = \
-	$(SYMBOL_VISIBILITY_INLINES) \
+	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
 libWebCorePlatform_la_CFLAGS = \
-	$(SYMBOL_VISIBILITY) \
+	-fvisibility=hidden \
 	$(global_cflags)
 libWebCorePlatform_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
@@ -716,11 +572,11 @@ libWebCoreGtk_la_SOURCES = \
 	$(webcoregtk_sources)
 
 libWebCoreGtk_la_CXXFLAGS = \
-	$(SYMBOL_VISIBILITY_INLINES) \
+	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
 
 libWebCoreGtk_la_CFLAGS = \
-	$(SYMBOL_VISIBILITY) \
+	-fvisibility=hidden \
 	$(global_cflags)
 
 libWebCoreGtk_la_CPPFLAGS = \
@@ -736,7 +592,6 @@ libWebCoreGtk_la_CPPFLAGS = \
 	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
-	$(FARSTREAM_CFLAGS) \
 	$(FREETYPE_CFLAGS) \
 	$(GAIL_CFLAGS) \
 	$(GAMEPAD_CFLAGS) \
@@ -780,6 +635,7 @@ EXTRA_DIST += \
 	$(wildcard $(srcdir)/Source/WebCore/inspector/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/loader/appcache/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/page/*.idl) \
+	$(wildcard $(srcdir)/Source/WebCore/platform/gtk/po/*) \
 	$(wildcard $(srcdir)/Source/WebCore/plugins/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/storage/*.idl) \
 	$(wildcard $(srcdir)/Source/WebCore/svg/*.idl) \
@@ -834,6 +690,7 @@ EXTRA_DIST += \
 	Source/WebCore/html/parser/HTMLEntityNames.in \
 	Source/WebCore/icu/LICENSE \
 	Source/WebCore/inspector/CodeGeneratorInspector.py \
+	Source/WebCore/inspector/CodeGeneratorInspectorStrings.py \
 	Source/WebCore/inspector/InjectedScriptCanvasModuleSource.js \
 	Source/WebCore/inspector/InjectedScriptSource.js \
 	Source/WebCore/inspector/Inspector.json \

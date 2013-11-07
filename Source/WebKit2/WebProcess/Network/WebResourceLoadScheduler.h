@@ -63,12 +63,12 @@ public:
     void networkProcessCrashed();
 
 private:
-    void scheduleLoad(WebCore::ResourceLoader*, WebCore::ResourceLoadPriority);
-    void addUnschedulableLoad(WebCore::ResourceLoader*);
-    void unscheduledLoadTimerFired();
+    void scheduleLoad(WebCore::ResourceLoader*, WebCore::ResourceLoadPriority, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
+    void scheduleInternallyFailedLoad(WebCore::ResourceLoader*);
+    void internallyFailedLoadTimerFired();
     
-    HashSet<RefPtr<WebCore::ResourceLoader> > m_unschedulableResourceLoaders;
-    WebCore::RunLoop::Timer<WebResourceLoadScheduler> m_unschedulableLoadTimer;
+    HashSet<RefPtr<WebCore::ResourceLoader> > m_internallyFailedResourceLoaders;
+    WebCore::RunLoop::Timer<WebResourceLoadScheduler> m_internallyFailedLoadTimer;
     
     HashMap<unsigned long, RefPtr<WebResourceLoader> > m_webResourceLoaders;
     

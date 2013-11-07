@@ -43,7 +43,7 @@ namespace WTF {
 //
 // ... write this:
 //
-//     ENUM_CLASS_BEGIN(MyEnums) {
+//     ENUM_CLASS(MyEnums) {
 //         Value1,
 //         Value2,
 //         ...
@@ -54,7 +54,8 @@ namespace WTF {
 // Otherwise, it will use the EnumClass template below.
 
 #if COMPILER_SUPPORTS(CXX_STRONG_ENUMS)
-#define ENUM_CLASS_BEGIN(__enumName) \
+
+#define ENUM_CLASS(__enumName) \
     enum class __enumName
 
 #define ENUM_CLASS_END(__enumName)
@@ -100,11 +101,20 @@ public:
     ALWAYS_INLINE bool operator>(const EnumClass other) { return m_value > other.m_value; }
     ALWAYS_INLINE bool operator>=(const EnumClass other) { return m_value >= other.m_value; }
 
+    ALWAYS_INLINE bool operator==(const Value value) { return m_value == value; }
+    ALWAYS_INLINE bool operator!=(const Value value) { return m_value != value; }
+    ALWAYS_INLINE bool operator<(const Value value) { return m_value < value; }
+    ALWAYS_INLINE bool operator<=(const Value value) { return m_value <= value; }
+    ALWAYS_INLINE bool operator>(const Value value) { return m_value > value; }
+    ALWAYS_INLINE bool operator>=(const Value value) { return m_value >= value; }
+
+    ALWAYS_INLINE operator Value() { return m_value; }
+
 private:
     Value m_value;
 };
 
-#define ENUM_CLASS_BEGIN(__enumName) \
+#define ENUM_CLASS(__enumName) \
     struct __enumName ## Definition { \
         enum Enums
 

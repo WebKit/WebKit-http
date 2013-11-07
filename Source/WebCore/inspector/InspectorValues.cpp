@@ -626,7 +626,7 @@ void InspectorBasicValue::writeJSON(StringBuilder* output) const
             output->append(falseString, 5);
     } else if (type() == TypeNumber) {
         NumberToLStringBuffer buffer;
-        if (!isfinite(m_doubleValue)) {
+        if (!std::isfinite(m_doubleValue)) {
             output->append(nullString, 4);
             return;
         }
@@ -789,7 +789,7 @@ InspectorArrayBase::InspectorArrayBase()
 
 PassRefPtr<InspectorValue> InspectorArrayBase::get(size_t index)
 {
-    ASSERT(index < m_data.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(index < m_data.size());
     return m_data[index];
 }
 

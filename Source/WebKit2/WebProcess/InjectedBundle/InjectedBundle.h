@@ -119,12 +119,12 @@ public:
     void addOriginAccessWhitelistEntry(const String&, const String&, const String&, bool);
     void removeOriginAccessWhitelistEntry(const String&, const String&, const String&, bool);
     void resetOriginAccessWhitelists();
+    void setAsynchronousSpellCheckingEnabled(WebPageGroupProxy*, bool);
     int numberOfPages(WebFrame*, double, double);
     int pageNumberForElementById(WebFrame*, const String&, double, double);
     String pageSizeAndMarginsInPixels(WebFrame*, int, int, int, int, int, int, int);
     bool isPageBoxVisible(WebFrame*, int);
     void setUserStyleSheetLocation(WebPageGroupProxy*, const String&);
-    void setMinimumTimerInterval(WebPageGroupProxy*, double seconds);
     void setWebNotificationPermission(WebPage*, const String& originString, bool allowed);
     void removeAllWebNotificationPermissions(WebPage*);
     uint64_t webNotificationID(JSContextRef, JSValueRef);
@@ -167,8 +167,6 @@ public:
     static void reportException(JSContextRef, JSValueRef exception);
 
     static bool isProcessingUserGesture();
-
-    static size_t workerThreadCount();
 
     void setTabKeyCyclesThroughElements(WebPage*, bool enabled);
     void setSerialLoadingEnabled(bool);

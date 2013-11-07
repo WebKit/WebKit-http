@@ -2,33 +2,30 @@
 <head>
 <script src="../../http/tests/inspector/inspector-test.js"></script>
 <script src="../../http/tests/inspector/debugger-test.js"></script>
+<script src="../../http/tests/inspector/workspace-test.js"></script>
 
 <script>
 function test()
 {
-    // Always use indentation in scripts drop box
-    WebInspector._isMac = false;
     WebInspector.showPanel("scripts");
-
-    var navigator = new WebInspector.ScriptsNavigator();
+    InspectorTest.createWorkspace(true);
+    var panel = new WebInspector.ScriptsPanel(InspectorTest.testWorkspace);
+    var navigator = panel._navigator;
 
     var uiSourceCodes = [];
     function addUISourceCode(url, isContentScript)
     {
-        var uiSourceCode = new WebInspector.UISourceCode(WebInspector.workspace, url, url, url, WebInspector.resourceTypes.Script, null);
-        uiSourceCode.isContentScript = isContentScript;
-        navigator.addUISourceCode(uiSourceCode);
+        var contentProvider = new WebInspector.StaticContentProvider(WebInspector.resourceTypes.Script, "", "text/javascript");
+        var uiSourceCode = InspectorTest.testNetworkWorkspaceProvider.addFileForURL(url, contentProvider, false, isContentScript);
         uiSourceCodes.push(uiSourceCode);
     }
 
-    function dumpScriptsList(noReveal)
+    function dumpScriptsList()
     {
         InspectorTest.addResult("");
-        InspectorTest.addResult("WebInspector.settings.showScriptFolders = " + WebInspector.settings.showScriptFolders.get());
-
         InspectorTest.dumpScriptsNavigator(navigator);
-        if (noReveal)
-            return;
+        navigator.revealUISourceCode(uiSourceCodes[0]);
+        InspectorTest.dumpScriptsNavigator(navigator);
         for (var i = 0; i < uiSourceCodes.length; ++i)
             navigator.revealUISourceCode(uiSourceCodes[i]);
         InspectorTest.dumpScriptsNavigator(navigator);
@@ -61,15 +58,7 @@ function test()
         "extension-schema://extension-name/folder/baz.js" ];
     for (var i = 0; i < extensions.length; ++i)
         addUISourceCode(extensions[i], true);
-    addUISourceCode("*Non*URL*path", true);
-
-    try {
-        dumpScriptsList();
-        WebInspector.settings.showScriptFolders.set(false);
-        dumpScriptsList(true);
-    } finally {
-        WebInspector.settings.showScriptFolders.set(true);
-    }
+    addUISourceCode("*Another*Non*URL*path", true);
     dumpScriptsList();
     InspectorTest.completeTest();
 }

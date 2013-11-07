@@ -14,6 +14,7 @@ IDBRequest conditional=INDEXED_DATABASE
 IDBTransaction conditional=INDEXED_DATABASE
 ScriptProcessorNode conditional=WEB_AUDIO
 LocalMediaStream conditional=MEDIA_STREAM
+MediaKeySession conditional=ENCRYPTED_MEDIA_V2
 MediaController conditional=VIDEO
 MediaSource conditional=MEDIA_SOURCE
 MediaStream conditional=MEDIA_STREAM
@@ -24,6 +25,7 @@ Node
 Notification conditional=NOTIFICATIONS|LEGACY_NOTIFICATIONS
 Performance conditional=WEB_TIMING
 RTCDataChannel conditional=MEDIA_STREAM
+RTCDTMFSender conditional=MEDIA_STREAM
 RTCPeerConnection conditional=MEDIA_STREAM
 SharedWorker conditional=SHARED_WORKERS
 SharedWorkerContext conditional=SHARED_WORKERS

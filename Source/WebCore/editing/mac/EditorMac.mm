@@ -47,6 +47,7 @@
 #import "RenderBlock.h"
 #import "RuntimeApplicationChecks.h"
 #import "Sound.h"
+#import "StylePropertySet.h"
 #import "Text.h"
 #import "TypingCommand.h"
 #import "htmlediting.h"
@@ -153,11 +154,8 @@ const SimpleFontData* Editor::fontForSelection(bool& hasMultipleFonts) const
         if (style)
             result = style->font().primaryFont();
 
-        if (nodeToRemove) {
-            ExceptionCode ec;
-            nodeToRemove->remove(ec);
-            ASSERT(!ec);
-        }
+        if (nodeToRemove)
+            nodeToRemove->remove(ASSERT_NO_EXCEPTION);
 
         return result;
     }
@@ -242,46 +240,8 @@ NSDictionary* Editor::fontAttributesForSelectionStart() const
     if (decoration & UNDERLINE)
         [result setObject:[NSNumber numberWithInt:NSUnderlineStyleSingle] forKey:NSUnderlineStyleAttributeName];
 
-    if (nodeToRemove) {
-        ExceptionCode ec = 0;
-        nodeToRemove->remove(ec);
-        ASSERT(ec == 0);
-    }
-
-    return result;
-}
-
-WritingDirection Editor::baseWritingDirectionForSelectionStart() const
-{
-    WritingDirection result = LeftToRightWritingDirection;
-
-    Position pos = m_frame->selection()->selection().visibleStart().deepEquivalent();
-    Node* node = pos.deprecatedNode();
-    if (!node)
-        return result;
-
-    RenderObject* renderer = node->renderer();
-    if (!renderer)
-        return result;
-
-    if (!renderer->isBlockFlow()) {
-        renderer = renderer->containingBlock();
-        if (!renderer)
-            return result;
-    }
-
-    RenderStyle* style = renderer->style();
-    if (!style)
-        return result;
-        
-    switch (style->direction()) {
-        case LTR:
-            result = LeftToRightWritingDirection;
-            break;
-        case RTL:
-            result = RightToLeftWritingDirection;
-            break;
-    }
+    if (nodeToRemove)
+        nodeToRemove->remove(ASSERT_NO_EXCEPTION);
 
     return result;
 }

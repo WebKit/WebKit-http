@@ -25,6 +25,7 @@
 #include "DocumentWriter.h"
 #include "Frame.h"
 #include "HTMLInputElement.h"
+#include "NotImplemented.h"
 #include "Page.h"
 #include "PagePopup.h"
 #include "PopupPicker.h"
@@ -119,9 +120,9 @@ String DatePickerClient::htmlSource()
     return m_source;
 }
 
-Localizer& SelectPopupClient::localizer()
+Locale& DatePickerClient::locale()
 {
-    return m_element->document()->getCachedLocalizer();
+    return m_element->document()->getCachedLocale();
 }
 
 void DatePickerClient::setValueAndClosePopup(int, const String& value)
@@ -135,6 +136,11 @@ void DatePickerClient::setValueAndClosePopup(int, const String& value)
     if (value != "-1")
         m_element->setValue(value);
     closePopup();
+}
+
+void DatePickerClient::setValue(const String& value)
+{
+    notImplemented();
 }
 
 void DatePickerClient::didClosePopup()

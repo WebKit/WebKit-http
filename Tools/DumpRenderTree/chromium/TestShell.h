@@ -31,7 +31,6 @@
 #ifndef TestShell_h
 #define TestShell_h
 
-#include "NotificationPresenter.h"
 #include "TestEventPrinter.h"
 #include "WebPreferences.h"
 #include "WebTestInterfaces.h"
@@ -46,7 +45,6 @@
 namespace WebKit {
 class WebDevToolsAgentClient;
 class WebFrame;
-class WebNotificationPresenter;
 class WebThread;
 class WebView;
 class WebURL;
@@ -56,6 +54,7 @@ class DRTDevToolsAgent;
 class DRTDevToolsCallArgs;
 class DRTDevToolsClient;
 class MockWebPrerenderingSupport;
+class MockPlatform;
 
 struct TestParams {
     bool dumpTree;
@@ -77,18 +76,13 @@ public:
     TestShell();
     ~TestShell();
 
-    void initialize();
+    void initialize(MockPlatform*);
 
     // The main WebView.
     WebKit::WebView* webView() const { return m_webView; }
     // Returns the host for the main WebView.
     WebViewHost* webViewHost() const { return m_webViewHost.get(); }
     WebTestRunner::WebTestRunner* testRunner() const { return m_testInterfaces->testRunner(); }
-    WebTestRunner::WebEventSender* eventSender() const { return m_testInterfaces->eventSender(); }
-    WebTestRunner::WebAccessibilityController* accessibilityController() const { return m_testInterfaces->accessibilityController(); }
-#if ENABLE(NOTIFICATIONS)
-    NotificationPresenter* notificationPresenter() const { return m_notificationPresenter.get(); }
-#endif
     const TestEventPrinter* printer() const { return &m_printer; }
 
     WebTestRunner::WebPreferences* preferences() { return &m_prefs; }
@@ -125,6 +119,7 @@ public:
     void setSoftwareCompositingEnabled(bool enabled) { m_softwareCompositingEnabled = enabled; }
     void setThreadedCompositingEnabled(bool enabled) { m_threadedCompositingEnabled = enabled; }
     void setForceCompositingMode(bool enabled) { m_forceCompositingMode = enabled; }
+    void setThreadedHTMLParser(bool enabled) { m_threadedHTMLParser = enabled; }
     void setAccelerated2dCanvasEnabled(bool enabled) { m_accelerated2dCanvasEnabled = enabled; }
     void setDeferred2dCanvasEnabled(bool enabled) { m_deferred2dCanvasEnabled = enabled; }
     void setAcceleratedPaintingEnabled(bool enabled) { m_acceleratedPaintingEnabled = enabled; }
@@ -165,6 +160,7 @@ public:
     void closeWindow(WebViewHost*);
     void closeRemainingWindows();
     int windowCount();
+    void captureHistoryForWindow(size_t windowIndex, WebKit::WebVector<WebKit::WebHistoryItem>*, size_t* currentEntryIndex);
     static void resizeWindowForTest(WebViewHost*, const WebKit::WebURL&);
 
     void showDevTools();
@@ -179,9 +175,7 @@ public:
     typedef Vector<WebViewHost*> WindowList;
     WindowList windowList() const { return m_windowList; }
 
-    // Returns a string representation of an URL's spec that does not depend on
-    // the location of the layout test in the file system.
-    std::string normalizeLayoutTestURL(const std::string&);
+    WebKit::WebThread* webCompositorThread() const { return m_webCompositorThread.get(); }
 
 private:
     WebViewHost* createNewWindow(const WebKit::WebURL&, DRTDevToolsAgent*, WebTestRunner::WebTestInterfaces*);
@@ -205,9 +199,6 @@ private:
     OwnPtr<DRTDevToolsClient> m_drtDevToolsClient;
     OwnPtr<WebTestRunner::WebTestInterfaces> m_testInterfaces;
     OwnPtr<WebTestRunner::WebTestInterfaces> m_devToolsTestInterfaces;
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    OwnPtr<NotificationPresenter> m_notificationPresenter;
-#endif
     // It's important that this thread is destroyed after the WebViewHost.
     OwnPtr<WebKit::WebThread> m_webCompositorThread;
     OwnPtr<WebViewHost> m_webViewHost;
@@ -225,6 +216,7 @@ private:
     bool m_softwareCompositingEnabled;
     bool m_threadedCompositingEnabled;
     bool m_forceCompositingMode;
+    bool m_threadedHTMLParser;
     bool m_accelerated2dCanvasEnabled;
     bool m_deferred2dCanvasEnabled;
     bool m_acceleratedPaintingEnabled;

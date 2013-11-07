@@ -27,6 +27,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import datetime
 import logging
 import os
 import re
@@ -245,13 +246,32 @@ class Git(SCM, SVNRepository):
     def display_name(self):
         return "git"
 
+    def _most_recent_log_matching(self, grep_str, path):
+        # We use '--grep=' + foo rather than '--grep', foo because
+        # git 1.7.0.4 (and earlier) didn't support the separate arg.
+        return self._run_git(['log', '-1', '--grep=' + grep_str, '--date=iso', self.find_checkout_root(path)])
+
     def svn_revision(self, path):
-        _log.debug('Running git.head_svn_revision... (Temporary logging message)')
-        git_log = self._run_git(['log', '-25', path])
+        git_log = self._most_recent_log_matching('git-svn-id:', path)
         match = re.search("^\s*git-svn-id:.*@(?P<svn_revision>\d+)\ ", git_log, re.MULTILINE)
         if not match:
             return ""
         return str(match.group('svn_revision'))
+
+    def timestamp_of_revision(self, path, revision):
+        git_log = self._most_recent_log_matching('git-svn-id:.*@%s' % revision, path)
+        match = re.search("^Date:\s*(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) ([+-])(\d{2})(\d{2})$", git_log, re.MULTILINE)
+        if not match:
+            return ""
+
+        # Manually modify the timezone since Git doesn't have an option to show it in UTC.
+        # Git also truncates milliseconds but we're going to ignore that for now.
+        time_with_timezone = datetime.datetime(int(match.group(1)), int(match.group(2)), int(match.group(3)),
+            int(match.group(4)), int(match.group(5)), int(match.group(6)), 0)
+
+        sign = 1 if match.group(7) == '+' else -1
+        time_without_timezone = time_with_timezone - datetime.timedelta(hours=sign * int(match.group(8)), minutes=int(match.group(9)))
+        return time_without_timezone.strftime('%Y-%m-%dT%H:%M:%SZ')
 
     def prepend_svn_revision(self, diff):
         revision = self.head_svn_revision()
@@ -290,6 +310,9 @@ class Git(SCM, SVNRepository):
 
     @memoized
     def git_commit_from_svn_revision(self, svn_revision):
+        # FIXME: https://bugs.webkit.org/show_bug.cgi?id=111668
+        # We should change this to run git log --grep 'git-svn-id' instead
+        # so that we don't require git+svn to be set up.
         git_commit = self._run_git_svn_find_rev('r%s' % svn_revision)
         if not git_commit:
             # FIXME: Alternatively we could offer to update the checkout? Or return None?

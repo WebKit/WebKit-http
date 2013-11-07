@@ -237,8 +237,11 @@ class ChangeLogTest(unittest.TestCase):
         parsed_entries = list(ChangeLog.parse_entries_from_file(changelog_file))
         self.assertEqual(len(parsed_entries), 9)
         self.assertEqual(parsed_entries[0].date_line(), u"2009-08-17  Tor Arne Vestb\xf8  <vestbo@webkit.org>")
+        self.assertEqual(parsed_entries[0].date(), "2009-08-17")
         self.assertEqual(parsed_entries[0].reviewer_text(), "David Levin")
         self.assertEqual(parsed_entries[0].is_touched_files_text_clean(), False)
+        self.assertEqual(parsed_entries[1].date_line(), "2009-08-16  David Kilzer  <ddkilzer@apple.com>")
+        self.assertEqual(parsed_entries[1].date(), "2009-08-16")
         self.assertEqual(parsed_entries[1].author_email(), "ddkilzer@apple.com")
         self.assertEqual(parsed_entries[1].touched_files_text(), "        * Scripts/bugzilla-tool:\n        * Scripts/modules/scm.py:\n")
         self.assertEqual(parsed_entries[1].is_touched_files_text_clean(), True)
@@ -450,6 +453,10 @@ class ChangeLogTest(unittest.TestCase):
             [('New Contributor', 'new@webkit.org'), ('Noob', 'noob@webkit.org')])
         self._assert_parse_authors('Adam Barth  <abarth@webkit.org> && Benjamin Poulain  <bpoulain@apple.com>',
             [('Adam Barth', 'abarth@webkit.org'), ('Benjamin Poulain', 'bpoulain@apple.com')])
+        self._assert_parse_authors(u'Pawe\u0142 Hajdan, Jr.  <phajdan.jr@chromium.org>',
+            [(u'Pawe\u0142 Hajdan, Jr.', u'phajdan.jr@chromium.org')])
+        self._assert_parse_authors(u'Pawe\u0142 Hajdan, Jr.  <phajdan.jr@chromium.org>, Adam Barth  <abarth@webkit.org>',
+            [(u'Pawe\u0142 Hajdan, Jr.', u'phajdan.jr@chromium.org'), (u'Adam Barth', u'abarth@webkit.org')])
 
     def _assert_has_valid_reviewer(self, reviewer_line, expected):
         self.assertEqual(self._entry_with_reviewer(reviewer_line).has_valid_reviewer(), expected)

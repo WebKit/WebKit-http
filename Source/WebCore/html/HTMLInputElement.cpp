@@ -47,6 +47,7 @@
 #include "HTMLCollection.h"
 #include "HTMLDataListElement.h"
 #include "HTMLFormElement.h"
+#include "HTMLImageLoader.h"
 #include "HTMLNames.h"
 #include "HTMLOptionElement.h"
 #include "HTMLParserIdioms.h"
@@ -136,7 +137,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document* docum
 {
     ASSERT(hasTagName(inputTag) || hasTagName(isindexTag));
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    setHasCustomCallbacks();
+    setHasCustomStyleCallbacks();
 #endif
 }
 
@@ -145,6 +146,13 @@ PassRefPtr<HTMLInputElement> HTMLInputElement::create(const QualifiedName& tagNa
     RefPtr<HTMLInputElement> inputElement = adoptRef(new HTMLInputElement(tagName, document, form, createdByParser));
     inputElement->ensureUserAgentShadowRoot();
     return inputElement.release();
+}
+
+HTMLImageLoader* HTMLInputElement::imageLoader()
+{
+    if (!m_imageLoader)
+        m_imageLoader = adoptPtr(new HTMLImageLoader(this));
+    return m_imageLoader.get();
 }
 
 void HTMLInputElement::didAddUserAgentShadowRoot(ShadowRoot*)
@@ -370,16 +378,6 @@ void HTMLInputElement::defaultBlur()
     HTMLTextFormControlElement::blur();
 }
 
-void HTMLInputElement::defaultFocus(bool restorePreviousSelection, FocusDirection direction)
-{
-    HTMLTextFormControlElement::focus(restorePreviousSelection, direction);
-}
-
-void HTMLInputElement::focus(bool restorePreviousSelection, FocusDirection direction)
-{
-    m_inputType->focus(restorePreviousSelection, direction);
-}
-
 bool HTMLInputElement::hasCustomFocusLogic() const
 {
     return m_inputType->hasCustomFocusLogic();
@@ -437,10 +435,9 @@ bool HTMLInputElement::shouldUseInputMethod()
     return m_inputType->shouldUseInputMethod();
 }
 
-void HTMLInputElement::handleFocusEvent(FocusDirection)
+void HTMLInputElement::handleFocusEvent(Node* oldFocusedNode, FocusDirection direction)
 {
-    // FIXME: Pass the FocusDirection argument to InputType:handleFocusEvent.
-    m_inputType->handleFocusEvent();
+    m_inputType->handleFocusEvent(oldFocusedNode, direction);
 }
 
 void HTMLInputElement::handleBlurEvent()
@@ -526,12 +523,12 @@ void HTMLInputElement::updateType()
         registerForSuspensionCallbackIfNeeded();
 
     if (didRespectHeightAndWidth != m_inputType->shouldRespectHeightAndWidthAttributes()) {
-        ASSERT(attributeData());
-        if (Attribute* height = getAttributeItem(heightAttr))
+        ASSERT(elementData());
+        if (const Attribute* height = getAttributeItem(heightAttr))
             attributeChanged(heightAttr, height->value());
-        if (Attribute* width = getAttributeItem(widthAttr))
+        if (const Attribute* width = getAttributeItem(widthAttr))
             attributeChanged(widthAttr, width->value());
-        if (Attribute* align = getAttributeItem(alignAttr))
+        if (const Attribute* align = getAttributeItem(alignAttr))
             attributeChanged(alignAttr, align->value());
     }
 
@@ -606,27 +603,27 @@ bool HTMLInputElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLTextFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLInputElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLInputElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
 {
-    if (attribute.name() == vspaceAttr) {
-        addHTMLLengthToStyle(style, CSSPropertyMarginTop, attribute.value());
-        addHTMLLengthToStyle(style, CSSPropertyMarginBottom, attribute.value());
-    } else if (attribute.name() == hspaceAttr) {
-        addHTMLLengthToStyle(style, CSSPropertyMarginLeft, attribute.value());
-        addHTMLLengthToStyle(style, CSSPropertyMarginRight, attribute.value());
-    } else if (attribute.name() == alignAttr) {
+    if (name == vspaceAttr) {
+        addHTMLLengthToStyle(style, CSSPropertyMarginTop, value);
+        addHTMLLengthToStyle(style, CSSPropertyMarginBottom, value);
+    } else if (name == hspaceAttr) {
+        addHTMLLengthToStyle(style, CSSPropertyMarginLeft, value);
+        addHTMLLengthToStyle(style, CSSPropertyMarginRight, value);
+    } else if (name == alignAttr) {
         if (m_inputType->shouldRespectAlignAttribute())
-            applyAlignmentAttributeToStyle(attribute, style);
-    } else if (attribute.name() == widthAttr) {
+            applyAlignmentAttributeToStyle(value, style);
+    } else if (name == widthAttr) {
         if (m_inputType->shouldRespectHeightAndWidthAttributes())
-            addHTMLLengthToStyle(style, CSSPropertyWidth, attribute.value());
-    } else if (attribute.name() == heightAttr) {
+            addHTMLLengthToStyle(style, CSSPropertyWidth, value);
+    } else if (name == heightAttr) {
         if (m_inputType->shouldRespectHeightAndWidthAttributes())
-            addHTMLLengthToStyle(style, CSSPropertyHeight, attribute.value());
-    } else if (attribute.name() == borderAttr && isImageButton())
-        applyBorderAttributeToStyle(attribute, style);
+            addHTMLLengthToStyle(style, CSSPropertyHeight, value);
+    } else if (name == borderAttr && isImageButton())
+        applyBorderAttributeToStyle(value, style);
     else
-        HTMLTextFormControlElement::collectStyleForPresentationAttribute(attribute, style);
+        HTMLTextFormControlElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
 void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -1072,7 +1069,7 @@ double HTMLInputElement::valueAsNumber() const
 
 void HTMLInputElement::setValueAsNumber(double newValue, ExceptionCode& ec, TextFieldEventBehavior eventBehavior)
 {
-    if (!isfinite(newValue)) {
+    if (!std::isfinite(newValue)) {
         ec = NOT_SUPPORTED_ERR;
         return;
     }
@@ -1231,11 +1228,6 @@ bool HTMLInputElement::willRespondToMouseClickEvents()
 bool HTMLInputElement::isURLAttribute(const Attribute& attribute) const
 {
     return attribute.name() == srcAttr || attribute.name() == formactionAttr || HTMLTextFormControlElement::isURLAttribute(attribute);
-}
-
-bool HTMLInputElement::isFocusableByClickOnLabel() const
-{
-    return m_inputType->isFocusableByClickOnLabel();
 }
 
 String HTMLInputElement::defaultValue() const
@@ -1482,6 +1474,11 @@ void HTMLInputElement::onSearch()
     dispatchEvent(Event::create(eventNames().searchEvent, true, false));
 }
 
+void HTMLInputElement::updateClearButtonVisibility()
+{
+    m_inputType->updateClearButtonVisibility();
+}
+
 void HTMLInputElement::documentDidResumeFromPageCache()
 {
     ASSERT(needsSuspensionCallback());
@@ -1524,7 +1521,9 @@ void HTMLInputElement::removedFrom(ContainerNode* insertionPoint)
 
 void HTMLInputElement::didMoveToNewDocument(Document* oldDocument)
 {
-    m_inputType->willMoveToNewOwnerDocument();
+    if (hasImageLoader())
+        imageLoader()->elementDidMoveToNewDocument();
+
     bool needsSuspensionCallback = this->needsSuspensionCallback();
     if (oldDocument) {
         // Always unregister for cache callbacks when leaving a document, even if we would otherwise like to be registered
@@ -1566,6 +1565,7 @@ void HTMLInputElement::requiredAttributeChanged()
     HTMLTextFormControlElement::requiredAttributeChanged();
     if (CheckedRadioButtons* buttons = checkedRadioButtons())
         buttons->requiredAttributeChanged(this);
+    m_inputType->requiredAttributeChanged();
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -1979,15 +1979,7 @@ void HTMLInputElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) con
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 PassRefPtr<RenderStyle> HTMLInputElement::customStyleForRenderer()
 {
-    RefPtr<RenderStyle> originalStyle = document()->styleResolver()->styleForElement(this);
-    if (!m_inputType->shouldApplyLocaleDirection())
-        return originalStyle.release();
-    TextDirection contentDirection = locale().isRTL() ? RTL : LTR;
-    if (originalStyle->direction() == contentDirection)
-        return originalStyle.release();
-    RefPtr<RenderStyle> style = RenderStyle::clone(originalStyle.get());
-    style->setDirection(contentDirection);
-    return style.release();
+    return m_inputType->customStyleForRenderer(document()->styleResolver()->styleForElement(this));
 }
 #endif
 

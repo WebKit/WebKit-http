@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,7 +50,6 @@
 #include <WebCore/AccessibilityObject.h>
 #include <WebCore/Frame.h>
 #include <WebCore/KURL.h>
-#include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/Page.h>
 #include <wtf/UnusedParam.h>
 
@@ -304,6 +303,26 @@ void WKBundlePageUninstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBu
     toImpl(pageRef)->uninstallPageOverlay(toImpl(pageOverlayRef), true);
 }
 
+void WKBundlePageSetTopOverhangImage(WKBundlePageRef page, WKImageRef image)
+{
+#if PLATFORM(MAC)
+    toImpl(page)->setTopOverhangImage(toImpl(image));
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(image);
+#endif
+}
+
+void WKBundlePageSetBottomOverhangImage(WKBundlePageRef page, WKImageRef image)
+{
+#if PLATFORM(MAC)
+    toImpl(page)->setBottomOverhangImage(toImpl(image));
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(image);
+#endif
+}
+
 bool WKBundlePageHasLocalDataForURL(WKBundlePageRef pageRef, WKURLRef urlRef)
 {
     return toImpl(pageRef)->hasLocalDataForURL(WebCore::KURL(WebCore::KURL(), toWTFString(urlRef)));
@@ -446,13 +465,12 @@ void WKBundlePageConfirmCompositionWithText(WKBundlePageRef pageRef, WKStringRef
     toImpl(pageRef)->confirmCompositionForTesting(toWTFString(text));
 }
 
-bool WKBundlePageCanShowMIMEType(WKBundlePageRef, WKStringRef mimeTypeRef)
+bool WKBundlePageCanShowMIMEType(WKBundlePageRef pageRef, WKStringRef mimeTypeRef)
 {
-    const String mimeType = toWTFString(mimeTypeRef);
-
-    return WebCore::MIMETypeRegistry::canShowMIMEType(mimeType);
+    return toImpl(pageRef)->canShowMIMEType(toWTFString(mimeTypeRef));
 }
 
+#if ENABLE(VIEW_MODE_CSS_MEDIA)
 void WKBundlePageSetViewMode(WKBundlePageRef pageRef, WKStringRef mode)
 {
     String modeWTF = toWTFString(mode);
@@ -469,3 +487,4 @@ void WKBundlePageSetViewMode(WKBundlePageRef pageRef, WKStringRef mode)
     else
         ASSERT_NOT_REACHED();
 }
+#endif // ENABLE(VIEW_MODE_CSS_MEDIA)

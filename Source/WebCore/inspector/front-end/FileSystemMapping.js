@@ -33,20 +33,6 @@
  */
 WebInspector.FileSystemMapping = function() { }
 
-/**
- * @constructor
- */
-WebInspector.FileSystemMapping.FileDescriptor = function(fileSystemPath, filePath)
-{
-    this.fileSystemPath = fileSystemPath;
-    this.filePath = filePath;
-}
-
-WebInspector.FileSystemMapping.Events = {
-    FileSystemAdded: "FileSystemAdded",
-    FileSystemRemoved: "FileSystemRemoved"
-}
-
 WebInspector.FileSystemMapping.prototype = {
     /**
      * @return {Array.<string>}
@@ -54,36 +40,10 @@ WebInspector.FileSystemMapping.prototype = {
     fileSystemPaths: function() { },
 
     /**
-     * @param {string} uri
-     * @return {?WebInspector.FileSystemMapping.FileDescriptor}
-     */
-    fileForURI: function(uri) { },
-
-    /**
-     * @param {WebInspector.FileSystemMapping.FileDescriptor} fileDescriptor
-     * @return {string}
-     */
-    uriForFile: function(fileDescriptor) { },
-
-    /**
-     * @param {string} path
+     * @param {string} prefix
      * @return {?string}
      */
-    uriForPath: function(path) { },
-
-    /**
-     * @param {string} eventType
-     * @param {function(WebInspector.Event)} listener
-     * @param {Object=} thisObject
-     */
-    addEventListener: function(eventType, listener, thisObject) { },
-
-    /**
-     * @param {string} eventType
-     * @param {function(WebInspector.Event)} listener
-     * @param {Object=} thisObject
-     */
-    removeEventListener: function(eventType, listener, thisObject) { }
+    fileSystemPathForPrefix: function(prefix) { }
 }
 
 /**
@@ -95,38 +55,37 @@ WebInspector.FileSystemMappingImpl = function()
 {
     WebInspector.Object.call(this);
     this._fileSystemMappingSetting = WebInspector.settings.createSetting("fileSystemMapping", {});
-    /** @type {!Object.<string, string>} */
-    this._mappedNames = this._fileSystemMappingSetting.get();
+    /** @type {!Object.<string, boolean>} */
+    this._fileSystemPaths = {};
+    this._loadFromSettings();
 }
 
 WebInspector.FileSystemMappingImpl.prototype = {
+    _loadFromSettings: function()
+    {
+        var savedMapping = this._fileSystemMappingSetting.get();
+        this._fileSystemPaths = savedMapping ? /** @type {!Object.<string, string>} */ (savedMapping.registeredFileSystemPaths) || {} : {};
+    },
+
+    _saveToSettings: function()
+    {
+        var savedMapping = {};
+        savedMapping.registeredFileSystemPaths = this._fileSystemPaths;
+        this._fileSystemMappingSetting.set(savedMapping);
+    },
+
+
     /**
      * @param {string} fileSystemPath
      */
     addFileSystemMapping: function(fileSystemPath)
     {
-        if (this._mappedNames[fileSystemPath])
+        if (this._fileSystemPaths[fileSystemPath])
             return;
-        var pathSegments = fileSystemPath.split("/");
-        var mappedName = pathSegments[pathSegments.length - 1];
-        var uniqueMappedName = this._uniqueMappedName(mappedName);
-        this._mappedNames[fileSystemPath] = mappedName;
-        this._fileSystemMappingSetting.set(this._mappedNames);
-        this.dispatchEventToListeners(WebInspector.FileSystemMapping.Events.FileSystemAdded, fileSystemPath);
-    },
 
-    /**
-     * @param {string} mappedName
-     */
-    _uniqueMappedName: function(mappedName)
-    {
-        var uniqueMappedName = mappedName;
-        var i = 1;
-        while (Object.values(this._mappedNames).indexOf(uniqueMappedName) !== -1) {
-            uniqueMappedName = mappedName + " (" + i + ")";
-            ++i;
-        }
-        return uniqueMappedName;
+        this._fileSystemPaths[fileSystemPath] = true;
+        this._saveToSettings();
+        delete this._cachedFileSystemPaths;
     },
 
     /**
@@ -134,10 +93,11 @@ WebInspector.FileSystemMappingImpl.prototype = {
      */
     removeFileSystemMapping: function(fileSystemPath)
     {
-        var uriPrefix = this._uriPrefixForMappedName(this._mappedNames[fileSystemPath]);
-        delete this._mappedNames[fileSystemPath];
-        this._fileSystemMappingSetting.set(this._mappedNames);
-        this.dispatchEventToListeners(WebInspector.FileSystemMapping.Events.FileSystemRemoved, fileSystemPath);
+        if (!this._fileSystemPaths[fileSystemPath])
+            return;
+        delete this._fileSystemPaths[fileSystemPath];
+        this._saveToSettings();
+        delete this._cachedFileSystemPaths;
     },
 
     /**
@@ -145,58 +105,27 @@ WebInspector.FileSystemMappingImpl.prototype = {
      */
     fileSystemPaths: function()
     {
-        return Object.keys(this._mappedNames);
+        return Object.keys(this._fileSystemPaths);
     },
 
     /**
-     * @return {string}
-     */
-    _uriPrefixForMappedName: function(mappedName)
-    {
-        return "file:///" + mappedName + "/";
-    },
-
-    /**
-     * @param {string} uri
-     * @return {?WebInspector.FileSystemMapping.FileDescriptor}
-     */
-    fileForURI: function(uri)
-    {
-        for (var fileSystemPath in this._mappedNames) {
-            var uriPrefix = this._uriPrefixForMappedName(this._mappedNames[fileSystemPath]);
-            if (uri.startsWith(uriPrefix))
-                return new WebInspector.FileSystemMapping.FileDescriptor(fileSystemPath, "/" + uri.substring(uriPrefix.length));
-        }
-        return null;
-    },
-
-    /**
-     * @param {WebInspector.FileSystemMapping.FileDescriptor} fileDescriptor
-     * @return {string}
-     */
-    uriForFile: function(fileDescriptor)
-    {
-        var uriPrefix = this._uriPrefixForMappedName(this._mappedNames[fileDescriptor.fileSystemPath]);
-        return uriPrefix + fileDescriptor.filePath.substring("/".length);
-    },
-    
-    /**
-     * @param {string} path
+     * @param {string} prefix
      * @return {?string}
      */
-    uriForPath: function(path)
+    fileSystemPathForPrefix: function(prefix)
     {
-        for (var fileSystemPath in this._mappedNames) {
-            if (path.startsWith(fileSystemPath)) {
-                var uriPrefix = this._uriPrefixForMappedName(this._mappedNames[fileSystemPath]);
-                var subPath = path.substring(fileSystemPath.length);
-                if (subPath.length === 0)
-                    return uriPrefix;
-                else if (subPath[0] === "/")
-                    return uriPrefix + subPath.substring("/".length);
+        this._cachedFileSystemPaths = this._cachedFileSystemPaths || {};
+        if (this._cachedFileSystemPaths.hasOwnProperty(prefix))
+            return this._cachedFileSystemPaths[prefix];
+        var result = null;
+        for (var fileSystemPath in this._fileSystemPaths) {
+            if (prefix.startsWith(fileSystemPath + "/")) {
+                result = fileSystemPath;
+                break;
             }
         }
-        return null;
+        this._cachedFileSystemPaths[prefix] = result;
+        return result;
     },
 
     __proto__: WebInspector.Object.prototype

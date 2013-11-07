@@ -63,6 +63,7 @@ private:
         void respondToNodeInsertion(Node*);
         void willRemoveNodePreservingChildren(Node*);
         void willRemoveNode(Node*);
+        void didReplaceNode(Node*, Node* newNode);
 
         Node* firstNodeInserted() const { return m_firstNodeInserted.get(); }
         Node* lastLeafInserted() const { return m_lastNodeInserted->lastDescendant(); }
@@ -87,6 +88,8 @@ private:
     void removeUnrenderedTextNodesAtEnds(InsertedNodes&);
     
     void removeRedundantStylesAndKeepStyleSpanInline(InsertedNodes&);
+    void makeInsertedContentRoundTrippableWithHTMLTreeBuilder(InsertedNodes&);
+    void moveNodeOutOfAncestor(PassRefPtr<Node>, PassRefPtr<Node> ancestor);
     void handleStyleSpans(InsertedNodes&);
     void handlePasteAsQuotationNode();
     

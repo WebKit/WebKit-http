@@ -26,7 +26,6 @@
 // This all-in-one cpp file cuts down on template bloat to allow us to build our Windows release build.
 
 #include "ActiveDOMObject.cpp"
-#include "AncestorChainWalker.cpp"
 #include "Attr.cpp"
 #include "BeforeTextInsertedEvent.cpp"
 #include "BeforeUnloadEvent.cpp"
@@ -70,7 +69,6 @@
 #include "DocumentSharedObjectPool.cpp"
 #include "DocumentType.cpp"
 #include "Element.cpp"
-#include "ElementAttributeData.cpp"
 #include "ElementShadow.cpp"
 #include "EntityReference.cpp"
 #include "ErrorEvent.cpp"
@@ -81,9 +79,12 @@
 #include "EventException.cpp"
 #include "EventListenerMap.cpp"
 #include "EventNames.cpp"
+#include "EventPathWalker.cpp"
+#include "EventRetargeter.cpp"
 #include "EventTarget.cpp"
 #include "ExceptionBase.cpp"
 #include "ExceptionCodePlaceholder.cpp"
+#include "FocusEvent.cpp"
 #include "IconURL.cpp"
 #include "IdTargetObserver.cpp"
 #include "IdTargetObserverRegistry.cpp"

@@ -44,7 +44,7 @@ namespace WebCore {
 
 static void fixNANs(double &x)
 {
-    if (isnan(x) || isinf(x))
+    if (std::isnan(x) || std::isinf(x))
         x = 0.0;
 }
 
@@ -56,7 +56,12 @@ PannerNode::PannerNode(AudioContext* context, float sampleRate)
 {
     addInput(adoptPtr(new AudioNodeInput(this)));
     addOutput(adoptPtr(new AudioNodeOutput(this, 2)));
-    
+
+    // Node-specific default mixing rules.
+    m_channelCount = 2;
+    m_channelCountMode = ClampedMax;
+    m_channelInterpretation = AudioBus::Speakers;
+
     m_distanceGain = AudioGain::create(context, "distanceGain", 1.0, 0.0, 1.0);
     m_coneGain = AudioGain::create(context, "coneGain", 1.0, 0.0, 1.0);
 
@@ -104,21 +109,28 @@ void PannerNode::process(size_t framesToProcess)
         return;
     }
 
-    // Apply the panning effect.
-    double azimuth;
-    double elevation;
-    getAzimuthElevation(&azimuth, &elevation);
-    m_panner->pan(azimuth, elevation, source, destination, framesToProcess);
+    // The audio thread can't block on this lock, so we call tryLock() instead.
+    MutexTryLocker tryLocker(m_pannerLock);
+    if (tryLocker.locked()) {
+        // Apply the panning effect.
+        double azimuth;
+        double elevation;
+        getAzimuthElevation(&azimuth, &elevation);
+        m_panner->pan(azimuth, elevation, source, destination, framesToProcess);
 
-    // Get the distance and cone gain.
-    double totalGain = distanceConeGain();
+        // Get the distance and cone gain.
+        double totalGain = distanceConeGain();
 
-    // Snap to desired gain at the beginning.
-    if (m_lastGain == -1.0)
-        m_lastGain = totalGain;
+        // Snap to desired gain at the beginning.
+        if (m_lastGain == -1.0)
+            m_lastGain = totalGain;
         
-    // Apply gain in-place with de-zippering.
-    destination->copyWithGainFrom(*destination, &m_lastGain, totalGain);
+        // Apply gain in-place with de-zippering.
+        destination->copyWithGainFrom(*destination, &m_lastGain, totalGain);
+    } else {
+        // Too bad - The tryLock() failed. We must be in the middle of changing the panner.
+        destination->zero();
+    }
 }
 
 void PannerNode::reset()
@@ -185,6 +197,9 @@ bool PannerNode::setPanningModel(unsigned model)
     case EQUALPOWER:
     case HRTF:
         if (!m_panner.get() || model != m_panningModel) {
+            // This synchronizes with process().
+            MutexLocker processLocker(m_pannerLock);
+            
             OwnPtr<Panner> newPanner = Panner::create(model, sampleRate());
             m_panner = newPanner.release();
             m_panningModel = model;

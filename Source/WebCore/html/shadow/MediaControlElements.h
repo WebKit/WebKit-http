@@ -438,8 +438,8 @@ public:
     static PassRefPtr<MediaControlTextTrackContainerElement> create(Document*);
 
     void updateDisplay();
-    void updateSizes();
-    void createSubtrees(Document*);
+    void updateSizes(bool forceUpdate = false);
+    static const AtomicString& textTrackContainerElementShadowPseudoId();
 
 private:
     explicit MediaControlTextTrackContainerElement(Document*);
@@ -453,7 +453,6 @@ private:
 
     IntRect m_videoDisplaySize;
     float m_fontSize;
-    RefPtr<HTMLElement> m_cueContainer;
 };
 
 #endif

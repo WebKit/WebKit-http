@@ -31,9 +31,12 @@
 #include "config.h"
 #include "WebPermissions.h"
 
+#include "TestCommon.h"
 #include "WebTestDelegate.h"
 #include <public/WebCString.h>
 #include <public/WebURL.h>
+
+using namespace std;
 
 namespace WebTestRunner {
 
@@ -51,7 +54,7 @@ bool WebPermissions::allowImage(WebKit::WebFrame*, bool enabledPerSettings, cons
 {
     bool allowed = enabledPerSettings && m_imagesAllowed;
     if (m_dumpCallbacks && m_delegate)
-        m_delegate->printMessage(std::string("PERMISSION CLIENT: allowImage(") + m_delegate->normalizeLayoutTestURL(imageURL.spec()) + "): " + (allowed ? "true" : "false") + "\n");
+        m_delegate->printMessage(std::string("PERMISSION CLIENT: allowImage(") + normalizeLayoutTestURL(imageURL.spec()) + "): " + (allowed ? "true" : "false") + "\n");
     return allowed;
 }
 
@@ -59,7 +62,7 @@ bool WebPermissions::allowScriptFromSource(WebKit::WebFrame*, bool enabledPerSet
 {
     bool allowed = enabledPerSettings && m_scriptsAllowed;
     if (m_dumpCallbacks && m_delegate)
-        m_delegate->printMessage(std::string("PERMISSION CLIENT: allowScriptFromSource(") + m_delegate->normalizeLayoutTestURL(scriptURL.spec()) + "): " + (allowed ? "true" : "false") + "\n");
+        m_delegate->printMessage(std::string("PERMISSION CLIENT: allowScriptFromSource(") + normalizeLayoutTestURL(scriptURL.spec()) + "): " + (allowed ? "true" : "false") + "\n");
     return allowed;
 }
 

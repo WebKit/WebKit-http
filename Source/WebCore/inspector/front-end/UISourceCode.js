@@ -33,29 +33,25 @@
  * @constructor
  * @extends {WebInspector.Object}
  * @implements {WebInspector.ContentProvider}
- * @param {WebInspector.Workspace} workspace
- * @param {string} uri
+ * @param {WebInspector.Project} project
+ * @param {Array.<string>} path
  * @param {string} url
  * @param {WebInspector.ResourceType} contentType
  * @param {boolean} isEditable
  */
-WebInspector.UISourceCode = function(workspace, uri, originURL, url, contentType, isEditable)
+WebInspector.UISourceCode = function(project, path, originURL, url, contentType, isEditable)
 {
-    this._workspace = workspace;
-    this._uri = uri;
+    this._project = project;
+    this._path = path;
     this._originURL = originURL;
     this._url = url;
-    this._parsedURL = new WebInspector.ParsedURL(originURL);
     this._contentType = contentType;
     this._isEditable = isEditable;
     /**
      * @type Array.<function(?string,boolean,string)>
      */
     this._requestContentCallbacks = [];
-    /**
-     * @type Array.<WebInspector.LiveLocation>
-     */
-    this._liveLocations = [];
+    this._liveLocations = new Set();
     /**
      * @type {Array.<WebInspector.PresentationConsoleMessage>}
      */
@@ -91,11 +87,40 @@ WebInspector.UISourceCode.prototype = {
     },
 
     /**
+     * @return {Array.<string>}
+     */
+    path: function()
+    {
+        return this._path;
+    },
+
+    /**
+     * @return {string}
+     */
+    name: function()
+    {
+        return this._path[this._path.length - 1];
+    },
+
+    /**
+     * @return {string}
+     */
+    displayName: function()
+    {
+        var displayName = this.name() || (this._project.displayName() + "/" + this._path.join("/"));
+        return displayName.trimEnd(100);
+    },
+
+    /**
      * @return {string}
      */
     uri: function()
     {
-        return this._uri;
+        if (!this._project.id())
+            return this._path.join("/");
+        if (!this._path.length)
+            return this._project.id();
+        return this._project.id() + "/" + this._path.join("/");
     },
 
     /**
@@ -107,22 +132,16 @@ WebInspector.UISourceCode.prototype = {
     },
 
     /**
-     * @param {string} url
+     * @param {string} newName
      */
-    urlChanged: function(url)
+    rename: function(newName)
     {
-        this._url = url;
-        this._originURL = url;
-        this._parsedURL = new WebInspector.ParsedURL(url);
+        if (!this._path.length)
+            return;
+        this._path[this._path.length - 1] = newName;
+        this._url = newName;
+        this._originURL = newName;
         this.dispatchEventToListeners(WebInspector.UISourceCode.Events.TitleChanged, null);
-    },
-
-    /**
-     * @return {WebInspector.ParsedURL}
-     */
-    get parsedURL()
-    {
-        return this._parsedURL;
     },
 
     /**
@@ -178,7 +197,7 @@ WebInspector.UISourceCode.prototype = {
      */
     project: function()
     {
-        return this._workspace.projectForUISourceCode(this);
+        return this._project;
     },
 
     /**
@@ -192,7 +211,27 @@ WebInspector.UISourceCode.prototype = {
         }
         this._requestContentCallbacks.push(callback);
         if (this._requestContentCallbacks.length === 1)
-            this._workspace.requestFileContent(this, this._fireContentAvailable.bind(this));
+            this._project.requestFileContent(this, this._fireContentAvailable.bind(this));
+    },
+
+    checkContentUpdated: function()
+    {
+        this._project.requestUpdatedFileContent(this, updatedContentLoaded.bind(this));
+
+        function updatedContentLoaded(updatedContent)
+        {
+            if (typeof updatedContent !== "string")
+                return;
+
+            if (!this.isDirty()) {
+                this.addRevision(updatedContent);
+                return;
+            }
+
+            var shouldUpdate = window.confirm(WebInspector.UIString("This file was changed externally. Would you like to reload it?"));
+            if (shouldUpdate)
+                this.addRevision(updatedContent);
+        }
     },
 
     /**
@@ -200,7 +239,7 @@ WebInspector.UISourceCode.prototype = {
      */
     requestOriginalContent: function(callback)
     {
-        this._workspace.requestFileContent(this, callback);
+        this._project.requestFileContent(this, callback);
     },
 
     /**
@@ -221,12 +260,11 @@ WebInspector.UISourceCode.prototype = {
         var oldWorkingCopy = this._workingCopy;
         delete this._workingCopy;
         this.dispatchEventToListeners(WebInspector.UISourceCode.Events.WorkingCopyCommitted, {oldWorkingCopy: oldWorkingCopy, workingCopy: this.workingCopy()});
-        this._workspace.dispatchEventToListeners(WebInspector.Workspace.Events.UISourceCodeContentCommitted, { uiSourceCode: this, content: this._content });
         if (this._url && WebInspector.fileManager.isURLSaved(this._url)) {
             WebInspector.fileManager.save(this._url, this._content, false);
             WebInspector.fileManager.close(this._url);
         }
-        this._workspace.setFileContent(this, this._content, function() { });
+        this._project.setFileContent(this, this._content, function() { });
     },
 
     /**
@@ -423,7 +461,7 @@ WebInspector.UISourceCode.prototype = {
             return;
         }
 
-        this._workspace.searchInFileContent(this, query, caseSensitive, isRegex, callback);
+        this._project.searchInFileContent(this, query, caseSensitive, isRegex, callback);
     },
 
     /**
@@ -470,15 +508,15 @@ WebInspector.UISourceCode.prototype = {
     },
 
     /**
-     * @param {WebInspector.LiveLocation} liveLocation
+     * @param {!WebInspector.LiveLocation} liveLocation
      */
     addLiveLocation: function(liveLocation)
     {
-        this._liveLocations.push(liveLocation);
+        this._liveLocations.add(liveLocation);
     },
 
     /**
-     * @param {WebInspector.LiveLocation} liveLocation
+     * @param {!WebInspector.LiveLocation} liveLocation
      */
     removeLiveLocation: function(liveLocation)
     {
@@ -487,9 +525,9 @@ WebInspector.UISourceCode.prototype = {
 
     updateLiveLocations: function()
     {
-        var locationsCopy = this._liveLocations.slice();
-        for (var i = 0; i < locationsCopy.length; ++i)
-            locationsCopy[i].update();
+        var items = this._liveLocations.items();
+        for (var i = 0; i < items.length; ++i)
+            items[i].update();
     },
 
     /**
@@ -617,6 +655,7 @@ WebInspector.UISourceCode.prototype = {
 
 /**
  * @interface
+ * @extends {WebInspector.EventTarget}
  */
 WebInspector.UISourceCodeProvider = function()
 {
@@ -632,20 +671,6 @@ WebInspector.UISourceCodeProvider.prototype = {
      * @return {Array.<WebInspector.UISourceCode>}
      */
     uiSourceCodes: function() {},
-
-    /**
-     * @param {string} eventType
-     * @param {function(WebInspector.Event)} listener
-     * @param {Object=} thisObject
-     */
-    addEventListener: function(eventType, listener, thisObject) { },
-
-    /**
-     * @param {string} eventType
-     * @param {function(WebInspector.Event)} listener
-     * @param {Object=} thisObject
-     */
-    removeEventListener: function(eventType, listener, thisObject) { }
 }
 
 /**

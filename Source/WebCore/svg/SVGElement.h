@@ -57,10 +57,10 @@ public:
 
     SVGDocumentExtensions* accessDocumentSVGExtensions();
 
-    virtual bool isStyled() const { return false; }
+    virtual bool isSVGStyledElement() const { return false; }
     virtual bool isStyledTransformable() const { return false; }
     virtual bool isStyledLocatable() const { return false; }
-    virtual bool isSVG() const { return false; }
+    virtual bool isSVGSVGElement() const { return false; }
     virtual bool isFilterEffect() const { return false; }
     virtual bool isGradientStop() const { return false; }
     virtual bool isTextContent() const { return false; }
@@ -79,7 +79,7 @@ public:
 
     virtual AffineTransform* supplementalTransform() { return 0; }
 
-    void invalidateSVGAttributes() { ensureAttributeData()->m_animatedSVGAttributesAreDirty = true; }
+    void invalidateSVGAttributes() { ensureUniqueElementData()->m_animatedSVGAttributesAreDirty = true; }
 
     const HashSet<SVGElementInstance*>& instancesForElement() const;
 
@@ -93,7 +93,7 @@ public:
     SVGElement* correspondingElement();
     void setCorrespondingElement(SVGElement*);
 
-    virtual void updateAnimatedSVGAttribute(const QualifiedName&) const;
+    void synchronizeAnimatedSVGAttribute(const QualifiedName&) const;
  
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
 
@@ -168,10 +168,16 @@ struct SVGAttributeHashTranslator {
     static bool equal(const QualifiedName& a, const QualifiedName& b) { return a.matches(b); }
 };
 
-inline SVGElement* toSVGElement(Element* element)
+inline SVGElement* toSVGElement(Node* node)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!element || element->isSVGElement());
-    return static_cast<SVGElement*>(element);
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
+    return static_cast<SVGElement*>(node);
+}
+
+inline const SVGElement* toSVGElement(const Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isSVGElement());
+    return static_cast<const SVGElement*>(node);
 }
 
 }

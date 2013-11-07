@@ -83,12 +83,6 @@ struct NodePointerTraits {
     static void dump(Node* value, PrintStream& out);
 };
 
-enum UseKind {
-    UntypedUse,
-    DoubleUse,
-    LastUseKind // Must always be the last entry in the enum, as it is used to denote the number of enum elements.
-};
-
 // Use RefChildren if the child ref counts haven't already been adjusted using
 // other means and either of the following is true:
 // - The node you're creating is MustGenerate.
@@ -106,17 +100,13 @@ enum RefNodeMode {
     DontRefNode
 };
 
-inline const char* useKindToString(UseKind useKind)
+inline bool isARMv7s()
 {
-    switch (useKind) {
-    case UntypedUse:
-        return "";
-    case DoubleUse:
-        return "d";
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        return 0;
-    }
+#if CPU(APPLE_ARMV7S)
+    return true;
+#else
+    return false;
+#endif
 }
 
 inline bool isX86()
@@ -137,6 +127,15 @@ inline bool verboseCompilationEnabled()
 #endif
 }
 
+inline bool logCompilationChanges()
+{
+#if DFG_ENABLE(DEBUG_VERBOSE)
+    return true;
+#else
+    return verboseCompilationEnabled() || Options::logCompilationChanges();
+#endif
+}
+
 inline bool shouldDumpGraphAtEachPhase()
 {
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
@@ -148,7 +147,11 @@ inline bool shouldDumpGraphAtEachPhase()
 
 inline bool validationEnabled()
 {
+#if !ASSERT_DISABLED
+    return true;
+#else
     return Options::validateGraph() || Options::validateGraphAtEachPhase();
+#endif
 }
 
 enum SpillRegistersMode { NeedToSpill, DontSpill };
@@ -157,7 +160,109 @@ enum NoResultTag { NoResult };
 
 enum OptimizationFixpointState { BeforeFixpoint, FixpointNotConverged, FixpointConverged };
 
+// Describes the form you can expect the entire graph to be in.
+enum GraphForm {
+    // LoadStore form means that basic blocks may freely use GetLocal, SetLocal,
+    // GetLocalUnlinked, and Flush for accessing local variables and indicating
+    // where their live ranges ought to be. Data flow between local accesses is
+    // implicit. Liveness is only explicit at block heads (variablesAtHead).
+    // This is only used by the DFG simplifier and is only preserved by same.
+    //
+    // For example, LoadStore form gives no easy way to determine which SetLocal's
+    // flow into a GetLocal. As well, LoadStore form implies no restrictions on
+    // redundancy: you can freely emit multiple GetLocals, or multiple SetLocals
+    // (or any combination thereof) to the same local in the same block. LoadStore
+    // form does not require basic blocks to declare how they affect or use locals,
+    // other than implicitly by using the local ops and by preserving
+    // variablesAtHead. Finally, LoadStore allows flexibility in how liveness of
+    // locals is extended; for example you can replace a GetLocal with a Phantom
+    // and so long as the Phantom retains the GetLocal's children (i.e. the Phi
+    // most likely) then it implies that the local is still live but that it need
+    // not be stored to the stack necessarily. This implies that Phantom can
+    // reference nodes that have no result, as long as those nodes are valid
+    // GetLocal children (i.e. Phi, SetLocal, SetArgument).
+    //
+    // LoadStore form also implies that Phis need not have children. By default,
+    // they end up having no children if you enter LoadStore using the canonical
+    // way (call Graph::dethread).
+    //
+    // LoadStore form is suitable for CFG transformations, as well as strength
+    // reduction, folding, and CSE.
+    LoadStore,
+    
+    // ThreadedCPS form means that basic blocks list up-front which locals they
+    // expect to be live at the head, and which locals they make available at the
+    // tail. ThreadedCPS form also implies that:
+    //
+    // - GetLocals and SetLocals to uncaptured variables are not redundant within
+    //   a basic block.
+    //
+    // - All GetLocals and Flushes are linked directly to the last access point
+    //   of the variable, which must not be another GetLocal if the variable is
+    //   uncaptured.
+    //
+    // - Phantom(Phi) is not legal, but PhantomLocal is.
+    //
+    // ThreadedCPS form is suitable for data flow analysis (CFA, prediction
+    // propagation), register allocation, and code generation.
+    ThreadedCPS
+};
+
+// Describes the state of the UnionFind structure of VariableAccessData's.
+enum UnificationState {
+    // BasicBlock-local accesses to variables are appropriately unified with each other.
+    LocallyUnified,
+    
+    // Unification has been performed globally.
+    GloballyUnified
+};
+
+// Describes how reference counts in the graph behave.
+enum RefCountState {
+    // Everything has refCount() == 1.
+    EverythingIsLive,
+
+    // Set after DCE has run.
+    ExactRefCount
+};
+
+enum OperandSpeculationMode { AutomaticOperandSpeculation, ManualOperandSpeculation };
+
+enum SpeculationDirection { ForwardSpeculation, BackwardSpeculation };
+
+enum ProofStatus { NeedsCheck, IsProved };
+
+inline bool isProved(ProofStatus proofStatus)
+{
+    ASSERT(proofStatus == IsProved || proofStatus == NeedsCheck);
+    return proofStatus == IsProved;
+}
+
+inline ProofStatus proofStatusForIsProved(bool isProved)
+{
+    return isProved ? IsProved : NeedsCheck;
+}
+
+template<typename T, typename U>
+bool checkAndSet(T& left, U right)
+{
+    if (left == right)
+        return false;
+    left = right;
+    return true;
+}
+
 } } // namespace JSC::DFG
+
+namespace WTF {
+
+void printInternal(PrintStream&, JSC::DFG::OptimizationFixpointState);
+void printInternal(PrintStream&, JSC::DFG::GraphForm);
+void printInternal(PrintStream&, JSC::DFG::UnificationState);
+void printInternal(PrintStream&, JSC::DFG::RefCountState);
+void printInternal(PrintStream&, JSC::DFG::ProofStatus);
+
+} // namespace WTF
 
 #endif // ENABLE(DFG_JIT)
 
@@ -165,7 +270,7 @@ namespace JSC { namespace DFG {
 
 // Put things here that must be defined even if ENABLE(DFG_JIT) is false.
 
-enum CapabilityLevel { CannotCompile, ShouldProfile, CanCompile, CapabilityLevelNotSet };
+enum CapabilityLevel { CannotCompile, MayInline, CanCompile, CapabilityLevelNotSet };
 
 // Unconditionally disable DFG disassembly support if the DFG is not compiled in.
 inline bool shouldShowDisassembly()

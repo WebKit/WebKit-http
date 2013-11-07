@@ -402,13 +402,6 @@ namespace JSC {
             emitInstruction(toARMWord(cc) | MOV | SetConditionalCodes, rd, ARMRegisters::r0, op2);
         }
 
-        static void revertJump(void* instructionStart, RegisterID rd, ARMWord imm)
-        {
-            ARMWord* insn = reinterpret_cast<ARMWord*>(instructionStart);
-            ARMWord* address = getLdrImmAddress(insn);
-            *address = imm;
-        }
-
         void bic(int rd, int rn, ARMWord op2, Condition cc = AL)
         {
             emitInstruction(toARMWord(cc) | BIC, rd, rn, op2);
@@ -904,7 +897,7 @@ namespace JSC {
 
         static void replaceWithJump(void* instructionStart, void* to)
         {
-            ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart) - 1;
+            ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart);
             intptr_t difference = reinterpret_cast<intptr_t>(to) - (reinterpret_cast<intptr_t>(instruction) + DefaultPrefetchOffset * sizeof(ARMWord));
 
             if (!(difference & 1)) {
@@ -950,6 +943,17 @@ namespace JSC {
                  *instruction = (*instruction & ~LdrOrAddInstructionMask) | AddImmediateInstruction;
                  cacheFlush(instruction, sizeof(ARMWord));
             }
+        }
+
+        static void revertBranchPtrWithPatch(void* instructionStart, RegisterID rn, ARMWord imm)
+        {
+            ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart);
+
+            ASSERT((instruction[2] & LdrPcImmediateInstructionMask) == LdrPcImmediateInstruction);
+            instruction[0] = toARMWord(AL) | ((instruction[2] & 0x0fff0fff) + sizeof(ARMWord)) | RD(ARMRegisters::S1);
+            *getLdrImmAddress(instruction) = imm;
+            instruction[1] = toARMWord(AL) | CMP | SetConditionalCodes | RN(rn) | RM(ARMRegisters::S1);
+            cacheFlush(instruction, 2 * sizeof(ARMWord));
         }
 
         // Address operations

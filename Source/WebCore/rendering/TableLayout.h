@@ -38,11 +38,14 @@ public:
 
     virtual ~TableLayout() { }
 
-    virtual void computePreferredLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) = 0;
+    virtual void computeIntrinsicLogicalWidths(LayoutUnit& minWidth, LayoutUnit& maxWidth) = 0;
+    virtual void applyPreferredLogicalWidthQuirks(LayoutUnit& minWidth, LayoutUnit& maxWidth) const = 0;
     virtual void layout() = 0;
 
 protected:
-    const static int tableMaxWidth = 15000;
+    // FIXME: Once we enable SATURATED_LAYOUT_ARITHMETHIC, this should just be LayoutUnit::nearlyMax().
+    // Until then though, using nearlyMax causes overflow in some tests, so we just pick a large number.
+    const static int tableMaxWidth = 1000000;
 
     RenderTable* m_table;
 };

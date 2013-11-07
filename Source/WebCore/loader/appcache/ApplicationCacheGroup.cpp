@@ -44,6 +44,7 @@
 #include "ManifestParser.h"
 #include "Page.h"
 #include "ResourceBuffer.h"
+#include "ResourceHandle.h"
 #include "ScriptProfile.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
@@ -474,7 +475,7 @@ void ApplicationCacheGroup::abort(Frame* frame)
     if (m_completionType != None)
         return;
 
-    frame->document()->addConsoleMessage(OtherMessageSource, TipMessageLevel, "Application Cache download process was aborted.");
+    frame->document()->addConsoleMessage(NetworkMessageSource, DebugMessageLevel, "Application Cache download process was aborted.");
     cacheUpdateFailed();
 }
 
@@ -568,7 +569,7 @@ void ApplicationCacheGroup::didReceiveResponse(ResourceHandle* handle, const Res
 
     if (response.httpStatusCode() / 100 != 2 || response.url() != m_currentHandle->firstRequest().url()) {
         if ((type & ApplicationCacheResource::Explicit) || (type & ApplicationCacheResource::Fallback)) {
-            m_frame->document()->addConsoleMessage(OtherMessageSource, ErrorMessageLevel, "Application Cache update failed, because " + m_currentHandle->firstRequest().url().string() + 
+            m_frame->document()->addConsoleMessage(OtherMessageSource, ErrorMessageLevel, "Application Cache update failed, because " + m_currentHandle->firstRequest().url().elidedString() +
                 ((response.httpStatusCode() / 100 != 2) ? " could not be fetched." : " was redirected."));
             // Note that cacheUpdateFailed() can cause the cache group to be deleted.
             cacheUpdateFailed();
@@ -682,7 +683,7 @@ void ApplicationCacheGroup::didFail(ResourceHandle* handle, const ResourceError&
     m_pendingEntries.remove(url);
 
     if ((type & ApplicationCacheResource::Explicit) || (type & ApplicationCacheResource::Fallback)) {
-        m_frame->document()->addConsoleMessage(OtherMessageSource, ErrorMessageLevel, "Application Cache update failed, because " + url.string() + " could not be fetched.");
+        m_frame->document()->addConsoleMessage(OtherMessageSource, ErrorMessageLevel, "Application Cache update failed, because " + url.elidedString() + " could not be fetched.");
         // Note that cacheUpdateFailed() can cause the cache group to be deleted.
         cacheUpdateFailed();
     } else {

@@ -34,7 +34,12 @@ namespace JSC { namespace DFG {
 
 void Edge::dump(PrintStream& out) const
 {
-    out.print(useKindToString(useKind()), node());
+    if (useKind() != UntypedUse) {
+        if (needsCheck())
+            out.print("Check:");
+        out.print(useKind(), ":");
+    }
+    out.print(node());
 }
 
 } } // namespace JSC::DFG

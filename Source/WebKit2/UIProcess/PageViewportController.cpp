@@ -125,9 +125,8 @@ FloatPoint PageViewportController::boundContentsPositionAtScale(const WebCore::F
     bounds.setHeight(std::max(0.f, m_contentsSize.height() - floorf(m_viewportSize.height() / scale)));
 
     FloatPoint position;
-    // Unfortunately it doesn't seem to be enough, so just always allow one pixel more.
-    position.setX(clampTo(framePosition.x(), bounds.x(), bounds.width() + 1));
-    position.setY(clampTo(framePosition.y(), bounds.y(), bounds.height() + 1));
+    position.setX(clampTo(framePosition.x(), bounds.x(), bounds.width()));
+    position.setY(clampTo(framePosition.y(), bounds.y(), bounds.height()));
 
     return position;
 }
@@ -252,7 +251,7 @@ void PageViewportController::didChangeViewportSize(const FloatSize& newSize)
 
     // Let the WebProcess know about the new viewport size, so that
     // it can resize the content accordingly.
-    m_webPageProxy->setViewportSize(roundedIntSize(newSize));
+    m_webPageProxy->drawingArea()->setSize(roundedIntSize(newSize), IntSize());
 }
 
 void PageViewportController::didChangeContentsVisibility(const FloatPoint& position, float scale, const FloatPoint& trajectoryVector)
@@ -317,8 +316,6 @@ void PageViewportController::suspendContent()
 
 void PageViewportController::resumeContent()
 {
-    m_client->didResumeContent();
-
     if (!m_hasSuspendedContent)
         return;
 

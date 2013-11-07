@@ -200,8 +200,6 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
                     buffer[i * 2 + 1] = U16_TRAIL(c);
                 }
             }
-            
-            m_page = GlyphPage::create(this);
 
             // Now that we have a buffer full of characters, we want to get back an array
             // of glyph indices.  This part involves calling into the platform-specific 
@@ -209,7 +207,11 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
             // Success is not guaranteed. For example, Times fails to fill page 260, giving glyph data
             // for only 128 out of 256 characters.
             bool haveGlyphs;
-            if (fontData->isSegmented()) {
+            if (!fontData->isSegmented()) {
+                m_page = GlyphPage::createForSingleFontData(this, static_cast<const SimpleFontData*>(fontData));
+                haveGlyphs = fill(m_page.get(), 0, GlyphPage::size, buffer, bufferLength, static_cast<const SimpleFontData*>(fontData));
+            } else {
+                m_page = GlyphPage::createForMixedFontData(this);
                 haveGlyphs = false;
 
                 const SegmentedFontData* segmentedFontData = static_cast<const SegmentedFontData*>(fontData);
@@ -225,7 +227,7 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
                     int to = 1 + min(static_cast<int>(range.to()) - static_cast<int>(start), static_cast<int>(GlyphPage::size) - 1);
                     if (from < static_cast<int>(GlyphPage::size) && to > 0) {
                         if (haveGlyphs && !scratchPage) {
-                            scratchPage = GlyphPage::create(this);
+                            scratchPage = GlyphPage::createForMixedFontData(this);
                             pageToFill = scratchPage.get();
                         }
 
@@ -238,7 +240,7 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
                         }
                         haveGlyphs |= fill(pageToFill, from, to - from, buffer + from * (start < 0x10000 ? 1 : 2), (to - from) * (start < 0x10000 ? 1 : 2), range.fontData().get());
                         if (scratchPage) {
-                            ASSERT(to <=  static_cast<int>(GlyphPage::size));
+                            ASSERT_WITH_SECURITY_IMPLICATION(to <=  static_cast<int>(GlyphPage::size));
                             for (int j = from; j < to; j++) {
                                 if (!m_page->glyphAt(j) && pageToFill->glyphAt(j))
                                     m_page->setGlyphDataForIndex(j, pageToFill->glyphDataForIndex(j));
@@ -246,8 +248,7 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
                         }
                     }
                 }
-            } else
-                haveGlyphs = fill(m_page.get(), 0, GlyphPage::size, buffer, bufferLength, static_cast<const SimpleFontData*>(fontData));
+            }
 
             if (!haveGlyphs)
                 m_page = 0;
@@ -279,7 +280,7 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
                 m_page = parentPage;
             } else {
                 // Combine the parent's glyphs and ours to form a new more complete page.
-                m_page = GlyphPage::create(this);
+                m_page = GlyphPage::createForMixedFontData(this);
 
                 // Overlay the parent page on the fallback page. Check if the fallback font
                 // has added anything.
@@ -300,15 +301,14 @@ void GlyphPageTreeNode::initializePage(const FontData* fontData, unsigned pageNu
             }
         }
     } else {
-        m_page = GlyphPage::create(this);
         // System fallback. Initialized with the parent's page here, as individual
         // entries may use different fonts depending on character. If the Font
         // ever finds it needs a glyph out of the system fallback page, it will
         // ask the system for the best font to use and fill that glyph in for us.
         if (parentPage)
-            m_page->copyFrom(*parentPage);
+            m_page = parentPage->createCopiedSystemFallbackPage(this);
         else
-            m_page->clear();
+            m_page = GlyphPage::createForMixedFontData(this);
     }
 }
 
@@ -370,7 +370,7 @@ void GlyphPageTreeNode::pruneFontData(const SimpleFontData* fontData, unsigned l
 
     // Prune fall back child (if any) of this font.
     if (m_systemFallbackChild && m_systemFallbackChild->m_page)
-        m_systemFallbackChild->m_page->clearForFontData(fontData);
+        m_systemFallbackChild->m_page->removeFontDataFromSystemFallbackPage(fontData);
 
     // Prune any branch that contains this FontData.
     if (OwnPtr<GlyphPageTreeNode> node = m_children.take(fontData)) {

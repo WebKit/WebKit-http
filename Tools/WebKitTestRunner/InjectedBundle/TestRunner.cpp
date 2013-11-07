@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -166,36 +166,6 @@ void TestRunner::setCustomTimeout(int timeout)
     m_timeout = timeout;
 }
 
-unsigned TestRunner::numberOfActiveAnimations() const
-{
-    // FIXME: Is it OK this works only for the main frame?
-    // FIXME: If this is needed only for the main frame, then why is the function on WKBundleFrame instead of WKBundlePage?
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    return WKBundleFrameGetNumberOfActiveAnimations(mainFrame);
-}
-
-bool TestRunner::pauseAnimationAtTimeOnElementWithId(JSStringRef animationName, double time, JSStringRef elementId)
-{
-    // FIXME: Is it OK this works only for the main frame?
-    // FIXME: If this is needed only for the main frame, then why is the function on WKBundleFrame instead of WKBundlePage?
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    return WKBundleFramePauseAnimationOnElementWithId(mainFrame, toWK(animationName).get(), toWK(elementId).get(), time);
-}
-
-bool TestRunner::pauseTransitionAtTimeOnElementWithId(JSStringRef propertyName, double time, JSStringRef elementId)
-{
-    // FIXME: Is it OK this works only for the main frame?
-    // FIXME: If this is needed only for the main frame, then why is the function on WKBundleFrame instead of WKBundlePage?
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    return WKBundleFramePauseTransitionOnElementWithId(mainFrame, toWK(propertyName).get(), toWK(elementId).get(), time);
-}
-
-void TestRunner::suspendAnimations()
-{
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    WKBundleFrameSuspendAnimations(mainFrame);
-}
-
 void TestRunner::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
     WKRetainPtr<WKStringRef> sourceWK = toWK(source);
@@ -218,31 +188,6 @@ void TestRunner::addUserStyleSheet(JSStringRef source, bool allFrames)
 void TestRunner::keepWebHistory()
 {
     WKBundleSetShouldTrackVisitedLinks(InjectedBundle::shared().bundle(), true);
-}
-
-JSValueRef TestRunner::computedStyleIncludingVisitedInfo(JSValueRef element)
-{
-    // FIXME: Is it OK this works only for the main frame?
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
-    if (!JSValueIsObject(context, element))
-        return JSValueMakeUndefined(context);
-    JSValueRef value = WKBundleFrameGetComputedStyleIncludingVisitedInfo(mainFrame, const_cast<JSObjectRef>(element));
-    if (!value)
-        return JSValueMakeUndefined(context);
-    return value;
-}
-
-JSRetainPtr<JSStringRef> TestRunner::markerTextForListItem(JSValueRef element)
-{
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    JSContextRef context = WKBundleFrameGetJavaScriptContext(mainFrame);
-    if (!element || !JSValueIsObject(context, element))
-        return 0;
-    WKRetainPtr<WKStringRef> text(AdoptWK, WKBundleFrameCopyMarkerText(mainFrame, const_cast<JSObjectRef>(element)));
-    if (WKStringIsEmpty(text.get()))
-        return 0;
-    return toJS(text);
 }
 
 void TestRunner::execCommand(JSStringRef name, JSStringRef argument)
@@ -378,11 +323,6 @@ void TestRunner::setAllowUniversalAccessFromFileURLs(bool enabled)
 void TestRunner::setAllowFileAccessFromFileURLs(bool enabled)
 {
     WKBundleSetAllowFileAccessFromFileURLs(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
-}
-
-void TestRunner::setFrameFlatteningEnabled(bool enabled)
-{
-    WKBundleSetFrameFlatteningEnabled(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
 }
 
 void TestRunner::setPluginsEnabled(bool enabled)
@@ -599,11 +539,6 @@ static void callTestRunnerCallback(unsigned index)
     JSValueUnprotect(context, callback);
 }
 
-unsigned TestRunner::workerThreadCount()
-{
-    return WKBundleGetWorkerThreadCount(InjectedBundle::shared().bundle());
-}
-
 void TestRunner::addChromeInputField(JSValueRef callback)
 {
     cacheTestRunnerCallback(AddChromeInputFieldCallbackID, callback);
@@ -691,11 +626,6 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef location)
         setUserStyleSheetEnabled(true);
 }
 
-void TestRunner::setMinimumTimerInterval(double seconds)
-{
-    WKBundleSetMinimumTimerInterval(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), seconds);
-}
-
 void TestRunner::setSpatialNavigationEnabled(bool enabled)
 {
     WKBundleSetSpatialNavigationEnabled(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
@@ -719,6 +649,11 @@ void TestRunner::dispatchPendingLoadRequests()
 void TestRunner::setCacheModel(int model)
 {
     WKBundleSetCacheModel(InjectedBundle::shared().bundle(), model);
+}
+
+void TestRunner::setAsynchronousSpellCheckingEnabled(bool enabled)
+{
+    WKBundleSetAsynchronousSpellCheckingEnabled(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
 }
 
 void TestRunner::grantWebNotificationPermission(JSStringRef origin)
@@ -847,8 +782,12 @@ void TestRunner::queueNonLoadingScript(JSStringRef script)
 
 void TestRunner::setViewModeMediaFeature(JSStringRef mode)
 {
+#if ENABLE(VIEW_MODE_CSS_MEDIA)
     WKRetainPtr<WKStringRef> modeWK = toWK(mode);
     WKBundlePageSetViewMode(InjectedBundle::shared().page()->page(), modeWK.get());
+#else
+    UNUSED_PARAM(mode);
+#endif // ENABLE(VIEW_MODE_CSS_MEDIA)
 }
 
 void TestRunner::setHandlesAuthenticationChallenges(bool handlesAuthenticationChallenges)

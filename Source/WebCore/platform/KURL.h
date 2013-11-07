@@ -124,6 +124,7 @@ public:
     bool canSetHostOrPort() const { return isHierarchical(); }
 
     bool canSetPathname() const { return isHierarchical(); }
+    bool isHierarchical() const;
 
 #if USE(GOOGLEURL)
     const String& string() const { return m_url.string(); }
@@ -133,6 +134,8 @@ public:
 #else
     const String& string() const { return m_string; }
 #endif
+
+    String elidedString() const;
 
     String protocol() const;
     String host() const;
@@ -236,10 +239,10 @@ public:
 #endif
 
     void reportMemoryUsage(MemoryObjectInfo*) const;
+    bool isSafeToSendToAnotherThread() const;
 
 private:
     void invalidate();
-    bool isHierarchical() const;
     static bool protocolIs(const String&, const char*);
 #if USE(GOOGLEURL)
     friend class KURLGooglePrivate;
@@ -359,6 +362,11 @@ inline bool KURL::isEmpty() const
 inline bool KURL::isValid() const
 {
     return m_isValid;
+}
+
+inline bool KURL::hasPath() const
+{
+    return m_pathEnd != m_portEnd;
 }
 
 inline bool KURL::hasPort() const

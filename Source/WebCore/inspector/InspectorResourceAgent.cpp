@@ -39,6 +39,7 @@
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "HTTPHeaderMap.h"
@@ -62,6 +63,7 @@
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include "ScriptableDocumentParser.h"
+#include "Settings.h"
 #include "SubresourceLoader.h"
 #include "WebSocketFrame.h"
 #include "WebSocketHandshakeRequest.h"
@@ -602,22 +604,25 @@ void InspectorResourceAgent::getResponseBody(ErrorString* errorString, const Str
 void InspectorResourceAgent::replayXHR(ErrorString*, const String& requestId)
 {
     RefPtr<XMLHttpRequest> xhr = XMLHttpRequest::create(m_pageAgent->mainFrame()->document());
-    ExceptionCode code;
     String actualRequestId = requestId;
 
     XHRReplayData* xhrReplayData = m_resourcesData->xhrReplayData(requestId);
     if (!xhrReplayData)
         return;
 
-    CachedResource* cachedResource = memoryCache()->resourceForURL(xhrReplayData->url());
+    ResourceRequest request(xhrReplayData->url());
+#if ENABLE(CACHE_PARTITIONING)
+    request.setCachePartition(m_pageAgent->mainFrame()->document()->topOrigin()->cachePartition());
+#endif
+    CachedResource* cachedResource = memoryCache()->resourceForRequest(request);
     if (cachedResource)
         memoryCache()->remove(cachedResource);
 
-    xhr->open(xhrReplayData->method(), xhrReplayData->url(), xhrReplayData->async(), code);
+    xhr->open(xhrReplayData->method(), xhrReplayData->url(), xhrReplayData->async(), IGNORE_EXCEPTION);
     HTTPHeaderMap::const_iterator end = xhrReplayData->headers().end();
     for (HTTPHeaderMap::const_iterator it = xhrReplayData->headers().begin(); it!= end; ++it)
-        xhr->setRequestHeader(it->key, it->value, code);
-    xhr->sendFromInspector(xhrReplayData->formData(), code);
+        xhr->setRequestHeader(it->key, it->value, IGNORE_EXCEPTION);
+    xhr->sendFromInspector(xhrReplayData->formData(), IGNORE_EXCEPTION);
 }
 
 void InspectorResourceAgent::canClearBrowserCache(ErrorString*, bool* result)

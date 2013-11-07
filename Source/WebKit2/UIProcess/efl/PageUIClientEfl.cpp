@@ -30,6 +30,7 @@
 #include "EwkView.h"
 #include "WKAPICast.h"
 #include "WKEvent.h"
+#include "WKPageEfl.h"
 #include "WKString.h"
 #include "ewk_file_chooser_request_private.h"
 #include "ewk_window_features_private.h"
@@ -72,6 +73,7 @@ PageUIClientEfl::PageUIClientEfl(EwkView* view)
     uiClient.setIsResizable = setIsResizable;
     uiClient.getWindowFrame = getWindowFrame;
     uiClient.setWindowFrame = setWindowFrame;
+    uiClient.runBeforeUnloadConfirmPanel = runBeforeUnloadConfirmPanel;
 #if ENABLE(SQL_DATABASE)
     uiClient.exceededDatabaseQuota = exceededDatabaseQuota;
 #endif
@@ -83,6 +85,15 @@ PageUIClientEfl::PageUIClientEfl(EwkView* view)
 #endif
 
     WKPageSetPageUIClient(pageRef, &uiClient);
+
+    // Popup Menu UI client.
+    WKPageUIPopupMenuClient uiPopupMenuClient;
+    memset(&uiPopupMenuClient, 0, sizeof(WKPageUIPopupMenuClient));
+    uiPopupMenuClient.version = kWKPageUIPopupMenuClientCurrentVersion;
+    uiPopupMenuClient.clientInfo = this;
+    uiPopupMenuClient.showPopupMenu = showPopupMenu;
+    uiPopupMenuClient.hidePopupMenu = hidePopupMenu;
+    WKPageSetUIPopupMenuClient(pageRef, &uiPopupMenuClient);
 }
 
 
@@ -94,17 +105,17 @@ void PageUIClientEfl::close(WKPageRef, const void* clientInfo)
 void PageUIClientEfl::takeFocus(WKPageRef, WKFocusDirection, const void* clientInfo)
 {
     // FIXME: this is only a partial implementation.
-    evas_object_focus_set(toPageUIClientEfl(clientInfo)->m_view->view(), false);
+    evas_object_focus_set(toPageUIClientEfl(clientInfo)->m_view->evasObject(), false);
 }
 
 void PageUIClientEfl::focus(WKPageRef, const void* clientInfo)
 {
-    evas_object_focus_set(toPageUIClientEfl(clientInfo)->m_view->view(), true);
+    evas_object_focus_set(toPageUIClientEfl(clientInfo)->m_view->evasObject(), true);
 }
 
 void PageUIClientEfl::unfocus(WKPageRef, const void* clientInfo)
 {
-    evas_object_focus_set(toPageUIClientEfl(clientInfo)->m_view->view(), false);
+    evas_object_focus_set(toPageUIClientEfl(clientInfo)->m_view->evasObject(), false);
 }
 
 void PageUIClientEfl::runJavaScriptAlert(WKPageRef, WKStringRef alertText, WKFrameRef, const void* clientInfo)
@@ -189,6 +200,11 @@ void PageUIClientEfl::setWindowFrame(WKPageRef, WKRect frame, const void* client
     toPageUIClientEfl(clientInfo)->m_view->setWindowGeometry(frame);
 }
 
+bool PageUIClientEfl::runBeforeUnloadConfirmPanel(WKPageRef, WKStringRef message, WKFrameRef, const void* clientInfo)
+{
+    return toPageUIClientEfl(clientInfo)->m_view->requestJSConfirmPopup(WKEinaSharedString(message));
+}
+
 #if ENABLE(SQL_DATABASE)
 unsigned long long PageUIClientEfl::exceededDatabaseQuota(WKPageRef, WKFrameRef, WKSecurityOriginRef, WKStringRef databaseName, WKStringRef displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage, const void* clientInfo)
 {
@@ -224,5 +240,15 @@ void PageUIClientEfl::hideColorPicker(WKPageRef, const void* clientInfo)
     pageUIClient->m_view->dismissColorPicker();
 }
 #endif
+
+void PageUIClientEfl::showPopupMenu(WKPageRef, WKPopupMenuListenerRef menuListenerRef, WKRect rect, WKPopupItemTextDirection textDirection, double pageScaleFactor, WKArrayRef itemsRef, int32_t selectedIndex, const void* clientInfo)
+{
+    return toPageUIClientEfl(clientInfo)->m_view->requestPopupMenu(menuListenerRef, rect, textDirection, pageScaleFactor, itemsRef, selectedIndex);
+}
+
+void PageUIClientEfl::hidePopupMenu(WKPageRef, const void* clientInfo)
+{
+    return toPageUIClientEfl(clientInfo)->m_view->closePopupMenu();
+}
 
 } // namespace WebKit

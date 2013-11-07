@@ -55,6 +55,18 @@ void PagePopupController::setValueAndClosePopup(int numValue, const String& stri
         m_popupClient->setValueAndClosePopup(numValue, stringValue);
 }
 
+void PagePopupController::setValue(const String& value)
+{
+    if (m_popupClient)
+        m_popupClient->setValue(value);
+}
+
+void PagePopupController::closePopup()
+{
+    if (m_popupClient)
+        m_popupClient->closePopup();
+}
+
 String PagePopupController::localizeNumberString(const String& numberString)
 {
     if (m_popupClient)
@@ -69,7 +81,16 @@ String PagePopupController::formatMonth(int year, int zeroBaseMonth)
         return emptyString();
     DateComponents date;
     date.setMonthsSinceEpoch((year - 1970) * 12.0 + zeroBaseMonth);
-    return m_popupClient->locale().formatDateTime(date);
+    return m_popupClient->locale().formatDateTime(date, Locale::FormatTypeMedium);
+}
+
+String PagePopupController::formatShortMonth(int year, int zeroBaseMonth)
+{
+    if (!m_popupClient)
+        return emptyString();
+    DateComponents date;
+    date.setMonthsSinceEpoch((year - 1970) * 12.0 + zeroBaseMonth);
+    return m_popupClient->locale().formatDateTime(date, Locale::FormatTypeShort);
 }
 #endif
 

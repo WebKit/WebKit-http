@@ -43,45 +43,6 @@
         "hidden": true,
         "types": [
             {
-                "id": "NodeCount",
-                "type": "object",
-                "properties": [
-                    { "name": "nodeName", "type": "string" },
-                    { "name": "count", "type": "integer" }
-                ],
-                "description": "Number of nodes with given name."
-            },
-            {
-                "id": "ListenerCount",
-                "type": "object",
-                "properties": [
-                    { "name": "type", "type": "string" },
-                    { "name": "count", "type": "integer" }
-                ],
-                "description": "Number of JS event listeners by event type."
-            },
-            {
-                "id": "StringStatistics",
-                "type": "object",
-                "properties": [
-                    { "name": "dom", "type": "integer" },
-                    { "name": "js", "type": "integer" },
-                    { "name": "shared", "type": "integer" }
-                ],
-                "description": "Character data statistics for the page."
-            },
-            {
-                "id": "DOMGroup",
-                "type": "object",
-                "properties": [
-                    { "name": "size", "type": "integer" },
-                    { "name": "title", "type": "string" },
-                    { "name": "documentURI", "type": "string", "optional": true },
-                    { "name": "nodeCount", "type": "array", "items": { "$ref": "NodeCount" }},
-                    { "name": "listenerCount", "type": "array", "items": { "$ref": "ListenerCount" }}
-                ]
-            },
-            {
                 "id": "MemoryBlock",
                 "type": "object",
                 "properties": [
@@ -89,14 +50,25 @@
                     { "name": "name", "type": "string", "description": "Unique name used to identify the component that allocated this block" },
                     { "name": "children", "type": "array", "optional": true, "items": { "$ref": "MemoryBlock" }}
                 ]
+            },
+            {
+                "id": "HeapSnapshotChunk",
+                "type": "object",
+                "properties": [
+                    { "name": "strings", "type": "array", "items": { "type": "string" }, "description": "An array of strings that were found since last update." },
+                    { "name": "nodes", "type": "array", "items": { "type": "integer" }, "description": "An array of nodes that were found since last update." },
+                    { "name": "edges", "type": "array", "items": { "type": "integer" }, "description": "An array of edges that were found since last update." },
+                    { "name": "baseToRealNodeId", "type": "array", "items": { "type": "integer" }, "description": "An array of integers for nodeId remapping. Even nodeId has to be mapped to the following odd nodeId." }
+                ]
             }
         ],
         "commands": [
             {
-                "name": "getDOMNodeCount",
+                "name": "getDOMCounters",
                 "returns": [
-                    { "name": "domGroups", "type": "array", "items": { "$ref": "DOMGroup" }},
-                    { "name": "strings", "$ref": "StringStatistics" }
+                    { "name": "documents", "type": "integer" },
+                    { "name": "nodes", "type": "integer" },
+                    { "name": "jsEventListeners", "type": "integer" }
                 ]
             },
             {
@@ -106,7 +78,15 @@
                 ],
                 "returns": [
                     { "name": "distribution", "$ref": "MemoryBlock", "description": "An object describing all memory allocated by the process"},
-                    { "name": "graph", "type": "object", "optional": true, "description": "Native memory graph."}
+                    { "name": "graphMetaInformation", "type": "object", "optional": true, "description": "An object describing structures of nodes and edges in the graph."}
+                ]
+            }
+        ],
+        "events": [
+            {
+                "name": "addNativeSnapshotChunk",
+                "parameters": [
+                    { "name": "chunk", "$ref": "HeapSnapshotChunk", "description": "A chunk of the serialized the snapshot." }
                 ]
             }
         ]
@@ -131,7 +111,7 @@
                     { "name": "loaderId", "$ref": "Network.LoaderId", "description": "Identifier of the loader associated with this frame." },
                     { "name": "name", "type": "string", "optional": true, "description": "Frame's name as specified in the tag." },
                     { "name": "url", "type": "string", "description": "Frame document's URL." },
-                    { "name": "securityOrigin", "type": "string", "optional": true, "description": "Frame document's security origin." },
+                    { "name": "securityOrigin", "type": "string", "description": "Frame document's security origin." },
                     { "name": "mimeType", "type": "string", "description": "Frame document's mimeType as determined by the browser." }
                 ],
                 "hidden": true
@@ -350,6 +330,22 @@
                 "hidden": true
             },
             {
+                "name": "canShowDebugBorders",
+                "description": "Tells if backend supports debug borders on layers",
+                "returns": [
+                    { "name": "show", "type": "boolean", "description": "True if the debug borders can be shown" }
+                ],
+                "hidden": true
+            },
+            {
+                "name": "setShowDebugBorders",
+                "description": "Requests that backend shows debug borders on layers",
+                "parameters": [
+                    { "name": "show", "type": "boolean", "description": "True for showing debug borders" }
+                ],
+                "hidden": true
+            },
+            {
                 "name": "canShowFPSCounter",
                 "description": "Tells if backend supports a FPS counter display",
                 "returns": [
@@ -564,6 +560,14 @@
                 "name": "javascriptDialogClosed",
                 "description": "Fired when a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload) has been closed.",
                 "hidden": true
+            },
+            {
+                "name": "scriptsEnabled",
+                "description": "Fired when the JavaScript is enabled/disabled on the page",
+                "parameters": [
+                    { "name": "isEnabled", "type": "boolean", "description": "Whether script execution is enabled or disabled on the page." }
+                ],
+                "hidden": true
             }
         ]
     },
@@ -609,6 +613,7 @@
                     { "name": "name", "type": "string", "description": "Property name." },
 	                { "name": "type", "type": "string", "enum": ["object", "function", "undefined", "string", "number", "boolean"], "description": "Object type." },
 	                { "name": "value", "type": "string", "optional": true, "description": "User-friendly property value string." },
+	                { "name": "valuePreview", "$ref": "ObjectPreview", "optional": true, "description": "Nested value preview." },
 	                { "name": "subtype", "type": "string", "optional": true, "enum": ["array", "null", "node", "regexp", "date"], "description": "Object subtype hint. Specified for <code>object</code> type values only." }
                 ]
             },
@@ -763,10 +768,10 @@
                 "type": "object",
                 "description": "Console message.",
                 "properties": [
-                    { "name": "source", "type": "string", "enum": ["html", "wml", "xml", "javascript", "network", "console-api", "other"], "description": "Message source." },
-                    { "name": "level", "type": "string", "enum": ["tip", "log", "warning", "error", "debug"], "description": "Message severity." },
+                    { "name": "source", "type": "string", "enum": ["xml", "javascript", "network", "console-api", "storage", "appcache", "rendering", "css", "security", "other"], "description": "Message source." },
+                    { "name": "level", "type": "string", "enum": ["log", "warning", "error", "debug"], "description": "Message severity." },
                     { "name": "text", "type": "string", "description": "Message text." },
-                    { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "trace", "clear", "startGroup", "startGroupCollapsed", "endGroup", "assert", "timing"], "description": "Console message type." },
+                    { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "table", "trace", "clear", "startGroup", "startGroupCollapsed", "endGroup", "assert", "timing", "profile", "profileEnd"], "description": "Console message type." },
                     { "name": "url", "type": "string", "optional": true, "description": "URL of the message origin." },
                     { "name": "line", "type": "integer", "optional": true, "description": "Line number in the resource that generated this message." },
                     { "name": "repeatCount", "type": "integer", "optional": true, "description": "Repeat count for repeated messages." },
@@ -796,22 +801,22 @@
         "commands": [
             {
                 "name": "enable",
-                "description": "Enables console domain, sends the messages collected so far to the client by means of the <code>messageAdded</code> notification." 
+                "description": "Enables console domain, sends the messages collected so far to the client by means of the <code>messageAdded</code> notification."
             },
             {
                 "name": "disable",
-                "description": "Disables console domain, prevents further console messages from being reported to the client." 
+                "description": "Disables console domain, prevents further console messages from being reported to the client."
             },
             {
                 "name": "clearMessages",
-                "description": "Clears console messages collected in the browser." 
+                "description": "Clears console messages collected in the browser."
             },
             {
                 "name": "setMonitoringXHREnabled",
                 "parameters": [
                     { "name": "enabled", "type": "boolean", "description": "Monitoring enabled state." }
                 ],
-                "description": "Toggles monitoring of XMLHttpRequest. If <code>true</code>, console will receive messages upon each XHR issued.", 
+                "description": "Toggles monitoring of XMLHttpRequest. If <code>true</code>, console will receive messages upon each XHR issued.",
                 "hidden": true
             },
             {
@@ -1052,7 +1057,7 @@
                 "parameters": [
                     { "name": "cacheDisabled", "type": "boolean", "description": "Cache disabled state." }
                 ],
-                "description": "Toggles ignoring cache for each request. If <code>true</code>, cache will not be used." 
+                "description": "Toggles ignoring cache for each request. If <code>true</code>, cache will not be used."
             }
         ],
         "events": [
@@ -1278,15 +1283,6 @@
         "hidden": true,
         "types": [
             {
-                "id": "SecurityOriginWithDatabaseNames",
-                "type": "object",
-                "description": "Security origin with database names.",
-                "properties": [
-                    { "name": "securityOrigin", "type": "string", "description": "Security origin." },
-                    { "name": "databaseNames", "type": "array", "items": { "type": "string" }, "description": "Database names for this origin." }
-                ]
-            },
-            {
                 "id": "DatabaseWithObjectStores",
                 "type": "object",
                 "description": "Database with an array of object stores.",
@@ -1373,21 +1369,21 @@
                 "description": "Disables events from backend."
             },
             {
-                "name": "requestDatabaseNamesForFrame",
+                "name": "requestDatabaseNames",
                 "async": true,
                 "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Frame id." }
+                    { "name": "securityOrigin", "type": "string", "description": "Security origin." }
                 ],
                 "returns": [
-                    { "name": "securityOriginWithDatabaseNames", "$ref": "SecurityOriginWithDatabaseNames", "description": "Frame with database names." }
+                    { "name": "databaseNames", "type": "array", "items": { "type": "string" }, "description": "Database names for origin." }
                 ],
-                "description": "Requests database names for given frame's security origin."
+                "description": "Requests database names for given security origin."
             },
             {
                 "name": "requestDatabase",
                 "async": true,
                 "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Frame id." },
+                    { "name": "securityOrigin", "type": "string", "description": "Security origin." },
                     { "name": "databaseName", "type": "string", "description": "Database name." }
                 ],
                 "returns": [
@@ -1399,7 +1395,7 @@
                 "name": "requestData",
                 "async": true,
                 "parameters": [
-                    { "name": "frameId", "$ref": "Network.FrameId", "description": "Frame id." },
+                    { "name": "securityOrigin", "type": "string", "description": "Security origin." },
                     { "name": "databaseName", "type": "string", "description": "Database name." },
                     { "name": "objectStoreName", "type": "string", "description": "Object store name." },
                     { "name": "indexName", "type": "string", "description": "Index name, empty string for object store data requests." },
@@ -1418,22 +1414,16 @@
     {
         "domain": "DOMStorage",
         "hidden": true,
+        "description": "Query and modify DOM storage.",
         "types": [
             {
                 "id": "StorageId",
-                "type": "string",
-                "description": "Unique identifier of DOM storage entry.",
-                "hidden": true
-            },
-            {
-                "id": "Entry",
                 "type": "object",
-                "description": "DOM Storage entry.",
+                "description": "DOM Storage identifier.",
                 "hidden": true,
                 "properties": [
-                    { "name": "origin", "type": "string", "description": "Document origin." },
-                    { "name": "isLocalStorage", "type": "boolean", "description": "True for local storage." },
-                    { "name": "id", "$ref": "StorageId", "description": "Entry id for further reference." }
+                    { "name": "securityOrigin", "type": "string", "description": "Security origin for the storage." },
+                    { "name": "isLocalStorage", "type": "boolean", "description": "Whether the storage is local storage (not session storage)." }
                 ]
             },
             {
@@ -1454,7 +1444,7 @@
                 "description": "Disables storage tracking, prevents storage events from being sent to the client."
             },
             {
-                "name": "getDOMStorageEntries",
+                "name": "getDOMStorageItems",
                 "parameters": [
                     { "name": "storageId", "$ref": "StorageId" }
                 ],
@@ -1468,9 +1458,6 @@
                     { "name": "storageId", "$ref": "StorageId" },
                     { "name": "key", "type": "string" },
                     { "name": "value", "type": "string" }
-                ],
-                "returns": [
-                    { "name": "success", "type": "boolean" }
                 ]
             },
             {
@@ -1478,23 +1465,38 @@
                 "parameters": [
                     { "name": "storageId", "$ref": "StorageId" },
                     { "name": "key", "type": "string" }
-                ],
-                "returns": [
-                    { "name": "success", "type": "boolean" }
                 ]
             }
         ],
         "events": [
             {
-                "name": "addDOMStorage",
+                "name": "domStorageItemsCleared",
                 "parameters": [
-                    { "name": "storage", "$ref": "Entry" }
+                    { "name": "storageId",  "$ref": "StorageId" }
                 ]
             },
             {
-                "name": "domStorageUpdated",
+                "name": "domStorageItemRemoved",
                 "parameters": [
-                    { "name": "storageId",  "$ref": "StorageId" }
+                    { "name": "storageId",  "$ref": "StorageId" },
+                    { "name": "key", "type": "string" }
+                ]
+            },
+            {
+                "name": "domStorageItemAdded",
+                "parameters": [
+                    { "name": "storageId",  "$ref": "StorageId" },
+                    { "name": "key", "type": "string" },
+                    { "name": "newValue", "type": "string" }
+                ]
+            },
+            {
+                "name": "domStorageItemUpdated",
+                "parameters": [
+                    { "name": "storageId",  "$ref": "StorageId" },
+                    { "name": "key", "type": "string" },
+                    { "name": "oldValue", "type": "string" },
+                    { "name": "newValue", "type": "string" }
                 ]
             }
         ]
@@ -1736,7 +1738,8 @@
                     { "name": "nodeId", "$ref": "NodeId", "description": "Target <code>DOMNode</code> id." },
                     { "name": "handlerBody", "type": "string", "description": "Event handler function body." },
                     { "name": "location", "$ref": "Debugger.Location", "optional": true, "description": "Handler code location." },
-                    { "name": "sourceName", "type": "string", "optional": true, "description": "Source script URL." }
+                    { "name": "sourceName", "type": "string", "optional": true, "description": "Source script URL." },
+                    { "name": "handler", "$ref": "Runtime.RemoteObject", "optional": true, "description": "Event handler function value." }
                 ],
                 "description": "DOM interaction is implemented in terms of mirror objects that represent the actual DOM nodes. DOMNode is a base node mirror type."
             },
@@ -1857,7 +1860,8 @@
             {
                 "name": "getEventListenersForNode",
                 "parameters": [
-                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get listeners for." }
+                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get listeners for." },
+                    { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name for handler value. Handler value is not returned without this parameter specified." }
                 ],
                 "returns": [
                     { "name": "listeners", "type": "array", "items": { "$ref": "EventListener"}, "description": "Array of relevant listeners." }
@@ -2032,9 +2036,18 @@
             {
                 "name": "focus",
                 "parameters": [
-                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "Id of the node to focus." }
+                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to focus." }
                 ],
                 "description": "Focuses the given element.",
+                "hidden": true
+            },
+            {
+                "name": "setFileInputFiles",
+                "parameters": [
+                    { "name": "nodeId", "$ref": "NodeId", "description": "Id of the file input node to set files for." },
+                    { "name": "files", "type": "array", "items": { "type": "string" }, "description": "Array of file paths to set." }
+                ],
+                "description": "Sets files for the given file input element.",
                 "hidden": true
             }
         ],
@@ -2249,8 +2262,10 @@
                 "id": "SourceRange",
                 "type": "object",
                 "properties": [
-                    { "name": "start", "type": "integer", "description": "Start of range (inclusive)."},
-                    { "name": "end", "type": "integer", "description": "End of range (exclusive)."}
+                    { "name": "startLine", "type": "integer", "description": "Start line of range." },
+                    { "name": "startColumn", "type": "integer", "description": "Start column of range (inclusive)." },
+                    { "name": "endLine", "type": "integer", "description": "End line of range" },
+                    { "name": "endColumn", "type": "integer", "description": "End column of range (exclusive)." }
                 ],
                 "description": "Text range within a resource."
             },
@@ -2302,7 +2317,7 @@
                     { "name": "implicit", "type": "boolean", "optional": true, "description": "Whether the property is implicit (implies <code>false</code> if absent)." },
                     { "name": "text", "type": "string", "optional": true, "description": "The full property text as specified in the style." },
                     { "name": "parsedOk", "type": "boolean", "optional": true, "description": "Whether the property is understood by the browser (implies <code>true</code> if absent)." },
-                    { "name": "status", "type": "string", "enum": ["active", "inactive", "disabled", "style"], "optional": true, "description": "The property status: \"active\" (implied if absent) if the property is effective in the style, \"inactive\" if the property is overridden by a same-named property in this style later on, \"disabled\" if the property is disabled by the user, \"style\" if the property is reported by the browser rather than by the CSS source parser." },
+                    { "name": "status", "type": "string", "enum": ["active", "inactive", "disabled", "style"], "optional": true, "description": "The property status: \"active\" if the property is effective in the style, \"inactive\" if the property is overridden by a same-named property in this style later on, \"disabled\" if the property is disabled by the user, \"style\" (implied if absent) if the property is reported by the browser rather than by the CSS source parser." },
                     { "name": "range", "$ref": "SourceRange", "optional": true, "description": "The entire property range in the enclosing style declaration (if available)." }
                 ],
                 "description": "CSS style effective visual dimensions and source offsets."
@@ -2573,6 +2588,7 @@
                 "type": "object",
                 "properties": [
                     { "name": "type", "type": "string", "description": "Event type." },
+                    { "name": "thread", "type": "string", "optional": true, "description": "If present, identifies the thread that produced the event." },
                     { "name": "data", "type": "object", "description": "Event data." },
                     { "name": "children", "type": "array", "optional": true, "items": { "$ref": "TimelineEvent" }, "description": "Nested records." }
                 ],
@@ -2592,12 +2608,20 @@
                 "description": "Stops capturing instrumentation events."
             },
             {
-                "name": "setIncludeMemoryDetails",
+                "name": "setIncludeDomCounters",
                 "parameters": [
-                    { "name": "enabled", "type": "boolean", "description": "True to start collecting DOM counters." }
+                    { "name": "enabled", "type": "boolean", "description": "Whether DOM counters data should be included into timeline events." }
                 ],
                 "hidden": true,
-                "description": "Starts calculating various DOM statistics and sending them as part of timeline events."
+                "description": "Controls if DOM counters should be send as part of timeline events."
+            },
+            {
+                "name": "setIncludeNativeMemoryStatistics",
+                "parameters": [
+                    { "name": "enabled", "type": "boolean", "description": "Whether native memory usage statistics should be reported as part of timeline events." }
+                ],
+                "hidden": true,
+                "description": "Controls whether statistics on native memory usage is sent with timeline events."
             },
             {
                 "name": "supportsFrameInstrumentation",
@@ -2908,6 +2932,18 @@
                 ],
                 "hidden": true,
                 "description": "Sets overlay message."
+            },
+            {
+                "name": "setVariableValue",
+                "parameters": [
+                    { "name": "scopeNumber", "type": "integer", "description": "0-based number of scope as was listed in scope chain. Only 'local', 'closure' and 'catch' scope types are allowed. Other scopes could be manipulated manually." },
+                    { "name": "variableName", "type": "string", "description": "Variable name." },
+                    { "name": "newValue", "$ref": "Runtime.CallArgument", "description": "New variable value." },
+                    { "name": "callFrameId", "$ref": "CallFrameId", "optional": true, "description": "Id of callframe that holds variable." },
+                    { "name": "functionObjectId", "$ref": "Runtime.RemoteObjectId", "optional": true, "description": "Object id of closure (function) that holds variable." }
+                ],
+                "hidden": true,
+                "description": "Changes value of variable in a callframe or a closure. Either callframe or function must be specified. Object-based scopes are not supported and must be mutated manually."
             }
         ],
         "events": [
@@ -3215,6 +3251,115 @@
         ]
     },
     {
+        "domain": "HeapProfiler",
+        "hidden": true,
+        "types": [
+            {
+                "id": "ProfileHeader",
+                "type": "object",
+                "description": "Profile header.",
+                "properties": [
+                    { "name": "title", "type": "string", "description": "Profile title." },
+                    { "name": "uid", "type": "integer", "description": "Unique identifier of the profile." },
+                    { "name": "maxJSObjectId", "type": "integer", "optional": true, "description": "Last seen JS object Id." }
+                ]
+            },
+            {
+                "id": "HeapSnapshotObjectId",
+                "type": "string",
+                "description": "Heap snashot object id."
+            }
+        ],
+        "commands": [
+            {
+                "name": "hasHeapProfiler",
+                "returns": [
+                    { "name": "result", "type": "boolean" }
+                ]
+            },
+            {
+                "name": "getProfileHeaders",
+                "returns": [
+                    { "name": "headers", "type": "array", "items": { "$ref": "ProfileHeader"} }
+                ]
+            },
+            {
+                "name": "getHeapSnapshot",
+                "parameters": [
+                    { "name": "uid", "type": "integer" }
+                ]
+            },
+            {
+                "name": "removeProfile",
+                "parameters": [
+                    { "name": "uid", "type": "integer" }
+                ]
+            },
+            {
+                "name": "clearProfiles"
+            },
+            {
+                "name": "takeHeapSnapshot",
+                "parameters": [
+                    { "name": "reportProgress", "type": "boolean", "optional": true, "description": "If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken." }
+                ]
+            },
+            {
+                "name": "collectGarbage"
+            },
+            {
+                "name": "getObjectByHeapObjectId",
+                "parameters": [
+                    { "name": "objectId", "$ref": "HeapSnapshotObjectId" },
+                    { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." }
+                ],
+                "returns": [
+                    { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Evaluation result." }
+                ]
+            },
+            {
+                "name": "getHeapObjectId",
+                "parameters": [
+                    { "name": "objectId", "$ref": "Runtime.RemoteObjectId", "description": "Identifier of the object to get heap object id for." }
+                ],
+                "returns": [
+                    { "name": "heapSnapshotObjectId", "$ref": "HeapSnapshotObjectId", "description": "Id of the heap snapshot object corresponding to the passed remote object id." }
+                ]
+            }
+        ],
+        "events": [
+            {
+                "name": "addProfileHeader",
+                "parameters": [
+                    { "name": "header", "$ref": "ProfileHeader" }
+                ]
+            },
+            {
+                "name": "addHeapSnapshotChunk",
+                "parameters": [
+                    { "name": "uid", "type": "integer" },
+                    { "name": "chunk", "type": "string" }
+                ]
+            },
+            {
+                "name": "finishHeapSnapshot",
+                "parameters": [
+                    { "name": "uid", "type": "integer" }
+                ]
+            },
+            {
+                "name": "resetProfiles"
+            },
+            {
+                "name": "reportHeapSnapshotProgress",
+                "parameters": [
+                    { "name": "done", "type": "integer" },
+                    { "name": "total", "type": "integer" }
+                ]
+            }
+        ]
+    },
+    {
         "domain": "Worker",
         "hidden": true,
         "types": [],
@@ -3320,6 +3465,7 @@
                     { "name": "arguments", "type": "array", "items": { "$ref": "CallArgument" }, "optional": true },
                     { "name": "result", "$ref": "CallArgument", "optional": true },
                     { "name": "isDrawingCall", "type": "boolean", "optional": true },
+                    { "name": "isFrameEndCall", "type": "boolean", "optional": true },
                     { "name": "property", "type": "string", "optional": true },
                     { "name": "value", "$ref": "CallArgument", "optional": true },
                     { "name": "sourceURL", "type": "string", "optional": true },
@@ -3500,6 +3646,11 @@
                 "description": "Unique RenderLayer identifier."
             },
             {
+                "id": "PseudoElementId",
+                "type": "string",
+                "description": "Unique PseudoElement identifier."
+            },
+            {
                 "id": "IntRect",
                 "type": "object",
                 "description": "A rectangle.",
@@ -3516,12 +3667,47 @@
                 "description": "Information about a compositing layer.",
                 "properties": [
                     { "name": "layerId", "$ref": "LayerId", "description": "The unique id for this layer." },
-                    { "name": "bounds", "$ref": "IntRect", "description": "Bounds of the layer." },
-                    { "name": "isComposited", "type": "boolean", "description": "Indicates whether this layer is composited." },
-                    { "name": "paintCount", "type": "integer", "optional": true, "description": "Indicates how many time this layer has painted." },
-                    { "name": "memory", "type": "integer", "optional": true, "description": "Estimated memory used by this layer." },
-                    { "name": "compositedBounds", "$ref": "IntRect", "optional": true, "description": "The bounds of the composited layer." },
-                    { "name": "childLayers", "type": "array", "optional": true, "items": { "$ref": "Layer" }, "description": "Child layers." }
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The id for the node associated with this layer." },
+                    { "name": "bounds", "$ref": "IntRect", "description": "Bounds of the layer in absolute page coordinates." },
+                    { "name": "paintCount", "type": "integer", "description": "Indicates how many time this layer has painted." },
+                    { "name": "memory", "type": "integer", "description": "Estimated memory used by this layer." },
+                    { "name": "compositedBounds", "$ref": "IntRect", "description": "The bounds of the composited layer." },
+                    { "name": "isInShadowTree", "type": "boolean", "optional": true, "description": "Indicates whether this layer is associated with an element hosted in a shadow tree." },
+                    { "name": "isReflection", "type": "boolean", "optional": true, "description": "Indicates whether this layer was used to provide a reflection for the element." },
+                    { "name": "isGeneratedContent", "type": "boolean", "optional": true, "description": "Indicates whether the layer is attached to a pseudo element that is CSS generated content." },
+                    { "name": "pseudoElementId", "$ref": "PseudoElementId", "optional": true, "description": "The id for the pseudo element associated with this layer." },
+                    { "name": "pseudoClass", "type": "string", "optional": true, "description": "The name of the CSS pseudo-class that prompted the layer's content to be generated." }
+                ]
+            },
+            {
+                "id": "CompositingReasons",
+                "type": "object",
+                "description": "An object containing the reasons why the layer was composited as properties.",
+                "properties": [
+                    { "name": "transform3D", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a CSS 3D transform." },
+                    { "name": "video", "type": "boolean", "optional": true, "description": "Composition due to association with a <video> element." },
+                    { "name": "canvas", "type": "boolean", "optional": true, "description": "Composition due to the element being a <canvas> element." },
+                    { "name": "plugin", "type": "boolean", "optional": true, "description": "Composition due to association with a plugin." },
+                    { "name": "iFrame", "type": "boolean", "optional": true, "description": "Composition due to association with an <iframe> element." },
+                    { "name": "backfaceVisibilityHidden", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a \"backface-visibility: hidden\" style." },
+                    { "name": "clipsCompositingDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with an element clipping compositing descendants." },
+                    { "name": "animation", "type": "boolean", "optional": true, "description": "Composition due to association with an animated element." },
+                    { "name": "filters", "type": "boolean", "optional": true, "description": "Composition due to association with an element with CSS filters applied." },
+                    { "name": "positionFixed", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a \"position: fixed\" style." },
+                    { "name": "positionSticky", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a \"position: sticky\" style." },
+                    { "name": "overflowScrollingTouch", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a \"overflow-scrolling: touch\" style." },
+                    { "name": "stacking", "type": "boolean", "optional": true, "description": "Composition due to association with an element establishing a stacking context." },
+                    { "name": "overlap", "type": "boolean", "optional": true, "description": "Composition due to association with an element overlapping other composited elements." },
+                    { "name": "negativeZIndexChildren", "type": "boolean", "optional": true, "description": "Composition due to association with an element with descendants that have a negative z-index." },
+                    { "name": "transformWithCompositedDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with an element with composited descendants." },
+                    { "name": "opacityWithCompositedDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with an element with opacity applied and composited descendants." },
+                    { "name": "maskWithCompositedDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with a masked element and composited descendants." },
+                    { "name": "reflectionWithCompositedDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a reflection and composited descendants." },
+                    { "name": "filterWithCompositedDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with an element with CSS filters applied and composited descendants." },
+                    { "name": "blendingWithCompositedDescendants", "type": "boolean", "optional": true, "description": "Composition due to association with an element with CSS blending applied and composited descendants." },
+                    { "name": "perspective", "type": "boolean", "optional": true, "description": "Composition due to association with an element with perspective applied." },
+                    { "name": "preserve3D", "type": "boolean", "optional": true, "description": "Composition due to association with an element with a \"transform-style: preserve-3d\" style." },
+                    { "name": "root", "type": "boolean", "optional": true, "description": "Composition due to association with the root element." }
                 ]
             }
         ],
@@ -3535,20 +3721,22 @@
                 "description": "Disables compositing tree inspection."
             },
             {
-                "name": "getLayerTree",
+                "name": "layersForNode",
+                "parameters": [
+                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "Root of the subtree for which we want to gather layers." }                ],
                 "description": "Returns the layer tree structure of the current page.",
                 "returns": [
-                    { "name": "layerTree", "$ref": "Layer", "description": "Layer tree structure of the current page." }
+                    { "name": "layers", "type": "array", "items": { "$ref": "Layer" }, "description": "Child layers." }
                 ]
             },
             {
-                "name": "nodeIdForLayerId",
-                "description": "Returns the node id for a given layer id.",
+                "name": "reasonsForCompositingLayer",
                 "parameters": [
-                    { "name": "layerId", "$ref": "LayerId" }
+                    { "name": "layerId", "$ref": "LayerId", "description": "The id of the layer for which we want to get the reasons it was composited." }
                 ],
+                "description": "Provides the reasons why the given layer was composited.",
                 "returns": [
-                    { "name": "nodeId", "$ref": "DOM.NodeId", "description": "The node id for the given layer id." }
+                    { "name": "compositingReasons", "$ref": "CompositingReasons", "description": "An object containing the reasons why the layer was composited as properties." }
                 ]
             }
         ],

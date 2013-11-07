@@ -673,9 +673,8 @@ public:
         m_assembler.vmov(dest1, dest2, src);
     }
 
-    void moveIntsToDouble(RegisterID src1, RegisterID src2, FPRegisterID dest, FPRegisterID scratch)
+    void moveIntsToDouble(RegisterID src1, RegisterID src2, FPRegisterID dest, FPRegisterID)
     {
-        UNUSED_PARAM(scratch);
         m_assembler.vmov(dest, src1, src2);
     }
 
@@ -980,6 +979,7 @@ public:
 
     Jump branchPtrWithPatch(RelationalCondition cond, RegisterID left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
     {
+        ensureSpace(3 * sizeof(ARMWord), 2 * sizeof(ARMWord));
         dataLabel = moveWithPatch(initialRightValue, ARMRegisters::S1);
         Jump jump = branch32(cond, left, ARMRegisters::S1, true);
         return jump;
@@ -988,6 +988,7 @@ public:
     Jump branchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
     {
         load32(left, ARMRegisters::S1);
+        ensureSpace(3 * sizeof(ARMWord), 2 * sizeof(ARMWord));
         dataLabel = moveWithPatch(initialRightValue, ARMRegisters::S0);
         Jump jump = branch32(cond, ARMRegisters::S0, ARMRegisters::S1, true);
         return jump;
@@ -1240,7 +1241,7 @@ public:
     // If the result is not representable as a 32 bit value, branch.
     // May also branch for some values that are representable in 32 bits
     // (specifically, in this case, 0).
-    void branchConvertDoubleToInt32(FPRegisterID src, RegisterID dest, JumpList& failureCases, FPRegisterID fpTemp)
+    void branchConvertDoubleToInt32(FPRegisterID src, RegisterID dest, JumpList& failureCases, FPRegisterID)
     {
         m_assembler.vcvt_s32_f64(ARMRegisters::SD0 << 1, src);
         m_assembler.vmov_arm32(dest, ARMRegisters::SD0 << 1);
@@ -1310,10 +1311,10 @@ public:
 
     static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel instructionStart, RegisterID reg, void* initialValue)
     {
-        ARMAssembler::revertJump(instructionStart.dataLocation(), reg, reinterpret_cast<uintptr_t>(initialValue) & 0xffff);
+        ARMAssembler::revertBranchPtrWithPatch(instructionStart.dataLocation(), reg, reinterpret_cast<uintptr_t>(initialValue) & 0xffff);
     }
 
-    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel instructionStart, Address, void* initialValue)
+    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }

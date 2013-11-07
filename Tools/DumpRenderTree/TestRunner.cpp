@@ -680,16 +680,6 @@ static JSValueRef keepWebHistoryCallback(JSContextRef context, JSObjectRef funct
     return JSValueMakeUndefined(context);
 }
 
-static JSValueRef computedStyleIncludingVisitedInfoCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount != 1)
-        return JSValueMakeUndefined(context);
-    
-    // Has mac implementation
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    return controller->computedStyleIncludingVisitedInfo(context, arguments[0]);
-}
-
 static JSValueRef notifyDoneCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     // Has mac & windows implementation
@@ -866,7 +856,7 @@ static JSValueRef setAppCacheMaximumSizeCallback(JSContextRef context, JSObjectR
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
 
     double size = JSValueToNumber(context, arguments[0], NULL);
-    if (!isnan(size))
+    if (!std::isnan(size))
         controller->setAppCacheMaximumSize(static_cast<unsigned long long>(size));
         
     return JSValueMakeUndefined(context);
@@ -881,7 +871,7 @@ static JSValueRef setApplicationCacheOriginQuotaCallback(JSContextRef context, J
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
 
     double size = JSValueToNumber(context, arguments[0], NULL);
-    if (!isnan(size))
+    if (!std::isnan(size))
         controller->setApplicationCacheOriginQuota(static_cast<unsigned long long>(size));
 
     return JSValueMakeUndefined(context);
@@ -939,17 +929,6 @@ static JSValueRef setAuthorAndUserStylesEnabledCallback(JSContextRef context, JS
     return JSValueMakeUndefined(context);
 }
 
-static JSValueRef setAutofilledCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount != 2 || !arguments[0])
-        return JSValueMakeUndefined(context);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->setAutofilled(context, arguments[0], JSValueToBoolean(context, arguments[1]));
-
-    return JSValueMakeUndefined(context);
-}
-
 static JSValueRef setCacheModelCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     // Has Mac implementation.
@@ -990,7 +969,7 @@ static JSValueRef setDatabaseQuotaCallback(JSContextRef context, JSObjectRef fun
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
 
     double quota = JSValueToNumber(context, arguments[0], NULL);
-    if (!isnan(quota))
+    if (!std::isnan(quota))
         controller->setDatabaseQuota(static_cast<unsigned long long>(quota));
         
     return JSValueMakeUndefined(context);
@@ -1298,18 +1277,6 @@ static JSValueRef setPrintingCallback(JSContextRef context, JSObjectRef function
     return JSValueMakeUndefined(context);
 }
 
-
-static JSValueRef setFrameFlatteningEnabledCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    // Has mac & windows implementation
-    if (argumentCount < 1)
-        return JSValueMakeUndefined(context);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->setFrameFlatteningEnabled(JSValueToBoolean(context, arguments[0]));
-
-    return JSValueMakeUndefined(context);
-}
 
 static JSValueRef setAllowUniversalAccessFromFileURLsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
@@ -1636,58 +1603,6 @@ static JSValueRef evaluateScriptInIsolatedWorldAndReturnValueCallback(JSContextR
     return JSValueMakeUndefined(context);
 }
 
-static JSValueRef elementDoesAutoCompleteForElementWithIdCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    JSRetainPtr<JSStringRef> elementId(Adopt, JSValueToStringCopy(context, arguments[0], exception));
-    ASSERT(!*exception);
-
-    bool autoCompletes = controller->elementDoesAutoCompleteForElementWithId(elementId.get());
-
-    return JSValueMakeBoolean(context, autoCompletes);
-}
-
-static JSValueRef pauseAnimationAtTimeOnElementWithIdCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount != 3)
-        return JSValueMakeUndefined(context);
-
-    JSRetainPtr<JSStringRef> animationName(Adopt, JSValueToStringCopy(context, arguments[0], exception));
-    ASSERT(!*exception);
-    double time = JSValueToNumber(context, arguments[1], exception);
-    ASSERT(!*exception);
-    JSRetainPtr<JSStringRef> elementId(Adopt, JSValueToStringCopy(context, arguments[2], exception));
-    ASSERT(!*exception);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    return JSValueMakeBoolean(context, controller->pauseAnimationAtTimeOnElementWithId(animationName.get(), time, elementId.get()));
-}
-
-static JSValueRef pauseTransitionAtTimeOnElementWithIdCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount != 3)
-        return JSValueMakeUndefined(context);
-
-    JSRetainPtr<JSStringRef> propertyName(Adopt, JSValueToStringCopy(context, arguments[0], exception));
-    ASSERT(!*exception);
-    double time = JSValueToNumber(context, arguments[1], exception);
-    ASSERT(!*exception);
-    JSRetainPtr<JSStringRef> elementId(Adopt, JSValueToStringCopy(context, arguments[2], exception));
-    ASSERT(!*exception);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    return JSValueMakeBoolean(context, controller->pauseTransitionAtTimeOnElementWithId(propertyName.get(), time, elementId.get()));
-}
-
-static JSValueRef numberOfActiveAnimationsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount != 0)
-        return JSValueMakeUndefined(context);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    return JSValueMakeNumber(context, controller->numberOfActiveAnimations());
-}
-
 static JSValueRef waitForPolicyDelegateCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t, const JSValueRef[], JSValueRef*)
 {
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
@@ -1822,52 +1737,11 @@ static JSValueRef setWebViewEditableCallback(JSContextRef context, JSObjectRef f
     return JSValueMakeUndefined(context);
 }
 
-static JSValueRef sendWebIntentResponseCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    JSRetainPtr<JSStringRef> response;
-    if (argumentCount == 1) {
-        response.adopt(JSValueToStringCopy(context, arguments[0], exception));
-        ASSERT(!*exception);
-    } else
-        response.adopt(JSStringCreateWithUTF8CString(0));
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->sendWebIntentResponse(response.get());
-
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef deliverWebIntentCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount < 3)
-        return JSValueMakeUndefined(context);
-
-    JSRetainPtr<JSStringRef> action(Adopt, JSValueToStringCopy(context, arguments[0], exception));
-    ASSERT(!*exception);
-    JSRetainPtr<JSStringRef> type(Adopt, JSValueToStringCopy(context, arguments[1], exception));
-    ASSERT(!*exception);
-    JSRetainPtr<JSStringRef> data(Adopt, JSValueToStringCopy(context, arguments[2], exception));
-    ASSERT(!*exception);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->deliverWebIntent(action.get(), type.get(), data.get());
-
-    return JSValueMakeUndefined(context);
-}
-
 static JSValueRef abortModalCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     controller->abortModal();
     return JSValueMakeUndefined(context);
-}
-
-static JSValueRef markerTextForListItemCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    if (argumentCount < 1)
-        return JSValueMakeUndefined(context);
-    return JSValueMakeString(context, controller->markerTextForListItem(context, arguments[0]).get());
 }
 
 static JSValueRef authenticateSessionCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
@@ -1973,12 +1847,6 @@ static JSValueRef getWebHistoryItemCountCallback(JSContextRef context, JSObjectR
     return JSValueMakeNumber(context, controller->webHistoryItemCount());
 }
 
-static JSValueRef getWorkerThreadCountCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
-{
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    return JSValueMakeNumber(context, controller->workerThreadCount());
-}
-
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN)
 static JSValueRef getPlatformNameCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
 {
@@ -2016,20 +1884,6 @@ static JSValueRef simulateLegacyWebNotificationClickCallback(JSContextRef contex
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject)); 
     JSRetainPtr<JSStringRef> title(Adopt, JSValueToStringCopy(context, arguments[0], exception));
     controller->simulateLegacyWebNotificationClick(title.get());
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef setMinimumTimerIntervalCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount < 1)
-        return JSValueMakeUndefined(context);
-
-    double minimum = JSValueToNumber(context, arguments[0], exception);
-    ASSERT(!*exception);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->setMinimumTimerInterval(minimum);
-
     return JSValueMakeUndefined(context);
 }
 
@@ -2168,7 +2022,6 @@ JSStaticValue* TestRunner::staticValues()
     static JSStaticValue staticValues[] = {
         { "globalFlag", getGlobalFlagCallback, setGlobalFlagCallback, kJSPropertyAttributeNone },
         { "webHistoryItemCount", getWebHistoryItemCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "workerThreadCount", getWorkerThreadCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN)
         { "platformName", getPlatformNameCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
 #endif
@@ -2196,9 +2049,7 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "clearBackForwardList", clearBackForwardListCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "clearPersistentUserStyleSheet", clearPersistentUserStyleSheetCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "closeWebInspector", closeWebInspectorCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "computedStyleIncludingVisitedInfo", computedStyleIncludingVisitedInfoCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "decodeHostName", decodeHostNameCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "deliverWebIntent", deliverWebIntentCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "disallowIncreaseForApplicationCacheQuota", disallowIncreaseForApplicationCacheQuotaCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dispatchPendingLoadRequests", dispatchPendingLoadRequestsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "display", displayCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2222,7 +2073,6 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "dumpTitleChanges", dumpTitleChangesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dumpIconChanges", dumpIconChangesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "dumpWillCacheResponse", dumpWillCacheResponseCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "elementDoesAutoCompleteForElementWithId", elementDoesAutoCompleteForElementWithIdCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "encodeHostName", encodeHostNameCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "evaluateInWebInspector", evaluateInWebInspectorCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "evaluateScriptInIsolatedWorldAndReturnValue", evaluateScriptInIsolatedWorldAndReturnValueCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2235,13 +2085,9 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "isCommandEnabled", isCommandEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "keepWebHistory", keepWebHistoryCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "numberOfPendingGeolocationPermissionRequests", numberOfPendingGeolocationPermissionRequestsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "markerTextForListItem", markerTextForListItemCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "notifyDone", notifyDoneCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "numberOfActiveAnimations", numberOfActiveAnimationsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "overridePreference", overridePreferenceCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "pathToLocalResource", pathToLocalResourceCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "pauseAnimationAtTimeOnElementWithId", pauseAnimationAtTimeOnElementWithIdCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "pauseTransitionAtTimeOnElementWithId", pauseTransitionAtTimeOnElementWithIdCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "printToPDF", dumpAsPDFCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "queueBackNavigation", queueBackNavigationCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "queueForwardNavigation", queueForwardNavigationCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2254,7 +2100,6 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "removeOriginAccessWhitelistEntry", removeOriginAccessWhitelistEntryCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "repaintSweepHorizontally", repaintSweepHorizontallyCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "resetPageVisibility", resetPageVisibilityCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "sendWebIntentResponse", sendWebIntentResponseCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAcceptsEditing", setAcceptsEditingCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAllowUniversalAccessFromFileURLs", setAllowUniversalAccessFromFileURLsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAllowFileAccessFromFileURLs", setAllowFileAccessFromFileURLsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2265,7 +2110,6 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "setAuthenticationPassword", setAuthenticationPasswordCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAuthenticationUsername", setAuthenticationUsernameCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAuthorAndUserStylesEnabled", setAuthorAndUserStylesEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "setAutofilled", setAutofilledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setCacheModel", setCacheModelCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setCallCloseOnWebViews", setCallCloseOnWebViewsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setCanOpenWindows", setCanOpenWindowsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2276,13 +2120,11 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "setDefersLoading", setDefersLoadingCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setUseDeferredFrameLoading", setUseDeferredFrameLoadingCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setDomainRelaxationForbiddenForURLScheme", setDomainRelaxationForbiddenForURLSchemeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "setFrameFlatteningEnabled", setFrameFlatteningEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setGeolocationPermission", setGeolocationPermissionCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setHandlesAuthenticationChallenges", setHandlesAuthenticationChallengesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setIconDatabaseEnabled", setIconDatabaseEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAutomaticLinkDetectionEnabled", setAutomaticLinkDetectionEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setMainFrameIsFirstResponder", setMainFrameIsFirstResponderCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "setMinimumTimerInterval", setMinimumTimerIntervalCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setMockDeviceOrientation", setMockDeviceOrientationCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setMockGeolocationPositionUnavailableError", setMockGeolocationPositionUnavailableErrorCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setMockGeolocationPosition", setMockGeolocationPositionCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },

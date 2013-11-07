@@ -27,6 +27,7 @@
 
 #import "WebFrameInternal.h"
 #import <WebCore/Frame.h>
+#import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoaderClient.h>
 #import <WebCore/RenderLayer.h>
 #import <WebCore/RenderLayerBacking.h>
@@ -52,9 +53,9 @@ using namespace WebCore;
 
     if (Node* node = renderer->node()) {
         if (node->isElementNode())
-            name = [name stringByAppendingFormat:@" %@", (NSString *)static_cast<Element*>(node)->tagName()];
+            name = [name stringByAppendingFormat:@" %@", (NSString *)toElement(node)->tagName()];
         if (node->hasID())
-            name = [name stringByAppendingFormat:@" id=\"%@\"", (NSString *)static_cast<Element*>(node)->getIdAttribute()];
+            name = [name stringByAppendingFormat:@" id=\"%@\"", (NSString *)toElement(node)->getIdAttribute()];
 
         if (node->hasClass()) {
             StyledElement* styledElement = static_cast<StyledElement*>(node);

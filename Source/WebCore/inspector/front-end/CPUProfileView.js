@@ -26,6 +26,7 @@
 /**
  * @constructor
  * @extends {WebInspector.View}
+ * @param {WebInspector.CPUProfileHeader} profile
  */
 WebInspector.CPUProfileView = function(profile)
 {
@@ -52,7 +53,18 @@ WebInspector.CPUProfileView = function(profile)
     this.dataGrid = new WebInspector.DataGrid(columns);
     this.dataGrid.addEventListener("sorting changed", this._sortProfile, this);
     this.dataGrid.element.addEventListener("mousedown", this._mouseDownInDataGrid.bind(this), true);
-    this.dataGrid.show(this.element);
+
+    if (WebInspector.experimentsSettings.cpuFlameChart.isEnabled()) {
+        this._splitView = new WebInspector.SplitView(false, "flameChartSplitLocation");
+        this._splitView.show(this.element);
+
+        this.dataGrid.show(this._splitView.firstElement());
+
+        this.flameChart = new WebInspector.FlameChart(this);
+        this.flameChart.addEventListener(WebInspector.FlameChart.Events.SelectedNode, this._revealProfilerNode.bind(this));
+        this.flameChart.show(this._splitView.secondElement());
+    } else
+        this.dataGrid.show(this.element);
 
     this.viewSelectComboBox = new WebInspector.StatusBarComboBox(this._changeView.bind(this));
 
@@ -75,9 +87,34 @@ WebInspector.CPUProfileView = function(profile)
     this.resetButton.visible = false;
     this.resetButton.addEventListener("click", this._resetClicked, this);
 
+    this.profileHead = /** @type {?ProfilerAgent.CPUProfileNode} */ (null);
     this.profile = profile;
 
-    function profileCallback(error, profile)
+    this._linkifier = new WebInspector.Linkifier(new WebInspector.Linkifier.DefaultFormatter(30));
+
+    ProfilerAgent.getCPUProfile(this.profile.uid, this._getCPUProfileCallback.bind(this));
+}
+
+WebInspector.CPUProfileView._TypeTree = "Tree";
+WebInspector.CPUProfileView._TypeHeavy = "Heavy";
+
+WebInspector.CPUProfileView.prototype = {
+    _revealProfilerNode: function(event)
+    {
+        var current = this.profileDataGridTree.children[0];
+
+        while (current && current.profileNode !== event.data)
+            current = current.traverseNextNode(false, null, false);
+
+        if (current)
+            current.revealAndSelect();
+    },
+
+    /**
+     * @param {?Protocol.Error} error
+     * @param {ProfilerAgent.CPUProfile} profile
+     */
+    _getCPUProfileCallback: function(error, profile)
     {
         if (error)
             return;
@@ -86,7 +123,7 @@ WebInspector.CPUProfileView = function(profile)
             // Profiling was tentatively terminated with the "Clear all profiles." button.
             return;
         }
-        this.profile.head = profile.head;
+        this.profileHead = profile.head;
 
         if (profile.idleTime)
             this._injectIdleTimeNode(profile);
@@ -94,49 +131,33 @@ WebInspector.CPUProfileView = function(profile)
         this._assignParentsInProfile();
         this._changeView();
         this._updatePercentButton();
-    }
+        if (this.flameChart)
+            this.flameChart.update();
+    },
 
-    this._linkifier = new WebInspector.Linkifier(new WebInspector.Linkifier.DefaultFormatter(30));
-
-    ProfilerAgent.getCPUProfile(this.profile.uid, profileCallback.bind(this));
-}
-
-WebInspector.CPUProfileView._TypeTree = "Tree";
-WebInspector.CPUProfileView._TypeHeavy = "Heavy";
-
-WebInspector.CPUProfileView.prototype = {
     get statusBarItems()
     {
         return [this.viewSelectComboBox.element, this.percentButton.element, this.focusButton.element, this.excludeButton.element, this.resetButton.element];
     },
 
-    get bottomUpProfileDataGridTree()
+    /**
+     * @return {!WebInspector.ProfileDataGridTree}
+     */
+    _getBottomUpProfileDataGridTree: function()
     {
-        if (!this._bottomUpProfileDataGridTree) {
-            if (this.profile.bottomUpHead)
-                this._bottomUpProfileDataGridTree = new WebInspector.TopDownProfileDataGridTree(this, this.profile.bottomUpHead);
-            else
-                this._bottomUpProfileDataGridTree = new WebInspector.BottomUpProfileDataGridTree(this, this.profile.head);
-        }
+        if (!this._bottomUpProfileDataGridTree)
+            this._bottomUpProfileDataGridTree = new WebInspector.BottomUpProfileDataGridTree(this, this.profileHead);
         return this._bottomUpProfileDataGridTree;
     },
 
-    get topDownProfileDataGridTree()
+    /**
+     * @return {!WebInspector.ProfileDataGridTree}
+     */
+    _getTopDownProfileDataGridTree: function()
     {
         if (!this._topDownProfileDataGridTree)
-            this._topDownProfileDataGridTree = new WebInspector.TopDownProfileDataGridTree(this, this.profile.head);
+            this._topDownProfileDataGridTree = new WebInspector.TopDownProfileDataGridTree(this, this.profileHead);
         return this._topDownProfileDataGridTree;
-    },
-
-    get currentTree()
-    {
-        return this._currentTree;
-    },
-
-    set currentTree(tree)
-    {
-        this._currentTree = tree;
-        this.refresh();
     },
 
     willHide: function()
@@ -298,7 +319,7 @@ WebInspector.CPUProfileView.prototype = {
                     profileDataGridNode._searchMatchedCallsColumn = true;
             }
 
-            if (profileDataGridNode.functionName.match(matcher) || profileDataGridNode.url.match(matcher))
+            if (profileDataGridNode.functionName.match(matcher) || (profileDataGridNode.url && profileDataGridNode.url.match(matcher)))
                 profileDataGridNode._searchMatchedFunctionColumn = true;
 
             if (profileDataGridNode._searchMatchedSelfColumn ||
@@ -388,12 +409,12 @@ WebInspector.CPUProfileView.prototype = {
 
         switch (this.viewSelectComboBox.selectedOption().value) {
         case WebInspector.CPUProfileView._TypeTree:
-            this.profileDataGridTree = this.topDownProfileDataGridTree;
+            this.profileDataGridTree = this._getTopDownProfileDataGridTree();
             this._sortProfile();
             this._viewType.set(WebInspector.CPUProfileView._TypeTree);
             break;
         case WebInspector.CPUProfileView._TypeHeavy:
-            this.profileDataGridTree = this.bottomUpProfileDataGridTree;
+            this.profileDataGridTree = this._getBottomUpProfileDataGridTree();
             this._sortProfile();
             this._viewType.set(WebInspector.CPUProfileView._TypeHeavy);
         }
@@ -515,12 +536,12 @@ WebInspector.CPUProfileView.prototype = {
 
     _assignParentsInProfile: function()
     {
-        var head = this.profile.head;
+        var head = this.profileHead;
         head.parent = null;
         head.head = null;
         var nodesToTraverse = [ { parent: head, children: head.children } ];
         while (nodesToTraverse.length > 0) {
-            var pair = nodesToTraverse.shift();
+            var pair = nodesToTraverse.pop();
             var parent = pair.parent;
             var children = pair.children;
             var length = children.length;
@@ -533,6 +554,9 @@ WebInspector.CPUProfileView.prototype = {
         }
     },
 
+    /**
+     * @param {ProfilerAgent.CPUProfile} profile
+     */
     _injectIdleTimeNode: function(profile)
     {
         var idleTime = profile.idleTime;
@@ -571,10 +595,12 @@ WebInspector.CPUProfileView.prototype = {
 /**
  * @constructor
  * @extends {WebInspector.ProfileType}
+ * @implements {ProfilerAgent.Dispatcher}
  */
 WebInspector.CPUProfileType = function()
 {
     WebInspector.ProfileType.call(this, WebInspector.CPUProfileType.TypeId, WebInspector.UIString("Collect JavaScript CPU Profile"));
+    InspectorBackend.registerProfilerDispatcher(this);
     this._recording = false;
     WebInspector.CPUProfileType.instance = this;
 }
@@ -612,6 +638,14 @@ WebInspector.CPUProfileType.prototype = {
         return WebInspector.UIString("CPU profiles show where the execution time is spent in your page's JavaScript functions.");
     },
 
+    /**
+     * @param {ProfilerAgent.ProfileHeader} profileHeader
+     */
+    addProfileHeader: function(profileHeader)
+    {
+        this.addProfile(this.createProfile(profileHeader));
+    },
+
     isRecordingProfile: function()
     {
         return this._recording;
@@ -630,6 +664,9 @@ WebInspector.CPUProfileType.prototype = {
         ProfilerAgent.stop();
     },
 
+    /**
+     * @param {boolean} isProfiling
+     */
     setRecordingProfile: function(isProfiling)
     {
         this._recording = isProfiling;
@@ -638,7 +675,7 @@ WebInspector.CPUProfileType.prototype = {
     /**
      * @override
      * @param {string=} title
-     * @return {WebInspector.ProfileHeader}
+     * @return {!WebInspector.ProfileHeader}
      */
     createTemporaryProfile: function(title)
     {
@@ -649,11 +686,57 @@ WebInspector.CPUProfileType.prototype = {
     /**
      * @override
      * @param {ProfilerAgent.ProfileHeader} profile
-     * @return {WebInspector.ProfileHeader}
+     * @return {!WebInspector.ProfileHeader}
      */
     createProfile: function(profile)
     {
         return new WebInspector.CPUProfileHeader(this, profile.title, profile.uid);
+    },
+
+    /**
+     * @override
+     * @param {!WebInspector.ProfileHeader} profile
+     */
+    removeProfile: function(profile)
+    {
+        WebInspector.ProfileType.prototype.removeProfile.call(this, profile);
+        if (!profile.isTemporary)
+            ProfilerAgent.removeProfile(this.id, profile.uid);
+    },
+
+    /**
+     * @override
+     * @param {function(this:WebInspector.ProfileType, ?string, Array.<ProfilerAgent.ProfileHeader>)} populateCallback
+     */
+    _requestProfilesFromBackend: function(populateCallback)
+    {
+        ProfilerAgent.getProfileHeaders(populateCallback);
+    },
+
+    /**
+     * @override
+     */
+    resetProfiles: function()
+    {
+        this._reset();
+    },
+
+    /** @deprecated To be removed from the protocol */
+    addHeapSnapshotChunk: function(uid, chunk)
+    {
+        throw new Error("Never called");
+    },
+
+    /** @deprecated To be removed from the protocol */
+    finishHeapSnapshot: function(uid)
+    {
+        throw new Error("Never called");
+    },
+
+    /** @deprecated To be removed from the protocol */
+    reportHeapSnapshotProgress: function(done, total)
+    {
+        throw new Error("Never called");
     },
 
     __proto__: WebInspector.ProfileType.prototype

@@ -638,10 +638,12 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
         0, // didNewFirstVisuallyNonEmptyLayout
         0, // willGoToBackForwardListItem
         0, // interactionOccurredWhileProcessUnresponsive
-        0, // pluginDidFail
+        0, // pluginDidFail_deprecatedForUseWithV1
         0, // didReceiveIntentForFrame
         0, // registerIntentServiceForFrame
         0, // didLayout
+        0, // pluginLoadPolicy
+        0, // pluginDidFail
     };
     WKPageSetPageLoaderClient(_webView.pageRef, &loadClient);
     
@@ -700,10 +702,10 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
         createNewPage,
         mouseDidMoveOverElement,
         0, // decidePolicyForNotificationPermissionRequest
-        0, // unavailablePluginButtonClicked
+        0, // unavailablePluginButtonClicked_deprecatedForUseWithV1
         0, // showColorPicker
         0, // hideColorPicker
-        0, // shouldInstantiatePlugin
+        0, // unavailablePluginButtonClicked
     };
     WKPageSetPageUIClient(_webView.pageRef, &uiClient);
 }

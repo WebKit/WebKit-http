@@ -42,6 +42,7 @@
 
 namespace WebCore {
 
+class EXTDrawBuffers;
 class EXTTextureFilterAnisotropic;
 class HTMLImageElement;
 class HTMLVideoElement;
@@ -50,12 +51,14 @@ class ImageData;
 class IntSize;
 class OESStandardDerivatives;
 class OESTextureFloat;
+class OESTextureHalfFloat;
 class OESVertexArrayObject;
 class OESElementIndexUint;
 class WebGLActiveInfo;
 class WebGLBuffer;
 class WebGLContextGroup;
 class WebGLContextObject;
+class WebGLCompressedTextureATC;
 class WebGLCompressedTextureS3TC;
 class WebGLContextAttributes;
 class WebGLDebugRendererInfo;
@@ -323,10 +326,12 @@ public:
     virtual void stop();
 
   private:
+    friend class EXTDrawBuffers;
     friend class WebGLFramebuffer;
     friend class WebGLObject;
     friend class OESVertexArrayObject;
     friend class WebGLDebugShaders;
+    friend class WebGLCompressedTextureATC;
     friend class WebGLCompressedTextureS3TC;
     friend class WebGLRenderingContextErrorMessageCallback;
     friend class WebGLVertexArrayObjectOES;
@@ -476,6 +481,9 @@ public:
     GC3Dint m_maxTextureLevel;
     GC3Dint m_maxCubeMapTextureLevel;
 
+    GC3Dint m_maxDrawBuffers;
+    GC3Dint m_maxColorAttachments;
+
     GC3Dint m_packAlignment;
     GC3Dint m_unpackAlignment;
     bool m_unpackFlipY;
@@ -509,14 +517,17 @@ public:
     int m_numGLErrorsToConsoleAllowed;
 
     // Enabled extension objects.
+    OwnPtr<EXTDrawBuffers> m_extDrawBuffers;
     OwnPtr<EXTTextureFilterAnisotropic> m_extTextureFilterAnisotropic;
     OwnPtr<OESTextureFloat> m_oesTextureFloat;
+    OwnPtr<OESTextureHalfFloat> m_oesTextureHalfFloat;
     OwnPtr<OESStandardDerivatives> m_oesStandardDerivatives;
     OwnPtr<OESVertexArrayObject> m_oesVertexArrayObject;
     OwnPtr<OESElementIndexUint> m_oesElementIndexUint;
     OwnPtr<WebGLLoseContext> m_webglLoseContext;
     OwnPtr<WebGLDebugRendererInfo> m_webglDebugRendererInfo;
     OwnPtr<WebGLDebugShaders> m_webglDebugShaders;
+    OwnPtr<WebGLCompressedTextureATC> m_webglCompressedTextureATC;
     OwnPtr<WebGLCompressedTextureS3TC> m_webglCompressedTextureS3TC;
     OwnPtr<WebGLDepthTexture> m_webglDepthTexture;
 
@@ -731,6 +742,11 @@ public:
 
     // Clamp the width and height to GL_MAX_VIEWPORT_DIMS.
     IntSize clampedCanvasSize();
+
+    // First time called, if EXT_draw_buffers is supported, query the value; otherwise return 0.
+    // Later, return the cached value.
+    GC3Dint getMaxDrawBuffers();
+    GC3Dint getMaxColorAttachments();
 
     friend class WebGLStateRestorer;
 };

@@ -50,11 +50,17 @@ static ChildProcess* sharedProcess;
 
 SecItemShim& SecItemShim::shared()
 {
-    AtomicallyInitializedStatic(SecItemShim*, proxy = new SecItemShim);
-    return *proxy;
+    static SecItemShim* shim;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        shim = adoptRef(new SecItemShim).leakRef();
+    });
+
+    return *shim;
 }
 
 SecItemShim::SecItemShim()
+    : m_queue(WorkQueue::create("com.apple.WebKit.SecItemShim"))
 {
 }
 
@@ -112,7 +118,7 @@ static OSStatus webSecItemDelete(CFDictionaryRef query)
     return response->resultCode();
 }
 
-void SecItemShim::secItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecItemResponseData& response)
+void SecItemShim::secItemResponse(uint64_t requestID, const SecItemResponseData& response)
 {
     responseMap().didReceiveResponse(requestID, adoptPtr(new SecItemResponseData(response)));
 }
@@ -132,14 +138,11 @@ void SecItemShim::initialize(ChildProcess* process)
     func(callbacks);
 }
 
-void SecItemShim::didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, bool& didHandleMessage)
+void SecItemShim::initializeConnection(CoreIPC::Connection* connection)
 {
-    if (decoder.messageReceiverName() == Messages::SecItemShim::messageReceiverName()) {
-        didReceiveSecItemShimMessageOnConnectionWorkQueue(connection, decoder, didHandleMessage);
-        return;
-    }
+    connection->addWorkQueueMessageReceiver(Messages::SecItemShim::messageReceiverName(), m_queue.get(), this);
 }
 
-}
+} // namespace WebKit
 
-#endif
+#endif // USE(SECURITY_FRAMEWORK)

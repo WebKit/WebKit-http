@@ -30,13 +30,13 @@
 
 /**
  * @constructor
- * @param {WebInspector.Workspace} workspace
  * @param {WebInspector.SimpleWorkspaceProvider} networkWorkspaceProvider
+ * @param {WebInspector.Workspace} workspace
  */
-WebInspector.NetworkUISourceCodeProvider = function(workspace, networkWorkspaceProvider)
+WebInspector.NetworkUISourceCodeProvider = function(networkWorkspaceProvider, workspace)
 {
-    this._workspace = workspace;
     this._networkWorkspaceProvider = networkWorkspaceProvider;
+    this._workspace = workspace;
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.MainFrameNavigated, this._mainFrameNavigated, this);
     WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.ParsedScriptSource, this._parsedScriptSource, this);
@@ -114,7 +114,7 @@ WebInspector.NetworkUISourceCodeProvider.prototype = {
      */
     _addFile: function(url, contentProvider, isContentScript)
     {
-        if (WebInspector.fileMapping.hasMappingForURL(url))
+        if (this._workspace.hasMappingForURL(url))
             return;
 
         var type = contentProvider.contentType();

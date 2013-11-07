@@ -373,14 +373,13 @@ static WebVTTNodeType tokenToNodeType(WebVTTToken& token)
 
 void WebVTTParser::constructTreeFromToken(Document* document)
 {
-    AtomicString tokenTagName(m_token.name().data(), m_token.name().size());
-    QualifiedName tagName(nullAtom, tokenTagName, xhtmlNamespaceURI);
+    QualifiedName tagName(nullAtom, AtomicString(m_token.name()), xhtmlNamespaceURI);
 
     // http://dev.w3.org/html5/webvtt/#webvtt-cue-text-dom-construction-rules
 
     switch (m_token.type()) {
     case WebVTTTokenTypes::Character: {
-        String content(m_token.characters().data(), m_token.characters().size());
+        String content(m_token.characters()); // FIXME: This should be 8bit if possible.
         RefPtr<Text> child = Text::create(document, content);
         m_currentNode->parserAppendChild(child);
         break;
@@ -392,16 +391,16 @@ void WebVTTParser::constructTreeFromToken(Document* document)
             child = WebVTTElement::create(nodeType, document);
         if (child) {
             if (m_token.classes().size() > 0)
-                child->setAttribute(classAttr, AtomicString(m_token.classes().data(), m_token.classes().size()));
+                child->setAttribute(classAttr, AtomicString(m_token.classes()));
 
             if (child->webVTTNodeType() == WebVTTNodeTypeVoice)
-                child->setAttribute(WebVTTElement::voiceAttributeName(), AtomicString(m_token.annotation().data(), m_token.annotation().size()));
-            else if (child->webVTTNodeType() == WebVTTNodeTypeLanguage)
-                m_languageStack.append(AtomicString(m_token.annotation().data(), m_token.annotation().size()));
-
-            if (!m_languageStack.isEmpty())
+                child->setAttribute(WebVTTElement::voiceAttributeName(), AtomicString(m_token.annotation()));
+            else if (child->webVTTNodeType() == WebVTTNodeTypeLanguage) {
+                m_languageStack.append(AtomicString(m_token.annotation()));
                 child->setAttribute(WebVTTElement::langAttributeName(), m_languageStack.last());
-
+            }
+            if (!m_languageStack.isEmpty())
+                child->setLanguage(m_languageStack.last());
             m_currentNode->parserAppendChild(child);
             m_currentNode = child;
         }
@@ -419,9 +418,10 @@ void WebVTTParser::constructTreeFromToken(Document* document)
     }
     case WebVTTTokenTypes::TimestampTag: {
         unsigned position = 0;
-        double time = collectTimeStamp(m_token.characters().data(), &position);
+        String charactersString(StringImpl::create8BitIfPossible(m_token.characters()));
+        double time = collectTimeStamp(charactersString, &position);
         if (time != malformedTime)
-            m_currentNode->parserAppendChild(ProcessingInstruction::create(document, "timestamp", String(m_token.characters().data(), m_token.characters().size())));
+            m_currentNode->parserAppendChild(ProcessingInstruction::create(document, "timestamp", charactersString));
         break;
     }
     default:

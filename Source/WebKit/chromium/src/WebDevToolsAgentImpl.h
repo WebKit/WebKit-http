@@ -85,6 +85,10 @@ public:
     virtual void reattach(const WebString& savedState);
     virtual void detach();
     virtual void didNavigate();
+    virtual void didBeginFrame();
+    virtual void didCancelFrame();
+    virtual void willComposite();
+    virtual void didComposite();
     virtual void dispatchOnInspectorBackend(const WebString& message);
     virtual void inspectElementAt(const WebPoint& point);
     virtual void evaluateInWebInspector(long callId, const WebString& script);
@@ -110,6 +114,7 @@ public:
 
     virtual void getAllocatedObjects(HashSet<const void*>&);
     virtual void dumpUncountedAllocatedObjects(const HashMap<const void*, size_t>&);
+    virtual void setTraceEventCallback(TraceEventCallback);
 
     virtual bool captureScreenshot(WTF::String* data);
 

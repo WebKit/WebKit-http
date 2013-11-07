@@ -89,7 +89,9 @@ public:
     void disabledStateChanged();
     Element* fieldsWrapperElement() const;
     void focusIfNoFocus();
-    void focusByOwner();
+    // If oldFocusedNode is one of sub-fields, focus on it. Otherwise focus on
+    // the first sub-field.
+    void focusByOwner(Node* oldFocusedNode = 0);
     bool hasFocusedField();
     void readOnlyStateChanged();
     void removeEditControlOwner() { m_editControlOwner = 0; }
@@ -123,6 +125,7 @@ private:
     size_t fieldIndexOf(const DateTimeFieldElement&) const;
     DateTimeFieldElement* focusedField() const;
     size_t focusedFieldIndex() const;
+    bool focusOnNextFocusableField(size_t startIndex);
     bool isDisabled() const;
     bool isReadOnly() const;
     void layout(const LayoutParameters&, const DateComponents&);
@@ -137,7 +140,8 @@ private:
     virtual void fieldValueChanged() OVERRIDE FINAL;
     virtual bool focusOnNextField(const DateTimeFieldElement&) OVERRIDE FINAL;
     virtual bool focusOnPreviousField(const DateTimeFieldElement&) OVERRIDE FINAL;
-    virtual bool isFieldOwnerDisabledOrReadOnly() const OVERRIDE FINAL;
+    virtual bool isFieldOwnerDisabled() const OVERRIDE FINAL;
+    virtual bool isFieldOwnerReadOnly() const OVERRIDE FINAL;
     virtual AtomicString localeIdentifier() const OVERRIDE FINAL;
 
     Vector<DateTimeFieldElement*, maximumNumberOfFields> m_fields;

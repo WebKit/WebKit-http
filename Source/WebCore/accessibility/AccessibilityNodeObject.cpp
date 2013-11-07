@@ -70,9 +70,9 @@
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
 #include "UserGestureIndicator.h"
+#include "VisibleUnits.h"
 #include "Widget.h"
 #include "htmlediting.h"
-#include "visible_units.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -389,7 +389,7 @@ bool AccessibilityNodeObject::canHaveChildren() const
     }
 }
 
-bool AccessibilityNodeObject::accessibilityIsIgnored() const
+bool AccessibilityNodeObject::computeAccessibilityIsIgnored() const
 {
 #ifndef NDEBUG
     // Double-check that an AccessibilityObject is never accessed before
@@ -989,13 +989,13 @@ void AccessibilityNodeObject::alterSliderValue(bool increase)
     
 void AccessibilityNodeObject::increment()
 {
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(DefinitelyProcessingNewUserGesture);
     alterSliderValue(true);
 }
 
 void AccessibilityNodeObject::decrement()
 {
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(DefinitelyProcessingNewUserGesture);
     alterSliderValue(false);
 }
 

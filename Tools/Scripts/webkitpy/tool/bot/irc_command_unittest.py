@@ -41,7 +41,7 @@ class IRCCommandTest(unittest.TestCase):
         whois = Whois()
         self.assertEqual("tom: Usage: whois SEARCH_STRING",
                           whois.execute("tom", [], None, None))
-        self.assertEqual("tom: Usage: whois SEARCH_STRING",
+        self.assertEqual("tom: Adam Barth is abarth (abarth@webkit.org). Why do you ask?",
                           whois.execute("tom", ["Adam", "Barth"], None, None))
         self.assertEqual("tom: Sorry, I don't know any contributors matching 'unknown@example.com'.",
                           whois.execute("tom", ["unknown@example.com"], None, None))
@@ -105,7 +105,10 @@ class IRCCommandTest(unittest.TestCase):
     def test_roll_chromium_deps(self):
         roll = RollChromiumDEPS()
         self.assertIsNone(roll._parse_args([]))
+        self.assertIsNone(roll._parse_args(["invalid"]))
         self.assertEqual("1234", roll._parse_args(["1234"]))
+        self.assertEqual("1234", roll._parse_args(["r1234"]))
+        self.assertEqual("LKGR", roll._parse_args(["LKGR"]))
         self.assertEqual('"Alan Cutter" <alancutter@chromium.org>', roll._expand_irc_nickname("alancutter"))
         self.assertEqual("unknown_irc_nickname", roll._expand_irc_nickname("unknown_irc_nickname"))
 

@@ -118,7 +118,7 @@ li.selected .base-storage-tree-element-subtitle {
     overflow: hidden;
 }
 
-.storage-view .data-grid {
+.storage-view .data-grid:not(.inline) {
     border: none;
     height: 100%;
 }
@@ -131,7 +131,6 @@ li.selected .base-storage-tree-element-subtitle {
     padding: 2px 0;
     overflow-y: overlay;
     overflow-x: hidden;
-    -webkit-text-size-adjust: auto;
 }
 
 .database-query-prompt {

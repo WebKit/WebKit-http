@@ -72,9 +72,12 @@
             'tests/FrameLoaderClientImplTest.cpp',
             'tests/FrameTestHelpers.cpp',
             'tests/FrameTestHelpers.h',
+            'tests/GIFImageDecoderTest.cpp',
             'tests/GraphicsLayerChromiumTest.cpp',
             'tests/IDBAbortOnCorruptTest.cpp',
+            'tests/IDBBackingStoreTest.cpp',
             'tests/IDBBindingUtilitiesTest.cpp',
+            'tests/IDBCleanupOnIOErrorTest.cpp',
             'tests/IDBDatabaseBackendTest.cpp',
             'tests/IDBFakeBackingStore.h',
             'tests/IDBKeyPathTest.cpp',
@@ -120,6 +123,7 @@
             'tests/WebPageNewSerializerTest.cpp',
             'tests/WebPageSerializerTest.cpp',
             'tests/WebPluginContainerTest.cpp',
+            'tests/WebUserGestureTokenTest.cpp',
             'tests/WebSocketDeflaterTest.cpp',
             'tests/WebSocketExtensionDispatcherTest.cpp',
             'tests/WebURLRequestTest.cpp',
@@ -157,6 +161,7 @@
             }],
             ['toolkit_uses_gtk == 1', {
                 'webkit_unittest_files': [
+                    'tests/KeyCodeConversionTestGtk.cpp',
                     'tests/WebInputEventFactoryTestGtk.cpp',
                 ],
             }],

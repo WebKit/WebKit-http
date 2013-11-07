@@ -363,11 +363,12 @@ WebInspector.DOMNode.prototype = {
     },
 
     /**
+     * @param {string} objectGroupId
      * @param {function(?Protocol.Error)=} callback
      */
-    eventListeners: function(callback)
+    eventListeners: function(objectGroupId, callback)
     {
-        DOMAgent.getEventListenersForNode(this.id, callback);
+        DOMAgent.getEventListenersForNode(this.id, objectGroupId, callback);
     },
 
     /**
@@ -1321,7 +1322,7 @@ WebInspector.DOMAgent.prototype = {
         var emulationEnabled = WebInspector.settings.emulateTouchEvents.get();
         if (emulationEnabled && !this._addTouchEventsScriptInjecting) {
             this._addTouchEventsScriptInjecting = true;
-            PageAgent.addScriptToEvaluateOnLoad("(" + injectedFunction.toString() + ")", scriptAddedCallback.bind(this));
+            PageAgent.addScriptToEvaluateOnLoad("(" + injectedFunction.toString() + ")()", scriptAddedCallback.bind(this));
         } else {
             if (typeof this._addTouchEventsScriptId !== "undefined") {
                 PageAgent.removeScriptToEvaluateOnLoad(this._addTouchEventsScriptId);

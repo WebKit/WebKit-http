@@ -56,7 +56,7 @@ HTMLOptionElement::HTMLOptionElement(const QualifiedName& tagName, Document* doc
     , m_isSelected(false)
 {
     ASSERT(hasTagName(optionTag));
-    setHasCustomCallbacks();
+    setHasCustomStyleCallbacks();
 }
 
 PassRefPtr<HTMLOptionElement> HTMLOptionElement::create(Document* document)
@@ -393,13 +393,13 @@ String HTMLOptionElement::collectOptionInnerText() const
 
 HTMLOptionElement* toHTMLOptionElement(Node* node)
 {
-    ASSERT(!node || node->hasTagName(optionTag));
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(optionTag));
     return static_cast<HTMLOptionElement*>(node);
 }
 
 const HTMLOptionElement* toHTMLOptionElement(const Node* node)
 {
-    ASSERT(!node || node->hasTagName(optionTag));
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || node->hasTagName(optionTag));
     return static_cast<const HTMLOptionElement*>(node);
 }
 

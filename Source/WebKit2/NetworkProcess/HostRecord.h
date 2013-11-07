@@ -28,7 +28,7 @@
 
 #if ENABLE(NETWORK_PROCESS)
 
-#include <WebCore/ResourceRequest.h>
+#include <WebCore/ResourceLoadPriority.h>
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
@@ -57,6 +57,9 @@ public:
     void removeLoader(SchedulableLoader*);
     bool hasRequests() const;
     void servePendingRequests(WebCore::ResourceLoadPriority);
+
+    uint64_t pendingRequestCount() const;
+    uint64_t activeLoadCount() const;
 
 private:
     HostRecord(const String& name, int maxRequestsInFlight);

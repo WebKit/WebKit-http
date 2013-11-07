@@ -31,6 +31,7 @@
 WebInspector.JavaScriptBreakpointsSidebarPane = function(breakpointManager, showSourceLineDelegate)
 {
     WebInspector.SidebarPane.call(this, WebInspector.UIString("Breakpoints"));
+    this.registerRequiredCSS("breakpointsList.css");
 
     this._breakpointManager = breakpointManager;
     this._showSourceLineDelegate = showSourceLineDelegate;
@@ -130,8 +131,7 @@ WebInspector.JavaScriptBreakpointsSidebarPane.prototype = {
         breakpointItem.checkbox = checkbox;
         this._items.put(breakpoint, breakpointItem);
 
-        if (!this.expanded)
-            this.expanded = true;
+        this.expand();
     },
 
     /**
@@ -305,7 +305,7 @@ WebInspector.XHRBreakpointsSidebarPane.prototype = {
         if (event)
             event.consume();
 
-        this.expanded = true;
+        this.expand();
 
         var inputElementContainer = document.createElement("p");
         inputElementContainer.className = "breakpoint-condition";
@@ -438,7 +438,7 @@ WebInspector.XHRBreakpointsSidebarPane.prototype = {
         var element = this._breakpointElements[url];
         if (!element)
             return;
-        this.expanded = true;
+        this.expand();
         element.addStyleClass("breakpoint-hit");
         this._highlightedElement = element;
     },
@@ -479,6 +479,7 @@ WebInspector.XHRBreakpointsSidebarPane.prototype = {
 WebInspector.EventListenerBreakpointsSidebarPane = function()
 {
     WebInspector.SidebarPane.call(this, WebInspector.UIString("Event Listener Breakpoints"));
+    this.registerRequiredCSS("breakpointsList.css");
 
     this.categoriesElement = document.createElement("ol");
     this.categoriesElement.tabIndex = 0;
@@ -636,7 +637,7 @@ WebInspector.EventListenerBreakpointsSidebarPane.prototype = {
         var breakpointItem = this._breakpointItems[eventName];
         if (!breakpointItem)
             return;
-        this.expanded = true;
+        this.expand();
         breakpointItem.parent.element.expand();
         breakpointItem.element.listItemElement.addStyleClass("breakpoint-hit");
         this._highlightedElement = breakpointItem.element.listItemElement;

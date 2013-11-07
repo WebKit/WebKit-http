@@ -29,6 +29,8 @@ messages -> WebPage LegacyReceiver {
     SetDrawsBackground(bool drawsBackground)
     SetDrawsTransparentBackground(bool drawsTransparentBackground)
 
+    SetUnderlayColor(WebCore::Color color)
+
     ViewWillStartLiveResize()
     ViewWillEndLiveResize()
 
@@ -116,10 +118,6 @@ messages -> WebPage LegacyReceiver {
     SuspendActiveDOMObjectsAndAnimations()
     ResumeActiveDOMObjectsAndAnimations()
 
-#if USE(TILED_BACKING_STORE)
-    SetViewportSize(WebCore::IntSize size)
-#endif
-
     Close()
     TryClose()
 
@@ -141,6 +139,9 @@ messages -> WebPage LegacyReceiver {
     SetFixedLayoutSize(WebCore::IntSize size)
     ListenForLayoutMilestones(uint32_t milestones)
     SetSuppressScrollbarAnimations(bool suppressAnimations)
+
+    SetRubberBandsAtBottom(bool rubberBandsAtBottom)
+    SetRubberBandsAtTop(bool rubberBandsAtTop)
 
     SetPaginationMode(uint32_t mode)
     SetPaginationBehavesLikeColumns(bool behavesLikeColumns)
@@ -194,11 +195,14 @@ messages -> WebPage LegacyReceiver {
     # Spelling and grammar.
     AdvanceToNextMisspelling(bool startBeforeSelection)
     ChangeSpellingToWord(WTF::String word)
+    DidFinishCheckingText(uint64_t requestID, WTF::Vector<WebCore::TextCheckingResult> result)
+    DidCancelCheckingText(uint64_t requestID)
 #if USE(APPKIT)
     UppercaseWord()
     LowercaseWord()
     CapitalizeWord()
-
+#endif
+#if PLATFORM(MAC)
     SetSmartInsertDeleteEnabled(bool isSmartInsertDeleteEnabled)
 #endif
 
@@ -256,8 +260,8 @@ messages -> WebPage LegacyReceiver {
     SendComplexTextInputToPlugin(uint64_t pluginComplexTextInputIdentifier, String textInput)
 
     SetWindowIsVisible(bool windowIsVisible)
-    WindowAndViewFramesChanged(WebCore::IntRect windowFrameInScreenCoordinates, WebCore::IntRect viewFrameInWindowCoordinates, WebCore::IntPoint accessibilityViewCoordinates)
-    ViewExposedRectChanged(WebCore::IntRect exposedRect)
+    WindowAndViewFramesChanged(WebCore::FloatRect windowFrameInScreenCoordinates, WebCore::FloatRect viewFrameInWindowCoordinates, WebCore::FloatPoint accessibilityViewCoordinates)
+    ViewExposedRectChanged(WebCore::FloatRect exposedRect)
     SetMainFrameIsScrollable(bool isScrollable)
     RegisterUIProcessAccessibilityTokens(CoreIPC::DataReference elemenToken, CoreIPC::DataReference windowToken)
     GetStringSelectionForPasteboard() -> (WTF::String stringValue)

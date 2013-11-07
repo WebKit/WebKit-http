@@ -34,6 +34,7 @@
 #import "DocumentLoader.h"
 #import "Editor.h"
 #import "EditorClient.h"
+#import "ExceptionCodePlaceholder.h"
 #import "Frame.h"
 #import "FrameView.h"
 #import "FrameLoaderClient.h"
@@ -149,13 +150,12 @@ PassRefPtr<SharedBuffer> Pasteboard::getDataSelection(Frame* frame, const String
         return SharedBuffer::wrapNSData((NSData *)data.get());
     }
 
-    ExceptionCode ec;
     RefPtr<Range> range = frame->editor()->selectedRange();
-    Node* commonAncestor = range->commonAncestorContainer(ec);
+    Node* commonAncestor = range->commonAncestorContainer(IGNORE_EXCEPTION);
     ASSERT(commonAncestor);
     Node* enclosingAnchor = enclosingNodeWithTag(firstPositionInNode(commonAncestor), HTMLNames::aTag);
     if (enclosingAnchor && comparePositions(firstPositionInOrBeforeNode(range->startPosition().anchorNode()), range->startPosition()) >= 0)
-        range->setStart(enclosingAnchor, 0, ec);
+        range->setStart(enclosingAnchor, 0, IGNORE_EXCEPTION);
     
     NSAttributedString* attributedString = nil;
     RetainPtr<WebHTMLConverter> converter(AdoptNS, [[WebHTMLConverter alloc] initWithDOMRange:kit(range.get())]);
@@ -289,7 +289,8 @@ static void writeFileWrapperAsRTFDAttachment(NSFileWrapper* wrapper, const Strin
     [attachment release];
     
     NSData *RTFDData = [string RTFDFromRange:NSMakeRange(0, [string length]) documentAttributes:nil];
-    platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData((NSData *)RTFDData).get(), NSRTFDPboardType, pasteboardName);
+    if (RTFDData)
+        platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData(RTFDData).get(), NSRTFDPboardType, pasteboardName);
 }
 
 void Pasteboard::writeImage(Node* node, const KURL& url, const String& title)
@@ -310,9 +311,12 @@ void Pasteboard::writeImage(Node* node, const KURL& url, const String& title)
     writeURLForTypes(writableTypesForImage(), m_pasteboardName, cocoaURL, nsStringNilIfEmpty(title), node->document()->frame());
     
     Image* image = cachedImage->imageForRenderer(renderer);
-    ASSERT(image);
-    
-    platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData((NSData *)[image->getNSImage() TIFFRepresentation]), NSTIFFPboardType, m_pasteboardName);
+    if (!image)
+        return;
+    NSData *imageData = (NSData *)[image->getNSImage() TIFFRepresentation];
+    if (!imageData)
+        return;
+    platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapNSData(imageData), NSTIFFPboardType, m_pasteboardName);
 
     String MIMEType = cachedImage->response().mimeType();
     ASSERT(MIMETypeRegistry::isSupportedImageResourceMIMEType(MIMEType));
@@ -345,11 +349,13 @@ String Pasteboard::plainText(Frame* frame)
 
     if (types.contains(String(NSRTFDPboardType))) {
         RefPtr<SharedBuffer> data = platformStrategies()->pasteboardStrategy()->bufferForType(NSRTFDPboardType, m_pasteboardName);
-        attributedString = [[NSAttributedString alloc] initWithRTFD:[data->createNSData() autorelease] documentAttributes:NULL];
+        if (data)
+            attributedString = [[NSAttributedString alloc] initWithRTFD:[data->createNSData() autorelease] documentAttributes:NULL];
     }
     if (attributedString == nil && types.contains(String(NSRTFPboardType))) {
         RefPtr<SharedBuffer> data = platformStrategies()->pasteboardStrategy()->bufferForType(NSRTFPboardType, m_pasteboardName);
-        attributedString = [[NSAttributedString alloc] initWithRTF:[data->createNSData() autorelease] documentAttributes:NULL];
+        if (data)
+            attributedString = [[NSAttributedString alloc] initWithRTF:[data->createNSData() autorelease] documentAttributes:NULL];
     }
     if (attributedString != nil) {
         string = [[attributedString string] precomposedStringWithCanonicalMapping];
@@ -397,9 +403,8 @@ static PassRefPtr<DocumentFragment> documentFragmentWithImageResource(Frame* fra
     imageElement->setAttribute(HTMLNames::srcAttr, [URL isFileURL] ? [URL absoluteString] : resource->url());
     RefPtr<DocumentFragment> fragment = frame->document()->createDocumentFragment();
     if (fragment) {
-        ExceptionCode ec;
-        fragment->appendChild(imageElement, ec);
-        return fragment.release();       
+        fragment->appendChild(imageElement, IGNORE_EXCEPTION);
+        return fragment.release();
     }
     return 0;
 }
@@ -412,11 +417,13 @@ static PassRefPtr<DocumentFragment> documentFragmentWithRTF(Frame* frame, NSStri
     NSAttributedString *string = nil;
     if (pasteboardType == NSRTFDPboardType) {
         RefPtr<SharedBuffer> data = platformStrategies()->pasteboardStrategy()->bufferForType(NSRTFDPboardType, pastebordName);
-        string = [[NSAttributedString alloc] initWithRTFD:[data->createNSData() autorelease] documentAttributes:NULL];
+        if (data)
+            string = [[NSAttributedString alloc] initWithRTFD:[data->createNSData() autorelease] documentAttributes:NULL];
     }
     if (string == nil) {
         RefPtr<SharedBuffer> data = platformStrategies()->pasteboardStrategy()->bufferForType(NSRTFPboardType, pastebordName);
-        string = [[NSAttributedString alloc] initWithRTF:[data->createNSData() autorelease] documentAttributes:NULL];
+        if (data)
+            string = [[NSAttributedString alloc] initWithRTF:[data->createNSData() autorelease] documentAttributes:NULL];
     }
     if (string == nil)
         return nil;
@@ -550,12 +557,11 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
         if ([URLString length] == 0)
             return nil;
         NSString *URLTitleString = [platformStrategies()->pasteboardStrategy()->stringForType(WebURLNamePboardType, m_pasteboardName) precomposedStringWithCanonicalMapping];
-        ExceptionCode ec;
         anchor->setAttribute(HTMLNames::hrefAttr, URLString);
-        anchor->appendChild(document->createTextNode(URLTitleString), ec);
+        anchor->appendChild(document->createTextNode(URLTitleString), IGNORE_EXCEPTION);
         fragment = document->createDocumentFragment();
         if (fragment) {
-            fragment->appendChild(anchor, ec);
+            fragment->appendChild(anchor, IGNORE_EXCEPTION);
             return fragment.release();
         }
     }

@@ -88,6 +88,46 @@ FilterContextOpenCL* FilterContextOpenCL::context()
     return m_context;
 }
 
+void FilterContextOpenCL::freeResources()
+{
+    clFinish(m_commandQueue);
+
+    if (m_colorMatrixWasCompiled) {
+        freeResource(m_matrixOperation);
+        freeResource(m_saturateAndHueRotateOperation);
+        freeResource(m_luminanceOperation);
+        freeResource(m_colorMatrixProgram);
+    }
+    m_colorMatrixWasCompiled = false;
+
+    if (m_turbulenceWasCompiled) {
+        freeResource(m_turbulenceOperation);
+        freeResource(m_turbulenceProgram);
+    }    
+    m_turbulenceWasCompiled = false;
+
+    if (m_transformColorSpaceWasCompiled) {
+        freeResource(m_transformColorSpaceKernel);
+        freeResource(m_transformColorSpaceProgram);
+    }
+    m_transformColorSpaceWasCompiled = false;
+}
+
+void FilterContextOpenCL::destroyContext()
+{
+    freeResources();
+
+    if (m_commandQueue)
+        clReleaseCommandQueue(m_commandQueue);
+    m_commandQueue = 0;
+
+    if (m_deviceContext)
+        clReleaseContext(m_deviceContext);
+    m_deviceContext = 0;
+
+    m_context = 0;
+}
+
 OpenCLHandle FilterContextOpenCL::createOpenCLImage(IntSize paintSize)
 {
     FilterContextOpenCL* context = FilterContextOpenCL::context();
@@ -117,31 +157,38 @@ __kernel void transformColorSpace(__read_only image2d_t source, __write_only ima
 }
 ); // End of OpenCL kernels
 
+inline bool FilterContextOpenCL::compileTransformColorSpaceProgram()
+{
+    if (m_transformColorSpaceWasCompiled || inError())
+        return !inError();
+
+    m_transformColorSpaceWasCompiled = true;
+
+    if (isResourceAllocationFailed((m_transformColorSpaceProgram = compileProgram(transformColorSpaceKernelProgram))))
+        return false;
+    if (isResourceAllocationFailed((m_transformColorSpaceKernel = kernelByName(m_transformColorSpaceProgram, "transformColorSpace"))))
+        return false;
+    return true;
+}
+
 void FilterContextOpenCL::openCLTransformColorSpace(OpenCLHandle& source, IntRect sourceSize, ColorSpace srcColorSpace, ColorSpace dstColorSpace)
 {
     DEFINE_STATIC_LOCAL(OpenCLHandle, deviceRgbLUT, ());
     DEFINE_STATIC_LOCAL(OpenCLHandle, linearRgbLUT, ());
 
-    if (srcColorSpace == dstColorSpace)
+    if (srcColorSpace == dstColorSpace || inError())
         return;
 
     if ((srcColorSpace != ColorSpaceLinearRGB && srcColorSpace != ColorSpaceDeviceRGB)
         || (dstColorSpace != ColorSpaceLinearRGB && dstColorSpace != ColorSpaceDeviceRGB))
         return;
 
-    FilterContextOpenCL* context = FilterContextOpenCL::context();
-    ASSERT(context);
+    if (!compileTransformColorSpaceProgram())
+        return;
 
-    OpenCLHandle destination = context->createOpenCLImage(sourceSize.size());
+    OpenCLHandle destination = createOpenCLImage(sourceSize.size());
 
-    if (!m_transformColorSpaceProgram) {
-        m_transformColorSpaceProgram = compileProgram(transformColorSpaceKernelProgram);
-        ASSERT(m_transformColorSpaceProgram);
-        m_transformColorSpaceKernel = kernelByName(m_transformColorSpaceProgram, "transformColorSpace");
-        ASSERT(m_transformColorSpaceKernel);
-    }
-
-    RunKernel kernel(context, m_transformColorSpaceKernel, sourceSize.width(), sourceSize.height());
+    RunKernel kernel(this, m_transformColorSpaceKernel, sourceSize.width(), sourceSize.height());
     kernel.addArgument(source);
     kernel.addArgument(destination);
 
@@ -178,20 +225,78 @@ void FilterContextOpenCL::openCLTransformColorSpace(OpenCLHandle& source, IntRec
     source = destination;
 }
 
+static const char* fillKernelProgram =
+PROGRAM_STR(
+__kernel void fill(__write_only image2d_t destination, float r, float g, float b, float a)
+{
+    float4 sourcePixel = (float4)(r, g, b, a);
+    write_imagef(destination, (int2)(get_global_id(0), get_global_id(1)), sourcePixel);
+}
+);
+
+inline bool FilterContextOpenCL::compileFill()
+{
+    if (m_fillWasCompiled || inError())
+        return !inError();
+
+    m_fillWasCompiled = true;
+
+    if (isResourceAllocationFailed((m_fillProgram = compileProgram(fillKernelProgram))))
+        return false;
+    if (isResourceAllocationFailed((m_fill = kernelByName(m_fillProgram, "fill"))))
+        return false;
+    return true;
+}
+
+void FilterContextOpenCL::fill(cl_mem image, IntSize imageSize, Color color)
+{
+    if (!m_context || inError())
+        return;
+
+    compileFill();
+
+    float r, g, b, a;
+
+    color.getRGBA(r, g, b, a);
+
+    RunKernel kernel(this, m_fill, imageSize.width(), imageSize.height());
+    kernel.addArgument(image);
+    kernel.addArgument(r);
+    kernel.addArgument(g);
+    kernel.addArgument(b);
+    kernel.addArgument(a);
+    kernel.run();
+}
+
 cl_program FilterContextOpenCL::compileProgram(const char* source)
 {
     cl_program program;
-    cl_int errorNumber;
+    cl_int errorNumber = 0;
 
-    FilterContextOpenCL* context = FilterContextOpenCL::context();
-    ASSERT(context);
+    program = clCreateProgramWithSource(m_deviceContext, 1, (const char**) &source, 0, &errorNumber);
+    if (isFailed(errorNumber))
+        return 0;
 
-    program = clCreateProgramWithSource(context->m_deviceContext, 1, (const char**) &source, 0, 0);
-    errorNumber = clBuildProgram(program, 0, 0, 0, 0, 0);
-    if (errorNumber)
+    if (isFailed(clBuildProgram(program, 0, 0, 0, 0, 0)))
         return 0;
 
     return program;
+}
+
+void FilterContextOpenCL::freeResource(cl_kernel& handle)
+{
+    if (handle) {
+        clReleaseKernel(handle);
+        handle = 0;
+    }
+}
+
+void FilterContextOpenCL::freeResource(cl_program& handle)
+{
+    if (handle) {
+        clReleaseProgram(handle);
+        handle = 0;
+    }
 }
 } // namespace WebCore
 

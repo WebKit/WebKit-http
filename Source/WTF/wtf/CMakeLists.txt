@@ -26,6 +26,7 @@ set(WTF_HEADERS
     Encoder.h
     FastAllocBase.h
     FastMalloc.h
+    FeatureDefines.h
     FilePrintStream.h
     FixedArray.h
     Forward.h
@@ -158,6 +159,7 @@ set(WTF_SOURCES
     ArrayBuffer.cpp
     ArrayBufferView.cpp
     Assertions.cpp
+    Atomics.cpp
     BitVector.cpp
     CryptographicallyRandomNumber.cpp
     CurrentTime.cpp
@@ -185,7 +187,6 @@ set(WTF_SOURCES
     RefCountedLeakCounter.cpp
     SHA1.cpp
     StackBounds.cpp
-    StringExtras.cpp
     StringPrintStream.cpp
     Threading.cpp
     TypeTraits.cpp

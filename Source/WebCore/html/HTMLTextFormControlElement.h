@@ -127,7 +127,7 @@ private:
     // Returns true if suggested value is empty. Used to check placeholder visibility.
     virtual bool isEmptySuggestedValue() const { return true; }
     // Called in dispatchFocusEvent(), after placeholder process, before calling parent's dispatchFocusEvent().
-    virtual void handleFocusEvent(FocusDirection) { }
+    virtual void handleFocusEvent(Node* /* oldFocusedNode */, FocusDirection) { }
     // Called in dispatchBlurEvent(), after placeholder process, before calling parent's dispatchBlurEvent().
     virtual void handleBlurEvent() { }
 
@@ -148,7 +148,7 @@ inline bool isHTMLTextFormControlElement(const Node* node)
 
 inline HTMLTextFormControlElement* toHTMLTextFormControlElement(Node* node)
 {
-    ASSERT(!node || isHTMLTextFormControlElement(node));
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLTextFormControlElement(node));
     return static_cast<HTMLTextFormControlElement*>(node);
 }
 

@@ -30,23 +30,24 @@
 #ifndef RenderRegion_h
 #define RenderRegion_h
 
-#include "RenderReplaced.h"
+#include "RenderBlock.h"
 #include "StyleInheritedData.h"
 
 namespace WebCore {
 
+struct LayerFragment;
+typedef Vector<LayerFragment, 1> LayerFragments;
 class RenderBox;
 class RenderBoxRegionInfo;
 class RenderFlowThread;
 class RenderNamedFlowThread;
 
-class RenderRegion : public RenderReplaced {
+class RenderRegion : public RenderBlock {
 public:
     explicit RenderRegion(Element*, RenderFlowThread*);
 
     virtual bool isRenderRegion() const { return true; }
 
-    virtual void paintReplaced(PaintInfo&, const LayoutPoint&);
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
@@ -67,8 +68,6 @@ public:
 
     bool hasCustomRegionStyle() const { return m_hasCustomRegionStyle; }
     void setHasCustomRegionStyle(bool hasCustomRegionStyle) { m_hasCustomRegionStyle = hasCustomRegionStyle; }
-
-    virtual void layout();
 
     RenderBoxRegionInfo* renderBoxRegionInfo(const RenderBox*) const;
     RenderBoxRegionInfo* setRenderBoxRegionInfo(const RenderBox*, LayoutUnit logicalLeftInset, LayoutUnit logicalRightInset,
@@ -100,8 +99,7 @@ public:
     virtual LayoutUnit pageLogicalHeight() const;
     LayoutUnit maxPageLogicalHeight() const;
 
-    virtual LayoutUnit minPreferredLogicalWidth() const OVERRIDE;
-    virtual LayoutUnit maxPreferredLogicalWidth() const OVERRIDE;
+    virtual void computePreferredLogicalWidths() OVERRIDE;
     
     LayoutUnit logicalTopOfFlowThreadContentRect(const LayoutRect&) const;
     LayoutUnit logicalBottomOfFlowThreadContentRect(const LayoutRect&) const;
@@ -131,6 +129,8 @@ public:
     
     virtual void repaintFlowThreadContent(const LayoutRect& repaintRect, bool immediate) const;
 
+    virtual void collectLayerFragments(LayerFragments&, const LayoutRect&, const LayoutRect&) { }
+
 protected:
     void setRegionObjectsRegionStyle();
     void restoreRegionObjectsOriginalStyle();
@@ -139,24 +139,18 @@ protected:
     void repaintFlowThreadContentRectangle(const LayoutRect& repaintRect, bool immediate, const LayoutRect& flowThreadPortionRect,
         const LayoutRect& flowThreadPortionOverflowRect, const LayoutPoint& regionLocation) const;
 
+    virtual bool shouldHaveAutoLogicalHeight() const;
+
 private:
     virtual const char* renderName() const { return "RenderRegion"; }
 
-    // FIXME: these functions should be revisited once RenderRegion inherits from RenderBlock
-    // instead of RenderReplaced (see https://bugs.webkit.org/show_bug.cgi?id=74132 )
-    // When width is auto, use normal block/box sizing code except when inline.
-    virtual bool isInlineBlockOrInlineTable() const OVERRIDE { return isInline() && !shouldComputeSizeAsReplaced(); }
-    virtual bool shouldComputeSizeAsReplaced() const OVERRIDE { return !style()->logicalWidth().isAuto() && !style()->logicalHeight().isAuto(); }
-
-    bool shouldHaveAutoLogicalHeight() const
-    {
-        bool hasSpecifiedEndpointsForHeight = style()->logicalTop().isSpecified() && style()->logicalBottom().isSpecified();
-        bool hasAnchoredEndpointsForHeight = isOutOfFlowPositioned() && hasSpecifiedEndpointsForHeight;
-        return style()->logicalHeight().isAuto() && !hasAnchoredEndpointsForHeight;
-    }
+    virtual bool canHaveChildren() const OVERRIDE { return false; }
 
     virtual void insertedIntoTree() OVERRIDE;
     virtual void willBeRemovedFromTree() OVERRIDE;
+
+    virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) OVERRIDE;
+    virtual void paintObject(PaintInfo&, const LayoutPoint&) OVERRIDE;
 
     virtual void installFlowThread();
 

@@ -44,13 +44,13 @@ public:
     void writeDocument(DocumentWriter&);
     IntSize contentSize();
     String htmlSource() const;
-    virtual Localizer& localizer();
+    virtual Locale& locale();
     void setValueAndClosePopup(int, const String&);
+    void setValue(const String&);
+    void closePopup();
     void didClosePopup();
 
 private:
-    void closePopup();
-
     String m_source;
     BlackBerry::WebKit::WebPagePrivate* m_webPage;
     RefPtr<HTMLInputElement> m_element;

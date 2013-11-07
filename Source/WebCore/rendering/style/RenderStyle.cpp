@@ -261,6 +261,20 @@ void RenderStyle::setHasPseudoStyle(PseudoId pseudo)
     noninherited_flags._pseudoBits |= pseudoBit(pseudo);
 }
 
+bool RenderStyle::hasUniquePseudoStyle() const
+{
+    if (!m_cachedPseudoStyles || styleType() != NOPSEUDO)
+        return false;
+
+    for (size_t i = 0; i < m_cachedPseudoStyles->size(); ++i) {
+        RenderStyle* pseudoStyle = m_cachedPseudoStyles->at(i).get();
+        if (pseudoStyle->unique())
+            return true;
+    }
+
+    return false;
+}
+
 RenderStyle* RenderStyle::getCachedPseudoStyle(PseudoId pid) const
 {
     if (!m_cachedPseudoStyles || !m_cachedPseudoStyles->size())
@@ -468,7 +482,6 @@ StyleDifference RenderStyle::diff(const RenderStyle* other, unsigned& changedCon
         if (rareInheritedData->highlight != other->rareInheritedData->highlight
             || rareInheritedData->indent != other->rareInheritedData->indent
             || rareInheritedData->m_effectiveZoom != other->rareInheritedData->m_effectiveZoom
-            || rareInheritedData->textSizeAdjust != other->rareInheritedData->textSizeAdjust
             || rareInheritedData->wordBreak != other->rareInheritedData->wordBreak
             || rareInheritedData->overflowWrap != other->rareInheritedData->overflowWrap
             || rareInheritedData->nbspMode != other->rareInheritedData->nbspMode
@@ -1290,8 +1303,8 @@ void RenderStyle::setFontSize(float size)
     // size must be specifiedSize if Text Autosizing is enabled, but computedSize if text
     // zoom is enabled (if neither is enabled it's irrelevant as they're probably the same).
 
-    ASSERT(isfinite(size));
-    if (!isfinite(size) || size < 0)
+    ASSERT(std::isfinite(size));
+    if (!std::isfinite(size) || size < 0)
         size = 0;
     else
         size = min(maximumAllowedFontSize, size);
@@ -1604,6 +1617,40 @@ LayoutBoxExtent RenderStyle::imageOutsets(const NinePieceImage& image) const
                            NinePieceImage::computeOutset(image.outset().right(), borderRightWidth()),
                            NinePieceImage::computeOutset(image.outset().bottom(), borderBottomWidth()),
                            NinePieceImage::computeOutset(image.outset().left(), borderLeftWidth()));
+}
+
+void RenderStyle::setBorderImageSource(PassRefPtr<StyleImage> image)
+{
+    if (surround->border.m_image.image() == image.get())
+        return;
+    surround.access()->border.m_image.setImage(image);
+}
+
+void RenderStyle::setBorderImageSlices(LengthBox slices)
+{
+    if (surround->border.m_image.imageSlices() == slices)
+        return;
+    surround.access()->border.m_image.setImageSlices(slices);
+}
+
+void RenderStyle::setBorderImageWidth(LengthBox slices)
+{
+    if (surround->border.m_image.borderSlices() == slices)
+        return;
+    surround.access()->border.m_image.setBorderSlices(slices);
+}
+
+void RenderStyle::setBorderImageOutset(LengthBox outset)
+{
+    if (surround->border.m_image.outset() == outset)
+        return;
+    surround.access()->border.m_image.setOutset(outset);
+}
+
+ExclusionShapeValue* RenderStyle::initialShapeInside()
+{
+    DEFINE_STATIC_LOCAL(RefPtr<ExclusionShapeValue>, sOutsideValue, (ExclusionShapeValue::createOutsideValue()));
+    return sOutsideValue.get();
 }
 
 void RenderStyle::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const

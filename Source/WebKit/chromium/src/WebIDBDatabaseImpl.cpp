@@ -35,12 +35,14 @@
 #include "IDBDatabaseCallbacksProxy.h"
 #include "IDBKeyRange.h"
 #include "IDBMetadata.h"
+#include "SharedBuffer.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBDatabaseCallbacks.h"
 #include "WebIDBDatabaseError.h"
 #include "WebIDBKey.h"
 #include "WebIDBKeyRange.h"
 #include "WebIDBMetadata.h"
+#include "public/WebData.h"
 
 using namespace WebCore;
 
@@ -116,7 +118,7 @@ void WebIDBDatabaseImpl::commit(long long transactionId)
 void WebIDBDatabaseImpl::openCursor(long long transactionId, long long objectStoreId, long long indexId, const WebIDBKeyRange& keyRange, unsigned short direction, bool keyOnly, TaskType taskType, WebIDBCallbacks* callbacks)
 {
     if (m_databaseBackend)
-        m_databaseBackend->openCursor(transactionId, objectStoreId, indexId, keyRange, static_cast<IDBCursor::Direction>(direction), keyOnly, static_cast<IDBDatabaseBackendInterface::TaskType>(taskType), IDBCallbacksProxy::create(adoptPtr(callbacks)));
+        m_databaseBackend->openCursor(transactionId, objectStoreId, indexId, keyRange, static_cast<IndexedDB::CursorDirection>(direction), keyOnly, static_cast<IDBDatabaseBackendInterface::TaskType>(taskType), IDBCallbacksProxy::create(adoptPtr(callbacks)));
 }
 
 void WebIDBDatabaseImpl::count(long long transactionId, long long objectStoreId, long long indexId, const WebIDBKeyRange& keyRange, WebIDBCallbacks* callbacks)
@@ -131,7 +133,7 @@ void WebIDBDatabaseImpl::get(long long transactionId, long long objectStoreId, l
         m_databaseBackend->get(transactionId, objectStoreId, indexId, keyRange, keyOnly, IDBCallbacksProxy::create(adoptPtr(callbacks)));
 }
 
-void WebIDBDatabaseImpl::put(long long transactionId, long long objectStoreId, WebVector<unsigned char>* value, const WebIDBKey& key, PutMode putMode, WebIDBCallbacks* callbacks, const WebVector<long long>& webIndexIds, const WebVector<WebIndexKeys>& webIndexKeys)
+void WebIDBDatabaseImpl::put(long long transactionId, long long objectStoreId, const WebData& value, const WebIDBKey& key, PutMode putMode, WebIDBCallbacks* callbacks, const WebVector<long long>& webIndexIds, const WebVector<WebIndexKeys>& webIndexKeys)
 {
     if (!m_databaseBackend)
         return;
@@ -148,9 +150,10 @@ void WebIDBDatabaseImpl::put(long long transactionId, long long objectStoreId, W
         indexKeys[i] = indexKeyList;
     }
 
-    Vector<uint8_t> valueBuffer;
-    valueBuffer.append(value->data(), value->size());
-    m_databaseBackend->put(transactionId, objectStoreId, &valueBuffer, key, static_cast<IDBDatabaseBackendInterface::PutMode>(putMode), IDBCallbacksProxy::create(adoptPtr(callbacks)), indexIds, indexKeys);
+    RefPtr<SharedBuffer> valueBuffer = PassRefPtr<SharedBuffer>(value);
+    if (!valueBuffer)
+        valueBuffer = SharedBuffer::create();
+    m_databaseBackend->put(transactionId, objectStoreId, valueBuffer, key, static_cast<IDBDatabaseBackendInterface::PutMode>(putMode), IDBCallbacksProxy::create(adoptPtr(callbacks)), indexIds, indexKeys);
 }
 
 void WebIDBDatabaseImpl::setIndexKeys(long long transactionId, long long objectStoreId, const WebIDBKey& primaryKey, const WebVector<long long>& webIndexIds, const WebVector<WebIndexKeys>& webIndexKeys)

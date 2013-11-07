@@ -27,30 +27,32 @@
 #define XSSAuditorDelegate_h
 
 #include "KURL.h"
+#include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
+#include <wtf/Vector.h>
+#include <wtf/text/TextPosition.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Document;
 
-class DidBlockScriptRequest {
+class XSSInfo {
 public:
-    static PassOwnPtr<DidBlockScriptRequest> create(const KURL& reportURL, const String& originalURL, const String& originalHTTPBody, bool didBlockEntirePage)
+    static PassOwnPtr<XSSInfo> create(const KURL& reportURL, bool didBlockEntirePage)
     {
-        return adoptPtr(new DidBlockScriptRequest(reportURL, originalURL, originalHTTPBody, didBlockEntirePage));
+        return adoptPtr(new XSSInfo(reportURL, didBlockEntirePage));
     }
 
+    bool isSafeToSendToAnotherThread() const;
+
     KURL m_reportURL;
-    String m_originalURL;
-    String m_originalHTTPBody;
     bool m_didBlockEntirePage;
+    TextPosition m_textPosition;
 
 private:
-    DidBlockScriptRequest(const KURL& reportURL, const String& originalURL, const String& originalHTTPBody, bool didBlockEntirePage)
+    XSSInfo(const KURL& reportURL, bool didBlockEntirePage)
         : m_reportURL(reportURL)
-        , m_originalURL(originalURL)
-        , m_originalHTTPBody(originalHTTPBody)
         , m_didBlockEntirePage(didBlockEntirePage)
     { }
 };
@@ -60,12 +62,14 @@ class XSSAuditorDelegate {
 public:
     explicit XSSAuditorDelegate(Document*);
 
-    void didBlockScript(PassOwnPtr<DidBlockScriptRequest>);
+    void didBlockScript(const XSSInfo&);
 
 private:
     Document* m_document;
     bool m_didNotifyClient;
 };
+
+typedef Vector<OwnPtr<XSSInfo> > XSSInfoStream;
 
 }
 

@@ -43,6 +43,7 @@
 #include "EntryArray.h"
 #include "EntryCallback.h"
 #include "ErrorCallback.h"
+#include "Event.h"
 #include "File.h"
 #include "FileCallback.h"
 #include "FileEntry.h"
@@ -498,8 +499,7 @@ bool FileContentRequest::didGetFile(File* file)
     m_reader->setOnload(this);
     m_reader->setOnerror(this);
 
-    ExceptionCode ec = 0;
-    m_reader->readAsArrayBuffer(blob.get(), ec);
+    m_reader->readAsArrayBuffer(blob.get(), IGNORE_EXCEPTION);
     return true;
 }
 

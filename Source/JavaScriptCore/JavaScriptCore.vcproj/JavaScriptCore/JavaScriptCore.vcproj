@@ -1174,6 +1174,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\runtime\PropertyTable.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\runtime\PrototypeMap.cpp"
 				>
 			</File>
@@ -1338,6 +1342,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\runtime\StructureInlines.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\runtime\StructureRareData.cpp"
 				>
 			</File>
@@ -1407,6 +1415,14 @@
 			</File>
 			<File
 				RelativePath="..\..\runtime\JSAPIValueWrapper.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\API\JSAPIWrapperObject.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\API\JSAPIWrapperObject.h"
 				>
 			</File>
 			<File
@@ -1794,10 +1810,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\bytecode\Comment.h"
-				>
-			</File>
-			<File
 				RelativePath="..\..\bytecode\EvalCodeCache.h"
 				>
 			</File>
@@ -1874,7 +1886,15 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\bytecode\PolymorphicAccessStructureList.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\bytecode\PolymorphicPutByIdList.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\bytecode\PolymorphicPutByIdList.h"
 				>
 			</File>
 			<File
@@ -2470,6 +2490,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\parser\ParserError.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\parser\ParserModes.h"
 				>
 			</File>
@@ -2479,6 +2503,10 @@
 			</File>
 			<File
 				RelativePath="..\..\parser\SourceCode.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\parser\SourceProvider.cpp"
 				>
 			</File>
 			<File

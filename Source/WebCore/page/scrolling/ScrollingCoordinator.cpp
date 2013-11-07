@@ -52,6 +52,10 @@
 #include "ScrollingCoordinatorChromium.h"
 #endif
 
+#if USE(COORDINATED_GRAPHICS)
+#include "ScrollingCoordinatorCoordinatedGraphics.h"
+#endif
+
 namespace WebCore {
 
 PassRefPtr<ScrollingCoordinator> ScrollingCoordinator::create(Page* page)
@@ -64,36 +68,11 @@ PassRefPtr<ScrollingCoordinator> ScrollingCoordinator::create(Page* page)
     return adoptRef(new ScrollingCoordinatorChromium(page));
 #endif
 
+#if USE(COORDINATED_GRAPHICS)
+    return adoptRef(new ScrollingCoordinatorCoordinatedGraphics(page));
+#endif
+
     return adoptRef(new ScrollingCoordinator(page));
-}
-
-static int fixedPositionScrollOffset(int visibleContentSize, int contentsSize, int scrollPosition, int scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame)
-{
-    int maxValue = contentsSize - visibleContentSize;
-    if (maxValue <= 0)
-        return 0;
-
-    if (!scrollOrigin) {
-        if (scrollPosition <= 0)
-            return 0;
-        if (scrollPosition > maxValue)
-            scrollPosition = maxValue;
-    } else {
-        if (scrollPosition >= 0)
-            return 0;
-        if (scrollPosition < -maxValue)
-            scrollPosition = -maxValue;
-    }
-
-    float dragFactor = fixedElementsLayoutRelativeToFrame ? 1 : (contentsSize - visibleContentSize * frameScaleFactor) / maxValue;
-    return scrollPosition * dragFactor / frameScaleFactor;
-}
-
-IntSize scrollOffsetForFixedPosition(const IntRect& visibleContentRect, const IntSize& contentsSize, const IntPoint& scrollPosition, const IntPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame)
-{
-    int x = fixedPositionScrollOffset(visibleContentRect.width(), contentsSize.width(), scrollPosition.x(), scrollOrigin.x(), frameScaleFactor, fixedElementsLayoutRelativeToFrame);
-    int y = fixedPositionScrollOffset(visibleContentRect.height(), contentsSize.height(), scrollPosition.y(), scrollOrigin.y(), frameScaleFactor, fixedElementsLayoutRelativeToFrame);
-    return IntSize(x, y);
 }
 
 ScrollingCoordinator::ScrollingCoordinator(Page* page)
@@ -292,6 +271,23 @@ void ScrollingCoordinator::frameViewFixedObjectsDidChange(FrameView* frameView)
 
     updateShouldUpdateScrollLayerPositionOnMainThread();
 }
+
+#if USE(ACCELERATED_COMPOSITING)
+GraphicsLayer* ScrollingCoordinator::scrollLayerForScrollableArea(ScrollableArea* scrollableArea)
+{
+    return scrollableArea->layerForScrolling();
+}
+
+GraphicsLayer* ScrollingCoordinator::horizontalScrollbarLayerForScrollableArea(ScrollableArea* scrollableArea)
+{
+    return scrollableArea->layerForHorizontalScrollbar();
+}
+
+GraphicsLayer* ScrollingCoordinator::verticalScrollbarLayerForScrollableArea(ScrollableArea* scrollableArea)
+{
+    return scrollableArea->layerForVerticalScrollbar();
+}
+#endif
 
 GraphicsLayer* ScrollingCoordinator::scrollLayerForFrameView(FrameView* frameView)
 {

@@ -1,3 +1,133 @@
+2013-03-05  Eric Seidel  <eric@webkit.org>
+
+        Add html-parser-threaded perf test now that the threaded parser is enabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=111200
+
+        Reviewed by Ryosuke Niwa.
+
+        The old srcdoc test no longer triggers the threaded parser due to compatibility fixes.
+
+        * Parser/html-parser-threaded.html: Renamed from PerformanceTests/Parser/html-parser-srcdoc.html.
+        * Skipped: Unfortunately this new test is still skipped too.
+
+2013-03-04  Eric Seidel  <eric@webkit.org>
+
+        Add PerformanceTest for document startup via iframe append/remove
+        https://bugs.webkit.org/show_bug.cgi?id=111389
+
+        Reviewed by Kentaro Hara.
+
+        We'd like pages with lots of iframes to be fast.
+        This test shows that at least for V8/Chromium we spend
+        all our time booting v8.
+
+        On my 32-core linux machine I see about 70 runs/sec in
+        Release and 5 runs/sec in Debug.
+
+        * DOM/iframe-append-remove.html: Added.
+
+2013-03-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Some perf. tests have variances that differ greatly between runs
+        https://bugs.webkit.org/show_bug.cgi?id=97510
+
+        Reviewed by Benjamin Poulain.
+
+        In order to control the number of iterations and processes to use from run-perf-tests, always use 20
+        iterations on all tests except Dromaeo, where even doing 5 iterations is prohibitively slow, by default.
+        Without this change, it'll become extremely hard for us to tweak the number of iterations and processes
+        to use from run-perf-tests.
+
+        * Animation/balls.html:
+        * DOM/DOMTable.html:
+        * DOM/resources/dom-perf.js:
+        (runBenchmarkSuite.PerfTestRunner.measureTime):
+        * Dromaeo/resources/dromaeorunner.js:
+        * Layout/floats_100_100.html:
+        * Layout/floats_100_100_nested.html:
+        * Layout/floats_20_100.html:
+        * Layout/floats_20_100_nested.html:
+        * Layout/floats_2_100.html:
+        * Layout/floats_2_100_nested.html:
+        * Layout/floats_50_100.html:
+        * Layout/floats_50_100_nested.html:
+        * Layout/subtree-detaching.html:
+        * Parser/html5-full-render.html:
+        * SVG/SvgHitTesting.html:
+        * resources/runner.js:
+        * resources/results-template.html:
+
+2013-02-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Use perf.webkit.org JSON format in results page
+        https://bugs.webkit.org/show_bug.cgi?id=110842
+
+        Reviewed by Benjamin Poulain.
+
+        Updated the results page template to use the new JSON format.
+
+        Since new JSON format doesn't contain statistics such as stdev and min, added statistics.js to compute
+        these values. Also use 95% percentile confidence interval instead of standard deviation in various places.
+
+        * resources/results-template.html: Added statistics.js as dependency.
+        (TestResult): Updated to take a metric instead of its test. Replaced stdev() with confidenceIntervalDelta()
+        now that we have a fancy Statistics class.
+
+        (TestRun.webkitRevision):
+        (PerfTestMetric): Renamed from PerfTest since this object now encapsulates each measurement (such as time,
+        JS heap, and malloc) in test. Also added a conversion table from a metric name to a unit since new format
+        doesn't contain units.
+        (PerfTestMetric.name): Updated to compute the full metric name from test name and metric name, matching
+        the old behavior.
+        (PerfTestMetric.isMemoryTest): Explicitly look for 'JSHeap' and 'Malloc' tests.
+        (PerfTestMetric.smallerIsBetter):
+
+        (attachPlot): Deleted the code to deal with tests that don't provide individual iteration measurement
+        since such tests no longer exist. Also fixed up the code compute y-axis range.
+
+        (createTableRow.markupForRun): Updated to use confidenceIntervalDelta() instead of stdev().
+        
+        (init.addTests): Added. Recursively add metrics.
+
+        * resources/statistics.js: Added. Imported from perf.webkit.org.
+        (Statistics.max):
+        (Statistics.min):
+        (Statistics.sum):
+        (Statistics.squareSum):
+        (Statistics.sampleStandardDeviation):
+        (Statistics.supportedConfidenceLevels):
+        (Statistics.confidenceIntervalDelta):
+        (Statistics.confidenceInterval):
+
+2013-02-11  Alexei Filippov  <alph@chromium.org>
+
+        Web Inspector: Split Profiler domain in protocol into Profiler and HeapProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=108653
+
+        Reviewed by Yury Semikhatsky.
+
+        Currently CPU and heap profilers share the same domain 'Profiler' in the protocol.
+        In fact these two profile types have not too much in common. So put each into its own domain.
+        It should also help when Profiles panel gets split into several tools.
+        This is the phase 1 which adds InspectorHeapProfilerAgent but doesn't
+        change the original InspectorProfilerAgent.
+
+        * inspector/heap-snapshot-performance-test.js:
+        (test.performanceTest.cleanup):
+
+2013-02-05  Dominik Röttsches  <dominik.rottsches@intel.com>
+
+        Add a performance test for arabic line breaking
+        https://bugs.webkit.org/show_bug.cgi?id=108948
+
+        Reviewed by Eric Seidel.
+
+        Adding a perfomance test based to exercise the complex
+        font path used in rendering arabic script.
+
+        * Layout/ArabicLineLayout.html: Added.
+        * Skipped: New test skipped by default as per Ryosuke's request.
+
 2013-01-23  Yury Semikhatsky  <yurys@chromium.org>
 
         Web Inspector: some measurements are missing in PerformanceTests/inspector/heap-*.html

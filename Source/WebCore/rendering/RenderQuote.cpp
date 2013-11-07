@@ -54,8 +54,13 @@ void RenderQuote::willBeDestroyed()
 void RenderQuote::willBeRemovedFromTree()
 {
     RenderText::willBeRemovedFromTree();
-
     detachQuote();
+}
+
+void RenderQuote::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
+{
+    RenderText::styleDidChange(diff, oldStyle);
+    setText(originalText());
 }
 
 typedef HashMap<AtomicString, const QuotesData*, CaseFoldingHash> QuotesMap;
@@ -243,34 +248,6 @@ PassRefPtr<StringImpl> RenderQuote::originalText() const
     return StringImpl::empty();
 }
 
-void RenderQuote::updateText()
-{
-    computePreferredLogicalWidths(0);
-}
-
-void RenderQuote::computePreferredLogicalWidths(float lead)
-{
-#ifndef NDEBUG
-    // FIXME: We shouldn't be modifying the tree in computePreferredLogicalWidths.
-    // Instead, we should properly hook the appropriate changes in the DOM and modify
-    // the render tree then. When that's done, we also won't need to override
-    // computePreferredLogicalWidths at all.
-    // https://bugs.webkit.org/show_bug.cgi?id=104829
-    bool oldSetNeedsLayoutIsForbidden = isSetNeedsLayoutForbidden();
-    setNeedsLayoutIsForbidden(false);
-#endif
-
-    if (!m_attached)
-        attachQuote();
-    setTextInternal(originalText());
-
-#ifndef NDEBUG
-    setNeedsLayoutIsForbidden(oldSetNeedsLayoutIsForbidden);
-#endif
-
-    RenderText::computePreferredLogicalWidths(lead);
-}
-
 const QuotesData* RenderQuote::quotesData() const
 {
     if (QuotesData* customQuotes = style()->quotes())
@@ -290,13 +267,7 @@ void RenderQuote::attachQuote()
     ASSERT(view());
     ASSERT(!m_attached);
     ASSERT(!m_next && !m_previous);
-
-    // FIXME: Don't set pref widths dirty during layout. See updateDepth() for
-    // more detail.
-    if (!isRooted()) {
-        setNeedsLayoutAndPrefWidthsRecalc();
-        return;
-    }
+    ASSERT(isRooted());
 
     if (!view()->renderQuoteHead()) {
         view()->setRenderQuoteHead(this);
@@ -375,12 +346,8 @@ void RenderQuote::updateDepth()
             break;
         }
     }
-    // FIXME: Don't call setNeedsLayout or dirty our preferred widths during layout.
-    // This is likely to fail anyway as one of our ancestor will call setNeedsLayout(false),
-    // preventing the future layout to occur on |this|. The solution is to move that to a
-    // pre-layout phase.
     if (oldDepth != m_depth)
-        setNeedsLayoutAndPrefWidthsRecalc();
+        setText(originalText());
 }
 
 } // namespace WebCore

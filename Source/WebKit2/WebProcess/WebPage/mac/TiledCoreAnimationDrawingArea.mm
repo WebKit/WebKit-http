@@ -100,11 +100,15 @@ TiledCoreAnimationDrawingArea::~TiledCoreAnimationDrawingArea()
     m_layerFlushScheduler.invalidate();
 }
 
-void TiledCoreAnimationDrawingArea::setNeedsDisplay(const IntRect& rect)
+void TiledCoreAnimationDrawingArea::setNeedsDisplay()
 {
 }
 
-void TiledCoreAnimationDrawingArea::scroll(const IntRect& scrollRect, const IntSize& scrollOffset)
+void TiledCoreAnimationDrawingArea::setNeedsDisplayInRect(const IntRect& rect)
+{
+}
+
+void TiledCoreAnimationDrawingArea::scroll(const IntRect& scrollRect, const IntSize& scrollDelta)
 {
 }
 
@@ -198,19 +202,26 @@ void TiledCoreAnimationDrawingArea::setPageOverlayNeedsDisplay(const IntRect& re
 
 void TiledCoreAnimationDrawingArea::updatePreferences(const WebPreferencesStore&)
 {
+    Settings* settings = m_webPage->corePage()->settings();
     bool scrollingPerformanceLoggingEnabled = m_webPage->scrollingPerformanceLoggingEnabled();
     ScrollingThread::dispatch(bind(&ScrollingTree::setScrollingPerformanceLoggingEnabled, m_webPage->corePage()->scrollingCoordinator()->scrollingTree(), scrollingPerformanceLoggingEnabled));
 
     if (TiledBacking* tiledBacking = mainFrameTiledBacking())
-        tiledBacking->setAggressivelyRetainsTiles(m_webPage->corePage()->settings()->aggressiveTileRetentionEnabled());
+        tiledBacking->setAggressivelyRetainsTiles(settings->aggressiveTileRetentionEnabled());
+    
+    if (m_pageOverlayLayer) {
+        m_pageOverlayLayer->setAcceleratesDrawing(settings->acceleratedDrawingEnabled());
+        m_pageOverlayLayer->setShowDebugBorder(settings->showDebugBorders());
+        m_pageOverlayLayer->setShowRepaintCounter(settings->showRepaintCounter());
+    }
 
     // Soon we want pages with fixed positioned elements to be able to be scrolled by the ScrollingCoordinator.
     // As a part of that work, we have to composite fixed position elements, and we have to allow those
     // elements to create a stacking context.
-    m_webPage->corePage()->settings()->setAcceleratedCompositingForFixedPositionEnabled(true);
-    m_webPage->corePage()->settings()->setFixedPositionCreatesStackingContext(true);
+    settings->setAcceleratedCompositingForFixedPositionEnabled(true);
+    settings->setFixedPositionCreatesStackingContext(true);
 
-    bool showTiledScrollingIndicator = m_webPage->corePage()->settings()->showTiledScrollingIndicator();
+    bool showTiledScrollingIndicator = settings->showTiledScrollingIndicator();
     if (showTiledScrollingIndicator == !!m_debugInfoLayer)
         return;
 
@@ -297,6 +308,8 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
 
     if (m_pageOverlayLayer) {
         m_pageOverlayLayer->setNeedsDisplay();
+        if (TiledBacking* overlayTiledBacking = m_pageOverlayLayer->tiledBacking())
+            overlayTiledBacking->setVisibleRect(enclosingIntRect(m_rootLayer.get().frame));
         m_pageOverlayLayer->flushCompositingStateForThisLayerOnly();
     }
 
@@ -333,17 +346,27 @@ void TiledCoreAnimationDrawingArea::resumePainting()
         m_webPage->corePage()->resumeScriptedAnimations();
 }
 
-void TiledCoreAnimationDrawingArea::setExposedRect(const IntRect& exposedRect)
+void TiledCoreAnimationDrawingArea::setExposedRect(const FloatRect& exposedRect)
 {
     // FIXME: This should be mapped through the scroll offset, but we need to keep it up to date.
     m_exposedRect = exposedRect;
 
     mainFrameTiledBacking()->setExposedRect(exposedRect);
+
+    if (m_pageOverlayLayer) {
+        if (TiledBacking* tiledBacking = m_pageOverlayLayer->tiledBacking())
+            tiledBacking->setExposedRect(exposedRect);
+    }
 }
 
 void TiledCoreAnimationDrawingArea::mainFrameScrollabilityChanged(bool isScrollable)
 {
     mainFrameTiledBacking()->setClipsToExposedRect(!isScrollable);
+
+    if (m_pageOverlayLayer) {
+        if (TiledBacking* tiledBacking = m_pageOverlayLayer->tiledBacking())
+            tiledBacking->setClipsToExposedRect(!isScrollable);
+    }
 }
 
 void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize)
@@ -364,7 +387,7 @@ void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize)
     }
 
     if (m_pageOverlayLayer)
-        m_pageOverlayLayer->setSize(size);
+        m_pageOverlayLayer->setSize(viewSize);
 
     if (!m_layerTreeStateIsFrozen)
         flushLayers();
@@ -372,7 +395,7 @@ void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize)
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
 
-    m_rootLayer.get().frame = CGRectMake(0, 0, size.width(), size.height());
+    m_rootLayer.get().frame = CGRectMake(0, 0, viewSize.width(), viewSize.height());
 
     [CATransaction commit];
     
@@ -434,7 +457,9 @@ void TiledCoreAnimationDrawingArea::updateLayerHostingContext()
 #endif
     }
 
-    m_layerHostingContext->setRootLayer(m_rootLayer.get());
+    if (m_hasRootCompositingLayer)
+        m_layerHostingContext->setRootLayer(m_rootLayer.get());
+
     if (colorSpace)
         m_layerHostingContext->setColorSpace(colorSpace.get());
 }
@@ -443,10 +468,16 @@ void TiledCoreAnimationDrawingArea::setRootCompositingLayer(CALayer *layer)
 {
     ASSERT(!m_layerTreeStateIsFrozen);
 
+    bool hadRootCompositingLayer = m_hasRootCompositingLayer;
+    m_hasRootCompositingLayer = !!layer;
+
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
 
-    m_rootLayer.get().sublayers = layer ? [NSArray arrayWithObject:layer] : [NSArray array];
+    m_rootLayer.get().sublayers = m_hasRootCompositingLayer ? [NSArray arrayWithObject:layer] : [NSArray array];
+
+    if (hadRootCompositingLayer != m_hasRootCompositingLayer)
+        m_layerHostingContext->setRootLayer(m_hasRootCompositingLayer ? m_rootLayer.get() : 0);
 
     if (m_pageOverlayLayer)
         [m_rootLayer.get() addSublayer:m_pageOverlayLayer->platformLayer()];
@@ -471,12 +502,18 @@ void TiledCoreAnimationDrawingArea::createPageOverlayLayer()
     m_pageOverlayLayer->setName("page overlay content");
 #endif
 
-    // We don't ever want the overlay layer to become tiled because that will look bad, and
-    // we also never expect the underlying CALayer to change.
-    static_cast<GraphicsLayerCA*>(m_pageOverlayLayer.get())->setAllowTiledLayer(false);
-    m_pageOverlayLayer->setAcceleratesDrawing(true);
+    m_pageOverlayLayer->setAcceleratesDrawing(m_webPage->corePage()->settings()->acceleratedDrawingEnabled());
     m_pageOverlayLayer->setDrawsContent(true);
-    m_pageOverlayLayer->setSize(m_webPage->size());
+    m_pageOverlayLayer->setSize(expandedIntSize(FloatSize(m_rootLayer.get().frame.size)));
+    m_pageOverlayLayer->setShowDebugBorder(m_webPage->corePage()->settings()->showDebugBorders());
+    m_pageOverlayLayer->setShowRepaintCounter(m_webPage->corePage()->settings()->showRepaintCounter());
+
+    m_pageOverlayPlatformLayer = m_pageOverlayLayer->platformLayer();
+
+    if (TiledBacking* tiledBacking = m_pageOverlayLayer->tiledBacking()) {
+        tiledBacking->setExposedRect(m_exposedRect);
+        tiledBacking->setClipsToExposedRect(!m_webPage->mainFrameIsScrollable());
+    }
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -498,6 +535,32 @@ void TiledCoreAnimationDrawingArea::destroyPageOverlayLayer()
     [CATransaction commit];
 
     m_pageOverlayLayer = nullptr;
+}
+
+void TiledCoreAnimationDrawingArea::didCommitChangesForLayer(const GraphicsLayer* layer) const
+{
+    if (layer != m_pageOverlayLayer.get())
+        return;
+
+    if (m_pageOverlayPlatformLayer.get() == layer->platformLayer())
+        return;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    
+    if (m_pageOverlayPlatformLayer)
+        [m_pageOverlayPlatformLayer.get() removeFromSuperlayer];
+
+    [m_rootLayer.get() addSublayer:m_pageOverlayLayer->platformLayer()];
+    
+    [CATransaction commit];
+
+    if (TiledBacking* tiledBacking = m_pageOverlayLayer->tiledBacking()) {
+        tiledBacking->setExposedRect(m_exposedRect);
+        tiledBacking->setClipsToExposedRect(!m_webPage->mainFrameIsScrollable());
+    }
+
+    m_pageOverlayPlatformLayer = m_pageOverlayLayer->platformLayer();
 }
 
 TiledBacking* TiledCoreAnimationDrawingArea::mainFrameTiledBacking() const

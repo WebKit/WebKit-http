@@ -83,8 +83,6 @@ namespace WebKit {
 
 namespace BrowserDataHintStringValues {
 static const char screenshot[] = "screenshot";
-static const char acceptJavaScriptDialog[] = "acceptJavaScriptDialog";
-static const char dismissJavaScriptDialog[] = "dismissJavaScriptDialog";
 }
 
 class ClientMessageLoopAdapter : public PageScriptDebugServer::ClientMessageLoop {
@@ -426,6 +424,30 @@ void WebDevToolsAgentImpl::didNavigate()
     ClientMessageLoopAdapter::didNavigate();
 }
 
+void WebDevToolsAgentImpl::didBeginFrame()
+{
+    if (InspectorController* ic = inspectorController())
+        ic->didBeginFrame();
+}
+
+void WebDevToolsAgentImpl::didCancelFrame()
+{
+    if (InspectorController* ic = inspectorController())
+        ic->didCancelFrame();
+}
+
+void WebDevToolsAgentImpl::willComposite()
+{
+    if (InspectorController* ic = inspectorController())
+        ic->willComposite();
+}
+
+void WebDevToolsAgentImpl::didComposite()
+{
+    if (InspectorController* ic = inspectorController())
+        ic->didComposite();
+}
+
 void WebDevToolsAgentImpl::didCreateScriptContext(WebFrameImpl* webframe, int worldId)
 {
     // Skip non main world contexts.
@@ -586,9 +608,13 @@ bool WebDevToolsAgentImpl::captureScreenshot(String* data)
 
 bool WebDevToolsAgentImpl::handleJavaScriptDialog(bool accept)
 {
-    // Operation is going to be performed in the browser process.
-    m_sendWithBrowserDataHint = accept ? BrowserDataHintAcceptJavaScriptDialog : BrowserDataHintDismissJavaScriptDialog;
+    // Operation was already performed in the browser process.
     return true;
+}
+
+void WebDevToolsAgentImpl::setTraceEventCallback(TraceEventCallback callback)
+{
+    m_client->setTraceEventCallback(callback);
 }
 
 void WebDevToolsAgentImpl::dispatchOnInspectorBackend(const WebString& message)
@@ -670,10 +696,6 @@ static String browserHintToString(WebDevToolsAgent::BrowserDataHint dataHint)
     switch (dataHint) {
     case WebDevToolsAgent::BrowserDataHintScreenshot:
         return BrowserDataHintStringValues::screenshot;
-    case WebDevToolsAgent::BrowserDataHintAcceptJavaScriptDialog:
-        return BrowserDataHintStringValues::acceptJavaScriptDialog;
-    case WebDevToolsAgent::BrowserDataHintDismissJavaScriptDialog:
-        return BrowserDataHintStringValues::dismissJavaScriptDialog;
     case WebDevToolsAgent::BrowserDataHintNone:
     default:
         ASSERT_NOT_REACHED();
@@ -685,10 +707,6 @@ static WebDevToolsAgent::BrowserDataHint browserHintFromString(const String& val
 {
     if (value == BrowserDataHintStringValues::screenshot)
         return WebDevToolsAgent::BrowserDataHintScreenshot;
-    if (value == BrowserDataHintStringValues::acceptJavaScriptDialog)
-        return WebDevToolsAgent::BrowserDataHintAcceptJavaScriptDialog;
-    if (value == BrowserDataHintStringValues::dismissJavaScriptDialog)
-        return WebDevToolsAgent::BrowserDataHintDismissJavaScriptDialog;
     ASSERT_NOT_REACHED();
     return WebDevToolsAgent::BrowserDataHintNone;
 }
@@ -778,7 +796,7 @@ bool WebDevToolsAgent::shouldInterruptForMessage(const WebString& message)
         || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_startCmd]
         || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_stopCmd]
         || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_getCPUProfileCmd]
-        || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kProfiler_getHeapSnapshotCmd];
+        || commandName == InspectorBackendDispatcher::commandNames[InspectorBackendDispatcher::kHeapProfiler_getHeapSnapshotCmd];
 }
 
 void WebDevToolsAgent::processPendingMessages()
@@ -843,10 +861,6 @@ WebString WebDevToolsAgent::patchWithBrowserData(const WebString& message, Brows
     switch (dataHint) {
     case BrowserDataHintScreenshot:
         resultObject->setString("data", hintData);
-        break;
-    case BrowserDataHintAcceptJavaScriptDialog:
-        break;
-    case BrowserDataHintDismissJavaScriptDialog:
         break;
     case BrowserDataHintNone:
     default:

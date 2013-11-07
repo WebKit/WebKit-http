@@ -18,11 +18,10 @@
     Boston, MA 02111-1307, USA.
 */
 
-#if ENABLE(Condition1) || ENABLE(Condition2)
-
 #ifndef V8TestInterface_h
 #define V8TestInterface_h
 
+#if ENABLE(Condition1) || ENABLE(Condition2)
 #include "TestInterface.h"
 #include "V8Binding.h"
 #include "V8DOMWrapper.h"
@@ -36,9 +35,9 @@ namespace WebCore {
 class V8TestInterface {
 public:
     static const bool hasDependentLifetime = true;
-    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate* = 0);
-    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate* = 0);
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate* = 0);
+    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate*);
+    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate*);
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*, WrapperWorldType);
     static TestInterface* toNative(v8::Handle<v8::Object> object)
     {
         return reinterpret_cast<TestInterface*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
@@ -49,8 +48,8 @@ public:
     static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);
     static v8::Handle<v8::Value> namedPropertySetter(v8::Local<v8::String>, v8::Local<v8::Value>, const v8::AccessorInfo&);
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + 0;
-    static void installPerContextProperties(v8::Handle<v8::Object>, TestInterface*) { }
-    static void installPerContextPrototypeProperties(v8::Handle<v8::Object>) { }
+    static void installPerContextProperties(v8::Handle<v8::Object>, TestInterface*, v8::Isolate*) { }
+    static void installPerContextPrototypeProperties(v8::Handle<v8::Object>, v8::Isolate*) { }
 private:
     friend v8::Handle<v8::Object> wrap(TestInterface*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
     static v8::Handle<v8::Object> createWrapper(PassRefPtr<TestInterface>, v8::Handle<v8::Object> creationContext, v8::Isolate*);

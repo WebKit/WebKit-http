@@ -62,8 +62,10 @@ public:
     void removeMessageReceiver(CoreIPC::StringReference messageReceiverName, uint64_t destinationID);
 
 #if PLATFORM(MAC)
-    bool processSuppressionEnabled() const { return !m_processVisibleAssertion; }
+    bool processSuppressionEnabled() const { return !m_processSuppressionAssertion; }
     void setProcessSuppressionEnabled(bool);
+
+    void shutdownWindowServerConnection();
 #endif
 
     CoreIPC::Connection* parentProcessConnection() const { return m_connection.get(); }
@@ -107,7 +109,7 @@ private:
     CoreIPC::MessageReceiverMap m_messageReceiverMap;
 
 #if PLATFORM(MAC)
-    RetainPtr<id> m_processVisibleAssertion;
+    RetainPtr<id> m_processSuppressionAssertion;
 #endif
 };
 

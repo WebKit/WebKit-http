@@ -28,6 +28,7 @@
 #include "ChromeClient.h"
 #include "CSSPropertyNames.h"
 #include "Document.h"
+#include "Event.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameTree.h"
@@ -169,22 +170,22 @@ bool HTMLPlugInElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFrameOwnerElement::isPresentationAttribute(name);
 }
 
-void HTMLPlugInElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLPlugInElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
 {
-    if (attribute.name() == widthAttr)
-        addHTMLLengthToStyle(style, CSSPropertyWidth, attribute.value());
-    else if (attribute.name() == heightAttr)
-        addHTMLLengthToStyle(style, CSSPropertyHeight, attribute.value());
-    else if (attribute.name() == vspaceAttr) {
-        addHTMLLengthToStyle(style, CSSPropertyMarginTop, attribute.value());
-        addHTMLLengthToStyle(style, CSSPropertyMarginBottom, attribute.value());
-    } else if (attribute.name() == hspaceAttr) {
-        addHTMLLengthToStyle(style, CSSPropertyMarginLeft, attribute.value());
-        addHTMLLengthToStyle(style, CSSPropertyMarginRight, attribute.value());
-    } else if (attribute.name() == alignAttr)
-        applyAlignmentAttributeToStyle(attribute, style);
+    if (name == widthAttr)
+        addHTMLLengthToStyle(style, CSSPropertyWidth, value);
+    else if (name == heightAttr)
+        addHTMLLengthToStyle(style, CSSPropertyHeight, value);
+    else if (name == vspaceAttr) {
+        addHTMLLengthToStyle(style, CSSPropertyMarginTop, value);
+        addHTMLLengthToStyle(style, CSSPropertyMarginBottom, value);
+    } else if (name == hspaceAttr) {
+        addHTMLLengthToStyle(style, CSSPropertyMarginLeft, value);
+        addHTMLLengthToStyle(style, CSSPropertyMarginRight, value);
+    } else if (name == alignAttr)
+        applyAlignmentAttributeToStyle(value, style);
     else
-        HTMLFrameOwnerElement::collectStyleForPresentationAttribute(attribute, style);
+        HTMLFrameOwnerElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
 void HTMLPlugInElement::defaultEventHandler(Event* event)
@@ -201,10 +202,10 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
             toRenderEmbeddedObject(r)->handleUnavailablePluginIndicatorEvent(event);
             return;
         }
-        if (r->isSnapshottedPlugIn() && displayState() < PlayingWithPendingMouseClick) {
-            toRenderSnapshottedPlugIn(r)->handleEvent(event);
-            return;
-        }
+    } else if (r && r->isSnapshottedPlugIn() && displayState() < PlayingWithPendingMouseClick) {
+        toRenderSnapshottedPlugIn(r)->handleEvent(event);
+        HTMLFrameOwnerElement::defaultEventHandler(event);
+        return;
     }
 
     if (!r || !r->isWidget())

@@ -33,6 +33,7 @@
 
 namespace WebCore {
 class IntRect;
+class FloatPoint;
 class FloatRect;
 class LayerRenderer;
 class TransformationMatrix;
@@ -88,28 +89,6 @@ public:
     TileMap m_tileMap;
 };
 
-class BackingStoreWindowBufferState {
-public:
-    Platform::IntRectRegion blittedRegion() const { return m_blittedRegion; }
-    void addBlittedRegion(const Platform::IntRectRegion& region)
-    {
-        m_blittedRegion = Platform::IntRectRegion::unionRegions(m_blittedRegion, region);
-    }
-    void clearBlittedRegion(const Platform::IntRectRegion& region)
-    {
-        m_blittedRegion = Platform::IntRectRegion::subtractRegions(m_blittedRegion, region);
-    }
-    void clearBlittedRegion() { m_blittedRegion = Platform::IntRectRegion(); }
-
-    bool isRendered(const Platform::IntPoint& scrollPosition, const Platform::IntRectRegion& contents) const
-    {
-        return Platform::IntRectRegion::subtractRegions(contents, m_blittedRegion).isEmpty();
-    }
-
-  private:
-    Platform::IntRectRegion m_blittedRegion;
-};
-
 class BackingStorePrivate : public BlackBerry::Platform::GuardedPointerBase {
 public:
     enum TileMatrixDirection { Horizontal, Vertical };
@@ -118,17 +97,10 @@ public:
     void instrumentBeginFrame();
     void instrumentCancelFrame();
 
-    // Returns whether direct rendering is explicitly turned on or is
-    // required because the surface pool is not large enough to meet
-    // the minimum number of tiles required to scroll.
-    bool shouldDirectRenderingToWindow() const;
-
     // Returns whether we're using the OpenGL code path for compositing the
     // backing store tiles. This can be due to the main window using
     // BlackBerry::Platform::Graphics::Window::GLES2Usage.
     bool isOpenGLCompositing() const;
-
-    bool isSuspended() const { return m_suspendBackingStoreUpdates; }
 
     // Suspends all backingstore updates so that rendering to the backingstore is disabled.
     void suspendBackingStoreUpdates();
@@ -136,11 +108,20 @@ public:
     // Resumes all backingstore updates so that rendering to the backingstore is enabled.
     void resumeBackingStoreUpdates();
 
+    // Suspends all backingstore geometry updates.
+    void suspendGeometryUpdates();
+
+    // Resumes all backingstore geometry updates.
+    void resumeGeometryUpdates();
+
     // Suspends all screen updates so that 'blitVisibleContents' is disabled.
     void suspendScreenUpdates();
 
     // Resumes all screen updates so that 'blitVisibleContents' is enabled.
     void resumeScreenUpdates(BackingStore::ResumeUpdateOperation);
+
+    // Update m_suspendScreenUpdates*Thread based on a number of conditions.
+    void updateSuspendScreenUpdateState(bool* hasSyncedToUserInterfaceThread = 0);
 
     // The functions repaint(), slowScroll(), scroll(), scrollingStartedHelper() are
     // called from outside WebKit and within WebKit via ChromeClientBlackBerry.
@@ -191,9 +172,6 @@ public:
     // tile matrix geometry.
     void scrollBackingStore(int deltaX, int deltaY);
 
-    // Render the given dirty rect and invalidate the screen.
-    Platform::IntRect renderDirectToWindow(const Platform::IntRect&);
-
     // Render the given tiles if enough back buffers are available.
     // Return the actual set of rendered tiles.
     // NOTE: This should only be called by RenderQueue and resumeScreenUpdates().
@@ -208,12 +186,8 @@ public:
     // Helper render methods.
     void renderAndBlitVisibleContentsImmediately();
     void renderAndBlitImmediately(const Platform::IntRect&);
-    void blitVisibleContents(bool force = false);
-
-    // Assumes the rect to be in window/viewport coordinates.
-    void copyPreviousContentsToBackSurfaceOfWindow();
-    void copyPreviousContentsToTileBuffer(const Platform::IntRect& excludeRect, TileBuffer* dstTileBuffer, TileBuffer* srcTileBuffer);
     void paintDefaultBackground(const Platform::IntRect& dstRect, BlackBerry::Platform::ViewportAccessor*, bool flush);
+    void blitVisibleContents(bool force = false);
     void blitOnIdle();
 
     Platform::IntRect blitTileRect(TileBuffer*, const Platform::IntRect&, const Platform::IntPoint&, const WebCore::TransformationMatrix&, BackingStoreGeometry*);
@@ -227,12 +201,8 @@ public:
     void compositeContents(WebCore::LayerRenderer*, const WebCore::TransformationMatrix&, const WebCore::FloatRect& contents, bool contentsOpaque);
 
     bool drawLayersOnCommitIfNeeded();
-    void drawAndBlendLayersForDirectRendering(const Platform::IntRect& dirtyRect);
     // WebPage will call this when drawing layers to tell us we don't need to
     void willDrawLayersOnCommit() { m_needsDrawLayersOnCommit = false; }
-    // WebPageCompositor uses this to cut down on excessive message sending.
-    bool isDirectRenderingAnimationMessageScheduled() { return m_isDirectRenderingAnimationMessageScheduled; }
-    void setDirectRenderingAnimationMessageScheduled() { m_isDirectRenderingAnimationMessageScheduled = true; }
 #endif
 
     void blitHorizontalScrollbar();
@@ -305,8 +275,7 @@ public:
     static Platform::IntSize tileSize();
 
     // This takes transformed contents coordinates.
-    void renderContents(BlackBerry::Platform::Graphics::Buffer*, const Platform::IntPoint& surfaceOffset, const Platform::IntRect& contentsRect) const;
-    void renderContents(Platform::Graphics::Drawable* /*drawable*/, const Platform::IntRect& /*contentsRect*/, const Platform::IntSize& /*destinationSize*/) const;
+    bool renderContents(BlackBerry::Platform::Graphics::Buffer*, const BlackBerry::Platform::IntRect& dstRect, double scale, const BlackBerry::Platform::FloatPoint& documentScrollPosition) const;
 
     void blitToWindow(const Platform::IntRect& dstRect, const BlackBerry::Platform::Graphics::Buffer* srcBuffer, const Platform::IntRect& srcRect, BlackBerry::Platform::Graphics::BlendMode, unsigned char globalAlpha);
     void fillWindow(Platform::Graphics::FillPattern, const Platform::IntRect& dstRect, const Platform::IntPoint& contentsOrigin, double contentsScale);
@@ -314,21 +283,13 @@ public:
     WebCore::Color webPageBackgroundColorUserInterfaceThread() const; // use WebSettings::backgroundColor() for the WebKit thread
     void setWebPageBackgroundColor(const WebCore::Color&);
 
-    void invalidateWindow();
-    void invalidateWindow(const Platform::IntRect& dst);
     void clearWindow(const Platform::IntRect&, unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha = 255);
 
     bool isScrollingOrZooming() const;
     void setScrollingOrZooming(bool scrollingOrZooming, bool shouldBlit = true);
 
-    void lockBackingStore();
-    void unlockBackingStore();
-
     BackingStoreGeometry* frontState() const;
     void adoptAsFrontState(BackingStoreGeometry* newFrontState);
-
-    BackingStoreWindowBufferState* windowFrontBufferState() const;
-    BackingStoreWindowBufferState* windowBackBufferState() const;
 
     static void setCurrentBackingStoreOwner(WebPage*);
     static WebPage* currentBackingStoreOwner() { return BackingStorePrivate::s_currentBackingStoreOwner; }
@@ -342,12 +303,16 @@ public:
 
     static WebPage* s_currentBackingStoreOwner;
 
-    unsigned m_suspendScreenUpdates;
+    unsigned m_suspendScreenUpdateCounterWebKitThread;
     unsigned m_suspendBackingStoreUpdates;
+    unsigned m_suspendGeometryUpdates;
     BackingStore::ResumeUpdateOperation m_resumeOperation;
 
+    bool m_suspendScreenUpdatesWebKitThread;
+    bool m_suspendScreenUpdatesUserInterfaceThread;
     bool m_suspendRenderJobs;
     bool m_suspendRegularRenderJobs;
+    bool m_tileMatrixContainsUsefulContent;
     bool m_tileMatrixNeedsUpdate;
     bool m_isScrollingOrZooming;
     WebPage* m_webPage;
@@ -361,18 +326,12 @@ public:
 
     mutable unsigned m_frontState;
 
-    unsigned m_currentWindowBackBuffer;
-    mutable BackingStoreWindowBufferState m_windowBufferState[2];
-
     TileMatrixDirection m_preferredTileMatrixDimension;
 
     Platform::IntRect m_visibleTileBufferRect;
 
-    pthread_mutex_t m_mutex;
-
 #if USE(ACCELERATED_COMPOSITING)
     mutable bool m_needsDrawLayersOnCommit; // Not thread safe, WebKit thread only
-    bool m_isDirectRenderingAnimationMessageScheduled;
 #endif
 
 protected:

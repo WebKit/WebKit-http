@@ -236,9 +236,6 @@ Page* ChromeClientBlackBerry::createWindow(Frame* frame, const FrameLoadRequest&
         return 0;
 #endif
 
-    PageGroupLoadDeferrer deferrer(m_webPagePrivate->m_page, true);
-    TimerBase::fireTimersInNestedEventLoop();
-
     int x = features.xSet ? features.x : 0;
     int y = features.ySet ? features.y : 0;
     int width = features.widthSet? features.width : -1;
@@ -503,8 +500,8 @@ void ChromeClientBlackBerry::exceededDatabaseQuota(Frame* frame, const String& n
 
     DatabaseManager& manager = DatabaseManager::manager();
 
-    unsigned long long originUsage = tracker.usageForOrigin(origin);
-    unsigned long long currentQuota = tracker.quotaForOrigin(origin);
+    unsigned long long originUsage = manager.usageForOrigin(origin);
+    unsigned long long currentQuota = manager.quotaForOrigin(origin);
 
     unsigned long long estimatedSize = details.expectedUsage();
     const String& nameStr = details.displayName();
@@ -743,9 +740,9 @@ void ChromeClientBlackBerry::exitFullscreenForNode(Node* node)
 }
 
 #if ENABLE(FULLSCREEN_API)
-bool ChromeClientBlackBerry::supportsFullScreenForElement(const WebCore::Element* element, bool withKeyboard)
+bool ChromeClientBlackBerry::supportsFullScreenForElement(const WebCore::Element*, bool)
 {
-    return !withKeyboard;
+    return true;
 }
 
 void ChromeClientBlackBerry::enterFullScreenForElement(WebCore::Element* element)
@@ -784,10 +781,10 @@ void ChromeClientBlackBerry::didSetSVGZoomAndPan(Frame* frame, unsigned short zo
         ViewportArguments arguments;
         switch (zoomAndPan) {
         case SVGZoomAndPan::SVG_ZOOMANDPAN_DISABLE:
-            arguments.userScalable = 0;
+            arguments.userZoom = 0;
             break;
         case SVGZoomAndPan::SVG_ZOOMANDPAN_MAGNIFY:
-            arguments.userScalable = 1;
+            arguments.userZoom = 1;
             break;
         default:
             return;
@@ -825,25 +822,6 @@ PassOwnPtr<ColorChooser> ChromeClientBlackBerry::createColorChooser(ColorChooser
 {
     return nullptr;
 }
-
-#if ENABLE(NAVIGATOR_CONTENT_UTILS)
-void ChromeClientBlackBerry::registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title)
-{
-    m_webPagePrivate->m_client->registerProtocolHandler(scheme, baseURL, url, title);
-}
-
-#if ENABLE(CUSTOM_SCHEME_HANDLER)
-ChromeClient::CustomHandlersState ChromeClientBlackBerry::isProtocolHandlerRegistered(const String& scheme, const String& baseURL, const String& url)
-{
-    return static_cast<CustomHandlersState>(m_webPagePrivate->m_client->isProtocolHandlerRegistered(scheme, baseURL, url));
-}
-
-void ChromeClientBlackBerry::unregisterProtocolHandler(const String& scheme, const String& baseURL, const String& url)
-{
-    m_webPagePrivate->m_client->unregisterProtocolHandler(scheme, baseURL, url);
-}
-#endif
-#endif
 
 void ChromeClientBlackBerry::addSearchProvider(const BlackBerry::Platform::String& originURL, const BlackBerry::Platform::String& newURL)
 {

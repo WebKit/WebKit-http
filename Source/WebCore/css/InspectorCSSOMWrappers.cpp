@@ -36,6 +36,7 @@
 #include "CSSRule.h"
 #include "CSSStyleRule.h"
 #include "CSSStyleSheet.h"
+#include "CSSSupportsRule.h"
 #include "DocumentStyleSheetCollection.h"
 #include "StyleSheetContents.h"
 #include "WebKitCSSRegionRule.h"
@@ -68,7 +69,7 @@ void InspectorCSSOMWrappers::collect(ListType* listType)
             break;
 #if ENABLE(CSS3_CONDITIONAL_RULES)
         case CSSRule::SUPPORTS_RULE:
-            collectCSSOMWrappers(static_cast<CSSSupportsRule*>(cssRule));
+            collect(static_cast<CSSSupportsRule*>(cssRule));
             break;
 #endif
 #if ENABLE(CSS_REGIONS)
@@ -123,6 +124,7 @@ CSSStyleRule* InspectorCSSOMWrappers::getWrapperForRuleInSheets(StyleRule* rule,
         collectFromStyleSheetContents(m_styleSheetCSSOMWrapperSet, CSSDefaultStyleSheets::mathMLStyleSheet);
         collectFromStyleSheetContents(m_styleSheetCSSOMWrapperSet, CSSDefaultStyleSheets::mediaControlsStyleSheet);
         collectFromStyleSheetContents(m_styleSheetCSSOMWrapperSet, CSSDefaultStyleSheets::fullscreenStyleSheet);
+        collectFromStyleSheetContents(m_styleSheetCSSOMWrapperSet, CSSDefaultStyleSheets::plugInsStyleSheet);
 
         collectFromDocumentStyleSheetCollection(styleSheetCollection);
     }

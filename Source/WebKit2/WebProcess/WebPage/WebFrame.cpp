@@ -42,9 +42,7 @@
 #include <JavaScriptCore/JSContextRef.h>
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/JSValueRef.h>
-#include <WebCore/AnimationController.h>
 #include <WebCore/ArchiveResource.h>
-#include <WebCore/CSSComputedStyleDeclaration.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/Frame.h>
@@ -417,80 +415,6 @@ PassRefPtr<ImmutableArray> WebFrame::childFrames()
     return ImmutableArray::adopt(vector);
 }
 
-unsigned WebFrame::numberOfActiveAnimations() const
-{
-    if (!m_coreFrame)
-        return 0;
-
-    AnimationController* controller = m_coreFrame->animation();
-    if (!controller)
-        return 0;
-
-    return controller->numberOfActiveAnimations(m_coreFrame->document());
-}
-
-bool WebFrame::pauseAnimationOnElementWithId(const AtomicString& animationName, const String& elementID, double time)
-{
-    if (!m_coreFrame)
-        return false;
-
-    AnimationController* controller = m_coreFrame->animation();
-    if (!controller)
-        return false;
-
-    if (!m_coreFrame->document())
-        return false;
-
-    Node* coreNode = m_coreFrame->document()->getElementById(elementID);
-    if (!coreNode || !coreNode->renderer())
-        return false;
-
-    return controller->pauseAnimationAtTime(coreNode->renderer(), animationName, time);
-}
-
-bool WebFrame::pauseTransitionOnElementWithId(const String& propertyName, const String& elementID, double time)
-{
-    if (!m_coreFrame)
-        return false;
-
-    AnimationController* controller = m_coreFrame->animation();
-    if (!controller)
-        return false;
-
-    if (!m_coreFrame->document())
-        return false;
-
-    Node* coreNode = m_coreFrame->document()->getElementById(elementID);
-    if (!coreNode || !coreNode->renderer())
-        return false;
-
-    return controller->pauseTransitionAtTime(coreNode->renderer(), propertyName, time);
-}
-
-void WebFrame::suspendAnimations()
-{
-    if (!m_coreFrame)
-        return;
-
-    AnimationController* controller = m_coreFrame->animation();
-    if (!controller)
-        return;
-
-    controller->suspendAnimations();
-}
-
-void WebFrame::resumeAnimations()
-{
-    if (!m_coreFrame)
-        return;
-
-    AnimationController* controller = m_coreFrame->animation();
-    if (!controller)
-        return;
-
-    controller->resumeAnimations();
-}
-
 String WebFrame::layerTreeAsText() const
 {
     if (!m_coreFrame)
@@ -557,7 +481,7 @@ IntRect WebFrame::visibleContentBounds() const
     if (!view)
         return IntRect();
     
-    IntRect contentRect = view->visibleContentRect(true);
+    IntRect contentRect = view->visibleContentRect(ScrollableArea::IncludeScrollbars);
     return IntRect(0, 0, contentRect.width(), contentRect.height());
 }
 
@@ -570,7 +494,7 @@ IntRect WebFrame::visibleContentBoundsExcludingScrollbars() const
     if (!view)
         return IntRect();
     
-    IntRect contentRect = view->visibleContentRect(false);
+    IntRect contentRect = view->visibleContentRect();
     return IntRect(0, 0, contentRect.width(), contentRect.height());
 }
 
@@ -615,7 +539,7 @@ PassRefPtr<InjectedBundleHitTestResult> WebFrame::hitTest(const IntPoint point) 
     if (!m_coreFrame)
         return 0;
 
-    return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler()->hitTestResultAtPoint(point, false, true));
+    return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler()->hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping));
 }
 
 bool WebFrame::getDocumentBackgroundColor(double* red, double* green, double* blue, double* alpha)
@@ -696,37 +620,12 @@ JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleRangeHandle* rangeHandle, I
     return toRef(exec, toJS(exec, globalObject, rangeHandle->coreRange()));
 }
 
-JSValueRef WebFrame::computedStyleIncludingVisitedInfo(JSObjectRef element)
-{
-    if (!m_coreFrame)
-        return 0;
-
-    JSDOMWindow* globalObject = m_coreFrame->script()->globalObject(mainThreadNormalWorld());
-    ExecState* exec = globalObject->globalExec();
-
-    if (!toJS(element)->inherits(&JSElement::s_info))
-        return JSValueMakeUndefined(toRef(exec));
-
-    RefPtr<CSSComputedStyleDeclaration> style = CSSComputedStyleDeclaration::create(static_cast<JSElement*>(toJS(element))->impl(), true);
-
-    JSLockHolder lock(exec);
-    return toRef(exec, toJS(exec, globalObject, style.get()));
-}
-
 String WebFrame::counterValue(JSObjectRef element)
 {
     if (!toJS(element)->inherits(&JSElement::s_info))
         return String();
 
     return counterValueForElement(static_cast<JSElement*>(toJS(element))->impl());
-}
-
-String WebFrame::markerText(JSObjectRef element)
-{
-    if (!toJS(element)->inherits(&JSElement::s_info))
-        return String();
-
-    return markerTextForListItem(static_cast<JSElement*>(toJS(element))->impl());
 }
 
 String WebFrame::provisionalURL() const

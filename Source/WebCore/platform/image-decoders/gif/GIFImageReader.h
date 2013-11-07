@@ -41,173 +41,218 @@
 // Define ourselves as the clientPtr.  Mozilla just hacked their C++ callback class into this old C decoder,
 // so we will too.
 #include "GIFImageDecoder.h"
+#include "SharedBuffer.h"
+#include <wtf/Vector.h>
 
 #define MAX_LZW_BITS          12
-#define MAX_BITS            4097 /* 2^MAX_LZW_BITS+1 */
+#define MAX_BYTES           4097 /* 2^MAX_LZW_BITS+1 */
 #define MAX_COLORS           256
-#define MAX_HOLD_SIZE        256
+#define GIF_COLORS             3
 
 const int cLoopCountNotSeen = -2;
 
-/* gif2.h  
-   The interface for the GIF87/89a decoder. 
-*/
-// List of possible parsing states
-typedef enum {
-    gif_type,
-    gif_global_header,
-    gif_global_colormap,
-    gif_image_start,            
-    gif_image_header,
-    gif_image_colormap,
-    gif_image_body,
-    gif_lzw_start,
-    gif_lzw,
-    gif_sub_block,
-    gif_extension,
-    gif_control_extension,
-    gif_consume_block,
-    gif_skip_block,
-    gif_done,
-    gif_comment_extension,
-    gif_application_extension,
-    gif_netscape_extension_block,
-    gif_consume_netscape_extension,
-    gif_consume_comment
-} gstate;
+// List of possible parsing states.
+enum GIFState {
+    GIFType,
+    GIFGlobalHeader,
+    GIFGlobalColormap,
+    GIFImageStart,            
+    GIFImageHeader,
+    GIFImageColormap,
+    GIFImageBody,
+    GIFLZWStart,
+    GIFLZW,
+    GIFSubBlock,
+    GIFExtension,
+    GIFControlExtension,
+    GIFConsumeBlock,
+    GIFSkipBlock,
+    GIFDone,
+    GIFCommentExtension,
+    GIFApplicationExtension,
+    GIFNetscapeExtensionBlock,
+    GIFConsumeNetscapeExtension,
+    GIFConsumeComment
+};
 
-struct GIFFrameReader {
+// Frame output state machine.
+struct GIFFrameContext {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    /* LZW decoder state machine */
-    unsigned char *stackp;              /* Current stack pointer */
     int datasize;
-    int codesize;
-    int codemask;
-    int clear_code;             /* Codeword used to trigger dictionary reset */
-    int avail;                  /* Index of next available slot in dictionary */
-    int oldcode;
-    unsigned char firstchar;
-    int bits;                   /* Number of unread bits in "datum" */
-    int datum;                /* 32-bit input buffer */
+    int ipass; // Interlace pass; Ranges 1-4 if interlaced.
+    size_t rowsRemaining; // Rows remaining to be output.
+    size_t irow; // Current output row, starting at zero.
 
-    /* Output state machine */
-    int ipass;                  /* Interlace pass; Ranges 1-4 if interlaced. */
-    unsigned int rows_remaining;        /* Rows remaining to be output */
-    unsigned int irow;                  /* Current output row, starting at zero */
-    unsigned char *rowbuf;              /* Single scanline temporary buffer */
-    unsigned char *rowend;              /* Pointer to end of rowbuf */
-    unsigned char *rowp;                /* Current output pointer */
-
-    /* Parameters for image frame currently being decoded */
-    unsigned int x_offset, y_offset;    /* With respect to "screen" origin */
-    unsigned int height, width;
-    int tpixel;                 /* Index of transparent pixel */
-    WebCore::ImageFrame::FrameDisposalMethod disposal_method;   /* Restore to background, leave in place, etc.*/
-    unsigned char *local_colormap;    /* Per-image colormap */
-    int local_colormap_size;    /* Size of local colormap array. */
+    // Parameters for image frame currently being decoded.
+    unsigned xOffset;
+    unsigned yOffset; // With respect to "screen" origin.
+    unsigned width;
+    unsigned height;
+    int tpixel; // Index of transparent pixel.
+    WebCore::ImageFrame::FrameDisposalMethod disposalMethod; // Restore to background, leave in place, etc.
+    size_t localColormapPosition; // Per-image colormap.
+    int localColormapSize; // Size of local colormap array.
     
-    bool is_local_colormap_defined : 1;
-    bool progressive_display : 1;    /* If TRUE, do Haeberli interlace hack */
-    bool interlaced : 1;             /* TRUE, if scanlines arrive interlaced order */
-    bool is_transparent : 1;         /* TRUE, if tpixel is valid */
+    bool isLocalColormapDefined : 1;
+    bool progressiveDisplay : 1; // If true, do Haeberli interlace hack.
+    bool interlaced : 1; // True, if scanlines arrive interlaced order.
+    bool isTransparent : 1; // TRUE, if tpixel is valid.
 
-    unsigned delay_time;        /* Display time, in milliseconds,
-                                   for this image in a multi-image GIF */
+    unsigned delayTime; // Display time, in milliseconds, for this image in a multi-image GIF.
 
-
-    unsigned short*  prefix;          /* LZW decoding tables */
-    unsigned char*   suffix;          /* LZW decoding tables */
-    unsigned char*   stack;           /* Base of LZW decoder stack */
-
-
-    GIFFrameReader() {
-        stackp = 0;
-        datasize = codesize = codemask = clear_code = avail = oldcode = 0;
-        firstchar = 0;
-        bits = datum = 0;
-        ipass = 0;
-        rows_remaining = irow = 0;
-        rowbuf = rowend = rowp = 0;
-
-        x_offset = y_offset = width = height = 0;
-        tpixel = 0;
-        disposal_method = WebCore::ImageFrame::DisposeNotSpecified;
-
-        local_colormap = 0;
-        local_colormap_size = 0;
-        is_local_colormap_defined = progressive_display = is_transparent = interlaced = false;
-
-        delay_time = 0;
-
-        prefix = 0;
-        suffix = stack = 0;
+    GIFFrameContext()
+        : datasize(0)
+        , ipass(0)
+        , rowsRemaining(0)
+        , irow(0)
+        , xOffset(0)
+        , yOffset(0)
+        , width(0)
+        , height(0)
+        , tpixel(0)
+        , disposalMethod(WebCore::ImageFrame::DisposeNotSpecified)
+        , localColormapPosition(0)
+        , localColormapSize(0)
+        , isLocalColormapDefined(false)
+        , progressiveDisplay(false)
+        , interlaced(false)
+        , isTransparent(false)
+        , delayTime(0)
+    {
     }
     
-    ~GIFFrameReader() {
-        delete []rowbuf;
-        delete []local_colormap;
-        delete []prefix;
-        delete []suffix;
-        delete []stack;
+    ~GIFFrameContext()
+    {
     }
 };
 
-struct GIFImageReader {
+// LZW decoder state machine.
+// FIXME: Make this a class and hide private members.
+struct GIFLZWContext {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WebCore::GIFImageDecoder* clientptr;
-    /* Parsing state machine */
-    gstate state;                      /* Current decoder master state */
-    unsigned bytes_to_consume;         /* Number of bytes to accumulate */
-    unsigned bytes_in_hold;            /* bytes accumulated so far*/
-    unsigned char hold[MAX_HOLD_SIZE]; /* Accumulation buffer */
-    unsigned char* global_colormap;    /* (3* MAX_COLORS in size) Default colormap if local not supplied, 3 bytes for each color  */
-    
-     /* Global (multi-image) state */
-    int screen_bgcolor;         /* Logical screen background color */
-    int version;                /* Either 89 for GIF89 or 87 for GIF87 */
-    unsigned screen_width;       /* Logical screen width & height */
-    unsigned screen_height;
-    int global_colormap_size;   /* Size of global colormap array. */
-    unsigned images_decoded;    /* Counts completed frames for animated GIFs */
-    int images_count;           /* Counted all frames seen so far (including incomplete frames) */
-    int loop_count;             /* Netscape specific extension block to control
-                                   the number of animation loops a GIF renders. */
-    
-    // Not really global, but convenient to locate here.
-    int count;                  /* Remaining # bytes in sub-block */
-    
-    GIFFrameReader* frame_reader;
+    GIFLZWContext()
+        : stackp(0)
+        , codesize(0)
+        , codemask(0)
+        , clearCode(0)
+        , avail(0)
+        , oldcode(0)
+        , firstchar(0)
+        , bits(0)
+        , datum(0)
+        , rowPosition(0)
+    { }
 
-    GIFImageReader(WebCore::GIFImageDecoder* client = 0) {
-        clientptr = client;
-        state = gif_type;
-        bytes_to_consume = 6;
-        bytes_in_hold = 0;
-        frame_reader = 0;
-        global_colormap = 0;
+    bool prepareToDecode(unsigned rowWidth, int datasize);
 
-        screen_bgcolor = version = 0;
-        screen_width = screen_height = 0;
-        global_colormap_size = images_decoded = images_count = 0;
-        loop_count = cLoopCountNotSeen;
-        count = 0;
+    size_t stackp; // Current stack pointer.
+    int codesize;
+    int codemask;
+    int clearCode; // Codeword used to trigger dictionary reset.
+    int avail; // Index of next available slot in dictionary.
+    int oldcode;
+    unsigned char firstchar;
+    int bits; // Number of unread bits in "datum".
+    int datum; // 32-bit input buffer.
+    size_t rowPosition;
+
+    Vector<unsigned short> prefix;
+    Vector<unsigned char> suffix;
+    Vector<unsigned char> stack;
+    Vector<unsigned char> rowBuffer; // Single scanline temporary buffer.
+};
+
+class GIFImageReader {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    GIFImageReader(WebCore::GIFImageDecoder* client = 0)
+        : m_client(client)
+        , m_state(GIFType)
+        , m_bytesToConsume(6) // Number of bytes for GIF type, either "GIF87a" or "GIF89a".
+        , m_bytesRead(0)
+        , m_screenBgcolor(0)
+        , m_version(0)
+        , m_screenWidth(0)
+        , m_screenHeight(0)
+        , m_isGlobalColormapDefined(false)
+        , m_globalColormapPosition(0)
+        , m_globalColormapSize(0)
+        , m_imagesDecoded(0)
+        , m_imagesCount(0)
+        , m_loopCount(cLoopCountNotSeen)
+        , m_frameContext(0)
+    {
     }
 
-    ~GIFImageReader() {
-        delete []global_colormap;
-        global_colormap = 0;
-        delete frame_reader;
-        frame_reader = 0;
+    ~GIFImageReader()
+    {
+        delete m_frameContext;
+        m_frameContext = 0;
     }
 
-    bool read(const unsigned char * buf, unsigned int numbytes, 
-              WebCore::GIFImageDecoder::GIFQuery query = WebCore::GIFImageDecoder::GIFFullQuery, unsigned haltAtFrame = -1);
+    void setData(PassRefPtr<WebCore::SharedBuffer> data) { m_data = data; }
+    bool decode(WebCore::GIFImageDecoder::GIFQuery, unsigned haltAtFrame);
+
+    int imagesCount() const { return m_imagesCount; }
+    int loopCount() const { return m_loopCount; }
+
+    const unsigned char* globalColormap() const
+    {
+        return m_isGlobalColormapDefined ? data(m_globalColormapPosition) : 0;
+    }
+    int globalColormapSize() const
+    {
+        return m_isGlobalColormapDefined ? m_globalColormapSize : 0;
+    }
+
+    const unsigned char* localColormap(const GIFFrameContext* frame) const
+    {
+        return frame->isLocalColormapDefined ? data(frame->localColormapPosition) : 0;
+    }
+    int localColormapSize(const GIFFrameContext* frame) const
+    {
+        return frame->isLocalColormapDefined ? frame->localColormapSize : 0;
+    }
+
+    const GIFFrameContext* frameContext() const { return m_frameContext; }
 
 private:
-    bool output_row();
-    bool do_lzw(const unsigned char *q);
+    bool decodeInternal(size_t dataPosition, size_t len, WebCore::GIFImageDecoder::GIFQuery, unsigned haltAtFrame);
+    bool outputRow();
+    bool doLZW(const unsigned char *, size_t);
+    void setRemainingBytes(size_t);
+
+    const unsigned char* data(size_t dataPosition) const
+    {
+        return reinterpret_cast<const unsigned char*>(m_data->data()) + dataPosition;
+    }
+
+    WebCore::GIFImageDecoder* m_client;
+
+    // Parsing state machine.
+    GIFState m_state; // Current decoder master state.
+    size_t m_bytesToConsume; // Number of bytes to consume for next stage of parsing.
+    size_t m_bytesRead; // Number of bytes processed.
+    
+    // Global (multi-image) state.
+    int m_screenBgcolor; // Logical screen background color.
+    int m_version; // Either 89 for GIF89 or 87 for GIF87.
+    unsigned m_screenWidth; // Logical screen width & height.
+    unsigned m_screenHeight;
+    bool m_isGlobalColormapDefined;
+    size_t m_globalColormapPosition; // (3* MAX_COLORS in size) Default colormap if local not supplied, 3 bytes for each color.
+    int m_globalColormapSize; // Size of global colormap array.
+    unsigned m_imagesDecoded; // Counts completed frames for animated GIFs.
+    int m_imagesCount; // Counted all frames seen so far (including incomplete frames).
+    int m_loopCount; // Netscape specific extension block to control the number of animation loops a GIF renders.
+    
+    GIFFrameContext* m_frameContext;
+
+    GIFLZWContext m_lzwContext;
+
+    RefPtr<WebCore::SharedBuffer> m_data;
 };
 
 #endif

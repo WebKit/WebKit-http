@@ -35,6 +35,7 @@
 #include "DOMWrapperWorld.h"
 #include "Node.h"
 #include "V8GCController.h"
+#include "WrapperTypeInfo.h"
 #include <v8.h>
 #include <wtf/HashMap.h>
 #include <wtf/MainThread.h>
@@ -50,13 +51,7 @@ namespace WebCore {
 class DOMDataStore {
     WTF_MAKE_NONCOPYABLE(DOMDataStore);
 public:
-    enum Type {
-        MainWorld,
-        IsolatedWorld,
-        Worker,
-    };
-
-    explicit DOMDataStore(Type);
+    explicit DOMDataStore(WrapperWorldType);
     ~DOMDataStore();
 
     static DOMDataStore* current(v8::Isolate*);
@@ -89,15 +84,15 @@ public:
     }
 
     template<typename T>
-    static void setWrapper(T* object, v8::Persistent<v8::Object> wrapper, v8::Isolate* isolate)
+    static void setWrapper(T* object, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate, const WrapperConfiguration& configuration)
     {
         if (mainWorldWrapperIsStoredInObject(object) && isMainWorldObject(object)) {
             if (LIKELY(!DOMWrapperWorld::isolatedWorldsExist())) {
-                setWrapperInObject(object, wrapper);
+                setWrapperInObject(object, wrapper, isolate, configuration);
                 return;
             }
         }
-        return current(isolate)->set(object, wrapper);
+        return current(isolate)->set(object, wrapper, isolate, configuration);
     }
 
     template<typename T>
@@ -108,21 +103,21 @@ public:
         return m_wrapperMap.get(object);
     }
 
+    void reportMemoryUsage(MemoryObjectInfo*) const;
+
+private:
     template<typename T>
-    inline void set(T* object, v8::Persistent<v8::Object> wrapper)
+    inline void set(T* object, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate, const WrapperConfiguration& configuration)
     {
         ASSERT(!!object);
         ASSERT(!wrapper.IsEmpty());
         if (mainWorldWrapperIsStoredInObject(object) && m_type == MainWorld) {
-            setWrapperInObject(object, wrapper);
+            setWrapperInObject(object, wrapper, isolate, configuration);
             return;
         }
-        m_wrapperMap.set(object, wrapper);
+        m_wrapperMap.set(object, wrapper, configuration);
     }
 
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
-private:
     static DOMDataStore* mainWorldStore();
 
     static bool mainWorldWrapperIsStoredInObject(void*) { return false; }
@@ -154,27 +149,16 @@ private:
         return object->wrapper();
     }
 
-    static void setWrapperInObject(void*, v8::Persistent<v8::Object>)
+    static void setWrapperInObject(void*, v8::Handle<v8::Object>, v8::Isolate*, const WrapperConfiguration&)
     {
         ASSERT_NOT_REACHED();
     }
-    static void setWrapperInObject(ScriptWrappable* object, v8::Persistent<v8::Object> wrapper)
+    static void setWrapperInObject(ScriptWrappable* object, v8::Handle<v8::Object> wrapper, v8::Isolate* isolate, const WrapperConfiguration& configuration)
     {
-        ASSERT(object->wrapper().IsEmpty());
-        object->setWrapper(wrapper);
-        wrapper.MakeWeak(object, weakCallback);
-    }
-    static void setWrapperInObject(Node* object, v8::Persistent<v8::Object> wrapper)
-    {
-        ASSERT(object->wrapper().IsEmpty());
-        object->setWrapper(wrapper);
-        V8GCController::didCreateWrapperForNode(object);
-        wrapper.MakeWeak(static_cast<ScriptWrappable*>(object), weakCallback);
+        object->setWrapper(wrapper, isolate, configuration);
     }
 
-    static void weakCallback(v8::Persistent<v8::Value>, void* context);
-
-    Type m_type;
+    WrapperWorldType m_type;
     DOMWrapperMap<void> m_wrapperMap;
 };
 

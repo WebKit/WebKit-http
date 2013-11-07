@@ -29,20 +29,23 @@
 namespace WebCore {
 
 enum MessageSource {
-    HTMLMessageSource,
     XMLMessageSource,
     JSMessageSource,
     NetworkMessageSource,
     ConsoleAPIMessageSource,
+    StorageMessageSource,
+    AppCacheMessageSource,
+    RenderingMessageSource,
+    CSSMessageSource,
+    SecurityMessageSource,
     OtherMessageSource,
 };
 
 enum MessageLevel {
-    TipMessageLevel,
-    LogMessageLevel,
-    WarningMessageLevel,
-    ErrorMessageLevel,
-    DebugMessageLevel
+    DebugMessageLevel = 4,
+    LogMessageLevel = 1,
+    WarningMessageLevel = 2,
+    ErrorMessageLevel = 3
 };
 
 } // namespace WebCore

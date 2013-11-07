@@ -1,3 +1,74 @@
+2013-03-07  Andrew Bortz  <andrew@abortz.net>
+
+        Replace Mersenne Twister RNG with a simple but fast RNG
+        https://bugs.webkit.org/show_bug.cgi?id=111533
+
+        Reviewed by Adam Barth.
+
+        This code is no longer used.
+
+        * mt19937ar.c: Removed.
+
+2013-02-20  Roger Fong  <roger_fong@apple.com>
+
+       Get VS2010 Solution B&I ready.
+        <rdar://problem/1322988>
+
+        Rubberstamped by Timothy Horton.
+        
+        Add Production configuration. 
+
+        * gtest/msvc/gtest-md.vcxproj:
+
+2013-02-14  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style native for .sln, .vcproj, and .vsprops files.
+        https://bugs.webkit.org/show_bug.cgi?id=96934
+
+        * gtest/msvc/gtest-md.sln: Modified property svn:eol-style.
+        * gtest/msvc/gtest.sln: Modified property svn:eol-style.
+
+2013-02-14  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style CRLF for .sln files.
+
+        * gtest/msvc/gtest-md.sln: Added property svn:eol-style.
+        * gtest/msvc/gtest.sln: Added property svn:eol-style.
+
+2013-02-14  Roger Fong  <roger_fong@apple.com>
+
+        Add gtest-md VS2010 project files.
+        https://bugs.webkit.org/show_bug.cgi?id=107034.
+
+        Reviewed by Brent Fulgham.
+
+        * gtest/msvc/gtest-md.sln: Added property svn:eol-style.
+        * gtest/msvc/gtest.sln: Added property svn:eol-style.
+
+2013-02-05  Simon Hausmann  <simon.hausmann@digia.com>
+
+        [Qt] Compile WTF tests of TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=108935
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add qmake build system .pro file for building gtest as static library.
+
+        * gtest/gtest.pro: Added.
+
+2013-02-05  Paweł Forysiuk  <tuxator@o2.pl>
+
+        Building with MinGW compiler dies with gtest errors
+        https://bugs.webkit.org/show_bug.cgi?id=108470
+
+        Reviewed by Martin Robinson.
+
+        Variable Libraries_libgtest_la_CXXFLAGS blindly assumes that
+        pthreads will always be enabled. Make using pthreads for gtest
+        conditional on the build target.
+
+        * gtest/GNUmakefile.am: Set Libraries_libgtest_la_CXXFLAGS accordingly to the build target.
+
 2013-01-23  Tony Chang  <tony@chromium.org>
 
         Unreviewed, set svn:eol-style to CRLF on Windows .sln files.

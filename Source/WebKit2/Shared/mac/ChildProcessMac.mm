@@ -41,6 +41,19 @@
 #define SANDBOX_NAMED_EXTERNAL 0x0003
 extern "C" int sandbox_init_with_parameters(const char *profile, uint64_t flags, const char *const parameters[], char **errorbuf);
 
+#ifdef __has_include
+#if __has_include(<CoreGraphics/CGSConnection.h>)
+#include <CoreGraphics/CGSConnection.h>
+#endif
+
+#if __has_include(<HIServices/ProcessesPriv.h>)
+#include <HIServices/ProcessesPriv.h>
+#endif
+#endif
+
+extern "C" CGError CGSShutdownServerConnections();
+extern "C" OSStatus SetApplicationIsDaemon(Boolean isDaemon);
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -52,9 +65,9 @@ void ChildProcess::setProcessSuppressionEnabled(bool processSuppressionEnabled)
         return;
 
     if (processSuppressionEnabled)
-        m_processVisibleAssertion.clear();
+        m_processSuppressionAssertion.clear();
     else
-        m_processVisibleAssertion = WKNSProcessInfoProcessAssertionWithTypes(WKProcessAssertionTypeVisible);
+        m_processSuppressionAssertion = [[NSProcessInfo processInfo] beginSuspensionOfSystemBehaviors:WKProcessSuppressionSystemBehaviors reason:@"Process Suppression Disabled"];
 #else
     UNUSED_PARAM(processSuppressionEnabled);
 #endif
@@ -70,14 +83,23 @@ static void initializeTimerCoalescingPolicy()
 }
 #endif
 
+void ChildProcess::shutdownWindowServerConnection()
+{
+    CGSShutdownServerConnections();
+    SetApplicationIsDaemon(true);
+}
+
 void ChildProcess::platformInitialize()
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
-    setpriority(PRIO_DARWIN_PROCESS, 0, 0);
     initializeTimerCoalescingPolicy();
 #endif
     // Starting with process suppression disabled.  The proxy for this process will enable if appropriate from didFinishLaunching().
     setProcessSuppressionEnabled(false);
+
+    // <rdar://problem/13229217> Sudden Termination is causing WebContent XPC services to be killed in response to memory pressure
+    // Hence, disable it until we can identify if it is being enabled in error or not.
+    [[NSProcessInfo processInfo] disableSuddenTermination];
 
     [[NSFileManager defaultManager] changeCurrentDirectoryPath:[[NSBundle mainBundle] bundlePath]];
 }
@@ -91,6 +113,17 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
         String defaultSystemDirectorySuffix = String([[NSBundle mainBundle] bundleIdentifier]) + "+" + parameters.clientIdentifier;
         sandboxParameters.setSystemDirectorySuffix(defaultSystemDirectorySuffix);
     }
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+    // Use private temporary and cache directories.
+    setenv("DIRHELPER_USER_DIR_SUFFIX", fileSystemRepresentation(sandboxParameters.systemDirectorySuffix()).data(), 0);
+    char temporaryDirectory[PATH_MAX];
+    if (!confstr(_CS_DARWIN_USER_TEMP_DIR, temporaryDirectory, sizeof(temporaryDirectory))) {
+        WTFLogAlways("%s: couldn't retrieve private temporary directory path: %d\n", getprogname(), errno);
+        exit(EX_NOPERM);
+    }
+    setenv("TMPDIR", temporaryDirectory, 1);
+#endif
 
     sandboxParameters.addPathParameter("WEBKIT2_FRAMEWORK_DIR", [[webkit2Bundle bundlePath] stringByDeletingLastPathComponent]);
     sandboxParameters.addConfDirectoryParameter("DARWIN_USER_TEMP_DIR", _CS_DARWIN_USER_TEMP_DIR);
@@ -106,17 +139,6 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
     }
 
     sandboxParameters.addPathParameter("HOME_DIR", pwd.pw_dir);
-
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
-    // Use private temporary and cache directories.
-    setenv("DIRHELPER_USER_DIR_SUFFIX", fileSystemRepresentation(sandboxParameters.systemDirectorySuffix()).data(), 0);
-    char temporaryDirectory[PATH_MAX];
-    if (!confstr(_CS_DARWIN_USER_TEMP_DIR, temporaryDirectory, sizeof(temporaryDirectory))) {
-        WTFLogAlways("%s: couldn't retrieve private temporary directory path: %d\n", getprogname(), errno);
-        exit(EX_NOPERM);
-    }
-    setenv("TMPDIR", temporaryDirectory, 1);
-#endif
 
     switch (sandboxParameters.mode()) {
     case SandboxInitializationParameters::UseDefaultSandboxProfilePath:

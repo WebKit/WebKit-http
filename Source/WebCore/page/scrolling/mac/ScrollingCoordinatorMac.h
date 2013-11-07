@@ -52,11 +52,8 @@ public:
     // Should be called whenever the root layer for the given frame view changes.
     virtual void frameViewRootLayerDidChange(FrameView*);
 
-    // Should be called whenever the horizontal scrollbar layer for the given frame view changes.
-    virtual void frameViewHorizontalScrollbarLayerDidChange(FrameView*, GraphicsLayer* horizontalScrollbarLayer);
-
-    // Should be called whenever the vertical scrollbar layer for the given frame view changes.
-    virtual void frameViewVerticalScrollbarLayerDidChange(FrameView*, GraphicsLayer* verticalScrollbarLayer);
+    // Should be called whenever the scrollbar layer for the given scrollable area changes.
+    virtual void scrollableAreaScrollbarLayerDidChange(ScrollableArea*, ScrollbarOrientation);
 
     // Requests that the scrolling coordinator updates the scroll position of the given frame view. If this function returns true, it means that the
     // position will be updated asynchronously. If it returns false, the caller should update the scrolling position itself.
@@ -76,6 +73,10 @@ public:
     virtual String scrollingStateTreeAsText() const OVERRIDE;
 
     virtual bool isRubberBandInProgress() const OVERRIDE;
+    virtual bool rubberBandsAtBottom() const OVERRIDE;
+    virtual void setRubberBandsAtBottom(bool) OVERRIDE;
+    virtual bool rubberBandsAtTop() const OVERRIDE;
+    virtual void setRubberBandsAtTop(bool) OVERRIDE;
 
 private:
     // Return whether this scrolling coordinator can keep fixed position layers fixed to their
@@ -96,7 +97,6 @@ private:
     virtual bool hasVisibleSlowRepaintViewportConstrainedObjects(FrameView*) const { return false; }
 
     void ensureRootStateNodeForFrameView(FrameView*);
-    ScrollingStateNode* stateNodeForID(ScrollingNodeID);
 
     struct ScrollParameters {
         ScrollElasticity horizontalScrollElasticity;
@@ -129,13 +129,9 @@ private:
     void scrollingStateTreeCommitterTimerFired(Timer<ScrollingCoordinatorMac>*);
     void commitTreeState();
 
-    void removeNode(ScrollingStateNode*);
-
     OwnPtr<ScrollingStateTree> m_scrollingStateTree;
     RefPtr<ScrollingTree> m_scrollingTree;
     Timer<ScrollingCoordinatorMac> m_scrollingStateTreeCommitterTimer;
-
-    HashMap<ScrollingNodeID, ScrollingStateNode*> m_stateNodeMap;
 };
 
 } // namespace WebCore

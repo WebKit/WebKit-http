@@ -112,7 +112,7 @@ class SVN(SCM, SVNRepository):
         match = re.search("^%s: (?P<value>.+)$" % field_name, info_output, re.MULTILINE)
         if not match:
             raise ScriptError(script_args=svn_info_args, message='svn info did not contain a %s.' % field_name)
-        return match.group('value')
+        return match.group('value').rstrip('\r')
 
     def find_checkout_root(self, path):
         uuid = self.find_uuid(path)
@@ -245,6 +245,13 @@ class SVN(SCM, SVNRepository):
 
     def svn_revision(self, path):
         return self.value_from_svn_info(path, 'Revision')
+
+    def timestamp_of_revision(self, path, revision):
+        # We use --xml to get timestamps like 2013-02-08T08:18:04.964409Z
+        repository_root = self.value_from_svn_info(self.checkout_root, 'Repository Root')
+        info_output = Executive().run_command([self.executable_name, 'log', '-r', revision, '--xml', repository_root], cwd=path).rstrip()
+        match = re.search(r"^<date>(?P<value>.+)</date>\r?$", info_output, re.MULTILINE)
+        return match.group('value')
 
     # FIXME: This method should be on Checkout.
     def create_patch(self, git_commit=None, changed_files=None):

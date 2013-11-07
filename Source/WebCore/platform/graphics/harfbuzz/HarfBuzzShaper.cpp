@@ -156,10 +156,18 @@ float HarfBuzzShaper::HarfBuzzRun::xPositionForOffset(unsigned offset)
     return position;
 }
 
-static void normalizeCharacters(const UChar* source, UChar* destination, int length)
+static void normalizeCharacters(const TextRun& run, UChar* destination, int length)
 {
     int position = 0;
     bool error = false;
+    const UChar* source;
+    String stringFor8BitRun;
+    if (run.is8Bit()) {
+        stringFor8BitRun = String::make16BitFrom8BitSource(run.characters8(), run.length());
+        source = stringFor8BitRun.characters16();
+    } else
+        source = run.characters16();
+
     while (position < length) {
         UChar32 character;
         int nextPosition = position;
@@ -182,7 +190,7 @@ HarfBuzzShaper::HarfBuzzShaper(const Font* font, const TextRun& run)
 {
     m_normalizedBuffer = adoptArrayPtr(new UChar[m_run.length() + 1]);
     m_normalizedBufferLength = m_run.length();
-    normalizeCharacters(m_run.characters16(), m_normalizedBuffer.get(), m_normalizedBufferLength);
+    normalizeCharacters(m_run, m_normalizedBuffer.get(), m_normalizedBufferLength);
     setPadding(m_run.expansion());
     setFontFeatures();
 }
@@ -193,8 +201,8 @@ HarfBuzzShaper::~HarfBuzzShaper()
 
 void HarfBuzzShaper::setDrawRange(int from, int to)
 {
-    ASSERT(from >= 0);
-    ASSERT(to <= m_run.length());
+    ASSERT_WITH_SECURITY_IMPLICATION(from >= 0);
+    ASSERT_WITH_SECURITY_IMPLICATION(to <= m_run.length());
     m_fromIndex = from;
     m_toIndex = to;
 }
@@ -323,10 +331,15 @@ bool HarfBuzzShaper::shapeHarfBuzzRuns(bool shouldSetDirection)
         unsigned runIndex = m_run.rtl() ? m_harfBuzzRuns.size() - i - 1 : i;
         HarfBuzzRun* currentRun = m_harfBuzzRuns[runIndex].get();
         const SimpleFontData* currentFontData = currentRun->fontData();
+        if (currentFontData->isSVGFont())
+            return false;
 
         hb_buffer_set_script(harfBuzzBuffer.get(), currentRun->script());
         if (shouldSetDirection)
             hb_buffer_set_direction(harfBuzzBuffer.get(), currentRun->rtl() ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
+        else
+            // Leaving direction to HarfBuzz to guess is *really* bad, but will do for now.
+            hb_buffer_guess_segment_properties(harfBuzzBuffer.get());
 
         // Add a space as pre-context to the buffer. This prevents showing dotted-circle
         // for combining marks at the beginning of runs.

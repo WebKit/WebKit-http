@@ -33,16 +33,16 @@ namespace WebCore {
 
 class V8TestNamedConstructorConstructor {
 public:
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*);
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*, WrapperWorldType);
     static WrapperTypeInfo info;
 };
 
 class V8TestNamedConstructor {
 public:
     static const bool hasDependentLifetime = true;
-    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate* = 0);
-    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate* = 0);
-    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate* = 0);
+    static bool HasInstance(v8::Handle<v8::Value>, v8::Isolate*);
+    static v8::Persistent<v8::FunctionTemplate> GetRawTemplate(v8::Isolate*);
+    static v8::Persistent<v8::FunctionTemplate> GetTemplate(v8::Isolate*, WrapperWorldType);
     static TestNamedConstructor* toNative(v8::Handle<v8::Object> object)
     {
         return reinterpret_cast<TestNamedConstructor*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
@@ -51,8 +51,8 @@ public:
     static WrapperTypeInfo info;
     static ActiveDOMObject* toActiveDOMObject(v8::Handle<v8::Object>);
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + 0;
-    static void installPerContextProperties(v8::Handle<v8::Object>, TestNamedConstructor*) { }
-    static void installPerContextPrototypeProperties(v8::Handle<v8::Object>) { }
+    static void installPerContextProperties(v8::Handle<v8::Object>, TestNamedConstructor*, v8::Isolate*) { }
+    static void installPerContextPrototypeProperties(v8::Handle<v8::Object>, v8::Isolate*) { }
 private:
     friend v8::Handle<v8::Object> wrap(TestNamedConstructor*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
     static v8::Handle<v8::Object> createWrapper(PassRefPtr<TestNamedConstructor>, v8::Handle<v8::Object> creationContext, v8::Isolate*);

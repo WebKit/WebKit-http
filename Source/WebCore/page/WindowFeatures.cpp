@@ -111,7 +111,7 @@ WindowFeatures::WindowFeatures(const String& features)
             i++;
         valueEnd = i;
 
-        ASSERT(i <= length);
+        ASSERT_WITH_SECURITY_IMPLICATION(i <= length);
 
         String keyString(buffer.substring(keyBegin, keyEnd - keyBegin));
         String valueString(buffer.substring(valueBegin, valueEnd - valueBegin));
@@ -224,7 +224,7 @@ float WindowFeatures::floatFeature(const DialogFeaturesMap& features, const char
     // return the number 0 and false for ok. But "0q" should yield the minimum rather than the default.
     bool ok;
     double parsedNumber = it->value.toDouble(&ok);
-    if ((parsedNumber == 0 && !ok) || isnan(parsedNumber))
+    if ((!parsedNumber && !ok) || std::isnan(parsedNumber))
         return defaultValue;
     if (parsedNumber < min || max <= min)
         return min;

@@ -67,6 +67,7 @@ static CalculationCategory unitCategory(CSSPrimitiveValue::UnitTypes type)
     case CSSPrimitiveValue::CSS_PT:
     case CSSPrimitiveValue::CSS_PC:
     case CSSPrimitiveValue::CSS_REMS:
+    case CSSPrimitiveValue::CSS_CHS:
         return CalcLength;
 #if ENABLE(CSS_VARIABLES)
     case CSSPrimitiveValue::CSS_VARIABLE_NAME:
@@ -93,6 +94,11 @@ static String buildCssText(const String& expression)
 String CSSCalcValue::customCssText() const
 {
     return buildCssText(m_expression->customCssText());
+}
+
+bool CSSCalcValue::equals(const CSSCalcValue& other) const
+{
+    return compareCSSValuePtr(m_expression, other.m_expression);
 }
 
 #if ENABLE(CSS_VARIABLES)
@@ -223,11 +229,21 @@ public:
         return 0;        
     }
 
+    virtual bool equals(const CSSCalcExpressionNode& other) const
+    {
+        if (type() != other.type())
+            return false;
+
+        return compareCSSValuePtr(m_value, static_cast<const CSSCalcPrimitiveValue&>(other).m_value);
+    }
+
     virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const OVERRIDE
     {
         MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
         info.addMember(m_value, "value");
     }
+
+    virtual Type type() const { return CssCalcPrimitiveValue; }
     
 private:
     explicit CSSCalcPrimitiveValue(CSSPrimitiveValue* value, bool isInteger)
@@ -359,6 +375,19 @@ public:
     }
 #endif
 
+    virtual bool equals(const CSSCalcExpressionNode& exp) const
+    {
+        if (type() != exp.type())
+            return false;
+
+        const CSSCalcBinaryOperation& other = static_cast<const CSSCalcBinaryOperation&>(exp);
+        return compareCSSValuePtr(m_leftSide, other.m_leftSide)
+            && compareCSSValuePtr(m_rightSide, other.m_rightSide)
+            && m_operator == other.m_operator;
+    }
+
+    virtual Type type() const { return CssCalcBinaryOperation; }
+
 private:
     CSSCalcBinaryOperation(PassRefPtr<CSSCalcExpressionNode> leftSide, PassRefPtr<CSSCalcExpressionNode> rightSide, CalcOperator op, CalculationCategory category)
         : CSSCalcExpressionNode(category, leftSide->isInteger() && rightSide->isInteger())
@@ -407,7 +436,7 @@ public:
         unsigned index = 0;
         Value result;
         bool ok = parseValueExpression(tokens, 0, &index, &result);
-        ASSERT(index <= tokens->size());
+        ASSERT_WITH_SECURITY_IMPLICATION(index <= tokens->size());
         if (!ok || index != tokens->size())
             return 0;
         return result.value;
@@ -488,7 +517,7 @@ private:
                 return false;
         }
 
-        ASSERT(*index <= tokens->size());
+        ASSERT_WITH_SECURITY_IMPLICATION(*index <= tokens->size());
         return true;
     }
 
@@ -515,7 +544,7 @@ private:
                 return false;
         }
 
-        ASSERT(*index <= tokens->size());
+        ASSERT_WITH_SECURITY_IMPLICATION(*index <= tokens->size());
         return true;
     }
 

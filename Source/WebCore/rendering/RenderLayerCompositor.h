@@ -55,6 +55,35 @@ enum CompositingUpdateType {
     CompositingUpdateOnCompositedScroll
 };
 
+enum {
+    CompositingReasonNone                                   = 0,
+    CompositingReason3DTransform                            = 1 << 0,
+    CompositingReasonVideo                                  = 1 << 1,
+    CompositingReasonCanvas                                 = 1 << 2,
+    CompositingReasonPlugin                                 = 1 << 3,
+    CompositingReasonIFrame                                 = 1 << 4,
+    CompositingReasonBackfaceVisibilityHidden               = 1 << 5,
+    CompositingReasonClipsCompositingDescendants            = 1 << 6,
+    CompositingReasonAnimation                              = 1 << 7,
+    CompositingReasonFilters                                = 1 << 8,
+    CompositingReasonPositionFixed                          = 1 << 9,
+    CompositingReasonPositionSticky                         = 1 << 10,
+    CompositingReasonOverflowScrollingTouch                 = 1 << 11,
+    CompositingReasonStacking                               = 1 << 12,
+    CompositingReasonOverlap                                = 1 << 13,
+    CompositingReasonNegativeZIndexChildren                 = 1 << 14,
+    CompositingReasonTransformWithCompositedDescendants     = 1 << 15,
+    CompositingReasonOpacityWithCompositedDescendants       = 1 << 16,
+    CompositingReasonMaskWithCompositedDescendants          = 1 << 17,
+    CompositingReasonReflectionWithCompositedDescendants    = 1 << 18,
+    CompositingReasonFilterWithCompositedDescendants        = 1 << 19,
+    CompositingReasonBlendingWithCompositedDescendants      = 1 << 20,
+    CompositingReasonPerspective                            = 1 << 21,
+    CompositingReasonPreserve3D                             = 1 << 22,
+    CompositingReasonRoot                                   = 1 << 23
+};
+typedef unsigned CompositingReasons;
+
 // RenderLayerCompositor manages the hierarchy of
 // composited RenderLayers. It determines which RenderLayers
 // become compositing, and creates and maintains a hierarchy of
@@ -171,8 +200,7 @@ public:
     void updateRootLayerAttachment();
     void updateRootLayerPosition();
     
-    void didMoveOnscreen();
-    void willMoveOffscreen();
+    void setIsInWindow(bool);
 
     void clearBackingForAllLayers();
     
@@ -226,6 +254,9 @@ public:
     GraphicsLayer* layerForScrollCorner() const { return m_layerForScrollCorner.get(); }
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* layerForOverhangAreas() const { return m_layerForOverhangAreas.get(); }
+
+    GraphicsLayer* updateLayerForTopOverhangArea(bool wantsLayer);
+    GraphicsLayer* updateLayerForBottomOverhangArea(bool wantsLayer);
 #endif
 
     void updateViewportConstraintStatus(RenderLayer*);
@@ -237,6 +268,10 @@ public:
     void reportMemoryUsage(MemoryObjectInfo*) const;
     void setShouldReevaluateCompositingAfterLayout() { m_reevaluateCompositingAfterLayout = true; }
 
+    bool viewHasTransparentBackground(Color* backgroundColor = 0) const;
+
+    CompositingReasons reasonsForCompositing(const RenderLayer*) const;
+    
 private:
     class OverlapMap;
 
@@ -249,6 +284,7 @@ private:
     
     // GraphicsLayerUpdaterClient implementation
     virtual void flushLayers(GraphicsLayerUpdater*) OVERRIDE;
+    virtual void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const OVERRIDE;
     
     // Whether the given RL needs a compositing layer.
     bool needsToBeComposited(const RenderLayer*, RenderLayer::ViewportConstrainedNotCompositedReason* = 0) const;
@@ -339,7 +375,7 @@ private:
 #endif
 
 #if !LOG_DISABLED
-    const char* reasonForCompositing(const RenderLayer*);
+    const char* logReasonsForCompositing(const RenderLayer*);
     void logLayerInfo(const RenderLayer*, int depth);
 #endif
 
@@ -389,6 +425,8 @@ private:
 #if ENABLE(RUBBER_BANDING)
     OwnPtr<GraphicsLayer> m_layerForOverhangAreas;
     OwnPtr<GraphicsLayer> m_contentShadowLayer;
+    OwnPtr<GraphicsLayer> m_layerForTopOverhangArea;
+    OwnPtr<GraphicsLayer> m_layerForBottomOverhangArea;
 #endif
 
     OwnPtr<GraphicsLayerUpdater> m_layerUpdater; // Updates tiled layer visible area periodically while animations are running.

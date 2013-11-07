@@ -33,12 +33,15 @@ import json
 import logging
 import optparse
 import time
+import datetime
 
 from webkitpy.common import find_files
 from webkitpy.common.checkout.scm.detection import SCMDetector
+from webkitpy.common.config.urls import view_source_url
 from webkitpy.common.host import Host
 from webkitpy.common.net.file_uploader import FileUploader
 from webkitpy.performance_tests.perftest import PerfTestFactory
+from webkitpy.performance_tests.perftest import DEFAULT_TEST_RUNNER_COUNT
 
 
 _log = logging.getLogger(__name__)
@@ -65,10 +68,9 @@ class PerfTestsRunner(object):
         self._host.initialize_scm()
         self._webkit_base_dir_len = len(self._port.webkit_base())
         self._base_path = self._port.perf_tests_dir()
-        self._results = {}
         self._timestamp = time.time()
-        self._needs_http = None
-        self._has_http_lock = False
+        self._utc_timestamp = datetime.datetime.utcnow()
+
 
     @staticmethod
     def _parse_args(args=None):
@@ -122,12 +124,17 @@ class PerfTestsRunner(object):
                 help="Output per-test profile information."),
             optparse.make_option("--profiler", action="store",
                 help="Output per-test profile information, using the specified profiler."),
+            optparse.make_option("--additional-drt-flag", action="append",
+                default=[], help="Additional command line flag to pass to DumpRenderTree "
+                     "Specify multiple times to add multiple flags."),
+            optparse.make_option("--repeat", default=1, type="int",
+                help="Specify number of times to run test set (default: 1)."),
+            optparse.make_option("--test-runner-count", default=DEFAULT_TEST_RUNNER_COUNT, type="int",
+                help="Specify number of times to invoke test runner for each performance test."),
             ]
         return optparse.OptionParser(option_list=(perf_option_list)).parse_args(args)
 
     def _collect_tests(self):
-        """Return the list of tests found."""
-
         test_extensions = ['.html', '.svg']
         if self._options.replay:
             test_extensions.append('.replay')
@@ -155,45 +162,55 @@ class PerfTestsRunner(object):
             relative_path = filesystem.relpath(path, self._base_path).replace('\\', '/')
             if self._options.use_skipped_list and self._port.skips_perf_test(relative_path) and filesystem.normpath(relative_path) not in paths:
                 continue
-            test = PerfTestFactory.create_perf_test(self._port, relative_path, path)
+            test = PerfTestFactory.create_perf_test(self._port, relative_path, path, test_runner_count=self._options.test_runner_count)
             tests.append(test)
 
         return tests
 
-    def _start_servers(self):
-        if self._needs_http:
-            self._port.acquire_http_lock()
-            self._port.start_http_server(number_of_servers=2)
-            self._has_http_lock = True
+    def _start_http_servers(self):
+        self._port.acquire_http_lock()
+        self._port.start_http_server(number_of_servers=2)
 
-    def _stop_servers(self):
-        if self._has_http_lock:
-            self._port.stop_http_server()
-            self._port.release_http_lock()
+    def _stop_http_servers(self):
+        self._port.stop_http_server()
+        self._port.release_http_lock()
 
     def run(self):
-        self._needs_http = self._port.requires_http_server()
+        needs_http = self._port.requires_http_server()
 
-        if not self._port.check_build(needs_http=self._needs_http):
+        if not self._port.check_build(needs_http=needs_http):
             _log.error("Build not up to date for %s" % self._port._path_to_driver())
             return self.EXIT_CODE_BAD_BUILD
 
-        tests = self._collect_tests()
-        _log.info("Running %d tests" % len(tests))
+        run_count = 0
+        repeat = self._options.repeat
+        while (run_count < repeat):
+            run_count += 1
 
-        for test in tests:
-            if not test.prepare(self._options.time_out_ms):
-                return self.EXIT_CODE_BAD_PREPARATION
+            tests = self._collect_tests()
+            runs = ' (Run %d of %d)' % (run_count, repeat) if repeat > 1 else ''
+            _log.info("Running %d tests%s" % (len(tests), runs))
 
-        try:
-            self._start_servers()
-            unexpected = self._run_tests_set(sorted(list(tests), key=lambda test: test.test_name()), self._port)
+            for test in tests:
+                if not test.prepare(self._options.time_out_ms):
+                    return self.EXIT_CODE_BAD_PREPARATION
 
-        finally:
-            self._stop_servers()
+            try:
+                if needs_http:
+                    self._start_http_servers()
+                unexpected = self._run_tests_set(sorted(list(tests), key=lambda test: test.test_name()))
+
+            finally:
+                if needs_http:
+                    self._stop_http_servers()
+
+            if self._options.generate_results and not self._options.profile:
+                exit_code = self._generate_results()
+                if exit_code:
+                    return exit_code
 
         if self._options.generate_results and not self._options.profile:
-            exit_code = self._generate_and_show_results()
+            exit_code = self._upload_and_show_results()
             if exit_code:
                 return exit_code
 
@@ -205,7 +222,10 @@ class PerfTestsRunner(object):
             return output_json_path
         return self._host.filesystem.join(self._port.perf_results_directory(), self._DEFAULT_JSON_FILENAME)
 
-    def _generate_and_show_results(self):
+    def _results_page_path(self):
+        return self._host.filesystem.splitext(self._output_json_path())[0] + '.html'
+
+    def _generate_results(self):
         options = self._options
         output_json_path = self._output_json_path()
         output = self._generate_results_dict(self._timestamp, options.description, options.platform, options.builder_name, options.build_number)
@@ -219,33 +239,68 @@ class PerfTestsRunner(object):
         if not output:
             return self.EXIT_CODE_BAD_MERGE
 
-        results_page_path = self._host.filesystem.splitext(output_json_path)[0] + '.html'
-        self._generate_output_files(output_json_path, results_page_path, output)
+        self._generate_output_files(output_json_path, self._results_page_path(), output)
+
+    def _upload_and_show_results(self):
+        options = self._options
 
         if options.test_results_server:
-            if not self._upload_json(options.test_results_server, output_json_path):
+            if options.test_results_server == 'webkit-perf.appspot.com':
+                options.test_results_server = 'perf.webkit.org'
+
+            if not self._upload_json(options.test_results_server, self._output_json_path()):
                 return self.EXIT_CODE_FAILED_UPLOADING
 
         if options.show_results:
-            self._port.show_results_html_file(results_page_path)
+            self._port.show_results_html_file(self._results_page_path())
 
     def _generate_results_dict(self, timestamp, description, platform, builder_name, build_number):
-        contents = {'results': self._results}
-        if description:
-            contents['description'] = description
+        revisions = {}
         for (name, path) in self._port.repository_paths():
             scm = SCMDetector(self._host.filesystem, self._host.executive).detect_scm_system(path) or self._host.scm()
-            contents[name + '-revision'] = scm.svn_revision(path)
+            revision = scm.svn_revision(path)
+            revisions[name] = {'revision': revision, 'timestamp': scm.timestamp_of_revision(path, revision)}
 
-        # FIXME: Add --branch or auto-detect the branch we're in
-        for key, value in {'timestamp': int(timestamp), 'branch': self._default_branch, 'platform': platform,
-            'builder-name': builder_name, 'build-number': int(build_number) if build_number else None}.items():
+        meta_info = {
+            'description': description,
+            'buildTime': self._datetime_in_ES5_compatible_iso_format(self._utc_timestamp),
+            'platform': platform,
+            'revisions': revisions,
+            'builderName': builder_name,
+            'buildNumber': int(build_number) if build_number else None}
+
+        contents = {'tests': {}}
+        for key, value in meta_info.items():
             if value:
                 contents[key] = value
 
+        for test, metrics in self._results:
+            for metric_name, iteration_values in metrics.iteritems():
+                if not isinstance(iteration_values, list):  # We can't reports results without individual measurements.
+                    continue
+
+                tests = contents['tests']
+                path = test.test_name_without_file_extension().split('/')
+                for i in range(0, len(path)):
+                    is_last_token = i + 1 == len(path)
+                    url = view_source_url('PerformanceTests/' + (test.test_name() if is_last_token else '/'.join(path[0:i + 1])))
+                    tests.setdefault(path[i], {'url': url})
+                    current_test = tests[path[i]]
+                    if is_last_token:
+                        current_test.setdefault('metrics', {})
+                        assert metric_name not in current_test['metrics']
+                        current_test['metrics'][metric_name] = {'current': iteration_values}
+                    else:
+                        current_test.setdefault('tests', {})
+                        tests = current_test['tests']
+
         return contents
 
-    def _merge_slave_config_json(self, slave_config_json_path, output):
+    @staticmethod
+    def _datetime_in_ES5_compatible_iso_format(datetime):
+        return datetime.strftime('%Y-%m-%dT%H:%M:%S.%f')
+
+    def _merge_slave_config_json(self, slave_config_json_path, contents):
         if not self._host.filesystem.isfile(slave_config_json_path):
             _log.error("Missing slave configuration JSON file: %s" % slave_config_json_path)
             return None
@@ -253,7 +308,9 @@ class PerfTestsRunner(object):
         try:
             slave_config_json = self._host.filesystem.open_text_file_for_reading(slave_config_json_path)
             slave_config = json.load(slave_config_json)
-            return dict(slave_config.items() + output.items())
+            for key in slave_config:
+                contents['builder' + key.capitalize()] = slave_config[key]
+            return contents
         except Exception, error:
             _log.error("Failed to merge slave configuration JSON file %s: %s" % (slave_config_json_path, error))
         return None
@@ -284,58 +341,48 @@ class PerfTestsRunner(object):
 
             filesystem.write_text_file(results_page_path, results_page)
 
-    def _upload_json(self, test_results_server, json_path, file_uploader=FileUploader):
-        uploader = file_uploader("https://%s/api/test/report" % test_results_server, 120)
+    def _upload_json(self, test_results_server, json_path, host_path="/api/report", file_uploader=FileUploader):
+        url = "https://%s%s" % (test_results_server, host_path)
+        uploader = file_uploader(url, 120)
         try:
             response = uploader.upload_single_text_file(self._host.filesystem, 'application/json', json_path)
         except Exception, error:
-            _log.error("Failed to upload JSON file in 120s: %s" % error)
+            _log.error("Failed to upload JSON file to %s in 120s: %s" % (url, error))
             return False
 
         response_body = [line.strip('\n') for line in response]
         if response_body != ['OK']:
-            _log.error("Uploaded JSON but got a bad response:")
-            for line in response_body:
-                _log.error(line)
-            return False
+            try:
+                parsed_response = json.loads('\n'.join(response_body))
+            except:
+                _log.error("Uploaded JSON to %s but got a bad response:" % url)
+                for line in response_body:
+                    _log.error(line)
+                return False
+            if parsed_response.get('status') != 'OK':
+                _log.error("Uploaded JSON to %s but got an error:" % url)
+                _log.error(json.dumps(parsed_response, indent=4))
+                return False
 
-        _log.info("JSON file uploaded.")
+        _log.info("JSON file uploaded to %s." % url)
         return True
 
-    def _print_status(self, tests, expected, unexpected):
-        if len(tests) == expected + unexpected:
-            status = "Ran %d tests" % len(tests)
-        else:
-            status = "Running %d of %d tests" % (expected + unexpected + 1, len(tests))
-        if unexpected:
-            status += " (%d didn't run)" % unexpected
-        _log.info(status)
-
-    def _run_tests_set(self, tests, port):
+    def _run_tests_set(self, tests):
         result_count = len(tests)
-        expected = 0
-        unexpected = 0
-        driver = None
+        failures = 0
+        self._results = []
 
-        for test in tests:
-            _log.info('Running %s (%d of %d)' % (test.test_name(), expected + unexpected + 1, len(tests)))
-            if self._run_single_test(test):
-                expected = expected + 1
+        for i, test in enumerate(tests):
+            _log.info('Running %s (%d of %d)' % (test.test_name(), i + 1, len(tests)))
+            start_time = time.time()
+            metrics = test.run(self._options.time_out_ms)
+            if metrics:
+                self._results.append((test, metrics))
             else:
-                unexpected = unexpected + 1
+                failures += 1
+                _log.error('FAILED')
 
+            _log.info('Finished: %f s' % (time.time() - start_time))
             _log.info('')
 
-        return unexpected
-
-    def _run_single_test(self, test):
-        start_time = time.time()
-        new_results = test.run(self._options.time_out_ms)
-        if new_results:
-            self._results.update(new_results)
-        else:
-            _log.error('FAILED')
-
-        _log.info("Finished: %f s" % (time.time() - start_time))
-
-        return new_results != None
+        return failures

@@ -133,6 +133,13 @@ PassRefPtr<ResourceBuffer> DocumentLoader::mainResourceData() const
     return 0;
 }
 
+Document* DocumentLoader::document() const
+{
+    if (m_frame && m_frame->loader()->documentLoader() == this)
+        return m_frame->document();
+    return 0;
+}
+
 const ResourceRequest& DocumentLoader::originalRequest() const
 {
     return m_originalRequest;
@@ -278,6 +285,18 @@ void DocumentLoader::commitIfReady()
     }
 }
 
+bool DocumentLoader::isLoading() const
+{
+    // FIXME: This should always be enabled, but it seems to cause
+    // http/tests/security/feed-urls-from-remote.html to timeout on Mac WK1
+    // see http://webkit.org/b/110554 and http://webkit.org/b/110401
+#if ENABLE(THREADED_HTML_PARSER)
+    if (document() && document()->hasActiveParser())
+        return true;
+#endif
+    return isLoadingMainResource() || !m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty();
+}
+
 void DocumentLoader::finishedLoading()
 {
     commitIfReady();
@@ -419,7 +438,11 @@ void DocumentLoader::checkLoadComplete()
 {
     if (!m_frame || isLoading())
         return;
+#if !ENABLE(THREADED_HTML_PARSER)
+    // This ASSERT triggers with the threaded HTML parser.
+    // See https://bugs.webkit.org/show_bug.cgi?id=110937
     ASSERT(this == frameLoader()->activeDocumentLoader());
+#endif
     m_frame->document()->domWindow()->finishedLoading();
 }
 
@@ -478,9 +501,10 @@ bool DocumentLoader::isLoadingInAPISense() const
             return true;
         if (m_cachedResourceLoader->requestCount())
             return true;
-        if (DocumentParser* parser = doc->parser())
-            if (parser->processingData())
-                return true;
+        if (doc->processingLoadEvent())
+            return true;
+        if (doc->hasActiveParser())
+            return true;
     }
     return frameLoader()->subframeIsLoading();
 }

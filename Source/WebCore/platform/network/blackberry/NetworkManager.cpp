@@ -57,18 +57,9 @@ bool NetworkManager::startJob(int playerId, PassRefPtr<ResourceHandle> job, cons
     return startJob(playerId, page->groupName(), job, request, streamFactory, frame, defersLoading ? 1 : 0);
 }
 
-static void setAuthCredentials(NetworkRequest& platformRequest, const AuthenticationChallenge& challenge)
+void protectionSpaceToPlatformAuth(const ProtectionSpace& protectionSpace, NetworkRequest::AuthType& authType, NetworkRequest::AuthProtocol& authProtocol, NetworkRequest::AuthScheme& authScheme)
 {
-    if (challenge.isNull())
-        return;
-
-    Credential credential = challenge.proposedCredential();
-    const ProtectionSpace& protectionSpace = challenge.protectionSpace();
-
-    String username = credential.user();
-    String password = credential.password();
-
-    NetworkRequest::AuthScheme authScheme = NetworkRequest::AuthSchemeNone;
+    authScheme = NetworkRequest::AuthSchemeNone;
     switch (protectionSpace.authenticationScheme()) {
     case ProtectionSpaceAuthenticationSchemeDefault:
         authScheme = NetworkRequest::AuthSchemeDefault;
@@ -90,8 +81,8 @@ static void setAuthCredentials(NetworkRequest& platformRequest, const Authentica
         break;
     }
 
-    NetworkRequest::AuthType authType = NetworkRequest::AuthTypeNone;
-    NetworkRequest::AuthProtocol authProtocol = NetworkRequest::AuthProtocolNone;
+    authType = NetworkRequest::AuthTypeNone;
+    authProtocol = NetworkRequest::AuthProtocolNone;
     switch (protectionSpace.serverType()) {
     case ProtectionSpaceServerHTTP:
         authType = NetworkRequest::AuthTypeHost;
@@ -125,12 +116,29 @@ static void setAuthCredentials(NetworkRequest& platformRequest, const Authentica
         ASSERT_NOT_REACHED();
         break;
     }
+}
+
+static void setAuthCredentials(NetworkRequest& platformRequest, const AuthenticationChallenge& challenge)
+{
+    if (challenge.isNull())
+        return;
+
+    Credential credential = challenge.proposedCredential();
+    const ProtectionSpace& protectionSpace = challenge.protectionSpace();
+
+    String username = credential.user();
+    String password = credential.password();
+
+    NetworkRequest::AuthType authType;
+    NetworkRequest::AuthProtocol authProtocol;
+    NetworkRequest::AuthScheme authScheme;
+    protectionSpaceToPlatformAuth(protectionSpace, authType, authProtocol, authScheme);
 
     if (authType != NetworkRequest::AuthTypeNone && authProtocol != NetworkRequest::AuthProtocolNone && authScheme != NetworkRequest::AuthSchemeNone)
         platformRequest.setCredentials(authType, authProtocol, authScheme, username.utf8().data(), password.utf8().data());
 }
 
-bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRefPtr<ResourceHandle> job, const ResourceRequest& request, BlackBerry::Platform::NetworkStreamFactory* streamFactory, Frame* frame, int deferLoadingCount, int redirectCount)
+bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRefPtr<ResourceHandle> job, const ResourceRequest& request, BlackBerry::Platform::NetworkStreamFactory* streamFactory, Frame* frame, int deferLoadingCount, int redirectCount, bool rereadCookies)
 {
     // Make sure the ResourceHandle doesn't go out of scope while calling callbacks.
     RefPtr<ResourceHandle> guardJob(job);
@@ -142,8 +150,12 @@ bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRef
     if (isInitial)
         m_initialURL = KURL();
 
+    // Always reread cookies on a redirect
+    if (redirectCount)
+        rereadCookies = true;
+
     BlackBerry::Platform::NetworkRequest platformRequest;
-    request.initializePlatformRequest(platformRequest, frame->loader() && frame->loader()->client() && static_cast<FrameLoaderClientBlackBerry*>(frame->loader()->client())->cookiesEnabled(), isInitial, redirectCount);
+    request.initializePlatformRequest(platformRequest, frame->loader() && frame->loader()->client() && static_cast<FrameLoaderClientBlackBerry*>(frame->loader()->client())->cookiesEnabled(), isInitial, rereadCookies);
 
     const String& documentUrl = frame->document()->url().string();
     if (!documentUrl.isEmpty()) {

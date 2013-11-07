@@ -54,6 +54,7 @@
 #include "InspectorFileSystemAgent.h"
 #include "InspectorFrontend.h"
 #include "InspectorFrontendClient.h"
+#include "InspectorHeapProfilerAgent.h"
 #include "InspectorIndexedDBAgent.h"
 #include "InspectorInputAgent.h"
 #include "InspectorInstrumentation.h"
@@ -97,7 +98,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_pageAgent = pageAgentPtr.get();
     m_agents.append(pageAgentPtr.release());
 
-    OwnPtr<InspectorDOMAgent> domAgentPtr(InspectorDOMAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get(), m_injectedScriptManager.get(), m_overlay.get()));
+    OwnPtr<InspectorDOMAgent> domAgentPtr(InspectorDOMAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get(), m_injectedScriptManager.get(), m_overlay.get(), inspectorClient));
     m_domAgent = domAgentPtr.get();
     m_agents.append(domAgentPtr.release());
 
@@ -116,7 +117,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
 #if ENABLE(FILE_SYSTEM)
     m_agents.append(InspectorFileSystemAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get()));
 #endif
-    OwnPtr<InspectorDOMStorageAgent> domStorageAgentPtr(InspectorDOMStorageAgent::create(m_instrumentingAgents.get(), m_state.get()));
+    OwnPtr<InspectorDOMStorageAgent> domStorageAgentPtr(InspectorDOMStorageAgent::create(m_instrumentingAgents.get(), m_pageAgent, m_state.get()));
     InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
     m_agents.append(domStorageAgentPtr.release());
 
@@ -124,7 +125,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_memoryAgent = memoryAgentPtr.get();
     m_agents.append(memoryAgentPtr.release());
 
-    m_agents.append(InspectorTimelineAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get(), InspectorTimelineAgent::PageInspector,
+    m_agents.append(InspectorTimelineAgent::create(m_instrumentingAgents.get(), pageAgent, m_memoryAgent, m_state.get(), InspectorTimelineAgent::PageInspector,
        inspectorClient));
     m_agents.append(InspectorApplicationCacheAgent::create(m_instrumentingAgents.get(), m_state.get(), pageAgent));
 
@@ -152,6 +153,9 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     OwnPtr<InspectorProfilerAgent> profilerAgentPtr(InspectorProfilerAgent::create(m_instrumentingAgents.get(), consoleAgent, page, m_state.get(), m_injectedScriptManager.get()));
     m_profilerAgent = profilerAgentPtr.get();
     m_agents.append(profilerAgentPtr.release());
+
+    m_agents.append(InspectorHeapProfilerAgent::create(m_instrumentingAgents.get(), m_state.get(), m_injectedScriptManager.get()));
+
 #endif
 
 #if ENABLE(WORKERS)
@@ -163,7 +167,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_agents.append(InspectorInputAgent::create(m_instrumentingAgents.get(), m_state.get(), page));
 
 #if USE(ACCELERATED_COMPOSITING)
-    m_agents.append(InspectorLayerTreeAgent::create(m_instrumentingAgents.get(), m_state.get(), page));
+    m_agents.append(InspectorLayerTreeAgent::create(m_instrumentingAgents.get(), m_state.get()));
 #endif
 
     ASSERT_ARG(inspectorClient, inspectorClient);
@@ -442,11 +446,36 @@ void InspectorController::didProcessTask()
 #endif
 }
 
+void InspectorController::didBeginFrame()
+{
+    if (InspectorTimelineAgent* timelineAgent = m_instrumentingAgents->inspectorTimelineAgent())
+        timelineAgent->didBeginFrame();
+    if (InspectorCanvasAgent* canvasAgent = m_instrumentingAgents->inspectorCanvasAgent())
+        canvasAgent->didBeginFrame();
+}
+
+void InspectorController::didCancelFrame()
+{
+    if (InspectorTimelineAgent* timelineAgent = m_instrumentingAgents->inspectorTimelineAgent())
+        timelineAgent->didCancelFrame();
+}
+
+void InspectorController::willComposite()
+{
+    if (InspectorTimelineAgent* timelineAgent = m_instrumentingAgents->inspectorTimelineAgent())
+        timelineAgent->willComposite();
+}
+
+void InspectorController::didComposite()
+{
+    if (InspectorTimelineAgent* timelineAgent = m_instrumentingAgents->inspectorTimelineAgent())
+        timelineAgent->didComposite();
+}
+
 HashMap<String, size_t> InspectorController::processMemoryDistribution() const
 {
     HashMap<String, size_t> memoryInfo;
-    RefPtr<InspectorObject> graph;
-    m_memoryAgent->getProcessMemoryDistributionAsMap(false, graph, &memoryInfo);
+    m_memoryAgent->getProcessMemoryDistributionMap(&memoryInfo);
     return memoryInfo;
 }
 

@@ -49,7 +49,8 @@ enum LayerTreeAsTextBehaviorFlags {
     LayerTreeAsTextDebug = 1 << 0, // Dump extra debugging info like layer addresses.
     LayerTreeAsTextIncludeVisibleRects = 1 << 1,
     LayerTreeAsTextIncludeTileCaches = 1 << 2,
-    LayerTreeAsTextIncludeRepaintRects = 1 << 3
+    LayerTreeAsTextIncludeRepaintRects = 1 << 3,
+    LayerTreeAsTextIncludePaintingPhases = 1 << 4
 };
 typedef unsigned LayerTreeAsTextBehavior;
 
@@ -349,6 +350,9 @@ public:
     // Pass an invalid color to remove the contents layer.
     virtual void setContentsToSolidColor(const Color&) { }
     virtual void setContentsToCanvas(PlatformLayer*) { }
+    // FIXME: webkit.org/b/109658
+    // Should unify setContentsToMedia and setContentsToCanvas
+    virtual void setContentsToPlatformLayer(PlatformLayer* layer) { setContentsToMedia(layer); }
     virtual bool hasContentsLayer() const { return false; }
 
     // Callback from the underlying graphics system to draw layer contents.

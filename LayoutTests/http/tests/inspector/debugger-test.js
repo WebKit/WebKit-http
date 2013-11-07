@@ -174,7 +174,7 @@ InspectorTest.showScriptSource = function(scriptName, callback)
     var panel = WebInspector.showPanel("scripts");
     var uiSourceCodes = panel._workspace.uiSourceCodes();
     for (var i = 0; i < uiSourceCodes.length; ++i) {
-        if (uiSourceCodes[i].parsedURL.lastPathComponent === scriptName) {
+        if (uiSourceCodes[i].name() === scriptName) {
             InspectorTest.showUISourceCode(uiSourceCodes[i], callback);
             return;
         }
@@ -183,12 +183,13 @@ InspectorTest.showScriptSource = function(scriptName, callback)
     InspectorTest.addSniffer(WebInspector.ScriptsPanel.prototype, "_addUISourceCode", InspectorTest.showScriptSource.bind(InspectorTest, scriptName, callback));
 };
 
-InspectorTest.dumpScriptsNavigator = function(navigator)
+InspectorTest.dumpScriptsNavigator = function(navigator, prefix)
 {
-    InspectorTest.addResult("Dumping ScriptsNavigator 'Scripts' tab:");
-    dumpNavigatorTreeOutline(navigator._scriptsView._scriptsTree);
-    InspectorTest.addResult("Dumping ScriptsNavigator 'Content scripts' tab:");
-    dumpNavigatorTreeOutline(navigator._contentScriptsView._scriptsTree);
+    prefix = prefix || "";
+    InspectorTest.addResult(prefix + "Dumping ScriptsNavigator 'Scripts' tab:");
+    dumpNavigatorTreeOutline(prefix, navigator._scriptsView._scriptsTree);
+    InspectorTest.addResult(prefix + "Dumping ScriptsNavigator 'Content scripts' tab:");
+    dumpNavigatorTreeOutline(prefix, navigator._contentScriptsView._scriptsTree);
 
     function dumpNavigatorTreeElement(prefix, treeElement)
     {
@@ -197,11 +198,12 @@ InspectorTest.dumpScriptsNavigator = function(navigator)
             dumpNavigatorTreeElement(prefix + "  ", treeElement.children[i]);
     }
 
-    function dumpNavigatorTreeOutline(treeOutline)
+    function dumpNavigatorTreeOutline(prefix, treeOutline)
     {
         for (var i = 0; i < treeOutline.children.length; ++i)
-            dumpNavigatorTreeElement("  ", treeOutline.children[i]);
+            dumpNavigatorTreeElement(prefix + "  ", treeOutline.children[i]);
     }
+    InspectorTest.addResult("");
 };
 
 InspectorTest.setBreakpoint = function(sourceFrame, lineNumber, condition, enabled)

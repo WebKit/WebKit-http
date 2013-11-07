@@ -33,6 +33,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "EventNames.h"
+#include "ExceptionCodePlaceholder.h"
 #include "FormController.h"
 #include "FormDataList.h"
 #include "Frame.h"
@@ -224,8 +225,7 @@ void HTMLSelectElement::remove(int optionIndex)
     if (listIndex < 0)
         return;
 
-    ExceptionCode ec;
-    listItems()[listIndex]->remove(ec);
+    listItems()[listIndex]->remove(IGNORE_EXCEPTION);
 }
 
 void HTMLSelectElement::remove(HTMLOptionElement* option)
@@ -233,8 +233,7 @@ void HTMLSelectElement::remove(HTMLOptionElement* option)
     if (option->ownerSelectElement() != this)
         return;
 
-    ExceptionCode ec;
-    option->remove(ec);
+    option->remove(IGNORE_EXCEPTION);
 }
 
 String HTMLSelectElement::value() const
@@ -292,7 +291,7 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         String attrSize = String::number(size);
         if (attrSize != value) {
             // FIXME: This is horribly factored.
-            if (Attribute* sizeAttribute = getAttributeItem(sizeAttr))
+            if (Attribute* sizeAttribute = ensureUniqueElementData()->getAttributeItem(sizeAttr))
                 sizeAttribute->setValue(attrSize);
         }
         size = max(size, 1);
@@ -374,9 +373,6 @@ void HTMLSelectElement::childrenChanged(bool changedByParser, Node* beforeChange
     setNeedsValidityCheck();
 
     HTMLFormControlElementWithState::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
-    
-    if (AXObjectCache::accessibilityEnabled() && renderer())
-        renderer()->document()->axObjectCache()->childrenChanged(this);
 }
 
 void HTMLSelectElement::optionElementChildrenChanged()
@@ -725,6 +721,9 @@ void HTMLSelectElement::setRecalcListItems()
     }
     if (!inDocument())
         invalidateSelectedItems();
+    
+    if (AXObjectCache::accessibilityEnabled() && renderer())
+        renderer()->document()->axObjectCache()->childrenChanged(this);
 }
 
 void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
@@ -1161,9 +1160,9 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
             if (keyCode == ' ' || keyCode == '\r') {
                 focus();
 
-                // Calling focus() may cause us to lose our renderer, in which case
-                // do not want to handle the event.
-                if (!renderer())
+                // Calling focus() may remove the renderer or change the
+                // renderer type.
+                if (!renderer() || !renderer()->isMenuList())
                     return;
 
                 // Save the selection so it can be compared to the new selection
@@ -1179,9 +1178,9 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
             if (keyCode == ' ') {
                 focus();
 
-                // Calling focus() may cause us to lose our renderer, in which case
-                // do not want to handle the event.
-                if (!renderer())
+                // Calling focus() may remove the renderer or change the
+                // renderer type.
+                if (!renderer() || !renderer()->isMenuList())
                     return;
 
                 // Save the selection so it can be compared to the new selection

@@ -79,24 +79,37 @@ DrawingAreaImpl::DrawingAreaImpl(WebPage* webPage, const WebPageCreationParamete
         enterAcceleratedCompositingMode(0);
 }
 
-void DrawingAreaImpl::setNeedsDisplay(const IntRect& rect)
+void DrawingAreaImpl::setNeedsDisplay()
 {
     if (!m_isPaintingEnabled)
         return;
 
+    if (m_layerTreeHost) {
+        ASSERT(m_dirtyRegion.isEmpty());
+        m_layerTreeHost->setNonCompositedContentsNeedDisplay();
+        return;
+    }
+
+    setNeedsDisplayInRect(m_webPage->bounds());
+}
+
+void DrawingAreaImpl::setNeedsDisplayInRect(const IntRect& rect)
+{
+    if (!m_isPaintingEnabled)
+        return;
+
+    if (m_layerTreeHost) {
+        ASSERT(m_dirtyRegion.isEmpty());
+        m_layerTreeHost->setNonCompositedContentsNeedDisplayInRect(rect);
+        return;
+    }
+    
     IntRect dirtyRect = rect;
     dirtyRect.intersect(m_webPage->bounds());
 
     if (dirtyRect.isEmpty())
         return;
 
-    if (m_layerTreeHost) {
-        ASSERT(m_dirtyRegion.isEmpty());
-
-        m_layerTreeHost->setNonCompositedContentsNeedDisplay(dirtyRect);
-        return;
-    }
-    
     if (m_webPage->mainFrameHasCustomRepresentation())
         return;
 
@@ -104,7 +117,7 @@ void DrawingAreaImpl::setNeedsDisplay(const IntRect& rect)
     scheduleDisplay();
 }
 
-void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollOffset)
+void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollDelta)
 {
     if (!m_isPaintingEnabled)
         return;
@@ -114,7 +127,7 @@ void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollOff
         ASSERT(m_scrollOffset.isEmpty());
         ASSERT(m_dirtyRegion.isEmpty());
 
-        m_layerTreeHost->scrollNonCompositedContents(scrollRect, scrollOffset);
+        m_layerTreeHost->scrollNonCompositedContents(scrollRect);
         return;
     }
 
@@ -131,12 +144,12 @@ void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollOff
         if (currentScrollArea >= scrollArea) {
             // The rect being scrolled is at least as large as the rect we'd like to scroll.
             // Go ahead and just invalidate the scroll rect.
-            setNeedsDisplay(scrollRect);
+            setNeedsDisplayInRect(scrollRect);
             return;
         }
 
         // Just repaint the entire current scroll rect, we'll scroll the new rect instead.
-        setNeedsDisplay(m_scrollRect);
+        setNeedsDisplayInRect(m_scrollRect);
         m_scrollRect = IntRect();
         m_scrollOffset = IntSize();
     }
@@ -149,20 +162,20 @@ void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollOff
         m_dirtyRegion.subtract(scrollRect);
 
         // Move the dirty parts.
-        Region movedDirtyRegionInScrollRect = intersect(translate(dirtyRegionInScrollRect, scrollOffset), scrollRect);
+        Region movedDirtyRegionInScrollRect = intersect(translate(dirtyRegionInScrollRect, scrollDelta), scrollRect);
 
         // And add them back.
         m_dirtyRegion.unite(movedDirtyRegionInScrollRect);
     } 
     
     // Compute the scroll repaint region.
-    Region scrollRepaintRegion = subtract(scrollRect, translate(scrollRect, scrollOffset));
+    Region scrollRepaintRegion = subtract(scrollRect, translate(scrollRect, scrollDelta));
 
     m_dirtyRegion.unite(scrollRepaintRegion);
     scheduleDisplay();
 
     m_scrollRect = scrollRect;
-    m_scrollOffset += scrollOffset;
+    m_scrollOffset += scrollDelta;
 }
 
 void DrawingAreaImpl::setLayerTreeStateIsFrozen(bool isFrozen)
@@ -183,7 +196,7 @@ void DrawingAreaImpl::setLayerTreeStateIsFrozen(bool isFrozen)
 
 void DrawingAreaImpl::forceRepaint()
 {
-    setNeedsDisplay(m_webPage->bounds());
+    setNeedsDisplay();
 
     m_webPage->layoutIfNeeded();
 
@@ -222,7 +235,7 @@ void DrawingAreaImpl::didUninstallPageOverlay()
     if (m_layerTreeHost)
         m_layerTreeHost->didUninstallPageOverlay();
 
-    setNeedsDisplay(m_webPage->bounds());
+    setNeedsDisplay();
 }
 
 void DrawingAreaImpl::setPageOverlayNeedsDisplay(const IntRect& rect)
@@ -232,7 +245,7 @@ void DrawingAreaImpl::setPageOverlayNeedsDisplay(const IntRect& rect)
         return;
     }
 
-    setNeedsDisplay(rect);
+    setNeedsDisplayInRect(rect);
 }
 
 void DrawingAreaImpl::setPageOverlayOpacity(float value)
@@ -380,9 +393,11 @@ void DrawingAreaImpl::updateBackingStoreState(uint64_t stateID, bool respondImme
         m_webPage->scrollMainFrameIfNotAtMaxScrollPosition(scrollOffset);
 
         if (m_layerTreeHost) {
-            // Use the previously set page size instead of the argument.
-            // It gets adjusted properly when using the fixed layout mode.
-            m_layerTreeHost->sizeDidChange(m_webPage->size());
+#if USE(COORDINATED_GRAPHICS)
+            // Coordinated Graphics sets the size of the root layer to contents size.
+            if (!m_webPage->useFixedLayout())
+#endif
+                m_layerTreeHost->sizeDidChange(m_webPage->size());
         } else
             m_dirtyRegion = m_webPage->bounds();
     } else {
@@ -487,7 +502,7 @@ void DrawingAreaImpl::resumePainting()
     m_isPaintingSuspended = false;
 
     // FIXME: We shouldn't always repaint everything here.
-    setNeedsDisplay(m_webPage->bounds());
+    setNeedsDisplay();
 
 #if PLATFORM(MAC)
     if (m_webPage->windowIsVisible())
@@ -651,11 +666,6 @@ static bool shouldPaintBoundsRect(const IntRect& bounds, const Vector<IntRect>& 
     return wastedSpace <= wastedSpaceThreshold;
 }
 
-PassOwnPtr<GraphicsContext> DrawingAreaImpl::createGraphicsContext(ShareableBitmap* bitmap)
-{
-    return bitmap->createGraphicsContext();
-}
-
 void DrawingAreaImpl::display(UpdateInfo& updateInfo)
 {
     ASSERT(!m_isPaintingSuspended);
@@ -706,7 +716,7 @@ void DrawingAreaImpl::display(UpdateInfo& updateInfo)
     m_scrollRect = IntRect();
     m_scrollOffset = IntSize();
 
-    OwnPtr<GraphicsContext> graphicsContext = createGraphicsContext(bitmap.get());
+    OwnPtr<GraphicsContext> graphicsContext = bitmap->createGraphicsContext();
     graphicsContext->applyDeviceScaleFactor(deviceScaleFactor);
     
     updateInfo.updateRectBounds = bounds;

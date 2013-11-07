@@ -116,10 +116,6 @@ Bug(GTK) fast/speech/speech-button-ignore-generated-events.html [ Failure ]
 Bug(GTK) fast/speech/speech-input-result-list-not-enough-arguments.html [ Failure ]
 Bug(GTK) fast/speech/speech-input-scripting.html [ Failure ]
 
-# WebKit2 needs layoutTestController.setCustomPolicyDelegate
-# https://bugs.webkit.org/show_bug.cgi?id=42546
-webkit.org/b/42546 fast/loader/policy-delegate-action-hit-test-zoomed.html [ Failure ]
-
 # WebKit2 needs layoutTestController.setEditingBehaviour
 Bug(GTK) editing/selection/directionality-after-undo-replace.html [ Failure ]
 Bug(GTK) editing/selection/5354455-1.html [ Failure ]
@@ -175,12 +171,6 @@ webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.htm
 # http://webkit.org/b/93982
 webkit.org/b/93982 storage/domstorage/storage-close-database-on-idle.html [ Failure ]
 
-# [Navigation Timing] Remove old-style LayoutTests
-# https://bugs.webkit.org/show_bug.cgi?id=91158
-webkit.org/b/91158 fast/dom/navigation-type-back-forward.html [ Failure ]
-webkit.org/b/91158 fast/dom/navigation-type-navigate.html [ Failure ]
-webkit.org/b/91158 fast/dom/navigation-type-reload.html [ Failure ]
-
 # https://bugs.webkit.org/show_bug.cgi?id=94549
 webkit.org/b/94549 fast/forms/file/selected-files-from-history-state.html [ Failure ]
 
@@ -194,6 +184,17 @@ webkit.org/b/42194 editing/undo/undo-smart-delete-reversed-selection.html [ Fail
 webkit.org/b/42194 fast/dom/vertical-scrollbar-in-rtl.html [ Failure ]
 webkit.org/b/42194 fast/events/5056619.html [ Failure ]
 webkit.org/b/42194 http/tests/security/drag-drop-same-unique-origin.html [ Failure ]
+
+# Missing TextChecker::requestCheckingOfString() implementation for Gtk.
+Bug(GTK) editing/spelling/grammar-markers.html [ Skip ]
+Bug(GTK) editing/spelling/grammar-paste.html [ Skip ]
+Bug(GTK) editing/spelling/grammar-markers-hidpi.html [ Skip ]
+Bug(GTK) editing/spelling/spellcheck-async-mutation.html [ Skip ]
+Bug(GTK) editing/spelling/spellcheck-async-remove-frame.html [ Skip ]
+Bug(GTK) editing/spelling/spellcheck-async.html [ Skip ]
+Bug(GTK) editing/spelling/spellcheck-queue.html [ Skip ]
+Bug(GTK) editing/spelling/spellcheck-sequencenum.html [ Skip ]
+Bug(GTK) editing/spelling/spelling-marker-description.html [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -301,7 +302,6 @@ webkit.org/b/106335 accessibility/accessibility-node-reparent.html [ Failure ]
 webkit.org/b/106336 accessibility/aria-describedby-on-input.html [ Failure ]
 webkit.org/b/106337 accessibility/aria-help.html [ Failure ]
 webkit.org/b/106338 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
-webkit.org/b/106339 accessibility/aria-hidden-with-elements.html [ Failure ]
 webkit.org/b/106340 accessibility/img-fallsback-to-title.html [ Failure ]
 webkit.org/b/106341 accessibility/label-for-control-hittest.html [ Failure ]
 webkit.org/b/106342 accessibility/language-attribute.html [ Failure ]
@@ -337,7 +337,6 @@ Bug(WK2) tables/mozilla_expected_failures/bugs/bug8499.html [ Failure ]
 webkit.org/b/93978 fast/hidpi/clip-text-in-hidpi.html [ Failure ]
 webkit.org/b/93978 fast/hidpi/image-set-background-dynamic.html [ Failure ]
 webkit.org/b/93978 fast/hidpi/image-set-border-image-dynamic.html [ Failure ]
-webkit.org/b/93978 fast/hidpi/image-set-in-content-dynamic.html [ Failure ]
 
 # RenderDeprecatedFlexibleBox showing 20-pixel diffs in WK2 bot
 # http://webkit.org/b/93981
@@ -383,8 +382,6 @@ Bug(GTK) editing/deleting/delete-ligature-003.html [ Failure ]
 Bug(GTK) editing/deleting/paragraph-in-preserveNewline.html [ Failure ]
 Bug(GTK) editing/deleting/whitespace-pre-1.html [ Failure ]
 Bug(GTK) editing/execCommand/delete-selection-has-style.html [ Failure ]
-Bug(GTK) editing/input/emacs-ctrl-o.html [ Failure ]
-Bug(GTK) editing/pasteboard/emacs-ctrl-a-k-y.html [ Failure ]
 Bug(GTK) editing/selection/5136696.html [ Failure ]
 Bug(GTK) editing/selection/inactive-selection.html [ Failure ]
 Bug(GTK) editing/selection/programmatic-selection-on-mac-is-directionless.html [ Failure ]
@@ -399,7 +396,6 @@ Bug(GTK) fast/dynamic/window-resize-scrollbars-test.html [ Failure ]
 Bug(GTK) fast/events/backspace-navigates-back.html [ Failure ]
 Bug(GTK) fast/events/keydown-leftright-keys.html [ Failure ]
 Bug(GTK) fast/events/keydown-numpad-keys.html [ Failure ]
-Bug(GTK) fast/events/mouse-drag-from-frame-to-other-frame.html [ Failure ]
 Bug(GTK) fast/events/remove-target-with-shadow-in-drag.html [ Failure ]
 Bug(GTK) fast/events/scroll-in-scaled-page-with-overflow-hidden.html [ Failure ]
 Bug(GTK) fast/events/selectionchange-iframe.html [ Failure ]
@@ -439,24 +435,17 @@ Bug(GTK) fast/workers/shared-worker-load-error.html [ Failure ]
 Bug(GTK) fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 Bug(GTK) http/tests/local/blob/send-hybrid-blob.html [ Failure ]
 Bug(GTK) http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure ]
-Bug(GTK) http/tests/multipart/multipart-html.php [ Timeout ]
-Bug(GTK) http/tests/multipart/multipart-replace-non-html-content.php [ Timeout ]
-Bug(GTK) http/tests/multipart/policy-ignore-crash.php [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Failure ]
 Bug(GTK) http/tests/xmlhttprequest/cache-override.html [ Failure ]
-Bug(GTK) http/tests/xmlhttprequest/cross-origin-no-credential-prompt.html [ Failure ]
 Bug(GTK) media/track/track-cue-rendering-horizontal.html [ Failure ]
 Bug(GTK) media/track/track-cue-rendering-vertical.html [ Failure ]
-Bug(GTK) media/video-play-require-user-gesture.html [ Failure ]
 Bug(GTK) media/video-zoom-controls.html [ Failure ]
-Bug(GTK) platform/gtk/editing/pasteboard/middle-button-paste.html [ Failure ]
 Bug(GTK) platform/gtk/fast/events/event-sender-metakey.html [ Failure ]
 Bug(GTK) platform/gtk/fast/forms/menulist-typeahead-find.html [ Failure ]
 Bug(GTK) plugins/evaluate-js-after-removing-plugin-element.html [ Failure ]
-Bug(GTK) plugins/fullscreen-plugins-dont-reload.html [ Failure ]
 Bug(GTK) plugins/keyboard-events.html [ Failure ]
 Bug(GTK) plugins/netscape-plugin-setwindow-size-2.html [ Failure ]
 Bug(GTK) plugins/npp-set-window-called-during-destruction.html [ Failure ]
@@ -488,6 +477,9 @@ Bug(GTK) fast/forms/text-input-event.html [ Pass ]
 Bug(GTK) fast/js/names.html [ Pass ]
 Bug(GTK) fast/loader/form-submission-after-beforeunload-cancel.html [ Pass ]
 Bug(GTK) fast/loader/stop-provisional-loads.html [ Pass ]
+Bug(GTK) fast/loader/onload-policy-ignore-for-frame.html [ Pass ]
+Bug(GTK) fast/loader/policy-delegate-action-hit-test-zoomed.html [ Pass ]
+Bug(GTK) fast/loader/reload-policy-delegate.html [ Pass ]
 Bug(GTK) fast/preloader/document-write-noscript.html [ Pass ]
 Bug(GTK) fast/preloader/first-base-tag-scanned-wins.html [ Pass ]
 Bug(GTK) fast/preloader/first-base-tag-wins.html [ Pass ]
@@ -530,9 +522,6 @@ Bug(GTK) plugins/form-value.html [ Pass ]
 Bug(GTK) plugins/npruntime/delete-plugin-within-getProperty.html [ Pass ]
 Bug(GTK) fullscreen/full-screen-keyboard-enabled.html [ Pass ]
 
-# Will need rebaselining after bug 98527 fixed
-webkit.org/b/98527 http/tests/loading/text-content-type-with-binary-extension.html [ Failure ]
-
 # Fix for https://bugs.webkit.org/show_bug.cgi?id=97192 introduces this regression
 webkit.org/b/102776 media/track/track-cue-container-rendering-position.html [ Failure ]
 
@@ -543,7 +532,6 @@ webkit.org/b/102776 media/track/track-cue-container-rendering-position.html [ Fa
 
 # Selection doesn't work properly.
 Bug(GTK) editing/selection/context-menu-text-selection.html [ Failure Pass ]
-Bug(GTK) editing/selection/empty-cell-right-click.html [ Failure ]
 Bug(GTK) editing/spelling/context-menu-suggestions.html [ Failure ]
 
 # EventSender's contextClick should return objects that implements click() method
@@ -556,9 +544,3 @@ Bug(GTK) fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
 
 # An onmousedown attribute is not called.
 Bug(GTK) fast/events/context-onmousedown-event.html [ Failure ]
-
-# An onselectstart attribute is not called.
-Bug(GTK) fast/events/selectstart-prevent-selection-on-right-click.html [ Failure ]
-
-# Start of media player causes timeout
-Bug(GTK) media/controls-right-click-on-timebar.html [ Failure ]

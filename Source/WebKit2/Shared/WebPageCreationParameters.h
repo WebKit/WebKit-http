@@ -62,6 +62,8 @@ struct WebPageCreationParameters {
     bool drawsBackground;
     bool drawsTransparentBackground;
 
+    WebCore::Color underlayColor;
+
     bool areMemoryCacheClientCallsEnabled;
 
     bool useFixedLayout;
@@ -88,7 +90,6 @@ struct WebPageCreationParameters {
     bool mayStartMediaWhenInWindow;
 
 #if PLATFORM(MAC)
-    bool isSmartInsertDeleteEnabled;
     LayerHostingMode layerHostingMode;
     ColorSpaceData colorSpace;
 #endif

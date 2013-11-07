@@ -29,26 +29,55 @@
 #include "Connection.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/text/StringHash.h>
+
+class WorkQueue;
 
 namespace WebKit {
-struct SecurityOriginData;
 
-class StorageManager : public ThreadSafeRefCounted<StorageManager>, public CoreIPC::Connection::QueueClient {
+struct SecurityOriginData;
+class WebProcessProxy;
+
+class StorageManager : public CoreIPC::Connection::WorkQueueMessageReceiver {
 public:
     static PassRefPtr<StorageManager> create();
     ~StorageManager();
 
+    void createSessionStorageNamespace(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
+    void destroySessionStorageNamespace(uint64_t storageNamespaceID);
+    void setAllowedSessionStorageNamespaceConnection(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection);
+    void cloneSessionStorageNamespace(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID);
+
+    void processWillOpenConnection(WebProcessProxy*);
+    void processWillCloseConnection(WebProcessProxy*);
+
 private:
     StorageManager();
 
-    // CoreIPC::Connection::QueueClient.
-    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage) OVERRIDE;
-
-    void didReceiveStorageManagerMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage);
+    // CoreIPC::Connection::WorkQueueMessageReceiver.
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
+    virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder) OVERRIDE;
 
     // Message handlers.
     void createStorageArea(CoreIPC::Connection*, uint64_t storageAreaID, uint64_t storageNamespaceID, const SecurityOriginData&);
     void destroyStorageArea(CoreIPC::Connection*, uint64_t storageAreaID);
+    void getValues(CoreIPC::Connection*, uint64_t storageAreaID, HashMap<String, String>& values);
+    void setItem(CoreIPC::Connection*, uint64_t storageAreaID, const String& key, const String& value, const String& urlString);
+
+    void createSessionStorageNamespaceInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
+    void destroySessionStorageNamespaceInternal(uint64_t storageNamespaceID);
+    void setAllowedSessionStorageNamespaceConnectionInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection);
+    void cloneSessionStorageNamespaceInternal(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID);
+
+    class StorageArea;
+    StorageArea* findStorageArea(CoreIPC::Connection*, uint64_t) const;
+
+    RefPtr<WorkQueue> m_queue;
+
+    class SessionStorageNamespace;
+    HashMap<uint64_t, RefPtr<SessionStorageNamespace> > m_sessionStorageNamespaces;
+
+    HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> > m_storageAreas;
 };
 
 } // namespace WebKit

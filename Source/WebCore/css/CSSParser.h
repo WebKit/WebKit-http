@@ -45,6 +45,7 @@
 
 namespace WebCore {
 
+class AnimationParseContext;
 class CSSBorderImageSliceValue;
 class CSSPrimitiveValue;
 class CSSSelectorList;
@@ -67,6 +68,7 @@ class StyledElement;
 #if ENABLE(CSS_SHADERS)
 class WebKitCSSArrayFunctionValue;
 class WebKitCSSMixFunctionValue;
+class WebKitCSSShaderValue;
 #endif
 
 class CSSParser {
@@ -80,6 +82,9 @@ public:
     void parseSheet(StyleSheetContents*, const String&, int startLineNumber = 0, RuleSourceDataList* = 0);
     PassRefPtr<StyleRuleBase> parseRule(StyleSheetContents*, const String&);
     PassRefPtr<StyleKeyframe> parseKeyframeRule(StyleSheetContents*, const String&);
+#if ENABLE(CSS3_CONDITIONAL_RULES)
+    bool parseSupportsCondition(const String&);
+#endif
     static bool parseValue(StylePropertySet*, CSSPropertyID, const String&, bool important, CSSParserMode, StyleSheetContents*);
     static bool parseColor(RGBA32& color, const String&, bool strict = false);
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
@@ -89,6 +94,7 @@ public:
     static PassRefPtr<StylePropertySet> parseInlineStyleDeclaration(const String&, Element*);
     PassOwnPtr<MediaQuery> parseMediaQuery(const String&);
 
+    void addPropertyWithPrefixingVariant(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
     void addProperty(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
     void rollbackLastProperties(int num);
     bool hasProperties() const { return !m_parsedProperties.isEmpty(); }
@@ -140,16 +146,17 @@ public:
     PassRefPtr<CSSValue> parseAnimationIterationCount();
     PassRefPtr<CSSValue> parseAnimationName();
     PassRefPtr<CSSValue> parseAnimationPlayState();
-    PassRefPtr<CSSValue> parseAnimationProperty(bool& allowAnimationProperty);
+    PassRefPtr<CSSValue> parseAnimationProperty(AnimationParseContext&);
     PassRefPtr<CSSValue> parseAnimationTimingFunction();
 
     bool parseTransformOriginShorthand(RefPtr<CSSValue>&, RefPtr<CSSValue>&, RefPtr<CSSValue>&);
     bool parseCubicBezierTimingFunctionValue(CSSParserValueList*& args, double& result);
-    bool parseAnimationProperty(CSSPropertyID, RefPtr<CSSValue>&);
-    bool parseTransitionShorthand(bool important);
+    bool parseAnimationProperty(CSSPropertyID, RefPtr<CSSValue>&, AnimationParseContext&);
+    bool parseTransitionShorthand(CSSPropertyID, bool important);
     bool parseAnimationShorthand(bool important);
 
     bool cssGridLayoutEnabled() const;
+    bool parseGridItemPositionShorthand(CSSPropertyID, bool important);
     bool parseGridTrackList(CSSPropertyID, bool important);
     bool parseGridTrackGroup(CSSValueList*);
     bool parseGridTrackMinMax(CSSValueList*);
@@ -177,7 +184,8 @@ public:
     bool parseColorFromValue(CSSParserValue*, RGBA32&);
     void parseSelector(const String&, CSSSelectorList&);
 
-    static bool fastParseColor(RGBA32&, const String&, bool strict);
+    template<typename StringType>
+    static bool fastParseColor(RGBA32&, const StringType&, bool strict);
 
     bool parseLineHeight(bool important);
     bool parseFontSize(bool important);
@@ -239,6 +247,8 @@ public:
     PassRefPtr<WebKitCSSFilterValue> parseCustomFilterFunctionWithAtRuleReferenceSyntax(CSSParserValue*);
     PassRefPtr<WebKitCSSFilterValue> parseCustomFilterFunctionWithInlineSyntax(CSSParserValue*);
     PassRefPtr<WebKitCSSFilterValue> parseCustomFilterFunction(CSSParserValue*);
+    bool parseFilterRuleSrc();
+    PassRefPtr<WebKitCSSShaderValue> parseFilterRuleSrcUriAndFormat(CSSParserValueList*);
 #endif
 #endif
 
@@ -254,6 +264,9 @@ public:
 
     void addTextDecorationProperty(CSSPropertyID, PassRefPtr<CSSValue>, bool important);
     bool parseTextDecoration(CSSPropertyID propId, bool important);
+#if ENABLE(CSS3_TEXT)
+    bool parseTextUnderlinePosition(bool important);
+#endif // CSS3_TEXT
 
     bool parseLineBoxContain(bool important);
     bool parseCalculation(CSSParserValue*, CalculationPermittedValueRange);
@@ -300,6 +313,7 @@ public:
     StyleRuleBase* createSupportsRule(bool conditionIsSupported, RuleList*);
     void markSupportsRuleHeaderStart();
     void markSupportsRuleHeaderEnd();
+    PassRefPtr<CSSRuleSourceData> popSupportsRuleData();
 #endif
 #if ENABLE(SHADOW_DOM)
     StyleRuleBase* createHostRule(RuleList* rules);
@@ -324,9 +338,10 @@ public:
 
     void addNamespace(const AtomicString& prefix, const AtomicString& uri);
     QualifiedName determineNameInNamespace(const AtomicString& prefix, const AtomicString& localName);
-    void updateSpecifiersWithElementName(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector*, bool isNamespacePlaceholder = false);
-    void updateSpecifiersWithNamespaceIfNeeded(CSSParserSelector*);
-    CSSParserSelector* updateSpecifiers(CSSParserSelector*, CSSParserSelector*);
+
+    CSSParserSelector* rewriteSpecifiersWithElementName(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector*, bool isNamespacePlaceholder = false);
+    CSSParserSelector* rewriteSpecifiersWithNamespaceIfNeeded(CSSParserSelector*);
+    CSSParserSelector* rewriteSpecifiers(CSSParserSelector*, CSSParserSelector*);
 
     void invalidBlockHit();
 
@@ -351,6 +366,10 @@ public:
     RefPtr<StyleKeyframe> m_keyframe;
     OwnPtr<MediaQuery> m_mediaQuery;
     OwnPtr<CSSParserValueList> m_valueList;
+#if ENABLE(CSS3_CONDITIONAL_RULES)
+    bool m_supportsCondition;
+#endif
+
     typedef Vector<CSSProperty, 256> ParsedPropertyVector;
     ParsedPropertyVector m_parsedProperties;
     CSSSelectorList* m_selectorListForParseSelector;
@@ -363,6 +382,10 @@ public:
 
     bool m_hasFontFaceOnlyValues;
     bool m_hadSyntacticallyValidCSSRule;
+
+#if ENABLE(CSS_SHADERS)
+    bool m_inFilterRule;
+#endif
 
     AtomicString m_defaultNamespace;
 

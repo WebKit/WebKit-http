@@ -43,6 +43,7 @@
 #include "DOMTimer.h"
 #include "DOMTokenList.h"
 #include "DOMURL.h"
+#include "DOMWindowCSS.h"
 #include "DOMWindowExtension.h"
 #include "DOMWindowNotifications.h"
 #include "DeviceMotionController.h"
@@ -55,7 +56,9 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
+#include "ExceptionCodePlaceholder.h"
 #include "FloatRect.h"
+#include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
@@ -82,6 +85,7 @@
 #include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include "SecurityOrigin.h"
+#include "SecurityPolicy.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
 #include "Storage.h"
@@ -319,40 +323,37 @@ FloatRect DOMWindow::adjustWindowRect(Page* page, const FloatRect& pendingChange
     FloatRect window = page->chrome()->windowRect();
 
     // Make sure we're in a valid state before adjusting dimensions.
-    ASSERT(isfinite(screen.x()));
-    ASSERT(isfinite(screen.y()));
-    ASSERT(isfinite(screen.width()));
-    ASSERT(isfinite(screen.height()));
-    ASSERT(isfinite(window.x()));
-    ASSERT(isfinite(window.y()));
-    ASSERT(isfinite(window.width()));
-    ASSERT(isfinite(window.height()));
+    ASSERT(std::isfinite(screen.x()));
+    ASSERT(std::isfinite(screen.y()));
+    ASSERT(std::isfinite(screen.width()));
+    ASSERT(std::isfinite(screen.height()));
+    ASSERT(std::isfinite(window.x()));
+    ASSERT(std::isfinite(window.y()));
+    ASSERT(std::isfinite(window.width()));
+    ASSERT(std::isfinite(window.height()));
 
     // Update window values if new requested values are not NaN.
-    if (!isnan(pendingChanges.x()))
+    if (!std::isnan(pendingChanges.x()))
         window.setX(pendingChanges.x());
-    if (!isnan(pendingChanges.y()))
+    if (!std::isnan(pendingChanges.y()))
         window.setY(pendingChanges.y());
-    if (!isnan(pendingChanges.width()))
+    if (!std::isnan(pendingChanges.width()))
         window.setWidth(pendingChanges.width());
-    if (!isnan(pendingChanges.height()))
+    if (!std::isnan(pendingChanges.height()))
         window.setHeight(pendingChanges.height());
 
     FloatSize minimumSize = page->chrome()->client()->minimumWindowSize();
-    window.setWidth(min(max(minimumSize.width(), window.width()), screen.width()));
-    window.setHeight(min(max(minimumSize.height(), window.height()), screen.height()));
+    // Let size 0 pass through, since that indicates default size, not minimum size.
+    if (window.width())
+        window.setWidth(min(max(minimumSize.width(), window.width()), screen.width()));
+    if (window.height())
+        window.setHeight(min(max(minimumSize.height(), window.height()), screen.height()));
 
     // Constrain the window position within the valid screen area.
     window.setX(max(screen.x(), min(window.x(), screen.maxX() - window.width())));
     window.setY(max(screen.y(), min(window.y(), screen.maxY() - window.height())));
 
     return window;
-}
-
-// FIXME: We can remove this function once V8 showModalDialog is changed to use DOMWindow.
-void DOMWindow::parseModalDialogFeatures(const String& string, HashMap<String, String>& map)
-{
-    WindowFeatures::parseDialogFeatures(string, map);
 }
 
 bool DOMWindow::allowPopUp(Frame* firstFrame)
@@ -762,7 +763,6 @@ Storage* DOMWindow::sessionStorage(ExceptionCode& ec) const
         ec = SECURITY_ERR;
         return 0;
     }
-    InspectorInstrumentation::didUseDOMStorage(page, storageArea.get(), false, m_frame);
 
     m_sessionStorage = Storage::create(m_frame, storageArea.release());
     return m_sessionStorage.get();
@@ -802,7 +802,6 @@ Storage* DOMWindow::localStorage(ExceptionCode& ec) const
         ec = SECURITY_ERR;
         return 0;
     }
-    InspectorInstrumentation::didUseDOMStorage(page, storageArea.get(), true, m_frame);
 
     m_localStorage = Storage::create(m_frame, storageArea.release());
     return m_localStorage.get();
@@ -885,7 +884,7 @@ void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTarg
         if (!intendedTargetOrigin->isSameSchemeHostPort(document()->securityOrigin())) {
             String message = "Unable to post message to " + intendedTargetOrigin->toString() +
                              ". Recipient has origin " + document()->securityOrigin()->toString() + ".\n";
-            console()->addMessage(JSMessageSource, ErrorMessageLevel, message, stackTrace);
+            console()->addMessage(SecurityMessageSource, ErrorMessageLevel, message, stackTrace);
             return;
         }
     }
@@ -932,6 +931,11 @@ void DOMWindow::focus(ScriptExecutionContext* context)
 
     if (!m_frame)
         return;
+
+    // Clear the current frame's focused node if a new frame is about to be focused.
+    Frame* focusedFrame = page->focusController()->focusedFrame();
+    if (focusedFrame && focusedFrame != m_frame)
+        focusedFrame->document()->setFocusedNode(0);
 
     m_frame->eventHandler()->focusDocumentView();
 }
@@ -1143,7 +1147,7 @@ int DOMWindow::innerHeight() const
 
     // If the device height is overridden, do not include the horizontal scrollbar into the innerHeight (since it is absent on the real device).
     bool includeScrollbars = !InspectorInstrumentation::shouldApplyScreenHeightOverride(m_frame);
-    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRect(includeScrollbars).height()));
+    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRect(includeScrollbars ? ScrollableArea::IncludeScrollbars : ScrollableArea::ExcludeScrollbars).height()));
 }
 
 int DOMWindow::innerWidth() const
@@ -1157,7 +1161,7 @@ int DOMWindow::innerWidth() const
 
     // If the device width is overridden, do not include the vertical scrollbar into the innerWidth (since it is absent on the real device).
     bool includeScrollbars = !InspectorInstrumentation::shouldApplyScreenWidthOverride(m_frame);
-    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRect(includeScrollbars).width()));
+    return view->mapFromLayoutToCSSUnits(static_cast<int>(view->visibleContentRect(includeScrollbars ? ScrollableArea::IncludeScrollbars : ScrollableArea::ExcludeScrollbars).width()));
 }
 
 int DOMWindow::screenX() const
@@ -1319,7 +1323,7 @@ DOMWindow* DOMWindow::top() const
 Document* DOMWindow::document() const
 {
     ScriptExecutionContext* context = ContextDestructionObserver::scriptExecutionContext();
-    ASSERT(!context || context->isDocument());
+    ASSERT_WITH_SECURITY_IMPLICATION(!context || context->isDocument());
     return static_cast<Document*>(context);
 }
 
@@ -1571,15 +1575,23 @@ void DOMWindow::cancelAnimationFrame(int id)
 }
 #endif
 
+#if ENABLE(CSS3_CONDITIONAL_RULES)
+DOMWindowCSS* DOMWindow::css()
+{
+    if (!m_css)
+        m_css = DOMWindowCSS::create();
+    return m_css.get();
+}
+#endif
+
 static void didAddStorageEventListener(DOMWindow* window)
 {
     // Creating these WebCore::Storage objects informs the system that we'd like to receive
     // notifications about storage events that might be triggered in other processes. Rather
     // than subscribe to these notifications explicitly, we subscribe to them implicitly to
     // simplify the work done by the system. 
-    ExceptionCode unused;
-    window->localStorage(unused);
-    window->sessionStorage(unused);
+    window->localStorage(IGNORE_EXCEPTION);
+    window->sessionStorage(IGNORE_EXCEPTION);
 }
 
 bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
@@ -1856,15 +1868,15 @@ Frame* DOMWindow::createWindow(const String& urlString, const AtomicString& fram
 {
     Frame* activeFrame = activeWindow->frame();
 
-    // For whatever reason, Firefox uses the first frame to determine the outgoingReferrer. We replicate that behavior here.
-    String referrer = firstFrame->loader()->outgoingReferrer();
-
     KURL completedURL = urlString.isEmpty() ? KURL(ParsedURLString, emptyString()) : firstFrame->document()->completeURL(urlString);
     if (!completedURL.isEmpty() && !completedURL.isValid()) {
         // Don't expose client code to invalid URLs.
         activeWindow->printErrorMessage("Unable to open a window with invalid URL '" + completedURL.string() + "'.\n");
         return 0;
     }
+
+    // For whatever reason, Firefox uses the first frame to determine the outgoingReferrer. We replicate that behavior here.
+    String referrer = SecurityPolicy::generateReferrerHeader(firstFrame->document()->referrerPolicy(), completedURL, firstFrame->loader()->outgoingReferrer());
 
     ResourceRequest request(completedURL, referrer);
     FrameLoader::addHTTPOriginIfNeeded(request, firstFrame->loader()->outgoingOrigin());

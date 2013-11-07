@@ -35,6 +35,7 @@
 #include "DocumentEventQueue.h"
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
+#include "HitTestRequest.h"
 #include "IconURL.h"
 #include "InspectorCounters.h"
 #include "IntRect.h"
@@ -70,6 +71,8 @@ class CanvasRenderingContext;
 class CharacterData;
 class Comment;
 class ContextFeatures;
+class CustomElementConstructor;
+class CustomElementRegistry;
 class DOMImplementation;
 class DOMNamedFlowCollection;
 class DOMSelection;
@@ -228,29 +231,6 @@ public:
     using ContainerNode::ref;
     using ContainerNode::deref;
 
-    // Nodes belonging to this document hold guard references -
-    // these are enough to keep the document from being destroyed, but
-    // not enough to keep it from removing its children. This allows a
-    // node that outlives its document to still have a valid document
-    // pointer without introducing reference cycles.
-    void guardRef()
-    {
-        ASSERT(!m_deletionHasBegun);
-        ++m_guardRefCount;
-    }
-
-    void guardDeref()
-    {
-        ASSERT(!m_deletionHasBegun);
-        --m_guardRefCount;
-        if (!m_guardRefCount && !refCount()) {
-#ifndef NDEBUG
-            m_deletionHasBegun = true;
-#endif
-            delete this;
-        }
-    }
-
     Element* getElementById(const AtomicString& id) const;
 
     virtual bool canContainRangeEndPoint() const { return true; }
@@ -380,11 +360,10 @@ public:
      * @param rightPadding How much to expand the right of the rectangle
      * @param bottomPadding How much to expand the bottom of the rectangle
      * @param leftPadding How much to expand the left of the rectangle
-     * @param ignoreClipping whether or not to ignore the root scroll frame when retrieving the element.
-     *        If false, this method returns null for coordinates outside of the viewport.
      */
-    PassRefPtr<NodeList> nodesFromRect(int centerX, int centerY, unsigned topPadding, unsigned rightPadding,
-                                       unsigned bottomPadding, unsigned leftPadding, bool ignoreClipping, bool allowShadowContent) const;
+    PassRefPtr<NodeList> nodesFromRect(int centerX, int centerY,
+                                       unsigned topPadding, unsigned rightPadding, unsigned bottomPadding, unsigned leftPadding,
+                                       HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active) const;
     Element* elementFromPoint(int x, int y) const;
     PassRefPtr<Range> caretRangeFromPoint(int x, int y);
 
@@ -710,7 +689,7 @@ public:
     void hoveredNodeDetached(Node*);
     void activeChainNodeDetached(Node*);
 
-    void updateHoverActiveState(const HitTestRequest&, HitTestResult&);
+    void updateHoverActiveState(const HitTestRequest&, Element*);
 
     // Updates for :target (CSS3 selector).
     void setCSSTarget(Element*);
@@ -941,7 +920,8 @@ public:
     bool hasNodesWithPlaceholderStyle() const { return m_hasNodesWithPlaceholderStyle; }
     void setHasNodesWithPlaceholderStyle() { m_hasNodesWithPlaceholderStyle = true; }
 
-    const Vector<IconURL>& iconURLs();
+    const Vector<IconURL>& shortcutIconURLs();
+    const Vector<IconURL>& iconURLs(int iconTypesMask);
     void addIconURL(const String& url, const String& mimeType, const String& size, IconType);
 
     void setUseSecureKeyboardEntryWhenActive(bool);
@@ -1121,6 +1101,9 @@ public:
     void didAddWheelEventHandler();
     void didRemoveWheelEventHandler();
 
+    double lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
+    void resetLastHandledUserGestureTimestamp();
+
 #if ENABLE(TOUCH_EVENTS)
     bool hasTouchEventHandlers() const { return (m_touchEventTargets.get()) ? m_touchEventTargets->size() : false; }
 #else
@@ -1165,8 +1148,18 @@ public:
     TextAutosizer* textAutosizer() { return m_textAutosizer.get(); }
 #endif
 
+#if ENABLE(CUSTOM_ELEMENTS)
+    PassRefPtr<CustomElementConstructor> registerElement(WebCore::ScriptState*, const AtomicString& name, ExceptionCode&);
+    PassRefPtr<CustomElementConstructor> registerElement(WebCore::ScriptState*, const AtomicString& name, const Dictionary& options, ExceptionCode&);
+    PassRefPtr<CustomElementRegistry> registry() const;
+#endif
+
     void adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>&, RenderObject*);
     void adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect&, RenderObject*);
+
+    bool hasActiveParser();
+    void incrementActiveParserCount() { ++m_activeParserCount; }
+    void decrementActiveParserCount();
 
     void setContextFeatures(PassRefPtr<ContextFeatures>);
     ContextFeatures* contextFeatures() { return m_contextFeatures.get(); }
@@ -1189,6 +1182,7 @@ public:
     void addToTopLayer(Element*);
     void removeFromTopLayer(Element*);
     const Vector<RefPtr<Element> >& topLayerElements() const { return m_topLayerElements; }
+    Element* activeModalDialog() const { return !m_topLayerElements.isEmpty() ? m_topLayerElements.last().get() : 0; }
 #endif
 
 #if ENABLE(TEMPLATE_ELEMENT)
@@ -1213,8 +1207,8 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
 
-    void removedLastRef();
-    
+    virtual void dispose() OVERRIDE;
+
     void detachParser();
 
     typedef void (*ArgumentsCallback)(const String& keyString, const String& valueString, Document*, void* data);
@@ -1282,8 +1276,6 @@ private:
     void addListenerType(ListenerType listenerType) { m_listenerTypes |= listenerType; }
     void addMutationEventListenerTypeIfEnabled(ListenerType);
 
-    int m_guardRefCount;
-
     void styleResolverThrowawayTimerFired(Timer<Document>*);
     Timer<Document> m_styleResolverThrowawayTimer;
     double m_lastStyleResolverAccessTime;
@@ -1307,6 +1299,7 @@ private:
 
     RefPtr<CachedResourceLoader> m_cachedResourceLoader;
     RefPtr<DocumentParser> m_parser;
+    unsigned m_activeParserCount;
     RefPtr<ContextFeatures> m_contextFeatures;
 
     bool m_wellFormed;
@@ -1523,6 +1516,8 @@ private:
     OwnPtr<TouchEventTargetSet> m_touchEventTargets;
 #endif
 
+    double m_lastHandledUserGestureTimestamp;
+
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
 #endif
@@ -1536,6 +1531,10 @@ private:
 
 #if ENABLE(TEXT_AUTOSIZING)
     OwnPtr<TextAutosizer> m_textAutosizer;
+#endif
+
+#if ENABLE(CUSTOM_ELEMENTS)
+    RefPtr<CustomElementRegistry> m_registry;
 #endif
 
     bool m_scheduledTasksAreSuspended;
@@ -1598,10 +1597,9 @@ inline Node::Node(Document* document, ConstructionType type)
     , m_previous(0)
     , m_next(0)
 {
-    if (document)
-        document->guardRef();
-    else
+    if (!m_treeScope)
         m_treeScope = TreeScope::noDocumentInstance();
+    m_treeScope->guardRef();
 
 #if !defined(NDEBUG) || (defined(DUMP_NODE_STATISTICS) && DUMP_NODE_STATISTICS)
     trackForDebugging();

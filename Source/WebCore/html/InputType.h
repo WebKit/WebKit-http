@@ -201,11 +201,10 @@ public:
     virtual bool shouldSubmitImplicitly(Event*);
     virtual PassRefPtr<HTMLFormElement> formForSubmission() const;
     virtual bool hasCustomFocusLogic() const;
-    virtual bool isFocusableByClickOnLabel() const;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
     virtual bool shouldUseInputMethod() const;
-    virtual void handleFocusEvent();
+    virtual void handleFocusEvent(Node* oldFocusedNode, FocusDirection);
     virtual void handleBlurEvent();
     virtual void accessKeyAction(bool sendMouseEvents);
     virtual bool canBeSuccessfulSubmitButton();
@@ -215,7 +214,6 @@ public:
 #endif
 
     virtual void blur();
-    virtual void focus(bool restorePreviousSelection, FocusDirection);
 
     // Shadow tree handling
 
@@ -239,6 +237,7 @@ public:
 
     virtual bool rendererIsNeeded();
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*) const;
+    virtual PassRefPtr<RenderStyle> customStyleForRenderer(PassRefPtr<RenderStyle>);
     virtual void addSearchResult();
     virtual void attach();
     virtual void detach();
@@ -246,7 +245,6 @@ public:
     virtual void stepAttributeChanged();
     virtual void altAttributeChanged();
     virtual void srcAttributeChanged();
-    virtual void willMoveToNewOwnerDocument();
     virtual bool shouldRespectAlignAttribute();
     virtual FileList* files();
     virtual void setFiles(PassRefPtr<FileList>);
@@ -262,7 +260,6 @@ public:
     virtual bool canSetValue(const String&);
     virtual bool storesValueSeparateFromAttribute();
     virtual void setValue(const String&, bool valueChanged, TextFieldEventBehavior);
-    virtual bool shouldApplyLocaleDirection() const;
     virtual bool shouldResetOnDocumentActivation();
     virtual bool shouldRespectListAttribute();
     virtual bool shouldRespectSpeechAttribute();
@@ -277,11 +274,13 @@ public:
     virtual void multipleAttributeChanged();
     virtual void disabledAttributeChanged();
     virtual void readonlyAttributeChanged();
+    virtual void requiredAttributeChanged();
     virtual String defaultToolTip() const;
 #if ENABLE(DATALIST_ELEMENT)
     virtual void listAttributeTargetChanged();
     virtual Decimal findClosestTickMarkValue(const Decimal&);
 #endif
+    virtual void updateClearButtonVisibility();
 
     // Parses the specified string for the type, and return
     // the Decimal value for the parsing result if the parsing
@@ -327,5 +326,4 @@ private:
 };
 
 } // namespace WebCore
-
 #endif

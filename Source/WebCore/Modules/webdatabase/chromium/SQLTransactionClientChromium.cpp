@@ -33,7 +33,8 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "DatabaseBackend.h"
+#include "DatabaseBackendBase.h"
+#include "DatabaseBackendContext.h"
 #include "DatabaseObserver.h"
 #include "ScriptExecutionContext.h"
 
@@ -41,7 +42,7 @@ namespace WebCore {
 
 class NotifyDatabaseChangedTask : public ScriptExecutionContext::Task {
 public:
-    static PassOwnPtr<NotifyDatabaseChangedTask> create(DatabaseBackend *database)
+    static PassOwnPtr<NotifyDatabaseChangedTask> create(DatabaseBackendBase *database)
     {
         return adoptPtr(new NotifyDatabaseChangedTask(database));
     }
@@ -52,35 +53,30 @@ public:
     }
 
 private:
-    NotifyDatabaseChangedTask(PassRefPtr<DatabaseBackend> database)
+    NotifyDatabaseChangedTask(PassRefPtr<DatabaseBackendBase> database)
         : m_database(database)
     {
     }
 
-    RefPtr<DatabaseBackend> m_database;
+    RefPtr<DatabaseBackendBase> m_database;
 };
 
-void SQLTransactionClient::didCommitWriteTransaction(DatabaseBackend* database)
+void SQLTransactionClient::didCommitWriteTransaction(DatabaseBackendBase* database)
 {
-    if (!database->scriptExecutionContext()->isContextThread()) {
-        database->scriptExecutionContext()->postTask(NotifyDatabaseChangedTask::create(database));
+    ScriptExecutionContext* scriptExecutionContext = database->databaseContext()->scriptExecutionContext();
+    if (!scriptExecutionContext->isContextThread()) {
+        scriptExecutionContext->postTask(NotifyDatabaseChangedTask::create(database));
         return;
     }
 
     WebCore::DatabaseObserver::databaseModified(database);
 }
 
-void SQLTransactionClient::didExecuteStatement(DatabaseBackend* database)
-{
-    // This method is called after executing every statement that changes the DB.
-    // Chromium doesn't need to do anything at that point.
-}
-
-bool SQLTransactionClient::didExceedQuota(DatabaseBackend* database)
+bool SQLTransactionClient::didExceedQuota(DatabaseBackendBase* database)
 {
     // Chromium does not allow users to manually change the quota for an origin (for now, at least).
     // Don't do anything.
-    ASSERT(database->scriptExecutionContext()->isContextThread());
+    ASSERT(database->databaseContext()->scriptExecutionContext()->isContextThread());
     return false;
 }
 

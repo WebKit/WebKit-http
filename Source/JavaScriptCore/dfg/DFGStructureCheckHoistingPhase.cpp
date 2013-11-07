@@ -49,6 +49,8 @@ public:
     
     bool run()
     {
+        ASSERT(m_graph.m_form == ThreadedCPS);
+        
         for (unsigned i = m_graph.m_variableAccessData.size(); i--;) {
             VariableAccessData* variable = &m_graph.m_variableAccessData[i];
             if (!variable->isRoot())
@@ -65,8 +67,6 @@ public:
                 continue;
             for (unsigned indexInBlock = 0; indexInBlock < block->size(); ++indexInBlock) {
                 Node* node = block->at(indexInBlock);
-                if (!node->shouldGenerate())
-                    continue;
                 switch (node->op()) {
                 case CheckStructure:
                 case StructureTransitionWatchpoint: {
@@ -75,9 +75,7 @@ public:
                         break;
                     VariableAccessData* variable = child->variableAccessData();
                     variable->vote(VoteStructureCheck);
-                    if (variable->isCaptured() || variable->structureCheckHoistingFailed())
-                        break;
-                    if (!isCellSpeculation(variable->prediction()))
+                    if (!shouldConsiderForHoisting(variable))
                         break;
                     noticeStructureCheck(variable, node->structureSet());
                     break;
@@ -116,9 +114,7 @@ public:
                             break;
                         VariableAccessData* variable = child->variableAccessData();
                         variable->vote(VoteOther);
-                        if (variable->isCaptured() || variable->structureCheckHoistingFailed())
-                            break;
-                        if (!isCellSpeculation(variable->prediction()))
+                        if (!shouldConsiderForHoisting(variable))
                             break;
                         noticeStructureCheck(variable, 0);
                     }
@@ -130,15 +126,11 @@ public:
                     // we're not hoisting a check that would contravene checks that are
                     // already being performed.
                     VariableAccessData* variable = node->variableAccessData();
-                    if (variable->isCaptured() || variable->structureCheckHoistingFailed())
-                        break;
-                    if (!isCellSpeculation(variable->prediction()))
+                    if (!shouldConsiderForHoisting(variable))
                         break;
                     Node* source = node->child1().node();
                     for (unsigned subIndexInBlock = 0; subIndexInBlock < block->size(); ++subIndexInBlock) {
                         Node* subNode = block->at(subIndexInBlock);
-                        if (!subNode->shouldGenerate())
-                            continue;
                         switch (subNode->op()) {
                         case CheckStructure: {
                             if (subNode->child1() != source)
@@ -267,8 +259,6 @@ public:
                 // Be careful not to use 'node' after appending to the graph. In those switch
                 // cases where we need to append, we first carefully extract everything we need
                 // from the node, before doing any appending.
-                if (!node->shouldGenerate())
-                    continue;
                 switch (node->op()) {
                 case SetArgument: {
                     ASSERT(!blockIndex);
@@ -286,12 +276,12 @@ public:
                     CodeOrigin codeOrigin = node->codeOrigin;
                     
                     Node* getLocal = insertionSet.insertNode(
-                        indexInBlock + 1, DontRefChildren, DontRefNode, variable->prediction(),
-                        GetLocal, codeOrigin, OpInfo(variable), node);
+                        indexInBlock + 1, variable->prediction(), GetLocal, codeOrigin,
+                        OpInfo(variable), Edge(node));
                     insertionSet.insertNode(
-                        indexInBlock + 1, RefChildren, DontRefNode, SpecNone, CheckStructure,
-                        codeOrigin, OpInfo(m_graph.addStructureSet(iter->value.m_structure)),
-                        getLocal);
+                        indexInBlock + 1, SpecNone, CheckStructure, codeOrigin,
+                        OpInfo(m_graph.addStructureSet(iter->value.m_structure)),
+                        Edge(getLocal, CellUse));
 
                     if (block->variablesAtTail.operand(variable->local()) == node)
                         block->variablesAtTail.operand(variable->local()) = getLocal;
@@ -315,17 +305,17 @@ public:
                     // to exit.
                     
                     CodeOrigin codeOrigin = node->codeOrigin;
-                    Node* child1 = node->child1().node();
+                    Edge child1 = node->child1();
                     
                     insertionSet.insertNode(
-                        indexInBlock, DontRefChildren, DontRefNode, SpecNone, SetLocal, codeOrigin,
-                        OpInfo(variable), child1);
+                        indexInBlock, SpecNone, SetLocal, codeOrigin, OpInfo(variable), child1);
 
                     // Use a ForwardCheckStructure to indicate that we should exit to the
                     // next bytecode instruction rather than reexecuting the current one.
                     insertionSet.insertNode(
-                        indexInBlock, RefChildren, DontRefNode, SpecNone, ForwardCheckStructure,
-                        codeOrigin, OpInfo(m_graph.addStructureSet(iter->value.m_structure)), child1);
+                        indexInBlock, SpecNone, ForwardCheckStructure, codeOrigin,
+                        OpInfo(m_graph.addStructureSet(iter->value.m_structure)),
+                        Edge(child1.node(), CellUse));
                     changed = true;
                     break;
                 }
@@ -341,6 +331,17 @@ public:
     }
 
 private:
+    bool shouldConsiderForHoisting(VariableAccessData* variable)
+    {
+        if (!variable->shouldUnboxIfPossible())
+            return false;
+        if (variable->structureCheckHoistingFailed())
+            return false;
+        if (!isCellSpeculation(variable->prediction()))
+            return false;
+        return true;
+    }
+    
     void noticeStructureCheck(VariableAccessData* variable, Structure* structure)
     {
         HashMap<VariableAccessData*, CheckData>::AddResult result =

@@ -133,6 +133,7 @@ webkit_web_view_save_to_file_finish
 webkit_web_view_download_uri
 webkit_web_view_set_view_mode
 webkit_web_view_get_view_mode
+webkit_web_view_get_tls_info
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult
@@ -150,7 +151,6 @@ webkit_script_dialog_confirm_set_confirmed
 webkit_script_dialog_prompt_get_default_text
 webkit_script_dialog_prompt_set_text
 webkit_web_view_get_main_resource
-webkit_web_view_get_subresources
 
 <SUBSECTION Standard>
 WebKitWebViewClass
@@ -352,7 +352,6 @@ webkit_uri_response_get_uri
 webkit_uri_response_get_status_code
 webkit_uri_response_get_content_length
 webkit_uri_response_get_mime_type
-webkit_uri_response_get_https_status
 webkit_uri_response_get_suggested_filename
 
 <SUBSECTION Standard>

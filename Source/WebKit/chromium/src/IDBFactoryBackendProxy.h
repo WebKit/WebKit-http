@@ -32,7 +32,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBCallbacks.h"
-#include "IDBFactoryBackendInterface.h"
+#include "IDBFactoryBackendInterfaceChromium.h"
 
 namespace WebCore {
 class ScriptExecutionContext;

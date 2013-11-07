@@ -34,9 +34,6 @@ namespace WebCore {
 
 PassRefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, RenderStyle renderStyle)
 {
-    if (renderStyle == RenderDirectlyToHostWindow)
-        return 0;
-
     RefPtr<GraphicsContext3D> context = adoptRef(new GraphicsContext3D(attrs, hostWindow, renderStyle));
     return context->m_private ? context.release() : 0;
 }
@@ -57,24 +54,19 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_depthStencilBuffer(0)
     , m_layerComposited(false)
     , m_internalColorFormat(0)
-    , m_boundFBO(0)
-    , m_activeTexture(GL_TEXTURE0)
-    , m_boundTexture0(0)
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
-    , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow, renderStyle)))
+    , m_private(GraphicsContext3DPrivate::create(this, hostWindow))
 {
-    if (!m_private || !m_private->m_platformContext) {
-        m_private = nullptr;
+    if (!m_private)
         return;
-    }
 
     validateAttributes();
 
     if (renderStyle == RenderOffscreen) {
         // Create buffers for the canvas FBO.
-        glGenFramebuffers(/* count */ 1, &m_fbo);
+        glGenFramebuffers(1, &m_fbo);
 
         // Create a texture to render into.
         glGenTextures(1, &m_texture);
@@ -89,14 +81,14 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
         if (m_attrs.antialias) {
             glGenFramebuffers(1, &m_multisampleFBO);
             glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_multisampleFBO);
-            m_boundFBO = m_multisampleFBO;
+            m_state.boundFBO = m_multisampleFBO;
             glGenRenderbuffers(1, &m_multisampleColorBuffer);
             if (m_attrs.stencil || m_attrs.depth)
                 glGenRenderbuffers(1, &m_multisampleDepthStencilBuffer);
         } else {
             // Bind canvas FBO.
             glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_fbo);
-            m_boundFBO = m_fbo;
+            m_state.boundFBO = m_fbo;
 #if USE(OPENGL_ES_2)
             if (m_attrs.depth)
                 glGenRenderbuffers(1, &m_depthBuffer);
@@ -122,6 +114,11 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
 
     // Always set to 1 for OpenGL ES.
     ANGLEResources.MaxDrawBuffers = 1;
+
+    GC3Dint range[2], precision;
+    getShaderPrecisionFormat(GraphicsContext3D::FRAGMENT_SHADER, GraphicsContext3D::HIGH_FLOAT, range, &precision);
+    ANGLEResources.FragmentPrecisionHigh = (range[0] || range[1] || precision);
+
     m_compiler.setResources(ANGLEResources);
 
 #if !USE(OPENGL_ES_2)
@@ -134,30 +131,38 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
 
 GraphicsContext3D::~GraphicsContext3D()
 {
-    if (!m_private || !makeContextCurrent())
+    if (!m_private || (m_renderStyle == RenderToCurrentGLContext) || !makeContextCurrent())
         return;
 
-    glDeleteTextures(1, &m_texture);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (m_texture)
+        glDeleteTextures(1, &m_texture);
+
+    if (m_fbo)
+        glDeleteFramebuffers(1, &m_fbo);
 
     if (m_attrs.antialias) {
-        glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
+        if (m_multisampleColorBuffer)
+            glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
 
-        if (m_attrs.stencil || m_attrs.depth)
+        if (m_multisampleDepthStencilBuffer)
             glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
 
-        glDeleteFramebuffers(1, &m_multisampleFBO);
+        if (m_multisampleFBO)
+            glDeleteFramebuffers(1, &m_multisampleFBO);
     } else if (m_attrs.stencil || m_attrs.depth) {
 #if USE(OPENGL_ES_2)
-        if (m_attrs.depth)
+        if (m_depthBuffer)
             glDeleteRenderbuffers(1, &m_depthBuffer);
 
-        if (m_attrs.stencil)
+        if (m_stencilBuffer)
             glDeleteRenderbuffers(1, &m_stencilBuffer);
 #endif
-        glDeleteRenderbuffers(1, &m_depthStencilBuffer);
+        if (m_depthStencilBuffer)
+            glDeleteRenderbuffers(1, &m_depthStencilBuffer);
     }
-
-    m_private->releaseResources();
 }
 
 PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D()

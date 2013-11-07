@@ -150,7 +150,7 @@ namespace JSC {
     struct IdentifierCharBufferTranslator {
         static unsigned hash(const CharBuffer<T>& buf)
         {
-            return StringHasher::computeHashAndMaskTop8Bits<T>(buf.s, buf.length);
+            return StringHasher::computeHashAndMaskTop8Bits(buf.s, buf.length);
         }
         
         static bool equal(StringImpl* str, const CharBuffer<T>& buf)
@@ -257,5 +257,11 @@ namespace JSC {
     }
 
 } // namespace JSC
+
+namespace WTF {
+
+template <> struct VectorTraits<JSC::Identifier> : SimpleClassVectorTraits { };
+
+} // namespace WTF
 
 #endif // Identifier_h

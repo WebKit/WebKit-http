@@ -48,8 +48,7 @@ typedef const char* MemoryObjectType;
 enum MemberType {
     PointerMember,
     ReferenceMember,
-    OwnPtrMember,
-    RefPtrMember,
+    RetainingPointer,
     LastMemberTypeEntry
 };
 
@@ -66,6 +65,7 @@ public:
     virtual void reportEdge(const void* target, const char* edgeName, MemberType) = 0;
     virtual void reportLeaf(const MemoryObjectInfo&, const char* edgeName) = 0;
     virtual void reportBaseAddress(const void* base, const void* real) = 0;
+    virtual int registerString(const char*) = 0;
 };
 
 class MemoryInstrumentation {
@@ -158,8 +158,6 @@ private:
         template <typename T> static void reportObjectMemoryUsage(const T*, MemoryObjectInfo*);
     };
 
-    WTF_EXPORT_PRIVATE static void callReportObjectInfo(MemoryObjectInfo*, const void* pointer, MemoryObjectType, size_t objectSize);
-
     template<typename T> class Wrapper : public WrapperBase {
     public:
         Wrapper(const T* pointer, MemoryObjectType);
@@ -168,7 +166,10 @@ private:
         virtual void callReportMemoryUsage(MemoryObjectInfo*) OVERRIDE;
     };
 
-    template<typename T> void addObject(const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName) { MemberTypeTraits<T>::addObject(this, t, ownerObjectInfo, edgeName); }
+    template<typename T> void addObject(const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName, MemberType memberType)
+    {
+        MemberTypeTraits<T>::addObject(this, t, ownerObjectInfo, edgeName, memberType);
+    }
     void addRawBuffer(const void* buffer, MemoryObjectType ownerObjectType, size_t size, const char* className = 0, const char* edgeName = 0)
     {
         if (!buffer || visited(buffer))
@@ -180,7 +181,7 @@ private:
 
     template<typename T>
     struct MemberTypeTraits { // Default ReferenceMember implementation.
-        static void addObject(MemoryInstrumentation* instrumentation, const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName)
+        static void addObject(MemoryInstrumentation* instrumentation, const T& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName, MemberType)
         {
             instrumentation->addObjectImpl(&t, ownerObjectInfo, ReferenceMember, edgeName);
         }
@@ -193,9 +194,9 @@ private:
 
     template<typename T>
     struct MemberTypeTraits<T*> { // Custom PointerMember implementation.
-        static void addObject(MemoryInstrumentation* instrumentation, const T* const& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName)
+        static void addObject(MemoryInstrumentation* instrumentation, const T* const& t, MemoryObjectInfo* ownerObjectInfo, const char* edgeName, MemberType memberType)
         {
-            instrumentation->addObjectImpl(t, ownerObjectInfo, PointerMember, edgeName);
+            instrumentation->addObjectImpl(t, ownerObjectInfo, memberType != LastMemberTypeEntry ? memberType : PointerMember, edgeName);
         }
 
         static void addRootObject(MemoryInstrumentation* instrumentation, const T* const& t, MemoryObjectType objectType)
@@ -212,6 +213,56 @@ private:
     MemoryInstrumentationClient* m_client;
 };
 
+// We are trying to keep the signature of the function as small as possible
+// because it significantly affects the binary size.
+// We caluclates class name for 624 classes at the moment.
+// So one extra byte of the function signature increases the binary size to 624 extra bytes.
+#if COMPILER(MSVC)
+template <typename T> struct FN {
+    static char* fn() { return const_cast<char*>(__FUNCTION__); }
+};
+
+template <typename T> char* fn() { return FN<T>::fn(); }
+#else
+template <typename T> char* fn() { return const_cast<char*>(__PRETTY_FUNCTION__); }
+#endif
+
+class MemoryClassInfo {
+public:
+    template<typename T>
+    MemoryClassInfo(MemoryObjectInfo* memoryObjectInfo, const T* pointer, MemoryObjectType objectType = 0, size_t actualSize = sizeof(T))
+        : m_memoryObjectInfo(memoryObjectInfo)
+        , m_memoryInstrumentation(0)
+        , m_objectType(0)
+        , m_skipMembers(false)
+    {
+        init(pointer, fn<T>(), objectType, actualSize);
+    }
+
+    template<typename M> void addMember(const M& member, const char* edgeName = 0, MemberType memberType = LastMemberTypeEntry)
+    {
+        if (!m_skipMembers)
+            m_memoryInstrumentation->addObject(member, m_memoryObjectInfo, edgeName, memberType);
+    }
+
+    WTF_EXPORT_PRIVATE void addRawBuffer(const void* buffer, size_t, const char* className = 0, const char* edgeName = 0);
+    WTF_EXPORT_PRIVATE void addPrivateBuffer(size_t, MemoryObjectType ownerObjectType = 0, const char* className = 0, const char* edgeName = 0);
+    WTF_EXPORT_PRIVATE void setCustomAllocation(bool);
+
+    void addWeakPointer(void*) { }
+    template<typename M> void ignoreMember(const M&) { }
+
+    WTF_EXPORT_PRIVATE static void callReportObjectInfo(MemoryObjectInfo*, const void* pointer, const char* stringWithClassName, MemoryObjectType, size_t actualSize);
+
+private:
+    WTF_EXPORT_PRIVATE void init(const void* pointer, const char* stringWithClassName, MemoryObjectType, size_t actualSize);
+
+    MemoryObjectInfo* m_memoryObjectInfo;
+    MemoryInstrumentation* m_memoryInstrumentation;
+    MemoryObjectType m_objectType;
+    bool m_skipMembers;
+};
+
 template <>
 template <typename T>
 void MemoryInstrumentation::InstrumentationSelector<true>::reportObjectMemoryUsage(const T* object, MemoryObjectInfo* memoryObjectInfo)
@@ -223,42 +274,8 @@ template <>
 template <typename T>
 void MemoryInstrumentation::InstrumentationSelector<false>::reportObjectMemoryUsage(const T* object, MemoryObjectInfo* memoryObjectInfo)
 {
-    callReportObjectInfo(memoryObjectInfo, object, 0, sizeof(T));
+    MemoryClassInfo::callReportObjectInfo(memoryObjectInfo, object, fn<T>(), 0, sizeof(T));
 }
-
-class MemoryClassInfo {
-public:
-    template<typename T>
-    MemoryClassInfo(MemoryObjectInfo* memoryObjectInfo, const T* pointer, MemoryObjectType objectType = 0, size_t actualSize = sizeof(T))
-        : m_memoryObjectInfo(memoryObjectInfo)
-        , m_memoryInstrumentation(0)
-        , m_objectType(0)
-        , m_skipMembers(false)
-    {
-        init(pointer, objectType, actualSize);
-    }
-
-    template<typename M> void addMember(const M& member, const char* edgeName = 0)
-    {
-        if (!m_skipMembers)
-            m_memoryInstrumentation->addObject(member, m_memoryObjectInfo, edgeName);
-    }
-
-    WTF_EXPORT_PRIVATE void addRawBuffer(const void* buffer, size_t, const char* className = 0, const char* edgeName = 0);
-    WTF_EXPORT_PRIVATE void addPrivateBuffer(size_t, MemoryObjectType ownerObjectType = 0, const char* className = 0, const char* edgeName = 0);
-    WTF_EXPORT_PRIVATE void setCustomAllocation(bool);
-
-    void addWeakPointer(void*) { }
-    template<typename M> void ignoreMember(const M&) { }
-
-private:
-    WTF_EXPORT_PRIVATE void init(const void* pointer, MemoryObjectType, size_t actualSize);
-
-    MemoryObjectInfo* m_memoryObjectInfo;
-    MemoryInstrumentation* m_memoryInstrumentation;
-    MemoryObjectType m_objectType;
-    bool m_skipMembers;
-};
 
 template<typename T>
 void reportMemoryUsage(const T* object, MemoryObjectInfo* memoryObjectInfo)
@@ -269,6 +286,8 @@ void reportMemoryUsage(const T* object, MemoryObjectInfo* memoryObjectInfo)
 template<typename T>
 void MemoryInstrumentation::addObjectImpl(const T* object, MemoryObjectInfo* ownerObjectInfo, MemberType memberType, const char* edgeName)
 {
+    if (memberType == PointerMember)
+        return;
     if (memberType == ReferenceMember)
         reportMemoryUsage(object, ownerObjectInfo);
     else {
@@ -286,7 +305,7 @@ void MemoryInstrumentation::addObjectImpl(const OwnPtr<T>* object, MemoryObjectI
 {
     if (memberType == PointerMember && !visited(object))
         countObjectSize(object, getObjectType(ownerObjectInfo), sizeof(*object));
-    addObjectImpl(object->get(), ownerObjectInfo, OwnPtrMember, edgeName);
+    addObjectImpl(object->get(), ownerObjectInfo, RetainingPointer, edgeName);
 }
 
 template<typename T>
@@ -294,7 +313,7 @@ void MemoryInstrumentation::addObjectImpl(const RefPtr<T>* object, MemoryObjectI
 {
     if (memberType == PointerMember && !visited(object))
         countObjectSize(object, getObjectType(ownerObjectInfo), sizeof(*object));
-    addObjectImpl(object->get(), ownerObjectInfo, RefPtrMember, edgeName);
+    addObjectImpl(object->get(), ownerObjectInfo, RetainingPointer, edgeName);
 }
 
 template<typename T>

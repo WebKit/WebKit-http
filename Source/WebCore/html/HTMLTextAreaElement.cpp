@@ -34,6 +34,7 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
+#include "ExceptionCodePlaceholder.h"
 #include "FormController.h"
 #include "FormDataList.h"
 #include "Frame.h"
@@ -146,9 +147,9 @@ bool HTMLTextAreaElement::isPresentationAttribute(const QualifiedName& name) con
     return HTMLTextFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLTextAreaElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLTextAreaElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
 {
-    if (attribute.name() == wrapAttr) {
+    if (name == wrapAttr) {
         if (shouldWrapText()) {
             addPropertyToPresentationAttributeStyle(style, CSSPropertyWhiteSpace, CSSValuePreWrap);
             addPropertyToPresentationAttributeStyle(style, CSSPropertyWordWrap, CSSValueBreakWord);
@@ -157,7 +158,7 @@ void HTMLTextAreaElement::collectStyleForPresentationAttribute(const Attribute& 
             addPropertyToPresentationAttributeStyle(style, CSSPropertyWordWrap, CSSValueNormal);
         }
     } else
-        HTMLTextFormControlElement::collectStyleForPresentationAttribute(attribute, style);
+        HTMLTextFormControlElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
 void HTMLTextAreaElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -417,17 +418,16 @@ void HTMLTextAreaElement::setDefaultValue(const String& defaultValue)
         if (n->isTextNode())
             textNodes.append(n);
     }
-    ExceptionCode ec;
     size_t size = textNodes.size();
     for (size_t i = 0; i < size; ++i)
-        removeChild(textNodes[i].get(), ec);
+        removeChild(textNodes[i].get(), IGNORE_EXCEPTION);
 
     // Normalize line endings.
     String value = defaultValue;
     value.replace("\r\n", "\n");
     value.replace('\r', '\n');
 
-    insertBefore(document()->createTextNode(value), firstChild(), ec);
+    insertBefore(document()->createTextNode(value), firstChild(), IGNORE_EXCEPTION);
 
     if (!m_isDirty)
         setNonDirtyValue(value);
@@ -539,12 +539,10 @@ bool HTMLTextAreaElement::matchesReadWritePseudoClass() const
 
 void HTMLTextAreaElement::updatePlaceholderText()
 {
-    ExceptionCode ec = 0;
     String placeholderText = strippedPlaceholder();
     if (placeholderText.isEmpty()) {
         if (m_placeholder) {
-            userAgentShadowRoot()->removeChild(m_placeholder, ec);
-            ASSERT(!ec);
+            userAgentShadowRoot()->removeChild(m_placeholder, ASSERT_NO_EXCEPTION);
             m_placeholder = 0;
         }
         return;
@@ -553,11 +551,9 @@ void HTMLTextAreaElement::updatePlaceholderText()
         RefPtr<HTMLDivElement> placeholder = HTMLDivElement::create(document());
         m_placeholder = placeholder.get();
         m_placeholder->setPseudo(AtomicString("-webkit-input-placeholder", AtomicString::ConstructFromLiteral));
-        userAgentShadowRoot()->insertBefore(m_placeholder, innerTextElement()->nextSibling(), ec);
-        ASSERT(!ec);
+        userAgentShadowRoot()->insertBefore(m_placeholder, innerTextElement()->nextSibling(), ASSERT_NO_EXCEPTION);
     }
-    m_placeholder->setInnerText(placeholderText, ec);
-    ASSERT(!ec);
+    m_placeholder->setInnerText(placeholderText, ASSERT_NO_EXCEPTION);
     fixPlaceholderRenderer(m_placeholder, innerTextElement());
 }
 

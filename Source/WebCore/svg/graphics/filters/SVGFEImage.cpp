@@ -125,8 +125,8 @@ void FEImage::platformApplySoftware()
         const AffineTransform& absoluteTransform = svgFilter->absoluteTransform();
         resultImage->context()->concatCTM(absoluteTransform);
 
-        SVGElement* contextNode = static_cast<SVGElement*>(renderer->node());
-        if (contextNode->isStyled() && static_cast<SVGStyledElement*>(contextNode)->hasRelativeLengths()) {
+        SVGElement* contextNode = toSVGElement(renderer->node());
+        if (contextNode->isSVGStyledElement() && toSVGStyledElement(contextNode)->hasRelativeLengths()) {
             SVGLengthContext lengthContext(contextNode);
             float width = 0;
             float height = 0;

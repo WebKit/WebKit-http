@@ -27,11 +27,12 @@
 #include "Element.h"
 #include "InsertListCommand.h"
 #include "DocumentFragment.h"
+#include "ExceptionCodePlaceholder.h"
 #include "htmlediting.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "TextIterator.h"
-#include "visible_units.h"
+#include "VisibleUnits.h"
 
 namespace WebCore {
 
@@ -232,11 +233,10 @@ void InsertListCommand::doApplyForSingleParagraph(bool forceCreateList, const Qu
 
             // Restore the start and the end of current selection if they started inside listNode
             // because moveParagraphWithClones could have removed them.
-            ExceptionCode ec;
             if (rangeStartIsInList && newList)
-                currentSelection->setStart(newList, 0, ec);
+                currentSelection->setStart(newList, 0, IGNORE_EXCEPTION);
             if (rangeEndIsInList && newList)
-                currentSelection->setEnd(newList, lastOffsetInNode(newList.get()), ec);
+                currentSelection->setEnd(newList, lastOffsetInNode(newList.get()), IGNORE_EXCEPTION);
 
             setEndingSelection(VisiblePosition(firstPositionInNode(newList.get())));
 
@@ -376,9 +376,11 @@ PassRefPtr<HTMLElement> InsertListCommand::listifyParagraph(const VisiblePositio
         // We inserted the list at the start of the content we're about to move
         // Update the start of content, so we don't try to move the list into itself.  bug 19066
         // Layout is necessary since start's node's inline renderers may have been destroyed by the insertion
+        // The end of the content may have changed after the insertion and layout so update it as well.
         if (insertionPos == start.deepEquivalent()) {
             listElement->document()->updateLayoutIgnorePendingStylesheets();
             start = startOfParagraph(originalStart, CanSkipOverEditingBoundary);
+            end = endOfParagraph(start, CanSkipOverEditingBoundary);
         }
     }
 

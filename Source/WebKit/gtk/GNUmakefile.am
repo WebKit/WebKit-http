@@ -18,17 +18,14 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_SOUR
 	$(webkitgtk_sources)
 
 libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CXXFLAGS = \
-	$(SYMBOL_VISIBILITY_INLINES) \
+	-fvisibility-inlines-hidden \
 	$(global_cxxflags)
 
 libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CFLAGS = \
-	$(SYMBOL_VISIBILITY) \
+	-fvisibility=hidden \
 	$(global_cflags)
 
 if ENABLE_SPELLCHECK
-webkitgtk_cppflags += \
-	-DENABLE_SPELLCHECK=1
-
 webkitgtk_sources += \
 	Source/WebKit/gtk/WebCoreSupport/TextCheckerClientGtk.cpp \
 	Source/WebKit/gtk/WebCoreSupport/TextCheckerClientGtk.h
@@ -315,15 +312,18 @@ $(WEBKIT_GIRSOURCES): $(G_IR_SCANNER) $(JSCORE_GIRSOURCES) libwebkitgtk-@WEBKITG
 	     --add-include-path=$(WebKit) \
 	     --add-include-path=$(top_builddir) \
 	     --c-include="webkit/webkit.h" \
+	     -DBUILDING_WEBKIT \
 	     -I$(srcdir)/Source \
 	     -I$(WebKit) \
 	     -I$(GENSOURCES) \
+	     -I$(GENSOURCES_WEBKITDOM) \
 	     -I$(GENSOURCES_WEBKIT) \
 	     -I$(top_builddir)/Source/WebKit/gtk \
 	     -I$(top_srcdir)/Source/JavaScriptCore/ForwardingHeaders \
 	     -I$(top_srcdir) \
 	     $(GENSOURCES_WEBKIT)/webkitenumtypes.h \
 	     $(webkitgtk_h_api) \
+	     $(webkitgtk_gdom_built_h_api) \
 	     $(WebKit)/webkit/*.cpp
 
 girdir = $(datadir)/gir-1.0
@@ -449,7 +449,8 @@ webkit_tests_ldadd = \
 	$(FREETYPE_LIBS) \
 	$(GTK_LIBS) \
 	$(GLIB_LIBS) \
-	$(LIBSOUP_LIBS)
+	$(LIBSOUP_LIBS) \
+	$(XRENDER_LIBS)
 
 webkit_tests_ldflags = \
 	-no-install \

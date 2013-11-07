@@ -223,15 +223,10 @@ CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
 #endif
 
-bool (*wkCaptionAppearanceHasUserPreferences)(void);
-bool (*wkCaptionAppearanceShowCaptionsWhenAvailable)(void);
-CGColorRef(*wkCaptionAppearanceCopyForegroundColor)(void);
-CGColorRef(*wkCaptionAppearanceCopyBackgroundColor)(void);
-CGColorRef(*wkCaptionAppearanceCopyWindowColor)(void);
-bool(*wkCaptionAppearanceGetForegroundOpacity)(CGFloat*);
-bool(*wkCaptionAppearanceGetBackgroundOpacity)(CGFloat*);
-bool(*wkCaptionAppearanceGetWindowOpacity)(CGFloat*);
-CGFontRef(*wkCaptionAppearanceCopyFontForStyle)(int);
-bool(*wkCaptionAppearanceGetRelativeCharacterSize)(CGFloat*);
-int(*wkCaptionAppearanceGetTextEdgeStyle)(void);
-CFStringRef(*wkCaptionAppearanceGetSettingsChangedNotification)(void);
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+bool (*wkIsPublicSuffix)(NSString *host);
+#endif
+
+#if ENABLE(CACHE_PARTITIONING)
+CFStringRef (*wkCachePartitionKey)(void);
+#endif

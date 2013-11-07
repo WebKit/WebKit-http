@@ -50,7 +50,10 @@ public:
         return *this;
     }
     WEBKIT_EXPORT void assign(const WebMediaStreamTrack&);
+
     WEBKIT_EXPORT void initialize(const WebMediaStreamSource&);
+    WEBKIT_EXPORT void initialize(const WebString& id, const WebMediaStreamSource&);
+
     WEBKIT_EXPORT void reset();
     bool isNull() const { return m_private.isNull(); }
 
@@ -61,6 +64,7 @@ public:
     WEBKIT_EXPORT bool isEnabled() const;
 
 #if WEBKIT_IMPLEMENTATION
+    WebMediaStreamTrack(PassRefPtr<WebCore::MediaStreamComponent>);
     WebMediaStreamTrack(WebCore::MediaStreamComponent*);
     WebMediaStreamTrack& operator=(WebCore::MediaStreamComponent*);
     operator WTF::PassRefPtr<WebCore::MediaStreamComponent>() const;

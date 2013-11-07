@@ -45,20 +45,19 @@
 
 #include "KeyCodeMapping.h"
 #include "MockSpellCheck.h"
+#include "TestCommon.h"
 #include "WebContextMenuData.h"
 #include "WebDragOperation.h"
-#include "WebEventSender.h"
 #include "WebTestDelegate.h"
 #include "WebTouchPoint.h"
 #include "WebView.h"
+#include <deque>
 #include <public/WebDragData.h>
 #include <public/WebPoint.h>
 #include <public/WebString.h>
 #include <public/WebVector.h>
-#include <wtf/Deque.h>
-#include <wtf/StringExtras.h>
 
-#if OS(WINDOWS)
+#ifdef WIN32
 #include "win/WebInputEventFactory.h"
 #endif
 
@@ -98,9 +97,9 @@ WebDragData currentDragData;
 WebDragOperation currentDragEffect;
 WebDragOperationsMask currentDragEffectsAllowed;
 bool replayingSavedEvents = false;
-Deque<SavedEvent> mouseEventQueue;
+deque<SavedEvent> mouseEventQueue;
 int touchModifiers;
-Vector<WebTouchPoint> touchPoints;
+vector<WebTouchPoint> touchPoints;
 
 // Time and place of the last mouse up event.
 double lastClickTimeSec = 0;
@@ -156,7 +155,7 @@ bool applyKeyModifier(const string& modifierName, WebInputEvent* event)
     bool isSystemKey = false;
     const char* characters = modifierName.c_str();
     if (!strcmp(characters, "ctrlKey")
-#if !OS(MAC_OS_X)
+#ifndef __APPLE__
         || !strcmp(characters, "addSelectionKey")
 #endif
         ) {
@@ -165,7 +164,7 @@ bool applyKeyModifier(const string& modifierName, WebInputEvent* event)
         event->modifiers |= WebInputEvent::ShiftKey;
     else if (!strcmp(characters, "altKey")) {
         event->modifiers |= WebInputEvent::AltKey;
-#if !OS(MAC_OS_X)
+#ifndef __APPLE__
         // On Windows all keys with Alt modifier will be marked as system key.
         // We keep the same behavior on Linux and everywhere non-Mac, see:
         // WebKit/chromium/src/gtk/WebInputEventFactory.cpp
@@ -173,7 +172,7 @@ bool applyKeyModifier(const string& modifierName, WebInputEvent* event)
         // kept in sync with the related code in above file.
         isSystemKey = true;
 #endif
-#if OS(MAC_OS_X)
+#ifdef __APPLE__
     } else if (!strcmp(characters, "metaKey") || !strcmp(characters, "addSelectionKey")) {
         event->modifiers |= WebInputEvent::MetaKey;
         // On Mac only command key presses are marked as system key.
@@ -192,8 +191,8 @@ bool applyKeyModifiers(const CppVariant* argument, WebInputEvent* event)
 {
     bool isSystemKey = false;
     if (argument->isObject()) {
-        Vector<string> modifiers = argument->toStringVector();
-        for (Vector<string>::const_iterator i = modifiers.begin(); i != modifiers.end(); ++i)
+        vector<string> modifiers = argument->toStringVector();
+        for (vector<string>::const_iterator i = modifiers.begin(); i != modifiers.end(); ++i)
             isSystemKey |= applyKeyModifier(*i, event);
     } else if (argument->isString())
         isSystemKey = applyKeyModifier(argument->toString(), event);
@@ -205,7 +204,7 @@ bool applyKeyModifiers(const CppVariant* argument, WebInputEvent* event)
 // of the edit command will be stored in |*name|.
 bool getEditCommand(const WebKeyboardEvent& event, string* name)
 {
-#if OS(MAC_OS_X)
+#ifdef __APPLE__
     // We only cares about Left,Right,Up,Down keys with Command or Command+Shift
     // modifiers. These key events correspond to some special movement and
     // selection editor commands, and was supposed to be handled in
@@ -294,6 +293,7 @@ EventSender::EventSender()
     bindMethod("gestureScrollEnd", &EventSender::gestureScrollEnd);
     bindMethod("gestureScrollFirstPoint", &EventSender::gestureScrollFirstPoint);
     bindMethod("gestureScrollUpdate", &EventSender::gestureScrollUpdate);
+    bindMethod("gestureScrollUpdateWithoutPropagation", &EventSender::gestureScrollUpdateWithoutPropagation);
     bindMethod("gestureTap", &EventSender::gestureTap);
     bindMethod("gestureTapDown", &EventSender::gestureTapDown);
     bindMethod("gestureTapCancel", &EventSender::gestureTapCancel);
@@ -307,7 +307,7 @@ EventSender::EventSender()
     // When set to true (the default value), we batch mouse move and mouse up
     // events so we can simulate drag & drop.
     bindProperty("dragMode", &dragMode);
-#if OS(WINDOWS)
+#ifdef WIN32
     bindProperty("WM_KEYDOWN", &wmKeyDown);
     bindProperty("WM_KEYUP", &wmKeyUp);
     bindProperty("WM_CHAR", &wmChar);
@@ -319,16 +319,25 @@ EventSender::EventSender()
 #endif
 }
 
+EventSender::~EventSender()
+{
+}
+
+void EventSender::setContextMenuData(const WebContextMenuData& contextMenuData)
+{
+    m_lastContextMenuData = auto_ptr<WebContextMenuData>(new WebContextMenuData(contextMenuData));
+}
+
 void EventSender::reset()
 {
     // The test should have finished a drag and the mouse button state.
-    ASSERT(currentDragData.isNull());
+    WEBKIT_ASSERT(currentDragData.isNull());
     currentDragData.reset();
     currentDragEffect = WebKit::WebDragOperationNone;
     currentDragEffectsAllowed = WebKit::WebDragOperationNone;
     pressedButton = WebMouseEvent::ButtonNone;
     dragMode.set(true);
-#if OS(WINDOWS)
+#ifdef WIN32
     wmKeyDown.set(WM_KEYDOWN);
     wmKeyUp.set(WM_KEYUP);
     wmChar.set(WM_CHAR);
@@ -418,7 +427,7 @@ void EventSender::mouseDown(const CppArgumentList& arguments, CppVariant* result
     webview()->layout();
 
     int buttonNumber = getButtonNumberFromSingleArg(arguments);
-    ASSERT(buttonNumber != -1);
+    WEBKIT_ASSERT(buttonNumber != -1);
 
     WebMouseEvent::Button buttonType = getButtonTypeFromButtonNumber(buttonNumber);
 
@@ -440,7 +449,7 @@ void EventSender::mouseUp(const CppArgumentList& arguments, CppVariant* result)
     webview()->layout();
 
     int buttonNumber = getButtonNumberFromSingleArg(arguments);
-    ASSERT(buttonNumber != -1);
+    WEBKIT_ASSERT(buttonNumber != -1);
 
     WebMouseEvent::Button buttonType = getButtonTypeFromButtonNumber(buttonNumber);
 
@@ -448,7 +457,7 @@ void EventSender::mouseUp(const CppArgumentList& arguments, CppVariant* result)
         SavedEvent savedEvent;
         savedEvent.type = SavedEvent::MouseUp;
         savedEvent.buttonType = buttonType;
-        mouseEventQueue.append(savedEvent);
+        mouseEventQueue.push_back(savedEvent);
         replaySavedEvents();
     } else {
         WebMouseEvent event;
@@ -505,7 +514,7 @@ void EventSender::mouseMoveTo(const CppArgumentList& arguments, CppVariant* resu
         SavedEvent savedEvent;
         savedEvent.type = SavedEvent::MouseMove;
         savedEvent.pos = mousePos;
-        mouseEventQueue.append(savedEvent);
+        mouseEventQueue.push_back(savedEvent);
     } else {
         WebMouseEvent event;
         initMouseEvent(WebInputEvent::MouseMove, pressedButton, mousePos, &event, getCurrentEventTimeSec(m_delegate));
@@ -598,12 +607,17 @@ void EventSender::keyDown(const CppArgumentList& arguments, CppVariant* result)
         }
         if (!code) {
             WebString webCodeStr = WebString::fromUTF8(codeStr.data(), codeStr.size());
-            ASSERT(webCodeStr.length() == 1);
+            WEBKIT_ASSERT(webCodeStr.length() == 1);
             text = code = webCodeStr.data()[0];
             needsShiftKeyModifier = needsShiftModifier(code);
             if ((code & 0xFF) >= 'a' && (code & 0xFF) <= 'z')
                 code -= 'a' - 'A';
             generateChar = true;
+        }
+
+        if ("(" == codeStr) {
+            code = '9';
+            needsShiftKeyModifier = true;
         }
     }
 
@@ -616,7 +630,7 @@ void EventSender::keyDown(const CppArgumentList& arguments, CppVariant* result)
     eventDown.type = WebInputEvent::RawKeyDown;
     eventDown.modifiers = 0;
     eventDown.windowsKeyCode = code;
-#if OS(LINUX) && USE(GTK)
+#if defined(__linux__) && USE(GTK)
     eventDown.nativeKeyCode = NativeKeyCodeForWindowsKeyCode(code);
 #endif
 
@@ -678,7 +692,7 @@ void EventSender::dispatchMessage(const CppArgumentList& arguments, CppVariant* 
 {
     result->setNull();
 
-#if OS(WINDOWS)
+#ifdef WIN32
     if (arguments.size() == 3) {
         // Grab the message id to see if we need to dispatch it.
         int msg = arguments[0].toInt32();
@@ -694,7 +708,7 @@ void EventSender::dispatchMessage(const CppArgumentList& arguments, CppVariant* 
         unsigned long lparam = static_cast<unsigned long>(arguments[2].toDouble());
         webview()->handleInputEvent(WebInputEventFactory::keyboardEvent(0, msg, arguments[1].toInt32(), lparam));
     } else
-        ASSERT_NOT_REACHED();
+        WEBKIT_ASSERT_NOT_REACHED();
 #endif
 }
 
@@ -718,7 +732,7 @@ void EventSender::leapForward(const CppArgumentList& arguments, CppVariant* resu
         SavedEvent savedEvent;
         savedEvent.type = SavedEvent::LeapForward;
         savedEvent.milliseconds = milliseconds;
-        mouseEventQueue.append(savedEvent);
+        mouseEventQueue.push_back(savedEvent);
     } else
         doLeapForward(milliseconds);
 }
@@ -779,8 +793,9 @@ void EventSender::continuousMouseScrollBy(const CppArgumentList& arguments, CppV
 void EventSender::replaySavedEvents()
 {
     replayingSavedEvents = true;
-    while (!mouseEventQueue.isEmpty()) {
-        SavedEvent e = mouseEventQueue.takeFirst();
+    while (!mouseEventQueue.empty()) {
+        SavedEvent e = mouseEventQueue.front();
+        mouseEventQueue.pop_front();
 
         switch (e.type) {
         case SavedEvent::MouseMove: {
@@ -799,7 +814,7 @@ void EventSender::replaySavedEvents()
             break;
         }
         default:
-            ASSERT_NOT_REACHED();
+            WEBKIT_ASSERT_NOT_REACHED();
         }
     }
 
@@ -813,7 +828,7 @@ void EventSender::replaySavedEvents()
 //   also makes sense. This function is doing such for some flags.
 // - Some test even checks actual string content. So providing it would be also helpful.
 //
-static Vector<WebString> makeMenuItemStringsFor(WebContextMenuData* contextMenu, WebTestDelegate* delegate)
+static vector<WebString> makeMenuItemStringsFor(WebContextMenuData* contextMenu, WebTestDelegate* delegate)
 {
     // These constants are based on Safari's context menu because tests are made for it.
     static const char* nonEditableMenuStrings[] = { "Back", "Reload Page", "Open in Dashbaord", "<separator>", "View Source", "Save Page As", "Print Page", "Inspect Element", 0 };
@@ -821,20 +836,20 @@ static Vector<WebString> makeMenuItemStringsFor(WebContextMenuData* contextMenu,
 
     // This is possible because mouse events are cancelleable.
     if (!contextMenu)
-        return Vector<WebString>();
+        return vector<WebString>();
 
-    Vector<WebString> strings;
+    vector<WebString> strings;
 
     if (contextMenu->isEditable) {
         for (const char** item = editableMenuStrings; *item; ++item) 
-            strings.append(WebString::fromUTF8(*item));
+            strings.push_back(WebString::fromUTF8(*item));
         WebVector<WebString> suggestions;
         MockSpellCheck::fillSuggestionList(contextMenu->misspelledWord, &suggestions);
         for (size_t i = 0; i < suggestions.size(); ++i) 
-            strings.append(suggestions[i]);
+            strings.push_back(suggestions[i]);
     } else {
         for (const char** item = nonEditableMenuStrings; *item; ++item) 
-            strings.append(WebString::fromUTF8(*item));
+            strings.push_back(WebString::fromUTF8(*item));
     }
 
     return strings;
@@ -848,7 +863,7 @@ void EventSender::contextClick(const CppArgumentList& arguments, CppVariant* res
 
     // Clears last context menu data because we need to know if the context menu be requested 
     // after following mouse events.
-    m_delegate->clearContextMenuData();
+    m_lastContextMenuData.reset();
 
     // Generate right mouse down and up.
     WebMouseEvent event;
@@ -859,15 +874,14 @@ void EventSender::contextClick(const CppArgumentList& arguments, CppVariant* res
     initMouseEvent(WebInputEvent::MouseDown, WebMouseEvent::ButtonRight, lastMousePos, &event, getCurrentEventTimeSec(m_delegate));
     webview()->handleInputEvent(event);
 
-#if OS(WINDOWS)
+#ifdef WIN32
     initMouseEvent(WebInputEvent::MouseUp, WebMouseEvent::ButtonRight, lastMousePos, &event, getCurrentEventTimeSec(m_delegate));
     webview()->handleInputEvent(event);
 
     pressedButton = WebMouseEvent::ButtonNone;
 #endif
 
-    WebContextMenuData* lastContextMenu = m_delegate->lastContextMenuData();
-    result->set(WebBindings::makeStringArray(makeMenuItemStringsFor(lastContextMenu, m_delegate)));
+    result->set(WebBindings::makeStringArray(makeMenuItemStringsFor(m_lastContextMenuData.get(), m_delegate)));
 }
 
 class MouseDownTask: public WebMethodTask<EventSender> {
@@ -916,7 +930,7 @@ void EventSender::scheduleAsynchronousKeyDown(const CppArgumentList& arguments, 
 void EventSender::beginDragWithFiles(const CppArgumentList& arguments, CppVariant* result)
 {
     currentDragData.initialize();
-    Vector<string> files = arguments[0].toStringVector();
+    vector<string> files = arguments[0].toStringVector();
     WebVector<WebString> absoluteFilenames(files.size());
     for (size_t i = 0; i < files.size(); ++i) {
         WebDragData::Item item;
@@ -955,7 +969,7 @@ void EventSender::addTouchPoint(const CppArgumentList& arguments, CppVariant* re
             lowestId++;
     }
     touchPoint.id = lowestId;
-    touchPoints.append(touchPoint);
+    touchPoints.push_back(touchPoint);
 }
 
 void EventSender::clearTouchPoints(const CppArgumentList&, CppVariant* result)
@@ -969,7 +983,7 @@ void EventSender::releaseTouchPoint(const CppArgumentList& arguments, CppVariant
     result->setNull();
 
     const unsigned index = arguments[0].toInt32();
-    ASSERT(index < touchPoints.size());
+    WEBKIT_ASSERT(index < touchPoints.size());
 
     WebTouchPoint* touchPoint = &touchPoints[index];
     touchPoint->state = WebTouchPoint::StateReleased;
@@ -1001,7 +1015,7 @@ void EventSender::updateTouchPoint(const CppArgumentList& arguments, CppVariant*
     result->setNull();
 
     const unsigned index = arguments[0].toInt32();
-    ASSERT(index < touchPoints.size());
+    WEBKIT_ASSERT(index < touchPoints.size());
 
     WebPoint position(arguments[1].toInt32(), arguments[2].toInt32());
     WebTouchPoint* touchPoint = &touchPoints[index];
@@ -1015,7 +1029,7 @@ void EventSender::cancelTouchPoint(const CppArgumentList& arguments, CppVariant*
     result->setNull();
 
     const unsigned index = arguments[0].toInt32();
-    ASSERT(index < touchPoints.size());
+    WEBKIT_ASSERT(index < touchPoints.size());
 
     WebTouchPoint* touchPoint = &touchPoints[index];
     touchPoint->state = WebTouchPoint::StateCancelled;
@@ -1023,7 +1037,7 @@ void EventSender::cancelTouchPoint(const CppArgumentList& arguments, CppVariant*
 
 void EventSender::sendCurrentTouchEvent(const WebInputEvent::Type type)
 {
-    ASSERT(static_cast<unsigned>(WebTouchEvent::touchesLengthCap) > touchPoints.size());
+    WEBKIT_ASSERT(static_cast<unsigned>(WebTouchEvent::touchesLengthCap) > touchPoints.size());
     webview()->layout();
 
     WebTouchEvent touchEvent;
@@ -1038,7 +1052,7 @@ void EventSender::sendCurrentTouchEvent(const WebInputEvent::Type type)
     for (unsigned i = 0; i < touchPoints.size(); ++i) {
         WebTouchPoint* touchPoint = &touchPoints[i];
         if (touchPoint->state == WebTouchPoint::StateReleased) {
-            touchPoints.remove(i);
+            touchPoints.erase(touchPoints.begin() + i);
             --i;
         } else
             touchPoint->state = WebTouchPoint::StateStationary;
@@ -1138,6 +1152,12 @@ void EventSender::gestureScrollUpdate(const CppArgumentList& arguments, CppVaria
     gestureEvent(WebInputEvent::GestureScrollUpdate, arguments);
 }
 
+void EventSender::gestureScrollUpdateWithoutPropagation(const CppArgumentList& arguments, CppVariant* result)
+{
+    result->setNull();
+    gestureEvent(WebInputEvent::GestureScrollUpdateWithoutPropagation, arguments);
+}
+
 void EventSender::gestureTap(const CppArgumentList& arguments, CppVariant* result)
 {
     result->setNull();
@@ -1196,6 +1216,7 @@ void EventSender::gestureEvent(WebInputEvent::Type type, const CppArgumentList& 
 
     switch (type) {
     case WebInputEvent::GestureScrollUpdate:
+    case WebInputEvent::GestureScrollUpdateWithoutPropagation:
         event.data.scrollUpdate.deltaX = static_cast<float>(arguments[0].toDouble());
         event.data.scrollUpdate.deltaY = static_cast<float>(arguments[1].toDouble());
         event.x = m_currentGestureLocation.x;
@@ -1258,7 +1279,7 @@ void EventSender::gestureEvent(WebInputEvent::Type type, const CppArgumentList& 
         }
         break;
     default:
-        ASSERT_NOT_REACHED();
+        WEBKIT_ASSERT_NOT_REACHED();
     }
 
     event.globalX = event.x;

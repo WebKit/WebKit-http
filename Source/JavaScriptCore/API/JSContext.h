@@ -23,9 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
+#ifndef JSContext_h
+#define JSContext_h
+
 #include <JavaScriptCore/JavaScript.h>
 
-#if JS_OBJC_API_ENABLED
+#if JSC_OBJC_API_ENABLED
 
 @class JSVirtualMachine, JSValue;
 
@@ -48,6 +51,10 @@ NS_CLASS_AVAILABLE(10_9, NA)
 
 // Evaluate a string of JavaScript code.
 - (JSValue *)evaluateScript:(NSString *)script;
+
+// Return the C API version of this context. This function is for convenience
+// at the boundaries when converting code from the C API to the Objective-C API.
+- (JSGlobalContextRef)globalContextRef;
 
 // This method retrieves the global object of the JavaScript execution context.
 // Instances of JSContext originating from WebKit will return a reference to the
@@ -76,8 +83,8 @@ NS_CLASS_AVAILABLE(10_9, NA)
 // of exception is not nil, the callback will result in that value being thrown.
 // This property may also be used to check for uncaught exceptions arising from
 // API function calls (since the default behaviour of "exceptionHandler" is to
-// assign ant uncaught exception to this property).
-// If a JSValue orginating from a different JSVirtualMachine this this context
+// assign an uncaught exception to this property).
+// If a JSValue originating from a different JSVirtualMachine than this context
 // is assigned to this property, an Objective-C exception will be raised.
 @property(retain) JSValue *exception;
 
@@ -85,7 +92,7 @@ NS_CLASS_AVAILABLE(10_9, NA)
 // "exceptionHandler" block will be invoked. The default implementation for the
 // exception handler will store the exception to the exception property on
 // context. As a consequence the default behaviour is for unhandled exceptions
-// occuring within a callback from JavaScript to be rethrown upon return.
+// occurring within a callback from JavaScript to be rethrown upon return.
 // Setting this value to nil will result in all uncaught exceptions thrown from
 // the API being silently consumed.
 @property(copy) void(^exceptionHandler)(JSContext *context, JSValue *exception);
@@ -103,7 +110,7 @@ NS_CLASS_AVAILABLE(10_9, NA)
 //    JSValue *v = context[@"X"]; // Get value for "X" from the global object.
 //    context[@"Y"] = v;          // Assign 'v' to "Y" on the global object.
 //
-// An object key passed as a subscript will be converted to a JavaScipt value,
+// An object key passed as a subscript will be converted to a JavaScript value,
 // and then the value converted to a string used to resolve a property of the
 // global object.
 @interface JSContext(SubscriptSupport)
@@ -114,3 +121,5 @@ NS_CLASS_AVAILABLE(10_9, NA)
 @end
 
 #endif
+
+#endif // JSContext_h

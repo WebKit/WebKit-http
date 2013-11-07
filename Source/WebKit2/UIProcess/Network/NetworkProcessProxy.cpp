@@ -72,6 +72,17 @@ void NetworkProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launc
     platformGetLaunchOptions(launchOptions);
 }
 
+void NetworkProcessProxy::connectionWillOpen(CoreIPC::Connection* connection)
+{
+#if USE(SECURITY_FRAMEWORK)
+    SecItemShimProxy::shared().initializeConnection(connection);
+#endif
+}
+
+void NetworkProcessProxy::connectionWillClose(CoreIPC::Connection*)
+{
+}
+
 void NetworkProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
 {
     m_pendingConnectionReplies.append(reply);
@@ -87,7 +98,7 @@ void NetworkProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebPr
 DownloadProxy* NetworkProcessProxy::createDownloadProxy()
 {
     if (!m_downloadProxyMap)
-        m_downloadProxyMap = adoptPtr(new DownloadProxyMap(m_messageReceiverMap));
+        m_downloadProxyMap = adoptPtr(new DownloadProxyMap(this));
 
     return m_downloadProxyMap->createDownloadProxy(m_webContext);
 }
@@ -111,25 +122,18 @@ void NetworkProcessProxy::networkProcessCrashedOrFailedToLaunch()
 
 void NetworkProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
 {
-    if (m_messageReceiverMap.dispatchMessage(connection, decoder))
+    if (dispatchMessage(connection, decoder))
         return;
 
     if (m_webContext->dispatchMessage(connection, decoder))
         return;
-
-#if ENABLE(CUSTOM_PROTOCOLS)
-    if (decoder.messageReceiverName() == Messages::CustomProtocolManagerProxy::messageReceiverName()) {
-        m_customProtocolManagerProxy.didReceiveMessage(connection, decoder);
-        return;
-    }
-#endif
 
     didReceiveNetworkProcessProxyMessage(connection, decoder);
 }
 
 void NetworkProcessProxy::didReceiveSyncMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder)
 {
-    if (m_messageReceiverMap.dispatchSyncMessage(connection, decoder, replyEncoder))
+    if (dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
 
     ASSERT_NOT_REACHED();
@@ -174,10 +178,6 @@ void NetworkProcessProxy::didReceiveAuthenticationChallenge(uint64_t pageID, uin
 void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, CoreIPC::Connection::Identifier connectionIdentifier)
 {
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
-
-#if USE(SECURITY_FRAMEWORK)
-    connection()->addQueueClient(&SecItemShimProxy::shared());
-#endif
 
     if (CoreIPC::Connection::identifierIsNull(connectionIdentifier)) {
         // FIXME: Do better cleanup here.

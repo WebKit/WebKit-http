@@ -44,6 +44,11 @@
                 # WebKit is checked out in src/chromium/third_party/WebKit
                 'chromium_src_dir': '<(tools_dir)/../../..',
             }],
+            ['OS=="linux"', {
+                'use_custom_freetype%': 1,
+            }, {
+                'use_custom_freetype%': 0,
+            }],
         ],
     },
     'includes': [
@@ -83,10 +88,7 @@
             'dependencies': [
                 'TestRunner_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit',
-                '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit_wtf_support',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit_test_support',
-                '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
-                '<(chromium_src_dir)/webkit/support/webkit_support.gyp:webkit_support',
             ],
             'include_dirs': [
                 '<(chromium_src_dir)',
@@ -106,6 +108,41 @@
                 '<@(test_runner_files)',
             ],
             'conditions': [
+                ['inside_chromium_build == 1', {
+                    'type': '<(component)',
+                    'conditions': [
+                        ['component=="shared_library"', {
+                            'defines': [
+                                'WEBTESTRUNNER_DLL',
+                                'WEBTESTRUNNER_IMPLEMENTATION=1',
+                            ],
+                            'dependencies': [
+                                '<(chromium_src_dir)/base/base.gyp:base',
+                                '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
+                                '<(chromium_src_dir)/skia/skia.gyp:skia',
+                                '<(chromium_src_dir)/v8/tools/gyp/v8.gyp:v8',
+                            ],
+                            'direct_dependent_settings': {
+                                'defines': [
+                                    'WEBTESTRUNNER_DLL',
+                                ],
+                            },
+                            'export_dependent_settings': [
+                                '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
+                                '<(chromium_src_dir)/v8/tools/gyp/v8.gyp:v8',
+                            ],
+                            'msvs_settings': {
+                                'VCLinkerTool': {
+                                    'conditions': [
+                                        ['incremental_chrome_dll==1', {
+                                            'UseLibraryDependencyInputs': 'true',
+                                        }],
+                                    ],
+                                },
+                            },
+                        }],
+                    ],
+                }],
                 ['toolkit_uses_gtk == 1', {
                     'defines': [
                         'WTF_USE_GTK=1',
@@ -118,6 +155,8 @@
                     ],
                 }],
             ],
+            # Disable c4267 warnings until we fix size_t to int truncations. 
+            'msvs_disabled_warnings': [ 4267, ],
         },
         {
             'target_name': 'TestRunner_resources',
@@ -193,8 +232,10 @@
             'mac_bundle': 1,
             'dependencies': [
                 'TestRunner',
+                'DumpRenderTree_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:inspector_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit',
+                '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit_wtf_support',
                 '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
                 '<(chromium_src_dir)/base/base.gyp:test_support_base',
                 '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
@@ -232,6 +273,7 @@
                     ],
                     'resource_include_dirs': ['<(SHARED_INTERMEDIATE_DIR)/webkit'],
                     'sources': [
+                        # FIXME: We should just use the resources in the .pak file.
                         '<(SHARED_INTERMEDIATE_DIR)/net/net_resources.rc',
                         '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_chromium_resources.rc',
                         '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_resources.rc',
@@ -254,29 +296,6 @@
                     'sources/': [
                         ['exclude', 'Win\\.cpp$'],
                     ],
-                    'actions': [
-                        {
-                            'action_name': 'repack_locale',
-                            'variables': {
-                                'repack_path': '<(chromium_src_dir)/tools/grit/grit/format/repack.py',
-                                'pak_inputs': [
-                                    '<(SHARED_INTERMEDIATE_DIR)/net/net_resources.pak',
-                                    '<(SHARED_INTERMEDIATE_DIR)/ui/gfx/gfx_resources.pak',
-                                    '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_chromium_resources.pak',
-                                    '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_strings_en-US.pak',
-                                    '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_resources_100_percent.pak',
-                            ]},
-                            'inputs': [
-                                '<(repack_path)',
-                                '<@(pak_inputs)',
-                            ],
-                            'outputs': [
-                                '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
-                            ],
-                            'action': ['python', '<(repack_path)', '<@(_outputs)', '<@(pak_inputs)'],
-                            'process_outputs_as_mac_bundle_resources': 1,
-                        },
-                    ], # actions
                 }],
                 ['OS=="mac"', {
                     'dependencies': [
@@ -297,12 +316,6 @@
                     'dependencies': [
                         '<(chromium_src_dir)/build/linux/system.gyp:fontconfig',
                     ],
-                    'copies': [{
-                        'destination': '<(PRODUCT_DIR)',
-                        'files': [
-                            '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
-                        ]
-                    }],
                     'variables': {
                         # FIXME: Enable warnings on other platforms.
                         'chromium_code': 1,
@@ -338,16 +351,15 @@
                         '<(chromium_src_dir)/tools/android/forwarder/forwarder.gyp:forwarder',
                         '<(chromium_src_dir)/tools/android/md5sum/md5sum.gyp:md5sum',
                     ],
-                    'copies': [{
-                        'destination': '<(PRODUCT_DIR)',
-                        'files': [
-                            '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
-                        ]
-                    }],
                 }, { # OS!="android"
                     'sources/': [
                         ['exclude', 'Android\\.cpp$'],
                     ],
+                }],
+                ['use_custom_freetype==1', {
+                   'dependencies': [
+                       '<(chromium_src_dir)/third_party/freetype2/freetype2.gyp:freetype2',
+                   ],
                 }],
                 ['inside_chromium_build==0', {
                     'dependencies': [
@@ -355,6 +367,39 @@
                     ]
                 }],
             ],
+        },
+        {
+            'target_name': 'DumpRenderTree_resources',
+            'type': 'none',
+            'actions': [{
+                'action_name': 'repack_local',
+                'variables': {
+                    'repack_path': '<(chromium_src_dir)/tools/grit/grit/format/repack.py',
+                    'pak_inputs': [
+                        '<(SHARED_INTERMEDIATE_DIR)/net/net_resources.pak',
+                        '<(SHARED_INTERMEDIATE_DIR)/ui/gfx/gfx_resources.pak',
+                        '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_chromium_resources.pak',
+                        '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_strings_en-US.pak',
+                        '<(SHARED_INTERMEDIATE_DIR)/webkit/webkit_resources_100_percent.pak',
+                ]},
+                'inputs': [
+                    '<(repack_path)',
+                    '<@(pak_inputs)',
+                ],
+                'outputs': [
+                    '<(PRODUCT_DIR)/DumpRenderTree.pak',
+                ],
+                'action': ['python', '<(repack_path)', '<@(_outputs)', '<@(pak_inputs)'],
+            }],
+            'conditions': [
+                ['OS=="mac"', {
+                    'all_dependent_settings': {
+                        'mac_bundle_resources': [
+                            '<(PRODUCT_DIR)/DumpRenderTree.pak',
+                        ],
+                    },
+                }],
+            ]
         },
         {
             'target_name': 'TestNetscapePlugIn',
@@ -400,6 +445,8 @@
                     ],
                     # The .rc file requires that the name of the dll is npTestNetscapePlugIn.dll.
                     'product_name': 'npTestNetscapePlugIn',
+                    # Disable c4267 warnings until we fix size_t to int truncations. 
+                    'msvs_disabled_warnings': [ 4267, ],
                 }],
             ],
         },
@@ -465,9 +512,9 @@
                 'target_name': 'DumpRenderTree_apk',
                 'type': 'none',
                 'dependencies': [
-                    '<(chromium_src_dir)/base/base.gyp:base',
+                    '<(chromium_src_dir)/base/base.gyp:base_java',
                     '<(chromium_src_dir)/media/media.gyp:media_java',
-                    '<(chromium_src_dir)/net/net.gyp:net',
+                    '<(chromium_src_dir)/net/net.gyp:net_java',
                     'DumpRenderTree',
                 ],
                 'variables': {

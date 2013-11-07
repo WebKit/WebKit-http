@@ -1,3 +1,333 @@
+2013-03-08  Roger Fong  <roger_fong@apple.com>
+
+        Build fix for AppleWin VS2010.
+
+        * WebKit.vcxproj/FeatureDefines.props:
+
+2013-03-06  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed partial roll-out of r145003. Disable
+        ENABLE_CURSOR_VISIBILITY on win.
+
+        * WebKit.vcxproj/FeatureDefines.props:
+
+2013-03-04  Jer Noble  <jer.noble@apple.com>
+
+        Default mouse cursor behavior should be auto-hide for full screen video with custom controls
+        https://bugs.webkit.org/show_bug.cgi?id=107601
+
+        Reviewed by Beth Dakin.
+
+        Enable the CURSOR_VISIBILITY feature.
+
+        * WebKit.vcxproj/FeatureDefines.props:
+
+2013-03-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Build break with latest EFL libraries
+        https://bugs.webkit.org/show_bug.cgi?id=111028
+
+        Reviewed by Dirk Pranke.
+
+        * PlatformEfl.cmake: Added ECORE_X_INCLUDE_DIRS.
+
+2013-03-04  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. AppleWin build fix.
+
+        * WebKit.vcxproj/FeatureDefines.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-03-03  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r144567.
+        http://trac.webkit.org/changeset/144567
+        https://bugs.webkit.org/show_bug.cgi?id=111266
+
+        Does not compile on apple-win (Requested by abarth on
+        #webkit).
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-26  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed AppleWin build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+
+2013-02-26  Alberto Garcia  <agarcia@igalia.com>
+
+        [BlackBerry] Upstream the datalist support UI
+        https://bugs.webkit.org/show_bug.cgi?id=110736
+
+        Reviewed by Rob Buis.
+
+        Original code by Otto Derek Cheung <otcheung@rim.com>
+
+        * PlatformBlackBerry.cmake:
+
+2013-02-25  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. VS2010 solution build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-22  Aaron Colwell  <acolwell@chromium.org>
+
+        Disable MediaSource on Apple Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=110494
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/FeatureDefines.props:
+
+2013-02-20  Roger Fong  <roger_fong@apple.com>
+
+        Get VS2010 Solution B&I ready.
+        <rdar://problem/1322988>
+
+        Rubberstamped by Timothy Horton.        
+        
+        Add Production configuration. 
+        Add a WebKit submit solution with a DebugSuffix configuration. 
+        Modify WebKit.make as necessary.
+        
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/InterfacesProduction.props: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesRelease.props:
+        * WebKit.vcxproj/WebKit.make: Added.
+        * WebKit.vcxproj/WebKit.sln:
+        * WebKit.vcxproj/WebKit.submit.sln: Added.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKitCommon.props:
+        * WebKit.vcxproj/WebKit/WebKitProduction.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitRelease.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPreBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorProduction.props: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorRelease.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDProduction.props: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDRelease.props:
+        * WebKit.vcxproj/common.props:
+        * WebKit.vcxproj/debugsuffix.props: Added.
+        * WebKit.vcxproj/production.props: Added.
+        * WebKit.vcxproj/releaseproduction.props: Removed.
+
+2013-02-19  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, include exports for VS2010 as well.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-18  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Windows] Unreviewed VS2010 build correction.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Sync
+        export definition with VS2005 version.
+
+2013-02-15  Rik Cabanier  <cabanier@adobe.com>
+
+        Add platform support for -webkit-background-blend-mode to CG context
+        https://bugs.webkit.org/show_bug.cgi?id=108549
+
+        Reviewed by Dean Jackson.
+
+        Fixed build issue.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-14  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Touch-ups to the VS2010 WebKit solution.
+        Remove un-needed include directories and force includes. 
+        Update exports file.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        * WebKit.vcxproj/common.props:
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeLauncherCommon.props:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffLauncherCommon.props:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj:
+        * DumpRenderTree/DumpRenderTree.vcxproj/TestNetscapePlugin/TestNetscapePlugin.vcxproj.filters:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * WinLauncher/WinLauncher.vcxproj/WinLauncherCommon.props:
+        * win/record-memory/record-memoryCommon.props:
+        * WebCore.vcxproj/WebCore.vcxproj:
+        * WebCore.vcxproj/WebCore.vcxproj.filters:
+        * JavaScriptCore.vcxproj/JavaScriptCoreCommon.props:
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExports.def.in:
+        * JavaScriptCore.vcxproj/jsc/jscCommon.props:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExp.vcxproj:
+        * JavaScriptCore.vcxproj/testapi/testapi.vcxproj:
+        * WTF.vcxproj/WTFCommon.props:
+
+2013-02-14  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style native for .sln, .vcproj, and .vsprops files.
+        https://bugs.webkit.org/show_bug.cgi?id=96934
+
+        * WebKit.vcxproj/WebKit.sln: Modified property svn:eol-style.
+
+2013-02-14  Tony Chang  <tony@chromium.org>
+
+        Unreviewed, set svn:eol-style CRLF for .sln files.
+
+        * WebKit.vcxproj/WebKit.sln: Modified property svn:eol-style.
+
+2013-02-14  Roger Fong  <roger_fong@apple.com>
+
+        Add TestWebKitAPI, gtest-md and record-memory projects to VS2010 WebKit solution.
+        https://bugs.webkit.org/show_bug.cgi?id=107034.
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.sln:
+
+2013-02-12  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Build fix for VS2010 WebKit solution.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-11  Adenilson Cavalcanti  <cavalcantii@gmail.com>
+
+        Build fix: r142549 broke EFL build
+        https://bugs.webkit.org/show_bug.cgi?id=109527
+
+        Reviewed by Kentaro Hara.
+
+        Build fix.
+
+        * CMakeLists.txt:
+
+2013-02-11  Brent Fulgham  <bfulgham@webkit.org>
+
+        Rename Visual Studio solution folders to avoid conflicts with project names
+        https://bugs.webkit.org/show_bug.cgi?id=109484
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/WebKit.sln: Rename several solution folders (e.g.,
+        WTF, WebCore, WebKit, JavaScriptCore) so that they do not conflict
+        with projects using the same name.
+
+2013-02-08  Benjamin Poulain  <bpoulain@apple.com>
+
+        Move workerThreadCount from TestRunner to WebCore Internals
+        https://bugs.webkit.org/show_bug.cgi?id=109239
+
+        Reviewed by Darin Adler.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-02-07  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Corrections the exports definition file.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-07  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. More VS2010 WebKit solution touchups.
+        Make WebKitExports.def.in be treated as a custom build file so that changes to it cause the exports to be rebuilt.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj.filters:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-06  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Touchups to VS2010 WebKit solution.
+        Add WinLauncher projects to solution.
+
+        * WebKit.vcxproj/WebKit.sln:
+
+2013-02-05  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Get rid of redundant exports in export definitions file.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-02-05  Brent Fulgham  <bfulgham@webkit.org>
+
+        Unreviewed Visual Studio 2010 build correction.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        Link export definitions out of date with ToT.  Corrected.
+
+2013-02-05  Roger Fong  <roger_fong@apple.com>
+
+        Add a JavaScriptCore Export Generator project.
+        https://bugs.webkit.org/show_bug.cgi?id=108971.
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.sln:
+
+2013-02-05  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Delete some errant preprocessor definitions.
+
+        * WebKit.vcxproj/WebKit/WebKitCommon.props:
+
+2013-02-05  Roger Fong  <roger_fong@apple.com>
+
+        VS2010 WebKit projects, scripts, and property sheets.
+        https://bugs.webkit.org/show_bug.cgi?id=106989.
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces: Added.
+        * WebKit.vcxproj/Interfaces/FixMIDLHeaders.pl: Copied from win/WebKit.vcproj/FixMIDLHeaders.pl.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj: Added.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters: Added.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.user: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesDebug.props: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesPostBuild.cmd: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesPreBuild.cmd: Added.
+        * WebKit.vcxproj/Interfaces/InterfacesRelease.props: Added.
+        * WebKit.vcxproj/WebKit: Added.
+        * WebKit.vcxproj/WebKit.sln:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Added.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters: Added.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.user: Added.
+        * WebKit.vcxproj/WebKit/WebKitApple.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitCFLite.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitCommon.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitDebug.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitDirectX.props: Added.
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd: Added.
+        * WebKit.vcxproj/WebKit/WebKitPreBuild.cmd: Added.
+        * WebKit.vcxproj/WebKit/WebKitPreLink.cmd: Added.
+        * WebKit.vcxproj/WebKit/WebKitRelease.props: Added.
+        * WebKit.vcxproj/WebKit/resource.h: Copied from win/WebKit.vcproj/resource.h.
+        * WebKit.vcxproj/WebKitExportGenerator: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj.filters: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj.user: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorBuildCmd.cmd: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorDebug.props: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPostBuild.cmd: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPreBuild.cmd: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorRelease.props: Added.
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Copied from win/WebKit.vcproj/WebKitExports.def.in.
+        * WebKit.vcxproj/WebKitGUID: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.user: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDCommon.props: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebug.props: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDPostBuild.cmd: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDPreBuild.cmd: Added.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDRelease.props: Added.
+
 2013-01-31  Christophe Dumez  <dchris@gmail.com>
 
         [EFL] Disable Web Intents

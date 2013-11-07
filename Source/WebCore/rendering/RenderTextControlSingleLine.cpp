@@ -52,7 +52,7 @@ using namespace HTMLNames;
 RenderTextControlSingleLine::RenderTextControlSingleLine(Element* element)
     : RenderTextControl(element)
     , m_shouldDrawCapsLockIndicator(false)
-    , m_desiredInnerTextHeight(-1)
+    , m_desiredInnerTextLogicalHeight(-1)
 {
     ASSERT(element->isHTMLElement());
     ASSERT(element->toInputElement());
@@ -80,8 +80,11 @@ void RenderTextControlSingleLine::paint(PaintInfo& paintInfo, const LayoutPoint&
     if (paintInfo.phase == PaintPhaseBlockBackground && m_shouldDrawCapsLockIndicator) {
         LayoutRect contentsRect = contentBoxRect();
 
-        // Center vertically like the text.
-        contentsRect.setY((height() - contentsRect.height()) / 2);
+        // Center in the block progression direction.
+        if (isHorizontalWritingMode())
+            contentsRect.setY((height() - contentsRect.height()) / 2);
+        else
+            contentsRect.setX((width() - contentsRect.width()) / 2);
 
         // Convert the rect into the coords used for painting the content
         contentsRect.moveBy(paintOffset + location());
@@ -89,9 +92,9 @@ void RenderTextControlSingleLine::paint(PaintInfo& paintInfo, const LayoutPoint&
     }
 }
 
-LayoutUnit RenderTextControlSingleLine::computeHeightLimit() const
+LayoutUnit RenderTextControlSingleLine::computeLogicalHeightLimit() const
 {
-    return containerElement() ? contentHeight() : height();
+    return containerElement() ? contentLogicalHeight() : logicalHeight();
 }
 
 void RenderTextControlSingleLine::layout()
@@ -110,13 +113,13 @@ void RenderTextControlSingleLine::layout()
     // because of compability.
 
     RenderBox* innerTextRenderer = innerTextElement()->renderBox();
-    ASSERT(innerTextRenderer);
     RenderBox* innerBlockRenderer = innerBlockElement() ? innerBlockElement()->renderBox() : 0;
 
     // To ensure consistency between layouts, we need to reset any conditionally overriden height.
-    innerTextRenderer->style()->setHeight(Length(Auto));
+    if (innerTextRenderer)
+        innerTextRenderer->style()->setLogicalHeight(Length(Auto));
     if (innerBlockRenderer)
-        innerBlockRenderer->style()->setHeight(Length(Auto));
+        innerBlockRenderer->style()->setLogicalHeight(Length(Auto));
 
     RenderBlock::layoutBlock(false);
 
@@ -124,42 +127,41 @@ void RenderTextControlSingleLine::layout()
     RenderBox* containerRenderer = container ? container->renderBox() : 0;
 
     // Set the text block height
-    LayoutUnit desiredHeight = textBlockHeight();
-    LayoutUnit currentHeight = innerTextRenderer->height();
-
-    LayoutUnit heightLimit = computeHeightLimit();
-    if (currentHeight > heightLimit) {
-        if (desiredHeight != currentHeight)
+    LayoutUnit desiredLogicalHeight = textBlockLogicalHeight();
+    LayoutUnit logicalHeightLimit = computeLogicalHeightLimit();
+    if (innerTextRenderer && innerTextRenderer->logicalHeight() > logicalHeightLimit) {
+        if (desiredLogicalHeight != innerTextRenderer->logicalHeight())
             setNeedsLayout(true, MarkOnlyThis);
 
-        innerTextRenderer->style()->setHeight(Length(desiredHeight, Fixed));
-        m_desiredInnerTextHeight = desiredHeight;
+        m_desiredInnerTextLogicalHeight = desiredLogicalHeight;
+
+        if (innerTextRenderer)
+            innerTextRenderer->style()->setLogicalHeight(Length(desiredLogicalHeight, Fixed));
         if (innerBlockRenderer)
-            innerBlockRenderer->style()->setHeight(Length(desiredHeight, Fixed));
+            innerBlockRenderer->style()->setLogicalHeight(Length(desiredLogicalHeight, Fixed));
     }
     // The container might be taller because of decoration elements.
     if (containerRenderer) {
         containerRenderer->layoutIfNeeded();
-        LayoutUnit containerHeight = containerRenderer->height();
-        if (containerHeight > heightLimit) {
-            containerRenderer->style()->setHeight(Length(heightLimit, Fixed));
+        LayoutUnit containerLogicalHeight = containerRenderer->logicalHeight();
+        if (containerLogicalHeight > logicalHeightLimit) {
+            containerRenderer->style()->setLogicalHeight(Length(logicalHeightLimit, Fixed));
             setNeedsLayout(true, MarkOnlyThis);
-        } else if (containerRenderer->height() < contentHeight()) {
-            containerRenderer->style()->setHeight(Length(contentHeight(), Fixed));
+        } else if (containerRenderer->logicalHeight() < contentLogicalHeight()) {
+            containerRenderer->style()->setLogicalHeight(Length(contentLogicalHeight(), Fixed));
             setNeedsLayout(true, MarkOnlyThis);
         } else
-            containerRenderer->style()->setHeight(Length(containerHeight, Fixed));
+            containerRenderer->style()->setLogicalHeight(Length(containerLogicalHeight, Fixed));
     }
 
     // If we need another layout pass, we have changed one of children's height so we need to relayout them.
     if (needsLayout())
         RenderBlock::layoutBlock(true);
 
-    // Center the child block vertically
-    currentHeight = innerTextRenderer->height();
-    if (!container && currentHeight != contentHeight()) {
-        LayoutUnit heightDiff = currentHeight - contentHeight();
-        innerTextRenderer->setY(innerTextRenderer->y() - (heightDiff / 2 + layoutMod(heightDiff, 2)));
+    // Center the child block in the block progression direction (vertical centering for horizontal text fields).
+    if (!container && innerTextRenderer && innerTextRenderer->height() != contentLogicalHeight()) {
+        LayoutUnit logicalHeightDiff = innerTextRenderer->logicalHeight() - contentLogicalHeight();
+        innerTextRenderer->setLogicalTop(innerTextRenderer->logicalTop() - (logicalHeightDiff / 2 + layoutMod(logicalHeightDiff, 2)));
     } else
         centerContainerIfNeeded(containerRenderer);
 
@@ -167,16 +169,18 @@ void RenderTextControlSingleLine::layout()
     if (RenderBox* innerSpinBox = innerSpinButtonElement() ? innerSpinButtonElement()->renderBox() : 0) {
         RenderBox* parentBox = innerSpinBox->parentBox();
         if (containerRenderer && !containerRenderer->style()->isLeftToRightDirection())
-            innerSpinBox->setLocation(LayoutPoint(-paddingLeft(), -paddingTop()));
+            innerSpinBox->setLogicalLocation(LayoutPoint(-paddingLogicalLeft(), -paddingBefore()));
         else
-            innerSpinBox->setLocation(LayoutPoint(parentBox->width() - innerSpinBox->width() + paddingRight(), -paddingTop()));
-        innerSpinBox->setHeight(height() - borderTop() - borderBottom());
+            innerSpinBox->setLogicalLocation(LayoutPoint(parentBox->logicalWidth() - innerSpinBox->logicalWidth() + paddingLogicalRight(), -paddingBefore()));
+        innerSpinBox->setLogicalHeight(logicalHeight() - borderBefore() - borderAfter());
     }
 
     HTMLElement* placeholderElement = inputElement()->placeholderElement();
     if (RenderBox* placeholderBox = placeholderElement ? placeholderElement->renderBox() : 0) {
+        ASSERT(innerTextRenderer);
         placeholderBox->style()->setWidth(Length(innerTextRenderer->width() - placeholderBox->borderAndPaddingWidth(), Fixed));
         placeholderBox->style()->setHeight(Length(innerTextRenderer->height() - placeholderBox->borderAndPaddingHeight(), Fixed));
+        bool neededLayout = placeholderBox->needsLayout();
         bool placeholderBoxHadLayout = placeholderBox->everHadLayout();
         placeholderBox->layoutIfNeeded();
         LayoutPoint textOffset = innerTextRenderer->location();
@@ -191,6 +195,10 @@ void RenderTextControlSingleLine::layout()
             // logic should be shared with RenderBlock::layoutBlockChild.
             placeholderBox->repaint();
         }
+        // The placeholder gets layout last, after the parent text control and its other children,
+        // so in order to get the correct overflow from the placeholder we need to recompute it now.
+        if (neededLayout)
+            computeOverflow(clientLogicalBottom());
     }
 }
 
@@ -219,7 +227,7 @@ bool RenderTextControlSingleLine::nodeAtPoint(const HitTestRequest& request, Hit
 
 void RenderTextControlSingleLine::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    m_desiredInnerTextHeight = -1;
+    m_desiredInnerTextLogicalHeight = -1;
     RenderTextControl::styleDidChange(diff, oldStyle);
 
     // We may have set the width and the height in the old style in layout().
@@ -272,7 +280,9 @@ bool RenderTextControlSingleLine::hasControlClip() const
 LayoutRect RenderTextControlSingleLine::controlClipRect(const LayoutPoint& additionalOffset) const
 {
     ASSERT(hasControlClip());
-    LayoutRect clipRect = unionRect(contentBoxRect(), containerElement()->renderBox()->frameRect());
+    LayoutRect clipRect = contentBoxRect();
+    if (containerElement()->renderBox())
+        clipRect = unionRect(clipRect, containerElement()->renderBox()->frameRect());
     clipRect.moveBy(additionalOffset);
     return clipRect;
 }
@@ -289,7 +299,7 @@ float RenderTextControlSingleLine::getAvgCharWidth(AtomicString family)
     return RenderTextControl::getAvgCharWidth(family);
 }
 
-LayoutUnit RenderTextControlSingleLine::preferredContentWidth(float charWidth) const
+LayoutUnit RenderTextControlSingleLine::preferredContentLogicalWidth(float charWidth) const
 {
     int factor;
     bool includesDecoration = inputElement()->sizeShouldIncludeDecoration(factor);
@@ -316,18 +326,17 @@ LayoutUnit RenderTextControlSingleLine::preferredContentWidth(float charWidth) c
     if (includesDecoration) {
         HTMLElement* spinButton = innerSpinButtonElement();
         if (RenderBox* spinRenderer = spinButton ? spinButton->renderBox() : 0) {
-            result += spinRenderer->borderLeft() + spinRenderer->borderRight() +
-                  spinRenderer->paddingLeft() + spinRenderer->paddingRight();
-            // Since the width of spinRenderer is not calculated yet, spinRenderer->width() returns 0.
-            // So computedStyle()->width() is used instead.
-            result += spinButton->computedStyle()->width().value();
+            result += spinRenderer->borderAndPaddingLogicalWidth();
+            // Since the width of spinRenderer is not calculated yet, spinRenderer->logicalWidth() returns 0.
+            // So computedStyle()->logicalWidth() is used instead.
+            result += spinButton->computedStyle()->logicalWidth().value();
         }
     }
 
     return result;
 }
 
-LayoutUnit RenderTextControlSingleLine::computeControlHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const
+LayoutUnit RenderTextControlSingleLine::computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const
 {
     return lineHeight + nonContentHeight;
 }
@@ -349,8 +358,8 @@ PassRefPtr<RenderStyle> RenderTextControlSingleLine::createInnerTextStyle(const 
     textBlockStyle->setOverflowY(OHIDDEN);
     textBlockStyle->setTextOverflow(textShouldBeTruncated() ? TextOverflowEllipsis : TextOverflowClip);
 
-    if (m_desiredInnerTextHeight >= 0)
-        textBlockStyle->setHeight(Length(m_desiredInnerTextHeight, Fixed));
+    if (m_desiredInnerTextLogicalHeight >= 0)
+        textBlockStyle->setLogicalHeight(Length(m_desiredInnerTextLogicalHeight, Fixed));
     // Do not allow line-height to be smaller than our default.
     if (textBlockStyle->fontMetrics().lineSpacing() > lineHeight(true, HorizontalLine, PositionOfInteriorLineBoxes))
         textBlockStyle->setLineHeight(RenderStyle::initialLineHeight());
@@ -383,7 +392,10 @@ bool RenderTextControlSingleLine::textShouldBeTruncated() const
 
 void RenderTextControlSingleLine::autoscroll(const IntPoint& position)
 {
-    RenderLayer* layer = innerTextElement()->renderBox()->layer();
+    RenderBox* renderer = innerTextElement()->renderBox();
+    if (!renderer)
+        return;
+    RenderLayer* layer = renderer->layer();
     if (layer)
         layer->autoscroll(position);
 }
@@ -430,7 +442,10 @@ void RenderTextControlSingleLine::setScrollTop(int newTop)
 
 bool RenderTextControlSingleLine::scroll(ScrollDirection direction, ScrollGranularity granularity, float multiplier, Node** stopNode)
 {
-    RenderLayer* layer = innerTextElement()->renderBox()->layer();
+    RenderBox* renderer = innerTextElement()->renderBox();
+    if (!renderer)
+        return false;
+    RenderLayer* layer = renderer->layer();
     if (layer && layer->scroll(direction, granularity, multiplier))
         return true;
     return RenderBlock::scroll(direction, granularity, multiplier, stopNode);

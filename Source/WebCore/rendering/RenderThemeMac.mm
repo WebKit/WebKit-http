@@ -21,6 +21,7 @@
 #import "RenderThemeMac.h"
 
 #import "Element.h"
+#import "ExceptionCodePlaceholder.h"
 #import "GraphicsContextCG.h"
 #import "HTMLMediaElement.h"
 #import "LocalCurrentGraphicsContext.h"
@@ -234,11 +235,10 @@ bool RenderThemeMac::paintMediaSliderTrack(RenderObject* o, const PaintInfo& pai
         return false;
 
     RefPtr<TimeRanges> timeRanges = mediaElement->buffered();
-    ExceptionCode ignoredException;
-    float timeLoaded = timeRanges->length() ? timeRanges->end(0, ignoredException) : 0;
+    float timeLoaded = timeRanges->length() ? timeRanges->end(0, IGNORE_EXCEPTION) : 0;
     float currentTime = mediaElement->currentTime();
     float duration = mediaElement->duration();
-    if (isnan(duration))
+    if (std::isnan(duration))
         duration = 0;
 
     ContextContainer cgContextContainer(paintInfo.context);
@@ -280,19 +280,6 @@ bool RenderThemeMac::paintMediaReturnToRealtimeButton(RenderObject* o, const Pai
 
     LocalCurrentGraphicsContext localContext(paintInfo.context);
     wkDrawMediaUIPart(MediaReturnToRealtimeButton, mediaControllerTheme(), localContext.cgContext(), r, getMediaUIPartStateFlags(node));
-    return false;
-}
-
-bool RenderThemeMac::paintMediaToggleClosedCaptionsButton(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
-{
-    Node* node = o->node();
-    if (!node)
-        return false;
-    if (!node->isMediaControlElement())
-        return false;
-
-    LocalCurrentGraphicsContext localContext(paintInfo.context);
-    wkDrawMediaUIPart(mediaControlElementType(node), mediaControllerTheme(), localContext.cgContext(), r, getMediaUIPartStateFlags(node));
     return false;
 }
 

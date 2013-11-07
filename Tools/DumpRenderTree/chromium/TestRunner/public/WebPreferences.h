@@ -34,6 +34,7 @@
 #include "Platform/chromium/public/WebString.h"
 #include "Platform/chromium/public/WebURL.h"
 #include "WebKit/chromium/public/WebSettings.h"
+#include "WebTestCommon.h"
 
 namespace WebKit {
 class WebView;
@@ -41,7 +42,7 @@ class WebView;
 
 namespace WebTestRunner {
 
-struct WebPreferences {
+struct WEBTESTRUNNER_EXPORT WebPreferences {
     WebKit::WebString standardFontFamily;
     WebKit::WebString fixedFontFamily;
     WebKit::WebString serifFontFamily;
@@ -91,6 +92,7 @@ struct WebPreferences {
     bool acceleratedCompositingForOverflowScrollEnabled;
     bool acceleratedCompositingEnabled;
     bool forceCompositingMode;
+    bool threadedHTMLParser;
     bool accelerated2dCanvasEnabled;
     bool deferred2dCanvasEnabled;
     bool acceleratedPaintingEnabled;
@@ -102,7 +104,6 @@ struct WebPreferences {
     bool cssCustomFilterEnabled;
     bool shouldRespectImageOrientation;
     bool asynchronousSpellCheckingEnabled;
-    double minimumTimerInterval;
     bool touchDragDropEnabled;
 
     WebPreferences() { reset(); }

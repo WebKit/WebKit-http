@@ -83,7 +83,7 @@ static NSRect convertRectToScreen(NSWindow *window, NSRect rect)
 #pragma mark Initialization
 - (id)init
 {
-    RetainPtr<NSWindow> window = adoptNS([[WebCoreFullScreenWindow alloc] initWithContentRect:NSZeroRect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO]);
+    RetainPtr<NSWindow> window = adoptNS([[WebCoreFullScreenWindow alloc] initWithContentRect:NSZeroRect styleMask:NSClosableWindowMask backing:NSBackingStoreBuffered defer:NO]);
     self = [super initWithWindow:window.get()];
     if (!self)
         return nil;
@@ -109,7 +109,6 @@ static NSRect convertRectToScreen(NSWindow *window, NSRect rect)
 {
     [super windowDidLoad];
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidResignActive:) name:NSApplicationDidResignActiveNotification object:NSApp];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationDidChangeScreenParameters:) name:NSApplicationDidChangeScreenParametersNotification object:NSApp];
 }
 
@@ -155,21 +154,6 @@ static NSRect convertRectToScreen(NSWindow *window, NSRect rect)
 
 #pragma mark -
 #pragma mark Notifications
-
-- (void)applicationDidResignActive:(NSNotification*)notification
-{
-    // Check to see if the fullScreenWindow is on the active space; this function is available
-    // on 10.6 and later, so default to YES if the function is not available:
-    NSWindow* fullScreenWindow = [self window];
-    BOOL isOnActiveSpace = ([fullScreenWindow respondsToSelector:@selector(isOnActiveSpace)] ? [fullScreenWindow isOnActiveSpace] : YES);
-    
-    // Replicate the QuickTime Player (X) behavior when losing active application status:
-    // Is the fullScreen screen the main screen? (Note: this covers the case where only a 
-    // single screen is available.)  Is the fullScreen screen on the current space? IFF so, 
-    // then exit fullScreen mode. 
-    if ([fullScreenWindow screen] == [[NSScreen screens] objectAtIndex:0] && isOnActiveSpace)
-        [self cancelOperation:self];
-}
 
 - (void)applicationDidChangeScreenParameters:(NSNotification*)notification
 {
@@ -262,6 +246,8 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
 
     [self _manager]->setAnimatingFullScreen(true);
     [self _manager]->willEnterFullScreen();
+    _savedScale = [self _page]->pageScaleFactor();
+    [self _page]->scalePage(1, IntPoint());
 }
 
 - (void)beganEnterFullScreenWithInitialFrame:(const WebCore::IntRect&)initialFrame finalFrame:(const WebCore::IntRect&)finalFrame
@@ -391,7 +377,7 @@ static void completeFinishExitFullScreenAnimationAfterRepaint(WKErrorRef, void*)
     // These messages must be sent after the swap or flashing will occur during forceRepaint:
     [self _manager]->didExitFullScreen();
     [self _manager]->setAnimatingFullScreen(false);
-
+    [self _page]->scalePage(_savedScale, IntPoint());
     [self _page]->forceRepaint(VoidCallback::create(self, completeFinishExitFullScreenAnimationAfterRepaint));
 }
 
@@ -405,6 +391,12 @@ static void completeFinishExitFullScreenAnimationAfterRepaint(WKErrorRef, void*)
 static void completeFinishExitFullScreenAnimationAfterRepaint(WKErrorRef, void* _self)
 {
     [(WKFullScreenWindowController*)_self completeFinishExitFullScreenAnimationAfterRepaint];
+}
+
+- (void)performClose:(id)sender
+{
+    if (_isFullScreen)
+        [self cancelOperation:sender];
 }
 
 - (void)close
@@ -575,6 +567,7 @@ static NSRect windowFrameFromApparentFrames(NSRect screenFrame, NSRect initialFr
     if (_isFullScreen) {
         // We still believe we're in full screen mode, so we must have been asked to exit full
         // screen by the system full screen button.
+        [self _manager]->requestExitFullScreen();
         [self exitFullScreen];
         _isExitingFullScreen = YES;
     }

@@ -175,20 +175,17 @@ String contextMenuItemTagOpenFrameInNewWindow()
 
 String contextMenuItemTagCopy()
 {
-    static String stockLabel = String::fromUTF8("Copy");
-    return stockLabel;
+    return String::fromUTF8("Copy");
 }
 
 String contextMenuItemTagDelete()
 {
-    static String stockLabel = String::fromUTF8("Delete");
-    return stockLabel;
+    return String::fromUTF8("Delete");
 }
 
 String contextMenuItemTagSelectAll()
 {
-    static String stockLabel = String::fromUTF8("Select All");
-    return stockLabel;
+    return String::fromUTF8("Select All");
 }
 
 String contextMenuItemTagUnicode()
@@ -203,20 +200,17 @@ String contextMenuItemTagInputMethods()
 
 String contextMenuItemTagGoBack()
 {
-    static String stockLabel = String::fromUTF8("Go Back");
-    return stockLabel;
+    return String::fromUTF8("Go Back");
 }
 
 String contextMenuItemTagGoForward()
 {
-    static String stockLabel = String::fromUTF8("Go Forward");
-    return stockLabel;
+    return String::fromUTF8("Go Forward");
 }
 
 String contextMenuItemTagStop()
 {
-    static String stockLabel = String::fromUTF8("Stop");
-    return stockLabel;
+    return String::fromUTF8("Stop");
 }
 
 String contextMenuItemTagReload()
@@ -226,14 +220,12 @@ String contextMenuItemTagReload()
 
 String contextMenuItemTagCut()
 {
-    static String stockLabel = String::fromUTF8("Cut");
-    return stockLabel;
+    return String::fromUTF8("Cut");
 }
 
 String contextMenuItemTagPaste()
 {
-    static String stockLabel = String::fromUTF8("Paste");
-    return stockLabel;
+    return String::fromUTF8("Paste");
 }
 
 String contextMenuItemTagNoGuessesFound()
@@ -303,20 +295,17 @@ String contextMenuItemTagFontMenu()
 
 String contextMenuItemTagBold()
 {
-    static String stockLabel = String::fromUTF8("Bold");
-    return stockLabel;
+    return String::fromUTF8("Bold");
 }
 
 String contextMenuItemTagItalic()
 {
-    static String stockLabel = String::fromUTF8("Italic");
-    return stockLabel;
+    return String::fromUTF8("Italic");
 }
 
 String contextMenuItemTagUnderline()
 {
-    static String stockLabel = String::fromUTF8("Underline");
-    return stockLabel;
+    return String::fromUTF8("Underline");
 }
 
 String contextMenuItemTagOutline()
@@ -465,14 +454,14 @@ String validationMessagePatternMismatchText()
     return String::fromUTF8("pattern mismatch");
 }
 
-String validationMessageRangeOverflowText(const String&)
+String validationMessageRangeOverflowText(const String& maximum)
 {
-    return String::fromUTF8("range overflow");
+    return ASCIILiteral("Value must be less than or equal to ") + maximum;
 }
 
-String validationMessageRangeUnderflowText(const String&)
+String validationMessageRangeUnderflowText(const String& minimum)
 {
-    return String::fromUTF8("range underflow");
+    return ASCIILiteral("Value must be greater than or equal to ") + minimum;
 }
 
 String validationMessageStepMismatchText(const String&, const String&)
@@ -492,17 +481,17 @@ String validationMessageTypeMismatchText()
 
 String validationMessageTypeMismatchForEmailText()
 {
-    return String::fromUTF8("type mismatch");
+    return ASCIILiteral("Please enter an email address");
 }
 
 String validationMessageTypeMismatchForMultipleEmailText()
 {
-    return String::fromUTF8("type mismatch");
+    return ASCIILiteral("Please enter an email address");
 }
 
 String validationMessageTypeMismatchForURLText()
 {
-    return String::fromUTF8("type mismatch");
+    return ASCIILiteral("Please enter a URL");
 }
 
 String validationMessageValueMissingText()
@@ -620,5 +609,16 @@ String textTrackNoLabelText()
     return String::fromUTF8("No label");
 }
 #endif
+
+String snapshottedPlugInLabelTitle()
+{
+    return String("Snapshotted Plug-In");
+}
+
+String snapshottedPlugInLabelSubtitle()
+{
+    return String("Click to restart");
+}
+
 
 }

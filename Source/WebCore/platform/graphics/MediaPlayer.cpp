@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,6 +42,10 @@
 
 #if ENABLE(VIDEO_TRACK)
 #include "InbandTextTrackPrivate.h"
+#endif
+
+#if ENABLE(MEDIA_SOURCE)
+#include "MediaSource.h"
 #endif
 
 #if PLATFORM(QT)
@@ -91,6 +95,9 @@ public:
     NullMediaPlayerPrivate(MediaPlayer*) { }
 
     virtual void load(const String&) { }
+#if ENABLE(MEDIA_SOURCE)
+    virtual void load(const String&, PassRefPtr<MediaSource>) { }
+#endif
     virtual void cancelLoad() { }
 
     virtual void prepareToPlay() { }
@@ -151,17 +158,6 @@ public:
 
     virtual bool hasSingleSecurityOrigin() const { return true; }
 
-#if ENABLE(MEDIA_SOURCE)
-    virtual MediaPlayer::AddIdStatus sourceAddId(const String& id, const String& type, const Vector<String>& codecs) { return MediaPlayer::NotSupported; }
-    virtual PassRefPtr<TimeRanges> sourceBuffered(const String&) { return TimeRanges::create(); }
-    virtual bool sourceRemoveId(const String&) { return false; }
-    virtual bool sourceAppend(const String&, const unsigned char*, unsigned) { return false; }
-    virtual bool sourceAbort(const String&) { return false; }
-    virtual void sourceSetDuration(double) { }
-    virtual void sourceEndOfStream(MediaPlayer::EndOfStreamStatus) { }
-    virtual bool sourceSetTimestampOffset(const String&, double) { return false; }
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) OVERRIDE { return MediaPlayer::InvalidPlayerState; }
     virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) OVERRIDE { return MediaPlayer::InvalidPlayerState; }
@@ -204,15 +200,16 @@ static void addMediaEngine(CreateMediaEnginePlayer, MediaEngineSupportedTypes, M
 static MediaPlayerFactory* bestMediaEngineForTypeAndCodecs(const String& type, const String& codecs, const String& keySystem, const KURL&, MediaPlayerFactory* current = 0);
 static MediaPlayerFactory* nextMediaEngine(MediaPlayerFactory* current);
 
-enum RequeryEngineOptions { DoNotRequeryEngines, RequeryEngines };
-static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions requeryFlags = DoNotRequeryEngines )
+enum RequeryEngineOptions { DoNotResetEngines, ResetEngines };
+static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions requeryFlags = DoNotResetEngines )
 {
     DEFINE_STATIC_LOCAL(Vector<MediaPlayerFactory*>, installedEngines, ());
     static bool enginesQueried = false;
 
-    if (requeryFlags == RequeryEngines) {
+    if (requeryFlags == ResetEngines) {
         installedEngines.clear();
         enginesQueried = false;
+        return installedEngines;
     }
 
     if (!enginesQueried) {
@@ -295,7 +292,7 @@ static MediaPlayerFactory* bestMediaEngineForTypeAndCodecs(const String& type, c
                 current = 0;
             continue;
         }
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
         MediaPlayer::SupportsType engineSupport = engines[ndx]->supportsTypeAndCodecs(type, codecs, keySystem, url);
 #else
         UNUSED_PARAM(keySystem);
@@ -372,6 +369,10 @@ bool MediaPlayer::load(const KURL& url, const ContentType& contentType, const St
     m_keySystem = keySystem.lower();
     m_contentMIMETypeWasInferredFromExtension = false;
 
+#if ENABLE(MEDIA_SOURCE)
+    m_mediaSource = 0;
+#endif
+
     // If the MIME type is missing or is not meaningful, try to figure it out from the URL.
     if (m_contentMIMEType.isEmpty() || m_contentMIMEType == applicationOctetStream() || m_contentMIMEType == textPlain()) {
         if (m_url.protocolIsData())
@@ -393,6 +394,20 @@ bool MediaPlayer::load(const KURL& url, const ContentType& contentType, const St
     loadWithNextMediaEngine(0);
     return m_currentMediaEngine;
 }
+
+#if ENABLE(MEDIA_SOURCE)
+bool MediaPlayer::load(const KURL& url, PassRefPtr<MediaSource> mediaSource)
+{
+    m_mediaSource = mediaSource;
+    m_contentMIMEType = "";
+    m_contentTypeCodecs = "";
+    m_url = url;
+    m_keySystem = "";
+    m_contentMIMETypeWasInferredFromExtension = false;
+    loadWithNextMediaEngine(0);
+    return m_currentMediaEngine;
+}
+#endif
 
 void MediaPlayer::loadWithNextMediaEngine(MediaPlayerFactory* current)
 {
@@ -425,9 +440,14 @@ void MediaPlayer::loadWithNextMediaEngine(MediaPlayerFactory* current)
             m_private->prepareForRendering();
     }
 
-    if (m_private)
+    if (m_private) {
+#if ENABLE(MEDIA_SOURCE)
+        if (m_mediaSource)
+            m_private->load(m_url.string(), m_mediaSource);
+        else
+#endif
         m_private->load(m_url.string());
-    else {
+    } else {
         m_private = createNullMediaPlayer(this);
         if (m_mediaPlayerClient) {
             m_mediaPlayerClient->mediaPlayerEngineUpdated(this);
@@ -476,49 +496,6 @@ void MediaPlayer::pause()
 {
     m_private->pause();
 }
-
-#if ENABLE(MEDIA_SOURCE)
-
-MediaPlayer::AddIdStatus MediaPlayer::sourceAddId(const String& id, const String& type, const Vector<String>& codecs)
-{
-    return m_private->sourceAddId(id, type, codecs);
-}
-
-PassRefPtr<TimeRanges> MediaPlayer::sourceBuffered(const String& id)
-{
-    return m_private->sourceBuffered(id);
-}
-
-bool MediaPlayer::sourceRemoveId(const String& id)
-{
-    return m_private->sourceRemoveId(id);
-}
-
-bool MediaPlayer::sourceAppend(const String& id, const unsigned char* data, unsigned length)
-{
-    return m_private->sourceAppend(id, data, length);
-}
-
-bool MediaPlayer::sourceAbort(const String& id)
-{
-    return m_private->sourceAbort(id);
-}
-
-void MediaPlayer::sourceSetDuration(double duration)
-{
-    m_private->sourceSetDuration(duration);
-}
-
-void MediaPlayer::sourceEndOfStream(MediaPlayer::EndOfStreamStatus status)
-{
-    return m_private->sourceEndOfStream(status);
-}
-
-bool MediaPlayer::sourceSetTimestampOffset(const String& id, double offset)
-{
-    return m_private->sourceSetTimestampOffset(id, offset);
-}
-#endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
 MediaPlayer::MediaKeyException MediaPlayer::generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength)
@@ -784,7 +761,7 @@ MediaPlayer::SupportsType MediaPlayer::supportsType(const ContentType& contentTy
     UNUSED_PARAM(client);
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     return engine->supportsTypeAndCodecs(type, typeCodecs, system, url);
 #else
     ASSERT(system.isEmpty());
@@ -947,21 +924,6 @@ void MediaPlayer::setPrivateBrowsingMode(bool privateBrowsingMode)
     m_private->setPrivateBrowsingMode(m_privateBrowsing);
 }
 
-#if ENABLE(MEDIA_SOURCE)
-void MediaPlayer::sourceOpened()
-{
-    if (m_mediaPlayerClient)
-        m_mediaPlayerClient->mediaPlayerSourceOpened();
-}
-
-String MediaPlayer::sourceURL() const
-{
-    if (m_mediaPlayerClient)
-        return m_mediaPlayerClient->mediaPlayerSourceURL();
-    return String();
-}
-#endif
-
 // Client callbacks.
 void MediaPlayer::networkStateChanged()
 {
@@ -1081,6 +1043,15 @@ bool MediaPlayer::keyNeeded(const String& keySystem, const String& sessionId, co
 }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+bool MediaPlayer::keyNeeded(Uint8Array* initData)
+{
+    if (m_mediaPlayerClient)
+        return m_mediaPlayerClient->mediaPlayerKeyNeeded(this, initData);
+    return false;
+}
+#endif
+
 String MediaPlayer::referrer() const
 {
     if (!m_mediaPlayerClient)
@@ -1149,11 +1120,23 @@ void MediaPlayer::setTextTrackRepresentation(TextTrackRepresentation* representa
 {
     m_private->setTextTrackRepresentation(representation);
 }
-#endif
+#endif // ENABLE(VIDEO_TRACK)
 
-void MediaPlayer::requeryMediaEngines()
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+bool MediaPlayer::implementsTextTrackControls() const
 {
-    installedMediaEngines(RequeryEngines);
+    return m_private->implementsTextTrackControls();
+}
+
+PassRefPtr<PlatformTextTrackMenuInterface> MediaPlayer::textTrackMenu()
+{
+    return m_private->textTrackMenu();
+}
+#endif // USE(PLATFORM_TEXT_TRACK_MENU)
+
+void MediaPlayer::resetMediaEngines()
+{
+    installedMediaEngines(ResetEngines);
 }
 
 }

@@ -1,0 +1,3 @@
+CONSOLE MESSAGE: line 8: FAIL
+CONSOLE MESSAGE: PASS if this is reported as an uncaught exception.
+

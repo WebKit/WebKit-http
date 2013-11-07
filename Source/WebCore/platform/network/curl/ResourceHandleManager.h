@@ -56,7 +56,11 @@ public:
     static ResourceHandleManager* sharedInstance();
     void add(ResourceHandle*);
     void cancel(ResourceHandle*);
+
+    CURLSH* getCurlShareHandle() const;
+
     void setCookieJarFileName(const char* cookieJarFileName);
+    const char* getCookieJarFileName() const;
 
     void dispatchSynchronousJob(ResourceHandle*);
 
@@ -79,6 +83,8 @@ private:
     bool startScheduledJobs();
 
     void initializeHandle(ResourceHandle*);
+
+    void initCookieSession();
 
     Timer<ResourceHandleManager> m_downloadTimer;
     CURLM* m_curlMultiHandle;

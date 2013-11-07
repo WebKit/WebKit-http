@@ -52,15 +52,15 @@
 
 namespace WebCore {
 
-v8::Local<v8::Object> V8HTMLDocument::wrapInShadowObject(v8::Local<v8::Object> wrapper, Node* impl)
+v8::Local<v8::Object> V8HTMLDocument::wrapInShadowObject(v8::Local<v8::Object> wrapper, Node* impl, v8::Isolate* isolate)
 {
     DEFINE_STATIC_LOCAL(v8::Persistent<v8::FunctionTemplate>, shadowTemplate, ());
     if (shadowTemplate.IsEmpty()) {
-        shadowTemplate = v8::Persistent<v8::FunctionTemplate>::New(v8::FunctionTemplate::New());
+        shadowTemplate = v8::Persistent<v8::FunctionTemplate>::New(isolate, v8::FunctionTemplate::New());
         if (shadowTemplate.IsEmpty())
             return v8::Local<v8::Object>();
         shadowTemplate->SetClassName(v8::String::NewSymbol("HTMLDocument"));
-        shadowTemplate->Inherit(V8HTMLDocument::GetTemplate());
+        shadowTemplate->Inherit(V8HTMLDocument::GetTemplate(isolate, worldTypeInMainThread(isolate)));
         shadowTemplate->InstanceTemplate()->SetInternalFieldCount(V8HTMLDocument::internalFieldCount);
     }
 
@@ -80,27 +80,6 @@ v8::Local<v8::Object> V8HTMLDocument::wrapInShadowObject(v8::Local<v8::Object> w
     return shadow;
 }
 
-v8::Handle<v8::Value> V8HTMLDocument::getNamedProperty(HTMLDocument* htmlDocument, const AtomicString& key, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
-{
-    if (!htmlDocument->hasNamedItem(key.impl()) && !htmlDocument->hasExtraNamedItem(key.impl()))
-        return v8Undefined();
-
-    RefPtr<HTMLCollection> items = htmlDocument->documentNamedItems(key);
-    if (items->isEmpty())
-        return v8Undefined();
-
-    if (items->hasExactlyOneItem()) {
-        Node* node = items->item(0);
-        Frame* frame = 0;
-        if (node->hasTagName(HTMLNames::iframeTag) && (frame = static_cast<HTMLIFrameElement*>(node)->contentFrame()))
-            return toV8(frame->document()->domWindow(), creationContext, isolate);
-
-        return toV8(node, creationContext, isolate);
-    }
-
-    return toV8(items.release(), creationContext, isolate);
-}
-
 // HTMLDocument ----------------------------------------------------------------
 
 // Concatenates "args" to a string. If args is empty, returns empty string.
@@ -115,21 +94,21 @@ static String writeHelperGetString(const v8::Arguments& args)
     return builder.toString();
 }
 
-v8::Handle<v8::Value> V8HTMLDocument::writeCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLDocument::writeMethodCustom(const v8::Arguments& args)
 {
     HTMLDocument* htmlDocument = V8HTMLDocument::toNative(args.Holder());
     htmlDocument->write(writeHelperGetString(args), activeDOMWindow(BindingState::instance())->document());
     return v8::Undefined();
 }
 
-v8::Handle<v8::Value> V8HTMLDocument::writelnCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLDocument::writelnMethodCustom(const v8::Arguments& args)
 {
     HTMLDocument* htmlDocument = V8HTMLDocument::toNative(args.Holder());
     htmlDocument->writeln(writeHelperGetString(args), activeDOMWindow(BindingState::instance())->document());
     return v8::Undefined();
 }
 
-v8::Handle<v8::Value> V8HTMLDocument::openCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8HTMLDocument::openMethodCustom(const v8::Arguments& args)
 {
     HTMLDocument* htmlDocument = V8HTMLDocument::toNative(args.Holder());
 
@@ -159,19 +138,13 @@ v8::Handle<v8::Value> V8HTMLDocument::openCallback(const v8::Arguments& args)
     return args.Holder();
 }
 
-void V8HTMLDocument::allAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
-{
-    // Just emulate a normal JS behaviour---install a property on this.
-    info.This()->ForceSet(name, value);
-}
-
 v8::Handle<v8::Object> wrap(HTMLDocument* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     ASSERT(impl);
     v8::Handle<v8::Object> wrapper = V8HTMLDocument::createWrapper(impl, creationContext, isolate);
     if (wrapper.IsEmpty())
         return wrapper;
-    if (!worldForEnteredContextIfIsolated()) {
+    if (!isolatedWorldForEnteredContext()) {
         if (Frame* frame = impl->frame())
             frame->script()->windowShell(mainThreadNormalWorld())->updateDocumentWrapper(wrapper);
     }

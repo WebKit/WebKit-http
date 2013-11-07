@@ -45,8 +45,17 @@ WebInspector.View._cssFileToVisibleViewCount = {};
 WebInspector.View._cssFileToStyleElement = {};
 
 WebInspector.View.prototype = {
+    /**
+     * @return {?Element}
+     */
+    statusBarText: function()
+    {
+        return null;
+    },
+
     markAsRoot: function()
     {
+        WebInspector.View._assert(!this.element.parentElement, "Attempt to mark as root attached node");
         this._isRoot = true;
     },
 
@@ -290,6 +299,8 @@ WebInspector.View.prototype = {
 
     registerRequiredCSS: function(cssFile)
     {
+        if (window.flattenImports)
+            cssFile = cssFile.split("/").reverse()[0];
         this._cssFiles.push(cssFile);
     },
 

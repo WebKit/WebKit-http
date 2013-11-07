@@ -37,6 +37,7 @@
 #include "Blob.h"
 #include "CookieJar.h"
 #include "Document.h"
+#include "ExceptionCodePlaceholder.h"
 #include "FileError.h"
 #include "FileReaderLoader.h"
 #include "Frame.h"
@@ -107,7 +108,7 @@ void WebSocketChannel::connect(const KURL& url, const String& protocol)
     if (m_deflateFramer.canDeflate())
         m_handshake->addExtensionProcessor(m_deflateFramer.createExtensionProcessor());
     if (m_identifier)
-        InspectorInstrumentation::didCreateWebSocket(m_document, m_identifier, url, m_document->url());
+        InspectorInstrumentation::didCreateWebSocket(m_document, m_identifier, url, m_document->url(), protocol);
     ref();
     m_handle = SocketStreamHandle::create(m_handshake->url(), this);
 }
@@ -157,7 +158,7 @@ ThreadableWebSocketChannel::SendResult WebSocketChannel::send(const ArrayBuffer&
 
 ThreadableWebSocketChannel::SendResult WebSocketChannel::send(const Blob& binaryData)
 {
-    LOG(Network, "WebSocketChannel %p send blob %s", this, binaryData.url().string().utf8().data());
+    LOG(Network, "WebSocketChannel %p send blob %s", this, binaryData.url().elidedString().utf8().data());
     enqueueBlobFrame(WebSocketFrame::OpCodeBinary, binaryData);
     return ThreadableWebSocketChannel::SendSuccess;
 }
@@ -194,7 +195,7 @@ void WebSocketChannel::fail(const String& reason)
     ASSERT(!m_suspended);
     if (m_document) {
         InspectorInstrumentation::didReceiveWebSocketFrameError(m_document, m_identifier, reason);
-        m_document->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "WebSocket connection to '" + m_handshake->url().string() + "' failed: " + reason);
+        m_document->addConsoleMessage(NetworkMessageSource, ErrorMessageLevel, "WebSocket connection to '" + m_handshake->url().elidedString() + "' failed: " + reason);
     }
 
     // Hybi-10 specification explicitly states we must not continue to handle incoming data
@@ -395,7 +396,7 @@ bool WebSocketChannel::appendToBuffer(const char* data, size_t len)
 
 void WebSocketChannel::skipBuffer(size_t len)
 {
-    ASSERT(len <= m_buffer.size());
+    ASSERT_WITH_SECURITY_IMPLICATION(len <= m_buffer.size());
     memmove(m_buffer.data(), m_buffer.data() + len, m_buffer.size() - len);
     m_buffer.resize(m_buffer.size() - len);
 }
@@ -426,8 +427,8 @@ bool WebSocketChannel::processBuffer()
                 InspectorInstrumentation::didReceiveWebSocketHandshakeResponse(m_document, m_identifier, m_handshake->serverHandshakeResponse());
             if (!m_handshake->serverSetCookie().isEmpty()) {
                 if (cookiesEnabled(m_document)) {
-                    ExceptionCode ec; // Exception (for sandboxed documents) ignored.
-                    m_document->setCookie(m_handshake->serverSetCookie(), ec);
+                    // Exception (for sandboxed documents) ignored.
+                    m_document->setCookie(m_handshake->serverSetCookie(), IGNORE_EXCEPTION);
                 }
             }
             // FIXME: handle set-cookie2.

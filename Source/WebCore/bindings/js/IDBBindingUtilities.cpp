@@ -33,6 +33,7 @@
 #include "IDBKey.h"
 #include "IDBKeyPath.h"
 #include "IDBTracing.h"
+#include "SharedBuffer.h"
 
 #include <runtime/DateInstance.h>
 #include <runtime/ObjectConstructor.h>
@@ -110,11 +111,11 @@ static const size_t maximumDepth = 2000;
 
 static PassRefPtr<IDBKey> createIDBKeyFromValue(ExecState* exec, JSValue value, Vector<JSArray*>& stack)
 {
-    if (value.isNumber() && !isnan(value.toNumber(exec)))
+    if (value.isNumber() && !std::isnan(value.toNumber(exec)))
         return IDBKey::createNumber(value.toNumber(exec));
     if (value.isString())
         return IDBKey::createString(value.toString(exec)->value(exec));
-    if (value.inherits(&DateInstance::s_info) && !isnan(valueToDate(exec, value)))
+    if (value.inherits(&DateInstance::s_info) && !std::isnan(valueToDate(exec, value)))
         return IDBKey::createDate(valueToDate(exec, value));
     if (value.isObject()) {
         JSObject* object = asObject(value);
@@ -298,6 +299,20 @@ ScriptValue deserializeIDBValue(DOMRequestState* requestState, PassRefPtr<Serial
     RefPtr<SerializedScriptValue> serializedValue = prpValue;
     if (serializedValue)
         return ScriptValue::deserialize(exec, serializedValue.get(), NonThrowing);
+    return ScriptValue(exec->globalData(), jsNull());
+}
+
+ScriptValue deserializeIDBValueBuffer(DOMRequestState* requestState, PassRefPtr<SharedBuffer> prpBuffer)
+{
+    ExecState* exec = requestState->exec();
+    RefPtr<SharedBuffer> buffer = prpBuffer;
+    if (buffer) {
+        // FIXME: The extra copy here can be eliminated by allowing SerializedScriptValue to take a raw const char* or const uint8_t*.
+        Vector<uint8_t> value;
+        value.append(buffer->data(), buffer->size());
+        RefPtr<SerializedScriptValue> serializedValue = SerializedScriptValue::createFromWireBytes(value);
+        return ScriptValue::deserialize(exec, serializedValue.get(), NonThrowing);
+    }
     return ScriptValue(exec->globalData(), jsNull());
 }
 

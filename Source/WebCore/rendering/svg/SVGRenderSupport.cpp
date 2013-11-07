@@ -253,8 +253,8 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
 
         if (layoutSizeChanged) {
             // When selfNeedsLayout is false and the layout size changed, we have to check whether this child uses relative lengths
-            if (SVGElement* element = child->node()->isSVGElement() ? static_cast<SVGElement*>(child->node()) : 0) {
-                if (element->isStyled() && static_cast<SVGStyledElement*>(element)->hasRelativeLengths()) {
+            if (SVGElement* element = child->node()->isSVGElement() ? toSVGElement(child->node()) : 0) {
+                if (element->isSVGStyledElement() && toSVGStyledElement(element)->hasRelativeLengths()) {
                     // When the layout size changed and when using relative values tell the RenderSVGShape to update its shape object
                     if (child->isSVGShape())
                         toRenderSVGShape(child)->setNeedsShapeUpdate();
@@ -431,7 +431,7 @@ void SVGRenderSupport::applyStrokeStyleToContext(GraphicsContext* context, const
     const SVGRenderStyle* svgStyle = style->svgStyle();
     ASSERT(svgStyle);
 
-    SVGLengthContext lengthContext(static_cast<SVGElement*>(object->node()));
+    SVGLengthContext lengthContext(toSVGElement(object->node()));
     context->setStrokeThickness(svgStyle->strokeWidth().value(lengthContext));
     context->setLineCap(svgStyle->capStyle());
     context->setLineJoin(svgStyle->joinStyle());

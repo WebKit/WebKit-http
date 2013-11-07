@@ -62,7 +62,7 @@ TextFieldDecorationElement::TextFieldDecorationElement(Document* document, TextF
     , m_isInHoverState(false)
 {
     ASSERT(decorator);
-    setHasCustomCallbacks();
+    setHasCustomStyleCallbacks();
 }
 
 PassRefPtr<TextFieldDecorationElement> TextFieldDecorationElement::create(Document* document, TextFieldDecorator* decorator)
@@ -127,7 +127,7 @@ inline HTMLInputElement* TextFieldDecorationElement::hostInput()
 {
     // TextFieldDecorationElement is created only by C++ code, and it is always
     // in <input> shadow.
-    ASSERT(!shadowHost() || shadowHost()->hasTagName(inputTag));
+    ASSERT_WITH_SECURITY_IMPLICATION(!shadowHost() || shadowHost()->hasTagName(inputTag));
     return static_cast<HTMLInputElement*>(shadowHost());
 }
 

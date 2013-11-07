@@ -17,6 +17,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess"
     "${WEBKIT2_DIR}/UIProcess/API"
     "${WEBKIT2_DIR}/UIProcess/API/C"
+    "${WEBKIT2_DIR}/UIProcess/API/CoordinatedGraphics"
     "${WEBKIT2_DIR}/UIProcess/API/cpp"
     "${WEBKIT2_DIR}/UIProcess/Authentication"
     "${WEBKIT2_DIR}/UIProcess/CoordinatedGraphics"
@@ -75,6 +76,8 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/loader/cache"
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
+    "${WEBCORE_DIR}/page/scrolling"
+    "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
     "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/graphics"
@@ -243,6 +246,8 @@ set(WebKit2_SOURCES
 
     UIProcess/PageViewportController.cpp
     UIProcess/ResponsivenessTimer.cpp
+    UIProcess/StatisticsRequest.cpp
+    UIProcess/TextCheckerCompletion.cpp
     UIProcess/VisitedLinkProvider.cpp
     UIProcess/WebApplicationCacheManagerProxy.cpp
     UIProcess/WebBackForwardList.cpp
@@ -338,6 +343,8 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKResourceCacheManager.cpp
     UIProcess/API/C/WKTextChecker.cpp
     UIProcess/API/C/WKVibration.cpp
+
+    UIProcess/API/CoordinatedGraphics/WKCoordinatedScene.cpp
 
     UIProcess/Authentication/AuthenticationChallengeProxy.cpp
     UIProcess/Authentication/AuthenticationDecisionListener.cpp
@@ -450,6 +457,8 @@ set(WebKit2_SOURCES
 
     WebProcess/ResourceCache/WebResourceCacheManager.cpp
 
+    WebProcess/Storage/StorageAreaProxy.cpp
+    WebProcess/Storage/StorageNamespaceProxy.cpp
     WebProcess/Storage/WebKeyValueStorageManager.cpp
 
     WebProcess/WebCoreSupport/WebBatteryClient.cpp
@@ -554,10 +563,12 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Notifications/WebNotificationManager.messages.in
 
     WebProcess/Plugins/PluginProcessConnection.messages.in
+    WebProcess/Plugins/PluginProcessConnectionManager.messages.in
     WebProcess/Plugins/PluginProxy.messages.in
 
     WebProcess/ResourceCache/WebResourceCacheManager.messages.in
 
+    WebProcess/Storage/StorageAreaProxy.messages.in
     WebProcess/Storage/WebKeyValueStorageManager.messages.in
 
     WebProcess/WebCoreSupport/WebDatabaseManager.messages.in

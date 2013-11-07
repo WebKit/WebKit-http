@@ -25,8 +25,12 @@
 
 #include "AXObjectCache.h"
 #include "ChildListMutationScope.h"
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "ContainerNodeAlgorithms.h"
+#if ENABLE(DELETION_UI)
 #include "DeleteButtonController.h"
+#endif
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FloatRect.h"
@@ -62,7 +66,7 @@ namespace WebCore {
 
 static void dispatchChildInsertionEvents(Node*);
 static void dispatchChildRemovalEvents(Node*);
-static void updateTreeAfterInsertion(ContainerNode*, Node*, bool shouldLazyAttach);
+static void updateTreeAfterInsertion(ContainerNode*, Node*, AttachBehavior);
 
 typedef pair<RefPtr<Node>, unsigned> CallbackParameters;
 typedef pair<NodeCallback, CallbackParameters> CallbackInfo;
@@ -105,15 +109,23 @@ void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
 {
     NodeVector children;
     getChildNodes(oldParent, children);
+
+    if (oldParent->document()->hasMutationObserversOfType(MutationObserver::ChildList)) {
+        ChildListMutationScope mutation(oldParent);
+        for (unsigned i = 0; i < children.size(); ++i)
+            mutation.willRemoveChild(children[i].get());
+    }
+
+    // FIXME: We need to do notifyMutationObserversNodeWillDetach() for each child,
+    // probably inside removeDetachedChildrenInContainer.
+
     oldParent->removeDetachedChildren();
 
     for (unsigned i = 0; i < children.size(); ++i) {
-        ExceptionCode ec = 0;
         if (children[i]->attached())
             children[i]->detach();
         // FIXME: We need a no mutation event version of adoptNode.
-        RefPtr<Node> child = document()->adoptNode(children[i].release(), ec);
-        ASSERT(!ec);
+        RefPtr<Node> child = document()->adoptNode(children[i].release(), ASSERT_NO_EXCEPTION);
         parserAppendChild(child.get());
         // FIXME: Together with adoptNode above, the tree scope might get updated recursively twice
         // (if the document changed or oldParent was in a shadow tree, AND *this is in a shadow tree).
@@ -230,7 +242,7 @@ static inline bool checkReplaceChild(ContainerNode* newParent, Node* newChild, N
     return true;
 }
 
-bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec, bool shouldLazyAttach)
+bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, ExceptionCode& ec, AttachBehavior attachBehavior)
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
@@ -242,7 +254,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
 
     // insertBefore(node, 0) is equivalent to appendChild(node)
     if (!refChild)
-        return appendChild(newChild, ec, shouldLazyAttach);
+        return appendChild(newChild, ec, attachBehavior);
 
     // Make sure adding the new child is OK.
     if (!checkAddChild(this, newChild.get(), ec))
@@ -289,7 +301,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
 
         insertBeforeCommon(next.get(), child);
 
-        updateTreeAfterInsertion(this, child, shouldLazyAttach);
+        updateTreeAfterInsertion(this, child, attachBehavior);
     }
 
     dispatchSubtreeModifiedEvent();
@@ -342,11 +354,13 @@ void ContainerNode::parserInsertBefore(PassRefPtr<Node> newChild, Node* nextChil
 
     newChild->updateAncestorConnectedSubframeCountForInsertion();
 
+    ChildListMutationScope(this).childAdded(newChild.get());
+
     childrenChanged(true, newChild->previousSibling(), nextChild, 1);
     ChildNodeInsertionNotifier(this).notify(newChild.get());
 }
 
-bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec, bool shouldLazyAttach)
+bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, ExceptionCode& ec, AttachBehavior attachBehavior)
 {
     // Check that this node is not "floating".
     // If it is, it can be deleted as a side effect of sending mutation events.
@@ -426,7 +440,7 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
                 appendChildToContainer(child, this);
         }
 
-        updateTreeAfterInsertion(this, child, shouldLazyAttach);
+        updateTreeAfterInsertion(this, child, attachBehavior);
     }
 
     dispatchSubtreeModifiedEvent();
@@ -565,6 +579,9 @@ void ContainerNode::parserRemoveChild(Node* oldChild)
 
     oldChild->updateAncestorConnectedSubframeCountForRemoval();
 
+    ChildListMutationScope(this).willRemoveChild(oldChild);
+    oldChild->notifyMutationObserversNodeWillDetach();
+
     removeBetween(prev, next, oldChild);
 
     childrenChanged(true, prev, next, -1);
@@ -637,7 +654,7 @@ void ContainerNode::removeChildren()
     dispatchSubtreeModifiedEvent();
 }
 
-bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, bool shouldLazyAttach)
+bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, AttachBehavior attachBehavior)
 {
     RefPtr<ContainerNode> protect(this);
 
@@ -687,7 +704,7 @@ bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, bo
             appendChildToContainer(child, this);
         }
 
-        updateTreeAfterInsertion(this, child, shouldLazyAttach);
+        updateTreeAfterInsertion(this, child, attachBehavior);
     }
 
     dispatchSubtreeModifiedEvent();
@@ -715,6 +732,8 @@ void ContainerNode::parserAppendChild(PassRefPtr<Node> newChild)
     }
 
     newChild->updateAncestorConnectedSubframeCountForInsertion();
+
+    ChildListMutationScope(this).childAdded(newChild.get());
 
     childrenChanged(true, last, 0, 1);
     ChildNodeInsertionNotifier(this).notify(newChild.get());
@@ -810,9 +829,9 @@ void ContainerNode::attach()
 
 void ContainerNode::detach()
 {
-    Node::detach();
     detachChildren();
     clearChildNeedsStyleRecalc();
+    Node::detach();
 }
 
 void ContainerNode::childrenChanged(bool changedByParser, Node*, Node*, int childCountDelta)
@@ -825,14 +844,17 @@ void ContainerNode::childrenChanged(bool changedByParser, Node*, Node*, int chil
 
 void ContainerNode::cloneChildNodes(ContainerNode *clone)
 {
+#if ENABLE(DELETION_UI)
     HTMLElement* deleteButtonContainerElement = 0;
     if (Frame* frame = document()->frame())
         deleteButtonContainerElement = frame->editor()->deleteButtonController()->containerElement();
-
+#endif
     ExceptionCode ec = 0;
     for (Node* n = firstChild(); n && !ec; n = n->nextSibling()) {
+#if ENABLE(DELETION_UI)
         if (n == deleteButtonContainerElement)
             continue;
+#endif
         clone->appendChild(n->cloneNode(true), ec);
     }
 }
@@ -992,6 +1014,13 @@ void ContainerNode::setActive(bool down, bool pause)
             if (renderer()->theme()->stateChanged(renderer(), PressedState))
                 reactsToPress = true;
         }
+
+        // The rest of this function implements a feature that only works if the
+        // platform supports immediate invalidations on the ChromeClient, so bail if
+        // that isn't supported.
+        if (!document()->page()->chrome()->client()->supportsImmediateInvalidation())
+            return;
+
         if (reactsToPress && pause) {
             // The delay here is subtle.  It relies on an assumption, namely that the amount of time it takes
             // to repaint the "down" state of the control is about the same time as it would take to repaint the
@@ -1057,8 +1086,14 @@ void ContainerNode::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     Node::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_firstChild, "firstChild");
-    info.addMember(m_lastChild, "lastChild");
+    info.ignoreMember(m_firstChild);
+    info.ignoreMember(m_lastChild);
+
+    // Report child nodes as direct members to make them look like a tree in the snapshot.
+    NodeVector children;
+    getChildNodes(const_cast<ContainerNode*>(this), children);
+    for (size_t i = 0; i < children.size(); ++i)
+        info.addMember(children[i], "child");
 }
 
 static void dispatchChildInsertionEvents(Node* child)
@@ -1109,7 +1144,7 @@ static void dispatchChildRemovalEvents(Node* child)
     }
 }
 
-static void updateTreeAfterInsertion(ContainerNode* parent, Node* child, bool shouldLazyAttach)
+static void updateTreeAfterInsertion(ContainerNode* parent, Node* child, AttachBehavior attachBehavior)
 {
     ASSERT(parent->refCount());
     ASSERT(child->refCount());
@@ -1123,7 +1158,7 @@ static void updateTreeAfterInsertion(ContainerNode* parent, Node* child, bool sh
     // FIXME: Attachment should be the first operation in this function, but some code
     // (for example, HTMLFormControlElement's autofocus support) requires this ordering.
     if (parent->attached() && !child->attached() && child->parentNode() == parent) {
-        if (shouldLazyAttach)
+        if (attachBehavior == AttachLazily)
             child->lazyAttach();
         else
             child->attach();

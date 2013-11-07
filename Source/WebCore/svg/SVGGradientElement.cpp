@@ -142,11 +142,11 @@ Vector<Gradient::ColorStop> SVGGradientElement::buildStops()
 
     float previousOffset = 0.0f;
     for (Node* n = firstChild(); n; n = n->nextSibling()) {
-        SVGElement* element = n->isSVGElement() ? static_cast<SVGElement*>(n) : 0;
+        SVGElement* element = n->isSVGElement() ? toSVGElement(n) : 0;
         if (!element || !element->isGradientStop())
             continue;
 
-        SVGStopElement* stop = static_cast<SVGStopElement*>(element);
+        SVGStopElement* stop = toSVGStopElement(element);
         Color color = stop->stopColorIncludingOpacity();
 
         // Figure out right monotonic offset

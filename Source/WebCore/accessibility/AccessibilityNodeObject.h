@@ -165,7 +165,6 @@ protected:
     virtual void insertChild(AccessibilityObject*, unsigned index);
 
     virtual bool canHaveChildren() const;
-    virtual bool accessibilityIsIgnored() const;
     AccessibilityRole ariaRoleAttribute() const;
     AccessibilityRole determineAriaRoleAttribute() const;
     AccessibilityRole remapAriaRoleDueToParent(AccessibilityRole) const;
@@ -198,17 +197,18 @@ private:
     void helpText(Vector<AccessibilityText>&) const;
     String alternativeTextForWebArea() const;
     void ariaLabeledByText(Vector<AccessibilityText>&) const;
+    virtual bool computeAccessibilityIsIgnored() const;
 };
 
 inline AccessibilityNodeObject* toAccessibilityNodeObject(AccessibilityObject* object)
 {
-    ASSERT(!object || object->isAccessibilityNodeObject());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isAccessibilityNodeObject());
     return static_cast<AccessibilityNodeObject*>(object);
 }
 
 inline const AccessibilityNodeObject* toAccessibilityNodeObject(const AccessibilityObject* object)
 {
-    ASSERT(!object || object->isAccessibilityNodeObject());
+    ASSERT_WITH_SECURITY_IMPLICATION(!object || object->isAccessibilityNodeObject());
     return static_cast<const AccessibilityNodeObject*>(object);
 }
 

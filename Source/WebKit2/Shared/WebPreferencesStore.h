@@ -99,6 +99,7 @@ namespace WebKit {
     macro(JavaScriptCanAccessClipboard, javaScriptCanAccessClipboard, Bool, bool, false) \
     macro(ShouldPrintBackgrounds, shouldPrintBackgrounds, Bool, bool, false) \
     macro(FullScreenEnabled, fullScreenEnabled, Bool, bool, false) \
+    macro(AsynchronousSpellCheckingEnabled, asynchronousSpellCheckingEnabled, Bool, bool, false) \
     macro(WebSecurityEnabled, webSecurityEnabled, Bool, bool, true) \
     macro(AllowUniversalAccessFromFileURLs, allowUniversalAccessFromFileURLs, Bool, bool, false) \
     macro(AllowFileAccessFromFileURLs, allowFileAccessFromFileURLs, Bool, bool, false) \
@@ -140,6 +141,9 @@ namespace WebKit {
     macro(QTKitEnabled, isQTKitEnabled, Bool, bool, true) \
     macro(LogsPageMessagesToSystemConsoleEnabled, logsPageMessagesToSystemConsoleEnabled, Bool, bool, false) \
     macro(PageVisibilityBasedProcessSuppressionEnabled, pageVisibilityBasedProcessSuppressionEnabled, Bool, bool, false) \
+    macro(SmartInsertDeleteEnabled, smartInsertDeleteEnabled, Bool, bool, true) \
+    macro(ShowsURLsInToolTipsEnabled, showsURLsInToolTipsEnabled, Bool, bool, false) \
+    macro(AcceleratedCompositingForOverflowScrollEnabled, acceleratedCompositingForOverflowScrollEnabled, Bool, bool, false) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

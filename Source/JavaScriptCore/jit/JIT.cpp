@@ -390,6 +390,9 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_to_jsnumber)
         DEFINE_OP(op_to_primitive)
 
+        DEFINE_OP(op_get_scoped_var)
+        DEFINE_OP(op_put_scoped_var)
+
         case op_get_by_id_chain:
         case op_get_by_id_generic:
         case op_get_by_id_proto:
@@ -627,12 +630,14 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         m_canBeOptimized = false;
         m_shouldEmitProfiling = false;
         break;
-    case DFG::ShouldProfile:
+    case DFG::MayInline:
         m_canBeOptimized = false;
+        m_canBeOptimizedOrInlined = true;
         m_shouldEmitProfiling = true;
         break;
     case DFG::CanCompile:
         m_canBeOptimized = true;
+        m_canBeOptimizedOrInlined = true;
         m_shouldEmitProfiling = true;
         break;
     default:
@@ -815,7 +820,7 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
     }
 
 #if ENABLE(DFG_JIT) || ENABLE(LLINT)
-    if (canBeOptimized()
+    if (canBeOptimizedOrInlined()
 #if ENABLE(LLINT)
         || true
 #endif

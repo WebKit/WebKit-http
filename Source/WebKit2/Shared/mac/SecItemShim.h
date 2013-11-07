@@ -35,23 +35,23 @@ namespace WebKit {
 class ChildProcess;
 class SecItemResponseData;
 
-class SecItemShim : public CoreIPC::Connection::QueueClient {
+class SecItemShim : public CoreIPC::Connection::WorkQueueMessageReceiver {
 WTF_MAKE_NONCOPYABLE(SecItemShim);
 public:
     static SecItemShim& shared();
 
     void initialize(ChildProcess*);
+    void initializeConnection(CoreIPC::Connection*);
 
 private:
     SecItemShim();
 
-    // QueueClient
-    virtual void didReceiveMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage) OVERRIDE;
+    // CoreIPC::Connection::WorkQueueMessageReceiver.
+    virtual void didReceiveMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&) OVERRIDE;
 
-    // Implemented in generated SecItemShimMessageReceiver.cpp.
-    void didReceiveSecItemShimMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageDecoder&, bool& didHandleMessage);
+    void secItemResponse(uint64_t requestID, const SecItemResponseData&);
 
-    void secItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecItemResponseData&);
+    RefPtr<WorkQueue> m_queue;
 };
 
 } // namespace WebKit

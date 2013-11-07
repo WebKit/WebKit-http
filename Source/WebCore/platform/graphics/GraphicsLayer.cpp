@@ -332,7 +332,7 @@ String GraphicsLayer::animationNameForTransition(AnimatedPropertyID property)
     // | is not a valid identifier character in CSS, so this can never conflict with a keyframe identifier.
     StringBuilder id;
     id.appendLiteral("-|transition");
-    id.append(static_cast<char>(property));
+    id.appendNumber(static_cast<int>(property));
     id.append('-');
     return id.toString();
 }
@@ -704,7 +704,34 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
         writeIndent(ts, indent + 1);
         ts << ")\n";
     }
-    
+
+    if (behavior & LayerTreeAsTextIncludePaintingPhases && paintingPhase()) {
+        writeIndent(ts, indent + 1);
+        ts << "(paintingPhases\n";
+        if (paintingPhase() & GraphicsLayerPaintBackground) {
+            writeIndent(ts, indent + 2);
+            ts << "GraphicsLayerPaintBackground\n";
+        }
+        if (paintingPhase() & GraphicsLayerPaintForeground) {
+            writeIndent(ts, indent + 2);
+            ts << "GraphicsLayerPaintForeground\n";
+        }
+        if (paintingPhase() & GraphicsLayerPaintMask) {
+            writeIndent(ts, indent + 2);
+            ts << "GraphicsLayerPaintMask\n";
+        }
+        if (paintingPhase() & GraphicsLayerPaintOverflowContents) {
+            writeIndent(ts, indent + 2);
+            ts << "GraphicsLayerPaintOverflowContents\n";
+        }
+        if (paintingPhase() & GraphicsLayerPaintCompositedScroll) {
+            writeIndent(ts, indent + 2);
+            ts << "GraphicsLayerPaintCompositedScroll\n";
+        }
+        writeIndent(ts, indent + 1);
+        ts << ")\n";
+    }
+
     dumpAdditionalProperties(ts, indent, behavior);
     
     if (m_children.size()) {

@@ -20,45 +20,55 @@ if ($cgi->param('enable-full-block-report')) {
     print "X-XSS-Protection: 1; mode=block; report=/security/contentSecurityPolicy/resources/save-report.php\n";
 }
 
-if ($cgi->param('valid-header') == 1) {
-    print "X-XSS-Protection:   1  ;MoDe =  bLocK   \n";
-}
-if ($cgi->param('valid-header') == 2) {
-    print "X-XSS-Protection: 1; \n";
-}
-if ($cgi->param('valid-header') == 3) {
-    print "X-XSS-Protection: 1; mode=block; \n";
-}
-if ($cgi->param('valid-header') == 4) {
-    print "X-XSS-Protection: 1; report=/security/contentSecurityPolicy/resources/nonesuch.php; mode=block; \n";
+if ($cgi->param('valid-header')) {
+    if ($cgi->param('valid-header') == 1) {
+        print "X-XSS-Protection:   1  ;MoDe =  bLocK   \n";
+    }
+    if ($cgi->param('valid-header') == 2) {
+        print "X-XSS-Protection: 1; \n";
+    }
+    if ($cgi->param('valid-header') == 3) {
+        print "X-XSS-Protection: 1; mode=block; \n";
+    }
+    if ($cgi->param('valid-header') == 4) {
+        print "X-XSS-Protection: 1; report=/security/contentSecurityPolicy/resources/nonesuch.php; mode=block; \n";
+    }
 }
 
-if ($cgi->param('malformed-header') == 1) {
-    print "X-XSS-Protection: 12345678901234567\n";
+if ($cgi->param('malformed-header')) {
+    if ($cgi->param('malformed-header') == 1) {
+        print "X-XSS-Protection: 12345678901234567\n";
+    }
+    if ($cgi->param('malformed-header') == 2) {
+        print "X-XSS-Protection: red\n";
+    }
+    if ($cgi->param('malformed-header') == 3) {
+        print "X-XSS-Protection: 1; mode=purple\n";
+    }
+    if ($cgi->param('malformed-header') == 4) {
+        print "X-XSS-Protection: 1; mode=block-a-block-block\n";
+    }
+    if ($cgi->param('malformed-header') == 5) {
+        print "X-XSS-Protection: 1; mode=block; report\n";
+    }
+    if ($cgi->param('malformed-header') == 6) {
+        print "X-XSS-Protection: 1; report= ;\n";
+    }
+    if ($cgi->param('malformed-header') == 7) {
+        print "X-XSS-Protection: 1; red\n";
+    }
+    if ($cgi->param('malformed-header') == 8) {
+        print "X-XSS-Protection: 1; mode=block; report=/fail; mode=block;\n";
+    }
+    if ($cgi->param('malformed-header') == 9) {
+        print "X-XSS-Protection: 1; mode=block; report=/fail; report=/fail;\n";
+    }
 }
-if ($cgi->param('malformed-header') == 2) {
-    print "X-XSS-Protection: red\n";
-}
-if ($cgi->param('malformed-header') == 3) {
-    print "X-XSS-Protection: 1; mode=purple\n";
-}
-if ($cgi->param('malformed-header') == 4) {
-    print "X-XSS-Protection: 1; mode=block-a-block-block\n";
-}
-if ($cgi->param('malformed-header') == 5) {
-    print "X-XSS-Protection: 1; mode=block; report\n";
-}
-if ($cgi->param('malformed-header') == 6) {
-    print "X-XSS-Protection: 1; report= ;\n";
-}
-if ($cgi->param('malformed-header') == 7) {
-    print "X-XSS-Protection: 1; red\n";
-}
-if ($cgi->param('malformed-header') == 8) {
-    print "X-XSS-Protection: 1; mode=block; report=/fail; mode=block;\n";
-}
-if ($cgi->param('malformed-header') == 9) {
-    print "X-XSS-Protection: 1; mode=block; report=/fail; report=/fail;\n";
+
+if ($cgi->param('csp') eq '_empty_') {
+    print "X-WebKit-CSP: reflected-xss\n";
+} elsif ($cgi->param('csp')) {
+    print "X-WebKit-CSP: reflected-xss " . $cgi->param('csp') . "\n";
 }
 
 print "Content-Type: text/html; charset=";
@@ -84,8 +94,28 @@ if ($cgi->param('q2')) {
 }
 if ($cgi->param('showAction')) {
     print "<script>\n";
-    print "if (window.testRunner)\n";
     print "    alert('Form action set to ' + document.forms[0].action);\n";
+    print "</script>\n";
+}
+if ($cgi->param('showFormaction')) {
+    print "<script>\n";
+    print "    var e = document.querySelector('[formaction]');\n";
+    print "    if (e)\n";
+    print "        alert('formaction present on ' + e.nodeName + ' with value of ' + e.getAttribute('formaction'));\n";
+    print "</script>\n";
+}
+if ($cgi->param('dumpElementBySelector')) {
+    print "<pre id='console'></pre>\n";
+    print "<script>\n";
+    print "    var e = document.querySelector('" . $cgi->param('dumpElementBySelector') . "');\n";
+    print "    if (e) {\n";
+    print "        var log = '" . $cgi->param('dumpElementBySelector') . " => ' + e.nodeName + '\\n';\n";
+    print "        for (var i = 0; i < e.attributes.length; i++) {\n";
+    print "            log += '* ' + e.attributes[i].name + ': ' + e.attributes[i].value + '\\n';\n";
+    print "        }\n";
+    print "        document.getElementById('console').innerText = log;\n";
+    print "    } else\n";
+    print "        alert('No element matched the given selector.');\n";
     print "</script>\n";
 }
 if ($cgi->param('notifyDone')) {

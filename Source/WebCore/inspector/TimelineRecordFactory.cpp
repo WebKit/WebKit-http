@@ -184,10 +184,16 @@ PassRefPtr<InspectorObject> TimelineRecordFactory::createResizeImageData(bool sh
     return data.release();
 }
 
-PassRefPtr<InspectorObject> TimelineRecordFactory::createParseHTMLData(unsigned int length, unsigned int startLine)
+PassRefPtr<InspectorObject> TimelineRecordFactory::createMarkData(bool isMainFrame)
 {
     RefPtr<InspectorObject> data = InspectorObject::create();
-    data->setNumber("length", length);
+    data->setBoolean("isMainFrame", isMainFrame);
+    return data.release();
+}
+
+PassRefPtr<InspectorObject> TimelineRecordFactory::createParseHTMLData(unsigned startLine)
+{
+    RefPtr<InspectorObject> data = InspectorObject::create();
     data->setNumber("startLine", startLine);
     return data.release();
 }
@@ -205,6 +211,14 @@ void TimelineRecordFactory::addRectData(InspectorObject* data, const LayoutRect&
     data->setNumber("y", rect.y());
     data->setNumber("width", rect.width());
     data->setNumber("height", rect.height());
+}
+
+PassRefPtr<InspectorObject> TimelineRecordFactory::createRasterData(double totalCPUTime, int threadsUsed)
+{
+    RefPtr<InspectorObject> data = InspectorObject::create();
+    data->setNumber("totalCPUTime", totalCPUTime);
+    data->setNumber("threadsUsed", threadsUsed);
+    return data.release();
 }
 
 } // namespace WebCore

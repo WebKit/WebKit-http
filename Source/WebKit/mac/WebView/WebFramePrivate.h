@@ -95,14 +95,9 @@ typedef enum {
 - (NSString *)_stringByEvaluatingJavaScriptFromString:(NSString *)string withGlobalObject:(JSObjectRef)globalObject inScriptWorld:(WebScriptWorld *)world;
 - (JSGlobalContextRef)_globalContextForScriptWorld:(WebScriptWorld *)world;
 
-// Pause a given CSS animation or transition on the target node at a specific time.
-// If the animation or transition is already paused, it will update its pause time.
-// This method is only intended to be used for testing the CSS animation and transition system.
-- (BOOL)_pauseAnimation:(NSString*)name onNode:(DOMNode *)node atTime:(NSTimeInterval)time;
-- (BOOL)_pauseTransitionOfProperty:(NSString*)name onNode:(DOMNode*)node atTime:(NSTimeInterval)time;
-
-// Returns the total number of currently running animations (includes both CSS transitions and CSS animations).
-- (unsigned)_numberOfActiveAnimations;
+#if JSC_OBJC_API_ENABLED
+- (JSContext *)_javaScriptContextForScriptWorld:(WebScriptWorld *)world;
+#endif
 
 - (void)_replaceSelectionWithFragment:(DOMDocumentFragment *)fragment selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace matchStyle:(BOOL)matchStyle;
 - (void)_replaceSelectionWithText:(NSString *)text selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace;

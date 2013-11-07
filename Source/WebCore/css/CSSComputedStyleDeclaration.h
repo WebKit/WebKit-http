@@ -78,6 +78,13 @@ public:
 private:
     CSSComputedStyleDeclaration(PassRefPtr<Node>, bool allowVisitedStyle, const String&);
 
+    // The styled node is either the node passed into getComputedStyle, or the
+    // PseudoElement for :before and :after if they exist.
+    // FIXME: This should be styledElement since in JS getComputedStyle only works
+    // on Elements, but right now editing creates these for text nodes. We should fix
+    // that.
+    Node* styledNode() const;
+
     // CSSOM functions. Don't make these public.
     virtual CSSRule* parentRule() const;
     virtual unsigned length() const;
@@ -95,7 +102,7 @@ private:
     virtual String getPropertyValueInternal(CSSPropertyID);
     virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&);
 
-    virtual bool cssPropertyMatches(const StylePropertySet::PropertyReference&) const OVERRIDE;
+    virtual bool cssPropertyMatches(CSSPropertyID, const CSSValue*) const OVERRIDE;
 
     PassRefPtr<CSSValue> valueForShadow(const ShadowData*, CSSPropertyID, const RenderStyle*) const;
     PassRefPtr<CSSPrimitiveValue> currentColorOrValidColor(RenderStyle*, const Color&) const;
@@ -110,6 +117,7 @@ private:
     PassRefPtr<CSSValueList> getCSSPropertyValuesForShorthandProperties(const StylePropertyShorthand&) const;
     PassRefPtr<CSSValueList> getCSSPropertyValuesForSidesShorthand(const StylePropertyShorthand&) const;
     PassRefPtr<CSSValueList> getBackgroundShorthandValue() const;
+    PassRefPtr<CSSValueList> getCSSPropertyValuesForGridShorthand(const StylePropertyShorthand&) const;
 
     RefPtr<Node> m_node;
     PseudoId m_pseudoElementSpecifier;

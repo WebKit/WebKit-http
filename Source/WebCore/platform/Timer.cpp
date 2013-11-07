@@ -48,13 +48,10 @@ class TimerHeapReference;
 // Then we set a single shared system timer to fire at that time.
 //
 // When a timer's "next fire time" changes, we need to move it around in the priority queue.
-
-// Simple accessors to thread-specific data.
-static Vector<TimerBase*>& timerHeap()
+static Vector<TimerBase*>& threadGlobalTimerHeap()
 {
     return threadGlobalData().threadTimers().timerHeap();
 }
-
 // ----------------
 
 class TimerHeapPointer {
@@ -85,7 +82,7 @@ inline TimerHeapReference TimerHeapPointer::operator*() const
 inline TimerHeapReference& TimerHeapReference::operator=(TimerBase* timer)
 {
     m_reference = timer;
-    Vector<TimerBase*>& heap = timerHeap();
+    Vector<TimerBase*>& heap = timer->timerHeap();
     if (&m_reference >= heap.data() && &m_reference < heap.data() + heap.size())
         timer->m_heapIndex = &m_reference - heap.data();
     return *this;
@@ -131,10 +128,10 @@ public:
 private:
     void checkConsistency(ptrdiff_t offset = 0) const
     {
-        ASSERT(m_pointer >= timerHeap().data());
-        ASSERT(m_pointer <= timerHeap().data() + timerHeap().size());
-        ASSERT_UNUSED(offset, m_pointer + offset >= timerHeap().data());
-        ASSERT_UNUSED(offset, m_pointer + offset <= timerHeap().data() + timerHeap().size());
+        ASSERT(m_pointer >= threadGlobalTimerHeap().data());
+        ASSERT(m_pointer <= threadGlobalTimerHeap().data() + threadGlobalTimerHeap().size());
+        ASSERT_UNUSED(offset, m_pointer + offset >= threadGlobalTimerHeap().data());
+        ASSERT_UNUSED(offset, m_pointer + offset <= threadGlobalTimerHeap().data() + threadGlobalTimerHeap().size());
     }
 
     friend bool operator==(TimerHeapIterator, TimerHeapIterator);
@@ -170,10 +167,10 @@ inline ptrdiff_t operator-(TimerHeapIterator a, TimerHeapIterator b) { return a.
 
 class TimerHeapLessThanFunction {
 public:
-    bool operator()(TimerBase*, TimerBase*) const;
+    bool operator()(const TimerBase*, const TimerBase*) const;
 };
 
-inline bool TimerHeapLessThanFunction::operator()(TimerBase* a, TimerBase* b) const
+inline bool TimerHeapLessThanFunction::operator()(const TimerBase* a, const TimerBase* b) const
 {
     // The comparisons below are "backwards" because the heap puts the largest 
     // element first and we want the lowest time to be the first one in the heap.
@@ -195,6 +192,7 @@ TimerBase::TimerBase()
     , m_unalignedNextFireTime(0)
     , m_repeatInterval(0)
     , m_heapIndex(-1)
+    , m_cachedThreadGlobalTimerHeap(0)
 #ifndef NDEBUG
     , m_thread(currentThread())
 #endif
@@ -238,6 +236,7 @@ double TimerBase::nextFireInterval() const
 
 inline void TimerBase::checkHeapIndex() const
 {
+    ASSERT(timerHeap() == threadGlobalTimerHeap());
     ASSERT(!timerHeap().isEmpty());
     ASSERT(m_heapIndex >= 0);
     ASSERT(m_heapIndex < static_cast<int>(timerHeap().size()));
@@ -313,12 +312,68 @@ void TimerBase::heapPopMin()
     ASSERT(this == timerHeap().last());
 }
 
+static inline bool parentHeapPropertyHolds(const TimerBase* current, const Vector<TimerBase*>& heap, unsigned currentIndex)
+{
+    if (!currentIndex)
+        return true;
+    unsigned parentIndex = (currentIndex - 1) / 2;
+    TimerHeapLessThanFunction compareHeapPosition;
+    return compareHeapPosition(current, heap[parentIndex]);
+}
+
+static inline bool childHeapPropertyHolds(const TimerBase* current, const Vector<TimerBase*>& heap, unsigned childIndex)
+{
+    if (childIndex >= heap.size())
+        return true;
+    TimerHeapLessThanFunction compareHeapPosition;
+    return compareHeapPosition(heap[childIndex], current);
+}
+
+bool TimerBase::hasValidHeapPosition() const
+{
+    ASSERT(m_nextFireTime);
+    if (!inHeap())
+        return false;
+    // Check if the heap property still holds with the new fire time. If it does we don't need to do anything.
+    // This assumes that the STL heap is a standard binary heap. In an unlikely event it is not, the assertions
+    // in updateHeapIfNeeded() will get hit.
+    const Vector<TimerBase*>& heap = timerHeap();
+    if (!parentHeapPropertyHolds(this, heap, m_heapIndex))
+        return false;
+    unsigned childIndex1 = 2 * m_heapIndex + 1;
+    unsigned childIndex2 = childIndex1 + 1;
+    return childHeapPropertyHolds(this, heap, childIndex1) && childHeapPropertyHolds(this, heap, childIndex2);
+}
+
+void TimerBase::updateHeapIfNeeded(double oldTime)
+{
+    if (m_nextFireTime && hasValidHeapPosition())
+        return;
+#ifndef NDEBUG
+    int oldHeapIndex = m_heapIndex;
+#endif
+    if (!oldTime)
+        heapInsert();
+    else if (!m_nextFireTime)
+        heapDelete();
+    else if (m_nextFireTime < oldTime)
+        heapDecreaseKey();
+    else
+        heapIncreaseKey();
+    ASSERT(m_heapIndex != oldHeapIndex);
+    ASSERT(!inHeap() || hasValidHeapPosition());
+}
+
 void TimerBase::setNextFireTime(double newUnalignedTime)
 {
     ASSERT(m_thread == currentThread());
 
     if (m_unalignedNextFireTime != newUnalignedTime)
         m_unalignedNextFireTime = newUnalignedTime;
+
+    // Accessing thread global data is slow. Cache the heap pointer.
+    if (!m_cachedThreadGlobalTimerHeap)
+        m_cachedThreadGlobalTimerHeap = &threadGlobalTimerHeap();
 
     // Keep heap valid while changing the next-fire time.
     double oldTime = m_nextFireTime;
@@ -330,14 +385,7 @@ void TimerBase::setNextFireTime(double newUnalignedTime)
 
         bool wasFirstTimerInHeap = m_heapIndex == 0;
 
-        if (oldTime == 0)
-            heapInsert();
-        else if (newTime == 0)
-            heapDelete();
-        else if (newTime < oldTime)
-            heapDecreaseKey();
-        else
-            heapIncreaseKey();
+        updateHeapIfNeeded(oldTime);
 
         bool isFirstTimerInHeap = m_heapIndex == 0;
 

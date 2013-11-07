@@ -56,7 +56,8 @@ GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(GraphicsLayerClient* clie
     , m_fixedToViewport(false)
     , m_debugBorderWidth(0)
     , m_contentsLayer(0)
-    , m_animationStartedTimer(this, &GraphicsLayerTextureMapper::animationStartedTimerFired)
+    , m_animationStartTime(0)
+    , m_isScrollable(false)
 {
 }
 
@@ -87,7 +88,7 @@ void GraphicsLayerTextureMapper::willBeDestroyed()
 */
 void GraphicsLayerTextureMapper::setNeedsDisplay()
 {
-    if (!m_hasOwnBackingStore)
+    if (!drawsContent() || !m_hasOwnBackingStore)
         return;
 
     m_needsDisplay = true;
@@ -107,7 +108,7 @@ void GraphicsLayerTextureMapper::setContentsNeedsDisplay()
 */
 void GraphicsLayerTextureMapper::setNeedsDisplayInRect(const FloatRect& rect)
 {
-    if (!m_hasOwnBackingStore)
+    if (!drawsContent() || !m_hasOwnBackingStore)
         return;
 
     if (m_needsDisplay)
@@ -277,8 +278,8 @@ void GraphicsLayerTextureMapper::setDrawsContent(bool value)
 {
     if (value == drawsContent())
         return;
-    notifyChange(DrawsContentChange);
     GraphicsLayer::setDrawsContent(value);
+    notifyChange(DrawsContentChange);
 
     if (value && m_hasOwnBackingStore)
         setNeedsDisplay();
@@ -401,6 +402,24 @@ void GraphicsLayerTextureMapper::setShowRepaintCounter(bool show)
 
     GraphicsLayer::setShowRepaintCounter(show);
     notifyChange(DebugVisualsChange);
+}
+
+void GraphicsLayerTextureMapper::didCommitScrollOffset(const IntSize& offset)
+{
+    if (offset.isZero())
+        return;
+
+    m_committedScrollOffset = offset;
+    notifyChange(CommittedScrollOffsetChange);
+}
+
+void GraphicsLayerTextureMapper::setIsScrollable(bool isScrollable)
+{
+    if (m_isScrollable == isScrollable)
+        return;
+
+    m_isScrollable = isScrollable;
+    notifyChange(IsScrollableChange);
 }
 
 /* \reimp (GraphicsLayer.h)
@@ -537,8 +556,17 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask & AnimationChange)
         m_layer->setAnimations(m_animations);
 
+    if (m_changeMask & AnimationStarted)
+        client()->notifyAnimationStarted(this, m_animationStartTime);
+
     if (m_changeMask & FixedToViewporChange)
         m_layer->setFixedToViewport(fixedToViewport());
+
+    if (m_changeMask & IsScrollableChange)
+        m_layer->setIsScrollable(isScrollable());
+
+    if (m_changeMask & CommittedScrollOffsetChange)
+        m_layer->didCommitScrollOffset(m_committedScrollOffset);
 
     m_changeMask = NoChanges;
 }
@@ -581,7 +609,7 @@ void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
     if (dirtyRect.isEmpty())
         return;
 
-#if PLATFORM(QT)
+#if PLATFORM(QT) && !defined(QT_NO_DYNAMIC_CAST)
     ASSERT(dynamic_cast<TextureMapperTiledBackingStore*>(m_backingStore.get()));
 #endif
     TextureMapperTiledBackingStore* backingStore = static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get());
@@ -610,9 +638,15 @@ bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList
     if (valueList.property() == AnimatedPropertyWebkitTransform)
         listsMatch = validateTransformOperations(valueList, hasBigRotation) >= 0;
 
-    m_animations.add(GraphicsLayerAnimation(keyframesName, valueList, boxSize, anim, WTF::currentTime() - timeOffset, listsMatch));
+    const double currentTime = WTF::currentTime();
+    m_animations.add(GraphicsLayerAnimation(keyframesName, valueList, boxSize, anim, currentTime - timeOffset, listsMatch));
+    // m_animationStartTime is the time of the first real frame of animation, now or delayed by a negative offset.
+    if (timeOffset > 0)
+        m_animationStartTime = currentTime;
+    else
+        m_animationStartTime = currentTime - timeOffset;
     notifyChange(AnimationChange);
-    m_animationStartedTimer.startOneShot(0);
+    notifyChange(AnimationStarted);
     return true;
 }
 
@@ -631,11 +665,6 @@ void GraphicsLayerTextureMapper::pauseAnimation(const String& animationName, dou
 void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
 {
     m_animations.remove(animationName);
-}
-
-void GraphicsLayerTextureMapper::animationStartedTimerFired(Timer<GraphicsLayerTextureMapper>*)
-{
-    client()->notifyAnimationStarted(this, /* DOM time */ WTF::currentTime());
 }
 
 #if ENABLE(CSS_FILTERS)

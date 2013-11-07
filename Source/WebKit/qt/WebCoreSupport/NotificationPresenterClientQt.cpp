@@ -33,6 +33,7 @@
 #include "NotificationPresenterClientQt.h"
 
 #include "Document.h"
+#include "Event.h"
 #include "EventNames.h"
 #include "KURL.h"
 #include "Page.h"
@@ -254,7 +255,7 @@ void NotificationPresenterClientQt::notificationClicked(NotificationWrapper* wra
     Notification* notification =  notificationForWrapper(wrapper);
     if (notification) {
         // Make sure clicks on notifications are treated as user gestures.
-        UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+        UserGestureIndicator gestureIndicator(DefinitelyProcessingNewUserGesture);
         sendEvent(notification, eventNames().clickEvent);
     }
 }

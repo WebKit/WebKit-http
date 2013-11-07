@@ -30,6 +30,7 @@
 #include "Attribute.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
+#include "CachedSVGDocument.h"
 #include "Document.h"
 #include "ElementShadow.h"
 #include "Event.h"
@@ -93,7 +94,7 @@ inline SVGUseElement::SVGUseElement(const QualifiedName& tagName, Document* docu
     , m_needsShadowTreeRecreation(false)
     , m_svgLoadEventTimer(this, &SVGElement::svgLoadEventTimerFired)
 {
-    ASSERT(hasCustomCallbacks());
+    ASSERT(hasCustomStyleCallbacks());
     ASSERT(hasTagName(SVGNames::useTag));
     registerAnimatedPropertiesForSVGUseElement();
 }
@@ -409,10 +410,10 @@ void SVGUseElement::clearResourceReferences()
 
 void SVGUseElement::buildPendingResource()
 {
-    if (!referencedDocument())
+    if (!referencedDocument() || isInShadowTree())
         return;
     clearResourceReferences();
-    if (!inDocument() || isInShadowTree())
+    if (!inDocument())
         return;
 
     String id;
@@ -430,8 +431,11 @@ void SVGUseElement::buildPendingResource()
         return;
     }
 
-    if (target->isSVGElement())
-        buildShadowAndInstanceTree(static_cast<SVGElement*>(target));
+    if (target->isSVGElement()) {
+        buildShadowAndInstanceTree(toSVGElement(target));
+        invalidateDependentShadowTrees();
+    }
+
     ASSERT(!m_needsShadowTreeRecreation);
 }
 
@@ -517,10 +521,6 @@ void SVGUseElement::buildShadowAndInstanceTree(SVGElement* target)
     // Update relative length information.
     updateRelativeLengthsInformation();
 
-    // Rebuild all dependent use elements.
-    ASSERT(document());
-    document()->accessSVGExtensions()->rebuildAllElementReferencesForTarget(this);
-
     // Eventually dump instance tree
 #ifdef DUMP_INSTANCE_TREE
     String text;
@@ -562,7 +562,7 @@ void SVGUseElement::toClipPath(Path& path)
     if (!n)
         return;
 
-    if (n->isSVGElement() && static_cast<SVGElement*>(n)->isStyledTransformable()) {
+    if (n->isSVGElement() && toSVGElement(n)->isStyledTransformable()) {
         if (!isDirectReference(n))
             // Spec: Indirect references are an error (14.3.5)
             document()->accessSVGExtensions()->reportError("Not allowed to use indirect reference in <clip-path>");
@@ -583,7 +583,7 @@ RenderObject* SVGUseElement::rendererClipChild() const
         return 0;
 
     if (n->isSVGElement() && isDirectReference(n))
-        return static_cast<SVGElement*>(n)->renderer();
+        return toSVGElement(n)->renderer();
 
     return 0;
 }
@@ -624,7 +624,7 @@ void SVGUseElement::buildInstanceTree(SVGElement* target, SVGElementInstance* ta
     for (Node* node = target->firstChild(); node; node = node->nextSibling()) {
         SVGElement* element = 0;
         if (node->isSVGElement())
-            element = static_cast<SVGElement*>(node);
+            element = toSVGElement(node);
 
         // Skip any non-svg nodes or any disallowed element.
         if (!element || isDisallowedElement(element))
@@ -655,7 +655,7 @@ bool SVGUseElement::hasCycleUseReferencing(SVGUseElement* use, SVGElementInstanc
     Element* targetElement = SVGURIReference::targetElementFromIRIString(use->href(), referencedDocument());
     newTarget = 0;
     if (targetElement && targetElement->isSVGElement())
-        newTarget = static_cast<SVGElement*>(targetElement);
+        newTarget = toSVGElement(targetElement);
 
     if (!newTarget)
         return false;
@@ -669,8 +669,7 @@ bool SVGUseElement::hasCycleUseReferencing(SVGUseElement* use, SVGElementInstanc
     while (instance) {
         SVGElement* element = instance->correspondingElement();
 
-        // FIXME: This should probably be using getIdAttribute instead of idForStyleResolution.
-        if (element->hasID() && element->idForStyleResolution() == targetId && element->document() == newTarget->document())
+        if (element->hasID() && element->getIdAttribute() == targetId && element->document() == newTarget->document())
             return true;
 
         instance = instance->parentNode();
@@ -728,7 +727,7 @@ void SVGUseElement::expandUseElementsInShadowTree(Node* element)
         Element* targetElement = SVGURIReference::targetElementFromIRIString(use->href(), referencedDocument());
         SVGElement* target = 0;
         if (targetElement && targetElement->isSVGElement())
-            target = static_cast<SVGElement*>(targetElement);
+            target = toSVGElement(targetElement);
 
         // Don't ASSERT(target) here, it may be "pending", too.
         // Setup sub-shadow tree root node
@@ -849,7 +848,7 @@ void SVGUseElement::associateInstancesWithShadowTreeElements(Node* target, SVGEl
 
     SVGElement* element = 0;
     if (target->isSVGElement())
-        element = static_cast<SVGElement*>(target);
+        element = toSVGElement(target);
 
     ASSERT(!targetInstance->shadowTreeElement());
     targetInstance->setShadowTreeElement(element);
@@ -906,6 +905,20 @@ void SVGUseElement::invalidateShadowTree()
         return;
     m_needsShadowTreeRecreation = true;
     setNeedsStyleRecalc();
+    invalidateDependentShadowTrees();
+}
+
+void SVGUseElement::invalidateDependentShadowTrees()
+{
+    // Recursively invalidate dependent <use> shadow trees
+    const HashSet<SVGElementInstance*>& instances = instancesForElement();
+    const HashSet<SVGElementInstance*>::const_iterator end = instances.end();
+    for (HashSet<SVGElementInstance*>::const_iterator it = instances.begin(); it != end; ++it) {
+        if (SVGUseElement* element = (*it)->correspondingUseElement()) {
+            ASSERT(element->inDocument());
+            element->invalidateShadowTree();
+        }
+    }
 }
 
 void SVGUseElement::transferUseAttributesToReplacedElement(SVGElement* from, SVGElement* to) const
@@ -934,10 +947,10 @@ bool SVGUseElement::selfHasRelativeLengths() const
         return false;
 
     SVGElement* element = m_targetElementInstance->correspondingElement();
-    if (!element || !element->isStyled())
+    if (!element || !element->isSVGStyledElement())
         return false;
 
-    return static_cast<SVGStyledElement*>(element)->hasRelativeLengths();
+    return toSVGStyledElement(element)->hasRelativeLengths();
 }
 
 void SVGUseElement::notifyFinished(CachedResource* resource)

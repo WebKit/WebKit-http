@@ -148,6 +148,8 @@ interface AccessibilityUIElement {
     readonly attribute AccessibilityUIElement horizontalScrollbar;
     readonly attribute AccessibilityUIElement verticalScrollbar;
 
+    void scrollToMakeVisible();
+
     // Text markers.
     AccessibilityTextMarkerRange textMarkerRangeForElement(in AccessibilityUIElement element);    
     AccessibilityTextMarkerRange textMarkerRangeForMarkers(in AccessibilityTextMarker startMarker, in AccessibilityTextMarker endMarker);
@@ -163,6 +165,9 @@ interface AccessibilityUIElement {
     int indexForTextMarker(in AccessibilityTextMarker marker);
     boolean isTextMarkerValid(in AccessibilityTextMarker marker);
     AccessibilityTextMarker textMarkerForIndex(in int textIndex);
+
+    // Returns an ordered list of supported actions for an element.
+    readonly attribute DOMString supportedActions;
 
     // Notification support.
     boolean addNotificationListener(in object callbackFunction);

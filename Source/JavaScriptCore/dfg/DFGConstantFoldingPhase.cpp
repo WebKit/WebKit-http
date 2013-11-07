@@ -88,8 +88,7 @@ private:
                         m_state.variables().operand(
                             m_graph.argumentsRegisterFor(node->codeOrigin)).m_type))
                     break;
-                ASSERT(node->refCount() == 1);
-                node->setOpAndDefaultFlags(Phantom);
+                node->convertToPhantom();
                 eliminated = true;
                 break;
             }
@@ -103,19 +102,20 @@ private:
                     set = node->structure();
                 else
                     set = node->structureSet();
-                if (!isCellSpeculation(value.m_type))
-                    break;
                 if (value.m_currentKnownStructure.isSubsetOf(set)) {
-                    ASSERT(node->refCount() == 1);
-                    node->setOpAndDefaultFlags(Phantom);
+                    m_state.execute(indexInBlock); // Catch the fact that we may filter on cell.
+                    node->convertToPhantom();
                     eliminated = true;
                     break;
                 }
                 StructureAbstractValue& structureValue = value.m_futurePossibleStructure;
                 if (structureValue.isSubsetOf(set)
                     && structureValue.hasSingleton()) {
-                    node->convertToStructureTransitionWatchpoint(structureValue.singleton());
-                    changed = true;
+                    Structure* structure = structureValue.singleton();
+                    m_state.execute(indexInBlock); // Catch the fact that we may filter on cell.
+                    node->convertToStructureTransitionWatchpoint(structure);
+                    eliminated = true;
+                    break;
                 }
                 break;
             }
@@ -124,8 +124,7 @@ private:
             case Arrayify: {
                 if (!node->arrayMode().alreadyChecked(m_graph, node, m_state.forNode(node->child1())))
                     break;
-                ASSERT(node->refCount() == 1);
-                node->setOpAndDefaultFlags(Phantom);
+                node->convertToPhantom();
                 eliminated = true;
                 break;
             }
@@ -133,26 +132,19 @@ private:
             case CheckFunction: {
                 if (m_state.forNode(node->child1()).value() != node->function())
                     break;
-                node->setOpAndDefaultFlags(Phantom);
+                node->convertToPhantom();
                 eliminated = true;
-                break;
-            }
-                
-            case ConvertThis: {
-                if (!isObjectSpeculation(m_state.forNode(node->child1()).m_type))
-                    break;
-                node->setOpAndDefaultFlags(Identity);
-                changed = true;
                 break;
             }
                 
             case GetById:
             case GetByIdFlush: {
                 CodeOrigin codeOrigin = node->codeOrigin;
-                Node* child = node->child1().node();
+                Edge childEdge = node->child1();
+                Node* child = childEdge.node();
                 unsigned identifierNumber = node->identifierNumber();
                 
-                if (!isCellSpeculation(child->prediction()))
+                if (childEdge.useKind() != CellUse)
                     break;
                 
                 Structure* structure = m_state.forNode(child).bestProvenStructure();
@@ -164,8 +156,11 @@ private:
                 GetByIdStatus status = GetByIdStatus::computeFor(
                     globalData(), structure, codeBlock()->identifier(identifierNumber));
                 
-                if (!status.isSimple())
+                if (!status.isSimple()) {
+                    // FIXME: We could handle prototype cases.
+                    // https://bugs.webkit.org/show_bug.cgi?id=110386
                     break;
+                }
                 
                 ASSERT(status.structureSet().size() == 1);
                 ASSERT(status.chain().isEmpty());
@@ -180,19 +175,22 @@ private:
                 if (needsWatchpoint) {
                     ASSERT(m_state.forNode(child).m_futurePossibleStructure.isSubsetOf(StructureSet(structure)));
                     m_insertionSet.insertNode(
-                        indexInBlock, RefChildren, DontRefNode, SpecNone,
-                        StructureTransitionWatchpoint, codeOrigin, OpInfo(structure), child);
+                        indexInBlock, SpecNone, StructureTransitionWatchpoint, codeOrigin,
+                        OpInfo(structure), childEdge);
+                } else if (m_state.forNode(child).m_type & ~SpecCell) {
+                    m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, Phantom, codeOrigin, childEdge);
                 }
                 
-                Node* propertyStorage;
+                childEdge.setUseKind(KnownCellUse);
                 
-                child->ref();
+                Edge propertyStorage;
+                
                 if (isInlineOffset(status.offset()))
-                    propertyStorage = child;
+                    propertyStorage = childEdge;
                 else {
-                    propertyStorage = m_insertionSet.insertNode(
-                        indexInBlock, DontRefChildren, RefNode, SpecNone, GetButterfly, codeOrigin,
-                        child);
+                    propertyStorage = Edge(m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, GetButterfly, codeOrigin, childEdge));
                 }
                 
                 node->convertToGetByOffset(m_graph.m_storageAccessData.size(), propertyStorage);
@@ -207,8 +205,11 @@ private:
             case PutById:
             case PutByIdDirect: {
                 CodeOrigin codeOrigin = node->codeOrigin;
-                Node* child = node->child1().node();
+                Edge childEdge = node->child1();
+                Node* child = childEdge.node();
                 unsigned identifierNumber = node->identifierNumber();
+                
+                ASSERT(childEdge.useKind() == CellUse);
                 
                 Structure* structure = m_state.forNode(child).bestProvenStructure();
                 if (!structure)
@@ -237,9 +238,14 @@ private:
                 if (needsWatchpoint) {
                     ASSERT(m_state.forNode(child).m_futurePossibleStructure.isSubsetOf(StructureSet(structure)));
                     m_insertionSet.insertNode(
-                        indexInBlock, RefChildren, DontRefNode, SpecNone,
-                        StructureTransitionWatchpoint, codeOrigin, OpInfo(structure), child);
+                        indexInBlock, SpecNone, StructureTransitionWatchpoint, codeOrigin,
+                        OpInfo(structure), childEdge);
+                } else if (m_state.forNode(child).m_type & ~SpecCell) {
+                    m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, Phantom, codeOrigin, childEdge);
                 }
+                
+                childEdge.setUseKind(KnownCellUse);
                 
                 StructureTransitionData* transitionData = 0;
                 if (status.isSimpleTransition()) {
@@ -264,38 +270,35 @@ private:
                     }
                 }
 
-                Node* propertyStorage;
+                Edge propertyStorage;
                 
-                if (isInlineOffset(status.offset())) {
-                    child->ref(); // The child will be used as the property index, so ref it to reflect the double use.
-                    propertyStorage = child;
-                } else if (status.isSimpleReplace() || structure->outOfLineCapacity() == status.newStructure()->outOfLineCapacity()) {
-                    propertyStorage = m_insertionSet.insertNode(
-                        indexInBlock, RefChildren, RefNode, SpecNone, GetButterfly, codeOrigin, child);
+                if (isInlineOffset(status.offset()))
+                    propertyStorage = childEdge;
+                else if (status.isSimpleReplace() || structure->outOfLineCapacity() == status.newStructure()->outOfLineCapacity()) {
+                    propertyStorage = Edge(m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, GetButterfly, codeOrigin, childEdge));
                 } else if (!structure->outOfLineCapacity()) {
                     ASSERT(status.newStructure()->outOfLineCapacity());
                     ASSERT(!isInlineOffset(status.offset()));
-                    propertyStorage = m_insertionSet.insertNode(
-                        indexInBlock, RefChildren, RefNode, SpecNone, AllocatePropertyStorage,
-                        codeOrigin, OpInfo(transitionData), child);
+                    propertyStorage = Edge(m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, AllocatePropertyStorage,
+                        codeOrigin, OpInfo(transitionData), childEdge));
                 } else {
                     ASSERT(structure->outOfLineCapacity());
                     ASSERT(status.newStructure()->outOfLineCapacity() > structure->outOfLineCapacity());
                     ASSERT(!isInlineOffset(status.offset()));
                     
-                    propertyStorage = m_insertionSet.insertNode(
-                        indexInBlock, RefChildren, RefNode, SpecNone, ReallocatePropertyStorage,
-                        codeOrigin, OpInfo(transitionData),
-                        child,
-                        m_insertionSet.insertNode(
-                            indexInBlock, DontRefChildren, DontRefNode, SpecNone, GetButterfly,
-                            codeOrigin, child));
+                    propertyStorage = Edge(m_insertionSet.insertNode(
+                        indexInBlock, SpecNone, ReallocatePropertyStorage, codeOrigin,
+                        OpInfo(transitionData), childEdge,
+                        Edge(m_insertionSet.insertNode(
+                            indexInBlock, SpecNone, GetButterfly, codeOrigin, childEdge))));
                 }
                 
                 if (status.isSimpleTransition()) {
                     m_insertionSet.insertNode(
-                        indexInBlock, RefChildren, DontRefNode, SpecNone, PutStructure, codeOrigin,
-                        OpInfo(transitionData), child);
+                        indexInBlock, SpecNone, PutStructure, codeOrigin, 
+                        OpInfo(transitionData), childEdge);
                 }
                 
                 node->convertToPutByOffset(m_graph.m_storageAccessData.size(), propertyStorage);
@@ -323,66 +326,45 @@ private:
             if (!value)
                 continue;
                 
-            if (node->op() == GetLocal) {
-                Node* previousLocalAccess = 0;
-                if (block->variablesAtHead.operand(node->local()) == node
-                    && node->child1()->op() == Phi) {
-                    // We expect this to be the common case.
-                    ASSERT(block->isInPhis(node->child1().node()));
-                    previousLocalAccess = node->child1().node();
-                    block->variablesAtHead.operand(node->local()) = previousLocalAccess;
-                } else {
-                    ASSERT(indexInBlock > 0);
-                    // Must search for the previous access to this local.
-                    for (BlockIndex subIndexInBlock = indexInBlock; subIndexInBlock--;) {
-                        Node* subNode = block->at(subIndexInBlock);
-                        if (!subNode->shouldGenerate())
-                            continue;
-                        if (!subNode->hasVariableAccessData())
-                            continue;
-                        if (subNode->local() != node->local())
-                            continue;
-                        // The two must have been unified.
-                        ASSERT(subNode->variableAccessData() == node->variableAccessData());
-                        previousLocalAccess = subNode;
-                        break;
-                    }
-                    if (!previousLocalAccess) {
-                        // The previous access must have been a Phi.
-                        for (BlockIndex phiIndexInBlock = block->phis.size(); phiIndexInBlock--;) {
-                            Node* phiNode = block->phis[phiIndexInBlock];
-                            if (!phiNode->shouldGenerate())
-                                continue;
-                            if (phiNode->local() != node->local())
-                                continue;
-                            // The two must have been unified.
-                            ASSERT(phiNode->variableAccessData() == node->variableAccessData());
-                            previousLocalAccess = phiNode;
-                            break;
-                        }
-                        ASSERT(previousLocalAccess);
-                    }
-                }
-                    
-                ASSERT(previousLocalAccess);
-                
-                Node* tailNode = block->variablesAtTail.operand(node->local());
-                if (tailNode == node)
-                    block->variablesAtTail.operand(node->local()) = previousLocalAccess;
-                else {
-                    ASSERT(
-                        tailNode->op() == Flush
-                        || tailNode->op() == SetLocal
-                        || isCapturedAtOrAfter(block, indexInBlock, node->local()));
-                }
-            }
-            
             CodeOrigin codeOrigin = node->codeOrigin;
             AdjacencyList children = node->children;
+            
+            if (node->op() == GetLocal) {
+                // GetLocals without a Phi child are guaranteed dead. We don't have to
+                // do anything about them.
+                if (!node->child1())
+                    continue;
                 
+                if (m_graph.m_form != LoadStore) {
+                    VariableAccessData* variable = node->variableAccessData();
+                    Node* phi = node->child1().node();
+                    if (phi->op() == Phi
+                        && block->variablesAtHead.operand(variable->local()) == phi
+                        && block->variablesAtTail.operand(variable->local()) == node) {
+                        
+                        // Keep the graph threaded for easy cases. This is improves compile
+                        // times. It would be correct to just dethread here.
+                        
+                        m_graph.convertToConstant(node, value);
+                        Node* phantom = m_insertionSet.insertNode(
+                            indexInBlock, SpecNone, PhantomLocal,  codeOrigin,
+                            OpInfo(variable), Edge(phi));
+                        block->variablesAtHead.operand(variable->local()) = phantom;
+                        block->variablesAtTail.operand(variable->local()) = phantom;
+                        
+                        changed = true;
+                        
+                        continue;
+                    }
+                    
+                    m_graph.dethread();
+                }
+            } else
+                ASSERT(!node->hasVariableAccessData());
+            
             m_graph.convertToConstant(node, value);
             m_insertionSet.insertNode(
-                indexInBlock, DontRefChildren, DontRefNode, SpecNone, Phantom, codeOrigin, children);
+                indexInBlock, SpecNone, Phantom, codeOrigin, children);
             
             changed = true;
         }
@@ -411,19 +393,18 @@ private:
     void addStructureTransitionCheck(CodeOrigin codeOrigin, unsigned indexInBlock, JSCell* cell)
     {
         Node* weakConstant = m_insertionSet.insertNode(
-            indexInBlock, DontRefChildren, DontRefNode, speculationFromValue(cell),
-            WeakJSConstant, codeOrigin, OpInfo(cell));
+            indexInBlock, speculationFromValue(cell), WeakJSConstant, codeOrigin, OpInfo(cell));
         
         if (cell->structure()->transitionWatchpointSetIsStillValid()) {
             m_insertionSet.insertNode(
-                indexInBlock, RefChildren, DontRefNode, SpecNone, StructureTransitionWatchpoint,
-                codeOrigin, OpInfo(cell->structure()), weakConstant);
+                indexInBlock, SpecNone, StructureTransitionWatchpoint, codeOrigin,
+                OpInfo(cell->structure()), Edge(weakConstant, CellUse));
             return;
         }
 
         m_insertionSet.insertNode(
-            indexInBlock, RefChildren, DontRefNode, SpecNone, CheckStructure, codeOrigin,
-            OpInfo(m_graph.addStructureSet(cell->structure())), weakConstant);
+            indexInBlock, SpecNone, CheckStructure, codeOrigin,
+            OpInfo(m_graph.addStructureSet(cell->structure())), Edge(weakConstant, CellUse));
     }
     
     // This is necessary because the CFA may reach conclusions about constants based on its
@@ -459,8 +440,7 @@ private:
                 
             default:
                 m_insertionSet.insertNode(
-                    indexInBlock, DontRefChildren, DontRefNode, SpecNone, ForceOSRExit,
-                    node->codeOrigin);
+                    indexInBlock, SpecNone, ForceOSRExit, node->codeOrigin);
                 changed = true;
                 break;
             }

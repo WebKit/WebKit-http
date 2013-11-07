@@ -83,11 +83,6 @@
               'WTF_USE_NEW_THEME=1',
             ],
           }],
-          ['os_posix == 1 and OS != "mac"', {
-            'defines': [
-              'WTF_USE_PTHREADS=1',
-            ],
-          }],
         ],
       },
     },
@@ -118,14 +113,13 @@
         ['exclude', '../wtf/url'],
         ['exclude', '../wtf/wince'],
         ['exclude', '../wtf/wx'],
-        ['exclude', '../wtf/unicode/glib'],
         ['exclude', '../wtf/unicode/qt4'],
         ['exclude', '../wtf/unicode/wchar'],
-        # GLib/GTK, even though its name doesn't really indicate.
-        ['exclude', '/(gtk|glib|gobject)/.*\\.(cpp|h)$'],
+        ['exclude', '/(gtk|gobject)/.*\\.(cpp|h)$'],
         ['exclude', '(Default|Gtk|Mac|None|Qt|Win|Wx|Efl)\\.(cpp|mm)$'],
         ['exclude', 'wtf/OSRandomSource\\.cpp$'],
         ['exclude', 'wtf/MainThread.cpp$'],
+        ['exclude', 'wtf/MetaAllocator\\.(cpp|h)$'],
       ],
       'direct_dependent_settings': {
         'include_dirs': [

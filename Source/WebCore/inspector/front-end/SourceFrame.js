@@ -44,8 +44,11 @@ WebInspector.SourceFrame = function(contentProvider)
     var textEditorDelegate = new WebInspector.TextEditorDelegateForSourceFrame(this);
 
     if (WebInspector.experimentsSettings.codemirror.isEnabled()) {
-        importScript("CodeMirrorTextEditor.js");
+        loadScript("CodeMirrorTextEditor.js");
         this._textEditor = new WebInspector.CodeMirrorTextEditor(this._url, textEditorDelegate);
+    } else if (WebInspector.experimentsSettings.aceTextEditor.isEnabled()) {
+        loadScript("AceTextEditor.js");
+        this._textEditor = new WebInspector.AceTextEditor(this._url, textEditorDelegate);
     } else
         this._textEditor = new WebInspector.DefaultTextEditor(this._url, textEditorDelegate);
 
@@ -112,11 +115,19 @@ WebInspector.SourceFrame.prototype = {
     },
 
     /**
+     * @return {?Element}
+     */
+    statusBarText: function()
+    {
+        return this._sourcePositionElement;
+    },
+
+    /**
      * @return {Array.<Element>}
      */
     statusBarItems: function()
     {
-        return [this._sourcePositionElement];
+        return [];
     },
 
     defaultFocusedElement: function()
@@ -297,8 +308,11 @@ WebInspector.SourceFrame.prototype = {
     {
         this._textEditor.mimeType = mimeType;
 
-        this._loaded = true;
-        this._textEditor.setText(content || "");
+        if (!this._loaded) {
+            this._loaded = true;
+            this._textEditor.setText(content || "");
+        } else
+            this._textEditor.editRange(this._textEditor.range(), content || "");
 
         this._textEditor.beginUpdates();
 

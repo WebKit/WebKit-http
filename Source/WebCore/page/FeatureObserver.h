@@ -45,7 +45,7 @@ public:
     enum Feature {
         PageDestruction,
         LegacyNotifications,
-        UnusedSlot01, // Prior to 10/2012, we used this slot for LegacyBlobBuilder.
+        MultipartMainResource,
         PrefixedIndexedDB,
         WorkerStart,
         SharedWorkerStart,
@@ -95,12 +95,18 @@ public:
         RequiredAttribute,
         ResultsAttribute,
         StepAttribute,
+        PageVisits,
+        HTMLMarqueeElement,
+        CSSOverflowMarquee,
+        Reflection,
+        CursorVisibility,
         // Add new features above this line. Don't change assigned numbers of each items.
         NumberOfFeatures, // This enum value must be last.
     };
 
     static void observe(Document*, Feature);
     static void observe(DOMWindow*, Feature);
+    void didCommitLoad();
 
 private:
     void didObserve(Feature feature)
@@ -113,6 +119,8 @@ private:
         }
         m_featureBits->quickSet(feature);
     }
+
+    void updateMeasurements();
 
     OwnPtr<BitVector> m_featureBits;
 };

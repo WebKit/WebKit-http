@@ -47,7 +47,7 @@ V8ArrayBufferDeallocationObserver* V8ArrayBufferDeallocationObserver::instance()
 }
 
 
-v8::Handle<v8::Value> V8ArrayBuffer::constructorCallbackCustom(const v8::Arguments& args)
+v8::Handle<v8::Value> V8ArrayBuffer::constructorCustom(const v8::Arguments& args)
 {
     // If we return a previously constructed ArrayBuffer,
     // e.g. from the call to ArrayBufferView.buffer, this code is called
@@ -76,7 +76,7 @@ v8::Handle<v8::Value> V8ArrayBuffer::constructorCallbackCustom(const v8::Argumen
     v8::V8::AdjustAmountOfExternalAllocatedMemory(buffer->byteLength());
     // Transform the holder into a wrapper object for the array.
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::associateObjectWithWrapper(buffer.release(), &info, wrapper, args.GetIsolate());
+    V8DOMWrapper::associateObjectWithWrapper(buffer.release(), &info, wrapper, args.GetIsolate(), WrapperConfiguration::Dependent);
     return wrapper;
 }
 

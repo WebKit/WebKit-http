@@ -28,6 +28,7 @@
 
 VPATH = \
     $(WebCore) \
+	$(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/filesystem \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
@@ -62,6 +63,10 @@ VPATH = \
 #
 
 BINDING_IDLS = \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyNeededEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeys.idl \
     $(WebCore)/Modules/filesystem/DOMFileSystem.idl \
     $(WebCore)/Modules/filesystem/DOMFileSystemSync.idl \
     $(WebCore)/Modules/filesystem/DOMWindowFileSystem.idl \
@@ -188,6 +193,7 @@ BINDING_IDLS = \
     $(WebCore)/css/CSSValue.idl \
     $(WebCore)/css/CSSValueList.idl \
     $(WebCore)/css/Counter.idl \
+    $(WebCore)/css/DOMWindowCSS.idl \
     $(WebCore)/css/MediaList.idl \
     $(WebCore)/css/MediaQueryList.idl \
     $(WebCore)/css/MediaQueryListListener.idl \
@@ -214,6 +220,7 @@ BINDING_IDLS = \
     $(WebCore)/dom/Clipboard.idl \
     $(WebCore)/dom/Comment.idl \
     $(WebCore)/dom/CompositionEvent.idl \
+    $(WebCore)/dom/CustomElementConstructor.idl \
     $(WebCore)/dom/CustomEvent.idl \
     $(WebCore)/dom/DOMCoreException.idl \
     $(WebCore)/dom/DOMError.idl \
@@ -235,6 +242,7 @@ BINDING_IDLS = \
     $(WebCore)/dom/EventException.idl \
     $(WebCore)/dom/EventListener.idl \
     $(WebCore)/dom/EventTarget.idl \
+    $(WebCore)/dom/FocusEvent.idl \
     $(WebCore)/dom/HashChangeEvent.idl \
     $(WebCore)/dom/KeyboardEvent.idl \
     $(WebCore)/dom/MessageChannel.idl \
@@ -365,8 +373,8 @@ BINDING_IDLS = \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
     $(WebCore)/html/MediaError.idl \
-	$(WebCore)/html/MediaKeyError.idl \
-	$(WebCore)/html/MediaKeyEvent.idl \
+    $(WebCore)/html/MediaKeyError.idl \
+    $(WebCore)/html/MediaKeyEvent.idl \
     $(WebCore)/html/MicroDataItemValue.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
@@ -382,6 +390,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/CanvasRenderingContext2D.idl \
     $(WebCore)/html/canvas/DataView.idl \
     $(WebCore)/html/canvas/DOMPath.idl \
+    $(WebCore)/html/canvas/EXTDrawBuffers.idl \
     $(WebCore)/html/canvas/EXTTextureFilterAnisotropic.idl \
     $(WebCore)/html/canvas/Float32Array.idl \
     $(WebCore)/html/canvas/Float64Array.idl \
@@ -391,6 +400,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/OESElementIndexUint.idl \
     $(WebCore)/html/canvas/OESStandardDerivatives.idl \
     $(WebCore)/html/canvas/OESTextureFloat.idl \
+    $(WebCore)/html/canvas/OESTextureHalfFloat.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
     $(WebCore)/html/canvas/Uint16Array.idl \
     $(WebCore)/html/canvas/Uint32Array.idl \
@@ -398,6 +408,7 @@ BINDING_IDLS = \
     $(WebCore)/html/canvas/Uint8ClampedArray.idl \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \
     $(WebCore)/html/canvas/WebGLBuffer.idl \
+    $(WebCore)/html/canvas/WebGLCompressedTextureATC.idl \
     $(WebCore)/html/canvas/WebGLCompressedTextureS3TC.idl \
     $(WebCore)/html/canvas/WebGLContextAttributes.idl \
     $(WebCore)/html/canvas/WebGLContextEvent.idl \
@@ -687,29 +698,15 @@ ifneq ($(SDKROOT),)
 	SDK_FLAGS=-isysroot $(SDKROOT)
 endif
 
-ifeq ($(shell $(CC) -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_DASHBOARD_SUPPORT | cut -d' ' -f3), 1)
-    ENABLE_DASHBOARD_SUPPORT = 1
-else
-    ENABLE_DASHBOARD_SUPPORT = 0
-endif
-
 ifeq ($(shell $(CC) -x c++ -E -P -dM $(SDK_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ENABLE_ORIENTATION_EVENTS | cut -d' ' -f3), 1)
     ENABLE_ORIENTATION_EVENTS = 1
-else
-    ENABLE_ORIENTATION_EVENTS = 0
 endif
 
-else
-
-ifndef ENABLE_DASHBOARD_SUPPORT
-    ENABLE_DASHBOARD_SUPPORT = 0
-endif
+endif # MACOS
 
 ifndef ENABLE_ORIENTATION_EVENTS
     ENABLE_ORIENTATION_EVENTS = 0
 endif
-
-endif # MACOS
 
 ifndef ENABLE_DRAGGABLE_REGION
     ENABLE_DRAGGABLE_REGION = 0
@@ -838,6 +835,10 @@ ifeq ($(findstring ENABLE_DETAILS_ELEMENT,$(FEATURE_DEFINES)), ENABLE_DETAILS_EL
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_DETAILS_ELEMENT=1
 endif
 
+ifeq ($(findstring ENABLE_ENCRYPTED_MEDIA_V2,$(FEATURE_DEFINES)), ENABLE_ENCRYPTED_MEDIA_V2)
+	HTML_FLAGS := $(HTML_FLAGS) ENABLE_ENCRYPTED_MEDIA_V2=1
+endif
+
 ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_METER_ELEMENT=1
 endif
@@ -962,11 +963,11 @@ preprocess_idls_script = perl $(addprefix -I $(WebCore)/, $(sort $(dir $(1)))) $
 
 IDL_INCLUDES = \
     $(WebCore)/Modules/battery \
+	$(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/filesystem \
     $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
-    $(WebCore)/Modules/intents \
     $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/mediastream \
     $(WebCore)/Modules/networkinfo \
@@ -1112,6 +1113,6 @@ ifeq ($(OS),Windows_NT)
 all : WebCoreHeaderDetection.h
 
 WebCoreHeaderDetection.h : DerivedSources.make
-	if [ -f "$(WEBKITLIBRARIESDIR)/include/AVFoundationCF/AVCFBase.h" ]; then echo "#define HAVE_AVCF 1" > $@; else echo > $@; fi
+	if [ -f "$(WEBKIT_LIBRARIES)/include/AVFoundationCF/AVCFBase.h" ]||[ -f "$(WEBKITLIBRARIESDIR)/include/AVFoundationCF/AVCFBase.h" ]; then echo "#define HAVE_AVCF 1" > $@; else echo > $@; fi
 
 endif # Windows_NT

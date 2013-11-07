@@ -112,7 +112,16 @@ void LayerTreeHostMac::invalidate()
     m_layerFlushScheduler.invalidate();
 }
 
-void LayerTreeHostMac::setNonCompositedContentsNeedDisplay(const IntRect& rect)
+void LayerTreeHostMac::setNonCompositedContentsNeedDisplay()
+{
+    m_nonCompositedContentLayer->setNeedsDisplay();
+    if (m_pageOverlayLayer)
+        m_pageOverlayLayer->setNeedsDisplay();
+
+    scheduleLayerFlush();
+}
+
+void LayerTreeHostMac::setNonCompositedContentsNeedDisplayInRect(const IntRect& rect)
 {
     m_nonCompositedContentLayer->setNeedsDisplayInRect(rect);
     if (m_pageOverlayLayer)
@@ -121,9 +130,9 @@ void LayerTreeHostMac::setNonCompositedContentsNeedDisplay(const IntRect& rect)
     scheduleLayerFlush();
 }
 
-void LayerTreeHostMac::scrollNonCompositedContents(const IntRect& scrollRect, const IntSize& scrollOffset)
+void LayerTreeHostMac::scrollNonCompositedContents(const IntRect& scrollRect)
 {
-    setNonCompositedContentsNeedDisplay(scrollRect);
+    setNonCompositedContentsNeedDisplayInRect(scrollRect);
 }
 
 void LayerTreeHostMac::forceRepaint()

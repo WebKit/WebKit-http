@@ -30,6 +30,7 @@
 
 /**
  * @constructor
+ * @extends {WebInspector.Object}
  */
 WebInspector.DockController = function()
 {
@@ -50,6 +51,10 @@ WebInspector.DockController.State = {
     Undocked: "undocked"
 }
 
+WebInspector.DockController.Events = {
+    DockSideChanged: "DockSideChanged"
+}
+
 WebInspector.DockController.prototype = {
     /**
      * @return {Element}
@@ -57,6 +62,14 @@ WebInspector.DockController.prototype = {
     get element()
     {
         return this._dockToggleButton.element;
+    },
+
+    /**
+     * @return {string}
+     */
+    dockSide: function()
+    {
+        return this._dockSide;
     },
 
     /**
@@ -76,14 +89,7 @@ WebInspector.DockController.prototype = {
         else
             WebInspector.userMetrics.WindowUndocked.record();
         this._updateUI();
-    },
-
-    /**
-     * @return {boolean}
-     */
-    isDockedToBottom: function()
-    {
-        return this._dockSide == WebInspector.DockController.State.DockedToBottom;
+        this.dispatchEventToListeners(WebInspector.DockController.Events.DockSideChanged, this._dockSide);
     },
 
     /**
@@ -182,7 +188,9 @@ WebInspector.DockController.prototype = {
         case "undock": action = "undocked"; break;
         }
         InspectorFrontendHost.requestSetDockSide(action);
-    }
+    },
+
+    __proto__: WebInspector.Object.prototype
 }
 
 /**

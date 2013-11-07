@@ -107,9 +107,6 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_depthStencilBuffer(0)
     , m_layerComposited(false)
     , m_internalColorFormat(0)
-    , m_boundFBO(0)
-    , m_activeTexture(GL_TEXTURE0)
-    , m_boundTexture0(0)
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
@@ -194,7 +191,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     ::glGenFramebuffersEXT(1, &m_fbo);
     ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
     
-    m_boundFBO = m_fbo;
+    m_state.boundFBO = m_fbo;
     if (!m_attrs.antialias && (m_attrs.stencil || m_attrs.depth))
         ::glGenRenderbuffersEXT(1, &m_depthStencilBuffer);
 
@@ -202,7 +199,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     if (m_attrs.antialias) {
         ::glGenFramebuffersEXT(1, &m_multisampleFBO);
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_multisampleFBO);
-        m_boundFBO = m_multisampleFBO;
+        m_state.boundFBO = m_multisampleFBO;
         ::glGenRenderbuffersEXT(1, &m_multisampleColorBuffer);
         if (m_attrs.stencil || m_attrs.depth)
             ::glGenRenderbuffersEXT(1, &m_multisampleDepthStencilBuffer);
@@ -224,6 +221,10 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     // Always set to 1 for OpenGL ES.
     ANGLEResources.MaxDrawBuffers = 1;
     
+    GC3Dint range[2], precision;
+    getShaderPrecisionFormat(GraphicsContext3D::FRAGMENT_SHADER, GraphicsContext3D::HIGH_FLOAT, range, &precision);
+    ANGLEResources.FragmentPrecisionHigh = (range[0] || range[1] || precision);
+
     m_compiler.setResources(ANGLEResources);
     
     ::glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);

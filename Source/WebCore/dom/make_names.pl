@@ -371,7 +371,7 @@ sub printConstructorInterior
     if ($enabledTags{$tagName}{wrapperOnlyIfMediaIsAvailable}) {
         print F <<END
     Settings* settings = document->settings();
-    if (!MediaPlayer::isAvailable() || (settings && !settings->isMediaEnabled()))
+    if (!MediaPlayer::isAvailable() || (settings && !settings->mediaEnabled()))
         return 0;
     
 END
@@ -1020,7 +1020,7 @@ sub printWrapperFunctions
 static JSDOMWrapper* create${JSInterfaceName}Wrapper(ExecState* exec, JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
     Settings* settings = element->document()->settings();
-    if (!MediaPlayer::isAvailable() || (settings && !settings->isMediaEnabled()))
+    if (!MediaPlayer::isAvailable() || (settings && !settings->mediaEnabled()))
         return CREATE_DOM_WRAPPER(exec, globalObject, $parameters{namespace}Element, element.get());
     return CREATE_DOM_WRAPPER(exec, globalObject, ${JSInterfaceName}, element.get());
 }
@@ -1071,7 +1071,7 @@ END
 static v8::Handle<v8::Object> create${JSInterfaceName}Wrapper($parameters{namespace}Element* element, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
     Settings* settings = element->document()->settings();
-    if (!MediaPlayer::isAvailable() || (settings && !settings->isMediaEnabled()))
+    if (!MediaPlayer::isAvailable() || (settings && !settings->mediaEnabled()))
         return createV8$parameters{namespace}DirectWrapper(element, creationContext, isolate);
     return wrap(static_cast<${JSInterfaceName}*>(element), creationContext, isolate);
 }
@@ -1174,8 +1174,9 @@ END
 ;
     } elsif ($wrapperFactoryType eq "V8") {
         print F <<END
+#include "V8CustomElement.h"
 #include "V8$parameters{namespace}Element.h"
-        
+
 #include <v8.h>
 END
 ;
@@ -1274,6 +1275,11 @@ END
         if ($parameters{namespace} eq "SVG") {
             print F <<END
     return V8SVGElement::createWrapper(element, creationContext, isolate);
+END
+;
+        } elsif ($parameters{namespace} eq "HTML") {
+            print F <<END
+    return V8CustomElement::wrap(element, creationContext, isolate);
 END
 ;
         } else {

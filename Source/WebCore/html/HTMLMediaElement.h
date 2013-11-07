@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 #define HTMLMediaElement_h
 
 #if ENABLE(VIDEO)
-
 #include "HTMLElement.h"
 #include "ActiveDOMObject.h"
 #include "GenericEventQueue.h"
@@ -67,6 +66,9 @@ class Widget;
 #if PLATFORM(MAC)
 class DisplaySleepDisabler;
 #endif
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+class MediaKeys;
+#endif
 
 #if ENABLE(VIDEO_TRACK)
 class InbandTextTrackPrivate;
@@ -83,6 +85,9 @@ typedef Vector<CueInterval> CueList;
 class HTMLMediaElement : public HTMLElement, public MediaPlayerClient, public MediaPlayerSupportsTypeClient, private MediaCanStartListener, public ActiveDOMObject, public MediaControllerInterface
 #if ENABLE(VIDEO_TRACK)
     , private TextTrackClient, private CaptionPreferencesChangedListener
+#endif
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+    , public PlatformTextTrackMenuClient
 #endif
 {
 public:
@@ -106,11 +111,12 @@ public:
     PlatformLayer* platformLayer() const;
 #endif
 
-    enum LoadType {
-        MediaResource = 1 << 0,
-        TextTrackResource = 1 << 1
+    enum DelayedActionType {
+        LoadMediaResource = 1 << 0,
+        LoadTextTrackResource = 1 << 1,
+        TextTrackChangesNotification = 1 << 2
     };
-    void scheduleLoad(LoadType);
+    void scheduleDelayedAction(DelayedActionType);
     
     MediaPlayer::MovieLoadType movieLoadType() const;
     
@@ -188,7 +194,14 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitkeyadded);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitkeyerror);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitkeymessage);
+#endif
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitneedkey);
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    MediaKeys* mediaKeys() const { return m_mediaKeys.get(); }
+    void setMediaKeys(MediaKeys*);
 #endif
 
 // controls
@@ -215,14 +228,23 @@ public:
     TextTrackList* textTracks();
     CueList currentlyActiveCues() const { return m_currentlyActiveCues; }
 
+    void addTrack(TextTrack*);
     void removeTrack(TextTrack*);
     void removeAllInbandTracks();
+    void closeCaptionTracksChanged();
+    void notifyMediaPlayerOfTextTrackChanges();
 
     virtual void didAddTrack(HTMLTrackElement*);
     virtual void didRemoveTrack(HTMLTrackElement*);
 
     virtual void mediaPlayerDidAddTrack(PassRefPtr<InbandTextTrackPrivate>) OVERRIDE;
     virtual void mediaPlayerDidRemoveTrack(PassRefPtr<InbandTextTrackPrivate>) OVERRIDE;
+
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+    virtual void setSelectedTextTrack(PassRefPtr<PlatformTextTrack>) OVERRIDE;
+    virtual Vector<RefPtr<PlatformTextTrack> > platformTextTracks() OVERRIDE;
+    PlatformTextTrackMenuInterface* platformTextTrackMenu();
+#endif
 
     struct TrackGroup {
         enum GroupKind { CaptionsAndSubtitles, Description, Chapter, Metadata, Other };
@@ -244,7 +266,7 @@ public:
 
     void configureTextTrackGroupForLanguage(const TrackGroup&) const;
     void configureTextTracks();
-    void configureTextTrackGroup(const TrackGroup&) const;
+    void configureTextTrackGroup(const TrackGroup&);
 
     void toggleTrackAtIndex(int index, bool exclusive = true);
     static int textTracksOffIndex() { return -1; }
@@ -307,7 +329,7 @@ public:
     static void getSitesInMediaCache(Vector<String>&);
     static void clearMediaCache();
     static void clearMediaCacheForSite(const String&);
-    static void requeryMediaEngines();
+    static void resetMediaEngines();
 
     bool isPlaying() const { return m_playing; }
 
@@ -433,16 +455,15 @@ private:
     virtual void mediaPlayerFirstVideoFrameAvailable(MediaPlayer*);
     virtual void mediaPlayerCharacteristicChanged(MediaPlayer*);
 
-#if ENABLE(MEDIA_SOURCE)
-    virtual void mediaPlayerSourceOpened();
-    virtual String mediaPlayerSourceURL() const;
-#endif
-
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void mediaPlayerKeyAdded(MediaPlayer*, const String& keySystem, const String& sessionId) OVERRIDE;
     virtual void mediaPlayerKeyError(MediaPlayer*, const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode, unsigned short systemCode) OVERRIDE;
     virtual void mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const KURL& defaultURL) OVERRIDE;
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength) OVERRIDE;
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    virtual bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*);
 #endif
 
     virtual String mediaPlayerReferrer() const OVERRIDE;
@@ -626,7 +647,6 @@ private:
     int m_processingMediaPlayerCallback;
 
 #if ENABLE(MEDIA_SOURCE)
-    KURL m_mediaSourceURL;
     RefPtr<MediaSource> m_mediaSource;
 #endif
 
@@ -637,8 +657,8 @@ private:
     double m_fragmentStartTime;
     double m_fragmentEndTime;
 
-    typedef unsigned PendingLoadFlags;
-    PendingLoadFlags m_pendingLoadFlags;
+    typedef unsigned PendingActionFlags;
+    PendingActionFlags m_pendingActionFlags;
 
     bool m_playing : 1;
     bool m_isWaitingUntilMediaCanStart : 1;
@@ -678,6 +698,7 @@ private:
 #if ENABLE(VIDEO_TRACK)
     bool m_tracksAreReady : 1;
     bool m_haveVisibleTextTrack : 1;
+    bool m_processingPreferenceChange : 1;
     float m_lastTextTrackUpdateTime;
 
     RefPtr<TextTrackList> m_textTracks;
@@ -706,6 +727,14 @@ private:
 #endif
 
     friend class TrackDisplayUpdateScope;
+
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    RefPtr<MediaKeys> m_mediaKeys;
+#endif
+
+#if USE(PLATFORM_TEXT_TRACK_MENU)
+    RefPtr<PlatformTextTrackMenuInterface> m_platformMenu;
+#endif
 };
 
 #if ENABLE(VIDEO_TRACK)
@@ -736,7 +765,7 @@ inline bool isMediaElement(Node* node)
 
 inline HTMLMediaElement* toMediaElement(Node* node)
 {
-    ASSERT(!node || isMediaElement(node));
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || isMediaElement(node));
     return static_cast<HTMLMediaElement*>(node);
 }
 

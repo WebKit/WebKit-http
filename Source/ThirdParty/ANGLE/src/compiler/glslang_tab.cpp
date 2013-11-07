@@ -434,7 +434,7 @@ typedef short int yytype_int16;
 #define YYSIZE_MAXIMUM ((YYSIZE_T) -1)
 
 #ifndef YY_
-# if YYENABLE_NLS
+# if defined YYENABLE_NLS && YYENABLE_NLS
 #  if ENABLE_NLS
 #   include <libintl.h> /* INFRINGES ON USER NAME SPACE */
 #   define YY_(msgid) dgettext ("bison-runtime", msgid)
@@ -758,20 +758,20 @@ static const yytype_uint16 yyrline[] =
      762,   773,   777,   778,   788,   798,   808,   821,   822,   832,
      845,   849,   853,   857,   858,   871,   872,   885,   886,   899,
      900,   917,   918,   931,   932,   933,   934,   935,   939,   942,
-     953,   961,   988,   993,  1000,  1038,  1041,  1048,  1056,  1077,
-    1098,  1109,  1138,  1143,  1153,  1158,  1168,  1171,  1174,  1177,
-    1183,  1190,  1193,  1215,  1233,  1257,  1280,  1284,  1302,  1310,
-    1342,  1362,  1451,  1460,  1483,  1486,  1492,  1500,  1508,  1516,
-    1526,  1533,  1536,  1539,  1545,  1548,  1563,  1567,  1571,  1575,
-    1584,  1589,  1594,  1599,  1604,  1609,  1614,  1619,  1624,  1629,
-    1635,  1641,  1647,  1652,  1657,  1666,  1675,  1680,  1693,  1693,
-    1707,  1707,  1716,  1719,  1734,  1770,  1774,  1780,  1788,  1804,
-    1808,  1812,  1813,  1819,  1820,  1821,  1822,  1823,  1827,  1828,
-    1828,  1828,  1838,  1839,  1843,  1843,  1844,  1844,  1849,  1852,
-    1862,  1865,  1871,  1872,  1876,  1884,  1888,  1898,  1903,  1920,
-    1920,  1925,  1925,  1932,  1932,  1940,  1943,  1949,  1952,  1958,
-    1962,  1969,  1976,  1983,  1990,  2001,  2010,  2014,  2021,  2024,
-    2030,  2030
+     953,   961,   988,   993,  1007,  1045,  1048,  1055,  1063,  1084,
+    1105,  1116,  1145,  1150,  1160,  1165,  1175,  1178,  1181,  1184,
+    1190,  1197,  1200,  1222,  1240,  1264,  1287,  1291,  1309,  1317,
+    1349,  1369,  1458,  1467,  1490,  1493,  1499,  1507,  1515,  1523,
+    1533,  1540,  1543,  1546,  1552,  1555,  1570,  1574,  1578,  1582,
+    1591,  1596,  1601,  1606,  1611,  1616,  1621,  1626,  1631,  1636,
+    1642,  1648,  1654,  1659,  1664,  1673,  1682,  1687,  1700,  1700,
+    1714,  1714,  1723,  1726,  1741,  1777,  1781,  1787,  1795,  1811,
+    1815,  1819,  1820,  1826,  1827,  1828,  1829,  1830,  1834,  1835,
+    1835,  1835,  1845,  1846,  1850,  1850,  1851,  1851,  1856,  1859,
+    1869,  1872,  1878,  1879,  1883,  1891,  1895,  1905,  1910,  1927,
+    1927,  1932,  1932,  1939,  1939,  1947,  1950,  1956,  1959,  1965,
+    1969,  1976,  1983,  1990,  1997,  2008,  2017,  2021,  2028,  2031,
+    2037,  2037
 };
 #endif
 
@@ -1407,7 +1407,7 @@ while (YYID (0))
    we won't break user code: when these are the locations we know.  */
 
 #ifndef YY_LOCATION_PRINT
-# if YYLTYPE_IS_TRIVIAL
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
 #  define YY_LOCATION_PRINT(File, Loc)			\
      fprintf (File, "%d.%d-%d.%d",			\
 	      (Loc).first_line, (Loc).first_column,	\
@@ -2554,7 +2554,7 @@ yyreduce:
                     (yyval.interm.intermTypedNode)->getAsAggregate()->setName(fnCandidate->getMangledName());
 
                     TQualifier qual;
-                    for (int i = 0; i < fnCandidate->getParamCount(); ++i) {
+                    for (size_t i = 0; i < fnCandidate->getParamCount(); ++i) {
                         qual = fnCandidate->getParam(i).type->getQualifier();
                         if (qual == EvqOut || qual == EvqInOut) {
                             if (context->lValueErrorCheck((yyval.interm.intermTypedNode)->getLine(), "assign", (yyval.interm.intermTypedNode)->getAsAggregate()->getSequence()[i]->getAsTyped())) {
@@ -3140,7 +3140,7 @@ yyreduce:
         prototype->setType(function.getReturnType());
         prototype->setName(function.getName());
         
-        for (int i = 0; i < function.getParamCount(); i++)
+        for (size_t i = 0; i < function.getParamCount(); i++)
         {
             const TParameter &param = function.getParam(i);
             if (param.name != 0)
@@ -3174,7 +3174,14 @@ yyreduce:
   case 73:
 
     {
-        context->symbolTable.setDefaultPrecision( (yyvsp[(3) - (4)].interm.type).type, (yyvsp[(2) - (4)].interm.precision) );
+        if (((yyvsp[(2) - (4)].interm.precision) == EbpHigh) && (context->shaderType == SH_FRAGMENT_SHADER) && !context->fragmentPrecisionHigh) {
+            context->error((yyvsp[(1) - (4)].lex).line, "precision is not supported in fragment shader", "highp");
+            context->recover();
+        }
+        if (!context->symbolTable.setDefaultPrecision( (yyvsp[(3) - (4)].interm.type), (yyvsp[(2) - (4)].interm.precision) )) {
+            context->error((yyvsp[(1) - (4)].lex).line, "illegal type argument for default precision qualifier", getBasicString((yyvsp[(3) - (4)].interm.type).type));
+            context->recover();
+        }
         (yyval.interm.intermNode) = 0;
     ;}
     break;
@@ -3196,7 +3203,7 @@ yyreduce:
                 context->error((yyvsp[(2) - (2)].lex).line, "overloaded functions must have the same return type", (yyvsp[(1) - (2)].interm.function)->getReturnType().getBasicString());
                 context->recover();
             }
-            for (int i = 0; i < prevDec->getParamCount(); ++i) {
+            for (size_t i = 0; i < prevDec->getParamCount(); ++i) {
                 if (prevDec->getParam(i).type->getQualifier() != (yyvsp[(1) - (2)].interm.function)->getParam(i).type->getQualifier()) {
                     context->error((yyvsp[(2) - (2)].lex).line, "overloaded functions must have the same parameter qualifiers", (yyvsp[(1) - (2)].interm.function)->getParam(i).type->getQualifierString());
                     context->recover();
@@ -4562,7 +4569,7 @@ yyreduce:
         // knows where to find parameters.
         //
         TIntermAggregate* paramNodes = new TIntermAggregate;
-        for (int i = 0; i < function->getParamCount(); i++) {
+        for (size_t i = 0; i < function->getParamCount(); i++) {
             const TParameter& param = function->getParam(i);
             if (param.name != 0) {
                 TVariable *variable = new TVariable(param.name, *param.type);
@@ -4843,5 +4850,4 @@ yyreturn:
 int glslang_parse(TParseContext* context) {
     return yyparse(context);
 }
-
 

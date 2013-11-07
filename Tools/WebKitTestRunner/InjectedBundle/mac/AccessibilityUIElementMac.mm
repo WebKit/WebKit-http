@@ -1098,6 +1098,13 @@ PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::verticalScrollbar() c
     return 0;
 }
 
+void AccessibilityUIElement::scrollToMakeVisible()
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    [m_element accessibilityPerformAction:@"AXScrollToVisible"];
+    END_AX_OBJC_EXCEPTIONS
+}
+    
 JSRetainPtr<JSStringRef> AccessibilityUIElement::selectedTextRange()
 {
     NSRange range = NSMakeRange(NSNotFound, 0);
@@ -1438,6 +1445,15 @@ PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForIndex(i
     return 0;                                                                          
 }
 
+JSRetainPtr<JSStringRef> AccessibilityUIElement::supportedActions() const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSArray *names = [m_element accessibilityActionNames];
+    return [[names componentsJoinedByString:@","] createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
+    return 0;
+}
 
 } // namespace WTR
 

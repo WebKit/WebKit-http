@@ -71,10 +71,9 @@ WebInspector.NetworkManager._MIMETypes = {
     "image/x-xbitmap":             {"image": true},
     "font/ttf":                    {"font": true},
     "font/opentype":               {"font": true},
-    "font/woff":                   {"font": true},
+    "application/font-woff":       {"font": true},
     "application/x-font-type1":    {"font": true},
     "application/x-font-ttf":      {"font": true},
-    "application/x-font-woff":     {"font": true},
     "application/x-truetype-font": {"font": true},
     "text/javascript":             {"script": true},
     "text/ecmascript":             {"script": true},
@@ -182,7 +181,7 @@ WebInspector.NetworkDispatcher.prototype = {
 
         if (!this._mimeTypeIsConsistentWithType(networkRequest)) {
             WebInspector.console.addMessage(WebInspector.ConsoleMessage.create(WebInspector.ConsoleMessage.MessageSource.Network,
-                WebInspector.ConsoleMessage.MessageLevel.Warning,
+                WebInspector.ConsoleMessage.MessageLevel.Log,
                 WebInspector.UIString("Resource interpreted as %s but transferred with MIME type %s: \"%s\".", networkRequest.type.title(), networkRequest.mimeType, networkRequest.url),
                 WebInspector.ConsoleMessage.MessageType.Log,
                 "",
@@ -263,7 +262,7 @@ WebInspector.NetworkDispatcher.prototype = {
             // FIXME: move this check to the backend.
             if (!redirectResponse)
                 return;
-            this.responseReceived(requestId, frameId, loaderId, time, "Other", redirectResponse);
+            this.responseReceived(requestId, frameId, loaderId, time, PageAgent.ResourceType.Other, redirectResponse);
             networkRequest = this._appendRedirect(requestId, time, request.url);
         } else
             networkRequest = this._createNetworkRequest(requestId, frameId, loaderId, request.url, documentURL, initiator);

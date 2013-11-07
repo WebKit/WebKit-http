@@ -30,6 +30,7 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLNames.h"
 #include "Length.h"
@@ -56,7 +57,7 @@ HTMLFrameSetElement::HTMLFrameSetElement(const QualifiedName& tagName, Document*
 {
     ASSERT(hasTagName(framesetTag));
     
-    setHasCustomCallbacks();
+    setHasCustomStyleCallbacks();
 }
 
 PassRefPtr<HTMLFrameSetElement> HTMLFrameSetElement::create(const QualifiedName& tagName, Document* document)
@@ -71,12 +72,12 @@ bool HTMLFrameSetElement::isPresentationAttribute(const QualifiedName& name) con
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLFrameSetElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLFrameSetElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStylePropertySet* style)
 {
-    if (attribute.name() == bordercolorAttr)
-        addHTMLColorToStyle(style, CSSPropertyBorderColor, attribute.value());
+    if (name == bordercolorAttr)
+        addHTMLColorToStyle(style, CSSPropertyBorderColor, value);
     else
-        HTMLElement::collectStyleForPresentationAttribute(attribute, style);
+        HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
 void HTMLFrameSetElement::parseAttribute(const QualifiedName& name, const AtomicString& value)

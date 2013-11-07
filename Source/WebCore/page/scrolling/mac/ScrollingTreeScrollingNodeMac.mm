@@ -28,12 +28,13 @@
 
 #if ENABLE(THREADED_SCROLLING)
 
+#include "FrameView.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollingCoordinator.h"
 #include "ScrollingTree.h"
 #include "ScrollingStateTree.h"
 #include "Settings.h"
-#include "TileCache.h"
+#include "TileController.h"
 #include "WebTileLayer.h"
 
 #include <wtf/CurrentTime.h>
@@ -65,9 +66,9 @@ ScrollingTreeScrollingNodeMac::~ScrollingTreeScrollingNodeMac()
         CFRunLoopTimerInvalidate(m_snapRubberbandTimer.get());
 }
 
-void ScrollingTreeScrollingNodeMac::update(ScrollingStateNode* stateNode)
+void ScrollingTreeScrollingNodeMac::updateBeforeChildren(ScrollingStateNode* stateNode)
 {
-    ScrollingTreeScrollingNode::update(stateNode);
+    ScrollingTreeScrollingNode::updateBeforeChildren(stateNode);
     ScrollingStateScrollingNode* scrollingStateNode = toScrollingStateScrollingNode(stateNode);
 
     if (scrollingStateNode->hasChangedProperty(ScrollingStateNode::ScrollLayer))
@@ -75,12 +76,6 @@ void ScrollingTreeScrollingNodeMac::update(ScrollingStateNode* stateNode)
 
     if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::CounterScrollingLayer))
         m_counterScrollingLayer = scrollingStateNode->counterScrollingPlatformLayer();
-
-    if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::RequestedScrollPosition))
-        setScrollPosition(scrollingStateNode->requestedScrollPosition());
-
-    if (scrollingStateNode->hasChangedProperty(ScrollingStateNode::ScrollLayer) || scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ContentsSize) || scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ViewportRect))
-        updateMainFramePinState(scrollPosition());
 
     if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ShouldUpdateScrollLayerPositionOnMainThread)) {
         unsigned mainThreadScrollingReasons = this->shouldUpdateScrollLayerPositionOnMainThread();
@@ -104,6 +99,20 @@ void ScrollingTreeScrollingNodeMac::update(ScrollingStateNode* stateNode)
         if (scrollingTree()->scrollingPerformanceLoggingEnabled())
             logWheelEventHandlerCountChanged(scrollingStateNode->wheelEventHandlerCount());
     }
+}
+
+void ScrollingTreeScrollingNodeMac::updateAfterChildren(ScrollingStateNode* stateNode)
+{
+    ScrollingTreeScrollingNode::updateAfterChildren(stateNode);
+
+    ScrollingStateScrollingNode* scrollingStateNode = toScrollingStateScrollingNode(stateNode);
+
+    // Update the scroll position after child nodes have been updated, because they need to have updated their constraints before any scrolling happens.
+    if (scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::RequestedScrollPosition))
+        setScrollPosition(scrollingStateNode->requestedScrollPosition());
+
+    if (scrollingStateNode->hasChangedProperty(ScrollingStateNode::ScrollLayer) || scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ContentsSize) || scrollingStateNode->hasChangedProperty(ScrollingStateScrollingNode::ViewportRect))
+        updateMainFramePinState(scrollPosition());
 }
 
 void ScrollingTreeScrollingNodeMac::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
@@ -191,7 +200,7 @@ bool ScrollingTreeScrollingNodeMac::pinnedInDirection(const FloatSize& delta)
         }
     }
 
-    if ((delta.width() || delta.height()) && (limitDelta.width() < 1 && limitDelta.height() < 1))        
+    if ((delta.width() || delta.height()) && (limitDelta.width() < 1 && limitDelta.height() < 1))
         return true;
 
     return false;
@@ -296,7 +305,7 @@ void ScrollingTreeScrollingNodeMac::setScrollLayerPosition(const IntPoint& posit
     ASSERT(!shouldUpdateScrollLayerPositionOnMainThread());
     m_scrollLayer.get().position = CGPointMake(-position.x() + scrollOrigin().x(), -position.y() + scrollOrigin().y());
 
-    IntSize scrollOffsetForFixedChildren = WebCore::scrollOffsetForFixedPosition(viewportRect(), contentsSize(), position, scrollOrigin(), frameScaleFactor(), false);
+    IntSize scrollOffsetForFixedChildren = FrameView::scrollOffsetForFixedPosition(viewportRect(), contentsSize(), position, scrollOrigin(), frameScaleFactor(), false);
     if (m_counterScrollingLayer)
         m_counterScrollingLayer.get().position = FloatPoint(scrollOffsetForFixedChildren);
 
@@ -340,8 +349,10 @@ void ScrollingTreeScrollingNodeMac::updateMainFramePinState(const IntPoint& scro
 {
     bool pinnedToTheLeft = scrollPosition.x() <= minimumScrollPosition().x();
     bool pinnedToTheRight = scrollPosition.x() >= maximumScrollPosition().x();
+    bool pinnedToTheTop = scrollPosition.y() <= minimumScrollPosition().y();
+    bool pinnedToTheBottom = scrollPosition.y() >= maximumScrollPosition().y();
 
-    scrollingTree()->setMainFramePinState(pinnedToTheLeft, pinnedToTheRight);
+    scrollingTree()->setMainFramePinState(pinnedToTheLeft, pinnedToTheRight, pinnedToTheTop, pinnedToTheBottom);
 }
 
 void ScrollingTreeScrollingNodeMac::logExposedUnfilledArea()
@@ -371,7 +382,7 @@ void ScrollingTreeScrollingNodeMac::logExposedUnfilledArea()
     }
 
     IntPoint scrollPosition = this->scrollPosition();
-    unsigned unfilledArea = TileCache::blankPixelCountForTiles(tiles, viewportRect(), IntPoint(-scrollPosition.x(), -scrollPosition.y()));
+    unsigned unfilledArea = TileController::blankPixelCountForTiles(tiles, viewportRect(), IntPoint(-scrollPosition.x(), -scrollPosition.y()));
 
     if (unfilledArea || m_lastScrollHadUnfilledPixels)
         WTFLogAlways("SCROLLING: Exposed tileless area. Time: %f Unfilled Pixels: %u\n", WTF::monotonicallyIncreasingTime(), unfilledArea);

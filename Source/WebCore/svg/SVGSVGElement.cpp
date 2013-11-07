@@ -349,11 +349,12 @@ PassRefPtr<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(const Flo
     Element* element = ElementTraversal::next(referenceElement ? referenceElement : this);
     while (element) {
         if (element->isSVGElement()) { 
+            SVGElement* svgElement = toSVGElement(element);
             if (collect == CollectIntersectionList) {
-                if (checkIntersection(static_cast<SVGElement*>(element), rect))
+                if (checkIntersection(svgElement, rect))
                     nodes.append(element);
             } else {
-                if (checkEnclosure(static_cast<SVGElement*>(element), rect))
+                if (checkEnclosure(svgElement, rect))
                     nodes.append(element);
             }
         }
@@ -544,7 +545,7 @@ float SVGSVGElement::getCurrentTime() const
 
 void SVGSVGElement::setCurrentTime(float seconds)
 {
-    if (isnan(seconds))
+    if (std::isnan(seconds))
         return;
     seconds = max(seconds, 0.0f);
     m_timeContainer->setElapsed(seconds);
@@ -598,7 +599,7 @@ FloatSize SVGSVGElement::currentViewportSize() const
     }
 
     FloatRect viewportRect = toRenderSVGViewportContainer(renderer())->viewport();
-    return FloatSize(viewportRect.width() / renderer()->style()->effectiveZoom(), viewportRect.height() / renderer()->style()->effectiveZoom());
+    return FloatSize(viewportRect.width(), viewportRect.height());
 }
 
 bool SVGSVGElement::widthAttributeEstablishesViewport() const

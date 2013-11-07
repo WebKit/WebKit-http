@@ -78,7 +78,6 @@ StyleRareInheritedData::StyleRareInheritedData()
     , overflowWrap(RenderStyle::initialOverflowWrap())
     , nbspMode(NBNORMAL)
     , lineBreak(LineBreakAuto)
-    , textSizeAdjust(RenderStyle::initialTextSizeAdjust())
     , resize(RenderStyle::initialResize())
     , userSelect(RenderStyle::initialUserSelect())
     , colorSpace(ColorSpaceDeviceRGB)
@@ -104,6 +103,7 @@ StyleRareInheritedData::StyleRareInheritedData()
 #endif
 #if ENABLE(CSS3_TEXT)
     , m_textAlignLast(RenderStyle::initialTextAlignLast())
+    , m_textUnderlinePosition(RenderStyle::initialTextUnderlinePosition())
 #endif // CSS3_TEXT
     , m_rubyPosition(RenderStyle::initialRubyPosition())
     , hyphenationLimitBefore(-1)
@@ -148,7 +148,6 @@ StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
     , overflowWrap(o.overflowWrap)
     , nbspMode(o.nbspMode)
     , lineBreak(o.lineBreak)
-    , textSizeAdjust(o.textSizeAdjust)
     , resize(o.resize)
     , userSelect(o.userSelect)
     , colorSpace(o.colorSpace)
@@ -174,6 +173,7 @@ StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
 #endif
 #if ENABLE(CSS3_TEXT)
     , m_textAlignLast(o.m_textAlignLast)
+    , m_textUnderlinePosition(o.m_textUnderlinePosition)
 #endif // CSS3_TEXT
     , m_rubyPosition(o.m_rubyPosition)
     , hyphenationString(o.hyphenationString)
@@ -239,7 +239,6 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
         && useTouchOverflowScrolling == o.useTouchOverflowScrolling
 #endif
-        && textSizeAdjust == o.textSizeAdjust
         && resize == o.resize
         && userSelect == o.userSelect
         && colorSpace == o.colorSpace
@@ -270,6 +269,7 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
 #endif
 #if ENABLE(CSS3_TEXT)
         && m_textAlignLast == o.m_textAlignLast
+        && m_textUnderlinePosition == o.m_textUnderlinePosition
 #endif // CSS3_TEXT
         && m_rubyPosition == o.m_rubyPosition
         && m_lineSnap == o.m_lineSnap

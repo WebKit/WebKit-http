@@ -87,6 +87,7 @@
 #include "PluginData.h"
 #include "PluginDatabase.h"
 #include "PluginDocument.h"
+#include "PolicyChecker.h"
 #include "ProgressTracker.h"
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
@@ -232,6 +233,10 @@ FrameLoader::FrameLoader(Frame* frame, FrameLoaderClient* client)
     , m_shouldCallCheckCompleted(false)
     , m_shouldCallCheckLoadComplete(false)
     , m_opener(0)
+#if PLATFORM(CHROMIUM)
+    , m_didAccessInitialDocument(false)
+    , m_didAccessInitialDocumentTimer(this, &FrameLoader::didAccessInitialDocumentTimerFired)
+#endif
     , m_didPerformFirstNavigation(false)
     , m_loadingFromCachedPage(false)
     , m_suppressOpenerInNewFrame(false)
@@ -311,8 +316,6 @@ void FrameLoader::urlSelected(const FrameLoadRequest& passedRequest, PassRefPtr<
 
     if (shouldSendReferrer == NeverSendReferrer)
         m_suppressOpenerInNewFrame = true;
-    if (frameRequest.resourceRequest().httpReferrer().isEmpty())
-        frameRequest.resourceRequest().setHTTPReferrer(outgoingReferrer());
     addHTTPOriginIfNeeded(frameRequest.resourceRequest(), outgoingOrigin());
 
     loadFrameRequest(frameRequest, lockHistory, lockBackForwardList, triggeringEvent, 0, shouldSendReferrer);
@@ -337,7 +340,7 @@ void FrameLoader::submitForm(PassRefPtr<FormSubmission> submission)
 
     if (isDocumentSandboxed(m_frame, SandboxForms)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        m_frame->document()->addConsoleMessage(HTMLMessageSource, ErrorMessageLevel, "Blocked form submission to '" + submission->action().string() + "' because the form's frame is sandboxed and the 'allow-forms' permission is not set.");
+        m_frame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked form submission to '" + submission->action().elidedString() + "' because the form's frame is sandboxed and the 'allow-forms' permission is not set.");
         return;
     }
 
@@ -659,19 +662,19 @@ void FrameLoader::didBeginDocument(bool dispatch)
 
         String policyValue = m_documentLoader->response().httpHeaderField("Content-Security-Policy");
         if (!policyValue.isEmpty())
-            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::EnforceStableDirectives);
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::Enforce);
 
         policyValue = m_documentLoader->response().httpHeaderField("Content-Security-Policy-Report-Only");
         if (!policyValue.isEmpty())
-            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::ReportStableDirectives);
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::Report);
 
         policyValue = m_documentLoader->response().httpHeaderField("X-WebKit-CSP");
         if (!policyValue.isEmpty())
-            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::EnforceAllDirectives);
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::PrefixedEnforce);
 
         policyValue = m_documentLoader->response().httpHeaderField("X-WebKit-CSP-Report-Only");
         if (!policyValue.isEmpty())
-            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::ReportAllDirectives);
+            m_frame->document()->contentSecurityPolicy()->didReceiveHeader(policyValue, ContentSecurityPolicy::PrefixedReport);
 
         String headerContentLanguage = m_documentLoader->response().httpHeaderField("Content-Language");
         if (!headerContentLanguage.isEmpty()) {
@@ -744,6 +747,7 @@ bool FrameLoader::allAncestorsAreComplete() const
 
 void FrameLoader::checkCompleted()
 {
+    RefPtr<Frame> protect(m_frame);
     m_shouldCallCheckCompleted = false;
 
     if (m_frame->view())
@@ -774,7 +778,6 @@ void FrameLoader::checkCompleted()
     m_requestedHistoryItem = 0;
     m_frame->document()->setReadyState(Document::Complete);
 
-    RefPtr<Frame> protect(m_frame);
     checkCallImplicitClose(); // if we didn't do it before
 
     m_frame->navigationScheduler()->startTimer();
@@ -1143,7 +1146,7 @@ void FrameLoader::loadFrameRequest(const FrameLoadRequest& request, bool lockHis
 
     ASSERT(m_frame->document());
     if (!request.requester()->canDisplay(url)) {
-        reportLocalLoadFailed(m_frame, url.string());
+        reportLocalLoadFailed(m_frame, url.elidedString());
         return;
     }
 
@@ -1195,6 +1198,10 @@ void FrameLoader::loadURL(const KURL& newURL, const String& referrer, const Stri
         RefPtr<SecurityOrigin> referrerOrigin = SecurityOrigin::createFromString(referrer);
         addHTTPOriginIfNeeded(request, referrerOrigin->toString());
     }
+#if ENABLE(CACHE_PARTITIONING)
+    if (m_frame->tree()->top() != m_frame)
+        request.setCachePartition(m_frame->tree()->top()->document()->securityOrigin()->cachePartition());
+#endif
     addExtraFieldsToRequest(request, newLoadType, true);
     if (newLoadType == FrameLoadTypeReload || newLoadType == FrameLoadTypeReloadFromOrigin)
         request.setCachePolicy(ReloadIgnoringCacheData);
@@ -1407,7 +1414,7 @@ void FrameLoader::reportLocalLoadFailed(Frame* frame, const String& url)
     if (!frame)
         return;
 
-    frame->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, "Not allowed to load local resource: " + url);
+    frame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Not allowed to load local resource: " + url);
 }
 
 const ResourceRequest& FrameLoader::initialRequest() const
@@ -1583,6 +1590,23 @@ DocumentLoader* FrameLoader::activeDocumentLoader() const
     return m_documentLoader.get();
 }
 
+#if PLATFORM(CHROMIUM)
+void FrameLoader::didAccessInitialDocument()
+{
+    // We only need to notify the client once, and only for the main frame.
+    if (isLoadingMainFrame() && !m_didAccessInitialDocument) {
+        m_didAccessInitialDocument = true;
+        // Notify asynchronously, since this is called within a JavaScript security check.
+        m_didAccessInitialDocumentTimer.startOneShot(0);
+    }
+}
+
+void FrameLoader::didAccessInitialDocumentTimerFired(Timer<FrameLoader>*)
+{
+    m_client->didAccessInitialDocument();
+}
+#endif
+
 bool FrameLoader::isLoading() const
 {
     DocumentLoader* docLoader = activeDocumentLoader();
@@ -1683,8 +1707,8 @@ void FrameLoader::commitProvisionalLoad()
     RefPtr<Frame> protect(m_frame);
 
     LOG(PageCache, "WebCoreLoading %s: About to commit provisional load from previous URL '%s' to new URL '%s'", m_frame->tree()->uniqueName().string().utf8().data(),
-        m_frame->document() ? m_frame->document()->url().string().utf8().data() : "", 
-        pdl ? pdl->url().string().utf8().data() : "<no provisional DocumentLoader>");
+        m_frame->document() ? m_frame->document()->url().elidedString().utf8().data() : "",
+        pdl ? pdl->url().elidedString().utf8().data() : "<no provisional DocumentLoader>");
 
     // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
     // We are doing this here because we know for sure that a new page is about to be loaded.
@@ -1735,7 +1759,7 @@ void FrameLoader::commitProvisionalLoad()
     }
 
     LOG(Loading, "WebCoreLoading %s: Finished committing provisional load to URL %s", m_frame->tree()->uniqueName().string().utf8().data(),
-        m_frame->document() ? m_frame->document()->url().string().utf8().data() : "");
+        m_frame->document() ? m_frame->document()->url().elidedString().utf8().data() : "");
 
     if (m_loadType == FrameLoadTypeStandard && m_documentLoader->isClientRedirect())
         history()->updateForClientRedirect();
@@ -2584,9 +2608,6 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
         
         if (!documentLoader()->applicationCacheHost()->maybeLoadSynchronously(newRequest, error, response, data)) {
 #if USE(PLATFORM_STRATEGIES)
-            unsigned long identifier = 0;
-            if (m_frame->page())
-                identifier = m_frame->page()->progress()->createUniqueIdentifier();
             platformStrategies()->loaderStrategy()->loadResourceSynchronously(networkingContext(), identifier, newRequest, storedCredentials, error, response, data);
 #else
             ResourceHandle::loadResourceSynchronously(networkingContext(), newRequest, storedCredentials, error, response, data);
@@ -2902,7 +2923,7 @@ void FrameLoader::loadedResourceFromMemoryCache(CachedResource* resource)
 
     if (!page->areMemoryCacheClientCallsEnabled()) {
         InspectorInstrumentation::didLoadResourceFromMemoryCache(page, m_documentLoader.get(), resource);
-        m_documentLoader->recordMemoryCacheLoadForFutureClientNotification(resource->url());
+        m_documentLoader->recordMemoryCacheLoadForFutureClientNotification(resource->resourceRequest());
         m_documentLoader->didTellClientAboutLoad(resource->url());
         return;
     }
@@ -2940,8 +2961,8 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
         RefPtr<SecurityOrigin> origin = SecurityOrigin::create(url);
         if (!origin->isSameSchemeHostPort(topFrame->document()->securityOrigin()))
             return true;
-    } else {
-        String message = "Invalid 'X-Frame-Options' header encountered when loading '" + url.string() + "': '" + content + "' is not a recognized directive. The header will be ignored.";
+    } else if (!equalIgnoringCase(content, "allowall")) {
+        String message = "Invalid 'X-Frame-Options' header encountered when loading '" + url.elidedString() + "': '" + content + "' is not a recognized directive. The header will be ignored.";
         m_frame->document()->addConsoleMessage(JSMessageSource, ErrorMessageLevel, message, requestIdentifier);
     }
 
@@ -2951,7 +2972,7 @@ bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, con
 void FrameLoader::loadProvisionalItemFromCachedPage()
 {
     DocumentLoader* provisionalLoader = provisionalDocumentLoader();
-    LOG(PageCache, "WebCorePageCache: Loading provisional DocumentLoader %p with URL '%s' from CachedPage", provisionalDocumentLoader(), provisionalDocumentLoader()->url().string().utf8().data());
+    LOG(PageCache, "WebCorePageCache: Loading provisional DocumentLoader %p with URL '%s' from CachedPage", provisionalDocumentLoader(), provisionalDocumentLoader()->url().elidedString().utf8().data());
 
     prepareForLoadStart();
 
@@ -3267,6 +3288,10 @@ void FrameLoader::dispatchDidCommitLoad()
     }
 
     InspectorInstrumentation::didCommitLoad(m_frame, m_documentLoader.get());
+
+    if (m_frame->page()->mainFrame() == m_frame)
+        m_frame->page()->featureObserver()->didCommitLoad();
+
 }
 
 void FrameLoader::tellClientAboutPastMemoryCacheLoads()
@@ -3277,12 +3302,12 @@ void FrameLoader::tellClientAboutPastMemoryCacheLoads()
     if (!m_documentLoader)
         return;
 
-    Vector<String> pastLoads;
+    Vector<ResourceRequest> pastLoads;
     m_documentLoader->takeMemoryCacheLoadsForClientNotification(pastLoads);
 
     size_t size = pastLoads.size();
     for (size_t i = 0; i < size; ++i) {
-        CachedResource* resource = memoryCache()->resourceForURL(KURL(ParsedURLString, pastLoads[i]));
+        CachedResource* resource = memoryCache()->resourceForRequest(pastLoads[i]);
 
         // FIXME: These loads, loaded from cache, but now gone from the cache by the time
         // Page::setMemoryCacheClientCallsEnabled(true) is called, will not be seen by the client.
@@ -3342,13 +3367,15 @@ Frame* createWindow(Frame* openerFrame, Frame* lookupFrame, const FrameLoadReque
     // Sandboxed frames cannot open new auxiliary browsing contexts.
     if (isDocumentSandboxed(openerFrame, SandboxPopups)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        openerFrame->document()->addConsoleMessage(HTMLMessageSource, ErrorMessageLevel, "Blocked opening '" + request.resourceRequest().url().string() + "' in a new window because the request was made in a sandboxed frame whose 'allow-popups' permission is not set.");
+        openerFrame->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, "Blocked opening '" + request.resourceRequest().url().elidedString() + "' in a new window because the request was made in a sandboxed frame whose 'allow-popups' permission is not set.");
         return 0;
     }
 
     // FIXME: Setting the referrer should be the caller's responsibility.
     FrameLoadRequest requestWithReferrer = request;
-    requestWithReferrer.resourceRequest().setHTTPReferrer(openerFrame->loader()->outgoingReferrer());
+    String referrer = SecurityPolicy::generateReferrerHeader(openerFrame->document()->referrerPolicy(), request.resourceRequest().url(), openerFrame->loader()->outgoingReferrer());
+    if (!referrer.isEmpty())
+        requestWithReferrer.resourceRequest().setHTTPReferrer(referrer);
     FrameLoader::addHTTPOriginIfNeeded(requestWithReferrer.resourceRequest(), openerFrame->loader()->outgoingOrigin());
 
     if (openerFrame->settings() && !openerFrame->settings()->supportsMultipleWindows()) {

@@ -37,6 +37,7 @@
 #include "Page.h"
 #include "PasteboardHelper.h"
 #include "PlatformKeyboardEvent.h"
+#include "StylePropertySet.h"
 #include "UndoStep.h"
 #include "WebKitDOMBinding.h"
 #include "WebKitDOMCSSStyleDeclarationPrivate.h"
@@ -91,14 +92,6 @@ bool EditorClient::shouldDeleteRange(Range* range)
     gboolean accept = TRUE;
     GRefPtr<WebKitDOMRange> kitRange(adoptGRef(kit(range)));
     g_signal_emit_by_name(m_webView, "should-delete-range", kitRange.get(), &accept);
-    return accept;
-}
-
-bool EditorClient::shouldShowDeleteInterface(HTMLElement* element)
-{
-    gboolean accept = FALSE;
-    GRefPtr<WebKitDOMHTMLElement> kitElement(adoptGRef(kit(element)));
-    g_signal_emit_by_name(m_webView, "should-show-delete-interface-for-element", kitElement.get(), &accept);
     return accept;
 }
 

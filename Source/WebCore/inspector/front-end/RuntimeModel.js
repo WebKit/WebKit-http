@@ -169,7 +169,7 @@ WebInspector.RuntimeModel.prototype = {
      * @param {Element} proxyElement
      * @param {Range} wordRange
      * @param {boolean} force
-     * @param {function(Array.<string>, number=)} completionsReadyCallback
+     * @param {function(!Array.<string>, number=)} completionsReadyCallback
      */
     completionsForTextPrompt: function(proxyElement, wordRange, force, completionsReadyCallback)
     {
@@ -184,7 +184,7 @@ WebInspector.RuntimeModel.prototype = {
      * @param {string} expressionString
      * @param {string} prefix
      * @param {boolean} force
-     * @param {function(Array.<string>, number=)} completionsReadyCallback
+     * @param {function(!Array.<string>, number=)} completionsReadyCallback
      */
     _completionsForExpression: function(expressionString, prefix, force, completionsReadyCallback)
     {
@@ -266,7 +266,8 @@ WebInspector.RuntimeModel.prototype = {
             }
             var includeCommandLineAPI = (!dotNotation && !bracketNotation);
             if (includeCommandLineAPI) {
-                const commandLineAPI = ["dir", "dirxml", "keys", "values", "profile", "profileEnd", "monitorEvents", "unmonitorEvents", "inspect", "copy", "clear"];
+                const commandLineAPI = ["dir", "dirxml", "keys", "values", "profile", "profileEnd", "monitorEvents", "unmonitorEvents", "inspect", "copy", "clear",
+                    "getEventListeners", "$", "$$", "$x"];
                 for (var i = 0; i < commandLineAPI.length; ++i)
                     propertyNames[commandLineAPI[i]] = true;
             }
@@ -275,7 +276,7 @@ WebInspector.RuntimeModel.prototype = {
     },
 
     /**
-     * @param {function(Array.<string>, number=)} completionsReadyCallback
+     * @param {function(!Array.<string>, number=)} completionsReadyCallback
      * @param {boolean} dotNotation
      * @param {boolean} bracketNotation
      * @param {string} expressionString

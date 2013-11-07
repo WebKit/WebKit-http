@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2009, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2006, 2009, 2010, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Igalia S.L
  *
  * Redistribution and use in source and binary forms, with or without
@@ -705,7 +705,7 @@ String multipleFileUploadText(unsigned numberOfFiles)
 
 String unknownFileSizeText()
 {
-    return WEB_UI_STRING("Unknown", "Unknown filesize FTP directory listing item");
+    return WEB_UI_STRING_KEY("Unknown", "Unknown (filesize)", "Unknown filesize FTP directory listing item");
 }
 
 #if PLATFORM(WIN)
@@ -910,7 +910,7 @@ String localizedMediaControlElementHelpText(const String& name)
 
 String localizedMediaTimeDescription(float time)
 {
-    if (!isfinite(time))
+    if (!std::isfinite(time))
         return WEB_UI_STRING("indefinite time", "accessibility help text for an indefinite media controller time value");
 
     int seconds = static_cast<int>(fabsf(time));
@@ -1015,11 +1015,6 @@ String clickToExitFullScreenText()
 }
 
 #if ENABLE(VIDEO_TRACK)
-String textTrackClosedCaptionsText()
-{
-    return WEB_UI_STRING("Closed Captions", "Menu section heading for closed captions");
-}
-
 String textTrackSubtitlesText()
 {
     return WEB_UI_STRING("Subtitles", "Menu section heading for subtitles");
@@ -1032,8 +1027,18 @@ String textTrackOffText()
 
 String textTrackNoLabelText()
 {
-    return WEB_UI_STRING("No label", "Menu item label for a closed captions track that has no other name");
+    return WEB_UI_STRING_KEY("Unknown", "Unknown (closed captions track)", "Menu item label for a closed captions track that has no other name");
 }
 #endif
+
+String snapshottedPlugInLabelTitle()
+{
+    return WEB_UI_STRING("Snapshotted Plug-In", "Title of the label to show on a snapshotted plug-in");
+}
+
+String snapshottedPlugInLabelSubtitle()
+{
+    return WEB_UI_STRING("Click to restart", "Subtitle of the label to show on a snapshotted plug-in");
+}
 
 } // namespace WebCore

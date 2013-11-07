@@ -38,6 +38,7 @@
 #include "EditorClient.h"
 #include "Event.h"
 #include "EventHandler.h"
+#include "ExceptionCodePlaceholder.h"
 #include "FormatBlockCommand.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -213,8 +214,7 @@ static bool expandSelectionToGranularity(Frame* frame, TextGranularity granulari
     RefPtr<Range> newRange = selection.toNormalizedRange();
     if (!newRange)
         return false;
-    ExceptionCode ec = 0;
-    if (newRange->collapsed(ec))
+    if (newRange->collapsed(IGNORE_EXCEPTION))
         return false;
     RefPtr<Range> oldRange = frame->selection()->selection().toNormalizedRange();
     EAffinity affinity = frame->selection()->affinity();
@@ -266,13 +266,10 @@ static unsigned verticalScrollDistance(Frame* frame)
 
 static RefPtr<Range> unionDOMRanges(Range* a, Range* b)
 {
-    ExceptionCode ec = 0;
-    Range* start = a->compareBoundaryPoints(Range::START_TO_START, b, ec) <= 0 ? a : b;
-    ASSERT(!ec);
-    Range* end = a->compareBoundaryPoints(Range::END_TO_END, b, ec) <= 0 ? b : a;
-    ASSERT(!ec);
+    Range* start = a->compareBoundaryPoints(Range::START_TO_START, b, ASSERT_NO_EXCEPTION) <= 0 ? a : b;
+    Range* end = a->compareBoundaryPoints(Range::END_TO_END, b, ASSERT_NO_EXCEPTION) <= 0 ? b : a;
 
-    return Range::create(a->startContainer(ec)->ownerDocument(), start->startContainer(ec), start->startOffset(ec), end->endContainer(ec), end->endOffset(ec));
+    return Range::create(a->ownerDocument(), start->startContainer(), start->startOffset(), end->endContainer(), end->endOffset());
 }
 
 // Execute command functions
@@ -445,9 +442,8 @@ static bool executeFormatBlock(Frame* frame, Event*, EditorCommandSource, const 
     if (tagName[0] == '<' && tagName[tagName.length() - 1] == '>')
         tagName = tagName.substring(1, tagName.length() - 2);
 
-    ExceptionCode ec;
     String localName, prefix;
-    if (!Document::parseQualifiedName(tagName, prefix, localName, ec))
+    if (!Document::parseQualifiedName(tagName, prefix, localName, IGNORE_EXCEPTION))
         return false;
     QualifiedName qualifiedTagName(prefix, localName, xhtmlNamespaceURI);
 
@@ -1096,12 +1092,12 @@ static bool executeTakeFindStringFromSelection(Frame* frame, Event*, EditorComma
 
 static bool executeToggleBold(Frame* frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeToggleStyle(frame, source, EditActionChangeAttributes, CSSPropertyFontWeight, "normal", "bold");
+    return executeToggleStyle(frame, source, EditActionBold, CSSPropertyFontWeight, "normal", "bold");
 }
 
 static bool executeToggleItalic(Frame* frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeToggleStyle(frame, source, EditActionChangeAttributes, CSSPropertyFontStyle, "normal", "italic");
+    return executeToggleStyle(frame, source, EditActionItalics, CSSPropertyFontStyle, "normal", "italic");
 }
 
 static bool executeTranspose(Frame* frame, Event*, EditorCommandSource, const String&)
@@ -1183,7 +1179,7 @@ static bool supportedPaste(Frame* frame)
         return false;
 
     Settings* settings = frame->settings();
-    bool defaultValue = settings && settings->javaScriptCanAccessClipboard() && settings->isDOMPasteAllowed();
+    bool defaultValue = settings && settings->javaScriptCanAccessClipboard() && settings->DOMPasteAllowed();
 
     EditorClient* client = frame->editor()->client();
     return client ? client->canPaste(frame, defaultValue) : defaultValue;

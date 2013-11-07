@@ -56,19 +56,19 @@ v8::Handle<v8::Value> V8NodeList::namedPropertyGetter(v8::Local<v8::String> name
     if (!result)
         return v8Undefined();
 
-    return toV8(result.release(), info.Holder(), info.GetIsolate());
+    return toV8Fast(result.release(), info, list);
 }
 
-void* V8NodeList::opaqueRootForGC(void* object, v8::Persistent<v8::Object> wrapper)
+void* V8NodeList::opaqueRootForGC(void* object, v8::Persistent<v8::Object> wrapper, v8::Isolate* isolate)
 {
-    ASSERT(V8NodeList::HasInstance(wrapper));
+    ASSERT(V8NodeList::HasInstance(wrapper, isolate));
     NodeList* impl = static_cast<NodeList*>(object);
     if (!impl->isLiveNodeList())
         return object;
     Node* owner = static_cast<LiveNodeList*>(impl)->ownerNode();
     if (!owner)
         return object;
-    return V8GCController::opaqueRootForGC(owner);
+    return V8GCController::opaqueRootForGC(owner, isolate);
 }
 
 } // namespace WebCore

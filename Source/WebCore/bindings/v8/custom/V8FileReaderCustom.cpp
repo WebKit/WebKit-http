@@ -40,12 +40,12 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8FileReader::resultAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
+v8::Handle<v8::Value> V8FileReader::resultAttrGetterCustom(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     v8::Handle<v8::Object> holder = info.Holder();
     FileReader* imp = V8FileReader::toNative(holder);
     if (imp->readType() == FileReaderLoader::ReadAsArrayBuffer)
-        return toV8(imp->arrayBufferResult(), info.Holder(), info.GetIsolate());
+        return toV8Fast(imp->arrayBufferResult(), info, imp);
     return v8StringOrNull(imp->stringResult(), info.GetIsolate());
 }
 

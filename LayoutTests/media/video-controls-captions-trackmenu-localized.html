@@ -8,7 +8,7 @@
         <script src="trackmenu-test.js"></script>
         <script>
 
-        var captionsSection;
+        var trackListSection;
         var item;
 
         if (window.testRunner)
@@ -20,19 +20,14 @@
             if (!trackListElement)
                 return;
 
-            // Track list should have two <section> elements.
-            var trackListSections = trackListElement.querySelectorAll("h3");
-            if (!trackListSections || trackListSections.length != 2) {
-                failTest("There should be two section elements in track list menu");
+            trackListSection = trackListElement.querySelector("h3");
+            if (!trackListSection) {
+                failTest("There should be a single section element in track list menu");
                 return;
             }
 
-            captionsSection = trackListSections[0];
-            logConsole("First section should be labelled 'Closed Captions'");
-            testExpected("captionsSection.textContent", "Closed Captions");
-            captionsSection = trackListSections[1];
-            logConsole("Second section should be labelled 'Subtitles'");
-            testExpected("captionsSection.textContent", "Subtitles");
+            consoleWrite("Heading should be labelled 'Subtitles'");
+            testExpected("trackListSection.textContent", "Subtitles");
 
             var captionsEntries = trackListElement.querySelectorAll("li");
             if (!captionsEntries || captionsEntries.length <= 0) {
@@ -41,18 +36,28 @@
             }
 
             item = captionsEntries[0];
-            logConsole("First item in captions menu should be labelled 'Off'");
+            consoleWrite("<br>First item in captions menu should be labelled 'Off'");
             testExpected("item.textContent", "Off");
+
             item = captionsEntries[1];
-            logConsole("Second item in captions menu should be labelled 'No label'");
-            testExpected("item.textContent", "No label");
+            consoleWrite("<br>Second item in captions menu should be labelled 'English CC'");
+            testExpected("item.textContent", "English CC");
+
+            item = captionsEntries[2];
+            consoleWrite("<br>Third item in captions menu should be labelled 'Unknown'");
+            testExpected("item.textContent", "Unknown");
+
+            item = captionsEntries[3];
+            consoleWrite("<br>Fourth item in captions menu should be labelled 'Unknown'");
+            testExpected("item.textContent", "Unknown");
+
             endTest();
         }
 
         function start()
         {
             findMediaElement();
-            video.src = findMediaFile('video', 'content/test');
+            video.src = 'content/counting-captioned.mov';
             waitForEvent('canplaythrough', function () { startTrackMenuTest(testMenuHeaders); });
         }
         </script>

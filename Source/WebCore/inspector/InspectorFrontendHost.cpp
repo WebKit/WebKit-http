@@ -48,10 +48,11 @@
 #include "InspectorFrontendClient.h"
 #include "Page.h"
 #include "Pasteboard.h"
+#include "ResourceError.h"
+#include "ResourceRequest.h"
+#include "ResourceResponse.h"
 #include "ScriptFunctionCall.h"
 #include "UserGestureIndicator.h"
-
-#include <wtf/RefPtr.h>
 #include <wtf/StdLibExtras.h>
 
 using namespace std;
@@ -94,7 +95,7 @@ private:
     virtual void contextMenuItemSelected(ContextMenuItem* item)
     {
         if (m_frontendHost) {
-            UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+            UserGestureIndicator gestureIndicator(DefinitelyProcessingNewUserGesture);
             int itemNumber = item->action() - ContextMenuItemBaseCustomTag;
 
             ScriptFunctionCall function(m_frontendApiObject, "contextMenuItemSelected");
