@@ -181,8 +181,6 @@ void ContextMenuController::showContextMenu(Event* event)
 static void openNewWindow(const KURL& urlToLoad, Frame* frame)
 {
     if (Page* oldPage = frame->page()) {
-        WindowFeatures features;
-        features.activate = false;
         FrameLoadRequest request(frame->document()->securityOrigin(), ResourceRequest(urlToLoad, frame->loader()->outgoingReferrer()));
         Page* newPage = oldPage;
         if (!frame->settings() || frame->settings()->supportsMultipleWindows()) {

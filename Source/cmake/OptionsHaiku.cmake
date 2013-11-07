@@ -5,6 +5,10 @@ SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 
 add_definitions(-DBUILDING_HAIKU__=1)
 
+# Force libstdc++ to export std::isinf and friends. This should be fixed on
+# Haiku side ultimately.
+add_definitions(-D_GLIBCXX_USE_C99_MATH)
+
 if (NOT DEFINED ENABLE_WEBKIT2)
     set(ENABLE_WEBKIT2 OFF)
 endif ()

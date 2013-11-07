@@ -160,8 +160,7 @@ Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& requ
 
 //printf("  frame: "); windowFrame.PrintToStream();
 
-	WebCore::Page* page = m_webPage->createNewPage(windowFrame, features.dialog, features.resizable,
-	    features.activate);
+	WebCore::Page* page = m_webPage->createNewPage(windowFrame, features.dialog, features.resizable);
 	if (!page)
 	    return 0;
 

@@ -109,11 +109,11 @@ ResourceHandle::~ResourceHandle()
 
 #include <stdio.h>
 
-bool ResourceHandle::start(NetworkingContext* context)
+bool ResourceHandle::start()
 {
     // If NetworkingContext is invalid then we are no longer attached to a Page,
     // this must be an attempted load from an unload event handler, so let's just block it.
-    if (context && !context->isValid())
+    if (d->m_context && !d->m_context->isValid())
         return false;
 
 	printf("ResourceHandle::start()\n");
@@ -128,7 +128,7 @@ bool ResourceHandle::start(NetworkingContext* context)
 
     ResourceHandleInternal *d = getInternal();
 	printf("ProtocolHandler::__construct()\n");
-    d->m_urlrequest = new BUrlProtocolHandler(context, this, false);
+    d->m_urlrequest = new BUrlProtocolHandler(d->m_context.get(), this, false);
     return true;
 }
 
@@ -146,10 +146,10 @@ bool ResourceHandle::loadsBlocked()
     return false;
 }
 
-void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader;
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(request, &syncLoader, true, false));
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false));
 
     ResourceHandleInternal* d = handle->getInternal();
     if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
