@@ -49,13 +49,5 @@ KURL::operator BUrl() const
     return url;
 }
 
-String KURL::fileSystemPath() const
-{
-    if (!isValid() || !protocolIs("file"))
-        return String();
-
-    return String(path());
-}
-
 } // namespace WebCore
 

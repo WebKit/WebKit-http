@@ -3,7 +3,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBKIT_DIR}"
     "${WEBCORE_DIR}"
-    "${WEBCORE_DIR}/Modules/filesystem"
     "${WEBCORE_DIR}/Modules/networkinfo"
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/accessibility"
@@ -50,7 +49,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/bytecompiler"
     "${JAVASCRIPTCORE_DIR}/disassembler"
     "${JAVASCRIPTCORE_DIR}/dfg"
-    "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
@@ -65,8 +63,10 @@ set(WebKit_INCLUDE_DIRECTORIES
 SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/css"
     "${WEBCORE_DIR}/dom"
+    "${WEBCORE_DIR}/Modules/filesystem"
     "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/graphics"
+    "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/parser"
 )
 

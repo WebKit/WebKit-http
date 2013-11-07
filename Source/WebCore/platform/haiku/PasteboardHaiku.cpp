@@ -79,7 +79,7 @@ private:
     bool m_isLocked;
 };
 
-void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame)
+void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame, ShouldSerializeSelectedTextForClipboard)
 {
     AutoClipboardLocker locker(be_clipboard);
     if (!locker.isLocked())

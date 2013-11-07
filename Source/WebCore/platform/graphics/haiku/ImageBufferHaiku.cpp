@@ -69,7 +69,7 @@ ImageBufferData::~ImageBufferData()
     m_bitmap.Unlock();
 }
 
-ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, DeferralMode, bool& success)
+ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
     : m_data(size)
     , m_size(size)
     , m_logicalSize(size)

@@ -753,7 +753,7 @@ void FrameLoaderClientHaiku::didDetectXSS(const KURL&, bool)
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(MainResourceLoader*, const ResourceRequest& request, const ResourceResponse&)
+void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(DocumentLoader*, const ResourceRequest& request, const ResourceResponse&)
 {
     startDownload(request);
 }

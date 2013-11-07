@@ -89,7 +89,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/bytecompiler"
     "${JAVASCRIPTCORE_DIR}/dfg"
     "${JAVASCRIPTCORE_DIR}/disassembler"
-    "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
@@ -110,6 +109,7 @@ SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/fileapi"
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform"
+    "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/parser"
 )
 
