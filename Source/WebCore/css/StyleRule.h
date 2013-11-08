@@ -1,7 +1,7 @@
 /*
  * (C) 1999-2003 Lars Knoll (knoll@kde.org)
  * (C) 2002-2003 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2002, 2006, 2008, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2002, 2006, 2008, 2012, 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -31,6 +31,7 @@ namespace WebCore {
 class CSSRule;
 class CSSStyleRule;
 class CSSStyleSheet;
+class MutableStylePropertySet;
 class StylePropertySet;
 
 class StyleRuleBase : public WTF::RefCountedBase {
@@ -98,8 +99,6 @@ public:
     PassRefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet = 0) const;
     PassRefPtr<CSSRule> createCSSOMWrapper(CSSRule* parentRule) const;
 
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
 protected:
     StyleRuleBase(Type type, signed sourceLine = 0) : m_type(type), m_sourceLine(sourceLine) { }
     StyleRuleBase(const StyleRuleBase& o) : WTF::RefCountedBase(), m_type(o.m_type), m_sourceLine(o.m_sourceLine) { }
@@ -124,7 +123,7 @@ public:
 
     const CSSSelectorList& selectorList() const { return m_selectorList; }
     const StylePropertySet* properties() const { return m_properties.get(); }
-    StylePropertySet* mutableProperties();
+    MutableStylePropertySet* mutableProperties();
     
     void parserAdoptSelectorVector(Vector<OwnPtr<CSSParserSelector> >& selectors) { m_selectorList.adoptSelectorVector(selectors); }
     void wrapperAdoptSelectorList(CSSSelectorList& selectors) { m_selectorList.adopt(selectors); }
@@ -133,7 +132,6 @@ public:
     PassRefPtr<StyleRule> copy() const { return adoptRef(new StyleRule(*this)); }
 
     static unsigned averageSizeInBytes();
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     StyleRule(int sourceLine);
@@ -150,13 +148,12 @@ public:
     ~StyleRuleFontFace();
 
     const StylePropertySet* properties() const { return m_properties.get(); }
-    StylePropertySet* mutableProperties();
+    MutableStylePropertySet* mutableProperties();
 
     void setProperties(PassRefPtr<StylePropertySet>);
 
     PassRefPtr<StyleRuleFontFace> copy() const { return adoptRef(new StyleRuleFontFace(*this)); }
 
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     StyleRuleFontFace();
@@ -173,15 +170,13 @@ public:
 
     const CSSSelector* selector() const { return m_selectorList.first(); }    
     const StylePropertySet* properties() const { return m_properties.get(); }
-    StylePropertySet* mutableProperties();
+    MutableStylePropertySet* mutableProperties();
 
     void parserAdoptSelectorVector(Vector<OwnPtr<CSSParserSelector> >& selectors) { m_selectorList.adoptSelectorVector(selectors); }
     void wrapperAdoptSelectorList(CSSSelectorList& selectors) { m_selectorList.adopt(selectors); }
     void setProperties(PassRefPtr<StylePropertySet>);
 
     PassRefPtr<StyleRulePage> copy() const { return adoptRef(new StyleRulePage(*this)); }
-
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     StyleRulePage();
@@ -197,8 +192,6 @@ public:
     
     void wrapperInsertRule(unsigned, PassRefPtr<StyleRuleBase>);
     void wrapperRemoveRule(unsigned);
-
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
     
 protected:
     StyleRuleGroup(Type, Vector<RefPtr<StyleRuleBase> >& adoptRule);
@@ -218,8 +211,6 @@ public:
     MediaQuerySet* mediaQueries() const { return m_mediaQueries.get(); }
 
     PassRefPtr<StyleRuleMedia> copy() const { return adoptRef(new StyleRuleMedia(*this)); }
-
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     StyleRuleMedia(PassRefPtr<MediaQuerySet>, Vector<RefPtr<StyleRuleBase> >& adoptRules);
@@ -260,8 +251,6 @@ public:
 
     PassRefPtr<StyleRuleRegion> copy() const { return adoptRef(new StyleRuleRegion(*this)); }
 
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
-
 private:
     StyleRuleRegion(Vector<OwnPtr<CSSParserSelector> >*, Vector<RefPtr<StyleRuleBase> >& adoptRules);
     StyleRuleRegion(const StyleRuleRegion&);
@@ -293,13 +282,11 @@ public:
     ~StyleRuleViewport();
 
     const StylePropertySet* properties() const { return m_properties.get(); }
-    StylePropertySet* mutableProperties();
+    MutableStylePropertySet* mutableProperties();
 
     void setProperties(PassRefPtr<StylePropertySet>);
 
     PassRefPtr<StyleRuleViewport> copy() const { return adoptRef(new StyleRuleViewport(*this)); }
-
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     StyleRuleViewport();
@@ -339,13 +326,11 @@ public:
     const String& filterName() const { return m_filterName; }
 
     const StylePropertySet* properties() const { return m_properties.get(); }
-    StylePropertySet* mutableProperties();
+    MutableStylePropertySet* mutableProperties();
 
     void setProperties(PassRefPtr<StylePropertySet>);
 
     PassRefPtr<StyleRuleFilter> copy() const { return adoptRef(new StyleRuleFilter(*this)); }
-
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     StyleRuleFilter(const String&);

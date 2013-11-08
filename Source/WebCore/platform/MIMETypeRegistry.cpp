@@ -39,6 +39,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <wtf/RetainPtr.h>
 #endif
+
 #if PLATFORM(QT)
 #include <QImageReader>
 #include <QImageWriter>
@@ -196,6 +197,7 @@ static HashSet<String>* supportedImageMIMETypesForEncoding;
 static HashSet<String>* supportedJavaScriptMIMETypes;
 static HashSet<String>* supportedNonImageMIMETypes;
 static HashSet<String>* supportedMediaMIMETypes;
+static HashSet<String>* pdfAndPostScriptMIMETypes;
 static HashSet<String>* unsupportedTextMIMETypes;
 
 typedef HashMap<String, Vector<String>*, CaseFoldingHash> MediaMIMETypeMap;
@@ -203,11 +205,11 @@ typedef HashMap<String, Vector<String>*, CaseFoldingHash> MediaMIMETypeMap;
 static void initializeSupportedImageMIMETypes()
 {
 #if USE(CG)
-    RetainPtr<CFArrayRef> supportedTypes(AdoptCF, CGImageSourceCopyTypeIdentifiers());
+    RetainPtr<CFArrayRef> supportedTypes = adoptCF(CGImageSourceCopyTypeIdentifiers());
     CFIndex count = CFArrayGetCount(supportedTypes.get());
     for (CFIndex i = 0; i < count; i++) {
-        RetainPtr<CFStringRef> supportedType(AdoptCF, reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i)));
-        String mimeType = MIMETypeForImageSourceType(supportedType.get());
+        CFStringRef supportedType = reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i));
+        String mimeType = MIMETypeForImageSourceType(supportedType);
         if (!mimeType.isEmpty()) {
             supportedImageMIMETypes->add(mimeType);
             supportedImageResourceMIMETypes->add(mimeType);
@@ -290,11 +292,11 @@ static void initializeSupportedImageMIMETypesForEncoding()
 
 #if USE(CG)
 #if PLATFORM(MAC)
-    RetainPtr<CFArrayRef> supportedTypes(AdoptCF, CGImageDestinationCopyTypeIdentifiers());
+    RetainPtr<CFArrayRef> supportedTypes = adoptCF(CGImageDestinationCopyTypeIdentifiers());
     CFIndex count = CFArrayGetCount(supportedTypes.get());
     for (CFIndex i = 0; i < count; i++) {
-        RetainPtr<CFStringRef> supportedType(AdoptCF, reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i)));
-        String mimeType = MIMETypeForImageSourceType(supportedType.get());
+        CFStringRef supportedType = reinterpret_cast<CFStringRef>(CFArrayGetValueAtIndex(supportedTypes.get(), i));
+        String mimeType = MIMETypeForImageSourceType(supportedType);
         if (!mimeType.isEmpty())
             supportedImageMIMETypesForEncoding->add(mimeType);
     }
@@ -388,6 +390,17 @@ static void initializeSupportedJavaScriptMIMETypes()
     };
     for (size_t i = 0; i < WTF_ARRAY_LENGTH(types); ++i)
       supportedJavaScriptMIMETypes->add(types[i]);
+}
+
+static void initializePDFAndPostScriptMIMETypes()
+{
+    const char* const types[] = {
+        "application/pdf",
+        "text/pdf",
+        "application/postscript",
+    };
+    for (size_t i = 0; i < WTF_ARRAY_LENGTH(types); ++i)
+        pdfAndPostScriptMIMETypes->add(types[i]);
 }
 
 static void initializeSupportedNonImageMimeTypes()
@@ -527,6 +540,9 @@ static void initializeMIMETypeRegistry()
     supportedImageMIMETypes = new HashSet<String>;
     initializeSupportedImageMIMETypes();
 
+    pdfAndPostScriptMIMETypes = new HashSet<String>;
+    initializePDFAndPostScriptMIMETypes();
+
     unsupportedTextMIMETypes = new HashSet<String>;
     initializeUnsupportedTextMIMETypes();
 }
@@ -658,6 +674,15 @@ bool MIMETypeRegistry::isJavaAppletMIMEType(const String& mimeType)
         || mimeType.startsWith("application/x-java-vm", false);
 }
 
+bool MIMETypeRegistry::isPDFOrPostScriptMIMEType(const String& mimeType)
+{
+    if (mimeType.isEmpty())
+        return false;
+    if (!pdfAndPostScriptMIMETypes)
+        initializeMIMETypeRegistry();
+    return pdfAndPostScriptMIMETypes->contains(mimeType);
+}
+
 bool MIMETypeRegistry::canShowMIMEType(const String& mimeType)
 {
     if (isSupportedImageMIMEType(mimeType) || isSupportedNonImageMIMEType(mimeType) || isSupportedMediaMIMEType(mimeType))
@@ -702,6 +727,13 @@ HashSet<String>& MIMETypeRegistry::getSupportedMediaMIMETypes()
     if (!supportedMediaMIMETypes)
         initializeSupportedMediaMIMETypes();
     return *supportedMediaMIMETypes;
+}
+
+HashSet<String>& MIMETypeRegistry::getPDFAndPostScriptMIMETypes()
+{
+    if (!pdfAndPostScriptMIMETypes)
+        initializeMIMETypeRegistry();
+    return *pdfAndPostScriptMIMETypes;
 }
 
 HashSet<String>& MIMETypeRegistry::getUnsupportedTextMIMETypes()

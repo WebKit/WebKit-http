@@ -27,10 +27,6 @@ fast/notifications
 # https://bugs.webkit.org/show_bug.cgi?id=28221
 media/audio-delete-while-step-button-clicked.html
 
-# Crashes due to debug assert until we fix issues with style elements in SVG
-# https://bugs.webkit.org/show_bug.cgi?id=77764
-svg/custom/use-referencing-style-crash.svg
-
 # This test requires media controls has a volume slider.
 media/video-volume-slider.html
 
@@ -292,12 +288,6 @@ inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
 webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
 
-webkit.org/b/113787 inspector/profiler/memory-instrumentation-external-array.html [ Skip ]
-
-webkit.org/b/113787 inspector/profiler/memory-instrumentation-external-string.html [ Skip ]
-
-# New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
-webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-replay-log-grid.html
@@ -384,12 +374,11 @@ animations/stop-animation-on-suspend.html
 # DRT does not support toggling caret browsing on / off
 editing/selection/caret-mode-paragraph-keys-navigation.html
 
-# This port doesn't support v8 i18n extension.
-fast/js/i18n-bindings-locale.html
-
 # Non-premultiplied-alpha currently broken on mac.
 # https://bugs.webkit.org/show_bug.cgi?id=55509
 compositing/webgl/webgl-nonpremultiplied-blend.html
+
+webkit.org/b/114321 compositing/plugins/invalidate_rect.html [ Failure Pass ]
 
 # DataTransferItems is not yet implemented.
 editing/pasteboard/data-transfer-items.html
@@ -491,10 +480,6 @@ fast/xsl/xslt-processor-template.html
 
 # JSC does not support setIsolatedWorldSecurityOrigin (http://webkit.org/b/61540)
 http/tests/security/isolatedWorld/cross-origin-xhr.html
-
-# JSC also doesn't support setIsolatedWorldContentSecurityPolicy (webkit.org/b/100815)
-webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp.html [ Failure ]
-webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=63282 layerTreeAsText doesn't work for iframes
 compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html
@@ -775,7 +760,6 @@ inspector/debugger/linkifier.html
 # Failing subpixel reference tests
 # https://bugs.webkit.org/show_bug.cgi?id=85532
 fast/sub-pixel/file-upload-control-at-fractional-offset.html [ ImageOnlyFailure ]
-fast/sub-pixel/float-wrap-zoom.html [ ImageOnlyFailure ]
 fast/sub-pixel/zoomed-image-tiles.html [ ImageOnlyFailure ]
 
 # Needs rebaseline
@@ -870,9 +854,6 @@ compositing/iframes/overlapped-nested-iframes.html [ Failure Pass ]
 # https://bugs.webkit.org/show_bug.cgi?id=90725
 media/media-blocked-by-beforeload.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=90833
-fast/js/global-constructors.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=91505
 platform/mac/plugins/root-object-premature-delete-crash.html
 
@@ -938,6 +919,13 @@ compositing/overflow/scrolling-without-painting.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=110871
 compositing/overlap-blending/reflection-opacity-huge.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=114340
+compositing/overlap-blending/nested-overlap.html
+compositing/overlap-blending/nested-non-overlap-clipping.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=114338
+compositing/overlap-blending/nested-overlap-overflow.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=95027
 fast/block/float/016.html
@@ -1163,7 +1151,11 @@ webkit.org/b/89052 fast/css/image-orientation
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
+webkit.org/b/99945 fast/css3-text/css3-text-justify [ Failure ]
 webkit.org/b/112755 fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
+
+# MHTML is not yet enabled
+mhtml [ Skip ]
 
 # Our slow tests, in alphabetical order.
 webkit.org/b/57672 http/tests/local/fileapi/send-sliced-dragged-file.html [ Failure Pass ]
@@ -1360,10 +1352,14 @@ webkit.org/b/103663 [ MountainLion Lion SnowLeopard ] media/track/track-in-band.
 webkit.org/b/103663 [ MountainLion Lion SnowLeopard ] media/track/track-in-band-cues-added-once.html
 webkit.org/b/103663 [ MountainLion Lion SnowLeopard ] media/track/track-in-band-style.html
 webkit.org/b/103663 [ MountainLion Lion SnowLeopard ] media/track/track-in-band-legacy-api.html
+webkit.org/b/103663 [ MountainLion Lion SnowLeopard ] media/track/track-forced-subtitles-in-band.html
 
 # These two tests sometimes timeout
 webkit.org/b/112492 media/track/track-language-preference.html [ Failure Pass ]
 webkit.org/b/112492 media/track/track-prefer-captions.html [ Failure Pass ]
+
+# The logic in this test is no longer correct for Apple ports
+webkit.org/b/112492 media/track/track-user-preferences.html [ Skip ]
 
 webkit.org/b/104104 fast/overflow/scrollbar-click-retains-focus.html [ Failure ]
 
@@ -1372,8 +1368,6 @@ webkit.org/b/104949 fast/spatial-navigation/snav-unit-overflow-and-scroll-in-dir
 webkit.org/b/104954 http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyFailure ]
 
 webkit.org/b/104962 platform/mac/fast/loader/file-url-mimetypes-2.html [ Failure ]
-
-webkit.org/b/105601 svg/zoom/page/zoom-replaced-intrinsic-ratio-001.htm [ Crash Pass ]
 
 webkit.org/b/105603 http/tests/cookies/single-quoted-value.html [ Failure Pass ]
 
@@ -1402,19 +1396,9 @@ webkit.org/b/94198 fast/forms/input-value.html [ Failure ]
 webkit.org/b/94198 fast/lists/inlineBoxWrapperNullCheck.html [ Failure ]
 webkit.org/b/94198 tables/mozilla/collapsing_borders/bug41262-3.html [ Failure ]
 
-# Spellchecker behavior tests.
-webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-double-clicked-word-with-underscores.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-should-select-single-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-with-underscore-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
 webkit.org/b/108370 editing/spelling/spelling-changed-text.html [ Skip ]
+webkit.org/b/114470 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
+webkit.org/b/114470 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
 
 webkit.org/b/110027 compositing/transitions/transform-on-large-layer.html [ Pass ImageOnlyFailure ]
 
@@ -1494,6 +1478,62 @@ webkit.org/b/113227 transitions/svg-text-shadow-transition.html [ Pass Failure ]
 # New test failing, needs investigation.
 webkit.org/b/103857 fast/events/mouse-cursor-change.html
 
-# Needs rebaseline after bug https://bugs.webkit.org/show_bug.cgi?id=13709
-webkit.org/b/89315 tables/mozilla_expected_failures/bugs/bug89315.html [ Failure Rebaseline ]
+# Underlying system color profile problem.
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing-add-text.html [ ImageOnlyFailure Pass ]
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing-contain.html [ ImageOnlyFailure Pass ]
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing-cover.html [ ImageOnlyFailure Pass ]
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing-padding.html [ ImageOnlyFailure Pass ]
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing-position.html [ ImageOnlyFailure Pass ]
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing-size.html [ ImageOnlyFailure Pass ]
+webkit.org/b/106186 [ MountainLion Lion ] compositing/patterns/direct-pattern-compositing.html [ ImageOnlyFailure Pass ]
 
+# Reference test fast/sub-pixel/float-wrap-zoom.html fails
+webkit.org/b/114800 fast/sub-pixel/float-wrap-zoom.html [ ImageOnlyFailure ]
+
+# Needs rebaseline after bug https://bugs.webkit.org/show_bug.cgi?id=18092
+webkit.org/b/18092 fast/table/giantRowspan.html [ Failure Rebaseline ]
+webkit.org/b/18092 fast/table/giantRowspan2.html [ Failure Rebaseline ]
+webkit.org/b/133756 tables/mozilla/bugs/bug133756-1.html [ Failure Rebaseline ]
+webkit.org/b/133756 tables/mozilla/bugs/bug133756-2.html [ Failure Rebaseline ]
+webkit.org/b/220536 tables/mozilla/bugs/bug220536.html [ Failure Rebaseline ]
+webkit.org/b/8858 tables/mozilla/bugs/bug8858.html [ Failure Rebaseline ]
+webkit.org/b/65372 tables/mozilla_expected_failures/bugs/bug65372.html [ Failure Rebaseline ]
+webkit.org/b/18092 tables/mozilla/core/bloomberg.html [ Failure Rebaseline ]
+webkit.org/b/18092 tables/mozilla/core/row_span.html [ Failure Rebaseline ]
+webkit.org/b/131010 tables/mozilla_expected_failures/bugs/bug131020-3.html [ Failure Rebaseline ]
+webkit.org/b/23847 tables/mozilla_expected_failures/bugs/bug23847.html [ Failure Rebaseline ]
+
+# Disabling subpixel layout on mac, https://bugs.webkit.org/show_bug.cgi?id=114999
+fast/sub-pixel
+
+# Some tests need to be rebaselined still after disabling subpixel layout
+# http://bugs.webkit.org/show_bug.cgi?id=115292
+webkit.org/b/115292 css1/units/rounding.html
+webkit.org/b/115292 fast/block/float/overhanging-tall-block.html
+webkit.org/b/115292 fast/events/clientXY-in-zoom-and-scroll.html
+webkit.org/b/115292 fast/events/constructors/mouse-event-constructor.html
+webkit.org/b/115292 fast/events/constructors/wheel-event-constructor.html
+webkit.org/b/115292 fast/exclusions/shape-outside-floats/shape-outside-floats-non-zero-y.html
+webkit.org/b/115292 fast/exclusions/shape-outside-floats/shape-outside-floats-simple-circle.html
+webkit.org/b/115292 fast/exclusions/shape-outside-floats/shape-outside-floats-simple-ellipse.html
+webkit.org/b/115292 fast/exclusions/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle.html
+webkit.org/b/115292 fast/forms/range/slider-mouse-events.html
+webkit.org/b/115292 fast/overflow/infiniteRecursionGuard.html
+webkit.org/b/115292 platform/mac-wk2/tiled-drawing/fixed/four-bars-zoomed.html
+webkit.org/b/115292 platform/mac-wk2/tiled-drawing/sticky/sticky-vertical.html
+webkit.org/b/115292 svg/zoom/page/zoom-replaced-intrinsic-ratio-001.htm
+webkit.org/b/115292 editing/selection/vertical-lr-ltr-extend-line-backward-br.html
+webkit.org/b/115292 editing/selection/vertical-lr-ltr-extend-line-forward-br.html
+webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-backward-br.html
+webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-backward-p.html
+webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-forward-br.html
+webkit.org/b/115292 editing/selection/vertical-rl-ltr-extend-line-forward-p.html
+webkit.org/b/115292 fast/text/international/hindi-spacing.html
+webkit.org/b/115292 fast/text/international/vertical-text-glyph-test.html
+webkit.org/b/115292 fast/text/orientation-sideways.html
+webkit.org/b/115292 fast/text/vertical-no-sideways.html
+webkit.org/b/115292 fast/writing-mode/Kusa-Makura-background-canvas.html
+webkit.org/b/115292 fast/writing-mode/japanese-ruby-vertical-lr.html
+webkit.org/b/115292 fast/writing-mode/japanese-ruby-vertical-rl.html
+webkit.org/b/115292 fast/writing-mode/vertical-baseline-alignment.html
+webkit.org/b/115292 fast/writing-mode/vertical-font-fallback.html

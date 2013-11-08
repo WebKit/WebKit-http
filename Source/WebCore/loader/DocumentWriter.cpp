@@ -39,13 +39,13 @@
 #include "PlaceholderDocument.h"
 #include "PluginDocument.h"
 #include "RawDataDocumentParser.h"
+#include "ScriptController.h"
 #include "ScriptableDocumentParser.h"
 #include "SecurityOrigin.h"
 #include "SegmentedString.h"
 #include "Settings.h"
 #include "SinkDocument.h"
 #include "TextResourceDecoder.h"
-
 
 namespace WebCore {
 
@@ -104,7 +104,7 @@ void DocumentWriter::begin()
 
 PassRefPtr<Document> DocumentWriter::createDocument(const KURL& url)
 {
-    if (!m_frame->loader()->stateMachine()->isDisplayingInitialEmptyDocument() && m_frame->loader()->client()->shouldUsePluginDocument(m_mimeType))
+    if (!m_frame->loader()->stateMachine()->isDisplayingInitialEmptyDocument() && m_frame->loader()->client()->shouldAlwaysUsePluginDocument(m_mimeType))
         return PluginDocument::create(m_frame, url);
     if (!m_frame->loader()->client()->hasHTMLView())
         return PlaceholderDocument::create(m_frame, url);

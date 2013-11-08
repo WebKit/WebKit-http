@@ -20,7 +20,7 @@
 #ifndef TextureMapperLayer_h
 #define TextureMapperLayer_h
 
-#if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER)
 
 #include "FilterOperations.h"
 #include "FloatRect.h"
@@ -56,6 +56,7 @@ public:
         , m_id(0)
         , m_scrollClient(0)
         , m_isScrollable(false)
+        , m_patternTransformDirty(false)
     { }
 
     virtual ~TextureMapperLayer();
@@ -63,6 +64,7 @@ public:
     void setID(uint32_t id) { m_id = id; }
     uint32_t id() { return m_id; }
 
+    const Vector<TextureMapperLayer*>& children() const { return m_children; }
     TextureMapperLayer* findScrollableContentsLayerAt(const FloatPoint& pos);
 
     void setScrollClient(ScrollingClient* scrollClient) { m_scrollClient = scrollClient; }
@@ -87,11 +89,18 @@ public:
     void setContentsRect(const IntRect&);
     void setMasksToBounds(bool);
     void setDrawsContent(bool);
+    bool drawsContent() const { return m_state.drawsContent; }
+    bool contentsAreVisible() const { return m_state.contentsVisible; }
+    FloatSize size() const { return m_state.size; }
+    float opacity() const { return m_state.opacity; }
+    TransformationMatrix transform() const { return m_state.transform; }
     void setContentsVisible(bool);
     void setContentsOpaque(bool);
     void setBackfaceVisibility(bool);
     void setOpacity(float);
     void setSolidColor(const Color&);
+    void setContentsTileSize(const IntSize&);
+    void setContentsTilePhase(const IntPoint&);
 #if ENABLE(CSS_FILTERS)
     void setFilters(const FilterOperations&);
 #endif
@@ -106,10 +115,12 @@ public:
     }
 
     void setDebugVisuals(bool showDebugBorders, const Color& debugBorderColor, float debugBorderWidth, bool showRepaintCounter);
+    bool isShowingRepaintCounter() const { return m_state.showRepaintCounter; }
     void setRepaintCount(int);
     void setContentsLayer(TextureMapperPlatformLayer*);
     void setAnimations(const GraphicsLayerAnimations&);
     void setFixedToViewport(bool);
+    bool fixedToViewport() const { return m_fixedToViewport; }
     void setBackingStore(PassRefPtr<TextureMapperBackingStore>);
 
     void syncAnimations();
@@ -120,6 +131,7 @@ public:
     void setScrollPositionDeltaIfNeeded(const FloatSize&);
 
     void applyAnimationsRecursively();
+    void addChild(TextureMapperLayer*);
 
 private:
     const TextureMapperLayer* rootLayer() const;
@@ -132,7 +144,6 @@ private:
     FloatPoint adjustedPosition() const { return m_state.pos + m_scrollPositionDelta - m_userScrollOffset; }
     bool isAncestorFixedToViewport() const;
     TransformationMatrix replicaTransform();
-    void addChild(TextureMapperLayer*);
     void removeFromParent();
     void removeAllChildren();
 
@@ -150,6 +161,7 @@ private:
     void paintSelfAndChildren(const TextureMapperPaintOptions&);
     void paintSelfAndChildrenWithReplica(const TextureMapperPaintOptions&);
     void applyMask(const TextureMapperPaintOptions&);
+    void computePatternTransformIfNeeded();
 
     // GraphicsLayerAnimation::Client
     virtual void setAnimatedTransform(const TransformationMatrix&) OVERRIDE;
@@ -198,6 +210,8 @@ private:
         TransformationMatrix childrenTransform;
         float opacity;
         FloatRect contentsRect;
+        IntSize contentsTileSize;
+        IntPoint contentsTilePhase;
         TextureMapperLayer* maskLayer;
         TextureMapperLayer* replicaLayer;
         Color solidColor;
@@ -247,6 +261,8 @@ private:
     bool m_isScrollable;
     FloatSize m_userScrollOffset;
     FloatSize m_accumulatedScrollOffsetFractionalPart;
+    TransformationMatrix m_patternTransform;
+    bool m_patternTransformDirty;
 };
 
 }

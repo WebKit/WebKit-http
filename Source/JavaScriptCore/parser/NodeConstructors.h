@@ -27,19 +27,19 @@
 
 namespace JSC {
 
-    inline void* ParserArenaFreeable::operator new(size_t size, JSGlobalData* globalData)
+    inline void* ParserArenaFreeable::operator new(size_t size, VM* vm)
     {
-        return globalData->parserArena->allocateFreeable(size);
+        return vm->parserArena->allocateFreeable(size);
     }
 
-    inline void* ParserArenaDeletable::operator new(size_t size, JSGlobalData* globalData)
+    inline void* ParserArenaDeletable::operator new(size_t size, VM* vm)
     {
-        return globalData->parserArena->allocateDeletable(size);
+        return vm->parserArena->allocateDeletable(size);
     }
 
-    inline ParserArenaRefCounted::ParserArenaRefCounted(JSGlobalData* globalData)
+    inline ParserArenaRefCounted::ParserArenaRefCounted(VM* vm)
     {
-        globalData->parserArena->derefWithArena(adoptRef(this));
+        vm->parserArena->derefWithArena(adoptRef(this));
     }
 
     inline Node::Node(const JSTokenLocation& location)
@@ -60,25 +60,30 @@ namespace JSC {
     {
     }
 
+    inline ConstantNode::ConstantNode(const JSTokenLocation& location, ResultType resultType)
+        : ExpressionNode(location, resultType)
+    {
+    }
+
     inline NullNode::NullNode(const JSTokenLocation& location)
-        : ExpressionNode(location, ResultType::nullType())
+        : ConstantNode(location, ResultType::nullType())
     {
     }
 
     inline BooleanNode::BooleanNode(const JSTokenLocation& location, bool value)
-        : ExpressionNode(location, ResultType::booleanType())
+        : ConstantNode(location, ResultType::booleanType())
         , m_value(value)
     {
     }
 
     inline NumberNode::NumberNode(const JSTokenLocation& location, double value)
-        : ExpressionNode(location, ResultType::numberType())
+        : ConstantNode(location, JSValue(value).isInt32() ? ResultType::numberTypeIsInt32() : ResultType::numberType())
         , m_value(value)
     {
     }
 
     inline StringNode::StringNode(const JSTokenLocation& location, const Identifier& value)
-        : ExpressionNode(location, ResultType::stringType())
+        : ConstantNode(location, ResultType::stringType())
         , m_value(value)
     {
     }
@@ -141,15 +146,15 @@ namespace JSC {
     {
     }
 
-    inline PropertyNode::PropertyNode(JSGlobalData*, const Identifier& name, ExpressionNode* assign, Type type)
+    inline PropertyNode::PropertyNode(VM*, const Identifier& name, ExpressionNode* assign, Type type)
         : m_name(name)
         , m_assign(assign)
         , m_type(type)
     {
     }
 
-    inline PropertyNode::PropertyNode(JSGlobalData* globalData, double name, ExpressionNode* assign, Type type)
-        : m_name(globalData->parserArena->identifierArena().makeNumericIdentifier(globalData, name))
+    inline PropertyNode::PropertyNode(VM* vm, double name, ExpressionNode* assign, Type type)
+        : m_name(vm->parserArena->identifierArena().makeNumericIdentifier(vm, name))
         , m_assign(assign)
         , m_type(type)
     {
@@ -355,7 +360,7 @@ namespace JSC {
     }
 
     inline UnaryPlusNode::UnaryPlusNode(const JSTokenLocation& location, ExpressionNode* expr)
-        : UnaryOpNode(location, ResultType::numberType(), expr, op_to_jsnumber)
+        : UnaryOpNode(location, ResultType::numberType(), expr, op_to_number)
     {
     }
 
@@ -631,15 +636,10 @@ namespace JSC {
     {
     }
     
-    inline IfNode::IfNode(const JSTokenLocation& location, ExpressionNode* condition, StatementNode* ifBlock)
+    inline IfElseNode::IfElseNode(const JSTokenLocation& location, ExpressionNode* condition, StatementNode* ifBlock, StatementNode* elseBlock)
         : StatementNode(location)
         , m_condition(condition)
         , m_ifBlock(ifBlock)
-    {
-    }
-
-    inline IfElseNode::IfElseNode(const JSTokenLocation& location, ExpressionNode* condition, StatementNode* ifBlock, StatementNode* elseBlock)
-        : IfNode(location, condition, ifBlock)
         , m_elseBlock(elseBlock)
     {
     }
@@ -668,9 +668,9 @@ namespace JSC {
         ASSERT(statement);
     }
 
-    inline ContinueNode::ContinueNode(JSGlobalData* globalData, const JSTokenLocation& location)
+    inline ContinueNode::ContinueNode(VM* vm, const JSTokenLocation& location)
         : StatementNode(location)
-        , m_ident(globalData->propertyNames->nullIdentifier)
+        , m_ident(vm->propertyNames->nullIdentifier)
     {
     }
 
@@ -680,9 +680,9 @@ namespace JSC {
     {
     }
     
-    inline BreakNode::BreakNode(JSGlobalData* globalData, const JSTokenLocation& location)
+    inline BreakNode::BreakNode(VM* vm, const JSTokenLocation& location)
         : StatementNode(location)
-        , m_ident(globalData->propertyNames->nullIdentifier)
+        , m_ident(vm->propertyNames->nullIdentifier)
     {
     }
 
@@ -812,15 +812,15 @@ namespace JSC {
     {
     }
 
-    inline ForInNode::ForInNode(JSGlobalData* globalData, const JSTokenLocation& location, const Identifier& ident, ExpressionNode* in, ExpressionNode* expr, StatementNode* statement, int divot, int startOffset, int endOffset)
+    inline ForInNode::ForInNode(VM* vm, const JSTokenLocation& location, const Identifier& ident, ExpressionNode* in, ExpressionNode* expr, StatementNode* statement, int divot, int startOffset, int endOffset)
         : StatementNode(location)
         , m_init(0)
-        , m_lexpr(new (globalData) ResolveNode(location, ident, divot - startOffset))
+        , m_lexpr(new (vm) ResolveNode(location, ident, divot - startOffset))
         , m_expr(expr)
         , m_statement(statement)
     {
         if (in) {
-            AssignResolveNode* node = new (globalData) AssignResolveNode(location, ident, in);
+            AssignResolveNode* node = new (vm) AssignResolveNode(location, ident, in);
             node->setExceptionSourceCode(divot, divot - startOffset, endOffset - divot);
             m_init = node;
         }

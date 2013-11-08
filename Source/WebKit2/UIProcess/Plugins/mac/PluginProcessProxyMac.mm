@@ -53,8 +53,6 @@
 
 @end
 
-NSString * const WebKit2PlugInSandboxProfileDirectoryPathKey = @"WebKit2PlugInSandboxProfileDirectoryPath";
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -140,13 +138,7 @@ void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions
 {
     launchOptions.architecture = pluginInfo.pluginArchitecture;
     launchOptions.executableHeap = PluginProcessProxy::pluginNeedsExecutableHeap(pluginInfo);
-
     launchOptions.extraInitializationData.add("plugin-path", pluginInfo.path);
-
-    // FIXME: We should rip this out once we have a good place to install plug-in sandbox profiles.
-    NSString* sandboxProfileDirectoryPath = [[NSUserDefaults standardUserDefaults] stringForKey:WebKit2PlugInSandboxProfileDirectoryPathKey];
-    if (sandboxProfileDirectoryPath)
-        launchOptions.extraInitializationData.add("sandbox-profile-directory-path", String(sandboxProfileDirectoryPath));
 
 #if HAVE(XPC)
     launchOptions.useXPC = shouldUseXPC();
@@ -295,7 +287,7 @@ void PluginProcessProxy::beginModal()
     ASSERT(!m_placeholderWindow);
     ASSERT(!m_activationObserver);
     
-    m_placeholderWindow.adoptNS([[WKPlaceholderModalWindow alloc] initWithContentRect:NSMakeRect(0, 0, 1, 1) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:YES]);
+    m_placeholderWindow = adoptNS([[WKPlaceholderModalWindow alloc] initWithContentRect:NSMakeRect(0, 0, 1, 1) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:YES]);
     [m_placeholderWindow.get() setReleasedWhenClosed:NO];
     
     m_activationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationWillBecomeActiveNotification object:NSApp queue:nil

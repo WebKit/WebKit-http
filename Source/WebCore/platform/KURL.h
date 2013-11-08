@@ -198,7 +198,6 @@ public:
     void print() const;
 #endif
 
-    void reportMemoryUsage(MemoryObjectInfo*) const;
     bool isSafeToSendToAnotherThread() const;
 
 private:

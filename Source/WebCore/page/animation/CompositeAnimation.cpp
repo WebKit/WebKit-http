@@ -34,10 +34,18 @@
 #include "CSSPropertyNames.h"
 #include "ImplicitAnimation.h"
 #include "KeyframeAnimation.h"
+#include "Logging.h"
 #include "RenderObject.h"
 #include "RenderStyle.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
+
+CompositeAnimation::CompositeAnimation(AnimationControllerPrivate* animationController)
+    : m_animationController(animationController)
+{
+    m_suspended = animationController->isSuspended();
+}
 
 CompositeAnimation::~CompositeAnimation()
 {
@@ -90,7 +98,7 @@ void CompositeAnimation::updateTransitions(RenderObject* renderer, RenderStyle* 
     if (targetStyle->transitions()) {
         for (size_t i = 0; i < targetStyle->transitions()->size(); ++i) {
             const Animation* anim = targetStyle->transitions()->animation(i);
-            bool isActiveTransition = anim->duration() || anim->delay() > 0;
+            bool isActiveTransition = !m_suspended && (anim->duration() || anim->delay() > 0);
 
             Animation::AnimationMode mode = anim->animationMode();
             if (mode == Animation::AnimateNone)
@@ -121,7 +129,7 @@ void CompositeAnimation::updateTransitions(RenderObject* renderer, RenderStyle* 
                 RenderStyle* fromStyle = keyframeAnim ? keyframeAnim->unanimatedStyle() : currentStyle;
 
                 // See if there is a current transition for this prop
-                ImplicitAnimation* implAnim = m_transitions.get(prop).get();
+                ImplicitAnimation* implAnim = m_transitions.get(prop);
                 bool equal = true;
 
                 if (implAnim) {
@@ -140,7 +148,7 @@ void CompositeAnimation::updateTransitions(RenderObject* renderer, RenderStyle* 
                     // list. In this case, the latter one overrides the earlier one, so we
                     // behave as though this is a running animation being replaced.
                     if (!implAnim->isTargetPropertyEqual(prop, targetStyle)) {
-    #if USE(ACCELERATED_COMPOSITING)
+#if USE(ACCELERATED_COMPOSITING)
                         // For accelerated animations we need to return a new RenderStyle with the _current_ value
                         // of the property, so that restarted transitions use the correct starting point.
                         if (CSSPropertyAnimation::animationOfPropertyIsAccelerated(prop) && implAnim->isAccelerated()) {
@@ -149,7 +157,8 @@ void CompositeAnimation::updateTransitions(RenderObject* renderer, RenderStyle* 
 
                             implAnim->blendPropertyValueInStyle(prop, modifiedCurrentStyle.get());
                         }
-    #endif
+#endif
+                        LOG(Animations, "Removing existing ImplicitAnimation %p for property %s", implAnim, getPropertyName(prop));
                         animationController()->animationWillBeRemoved(implAnim);
                         m_transitions.remove(prop);
                         equal = false;
@@ -165,7 +174,9 @@ void CompositeAnimation::updateTransitions(RenderObject* renderer, RenderStyle* 
                 // <https://bugs.webkit.org/show_bug.cgi?id=24787>
                 if (!equal && isActiveTransition) {
                     // Add the new transition
-                    m_transitions.set(prop, ImplicitAnimation::create(const_cast<Animation*>(anim), prop, renderer, this, modifiedCurrentStyle ? modifiedCurrentStyle.get() : fromStyle));
+                    RefPtr<ImplicitAnimation> animation = ImplicitAnimation::create(const_cast<Animation*>(anim), prop, renderer, this, modifiedCurrentStyle ? modifiedCurrentStyle.get() : fromStyle);
+                    LOG(Animations, "Created ImplicitAnimation %p for property %s duration %.2f delay %.2f", animation.get(), getPropertyName(prop), anim->duration(), anim->delay());
+                    m_transitions.set(prop, animation.release());
                 }
                 
                 // We only need one pass for the single prop case
@@ -183,6 +194,7 @@ void CompositeAnimation::updateTransitions(RenderObject* renderer, RenderStyle* 
         if (!anim->active()) {
             animationController()->animationWillBeRemoved(anim);
             toBeRemoved.append(anim->animatingProperty());
+            LOG(Animations, "Removing ImplicitAnimation %p for property %s", anim, getPropertyName(anim->animatingProperty()));
         }
     }
 
@@ -246,6 +258,16 @@ void CompositeAnimation::updateKeyframeAnimations(RenderObject* renderer, Render
                     keyframeAnim->setIndex(i);
                 } else if ((anim->duration() || anim->delay()) && anim->iterationCount() && animationName != none) {
                     keyframeAnim = KeyframeAnimation::create(const_cast<Animation*>(anim), renderer, i, this, targetStyle);
+                    LOG(Animations, "Creating KeyframeAnimation %p with keyframes %s, duration %.2f, delay %.2f, iterations %.2f", keyframeAnim.get(), anim->name().utf8().data(), anim->duration(), anim->delay(), anim->iterationCount());
+                    if (m_suspended) {
+                        keyframeAnim->updatePlayState(AnimPlayStatePaused);
+                        LOG(Animations, "  (created in suspended/paused state)");
+                    }
+#if !LOG_DISABLED
+                    HashSet<CSSPropertyID>::const_iterator endProperties = keyframeAnim->keyframes().endProperties();
+                    for (HashSet<CSSPropertyID>::const_iterator it = keyframeAnim->keyframes().beginProperties(); it != endProperties; ++it)
+                        LOG(Animations, "  property %s", getPropertyName(*it));
+#endif
                     m_keyframeAnimations.set(keyframeAnim->name().impl(), keyframeAnim);
                 }
                 
@@ -265,6 +287,7 @@ void CompositeAnimation::updateKeyframeAnimations(RenderObject* renderer, Render
             animsToBeRemoved.append(keyframeAnim->name().impl());
             animationController()->animationWillBeRemoved(keyframeAnim);
             keyframeAnim->clear();
+            LOG(Animations, "Removing KeyframeAnimation %p", keyframeAnim);
         }
     }
     
@@ -498,7 +521,7 @@ bool CompositeAnimation::pauseTransitionAtTime(CSSPropertyID property, double t)
     if ((property < firstCSSProperty) || (property >= firstCSSProperty + numCSSProperties))
         return false;
 
-    ImplicitAnimation* implAnim = m_transitions.get(property).get();
+    ImplicitAnimation* implAnim = m_transitions.get(property);
     if (!implAnim) {
         // Check to see if this property is being animated via a shorthand.
         // This code is only used for testing, so performance is not critical here.

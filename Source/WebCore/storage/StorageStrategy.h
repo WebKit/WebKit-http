@@ -33,12 +33,15 @@
 namespace WebCore {
 
 class Page;
+class PageGroup;
+class SecurityOrigin;
 class StorageNamespace;
 
 class StorageStrategy {
 public:
-    virtual PassRefPtr<StorageNamespace> localStorageNamespace(const String& path, unsigned quota);
-    virtual PassRefPtr<StorageNamespace> sessionStorageNamespace(Page*, unsigned quota);
+    virtual PassRefPtr<StorageNamespace> localStorageNamespace(PageGroup*);
+    virtual PassRefPtr<StorageNamespace> transientLocalStorageNamespace(PageGroup*, SecurityOrigin*);
+    virtual PassRefPtr<StorageNamespace> sessionStorageNamespace(Page*);
 
 protected:
     virtual ~StorageStrategy()

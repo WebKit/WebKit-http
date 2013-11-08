@@ -63,8 +63,8 @@ function generateString(dimensions, lineHeight) {
     if (dimensions.shapeRadiusX == 0 || dimensions.shapeRadiusY == 0)
         resultLength = dimensions.shapeWidth * dimensions.shapeHeight / (lineHeight * lineHeight);
     else {
-        for (var lineTop = 0; lineTop < dimensions.shapeHeight; lineTop += lineHeight) {
-            var width = dimensions.shapeWidth - 2 * xInset(dimensions, lineTop, lineTop + lineHeight);
+        for (var lineBottom = lineHeight; lineBottom < dimensions.shapeHeight; lineBottom += lineHeight) {
+            var width = dimensions.shapeWidth - 2 * xInset(dimensions, lineBottom, lineBottom + lineHeight);
             resultLength += width / lineHeight;
         }
     }
@@ -95,12 +95,12 @@ function simulateShape(elementId, stylesheet, dimensions, lineHeight) {
 
         var paddingLeft = document.createElement("div");
         paddingLeft.setAttribute("class", "float left");
-        paddingLeft.style.width = SubPixelLayout.roundLineLeft(dimensions.shapeX + inset) + "px";
+        paddingLeft.style.width = SubPixelLayout.snapToLayoutUnit(dimensions.shapeX + inset) + "px";
         element.appendChild(paddingLeft);
 
         var paddingRight = document.createElement("div");
         paddingRight.setAttribute("class", "float right");
-        paddingRight.style.width = SubPixelLayout.roundLineRight((dimensions.width - dimensions.shapeWidth - dimensions.shapeX) + inset) + "px";
+        paddingRight.style.width = SubPixelLayout.snapToLayoutUnit((dimensions.width - dimensions.shapeWidth - dimensions.shapeX) + inset) + "px";
         element.appendChild(paddingRight);
     }
 }

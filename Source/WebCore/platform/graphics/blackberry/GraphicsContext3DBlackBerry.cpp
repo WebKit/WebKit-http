@@ -56,7 +56,6 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_currentHeight(0)
     , m_context(BlackBerry::Platform::Graphics::createWebGLContext())
     , m_compiler(SH_ESSL_OUTPUT)
-    , m_extensions(adoptPtr(new Extensions3DOpenGLES(this)))
     , m_attrs(attrs)
     , m_texture(0)
     , m_fbo(0)
@@ -108,11 +107,6 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     getIntegerv(GraphicsContext3D::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxCombinedTextureImageUnits);
     getIntegerv(GraphicsContext3D::MAX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxTextureImageUnits);
     getIntegerv(GraphicsContext3D::MAX_FRAGMENT_UNIFORM_VECTORS, &ANGLEResources.MaxFragmentUniformVectors);
-
-    ANGLEResources.MaxDrawBuffers = 1; // Always set to 1 for OpenGL ES.
-    ANGLEResources.OES_standard_derivatives = m_extensions->supports("GL_OES_standard_derivatives");
-    ANGLEResources.OES_EGL_image_external = m_extensions->supports("GL_EGL_image_external");
-    ANGLEResources.ARB_texture_rectangle = m_extensions->supports("GL_ARB_texture_rectangle");
 
     GC3Dint range[2], precision;
     getShaderPrecisionFormat(GraphicsContext3D::FRAGMENT_SHADER, GraphicsContext3D::HIGH_FLOAT, range, &precision);
@@ -285,9 +279,9 @@ void GraphicsContext3D::readPixelsIMG(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3
     // If this ever changes, this code will need to be updated.
 
     // Calculate the strides of our data and canvas
-    unsigned int formatSize = 4; // RGBA UNSIGNED_BYTE
-    unsigned int dataStride = width * formatSize;
-    unsigned int canvasStride = m_currentWidth * formatSize;
+    unsigned formatSize = 4; // RGBA UNSIGNED_BYTE
+    unsigned dataStride = width * formatSize;
+    unsigned canvasStride = m_currentWidth * formatSize;
 
     // If we are using a pack alignment of 8, then we need to align our strides to 8 byte boundaries
     // See: http://en.wikipedia.org/wiki/Data_structure_alignment (computing padding)
@@ -317,10 +311,10 @@ void GraphicsContext3D::readPixelsIMG(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3
     IntRect canvasRect(0, 0, m_currentWidth, m_currentHeight);
     IntRect nonZeroDataRect = intersection(dataRect, canvasRect);
 
-    unsigned int xDataOffset = x < 0 ? -x * formatSize : 0;
-    unsigned int yDataOffset = y < 0 ? -y * dataStride : 0;
-    unsigned int xCanvasOffset = nonZeroDataRect.x() * formatSize;
-    unsigned int yCanvasOffset = nonZeroDataRect.y() * canvasStride;
+    unsigned xDataOffset = x < 0 ? -x * formatSize : 0;
+    unsigned yDataOffset = y < 0 ? -y * dataStride : 0;
+    unsigned xCanvasOffset = nonZeroDataRect.x() * formatSize;
+    unsigned yCanvasOffset = nonZeroDataRect.y() * canvasStride;
     unsigned char* dst = static_cast<unsigned char*>(data) + xDataOffset + yDataOffset;
     unsigned char* src = canvasData + xCanvasOffset + yCanvasOffset;
     for (int row = 0; row < nonZeroDataRect.height(); row++) {
@@ -366,7 +360,7 @@ PlatformLayer* GraphicsContext3D::platformLayer() const
 #endif
 
 void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight, int canvasWidth, int canvasHeight,
-       GraphicsContext* context)
+    GraphicsContext* context)
 {
     FloatRect src(0, 0, canvasWidth, canvasHeight);
     FloatRect dst(0, 0, imageWidth, imageHeight);
@@ -392,7 +386,7 @@ GraphicsContext3D::ImageExtractor::~ImageExtractor()
 {
 }
 
-bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile)
+bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool)
 {
     if (!m_image)
         return false;

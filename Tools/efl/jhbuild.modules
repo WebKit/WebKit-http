@@ -32,10 +32,6 @@
       href="https://github.com"/>
   <repository type="tarball" name="sourceware.org"
       href="ftp://sourceware.org"/>
-  <repository type="tarball" name="gnupg.org"
-      href="ftp://ftp.gnupg.org"/>
-  <repository type="tarball" name="p11-glue.freedesktop.org"
-      href="http://p11-glue.freedesktop.org"/>
   <repository type="tarball" name="ftp.gnome.org"
       href="http://ftp.gnome.org"/>
   <repository type="git" name="git.gnome.org"
@@ -98,40 +94,15 @@
             md5sum="b93435488942486c8d0ca22e8f768034" />
   </tarball>
 
-  <autotools id="p11-kit">
-    <branch module="/releases/p11-kit-0.12.tar.gz" version="0.12"
-             repo="p11-glue.freedesktop.org"
-             hash="sha256:4db792def545a3c8ae12e7e4ef166d7620cb445c00a5a984ab7c4a3b35f0be00"
-             md5sum="029aa2a3a103e7eb81b4aa731b93539e"/>
-  </autotools>
-
-  <autotools id="libgpg-error" autogen-sh="configure">
-    <branch module="/gcrypt/libgpg-error/libgpg-error-1.10.tar.bz2" version="1.10"
-             repo="gnupg.org"
-             hash="sha256:520629b4568b5c29b1991c8ffc267c8bdee5f223c7333c42a651b56f9b1c5431"
-             md5sum="736a03daa9dc5873047d4eb4a9c22a16"/>
-  </autotools>
-
-  <autotools id="libgcrypt" autogen-sh="configure">
-    <dependencies>
-      <dep package="libgpg-error"/>
-    </dependencies>
-    <branch module="/gcrypt/libgcrypt/libgcrypt-1.5.0.tar.bz2" version="1.5.0"
-             repo="gnupg.org"
-             hash="sha256:4b62fc516004940a0571025401a0581d49199f1a76dfb5ce6fd63f50db8173fa"
-             md5sum="693f9c64d50c908bc4d6e01da3ff76d8"/>
-  </autotools>
-
   <autotools id="glib"
              autogen-sh="configure"
              autogenargs="--disable-dtrace">
     <dependencies>
       <dep package="libffi"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib/2.33/glib-2.33.2.tar.xz" version="2.33.2"
+    <branch module="/pub/GNOME/sources/glib/2.36/glib-2.36.0.tar.xz" version="2.36.0"
             repo="ftp.gnome.org"
-            hash="sha256:b7163e9f159775d13ecfb433d67c3f0883e0e518e85b2e970d4ad9773d7cd0b4"
-            md5sum="06ef0099fed22afcf34ade39ddff9a5b"/>
+            hash="sha256:455a8abe8692c5174bcc7ffa15b96a7521a2f2f9fb47594405927c35cb9bb227"/>
   </autotools>
 
   <autotools id="glib-networking">
@@ -149,10 +120,9 @@
     <dependencies>
       <dep package="glib-networking"/>
     </dependencies>
-    <branch module="/pub/gnome/sources/libsoup/2.40/libsoup-2.40.3.tar.xz" version="2.40.3"
+    <branch module="/pub/gnome/sources/libsoup/2.42/libsoup-2.42.0.tar.xz" version="2.42.0"
             repo="ftp.gnome.org"
-            hash="sha256:82c92f1f6f4cbfd501df783ed87e7de9410b4a12a3bb0b19c64722e185d2bbc9">
-      <patch file="libsoup-2.40-auth-fix.patch" strip="1"/>
+            hash="sha256:9e0e7eb5d3f7401ccf521fbc289fc1fa0923b7c7833729e2ed7696f7b848893e">
     </branch>
   </autotools>
 
@@ -224,7 +194,6 @@
             md5sum="ec3fffbeff0be2699aeed1ed4377ee9d">
     </branch>
     <dependencies>
-      <dep package="libgcrypt"/>
       <dep package="eina"/>
     </dependencies>
   </autotools>
@@ -296,11 +265,13 @@
     </dependencies>
   </autotools>
 
-  <autotools id="libxml2">
-    <branch module="/libxml2/libxml2-2.8.0.tar.gz" version="2.8.0"
+  <autotools id="libxml2"
+             autogen-sh="configure"
+             autogenargs="--without-python">
+    <branch module="/libxml2/libxml2-2.9.1.tar.gz" version="2.9.1"
             repo="xmlsoft.org"
-            hash="sha256:f2e2d0e322685193d1affec83b21dc05d599e17a7306d7b90de95bb5b9ac622a"
-            md5sum="c62106f02ee00b6437f0fb9d370c1093"/>
+            hash="sha256:fd3c64cb66f2c4ea27e934d275904d92cec494a8e8405613780cbc8a71680fdb"
+            md5sum="9c0cfef285d5c4a5c80d00904ddab380"/>
   </autotools>
 
   <autotools id="gstreamer" autogen-sh="configure">

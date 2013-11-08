@@ -229,7 +229,7 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
                 // preview.
                 // FIXME: the zoom preview only works if we don't re-tile the
                 // layer. We need to store texture coordinates in
-                // WebCore::Texture to be able to fix that.
+                // WebCore::LayerTexture to be able to fix that.
                 if (didResize && !(isZoomJob && wasOneTile && isOneTile))
                     addTextureJob(TextureJob::discardContents(tileRect));
                 else
@@ -253,18 +253,14 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
         if (BlackBerry::Platform::Graphics::Buffer* buffer = createBuffer(bufferSize)) {
             IntRect contentsRect(IntPoint::zero(), image->size());
             m_layer->paintContents(buffer, contentsRect, scale);
-
-            bool isOpaque = false;
-            if (image->isBitmapImage())
-                isOpaque = static_cast<BitmapImage*>(image)->currentFrameKnownToBeOpaque();
-            addTextureJob(TextureJob::setContents(buffer, contentsRect, isOpaque));
+            addTextureJob(TextureJob::setContents(buffer, contentsRect));
         }
     } else if (m_layer->drawsContent()) {
         for (HashSet<TileIndex>::iterator it = renderJobs.begin(); it != renderJobs.end(); ++it) {
             if (BlackBerry::Platform::Graphics::Buffer* buffer = createBuffer(tileSize())) {
                 IntRect tileRect = rectForTile(*it, requiredTextureSize);
                 m_layer->paintContents(buffer, tileRect, scale);
-                addTextureJob(TextureJob::updateContents(buffer, tileRect, m_layer->isOpaque()));
+                addTextureJob(TextureJob::updateContents(buffer, tileRect));
             }
         }
     }
@@ -369,11 +365,7 @@ void LayerTiler::uploadTexturesIfNeeded(LayerCompositingThread*)
             m_tiles.add(tileJobsIter->key, tile);
         }
 
-        IntRect tileRect(origin, tileSize());
-        tileRect.setWidth(min(m_requiredTextureSize.width() - tileRect.x(), tileRect.width()));
-        tileRect.setHeight(min(m_requiredTextureSize.height() - tileRect.y(), tileRect.height()));
-
-        performTileJob(tile, *tileJobsIter->value, tileRect);
+        performTileJob(tile, *tileJobsIter->value);
     }
 
     m_textureJobs.clear();
@@ -387,11 +379,6 @@ void LayerTiler::processTextureJob(const TextureJob& job, TileJobsMap& tileJobsM
             pruneTextures();
 
         m_requiredTextureSize = pendingTextureSize;
-        return;
-    }
-
-    if (job.m_type == TextureJob::SetContentsToColor) {
-        addTileJob(job.m_index, job, tileJobsMap);
         return;
     }
 
@@ -418,14 +405,11 @@ void LayerTiler::addTileJob(const TileIndex& index, const TextureJob& job, TileJ
     result.iterator->value = &job;
 }
 
-void LayerTiler::performTileJob(LayerTile* tile, const TextureJob& job, const IntRect& tileRect)
+void LayerTiler::performTileJob(LayerTile* tile, const TextureJob& job)
 {
     switch (job.m_type) {
-    case TextureJob::SetContentsToColor:
-        tile->setContentsToColor(job.m_color);
-        return;
     case TextureJob::SetContents:
-        tile->setContents(job.m_contents, tileRect, indexOfTile(tileRect.location()), job.m_isOpaque);
+        tile->setContents(job.m_contents);
         {
             MutexLocker locker(m_tilesMutex);
             if (tile->renderState() == LayerTile::RenderPending)
@@ -433,7 +417,7 @@ void LayerTiler::performTileJob(LayerTile* tile, const TextureJob& job, const In
         }
         return;
     case TextureJob::UpdateContents:
-        tile->updateContents(job.m_contents, job.m_dirtyRect, tileRect, job.m_isOpaque);
+        tile->updateContents(job.m_contents);
         {
             MutexLocker locker(m_tilesMutex);
             if (tile->renderState() == LayerTile::RenderPending)
@@ -454,7 +438,7 @@ void LayerTiler::performTileJob(LayerTile* tile, const TextureJob& job, const In
     ASSERT_NOT_REACHED();
 }
 
-bool LayerTiler::drawTile(LayerCompositingThread* layer, double scale, const TileIndex& index, const FloatRect& dst, const GLES2Program& program)
+bool LayerTiler::drawTile(LayerCompositingThread* layer, double scale, const TileIndex& index, const FloatRect& dst, const GLES2Program&)
 {
     TransformationMatrix drawTransform = layer->drawTransform();
     float vertices[4 * 4];
@@ -492,7 +476,7 @@ bool LayerTiler::drawTile(LayerCompositingThread* layer, double scale, const Til
 
     if (visible) {
         if (tile->hasTexture()) {
-            Texture* texture = tile->texture();
+            LayerTexture* texture = tile->texture();
             textureCacheCompositingThread()->textureAccessed(texture);
 
             if (shouldDrawTile) {
@@ -502,7 +486,7 @@ bool LayerTiler::drawTile(LayerCompositingThread* layer, double scale, const Til
                 else
                     drawTransform.scale(1.0 / layer->contentsScale());
                 drawTransform.scale(layer->sizeIsScaleInvariant() ? 1.0 / scale : 1.0);
-                blitToBuffer(0, texture->textureId(), reinterpret_cast<BlackBerry::Platform::TransformationMatrix&>(drawTransform),
+                blitToBuffer(0, texture->buffer(), reinterpret_cast<BlackBerry::Platform::TransformationMatrix&>(drawTransform),
                     BlackBerry::Platform::Graphics::SourceOver, globalAlpha);
             }
         }
@@ -671,7 +655,7 @@ IntRect LayerTiler::rectForTile(const TileIndex& index, const IntSize& bounds)
     return IntRect(origin, size);
 }
 
-Texture* LayerTiler::contentsTexture(LayerCompositingThread*)
+LayerTexture* LayerTiler::contentsTexture(LayerCompositingThread*)
 {
     ASSERT(m_tiles.size() == 1);
     if (m_tiles.size() != 1)

@@ -27,12 +27,31 @@
 #include "RunLoop.h"
 
 #include <wtf/StdLibExtras.h>
+#include <wtf/ThreadSpecific.h>
 
 namespace WebCore {
 
 #if !PLATFORM(MAC)
+void RunLoop::setUseApplicationRunLoopOnMainRunLoop()
+{
+}
+#endif
 
 static RunLoop* s_mainRunLoop;
+
+// Helper class for ThreadSpecificData.
+class RunLoop::Holder {
+public:
+    Holder()
+        : m_runLoop(adoptRef(new RunLoop))
+    {
+    }
+
+    RunLoop* runLoop() const { return m_runLoop.get(); }
+
+private:
+    RefPtr<RunLoop> m_runLoop;
+};
 
 void RunLoop::initializeMainRunLoop()
 {
@@ -43,8 +62,8 @@ void RunLoop::initializeMainRunLoop()
 
 RunLoop* RunLoop::current()
 {
-    DEFINE_STATIC_LOCAL(WTF::ThreadSpecific<RunLoop>, runLoopData, ());
-    return &*runLoopData;
+    DEFINE_STATIC_LOCAL(WTF::ThreadSpecific<RunLoop::Holder>, runLoopHolder, ());
+    return runLoopHolder->runLoop();
 }
 
 RunLoop* RunLoop::main()
@@ -52,12 +71,6 @@ RunLoop* RunLoop::main()
     ASSERT(s_mainRunLoop);
     return s_mainRunLoop;
 }
-
-void RunLoop::setUseApplicationRunLoopOnMainRunLoop()
-{
-}
-
-#endif
 
 void RunLoop::performWork()
 {

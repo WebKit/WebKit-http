@@ -114,6 +114,7 @@ FrameSelection::FrameSelection(Frame* frame)
     , m_caretPaint(true)
     , m_isCaretBlinkingSuspended(false)
     , m_focused(frame && frame->page() && frame->page()->focusController()->focusedFrame() == frame)
+    , m_shouldShowBlockCursor(false)
 {
     if (shouldAlwaysUseDirectionalSelection(m_frame))
         m_selection.setIsDirectional(true);
@@ -581,6 +582,26 @@ VisiblePosition FrameSelection::endForPlatform() const
     return positionForPlatform(false);
 }
 
+VisiblePosition FrameSelection::nextWordPositionForPlatform(const VisiblePosition &originalPosition)
+{
+    VisiblePosition positionAfterCurrentWord = nextWordPosition(originalPosition);
+
+    if (m_frame && m_frame->editor()->behavior().shouldSkipSpaceWhenMovingRight()) {
+        // In order to skip spaces when moving right, we advance one
+        // word further and then move one word back. Given the
+        // semantics of previousWordPosition() this will put us at the
+        // beginning of the word following.
+        VisiblePosition positionAfterSpacingAndFollowingWord = nextWordPosition(positionAfterCurrentWord);
+        if (positionAfterSpacingAndFollowingWord != positionAfterCurrentWord)
+            positionAfterCurrentWord = previousWordPosition(positionAfterSpacingAndFollowingWord);
+
+        bool movingBackwardsMovedPositionToStartOfCurrentWord = positionAfterCurrentWord == previousWordPosition(nextWordPosition(originalPosition));
+        if (movingBackwardsMovedPositionToStartOfCurrentWord)
+            positionAfterCurrentWord = positionAfterSpacingAndFollowingWord;
+    }
+    return positionAfterCurrentWord;
+}
+
 #if ENABLE(USERSELECT_ALL)
 static void adjustPositionForUserSelectAll(VisiblePosition& pos, bool isForward)
 {
@@ -607,7 +628,7 @@ VisiblePosition FrameSelection::modifyExtendingRight(TextGranularity granularity
         break;
     case WordGranularity:
         if (directionOfEnclosingBlock() == LTR)
-            pos = nextWordPosition(pos);
+            pos = nextWordPositionForPlatform(pos);
         else
             pos = previousWordPosition(pos);
         break;
@@ -641,7 +662,7 @@ VisiblePosition FrameSelection::modifyExtendingForward(TextGranularity granulari
         pos = pos.next(CannotCrossEditingBoundary);
         break;
     case WordGranularity:
-        pos = nextWordPosition(pos);
+        pos = nextWordPositionForPlatform(pos);
         break;
     case SentenceGranularity:
         pos = nextSentencePosition(pos);
@@ -725,7 +746,7 @@ VisiblePosition FrameSelection::modifyMovingForward(TextGranularity granularity)
             pos = VisiblePosition(m_selection.extent(), m_selection.affinity()).next(CannotCrossEditingBoundary);
         break;
     case WordGranularity:
-        pos = nextWordPosition(VisiblePosition(m_selection.extent(), m_selection.affinity()));
+        pos = nextWordPositionForPlatform(VisiblePosition(m_selection.extent(), m_selection.affinity()));
         break;
     case SentenceGranularity:
         pos = nextSentencePosition(VisiblePosition(m_selection.extent(), m_selection.affinity()));
@@ -781,7 +802,7 @@ VisiblePosition FrameSelection::modifyExtendingLeft(TextGranularity granularity)
         if (directionOfEnclosingBlock() == LTR)
             pos = previousWordPosition(pos);
         else
-            pos = nextWordPosition(pos);
+            pos = nextWordPositionForPlatform(pos);
         break;
     case LineBoundary:
         if (directionOfEnclosingBlock() == LTR)
@@ -1344,12 +1365,7 @@ static void repaintCaretForLocalRect(Node* node, const LayoutRect& rect)
     if (!caretPainter)
         return;
 
-    // FIXME: Need to over-paint 1 pixel to workaround some rounding problems.
-    // https://bugs.webkit.org/show_bug.cgi?id=108283
-    LayoutRect inflatedRect = rect;
-    inflatedRect.inflate(1);
-
-    caretPainter->repaintRectangle(inflatedRect);
+    caretPainter->repaintRectangle(rect);
 }
 
 bool FrameSelection::recomputeCaretRect()
@@ -1738,11 +1754,19 @@ inline static bool shouldStopBlinkingDueToTypingCommand(Frame* frame)
 
 void FrameSelection::updateAppearance()
 {
+    // Paint a block cursor instead of a caret in overtype mode unless the caret is at the end of a line (in this case
+    // the FrameSelection will paint a blinking caret as usual).
+    VisiblePosition forwardPosition;
+    if (m_shouldShowBlockCursor && m_selection.isCaret()) {
+        forwardPosition = modifyExtendingForward(CharacterGranularity);
+        m_caretPaint = forwardPosition.isNull();
+    }
+
 #if ENABLE(TEXT_CARET)
     bool caretRectChangedOrCleared = recomputeCaretRect();
 
     bool caretBrowsing = m_frame->settings() && m_frame->settings()->caretBrowsingEnabled();
-    bool shouldBlink = caretIsVisible() && isCaret() && (isContentEditable() || caretBrowsing);
+    bool shouldBlink = caretIsVisible() && isCaret() && (isContentEditable() || caretBrowsing) && forwardPosition.isNull();
 
     // If the caret moved, stop the blink timer so we can restart with a
     // black caret in the new location.
@@ -1768,7 +1792,7 @@ void FrameSelection::updateAppearance()
 
     // Construct a new VisibleSolution, since m_selection is not necessarily valid, and the following steps
     // assume a valid selection. See <https://bugs.webkit.org/show_bug.cgi?id=69563> and <rdar://problem/10232866>.
-    VisibleSelection selection(m_selection.visibleStart(), m_selection.visibleEnd());
+    VisibleSelection selection(m_selection.visibleStart(), forwardPosition.isNotNull() ? forwardPosition : m_selection.visibleEnd());
 
     if (!selection.isRange()) {
         view->clearSelection();
@@ -1895,11 +1919,11 @@ void DragCaretController::paintDragCaret(Frame* frame, GraphicsContext* p, const
 #endif
 }
 
-PassRefPtr<StylePropertySet> FrameSelection::copyTypingStyle() const
+PassRefPtr<MutableStylePropertySet> FrameSelection::copyTypingStyle() const
 {
     if (!m_typingStyle || !m_typingStyle->style())
         return 0;
-    return m_typingStyle->style()->copy();
+    return m_typingStyle->style()->mutableCopy();
 }
 
 bool FrameSelection::shouldDeleteSelection(const VisibleSelection& selection) const
@@ -2039,6 +2063,15 @@ inline bool FrameSelection::visualWordMovementEnabled() const
 {
     Settings* settings = m_frame ? m_frame->settings() : 0;
     return settings && settings->visualWordMovementEnabled();
+}
+
+void FrameSelection::setShouldShowBlockCursor(bool shouldShowBlockCursor)
+{
+    m_shouldShowBlockCursor = shouldShowBlockCursor;
+
+    m_frame->document()->updateLayoutIgnorePendingStylesheets();
+
+    updateAppearance();
 }
 
 #ifndef NDEBUG

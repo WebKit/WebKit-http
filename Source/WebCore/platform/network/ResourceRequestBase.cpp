@@ -26,10 +26,7 @@
 #include "config.h"
 #include "ResourceRequestBase.h"
 
-#include "PlatformMemoryInstrumentation.h"
 #include "ResourceRequest.h"
-#include <wtf/MemoryInstrumentationHashMap.h>
-#include <wtf/MemoryInstrumentationVector.h>
 
 using namespace std;
 
@@ -475,15 +472,13 @@ bool ResourceRequestBase::isConditional() const
             m_httpHeaderFields.contains("If-Unmodified-Since"));
 }
 
-void ResourceRequestBase::reportMemoryUsageBase(MemoryObjectInfo* memoryObjectInfo) const
+void ResourceRequestBase::makeUnconditional()
 {
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Loader);
-    info.addMember(m_url, "url");
-    info.addMember(m_firstPartyForCookies, "firstPartyForCookies");
-    info.addMember(m_httpMethod, "httpMethod");
-    info.addMember(m_httpHeaderFields, "httpHeaderFields");
-    info.addMember(m_responseContentDispositionEncodingFallbackArray, "responseContentDispositionEncodingFallbackArray");
-    info.addMember(m_httpBody, "httpBody");
+    m_httpHeaderFields.remove("If-Match");
+    m_httpHeaderFields.remove("If-Modified-Since");
+    m_httpHeaderFields.remove("If-None-Match");
+    m_httpHeaderFields.remove("If-Range");
+    m_httpHeaderFields.remove("If-Unmodified-Since");
 }
 
 double ResourceRequestBase::defaultTimeoutInterval()

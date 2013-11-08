@@ -60,7 +60,7 @@ using namespace JSC::Bindings;
 
 namespace WebCore {
 
-PassScriptInstance ScriptController::createScriptInstanceForWidget(Widget* widget)
+PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(Widget* widget)
 {
     NSView* widgetView = widget->platformWidget();
     if (!widgetView)
@@ -101,7 +101,7 @@ WebScriptObject* ScriptController::windowScriptObject()
         return 0;
 
     if (!m_windowScriptObject) {
-        JSC::JSLockHolder lock(JSDOMWindowBase::commonJSGlobalData());
+        JSC::JSLockHolder lock(JSDOMWindowBase::commonVM());
         JSC::Bindings::RootObject* root = bindingRootObject();
         m_windowScriptObject = [WebScriptObject scriptObjectForJSObject:toRef(windowShell(pluginWorld())) originRootObject:root rootObject:root];
     }
@@ -115,7 +115,7 @@ JSContext *ScriptController::javaScriptContext()
 #if JSC_OBJC_API_ENABLED
     if (!canExecuteScripts(NotAboutToExecuteScript))
         return 0;
-    JSContext *context = [JSContext contextWithGlobalContextRef:toGlobalRef(bindingRootObject()->globalObject()->globalExec())];
+    JSContext *context = [JSContext contextWithJSGlobalContextRef:toGlobalRef(bindingRootObject()->globalObject()->globalExec())];
     return context;
 #else
     return 0;

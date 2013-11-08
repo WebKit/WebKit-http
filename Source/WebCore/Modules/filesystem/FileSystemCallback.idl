@@ -30,7 +30,6 @@
 
 [
     Conditional=FILE_SYSTEM,
-    Callback
-] interface FileSystemCallback {
-    boolean handleEvent(in DOMFileSystem fileSystem);
+] callback interface FileSystemCallback {
+    boolean handleEvent(DOMFileSystem fileSystem);
 };

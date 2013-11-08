@@ -25,6 +25,7 @@
 #include "Document.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
+#include "FrameSelection.h"
 #include "InspectorInstrumentation.h"
 #include "MutationEvent.h"
 #include "MutationObserverInterestGroup.h"
@@ -34,7 +35,6 @@
 #include "StyleInheritedData.h"
 #include "Text.h"
 #include "TextBreakIterator.h"
-#include "WebCoreMemoryInstrumentation.h"
 
 using namespace std;
 
@@ -101,13 +101,6 @@ unsigned CharacterData::parserAppendData(const String& string, unsigned offset, 
         parentNode()->childrenChanged();
 
     return characterLengthLimit;
-}
-
-void CharacterData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    Node::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_data, "data");
 }
 
 void CharacterData::appendData(const String& data, ExceptionCode&)

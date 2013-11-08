@@ -337,9 +337,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return nil;
 
-    [self _rootObject]->globalObject()->globalData().timeoutChecker.start();
     JSC::JSValue result = JSMainThreadExecState::call(exec, function, callType, callData, [self _imp], argList);
-    [self _rootObject]->globalObject()->globalData().timeoutChecker.stop();
 
     if (exec->hadException()) {
         addExceptionToConsole(exec);
@@ -363,9 +361,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
 
     JSLockHolder lock(exec);
     
-    [self _rootObject]->globalObject()->globalData().timeoutChecker.start();
     JSC::JSValue returnValue = JSMainThreadExecState::evaluate(exec, makeSource(String(script)), JSC::JSValue(), 0);
-    [self _rootObject]->globalObject()->globalData().timeoutChecker.stop();
 
     id resultObj = [WebScriptObject _convertValueToObjcValue:returnValue originRootObject:[self _originRootObject] rootObject:[self _rootObject]];
     
@@ -536,7 +532,7 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
 {
     if (value.isObject()) {
         JSObject* object = asObject(value);
-        JSLockHolder lock(rootObject->globalObject()->globalData());
+        JSLockHolder lock(rootObject->globalObject()->vm());
 
         if (object->inherits(&JSHTMLElement::s_info)) {
             // Plugin elements cache the instance internally.
@@ -583,8 +579,8 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return 0;
     
-    return [JSValue valueWithValue:[self JSObject] 
-                    inContext:[JSContext contextWithGlobalContextRef:[self _globalContextRef]]];
+    return [JSValue valueWithJSValueRef:[self JSObject] 
+                    inContext:[JSContext contextWithJSGlobalContextRef:[self _globalContextRef]]];
 }
 #endif
 

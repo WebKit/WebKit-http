@@ -95,7 +95,7 @@ private:
     // Message handlers.
     virtual void suspendPainting() OVERRIDE;
     virtual void resumePainting() OVERRIDE;
-    virtual void updateGeometry(const WebCore::IntSize& viewSize) OVERRIDE;
+    virtual void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition) OVERRIDE;
     virtual void setDeviceScaleFactor(float) OVERRIDE;
     virtual void setLayerHostingMode(uint32_t) OVERRIDE;
     virtual void setColorSpace(const ColorSpaceData&) OVERRIDE;
@@ -110,6 +110,8 @@ private:
     void updateDebugInfoLayer(bool showLayer);
 
     void updateIntrinsicContentSizeTimerFired(WebCore::Timer<TiledCoreAnimationDrawingArea>*);
+    
+    void invalidateAllPageOverlays();
 
     bool m_layerTreeStateIsFrozen;
     WebCore::LayerFlushScheduler m_layerFlushScheduler;
@@ -121,9 +123,9 @@ private:
 
     RetainPtr<CALayer> m_debugInfoLayer;
 
-    typedef HashMap<PageOverlay*, OwnPtr<WebCore::GraphicsLayer> > PageOverlayLayerMap;
+    typedef HashMap<PageOverlay*, OwnPtr<WebCore::GraphicsLayer>> PageOverlayLayerMap;
     PageOverlayLayerMap m_pageOverlayLayers;
-    mutable HashMap<const WebCore::GraphicsLayer*, RetainPtr<CALayer> > m_pageOverlayPlatformLayers;
+    mutable HashMap<const WebCore::GraphicsLayer*, RetainPtr<CALayer>> m_pageOverlayPlatformLayers;
 
     bool m_isPaintingSuspended;
     bool m_hasRootCompositingLayer;

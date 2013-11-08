@@ -2,7 +2,7 @@
 
 set PublicHeadersDirectory=%CONFIGURATIONBUILDDIR%\include\JavaScriptCore
 set PrivateHeadersDirectory=%CONFIGURATIONBUILDDIR%\include\private\JavaScriptCore
-set ResourcesDirectory=%CONFIGURATIONBUILDDIR%\bin\JavaScriptCore.resources
+set ResourcesDirectory=%CONFIGURATIONBUILDDIR%\bin32\JavaScriptCore.resources
 
 if "%1" EQU "clean" goto :clean
 if "%1" EQU "rebuild" call :clean
@@ -31,7 +31,7 @@ for %%f in (
     OpaqueJSString.h
     WebKitAvailability.h
 ) do (
-    xcopy /y /d %WebKit_Source%\JavaScriptCore\API\%%f "%PublicHeadersDirectory%" >NUL
+    xcopy /y /d ..\API\%%f "%PublicHeadersDirectory%" >NUL
 )
 
 echo Copying private headers...
@@ -51,7 +51,7 @@ for %%d in (
     runtime
     yarr
 ) do (
-    xcopy /y /d %WebKit_Source%\JavaScriptCore\%%d\*.h "%PrivateHeadersDirectory%" >NUL
+    xcopy /y /d ..\%%d\*.h "%PrivateHeadersDirectory%" >NUL
 )
 
 echo Copying resources...

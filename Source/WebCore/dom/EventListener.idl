@@ -20,11 +20,12 @@
 
 // Introduced in DOM Level 2:
 [
+    NoInterfaceObject,
     JSNoStaticTables,
     ObjCProtocol,
     CPPPureInterface,
     OmitConstructor
 ] interface EventListener {
-    void               handleEvent(in Event evt);
+    void               handleEvent(Event evt);
 };
 

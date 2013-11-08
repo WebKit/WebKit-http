@@ -45,8 +45,8 @@
 #include "MIMETypeRegistry.h"
 #include "Page.h"
 #include "RenderHTMLCanvas.h"
+#include "ScriptController.h"
 #include "Settings.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -70,9 +70,6 @@ static const int DefaultHeight = 150;
 // reaches that limit. We limit by area instead, giving us larger maximum dimensions,
 // in exchange for a smaller maximum canvas size.
 static const float MaxCanvasArea = 32768 * 8192; // Maximum canvas area in CSS pixels
-
-//In Skia, we will also limit width/height to 32767.
-static const float MaxSkiaDim = 32767.0F; // Maximum width/height in CSS pixels.
 
 HTMLCanvasElement::HTMLCanvasElement(const QualifiedName& tagName, Document* document)
     : HTMLElement(tagName, document)
@@ -418,7 +415,7 @@ String HTMLCanvasElement::toDataURL(const String& mimeType, const double* qualit
 
     String encodingMimeType = toEncodingMimeType(mimeType);
 
-#if USE(CG) || USE(SKIA)
+#if USE(CG)
     // Try to get ImageData first, as that may avoid lossy conversions.
     RefPtr<ImageData> imageData = getImageData();
 
@@ -481,11 +478,6 @@ SecurityOrigin* HTMLCanvasElement::securityOrigin() const
     return document()->securityOrigin();
 }
 
-StyleResolver* HTMLCanvasElement::styleResolver()
-{
-    return document()->styleResolver();
-}
-
 bool HTMLCanvasElement::shouldAccelerate(const IntSize& size) const
 {
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
@@ -524,21 +516,12 @@ void HTMLCanvasElement::createImageBuffer() const
 
     if (deviceSize.width() * deviceSize.height() > MaxCanvasArea)
         return;
-#if USE(SKIA)
-    if (deviceSize.width() > MaxSkiaDim || deviceSize.height() > MaxSkiaDim)
-        return;
-#endif
 
     IntSize bufferSize(deviceSize.width(), deviceSize.height());
     if (!bufferSize.width() || !bufferSize.height())
         return;
 
-    RenderingMode renderingMode = shouldAccelerate(bufferSize) ? Accelerated : 
-#if USE(SKIA)
-        UnacceleratedNonPlatformBuffer;
-#else
-        Unaccelerated;
-#endif
+    RenderingMode renderingMode = shouldAccelerate(bufferSize) ? Accelerated : Unaccelerated;
     m_imageBuffer = ImageBuffer::create(size(), m_deviceScaleFactor, ColorSpaceDeviceRGB, renderingMode);
     if (!m_imageBuffer)
         return;
@@ -549,9 +532,9 @@ void HTMLCanvasElement::createImageBuffer() const
     m_imageBuffer->context()->setStrokeThickness(1);
     m_contextStateSaver = adoptPtr(new GraphicsContextStateSaver(*m_imageBuffer->context()));
 
-    JSC::JSLockHolder lock(scriptExecutionContext()->globalData());
+    JSC::JSLockHolder lock(scriptExecutionContext()->vm());
     size_t numBytes = 4 * m_imageBuffer->internalSize().width() * m_imageBuffer->internalSize().height();
-    scriptExecutionContext()->globalData()->heap.reportExtraMemoryCost(numBytes);
+    scriptExecutionContext()->vm()->heap.reportExtraMemoryCost(numBytes);
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE) || (ENABLE(ACCELERATED_2D_CANVAS) && USE(ACCELERATED_COMPOSITING))
     if (m_context && m_context->is2d())
@@ -621,18 +604,6 @@ AffineTransform HTMLCanvasElement::baseTransform() const
     if (size.width() && size.height())
         transform.scaleNonUniform(size.width() / unscaledSize.width(), size.height() / unscaledSize.height());
     return m_imageBuffer->baseTransform() * transform;
-}
-
-void HTMLCanvasElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    HTMLElement::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_observers, "observers");
-    info.addMember(m_context, "context");
-    info.addMember(m_imageBuffer, "imageBuffer");
-    info.addMember(m_contextStateSaver, "contextStateSaver");
-    info.addMember(m_presentedImage, "presentedImage");
-    info.addMember(m_copiedImage, "copiedImage");
 }
 
 }

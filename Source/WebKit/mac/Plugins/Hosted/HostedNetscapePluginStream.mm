@@ -36,6 +36,7 @@
 #import "WebKitSystemInterface.h"
 #import "WebNSURLExtras.h"
 #import "WebNSURLRequestExtras.h"
+#import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
@@ -54,7 +55,7 @@ DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, hostedNetscapePluginStreamC
 HostedNetscapePluginStream::HostedNetscapePluginStream(NetscapePluginInstanceProxy* instance, uint32_t streamID, NSURLRequest *request)
     : m_instance(instance)
     , m_streamID(streamID)
-    , m_request(AdoptNS, [request mutableCopy])
+    , m_request(adoptNS([request mutableCopy]))
     , m_requestURL([request URL])
     , m_frameLoader(0)
 {

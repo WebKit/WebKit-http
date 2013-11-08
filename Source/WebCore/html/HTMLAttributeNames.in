@@ -169,8 +169,6 @@ novalidate
 nowrap
 object
 onabort
-onautocomplete
-onautocompleteerror
 onbeforecopy
 onbeforecut
 onbeforeload
@@ -210,6 +208,8 @@ onloadeddata
 onloadedmetadata
 onloadstart
 onmousedown
+onmouseenter
+onmouseleave
 onmousemove
 onmouseout
 onmouseover

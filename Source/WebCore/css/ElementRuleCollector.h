@@ -30,14 +30,12 @@
 
 namespace WebCore {
 
-class CSSRuleList;
 class DocumentRuleSets;
 class RenderRegion;
 class RuleData;
 class RuleSet;
 class SelectorFilter;
 class StyleScopeResolver;
-class StaticCSSRuleList;
 
 class ElementRuleCollector {
 public:
@@ -69,7 +67,7 @@ public:
     bool hasAnyMatchingRules(RuleSet*);
 
     StyleResolver::MatchResult& matchedResult();
-    PassRefPtr<CSSRuleList> matchedRuleList();
+    const Vector<RefPtr<StyleRuleBase> >& matchedRuleList() const;
 
 private:
     Document* document() { return m_state.document(); }
@@ -92,10 +90,11 @@ private:
 
     void addMatchedRule(const RuleData*);
     void clearMatchedRules();
-
-    StaticCSSRuleList* ensureRuleList();
         
 private:
+    template<bool hasInspectorFrontends>
+    void doCollectMatchingRulesForList(const Vector<RuleData>*, const MatchRequest&, StyleResolver::RuleRange&);
+
     const StyleResolver::State& m_state;
     DocumentRuleSets& m_ruleSets;
     SelectorFilter& m_selectorFilter;
@@ -113,7 +112,7 @@ private:
     OwnPtr<Vector<const RuleData*, 32> > m_matchedRules;
 
     // Output.
-    RefPtr<StaticCSSRuleList> m_ruleList;
+    Vector<RefPtr<StyleRuleBase> > m_matchedRuleList;
     StyleResolver::MatchResult m_result;
 };
 

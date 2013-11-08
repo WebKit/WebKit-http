@@ -105,6 +105,9 @@ cursor
 empty-cells
 float
 font-stretch
+#if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
+geometry
+#endif
 height
 #if defined(ENABLE_CSS_IMAGE_ORIENTATION) && ENABLE_CSS_IMAGE_ORIENTATION
 image-orientation
@@ -128,6 +131,10 @@ max-height
 max-width
 min-height
 min-width
+#if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
+mix
+parameters
+#endif
 opacity
 // Honor -webkit-opacity as a synonym for opacity. This was the only syntax that worked in Safari 1.1,
 // and may be in use on some websites and widgets.
@@ -375,6 +382,7 @@ z-index
 -webkit-text-decoration-style
 -webkit-text-decoration-color
 -webkit-text-align-last
+-webkit-text-justify
 -webkit-text-underline-position
 #endif
 -webkit-text-decorations-in-effect
@@ -419,7 +427,6 @@ z-index
 -webkit-shape-padding
 -webkit-wrap-flow
 -webkit-wrap-through
--webkit-wrap
 #endif
 #if defined(ENABLE_CSS_DEVICE_ADAPTATION) && ENABLE_CSS_DEVICE_ADAPTATION
 max-zoom

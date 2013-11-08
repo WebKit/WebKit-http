@@ -94,7 +94,7 @@ public:
     virtual void animationAdvanced(const Image*);
     virtual void changedInRect(const Image*, const IntRect&);
 
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+    static void resumeAnimatingImagesForLoader(CachedResourceLoader*);
 
 private:
     void clear();
@@ -108,6 +108,7 @@ private:
     void checkShouldPaintBrokenImage();
 
     virtual void switchClientsToRevalidatedResource() OVERRIDE;
+    virtual bool mayTryReplaceEncodedData() const OVERRIDE { return true; }
 
     typedef pair<IntSize, float> SizeAndZoom;
     typedef HashMap<const CachedImageClient*, SizeAndZoom> ContainerSizeRequests;

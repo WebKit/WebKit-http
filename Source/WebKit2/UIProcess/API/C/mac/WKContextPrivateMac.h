@@ -53,7 +53,13 @@ WK_EXPORT WKStringRef WKPlugInInfoLoadPolicyKey();
 /* Value type: WKBooleanRef */
 WK_EXPORT WKStringRef WKPlugInInfoUpdatePastLastBlockedVersionIsKnownAvailableKey();
 
+/* Value type: WKBooleanRef */
+WK_EXPORT WKStringRef WKPlugInInfoIsSandboxedKey();
+
 WK_EXPORT WKDictionaryRef WKContextCopyPlugInInfoForBundleIdentifier(WKContextRef context, WKStringRef plugInBundleIdentifier);
+
+typedef void (^WKContextGetInfoForInstalledPlugInsBlock)(WKArrayRef, WKErrorRef);
+WK_EXPORT void WKContextGetInfoForInstalledPlugIns(WKContextRef context, WKContextGetInfoForInstalledPlugInsBlock block);
 
 #ifdef __cplusplus
 }

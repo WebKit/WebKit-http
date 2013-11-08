@@ -47,8 +47,8 @@ Cursor::Cursor(const Cursor& other)
 {
 }
 
-Cursor::Cursor(Image* image, const IntPoint& hotspot)
-: m_platformCursor(BlackBerry::Platform::CursorCustomized, std::string(), hotspot)
+Cursor::Cursor(Image*, const IntPoint& hotspot)
+: m_platformCursor(BlackBerry::Platform::CursorCustomized, BlackBerry::Platform::String::emptyString(), hotspot)
 {
 }
 

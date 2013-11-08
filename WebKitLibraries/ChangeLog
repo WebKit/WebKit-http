@@ -1,3 +1,129 @@
+2013-05-08  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Update WebKitLibraries/win to handle different architectures properly.
+
+        * win/lib32: Copied from win/lib.
+        * win/tools/WinTools.make:
+
+2013-05-02  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed Windows build fix.
+
+        * win/lib/WebKitSystemInterface.lib:
+
+2013-05-01  Alexey Proskuryakov  <ap@apple.com>
+
+        Update WebKitSystemInterface.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2013-04-29  Chris Fleizach  <cfleizach@apple.com>
+
+        WEB SPEECH: need to identify the default voice per language
+        https://bugs.webkit.org/show_bug.cgi?id=115366
+
+        Reviewed by Simon Fraser.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2013-04-29  Roger Fong  <roger_fong@apple.com>
+
+        Need a tools32 folder for VS2010 builds. 
+        tools folder will be nuked when we nuke VS2005.
+
+        * win/tools32: Copied from WebKitLibraries/win/tools.
+
+2013-04-26  Roger Fong  <roger_fong@apple.com>
+
+        Disable sub-pixel-layout on Apple Windows port, VS2005 edition.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+
+2013-04-26  Roger Fong  <roger_fong@apple.com>
+
+        Disable sub-pixel-layout on Apple Windows port.
+
+        * win/tools/vsprops/FeatureDefines.props:
+
+2013-04-26  Roger Fong  <roger_fong@apple.com>
+
+        Make Apple Windows VS2010 build results into and get dependencies from __32 suffixed folders.
+        Make the DebugSuffix configuration use _debug dependencies.
+
+        * win/tools/WinTools.make:
+        * win/tools/scripts/auto-version2010.sh:
+        * win/tools/scripts/feature-defines2010.sh:
+        * win/tools/vsprops/common.props:
+        * win/tools/vsprops/debugsuffix.props:
+
+2013-04-25  Chris Fleizach  <cfleizach@apple.com>
+
+        WEB SPEECH: language support does not work as expected
+        https://bugs.webkit.org/show_bug.cgi?id=115119
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitSystemInterface.h:
+
+2013-04-24  Roger Fong  <roger_fong@apple.com>
+
+        Have VS2010 WebKit solution look in WebKit_Libraries/lib32 for dependencies.
+
+        * win/tools/vsprops/common.props:
+
+2013-04-23  Antoine Quint  <graouts@apple.com>
+
+        Initial advance of text runs should be taken into account
+        https://bugs.webkit.org/show_bug.cgi?id=114949
+
+        Reviewed by Darin Adler.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2013-04-12  Jeffrey Pfau  <jpfau@apple.com>
+
+        Query directly for cache partition names
+        https://bugs.webkit.org/show_bug.cgi?id=114538
+
+        Reviewed by David Kilzer.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2013-04-08  Roger Fong  <roger_fong@apple.com>
+
+        Build fix.
+
+        * win/include/WebKitSystemInterface/WebKitSystemInterface.h:
+        * win/lib/WebKitSystemInterface.lib:
+
+2013-04-11  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/10416316> [Mac] WebSocket doesn't work with authenticating proxies
+        https://bugs.webkit.org/show_bug.cgi?id=114464
+
+        Update WebKitSystemInterface.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceMountainLion.a:
+
+2013-04-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Mass remove all the empty directories
+
+        Rubberstamped by Ryosuke Niwa.
+
+        * win/bin: Removed.
+        * win/lib/WebKitSystemInterface: Removed.
+
 2013-04-05  Roger Fong  <roger_fong@apple.com>
 
         More VS2010 solution makefile fixes.

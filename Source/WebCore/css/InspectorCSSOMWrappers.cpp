@@ -41,9 +41,6 @@
 #include "StyleSheetContents.h"
 #include "WebKitCSSRegionRule.h"
 
-#include <wtf/MemoryInstrumentationHashMap.h>
-#include <wtf/MemoryInstrumentationHashSet.h>
-
 namespace WebCore {
 
 void InspectorCSSOMWrappers::collectFromStyleSheetIfNeeded(CSSStyleSheet* styleSheet)
@@ -128,14 +125,7 @@ CSSStyleRule* InspectorCSSOMWrappers::getWrapperForRuleInSheets(StyleRule* rule,
 
         collectFromDocumentStyleSheetCollection(styleSheetCollection);
     }
-    return m_styleRuleToCSSOMWrapperMap.get(rule).get();
-}
-
-void InspectorCSSOMWrappers::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_styleRuleToCSSOMWrapperMap);
-    info.addMember(m_styleSheetCSSOMWrapperSet);
+    return m_styleRuleToCSSOMWrapperMap.get(rule);
 }
 
 } // namespace WebCore

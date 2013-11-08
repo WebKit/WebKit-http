@@ -63,9 +63,9 @@ class DOMStringList;
     class DOMConstructorObject : public JSDOMWrapper {
         typedef JSDOMWrapper Base;
     public:
-        static JSC::Structure* createStructure(JSC::JSGlobalData& globalData, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
+        static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
         {
-            return JSC::Structure::create(globalData, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), &s_info);
+            return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), &s_info);
         }
 
     protected:
@@ -94,7 +94,7 @@ class DOMStringList;
 
         void finishCreation(JSDOMGlobalObject* globalObject)
         {
-            Base::finishCreation(globalObject->globalData());
+            Base::finishCreation(globalObject->vm());
             ASSERT(globalObject->scriptExecutionContext()->isDocument());
         }
     };
@@ -114,7 +114,7 @@ class DOMStringList;
     {
         if (JSC::Structure* structure = getCachedDOMStructure(globalObject, &WrapperClass::s_info))
             return structure;
-        return cacheDOMStructure(globalObject, WrapperClass::createStructure(exec->globalData(), globalObject, WrapperClass::createPrototype(exec, globalObject)), &WrapperClass::s_info);
+        return cacheDOMStructure(globalObject, WrapperClass::createStructure(exec->vm(), globalObject, WrapperClass::createPrototype(exec, globalObject)), &WrapperClass::s_info);
     }
 
     template<class WrapperClass> inline JSC::Structure* deprecatedGetDOMStructure(JSC::ExecState* exec)
@@ -143,7 +143,7 @@ class DOMStringList;
     {
         if (!world->isNormal())
             return false;
-        domObject->setWrapper(*world->globalData(), wrapper, wrapperOwner, context);
+        domObject->setWrapper(*world->vm(), wrapper, wrapperOwner, context);
         return true;
     }
 
@@ -200,12 +200,25 @@ class DOMStringList;
         return createWrapper<WrapperClass>(exec, globalObject, domObject);
     }
 
+    template<class WrapperClass, class DOMClass> inline JSC::JSValue getExistingWrapper(JSC::ExecState* exec, DOMClass* domObject)
+    {
+        ASSERT(domObject);
+        return getCachedWrapper(currentWorld(exec), domObject);
+    }
+
+    template<class WrapperClass, class DOMClass> inline JSC::JSValue createNewWrapper(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, DOMClass* domObject)
+    {
+        ASSERT(domObject);
+        ASSERT(!getCachedWrapper(currentWorld(exec), domObject));
+        return createWrapper<WrapperClass>(exec, globalObject, domObject);
+    }
+
     inline JSC::JSValue argumentOrNull(JSC::ExecState* exec, unsigned index)
     {
         return index >= exec->argumentCount() ? JSC::JSValue() : exec->argument(index);
     }
 
-    const JSC::HashTable* getHashTableForGlobalData(JSC::JSGlobalData&, const JSC::HashTable* staticTable);
+    const JSC::HashTable* getHashTableForGlobalData(JSC::VM&, const JSC::HashTable* staticTable);
 
     void reportException(JSC::ExecState*, JSC::JSValue exception, CachedScript* = 0);
     void reportCurrentException(JSC::ExecState*);
@@ -473,8 +486,8 @@ class DOMStringList;
         if (stringImpl->length() == 1) {
             UChar singleCharacter = (*stringImpl)[0u];
             if (singleCharacter <= JSC::maxSingleCharacterString) {
-                JSC::JSGlobalData* globalData = &exec->globalData();
-                return globalData->smallStrings.singleCharacterString(globalData, static_cast<unsigned char>(singleCharacter));
+                JSC::VM* vm = &exec->vm();
+                return vm->smallStrings.singleCharacterString(vm, static_cast<unsigned char>(singleCharacter));
             }
         }
 
@@ -509,6 +522,42 @@ class DOMStringList;
     {
         return 0;
     }
+
+    template<typename T>
+    class HasMemoryCostMemberFunction {
+        typedef char YesType;
+        struct NoType {
+            char padding[8];
+        };
+
+        struct BaseMixin {
+            size_t memoryCost();
+        };
+
+        struct Base : public T, public BaseMixin { };
+
+        template<typename U, U> struct
+        TypeChecker { };
+
+        template<typename U>
+        static NoType dummy(U*, TypeChecker<size_t (BaseMixin::*)(), &U::memoryCost>* = 0);
+        static YesType dummy(...);
+
+    public:
+        static const bool value = sizeof(dummy(static_cast<Base*>(0))) == sizeof(YesType);
+    };
+    template <typename T, bool hasReportCostFunction = HasMemoryCostMemberFunction<T>::value > struct ReportMemoryCost;
+    template <typename T> struct ReportMemoryCost<T, true> {
+        static void reportMemoryCost(JSC::ExecState* exec, T* impl)
+        {
+            exec->heap()->reportExtraMemoryCost(impl->memoryCost());
+        }
+    };
+    template <typename T> struct ReportMemoryCost<T, false> {
+        static void reportMemoryCost(JSC::ExecState*, T*)
+        {
+        }
+    };
 
 } // namespace WebCore
 

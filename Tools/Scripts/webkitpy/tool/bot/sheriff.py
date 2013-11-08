@@ -36,6 +36,9 @@ class Sheriff(object):
         self._tool = tool
         self._sheriffbot = sheriffbot
 
+    def name(self):
+        return self._sheriffbot.name
+
     def responsible_nicknames_from_commit_info(self, commit_info):
         nestedList = [party.irc_nicknames for party in commit_info.responsible_parties() if party.irc_nicknames]
         return reduce(lambda list, childList: list + childList, nestedList)
@@ -86,18 +89,6 @@ class Sheriff(object):
             svn_revisions,
             rollout_reason,
         ])
-        return urls.parse_bug_id(output)
-
-    def post_chromium_deps_roll(self, revision, revision_name, changelog_message):
-        args = [
-            "post-chromium-deps-roll",
-            "--force-clean",
-            "--non-interactive",
-            "--parent-command=sheriff-bot",
-        ]
-        # revision can be None, but revision_name is always something meaningful.
-        args += [revision, revision_name, changelog_message]
-        output = self._sheriffbot.run_webkit_patch(args)
         return urls.parse_bug_id(output)
 
     def post_blame_comment_on_bug(self, commit_info, builders, tests):

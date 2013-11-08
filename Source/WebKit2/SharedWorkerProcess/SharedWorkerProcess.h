@@ -48,6 +48,7 @@ private:
     ~SharedWorkerProcess();
 
     // ChildProcess
+    virtual void initializeProcess(const ChildProcessInitializationParameters&) OVERRIDE;
     virtual void initializeProcessName(const ChildProcessInitializationParameters&) OVERRIDE;
     virtual bool shouldTerminate() OVERRIDE;
 
@@ -65,7 +66,7 @@ private:
     void minimumLifetimeTimerFired();
 
     // Our web process connections.
-    Vector<RefPtr<WebProcessConnection> > m_webProcessConnections;
+    Vector<RefPtr<WebProcessConnection>> m_webProcessConnections;
 
     WebCore::RunLoop::Timer<SharedWorkerProcess> m_minimumLifetimeTimer;
 };

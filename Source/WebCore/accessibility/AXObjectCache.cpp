@@ -56,19 +56,19 @@
 #include "AccessibilityTableHeaderContainer.h"
 #include "AccessibilityTableRow.h"
 #include "Document.h"
+#include "Editor.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "HTMLAreaElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLLabelElement.h"
+#include "HTMLMeterElement.h"
 #include "HTMLNames.h"
-#if ENABLE(VIDEO)
-#include "MediaControlElements.h"
-#endif
 #include "Page.h"
 #include "RenderListBox.h"
 #include "RenderMenuList.h"
+#include "RenderMeter.h"
 #include "RenderProgress.h"
 #include "RenderSlider.h"
 #include "RenderTable.h"
@@ -76,8 +76,11 @@
 #include "RenderTableRow.h"
 #include "RenderView.h"
 #include "ScrollView.h"
-
 #include <wtf/PassRefPtr.h>
+
+#if ENABLE(VIDEO)
+#include "MediaControlElements.h"
+#endif
 
 namespace WebCore {
 
@@ -192,7 +195,7 @@ AccessibilityObject* AXObjectCache::get(Widget* widget)
     if (!axID)
         return 0;
     
-    return m_objects.get(axID).get();    
+    return m_objects.get(axID);    
 }
     
 AccessibilityObject* AXObjectCache::get(RenderObject* renderer)
@@ -205,7 +208,7 @@ AccessibilityObject* AXObjectCache::get(RenderObject* renderer)
     if (!axID)
         return 0;
 
-    return m_objects.get(axID).get();    
+    return m_objects.get(axID);    
 }
 
 AccessibilityObject* AXObjectCache::get(Node* node)
@@ -228,12 +231,12 @@ AccessibilityObject* AXObjectCache::get(Node* node)
     }
 
     if (renderID)
-        return m_objects.get(renderID).get();
+        return m_objects.get(renderID);
 
     if (!nodeID)
         return 0;
 
-    return m_objects.get(nodeID).get();
+    return m_objects.get(nodeID);
 }
 
 // FIXME: This probably belongs on Node.
@@ -296,6 +299,10 @@ static PassRefPtr<AccessibilityObject> createFromRenderer(RenderObject* renderer
         if (cssBox->isProgress())
             return AccessibilityProgressIndicator::create(toRenderProgress(cssBox));
 #endif
+#if ENABLE(METER_ELEMENT)
+        if (cssBox->isMeter())
+            return AccessibilityProgressIndicator::create(toRenderMeter(cssBox));
+#endif
 
         // input type=range
         if (cssBox->isSlider())
@@ -354,7 +361,13 @@ AccessibilityObject* AXObjectCache::getOrCreate(Node* node)
     // Or if it's a hidden element, but we still want to expose it because of other ARIA attributes.
     bool inCanvasSubtree = node->parentElement()->isInCanvasSubtree();
     bool isHidden = !node->renderer() && isNodeAriaVisible(node);
-    if (!inCanvasSubtree && !isHidden)
+
+    bool insideMeterElement = false;
+#if ENABLE(METER_ELEMENT)
+    insideMeterElement = isHTMLMeterElement(node->parentElement());
+#endif
+    
+    if (!inCanvasSubtree && !isHidden && !insideMeterElement)
         return 0;
 
     RefPtr<AccessibilityObject> newObj = createFromNode(node);
@@ -469,7 +482,7 @@ void AXObjectCache::remove(AXID axID)
         return;
     
     // first fetch object to operate some cleanup functions on it 
-    AccessibilityObject* obj = m_objects.get(axID).get();
+    AccessibilityObject* obj = m_objects.get(axID);
     if (!obj)
         return;
     

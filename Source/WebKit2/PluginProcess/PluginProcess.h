@@ -44,8 +44,7 @@ public:
     enum Type {
         // Start with value one since default HashTraits<> disallows zero as key.
         TypeRegularProcess = 1,
-        TypeSnapshotProcess,
-        TypeRestartedProcess
+        TypeSnapshotProcess
     };
 
     static PluginProcess& shared();
@@ -93,10 +92,14 @@ private:
     void setMinimumLifetime(double);
     void minimumLifetimeTimerFired();
     // Our web process connections.
-    Vector<RefPtr<WebProcessConnection> > m_webProcessConnections;
+    Vector<RefPtr<WebProcessConnection>> m_webProcessConnections;
 
     // The plug-in path.
     String m_pluginPath;
+
+#if PLATFORM(MAC)
+    String m_pluginBundleIdentifier;
+#endif
 
     // The plug-in module.
     RefPtr<NetscapePluginModule> m_pluginModule;

@@ -42,7 +42,7 @@
 
 namespace JSC {
 
-class JSGlobalData;
+class VM;
 
 #if PLATFORM(QT) && !USE(CF)
 class HeapTimer : public QObject {
@@ -51,20 +51,17 @@ class HeapTimer {
 #endif
 public:
 #if USE(CF)
-    HeapTimer(JSGlobalData*, CFRunLoopRef);
+    HeapTimer(VM*, CFRunLoopRef);
     static void timerDidFire(CFRunLoopTimerRef, void*);
 #else
-    HeapTimer(JSGlobalData*);
+    HeapTimer(VM*);
 #endif
     
     virtual ~HeapTimer();
-
-    void didStartVMShutdown();
-    virtual void synchronize();
     virtual void doWork() = 0;
     
 protected:
-    JSGlobalData* m_globalData;
+    VM* m_vm;
 
 #if USE(CF)
     static const CFTimeInterval s_decade;

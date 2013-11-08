@@ -32,9 +32,6 @@
 #ifndef ScriptState_h
 #define ScriptState_h
 
-#include <heap/Strong.h>
-#include <wtf/Noncopyable.h>
-
 namespace JSC {
 class ExecState;
 class JSGlobalObject;
@@ -50,26 +47,13 @@ class ScriptExecutionContext;
 class WorkerContext;
 
 // The idea is to expose "state-like" methods (hadException, and any other
-// methods where ExecState just dips into globalData) of JSC::ExecState as a
+// methods where ExecState just dips into vm) of JSC::ExecState as a
 // separate abstraction.
 // For now, the separation is purely by convention.
 typedef JSC::ExecState ScriptState;
 
-class ScriptStateProtectedPtr {
-    WTF_MAKE_NONCOPYABLE(ScriptStateProtectedPtr);
-public:
-    explicit ScriptStateProtectedPtr(ScriptState*);
-    ~ScriptStateProtectedPtr();
-    ScriptState* get() const;
-private:
-    JSC::Strong<JSC::JSGlobalObject> m_globalObject;
-};
-
 DOMWindow* domWindowFromScriptState(ScriptState*);
 ScriptExecutionContext* scriptExecutionContextFromScriptState(ScriptState*);
-
-bool evalEnabled(ScriptState*);
-void setEvalEnabled(ScriptState*, bool);
 
 ScriptState* mainWorldScriptState(Frame*);
 

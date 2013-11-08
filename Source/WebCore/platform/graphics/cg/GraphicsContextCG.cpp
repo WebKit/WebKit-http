@@ -412,95 +412,6 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
     drawPath(path);
 }
 
-
-void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSpan)
-{
-    if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f)
-        return;
-
-    CGContextRef context = platformContext();
-    CGContextSaveGState(context);
-    CGContextBeginPath(context);
-    CGContextSetShouldAntialias(context, false);
-
-    int x = rect.x();
-    int y = rect.y();
-    float w = (float)rect.width();
-    float h = (float)rect.height();
-    float scaleFactor = h / w;
-    float reverseScaleFactor = w / h;
-
-    if (w != h)
-        scale(FloatSize(1, scaleFactor));
-
-    float hRadius = w / 2;
-    float vRadius = h / 2;
-    float fa = startAngle;
-    float falen =  fa + angleSpan;
-    float start = -fa * piFloat / 180.0f;
-    float end = -falen * piFloat / 180.0f;
-    CGContextAddArc(context, x + hRadius, (y + vRadius) * reverseScaleFactor, hRadius, start, end, true);
-
-    if (w != h)
-        scale(FloatSize(1, reverseScaleFactor));
-
-    float width = strokeThickness();
-    int patWidth = 0;
-
-    switch (strokeStyle()) {
-    case DottedStroke:
-        patWidth = (int)(width / 2);
-        break;
-    case DashedStroke:
-        patWidth = 3 * (int)(width / 2);
-        break;
-    default:
-        break;
-    }
-
-    if (patWidth) {
-        // Example: 80 pixels with a width of 30 pixels.
-        // Remainder is 20.  The maximum pixels of line we could paint
-        // will be 50 pixels.
-        int distance;
-        if (hRadius == vRadius)
-            distance = static_cast<int>((piFloat * hRadius) / 2.0f);
-        else // We are elliptical and will have to estimate the distance
-            distance = static_cast<int>((piFloat * sqrtf((hRadius * hRadius + vRadius * vRadius) / 2.0f)) / 2.0f);
-
-        int remainder = distance % patWidth;
-        int coverage = distance - remainder;
-        int numSegments = coverage / patWidth;
-
-        float patternOffset = 0.0f;
-        // Special case 1px dotted borders for speed.
-        if (patWidth == 1)
-            patternOffset = 1.0f;
-        else {
-            bool evenNumberOfSegments = !(numSegments % 2);
-            if (remainder)
-                evenNumberOfSegments = !evenNumberOfSegments;
-            if (evenNumberOfSegments) {
-                if (remainder) {
-                    patternOffset += patWidth - remainder;
-                    patternOffset += remainder / 2.0f;
-                } else
-                    patternOffset = patWidth / 2.0f;
-            } else {
-                if (remainder)
-                    patternOffset = (patWidth - remainder) / 2.0f;
-            }
-        }
-
-        const CGFloat dottedLine[2] = { static_cast<CGFloat>(patWidth), static_cast<CGFloat>(patWidth) };
-        CGContextSetLineDash(context, patternOffset, dottedLine, 2);
-    }
-
-    CGContextStrokePath(context);
-
-    CGContextRestoreGState(context);
-}
-
 static void addConvexPolygonToPath(Path& path, size_t numberOfPoints, const FloatPoint* points)
 {
     ASSERT(numberOfPoints > 0);
@@ -558,11 +469,11 @@ void GraphicsContext::applyStrokePattern()
     CGContextRef cgContext = platformContext();
     AffineTransform userToBaseCTM = AffineTransform(wkGetUserToBaseCTM(cgContext));
 
-    RetainPtr<CGPatternRef> platformPattern(AdoptCF, m_state.strokePattern->createPlatformPattern(userToBaseCTM));
+    RetainPtr<CGPatternRef> platformPattern = adoptCF(m_state.strokePattern->createPlatformPattern(userToBaseCTM));
     if (!platformPattern)
         return;
 
-    RetainPtr<CGColorSpaceRef> patternSpace(AdoptCF, CGColorSpaceCreatePattern(0));
+    RetainPtr<CGColorSpaceRef> patternSpace = adoptCF(CGColorSpaceCreatePattern(0));
     CGContextSetStrokeColorSpace(cgContext, patternSpace.get());
 
     const CGFloat patternAlpha = 1;
@@ -574,11 +485,11 @@ void GraphicsContext::applyFillPattern()
     CGContextRef cgContext = platformContext();
     AffineTransform userToBaseCTM = AffineTransform(wkGetUserToBaseCTM(cgContext));
 
-    RetainPtr<CGPatternRef> platformPattern(AdoptCF, m_state.fillPattern->createPlatformPattern(userToBaseCTM));
+    RetainPtr<CGPatternRef> platformPattern = adoptCF(m_state.fillPattern->createPlatformPattern(userToBaseCTM));
     if (!platformPattern)
         return;
 
-    RetainPtr<CGColorSpaceRef> patternSpace(AdoptCF, CGColorSpaceCreatePattern(0));
+    RetainPtr<CGColorSpaceRef> patternSpace = adoptCF(CGColorSpaceCreatePattern(0));
     CGContextSetFillColorSpace(cgContext, patternSpace.get());
 
     const CGFloat patternAlpha = 1;
@@ -1393,7 +1304,7 @@ void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
     if (paintingDisabled())
         return;
 
-    RetainPtr<CFURLRef> urlRef(AdoptCF, link.createCFURL());
+    RetainPtr<CFURLRef> urlRef = adoptCF(link.createCFURL());
     if (!urlRef)
         return;
 

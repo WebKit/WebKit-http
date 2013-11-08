@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2011, 2012, 2013 Collabora Ltd.
- * Copyright (C) 2012 Intel Corporation. All rights reserved.
+ * Copyright (C) 2012, 2013 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,7 +22,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -227,7 +227,7 @@ static bool animationHasStepsTimingFunction(const KeyframeValueList& valueList, 
         return true;
 
     for (unsigned i = 0; i < valueList.size(); ++i) {
-        const TimingFunction* timingFunction = valueList.at(i)->timingFunction();
+        const TimingFunction* timingFunction = valueList.at(i).timingFunction();
         if (timingFunction && timingFunction->isStepsTimingFunction())
             return true;
     }
@@ -252,6 +252,7 @@ PassOwnPtr<GraphicsLayer> GraphicsLayer::create(GraphicsLayerClient* client)
 
 GraphicsLayerClutter::GraphicsLayerClutter(GraphicsLayerClient* client)
     : GraphicsLayer(client)
+    , m_contentsLayerPurpose(NoContentsLayer)
     , m_uncommittedChanges(0)
 {
     // ClutterRectangle will be used to show the debug border.
@@ -263,10 +264,10 @@ static gboolean idleDestroy(gpointer data)
     GRefPtr<ClutterActor> actor = adoptGRef(CLUTTER_ACTOR(data));
     ClutterActor* parent = clutter_actor_get_parent(actor.get());
 
-    // We should remove child actors manually because the container of Clutter 
-    // seems to have a bug to remove its child actors when it is removed. 
+    // We should remove child actors manually because the container of Clutter
+    // seems to have a bug to remove its child actors when it is removed.
     if (GRAPHICS_LAYER_IS_ACTOR(GRAPHICS_LAYER_ACTOR(actor.get())))
-        graphicsLayerActorRemoveAll(GRAPHICS_LAYER_ACTOR(actor.get()));
+        clutter_actor_remove_all_children(actor.get());
 
     if (parent)
         clutter_actor_remove_child(parent, actor.get());
@@ -302,6 +303,11 @@ GraphicsLayerClutter::~GraphicsLayerClutter()
     if (m_structuralLayer) {
         graphicsLayerActorSetClient(m_structuralLayer.get(), 0);
         g_idle_add(idleDestroy, m_structuralLayer.leakRef());
+    }
+
+    if (m_contentsLayer) {
+        graphicsLayerActorSetClient(m_contentsLayer.get(), 0);
+        g_idle_add(idleDestroy, m_contentsLayer.leakRef());
     }
 }
 
@@ -383,7 +389,7 @@ void GraphicsLayerClutter::setSize(const FloatSize& size)
         return;
 
     GraphicsLayer::setSize(size);
-    noteLayerPropertyChanged(GeometryChanged);
+    noteLayerPropertyChanged(masksToBounds() ? GeometryChanged | MasksToBoundsChanged : GeometryChanged);
 }
 void GraphicsLayerClutter::setTransform(const TransformationMatrix& t)
 {
@@ -394,9 +400,39 @@ void GraphicsLayerClutter::setTransform(const TransformationMatrix& t)
     noteLayerPropertyChanged(TransformChanged);
 }
 
+void GraphicsLayerClutter::moveOrCopyLayerAnimation(MoveOrCopy operation, const String& animationIdentifier, GraphicsLayerActor* fromLayer, GraphicsLayerActor* toLayer)
+{
+    RefPtr<PlatformClutterAnimation> anim = graphicsLayerActorGetAnimationForKey(fromLayer, animationIdentifier);
+    if (!anim)
+        return;
+
+    switch (operation) {
+    case Move:
+        anim->removeAnimationForKey(fromLayer, animationIdentifier);
+        anim->addAnimationForKey(toLayer, animationIdentifier);
+        break;
+    case Copy:
+        anim->addAnimationForKey(toLayer, animationIdentifier);
+        break;
+    }
+}
+
 void GraphicsLayerClutter::moveOrCopyAnimations(MoveOrCopy operation, GraphicsLayerActor* fromLayer, GraphicsLayerActor* toLayer)
 {
-    notImplemented();
+    // Look for running animations affecting this property.
+    AnimationsMap::const_iterator end = m_runningAnimations.end();
+    for (AnimationsMap::const_iterator it = m_runningAnimations.begin(); it != end; ++it) {
+        const Vector<LayerPropertyAnimation>& propertyAnimations = it->value;
+        size_t numAnimations = propertyAnimations.size();
+        for (size_t i = 0; i < numAnimations; ++i) {
+            const LayerPropertyAnimation& currAnimation = propertyAnimations[i];
+
+            if (currAnimation.m_property == AnimatedPropertyWebkitTransform
+                || currAnimation.m_property == AnimatedPropertyOpacity
+                || currAnimation.m_property == AnimatedPropertyBackgroundColor)
+                moveOrCopyLayerAnimation(operation, animationIdentifier(currAnimation.m_name, currAnimation.m_property, currAnimation.m_index), fromLayer, toLayer);
+        }
+    }
 }
 
 void GraphicsLayerClutter::setPreserves3D(bool preserves3D)
@@ -408,6 +444,15 @@ void GraphicsLayerClutter::setPreserves3D(bool preserves3D)
     noteLayerPropertyChanged(Preserves3DChanged);
 }
 
+void GraphicsLayerClutter::setMasksToBounds(bool masksToBounds)
+{
+    if (masksToBounds == m_masksToBounds)
+        return;
+
+    GraphicsLayer::setMasksToBounds(masksToBounds);
+    noteLayerPropertyChanged(MasksToBoundsChanged);
+}
+
 void GraphicsLayerClutter::setDrawsContent(bool drawsContent)
 {
     if (drawsContent == m_drawsContent)
@@ -415,6 +460,43 @@ void GraphicsLayerClutter::setDrawsContent(bool drawsContent)
 
     GraphicsLayer::setDrawsContent(drawsContent);
     noteLayerPropertyChanged(DrawsContentChanged);
+}
+
+
+void GraphicsLayerClutter::setContentsToImage(Image* image)
+{
+    if (image) {
+        RefPtr<cairo_surface_t> newImage = image->nativeImageForCurrentFrame();
+        if (!newImage)
+            return;
+
+        m_pendingContentsImage = newImage;
+
+        m_contentsLayerPurpose = ContentsLayerForImage;
+        if (!m_contentsLayer)
+            noteSublayersChanged();
+    } else {
+        m_pendingContentsImage = 0;
+        m_contentsLayerPurpose = NoContentsLayer;
+        if (m_contentsLayer)
+            noteSublayersChanged();
+    }
+
+    noteLayerPropertyChanged(ContentsImageChanged);
+}
+
+void GraphicsLayerClutter::setContentsNeedsDisplay()
+{
+    noteLayerPropertyChanged(ContentsNeedsDisplay);
+}
+
+void GraphicsLayerClutter::setContentsRect(const IntRect& rect)
+{
+    if (rect == m_contentsRect)
+        return;
+
+    GraphicsLayer::setContentsRect(rect);
+    noteLayerPropertyChanged(ContentsRectChanged);
 }
 
 void GraphicsLayerClutter::setParent(GraphicsLayer* childLayer)
@@ -642,6 +724,15 @@ void GraphicsLayerClutter::commitLayerChangesBeforeSublayers(float pageScaleFact
     if (m_uncommittedChanges & Preserves3DChanged)
         updateStructuralLayer();
 
+    if (m_uncommittedChanges & NameChanged)
+        updateLayerNames();
+
+    if (m_uncommittedChanges & ContentsImageChanged) // Needs to happen before ChildrenChanged
+        updateContentsImage();
+
+    if (m_uncommittedChanges & ChildrenChanged)
+        updateSublayerList();
+
     if (m_uncommittedChanges & GeometryChanged)
         updateGeometry(pageScaleFactor, positionRelativeToBase);
 
@@ -654,6 +745,9 @@ void GraphicsLayerClutter::commitLayerChangesBeforeSublayers(float pageScaleFact
     if (m_uncommittedChanges & TransformChanged)
         updateTransform();
 
+    if (m_uncommittedChanges & MasksToBoundsChanged)
+        updateMasksToBounds();
+
     if (m_uncommittedChanges & OpacityChanged)
         updateOpacityOnLayer();
 
@@ -663,12 +757,63 @@ void GraphicsLayerClutter::commitLayerChangesBeforeSublayers(float pageScaleFact
     if (m_uncommittedChanges & DirtyRectsChanged)
         repaintLayerDirtyRects();
 
+    if (m_uncommittedChanges & ContentsRectChanged)
+        updateContentsRect();
+
+    if (m_uncommittedChanges & ContentsNeedsDisplay)
+        updateContentsNeedsDisplay();
+
     if (m_uncommittedChanges & ChildrenChanged) {
         updateSublayerList();
         // Sublayers may set this flag again, so clear it to avoid always updating sublayers in commitLayerChangesAfterSublayers().
         m_uncommittedChanges &= ~ChildrenChanged;
     }
 }
+
+void GraphicsLayerClutter::setupContentsLayer(GraphicsLayerActor* contentsLayer)
+{
+    graphicsLayerActorSetMasksToBounds(contentsLayer, true);
+    graphicsLayerActorSetAnchorPoint(contentsLayer, 0.0, 0.0, 0.0);
+}
+
+void GraphicsLayerClutter::updateContentsImage()
+{
+    if (m_pendingContentsImage) {
+        if (!m_contentsLayer) {
+            m_contentsLayer = graphicsLayerActorNewWithClient(LayerTypeLayer, this);
+            clutter_actor_set_name(CLUTTER_ACTOR(m_contentsLayer.get()), "Image Layer");
+            setupContentsLayer(m_contentsLayer.get());
+        }
+
+        graphicsLayerActorSetSurface(GRAPHICS_LAYER_ACTOR(m_contentsLayer.get()), m_pendingContentsImage.get());
+        m_pendingContentsImage = 0;
+
+        updateContentsRect();
+    } else {
+        // No image.
+        // m_contentsLayer will be removed via updateSublayerList.
+        m_contentsLayer = 0;
+    }
+}
+
+void GraphicsLayerClutter::updateContentsNeedsDisplay()
+{
+    if (m_contentsLayer)
+        graphicsLayerActorInvalidateRectangle(m_contentsLayer.get(), FloatRect(FloatPoint(0, 0), size()));
+}
+
+void GraphicsLayerClutter::updateContentsRect()
+{
+    if (!m_contentsLayer)
+        return;
+
+    FloatPoint point(m_contentsRect.x(), m_contentsRect.y());
+    FloatRect rect(0, 0, m_contentsRect.width(), m_contentsRect.height());
+
+    clutter_actor_set_position(CLUTTER_ACTOR(m_contentsLayer.get()), point.x(), point.y());
+    clutter_actor_set_size(CLUTTER_ACTOR(m_contentsLayer.get()), rect.width(), rect.height());
+}
+
 
 void GraphicsLayerClutter::updateGeometry(float pageScaleFactor, const FloatPoint& positionRelativeToBase)
 {
@@ -695,6 +840,9 @@ void GraphicsLayerClutter::updateSublayerList()
 
     if (m_structuralLayer)
         structuralLayerChildren.append(m_layer);
+
+    if (m_contentsLayer)
+        primaryLayerChildren.append(m_contentsLayer);
 
     const Vector<GraphicsLayer*>& childLayers = children();
     size_t numChildren = childLayers.size();
@@ -725,6 +873,11 @@ void GraphicsLayerClutter::updateTransform()
     clutter_actor_set_transform(CLUTTER_ACTOR(primaryLayer()), &matrix);
 }
 
+void GraphicsLayerClutter::updateMasksToBounds()
+{
+    graphicsLayerActorSetMasksToBounds(m_layer.get(), m_masksToBounds);
+}
+
 void GraphicsLayerClutter::updateStructuralLayer()
 {
     ensureStructuralLayer(structuralLayerPurpose());
@@ -749,7 +902,7 @@ void GraphicsLayerClutter::ensureStructuralLayer(StructuralLayerPurpose purpose)
             // is likely hosted by something that is not expecting to be changed
             ClutterActor* parentActor = clutter_actor_get_parent(CLUTTER_ACTOR(m_structuralLayer.get()));
             ASSERT(parentActor);
-            graphicsLayerActorReplaceSublayer(GRAPHICS_LAYER_ACTOR(parentActor), CLUTTER_ACTOR(m_structuralLayer.get()), CLUTTER_ACTOR(m_layer.get()));
+            clutter_actor_replace_child(parentActor, CLUTTER_ACTOR(m_structuralLayer.get()), CLUTTER_ACTOR(m_layer.get()));
 
             moveOrCopyAnimations(Move, m_structuralLayer.get(), m_layer.get());
 
@@ -813,13 +966,12 @@ GraphicsLayerClutter::StructuralLayerPurpose GraphicsLayerClutter::structuralLay
 
 void GraphicsLayerClutter::updateLayerDrawsContent(float pageScaleFactor, const FloatPoint& positionRelativeToBase)
 {
-    if (m_drawsContent) {
-        graphicsLayerActorSetDrawsContent(m_layer.get(), TRUE);
+    graphicsLayerActorSetDrawsContent(m_layer.get(), m_drawsContent);
+
+    if (m_drawsContent)
         setNeedsDisplay();
-    } else {
-        graphicsLayerActorSetDrawsContent(m_layer.get(), FALSE);
+    else
         graphicsLayerActorSetSurface(m_layer.get(), 0);
-    }
 
     updateDebugIndicators();
 }
@@ -860,12 +1012,12 @@ void GraphicsLayerClutter::setupAnimation(PlatformClutterAnimation* propertyAnim
     propertyAnim->setFillMode(fillMode);
 }
 
-const TimingFunction* GraphicsLayerClutter::timingFunctionForAnimationValue(const AnimationValue* animValue, const Animation* anim)
+const TimingFunction* GraphicsLayerClutter::timingFunctionForAnimationValue(const AnimationValue& animValue, const Animation& anim)
 {
-    if (animValue->timingFunction())
-        return animValue->timingFunction();
-    if (anim->isTimingFunctionSet())
-        return anim->timingFunction().get();
+    if (animValue.timingFunction())
+        return animValue.timingFunction();
+    if (anim.isTimingFunctionSet())
+        return anim.timingFunction().get();
 
     return CubicBezierTimingFunction::defaultTimingFunction();
 }
@@ -896,12 +1048,12 @@ bool GraphicsLayerClutter::setTransformAnimationKeyframes(const KeyframeValueLis
 
     for (unsigned i = 0; i < valueList.size(); ++i) {
         unsigned index = forwards ? i : (valueList.size() - i - 1);
-        const TransformAnimationValue* curValue = static_cast<const TransformAnimationValue*>(valueList.at(index));
-        keyTimes.append(forwards ? curValue->keyTime() : (1 - curValue->keyTime()));
+        const TransformAnimationValue& curValue = static_cast<const TransformAnimationValue&>(valueList.at(index));
+        keyTimes.append(forwards ? curValue.keyTime() : (1 - curValue.keyTime()));
 
         if (isMatrixAnimation) {
             TransformationMatrix transform;
-            curValue->value()->apply(boxSize, transform);
+            curValue.value().apply(boxSize, transform);
 
             // FIXME: In CoreAnimation case, if any matrix is singular, CA won't animate it correctly.
             // But I'm not sure clutter also does. Check it later, and then decide
@@ -911,7 +1063,7 @@ bool GraphicsLayerClutter::setTransformAnimationKeyframes(const KeyframeValueLis
 
             transformationMatrixValues.append(transform);
         } else {
-            const TransformOperation* transformOp = curValue->value()->at(functionIndex);
+            const TransformOperation* transformOp = curValue.value().at(functionIndex);
             if (isTransformTypeNumber(transformOpType)) {
                 float value;
                 getTransformFunctionValue(transformOp, transformOpType, boxSize, value);
@@ -928,7 +1080,7 @@ bool GraphicsLayerClutter::setTransformAnimationKeyframes(const KeyframeValueLis
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), animation));
+            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
 
     keyframeAnim->setKeyTimes(keyTimes);
@@ -958,13 +1110,13 @@ bool GraphicsLayerClutter::setTransformAnimationEndpoints(const KeyframeValueLis
     unsigned fromIndex = !forwards;
     unsigned toIndex = forwards;
 
-    const TransformAnimationValue* startValue = static_cast<const TransformAnimationValue*>(valueList.at(fromIndex));
-    const TransformAnimationValue* endValue = static_cast<const TransformAnimationValue*>(valueList.at(toIndex));
+    const TransformAnimationValue& startValue = static_cast<const TransformAnimationValue&>(valueList.at(fromIndex));
+    const TransformAnimationValue& endValue = static_cast<const TransformAnimationValue&>(valueList.at(toIndex));
 
     if (isMatrixAnimation) {
         TransformationMatrix fromTransform, toTransform;
-        startValue->value()->apply(boxSize, fromTransform);
-        endValue->value()->apply(boxSize, toTransform);
+        startValue.value().apply(boxSize, fromTransform);
+        endValue.value().apply(boxSize, toTransform);
 
         // FIXME: If any matrix is singular, CA won't animate it correctly.
         // So fall back to software animation, But it's not sure in clutter case.
@@ -977,34 +1129,34 @@ bool GraphicsLayerClutter::setTransformAnimationEndpoints(const KeyframeValueLis
     } else {
         if (isTransformTypeNumber(transformOpType)) {
             float fromValue;
-            getTransformFunctionValue(startValue->value()->at(functionIndex), transformOpType, boxSize, fromValue);
+            getTransformFunctionValue(startValue.value().at(functionIndex), transformOpType, boxSize, fromValue);
             basicAnim->setFromValue(fromValue);
 
             float toValue;
-            getTransformFunctionValue(endValue->value()->at(functionIndex), transformOpType, boxSize, toValue);
+            getTransformFunctionValue(endValue.value().at(functionIndex), transformOpType, boxSize, toValue);
             basicAnim->setToValue(toValue);
         } else if (isTransformTypeFloatPoint3D(transformOpType)) {
             FloatPoint3D fromValue;
-            getTransformFunctionValue(startValue->value()->at(functionIndex), transformOpType, boxSize, fromValue);
+            getTransformFunctionValue(startValue.value().at(functionIndex), transformOpType, boxSize, fromValue);
             basicAnim->setFromValue(fromValue);
 
             FloatPoint3D toValue;
-            getTransformFunctionValue(endValue->value()->at(functionIndex), transformOpType, boxSize, toValue);
+            getTransformFunctionValue(endValue.value().at(functionIndex), transformOpType, boxSize, toValue);
             basicAnim->setToValue(toValue);
         } else {
             TransformationMatrix fromValue;
-            getTransformFunctionValue(startValue->value()->at(functionIndex), transformOpType, boxSize, fromValue);
+            getTransformFunctionValue(startValue.value().at(functionIndex), transformOpType, boxSize, fromValue);
             basicAnim->setFromValue(fromValue);
 
             TransformationMatrix toValue;
-            getTransformFunctionValue(endValue->value()->at(functionIndex), transformOpType, boxSize, toValue);
+            getTransformFunctionValue(endValue.value().at(functionIndex), transformOpType, boxSize, toValue);
             basicAnim->setToValue(toValue);
         }
     }
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), animation);
+    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), *animation);
     basicAnim->setTimingFunction(timingFunction, !forwards);
 
     PlatformClutterAnimation::ValueFunctionType valueFunction = getValueFunctionNameForTransformOperation(transformOpType);
@@ -1043,7 +1195,7 @@ bool GraphicsLayerClutter::createTransformAnimationsFromKeyframes(const Keyframe
 
     bool hasBigRotation;
     int listIndex = validateTransformOperations(valueList, hasBigRotation);
-    const TransformOperations* operations = (listIndex >= 0) ? static_cast<const TransformAnimationValue*>(valueList.at(listIndex))->value() : 0;
+    const TransformOperations* operations = (listIndex >= 0) ? &static_cast<const TransformAnimationValue&>(valueList.at(listIndex)).value() : 0;
 
     // We need to fall back to software animation if we don't have setValueFunction:, and
     // we would need to animate each incoming transform function separately. This is the
@@ -1174,8 +1326,8 @@ bool GraphicsLayerClutter::setAnimationEndpoints(const KeyframeValueList& valueL
 
     switch (valueList.property()) {
     case AnimatedPropertyOpacity: {
-        basicAnim->setFromValue(static_cast<const FloatAnimationValue*>(valueList.at(fromIndex))->value());
-        basicAnim->setToValue(static_cast<const FloatAnimationValue*>(valueList.at(toIndex))->value());
+        basicAnim->setFromValue(static_cast<const FloatAnimationValue&>(valueList.at(fromIndex)).value());
+        basicAnim->setToValue(static_cast<const FloatAnimationValue&>(valueList.at(toIndex)).value());
         break;
     }
     default:
@@ -1185,7 +1337,7 @@ bool GraphicsLayerClutter::setAnimationEndpoints(const KeyframeValueList& valueL
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), animation);
+    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), *animation);
     if (timingFunction)
         basicAnim->setTimingFunction(timingFunction, !forwards);
 
@@ -1202,13 +1354,13 @@ bool GraphicsLayerClutter::setAnimationKeyframes(const KeyframeValueList& valueL
 
     for (unsigned i = 0; i < valueList.size(); ++i) {
         unsigned index = forwards ? i : (valueList.size() - i - 1);
-        const AnimationValue* curValue = valueList.at(index);
-        keyTimes.append(forwards ? curValue->keyTime() : (1 - curValue->keyTime()));
+        const AnimationValue& curValue = valueList.at(index);
+        keyTimes.append(forwards ? curValue.keyTime() : (1 - curValue.keyTime()));
 
         switch (valueList.property()) {
         case AnimatedPropertyOpacity: {
-            const FloatAnimationValue* floatValue = static_cast<const FloatAnimationValue*>(curValue);
-            values.append(floatValue->value());
+            const FloatAnimationValue& floatValue = static_cast<const FloatAnimationValue&>(curValue);
+            values.append(floatValue.value());
             break;
         }
         default:
@@ -1217,7 +1369,7 @@ bool GraphicsLayerClutter::setAnimationKeyframes(const KeyframeValueList& valueL
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), animation));
+            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
 
     keyframeAnim->setKeyTimes(keyTimes);

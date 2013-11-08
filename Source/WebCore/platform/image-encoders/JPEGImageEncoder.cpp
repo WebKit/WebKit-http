@@ -83,9 +83,9 @@ static void jpegErrorExit(j_common_ptr compressData)
     longjmp(err->m_setjmpBuffer, -1);
 }
 
-bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize& size, Vector<char>& jpegData)
+bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize& size, Vector<char>& jpegData, const double* quality)
 {
-    struct jpeg_compress_struct compressData = { 0 };
+    struct jpeg_compress_struct compressData;
     JPEGCompressErrorMgr err;
     compressData.err = jpeg_std_error(&err);
     err.error_exit = jpegErrorExit;
@@ -103,7 +103,10 @@ bool compressRGBABigEndianToJPEG(unsigned char* rgbaBigEndianData, const IntSize
     compressData.input_components = 3;
     compressData.in_color_space = JCS_RGB;
     jpeg_set_defaults(&compressData);
-    jpeg_set_quality(&compressData, 65, FALSE);
+    int compressionQuality = 65;
+    if (quality && *quality >= 0.0 && *quality <= 1.0)
+        compressionQuality = static_cast<int>(*quality * 100 + 0.5);
+    jpeg_set_quality(&compressData, compressionQuality, FALSE);
 
     // rowBuffer must be defined here so that its destructor is always called even when "setjmp" catches an error.
     Vector<JSAMPLE, 600 * 3> rowBuffer;

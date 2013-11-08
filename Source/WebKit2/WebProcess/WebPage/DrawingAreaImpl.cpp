@@ -38,7 +38,6 @@
 #include <WebCore/Settings.h>
 
 using namespace WebCore;
-using namespace std;
 
 namespace WebKit {
 
@@ -176,6 +175,12 @@ void DrawingAreaImpl::scroll(const IntRect& scrollRect, const IntSize& scrollDel
 
     m_scrollRect = scrollRect;
     m_scrollOffset += scrollDelta;
+}
+
+void DrawingAreaImpl::pageBackgroundTransparencyChanged()
+{
+    if (m_layerTreeHost)
+        m_layerTreeHost->pageBackgroundTransparencyChanged();
 }
 
 void DrawingAreaImpl::setLayerTreeStateIsFrozen(bool isFrozen)

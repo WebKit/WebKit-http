@@ -230,7 +230,6 @@ public:
 
     void capsLockStateMayHaveChanged(); // Only called by FrameSelection
     
-    void sendResizeEvent(); // Only called in FrameView
     void sendScrollEvent(); // Ditto
 
 #if PLATFORM(MAC) && defined(__OBJC__)
@@ -256,6 +255,8 @@ public:
 
     bool useHandCursor(Node*, bool isOverLink, bool shiftKey);
     void updateCursor();
+
+    bool isHandlingWheelEvent() const { return m_isHandlingWheelEvent; }
 
 private:
 #if ENABLE(DRAG_SUPPORT)
@@ -494,6 +495,7 @@ private:
     PlatformEvent::Type m_baseEventType;
     bool m_didStartDrag;
     bool m_didLongPressInvokeContextMenu;
+    bool m_isHandlingWheelEvent;
 
 #if ENABLE(CURSOR_VISIBILITY)
     Timer<EventHandler> m_autoHideCursorTimer;

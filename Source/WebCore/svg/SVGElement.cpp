@@ -77,6 +77,9 @@ SVGElement::~SVGElement()
             cursorImageValue->removeReferencedElement(this);
 
         delete rareData;
+
+        it = rareDataMap.find(this);
+        ASSERT(it != rareDataMap.end());
         rareDataMap.remove(it);
     }
     ASSERT(document());
@@ -317,6 +320,10 @@ void SVGElement::parseAttribute(const QualifiedName& name, const AtomicString& v
         setAttributeEventListener(eventNames().clickEvent, createAttributeEventListener(this, name, value));
     else if (name == onmousedownAttr)
         setAttributeEventListener(eventNames().mousedownEvent, createAttributeEventListener(this, name, value));
+    else if (name == onmouseenterAttr)
+        setAttributeEventListener(eventNames().mouseenterEvent, createAttributeEventListener(this, name, value));
+    else if (name == onmouseleaveAttr)
+        setAttributeEventListener(eventNames().mouseleaveEvent, createAttributeEventListener(this, name, value));
     else if (name == onmousemoveAttr)
         setAttributeEventListener(eventNames().mousemoveEvent, createAttributeEventListener(this, name, value));
     else if (name == onmouseoutAttr)
@@ -452,6 +459,12 @@ static bool hasLoadListener(Element* element)
     return false;
 }
 
+bool SVGElement::moveToFlowThreadIsNeeded(RefPtr<RenderStyle>& cachedStyle)
+{
+    // Allow only svg root elements to be directly collected by a render flow thread.
+    return parentNode() && !parentNode()->isSVGElement() && hasTagName(SVGNames::svgTag) && Element::moveToFlowThreadIsNeeded(cachedStyle);
+}
+
 void SVGElement::sendSVGLoadEventIfPossible(bool sendParentLoadEvents)
 {
     RefPtr<SVGElement> currentTarget = this;
@@ -583,7 +596,7 @@ void SVGElement::synchronizeSystemLanguage(SVGElement* contextElement)
 PassRefPtr<RenderStyle> SVGElement::customStyleForRenderer()
 {
     if (!correspondingElement())
-        return document()->styleResolver()->styleForElement(this);
+        return document()->ensureStyleResolver()->styleForElement(this);
 
     RenderStyle* style = 0;
     if (Element* parent = parentOrShadowHostElement()) {
@@ -591,17 +604,17 @@ PassRefPtr<RenderStyle> SVGElement::customStyleForRenderer()
             style = renderer->style();
     }
 
-    return document()->styleResolver()->styleForElement(correspondingElement(), style, DisallowStyleSharing);
+    return document()->ensureStyleResolver()->styleForElement(correspondingElement(), style, DisallowStyleSharing);
 }
 
-StylePropertySet* SVGElement::animatedSMILStyleProperties() const
+MutableStylePropertySet* SVGElement::animatedSMILStyleProperties() const
 {
     if (hasSVGRareData())
         return svgRareData()->animatedSMILStyleProperties();
     return 0;
 }
 
-StylePropertySet* SVGElement::ensureAnimatedSMILStyleProperties()
+MutableStylePropertySet* SVGElement::ensureAnimatedSMILStyleProperties()
 {
     return ensureSVGRareData()->ensureAnimatedSMILStyleProperties();
 }

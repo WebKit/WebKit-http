@@ -29,13 +29,14 @@
  */
 
 [
+    NoInterfaceObject,
     OmitConstructor,
     ImplementationLacksVTable
 ] interface MemoryInfo {
 
     readonly attribute unsigned long totalJSHeapSize;
     readonly attribute unsigned long usedJSHeapSize;
-    [JSCustomGetter] readonly attribute unsigned long jsHeapSizeLimit;
+    [CustomGetter] readonly attribute unsigned long jsHeapSizeLimit;
 
 };
 

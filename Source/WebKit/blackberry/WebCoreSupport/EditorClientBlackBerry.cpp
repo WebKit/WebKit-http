@@ -34,6 +34,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "SelectionHandler.h"
 #include "Settings.h"
+#include "SpellChecker.h"
 #include "WebPage_p.h"
 #include "WindowsKeyboardCodes.h"
 
@@ -562,12 +563,12 @@ void EditorClientBlackBerry::learnWord(const WTF::String&)
     notImplemented();
 }
 
-void EditorClientBlackBerry::checkSpellingOfString(const UChar* text, int textLength, int* misspellLocation, int* misspellLength)
+void EditorClientBlackBerry::checkSpellingOfString(const UChar*, int, int*, int*)
 {
     notImplemented();
 }
 
-WTF::String EditorClientBlackBerry::getAutoCorrectSuggestionForMisspelledWord(const WTF::String& misspelledWord)
+WTF::String EditorClientBlackBerry::getAutoCorrectSuggestionForMisspelledWord(const WTF::String&)
 {
     notImplemented();
     return WTF::String();
@@ -578,9 +579,10 @@ void EditorClientBlackBerry::checkGrammarOfString(const UChar*, int, WTF::Vector
     notImplemented();
 }
 
-void EditorClientBlackBerry::requestCheckingOfString(PassRefPtr<TextCheckingRequest> testCheckingRequest)
+void EditorClientBlackBerry::requestCheckingOfString(PassRefPtr<TextCheckingRequest> textCheckingRequest)
 {
-    m_webPagePrivate->m_inputHandler->requestCheckingOfString(textCheckingRequest);
+    RefPtr<SpellCheckRequest> spellCheckRequest = static_cast<SpellCheckRequest*>(textCheckingRequest.get());
+    m_webPagePrivate->m_inputHandler->requestCheckingOfString(spellCheckRequest);
 }
 
 void EditorClientBlackBerry::checkTextOfParagraph(const UChar*, int, TextCheckingTypeMask, Vector<TextCheckingResult>&)

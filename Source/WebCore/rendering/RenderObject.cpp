@@ -28,19 +28,23 @@
 #include "RenderObject.h"
 
 #include "AXObjectCache.h"
+#include "AnimationController.h"
 #include "Chrome.h"
 #include "ContentData.h"
 #include "CursorList.h"
 #include "DashArray.h"
 #include "EditingBoundary.h"
+#include "EventHandler.h"
 #include "FloatQuad.h"
 #include "FlowThreadController.h"
 #include "Frame.h"
+#include "FrameSelection.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
 #include "HitTestResult.h"
+#include "LogicalSelectionOffsetCaches.h"
 #include "Page.h"
 #include "RenderArena.h"
 #include "RenderCounter.h"
@@ -69,11 +73,11 @@
 #include "Settings.h"
 #include "StyleResolver.h"
 #include "TransformState.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include "htmlediting.h"
 #include <algorithm>
 #include <stdio.h>
 #include <wtf/RefCountedLeakCounter.h>
+#include <wtf/StackStats.h>
 #include <wtf/UnusedParam.h>
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -769,45 +773,13 @@ RenderBlock* RenderObject::containingBlock() const
     RenderObject* o = parent();
     if (!o && isRenderScrollbarPart())
         o = toRenderScrollbarPart(this)->rendererOwningScrollbar();
-    if (!isText() && m_style->position() == FixedPosition) {
-        while (o) {
-            if (o->canContainFixedPositionObjects())
-                break;
-            o = o->parent();
-        }
-        ASSERT(!o || !o->isAnonymousBlock());
-    } else if (!isText() && m_style->position() == AbsolutePosition) {
-        while (o) {
-            // For relpositioned inlines, we return the nearest non-anonymous enclosing block. We don't try
-            // to return the inline itself.  This allows us to avoid having a positioned objects
-            // list in all RenderInlines and lets us return a strongly-typed RenderBlock* result
-            // from this method.  The container() method can actually be used to obtain the
-            // inline directly.
-            if (o->style()->position() != StaticPosition && (!o->isInline() || o->isReplaced()))
-                break;
-            if (o->isRenderView())
-                break;
-            if (o->hasTransform() && o->isRenderBlock())
-                break;
 
-            if (o->style()->hasInFlowPosition() && o->isInline() && !o->isReplaced()) {
-                o = o->containingBlock();
-                break;
-            }
-#if ENABLE(SVG)
-            if (o->isSVGForeignObject()) //foreignObject is the containing block for contents inside it
-                break;
-#endif
-
-            o = o->parent();
-        }
-
-        while (o && o->isAnonymousBlock())
-            o = o->containingBlock();
-    } else {
-        while (o && ((o->isInline() && !o->isReplaced()) || !o->isRenderBlock()))
-            o = o->parent();
-    }
+    if (!isText() && m_style->position() == FixedPosition)
+        o = containingBlockForFixedPosition(o);
+    else if (!isText() && m_style->position() == AbsolutePosition)
+        o = containingBlockForAbsolutePosition(o);
+    else
+        o = containingBlockForObjectInFlow(o);
 
     if (!o || !o->isRenderBlock())
         return 0; // This can still happen in case of an orphaned tree
@@ -835,7 +807,11 @@ static bool mustRepaintFillLayers(const RenderObject* renderer, const FillLayer*
         return true;
     
     if (sizeType == SizeLength) {
-        if (layer->sizeLength().width().isPercent() || layer->sizeLength().height().isPercent())
+        LengthSize size = layer->sizeLength();
+        if (size.width().isPercent() || size.height().isPercent())
+            return true;
+        // If the image has neither an intrinsic width nor an intrinsic height, its size is determined as for 'contain'.
+        if ((size.width().isAuto() || size.height().isAuto()) && img->isGeneratedImage())
             return true;
     } else if (img->usesImageContainerSize())
         return true;
@@ -898,14 +874,13 @@ void RenderObject::drawLineForBoxSide(GraphicsContext* graphicsContext, int x1, 
             return;
         case DOTTED:
         case DASHED: {
-            graphicsContext->setStrokeColor(color, m_style->colorSpace());
-            graphicsContext->setStrokeThickness(thickness);
-            StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
-            graphicsContext->setStrokeStyle(style == DASHED ? DashedStroke : DottedStroke);
-
             if (thickness > 0) {
                 bool wasAntialiased = graphicsContext->shouldAntialias();
+                StrokeStyle oldStrokeStyle = graphicsContext->strokeStyle();
                 graphicsContext->setShouldAntialias(antialias);
+                graphicsContext->setStrokeColor(color, m_style->colorSpace());
+                graphicsContext->setStrokeThickness(thickness);
+                graphicsContext->setStrokeStyle(style == DASHED ? DashedStroke : DottedStroke);
 
                 switch (side) {
                     case BSBottom:
@@ -2792,12 +2767,12 @@ PassRefPtr<RenderStyle> RenderObject::getUncachedPseudoStyle(const PseudoStyleRe
     Element* element = toElement(n);
 
     if (pseudoStyleRequest.pseudoId == FIRST_LINE_INHERITED) {
-        RefPtr<RenderStyle> result = document()->styleResolver()->styleForElement(element, parentStyle, DisallowStyleSharing);
+        RefPtr<RenderStyle> result = document()->ensureStyleResolver()->styleForElement(element, parentStyle, DisallowStyleSharing);
         result->setStyleType(FIRST_LINE_INHERITED);
         return result.release();
     }
 
-    return document()->styleResolver()->pseudoStyleForElement(element, pseudoStyleRequest, parentStyle);
+    return document()->ensureStyleResolver()->pseudoStyleForElement(element, pseudoStyleRequest, parentStyle);
 }
 
 static Color decorationColor(RenderStyle* style)
@@ -3001,46 +2976,46 @@ void RenderObject::imageChanged(CachedImage* image, const IntRect* rect)
     imageChanged(static_cast<WrappedImagePtr>(image), rect);
 }
 
-Element* RenderObject::offsetParent() const
+RenderBoxModelObject* RenderObject::offsetParent() const
 {
-    if (isRoot() || isBody())
-        return 0;
-
-    if (isOutOfFlowPositioned() && style()->position() == FixedPosition)
+    // If any of the following holds true return null and stop this algorithm:
+    // A is the root element.
+    // A is the HTML body element.
+    // The computed value of the position property for element A is fixed.
+    if (isRoot() || isBody() || (isOutOfFlowPositioned() && style()->position() == FixedPosition))
         return 0;
 
     // If A is an area HTML element which has a map HTML element somewhere in the ancestor
     // chain return the nearest ancestor map HTML element and stop this algorithm.
     // FIXME: Implement!
 
-    // FIXME: Figure out the right behavior for elements inside a flow thread.
+    // FIXME: Stop the search at the flow thread boundary until we figure out the right
+    // behavior for elements inside a flow thread.
     // https://bugs.webkit.org/show_bug.cgi?id=113276
+    
+    // Return the nearest ancestor element of A for which at least one of the following is
+    // true and stop this algorithm if such an ancestor is found:
+    //     * The computed value of the position property is not static.
+    //     * It is the HTML body element.
+    //     * The computed value of the position property of A is static and the ancestor
+    //       is one of the following HTML elements: td, th, or table.
+    //     * Our own extension: if there is a difference in the effective zoom
 
-    float effectiveZoom = style()->effectiveZoom();
-    Node* node = 0;
-    for (RenderObject* ancestor = parent(); ancestor; ancestor = ancestor->parent()) {
-        node = ancestor->node();
-
-        // Spec: http://www.w3.org/TR/cssom-view/#offset-attributes
-
-        if (!node)
-            continue;
-
-        if (ancestor->isPositioned())
+    bool skipTables = isPositioned();
+    float currZoom = style()->effectiveZoom();
+    RenderObject* curr = parent();
+    while (curr && (!curr->node() || (!curr->isPositioned() && !curr->isBody())) && !curr->isRenderNamedFlowThread()) {
+        Node* element = curr->node();
+        if (!skipTables && element && (element->hasTagName(tableTag) || element->hasTagName(tdTag) || element->hasTagName(thTag)))
             break;
-
-        if (node->hasTagName(HTMLNames::bodyTag))
+ 
+        float newZoom = curr->style()->effectiveZoom();
+        if (currZoom != newZoom)
             break;
-
-        if (!isPositioned() && (node->hasTagName(tableTag) || node->hasTagName(tdTag) || node->hasTagName(thTag)))
-            break;
-
-        // Webkit specific extension where offsetParent stops at zoom level changes.
-        if (effectiveZoom != ancestor->style()->effectiveZoom())
-            break;
+        currZoom = newZoom;
+        curr = curr->parent();
     }
-
-    return node && node->isElementNode() ? toElement(node) : 0;
+    return curr && curr->isBoxModelObject() && !curr->isRenderNamedFlowThread() ? toRenderBoxModelObject(curr) : 0;
 }
 
 VisiblePosition RenderObject::createVisiblePosition(int offset, EAffinity affinity)
@@ -3132,18 +3107,6 @@ bool RenderObject::canHaveGeneratedChildren() const
 bool RenderObject::canBeReplacedWithInlineRunIn() const
 {
     return true;
-}
-
-void RenderObject::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
-    info.addMember(m_style, "style");
-    info.addWeakPointer(m_node);
-    info.addWeakPointer(m_parent);
-    info.addWeakPointer(m_previous);
-    info.addWeakPointer(m_next);
-
-    info.setCustomAllocation(true);
 }
 
 #if ENABLE(SVG)

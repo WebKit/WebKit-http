@@ -38,7 +38,7 @@ from webkitpy.tool.commands.abstractsequencedcommand import AbstractSequencedCom
 from webkitpy.tool.commands.stepsequence import StepSequence
 from webkitpy.tool.comments import bug_comment_from_commit_text
 from webkitpy.tool.grammar import pluralize
-from webkitpy.tool.multicommandtool import AbstractDeclarativeCommand
+from webkitpy.tool.multicommandtool import Command
 
 _log = logging.getLogger(__name__)
 
@@ -114,8 +114,9 @@ If a bug id is provided, or one can be found in the ChangeLog land will update t
         }
 
 
-class LandCowboy(AbstractSequencedCommand):
-    name = "land-cowboy"
+class LandCowhand(AbstractSequencedCommand):
+    # Gender-blind term for cowboy, see: http://en.wiktionary.org/wiki/cowhand
+    name = "land-cowhand"
     help_text = "Prepares a ChangeLog and lands the current working directory diff."
     steps = [
         steps.PrepareChangeLog,
@@ -132,9 +133,12 @@ class LandCowboy(AbstractSequencedCommand):
         options.check_style_filter = "-changelog"
 
 
-class LandCowhand(LandCowboy):
-    # Gender-blind term for cowboy, see: http://en.wiktionary.org/wiki/cowhand
-    name = "land-cowhand"
+class LandCowboy(LandCowhand):
+    name = "land-cowboy"
+
+    def _prepare_state(self, options, args, tool):
+        _log.warning("land-cowboy is deprecated, use land-cowhand instead.")
+        LandCowhand._prepare_state(self, options, args, tool)
 
 
 class CheckStyleLocal(AbstractSequencedCommand):
@@ -145,7 +149,7 @@ class CheckStyleLocal(AbstractSequencedCommand):
     ]
 
 
-class AbstractPatchProcessingCommand(AbstractDeclarativeCommand):
+class AbstractPatchProcessingCommand(Command):
     # Subclasses must implement the methods below.  We don't declare them here
     # because we want to be able to implement them with mix-ins.
     #

@@ -26,14 +26,13 @@
 #ifndef InbandTextTrackPrivateAVF_h
 #define InbandTextTrackPrivateAVF_h
 
-#if ENABLE(VIDEO) && ((USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)) || PLATFORM(IOS))
+#if ENABLE(VIDEO) && ((USE(AVFOUNDATION) && !PLATFORM(WIN)) || PLATFORM(IOS))
 
 #include "InbandTextTrackPrivate.h"
+#include "InbandTextTrackPrivateClient.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
-
-class GenericCueData;
 
 class AVFInbandTrackParent {
 public:
@@ -60,6 +59,12 @@ public:
     void processCue(CFArrayRef, double);
     void resetCueValues();
 
+    void beginSeeking();
+    void endSeeking() { m_seeking = false; }
+    bool seeking() const { return m_seeking; }
+    
+    virtual bool isLegacyClosedCaptionsTrack() const = 0;
+
 protected:
     InbandTextTrackPrivateAVF(AVFInbandTrackParent*);
 
@@ -68,16 +73,23 @@ protected:
     double m_currentCueStartTime;
     double m_currentCueEndTime;
 
-    Vector<OwnPtr<GenericCueData> > m_cues;
-
+    Vector<RefPtr<GenericCueData> > m_cues;
     AVFInbandTrackParent* m_owner;
+
+    enum PendingCueStatus {
+        None,
+        DeliveredDuringSeek,
+        Valid
+    };
+    PendingCueStatus m_pendingCueStatus;
+
     int m_index;
-    bool m_havePartialCue;
     bool m_hasBeenReported;
+    bool m_seeking;
 };
 
 } // namespace WebCore
 
-#endif //  ENABLE(VIDEO) && ((USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)) || PLATFORM(IOS))
+#endif //  ENABLE(VIDEO) && ((USE(AVFOUNDATION) && !PLATFORM(WIN)) || PLATFORM(IOS))
 
 #endif // InbandTextTrackPrivateAVF_h

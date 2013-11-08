@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(VIDEO) && ((USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)) || PLATFORM(IOS))
+#if ENABLE(VIDEO) && ((USE(AVFOUNDATION) && !PLATFORM(WIN)) || PLATFORM(IOS))
 
 #include "InbandTextTrackPrivateAVF.h"
 
@@ -89,9 +89,10 @@ AVFInbandTrackParent::~AVFInbandTrackParent()
 
 InbandTextTrackPrivateAVF::InbandTextTrackPrivateAVF(AVFInbandTrackParent* owner)
     : m_owner(owner)
+    , m_pendingCueStatus(None)
     , m_index(0)
-    , m_havePartialCue(false)
     , m_hasBeenReported(false)
+    , m_seeking(false)
 {
 }
 
@@ -332,32 +333,28 @@ void InbandTextTrackPrivateAVF::processCue(CFArrayRef attributedStrings, double 
 {
     if (!client())
         return;
-    
-    if (m_havePartialCue) {
+
+    LOG(Media, "InbandTextTrackPrivateAVF::processCue - %li cues at time %.2f\n", CFArrayGetCount(attributedStrings), time);
+
+    if (m_pendingCueStatus != None) {
         // Cues do not have an explicit duration, they are displayed until the next "cue" (which might be empty) is emitted.
         m_currentCueEndTime = time;
 
         if (m_currentCueEndTime >= m_currentCueStartTime) {
             for (size_t i = 0; i < m_cues.size(); i++) {
-
                 GenericCueData* cueData = m_cues[i].get();
 
-                LOG(Media, "InbandTextTrackPrivateAVF::processCue flushing cue: start=%.2f, end=%.2f, content=\"%s\" \n",
-                    m_currentCueStartTime, m_currentCueEndTime, cueData->content().utf8().data());
-                
-                if (!cueData->content().length())
-                    continue;
-                
-                cueData->setStartTime(m_currentCueStartTime);
-                cueData->setEndTime(m_currentCueEndTime);
-                
-                // AVFoundation cue "position" is to the center of the text so adjust relative to the edge because we will use it to
-                // set CSS "left".
-                if (cueData->position() >= 0 && cueData->size() > 0)
-                    cueData->setPosition(cueData->position() - cueData->size() / 2);
-                
-                LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - adding cue for time %.2f", this, cueData->startTime());
-                client()->addGenericCue(this, cueData);
+                if (m_pendingCueStatus == Valid) {
+                    cueData->setEndTime(m_currentCueEndTime);
+                    cueData->setStatus(GenericCueData::Complete);
+
+                    LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - updating cue: start=%.2f, end=%.2f, content=\"%s\"", this, cueData->startTime(), m_currentCueEndTime, cueData->content().utf8().data());
+                    client()->updateGenericCue(this, cueData);
+                } else {
+                    // We have to assume that the implicit duration is invalid for cues delivered during a seek because the AVF decode pipeline may not
+                    // see every cue, so DO NOT update cue duration while seeking.
+                    LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - ignoring cue delivered during seek: start=%.2f, end=%.2f, content=\"%s\"", this, cueData->startTime(), m_currentCueEndTime, cueData->content().utf8().data());
+                }
             }
         } else
             LOG(Media, "InbandTextTrackPrivateAVF::processCue negative length cue(s) ignored: start=%.2f, end=%.2f\n", m_currentCueStartTime, m_currentCueEndTime);
@@ -378,11 +375,38 @@ void InbandTextTrackPrivateAVF::processCue(CFArrayRef attributedStrings, double 
         if (!attributedString || !CFAttributedStringGetLength(attributedString))
             continue;
 
-        m_cues.append(adoptPtr(new GenericCueData));
-        processCueAttributes(attributedString, m_cues[i].get());
+        RefPtr<GenericCueData> cueData = GenericCueData::create();
+        processCueAttributes(attributedString, cueData.get());
+        if (!cueData->content().length())
+            continue;
+
+        m_cues.append(cueData);
+
         m_currentCueStartTime = time;
-        m_havePartialCue = true;
+        cueData->setStartTime(m_currentCueStartTime);
+        cueData->setEndTime(numeric_limits<double>::infinity());
+        
+        // AVFoundation cue "position" is to the center of the text so adjust relative to the edge because we will use it to
+        // set CSS "left".
+        if (cueData->position() >= 0 && cueData->size() > 0)
+            cueData->setPosition(cueData->position() - cueData->size() / 2);
+        
+        LOG(Media, "InbandTextTrackPrivateAVF::processCue(%p) - adding cue for time = %.2f, position =  %.2f, line =  %.2f", this, cueData->startTime(), cueData->position(), cueData->line());
+
+        cueData->setStatus(GenericCueData::Partial);
+        client()->addGenericCue(this, cueData.release());
+
+        m_pendingCueStatus = seeking() ? DeliveredDuringSeek : Valid;
     }
+}
+
+void InbandTextTrackPrivateAVF::beginSeeking()
+{
+    // Forget any partially accumulated cue data as the seek could be to a time outside of the cue's
+    // range, which will mean that the next cue delivered will result in the current cue getting the
+    // incorrect duration.
+    resetCueValues();
+    m_seeking = true;
 }
 
 void InbandTextTrackPrivateAVF::disconnect()
@@ -393,11 +417,16 @@ void InbandTextTrackPrivateAVF::disconnect()
 
 void InbandTextTrackPrivateAVF::resetCueValues()
 {
-    if (m_havePartialCue && !m_currentCueEndTime)
+    if (m_currentCueEndTime && m_cues.size())
         LOG(Media, "InbandTextTrackPrivateAVF::resetCueValues flushing data for cues: start=%.2f\n", m_currentCueStartTime);
 
+    if (client()) {
+        for (size_t i = 0; i < m_cues.size(); i++)
+            client()->removeGenericCue(this, m_cues[i].get());
+    }
+
     m_cues.resize(0);
-    m_havePartialCue = false;
+    m_pendingCueStatus = None;
     m_currentCueStartTime = 0;
     m_currentCueEndTime = 0;
 }
@@ -418,4 +447,4 @@ void InbandTextTrackPrivateAVF::setMode(InbandTextTrackPrivate::Mode newMode)
 
 } // namespace WebCore
 
-#endif // ENABLE(VIDEO) && ((USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)) || PLATFORM(IOS))
+#endif // ENABLE(VIDEO) && ((USE(AVFOUNDATION) && !PLATFORM(WIN)) || PLATFORM(IOS))

@@ -96,11 +96,11 @@ class WebPageCompositorPrivate;
 // the viewport position is called the transformedScrollPosition,
 // and the viewport size is called the transformedActualVisibleSize.
 class WebPagePrivate : public PageClientBlackBerry
-                     , public WebSettingsDelegate
+    , public WebSettingsDelegate
 #if USE(ACCELERATED_COMPOSITING)
-                     , public WebCore::GraphicsLayerClient
+    , public WebCore::GraphicsLayerClient
 #endif
-                     , public Platform::GuardedPointerBase {
+    , public Platform::GuardedPointerBase {
 public:
     enum ViewMode { Desktop, FixedDesktop };
     enum LoadState { None /* on instantiation of page */, Provisional, Committed, Finished, Failed };
@@ -115,7 +115,7 @@ public:
     bool handleMouseEvent(WebCore::PlatformMouseEvent&);
     bool handleWheelEvent(WebCore::PlatformWheelEvent&);
 
-    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, const BlackBerry::Platform::String& method, Platform::NetworkRequest::CachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool isInitial, bool mustHandleInternally = false, bool needReferer = false, bool forceDownload = false, const BlackBerry::Platform::String& overrideContentType = BlackBerry::Platform::String::emptyString(), const BlackBerry::Platform::String& suggestedSaveName = BlackBerry::Platform::String::emptyString());
+    void load(const Platform::NetworkRequest& platformRequest, bool needReferer = false);
     void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& mimeType, const BlackBerry::Platform::String& failingURL);
     bool executeJavaScript(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
     bool executeJavaScriptInIsolatedWorld(const WebCore::ScriptSourceCode&, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
@@ -479,6 +479,7 @@ public:
     bool m_overflowExceedsContentsSize;
     bool m_resetVirtualViewportOnCommitted;
     bool m_shouldUseFixedDesktopMode;
+    bool m_inspectorEnabled;
     int m_preventIdleDimmingCount;
 
 #if ENABLE(TOUCH_EVENTS)
@@ -634,6 +635,9 @@ public:
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     NotificationManager m_notificationManager;
 #endif
+
+    bool m_didStartAnimations;
+    double m_animationStartTime;
 
 protected:
     virtual ~WebPagePrivate();

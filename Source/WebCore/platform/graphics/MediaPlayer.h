@@ -32,11 +32,13 @@
 #include "MediaPlayerProxy.h"
 #endif
 
+#include "AudioTrackPrivate.h"
 #include "InbandTextTrackPrivate.h"
 #include "IntRect.h"
 #include "KURL.h"
 #include "LayoutRect.h"
 #include "Timer.h"
+#include "VideoTrackPrivate.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
@@ -218,8 +220,12 @@ public:
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() { return 0; }
 
 #if ENABLE(VIDEO_TRACK)
-    virtual void mediaPlayerDidAddTrack(PassRefPtr<InbandTextTrackPrivate>) { }
-    virtual void mediaPlayerDidRemoveTrack(PassRefPtr<InbandTextTrackPrivate>) { }
+    virtual void mediaPlayerDidAddAudioTrack(PassRefPtr<AudioTrackPrivate>) { }
+    virtual void mediaPlayerDidAddTextTrack(PassRefPtr<InbandTextTrackPrivate>) { }
+    virtual void mediaPlayerDidAddVideoTrack(PassRefPtr<VideoTrackPrivate>) { }
+    virtual void mediaPlayerDidRemoveAudioTrack(PassRefPtr<AudioTrackPrivate>) { }
+    virtual void mediaPlayerDidRemoveTextTrack(PassRefPtr<InbandTextTrackPrivate>) { }
+    virtual void mediaPlayerDidRemoveVideoTrack(PassRefPtr<VideoTrackPrivate>) { }
 
     virtual void textTrackRepresentationBoundsChanged(const IntRect&) { }
     virtual void paintTextTrackRepresentation(GraphicsContext*, const IntRect&) { }
@@ -298,29 +304,30 @@ public:
     bool paused() const;
     bool seeking() const;
 
-    static float invalidTime() { return -1.0f;}
-    float duration() const;
-    float currentTime() const;
-    void seek(float time);
+    static double invalidTime() { return -1.0;}
+    double duration() const;
+    double currentTime() const;
+    void seek(double time);
 
-    float startTime() const;
+    double startTime() const;
 
     double initialTime() const;
 
-    float rate() const;
-    void setRate(float);
+    double rate() const;
+    void setRate(double);
 
     bool preservesPitch() const;    
     void setPreservesPitch(bool);
 
     PassRefPtr<TimeRanges> buffered();
     PassRefPtr<TimeRanges> seekable();
-    float maxTimeSeekable();
+    double minTimeSeekable();
+    double maxTimeSeekable();
 
     bool didLoadingProgress();
 
-    float volume() const;
-    void setVolume(float);
+    double volume() const;
+    void setVolume(double);
 
     bool muted() const;
     void setMuted(bool);
@@ -364,7 +371,7 @@ public:
 
     void networkStateChanged();
     void readyStateChanged();
-    void volumeChanged(float);
+    void volumeChanged(double);
     void muteChanged(bool);
     void timeChanged();
     void sizeChanged();
@@ -377,6 +384,7 @@ public:
     void repaint();
 
     MediaPlayerClient* mediaPlayerClient() const { return m_mediaPlayerClient; }
+    void clearMediaPlayerClient() { m_mediaPlayerClient = 0; }
 
     bool hasAvailableVideoFrame() const;
     void prepareForRendering();
@@ -414,7 +422,7 @@ public:
 
     bool didPassCORSAccessCheck() const;
 
-    float mediaTimeForTimeValue(float) const;
+    double mediaTimeForTimeValue(double) const;
 
     double maximumDurationToCacheMediaTime() const;
 
@@ -448,8 +456,12 @@ public:
     CachedResourceLoader* cachedResourceLoader();
 
 #if ENABLE(VIDEO_TRACK)
+    void addAudioTrack(PassRefPtr<AudioTrackPrivate>);
     void addTextTrack(PassRefPtr<InbandTextTrackPrivate>);
+    void addVideoTrack(PassRefPtr<VideoTrackPrivate>);
+    void removeAudioTrack(PassRefPtr<AudioTrackPrivate>);
     void removeTextTrack(PassRefPtr<InbandTextTrackPrivate>);
+    void removeVideoTrack(PassRefPtr<VideoTrackPrivate>);
 
     bool requiresTextTrackRepresentation() const;
     void setTextTrackRepresentation(TextTrackRepresentation*);
@@ -487,8 +499,8 @@ private:
     IntSize m_size;
     Preload m_preload;
     bool m_visible;
-    float m_rate;
-    float m_volume;
+    double m_rate;
+    double m_volume;
     bool m_muted;
     bool m_preservesPitch;
     bool m_privateBrowsing;

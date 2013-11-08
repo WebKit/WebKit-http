@@ -293,7 +293,7 @@ namespace WebCore {
         virtual bool shouldCacheResponse(DocumentLoader*, unsigned long identifier, const ResourceResponse&, const unsigned char* data, unsigned long long length) = 0;
 #endif
 
-        virtual bool shouldUsePluginDocument(const String& /*mimeType*/) const { return false; }
+        virtual bool shouldAlwaysUsePluginDocument(const String& /*mimeType*/) const { return false; }
         virtual bool shouldLoadMediaElementURL(const KURL&) const { return true; }
 
         virtual void didChangeScrollOffset() { }
@@ -335,10 +335,6 @@ namespace WebCore {
 
 #if ENABLE(MEDIA_STREAM)
         virtual void dispatchWillStartUsingPeerConnectionHandler(RTCPeerConnectionHandler*) { }
-#endif
-
-#if ENABLE(REQUEST_AUTOCOMPLETE)
-        virtual void didRequestAutocomplete(PassRefPtr<FormState>) = 0;
 #endif
 
 #if ENABLE(WEBGL)

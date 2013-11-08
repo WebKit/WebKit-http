@@ -59,4 +59,4 @@ void ScrollingStateNode::setScrollLayer(GraphicsLayer* graphicsLayer)
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif

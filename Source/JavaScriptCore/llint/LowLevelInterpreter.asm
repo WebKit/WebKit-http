@@ -154,11 +154,11 @@ else
 end
 
 # This must match wtf/Vector.h
-const VectorSizeOffset = 0
+const VectorBufferOffset = 0
 if JSVALUE64
-    const VectorBufferOffset = 8
+    const VectorSizeOffset = 12
 else
-    const VectorBufferOffset = 4
+    const VectorSizeOffset = 8
 end
 
 
@@ -185,6 +185,8 @@ macro preserveReturnAddressAfterCall(destinationRegister)
     if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
         # In C_LOOP case, we're only preserving the bytecode vPC.
         move lr, destinationRegister
+    elsif SH4
+        stspr destinationRegister
     elsif X86 or X86_64
         pop destinationRegister
     else
@@ -196,6 +198,8 @@ macro restoreReturnAddressBeforeReturn(sourceRegister)
     if C_LOOP or ARM or ARMv7 or ARMv7_TRADITIONAL or MIPS
         # In C_LOOP case, we're only restoring the bytecode vPC.
         move sourceRegister, lr
+    elsif SH4
+        ldspr sourceRegister
     elsif X86 or X86_64
         push sourceRegister
     else
@@ -358,8 +362,8 @@ macro functionInitialization(profileArgSkip)
         
     # Check stack height.
     loadi CodeBlock::m_numCalleeRegisters[t1], t0
-    loadp CodeBlock::m_globalData[t1], t2
-    loadp JSGlobalData::interpreter[t2], t2   # FIXME: Can get to the JSStack from the JITStackFrame
+    loadp CodeBlock::m_vm[t1], t2
+    loadp VM::interpreter[t2], t2   # FIXME: Can get to the JSStack from the JITStackFrame
     lshifti 3, t0
     addp t0, cfr, t0
     bpaeq Interpreter::m_stack + JSStack::m_end[t2], t0, .stackHeightOK
@@ -814,11 +818,6 @@ _llint_op_resolve_base:
     callSlowPath(_llint_slow_path_resolve_base)
     dispatch(7)
 
-_llint_op_ensure_property_exists:
-    traceExecution()
-    callSlowPath(_llint_slow_path_ensure_property_exists)
-    dispatch(3)
-
 macro interpretResolveWithBase(opcodeLength, slowPath)
     traceExecution()
     getResolveOperation(4, t0)
@@ -1053,9 +1052,17 @@ _llint_op_jngreatereq:
 
 _llint_op_loop_hint:
     traceExecution()
+    loadp JITStackFrame::vm[sp], t1
+    loadb VM::watchdog+Watchdog::m_timerDidFire[t1], t0
+    btbnz t0, .handleWatchdogTimer
+.afterWatchdogTimerCheck:
     checkSwitchToJITForLoop()
     dispatch(1)
-
+.handleWatchdogTimer:
+    callWatchdogTimerHandler(.throwHandler)
+    jmp .afterWatchdogTimerCheck
+.throwHandler:
+    jmp _llint_throw_from_slow_path_trampoline
 
 _llint_op_switch_string:
     traceExecution()

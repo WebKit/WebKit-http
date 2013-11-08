@@ -122,7 +122,7 @@ void WebContextMenuProxyMac::contextMenuItemSelected(const WebContextMenuItemDat
     m_page->contextMenuItemSelected(item);
 }
 
-static void populateNSMenu(NSMenu* menu, const Vector<RetainPtr<NSMenuItem> >& menuItemVector)
+static void populateNSMenu(NSMenu* menu, const Vector<RetainPtr<NSMenuItem>>& menuItemVector)
 {
     for (unsigned i = 0; i < menuItemVector.size(); ++i) {
         NSInteger oldState = [menuItemVector[i].get() state];
@@ -131,9 +131,9 @@ static void populateNSMenu(NSMenu* menu, const Vector<RetainPtr<NSMenuItem> >& m
     }
 }
 
-static Vector<RetainPtr<NSMenuItem> > nsMenuItemVector(const Vector<WebContextMenuItemData>& items)
+static Vector<RetainPtr<NSMenuItem>> nsMenuItemVector(const Vector<WebContextMenuItemData>& items)
 {
-    Vector<RetainPtr<NSMenuItem> > result;
+    Vector<RetainPtr<NSMenuItem>> result;
 
     unsigned size = items.size();
     result.reserveCapacity(size);
@@ -152,7 +152,7 @@ static Vector<RetainPtr<NSMenuItem> > nsMenuItemVector(const Vector<WebContextMe
                 [wrapper release];
             }
 
-            result.append(RetainPtr<NSMenuItem>(AdoptNS, menuItem));
+            result.append(adoptNS(menuItem));
             break;
         }
         case SeparatorType:
@@ -168,7 +168,7 @@ static Vector<RetainPtr<NSMenuItem> > nsMenuItemVector(const Vector<WebContextMe
             [menuItem setSubmenu:menu];
             [menu release];
 
-            result.append(RetainPtr<NSMenuItem>(AdoptNS, menuItem));
+            result.append(adoptNS(menuItem));
             
             break;
         }
@@ -189,7 +189,7 @@ void WebContextMenuProxyMac::populate(const Vector<WebContextMenuItemData>& item
     if (m_popup)
         [m_popup.get() removeAllItems];
     else {
-        m_popup.adoptNS([[NSPopUpButtonCell alloc] initTextCell:@"" pullsDown:NO]);
+        m_popup = adoptNS([[NSPopUpButtonCell alloc] initTextCell:@"" pullsDown:NO]);
         [m_popup.get() setUsesItemFromMenu:NO];
         [m_popup.get() setAutoenablesItems:NO];
     }

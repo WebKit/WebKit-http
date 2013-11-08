@@ -24,10 +24,11 @@
 #include "config.h"
 #include "RenderEmbeddedObject.h"
 
+#include "CSSValueKeywords.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Cursor.h"
-#include "CSSValueKeywords.h"
+#include "EventHandler.h"
 #include "Font.h"
 #include "FontSelector.h"
 #include "Frame.h"
@@ -46,6 +47,7 @@
 #include "Page.h"
 #include "PaintInfo.h"
 #include "Path.h"
+#include "PlatformMouseEvent.h"
 #include "PluginViewBase.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -53,6 +55,7 @@
 #include "Settings.h"
 #include "Text.h"
 #include "TextRun.h"
+#include <wtf/StackStats.h>
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 #include "HTMLMediaElement.h"
@@ -180,7 +183,7 @@ void RenderEmbeddedObject::paintContents(PaintInfo& paintInfo, const LayoutPoint
 
     if (plugInElement->displayState() > HTMLPlugInElement::DisplayingSnapshot) {
         RenderPart::paintContents(paintInfo, paintOffset);
-        if (!plugInElement->restartedPlugin())
+        if (!plugInElement->isRestartedPlugin())
             return;
     }
 
@@ -293,10 +296,26 @@ void RenderEmbeddedObject::layout()
 
     updateLayerTransform();
 
-    if (!widget() && frameView() && canHaveWidget())
+    bool wasMissingWidget = false;
+    if (!widget() && frameView() && canHaveWidget()) {
+        wasMissingWidget = true;
         frameView()->addWidgetToUpdate(this);
+    }
 
     setNeedsLayout(false);
+
+    LayoutSize newSize = contentBoxRect().size();
+
+    if (!wasMissingWidget && newSize.width() >= oldSize.width() && newSize.height() >= oldSize.height()) {
+        Element* element = toElement(node());
+        if (element && element->isPluginElement() && toHTMLPlugInElement(element)->isPlugInImageElement()) {
+            HTMLPlugInImageElement* plugInImageElement = toHTMLPlugInImageElement(element);
+            if (plugInImageElement->displayState() > HTMLPlugInElement::DisplayingSnapshot && plugInImageElement->snapshotDecision() == HTMLPlugInImageElement::MaySnapshotWhenResized && document()->view()) {
+                plugInImageElement->setNeedsCheckForSizeChange();
+                document()->view()->addWidgetToUpdate(this);
+            }
+        }
+    }
 
     if (!canHaveChildren())
         return;
@@ -312,7 +331,6 @@ void RenderEmbeddedObject::layout()
     if (!childBox)
         return;
     
-    LayoutSize newSize = contentBoxRect().size();
     if (newSize == oldSize && !childBox->needsLayout())
         return;
     

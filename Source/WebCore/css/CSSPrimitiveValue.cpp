@@ -39,7 +39,6 @@
 #include "Rect.h"
 #include "RenderStyle.h"
 #include "StyleSheetContents.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/DecimalNumber.h>
 #include <wtf/StdLibExtras.h>
@@ -481,17 +480,17 @@ double CSSPrimitiveValue::computeDegrees()
     }
 }
 
-template<> int CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> int CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     return roundForImpreciseConversion<int>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize));
 }
 
-template<> unsigned CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> unsigned CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     return roundForImpreciseConversion<unsigned>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize));
 }
 
-template<> Length CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> Length CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
 #if ENABLE(SUBPIXEL_LAYOUT)
     return Length(clampTo<float>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize), minValueForCssLength, maxValueForCssLength), Fixed);
@@ -500,27 +499,27 @@ template<> Length CSSPrimitiveValue::computeLength(RenderStyle* style, RenderSty
 #endif
 }
 
-template<> short CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> short CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     return roundForImpreciseConversion<short>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize));
 }
 
-template<> unsigned short CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> unsigned short CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     return roundForImpreciseConversion<unsigned short>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize));
 }
 
-template<> float CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> float CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     return static_cast<float>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize));
 }
 
-template<> double CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+template<> double CSSPrimitiveValue::computeLength(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     return computeLengthDouble(style, rootStyle, multiplier, computingFontSize);
 }
 
-double CSSPrimitiveValue::computeLengthDouble(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
+double CSSPrimitiveValue::computeLengthDouble(const RenderStyle* style, const RenderStyle* rootStyle, float multiplier, bool computingFontSize) const
 {
     if (m_primitiveUnitType == CSS_CALC)
         // The multiplier and factor is applied to each value in the calc expression individually
@@ -1169,7 +1168,7 @@ void CSSPrimitiveValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const S
         addSubresourceURL(urls, styleSheet->completeURL(m_value.string));
 }
 
-Length CSSPrimitiveValue::viewportPercentageLength()
+Length CSSPrimitiveValue::viewportPercentageLength() const
 {
     ASSERT(isViewportPercentageLength());
     Length viewportLength;
@@ -1357,50 +1356,6 @@ bool CSSPrimitiveValue::equals(const CSSPrimitiveValue& other) const
         return m_value.shape && other.m_value.shape && m_value.shape->equals(*other.m_value.shape);
     }
     return false;
-}
-
-void CSSPrimitiveValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    switch (m_primitiveUnitType) {
-    case CSS_ATTR:
-    case CSS_COUNTER_NAME:
-    case CSS_PARSER_IDENTIFIER:
-    case CSS_PARSER_HEXCOLOR:
-    case CSS_STRING:
-    case CSS_URI:
-#if ENABLE(CSS_VARIABLES)
-    case CSS_VARIABLE_NAME:
-#endif
-        // FIXME: detect other cases when m_value is StringImpl*
-        info.addMember(m_value.string, "value.string");
-        break;
-    case CSS_COUNTER:
-        info.addMember(m_value.counter, "value.counter");
-        break;
-    case CSS_RECT:
-        info.addMember(m_value.rect, "value.rect");
-        break;
-    case CSS_QUAD:
-        info.addMember(m_value.quad, "value.quad");
-        break;
-    case CSS_PAIR:
-        info.addMember(m_value.pair, "value.pair");
-        break;
-#if ENABLE(DASHBOARD_SUPPORT)
-    case CSS_DASHBOARD_REGION:
-        info.addMember(m_value.region, "value.region");
-        break;
-#endif
-    case CSS_SHAPE:
-        info.addMember(m_value.shape, "value.shape");
-        break;
-    case CSS_CALC:
-        info.addMember(m_value.calc, "value.calc");
-        break;
-    default:
-        break;
-    }
 }
 
 } // namespace WebCore

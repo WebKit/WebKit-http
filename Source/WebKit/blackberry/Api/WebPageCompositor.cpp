@@ -21,12 +21,11 @@
 #include "WebPageCompositor.h"
 
 #if USE(ACCELERATED_COMPOSITING)
-#include "WebPageCompositorClient.h"
-#include "WebPageCompositor_p.h"
-
 #include "BackingStore_p.h"
 #include "LayerWebKitThread.h"
 #include "WebOverlay_p.h"
+#include "WebPageCompositorClient.h"
+#include "WebPageCompositor_p.h"
 #include "WebPage_p.h"
 
 #include <BlackBerryPlatformDebugMacros.h>
@@ -280,6 +279,23 @@ void WebPageCompositorPrivate::removeOverlay(LayerCompositingThread* layer)
         m_compositingThreadOverlayLayer.clear();
 }
 
+void WebPageCompositorPrivate::findFixedElementRect(LayerCompositingThread* layer, WebCore::IntRect& fixedElementRect)
+{
+    if ((layer->hasFixedContainer() || layer->isFixedPosition() || layer->hasFixedAncestorInDOMTree()) && layer->layerRenderer()) {
+        IntRect fixedRect = layer->layerRenderer()->toPixelViewportCoordinates(layer->getDrawRect());
+        // FIXME: It's possible that the rects don't intersect now, but will be connected by a fixed rect found later.
+        // We need to handle it as well.
+        if (fixedElementRect.isEmpty() || fixedElementRect.intersects(fixedRect)) // Unite rects if they intersect each other.
+            fixedElementRect.unite(fixedRect);
+        else if (fixedRect.y() < fixedElementRect.y()) // Replace the fixedElementRect with fixedRect if fixedRect is above it (closer to top).
+            fixedElementRect = fixedRect;
+    }
+
+    const Vector<RefPtr<LayerCompositingThread> >& sublayers = layer->getSublayers();
+    for (size_t i = 0; i < sublayers.size(); i++)
+        findFixedElementRect(sublayers[i].get(), fixedElementRect);
+}
+
 WebPageCompositor::WebPageCompositor(WebPage* page, WebPageCompositorClient* client)
 {
     using namespace BlackBerry::Platform;
@@ -334,7 +350,7 @@ void WebPageCompositor::render(Platform::Graphics::GLES2Context* context, const 
     d->render(targetRect, clipRect, TransformationMatrix(reinterpret_cast<const TransformationMatrix&>(transform)), documentContents, viewport);
 }
 
-void WebPageCompositor::cleanup(Platform::Graphics::GLES2Context* context)
+void WebPageCompositor::cleanup(Platform::Graphics::GLES2Context*)
 {
     d->setContext(0);
 }
@@ -378,11 +394,11 @@ void WebPageCompositor::prepareFrame(Platform::Graphics::GLES2Context*, double)
 }
 
 void WebPageCompositor::render(Platform::Graphics::GLES2Context*,
-                               const Platform::IntRect&,
-                               const Platform::IntRect&,
-                               const Platform::TransformationMatrix&,
-                               const Platform::FloatRect&,
-                               const Platform::FloatRect&)
+    const Platform::IntRect&,
+    const Platform::IntRect&,
+    const Platform::TransformationMatrix&,
+    const Platform::FloatRect&,
+    const Platform::FloatRect&)
 {
 }
 

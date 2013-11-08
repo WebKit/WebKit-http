@@ -26,11 +26,12 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=SVG
 ] interface SVGStyledElement : SVGElement {
     readonly attribute SVGAnimatedString className;
     readonly attribute CSSStyleDeclaration style;
 
-    CSSValue getPresentationAttribute(in [Optional=DefaultIsUndefined] DOMString name);
+    CSSValue getPresentationAttribute([Default=Undefined] optional DOMString name);
 };
 

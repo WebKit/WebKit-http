@@ -20,6 +20,7 @@
                     { "name": "apple-mini-208", "platform": "mac-mountainlion"},
                     { "name": "apple-mini-209", "platform": "mac-mountainlion"},
                     { "name": "apple-mini-210", "platform": "mac-mountainlion"},
+                    { "name": "apple-mini-218", "platform": "mac-mountainlion"},
 
                     { "name": "apple-windows-1", "platform": "win"},
                     { "name": "apple-windows-2", "platform": "win"},
@@ -104,6 +105,10 @@
                       "triggers": ["mountainlion-release-tests-wk1", "mountainlion-release-tests-wk2", "mountainlion-release-perf"],
                       "slavenames": ["apple-mini-204"]
                     },
+                    { "name": "Apple MountainLion Release (32-bit Build)", "type": "Build", "builddir": "mountainlion-32bit-release",
+                      "platform": "mac-mountainlion", "configuration": "release", "architectures": ["i386"],
+                      "slavenames": ["apple-mini-218"]
+                    },
                     { "name": "Apple MountainLion Debug WK1 (Tests)", "type": "Test", "builddir": "mountainlion-debug-tests-wk1",
                       "platform": "mac-mountainlion", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["apple-mini-205"]
@@ -148,7 +153,7 @@
                       "slavenames": ["apple-windows-3", "apple-windows-4"]
                     },
                     {
-                      "name": "GTK Linux 32-bit Release", "type": "BuildAndTest", "builddir": "gtk-linux-32-release",
+                      "name": "GTK Linux 32-bit Release", "type": "BuildAndAPITest", "builddir": "gtk-linux-32-release",
                       "platform": "gtk", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["gtk-linux-slave-1"]
                     },
@@ -276,7 +281,7 @@
                       "builderNames": ["Apple Lion Release (Build)", "Apple Lion Debug (Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "mac-mountainlion", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple MountainLion Release (Build)", "Apple MountainLion Debug (Build)", "Apple MountainLion (Leaks)"]
+                      "builderNames": ["Apple MountainLion Release (Build)", "Apple MountainLion Debug (Build)", "Apple MountainLion Release (32-bit Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "win", "branch": "trunk", "treeStableTimer": 45.0,
                       "builderNames": ["Apple Win Release (Build)", "Apple Win Debug (Build)"]

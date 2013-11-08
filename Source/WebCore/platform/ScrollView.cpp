@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ScrollView.h"
 
-#include "AXObjectCache.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "HostWindow.h"
@@ -91,16 +90,13 @@ void ScrollView::setHasHorizontalScrollbar(bool hasBar)
     if (hasBar && !m_horizontalScrollbar) {
         m_horizontalScrollbar = createScrollbar(HorizontalScrollbar);
         addChild(m_horizontalScrollbar.get());
-        didAddHorizontalScrollbar(m_horizontalScrollbar.get());
+        didAddScrollbar(m_horizontalScrollbar.get(), HorizontalScrollbar);
         m_horizontalScrollbar->styleChanged();
     } else if (!hasBar && m_horizontalScrollbar) {
-        willRemoveHorizontalScrollbar(m_horizontalScrollbar.get());
+        willRemoveScrollbar(m_horizontalScrollbar.get(), HorizontalScrollbar);
         removeChild(m_horizontalScrollbar.get());
         m_horizontalScrollbar = 0;
     }
-    
-    if (AXObjectCache* cache = axObjectCache())
-        cache->handleScrollbarUpdate(this);
 }
 
 void ScrollView::setHasVerticalScrollbar(bool hasBar)
@@ -109,16 +105,13 @@ void ScrollView::setHasVerticalScrollbar(bool hasBar)
     if (hasBar && !m_verticalScrollbar) {
         m_verticalScrollbar = createScrollbar(VerticalScrollbar);
         addChild(m_verticalScrollbar.get());
-        didAddVerticalScrollbar(m_verticalScrollbar.get());
+        didAddScrollbar(m_verticalScrollbar.get(), VerticalScrollbar);
         m_verticalScrollbar->styleChanged();
     } else if (!hasBar && m_verticalScrollbar) {
-        willRemoveVerticalScrollbar(m_verticalScrollbar.get());
+        willRemoveScrollbar(m_verticalScrollbar.get(), VerticalScrollbar);
         removeChild(m_verticalScrollbar.get());
         m_verticalScrollbar = 0;
     }
-    
-    if (AXObjectCache* cache = axObjectCache())
-        cache->handleScrollbarUpdate(this);
 }
 
 #if !PLATFORM(GTK)
@@ -333,6 +326,18 @@ IntPoint ScrollView::adjustScrollPositionWithinRange(const IntPoint& scrollPoint
     IntPoint newScrollPosition = scrollPoint.shrunkTo(maximumScrollPosition());
     newScrollPosition = newScrollPosition.expandedTo(minimumScrollPosition());
     return newScrollPosition;
+}
+
+IntSize ScrollView::scrollOffsetRelativeToDocument() const
+{
+    IntSize scrollOffset = this->scrollOffset();
+    return IntSize(scrollOffset.width(), scrollOffset.height() - headerHeight());
+}
+
+IntPoint ScrollView::scrollPositionRelativeToDocument() const
+{
+    IntPoint scrollPosition = this->scrollPosition();
+    return IntPoint(scrollPosition.x(), scrollPosition.y() - headerHeight());
 }
 
 int ScrollView::scrollSize(ScrollbarOrientation orientation) const
@@ -707,27 +712,33 @@ void ScrollView::scrollContentsSlowPath(const IntRect& updateRect)
 IntPoint ScrollView::rootViewToContents(const IntPoint& rootViewPoint) const
 {
     IntPoint viewPoint = convertFromRootView(rootViewPoint);
-    return viewPoint + scrollOffset();
+    return viewPoint + scrollOffsetRelativeToDocument();
 }
 
 IntPoint ScrollView::contentsToRootView(const IntPoint& contentsPoint) const
 {
-    IntPoint viewPoint = contentsPoint - scrollOffset();
+    IntPoint viewPoint = contentsPoint + IntSize(0, headerHeight()) - scrollOffset();
     return convertToRootView(viewPoint);  
 }
 
 IntRect ScrollView::rootViewToContents(const IntRect& rootViewRect) const
 {
     IntRect viewRect = convertFromRootView(rootViewRect);
-    viewRect.move(scrollOffset());
+    viewRect.move(scrollOffsetRelativeToDocument());
     return viewRect;
 }
 
 IntRect ScrollView::contentsToRootView(const IntRect& contentsRect) const
 {
     IntRect viewRect = contentsRect;
-    viewRect.move(-scrollOffset());
+    viewRect.move(-scrollOffset() + IntSize(0, headerHeight()));
     return convertToRootView(viewRect);
+}
+
+IntPoint ScrollView::rootViewToTotalContents(const IntPoint& rootViewPoint) const
+{
+    IntPoint viewPoint = convertFromRootView(rootViewPoint);
+    return viewPoint + scrollOffset();
 }
 
 IntPoint ScrollView::windowToContents(const IntPoint& windowPoint) const
@@ -736,8 +747,7 @@ IntPoint ScrollView::windowToContents(const IntPoint& windowPoint) const
         return convertFromContainingWindow(windowPoint);
 
     IntPoint viewPoint = convertFromContainingWindow(windowPoint);
-    IntSize offsetInDocument = scrollOffset() - IntSize(0, headerHeight());
-    return viewPoint + offsetInDocument;
+    return viewPoint + scrollOffsetRelativeToDocument();
 }
 
 IntPoint ScrollView::contentsToWindow(const IntPoint& contentsPoint) const
@@ -745,8 +755,7 @@ IntPoint ScrollView::contentsToWindow(const IntPoint& contentsPoint) const
     if (delegatesScrolling())
         return convertToContainingWindow(contentsPoint);
 
-    IntSize offsetInDocument = scrollOffset() + IntSize(0, headerHeight());
-    IntPoint viewPoint = contentsPoint - offsetInDocument;
+    IntPoint viewPoint = contentsPoint + IntSize(0, headerHeight()) - scrollOffset();
     return convertToContainingWindow(viewPoint);  
 }
 
@@ -756,8 +765,7 @@ IntRect ScrollView::windowToContents(const IntRect& windowRect) const
         return convertFromContainingWindow(windowRect);
 
     IntRect viewRect = convertFromContainingWindow(windowRect);
-    IntSize offsetInDocument = scrollOffset() - IntSize(0, headerHeight());
-    viewRect.move(offsetInDocument);
+    viewRect.move(scrollOffsetRelativeToDocument());
     return viewRect;
 }
 
@@ -1329,7 +1337,7 @@ void ScrollView::setScrollOrigin(const IntPoint& origin, bool updatePositionAtAl
         updateScrollbars(scrollOffset());
 }
 
-#if !PLATFORM(WX) && !PLATFORM(EFL)
+#if !PLATFORM(EFL)
 
 void ScrollView::platformInit()
 {
@@ -1341,7 +1349,7 @@ void ScrollView::platformDestroy()
 
 #endif
 
-#if !PLATFORM(WX) && !PLATFORM(QT) && !PLATFORM(MAC)
+#if !PLATFORM(QT) && !PLATFORM(MAC)
 
 void ScrollView::platformAddChild(Widget*)
 {
@@ -1369,7 +1377,7 @@ void ScrollView::platformSetScrollbarOverlayStyle(ScrollbarOverlayStyle)
 
 #endif
 
-#if !PLATFORM(MAC) && !PLATFORM(WX)
+#if !PLATFORM(MAC)
 
 void ScrollView::platformSetScrollbarModes()
 {

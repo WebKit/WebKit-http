@@ -34,6 +34,8 @@
 	<dict>
 		<key>ServiceType</key>
 		<string>Application</string>
+		<key>JoinExistingSession</key>
+		<true/>
 		<key>RunLoopType</key>
 		<string>NSRunLoop</string>
 		<key>_MultipleInstances</key>
@@ -41,7 +43,7 @@
 		<key>EnvironmentVariables</key>
 		<dict>
 			<key>DYLD_INSERT_LIBRARIES</key>
-			<string>$(WEBKIT2_FRAMEWORKS_DIR)/WebKit2.framework/WebProcess.app/Contents/MacOS/SecItemShim.dylib</string>
+			<string>$(WEBKIT2_FRAMEWORKS_DIR)/WebKit2.framework/NetworkProcess.app/Contents/MacOS/SecItemShim.dylib</string>
 		</dict>
 	</dict>
 </dict>

@@ -31,7 +31,6 @@
 #include "Document.h"
 #include "SelectorChecker.h"
 #include "SelectorCheckerFastPath.h"
-#include "SiblingTraversalStrategies.h"
 #include "StaticNodeList.h"
 #include "StyledElement.h"
 
@@ -64,7 +63,7 @@ inline bool SelectorDataList::selectorMatches(const SelectorData& selectorData, 
     selectorCheckingContext.behaviorAtBoundary = SelectorChecker::StaysWithinTreeScope;
     selectorCheckingContext.scope = !rootNode->isDocumentNode() && rootNode->isContainerNode() ? toContainerNode(rootNode) : 0;
     PseudoId ignoreDynamicPseudo = NOPSEUDO;
-    return selectorChecker.match(selectorCheckingContext, ignoreDynamicPseudo, DOMSiblingTraversalStrategy()) == SelectorChecker::SelectorMatches;
+    return selectorChecker.match(selectorCheckingContext, ignoreDynamicPseudo) == SelectorChecker::SelectorMatches;
 }
 
 bool SelectorDataList::matches(Element* targetElement) const
@@ -167,21 +166,6 @@ SelectorQuery::SelectorQuery(const CSSSelectorList& selectorList)
     : m_selectorList(selectorList)
 {
     m_selectors.initialize(m_selectorList);
-}
-
-bool SelectorQuery::matches(Element* element) const
-{
-    return m_selectors.matches(element);
-}
-
-PassRefPtr<NodeList> SelectorQuery::queryAll(Node* rootNode) const
-{
-    return m_selectors.queryAll(rootNode);
-}
-
-PassRefPtr<Element> SelectorQuery::queryFirst(Node* rootNode) const
-{
-    return m_selectors.queryFirst(rootNode);
 }
 
 SelectorQuery* SelectorQueryCache::add(const AtomicString& selectors, Document* document, ExceptionCode& ec)

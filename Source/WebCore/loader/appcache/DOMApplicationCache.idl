@@ -24,10 +24,11 @@
  */
  
 [
+    NoInterfaceObject,
     EventTarget,
     OmitConstructor,
     DoNotCheckConstants,
-    JSGenerateIsReachable=ImplFrame
+    GenerateIsReachable=ImplFrame
 ] interface DOMApplicationCache {
     // update status
     const unsigned short UNCACHED = 0;
@@ -55,13 +56,13 @@
     attribute EventListener onobsolete;
 
     // EventTarget interface
-    void addEventListener(in DOMString type, 
-                          in EventListener listener, 
-                          in [Optional] boolean useCapture);
-    void removeEventListener(in DOMString type, 
-                             in EventListener listener, 
-                             in [Optional] boolean useCapture);
-    boolean dispatchEvent(in Event evt)
+    void addEventListener(DOMString type, 
+                          EventListener listener, 
+                          optional boolean useCapture);
+    void removeEventListener(DOMString type, 
+                             EventListener listener, 
+                             optional boolean useCapture);
+    boolean dispatchEvent(Event evt)
         raises(EventException);
 };
 

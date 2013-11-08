@@ -62,7 +62,7 @@ public:
     virtual void commitScrollOffset(uint32_t layerID, const IntSize& offset) = 0;
 };
 
-class CoordinatedGraphicsScene : public ThreadSafeRefCounted<CoordinatedGraphicsScene>, public GraphicsLayerClient, public TextureMapperLayer::ScrollingClient {
+class CoordinatedGraphicsScene : public ThreadSafeRefCounted<CoordinatedGraphicsScene>, public TextureMapperLayer::ScrollingClient {
 public:
     explicit CoordinatedGraphicsScene(CoordinatedGraphicsSceneClient*);
     virtual ~CoordinatedGraphicsScene();
@@ -98,7 +98,6 @@ public:
     void updateImageBacking(CoordinatedImageBackingID, PassRefPtr<CoordinatedSurface>);
     void clearImageBackingContents(CoordinatedImageBackingID);
     void removeImageBacking(CoordinatedImageBackingID);
-    void setAnimationsLocked(bool);
     void setBackgroundColor(const Color&);
     void setDrawsBackground(bool enable) { m_setDrawsBackground = enable; }
 
@@ -109,37 +108,32 @@ public:
 private:
     void setRootLayerID(CoordinatedLayerID);
     void setLayerState(CoordinatedLayerID, const CoordinatedGraphicsLayerState&);
-    void setLayerChildrenIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
-    void updateTilesIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
-    void createTilesIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
-    void removeTilesIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void setLayerChildrenIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void updateTilesIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void createTilesIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void removeTilesIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 #if ENABLE(CSS_FILTERS)
-    void setLayerFiltersIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void setLayerFiltersIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 #endif
-    void setLayerAnimationsIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void setLayerAnimationsIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 #if USE(GRAPHICS_SURFACE)
-    void createCanvasIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
-    void syncCanvasIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
-    void destroyCanvasIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void createCanvasIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void syncCanvasIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
+    void destroyCanvasIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 #endif
-    void setLayerRepaintCountIfNeeded(GraphicsLayer*, const CoordinatedGraphicsLayerState&);
+    void setLayerRepaintCountIfNeeded(TextureMapperLayer*, const CoordinatedGraphicsLayerState&);
 
-    GraphicsLayer* layerByID(CoordinatedLayerID id)
+    TextureMapperLayer* layerByID(CoordinatedLayerID id)
     {
         ASSERT(m_layers.contains(id));
         ASSERT(id != InvalidCoordinatedLayerID);
         return m_layers.get(id);
     }
-    GraphicsLayer* getLayerByIDIfExists(CoordinatedLayerID);
-    GraphicsLayer* rootLayer() { return m_rootLayer.get(); }
+    TextureMapperLayer* getLayerByIDIfExists(CoordinatedLayerID);
+    TextureMapperLayer* rootLayer() { return m_rootLayer.get(); }
 
     void syncRemoteContent();
     void adjustPositionForFixedLayers();
-
-    // Reimplementations from GraphicsLayerClient.
-    virtual void notifyAnimationStarted(const GraphicsLayer*, double) { }
-    virtual void notifyFlushRequired(const GraphicsLayer*) { }
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect&) OVERRIDE { }
 
     void dispatchOnMainThread(const Function<void()>&);
     void updateViewport();
@@ -152,15 +146,15 @@ private:
     void createLayer(CoordinatedLayerID);
     void deleteLayer(CoordinatedLayerID);
 
-    void assignImageBackingToLayer(GraphicsLayer*, CoordinatedImageBackingID);
+    void assignImageBackingToLayer(TextureMapperLayer*, CoordinatedImageBackingID);
     void removeReleasedImageBackingsIfNeeded();
     void ensureRootLayer();
     void commitPendingBackingStoreOperations();
 
-    void prepareContentBackingStore(GraphicsLayer*);
-    void createBackingStoreIfNeeded(GraphicsLayer*);
-    void removeBackingStoreIfNeeded(GraphicsLayer*);
-    void resetBackingStoreSizeToLayerSize(GraphicsLayer*);
+    void prepareContentBackingStore(TextureMapperLayer*);
+    void createBackingStoreIfNeeded(TextureMapperLayer*);
+    void removeBackingStoreIfNeeded(TextureMapperLayer*);
+    void resetBackingStoreSizeToLayerSize(TextureMapperLayer*);
 
     void dispatchCommitScrollOffset(uint32_t layerID, const IntSize& offset);
 
@@ -174,13 +168,13 @@ private:
     ImageBackingMap m_imageBackings;
     Vector<RefPtr<CoordinatedBackingStore> > m_releasedImageBackings;
 
-    typedef HashMap<GraphicsLayer*, RefPtr<CoordinatedBackingStore> > BackingStoreMap;
+    typedef HashMap<TextureMapperLayer*, RefPtr<CoordinatedBackingStore> > BackingStoreMap;
     BackingStoreMap m_backingStores;
 
     HashSet<RefPtr<CoordinatedBackingStore> > m_backingStoresWithPendingBuffers;
 
 #if USE(GRAPHICS_SURFACE)
-    typedef HashMap<GraphicsLayer*, RefPtr<TextureMapperSurfaceBackingStore> > SurfaceBackingStoreMap;
+    typedef HashMap<TextureMapperLayer*, RefPtr<TextureMapperSurfaceBackingStore> > SurfaceBackingStoreMap;
     SurfaceBackingStoreMap m_surfaceBackingStores;
 #endif
 
@@ -191,16 +185,15 @@ private:
     CoordinatedGraphicsSceneClient* m_client;
     bool m_isActive;
 
-    OwnPtr<GraphicsLayer> m_rootLayer;
+    OwnPtr<TextureMapperLayer> m_rootLayer;
 
-    typedef HashMap<CoordinatedLayerID, OwnPtr<GraphicsLayer> > LayerMap;
+    typedef HashMap<CoordinatedLayerID, OwnPtr<TextureMapperLayer> > LayerMap;
     LayerMap m_layers;
-    typedef HashMap<CoordinatedLayerID, GraphicsLayer*> LayerRawPtrMap;
+    typedef HashMap<CoordinatedLayerID, TextureMapperLayer*> LayerRawPtrMap;
     LayerRawPtrMap m_fixedLayers;
     CoordinatedLayerID m_rootLayerID;
     FloatPoint m_scrollPosition;
     FloatPoint m_renderedContentsScrollPosition;
-    bool m_animationsLocked;
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     bool m_animationFrameRequested;
 #endif

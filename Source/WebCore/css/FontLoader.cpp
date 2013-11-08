@@ -237,7 +237,7 @@ void FontLoader::loadFont(const Dictionary& params)
     RefPtr<LoadFontCallback> callback = LoadFontCallback::createFromParams(params, font.family());
     
     for (const FontFamily* f = &font.family(); f; f = f->next()) {
-        CSSSegmentedFontFace* face = m_document->styleResolver()->fontSelector()->getFontFace(font.fontDescription(), f->family());
+        CSSSegmentedFontFace* face = m_document->ensureStyleResolver()->fontSelector()->getFontFace(font.fontDescription(), f->family());
         if (!face) {
             if (callback)
                 callback->notifyError();
@@ -254,7 +254,7 @@ bool FontLoader::checkFont(const String& fontString, const String&)
     if (!resolveFontStyle(fontString, font))
         return false;
     for (const FontFamily* f = &font.family(); f; f = f->next()) {
-        CSSSegmentedFontFace* face = m_document->styleResolver()->fontSelector()->getFontFace(font.fontDescription(), f->family());
+        CSSSegmentedFontFace* face = m_document->ensureStyleResolver()->fontSelector()->getFontFace(font.fontDescription(), f->family());
         if (!face || !face->checkFont())
             return false;
     }
@@ -269,7 +269,7 @@ static void applyPropertyToCurrentStyle(StyleResolver* styleResolver, CSSPropert
 bool FontLoader::resolveFontStyle(const String& fontString, Font& font)
 {
     // Interpret fontString in the same way as the 'font' attribute of CanvasRenderingContext2D.
-    RefPtr<StylePropertySet> parsedStyle = StylePropertySet::create();
+    RefPtr<MutableStylePropertySet> parsedStyle = MutableStylePropertySet::create();
     CSSParser::parseValue(parsedStyle.get(), CSSPropertyFont, fontString, true, CSSStrictMode, 0);
     if (parsedStyle->isEmpty())
         return false;
@@ -293,7 +293,7 @@ bool FontLoader::resolveFontStyle(const String& fontString, Font& font)
     style->font().update(style->font().fontSelector());
 
     // Now map the font property longhands into the style.
-    StyleResolver* styleResolver = m_document->styleResolver();
+    StyleResolver* styleResolver = m_document->ensureStyleResolver();
     styleResolver->applyPropertyToStyle(CSSPropertyFontFamily, parsedStyle->getPropertyCSSValue(CSSPropertyFontFamily).get(), style.get());
     applyPropertyToCurrentStyle(styleResolver, CSSPropertyFontStyle, parsedStyle);
     applyPropertyToCurrentStyle(styleResolver, CSSPropertyFontVariant, parsedStyle);

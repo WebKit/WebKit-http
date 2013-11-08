@@ -35,6 +35,7 @@
 #include "WKGeometry.h"
 #include "WKImage.h"
 #include "WKPageLoadTypes.h"
+#include "WKPageLoadTypesPrivate.h"
 #include "WKPageVisibilityTypes.h"
 #include "WebError.h"
 #include "WebEvent.h"
@@ -799,6 +800,12 @@ inline WKLayoutMilestones toWKLayoutMilestones(WebCore::LayoutMilestones milesto
         wkMilestones |= kWKDidFirstVisuallyNonEmptyLayout;
     if (milestones & WebCore::DidHitRelevantRepaintedObjectsAreaThreshold)
         wkMilestones |= kWKDidHitRelevantRepaintedObjectsAreaThreshold;
+    if (milestones & WebCore::DidFirstFlushForHeaderLayer)
+        wkMilestones |= kWKDidFirstFlushForHeaderLayer;
+    if (milestones & WebCore::DidFirstLayoutAfterSuppressedIncrementalRendering)
+        wkMilestones |= kWKDidFirstLayoutAfterSuppressedIncrementalRendering;
+    if (milestones & WebCore::DidFirstPaintAfterSuppressedIncrementalRendering)
+        wkMilestones |= kWKDidFirstPaintAfterSuppressedIncrementalRendering;
     
     return wkMilestones;
 }
@@ -813,6 +820,12 @@ inline WebCore::LayoutMilestones toLayoutMilestones(WKLayoutMilestones wkMilesto
         milestones |= WebCore::DidFirstVisuallyNonEmptyLayout;
     if (wkMilestones & kWKDidHitRelevantRepaintedObjectsAreaThreshold)
         milestones |= WebCore::DidHitRelevantRepaintedObjectsAreaThreshold;
+    if (wkMilestones & kWKDidFirstFlushForHeaderLayer)
+        milestones |= WebCore::DidFirstFlushForHeaderLayer;
+    if (wkMilestones & kWKDidFirstLayoutAfterSuppressedIncrementalRendering)
+        milestones |= WebCore::DidFirstLayoutAfterSuppressedIncrementalRendering;
+    if (wkMilestones & kWKDidFirstPaintAfterSuppressedIncrementalRendering)
+        milestones |= WebCore::DidFirstPaintAfterSuppressedIncrementalRendering;
     
     return milestones;
 }

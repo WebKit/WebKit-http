@@ -30,7 +30,9 @@
 
 #include <APICast.h>
 #include <AnimationController.h>
+#include <DOMWindow.h>
 #include <DocumentLoader.h>
+#include <Editor.h>
 #include <EditorClientEfl.h>
 #include <Eina.h>
 #include <Evas.h>
@@ -38,11 +40,13 @@
 #include <FloatSize.h>
 #include <FocusController.h>
 #include <FrameLoader.h>
+#include <FrameSelection.h>
 #include <FrameView.h>
 #include <HTMLInputElement.h>
 #include <InspectorController.h>
 #include <IntRect.h>
 #include <JSCSSStyleDeclaration.h>
+#include <JSDOMWindow.h>
 #include <JSElement.h>
 #include <JavaScriptCore/OpaqueJSString.h>
 #include <MemoryCache.h>
@@ -53,6 +57,7 @@
 #include <ResourceLoadScheduler.h>
 #include <RuntimeEnabledFeatures.h>
 #include <SchemeRegistry.h>
+#include <ScriptController.h>
 #include <ScriptValue.h>
 #include <Settings.h>
 #include <TextIterator.h>
@@ -389,7 +394,7 @@ void DumpRenderTreeSupportEfl::garbageCollectorCollectOnAlternateThread(bool wai
 
 size_t DumpRenderTreeSupportEfl::javaScriptObjectsCount()
 {
-    return WebCore::JSDOMWindow::commonJSGlobalData()->heap.objectCount();
+    return WebCore::JSDOMWindow::commonVM()->heap.objectCount();
 }
 
 void DumpRenderTreeSupportEfl::setDeadDecodedDataDeletionInterval(double interval)

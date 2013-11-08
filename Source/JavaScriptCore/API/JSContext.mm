@@ -49,7 +49,7 @@
 
 @synthesize exceptionHandler;
 
-- (JSGlobalContextRef)globalContextRef
+- (JSGlobalContextRef)JSGlobalContextRef
 {
     return m_context;
 }
@@ -97,13 +97,13 @@
     if (exceptionValue)
         return [self valueFromNotifyException:exceptionValue];
 
-    return [JSValue valueWithValue:result inContext:self];
+    return [JSValue valueWithJSValueRef:result inContext:self];
 }
 
 - (void)setException:(JSValue *)value
 {
     if (value)
-        m_exception.set(toJS(m_context)->globalData(), toJS(JSValueToObject(m_context, valueInternalValue(value), 0)));
+        m_exception.set(toJS(m_context)->vm(), toJS(JSValueToObject(m_context, valueInternalValue(value), 0)));
     else
         m_exception.clear();
 }
@@ -112,7 +112,7 @@
 {
     if (!m_exception)
         return nil;
-    return [JSValue valueWithValue:toRef(m_exception.get()) inContext:self];
+    return [JSValue valueWithJSValueRef:toRef(m_exception.get()) inContext:self];
 }
 
 - (JSWrapperMap *)wrapperMap
@@ -122,7 +122,7 @@
 
 - (JSValue *)globalObject
 {
-    return [JSValue valueWithValue:JSContextGetGlobalObject(m_context) inContext:self];
+    return [JSValue valueWithJSValueRef:JSContextGetGlobalObject(m_context) inContext:self];
 }
 
 + (JSContext *)currentContext
@@ -153,7 +153,7 @@
         size_t count = entry->argumentCount;
         JSValue * argumentArray[count];
         for (size_t i =0; i < count; ++i)
-            argumentArray[i] = [JSValue valueWithValue:entry->arguments[i] inContext:context];
+            argumentArray[i] = [JSValue valueWithJSValueRef:entry->arguments[i] inContext:context];
         entry->currentArguments = [[NSArray alloc] initWithObjects:argumentArray count:count];
     }
 
@@ -190,7 +190,7 @@
         return nil;
 
     JSC::JSGlobalObject* globalObject = toJS(context)->lexicalGlobalObject();
-    m_virtualMachine = [[JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&globalObject->globalData())] retain];
+    m_virtualMachine = [[JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&globalObject->vm())] retain];
     ASSERT(m_virtualMachine);
     m_context = JSGlobalContextRetain(context);
     m_wrapperMap = [[JSWrapperMap alloc] initWithContext:self];
@@ -206,7 +206,7 @@
 
 - (void)notifyException:(JSValueRef)exceptionValue
 {
-    self.exceptionHandler(self, [JSValue valueWithValue:exceptionValue inContext:self]);
+    self.exceptionHandler(self, [JSValue valueWithJSValueRef:exceptionValue inContext:self]);
 }
 
 - (JSValue *)valueFromNotifyException:(JSValueRef)exceptionValue
@@ -255,9 +255,9 @@
     return [m_wrapperMap objcWrapperForJSValueRef:value];
 }
 
-+ (JSContext *)contextWithGlobalContextRef:(JSGlobalContextRef)globalContext
++ (JSContext *)contextWithJSGlobalContextRef:(JSGlobalContextRef)globalContext
 {
-    JSVirtualMachine *virtualMachine = [JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&toJS(globalContext)->globalData())];
+    JSVirtualMachine *virtualMachine = [JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&toJS(globalContext)->vm())];
     JSContext *context = [virtualMachine contextForGlobalContextRef:globalContext];
     if (!context)
         context = [[[JSContext alloc] initWithGlobalContextRef:globalContext] autorelease];

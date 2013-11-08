@@ -45,6 +45,7 @@
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/DocumentLoader.h>
+#include <WebCore/EventHandler.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/HTMLFrameOwnerElement.h>
@@ -59,6 +60,7 @@
 #include <WebCore/RenderTreeAsText.h>
 #include <WebCore/ResourceBuffer.h>
 #include <WebCore/ResourceLoader.h>
+#include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/TextIterator.h>
 #include <WebCore/TextResourceDecoder.h>
@@ -256,7 +258,7 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
 
 #if ENABLE(NETWORK_PROCESS)
     if (WebProcess::shared().usesNetworkProcess()) {
-        // FIXME: Handle this case.
+        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(documentLoader->mainResourceLoader()->identifier(), policyDownloadID, request, response), 0);
         return;
     }
 #endif
@@ -404,7 +406,7 @@ PassRefPtr<ImmutableArray> WebFrame::childFrames()
     if (!size)
         return ImmutableArray::create();
 
-    Vector<RefPtr<APIObject> > vector;
+    Vector<RefPtr<APIObject>> vector;
     vector.reserveInitialCapacity(size);
 
     for (Frame* child = m_coreFrame->tree()->firstChild(); child; child = child->tree()->nextSibling()) {
@@ -572,6 +574,24 @@ bool WebFrame::containsAnyFormElements() const
         if (!node->isElementNode())
             continue;
         if (toElement(node)->hasTagName(HTMLNames::formTag))
+            return true;
+    }
+    return false;
+}
+
+bool WebFrame::containsAnyFormControls() const
+{
+    if (!m_coreFrame)
+        return false;
+    
+    Document* document = m_coreFrame->document();
+    if (!document)
+        return false;
+
+    for (Node* node = document->documentElement(); node; node = NodeTraversal::next(node)) {
+        if (!node->isElementNode())
+            continue;
+        if (toElement(node)->hasTagName(HTMLNames::inputTag) || toElement(node)->hasTagName(HTMLNames::selectTag) || toElement(node)->hasTagName(HTMLNames::textareaTag))
             return true;
     }
     return false;

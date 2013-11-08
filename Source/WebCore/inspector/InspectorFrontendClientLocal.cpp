@@ -35,6 +35,7 @@
 #include "InspectorFrontendClientLocal.h"
 
 #include "Chrome.h"
+#include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "FloatRect.h"
 #include "Frame.h"
@@ -46,6 +47,7 @@
 #include "InspectorFrontendHost.h"
 #include "InspectorPageAgent.h"
 #include "Page.h"
+#include "ScriptController.h"
 #include "ScriptFunctionCall.h"
 #include "ScriptObject.h"
 #include "ScriptState.h"
@@ -213,7 +215,7 @@ void InspectorFrontendClientLocal::openInNewTab(const String& url)
 
     bool created;
     WindowFeatures windowFeatures;
-    Frame* frame = WebCore::createWindow(mainFrame, mainFrame, request, windowFeatures, created);
+    RefPtr<Frame> frame = WebCore::createWindow(mainFrame, mainFrame, request, windowFeatures, created);
     if (!frame)
         return;
 

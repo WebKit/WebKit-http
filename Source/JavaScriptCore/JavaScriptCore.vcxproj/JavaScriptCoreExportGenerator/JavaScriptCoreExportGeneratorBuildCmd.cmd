@@ -2,8 +2,8 @@
 if errorlevel 1 set PATH=%SystemDrive%\cygwin\bin;%PATH%
 cmd /c
 
-set GeneratorDirectory=%CONFIGURATIONBUILDDIR%/obj/JavaScriptCoreExportGenerator
+set GeneratorDirectory=%CONFIGURATIONBUILDDIR%/obj32/JavaScriptCoreExportGenerator
 
 echo Generating export definitions
 del /F /Q "%GeneratorDirectory%/DerivedSources/JavaScriptCorGenerator.cpp"
-bash -c "${WEBKIT_SOURCE}/WebCore/make-export-file-generator ./JavaScriptCoreExports.def.in '%GeneratorDirectory%/DerivedSources/JavaScriptCoreExportGenerator.cpp'"
+bash -c "./make-export-file-generator ./JavaScriptCoreExports.def.in '%GeneratorDirectory%/DerivedSources/JavaScriptCoreExportGenerator.cpp'"

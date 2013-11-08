@@ -386,6 +386,7 @@ bool AccessibilityNodeObject::canHaveChildren() const
     case StaticTextRole:
     case ListBoxOptionRole:
     case ScrollBarRole:
+    case ProgressIndicatorRole:
         return false;
     default:
         return true;
@@ -648,14 +649,20 @@ bool AccessibilityNodeObject::isChecked() const
         return inputElement->shouldAppearChecked();
 
     // Else, if this is an ARIA checkbox or radio, respect the aria-checked attribute
-    AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (ariaRole == RadioButtonRole || ariaRole == CheckBoxRole) {
-        if (equalIgnoringCase(getAttribute(aria_checkedAttr), "true"))
-            return true;
-        return false;
+    bool validRole = false;
+    switch (ariaRoleAttribute()) {
+    case RadioButtonRole:
+    case CheckBoxRole:
+    case MenuItemRole:
+        validRole = true;
+        break;
+    default:
+        break;
     }
+    
+    if (validRole && equalIgnoringCase(getAttribute(aria_checkedAttr), "true"))
+        return true;
 
-    // Otherwise it's not checked
     return false;
 }
 
@@ -716,8 +723,11 @@ int AccessibilityNodeObject::headingLevel() const
     if (!node)
         return false;
 
-    if (ariaRoleAttribute() == HeadingRole)
-        return getAttribute(aria_levelAttr).toInt();
+    if (isHeading()) {
+        int ariaLevel = getAttribute(aria_levelAttr).toInt();
+        if (ariaLevel > 0)
+            return ariaLevel;
+    }
 
     if (node->hasTagName(h1Tag))
         return 1;
@@ -742,23 +752,10 @@ int AccessibilityNodeObject::headingLevel() const
 
 String AccessibilityNodeObject::valueDescription() const
 {
-    if (!isARIARange())
+    if (!isRangeControl())
         return String();
 
     return getAttribute(aria_valuetextAttr).string();
-}
-
-bool AccessibilityNodeObject::isARIARange() const
-{
-    switch (m_ariaRole) {
-    case ProgressIndicatorRole:
-    case SliderRole:
-    case ScrollBarRole:
-    case SpinButtonRole:
-        return true;
-    default:
-        return false;
-    }
 }
 
 float AccessibilityNodeObject::valueForRange() const
@@ -769,7 +766,7 @@ float AccessibilityNodeObject::valueForRange() const
             return input->valueAsNumber();
     }
 
-    if (!isARIARange())
+    if (!isRangeControl())
         return 0.0f;
 
     return getAttribute(aria_valuenowAttr).toFloat();
@@ -783,7 +780,7 @@ float AccessibilityNodeObject::maxValueForRange() const
             return input->maximum();
     }
 
-    if (!isARIARange())
+    if (!isRangeControl())
         return 0.0f;
 
     return getAttribute(aria_valuemaxAttr).toFloat();
@@ -797,7 +794,7 @@ float AccessibilityNodeObject::minValueForRange() const
             return input->minimum();
     }
 
-    if (!isARIARange())
+    if (!isRangeControl())
         return 0.0f;
 
     return getAttribute(aria_valueminAttr).toFloat();
@@ -962,7 +959,12 @@ Element* AccessibilityNodeObject::mouseButtonListener() const
 
     // FIXME: Do the continuation search like anchorElement does
     for (Element* element = toElement(node); element; element = element->parentElement()) {
-        if (element->getAttributeEventListener(eventNames().clickEvent) || element->getAttributeEventListener(eventNames().mousedownEvent) || element->getAttributeEventListener(eventNames().mouseupEvent))
+        // If we've reached the body and this is not a control element, do not expose press action for this element.
+        // It can cause false positives, where every piece of text is labeled as accepting press actions. 
+        if (element->hasTagName(bodyTag) && isStaticText())
+            break;
+        
+        if (element->hasEventListeners(eventNames().clickEvent) || element->hasEventListeners(eventNames().mousedownEvent) || element->hasEventListeners(eventNames().mouseupEvent))
             return element;
     }
 
@@ -1237,6 +1239,7 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     case MenuItemRole:
     case RadioButtonRole:
     case TabRole:
+    case ProgressIndicatorRole:
         useTextUnderElement = true;
         break;
     default:
@@ -1492,6 +1495,11 @@ static bool shouldUseAccessiblityObjectInnerText(AccessibilityObject* obj)
     // quite long. As a heuristic, skip links, controls, and elements that are usually
     // containers with lots of children.
 
+    // If something doesn't expose any children, then we can always take the inner text content.
+    // This is what we want when someone puts an <a> inside a <button> for example.
+    if (obj->isDescendantOfBarrenParent())
+        return true;
+    
     // Skip focusable children, so we don't include the text of links and controls.
     if (obj->canSetFocusAttribute())
         return false;

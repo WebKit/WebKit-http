@@ -30,7 +30,6 @@ namespace WebCore {
 class TestTypedefs;
 };
 
-class WebDOMArray;
 class WebDOMDOMString[];
 class WebDOMSVGPoint;
 class WebDOMString;
@@ -58,7 +57,6 @@ public:
     void setStringAttrWithSetterException(const WebDOMString&);
 
     void func(const WebDOMlong[]& x);
-    void multiTransferList(const WebDOMString& first, const WebDOMArray& tx, const WebDOMString& second, const WebDOMArray& txx);
     void setShadow(float width, float height, float blur, const WebDOMString& color, float alpha);
     void nullableArrayArg(const WebDOMDOMString[]& arrayArg);
     WebDOMSVGPoint immutablePointFunction();

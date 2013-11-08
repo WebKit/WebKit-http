@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,13 +21,12 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "Texture.h"
+#include "LayerTexture.h"
 
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class Color;
 class IntRect;
 class TileIndex;
 
@@ -37,18 +36,17 @@ public:
     LayerTile();
     ~LayerTile();
 
-    Texture* texture() const { return m_texture.get(); }
+    LayerTexture* texture() const { return m_texture.get(); }
 
     bool isVisible() const { return m_visible; }
     void setVisible(bool);
 
     bool isDirty() const { return m_contentsDirty || !m_texture || m_texture->isDirty(); }
 
-    bool hasTexture() const { return m_texture && m_texture->hasTexture(); }
+    bool hasTexture() const { return m_texture && m_texture->buffer(); }
 
-    void setContents(const Texture::HostType& contents, const IntRect& tileRect, const TileIndex&, bool isOpaque);
-    void setContentsToColor(const Color&);
-    void updateContents(const Texture::HostType& contents, const IntRect& dirtyRect, const IntRect& tileRect, bool isOpaque);
+    void setContents(BlackBerry::Platform::Graphics::Buffer*);
+    void updateContents(BlackBerry::Platform::Graphics::Buffer*);
     void discardContents();
 
     // The current texture is an accurate preview of this layer, but a more
@@ -64,10 +62,10 @@ public:
     void setRenderDone() { m_needsRender = DoesNotNeedRender; }
 
 private:
-    void setTexture(PassRefPtr<Texture>);
+    void setTexture(PassRefPtr<LayerTexture>);
 
     // Never assign to m_texture directly, use setTexture() above.
-    RefPtr<Texture> m_texture;
+    RefPtr<LayerTexture> m_texture;
     bool m_contentsDirty : 1;
     bool m_visible : 1;
     unsigned m_needsRender : 2;

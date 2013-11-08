@@ -30,7 +30,6 @@
 #include "WebSoupRequestManagerProxyMessages.h"
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceRequest.h>
-#include <libsoup/soup-requester.h>
 #include <wtf/gobject/GOwnPtr.h>
 #include <wtf/text/CString.h>
 
@@ -95,16 +94,9 @@ void WebSoupRequestManager::registerURIScheme(const String& scheme)
     g_ptr_array_add(m_schemes.get(), 0);
 
     SoupSession* session = WebCore::ResourceHandle::defaultSession();
-    GRefPtr<SoupRequester> requester = SOUP_REQUESTER(soup_session_get_feature(session, SOUP_TYPE_REQUESTER));
-    if (requester)
-        soup_session_feature_remove_feature(SOUP_SESSION_FEATURE(requester.get()), WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
-    else {
-        requester = adoptGRef(soup_requester_new());
-        soup_session_add_feature(session, SOUP_SESSION_FEATURE(requester.get()));
-    }
     SoupRequestClass* genericRequestClass = static_cast<SoupRequestClass*>(g_type_class_ref(WEBKIT_TYPE_SOUP_REQUEST_GENERIC));
     genericRequestClass->schemes = const_cast<const char**>(reinterpret_cast<char**>(m_schemes->pdata));
-    soup_session_feature_add_feature(SOUP_SESSION_FEATURE(requester.get()), WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
+    soup_session_add_feature_by_type(session, WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
 }
 
 void WebSoupRequestManager::didHandleURIRequest(const CoreIPC::DataReference& requestData, uint64_t contentLength, const String& mimeType, uint64_t requestID)
@@ -161,6 +153,22 @@ void WebSoupRequestManager::didReceiveURIRequestData(const CoreIPC::DataReferenc
     webkitSoupRequestInputStreamAddData(WEBKIT_SOUP_REQUEST_INPUT_STREAM(data->stream.get()), requestData.data(), requestData.size());
     if (webkitSoupRequestInputStreamFinished(WEBKIT_SOUP_REQUEST_INPUT_STREAM(data->stream.get())))
         m_requestMap.remove(requestID);
+}
+
+void WebSoupRequestManager::didFailURIRequest(const WebCore::ResourceError& error, uint64_t requestID)
+{
+    WebSoupRequestAsyncData* data = m_requestMap.get(requestID);
+    ASSERT(data);
+    GRefPtr<GSimpleAsyncResult> result = data->releaseResult();
+    ASSERT(result.get());
+
+    g_simple_async_result_take_error(result.get(),
+        g_error_new_literal(g_quark_from_string(error.domain().utf8().data()),
+            error.errorCode(),
+            error.localizedDescription().utf8().data()));
+    g_simple_async_result_complete(result.get());
+
+    m_requestMap.remove(requestID);
 }
 
 void WebSoupRequestManager::send(GSimpleAsyncResult* result, GCancellable* cancellable)

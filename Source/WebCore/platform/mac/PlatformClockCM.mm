@@ -29,7 +29,6 @@
 
 #import "PlatformClockCM.h"
 
-#import "FloatConversion.h"
 #import "SoftLinking.h"
 #import <CoreMedia/CMAudioDeviceClock.h>
 
@@ -55,7 +54,7 @@ PlatformClockCM::PlatformClockCM()
 {
     CMClockRef rawClockPtr = 0;
     CMAudioDeviceClockCreate(kCFAllocatorDefault, NULL, &rawClockPtr);
-    RetainPtr<CMClockRef> clock(AdoptCF, rawClockPtr);
+    RetainPtr<CMClockRef> clock = adoptCF(rawClockPtr);
     initializeWithTimingSource(clock.get());
 }
 
@@ -70,22 +69,22 @@ void PlatformClockCM::initializeWithTimingSource(CMClockRef clock)
 {
     CMTimebaseRef rawTimebasePtr = 0;
     CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, clock, &rawTimebasePtr);
-    m_timebase.adoptCF(rawTimebasePtr);
+    m_timebase = adoptCF(rawTimebasePtr);
 }
 
-void PlatformClockCM::setCurrentTime(float time)
+void PlatformClockCM::setCurrentTime(double time)
 {
     CMTime cmTime = CMTimeMakeWithSeconds(time, DefaultTimeScale);
     CMTimebaseSetTime(m_timebase.get(), cmTime);
 }
 
-float PlatformClockCM::currentTime() const
+double PlatformClockCM::currentTime() const
 {
     CMTime cmTime = CMTimebaseGetTime(m_timebase.get());
-    return narrowPrecisionToFloat(CMTimeGetSeconds(cmTime));
+    return CMTimeGetSeconds(cmTime);
 }
 
-void PlatformClockCM::setPlayRate(float rate)
+void PlatformClockCM::setPlayRate(double rate)
 {
     if (m_rate == rate)
         return;

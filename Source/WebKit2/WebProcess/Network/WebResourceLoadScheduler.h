@@ -58,19 +58,19 @@ public:
 
     virtual void setSerialLoadingEnabled(bool) OVERRIDE;
 
-    WebResourceLoader* webResourceLoaderForIdentifier(ResourceLoadIdentifier identifier) const { return m_webResourceLoaders.get(identifier).get(); }
+    WebResourceLoader* webResourceLoaderForIdentifier(ResourceLoadIdentifier identifier) const { return m_webResourceLoaders.get(identifier); }
 
     void networkProcessCrashed();
 
 private:
-    void scheduleLoad(WebCore::ResourceLoader*, WebCore::ResourceLoadPriority, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
+    void scheduleLoad(WebCore::ResourceLoader*, WebCore::CachedResource*, WebCore::ResourceLoadPriority, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
     void scheduleInternallyFailedLoad(WebCore::ResourceLoader*);
     void internallyFailedLoadTimerFired();
     
-    HashSet<RefPtr<WebCore::ResourceLoader> > m_internallyFailedResourceLoaders;
+    HashSet<RefPtr<WebCore::ResourceLoader>> m_internallyFailedResourceLoaders;
     WebCore::RunLoop::Timer<WebResourceLoadScheduler> m_internallyFailedLoadTimer;
     
-    HashMap<unsigned long, RefPtr<WebResourceLoader> > m_webResourceLoaders;
+    HashMap<unsigned long, RefPtr<WebResourceLoader>> m_webResourceLoaders;
     
     unsigned m_suspendPendingRequestsCount;
 

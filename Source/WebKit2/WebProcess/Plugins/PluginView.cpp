@@ -40,7 +40,7 @@
 #include <WebCore/Credential.h>
 #include <WebCore/CredentialStorage.h>
 #include <WebCore/DocumentLoader.h>
-#include <WebCore/MouseEvent.h>
+#include <WebCore/EventHandler.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
@@ -49,15 +49,19 @@
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HTMLPlugInElement.h>
+#include <WebCore/HTMLPlugInImageElement.h>
 #include <WebCore/HostWindow.h>
 #include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/MouseEvent.h>
 #include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/Page.h>
+#include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/ProxyServer.h>
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/ResourceLoadScheduler.h>
+#include <WebCore/ScriptController.h>
 #include <WebCore/ScriptValue.h>
 #include <WebCore/ScrollView.h>
 #include <WebCore/SecurityOrigin.h>
@@ -926,7 +930,7 @@ void PluginView::notifyWidget(WidgetNotification notification)
 {
     switch (notification) {
     case WillPaintFlattened:
-        if (m_plugin && m_isInitialized)
+        if (shouldCreateTransientPaintingSnapshot())
             m_transientPaintingSnapshot = m_plugin->snapshot();
         break;
     case DidPaintFlattened:
@@ -1079,6 +1083,8 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
         return;
     }
 
+    UserGestureIndicator gestureIndicator(request->allowPopups() ? DefinitelyProcessingNewUserGesture : PossiblyProcessingUserGesture);
+
     // First, try to find a target frame.
     Frame* targetFrame = frame->loader()->findFrameForNavigation(request->target());
     if (!targetFrame) {
@@ -1163,7 +1169,7 @@ void PluginView::removeStream(Stream* stream)
 
 void PluginView::cancelAllStreams()
 {
-    Vector<RefPtr<Stream> > streams;
+    Vector<RefPtr<Stream>> streams;
     copyValuesToVector(m_streams, streams);
     
     for (size_t i = 0; i < streams.size(); ++i)
@@ -1286,7 +1292,7 @@ void PluginView::cancelStreamLoad(uint64_t streamID)
 {
     // Keep a reference to the stream. Stream::cancel might remove the stream from the map, and thus
     // releasing its last reference.
-    RefPtr<Stream> stream = m_streams.get(streamID).get();
+    RefPtr<Stream> stream = m_streams.get(streamID);
     if (!stream)
         return;
 
@@ -1318,7 +1324,7 @@ NPObject* PluginView::windowScriptNPObject()
         return 0;
     }
 
-    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld()->globalData(), frame()->script()->windowShell(pluginWorld())->window());
+    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld()->vm(), frame()->script()->windowShell(pluginWorld())->window());
 }
 
 NPObject* PluginView::pluginElementNPObject()
@@ -1334,7 +1340,7 @@ NPObject* PluginView::pluginElementNPObject()
     JSObject* object = frame()->script()->jsObjectForPluginElement(m_pluginElement.get());
     ASSERT(object);
 
-    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld()->globalData(), object);
+    return m_npRuntimeObjectMap.getOrCreateNPObject(*pluginWorld()->vm(), object);
 }
 
 bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVariant* result, bool allowPopups)
@@ -1637,6 +1643,11 @@ void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>*)
     m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
 }
 
+void PluginView::beginSnapshottingRunningPlugin()
+{
+    m_pluginSnapshotTimer.restart();
+}
+
 bool PluginView::shouldAlwaysAutoStart() const
 {
     if (!m_plugin)
@@ -1650,9 +1661,6 @@ bool PluginView::shouldAlwaysAutoStart() const
 
 void PluginView::pluginDidReceiveUserInteraction()
 {
-    // FIXME: Extend autostart timeout when this codepath is hit.
-    // http://webkit.org/b/113232
-
     if (frame() && !frame()->settings()->plugInSnapshottingEnabled())
         return;
 
@@ -1660,6 +1668,32 @@ void PluginView::pluginDidReceiveUserInteraction()
         return;
 
     m_didReceiveUserInteraction = true;
+
+    WebCore::HTMLPlugInImageElement* plugInImageElement = toHTMLPlugInImageElement(m_pluginElement.get());
+    String pageOrigin = plugInImageElement->document()->page()->mainFrame()->document()->baseURL().host();
+    String pluginOrigin = plugInImageElement->loadedUrl().host();
+    String mimeType = plugInImageElement->loadedMimeType();
+
+    WebProcess::shared().plugInDidReceiveUserInteraction(pageOrigin, pluginOrigin, mimeType);
+}
+
+bool PluginView::shouldCreateTransientPaintingSnapshot() const
+{
+    if (!m_plugin)
+        return false;
+
+    if (!m_isInitialized)
+        return false;
+
+    if (FrameView* frameView = frame()->view()) {
+        if (frameView->paintBehavior() & (PaintBehaviorSelectionOnly | PaintBehaviorForceBlackText)) {
+            // This paint behavior is used when drawing the find indicator and there's no need to
+            // snapshot plug-ins, because they can never be painted as part of the find indicator.
+            return false;
+        }
+    }
+
+    return true;
 }
 
 } // namespace WebKit

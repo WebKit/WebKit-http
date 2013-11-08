@@ -25,6 +25,7 @@
 #include "config.h"
 #include "FormDataBuilder.h"
 
+#include "Blob.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -134,7 +135,7 @@ Vector<char> FormDataBuilder::generateUniqueBoundaryString()
         randomBytes.append(alphaNumericEncodingMap[randomness & 0x3F]);
     }
 
-    boundary.append(randomBytes);
+    boundary.appendVector(randomBytes);
     boundary.append(0); // Add a 0 at the end so we can use this as a C-style string.
     return boundary;
 }
@@ -172,6 +173,7 @@ void FormDataBuilder::addFilenameToMultiPartHeader(Vector<char>& buffer, const T
 
 void FormDataBuilder::addContentTypeToMultiPartHeader(Vector<char>& buffer, const CString& mimeType)
 {
+    ASSERT(Blob::isNormalizedContentType(mimeType));
     append(buffer, "\r\nContent-Type: ");
     append(buffer, mimeType);
 }

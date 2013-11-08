@@ -199,21 +199,8 @@ fast/xsl/xslt-xhtml-template.xml
 fast/xpath/xpath-template-element.html
 fast/xsl/xslt-processor-template.html
 
-# Fail until SUBPIXEL_LAYOUT is enabled
-# https://bugs.webkit.org/show_bug.cgi?id=85532
-fast/sub-pixel
-
-# USE(V8)
-
-# v8 i18n extension.
-fast/js/i18n-bindings-locale.html
-
 # JSC does not support setIsolatedWorldSecurityOrigin, (http://webkit.org/b/61540)
 http/tests/security/isolatedWorld/cross-origin-xhr.html
-
-# JSC also doesn't support setIsolatedWorldContentSecurityPolicy (webkit.org/b/100815)
-webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp.html
-webkit.org/b/100815 http/tests/security/isolatedWorld/bypass-main-world-csp-for-xhr.html
 
 # This test is for clients that choose to make the missing plugin indicator a button
 
@@ -268,12 +255,7 @@ inspector/profiler/heap-snapshot-summary-show-ranges.html
 inspector/profiler/heap-snapshot-summary-sorting-fields.html
 inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
-inspector/profiler/memory-instrumentation-cached-images.html
 webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
-
-webkit.org/b/113787 inspector/profiler/memory-instrumentation-external-array.html [ Skip ]
-
-webkit.org/b/113787 inspector/profiler/memory-instrumentation-external-string.html [ Skip ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
@@ -351,6 +333,7 @@ webkit.org/b/89052 fast/css/image-orientation
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
+webkit.org/b/99945 fast/css3-text/css3-text-justify [ Failure ]
 webkit.org/b/112755 fast/css3-text/css3-text-indent [ Failure ImageOnlyFailure ]
 
 # Web Inspector: Implement support for InspectorClient::overrideDeviceMetrics() in platforms other than Chromium
@@ -368,6 +351,40 @@ webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html [ Failure ]
 
 # Snapshotted plugins not enabled
 webkit.org/b/98696 plugins/snapshotting [ Skip ]
+
+# CSS Variable is disable.
+fast/css/variables/border-width.html
+fast/css/variables/build-supports-variables.html
+fast/css/variables/calc.html
+fast/css/variables/case-insensitive.html
+fast/css/variables/colors-test.html
+fast/css/variables/computed-style.html
+fast/css/variables/inherited-values.html
+fast/css/variables/inline-styles.html
+fast/css/variables/redefinition.html
+fast/css/variables/shorthand.html
+fast/css/variables/transform-test.html  
+fast/css/variables/use-before-defined.html
+fast/css/variables/var-inside-box-reflect.html
+fast/css/variables/var-inside-pair.html
+fast/css/variables/var-inside-quad.html
+fast/css/variables/var-inside-shorthand.html
+fast/css/variables/variable-chain.html
+inspector/styles/variables/css-variables.html
+
+# MathML is disable.
+mathml/EmptyMFracCrash.xhtml
+mathml/EmptyMunderOverCrash.xhtml
+mathml/empty-mroot-crash.xhtml
+mathml/fenced-whitespace-separators-crash.html
+mathml/msub-anonymous-child-render-crash.html
+mathml/msubsup-fuzz.html
+mathml/msubsup-no-grandchild.xhtml
+mathml/msubsup-remove-children.xhtml
+mathml/munderover-remove-children.html
+mathml/presentation/mfenced-add-child2.html
+mathml/presentation/mfrac-nested.html
+mathml/presentation/sup-nested.html
 
 # =========================================================================== #
 #       Feature not yet supported.                                            #
@@ -771,6 +788,8 @@ editing/selection/mixed-editability-10.html
 # [Qt] editing/selection/select-out-of-editable.html times out after r141792.
 webkit.org/b/108942 editing/selection/select-out-of-editable.html [ Skip ]
 
+webkit.org/b/115261 editing/selection/selection-in-iframe-removed-crash.html [ Skip ]
+
 # ============================================================================= #
 # Failing editing/spelling tests
 # ============================================================================= #
@@ -823,15 +842,12 @@ editing/spelling/grammar-edit-word.html
 # Spellchecker behavior tests.
 # https://bugs.webkit.org/show_bug.cgi?id=108370
 editing/spelling/spelling-double-clicked-word.html
-editing/spelling/spelling-double-clicked-word-with-underscores.html
 editing/spelling/spelling-exactly-selected-multiple-words.html
 editing/spelling/spelling-exactly-selected-word.html
 editing/spelling/spelling-multiword-selection.html
 editing/spelling/spelling-should-select-multiple-words.html
-editing/spelling/spelling-should-select-single-word.html
 editing/spelling/spelling-subword-selection.html
 editing/spelling/spelling-with-punctuation-selection.html
-editing/spelling/spelling-with-underscore-selection.html
 editing/spelling/spelling-with-whitespace-selection.html
 webkit.org/b/108370 editing/spelling/spelling-changed-text.html [ Failure ]
 
@@ -1205,6 +1221,12 @@ css3/filters/custom-with-at-rule-syntax/parsing-at-rule-invalid.html
 css3/filters/custom-with-at-rule-syntax/parsing-at-rule-valid.html
 css3/filters/custom-with-at-rule-syntax/parsing-src-property-invalid.html
 css3/filters/custom-with-at-rule-syntax/parsing-src-property-valid.html
+css3/filters/custom-with-at-rule-syntax/parsing-geometry-property-invalid.html
+css3/filters/custom-with-at-rule-syntax/parsing-geometry-property-valid.html
+css3/filters/custom-with-at-rule-syntax/parsing-mix-property-invalid.html
+css3/filters/custom-with-at-rule-syntax/parsing-mix-property-valid.html
+css3/filters/custom-with-at-rule-syntax/parsing-parameters-property-invalid.html
+css3/filters/custom-with-at-rule-syntax/parsing-parameters-property-valid.html
 
 # The following tests need further investigation:
 # https://bugs.webkit.org/show_bug.cgi?id=101531
@@ -1369,6 +1391,15 @@ webkit.org/b/112106 fast/js/regress/string-repeat-arith.html [ Skip ]
 # https://bugs.webkit.org/show_bug.cgi?id=108481
 inspector/console/console-filter-test.html
 
+# REGRESSION(r148790) Made 7 tests fail on x86 32bit
+webkit.org/b/114913 fast/canvas/canvas-arc-360-winding.html [ Skip ]
+webkit.org/b/114913 fast/canvas/canvas-fillPath-alpha-shadow.html [ Skip ]
+webkit.org/b/114913 fast/canvas/canvas-fillPath-gradient-shadow.html [ Skip ]
+webkit.org/b/114913 fast/canvas/canvas-fillPath-pattern-shadow.html [ Skip ]
+webkit.org/b/114913 fast/canvas/canvas-strokePath-alpha-shadow.html [ Skip ]
+webkit.org/b/114913 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.13_pow/S15.8.2.13_A24.html [ Skip ]
+webkit.org/b/114913 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.8_exp/S15.8.2.8_A6.html [ Skip ]
+
 # Fail on 32 bit with minor pixel differences (tests introduced in r132602)
 fast/regions/autoheight-middleregion.html
 fast/regions/autoheight-singleregion-breakbeforealways-minheight.html
@@ -1476,6 +1507,13 @@ fast/css/line-after-floating-div.html
 # [Qt] The square-button-appearance test is wrong
 # https://bugs.webkit.org/show_bug.cgi?id=67128
 fast/css/square-button-appearance.html
+
+fast/exclusions/shape-inside/shape-inside-polygon-layout.html
+
+# REGRESSION(r149457): some fast/exclusions tests are failing
+webkit.org/b/115511 fast/exclusions/shape-outside-floats/shape-outside-floats-diamond-margin-polygon.html [ Skip ]
+webkit.org/b/115511 fast/exclusions/shape-outside-floats/shape-outside-floats-ellipse-margin-left.html [ Skip ]
+webkit.org/b/115511 fast/exclusions/shape-outside-floats/shape-outside-floats-ellipse-margin-right.html [ Skip ]
 
 # --- new failing tests, bug report needed
 css3/images/cross-fade-blending.html
@@ -1910,10 +1948,6 @@ webkit.org/b/109224 fast/forms/number/number-l10n-input.html [ Skip ]
 # [Qt] New fast/flexbox/line-clamp-link-after-ellipsis.html layout test is failing since r142335.
 webkit.org/b/109353 fast/flexbox/line-clamp-link-after-ellipsis.html [ Skip ]
 
-# Some fast/exclusions/shape-outside-floats tests are failing
-webkit.org/b/113769 fast/exclusions/shape-outside-floats/shape-outside-floats-ellipse-margin-left.html [ Skip ]
-webkit.org/b/113769 fast/exclusions/shape-outside-floats/shape-outside-floats-diamond-margin-polygon.html [ Failure ]
-
 webkit.org/b/110090 fast/events/clientXY-in-zoom-and-scroll.html [ Skip ]
 
 webkit.org/b/108508 fast/canvas/canvas-currentPath.html [ Skip ]
@@ -1927,7 +1961,7 @@ webkit.org/b/112914 fast/media/mq-resolution-dpi-dpcm-warning.html [ Skip ]
 webkit.org/b/112914 fast/media/mq-resolution.html [ Skip ]
 webkit.org/b/112914 fast/media/w3c/test_media_queries.html [ Skip ]
 
-webkit.org/b/113930 fast/loader/url-selected-user-gesture.html [ Skip ]
+webkit.org/b/114611 fast/repaint/background-shorthand-with-gradient-and-height-changes.html [ Skip ]
 
 webkit.org/b/113931 fast/forms/select/popup-closes-on-blur.html [ Skip ]
 
@@ -2273,7 +2307,7 @@ fast/block/lineboxcontain/font.html
 css3/flexbox/flexbox-overflow-auto.html
 fast/block/line-layout/selection-highlight-overlap.html
 fast/css/empty-cell-baseline.html
-fast/exclusions/shape-inside/shape-inside-polygon-padding-002.html
+
 fast/forms/datalist/input-appearance-range-with-datalist-rtl.html
 fast/forms/datalist/update-range-with-datalist.html
 fast/multicol/cell-shrinkback.html
@@ -2288,20 +2322,20 @@ svg/animations/animateTransform-rotate-around-point.svg
 svg/animations/animateMotion-additive-1.svg
 svg/text/alt-glyph-for-surrogate-pair.svg
 svg/transforms/transformed-text-fill-gradient.html
+fast/regions/counters/extract-list-items-013.html
 fast/regions/floats-basic-in-variable-width-regions.html
 fast/regions/region-style-rule-position.html
+fast/regions/webkit-flow-inlines-inside-regions-bounds.html
+fast/regions/webkit-flow-inlines-inside-regions-bounds-vertical.html
+
 fast/forms/select/intrinsic-min-width-applies-with-fixed-width.html
 webkit.org/b/110762 compositing/overlap-blending/children-opacity-no-overlap.html [ Skip ]
 webkit.org/b/110762 compositing/overlap-blending/reflection-opacity-huge.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-inside/shape-inside-circle.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-inside/shape-inside-circle-padding.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-inside/shape-inside-ellipse.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-inside/shape-inside-ellipse-padding.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-outside-floats/shape-outside-floats-non-zero-y.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-outside-floats/shape-outside-floats-simple-circle.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-outside-floats/shape-outside-floats-simple-ellipse.html [ Skip ]
-webkit.org/b/110089 fast/exclusions/shape-outside-floats/shape-outside-floats-simple-rounded-rectangle.html [ Skip ]
 webkit.org/b/110447 fast/regions/shape-inside/shape-inside-on-regions.html [ Skip ]
+css3/flexbox/auto-margins.html
+fast/regions/overflow-in-uniform-regions.html
+webkit.org/b/114807 fast/gradients/css3-color-stop-invalid.html [ Skip ]
+webkit.org/b/115512 compositing/layer-creation/deep-tree.html [ Skip ]
 
 # Failing fast/css/sticky/ tests with minor pixel differences
 # https://bugs.webkit.org/show_bug.cgi?id=92080
@@ -2392,10 +2426,6 @@ jquery/data.html
 # https://bugs.webkit.org/show_bug.cgi?id=92018
 svg/zoom/text/zoom-hixie-mixed-009.xml
 svg/zoom/page/zoom-hixie-mixed-009.xml
-
-# This test depends on subpixel layout.
-# https://bugs.webkit.org/show_bug.cgi?id=92352
-css3/flexbox/flex-rounding.html
 
 # [Qt][GTK] REGRESSION(r125251): It made svg/custom/use-instanceRoot-as-event-target.xhtml assert and flakey
 # https://bugs.webkit.org/show_bug.cgi?id=93812
@@ -2517,8 +2547,6 @@ webkit.org/b/91376 http/tests/security/sandboxed-iframe-modify-self.html [ Failu
 webkit.org/b/91379 http/tests/security/contentSecurityPolicy/policy-does-not-affect-child.html [ Failure Pass ]
 webkit.org/b/91379 http/tests/security/contentSecurityPolicy/object-src-none-allowed.html [ Failure Pass ]
 
-webkit.org/b/99756 fast/events/touch/touch-slider.html [ Failure ]
-
 # This has always failed on Qt - exposed by bug 89826
 webkit.org/b/94004 css2.1/20110323/c541-word-sp-000.htm [ ImageOnlyFailure ]
 
@@ -2549,18 +2577,9 @@ webkit.org/b/98640 plugins/refcount-leaks.html
 
 webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
 
-# New inspector/profiler/memory-instrumentation-canvas.html fails on JSC platforms
-webkit.org/b/99001 inspector/profiler/memory-instrumentation-canvas.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-replay-log-grid.html
-
-# [Qt] Unidentified pixel failures
-webkit.org/b/99306 animations/additive-transform-animations.html [ ImageOnlyFailure ]
-webkit.org/b/99306 animations/cross-fade-webkit-mask-box-image.html [ ImageOnlyFailure ]
-webkit.org/b/99306 animations/missing-values-first-keyframe.html [ ImageOnlyFailure ]
-webkit.org/b/99306 animations/missing-values-last-keyframe.html [ ImageOnlyFailure ]
-webkit.org/b/99306 css3/filters/effect-blur-hw.html [ ImageOnlyFailure ] # Blur effect radius is too small on WebKit1, the effect not applied at all on WebKit2.
 
 # REGRESSION(r132143): It made fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html flakey
 webkit.org/b/100117 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
@@ -2621,8 +2640,7 @@ webkit.org/b/103769 media/track/track-in-band.html [ Skip ]
 webkit.org/b/103769 media/track/track-in-band-cues-added-once.html [ Skip ]
 webkit.org/b/103769 media/track/track-in-band-style.html [ Skip ]
 webkit.org/b/103769 media/track/track-in-band-legacy-api.html [ Skip ]
-
-webkit.org/b/104150 fast/media/implicit-media-all.html [ ImageOnlyFailure ]
+webkit.org/b/103769 media/track/track-forced-subtitles-in-band.html [ Skip ]
 
 # [Qt] new http/tests/xmlhttprequest/post-blob-content-type-sync.html and ~async.html fail since introduced in r136893
 # https://bugs.webkit.org/show_bug.cgi?id=104352
@@ -2707,9 +2725,6 @@ webkit.org/b/111606 fast/repaint/border-fit-lines.html [ Skip ]
 fast/dom/beforeload/remove-video-poster-in-beforeload-listener.html
 fast/dom/beforeload/remove-video-in-beforeload-listener.html
 
-# New test fails due to resizeTo not firing an event.
-webkit.org/b/109179 compositing/transitions/transform-on-large-layer.html [ ImageOnlyFailure ]
-
 # [Qt] Two tests hit assertion fail after r140999.
 webkit.org/b/108257 compositing/overflow/composited-scrolling-creates-a-stacking-container.html [ Skip ]
 
@@ -2724,3 +2739,18 @@ webkit.org/b/113770 editing/execCommand/format-block-at-root.html [ Skip ]
 
 #[Qt] New test fast/js/dom-static-property-for-in-iteration.html fails on Qt after r147570
 webkit.org/b/114157 fast/js/dom-static-property-for-in-iteration.html [ Failure ]
+
+# Nested opacity with overflow may display wrong results when composited
+webkit.org/b/114338 compositing/overlap-blending/nested-overlap-overflow.html [ Skip ]
+webkit.org/b/114338 compositing/overlap-blending/nested-non-overlap-clipping.html [ Skip ]
+
+# REGRESSION(r148378): editing/style/block-style-005.html failing
+webkit.org/b/114612 editing/style/block-style-005.html [ Skip ]
+
+# SUBPIXEL tests with missing baselines
+fast/sub-pixel/sub-pixel-accumulates-to-layers.html [ Missing ]
+fast/sub-pixel/sub-pixel-iframe-copy-on-scroll.html [ Missing ]
+fast/sub-pixel/transformed-iframe-copy-on-scroll.html [ Missing ]
+
+# Reference test fast/sub-pixel/float-wrap-zoom.html fails
+webkit.org/b/114800 fast/sub-pixel/float-wrap-zoom.html [ ImageOnlyFailure ]

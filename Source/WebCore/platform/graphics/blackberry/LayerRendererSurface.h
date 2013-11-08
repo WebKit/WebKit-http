@@ -24,7 +24,7 @@
 #include "FloatRect.h"
 #include "IntRect.h"
 #include "IntSize.h"
-#include "Texture.h"
+#include "LayerTexture.h"
 #include "TransformationMatrix.h"
 
 namespace WebCore {
@@ -51,16 +51,17 @@ public:
     const TransformationMatrix& replicaDrawTransform() const { return m_replicaDrawTransform; }
 
     FloatRect drawRect() const;
+    FloatQuad transformedBounds() const;
 
     bool ensureTexture();
     void releaseTexture();
-    Texture* texture() const { return m_texture.get(); }
+    LayerTexture* texture() const { return m_texture.get(); }
 
     float drawOpacity() { return m_opacity; }
     void setDrawOpacity(float opacity) { m_opacity = opacity; }
 
 private:
-    RefPtr<Texture> m_texture;
+    RefPtr<LayerTexture> m_texture;
 
     FloatRect m_contentRect;
     FloatRect m_clipRect;

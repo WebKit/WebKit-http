@@ -222,6 +222,7 @@ endif
 
 libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBADD += \
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	libPlatform.la \
 	libPlatformGtk.la \
 	libWebCoreDOM.la \
 	libWebCoreGtk.la \
@@ -261,13 +262,18 @@ pkgconfig_DATA += Source/WebKit2/webkit2gtk-@WEBKITGTK_API_VERSION@.pc
 if ENABLE_INTROSPECTION
 
 WebKit2-@WEBKITGTK_API_VERSION@.gir: $(G_IR_SCANNER) libwebkit2gtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
-	$(AM_V_GEN)$(G_IR_SCANNER) -v --warn-all \
+	$(AM_V_GEN) \
+	     CFLAGS="$(CFLAGS) -Wno-deprecated-declarations" \
+	     $(G_IR_SCANNER) \
+	     --quiet \
+	     --warn-all \
 	     --symbol-prefix=webkit \
 	     --identifier-prefix=WebKit \
 	     --namespace=WebKit2 \
 	     --nsversion=@WEBKITGTK_API_VERSION@ \
 	     --include=GObject-2.0 \
 	     --include=Gtk-3.0 \
+	     --include=JavaScriptCore-@WEBKITGTK_API_VERSION@ \
 	     --include=Soup-2.4 \
 	     --library=webkit2gtk-@WEBKITGTK_API_VERSION@ \
 	     --library=javascriptcoregtk-@WEBKITGTK_API_VERSION@ \
@@ -297,27 +303,23 @@ WebKit2-@WEBKITGTK_API_VERSION@.gir: $(G_IR_SCANNER) libwebkit2gtk-@WEBKITGTK_AP
 	     $(webkitgtk_gdom_built_h_api) \
 	     $(WebKit2)/UIProcess/API/gtk/*.cpp
 
-gir2dir = $(datadir)/gir-1.0
-gir2_DATA = WebKit2-@WEBKITGTK_API_VERSION@.gir
-
-typelibs2dir = $(libdir)/girepository-1.0
-typelibs2_DATA = WebKit2-@WEBKITGTK_API_VERSION@.typelib
-
 WebKit2-@WEBKITGTK_API_VERSION@.typelib: WebKit2-@WEBKITGTK_API_VERSION@.gir $(G_IR_COMPILER)
 	$(AM_V_GEN)$(G_IR_COMPILER) --includedir $(WebKit2) --includedir $(top_builddir) $< -o $@
+
+gir_DATA += WebKit2-@WEBKITGTK_API_VERSION@.gir
+typelibs_DATA += WebKit2-@WEBKITGTK_API_VERSION@.typelib
 
 CLEANFILES += WebKit2-@WEBKITGTK_API_VERSION@.gir WebKit2-@WEBKITGTK_API_VERSION@.typelib
 
 endif
 endif
 
-# WebKit2 specific variables
-forwarding_headers := $(GENSOURCES_WEBKIT2)/include
-generate-webkit2-forwarding-headers: $(WebKit2)/Scripts/generate-forwarding-headers.pl $(libWebKit2_la_SOURCES)
-	$(AM_V_GEN)$(PERL) $< $(WebKit2) $(forwarding_headers) gtk
-	$(AM_V_GEN)$(PERL) $< $(WebKit2) $(forwarding_headers) soup
+stamp-webkit2-forwarding-headers: $(WebKit2)/Scripts/generate-forwarding-headers.pl $(webkit2_sources)
+	$(AM_V_GEN)$(PERL) $< $(WebKit2) $(GENSOURCES_WEBKIT2)/include gtk \
+	&& $(PERL) $< $(WebKit2) $(GENSOURCES_WEBKIT2)/include soup \
+	&& echo timestamp > $(@F)
 
-BUILT_SOURCES += generate-webkit2-forwarding-headers
+BUILT_SOURCES += $(top_builddir)/stamp-webkit2-forwarding-headers
 
 $(GENSOURCES_WEBKIT2)/webkit2gtk/include/webkit2: $(libwebkit2gtkinclude_HEADERS)
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2gtk/include \
@@ -647,22 +649,63 @@ Programs_WebKitPluginProcess_SOURCES = \
 
 Programs_WebKitPluginProcess_LDADD = \
 	-lpthread \
-	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
-	libWebCore.la
+	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
 
+# FIXME: Due to layer violations and circular dependencies all these libraries have to be specified multiple times
+# when invoking the linker. This ensures any undefined symbols are resolved when linking. See wkb.ug/114901 for more detail.
+# First time around these libraries are simply listed by their file name that's later resolved to the path of the *.a archive
+# (i.e. .libs/libPlatformGtk2.a) by libtool.
+Programs_WebKitPluginProcess_LDADD += \
+	libPlatformGtk2.la \
+	libWebCoreGtk2.la \
+	libPlatform.la \
+	libWebCorePlatform.la \
+	libWebCore.la \
+	libWebCoreModules.la \
+	libWebKit2Platform.la
+if ENABLE_INDEXED_DATABASE
+Programs_WebKitPluginProcess_LDADD += \
+	libLevelDB.la
+endif
+if USE_OPENGL
+Programs_WebKitPluginProcess_LDADD += \
+	libANGLE.la
+endif
 if ENABLE_SVG
 Programs_WebKitPluginProcess_LDADD += \
 	libWebCoreSVG.la
 endif
 
+# FIXME: Second time around all the libraries are relisted, this time in the -lNAME form. Listed items are resolved into the
+# absolute paths to the *.a archive (i.e. $(abs_builddir)/.libs.libPlatformGtk2.a) by libtool.
 Programs_WebKitPluginProcess_LDADD += \
-	libPlatformGtk2.la \
-	libWebCoreModules.la \
-	libWebCoreGtk2.la \
-	libWebCorePlatform.la \
-	libWebKit2Platform.la \
+	-lPlatformGtk2 -lWebCoreGtk2 -lPlatform -lWebCorePlatform -lWebCore -lWebCoreModules
+if ENABLE_INDEXED_DATABASE
+Programs_WebKitPluginProcess_LDADD += \
+	-lLevelDB
+endif
+if USE_OPENGL
+Programs_WebKitPluginProcess_LDADD += \
+	-lANGLE
+endif
+if ENABLE_SVG
+Programs_WebKitPluginProcess_LDADD += \
+	-lWebCoreSVG
+endif
+
+# FIXME: To make the matter worse, these four libraries are again required to be listed for linking. This time they're added by
+# specifying the symbolic link that points back to the ./lib*.la libtool archives which are again resolved into paths to the
+# *.a archives (i.e. .libs/libPlatformGtk2.la) by libtool. Phony targets are added for these files to prevent Automake to try
+# to build them as these symlinks are just a byproduct of libtool.
+.PHONY : .libs/libPlatformGtk2.la .libs/libWebCoreGtk2.la .libs/libPlatform.la .libs/libWebCorePlatform.la
+Programs_WebKitPluginProcess_LDADD += \
+	.libs/libPlatformGtk2.la .libs/libWebCoreGtk2.la .libs/libPlatform.la .libs/libWebCorePlatform.la
+
+Programs_WebKitPluginProcess_LDADD += \
 	$(CAIRO_LIBS) \
 	$(COVERAGE_LDFLAGS) \
+	$(FREETYPE_LIBS) \
+	$(GAMEPAD_LIBS) \
 	$(GEOCLUE_LIBS) \
 	$(GLIB_LIBS) \
 	$(GSTREAMER_LIBS) \
@@ -685,13 +728,6 @@ Programs_WebKitPluginProcess_LDADD += \
 	$(XT_LIBS) \
 	$(WINMM_LIBS) \
 	$(ZLIB_LIBS)
-
-# libWebCore and libWebCoreModules have circular dependencies that only seem to
-# be a problem when linking the plugin process; we don't really care about
-# modules for the plugin process, though, so to work around that we ignore
-# internal unresolved symbols
-Programs_WebKitPluginProcess_LDFLAGS = \
-	-Wl,--unresolved-symbols=ignore-in-object-files
 
 Programs_WebKitPluginProcess_CXXFLAGS = \
 	-fvisibility-inlines-hidden \

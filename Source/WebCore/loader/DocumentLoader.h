@@ -30,7 +30,7 @@
 #ifndef DocumentLoader_h
 #define DocumentLoader_h
 
-#include "CachedRawResource.h"
+#include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
 #include "DocumentLoadTiming.h"
 #include "DocumentWriter.h"
@@ -62,6 +62,7 @@ namespace WebCore {
 #endif
     class ArchiveResource;
     class ArchiveResourceCollection;
+    class CachedRawResource;
     class CachedResourceLoader;
     class ContentFilter;
     class FormState;
@@ -246,7 +247,6 @@ namespace WebCore {
 
         ApplicationCacheHost* applicationCacheHost() const { return m_applicationCacheHost.get(); }
 
-        virtual void reportMemoryUsage(MemoryObjectInfo*) const;
         void checkLoadComplete();
 
     protected:

@@ -30,10 +30,10 @@
 ] interface CustomEvent : Event {
     [InitializedByEventConstructor] readonly attribute any detail;
 
-    void initCustomEvent(in [Optional=DefaultIsUndefined] DOMString typeArg, 
-                         in [Optional=DefaultIsUndefined] boolean canBubbleArg, 
-                         in [Optional=DefaultIsUndefined] boolean cancelableArg, 
-                         in [Optional=DefaultIsUndefined] any detailArg);
+    void initCustomEvent([Default=Undefined] optional DOMString typeArg, 
+                         [Default=Undefined] optional boolean canBubbleArg, 
+                         [Default=Undefined] optional boolean cancelableArg, 
+                         [Default=Undefined] optional any detailArg);
 };
 #endif
 

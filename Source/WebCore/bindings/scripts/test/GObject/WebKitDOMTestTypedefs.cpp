@@ -25,7 +25,6 @@
 #include "DOMObjectCache.h"
 #include "ExceptionCode.h"
 #include "JSMainThreadExecState.h"
-#include "WebKitDOMArrayPrivate.h"
 #include "WebKitDOMDOMString[]Private.h"
 #include "WebKitDOMPrivate.h"
 #include "WebKitDOMSVGPointPrivate.h"
@@ -252,23 +251,6 @@ webkit_dom_test_typedefs_func(WebKitDOMTestTypedefs* self, WebKitDOMlong[]* x)
     WebCore::TestTypedefs* item = WebKit::core(self);
     WebCore::long[]* convertedX = WebKit::core(x);
     item->func(convertedX);
-}
-
-void
-webkit_dom_test_typedefs_multi_transfer_list(WebKitDOMTestTypedefs* self, WebKitDOMSerializedScriptValue* first, WebKitDOMArray* tx, WebKitDOMSerializedScriptValue* second, WebKitDOMArray* txx)
-{
-    WebCore::JSMainThreadNullState state;
-    g_return_if_fail(WEBKIT_DOM_IS_TEST_TYPEDEFS(self));
-    g_return_if_fail(WEBKIT_DOM_IS_SERIALIZED_SCRIPT_VALUE(first));
-    g_return_if_fail(WEBKIT_DOM_IS_ARRAY(tx));
-    g_return_if_fail(WEBKIT_DOM_IS_SERIALIZED_SCRIPT_VALUE(second));
-    g_return_if_fail(WEBKIT_DOM_IS_ARRAY(txx));
-    WebCore::TestTypedefs* item = WebKit::core(self);
-    WebCore::SerializedScriptValue* convertedFirst = WebKit::core(first);
-    WebCore::Array* convertedTx = WebKit::core(tx);
-    WebCore::SerializedScriptValue* convertedSecond = WebKit::core(second);
-    WebCore::Array* convertedTxx = WebKit::core(txx);
-    item->multiTransferList(convertedFirst, convertedTx, convertedSecond, convertedTxx);
 }
 
 void

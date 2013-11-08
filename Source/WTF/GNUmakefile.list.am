@@ -4,7 +4,6 @@ wtf_sources += \
     Source/WTF/wtf/ASCIICType.h \
     Source/WTF/wtf/AVLTree.h \
     Source/WTF/wtf/Alignment.h \
-    Source/WTF/wtf/AlwaysInline.h \
     Source/WTF/wtf/ArrayBuffer.cpp \
     Source/WTF/wtf/ArrayBuffer.h \
     Source/WTF/wtf/ArrayBufferView.cpp \
@@ -13,6 +12,7 @@ wtf_sources += \
     Source/WTF/wtf/Assertions.h \
     Source/WTF/wtf/Atomics.cpp \
     Source/WTF/wtf/Atomics.h \
+    Source/WTF/wtf/AutodrainedPool.h \
     Source/WTF/wtf/BitArray.h \
     Source/WTF/wtf/BitVector.cpp \
     Source/WTF/wtf/BitVector.h \
@@ -57,6 +57,8 @@ wtf_sources += \
     Source/WTF/wtf/Float32Array.h \
     Source/WTF/wtf/Float64Array.h \
     Source/WTF/wtf/Forward.h \
+    Source/WTF/wtf/FunctionDispatcher.cpp \
+    Source/WTF/wtf/FunctionDispatcher.h \
     Source/WTF/wtf/Functional.h \
     Source/WTF/wtf/GetPtr.h \
     Source/WTF/wtf/GregorianDateTime.cpp \
@@ -76,7 +78,6 @@ wtf_sources += \
     Source/WTF/wtf/Int8Array.h \
     Source/WTF/wtf/IntegralTypedArrayBase.h \
     Source/WTF/wtf/ListHashSet.h \
-    Source/WTF/wtf/ListRefPtr.h \
     Source/WTF/wtf/Locker.h \
     Source/WTF/wtf/MD5.cpp \
     Source/WTF/wtf/MD5.h \
@@ -86,17 +87,6 @@ wtf_sources += \
     Source/WTF/wtf/MathExtras.h \
     Source/WTF/wtf/MediaTime.h \
     Source/WTF/wtf/MediaTime.cpp \
-    Source/WTF/wtf/MemoryInstrumentation.cpp \
-    Source/WTF/wtf/MemoryInstrumentation.h \
-    Source/WTF/wtf/MemoryInstrumentationArrayBufferView.h \
-    Source/WTF/wtf/MemoryInstrumentationHashCountedSet.h \
-    Source/WTF/wtf/MemoryInstrumentationHashMap.h \
-    Source/WTF/wtf/MemoryInstrumentationHashSet.h \
-    Source/WTF/wtf/MemoryInstrumentationListHashSet.h \
-    Source/WTF/wtf/MemoryInstrumentationSequence.h \
-    Source/WTF/wtf/MemoryInstrumentationString.h \
-    Source/WTF/wtf/MemoryInstrumentationVector.h \
-    Source/WTF/wtf/MemoryObjectInfo.h \
     Source/WTF/wtf/MessageQueue.h \
     Source/WTF/wtf/MetaAllocator.cpp \
     Source/WTF/wtf/MetaAllocator.h \

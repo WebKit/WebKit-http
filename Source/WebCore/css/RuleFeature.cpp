@@ -30,10 +30,6 @@
 #include "RuleFeature.h"
 
 #include "CSSSelector.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include <wtf/MemoryInstrumentationHashMap.h>
-#include <wtf/MemoryInstrumentationHashSet.h>
-#include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
@@ -69,8 +65,8 @@ void RuleFeatureSet::add(const RuleFeatureSet& other)
     end = other.attrsInRules.end();
     for (HashSet<AtomicStringImpl*>::const_iterator it = other.attrsInRules.begin(); it != end; ++it)
         attrsInRules.add(*it);
-    siblingRules.append(other.siblingRules);
-    uncommonAttributeRules.append(other.uncommonAttributeRules);
+    siblingRules.appendVector(other.siblingRules);
+    uncommonAttributeRules.appendVector(other.uncommonAttributeRules);
     usesFirstLineRules = usesFirstLineRules || other.usesFirstLineRules;
     usesBeforeAfterRules = usesBeforeAfterRules || other.usesBeforeAfterRules;
 }
@@ -84,16 +80,6 @@ void RuleFeatureSet::clear()
     uncommonAttributeRules.clear();
     usesFirstLineRules = false;
     usesBeforeAfterRules = false;
-}
-
-void RuleFeatureSet::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(idsInRules, "idsInRules");
-    info.addMember(classesInRules, "classesInRules");
-    info.addMember(attrsInRules, "attrsInRules");
-    info.addMember(siblingRules, "siblingRules");
-    info.addMember(uncommonAttributeRules, "uncommonAttributeRules");
 }
 
 } // namespace WebCore

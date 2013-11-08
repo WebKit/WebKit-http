@@ -187,13 +187,13 @@ public:
         // We need to pass in the right global object for "i".
         Structure* domStructure = WebCore::deprecatedGetDOMStructure<ObjCRuntimeMethod>(exec);
         ObjCRuntimeMethod* runtimeMethod = new (NotNull, allocateCell<ObjCRuntimeMethod>(*exec->heap())) ObjCRuntimeMethod(globalObject, domStructure, method);
-        runtimeMethod->finishCreation(exec->globalData(), name);
+        runtimeMethod->finishCreation(exec->vm(), name);
         return runtimeMethod;
     }
 
-    static Structure* createStructure(JSGlobalData& globalData, JSC::JSGlobalObject* globalObject, JSValue prototype)
+    static Structure* createStructure(VM& vm, JSC::JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(globalData, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
     }
 
     static const ClassInfo s_info;
@@ -206,9 +206,9 @@ private:
     {
     }
 
-    void finishCreation(JSGlobalData& globalData, const String& name)
+    void finishCreation(VM& vm, const String& name)
     {
-        Base::finishCreation(globalData, name);
+        Base::finishCreation(vm, name);
         ASSERT(inherits(&s_info));
     }
 };
@@ -288,6 +288,9 @@ JSValue ObjcInstance::invokeObjcMethod(ExecState* exec, ObjcMethod* method)
                 case ObjcShortType:
                 case ObjcUnsignedShortType:
                     [invocation setArgument:&value.shortValue atIndex:i];
+                    break;
+                case ObjcBoolType:
+                    [invocation setArgument:&value.booleanValue atIndex:i];
                     break;
                 case ObjcIntType:
                 case ObjcUnsignedIntType:

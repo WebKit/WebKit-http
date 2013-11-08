@@ -91,17 +91,26 @@ void visibleTextQuads(const Range& range, Vector<FloatQuad>& quads, bool useSele
     }
 }
 
+bool isShadowHostTextInputElement(Node* node)
+{
+    if (!node)
+        return false;
+
+    Element* element = node->shadowHost();
+    return element && DOMSupport::isTextInputElement(element);
+}
+
 bool isTextInputElement(Element* element)
 {
     return element->isTextFormControl()
-           || element->hasTagName(HTMLNames::textareaTag)
-           || element->isContentEditable();
+        || element->hasTagName(HTMLNames::textareaTag)
+        || element->isContentEditable();
 }
 
 bool isPasswordElement(const Element* element)
 {
     return element && element->hasTagName(HTMLNames::inputTag)
-           && static_cast<const HTMLInputElement*>(element)->isPasswordField();
+        && static_cast<const HTMLInputElement*>(element)->isPasswordField();
 }
 
 WTF::String inputElementText(Element* element)
@@ -221,6 +230,11 @@ AttributeState elementSupportsAutocomplete(const Element* element)
 AttributeState elementSupportsSpellCheck(const Element* element)
 {
     return elementAttributeState(element, HTMLNames::spellcheckAttr);
+}
+
+bool isElementReadOnly(const Element* element)
+{
+    return element->fastHasAttribute(HTMLNames::readonlyAttr);
 }
 
 AttributeState elementAttributeState(const Element* element, const QualifiedName& attributeName)
@@ -459,8 +473,9 @@ IntPoint convertPointToFrame(const Frame* sourceFrame, const Frame* targetFrame,
 
     // Requested point is outside of target frame, return InvalidPoint.
     if (clampToTargetFrame && !targetFrameRect.contains(targetPoint))
-        targetPoint = IntPoint(targetPoint.x() < targetFrameRect.x() ? targetFrameRect.x() : std::min(targetPoint.x(), targetFrameRect.maxX()),
-                targetPoint.y() < targetFrameRect.y() ? targetFrameRect.y() : std::min(targetPoint.y(), targetFrameRect.maxY()));
+        targetPoint = IntPoint(
+            targetPoint.x() < targetFrameRect.x() ? targetFrameRect.x() : std::min(targetPoint.x(), targetFrameRect.maxX()),
+            targetPoint.y() < targetFrameRect.y() ? targetFrameRect.y() : std::min(targetPoint.y(), targetFrameRect.maxY()));
     else if (!targetFrameRect.contains(targetPoint))
         return InvalidPoint;
 
@@ -651,6 +666,11 @@ BlackBerry::Platform::RequestedHandlePosition elementHandlePositionAttribute(con
     else if (equalIgnoringCase(attributeString, "below"))
         position = BlackBerry::Platform::Below;
     return position;
+}
+
+bool isElementAndDocumentAttached(const WebCore::Element* element)
+{
+    return element && element->attached() && element->document() && element->document()->attached();
 }
 
 } // DOMSupport

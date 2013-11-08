@@ -38,6 +38,8 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				Optimization="2"
+				BasicRuntimeChecks="0"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -573,10 +575,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\wtf\AlwaysInline.h"
-			>
-		</File>
-		<File
 			RelativePath="..\wtf\ArrayBuffer.cpp"
 			>
 		</File>
@@ -609,27 +607,19 @@
 			>
 		</File>
 		<File
-			RelativePath="..\wtf\AVLTree.h"
-			>
-		</File>
-		<File
 			RelativePath="..\wtf\AutodrainedPool.h"
 			>
 		</File>
 		<File
-			RelativePath="..\wtf\SchedulePair.h"
-			>
-		</File>
-		<File
-			RelativePath="..\wtf\SchedulePairCF.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\wtf\Bitmap.h"
+			RelativePath="..\wtf\AVLTree.h"
 			>
 		</File>
 		<File
 			RelativePath="..\wtf\BitArray.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\Bitmap.h"
 			>
 		</File>
 		<File
@@ -753,6 +743,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\wtf\EnumClass.h"
+			>
+		</File>
+		<File
 			RelativePath="..\wtf\FastAllocBase.h"
 			>
 		</File>
@@ -818,6 +812,14 @@
 		</File>
 		<File
 			RelativePath="..\wtf\Forward.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\FunctionDispatcher.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\FunctionDispatcher.h"
 			>
 		</File>
 		<File
@@ -889,10 +891,6 @@
 			>
 		</File>
 		<File
-			RelativePath="..\wtf\ListRefPtr.h"
-			>
-		</File>
-		<File
 			RelativePath="..\wtf\Locker.h"
 			>
 		</File>
@@ -921,55 +919,11 @@
 			>
 		</File>
 		<File
-			RelativePath="..\wtf\MediaTime.h"
-			>
-		</File>
-		<File
 			RelativePath="..\wtf\MediaTime.cpp"
 			>
 		</File>
 		<File
-		        RelativePath="..\wtf\MemoryInstrumentation.cpp"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentation.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationArrayBufferView.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationHashCountedSet.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationHashMap.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationHashSet.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationListHashSet.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationSequence.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationString.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryInstrumentationVector.h"
-			>
-		</File>
-		<File
-		        RelativePath="..\wtf\MemoryObjectInfo.h"
+			RelativePath="..\wtf\MediaTime.h"
 			>
 		</File>
 		<File
@@ -1006,14 +960,6 @@
 		</File>
 		<File
 			RelativePath="..\wtf\NullPtr.h"
-			>
-		</File>
-		<File
-			RelativePath="..\wtf\RAMSize.cpp"
-			>
-		</File>
-		<File
-			RelativePath="..\wtf\RAMSize.h"
 			>
 		</File>
 		<File
@@ -1133,6 +1079,14 @@
 			>
 		</File>
 		<File
+			RelativePath="..\wtf\RAMSize.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\RAMSize.h"
+			>
+		</File>
+		<File
 			RelativePath="..\wtf\RandomNumber.cpp"
 			>
 		</File>
@@ -1178,6 +1132,14 @@
 		</File>
 		<File
 			RelativePath="..\wtf\SaturatedArithmetic.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\SchedulePair.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\SchedulePairCF.cpp"
 			>
 		</File>
 		<File
@@ -1337,15 +1299,15 @@
 			>
 		</File>
 		<File
+			RelativePath="..\wtf\WeakPtr.h"
+			>
+		</File>
+		<File
 			RelativePath="..\wtf\WTFThreadData.cpp"
 			>
 		</File>
 		<File
 			RelativePath="..\wtf\WTFThreadData.h"
-			>
-		</File>
-		<File
-			RelativePath="..\wtf\WeakPtr.h"
 			>
 		</File>
 	</Files>

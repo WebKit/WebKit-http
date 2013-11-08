@@ -124,8 +124,22 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
         BlendMode blendOp = BlendModeNormal;
         if (!parseCompositeAndBlendOperator(value, m_compositeOperator, blendOp))
             m_compositeOperator = CompositeSourceOver;
-    } else
+    } else {
+        if (name == nameAttr) {
+            bool willHaveName = !value.isNull();
+            if (hasName() != willHaveName && inDocument() && document()->isHTMLDocument()) {
+                HTMLDocument* document = toHTMLDocument(this->document());
+                const AtomicString& id = getIdAttribute();
+                if (!id.isEmpty()) {
+                    if (willHaveName)
+                        document->documentNamedItemMap().add(id.impl(), this);
+                    else
+                        document->documentNamedItemMap().remove(id.impl(), this);
+                }
+            }
+        }
         HTMLElement::parseAttribute(name, value);
+    }
 }
 
 String HTMLImageElement::altText() const
@@ -374,13 +388,5 @@ void HTMLImageElement::setItemValueText(const String& value, ExceptionCode&)
     setAttribute(srcAttr, value);
 }
 #endif
-
-void HTMLImageElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    HTMLElement::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_imageLoader, "imageLoader");
-    info.addMember(m_form, "form");
-}
 
 }

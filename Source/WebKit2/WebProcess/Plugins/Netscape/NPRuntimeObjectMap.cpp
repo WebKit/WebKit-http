@@ -39,7 +39,9 @@
 #include <JavaScriptCore/SourceCode.h>
 #include <JavaScriptCore/Strong.h>
 #include <JavaScriptCore/StrongInlines.h>
+#include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/Frame.h>
+#include <WebCore/ScriptController.h>
 
 using namespace JSC;
 using namespace WebCore;
@@ -64,7 +66,7 @@ NPRuntimeObjectMap::PluginProtector::~PluginProtector()
 {
 }
 
-NPObject* NPRuntimeObjectMap::getOrCreateNPObject(JSGlobalData& globalData, JSObject* jsObject)
+NPObject* NPRuntimeObjectMap::getOrCreateNPObject(VM& vm, JSObject* jsObject)
 {
     // If this is a JSNPObject, we can just get its underlying NPObject.
     if (jsObject->classInfo() == &JSNPObject::s_info) {
@@ -81,7 +83,7 @@ NPObject* NPRuntimeObjectMap::getOrCreateNPObject(JSGlobalData& globalData, JSOb
         return npJSObject;
     }
 
-    NPJSObject* npJSObject = NPJSObject::create(globalData, this, jsObject);
+    NPJSObject* npJSObject = NPJSObject::create(vm, this, jsObject);
     m_npJSObjects.set(jsObject, npJSObject);
 
     return npJSObject;
@@ -170,7 +172,7 @@ void NPRuntimeObjectMap::convertJSValueToNPVariant(ExecState* exec, JSValue valu
     }
 
     if (value.isObject()) {
-        NPObject* npObject = getOrCreateNPObject(exec->globalData(), asObject(value));
+        NPObject* npObject = getOrCreateNPObject(exec->vm(), asObject(value));
         OBJECT_TO_NPVARIANT(npObject, variant);
         return;
     }
@@ -180,7 +182,7 @@ void NPRuntimeObjectMap::convertJSValueToNPVariant(ExecState* exec, JSValue valu
 
 bool NPRuntimeObjectMap::evaluate(NPObject* npObject, const String& scriptString, NPVariant* result)
 {
-    Strong<JSGlobalObject> globalObject(this->globalObject()->globalData(), this->globalObject());
+    Strong<JSGlobalObject> globalObject(this->globalObject()->vm(), this->globalObject());
     if (!globalObject)
         return false;
 
@@ -189,9 +191,7 @@ bool NPRuntimeObjectMap::evaluate(NPObject* npObject, const String& scriptString
     JSLockHolder lock(exec);
     JSValue thisValue = getOrCreateJSObject(globalObject.get(), npObject);
 
-    globalObject->globalData().timeoutChecker.start();
     JSValue resultValue = JSC::evaluate(exec, makeSource(scriptString), thisValue);
-    globalObject->globalData().timeoutChecker.stop();
 
     convertJSValueToNPVariant(exec, resultValue, *result);
     return true;
@@ -211,7 +211,7 @@ void NPRuntimeObjectMap::invalidate()
 
     Vector<NPObject*> objects;
 
-    for (HashMap<NPObject*, JSC::Weak<JSNPObject> >::iterator ptr = m_jsNPObjects.begin(), end = m_jsNPObjects.end(); ptr != end; ++ptr) {
+    for (HashMap<NPObject*, JSC::Weak<JSNPObject>>::iterator ptr = m_jsNPObjects.begin(), end = m_jsNPObjects.end(); ptr != end; ++ptr) {
         JSNPObject* jsNPObject = ptr->value.get();
         if (!jsNPObject) // Skip zombies.
             continue;

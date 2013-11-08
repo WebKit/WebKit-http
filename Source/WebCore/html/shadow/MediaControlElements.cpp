@@ -34,10 +34,10 @@
 
 #include "CaptionUserPreferences.h"
 #include "DOMTokenList.h"
+#include "EventHandler.h"
 #include "EventNames.h"
 #include "EventTarget.h"
 #include "ExceptionCodePlaceholder.h"
-#include "FloatConversion.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
 #include "HTMLVideoElement.h"
@@ -629,7 +629,7 @@ PassRefPtr<MediaControlRewindButtonElement> MediaControlRewindButtonElement::cre
 void MediaControlRewindButtonElement::defaultEventHandler(Event* event)
 {
     if (event->type() == eventNames().clickEvent) {
-        mediaController()->setCurrentTime(max(0.0f, mediaController()->currentTime() - 30), IGNORE_EXCEPTION);
+        mediaController()->setCurrentTime(max(0.0, mediaController()->currentTime() - 30), IGNORE_EXCEPTION);
         event->setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
@@ -945,7 +945,7 @@ void MediaControlTimelineElement::defaultEventHandler(Event* event)
     if (event->type() == eventNames().mouseoverEvent || event->type() == eventNames().mouseoutEvent || event->type() == eventNames().mousemoveEvent)
         return;
 
-    float time = narrowPrecisionToFloat(value().toDouble());
+    double time = value().toDouble();
     if (event->type() == eventNames().inputEvent && time != mediaController()->currentTime())
         mediaController()->setCurrentTime(time, IGNORE_EXCEPTION);
 
@@ -962,12 +962,12 @@ bool MediaControlTimelineElement::willRespondToMouseClickEvents()
     return true;
 }
 
-void MediaControlTimelineElement::setPosition(float currentTime)
+void MediaControlTimelineElement::setPosition(double currentTime)
 {
     setValue(String::number(currentTime));
 }
 
-void MediaControlTimelineElement::setDuration(float duration)
+void MediaControlTimelineElement::setDuration(double duration)
 {
     setAttribute(maxAttr, String::number(std::isfinite(duration) ? duration : 0));
 }
@@ -1188,7 +1188,9 @@ const AtomicString& MediaControlCurrentTimeDisplayElement::shadowPseudoId() cons
 
 MediaControlTextTrackContainerElement::MediaControlTextTrackContainerElement(Document* document)
     : MediaControlDivElement(document, MediaTextTrackDisplayContainer)
+    , m_updateTimer(this, &MediaControlTextTrackContainerElement::updateTimerFired)
     , m_fontSize(0)
+    , m_fontSizeIsImportant(false)
 {
 }
 
@@ -1271,13 +1273,15 @@ void MediaControlTextTrackContainerElement::updateDisplay()
         TextTrackCue* cue = activeCues[i].data();
 
         ASSERT(cue->isActive());
-        if (!cue->track() || !cue->track()->isRendered() || !cue->isActive())
+        if (!cue->track() || !cue->track()->isRendered() || !cue->isActive() || cue->text().isEmpty())
             continue;
 
         RefPtr<TextTrackCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size());
-        if (displayBox->hasChildNodes() && !contains(static_cast<Node*>(displayBox.get())))
+        if (displayBox->hasChildNodes() && !contains(static_cast<Node*>(displayBox.get()))) {
             // Note: the display tree of a cue is removed when the active flag of the cue is unset.
             appendChild(displayBox, ASSERT_NO_EXCEPTION, AttachNow);
+            cue->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
+        }
     }
 
     // 11. Return output.
@@ -1301,6 +1305,32 @@ void MediaControlTextTrackContainerElement::updateDisplay()
         mediaElement->setTextTrackRepresentation(0);
         removeInlineStyleProperty(CSSPropertyWidth);
         removeInlineStyleProperty(CSSPropertyHeight);
+    }
+}
+
+void MediaControlTextTrackContainerElement::updateTimerFired(Timer<MediaControlTextTrackContainerElement>*)
+{
+    if (!document()->page())
+        return;
+
+    if (m_textTrackRepresentation) {
+        setInlineStyleProperty(CSSPropertyWidth, String::number(m_videoDisplaySize.size().width()) + "px");
+        setInlineStyleProperty(CSSPropertyHeight, String::number(m_videoDisplaySize.size().height()) + "px");
+    }
+    
+    HTMLMediaElement* mediaElement = toParentMediaElement(this);
+    if (!mediaElement)
+        return;
+
+    float smallestDimension = std::min(m_videoDisplaySize.size().height(), m_videoDisplaySize.size().width());
+    float fontScale = document()->page()->group().captionPreferences()->captionFontSizeScaleAndImportance(m_fontSizeIsImportant);
+    m_fontSize = lroundf(smallestDimension * fontScale);
+    
+    CueList activeCues = mediaElement->currentlyActiveCues();
+    for (size_t i = 0; i < activeCues.size(); ++i) {
+        TextTrackCue* cue = activeCues[i].data();
+        cue->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
+        
     }
 }
 
@@ -1333,25 +1363,7 @@ void MediaControlTextTrackContainerElement::updateSizes(bool forceUpdate)
         return;
     m_videoDisplaySize = videoBox;
 
-    if (m_textTrackRepresentation) {
-        setInlineStyleProperty(CSSPropertyWidth, String::number(m_videoDisplaySize.size().width()) + "px");
-        setInlineStyleProperty(CSSPropertyHeight, String::number(m_videoDisplaySize.size().height()) + "px");
-    }
-
-    float smallestDimension = std::min(m_videoDisplaySize.size().height(), m_videoDisplaySize.size().width());
-
-    bool important;
-    float fontSize = smallestDimension * (document()->page()->group().captionPreferences()->captionFontSizeScale(important));
-    if (fontSize != m_fontSize) {
-        m_fontSize = fontSize;
-        setInlineStyleProperty(CSSPropertyFontSize, String::number(fontSize) + "px", important);
-    }
-
-    CueList activeCues = mediaElement->currentlyActiveCues();
-    for (size_t i = 0; i < activeCues.size(); ++i) {
-        TextTrackCue* cue = activeCues[i].data();
-        cue->videoSizeDidChange(m_videoDisplaySize.size());
-    }
+    m_updateTimer.startOneShot(0);
 }
 
 void MediaControlTextTrackContainerElement::paintTextTrackRepresentation(GraphicsContext* context, const IntRect& contextRect)

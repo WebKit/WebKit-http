@@ -44,9 +44,6 @@
 #include "RegularExpression.h"
 #include "ScriptDebugServer.h"
 #include "ScriptObject.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include <wtf/MemoryInstrumentationHashMap.h>
-#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/text/WTFString.h>
 
 using WebCore::TypeBuilder::Array;
@@ -632,23 +629,25 @@ PassRefPtr<Array<TypeBuilder::Debugger::CallFrame> > InspectorDebuggerAgent::cur
 
 String InspectorDebuggerAgent::sourceMapURLForScript(const Script& script)
 {
-    DEFINE_STATIC_LOCAL(String, sourceMapHttpHeader, (ASCIILiteral("X-SourceMap")));
+    DEFINE_STATIC_LOCAL(String, sourceMapHTTPHeader, (ASCIILiteral("SourceMap")));
+    DEFINE_STATIC_LOCAL(String, sourceMapHTTPHeaderDeprecated, (ASCIILiteral("X-SourceMap")));
 
-    String sourceMapURL = ContentSearchUtils::findSourceMapURL(script.source);
-    if (!sourceMapURL.isEmpty())
-        return sourceMapURL;
+    if (!script.url.isEmpty()) {
+        if (InspectorPageAgent* pageAgent = m_instrumentingAgents->inspectorPageAgent()) {
+            CachedResource* resource = pageAgent->cachedResource(pageAgent->mainFrame(), KURL(ParsedURLString, script.url));
+            if (resource) {
+                String sourceMapHeader = resource->response().httpHeaderField(sourceMapHTTPHeader);
+                if (!sourceMapHeader.isEmpty())
+                    return sourceMapHeader;
 
-    if (script.url.isEmpty())
-        return String();
+                sourceMapHeader = resource->response().httpHeaderField(sourceMapHTTPHeaderDeprecated);
+                if (!sourceMapHeader.isEmpty())
+                    return sourceMapHeader;                
+            }
+        }
+    }
 
-    InspectorPageAgent* pageAgent = m_instrumentingAgents->inspectorPageAgent();
-    if (!pageAgent)
-        return String();
-
-    CachedResource* resource = pageAgent->cachedResource(pageAgent->mainFrame(), KURL(ParsedURLString, script.url));
-    if (resource)
-        return resource->response().httpHeaderField(sourceMapHttpHeader);
-    return String();
+    return ContentSearchUtils::findScriptSourceMapURL(script.source);
 }
 
 // JavaScriptDebugListener functions
@@ -661,7 +660,7 @@ void InspectorDebuggerAgent::didParseSource(const String& scriptId, const Script
     String* sourceMapURLParam = sourceMapURL.isNull() ? 0 : &sourceMapURL;
     String sourceURL;
     if (!script.startLine && !script.startColumn)
-        sourceURL = ContentSearchUtils::findSourceURL(script.source);
+        sourceURL = ContentSearchUtils::findScriptSourceURL(script.source);
     bool hasSourceURL = !sourceURL.isEmpty();
     String scriptURL = hasSourceURL ? sourceURL : script.url;
     bool* hasSourceURLParam = hasSourceURL ? &hasSourceURL : 0;
@@ -763,29 +762,6 @@ void InspectorDebuggerAgent::clearBreakDetails()
 {
     m_breakReason = InspectorFrontend::Debugger::Reason::Other;
     m_breakAuxData = 0;
-}
-
-void InspectorDebuggerAgent::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorDebuggerAgent);
-    InspectorBaseAgent<InspectorDebuggerAgent>::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_injectedScriptManager, "injectedScriptManager");
-    info.addWeakPointer(m_frontend);
-    info.addMember(m_pausedScriptState, "pausedScriptState");
-    info.addMember(m_currentCallStack, "currentCallStack");
-    info.addMember(m_scripts, "scripts");
-    info.addMember(m_breakpointIdToDebugServerBreakpointIds, "breakpointIdToDebugServerBreakpointIds");
-    info.addMember(m_continueToLocationBreakpointId, "continueToLocationBreakpointId");
-    info.addMember(m_breakAuxData, "breakAuxData");
-    info.addWeakPointer(m_listener);
-}
-
-void ScriptDebugListener::Script::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorDebuggerAgent);
-    info.addMember(url, "url");
-    info.addMember(source, "source");
-    info.addMember(sourceMappingURL, "sourceMappingURL");
 }
 
 void InspectorDebuggerAgent::reset()

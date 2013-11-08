@@ -50,7 +50,7 @@ class UnlinkedEvalCodeBlock;
 class UnlinkedFunctionCodeBlock;
 class UnlinkedFunctionExecutable;
 class UnlinkedProgramCodeBlock;
-class JSGlobalData;
+class VM;
 struct ParserError;
 class SourceCode;
 class SourceProvider;
@@ -120,8 +120,8 @@ struct SourceCodeValue {
     {
     }
 
-    SourceCodeValue(JSGlobalData& globalData, JSCell* cell, int64_t age)
-        : cell(globalData, cell)
+    SourceCodeValue(VM& vm, JSCell* cell, int64_t age)
+        : cell(vm, cell)
         , age(age)
     {
     }
@@ -136,13 +136,15 @@ public:
     typedef MapType::iterator iterator;
     typedef MapType::AddResult AddResult;
 
-    CodeCacheMap()
+    CodeCacheMap(int64_t workingSetMaxBytes, size_t workingSetMaxEntries)
         : m_size(0)
         , m_sizeAtLastPrune(0)
         , m_timeAtLastPrune(monotonicallyIncreasingTime())
         , m_minCapacity(0)
         , m_capacity(0)
         , m_age(0)
+        , m_workingSetMaxBytes(workingSetMaxBytes)
+        , m_workingSetMaxEntries(workingSetMaxEntries)
     {
     }
 
@@ -192,12 +194,20 @@ public:
 
     int64_t age() { return m_age; }
 
+    static const int64_t globalWorkingSetMaxBytes;
+    static const size_t globalWorkingSetMaxEntries;
+
+    // We have a smaller cap for the per-codeblock CodeCache that approximates the
+    // linked EvalCodeCache limits, but still allows us to keep large string based
+    // evals at least partially cached.
+    static const unsigned nonGlobalWorkingSetScale;
+    static const int64_t nonGlobalWorkingSetMaxBytes;
+    static const size_t nonGlobalWorkingSetMaxEntries;
+
 private:
     // This constant factor biases cache capacity toward allowing a minimum
     // working set to enter the cache before it starts evicting.
     static const double workingSetTime;
-    static const int64_t workingSetMaxBytes = 16000000;
-    static const size_t workingSetMaxEntries = 2000;
 
     // This constant factor biases cache capacity toward recent activity. We
     // want to adapt to changing workloads.
@@ -209,7 +219,7 @@ private:
     static const int64_t oldObjectSamplingMultiplier = 32;
 
     size_t numberOfEntries() const { return static_cast<size_t>(m_map.size()); }
-    bool canPruneQuickly() const { return numberOfEntries() < workingSetMaxEntries; }
+    bool canPruneQuickly() const { return numberOfEntries() < m_workingSetMaxEntries; }
 
     void pruneSlowCase();
     void prune()
@@ -218,7 +228,7 @@ private:
             return;
 
         if (monotonicallyIncreasingTime() - m_timeAtLastPrune < workingSetTime
-            && m_size - m_sizeAtLastPrune < workingSetMaxBytes
+            && m_size - m_sizeAtLastPrune < m_workingSetMaxBytes
             && canPruneQuickly())
                 return;
 
@@ -232,16 +242,19 @@ private:
     int64_t m_minCapacity;
     int64_t m_capacity;
     int64_t m_age;
+    const int64_t m_workingSetMaxBytes;
+    const size_t m_workingSetMaxEntries;
 };
 
 // Caches top-level code such as <script>, eval(), new Function, and JSEvaluateScript().
-class CodeCache {
+class CodeCache : public RefCounted<CodeCache> {
 public:
-    static PassOwnPtr<CodeCache> create() { return adoptPtr(new CodeCache); }
+    enum CodeCacheKind { GlobalCodeCache, NonGlobalCodeCache };
+    static PassRefPtr<CodeCache> create(CodeCacheKind kind) { return adoptRef(new CodeCache(kind)); }
 
-    UnlinkedProgramCodeBlock* getProgramCodeBlock(JSGlobalData&, ProgramExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
-    UnlinkedEvalCodeBlock* getEvalCodeBlock(JSGlobalData&, JSScope*, EvalExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
-    UnlinkedFunctionExecutable* getFunctionExecutableFromGlobalCode(JSGlobalData&, const Identifier&, const SourceCode&, ParserError&);
+    UnlinkedProgramCodeBlock* getProgramCodeBlock(VM&, ProgramExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
+    UnlinkedEvalCodeBlock* getEvalCodeBlock(VM&, JSScope*, EvalExecutable*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
+    UnlinkedFunctionExecutable* getFunctionExecutableFromGlobalCode(VM&, const Identifier&, const SourceCode&, ParserError&);
     ~CodeCache();
 
     void clear()
@@ -250,10 +263,13 @@ public:
     }
 
 private:
-    CodeCache();
+    CodeCache(CodeCacheKind);
 
     template <class UnlinkedCodeBlockType, class ExecutableType> 
-    UnlinkedCodeBlockType* getCodeBlock(JSGlobalData&, JSScope*, ExecutableType*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
+    UnlinkedCodeBlockType* getCodeBlock(VM&, JSScope*, ExecutableType*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
+
+    template <class UnlinkedCodeBlockType, class ExecutableType>
+    UnlinkedCodeBlockType* generateBytecode(VM&, JSScope*, ExecutableType*, const SourceCode&, JSParserStrictness, DebuggerMode, ProfilerMode, ParserError&);
 
     CodeCacheMap m_sourceCode;
 };

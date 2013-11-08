@@ -51,7 +51,7 @@
 #include <gst/interfaces/streamvolume.h>
 #endif
 
-GST_DEBUG_CATEGORY_STATIC(webkit_media_player_debug);
+GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
 
 using namespace std;
@@ -108,6 +108,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_buffer(0)
     , m_volumeTimerHandler(0)
     , m_muteTimerHandler(0)
+    , m_repaintHandler(0)
+    , m_volumeSignalHandler(0)
+    , m_muteSignalHandler(0)
 {
 }
 

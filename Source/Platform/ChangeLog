@@ -1,3 +1,35 @@
+2013-05-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move GeolocationProviderGeoclue into libPlatform
+        https://bugs.webkit.org/show_bug.cgi?id=115591
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: List the Source/WebCore/platform/geoclue directory under platform_webcore_cppflags.
+        Add Geoclue dependency CPPFLAGS to the list of libPlatform's CPPFLAGS.
+
+2013-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move image decoders, some other GStreamer, Cairo and Soup sources to libPlatform
+        https://bugs.webkit.org/show_bug.cgi?id=115050
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Add the image-decoders directory and its subdirectories to the list of header inclusion directories.
+        List the Cairo, GStreamer and Libsoup cppflags under the cppflags libPlatform uses for compiling its sources.
+
+2013-04-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Set up libPlatform.la
+        https://bugs.webkit.org/show_bug.cgi?id=114168
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Set up the libPlatform.la static library to build the source files listed in platform_sources.
+        As with the libPlatformGtk.la library, only the Source/WebCore/platform and its subdirectories are allowed to be
+        searched for headers to include, providing a convenient way to detect any platform violations. These directories
+        are listed in the platform_webcore_cppflags variable.
+
 2013-04-05  Benjamin Poulain  <benjamin@webkit.org>
 
         Fix GTK+ for real after r147712

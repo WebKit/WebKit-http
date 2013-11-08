@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2008, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,7 +41,11 @@ namespace WebCore {
     class HTMLCanvasElement;
 
     class CanvasStyle : public RefCounted<CanvasStyle> {
+        WTF_MAKE_FAST_ALLOCATED;
+        WTF_MAKE_NONCOPYABLE(CanvasStyle);
     public:
+        ~CanvasStyle();
+
         static PassRefPtr<CanvasStyle> createFromRGBA(RGBA32 rgba) { return adoptRef(new CanvasStyle(rgba)); }
         static PassRefPtr<CanvasStyle> createFromString(const String& color, Document* = 0);
         static PassRefPtr<CanvasStyle> createFromStringWithOverrideAlpha(const String& color, float alpha);
@@ -55,9 +59,9 @@ namespace WebCore {
         bool hasOverrideAlpha() const { return m_type == CurrentColorWithOverrideAlpha; }
         float overrideAlpha() const { ASSERT(m_type == CurrentColorWithOverrideAlpha); return m_overrideAlpha; }
 
-        String color() const { ASSERT(m_type == RGBA || m_type == CMYKA); return Color(m_rgba).serialized(); }
-        CanvasGradient* canvasGradient() const { return m_gradient.get(); }
-        CanvasPattern* canvasPattern() const { return m_pattern.get(); }
+        String color() const;
+        CanvasGradient* canvasGradient() const;
+        CanvasPattern* canvasPattern() const;
 
         void applyFillColor(GraphicsContext*);
         void applyStrokeColor(GraphicsContext*);
@@ -68,6 +72,19 @@ namespace WebCore {
 
     private:
         enum Type { RGBA, CMYKA, Gradient, ImagePattern, CurrentColor, CurrentColorWithOverrideAlpha };
+        struct CMYKAValues {
+            WTF_MAKE_FAST_ALLOCATED;
+            WTF_MAKE_NONCOPYABLE(CMYKAValues);
+        public:
+            CMYKAValues() : rgba(0), c(0), m(0), y(0), k(0), a(0) { }
+            CMYKAValues(RGBA32 rgba, float cyan, float magenta, float yellow, float black, float alpha) : rgba(rgba), c(cyan), m(magenta), y(yellow), k(black), a(alpha) { }
+            RGBA32 rgba;
+            float c;
+            float m;
+            float y;
+            float k;
+            float a;
+        };
 
         CanvasStyle(Type, float overrideAlpha = 0);
         CanvasStyle(RGBA32 rgba);
@@ -82,24 +99,36 @@ namespace WebCore {
         union {
             RGBA32 m_rgba;
             float m_overrideAlpha;
+            CanvasGradient* m_gradient;
+            CanvasPattern* m_pattern;
+            CMYKAValues* m_cmyka;
         };
-
-        RefPtr<CanvasGradient> m_gradient;
-        RefPtr<CanvasPattern> m_pattern;
-
-        struct CMYKAValues {
-            CMYKAValues() : c(0), m(0), y(0), k(0), a(0) { }
-            CMYKAValues(float cyan, float magenta, float yellow, float black, float alpha) : c(cyan), m(magenta), y(yellow), k(black), a(alpha) { }
-            float c;
-            float m;
-            float y;
-            float k;
-            float a;
-        } m_cmyka;
     };
 
     RGBA32 currentColor(HTMLCanvasElement*);
     bool parseColorOrCurrentColor(RGBA32& parsedColor, const String& colorString, HTMLCanvasElement*);
+
+    inline CanvasGradient* CanvasStyle::canvasGradient() const
+    {
+        if (m_type == Gradient)
+            return m_gradient;
+        return 0;
+    }
+
+    inline CanvasPattern* CanvasStyle::canvasPattern() const
+    {
+        if (m_type == ImagePattern)
+            return m_pattern;
+        return 0;
+    }
+
+    inline String CanvasStyle::color() const
+    {
+        ASSERT(m_type == RGBA || m_type == CMYKA);
+        if (m_type == RGBA)
+            return Color(m_rgba).serialized();
+        return Color(m_cmyka->rgba).serialized();
+    }
 
 } // namespace WebCore
 

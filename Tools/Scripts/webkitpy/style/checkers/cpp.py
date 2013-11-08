@@ -1113,6 +1113,19 @@ def check_invalid_increment(clean_lines, line_number, error):
               'Changing pointer instead of value (or unused value of operator*).')
 
 
+def check_for_webcore_platform_layering_violation(filename, clean_lines, line_number, error):
+    """Checks for platform-specific code inside WebCore outside of the platform layer."""
+    directory = FileInfo(filename).split()[0]
+    if not match(r'Source/WebCore', directory):
+        return
+    if match(r'Source/WebCore/platform', directory):
+        return
+    line = clean_lines.elided[line_number]
+    if match(r'\s*#\s*if\s*PLATFORM\s*\(', line):
+        error(line_number, 'build/webcore_platform_layering_violation', 5,
+              'Do not add platform specific code in WebCore outside of platform.')
+
+
 class _ClassInfo(object):
     """Stores information about a class."""
 
@@ -1662,20 +1675,6 @@ def check_function_definition(filename, file_extension, clean_lines, line_number
         return
 
     modifiers_and_return_type = function_state.modifiers_and_return_type()
-    if filename.find('/chromium/') != -1 and search(r'\bWEBKIT_EXPORT\b', modifiers_and_return_type):
-        if filename.find('/chromium/public/') == -1 and filename.find('/chromium/tests/') == -1 and filename.find('chromium/platform') == -1:
-            error(function_state.function_name_start_position.row, 'readability/webkit_export', 5,
-                  'WEBKIT_EXPORT should only appear in the chromium public (or tests) directory.')
-        elif not file_extension == "h":
-            error(function_state.function_name_start_position.row, 'readability/webkit_export', 5,
-                  'WEBKIT_EXPORT should only be used in header files.')
-        elif not function_state.is_declaration or search(r'\binline\b', modifiers_and_return_type):
-            error(function_state.function_name_start_position.row, 'readability/webkit_export', 5,
-                  'WEBKIT_EXPORT should not be used on a function with a body.')
-        elif function_state.is_pure:
-            error(function_state.function_name_start_position.row, 'readability/webkit_export', 5,
-                  'WEBKIT_EXPORT should not be used with a pure virtual function.')
-
     check_function_definition_and_pass_ptr(modifiers_and_return_type, function_state.function_name_start_position.row, 'return', error)
 
     parameter_list = function_state.parameter_list()
@@ -2826,10 +2825,6 @@ def check_include_line(filename, file_extension, clean_lines, line_number, inclu
         error(line_number, 'build/include', 4,
               'wtf includes should be <wtf/file.h> instead of "wtf/file.h".')
 
-    if filename.find('/chromium/') != -1 and include.startswith('cc/CC'):
-        error(line_number, 'build/include', 4,
-              'cc includes should be "CCFoo.h" instead of "cc/CCFoo.h".')
-
     duplicate_header = include in include_state
     if duplicate_header:
         error(line_number, 'build/include', 4,
@@ -3579,6 +3574,7 @@ def process_line(filename, file_extension,
     check_for_non_standard_constructs(clean_lines, line, class_state, error)
     check_posix_threading(clean_lines, line, error)
     check_invalid_increment(clean_lines, line, error)
+    check_for_webcore_platform_layering_violation(filename, clean_lines, line, error)
 
 
 def _process_lines(filename, file_extension, lines, error, min_confidence):
@@ -3645,6 +3641,7 @@ class CppChecker(object):
         'build/printf_format',
         'build/storage_class',
         'build/using_std',
+        'build/webcore_platform_layering_violation',
         'legal/copyright',
         'readability/braces',
         'readability/casting',

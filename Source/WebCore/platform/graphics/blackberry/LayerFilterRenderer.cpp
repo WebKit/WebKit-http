@@ -38,6 +38,31 @@
 
 namespace WebCore {
 
+class SurfaceFunctor {
+public:
+    SurfaceFunctor(LayerRendererSurface* surface)
+        : m_surface(surface)
+    {
+    }
+
+protected:
+    LayerRendererSurface* m_surface;
+};
+
+class InverseSurfaceWidth : public SurfaceFunctor {
+public:
+    InverseSurfaceWidth(LayerRendererSurface* surface) : SurfaceFunctor(surface) { }
+
+    float operator() () { return 1.0f / m_surface->size().width(); }
+};
+
+class InverseSurfaceHeight : public SurfaceFunctor {
+public:
+    InverseSurfaceHeight(LayerRendererSurface* surface) : SurfaceFunctor(surface) { }
+
+    float operator() () { return 1.0f / m_surface->size().height(); }
+};
+
 static int operationTypeToProgramID(const FilterOperation::OperationType& t)
 {
     switch (t) {
@@ -328,7 +353,7 @@ bool LayerFilterRenderer::initializeSharedGLObjects()
         "varying mediump vec2 v_texCoord;\n"\
         "uniform lowp sampler2D s_texture;\n"\
         "uniform highp float u_amount;\n"\
-        #x\
+#x\
         "void main(void)\n { gl_FragColor = shade(texture2D(s_texture, v_texCoord)); }"
 
 #define BLUR_FILTER(x...) \
@@ -339,7 +364,7 @@ bool LayerFilterRenderer::initializeSharedGLObjects()
         "uniform highp float u_amount;\n"\
         "uniform highp float u_blurSize;\n"\
         "const float pi = 3.1415927;\n"\
-        #x\
+#x\
         "void main(void)\n"\
         "{\n"\
         "vec3 incr;\n"\
@@ -371,9 +396,9 @@ bool LayerFilterRenderer::initializeSharedGLObjects()
         {
             lowp float amount = 1.0 - u_amount;
             return vec4((0.2126 + 0.7874 * amount) * color.r + (0.7152 - 0.7152 * amount) * color.g + (0.0722 - 0.0722 * amount) * color.b,
-                        (0.2126 - 0.2126 * amount) * color.r + (0.7152 + 0.2848 * amount) * color.g + (0.0722 - 0.0722 * amount) * color.b,
-                        (0.2126 - 0.2126 * amount) * color.r + (0.7152 - 0.7152 * amount) * color.g + (0.0722 + 0.9278 * amount) * color.b,
-                        color.a);
+                (0.2126 - 0.2126 * amount) * color.r + (0.7152 + 0.2848 * amount) * color.g + (0.0722 - 0.0722 * amount) * color.b,
+                (0.2126 - 0.2126 * amount) * color.r + (0.7152 - 0.7152 * amount) * color.g + (0.0722 + 0.9278 * amount) * color.b,
+                color.a);
         }
     );
 
@@ -382,19 +407,19 @@ bool LayerFilterRenderer::initializeSharedGLObjects()
         {
             lowp float amount = 1.0 - u_amount;
             return vec4((0.393 + 0.607 * amount) * color.r + (0.769 - 0.769 * amount) * color.g + (0.189 - 0.189 * amount) * color.b,
-                        (0.349 - 0.349 * amount) * color.r + (0.686 + 0.314 * amount) * color.g + (0.168 - 0.168 * amount) * color.b,
-                        (0.272 - 0.272 * amount) * color.r + (0.534 - 0.534 * amount) * color.g + (0.131 + 0.869 * amount) * color.b,
-                        color.a);
-         }
+                (0.349 - 0.349 * amount) * color.r + (0.686 + 0.314 * amount) * color.g + (0.168 - 0.168 * amount) * color.b,
+                (0.272 - 0.272 * amount) * color.r + (0.534 - 0.534 * amount) * color.g + (0.131 + 0.869 * amount) * color.b,
+                color.a);
+        }
     );
 
     shaderStrs[LayerData::CSSFilterShaderSaturate] = STANDARD_FILTER(
         lowp vec4 shade(lowp vec4 color)
         {
             return vec4((0.213 + 0.787 * u_amount) * color.r + (0.715 - 0.715 * u_amount) * color.g + (0.072 - 0.072 * u_amount) * color.b,
-                        (0.213 - 0.213 * u_amount) * color.r + (0.715 + 0.285 * u_amount) * color.g + (0.072 - 0.072 * u_amount) * color.b,
-                        (0.213 - 0.213 * u_amount) * color.r + (0.715 - 0.715 * u_amount) * color.g + (0.072 + 0.928 * u_amount) * color.b,
-                        color.a);
+                (0.213 - 0.213 * u_amount) * color.r + (0.715 + 0.285 * u_amount) * color.g + (0.072 - 0.072 * u_amount) * color.b,
+                (0.213 - 0.213 * u_amount) * color.r + (0.715 - 0.715 * u_amount) * color.g + (0.072 + 0.928 * u_amount) * color.b,
+                color.a);
         }
     );
 
@@ -405,9 +430,9 @@ bool LayerFilterRenderer::initializeSharedGLObjects()
             highp float c = cos(u_amount * pi / 180.0);
             highp float s = sin(u_amount * pi / 180.0);
             return vec4(color.r * (0.213 + c * 0.787 - s * 0.213) + color.g * (0.715 - c * 0.715 - s * 0.715) + color.b * (0.072 - c * 0.072 + s * 0.928),
-                        color.r * (0.213 - c * 0.213 + s * 0.143) + color.g * (0.715 + c * 0.285 + s * 0.140) + color.b * (0.072 - c * 0.072 - s * 0.283),
-                        color.r * (0.213 - c * 0.213 - s * 0.787) +  color.g * (0.715 - c * 0.715 + s * 0.715) + color.b * (0.072 + c * 0.928 + s * 0.072),
-                        color.a);
+                color.r * (0.213 - c * 0.213 + s * 0.143) + color.g * (0.715 + c * 0.285 + s * 0.140) + color.b * (0.072 - c * 0.072 - s * 0.283),
+                color.r * (0.213 - c * 0.213 - s * 0.787) +  color.g * (0.715 - c * 0.715 + s * 0.715) + color.b * (0.072 + c * 0.928 + s * 0.072),
+                color.a);
         }
     );
 
@@ -500,11 +525,7 @@ bool LayerFilterRenderer::initializeSharedGLObjects()
 
 void LayerFilterRenderer::ping(LayerRendererSurface* surface)
 {
-    GLuint texid = reinterpret_cast<GLuint>(platformBufferHandle(m_texture->textureId()));
-    if (!texid) {
-        BlackBerry::Platform::Graphics::lockAndBindBufferGLTexture(m_texture->textureId(), GL_TEXTURE_2D);
-        texid = reinterpret_cast<GLuint>(platformBufferHandle(m_texture->textureId()));
-    }
+    GLuint texid = m_texture->platformTexture();
 
     glFramebufferTexture2D(
         GL_FRAMEBUFFER,
@@ -515,7 +536,7 @@ void LayerFilterRenderer::ping(LayerRendererSurface* surface)
     );
     glBindTexture(
         GL_TEXTURE_2D,
-        reinterpret_cast<GLuint>(platformBufferHandle(surface->texture()->textureId()))
+        surface->texture()->platformTexture()
     );
 }
 
@@ -525,22 +546,18 @@ void LayerFilterRenderer::pong(LayerRendererSurface* surface)
         GL_FRAMEBUFFER,
         GL_COLOR_ATTACHMENT0,
         GL_TEXTURE_2D,
-        reinterpret_cast<GLuint>(platformBufferHandle(surface->texture()->textureId())),
+        surface->texture()->platformTexture(),
         0
     );
     glBindTexture(
         GL_TEXTURE_2D,
-        reinterpret_cast<GLuint>(platformBufferHandle(m_texture->textureId()))
+        m_texture->platformTexture()
     );
 }
 
 void LayerFilterRenderer::pushSnapshot(LayerRendererSurface* surface, int sourceId)
 {
-    GLuint texid = reinterpret_cast<GLuint>(platformBufferHandle(m_snapshotTexture->textureId()));
-    if (!texid) {
-        BlackBerry::Platform::Graphics::lockAndBindBufferGLTexture(m_snapshotTexture->textureId(), GL_TEXTURE_2D);
-        texid = reinterpret_cast<GLuint>(platformBufferHandle(m_snapshotTexture->textureId()));
-    }
+    GLuint texid = m_snapshotTexture->platformTexture();
 
     glFramebufferTexture2D(
         GL_FRAMEBUFFER,
@@ -568,14 +585,14 @@ void LayerFilterRenderer::popSnapshot()
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glBindTexture(
         GL_TEXTURE_2D,
-        reinterpret_cast<GLuint>(platformBufferHandle(m_snapshotTexture->textureId()))
+        m_snapshotTexture->platformTexture()
     );
 }
 
 Vector<RefPtr<LayerFilterRendererAction> > LayerFilterRenderer::actionsForOperations(LayerRendererSurface* surface, const Vector<RefPtr<FilterOperation> >& ops)
 {
     Vector<RefPtr<LayerFilterRendererAction> > ret;
-    for (unsigned int i = 0; i < ops.size(); ++i) {
+    for (unsigned i = 0; i < ops.size(); ++i) {
         const FilterOperation& operation = *ops[i].get();
         if (operation.getOperationType() == FilterOperation::BLUR && static_cast<const BlurFilterOperation&>(operation).stdDeviation().value() < 0.1)
             continue;
@@ -609,14 +626,12 @@ Vector<RefPtr<LayerFilterRendererAction> > LayerFilterRenderer::actionsForOperat
 
             // BLUR Y:
             ret.last()->appendParameter(Uniform1f::create(m_amountLocation[LayerData::CSSFilterShaderBlurY], amount));
-            ret.last()->appendParameter(Uniform1f::create(m_blurAmountLocation[0]
-                , 1.0f / float(surface->size().height())));
+            ret.last()->appendParameter(Uniform1f::createWithFunctor(m_blurAmountLocation[0], InverseSurfaceHeight(surface)));
 
             // BLUR X:
             ret.append(LayerFilterRendererAction::create(LayerData::CSSFilterShaderBlurX));
             ret.last()->appendParameter(Uniform1f::create(m_amountLocation[LayerData::CSSFilterShaderBlurX], amount));
-            ret.last()->appendParameter(Uniform1f::create(m_blurAmountLocation[1]
-                , 1.0f / float(surface->size().width())));
+            ret.last()->appendParameter(Uniform1f::createWithFunctor(m_blurAmountLocation[1], InverseSurfaceWidth(surface)));
 
             }
             break;
@@ -642,15 +657,13 @@ Vector<RefPtr<LayerFilterRendererAction> > LayerFilterRenderer::actionsForOperat
             ret.append(LayerFilterRendererAction::create(LayerData::CSSFilterShaderBlurY));
             ret.last()->appendParameter(Uniform1f::create(m_amountLocation[LayerData::CSSFilterShaderBlurY]
                 , dsfo.stdDeviation()));
-            ret.last()->appendParameter(Uniform1f::create(m_blurAmountLocation[0]
-                , 1.0f / float(surface->size().height())));
+            ret.last()->appendParameter(Uniform1f::createWithFunctor(m_blurAmountLocation[0], InverseSurfaceHeight(surface)));
 
             // BLUR X
             ret.append(LayerFilterRendererAction::create(LayerData::CSSFilterShaderBlurX));
             ret.last()->appendParameter(Uniform1f::create(m_amountLocation[LayerData::CSSFilterShaderBlurX]
                 , dsfo.stdDeviation()));
-            ret.last()->appendParameter(Uniform1f::create(m_blurAmountLocation[1]
-                , 1.0f / float(surface->size().width())));
+            ret.last()->appendParameter(Uniform1f::createWithFunctor(m_blurAmountLocation[1], InverseSurfaceWidth(surface)));
 
             // Repaint original image
             ret.append(LayerFilterRendererAction::create(LayerData::CSSFilterShaderPassthrough));
@@ -696,8 +709,10 @@ void LayerFilterRenderer::applyActions(unsigned& fbo, LayerCompositingThread* la
 
     LayerRendererSurface* surface = layer->layerRendererSurface();
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds() );
+    glVertexAttribPointer(m_positionLocation, 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
+    glEnableVertexAttribArray(m_positionLocation);
     glVertexAttribPointer(m_texCoordLocation, 2, GL_FLOAT, GL_FALSE, 0, texcoords);
+    glEnableVertexAttribArray(m_texCoordLocation);
 
     m_texture->protect(surface->texture()->size(), BlackBerry::Platform::Graphics::AlwaysBacked);
     if (requireSnapshot)
@@ -708,7 +723,7 @@ void LayerFilterRenderer::applyActions(unsigned& fbo, LayerCompositingThread* la
 
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-    for (unsigned int i = 0; i < actions.size(); ++i) {
+    for (unsigned i = 0; i < actions.size(); ++i) {
         // NOTE ABOUT PING-PONGING
         // =======================
         // Under OpenGL ES 2.0, we cannot use the fbo we are writting to as a texture, so we need to play ping-pong:
@@ -719,14 +734,8 @@ void LayerFilterRenderer::applyActions(unsigned& fbo, LayerCompositingThread* la
         // actionsForOperations takes care of that.
 
         if (actions[i]->shouldPushSnapshot()) {
-            RefPtr<Texture> currentTexture = (!(i % 2) ? surface->texture() : m_texture);
-            GLuint texid = reinterpret_cast<GLuint>(platformBufferHandle(currentTexture->textureId()));
-            if (!texid) {
-                BlackBerry::Platform::Graphics::lockAndBindBufferGLTexture(currentTexture->textureId(), GL_TEXTURE_2D);
-                texid = reinterpret_cast<GLuint>(platformBufferHandle(currentTexture->textureId()));
-            }
-
-            pushSnapshot(surface, texid);
+            RefPtr<LayerTexture> currentTexture = (!(i % 2) ? surface->texture() : m_texture);
+            pushSnapshot(surface, currentTexture->platformTexture());
         }
         if (!(i % 2))
             ping(surface); // Set framebuffer to ours, and texture to parent

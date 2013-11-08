@@ -78,7 +78,7 @@ static CString certificatePath()
 #if USE(CF)
     CFBundleRef webKitBundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.WebKit"));
     if (webKitBundle) {
-        RetainPtr<CFURLRef> certURLRef(AdoptCF, CFBundleCopyResourceURL(webKitBundle, CFSTR("cacert"), CFSTR("pem"), CFSTR("certificates")));
+        RetainPtr<CFURLRef> certURLRef = adoptCF(CFBundleCopyResourceURL(webKitBundle, CFSTR("cacert"), CFSTR("pem"), CFSTR("certificates")));
         if (certURLRef) {
             char path[MAX_PATH];
             CFURLGetFileSystemRepresentation(certURLRef.get(), false, reinterpret_cast<UInt8*>(path), MAX_PATH);
@@ -141,6 +141,16 @@ static void curl_unlock_callback(CURL* handle, curl_lock_data data, void* userPt
 {
     if (Mutex* mutex = sharedResourceMutex(data))
         mutex->unlock();
+}
+
+inline static bool isHttpInfo(int statusCode)
+{
+    return 100 <= statusCode && statusCode < 200;
+}
+
+inline static bool isHttpRedirect(int statusCode)
+{
+    return 300 <= statusCode && statusCode < 400 && statusCode != 304;
 }
 
 ResourceHandleManager::ResourceHandleManager()
@@ -335,6 +345,15 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
         CURL* h = d->m_handle;
         CURLcode err;
 
+        long httpCode = 0;
+        err = curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &httpCode);
+
+        if (isHttpInfo(httpCode)) {
+            // Just return when receiving http info, e.g. HTTP/1.1 100 Continue.
+            // If not, the request might be cancelled, because the MIME type will be empty for this response.
+            return totalSize;
+        }
+
         double contentLength = 0;
         err = curl_easy_getinfo(h, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength);
         d->m_response.setExpectedContentLength(static_cast<long long int>(contentLength));
@@ -343,16 +362,13 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
         err = curl_easy_getinfo(h, CURLINFO_EFFECTIVE_URL, &hdr);
         d->m_response.setURL(KURL(ParsedURLString, hdr));
 
-        long httpCode = 0;
-        err = curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &httpCode);
         d->m_response.setHTTPStatusCode(httpCode);
-
         d->m_response.setMimeType(extractMIMETypeFromMediaType(d->m_response.httpHeaderField("Content-Type")));
         d->m_response.setTextEncodingName(extractCharsetFromMediaType(d->m_response.httpHeaderField("Content-Type")));
         d->m_response.setSuggestedFilename(filenameFromHTTPContentDisposition(d->m_response.httpHeaderField("Content-Disposition")));
 
         // HTTP redirection
-        if (httpCode >= 300 && httpCode < 400) {
+        if (isHttpRedirect(httpCode)) {
             String location = d->m_response.httpHeaderField("location");
             if (!location.isEmpty()) {
                 KURL newURL = KURL(job->firstRequest().url(), location);

@@ -92,6 +92,7 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
     supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
     parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
+    parameters.shouldTrackVisitedLinks = true;
 }
 
 void WebContext::platformInvalidateContext()
@@ -118,8 +119,8 @@ String WebContext::platformDefaultLocalStorageDirectory() const
 
 String WebContext::platformDefaultDiskCacheDirectory() const
 {
-    notImplemented();
-    return String();
+    GOwnPtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), g_get_prgname(), NULL));
+    return WebCore::filenameToString(diskCacheDirectory.get());
 }
 
 String WebContext::platformDefaultCookieStorageDirectory() const

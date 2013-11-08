@@ -53,7 +53,7 @@ inline SVGFontFaceElement::SVGFontFaceElement(const QualifiedName& tagName, Docu
     , m_fontElement(0)
 {
     ASSERT(hasTagName(font_faceTag));
-    RefPtr<StylePropertySet> styleDeclaration = StylePropertySet::create(CSSStrictMode);
+    RefPtr<MutableStylePropertySet> styleDeclaration = MutableStylePropertySet::create(CSSStrictMode);
     m_fontFaceRule->setProperties(styleDeclaration.release());
 }
 
@@ -339,7 +339,7 @@ void SVGFontFaceElement::removedFrom(ContainerNode* rootParent)
     if (rootParent->inDocument()) {
         m_fontElement = 0;
         document()->accessSVGExtensions()->unregisterSVGFontFaceElement(this);
-        m_fontFaceRule->mutableProperties()->parseDeclaration(emptyString(), 0);
+        m_fontFaceRule->mutableProperties()->clear();
 
         document()->styleResolverChanged(DeferRecalcStyle);
     } else

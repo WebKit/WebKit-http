@@ -135,6 +135,8 @@ private:
     void pluginSnapshotTimerFired(WebCore::DeferrableOneShotTimer<PluginView>*);
     void pluginDidReceiveUserInteraction();
 
+    bool shouldCreateTransientPaintingSnapshot() const;
+
     // WebCore::PluginViewBase
 #if PLATFORM(MAC)
     virtual PlatformLayer* platformLayer() const;
@@ -148,6 +150,7 @@ private:
     virtual WebCore::Scrollbar* verticalScrollbar();
     virtual bool wantsWheelEvents();
     virtual bool shouldAlwaysAutoStart() const OVERRIDE;
+    virtual void beginSnapshottingRunningPlugin() OVERRIDE;
     virtual bool shouldAllowNavigationFromDrags() const OVERRIDE;
 
     // WebCore::Widget
@@ -226,15 +229,15 @@ private:
     bool m_isBeingDestroyed;
 
     // Pending URLRequests that the plug-in has made.
-    Deque<RefPtr<URLRequest> > m_pendingURLRequests;
+    Deque<RefPtr<URLRequest>> m_pendingURLRequests;
     WebCore::RunLoop::Timer<PluginView> m_pendingURLRequestsTimer;
 
     // Pending frame loads that the plug-in has made.
-    typedef HashMap<RefPtr<WebFrame>, RefPtr<URLRequest> > FrameLoadMap;
+    typedef HashMap<RefPtr<WebFrame>, RefPtr<URLRequest>> FrameLoadMap;
     FrameLoadMap m_pendingFrameLoads;
 
     // Streams that the plug-in has requested to load. 
-    HashMap<uint64_t, RefPtr<Stream> > m_streams;
+    HashMap<uint64_t, RefPtr<Stream>> m_streams;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     // A map of all related NPObjects for this plug-in view.

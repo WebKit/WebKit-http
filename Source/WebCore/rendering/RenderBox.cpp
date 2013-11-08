@@ -25,7 +25,6 @@
 #include "config.h"
 #include "RenderBox.h"
 
-#include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Document.h"
@@ -55,22 +54,15 @@
 #include "RenderView.h"
 #include "ScrollbarTheme.h"
 #include "TransformState.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include <algorithm>
 #include <math.h>
-#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/StackStats.h>
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
 #endif
 
 using namespace std;
-
-namespace WTF {
-template<> struct SequenceMemoryInstrumentationTraits<WebCore::LayoutUnit> {
-    template <typename I> static void reportMemoryUsage(I, I, MemoryClassInfo&) { }
-};
-}
 
 namespace WebCore {
 
@@ -1428,8 +1420,13 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
 
 
 #if USE(ACCELERATED_COMPOSITING)
-    if (hasLayer() && layer()->hasCompositedMask() && layersUseImage(image, style()->maskLayers()))
+    if (!isComposited())
+        return;
+
+    if (layer()->hasCompositedMask() && layersUseImage(image, style()->maskLayers()))
         layer()->contentChanged(MaskImageChanged);
+    if (layersUseImage(image, style()->backgroundLayers()))
+        layer()->contentChanged(BackgroundImageChanged);
 #endif
 }
 
@@ -4586,22 +4583,6 @@ RenderObject* RenderBox::splitAnonymousBoxesAroundChild(RenderObject* beforeChil
 
     ASSERT(beforeChild->parent() == this);
     return beforeChild;
-}
-
-void RenderBox::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
-    RenderBoxModelObject::reportMemoryUsage(memoryObjectInfo);
-    info.addWeakPointer(m_inlineBoxWrapper);
-    info.addMember(m_overflow, "overflow");
-}
-
-void RenderBox::reportStaticMembersMemoryUsage(MemoryInstrumentation* memoryInstrumentation)
-{
-    memoryInstrumentation->addRootObject(gOverrideHeightMap, WebCoreMemoryTypes::RenderingStructures);
-    memoryInstrumentation->addRootObject(gOverrideWidthMap, WebCoreMemoryTypes::RenderingStructures);
-    memoryInstrumentation->addRootObject(gOverrideContainingBlockLogicalHeightMap, WebCoreMemoryTypes::RenderingStructures);
-    memoryInstrumentation->addRootObject(gOverrideContainingBlockLogicalWidthMap, WebCoreMemoryTypes::RenderingStructures);
 }
 
 } // namespace WebCore

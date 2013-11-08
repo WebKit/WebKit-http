@@ -2357,6 +2357,58 @@ template<> inline CSSPrimitiveValue::operator TextAlignLast() const
     ASSERT_NOT_REACHED();
     return TextAlignLastAuto;
 }
+
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(TextJustify e)
+    : CSSValue(PrimitiveClass)
+{
+    m_primitiveUnitType = CSS_IDENT;
+    switch (e) {
+    case TextJustifyAuto:
+        m_value.ident = CSSValueAuto;
+        break;
+    case TextJustifyNone:
+        m_value.ident = CSSValueNone;
+        break;
+    case TextJustifyInterWord:
+        m_value.ident = CSSValueInterWord;
+        break;
+    case TextJustifyInterIdeograph:
+        m_value.ident = CSSValueInterIdeograph;
+        break;
+    case TextJustifyInterCluster:
+        m_value.ident = CSSValueInterCluster;
+        break;
+    case TextJustifyDistribute:
+        m_value.ident = CSSValueDistribute;
+        break;
+    case TextJustifyKashida:
+        m_value.ident = CSSValueKashida;
+        break;
+    }
+}
+
+template<> inline CSSPrimitiveValue::operator TextJustify() const
+{
+    switch (m_value.ident) {
+    case CSSValueAuto:
+        return TextJustifyAuto;
+    case CSSValueNone:
+        return TextJustifyNone;
+    case CSSValueInterWord:
+        return TextJustifyInterWord;
+    case CSSValueInterIdeograph:
+        return TextJustifyInterIdeograph;
+    case CSSValueInterCluster:
+        return TextJustifyInterCluster;
+    case CSSValueDistribute:
+        return TextJustifyDistribute;
+    case CSSValueKashida:
+        return TextJustifyKashida;
+    }
+
+    ASSERT_NOT_REACHED();
+    return TextJustifyAuto;
+}
 #endif // CSS3_TEXT
 
 template<> inline CSSPrimitiveValue::operator ETextDecoration() const
@@ -3979,14 +4031,14 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EImageRendering e)
     case ImageRenderingAuto:
         m_value.ident = CSSValueAuto;
         break;
+    case ImageRenderingCrispEdges:
+        m_value.ident = CSSValueWebkitCrispEdges;
+        break;
     case ImageRenderingOptimizeSpeed:
         m_value.ident = CSSValueOptimizespeed;
         break;
     case ImageRenderingOptimizeQuality:
         m_value.ident = CSSValueOptimizequality;
-        break;
-    case ImageRenderingOptimizeContrast:
-        m_value.ident = CSSValueWebkitOptimizeContrast;
         break;
     }
 }
@@ -3996,12 +4048,13 @@ template<> inline CSSPrimitiveValue::operator EImageRendering() const
     switch (m_value.ident) {
     case CSSValueAuto:
         return ImageRenderingAuto;
+    case CSSValueWebkitOptimizeContrast:
+    case CSSValueWebkitCrispEdges:
+        return ImageRenderingCrispEdges;
     case CSSValueOptimizespeed:
         return ImageRenderingOptimizeSpeed;
     case CSSValueOptimizequality:
         return ImageRenderingOptimizeQuality;
-    case CSSValueWebkitOptimizeContrast:
-        return ImageRenderingOptimizeContrast;
     }
 
     ASSERT_NOT_REACHED();
@@ -4212,7 +4265,7 @@ enum LengthConversion {
     ViewportPercentageConversion = 1 << 6
 };
 
-template<int supported> Length CSSPrimitiveValue::convertToLength(RenderStyle* style, RenderStyle* rootStyle, double multiplier, bool computingFontSize)
+template<int supported> Length CSSPrimitiveValue::convertToLength(const RenderStyle* style, const RenderStyle* rootStyle, double multiplier, bool computingFontSize) const
 {
 #if ENABLE(CSS_VARIABLES)
     ASSERT(!hasVariableReference());

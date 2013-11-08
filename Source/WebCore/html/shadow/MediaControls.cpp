@@ -92,7 +92,7 @@ void MediaControls::reset()
 
     updateCurrentTimeDisplay();
 
-    float duration = m_mediaController->duration();
+    double duration = m_mediaController->duration();
     if (std::isfinite(duration) || page->theme()->hasOwnDisabledStateHandlingFor(MediaSliderPart)) {
         m_timeline->setDuration(duration);
         m_timeline->setPosition(m_mediaController->currentTime());
@@ -214,7 +214,7 @@ void MediaControls::playbackStopped()
 
 void MediaControls::updateCurrentTimeDisplay()
 {
-    float now = m_mediaController->currentTime();
+    double now = m_mediaController->currentTime();
 
     Page* page = document()->page();
     if (!page)
@@ -409,9 +409,9 @@ void MediaControls::updateTextTrackDisplay()
     
 void MediaControls::textTrackPreferencesChanged()
 {
+    closedCaptionTracksChanged();
     if (m_textDisplayContainer)
         m_textDisplayContainer->updateSizes(true);
-    closedCaptionTracksChanged();
 }
 #endif
 

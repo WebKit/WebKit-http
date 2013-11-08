@@ -26,11 +26,14 @@
 #include "JSCJSValue.h"
 
 namespace JSC {
-
+    
+    struct ParserError;
     class ExecState;
     class JSScope;
     class SourceCode;
+    class VM;
 
+    JS_EXPORT_PRIVATE bool checkSyntax(VM&, const SourceCode&, ParserError&);
     JS_EXPORT_PRIVATE bool checkSyntax(ExecState*, const SourceCode&, JSValue* exception = 0);
     JS_EXPORT_PRIVATE JSValue evaluate(ExecState*, const SourceCode&, JSValue thisValue = JSValue(), JSValue* exception = 0);
 

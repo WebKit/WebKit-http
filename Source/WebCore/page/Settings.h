@@ -107,10 +107,6 @@ namespace WebCore {
 #endif
 
         // Only set by Layout Tests.
-        void setResolutionOverride(const IntSize&);
-        const IntSize& resolutionOverride() const { return m_resolutionDensityPerInchOverride; }
-
-        // Only set by Layout Tests.
         void setMediaTypeOverride(const String&);
         const String& mediaTypeOverride() const { return m_mediaTypeOverride; }
 
@@ -213,7 +209,7 @@ namespace WebCore {
         void setShowTiledScrollingIndicator(bool);
         bool showTiledScrollingIndicator() const { return m_showTiledScrollingIndicator; }
 
-#if PLATFORM(WIN) || (OS(WINDOWS) && PLATFORM(WX))
+#if PLATFORM(WIN)
         static void setShouldUseHighResolutionTimers(bool);
         static bool shouldUseHighResolutionTimers() { return gShouldUseHighResolutionTimers; }
 #endif
@@ -292,7 +288,6 @@ namespace WebCore {
         IntSize m_textAutosizingWindowSizeOverride;
         bool m_textAutosizingEnabled : 1;
 #endif
-        IntSize m_resolutionDensityPerInchOverride;
 
         SETTINGS_MEMBER_VARIABLES
 
@@ -352,7 +347,7 @@ namespace WebCore {
 #if USE(SAFARI_THEME)
         static bool gShouldPaintNativeControls;
 #endif
-#if PLATFORM(WIN) || (OS(WINDOWS) && PLATFORM(WX))
+#if PLATFORM(WIN)
         static bool gShouldUseHighResolutionTimers;
 #endif
         static bool gShouldRespectPriorityInCSSAttributeSetters;

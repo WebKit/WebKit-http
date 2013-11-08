@@ -428,7 +428,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
         forNode(node).set(SpecInt32);
         break;
     }
-        
+
     case Int32ToDouble:
     case ForwardInt32ToDouble: {
         JSValue child = forNode(node->child1()).value();
@@ -476,7 +476,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
     }
         
     case MakeRope: {
-        forNode(node).set(m_graph.m_globalData.stringStructure.get());
+        forNode(node).set(m_graph.m_vm.stringStructure.get());
         break;
     }
             
@@ -553,6 +553,11 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
             RELEASE_ASSERT_NOT_REACHED();
             break;
         }
+        break;
+    }
+
+    case ArithIMul: {
+        forNode(node).set(SpecInt32);
         break;
     }
         
@@ -723,41 +728,41 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
     }
 
     case TypeOf: {
-        JSGlobalData* globalData = m_codeBlock->globalData();
+        VM* vm = m_codeBlock->vm();
         JSValue child = forNode(node->child1()).value();
         AbstractValue& abstractChild = forNode(node->child1());
         if (child) {
-            JSValue typeString = jsTypeStringForValue(*globalData, m_codeBlock->globalObjectFor(node->codeOrigin), child);
+            JSValue typeString = jsTypeStringForValue(*vm, m_codeBlock->globalObjectFor(node->codeOrigin), child);
             if (trySetConstant(node, typeString)) {
                 m_foundConstants = true;
                 break;
             }
         } else if (isNumberSpeculation(abstractChild.m_type)) {
-            if (trySetConstant(node, globalData->smallStrings.numberString())) {
+            if (trySetConstant(node, vm->smallStrings.numberString())) {
                 forNode(node->child1()).filter(SpecNumber);
                 m_foundConstants = true;
                 break;
             }
         } else if (isStringSpeculation(abstractChild.m_type)) {
-            if (trySetConstant(node, globalData->smallStrings.stringString())) {
+            if (trySetConstant(node, vm->smallStrings.stringString())) {
                 forNode(node->child1()).filter(SpecString);
                 m_foundConstants = true;
                 break;
             }
         } else if (isFinalObjectSpeculation(abstractChild.m_type) || isArraySpeculation(abstractChild.m_type) || isArgumentsSpeculation(abstractChild.m_type)) {
-            if (trySetConstant(node, globalData->smallStrings.objectString())) {
+            if (trySetConstant(node, vm->smallStrings.objectString())) {
                 forNode(node->child1()).filter(SpecFinalObject | SpecArray | SpecArguments);
                 m_foundConstants = true;
                 break;
             }
         } else if (isFunctionSpeculation(abstractChild.m_type)) {
-            if (trySetConstant(node, globalData->smallStrings.functionString())) {
+            if (trySetConstant(node, vm->smallStrings.functionString())) {
                 forNode(node->child1()).filter(SpecFunction);
                 m_foundConstants = true;
                 break;
             }
         } else if (isBooleanSpeculation(abstractChild.m_type)) {
-            if (trySetConstant(node, globalData->smallStrings.booleanString())) {
+            if (trySetConstant(node, vm->smallStrings.booleanString())) {
                 forNode(node->child1()).filter(SpecBoolean);
                 m_foundConstants = true;
                 break;
@@ -775,7 +780,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
             RELEASE_ASSERT_NOT_REACHED();
             break;
         }
-        forNode(node).set(m_graph.m_globalData.stringStructure.get());
+        forNode(node).set(m_graph.m_vm.stringStructure.get());
         break;
     }
             
@@ -867,7 +872,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
 
     case StringCharAt:
         node->setCanExit(true);
-        forNode(node).set(m_graph.m_globalData.stringStructure.get());
+        forNode(node).set(m_graph.m_vm.stringStructure.get());
         break;
             
     case GetByVal: {
@@ -886,7 +891,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
             forNode(node).makeTop();
             break;
         case Array::String:
-            forNode(node).set(m_graph.m_globalData.stringStructure.get());
+            forNode(node).set(m_graph.m_vm.stringStructure.get());
             break;
         case Array::Arguments:
             forNode(node).makeTop();
@@ -997,8 +1002,11 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
         break;
             
     case RegExpExec:
-    case RegExpTest:
         forNode(node).makeTop();
+        break;
+
+    case RegExpTest:
+        forNode(node).set(SpecBoolean);
         break;
             
     case Jump:
@@ -1052,7 +1060,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
         // if (destination.m_type & !(SpecNumber | SpecString | SpecBoolean)) {
         //     destination.filter(SpecNumber | SpecString | SpecBoolean);
         //     AbstractValue string;
-        //     string.set(globalData->stringStructure);
+        //     string.set(vm->stringStructure);
         //     destination.merge(string);
         // }
         //
@@ -1097,7 +1105,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
             RELEASE_ASSERT_NOT_REACHED();
             break;
         }
-        forNode(node).set(m_graph.m_globalData.stringStructure.get());
+        forNode(node).set(m_graph.m_vm.stringStructure.get());
         break;
     }
         
@@ -1270,7 +1278,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
         if (isCellSpeculation(node->child1()->prediction())) {
             if (Structure* structure = forNode(node->child1()).bestProvenStructure()) {
                 GetByIdStatus status = GetByIdStatus::computeFor(
-                    m_graph.m_globalData, structure,
+                    m_graph.m_vm, structure,
                     m_graph.m_codeBlock->identifier(node->identifierNumber()));
                 if (status.isSimple()) {
                     // Assert things that we can't handle and that the computeFor() method
@@ -1458,10 +1466,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
         }
         
         node->setCanExit(true); // Lies! We can do better.
-        if (!forNode(node->child1()).filterByValue(node->function())) {
-            m_isValid = false;
-            break;
-        }
+        forNode(node->child1()).filterByValue(node->function());
         break;
     }
         
@@ -1470,7 +1475,7 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
         node->setCanExit(true);
         if (Structure* structure = forNode(node->child1()).bestProvenStructure()) {
             PutByIdStatus status = PutByIdStatus::computeFor(
-                m_graph.m_globalData,
+                m_graph.m_vm,
                 m_graph.globalObjectFor(node->codeOrigin),
                 structure,
                 m_graph.m_codeBlock->identifier(node->identifierNumber()),
@@ -1539,6 +1544,10 @@ bool AbstractState::executeEffects(unsigned indexInBlock, Node* node)
     case ForceOSRExit:
         node->setCanExit(true);
         m_isValid = false;
+        break;
+            
+    case CheckWatchdogTimer:
+        node->setCanExit(true);
         break;
             
     case Phantom:

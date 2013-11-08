@@ -34,10 +34,10 @@
 #include "DocumentLoader.h"
 #include "Element.h"
 #include "FocusController.h"
-#include "FrameLoader.h"
-#include "FrameLoadRequest.h"
-#include "FrameTree.h"
 #include "Frame.h"
+#include "FrameLoadRequest.h"
+#include "FrameLoader.h"
+#include "FrameTree.h"
 #include "FrameView.h"
 #include "GRefPtrGtk.h"
 #include "GraphicsContext.h"
@@ -46,6 +46,8 @@
 #include "HTMLPlugInElement.h"
 #include "HostWindow.h"
 #include "Image.h"
+#include "JSDOMBinding.h"
+#include "JSDOMWindowBase.h"
 #include "KeyboardEvent.h"
 #include "MouseEvent.h"
 #include "NotImplemented.h"
@@ -59,7 +61,6 @@
 #include "RenderObject.h"
 #include "Settings.h"
 #include "SpatialNavigation.h"
-#include "JSDOMBinding.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
 #include <runtime/JSCJSValue.h>
@@ -99,7 +100,7 @@ bool PluginView::dispatchNPEvent(NPEvent& event)
         return false;
 
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
 
     bool accepted = !m_plugin->pluginFuncs()->event(m_instance, &event);
@@ -263,7 +264,7 @@ void PluginView::paint(GraphicsContext* context, const IntRect& rect)
 
 void PluginView::handleKeyboardEvent(KeyboardEvent* event)
 {
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
 
     if (!m_isStarted || m_status != PluginStatusLoadedSuccessfully)
         return;
@@ -389,7 +390,7 @@ static void setXCrossingEventSpecificFields(XEvent* xEvent, MouseEvent* event, c
 
 void PluginView::handleMouseEvent(MouseEvent* event)
 {
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
 
     if (!m_isStarted || m_status != PluginStatusLoadedSuccessfully)
         return;
@@ -514,7 +515,7 @@ void PluginView::setNPWindowIfNeeded()
     }
 
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
     m_plugin->pluginFuncs()->setwindow(m_instance, &m_npWindow);
     setCallingPlugin(false);
@@ -788,7 +789,7 @@ bool PluginView::platformStart()
 
     if (m_plugin->pluginFuncs()->getvalue) {
         PluginView::setCurrentPluginView(this);
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
         setCallingPlugin(true);
         m_plugin->pluginFuncs()->getvalue(m_instance, NPPVpluginNeedsXEmbed, &m_needsXEmbed);
         setCallingPlugin(false);

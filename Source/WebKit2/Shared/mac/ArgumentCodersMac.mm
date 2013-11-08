@@ -33,7 +33,6 @@
 #import <WebCore/ColorMac.h>
 
 using namespace WebCore;
-using namespace std;
 
 namespace CoreIPC {
 
@@ -219,7 +218,7 @@ void encode(ArgumentEncoder& encoder, NSAttributedString *string)
     NSUInteger length = [plainString length];
     CoreIPC::encode(encoder, plainString);
 
-    Vector<pair<NSRange, RetainPtr<NSDictionary> > > ranges;
+    Vector<pair<NSRange, RetainPtr<NSDictionary>>> ranges;
 
     NSUInteger position = 0;
     while (position < length) {
@@ -230,7 +229,7 @@ void encode(ArgumentEncoder& encoder, NSAttributedString *string)
         ASSERT(effectiveRange.length);
         ASSERT(NSMaxRange(effectiveRange) <= length);
 
-        ranges.append(make_pair(effectiveRange, attributesAtIndex));
+        ranges.append(std::make_pair(effectiveRange, attributesAtIndex));
 
         position = NSMaxRange(effectiveRange);
     }
@@ -252,7 +251,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSAttributedString>& result)
 
     NSUInteger stringLength = [plainString.get() length];
 
-    RetainPtr<NSMutableAttributedString> resultString(AdoptNS, [[NSMutableAttributedString alloc] initWithString:plainString.get()]);
+    RetainPtr<NSMutableAttributedString> resultString = adoptNS([[NSMutableAttributedString alloc] initWithString:plainString.get()]);
 
     uint64_t rangeCount;
     if (!decoder.decode(rangeCount))
@@ -277,7 +276,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSAttributedString>& result)
         [resultString.get() addAttributes:attributes.get() range:NSMakeRange(rangeLocation, rangeLength)];
     }
 
-    result.adoptCF(resultString.leakRef());
+    result = adoptNS(resultString.leakRef());
     return true;
 }
 
@@ -330,7 +329,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSDictionary>& result)
     if (!decoder.decode(size))
         return false;
 
-    RetainPtr<NSMutableDictionary> dictionary(AdoptNS, [[NSMutableDictionary alloc] initWithCapacity:size]);
+    RetainPtr<NSMutableDictionary> dictionary = adoptNS([[NSMutableDictionary alloc] initWithCapacity:size]);
     for (uint64_t i = 0; i < size; ++i) {
         // Try to decode the key name.
         RetainPtr<NSString> key;
@@ -344,7 +343,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSDictionary>& result)
         [dictionary.get() setObject:value.get() forKey:key.get()];
     }
 
-    result.adoptCF(dictionary.leakRef());
+    result = adoptNS(dictionary.leakRef());
     return true;
 }
 
@@ -379,7 +378,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSNumber>& result)
     if (!decode(decoder, number))
         return false;
 
-    result.adoptCF((NSNumber *)number.leakRef());
+    result = adoptNS((NSNumber *)number.leakRef());
     return true;
 }
 
@@ -394,7 +393,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSString>& result)
     if (!decode(decoder, string))
         return false;
 
-    result.adoptCF((NSString *)string.leakRef());
+    result = adoptNS((NSString *)string.leakRef());
     return true;
 }
 
@@ -429,7 +428,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSArray>& result)
         [array.get() addObject:value.get()];
     }
 
-    result.adoptNS(array.leakRef());
+    result = adoptNS(array.leakRef());
     return true;
 }
 
@@ -444,7 +443,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSDate>& result)
     if (!decode(decoder, date))
         return false;
 
-    result.adoptCF((NSDate *)date.leakRef());
+    result = adoptNS((NSDate *)date.leakRef());
     return true;
 }
 
@@ -459,7 +458,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSData>& result)
     if (!decode(decoder, data))
         return false;
 
-    result.adoptCF((NSData *)data.leakRef());
+    result = adoptNS((NSData *)data.leakRef());
     return true;
 }
 

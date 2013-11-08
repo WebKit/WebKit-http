@@ -20,13 +20,12 @@
  */
 
 [
-    Conditional=SVG,
-    V8CustomToJSObject
+    Conditional=SVG
 ] interface SVGDocument : Document {
     readonly attribute SVGSVGElement        rootElement;
 
     // Overwrite the one in events::DocumentEvent
-    Event createEvent(in [Optional=DefaultIsUndefined] DOMString eventType)
+    Event createEvent([Default=Undefined] optional DOMString eventType)
         raises(DOMException);
 };
 

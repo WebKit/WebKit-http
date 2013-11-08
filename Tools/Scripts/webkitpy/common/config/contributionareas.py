@@ -131,7 +131,6 @@ contribution_areas = [
     _Area('Scrollbars', ['scroll']),
     _Area('Security'),  # Probably need more tokens
 # FIXME: 'Shadow DOM'
-    _Area('Skia'),
     _Area('Soup Network Backend', ['soup']),
 # FIXME: 'Spell Checking' just need tokens
     _Area('Tables', ['htmltable', 'rendertable']),
@@ -144,7 +143,6 @@ contribution_areas = [
     _Area('The QtWebKit Port', ['qt']),
     _Area('The WinCE Port', ['wince']),
     _Area('The WinCairo Port', ['cairo']),
-    _Area('The wxWebKit Port', ['wx']),
     _Area('Threading', ['thread']),
     _Area('Tools'),
     _Area('Touch Support', ['touch']),

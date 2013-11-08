@@ -43,7 +43,6 @@
 #include <wtf/text/CString.h>
 
 using namespace WebCore;
-using namespace std;
 
 namespace WebKit {
 
@@ -188,7 +187,7 @@ void NetscapePlugin::loadURL(const String& method, const String& urlString, cons
         // Eventually we are going to get a frameDidFinishLoading or frameDidFail call for this request.
         // Keep track of the notification data so we can call NPP_URLNotify.
         ASSERT(!m_pendingURLNotifications.contains(requestID));
-        m_pendingURLNotifications.set(requestID, make_pair(urlString, notificationData));
+        m_pendingURLNotifications.set(requestID, std::make_pair(urlString, notificationData));
     }
 }
 
@@ -529,12 +528,12 @@ bool NetscapePlugin::shouldLoadSrcURL()
 
 NetscapePluginStream* NetscapePlugin::streamFromID(uint64_t streamID)
 {
-    return m_streams.get(streamID).get();
+    return m_streams.get(streamID);
 }
 
 void NetscapePlugin::stopAllStreams()
 {
-    Vector<RefPtr<NetscapePluginStream> > streams;
+    Vector<RefPtr<NetscapePluginStream>> streams;
     copyValuesToVector(m_streams, streams);
 
     for (size_t i = 0; i < streams.size(); ++i)

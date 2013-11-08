@@ -1,6 +1,7 @@
 namespace="EventTarget"
 
 AudioContext conditional=WEB_AUDIO
+AudioTrackList conditional=VIDEO_TRACK
 BatteryManager conditional=BATTERY_STATUS
 DedicatedWorkerContext conditional=WORKERS
 DOMApplicationCache
@@ -24,7 +25,7 @@ MessagePort
 NetworkInfoConnection conditional=NETWORK_INFO
 Node
 Notification conditional=NOTIFICATIONS|LEGACY_NOTIFICATIONS
-Performance conditional=WEB_TIMING
+Performance conditional=WEB_TIMING|WEB_TIMING_MINIMAL
 RTCDataChannel conditional=MEDIA_STREAM
 RTCDTMFSender conditional=MEDIA_STREAM
 RTCPeerConnection conditional=MEDIA_STREAM
@@ -37,6 +38,7 @@ SVGElementInstance conditional=SVG
 TextTrack conditional=VIDEO_TRACK
 TextTrackCue conditional=VIDEO_TRACK
 TextTrackList conditional=VIDEO_TRACK
+VideoTrackList conditional=VIDEO_TRACK
 WebKitNamedFlow
 WebSocket conditional=WEB_SOCKETS
 Worker conditional=WORKERS

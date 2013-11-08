@@ -26,12 +26,12 @@
 #include "config.h"
 #include "ScrollingStateStickyNode.h"
 
+#if ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+
 #include "GraphicsLayer.h"
 #include "ScrollingStateTree.h"
 #include "TextStream.h"
 #include <wtf/OwnPtr.h>
-
-#if ENABLE(THREADED_SCROLLING)
 
 namespace WebCore {
 
@@ -132,4 +132,4 @@ void ScrollingStateStickyNode::dumpProperties(TextStream& ts, int indent) const
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)

@@ -220,6 +220,16 @@ justify
 -webkit-center
 -webkit-match-parent
 //
+// CSS_PROP_TEXT_JUSTIFY:
+//
+//auto
+//none
+inter-word
+inter-ideograph
+inter-cluster
+distribute
+kashida
+//
 // CSS_PROP_LIST_STYLE_POSITION:
 //
 outside
@@ -922,9 +932,10 @@ on
 off
 
 // image-rendering
-//auto
-//optimizeSpeed
+// auto
+// optimizeSpeed
 optimizeQuality
+-webkit-crisp-edges
 -webkit-optimize-contrast
 
 // -webkit-shape-inside
@@ -973,6 +984,7 @@ fine
 // border-box
 // padding-box
 // content-box
+attached
 filter-box
 detached
 #endif // CSS_SHADERS
@@ -1013,5 +1025,6 @@ no-drag
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
 // text-indent
 -webkit-each-line
+-webkit-hanging
 #endif
 

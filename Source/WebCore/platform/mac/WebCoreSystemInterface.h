@@ -50,6 +50,7 @@ typedef struct _CFURLResponse *CFURLResponseRef;
 typedef const struct _CFURLRequest *CFURLRequestRef;
 typedef const struct __CTFont * CTFontRef;
 typedef const struct __CTLine * CTLineRef;
+typedef const struct __CTRun * CTRunRef;
 typedef const struct __CTTypesetter * CTTypesetterRef;
 typedef const struct __AXUIElement *AXUIElementRef;
 typedef struct _NSRange NSRange;
@@ -90,6 +91,7 @@ OBJC_CLASS NSEvent;
 OBJC_CLASS NSFont;
 OBJC_CLASS NSHTTPCookie;
 OBJC_CLASS NSImage;
+OBJC_CLASS NSLocale;
 OBJC_CLASS NSMenu;
 OBJC_CLASS NSMutableURLRequest;
 OBJC_CLASS NSString;
@@ -214,7 +216,7 @@ extern void (*wkSetHTTPPipeliningPriority)(CFURLRequestRef, int priority);
 extern void (*wkSetHTTPPipeliningMinimumFastLanePriority)(int priority);
 extern void (*wkSetCONNECTProxyForStream)(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
 extern void (*wkSetCONNECTProxyAuthorizationForStream)(CFReadStreamRef, CFStringRef proxyAuthorizationString);
-extern CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL);
+extern CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
 
 extern void (*wkGetGlyphsForCharacters)(CGFontRef, const UniChar[], CGGlyph[], size_t);
 extern bool (*wkGetVerticalGlyphsForCharacters)(CTFontRef, const UniChar[], CGGlyph[], size_t);
@@ -253,6 +255,8 @@ extern bool (*wkCTFontTransformGlyphs)(CTFontRef font, CGGlyph glyphs[], CGSize 
 
 extern CTTypesetterRef (*wkCreateCTTypesetterWithUniCharProviderAndOptions)(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
 
+extern CGSize (*wkCTRunGetInitialAdvance)(CTRunRef);
+
 #if PLATFORM(MAC) && USE(CA)
 extern CGContextRef (*wkIOSurfaceContextCreate)(IOSurfaceRef surface, unsigned width, unsigned height, CGColorSpaceRef colorSpace);
 extern CGImageRef (*wkIOSurfaceContextCreateImage)(CGContextRef context);
@@ -269,6 +273,11 @@ extern NSURL *(*wkAVAssetResolvedURL)(AVAsset*);
 
 extern NSCursor *(*wkCursor)(const char*);
 
+#endif
+    
+#if PLATFORM(MAC)
+extern NSArray *(*wkSpeechSynthesisGetVoiceIdentifiers)(void);
+extern NSString *(*wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale)(NSLocale *);
 #endif
 
 extern void (*wkUnregisterUniqueIdForElement)(id element);

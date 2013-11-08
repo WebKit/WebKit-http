@@ -55,10 +55,6 @@ class IntSize;
 }
 #endif
 
-#if PLATFORM(WX)
-class wxSize;
-#endif
-
 namespace WebCore {
 
 class IntSize {
@@ -157,11 +153,6 @@ public:
 #if PLATFORM(HAIKU)
     explicit IntSize(const BSize&);
     operator BSize() const;
-#endif
-
-#if PLATFORM(WX)
-    IntSize(const wxSize&);
-    operator wxSize() const;
 #endif
 
 #if PLATFORM(BLACKBERRY)

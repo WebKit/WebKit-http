@@ -57,9 +57,6 @@
 #include "ScriptProcessorNode.h"
 #include "WaveShaperNode.h"
 #include "WaveTable.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include <wtf/MemoryInstrumentationHashSet.h>
-#include <wtf/MemoryInstrumentationVector.h>
 
 #if ENABLE(MEDIA_STREAM)
 #include "MediaStream.h"
@@ -235,7 +232,7 @@ void AudioContext::clear()
     // Audio thread is dead. Nobody will schedule node deletion action. Let's do it ourselves.
     do {
         deleteMarkedNodes();
-        m_nodesToDelete.append(m_nodesMarkedForDeletion);
+        m_nodesToDelete.appendVector(m_nodesMarkedForDeletion);
         m_nodesMarkedForDeletion.clear();
     } while (m_nodesToDelete.size());
 
@@ -796,7 +793,7 @@ void AudioContext::scheduleNodeDeletion()
 
     // Make sure to call deleteMarkedNodes() on main thread.    
     if (m_nodesMarkedForDeletion.size() && !m_isDeletionScheduled) {
-        m_nodesToDelete.append(m_nodesMarkedForDeletion);
+        m_nodesToDelete.appendVector(m_nodesMarkedForDeletion);
         m_nodesMarkedForDeletion.clear();
 
         m_isDeletionScheduled = true;
@@ -976,30 +973,6 @@ void AudioContext::incrementActiveSourceCount()
 void AudioContext::decrementActiveSourceCount()
 {
     atomicDecrement(&m_activeSourceCount);
-}
-
-void AudioContext::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    AutoLocker locker(const_cast<AudioContext*>(this));
-
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Audio);
-    ActiveDOMObject::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_destinationNode, "destinationNode");
-    info.addMember(m_listener, "listener");
-    info.addMember(m_finishedNodes, "finishedNodes");
-    info.addMember(m_referencedNodes, "referencedNodes");
-    info.addMember(m_nodesMarkedForDeletion, "nodesMarkedForDeletion");
-    info.addMember(m_nodesToDelete, "nodesToDelete");
-    info.addMember(m_dirtySummingJunctions, "dirtySummingJunctions");
-    info.addMember(m_dirtyAudioNodeOutputs, "dirtyAudioNodeOutputs");
-    info.addMember(m_automaticPullNodes, "automaticPullNodes");
-    info.addMember(m_renderingAutomaticPullNodes, "renderingAutomaticPullNodes");
-    info.addMember(m_contextGraphMutex, "contextGraphMutex");
-    info.addMember(m_deferredFinishDerefList, "deferredFinishDerefList");
-    info.addMember(m_hrtfDatabaseLoader, "hrtfDatabaseLoader");
-    info.addMember(m_eventTargetData, "eventTargetData");
-    info.addMember(m_renderTarget, "renderTarget");
-    info.addMember(m_audioDecoder, "audioDecoder");
 }
 
 } // namespace WebCore

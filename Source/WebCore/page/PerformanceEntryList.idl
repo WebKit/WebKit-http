@@ -30,6 +30,7 @@
 
 // See: https://dvcs.w3.org/hg/webperf/raw-file/tip/specs/PerformanceTimeline/Overview.html
 [
+    NoInterfaceObject,
     Conditional=WEB_TIMING,
     Conditional=PERFORMANCE_TIMELINE,
     OmitConstructor,
@@ -37,6 +38,6 @@
     ImplementationLacksVTable
 ] interface PerformanceEntryList {
     readonly attribute unsigned long length;
-    PerformanceEntry item(in unsigned long index);
+    PerformanceEntry item(unsigned long index);
 };
 

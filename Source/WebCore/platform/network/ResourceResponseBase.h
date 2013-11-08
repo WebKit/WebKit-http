@@ -29,7 +29,6 @@
 
 #include "HTTPHeaderMap.h"
 #include "KURL.h"
-#include "ResourceLoadInfo.h"
 #include "ResourceLoadTiming.h"
 
 #include <wtf/PassOwnPtr.h>
@@ -118,17 +117,12 @@ public:
     ResourceLoadTiming* resourceLoadTiming() const;
     void setResourceLoadTiming(PassRefPtr<ResourceLoadTiming>);
 
-    PassRefPtr<ResourceLoadInfo> resourceLoadInfo() const;
-    void setResourceLoadInfo(PassRefPtr<ResourceLoadInfo>);
-
     // The ResourceResponse subclass may "shadow" this method to provide platform-specific memory usage information
     unsigned memoryUsage() const
     {
         // average size, mostly due to URL and Header Map strings
         return 1280;
     }
-
-    void reportMemoryUsage(MemoryObjectInfo*) const;
 
     static bool compare(const ResourceResponse&, const ResourceResponse&);
 
@@ -164,7 +158,6 @@ protected:
     unsigned m_connectionID;
     bool m_connectionReused : 1;
     RefPtr<ResourceLoadTiming> m_resourceLoadTiming;
-    RefPtr<ResourceLoadInfo> m_resourceLoadInfo;
 
     bool m_isNull : 1;
     

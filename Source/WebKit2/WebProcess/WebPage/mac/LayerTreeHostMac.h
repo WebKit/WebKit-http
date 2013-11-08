@@ -58,6 +58,7 @@ private:
     virtual void forceRepaint() OVERRIDE;
     virtual void sizeDidChange(const WebCore::IntSize& newSize) OVERRIDE;
     virtual void deviceOrPageScaleFactorChanged() OVERRIDE;
+    virtual void pageBackgroundTransparencyChanged() OVERRIDE;
 
     virtual void didInstallPageOverlay(PageOverlay*) OVERRIDE;
     virtual void didUninstallPageOverlay(PageOverlay*) OVERRIDE;
@@ -92,7 +93,7 @@ private:
 
     OwnPtr<WebCore::GraphicsLayer> m_rootLayer;
     OwnPtr<WebCore::GraphicsLayer> m_nonCompositedContentLayer;
-    typedef HashMap<PageOverlay*, OwnPtr<WebCore::GraphicsLayer> > PageOverlayLayerMap;
+    typedef HashMap<PageOverlay*, OwnPtr<WebCore::GraphicsLayer>> PageOverlayLayerMap;
     PageOverlayLayerMap m_pageOverlayLayers;
 
     OwnPtr<LayerHostingContext> m_layerHostingContext;

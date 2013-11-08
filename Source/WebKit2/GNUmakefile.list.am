@@ -107,6 +107,7 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFileChooserRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFindController.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitFormSubmissionRequest.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitForwardDeclarations.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitGeolocationPermissionRequest.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitHitTestResult.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitJavascriptResult.h \
@@ -128,12 +129,12 @@ webkit2gtk_h_api += \
 	$(WebKit2)/UIProcess/API/gtk/WebKitWebResource.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitWebView.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitWebViewBase.h \
+	$(WebKit2)/UIProcess/API/gtk/WebKitWebViewGroup.h \
 	$(WebKit2)/UIProcess/API/gtk/WebKitWindowProperties.h \
 	$(WebKit2)/UIProcess/API/gtk/webkit2.h
 
 webkit2_web_extension_h_api += \
 	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.h \
-	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionDefines.h \
 	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.h \
 	$(WebKit2)/WebProcess/InjectedBundle/API/gtk/webkit-web-extension.h
 
@@ -162,8 +163,8 @@ webkit2_built_sources += \
 	DerivedSources/WebKit2/PluginProcessProxyMessages.h \
 	DerivedSources/WebKit2/PluginProxyMessageReceiver.cpp \
 	DerivedSources/WebKit2/PluginProxyMessages.h \
-	DerivedSources/WebKit2/StorageAreaProxyMessageReceiver.cpp \
-	DerivedSources/WebKit2/StorageAreaProxyMessages.h \
+	DerivedSources/WebKit2/StorageAreaMapMessageReceiver.cpp \
+	DerivedSources/WebKit2/StorageAreaMapMessages.h \
 	DerivedSources/WebKit2/StorageManagerMessageReceiver.cpp \
 	DerivedSources/WebKit2/StorageManagerMessages.h \
 	DerivedSources/WebKit2/WebApplicationCacheManagerMessageReceiver.cpp \
@@ -259,8 +260,6 @@ webkit2platform_sources += \
 	Source/WebKit2/Platform/CoreIPC/Arguments.h \
 	Source/WebKit2/Platform/CoreIPC/Attachment.cpp \
 	Source/WebKit2/Platform/CoreIPC/Attachment.h \
-	Source/WebKit2/Platform/CoreIPC/BinarySemaphore.cpp \
-	Source/WebKit2/Platform/CoreIPC/BinarySemaphore.h \
 	Source/WebKit2/Platform/CoreIPC/Connection.cpp \
 	Source/WebKit2/Platform/CoreIPC/Connection.h \
 	Source/WebKit2/Platform/CoreIPC/DataReference.cpp \
@@ -349,6 +348,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/API/c/WKNumber.cpp \
 	Source/WebKit2/Shared/API/c/WKNumber.h \
 	Source/WebKit2/Shared/API/c/WKPageLoadTypes.h \
+	Source/WebKit2/Shared/API/c/WKPageLoadTypesPrivate.h \
 	Source/WebKit2/Shared/API/c/WKPageVisibilityTypes.h \
 	Source/WebKit2/Shared/API/c/WKRenderLayer.cpp \
 	Source/WebKit2/Shared/API/c/WKRenderLayer.h \
@@ -386,6 +386,7 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ChildProcess.h \
 	Source/WebKit2/Shared/ChildProcessProxy.cpp \
 	Source/WebKit2/Shared/ChildProcessProxy.h \
+	Source/WebKit2/Shared/ChildProcessSupplement.h \
 	Source/WebKit2/Shared/CommandLine.h \
 	Source/WebKit2/Shared/ConnectionStack.cpp \
 	Source/WebKit2/Shared/ConnectionStack.h \
@@ -647,8 +648,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/cpp/WKRetainPtr.h \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.h \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.cpp \
-	Source/WebKit2/UIProcess/API/gtk/WebKit2GtkAuthenticationDialog.cpp \
-	Source/WebKit2/UIProcess/API/gtk/WebKit2GtkAuthenticationDialog.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationDialog.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitAuthenticationDialog.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.h \
@@ -688,6 +689,7 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFormSubmissionRequestPrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFormClient.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFormClient.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitForwardDeclarations.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFullscreenClient.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitFullscreenClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitGeolocationPermissionRequest.cpp \
@@ -774,6 +776,9 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWebViewBaseAccessible.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWebViewBaseAccessible.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWebViewBasePrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitWebViewGroup.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitWebViewGroup.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitWebViewGroupPrivate.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWindowProperties.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWindowProperties.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitWindowPropertiesPrivate.h \
@@ -852,6 +857,10 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/ResponsivenessTimer.h \
 	Source/WebKit2/UIProcess/StatisticsRequest.cpp \
 	Source/WebKit2/UIProcess/StatisticsRequest.h \
+	Source/WebKit2/UIProcess/Storage/LocalStorageDatabase.cpp \
+	Source/WebKit2/UIProcess/Storage/LocalStorageDatabase.h \
+	Source/WebKit2/UIProcess/Storage/LocalStorageDatabaseTracker.cpp \
+	Source/WebKit2/UIProcess/Storage/LocalStorageDatabaseTracker.h \
 	Source/WebKit2/UIProcess/Storage/StorageManager.cpp \
 	Source/WebKit2/UIProcess/Storage/StorageManager.h \
 	Source/WebKit2/UIProcess/soup/WebCookieManagerProxySoup.cpp \
@@ -1038,7 +1047,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionPrivate.h \
-	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebExtensionDefines.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebPage.h \
 	Source/WebKit2/WebProcess/InjectedBundle/API/gtk/WebKitWebPagePrivate.h \
@@ -1123,10 +1131,12 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/Plugins/PluginView.h \
 	Source/WebKit2/WebProcess/ResourceCache/WebResourceCacheManager.h \
 	Source/WebKit2/WebProcess/ResourceCache/WebResourceCacheManager.cpp \
-	Source/WebKit2/WebProcess/Storage/StorageAreaProxy.cpp \
-	Source/WebKit2/WebProcess/Storage/StorageAreaProxy.h \
-	Source/WebKit2/WebProcess/Storage/StorageNamespaceProxy.cpp \
-	Source/WebKit2/WebProcess/Storage/StorageNamespaceProxy.h \
+	Source/WebKit2/WebProcess/Storage/StorageAreaImpl.cpp \
+	Source/WebKit2/WebProcess/Storage/StorageAreaImpl.h \
+	Source/WebKit2/WebProcess/Storage/StorageAreaMap.cpp \
+	Source/WebKit2/WebProcess/Storage/StorageAreaMap.h \
+	Source/WebKit2/WebProcess/Storage/StorageNamespaceImpl.cpp \
+	Source/WebKit2/WebProcess/Storage/StorageNamespaceImpl.h \
 	Source/WebKit2/WebProcess/Storage/WebKeyValueStorageManager.cpp \
 	Source/WebKit2/WebProcess/Storage/WebKeyValueStorageManager.h \
 	Source/WebKit2/WebProcess/soup/WebSoupRequestManager.cpp \
@@ -1203,6 +1213,8 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPrintOperationGtk.h \
 	Source/WebKit2/WebProcess/WebPage/LayerTreeHost.cpp \
 	Source/WebKit2/WebProcess/WebPage/LayerTreeHost.h \
+	Source/WebKit2/WebProcess/WebPage/PageBanner.cpp \
+	Source/WebKit2/WebProcess/WebPage/PageBanner.h \
 	Source/WebKit2/WebProcess/WebPage/PageOverlay.cpp \
 	Source/WebKit2/WebProcess/WebPage/PageOverlay.h \
 	Source/WebKit2/WebProcess/WebPage/WebBackForwardListProxy.cpp \
@@ -1294,7 +1306,12 @@ webkit2_plugin_process_sources += \
 	Source/WebKit2/Shared/gtk/ProcessExecutablePathGtk.cpp \
 	Source/WebKit2/Shared/gtk/WebEventFactory.cpp \
 	Source/WebKit2/Shared/cairo/ShareableBitmapCairo.cpp \
+	Source/WebKit2/Shared/soup/PlatformCertificateInfo.cpp \
+	Source/WebKit2/Shared/soup/PlatformCertificateInfo.h \
 	Source/WebKit2/Shared/soup/WebCoreArgumentCodersSoup.cpp \
+	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.cpp \
+	Source/WebKit2/UIProcess/Launcher/ProcessLauncher.h \
+	Source/WebKit2/UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp \
 	Source/WebKit2/UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.cpp \
 	Source/WebKit2/WebProcess/Plugins/Plugin.h \

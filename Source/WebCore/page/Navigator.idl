@@ -18,8 +18,7 @@
 */
 
 [
-    JSGenerateIsReachable=ImplFrame,
-    OmitConstructor
+    GenerateIsReachable=ImplFrame,
 ] interface Navigator {
     readonly attribute DOMString appCodeName;
     readonly attribute DOMString appName;

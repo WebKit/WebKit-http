@@ -35,7 +35,6 @@
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "FloatPoint.h"
-#include "PlatformMemoryInstrumentation.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
@@ -261,30 +260,23 @@ void ScrollableArea::finishCurrentScrollAnimations() const
         scrollAnimator->finishCurrentScrollAnimations();
 }
 
-void ScrollableArea::didAddVerticalScrollbar(Scrollbar* scrollbar)
+void ScrollableArea::didAddScrollbar(Scrollbar* scrollbar, ScrollbarOrientation orientation)
 {
-    scrollAnimator()->didAddVerticalScrollbar(scrollbar);
+    if (orientation == VerticalScrollbar)
+        scrollAnimator()->didAddVerticalScrollbar(scrollbar);
+    else
+        scrollAnimator()->didAddHorizontalScrollbar(scrollbar);
 
     // <rdar://problem/9797253> AppKit resets the scrollbar's style when you attach a scrollbar
     setScrollbarOverlayStyle(scrollbarOverlayStyle());
 }
 
-void ScrollableArea::willRemoveVerticalScrollbar(Scrollbar* scrollbar)
+void ScrollableArea::willRemoveScrollbar(Scrollbar* scrollbar, ScrollbarOrientation orientation)
 {
-    scrollAnimator()->willRemoveVerticalScrollbar(scrollbar);
-}
-
-void ScrollableArea::didAddHorizontalScrollbar(Scrollbar* scrollbar)
-{
-    scrollAnimator()->didAddHorizontalScrollbar(scrollbar);
-
-    // <rdar://problem/9797253> AppKit resets the scrollbar's style when you attach a scrollbar
-    setScrollbarOverlayStyle(scrollbarOverlayStyle());
-}
-
-void ScrollableArea::willRemoveHorizontalScrollbar(Scrollbar* scrollbar)
-{
-    scrollAnimator()->willRemoveHorizontalScrollbar(scrollbar);
+    if (orientation == VerticalScrollbar)
+        scrollAnimator()->willRemoveVerticalScrollbar(scrollbar);
+    else
+        scrollAnimator()->willRemoveHorizontalScrollbar(scrollbar);
 }
 
 void ScrollableArea::contentsResized()
@@ -455,12 +447,6 @@ IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntRect& visib
 IntPoint ScrollableArea::constrainScrollPositionForOverhang(const IntPoint& scrollPosition)
 {
     return constrainScrollPositionForOverhang(visibleContentRect(), totalContentsSize(), scrollPosition, scrollOrigin(), headerHeight(), footerHeight());
-}
-
-void ScrollableArea::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this);
-    info.addMember(m_scrollAnimator, "scrollAnimator");
 }
 
 } // namespace WebCore

@@ -78,16 +78,16 @@ ALWAYS_INLINE void JIT::emitGetFromCallFrameHeader64(JSStack::CallFrameHeaderEnt
 
 ALWAYS_INLINE void JIT::emitLoadCharacterString(RegisterID src, RegisterID dst, JumpList& failures)
 {
-    failures.append(branchPtr(NotEqual, Address(src, JSCell::structureOffset()), TrustedImmPtr(m_globalData->stringStructure.get())));
+    failures.append(branchPtr(NotEqual, Address(src, JSCell::structureOffset()), TrustedImmPtr(m_vm->stringStructure.get())));
     failures.append(branch32(NotEqual, MacroAssembler::Address(src, ThunkHelpers::jsStringLengthOffset()), TrustedImm32(1)));
     loadPtr(MacroAssembler::Address(src, ThunkHelpers::jsStringValueOffset()), dst);
     failures.append(branchTest32(Zero, dst));
-    loadPtr(MacroAssembler::Address(dst, ThunkHelpers::stringImplFlagsOffset()), regT1);
-    loadPtr(MacroAssembler::Address(dst, ThunkHelpers::stringImplDataOffset()), dst);
+    loadPtr(MacroAssembler::Address(dst, StringImpl::flagsOffset()), regT1);
+    loadPtr(MacroAssembler::Address(dst, StringImpl::dataOffset()), dst);
 
     JumpList is16Bit;
     JumpList cont8Bit;
-    is16Bit.append(branchTest32(Zero, regT1, TrustedImm32(ThunkHelpers::stringImpl8BitFlag())));
+    is16Bit.append(branchTest32(Zero, regT1, TrustedImm32(StringImpl::flagIs8Bit())));
     load8(MacroAssembler::Address(dst, 0), dst);
     cont8Bit.append(jump());
     is16Bit.link(this);
@@ -186,7 +186,7 @@ ALWAYS_INLINE void JIT::updateTopCallFrame()
         store32(TrustedImm32(m_bytecodeOffset + 1), intTagFor(JSStack::ArgumentCount));
 #endif
     }
-    storePtr(callFrameRegister, &m_globalData->topCallFrame);
+    storePtr(callFrameRegister, &m_vm->topCallFrame);
 }
 
 ALWAYS_INLINE void JIT::restoreArgumentReferenceForTrampoline()

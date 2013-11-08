@@ -29,6 +29,7 @@
 #include "DocumentStyleSheetCollection.h"
 
 #include "CSSStyleSheet.h"
+#include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "Element.h"
 #include "HTMLIFrameElement.h"
@@ -47,9 +48,6 @@
 #include "StyleSheetContents.h"
 #include "StyleSheetList.h"
 #include "UserContentURLPattern.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include <wtf/MemoryInstrumentationListHashSet.h>
-#include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
@@ -88,7 +86,7 @@ DocumentStyleSheetCollection::~DocumentStyleSheetCollection()
 void DocumentStyleSheetCollection::combineCSSFeatureFlags()
 {
     // Delay resetting the flags until after next style recalc since unapplying the style may not work without these set (this is true at least with before/after).
-    StyleResolver* styleResolver = m_document->styleResolver();
+    StyleResolver* styleResolver = m_document->ensureStyleResolver();
     m_usesSiblingRules = m_usesSiblingRules || styleResolver->usesSiblingRules();
     m_usesFirstLineRules = m_usesFirstLineRules || styleResolver->usesFirstLineRules();
     m_usesBeforeAfterRules = m_usesBeforeAfterRules || styleResolver->usesBeforeAfterRules();
@@ -96,7 +94,7 @@ void DocumentStyleSheetCollection::combineCSSFeatureFlags()
 
 void DocumentStyleSheetCollection::resetCSSFeatureFlags()
 {
-    StyleResolver* styleResolver = m_document->styleResolver();
+    StyleResolver* styleResolver = m_document->ensureStyleResolver();
     m_usesSiblingRules = styleResolver->usesSiblingRules();
     m_usesFirstLineRules = styleResolver->usesFirstLineRules();
     m_usesBeforeAfterRules = styleResolver->usesBeforeAfterRules();
@@ -443,7 +441,7 @@ static void collectActiveCSSStyleSheetsFromSeamlessParents(Vector<RefPtr<CSSStyl
     HTMLIFrameElement* seamlessParentIFrame = document->seamlessParentIFrame();
     if (!seamlessParentIFrame)
         return;
-    sheets.append(seamlessParentIFrame->document()->styleSheetCollection()->activeAuthorStyleSheets());
+    sheets.appendVector(seamlessParentIFrame->document()->styleSheetCollection()->activeAuthorStyleSheets());
 }
 
 bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag)
@@ -464,8 +462,8 @@ bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag
     collectActiveStyleSheets(activeStyleSheets);
 
     Vector<RefPtr<CSSStyleSheet> > activeCSSStyleSheets;
-    activeCSSStyleSheets.append(injectedAuthorStyleSheets());
-    activeCSSStyleSheets.append(documentAuthorStyleSheets());
+    activeCSSStyleSheets.appendVector(injectedAuthorStyleSheets());
+    activeCSSStyleSheets.appendVector(documentAuthorStyleSheets());
     collectActiveCSSStyleSheetsFromSeamlessParents(activeCSSStyleSheets, m_document);
     filterEnabledCSSStyleSheets(activeCSSStyleSheets, activeStyleSheets);
 
@@ -476,7 +474,7 @@ bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag
     if (styleResolverUpdateType == Reconstruct)
         m_document->clearStyleResolver();
     else {
-        StyleResolver* styleResolver = m_document->styleResolver();
+        StyleResolver* styleResolver = m_document->ensureStyleResolver();
         if (styleResolverUpdateType == Reset) {
             styleResolver->ruleSets().resetAuthorStyle();
             styleResolver->appendAuthorStyleSheets(0, activeCSSStyleSheets);
@@ -495,22 +493,6 @@ bool DocumentStyleSheetCollection::updateActiveStyleSheets(UpdateFlag updateFlag
     m_document->notifySeamlessChildDocumentsOfStylesheetUpdate();
 
     return requiresFullStyleRecalc;
-}
-
-void DocumentStyleSheetCollection::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_pageUserSheet, "pageUserSheet");
-    info.addMember(m_injectedUserStyleSheets, "injectedUserStyleSheets");
-    info.addMember(m_injectedAuthorStyleSheets, "injectedAuthorStyleSheets");
-    info.addMember(m_userStyleSheets, "userStyleSheets");
-    info.addMember(m_authorStyleSheets, "authorStyleSheets");
-    info.addMember(m_activeAuthorStyleSheets, "activeAuthorStyleSheets");
-    info.addMember(m_styleSheetsForStyleSheetList, "styleSheetsForStyleSheetList");
-    info.addMember(m_styleSheetCandidateNodes, "styleSheetCandidateNodes");
-    info.addMember(m_preferredStylesheetSetName, "preferredStylesheetSetName");
-    info.addMember(m_selectedStylesheetSetName, "selectedStylesheetSetName");
-    info.addMember(m_document, "document");
 }
 
 }

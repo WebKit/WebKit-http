@@ -23,7 +23,6 @@
 
 #include "DOMStringList.h"
 #include "ExceptionCode.h"
-#include "JSArray.h"
 #include "JSDOMBinding.h"
 #include "JSDOMStringList.h"
 #include "JSSVGPoint.h"
@@ -90,10 +89,10 @@ JSTestTypedefsConstructor::JSTestTypedefsConstructor(Structure* structure, JSDOM
 
 void JSTestTypedefsConstructor::finishCreation(ExecState* exec, JSDOMGlobalObject* globalObject)
 {
-    Base::finishCreation(exec->globalData());
+    Base::finishCreation(exec->vm());
     ASSERT(inherits(&s_info));
-    putDirect(exec->globalData(), exec->propertyNames().prototype, JSTestTypedefsPrototype::self(exec, globalObject), DontDelete | ReadOnly);
-    putDirect(exec->globalData(), exec->propertyNames().length, jsNumber(2), ReadOnly | DontDelete | DontEnum);
+    putDirect(exec->vm(), exec->propertyNames().prototype, JSTestTypedefsPrototype::self(exec, globalObject), DontDelete | ReadOnly);
+    putDirect(exec->vm(), exec->propertyNames().length, jsNumber(2), ReadOnly | DontDelete | DontEnum);
 }
 
 bool JSTestTypedefsConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -116,12 +115,11 @@ ConstructType JSTestTypedefsConstructor::getConstructData(JSCell*, ConstructData
 
 static const HashTableValue JSTestTypedefsPrototypeTableValues[] =
 {
-    { "func", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionFunc), (intptr_t)1, NoIntrinsic },
-    { "multiTransferList", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionMultiTransferList), (intptr_t)4, NoIntrinsic },
-    { "setShadow", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionSetShadow), (intptr_t)5, NoIntrinsic },
+    { "func", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionFunc), (intptr_t)0, NoIntrinsic },
+    { "setShadow", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionSetShadow), (intptr_t)3, NoIntrinsic },
     { "methodWithSequenceArg", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionMethodWithSequenceArg), (intptr_t)1, NoIntrinsic },
     { "nullableArrayArg", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionNullableArrayArg), (intptr_t)1, NoIntrinsic },
-    { "funcWithClamp", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionFuncWithClamp), (intptr_t)2, NoIntrinsic },
+    { "funcWithClamp", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionFuncWithClamp), (intptr_t)1, NoIntrinsic },
     { "immutablePointFunction", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionImmutablePointFunction), (intptr_t)0, NoIntrinsic },
     { "stringArrayFunction", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionStringArrayFunction), (intptr_t)1, NoIntrinsic },
     { "stringArrayFunction2", DontDelete | JSC::Function, (intptr_t)static_cast<NativeFunction>(jsTestTypedefsPrototypeFunctionStringArrayFunction2), (intptr_t)1, NoIntrinsic },
@@ -129,7 +127,7 @@ static const HashTableValue JSTestTypedefsPrototypeTableValues[] =
     { 0, 0, 0, 0, NoIntrinsic }
 };
 
-static const HashTable JSTestTypedefsPrototypeTable = { 34, 31, JSTestTypedefsPrototypeTableValues, 0 };
+static const HashTable JSTestTypedefsPrototypeTable = { 33, 31, JSTestTypedefsPrototypeTableValues, 0 };
 const ClassInfo JSTestTypedefsPrototype::s_info = { "TestTypedefsPrototype", &Base::s_info, &JSTestTypedefsPrototypeTable, 0, CREATE_METHOD_TABLE(JSTestTypedefsPrototype) };
 
 JSObject* JSTestTypedefsPrototype::self(ExecState* exec, JSGlobalObject* globalObject)
@@ -157,15 +155,15 @@ JSTestTypedefs::JSTestTypedefs(Structure* structure, JSDOMGlobalObject* globalOb
 {
 }
 
-void JSTestTypedefs::finishCreation(JSGlobalData& globalData)
+void JSTestTypedefs::finishCreation(VM& vm)
 {
-    Base::finishCreation(globalData);
+    Base::finishCreation(vm);
     ASSERT(inherits(&s_info));
 }
 
 JSObject* JSTestTypedefs::createPrototype(ExecState* exec, JSGlobalObject* globalObject)
 {
-    return JSTestTypedefsPrototype::create(exec->globalData(), globalObject, JSTestTypedefsPrototype::createStructure(globalObject->globalData(), globalObject, globalObject->objectPrototype()));
+    return JSTestTypedefsPrototype::create(exec->vm(), globalObject, JSTestTypedefsPrototype::createStructure(globalObject->vm(), globalObject, globalObject->objectPrototype()));
 }
 
 void JSTestTypedefs::destroy(JSC::JSCell* cell)
@@ -380,49 +378,6 @@ EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionFunc(ExecState* exec
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionMultiTransferList(ExecState* exec)
-{
-    JSValue thisValue = exec->hostThisValue();
-    if (!thisValue.inherits(&JSTestTypedefs::s_info))
-        return throwVMTypeError(exec);
-    JSTestTypedefs* castedThis = jsCast<JSTestTypedefs*>(asObject(thisValue));
-    ASSERT_GC_OBJECT_INHERITS(castedThis, &JSTestTypedefs::s_info);
-    TestTypedefs* impl = static_cast<TestTypedefs*>(castedThis->impl());
-    if (exec->argumentCount() < 1)
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    RefPtr<SerializedScriptValue> first(SerializedScriptValue::create(exec, exec->argument(0), 0, 0));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    size_t argsCount = exec->argumentCount();
-    if (argsCount <= 1) {
-        impl->multiTransferList(first);
-        return JSValue::encode(jsUndefined());
-    }
-
-    Array* tx(toArray(exec->argument(1)));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    if (argsCount <= 2) {
-        impl->multiTransferList(first, tx);
-        return JSValue::encode(jsUndefined());
-    }
-
-    RefPtr<SerializedScriptValue> second(SerializedScriptValue::create(exec, exec->argument(2), 0, 0));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    if (argsCount <= 3) {
-        impl->multiTransferList(first, tx, second);
-        return JSValue::encode(jsUndefined());
-    }
-
-    Array* txx(toArray(exec->argument(3)));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    impl->multiTransferList(first, tx, second, txx);
-    return JSValue::encode(jsUndefined());
-}
-
 EncodedJSValue JSC_HOST_CALL jsTestTypedefsPrototypeFunctionSetShadow(ExecState* exec)
 {
     JSValue thisValue = exec->hostThisValue();
@@ -627,9 +582,40 @@ void JSTestTypedefsOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* conte
     jsTestTypedefs->releaseImpl();
 }
 
+#if ENABLE(BINDING_INTEGRITY)
+#if PLATFORM(WIN)
+#pragma warning(disable: 4483)
+extern "C" { extern void (*const __identifier("??_7TestTypedefs@WebCore@@6B@")[])(); }
+#else
+extern "C" { extern void* _ZTVN7WebCore12TestTypedefsE[]; }
+#endif
+#endif
 JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestTypedefs* impl)
 {
-    return wrap<JSTestTypedefs>(exec, globalObject, impl);
+    if (!impl)
+        return jsNull();
+    if (JSValue result = getExistingWrapper<JSTestTypedefs>(exec, impl)) return result;
+
+#if ENABLE(BINDING_INTEGRITY)
+    void* actualVTablePointer = *(reinterpret_cast<void**>(impl));
+#if PLATFORM(WIN)
+    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestTypedefs@WebCore@@6B@"));
+#else
+    void* expectedVTablePointer = &_ZTVN7WebCore12TestTypedefsE[2];
+#if COMPILER(CLANG)
+    // If this fails TestTypedefs does not have a vtable, so you need to add the
+    // ImplementationLacksVTable attribute to the interface definition
+    COMPILE_ASSERT(__is_polymorphic(TestTypedefs), TestTypedefs_is_not_polymorphic);
+#endif
+#endif
+    // If you hit this assertion you either have a use after free bug, or
+    // TestTypedefs has subclasses. If TestTypedefs has subclasses that get passed
+    // to toJS() we currently require TestTypedefs you to opt out of binding hardening
+    // by adding the SkipVTableValidation attribute to the interface IDL definition
+    RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
+#endif
+    ReportMemoryCost<TestTypedefs>::reportMemoryCost(exec, impl);
+    return createNewWrapper<JSTestTypedefs>(exec, globalObject, impl);
 }
 
 TestTypedefs* toTestTypedefs(JSC::JSValue value)

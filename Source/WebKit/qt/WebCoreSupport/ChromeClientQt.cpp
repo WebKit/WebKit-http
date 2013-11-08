@@ -73,6 +73,7 @@
 #include <qdebug.h>
 #include <qeventloop.h>
 #include <qwindow.h>
+#include <wtf/CurrentTime.h>
 #include <wtf/OwnPtr.h>
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA) || USE(QTKIT))
@@ -307,10 +308,11 @@ void ChromeClientQt::setResizable(bool)
     notImplemented();
 }
 
-void ChromeClientQt::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, const String& sourceID)
+void ChromeClientQt::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID)
 {
     QString x = message;
     QString y = sourceID;
+    UNUSED_PARAM(columnNumber);
     m_webPage->javaScriptConsoleMessage(x, lineNumber, y);
 }
 
@@ -654,7 +656,7 @@ void ChromeClientQt::scheduleCompositingLayerFlush()
 ChromeClient::CompositingTriggerFlags ChromeClientQt::allowedCompositingTriggers() const
 {
     if (allowsAcceleratedCompositing())
-        return ThreeDTransformTrigger | VideoTrigger | CanvasTrigger | AnimationTrigger;
+        return ThreeDTransformTrigger | CanvasTrigger | AnimationTrigger | AnimatedOpacityTrigger;
 
     return 0;
 }

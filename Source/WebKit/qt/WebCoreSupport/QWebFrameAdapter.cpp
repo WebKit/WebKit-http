@@ -25,6 +25,7 @@
 #include "Chrome.h"
 #include "ChromeClientQt.h"
 #include "DocumentLoader.h"
+#include "EventHandler.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
@@ -42,6 +43,7 @@
 #include "Page.h"
 #include "QWebPageAdapter.h"
 #include "RenderObject.h"
+#include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
 #include "SubstituteData.h"
@@ -195,14 +197,17 @@ void QWebFrameAdapter::handleGestureEvent(QGestureEventFacade* gestureEvent)
 
 QVariant QWebFrameAdapter::evaluateJavaScript(const QString &scriptSource)
 {
-    ScriptController* proxy = frame->script();
+    ScriptController* scriptController = frame->script();
     QVariant rc;
-    if (proxy) {
+    if (scriptController) {
         int distance = 0;
-        JSC::JSValue v = frame->script()->executeScript(ScriptSourceCode(scriptSource)).jsValue();
-        JSC::ExecState* exec = proxy->globalObject(mainThreadNormalWorld())->globalExec();
+        ScriptValue value = scriptController->executeScript(ScriptSourceCode(scriptSource));
+        JSC::ExecState* exec = scriptController->globalObject(mainThreadNormalWorld())->globalExec();
         JSValueRef* ignoredException = 0;
-        rc = JSC::Bindings::convertValueToQVariant(toRef(exec), toRef(exec, v), QMetaType::Void, &distance, ignoredException);
+        exec->vm().apiLock().lock();
+        JSValueRef valueRef = toRef(exec, value.jsValue());
+        exec->vm().apiLock().unlock();
+        rc = JSC::Bindings::convertValueToQVariant(toRef(exec), valueRef, QMetaType::Void, &distance, ignoredException);
     }
     return rc;
 }
@@ -234,7 +239,7 @@ void QWebFrameAdapter::addToJavaScriptWindowObject(const QString& name, QObject*
     JSC::JSObject* runtimeObject = JSC::Bindings::QtInstance::getQtInstance(object, root, valueOwnership)->createRuntimeObject(exec);
 
     JSC::PutPropertySlot slot;
-    window->methodTable()->put(window, exec, JSC::Identifier(&exec->globalData(), reinterpret_cast_ptr<const UChar*>(name.constData()), name.length()), runtimeObject, slot);
+    window->methodTable()->put(window, exec, JSC::Identifier(&exec->vm(), reinterpret_cast_ptr<const UChar*>(name.constData()), name.length()), runtimeObject, slot);
 }
 
 QString QWebFrameAdapter::toHtml() const

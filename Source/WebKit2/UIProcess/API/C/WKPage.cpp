@@ -40,6 +40,10 @@
 #include <Block.h>
 #endif
 
+#if ENABLE(CONTEXT_MENUS)
+#include "WebContextMenuItem.h"
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -86,6 +90,11 @@ void WKPageLoadPlainTextString(WKPageRef pageRef, WKStringRef plainTextStringRef
 void WKPageLoadWebArchiveData(WKPageRef pageRef, WKDataRef webArchiveDataRef)
 {
     toImpl(pageRef)->loadWebArchiveData(toImpl(webArchiveDataRef));
+}
+
+void WKPageLoadFile(WKPageRef pageRef, WKURLRef fileURL, WKURLRef resourceDirectoryURL)
+{
+    toImpl(pageRef)->loadFile(toWTFString(fileURL), toWTFString(resourceDirectoryURL));
 }
 
 void WKPageStopLoading(WKPageRef pageRef)
@@ -262,6 +271,12 @@ WKStringRef WKPageGetSessionHistoryURLValueType()
 {
     static WebString* sessionHistoryURLValueType = WebString::create("SessionHistoryURL").leakRef();
     return toAPI(sessionHistoryURLValueType);
+}
+
+WKStringRef WKPageGetSessionBackForwardListItemValueType()
+{
+    static WebString* sessionBackForwardListValueType = WebString::create("SessionBackForwardListItem").leakRef();
+    return toAPI(sessionBackForwardListValueType);
 }
 
 WKDataRef WKPageCopySessionState(WKPageRef pageRef, void *context, WKPageSessionStateFilterCallback filter)
@@ -872,4 +887,11 @@ void WKPageSetOverridePrivateBrowsingEnabled(WKPageRef pageRef, bool enabled)
 bool WKPageGetOverridePrivateBrowsingEnabled(WKPageRef pageRef)
 {
     return toImpl(pageRef)->overridePrivateBrowsingEnabled();
+}
+
+void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item)
+{
+#if ENABLE(CONTEXT_MENUS)
+    toImpl(page)->contextMenuItemSelected(*(toImpl(item)->data()));
+#endif
 }

@@ -59,6 +59,7 @@ protected:
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*);
     virtual void scheduleLayerFlush();
     virtual void setLayerFlushSchedulingEnabled(bool layerFlushingEnabled);
+    virtual void pageBackgroundTransparencyChanged() OVERRIDE;
 
 private:
     // LayerTreeHost.
@@ -104,6 +105,7 @@ private:
     PageOverlayLayerMap m_pageOverlayLayers;
     OwnPtr<WebCore::TextureMapper> m_textureMapper;
     OwnPtr<WebCore::GLContext> m_context;
+    double m_lastFlushTime;
     bool m_layerFlushSchedulingEnabled;
     unsigned m_layerFlushTimerCallbackId;
 };

@@ -58,10 +58,6 @@ if test "$enable_opcode_stats" = "yes"; then
     AC_DEFINE([ENABLE_OPCODE_STATS], [1], [Define to enable Opcode statistics])
 fi
 
-if test "$enable_introspection" = "yes"; then
-    AC_DEFINE([ENABLE_INTROSPECTION], [1], [Define to enable GObject introspection support])
-fi
-
 if test "$enable_video" = "yes" || test "$enable_web_audio" = "yes"; then
     AC_DEFINE([WTF_USE_GSTREAMER], [1], [ ])
     if test "$enable_debug" = "yes"; then
@@ -116,6 +112,6 @@ if test "$enable_spellcheck" = "yes"; then
 fi
 
 if test "$enable_credential_storage" = "yes"; then
-    AC_DEFINE([WTF_ENABLE_CREDENTIAL_STORAGE], [1], [ ])
+    AC_DEFINE([ENABLE_CREDENTIAL_STORAGE], [1], [ ])
 fi
 

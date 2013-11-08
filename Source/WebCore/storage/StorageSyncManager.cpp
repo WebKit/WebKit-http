@@ -30,7 +30,6 @@
 #include "FileSystem.h"
 #include "Frame.h"
 #include "FrameTree.h"
-#include "StorageTask.h"
 #include "StorageThread.h"
 #include "Page.h"
 #include "PageGroup.h"
@@ -72,39 +71,23 @@ String StorageSyncManager::fullDatabaseFilename(const String& databaseIdentifier
     return pathByAppendingComponent(m_path, databaseIdentifier + ".localstorage");
 }
 
+void StorageSyncManager::dispatch(const Function<void ()>& function)
+{
+    ASSERT(isMainThread());
+    ASSERT(m_thread);
+
+    if (m_thread)
+        m_thread->dispatch(function);
+}
+
 void StorageSyncManager::close()
 {
     ASSERT(isMainThread());
 
     if (m_thread) {
         m_thread->terminate();
-        m_thread.clear();
+        m_thread = nullptr;
     }
-}
-
-bool StorageSyncManager::scheduleImport(PassRefPtr<StorageAreaSync> area)
-{
-    ASSERT(isMainThread());
-    ASSERT(m_thread);
-    if (m_thread)
-        m_thread->scheduleTask(StorageTask::createImport(area.get()));
-    return m_thread;
-}
-
-void StorageSyncManager::scheduleSync(PassRefPtr<StorageAreaSync> area)
-{
-    ASSERT(isMainThread());
-    ASSERT(m_thread);
-    if (m_thread)
-        m_thread->scheduleTask(StorageTask::createSync(area.get()));
-}
-
-void StorageSyncManager::scheduleDeleteEmptyDatabase(PassRefPtr<StorageAreaSync> area)
-{
-    ASSERT(isMainThread());
-    ASSERT(m_thread);
-    if (m_thread)
-        m_thread->scheduleTask(StorageTask::createDeleteEmptyDatabase(area.get()));
 }
 
 } // namespace WebCore

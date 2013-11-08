@@ -35,6 +35,7 @@
 #include <wtf/PassOwnArrayPtr.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/TemporaryChange.h>
 
 #if PLATFORM(QT)
 #include "NativeImageQt.h"
@@ -63,6 +64,8 @@
 #define GL_UNPACK_SKIP_PIXELS 0x0CF4
 #define GL_UNPACK_SKIP_ROWS 0x0CF3
 #endif
+
+#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER)
 
 namespace WebCore {
 struct TextureMapperGLData {
@@ -134,6 +137,9 @@ public:
         , previousScissorState(0)
         , previousDepthState(0)
         , sharedData(TextureMapperGLData::SharedGLData::currentSharedGLData(this->context))
+#if ENABLE(CSS_FILTERS)
+        , filterInfo(0)
+#endif
     { }
 
     ~TextureMapperGLData();
@@ -152,6 +158,9 @@ public:
     RefPtr<SharedGLData> sharedData;
     RefPtr<BitmapTexture> currentSurface;
     HashMap<const void*, Platform3DObject> vbos;
+#if ENABLE(CSS_FILTERS)
+    const BitmapTextureGL::FilterInfo* filterInfo;
+#endif
 };
 
 Platform3DObject TextureMapperGLData::getStaticVBO(GC3Denum target, GC3Dsizeiptr size, const void* data)
@@ -174,9 +183,11 @@ TextureMapperGLData::~TextureMapperGLData()
         context->deleteBuffer(it->value);
 }
 
-void TextureMapperGL::ClipStack::reset(const IntRect& rect)
+void TextureMapperGL::ClipStack::reset(const IntRect& rect, TextureMapperGL::ClipStack::YAxisMode mode)
 {
     clipStack.clear();
+    size = rect.size();
+    yAxisMode = mode;
     clipState = TextureMapperGL::ClipState(rect);
     clipStateDirty = true;
 }
@@ -208,19 +219,14 @@ void TextureMapperGL::ClipStack::pop()
     clipStateDirty = true;
 }
 
-static void scissorClip(GraphicsContext3D* context, const IntRect& rect)
-{
-    if (rect.isEmpty())
-        return;
-
-    GC3Dint viewport[4];
-    context->getIntegerv(GraphicsContext3D::VIEWPORT, viewport);
-    context->scissor(rect.x(), viewport[3] - rect.maxY(), rect.width(), rect.height());
-}
-
 void TextureMapperGL::ClipStack::apply(GraphicsContext3D* context)
 {
-    scissorClip(context, clipState.scissorBox);
+    if (clipState.scissorBox.isEmpty())
+        return;
+
+    context->scissor(clipState.scissorBox.x(),
+        (yAxisMode == InvertedYAxis) ? size.height() - clipState.scissorBox.maxY() : clipState.scissorBox.y(),
+        clipState.scissorBox.width(), clipState.scissorBox.height());
     context->stencilOp(GraphicsContext3D::KEEP, GraphicsContext3D::KEEP, GraphicsContext3D::KEEP);
     context->stencilFunc(GraphicsContext3D::EQUAL, clipState.stencilIndex - 1, clipState.stencilIndex - 1);
     if (clipState.stencilIndex == 1)
@@ -237,7 +243,6 @@ void TextureMapperGL::ClipStack::applyIfNeeded(GraphicsContext3D* context)
     clipStateDirty = false;
     apply(context);
 }
-
 
 void TextureMapperGLData::initializeStencil()
 {
@@ -293,7 +298,7 @@ void TextureMapperGL::beginPainting(PaintFlags flags)
     m_context3D->depthMask(0);
     m_context3D->getIntegerv(GraphicsContext3D::VIEWPORT, data().viewport);
     m_context3D->getIntegerv(GraphicsContext3D::SCISSOR_BOX, data().previousScissor);
-    m_clipStack.reset(IntRect(0, 0, data().viewport[2], data().viewport[3]));
+    m_clipStack.reset(IntRect(0, 0, data().viewport[2], data().viewport[3]), ClipStack::InvertedYAxis);
     m_context3D->getIntegerv(GraphicsContext3D::FRAMEBUFFER_BINDING, &data().targetFrameBuffer);
     data().PaintFlags = flags;
     bindSurface(0);
@@ -417,6 +422,157 @@ void TextureMapperGL::drawNumber(int number, const Color& color, const FloatPoin
 #endif
 }
 
+#if ENABLE(CSS_FILTERS)
+
+static TextureMapperShaderProgram::Options optionsForFilterType(FilterOperation::OperationType type, unsigned pass)
+{
+    switch (type) {
+    case FilterOperation::GRAYSCALE:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::GrayscaleFilter;
+    case FilterOperation::SEPIA:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::SepiaFilter;
+    case FilterOperation::SATURATE:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::SaturateFilter;
+    case FilterOperation::HUE_ROTATE:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::HueRotateFilter;
+    case FilterOperation::INVERT:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::InvertFilter;
+    case FilterOperation::BRIGHTNESS:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::BrightnessFilter;
+    case FilterOperation::CONTRAST:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::ContrastFilter;
+    case FilterOperation::OPACITY:
+        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::OpacityFilter;
+    case FilterOperation::BLUR:
+        return TextureMapperShaderProgram::BlurFilter;
+    case FilterOperation::DROP_SHADOW:
+        return TextureMapperShaderProgram::AlphaBlur
+            | (pass ? TextureMapperShaderProgram::ContentTexture | TextureMapperShaderProgram::SolidColor: 0);
+    default:
+        ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
+
+static unsigned getPassesRequiredForFilter(FilterOperation::OperationType type)
+{
+    switch (type) {
+    case FilterOperation::GRAYSCALE:
+    case FilterOperation::SEPIA:
+    case FilterOperation::SATURATE:
+    case FilterOperation::HUE_ROTATE:
+    case FilterOperation::INVERT:
+    case FilterOperation::BRIGHTNESS:
+    case FilterOperation::CONTRAST:
+    case FilterOperation::OPACITY:
+#if ENABLE(CSS_SHADERS)
+    case FilterOperation::CUSTOM:
+    case FilterOperation::VALIDATED_CUSTOM:
+#endif
+        return 1;
+    case FilterOperation::BLUR:
+    case FilterOperation::DROP_SHADOW:
+        // We use two-passes (vertical+horizontal) for blur and drop-shadow.
+        return 2;
+    default:
+        return 0;
+    }
+}
+
+// Create a normal distribution of 21 values between -2 and 2.
+static const unsigned GaussianKernelHalfWidth = 11;
+static const float GaussianKernelStep = 0.2;
+
+static inline float gauss(float x)
+{
+    return exp(-(x * x) / 2.);
+}
+
+static float* gaussianKernel()
+{
+    static bool prepared = false;
+    static float kernel[GaussianKernelHalfWidth] = {0, };
+
+    if (prepared)
+        return kernel;
+
+    kernel[0] = gauss(0);
+    float sum = kernel[0];
+    for (unsigned i = 1; i < GaussianKernelHalfWidth; ++i) {
+        kernel[i] = gauss(i * GaussianKernelStep);
+        sum += 2 * kernel[i];
+    }
+
+    // Normalize the kernel.
+    float scale = 1 / sum;
+    for (unsigned i = 0; i < GaussianKernelHalfWidth; ++i)
+        kernel[i] *= scale;
+
+    prepared = true;
+    return kernel;
+}
+
+static void prepareFilterProgram(TextureMapperShaderProgram* program, const FilterOperation& operation, unsigned pass, const IntSize& size, GC3Duint contentTexture)
+{
+    RefPtr<GraphicsContext3D> context = program->context();
+    context->useProgram(program->programID());
+
+    switch (operation.getOperationType()) {
+    case FilterOperation::GRAYSCALE:
+    case FilterOperation::SEPIA:
+    case FilterOperation::SATURATE:
+    case FilterOperation::HUE_ROTATE:
+        context->uniform1f(program->filterAmountLocation(), static_cast<const BasicColorMatrixFilterOperation&>(operation).amount());
+        break;
+    case FilterOperation::INVERT:
+    case FilterOperation::BRIGHTNESS:
+    case FilterOperation::CONTRAST:
+    case FilterOperation::OPACITY:
+        context->uniform1f(program->filterAmountLocation(), static_cast<const BasicComponentTransferFilterOperation&>(operation).amount());
+        break;
+    case FilterOperation::BLUR: {
+        const BlurFilterOperation& blur = static_cast<const BlurFilterOperation&>(operation);
+        FloatSize radius;
+
+        // Blur is done in two passes, first horizontally and then vertically. The same shader is used for both.
+        if (pass)
+            radius.setHeight(floatValueForLength(blur.stdDeviation(), size.height()) / size.height());
+        else
+            radius.setWidth(floatValueForLength(blur.stdDeviation(), size.width()) / size.width());
+
+        context->uniform2f(program->blurRadiusLocation(), radius.width(), radius.height());
+        context->uniform1fv(program->gaussianKernelLocation(), GaussianKernelHalfWidth, gaussianKernel());
+        break;
+    }
+    case FilterOperation::DROP_SHADOW: {
+        const DropShadowFilterOperation& shadow = static_cast<const DropShadowFilterOperation&>(operation);
+        context->uniform1fv(program->gaussianKernelLocation(), GaussianKernelHalfWidth, gaussianKernel());
+        switch (pass) {
+        case 0:
+            // First pass: horizontal alpha blur.
+            context->uniform2f(program->blurRadiusLocation(), shadow.stdDeviation() / float(size.width()), 0);
+            context->uniform2f(program->shadowOffsetLocation(), float(shadow.location().x()) / float(size.width()), float(shadow.location().y()) / float(size.height()));
+            break;
+        case 1:
+            // Second pass: we need the shadow color and the content texture for compositing.
+            float r, g, b, a;
+            Color(premultipliedARGBFromColor(shadow.color())).getRGBA(r, g, b, a);
+            context->uniform4f(program->colorLocation(), r, g, b, a);
+            context->uniform2f(program->blurRadiusLocation(), 0, shadow.stdDeviation() / float(size.height()));
+            context->uniform2f(program->shadowOffsetLocation(), 0, 0);
+            context->activeTexture(GraphicsContext3D::TEXTURE1);
+            context->bindTexture(GraphicsContext3D::TEXTURE_2D, contentTexture);
+            context->uniform1i(program->contentTextureLocation(), 1);
+            break;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+#endif
+
 void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, unsigned exposedEdges)
 {
     if (!texture.isValid())
@@ -426,6 +582,10 @@ void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect&
         return;
 
     const BitmapTextureGL& textureGL = static_cast<const BitmapTextureGL&>(texture);
+#if ENABLE(CSS_FILTERS)
+    TemporaryChange<const BitmapTextureGL::FilterInfo*> filterInfo(data().filterInfo, textureGL.filterInfo());
+#endif
+
     drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : ShouldBlend, textureGL.size(), targetRect, matrix, opacity, exposedEdges);
 }
 
@@ -446,11 +606,30 @@ void TextureMapperGL::drawTexture(Platform3DObject texture, Flags flags, const I
         flags |= ShouldAntialias;
     }
 
+#if ENABLE(CSS_FILTERS)
+    RefPtr<FilterOperation> filter = data().filterInfo ? data().filterInfo->filter: 0;
+    GC3Duint filterContentTextureID = 0;
+
+    if (filter) {
+        if (data().filterInfo->contentTexture)
+            filterContentTextureID = toBitmapTextureGL(data().filterInfo->contentTexture.get())->id();
+        options |= optionsForFilterType(filter->getOperationType(), data().filterInfo->pass);
+        if (filter->affectsOpacity())
+            flags |= ShouldBlend;
+    }
+#endif
+
     if (useAntialiasing || opacity < 1)
         flags |= ShouldBlend;
 
     RefPtr<TextureMapperShaderProgram> program;
     program = data().sharedGLData().getShaderProgram(options);
+
+#if ENABLE(CSS_FILTERS)
+    if (filter)
+        prepareFilterProgram(program.get(), *filter.get(), data().filterInfo->pass, textureSize, filterContentTextureID);
+#endif
+
     drawTexturedQuadWithProgram(program.get(), texture, flags, textureSize, targetRect, modelViewMatrix, opacity);
 }
 
@@ -552,8 +731,12 @@ void TextureMapperGL::drawTexturedQuadWithProgram(TextureMapperShaderProgram* pr
     GC3Denum target = flags & ShouldUseARBTextureRect ? GC3Denum(Extensions3D::TEXTURE_RECTANGLE_ARB) : GC3Denum(GraphicsContext3D::TEXTURE_2D);
     m_context3D->bindTexture(target, texture);
     m_context3D->uniform1i(program->samplerLocation(), 0);
+    if (wrapMode() == RepeatWrap) {
+        m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::REPEAT);
+        m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::REPEAT);
+    }
 
-    TransformationMatrix patternTransform;
+    TransformationMatrix patternTransform = this->patternTransform();
     if (flags & ShouldFlipTexture)
         patternTransform.flipY();
     if (flags & ShouldUseARBTextureRect)
@@ -568,6 +751,8 @@ void TextureMapperGL::drawTexturedQuadWithProgram(TextureMapperShaderProgram* pr
         flags |= ShouldBlend;
 
     draw(rect, modelViewMatrix, program, GraphicsContext3D::TRIANGLE_FAN, flags);
+    m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_S, GraphicsContext3D::CLAMP_TO_EDGE);
+    m_context3D->texParameteri(GraphicsContext3D::TEXTURE_2D, GraphicsContext3D::TEXTURE_WRAP_T, GraphicsContext3D::CLAMP_TO_EDGE);
 }
 
 BitmapTextureGL::BitmapTextureGL(TextureMapperGL* textureMapper)
@@ -735,156 +920,6 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
     updateContents(imageData, targetRect, offset, bytesPerLine, updateContentsFlag);
 }
 
-#if ENABLE(CSS_FILTERS)
-
-static TextureMapperShaderProgram::Options optionsForFilterType(FilterOperation::OperationType type, unsigned pass)
-{
-    switch (type) {
-    case FilterOperation::GRAYSCALE:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::GrayscaleFilter;
-    case FilterOperation::SEPIA:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::SepiaFilter;
-    case FilterOperation::SATURATE:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::SaturateFilter;
-    case FilterOperation::HUE_ROTATE:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::HueRotateFilter;
-    case FilterOperation::INVERT:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::InvertFilter;
-    case FilterOperation::BRIGHTNESS:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::BrightnessFilter;
-    case FilterOperation::CONTRAST:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::ContrastFilter;
-    case FilterOperation::OPACITY:
-        return TextureMapperShaderProgram::Texture | TextureMapperShaderProgram::OpacityFilter;
-    case FilterOperation::BLUR:
-        return TextureMapperShaderProgram::BlurFilter;
-    case FilterOperation::DROP_SHADOW:
-        return TextureMapperShaderProgram::AlphaBlur
-            | (pass ? TextureMapperShaderProgram::ContentTexture | TextureMapperShaderProgram::SolidColor: 0);
-    default:
-        ASSERT_NOT_REACHED();
-        return 0;
-    }
-}
-
-static unsigned getPassesRequiredForFilter(FilterOperation::OperationType type)
-{
-    switch (type) {
-    case FilterOperation::GRAYSCALE:
-    case FilterOperation::SEPIA:
-    case FilterOperation::SATURATE:
-    case FilterOperation::HUE_ROTATE:
-    case FilterOperation::INVERT:
-    case FilterOperation::BRIGHTNESS:
-    case FilterOperation::CONTRAST:
-    case FilterOperation::OPACITY:
-#if ENABLE(CSS_SHADERS)
-    case FilterOperation::CUSTOM:
-    case FilterOperation::VALIDATED_CUSTOM:
-#endif
-        return 1;
-    case FilterOperation::BLUR:
-    case FilterOperation::DROP_SHADOW:
-        // We use two-passes (vertical+horizontal) for blur and drop-shadow.
-        return 2;
-    default:
-        return 0;
-    }
-}
-
-// Create a normal distribution of 21 values between -2 and 2.
-static const unsigned GaussianKernelHalfWidth = 11;
-static const float GaussianKernelStep = 0.2;
-
-static inline float gauss(float x)
-{
-    return exp(-(x * x) / 2.);
-}
-
-static float* gaussianKernel()
-{
-    static bool prepared = false;
-    static float kernel[GaussianKernelHalfWidth] = {0, };
-
-    if (prepared)
-        return kernel;
-
-    kernel[0] = gauss(0);
-    float sum = kernel[0];
-    for (unsigned i = 1; i < GaussianKernelHalfWidth; ++i) {
-        kernel[i] = gauss(i * GaussianKernelStep);
-        sum += 2 * kernel[i];
-    }
-
-    // Normalize the kernel.
-    float scale = 1 / sum;
-    for (unsigned i = 0; i < GaussianKernelHalfWidth; ++i)
-        kernel[i] *= scale;
-
-    prepared = true;
-    return kernel;
-}
-
-static void prepareFilterProgram(TextureMapperShaderProgram* program, const FilterOperation& operation, unsigned pass, const IntSize& size, GC3Duint contentTexture)
-{
-    RefPtr<GraphicsContext3D> context = program->context();
-    context->useProgram(program->programID());
-
-    switch (operation.getOperationType()) {
-    case FilterOperation::GRAYSCALE:
-    case FilterOperation::SEPIA:
-    case FilterOperation::SATURATE:
-    case FilterOperation::HUE_ROTATE:
-        context->uniform1f(program->filterAmountLocation(), static_cast<const BasicColorMatrixFilterOperation&>(operation).amount());
-        break;
-    case FilterOperation::INVERT:
-    case FilterOperation::BRIGHTNESS:
-    case FilterOperation::CONTRAST:
-    case FilterOperation::OPACITY:
-        context->uniform1f(program->filterAmountLocation(), static_cast<const BasicComponentTransferFilterOperation&>(operation).amount());
-        break;
-    case FilterOperation::BLUR: {
-        const BlurFilterOperation& blur = static_cast<const BlurFilterOperation&>(operation);
-        FloatSize radius;
-
-        // Blur is done in two passes, first horizontally and then vertically. The same shader is used for both.
-        if (pass)
-            radius.setHeight(floatValueForLength(blur.stdDeviation(), size.height()) / size.height());
-        else
-            radius.setWidth(floatValueForLength(blur.stdDeviation(), size.width()) / size.width());
-
-        context->uniform2f(program->blurRadiusLocation(), radius.width(), radius.height());
-        context->uniform1fv(program->gaussianKernelLocation(), GaussianKernelHalfWidth, gaussianKernel());
-        break;
-    }
-    case FilterOperation::DROP_SHADOW: {
-        const DropShadowFilterOperation& shadow = static_cast<const DropShadowFilterOperation&>(operation);
-        context->uniform1fv(program->gaussianKernelLocation(), GaussianKernelHalfWidth, gaussianKernel());
-        switch (pass) {
-        case 0:
-            // First pass: horizontal alpha blur.
-            context->uniform2f(program->blurRadiusLocation(), shadow.stdDeviation() / float(size.width()), 0);
-            context->uniform2f(program->shadowOffsetLocation(), float(shadow.location().x()) / float(size.width()), float(shadow.location().y()) / float(size.height()));
-            break;
-        case 1:
-            // Second pass: we need the shadow color and the content texture for compositing.
-            float r, g, b, a;
-            Color(premultipliedARGBFromColor(shadow.color())).getRGBA(r, g, b, a);
-            context->uniform4f(program->colorLocation(), r, g, b, a);
-            context->uniform2f(program->blurRadiusLocation(), 0, shadow.stdDeviation() / float(size.height()));
-            context->uniform2f(program->shadowOffsetLocation(), 0, 0);
-            context->activeTexture(GraphicsContext3D::TEXTURE1);
-            context->bindTexture(GraphicsContext3D::TEXTURE_2D, contentTexture);
-            context->uniform1i(program->contentTextureLocation(), 1);
-            break;
-        }
-        break;
-    }
-    default:
-        break;
-    }
-}
-
 #if ENABLE(CSS_SHADERS)
 void TextureMapperGL::removeCachedCustomFilterProgram(CustomFilterProgram* program)
 {
@@ -944,53 +979,79 @@ bool TextureMapperGL::drawUsingCustomFilter(BitmapTexture& target, const BitmapT
 }
 #endif
 
-void TextureMapperGL::drawFiltered(const BitmapTexture& sampler, const BitmapTexture& contentTexture, const FilterOperation& filter, int pass)
+#if ENABLE(CSS_FILTERS)
+void TextureMapperGL::drawFiltered(const BitmapTexture& sampler, const BitmapTexture* contentTexture, const FilterOperation& filter, int pass)
 {
     // For standard filters, we always draw the whole texture without transformations.
     TextureMapperShaderProgram::Options options = optionsForFilterType(filter.getOperationType(), pass);
     RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().getShaderProgram(options);
     ASSERT(program);
 
-    prepareFilterProgram(program.get(), filter, pass, sampler.contentSize(), static_cast<const BitmapTextureGL&>(contentTexture).id());
+    prepareFilterProgram(program.get(), filter, pass, sampler.contentSize(), contentTexture ? static_cast<const BitmapTextureGL*>(contentTexture)->id() : 0);
     FloatRect targetRect(IntPoint::zero(), sampler.contentSize());
     drawTexturedQuadWithProgram(program.get(), static_cast<const BitmapTextureGL&>(sampler).id(), 0, IntSize(1, 1), targetRect, TransformationMatrix(), 1);
 }
 
-PassRefPtr<BitmapTexture> BitmapTextureGL::applyFilters(TextureMapper* textureMapper, const BitmapTexture& contentTexture, const FilterOperations& filters)
+static bool isCustomFilter(FilterOperation::OperationType type)
 {
-    TextureMapperGL* textureMapperGL = static_cast<TextureMapperGL*>(textureMapper);
-    RefPtr<BitmapTexture> previousSurface = textureMapperGL->data().currentSurface;
+#if ENABLE(CSS_SHADERS)
+    return type == FilterOperation::CUSTOM || type == FilterOperation::VALIDATED_CUSTOM;
+#else
+    return false;
+#endif
+}
 
-    RefPtr<BitmapTexture> source = this;
-    RefPtr<BitmapTexture> target = textureMapper->acquireTextureFromPool(m_textureSize);
+PassRefPtr<BitmapTexture> BitmapTextureGL::applyFilters(TextureMapper* textureMapper, const FilterOperations& filters)
+{
+    if (filters.isEmpty())
+        return this;
 
-    bool useContentTexture = true;
+    TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+    RefPtr<BitmapTexture> previousSurface = texmapGL->data().currentSurface;
+    RefPtr<BitmapTexture> resultSurface = this;
+    RefPtr<BitmapTexture> intermediateSurface;
+    RefPtr<BitmapTexture> spareSurface;
+
+    m_filterInfo = FilterInfo();
+
     for (size_t i = 0; i < filters.size(); ++i) {
-        const FilterOperation* filter = filters.at(i);
+        RefPtr<FilterOperation> filter = filters.operations()[i];
         ASSERT(filter);
+
+        bool custom = isCustomFilter(filter->getOperationType());
 
         int numPasses = getPassesRequiredForFilter(filter->getOperationType());
         for (int j = 0; j < numPasses; ++j) {
-            textureMapperGL->bindSurface(target.get());
-            const BitmapTexture& sourceTexture = useContentTexture ? contentTexture : *source;
+            bool last = (i == filters.size() - 1) && (j == numPasses - 1);
+            if (custom || !last) {
+                if (!intermediateSurface)
+                    intermediateSurface = texmapGL->acquireTextureFromPool(contentSize());
+                texmapGL->bindSurface(intermediateSurface.get());
+            }
+
 #if ENABLE(CSS_SHADERS)
-            if (filter->getOperationType() == FilterOperation::CUSTOM || filter->getOperationType() == FilterOperation::VALIDATED_CUSTOM) {
-                if (textureMapperGL->drawUsingCustomFilter(*target, sourceTexture, *filter)) {
-                    // Only swap if the draw was successful.
-                    std::swap(source, target);
-                    useContentTexture = false;
-                }
+            if (custom) {
+                if (texmapGL->drawUsingCustomFilter(*intermediateSurface.get(), *resultSurface.get(), *filter))
+                    std::swap(resultSurface, intermediateSurface);
                 continue;
             }
 #endif
-            textureMapperGL->drawFiltered(sourceTexture, contentTexture, *filter, j);
-            std::swap(source, target);
-            useContentTexture = false;
+            if (last) {
+                toBitmapTextureGL(resultSurface.get())->m_filterInfo = BitmapTextureGL::FilterInfo(filter, j, spareSurface);
+                break;
+            }
+
+            texmapGL->drawFiltered(*resultSurface.get(), spareSurface.get(), *filter, j);
+            if (!j && filter->getOperationType() == FilterOperation::DROP_SHADOW) {
+                spareSurface = resultSurface;
+                resultSurface.clear();
+            }
+            std::swap(resultSurface, intermediateSurface);
         }
     }
 
-    textureMapperGL->bindSurface(previousSurface.get());
-    return source;
+    texmapGL->bindSurface(previousSurface.get());
+    return resultSurface;
 }
 #endif
 
@@ -1040,7 +1101,7 @@ void BitmapTextureGL::clearIfNeeded()
     if (!m_shouldClear)
         return;
 
-    m_clipStack.reset(IntRect(IntPoint::zero(), m_textureSize));
+    m_clipStack.reset(IntRect(IntPoint::zero(), m_textureSize), TextureMapperGL::ClipStack::DefaultYAxis);
     m_clipStack.applyIfNeeded(m_context3D.get());
     m_context3D->clearColor(0, 0, 0, 0);
     m_context3D->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
@@ -1066,7 +1127,7 @@ void BitmapTextureGL::bind(TextureMapperGL* textureMapper)
     m_context3D->viewport(0, 0, m_textureSize.width(), m_textureSize.height());
     clearIfNeeded();
     textureMapper->data().projectionMatrix = createProjectionMatrix(m_textureSize, true /* mirrored */);
-    m_clipStack.applyIfNeeded(m_context3D.get());
+    m_clipStack.apply(m_context3D.get());
 }
 
 BitmapTextureGL::~BitmapTextureGL()
@@ -1196,6 +1257,11 @@ void TextureMapperGL::endClip()
     clipStack().applyIfNeeded(m_context3D.get());
 }
 
+IntRect TextureMapperGL::clipBounds()
+{
+    return clipStack().current().scissorBox;
+}
+
 PassRefPtr<BitmapTexture> TextureMapperGL::createTexture()
 {
     BitmapTextureGL* texture = new BitmapTextureGL(this);
@@ -1208,3 +1274,4 @@ PassOwnPtr<TextureMapper> TextureMapper::platformCreateAccelerated()
 }
 
 };
+#endif

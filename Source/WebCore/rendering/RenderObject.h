@@ -251,6 +251,7 @@ public:
     // RenderObject tree manipulation
     //////////////////////////////////////////
     virtual bool canHaveChildren() const { return virtualChildren(); }
+    virtual bool canDOMChildrenHaveRenderParent() const { return false; } // Even if this render object can't have render children, the children in the DOM tree may have a render parent (that is different from this object).
     virtual bool canHaveGeneratedChildren() const;
     virtual bool isChildAllowed(RenderObject*, RenderStyle*) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0);
@@ -258,8 +259,6 @@ public:
     virtual void removeChild(RenderObject*);
     virtual bool createsAnonymousWrapper() const { return false; }
     //////////////////////////////////////////
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     //////////////////////////////////////////
@@ -660,7 +659,7 @@ public:
 
     virtual RenderObject* hoverAncestor() const { return parent(); }
 
-    Element* offsetParent() const;
+    RenderBoxModelObject* offsetParent() const;
 
     void markContainingBlocksForLayout(bool scheduleRelayout = true, RenderObject* newRoot = 0);
     void setNeedsLayout(bool needsLayout, MarkingBehavior = MarkContainingBlockChain);

@@ -17,10 +17,11 @@
  *  Boston, MA 02110-1301, USA.
  */
 [
+    NoInterfaceObject,
     ImplementationLacksVTable
 ] interface MediaQueryList {
     readonly attribute DOMString media;
     readonly attribute boolean matches;
-    void addListener(in [Optional=DefaultIsUndefined] MediaQueryListListener listener);
-    void removeListener(in [Optional=DefaultIsUndefined] MediaQueryListListener listener);
+    void addListener([Default=Undefined] optional MediaQueryListListener listener);
+    void removeListener([Default=Undefined] optional MediaQueryListListener listener);
 };

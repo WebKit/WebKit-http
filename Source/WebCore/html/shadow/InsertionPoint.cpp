@@ -134,8 +134,6 @@ Node::InsertionNotificationRequest InsertionPoint::insertedInto(ContainerNode* i
             if (isActive() && !m_registeredWithShadowRoot && insertionPoint->treeScope()->rootNode() == root) {
                 m_registeredWithShadowRoot = true;
                 root->ensureScopeDistribution()->registerInsertionPoint(this);
-                if (canAffectSelector())
-                    rootOwner->willAffectSelector();
             }
         }
     }
@@ -161,8 +159,6 @@ void InsertionPoint::removedFrom(ContainerNode* insertionPoint)
         ASSERT(root);
         m_registeredWithShadowRoot = false;
         root->ensureScopeDistribution()->unregisterInsertionPoint(this);
-        if (rootOwner && canAffectSelector())
-            rootOwner->willAffectSelector();
     }
 
     HTMLElement::removedFrom(insertionPoint);
@@ -190,7 +186,7 @@ void InsertionPoint::setResetStyleInheritance(bool value)
 
 bool InsertionPoint::contains(const Node* node) const
 {
-    return m_distribution.contains(const_cast<Node*>(node)) || (node->isShadowRoot() && ScopeContentDistribution::assignedTo(toShadowRoot(node)) == this);
+    return m_distribution.contains(const_cast<Node*>(node));
 }
 
 const CSSSelectorList& InsertionPoint::emptySelectorList()
@@ -214,15 +210,6 @@ InsertionPoint* resolveReprojection(const Node* projectedNode)
                 continue;
             }
         }
-
-        if (Node* parent = parentNodeForDistribution(current)) {
-            if (InsertionPoint* insertedTo = parent->isShadowRoot() ? ScopeContentDistribution::assignedTo(toShadowRoot(parent)) : 0) {
-                current = insertedTo;
-                insertionPoint = insertedTo;
-                continue;
-            }
-        }
-
         break;
     }
 
@@ -237,13 +224,6 @@ void collectInsertionPointsWhereNodeIsDistributed(const Node* node, Vector<Inser
             if (ShadowRoot* root = current->containingShadowRoot())
                 ContentDistributor::ensureDistribution(root);
             if (InsertionPoint* insertedTo = shadow->distributor().findInsertionPointFor(node)) {
-                current = insertedTo;
-                results.append(insertedTo);
-                continue;
-            }
-        }
-        if (Node* parent = parentNodeForDistribution(current)) {
-            if (InsertionPoint* insertedTo = parent->isShadowRoot() ? ScopeContentDistribution::assignedTo(toShadowRoot(parent)) : 0) {
                 current = insertedTo;
                 results.append(insertedTo);
                 continue;

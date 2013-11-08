@@ -54,10 +54,12 @@
 #include "RenderPart.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScriptController.h"
 #include "Settings.h"
 #include "WebKitVersion.h"
 #include "ewk_frame_private.h"
 #include "ewk_private.h"
+#include "ewk_settings.h"
 #include "ewk_settings_private.h"
 #include "ewk_view_private.h"
 #include <Ecore_Evas.h>
@@ -424,8 +426,7 @@ ObjectContentType FrameLoaderClientEfl::objectContentType(const KURL& url, const
 
 String FrameLoaderClientEfl::overrideMediaType() const
 {
-    notImplemented();
-    return String();
+    return String::fromUTF8(ewk_settings_css_media_type_get());
 }
 
 void FrameLoaderClientEfl::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)

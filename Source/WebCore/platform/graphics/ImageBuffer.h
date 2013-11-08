@@ -128,8 +128,6 @@ namespace WebCore {
         // with textures that are RGB or RGBA format, and UNSIGNED_BYTE type.
         bool copyToPlatformTexture(GraphicsContext3D&, Platform3DObject, GC3Denum, bool, bool);
 
-        void reportMemoryUsage(MemoryObjectInfo*) const;
-
     private:
 #if USE(CG)
         PassNativeImagePtr copyNativeImage(BackingStoreCopy = CopyBackingStore) const;
@@ -156,12 +154,9 @@ namespace WebCore {
         // This constructor will place its success into the given out-variable
         // so that create() knows when it should return failure.
         ImageBuffer(const IntSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
-#if USE(SKIA)
-        ImageBuffer(const IntSize&, float resolutionScale, ColorSpace, const GraphicsContext*, bool hasAlpha, bool& success);
-#endif
     };
 
-#if USE(CG) || USE(SKIA)
+#if USE(CG)
     String ImageDataToDataURL(const ImageData&, const String& mimeType, const double* quality);
 #endif
 

@@ -38,10 +38,17 @@ namespace WebCore {
 
 class OffsetPolygonEdge : public VertexPair {
 public:
+    enum Basis {
+        Edge,
+        Vertex,
+        LineTop
+    };
+
     OffsetPolygonEdge(const FloatPolygonEdge& edge, const FloatSize& offset)
         : m_vertex1(edge.vertex1() + offset)
         , m_vertex2(edge.vertex2() + offset)
         , m_edgeIndex(edge.edgeIndex())
+        , m_basis(Edge)
     {
     }
 
@@ -49,6 +56,7 @@ public:
         : m_vertex1(reflexVertex + offset1)
         , m_vertex2(reflexVertex + offset2)
         , m_edgeIndex(-1)
+        , m_basis(Vertex)
     {
     }
 
@@ -56,17 +64,20 @@ public:
         : m_vertex1(FloatPoint(polygon.boundingBox().x(), minLogicalIntervalTop) + offset)
         , m_vertex2(FloatPoint(polygon.boundingBox().maxX(), minLogicalIntervalTop) + offset)
         , m_edgeIndex(-1)
+        , m_basis(LineTop)
     {
     }
 
     virtual const FloatPoint& vertex1() const OVERRIDE { return m_vertex1; }
     virtual const FloatPoint& vertex2() const OVERRIDE { return m_vertex2; }
     int edgeIndex() const { return m_edgeIndex; }
+    Basis basis() const { return m_basis; }
 
 private:
     FloatPoint m_vertex1;
     FloatPoint m_vertex2;
     int m_edgeIndex;
+    Basis m_basis;
 };
 
 class ExclusionPolygon : public ExclusionShape {
@@ -80,17 +91,17 @@ public:
     {
     }
 
-    virtual FloatRect shapeMarginLogicalBoundingBox() const OVERRIDE { return shapeMarginBounds().boundingBox(); }
-    virtual FloatRect shapePaddingLogicalBoundingBox() const OVERRIDE { return shapePaddingBounds().boundingBox(); }
+    virtual LayoutRect shapeMarginLogicalBoundingBox() const OVERRIDE { return static_cast<LayoutRect>(shapeMarginBounds().boundingBox()); }
+    virtual LayoutRect shapePaddingLogicalBoundingBox() const OVERRIDE { return static_cast<LayoutRect>(shapePaddingBounds().boundingBox()); }
     virtual bool isEmpty() const OVERRIDE { return m_polygon.isEmpty(); }
-    virtual void getExcludedIntervals(float logicalTop, float logicalHeight, SegmentList&) const OVERRIDE;
-    virtual void getIncludedIntervals(float logicalTop, float logicalHeight, SegmentList&) const OVERRIDE;
-    virtual bool firstIncludedIntervalLogicalTop(float minLogicalIntervalTop, const FloatSize& minLogicalIntervalSize, float&) const OVERRIDE;
+    virtual void getExcludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList&) const OVERRIDE;
+    virtual void getIncludedIntervals(LayoutUnit logicalTop, LayoutUnit logicalHeight, SegmentList&) const OVERRIDE;
+    virtual bool firstIncludedIntervalLogicalTop(LayoutUnit minLogicalIntervalTop, const LayoutSize& minLogicalIntervalSize, LayoutUnit&) const OVERRIDE;
 
+private:
     const FloatPolygon& shapeMarginBounds() const;
     const FloatPolygon& shapePaddingBounds() const;
 
-private:
     FloatPolygon m_polygon;
     mutable OwnPtr<FloatPolygon> m_marginBounds;
     mutable OwnPtr<FloatPolygon> m_paddingBounds;

@@ -104,11 +104,10 @@ function rawValuesHTML(results, numColumns)
 
 function chartHTML(results, numColumns)
 {
-    var shouldShowWebKitRevisions = isTipOfTreeWebKitBuilder();
-    var revisionKey = shouldShowWebKitRevisions ? WEBKIT_REVISIONS_KEY : CHROME_REVISIONS_KEY;
+    var revisionKey = WEBKIT_REVISIONS_KEY;
+    var revisionLabel = "WebKit Revision";
     var startRevision = results[revisionKey][numColumns - 1];
     var endRevision = results[revisionKey][0];
-    var revisionLabel = shouldShowWebKitRevisions ? "WebKit Revision" : "Chromium Revision";
 
     var fixable = results[FIXABLE_COUNT_KEY].slice(0, numColumns);
     var html = chart("Total failing", {"": fixable}, revisionLabel, startRevision, endRevision);
@@ -185,12 +184,6 @@ function chart(title, values, revisionLabel, startRevision, endRevision)
     return '<img src="' + url + '">';
 }
 
-function htmlForRevisionRows(results, numColumns)
-{
-    return htmlForTableRow('WebKit Revision', results[WEBKIT_REVISIONS_KEY].slice(0, numColumns)) +
-        htmlForTableRow('Chrome Revision', results[CHROME_REVISIONS_KEY].slice(0, numColumns));
-}
-
 function wrapHTMLInTable(description, html)
 {
     return '<h3>' + description + '</h3><table><tbody>' + html + '</tbody></table>';
@@ -206,7 +199,7 @@ function htmlForSummaryTable(results, numColumns)
         // Round to the nearest tenth of a percent.
         percent.push(Math.round(percentage * 10) / 10 + '%');
     }
-    var html = htmlForRevisionRows(results, numColumns) +
+    var html = htmlForTableRow('WebKit Revision', results[WEBKIT_REVISIONS_KEY].slice(0, numColumns)) +
         htmlForTableRow('Percent passed', percent) +
         htmlForTableRow('Failures (deduped)', fixable) +
         htmlForTableRow('Fixable Tests', allFixable);
@@ -232,7 +225,7 @@ function valuesPerExpectation(counts, numColumns)
 function htmlForTestType(results, key, description, numColumns)
 {
     var counts = results[key];
-    var html = htmlForRevisionRows(results, numColumns);
+    var html = htmlForTableRow('WebKit Revision', results[WEBKIT_REVISIONS_KEY].slice(0, numColumns));
     var values = valuesPerExpectation(counts, numColumns);
     for (var expectation in values)
         html += htmlForTableRow(expectationsMap()[expectation], values[expectation]);

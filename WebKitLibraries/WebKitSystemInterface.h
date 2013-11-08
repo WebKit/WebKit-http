@@ -60,10 +60,6 @@ OSType WKCarbonWindowPropertyCreator(void);
 OSType WKCarbonWindowPropertyTag(void);
 #endif
 
-typedef id WKNSURLConnectionDelegateProxyPtr;
-
-WKNSURLConnectionDelegateProxyPtr WKCreateNSURLConnectionDelegateProxy(void);
-
 void WKDisableCGDeferredUpdates(void);
 
 Class WKNSURLProtocolClassForRequest(NSURLRequest *request);
@@ -88,7 +84,10 @@ CFTypeRef WKCopyAXTextMarkerRangeEnd(CFTypeRef range);
 void WKAccessibilityHandleFocusChanged(void);
 AXUIElementRef WKCreateAXUIElementRef(id element);
 void WKUnregisterUniqueIdForElement(id element);
-
+    
+NSArray *WKSpeechSynthesisGetVoiceIdentifiers(void);
+NSString *WKSpeechSynthesisGetDefaultVoiceIdentifierForLocale(NSLocale*);
+    
 BOOL WKShouldBlockPlugin(NSString *bundleIdentifier, NSString *bundleVersionString);
 BOOL WKIsPluginUpdateAvailable(NSString *bundleIdentifier);
 
@@ -166,6 +165,8 @@ bool WKCTFontTransformGlyphs(CTFontRef font, CGGlyph glyphs[], CGSize advances[]
 #endif
 
 CTTypesetterRef WKCreateCTTypesetterWithUniCharProviderAndOptions(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
+
+CGSize WKCTRunGetInitialAdvance(CTRunRef);
 
 CGContextRef WKIOSurfaceContextCreate(IOSurfaceRef, unsigned width, unsigned height, CGColorSpaceRef);
 CGImageRef WKIOSurfaceContextCreateImage(CGContextRef context);
@@ -260,6 +261,7 @@ CFArrayRef WKCFURLRequestCopyHTTPRequestBodyParts(CFURLRequestRef);
 void WKCFURLRequestSetHTTPRequestBodyParts(CFMutableURLRequestRef, CFArrayRef bodyParts);
 
 void WKSetVisibleApplicationName(CFStringRef);
+void WKSetApplicationInformationItem(CFStringRef key, CFTypeRef value);
 
 CFURLRef WKCopyBundleURLForExecutableURL(CFURLRef);
 
@@ -387,7 +389,7 @@ void WKSetHTTPPipeliningMinimumFastLanePriority(int priority);
 
 void WKSetCONNECTProxyForStream(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
 void WKSetCONNECTProxyAuthorizationForStream(CFReadStreamRef, CFStringRef proxyAuthorizationString);
-CFHTTPMessageRef WKCopyCONNECTProxyResponse(CFReadStreamRef, CFURLRef responseURL);
+CFHTTPMessageRef WKCopyCONNECTProxyResponse(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
 
 void WKWindowSetAlpha(NSWindow *window, float alphaValue);
 void WKWindowSetScaledFrame(NSWindow *window, NSRect scaleFrame, NSRect nonScaledFrame);
@@ -479,8 +481,10 @@ CGFloat WKNSReboundDeltaForElasticDelta(CGFloat delta);
 typedef enum {
     WKOcclusionNotificationTypeApplicationBecameVisible,
     WKOcclusionNotificationTypeApplicationBecameOccluded,
+    WKOcclusionNotificationTypeApplicationWindowModificationsStarted,
+    WKOcclusionNotificationTypeApplicationWindowModificationsStopped,
     WKOcclusionNotificationTypeWindowBecameVisible,
-    WKOcclusionNotificationTypeWindowBecameOccluded
+    WKOcclusionNotificationTypeWindowBecameOccluded,
 } WKOcclusionNotificationType;
 
 typedef uint32_t WKWindowID;
@@ -491,7 +495,10 @@ bool WKRegisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclu
 bool WKUnregisterOcclusionNotificationHandler(WKOcclusionNotificationType, WKOcclusionNotificationHandler);
 bool WKEnableWindowOcclusionNotifications(NSInteger windowID, bool *outCurrentOcclusionState);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 extern const NSSystemBehaviors WKProcessSuppressionSystemBehaviors;
+#pragma clang diagnostic pop
 #endif
 
 bool WKIsJavaPlugInActive(void);
@@ -503,8 +510,11 @@ void WKCFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
 bool WKIsPublicSuffix(NSString *domain);
 
 CFArrayRef WKCFURLCacheCopyAllHostNamesInPersistentStoreForPartition(CFStringRef partition);
+typedef void (^CFURLCacheCopyAllPartitionNamesResultsNotification)(CFArrayRef partitionNames);
+
 void WKCFURLCacheDeleteHostNamesInPersistentStoreForPartition(CFArrayRef hostArray, CFStringRef partition);
 CFStringRef WKCachePartitionKey(void);
+void WKCFURLCacheCopyAllPartitionNames(CFURLCacheCopyAllPartitionNamesResultsNotification resultsBlock);
 #endif
 
 #ifdef __cplusplus

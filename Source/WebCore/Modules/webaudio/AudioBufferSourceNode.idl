@@ -24,6 +24,7 @@
 
 // A cached (non-streamed), memory-resident audio source
 [
+    NoInterfaceObject,
     Conditional=WEB_AUDIO,
     JSGenerateToJSObject
 ] interface AudioBufferSourceNode : AudioSourceNode {
@@ -45,16 +46,14 @@
     attribute double loopStart;
     attribute double loopEnd;
 
-    void start(in double when);
-    [ImplementedAs=startGrain] void start(in double when, in double grainOffset);
-    [ImplementedAs=startGrain] void start(in double when, in double grainOffset, in double grainDuration);
-    void stop(in double when);
+    void start(double when);
+    [ImplementedAs=startGrain] void start(double when, double grainOffset);
+    [ImplementedAs=startGrain] void start(double when, double grainOffset, double grainDuration);
+    void stop(double when);
 
-#if defined(ENABLE_LEGACY_WEB_AUDIO) && ENABLE_LEGACY_WEB_AUDIO
-    attribute boolean looping; // This is an alias for the .loop attribute for backwards compatibility.
+    [Conditional=LEGACY_WEB_AUDIO] attribute boolean looping; // This is an alias for the .loop attribute for backwards compatibility.
 
-    void noteOn(in double when);
-    void noteGrainOn(in double when, in double grainOffset, in double grainDuration);
-    void noteOff(in double when);
-#endif
+    [Conditional=LEGACY_WEB_AUDIO] void noteOn(double when);
+    [Conditional=LEGACY_WEB_AUDIO] void noteGrainOn(double when, double grainOffset, double grainDuration);
+    [Conditional=LEGACY_WEB_AUDIO] void noteOff(double when);
 };

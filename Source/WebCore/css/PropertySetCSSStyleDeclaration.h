@@ -36,13 +36,13 @@ namespace WebCore {
 class CSSRule;
 class CSSProperty;
 class CSSValue;
-class StylePropertySet;
+class MutableStylePropertySet;
 class StyleSheetContents;
 class StyledElement;
 
 class PropertySetCSSStyleDeclaration : public CSSStyleDeclaration {
 public:
-    PropertySetCSSStyleDeclaration(StylePropertySet* propertySet) : m_propertySet(propertySet) { }
+    PropertySetCSSStyleDeclaration(MutableStylePropertySet* propertySet) : m_propertySet(propertySet) { }
     
     virtual StyledElement* parentElement() const { return 0; }
     virtual void clearParentElement() { ASSERT_NOT_REACHED(); }
@@ -50,8 +50,6 @@ public:
     
     virtual void ref() OVERRIDE;
     virtual void deref() OVERRIDE;
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 private:
     virtual CSSRule* parentRule() const OVERRIDE { return 0; };
@@ -71,8 +69,7 @@ private:
     virtual void setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) OVERRIDE;
     
     virtual bool cssPropertyMatches(CSSPropertyID, const CSSValue*) const OVERRIDE;
-    virtual PassRefPtr<StylePropertySet> copy() const OVERRIDE;
-    virtual PassRefPtr<StylePropertySet> makeMutable() OVERRIDE;
+    virtual PassRefPtr<MutableStylePropertySet> copyProperties() const OVERRIDE;
 
     CSSValue* cloneAndCacheForCSSOM(CSSValue*);
     
@@ -81,14 +78,14 @@ protected:
     virtual void willMutate() { }
     virtual void didMutate(MutationType) { }
 
-    StylePropertySet* m_propertySet;
+    MutableStylePropertySet* m_propertySet;
     OwnPtr<HashMap<CSSValue*, RefPtr<CSSValue> > > m_cssomCSSValueClones;
 };
 
 class StyleRuleCSSStyleDeclaration : public PropertySetCSSStyleDeclaration
 {
 public:
-    static PassRefPtr<StyleRuleCSSStyleDeclaration> create(StylePropertySet* propertySet, CSSRule* parentRule)
+    static PassRefPtr<StyleRuleCSSStyleDeclaration> create(MutableStylePropertySet* propertySet, CSSRule* parentRule)
     {
         return adoptRef(new StyleRuleCSSStyleDeclaration(propertySet, parentRule));
     }
@@ -99,12 +96,10 @@ public:
     virtual void ref() OVERRIDE;
     virtual void deref() OVERRIDE;
 
-    void reattach(StylePropertySet*);
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+    void reattach(MutableStylePropertySet*);
 
 private:
-    StyleRuleCSSStyleDeclaration(StylePropertySet*, CSSRule*);
+    StyleRuleCSSStyleDeclaration(MutableStylePropertySet*, CSSRule*);
 
     virtual CSSStyleSheet* parentStyleSheet() const OVERRIDE;
 
@@ -120,13 +115,11 @@ private:
 class InlineCSSStyleDeclaration : public PropertySetCSSStyleDeclaration
 {
 public:
-    InlineCSSStyleDeclaration(StylePropertySet* propertySet, StyledElement* parentElement)
+    InlineCSSStyleDeclaration(MutableStylePropertySet* propertySet, StyledElement* parentElement)
         : PropertySetCSSStyleDeclaration(propertySet)
         , m_parentElement(parentElement) 
     {
     }
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
     
 private:
     virtual CSSStyleSheet* parentStyleSheet() const OVERRIDE;

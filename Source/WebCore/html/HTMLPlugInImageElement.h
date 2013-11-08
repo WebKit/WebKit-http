@@ -75,7 +75,7 @@ public:
     void setNeedsWidgetUpdate(bool needsWidgetUpdate) { m_needsWidgetUpdate = needsWidgetUpdate; }
 
     void userDidClickSnapshot(PassRefPtr<MouseEvent>, bool forwardEvent);
-    void updateSnapshotInfo();
+    void checkSnapshotStatus();
     Image* snapshotImage() const { return m_snapshotImage.get(); }
 
     // Plug-in URL might not be the same as url() with overriding parameters.
@@ -83,7 +83,19 @@ public:
     void subframeLoaderDidCreatePlugIn(const Widget*);
 
     void setIsPrimarySnapshottedPlugIn(bool);
-    bool partOfSnapshotLabel(Node*);
+    bool partOfSnapshotOverlay(Node*);
+
+    bool needsCheckForSizeChange() const { return m_needsCheckForSizeChange; }
+    void setNeedsCheckForSizeChange() { m_needsCheckForSizeChange = true; }
+    void checkSizeChangeForSnapshotting();
+
+    enum SnapshotDecision {
+        SnapshotNotYetDecided,
+        NeverSnapshot,
+        Snapshotted,
+        MaySnapshotWhenResized
+    };
+    SnapshotDecision snapshotDecision() const { return m_snapshotDecision; }
 
 protected:
     HTMLPlugInImageElement(const QualifiedName& tagName, Document*, bool createdByParser, PreferPlugInsForImagesOption);
@@ -110,7 +122,7 @@ protected:
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
 
     void restartSnapshottedPlugIn();
-    virtual bool restartedPlugin() const OVERRIDE { return m_restartedPlugin; }
+    virtual bool isRestartedPlugin() const OVERRIDE { return m_isRestartedPlugin; }
 
 private:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
@@ -143,10 +155,13 @@ private:
     Timer<HTMLPlugInImageElement> m_swapRendererTimer;
     Timer<HTMLPlugInImageElement> m_removeSnapshotTimer;
     RefPtr<Image> m_snapshotImage;
-    RefPtr<Element> m_shadowContainer;
-    RefPtr<Element> m_snapshotLabel;
     bool m_createdDuringUserGesture;
-    bool m_restartedPlugin;
+    bool m_isRestartedPlugin;
+    bool m_needsCheckForSizeChange;
+    bool m_plugInWasCreated;
+    bool m_deferredPromotionToPrimaryPlugIn;
+    IntSize m_sizeWhenSnapshotted;
+    SnapshotDecision m_snapshotDecision;
 };
 
 inline HTMLPlugInImageElement* toHTMLPlugInImageElement(Node* node)

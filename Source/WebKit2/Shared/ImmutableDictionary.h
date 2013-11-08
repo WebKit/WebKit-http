@@ -40,7 +40,7 @@ class ImmutableArray;
 
 class ImmutableDictionary : public TypedAPIObject<APIObject::TypeDictionary> {
 public:
-    typedef HashMap<String, RefPtr<APIObject> > MapType;
+    typedef HashMap<String, RefPtr<APIObject>> MapType;
 
     static PassRefPtr<ImmutableDictionary> create()
     {
@@ -70,7 +70,7 @@ public:
 
     APIObject* get(const String& key)
     {
-        return m_map.get(key).get();
+        return m_map.get(key);
     }
 
     PassRefPtr<ImmutableArray> keys() const;

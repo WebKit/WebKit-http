@@ -30,6 +30,7 @@
 #include "config.h"
 #include "Frame.h"
 
+#include "AnimationController.h"
 #include "ApplyStyleCommand.h"
 #include "BackForwardController.h"
 #include "CSSComputedStyleDeclaration.h"
@@ -40,14 +41,17 @@
 #include "ChromeClient.h"
 #include "DOMWindow.h"
 #include "DocumentType.h"
+#include "Editor.h"
 #include "EditorClient.h"
 #include "Event.h"
+#include "EventHandler.h"
 #include "EventNames.h"
 #include "FloatQuad.h"
 #include "FocusController.h"
 #include "FrameDestructionObserver.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
+#include "FrameSelection.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
@@ -151,11 +155,11 @@ inline Frame::Frame(Page* page, HTMLFrameOwnerElement* ownerElement, FrameLoader
     , m_loader(this, frameLoaderClient)
     , m_navigationScheduler(this)
     , m_ownerElement(ownerElement)
-    , m_script(this)
-    , m_editor(this)
-    , m_selection(this)
-    , m_eventHandler(this)
-    , m_animationController(this)
+    , m_script(adoptPtr(new ScriptController(this)))
+    , m_editor(adoptPtr(new Editor(this)))
+    , m_selection(adoptPtr(new FrameSelection(this)))
+    , m_eventHandler(adoptPtr(new EventHandler(this)))
+    , m_animationController(adoptPtr(new AnimationController(this)))
     , m_pageZoomFactor(parentPageZoomFactor(this))
     , m_textZoomFactor(parentTextZoomFactor(this))
 #if ENABLE(ORIENTATION_EVENTS)
@@ -294,7 +298,7 @@ void Frame::setDocument(PassRefPtr<Document> newDoc)
         m_doc->attach();
 
     if (m_doc) {
-        m_script.updateDocument();
+        m_script->updateDocument();
         m_doc->updateViewportArguments();
     }
 
@@ -309,7 +313,7 @@ void Frame::setDocument(PassRefPtr<Document> newDoc)
     // Suspend document if this frame was created in suspended state.
     if (m_doc && activeDOMObjectsAndAnimationsSuspended()) {
         m_doc->suspendScriptedAnimationControllerCallbacks();
-        m_animationController.suspendAnimationsForDocument(m_doc.get());
+        m_animationController->suspendAnimationsForDocument(m_doc.get());
         m_doc->suspendActiveDOMObjects(ActiveDOMObject::PageWillBeSuspended);
     }
 }
@@ -521,7 +525,7 @@ void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSiz
     }
 
     // Subframes of the one we're printing don't lay out to the page size.
-    for (Frame* child = tree()->firstChild(); child; child = child->tree()->nextSibling())
+    for (RefPtr<Frame> child = tree()->firstChild(); child; child = child->tree()->nextSibling())
         child->setPrinting(printing, FloatSize(), FloatSize(), 0, shouldAdjustViewSize);
 }
 
@@ -586,7 +590,7 @@ void Frame::injectUserScriptsForWorld(DOMWrapperWorld* world, const UserScriptVe
             continue;
 
         if (script->injectionTime() == injectionTime && UserContentURLPattern::matchesPatterns(doc->url(), script->whitelist(), script->blacklist()))
-            m_script.evaluateInWorld(ScriptSourceCode(script->source(), script->url()), world);
+            m_script->evaluateInWorld(ScriptSourceCode(script->source(), script->url()), world);
     }
 }
 
@@ -656,17 +660,6 @@ void Frame::dispatchVisibilityStateChangeEvent()
         childFrames[i]->dispatchVisibilityStateChangeEvent();
 }
 #endif
-
-void Frame::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_doc, "doc");
-    info.ignoreMember(m_view);
-    info.addMember(m_ownerElement, "ownerElement");
-    info.addMember(m_page, "page");
-    info.addMember(m_loader, "loader");
-    info.ignoreMember(m_destructionObservers);
-}
 
 void Frame::willDetachPage()
 {
@@ -914,7 +907,7 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
     if (!document)
         return;
 
-    m_editor.dismissCorrectionPanelAsIgnored();
+    m_editor->dismissCorrectionPanelAsIgnored();
 
 #if ENABLE(SVG)
     // Respect SVGs zoomAndPan="disabled" property in standalone SVG documents.
@@ -939,7 +932,7 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
 
     document->recalcStyle(Node::Force);
 
-    for (Frame* child = tree()->firstChild(); child; child = child->tree()->nextSibling())
+    for (RefPtr<Frame> child = tree()->firstChild(); child; child = child->tree()->nextSibling())
         child->setPageAndTextZoomFactors(m_pageZoomFactor, m_textZoomFactor);
 
     if (FrameView* view = this->view()) {
@@ -997,7 +990,7 @@ void Frame::resumeActiveDOMObjectsAndAnimations()
 #if USE(ACCELERATED_COMPOSITING)
 void Frame::deviceOrPageScaleFactorChanged()
 {
-    for (Frame* child = tree()->firstChild(); child; child = child->tree()->nextSibling())
+    for (RefPtr<Frame> child = tree()->firstChild(); child; child = child->tree()->nextSibling())
         child->deviceOrPageScaleFactorChanged();
 
     RenderView* root = contentRenderer();

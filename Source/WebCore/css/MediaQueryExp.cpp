@@ -34,7 +34,6 @@
 #include "CSSParser.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSValueList.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -88,6 +87,9 @@ static inline bool featureWithPositiveInteger(const AtomicString& mediaFeature, 
     return mediaFeature == MediaFeatureNames::colorMediaFeature
         || mediaFeature == MediaFeatureNames::max_colorMediaFeature
         || mediaFeature == MediaFeatureNames::min_colorMediaFeature
+        || mediaFeature == MediaFeatureNames::color_indexMediaFeature
+        || mediaFeature == MediaFeatureNames::max_color_indexMediaFeature
+        || mediaFeature == MediaFeatureNames::min_color_indexMediaFeature
         || mediaFeature == MediaFeatureNames::min_monochromeMediaFeature
         || mediaFeature == MediaFeatureNames::max_monochromeMediaFeature;
 }
@@ -130,6 +132,7 @@ static inline bool featureWithoutValue(const AtomicString& mediaFeature)
     // Media features that are prefixed by min/max cannot be used without a value.
     return mediaFeature == MediaFeatureNames::monochromeMediaFeature
         || mediaFeature == MediaFeatureNames::colorMediaFeature
+        || mediaFeature == MediaFeatureNames::color_indexMediaFeature
         || mediaFeature == MediaFeatureNames::gridMediaFeature
         || mediaFeature == MediaFeatureNames::heightMediaFeature
         || mediaFeature == MediaFeatureNames::widthMediaFeature
@@ -244,14 +247,6 @@ String MediaQueryExp::serialize() const
 
     const_cast<MediaQueryExp*>(this)->m_serializationCache = result.toString();
     return m_serializationCache;
-}
-
-void MediaQueryExp::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_mediaFeature, "mediaFeature");
-    info.addMember(m_serializationCache, "serializationCache");
-    info.addMember(m_value, "value");
 }
 
 } // namespace

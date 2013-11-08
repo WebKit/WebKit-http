@@ -51,13 +51,16 @@ void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder& encoder
     // We don't send HTTP body over IPC for better performance.
     // Also, it's not always possible to do, as streams can only be created in process that does networking.
     if ([requestToSerialize.get() HTTPBody] || [requestToSerialize.get() HTTPBodyStream]) {
-        requestToSerialize.adoptNS([requestToSerialize.get() mutableCopy]);
+        requestToSerialize = adoptNS([requestToSerialize.get() mutableCopy]);
         [(NSMutableURLRequest *)requestToSerialize.get() setHTTPBody:nil];
         [(NSMutableURLRequest *)requestToSerialize.get() setHTTPBodyStream:nil];
     }
 
-    RetainPtr<CFDictionaryRef> dictionary(AdoptCF, WKNSURLRequestCreateSerializableRepresentation(requestToSerialize.get(), CoreIPC::tokenNullTypeRef()));
+    RetainPtr<CFDictionaryRef> dictionary = adoptCF(WKNSURLRequestCreateSerializableRepresentation(requestToSerialize.get(), CoreIPC::tokenNullTypeRef()));
     CoreIPC::encode(encoder, dictionary.get());
+
+    // The fallback array is part of NSURLRequest, but it is not encoded by WKNSURLRequestCreateSerializableRepresentation.
+    encoder << resourceRequest.responseContentDispositionEncodingFallbackArray();
 }
 
 bool ArgumentCoder<ResourceRequest>::decodePlatformData(ArgumentDecoder& decoder, ResourceRequest& resourceRequest)
@@ -80,6 +83,17 @@ bool ArgumentCoder<ResourceRequest>::decodePlatformData(ArgumentDecoder& decoder
         return false;
 
     resourceRequest = ResourceRequest(nsURLRequest);
+    
+    Vector<String> responseContentDispositionEncodingFallbackArray;
+    if (!decoder.decode(responseContentDispositionEncodingFallbackArray))
+        return false;
+
+    resourceRequest.setResponseContentDispositionEncodingFallbackArray(
+        responseContentDispositionEncodingFallbackArray.size() > 0 ? responseContentDispositionEncodingFallbackArray[0] : String(),
+        responseContentDispositionEncodingFallbackArray.size() > 1 ? responseContentDispositionEncodingFallbackArray[1] : String(),
+        responseContentDispositionEncodingFallbackArray.size() > 2 ? responseContentDispositionEncodingFallbackArray[2] : String()
+    );
+
     return true;
 }
 
@@ -91,7 +105,7 @@ void ArgumentCoder<ResourceResponse>::encodePlatformData(ArgumentEncoder& encode
     if (!responseIsPresent)
         return;
 
-    RetainPtr<CFDictionaryRef> dictionary(AdoptCF, WKNSURLResponseCreateSerializableRepresentation(resourceResponse.nsURLResponse(), CoreIPC::tokenNullTypeRef()));
+    RetainPtr<CFDictionaryRef> dictionary = adoptCF(WKNSURLResponseCreateSerializableRepresentation(resourceResponse.nsURLResponse(), CoreIPC::tokenNullTypeRef()));
     CoreIPC::encode(encoder, dictionary.get());
 }
 
@@ -198,7 +212,7 @@ bool ArgumentCoder<ResourceError>::decodePlatformData(ArgumentDecoder& decoder, 
     if (certificate.certificateChain())
         [userInfo setObject:(NSArray *)certificate.certificateChain() forKey:@"NSErrorPeerCertificateChainKey"];
 
-    RetainPtr<NSError> nsError(AdoptNS, [[NSError alloc] initWithDomain:nsString(domain) code:code userInfo:userInfo]);
+    RetainPtr<NSError> nsError = adoptNS([[NSError alloc] initWithDomain:nsString(domain) code:code userInfo:userInfo]);
 
     resourceError = ResourceError(nsError.get());
     return true;

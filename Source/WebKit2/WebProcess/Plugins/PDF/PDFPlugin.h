@@ -40,6 +40,7 @@ typedef const struct OpaqueJSContext* JSContextRef;
 typedef struct OpaqueJSValue* JSObjectRef;
 typedef const struct OpaqueJSValue* JSValueRef;
 
+OBJC_CLASS NSArray;
 OBJC_CLASS PDFAnnotation;
 OBJC_CLASS PDFLayerController;
 OBJC_CLASS PDFSelection;
@@ -57,6 +58,7 @@ struct PluginInfo;
 namespace WebKit {
 
 class PDFPluginAnnotation;
+class PDFPluginPasswordField;
 class PluginView;
 class WebFrame;
 
@@ -80,9 +82,12 @@ public:
     void writeItemsToPasteboard(NSArray *items, NSArray *types);
     void showDefinitionForAttributedString(NSAttributedString *, CGPoint);
     void performWebSearch(NSString *);
+    void performSpotlightSearch(NSString *);
 
     void focusNextAnnotation();
     void focusPreviousAnnotation();
+
+    void attemptToUnlockPDF(const String& password);
 
 private:
     explicit PDFPlugin(WebFrame*);
@@ -100,6 +105,8 @@ private:
     virtual void geometryDidChange(const WebCore::IntSize& pluginSize, const WebCore::IntRect& clipRect, const WebCore::AffineTransform& pluginToRootViewTransform) OVERRIDE;
     virtual void contentsScaleFactorChanged(float) OVERRIDE;
     virtual bool handleMouseEvent(const WebMouseEvent&) OVERRIDE;
+    virtual bool handleMouseEnterEvent(const WebMouseEvent&) OVERRIDE;
+    virtual bool handleMouseLeaveEvent(const WebMouseEvent&) OVERRIDE;
     virtual bool handleContextMenuEvent(const WebMouseEvent&) OVERRIDE;
     virtual bool handleKeyboardEvent(const WebKeyboardEvent&) OVERRIDE;
     virtual bool handleEditingCommand(const String& commandName, const String& argument) OVERRIDE;
@@ -131,7 +138,23 @@ private:
 
     void updatePageAndDeviceScaleFactors();
 
+    void createPasswordEntryForm();
+
     WebCore::IntPoint convertFromPDFViewToRootView(const WebCore::IntPoint&) const;
+
+    virtual NSData *liveData() const OVERRIDE;
+
+    enum UpdateCursorMode {
+        UpdateIfNeeded,
+        ForceUpdate
+    };
+
+    enum HitTestResult {
+        None,
+        Text
+    };
+
+    void updateCursor(const WebMouseEvent&, UpdateCursorMode = UpdateIfNeeded);
 
     RetainPtr<CALayer> m_containerLayer;
     RetainPtr<CALayer> m_contentLayer;
@@ -141,6 +164,7 @@ private:
     RetainPtr<PDFLayerController> m_pdfLayerController;
     
     RefPtr<PDFPluginAnnotation> m_activeAnnotation;
+    RefPtr<PDFPluginPasswordField> m_passwordField;
     RefPtr<WebCore::Element> m_annotationContainer;
 
     WebCore::AffineTransform m_rootViewToPluginTransform;
@@ -150,6 +174,8 @@ private:
     String m_temporaryPDFUUID;
 
     String m_lastFoundString;
+
+    HitTestResult m_lastHitTestResult;
     
     RetainPtr<WKPDFLayerControllerDelegate> m_pdfLayerControllerDelegate;
 };

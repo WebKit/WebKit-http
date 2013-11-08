@@ -113,17 +113,17 @@ public:
 
     virtual void setVisible(bool) { }
 
-    virtual float duration() const { return 0; }
+    virtual double durationDouble() const { return 0; }
 
-    virtual float currentTime() const { return 0; }
-    virtual void seek(float) { }
+    virtual double currentTimeDouble() const { return 0; }
+    virtual void seekDouble(double) { }
     virtual bool seeking() const { return false; }
 
-    virtual void setRate(float) { }
+    virtual void setRateDouble(double) { }
     virtual void setPreservesPitch(bool) { }
     virtual bool paused() const { return false; }
 
-    virtual void setVolume(float) { }
+    virtual void setVolumeDouble(double) { }
 
     virtual bool supportsMuting() const { return false; }
     virtual void setMuted(bool) { }
@@ -134,7 +134,8 @@ public:
     virtual MediaPlayer::NetworkState networkState() const { return MediaPlayer::Empty; }
     virtual MediaPlayer::ReadyState readyState() const { return MediaPlayer::HaveNothing; }
 
-    virtual float maxTimeSeekable() const { return 0; }
+    virtual double maxTimeSeekableDouble() const { return 0; }
+    virtual double minTimeSeekable() const { return 0; }
     virtual PassRefPtr<TimeRanges> buffered() const { return TimeRanges::create(); }
 
     virtual unsigned totalBytes() const { return 0; }
@@ -511,14 +512,14 @@ MediaPlayer::MediaKeyException MediaPlayer::cancelKeyRequest(const String& keySy
 }
 #endif
 
-float MediaPlayer::duration() const
+double MediaPlayer::duration() const
 {
-    return m_private->duration();
+    return m_private->durationDouble();
 }
 
-float MediaPlayer::startTime() const
+double MediaPlayer::startTime() const
 {
-    return m_private->startTime();
+    return m_private->startTimeDouble();
 }
 
 double MediaPlayer::initialTime() const
@@ -526,14 +527,14 @@ double MediaPlayer::initialTime() const
     return m_private->initialTime();
 }
 
-float MediaPlayer::currentTime() const
+double MediaPlayer::currentTime() const
 {
-    return m_private->currentTime();
+    return m_private->currentTimeDouble();
 }
 
-void MediaPlayer::seek(float time)
+void MediaPlayer::seek(double time)
 {
-    m_private->seek(time);
+    m_private->seekDouble(time);
 }
 
 bool MediaPlayer::paused() const
@@ -606,17 +607,17 @@ MediaPlayer::ReadyState MediaPlayer::readyState()
     return m_private->readyState();
 }
 
-float MediaPlayer::volume() const
+double MediaPlayer::volume() const
 {
     return m_volume;
 }
 
-void MediaPlayer::setVolume(float volume)
+void MediaPlayer::setVolume(double volume)
 {
     m_volume = volume;
 
     if (m_private->supportsMuting() || !m_muted)
-        m_private->setVolume(volume);
+        m_private->setVolumeDouble(volume);
 }
 
 bool MediaPlayer::muted() const
@@ -644,15 +645,15 @@ void MediaPlayer::setClosedCaptionsVisible(bool closedCaptionsVisible)
     m_private->setClosedCaptionsVisible(closedCaptionsVisible);
 }
 
-float MediaPlayer::rate() const
+double MediaPlayer::rate() const
 {
     return m_rate;
 }
 
-void MediaPlayer::setRate(float rate)
+void MediaPlayer::setRate(double rate)
 {
     m_rate = rate;
-    m_private->setRate(rate);   
+    m_private->setRateDouble(rate);
 }
 
 bool MediaPlayer::preservesPitch() const
@@ -676,9 +677,14 @@ PassRefPtr<TimeRanges> MediaPlayer::seekable()
     return m_private->seekable();
 }
 
-float MediaPlayer::maxTimeSeekable()
+double MediaPlayer::maxTimeSeekable()
 {
-    return m_private->maxTimeSeekable();
+    return m_private->maxTimeSeekableDouble();
+}
+
+double MediaPlayer::minTimeSeekable()
+{
+    return m_private->minTimeSeekable();
 }
 
 bool MediaPlayer::didLoadingProgress()
@@ -851,9 +857,9 @@ MediaPlayer::MovieLoadType MediaPlayer::movieLoadType() const
     return m_private->movieLoadType();
 }
 
-float MediaPlayer::mediaTimeForTimeValue(float timeValue) const
+double MediaPlayer::mediaTimeForTimeValue(double timeValue) const
 {
-    return m_private->mediaTimeForTimeValue(timeValue);
+    return m_private->mediaTimeForTimeValueDouble(timeValue);
 }
 
 double MediaPlayer::maximumDurationToCacheMediaTime() const
@@ -896,7 +902,7 @@ void MediaPlayer::getSitesInMediaCache(Vector<String>& sites)
             continue;
         Vector<String> engineSites;
         engines[i]->getSitesInMediaCache(engineSites);
-        sites.append(engineSites);
+        sites.appendVector(engineSites);
     }
 }
 
@@ -949,7 +955,7 @@ void MediaPlayer::readyStateChanged()
         m_mediaPlayerClient->mediaPlayerReadyStateChanged(this);
 }
 
-void MediaPlayer::volumeChanged(float newVolume)
+void MediaPlayer::volumeChanged(double newVolume)
 {
     m_volume = newVolume;
     if (m_mediaPlayerClient)
@@ -1097,12 +1103,28 @@ CachedResourceLoader* MediaPlayer::cachedResourceLoader()
 }
 
 #if ENABLE(VIDEO_TRACK)
+void MediaPlayer::addAudioTrack(PassRefPtr<AudioTrackPrivate> track)
+{
+    if (!m_mediaPlayerClient)
+        return;
+
+    m_mediaPlayerClient->mediaPlayerDidAddAudioTrack(track);
+}
+
+void MediaPlayer::removeAudioTrack(PassRefPtr<AudioTrackPrivate> track)
+{
+    if (!m_mediaPlayerClient)
+        return;
+
+    m_mediaPlayerClient->mediaPlayerDidRemoveAudioTrack(track);
+}
+
 void MediaPlayer::addTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
 {
     if (!m_mediaPlayerClient)
         return;
 
-    m_mediaPlayerClient->mediaPlayerDidAddTrack(track);
+    m_mediaPlayerClient->mediaPlayerDidAddTextTrack(track);
 }
 
 void MediaPlayer::removeTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
@@ -1110,7 +1132,23 @@ void MediaPlayer::removeTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
     if (!m_mediaPlayerClient)
         return;
 
-    m_mediaPlayerClient->mediaPlayerDidRemoveTrack(track);
+    m_mediaPlayerClient->mediaPlayerDidRemoveTextTrack(track);
+}
+
+void MediaPlayer::addVideoTrack(PassRefPtr<VideoTrackPrivate> track)
+{
+    if (!m_mediaPlayerClient)
+        return;
+
+    m_mediaPlayerClient->mediaPlayerDidAddVideoTrack(track);
+}
+
+void MediaPlayer::removeVideoTrack(PassRefPtr<VideoTrackPrivate> track)
+{
+    if (!m_mediaPlayerClient)
+        return;
+
+    m_mediaPlayerClient->mediaPlayerDidRemoveVideoTrack(track);
 }
 
 bool MediaPlayer::requiresTextTrackRepresentation() const

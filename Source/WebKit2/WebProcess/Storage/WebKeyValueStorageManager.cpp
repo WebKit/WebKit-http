@@ -46,6 +46,7 @@ const char* WebKeyValueStorageManager::supplementName()
 
 WebKeyValueStorageManager::WebKeyValueStorageManager(WebProcess* process)
     : m_process(process)
+    , m_didFinishLoadingOrigins(false)
 {
     m_process->addMessageReceiver(Messages::WebKeyValueStorageManager::messageReceiverName(), this);
 }
@@ -63,7 +64,7 @@ static void keyValueStorageOriginIdentifiers(Vector<SecurityOriginData>& identif
 {
     ASSERT(identifiers.isEmpty());
 
-    Vector<RefPtr<SecurityOrigin> > coreOrigins;
+    Vector<RefPtr<SecurityOrigin>> coreOrigins;
 
     StorageTracker::tracker().origins(coreOrigins);
 
@@ -88,7 +89,7 @@ void WebKeyValueStorageManager::dispatchDidGetKeyValueStorageOrigins(const Vecto
 
 void WebKeyValueStorageManager::getKeyValueStorageOrigins(uint64_t callbackID)
 {
-    if (!StorageTracker::tracker().originsLoaded()) {
+    if (!m_didFinishLoadingOrigins) {
         m_originsRequestCallbackIDs.append(callbackID);
         return;
     }
@@ -100,6 +101,8 @@ void WebKeyValueStorageManager::getKeyValueStorageOrigins(uint64_t callbackID)
 
 void WebKeyValueStorageManager::didFinishLoadingOrigins()
 {
+    m_didFinishLoadingOrigins = true;
+
     if (m_originsRequestCallbackIDs.isEmpty())
         return;
 

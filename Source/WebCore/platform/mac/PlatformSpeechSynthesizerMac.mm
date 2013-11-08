@@ -28,6 +28,7 @@
 
 #include "PlatformSpeechSynthesisUtterance.h"
 #include "PlatformSpeechSynthesisVoice.h"
+#include "WebCoreSystemInterface.h"
 #include <AppKit/NSSpeechSynthesizer.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RetainPtr.h>
@@ -105,7 +106,8 @@
         for (size_t k = 0; k < voiceListSize; k++) {
             if (equalIgnoringCase(utterance->lang(), voiceList[k]->lang())) {
                 utteranceVoice = voiceList[k].get();
-                break;
+                if (voiceList[k]->isDefault())
+                    break;
             }
         }
     }
@@ -209,8 +211,7 @@ PlatformSpeechSynthesizer::~PlatformSpeechSynthesizer()
 
 void PlatformSpeechSynthesizer::initializeVoiceList()
 {
-    NSString *defaultVoiceURI = [NSSpeechSynthesizer defaultVoice];
-    NSArray *availableVoices = [NSSpeechSynthesizer availableVoices];
+    NSArray *availableVoices = wkSpeechSynthesisGetVoiceIdentifiers();
     NSUInteger count = [availableVoices count];
     for (NSUInteger k = 0; k < count; k++) {
         NSString *voiceName = [availableVoices objectAtIndex:k];
@@ -219,6 +220,9 @@ void PlatformSpeechSynthesizer::initializeVoiceList()
         NSString *voiceURI = [attributes objectForKey:NSVoiceIdentifier];
         NSString *name = [attributes objectForKey:NSVoiceName];
         NSString *language = [attributes objectForKey:NSVoiceLocaleIdentifier];
+        NSLocale *locale = [[NSLocale alloc] initWithLocaleIdentifier:language];
+        NSString *defaultVoiceURI = wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale(locale);
+        [locale release];
         
         // Change to BCP-47 format as defined by spec.
         language = [language stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
@@ -242,7 +246,7 @@ void PlatformSpeechSynthesizer::resume()
 void PlatformSpeechSynthesizer::speak(PassRefPtr<PlatformSpeechSynthesisUtterance> utterance)
 {
     if (!m_platformSpeechWrapper)
-        m_platformSpeechWrapper.adoptNS([[WebSpeechSynthesisWrapper alloc] initWithSpeechSynthesizer:this]);
+        m_platformSpeechWrapper = adoptNS([[WebSpeechSynthesisWrapper alloc] initWithSpeechSynthesizer:this]);
     
     [m_platformSpeechWrapper.get() speakUtterance:utterance.get()];
 }

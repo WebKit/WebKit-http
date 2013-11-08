@@ -30,9 +30,6 @@
 
 #include "Animation.h"
 #include "Color.h"
-#if ENABLE(CSS_FILTERS)
-#include "FilterOperations.h"
-#endif
 #include "FloatPoint.h"
 #include "FloatPoint3D.h"
 #include "FloatSize.h"
@@ -42,6 +39,10 @@
 #include "TransformOperations.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
+
+#if ENABLE(CSS_FILTERS)
+#include "FilterOperations.h"
+#endif
 
 enum LayerTreeAsTextBehaviorFlags {
     LayerTreeAsTextBehaviorNormal = 0,
@@ -55,7 +56,6 @@ typedef unsigned LayerTreeAsTextBehavior;
 
 namespace WebCore {
 
-class FloatPoint3D;
 class FloatRect;
 class GraphicsContext;
 class GraphicsLayerFactory;
@@ -68,21 +68,22 @@ class TransformationMatrix;
 // Base class for animation values (also used for transitions). Here to
 // represent values for properties being animated via the GraphicsLayer,
 // without pulling in style-related data from outside of the platform directory.
+// FIXME: Should be moved to its own header file.
 class AnimationValue {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    AnimationValue(float keyTime, PassRefPtr<TimingFunction> timingFunction = 0)
-        : m_keyTime(keyTime)
-    {
-        if (timingFunction)
-            m_timingFunction = timingFunction;
-    }
-    
     virtual ~AnimationValue() { }
 
     float keyTime() const { return m_keyTime; }
     const TimingFunction* timingFunction() const { return m_timingFunction.get(); }
-    virtual AnimationValue* clone() const = 0;
+    virtual PassOwnPtr<AnimationValue> clone() const = 0;
+
+protected:
+    AnimationValue(float keyTime, PassRefPtr<TimingFunction> timingFunction = 0)
+        : m_keyTime(keyTime)
+        , m_timingFunction(timingFunction)
+    {
+    }
 
 private:
     float m_keyTime;
@@ -90,63 +91,91 @@ private:
 };
 
 // Used to store one float value of an animation.
+// FIXME: Should be moved to its own header file.
 class FloatAnimationValue : public AnimationValue {
 public:
-    FloatAnimationValue(float keyTime, float value, PassRefPtr<TimingFunction> timingFunction = 0)
-        : AnimationValue(keyTime, timingFunction)
-        , m_value(value)
+    static PassOwnPtr<FloatAnimationValue> create(float keyTime, float value, PassRefPtr<TimingFunction> timingFunction = 0)
     {
+        return adoptPtr(new FloatAnimationValue(keyTime, value, timingFunction));
     }
-    virtual AnimationValue* clone() const { return new FloatAnimationValue(*this); }
+
+    virtual PassOwnPtr<AnimationValue> clone() const OVERRIDE
+    {
+        return adoptPtr(new FloatAnimationValue(*this));
+    }
 
     float value() const { return m_value; }
 
 private:
+    FloatAnimationValue(float keyTime, float value, PassRefPtr<TimingFunction> timingFunction)
+        : AnimationValue(keyTime, timingFunction)
+        , m_value(value)
+    {
+    }
+
     float m_value;
 };
 
 // Used to store one transform value in a keyframe list.
+// FIXME: Should be moved to its own header file.
 class TransformAnimationValue : public AnimationValue {
 public:
-    TransformAnimationValue(float keyTime, const TransformOperations* value = 0, PassRefPtr<TimingFunction> timingFunction = 0)
-        : AnimationValue(keyTime, timingFunction)
+    static PassOwnPtr<TransformAnimationValue> create(float keyTime, const TransformOperations& value, PassRefPtr<TimingFunction> timingFunction = 0)
     {
-        if (value)
-            m_value = *value;
+        return adoptPtr(new TransformAnimationValue(keyTime, value, timingFunction));
     }
-    virtual AnimationValue* clone() const { return new TransformAnimationValue(*this); }
 
-    const TransformOperations* value() const { return &m_value; }
+    virtual PassOwnPtr<AnimationValue> clone() const OVERRIDE
+    {
+        return adoptPtr(new TransformAnimationValue(*this));
+    }
+
+    const TransformOperations& value() const { return m_value; }
 
 private:
+    TransformAnimationValue(float keyTime, const TransformOperations& value, PassRefPtr<TimingFunction> timingFunction)
+        : AnimationValue(keyTime, timingFunction)
+        , m_value(value)
+    {
+    }
+
     TransformOperations m_value;
 };
 
 #if ENABLE(CSS_FILTERS)
 // Used to store one filter value in a keyframe list.
+// FIXME: Should be moved to its own header file.
 class FilterAnimationValue : public AnimationValue {
 public:
-    FilterAnimationValue(float keyTime, const FilterOperations* value = 0, PassRefPtr<TimingFunction> timingFunction = 0)
-        : AnimationValue(keyTime, timingFunction)
+    static PassOwnPtr<FilterAnimationValue> create(float keyTime, const FilterOperations& value, PassRefPtr<TimingFunction> timingFunction = 0)
     {
-        if (value)
-            m_value = *value;
+        return adoptPtr(new FilterAnimationValue(keyTime, value, timingFunction));
     }
-    virtual AnimationValue* clone() const { return new FilterAnimationValue(*this); }
 
-    const FilterOperations* value() const { return &m_value; }
+    virtual PassOwnPtr<AnimationValue> clone() const OVERRIDE
+    {
+        return adoptPtr(new FilterAnimationValue(*this));
+    }
+
+    const FilterOperations& value() const { return m_value; }
 
 private:
+    FilterAnimationValue(float keyTime, const FilterOperations& value, PassRefPtr<TimingFunction> timingFunction)
+        : AnimationValue(keyTime, timingFunction)
+        , m_value(value)
+    {
+    }
+
     FilterOperations m_value;
 };
 #endif
 
-// Used to store a series of values in a keyframe list. Values will all be of the same type,
-// which can be inferred from the property.
+// Used to store a series of values in a keyframe list.
+// Values will all be of the same type, which can be inferred from the property.
+// FIXME: Should be moved to its own header file.
 class KeyframeValueList {
 public:
-
-    KeyframeValueList(AnimatedPropertyID property)
+    explicit KeyframeValueList(AnimatedPropertyID property)
         : m_property(property)
     {
     }
@@ -160,7 +189,6 @@ public:
 
     ~KeyframeValueList()
     {
-        deleteAllValues(m_values);
     }
 
     KeyframeValueList& operator=(const KeyframeValueList& other)
@@ -179,17 +207,15 @@ public:
     AnimatedPropertyID property() const { return m_property; }
 
     size_t size() const { return m_values.size(); }
-    const AnimationValue* at(size_t i) const { return m_values.at(i); }
+    const AnimationValue& at(size_t i) const { return *m_values.at(i); }
     
-    // Insert, sorted by keyTime. Takes ownership of the pointer.
-    void insert(const AnimationValue*);
+    // Insert, sorted by keyTime.
+    void insert(PassOwnPtr<const AnimationValue>);
     
 protected:
-    Vector<const AnimationValue*> m_values;
+    Vector<OwnPtr<const AnimationValue> > m_values;
     AnimatedPropertyID m_property;
 };
-
-
 
 // GraphicsLayer is an abstraction for a rendering surface with backing store,
 // which may have associated transformation and animations.
@@ -326,6 +352,14 @@ public:
 
     virtual void setContentsNeedsDisplay() { };
 
+    // The tile phase is relative to the GraphicsLayer bounds.
+    virtual void setContentsTilePhase(const IntPoint& p) { m_contentsTilePhase = p; }
+    IntPoint contentsTilePhase() const { return m_contentsTilePhase; }
+
+    virtual void setContentsTileSize(const IntSize& s) { m_contentsTileSize = s; }
+    IntSize contentsTileSize() const { return m_contentsTileSize; }
+    bool hasContentsTiling() const { return !m_contentsTileSize.isEmpty(); }
+
     // Set that the position/size of the contents (image or video).
     IntRect contentsRect() const { return m_contentsRect; }
     virtual void setContentsRect(const IntRect& r) { m_contentsRect = r; }
@@ -435,11 +469,19 @@ public:
 #endif
     }
 
+#if USE(COORDINATED_GRAPHICS)
+    static bool supportsContentsTiling();
+#else
+    static bool supportsContentsTiling()
+    {
+        // FIXME: Enable the feature on different ports.
+        return false;
+    }
+#endif
+
     void updateDebugIndicators();
 
     virtual bool canThrottleLayerFlush() const { return false; }
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 protected:
     // Should be called from derived class destructors. Should call willBeDestroyed() on super.
@@ -527,6 +569,8 @@ protected:
     FloatPoint m_replicatedLayerPosition; // For a replica layer, the position of the replica.
 
     IntRect m_contentsRect;
+    IntPoint m_contentsTilePhase;
+    IntSize m_contentsTileSize;
 
     int m_repaintCount;
 };

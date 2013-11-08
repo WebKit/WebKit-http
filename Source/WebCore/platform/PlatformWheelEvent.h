@@ -44,11 +44,6 @@ typedef struct _Evas_Event_Mouse_Wheel Evas_Event_Mouse_Wheel;
 class BMessage;
 #endif
 
-#if PLATFORM(WX)
-class wxMouseEvent;
-class wxPoint;
-#endif
-
 namespace WebCore {
 
     class FloatPoint;
@@ -171,10 +166,6 @@ namespace WebCore {
 #if PLATFORM(WIN)
         PlatformWheelEvent(HWND, WPARAM, LPARAM, bool isMouseHWheel);
         PlatformWheelEvent(HWND, const FloatSize& delta, const FloatPoint& location);
-#endif
-
-#if PLATFORM(WX)
-        PlatformWheelEvent(const wxMouseEvent&, const wxPoint&);
 #endif
 
     protected:

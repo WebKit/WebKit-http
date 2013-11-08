@@ -24,11 +24,10 @@
 #define CachedRawResource_h
 
 #include "CachedResource.h"
-#include "CachedResourceClient.h"
 
 namespace WebCore {
-class CachedRawResourceCallback;
-class CachedRawResourceClient;
+
+class CachedResourceClient;
 class SubresourceLoader;
 
 class CachedRawResource : public CachedResource {
@@ -50,8 +49,6 @@ public:
 
     virtual bool canReuse(const ResourceRequest&) const;
 
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
-
 private:
     virtual void didAddClient(CachedResourceClient*);
     virtual void data(PassRefPtr<ResourceBuffer> data, bool allDataReceived);
@@ -64,6 +61,7 @@ private:
     virtual void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent);
 
     virtual void switchClientsToRevalidatedResource() OVERRIDE;
+    virtual bool mayTryReplaceEncodedData() const OVERRIDE { return true; }
 
     unsigned long m_identifier;
 
@@ -80,19 +78,6 @@ private:
     };
 
     Vector<RedirectPair> m_redirectChain;
-};
-
-
-class CachedRawResourceClient : public CachedResourceClient {
-public:
-    virtual ~CachedRawResourceClient() { }
-    static CachedResourceClientType expectedType() { return RawResourceType; }
-    virtual CachedResourceClientType resourceClientType() const { return expectedType(); }
-
-    virtual void dataSent(CachedResource*, unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
-    virtual void responseReceived(CachedResource*, const ResourceResponse&) { }
-    virtual void dataReceived(CachedResource*, const char* /* data */, int /* length */) { }
-    virtual void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) { }
 };
 
 }

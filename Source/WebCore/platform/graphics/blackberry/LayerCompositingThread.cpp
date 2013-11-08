@@ -272,13 +272,13 @@ void LayerCompositingThread::drawSurface(const TransformationMatrix& drawTransfo
     using namespace BlackBerry::Platform::Graphics;
 
     if (m_layerRenderer->layerAlreadyOnSurface(this)) {
-        Texture* surfaceTexture = layerRendererSurface()->texture();
+        LayerTexture* surfaceTexture = layerRendererSurface()->texture();
         if (!surfaceTexture) {
             ASSERT_NOT_REACHED();
             return;
         }
         textureCacheCompositingThread()->textureAccessed(layerRendererSurface()->texture());
-        GLuint surfaceTexID = reinterpret_cast<GLuint>(platformBufferHandle(surfaceTexture->textureId()));
+        GLuint surfaceTexID = surfaceTexture->platformTexture();
 
         if (!surfaceTexID) {
             ASSERT_NOT_REACHED();
@@ -286,18 +286,8 @@ void LayerCompositingThread::drawSurface(const TransformationMatrix& drawTransfo
         }
 
         if (mask) {
-            Texture* maskTexture = mask->contentsTexture();
-            if (maskTexture) {
-                GLuint maskTexID = reinterpret_cast<GLuint>(platformBufferHandle(maskTexture->textureId()));
-
-                // Force creation if it's 0
-                if (!maskTexID) {
-                    // This call will cause display list to render to backing, which can mutate a lot of GL state.
-                    GLES2ContextState::ProgramStateSaver programSaver;
-                    GLES2ContextState::TextureAndFBOStateSaver textureSaver;
-                    lockAndBindBufferGLTexture(maskTexture->textureId(), GL_TEXTURE_2D);
-                    maskTexID = reinterpret_cast<GLuint>(platformBufferHandle(maskTexture->textureId()));
-                }
+            if (LayerTexture* maskTexture = mask->contentsTexture()) {
+                GLuint maskTexID = maskTexture->platformTexture();
 
                 glActiveTexture(GL_TEXTURE1);
                 glBindTexture(GL_TEXTURE_2D, maskTexID);
@@ -425,7 +415,7 @@ void LayerCompositingThread::updateTextureContentsIfNeeded()
         m_client->uploadTexturesIfNeeded(this);
 }
 
-Texture* LayerCompositingThread::contentsTexture()
+LayerTexture* LayerCompositingThread::contentsTexture()
 {
     if (m_client)
         return m_client->contentsTexture(this);

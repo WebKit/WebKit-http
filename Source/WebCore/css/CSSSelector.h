@@ -201,7 +201,6 @@ namespace WebCore {
         }
 
         static PseudoType parsePseudoType(const AtomicString&);
-        static bool isCustomPseudoType(const AtomicString&);        
         static PseudoId pseudoId(PseudoType);
 
         // Selectors are kept in an array by CSSSelectorList. The next component of the selector is
@@ -371,14 +370,6 @@ inline void CSSSelector::setValue(const AtomicString& value)
         m_data.m_value->deref();
     m_data.m_value = value.impl();
     m_data.m_value->ref();
-}
-
-inline void move(PassOwnPtr<CSSSelector> from, CSSSelector* to)
-{
-    memcpy(to, from.get(), sizeof(CSSSelector));
-    // We want to free the memory (which was allocated with fastNew), but we
-    // don't want the destructor to run since it will affect the copy we've just made.
-    fastDeleteSkippingDestructor(from.leakPtr());
 }
 
 inline CSSSelector::CSSSelector()

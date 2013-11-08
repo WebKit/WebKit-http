@@ -37,7 +37,7 @@
 #include "WorkerDebuggerAgent.h"
 #include "WorkerRunLoop.h"
 #include "WorkerThread.h"
-
+#include <runtime/VM.h>
 #include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
@@ -68,14 +68,14 @@ void WorkerScriptDebugServer::willExecuteProgram(const JSC::DebuggerCallFrame& d
 
 void WorkerScriptDebugServer::recompileAllJSFunctions(Timer<ScriptDebugServer>*)
 {
-    JSC::JSGlobalData* globalData = m_workerContext->script()->globalData();
+    JSC::VM* vm = m_workerContext->script()->vm();
 
-    JSC::JSLockHolder lock(globalData);
+    JSC::JSLockHolder lock(vm);
     // If JavaScript stack is not empty postpone recompilation.
-    if (globalData->dynamicGlobalObject)
+    if (vm->dynamicGlobalObject)
         recompileAllJSFunctionsSoon();
     else
-        JSC::Debugger::recompileAllJSFunctions(globalData);
+        JSC::Debugger::recompileAllJSFunctions(vm);
 }
 
 void WorkerScriptDebugServer::removeListener(ScriptDebugListener* listener)

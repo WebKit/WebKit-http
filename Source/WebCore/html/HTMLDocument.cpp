@@ -72,6 +72,7 @@
 #include "InspectorInstrumentation.h"
 #include "KURL.h"
 #include "Page.h"
+#include "ScriptController.h"
 #include "Settings.h"
 #include "StyleResolver.h"
 #include <wtf/text/CString.h>
@@ -80,8 +81,8 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLDocument::HTMLDocument(Frame* frame, const KURL& url)
-    : Document(frame, url, false, true)
+HTMLDocument::HTMLDocument(Frame* frame, const KURL& url, DocumentClassFlags documentClasses)
+    : Document(frame, url, documentClasses | HTMLDocumentClass)
 {
     clearXMLVersion();
 }
@@ -292,44 +293,6 @@ PassRefPtr<Element> HTMLDocument::createElement(const AtomicString& name, Except
         return 0;
     }
     return HTMLElementFactory::createHTMLElement(QualifiedName(nullAtom, name.lower(), xhtmlNamespaceURI), this, 0, false);
-}
-
-void HTMLDocument::addItemToMap(HashCountedSet<AtomicStringImpl*>& map, const AtomicString& name)
-{
-    if (name.isEmpty())
-        return;
-    map.add(name.impl());
-    if (Frame* f = frame())
-        f->script()->namedItemAdded(this, name);
-}
-
-void HTMLDocument::removeItemFromMap(HashCountedSet<AtomicStringImpl*>& map, const AtomicString& name)
-{
-    if (name.isEmpty())
-        return;
-    map.remove(name.impl());
-    if (Frame* f = frame())
-        f->script()->namedItemRemoved(this, name);
-}
-
-void HTMLDocument::addNamedItem(const AtomicString& name)
-{
-    addItemToMap(m_namedItemCounts, name);
-}
-
-void HTMLDocument::removeNamedItem(const AtomicString& name)
-{ 
-    removeItemFromMap(m_namedItemCounts, name);
-}
-
-void HTMLDocument::addExtraNamedItem(const AtomicString& name)
-{
-    addItemToMap(m_extraNamedItemCounts, name);
-}
-
-void HTMLDocument::removeExtraNamedItem(const AtomicString& name)
-{ 
-    removeItemFromMap(m_extraNamedItemCounts, name);
 }
 
 static void addLocalNameToSet(HashSet<AtomicStringImpl*>* set, const QualifiedName& qName)

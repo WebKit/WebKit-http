@@ -109,6 +109,7 @@ public:
         TypePreferences,
         TypeTextChecker,
         TypeVibration,
+        TypeViewportAttributes,
 
         // Bundle types
         TypeBundle,
@@ -121,6 +122,7 @@ public:
         TypeBundleNavigationAction,
         TypeBundleNodeHandle,
         TypeBundlePage,
+        TypeBundlePageBanner,
         TypeBundlePageGroup,
         TypeBundlePageOverlay,
         TypeBundleRangeHandle,

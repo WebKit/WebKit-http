@@ -51,13 +51,15 @@ public:
     WebCore::ResourceLoadPriority priority() const { return m_priority; }
     WebCore::ContentSniffingPolicy contentSniffingPolicy() const { return m_contentSniffingPolicy; }
     WebCore::StoredCredentials allowStoredCredentials() const { return m_allowStoredCredentials; }
+    WebCore::ClientCredentialPolicy clientCredentialPolicy() const { return m_clientCredentialPolicy; }
     bool inPrivateBrowsingMode() const { return m_inPrivateBrowsingMode; }
+    bool isLoadingMainResource() const { return m_isLoadingMainResource; }
 
     NetworkConnectionToWebProcess* connectionToWebProcess() const { return m_connection.get(); }
-    virtual void connectionToWebProcessDidClose() = 0;
 
     virtual void start() = 0;
-    
+    virtual void abort() = 0;
+
     virtual bool isSynchronous() { return false; }
 
     void setHostRecord(HostRecord* hostRecord) { ASSERT(isMainThread()); m_hostRecord = hostRecord; }
@@ -79,16 +81,17 @@ private:
     WebCore::ResourceLoadPriority m_priority;
     WebCore::ContentSniffingPolicy m_contentSniffingPolicy;
     WebCore::StoredCredentials m_allowStoredCredentials;
+    WebCore::ClientCredentialPolicy m_clientCredentialPolicy;
     bool m_inPrivateBrowsingMode;
+    bool m_shouldClearReferrerOnHTTPSToHTTPRedirect;
+    bool m_isLoadingMainResource;
 
-    Vector<RefPtr<SandboxExtension> > m_requestBodySandboxExtensions;
-    Vector<RefPtr<SandboxExtension> > m_resourceSandboxExtensions;
+    Vector<RefPtr<SandboxExtension>> m_requestBodySandboxExtensions;
+    Vector<RefPtr<SandboxExtension>> m_resourceSandboxExtensions;
 
     RefPtr<NetworkConnectionToWebProcess> m_connection;
     
     RefPtr<HostRecord> m_hostRecord;
-
-    bool m_shouldClearReferrerOnHTTPSToHTTPRedirect;
 };
 
 } // namespace WebKit

@@ -26,10 +26,10 @@
 #import "config.h"
 #import "InjectedBundle.h"
 
+#import "ObjCObjectGraph.h"
 #import "WKBundleAPICast.h"
 #import "WKBundleInitialize.h"
 #import "WKWebProcessPlugInInternal.h"
-
 #import <Foundation/NSBundle.h>
 #import <stdio.h>
 #import <wtf/RetainPtr.h>
@@ -55,13 +55,13 @@ bool InjectedBundle::load(APIObject* initializationUserData)
         m_sandboxExtension = 0;
     }
     
-    RetainPtr<CFStringRef> injectedBundlePathStr(AdoptCF, CFStringCreateWithCharacters(0, reinterpret_cast<const UniChar*>(m_path.characters()), m_path.length()));
+    RetainPtr<CFStringRef> injectedBundlePathStr = adoptCF(CFStringCreateWithCharacters(0, reinterpret_cast<const UniChar*>(m_path.characters()), m_path.length()));
     if (!injectedBundlePathStr) {
         WTFLogAlways("InjectedBundle::load failed - Could not create the path string.\n");
         return false;
     }
     
-    RetainPtr<CFURLRef> bundleURL(AdoptCF, CFURLCreateWithFileSystemPath(0, injectedBundlePathStr.get(), kCFURLPOSIXPathStyle, false));
+    RetainPtr<CFURLRef> bundleURL = adoptCF(CFURLCreateWithFileSystemPath(0, injectedBundlePathStr.get(), kCFURLPOSIXPathStyle, false));
     if (!bundleURL) {
         WTFLogAlways("InjectedBundle::load failed - Could not create the url from the path string.\n");
         return false;
@@ -107,8 +107,17 @@ bool InjectedBundle::load(APIObject* initializationUserData)
     // Create the shared WKWebProcessPlugInController.
     [[WKWebProcessPlugInController alloc] _initWithPrincipalClassInstance:instance bundleRef:toAPI(this)];
 
-    if ([instance respondsToSelector:@selector(webProcessPlugInInitialize:)])
+    if ([instance respondsToSelector:@selector(webProcessPlugIn:initializeWithObject:)]) {
+        RetainPtr<id> objCInitializationUserData;
+        if (initializationUserData && initializationUserData->type() == APIObject::TypeObjCObjectGraph)
+            objCInitializationUserData = static_cast<ObjCObjectGraph*>(initializationUserData)->rootObject();
+        [instance webProcessPlugIn:[WKWebProcessPlugInController _shared] initializeWithObject:objCInitializationUserData.get()];
+    } else if ([instance respondsToSelector:@selector(webProcessPlugInInitialize:)]) {
+        CLANG_PRAGMA("clang diagnostic push")
+        CLANG_PRAGMA("clang diagnostic ignored \"-Wdeprecated-declarations\"")
         [instance webProcessPlugInInitialize:[WKWebProcessPlugInController _shared]];
+        CLANG_PRAGMA("clang diagnostic pop")
+    }
 
     return true;
 #else

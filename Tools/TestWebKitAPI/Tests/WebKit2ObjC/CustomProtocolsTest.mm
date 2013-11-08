@@ -28,57 +28,17 @@
 
 #import "PlatformUtilities.h"
 #import "TestBrowsingContextLoadDelegate.h"
-#import <Foundation/Foundation.h>
+#import "TestProtocol.h"
 #import <WebKit2/WebKit2.h>
 
-static NSString *testScheme = @"test";
-static NSString *testHost = @"test";
 static bool testFinished = false;
 
-@interface TestProtocol : NSURLProtocol {
-}
-@end
+namespace TestWebKitAPI {
 
-@implementation TestProtocol
-
-+ (BOOL)canInitWithRequest:(NSURLRequest *)request
-{
-    return [[[request URL] scheme] caseInsensitiveCompare:testScheme] == NSOrderedSame;
-}
-
-+ (NSURLRequest *)canonicalRequestForRequest:(NSURLRequest *)request
-{
-    return request;
-}
-
-+ (BOOL)requestIsCacheEquivalent:(NSURLRequest *)a toRequest:(NSURLRequest *)b
-{
-    return NO;
-}
-
-- (void)startLoading
-{
-    EXPECT_TRUE([[[[self request] URL] scheme] isEqualToString:testScheme]);
-    EXPECT_TRUE([[[[self request] URL] host] isEqualToString:testHost]);
-    
-    NSData *data = [@"<body>PASS</body>" dataUsingEncoding:NSASCIIStringEncoding];
-    NSURLResponse *response = [[NSURLResponse alloc] initWithURL:[[self request] URL] MIMEType:@"text/html" expectedContentLength:[data length] textEncodingName:nil];
-    [[self client] URLProtocol:self didReceiveResponse:response cacheStoragePolicy:NSURLCacheStorageNotAllowed];
-    [[self client] URLProtocol:self didLoadData:data];
-    [[self client] URLProtocolDidFinishLoading:self];
-    [response release];
-}
-
-- (void)stopLoading
-{
-}
-
-@end
-
-TEST(WebKit2CustomProtocolsTest, CustomProtocolUsed)
+TEST(WebKit2CustomProtocolsTest, MainResource)
 {
     [NSURLProtocol registerClass:[TestProtocol class]];
-    [WKBrowsingContextController registerSchemeForCustomProtocol:testScheme];
+    [WKBrowsingContextController registerSchemeForCustomProtocol:[TestProtocol scheme]];
 
     WKProcessGroup *processGroup = [[WKProcessGroup alloc] init];
     WKBrowsingContextGroup *browsingContextGroup = [[WKBrowsingContextGroup alloc] initWithIdentifier:@"TestIdentifier"];
@@ -86,7 +46,9 @@ TEST(WebKit2CustomProtocolsTest, CustomProtocolUsed)
     wkView.browsingContextController.loadDelegate = [[TestBrowsingContextLoadDelegate alloc] initWithBlockToRunOnLoad:^(WKBrowsingContextController *sender) {
         testFinished = true;
     }];
-    [wkView.browsingContextController loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@://%@", testScheme, testHost]]]];
+    [wkView.browsingContextController loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@://test", [TestProtocol scheme]]]]];
 
-    TestWebKitAPI::Util::run(&testFinished);
+    Util::run(&testFinished);
 }
+
+} // namespace TestWebKitAPI

@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(PDFKIT_PLUGIN)
-
 #import "config.h"
 #import "PDFPlugin.h"
+
+#if ENABLE(PDFKIT_PLUGIN)
 
 #import "ArgumentCoders.h"
 #import "AttributedString.h"
@@ -36,8 +36,10 @@
 #import "PDFKitImports.h"
 #import "PDFLayerControllerDetails.h"
 #import "PDFPluginAnnotation.h"
+#import "PDFPluginPasswordField.h"
 #import "PluginView.h"
 #import "WebContextMessages.h"
+#import "WebCoreArgumentCoders.h"
 #import "WebEvent.h"
 #import "WebEventConversion.h"
 #import "WebPage.h"
@@ -45,6 +47,7 @@
 #import "WebProcess.h"
 #import <PDFKit/PDFKit.h>
 #import <QuartzCore/QuartzCore.h>
+#import <WebCore/Cursor.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FormState.h>
 #import <WebCore/Frame.h>
@@ -76,6 +79,9 @@ static const char* annotationStyle =
 "    left: 0; "
 "    right: 0; "
 "    bottom: 0; "
+"    display: -webkit-box; "
+"    -webkit-box-align: center; "
+"    -webkit-box-pack: center; "
 "} "
 ".annotation { "
 "    position: absolute; "
@@ -83,7 +89,12 @@ static const char* annotationStyle =
 "} "
 "textarea.annotation { "
 "    resize: none; "
-"}";
+"} "
+"input.annotation[type='password'] { "
+"    position: static; "
+"    width: 200px; "
+"    margin-top: 100px; "
+"} ";
 
 // In non-continuous modes, a single scroll event with a magnitude of >= 20px
 // will jump to the next or previous page, to match PDFKit behavior.
@@ -167,6 +178,11 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
     _pdfPlugin->performWebSearch(string);
 }
 
+- (void)performSpotlightSearch:(NSString *)string
+{
+    _pdfPlugin->performSpotlightSearch(string);
+}
+
 - (void)openWithNativeApplication
 {
     _pdfPlugin->openWithNativeApplication();
@@ -215,11 +231,11 @@ PassRefPtr<PDFPlugin> PDFPlugin::create(WebFrame* frame)
 
 PDFPlugin::PDFPlugin(WebFrame* frame)
     : SimplePDFPlugin(frame)
-    , m_containerLayer(AdoptNS, [[CALayer alloc] init])
-    , m_contentLayer(AdoptNS, [[CALayer alloc] init])
-    , m_scrollCornerLayer(AdoptNS, [[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this])
-    , m_pdfLayerController(AdoptNS, [[pdfLayerControllerClass() alloc] init])
-    , m_pdfLayerControllerDelegate(AdoptNS, [[WKPDFLayerControllerDelegate alloc] initWithPDFPlugin:this])
+    , m_containerLayer(adoptNS([[CALayer alloc] init]))
+    , m_contentLayer(adoptNS([[CALayer alloc] init]))
+    , m_scrollCornerLayer(adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]))
+    , m_pdfLayerController(adoptNS([[pdfLayerControllerClass() alloc] init]))
+    , m_pdfLayerControllerDelegate(adoptNS([[WKPDFLayerControllerDelegate alloc] initWithPDFPlugin:this]))
 {
     m_pdfLayerController.get().delegate = m_pdfLayerControllerDelegate.get();
     m_pdfLayerController.get().parentLayer = m_contentLayer.get();
@@ -268,16 +284,13 @@ PassRefPtr<Scrollbar> PDFPlugin::createScrollbar(ScrollbarOrientation orientatio
 {
     RefPtr<Scrollbar> widget = Scrollbar::createNativeScrollbar(this, orientation, RegularScrollbar);
     if (orientation == HorizontalScrollbar) {
-        m_horizontalScrollbarLayer.adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]);
+        m_horizontalScrollbarLayer = adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]);
         [m_containerLayer.get() addSublayer:m_horizontalScrollbarLayer.get()];
-        
-        didAddHorizontalScrollbar(widget.get());
     } else {
-        m_verticalScrollbarLayer.adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]);
+        m_verticalScrollbarLayer = adoptNS([[WKPDFPluginScrollbarLayer alloc] initWithPDFPlugin:this]);
         [m_containerLayer.get() addSublayer:m_verticalScrollbarLayer.get()];
-        
-        didAddVerticalScrollbar(widget.get());
     }
+    didAddScrollbar(widget.get(), orientation);
     pluginView()->frame()->view()->addChild(widget.get());
     return widget.release();
 }
@@ -299,14 +312,14 @@ void PDFPlugin::pdfDocumentDidLoad()
 {
     addArchiveResource();
     
-    RetainPtr<PDFDocument> document(AdoptNS, [[pdfDocumentClass() alloc] initWithData:rawData()]);
+    RetainPtr<PDFDocument> document = adoptNS([[pdfDocumentClass() alloc] initWithData:rawData()]);
 
     setPDFDocument(document);
 
+    updatePageAndDeviceScaleFactors();
+
     [m_pdfLayerController.get() setFrameSize:size()];
     m_pdfLayerController.get().document = document.get();
-
-    updatePageAndDeviceScaleFactors();
 
     if (handlesPageScaleFactor())
         pluginView()->setPageScaleFactor([m_pdfLayerController.get() contentScaleFactor], IntPoint());
@@ -317,6 +330,27 @@ void PDFPlugin::pdfDocumentDidLoad()
     updateScrollbars();
 
     runScriptsInPDFDocument();
+
+    if ([document.get() isLocked])
+        createPasswordEntryForm();
+}
+
+void PDFPlugin::createPasswordEntryForm()
+{
+    m_passwordField = PDFPluginPasswordField::create(m_pdfLayerController.get(), this);
+    m_passwordField->attach(m_annotationContainer.get());
+}
+
+void PDFPlugin::attemptToUnlockPDF(const String& password)
+{
+    [m_pdfLayerController attemptToUnlockWithPassword:password];
+
+    if (![pdfDocument() isLocked]) {
+        m_passwordField = nullptr;
+
+        calculateSizes();
+        updateScrollbars();
+    }
 }
 
 void PDFPlugin::updatePageAndDeviceScaleFactors()
@@ -335,6 +369,11 @@ void PDFPlugin::contentsScaleFactorChanged(float)
 
 void PDFPlugin::calculateSizes()
 {
+    if ([pdfDocument() isLocked]) {
+        setPDFDocumentSize(IntSize(0, 0));
+        return;
+    }
+
     // FIXME: This should come straight from PDFKit.
     computePageBoxes();
 
@@ -345,7 +384,7 @@ void PDFPlugin::destroy()
 {
     m_pdfLayerController.get().delegate = 0;
 
-    if (webFrame() && webFrame()->coreFrame()) {
+    if (webFrame()) {
         if (FrameView* frameView = webFrame()->coreFrame()->view())
             frameView->removeScrollableArea(this);
     }
@@ -533,6 +572,21 @@ NSEvent *PDFPlugin::nsEventForWebMouseEvent(const WebMouseEvent& event)
     return [NSEvent mouseEventWithType:eventType location:positionInPDFViewCoordinates modifierFlags:modifierFlags timestamp:0 windowNumber:0 context:nil eventNumber:0 clickCount:event.clickCount() pressure:0];
 }
 
+void PDFPlugin::updateCursor(const WebMouseEvent& event, UpdateCursorMode mode)
+{
+    HitTestResult hitTestResult = None;
+
+    PDFSelection *selectionUnderMouse = [m_pdfLayerController.get() getSelectionForWordAtPoint:convertFromPluginToPDFView(event.position())];
+    if (selectionUnderMouse && [[selectionUnderMouse string] length])
+        hitTestResult = Text;
+
+    if (hitTestResult == m_lastHitTestResult && mode == UpdateIfNeeded)
+        return;
+
+    webFrame()->page()->send(Messages::WebPageProxy::SetCursor(hitTestResult == Text ? iBeamCursor() : pointerCursor()));
+    m_lastHitTestResult = hitTestResult;
+}
+
 bool PDFPlugin::handleMouseEvent(const WebMouseEvent& event)
 {
     PlatformMouseEvent platformEvent = platform(event);
@@ -562,6 +616,9 @@ bool PDFPlugin::handleMouseEvent(const WebMouseEvent& event)
     if (m_scrollCornerLayer && IntRect(m_scrollCornerLayer.get().frame).contains(mousePosition))
         return false;
 
+    if ([pdfDocument() isLocked])
+        return false;
+
     // Right-clicks and Control-clicks always call handleContextMenuEvent as well.
     if (event.button() == WebMouseEvent::RightButton || (event.button() == WebMouseEvent::LeftButton && event.controlKey()))
         return true;
@@ -571,6 +628,7 @@ bool PDFPlugin::handleMouseEvent(const WebMouseEvent& event)
     switch (event.type()) {
     case WebEvent::MouseMove:
         mouseMovedInContentArea();
+        updateCursor(event);
 
         if (targetScrollbar) {
             if (!targetScrollbarForLastMousePosition) {
@@ -626,6 +684,19 @@ bool PDFPlugin::handleMouseEvent(const WebMouseEvent& event)
         break;
     }
 
+    return false;
+}
+
+bool PDFPlugin::handleMouseEnterEvent(const WebMouseEvent& event)
+{
+    mouseEnteredContentArea();
+    updateCursor(event, ForceUpdate);
+    return false;
+}
+
+bool PDFPlugin::handleMouseLeaveEvent(const WebMouseEvent&)
+{
+    mouseExitedContentArea();
     return false;
 }
     
@@ -823,7 +894,7 @@ void PDFPlugin::writeItemsToPasteboard(NSArray *items, NSArray *types)
             continue;
 
         if ([type isEqualToString:NSStringPboardType] || [type isEqualToString:NSPasteboardTypeString]) {
-            RetainPtr<NSString> plainTextString(AdoptNS, [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+            RetainPtr<NSString> plainTextString = adoptNS([[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
             WebProcess::shared().connection()->send(Messages::WebContext::SetPasteboardStringForType(NSGeneralPboard, type, plainTextString.get()), 0);
         } else {
             RefPtr<SharedBuffer> buffer = SharedBuffer::wrapNSData(data);
@@ -984,6 +1055,11 @@ void PDFPlugin::performWebSearch(NSString *string)
     webFrame()->page()->send(Messages::WebPageProxy::SearchTheWeb(string));
 }
 
+void PDFPlugin::performSpotlightSearch(NSString *string)
+{
+    webFrame()->page()->send(Messages::WebPageProxy::SearchWithSpotlight(string));
+}
+
 bool PDFPlugin::handleWheelEvent(const WebWheelEvent& event)
 {
     PDFDisplayMode displayMode = [m_pdfLayerController.get() displayMode];
@@ -1021,6 +1097,14 @@ bool PDFPlugin::handleWheelEvent(const WebWheelEvent& event)
     }
 
     return SimplePDFPlugin::handleWheelEvent(event);
+}
+
+NSData *PDFPlugin::liveData() const
+{
+    if (m_activeAnnotation)
+        m_activeAnnotation->commit();
+
+    return SimplePDFPlugin::liveData();
 }
 
 } // namespace WebKit

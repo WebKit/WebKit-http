@@ -129,7 +129,6 @@ set(WebKit2_SOURCES
     Platform/CoreIPC/ArgumentDecoder.cpp
     Platform/CoreIPC/ArgumentEncoder.cpp
     Platform/CoreIPC/Attachment.cpp
-    Platform/CoreIPC/BinarySemaphore.cpp
     Platform/CoreIPC/Connection.cpp
     Platform/CoreIPC/DataReference.cpp
     Platform/CoreIPC/MessageDecoder.cpp
@@ -301,6 +300,7 @@ set(WebKit2_SOURCES
     UIProcess/WebUIClient.cpp
     UIProcess/WebVibrationProvider.cpp
     UIProcess/WebVibrationProxy.cpp
+    UIProcess/WebViewportAttributes.cpp
 
     UIProcess/API/C/WKApplicationCacheManager.cpp
     UIProcess/API/C/WKAuthenticationChallenge.cpp
@@ -343,6 +343,7 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKResourceCacheManager.cpp
     UIProcess/API/C/WKTextChecker.cpp
     UIProcess/API/C/WKVibration.cpp
+    UIProcess/API/C/WKViewportAttributes.cpp
 
     UIProcess/API/CoordinatedGraphics/WKCoordinatedScene.cpp
 
@@ -373,6 +374,9 @@ set(WebKit2_SOURCES
     UIProcess/Plugins/PluginProcessManager.cpp
     UIProcess/Plugins/PluginProcessProxy.cpp
     UIProcess/Plugins/WebPluginSiteDataManager.cpp
+
+    UIProcess/Storage/LocalStorageDatabase.cpp
+    UIProcess/Storage/LocalStorageDatabaseTracker.cpp
 
     WebProcess/WebConnectionToUIProcess.cpp
     WebProcess/WebProcess.cpp
@@ -457,8 +461,9 @@ set(WebKit2_SOURCES
 
     WebProcess/ResourceCache/WebResourceCacheManager.cpp
 
-    WebProcess/Storage/StorageAreaProxy.cpp
-    WebProcess/Storage/StorageNamespaceProxy.cpp
+    WebProcess/Storage/StorageAreaImpl.cpp
+    WebProcess/Storage/StorageAreaMap.cpp
+    WebProcess/Storage/StorageNamespaceImpl.cpp
     WebProcess/Storage/WebKeyValueStorageManager.cpp
 
     WebProcess/WebCoreSupport/WebBatteryClient.cpp
@@ -487,8 +492,8 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/EncoderAdapter.cpp
     WebProcess/WebPage/EventDispatcher.cpp
     WebProcess/WebPage/FindController.cpp
-
     WebProcess/WebPage/LayerTreeHost.cpp
+    WebProcess/WebPage/PageBanner.cpp
     WebProcess/WebPage/PageOverlay.cpp
     WebProcess/WebPage/TapHighlightController.cpp
     WebProcess/WebPage/WebBackForwardListProxy.cpp
@@ -568,7 +573,7 @@ set(WebKit2_MESSAGES_IN_FILES
 
     WebProcess/ResourceCache/WebResourceCacheManager.messages.in
 
-    WebProcess/Storage/StorageAreaProxy.messages.in
+    WebProcess/Storage/StorageAreaMap.messages.in
     WebProcess/Storage/WebKeyValueStorageManager.messages.in
 
     WebProcess/WebCoreSupport/WebDatabaseManager.messages.in
@@ -591,6 +596,7 @@ set(WebProcess_LIBRARIES
 )
 
 set(WebKit2_LIBRARIES
+    ${WTF_LIBRARY_NAME}
     ${WebCore_LIBRARY_NAME}
 )
 

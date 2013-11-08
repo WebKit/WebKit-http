@@ -76,7 +76,10 @@ inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlo
 
     if (!Options::useDFGJIT())
         return false;
-    
+
+    if (!Options::bytecodeRangeToDFGCompile().isInRange(codeBlock->instructionCount()))
+        return false;
+
     if (logCompilationChanges())
         dataLog("DFG compiling ", *codeBlock, ", number of instructions = ", codeBlock->instructionCount(), "\n");
     
@@ -103,7 +106,7 @@ inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlo
             mustHandleValues[i] = exec->uncheckedR(operand).jsValue();
     }
     
-    Graph dfg(exec->globalData(), codeBlock, osrEntryBytecodeIndex, mustHandleValues);
+    Graph dfg(exec->vm(), codeBlock, osrEntryBytecodeIndex, mustHandleValues);
     if (!parse(exec, dfg))
         return false;
     

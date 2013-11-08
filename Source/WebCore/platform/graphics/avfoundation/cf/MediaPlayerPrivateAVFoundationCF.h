@@ -40,6 +40,9 @@ public:
 
     static void registerMediaEngine(MediaEngineRegistrar);
 
+    //FIXME: this needs to be implemented
+    virtual InbandTextTrackPrivateAVF* currentTrack() const { return 0; }
+
 private:
     MediaPlayerPrivateAVFoundationCF(MediaPlayer*);
 
@@ -74,10 +77,11 @@ private:
     virtual void checkPlayability();
     virtual void updateRate();
     virtual float rate() const;
-    virtual void seekToTime(float time);
+    virtual void seekToTime(double time);
     virtual unsigned totalBytes() const;
     virtual PassRefPtr<TimeRanges> platformBufferedTimeRanges() const;
-    virtual float platformMaxTimeSeekable() const;
+    virtual double platformMinTimeSeekable() const;
+    virtual double platformMaxTimeSeekable() const;
     virtual float platformDuration() const;
     virtual float platformMaxTimeLoaded() const;
     virtual void beginLoadingMetadata();

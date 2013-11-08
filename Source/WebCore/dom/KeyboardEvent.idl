@@ -40,37 +40,37 @@
     readonly attribute boolean          altGraphKey;
 
 #if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
-    boolean getModifierState(in [Optional=DefaultIsUndefined] DOMString keyIdentifierArg);
+    boolean getModifierState([Default=Undefined] optional DOMString keyIdentifierArg);
 #endif
 
     // FIXME: this does not match the version in the DOM spec.
-    void initKeyboardEvent(in [Optional=DefaultIsUndefined] DOMString type, 
-                           in [Optional=DefaultIsUndefined] boolean canBubble, 
-                           in [Optional=DefaultIsUndefined] boolean cancelable, 
-                           in [Optional=DefaultIsUndefined] DOMWindow view, 
-                           in [Optional=DefaultIsUndefined] DOMString keyIdentifier,
-                           in [Optional=DefaultIsUndefined] unsigned long keyLocation,
-                           in [Optional=DefaultIsUndefined] boolean ctrlKey,
-                           in [Optional=DefaultIsUndefined] boolean altKey,
-                           in [Optional=DefaultIsUndefined] boolean shiftKey,
-                           in [Optional=DefaultIsUndefined] boolean metaKey,
-                           in [Optional=DefaultIsUndefined] boolean altGraphKey);
+    void initKeyboardEvent([Default=Undefined] optional DOMString type, 
+                           [Default=Undefined] optional boolean canBubble, 
+                           [Default=Undefined] optional boolean cancelable, 
+                           [Default=Undefined] optional DOMWindow view, 
+                           [Default=Undefined] optional DOMString keyIdentifier,
+                           [Default=Undefined] optional unsigned long keyLocation,
+                           [Default=Undefined] optional boolean ctrlKey,
+                           [Default=Undefined] optional boolean altKey,
+                           [Default=Undefined] optional boolean shiftKey,
+                           [Default=Undefined] optional boolean metaKey,
+                           [Default=Undefined] optional boolean altGraphKey);
 
     // WebKit Extensions
 #if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
     readonly attribute long             keyCode;
     readonly attribute long             charCode;
     
-    void initKeyboardEvent(in [Optional=DefaultIsUndefined] DOMString type, 
-                           in [Optional=DefaultIsUndefined] boolean canBubble, 
-                           in [Optional=DefaultIsUndefined] boolean cancelable, 
-                           in [Optional=DefaultIsUndefined] DOMWindow view, 
-                           in [Optional=DefaultIsUndefined] DOMString keyIdentifier,
-                           in [Optional=DefaultIsUndefined] unsigned long keyLocation,
-                           in [Optional=DefaultIsUndefined] boolean ctrlKey,
-                           in [Optional=DefaultIsUndefined] boolean altKey,
-                           in [Optional=DefaultIsUndefined] boolean shiftKey,
-                           in [Optional=DefaultIsUndefined] boolean metaKey);
+    void initKeyboardEvent([Default=Undefined] optional DOMString type, 
+                           [Default=Undefined] optional boolean canBubble, 
+                           [Default=Undefined] optional boolean cancelable, 
+                           [Default=Undefined] optional DOMWindow view, 
+                           [Default=Undefined] optional DOMString keyIdentifier,
+                           [Default=Undefined] optional unsigned long keyLocation,
+                           [Default=Undefined] optional boolean ctrlKey,
+                           [Default=Undefined] optional boolean altKey,
+                           [Default=Undefined] optional boolean shiftKey,
+                           [Default=Undefined] optional boolean metaKey);
 #endif
 
 };

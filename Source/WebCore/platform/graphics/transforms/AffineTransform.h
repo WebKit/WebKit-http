@@ -34,14 +34,8 @@
 typedef struct CGAffineTransform CGAffineTransform;
 #elif USE(CAIRO)
 #include <cairo.h>
-#elif PLATFORM(OPENVG)
-#include "VGUtils.h"
 #elif PLATFORM(QT)
 #include <QTransform>
-#elif USE(SKIA)
-#include <SkMatrix.h>
-#elif PLATFORM(WX) && USE(WXGC)
-#include <wx/graphics.h>
 #endif
 
 namespace WebCore {
@@ -174,14 +168,8 @@ public:
     operator CGAffineTransform() const;
 #elif USE(CAIRO)
     operator cairo_matrix_t() const;
-#elif PLATFORM(OPENVG)
-    operator VGMatrix() const;
 #elif PLATFORM(QT)
     operator QTransform() const;
-#elif USE(SKIA)
-    operator SkMatrix() const;
-#elif PLATFORM(WX) && USE(WXGC)
-    operator wxGraphicsMatrix() const;
 #endif
 
     static AffineTransform translation(double x, double y)

@@ -33,12 +33,11 @@
 #include "config.h"
 
 #if USE(ACCELERATED_COMPOSITING)
-
 #include "LayerRenderer.h"
-#include "LayerRendererClient.h"
 
 #include "LayerCompositingThread.h"
 #include "LayerFilterRenderer.h"
+#include "LayerRendererClient.h"
 #include "TextureCacheCompositingThread.h"
 
 #include <BlackBerryPlatformGraphics.h>
@@ -242,9 +241,9 @@ void LayerRenderer::setViewport(const IntRect& targetRect, const IntRect& clipRe
     m_clipRect = clipRect;
     m_clipRect.intersect(targetRect);
     m_clipRect = FloatRect(-1 + 2 * (m_clipRect.x() - targetRect.x()) / targetRect.width(),
-                           -1 + 2 * (m_clipRect.y() - targetRect.y()) / targetRect.height(),
-                           2 * m_clipRect.width() / targetRect.width(),
-                           2 * m_clipRect.height() / targetRect.height());
+        -1 + 2 * (m_clipRect.y() - targetRect.y()) / targetRect.height(),
+        2 * m_clipRect.width() / targetRect.width(),
+        2 * m_clipRect.height() / targetRect.height());
 
 #if DEBUG_CLIPPING
     printf("LayerRenderer::setViewport() m_visibleRect=(%.2f,%.2f %.2fx%.2f), m_layoutRect=(%d,%d %dx%d), m_contentsSize=(%dx%d), m_viewport=(%d,%d %dx%d), m_scissorRect=(%d,%d %dx%d), m_clipRect=(%.2f,%.2f %.2fx%.2f)\n",
@@ -381,9 +380,9 @@ void LayerRenderer::compositeBuffer(const TransformationMatrix& transform, const
         return;
 
     FloatQuad vertices(transform.mapPoint(contents.minXMinYCorner()),
-                       transform.mapPoint(contents.minXMaxYCorner()),
-                       transform.mapPoint(contents.maxXMaxYCorner()),
-                       transform.mapPoint(contents.maxXMinYCorner()));
+        transform.mapPoint(contents.minXMaxYCorner()),
+        transform.mapPoint(contents.maxXMaxYCorner()),
+        transform.mapPoint(contents.maxXMinYCorner()));
 
     if (!vertices.boundingBox().intersects(m_clipRect))
         return;
@@ -391,9 +390,8 @@ void LayerRenderer::compositeBuffer(const TransformationMatrix& transform, const
     if (!contentsOpaque || opacity < 1.0f) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-    } else {
+    } else
         glDisable(GL_BLEND);
-    }
 
     if (BlackBerry::Platform::Graphics::lockAndBindBufferGLTexture(buffer, GL_TEXTURE_2D)) {
         const GLES2Program& program = useProgram(LayerProgramRGBA);
@@ -410,9 +408,9 @@ void LayerRenderer::compositeBuffer(const TransformationMatrix& transform, const
 void LayerRenderer::drawColor(const TransformationMatrix& transform, const FloatRect& contents, const Color& color)
 {
     FloatQuad vertices(transform.mapPoint(contents.minXMinYCorner()),
-                       transform.mapPoint(contents.minXMaxYCorner()),
-                       transform.mapPoint(contents.maxXMaxYCorner()),
-                       transform.mapPoint(contents.maxXMinYCorner()));
+        transform.mapPoint(contents.minXMaxYCorner()),
+        transform.mapPoint(contents.maxXMaxYCorner()),
+        transform.mapPoint(contents.maxXMinYCorner()));
 
     if (!vertices.boundingBox().intersects(m_clipRect))
         return;
@@ -445,11 +443,7 @@ bool LayerRenderer::useSurface(LayerRendererSurface* surface)
 
     surface->ensureTexture();
 
-    GLuint texid = reinterpret_cast<GLuint>(platformBufferHandle(surface->texture()->textureId()));
-    if (!texid) {
-        BlackBerry::Platform::Graphics::lockAndBindBufferGLTexture(surface->texture()->textureId(), GL_TEXTURE_2D);
-        texid = reinterpret_cast<GLuint>(platformBufferHandle(surface->texture()->textureId()));
-    }
+    GLuint texid = surface->texture()->platformTexture();
 
     if (!m_fbo)
         glGenFramebuffers(1, &m_fbo);
@@ -599,8 +593,18 @@ void LayerRenderer::drawDebugBorder(LayerCompositingThread* layer)
     } else
         glDisable(GL_BLEND);
 
+    // If we're rendering to a surface, don't include debug border inside the surface.
+    if (m_currentLayerRendererSurface)
+        return;
+
+    FloatQuad transformedBounds;
+    if (layerAlreadyOnSurface(layer))
+        transformedBounds = layer->layerRendererSurface()->transformedBounds();
+    else
+        transformedBounds = layer->getTransformedBounds();
+
     const GLES2Program& program = useProgram(ColorProgram);
-    glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &layer->getTransformedBounds());
+    glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &transformedBounds);
     glUniform4f(m_colorColorLocation, borderColor.red() / 255.0, borderColor.green() / 255.0, borderColor.blue() / 255.0, 1);
 
     glLineWidth(std::max(1.0f, layer->borderWidth()));
@@ -988,7 +992,7 @@ void LayerRenderer::compositeLayersRecursive(LayerCompositingThread* layer, int 
         if (preserves3D && superlayerPreserves3D)
             continue;
 
-         compositeLayersRecursive(sublayer, newStencilValue, clipRect);
+        compositeLayersRecursive(sublayer, newStencilValue, clipRect);
     }
 
     if (stencilClip) {

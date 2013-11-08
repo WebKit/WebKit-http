@@ -476,7 +476,7 @@ static void prepareDataForPrintingOnSecondaryThread(void* untypedContext)
     scaledPrintingRect.scale(1 / _totalScaleFactorForPrinting);
     IntSize imageSize(nsRect.size);
     imageSize.scale(_webFrame->page()->deviceScaleFactor());
-    HashMap<WebCore::IntRect, RefPtr<ShareableBitmap> >::iterator pagePreviewIterator = _pagePreviews.find(scaledPrintingRect);
+    HashMap<WebCore::IntRect, RefPtr<ShareableBitmap>>::iterator pagePreviewIterator = _pagePreviews.find(scaledPrintingRect);
     if (pagePreviewIterator == _pagePreviews.end())  {
         // It's too early to ask for page preview if we don't even know page size and scale.
         if ([self _hasPageRects]) {
@@ -536,8 +536,8 @@ static void prepareDataForPrintingOnSecondaryThread(void* untypedContext)
     ASSERT(!_printedPagesData.isEmpty()); // Prepared by knowsPageRange:
 
     if (!_printedPagesPDFDocument) {
-        RetainPtr<NSData> pdfData(AdoptNS, [[NSData alloc] initWithBytes:_printedPagesData.data() length:_printedPagesData.size()]);
-        _printedPagesPDFDocument.adoptNS([[pdfDocumentClass() alloc] initWithData:pdfData.get()]);
+        RetainPtr<NSData> pdfData = adoptNS([[NSData alloc] initWithBytes:_printedPagesData.data() length:_printedPagesData.size()]);
+        _printedPagesPDFDocument = adoptNS([[pdfDocumentClass() alloc] initWithData:pdfData.get()]);
     }
 
     unsigned printedPageNumber = [self _pageForRect:nsRect] - [self _firstPrintedPageNumber];

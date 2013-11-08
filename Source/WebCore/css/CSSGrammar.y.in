@@ -743,6 +743,7 @@ supports:
         $$ = parser->createSupportsRule($4, $9);
     }
     | before_supports_rule SUPPORTS_SYM supports_error {
+        $$ = 0;
         parser->popRuleData();
         parser->popSupportsRuleData();
     }
@@ -876,8 +877,13 @@ key:
             $$.fValue = 0;
         else if (str.equalIgnoringCase("to"))
             $$.fValue = 100;
-        else
+        else {
+            $$.unit = 0;
             YYERROR;
+        }
+    }
+    | error {
+        $$.unit = 0;
     }
     ;
 
@@ -1609,11 +1615,11 @@ decl_list:
     ;
 
 declaration:
-    VAR_DEFINITION ':' maybe_space expr prio {
+    VAR_DEFINITION maybe_space ':' maybe_space expr prio {
 #if ENABLE_CSS_VARIABLES
-        parser->storeVariableDeclaration($1, parser->sinkFloatingValueList($4), $5);
+        parser->storeVariableDeclaration($1, parser->sinkFloatingValueList($5), $6);
         $$ = true;
-        parser->markPropertyEnd($5, true);
+        parser->markPropertyEnd($6, true);
 #else
         $$ = false;
 #endif

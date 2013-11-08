@@ -37,6 +37,7 @@
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
 #include "HTTPParsers.h"
+#include "HistoryController.h"
 #include "HistoryItem.h"
 #include "IconDatabase.h"
 #include "Image.h"
@@ -49,6 +50,7 @@
 #include "PluginDatabase.h"
 #include "PluginView.h"
 #include "ProgressTracker.h"
+#include "ResourceBuffer.h"
 #include "ScopePointer.h"
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
 #include "Settings.h"
@@ -68,7 +70,9 @@
 #include <BlackBerryPlatformLog.h>
 #include <BlackBerryPlatformMessageClient.h>
 #include <BlackBerryPlatformScreen.h>
+#include <BlackBerryPlatformStringBuilder.h>
 #include <JavaScriptCore/APICast.h>
+#include <network/DataStream.h>
 #include <network/FilterStream.h>
 #include <network/NetworkRequest.h>
 #include <wtf/text/Base64.h>
@@ -263,7 +267,7 @@ void FrameLoaderClientBlackBerry::doPendingFragmentScroll()
     delayPolicyCheckUntilFragmentExists(fragment, function);
 }
 
-void FrameLoaderClientBlackBerry::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const NavigationAction&, const ResourceRequest& request, PassRefPtr<FormState>, const String& frameName)
+void FrameLoaderClientBlackBerry::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const NavigationAction&, const ResourceRequest& request, PassRefPtr<FormState>, const String&)
 {
     if (ScriptController::processingUserGesture() && !m_webPagePrivate->m_pluginMayOpenNewTab) {
         (m_frame->loader()->policyChecker()->*function)(PolicyIgnore);
@@ -304,6 +308,11 @@ void FrameLoaderClientBlackBerry::committedLoad(DocumentLoader* loader, const ch
     }
 }
 
+bool FrameLoaderClientBlackBerry::shouldAlwaysUsePluginDocument(const String& mimeType) const
+{
+    return mimeType == "application/x-shockwave-flash";
+}
+
 PassRefPtr<Widget> FrameLoaderClientBlackBerry::createPlugin(const IntSize& pluginSize,
     HTMLPlugInElement* element, const KURL& url, const Vector<String>& paramNames,
     const Vector<String>& paramValues, const String& mimeTypeIn, bool loadManually)
@@ -312,7 +321,7 @@ PassRefPtr<Widget> FrameLoaderClientBlackBerry::createPlugin(const IntSize& plug
     if (mimeType.isEmpty()) {
         mimeType = MIMETypeRegistry::getMIMETypeForPath(url.path());
         mimeType = MIMETypeRegistry::getNormalizedMIMEType(mimeType);
-        if (mimeType != "application/x-shockwave-flash")
+        if (!shouldAlwaysUsePluginDocument(mimeType))
             mimeType = mimeTypeIn;
     }
 
@@ -326,7 +335,7 @@ PassRefPtr<Widget> FrameLoaderClientBlackBerry::createPlugin(const IntSize& plug
     // will generally be a valid media mime type, or it may be null. We
     // explicitly check for Flash content so it does not get rendered as
     // text at this point, producing garbled characters.
-    if (mimeType != "application/x-shockwave-flash" && m_frame->loader() && m_frame->loader()->subframeLoader() && !url.isNull())
+    if (!shouldAlwaysUsePluginDocument(mimeType) && m_frame->loader() && m_frame->loader()->subframeLoader() && !url.isNull())
         m_frame->loader()->subframeLoader()->requestFrame(element, url, String());
 
     return 0;
@@ -502,7 +511,7 @@ void FrameLoaderClientBlackBerry::dispatchDidStartProvisionalLoad()
     m_wasProvisionalLoadTriggeredByUserGesture = ScriptController::processingUserGesture();
 }
 
-void FrameLoaderClientBlackBerry::dispatchDidReceiveResponse(DocumentLoader*, unsigned long identifier, const ResourceResponse& response)
+void FrameLoaderClientBlackBerry::dispatchDidReceiveResponse(DocumentLoader*, unsigned long, const ResourceResponse& response)
 {
     if (m_webPagePrivate->m_dumpRenderTree)
         m_webPagePrivate->m_dumpRenderTree->didReceiveResponseForFrame(m_frame, response);
@@ -625,7 +634,7 @@ void FrameLoaderClientBlackBerry::dispatchDidFinishLoad()
             String title = linkElement->title();
 
             if (WTF::equalIgnoringCase(linkElement->rel(), "apple-touch-icon"))
-                m_webPagePrivate->m_client->setLargeIcon(href.latin1().data());
+                m_webPagePrivate->m_client->setLargeIcon(href);
             else if (WTF::equalIgnoringCase(linkElement->rel(), "search")) {
                 if (WTF::equalIgnoringCase(linkElement->type(), "application/opensearchdescription+xml"))
                     m_webPagePrivate->m_client->setSearchProviderDetails(title, href);
@@ -900,8 +909,7 @@ void FrameLoaderClientBlackBerry::postProgressFinishedNotification()
     // we may need to call readyToRender now.
     readyToRender(false);
 
-    // FIXME: Send up a real status code.
-    m_webPagePrivate->m_client->notifyLoadFinished(m_loadError.isNull() ? 0 : -1);
+    m_webPagePrivate->m_client->notifyLoadFinished(m_loadError.isNull() ? 0 : m_loadError.errorCode());
 
     // Notify plugins that are waiting for the page to fully load before starting that
     // the load has completed.
@@ -935,7 +943,7 @@ bool FrameLoaderClientBlackBerry::shouldStopLoadingForHistoryItem(HistoryItem*) 
 
 Frame* FrameLoaderClientBlackBerry::dispatchCreatePage(const NavigationAction& navigation)
 {
-    WebPage* webPage = m_webPagePrivate->m_client->createWindow(0, 0, -1, -1, WebPageClient::FlagWindowDefault, navigation.url().string(), BlackBerry::Platform::String::emptyString());
+    WebPage* webPage = m_webPagePrivate->m_client->createWindow(0, 0, -1, -1, WebPageClient::FlagWindowDefault, navigation.url().string(), BlackBerry::Platform::String::emptyString(), ScriptController::processingUserGesture());
     if (!webPage)
         return 0;
 
@@ -1008,7 +1016,7 @@ void FrameLoaderClientBlackBerry::dispatchWillSendRequest(DocumentLoader* docLoa
     }
 }
 
-bool FrameLoaderClientBlackBerry::shouldUseCredentialStorage(DocumentLoader* loader, long unsigned identifier)
+bool FrameLoaderClientBlackBerry::shouldUseCredentialStorage(DocumentLoader*, long unsigned)
 {
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
     if (m_frame->page()->settings()->privateBrowsingEnabled())
@@ -1184,15 +1192,50 @@ PassRefPtr<FrameNetworkingContext> FrameLoaderClientBlackBerry::createNetworking
 
 void FrameLoaderClientBlackBerry::startDownload(const ResourceRequest& request, const String& suggestedName)
 {
-    m_webPagePrivate->load(request.url().string(), BlackBerry::Platform::String::emptyString(), "GET", NetworkRequest::UseProtocolCachePolicy, 0, 0, 0, 0, false, false, true, "", suggestedName);
+    ResourceRequest requestCopy = request;
+    requestCopy.setSuggestedSaveName(suggestedName);
+    requestCopy.setForceDownload(true);
+    m_webPagePrivate->m_mainFrame->loader()->load(FrameLoadRequest(m_webPagePrivate->m_mainFrame, requestCopy));
 }
 
-void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest&, const ResourceResponse& r)
+void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest& request, const ResourceResponse& response)
 {
-    BlackBerry::Platform::FilterStream* stream = NetworkManager::instance()->streamForHandle(documentLoader->mainResourceLoader()->handle());
-    ASSERT(stream);
+    ASSERT(documentLoader);
+    ResourceBuffer* buff = documentLoader->mainResourceData().get();
 
-    m_webPagePrivate->m_client->downloadRequested(stream, r.suggestedFilename());
+    if (!buff) {
+        // If no cached, like policyDownload resource which don't go render at all, just direct to downloadStream.
+        ASSERT(documentLoader->mainResourceLoader() && documentLoader->mainResourceLoader()->handle());
+        ResourceHandle* handle = documentLoader->mainResourceLoader()->handle();
+        BlackBerry::Platform::FilterStream* stream = NetworkManager::instance()->streamForHandle(handle);
+        // There are cases where there won't have a FilterStream
+        // associated with a ResourceHandle. For instance, Blob objects
+        // have their own ResourceHandle class which won't call startJob
+        // to do the proper setup. Do it here.
+        if (!stream) {
+            int playerId = static_cast<FrameLoaderClientBlackBerry*>(m_frame->loader()->client())->playerId();
+            NetworkManager::instance()->startJob(playerId, handle, request, m_frame, false);
+            stream = NetworkManager::instance()->streamForHandle(handle);
+        }
+        ASSERT(stream);
+
+        m_webPagePrivate->m_client->downloadRequested(stream, response.suggestedFilename());
+        return;
+    }
+
+    // For main page resource which has cached, get from cached resource.
+    BlackBerry::Platform::StringBuilder url;
+    STATIC_LOCAL_STRING(s_create, "data:");
+    url.append(s_create);
+    url.append(BlackBerry::Platform::String::fromUtf8(response.mimeType().utf8().data()));
+    STATIC_LOCAL_STRING(s_base64, ";base64,");
+    url.append(s_base64);
+    url.append(BlackBerry::Platform::String::fromUtf8(base64Encode(CString(buff->data(), buff->size())).utf8().data()));
+    NetworkRequest req;
+    req.setRequestUrl(url.string(), BlackBerry::Platform::String::fromAscii("GET"));
+    BlackBerry::Platform::DataStream *stream = new BlackBerry::Platform::DataStream(req);
+    m_webPagePrivate->m_client->downloadRequested(stream, response.suggestedFilename());
+    stream->streamOpen();
 }
 
 void FrameLoaderClientBlackBerry::dispatchDidReceiveIcon()
@@ -1213,7 +1256,7 @@ void FrameLoaderClientBlackBerry::dispatchDidReceiveIcon()
     base64Encode(static_cast<const char*>(data->data()), data->size(), out);
     out.append('\0'); // Make it null-terminated.
     String iconUrl = iconDatabase().synchronousIconURLForPageURL(url);
-    m_webPagePrivate->m_client->setFavicon(out.data(), iconUrl);
+    m_webPagePrivate->m_client->setFavicon(BlackBerry::Platform::String::fromAscii(out.data(), out.size()), iconUrl);
     data->unref();
 }
 

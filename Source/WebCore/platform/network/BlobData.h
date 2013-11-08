@@ -34,6 +34,7 @@
 #include "FileSystem.h"
 #include "KURL.h"
 #include <wtf/Forward.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -172,7 +173,7 @@ public:
     void detachFromCurrentThread();
 
     const String& contentType() const { return m_contentType; }
-    void setContentType(const String& contentType) { m_contentType = contentType; }
+    void setContentType(const String&);
 
     const String& contentDisposition() const { return m_contentDisposition; }
     void setContentDisposition(const String& contentDisposition) { m_contentDisposition = contentDisposition; }

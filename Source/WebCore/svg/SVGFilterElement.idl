@@ -40,7 +40,7 @@
     readonly attribute SVGAnimatedInteger     filterResX;
     readonly attribute SVGAnimatedInteger     filterResY;
 
-    void setFilterRes(in [Optional=DefaultIsUndefined] unsigned long filterResX, 
-                      in [Optional=DefaultIsUndefined] unsigned long filterResY);
+    void setFilterRes([Default=Undefined] optional unsigned long filterResX, 
+                      [Default=Undefined] optional unsigned long filterResY);
 };
 

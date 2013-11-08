@@ -30,8 +30,6 @@
 #include "MutationRecord.h"
 #include "StylePropertySet.h"
 #include "StyledElement.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include <wtf/MemoryInstrumentationHashMap.h>
 
 using namespace std;
 
@@ -132,13 +130,6 @@ void PropertySetCSSStyleDeclaration::deref()
     m_propertySet->deref(); 
 }
 
-void PropertySetCSSStyleDeclaration::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_propertySet, "propertySet");
-    info.addMember(m_cssomCSSValueClones, "cssomCSSValueClones");
-}
-
 unsigned PropertySetCSSStyleDeclaration::length() const
 {
     return m_propertySet->propertyCount();
@@ -199,10 +190,7 @@ String PropertySetCSSStyleDeclaration::getPropertyShorthand(const String& proper
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return String();
-    CSSPropertyID shorthandID = m_propertySet->getPropertyShorthand(propertyID);
-    if (!shorthandID)
-        return String();
-    return getPropertyNameString(shorthandID);
+    return m_propertySet->getPropertyShorthand(propertyID);
 }
 
 bool PropertySetCSSStyleDeclaration::isPropertyImplicit(const String& propertyName)
@@ -302,15 +290,9 @@ StyleSheetContents* PropertySetCSSStyleDeclaration::contextStyleSheet() const
     return cssStyleSheet ? cssStyleSheet->contents() : 0;
 }
 
-PassRefPtr<StylePropertySet> PropertySetCSSStyleDeclaration::copy() const
+PassRefPtr<MutableStylePropertySet> PropertySetCSSStyleDeclaration::copyProperties() const
 {
-    return m_propertySet->copy();
-}
-
-PassRefPtr<StylePropertySet> PropertySetCSSStyleDeclaration::makeMutable()
-{
-    ASSERT(m_propertySet->isMutable());
-    return m_propertySet;
+    return m_propertySet->mutableCopy();
 }
 
 bool PropertySetCSSStyleDeclaration::cssPropertyMatches(CSSPropertyID propertyID, const CSSValue* propertyValue) const
@@ -318,7 +300,7 @@ bool PropertySetCSSStyleDeclaration::cssPropertyMatches(CSSPropertyID propertyID
     return m_propertySet->propertyMatches(propertyID, propertyValue);
 }
     
-StyleRuleCSSStyleDeclaration::StyleRuleCSSStyleDeclaration(StylePropertySet* propertySet, CSSRule* parentRule)
+StyleRuleCSSStyleDeclaration::StyleRuleCSSStyleDeclaration(MutableStylePropertySet* propertySet, CSSRule* parentRule)
     : PropertySetCSSStyleDeclaration(propertySet)
     , m_refCount(1)
     , m_parentRule(parentRule) 
@@ -364,26 +346,12 @@ CSSStyleSheet* StyleRuleCSSStyleDeclaration::parentStyleSheet() const
     return m_parentRule ? m_parentRule->parentStyleSheet() : 0;
 }
 
-void StyleRuleCSSStyleDeclaration::reattach(StylePropertySet* propertySet)
+void StyleRuleCSSStyleDeclaration::reattach(MutableStylePropertySet* propertySet)
 {
     ASSERT(propertySet);
     m_propertySet->deref();
     m_propertySet = propertySet;
     m_propertySet->ref();
-}
-
-void StyleRuleCSSStyleDeclaration::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    PropertySetCSSStyleDeclaration::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_parentRule, "parentRule");
-}
-
-void InlineCSSStyleDeclaration::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    PropertySetCSSStyleDeclaration::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_parentElement, "parentElement");
 }
 
 void InlineCSSStyleDeclaration::didMutate(MutationType type)

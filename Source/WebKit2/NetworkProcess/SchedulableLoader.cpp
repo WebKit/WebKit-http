@@ -38,19 +38,21 @@ using namespace WebCore;
 namespace WebKit {
 
 SchedulableLoader::SchedulableLoader(const NetworkResourceLoadParameters& parameters, NetworkConnectionToWebProcess* connection)
-    : m_identifier(parameters.identifier())
-    , m_webPageID(parameters.webPageID())
-    , m_webFrameID(parameters.webFrameID())
-    , m_request(parameters.request())
-    , m_priority(parameters.priority())
-    , m_contentSniffingPolicy(parameters.contentSniffingPolicy())
-    , m_allowStoredCredentials(parameters.allowStoredCredentials())
-    , m_inPrivateBrowsingMode(parameters.inPrivateBrowsingMode())
+    : m_identifier(parameters.identifier)
+    , m_webPageID(parameters.webPageID)
+    , m_webFrameID(parameters.webFrameID)
+    , m_request(parameters.request)
+    , m_priority(parameters.priority)
+    , m_contentSniffingPolicy(parameters.contentSniffingPolicy)
+    , m_allowStoredCredentials(parameters.allowStoredCredentials)
+    , m_clientCredentialPolicy(parameters.clientCredentialPolicy)
+    , m_inPrivateBrowsingMode(parameters.inPrivateBrowsingMode)
+    , m_shouldClearReferrerOnHTTPSToHTTPRedirect(parameters.shouldClearReferrerOnHTTPSToHTTPRedirect)
+    , m_isLoadingMainResource(parameters.isMainResource)
     , m_connection(connection)
-    , m_shouldClearReferrerOnHTTPSToHTTPRedirect(parameters.shouldClearReferrerOnHTTPSToHTTPRedirect())
 {
-    for (size_t i = 0, count = parameters.requestBodySandboxExtensions().size(); i < count; ++i) {
-        if (RefPtr<SandboxExtension> extension = SandboxExtension::create(parameters.requestBodySandboxExtensions()[i]))
+    for (size_t i = 0, count = parameters.requestBodySandboxExtensions.size(); i < count; ++i) {
+        if (RefPtr<SandboxExtension> extension = SandboxExtension::create(parameters.requestBodySandboxExtensions[i]))
             m_requestBodySandboxExtensions.append(extension);
     }
 
@@ -59,18 +61,18 @@ SchedulableLoader::SchedulableLoader(const NetworkResourceLoadParameters& parame
         const Vector<FormDataElement>& elements = m_request.httpBody()->elements();
         for (size_t i = 0, count = elements.size(); i < count; ++i) {
             if (elements[i].m_type == FormDataElement::encodedBlob) {
-                Vector<RefPtr<SandboxExtension> > blobElementExtensions = NetworkBlobRegistry::shared().sandboxExtensions(elements[i].m_url);
-                m_requestBodySandboxExtensions.append(blobElementExtensions);
+                Vector<RefPtr<SandboxExtension>> blobElementExtensions = NetworkBlobRegistry::shared().sandboxExtensions(elements[i].m_url);
+                m_requestBodySandboxExtensions.appendVector(blobElementExtensions);
             }
         }
     }
 
     if (m_request.url().protocolIs("blob")) {
-        ASSERT(!SandboxExtension::create(parameters.resourceSandboxExtension()));
+        ASSERT(!SandboxExtension::create(parameters.resourceSandboxExtension));
         m_resourceSandboxExtensions = NetworkBlobRegistry::shared().sandboxExtensions(m_request.url());
     } else
 #endif
-    if (RefPtr<SandboxExtension> resourceSandboxExtension = SandboxExtension::create(parameters.resourceSandboxExtension()))
+    if (RefPtr<SandboxExtension> resourceSandboxExtension = SandboxExtension::create(parameters.resourceSandboxExtension))
         m_resourceSandboxExtensions.append(resourceSandboxExtension);
 }
 

@@ -28,11 +28,9 @@
 #include "ResourceResponseBase.h"
 
 #include "HTTPParsers.h"
-#include "PlatformMemoryInstrumentation.h"
 #include "ResourceResponse.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
-#include <wtf/MemoryInstrumentationHashMap.h>
 #include <wtf/StdLibExtras.h>
 
 using namespace std;
@@ -589,38 +587,11 @@ void ResourceResponseBase::setResourceLoadTiming(PassRefPtr<ResourceLoadTiming> 
     m_resourceLoadTiming = resourceLoadTiming;
 }
 
-PassRefPtr<ResourceLoadInfo> ResourceResponseBase::resourceLoadInfo() const
-{
-    lazyInit(CommonAndUncommonFields);
-
-    return m_resourceLoadInfo.get();
-}
-
-void ResourceResponseBase::setResourceLoadInfo(PassRefPtr<ResourceLoadInfo> loadInfo)
-{
-    lazyInit(CommonAndUncommonFields);
-
-    m_resourceLoadInfo = loadInfo;
-}
-
 void ResourceResponseBase::lazyInit(InitLevel initLevel) const
 {
     const_cast<ResourceResponse*>(static_cast<const ResourceResponse*>(this))->platformLazyInit(initLevel);
 }
 
-void ResourceResponseBase::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Loader);
-    info.addMember(m_url, "url");
-    info.addMember(m_mimeType, "mimeType");
-    info.addMember(m_textEncodingName, "textEncodingName");
-    info.addMember(m_suggestedFilename, "suggestedFilename");
-    info.addMember(m_httpStatusText, "httpStatusText");
-    info.addMember(m_httpHeaderFields, "httpHeaderFields");
-    info.addMember(m_resourceLoadTiming, "resourceLoadTiming");
-    info.addMember(m_resourceLoadInfo, "resourceLoadInfo");
-}
-    
 bool ResourceResponseBase::compare(const ResourceResponse& a, const ResourceResponse& b)
 {
     if (a.isNull() != b.isNull())

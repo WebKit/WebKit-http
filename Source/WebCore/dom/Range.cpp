@@ -1732,6 +1732,31 @@ void Range::nodeChildrenChanged(ContainerNode* container)
     boundaryNodeChildrenChanged(m_end, container);
 }
 
+static inline void boundaryNodeChildrenWillBeRemoved(RangeBoundaryPoint& boundary, ContainerNode* container)
+{
+    for (Node* nodeToBeRemoved = container->firstChild(); nodeToBeRemoved; nodeToBeRemoved = nodeToBeRemoved->nextSibling()) {
+        if (boundary.childBefore() == nodeToBeRemoved) {
+            boundary.setToStartOfNode(container);
+            return;
+        }
+
+        for (Node* n = boundary.container(); n; n = n->parentNode()) {
+            if (n == nodeToBeRemoved) {
+                boundary.setToStartOfNode(container);
+                return;
+            }
+        }
+    }
+}
+
+void Range::nodeChildrenWillBeRemoved(ContainerNode* container)
+{
+    ASSERT(container);
+    ASSERT(container->document() == m_ownerDocument);
+    boundaryNodeChildrenWillBeRemoved(m_start, container);
+    boundaryNodeChildrenWillBeRemoved(m_end, container);
+}
+
 static inline void boundaryNodeWillBeRemoved(RangeBoundaryPoint& boundary, Node* nodeToBeRemoved)
 {
     if (boundary.childBefore() == nodeToBeRemoved) {
@@ -1884,22 +1909,25 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
     Node* endContainer = m_end.container();
     Node* stopNode = pastLastNode();
 
-    HashSet<Node*> nodeSet;
+    HashSet<Node*> selectedElementsSet;
     for (Node* node = firstNode(); node != stopNode; node = NodeTraversal::next(node)) {
         if (node->isElementNode())
-            nodeSet.add(node);
+            selectedElementsSet.add(node);
     }
 
-    for (Node* node = firstNode(); node != stopNode; node = NodeTraversal::next(node)) {
-        if (node->isElementNode()) {
-            if (!nodeSet.contains(node->parentNode())) {
-                if (RenderBoxModelObject* renderBoxModelObject = toElement(node)->renderBoxModelObject()) {
-                    Vector<FloatQuad> elementQuads;
-                    renderBoxModelObject->absoluteQuads(elementQuads);
-                    m_ownerDocument->adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(elementQuads, renderBoxModelObject);
+    // Don't include elements that are only partially selected.
+    Node* lastNode = m_end.childBefore() ? m_end.childBefore() : endContainer;
+    for (Node* parent = lastNode->parentNode(); parent; parent = parent->parentNode())
+        selectedElementsSet.remove(parent);
 
-                    quads.append(elementQuads);
-                }
+    for (Node* node = firstNode(); node != stopNode; node = NodeTraversal::next(node)) {
+        if (node->isElementNode() && selectedElementsSet.contains(node) && !selectedElementsSet.contains(node->parentNode())) {
+            if (RenderBoxModelObject* renderBoxModelObject = toElement(node)->renderBoxModelObject()) {
+                Vector<FloatQuad> elementQuads;
+                renderBoxModelObject->absoluteQuads(elementQuads);
+                m_ownerDocument->adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(elementQuads, renderBoxModelObject);
+
+                quads.appendVector(elementQuads);
             }
         } else if (node->isTextNode()) {
             if (RenderObject* renderer = toText(node)->renderer()) {
@@ -1911,7 +1939,7 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
                 renderText->absoluteQuadsForRange(textQuads, startOffset, endOffset);
                 m_ownerDocument->adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(textQuads, renderText);
 
-                quads.append(textQuads);
+                quads.appendVector(textQuads);
             }
         }
     }

@@ -25,6 +25,5 @@
 
 [
     Conditional=USER_TIMING,
-    OmitConstructor
 ] interface PerformanceMark : PerformanceEntry {
 };

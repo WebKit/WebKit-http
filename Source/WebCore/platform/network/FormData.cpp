@@ -35,11 +35,9 @@
 #include "FormDataList.h"
 #include "MIMETypeRegistry.h"
 #include "Page.h"
-#include "PlatformMemoryInstrumentation.h"
 #include "TextEncoding.h"
 #include <wtf/Decoder.h>
 #include <wtf/Encoder.h>
-#include <wtf/MemoryInstrumentationVector.h>
 
 namespace WebCore {
 
@@ -227,7 +225,7 @@ void FormData::appendKeyValuePairItems(const FormDataList& list, const TextEncod
                 if (value.blob()->isFile()) {
                     File* file = toFile(value.blob());
                     // For file blob, use the filename (or relative path if it is present) as the name.
-#if ENABLE(DIRECTORY_UPLOAD)                
+#if ENABLE(DIRECTORY_UPLOAD)
                     name = file->webkitRelativePath().isEmpty() ? file->name() : file->webkitRelativePath();
 #else
                     name = file->name();
@@ -258,12 +256,11 @@ void FormData::appendKeyValuePairItems(const FormDataList& list, const TextEncod
                 FormDataBuilder::addFilenameToMultiPartHeader(header, encoding, name);
 
                 // Add the content type if available, or "application/octet-stream" otherwise (RFC 1867).
-                String contentType;
-                if (value.blob()->type().isEmpty())
+                String contentType = value.blob()->type();
+                if (contentType.isEmpty())
                     contentType = "application/octet-stream";
-                else
-                    contentType = value.blob()->type();
-                FormDataBuilder::addContentTypeToMultiPartHeader(header, contentType.latin1());
+                ASSERT(Blob::isNormalizedContentType(contentType));
+                FormDataBuilder::addContentTypeToMultiPartHeader(header, contentType.ascii());
             }
 
             FormDataBuilder::finishMultiPartHeader(header);
@@ -426,24 +423,6 @@ void FormData::removeGeneratedFilesIfNeeded()
         }
     }
     m_hasGeneratedFiles = false;
-}
-
-void FormData::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Loader);
-    info.addMember(m_boundary, "boundary");
-    info.addMember(m_elements, "elements");
-}
-
-void FormDataElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Loader);
-    info.addMember(m_data, "data");
-    info.addMember(m_filename, "filename");
-#if ENABLE(BLOB)
-    info.addMember(m_url, "url");
-#endif
-    info.addMember(m_generatedFilename, "generatedFilename");
 }
 
 static void encodeElement(Encoder& encoder, const FormDataElement& element)

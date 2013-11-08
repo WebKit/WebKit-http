@@ -46,7 +46,6 @@
 #include "InspectorValues.h"
 #include "KURL.h"
 #include "PingLoader.h"
-#include "SecurityOrigin.h"
 #include "Settings.h"
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
@@ -225,6 +224,16 @@ XSSAuditor::XSSAuditor()
 {
     // Although tempting to call init() at this point, the various objects
     // we want to reference might not all have been constructed yet.
+}
+
+void XSSAuditor::initForFragment()
+{
+    ASSERT(isMainThread());
+    ASSERT(m_state == Uninitialized);
+    m_state = Initialized;
+    // When parsing a fragment, we don't enable the XSS auditor because it's
+    // too much overhead.
+    ASSERT(!m_isEnabled);
 }
 
 void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)

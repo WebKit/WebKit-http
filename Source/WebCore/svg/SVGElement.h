@@ -111,14 +111,16 @@ public:
     bool isAnimatableAttribute(const QualifiedName&) const;
 #endif
 
-    StylePropertySet* animatedSMILStyleProperties() const;
-    StylePropertySet* ensureAnimatedSMILStyleProperties();
+    MutableStylePropertySet* animatedSMILStyleProperties() const;
+    MutableStylePropertySet* ensureAnimatedSMILStyleProperties();
     void setUseOverrideComputedStyle(bool);
 
     virtual bool haveLoadedRequiredResources();
 
     virtual bool addEventListener(const AtomicString& eventType, PassRefPtr<EventListener>, bool useCapture) OVERRIDE;
     virtual bool removeEventListener(const AtomicString& eventType, EventListener*, bool useCapture) OVERRIDE;
+
+    virtual bool moveToFlowThreadIsNeeded(RefPtr<RenderStyle>& cachedStyle) OVERRIDE;
 
 protected:
     SVGElement(const QualifiedName&, Document*, ConstructionType = CreateSVGElement);

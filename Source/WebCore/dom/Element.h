@@ -28,7 +28,6 @@
 #include "Attribute.h"
 #include "CollectionType.h"
 #include "Document.h"
-#include "FragmentScriptingPermission.h"
 #include "HTMLNames.h"
 #include "ScrollTypes.h"
 #include "SpaceSplitString.h"
@@ -59,6 +58,8 @@ public:
     // the appropriate subclass type.
     void deref();
 
+    static const unsigned attributeNotFound = static_cast<unsigned>(-1);
+
     void clearClass() const { m_classNames.clear(); }
     void setClass(const AtomicString& className, bool shouldFoldCase) const { m_classNames.set(className, shouldFoldCase); }
     const SpaceSplitString& classNames() const { return m_classNames; }
@@ -70,20 +71,18 @@ public:
 
     const StylePropertySet* presentationAttributeStyle() const;
 
-    size_t length() const;
+    unsigned length() const;
     bool isEmpty() const { return !length(); }
 
     const Attribute* attributeItem(unsigned index) const;
     const Attribute* getAttributeItem(const QualifiedName&) const;
-    size_t getAttributeItemIndex(const QualifiedName&) const;
-    size_t getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
+    unsigned getAttributeItemIndex(const QualifiedName&) const;
+    unsigned getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
 
     bool hasID() const { return !m_idForStyleResolution.isNull(); }
     bool hasClass() const { return !m_classNames.isNull(); }
 
     bool isEquivalent(const ElementData* other) const;
-
-    void reportMemoryUsage(MemoryObjectInfo*) const;
 
     bool isUnique() const { return m_isUnique; }
 
@@ -113,8 +112,9 @@ private:
     friend class SVGElement;
 #endif
 
+    const Attribute* attributeBase() const;
     const Attribute* getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
-    size_t getAttributeItemIndexSlowCase(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
+    unsigned getAttributeItemIndexSlowCase(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
 
     PassRefPtr<UniqueElementData> makeUniqueCopy() const;
 };
@@ -146,7 +146,7 @@ public:
 
     // These functions do no error/duplicate checking.
     void addAttribute(const QualifiedName&, const AtomicString&);
-    void removeAttribute(size_t index);
+    void removeAttribute(unsigned index);
 
     Attribute* attributeItem(unsigned index);
     Attribute* getAttributeItem(const QualifiedName&);
@@ -199,6 +199,8 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(keypress);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(keyup);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(mousedown);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseenter);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseleave);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(mousemove);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseout);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseover);
@@ -287,11 +289,11 @@ public:
 
     // Internal methods that assume the existence of attribute storage, one should use hasAttributes()
     // before calling them.
-    size_t attributeCount() const;
+    unsigned attributeCount() const;
     const Attribute* attributeItem(unsigned index) const;
     const Attribute* getAttributeItem(const QualifiedName&) const;
-    size_t getAttributeItemIndex(const QualifiedName& name) const { return elementData()->getAttributeItemIndex(name); }
-    size_t getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const { return elementData()->getAttributeItemIndex(name, shouldIgnoreAttributeCase); }
+    unsigned getAttributeItemIndex(const QualifiedName& name) const { return elementData()->getAttributeItemIndex(name); }
+    unsigned getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const { return elementData()->getAttributeItemIndex(name, shouldIgnoreAttributeCase); }
 
     void scrollIntoView(bool alignToTop = true);
     void scrollIntoViewIfNeeded(bool centerIfNeeded = true);
@@ -331,7 +333,7 @@ public:
     void removeAttribute(const AtomicString& name);
     void removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
-    PassRefPtr<Attr> detachAttribute(size_t index);
+    PassRefPtr<Attr> detachAttribute(unsigned index);
 
     PassRefPtr<Attr> getAttributeNode(const AtomicString& name);
     PassRefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
@@ -413,10 +415,9 @@ public:
     ElementShadow* shadow() const;
     ElementShadow* ensureShadow();
     PassRefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
-    ShadowRoot* shadowRoot() const;
+    ShadowRoot* authorShadowRoot() const;
 
-    bool hasAuthorShadowRoot() const { return shadowRoot(); }
-    virtual void willAddAuthorShadowRoot() { }
+    bool hasAuthorShadowRoot() const { return authorShadowRoot(); }
 
     ShadowRoot* userAgentShadowRoot() const;
     ShadowRoot* ensureUserAgentShadowRoot();
@@ -554,7 +555,6 @@ public:
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
-    virtual bool isTextFieldDecoration() const { return false; }
 
     virtual bool canContainRangeEndPoint() const { return true; }
 
@@ -587,9 +587,9 @@ public:
     };
     
     void webkitRequestFullScreen(unsigned short flags);
-    virtual bool containsFullScreenElement() const;
-    virtual void setContainsFullScreenElement(bool);
-    virtual void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
+    bool containsFullScreenElement() const;
+    void setContainsFullScreenElement(bool);
+    void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
 
     // W3C API
     void webkitRequestFullscreen();
@@ -609,6 +609,7 @@ public:
     PassRefPtr<RenderStyle> styleForRenderer();
 
     RenderRegion* renderRegion() const;
+    virtual bool moveToFlowThreadIsNeeded(RefPtr<RenderStyle>& cachedStyle);
 #if ENABLE(CSS_REGIONS)
     const AtomicString& webkitRegionOverset() const;
     Vector<RefPtr<Range> > webkitGetRegionFlowRanges() const;
@@ -620,8 +621,6 @@ public:
 
     IntSize savedLayerScrollOffset() const;
     void setSavedLayerScrollOffset(const IntSize&);
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 protected:
     Element(const QualifiedName& tagName, Document* document, ConstructionType type)
@@ -638,9 +637,6 @@ protected:
     virtual bool willRecalcStyle(StyleChange);
     virtual void didRecalcStyle(StyleChange);
     virtual PassRefPtr<RenderStyle> customStyleForRenderer();
-
-    virtual bool shouldRegisterAsNamedItem() const { return false; }
-    virtual bool shouldRegisterAsExtraNamedItem() const { return false; }
 
     void clearTabIndexExplicitlyIfNeeded();    
     void setTabIndexExplicitly(short);
@@ -680,6 +676,7 @@ private:
     void updateId(const AtomicString& oldId, const AtomicString& newId);
     void updateId(TreeScope*, const AtomicString& oldId, const AtomicString& newId);
     void updateName(const AtomicString& oldName, const AtomicString& newName);
+    void updateName(TreeScope*, const AtomicString& oldName, const AtomicString& newName);
     void updateLabel(TreeScope*, const AtomicString& oldForAttributeValue, const AtomicString& newForAttributeValue);
 
     void scrollByUnits(int units, ScrollGranularity);
@@ -688,9 +685,9 @@ private:
     virtual NodeType nodeType() const;
     virtual bool childTypeAllowed(NodeType) const;
 
-    void setAttributeInternal(size_t index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
+    void setAttributeInternal(unsigned index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void addAttributeInternal(const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
-    void removeAttributeInternal(size_t index, SynchronizationOfLazyAttribute);
+    void removeAttributeInternal(unsigned index, SynchronizationOfLazyAttribute);
     void attributeChangedFromParserOrByCloning(const QualifiedName&, const AtomicString&, AttributeModificationReason);
 
 #ifndef NDEBUG
@@ -725,14 +722,9 @@ private:
 
     SpellcheckAttributeState spellcheckAttributeState() const;
 
-    void updateNamedItemRegistration(const AtomicString& oldName, const AtomicString& newName);
-    void updateExtraNamedItemRegistration(const AtomicString& oldName, const AtomicString& newName);
-
     void unregisterNamedFlowContentNode();
 
     void createUniqueElementData();
-
-    bool shouldInvalidateDistributionWhenAttributeChanged(ElementShadow*, const QualifiedName&, const AtomicString&);
 
     ElementRareData* elementRareData() const;
     ElementRareData* ensureElementRareData();
@@ -867,7 +859,7 @@ inline const SpaceSplitString& Element::classNames() const
     return elementData()->classNames();
 }
 
-inline size_t Element::attributeCount() const
+inline unsigned Element::attributeCount() const
 {
     ASSERT(elementData());
     return elementData()->length();
@@ -937,11 +929,18 @@ inline bool isShadowHost(const Node* node)
     return node && node->isElementNode() && toElement(node)->shadow();
 }
 
-inline size_t ElementData::length() const
+inline unsigned ElementData::length() const
 {
     if (isUnique())
         return static_cast<const UniqueElementData*>(this)->m_attributeVector.size();
     return m_arraySize;
+}
+
+inline const Attribute* ElementData::attributeBase() const
+{
+    if (m_isUnique)
+        return static_cast<const UniqueElementData*>(this)->m_attributeVector.data();
+    return static_cast<const ShareableElementData*>(this)->m_attributeArray;
 }
 
 inline const StylePropertySet* ElementData::presentationAttributeStyle() const
@@ -953,33 +952,34 @@ inline const StylePropertySet* ElementData::presentationAttributeStyle() const
 
 inline const Attribute* ElementData::getAttributeItem(const AtomicString& name, bool shouldIgnoreAttributeCase) const
 {
-    size_t index = getAttributeItemIndex(name, shouldIgnoreAttributeCase);
-    if (index != notFound)
+    unsigned index = getAttributeItemIndex(name, shouldIgnoreAttributeCase);
+    if (index != attributeNotFound)
         return attributeItem(index);
     return 0;
 }
 
-inline size_t ElementData::getAttributeItemIndex(const QualifiedName& name) const
+inline unsigned ElementData::getAttributeItemIndex(const QualifiedName& name) const
 {
-    for (unsigned i = 0; i < length(); ++i) {
-        if (attributeItem(i)->name().matches(name))
+    const Attribute* attributes = attributeBase();
+    for (unsigned i = 0, count = length(); i < count; ++i) {
+        if (attributes[i].name().matches(name))
             return i;
     }
-    return notFound;
+    return attributeNotFound;
 }
 
 // We use a boolean parameter instead of calling shouldIgnoreAttributeCase so that the caller
 // can tune the behavior (hasAttribute is case sensitive whereas getAttribute is not).
-inline size_t ElementData::getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const
+inline unsigned ElementData::getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const
 {
-    unsigned len = length();
+    const Attribute* attributes = attributeBase();
     bool doSlowCheck = shouldIgnoreAttributeCase;
+    const AtomicString& caseAdjustedName = shouldIgnoreAttributeCase ? name.lower() : name;
 
     // Optimize for the case where the attribute exists and its name exactly matches.
-    for (unsigned i = 0; i < len; ++i) {
-        const Attribute* attribute = attributeItem(i);
-        if (!attribute->name().hasPrefix()) {
-            if (name == attribute->localName())
+    for (unsigned i = 0, count = length(); i < count; ++i) {
+        if (!attributes[i].name().hasPrefix()) {
+            if (caseAdjustedName == attributes[i].localName())
                 return i;
         } else
             doSlowCheck = true;
@@ -987,24 +987,23 @@ inline size_t ElementData::getAttributeItemIndex(const AtomicString& name, bool 
 
     if (doSlowCheck)
         return getAttributeItemIndexSlowCase(name, shouldIgnoreAttributeCase);
-    return notFound;
+    return attributeNotFound;
 }
 
 inline const Attribute* ElementData::getAttributeItem(const QualifiedName& name) const
 {
-    for (unsigned i = 0; i < length(); ++i) {
-        if (attributeItem(i)->name().matches(name))
-            return attributeItem(i);
+    const Attribute* attributes = attributeBase();
+    for (unsigned i = 0, count = length(); i < count; ++i) {
+        if (attributes[i].name().matches(name))
+            return &attributes[i];
     }
     return 0;
 }
 
 inline const Attribute* ElementData::attributeItem(unsigned index) const
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(index < length());
-    if (m_isUnique)
-        return &static_cast<const UniqueElementData*>(this)->m_attributeVector.at(index);
-    return &static_cast<const ShareableElementData*>(this)->m_attributeArray[index];
+    RELEASE_ASSERT(index < length());
+    return attributeBase() + index;
 }
 
 } // namespace

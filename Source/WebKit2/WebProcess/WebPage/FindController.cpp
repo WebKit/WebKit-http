@@ -41,7 +41,6 @@
 #include <WebCore/Page.h>
 #include <WebCore/PluginDocument.h>
 
-using namespace std;
 using namespace WebCore;
 
 namespace WebKit {
@@ -77,7 +76,7 @@ static PluginView* pluginViewForFrame(Frame* frame)
 
 void FindController::countStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
 {
-    if (maxMatchCount == numeric_limits<unsigned>::max())
+    if (maxMatchCount == std::numeric_limits<unsigned>::max())
         --maxMatchCount;
     
     PluginView* pluginView = pluginViewForFrame(m_webPage->mainFrame());
@@ -91,7 +90,6 @@ void FindController::countStringMatches(const String& string, FindOptions option
         m_webPage->corePage()->unmarkAllTextMatches();
     }
 
-    // Check if we have more matches than allowed.
     if (matchCount > maxMatchCount)
         matchCount = static_cast<unsigned>(kWKMoreThanMaximumMatchCount);
     
@@ -120,7 +118,6 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
         if (!pluginView)
             m_webPage->corePage()->unmarkAllTextMatches();
 
-        // Clear the selection.
         if (selectedFrame)
             selectedFrame->selection()->clear();
 
@@ -133,8 +130,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
         unsigned matchCount = 1;
 
         if (shouldShowOverlay || shouldShowHighlight) {
-
-            if (maxMatchCount == numeric_limits<unsigned>::max())
+            if (maxMatchCount == std::numeric_limits<unsigned>::max())
                 --maxMatchCount;
 
             if (pluginView) {
@@ -145,7 +141,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
                 matchCount = m_webPage->corePage()->markAllMatchesForText(string, core(options), shouldShowHighlight, maxMatchCount + 1);
             }
 
-            // Check if we have more matches than allowed.
+            // If we have a large number of matches, we don't want to take the time to paint the overlay.
             if (matchCount > maxMatchCount) {
                 shouldShowOverlay = false;
                 matchCount = static_cast<unsigned>(kWKMoreThanMaximumMatchCount);
@@ -154,17 +150,13 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
 
         m_webPage->send(Messages::WebPageProxy::DidFindString(string, matchCount));
 
-        if (!(options & FindOptionsShowFindIndicator) || !updateFindIndicator(selectedFrame, shouldShowOverlay)) {
-            // Either we shouldn't show the find indicator, or we couldn't update it.
+        if (!(options & FindOptionsShowFindIndicator) || !updateFindIndicator(selectedFrame, shouldShowOverlay))
             hideFindIndicator();
-        }
     }
 
     if (!shouldShowOverlay) {
-        if (m_findPageOverlay) {
-            // Get rid of the overlay.
+        if (m_findPageOverlay)
             m_webPage->uninstallPageOverlay(m_findPageOverlay, true);
-        }        
     } else {
         if (!m_findPageOverlay) {
             RefPtr<PageOverlay> findPageOverlay = PageOverlay::create(this);
@@ -197,7 +189,7 @@ void FindController::findStringMatches(const String& string, FindOptions options
 
     m_webPage->corePage()->findStringMatchingRanges(string, core(options), maxMatchCount, &m_findMatches, indexForSelection);
 
-    Vector<Vector<IntRect> > matchRects;
+    Vector<Vector<IntRect>> matchRects;
     for (size_t i = 0; i < m_findMatches.size(); ++i) {
         Vector<IntRect> rects;
         m_findMatches[i]->textRects(rects);
@@ -362,7 +354,7 @@ Vector<IntRect> FindController::rectsForTextMatches()
 
         IntRect visibleRect = frame->view()->visibleContentRect();
         Vector<IntRect> frameRects = document->markers()->renderedRectsForMarkers(DocumentMarker::TextMatch);
-        IntPoint frameOffset(-frame->view()->scrollOffset().width(), -frame->view()->scrollOffset().height());
+        IntPoint frameOffset(-frame->view()->scrollOffsetRelativeToDocument().width(), -frame->view()->scrollOffsetRelativeToDocument().height());
         frameOffset = frame->view()->convertToContainingWindow(frameOffset);
 
         for (Vector<IntRect>::iterator it = frameRects.begin(), end = frameRects.end(); it != end; ++it) {
@@ -384,7 +376,6 @@ void FindController::willMoveToWebPage(PageOverlay*, WebPage* webPage)
     if (webPage)
         return;
 
-    // The page overlay is moving away from the web page, reset it.
     ASSERT(m_findPageOverlay);
     m_findPageOverlay = 0;
 }
@@ -461,11 +452,8 @@ void FindController::drawRect(PageOverlay* pageOverlay, GraphicsContext& graphic
 
 bool FindController::mouseEvent(PageOverlay*, const WebMouseEvent& mouseEvent)
 {
-    // If we get a mouse down event inside the page overlay we should hide the find UI.
-    if (mouseEvent.type() == WebEvent::MouseDown) {
-        // Dismiss the overlay.
+    if (mouseEvent.type() == WebEvent::MouseDown)
         hideFindUI();
-    }
 
     return false;
 }

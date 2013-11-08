@@ -35,6 +35,7 @@ from webkitpy.common.system.executive import ScriptError
 from webkitpy.tool.bot.irc_command import IRCCommand
 from webkitpy.tool.bot.irc_command import Help
 from webkitpy.tool.bot.irc_command import Hi
+from webkitpy.tool.bot.irc_command import PingPong
 from webkitpy.tool.bot.irc_command import Restart
 from webkitpy.tool.bot.ircbot import IRCBot
 from webkitpy.tool.commands.queues import AbstractQueue
@@ -43,16 +44,12 @@ from webkitpy.tool.commands.stepsequence import StepSequenceErrorHandler
 _log = logging.getLogger(__name__)
 
 
-class PingPong(IRCCommand):
-    def execute(self, nick, args, tool, sheriff):
-        return nick + ": pong"
-
-
 class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
     name = "new-commit-bot"
     watchers = AbstractQueue.watchers + ["rniwa@webkit.org"]
 
     _commands = {
+        "hi": Hi,
         "ping": PingPong,
         "restart": Restart,
     }
@@ -75,18 +72,24 @@ class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
 
         _log.info('Last SVN revision: %d' % self._last_svn_revision)
 
-        if self._tool.scm().executable_name != 'svn':
-            _log.error('This bot only works inside a SVN checkout')
-
-        for revision in range(self._last_svn_revision + 1, self._last_svn_revision + self._maximum_number_of_revisions_to_avoid_spamming_irc):
+        count = 0
+        while count < self._maximum_number_of_revisions_to_avoid_spamming_irc:
+            new_revision = self._last_svn_revision + 1
             try:
-                commit_log = self._tool.scm().svn_commit_log(revision)
+                commit_log = self._tool.executive.run_command(['svn', 'log', 'https://svn.webkit.org/repository/webkit/trunk', '--non-interactive', '--revision',
+                    self._tool.scm().strip_r_from_svn_revision(new_revision)])
             except ScriptError:
                 break
+
+            if commit_log.find('No such revision') >= 0:
+                continue
+
+            self._last_svn_revision = new_revision
             if self._is_empty_log(commit_log):
                 continue
-            _log.info('Found revision %d' % revision)
-            self._last_svn_revision = revision
+
+            count += 1
+            _log.info('Found revision %d' % new_revision)
             self._tool.irc().post(self._summarize_commit_log(commit_log).encode('utf-8'))
 
     def _is_empty_log(self, commit_log):
@@ -94,10 +97,6 @@ class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
 
     def process_work_item(self, failure_map):
         return True
-
-    def _update_checkout(self):
-        tool = self._tool
-        tool.executive.run_and_throw_if_fail(tool.deprecated_port().update_webkit_command(), quiet=True, cwd=tool.scm().checkout_root)
 
     _patch_by_regex = re.compile(r'^Patch\s+by\s+(?P<author>.+?)\s+on(\s+\d{4}-\d{2}-\d{2})?\n?', re.MULTILINE | re.IGNORECASE)
     _rollout_regex = re.compile(r'(rolling out|reverting) (?P<revisions>r?\d+((,\s*|,?\s*and\s+)?r?\d+)*)\.?\s*', re.MULTILINE | re.IGNORECASE)

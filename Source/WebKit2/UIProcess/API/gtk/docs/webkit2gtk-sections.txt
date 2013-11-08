@@ -47,6 +47,7 @@ webkit_web_context_set_tls_errors_policy
 webkit_web_context_get_tls_errors_policy
 webkit_web_context_set_web_extensions_directory
 webkit_web_context_prefetch_dns
+webkit_web_context_set_disk_cache_directory
 
 <SUBSECTION URI Scheme>
 WebKitURISchemeRequestCallback
@@ -75,6 +76,8 @@ WebKitPolicyDecisionType
 WebKitSaveMode
 WebKitViewMode
 WebKitInsecureContentEvent
+WebKitSnapshotOptions
+WebKitSnapshotRegion
 
 <SUBSECTION Editing Commands>
 WEBKIT_EDITING_COMMAND_CUT
@@ -87,7 +90,9 @@ WEBKIT_EDITING_COMMAND_REDO
 <SUBSECTION>
 webkit_web_view_new
 webkit_web_view_new_with_context
+webkit_web_view_new_with_group
 webkit_web_view_get_context
+webkit_web_view_get_group
 webkit_web_view_load_uri
 webkit_web_view_load_html
 webkit_web_view_load_alternate_html
@@ -134,6 +139,8 @@ webkit_web_view_download_uri
 webkit_web_view_set_view_mode
 webkit_web_view_get_view_mode
 webkit_web_view_get_tls_info
+webkit_web_view_get_snapshot
+webkit_web_view_get_snapshot_finish
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult
@@ -310,6 +317,8 @@ webkit_settings_set_user_agent
 webkit_settings_set_user_agent_with_application_details
 webkit_settings_get_enable_smooth_scrolling
 webkit_settings_set_enable_smooth_scrolling
+webkit_settings_get_enable_accelerated_2d_canvas
+webkit_settings_set_enable_accelerated_2d_canvas
 
 <SUBSECTION Standard>
 WebKitSettingsClass
@@ -330,6 +339,8 @@ webkit_settings_get_type
 WebKitURIRequest
 webkit_uri_request_new
 webkit_uri_request_get_uri
+webkit_uri_request_set_uri
+webkit_uri_request_get_http_headers
 
 <SUBSECTION Standard>
 WebKitURIRequestClass
@@ -607,18 +618,21 @@ WEBKIT_POLICY_ERROR
 WEBKIT_DOWNLOAD_ERROR
 WEBKIT_PRINT_ERROR
 WEBKIT_JAVASCRIPT_ERROR
+WEBKIT_SNAPSHOT_ERROR
 WebKitNetworkError
 WebKitPluginError
 WebKitPolicyError
 WebKitDownloadError
 WebKitPrintError
 WebKitJavascriptError
+WebKitSnapshotError
 webkit_network_error_quark
 webkit_plugin_error_quark
 webkit_policy_error_quark
 webkit_download_error_quark
 webkit_print_error_quark
 webkit_javascript_error_quark
+webkit_snapshot_error_quark
 </SECTION>
 
 <SECTION>
@@ -792,6 +806,7 @@ webkit_uri_scheme_request_get_uri
 webkit_uri_scheme_request_get_path
 webkit_uri_scheme_request_get_web_view
 webkit_uri_scheme_request_finish
+webkit_uri_scheme_request_finish_error
 
 <SUBSECTION Standard>
 WebKitURISchemeRequestClass
@@ -931,6 +946,31 @@ webkit_security_manager_get_type
 </SECTION>
 
 <SECTION>
+<FILE>WebKitWebViewGroup</FILE>
+WebKitWebViewGroup
+WebKitInjectedContentFrames
+webkit_web_view_group_new
+webkit_web_view_group_get_name
+webkit_web_view_group_get_settings
+webkit_web_view_group_set_settings
+webkit_web_view_group_add_user_style_sheet
+webkit_web_view_group_remove_all_user_style_sheets
+
+<SUBSECTION Standard>
+WebKitWebViewGroupClass
+WEBKIT_TYPE_WEB_VIEW_GROUP
+WEBKIT_WEB_VIEW_GROUP
+WEBKIT_IS_WEB_VIEW_GROUP
+WEBKIT_WEB_VIEW_GROUP_CLASS
+WEBKIT_IS_WEB_VIEW_GROUP_CLASS
+WEBKIT_WEB_VIEW_GROUP_GET_CLASS
+
+<SUBSECTION Private>
+WebKitWebViewGroupPrivate
+webkit_web_view_group_get_type
+</SECTION>
+
+<SECTION>
 <FILE>WebKitWebExtension</FILE>
 WebKitWebExtension
 WebKitWebExtensionInitializeFunction
@@ -954,6 +994,8 @@ webkit_web_extension_get_type
 <FILE>WebKitWebPage</FILE>
 WebKitWebPage
 webkit_web_page_get_dom_document
+webkit_web_page_get_id
+webkit_web_page_get_uri
 
 <SUBSECTION Standard>
 WebKitWebPageClass

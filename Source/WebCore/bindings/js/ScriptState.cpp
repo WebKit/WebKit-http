@@ -35,6 +35,7 @@
 #include "JSDOMWindowBase.h"
 #include "Node.h"
 #include "Page.h"
+#include "ScriptController.h"
 #include "WorkerContext.h"
 #include "WorkerScriptController.h"
 #include <heap/StrongInlines.h>
@@ -46,22 +47,6 @@
 #endif
 
 namespace WebCore {
-
-ScriptStateProtectedPtr::~ScriptStateProtectedPtr()
-{
-}
-
-ScriptStateProtectedPtr::ScriptStateProtectedPtr(ScriptState* scriptState)
-    : m_globalObject(scriptState->globalData(), scriptState->lexicalGlobalObject())
-{
-}
-
-ScriptState* ScriptStateProtectedPtr::get() const
-{
-    if (m_globalObject)
-        return const_cast<JSC::JSGlobalObject*>(m_globalObject.get())->globalExec();
-    return 0;
-}
 
 DOMWindow* domWindowFromScriptState(ScriptState* scriptState)
 {
@@ -77,18 +62,6 @@ ScriptExecutionContext* scriptExecutionContextFromScriptState(ScriptState* scrip
     if (!globalObject->inherits(&JSDOMGlobalObject::s_info))
         return 0;
     return JSC::jsCast<JSDOMGlobalObject*>(globalObject)->scriptExecutionContext();
-}
-
-bool evalEnabled(ScriptState* scriptState)
-{
-    JSC::JSGlobalObject* globalObject = scriptState->lexicalGlobalObject();
-    return globalObject->evalEnabled();
-}
-
-void setEvalEnabled(ScriptState* scriptState, bool enabled)
-{
-    JSC::JSGlobalObject* globalObject = scriptState->lexicalGlobalObject();
-    return globalObject->setEvalEnabled(enabled);
 }
 
 ScriptState* mainWorldScriptState(Frame* frame)

@@ -210,9 +210,6 @@
 #include "JSHTMLQuoteElement.cpp"
 #include "JSHTMLScriptElement.cpp"
 #include "JSHTMLSelectElement.cpp"
-#if ENABLE(SHADOW_DOM)
-#include "JSHTMLShadowElement.cpp"
-#endif
 #include "JSHTMLSourceElement.cpp"
 #include "JSHTMLSpanElement.cpp"
 #include "JSHTMLStyleElement.cpp"
@@ -472,12 +469,16 @@
 #include "JSTextEvent.cpp"
 #include "JSTextMetrics.cpp"
 #if ENABLE(VIDEO_TRACK)
+#include "JSAudioTrack.cpp"
+#include "JSAudioTrackList.cpp"
 #include "JSHTMLTrackElement.cpp"
 #include "JSTextTrack.cpp"
 #include "JSTextTrackCue.cpp"
 #include "JSTextTrackCueList.cpp"
 #include "JSTextTrackList.cpp"
 #include "JSTrackEvent.cpp"
+#include "JSVideoTrack.cpp"
+#include "JSVideoTrackList.cpp"
 #endif
 #include "JSTimeRanges.cpp"
 #include "JSTouch.cpp"
@@ -527,6 +528,7 @@
 #include "JSXPathNSResolver.cpp"
 #include "JSXPathResult.cpp"
 #include "JSXSLTProcessor.cpp"
+#include "PlugInsResourcesData.cpp"
 #include "UserAgentStyleSheetsData.cpp"
 
 // On MSVC, including StaticConstructors.h causes all global objects not to be

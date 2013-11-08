@@ -1,3 +1,284 @@
+2013-05-06  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. AppleWin VS2010 build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-05-04  Dean Jackson  <dino@apple.com>
+
+        Animations and Transitions should not start when globally suspended
+        https://bugs.webkit.org/show_bug.cgi?id=114915
+
+        Reviewed by Sam Weinig.
+
+        Export AnimationController::isSuspended
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-05-04  Sam Weinig  <sam@webkit.org>
+
+        Move PopupMenuMac and SearchPopupMenuMac to Source/WebKit/mac
+        matching where they are in WebKit2.
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-05-02  Roger Fong  <roger_fong@apple.com>
+
+        Following r149463, set Path for WebKit makefile as well.
+
+        * WebKit.vcxproj/WebKit.make:
+
+2013-05-01  Sergio Villar Senin  <svillar@igalia.com>
+
+        Show a block cursor in overtype mode
+        https://bugs.webkit.org/show_bug.cgi?id=114819
+
+        Reviewed by Ryosuke Niwa.
+
+        Export three more WebCore symbols.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-29  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Windows, WinCairo] Remove pthread paths for WebKit build.
+        https://bugs.webkit.org/show_bug.cgi?id=115390
+
+        Reviewed by Tim Horton.
+
+        Update Visual Studio property sheets to remove include paths and
+        link references for the pthreadsVC2.dll, which is no longer used.
+
+        * WebKit.vcxproj/WebKit/WebKitCommon.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+
+2013-04-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        StaticHashSetNodeList is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=115219
+
+        Reviewed by Antonio Gomes.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-26  Roger Fong  <roger_fong@apple.com>
+
+        Make Apple Windows VS2010 build results into and get dependencies from __32 suffixed folders.
+        Make the DebugSuffix configuration use _debug dependencies.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props:
+        * WebKit.vcxproj/Interfaces/InterfacesDebug.props:
+        * WebKit.vcxproj/Interfaces/InterfacesDebugWinCairo.props:
+        * WebKit.vcxproj/Interfaces/InterfacesPreBuild.cmd:
+        * WebKit.vcxproj/Interfaces/InterfacesProduction.props:
+        * WebKit.vcxproj/Interfaces/InterfacesRelease.props:
+        * WebKit.vcxproj/Interfaces/InterfacesReleaseWinCairo.props:
+        * WebKit.vcxproj/WebKit.make:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKitApple.props:
+        * WebKit.vcxproj/WebKit/WebKitCommon.props:
+        * WebKit.vcxproj/WebKit/WebKitDebug.props:
+        * WebKit.vcxproj/WebKit/WebKitDebugWinCairo.props:
+        * WebKit.vcxproj/WebKit/WebKitPostBuild.cmd:
+        * WebKit.vcxproj/WebKit/WebKitPreBuild.cmd:
+        * WebKit.vcxproj/WebKit/WebKitProduction.props:
+        * WebKit.vcxproj/WebKit/WebKitRelease.props:
+        * WebKit.vcxproj/WebKit/WebKitReleaseWinCairo.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorBuildCmd.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorDebug.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorDebugWinCairo.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPostBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorPreBuild.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorProduction.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorRelease.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorReleaseWinCairo.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDCommon.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebug.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebugWinCairo.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDProduction.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDRelease.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDReleaseWinCairo.props:
+
+2013-04-25  Andreas Kling  <akling@apple.com>
+
+        Remove ENABLE(PARSED_STYLE_SHEET_CACHING) and make it always-on.
+
+        Rubber-stamped by Anders Koivisto.
+
+        * PlatformWinCE.cmake:
+
+2013-04-25  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove OS(WINCE) from AccessibilityObject.h
+        https://bugs.webkit.org/show_bug.cgi?id=115192
+
+        Reviewed by Andreas Kling.
+
+        Use the same files like the the other PLATFORM(WIN) ports use.
+
+        * PlatformWinCE.cmake:
+
+2013-04-24  Jessie Berlin  <jberlin@apple.com>
+
+        Assertion failure (crash in release) attempting to delete database storage in WK1 without
+        creating a WebView first
+        https://bugs.webkit.org/show_bug.cgi?id=115065
+
+        Reviewed by Brady Eidson.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Remove WebDatabaseManagerInternal.h.
+
+2013-04-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        Remove the WebKit layer of wxWebKit
+        https://bugs.webkit.org/show_bug.cgi?id=115006
+
+        Reviewed by Anders Carlsson.
+
+        The wxWebKit port is no longer actively maintained by Kevin
+        on webkit.org. Remove the code until new maintainers resume the work.
+
+        * wx/WebBrowserShell.cpp: Removed.
+        * wx/WebBrowserShell.h: Removed.
+        * wx/WebDOMSelection.cpp: Removed.
+        * wx/WebDOMSelection.h: Removed.
+        * wx/WebEdit.cpp: Removed.
+        * wx/WebEdit.h: Removed.
+        * wx/WebFrame.cpp: Removed.
+        * wx/WebFrame.h: Removed.
+        * wx/WebFramePrivate.h: Removed.
+        * wx/WebKitDefines.h: Removed.
+        * wx/WebKitSupport/ChromeClientWx.cpp: Removed.
+        * wx/WebKitSupport/ChromeClientWx.h: Removed.
+        * wx/WebKitSupport/ContextMenuClientWx.cpp: Removed.
+        * wx/WebKitSupport/ContextMenuClientWx.h: Removed.
+        * wx/WebKitSupport/DragClientWx.cpp: Removed.
+        * wx/WebKitSupport/DragClientWx.h: Removed.
+        * wx/WebKitSupport/EditCommandWx.h: Removed.
+        * wx/WebKitSupport/EditorClientWx.cpp: Removed.
+        * wx/WebKitSupport/EditorClientWx.h: Removed.
+        * wx/WebKitSupport/FrameLoaderClientWx.cpp: Removed.
+        * wx/WebKitSupport/FrameLoaderClientWx.h: Removed.
+        * wx/WebKitSupport/FrameNetworkingContextWx.h: Removed.
+        * wx/WebKitSupport/InspectorClientWx.cpp: Removed.
+        * wx/WebKitSupport/InspectorClientWx.h: Removed.
+        * wx/WebSettings.cpp: Removed.
+        * wx/WebSettings.h: Removed.
+        * wx/WebView.cpp: Removed.
+        * wx/WebView.h: Removed.
+        * wx/WebViewPrivate.h: Removed.
+        * wx/bindings/python/samples/simple.py: Removed.
+        * wx/bindings/python/webview.i: Removed.
+        * wx/bindings/python/wscript: Removed.
+        * wx/wscript: Removed.
+
+2013-04-22  Jessie Berlin  <jberlin@apple.com>
+
+        Speculative Windows build fix.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove the memory instrumentation code
+        https://bugs.webkit.org/show_bug.cgi?id=114931
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-21  Benjamin Poulain  <benjamin@webkit.org>
+
+        Improve StringImpl code density for older ARM hardware
+        https://bugs.webkit.org/show_bug.cgi?id=114898
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-19  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. WebKit_Source is incorrectly set.
+
+        * WebKit.vcxproj/WebKit.make:
+
+2013-04-19  Jose Lejin PJ  <jose.lejin@gmail.com>
+
+        [EFL] Add method in ewk_settings for setting the CSS media type
+        https://bugs.webkit.org/show_bug.cgi?id=113284
+
+        Reviewed by Gyuyoung Kim.
+
+        test_ewk_setting is added.
+
+        * PlatformEfl.cmake:
+
+2013-04-18  Sam Weinig  <sam@webkit.org>
+
+        Network Process crashing trying to read in IDNScriptWhiteList.txt
+        https://bugs.webkit.org/show_bug.cgi?id=114827
+
+        Reviewed by Anders Carlsson.
+
+        Move IDNScriptWhiteList.txt from WebKit to WebCore, so that the NetworkProcess does not have to link against
+        WebKit. It was a layering violation for WebCore to be trying to access WebKit resources anyway.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-04-14  Roger Fong  <roger_fong@apple.com>
+
+        Copy make-file-export-generator script to the the Source folders of the projects that use it.
+        <rdar://problem/13675604>
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj.filters:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorBuildCmd.cmd:
+        * WebKit.vcxproj/WebKitExportGenerator/make-export-file-generator: Copied from Source/WebCore/make-export-file-generator.
+
+2013-04-16  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Windows] Unreviewed VS2010 build correction.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+        Add correct link library to avoid mixture of ICU 4.0 and 4.6
+        syumbol use.
+
+2013-04-12  Jer Noble  <jer.noble@apple.com>
+
+        TimeRanges::nearest() returns incorrect results.
+        https://bugs.webkit.org/show_bug.cgi?id=114483
+
+        Reviewed by Eric Carlson.
+
+        Add symbols needed by WebCoreTestSupport to the exports list.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-04-11  Rune Lillesveen  <rune@opera.com>
+
+        Incorrect evaluation of resolution media queries
+        https://bugs.webkit.org/show_bug.cgi?id=114029
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Removed setResolutionOverride from exports.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
 2013-04-05  Roger Fong  <roger_fong@apple.com>
 
         Build fix.

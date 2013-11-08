@@ -1,9 +1,9 @@
-mkdir 2>NUL "%IntDir%\lib"
+mkdir 2>NUL "%IntDir%\lib32"
 
-if exist "%WebKit_Libraries%\lib\icuuc.lib" copy /y "%WebKit_Libraries%\lib\icuuc.lib" "%IntDir%\lib\libicuuc.lib"
-if exist "%WebKit_Libraries%\lib\icuin.lib" copy /y "%WebKit_Libraries%\lib\icuin.lib" "%IntDir%\lib\libicuin.lib"
+if exist "%WebKit_Libraries%\lib32\icuuc%DebugSuffix%.lib" copy /y "%WebKit_Libraries%\lib32\icuuc%DebugSuffix%.lib" "%IntDir%\lib32\libicuuc%DebugSuffix%.lib"
+if exist "%WebKit_Libraries%\lib32\icuin%DebugSuffix%.lib" copy /y "%WebKit_Libraries%\lib32\icuin%DebugSuffix%.lib" "%IntDir%\lib32\libicuin%DebugSuffix%.lib"
 
-if exist "%WebKit_Libraries%\lib\libicuuc.lib" copy /y "%WebKit_Libraries%\lib\libicuuc.lib" "%IntDir%\lib"
-if exist "%WebKit_Libraries%\lib\libicuin.lib" copy /y "%WebKit_Libraries%\lib\libicuin.lib" "%IntDir%\lib"
+if exist "%WebKit_Libraries%\lib32\libicuuc%DebugSuffix%.lib" copy /y "%WebKit_Libraries%\lib32\libicuuc%DebugSuffix%.lib" "%IntDir%\lib32"
+if exist "%WebKit_Libraries%\lib32\libicuin%DebugSuffix%.lib" copy /y "%WebKit_Libraries%\lib32\libicuin%DebugSuffix%.lib" "%IntDir%\lib32"
 
 cmd /c

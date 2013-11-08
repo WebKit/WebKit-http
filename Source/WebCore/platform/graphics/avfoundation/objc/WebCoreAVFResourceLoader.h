@@ -28,8 +28,9 @@
 
 #if ENABLE(VIDEO) && USE(AVFOUNDATION) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 
-#include "CachedRawResource.h"
+#include "CachedRawResourceClient.h"
 #include "CachedResourceHandle.h"
+#include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RetainPtr.h>
 
@@ -37,6 +38,7 @@ OBJC_CLASS AVAssetResourceLoadingRequest;
 
 namespace WebCore {
 
+class CachedRawResource;
 class CachedResourceLoader;
 class MediaPlayerPrivateAVFoundationObjC;
 

@@ -72,7 +72,8 @@ class AbstractQueue(Command, QueueEngineDelegate):
             make_option("--no-confirm", action="store_false", dest="confirm", default=True, help="Do not ask the user for confirmation before running the queue.  Dangerous!"),
             make_option("--exit-after-iteration", action="store", type="int", dest="iterations", default=None, help="Stop running the queue after iterating this number of times."),
         ]
-        Command.__init__(self, "Run the %s" % self.name, options=options_list)
+        self.help_text = "Run the %s" % self.name
+        Command.__init__(self, options=options_list)
         self._iteration_count = 0
 
     def _cc_watchers(self, bug_id):
@@ -261,9 +262,6 @@ class PatchProcessingQueue(AbstractPatchQueue):
 
     # FIXME: This is a hack to map between the old port names and the new port names.
     def _new_port_name_from_old(self, port_name, platform):
-        # The new port system has no concept of xvfb yet.
-        if port_name == 'chromium-xvfb':
-            return 'chromium'
         # ApplePort.determine_full_port_name asserts if the name doesn't include version.
         if port_name == 'mac':
             return 'mac-' + platform.os_version
@@ -381,9 +379,9 @@ class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTas
         reporter.report_flaky_tests(patch, flaky_test_results, results_archive)
 
     def did_pass_testing_ews(self, patch):
-        # Currently, chromium-ews is the only testing EWS. Once there are more,
-        # should make sure they all pass.
-        status = self._tool.status_server.patch_status("chromium-ews", patch.id())
+        # Only Mac and Mac WK2 run tests
+        # FIXME: We shouldn't have to hard-code it here.
+        status = self._tool.status_server.patch_status("mac", patch.id())
         return status == self._pass_status
 
     # StepSequenceErrorHandler methods

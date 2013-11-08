@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ class InbandTextTrackPrivateAVF;
 class GenericCueData;
 
 class MediaPlayerPrivateAVFoundation : public MediaPlayerPrivateInterface
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
     , public AVFInbandTrackParent
 #endif
 {
@@ -56,10 +56,10 @@ public:
     virtual void seekCompleted(bool);
     virtual void didEnd();
     virtual void contentsNeedsDisplay() { }
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
     virtual void configureInbandTracks();
     virtual void setCurrentTrack(InbandTextTrackPrivateAVF*) { }
-    virtual InbandTextTrackPrivateAVF* currentTrack() { return 0; }
+    virtual InbandTextTrackPrivateAVF* currentTrack() const = 0;
 #endif
 
     class Notification {
@@ -157,7 +157,8 @@ protected:
     virtual void setClosedCaptionsVisible(bool) = 0;
     virtual MediaPlayer::NetworkState networkState() const { return m_networkState; }
     virtual MediaPlayer::ReadyState readyState() const { return m_readyState; }
-    virtual float maxTimeSeekable() const;
+    virtual double maxTimeSeekableDouble() const;
+    virtual double minTimeSeekable() const;
     virtual PassRefPtr<TimeRanges> buffered() const;
     virtual bool didLoadingProgress() const;
     virtual void setSize(const IntSize&);
@@ -209,10 +210,11 @@ protected:
     virtual void checkPlayability() = 0;
     virtual void updateRate() = 0;
     virtual float rate() const = 0;
-    virtual void seekToTime(float time) = 0;
+    virtual void seekToTime(double time) = 0;
     virtual unsigned totalBytes() const = 0;
     virtual PassRefPtr<TimeRanges> platformBufferedTimeRanges() const = 0;
-    virtual float platformMaxTimeSeekable() const = 0;
+    virtual double platformMaxTimeSeekable() const = 0;
+    virtual double platformMinTimeSeekable() const = 0;
     virtual float platformMaxTimeLoaded() const = 0;
     virtual float platformDuration() const = 0;
 
@@ -264,7 +266,7 @@ protected:
 
     virtual String engineDescription() const { return "AVFoundation"; }
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
     virtual void trackModeChanged() OVERRIDE;
     Vector<RefPtr<InbandTextTrackPrivateAVF> > m_textTracks;
 #endif
@@ -285,11 +287,12 @@ private:
 
     IntSize m_cachedNaturalSize;
     mutable float m_cachedMaxTimeLoaded;
-    mutable float m_cachedMaxTimeSeekable;
+    mutable double m_cachedMaxTimeSeekable;
+    mutable double m_cachedMinTimeSeekable;
     mutable float m_cachedDuration;
     float m_reportedDuration;
     mutable float m_maxTimeLoadedAtLastDidLoadingProgress;
-    float m_seekTo;
+    double m_seekTo;
     float m_requestedRate;
     mutable int m_delayCallbacks;
     bool m_mainThreadCallPending;
@@ -303,7 +306,7 @@ private:
     bool m_ignoreLoadStateChanges;
     bool m_haveReportedFirstVideoFrame;
     bool m_playWhenFramesAvailable;
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
     bool m_inbandTrackConfigurationPending;
 #endif
 };

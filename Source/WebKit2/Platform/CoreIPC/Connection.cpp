@@ -26,10 +26,11 @@
 #include "config.h"
 #include "Connection.h"
 
-#include "BinarySemaphore.h"
 #include <WebCore/RunLoop.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/HashSet.h>
+#include <wtf/text/WTFString.h>
+#include <wtf/threads/BinarySemaphore.h>
 
 using namespace WebCore;
 
@@ -83,7 +84,7 @@ private:
     Mutex m_mutex;
 
     // The set of connections for which we've scheduled a call to dispatchMessageAndResetDidScheduleDispatchMessagesForConnection.
-    HashSet<RefPtr<Connection> > m_didScheduleDispatchMessagesWorkSet;
+    HashSet<RefPtr<Connection>> m_didScheduleDispatchMessagesWorkSet;
 
     struct ConnectionAndIncomingMessage {
         RefPtr<Connection> connection;
@@ -189,7 +190,7 @@ void Connection::SyncMessageState::dispatchMessages(Connection* allowedConnectio
 
     if (!messagesToPutBack.isEmpty()) {
         MutexLocker locker(m_mutex);
-        m_messagesToDispatchWhileWaitingForSyncReply.append(messagesToPutBack);
+        m_messagesToDispatchWhileWaitingForSyncReply.appendVector(messagesToPutBack);
     }
 }
 
@@ -385,7 +386,7 @@ PassOwnPtr<MessageDecoder> Connection::waitForMessage(StringReference messageRec
     {
         MutexLocker locker(m_incomingMessagesLock);
 
-        for (Deque<OwnPtr<MessageDecoder> >::iterator it = m_incomingMessages.begin(), end = m_incomingMessages.end(); it != end; ++it) {
+        for (Deque<OwnPtr<MessageDecoder>>::iterator it = m_incomingMessages.begin(), end = m_incomingMessages.end(); it != end; ++it) {
             OwnPtr<MessageDecoder>& message = *it;
 
             if (message->messageReceiverName() == messageReceiverName && message->messageName() == messageName && message->destinationID() == destinationID) {
@@ -415,7 +416,7 @@ PassOwnPtr<MessageDecoder> Connection::waitForMessage(StringReference messageRec
     while (true) {
         MutexLocker locker(m_waitForMessageMutex);
 
-        HashMap<std::pair<std::pair<StringReference, StringReference>, uint64_t>, OwnPtr<MessageDecoder> >::iterator it = m_waitForMessageMap.find(messageAndDestination);
+        HashMap<std::pair<std::pair<StringReference, StringReference>, uint64_t>, OwnPtr<MessageDecoder>>::iterator it = m_waitForMessageMap.find(messageAndDestination);
         if (it->value) {
             OwnPtr<MessageDecoder> decoder = it->value.release();
             m_waitForMessageMap.remove(it);
@@ -619,11 +620,21 @@ void Connection::processIncomingMessage(PassOwnPtr<MessageDecoder> incomingMessa
     }
 
     if (!m_workQueueMessageReceivers.isValidKey(message->messageReceiverName())) {
+        if (message->messageReceiverName().isEmpty() && message->messageName().isEmpty()) {
+            // Something went wrong when decoding the message. Encode the message length so we can figure out if this
+            // happens for certain message lengths.
+            CString messageReceiverName = "<unknown message>";
+            CString messageName = String::format("<message length: %zu bytes>", message->length()).utf8();
+
+            m_clientRunLoop->dispatch(bind(&Connection::dispatchDidReceiveInvalidMessage, this, messageReceiverName, messageName));
+            return;
+        }
+
         m_clientRunLoop->dispatch(bind(&Connection::dispatchDidReceiveInvalidMessage, this, message->messageReceiverName().toString(), message->messageName().toString()));
         return;
     }
 
-    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver> > >::const_iterator it = m_workQueueMessageReceivers.find(message->messageReceiverName());
+    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver>>>::const_iterator it = m_workQueueMessageReceivers.find(message->messageReceiverName());
     if (it != m_workQueueMessageReceivers.end()) {
         it->value.first->dispatch(bind(&Connection::dispatchWorkQueueMessageReceiverMessage, this, it->value.second, message.release().leakPtr()));
         return;
@@ -639,7 +650,7 @@ void Connection::processIncomingMessage(PassOwnPtr<MessageDecoder> incomingMessa
     {
         MutexLocker locker(m_waitForMessageMutex);
 
-        HashMap<std::pair<std::pair<StringReference, StringReference>, uint64_t>, OwnPtr<MessageDecoder> >::iterator it = m_waitForMessageMap.find(std::make_pair(std::make_pair(message->messageReceiverName(), message->messageName()), message->destinationID()));
+        HashMap<std::pair<std::pair<StringReference, StringReference>, uint64_t>, OwnPtr<MessageDecoder>>::iterator it = m_waitForMessageMap.find(std::make_pair(std::make_pair(message->messageReceiverName(), message->messageName()), message->destinationID()));
         if (it != m_waitForMessageMap.end()) {
             it->value = message.release();
             ASSERT(it->value);

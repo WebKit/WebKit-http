@@ -372,7 +372,7 @@ bool InspectorStyle::setPropertyText(unsigned index, const String& propertyText,
     populateAllProperties(&allProperties);
 
     if (propertyText.stripWhiteSpace().length()) {
-        RefPtr<StylePropertySet> tempMutableStyle = StylePropertySet::create();
+        RefPtr<MutableStylePropertySet> tempMutableStyle = MutableStylePropertySet::create();
         RefPtr<CSSRuleSourceData> sourceData = CSSRuleSourceData::create(CSSRuleSourceData::STYLE_RULE);
         Document* ownerDocument = m_parentStyleSheet->pageStyleSheet() ? m_parentStyleSheet->pageStyleSheet()->ownerDocument() : 0;
         createCSSParser(ownerDocument)->parseDeclaration(tempMutableStyle.get(), propertyText + " " + bogusPropertyName + ": none", sourceData, m_style->parentStyleSheet()->contents());
@@ -460,7 +460,7 @@ bool InspectorStyle::toggleProperty(unsigned index, bool disable, ExceptionCode&
     return applyStyleText(editor.styleText());
 }
 
-bool InspectorStyle::styleText(String* result) const
+bool InspectorStyle::getText(String* result) const
 {
     // Precondition: m_parentStyleSheet->ensureParsedDataReady() has been called successfully.
     RefPtr<CSSRuleSourceData> sourceData = extractSourceData();
@@ -641,9 +641,9 @@ PassRefPtr<CSSRuleSourceData> InspectorStyle::extractSourceData() const
     return m_parentStyleSheet->ruleSourceDataFor(m_style.get());
 }
 
-bool InspectorStyle::applyStyleText(const String& text)
+bool InspectorStyle::setText(const String& text, ExceptionCode& ec)
 {
-    return m_parentStyleSheet->setStyleText(m_style.get(), text);
+    return m_parentStyleSheet->setStyleText(m_style.get(), text, ec);
 }
 
 String InspectorStyle::shorthandValue(const String& shorthandProperty) const
@@ -1109,6 +1109,23 @@ PassRefPtr<TypeBuilder::CSS::CSSStyle> InspectorStyleSheet::buildObjectForStyle(
     return result.release();
 }
 
+bool InspectorStyleSheet::setStyleText(const InspectorCSSId& id, const String& text, String* oldText, ExceptionCode& ec)
+{
+    RefPtr<InspectorStyle> inspectorStyle = inspectorStyleForId(id);
+    if (!inspectorStyle) {
+        ec = NOT_FOUND_ERR;
+        return false;
+    }
+
+    if (oldText && !inspectorStyle->getText(oldText))
+        return false;
+
+    bool success = inspectorStyle->setText(text, ec);
+    if (success)
+        fireStyleSheetChanged();
+    return success;
+}
+
 bool InspectorStyleSheet::setPropertyText(const InspectorCSSId& id, unsigned propertyIndex, const String& text, bool overwrite, String* oldText, ExceptionCode& ec)
 {
     RefPtr<InspectorStyle> inspectorStyle = inspectorStyleForId(id);
@@ -1279,7 +1296,7 @@ void InspectorStyleSheet::ensureFlatRules() const
         collectFlatRules(asCSSRuleList(pageStyleSheet()), &m_flatRules);
 }
 
-bool InspectorStyleSheet::setStyleText(CSSStyleDeclaration* style, const String& text)
+bool InspectorStyleSheet::setStyleText(CSSStyleDeclaration* style, const String& text, ExceptionCode& ec)
 {
     if (!m_pageStyleSheet)
         return false;
@@ -1295,7 +1312,6 @@ bool InspectorStyleSheet::setStyleText(CSSStyleDeclaration* style, const String&
     if (id.isEmpty())
         return false;
 
-    ExceptionCode ec = 0;
     style->setCssText(text, ec);
     if (!ec)
         m_parsedStyleSheet->setText(patchedStyleSheetText);
@@ -1342,7 +1358,9 @@ void InspectorStyleSheet::revalidateStyle(CSSStyleDeclaration* pageStyle)
             if (parsedRule->styleRule()->properties()->asText() != pageStyle->cssText()) {
                 // Clear the disabled properties for the invalid style here.
                 m_inspectorStyles.remove(pageStyle);
-                setStyleText(pageStyle, pageStyle->cssText());
+
+                ExceptionCode ec = 0;
+                setStyleText(pageStyle, pageStyle->cssText(), ec);
             }
             break;
         }
@@ -1460,10 +1478,9 @@ bool InspectorStyleSheetForInlineStyle::getText(String* result) const
     return true;
 }
 
-bool InspectorStyleSheetForInlineStyle::setStyleText(CSSStyleDeclaration* style, const String& text)
+bool InspectorStyleSheetForInlineStyle::setStyleText(CSSStyleDeclaration* style, const String& text, ExceptionCode& ec)
 {
     ASSERT_UNUSED(style, style == inlineStyle());
-    ExceptionCode ec = 0;
 
     {
         InspectorCSSAgent::InlineStyleOverrideScope overrideScope(m_element->ownerDocument());
@@ -1534,7 +1551,7 @@ bool InspectorStyleSheetForInlineStyle::getStyleAttributeRanges(CSSRuleSourceDat
         return true;
     }
 
-    RefPtr<StylePropertySet> tempDeclaration = StylePropertySet::create();
+    RefPtr<MutableStylePropertySet> tempDeclaration = MutableStylePropertySet::create();
     createCSSParser(m_element->document())->parseDeclaration(tempDeclaration.get(), m_styleText, result, m_element->document()->elementSheet()->contents());
     return true;
 }

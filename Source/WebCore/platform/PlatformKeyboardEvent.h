@@ -49,10 +49,6 @@ class QKeyEvent;
 QT_END_NAMESPACE
 #endif
 
-#if PLATFORM(WX)
-class wxKeyEvent;
-#endif
-
 #if PLATFORM(HAIKU)
 class BMessage;
 #endif
@@ -169,10 +165,6 @@ namespace WebCore {
         QKeyEvent* qtEvent() const { return m_qtEvent; }
         uint32_t nativeModifiers() const;
         uint32_t nativeScanCode() const;
-#endif
-
-#if PLATFORM(WX)
-        PlatformKeyboardEvent(wxKeyEvent&);
 #endif
 
 #if PLATFORM(HAIKU)

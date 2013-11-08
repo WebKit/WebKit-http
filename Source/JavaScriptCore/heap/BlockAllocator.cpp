@@ -58,6 +58,16 @@ BlockAllocator::~BlockAllocator()
         m_emptyRegionCondition.broadcast();
     }
     waitForThreadCompletion(m_blockFreeingThread);
+    ASSERT(allRegionSetsAreEmpty());
+    ASSERT(m_emptyRegions.isEmpty());
+}
+
+bool BlockAllocator::allRegionSetsAreEmpty() const
+{
+    return m_copiedRegionSet.isEmpty()
+        && m_markedRegionSet.isEmpty()
+        && m_fourKBBlockRegionSet.isEmpty()
+        && m_workListRegionSet.isEmpty();
 }
 
 void BlockAllocator::releaseFreeRegions()
@@ -78,7 +88,7 @@ void BlockAllocator::releaseFreeRegions()
         if (!region)
             break;
 
-        delete region;
+        region->destroy();
     }
 }
 
@@ -150,7 +160,7 @@ void BlockAllocator::blockFreeingThreadMain()
             if (!region)
                 break;
             
-            delete region;
+            region->destroy();
         }
     }
 }

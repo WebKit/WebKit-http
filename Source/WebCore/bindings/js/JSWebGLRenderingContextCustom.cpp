@@ -52,6 +52,8 @@
 #include "JSWebGLCompressedTextureATC.h"
 #include "JSWebGLCompressedTexturePVRTC.h"
 #include "JSWebGLCompressedTextureS3TC.h"
+#include "JSWebGLDebugRendererInfo.h"
+#include "JSWebGLDebugShaders.h"
 #include "JSWebGLDepthTexture.h"
 #include "JSWebGLFramebuffer.h"
 #include "JSWebGLLoseContext.h"
@@ -427,7 +429,7 @@ bool toVector(JSC::ExecState* exec, JSC::JSValue value, Vector<T, inlineCapacity
         return false;
 
     JSC::JSObject* object = asObject(value);
-    int32_t length = object->get(exec, JSC::Identifier(exec, "length")).toInt32(exec);
+    int32_t length = object->get(exec, exec->vm().propertyNames->length).toInt32(exec);
 
     if (!vector.tryReserveCapacity(length))
         return false;

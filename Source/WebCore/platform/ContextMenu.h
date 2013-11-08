@@ -82,10 +82,6 @@ namespace WebCore {
 
         PlatformMenuDescription releasePlatformDescription();
 
-#if PLATFORM(WX)
-        static ContextMenuItem* itemWithId(int);
-#endif
-
 #if PLATFORM(HAIKU)
         void setController(ContextMenuController*);
 #endif

@@ -122,7 +122,7 @@ namespace JSC { namespace DFG {
 class ByteCodeParser {
 public:
     ByteCodeParser(Graph& graph)
-        : m_globalData(&graph.m_globalData)
+        : m_vm(&graph.m_vm)
         , m_codeBlock(graph.m_codeBlock)
         , m_profiledBlock(graph.m_profiledBlock)
         , m_graph(graph)
@@ -679,7 +679,9 @@ private:
     {
         return node->isStronglyProvedConstantIn(inlineCallFrame());
     }
-    
+
+    // Our codegen for constant strict equality performs a bitwise comparison,
+    // so we can only select values that have a consistent bitwise identity.
     bool isConstantForCompareStrictEq(Node* node)
     {
         if (!node->isConstant())
@@ -942,7 +944,7 @@ private:
     
     void buildOperandMapsIfNecessary();
     
-    JSGlobalData* m_globalData;
+    VM* m_vm;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
     Graph& m_graph;
@@ -1598,6 +1600,17 @@ bool ByteCodeParser::handleIntrinsic(bool usesResult, int resultOperand, Intrins
         
         return true;
     }
+
+    case IMulIntrinsic: {
+        if (argumentCountIncludingThis != 3)
+            return false;
+        int leftOperand = registerOffset + argumentToOperand(1);
+        int rightOperand = registerOffset + argumentToOperand(2);
+        Node* left = getToInt32(leftOperand);
+        Node* right = getToInt32(rightOperand);
+        setIntrinsicResult(usesResult, resultOperand, addToGraph(ArithIMul, left, right));
+        return true;
+    }
         
     default:
         return false;
@@ -1635,7 +1648,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
         Node* result;
         
         if (argumentCountIncludingThis <= 1)
-            result = cellConstant(m_globalData->smallStrings.emptyString());
+            result = cellConstant(m_vm->smallStrings.emptyString());
         else
             result = addToGraph(ToString, get(registerOffset + argumentToOperand(1)));
         
@@ -1924,7 +1937,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 {
     bool shouldContinueParsing = true;
 
-    Interpreter* interpreter = m_globalData->interpreter;
+    Interpreter* interpreter = m_vm->interpreter;
     Instruction* instructionsBegin = m_inlineStackTop->m_codeBlock->instructions().begin();
     unsigned blockBegin = m_currentIndex;
     
@@ -1974,7 +1987,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         
         if (m_graph.m_compilation && opcodeID != op_call_put_result) {
             addToGraph(CountExecution, OpInfo(m_graph.m_compilation->executionCounterFor(
-                Profiler::OriginStack(*m_globalData->m_perBytecodeProfiler, m_codeBlock, currentCodeOrigin()))));
+                Profiler::OriginStack(*m_vm->m_perBytecodeProfiler, m_codeBlock, currentCodeOrigin()))));
         }
         
         switch (opcodeID) {
@@ -2025,6 +2038,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ObjectAllocationProfile* allocationProfile = function->tryGetAllocationProfile();
                 if (allocationProfile) {
                     addToGraph(AllocationProfileWatchpoint, OpInfo(function));
+                    // The callee is still live up to this point.
+                    addToGraph(Phantom, callee);
                     set(currentInstruction[1].u.operand,
                         addToGraph(NewObject, OpInfo(allocationProfile->structure())));
                     alreadyEmitted = true;
@@ -2181,35 +2196,18 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
         // === Increment/Decrement opcodes ===
 
-        case op_pre_inc: {
+        case op_inc: {
             unsigned srcDst = currentInstruction[1].u.operand;
             Node* op = get(srcDst);
             set(srcDst, makeSafe(addToGraph(ArithAdd, op, one())));
-            NEXT_OPCODE(op_pre_inc);
+            NEXT_OPCODE(op_inc);
         }
 
-        case op_post_inc: {
-            unsigned result = currentInstruction[1].u.operand;
-            unsigned srcDst = currentInstruction[2].u.operand;
-            ASSERT(result != srcDst); // Required for assumptions we make during OSR.
-            Node* op = get(srcDst);
-            setPair(result, op, srcDst, makeSafe(addToGraph(ArithAdd, op, one())));
-            NEXT_OPCODE(op_post_inc);
-        }
-
-        case op_pre_dec: {
+        case op_dec: {
             unsigned srcDst = currentInstruction[1].u.operand;
             Node* op = get(srcDst);
             set(srcDst, makeSafe(addToGraph(ArithSub, op, one())));
-            NEXT_OPCODE(op_pre_dec);
-        }
-
-        case op_post_dec: {
-            unsigned result = currentInstruction[1].u.operand;
-            unsigned srcDst = currentInstruction[2].u.operand;
-            Node* op = get(srcDst);
-            setPair(result, op, srcDst, makeSafe(addToGraph(ArithSub, op, one())));
-            NEXT_OPCODE(op_post_dec);
+            NEXT_OPCODE(op_dec);
         }
 
         // === Arithmetic operations ===
@@ -2432,11 +2430,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (canFold(op1) && canFold(op2)) {
                 JSValue a = valueOfJSConstant(op1);
                 JSValue b = valueOfJSConstant(op2);
-                if (a.isNumber() && b.isNumber()) {
-                    set(currentInstruction[1].u.operand,
-                        getJSConstantForValue(jsBoolean(a.asNumber() == b.asNumber())));
-                    NEXT_OPCODE(op_eq);
-                }
+                set(currentInstruction[1].u.operand,
+                    getJSConstantForValue(jsBoolean(JSValue::equal(m_codeBlock->globalObject()->globalExec(), a, b))));
+                NEXT_OPCODE(op_eq);
             }
             set(currentInstruction[1].u.operand, addToGraph(CompareEq, op1, op2));
             NEXT_OPCODE(op_eq);
@@ -2454,11 +2450,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (canFold(op1) && canFold(op2)) {
                 JSValue a = valueOfJSConstant(op1);
                 JSValue b = valueOfJSConstant(op2);
-                if (a.isNumber() && b.isNumber()) {
-                    set(currentInstruction[1].u.operand,
-                        getJSConstantForValue(jsBoolean(a.asNumber() == b.asNumber())));
-                    NEXT_OPCODE(op_stricteq);
-                }
+                set(currentInstruction[1].u.operand,
+                    getJSConstantForValue(jsBoolean(JSValue::strictEqual(m_codeBlock->globalObject()->globalExec(), a, b))));
+                NEXT_OPCODE(op_stricteq);
             }
             if (isConstantForCompareStrictEq(op1))
                 set(currentInstruction[1].u.operand, addToGraph(CompareStrictEqConstant, op2, op1));
@@ -2475,11 +2469,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (canFold(op1) && canFold(op2)) {
                 JSValue a = valueOfJSConstant(op1);
                 JSValue b = valueOfJSConstant(op2);
-                if (a.isNumber() && b.isNumber()) {
-                    set(currentInstruction[1].u.operand,
-                        getJSConstantForValue(jsBoolean(a.asNumber() != b.asNumber())));
-                    NEXT_OPCODE(op_stricteq);
-                }
+                set(currentInstruction[1].u.operand,
+                    getJSConstantForValue(jsBoolean(!JSValue::equal(m_codeBlock->globalObject()->globalExec(), a, b))));
+                NEXT_OPCODE(op_neq);
             }
             set(currentInstruction[1].u.operand, addToGraph(LogicalNot, addToGraph(CompareEq, op1, op2)));
             NEXT_OPCODE(op_neq);
@@ -2497,11 +2489,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (canFold(op1) && canFold(op2)) {
                 JSValue a = valueOfJSConstant(op1);
                 JSValue b = valueOfJSConstant(op2);
-                if (a.isNumber() && b.isNumber()) {
-                    set(currentInstruction[1].u.operand,
-                        getJSConstantForValue(jsBoolean(a.asNumber() != b.asNumber())));
-                    NEXT_OPCODE(op_stricteq);
-                }
+                set(currentInstruction[1].u.operand,
+                    getJSConstantForValue(jsBoolean(!JSValue::strictEqual(m_codeBlock->globalObject()->globalExec(), a, b))));
+                NEXT_OPCODE(op_nstricteq);
             }
             Node* invertedResult;
             if (isConstantForCompareStrictEq(op1))
@@ -3281,7 +3271,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // Baseline->DFG OSR jumps between loop hints. The DFG assumes that Baseline->DFG
             // OSR can only happen at basic block boundaries. Assert that these two statements
             // are compatible.
-            ASSERT_UNUSED(blockBegin, m_currentIndex == blockBegin);
+            RELEASE_ASSERT(m_currentIndex == blockBegin);
             
             // We never do OSR into an inlined code block. That could not happen, since OSR
             // looks up the code block that is the replacement for the baseline JIT code
@@ -3289,9 +3279,13 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (!m_inlineStackTop->m_caller)
                 m_currentBlock->isOSRTarget = true;
 
-            // Emit a phantom node to ensure that there is a placeholder node for this bytecode
-            // op.
-            addToGraph(Phantom);
+            if (m_vm->watchdog.isEnabled())
+                addToGraph(CheckWatchdogTimer);
+            else {
+                // Emit a phantom node to ensure that there is a placeholder
+                // node for this bytecode op.
+                addToGraph(Phantom);
+            }
             
             NEXT_OPCODE(op_loop_hint);
         }
@@ -3364,6 +3358,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             set(currentInstruction[1].u.operand,
                 addToGraph(TypeOf, get(currentInstruction[2].u.operand)));
             NEXT_OPCODE(op_typeof);
+        }
+
+        case op_to_number: {
+            set(currentInstruction[1].u.operand,
+                addToGraph(Identity, Edge(get(currentInstruction[2].u.operand), NumberUse)));
+            NEXT_OPCODE(op_to_number);
         }
 
         default:
@@ -3479,10 +3479,10 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
         ASSERT(callsiteBlockHead != NoBlock);
         
         InlineCallFrame inlineCallFrame;
-        inlineCallFrame.executable.set(*byteCodeParser->m_globalData, byteCodeParser->m_codeBlock->ownerExecutable(), codeBlock->ownerExecutable());
+        inlineCallFrame.executable.set(*byteCodeParser->m_vm, byteCodeParser->m_codeBlock->ownerExecutable(), codeBlock->ownerExecutable());
         inlineCallFrame.stackOffset = inlineCallFrameStart + JSStack::CallFrameHeaderSize;
         if (callee)
-            inlineCallFrame.callee.set(*byteCodeParser->m_globalData, byteCodeParser->m_codeBlock->ownerExecutable(), callee);
+            inlineCallFrame.callee.set(*byteCodeParser->m_vm, byteCodeParser->m_codeBlock->ownerExecutable(), callee);
         inlineCallFrame.caller = byteCodeParser->currentCodeOrigin();
         inlineCallFrame.arguments.resize(argumentCountIncludingThis); // Set the number of arguments including this, but don't configure the value recoveries, yet.
         inlineCallFrame.isCall = isCall(kind);
@@ -3524,7 +3524,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
             StringImpl* rep = codeBlock->identifier(i).impl();
             IdentifierMap::AddResult result = byteCodeParser->m_identifierMap.add(rep, byteCodeParser->m_codeBlock->numberOfIdentifiers());
             if (result.isNewEntry)
-                byteCodeParser->m_codeBlock->addIdentifier(Identifier(byteCodeParser->m_globalData, rep));
+                byteCodeParser->m_codeBlock->addIdentifier(Identifier(byteCodeParser->m_vm, rep));
             m_identifierRemap[i] = result.iterator->value;
         }
         for (size_t i = 0; i < codeBlock->numberOfConstantRegisters(); ++i) {
@@ -3594,7 +3594,7 @@ void ByteCodeParser::parseCodeBlock()
     
     if (m_graph.m_compilation) {
         m_graph.m_compilation->addProfiledBytecodes(
-            *m_globalData->m_perBytecodeProfiler, m_inlineStackTop->m_profiledBlock);
+            *m_vm->m_perBytecodeProfiler, m_inlineStackTop->m_profiledBlock);
     }
     
     bool shouldDumpBytecode = Options::dumpBytecodeAtDFGTime();

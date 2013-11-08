@@ -33,6 +33,7 @@
 #include "WKData.h"
 #include "WebFrame.h"
 #include "WebSecurityOrigin.h"
+#include <WebCore/Document.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
@@ -218,6 +219,11 @@ WKStringRef WKBundleFrameCopyMIMETypeForResourceWithURL(WKBundleFrameRef frameRe
 bool WKBundleFrameContainsAnyFormElements(WKBundleFrameRef frameRef)
 {
     return toImpl(frameRef)->containsAnyFormElements();
+}
+
+bool WKBundleFrameContainsAnyFormControls(WKBundleFrameRef frameRef)
+{
+    return toImpl(frameRef)->containsAnyFormControls();
 }
 
 void WKBundleFrameSetTextDirection(WKBundleFrameRef frameRef, WKStringRef directionRef)

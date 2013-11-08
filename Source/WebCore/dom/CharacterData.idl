@@ -24,24 +24,24 @@ interface CharacterData : Node {
 
     readonly attribute unsigned long length;
     
-    [TreatReturnedNullStringAs=Null, ObjCLegacyUnnamedParameters] DOMString substringData(in [IsIndex,Optional=DefaultIsUndefined] unsigned long offset, 
-                                                                     in [IsIndex,Optional=DefaultIsUndefined] unsigned long length)
+    [TreatReturnedNullStringAs=Null, ObjCLegacyUnnamedParameters] DOMString substringData([IsIndex, Default=Undefined] optional unsigned long offset, 
+                                                                     [IsIndex, Default=Undefined] optional unsigned long length)
         raises(DOMException);
 
-    void appendData(in [Optional=DefaultIsUndefined] DOMString data)
+    void appendData([Default=Undefined] optional DOMString data)
         raises(DOMException);
 
-    [ObjCLegacyUnnamedParameters] void insertData(in [IsIndex,Optional=DefaultIsUndefined] unsigned long offset, 
-                                   in [Optional=DefaultIsUndefined] DOMString data)
+    [ObjCLegacyUnnamedParameters] void insertData([IsIndex, Default=Undefined] optional unsigned long offset, 
+                                   [Default=Undefined] optional DOMString data)
         raises(DOMException);
 
-    [ObjCLegacyUnnamedParameters] void deleteData(in [IsIndex,Optional=DefaultIsUndefined] unsigned long offset, 
-                                   in [IsIndex,Optional=DefaultIsUndefined] unsigned long length)
+    [ObjCLegacyUnnamedParameters] void deleteData([IsIndex, Default=Undefined] optional unsigned long offset, 
+                                   [IsIndex, Default=Undefined] optional unsigned long length)
         raises(DOMException);
 
-    [ObjCLegacyUnnamedParameters] void replaceData(in [IsIndex,Optional=DefaultIsUndefined] unsigned long offset, 
-                                    in [IsIndex,Optional=DefaultIsUndefined] unsigned long length,
-                                    in [Optional=DefaultIsUndefined] DOMString data)
+    [ObjCLegacyUnnamedParameters] void replaceData([IsIndex, Default=Undefined] optional unsigned long offset, 
+                                    [IsIndex, Default=Undefined] optional unsigned long length,
+                                    [Default=Undefined] optional DOMString data)
         raises(DOMException);
 
     // DOM 4

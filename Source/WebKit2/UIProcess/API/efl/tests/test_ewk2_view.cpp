@@ -287,6 +287,13 @@ TEST_F(EWK2UnitTestBase, ewk_view_full_screen_exit)
     ASSERT_TRUE(fullScreenCallbackCalled);
 }
 
+TEST_F(EWK2UnitTestBase, ewk_view_cancel_full_screen_request)
+{
+    // FullScreenmanager should skip cancel fullscreen request if fullscreen
+    // mode was not set using FullScreen API.
+    ASSERT_FALSE(ewk_view_fullscreen_exit(webView()));
+}
+
 TEST_F(EWK2UnitTestBase, ewk_view_same_page_navigation)
 {
     // Tests that same page navigation updates the page URL.
@@ -989,4 +996,18 @@ TEST_F(EWK2UnitTestBase, ewk_view_source_mode)
     //       But it needs a way to retrieve the body contents to compare the loaded contents
     //       such as excuting the JavaScript, 'window.document.body.innerText'.
     //       https://bugs.webkit.org/show_bug.cgi?id=101904.
+}
+
+TEST_F(EWK2UnitTestBase, ewk_view_user_agent)
+{
+    const char* defaultUserAgent = eina_stringshare_add(ewk_view_user_agent_get(webView()));
+    const char customUserAgent[] = "Foo";
+
+    ASSERT_TRUE(ewk_view_user_agent_set(webView(), customUserAgent));
+    ASSERT_STREQ(customUserAgent, ewk_view_user_agent_get(webView()));
+
+    // Set the default user agent string.
+    ASSERT_TRUE(ewk_view_user_agent_set(webView(), 0));
+    ASSERT_STREQ(defaultUserAgent, ewk_view_user_agent_get(webView()));
+    eina_stringshare_del(defaultUserAgent);
 }

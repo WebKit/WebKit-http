@@ -25,6 +25,7 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=SVG,
     ObjCProtocol,
     SuppressToJSObject,
@@ -36,7 +37,7 @@
     SVGRect   getBBox();
     SVGMatrix getCTM();
     SVGMatrix getScreenCTM();
-    SVGMatrix getTransformToElement(in [Optional=DefaultIsUndefined] SVGElement element)
+    SVGMatrix getTransformToElement([Default=Undefined] optional SVGElement element)
         raises(SVGException);
 };
 

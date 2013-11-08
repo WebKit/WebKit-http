@@ -84,6 +84,7 @@
 #include "InspectorOverlay.h"
 #include "JavaScriptVariant_p.h"
 #include "LayerWebKitThread.h"
+#include "LocalFileSystem.h"
 #if ENABLE(NETWORK_INFO)
 #include "NetworkInfoClientBlackBerry.h"
 #endif
@@ -155,10 +156,6 @@
 #include "MediaPlayerPrivateBlackBerry.h"
 #endif
 
-#if USE(SKIA)
-#include "PlatformContextSkia.h"
-#endif
-
 #if USE(ACCELERATED_COMPOSITING)
 #include "FrameLayers.h"
 #include "WebPageCompositorClient.h"
@@ -172,6 +169,7 @@
 #include <BlackBerryPlatformMouseEvent.h>
 #include <BlackBerryPlatformScreen.h>
 #include <BlackBerryPlatformSettings.h>
+#include <BlackBerryPlatformWebFileSystem.h>
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSContextRef.h>
 #include <JavaScriptCore/JSStringRef.h>
@@ -370,6 +368,7 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_overflowExceedsContentsSize(false)
     , m_resetVirtualViewportOnCommitted(true)
     , m_shouldUseFixedDesktopMode(false)
+    , m_inspectorEnabled(false)
     , m_preventIdleDimmingCount(0)
 #if ENABLE(TOUCH_EVENTS)
     , m_preventDefaultOnTouchStart(false)
@@ -428,6 +427,8 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     , m_notificationManager(this)
 #endif
+    , m_didStartAnimations(false)
+    , m_animationStartTime(0)
 {
     static bool isInitialized = false;
     if (!isInitialized) {
@@ -489,7 +490,7 @@ WebPagePrivate::~WebPagePrivate()
     m_proximityDetector = 0;
 
 #if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
-    delete m_dumpRenderTree;
+    BlackBerry::Platform::deleteGuardedObject(static_cast<DumpRenderTree*>(m_dumpRenderTree));
     m_dumpRenderTree = 0;
 #endif
 
@@ -509,6 +510,9 @@ Page* WebPagePrivate::core(const WebPage* webPage)
 
 void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
 {
+    m_webSettings = WebSettings::createFromStandardSettings();
+    m_webSettings->setUserAgentString(defaultUserAgent());
+
     ChromeClientBlackBerry* chromeClient = new ChromeClientBlackBerry(this);
 #if ENABLE(CONTEXT_MENUS)
     ContextMenuClientBlackBerry* contextMenuClient = 0;
@@ -578,8 +582,6 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
     WebCore::provideNetworkInfoTo(m_page, new WebCore::NetworkInfoClientBlackBerry(this));
 #endif
 
-    m_webSettings = WebSettings::createFromStandardSettings();
-    m_webSettings->setUserAgentString(defaultUserAgent());
     m_page->setDeviceScaleFactor(m_webSettings->devicePixelRatio());
 
     m_page->addLayoutMilestones(DidFirstVisuallyNonEmptyLayout);
@@ -619,6 +621,7 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
     m_page->settings()->setAllowUniversalAccessFromFileURLs(false);
     m_page->settings()->setAllowFileAccessFromFileURLs(false);
     m_page->settings()->setFixedPositionCreatesStackingContext(true);
+    m_page->settings()->setWantsBalancedSetDefersLoadingBehavior(true);
 
     m_backingStoreClient = BackingStoreClient::create(m_mainFrame, /* parent frame */ 0, m_webPage);
     // The direct access to BackingStore is left here for convenience since it
@@ -637,12 +640,20 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
     m_page->settings()->setMemoryInfoEnabled(true);
 #endif
 
+#if ENABLE(FILE_SYSTEM)
+    static bool localFileSystemInitialized = false;
+    if (!localFileSystemInitialized) {
+        localFileSystemInitialized = true;
+        WebCore::LocalFileSystem::initializeLocalFileSystem("/");
+    }
+#endif
+
 #if USE(ACCELERATED_COMPOSITING)
     // The compositor will be needed for overlay rendering, so create it
     // unconditionally. It will allocate OpenGL objects lazily, so this incurs
     // no overhead in the unlikely case where the compositor is not needed.
     Platform::userInterfaceThreadMessageClient()->dispatchSyncMessage(
-            createMethodCallMessage(&WebPagePrivate::createCompositor, this));
+        createMethodCallMessage(&WebPagePrivate::createCompositor, this));
 #endif
 }
 
@@ -660,12 +671,12 @@ private:
     }
 };
 
-void WebPagePrivate::load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, const BlackBerry::Platform::String& method, Platform::NetworkRequest::CachePolicy cachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool isInitial, bool mustHandleInternally, bool needReferer, bool forceDownload, const BlackBerry::Platform::String& overrideContentType, const BlackBerry::Platform::String& suggestedSaveName)
+void WebPagePrivate::load(const Platform::NetworkRequest& netReq, bool needReferer)
 {
     stopCurrentLoad();
     DeferredTaskLoadManualScript::finishOrCancel(this);
 
-    String urlString(url);
+    String urlString(netReq.getUrlRef());
     if (urlString.startsWith("vs:", false)) {
         urlString = urlString.substring(3);
         m_mainFrame->setInViewSourceMode(true);
@@ -682,64 +693,48 @@ void WebPagePrivate::load(const BlackBerry::Platform::String& url, const BlackBe
         return;
     }
 
-    if (isInitial)
-        NetworkManager::instance()->setInitialURL(kurl);
-
     ResourceRequest request(kurl);
-    request.setToken(networkToken);
-    if (isInitial || mustHandleInternally)
-        request.setMustHandleInternally(true);
-    request.setHTTPMethod(method);
-    request.setCachePolicy(toWebCoreCachePolicy(cachePolicy));
-    if (!overrideContentType.empty())
-        request.setOverrideContentType(overrideContentType);
+    request.setHTTPMethod(netReq.getMethodRef());
+    request.setCachePolicy(toWebCoreCachePolicy(netReq.getCachePolicy()));
+    if (!netReq.getOverrideContentType().empty())
+        request.setOverrideContentType(netReq.getOverrideContentType());
 
-    if (data)
-        request.setHTTPBody(FormData::create(data, dataLength));
+    Platform::NetworkRequest::HeaderList& list = netReq.getHeaderListRef();
+    if (!list.empty()) {
+        for (unsigned i = 0; i < list.size(); i++)
+            request.addHTTPHeaderField(list[i].first.c_str(), list[i].second.c_str());
+    }
 
-    for (unsigned i = 0; i + 1 < headersLength; i += 2)
-        request.addHTTPHeaderField(headers[i], headers[i + 1]);
     if (needReferer && focusedOrMainFrame() && focusedOrMainFrame()->document())
         request.addHTTPHeaderField("Referer", focusedOrMainFrame()->document()->url().string().utf8().data());
 
-    if (forceDownload)
+    if (Platform::NetworkRequest::TargetIsDownload == netReq.getTargetType())
         request.setForceDownload(true);
-
-    request.setSuggestedSaveName(suggestedSaveName);
+    if (!netReq.getSuggestedSaveName().empty())
+        request.setSuggestedSaveName(netReq.getSuggestedSaveName());
 
     m_mainFrame->loader()->load(FrameLoadRequest(m_mainFrame, request));
 }
 
-void WebPage::load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, bool isInitial, bool needReferer, bool forceDownload)
-{
-    d->load(url, networkToken, "GET", Platform::NetworkRequest::UseProtocolCachePolicy, 0, 0, 0, 0, isInitial, false, needReferer, forceDownload);
-}
-
-void WebPage::loadExtended(const char* url, const char* networkToken, const char* method, Platform::NetworkRequest::CachePolicy cachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool mustHandleInternally)
-{
-    d->load(url, networkToken, method, cachePolicy, data, dataLength, headers, headersLength, false, mustHandleInternally, false, false, "");
-}
-
 void WebPage::loadFile(const BlackBerry::Platform::String& path, const BlackBerry::Platform::String& overrideContentType)
 {
+    STATIC_LOCAL_STRING(s_filePrefix, "file://");
+    STATIC_LOCAL_STRING(s_fileRootPrefix, "file:///");
     BlackBerry::Platform::String fileUrl(path);
-    if (fileUrl.startsWith("/"))
-        fileUrl = BlackBerry::Platform::String("file://", 7) + fileUrl;
-    else if (!fileUrl.startsWith("file:///"))
+    if (fileUrl.startsWith('/'))
+        fileUrl = s_filePrefix + fileUrl;
+    else if (!fileUrl.startsWith(s_fileRootPrefix))
         return;
 
-    d->load(fileUrl, BlackBerry::Platform::String::emptyString(), BlackBerry::Platform::String("GET", 3), Platform::NetworkRequest::UseProtocolCachePolicy, 0, 0, 0, 0, false, false, false, false, overrideContentType.c_str());
+    Platform::NetworkRequest netRequest;
+    netRequest.setRequestUrl(fileUrl);
+    netRequest.setOverrideContentType(overrideContentType);
+    d->load(netRequest, false);
 }
 
-void WebPage::download(const Platform::NetworkRequest& request)
+void WebPage::load(const Platform::NetworkRequest& request, bool needReferer)
 {
-    vector<const char*> headers;
-    Platform::NetworkRequest::HeaderList& list = request.getHeaderListRef();
-    for (unsigned i = 0; i < list.size(); i++) {
-        headers.push_back(list[i].first.c_str());
-        headers.push_back(list[i].second.c_str());
-    }
-    d->load(request.getUrlRef(), BlackBerry::Platform::String::emptyString(), "GET", Platform::NetworkRequest::UseProtocolCachePolicy, 0, 0, headers.empty() ? 0 : &headers[0], headers.size(), false, false, false, true, "", request.getSuggestedSaveName().c_str());
+    d->load(request, needReferer);
 }
 
 void WebPagePrivate::loadString(const BlackBerry::Platform::String& string, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& contentType, const BlackBerry::Platform::String& failingURL)
@@ -848,7 +843,7 @@ bool WebPagePrivate::executeJavaScriptInIsolatedWorld(const ScriptSourceCode& so
 
 bool WebPage::executeJavaScriptInIsolatedWorld(const std::wstring& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue)
 {
-    // On our platform wchar_t is unsigned int and UChar is unsigned short
+    // On our platform wchar_t is unsigned and UChar is unsigned short
     // so we have to convert using ICU conversion function
     int lengthCopied = 0;
     UErrorCode error = U_ZERO_ERROR;
@@ -1111,11 +1106,12 @@ void WebPagePrivate::setLoadState(LoadState state)
             } else {
                 Platform::IntSize virtualViewport = recomputeVirtualViewportFromViewportArguments();
                 m_webPage->setVirtualViewportSize(virtualViewport);
-                if (m_shouldUseFixedDesktopMode)
-                    setViewMode(FixedDesktop);
-                else
-                    setViewMode(Desktop);
             }
+
+            if (m_shouldUseFixedDesktopMode)
+                setViewMode(FixedDesktop);
+            else
+                setViewMode(Desktop);
 
 #if ENABLE(EVENT_MODE_METATAGS)
             didReceiveCursorEventMode(ProcessedCursorEvents);
@@ -1246,7 +1242,7 @@ bool WebPagePrivate::zoomAboutPoint(double unclampedScale, const FloatPoint& anc
     updateViewportSize();
 
     IntPoint newScrollPosition(IntPoint(max(0, static_cast<int>(roundf(anchor.x() - anchorOffset.x() / inverseScale))),
-                                        max(0, static_cast<int>(roundf(anchor.y() - anchorOffset.y() / inverseScale)))));
+        max(0, static_cast<int>(roundf(anchor.y() - anchorOffset.y() / inverseScale)))));
 
     if (m_webPage->settings()->textReflowMode() == WebSettings::TextReflowEnabled) {
         // This is a hack for email which has reflow always turned on.
@@ -1254,8 +1250,8 @@ bool WebPagePrivate::zoomAboutPoint(double unclampedScale, const FloatPoint& anc
         requestLayoutIfNeeded();
         if (m_currentPinchZoomNode)
             newScrollPosition = calculateReflowedScrollPosition(anchorOffset, scale == minimumScale() ? 1 : inverseScale);
-         m_currentPinchZoomNode = 0;
-         m_anchorInNodeRectRatio = FloatPoint(-1, -1);
+        m_currentPinchZoomNode = 0;
+        m_anchorInNodeRectRatio = FloatPoint(-1, -1);
     }
 
     setScrollPosition(newScrollPosition);
@@ -1308,7 +1304,7 @@ IntPoint WebPagePrivate::calculateReflowedScrollPosition(const FloatPoint& ancho
     IntRect reflowedRect = adjustRectOffsetForFrameOffset(nodeRect, m_currentPinchZoomNode.get());
 
     return IntPoint(max(0, static_cast<int>(roundf(reflowedRect.x() + offsetX))),
-                    max(0, static_cast<int>(roundf(reflowedRect.y() + offsetY - anchorOffset.y() / inverseScale))));
+        max(0, static_cast<int>(roundf(reflowedRect.y() + offsetY - anchorOffset.y() / inverseScale))));
 }
 
 void WebPagePrivate::setNeedsLayout()
@@ -1503,7 +1499,7 @@ FloatPoint WebPagePrivate::centerOfVisibleContentsRect() const
 
     // The center of the visible contents rect in float.
     return FloatPoint(visibleContentsRect.x() + visibleContentsRect.width() / 2.0,
-                      visibleContentsRect.y() + visibleContentsRect.height() / 2.0);
+        visibleContentsRect.y() + visibleContentsRect.height() / 2.0);
 }
 
 IntRect WebPagePrivate::visibleContentsRect() const
@@ -1554,6 +1550,9 @@ void WebPagePrivate::overflowExceedsContentsSize()
 
 void WebPagePrivate::layoutFinished()
 {
+    // If a layout change has occurred, we need to invalidate any current spellcheck requests and trigger a new run.
+    m_inputHandler->stopPendingSpellCheckRequests(true /* isRestartRequired */);
+
     if (!m_contentsSizeChanged && !m_overflowExceedsContentsSize)
         return;
 
@@ -2143,7 +2142,8 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
 
     bool nodeAllowSelectionOverride = false;
     Node* linkNode = node->enclosingLinkEventParentOrSelf();
-    if (node->isLink() || (node->isTextNode() && linkNode)) {
+    // Set link url only when the node is linked image, or text inside anchor. Prevent CCM popup when long press non-link element(eg. button) inside an anchor.
+    if ((node == linkNode) || (node->isTextNode() && linkNode)) {
         KURL href;
         if (linkNode->isLink() && linkNode->hasAttributes()) {
             if (const Attribute* attribute = toElement(linkNode)->getAttributeItem(HTMLNames::hrefAttr))
@@ -2320,7 +2320,10 @@ IntSize WebPagePrivate::fixedLayoutSize(bool snapToIncrement) const
 
     // If the load state is none then we haven't actually got anything yet, but we need to layout
     // the entire page so that the user sees the entire page (unrendered) instead of just part of it.
-    if (m_loadState == None)
+    // If the load state is Provisional, it is possible that absoluteVisibleOverflowSize() and
+    // contentsSize() are based on the old page and cause inconsistent fixedLayoutSize, so layout the
+    // new page based on the defaultLayoutSize as well.
+    if (m_loadState == None || m_loadState == Provisional)
         return IntSize(defaultLayoutWidth, defaultLayoutHeight);
 
     if (m_viewMode == FixedDesktop) {
@@ -2513,7 +2516,7 @@ void WebPagePrivate::assignFocus(Platform::FocusDirection direction)
 void WebPage::assignFocus(Platform::FocusDirection direction)
 {
     if (d->m_page->defersLoading())
-       return;
+        return;
     d->assignFocus(direction);
 }
 
@@ -3036,6 +3039,8 @@ bool WebPage::canGoBackOrForward(int delta) const
 bool WebPage::goBackOrForward(int delta)
 {
     if (d->m_page->canGoBackOrForward(delta)) {
+        d->m_userPerformedManualZoom = false;
+        d->m_userPerformedManualScroll = false;
         d->m_backingStore->d->suspendScreenUpdates();
         d->m_page->goBackOrForward(delta);
         d->m_backingStore->d->resumeScreenUpdates(BackingStore::None);
@@ -3240,7 +3245,7 @@ void WebPagePrivate::updateDelegatedOverlays(bool dispatched)
     }
 }
 
-void WebPage::setCaretHighlightStyle(Platform::CaretHighlightStyle style)
+void WebPage::setCaretHighlightStyle(Platform::CaretHighlightStyle)
 {
 }
 
@@ -3484,7 +3489,7 @@ void WebPagePrivate::resumeBackingStore()
         m_backingStore->d->renderAndBlitVisibleContentsImmediately();
     } else {
         if (m_backingStore->d->isOpenGLCompositing())
-           setCompositorDrawsRootLayer(false);
+            setCompositorDrawsRootLayer(false);
 
         // Rendering was disabled while we were hidden, so we need to update all tiles.
         m_backingStore->d->updateTiles(true /* updateVisible */, false /* immediate */);
@@ -3547,7 +3552,7 @@ bool WebPagePrivate::setViewportSize(const IntSize& transformedActualVisibleSize
     IntSize viewportSizeBefore = actualVisibleSize();
     FloatPoint centerOfVisibleContentsRect = this->centerOfVisibleContentsRect();
     bool newVisibleRectContainsOldVisibleRect = (m_actualVisibleHeight <= transformedActualVisibleSize.height())
-                                          && (m_actualVisibleWidth <= transformedActualVisibleSize.width());
+        && (m_actualVisibleWidth <= transformedActualVisibleSize.width());
 
     bool atInitialScale = m_webPage->isAtInitialZoom();
     bool atTop = !scrollPosition().y();
@@ -3922,6 +3927,9 @@ bool WebPagePrivate::handleMouseEvent(PlatformMouseEvent& mouseEvent)
 
         // Fat fingers can deal with shadow content.
         node = lastFatFingersResult.node(FatFingersResult::ShadowContentNotAllowed);
+
+        // Save mouse event state for later. This allows us to know why some responses have occurred, namely selection changes.
+        m_touchEventHandler->m_userTriggeredTouchPressOnTextInput = mouseEvent.type() == WebCore::PlatformEvent::MousePressed && lastFatFingersResult.isTextInput();
     }
 
     if (!node) {
@@ -4002,6 +4010,9 @@ bool WebPage::touchEvent(const Platform::TouchEvent& event)
         if (elementUnderFatFinger)
             d->m_touchEventHandler->drawTapHighlight();
     }
+
+    if (event.isTouchHold())
+        d->m_touchEventHandler->handleTouchHold();
 
     bool handled = false;
 
@@ -4163,11 +4174,11 @@ BlackBerry::Platform::String WebPage::textEncoding()
 {
     Frame* frame = d->focusedOrMainFrame();
     if (!frame)
-        return "";
+        return BlackBerry::Platform::String::emptyString();
 
     Document* document = frame->document();
     if (!document)
-        return "";
+        return BlackBerry::Platform::String::emptyString();
 
     return document->loader()->writer()->encoding();
 }
@@ -4188,7 +4199,7 @@ BlackBerry::Platform::String WebPage::forcedTextEncoding()
 void WebPage::setForcedTextEncoding(const BlackBerry::Platform::String& encoding)
 {
     if (!encoding.empty() && d->focusedOrMainFrame() && d->focusedOrMainFrame()->loader() && d->focusedOrMainFrame()->loader())
-        return d->focusedOrMainFrame()->loader()->reloadWithOverrideEncoding(encoding);
+        d->focusedOrMainFrame()->loader()->reloadWithOverrideEncoding(encoding);
 }
 
 bool WebPage::keyEvent(const Platform::KeyboardEvent& keyboardEvent)
@@ -4204,7 +4215,7 @@ bool WebPage::keyEvent(const Platform::KeyboardEvent& keyboardEvent)
     return d->m_inputHandler->handleKeyboardInput(keyboardEvent);
 }
 
-bool WebPage::deleteTextRelativeToCursor(unsigned int leftOffset, unsigned int rightOffset)
+bool WebPage::deleteTextRelativeToCursor(unsigned leftOffset, unsigned rightOffset)
 {
     if (d->m_page->defersLoading())
         return false;
@@ -4264,11 +4275,6 @@ void WebPage::setSpellCheckingEnabled(bool enabled)
 
     if (!enabled)
         d->m_inputHandler->stopPendingSpellCheckRequests();
-}
-
-void WebPage::spellCheckingRequestCancelled(int32_t transactionId)
-{
-    d->m_inputHandler->spellCheckingRequestCancelled(transactionId);
 }
 
 void WebPage::spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t* spannableString)
@@ -4416,6 +4422,11 @@ void WebPage::setParagraphExpansionPixelScrollMargin(const Platform::IntSize& sc
     // Transform from pixel to document coordinates.
     Platform::IntSize documentScrollMargin = d->m_webkitThreadViewportAccessor->roundToDocumentFromPixelContents(Platform::IntRect(Platform::IntPoint(), scrollMargin)).size();
     d->m_selectionHandler->setParagraphExpansionScrollMargin(documentScrollMargin);
+}
+
+void WebPage::setSelectionDocumentViewportSize(const Platform::IntSize& selectionDocumentViewportSize)
+{
+    d->m_selectionHandler->setSelectionViewportSize(selectionDocumentViewportSize);
 }
 
 BackingStore* WebPage::backingStore() const
@@ -4729,12 +4740,6 @@ unsigned WebPage::timeoutForJavaScriptExecution() const
 void WebPage::setTimeoutForJavaScriptExecution(unsigned ms)
 {
     Settings::setTimeoutForJavaScriptExecution(d->m_page->groupName(), ms);
-
-    Document* doc = d->m_page->mainFrame()->document();
-    if (!doc)
-        return;
-
-    doc->globalData()->timeoutChecker.setTimeoutInterval(ms);
 }
 
 JSGlobalContextRef WebPage::globalContext() const
@@ -4785,6 +4790,7 @@ void WebPage::clearBrowsingData()
     clearCookieCache();
     clearHistory();
     clearPluginSiteData();
+    clearWebFileSystem();
 }
 
 void WebPage::clearHistory()
@@ -4828,6 +4834,13 @@ void WebPage::clearNeverRememberSites()
 #endif
 }
 
+void WebPage::clearWebFileSystem()
+{
+#if ENABLE(FILE_SYSTEM)
+    Platform::WebFileSystem::deleteAllFileSystems();
+#endif
+}
+
 void WebPage::clearCache()
 {
     clearMemoryCaches();
@@ -4853,7 +4866,7 @@ void WebPage::setEnableLocalAccessToAllCookies(bool enabled)
     cookieManager().setCanLocalAccessAllCookies(enabled);
 }
 
-void WebPage::addVisitedLink(const unsigned short* url, unsigned int length)
+void WebPage::addVisitedLink(const unsigned short* url, unsigned length)
 {
     ASSERT(d->m_page);
     d->m_page->group().addVisitedLink(url, length);
@@ -4934,12 +4947,12 @@ void WebPage::initPopupWebView(BlackBerry::WebKit::WebPage* webPage)
 String WebPagePrivate::findPatternStringForUrl(const KURL& url) const
 {
     if ((m_webSettings->shouldHandlePatternUrls() && protocolIs(url, "pattern"))
-            || protocolIs(url, "tel")
-            || protocolIs(url, "wtai")
-            || protocolIs(url, "cti")
-            || protocolIs(url, "mailto")
-            || protocolIs(url, "sms")
-            || protocolIs(url, "pin")) {
+        || protocolIs(url, "tel")
+        || protocolIs(url, "wtai")
+        || protocolIs(url, "cti")
+        || protocolIs(url, "mailto")
+        || protocolIs(url, "sms")
+        || protocolIs(url, "pin")) {
         return url;
     }
     return String();
@@ -5027,15 +5040,15 @@ void WebPage::notifyAppActivationStateChange(ActivationStateType activationState
 void WebPage::notifySwipeEvent()
 {
     if (d->m_fullScreenPluginView.get())
-       d->m_fullScreenPluginView->handleSwipeEvent();
+        d->m_fullScreenPluginView->handleSwipeEvent();
     else
-       notifyFullScreenVideoExited(true);
+        notifyFullScreenVideoExited(true);
 }
 
 void WebPage::notifyScreenPowerStateChanged(bool powered)
 {
     FOR_EACH_PLUGINVIEW(d->m_pluginViews)
-       (*it)->handleScreenPowerEvent(powered);
+        (*it)->handleScreenPowerEvent(powered);
 }
 
 void WebPage::notifyFullScreenVideoExited(bool done)
@@ -5157,26 +5170,29 @@ bool WebPage::isDNSPrefetchEnabled() const
 
 void WebPage::enableWebInspector()
 {
-    if (!d->m_inspectorClient)
+    if (isWebInspectorEnabled() || !d->m_inspectorClient)
         return;
 
     d->m_page->inspectorController()->connectFrontend(d->m_inspectorClient);
     d->m_page->settings()->setDeveloperExtrasEnabled(true);
     d->setPreventsScreenDimming(true);
+    d->m_inspectorEnabled = true;
 }
 
 void WebPage::disableWebInspector()
 {
-    if (isWebInspectorEnabled()) {
-        d->m_page->inspectorController()->disconnectFrontend();
-        d->m_page->settings()->setDeveloperExtrasEnabled(false);
-        d->setPreventsScreenDimming(false);
-    }
+    if (!isWebInspectorEnabled())
+        return;
+
+    d->m_page->inspectorController()->disconnectFrontend();
+    d->m_page->settings()->setDeveloperExtrasEnabled(false);
+    d->setPreventsScreenDimming(false);
+    d->m_inspectorEnabled = false;
 }
 
 bool WebPage::isWebInspectorEnabled()
 {
-    return d->m_page->settings()->developerExtrasEnabled();
+    return d->m_inspectorEnabled;
 }
 
 void WebPage::enablePasswordEcho()
@@ -5203,6 +5219,21 @@ void WebPage::inspectCurrentContextElement()
 Platform::IntPoint WebPage::adjustDocumentScrollPosition(const Platform::IntPoint& documentScrollPosition, const Platform::IntRect& documentPaddingRect)
 {
     return d->m_proximityDetector->findBestPoint(documentScrollPosition, documentPaddingRect);
+}
+
+Platform::IntSize WebPage::fixedElementSizeDelta()
+{
+    ASSERT(Platform::userInterfaceThreadMessageClient()->isCurrentThread());
+
+    // Traverse the layer tree and find the fixed element rect if there is one.
+    IntRect fixedElementRect;
+    if (d->compositor() && d->compositor()->rootLayer())
+        d->compositor()->findFixedElementRect(d->compositor()->rootLayer(), fixedElementRect);
+
+    // Ignore the fixed element if it is not at the top of page.
+    if (!fixedElementRect.isEmpty() && !fixedElementRect.y())
+        return Platform::IntSize(0, fixedElementRect.height());
+    return Platform::IntSize();
 }
 
 bool WebPagePrivate::compositorDrawsRootLayer() const
@@ -5371,9 +5402,15 @@ void WebPagePrivate::commitRootLayer(const IntRect& layoutRect, const IntRect& d
 
     if (rootLayer)
         rootLayer->commitOnCompositingThread();
-
     if (overlayLayer)
         overlayLayer->commitOnCompositingThread();
+
+    m_animationStartTime = currentTime();
+    m_didStartAnimations = false;
+    if (rootLayer)
+        m_didStartAnimations |= rootLayer->startAnimations(m_animationStartTime);
+    if (overlayLayer)
+        m_didStartAnimations |= overlayLayer->startAnimations(m_animationStartTime);
 
     scheduleCompositingRun();
 }
@@ -5398,8 +5435,7 @@ bool WebPagePrivate::commitRootLayerIfNeeded()
         return false;
 
     // Don't bail if the layers were removed and we now need a one shot drawing sync as a consequence.
-    if (!(m_frameLayers && m_frameLayers->hasLayer()) && !m_overlayLayer
-     && !m_needsOneShotDrawingSynchronization)
+    if (!(m_frameLayers && m_frameLayers->hasLayer()) && !m_overlayLayer && !m_needsOneShotDrawingSynchronization)
         return false;
 
     FrameView* view = m_mainFrame->view();
@@ -5452,6 +5488,15 @@ bool WebPagePrivate::commitRootLayerIfNeeded()
             documentRect,
             drawsRootLayer));
 
+    if (m_didStartAnimations) {
+        if (m_frameLayers && m_frameLayers->hasLayer())
+            m_frameLayers->notifyAnimationsStarted(m_animationStartTime);
+        if (m_overlayLayer)
+            m_overlayLayer->platformLayer()->notifyAnimationsStarted(m_animationStartTime);
+
+        m_didStartAnimations = false;
+    }
+
     didComposite();
     return true;
 }
@@ -5502,10 +5547,10 @@ void WebPagePrivate::setRootLayerWebKitThread(Frame* frame, LayerWebKitThread* l
         return;
 
     if (!layer) {
-         ASSERT(m_frameLayers);
-         m_frameLayers->removeLayerByFrame(frame);
-         if (!m_frameLayers->hasLayer())
-             m_frameLayers.clear();
+        ASSERT(m_frameLayers);
+        m_frameLayers->removeLayerByFrame(frame);
+        if (!m_frameLayers->hasLayer())
+            m_frameLayers.clear();
     } else {
         if (!m_frameLayers)
             m_frameLayers = adoptPtr(new FrameLayers(this));
@@ -5590,7 +5635,7 @@ void WebPagePrivate::releaseLayerResources()
 
 void WebPagePrivate::releaseLayerResourcesCompositingThread()
 {
-     m_compositor->releaseLayerResources();
+    m_compositor->releaseLayerResources();
 }
 
 void WebPagePrivate::suspendRootLayerCommit()
@@ -5882,11 +5927,15 @@ void WebPagePrivate::didChangeSettings(WebSettings* webSettings)
 
     coreSettings->setShouldUseCrossOriginProtocolCheck(!webSettings->allowCrossSiteRequests());
     coreSettings->setWebSecurityEnabled(!webSettings->allowCrossSiteRequests());
-    coreSettings->setApplyPageScaleFactorInCompositor(webSettings->applyDeviceScaleFactorInCompositor());
+    coreSettings->setApplyDeviceScaleFactorInCompositor(webSettings->applyDeviceScaleFactorInCompositor());
 
     updateBackgroundColor(webSettings->backgroundColor());
 
     m_page->setDeviceScaleFactor(webSettings->devicePixelRatio());
+
+#if ENABLE(TEXT_AUTOSIZING)
+    coreSettings->setTextAutosizingEnabled(webSettings->isTextAutosizingEnabled());
+#endif
 }
 
 BlackBerry::Platform::String WebPage::textHasAttribute(const BlackBerry::Platform::String& query) const
@@ -5894,7 +5943,7 @@ BlackBerry::Platform::String WebPage::textHasAttribute(const BlackBerry::Platfor
     if (Document* doc = d->m_page->focusController()->focusedOrMainFrame()->document())
         return doc->queryCommandValue(query);
 
-    return "";
+    return BlackBerry::Platform::String::emptyString();
 }
 
 void WebPage::setJavaScriptCanAccessClipboard(bool enabled)
@@ -5944,7 +5993,7 @@ const BlackBerry::Platform::String& WebPagePrivate::defaultUserAgent()
         if (uaSize <= 0 || uaSize >= 256)
             BLACKBERRY_CRASH();
 
-        defaultUserAgent = new BlackBerry::Platform::String(uaBuffer, uaSize);
+        defaultUserAgent = new BlackBerry::Platform::String(BlackBerry::Platform::String::fromUtf8(uaBuffer, uaSize));
     }
 
     return *defaultUserAgent;

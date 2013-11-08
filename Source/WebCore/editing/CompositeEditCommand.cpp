@@ -28,14 +28,12 @@
 
 #include "AppendNodeCommand.h"
 #include "ApplyStyleCommand.h"
-#if ENABLE(DELETION_UI)
-#include "DeleteButtonController.h"
-#endif
 #include "DeleteFromTextNodeCommand.h"
 #include "DeleteSelectionCommand.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentMarkerController.h"
+#include "Editor.h"
 #include "EditorInsertAction.h"
 #include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
@@ -69,6 +67,10 @@
 #include "htmlediting.h"
 #include "markup.h"
 #include <wtf/unicode/CharacterNames.h>
+
+#if ENABLE(DELETION_UI)
+#include "DeleteButtonController.h"
+#endif
 
 using namespace std;
 
@@ -216,7 +218,7 @@ void CompositeEditCommand::apply()
 
     // Only need to call appliedEditing for top-level commands,
     // and TypingCommands do it on their own (see TypingCommand::typingAddedToOpenCommand).
-    if (!isTypingCommand())
+    if (!callsAppliedEditingInDoApply())
         frame->editor()->appliedEditing(this);
     setShouldRetainAutocorrectionIndicator(false);
 }
@@ -242,6 +244,11 @@ bool CompositeEditCommand::preservesTypingStyle() const
 }
 
 bool CompositeEditCommand::isTypingCommand() const
+{
+    return false;
+}
+
+bool CompositeEditCommand::callsAppliedEditingInDoApply() const
 {
     return false;
 }
@@ -1030,8 +1037,8 @@ void CompositeEditCommand::cloneParagraphUnderNewElement(Position& start, Positi
             outerNode = outerNode->parentNode();
         }
 
-        Node* startNode = start.deprecatedNode();
-        for (Node* node = NodeTraversal::nextSkippingChildren(startNode, outerNode.get()); node; node = NodeTraversal::nextSkippingChildren(node, outerNode.get())) {
+        RefPtr<Node> startNode = start.deprecatedNode();
+        for (RefPtr<Node> node = NodeTraversal::nextSkippingChildren(startNode.get(), outerNode.get()); node; node = NodeTraversal::nextSkippingChildren(node.get(), outerNode.get())) {
             // Move lastNode up in the tree as much as node was moved up in the
             // tree by NodeTraversal::nextSkippingChildren, so that the relative depth between
             // node and the original start node is maintained in the clone.
@@ -1043,7 +1050,7 @@ void CompositeEditCommand::cloneParagraphUnderNewElement(Position& start, Positi
             RefPtr<Node> clonedNode = node->cloneNode(true);
             insertNodeAfter(clonedNode, lastNode);
             lastNode = clonedNode.release();
-            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(node))
+            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(node.get()))
                 break;
         }
     }

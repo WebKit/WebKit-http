@@ -29,7 +29,6 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 #import "WebNetscapePluginStream.h"
 
-#import "WebNetscapePluginView.h"
 #import "WebFrameInternal.h"
 #import "WebKitErrorsPrivate.h"
 #import "WebKitLogging.h"
@@ -37,17 +36,20 @@
 #import "WebNSURLExtras.h"
 #import "WebNSURLRequestExtras.h"
 #import "WebNetscapePluginPackage.h"
+#import "WebNetscapePluginView.h"
 #import <Foundation/NSURLResponse.h>
-#import <runtime/JSLock.h>
+#import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
+#import <WebCore/JSDOMWindowBase.h>
 #import <WebCore/ResourceLoadScheduler.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
 #import <WebKitSystemInterface.h>
+#import <runtime/JSLock.h>
 #import <wtf/HashMap.h>
 #import <wtf/StdLibExtras.h>
 
@@ -152,7 +154,7 @@ WebNetscapePluginStream::WebNetscapePluginStream(NSURLRequest *request, NPP plug
     , m_isTerminated(false)
     , m_newStreamSuccessful(false)
     , m_frameLoader(0)
-    , m_request(AdoptNS, [request mutableCopy])
+    , m_request(adoptNS([request mutableCopy]))
     , m_pluginFuncs(0)
     , m_deliverDataTimer(this, &WebNetscapePluginStream::deliverDataTimerFired)
 {
@@ -366,7 +368,7 @@ bool WebNetscapePluginStream::wantsAllStreams() const
     NPError error;
     {
         PluginStopDeferrer deferrer(m_pluginView.get());
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
         error = m_pluginFuncs->getvalue(m_plugin, NPPVpluginWantsAllNetworkStreams, &value);
     }
     if (error != NPERR_NO_ERROR)
@@ -542,7 +544,7 @@ void WebNetscapePluginStream::deliverData()
             NSMutableData *newDeliveryData = [[NSMutableData alloc] initWithCapacity:totalBytes - totalBytesDelivered];
             [newDeliveryData appendBytes:(char *)[m_deliveryData.get() bytes] + totalBytesDelivered length:totalBytes - totalBytesDelivered];
             
-            m_deliveryData.adoptNS(newDeliveryData);
+            m_deliveryData = adoptNS(newDeliveryData);
         } else {
             [m_deliveryData.get() setLength:0];
             if (m_reason != WEB_REASON_NONE) 
@@ -570,7 +572,7 @@ void WebNetscapePluginStream::deliverDataToFile(NSData *data)
             return;
         }
 
-        m_path.adoptNS([[NSString stringWithUTF8String:temporaryFileName] retain]);
+        m_path = [NSString stringWithUTF8String:temporaryFileName];
         free(temporaryFileName);
     }
 
@@ -615,7 +617,7 @@ void WebNetscapePluginStream::didReceiveData(NetscapePlugInStreamLoader*, const 
     
     if (m_transferMode != NP_ASFILEONLY) {
         if (!m_deliveryData)
-            m_deliveryData.adoptNS([[NSMutableData alloc] initWithCapacity:[data length]]);
+            m_deliveryData = adoptNS([[NSMutableData alloc] initWithCapacity:[data length]]);
         [m_deliveryData.get() appendData:data];
         deliverData();
     }

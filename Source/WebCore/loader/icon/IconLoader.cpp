@@ -34,6 +34,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
+#include "IconController.h"
 #include "IconDatabase.h"
 #include "Logging.h"
 #include "ResourceBuffer.h"
@@ -61,7 +62,7 @@ void IconLoader::startLoading()
     if (m_resource || !m_frame->document())
         return;
 
-    CachedResourceRequest request(ResourceRequest(m_frame->loader()->icon()->url()), ResourceLoaderOptions(SendCallbacks, SniffContent, BufferData, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, DoSecurityCheck));
+    CachedResourceRequest request(ResourceRequest(m_frame->loader()->icon()->url()), ResourceLoaderOptions(SendCallbacks, SniffContent, BufferData, DoNotAllowStoredCredentials, DoNotAskClientForAnyCredentials, DoSecurityCheck));
 
 #if PLATFORM(BLACKBERRY)
     request.mutableResourceRequest().setTargetType(ResourceRequest::TargetIsFavicon);
@@ -94,6 +95,13 @@ void IconLoader::notifyFinished(CachedResource* resource)
     int status = resource->response().httpStatusCode();
     if (status && (status < 200 || status > 299))
         data = 0;
+
+    static const char pdfMagicNumber[] = "%PDF";
+    static unsigned pdfMagicNumberLength = sizeof(pdfMagicNumber) - 1;
+    if (data && data->size() >= pdfMagicNumberLength && !memcmp(data->data(), pdfMagicNumber, pdfMagicNumberLength)) {
+        LOG(IconDatabase, "IconLoader::finishLoading() - Ignoring icon at %s because it appears to be a PDF", resource->url().string().ascii().data());
+        data = 0;
+    }
 
     LOG(IconDatabase, "IconLoader::finishLoading() - Committing iconURL %s to database", resource->url().string().ascii().data());
     m_frame->loader()->icon()->commitToDatabase(resource->url());

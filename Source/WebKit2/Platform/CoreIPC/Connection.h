@@ -34,6 +34,7 @@
 #include "MessageReceiver.h"
 #include "WorkQueue.h"
 #include <wtf/Deque.h>
+#include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/Threading.h>
@@ -60,8 +61,6 @@ class RunLoop;
 
 namespace CoreIPC {
 
-class BinarySemaphore;
-    
 enum MessageSendFlags {
     // Whether this message should be dispatched when waiting for a sync reply.
     // This is the default for synchronous messages.
@@ -234,7 +233,7 @@ private:
     RefPtr<WorkQueue> m_connectionQueue;
     WebCore::RunLoop* m_clientRunLoop;
 
-    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver> > > m_workQueueMessageReceivers;
+    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver>>> m_workQueueMessageReceivers;
 
     unsigned m_inDispatchMessageCount;
     unsigned m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount;
@@ -242,15 +241,15 @@ private:
 
     // Incoming messages.
     Mutex m_incomingMessagesLock;
-    Deque<OwnPtr<MessageDecoder> > m_incomingMessages;
+    Deque<OwnPtr<MessageDecoder>> m_incomingMessages;
 
     // Outgoing messages.
     Mutex m_outgoingMessagesLock;
-    Deque<OwnPtr<MessageEncoder> > m_outgoingMessages;
+    Deque<OwnPtr<MessageEncoder>> m_outgoingMessages;
     
     ThreadCondition m_waitForMessageCondition;
     Mutex m_waitForMessageMutex;
-    HashMap<std::pair<std::pair<StringReference, StringReference>, uint64_t>, OwnPtr<MessageDecoder> > m_waitForMessageMap;
+    HashMap<std::pair<std::pair<StringReference, StringReference>, uint64_t>, OwnPtr<MessageDecoder>> m_waitForMessageMap;
 
     // Represents a sync request for which we're waiting on a reply.
     struct PendingSyncReply {
@@ -330,7 +329,7 @@ private:
     // same time zone as WTF::currentTime(). Dispatches sent (not posted) messages to the passed-in
     // set of HWNDs until the semaphore is signaled or absoluteTime is reached. Returns true if the
     // semaphore is signaled, false otherwise.
-    static bool dispatchSentMessagesUntil(const Vector<HWND>& windows, CoreIPC::BinarySemaphore& semaphore, double absoluteTime);
+    static bool dispatchSentMessagesUntil(const Vector<HWND>& windows, WTF::BinarySemaphore& semaphore, double absoluteTime);
 
     Vector<uint8_t> m_readBuffer;
     OVERLAPPED m_readState;

@@ -307,7 +307,7 @@ HBITMAP WebIconDatabase::getOrCreateDefaultIconBitmap(LPSIZE size)
     result = createDIB(size);
 
     m_defaultIconMap.set(*size, result);
-    if (!iconDatabase().defaultIcon(*size)->getHBITMAPOfSize(result, size)) {
+    if (!iconDatabase().defaultIcon(*size) || !iconDatabase().defaultIcon(*size)->getHBITMAPOfSize(result, size)) {
         LOG_ERROR("Failed to draw Image to HBITMAP");
         return 0;
     }
@@ -384,7 +384,7 @@ static void postDidRemoveAllIconsNotification(WebIconDatabase* iconDB)
 
 static void postDidAddIconNotification(const String& pageURL, WebIconDatabase* iconDB)
 {
-    RetainPtr<CFMutableDictionaryRef> dictionary(AdoptCF, 
+    RetainPtr<CFMutableDictionaryRef> dictionary = adoptCF(
     CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 
     CFDictionaryAddValue(dictionary.get(), WebIconDatabase::iconDatabaseNotificationUserInfoURLKey(), pageURL.createCFString().get());

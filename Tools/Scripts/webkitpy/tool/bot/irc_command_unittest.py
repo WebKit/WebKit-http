@@ -42,47 +42,26 @@ class IRCCommandTest(unittest.TestCase):
         whois = Whois()
         self.assertEqual("tom: Usage: whois SEARCH_STRING",
                           whois.execute("tom", [], None, None))
-        self.assertEqual("tom: Adam Barth is abarth (abarth@webkit.org). Why do you ask?",
+        self.assertEqual('tom: Adam Barth is "Adam Barth" <abarth@webkit.org> (:abarth) (r). Why do you ask?',
                           whois.execute("tom", ["Adam", "Barth"], None, None))
         self.assertEqual("tom: Sorry, I don't know any contributors matching 'unknown@example.com'.",
                           whois.execute("tom", ["unknown@example.com"], None, None))
-        self.assertEqual("tom: tonyg@chromium.org is tonyg-cr. Why do you ask?",
+        self.assertEqual('tom: tonyg@chromium.org is "Tony Gentilcore" <tonyg@chromium.org> (:tonyg-cr) (r). Why do you ask?',
                           whois.execute("tom", ["tonyg@chromium.org"], None, None))
-        self.assertEqual("tom: TonyG@Chromium.org is tonyg-cr. Why do you ask?",
+        self.assertEqual('tom: TonyG@Chromium.org is "Tony Gentilcore" <tonyg@chromium.org> (:tonyg-cr) (r). Why do you ask?',
                           whois.execute("tom", ["TonyG@Chromium.org"], None, None))
-        self.assertEqual("tom: rniwa is rniwa (rniwa@webkit.org). Why do you ask?",
+        self.assertEqual('tom: rniwa is "Ryosuke Niwa" <rniwa@webkit.org> (:rniwa) (r). Why do you ask?',
                           whois.execute("tom", ["rniwa"], None, None))
-        self.assertEqual("tom: lopez is xan (xan.lopez@gmail.com, xan@gnome.org, xan@webkit.org, xlopez@igalia.com). Why do you ask?",
+        self.assertEqual('tom: lopez is "Xan Lopez" <xan.lopez@gmail.com> (:xan) (r). Why do you ask?',
                           whois.execute("tom", ["lopez"], None, None))
+        self.assertEqual(u'tom: Osztrogon\u00e1c is "Csaba Osztrogon\u00e1c" <ossy@webkit.org> (:ossy) (r). Why do you ask?',
+                          whois.execute("tom", [u'Osztrogon\u00e1c'], None, None))
         self.assertEqual('tom: "Vicki Murley" <vicki@apple.com> hasn\'t told me their nick. Boo hoo :-(',
                           whois.execute("tom", ["vicki@apple.com"], None, None))
-        self.assertEqual('tom: I\'m not sure who you mean?  gavinp or gbarra could be \'Gavin\'.',
+        self.assertEqual('tom: I\'m not sure who you mean?  "Gavin Peters" <gavinp@chromium.org> (:gavinp) (c) or "Gavin Barraclough" <barraclough@apple.com> (:gbarra) (r) could be \'Gavin\'.',
                           whois.execute("tom", ["Gavin"], None, None))
         self.assertEqual('tom: More than 5 contributors match \'david\', could you be more specific?',
                           whois.execute("tom", ["david"], None, None))
-
-    @staticmethod
-    def _sheriff_test_data_url(suffix):
-        return "file://" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "testdata", "webkit_sheriff_%s.js" % suffix)
-
-    def test_sheriffs(self):
-        sheriffs = Sheriffs()
-        tool = MockTool(web=MockWeb({
-          "test_0": "document.write('');",
-          "test_1": "document.write('test_user');",
-          "test_2": "document.write('test_user_1, test_user_2');",
-          "test_malformed": "malformed",
-        }))
-        self.assertEqual("tom: There are no Chromium Webkit sheriffs currently assigned.",
-                         sheriffs.execute("tom", ["test_0"], tool, None))
-        self.assertEqual("tom: The current Chromium Webkit sheriff is: test_user",
-                         sheriffs.execute("tom", ["test_1"], tool, None))
-        self.assertEqual("tom: The current Chromium Webkit sheriffs are: test_user_1, test_user_2",
-                         sheriffs.execute("tom", ["test_2"], tool, None))
-        self.assertEqual("tom: Failed to parse URL: test_malformed",
-                         sheriffs.execute("tom", ["test_malformed"], tool, None))
-        self.assertEqual("tom: Failed to parse URL: invalid",
-                         sheriffs.execute("tom", ["invalid"], tool, None))
 
     def test_create_bug(self):
         create_bug = CreateBug()
@@ -102,16 +81,6 @@ class IRCCommandTest(unittest.TestCase):
         tool.bugs.create_bug = mock_create_bug
         self.assertEqual("tom: Failed to create bug:\nException from bugzilla!",
                           create_bug.execute("tom", example_args, tool, None))
-
-    def test_roll_chromium_deps(self):
-        roll = RollChromiumDEPS()
-        self.assertIsNone(roll._parse_args([]))
-        self.assertIsNone(roll._parse_args(["invalid"]))
-        self.assertEqual("1234", roll._parse_args(["1234"]))
-        self.assertEqual("1234", roll._parse_args(["r1234"]))
-        self.assertEqual("LKGR", roll._parse_args(["LKGR"]))
-        self.assertEqual('"Alan Cutter" <alancutter@chromium.org>', roll._expand_irc_nickname("alancutter"))
-        self.assertEqual("unknown_irc_nickname", roll._expand_irc_nickname("unknown_irc_nickname"))
 
     def test_rollout_updates_working_copy(self):
         rollout = Rollout()

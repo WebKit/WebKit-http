@@ -46,7 +46,7 @@ namespace JSC { namespace DFG {
     /* Marker to indicate that an operation was optimized entirely and all that is left */\
     /* is to make one node alias another. CSE will later usually eliminate this node, */\
     /* though it may choose not to if it would corrupt predictions (very rare). */\
-    macro(Identity, NodeResultJS | NodeDoesNotExit) \
+    macro(Identity, NodeResultJS) \
     \
     /* Nodes for handling functions (both as call and as construct). */\
     macro(ConvertThis, NodeResultJS) \
@@ -105,6 +105,7 @@ namespace JSC { namespace DFG {
     macro(ArithSub, NodeResultNumber | NodeMustGenerate) \
     macro(ArithNegate, NodeResultNumber | NodeMustGenerate) \
     macro(ArithMul, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithIMul, NodeResultInt32 | NodeMustGenerate) \
     macro(ArithDiv, NodeResultNumber | NodeMustGenerate) \
     macro(ArithMod, NodeResultNumber | NodeMustGenerate) \
     macro(ArithAbs, NodeResultNumber | NodeMustGenerate) \
@@ -264,7 +265,11 @@ namespace JSC { namespace DFG {
     /* This is a pseudo-terminal. It means that execution should fall out of DFG at */\
     /* this point, but execution does continue in the basic block - just in a */\
     /* different compiler. */\
-    macro(ForceOSRExit, NodeMustGenerate)
+    macro(ForceOSRExit, NodeMustGenerate) \
+    \
+    /* Checks the watchdog timer. If the timer has fired, we OSR exit to the */ \
+    /* baseline JIT to redo the watchdog timer check, and service the timer. */ \
+    macro(CheckWatchdogTimer, NodeMustGenerate) \
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).

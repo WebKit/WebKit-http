@@ -29,7 +29,7 @@
 #include "WKEinaSharedString.h"
 #include "WKGeometry.h"
 #include "WKRetainPtr.h"
-#include "WebView.h"
+#include "WebViewEfl.h"
 #include "ewk_url_request_private.h"
 #include <Evas.h>
 #include <WebCore/FloatPoint.h>
@@ -66,8 +66,6 @@ class ViewClientEfl;
 class PageViewportController;
 class PageViewportControllerClientEfl;
 #endif
-class WebContextMenuItemData;
-class WebContextMenuProxyEfl;
 class WebPageGroup;
 class WebPageProxy;
 
@@ -140,6 +138,8 @@ public:
     void setThemePath(const char* theme);
     const char* customTextEncodingName() const;
     void setCustomTextEncodingName(const String& encoding);
+    const char* userAgent() const { return m_userAgent; }
+    void setUserAgent(const char* userAgent);
 
     bool mouseEventsEnabled() const { return m_mouseEventsEnabled; }
     void setMouseEventsEnabled(bool enabled);
@@ -162,8 +162,8 @@ public:
     void setWindowGeometry(const WKRect&);
 #if USE(ACCELERATED_COMPOSITING)
     bool createGLSurface();
-#endif
     void setNeedsSurfaceResize() { m_pendingSurfaceResize = true; }
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void requestColorPicker(WKColorPickerResultListenerRef listener, const WebCore::Color&);
@@ -176,7 +176,7 @@ public:
     void requestPopupMenu(WKPopupMenuListenerRef, const WKRect&, WKPopupItemTextDirection, double pageScaleFactor, WKArrayRef items, int32_t selectedIndex);
     void closePopupMenu();
 
-    void showContextMenu(WebKit::WebContextMenuProxyEfl*, const WebCore::IntPoint& position, const Vector<WebKit::WebContextMenuItemData>& items);
+    void showContextMenu(WKPoint position, WKArrayRef items);
     void hideContextMenu();
 
     void updateTextInputState();
@@ -251,9 +251,9 @@ private:
     OwnPtr<Evas_GL> m_evasGL;
     OwnPtr<WebKit::EvasGLContext> m_evasGLContext;
     OwnPtr<WebKit::EvasGLSurface> m_evasGLSurface;
+    bool m_pendingSurfaceResize;
 #endif
     WebCore::TransformationMatrix m_userViewportTransform;
-    bool m_pendingSurfaceResize;
     OwnPtr<WebKit::PageLoadClientEfl> m_pageLoadClient;
     OwnPtr<WebKit::PagePolicyClientEfl> m_pagePolicyClient;
     OwnPtr<WebKit::PageUIClientEfl> m_pageUIClient;
@@ -272,6 +272,7 @@ private:
     mutable WKEinaSharedString m_title;
     WKEinaSharedString m_theme;
     mutable WKEinaSharedString m_customEncoding;
+    WKEinaSharedString m_userAgent;
     bool m_mouseEventsEnabled;
 #if ENABLE(TOUCH_EVENTS)
     bool m_touchEventsEnabled;

@@ -29,10 +29,11 @@
 #include "AlternativeTextController.h"
 #include "Document.h"
 #include "DocumentFragment.h"
+#include "Editor.h"
 #include "Frame.h"
-#include "InsertTextCommand.h"
 #include "SetSelectionCommand.h"
 #include "TextIterator.h"
+#include "TypingCommand.h"
 #include "markup.h"
 
 namespace WebCore {
@@ -101,10 +102,15 @@ void SpellingCorrectionCommand::doApply()
 #if USE(AUTOCORRECTION_PANEL)
     applyCommandToComposite(SpellingCorrectionRecordUndoCommand::create(document(), m_corrected, m_correction));
 #endif
-    applyCommandToComposite(InsertTextCommand::create(document(), m_correction));
+    TypingCommand::insertText(document(), m_correction, TypingCommand::PreventSpellChecking);
 }
 
 bool SpellingCorrectionCommand::shouldRetainAutocorrectionIndicator() const
+{
+    return true;
+}
+
+bool SpellingCorrectionCommand::callsAppliedEditingInDoApply() const
 {
     return true;
 }

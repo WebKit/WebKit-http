@@ -91,16 +91,16 @@ ChromeClientBlackBerry::ChromeClientBlackBerry(WebPagePrivate* pagePrivate)
 {
 }
 
-void ChromeClientBlackBerry::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, const String& sourceID)
+void ChromeClientBlackBerry::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID)
 {
 #if !defined(PUBLIC_BUILD) || !PUBLIC_BUILD
     if (m_webPagePrivate->m_dumpRenderTree) {
-        m_webPagePrivate->m_dumpRenderTree->addMessageToConsole(message, lineNumber, sourceID);
+        m_webPagePrivate->m_dumpRenderTree->addMessageToConsole(message, lineNumber, columnNumber, sourceID);
         return;
     }
 #endif
 
-    m_webPagePrivate->m_client->addMessageToConsole(message.characters(), message.length(), sourceID.characters(), sourceID.length(), lineNumber);
+    m_webPagePrivate->m_client->addMessageToConsole(message.characters(), message.length(), sourceID.characters(), sourceID.length(), lineNumber, columnNumber);
 }
 
 void ChromeClientBlackBerry::runJavaScriptAlert(Frame* frame, const String& message)
@@ -260,7 +260,7 @@ Page* ChromeClientBlackBerry::createWindow(Frame* frame, const FrameLoadRequest&
     if (features.dialog)
         flags |= WebPageClient::FlagWindowIsDialog;
 
-    WebPage* webPage = m_webPagePrivate->m_client->createWindow(x, y, width, height, flags, url.string(), request.frameName());
+    WebPage* webPage = m_webPagePrivate->m_client->createWindow(x, y, width, height, flags, url.string(), request.frameName(), ScriptController::processingUserGesture());
     if (!webPage)
         return 0;
 
@@ -445,7 +445,7 @@ IntRect ChromeClientBlackBerry::rootViewToScreen(const IntRect& windowRect) cons
     return windowPoint;
 }
 
-void ChromeClientBlackBerry::mouseDidMoveOverElement(const HitTestResult& result, unsigned int modifierFlags)
+void ChromeClientBlackBerry::mouseDidMoveOverElement(const HitTestResult&, unsigned)
 {
     notImplemented();
 }
@@ -667,12 +667,12 @@ PlatformPageClient ChromeClientBlackBerry::platformPageClient() const
 }
 
 #if ENABLE(TOUCH_EVENTS)
-void ChromeClientBlackBerry::needTouchEvents(bool value)
+void ChromeClientBlackBerry::needTouchEvents(bool)
 {
 }
 #endif
 
-void ChromeClientBlackBerry::reachedMaxAppCacheSize(int64_t spaceNeeded)
+void ChromeClientBlackBerry::reachedMaxAppCacheSize(int64_t)
 {
     notImplemented();
 }

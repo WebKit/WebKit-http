@@ -32,6 +32,7 @@
 #include "ExceptionCodePlaceholder.h"
 #include "NodeList.h"
 #include <wtf/ArrayBuffer.h>
+#include <wtf/Float32Array.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -57,6 +58,7 @@ class ShadowRoot;
 class WebKitPoint;
 class MallocStatistics;
 class SerializedScriptValue;
+class TimeRanges;
 class TypeConversions;
 
 typedef int ExceptionCode;
@@ -87,12 +89,7 @@ public:
     ShadowRootIfShadowDOMEnabledOrNode* ensureShadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* createShadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* shadowRoot(Element* host, ExceptionCode&);
-    ShadowRootIfShadowDOMEnabledOrNode* youngestShadowRoot(Element* host, ExceptionCode&);
-    ShadowRootIfShadowDOMEnabledOrNode* oldestShadowRoot(Element* host, ExceptionCode&);
-    ShadowRootIfShadowDOMEnabledOrNode* youngerShadowRoot(Node* shadow, ExceptionCode&);
-    ShadowRootIfShadowDOMEnabledOrNode* olderShadowRoot(Node* shadow, ExceptionCode&);
     String shadowRootType(const Node*, ExceptionCode&) const;
-    bool hasShadowInsertionPoint(const Node*, ExceptionCode&) const;
     bool hasContentElement(const Node*, ExceptionCode&) const;
     size_t countElementShadow(const Node*, ExceptionCode&) const;
     Element* includerFor(Node*, ExceptionCode&);
@@ -101,6 +98,7 @@ public:
 
     // CSS Animation testing.
     unsigned numberOfActiveAnimations() const;
+    bool animationsAreSuspended(Document*, ExceptionCode&) const;
     void suspendAnimations(Document*, ExceptionCode&) const;
     void resumeAnimations(Document*, ExceptionCode&) const;
     bool pauseAnimationAtTimeOnElement(const String& animationName, double pauseTime, Element*, ExceptionCode&);
@@ -201,6 +199,11 @@ public:
     bool hasGrammarMarker(Document*, int from, int length, ExceptionCode&);
     bool hasAutocorrectedMarker(Document*, int from, int length, ExceptionCode&);
     void setContinuousSpellCheckingEnabled(bool enabled, ExceptionCode&);
+    void setAutomaticQuoteSubstitutionEnabled(bool enabled, ExceptionCode&);
+    void setAutomaticLinkDetectionEnabled(bool enabled, ExceptionCode&);
+    void setAutomaticDashSubstitutionEnabled(bool enabled, ExceptionCode&);
+    void setAutomaticTextReplacementEnabled(bool enabled, ExceptionCode&);
+    void setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCode&);
 
     bool isOverwriteModeEnabled(Document*, ExceptionCode&);
     void toggleOverwriteModeEnabled(Document*, ExceptionCode&);
@@ -310,6 +313,18 @@ public:
 #endif
 
     bool isSelectPopupVisible(Node*);
+
+    String captionsStyleSheetOverride(ExceptionCode&);
+    void setCaptionsStyleSheetOverride(const String&, ExceptionCode&);
+    void setPrimaryAudioTrackLanguageOverride(const String&, ExceptionCode&);
+    void setCaptionDisplayMode(const String&, ExceptionCode&);
+
+#if ENABLE(VIDEO)
+    PassRefPtr<TimeRanges> createTimeRanges(Float32Array* startTimes, Float32Array* endTimes);
+    double closestTimeToTimeRanges(double time, TimeRanges*);
+#endif
+
+    PassRefPtr<ClientRect> selectionBounds(ExceptionCode&);
 
 private:
     explicit Internals(Document*);

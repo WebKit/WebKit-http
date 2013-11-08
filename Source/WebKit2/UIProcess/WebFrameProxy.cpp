@@ -34,11 +34,11 @@
 #include "WebPageProxy.h"
 #include <WebCore/DOMImplementation.h>
 #include <WebCore/Image.h>
+#include <WebCore/MIMETypeRegistry.h>
 #include <stdio.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebCore;
-using namespace std;
 
 namespace WebKit {
 
@@ -95,16 +95,7 @@ bool WebFrameProxy::canShowMIMEType(const String& mimeType) const
     if (!m_page)
         return false;
 
-    if (m_page->canShowMIMEType(mimeType))
-        return true;
-
-#if PLATFORM(MAC)
-    // On Mac, we can show PDFs.
-    if (!mimeType.isEmpty())
-        return WebContext::pdfAndPostScriptMIMETypes().contains(mimeType) && !WebContext::omitPDFSupport();
-#endif
-
-    return false;
+    return m_page->canShowMIMEType(mimeType);
 }
 
 bool WebFrameProxy::isDisplayingStandaloneImageDocument() const
@@ -115,8 +106,7 @@ bool WebFrameProxy::isDisplayingStandaloneImageDocument() const
 bool WebFrameProxy::isDisplayingMarkupDocument() const
 {
     // FIXME: This check should be moved to somewhere in WebCore.
-    // FIXME: This returns false when displaying a web archive.
-    return m_MIMEType == "text/html" || m_MIMEType == "image/svg+xml" || DOMImplementation::isXMLMIMEType(m_MIMEType);
+    return m_MIMEType == "text/html" || m_MIMEType == "image/svg+xml" || m_MIMEType == "application/x-webarchive" || DOMImplementation::isXMLMIMEType(m_MIMEType);
 }
 
 bool WebFrameProxy::isDisplayingPDFDocument() const
@@ -124,7 +114,7 @@ bool WebFrameProxy::isDisplayingPDFDocument() const
     if (m_MIMEType.isEmpty())
         return false;
 
-    return WebContext::pdfAndPostScriptMIMETypes().contains(m_MIMEType);
+    return MIMETypeRegistry::isPDFOrPostScriptMIMEType(m_MIMEType);
 }
 
 void WebFrameProxy::didStartProvisionalLoad(const String& url)

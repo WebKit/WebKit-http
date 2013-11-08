@@ -25,25 +25,24 @@
 
 [
     Conditional=VIDEO_TRACK,
-    V8EnabledAtRuntime=webkitVideoTrack,
+    GenerateIsReachable=ImplElementRoot,
     IndexedGetter,
     EventTarget,
-    JSCustomMarkFunction,
-    JSCustomIsReachable,
-    V8GenerateIsReachable=ImplOwnerRoot
+    JSCustomMarkFunction
 ] interface TextTrackList {
     readonly attribute unsigned long length;
-    TextTrack item(in unsigned long index);
+    TextTrack item(unsigned long index);
 
     attribute EventListener onaddtrack;
+    attribute EventListener onremovetrack;
 
-    void addEventListener(in DOMString type,
-                          in EventListener listener,
-                          in [Optional] boolean useCapture);
-    void removeEventListener(in DOMString type,
-                             in EventListener listener,
-                             in [Optional] boolean useCapture);
-    boolean dispatchEvent(in Event evt)
+    void addEventListener(DOMString type,
+                          EventListener listener,
+                          optional boolean useCapture);
+    void removeEventListener(DOMString type,
+                             EventListener listener,
+                             optional boolean useCapture);
+    boolean dispatchEvent(Event evt)
         raises(EventException);
 };
 

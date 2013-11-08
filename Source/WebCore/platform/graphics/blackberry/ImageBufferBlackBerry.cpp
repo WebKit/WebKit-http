@@ -32,6 +32,7 @@
 #include <BlackBerryPlatformGraphicsContext.h>
 #include <BlackBerryPlatformSettings.h>
 #include <BlackBerryPlatformWindow.h>
+#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 using namespace std;
@@ -113,7 +114,7 @@ void ImageBufferData::getImageData(GraphicsContext* context, const IntRect& rect
     getImageDataInternal(context, rect, size, result, unmultiply, m_window);
 }
 
-static bool flushAndDraw(const ImageBufferData* object, GraphicsContext* context, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, bool useLowQualityScale)
+static bool flushAndDraw(const ImageBufferData* object, GraphicsContext* context, ColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, bool)
 {
     if (!makeBufferCurrent(object->m_window)) {
         BlackBerry::Platform::logAlways(BlackBerry::Platform::LogLevelWarn,
@@ -153,7 +154,7 @@ void ImageBufferData::draw(GraphicsContext* thisContext, GraphicsContext* otherC
     }
 }
 
-ImageBuffer::ImageBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, RenderingMode renderingMode, HostWindow* window, bool& success)
+ImageBuffer::ImageBuffer(const IntSize& size, float, ColorSpace, RenderingMode renderingMode, HostWindow* window, bool& success)
     : m_size(size)
     , m_logicalSize(size)
     , m_resolutionScale(1)
@@ -207,13 +208,13 @@ PlatformLayer* ImageBuffer::platformLayer() const
     return m_data.m_platformLayer.get();
 }
 
-PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
+PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy, ScaleBehavior) const
 {
     // FIXME respect copyBehaviour enum.
-    unsigned* imageData = new unsigned[m_size.width() * m_size.height()];
-    m_data.getImageData(m_context.get(), IntRect(IntPoint(0, 0), m_size), IntRect(IntPoint(0, 0), m_size), (unsigned char*)imageData, false /* unmultiply */);
-    BlackBerry::Platform::Graphics::TiledImage* nativeImage = new BlackBerry::Platform::Graphics::TiledImage(m_size, imageData, false /* dataIsBGRA */);
-    return BitmapImage::create(nativeImage);
+    Vector<unsigned> pixels;
+    pixels.reserveCapacity(m_size.area());
+    m_data.getImageData(m_context.get(), IntRect(IntPoint(0, 0), m_size), IntRect(IntPoint(0, 0), m_size), reinterpret_cast<unsigned char*>(pixels.data()), false /* unmultiply */);
+    return BitmapImage::create(new BlackBerry::Platform::Graphics::TiledImage(m_size, pixels.data(), false /* dataIsBGRA */));
 }
 
 void ImageBuffer::clip(GraphicsContext* context, const FloatRect& rect) const
@@ -224,7 +225,7 @@ void ImageBuffer::clip(GraphicsContext* context, const FloatRect& rect) const
     context->platformContext()->addMaskLayer(rect, nativeImage);
 }
 
-void ImageBuffer::draw(GraphicsContext* context, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
+void ImageBuffer::draw(GraphicsContext* context, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode, bool useLowQualityScale)
 {
     m_data.draw(m_context.get(), context, styleColorSpace, destRect, srcRect, op, useLowQualityScale);
 }
@@ -235,7 +236,7 @@ void ImageBuffer::drawPattern(GraphicsContext* context, const FloatRect& srcRect
     image->drawPattern(context, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
 }
 
-void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
+void ImageBuffer::platformTransformColorSpace(const Vector<int>&)
 {
 }
 

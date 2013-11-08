@@ -78,12 +78,14 @@ namespace WTF {
         // Type for return value of functions that transfer ownership, such as take. 
         typedef T PassOutType;
         static PassOutType passOut(const T& value) { return value; }
+        static T& passOut(T& value) { return value; } // Overloaded to avoid copying of non-temporary values.
 
         // Type for return value of functions that do not transfer ownership, such as get.
         // FIXME: We could change this type to const T& for better performance if we figured out
         // a way to handle the return value from emptyValue, which is a temporary.
         typedef T PeekType;
         static PeekType peek(const T& value) { return value; }
+        static T& peek(T& value) { return value; } // Overloaded to avoid copying of non-temporary values.
     };
 
     template<typename T> struct HashTraits : GenericHashTraits<T> { };
@@ -138,12 +140,18 @@ namespace WTF {
     };
 
     template<typename P> struct HashTraits<RefPtr<P> > : SimpleClassHashTraits<RefPtr<P> > {
+        static P* emptyValue() { return 0; }
+
         typedef PassRefPtr<P> PassInType;
         static void store(PassRefPtr<P> value, RefPtr<P>& storage) { storage = value; }
 
-        // FIXME: We should change PassOutType to PassRefPtr for better performance.
-        // FIXME: We should consider changing PeekType to a raw pointer for better performance,
-        // but then callers won't need to call get; doing so will require updating many call sites.
+        typedef PassRefPtr<P> PassOutType;
+        static PassRefPtr<P> passOut(RefPtr<P>& value) { return value.release(); }
+        static PassRefPtr<P> passOut(P* value) { return value; }
+
+        typedef P* PeekType;
+        static PeekType peek(const RefPtr<P>& value) { return value.get(); }
+        static PeekType peek(P* value) { return value; }
     };
 
     template<> struct HashTraits<String> : SimpleClassHashTraits<String> {

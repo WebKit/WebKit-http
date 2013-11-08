@@ -40,23 +40,6 @@ var TEST_RESULTS_BASE_PATH = 'http://build.chromium.org/f/chromium/layout_test_r
 var GPU_RESULTS_BASE_PATH = 'http://chromium-browser-gpu-tests.commondatastorage.googleapis.com/runs/'
 
 var PLATFORMS = {
-    'CHROMIUM': {
-        expectationsDirectory: null, /* FIXME: cleanup post blink split 'chromium', */
-        subPlatforms: {
-            'LION': { fallbackPlatforms: ['CHROMIUM'] },
-            'SNOWLEOPARD': { fallbackPlatforms: ['CHROMIUM'] },
-            'XP': { fallbackPlatforms: ['CHROMIUM'] },
-            'VISTA': { fallbackPlatforms: ['CHROMIUM'] },
-            'WIN7': { fallbackPlatforms: ['CHROMIUM'] },
-            'LUCID': { fallbackPlatforms: ['CHROMIUM'] },
-            'ANDROID': { fallbackPlatforms: ['CHROMIUM'], expectationsDirectory: null /* 'chromium-android' */ }
-        },
-        platformModifierUnions: {
-            'MAC': ['CHROMIUM_LION', 'CHROMIUM_SNOWLEOPARD'],
-            'WIN': ['CHROMIUM_XP', 'CHROMIUM_VISTA', 'CHROMIUM_WIN7'],
-            'LINUX': ['CHROMIUM_LUCID']
-        }
-    },
     'APPLE': {
         subPlatforms: {
             'MAC': {
@@ -66,16 +49,15 @@ var PLATFORMS = {
                         expectationsDirectory: 'mac-lion',
                         subPlatforms: {
                             'WK1': { fallbackPlatforms: ['APPLE_MAC_LION', 'APPLE_MAC'] },
-                            'WK2': { fallbackPlatforms: ['APPLE_MAC_LION', 'APPLE_MAC', 'WK2'] }
+                            'WK2': { fallbackPlatforms: ['APPLE_MAC_LION', 'APPLE_MAC', 'WK2'], expectationsDirectory: 'mac-wk2'}
                         }
                     },
-                    'SNOWLEOPARD': {
-                        expectationsDirectory: 'mac-snowleopard',
+                    'MOUNTAINLION': {
                         subPlatforms: {
-                            'WK1': { fallbackPlatforms: ['APPLE_MAC_SNOWLEOPARD', 'APPLE_MAC'] },
-                            'WK2': { fallbackPlatforms: ['APPLE_MAC_SNOWLEOPARD', 'APPLE_MAC', 'WK2'] }
+                            'WK1': { fallbackPlatforms: ['APPLE_MAC_MOUNTAINLION', 'APPLE_MAC'] },
+                            'WK2': { fallbackPlatforms: ['APPLE_MAC_MOUNTAINLION', 'APPLE_MAC', 'WK2'], expectationsDirectory: 'mac-wk2'}
                         }
-                    }
+                    },
                 }
             },
             'WIN': {
@@ -375,7 +357,7 @@ function determineWKPlatform(builderName, basePlatform)
     return basePlatform + (isWK2Builder ? '_WK2' : '_WK1');
 }
 
-function nonChromiumPlatform(builderNameUpperCase)
+function determineBuilderPlatform(builderNameUpperCase)
 {
     if (string.contains(builderNameUpperCase, 'WINDOWS 7'))
         return 'APPLE_WIN_WIN7';
@@ -384,55 +366,25 @@ function nonChromiumPlatform(builderNameUpperCase)
     if (string.contains(builderNameUpperCase, 'QT LINUX'))
         return 'QT_LINUX';
 
+    if (string.contains(builderNameUpperCase, 'MOUNTAINLION'))
+        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_MOUNTAINLION');
     if (string.contains(builderNameUpperCase, 'LION'))
         return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_LION');
-    if (string.contains(builderNameUpperCase, 'SNOWLEOPARD'))
-        return determineWKPlatform(builderNameUpperCase, 'APPLE_MAC_SNOWLEOPARD');
     if (string.contains(builderNameUpperCase, 'GTK LINUX'))
         return determineWKPlatform(builderNameUpperCase, 'GTK_LINUX');
     if (string.contains(builderNameUpperCase, 'EFL'))
         return determineWKPlatform(builderNameUpperCase, 'EFL_LINUX');
 }
 
-function chromiumPlatform(builderNameUpperCase)
-{
-    if (string.contains(builderNameUpperCase, 'MAC')) {
-        if (string.contains(builderNameUpperCase, '10.7'))
-            return 'CHROMIUM_LION';
-        // The webkit.org 'Chromium Mac Release (Tests)' bot runs SnowLeopard.
-        return 'CHROMIUM_SNOWLEOPARD';
-    }
-    if (string.contains(builderNameUpperCase, 'WIN7'))
-        return 'CHROMIUM_WIN7';
-    if (string.contains(builderNameUpperCase, 'VISTA'))
-        return 'CHROMIUM_VISTA';
-    if (string.contains(builderNameUpperCase, 'WIN') || string.contains(builderNameUpperCase, 'XP'))
-        return 'CHROMIUM_XP';
-    if (string.contains(builderNameUpperCase, 'LINUX'))
-        return 'CHROMIUM_LUCID';
-    if (string.contains(builderNameUpperCase, 'ANDROID'))
-        return 'CHROMIUM_ANDROID';
-    // The interactive bot is XP, but doesn't have an OS in it's name.
-    if (string.contains(builderNameUpperCase, 'INTERACTIVE'))
-        return 'CHROMIUM_XP';
-}
-
-
 function platformAndBuildType(builderName)
 {
     if (!g_perBuilderPlatformAndBuildType[builderName]) {
         var builderNameUpperCase = builderName.toUpperCase();
-        
-        var platform = '';
-        if (g_history.isLayoutTestResults() && currentBuilderGroupName() == '@ToT - webkit.org' && !string.contains(builderNameUpperCase, 'CHROMIUM'))
-            platform = nonChromiumPlatform(builderNameUpperCase);
-        else
-            platform = chromiumPlatform(builderNameUpperCase);
-        
+        var platform = determineBuilderPlatform(builderNameUpperCase);
         if (!platform)
             console.error('Could not resolve platform for builder: ' + builderName);
 
-        var buildType = string.contains(builderNameUpperCase, 'DBG') || string.contains(builderNameUpperCase, 'DEBUG') ? 'DEBUG' : 'RELEASE';
+        var buildType = string.contains(builderNameUpperCase, 'DEBUG') ? 'DEBUG' : 'RELEASE';
         g_perBuilderPlatformAndBuildType[builderName] = {platform: platform, buildType: buildType};
     }
     return g_perBuilderPlatformAndBuildType[builderName];
@@ -863,33 +815,6 @@ function processExpectationsForPlatform(platformObject, platformName, expectatio
         var path = expectationsArray[i].path;
         var modifiers = expectationsArray[i].modifiers;
         var expectations = expectationsArray[i].expectations;
-
-        var shouldProcessExpectation = false;
-        var hasPlatformModifierUnions = false;
-        if (platformObject.fallbackPlatforms) {
-            platformObject.fallbackPlatforms.forEach(function(fallbackPlatform) {
-                if (shouldProcessExpectation)
-                    return;
-
-                var fallbackPlatformObject = platformObjectForName(fallbackPlatform);
-                if (!fallbackPlatformObject.platformModifierUnions)
-                    return;
-
-                modifiers.split(' ').forEach(function(modifier) {
-                    if (modifier in fallbackPlatformObject.platformModifierUnions) {
-                        hasPlatformModifierUnions = true;
-                        if (fallbackPlatformObject.platformModifierUnions[modifier].indexOf(platformName) != -1)
-                            shouldProcessExpectation = true;
-                    }
-                });
-            });
-        }
-
-        if (!hasPlatformModifierUnions)
-            shouldProcessExpectation = true;
-
-        if (!shouldProcessExpectation)
-            continue;
 
         getAllTestsTrie().forEach(function(triePath) {
             addTestToAllExpectationsForPlatform(triePath, platformName, expectations, modifiers);
@@ -1613,29 +1538,7 @@ function realModifiers(modifierString)
 {
     var modifiers = modifierString.split(' ');;
     return modifiers.filter(function(modifier) {
-        if (modifier in BUILD_TYPES || string.startsWith(modifier, 'BUG'))
-            return false;
-
-        var matchesPlatformOrUnion = false;
-        traversePlatformsTree(function(platform, platformName) {
-            if (matchesPlatformOrUnion)
-                return;
-
-            if (platform.fallbackPlatforms) {
-                platform.fallbackPlatforms.forEach(function(fallbackPlatform) {
-                    if (matchesPlatformOrUnion)
-                        return;
-
-                    var fallbackPlatformObject = platformObjectForName(fallbackPlatform);
-                    if (!fallbackPlatformObject.platformModifierUnions)
-                        return;
-
-                    matchesPlatformOrUnion = modifier in fallbackPlatformObject.subPlatforms || modifier in fallbackPlatformObject.platformModifierUnions;
-                });
-            }
-        });
-
-        return !matchesPlatformOrUnion;
+        return !(modifier in BUILD_TYPES || string.startsWith(modifier, 'BUG'));
     }).join(' ');
 }
 
@@ -2537,11 +2440,6 @@ g_fallbacksMap['MAC-LION'] = ['chromium-mac', 'chromium'];
 g_fallbacksMap['LINUX-32'] = ['chromium-linux-x86', 'chromium-linux', 'chromium-win', 'chromium'];
 g_fallbacksMap['LINUX-64'] = ['chromium-linux', 'chromium-win', 'chromium'];
 
-function htmlForFallbackHelp(fallbacks)
-{
-    return '<ol class=fallback-list><li>' + fallbacks.join('</li><li>') + '</li></ol>';
-}
-
 function showLegend()
 {
     var legend = $('legend');
@@ -2557,18 +2455,11 @@ function showLegend()
         html += '<div class=' + expectation + '>' + expectationsMap()[expectation] + '</div>';
 
     html += '<div class=merge>WEBKIT MERGE</div>';
-    if (g_history.isLayoutTestResults()) {
-      html += '</div><br style="clear:both">' +
-          '</div><h3>Test expectatons fallback order.</h3>';
-
-      for (var platform in g_fallbacksMap)
-          html += '<div class=fallback-header>' + platform + '</div>' + htmlForFallbackHelp(g_fallbacksMap[platform]);
-
-      html += '<div>TIMES:</div>' +
+    if (g_history.isLayoutTestResults())
+      html += '</div><br style="clear:both"><div>TIMES:</div>' +
           htmlForSlowTimes(MIN_SECONDS_FOR_SLOW_TEST) +
           '<div>DEBUG TIMES:</div>' +
           htmlForSlowTimes(MIN_SECONDS_FOR_SLOW_TEST_DEBUG);
-    }
 
     legend.innerHTML = html;
 }

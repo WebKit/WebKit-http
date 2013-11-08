@@ -24,6 +24,8 @@
 #include "config.h"
 #include "EditorClientWinCE.h"
 
+#include "Document.h"
+#include "Editor.h"
 #include "Frame.h"
 #include "KeyboardEvent.h"
 #include "NotImplemented.h"

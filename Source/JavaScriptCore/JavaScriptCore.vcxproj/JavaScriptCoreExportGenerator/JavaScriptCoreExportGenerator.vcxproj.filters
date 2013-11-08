@@ -4,9 +4,10 @@
     <None Include="JavaScriptCoreExportGeneratorPreBuild.cmd" />
     <None Include="JavaScriptCoreExportGeneratorBuildCmd.cmd" />
     <None Include="JavaScriptCoreExportGeneratorPostBuild.cmd" />
+    <None Include="make-export-file-generator" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj\JavaScriptCoreExportGenerator\DerivedSources\JavaScriptCoreExportGenerator.cpp" />
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\JavaScriptCoreExportGenerator\DerivedSources\JavaScriptCoreExportGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="JavaScriptCoreExports.def.in" />

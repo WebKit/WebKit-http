@@ -3,6 +3,8 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMAttrPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMBarInfo.cpp \
 	DerivedSources/webkitdom/WebKitDOMBarInfoPrivate.h \
+	DerivedSources/webkitdom/WebKitDOMBatteryManager.cpp \
+	DerivedSources/webkitdom/WebKitDOMBatteryManagerPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMBlob.cpp \
 	DerivedSources/webkitdom/WebKitDOMBlobPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMCDATASection.cpp \
@@ -283,6 +285,7 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMXPathResultPrivate.h
 
 webkitgtk_gdom_built_h_api += \
+	DerivedSources/webkitdom/WebKitDOMBatteryManager.h \
 	DerivedSources/webkitdom/WebKitDOMCSSRule.h \
 	DerivedSources/webkitdom/WebKitDOMCSSRuleList.h \
 	DerivedSources/webkitdom/WebKitDOMCSSStyleDeclaration.h \
@@ -433,18 +436,24 @@ webkitgtk_gdom_built_h_api += \
 
 if ENABLE_VIDEO
 webkitgtk_gdom_built_h_api += \
+	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMAudioTrack.h \
+	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMAudioTrackList.h \
 	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMHTMLAudioElement.h \
 	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMHTMLVideoElement.h \
 	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMTextTrack.h \
 	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMTextTrackList.h \
 	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMTextTrackCue.h \
 	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMTextTrackCueList.h \
-	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMTrackEvent.h
+	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMTrackEvent.h \
+	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMVideoTrack.h \
+	$(top_builddir)/DerivedSources/webkitdom/WebKitDOMVideoTrackList.h
 webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMHTMLAudioElement.cpp \
 	DerivedSources/webkitdom/WebKitDOMHTMLAudioElementPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMHTMLVideoElement.cpp \
 	DerivedSources/webkitdom/WebKitDOMHTMLVideoElementPrivate.h \
+	DerivedSources/webkitdom/WebKitDOMAudioTrack.cpp \
+	DerivedSources/webkitdom/WebKitDOMAudioTrackList.cpp \
 	DerivedSources/webkitdom/WebKitDOMTextTrack.cpp \
 	DerivedSources/webkitdom/WebKitDOMTextTrackPrivate.h \
 	DerivedSources/webkitdom/WebKitDOMTextTrackList.cpp \
@@ -453,6 +462,8 @@ webkitgtk_gdom_built_sources += \
 	DerivedSources/webkitdom/WebKitDOMTextTrackCuePrivate.h \
 	DerivedSources/webkitdom/WebKitDOMTextTrackCueList.cpp \
 	DerivedSources/webkitdom/WebKitDOMTextTrackCueListPrivate.h \
+	DerivedSources/webkitdom/WebKitDOMVideoTrack.cpp \
+	DerivedSources/webkitdom/WebKitDOMVideoTrackList.cpp \
 	DerivedSources/webkitdom/WebKitDOMTrackEvent.cpp \
 	DerivedSources/webkitdom/WebKitDOMTrackEventPrivate.h
 endif
@@ -489,7 +500,7 @@ $(top_builddir)/DerivedSources/webkitdom/WebKitDOMCustom.h: $(WebCore)/bindings/
 # Filter out SVG and IndexedDB for now
 gdom_feature_defines := $(filter-out ENABLE_INDEXED_DATABASE=1, $(filter-out ENABLE_SVG%, $(feature_defines))) ENABLE_INDEXED_DATABASE=0
 DerivedSources/webkitdom/WebKitDOM%.cpp DerivedSources/webkitdom/WebKitDOM%.h DerivedSources/webkitdom/WebKitDOM%Private.h: %.idl $(SCRIPTS_FOR_GENERATE_BINDINGS) $(WebCore)/bindings/scripts/CodeGeneratorGObject.pm $(WebCore)/bindings/gobject/GNUmakefile.am $(supplemental_dependency_file)
-	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $(WebCore)/bindings/scripts/generate-bindings.pl --include $(WebCore)/dom --include $(WebCore)/html --include $(WebCore)/css --include $(WebCore)/page --include $(WebCore)/xml --include $(WebCore)/svg --outputDir "$(GENSOURCES_WEBKITDOM)" --defines "LANGUAGE_GOBJECT=1 $(gdom_feature_defines)" --generator GObject --supplementalDependencyFile $(supplemental_dependency_file) $<
+	$(AM_V_GEN)$(PERL) -I$(WebCore)/bindings/scripts $(WebCore)/bindings/scripts/generate-bindings.pl --include $(WebCore)/Modules --include $(WebCore)/dom --include $(WebCore)/html --include $(WebCore)/css --include $(WebCore)/page --include $(WebCore)/fileapi --include $(WebCore)/xml --include $(WebCore)/svg --outputDir "$(GENSOURCES_WEBKITDOM)" --defines "LANGUAGE_GOBJECT=1 $(gdom_feature_defines)" --generator GObject --supplementalDependencyFile $(supplemental_dependency_file) $<
 
 libwebkitdomincludedir = $(libwebkitgtkincludedir)/webkitdom
 nodist_libwebkitdominclude_HEADERS = \

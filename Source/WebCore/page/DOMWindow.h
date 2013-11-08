@@ -316,6 +316,8 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(loadstart);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(message);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(mousedown);
+        DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseenter);
+        DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseleave);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(mousemove);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseout);
         DEFINE_ATTRIBUTE_EVENT_LISTENER(mouseover);
@@ -397,7 +399,7 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(touchcancel);
 #endif
 
-#if ENABLE(WEB_TIMING)
+#if ENABLE(WEB_TIMING) || ENABLE(WEB_TIMING_MINIMAL)
         Performance* performance() const;
 #endif
 
@@ -414,6 +416,7 @@ namespace WebCore {
         explicit DOMWindow(Document*);
 
         Page* page();
+        bool allowedToChangeWindowGeometry() const;
 
         virtual void frameDestroyed() OVERRIDE;
         virtual void willDetachPage() OVERRIDE;
@@ -423,7 +426,7 @@ namespace WebCore {
         virtual EventTargetData* eventTargetData();
         virtual EventTargetData* ensureEventTargetData();
 
-        static Frame* createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&,
+        static PassRefPtr<Frame> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&,
             DOMWindow* activeWindow, Frame* firstFrame, Frame* openerFrame,
             PrepareDialogFunction = 0, void* functionContext = 0);
         bool isInsecureScriptAccess(DOMWindow* activeWindow, const String& urlString);
@@ -461,7 +464,7 @@ namespace WebCore {
         mutable RefPtr<Storage> m_localStorage;
         mutable RefPtr<DOMApplicationCache> m_applicationCache;
 
-#if ENABLE(WEB_TIMING)
+#if ENABLE(WEB_TIMING) || ENABLE(WEB_TIMING_MINIMAL)
         mutable RefPtr<Performance> m_performance;
 #endif
 

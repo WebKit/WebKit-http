@@ -43,6 +43,7 @@
 #include "WKPopupItem.h"
 #include "WKString.h"
 #include "WKView.h"
+#include "WKViewEfl.h"
 #include "WebContext.h"
 #include "WebImage.h"
 #include "WebPageGroup.h"
@@ -128,6 +129,15 @@ static inline EwkView* toEwkView(const Ewk_View_Smart_Data* smartData)
     ASSERT(smartData->priv);
 
     return smartData->priv;
+}
+
+static inline void showEvasObjectsIfNeeded(const Ewk_View_Smart_Data* smartData)
+{
+    ASSERT(smartData);
+
+    if (evas_object_clipees_get(smartData->base.clipper))
+        evas_object_show(smartData->base.clipper);
+    evas_object_show(smartData->image);
 }
 
 // EwkViewEventHandler implementation.
@@ -241,7 +251,9 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     , m_evasObject(evasObject)
     , m_context(EwkContext::findOrCreateWrapper(WKPageGetContext(wkPage())))
     , m_pageGroup(EwkPageGroup::findOrCreateWrapper(WKPageGetPageGroup(wkPage())))
+#if USE(ACCELERATED_COMPOSITING)
     , m_pendingSurfaceResize(false)
+#endif
     , m_pageLoadClient(PageLoadClientEfl::create(this))
     , m_pagePolicyClient(PagePolicyClientEfl::create(this))
     , m_pageUIClient(PageUIClientEfl::create(this))
@@ -255,6 +267,7 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     , m_backForwardList(EwkBackForwardList::create(WKPageGetBackForwardList(wkPage())))
     , m_settings(EwkSettings::create(this))
     , m_cursorIdentifier(0)
+    , m_userAgent(WKEinaSharedString(AdoptWK, WKPageCopyUserAgent(wkPage())))
     , m_mouseEventsEnabled(false)
 #if ENABLE(TOUCH_EVENTS)
     , m_touchEventsEnabled(false)
@@ -271,7 +284,7 @@ EwkView::EwkView(WKViewRef view, Evas_Object* evasObject)
     ASSERT(m_context);
 
     // FIXME: Remove when possible.
-    webView()->setEwkView(this);
+    static_cast<WebViewEfl*>(webView())->setEwkView(this);
 #if USE(ACCELERATED_COMPOSITING)
     m_evasGL = adoptPtr(evas_gl_new(evas_object_evas_get(m_evasObject)));
     if (m_evasGL)
@@ -533,14 +546,17 @@ void EwkView::displayTimerFired(Timer<EwkView>*)
 {
     Ewk_View_Smart_Data* sd = smartData();
 
-    if (m_pendingSurfaceResize) {
 #if USE(ACCELERATED_COMPOSITING)
+    if (m_pendingSurfaceResize) {
         // Create a GL surface here so that Evas has no chance of painting to an empty GL surface.
         if (!createGLSurface())
             return;
-#endif
+        // Make Evas objects visible here in order not to paint empty Evas objects with black color.
+        showEvasObjectsIfNeeded(sd);
+
         m_pendingSurfaceResize = false;
     }
+#endif
 
     if (!m_isAccelerated) {
         RefPtr<cairo_surface_t> surface = createSurfaceForImage(sd->image);
@@ -669,6 +685,19 @@ void EwkView::setCustomTextEncodingName(const String& encoding)
 {
     WKRetainPtr<WKStringRef> wkEncoding = adoptWK(toCopiedAPI(encoding));
     WKPageSetCustomTextEncodingName(wkPage(), wkEncoding.get());
+}
+
+void EwkView::setUserAgent(const char* userAgent)
+{
+    if (m_userAgent == userAgent)
+        return;
+
+    WKRetainPtr<WKStringRef> wkUserAgent = adoptWK(WKStringCreateWithUTF8CString(userAgent));
+    WKPageSetCustomUserAgent(wkPage(), wkUserAgent.get());
+
+    // When 'userAgent' is 0, user agent is set as a standard user agent by WKPageSetCustomUserAgent()
+    // so m_userAgent needs to be updated using WKPageCopyUserAgent().
+    m_userAgent = WKEinaSharedString(AdoptWK, WKPageCopyUserAgent(wkPage()));
 }
 
 void EwkView::setMouseEventsEnabled(bool enabled)
@@ -804,12 +833,10 @@ void EwkView::dismissColorPicker()
 COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_RIGHT_TO_LEFT, RTL);
 COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_LEFT_TO_RIGHT, LTR);
 
-void EwkView::showContextMenu(WebContextMenuProxyEfl* contextMenuProxy, const WebCore::IntPoint& position, const Vector<WebContextMenuItemData>& items)
+void EwkView::showContextMenu(WKPoint position, WKArrayRef items)
 {
     Ewk_View_Smart_Data* sd = smartData();
     ASSERT(sd->api);
-
-    ASSERT(contextMenuProxy);
 
     if (!sd->api->context_menu_show)
         return;
@@ -817,9 +844,9 @@ void EwkView::showContextMenu(WebContextMenuProxyEfl* contextMenuProxy, const We
     if (m_contextMenu)
         hideContextMenu();
 
-    m_contextMenu = Ewk_Context_Menu::create(this, contextMenuProxy, items);
+    m_contextMenu = Ewk_Context_Menu::create(this, items);
 
-    sd->api->context_menu_show(sd, position.x(), position.y(), m_contextMenu.get());
+    sd->api->context_menu_show(sd, position.x, position.y, m_contextMenu.get());
 }
 
 void EwkView::hideContextMenu()
@@ -1112,9 +1139,9 @@ void EwkView::handleEvasObjectCalculate(Evas_Object* evasObject)
 #if USE(ACCELERATED_COMPOSITING)
         if (WKPageUseFixedLayout(self->wkPage()))
             self->pageViewportController()->didChangeViewportSize(self->size());
-#endif
 
         self->setNeedsSurfaceResize();
+#endif
     }
 }
 
@@ -1123,9 +1150,8 @@ void EwkView::handleEvasObjectShow(Evas_Object* evasObject)
     Ewk_View_Smart_Data* smartData = toSmartData(evasObject);
     ASSERT(smartData);
 
-    if (evas_object_clipees_get(smartData->base.clipper))
-        evas_object_show(smartData->base.clipper);
-    evas_object_show(smartData->image);
+    if (!toEwkView(smartData)->m_isAccelerated)
+        showEvasObjectsIfNeeded(smartData);
 }
 
 void EwkView::handleEvasObjectHide(Evas_Object* evasObject)

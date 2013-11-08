@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -53,6 +53,7 @@ static String getContentTypeFromFileName(const String& name, File::ContentTypeLo
 static PassOwnPtr<BlobData> createBlobDataForFileWithType(const String& path, const String& contentType)
 {
     OwnPtr<BlobData> blobData = BlobData::create();
+    ASSERT(Blob::isNormalizedContentType(contentType));
     blobData->setContentType(contentType);
     blobData->appendFile(path);
     return blobData.release();
@@ -117,7 +118,7 @@ File::File(const String& path, const KURL& url, const String& type)
     m_name = pathGetFileName(path);
     // FIXME: File object serialization/deserialization does not include
     // newer file object data members: m_name and m_relativePath.
-    // See SerializedScriptValue.cpp for js and v8.
+    // See SerializedScriptValue.cpp
 }
 
 File::File(const String& path, const String& name, ContentTypeLookupPolicy policy)

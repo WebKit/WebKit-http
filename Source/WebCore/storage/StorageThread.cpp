@@ -26,7 +26,6 @@
 #include "config.h"
 #include "StorageThread.h"
 
-#include "StorageTask.h"
 #include "StorageAreaSync.h"
 #include <wtf/AutodrainedPool.h>
 #include <wtf/HashSet.h>
@@ -75,19 +74,18 @@ void StorageThread::threadEntryPointCallback(void* thread)
 void StorageThread::threadEntryPoint()
 {
     ASSERT(!isMainThread());
-    AutodrainedPool pool;
-    
-    while (OwnPtr<StorageTask> task = m_queue.waitForMessage()) {
-        task->performTask();
-        pool.cycle();
+
+    while (OwnPtr<Function<void ()> > function = m_queue.waitForMessage()) {
+        AutodrainedPool pool;
+        (*function)();
     }
 }
 
-void StorageThread::scheduleTask(PassOwnPtr<StorageTask> task)
+void StorageThread::dispatch(const Function<void ()>& function)
 {
     ASSERT(isMainThread());
     ASSERT(!m_queue.killed() && m_threadID);
-    m_queue.append(task);
+    m_queue.append(adoptPtr(new Function<void ()>(function)));
 }
 
 void StorageThread::terminate()
@@ -99,7 +97,7 @@ void StorageThread::terminate()
     if (!m_threadID)
         return;
 
-    m_queue.append(StorageTask::createTerminate(this));
+    m_queue.append(adoptPtr(new Function<void ()>((bind(&StorageThread::performTerminate, this)))));
     waitForThreadCompletion(m_threadID);
     ASSERT(m_queue.killed());
     m_threadID = 0;
@@ -114,9 +112,9 @@ void StorageThread::performTerminate()
 void StorageThread::releaseFastMallocFreeMemoryInAllThreads()
 {
     HashSet<StorageThread*>& threads = activeStorageThreads();
-    HashSet<StorageThread*>::iterator end = threads.end();
-    for (HashSet<StorageThread*>::iterator it = threads.begin(); it != end; ++it)
-        (*it)->scheduleTask(StorageTask::createReleaseFastMallocFreeMemory());
+
+    for (HashSet<StorageThread*>::iterator it = threads.begin(), end = threads.end(); it != end; ++it)
+        (*it)->dispatch(bind(WTF::releaseFastMallocFreeMemory));
 }
 
 }

@@ -22,7 +22,7 @@
 #include "APICast.h"
 #include "AccessibilityController.h"
 #include "BackForwardController.h"
-#include "BackForwardListImpl.h"
+#include "BackForwardListBlackBerry.h"
 #include "Credential.h"
 #include "DatabaseTracker.h"
 #include "DocumentLoader.h"
@@ -222,7 +222,10 @@ void DumpRenderTree::runTest(const String& url, const String& imageHash)
         fwrite(m_currentTest->utf8().data(), 1, m_currentTest->utf8().length(), current);
         fclose(current);
     }
-    m_page->load(url, BlackBerry::Platform::String::emptyString(), false);
+    BlackBerry::Platform::NetworkRequest request;
+    STATIC_LOCAL_STRING(s_get, "GET");
+    request.setRequestUrl(url, s_get);
+    m_page->load(request);
 }
 
 void DumpRenderTree::doneDrt()
@@ -312,10 +315,13 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const String& url, cons
     settings->setDefaultFontSize(16);
     settings->setDefaultFixedFontSize(13);
     settings->setMinimumFontSize(1);
-    settings->setSerifFontFamily("Times");
-    settings->setFixedFontFamily("Courier New");
-    settings->setSansSerifFontFamily("Arial");
-    settings->setStandardFontFamily("Times");
+    STATIC_LOCAL_STRING(s_arial, "Arial");
+    STATIC_LOCAL_STRING(s_courier, "Courier New");
+    STATIC_LOCAL_STRING(s_times, "Times");
+    settings->setSerifFontFamily(s_times);
+    settings->setFixedFontFamily(s_courier);
+    settings->setSansSerifFontFamily(s_arial);
+    settings->setStandardFontFamily(s_times);
     settings->setXSSAuditorEnabled(false);
     settings->setMaximumPagesInCache(0);
     settings->setPluginsEnabled(true);
@@ -324,6 +330,9 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const String& url, cons
 
     setAcceptsEditing(true);
     DumpRenderTreeSupport::setLinksIncludedInFocusChain(true);
+#if ENABLE(STYLE_SCOPED)
+    DumpRenderTreeSupport::setStyleScopedEnabled(true);
+#endif
 
     m_page->setVirtualViewportSize(Platform::IntSize(800, 600));
     m_page->resetVirtualViewportOnCommitted(false);
@@ -463,7 +472,7 @@ static String dumpHistoryItem(PassRefPtr<WebCore::HistoryItem> item, int indent,
         start = 6;
     }
     for (int i = start; i < indent; i++)
-        result = result + " ";
+        result = result + ' ';
 
     String url = item->urlString();
     if (url.contains("file://")) {
@@ -485,7 +494,7 @@ static String dumpHistoryItem(PassRefPtr<WebCore::HistoryItem> item, int indent,
 
     if (item->isTargetItem())
         result = result + "  **nav target**";
-    result = result + "\n";
+    result = result + '\n';
 
     WebCore::HistoryItemVector children = item->children();
     // Must sort to eliminate arbitrary result ordering which defeats reproducible testing.
@@ -503,7 +512,8 @@ static String dumpBackForwardListForWebView()
     // FORMAT:
     // "        (file test):fast/loader/resources/click-fragment-link.html  **nav target**"
     // "curr->  (file test):fast/loader/resources/click-fragment-link.html#testfragment  **nav target**"
-    WebCore::BackForwardListImpl* bfList = static_cast<WebCore::BackForwardListImpl*>(mainFrame->page()->backForward()->client());
+    WebCore::BackForwardListBlackBerry* bfList = static_cast<WebCore::BackForwardListBlackBerry*>(mainFrame->page()->backForward()->client());
+
     int maxItems = bfList->capacity();
     WebCore::HistoryItemVector entries;
     bfList->backListWithLimit(maxItems, entries);
@@ -702,7 +712,7 @@ void DumpRenderTree::didReceiveTitleForFrame(const String& title, WebCore::Frame
 }
 
 // ChromeClient delegates.
-void DumpRenderTree::addMessageToConsole(const String& message, unsigned lineNumber, const String& sourceID)
+void DumpRenderTree::addMessageToConsole(const String& message, unsigned lineNumber, const String&)
 {
     printf("CONSOLE MESSAGE: ");
     if (lineNumber)
@@ -926,7 +936,7 @@ void DumpRenderTree::didHandleOnloadEventsForFrame(WebCore::Frame* frame)
         printf("%s - didHandleOnloadEventsForFrame\n", drtFrameDescription(frame).utf8().data());
 }
 
-void DumpRenderTree::didReceiveResponseForFrame(WebCore::Frame* frame, const WebCore::ResourceResponse& response)
+void DumpRenderTree::didReceiveResponseForFrame(WebCore::Frame*, const WebCore::ResourceResponse& response)
 {
     if (!testDone && gTestRunner->dumpResourceResponseMIMETypes())
         printf("%s has MIME type %s\n", response.url().lastPathComponent().utf8().data(), response.mimeType().utf8().data());

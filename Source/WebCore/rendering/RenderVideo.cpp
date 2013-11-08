@@ -38,6 +38,7 @@
 #include "Page.h"
 #include "PaintInfo.h"
 #include "RenderView.h"
+#include <wtf/StackStats.h>
 
 #if ENABLE(FULLSCREEN_API)
 #include "RenderFullScreen.h"
@@ -337,6 +338,14 @@ LayoutUnit RenderVideo::offsetHeight() const
     return RenderMedia::offsetHeight();
 }
 #endif
+
+bool RenderVideo::foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const
+{
+    if (videoElement()->shouldDisplayPosterImage())
+        return RenderImage::foregroundIsKnownToBeOpaqueInRect(localRect, maxDepthToTest);
+
+    return videoBox().contains(enclosingIntRect(localRect));
+}
 
 } // namespace WebCore
 

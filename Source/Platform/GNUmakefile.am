@@ -24,19 +24,52 @@ platform_webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/animation \
 	-I$(srcdir)/Source/WebCore/platform/audio \
 	-I$(srcdir)/Source/WebCore/platform/cairo \
+	-I$(srcdir)/Source/WebCore/platform/geoclue \
 	-I$(srcdir)/Source/WebCore/platform/graphics \
 	-I$(srcdir)/Source/WebCore/platform/graphics/cairo \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/graphics/gtk \
 	-I$(srcdir)/Source/WebCore/platform/graphics/transforms \
 	-I$(srcdir)/Source/WebCore/platform/gtk \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/bmp \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/cairo \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/gif \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/ico \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/jpeg \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/png \
+	-I$(srcdir)/Source/WebCore/platform/image-decoders/webp \
 	-I$(srcdir)/Source/WebCore/platform/network \
 	-I$(srcdir)/Source/WebCore/platform/network/gtk \
 	-I$(srcdir)/Source/WebCore/platform/network/soup \
 	-I$(srcdir)/Source/WebCore/platform/text
 
 noinst_LTLIBRARIES += \
+	libPlatform.la \
 	libPlatformGtk.la
+
+libPlatform_la_SOURCES = \
+	$(platform_sources)
+
+libPlatform_la_CXXFLAGS = \
+	-fvisibility-inlines-hidden \
+	$(global_cxxflags)
+
+libPlatform_la_CFLAGS = \
+	-fvisibility=hidden \
+	$(global_cflags)
+
+libPlatform_la_CPPFLAGS = \
+	-DBUILDING_WEBKIT \
+	$(global_cppflags) \
+	$(platform_cppflags) \
+	$(platform_webcore_cppflags) \
+	$(javascriptcore_cppflags) \
+	-fno-strict-aliasing \
+	$(CAIRO_CFLAGS) \
+	$(GEOCLUE_CFLAGS) \
+	$(GSTREAMER_CFLAGS) \
+	$(LIBSOUP_CFLAGS)
 
 libPlatformGtk_la_SOURCES = \
 	$(platformgtk_sources)

@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-NUMCPUS=`${WEBKIT_SOURCE}/../Tools/Scripts/num-cpus`
+NUMCPUS=`../../../Tools/Scripts/num-cpus`
 
 XSRCROOT="`pwd`/.."
 XSRCROOT=`realpath "$XSRCROOT"`
@@ -26,7 +26,7 @@ SDKROOT=`cygpath -m -s "$SDKROOT"`
 SDKROOT=`cygpath -u "$SDKROOT"`
 export SDKROOT
 
-export BUILT_PRODUCTS_DIR="$XDSTROOT/obj/JavaScriptCore"
+export BUILT_PRODUCTS_DIR="$XDSTROOT/obj32/JavaScriptCore"
 
 mkdir -p "${BUILT_PRODUCTS_DIR}/DerivedSources/docs"
 cd "${BUILT_PRODUCTS_DIR}/DerivedSources"

@@ -150,7 +150,7 @@ class TestResult(object):
         return self.failed or self.modifier == self.DISABLED
 
 
-class JSONResultsGeneratorBase(object):
+class JSONResultsGenerator(object):
     """A JSON results generator for generic tests."""
 
     MAX_NUMBER_OF_BUILD_RESULTS_TO_LOG = 750
@@ -188,16 +188,12 @@ class JSONResultsGeneratorBase(object):
 
     URL_FOR_TEST_LIST_JSON = "http://%s/testfile?builder=%s&name=%s&testlistjson=1&testtype=%s&master=%s"
 
-    # FIXME: Remove generate_incremental_results once the reference to it in
-    # http://src.chromium.org/viewvc/chrome/trunk/tools/build/scripts/slave/gtest_slave_utils.py
-    # has been removed.
     def __init__(self, port, builder_name, build_name, build_number,
         results_file_base_path, builder_base_url,
         test_results_map, svn_repositories=None,
         test_results_server=None,
         test_type="",
-        master_name="",
-        generate_incremental_results=None):
+        master_name=""):
         """Modifies the results.json file. Grabs it off the archive directory
         if it is not found locally.
 
@@ -524,18 +520,9 @@ class JSONResultsGeneratorBase(object):
 
         # Include SVN revisions for the given repositories.
         for (name, path) in self._svn_repositories:
-            # Note: for JSON file's backward-compatibility we use 'chrome' rather
-            # than 'chromium' here.
-            lowercase_name = name.lower()
-            if lowercase_name == 'chromium':
-                lowercase_name = 'chrome'
-            self._insert_item_into_raw_list(results_for_builder,
-                self._get_svn_revision(path),
-                lowercase_name + 'Revision')
+            self._insert_item_into_raw_list(results_for_builder, self._get_svn_revision(path), name.lower() + 'Revision')
 
-        self._insert_item_into_raw_list(results_for_builder,
-            int(time.time()),
-            self.TIME)
+        self._insert_item_into_raw_list(results_for_builder, int(time.time()), self.TIME)
 
     def _insert_test_time_and_result(self, test_name, tests):
         """ Insert a test item with its results to the given tests dictionary.
@@ -654,8 +641,3 @@ class JSONResultsGeneratorBase(object):
         """Returns whether all the results are of the given type
         (e.g. all passes)."""
         return len(results) == 1 and results[0][1] == type
-
-
-# Left here not to break anything.
-class JSONResultsGenerator(JSONResultsGeneratorBase):
-    pass

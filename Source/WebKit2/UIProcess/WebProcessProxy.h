@@ -60,8 +60,8 @@ struct WebNavigationDataStore;
 
 class WebProcessProxy : public ChildProcessProxy, ResponsivenessTimer::Client {
 public:
-    typedef HashMap<uint64_t, RefPtr<WebBackForwardListItem> > WebBackForwardListItemMap;
-    typedef HashMap<uint64_t, RefPtr<WebFrameProxy> > WebFrameProxyMap;
+    typedef HashMap<uint64_t, RefPtr<WebBackForwardListItem>> WebBackForwardListItemMap;
+    typedef HashMap<uint64_t, RefPtr<WebFrameProxy>> WebFrameProxyMap;
     typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
 
     static PassRefPtr<WebProcessProxy> create(PassRefPtr<WebContext>);
@@ -114,6 +114,8 @@ public:
     static bool pageIsProcessSuppressible(WebPageProxy*);
     void updateProcessSuppressionState();
 #endif
+
+    void requestTermination();
 
 private:
     explicit WebProcessProxy(PassRefPtr<WebContext>);

@@ -121,7 +121,7 @@ static void addDYLDEnvironmentAdditions(const ProcessLauncher::LaunchOptions& la
         NSString *processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"WebProcess.app"];
         NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
 
-        processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"SecItemShim.dylib"];
+        processShimPathNSString = [[processAppExecutablePath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"WebProcessShim.dylib"];
     } else if (launchOptions.processType == ProcessLauncher::NetworkProcess) {
         NSString *processPath = [webKit2Bundle pathForAuxiliaryExecutable:@"NetworkProcess.app"];
         NSString *processAppExecutablePath = [[NSBundle bundleWithPath:processPath] executablePath];
@@ -383,7 +383,7 @@ static void createProcess(const ProcessLauncher::LaunchOptions& launchOptions, b
     // Insert a send right so we can send to it.
     mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
 
-    RetainPtr<CFStringRef> cfLocalization(AdoptCF, WKCopyCFLocalizationPreferredName(NULL));
+    RetainPtr<CFStringRef> cfLocalization = adoptCF(WKCopyCFLocalizationPreferredName(NULL));
     CString localization = String(cfLocalization.get()).utf8();
 
     NSBundle *webKit2Bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebKit2"];

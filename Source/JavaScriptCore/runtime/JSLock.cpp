@@ -51,38 +51,52 @@ void GlobalJSLock::initialize()
 }
 
 JSLockHolder::JSLockHolder(ExecState* exec)
-    : m_globalData(&exec->globalData())
+    : m_vm(&exec->vm())
 {
-    m_globalData->apiLock().lock();
+    init();
 }
 
-JSLockHolder::JSLockHolder(JSGlobalData* globalData)
-    : m_globalData(globalData)
+JSLockHolder::JSLockHolder(VM* vm)
+    : m_vm(vm)
 {
-    m_globalData->apiLock().lock();
+    init();
 }
 
-JSLockHolder::JSLockHolder(JSGlobalData& globalData)
-    : m_globalData(&globalData)
+JSLockHolder::JSLockHolder(VM& vm)
+    : m_vm(&vm)
 {
-    m_globalData->apiLock().lock();
+    init();
+}
+
+void JSLockHolder::init()
+{
+    m_vm->apiLock().lock();
 }
 
 JSLockHolder::~JSLockHolder()
 {
-    m_globalData->apiLock().unlock();
+    RefPtr<JSLock> apiLock(&m_vm->apiLock());
+    m_vm.clear();
+    apiLock->unlock();
 }
 
-JSLock::JSLock()
+JSLock::JSLock(VM* vm)
     : m_ownerThread(0)
     , m_lockCount(0)
     , m_lockDropDepth(0)
+    , m_vm(vm)
 {
     m_spinLock.Init();
 }
 
 JSLock::~JSLock()
 {
+}
+
+void JSLock::willDestroyVM(VM* vm)
+{
+    ASSERT_UNUSED(vm, m_vm == vm);
+    m_vm = 0;
 }
 
 void JSLock::lock()
@@ -119,12 +133,12 @@ void JSLock::unlock()
 
 void JSLock::lock(ExecState* exec)
 {
-    exec->globalData().apiLock().lock();
+    exec->vm().apiLock().lock();
 }
 
 void JSLock::unlock(ExecState* exec)
 {
-    exec->globalData().apiLock().unlock();
+    exec->vm().apiLock().unlock();
 }
 
 bool JSLock::currentThreadIsHoldingLock()
@@ -201,21 +215,21 @@ void JSLock::grabAllLocks(unsigned lockCount)
 
 JSLock::DropAllLocks::DropAllLocks(ExecState* exec)
     : m_lockCount(0)
-    , m_globalData(&exec->globalData())
+    , m_vm(&exec->vm())
 {
-    m_lockCount = m_globalData->apiLock().dropAllLocks();
+    m_lockCount = m_vm->apiLock().dropAllLocks();
 }
 
-JSLock::DropAllLocks::DropAllLocks(JSGlobalData* globalData)
+JSLock::DropAllLocks::DropAllLocks(VM* vm)
     : m_lockCount(0)
-    , m_globalData(globalData)
+    , m_vm(vm)
 {
-    m_lockCount = m_globalData->apiLock().dropAllLocks();
+    m_lockCount = m_vm->apiLock().dropAllLocks();
 }
 
 JSLock::DropAllLocks::~DropAllLocks()
 {
-    m_globalData->apiLock().grabAllLocks(m_lockCount);
+    m_vm->apiLock().grabAllLocks(m_lockCount);
 }
 
 } // namespace JSC

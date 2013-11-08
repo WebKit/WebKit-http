@@ -29,7 +29,6 @@
 #include "FormData.h"
 #include "ResourceResponse.h"
 #include "ScriptWrappable.h"
-#include "SecurityOrigin.h"
 #include "ThreadableLoaderClient.h"
 #include "XMLHttpRequestProgressEventThrottle.h"
 #include <wtf/OwnPtr.h>
@@ -50,7 +49,7 @@ class ThreadableLoader;
 class XMLHttpRequest : public ScriptWrappable, public RefCounted<XMLHttpRequest>, public EventTarget, private ThreadableLoaderClient, public ActiveDOMObject {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static PassRefPtr<XMLHttpRequest> create(ScriptExecutionContext*, PassRefPtr<SecurityOrigin> = 0);
+    static PassRefPtr<XMLHttpRequest> create(ScriptExecutionContext*);
     ~XMLHttpRequest();
 
     // These exact numeric values are important because JS expects them.
@@ -135,8 +134,6 @@ public:
     XMLHttpRequestUpload* upload();
     XMLHttpRequestUpload* optionalUpload() const { return m_upload.get(); }
 
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
-
     DEFINE_ATTRIBUTE_EVENT_LISTENER(readystatechange);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
@@ -152,7 +149,7 @@ public:
     using RefCounted<XMLHttpRequest>::deref;
 
 private:
-    XMLHttpRequest(ScriptExecutionContext*, PassRefPtr<SecurityOrigin>);
+    XMLHttpRequest(ScriptExecutionContext*);
 
     virtual void refEventTarget() { ref(); }
     virtual void derefEventTarget() { deref(); }
@@ -245,8 +242,6 @@ private:
 
     // An enum corresponding to the allowed string values for the responseType attribute.
     ResponseTypeCode m_responseTypeCode;
-
-    RefPtr<SecurityOrigin> m_securityOrigin;
 };
 
 } // namespace WebCore

@@ -113,8 +113,8 @@ EXPORTS
         ??0CSSComputedStyleDeclaration@WebCore@@AAE@V?$PassRefPtr@VNode@WebCore@@@WTF@@_NABVString@3@@Z
         ??0Mutex@WTF@@QAE@XZ
         ??0ThreadCondition@WTF@@QAE@XZ
+        ??1HitTestResult@WebCore@@QAE@XZ
         ??1Mutex@WTF@@QAE@XZ
-        ??1StringImpl@WTF@@QAE@XZ
         ??1ThreadCondition@WTF@@QAE@XZ
         ?addTextMatchMarker@DocumentMarkerController@WebCore@@QAEXPBVRange@2@_N@Z
         ?broadcast@ThreadCondition@WTF@@QAEXXZ
@@ -129,6 +129,7 @@ EXPORTS
         ?createThread@WTF@@YAIP6AXPAX@Z0PBD@Z
         ?currentThread@WTF@@YAIXZ
         ?detachThread@WTF@@YAXI@Z
+        ?destroy@StringImpl@WTF@@SAXPAV12@@Z
         ?initializeMainThread@WTF@@YAXXZ
         ?initializeThreading@WTF@@YAXXZ
         ?instrumentationForPage@WebCore@@YAPAVInstrumentingAgents@1@PAVPage@1@@Z
@@ -148,10 +149,13 @@ EXPORTS
         ?createThread@WTF@@YAIP6APAXPAX@Z0@Z
 
         ; Re-exports from WebCore for test harnesses
+        ??0HitTestResult@WebCore@@QAE@ABVLayoutPoint@1@@Z
+        ??0HitTestResult@WebCore@@QAE@ABVLayoutPoint@1@IIII@Z
         ??0NodeRenderingContext@WebCore@@QAE@PAVNode@1@@Z
         ??1NodeRenderingContext@WebCore@@QAE@XZ
         ??1Range@WebCore@@QAE@XZ
         ?toNode@WebCore@@YAPAVNode@1@VJSValue@JSC@@@Z
+        ??0ClientRect@WebCore@@AAE@ABVFloatRect@1@@Z
         ??0ClientRect@WebCore@@AAE@ABVIntRect@1@@Z
         ??0ClientRect@WebCore@@AAE@XZ
         ??0ClientRectList@WebCore@@AAE@XZ
@@ -175,6 +179,7 @@ EXPORTS
         ?create@SerializedScriptValue@WebCore@@SA?AV?$PassRefPtr@VSerializedScriptValue@WebCore@@@WTF@@ABVString@4@@Z
         ?createShadowRoot@Element@WebCore@@QAE?AV?$PassRefPtr@VShadowRoot@WebCore@@@WTF@@AAH@Z
         ?createWrapper@WebCore@@YA?AVJSValue@JSC@@PAVExecState@3@PAVJSDOMGlobalObject@1@PAVNode@1@@Z
+        ?deprecatedShadowAncestorNode@Node@WebCore@@QBEPAV12@XZ
         ?deserialize@SerializedScriptValue@WebCore@@QAE?AVJSValue@JSC@@PAVExecState@4@PAVJSGlobalObject@4@PAV?$Vector@V?$RefPtr@VMessagePort@WebCore@@@WTF@@$00VCrashOnOverflow@2@@WTF@@W4SerializationErrorMode@2@@Z
         ?equal@WTF@@YA_NPBVStringImpl@1@PBE@Z
         ?equal@WTF@@YA_NPBVStringImpl@1@0@Z
@@ -183,13 +188,17 @@ EXPORTS
         ?find@StringImpl@WTF@@QAEIPAV12@I@Z
         ?find@StringImpl@WTF@@QAEIPAV12@@Z
         ?absoluteCaretBounds@FrameSelection@WebCore@@QAE?AVIntRect@2@XZ
+        ?bounds@FrameSelection@WebCore@@QBE?AVFloatRect@2@_N@Z
         ?fromUTF8@String@WTF@@SA?AV12@PBE@Z
         ?fromUTF8WithLatin1Fallback@String@WTF@@SA?AV12@PBEI@Z
         ?garbageCollectDocumentResources@CachedResourceLoader@WebCore@@QAEXXZ
         ?getCachedDOMStructure@WebCore@@YAPAVStructure@JSC@@PAVJSDOMGlobalObject@1@PBUClassInfo@3@@Z
         ?getData16SlowCase@StringImpl@WTF@@ABEPB_WXZ
         ?getLocationAndLengthFromRange@TextIterator@WebCore@@SA_NPAVNode@2@PBVRange@2@AAI2@Z
+        ?hitTest@RenderView@WebCore@@QAE_NABVHitTestRequest@2@AAVHitTestResult@2@@Z
         ?inputTag@HTMLNames@WebCore@@3VQualifiedName@2@B
+        ?intersects@IntRect@WebCore@@QBE_NABV12@@Z
+        ?item@StaticNodeList@WebCore@@UBEPAVNode@2@I@Z
         ?selectTag@HTMLNames@WebCore@@3VQualifiedName@2@B
 #if ENABLE(INSPECTOR)
         ?getHighlight@InspectorController@WebCore@@QBEXPAUHighlight@2@@Z
@@ -226,6 +235,8 @@ EXPORTS
         ?nextSibling@ComposedShadowTreeWalker@WebCore@@QAEXXZ
         ?firstChild@ComposedShadowTreeWalker@WebCore@@QAEXXZ
         ?lastChild@ComposedShadowTreeWalker@WebCore@@QAEXXZ
+        ?length@StaticNodeList@WebCore@@UBEIXZ
+        ?namedItem@StaticNodeList@WebCore@@UBEPAVNode@2@ABVAtomicString@WTF@@@Z
         ?next@ComposedShadowTreeWalker@WebCore@@QAEXXZ
         ?previous@ComposedShadowTreeWalker@WebCore@@QAEXXZ
         ?number@String@WTF@@SA?AV12@_J@Z
@@ -240,6 +251,8 @@ EXPORTS
         ?paintControlTints@FrameView@WebCore@@AAEXXZ
         ?placeholderShouldBeVisible@HTMLTextFormControlElement@WebCore@@QBE_NXZ
         ?rangeFromLocationAndLength@TextIterator@WebCore@@SA?AV?$PassRefPtr@VRange@WebCore@@@WTF@@PAVContainerNode@2@HH_N@Z
+        ?rectBasedTestResult@HitTestResult@WebCore@@QBEABV?$ListHashSet@V?$RefPtr@VNode@WebCore@@@WTF@@$0BAA@U?$PtrHash@V?$RefPtr@VNode@WebCore@@@WTF@@@2@@WTF@@XZ
+        ?rectForPoint@HitTestLocation@WebCore@@SA?AVIntRect@2@ABVLayoutPoint@2@IIII@Z
         ?reload@FrameLoader@WebCore@@QAEX_N@Z
         ?remove@String@WTF@@QAEXIH@Z
         ?removedLastRef@Node@WebCore@@AAEXXZ
@@ -274,7 +287,6 @@ EXPORTS
         ?setSuggestedValue@HTMLInputElement@WebCore@@QAEXABVString@WTF@@@Z
         ?setEditingValue@HTMLInputElement@WebCore@@QAEXABVString@WTF@@@Z
         ?setPseudo@Element@WebCore@@QAEXABVAtomicString@WTF@@@Z
-        ?setResolutionOverride@Settings@WebCore@@QAEXABVIntSize@2@@Z
         ?setMediaTypeOverride@Settings@WebCore@@QAEXABVString@WTF@@@Z
         ?settings@Document@WebCore@@QBEPAVSettings@2@XZ
         ?settings@Frame@WebCore@@QBEPAVSettings@2@XZ
@@ -304,10 +316,10 @@ EXPORTS
         ??1ContextDestructionObserver@WebCore@@MAE@XZ
         ?contextDestroyed@ContextDestructionObserver@WebCore@@UAEXXZ
         ??0ContextDestructionObserver@WebCore@@QAE@PAVScriptExecutionContext@1@@Z
-        ?nodesFromRect@Document@WebCore@@QBE?AV?$PassRefPtr@VNodeList@WebCore@@@WTF@@HHIIIII@Z
         ?selectionStartHasMarkerFor@Editor@WebCore@@QBE_NW4MarkerType@DocumentMarker@2@HH@Z
         ?isContinuousSpellCheckingEnabled@Editor@WebCore@@QBE_NXZ
         ?toggleContinuousSpellChecking@Editor@WebCore@@QAEXXZ
+        ?toggleOverwriteModeEnabled@Editor@WebCore@@QAEXXZ
 #if ENABLE(FULLSCREEN_API)
         ?webkitWillEnterFullScreenForElement@Document@WebCore@@QAEXPAVElement@2@@Z
         ?webkitDidEnterFullScreenForElement@Document@WebCore@@QAEXPAVElement@2@@Z
@@ -320,6 +332,7 @@ EXPORTS
         ?viewportArguments@Page@WebCore@@QBE?AUViewportArguments@2@XZ
         ?isPageBoxVisible@Document@WebCore@@QAE_NH@Z
         ?isActive@InsertionPoint@WebCore@@QBE_NXZ
+        ?isSuspended@AnimationController@WebCore@@QBE_NXZ
         ?suspendAnimations@AnimationController@WebCore@@QAEXXZ
         ?resumeAnimations@AnimationController@WebCore@@QAEXXZ
         ?setAllowsRoundingHacks@TextRun@WebCore@@SAX_N@Z
@@ -362,7 +375,6 @@ EXPORTS
         ?getHBITMAP@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@@Z
         ?getHBITMAPOfSize@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@PAUtagSIZE@@@Z
         ?drawPattern@Image@WebCore@@UAEXPAVGraphicsContext@2@ABVFloatRect@2@ABVAffineTransform@2@ABVFloatPoint@2@W4ColorSpace@2@W4CompositeOperator@2@1W4BlendMode@2@@Z
-        ?reportMemoryUsage@BitmapImage@WebCore@@UBEXPAVMemoryObjectInfo@WTF@@@Z
         ?drawFrameMatchingSourceSize@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@ABVIntSize@2@W4ColorSpace@2@W4CompositeOperator@2@@Z
         ?draw@Image@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@W4RespectImageOrientationEnum@2@@Z
         ?draw@BitmapImage@WebCore@@MAEXPAVGraphicsContext@2@ABVFloatRect@2@1W4ColorSpace@2@W4CompositeOperator@2@W4BlendMode@2@@Z
@@ -382,8 +394,6 @@ EXPORTS
         ?pseudoElement@Element@WebCore@@QBEPAVPseudoElement@2@W4PseudoId@2@@Z
         ?pauseTransitionAtTime@AnimationController@WebCore@@QAE_NPAVRenderObject@2@ABVString@WTF@@N@Z
         ?addFromLiteralData@AtomicString@WTF@@CA?AV?$PassRefPtr@VStringImpl@WTF@@@2@PBDI@Z
-        ?ensureSelectFeatureSet@ContentDistributor@WebCore@@QAEABVSelectRuleFeatureSet@2@PAVElementShadow@2@@Z
-        ?hasShadowElement@ScopeContentDistribution@WebCore@@SA_NPBVShadowRoot@2@@Z
         ?hasContentElement@ScopeContentDistribution@WebCore@@SA_NPBVShadowRoot@2@@Z
         ?countElementShadow@ScopeContentDistribution@WebCore@@SAIPBVShadowRoot@2@@Z
         ?memoryCache@WebCore@@YAPAVMemoryCache@1@XZ
@@ -427,4 +437,12 @@ EXPORTS
 
 #if ENABLE(WORKERS)
         ?workerThreadCount@WorkerThread@WebCore@@SAIXZ
+#endif
+
+#if ENABLE(VIDEO)
+        ?toTimeRanges@WebCore@@YAPAVTimeRanges@1@VJSValue@JSC@@@Z
+        ?toJS@WebCore@@YA?AVJSValue@JSC@@PAVExecState@3@PAVJSDOMGlobalObject@1@PAVTimeRanges@1@@Z
+        ?toFloat32Array@WebCore@@YAPAVFloat32Array@WTF@@VJSValue@JSC@@@Z
+        ?nearest@TimeRanges@WebCore@@QBENN@Z
+        ?add@TimeRanges@WebCore@@QAEXNN@Z
 #endif

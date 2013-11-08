@@ -29,8 +29,6 @@
 #include "qt/FontPlatformData.h"
 #elif PLATFORM(WIN) && OS(WINCE)
 #include "wince/FontPlatformData.h"
-#elif PLATFORM(WX)
-#include "wx/FontPlatformData.h"
 #elif PLATFORM(HAIKU)
 #include "haiku/FontPlatformData.h"
 #elif PLATFORM(EFL) || PLATFORM(GTK)

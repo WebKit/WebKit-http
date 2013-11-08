@@ -59,8 +59,6 @@ public:
     }
     bool shadowDataEquivalent(const StyleRareInheritedData&) const;
 
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
     RefPtr<StyleImage> listStyleImage;
 
     Color textStrokeColor;
@@ -101,7 +99,8 @@ public:
     unsigned textEmphasisPosition : 1; // TextEmphasisPosition
     unsigned m_textOrientation : 2; // TextOrientation
 #if ENABLE(CSS3_TEXT)
-    unsigned m_textIndentLine : 1; // TextIndentEachLine
+    unsigned m_textIndentLine : 1; // TextIndentLine
+    unsigned m_textIndentType : 1; // TextIndentType
 #endif
     unsigned m_lineBoxContain: 7; // LineBoxContain
     // CSS Image Values Level 3
@@ -120,6 +119,7 @@ public:
 #endif
 #if ENABLE(CSS3_TEXT)
     unsigned m_textAlignLast : 3; // TextAlignLast
+    unsigned m_textJustify : 3; // TextJustify
     unsigned m_textUnderlinePosition : 3; // TextUnderlinePosition
 #endif // CSS3_TEXT
     unsigned m_rubyPosition : 1; // RubyPosition

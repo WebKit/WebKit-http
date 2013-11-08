@@ -415,12 +415,12 @@ void InjectedBundle::resetApplicationCacheOriginQuota(const String& originString
 
 PassRefPtr<ImmutableArray> InjectedBundle::originsWithApplicationCache()
 {
-    HashSet<RefPtr<SecurityOrigin> > origins;
+    HashSet<RefPtr<SecurityOrigin>> origins;
     cacheStorage().getOriginsWithCache(origins);
-    Vector< RefPtr<APIObject> > originsVector;
+    Vector< RefPtr<APIObject>> originsVector;
 
-    HashSet<RefPtr<SecurityOrigin> >::iterator it = origins.begin();
-    HashSet<RefPtr<SecurityOrigin> >::iterator end = origins.end();
+    HashSet<RefPtr<SecurityOrigin>>::iterator it = origins.begin();
+    HashSet<RefPtr<SecurityOrigin>>::iterator end = origins.end();
     for ( ; it != end; ++it)
         originsVector.append(WebString::create((*it)->databaseIdentifier()));
 
@@ -552,8 +552,8 @@ void InjectedBundle::garbageCollectJavaScriptObjectsOnAlternateThreadForDebuggin
 
 size_t InjectedBundle::javaScriptObjectsCount()
 {
-    JSLockHolder lock(JSDOMWindow::commonJSGlobalData());
-    return JSDOMWindow::commonJSGlobalData()->heap.objectCount();
+    JSLockHolder lock(JSDOMWindow::commonVM());
+    return JSDOMWindow::commonVM()->heap.objectCount();
 }
 
 void InjectedBundle::reportException(JSContextRef context, JSValueRef exception)

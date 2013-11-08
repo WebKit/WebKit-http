@@ -26,24 +26,28 @@
 #include "config.h"
 #include "CachedPage.h"
 
+#include "AnimationController.h"
 #include "CachedFramePlatformData.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "DocumentLoader.h"
-#include "ExceptionCode.h"
+#include "EventHandler.h"
 #include "EventNames.h"
+#include "ExceptionCode.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
+#include "HistoryController.h"
 #include "HistoryItem.h"
 #include "Logging.h"
 #include "Page.h"
 #include "PageTransitionEvent.h"
+#include "ScriptController.h"
 #include "SerializedScriptValue.h"
-#include <wtf/text/CString.h>
 #include <wtf/RefCountedLeakCounter.h>
+#include <wtf/text/CString.h>
 
 #if ENABLE(SVG)
 #include "SVGDocumentExtensions.h"

@@ -28,30 +28,12 @@
 #if ENABLE(VIDEO_TRACK)
 #include "JSTextTrackList.h"
 
-#include "HTMLMediaElement.h"
+#include "Element.h"
 #include "JSNodeCustom.h"
 
 using namespace JSC;
 
 namespace WebCore {
-
-bool JSTextTrackListOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
-{
-    JSTextTrackList* jsTextTrackList = jsCast<JSTextTrackList*>(handle.get().asCell());
-    TextTrackList* textTrackList = static_cast<TextTrackList*>(jsTextTrackList->impl());
-
-    // If the list is firing event listeners, its wrapper is reachable because
-    // the wrapper is responsible for marking those event listeners.
-    if (textTrackList->isFiringEventListeners())
-        return true;
-
-    // If the list has no event listeners and has no custom properties, it is not reachable.
-    if (!textTrackList->hasEventListeners() && !jsTextTrackList->hasCustomProperties())
-        return false;
-
-    // It is reachable if the media element parent is reachable.
-    return visitor.containsOpaqueRoot(root(textTrackList->owner()));
-}
 
 void JSTextTrackList::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
@@ -62,7 +44,7 @@ void JSTextTrackList::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(jsTextTrackList, visitor);
     
     TextTrackList* textTrackList = static_cast<TextTrackList*>(jsTextTrackList->impl());
-    visitor.addOpaqueRoot(root(textTrackList->owner()));
+    visitor.addOpaqueRoot(root(textTrackList->element()));
     textTrackList->visitJSEventListeners(visitor);
 }
     

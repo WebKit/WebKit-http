@@ -35,6 +35,7 @@
 #include "CSSValueKeywords.h"
 #include "DateTimeChooser.h"
 #include "Document.h"
+#include "Editor.h"
 #include "ElementShadow.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
@@ -43,6 +44,7 @@
 #include "FileList.h"
 #include "FormController.h"
 #include "Frame.h"
+#include "FrameSelection.h"
 #include "FrameView.h"
 #include "HTMLCollection.h"
 #include "HTMLDataListElement.h"
@@ -59,6 +61,7 @@
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "PlatformLocale.h"
+#include "PlatformMouseEvent.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
@@ -1966,23 +1969,10 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
 }
 #endif
 
-void HTMLInputElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    HTMLTextFormControlElement::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_name, "name");
-    info.addMember(m_valueIfDirty, "valueIfDirty");
-    info.addMember(m_suggestedValue, "suggestedValue");
-    info.addMember(m_inputType, "inputType");
-#if ENABLE(DATALIST_ELEMENT)
-    info.addMember(m_listAttributeTargetObserver, "listAttributeTargetObserver");
-#endif
-}
-
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
 PassRefPtr<RenderStyle> HTMLInputElement::customStyleForRenderer()
 {
-    return m_inputType->customStyleForRenderer(document()->styleResolver()->styleForElement(this));
+    return m_inputType->customStyleForRenderer(document()->ensureStyleResolver()->styleForElement(this));
 }
 #endif
 

@@ -90,7 +90,7 @@ private:
     
     virtual void setResizable(bool) OVERRIDE;
     
-    virtual void addMessageToConsole(WebCore::MessageSource, WebCore::MessageLevel, const String& message, unsigned lineNumber, const String& sourceID) OVERRIDE;
+    virtual void addMessageToConsole(WebCore::MessageSource, WebCore::MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID) OVERRIDE;
     
     virtual bool canRunBeforeUnloadConfirmPanel() OVERRIDE;
     virtual bool runBeforeUnloadConfirmPanel(const String& message, WebCore::Frame*) OVERRIDE;
@@ -219,9 +219,10 @@ private:
 
     virtual void logDiagnosticMessage(const String& message, const String& description, const String& success) OVERRIDE;
 
-    virtual String plugInStartLabelTitle() const OVERRIDE;
-    virtual String plugInStartLabelSubtitle() const OVERRIDE;
+    virtual String plugInStartLabelTitle(const String& mimeType) const OVERRIDE;
+    virtual String plugInStartLabelSubtitle(const String& mimeType) const OVERRIDE;
     virtual String plugInExtraStyleSheet() const OVERRIDE;
+    virtual String plugInExtraScript() const OVERRIDE;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

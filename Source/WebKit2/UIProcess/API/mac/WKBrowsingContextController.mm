@@ -99,6 +99,9 @@ static inline NSURL *autoreleased(WKURLRef url)
 
 + (void)registerSchemeForCustomProtocol:(NSString *)scheme
 {
+    if (!scheme)
+        return;
+
     NSString *lowercaseScheme = [scheme lowercaseString];
     [[WKBrowsingContextController customSchemes] addObject:lowercaseScheme];
     [[NSNotificationCenter defaultCenter] postNotificationName:WebKit::SchemeForCustomProtocolRegisteredNotificationName object:lowercaseScheme];
@@ -106,6 +109,9 @@ static inline NSURL *autoreleased(WKURLRef url)
 
 + (void)unregisterSchemeForCustomProtocol:(NSString *)scheme
 {
+    if (!scheme)
+        return;
+
     NSString *lowercaseScheme = [scheme lowercaseString];
     [[WKBrowsingContextController customSchemes] removeObject:lowercaseScheme];
     [[NSNotificationCenter defaultCenter] postNotificationName:WebKit::SchemeForCustomProtocolUnregisteredNotificationName object:lowercaseScheme];
@@ -119,13 +125,13 @@ static inline NSURL *autoreleased(WKURLRef url)
 
 - (void)loadFileURL:(NSURL *)URL restrictToFilesWithin:(NSURL *)allowedDirectory
 {
-    if (![URL isFileURL])
-        return;
-
-    /* FIXME: Implement restrictions. */
+    if (![URL isFileURL] || (allowedDirectory && ![allowedDirectory isFileURL]))
+        [NSException raise:NSInvalidArgumentException format:@"Attempted to load a non-file URL"];
 
     WKRetainPtr<WKURLRef> wkURL = adoptWK(WKURLCreateWithCFURL((CFURLRef)URL));
-    WKPageLoadURL(self._pageRef, wkURL.get());
+    WKRetainPtr<WKURLRef> wkAllowedDirectory = adoptWK(WKURLCreateWithCFURL((CFURLRef)allowedDirectory));
+    
+    WKPageLoadFile(self._pageRef, wkURL.get(), wkAllowedDirectory.get());
 }
 
 - (void)loadHTMLString:(NSString *)HTMLString baseURL:(NSURL *)baseURL
@@ -340,7 +346,7 @@ static void didFailProvisionalLoadWithErrorForFrame(WKPageRef page, WKFrameRef f
 
     WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
     if ([browsingContext.loadDelegate respondsToSelector:@selector(browsingContextControllerDidFailProvisionalLoad:withError:)]) {
-        RetainPtr<CFErrorRef> cfError(AdoptCF, WKErrorCopyCFError(kCFAllocatorDefault, error));
+        RetainPtr<CFErrorRef> cfError = adoptCF(WKErrorCopyCFError(kCFAllocatorDefault, error));
         [browsingContext.loadDelegate browsingContextControllerDidFailProvisionalLoad:browsingContext withError:(NSError *)cfError.get()];
     }
 }
@@ -372,7 +378,7 @@ static void didFailLoadWithErrorForFrame(WKPageRef page, WKFrameRef frame, WKErr
 
     WKBrowsingContextController *browsingContext = (WKBrowsingContextController *)clientInfo;
     if ([browsingContext.loadDelegate respondsToSelector:@selector(browsingContextControllerDidFailLoad:withError:)]) {
-        RetainPtr<CFErrorRef> cfError(AdoptCF, WKErrorCopyCFError(kCFAllocatorDefault, error));
+        RetainPtr<CFErrorRef> cfError = adoptCF(WKErrorCopyCFError(kCFAllocatorDefault, error));
         [browsingContext.loadDelegate browsingContextControllerDidFailLoad:browsingContext withError:(NSError *)cfError.get()];
     }
 }

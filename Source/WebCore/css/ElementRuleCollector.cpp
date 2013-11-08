@@ -39,7 +39,6 @@
 #include "RenderRegion.h"
 #include "SVGElement.h"
 #include "SelectorCheckerFastPath.h"
-#include "SiblingTraversalStrategies.h"
 #include "StylePropertySet.h"
 #include "StyledElement.h"
 
@@ -49,7 +48,7 @@ namespace WebCore {
 
 static StylePropertySet* leftToRightDeclaration()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<StylePropertySet>, leftToRightDecl, (StylePropertySet::create()));
+    DEFINE_STATIC_LOCAL(RefPtr<MutableStylePropertySet>, leftToRightDecl, (MutableStylePropertySet::create()));
     if (leftToRightDecl->isEmpty())
         leftToRightDecl->setProperty(CSSPropertyDirection, CSSValueLtr);
     return leftToRightDecl.get();
@@ -57,7 +56,7 @@ static StylePropertySet* leftToRightDeclaration()
 
 static StylePropertySet* rightToLeftDeclaration()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<StylePropertySet>, rightToLeftDecl, (StylePropertySet::create()));
+    DEFINE_STATIC_LOCAL(RefPtr<MutableStylePropertySet>, rightToLeftDecl, (MutableStylePropertySet::create()));
     if (rightToLeftDecl->isEmpty())
         rightToLeftDecl->setProperty(CSSPropertyDirection, CSSValueRtl);
     return rightToLeftDecl.get();
@@ -69,10 +68,10 @@ StyleResolver::MatchResult& ElementRuleCollector::matchedResult()
     return m_result;
 }
 
-PassRefPtr<CSSRuleList> ElementRuleCollector::matchedRuleList()
+const Vector<RefPtr<StyleRuleBase> >& ElementRuleCollector::matchedRuleList() const
 {
     ASSERT(m_mode == SelectorChecker::CollectingRules);
-    return m_ruleList.release();
+    return m_matchedRuleList;
 }
 
 inline void ElementRuleCollector::addMatchedRule(const RuleData* rule)
@@ -87,13 +86,6 @@ inline void ElementRuleCollector::clearMatchedRules()
     if (!m_matchedRules)
         return;
     m_matchedRules->clear();
-}
-
-inline StaticCSSRuleList* ElementRuleCollector::ensureRuleList()
-{
-    if (!m_ruleList)
-        m_ruleList = StaticCSSRuleList::create();
-    return m_ruleList.get();
 }
 
 inline void ElementRuleCollector::addElementStyleProperties(const StylePropertySet* propertySet, bool isCacheable)
@@ -211,7 +203,7 @@ void ElementRuleCollector::sortAndTransferMatchedRules()
     Vector<const RuleData*, 32>& matchedRules = *m_matchedRules;
     if (m_mode == SelectorChecker::CollectingRules) {
         for (unsigned i = 0; i < matchedRules.size(); ++i)
-            ensureRuleList()->rules().append(matchedRules[i]->rule()->createCSSOMWrapper());
+            m_matchedRuleList.append(matchedRules[i]->rule());
         return;
     }
 
@@ -401,7 +393,7 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, const Co
     context.scrollbar = m_pseudoStyleRequest.scrollbar;
     context.scrollbarPart = m_pseudoStyleRequest.scrollbarPart;
     context.behaviorAtBoundary = m_behaviorAtBoundary;
-    SelectorChecker::Match match = selectorChecker.match(context, dynamicPseudo, DOMSiblingTraversalStrategy());
+    SelectorChecker::Match match = selectorChecker.match(context, dynamicPseudo);
     if (match != SelectorChecker::SelectorMatches)
         return false;
     if (m_pseudoStyleRequest.pseudoId != NOPSEUDO && m_pseudoStyleRequest.pseudoId != dynamicPseudo)
@@ -410,6 +402,16 @@ inline bool ElementRuleCollector::ruleMatches(const RuleData& ruleData, const Co
 }
 
 void ElementRuleCollector::collectMatchingRulesForList(const Vector<RuleData>* rules, const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
+{
+    if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
+        doCollectMatchingRulesForList<true>(rules, matchRequest, ruleRange);
+        return;
+    }
+    doCollectMatchingRulesForList<false>(rules, matchRequest, ruleRange);
+}
+
+template<bool hasInspectorFrontends>
+void ElementRuleCollector::doCollectMatchingRulesForList(const Vector<RuleData>* rules, const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
 {
     if (!rules)
         return;
@@ -423,25 +425,30 @@ void ElementRuleCollector::collectMatchingRulesForList(const Vector<RuleData>* r
             continue;
 
         StyleRule* rule = ruleData.rule();
-        InspectorInstrumentationCookie cookie = InspectorInstrumentation::willMatchRule(document(), rule, m_inspectorCSSOMWrappers, document()->styleSheetCollection());
+        InspectorInstrumentationCookie cookie;
+        if (hasInspectorFrontends)
+            cookie = InspectorInstrumentation::willMatchRule(document(), rule, m_inspectorCSSOMWrappers, document()->styleSheetCollection());
         PseudoId dynamicPseudo = NOPSEUDO;
         if (ruleMatches(ruleData, matchRequest.scope, dynamicPseudo)) {
             // If the rule has no properties to apply, then ignore it in the non-debug mode.
             const StylePropertySet* properties = rule->properties();
             if (!properties || (properties->isEmpty() && !matchRequest.includeEmptyRules)) {
-                InspectorInstrumentation::didMatchRule(cookie, false);
+                if (hasInspectorFrontends)
+                    InspectorInstrumentation::didMatchRule(cookie, false);
                 continue;
             }
             // FIXME: Exposing the non-standard getMatchedCSSRules API to web is the only reason this is needed.
             if (m_sameOriginOnly && !ruleData.hasDocumentSecurityOrigin()) {
-                InspectorInstrumentation::didMatchRule(cookie, false);
+                if (hasInspectorFrontends)
+                    InspectorInstrumentation::didMatchRule(cookie, false);
                 continue;
             }
             // If we're matching normal rules, set a pseudo bit if
             // we really just matched a pseudo-element.
             if (dynamicPseudo != NOPSEUDO && m_pseudoStyleRequest.pseudoId == NOPSEUDO) {
                 if (m_mode == SelectorChecker::CollectingRules) {
-                    InspectorInstrumentation::didMatchRule(cookie, false);
+                    if (hasInspectorFrontends)
+                        InspectorInstrumentation::didMatchRule(cookie, false);
                     continue;
                 }
                 if (dynamicPseudo < FIRST_INTERNAL_PSEUDOID)
@@ -454,11 +461,13 @@ void ElementRuleCollector::collectMatchingRulesForList(const Vector<RuleData>* r
 
                 // Add this rule to our list of matched rules.
                 addMatchedRule(&ruleData);
-                InspectorInstrumentation::didMatchRule(cookie, true);
+                if (hasInspectorFrontends)
+                    InspectorInstrumentation::didMatchRule(cookie, true);
                 continue;
             }
         }
-        InspectorInstrumentation::didMatchRule(cookie, false);
+        if (hasInspectorFrontends)
+            InspectorInstrumentation::didMatchRule(cookie, false);
     }
 }
 

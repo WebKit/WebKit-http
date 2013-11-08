@@ -74,8 +74,6 @@ class TestExpectationsTestCase(unittest.TestCase):
 
     def test_determine_port_from_expectations_path(self):
         self._expect_port_for_expectations_path(None, '/')
-        self._expect_port_for_expectations_path(None, 'LayoutTests/chromium-mac/TestExpectations')
-        self._expect_port_for_expectations_path('chromium', 'LayoutTests/platform/chromium/TestExpectations')
         self._expect_port_for_expectations_path(None, '/mock-checkout/LayoutTests/platform/win/TestExpectations')
         self._expect_port_for_expectations_path('win', 'LayoutTests/platform/win/TestExpectations')
         self._expect_port_for_expectations_path('efl', 'LayoutTests/platform/efl/TestExpectations')
@@ -115,7 +113,7 @@ class TestExpectationsTestCase(unittest.TestCase):
         self.assertFalse(self._error_collector.turned_off_filtering)
 
     def test_valid_expectations(self):
-        self.assert_lines_lint(["crbug.com/1234 [ Mac ] passes/text.html [ Pass Failure ]"], should_pass=True)
+        self.assert_lines_lint(["webkit.org/b/1234 [ Mac ] passes/text.html [ Pass Failure ]"], should_pass=True)
 
     def test_invalid_expectations(self):
         self.assert_lines_lint(["Bug(me) passes/text.html [ Give Up]"], should_pass=False)

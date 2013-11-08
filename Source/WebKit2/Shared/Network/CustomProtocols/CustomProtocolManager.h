@@ -28,10 +28,12 @@
 
 #if ENABLE(CUSTOM_PROTOCOLS)
 
-#include "MessageReceiver.h"
+#include "Connection.h"
 #include "NetworkProcessSupplement.h"
 #include "WebProcessSupplement.h"
+#include "WorkQueue.h"
 #include <wtf/HashSet.h>
+#include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
@@ -55,7 +57,7 @@ namespace WebKit {
 class ChildProcess;
 struct NetworkProcessCreationParameters;
 
-class CustomProtocolManager : public WebProcessSupplement, public NetworkProcessSupplement, public CoreIPC::MessageReceiver {
+class CustomProtocolManager : public WebProcessSupplement, public NetworkProcessSupplement, public CoreIPC::Connection::WorkQueueMessageReceiver {
     WTF_MAKE_NONCOPYABLE(CustomProtocolManager);
 public:
     explicit CustomProtocolManager(ChildProcess*);
@@ -74,6 +76,9 @@ public:
 #endif
 
 private:
+    // ChildProcessSupplement
+    void initializeConnection(CoreIPC::Connection*) OVERRIDE;
+
     // WebProcessSupplement
     void initialize(const WebProcessCreationParameters&) OVERRIDE;
 
@@ -91,12 +96,18 @@ private:
     void didFinishLoading(uint64_t customProtocolID);
 
     HashSet<String> m_registeredSchemes;
+    Mutex m_registeredSchemesMutex;
     ChildProcess* m_childProcess;
+    RefPtr<WorkQueue> m_messageQueue;
 
 #if PLATFORM(MAC)
-    typedef HashMap<uint64_t, RetainPtr<WKCustomProtocol> > CustomProtocolMap;
+    typedef HashMap<uint64_t, RetainPtr<WKCustomProtocol>> CustomProtocolMap;
     CustomProtocolMap m_customProtocolMap;
-    WKCustomProtocol *protocolForID(uint64_t customProtocolID);
+    Mutex m_customProtocolMapMutex;
+    
+    // WKCustomProtocol objects can be removed from the m_customProtocolMap from multiple threads.
+    // We return a RetainPtr here because it is unsafe to return a raw pointer since the object might immediately be destroyed from a different thread.
+    RetainPtr<WKCustomProtocol> protocolForID(uint64_t customProtocolID);
 #endif
 };
 

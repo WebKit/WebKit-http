@@ -50,6 +50,8 @@ struct( domInterface => {
     extendedAttributes => '$', # Extended attributes
     constructors => '@', # Constructors, list of 'domFunction'
     isException => '$', # Used for exception interfaces
+    isCallback => '$', # Used for callback interfaces
+    isPartial => '$', # Used for partial interfaces
 });
 
 # Used to represent domInterface contents (name of method, signature)
@@ -64,6 +66,7 @@ struct( domFunction => {
 struct( domAttribute => {
     type => '$',              # Attribute type (including namespace)
     isStatic => '$',
+    isReadOnly => '$',
     signature => '$',         # Attribute signature
     getterExceptions => '@',  # Possibly raised exceptions.
     setterExceptions => '@',  # Possibly raised exceptions.
@@ -76,7 +79,8 @@ struct( domSignature => {
     type => '$',      # Variable type
     extendedAttributes => '$', # Extended attributes
     isNullable => '$', # Is variable type Nullable (T?)
-    isVariadic => '$' # Is variable variadic (long... numbers)
+    isVariadic => '$', # Is variable variadic (long... numbers)
+    isOptional => '$', # Is variable optional (optional T)
 });
 
 # Used to represent string constants
@@ -474,7 +478,9 @@ sub parseCallbackRestOrInterface
 
     my $next = $self->nextToken();
     if ($next->value() eq "interface") {
-        return $self->parseInterface($extendedAttributeList);
+        my $interface = $self->parseInterface($extendedAttributeList);
+        $interface->isCallback(1);
+        return $interface;
     }
     if ($next->type() == IdentifierToken) {
         return $self->parseCallbackRest($extendedAttributeList);
@@ -526,7 +532,9 @@ sub parsePartialDefinition
 
     my $next = $self->nextToken();
     if ($next->value() eq "interface") {
-        return $self->parsePartialInterface($extendedAttributeList);
+        my $interface = $self->parseInterface($extendedAttributeList);
+        $interface->isPartial(1);
+        return $interface;
     }
     if ($next->value() eq "dictionary") {
         return $self->parsePartialDictionary($extendedAttributeList);
@@ -834,7 +842,7 @@ sub parseTypedef
         $self->assertTokenType($nameToken, IdentifierToken);
         $self->assertTokenValue($self->getToken(), ";", __LINE__);
         my $name = $nameToken->value();
-        die "typedef redefinition for " . $name . " at " . $self->{Line} if exists $typedefs{$name};
+        die "typedef redefinition for " . $name . " at " . $self->{Line} if (exists $typedefs{$name} && $typedef->type ne $typedefs{$name}->type);
         $typedefs{$name} = $typedef;
         return;
     }
@@ -1134,7 +1142,8 @@ sub parseAttributeRest
     if ($next->value() =~ /$nextAttributeRest_1/) {
         my $newDataNode = domAttribute->new();
         if ($self->parseReadOnly()) {
-            $newDataNode->type("readonly attribute");
+            $newDataNode->type("attribute");
+            $newDataNode->isReadOnly(1);
         } else {
             $newDataNode->type("attribute");
         }
@@ -1421,6 +1430,7 @@ sub parseOptionalOrRequiredArgument
         }
         # Remove all "?" if exists, e.g. "object?[]?" -> "object[]".
         $paramDataNode->type(typeRemoveNullableSuffix($type));
+        $paramDataNode->isOptional(1);
         $paramDataNode->name($self->parseArgumentName());
         $self->parseDefault();
         return $paramDataNode;
@@ -1435,6 +1445,7 @@ sub parseOptionalOrRequiredArgument
         }
         # Remove all "?" if exists, e.g. "object?[]?" -> "object[]".
         $paramDataNode->type(typeRemoveNullableSuffix($type));
+        $paramDataNode->isOptional(0);
         $paramDataNode->isVariadic($self->parseEllipsis());
         $paramDataNode->name($self->parseArgumentName());
         return $paramDataNode;
@@ -1489,7 +1500,8 @@ sub parseExceptionField
     my $next = $self->nextToken();
     if ($next->type() == IdentifierToken || $next->value() =~ /$nextExceptionField_1/) {
         my $newDataNode = domAttribute->new();
-        $newDataNode->type("readonly attribute");
+        $newDataNode->type("attribute");
+        $newDataNode->isReadOnly(1);
         $newDataNode->signature(domSignature->new());
         $newDataNode->signature->type($self->parseType());
         my $token = $self->getToken();
@@ -2405,7 +2417,8 @@ sub parseAttributeRestOld
     if ($next->value() =~ /$nextAttributeRest_1/) {
         my $newDataNode = domAttribute->new();
         if ($self->parseReadOnly()) {
-            $newDataNode->type("readonly attribute");
+            $newDataNode->type("attribute");
+            $newDataNode->isReadOnly(1);
         } else {
             $newDataNode->type("attribute");
         }

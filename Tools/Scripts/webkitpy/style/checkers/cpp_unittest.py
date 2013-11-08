@@ -2448,6 +2448,26 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('long int a : 30;', errmsg)
         self.assert_lint('int a = 1 ? 0 : 30;', '')
 
+    def test_webcore_platform_layering_violation(self):
+        errmsg = ('Do not add platform specific code in WebCore outside of platform.  [build/webcore_platform_layering_violation] [5]')
+
+        error_collector = ErrorCollector(self.assertTrue)
+        self.process_file_data('Source/WebCore/loader/NavigationAction.cpp', 'cpp', ['#if PLATFORM(MAC)', '#endif'], error_collector)
+        self.assertEqual(1, error_collector.result_list().count(errmsg))
+
+        error_collector = ErrorCollector(self.assertTrue)
+        self.process_file_data('Source/WebCore/platform/PlatformEvent.cpp', 'cpp', ['#if PLATFORM(MAC)', '#endif'], error_collector)
+        self.assertEqual(0, error_collector.result_list().count(errmsg))
+
+        error_collector = ErrorCollector(self.assertTrue)
+        self.process_file_data('Source/WebCore/loader/NavigationAction.cpp', 'cpp', ['#if PLATFORM ( MAC )', '#endif'], error_collector)
+        self.assertEqual(1, error_collector.result_list().count(errmsg))
+
+        error_collector = ErrorCollector(self.assertTrue)
+        self.process_file_data('Source/WebCore/loader/NavigationAction.cpp', 'cpp', ['// #if PLATFORM(MAC)', '#endif'], error_collector)
+        self.assertEqual(0, error_collector.result_list().count(errmsg))
+
+
 class CleansedLinesTest(unittest.TestCase):
     def test_init(self):
         lines = ['Line 1',
@@ -2758,15 +2778,6 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '\n'
                                          '#include "wtf/Assertions.h"\n',
                                          'wtf includes should be <wtf/file.h> instead of "wtf/file.h".'
-                                         '  [build/include] [4]')
-
-    def test_check_cc_includes(self):
-        self.assert_language_rules_check('bar/chromium/foo.cpp',
-                                         '#include "config.h"\n'
-                                         '#include "foo.h"\n'
-                                         '\n'
-                                         '#include "cc/CCProxy.h"\n',
-                                         'cc includes should be "CCFoo.h" instead of "cc/CCFoo.h".'
                                          '  [build/include] [4]')
 
     def test_classify_include(self):
@@ -4795,50 +4806,16 @@ class WebKitStyleTest(CppStyleTestBase):
                          '  [whitespace/comments] [5]')
 
     def test_webkit_export_check(self):
-        webkit_export_error_rules = ('-',
-                                  '+readability/webkit_export')
+        webkit_export_error_rules = ('-', '+readability/webkit_export')
         self.assertEqual('',
-                          self.perform_lint('WEBKIT_EXPORT int foo();\n',
-                                            'WebKit/chromium/public/test.h',
-                                            webkit_export_error_rules))
-        self.assertEqual('',
-                          self.perform_lint('WEBKIT_EXPORT int foo();\n',
-                                            'WebKit/chromium/tests/test.h',
-                                            webkit_export_error_rules))
-        self.assertEqual('WEBKIT_EXPORT should only be used in header files.  [readability/webkit_export] [5]',
-                          self.perform_lint('WEBKIT_EXPORT int foo();\n',
-                                            'WebKit/chromium/public/test.cpp',
-                                            webkit_export_error_rules))
-        self.assertEqual('WEBKIT_EXPORT should only appear in the chromium public (or tests) directory.  [readability/webkit_export] [5]',
-                          self.perform_lint('WEBKIT_EXPORT int foo();\n',
-                                            'WebKit/chromium/src/test.h',
-                                            webkit_export_error_rules))
-        self.assertEqual('WEBKIT_EXPORT should not be used on a function with a body.  [readability/webkit_export] [5]',
-                          self.perform_lint('WEBKIT_EXPORT int foo() { }\n',
-                                            'WebKit/chromium/public/test.h',
-                                            webkit_export_error_rules))
-        self.assertEqual('WEBKIT_EXPORT should not be used on a function with a body.  [readability/webkit_export] [5]',
-                          self.perform_lint('WEBKIT_EXPORT inline int foo()\n'
-                                            '{\n'
-                                            '}\n',
-                                            'WebKit/chromium/public/test.h',
-                                            webkit_export_error_rules))
-        self.assertEqual('WEBKIT_EXPORT should not be used with a pure virtual function.  [readability/webkit_export] [5]',
-                          self.perform_lint('{}\n'
-                                            'WEBKIT_EXPORT\n'
-                                            'virtual\n'
-                                            'int\n'
-                                            'foo() = 0;\n',
-                                            'WebKit/chromium/public/test.h',
-                                            webkit_export_error_rules))
-        self.assertEqual('',
-                          self.perform_lint('{}\n'
-                                            'WEBKIT_EXPORT\n'
-                                            'virtual\n'
-                                            'int\n'
-                                            'foo() = 0;\n',
-                                            'test.h',
-                                            webkit_export_error_rules))
+            self.perform_lint(
+                '{}\n'
+                'WEBKIT_EXPORT\n'
+                'virtual\n'
+                'int\n'
+                'foo() = 0;\n',
+                'test.h',
+                webkit_export_error_rules))
 
     def test_other(self):
         # FIXME: Implement this.

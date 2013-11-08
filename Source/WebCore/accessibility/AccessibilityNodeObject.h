@@ -169,10 +169,9 @@ protected:
     AccessibilityRole determineAriaRoleAttribute() const;
     AccessibilityRole remapAriaRoleDueToParent(AccessibilityRole) const;
     bool hasContentEditableAttributeSet() const;
-    bool isDescendantOfBarrenParent() const;
+    virtual bool isDescendantOfBarrenParent() const;
     void alterSliderValue(bool increase);
     void changeValueByStep(bool increase);
-    bool isARIARange() const;
     // This returns true if it's focusable but it's not content editable and it's not a control or ARIA control.
     bool isGenericFocusableElement() const;
     HTMLLabelElement* labelForElement(Element*) const;

@@ -34,25 +34,14 @@
 
 #if USE(CG)
 typedef struct CGPath PlatformPath;
-#elif PLATFORM(OPENVG)
-namespace WebCore {
-class PlatformPathOpenVG;
-}
-typedef WebCore::PlatformPathOpenVG PlatformPath;
 #elif PLATFORM(QT)
 #include <qpainterpath.h>
 typedef QPainterPath PlatformPath;
-#elif PLATFORM(WX) && USE(WXGC)
-class wxGraphicsPath;
-typedef wxGraphicsPath PlatformPath;
 #elif USE(CAIRO)
 namespace WebCore {
 class CairoPath;
 }
 typedef WebCore::CairoPath PlatformPath;
-#elif USE(SKIA)
-class SkPath;
-typedef SkPath PlatformPath;
 #elif PLATFORM(HAIKU)
 class BShape;
 typedef BShape PlatformPath;

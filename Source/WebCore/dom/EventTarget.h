@@ -41,6 +41,7 @@
 namespace WebCore {
 
     class AudioContext;
+    class AudioTrackList;
     class DedicatedWorkerContext;
     class DOMApplicationCache;
     class DOMWindow;
@@ -67,6 +68,7 @@ namespace WebCore {
     class SourceBufferList;
     class TextTrack;
     class TextTrackCue;
+    class VideoTrackList;
     class WebSocket;
     class WebKitNamedFlow;
     class Worker;
@@ -124,6 +126,7 @@ namespace WebCore {
 
         bool hasEventListeners();
         bool hasEventListeners(const AtomicString& eventType);
+        bool hasCapturingEventListeners(const AtomicString& eventType);
         const EventListenerVector& getEventListeners(const AtomicString& eventType);
 
         bool fireEventListeners(Event*);
@@ -202,6 +205,14 @@ namespace WebCore {
         if (!d)
             return false;
         return d->eventListenerMap.contains(eventType);
+    }
+
+    inline bool EventTarget::hasCapturingEventListeners(const AtomicString& eventType)
+    {
+        EventTargetData* d = eventTargetData();
+        if (!d)
+            return false;
+        return d->eventListenerMap.containsCapturing(eventType);
     }
 
 } // namespace WebCore

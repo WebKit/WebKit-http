@@ -32,6 +32,7 @@
 #include "Frame.h"
 #include "DocumentFragment.h"
 #include "Markup.h"
+#include "Range.h"
 #include "TextEncoding.h"
 #include <objidl.h>
 #include <shlwapi.h>
@@ -107,18 +108,16 @@ String DragData::asURL(Frame*, FilenameConversionPolicy filenamePolicy, String* 
 
 bool DragData::containsFiles() const
 {
-#if OS(WINCE)
-    return false;
-#else
+#if USE(CF)
     return (m_platformDragData) ? SUCCEEDED(m_platformDragData->QueryGetData(cfHDropFormat())) : m_dragDataMap.contains(cfHDropFormat()->cfFormat);
+#else
+    return false;
 #endif
 }
 
 unsigned DragData::numberOfFiles() const
 {
-#if OS(WINCE)
-    return 0;
-#else
+#if USE(CF)
     if (!m_platformDragData)
         return 0;
 
@@ -137,12 +136,14 @@ unsigned DragData::numberOfFiles() const
     GlobalUnlock(medium.hGlobal);
 
     return numFiles;
+#else
+    return 0;
 #endif
 }
 
 void DragData::asFilenames(Vector<String>& result) const
 {
-#if !OS(WINCE)
+#if USE(CF)
     if (m_platformDragData) {
         WCHAR filename[MAX_PATH];
 

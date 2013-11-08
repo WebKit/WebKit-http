@@ -66,6 +66,7 @@
 #import <WebCore/DocumentFragment.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DocumentMarkerController.h>
+#import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/EventNames.h>
 #import <WebCore/Frame.h>
@@ -87,6 +88,7 @@
 #import <WebCore/RenderPart.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <WebCore/ScriptController.h>
 #import <WebCore/ScriptValue.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SmartReplace.h>
@@ -767,7 +769,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     if (!_private->coreFrame)
         return nil;
-    RefPtr<StylePropertySet> typingStyle = _private->coreFrame->selection()->copyTypingStyle();
+    RefPtr<MutableStylePropertySet> typingStyle = _private->coreFrame->selection()->copyTypingStyle();
     if (!typingStyle)
         return nil;
     return kit(typingStyle->ensureCSSStyleDeclaration());
@@ -778,7 +780,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!_private->coreFrame || !style)
         return;
     // FIXME: We shouldn't have to create a copy here.
-    _private->coreFrame->editor()->computeAndSetTypingStyle(core(style)->copy().get(), undoAction);
+    _private->coreFrame->editor()->computeAndSetTypingStyle(core(style)->copyProperties().get(), undoAction);
 }
 
 #if ENABLE(DRAG_SUPPORT)
@@ -1093,7 +1095,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     JSGlobalContextRef globalContextRef = [self _globalContextForScriptWorld:world];
     if (!globalContextRef)
         return 0;
-    return [JSContext contextWithGlobalContextRef:globalContextRef];
+    return [JSContext contextWithJSGlobalContextRef:globalContextRef];
 }
 #endif
 

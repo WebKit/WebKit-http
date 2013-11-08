@@ -46,6 +46,7 @@
 #include <WebCore/GraphicsLayerTextureMapper.h>
 #include <WebCore/Page.h>
 #include <WebCore/Settings.h>
+#include <wtf/CurrentTime.h>
 
 #include <gdk/gdk.h>
 #if defined(GDK_WINDOWING_X11)
@@ -71,6 +72,7 @@ LayerTreeHostGtk::LayerTreeHostGtk(WebPage* webPage)
     : LayerTreeHost(webPage)
     , m_isValid(true)
     , m_notifyAfterScheduledLayerFlush(false)
+    , m_lastFlushTime(0)
     , m_layerFlushSchedulingEnabled(true)
     , m_layerFlushTimerCallbackId(0)
 {
@@ -301,8 +303,11 @@ void LayerTreeHostGtk::layerFlushTimerFired()
 
     flushAndRenderLayers();
 
-    if (toTextureMapperLayer(m_rootLayer.get())->descendantsOrSelfHaveRunningAnimations() && !m_layerFlushTimerCallbackId)
-        m_layerFlushTimerCallbackId = g_timeout_add_full(GDK_PRIORITY_EVENTS, 1000.0 / 60.0, reinterpret_cast<GSourceFunc>(layerFlushTimerFiredCallback), this, 0);
+    if (toTextureMapperLayer(m_rootLayer.get())->descendantsOrSelfHaveRunningAnimations() && !m_layerFlushTimerCallbackId) {
+        const double targetFPS = 60;
+        double nextFlush = std::max((1 / targetFPS) - (currentTime() - m_lastFlushTime), 0.0);
+        m_layerFlushTimerCallbackId = g_timeout_add_full(GDK_PRIORITY_EVENTS, nextFlush * 1000.0, reinterpret_cast<GSourceFunc>(layerFlushTimerFiredCallback), this, 0);
+    }
 }
 
 bool LayerTreeHostGtk::flushPendingLayerChanges()
@@ -358,6 +363,7 @@ void LayerTreeHostGtk::flushAndRenderLayers()
     if (!flushPendingLayerChanges())
         return;
 
+    m_lastFlushTime = currentTime();
     // Our model is very simple. We always composite and render the tree immediately after updating it.
     compositeLayersToContext();
 
@@ -416,6 +422,11 @@ void LayerTreeHostGtk::setLayerFlushSchedulingEnabled(bool layerFlushingEnabled)
     }
 
     cancelPendingLayerFlush();
+}
+
+void LayerTreeHostGtk::pageBackgroundTransparencyChanged()
+{
+    m_nonCompositedContentLayer->setContentsOpaque(m_webPage->drawsBackground() && !m_webPage->drawsTransparentBackground());
 }
 
 void LayerTreeHostGtk::cancelPendingLayerFlush()

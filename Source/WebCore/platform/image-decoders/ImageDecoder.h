@@ -38,11 +38,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-#if USE(SKIA)
-#include "NativeImageSkia.h"
-#include "SkColorPriv.h"
-#endif
-
 #if USE(QCMSLIB)
 #include "qcms.h"
 #if OS(DARWIN)
@@ -69,11 +64,7 @@ namespace WebCore {
             DisposeOverwritePrevious  // Clear frame to previous framebuffer
                                       // contents
         };
-#if USE(SKIA)
-        typedef uint32_t PixelData;
-#else
         typedef unsigned PixelData;
-#endif
 
         ImageFrame();
 
@@ -123,7 +114,6 @@ namespace WebCore {
         unsigned duration() const { return m_duration; }
         FrameDisposalMethod disposalMethod() const { return m_disposalMethod; }
         bool premultiplyAlpha() const { return m_premultiplyAlpha; }
-        void reportMemoryUsage(MemoryObjectInfo*) const;
 
         void setHasAlpha(bool alpha);
         void setColorProfile(const ColorProfile&);
@@ -140,11 +130,7 @@ namespace WebCore {
 
         inline PixelData* getAddr(int x, int y)
         {
-#if USE(SKIA)
-            return m_bitmap->bitmap().getAddr32(x, y);
-#else
             return m_bytes + (y * width()) + x;
-#endif
         }
 
         // Use fix point multiplier instead of integer division or floating point math.
@@ -170,44 +156,25 @@ namespace WebCore {
                 g = fixPointUnsignedMultiply(g, alphaMult);
                 b = fixPointUnsignedMultiply(b, alphaMult);
             }
-#if USE(SKIA)
-            // Call the "NoCheck" version since we may deliberately pass non-premultiplied
-            // values, and we don't want an assert.
-            *dest = SkPackARGB32NoCheck(a, r, g, b);
-#else
             *dest = (a << 24 | r << 16 | g << 8 | b);
-#endif
         }
 
     private:
         int width() const
         {
-#if USE(SKIA)
-            return m_bitmap->bitmap().width();
-#else
             return m_size.width();
-#endif
         }
 
         int height() const
         {
-#if USE(SKIA)
-            return m_bitmap->bitmap().height();
-#else
             return m_size.height();
-#endif
         }
 
-#if USE(SKIA)
-        RefPtr<NativeImageSkia> m_bitmap;
-        SkBitmap::Allocator* m_allocator;
-#else
         Vector<PixelData> m_backingStore;
         PixelData* m_bytes; // The memory is backed by m_backingStore.
         IntSize m_size;
         // FIXME: Do we need m_colorProfile anymore?
         ColorProfile m_colorProfile;
-#endif
         bool m_hasAlpha;
         IntRect m_originalFrameRect; // This will always just be the entire
                                      // buffer except for GIF frames whose
@@ -341,7 +308,7 @@ namespace WebCore {
                 qcmsInitialized = true;
                 // FIXME: Add optional ICCv4 support.
 #if OS(DARWIN)
-                RetainPtr<CGColorSpaceRef> monitorColorSpace(AdoptCF, CGDisplayCopyColorSpace(CGMainDisplayID()));
+                RetainPtr<CGColorSpaceRef> monitorColorSpace = adoptCF(CGDisplayCopyColorSpace(CGMainDisplayID()));
                 CFDataRef iccProfile(CGColorSpaceCopyICCProfile(monitorColorSpace.get()));
                 if (iccProfile) {
                     size_t length = CFDataGetLength(iccProfile);
@@ -393,34 +360,6 @@ namespace WebCore {
         // and returns true. Otherwise returns false.
         virtual bool hotSpot(IntPoint&) const { return false; }
 
-        virtual void reportMemoryUsage(MemoryObjectInfo*) const;
-
-#if USE(SKIA)
-        virtual void setMemoryAllocator(SkBitmap::Allocator* allocator)
-        {
-            // FIXME: this doesn't work for images with multiple frames.
-            if (m_frameBufferCache.isEmpty())
-                m_frameBufferCache.resize(1);
-            m_frameBufferCache[0].setMemoryAllocator(allocator);
-        }
-
-        virtual bool lockFrameBuffers()
-        {
-            bool ret = true;
-            for (unsigned i = 0; i < m_frameBufferCache.size(); ++i) {
-                const SkBitmap& bitmap = m_frameBufferCache[i].getSkBitmap();
-                bitmap.lockPixels();
-                ret = ret && bitmap.getPixels();
-            }
-            return ret;
-        }
-
-        virtual void unlockFrameBuffers()
-        {
-            for (unsigned i = 0; i < m_frameBufferCache.size(); ++i)
-                m_frameBufferCache[i].getSkBitmap().unlockPixels();
-        }
-#endif
     protected:
         void prepareScaleDataIfNecessary();
         int upperBoundScaledX(int origX, int searchStart = 0);

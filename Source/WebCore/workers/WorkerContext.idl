@@ -25,6 +25,7 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=WORKERS,
     JSCustomMarkFunction,
     JSCustomGetOwnPropertySlotAndDescriptor,
@@ -34,8 +35,6 @@
     JSLegacyParent=JSWorkerContextBase,
     JSNoStaticTables,
     OmitConstructor,
-    V8CustomToJSObject,
-    V8NoWrapperCache
 ] interface WorkerContext {
 
     // WorkerGlobalScope
@@ -47,24 +46,24 @@
              attribute EventListener onerror;
 
     // WorkerUtils
-    [Custom] void importScripts(/*[Variadic] in DOMString urls */);
+    [Custom] void importScripts(/*[Variadic] DOMString urls */);
              [Replaceable] readonly attribute WorkerNavigator navigator;
 
     // Timers
-    [Custom] long setTimeout(in any handler, in [Optional=DefaultIsUndefined] long timeout);
-    void clearTimeout(in [Optional=DefaultIsUndefined] long handle);
-    [Custom] long setInterval(in any handler, in [Optional=DefaultIsUndefined] long timeout);
-    void clearInterval(in [Optional=DefaultIsUndefined] long handle);
+    [Custom] long setTimeout(any handler, [Default=Undefined] optional long timeout);
+    void clearTimeout([Default=Undefined] optional long handle);
+    [Custom] long setInterval(any handler, [Default=Undefined] optional long timeout);
+    void clearInterval([Default=Undefined] optional long handle);
 
 
     // EventTarget interface
-    void addEventListener(in DOMString type, 
-                          in EventListener listener, 
-                          in [Optional] boolean useCapture);
-    void removeEventListener(in DOMString type, 
-                             in EventListener listener, 
-                             in [Optional] boolean useCapture);
-    boolean dispatchEvent(in Event evt)
+    void addEventListener(DOMString type, 
+                          EventListener listener, 
+                          optional boolean useCapture);
+    void removeEventListener(DOMString type, 
+                             EventListener listener, 
+                             optional boolean useCapture);
+    boolean dispatchEvent(Event evt)
         raises(EventException);
 
 #if !defined(LANGUAGE_CPP) || !LANGUAGE_CPP
@@ -72,11 +71,9 @@
     attribute MessageEventConstructor MessageEvent;
     attribute WorkerLocationConstructor WorkerLocation;
 
-#if defined(ENABLE_CHANNEL_MESSAGING) && ENABLE_CHANNEL_MESSAGING
-    [JSCustomGetter] attribute MessageChannelConstructor MessageChannel;
-#endif
-    [JSCustomGetter] attribute EventSourceConstructor EventSource;
-    [JSCustomGetter] attribute XMLHttpRequestConstructor XMLHttpRequest;
+    [Conditional=CHANNEL_MESSAGING, CustomGetter] attribute MessageChannelConstructor MessageChannel;
+    [CustomGetter] attribute EventSourceConstructor EventSource;
+    [CustomGetter] attribute XMLHttpRequestConstructor XMLHttpRequest;
 #endif
 
 #if defined(ENABLE_BLOB) && ENABLE_BLOB

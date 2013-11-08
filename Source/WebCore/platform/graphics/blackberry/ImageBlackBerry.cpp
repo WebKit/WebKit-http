@@ -42,7 +42,7 @@ namespace WebCore {
 
 PassRefPtr<Image> Image::loadPlatformResource(const char *name)
 {
-    ResourceData data = ResourceStore::instance()->requestResource(BlackBerry::Platform::String(name));
+    ResourceData data = ResourceStore::instance()->requestResource(BlackBerry::Platform::String::fromUtf8(name));
     if (!data.data())
         return BitmapImage::nullImage();
 
@@ -124,7 +124,7 @@ void BitmapImage::draw(GraphicsContext* context, const FloatRect& dstRect, const
     draw(context, dstRect, srcRect, styleColorSpace, op, DoNotRespectImageOrientation);
 }
 
-void BitmapImage::draw(GraphicsContext* context, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator op, RespectImageOrientationEnum shouldRespectImageOrientation)
+void BitmapImage::draw(GraphicsContext* context, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace, CompositeOperator op, RespectImageOrientationEnum shouldRespectImageOrientation)
 {
     startAnimation();
 
@@ -172,7 +172,7 @@ void BitmapImage::draw(GraphicsContext* context, const FloatRect& dstRect, const
         observer->didDraw(this);
 }
 
-void Image::drawPattern(GraphicsContext* context, const FloatRect& srcRect, const AffineTransform& patternTransformation, const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& dstRect, BlendMode blendMode)
+void Image::drawPattern(GraphicsContext* context, const FloatRect& srcRect, const AffineTransform& patternTransformation, const FloatPoint& phase, ColorSpace, CompositeOperator op, const FloatRect& dstRect, BlendMode)
 {
     NativeImagePtr image = nativeImageForCurrentFrame();
     if (!image)

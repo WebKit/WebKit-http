@@ -43,10 +43,6 @@ typedef struct _Evas_Event_Mouse_Up Evas_Event_Mouse_Up;
 typedef struct _Evas_Event_Mouse_Move Evas_Event_Mouse_Move;
 #endif
 
-#if PLATFORM(WX)
-class wxMouseEvent;
-#endif
-
 #if PLATFORM(HAIKU)
 class BMessage;
 #endif
@@ -123,10 +119,6 @@ namespace WebCore {
         PlatformMouseEvent(HWND, UINT, WPARAM, LPARAM, bool didActivateWebView = false);
         void setClickCount(int count) { m_clickCount = count; }
         bool didActivateWebView() const { return m_didActivateWebView; }
-#endif
-
-#if PLATFORM(WX)
-        PlatformMouseEvent(const wxMouseEvent&, const wxPoint& globalPoint, int clickCount);
 #endif
 
 #if PLATFORM(HAIKU)

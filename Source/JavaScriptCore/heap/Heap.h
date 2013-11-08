@@ -55,7 +55,7 @@ namespace JSC {
     class IncrementalSweeper;
     class JITStubRoutine;
     class JSCell;
-    class JSGlobalData;
+    class VM;
     class JSStack;
     class JSValue;
     class LiveObjectIterator;
@@ -96,16 +96,16 @@ namespace JSC {
         static void writeBarrier(const JSCell*, JSCell*);
         static uint8_t* addressOfCardFor(JSCell*);
 
-        Heap(JSGlobalData*, HeapType);
+        Heap(VM*, HeapType);
         ~Heap();
         JS_EXPORT_PRIVATE void lastChanceToFinalize();
 
-        JSGlobalData* globalData() const { return m_globalData; }
+        VM* vm() const { return m_vm; }
         MarkedSpace& objectSpace() { return m_objectSpace; }
         MachineThreads& machineThreads() { return m_machineThreads; }
 
         JS_EXPORT_PRIVATE GCActivityCallback* activityCallback();
-        JS_EXPORT_PRIVATE void setActivityCallback(GCActivityCallback*);
+        JS_EXPORT_PRIVATE void setActivityCallback(PassOwnPtr<GCActivityCallback>);
         JS_EXPORT_PRIVATE void setGarbageCollectionTimerEnabled(bool);
 
         JS_EXPORT_PRIVATE IncrementalSweeper* sweeper();
@@ -161,6 +161,7 @@ namespace JSC {
         HandleSet* handleSet() { return &m_handleSet; }
         HandleStack* handleStack() { return &m_handleStack; }
 
+        void canonicalizeCellLivenessData();
         void getConservativeRegisterRoots(HashSet<JSCell*>& roots);
 
         double lastGCLength() { return m_lastGCLength; }
@@ -172,7 +173,6 @@ namespace JSC {
         void didAbandon(size_t);
 
         bool isPagedOut(double deadline);
-        void didStartVMShutdown();
         
         const JITStubRoutineSet& jitStubRoutines() { return m_jitStubRoutines; }
 
@@ -259,14 +259,14 @@ namespace JSC {
         
         bool m_isSafeToCollect;
 
-        JSGlobalData* m_globalData;
+        VM* m_vm;
         double m_lastGCLength;
         double m_lastCodeDiscardTime;
 
         DoublyLinkedList<ExecutableBase> m_compiledCode;
         
-        GCActivityCallback* m_activityCallback;
-        IncrementalSweeper* m_sweeper;
+        OwnPtr<GCActivityCallback> m_activityCallback;
+        OwnPtr<IncrementalSweeper> m_sweeper;
         Vector<MarkedBlock*> m_blockSnapshot;
     };
 

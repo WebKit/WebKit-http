@@ -88,7 +88,7 @@ class IRCBotTest(unittest.TestCase):
         OutputCapture().assert_outputs(self, run, args=["hi"], expected_logs=expected_logs)
 
     def test_help(self):
-        expected_logs = 'MOCK: irc.post: mock_nick: Available commands: create-bug, help, hi, restart, roll-chromium-deps, rollout, sheriffs, whois\nMOCK: irc.post: mock_nick: Type "sheriffbot: help COMMAND" for help on individual commands.\n'
+        expected_logs = 'MOCK: irc.post: mock_nick: Available commands: create-bug, help, hi, ping, restart, roll-chromium-deps, rollout, whois\nMOCK: irc.post: mock_nick: Type "mock-sheriff-bot: help COMMAND" for help on my individual commands.\n'
         OutputCapture().assert_outputs(self, run, args=["help"], expected_logs=expected_logs)
         expected_logs = 'MOCK: irc.post: mock_nick: Usage: hi\nMOCK: irc.post: mock_nick: Retrieves a random quip from Bugzilla.\nMOCK: irc.post: mock_nick: Aliases: hello\n'
         OutputCapture().assert_outputs(self, run, args=["help hi"], expected_logs=expected_logs)
@@ -105,14 +105,6 @@ class IRCBotTest(unittest.TestCase):
     def test_revert(self):
         expected_logs = "MOCK: irc.post: mock_nick: Preparing rollout for http://trac.webkit.org/changeset/21654 ...\nMOCK: irc.post: mock_nick, abarth, darin, eseidel: Created rollout: http://example.com/36936\n"
         OutputCapture().assert_outputs(self, run, args=["revert 21654 This patch broke the world"], expected_logs=expected_logs)
-
-    def test_roll_chromium_deps(self):
-        expected_logs = "MOCK: irc.post: mock_nick: Rolling Chromium DEPS to r21654\nMOCK: irc.post: mock_nick: Created DEPS roll: http://example.com/36936\n"
-        OutputCapture().assert_outputs(self, run, args=["roll-chromium-deps 21654"], expected_logs=expected_logs)
-
-    def test_roll_chromium_deps_to_lkgr(self):
-        expected_logs = "MOCK: irc.post: mock_nick: Rolling Chromium DEPS to last-known good revision\nMOCK: irc.post: mock_nick: Created DEPS roll: http://example.com/36936\n"
-        OutputCapture().assert_outputs(self, run, args=["roll-chromium-deps LKGR"], expected_logs=expected_logs)
 
     def test_multi_rollout(self):
         expected_logs = "MOCK: irc.post: mock_nick: Preparing rollout for http://trac.webkit.org/changeset/21654, http://trac.webkit.org/changeset/21655, and http://trac.webkit.org/changeset/21656 ...\nMOCK: irc.post: mock_nick, abarth, darin, eseidel: Created rollout: http://example.com/36936\n"

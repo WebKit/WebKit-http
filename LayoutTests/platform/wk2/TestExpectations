@@ -89,48 +89,21 @@ inspector/elements/edit-dom-actions.html
 inspector/extensions/extensions-events.html
 inspector/styles/styles-computed-trace.html
 
-# [WK2][WTR] svg/animations/animate-text-nested-transforms.html fails
-# https://bugs.webkit.org/show_bug.cgi?id=95191
-svg/animations/animate-text-nested-transforms.html
-
 # WebKitTestRunner needs overridePreference for non-boolean values
 # (zero-font-size.html passes because overridePreference does not work)
 webkit.org/b/42197 fast/harness/override-preferences-2.html [ Failure ]
 webkit.org/b/42197 fast/text/zero-font-size.html [ Pass ]
 
-# WebKitTestRunner needs to support layoutTestController.dumpDOMAsWebArchive
-# <https://bugs.webkit.org/show_bug.cgi?id=42324>
-http/tests/webarchive/cross-origin-stylesheet-crash.html
-http/tests/webarchive/test-css-url-encoding.html
-http/tests/webarchive/test-css-url-encoding-shift-jis.html
-http/tests/webarchive/test-css-url-encoding-utf-8.html
-http/tests/webarchive/test-preload-resources.html
-svg/custom/image-with-prefix-in-webarchive.svg
-svg/webarchive/svg-cursor-subresources.svg
-svg/webarchive/svg-feimage-subresources.svg
-svg/webarchive/svg-script-subresouces.svg
-webarchive/adopt-attribute-styled-body-webarchive.html
-webarchive/adopt-attribute-styled-node-webarchive.html
-webarchive/adopt-inline-styled-node-webarchive.html
-webarchive/archive-empty-frame-dom.html
-webarchive/archive-with-unencoded-url.html
-webarchive/css-page-rule-crash.html
-webarchive/ignore-noscript-if-scripting-enabled.html
-webarchive/test-body-background.html
-webarchive/test-css-import.html
-webarchive/test-css-url-resources-in-stylesheets.html
-webarchive/test-css-url-resources-inline-styles.html
-webarchive/test-duplicate-resources.html
-webarchive/test-frameset.html
-webarchive/test-img-src.html
-webarchive/test-input-src.html
-webarchive/test-link-href.html
-webarchive/test-link-rel-icon-beforeload.html
-webarchive/test-object-data.html
-webarchive/test-script-src.html
-webarchive/test-table-background.html
-webarchive/test-td-background.html
-webarchive/test-xml-stylesheet.xml
+# setIconDatabaseEnabled not implemented in WebKitTestRunner.
+# https://bugs.webkit.org/show_bug.cgi?id=115809
+webarchive/test-link-rel-icon-beforeload.html [ Skip ]
+
+# https://bugs.webkit.org/show_bug.cgi?id=82665
+http/tests/webarchive/test-css-url-encoding.html [ Skip ]
+http/tests/webarchive/test-css-url-encoding-shift-jis.html [ Skip ]
+http/tests/webarchive/test-css-url-encoding-utf-8.html [ Skip ]
+webarchive/test-css-url-resources-in-stylesheets.html [ Skip ]
+webarchive/test-css-url-resources-inline-styles.html [ Skip ]
 
 # Fails on WebKit2
 # <https://bugs.webkit.org/show_bug.cgi?id=96741>
@@ -240,11 +213,6 @@ http/tests/globalhistory/history-delegate-basic-refresh-redirect.html
 http/tests/globalhistory/history-delegate-basic-title.html
 http/tests/globalhistory/history-delegate-basic-visited-links.html
 
-# These tests crash the WebProcess when run under WebKitTestRunner.
-# <https://bugs.webkit.org/show_bug.cgi?id=44479>
-fast/parser/remove-misnested-iframe-in-beforeload.html
-fast/parser/remove-misnested-iframe-parent-in-beforeload.html
-
 # transitions/default-timing-function.html failing on WebKit2 since it was added
 # <https://bugs.webkit.org/show_bug.cgi?id=56531>
 transitions/default-timing-function.html
@@ -258,34 +226,7 @@ plugins/open-and-close-window-with-plugin.html
 # http://webkit.org/b/56530
 http/tests/inspector/resource-har-conversion.html
 
-# WebKitTestRunner needs support for interactive validation tests
-# http://webkit.org/b/57450
-fast/forms/interactive-validation-assertion-by-validate-twice.html
-fast/forms/interactive-validation-crash-by-style-override.html
-fast/forms/interactive-validation-prevented.html
-fast/forms/interactive-validation-select-crash.html
-
-# WebKitTestRunner needs support for validation message bubble tests
-# http://webkit.org/b/57455
-fast/forms/validation-message-appearance.html
-fast/forms/validation-message-clone.html
-fast/forms/validation-message-on-checkbox.html
-fast/forms/validation-message-on-listbox.html
-fast/forms/validation-message-on-menulist.html
-fast/forms/validation-message-on-radio.html
-fast/forms/validation-message-on-range.html
-fast/forms/validation-message-on-textarea.html
-
 platform/mac/accessibility/search-predicate.html
-
-# [WK2] CSP reporting doesn't work
-# https://bugs.webkit.org/show_bug.cgi?id=59192
-http/tests/security/contentSecurityPolicy/report-uri-from-child-frame.html
-
-# WebKitTestRunner needs an implementation of allowRoundingHacks
-# http://webkit.org/b/63477
-platform/mac/fast/text/rounding-hacks.html
-platform/mac/fast/text/rounding-hacks-expansion.html
 
 # Sometimes fails
 # http://webkit.org/b/58990
@@ -325,23 +266,17 @@ webkit.org/b/100324 css3/supports-dom-api.html
 # https://bugs.webkit.org/show_bug.cgi?id=84186
 fast/text-autosizing
 
-# setMockGeolocationPosition not defined in WKTR
-# https://bugs.webkit.org/show_bug.cgi?id=94554
-inspector/geolocation-error.html
-inspector/geolocation-success.html
-
 # WebKitTestRunner needs to implement testRunner.closeIdleLocalStorageDatabases().
 # https://bugs.webkit.org/show_bug.cgi?id=103861
 storage/domstorage/localstorage/close-idle-localstorage-databases-immediately.html
 
+# WKTR needs a implementation of setStorageDatabaseIdleInterval
+# https://bugs.webkit.org/show_bug.cgi?id=91778
+storage/domstorage/storage-close-database-on-idle.html
+
 # [WK2] The new npruntime/embed-property-iframe-equality.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=105266
 plugins/npruntime/embed-property-iframe-equality.html
-
-# [WK2] Call Netscape Plugin's toString() and valueOf() instead of providing default implementation
-# https://bugs.webkit.org/show_bug.cgi?id=114213
-plugins/npruntime/tostring.html
-plugins/npruntime/valueof.html
 
 webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure ]
 
@@ -393,17 +328,14 @@ editing/spelling/spellcheck-attribute.html
 editing/spelling/spelling-attribute-at-child.html
 editing/spelling/spelling-attribute-change.html
 editing/spelling/spelling-double-clicked-word.html
-editing/spelling/spelling-double-clicked-word-with-underscores.html
 editing/spelling/spelling-exactly-selected-multiple-words.html
 editing/spelling/spelling-exactly-selected-word.html
 editing/spelling/spelling-hasspellingmarker.html
 editing/spelling/spelling-linebreak.html
 editing/spelling/spelling-multiword-selection.html
 editing/spelling/spelling-should-select-multiple-words.html
-editing/spelling/spelling-should-select-single-word.html
 editing/spelling/spelling-subword-selection.html
 editing/spelling/spelling-with-punctuation-selection.html
-editing/spelling/spelling-with-underscore-selection.html
 editing/spelling/spelling-with-whitespace-selection.html
 platform/mac/editing/spelling/delete-into-misspelled-word.html
 platform/mac/editing/spelling/editing-multiple-words-with-markers.html
@@ -572,8 +504,8 @@ fast/spatial-navigation/snav-fully-aligned-vertically.html
 fast/spatial-navigation/snav-iframe-no-scrollable-content.html
 fast/spatial-navigation/snav-imagemap-overlapped-areas.html
 
-# InjectedBundlePagePolicyClient::decidePolicyForResponse is not called on WK2 EFL at least.
-# Might be port-specific issue. Should be checked on other ports.
+# https://bugs.webkit.org/show_bug.cgi?id=115203
+# Downloaded file name tests fail because of incorrect custom policy delegate implementation
 http/tests/download/default-encoding.html
 http/tests/download/inherited-encoding-form-submission-result.html
 http/tests/download/inherited-encoding.html
@@ -695,7 +627,6 @@ http/tests/navigation/anchor-frames-same-origin.html
 
 # Unexplained plugin failures
 platform/mac/plugins/testplugin-onnew-onpaint.html
-plugins/no-mime-with-valid-extension.html
 
 # Unexplained plugin failures that were formerly in the NPRuntime support for out-of-process plug-ins
 # list.
@@ -870,6 +801,7 @@ fast/forms/file/get-file-upload.html
 fast/forms/file/input-file-re-render.html
 fast/forms/file/input-file-entries.html
 fast/forms/file/recover-file-input-in-unposted-form.html
+fast/forms/file/selected-files-from-history-state.html
 http/tests/local/fileapi/file-last-modified-after-delete.html
 http/tests/local/fileapi/file-last-modified.html
 http/tests/local/fileapi/send-dragged-file.html

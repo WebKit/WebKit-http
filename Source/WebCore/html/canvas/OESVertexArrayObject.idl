@@ -24,15 +24,16 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=WEBGL, 
-    JSGenerateIsReachable=ImplContext,
+    GenerateIsReachable=ImplContext,
     OmitConstructor, 
     DoNotCheckConstants
 ] interface OESVertexArrayObject {
     const unsigned int VERTEX_ARRAY_BINDING_OES = 0x85B5;
     
     [StrictTypeChecking] WebGLVertexArrayObjectOES createVertexArrayOES();
-    [StrictTypeChecking] void         deleteVertexArrayOES(in [Optional=DefaultIsUndefined] WebGLVertexArrayObjectOES arrayObject);
-    [StrictTypeChecking] boolean      isVertexArrayOES(in [Optional=DefaultIsUndefined] WebGLVertexArrayObjectOES arrayObject);
-    [StrictTypeChecking] void         bindVertexArrayOES(in [Optional=DefaultIsUndefined] WebGLVertexArrayObjectOES arrayObject) raises(DOMException);
+    [StrictTypeChecking] void         deleteVertexArrayOES([Default=Undefined] optional WebGLVertexArrayObjectOES arrayObject);
+    [StrictTypeChecking] boolean      isVertexArrayOES([Default=Undefined] optional WebGLVertexArrayObjectOES arrayObject);
+    [StrictTypeChecking] void         bindVertexArrayOES([Default=Undefined] optional WebGLVertexArrayObjectOES arrayObject) raises(DOMException);
 };

@@ -23,13 +23,16 @@
 
 #include "CookieManager.h"
 #include "CredentialStorage.h"
+#include "DOMFileSystemBase.h"
 #include "HostWindow.h"
 #include "MediaStreamDescriptor.h"
 #include "MediaStreamRegistry.h"
+#include "SecurityOrigin.h"
 
 #include <BlackBerryPlatformDeviceInfo.h>
 #include <BlackBerryPlatformPrimitives.h>
 #include <BlackBerryPlatformSettings.h>
+#include <BlackBerryPlatformWebFileSystem.h>
 #include <FrameLoaderClientBlackBerry.h>
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -146,8 +149,42 @@ void MediaPlayerPrivate::load(const WTF::String& url)
         kurl.setPath(tempPath);
         modifiedUrl = kurl.string();
     }
-    if (modifiedUrl.startsWith("file://")) {
-        // The QNX Multimedia Framework cannot handle filenames containing URL escape sequences.
+    // filesystem: URLs refer to entities in the Web File System (WFS) and are
+    // intended to be useable by HTML 5 media elements directly. Unfortunately
+    // the loader for our media player is implemented in a separate process and
+    // does not have access to WFS, so we translate to a file:// URL. Normally
+    // this would be a security violation, but since the MediaElement has
+    // already done a security check on the filesystem: URL as part of the
+    // media resource selection algorithm, we should be OK here.
+    if (modifiedUrl.startsWith("filesystem:")) {
+        KURL kurl = KURL(KURL(), modifiedUrl);
+        KURL mediaURL;
+        WTF::String fsPath;
+        FileSystemType fsType;
+        WebFileSystem::Type type;
+
+        // Extract the root and file paths from WFS
+        DOMFileSystemBase::crackFileSystemURL(kurl, fsType, fsPath);
+        if (fsType == FileSystemTypeTemporary)
+            type = WebFileSystem::Temporary;
+        else
+            type = WebFileSystem::Persistent;
+        WTF::String fsRoot = BlackBerry::Platform::WebFileSystem::rootPathForWebFileSystem(type);
+
+        // Build a BlackBerry::Platform::SecurityOrigin from the document's 
+        // WebCore::SecurityOrigin and serialize it to build the last
+        // path component
+        WebCore::SecurityOrigin* wkOrigin = m_webCorePlayer->mediaPlayerClient()->mediaPlayerOwningDocument()->securityOrigin();
+        BlackBerry::Platform::SecurityOrigin bbOrigin(wkOrigin->protocol(), wkOrigin->host(), wkOrigin->port());
+        WTF::String secOrigin(bbOrigin.serialize('_'));
+
+        // Build a file:// URL from the path components and extract it to 
+        // a string for further processing
+        mediaURL.setProtocol("file");
+        mediaURL.setPath(fsRoot + "/" + secOrigin + "/" + fsPath);
+        modifiedUrl = mediaURL.string();
+    } else if (modifiedUrl.startsWith("file://") || modifiedUrl.startsWith("data:")) {
+        // The QNX Multimedia Framework cannot handle filenames or data containing URL escape sequences.
         modifiedUrl = decodeURLEscapeSequences(modifiedUrl);
     }
 
@@ -157,18 +194,15 @@ void MediaPlayerPrivate::load(const WTF::String& url)
 
     deleteGuardedObject(m_platformPlayer);
 #if USE(ACCELERATED_COMPOSITING)
-    m_platformPlayer = PlatformPlayer::create(this, tabId, isVideo, true, modifiedUrl.utf8().data());
+    m_platformPlayer = PlatformPlayer::create(this, tabId, isVideo, true, modifiedUrl);
 #else
-    m_platformPlayer = PlatformPlayer::create(this, tabId, isVideo, false, modifiedUrl.utf8().data());
+    m_platformPlayer = PlatformPlayer::create(this, tabId, isVideo, false, modifiedUrl);
 #endif
 
     WTF::String cookiePairs;
     if (!url.isEmpty())
-        cookiePairs = cookieManager().getCookie(KURL(ParsedURLString, url.utf8().data()), WithHttpOnlyCookies);
-    if (!cookiePairs.isEmpty() && cookiePairs.utf8().data())
-        m_platformPlayer->load(playerID, modifiedUrl.utf8().data(), m_webCorePlayer->userAgent().utf8().data(), cookiePairs.utf8().data());
-    else
-        m_platformPlayer->load(playerID, modifiedUrl.utf8().data(), m_webCorePlayer->userAgent().utf8().data(), 0);
+        cookiePairs = cookieManager().getCookie(KURL(ParsedURLString, url), WithHttpOnlyCookies);
+    m_platformPlayer->load(playerID, modifiedUrl, m_webCorePlayer->userAgent(), cookiePairs);
 }
 
 void MediaPlayerPrivate::cancelLoad()
@@ -185,9 +219,8 @@ void MediaPlayerPrivate::prepareToPlay()
 
 void MediaPlayerPrivate::play()
 {
-    if (m_platformPlayer) {
+    if (m_platformPlayer)
         m_platformPlayer->play();
-    }
 }
 
 void MediaPlayerPrivate::pause()
@@ -576,12 +609,12 @@ void MediaPlayerPrivate::onMediaStatusChanged(PlatformPlayer::MMRPlayState)
     updateStates();
 }
 
-void MediaPlayerPrivate::onError(PlatformPlayer::Error type)
+void MediaPlayerPrivate::onError(PlatformPlayer::Error)
 {
     updateStates();
 }
 
-void MediaPlayerPrivate::onDurationChanged(float duration)
+void MediaPlayerPrivate::onDurationChanged(float)
 {
     updateStates();
     m_webCorePlayer->durationChanged();
@@ -679,9 +712,9 @@ void MediaPlayerPrivate::waitMetadataTimerFired(Timer<MediaPlayerPrivate>*)
     if (wait == PlatformPlayer::DialogResponse0)
         onPauseNotified();
     else {
-        if (m_platformPlayer->isMetadataReady()) {
+        if (m_platformPlayer->isMetadataReady())
             m_platformPlayer->playWithMetadataReady();
-        } else
+        else
             m_waitMetadataTimer.startOneShot(checkMetadataReadyInterval);
     }
 }
@@ -722,16 +755,14 @@ void MediaPlayerPrivate::onAuthenticationNeeded(MMRAuthChallenge& authChallenge)
         this, m_webCorePlayer->mediaPlayerClient()->mediaPlayerHostWindow()->platformPageClient());
 }
 
-void MediaPlayerPrivate::notifyChallengeResult(const KURL& url, const ProtectionSpace& protectionSpace, AuthenticationChallengeResult result, const Credential& credential)
+void MediaPlayerPrivate::notifyChallengeResult(const KURL& url, const ProtectionSpace&, AuthenticationChallengeResult result, const Credential& credential)
 {
     m_isAuthenticationChallenging = false;
 
     if (result != AuthenticationChallengeSuccess || !url.isValid())
         return;
 
-    m_platformPlayer->reloadWithCredential(credential.user().utf8(WTF::String::StrictConversion).data(),
-        credential.password().utf8(WTF::String::StrictConversion).data(),
-        static_cast<MMRAuthChallenge::CredentialPersistence>(credential.persistence()));
+    m_platformPlayer->reloadWithCredential(credential.user(), credential.password(), static_cast<MMRAuthChallenge::CredentialPersistence>(credential.persistence()));
 }
 
 void MediaPlayerPrivate::onAuthenticationAccepted(const MMRAuthChallenge& authChallenge) const
@@ -785,7 +816,7 @@ int MediaPlayerPrivate::onShowErrorDialog(PlatformPlayer::Error type)
 
 static WebMediaStreamSource toWebMediaStreamSource(MediaStreamSource* src)
 {
-    return WebMediaStreamSource(src->id().utf8().data(), static_cast<WebMediaStreamSource::Type>(src->type()), src->name().utf8().data());
+    return WebMediaStreamSource(src->id(), static_cast<WebMediaStreamSource::Type>(src->type()), src->name());
 }
 
 static WebMediaStreamDescriptor toWebMediaStreamDescriptor(MediaStreamDescriptor* d)
@@ -798,7 +829,7 @@ static WebMediaStreamDescriptor toWebMediaStreamDescriptor(MediaStreamDescriptor
     for (size_t i = 0; i < d->numberOfVideoComponents(); i++)
         videoSources.push_back(toWebMediaStreamSource(d->videoComponent(i)->source()));
 
-    return WebMediaStreamDescriptor(d->id().utf8().data(), audioSources, videoSources);
+    return WebMediaStreamDescriptor(d->id(), audioSources, videoSources);
 }
 
 WebMediaStreamDescriptor MediaPlayerPrivate::lookupMediaStream(const BlackBerry::Platform::String& url)

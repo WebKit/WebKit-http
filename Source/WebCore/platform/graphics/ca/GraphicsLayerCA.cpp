@@ -60,6 +60,9 @@ namespace WebCore {
 // texture size limit on all supported hardware.
 static const int cMaxPixelDimension = 2000;
 
+// Derived empirically: <rdar://problem/13401861>
+static const int cMaxLayerTreeDepth = 250;
+
 // If we send a duration of 0 to CA, then it will use the default duration
 // of 250ms. So send a very small value instead.
 static const float cAnimationAlmostZeroDuration = 1e-3f;
@@ -239,9 +242,10 @@ static bool animationHasStepsTimingFunction(const KeyframeValueList& valueList, 
         return true;
     
     for (unsigned i = 0; i < valueList.size(); ++i) {
-        const TimingFunction* timingFunction = valueList.at(i)->timingFunction();
-        if (timingFunction && timingFunction->isStepsTimingFunction())
-            return true;
+        if (const TimingFunction* timingFunction = valueList.at(i).timingFunction()) {
+            if (timingFunction->isStepsTimingFunction())
+                return true;
+        }
     }
 
     return false;
@@ -789,7 +793,7 @@ void GraphicsLayerCA::setContentsToImage(Image* image)
             // CoreGraphics renders images tagged with DeviceRGB using the color space of the main display. When we hand such
             // images to CA we need to tag them similarly so CA rendering matches CG rendering.
             static CGColorSpaceRef genericRGB = CGDisplayCopyColorSpace(kCGDirectMainDisplay);
-            m_pendingContentsImage.adoptCF(CGImageCreateCopyWithColorSpace(m_pendingContentsImage.get(), genericRGB));
+            m_pendingContentsImage = adoptCF(CGImageCreateCopyWithColorSpace(m_pendingContentsImage.get(), genericRGB));
         }
 #endif
         m_contentsLayerPurpose = ContentsLayerForImage;
@@ -898,10 +902,12 @@ void GraphicsLayerCA::flushCompositingStateForThisLayerOnly()
 {
     float pageScaleFactor;
     bool hadChanges = m_uncommittedChanges;
+    
+    CommitState commitState;
 
     FloatPoint offset = computePositionRelativeToBase(pageScaleFactor);
-    commitLayerChangesBeforeSublayers(pageScaleFactor, offset, m_visibleRect);
-    commitLayerChangesAfterSublayers();
+    commitLayerChangesBeforeSublayers(commitState, pageScaleFactor, offset, m_visibleRect);
+    commitLayerChangesAfterSublayers(commitState);
 
     if (hadChanges && client())
         client()->didCommitChangesForLayer(this);
@@ -913,10 +919,13 @@ bool GraphicsLayerCA::recursiveVisibleRectChangeRequiresFlush(const TransformSta
     
     // This may be called at times when layout has not been updated, so we want to avoid calling out to the client
     // for animating transforms.
-    FloatRect visibleRect = computeVisibleRect(localState, 0);
-    if (visibleRect != m_visibleRect) {
+    FloatRect newVisibleRect = computeVisibleRect(localState, 0);
+    if (m_layer->layerType() == PlatformCALayer::LayerTypeTiledBackingLayer)
+        newVisibleRect = adjustTiledLayerVisibleRect(tiledBacking(), m_visibleRect, newVisibleRect, m_sizeAtLastVisibleRectUpdate, m_size);
+
+    if (newVisibleRect != m_visibleRect) {
         if (TiledBacking* tiledBacking = this->tiledBacking()) {
-            if (tiledBacking->tilesWouldChangeForVisibleRect(visibleRect))
+            if (tiledBacking->tilesWouldChangeForVisibleRect(newVisibleRect))
                 return true;
         }
     }
@@ -994,7 +1003,10 @@ FloatRect GraphicsLayerCA::computeVisibleRect(TransformState& state, ComputeVisi
     
     bool mapWasClamped;
     FloatRect clipRectForChildren = state.mappedQuad(&mapWasClamped).boundingBox();
-    FloatRect clipRectForSelf(0, 0, m_size.width(), m_size.height());
+    FloatPoint boundsOrigin = m_boundsOrigin;
+    clipRectForChildren.move(boundsOrigin.x(), boundsOrigin.y());
+    
+    FloatRect clipRectForSelf(boundsOrigin, m_size);
     if (!applyWasClamped && !mapWasClamped)
         clipRectForSelf.intersect(clipRectForChildren);
     
@@ -1053,7 +1065,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     if (affectedByPageScale)
         baseRelativePosition += m_position;
     
-    commitLayerChangesBeforeSublayers(pageScaleFactor, baseRelativePosition, oldVisibleRect);
+    commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition, oldVisibleRect);
 
     if (isRunningTransformAnimation()) {
         childCommitState.ancestorHasTransformAnimation = true;
@@ -1062,7 +1074,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
 
     if (m_maskLayer) {
         GraphicsLayerCA* maskLayerCA = static_cast<GraphicsLayerCA*>(m_maskLayer);
-        maskLayerCA->commitLayerChangesBeforeSublayers(pageScaleFactor, baseRelativePosition, maskLayerCA->visibleRect());
+        maskLayerCA->commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition, maskLayerCA->visibleRect());
     }
 
     const Vector<GraphicsLayer*>& childLayers = children();
@@ -1077,9 +1089,9 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
         static_cast<GraphicsLayerCA*>(m_replicaLayer)->recursiveCommitChanges(childCommitState, localState, pageScaleFactor, baseRelativePosition, affectedByPageScale);
 
     if (m_maskLayer)
-        static_cast<GraphicsLayerCA*>(m_maskLayer)->commitLayerChangesAfterSublayers();
+        static_cast<GraphicsLayerCA*>(m_maskLayer)->commitLayerChangesAfterSublayers(childCommitState);
 
-    commitLayerChangesAfterSublayers();
+    commitLayerChangesAfterSublayers(childCommitState);
 
     if (affectedByTransformAnimation && client() && m_layer->layerType() == PlatformCALayer::LayerTypeTiledBackingLayer)
         client()->notifyFlushBeforeDisplayRefresh(this);
@@ -1118,10 +1130,18 @@ float GraphicsLayerCA::platformCALayerDeviceScaleFactor()
     return deviceScaleFactor();
 }
 
-void GraphicsLayerCA::commitLayerChangesBeforeSublayers(float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect)
+void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState, float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect)
 {
-    if (!m_uncommittedChanges)
+    ++commitState.treeDepth;
+    if (m_structuralLayer)
+        ++commitState.treeDepth;
+
+    if (!m_uncommittedChanges) {
+        // Ensure that we cap layer depth in commitLayerChangesAfterSublayers().
+        if (commitState.treeDepth > cMaxLayerTreeDepth)
+            m_uncommittedChanges |= ChildrenChanged;
         return;
+    }
 
     bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
     if (needTiledLayer != m_usingTiledBacking)
@@ -1215,15 +1235,19 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(float pageScaleFactor, c
         // Sublayers may set this flag again, so clear it to avoid always updating sublayers in commitLayerChangesAfterSublayers().
         m_uncommittedChanges &= ~ChildrenChanged;
     }
+
+    // Ensure that we cap layer depth in commitLayerChangesAfterSublayers().
+    if (commitState.treeDepth > cMaxLayerTreeDepth)
+        m_uncommittedChanges |= ChildrenChanged;
 }
 
-void GraphicsLayerCA::commitLayerChangesAfterSublayers()
+void GraphicsLayerCA::commitLayerChangesAfterSublayers(CommitState& commitState)
 {
     if (!m_uncommittedChanges)
         return;
 
     if (m_uncommittedChanges & ChildrenChanged)
-        updateSublayerList();
+        updateSublayerList(commitState.treeDepth > cMaxLayerTreeDepth);
 
     if (m_uncommittedChanges & ReplicatedLayerChanged)
         updateReplicatedLayers();
@@ -1246,8 +1270,13 @@ void GraphicsLayerCA::updateLayerNames()
     m_layer->setName(name());
 }
 
-void GraphicsLayerCA::updateSublayerList()
+void GraphicsLayerCA::updateSublayerList(bool maxLayerDepthReached)
 {
+    if (maxLayerDepthReached) {
+        m_layer->setSublayers(PlatformCALayerList());
+        return;
+    }
+    
     const PlatformCALayerList* customSublayers = m_layer->customSublayers();
 
     PlatformCALayerList structuralLayerChildren;
@@ -1256,7 +1285,7 @@ void GraphicsLayerCA::updateSublayerList()
     PlatformCALayerList& childListForSublayers = m_structuralLayer ? structuralLayerChildren : primaryLayerChildren;
 
     if (customSublayers)
-        primaryLayerChildren.append(*customSublayers);
+        primaryLayerChildren.appendVector(*customSublayers);
 
     if (m_structuralLayer) {
         if (m_replicaLayer)
@@ -1299,12 +1328,11 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
     FloatSize pixelAlignmentOffset;
     computePixelAlignment(pageScaleFactor, positionRelativeToBase, scaledPosition, scaledSize, scaledAnchorPoint, pixelAlignmentOffset);
 
-    FloatSize usedSize = m_usingTiledBacking ? constrainedSize() : scaledSize;
-    FloatRect adjustedBounds(m_boundsOrigin - pixelAlignmentOffset, usedSize);
+    FloatRect adjustedBounds(m_boundsOrigin - pixelAlignmentOffset, scaledSize);
 
     // Update position.
     // Position is offset on the layer by the layer anchor point.
-    FloatPoint adjustedPosition(scaledPosition.x() + scaledAnchorPoint.x() * usedSize.width(), scaledPosition.y() + scaledAnchorPoint.y() * usedSize.height());
+    FloatPoint adjustedPosition(scaledPosition.x() + scaledAnchorPoint.x() * scaledSize.width(), scaledPosition.y() + scaledAnchorPoint.y() * scaledSize.height());
 
     if (m_structuralLayer) {
         FloatPoint layerPosition(m_position.x() + m_anchorPoint.x() * m_size.width(), m_position.y() + m_anchorPoint.y() * m_size.height());
@@ -1334,7 +1362,7 @@ void GraphicsLayerCA::updateGeometry(float pageScaleFactor, const FloatPoint& po
 
         // If we have a structural layer, we just use 0.5, 0.5 for the anchor point of the main layer.
         scaledAnchorPoint = FloatPoint(0.5f, 0.5f);
-        adjustedPosition = FloatPoint(scaledAnchorPoint.x() * usedSize.width() - pixelAlignmentOffset.width(), scaledAnchorPoint.y() * usedSize.height() - pixelAlignmentOffset.height());
+        adjustedPosition = FloatPoint(scaledAnchorPoint.x() * scaledSize.width() - pixelAlignmentOffset.width(), scaledAnchorPoint.y() * scaledSize.height() - pixelAlignmentOffset.height());
     }
     
     m_layer->setPosition(adjustedPosition);
@@ -1592,24 +1620,24 @@ void GraphicsLayerCA::updateDebugBorder()
         m_layer->setBorderWidth(0);
 }
 
-FloatRect GraphicsLayerCA::adjustTiledLayerVisibleRect(TiledBacking* tiledBacking, const FloatRect& oldVisibleRect, const FloatSize& oldSize) const
+FloatRect GraphicsLayerCA::adjustTiledLayerVisibleRect(TiledBacking* tiledBacking, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize)
 {
     // If the old visible rect is empty, we have no information about how the visible area is changing
     // (maybe the layer was just created), so don't attempt to expand. Also don't attempt to expand
     // if the size changed.
-    if (oldVisibleRect.isEmpty() || m_size != oldSize)
-        return m_visibleRect;
+    if (oldVisibleRect.isEmpty() || newSize != oldSize)
+        return newVisibleRect;
 
     const float paddingMultiplier = 2;
 
-    float leftEdgeDelta = paddingMultiplier * (m_visibleRect.x() - oldVisibleRect.x());
-    float rightEdgeDelta = paddingMultiplier * (m_visibleRect.maxX() - oldVisibleRect.maxX());
+    float leftEdgeDelta = paddingMultiplier * (newVisibleRect.x() - oldVisibleRect.x());
+    float rightEdgeDelta = paddingMultiplier * (newVisibleRect.maxX() - oldVisibleRect.maxX());
 
-    float topEdgeDelta = paddingMultiplier * (m_visibleRect.y() - oldVisibleRect.y());
-    float bottomEdgeDelta = paddingMultiplier * (m_visibleRect.maxY() - oldVisibleRect.maxY());
+    float topEdgeDelta = paddingMultiplier * (newVisibleRect.y() - oldVisibleRect.y());
+    float bottomEdgeDelta = paddingMultiplier * (newVisibleRect.maxY() - oldVisibleRect.maxY());
     
     FloatRect existingTileBackingRect = tiledBacking->visibleRect();
-    FloatRect expandedRect = m_visibleRect;
+    FloatRect expandedRect = newVisibleRect;
 
     // More exposed on left side.
     if (leftEdgeDelta < 0) {
@@ -1659,7 +1687,7 @@ void GraphicsLayerCA::updateVisibleRect(const FloatRect& oldVisibleRect)
 
     FloatRect tileArea = m_visibleRect;
     if (m_layer->layerType() == PlatformCALayer::LayerTypeTiledBackingLayer)
-        tileArea = adjustTiledLayerVisibleRect(tiledBacking(), oldVisibleRect, m_sizeAtLastVisibleRectUpdate);
+        tileArea = adjustTiledLayerVisibleRect(tiledBacking(), oldVisibleRect, tileArea, m_sizeAtLastVisibleRectUpdate, m_size);
 
     tiledBacking()->setVisibleRect(tileArea);
 
@@ -1769,7 +1797,7 @@ void GraphicsLayerCA::updateMaskLayer()
     if (LayerMap* layerCloneMap = m_layerClones.get()) {
         LayerMap::const_iterator end = layerCloneMap->end();
         for (LayerMap::const_iterator it = layerCloneMap->begin(); it != end; ++it) {            
-            PlatformCALayer* maskClone = maskLayerCloneMap ? maskLayerCloneMap->get(it->key).get() : 0;
+            PlatformCALayer* maskClone = maskLayerCloneMap ? maskLayerCloneMap->get(it->key) : 0;
             it->value->setMask(maskClone);
         }
     }
@@ -2064,7 +2092,7 @@ bool GraphicsLayerCA::createTransformAnimationsFromKeyframes(const KeyframeValue
 
     bool hasBigRotation;
     int listIndex = validateTransformOperations(valueList, hasBigRotation);
-    const TransformOperations* operations = (listIndex >= 0) ? static_cast<const TransformAnimationValue*>(valueList.at(listIndex))->value() : 0;
+    const TransformOperations* operations = (listIndex >= 0) ? &static_cast<const TransformAnimationValue&>(valueList.at(listIndex)).value() : 0;
 
     // We need to fall back to software animation if we don't have setValueFunction:, and
     // we would need to animate each incoming transform function separately. This is the
@@ -2154,21 +2182,21 @@ bool GraphicsLayerCA::createFilterAnimationsFromKeyframes(const KeyframeValueLis
     if (listIndex < 0)
         return false;
         
-    const FilterOperations* operations = static_cast<const FilterAnimationValue*>(valueList.at(listIndex))->value();
+    const FilterOperations& operations = static_cast<const FilterAnimationValue&>(valueList.at(listIndex)).value();
     // Make sure the platform layer didn't fallback to using software filter compositing instead.
-    if (!PlatformCALayer::filtersCanBeComposited(*operations))
+    if (!PlatformCALayer::filtersCanBeComposited(operations))
         return false;
 
-    int numAnimations = operations->size();
+    int numAnimations = operations.size();
 
     // FIXME: We can't currently hardware animate shadows.
     for (int i = 0; i < numAnimations; ++i) {
-        if (operations->at(i)->getOperationType() == FilterOperation::DROP_SHADOW)
+        if (operations.at(i)->getOperationType() == FilterOperation::DROP_SHADOW)
             return false;
     }
 
     for (int animationIndex = 0; animationIndex < numAnimations; ++animationIndex) {
-        if (!appendToUncommittedAnimations(valueList, operations->operations().at(animationIndex).get(), animation, animationName, animationIndex, timeOffset))
+        if (!appendToUncommittedAnimations(valueList, operations.operations().at(animationIndex).get(), animation, animationName, animationIndex, timeOffset))
             return false;
     }
 
@@ -2226,12 +2254,12 @@ void GraphicsLayerCA::setupAnimation(PlatformCAAnimation* propertyAnim, const An
     propertyAnim->setFillMode(fillMode);
 }
 
-const TimingFunction* GraphicsLayerCA::timingFunctionForAnimationValue(const AnimationValue* animValue, const Animation* anim)
+const TimingFunction* GraphicsLayerCA::timingFunctionForAnimationValue(const AnimationValue& animValue, const Animation& anim)
 {
-    if (animValue->timingFunction())
-        return animValue->timingFunction();
-    if (anim->isTimingFunctionSet())
-        return anim->timingFunction().get();
+    if (animValue.timingFunction())
+        return animValue.timingFunction();
+    if (anim.isTimingFunctionSet())
+        return anim.timingFunction().get();
     
     return CubicBezierTimingFunction::defaultTimingFunction();
 }
@@ -2245,8 +2273,8 @@ bool GraphicsLayerCA::setAnimationEndpoints(const KeyframeValueList& valueList, 
     
     switch (valueList.property()) {
     case AnimatedPropertyOpacity: {
-        basicAnim->setFromValue(static_cast<const FloatAnimationValue*>(valueList.at(fromIndex))->value());
-        basicAnim->setToValue(static_cast<const FloatAnimationValue*>(valueList.at(toIndex))->value());
+        basicAnim->setFromValue(static_cast<const FloatAnimationValue&>(valueList.at(fromIndex)).value());
+        basicAnim->setToValue(static_cast<const FloatAnimationValue&>(valueList.at(toIndex)).value());
         break;
     }
     default:
@@ -2256,7 +2284,7 @@ bool GraphicsLayerCA::setAnimationEndpoints(const KeyframeValueList& valueList, 
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), animation);
+    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), *animation);
     if (timingFunction)
         basicAnim->setTimingFunction(timingFunction, !forwards);
 
@@ -2273,13 +2301,13 @@ bool GraphicsLayerCA::setAnimationKeyframes(const KeyframeValueList& valueList, 
     
     for (unsigned i = 0; i < valueList.size(); ++i) {
         unsigned index = forwards ? i : (valueList.size() - i - 1);
-        const AnimationValue* curValue = valueList.at(index);
-        keyTimes.append(forwards ? curValue->keyTime() : (1 - curValue->keyTime()));
+        const AnimationValue& curValue = valueList.at(index);
+        keyTimes.append(forwards ? curValue.keyTime() : (1 - curValue.keyTime()));
 
         switch (valueList.property()) {
         case AnimatedPropertyOpacity: {
-            const FloatAnimationValue* floatValue = static_cast<const FloatAnimationValue*>(curValue);
-            values.append(floatValue->value());
+            const FloatAnimationValue& floatValue = static_cast<const FloatAnimationValue&>(curValue);
+            values.append(floatValue.value());
             break;
         }
         default:
@@ -2288,7 +2316,7 @@ bool GraphicsLayerCA::setAnimationKeyframes(const KeyframeValueList& valueList, 
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), animation));
+            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
     
     keyframeAnim->setKeyTimes(keyTimes);
@@ -2307,13 +2335,13 @@ bool GraphicsLayerCA::setTransformAnimationEndpoints(const KeyframeValueList& va
     unsigned fromIndex = !forwards;
     unsigned toIndex = forwards;
     
-    const TransformAnimationValue* startValue = static_cast<const TransformAnimationValue*>(valueList.at(fromIndex));
-    const TransformAnimationValue* endValue = static_cast<const TransformAnimationValue*>(valueList.at(toIndex));
+    const TransformAnimationValue& startValue = static_cast<const TransformAnimationValue&>(valueList.at(fromIndex));
+    const TransformAnimationValue& endValue = static_cast<const TransformAnimationValue&>(valueList.at(toIndex));
     
     if (isMatrixAnimation) {
         TransformationMatrix fromTransform, toTransform;
-        startValue->value()->apply(boxSize, fromTransform);
-        endValue->value()->apply(boxSize, toTransform);
+        startValue.value().apply(boxSize, fromTransform);
+        endValue.value().apply(boxSize, toTransform);
 
         // If any matrix is singular, CA won't animate it correctly. So fall back to software animation
         if (!fromTransform.isInvertible() || !toTransform.isInvertible())
@@ -2324,34 +2352,34 @@ bool GraphicsLayerCA::setTransformAnimationEndpoints(const KeyframeValueList& va
     } else {
         if (isTransformTypeNumber(transformOpType)) {
             float fromValue;
-            getTransformFunctionValue(startValue->value()->at(functionIndex), transformOpType, boxSize, fromValue);
+            getTransformFunctionValue(startValue.value().at(functionIndex), transformOpType, boxSize, fromValue);
             basicAnim->setFromValue(fromValue);
             
             float toValue;
-            getTransformFunctionValue(endValue->value()->at(functionIndex), transformOpType, boxSize, toValue);
+            getTransformFunctionValue(endValue.value().at(functionIndex), transformOpType, boxSize, toValue);
             basicAnim->setToValue(toValue);
         } else if (isTransformTypeFloatPoint3D(transformOpType)) {
             FloatPoint3D fromValue;
-            getTransformFunctionValue(startValue->value()->at(functionIndex), transformOpType, boxSize, fromValue);
+            getTransformFunctionValue(startValue.value().at(functionIndex), transformOpType, boxSize, fromValue);
             basicAnim->setFromValue(fromValue);
             
             FloatPoint3D toValue;
-            getTransformFunctionValue(endValue->value()->at(functionIndex), transformOpType, boxSize, toValue);
+            getTransformFunctionValue(endValue.value().at(functionIndex), transformOpType, boxSize, toValue);
             basicAnim->setToValue(toValue);
         } else {
             TransformationMatrix fromValue;
-            getTransformFunctionValue(startValue->value()->at(functionIndex), transformOpType, boxSize, fromValue);
+            getTransformFunctionValue(startValue.value().at(functionIndex), transformOpType, boxSize, fromValue);
             basicAnim->setFromValue(fromValue);
 
             TransformationMatrix toValue;
-            getTransformFunctionValue(endValue->value()->at(functionIndex), transformOpType, boxSize, toValue);
+            getTransformFunctionValue(endValue.value().at(functionIndex), transformOpType, boxSize, toValue);
             basicAnim->setToValue(toValue);
         }
     }
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), animation);
+    const TimingFunction* timingFunction = timingFunctionForAnimationValue(valueList.at(0), *animation);
     basicAnim->setTimingFunction(timingFunction, !forwards);
 
     PlatformCAAnimation::ValueFunctionType valueFunction = getValueFunctionNameForTransformOperation(transformOpType);
@@ -2373,12 +2401,12 @@ bool GraphicsLayerCA::setTransformAnimationKeyframes(const KeyframeValueList& va
 
     for (unsigned i = 0; i < valueList.size(); ++i) {
         unsigned index = forwards ? i : (valueList.size() - i - 1);
-        const TransformAnimationValue* curValue = static_cast<const TransformAnimationValue*>(valueList.at(index));
-        keyTimes.append(forwards ? curValue->keyTime() : (1 - curValue->keyTime()));
+        const TransformAnimationValue& curValue = static_cast<const TransformAnimationValue&>(valueList.at(index));
+        keyTimes.append(forwards ? curValue.keyTime() : (1 - curValue.keyTime()));
 
         if (isMatrixAnimation) {
             TransformationMatrix transform;
-            curValue->value()->apply(boxSize, transform);
+            curValue.value().apply(boxSize, transform);
 
             // If any matrix is singular, CA won't animate it correctly. So fall back to software animation
             if (!transform.isInvertible())
@@ -2386,7 +2414,7 @@ bool GraphicsLayerCA::setTransformAnimationKeyframes(const KeyframeValueList& va
 
             transformationMatrixValues.append(transform);
         } else {
-            const TransformOperation* transformOp = curValue->value()->at(functionIndex);
+            const TransformOperation* transformOp = curValue.value().at(functionIndex);
             if (isTransformTypeNumber(transformOpType)) {
                 float value;
                 getTransformFunctionValue(transformOp, transformOpType, boxSize, value);
@@ -2403,7 +2431,7 @@ bool GraphicsLayerCA::setTransformAnimationKeyframes(const KeyframeValueList& va
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), animation));
+            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
     
     keyframeAnim->setKeyTimes(keyTimes);
@@ -2434,11 +2462,11 @@ bool GraphicsLayerCA::setFilterAnimationEndpoints(const KeyframeValueList& value
     unsigned fromIndex = !forwards;
     unsigned toIndex = forwards;
 
-    const FilterAnimationValue* fromValue = static_cast<const FilterAnimationValue*>(valueList.at(fromIndex));
-    const FilterAnimationValue* toValue = static_cast<const FilterAnimationValue*>(valueList.at(toIndex));
+    const FilterAnimationValue& fromValue = static_cast<const FilterAnimationValue&>(valueList.at(fromIndex));
+    const FilterAnimationValue& toValue = static_cast<const FilterAnimationValue&>(valueList.at(toIndex));
 
-    const FilterOperation* fromOperation = fromValue->value()->at(functionIndex);
-    const FilterOperation* toOperation = toValue->value()->at(functionIndex);
+    const FilterOperation* fromOperation = fromValue.value().at(functionIndex);
+    const FilterOperation* toOperation = toValue.value().at(functionIndex);
 
     RefPtr<DefaultFilterOperation> defaultFromOperation;
     RefPtr<DefaultFilterOperation> defaultToOperation;
@@ -2460,7 +2488,7 @@ bool GraphicsLayerCA::setFilterAnimationEndpoints(const KeyframeValueList& value
 
     // This codepath is used for 2-keyframe animations, so we still need to look in the start
     // for a timing function. Even in the reversing animation case, the first keyframe provides the timing function.
-    basicAnim->setTimingFunction(timingFunctionForAnimationValue(valueList.at(0), animation), !forwards);
+    basicAnim->setTimingFunction(timingFunctionForAnimationValue(valueList.at(0), *animation), !forwards);
 
     return true;
 }
@@ -2476,11 +2504,11 @@ bool GraphicsLayerCA::setFilterAnimationKeyframes(const KeyframeValueList& value
 
     for (unsigned i = 0; i < valueList.size(); ++i) {
         unsigned index = forwards ? i : (valueList.size() - i - 1);
-        const FilterAnimationValue* curValue = static_cast<const FilterAnimationValue*>(valueList.at(index));
-        keyTimes.append(forwards ? curValue->keyTime() : (1 - curValue->keyTime()));
+        const FilterAnimationValue& curValue = static_cast<const FilterAnimationValue&>(valueList.at(index));
+        keyTimes.append(forwards ? curValue.keyTime() : (1 - curValue.keyTime()));
 
-        if (curValue->value()->operations().size() > static_cast<size_t>(functionIndex))
-            values.append(curValue->value()->operations()[functionIndex]);
+        if (curValue.value().operations().size() > static_cast<size_t>(functionIndex))
+            values.append(curValue.value().operations()[functionIndex]);
         else {
             if (!defaultOperation)
                 defaultOperation = DefaultFilterOperation::create(filterOp);
@@ -2488,7 +2516,7 @@ bool GraphicsLayerCA::setFilterAnimationKeyframes(const KeyframeValueList& value
         }
 
         if (i < (valueList.size() - 1))
-            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), animation));
+            timingFunctions.append(timingFunctionForAnimationValue(forwards ? curValue : valueList.at(index - 1), *animation));
     }
     
     keyframeAnim->setKeyTimes(keyTimes);
@@ -2641,30 +2669,6 @@ void GraphicsLayerCA::setDebugBorder(const Color& color, float borderWidth)
         m_layer->setBorderColor(Color::transparent);
         m_layer->setBorderWidth(0);
     }
-}
-
-FloatSize GraphicsLayerCA::constrainedSize() const
-{
-    FloatSize constrainedSize = m_size;
-#if !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
-    float tileColumns = ceilf(m_size.width() / kTiledLayerTileSize);
-    float tileRows = ceilf(m_size.height() / kTiledLayerTileSize);
-    double numTiles = tileColumns * tileRows;
-    
-    const unsigned cMaxTileCount = 512;
-    while (numTiles > cMaxTileCount) {
-        // Constrain the wider dimension.
-        if (constrainedSize.width() >= constrainedSize.height()) {
-            tileColumns = max(floorf(cMaxTileCount / tileRows), 1.0f);
-            constrainedSize.setWidth(tileColumns * kTiledLayerTileSize);
-        } else {
-            tileRows = max(floorf(cMaxTileCount / tileColumns), 1.0f);
-            constrainedSize.setHeight(tileRows * kTiledLayerTileSize);
-        }
-        numTiles = tileColumns * tileRows;
-    }
-#endif
-    return constrainedSize;
 }
 
 bool GraphicsLayerCA::requiresTiledLayer(float pageScaleFactor) const

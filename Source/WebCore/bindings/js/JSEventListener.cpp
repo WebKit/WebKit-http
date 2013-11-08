@@ -26,6 +26,7 @@
 #include "JSEvent.h"
 #include "JSEventTarget.h"
 #include "JSMainThreadExecState.h"
+#include "ScriptController.h"
 #include "WorkerContext.h"
 #include <runtime/ExceptionHelpers.h>
 #include <runtime/JSLock.h>
@@ -78,7 +79,7 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
     if (!scriptExecutionContext || scriptExecutionContext->isJSExecutionForbidden())
         return;
 
-    JSLockHolder lock(scriptExecutionContext->globalData());
+    JSLockHolder lock(scriptExecutionContext->vm());
 
     JSObject* jsFunction = this->jsFunction(scriptExecutionContext);
     if (!jsFunction)
@@ -118,10 +119,9 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
         Event* savedEvent = globalObject->currentEvent();
         globalObject->setCurrentEvent(event);
 
-        JSGlobalData& globalData = globalObject->globalData();
-        DynamicGlobalObjectScope globalObjectScope(globalData, globalData.dynamicGlobalObject ? globalData.dynamicGlobalObject : globalObject);
+        VM& vm = globalObject->vm();
+        DynamicGlobalObjectScope globalObjectScope(vm, vm.dynamicGlobalObject ? vm.dynamicGlobalObject : globalObject);
 
-        globalData.timeoutChecker.start();
         InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(scriptExecutionContext, callType, callData);
 
         JSValue thisValue = handleEventFunction == jsFunction ? toJS(exec, globalObject, event->currentTarget()) : jsFunction;
@@ -130,14 +130,13 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
             : JSC::call(exec, handleEventFunction, callType, callData, thisValue, args);
 
         InspectorInstrumentation::didCallFunction(cookie);
-        globalData.timeoutChecker.stop();
 
         globalObject->setCurrentEvent(savedEvent);
 
 #if ENABLE(WORKERS)
         if (scriptExecutionContext->isWorkerContext()) {
             bool terminatorCausedException = (exec->hadException() && isTerminatedExecutionException(exec->exception()));
-            if (terminatorCausedException || globalData.terminator.shouldTerminate())
+            if (terminatorCausedException || vm.watchdog.didFire())
                 static_cast<WorkerContext*>(scriptExecutionContext)->script()->forbidExecution();
         }
 #endif

@@ -36,6 +36,7 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebProcess.h"
+#include <WebCore/DocumentLoader.h>
 #include <WebCore/ResourceBuffer.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoader.h>
@@ -98,12 +99,22 @@ void WebResourceLoader::didSendData(uint64_t bytesSent, uint64_t totalBytesToBeS
     m_coreLoader->didSendData(bytesSent, totalBytesToBeSent);
 }
 
-void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResponse& response, const PlatformCertificateInfo& certificateInfo)
+void WebResourceLoader::didReceiveResponseWithCertificateInfo(const ResourceResponse& response, const PlatformCertificateInfo& certificateInfo, bool needsContinueDidReceiveResponseMessage)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponseWithCertificateInfo for '%s'. Status %d.", m_coreLoader->url().string().utf8().data(), response.httpStatusCode());
+
+    RefPtr<WebResourceLoader> protector(this);
+
     ResourceResponse responseCopy(response);
     responseCopy.setCertificateChain(certificateInfo.certificateChain());
     m_coreLoader->didReceiveResponse(responseCopy);
+
+    // If m_coreLoader becomes null as a result of the didReceiveResponse callback, we can't use the send function(). 
+    if (!m_coreLoader)
+        return;
+
+    if (needsContinueDidReceiveResponseMessage)
+        send(Messages::NetworkResourceLoader::ContinueDidReceiveResponse());
 }
 
 void WebResourceLoader::didReceiveData(const CoreIPC::DataReference& data, int64_t encodedDataLength)

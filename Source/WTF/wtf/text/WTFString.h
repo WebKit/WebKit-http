@@ -38,10 +38,6 @@ class QString;
 QT_END_NAMESPACE
 #endif
 
-#if PLATFORM(WX)
-class wxString;
-#endif
-
 #if PLATFORM(HAIKU)
 class BString;
 #endif
@@ -57,7 +53,6 @@ class String;
 namespace WTF {
 
 class CString;
-class MemoryObjectInfo;
 struct StringHash;
 
 // Declarations of string operations
@@ -407,7 +402,13 @@ public:
 
     bool percentage(int& percentage) const;
 
+#if COMPILER_SUPPORTS(CXX_REFERENCE_QUALIFIED_FUNCTIONS)
+    WTF_EXPORT_STRING_API String isolatedCopy() const &;
+    WTF_EXPORT_STRING_API String isolatedCopy() const &&;
+#else
     WTF_EXPORT_STRING_API String isolatedCopy() const;
+#endif
+
     WTF_EXPORT_STRING_API bool isSafeToSendToAnotherThread() const;
 
     // Prevent Strings from being implicitly convertable to bool as it will be ambiguous on any platform that
@@ -434,11 +435,6 @@ public:
     WTF_EXPORT_STRING_API String(const QString&);
     WTF_EXPORT_STRING_API String(const QStringRef&);
     WTF_EXPORT_STRING_API operator QString() const;
-#endif
-
-#if PLATFORM(WX)
-    WTF_EXPORT_PRIVATE String(const wxString&);
-    WTF_EXPORT_PRIVATE operator wxString() const;
 #endif
 
 #if PLATFORM(HAIKU)

@@ -29,8 +29,6 @@
 
 #import "DOMTestTypedefs.h"
 
-#import "Array.h"
-#import "DOMArrayInternal.h"
 #import "DOMBlobInternal.h"
 #import "DOMCSSRuleInternal.h"
 #import "DOMCSSValueInternal.h"
@@ -152,12 +150,6 @@
     WebCore::ExceptionCode ec = 0;
     IMPL->setStringAttrWithSetterException(newStringAttrWithSetterException, ec);
     WebCore::raiseOnDOMError(ec);
-}
-
-- (void)multiTransferList:(NSString *)first tx:(DOMArray *)tx second:(NSString *)second txx:(DOMArray *)txx
-{
-    WebCore::JSMainThreadNullState state;
-    IMPL->multiTransferList(WebCore::SerializedScriptValue::create(WTF::String(first)), core(tx), WebCore::SerializedScriptValue::create(WTF::String(second)), core(txx));
 }
 
 - (void)setShadow:(float)width height:(float)height blur:(float)blur color:(NSString *)color alpha:(float)alpha

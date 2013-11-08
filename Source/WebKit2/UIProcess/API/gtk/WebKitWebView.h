@@ -34,6 +34,7 @@
 #include <webkit2/WebKitFileChooserRequest.h>
 #include <webkit2/WebKitFindController.h>
 #include <webkit2/WebKitFormSubmissionRequest.h>
+#include <webkit2/WebKitForwardDeclarations.h>
 #include <webkit2/WebKitHitTestResult.h>
 #include <webkit2/WebKitJavascriptResult.h>
 #include <webkit2/WebKitPermissionRequest.h>
@@ -45,6 +46,7 @@
 #include <webkit2/WebKitWebInspector.h>
 #include <webkit2/WebKitWebResource.h>
 #include <webkit2/WebKitWebViewBase.h>
+#include <webkit2/WebKitWebViewGroup.h>
 #include <webkit2/WebKitWindowProperties.h>
 
 G_BEGIN_DECLS
@@ -159,6 +161,34 @@ typedef enum {
     WEBKIT_VIEW_MODE_SOURCE
 } WebKitViewMode;
 
+/**
+ * WebKitSnapshotOptions:
+ * @WEBKIT_SNAPSHOT_OPTIONS_NONE: Do not include any special options.
+ * @WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING: Whether to include in the
+ * snapshot the highlight of the selected content.
+ *
+ * Enum values used to specify options when taking a snapshot
+ * from a #WebKitWebView.
+ */
+typedef enum {
+  WEBKIT_SNAPSHOT_OPTIONS_NONE = 0,
+  WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING = 1 << 0,
+} WebKitSnapshotOptions;
+
+/**
+ * WebKitSnapshotRegion:
+ * @WEBKIT_SNAPSHOT_REGION_VISIBLE: Specifies a snapshot only for the area that is
+ * visible in the webview
+ * @WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT: A snapshot of the entire document.
+ *
+ * Enum values used to specify the region from which to get a #WebKitWebView
+ * snapshot
+ */
+typedef enum {
+  WEBKIT_SNAPSHOT_REGION_VISIBLE = 0,
+  WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT,
+} WebKitSnapshotRegion;
+
 struct _WebKitWebView {
     WebKitWebViewBase parent;
 
@@ -210,6 +240,7 @@ struct _WebKitWebViewClass {
                                               WebKitFormSubmissionRequest *request);
     void       (* insecure_content_detected) (WebKitWebView               *web_view,
                                               WebKitInsecureContentEvent   event);
+    gboolean   (* web_process_crashed)       (WebKitWebView               *web_view);
 
     /* Padding for future expansion */
     void (*_webkit_reserved0) (void);
@@ -231,8 +262,14 @@ webkit_web_view_new                                  (void);
 WEBKIT_API GtkWidget *
 webkit_web_view_new_with_context                     (WebKitWebContext          *context);
 
+WEBKIT_API GtkWidget *
+webkit_web_view_new_with_group                       (WebKitWebViewGroup        *group);
+
 WEBKIT_API WebKitWebContext *
 webkit_web_view_get_context                          (WebKitWebView             *web_view);
+
+WEBKIT_API WebKitWebViewGroup *
+webkit_web_view_get_group                            (WebKitWebView             *web_view);
 
 WEBKIT_API void
 webkit_web_view_load_uri                             (WebKitWebView             *web_view,
@@ -418,7 +455,18 @@ WEBKIT_API gboolean
 webkit_web_view_get_tls_info                         (WebKitWebView             *web_view,
                                                       GTlsCertificate          **certificate,
                                                       GTlsCertificateFlags      *errors);
+WEBKIT_API void
+webkit_web_view_get_snapshot                         (WebKitWebView             *web_view,
+                                                      WebKitSnapshotRegion       region,
+                                                      WebKitSnapshotOptions      options,
+                                                      GCancellable              *cancellable,
+                                                      GAsyncReadyCallback        callback,
+                                                      gpointer                   user_data);
 
+WEBKIT_API cairo_surface_t *
+webkit_web_view_get_snapshot_finish                  (WebKitWebView             *web_view,
+                                                      GAsyncResult              *result,
+                                                      GError                   **error);
 G_END_DECLS
 
 #endif

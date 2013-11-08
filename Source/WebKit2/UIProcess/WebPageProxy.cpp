@@ -162,7 +162,7 @@ private:
     ExceededDatabaseQuotaRecords() { }
     ~ExceededDatabaseQuotaRecords() { }
 
-    Deque<OwnPtr<Record> > m_records;
+    Deque<OwnPtr<Record>> m_records;
     OwnPtr<Record> m_currentRecord;
 };
 
@@ -268,7 +268,7 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_canRunModal(false)
     , m_isInPrintingMode(false)
     , m_isPerformingDOMPrintOperation(false)
-    , m_inDecidePolicyForResponse(false)
+    , m_inDecidePolicyForResponseSync(false)
     , m_decidePolicyForResponseRequest(0)
     , m_syncMimeTypePolicyActionIsValid(false)
     , m_syncMimeTypePolicyAction(PolicyUse)
@@ -308,6 +308,10 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_minimumLayoutWidth(0)
     , m_mediaVolume(1)
     , m_mayStartMediaWhenInWindow(true)
+    , m_waitingForDidUpdateInWindowState(false)
+#if PLATFORM(MAC)
+    , m_exposedRectChangedTimer(this, &WebPageProxy::exposedRectChangedTimerFired)
+#endif
 #if ENABLE(PAGE_VISIBILITY_API)
     , m_visibilityState(PageVisibilityStateVisible)
 #endif
@@ -388,7 +392,7 @@ PassRefPtr<ImmutableArray> WebPageProxy::relatedPages() const
     // pages() returns a list of pages in WebProcess, so this page may or may not be among them - a client can use a reference to WebPageProxy after the page has closed.
     Vector<WebPageProxy*> pages = m_process->pages();
 
-    Vector<RefPtr<APIObject> > result;
+    Vector<RefPtr<APIObject>> result;
     result.reserveCapacity(pages.size());
     for (size_t i = 0; i < pages.size(); ++i) {
         if (pages[i] != this)
@@ -628,6 +632,10 @@ void WebPageProxy::close()
 
     m_drawingArea = nullptr;
 
+#if PLATFORM(MAC)
+    m_exposedRectChangedTimer.stop();
+#endif
+
     m_process->send(Messages::WebPage::Close(), m_pageID);
     m_process->removeWebPage(m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
@@ -727,6 +735,33 @@ void WebPageProxy::loadWebArchiveData(const WebData* webArchiveData)
         reattachToWebProcess();
 
     m_process->send(Messages::WebPage::LoadWebArchiveData(webArchiveData->dataReference()), m_pageID);
+    m_process->responsivenessTimer()->start();
+}
+
+void WebPageProxy::loadFile(const String& fileURLString, const String& resourceDirectoryURLString)
+{
+    if (!isValid())
+        reattachToWebProcess();
+
+    KURL fileURL = KURL(KURL(), fileURLString);
+    if (!fileURL.isLocalFile())
+        return;
+
+    KURL resourceDirectoryURL;
+    if (resourceDirectoryURLString.isNull())
+        resourceDirectoryURL = KURL(ParsedURLString, ASCIILiteral("file:///"));
+    else {
+        resourceDirectoryURL = KURL(KURL(), resourceDirectoryURLString);
+        if (!resourceDirectoryURL.isLocalFile())
+            return;
+    }
+
+    String resourceDirectoryPath = resourceDirectoryURL.fileSystemPath();
+
+    SandboxExtension::Handle sandboxExtensionHandle;
+    SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::ReadOnly, sandboxExtensionHandle);
+    m_process->assumeReadAccessToBaseURL(resourceDirectoryURL);
+    m_process->send(Messages::WebPage::LoadURL(fileURL, sandboxExtensionHandle), m_pageID);
     m_process->responsivenessTimer()->start();
 }
 
@@ -833,7 +868,7 @@ void WebPageProxy::tryRestoreScrollPosition()
     m_process->send(Messages::WebPage::TryRestoreScrollPosition(), m_pageID);
 }
 
-void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vector<RefPtr<APIObject> >* removed)
+void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vector<RefPtr<APIObject>>* removed)
 {
     m_loaderClient.didChangeBackForwardList(this, added, removed);
 }
@@ -907,6 +942,13 @@ bool WebPageProxy::canShowMIMEType(const String& mimeType) const
     if (!plugin.path.isNull() && m_pageGroup->preferences()->pluginsEnabled())
         return true;
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
+
+#if PLATFORM(MAC)
+    // On Mac, we can show PDFs.
+    if (MIMETypeRegistry::isPDFOrPostScriptMIMEType(mimeType) && !WebContext::omitPDFSupport())
+        return true;
+#endif // PLATFORM(MAC)
+
     return false;
 }
 
@@ -1038,6 +1080,20 @@ void WebPageProxy::viewStateDidChange(ViewStateFlags flags)
 #endif
 
     updateBackingStoreDiscardableState();
+}
+
+void WebPageProxy::waitForDidUpdateInWindowState()
+{
+    // If we have previously timed out with no response from the WebProcess, don't block the UIProcess again until it starts responding.
+    if (m_waitingForDidUpdateInWindowState)
+        return;
+
+    m_waitingForDidUpdateInWindowState = true;
+
+    if (!m_process->isLaunching()) {
+        const double inWindowStateUpdateTimeout = 0.25;
+        m_process->connection()->waitForAndDispatchImmediately<Messages::WebPageProxy::DidUpdateInWindowState>(m_pageID, inWindowStateUpdateTimeout);
+    }
 }
 
 IntSize WebPageProxy::viewSize() const
@@ -1283,7 +1339,7 @@ void WebPageProxy::handleWheelEvent(const NativeWebWheelEvent& event)
         return;
     }
 
-    OwnPtr<Vector<NativeWebWheelEvent> > coalescedWheelEvent = adoptPtr(new Vector<NativeWebWheelEvent>);
+    OwnPtr<Vector<NativeWebWheelEvent>> coalescedWheelEvent = adoptPtr(new Vector<NativeWebWheelEvent>);
     coalescedWheelEvent->append(event);
     m_currentlyProcessedWheelEvents.append(coalescedWheelEvent.release());
     sendWheelEvent(event);
@@ -1291,7 +1347,7 @@ void WebPageProxy::handleWheelEvent(const NativeWebWheelEvent& event)
 
 void WebPageProxy::processNextQueuedWheelEvent()
 {
-    OwnPtr<Vector<NativeWebWheelEvent> > nextCoalescedEvent = adoptPtr(new Vector<NativeWebWheelEvent>);
+    OwnPtr<Vector<NativeWebWheelEvent>> nextCoalescedEvent = adoptPtr(new Vector<NativeWebWheelEvent>);
     WebWheelEvent nextWheelEvent = coalescedWheelEvent(m_wheelEventQueue, *nextCoalescedEvent.get());
     m_currentlyProcessedWheelEvents.append(nextCoalescedEvent.release());
     sendWheelEvent(nextWheelEvent);
@@ -1330,11 +1386,11 @@ void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-void WebPageProxy::getPluginPath(const String& mimeType, const String& urlString, const String& frameURLString, const String& pageURLString, String& pluginPath, uint32_t& pluginLoadPolicy)
+void WebPageProxy::findPlugin(const String& mimeType, const String& urlString, const String& frameURLString, const String& pageURLString, String& pluginPath, String& newMimeType, uint32_t& pluginLoadPolicy)
 {
     MESSAGE_CHECK_URL(urlString);
 
-    String newMimeType = mimeType.lower();
+    newMimeType = mimeType.lower();
 
     pluginLoadPolicy = PluginModuleLoadNormally;
     PluginModuleInfo plugin = m_process->context()->pluginInfoStore().findPlugin(newMimeType, KURL(KURL(), urlString));
@@ -1431,16 +1487,6 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy* fr
     if (!isValid())
         return;
 
-#if ENABLE(NETWORK_PROCESS)
-    // FIXME (NetworkProcess): Instead of canceling the load and then starting a separate download, we should
-    // just convert the connection to a download connection. See <rdar://problem/12890184>.
-    if (m_inDecidePolicyForResponse && action == PolicyDownload && m_process->context()->usesNetworkProcess()) {
-        action = PolicyIgnore;
-
-        m_process->context()->download(this, *m_decidePolicyForResponseRequest);
-    }
-#endif
-
     if (action == PolicyIgnore)
         clearPendingAPIRequestURL();
 
@@ -1457,7 +1503,7 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy* fr
 
     // If we received a policy decision while in decidePolicyForResponse the decision will
     // be sent back to the web process by decidePolicyForResponse.
-    if (m_inDecidePolicyForResponse) {
+    if (m_inDecidePolicyForResponseSync) {
         m_syncMimeTypePolicyActionIsValid = true;
         m_syncMimeTypePolicyAction = action;
         m_syncMimeTypePolicyDownloadID = downloadID;
@@ -1567,7 +1613,8 @@ void WebPageProxy::terminateProcess()
     if (!m_isValid)
         return;
 
-    m_process->terminate();
+    m_process->requestTermination();
+    resetStateAfterProcessExited();
 }
 
 #if !USE(CF) || defined(BUILDING_QT__)
@@ -1860,7 +1907,7 @@ void WebPageProxy::setMemoryCacheClientCallsEnabled(bool memoryCacheClientCallsE
 void WebPageProxy::findStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
 {
     if (string.isEmpty()) {
-        didFindStringMatches(string, Vector<Vector<WebCore::IntRect> > (), 0);
+        didFindStringMatches(string, Vector<Vector<WebCore::IntRect>> (), 0);
         return;
     }
 
@@ -2480,7 +2527,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, uint32_t opa
         listener->use();
 }
 
-void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const ResourceResponse& response, const ResourceRequest& request, uint64_t listenerID, CoreIPC::MessageDecoder& decoder, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID)
+void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const ResourceResponse& response, const ResourceRequest& request, uint64_t listenerID, CoreIPC::MessageDecoder& decoder)
 {
     RefPtr<APIObject> userData;
     WebContextUserMessageDecoder messageDecoder(userData, m_process.get());
@@ -2491,19 +2538,24 @@ void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const ResourceRespo
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(request.url());
     MESSAGE_CHECK_URL(response.url());
-    
+
     RefPtr<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
-
-    ASSERT(!m_inDecidePolicyForResponse);
-
-    m_inDecidePolicyForResponse = true;
-    m_decidePolicyForResponseRequest = &request;
-    m_syncMimeTypePolicyActionIsValid = false;
 
     if (!m_policyClient.decidePolicyForResponse(this, frame, response, request, listener.get(), userData.get()))
         listener->use();
+}
 
-    m_inDecidePolicyForResponse = false;
+void WebPageProxy::decidePolicyForResponseSync(uint64_t frameID, const ResourceResponse& response, const ResourceRequest& request, uint64_t listenerID, CoreIPC::MessageDecoder& decoder, bool& receivedPolicyAction, uint64_t& policyAction, uint64_t& downloadID)
+{
+    ASSERT(!m_inDecidePolicyForResponseSync);
+
+    m_inDecidePolicyForResponseSync = true;
+    m_decidePolicyForResponseRequest = &request;
+    m_syncMimeTypePolicyActionIsValid = false;
+
+    decidePolicyForResponse(frameID, response, request, listenerID, decoder);
+
+    m_inDecidePolicyForResponseSync = false;
     m_decidePolicyForResponseRequest = 0;
 
     // Check if we received a policy decision already. If we did, we can just pass it back.
@@ -2529,7 +2581,7 @@ void WebPageProxy::unableToImplementPolicy(uint64_t frameID, const ResourceError
 
 // FormClient
 
-void WebPageProxy::willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, const Vector<std::pair<String, String> >& textFieldValues, uint64_t listenerID, CoreIPC::MessageDecoder& decoder)
+void WebPageProxy::willSubmitForm(uint64_t frameID, uint64_t sourceFrameID, const Vector<std::pair<String, String>>& textFieldValues, uint64_t listenerID, CoreIPC::MessageDecoder& decoder)
 {
     RefPtr<APIObject> userData;
     WebContextUserMessageDecoder messageDecoder(userData, m_process.get());
@@ -2643,7 +2695,7 @@ void WebPageProxy::connectionWillOpen(CoreIPC::Connection* connection)
 
 void WebPageProxy::connectionWillClose(CoreIPC::Connection* connection)
 {
-    ASSERT(connection == m_process->connection());
+    ASSERT_UNUSED(connection, connection == m_process->connection());
 
     m_process->context()->storageManager().setAllowedSessionStorageNamespaceConnection(m_pageID, 0);
 }
@@ -2690,7 +2742,7 @@ String WebPageProxy::pluginInformationPluginURLKey()
 
 PassRefPtr<ImmutableDictionary> WebPageProxy::pluginInformationDictionary(const String& bundleIdentifier, const String& bundleVersion, const String& displayName, const String& frameURLString, const String& mimeType, const String& pageURLString, const String& pluginspageAttributeURLString, const String& pluginURLString)
 {
-    HashMap<String, RefPtr<APIObject> > pluginInfoMap;
+    HashMap<String, RefPtr<APIObject>> pluginInfoMap;
     if (!bundleIdentifier.isEmpty())
         pluginInfoMap.set(WebPageProxy::pluginInformationBundleIdentifierKey(), WebString::create(bundleIdentifier));
     if (!bundleVersion.isEmpty())
@@ -3129,15 +3181,15 @@ void WebPageProxy::didFindString(const String& string, uint32_t matchCount)
     m_findClient.didFindString(this, string, matchCount);
 }
 
-void WebPageProxy::didFindStringMatches(const String& string, Vector<Vector<WebCore::IntRect> > matchRects, int32_t firstIndexAfterSelection)
+void WebPageProxy::didFindStringMatches(const String& string, Vector<Vector<WebCore::IntRect>> matchRects, int32_t firstIndexAfterSelection)
 {
-    Vector<RefPtr<APIObject> > matches;
+    Vector<RefPtr<APIObject>> matches;
     matches.reserveInitialCapacity(matchRects.size());
 
     for (size_t i = 0; i < matchRects.size(); ++i) {
         const Vector<WebCore::IntRect>& rects = matchRects[i];
         size_t numRects = matchRects[i].size();
-        Vector<RefPtr<APIObject> > apiRects;
+        Vector<RefPtr<APIObject>> apiRects;
         apiRects.reserveInitialCapacity(numRects);
 
         for (size_t i = 0; i < numRects; ++i)
@@ -3247,7 +3299,7 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const W
 
     m_activeContextMenuHitTestResultData = hitTestResultData;
 
-    if (m_activeContextMenu) {
+    if (!m_contextMenuClient.hideContextMenu(this) && m_activeContextMenu) {
         m_activeContextMenu->hideContextMenu();
         m_activeContextMenu = 0;
     }
@@ -3261,9 +3313,10 @@ void WebPageProxy::internalShowContextMenu(const IntPoint& menuLocation, const W
 
     // Give the PageContextMenuClient one last swipe at changing the menu.
     Vector<WebContextMenuItemData> items;
-    if (!m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, hitTestResultData, userData.get()))
-        m_activeContextMenu->showContextMenu(menuLocation, proposedItems);
-    else
+    if (!m_contextMenuClient.getContextMenuFromProposedMenu(this, proposedItems, items, hitTestResultData, userData.get())) {
+        if (!m_contextMenuClient.showContextMenu(this, menuLocation, proposedItems))
+            m_activeContextMenu->showContextMenu(menuLocation, proposedItems);
+    } else if (!m_contextMenuClient.showContextMenu(this, menuLocation, items))
         m_activeContextMenu->showContextMenu(menuLocation, items);
     
     m_contextMenuClient.contextMenuDismissed(this);
@@ -3586,7 +3639,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     case WebEvent::Wheel: {
         ASSERT(!m_currentlyProcessedWheelEvents.isEmpty());
 
-        OwnPtr<Vector<NativeWebWheelEvent> > oldestCoalescedEvent = m_currentlyProcessedWheelEvents.takeFirst();
+        OwnPtr<Vector<NativeWebWheelEvent>> oldestCoalescedEvent = m_currentlyProcessedWheelEvents.takeFirst();
 
         // FIXME: Dispatch additional events to the didNotHandleWheelEvent client function.
         if (!handled && m_uiClient.implementsDidNotHandleWheelEvent())
@@ -3798,8 +3851,20 @@ void WebPageProxy::processDidBecomeResponsive()
 
 void WebPageProxy::processDidCrash()
 {
-    ASSERT(m_pageClient);
+    ASSERT(m_isValid);
 
+    resetStateAfterProcessExited();
+
+    m_pageClient->processDidCrash();
+    m_loaderClient.processDidCrash(this);
+}
+
+void WebPageProxy::resetStateAfterProcessExited()
+{
+    if (!isValid())
+        return;
+
+    ASSERT(m_pageClient);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
     m_isValid = false;
@@ -3886,16 +3951,11 @@ void WebPageProxy::processDidCrash()
 
     m_pendingLearnOrIgnoreWordMessageCount = 0;
 
-    m_pageClient->processDidCrash();
-    m_loaderClient.processDidCrash(this);
-
-    if (!m_isValid) {
-        // If the call out to the loader client didn't cause the web process to be relaunched, 
-        // we'll call setNeedsDisplay on the view so that we won't have the old contents showing.
-        // If the call did cause the web process to be relaunched, we'll keep the old page contents showing
-        // until the new web process has painted its contents.
-        setViewNeedsDisplay(IntRect(IntPoint(), viewSize()));
-    }
+    // If the call out to the loader client didn't cause the web process to be relaunched,
+    // we'll call setNeedsDisplay on the view so that we won't have the old contents showing.
+    // If the call did cause the web process to be relaunched, we'll keep the old page contents showing
+    // until the new web process has painted its contents.
+    setViewNeedsDisplay(IntRect(IntPoint(), viewSize()));
 
     // Can't expect DidReceiveEvent notifications from a crashed web process.
     m_keyEventQueue.clear();
@@ -4374,11 +4434,6 @@ void WebPageProxy::handleAlternativeTextUIResult(const String& result)
 void WebPageProxy::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext)
 {
     m_pageClient->showDictationAlternativeUI(boundingBoxOfDictatedText, dictationContext);
-}
-
-void WebPageProxy::dismissDictationAlternativeUI()
-{
-    m_pageClient->dismissDictationAlternativeUI();
 }
 
 void WebPageProxy::removeDictationAlternatives(uint64_t dictationContext)

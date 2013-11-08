@@ -79,8 +79,8 @@ public:
     QSocketNotifier* registerSocketEventHandler(int, QSocketNotifier::Type, const Function<void()>&);
     void dispatchOnTermination(WebKit::PlatformProcessIdentifier, const Function<void()>&);
 #elif PLATFORM(GTK)
-    void registerEventSourceHandler(int, int, const Function<void()>&);
-    void unregisterEventSourceHandler(int);
+    void registerSocketEventHandler(int, int, const Function<void()>& function, const Function<void()>& closeFunction);
+    void unregisterSocketEventHandler(int);
     void dispatchOnTermination(WebKit::PlatformProcessIdentifier, const Function<void()>&);
 #elif PLATFORM(EFL)
     void registerSocketEventHandler(int, const Function<void()>&);
@@ -142,10 +142,10 @@ private:
     volatile LONG m_isWorkThreadRegistered;
 
     Mutex m_workItemQueueLock;
-    Vector<RefPtr<WorkItemWin> > m_workItemQueue;
+    Vector<RefPtr<WorkItemWin>> m_workItemQueue;
 
     Mutex m_handlesLock;
-    HashMap<HANDLE, RefPtr<HandleWorkItem> > m_handles;
+    HashMap<HANDLE, RefPtr<HandleWorkItem>> m_handles;
 
     HANDLE m_timerQueue;
 #elif PLATFORM(QT)
@@ -163,8 +163,9 @@ private:
     GRefPtr<GMainLoop> m_eventLoop;
     Mutex m_eventSourcesLock;
     class EventSource;
-    HashMap<int, Vector<EventSource*> > m_eventSources;
-    typedef HashMap<int, Vector<EventSource*> >::iterator EventSourceIterator; 
+    class SocketEventSource;
+    HashMap<int, Vector<SocketEventSource*>> m_eventSources;
+    typedef HashMap<int, Vector<SocketEventSource*>>::iterator SocketEventSourceIterator;
 #elif PLATFORM(EFL)
     class TimerWorkItem {
     public:
@@ -189,13 +190,13 @@ private:
 
     bool m_threadLoop;
 
-    Vector<Function<void()> > m_workItemQueue;
+    Vector<Function<void()>> m_workItemQueue;
     Mutex m_workItemQueueLock;
 
     int m_socketDescriptor;
     Function<void()> m_socketEventHandler;
 
-    Vector<OwnPtr<TimerWorkItem> > m_timerWorkItems;
+    Vector<OwnPtr<TimerWorkItem>> m_timerWorkItems;
     Mutex m_timerWorkItemsLock;
 
     void sendMessageToThread(const char*);

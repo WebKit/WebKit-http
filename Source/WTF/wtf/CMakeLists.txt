@@ -2,7 +2,6 @@ set(WTF_HEADERS
     ASCIICType.h
     AVLTree.h
     Alignment.h
-    AlwaysInline.h
     Assertions.h
     Atomics.h
     BitArray.h
@@ -30,6 +29,8 @@ set(WTF_HEADERS
     FilePrintStream.h
     FixedArray.h
     Forward.h
+    FunctionDispatcher.h
+    Functional.h
     GetPtr.h
     GregorianDateTime.h
     HashCountedSet.h
@@ -41,23 +42,12 @@ set(WTF_HEADERS
     HashTraits.h
     HexNumber.h
     ListHashSet.h
-    ListRefPtr.h
     Locker.h
     MD5.h
     MainThread.h
     MallocZoneSupport.h
     MathExtras.h
     MediaTime.h
-    MemoryInstrumentation.h
-    MemoryInstrumentationArrayBufferView.h
-    MemoryInstrumentationHashCountedSet.h
-    MemoryInstrumentationHashMap.h
-    MemoryInstrumentationHashSet.h
-    MemoryInstrumentationListHashSet.h
-    MemoryInstrumentationSequence.h
-    MemoryInstrumentationString.h
-    MemoryInstrumentationVector.h
-    MemoryObjectInfo.h
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
@@ -169,14 +159,15 @@ set(WTF_SOURCES
     DynamicAnnotations.cpp
     FastMalloc.cpp
     FilePrintStream.cpp
+    FunctionDispatcher.cpp
     GregorianDateTime.cpp
     HashTable.cpp
     MD5.cpp
     MainThread.cpp
     MediaTime.cpp
     MetaAllocator.cpp
+    NullPtr.cpp
     OSRandomSource.cpp
-    MemoryInstrumentation.cpp
     NumberOfCores.cpp
     RAMSize.cpp
     PageAllocationAligned.cpp
@@ -225,6 +216,30 @@ set(WTF_INCLUDE_DIRECTORIES
     "${THIRDPARTY_DIR}"
     "${CMAKE_BINARY_DIR}"
 )
+
+if (WTF_USE_ICU_UNICODE)
+    list(APPEND WTF_HEADERS
+        unicode/icu/UnicodeIcu.h
+    )
+    list(APPEND WTF_SOURCES
+        unicode/icu/CollatorICU.cpp
+    )
+    list(APPEND WTF_INCLUDE_DIRECTORIES
+        ${ICU_INCLUDE_DIRS}
+    )
+    list(APPEND WTF_LIBRARIES
+        ${ICU_I18N_LIBRARIES}
+        ${ICU_LIBRARIES}
+    )
+elseif (WTF_USE_WCHAR_UNICODE)
+    list(APPEND WTF_HEADERS
+        unicode/wchar/UnicodeWchar.h
+    )
+    list(APPEND WTF_SOURCES
+        unicode/CollatorDefault.cpp
+        unicode/wchar/UnicodeWchar.cpp
+    )
+endif ()
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 

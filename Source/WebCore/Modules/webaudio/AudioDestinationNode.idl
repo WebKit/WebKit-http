@@ -23,9 +23,10 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=WEB_AUDIO,
     JSGenerateToJSObject,
-    V8SkipVTableValidation
+    SkipVTableValidation
 ] interface AudioDestinationNode : AudioNode {
     readonly attribute unsigned long maxChannelCount;
 };

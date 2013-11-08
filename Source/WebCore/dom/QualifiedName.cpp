@@ -27,7 +27,6 @@
 
 #include "QualifiedName.h"
 #include "HTMLNames.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include "XLinkNames.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
@@ -132,7 +131,7 @@ void QualifiedName::init()
         // Use placement new to initialize the globals.
         
         AtomicString::init();
-        new ((void*)&anyName) QualifiedName(nullAtom, starAtom, starAtom);
+        new (NotNull, (void*)&anyName) QualifiedName(nullAtom, starAtom, starAtom);
         initialized = true;
     }
 }
@@ -150,22 +149,6 @@ const AtomicString& QualifiedName::localNameUpper() const
     return m_impl->m_localNameUpper;
 }
 
-void QualifiedName::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_impl, "impl");
-}
-
-
-void QualifiedName::QualifiedNameImpl::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_prefix, "prefix");
-    info.addMember(m_localName, "localName");
-    info.addMember(m_namespace, "namespace");
-    info.addMember(m_localNameUpper, "localNameUpper");
-}
-
 unsigned QualifiedName::QualifiedNameImpl::computeHash() const
 {
     QualifiedNameComponents components = { m_prefix.impl(), m_localName.impl(), m_namespace.impl() };
@@ -174,12 +157,12 @@ unsigned QualifiedName::QualifiedNameImpl::computeHash() const
 
 void createQualifiedName(void* targetAddress, StringImpl* name, const AtomicString& nameNamespace)
 {
-    new (reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, AtomicString(name), nameNamespace);
+    new (NotNull, reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, AtomicString(name), nameNamespace);
 }
 
 void createQualifiedName(void* targetAddress, StringImpl* name)
 {
-    new (reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, AtomicString(name), nullAtom);
+    new (NotNull, reinterpret_cast<void*>(targetAddress)) QualifiedName(nullAtom, AtomicString(name), nullAtom);
 }
 
 }

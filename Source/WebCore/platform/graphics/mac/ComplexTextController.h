@@ -94,6 +94,7 @@ private:
         CFIndex indexEnd() const { return m_indexEnd; }
         CFIndex endOffsetAt(size_t i) const { ASSERT(!m_isMonotonic); return m_glyphEndOffsets[i]; }
         const CGGlyph* glyphs() const { return m_glyphs; }
+        CGSize initialAdvance() const { return m_initialAdvance; }
         const CGSize* advances() const { return m_advances; }
         bool isLTR() const { return m_isLTR; }
         bool isMonotonic() const { return m_isMonotonic; }
@@ -115,6 +116,7 @@ private:
         Vector<CFIndex, 64> m_glyphEndOffsets;
         Vector<CGGlyph, 64> m_glyphsVector;
         const CGGlyph* m_glyphs;
+        CGSize m_initialAdvance;
         Vector<CGSize, 64> m_advancesVector;
         const CGSize* m_advances;
         bool m_isLTR;
@@ -132,9 +134,10 @@ private:
     unsigned indexOfCurrentRun(unsigned& leftmostGlyph);
     unsigned incrementCurrentRun(unsigned& leftmostGlyph);
 
-    // The default size of this vector was selected as being the smallest power of two greater than
+    // The initial capacity of these vectors was selected as being the smallest power of two greater than
     // the average (3.5) plus one standard deviation (7.5) of nonzero sizes used on Arabic Wikipedia.
     Vector<unsigned, 16> m_runIndices;
+    Vector<unsigned, 16> m_glyphCountFromStartToIndex;
 
     const Font& m_font;
     const TextRun& m_run;

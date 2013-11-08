@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 
 #import "InbandTextTrackPrivateAVFObjC.h"
 
@@ -34,7 +34,6 @@
 #import "InbandTextTrackPrivate.h"
 #import "InbandTextTrackPrivateAVF.h"
 #import "Logging.h"
-#import "MediaPlayerPrivateAVFoundationObjC.h"
 #import "SoftLinking.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
@@ -42,6 +41,7 @@
 
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
+
 #define AVPlayer getAVPlayerClass()
 #define AVPlayerItem getAVPlayerItemClass()
 
@@ -81,7 +81,7 @@ using namespace std;
 
 namespace WebCore {
 
-InbandTextTrackPrivateAVFObjC::InbandTextTrackPrivateAVFObjC(MediaPlayerPrivateAVFoundationObjC* player, AVMediaSelectionOption* selection)
+InbandTextTrackPrivateAVFObjC::InbandTextTrackPrivateAVFObjC(AVFInbandTrackParent* player, AVMediaSelectionOption *selection)
     : InbandTextTrackPrivateAVF(player)
     , m_mediaSelectionOption(selection)
 {
@@ -96,24 +96,28 @@ void InbandTextTrackPrivateAVFObjC::disconnect()
 InbandTextTrackPrivate::Kind InbandTextTrackPrivateAVFObjC::kind() const
 {
     if (!m_mediaSelectionOption)
-        return None;
+        return InbandTextTrackPrivate::None;
 
     NSString *mediaType = [m_mediaSelectionOption mediaType];
+    
     if ([mediaType isEqualToString:AVMediaTypeClosedCaption])
-        return Captions;
+        return InbandTextTrackPrivate::Captions;
     if ([mediaType isEqualToString:AVMediaTypeSubtitle]) {
+
+        if ([m_mediaSelectionOption hasMediaCharacteristic:AVMediaCharacteristicContainsOnlyForcedSubtitles])
+            return InbandTextTrackPrivate::Forced;
 
         // An "SDH" track is a subtitle track created for the deaf or hard-of-hearing. "captions" in WebVTT are
         // "labeled as appropriate for the hard-of-hearing", so tag SDH sutitles as "captions".
         if ([m_mediaSelectionOption hasMediaCharacteristic:AVMediaCharacteristicTranscribesSpokenDialogForAccessibility])
-            return Captions;
+            return InbandTextTrackPrivate::Captions;
         if ([m_mediaSelectionOption hasMediaCharacteristic:AVMediaCharacteristicDescribesMusicAndSoundForAccessibility])
-            return Captions;
+            return InbandTextTrackPrivate::Captions;
         
-        return Subtitles;
+        return InbandTextTrackPrivate::Subtitles;
     }
 
-    return Captions;
+    return InbandTextTrackPrivate::Captions;
 }
 
 bool InbandTextTrackPrivateAVFObjC::isClosedCaptions() const
@@ -153,17 +157,20 @@ AtomicString InbandTextTrackPrivateAVFObjC::label() const
     if (!m_mediaSelectionOption)
         return emptyAtom;
 
+    NSString *title = 0;
+
     NSArray *titles = [AVMetadataItem metadataItemsFromArray:[m_mediaSelectionOption.get() commonMetadata] withKey:AVMetadataCommonKeyTitle keySpace:AVMetadataKeySpaceCommon];
     if ([titles count]) {
         // If possible, return a title in one of the user's preferred languages.
         NSArray *titlesForPreferredLanguages = [AVMetadataItem metadataItemsFromArray:titles filteredAndSortedAccordingToPreferredLanguages:[NSLocale preferredLanguages]];
         if ([titlesForPreferredLanguages count])
-            return [[titlesForPreferredLanguages objectAtIndex:0] stringValue];
+            title = [[titlesForPreferredLanguages objectAtIndex:0] stringValue];
 
-        return [[titles objectAtIndex:0] stringValue];
+        if (!title)
+            title = [[titles objectAtIndex:0] stringValue];
     }
 
-    return emptyAtom;
+    return title ? AtomicString(title) : emptyAtom;
 }
 
 AtomicString InbandTextTrackPrivateAVFObjC::language() const
@@ -178,7 +185,6 @@ bool InbandTextTrackPrivateAVFObjC::isDefault() const
 {
     return false;
 }
-   
 
 } // namespace WebCore
 

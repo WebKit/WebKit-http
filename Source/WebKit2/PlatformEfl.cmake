@@ -46,10 +46,12 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
+    UIProcess/API/C/CoordinatedGraphics/WKView.cpp
+
     UIProcess/API/C/efl/WKPageEfl.cpp
     UIProcess/API/C/efl/WKPopupItem.cpp
     UIProcess/API/C/efl/WKPopupMenuListener.cpp
-    UIProcess/API/C/efl/WKView.cpp
+    UIProcess/API/C/efl/WKViewEfl.cpp
 
     UIProcess/API/cpp/efl/WKEinaSharedString.cpp
 
@@ -94,6 +96,9 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/cairo/BackingStoreCairo.cpp
 
+    UIProcess/CoordinatedGraphics/WebView.cpp
+    UIProcess/CoordinatedGraphics/WebViewClient.cpp
+
     UIProcess/efl/BatteryProvider.cpp
     UIProcess/efl/ContextHistoryClientEfl.cpp
     UIProcess/efl/ContextMenuClientEfl.cpp
@@ -107,9 +112,11 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/PageUIClientEfl.cpp
     UIProcess/efl/PageViewportControllerClientEfl.cpp
     UIProcess/efl/RequestManagerClientEfl.cpp
+    UIProcess/efl/TextCheckerClientEfl.cpp
     UIProcess/efl/TextCheckerEfl.cpp
     UIProcess/efl/VibrationClientEfl.cpp
     UIProcess/efl/ViewClientEfl.cpp
+    UIProcess/efl/WebViewEfl.cpp
     UIProcess/efl/WebContextEfl.cpp
     UIProcess/efl/WebContextMenuProxyEfl.cpp
     UIProcess/efl/WebFullScreenManagerProxyEfl.cpp
@@ -120,8 +127,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/efl/WebPreferencesEfl.cpp
     UIProcess/efl/WebProcessProxyEfl.cpp
     UIProcess/efl/WebUIPopupMenuClient.cpp
-    UIProcess/efl/WebView.cpp
-    UIProcess/efl/WebViewClient.cpp
 
     UIProcess/InspectorServer/efl/WebInspectorServerEfl.cpp
     UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
@@ -183,6 +188,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/Shared/efl"
     "${WEBKIT2_DIR}/Shared/soup"
     "${WEBKIT2_DIR}/UIProcess/API/C/cairo"
+    "${WEBKIT2_DIR}/UIProcess/API/C/CoordinatedGraphics"
     "${WEBKIT2_DIR}/UIProcess/API/C/efl"
     "${WEBKIT2_DIR}/UIProcess/API/C/soup"
     "${WEBKIT2_DIR}/UIProcess/API/cpp/efl"
@@ -287,6 +293,7 @@ endif ()
 
 add_custom_target(forwarding-headerEfl
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include CoordinatedGraphics
 )
 set(ForwardingHeaders_NAME forwarding-headerEfl)
 

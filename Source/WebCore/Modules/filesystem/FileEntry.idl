@@ -29,11 +29,12 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=FILE_SYSTEM,
     JSGenerateToNativeObject,
     JSGenerateToJSObject,
     JSNoStaticTables
 ] interface FileEntry : Entry {
-    void createWriter(in [Callback] FileWriterCallback successCallback, in [Optional, Callback] ErrorCallback errorCallback);
-    void file(in [Callback] FileCallback successCallback, in [Optional, Callback] ErrorCallback errorCallback);
+    void createWriter(FileWriterCallback successCallback, optional ErrorCallback errorCallback);
+    void file(FileCallback successCallback, optional ErrorCallback errorCallback);
 };

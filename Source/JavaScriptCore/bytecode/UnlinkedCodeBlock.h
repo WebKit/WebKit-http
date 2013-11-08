@@ -27,6 +27,7 @@
 #define UnlinkedCodeBlock_h
 
 #include "BytecodeConventions.h"
+#include "CodeCache.h"
 #include "CodeSpecializationKind.h"
 #include "CodeType.h"
 #include "ExpressionRangeInfo.h"
@@ -81,10 +82,10 @@ class UnlinkedFunctionExecutable : public JSCell {
 public:
     friend class CodeCache;
     typedef JSCell Base;
-    static UnlinkedFunctionExecutable* create(JSGlobalData* globalData, const SourceCode& source, FunctionBodyNode* node)
+    static UnlinkedFunctionExecutable* create(VM* vm, const SourceCode& source, FunctionBodyNode* node)
     {
-        UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(globalData->heap)) UnlinkedFunctionExecutable(globalData, globalData->unlinkedFunctionExecutableStructure.get(), source, node);
-        instance->finishCreation(*globalData);
+        UnlinkedFunctionExecutable* instance = new (NotNull, allocateCell<UnlinkedFunctionExecutable>(vm->heap)) UnlinkedFunctionExecutable(vm, vm->unlinkedFunctionExecutableStructure.get(), source, node);
+        instance->finishCreation(*vm);
         return instance;
     }
 
@@ -107,11 +108,11 @@ public:
 
     String paramString() const;
 
-    UnlinkedFunctionCodeBlock* codeBlockFor(JSGlobalData&, JSScope*, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, ParserError&);
+    UnlinkedFunctionCodeBlock* codeBlockFor(VM&, JSScope*, const SourceCode&, CodeSpecializationKind, DebuggerMode, ProfilerMode, ParserError&);
 
     static UnlinkedFunctionExecutable* fromGlobalCode(const Identifier&, ExecState*, Debugger*, const SourceCode&, JSObject** exception);
 
-    FunctionExecutable* link(JSGlobalData&, const SourceCode&, size_t lineOffset, size_t sourceOffset);
+    FunctionExecutable* link(VM&, const SourceCode&, size_t lineOffset, size_t sourceOffset);
 
     void clearCodeForRecompilation()
     {
@@ -140,7 +141,7 @@ public:
     static void destroy(JSCell*);
 
 private:
-    UnlinkedFunctionExecutable(JSGlobalData*, Structure*, const SourceCode&, FunctionBodyNode*);
+    UnlinkedFunctionExecutable(VM*, Structure*, const SourceCode&, FunctionBodyNode*);
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForCall;
     WriteBarrier<UnlinkedFunctionCodeBlock> m_codeBlockForConstruct;
 
@@ -166,18 +167,18 @@ private:
     FunctionNameIsInScopeToggle m_functionNameIsInScopeToggle;
 
 protected:
-    void finishCreation(JSGlobalData& globalData)
+    void finishCreation(VM& vm)
     {
-        Base::finishCreation(globalData);
-        m_nameValue.set(globalData, this, jsString(&globalData, name().string()));
+        Base::finishCreation(vm);
+        m_nameValue.set(vm, this, jsString(&vm, name().string()));
     }
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
 public:
-    static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue proto)
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(globalData, globalObject, proto, TypeInfo(UnlinkedFunctionExecutableType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionExecutableType, StructureFlags), &s_info);
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | JSCell::StructureFlags;
@@ -282,7 +283,7 @@ public:
     {
         createRareDataIfNecessary();
         unsigned size = m_rareData->m_regexps.size();
-        m_rareData->m_regexps.append(WriteBarrier<RegExp>(*m_globalData, this, r));
+        m_rareData->m_regexps.append(WriteBarrier<RegExp>(*m_vm, this, r));
         return size;
     }
     unsigned numberOfRegExps() const
@@ -305,7 +306,7 @@ public:
     {
         unsigned result = m_constantRegisters.size();
         m_constantRegisters.append(WriteBarrier<Unknown>());
-        m_constantRegisters.last().set(*m_globalData, this, v);
+        m_constantRegisters.last().set(*m_vm, this, v);
         return result;
     }
     unsigned addOrFindConstant(JSValue);
@@ -373,7 +374,7 @@ public:
     {
         unsigned size = m_functionDecls.size();
         m_functionDecls.append(WriteBarrier<UnlinkedFunctionExecutable>());
-        m_functionDecls.last().set(*m_globalData, this, n);
+        m_functionDecls.last().set(*m_vm, this, n);
         return size;
     }
     UnlinkedFunctionExecutable* functionDecl(int index) { return m_functionDecls[index].get(); }
@@ -382,7 +383,7 @@ public:
     {
         unsigned size = m_functionExprs.size();
         m_functionExprs.append(WriteBarrier<UnlinkedFunctionExecutable>());
-        m_functionExprs.last().set(*m_globalData, this, n);
+        m_functionExprs.last().set(*m_vm, this, n);
         return size;
     }
     UnlinkedFunctionExecutable* functionExpr(int index) { return m_functionExprs[index].get(); }
@@ -395,7 +396,7 @@ public:
 
     SharedSymbolTable* symbolTable() const { return m_symbolTable.get(); }
 
-    JSGlobalData* globalData() const { return m_globalData; }
+    VM* vm() const { return m_vm; }
 
     unsigned addResolve() { return m_resolveOperationCount++; }
     unsigned numberOfResolveOperations() const { return m_resolveOperationCount; }
@@ -470,16 +471,26 @@ public:
     unsigned firstLine() const { return m_firstLine; }
     unsigned lineCount() const { return m_lineCount; }
 
+    PassRefPtr<CodeCache> codeCacheForEval()
+    {
+        if (m_codeType == GlobalCode)
+            return m_vm->codeCache();
+        createRareDataIfNecessary();
+        if (!m_rareData->m_evalCodeCache)
+            m_rareData->m_evalCodeCache = CodeCache::create(CodeCache::NonGlobalCodeCache);
+        return m_rareData->m_evalCodeCache.get();
+    }
+
 protected:
-    UnlinkedCodeBlock(JSGlobalData*, Structure*, CodeType, const ExecutableInfo&);
+    UnlinkedCodeBlock(VM*, Structure*, CodeType, const ExecutableInfo&);
     ~UnlinkedCodeBlock();
 
-    void finishCreation(JSGlobalData& globalData)
+    void finishCreation(VM& vm)
     {
-        Base::finishCreation(globalData);
+        Base::finishCreation(vm);
         if (codeType() == GlobalCode)
             return;
-        m_symbolTable.set(globalData, this, SharedSymbolTable::create(globalData));
+        m_symbolTable.set(vm, this, SharedSymbolTable::create(vm));
     }
 
 private:
@@ -493,7 +504,7 @@ private:
     RefCountedArray<UnlinkedInstruction> m_unlinkedInstructions;
 
     int m_numParameters;
-    JSGlobalData* m_globalData;
+    VM* m_vm;
 
     int m_thisRegister;
     int m_argumentsRegister;
@@ -556,8 +567,7 @@ public:
         Vector<UnlinkedSimpleJumpTable> m_immediateSwitchJumpTables;
         Vector<UnlinkedSimpleJumpTable> m_characterSwitchJumpTables;
         Vector<UnlinkedStringJumpTable> m_stringSwitchJumpTables;
-
-        // Expression info - present if debugging.
+        RefPtr<CodeCache> m_evalCodeCache;
     };
 
 private:
@@ -578,8 +588,8 @@ public:
     typedef UnlinkedCodeBlock Base;
 
 protected:
-    UnlinkedGlobalCodeBlock(JSGlobalData* globalData, Structure* structure, CodeType codeType, const ExecutableInfo& info)
-        : Base(globalData, structure, codeType, info)
+    UnlinkedGlobalCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info)
+        : Base(vm, structure, codeType, info)
     {
     }
 
@@ -591,10 +601,10 @@ protected:
 class UnlinkedProgramCodeBlock : public UnlinkedGlobalCodeBlock {
 private:
     friend class CodeCache;
-    static UnlinkedProgramCodeBlock* create(JSGlobalData* globalData, const ExecutableInfo& info)
+    static UnlinkedProgramCodeBlock* create(VM* vm, const ExecutableInfo& info)
     {
-        UnlinkedProgramCodeBlock* instance = new (NotNull, allocateCell<UnlinkedProgramCodeBlock>(globalData->heap)) UnlinkedProgramCodeBlock(globalData, globalData->unlinkedProgramCodeBlockStructure.get(), info);
-        instance->finishCreation(*globalData);
+        UnlinkedProgramCodeBlock* instance = new (NotNull, allocateCell<UnlinkedProgramCodeBlock>(vm->heap)) UnlinkedProgramCodeBlock(vm, vm->unlinkedProgramCodeBlockStructure.get(), info);
+        instance->finishCreation(*vm);
         return instance;
     }
 
@@ -602,9 +612,9 @@ public:
     typedef UnlinkedGlobalCodeBlock Base;
     static void destroy(JSCell*);
 
-    void addFunctionDeclaration(JSGlobalData& globalData, const Identifier& name, UnlinkedFunctionExecutable* functionExecutable)
+    void addFunctionDeclaration(VM& vm, const Identifier& name, UnlinkedFunctionExecutable* functionExecutable)
     {
-        m_functionDeclarations.append(std::make_pair(name, WriteBarrier<UnlinkedFunctionExecutable>(globalData, this, functionExecutable)));
+        m_functionDeclarations.append(std::make_pair(name, WriteBarrier<UnlinkedFunctionExecutable>(vm, this, functionExecutable)));
     }
 
     void addVariableDeclaration(const Identifier& name, bool isConstant)
@@ -621,8 +631,8 @@ public:
     static void visitChildren(JSCell*, SlotVisitor&);
 
 private:
-    UnlinkedProgramCodeBlock(JSGlobalData* globalData, Structure* structure, const ExecutableInfo& info)
-        : Base(globalData, structure, GlobalCode, info)
+    UnlinkedProgramCodeBlock(VM* vm, Structure* structure, const ExecutableInfo& info)
+        : Base(vm, structure, GlobalCode, info)
     {
     }
 
@@ -630,9 +640,9 @@ private:
     FunctionDeclations m_functionDeclarations;
 
 public:
-    static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue proto)
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(globalData, globalObject, proto, TypeInfo(UnlinkedProgramCodeBlockType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedProgramCodeBlockType, StructureFlags), &s_info);
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
@@ -644,10 +654,10 @@ class UnlinkedEvalCodeBlock : public UnlinkedGlobalCodeBlock {
 private:
     friend class CodeCache;
 
-    static UnlinkedEvalCodeBlock* create(JSGlobalData* globalData, const ExecutableInfo& info)
+    static UnlinkedEvalCodeBlock* create(VM* vm, const ExecutableInfo& info)
     {
-        UnlinkedEvalCodeBlock* instance = new (NotNull, allocateCell<UnlinkedEvalCodeBlock>(globalData->heap)) UnlinkedEvalCodeBlock(globalData, globalData->unlinkedEvalCodeBlockStructure.get(), info);
-        instance->finishCreation(*globalData);
+        UnlinkedEvalCodeBlock* instance = new (NotNull, allocateCell<UnlinkedEvalCodeBlock>(vm->heap)) UnlinkedEvalCodeBlock(vm, vm->unlinkedEvalCodeBlockStructure.get(), info);
+        instance->finishCreation(*vm);
         return instance;
     }
 
@@ -664,17 +674,17 @@ public:
     }
 
 private:
-    UnlinkedEvalCodeBlock(JSGlobalData* globalData, Structure* structure, const ExecutableInfo& info)
-        : Base(globalData, structure, EvalCode, info)
+    UnlinkedEvalCodeBlock(VM* vm, Structure* structure, const ExecutableInfo& info)
+        : Base(vm, structure, EvalCode, info)
     {
     }
 
     Vector<Identifier, 0, UnsafeVectorOverflow> m_variables;
 
 public:
-    static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue proto)
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(globalData, globalObject, proto, TypeInfo(UnlinkedEvalCodeBlockType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedEvalCodeBlockType, StructureFlags), &s_info);
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;
@@ -684,10 +694,10 @@ public:
 
 class UnlinkedFunctionCodeBlock : public UnlinkedCodeBlock {
 public:
-    static UnlinkedFunctionCodeBlock* create(JSGlobalData* globalData, CodeType codeType, const ExecutableInfo& info)
+    static UnlinkedFunctionCodeBlock* create(VM* vm, CodeType codeType, const ExecutableInfo& info)
     {
-        UnlinkedFunctionCodeBlock* instance = new (NotNull, allocateCell<UnlinkedFunctionCodeBlock>(globalData->heap)) UnlinkedFunctionCodeBlock(globalData, globalData->unlinkedFunctionCodeBlockStructure.get(), codeType, info);
-        instance->finishCreation(*globalData);
+        UnlinkedFunctionCodeBlock* instance = new (NotNull, allocateCell<UnlinkedFunctionCodeBlock>(vm->heap)) UnlinkedFunctionCodeBlock(vm, vm->unlinkedFunctionCodeBlockStructure.get(), codeType, info);
+        instance->finishCreation(*vm);
         return instance;
     }
 
@@ -695,15 +705,15 @@ public:
     static void destroy(JSCell*);
 
 private:
-    UnlinkedFunctionCodeBlock(JSGlobalData* globalData, Structure* structure, CodeType codeType, const ExecutableInfo& info)
-        : Base(globalData, structure, codeType, info)
+    UnlinkedFunctionCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info)
+        : Base(vm, structure, codeType, info)
     {
     }
     
 public:
-    static Structure* createStructure(JSGlobalData& globalData, JSGlobalObject* globalObject, JSValue proto)
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)
     {
-        return Structure::create(globalData, globalObject, proto, TypeInfo(UnlinkedFunctionCodeBlockType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, proto, TypeInfo(UnlinkedFunctionCodeBlockType, StructureFlags), &s_info);
     }
 
     static const unsigned StructureFlags = OverridesVisitChildren | Base::StructureFlags;

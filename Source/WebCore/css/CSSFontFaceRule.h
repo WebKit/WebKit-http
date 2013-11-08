@@ -39,9 +39,8 @@ public:
     virtual CSSRule::Type type() const OVERRIDE { return FONT_FACE_RULE; }
     virtual String cssText() const OVERRIDE;
     virtual void reattach(StyleRuleBase*) OVERRIDE;
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
-    CSSStyleDeclaration* style() const;
+    CSSStyleDeclaration* style();
 
 private:
     CSSFontFaceRule(StyleRuleFontFace*, CSSStyleSheet* parent);

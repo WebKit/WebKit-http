@@ -31,10 +31,10 @@
 [
     CustomConstructor,
     ConstructorParameters=1,
-    JSCustomIsReachable,
+    CustomIsReachable,
     ImplementationLacksVTable
 ] interface MutationObserver {
-    void observe(in Node target, in Dictionary options)
+    void observe(Node target, Dictionary options)
         raises(DOMException);
     sequence<MutationRecord> takeRecords();
     void disconnect();

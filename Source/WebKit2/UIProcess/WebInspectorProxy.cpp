@@ -67,10 +67,6 @@ static PassRefPtr<WebPageGroup> createInspectorPageGroup()
     pageGroup->preferences()->setLogsPageMessagesToSystemConsoleEnabled(true);
 #endif
 
-#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
-    pageGroup->preferences()->setAcceleratedDrawingEnabled(true);
-#endif
-
     pageGroup->preferences()->setApplicationChromeModeEnabled(true);
 
     return pageGroup.release();
@@ -153,7 +149,7 @@ void WebInspectorProxy::show()
         return;
 
     if (isConnected()) {
-        open();
+        bringToFront();
         return;
     }
 
@@ -427,8 +423,6 @@ void WebInspectorProxy::createInspectorPage(uint64_t& inspectorPageID, WebPageCr
 
 void WebInspectorProxy::open()
 {
-    ASSERT(m_createdInspectorPage);
-
     m_isVisible = true;
 
     platformOpen();

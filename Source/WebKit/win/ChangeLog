@@ -1,3 +1,302 @@
+2013-05-09  Max Feil  <mfeil@rim.com>
+
+        shouldUsePluginDocument() needs to be respected when a document is created
+        https://bugs.webkit.org/show_bug.cgi?id=110308
+
+        Reviewed by Rob Buis.
+
+        Renaming shouldUsePluginDocument() to shouldAlwaysUsePluginDocument()
+        for clarity.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::shouldAlwaysUsePluginDocument):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        (WebFrameLoaderClient):
+
+2013-05-06  Darin Adler  <darin@apple.com>
+
+        Use adoptCF and adoptNS in more places
+        https://bugs.webkit.org/show_bug.cgi?id=115657
+
+        Reviewed by Sam Weinig.
+
+        This is similar to my last set of changes, but covers code that I missed with
+        global replace using the Safari Xcode workspace.
+
+        * CFDictionaryPropertyBag.cpp:
+        (CFDictionaryPropertyBag::Write):
+        * WebCache.cpp:
+        (WebCache::statistics):
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidFailToStartPlugin):
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::openInspectorFrontend):
+        (WebInspectorFrontendClient::localizedStringsURL):
+        * WebDatabaseManager.cpp:
+        (WebDatabaseManager::dispatchDidModifyDatabase):
+        * WebDownloadCFNet.cpp:
+        (WebDownload::init):
+        (WebDownload::initWithRequest):
+        (WebDownload::initToResumeWithBundle):
+        (WebDownload::cancelForResume):
+        (WebDownload::useCredential):
+        (WebDownload::didReceiveAuthenticationChallenge):
+        * WebError.cpp:
+        (WebError::sslPeerCertificate):
+        * WebHistory.cpp:
+        (createUserInfoFromArray):
+        (createUserInfoFromHistoryItem):
+        (WebHistory::WebHistory):
+        (WebHistory::loadFromURL):
+        (WebHistory::loadHistoryGutsFromURL):
+        (WebHistory::saveToURL):
+        (WebHistory::saveHistoryGuts):
+        (WebHistory::removeAllItems):
+        (WebHistory::removeItem):
+        (WebHistory::addItem):
+        (WebHistory::itemForURL):
+        (WebHistory::addItemToDateCaches):
+        (getDayBoundaries):
+        * WebIconDatabase.cpp:
+        (postDidAddIconNotification):
+        * WebLocalizableStrings.cpp:
+        (cfBundleForStringsBundle):
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::mutableCopy):
+        * WebPreferences.cpp:
+        (cfNumber):
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::valueForKey):
+        (WebPreferences::setStringValue):
+        (WebPreferences::load):
+        (WebPreferences::migrateWebKitPreferencesToCFPreferences):
+        (WebPreferences::setPreferenceForTest):
+        * WebView.cpp:
+        (WebView::setCacheModel):
+        (WebView::notifyPreferencesChanged):
+        Use adoptCF and adoptNS.
+
+2013-05-06  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. AppleWin build fix.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-05-04  Dean Jackson  <dino@apple.com>
+
+        Animations and Transitions should not start when globally suspended
+        https://bugs.webkit.org/show_bug.cgi?id=114915
+
+        Reviewed by Sam Weinig.
+
+        Export AnimationController::isSuspended
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-05-01  Sergio Villar Senin  <svillar@igalia.com>
+
+        Show a block cursor in overtype mode
+        https://bugs.webkit.org/show_bug.cgi?id=114819
+
+        Reviewed by Ryosuke Niwa.
+
+        Export three more WebCore symbols.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-29  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Windows, WinCairo] Remove pthread paths for WebKit build.
+        https://bugs.webkit.org/show_bug.cgi?id=115390
+
+        Reviewed by Tim Horton.
+
+        Update Visual Studio property sheets to remove include paths and
+        link references for the pthreadsVC2.dll, which is no longer used.
+
+
+        * WebKit.vcproj/WebKitExportGeneratorCommon.vsprops:
+        * WebKit.vcproj/WebKitLibCommon.vsprops:
+
+2013-04-30  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Stop using "in" keyword in IDL files
+        https://bugs.webkit.org/show_bug.cgi?id=115418
+
+        Reviewed by Kentaro Hara.
+
+        Remove "in" keyword from IDL files as this is no longer part of the Web
+        IDL specification.
+
+        * Interfaces/DOMEvents.idl:
+        * Interfaces/DOMPrivate.idl:
+        * Interfaces/DOMWindow.idl:
+
+2013-04-30  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Replace "Optional" extended attribute by proper Web IDL "optional" keyword
+        https://bugs.webkit.org/show_bug.cgi?id=115380
+
+        Reviewed by Kentaro Hara.
+
+        Replace [Optional] by optional.
+
+        * Interfaces/DOMWindow.idl:
+
+2013-04-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        StaticHashSetNodeList is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=115219
+
+        Reviewed by Antonio Gomes.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ConsoleMessage should include line and column number where possible
+        https://bugs.webkit.org/show_bug.cgi?id=114929
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::addMessageToConsole):
+        * WebCoreSupport/WebChromeClient.h:
+
+2013-04-24  Andreas Kling  <akling@apple.com>
+
+        Wild build fix attempt.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2013-04-22  Jessie Berlin  <jberlin@apple.com>
+
+        Speculative Windows build fix.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        Another Windows build fix after r148921
+
+        Unreviewed.
+
+        * AccessibleBase.cpp: Add missing header include.
+
+2013-04-22  Benjamin Poulain  <benjamin@webkit.org>
+
+        Remove the memory instrumentation code
+        https://bugs.webkit.org/show_bug.cgi?id=114931
+
+        Reviewed by Andreas Kling.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-21  Benjamin Poulain  <benjamin@webkit.org>
+
+        Improve StringImpl code density for older ARM hardware
+        https://bugs.webkit.org/show_bug.cgi?id=114898
+
+        Reviewed by Geoffrey Garen.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-17  Geoffrey Garen  <ggaren@apple.com>
+
+        Renamed JSGlobalData to VM
+        https://bugs.webkit.org/show_bug.cgi?id=114777
+
+        Reviewed by Phil Pizlo.
+
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::javaScriptObjectsCount):
+        (WebCoreStatistics::javaScriptGlobalObjectsCount):
+        (WebCoreStatistics::javaScriptProtectedObjectsCount):
+        (WebCoreStatistics::javaScriptProtectedGlobalObjectsCount):
+        (WebCoreStatistics::javaScriptProtectedObjectTypeCounts):
+        * WebJavaScriptCollector.cpp:
+        (WebJavaScriptCollector::objectCount):
+
+2013-04-13  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Build fix for Windows.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        * WebCoreSupport/WebDragClient.cpp:
+        * WebFrame.cpp:
+
+2013-04-16  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Windows] Unreviewed build correction.
+
+        * WebKit.vcproj/WebKitExportGeneratorCommon.vsprops: Add correct
+        ICU link library to avoid mixture of ICU 4.0 and 4.6 symbols
+        during link.
+
+2013-04-15  peavo@outlook.com  <peavo@outlook.com>
+
+        Crash when favicon is requested
+        https://bugs.webkit.org/show_bug.cgi?id=114624
+
+        Reviewed by Brent Fulgham.
+
+        * WebIconDatabase.cpp:
+        (WebIconDatabase::getOrCreateDefaultIconBitmap): Added NULL pointer check.
+
+2013-04-12  Anders Carlsson  <andersca@apple.com>
+
+        All tests crash on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=114522
+
+        Reviewed by Ryosuke Niwa.
+
+        In the MSVC++ ABI, a member function pointer will have a different size depending on whether the
+        class it belongs to is defined or not. Because of this, when passing member function pointers as parameters
+        it's important to ensure that the class is known by both the caller and the callee.
+
+        * WebFrame.cpp:
+        Include PolicyChecker.h
+
+2013-04-12  Jer Noble  <jer.noble@apple.com>
+
+        TimeRanges::nearest() returns incorrect results.
+        https://bugs.webkit.org/show_bug.cgi?id=114483
+
+        Reviewed by Eric Carlson.
+
+        Add symbols needed by WebCoreTestSupport to the exports list.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-11  Rune Lillesveen  <rune@opera.com>
+
+        Incorrect evaluation of resolution media queries
+        https://bugs.webkit.org/show_bug.cgi?id=114029
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Removed setResolutionOverride from exports.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-04-08  Anders Carlsson  <andersca@apple.com>
+
+        Remove unneeded headers from FrameLoader.h
+        https://bugs.webkit.org/show_bug.cgi?id=114223
+
+        Reviewed by Geoffrey Garen.
+
+        Include HistoryController.h from WebCore.
+
+        * WebView.cpp:
+
 2013-04-05  Roger Fong  <roger_fong@apple.com>
 
         Build fix.

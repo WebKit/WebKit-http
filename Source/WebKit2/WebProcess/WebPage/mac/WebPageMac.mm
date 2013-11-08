@@ -30,6 +30,7 @@
 #import "DataReference.h"
 #import "EditorState.h"
 #import "PDFKitImports.h"
+#import "PageBanner.h"
 #import "PluginView.h"
 #import "PrintInfo.h"
 #import "WKAccessibilityWebPageObject.h"
@@ -45,29 +46,30 @@
 #import <PDFKit/PDFKit.h>
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/AXObjectCache.h>
+#import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameView.h>
-#import <WebCore/HitTestResult.h>
 #import <WebCore/HTMLConverter.h>
+#import <WebCore/HitTestResult.h>
 #import <WebCore/KeyboardEvent.h>
+#import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/NetworkingContext.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformKeyboardEvent.h>
 #import <WebCore/PluginDocument.h>
-#import <WebCore/ResourceHandle.h>
 #import <WebCore/RenderObject.h>
 #import <WebCore/RenderStyle.h>
+#import <WebCore/ResourceHandle.h>
 #import <WebCore/ScrollView.h>
 #import <WebCore/StyleInheritedData.h>
 #import <WebCore/TextIterator.h>
-#import <WebCore/WindowsKeyboardCodes.h>
 #import <WebCore/VisibleUnits.h>
+#import <WebCore/WindowsKeyboardCodes.h>
 #import <WebKitSystemInterface.h>
 
 using namespace WebCore;
-using namespace std;
 
 namespace WebKit {
 
@@ -102,9 +104,9 @@ void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
 
     BOOL omitPDFSupport = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitOmitPDFSupport"];
     if (!shouldUsePDFPlugin() && !omitPDFSupport) {
-        // We want to use a PDF view in the UI process for PDF MIME types.
-        HashSet<String, CaseFoldingHash> mimeTypes = pdfAndPostScriptMIMETypes();
-        for (HashSet<String, CaseFoldingHash>::iterator it = mimeTypes.begin(); it != mimeTypes.end(); ++it)
+        // If we don't have PDFPlugin, we will use a PDF view in the UI process for PDF and PostScript MIME types.
+        HashSet<String> mimeTypes = MIMETypeRegistry::getPDFAndPostScriptMIMETypes();
+        for (HashSet<String>::iterator it = mimeTypes.begin(); it != mimeTypes.end(); ++it)
             m_mimeTypesWithCustomRepresentations.add(*it);
     }
 }
@@ -572,12 +574,12 @@ void WebPage::performDictionaryLookupForRange(DictionaryPopupInfo::Type type, Fr
 
     NSAttributedString *nsAttributedString = [WebHTMLConverter editingAttributedStringFromRange:range];
 
-    RetainPtr<NSMutableAttributedString> scaledNSAttributedString(AdoptNS, [[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
+    RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
 
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
 
     [nsAttributedString enumerateAttributesInRange:NSMakeRange(0, [nsAttributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
-        RetainPtr<NSMutableDictionary> scaledAttributes(AdoptNS, [attributes mutableCopy]);
+        RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
 
         NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
         if (font) {
@@ -716,7 +718,7 @@ bool WebPage::platformHasLocalDataForURL(const WebCore::KURL& url)
 
 static NSCachedURLResponse *cachedResponseForURL(WebPage* webPage, const KURL& url)
 {
-    RetainPtr<NSMutableURLRequest> request(AdoptNS, [[NSMutableURLRequest alloc] initWithURL:url]);
+    RetainPtr<NSMutableURLRequest> request = adoptNS([[NSMutableURLRequest alloc] initWithURL:url]);
     [request.get() setValue:(NSString *)webPage->userAgent() forHTTPHeaderField:@"User-Agent"];
 
     if (CFURLStorageSessionRef storageSession = webPage->corePage()->mainFrame()->loader()->networkingContext()->storageSession().platformSession())
@@ -836,8 +838,12 @@ void WebPage::setHeaderLayerWithHeight(CALayer *layer, int height)
 
     m_headerLayer = layer;
     GraphicsLayer* parentLayer = frameView->setWantsLayerForHeader(m_headerLayer);
-    if (!parentLayer)
+    if (!parentLayer) {
+        m_page->removeLayoutMilestones(DidFirstFlushForHeaderLayer);
         return;
+    }
+
+    m_page->addLayoutMilestones(DidFirstFlushForHeaderLayer);
 
     m_headerLayer.get().bounds = CGRectMake(0, 0, parentLayer->size().width(), parentLayer->size().height());
     [parentLayer->platformLayer() addSublayer:m_headerLayer.get()];
@@ -863,6 +869,24 @@ void WebPage::setFooterLayerWithHeight(CALayer *layer, int height)
 
     m_footerLayer.get().bounds = CGRectMake(0, 0, parentLayer->size().width(), parentLayer->size().height());
     [parentLayer->platformLayer() addSublayer:m_footerLayer.get()];
+}
+
+void WebPage::updateHeaderAndFooterLayersForDeviceScaleChange(float scaleFactor)
+{
+    if (m_headerLayer) {
+        m_headerLayer.get().contentsScale = scaleFactor;
+        [m_headerLayer.get() setNeedsDisplay];
+    }
+
+    if (m_footerLayer) {
+        m_footerLayer.get().contentsScale = scaleFactor;
+        [m_footerLayer.get() setNeedsDisplay];
+    }
+    
+    if (m_headerBanner)
+        m_headerBanner->didChangeDeviceScaleFactor(scaleFactor);
+    if (m_footerBanner)
+        m_footerBanner->didChangeDeviceScaleFactor(scaleFactor);
 }
 
 void WebPage::computePagesForPrintingPDFDocument(uint64_t frameID, const PrintInfo& printInfo, Vector<IntRect>& resultPageRects)
@@ -908,7 +932,7 @@ static void drawPDFPage(PDFDocument *pdfDocument, CFIndex pageIndex, CGContextRe
 
     bool shouldRotate = (paperSize.width < paperSize.height) != (cropBox.size.width < cropBox.size.height);
     if (shouldRotate)
-        swap(cropBox.size.width, cropBox.size.height);
+        std::swap(cropBox.size.width, cropBox.size.height);
 
     // Center.
     CGFloat widthDifference = paperSize.width / pageSetupScaleFactor - cropBox.size.width;
@@ -970,24 +994,12 @@ void WebPage::drawPagesToPDFFromPDFDocument(CGContextRef context, PDFDocument *p
         if (page >= pageCount)
             break;
 
-        RetainPtr<CFDictionaryRef> pageInfo(AdoptCF, CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        RetainPtr<CFDictionaryRef> pageInfo = adoptCF(CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 
         CGPDFContextBeginPage(context, pageInfo.get());
         drawPDFPage(pdfDocument, page, context, printInfo.pageSetupScaleFactor, CGSizeMake(printInfo.availablePaperWidth, printInfo.availablePaperHeight));
         CGPDFContextEndPage(context);
     }
-}
-
-// FIXME: This is not the ideal place for this function (and now it's duplicated here and in WebContextMac).
-HashSet<String, CaseFoldingHash> WebPage::pdfAndPostScriptMIMETypes()
-{
-    HashSet<String, CaseFoldingHash> mimeTypes;
-    
-    mimeTypes.add("application/pdf");
-    mimeTypes.add("application/postscript");
-    mimeTypes.add("text/pdf");
-    
-    return mimeTypes;
 }
 
 } // namespace WebKit

@@ -46,7 +46,7 @@ private:
     virtual void layerHostingModeDidChange() OVERRIDE;
     virtual void visibilityDidChange() OVERRIDE;
     virtual void sizeDidChange() OVERRIDE;
-    virtual void waitForPossibleGeometryUpdate() OVERRIDE;
+    virtual void waitForPossibleGeometryUpdate(double timeout = didUpdateBackingStoreStateTimeout) OVERRIDE;
     virtual void colorSpaceDidChange() OVERRIDE;
     virtual void minimumLayoutWidthDidChange() OVERRIDE;
 
@@ -65,6 +65,7 @@ private:
 
     // The last size we sent to the web process.
     WebCore::IntSize m_lastSentSize;
+    WebCore::IntSize m_lastSentLayerPosition;
 
     // The last minimum layout width we sent to the web process.
     double m_lastSentMinimumLayoutWidth;

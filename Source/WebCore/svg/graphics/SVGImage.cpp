@@ -36,6 +36,7 @@
 #include "ImageObserver.h"
 #include "IntRect.h"
 #include "RenderSVGRoot.h"
+#include "RenderStyle.h"
 #include "SVGDocument.h"
 #include "SVGImageChromeClient.h"
 #include "SVGSVGElement.h"
@@ -141,7 +142,7 @@ void SVGImage::drawForContainer(GraphicsContext* context, const FloatSize contai
     setImageObserver(observer);
 }
 
-#if USE(SKIA) || USE(CAIRO)
+#if USE(CAIRO)
 // Passes ownership of the native image to the caller so PassNativeImagePtr needs
 // to be a smart pointer type.
 PassNativeImagePtr SVGImage::nativeImageForCurrentFrame()
@@ -366,14 +367,6 @@ bool SVGImage::dataChanged(bool allDataReceived)
 String SVGImage::filenameExtension() const
 {
     return "svg";
-}
-
-void SVGImage::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceImage);
-    Image::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_chromeClient, "chromeClient");
-    info.addMember(m_page, "page");
 }
 
 }

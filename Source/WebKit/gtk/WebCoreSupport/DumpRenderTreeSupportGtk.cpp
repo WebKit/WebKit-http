@@ -32,6 +32,7 @@
 #include "ChromeClientGtk.h"
 #include "DOMWrapperWorld.h"
 #include "Document.h"
+#include "Editor.h"
 #include "EditorClientGtk.h"
 #include "Element.h"
 #include "FocusController.h"
@@ -476,8 +477,8 @@ void DumpRenderTreeSupportGtk::gcCollectJavascriptObjectsOnAlternateThread(bool 
 
 unsigned long DumpRenderTreeSupportGtk::gcCountJavascriptObjects()
 {
-    JSC::JSLockHolder lock(JSDOMWindow::commonJSGlobalData());
-    return JSDOMWindow::commonJSGlobalData()->heap.objectCount();
+    JSC::JSLockHolder lock(JSDOMWindow::commonVM());
+    return JSDOMWindow::commonVM()->heap.objectCount();
 }
 
 void DumpRenderTreeSupportGtk::layoutFrame(WebKitWebFrame* frame)
@@ -738,4 +739,15 @@ void DumpRenderTreeSupportGtk::setFrameLoadEventCallback(FrameLoadEventCallback 
 void DumpRenderTreeSupportGtk::setAuthenticationCallback(AuthenticationCallback authenticationCallback)
 {
     s_authenticationCallback = authenticationCallback;
+}
+
+void DumpRenderTreeSupportGtk::setPageVisibility(WebKitWebView* webView, WebCore::PageVisibilityState visibilityState, bool isInitialState)
+{
+#if ENABLE(PAGE_VISIBILITY_API)
+    Page* page = core(webView);
+    if (!page)
+        return;
+
+    page->setVisibilityState(visibilityState, isInitialState);
+#endif
 }

@@ -535,7 +535,7 @@ void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChall
     RefPtr<ResourceLoader> protector(this);
 
     if (m_options.allowCredentials == AllowStoredCredentials) {
-        if (m_options.crossOriginCredentialPolicy == AskClientForCrossOriginCredentials || m_frame->document()->securityOrigin()->canRequest(originalRequest().url())) {
+        if (m_options.clientCredentialPolicy == AskClientForAllCredentials || (m_options.clientCredentialPolicy == DoNotAskClientForCrossOriginCredentials && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()))) {
             frameLoader()->notifier()->didReceiveAuthenticationChallenge(this, challenge);
             return;
         }
@@ -569,19 +569,6 @@ bool ResourceLoader::canAuthenticateAgainstProtectionSpace(const ProtectionSpace
 void ResourceLoader::receivedCancellation(const AuthenticationChallenge&)
 {
     cancel();
-}
-
-void ResourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
-    info.addMember(m_handle, "handle");
-    info.addMember(m_frame, "frame");
-    info.addMember(m_documentLoader, "documentLoader");
-    info.addMember(m_request, "request");
-    info.addMember(m_originalRequest, "originalRequest");
-    info.addMember(m_resourceData, "resourceData");
-    info.addMember(m_deferredRequest, "deferredRequest");
-    info.addMember(m_options, "options");
 }
 
 }

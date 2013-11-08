@@ -25,6 +25,7 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=SHADOW_DOM,
     JSGenerateToJSObject
 ] interface ShadowRoot : DocumentFragment {
@@ -36,15 +37,15 @@
     attribute DOMString innerHTML setter raises(DOMException);
 
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    Node cloneNode(in [Optional=DefaultIsUndefined] boolean deep) raises(DOMException);
+    Node cloneNode([Default=Undefined] optional boolean deep) raises(DOMException);
 #endif
     DOMSelection getSelection();
-    Element getElementById(in [Optional=DefaultIsUndefined] DOMString elementId);
-    NodeList getElementsByClassName(in [Optional=DefaultIsUndefined] DOMString className);
-    NodeList getElementsByTagName(in [Optional=DefaultIsUndefined] DOMString tagName);
-    NodeList getElementsByTagNameNS(in [TreatNullAs=NullString,Optional=DefaultIsUndefined] DOMString namespaceURI,
-                                    in [Optional=DefaultIsUndefined] DOMString localName);
+    Element getElementById([Default=Undefined] optional DOMString elementId);
+    NodeList getElementsByClassName([Default=Undefined] optional DOMString className);
+    NodeList getElementsByTagName([Default=Undefined] optional DOMString tagName);
+    NodeList getElementsByTagNameNS([TreatNullAs=NullString,Default=Undefined] optional DOMString namespaceURI,
+                                    [Default=Undefined] optional DOMString localName);
 
-    Element elementFromPoint(in [Optional=DefaultIsUndefined] long x, 
-                             in [Optional=DefaultIsUndefined] long y);
+    Element elementFromPoint([Default=Undefined] optional long x, 
+                             [Default=Undefined] optional long y);
 };

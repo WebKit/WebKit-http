@@ -24,6 +24,7 @@
 
 // OscillatorNode is an audio generator of periodic waveforms.
 [
+    NoInterfaceObject,
     Conditional=WEB_AUDIO,
     JSGenerateToJSObject
 ] interface OscillatorNode : AudioSourceNode {
@@ -48,14 +49,12 @@
     readonly attribute AudioParam frequency; // in Hertz
     readonly attribute AudioParam detune; // in Cents
 
-    void start(in double when);
-    void stop(in double when);
+    void start(double when);
+    void stop(double when);
 
-#if defined(ENABLE_LEGACY_WEB_AUDIO) && ENABLE_LEGACY_WEB_AUDIO
-    void noteOn(in double when);
-    void noteOff(in double when);
-#endif
+    [Conditional=LEGACY_WEB_AUDIO] void noteOn(double when);
+    [Conditional=LEGACY_WEB_AUDIO] void noteOff(double when);
 
-    void setWaveTable(in WaveTable waveTable);
+    void setWaveTable(WaveTable waveTable);
 
 };

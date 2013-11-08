@@ -19,10 +19,11 @@
 #include "config.h"
 #include "InRegionScrollableArea.h"
 
+#include "DOMSupport.h"
 #include "Document.h"
 #include "Frame.h"
-#include "LayerWebKitThread.h"
 #include "InRegionScroller_p.h"
+#include "LayerWebKitThread.h"
 #include "RenderBox.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
@@ -118,7 +119,7 @@ InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLa
         m_scrollsVertically = box->scrollHeight() != box->clientHeight();
 
         // Check the overflow if its not an input field because overflow can be set to hidden etc. by the content.
-        if (!box->node() || !box->node()->rendererIsEditable()) {
+        if (!DOMSupport::isShadowHostTextInputElement(box->node())) {
             m_scrollsHorizontally = m_scrollsHorizontally && box->scrollsOverflowX();
             m_scrollsVertically = m_scrollsVertically && box->scrollsOverflowY();
         }
@@ -130,11 +131,12 @@ InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLa
             m_forceContentToBeHorizontallyScrollable = m_scrollsHorizontally;
             m_forceContentToBeVerticallyScrollable = m_scrollsVertically;
             // Force content to be scrollable even if it doesn't need to scroll in either direction.
-            if (!m_scrollsHorizontally && !m_scrollsVertically)
+            if (!m_scrollsHorizontally && !m_scrollsVertically) {
                 if (box->scrollsOverflowY())
                     m_forceContentToBeVerticallyScrollable = true;
                 else if (box->scrollsOverflowX()) // If it's already forced scrollable vertically, don't force it to scroll horizontally
                     m_forceContentToBeHorizontallyScrollable = true;
+            }
             m_supportsCompositedScrolling = true;
             ASSERT(m_layer->backing()->hasScrollingLayer());
             m_camouflagedCompositedScrollableLayer = reinterpret_cast<unsigned>(m_layer->backing()->scrollingContentsLayer()->platformLayer());

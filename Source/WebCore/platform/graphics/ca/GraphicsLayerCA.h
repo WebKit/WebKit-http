@@ -133,8 +133,10 @@ public:
 
     struct CommitState {
         bool ancestorHasTransformAnimation;
+        int treeDepth;
         CommitState()
             : ancestorHasTransformAnimation(false)
+            , treeDepth(0)
         { }
     };
     void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
@@ -203,7 +205,7 @@ private:
     PassRefPtr<PlatformCAAnimation> createKeyframeAnimation(const Animation*, const String&, bool additive);
     void setupAnimation(PlatformCAAnimation*, const Animation*, bool additive);
     
-    const TimingFunction* timingFunctionForAnimationValue(const AnimationValue*, const Animation*);
+    const TimingFunction* timingFunctionForAnimationValue(const AnimationValue&, const Animation&);
     
     bool setAnimationEndpoints(const KeyframeValueList&, const Animation*, PlatformCAAnimation*);
     bool setAnimationKeyframes(const KeyframeValueList&, const Animation*, PlatformCAAnimation*);
@@ -223,12 +225,10 @@ private:
         return m_runningAnimations.find(animationName) != m_runningAnimations.end();
     }
 
-    void commitLayerChangesBeforeSublayers(float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect);
-    void commitLayerChangesAfterSublayers();
+    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase, const FloatRect& oldVisibleRect);
+    void commitLayerChangesAfterSublayers(CommitState&);
 
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
-
-    FloatSize constrainedSize() const;
 
     bool requiresTiledLayer(float pageScaleFactor) const;
     void swapFromOrToTiledLayer(bool useTiledLayer);
@@ -250,7 +250,7 @@ private:
     FloatRect computeVisibleRect(TransformState&, ComputeVisibleRectFlags = RespectAnimatingTransforms) const;
     const FloatRect& visibleRect() const { return m_visibleRect; }
     
-    FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatSize& oldSize) const;
+    static FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize);
 
     bool recursiveVisibleRectChangeRequiresFlush(const TransformState&) const;
 
@@ -322,7 +322,7 @@ private:
     
     // All these "update" methods will be called inside a BEGIN_BLOCK_OBJC_EXCEPTIONS/END_BLOCK_OBJC_EXCEPTIONS block.
     void updateLayerNames();
-    void updateSublayerList();
+    void updateSublayerList(bool maxLayerDepthReached = false);
     void updateGeometry(float pixelAlignmentScale, const FloatPoint& positionRelativeToBase);
     void updateTransform();
     void updateChildrenTransform();

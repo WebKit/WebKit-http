@@ -1,4 +1,5 @@
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/accessibility/win"
     "${WEBCORE_DIR}/platform/wince"
     "${WEBCORE_DIR}/platform/win"
     "${WEBCORE_DIR}/platform/graphics/wince"
@@ -16,6 +17,10 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
+    accessibility/win/AccessibilityObjectWin.cpp
+
+    html/HTMLSelectElementWin.cpp
+
     page/win/DragControllerWin.cpp
     page/win/EventHandlerWin.cpp
     page/wince/FrameWinCE.cpp
@@ -76,6 +81,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/opentype/OpenTypeUtilities.cpp
 
+    platform/graphics/win/DIBPixelData.cpp
     platform/graphics/win/GDIExtras.cpp
     platform/graphics/win/IconWin.cpp
     platform/graphics/win/ImageWin.cpp
@@ -98,9 +104,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/wince/SimpleFontDataWince.cpp
 
     platform/text/LocaleNone.cpp
-    platform/text/TextEncodingDetectorNone.cpp
-
-    platform/text/wchar/TextBreakIteratorWchar.cpp
 
     platform/text/win/TextCodecWin.cpp
 )

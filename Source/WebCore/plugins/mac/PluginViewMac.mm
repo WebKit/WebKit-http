@@ -85,11 +85,6 @@ extern Q_GUI_EXPORT CGContextRef qt_mac_cg_context(const QPaintDevice *pdev); //
 QT_END_NAMESPACE
 #endif
 
-#if PLATFORM(WX)
-#include <wx/defs.h>
-#include <wx/wx.h>
-#endif
-
 using std::min;
 
 using namespace WTF;
@@ -111,9 +106,6 @@ static inline WindowRef nativeWindowFor(PlatformWidget widget)
 #else
         return static_cast<WindowRef>(qt_mac_window_for(widget));
 #endif
-#elif PLATFORM(WX)
-    if (widget)
-        return (WindowRef)widget->MacGetTopLevelWindowRef();
 #endif
     return 0;
 }
@@ -124,10 +116,6 @@ static inline CGContextRef cgHandleFor(PlatformWidget widget)
     if (widget)
         return (CGContextRef)static_cast<QWidget*>(widget)->macCGHandle();
 #endif
-#if PLATFORM(WX)
-    if (widget)
-        return (CGContextRef)widget->MacGetCGContextRef();
-#endif
     return 0;
 }
 
@@ -137,12 +125,6 @@ static inline IntPoint topLevelOffsetFor(PlatformWidget widget)
     if (widget) {
         QWidget* topLevel = static_cast<QWidget*>(widget)->window();
         return static_cast<QWidget*>(widget)->mapTo(topLevel, QPoint(0, 0)) + topLevel->geometry().topLeft() - topLevel->pos();
-    }
-#endif
-#if PLATFORM(WX)
-    if (widget) {
-        PlatformWidget toplevel = wxGetTopLevelParent(widget);
-        return toplevel->ScreenToClient(widget->GetScreenPosition());
     }
 #endif
     return IntPoint();
@@ -243,10 +225,6 @@ bool PluginView::platformStart()
         if (QWidget* widget = qobject_cast<QWidget*>(client->pluginParent()))
             setPlatformPluginWidget(widget);
     }
-#endif
-#if PLATFORM(WX)
-    if (wxWindow* widget = m_parentFrame->view()->hostWindow()->platformPageClient())
-        setPlatformPluginWidget(widget);
 #endif
 
     // Create a fake window relative to which all events will be sent when using offscreen rendering
@@ -495,7 +473,7 @@ void PluginView::setNPWindowIfNeeded()
             m_npWindow.clipRect.right - m_npWindow.clipRect.left, m_npWindow.clipRect.bottom - m_npWindow.clipRect.top);
 
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
     m_plugin->pluginFuncs()->setwindow(m_instance, &m_npWindow);
     setCallingPlugin(false);
@@ -875,7 +853,7 @@ void PluginView::handleKeyboardEvent(KeyboardEvent* event)
             return;
         }
         
-        WTF::RetainPtr<CFStringRef> cfText(WTF::AdoptCF, text.createCFString());
+        WTF::RetainPtr<CFStringRef> cfText = adoptCF(text.createCFString());
         
         LOG(Plugins, "PV::hKE(): PKE.text: %s, PKE.unmodifiedText: %s, PKE.keyIdentifier: %s",
             text.ascii().data(), platformEvent->unmodifiedText().ascii().data(),
@@ -1018,18 +996,6 @@ Point PluginView::globalMousePosForPlugin() const
     Point pos;
     GetGlobalMouse(&pos);
 
-#if PLATFORM(WX)
-    // make sure the titlebar/toolbar size is included
-    WindowRef windowRef = nativeWindowFor(platformPluginWidget());
-    ::Rect content, structure;
-
-    GetWindowBounds(windowRef, kWindowStructureRgn, &structure);
-    GetWindowBounds(windowRef, kWindowContentRgn, &content);
-
-    int top = content.top  - structure.top;
-    pos.v -= top;
-#endif
-
     return pos;
 }
 #endif
@@ -1060,7 +1026,7 @@ Point PluginView::mousePosForPlugin(MouseEvent* event) const
 bool PluginView::dispatchNPEvent(NPEvent& event)
 {
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
 
     bool accepted = m_plugin->pluginFuncs()->event(m_instance, &event);
@@ -1075,7 +1041,7 @@ bool PluginView::dispatchNPEvent(NPEvent& event)
 int16_t PluginView::dispatchNPCocoaEvent(NPCocoaEvent& cocoaEvent)
 {
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
 
     int16_t response = m_plugin->pluginFuncs()->event(m_instance, &cocoaEvent);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2007, 2008, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2007, 2008, 2011, 2012, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Research In Motion Limited. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,12 +29,10 @@
 
 #include "DecodeEscapeSequences.h"
 #include "MIMETypeRegistry.h"
-#include "PlatformMemoryInstrumentation.h"
 #include "TextEncoding.h"
 #include <stdio.h>
 #include <wtf/HashMap.h>
 #include <wtf/HexNumber.h>
-#include <wtf/MemoryInstrumentationString.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
@@ -631,7 +629,7 @@ String KURL::baseAsString() const
     return m_string.left(m_pathAfterLastSlash);
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(QT) && !USE(CF)
+#if !PLATFORM(QT) && !USE(CF)
 String KURL::fileSystemPath() const
 {
     if (!isValid() || !isLocalFile())
@@ -702,7 +700,7 @@ bool KURL::setProtocol(const String& s)
         return false;
 
     if (!m_isValid) {
-        parse(newProtocol + ":" + m_string);
+        parse(newProtocol + ':' + m_string);
         return true;
     }
 
@@ -1891,7 +1889,7 @@ String mimeTypeFromDataURL(const String& url)
         index = url.find(',');
     if (index != notFound) {
         if (index > 5)
-            return url.substring(5, index - 5);
+            return url.substring(5, index - 5).lower();
         return "text/plain"; // Data URLs with no MIME type are considered text/plain.
     }
     return "";
@@ -1904,12 +1902,6 @@ String mimeTypeFromURL(const KURL& url)
 
     // We don't use MIMETypeRegistry::getMIMETypeForPath() because it returns "application/octet-stream" upon failure
     return MIMETypeRegistry::getMIMETypeForExtension(extension);
-}
-
-void KURL::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this);
-    info.addMember(m_string, "string");
 }
 
 bool KURL::isSafeToSendToAnotherThread() const

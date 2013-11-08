@@ -73,6 +73,7 @@
 #import "WebViewInternal.h"
 #import <AppKit/NSAccessibility.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <WebCore/CSSStyleDeclaration.h>
 #import <WebCore/CachedImage.h>
 #import <WebCore/CachedResourceClient.h>
 #import <WebCore/CachedResourceLoader.h>
@@ -80,7 +81,6 @@
 #import <WebCore/ColorMac.h>
 #import <WebCore/ContextMenu.h>
 #import <WebCore/ContextMenuController.h>
-#import <WebCore/CSSStyleDeclaration.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentFragment.h>
 #import <WebCore/DocumentMarkerController.h>
@@ -95,6 +95,7 @@
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameSelection.h>
+#import <WebCore/FrameSnapshottingMac.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLConverter.h>
 #import <WebCore/HTMLNames.h>
@@ -106,8 +107,8 @@
 #import <WebCore/Page.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/Range.h>
-#import <WebCore/RenderWidget.h>
 #import <WebCore/RenderView.h>
+#import <WebCore/RenderWidget.h>
 #import <WebCore/ResourceBuffer.h>
 #import <WebCore/RunLoop.h>
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -1809,7 +1810,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 {
     if (![self _hasSelection])
         return nil;
-    NSImage *dragImage = core([self _frame])->selectionImage();
+    NSImage *dragImage = selectionImage(core([self _frame]));
     [dragImage _web_dissolveToFraction:WebDragImageAlpha];
     return dragImage;
 }
@@ -3152,6 +3153,16 @@ static void setMenuTargets(NSMenu* menu)
     return [[self _webView] drawsBackground];
 }
 
+- (void)setLayer:(CALayer *)layer
+{
+    if (Frame* frame = core([self _frame])) {
+        if (FrameView* view = frame->view())
+            view->setPaintsEntireContents(layer);
+    }
+
+    [super setLayer:layer];
+}
+
 #if !LOG_DISABLED
 - (void)setNeedsDisplay:(BOOL)flag
 {
@@ -4335,11 +4346,11 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     int underlineInt = [[dictionary objectForKey:NSUnderlineStyleAttributeName] intValue];
     // FIXME: Underline wins here if we have both (see bug 3790443).
     if (strikethroughInt == NSUnderlineStyleNone && underlineInt == NSUnderlineStyleNone)
-        [style setProperty:@"-khtml-text-decorations-in-effect" value:@"none" priority:@""];
+        [style setProperty:@"-webkit-text-decorations-in-effect" value:@"none" priority:@""];
     else if (underlineInt == NSUnderlineStyleNone)
-        [style setProperty:@"-khtml-text-decorations-in-effect" value:@"line-through" priority:@""];
+        [style setProperty:@"-webkit-text-decorations-in-effect" value:@"line-through" priority:@""];
     else
-        [style setProperty:@"-khtml-text-decorations-in-effect" value:@"underline" priority:@""];
+        [style setProperty:@"-webkit-text-decorations-in-effect" value:@"underline" priority:@""];
 
     return style;
 }
@@ -4348,7 +4359,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 {
     if (Frame* coreFrame = core([self _frame])) {
         // FIXME: We shouldn't have to make a copy here. We want callers of this function to work directly with StylePropertySet eventually.
-        coreFrame->editor()->applyStyleToSelection(core(style)->copy().get(), undoAction);
+        coreFrame->editor()->applyStyleToSelection(core(style)->copyProperties().get(), undoAction);
     }
 }
 
@@ -4587,10 +4598,10 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     int sb = [[b objectForKey:NSStrikethroughStyleAttributeName] intValue];
     if (sa == sb) {
         if (sa == NSUnderlineStyleNone)
-            [style setProperty:@"-khtml-text-decorations-in-effect" value:@"none" priority:@""]; 
+            [style setProperty:@"-webkit-text-decorations-in-effect" value:@"none" priority:@""];
             // we really mean "no line-through" rather than "none"
         else
-            [style setProperty:@"-khtml-text-decorations-in-effect" value:@"line-through" priority:@""];
+            [style setProperty:@"-webkit-text-decorations-in-effect" value:@"line-through" priority:@""];
             // we really mean "add line-through" rather than "line-through"
     }
 
@@ -4609,10 +4620,10 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     int ub = [[b objectForKey:NSUnderlineStyleAttributeName] intValue];
     if (ua == ub) {
         if (ua == NSUnderlineStyleNone)
-            [style setProperty:@"-khtml-text-decorations-in-effect" value:@"none" priority:@""];
+            [style setProperty:@"-webkit-text-decorations-in-effect" value:@"none" priority:@""];
             // we really mean "no underline" rather than "none"
         else
-            [style setProperty:@"-khtml-text-decorations-in-effect" value:@"underline" priority:@""];
+            [style setProperty:@"-webkit-text-decorations-in-effect" value:@"underline" priority:@""];
             // we really mean "add underline" rather than "underline"
     }
 
@@ -4650,7 +4661,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     if ([[webView _editingDelegateForwarder] webView:webView shouldApplyStyle:style toElementsInDOMRange:range]) {
         if (Frame* coreFrame = core([self _frame])) {
             // FIXME: We shouldn't have to make a copy here.
-            coreFrame->editor()->applyStyle(core(style)->copy().get(), [self _undoActionFromColorPanelWithSelector:selector]);
+            coreFrame->editor()->applyStyle(core(style)->copyProperties().get(), [self _undoActionFromColorPanelWithSelector:selector]);
         }
     }
 
@@ -5925,7 +5936,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 {
     if (![self _hasSelection])
         return nil;
-    return core([self _frame])->selectionImage(forceBlackText);
+    return selectionImage(core([self _frame]), forceBlackText);
 }
 
 - (NSRect)selectionImageRect

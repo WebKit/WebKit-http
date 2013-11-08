@@ -46,13 +46,26 @@ namespace JSC {
     
 const CFTimeInterval HeapTimer::s_decade = 60 * 60 * 24 * 365 * 10;
 
-HeapTimer::HeapTimer(JSGlobalData* globalData, CFRunLoopRef runLoop)
-    : m_globalData(globalData)
+static const void* retainAPILock(const void* info)
+{
+    static_cast<JSLock*>(const_cast<void*>(info))->ref();
+    return info;
+}
+
+static void releaseAPILock(const void* info)
+{
+    static_cast<JSLock*>(const_cast<void*>(info))->deref();
+}
+
+HeapTimer::HeapTimer(VM* vm, CFRunLoopRef runLoop)
+    : m_vm(vm)
     , m_runLoop(runLoop)
 {
     memset(&m_context, 0, sizeof(CFRunLoopTimerContext));
-    m_context.info = this;
-    m_timer.adoptCF(CFRunLoopTimerCreate(0, s_decade, s_decade, 0, 0, HeapTimer::timerDidFire, &m_context));
+    m_context.info = &vm->apiLock();
+    m_context.retain = retainAPILock;
+    m_context.release = releaseAPILock;
+    m_timer = adoptCF(CFRunLoopTimerCreate(0, s_decade, s_decade, 0, 0, HeapTimer::timerDidFire, &m_context));
     CFRunLoopAddTimer(m_runLoop.get(), m_timer.get(), kCFRunLoopCommonModes);
 }
 
@@ -62,54 +75,38 @@ HeapTimer::~HeapTimer()
     CFRunLoopTimerInvalidate(m_timer.get());
 }
 
-void HeapTimer::synchronize()
+void HeapTimer::timerDidFire(CFRunLoopTimerRef timer, void* context)
 {
-    if (CFRunLoopGetCurrent() == m_runLoop.get())
-        return;
-    CFRunLoopRemoveTimer(m_runLoop.get(), m_timer.get(), kCFRunLoopCommonModes);
-    m_runLoop = CFRunLoopGetCurrent();
-    CFRunLoopAddTimer(m_runLoop.get(), m_timer.get(), kCFRunLoopCommonModes);
-}
+    JSLock* apiLock = static_cast<JSLock*>(context);
+    apiLock->lock();
 
-void HeapTimer::invalidate()
-{
-    m_globalData = 0;
-    CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() - s_decade);
-}
-
-void HeapTimer::didStartVMShutdown()
-{
-    if (CFRunLoopGetCurrent() == m_runLoop.get()) {
-        invalidate();
-        delete this;
+    VM* vm = apiLock->vm();
+    // The VM has been destroyed, so we should just give up.
+    if (!vm) {
+        apiLock->unlock();
         return;
     }
-    ASSERT(!m_globalData->apiLock().currentThreadIsHoldingLock());
-    MutexLocker locker(m_shutdownMutex);
-    invalidate();
-}
 
-void HeapTimer::timerDidFire(CFRunLoopTimerRef, void* info)
-{
-    HeapTimer* agent = static_cast<HeapTimer*>(info);
-    agent->m_shutdownMutex.lock();
-    if (!agent->m_globalData) {
-        agent->m_shutdownMutex.unlock();
-        delete agent;
-        return;
-    }
+    HeapTimer* heapTimer = 0;
+    if (vm->heap.activityCallback()->m_timer.get() == timer)
+        heapTimer = vm->heap.activityCallback();
+    else if (vm->heap.sweeper()->m_timer.get() == timer)
+        heapTimer = vm->heap.sweeper();
+    else
+        RELEASE_ASSERT_NOT_REACHED();
+
     {
-        // We don't ref here to prevent us from resurrecting the ref count of a "dead" JSGlobalData.
-        APIEntryShim shim(agent->m_globalData, APIEntryShimWithoutLock::DontRefGlobalData);
-        agent->doWork();
+        APIEntryShim shim(vm);
+        heapTimer->doWork();
     }
-    agent->m_shutdownMutex.unlock();
+
+    apiLock->unlock();
 }
 
 #elif PLATFORM(BLACKBERRY)
 
-HeapTimer::HeapTimer(JSGlobalData* globalData)
-    : m_globalData(globalData)
+HeapTimer::HeapTimer(VM* vm)
+    : m_vm(vm)
     , m_timer(this, &HeapTimer::timerDidFire)
 {
     // FIXME: Implement HeapTimer for other threads.
@@ -126,23 +123,14 @@ void HeapTimer::timerDidFire()
     doWork();
 }
 
-void HeapTimer::synchronize()
-{
-}
-
 void HeapTimer::invalidate()
 {
 }
 
-void HeapTimer::didStartVMShutdown()
-{
-    delete this;
-}
-
 #elif PLATFORM(QT)
 
-HeapTimer::HeapTimer(JSGlobalData* globalData)
-    : m_globalData(globalData)
+HeapTimer::HeapTimer(VM* vm)
+    : m_vm(vm)
     , m_newThread(0)
     , m_mutex(QMutex::NonRecursive)
 {
@@ -153,6 +141,8 @@ HeapTimer::HeapTimer(JSGlobalData* globalData)
 
 HeapTimer::~HeapTimer()
 {
+    QMutexLocker lock(&m_mutex);
+    m_timer.stop();
 }
 
 void HeapTimer::timerEvent(QTimerEvent*)
@@ -163,7 +153,7 @@ void HeapTimer::timerEvent(QTimerEvent*)
         return;
     }
 
-    APIEntryShim shim(m_globalData, APIEntryShimWithoutLock::DontRefGlobalData);
+    APIEntryShim shim(m_vm);
     doWork();
 }
 
@@ -175,49 +165,13 @@ void HeapTimer::customEvent(QEvent*)
     m_newThread = 0;
 }
 
-void HeapTimer::synchronize()
-{
-    if (thread() != QThread::currentThread()) {
-        // We can only move from the objects own thread to another, so we fire an
-        // event into the owning thread to trigger the move.
-        // This must be processed before any timerEvents so giving it high priority.
-        QMutexLocker lock(&m_mutex);
-        m_newThread = QThread::currentThread();
-        QCoreApplication::postEvent(this, new QEvent(QEvent::User), Qt::HighEventPriority);
-    }
-}
-
-void HeapTimer::invalidate()
-{
-    QMutexLocker lock(&m_mutex);
-    m_timer.stop();
-}
-
-void HeapTimer::didStartVMShutdown()
-{
-    invalidate();
-    if (thread() == QThread::currentThread())
-        delete this;
-    else
-        deleteLater();
-}
-
 #else
-HeapTimer::HeapTimer(JSGlobalData* globalData)
-    : m_globalData(globalData)
+HeapTimer::HeapTimer(VM* vm)
+    : m_vm(vm)
 {
 }
 
 HeapTimer::~HeapTimer()
-{
-}
-
-void HeapTimer::didStartVMShutdown()
-{
-    delete this;
-}
-
-void HeapTimer::synchronize()
 {
 }
 

@@ -39,7 +39,7 @@ namespace JSC {
 bool checkSyntax(ExecState* exec, const SourceCode& source, JSValue* returnedException)
 {
     JSLockHolder lock(exec);
-    RELEASE_ASSERT(exec->globalData().identifierTable == wtfThreadData().currentIdentifierTable());
+    RELEASE_ASSERT(exec->vm().identifierTable == wtfThreadData().currentIdentifierTable());
 
     ProgramExecutable* program = ProgramExecutable::create(exec, source);
     JSObject* error = program->checkSyntax(exec);
@@ -51,21 +51,29 @@ bool checkSyntax(ExecState* exec, const SourceCode& source, JSValue* returnedExc
 
     return true;
 }
+    
+bool checkSyntax(VM& vm, const SourceCode& source, ParserError& error)
+{
+    JSLockHolder lock(vm);
+    RELEASE_ASSERT(vm.identifierTable == wtfThreadData().currentIdentifierTable());
+    RefPtr<ProgramNode> programNode = parse<ProgramNode>(&vm, source, 0, Identifier(), JSParseNormal, JSParseProgramCode, error);
+    return programNode;
+}
 
 JSValue evaluate(ExecState* exec, const SourceCode& source, JSValue thisValue, JSValue* returnedException)
 {
     JSLockHolder lock(exec);
-    RELEASE_ASSERT(exec->globalData().identifierTable == wtfThreadData().currentIdentifierTable());
-    RELEASE_ASSERT(!exec->globalData().isCollectorBusy());
+    RELEASE_ASSERT(exec->vm().identifierTable == wtfThreadData().currentIdentifierTable());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
 
     CodeProfiling profile(source);
 
     ProgramExecutable* program = ProgramExecutable::create(exec, source);
     if (!program) {
         if (returnedException)
-            *returnedException = exec->globalData().exception;
+            *returnedException = exec->vm().exception;
 
-        exec->globalData().exception = JSValue();
+        exec->vm().exception = JSValue();
         return jsUndefined();
     }
 

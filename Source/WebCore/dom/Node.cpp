@@ -107,7 +107,6 @@
 #include "UIEvent.h"
 #include "UIEventWithKeyState.h"
 #include "UserActionElementSet.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include "WheelEvent.h"
 #include "WindowEventContext.h"
 #include "XMLNames.h"
@@ -132,7 +131,7 @@
 #include "InspectorController.h"
 #endif
 
-#include <runtime/JSGlobalData.h>
+#include <runtime/VM.h>
 #include <runtime/Operations.h>
 
 #if ENABLE(MICRODATA)
@@ -800,15 +799,6 @@ bool Node::hasNonEmptyBoundingBox() const
             return true;
 
     return false;
-}
-
-inline static ShadowRoot* oldestShadowRootFor(const Node* node)
-{
-    if (!node->isElementNode())
-        return 0;
-    if (ElementShadow* shadow = toElement(node)->shadow())
-        return shadow->oldestShadowRoot();
-    return 0;
 }
 
 inline void Node::setStyleChange(StyleChangeType changeType)
@@ -1975,7 +1965,7 @@ void Node::showNodePathForThis() const
         const Node* node = chain[index - 1];
         if (node->isShadowRoot()) {
             int count = 0;
-            for (ShadowRoot* shadowRoot = oldestShadowRootFor(toShadowRoot(node)->host()); shadowRoot && shadowRoot != node; shadowRoot = shadowRoot->youngerShadowRoot())
+            for (const ShadowRoot* shadowRoot = toShadowRoot(node); shadowRoot && shadowRoot != node; shadowRoot = shadowRoot->shadowRoot())
                 ++count;
             fprintf(stderr, "/#shadow-root[%d]", count);
             continue;
@@ -2029,11 +2019,10 @@ static void traverseTreeAndMark(const String& baseIndent, const Node* rootNode, 
         fprintf(stderr, "%s", indent.toString().utf8().data());
         node->showNode();
         indent.append('\t');
-        if (node->isShadowRoot()) {
-            if (ShadowRoot* youngerShadowRoot = toShadowRoot(node)->youngerShadowRoot())
-                traverseTreeAndMark(indent.toString(), youngerShadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
-        } else if (ShadowRoot* oldestShadowRoot = oldestShadowRootFor(node))
-            traverseTreeAndMark(indent.toString(), oldestShadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
+        if (!node->isShadowRoot()) {
+            if (ShadowRoot* shadowRoot = node->shadowRoot())
+                traverseTreeAndMark(indent.toString(), shadowRoot, markedNode1, markedLabel1, markedNode2, markedLabel2);
+        }
     }
 }
 
@@ -2077,15 +2066,12 @@ static void showSubTreeAcrossFrame(const Node* node, const Node* markedNode, con
         fputs("*", stderr);
     fputs(indent.utf8().data(), stderr);
     node->showNode();
-     if (node->isShadowRoot()) {
-         if (ShadowRoot* youngerShadowRoot = toShadowRoot(node)->youngerShadowRoot())
-             showSubTreeAcrossFrame(youngerShadowRoot, markedNode, indent + "\t");
-     } else {
-         if (node->isFrameOwnerElement())
-             showSubTreeAcrossFrame(static_cast<const HTMLFrameOwnerElement*>(node)->contentDocument(), markedNode, indent + "\t");
-         if (ShadowRoot* oldestShadowRoot = oldestShadowRootFor(node))
-             showSubTreeAcrossFrame(oldestShadowRoot, markedNode, indent + "\t");
-     }
+    if (!node->isShadowRoot()) {
+        if (node->isFrameOwnerElement())
+            showSubTreeAcrossFrame(static_cast<const HTMLFrameOwnerElement*>(node)->contentDocument(), markedNode, indent + "\t");
+        if (ShadowRoot* shadowRoot = node->shadowRoot())
+            showSubTreeAcrossFrame(shadowRoot, markedNode, indent + "\t");
+    }
     for (Node* child = node->firstChild(); child; child = child->nextSibling())
         showSubTreeAcrossFrame(child, markedNode, indent + "\t");
 }
@@ -2152,11 +2138,18 @@ void Node::didMoveToNewDocument(Document* oldDocument)
 {
     TreeScopeAdopter::ensureDidMoveToNewDocumentWasCalled(oldDocument);
 
+    if (const EventTargetData* eventTargetData = this->eventTargetData()) {
+        const EventListenerMap& listenerMap = eventTargetData->eventListenerMap;
+        if (!listenerMap.isEmpty()) {
+            Vector<AtomicString> types = listenerMap.eventTypes();
+            for (unsigned i = 0; i < types.size(); ++i)
+                document()->addListenerTypeIfNeeded(types[i]);
+        }
+    }
+
     if (AXObjectCache::accessibilityEnabled() && oldDocument)
         if (AXObjectCache* cache = oldDocument->existingAXObjectCache())
             cache->remove(this);
-
-    // FIXME: Event listener types for this node should be set on the new owner document here.
 
     const EventListenerVector& wheelListeners = getEventListeners(eventNames().mousewheelEvent);
     for (size_t i = 0; i < wheelListeners.size(); ++i) {
@@ -2678,22 +2671,6 @@ void Node::removedLastRef()
     m_deletionHasBegun = true;
 #endif
     delete this;
-}
-
-void Node::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_parentOrShadowHostNode, "parentOrShadowHostNode");
-    info.addMember(m_treeScope, "treeScope");
-    info.ignoreMember(m_next);
-    info.ignoreMember(m_previous);
-    info.addMember(this->renderer(), "renderer");
-    if (hasRareData()) {
-        if (isElementNode())
-            info.addMember(static_cast<ElementRareData*>(rareData()), "elementRareData");
-        else
-            info.addMember(rareData(), "rareData");
-    }
 }
 
 void Node::textRects(Vector<IntRect>& rects) const

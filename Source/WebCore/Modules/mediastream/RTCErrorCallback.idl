@@ -30,8 +30,7 @@
 
 [
     Conditional=MEDIA_STREAM,
-    Callback
-] interface RTCErrorCallback {
-    boolean handleEvent(in DOMString errorInformation);
+] callback interface RTCErrorCallback {
+    boolean handleEvent(DOMString errorInformation);
 };
 

@@ -25,7 +25,6 @@
 #ifndef Cache_h
 #define Cache_h
 
-#include "CachedResource.h"
 #include "SecurityOriginHash.h"
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -40,8 +39,11 @@ class CachedCSSStyleSheet;
 class CachedResource;
 class CachedResourceLoader;
 class KURL;
+class ResourceRequest;
+class ResourceResponse;
 class ScriptExecutionContext;
 class SecurityOrigin;
+struct CrossThreadResourceRequestData;
 struct SecurityOriginHash;
 
 // This cache holds subresources used by Web pages: images, scripts, stylesheets, etc.
@@ -176,8 +178,6 @@ public:
     unsigned liveSize() const { return m_liveSize; }
     unsigned deadSize() const { return m_deadSize; }
 
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
 private:
     MemoryCache();
     ~MemoryCache(); // Not implemented to make sure nobody accidentally calls delete -- WebCore does not delete singletons.
@@ -204,7 +204,7 @@ private:
     void evict(CachedResource*);
 
     static void removeRequestFromCacheImpl(ScriptExecutionContext*, const ResourceRequest&);
-    static void crossThreadRemoveRequestFromCache(ScriptExecutionContext*, PassOwnPtr<WebCore::CrossThreadResourceRequestData>);
+    static void crossThreadRemoveRequestFromCache(ScriptExecutionContext*, PassOwnPtr<CrossThreadResourceRequestData>);
 
     bool m_disabled;  // Whether or not the cache is enabled.
     bool m_pruneEnabled;

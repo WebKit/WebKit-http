@@ -88,6 +88,9 @@ end
 macro prepareStateForCCall()
     leap [PB, PC, 8], PC
     move PB, t3
+    if X86_64
+        resetX87Stack
+    end
 end
 
 macro restoreStateAfterCCall()
@@ -124,6 +127,16 @@ macro callCallSlowPath(advance, slowPath, action)
     cCall2(slowPath, cfr, PC)
     move t1, cfr
     action(t0)
+end
+
+macro callWatchdogTimerHandler(throwHandler)
+    storei PC, ArgumentCount + TagOffset[cfr]
+    prepareStateForCCall()
+    cCall2(_llint_slow_path_handle_watchdog_timer, cfr, PC)
+    move t1, cfr
+    btpnz t0, throwHandler
+    move t3, PB
+    loadi ArgumentCount + TagOffset[cfr], PC
 end
 
 macro checkSwitchToJITForLoop()
@@ -186,9 +199,9 @@ macro functionArityCheck(doneLabel, slow_path)
     cCall2(slow_path, cfr, PC)   # This slow_path has a simple protocol: t0 = 0 => no error, t0 != 0 => error
     move t1, cfr
     btiz t0, .continue
-    loadp JITStackFrame::globalData[sp], t1
-    loadp JSGlobalData::callFrameForThrow[t1], t0
-    jmp JSGlobalData::targetMachinePCForThrow[t1]
+    loadp JITStackFrame::vm[sp], t1
+    loadp VM::callFrameForThrow[t1], t0
+    jmp VM::targetMachinePCForThrow[t1]
 .continue:
     # Reload CodeBlock and reset PC, since the slow_path clobbered them.
     loadp CodeBlock[cfr], t1
@@ -441,63 +454,31 @@ macro preOp(arithmeticOperation, slowPath)
     dispatch(2)
 end
 
-_llint_op_pre_inc:
+_llint_op_inc:
     preOp(
         macro (value, slow) baddio 1, value, slow end,
         _llint_slow_path_pre_inc)
 
 
-_llint_op_pre_dec:
+_llint_op_dec:
     preOp(
         macro (value, slow) bsubio 1, value, slow end,
         _llint_slow_path_pre_dec)
 
 
-macro postOp(arithmeticOperation, slowPath)
-    traceExecution()
-    loadisFromInstruction(2, t0)
-    loadisFromInstruction(1, t1)
-    loadq [cfr, t0, 8], t2
-    bieq t0, t1, .done
-    bqb t2, tagTypeNumber, .slow
-    move t2, t3
-    arithmeticOperation(t3, .slow)
-    orq tagTypeNumber, t3
-    storeq t2, [cfr, t1, 8]
-    storeq t3, [cfr, t0, 8]
-.done:
-    dispatch(3)
-
-.slow:
-    callSlowPath(slowPath)
-    dispatch(3)
-end
-
-_llint_op_post_inc:
-    postOp(
-        macro (value, slow) baddio 1, value, slow end,
-        _llint_slow_path_post_inc)
-
-
-_llint_op_post_dec:
-    postOp(
-        macro (value, slow) bsubio 1, value, slow end,
-        _llint_slow_path_post_dec)
-
-
-_llint_op_to_jsnumber:
+_llint_op_to_number:
     traceExecution()
     loadisFromInstruction(2, t0)
     loadisFromInstruction(1, t1)
     loadConstantOrVariable(t0, t2)
-    bqaeq t2, tagTypeNumber, .opToJsnumberIsImmediate
-    btqz t2, tagTypeNumber, .opToJsnumberSlow
-.opToJsnumberIsImmediate:
+    bqaeq t2, tagTypeNumber, .opToNumberIsImmediate
+    btqz t2, tagTypeNumber, .opToNumberSlow
+.opToNumberIsImmediate:
     storeq t2, [cfr, t1, 8]
     dispatch(3)
 
-.opToJsnumberSlow:
-    callSlowPath(_llint_slow_path_to_jsnumber)
+.opToNumberSlow:
+    callSlowPath(_llint_slow_path_to_number)
     dispatch(3)
 
 
@@ -1587,16 +1568,16 @@ _llint_op_catch:
     # the interpreter's throw trampoline (see _llint_throw_trampoline).
     # The JIT throwing protocol calls for the cfr to be in t0. The throwing
     # code must have known that we were throwing to the interpreter, and have
-    # set JSGlobalData::targetInterpreterPCForThrow.
+    # set VM::targetInterpreterPCForThrow.
     move t0, cfr
     loadp CodeBlock[cfr], PB
     loadp CodeBlock::m_instructions[PB], PB
-    loadp JITStackFrame::globalData[sp], t3
-    loadp JSGlobalData::targetInterpreterPCForThrow[t3], PC
+    loadp JITStackFrame::vm[sp], t3
+    loadp VM::targetInterpreterPCForThrow[t3], PC
     subp PB, PC
     rshiftp 3, PC
-    loadq JSGlobalData::exception[t3], t0
-    storeq 0, JSGlobalData::exception[t3]
+    loadq VM::exception[t3], t0
+    storeq 0, VM::exception[t3]
     loadisFromInstruction(1, t2)
     storeq t0, [cfr, t2, 8]
     traceExecution()
@@ -1616,16 +1597,16 @@ _llint_throw_from_slow_path_trampoline:
     # When throwing from the interpreter (i.e. throwing from LLIntSlowPaths), so
     # the throw target is not necessarily interpreted code, we come to here.
     # This essentially emulates the JIT's throwing protocol.
-    loadp JITStackFrame::globalData[sp], t1
-    loadp JSGlobalData::callFrameForThrow[t1], t0
-    jmp JSGlobalData::targetMachinePCForThrow[t1]
+    loadp JITStackFrame::vm[sp], t1
+    loadp VM::callFrameForThrow[t1], t0
+    jmp VM::targetMachinePCForThrow[t1]
 
 
 _llint_throw_during_call_trampoline:
     preserveReturnAddressAfterCall(t2)
-    loadp JITStackFrame::globalData[sp], t1
-    loadp JSGlobalData::callFrameForThrow[t1], t0
-    jmp JSGlobalData::targetMachinePCForThrow[t1]
+    loadp JITStackFrame::vm[sp], t1
+    loadp VM::callFrameForThrow[t1], t0
+    jmp VM::targetMachinePCForThrow[t1]
 
 # Gives you the scope in t0, while allowing you to optionally perform additional checks on the
 # scopes as they are traversed. scopeCheck() is called with two arguments: the register
@@ -1692,8 +1673,8 @@ _llint_op_put_scoped_var:
 macro nativeCallTrampoline(executableOffsetToFunction)
     storep 0, CodeBlock[cfr]
     if X86_64
-        loadp JITStackFrame::globalData + 8[sp], t0
-        storep cfr, JSGlobalData::topCallFrame[t0]
+        loadp JITStackFrame::vm + 8[sp], t0
+        storep cfr, VM::topCallFrame[t0]
         loadp CallerFrame[cfr], t0
         loadq ScopeChain[t0], t1
         storeq t1, ScopeChain[cfr]
@@ -1706,15 +1687,15 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         move t0, cfr # Restore cfr to avoid loading from stack
         call executableOffsetToFunction[t1]
         addp 16 - 8, sp
-        loadp JITStackFrame::globalData + 8[sp], t3
+        loadp JITStackFrame::vm + 8[sp], t3
 
     elsif C_LOOP
         loadp CallerFrame[cfr], t0
         loadp ScopeChain[t0], t1
         storep t1, ScopeChain[cfr]
 
-        loadp JITStackFrame::globalData[sp], t3
-        storep cfr, JSGlobalData::topCallFrame[t3]
+        loadp JITStackFrame::vm[sp], t3
+        storep cfr, VM::topCallFrame[t3]
 
         move t0, t2
         preserveReturnAddressAfterCall(t3)
@@ -1726,20 +1707,20 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         cloopCallNative executableOffsetToFunction[t1]
 
         restoreReturnAddressBeforeReturn(t3)
-        loadp JITStackFrame::globalData[sp], t3
+        loadp JITStackFrame::vm[sp], t3
     else
         error
     end
 
-    btqnz JSGlobalData::exception[t3], .exception
+    btqnz VM::exception[t3], .exception
     ret
 .exception:
     preserveReturnAddressAfterCall(t1)
     loadi ArgumentCount + TagOffset[cfr], PC
     loadp CodeBlock[cfr], PB
     loadp CodeBlock::m_instructions[PB], PB
-    loadp JITStackFrame::globalData[sp], t0
-    storep cfr, JSGlobalData::topCallFrame[t0]
+    loadp JITStackFrame::vm[sp], t0
+    storep cfr, VM::topCallFrame[t0]
     callSlowPath(_llint_throw_from_native_call)
     jmp _llint_throw_from_slow_path_trampoline
 end

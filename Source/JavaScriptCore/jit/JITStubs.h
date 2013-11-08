@@ -48,7 +48,7 @@ class CodeBlock;
 class ExecutablePool;
 class FunctionExecutable;
 class Identifier;
-class JSGlobalData;
+class VM;
 class JSGlobalObject;
 class JSObject;
 class JSPropertyNameIterator;
@@ -98,7 +98,7 @@ struct JITStackFrame {
     CallFrame* callFrame;
     void* unused1;
     void* unused2;
-    JSGlobalData* globalData;
+    VM* vm;
 
     void* savedRBX;
     void* savedR15;
@@ -134,7 +134,7 @@ struct JITStackFrame {
 
     // Passed on the stack
     void* unused2;
-    JSGlobalData* globalData;
+    VM* vm;
 
     // When JIT code makes a call, it pushes its return address just below the rest of the stack.
     ReturnAddressPtr* returnAddressSlot() { return reinterpret_cast<ReturnAddressPtr*>(this) - 1; }
@@ -162,7 +162,7 @@ struct JITStackFrame {
     CallFrame* callFrame;
     void* unused1;
     void* unused2;
-    JSGlobalData* globalData;
+    VM* vm;
         
     // When JIT code makes a call, it pushes its return address just below the rest of the stack.
     ReturnAddressPtr* returnAddressSlot() { return reinterpret_cast<ReturnAddressPtr*>(this) - 1; }
@@ -193,7 +193,7 @@ struct JITStackFrame {
 
     // These arguments passed on the stack.
     void* unused1;
-    JSGlobalData* globalData;
+    VM* vm;
         
     ReturnAddressPtr* returnAddressSlot() { return &thunkReturnAddress; }
 };
@@ -223,7 +223,7 @@ struct JITStackFrame {
 
     // These arguments passed on the stack.
     void* unused2;
-    JSGlobalData* globalData;
+    VM* vm;
 
     // When JIT code makes a call, it pushes its return address just below the rest of the stack.
     ReturnAddressPtr* returnAddressSlot() { return &thunkReturnAddress; }
@@ -257,7 +257,7 @@ struct JITStackFrame {
 
     // These arguments passed on the stack.
     void* unused2;
-    JSGlobalData* globalData;
+    VM* vm;
 
     ReturnAddressPtr* returnAddressSlot() { return &thunkReturnAddress; }
 };
@@ -278,7 +278,7 @@ struct JITStackFrame {
     CallFrame* callFrame;
     JSValue* exception;
     void* unused1;
-    JSGlobalData* globalData;
+    VM* vm;
 
     ReturnAddressPtr* returnAddressSlot() { return &thunkReturnAddress; }
 };
@@ -307,7 +307,7 @@ struct JITStackFrame {
 
 extern "C" void ctiVMThrowTrampoline();
 extern "C" void ctiOpThrowNotCaught();
-extern "C" EncodedJSValue ctiTrampoline(void* code, JSStack*, CallFrame*, void* /*unused1*/, void* /*unused2*/, JSGlobalData*);
+extern "C" EncodedJSValue ctiTrampoline(void* code, JSStack*, CallFrame*, void* /*unused1*/, void* /*unused2*/, VM*);
 #if ENABLE(DFG_JIT)
 extern "C" void ctiTrampolineEnd();
 
@@ -318,7 +318,7 @@ inline bool returnAddressIsInCtiTrampoline(ReturnAddressPtr returnAddress)
 }
 #endif
 
-void performPlatformSpecificJITAssertions(JSGlobalData*);
+void performPlatformSpecificJITAssertions(VM*);
 
 extern "C" {
 EncodedJSValue JIT_STUB cti_op_add(STUB_ARGS_DECLARATION) WTF_INTERNAL;
@@ -366,14 +366,11 @@ EncodedJSValue JIT_STUB cti_op_mul(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_negate(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_not(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_nstricteq(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-EncodedJSValue JIT_STUB cti_op_post_dec(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-EncodedJSValue JIT_STUB cti_op_post_inc(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-EncodedJSValue JIT_STUB cti_op_pre_dec(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-EncodedJSValue JIT_STUB cti_op_pre_inc(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+EncodedJSValue JIT_STUB cti_op_dec(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+EncodedJSValue JIT_STUB cti_op_inc(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_resolve(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_resolve_base(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_resolve_base_strict_put(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-EncodedJSValue JIT_STUB cti_op_ensure_property_exists(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_resolve_with_base(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_resolve_with_this(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 void JIT_STUB cti_op_put_to_base(STUB_ARGS_DECLARATION) WTF_INTERNAL;
@@ -381,7 +378,7 @@ EncodedJSValue JIT_STUB cti_op_rshift(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_strcat(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_stricteq(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_sub(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-EncodedJSValue JIT_STUB cti_op_to_jsnumber(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+EncodedJSValue JIT_STUB cti_op_to_number(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_to_primitive(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_typeof(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 EncodedJSValue JIT_STUB cti_op_urshift(STUB_ARGS_DECLARATION) WTF_INTERNAL;
@@ -406,7 +403,7 @@ int JIT_STUB cti_op_jgreater(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 int JIT_STUB cti_op_jgreatereq(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 int JIT_STUB cti_op_jtrue(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 void* JIT_STUB cti_op_load_varargs(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-int JIT_STUB cti_timeout_check(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+void JIT_STUB cti_handle_watchdog_timer(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 int JIT_STUB cti_has_property(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 void JIT_STUB cti_op_debug(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 void JIT_STUB cti_op_end(STUB_ARGS_DECLARATION) WTF_INTERNAL;
@@ -448,7 +445,7 @@ void* JIT_STUB cti_vm_throw(STUB_ARGS_DECLARATION) REFERENCED_FROM_ASM WTF_INTER
 #elif ENABLE(LLINT_C_LOOP)
 
 struct JITStackFrame {
-    JSGlobalData* globalData;
+    VM* vm;
 };
 
 #endif // ENABLE(LLINT_C_LOOP)

@@ -42,7 +42,7 @@
 #include "RenderWidgetProtector.h"
 #include "StyleInheritedData.h"
 #include "TransformState.h"
-#include "WebCoreMemoryInstrumentation.h"
+#include <wtf/StackStats.h>
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
@@ -91,7 +91,21 @@ bool RenderView::hitTest(const HitTestRequest& request, HitTestResult& result)
 
 bool RenderView::hitTest(const HitTestRequest& request, const HitTestLocation& location, HitTestResult& result)
 {
-    return layer()->hitTest(request, location, result);
+    if (layer()->hitTest(request, location, result))
+        return true;
+
+    // FIXME: Consider if this test should be done unconditionally.
+    if (request.allowsFrameScrollbars() && m_frameView) {
+        // ScrollView scrollbars are not the same as RenderLayer scrollbars tested by RenderLayer::hitTestOverflowControls,
+        // so we need to test ScrollView scrollbars separately here.
+        Scrollbar* frameScrollbar = m_frameView->scrollbarAtPoint(location.roundedPoint());
+        if (frameScrollbar) {
+            result.setScrollbar(frameScrollbar);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void RenderView::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit, LogicalExtentComputedValues& computedValues) const
@@ -412,6 +426,9 @@ static inline bool rendererObscuresBackground(RenderObject* rootObject)
 
 void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
 {
+    if (!paintInfo.shouldPaintWithinRoot(this))
+        return;
+
     // Check to see if we are enclosed by a layer that requires complex painting rules.  If so, we cannot blit
     // when scrolling, and we need to use slow repaints.  Examples of layers that require this are transparent layers,
     // layers with reflections, or transformed layers.
@@ -1128,27 +1145,6 @@ RenderBlock::IntervalArena* RenderView::intervalArena()
     if (!m_intervalArena)
         m_intervalArena = IntervalArena::create();
     return m_intervalArena.get();
-}
-
-void RenderView::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
-    RenderBlock::reportMemoryUsage(memoryObjectInfo);
-    info.addWeakPointer(m_frameView);
-    info.addWeakPointer(m_selectionStart);
-    info.addWeakPointer(m_selectionEnd);
-    info.addMember(m_widgets, "widgets");
-    info.addMember(m_layoutState, "layoutState");
-#if USE(ACCELERATED_COMPOSITING)
-    info.addMember(m_compositor, "compositor");
-#endif
-#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
-    info.addMember(m_customFilterGlobalContext, "customFilterGlobalContext");
-#endif
-    info.addMember(m_flowThreadController, "flowThreadController");
-    info.addMember(m_intervalArena, "intervalArena");
-    info.addWeakPointer(m_renderQuoteHead);
-    info.addMember(m_legacyPrinting, "legacyPrinting");
 }
 
 FragmentationDisabler::FragmentationDisabler(RenderObject* root)

@@ -60,9 +60,7 @@ public:
     virtual void stopAnimation() OVERRIDE;
     virtual void resetAnimation() OVERRIDE;
 
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
-
-#if USE(SKIA) || USE(CAIRO)
+#if USE(CAIRO)
     virtual PassNativeImagePtr nativeImageForCurrentFrame() OVERRIDE;
 #endif
 

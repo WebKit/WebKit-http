@@ -36,21 +36,12 @@
 #include "NodeRenderStyle.h"
 #include "RenderObject.h"
 #include "StyleResolver.h"
-#include "WebCoreMemoryInstrumentation.h"
-#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 using namespace std;
 
 namespace WebCore {
-
-void CSSGradientColorStop::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    info.addMember(m_position, "position");
-    info.addMember(m_color, "color");
-}
 
 PassRefPtr<Image> CSSGradientValue::image(RenderObject* renderer, const IntSize& size)
 {
@@ -301,7 +292,7 @@ void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, Rend
                 while (true) {
                     GradientStop newStop = stops[originalFirstStopIndex + srcStopOrdinal];
                     newStop.offset = currOffset;
-                    stops.prepend(newStop);
+                    stops.insert(0, newStop);
                     ++originalFirstStopIndex;
                     if (currOffset < 0)
                         break;
@@ -340,15 +331,21 @@ void CSSGradientValue::addStops(Gradient* gradient, RenderObject* renderer, Rend
         if (isLinearGradient()) {
             float firstOffset = stops[0].offset;
             float lastOffset = stops[numStops - 1].offset;
-            float scale = lastOffset - firstOffset;
+            if (firstOffset != lastOffset) {
+                float scale = lastOffset - firstOffset;
 
-            for (size_t i = 0; i < numStops; ++i)
-                stops[i].offset = (stops[i].offset - firstOffset) / scale;
+                for (size_t i = 0; i < numStops; ++i)
+                    stops[i].offset = (stops[i].offset - firstOffset) / scale;
 
-            FloatPoint p0 = gradient->p0();
-            FloatPoint p1 = gradient->p1();
-            gradient->setP0(FloatPoint(p0.x() + firstOffset * (p1.x() - p0.x()), p0.y() + firstOffset * (p1.y() - p0.y())));
-            gradient->setP1(FloatPoint(p1.x() + (lastOffset - 1) * (p1.x() - p0.x()), p1.y() + (lastOffset - 1) * (p1.y() - p0.y())));
+                FloatPoint p0 = gradient->p0();
+                FloatPoint p1 = gradient->p1();
+                gradient->setP0(FloatPoint(p0.x() + firstOffset * (p1.x() - p0.x()), p0.y() + firstOffset * (p1.y() - p0.y())));
+                gradient->setP1(FloatPoint(p1.x() + (lastOffset - 1) * (p1.x() - p0.x()), p1.y() + (lastOffset - 1) * (p1.y() - p0.y())));
+            } else {
+                // There's a single position that is outside the scale, clamp the positions to 1.
+                for (size_t i = 0; i < numStops; ++i)
+                    stops[i].offset = 1;
+            }
         } else if (isRadialGradient()) {
             // Rather than scaling the points < 0, we truncate them, so only scale according to the largest point.
             float firstOffset = 0;
@@ -469,17 +466,6 @@ bool CSSGradientValue::knownToBeOpaque(const RenderObject*) const
             return false;
     }
     return true;
-}
-
-void CSSGradientValue::reportBaseClassMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    CSSImageGeneratorValue::reportBaseClassMemoryUsage(memoryObjectInfo);
-    info.addMember(m_firstX, "firstX");
-    info.addMember(m_firstY, "firstY");
-    info.addMember(m_secondX, "secondX");
-    info.addMember(m_secondY, "secondY");
-    info.addMember(m_stops, "stops");
 }
 
 String CSSLinearGradientValue::customCssText() const
@@ -753,13 +739,6 @@ bool CSSLinearGradientValue::equals(const CSSLinearGradientValue& other) const
         equalXorY = !other.m_firstX || !other.m_firstY;
 
     return equalXorY && m_stops == other.m_stops;
-}
-
-void CSSLinearGradientValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    CSSGradientValue::reportBaseClassMemoryUsage(memoryObjectInfo);
-    info.addMember(m_angle, "angle");
 }
 
 String CSSRadialGradientValue::customCssText() const
@@ -1188,18 +1167,6 @@ bool CSSRadialGradientValue::equals(const CSSRadialGradientValue& other) const
         equalHorizontalAndVerticalSize = !other.m_endHorizontalSize && !other.m_endVerticalSize;
     }
     return equalShape && equalSizingBehavior && equalHorizontalAndVerticalSize && m_stops == other.m_stops;
-}
-
-void CSSRadialGradientValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
-    CSSGradientValue::reportBaseClassMemoryUsage(memoryObjectInfo);
-    info.addMember(m_firstRadius, "firstRadius");
-    info.addMember(m_secondRadius, "secondRadius");
-    info.addMember(m_shape, "shape");
-    info.addMember(m_sizingBehavior, "sizingBehavior");
-    info.addMember(m_endHorizontalSize, "endHorizontalSize");
-    info.addMember(m_endVerticalSize, "endVerticalSize");
 }
 
 } // namespace WebCore

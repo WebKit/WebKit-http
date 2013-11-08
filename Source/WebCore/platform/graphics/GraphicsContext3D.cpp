@@ -1335,8 +1335,8 @@ ALWAYS_INLINE void FormatConverter::convert()
         }
     } else if (!trivialUnpack && !trivialPack) {
         for (size_t i = 0; i < m_height; ++i) {
-            unpack<SrcFormat>(srcRowStart, reinterpret_cast<IntermediateSrcType*>(m_unpackedIntermediateSrcData.get()), m_width);
-            pack<DstFormat, alphaOp>(reinterpret_cast<IntermediateSrcType*>(m_unpackedIntermediateSrcData.get()), dstRowStart, m_width);
+            unpack<SrcFormat>(srcRowStart, reinterpret_cast_ptr<IntermediateSrcType*>(m_unpackedIntermediateSrcData.get()), m_width);
+            pack<DstFormat, alphaOp>(reinterpret_cast_ptr<IntermediateSrcType*>(m_unpackedIntermediateSrcData.get()), dstRowStart, m_width);
             srcRowStart += srcStrideInElements;
             dstRowStart += dstStrideInElements;
         }
@@ -1470,6 +1470,25 @@ unsigned GraphicsContext3D::getChannelBitsByFormat(GC3Denum format)
         return 0;
     }
 }
+
+#if !PLATFORM(BLACKBERRY) && !PLATFORM(QT) && !PLATFORM(GTK) && !PLATFORM(EFL) && !PLATFORM(MAC)
+PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D() const
+{
+    return NullPlatformGraphicsContext3D;
+}
+
+Platform3DObject GraphicsContext3D::platformTexture() const
+{
+    return NullPlatform3DObject;
+}
+
+#if USE(ACCELERATED_COMPOSITING)
+PlatformLayer* GraphicsContext3D::platformLayer() const
+{
+    return 0;
+}
+#endif
+#endif
 
 } // namespace WebCore
 

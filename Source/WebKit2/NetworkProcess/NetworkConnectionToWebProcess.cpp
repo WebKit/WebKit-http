@@ -73,7 +73,7 @@ void NetworkConnectionToWebProcess::didReceiveMessage(CoreIPC::Connection* conne
     }
 
     if (decoder.messageReceiverName() == Messages::NetworkResourceLoader::messageReceiverName()) {
-        HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader> >::iterator loaderIterator = m_networkResourceLoaders.find(decoder.destinationID());
+        HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader>>::iterator loaderIterator = m_networkResourceLoaders.find(decoder.destinationID());
         if (loaderIterator != m_networkResourceLoaders.end())
             loaderIterator->value->didReceiveNetworkResourceLoaderMessage(connection, decoder);
         return;
@@ -96,13 +96,13 @@ void NetworkConnectionToWebProcess::didClose(CoreIPC::Connection*)
     // Protect ourself as we might be otherwise be deleted during this function.
     RefPtr<NetworkConnectionToWebProcess> protector(this);
 
-    HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader> >::iterator end = m_networkResourceLoaders.end();
-    for (HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader> >::iterator i = m_networkResourceLoaders.begin(); i != end; ++i)
-        i->value->connectionToWebProcessDidClose();
+    HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader>>::iterator end = m_networkResourceLoaders.end();
+    for (HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader>>::iterator i = m_networkResourceLoaders.begin(); i != end; ++i)
+        i->value->abort();
 
-    HashMap<ResourceLoadIdentifier, RefPtr<SyncNetworkResourceLoader> >::iterator syncEnd = m_syncNetworkResourceLoaders.end();
-    for (HashMap<ResourceLoadIdentifier, RefPtr<SyncNetworkResourceLoader> >::iterator i = m_syncNetworkResourceLoaders.begin(); i != syncEnd; ++i)
-        i->value->connectionToWebProcessDidClose();
+    HashMap<ResourceLoadIdentifier, RefPtr<SyncNetworkResourceLoader>>::iterator syncEnd = m_syncNetworkResourceLoaders.end();
+    for (HashMap<ResourceLoadIdentifier, RefPtr<SyncNetworkResourceLoader>>::iterator i = m_syncNetworkResourceLoaders.begin(); i != syncEnd; ++i)
+        i->value->abort();
 
     NetworkBlobRegistry::shared().connectionToWebProcessDidClose(this);
 
@@ -118,14 +118,14 @@ void NetworkConnectionToWebProcess::didReceiveInvalidMessage(CoreIPC::Connection
 void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLoadParameters& loadParameters)
 {
     RefPtr<NetworkResourceLoader> loader = NetworkResourceLoader::create(loadParameters, this);
-    m_networkResourceLoaders.add(loadParameters.identifier(), loader);
+    m_networkResourceLoaders.add(loadParameters.identifier, loader);
     NetworkProcess::shared().networkResourceLoadScheduler().scheduleLoader(loader.get());
 }
 
 void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResourceLoadParameters& loadParameters, PassRefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply> reply)
 {
     RefPtr<SyncNetworkResourceLoader> loader = SyncNetworkResourceLoader::create(loadParameters, this, reply);
-    m_syncNetworkResourceLoaders.add(loadParameters.identifier(), loader);
+    m_syncNetworkResourceLoaders.add(loadParameters.identifier, loader);
     NetworkProcess::shared().networkResourceLoadScheduler().scheduleLoader(loader.get());
 }
 
@@ -139,7 +139,9 @@ void NetworkConnectionToWebProcess::removeLoadIdentifier(ResourceLoadIdentifier 
     if (!loader)
         return;
 
-    NetworkProcess::shared().networkResourceLoadScheduler().removeLoader(loader.get());
+    // Abort the load now, as the WebProcess won't be able to respond to messages any more which might lead
+    // to leaked loader resources (connections, threads, etc).
+    loader->abort();
 }
 
 void NetworkConnectionToWebProcess::servePendingRequests(uint32_t resourceLoadPriority)
@@ -161,6 +163,17 @@ void NetworkConnectionToWebProcess::startDownload(bool privateBrowsingEnabled, u
 {
     // FIXME: Do something with the private browsing flag.
     NetworkProcess::shared().downloadManager().startDownload(downloadID, request);
+}
+
+void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(uint64_t mainResourceLoadIdentifier, uint64_t downloadID, const ResourceRequest& request, const ResourceResponse& response)
+{
+    NetworkResourceLoader* loader = m_networkResourceLoaders.get(mainResourceLoadIdentifier);
+    NetworkProcess::shared().downloadManager().convertHandleToDownload(downloadID, loader->handle(), request, response);
+
+    // Unblock the URL connection operation queue.
+    loader->handle()->continueDidReceiveResponse();
+    
+    loader->didConvertHandleToDownload();
 }
 
 void NetworkConnectionToWebProcess::cookiesForDOM(bool privateBrowsingEnabled, const KURL& firstParty, const KURL& url, String& result)
@@ -197,7 +210,7 @@ void NetworkConnectionToWebProcess::registerBlobURL(const KURL& url, const BlobR
 {
     // FIXME: unregister all URLs when process connection closes.
 
-    Vector<RefPtr<SandboxExtension> > extensions;
+    Vector<RefPtr<SandboxExtension>> extensions;
     for (size_t i = 0, count = data.sandboxExtensions().size(); i < count; ++i) {
         if (RefPtr<SandboxExtension> extension = SandboxExtension::create(data.sandboxExtensions()[i]))
             extensions.append(extension);

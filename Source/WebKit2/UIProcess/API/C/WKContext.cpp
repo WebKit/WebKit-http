@@ -46,6 +46,12 @@
 #if ENABLE(SQL_DATABASE)
 #include "WebDatabaseManagerProxy.h"
 #endif
+#if ENABLE(BATTERY_STATUS)
+#include "WebBatteryManagerProxy.h"
+#endif
+#if ENABLE(NETWORK_INFO)
+#include "WebNetworkInfoManagerProxy.h"
+#endif
 
 using namespace WebKit;
 
@@ -206,7 +212,7 @@ WKApplicationCacheManagerRef WKContextGetApplicationCacheManager(WKContextRef co
 WKBatteryManagerRef WKContextGetBatteryManager(WKContextRef contextRef)
 {
 #if ENABLE(BATTERY_STATUS)
-    return toAPI(toImpl(contextRef)->batteryManagerProxy());
+    return toAPI(toImpl(contextRef)->supplement<WebBatteryManagerProxy>());
 #else
     return 0;
 #endif
@@ -229,7 +235,7 @@ WKGeolocationManagerRef WKContextGetGeolocationManager(WKContextRef contextRef)
 WKNetworkInfoManagerRef WKContextGetNetworkInfoManager(WKContextRef contextRef)
 {
 #if ENABLE(NETWORK_INFO)
-    return toAPI(toImpl(contextRef)->networkInfoManagerProxy());
+    return toAPI(toImpl(contextRef)->supplement<WebNetworkInfoManagerProxy>());
 #else
     return 0;
 #endif

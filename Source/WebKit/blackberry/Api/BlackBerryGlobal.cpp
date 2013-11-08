@@ -28,7 +28,7 @@
 #include "InitializeLogging.h"
 #include "InitializeThreading.h"
 #include "JSDOMWindow.h"
-#include "JSGlobalData.h"
+#include "VM.h"
 #include "MemoryCache.h"
 #include "NetworkStateNotifier.h"
 #include "PageCache.h"
@@ -114,7 +114,7 @@ void clearMemoryCaches()
 #endif
 
     {
-        JSC::JSLockHolder lock(JSDOMWindow::commonJSGlobalData());
+        JSC::JSLockHolder lock(JSDOMWindow::commonVM());
         collectJavascriptGarbageNow();
     }
 
@@ -137,12 +137,12 @@ void clearMemoryCaches()
     fontCache()->invalidate();
 }
 
-void clearAppCache(const BlackBerry::Platform::String& pageGroupName)
+void clearAppCache(const BlackBerry::Platform::String&)
 {
     cacheStorage().empty();
 }
 
-void clearDatabase(const BlackBerry::Platform::String& pageGroupName)
+void clearDatabase(const BlackBerry::Platform::String&)
 {
 }
 

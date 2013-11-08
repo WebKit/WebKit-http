@@ -20,6 +20,7 @@
 #include "InRegionScroller.h"
 
 #include "BackingStoreClient.h"
+#include "DOMSupport.h"
 #include "Frame.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HitTestResult.h"
@@ -133,8 +134,7 @@ bool InRegionScrollerPrivate::setScrollPositionCompositingThread(unsigned camouf
         bounds = scrollLayer->bounds();
 
     // Position is offset on the layer by the layer anchor point.
-    FloatPoint layerPosition(-scrollPosition.x() + anchor.x() * bounds.width(),
-                             -scrollPosition.y() + anchor.y() * bounds.height());
+    FloatPoint layerPosition(-scrollPosition.x() + anchor.x() * bounds.width(), -scrollPosition.y() + anchor.y() * bounds.height());
 
     scrollLayer->override()->setPosition(FloatPoint(layerPosition.x(), layerPosition.y()));
 
@@ -282,7 +282,7 @@ void InRegionScrollerPrivate::calculateInRegionScrollableAreasForPoint(const Web
             end->setCanPropagateScrollingToEnclosingScrollable(false);
         }
 
-    } while (layer = parentLayer(layer));
+    } while ((layer = parentLayer(layer)));
 
     if (m_activeInRegionScrollableAreas.empty())
         return;
@@ -306,8 +306,8 @@ void InRegionScrollerPrivate::updateSelectionScrollView(const Node* node)
     // Deleting the scrollview is handled by the client.
     Platform::ScrollViewBase* selectionScrollView = firstScrollableInRegionForNode(node);
     m_webPage->m_client->notifySelectionScrollView(selectionScrollView);
-    // if there's no subframe set an empty rect so that we default to the main frame.
-    m_webPage->m_selectionHandler->setSelectionViewportRect(selectionScrollView ? WebCore::IntRect(selectionScrollView->documentViewportRect()) : WebCore::IntRect());
+    // If there's no subframe set an empty rect so that we default to the main frame.
+    m_webPage->m_selectionHandler->setSelectionSubframeViewportRect(selectionScrollView ? WebCore::IntRect(selectionScrollView->documentViewportRect()) : WebCore::IntRect());
 }
 
 Platform::ScrollViewBase* InRegionScrollerPrivate::firstScrollableInRegionForNode(const Node* node)
@@ -345,7 +345,7 @@ Platform::ScrollViewBase* InRegionScrollerPrivate::firstScrollableInRegionForNod
             end->setCanPropagateScrollingToEnclosingScrollable(false);
         }
 
-    } while (layer = parentLayer(layer));
+    } while ((layer = parentLayer(layer)));
     return 0;
 }
 
@@ -451,12 +451,12 @@ bool InRegionScrollerPrivate::canScrollRenderBox(RenderBox* box)
     if (box->scrollHeight() == box->clientHeight() && box->scrollWidth() == box->clientWidth())
         return false;
 
-    if (box->scrollsOverflowX() && (box->scrollWidth() != box->clientWidth())
-        || box->scrollsOverflowY() && (box->scrollHeight() != box->clientHeight()))
+    if ((box->scrollsOverflowX() && (box->scrollWidth() != box->clientWidth()))
+        || (box->scrollsOverflowY() && (box->scrollHeight() != box->clientHeight())))
         return true;
 
     Node* node = box->node();
-    return node && (node->rendererIsEditable() || node->isDocumentNode());
+    return node && (DOMSupport::isShadowHostTextInputElement(node) || node->isDocumentNode());
 }
 
 static RenderLayer* parentLayer(RenderLayer* layer)

@@ -36,7 +36,6 @@
 #include "AudioContext.h"
 #include "AudioFileReader.h"
 #include "ExceptionCode.h"
-#include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
@@ -50,7 +49,7 @@ PassRefPtr<AudioBuffer> AudioBuffer::create(unsigned numberOfChannels, size_t nu
 
 PassRefPtr<AudioBuffer> AudioBuffer::createFromAudioFileData(const void* data, size_t dataSize, bool mixToMono, float sampleRate)
 {
-    OwnPtr<AudioBus> bus = createBusFromInMemoryAudioFile(data, dataSize, mixToMono, sampleRate);
+    RefPtr<AudioBus> bus = createBusFromInMemoryAudioFile(data, dataSize, mixToMono, sampleRate);
     if (bus.get())
         return adoptRef(new AudioBuffer(bus.get()));
 
@@ -114,6 +113,14 @@ void AudioBuffer::zero()
         if (getChannelData(i))
             getChannelData(i)->zeroRange(0, length());
     }
+}
+
+size_t AudioBuffer::memoryCost() const
+{
+    size_t cost = 0;
+    for (unsigned i = 0; i < m_channels.size() ; ++i)
+        cost += m_channels[i]->byteLength();
+    return cost;
 }
 
 } // namespace WebCore

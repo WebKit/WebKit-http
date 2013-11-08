@@ -38,8 +38,8 @@
 
 namespace WebCore {
 
-struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope, public DoublyLinkedListNode<ShadowRoot> {
-    void* pointers[3];
+struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
+    void* pointers[1];
     unsigned countersAndFlags[1];
 };
 
@@ -54,8 +54,6 @@ enum ShadowRootUsageOriginType {
 ShadowRoot::ShadowRoot(Document* document, ShadowRootType type)
     : DocumentFragment(0, CreateShadowRoot)
     , TreeScope(this, document)
-    , m_prev(0)
-    , m_next(0)
     , m_numberOfStyles(0)
     , m_applyAuthorStyles(false)
     , m_resetStyleInheritance(false)
@@ -67,9 +65,6 @@ ShadowRoot::ShadowRoot(Document* document, ShadowRootType type)
 
 ShadowRoot::~ShadowRoot()
 {
-    ASSERT(!m_prev);
-    ASSERT(!m_next);
-
     // We cannot let ContainerNode destructor call willBeDeletedFrom()
     // for this ShadowRoot instance because TreeScope destructor
     // clears Node::m_treeScope thus ContainerNode is no longer able
@@ -134,7 +129,7 @@ void ShadowRoot::recalcStyle(StyleChange change)
     // ShadowRoot doesn't support custom callbacks.
     ASSERT(!hasCustomStyleCallbacks());
 
-    StyleResolver* styleResolver = document()->styleResolver();
+    StyleResolver* styleResolver = document()->ensureStyleResolver();
     styleResolver->pushParentShadowRoot(this);
 
     for (Node* child = firstChild(); child; child = child->nextSibling()) {
@@ -174,7 +169,7 @@ void ShadowRoot::setResetStyleInheritance(bool value)
 
 void ShadowRoot::attach()
 {
-    StyleResolver* styleResolver = document()->styleResolver();
+    StyleResolver* styleResolver = document()->ensureStyleResolver();
     styleResolver->pushParentShadowRoot(this);
     DocumentFragment::attach();
     styleResolver->popParentShadowRoot(this);
@@ -184,7 +179,7 @@ Node::InsertionNotificationRequest ShadowRoot::insertedInto(ContainerNode* inser
 {
     DocumentFragment::insertedInto(insertionPoint);
 
-    if (!insertionPoint->inDocument() || !isOldest())
+    if (!insertionPoint->inDocument())
         return InsertionDone;
 
     // FIXME: When parsing <video controls>, insertedInto() is called many times without invoking removedFrom.
@@ -246,15 +241,5 @@ ScopeContentDistribution* ShadowRoot::ensureScopeDistribution()
     m_scopeDistribution = adoptPtr(new ScopeContentDistribution);
     return m_scopeDistribution.get();
 }   
-
-void ShadowRoot::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    DocumentFragment::reportMemoryUsage(memoryObjectInfo);
-    TreeScope::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_prev, "prev");
-    info.addMember(m_next, "next");
-    info.addMember(m_scopeDistribution, "scopeDistribution");
-}
 
 }

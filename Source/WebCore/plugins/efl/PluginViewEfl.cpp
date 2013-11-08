@@ -36,9 +36,11 @@
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
 #include "HostWindow.h"
+#include "JSDOMWindowBase.h"
 #include "MouseEvent.h"
 #include "NotImplemented.h"
 #include "PluginPackage.h"
+#include "ScriptController.h"
 #include "npruntime_impl.h"
 #include "runtime/JSLock.h"
 #include "runtime/Operations.h"
@@ -56,7 +58,7 @@ bool PluginView::dispatchNPEvent(NPEvent& event)
         return false;
 
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
 
     bool accepted = m_plugin->pluginFuncs()->event(m_instance, &event);

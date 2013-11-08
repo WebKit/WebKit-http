@@ -606,7 +606,6 @@ void GraphicsContext::clip(const IntRect& rect)
 }
 #endif
 
-#if !USE(SKIA)
 void GraphicsContext::clipRoundedRect(const RoundedRect& rect)
 {
     if (paintingDisabled())
@@ -621,7 +620,6 @@ void GraphicsContext::clipRoundedRect(const RoundedRect& rect)
     path.addRoundedRect(rect);
     clip(path);
 }
-#endif
 
 void GraphicsContext::clipOutRoundedRect(const RoundedRect& rect)
 {
@@ -673,23 +671,26 @@ void GraphicsContext::fillRect(const FloatRect& rect, Generator& generator)
     generator.fill(this, rect);
 }
 
-void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace styleColorSpace, CompositeOperator op)
+void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace styleColorSpace, CompositeOperator op, BlendMode blendMode)
 {
     if (paintingDisabled())
         return;
 
     CompositeOperator previousOperator = compositeOperation();
-    setCompositeOperation(op);
+    setCompositeOperation(op, blendMode);
     fillRect(rect, color, styleColorSpace);
     setCompositeOperation(previousOperator);
 }
 
-void GraphicsContext::fillRoundedRect(const RoundedRect& rect, const Color& color, ColorSpace colorSpace)
+void GraphicsContext::fillRoundedRect(const RoundedRect& rect, const Color& color, ColorSpace colorSpace, BlendMode blendMode)
 {
-    if (rect.isRounded())
+
+    if (rect.isRounded()) {
+        setCompositeOperation(compositeOperation(), blendMode);
         fillRoundedRect(rect.rect(), rect.radii().topLeft(), rect.radii().topRight(), rect.radii().bottomLeft(), rect.radii().bottomRight(), color, colorSpace);
-    else
-        fillRect(rect.rect(), color, colorSpace);
+        setCompositeOperation(compositeOperation());
+    } else
+        fillRect(rect.rect(), color, colorSpace, compositeOperation(), blendMode);
 }
 
 #if !USE(CG) && !PLATFORM(QT)
@@ -737,7 +738,7 @@ BlendMode GraphicsContext::blendModeOperation() const
     return m_state.blendMode;
 }
 
-#if !USE(CG) && !USE(SKIA)
+#if !USE(CG)
 // Implement this if you want to go ahead and push the drawing mode into your native context
 // immediately.
 void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags)
@@ -745,7 +746,7 @@ void GraphicsContext::setPlatformTextDrawingMode(TextDrawingModeFlags)
 }
 #endif
 
-#if !PLATFORM(QT) && !USE(CAIRO) && !USE(SKIA) && !PLATFORM(OPENVG) && !PLATFORM(HAIKU)
+#if !PLATFORM(QT) && !USE(CAIRO) && !PLATFORM(HAIKU)
 void GraphicsContext::setPlatformStrokeStyle(StrokeStyle)
 {
 }
@@ -757,7 +758,7 @@ void GraphicsContext::setPlatformShouldSmoothFonts(bool)
 }
 #endif
 
-#if !USE(SKIA) && !USE(CG)
+#if !USE(CG) && !USE(CAIRO)
 bool GraphicsContext::isAcceleratedContext() const
 {
     return false;
@@ -860,7 +861,7 @@ void GraphicsContext::strokeEllipseAsPath(const FloatRect& ellipse)
     strokePath(path);
 }
 
-#if !USE(CG) && !USE(SKIA) // append && !USE(MYPLATFORM) here to optimize ellipses on your platform.
+#if !USE(CG)
 void GraphicsContext::platformFillEllipse(const FloatRect& ellipse)
 {
     if (paintingDisabled())

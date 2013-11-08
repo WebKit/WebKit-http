@@ -127,7 +127,7 @@ PassOwnPtr<PageClientImpl> PageClientImpl::create(WKView* wkView)
 
 PageClientImpl::PageClientImpl(WKView* wkView)
     : m_wkView(wkView)
-    , m_undoTarget(AdoptNS, [[WKEditorUndoTargetObjC alloc] init])
+    , m_undoTarget(adoptNS([[WKEditorUndoTargetObjC alloc] init]))
 #if USE(DICTATION_ALTERNATIVES)
     , m_alternativeTextUIController(adoptPtr(new AlternativeTextUIController))
 #endif
@@ -196,6 +196,13 @@ bool PageClientImpl::isViewVisible()
 
     if (![[m_wkView window] isVisible])
         return false;
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
+    // Mountain Lion and previous do not support occlusion notifications, and as such will
+    // continue to report as "visible" when not on the active space.
+    if (![[m_wkView window] isOnActiveSpace])
+        return false;
+#endif
 
     if ([m_wkView isHiddenOrHasHiddenAncestor])
         return false;
@@ -275,7 +282,7 @@ void PageClientImpl::registerEditCommand(PassRefPtr<WebEditCommandProxy> prpComm
 {
     RefPtr<WebEditCommandProxy> command = prpCommand;
 
-    RetainPtr<WKEditCommandObjC> commandObjC(AdoptNS, [[WKEditCommandObjC alloc] initWithWebEditCommandProxy:command]);
+    RetainPtr<WKEditCommandObjC> commandObjC = adoptNS([[WKEditCommandObjC alloc] initWithWebEditCommandProxy:command]);
     String actionName = WebEditCommandProxy::nameForEditAction(command->editAction());
 
     NSUndoManager *undoManager = [m_wkView undoManager];
@@ -307,7 +314,7 @@ bool PageClientImpl::interpretKeyEvent(const NativeWebKeyboardEvent& event, Vect
 void PageClientImpl::setDragImage(const IntPoint& clientPosition, PassRefPtr<ShareableBitmap> dragImage, bool isLinkDrag)
 {
     RetainPtr<CGImageRef> dragCGImage = dragImage->makeCGImage();
-    RetainPtr<NSImage> dragNSImage(AdoptNS, [[NSImage alloc] initWithCGImage:dragCGImage.get() size:dragImage->size()]);
+    RetainPtr<NSImage> dragNSImage = adoptNS([[NSImage alloc] initWithCGImage:dragCGImage.get() size:dragImage->size()]);
 
     [m_wkView _setDragImage:dragNSImage.get() at:clientPosition linkDrag:isLinkDrag];
 }
@@ -581,11 +588,6 @@ void PageClientImpl::showDictationAlternativeUI(const WebCore::FloatRect& boundi
 Vector<String> PageClientImpl::dictationAlternatives(uint64_t dictationContext)
 {
     return m_alternativeTextUIController->alternativesForContext(dictationContext);
-}
-
-void PageClientImpl::dismissDictationAlternativeUI()
-{
-    m_alternativeTextUIController->dismissAlternatives();
 }
 #endif
 

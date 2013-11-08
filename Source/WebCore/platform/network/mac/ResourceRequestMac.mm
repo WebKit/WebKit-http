@@ -67,7 +67,7 @@ ResourceRequest::ResourceRequest(NSURLRequest *nsRequest)
 void ResourceRequest::updateNSURLRequest()
 {
     if (m_cfRequest)
-        m_nsRequest.adoptNS([[NSURLRequest alloc] _initWithCFURLRequest:m_cfRequest.get()]);
+        m_nsRequest = adoptNS([[NSURLRequest alloc] _initWithCFURLRequest:m_cfRequest.get()]);
 }
 
 #else
@@ -100,17 +100,13 @@ void ResourceRequest::doUpdateResourceRequest()
     while ((name = [e nextObject]))
         m_httpHeaderFields.set(name, [headers objectForKey:name]);
 
-    // The below check can be removed once we require a version of Foundation with -[NSURLRequest contentDispositionEncodingFallbackArray] method.
-    static bool supportsContentDispositionEncodingFallbackArray = [NSURLRequest instancesRespondToSelector:@selector(contentDispositionEncodingFallbackArray)];
-    if (supportsContentDispositionEncodingFallbackArray) {
-        m_responseContentDispositionEncodingFallbackArray.clear();
-        NSArray *encodingFallbacks = [m_nsRequest.get() contentDispositionEncodingFallbackArray];
-        NSUInteger count = [encodingFallbacks count];
-        for (NSUInteger i = 0; i < count; ++i) {
-            CFStringEncoding encoding = CFStringConvertNSStringEncodingToEncoding([(NSNumber *)[encodingFallbacks objectAtIndex:i] unsignedLongValue]);
-            if (encoding != kCFStringEncodingInvalidId)
-                m_responseContentDispositionEncodingFallbackArray.append(CFStringConvertEncodingToIANACharSetName(encoding));
-        }
+    m_responseContentDispositionEncodingFallbackArray.clear();
+    NSArray *encodingFallbacks = [m_nsRequest.get() contentDispositionEncodingFallbackArray];
+    NSUInteger count = [encodingFallbacks count];
+    for (NSUInteger i = 0; i < count; ++i) {
+        CFStringEncoding encoding = CFStringConvertNSStringEncodingToEncoding([(NSNumber *)[encodingFallbacks objectAtIndex:i] unsignedLongValue]);
+        if (encoding != kCFStringEncodingInvalidId)
+            m_responseContentDispositionEncodingFallbackArray.append(CFStringConvertEncodingToIANACharSetName(encoding));
     }
 
 #if ENABLE(CACHE_PARTITIONING)
@@ -177,20 +173,16 @@ void ResourceRequest::doUpdatePlatformRequest()
     for (HTTPHeaderMap::const_iterator it = httpHeaderFields().begin(); it != end; ++it)
         [nsRequest setValue:it->value forHTTPHeaderField:it->key];
 
-    // The below check can be removed once we require a version of Foundation with -[NSMutableURLRequest setContentDispositionEncodingFallbackArray:] method.
-    static bool supportsContentDispositionEncodingFallbackArray = [NSMutableURLRequest instancesRespondToSelector:@selector(setContentDispositionEncodingFallbackArray:)];
-    if (supportsContentDispositionEncodingFallbackArray) {
-        NSMutableArray *encodingFallbacks = [NSMutableArray array];
-        unsigned count = m_responseContentDispositionEncodingFallbackArray.size();
-        for (unsigned i = 0; i != count; ++i) {
-            RetainPtr<CFStringRef> encodingName = m_responseContentDispositionEncodingFallbackArray[i].createCFString();
-            unsigned long nsEncoding = CFStringConvertEncodingToNSStringEncoding(CFStringConvertIANACharSetNameToEncoding(encodingName.get()));
+    NSMutableArray *encodingFallbacks = [NSMutableArray array];
+    unsigned count = m_responseContentDispositionEncodingFallbackArray.size();
+    for (unsigned i = 0; i != count; ++i) {
+        RetainPtr<CFStringRef> encodingName = m_responseContentDispositionEncodingFallbackArray[i].createCFString();
+        unsigned long nsEncoding = CFStringConvertEncodingToNSStringEncoding(CFStringConvertIANACharSetNameToEncoding(encodingName.get()));
 
-            if (nsEncoding != kCFStringEncodingInvalidId)
-                [encodingFallbacks addObject:[NSNumber numberWithUnsignedLong:nsEncoding]];
-        }
-        [nsRequest setContentDispositionEncodingFallbackArray:encodingFallbacks];
+        if (nsEncoding != kCFStringEncodingInvalidId)
+            [encodingFallbacks addObject:[NSNumber numberWithUnsignedLong:nsEncoding]];
     }
+    [nsRequest setContentDispositionEncodingFallbackArray:encodingFallbacks];
 
 #if ENABLE(CACHE_PARTITIONING)
     String partition = cachePartition();
@@ -200,7 +192,7 @@ void ResourceRequest::doUpdatePlatformRequest()
     }
 #endif
 
-    m_nsRequest.adoptNS(nsRequest);
+    m_nsRequest = adoptNS(nsRequest);
 }
 
 void ResourceRequest::doUpdatePlatformHTTPBody()
@@ -232,7 +224,7 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
         }
     }
 
-    m_nsRequest.adoptNS(nsRequest);
+    m_nsRequest = adoptNS(nsRequest);
 }
 
 void ResourceRequest::updateFromDelegatePreservingOldHTTPBody(const ResourceRequest& delegateProvidedRequest)
@@ -252,7 +244,7 @@ void ResourceRequest::applyWebArchiveHackForMail()
 void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 {
     updatePlatformRequest();
-    m_nsRequest.adoptNS(wkCopyRequestWithStorageSession(storageSession, m_nsRequest.get()));
+    m_nsRequest = adoptNS(wkCopyRequestWithStorageSession(storageSession, m_nsRequest.get()));
 }
     
 #endif // USE(CFNETWORK)

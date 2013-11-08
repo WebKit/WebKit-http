@@ -32,6 +32,7 @@
 #include "EditingDelegate.h"
 #include "FrameLoadDelegate.h"
 #include "HistoryDelegate.h"
+#include "JavaScriptThreading.h"
 #include "PixelDumpSupport.h"
 #include "PolicyDelegate.h"
 #include "ResourceLoadDelegate.h"
@@ -45,7 +46,6 @@
 #include <fcntl.h>
 #include <io.h>
 #include <math.h>
-#include <pthread.h>
 #include <shlwapi.h>
 #include <stdio.h>
 #include <string.h>
@@ -54,7 +54,6 @@
 #include <wtf/Vector.h>
 #include <windows.h>
 #include <CoreFoundation/CoreFoundation.h>
-#include <JavaScriptCore/JavaScriptCore.h>
 #include <WebKit/WebKit.h>
 #include <WebKit/WebKitCOMAPI.h>
 
@@ -136,14 +135,14 @@ bool setAlwaysAcceptCookies(bool alwaysAcceptCookies)
 
 static RetainPtr<CFStringRef> substringFromIndex(CFStringRef string, CFIndex index)
 {
-    return RetainPtr<CFStringRef>(AdoptCF, CFStringCreateWithSubstring(kCFAllocatorDefault, string, CFRangeMake(index, CFStringGetLength(string) - index)));
+    return adoptCF(CFStringCreateWithSubstring(kCFAllocatorDefault, string, CFRangeMake(index, CFStringGetLength(string) - index)));
 }
 
 wstring urlSuitableForTestResult(const wstring& urlString)
 {
-    RetainPtr<CFURLRef> url(AdoptCF, CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(urlString.c_str()), urlString.length() * sizeof(wstring::value_type), kCFStringEncodingUTF16, 0));
+    RetainPtr<CFURLRef> url = adoptCF(CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(urlString.c_str()), urlString.length() * sizeof(wstring::value_type), kCFStringEncodingUTF16, 0));
 
-    RetainPtr<CFStringRef> scheme(AdoptCF, CFURLCopyScheme(url.get()));
+    RetainPtr<CFStringRef> scheme = adoptCF(CFURLCopyScheme(url.get()));
     if (scheme && CFStringCompare(scheme.get(), CFSTR("file"), kCFCompareCaseInsensitive) != kCFCompareEqualTo)
         return urlString;
 
@@ -161,11 +160,11 @@ wstring urlSuitableForTestResult(const wstring& urlString)
     if (FAILED(request->URL(requestURLString.GetAddress())))
         return urlString;
 
-    RetainPtr<CFURLRef> requestURL(AdoptCF, CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(requestURLString.GetBSTR()), requestURLString.length() * sizeof(OLECHAR), kCFStringEncodingUTF16, 0));
-    RetainPtr<CFURLRef> baseURL(AdoptCF, CFURLCreateCopyDeletingLastPathComponent(kCFAllocatorDefault, requestURL.get()));
+    RetainPtr<CFURLRef> requestURL = adoptCF(CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(requestURLString.GetBSTR()), requestURLString.length() * sizeof(OLECHAR), kCFStringEncodingUTF16, 0));
+    RetainPtr<CFURLRef> baseURL = adoptCF(CFURLCreateCopyDeletingLastPathComponent(kCFAllocatorDefault, requestURL.get()));
 
-    RetainPtr<CFStringRef> basePath(AdoptCF, CFURLCopyPath(baseURL.get()));
-    RetainPtr<CFStringRef> path(AdoptCF, CFURLCopyPath(url.get()));
+    RetainPtr<CFStringRef> basePath = adoptCF(CFURLCopyPath(baseURL.get()));
+    RetainPtr<CFStringRef> path = adoptCF(CFURLCopyPath(url.get()));
 
     return cfStringRefToWString(substringFromIndex(path.get(), CFStringGetLength(basePath.get())).get());
 }
@@ -175,8 +174,8 @@ wstring lastPathComponent(const wstring& urlString)
     if (urlString.empty())
         return urlString;
 
-    RetainPtr<CFURLRef> url(AdoptCF, CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(urlString.c_str()), urlString.length() * sizeof(wstring::value_type), kCFStringEncodingUTF16, 0));
-    RetainPtr<CFStringRef> lastPathComponent(CFURLCopyLastPathComponent(url.get()));
+    RetainPtr<CFURLRef> url = adoptCF(CFURLCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(urlString.c_str()), urlString.length() * sizeof(wstring::value_type), kCFStringEncodingUTF16, 0));
+    RetainPtr<CFStringRef> lastPathComponent = adoptCF(CFURLCopyLastPathComponent(url.get()));
 
     return cfStringRefToWString(lastPathComponent.get());
 }
@@ -528,7 +527,7 @@ static int compareHistoryItems(const void* item1, const void* item2)
 
 static void dumpHistoryItem(IWebHistoryItem* item, int indent, bool current)
 {
-    assert(item);
+    ASSERT(item);
 
     int start = 0;
     if (current) {
@@ -645,17 +644,17 @@ static void dumpBackForwardList(IWebView* webView)
         if (FAILED(bfList->itemAtIndex(i, &item)))
             return;
         // something is wrong if the item from the last test is in the forward part of the b/f list
-        assert(item != prevTestBFItem);
+        ASSERT(item != prevTestBFItem);
         COMPtr<IUnknown> itemUnknown;
         item->QueryInterface(&itemUnknown);
         itemsToPrint.append(itemUnknown);
     }
-    
+
     COMPtr<IWebHistoryItem> currentItem;
     if (FAILED(bfList->currentItem(&currentItem)))
         return;
 
-    assert(currentItem != prevTestBFItem);
+    ASSERT(currentItem != prevTestBFItem);
     COMPtr<IUnknown> currentItemUnknown;
     currentItem->QueryInterface(&currentItemUnknown);
     itemsToPrint.append(currentItemUnknown);
@@ -931,11 +930,11 @@ static void sizeWebViewForCurrentTest()
     unsigned width;
     unsigned height;
     if (isSVGW3CTest) {
-        width = 480;
-        height = 360;
+        width = TestRunner::w3cSVGViewWidth;
+        height = TestRunner::w3cSVGViewHeight;
     } else {
-        width = TestRunner::maxViewWidth;
-        height = TestRunner::maxViewHeight;
+        width = TestRunner::viewWidth;
+        height = TestRunner::viewHeight;
     }
 
     ::SetWindowPos(webViewWindow, 0, 0, 0, width, height, SWP_NOMOVE);
@@ -1071,111 +1070,6 @@ exit:
     return;
 }
 
-static Boolean pthreadEqualCallback(const void* value1, const void* value2)
-{
-    return (Boolean)pthread_equal(*(pthread_t*)value1, *(pthread_t*)value2);
-}
-
-static CFDictionaryKeyCallBacks pthreadKeyCallbacks = { 0, 0, 0, 0, pthreadEqualCallback, 0 };
-
-static pthread_mutex_t javaScriptThreadsMutex = PTHREAD_MUTEX_INITIALIZER;
-static bool javaScriptThreadsShouldTerminate;
-
-static const int javaScriptThreadsCount = 4;
-static CFMutableDictionaryRef javaScriptThreads()
-{
-    assert(pthread_mutex_trylock(&javaScriptThreadsMutex) == EBUSY);
-    static CFMutableDictionaryRef staticJavaScriptThreads;
-    if (!staticJavaScriptThreads)
-        staticJavaScriptThreads = CFDictionaryCreateMutable(0, 0, &pthreadKeyCallbacks, 0);
-    return staticJavaScriptThreads;
-}
-
-// Loops forever, running a script and randomly respawning, until 
-// javaScriptThreadsShouldTerminate becomes true.
-void* runJavaScriptThread(void* arg)
-{
-    const char* const script =
-    " \
-    var array = []; \
-    for (var i = 0; i < 10; i++) { \
-        array.push(String(i)); \
-    } \
-    ";
-
-    while (true) {
-        JSGlobalContextRef ctx = JSGlobalContextCreate(0);
-        JSStringRef scriptRef = JSStringCreateWithUTF8CString(script);
-
-        JSValueRef exception = 0;
-        JSEvaluateScript(ctx, scriptRef, 0, 0, 1, &exception);
-        assert(!exception);
-        
-        JSGlobalContextRelease(ctx);
-        JSStringRelease(scriptRef);
-        
-        JSGarbageCollect(ctx);
-
-        pthread_mutex_lock(&javaScriptThreadsMutex);
-
-        // Check for cancellation.
-        if (javaScriptThreadsShouldTerminate) {
-            pthread_mutex_unlock(&javaScriptThreadsMutex);
-            return 0;
-        }
-
-        // Respawn probabilistically.
-        if (rand() % 5 == 0) {
-            pthread_t pthread;
-            pthread_create(&pthread, 0, &runJavaScriptThread, 0);
-            pthread_detach(pthread);
-
-            pthread_t self = pthread_self();
-            CFDictionaryRemoveValue(javaScriptThreads(), self.p);
-            CFDictionaryAddValue(javaScriptThreads(), pthread.p, 0);
-
-            pthread_mutex_unlock(&javaScriptThreadsMutex);
-            return 0;
-        }
-
-        pthread_mutex_unlock(&javaScriptThreadsMutex);
-    }
-}
-
-static void startJavaScriptThreads(void)
-{
-    pthread_mutex_lock(&javaScriptThreadsMutex);
-
-    for (int i = 0; i < javaScriptThreadsCount; i++) {
-        pthread_t pthread;
-        pthread_create(&pthread, 0, &runJavaScriptThread, 0);
-        pthread_detach(pthread);
-        CFDictionaryAddValue(javaScriptThreads(), pthread.p, 0);
-    }
-
-    pthread_mutex_unlock(&javaScriptThreadsMutex);
-}
-
-static void stopJavaScriptThreads(void)
-{
-    pthread_mutex_lock(&javaScriptThreadsMutex);
-
-    javaScriptThreadsShouldTerminate = true;
-
-    pthread_t* pthreads[javaScriptThreadsCount] = {0};
-    int threadDictCount = CFDictionaryGetCount(javaScriptThreads());
-    assert(threadDictCount == javaScriptThreadsCount);
-    CFDictionaryGetKeysAndValues(javaScriptThreads(), (const void**)pthreads, 0);
-
-    pthread_mutex_unlock(&javaScriptThreadsMutex);
-
-    for (int i = 0; i < javaScriptThreadsCount; i++) {
-        pthread_t* pthread = pthreads[i];
-        pthread_join(*pthread, 0);
-        free(pthread);
-    }
-}
-
 Vector<HWND>& openWindows()
 {
     static Vector<HWND> vector;
@@ -1190,8 +1084,8 @@ WindowToWebViewMap& windowToWebViewMap()
 
 IWebView* createWebViewAndOffscreenWindow(HWND* webViewWindow)
 {
-    unsigned maxViewWidth = TestRunner::maxViewWidth;
-    unsigned maxViewHeight = TestRunner::maxViewHeight;
+    unsigned maxViewWidth = TestRunner::viewWidth;
+    unsigned maxViewHeight = TestRunner::viewHeight;
     HWND hostWindow = CreateWindowEx(WS_EX_TOOLWINDOW, kDumpRenderTreeClassName, TEXT("DumpRenderTree"), WS_POPUP,
       -maxViewWidth, -maxViewHeight, maxViewWidth, maxViewHeight, 0, 0, GetModuleHandle(0), 0);
 
@@ -1278,7 +1172,7 @@ RetainPtr<CFURLCacheRef> sharedCFURLCache()
 
     typedef CFURLCacheRef (*CFURLCacheCopySharedURLCacheProcPtr)(void);
     if (CFURLCacheCopySharedURLCacheProcPtr copyCache = reinterpret_cast<CFURLCacheCopySharedURLCacheProcPtr>(GetProcAddress(module, "CFURLCacheCopySharedURLCache")))
-        return RetainPtr<CFURLCacheRef>(AdoptCF, copyCache());
+        return adoptCF(copyCache());
 
     typedef CFURLCacheRef (*CFURLCacheSharedURLCacheProcPtr)(void);
     if (CFURLCacheSharedURLCacheProcPtr sharedCache = reinterpret_cast<CFURLCacheSharedURLCacheProcPtr>(GetProcAddress(module, "CFURLCacheSharedURLCache")))

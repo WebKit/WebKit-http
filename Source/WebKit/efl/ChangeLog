@@ -1,3 +1,191 @@
+2013-05-08  Jose Lejin PJ  <jose.lejin@gmail.com>
+
+        [EFL] Correct documentation for ewk_settings APIs
+        https://bugs.webkit.org/show_bug.cgi?id=115507
+
+        Reviewed by Gyuyoung Kim.
+
+        Corrected documentation for ewk_settings APIs.
+
+        * ewk/ewk_settings.h:
+
+2013-05-07  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Remove the ewk_settings_shadow_dom_enable_set/get APIs from unit test
+        https://bugs.webkit.org/show_bug.cgi?id=115771
+
+        Reviewed by Gyuyoung Kim.
+
+        Unit test is failing since r149702. Remove the test case related to shadow dom.
+
+        * tests/test_ewk_setting.cpp:
+
+2013-04-26  Jose Lejin PJ  <jose.lejin@gmail.com>
+
+        [EFL] Add unit test cases for ewk_settings APIs
+        https://bugs.webkit.org/show_bug.cgi?id=114897
+
+        Reviewed by Gyuyoung Kim.
+
+        Added unit tests for ewk_settings APIs.
+
+        * tests/test_ewk_setting.cpp:
+        (TEST_F):
+
+2013-04-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ConsoleMessage should include line and column number where possible
+        https://bugs.webkit.org/show_bug.cgi?id=114929
+
+        Reviewed by Timothy Hatcher.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::addMessageToConsole):
+        * WebCoreSupport/ChromeClientEfl.h:
+        (ChromeClientEfl):
+
+2013-04-25  Commit Queue  <rniwa@webkit.org>
+
+        Unreviewed, rolling out r149032.
+        http://trac.webkit.org/changeset/149032
+        https://bugs.webkit.org/show_bug.cgi?id=115151
+
+        EFL WK1 API test has been broken after r149032 (Requested by
+        gyuyoung on #webkit).
+
+        * tests/test_ewk_setting.cpp:
+        (TEST_F):
+
+2013-04-24  Jose Lejin PJ  <jose.lejin@gmail.com>
+
+        [EFL] Add unit test cases for ewk_settings APIs
+        https://bugs.webkit.org/show_bug.cgi?id=114897
+
+        Reviewed by Gyuyoung Kim.
+  
+        Added unit tests for ewk_settings APIs.
+
+        * tests/test_ewk_setting.cpp:
+        (TEST_F):
+
+2013-04-19  Jose Lejin PJ  <jose.lejin@gmail.com>
+
+        [EFL] Add method in ewk_settings for setting the CSS media type
+        https://bugs.webkit.org/show_bug.cgi?id=113284
+
+        Reviewed by Gyuyoung Kim.
+
+        Added APIs to set and get CSS media type.
+        Added unit tests for these APIs.
+
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        (WebCore::FrameLoaderClientEfl::overrideMediaType):
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_css_media_type_set):
+        (ewk_settings_css_media_type_get):
+        * ewk/ewk_settings.h:
+        * tests/test_ewk_setting.cpp: Added.
+        (TEST_F):
+
+2013-04-17  Geoffrey Garen  <ggaren@apple.com>
+
+        Renamed JSGlobalData to VM
+        https://bugs.webkit.org/show_bug.cgi?id=114777
+
+        Reviewed by Phil Pizlo.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::javaScriptObjectsCount):
+
+2013-04-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        More EFL build fixes.
+
+        * ewk/ewk_frame.cpp:
+        * ewk/ewk_view.cpp:
+
+2013-04-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        EFL build fix after r148545.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+
+2013-04-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        REGRESSION (r148506): Use of deprecated libsoup API
+        https://bugs.webkit.org/show_bug.cgi?id=114679
+
+        Reviewed by Gyuyoung Kim.
+
+        Remove deprecated libsoup API usage.
+
+        * ewk/ewk_network.cpp:
+        (ewk_network_proxy_uri_set):
+        (ewk_network_proxy_uri_get):
+
+2013-04-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK][EFL] Remove deprecated libsoup API usage
+        https://bugs.webkit.org/show_bug.cgi?id=104894
+
+        Reviewed by Philippe Normand.
+
+        Remove LIBSOUP_USE_UNSTABLE_REQUEST_API and only include
+        libsoup/soup.h.
+
+2013-04-14  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Unreviewed build fix for WebKit1 EFL after r148373 due to missing
+        header includes.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        * WebCoreSupport/EditorClientEfl.cpp:
+        * WebCoreSupport/FrameLoaderClientEfl.cpp:
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        * ewk/ewk_frame.cpp:
+        * ewk/ewk_view.cpp:
+        * ewk/ewk_view_private.h:
+        (WebCore):
+
+2013-04-13  Ed Bartosh  <bartosh@gmail.com>
+
+        [EFL] --minimal build fails with error: 'ViewModeInvalid' is not a member of 'WebCore::Page'
+        https://bugs.webkit.org/show_bug.cgi?id=114048
+
+        Reviewed by Gyuyoung Kim.
+
+        Wrapped view-mode media related code into #if ENABLE(VIEW_MODE_CSS_MEDIA)
+
+        * WebCoreSupport/AssertMatchingEnums.cpp:
+        * ewk/ewk_view.cpp:
+        (ewk_view_mode_set):
+
+2013-04-10  Benjamin Poulain  <bpoulain@apple.com>
+
+        Mass remove all the empty directories
+
+        Rubberstamped by Ryosuke Niwa.
+
+        * DefaultTheme/widget/button: Removed.
+        * DefaultTheme/widget/check: Removed.
+        * DefaultTheme/widget/combo: Removed.
+        * DefaultTheme/widget/entry: Removed.
+        * DefaultTheme/widget/file: Removed.
+        * DefaultTheme/widget/mediacontrol/fullscreenbutton: Removed.
+        * DefaultTheme/widget/mediacontrol/mutebutton: Removed.
+        * DefaultTheme/widget/mediacontrol/playpausebutton: Removed.
+        * DefaultTheme/widget/mediacontrol/seekbackwardbutton: Removed.
+        * DefaultTheme/widget/mediacontrol/seekforwardbutton: Removed.
+        * DefaultTheme/widget/mediacontrol/togglecaptionsbutton: Removed.
+        * DefaultTheme/widget/progressbar: Removed.
+        * DefaultTheme/widget/radio: Removed.
+        * DefaultTheme/widget/scrollbar: Removed.
+        * DefaultTheme/widget/search/cancel: Removed.
+        * DefaultTheme/widget/search/decoration: Removed.
+        * DefaultTheme/widget/search/field: Removed.
+        * DefaultTheme/widget/slider: Removed.
+        * DefaultTheme/widget/spinner: Removed.
+
 2013-04-09  Ed Bartosh  <bartosh@gmail.com>
 
         [EFL] --minimal build fails with error: `setSeamlessIFramesEnabled' is not a member of `WebCore::RuntimeEnabledFeatures'

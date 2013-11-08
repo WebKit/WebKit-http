@@ -48,16 +48,21 @@ using namespace VectorMath;
 
 const unsigned MaxBusChannels = 32;
 
+PassRefPtr<AudioBus> AudioBus::create(unsigned numberOfChannels, size_t length, bool allocate)
+{
+    ASSERT(numberOfChannels <= MaxBusChannels);
+    if (numberOfChannels > MaxBusChannels)
+        return 0;
+
+    return adoptRef(new AudioBus(numberOfChannels, length, allocate));
+}
+
 AudioBus::AudioBus(unsigned numberOfChannels, size_t length, bool allocate)
     : m_length(length)
     , m_busGain(1)
     , m_isFirstTime(true)
     , m_sampleRate(0)
 {
-    ASSERT(numberOfChannels <= MaxBusChannels);
-    if (numberOfChannels > MaxBusChannels)
-        return;
-
     m_channels.reserveInitialCapacity(numberOfChannels);
 
     for (unsigned i = 0; i < numberOfChannels; ++i) {
@@ -164,7 +169,7 @@ bool AudioBus::topologyMatches(const AudioBus& bus) const
     return true;
 }
 
-PassOwnPtr<AudioBus> AudioBus::createBufferFromRange(const AudioBus* sourceBuffer, unsigned startFrame, unsigned endFrame)
+PassRefPtr<AudioBus> AudioBus::createBufferFromRange(const AudioBus* sourceBuffer, unsigned startFrame, unsigned endFrame)
 {
     size_t numberOfSourceFrames = sourceBuffer->length();
     unsigned numberOfChannels = sourceBuffer->numberOfChannels();
@@ -173,17 +178,17 @@ PassOwnPtr<AudioBus> AudioBus::createBufferFromRange(const AudioBus* sourceBuffe
     bool isRangeSafe = startFrame < endFrame && endFrame <= numberOfSourceFrames;
     ASSERT(isRangeSafe);
     if (!isRangeSafe)
-        return nullptr;
+        return 0;
 
     size_t rangeLength = endFrame - startFrame;
 
-    OwnPtr<AudioBus> audioBus = adoptPtr(new AudioBus(numberOfChannels, rangeLength));
+    RefPtr<AudioBus> audioBus = create(numberOfChannels, rangeLength);
     audioBus->setSampleRate(sourceBuffer->sampleRate());
 
     for (unsigned i = 0; i < numberOfChannels; ++i)
         audioBus->channel(i)->copyFromRange(sourceBuffer->channel(i), startFrame, endFrame);
 
-    return audioBus.release();
+    return audioBus;
 }
 
 float AudioBus::maxAbsValue() const
@@ -518,12 +523,12 @@ void AudioBus::copyWithSampleAccurateGainValuesFrom(const AudioBus &sourceBus, f
     }
 }
 
-PassOwnPtr<AudioBus> AudioBus::createBySampleRateConverting(const AudioBus* sourceBus, bool mixToMono, double newSampleRate)
+PassRefPtr<AudioBus> AudioBus::createBySampleRateConverting(const AudioBus* sourceBus, bool mixToMono, double newSampleRate)
 {
     // sourceBus's sample-rate must be known.
     ASSERT(sourceBus && sourceBus->sampleRate());
     if (!sourceBus || !sourceBus->sampleRate())
-        return nullptr;
+        return 0;
 
     double sourceSampleRate = sourceBus->sampleRate();
     double destinationSampleRate = newSampleRate;
@@ -543,14 +548,14 @@ PassOwnPtr<AudioBus> AudioBus::createBySampleRateConverting(const AudioBus* sour
     }
 
     if (sourceBus->isSilent()) {
-        OwnPtr<AudioBus> silentBus = adoptPtr(new AudioBus(numberOfSourceChannels, sourceBus->length() / sampleRateRatio));
+        RefPtr<AudioBus> silentBus = create(numberOfSourceChannels, sourceBus->length() / sampleRateRatio);
         silentBus->setSampleRate(newSampleRate);
-        return silentBus.release();
+        return silentBus;
     }
 
     // First, mix to mono (if necessary) then sample-rate convert.
     const AudioBus* resamplerSourceBus;
-    OwnPtr<AudioBus> mixedMonoBus;
+    RefPtr<AudioBus> mixedMonoBus;
     if (mixToMono) {
         mixedMonoBus = AudioBus::createByMixingToMono(sourceBus);
         resamplerSourceBus = mixedMonoBus.get();
@@ -565,7 +570,7 @@ PassOwnPtr<AudioBus> AudioBus::createBySampleRateConverting(const AudioBus* sour
 
     // Create destination bus with same number of channels.
     unsigned numberOfDestinationChannels = resamplerSourceBus->numberOfChannels();
-    OwnPtr<AudioBus> destinationBus(adoptPtr(new AudioBus(numberOfDestinationChannels, destinationLength)));
+    RefPtr<AudioBus> destinationBus = create(numberOfDestinationChannels, destinationLength);
 
     // Sample-rate convert each channel.
     for (unsigned i = 0; i < numberOfDestinationChannels; ++i) {
@@ -578,13 +583,13 @@ PassOwnPtr<AudioBus> AudioBus::createBySampleRateConverting(const AudioBus* sour
 
     destinationBus->clearSilentFlag();
     destinationBus->setSampleRate(newSampleRate);    
-    return destinationBus.release();
+    return destinationBus;
 }
 
-PassOwnPtr<AudioBus> AudioBus::createByMixingToMono(const AudioBus* sourceBus)
+PassRefPtr<AudioBus> AudioBus::createByMixingToMono(const AudioBus* sourceBus)
 {
     if (sourceBus->isSilent())
-        return adoptPtr(new AudioBus(1, sourceBus->length()));
+        return create(1, sourceBus->length());
 
     switch (sourceBus->numberOfChannels()) {
     case 1:
@@ -593,7 +598,7 @@ PassOwnPtr<AudioBus> AudioBus::createByMixingToMono(const AudioBus* sourceBus)
     case 2:
         {
             unsigned n = sourceBus->length();
-            OwnPtr<AudioBus> destinationBus(adoptPtr(new AudioBus(1, n)));
+            RefPtr<AudioBus> destinationBus = create(1, n);
 
             const float* sourceL = sourceBus->channel(0)->data();
             const float* sourceR = sourceBus->channel(1)->data();
@@ -605,12 +610,12 @@ PassOwnPtr<AudioBus> AudioBus::createByMixingToMono(const AudioBus* sourceBus)
 
             destinationBus->clearSilentFlag();
             destinationBus->setSampleRate(sourceBus->sampleRate());    
-            return destinationBus.release();
+            return destinationBus;
         }
     }
 
     ASSERT_NOT_REACHED();
-    return nullptr;
+    return 0;
 }
 
 bool AudioBus::isSilent() const

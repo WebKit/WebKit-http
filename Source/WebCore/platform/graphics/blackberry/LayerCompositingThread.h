@@ -149,7 +149,7 @@ public:
     // Returns true if we have an animation
     bool updateAnimations(double currentTime);
     void updateTextureContentsIfNeeded();
-    Texture* contentsTexture();
+    LayerTexture* contentsTexture();
 
     const LayerCompositingThread* rootLayer() const;
     void setSublayers(const Vector<RefPtr<LayerCompositingThread> >&);
@@ -290,8 +290,8 @@ inline void ThreadSafeRefCounted<WebCore::LayerCompositingThread>::deref()
     if (derefBase()) {
         // Delete on the compositing thread.
         BlackBerry::Platform::GuardedPointerDeleter::deleteOnThread(
-                BlackBerry::Platform::userInterfaceThreadMessageClient(),
-                static_cast<WebCore::LayerCompositingThread*>(this));
+            BlackBerry::Platform::userInterfaceThreadMessageClient(),
+            static_cast<WebCore::LayerCompositingThread*>(this));
     }
 }
 

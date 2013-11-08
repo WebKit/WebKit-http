@@ -39,12 +39,11 @@ public:
     virtual CSSRule::Type type() const { return STYLE_RULE; }
     virtual String cssText() const OVERRIDE;
     virtual void reattach(StyleRuleBase*) OVERRIDE;
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
     String selectorText() const;
     void setSelectorText(const String&);
 
-    CSSStyleDeclaration* style() const;
+    CSSStyleDeclaration* style();
 
     // FIXME: Not CSSOM. Remove.
     StyleRule* styleRule() const { return m_styleRule.get(); }

@@ -158,9 +158,8 @@ bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRef
     request.initializePlatformRequest(platformRequest, frame->loader() && frame->loader()->client() && static_cast<FrameLoaderClientBlackBerry*>(frame->loader()->client())->cookiesEnabled(), isInitial, rereadCookies);
 
     const String& documentUrl = frame->document()->url().string();
-    if (!documentUrl.isEmpty()) {
+    if (!documentUrl.isEmpty())
         platformRequest.setReferrer(documentUrl);
-    }
 
     platformRequest.setSecurityOrigin(frame->document()->securityOrigin()->toRawString());
 
@@ -169,7 +168,7 @@ bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRef
     setAuthCredentials(platformRequest, guardJob->getInternal()->m_proxyWebChallenge);
 
     if (!request.overrideContentType().isEmpty())
-        platformRequest.setOverrideContentType(request.overrideContentType().latin1().data());
+        platformRequest.setOverrideContentType(request.overrideContentType());
 
     NetworkJob* networkJob = new NetworkJob;
     if (!networkJob)

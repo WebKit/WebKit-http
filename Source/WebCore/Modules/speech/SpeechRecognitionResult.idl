@@ -24,11 +24,12 @@
  */
 
 [
+    NoInterfaceObject,
     Conditional=SCRIPTED_SPEECH,
     IndexedGetter,
     ImplementationLacksVTable
 ] interface SpeechRecognitionResult {
     readonly attribute unsigned long length;
-    SpeechRecognitionAlternative item(in [IsIndex] unsigned long index);
+    SpeechRecognitionAlternative item([IsIndex] unsigned long index);
     readonly attribute boolean isFinal;
 };

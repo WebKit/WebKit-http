@@ -51,9 +51,7 @@
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 #include "VoidCallback.h"
-#include "WebCoreMemoryInstrumentation.h"
 
-#include <wtf/MemoryInstrumentationHashMap.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -120,8 +118,11 @@ void InspectorDOMStorageAgent::getDOMStorageItems(ErrorString* errorString, cons
 {
     Frame* frame;
     RefPtr<StorageArea> storageArea = findStorageArea(errorString, storageId, frame);
-    if (!storageArea)
+    if (!storageArea) {
+        if (errorString)
+            *errorString = "No StorageArea for given storageId";
         return;
+    }
 
     RefPtr<TypeBuilder::Array<TypeBuilder::Array<String> > > storageItems = TypeBuilder::Array<TypeBuilder::Array<String> >::create();
 
@@ -239,13 +240,6 @@ PassRefPtr<StorageArea> InspectorDOMStorageAgent::findStorageArea(ErrorString* e
     if (isLocalStorage)
         return page->group().localStorage()->storageArea(frame->document()->securityOrigin());
     return page->sessionStorage()->storageArea(frame->document()->securityOrigin());
-}
-
-void InspectorDOMStorageAgent::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::InspectorDOMStorageAgent);
-    InspectorBaseAgent<InspectorDOMStorageAgent>::reportMemoryUsage(memoryObjectInfo);
-    info.addWeakPointer(m_frontend);
 }
 
 } // namespace WebCore

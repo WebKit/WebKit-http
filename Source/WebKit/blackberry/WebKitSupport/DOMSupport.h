@@ -53,6 +53,7 @@ enum AttributeState { On, Off, Default };
 bool isElementTypePlugin(const WebCore::Element*);
 
 bool isTextInputElement(WebCore::Element*);
+bool isShadowHostTextInputElement(WebCore::Node*);
 bool isTextBasedContentEditableElement(WebCore::Element*);
 bool isPasswordElement(const WebCore::Element*);
 
@@ -64,6 +65,7 @@ AttributeState elementAttributeState(const WebCore::Element*, const WebCore::Qua
 AttributeState elementSupportsAutocorrect(const WebCore::Element*);
 AttributeState elementSupportsAutocomplete(const WebCore::Element*);
 AttributeState elementSupportsSpellCheck(const WebCore::Element*);
+bool isElementReadOnly(const WebCore::Element*);
 
 bool elementHasContinuousSpellCheckingEnabled(const PassRefPtr<WebCore::Element>);
 
@@ -104,6 +106,8 @@ bool isFixedPositionOrHasFixedPositionAncestor(WebCore::RenderObject*);
 
 WebCore::Element* selectionContainerElement(const WebCore::VisibleSelection&);
 BlackBerry::Platform::RequestedHandlePosition elementHandlePositionAttribute(const WebCore::Element*);
+
+bool isElementAndDocumentAttached(const WebCore::Element*);
 
 } // DOMSupport
 } // WebKit

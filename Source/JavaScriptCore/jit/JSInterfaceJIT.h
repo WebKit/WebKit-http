@@ -33,7 +33,6 @@
 #include "JSStack.h"
 #include "JSString.h"
 #include "MacroAssembler.h"
-#include <wtf/AlwaysInline.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(JIT)
@@ -67,7 +66,6 @@ namespace JSC {
         static const RegisterID bucketCounterRegister = X86Registers::r10;
 #endif
 
-        static const RegisterID timeoutCheckRegister = X86Registers::r12;
         static const RegisterID callFrameRegister = X86Registers::r13;
         static const RegisterID tagTypeNumberRegister = X86Registers::r14;
         static const RegisterID tagMaskRegister = X86Registers::r15;
@@ -118,7 +116,6 @@ namespace JSC {
 
         // Update ctiTrampoline in JITStubs.cpp if these values are changed!
         static const RegisterID callFrameRegister = ARMRegisters::r5;
-        static const RegisterID timeoutCheckRegister = ARMRegisters::r6;
 
         static const FPRegisterID fpRegT0 = ARMRegisters::d0;
         static const FPRegisterID fpRegT1 = ARMRegisters::d1;
@@ -145,14 +142,12 @@ namespace JSC {
         static const RegisterID regT3 = MIPSRegisters::s2;
         
         static const RegisterID callFrameRegister = MIPSRegisters::s0;
-        static const RegisterID timeoutCheckRegister = MIPSRegisters::s1;
         
         static const FPRegisterID fpRegT0 = MIPSRegisters::f4;
         static const FPRegisterID fpRegT1 = MIPSRegisters::f6;
         static const FPRegisterID fpRegT2 = MIPSRegisters::f8;
         static const FPRegisterID fpRegT3 = MIPSRegisters::f10;
 #elif CPU(SH4)
-        static const RegisterID timeoutCheckRegister = SH4Registers::r8;
         static const RegisterID callFrameRegister = SH4Registers::fp;
 
         static const RegisterID regT0 = SH4Registers::r0;
@@ -223,9 +218,6 @@ namespace JSC {
     };
 
     struct ThunkHelpers {
-        static unsigned stringImplFlagsOffset() { return StringImpl::flagsOffset(); }
-        static unsigned stringImpl8BitFlag() { return StringImpl::flagIs8Bit(); }
-        static unsigned stringImplDataOffset() { return StringImpl::dataOffset(); }
         static unsigned jsStringLengthOffset() { return OBJECT_OFFSETOF(JSString, m_length); }
         static unsigned jsStringValueOffset() { return OBJECT_OFFSETOF(JSString, m_value); }
     };

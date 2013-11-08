@@ -86,6 +86,9 @@ STYLESHEETS_EMBED = \
     $$PWD/css/themeQtNoListboxes.css \
     $$PWD/css/mobileThemeQt.css
 
+PLUGINS_EMBED = \
+    $$PWD/Resources/plugIns.js
+
 IDL_BINDINGS += \
     $$PWD/Modules/filesystem/DOMFileSystem.idl \
     $$PWD/Modules/filesystem/DOMFileSystemSync.idl \
@@ -158,7 +161,6 @@ IDL_BINDINGS += \
     $$PWD/Modules/webaudio/BiquadFilterNode.idl \
     $$PWD/Modules/webaudio/ConvolverNode.idl \
     $$PWD/Modules/webaudio/DelayNode.idl \
-    $$PWD/Modules/webaudio/DOMWindowWebAudio.idl \
     $$PWD/Modules/webaudio/DynamicsCompressorNode.idl \
     $$PWD/Modules/webaudio/ScriptProcessorNode.idl \
     $$PWD/Modules/webaudio/MediaElementAudioSourceNode.idl \
@@ -186,7 +188,6 @@ IDL_BINDINGS += \
     $$PWD/Modules/webdatabase/SQLTransactionSyncCallback.idl \
     $$PWD/Modules/webdatabase/WorkerContextWebDatabase.idl \
     $$PWD/Modules/websockets/CloseEvent.idl \
-    $$PWD/Modules/websockets/DOMWindowWebSocket.idl \
     $$PWD/Modules/websockets/WebSocket.idl \
     $$PWD/Modules/websockets/WorkerContextWebSocket.idl \
     $$PWD/css/Counter.idl \
@@ -435,7 +436,6 @@ IDL_BINDINGS += \
     $$PWD/html/ValidityState.idl \
     $$PWD/html/VoidCallback.idl \
     $$PWD/html/shadow/HTMLContentElement.idl \
-    $$PWD/html/shadow/HTMLShadowElement.idl \
     $$PWD/inspector/InjectedScriptHost.idl \
     $$PWD/inspector/InspectorFrontendHost.idl \
     $$PWD/inspector/JavaScriptCallFrame.idl \
@@ -652,11 +652,15 @@ enable?(GAMEPAD) {
 
 enable?(VIDEO_TRACK) {
   IDL_BINDINGS += \
+    $$PWD/html/track/AudioTrack.idl \
+    $$PWD/html/track/AudioTrackList.idl \
     $$PWD/html/track/TextTrack.idl \
     $$PWD/html/track/TextTrackCue.idl \
     $$PWD/html/track/TextTrackCueList.idl \
     $$PWD/html/track/TextTrackList.idl \
     $$PWD/html/track/TrackEvent.idl \
+    $$PWD/html/track/VideoTrack.idl \
+    $$PWD/html/track/VideoTrackList.idl
 }
 
 enable?(MEDIA_SOURCE) {
@@ -727,6 +731,7 @@ IDL_BINDINGS += generated/$$INTERNAL_SETTINGS_GENERATED_IDL
 
 # GENERATOR 0: Resolve [Supplemental] dependency in IDLs
 SUPPLEMENTAL_DEPENDENCY_FILE = supplemental_dependency.tmp
+WINDOW_CONSTRUCTORS_FILE = DOMWindowConstructors.idl
 IDL_FILES_TMP = ${QMAKE_FUNC_FILE_OUT_PATH}/idl_files.tmp
 PREPROCESS_IDLS_SCRIPT = $$PWD/bindings/scripts/preprocess-idls.pl
 IDL_ATTRIBUTES_FILE = $$PWD/bindings/scripts/IDLAttributes.txt
@@ -744,8 +749,9 @@ for(binding, IDL_BINDINGS) {
 preprocessIdls.commands += perl -I$$PWD/bindings/scripts $$preprocessIdls.script \
                                --defines \"$$javascriptFeatureDefines()\" \
                                --idlFilesList $$IDL_FILES_TMP \
-                               --supplementalDependencyFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE
-preprocessIdls.output = $$SUPPLEMENTAL_DEPENDENCY_FILE
+                               --supplementalDependencyFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$SUPPLEMENTAL_DEPENDENCY_FILE \
+                               --windowConstructorsFile ${QMAKE_FUNC_FILE_OUT_PATH}/$$WINDOW_CONSTRUCTORS_FILE
+preprocessIdls.output = $$SUPPLEMENTAL_DEPENDENCY_FILE $$WINDOW_CONSTRUCTORS_FILE
 preprocessIdls.add_output_to_sources = false
 preprocessIdls.depends = $$IDL_BINDINGS
 GENERATORS += preprocessIdls
@@ -952,14 +958,23 @@ stylesheets.depends = $$STYLESHEETS_EMBED
 stylesheets.clean = ${QMAKE_FILE_OUT} ${QMAKE_FUNC_FILE_OUT_PATH}/UserAgentStyleSheets.h
 GENERATORS += stylesheets
 
-# GENERATOR 10: XPATH grammar
+# GENERATOR 10:
+pluginsresources.script = $$PWD/css/make-css-file-arrays.pl
+pluginsresources.output = PlugInsResourcesData.cpp
+pluginsresources.input = pluginsresources.script
+pluginsresources.commands = perl $$pluginsresources.script ${QMAKE_FUNC_FILE_OUT_PATH}/PlugInsResources.h ${QMAKE_FILE_OUT} $$PLUGINS_EMBED
+pluginsresources.depends = $$PLUGINS_EMBED
+pluginsresources.clean = ${QMAKE_FILE_OUT} ${QMAKE_FUNC_FILE_OUT_PATH}/PlugInsResources.h
+GENERATORS += pluginsresources
+
+# GENERATOR 11: XPATH grammar
 xpathbison.output = ${QMAKE_FILE_BASE}.cpp
 xpathbison.input = XPATHBISON
 xpathbison.commands = bison -d -p xpathyy ${QMAKE_FILE_NAME} -o ${QMAKE_FUNC_FILE_OUT_PATH}/${QMAKE_FILE_BASE}.tab.c && $(MOVE) ${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}${QMAKE_FILE_BASE}.tab.c ${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}${QMAKE_FILE_BASE}.cpp && $(MOVE) ${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}${QMAKE_FILE_BASE}.tab.h ${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}${QMAKE_FILE_BASE}.h
 xpathbison.depends = ${QMAKE_FILE_NAME}
 GENERATORS += xpathbison
 
-# GENERATOR 11: WebKit Version
+# GENERATOR 12: WebKit Version
 # The appropriate Apple-maintained Version.xcconfig file for WebKit version information is in Source/WebKit/mac/Configurations/.
 webkitversion.script = $$PWD/../WebKit/scripts/generate-webkitversion.pl
 webkitversion.output = WebKitVersion.h

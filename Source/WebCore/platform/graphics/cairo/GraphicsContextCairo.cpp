@@ -297,7 +297,6 @@ static void drawLineOnCairoContext(GraphicsContext* graphicsContext, cairo_t* co
     FloatPoint point2OnPixelBoundaries = point2;
     GraphicsContext::adjustLineToPixelBoundaries(point1OnPixelBoundaries, point2OnPixelBoundaries, strokeThickness, style);
 
-    cairo_set_antialias(context, CAIRO_ANTIALIAS_NONE);
     if (patternWidth) {
         // Do a rect fill of our endpoints.  This ensures we always have the
         // appearance of being a border.  We then draw the actual dotted/dashed line.
@@ -364,63 +363,6 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
         cairo_stroke(cr);
     } else
         cairo_new_path(cr);
-}
-
-void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSpan)
-{
-    if (paintingDisabled() || strokeStyle() == NoStroke)
-        return;
-
-    int x = rect.x();
-    int y = rect.y();
-    float w = rect.width();
-    float h = rect.height();
-    float scaleFactor = h / w;
-    float reverseScaleFactor = w / h;
-
-    float hRadius = w / 2;
-    float vRadius = h / 2;
-    float fa = startAngle;
-    float falen =  fa + angleSpan;
-
-    cairo_t* cr = platformContext()->cr();
-    cairo_save(cr);
-
-    if (w != h)
-        cairo_scale(cr, 1., scaleFactor);
-
-    cairo_arc_negative(cr, x + hRadius, (y + vRadius) * reverseScaleFactor, hRadius, deg2rad(-fa), deg2rad(-falen));
-
-    if (w != h)
-        cairo_scale(cr, 1., reverseScaleFactor);
-
-    int patternWidth = 0;
-    switch (strokeStyle()) {
-    case DottedStroke:
-        patternWidth = floorf(strokeThickness() / 2.f);
-        break;
-    case DashedStroke:
-        patternWidth = 3 * floorf(strokeThickness() / 2.f);
-        break;
-    default:
-        break;
-    }
-
-    setSourceRGBAFromColor(cr, strokeColor());
-
-    if (patternWidth) {
-        float distance = 0;
-        if (hRadius == vRadius)
-            distance = (piFloat * hRadius) / 2.f;
-        else // We are elliptical and will have to estimate the distance
-            distance = (piFloat * sqrtf((hRadius * hRadius + vRadius * vRadius) / 2.f)) / 2.f;
-        double patternOffset = calculateStrokePatternOffset(floorf(distance), patternWidth);
-        double patternWidthAsDouble = patternWidth;
-        cairo_set_dash(cr, &patternWidthAsDouble, 1, patternOffset);
-    }
-
-    cairo_stroke(cr);
-    cairo_restore(cr);
 }
 
 void GraphicsContext::drawConvexPolygon(size_t npoints, const FloatPoint* points, bool shouldAntialias)
@@ -1140,6 +1082,11 @@ void GraphicsContext::setImageInterpolationQuality(InterpolationQuality quality)
 InterpolationQuality GraphicsContext::imageInterpolationQuality() const
 {
     return platformContext()->imageInterpolationQuality();
+}
+
+bool GraphicsContext::isAcceleratedContext() const
+{
+    return cairo_surface_get_type(cairo_get_target(platformContext()->cr())) == CAIRO_SURFACE_TYPE_GL;
 }
 
 #if ENABLE(3D_RENDERING) && USE(TEXTURE_MAPPER)

@@ -46,9 +46,7 @@
 #include "Settings.h"
 #include "SVGTextRunRenderingContext.h"
 #include "Text.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include "break_lines.h"
-#include <wtf/AlwaysInline.h>
 #include <wtf/text/CString.h>
 
 using namespace std;
@@ -389,21 +387,21 @@ FloatSize InlineTextBox::applyShadowToGraphicsContext(GraphicsContext* context, 
     int shadowX = horizontal ? shadow->x() : shadow->y();
     int shadowY = horizontal ? shadow->y() : -shadow->x();
     FloatSize shadowOffset(shadowX, shadowY);
-    int shadowBlur = shadow->blur();
+    int shadowRadius = shadow->radius();
     const Color& shadowColor = shadow->color();
 
     if (shadow->next() || stroked || !opaque) {
         FloatRect shadowRect(textRect);
-        shadowRect.inflate(shadowBlur);
+        shadowRect.inflate(shadow->paintingExtent());
         shadowRect.move(shadowOffset);
         context->save();
         context->clip(shadowRect);
 
-        extraOffset = FloatSize(0, 2 * textRect.height() + max(0.0f, shadowOffset.height()) + shadowBlur);
+        extraOffset = FloatSize(0, 2 * textRect.height() + max(0.0f, shadowOffset.height()) + shadowRadius);
         shadowOffset -= extraOffset;
     }
 
-    context->setShadow(shadowOffset, shadowBlur, shadowColor, context->fillColorSpace());
+    context->setShadow(shadowOffset, shadowRadius, shadowColor, context->fillColorSpace());
     return extraOffset;
 }
 
@@ -1150,13 +1148,14 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
     if (!linesAreOpaque && shadow && shadow->next()) {
         FloatRect clipRect(localOrigin, FloatSize(width, baseline + 2));
         for (const ShadowData* s = shadow; s; s = s->next()) {
+            int shadowExtent = s->paintingExtent();
             FloatRect shadowRect(localOrigin, FloatSize(width, baseline + 2));
-            shadowRect.inflate(s->blur());
+            shadowRect.inflate(shadowExtent);
             int shadowX = isHorizontal() ? s->x() : s->y();
             int shadowY = isHorizontal() ? s->y() : -s->x();
             shadowRect.move(shadowX, shadowY);
             clipRect.unite(shadowRect);
-            extraOffset = max(extraOffset, max(0, shadowY) + s->blur());
+            extraOffset = max(extraOffset, max(0, shadowY) + shadowExtent);
         }
         context->save();
         context->clip(clipRect);
@@ -1177,7 +1176,7 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
             }
             int shadowX = isHorizontal() ? shadow->x() : shadow->y();
             int shadowY = isHorizontal() ? shadow->y() : -shadow->x();
-            context->setShadow(FloatSize(shadowX, shadowY - extraOffset), shadow->blur(), shadow->color(), colorSpace);
+            context->setShadow(FloatSize(shadowX, shadowY - extraOffset), shadow->radius(), shadow->color(), colorSpace);
             setShadow = true;
             shadow = shadow->next();
         }
@@ -1647,13 +1646,5 @@ void InlineTextBox::showBox(int printedCharacters) const
 }
 
 #endif
-
-void InlineTextBox::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Rendering);
-    InlineBox::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_prevTextBox, "prevTextBox");
-    info.addMember(m_nextTextBox, "nextTextBox");
-}
 
 } // namespace WebCore

@@ -42,70 +42,34 @@ editing/pasteboard/get-data-text-plain-drop.html
 editing/pasteboard/smart-drag-drop.html
 editing/pasteboard/smart-paste-004.html
 editing/pasteboard/subframe-dragndrop-1.html
-editing/selection/14971.html
 editing/selection/4895428-1.html
 editing/selection/4895428-4.html
-editing/selection/5057506.html
-editing/selection/5232159.html
-editing/selection/5333725.html
 editing/selection/5354455-1.html
 editing/selection/5354455-2.html
-editing/selection/anchor-focus2.html
-editing/selection/anchor-focus3.html
 editing/selection/button-right-click.html
-editing/selection/click-in-margins-inside-editable-div.html
-editing/selection/click-in-padding-with-multiple-line-boxes.html
 editing/selection/contains-boundaries.html
 editing/selection/context-menu-on-text.html
 editing/selection/doubleclick-beside-cr-span.html
-editing/selection/doubleclick-whitespace-crash.html
-editing/selection/doubleclick-whitespace-img-crash.html
 editing/selection/doubleclick-whitespace.html
-editing/selection/drag-select-1.html
-editing/selection/drag-select-rapidly.html
-editing/selection/drag-start-event-client-x-y.html
 editing/selection/drag-to-contenteditable-iframe.html
 editing/selection/empty-cell-right-click.html
-editing/selection/extend-after-mouse-selection.html
-editing/selection/extend-selection-after-double-click.html
-editing/selection/fake-drag.html
-editing/selection/inline-closest-leaf-child.html
-editing/selection/last-empty-inline.html
 editing/selection/mixed-editability-10.html
-editing/selection/paragraph-granularity.html
-editing/selection/select-from-textfield-outwards.html
 editing/selection/select-out-of-editable.html
-editing/selection/select-out-of-floated-contenteditable.html
-editing/selection/select-out-of-floated-input.html
-editing/selection/select-out-of-floated-textarea.html
-editing/selection/selection-actions.html
-editing/selection/shift-click.html
-editing/selection/user-drag-element-and-user-select-none.html
-editing/selection/word-granularity.html
 editing/spelling/context-menu-suggestions.html
 editing/spelling/spellcheck-paste.html
 editing/spelling/spellcheck-paste-disabled.html
 editing/spelling/spellcheck-paste-continuous-disabled.html
-editing/undo/undo-smart-delete-reversed-selection.html
-fast/block/positioning/hittest-on-relative-positioned-children.html
-fast/css/user-drag-none.html
 fast/dom/Window/window-postmessage-clone.html
 fast/dom/vertical-scrollbar-in-rtl.html
-fast/dynamic/layer-hit-test-crash.html
-fast/encoding/mailto-always-utf-8.html
 fast/events/5056619.html
 fast/events/autoscroll-in-textfield.html
-fast/events/autoscroll-nonscrollable-iframe-in-scrollable-div.html
-fast/events/autoscroll-with-non-scrollable-parent.html
 fast/events/bogus-dropEffect-effectAllowed.html
-fast/events/click-count.html
 fast/events/content-changed-during-drop.html
 fast/events/context-no-deselect.html
 fast/events/context-onmousedown-event.html
 fast/events/contextmenu-scrolled-page-with-frame.html
 fast/events/continuous-platform-wheelevent-in-scrolling-div.html
 fast/events/crash-on-mutate-during-drop.html
-fast/events/dblclick-addEventListener.html
 fast/events/drag-and-drop-dataTransfer-types-nocrash.html
 fast/events/drag-and-drop-fire-drag-dragover.html
 fast/events/drag-and-drop.html
@@ -121,11 +85,7 @@ fast/events/mouseup-from-button2.html
 fast/events/node-event-anchor-lock.html
 fast/events/ondragenter.html
 fast/events/only-valid-drop-targets-receive-file-drop.html
-fast/events/open-window-from-another-frame.html
-fast/events/popup-when-select-change.html
 fast/events/right-click-focus.html
-fast/events/scroll-after-click-on-tab-index.html
-fast/events/selectstart-by-drag.html
 fast/events/selectstart-prevent-selection-on-right-click.html
 fast/events/standalone-image-drag-to-editable.html
 fast/events/wheelevent-in-horizontal-scrollbar-in-rtl.html
@@ -134,47 +94,37 @@ fast/events/wheelevent-direction-inverted-from-device.html
 fast/forms/drag-into-textarea.html
 fast/forms/drag-out-of-textarea.html
 fast/forms/file/input-file-value.html
-fast/forms/input-readonly-autoscroll.html
-fast/forms/input-text-drag-down.html
 fast/forms/listbox-typeahead-cyrillic.html
 fast/forms/listbox-typeahead-greek.html
-fast/forms/range/slider-mouse-events.html
-fast/forms/range/slider-onchange-event.html
 fast/forms/select-type-ahead-non-latin.html
 fast/forms/file/input-file-write-files.html
 fast/history/window-open.html
 fast/lists/drag-into-marker.html
-fast/loader/policy-delegate-action-hit-test-zoomed.html
 fast/repaint/japanese-rl-selection-repaint.html
 fast/repaint/repaint-across-writing-mode-boundary.html
-fast/repaint/selection-rl.html
 http/tests/local/blob/send-hybrid-blob.html
 http/tests/local/drag-over-remote-content.html
 http/tests/local/fileapi/send-sliced-dragged-file.html
 http/tests/misc/bubble-drag-events.html
-http/tests/security/dataTransfer-set-data-file-url.html
 http/tests/security/drag-drop-same-unique-origin.html
 http/tests/security/drag-over-remote-content-iframe.html
 media/controls-right-click-on-timebar.html
 platform/mac/editing/pasteboard/dataTransfer-set-data-file-url.html
 platform/mac/editing/pasteboard/drag-selections-to-contenteditable.html
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html
-scrollbars/scrollbar-iframe-click-does-not-blur-content.html
-scrollbars/scrollevent-iframe-no-scrolling-wheel.html
-svg/custom/foreignObject-crash-on-hover.xml
-svg/custom/use-events-crash.svg
 
 # [WK2] [Mac] Spellcheck tests don't seem to work
+webkit.org/b/105616 editing/spelling/spelling-changed-text.html
 webkit.org/b/105616 platform/mac/editing/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
 webkit.org/b/105616 platform/mac/editing/spelling/click-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-to-beginning-of-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-to-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/delete-into-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/forward-delete-into-autocorrected-word.html
+webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-with-multi-line-text.html
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
-editing/pasteboard/drag-drop-iframe-refresh-crash.html
 editing/selection/select-across-readonly-input-2.html
 editing/selection/select-across-readonly-input-3.html
 editing/selection/select-across-readonly-input-4.html
@@ -194,10 +144,6 @@ fast/events/pagehide-timeout.html
 fast/events/pageshow-pagehide-on-back-cached-with-frames.html
 fast/events/pageshow-pagehide-on-back-cached.html
 fast/events/pageshow-pagehide.html
-
-# [WK2] http/tests/navigation/https-in-page-cache.html times out on mac-wk2
-# https://bugs.webkit.org/show_bug.cgi?id=81622
-http/tests/navigation/https-in-page-cache.html
 
 # [WK2] Four http/tests/xmlhttprequest tests fail on mac-wk2
 # https://bugs.webkit.org/show_bug.cgi?id=81627
@@ -221,18 +167,10 @@ storage/websql/statement-success-callback-isolated-world.html
 storage/websql/transaction-callback-isolated-world.html
 storage/websql/transaction-error-callback-isolated-world.html
 
-# Times out on mac-lion-wk2
-# https://bugs.webkit.org/show_bug.cgi?id=88348
-http/tests/media/remove-while-loading.html
-
 # Missing functionality of textInputController
 # https://bugs.webkit.org/show_bug.cgi?id=89401
 platform/mac/editing/input/insert-dictated-text.html
 platform/mac/editing/input/edit-dictated-text-with-alternative.html
-
-# Crashes on Lion Debug WK2
-# https://bugs.webkit.org/show_bug.cgi?id=89780
-fast/canvas/canvas-createImageData.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=89199
 editing/spelling/grammar-edit-word.html
@@ -240,18 +178,9 @@ editing/spelling/grammar-edit-word.html
 # https://bugs.webkit.org/show_bug.cgi?id=90156
 platform/mac/editing/spelling/autocorrection-blockquote-crash.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=91778
-storage/domstorage/storage-close-database-on-idle.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=94549
-fast/forms/file/selected-files-from-history-state.html
-
 # fast/multicol/shrink-to-column-height-for-pagination.html fails on Mac WK2 bots
 # https://bugs.webkit.org/show_bug.cgi?id=94624
 fast/multicol/shrink-to-column-height-for-pagination.html
-
-# https://bugs.webkit.org/show_bug.cgi?id=95041
-fast/forms/validation-message-user-modify.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=95043
 http/tests/security/local-user-CSS-from-remote.html
@@ -265,9 +194,6 @@ webkit.org/b/96438 fast/spatial-navigation
 
 # WK2 tests fail image diff
 webkit.org/b/96580 [ Debug ] css3/filters/custom/filter-fallback-to-software.html [ ImageOnlyFailure ]
-
-# new fast/load tests fail https://bugs.webkit.org/show_bug.cgi?id=96832
-webkit.org/b/96832 fast/loader/display-image-unset-can-block-image-and-can-reload-in-place.html [ Failure ]
 
 # Causes next test to crash
 webkit.org/b/98960 fast/parser/document-open-in-unload.html [ Skip ]
@@ -335,11 +261,15 @@ webkit.org/b/113515 compositing/iframes/remove-iframe-crash.html [ Crash Pass ]
 webkit.org/b/104954 [ Release ] http/tests/canvas/canvas-slow-font-loading.html [ Pass ImageOnlyFailure ]
 webkit.org/b/104954 [ Debug ] http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyFailure ]
 
-webkit.org/b/114217 platform/mac-wk2/plugins/slow/asynchronous-plugin-initialization-multiple.html [ Skip ]
+# Flaky everywhere.
+webkit.org/b/114302 platform/mac-wk2/plugins/mouse-events-scaled-iframe.html [ Pass Failure ]
 
-# The test pass reliably on WebKit2 Mountain Lion in release.
-webkit.org/b/60731 [ MountainLion Release ] ietestcenter/css3/grid/grid-items-003.htm [ Pass ]
-webkit.org/b/60731 ietestcenter/css3/grid/grid-items-003.htm [ ImageOnlyFailure ]
+webkit.org/b/114571 [ Debug ] fast/regions/fixed-pos-elem-in-region.html [ Pass Failure ImageOnlyFailure ]
+
+webkit.org/b/114572 platform/mac-wk2/plugins/mouse-events-scaled.html [ Pass Failure ]
+
+webkit.org/b/114573 fast/repaint/selection-gap-fixed-child.html [ Failure ]
+webkit.org/b/114573 fast/repaint/selection-gap-flipped-fixed-child.html [ Failure ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -367,64 +297,17 @@ editing/spelling/spelling-marker-description.html
 ### START OF (3) Unclassified failures
 
 # All tests that failed on the Lion WebKit2 Release bot in r111739
-editing/execCommand/copy-without-selection.html
-editing/pasteboard/copy-two-pasteboard-types-both-work.html
-editing/pasteboard/pasting-empty-html-falls-back-to-text.html
-fast/forms/interactive-validation-attach-assertion.html
 fast/forms/range/slider-delete-while-dragging-thumb.html
-fast/frames/flattening/frameset-flattening-advanced.html
-fast/history/form-submit-in-frame-via-onclick.html
-fast/history/form-submit-in-frame.html
-fast/history/saves-state-after-frame-nav.html
-http/tests/inspector/extensions-ignore-cache.html
 http/tests/security/credentials-in-referer.html
-http/tests/workers/terminate-during-sync-operation.html
-storage/websql/hash-change-with-xhr.html
 svg/W3C-SVG-1.1/fonts-elem-04-b.svg
 
 # All additional tests that failed on the Lion WebKit2 Debug bot in r111739
-fast/forms/validation-message-in-relative-body.html
 http/tests/cookies/simple-cookies-expired.html
-http/tests/inspector/inspect-element.html
 inspector/elements/edit-dom-actions.html
-storage/websql/open-database-creation-callback-isolated-world.html
-storage/websql/statement-error-callback-isolated-world.html
 
 # All tests that failed more than once on the Lion WebKit2 Debug bot between r111808 and r111849
 http/tests/cookies/simple-cookies-max-age.html
 fast/workers/worker-cloneport.html
-
-# All additional tests that failed more than once on the Lion WebKit2 Release bot between r111814 and r111865
-css3/selectors3/xml/css3-modsel-d3.xml
-fast/canvas/webgl/texture-color-profile.html
-
-# All tests that crashed more than once on the Lion WebKit2 bots between r111865 and r111885
-accessibility/adjacent-continuations-cause-assertion-failure.html
-accessibility/contenteditable-hidden-div.html
-css3/filters/custom/effect-custom-combined-missing.html
-fast/workers/empty-worker-nocrash.html
-svg/custom/font-face-name-without-name-attr.svg
-
-# All additional tests that crashed more than once on the Lion WebKit2 bots between r111885 and r111892
-fast/dom/Window/anonymous-slot-with-changes.html
-fast/repaint/scroll-in-clipped-layer.html
-fast/workers/shared-worker-constructor.html
-http/tests/canvas/philip/tests/security.drawImage.image.html
-platform/mac/accessibility/attributed-string-includes-highlighting.html
-svg/foreignObject/repaint-rect-coordinates.html
-
-# All additional tests that crashed more than once on the Lion WebKit2 bots between r111867 and r111906
-animations/3d/change-transform-in-end-event.html
-canvas/philip/tests/2d.canvas.readonly.html
-compositing/overflow/overflow-scaled-descendant-overlapping.html
-compositing/sibling-positioning.html
-compositing/video/video-with-invalid-source.html
-fast/events/onunload-not-on-body.html
-http/tests/cache/cancel-during-revalidation-succeeded.html
-http/tests/media/media-document.html
-http/tests/media/video-error-abort.html
-platform/mac/accessibility/attributed-string-includes-misspelled-with-selection.html
-svg/transforms/change-transform-origin-css.xhtml
 
 # Intermittent crashes
 # https://bugs.webkit.org/show_bug.cgi?id=82939

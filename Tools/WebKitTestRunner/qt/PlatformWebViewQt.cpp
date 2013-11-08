@@ -65,7 +65,9 @@ private Q_SLOTS:
         if (PlatformWebView::windowShapshotEnabled()) {
             setSurfaceType(OpenGLSurface);
             create();
+#if QT_VERSION < QT_VERSION_CHECK(5, 1, 0)
             QQuickWindowPrivate::get(this)->setRenderWithoutShowing(true);
+#endif
         } else
             m_view->experimental()->setRenderToOffscreenBuffer(true);
 
@@ -77,7 +79,7 @@ private:
     QQuickWebView* m_view;
 };
 
-PlatformWebView::PlatformWebView(WKContextRef contextRef, WKPageGroupRef pageGroupRef, WKDictionaryRef options)
+PlatformWebView::PlatformWebView(WKContextRef contextRef, WKPageGroupRef pageGroupRef, WKPageRef /* relatedPage */, WKDictionaryRef options)
     : m_windowIsKey(true)
     , m_options(options)
     , m_modalEventLoop(0)

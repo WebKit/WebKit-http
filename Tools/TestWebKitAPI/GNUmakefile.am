@@ -1,10 +1,3 @@
-BUILT_SOURCES += \
-	generate-testwebkitapi-forwarding-headers
-wk2_tests_sources = $(shell ls $(srcdir)/Tools/TestWebKitAPI/Tests/WebKit2/*.cpp)
-generate-testwebkitapi-forwarding-headers: $(WebKit2)/Scripts/generate-forwarding-headers.pl $(wk2_tests_sources)
-	$(AM_V_GEN)$(PERL) $< $(srcdir)/Tools/TestWebKitAPI $(GENSOURCES_WEBKIT2)/include gtk
-	$(AM_V_GEN)$(PERL) $< $(srcdir)/Tools/TestWebKitAPI $(GENSOURCES_WEBKIT2)/include soup
-
 noinst_LTLIBRARIES += \
 	Libraries/libTestWebKitAPIMain.la
 
@@ -21,18 +14,30 @@ Libraries_libTestWebKitAPIMain_la_CPPFLAGS = \
 	-isystem $(srcdir)/Source/ThirdParty/gtest/include \
 	-I$(srcdir)/Tools/TestWebKitAPI \
 	-I$(srcdir)/Source/ThirdParty/gtest/include \
+	-I$(top_builddir)/DerivedSources/WebCore/include \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags) \
 	$(GTK_CFLAGS)
 
 noinst_PROGRAMS += \
-	Programs/TestWebKitAPI/TestWTF
+	Programs/TestWebKitAPI/TestWTF \
+	Programs/TestWebKitAPI/TestJavaScriptCore \
+	Programs/TestWebKitAPI/TestWebCore \
+	Programs/TestWebKitAPI/TestGtk
+
+if ENABLE_WEBKIT2
+noinst_PROGRAMS += \
+	Programs/TestWebKitAPI/TestWebKit2
+endif # ENABLE_WEBKIT2
 
 Programs_TestWebKitAPI_TestWTF_CPPFLAGS = \
 	$(Libraries_libTestWebKitAPIMain_la_CPPFLAGS) \
 	$(GLIB_LIBS) \
 	$(CAIRO_CFLAGS)
+
+Programs_TestWebKitAPI_TestWTF_CXXFLAGS = \
+	$(global_cxxflags)
 
 Programs_TestWebKitAPI_TestWTF_LDADD = \
 	Libraries/libTestWebKitAPIMain.la \
@@ -51,10 +56,12 @@ Programs_TestWebKitAPI_TestWTF_SOURCES = \
 	Tools/TestWebKitAPI/Tests/WTF/CheckedArithmeticOperations.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/Functional.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/HashMap.cpp \
+	Tools/TestWebKitAPI/Tests/WTF/HashSet.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/IntegerToStringConversion.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/ListHashSet.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/MathExtras.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/MediaTime.cpp \
+	Tools/TestWebKitAPI/Tests/WTF/MetaAllocator.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/RedBlackTree.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/SaturatedArithmeticOperations.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/StringBuilder.cpp \
@@ -62,13 +69,124 @@ Programs_TestWebKitAPI_TestWTF_SOURCES = \
 	Tools/TestWebKitAPI/Tests/WTF/StringImpl.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/StringOperators.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/TemporaryChange.cpp \
-	Tools/TestWebKitAPI/Tests/WTF/VectorBasic.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/Vector.cpp \
+	Tools/TestWebKitAPI/Tests/WTF/VectorBasic.cpp \
 	Tools/TestWebKitAPI/Tests/WTF/VectorReverse.cpp \
 	Tools/TestWebKitAPI/WTFStringUtilities.h
 
-noinst_PROGRAMS += \
-	Programs/TestWebKitAPI/TestGtk
+Programs_TestWebKitAPI_TestJavaScriptCore_CPPFLAGS = \
+	$(Libraries_libTestWebKitAPIMain_la_CPPFLAGS)
+
+Programs_TestWebKitAPI_TestJavaScriptCore_CXXFLAGS = \
+	$(global_cxxflags)
+
+Programs_TestWebKitAPI_TestJavaScriptCore_LDADD = \
+	Libraries/libTestWebKitAPIMain.la \
+	Libraries/libgtest.la \
+	libWTF.la \
+	$(GTK_LIBS)
+
+Programs_TestWebKitAPI_TestJavaScriptCore_LDFLAGS = \
+	-no-install \
+	-no-fast-install
+
+Programs_TestWebKitAPI_TestJavaScriptCore_SOURCES = \
+	Tools/TestWebKitAPI/Tests/JavaScriptCore/VMInspector.cpp
+
+Programs_TestWebKitAPI_TestWebCore_CPPFLAGS = \
+	$(Libraries_libTestWebKitAPIMain_la_CPPFLAGS) \
+	-I$(top_builddir)/DerivedSources/WebCore/include
+
+Programs_TestWebKitAPI_TestWebCore_CXXFLAGS = \
+	$(global_cxxflags)
+
+Programs_TestWebKitAPI_TestWebCore_LDADD = \
+	Libraries/libTestWebKitAPIMain.la \
+	Libraries/libgtest.la \
+	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	libWTF.la
+
+# FIXME: Due to layer violations and circular dependencies all these libraries have to be specified multiple times
+# when invoking the linker. This ensures any undefined symbols are resolved when linking. See wkb.ug/114901 for more detail.
+# First time around these libraries are simply listed by their file name that's later resolved to the path of the *.a archive
+# (i.e. .libs/libPlatformGtk2.a) by libtool.
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	libPlatformGtk.la \
+	libWebCoreGtk.la \
+	libPlatform.la \
+	libWebCorePlatform.la \
+	libWebCore.la \
+	libWebCoreModules.la
+if ENABLE_INDEXED_DATABASE
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	libLevelDB.la
+endif
+if USE_OPENGL
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	libANGLE.la
+endif
+if ENABLE_SVG
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	libWebCoreSVG.la
+endif
+
+# FIXME: Second time around all the libraries are relisted, this time in the -lNAME form. Listed items are resolved into the
+# absolute paths to the *.a archive (i.e. $(abs_builddir)/.libs.libPlatformGtk2.a) by libtool.
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	-lPlatformGtk -lWebCoreGtk -lPlatform -lWebCorePlatform -lWebCore -lWebCoreModules
+if ENABLE_INDEXED_DATABASE
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	-lLevelDB
+endif
+if USE_OPENGL
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	-lANGLE
+endif
+if ENABLE_SVG
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	-lWebCoreSVG
+endif
+
+# FIXME: To make the matter worse, these four libraries are again required to be listed for linking. This time they're added by
+# specifying the symbolic link that points back to the ./lib*.la libtool archives which are again resolved into paths to the
+# *.a archives (i.e. .libs/libPlatformGtk2.la) by libtool. Phony targets are added for these files to prevent Automake to try
+# to build them as these symlinks are just a byproduct of libtool.
+.PHONY : .libs/libPlatformGtk.la .libs/libWebCoreGtk.la .libs/libPlatform.la .libs/libWebCorePlatform.la
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	.libs/libWebCoreGtk.la .libs/libPlatformGtk.la .libs/libPlatform.la .libs/libWebCorePlatform.la
+
+Programs_TestWebKitAPI_TestWebCore_LDADD += \
+	$(CAIRO_LIBS) \
+	$(CLUTTER_LIBS) \
+	$(FREETYPE_LIBS) \
+	$(GAMEPAD_LIBS) \
+	$(GEOCLUE_LIBS) \
+	$(GAIL_LIBS) \
+	$(GLIB_LIBS) \
+	$(GSTREAMER_LIBS) \
+	$(GTK_LIBS) \
+	$(JPEG_LIBS) \
+	$(LIBSECRET_LIBS) \
+	$(LIBSOUP_LIBS) \
+	$(LIBXML_LIBS) \
+	$(LIBXSLT_LIBS) \
+	$(OPENGL_LIBS) \
+	$(PANGO_LIBS) \
+	$(PNG_LIBS) \
+	$(SQLITE3_LIBS) \
+	$(UNICODE_LIBS) \
+	$(WEBP_LIBS) \
+	$(XRENDER_LIBS) \
+	$(XT_LIBS) \
+	$(ZLIB_LIBS)
+
+Programs_TestWebKitAPI_TestWebCore_LDFLAGS = \
+	-no-install \
+	-no-fast-install
+
+Programs_TestWebKitAPI_TestWebCore_SOURCES = \
+	Tools/TestWebKitAPI/Tests/WebCore/KURL.cpp \
+	Tools/TestWebKitAPI/Tests/WebCore/LayoutUnit.cpp
 
 Programs_TestWebKitAPI_TestGtk_CPPFLAGS = \
 	$(Programs_TestWebKitAPI_TestWTF_CPPFLAGS) \
@@ -102,10 +220,6 @@ Programs_TestWebKitAPI_TestGtk_SOURCES = \
 	Source/WebCore/platform/gtk/GtkInputMethodFilter.cpp \
 	Tools/TestWebKitAPI/config.h \
 	Tools/TestWebKitAPI/Tests/gtk/InputMethodFilter.cpp
-
-if ENABLE_WEBKIT2
-noinst_PROGRAMS += \
-	Programs/TestWebKitAPI/TestWebKit2
 
 Programs_TestWebKitAPI_TestWebKit2_CPPFLAGS = \
 	$(Programs_TestWebKitAPI_TestWTF_CPPFLAGS) \
@@ -155,6 +269,7 @@ Programs_TestWebKitAPI_TestWebKit2_SOURCES = \
 	Tools/TestWebKitAPI/Tests/WebKit2/InjectedBundleInitializationUserDataCallbackWins.cpp \
 	Tools/TestWebKitAPI/Tests/WebKit2/LoadAlternateHTMLStringWithNonDirectoryURL.cpp \
 	Tools/TestWebKitAPI/Tests/WebKit2/LoadCanceledNoServerRedirectCallback.cpp \
+	Tools/TestWebKitAPI/Tests/WebKit2/LoadPageOnCrash.cpp \
 	Tools/TestWebKitAPI/Tests/WebKit2/MouseMoveAfterCrash.cpp \
 	Tools/TestWebKitAPI/Tests/WebKit2/ReloadPageAfterCrash.cpp \
 	Tools/TestWebKitAPI/Tests/WebKit2/ResizeWindowAfterCrash.cpp \
@@ -179,8 +294,10 @@ Programs_TestWebKitAPI_TestWebKit2_SOURCES = \
 	Tools/TestWebKitAPI/Tests/WebKit2/WKString.cpp \
 	Tools/TestWebKitAPI/Tests/WebKit2/WKStringJSString.cpp
 
+if ENABLE_WEBKIT2
 noinst_LTLIBRARIES += \
 	Libraries/libTestWebKitAPIInjectedBundle.la
+endif # ENABLE_WEBKIT2
 
 Libraries_libTestWebKitAPIInjectedBundle_la_SOURCES = \
 	Tools/TestWebKitAPI/InjectedBundleController.cpp \
@@ -228,7 +345,21 @@ Libraries_libTestWebKitAPIInjectedBundle_la_CXXFLAGS = \
 
 Libraries_libTestWebKitAPIInjectedBundle_la_CFLAGS = \
 	$(global_cflags)
+
+
+stamp-testwebkitapi-webcore-forwarding-headers: $(WebKit2)/Scripts/generate-forwarding-headers.pl $(Programs_TestWebKitAPI_TestWebCore_SOURCES)
+	$(AM_V_GEN)$(PERL) $< $(srcdir)/Tools/TestWebKitAPI/Tests/WebCore $(GENSOURCES_WEBCORE)/include gtk \
+	&& echo timestamp > $(@F)
+
+stamp-testwebkitapi-webkit2-forwarding-headers: $(WebKit2)/Scripts/generate-forwarding-headers.pl $(Programs_TestWebKitAPI_TestWebKit2_SOURCES) $(Libraries_libTestWebKitAPIInjectedBundle_la_SOURCES)
+	$(AM_V_GEN)$(PERL) $< $(srcdir)/Tools/TestWebKitAPI $(GENSOURCES_WEBKIT2)/include gtk \
+	&& echo timestamp > $(@F)
+
+BUILT_SOURCES += $(top_builddir)/stamp-testwebkitapi-webcore-forwarding-headers
+if ENABLE_WEBKIT2
+BUILT_SOURCES += $(top_builddir)/stamp-testwebkitapi-webkit2-forwarding-headers
 endif # ENABLE_WEBKIT2
+
 
 EXTRA_DIST += \
 	Tools/TestWebKitAPI/Tests/WebKit2/18-characters.html \

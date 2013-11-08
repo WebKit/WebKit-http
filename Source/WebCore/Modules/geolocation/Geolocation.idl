@@ -25,18 +25,19 @@
 
 // http://www.w3.org/TR/geolocation-API/#geolocation_interface
 [
+    NoInterfaceObject,
     Conditional=GEOLOCATION, 
-    JSGenerateIsReachable=ImplFrame,
+    GenerateIsReachable=ImplFrame,
     OmitConstructor
 ] interface Geolocation {
-    [Custom] void getCurrentPosition(in PositionCallback successCallback,
-                                     in [Optional] PositionErrorCallback errorCallback,
-                                     in [Optional] PositionOptions options);
+    [Custom] void getCurrentPosition(PositionCallback successCallback,
+                                     optional PositionErrorCallback errorCallback,
+                                     optional PositionOptions options);
 
-    [Custom] long watchPosition(in PositionCallback successCallback,
-                                in [Optional] PositionErrorCallback errorCallback,
-                                in [Optional] PositionOptions options);
+    [Custom] long watchPosition(PositionCallback successCallback,
+                                optional PositionErrorCallback errorCallback,
+                                optional PositionOptions options);
 
-    void clearWatch(in long watchID);
+    void clearWatch(long watchID);
 };
 

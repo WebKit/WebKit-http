@@ -55,7 +55,7 @@ class ExecState;
 class FunctionBodyNode;
 class FunctionParameters;
 class Identifier;
-class JSGlobalData;
+class VM;
 class ProgramNode;
 class SourceCode;
 
@@ -110,8 +110,8 @@ struct ScopeLabelInfo {
 };
 
 struct Scope {
-    Scope(const JSGlobalData* globalData, bool isFunction, bool strictMode)
-        : m_globalData(globalData)
+    Scope(const VM* vm, bool isFunction, bool strictMode)
+        : m_vm(vm)
         , m_shadowsArguments(false)
         , m_usesEval(false)
         , m_needsFullActivation(false)
@@ -126,7 +126,7 @@ struct Scope {
     }
 
     Scope(const Scope& rhs)
-        : m_globalData(rhs.m_globalData)
+        : m_vm(rhs.m_vm)
         , m_shadowsArguments(rhs.m_shadowsArguments)
         , m_usesEval(rhs.m_usesEval)
         , m_needsFullActivation(rhs.m_needsFullActivation)
@@ -196,7 +196,7 @@ struct Scope {
 
     bool declareVariable(const Identifier* ident)
     {
-        bool isValidStrictMode = m_globalData->propertyNames->eval != *ident && m_globalData->propertyNames->arguments != *ident;
+        bool isValidStrictMode = m_vm->propertyNames->eval != *ident && m_vm->propertyNames->arguments != *ident;
         m_isValidStrictMode = m_isValidStrictMode && isValidStrictMode;
         m_declaredVariables.add(ident->string().impl());
         return isValidStrictMode;
@@ -213,8 +213,8 @@ struct Scope {
 
     bool declareParameter(const Identifier* ident)
     {
-        bool isArguments = m_globalData->propertyNames->arguments == *ident;
-        bool isValidStrictMode = m_declaredVariables.add(ident->string().impl()).isNewEntry && m_globalData->propertyNames->eval != *ident && !isArguments;
+        bool isArguments = m_vm->propertyNames->arguments == *ident;
+        bool isValidStrictMode = m_declaredVariables.add(ident->string().impl()).isNewEntry && m_vm->propertyNames->eval != *ident && !isArguments;
         m_isValidStrictMode = m_isValidStrictMode && isValidStrictMode;
         if (isArguments)
             m_shadowsArguments = true;
@@ -312,7 +312,7 @@ struct Scope {
     }
 
 private:
-    const JSGlobalData* m_globalData;
+    const VM* m_vm;
     bool m_shadowsArguments : 1;
     bool m_usesEval : 1;
     bool m_needsFullActivation : 1;
@@ -365,7 +365,7 @@ class Parser {
     WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    Parser(JSGlobalData*, const SourceCode&, FunctionParameters*, const Identifier&, JSParserStrictness, JSParserMode);
+    Parser(VM*, const SourceCode&, FunctionParameters*, const Identifier&, JSParserStrictness, JSParserMode);
     ~Parser();
 
     template <class ParsedNode>
@@ -422,7 +422,7 @@ private:
             isStrict = m_scopeStack.last().strictMode();
             isFunction = m_scopeStack.last().isFunction();
         }
-        m_scopeStack.append(Scope(m_globalData, isFunction, isStrict));
+        m_scopeStack.append(Scope(m_vm, isFunction, isStrict));
         return currentScope();
     }
     
@@ -705,9 +705,19 @@ private:
         case RESERVED: 
         case NUMBER:
         case IDENT: 
-        case STRING: 
+        case STRING:
+        case UNTERMINATED_IDENTIFIER_ESCAPE_ERRORTOK:
+        case UNTERMINATED_IDENTIFIER_UNICODE_ESCAPE_ERRORTOK:
+        case UNTERMINATED_MULTILINE_COMMENT_ERRORTOK:
+        case UNTERMINATED_NUMERIC_LITERAL_ERRORTOK:
+        case UNTERMINATED_STRING_LITERAL_ERRORTOK:
+        case INVALID_IDENTIFIER_ESCAPE_ERRORTOK:
+        case INVALID_IDENTIFIER_UNICODE_ESCAPE_ERRORTOK:
+        case INVALID_NUMERIC_LITERAL_ERRORTOK:
+        case INVALID_OCTAL_NUMBER_ERRORTOK:
+        case INVALID_STRING_LITERAL_ERRORTOK:
         case ERRORTOK:
-        case EOFTOK: 
+        case EOFTOK:
             return 0;
         case LastUntaggedToken: 
             break;
@@ -734,7 +744,36 @@ private:
         case STRING: 
             m_errorMessage = "Unexpected string " + getToken();
             return;
-        case ERRORTOK: 
+            
+        case UNTERMINATED_IDENTIFIER_ESCAPE_ERRORTOK:
+        case UNTERMINATED_IDENTIFIER_UNICODE_ESCAPE_ERRORTOK:
+            m_errorMessage = "Incomplete unicode escape in identifier: '" + getToken() + '\'';
+            return;
+        case UNTERMINATED_MULTILINE_COMMENT_ERRORTOK:
+            m_errorMessage = "Unterminated multiline comment";
+            return;
+        case UNTERMINATED_NUMERIC_LITERAL_ERRORTOK:
+            m_errorMessage = "Unterminated numeric literal '" + getToken() + '\'';
+            return;
+        case UNTERMINATED_STRING_LITERAL_ERRORTOK:
+            m_errorMessage = "Unterminated string literal '" + getToken() + '\'';
+            return;
+        case INVALID_IDENTIFIER_ESCAPE_ERRORTOK:
+            m_errorMessage = "Invalid escape in identifier: '" + getToken() + '\'';
+            return;
+        case INVALID_IDENTIFIER_UNICODE_ESCAPE_ERRORTOK:
+            m_errorMessage = "Invalid unicode escape in identifier: '" + getToken() + '\'';
+            return;
+        case INVALID_NUMERIC_LITERAL_ERRORTOK:
+            m_errorMessage = "Invalid numeric literal: '" + getToken() + '\'';
+            return;
+        case INVALID_OCTAL_NUMBER_ERRORTOK:
+            m_errorMessage = "Invalid use of octal: '" + getToken() + '\'';
+                return;
+        case INVALID_STRING_LITERAL_ERRORTOK:
+            m_errorMessage = "Invalid string literal: '" + getToken() + '\'';
+            return;
+        case ERRORTOK:
             m_errorMessage = "Unrecognized token '" + getToken() + '\'';
             return;
         case EOFTOK:  
@@ -752,17 +791,16 @@ private:
     
     NEVER_INLINE void updateErrorMessage() 
     {
-        m_error = true;
         const char* name = getTokenName(m_token.m_type);
         if (!name) 
             updateErrorMessageSpecialCase(m_token.m_type);
         else 
             m_errorMessage = String::format("Unexpected token '%s'", name);
+        ASSERT(!m_errorMessage.isNull());
     }
     
     NEVER_INLINE void updateErrorMessage(JSTokenType expectedToken) 
     {
-        m_error = true;
         const char* name = getTokenName(expectedToken);
         if (name)
             m_errorMessage = String::format("Expected token '%s'", name);
@@ -772,18 +810,19 @@ private:
             else
                 updateErrorMessageSpecialCase(expectedToken);
         }
+        ASSERT(!m_errorMessage.isNull());
     }
     
     NEVER_INLINE void updateErrorWithNameAndMessage(const char* beforeMsg, String name, const char* afterMsg)
     {
-        m_error = true;
         m_errorMessage = makeString(beforeMsg, " '", name, "' ", afterMsg);
     }
     
     NEVER_INLINE void updateErrorMessage(const char* msg)
-    {   
-        m_error = true;
+    {
+        ASSERT(msg);
         m_errorMessage = String(msg);
+        ASSERT(!m_errorMessage.isNull());
     }
     
     void startLoop() { currentScope()->startLoop(); }
@@ -889,14 +928,18 @@ private:
         return m_lastTokenEnd;
     }
 
-    JSGlobalData* m_globalData;
+    bool hasError() const
+    {
+        return !m_errorMessage.isNull();
+    }
+
+    VM* m_vm;
     const SourceCode* m_source;
     ParserArena* m_arena;
     OwnPtr<LexerType> m_lexer;
     
     StackBounds m_stack;
     bool m_hasStackOverflow;
-    bool m_error;
     String m_errorMessage;
     JSToken m_token;
     bool m_allowsIn;
@@ -971,7 +1014,7 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(ParserError& error)
         JSTokenLocation endLocation;
         endLocation.line = m_lexer->lastLineNumber();
         endLocation.charPosition = m_lexer->currentCharPosition();
-        result = ParsedNode::create(m_globalData,
+        result = ParsedNode::create(m_vm,
                                     startLocation,
                                     endLocation,
                                     m_sourceElements,
@@ -990,11 +1033,19 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(ParserError& error)
         // code we assume that it was a syntax error since running out of stack is much less
         // likely, and we are currently unable to distinguish between the two cases.
         if (isFunctionBodyNode(static_cast<ParsedNode*>(0)) || m_hasStackOverflow)
-            error = ParserError::StackOverflow;
-        else if (isEvalNode<ParsedNode>())
-            error = ParserError(ParserError::EvalError, errMsg, errLine);
-        else
-            error = ParserError(ParserError::SyntaxError, errMsg, errLine);
+            error = ParserError(ParserError::StackOverflow, ParserError::SyntaxErrorNone, m_token);
+        else {
+            ParserError::SyntaxErrorType errorType = ParserError::SyntaxErrorIrrecoverable;
+            if (m_token.m_type == EOFTOK)
+                errorType = ParserError::SyntaxErrorRecoverable;
+            else if (m_token.m_type & UnterminatedErrorTokenFlag)
+                errorType = ParserError::SyntaxErrorUnterminatedLiteral;
+            
+            if (isEvalNode<ParsedNode>())
+                error = ParserError(ParserError::EvalError, errorType, m_token, errMsg, errLine);
+            else
+                error = ParserError(ParserError::SyntaxError, errorType, m_token, errMsg, errLine);
+        }
     }
 
     m_arena->reset();
@@ -1003,16 +1054,16 @@ PassRefPtr<ParsedNode> Parser<LexerType>::parse(ParserError& error)
 }
 
 template <class ParsedNode>
-PassRefPtr<ParsedNode> parse(JSGlobalData* globalData, const SourceCode& source, FunctionParameters* parameters, const Identifier& name, JSParserStrictness strictness, JSParserMode parserMode, ParserError& error)
+PassRefPtr<ParsedNode> parse(VM* vm, const SourceCode& source, FunctionParameters* parameters, const Identifier& name, JSParserStrictness strictness, JSParserMode parserMode, ParserError& error)
 {
     SamplingRegion samplingRegion("Parsing");
 
     ASSERT(!source.provider()->source().isNull());
     if (source.provider()->source().is8Bit()) {
-        Parser< Lexer<LChar> > parser(globalData, source, parameters, name, strictness, parserMode);
+        Parser< Lexer<LChar> > parser(vm, source, parameters, name, strictness, parserMode);
         return parser.parse<ParsedNode>(error);
     }
-    Parser< Lexer<UChar> > parser(globalData, source, parameters, name, strictness, parserMode);
+    Parser< Lexer<UChar> > parser(vm, source, parameters, name, strictness, parserMode);
     return parser.parse<ParsedNode>(error);
 }
 

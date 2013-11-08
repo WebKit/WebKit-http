@@ -52,10 +52,8 @@ class BUrlProtocolHandler;
 #endif
 
 #if USE(SOUP)
-#define LIBSOUP_USE_UNSTABLE_REQUEST_API
-#include <libsoup/soup-multipart-input-stream.h>
-#include <libsoup/soup-request.h>
 #include <libsoup/soup.h>
+#include <wtf/gobject/GOwnPtr.h>
 #include <wtf/gobject/GRefPtr.h>
 class Frame;
 #endif
@@ -122,8 +120,8 @@ namespace WebCore {
 #endif
 #if USE(SOUP)
             , m_cancelled(false)
-            , m_buffer(0)
-            , m_bufferSize(0)
+            , m_readBufferPtr(0)
+            , m_readBufferSize(0)
             , m_bodySize(0)
             , m_bodyDataSent(0)
             , m_redirectCount(0)
@@ -216,8 +214,9 @@ namespace WebCore {
         GRefPtr<GCancellable> m_cancellable;
         GRefPtr<GAsyncResult> m_deferredResult;
         GRefPtr<GSource> m_timeoutSource;
-        char* m_buffer;
-        int m_bufferSize;
+        GOwnPtr<char> m_defaultReadBuffer;
+        char* m_readBufferPtr;
+        size_t m_readBufferSize;
         unsigned long m_bodySize;
         unsigned long m_bodyDataSent;
         SoupSession* soupSession();

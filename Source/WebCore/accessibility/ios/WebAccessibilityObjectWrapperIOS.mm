@@ -380,8 +380,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     if (path.isEmpty())
         return NULL;
     
-    Path transformedPath = [self convertPathToScreenSpace:path];
-    return transformedPath.platformPath();
+    return [self convertPathToScreenSpace:path];
 }
 
 - (NSString *)accessibilityLanguage
@@ -699,6 +698,16 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return NO;
 }
 
+static void appendStringToResult(NSMutableString *result, NSString *string)
+{
+    ASSERT(result);
+    if (![string length])
+        return;
+    if ([result length])
+        [result appendString:@", "];
+    [result appendString:string];
+}
+
 - (NSString *)accessibilityLabel
 {
     if (![self _prepareAccessibilityCall])
@@ -713,19 +722,20 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     // so concatentation will yield the best result.
     NSString *axTitle = [self accessibilityTitle];
     NSString *axDescription = [self accessibilityDescription];
-    NSUInteger axTitleLength = [axTitle length];
-    NSUInteger axDescriptionLength = [axDescription length];
+    NSString *landmarkDescription = [self ariaLandmarkRoleDescription];
+
+    NSMutableString *result = [NSMutableString string];
+
+    appendStringToResult(result, axTitle);
+    appendStringToResult(result, axDescription);
+    if ([self stringValueShouldBeUsedInLabel]) {
+        NSString *valueLabel = m_object->stringValue();
+        valueLabel = [valueLabel stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+        appendStringToResult(result, valueLabel);
+    }
+    appendStringToResult(result, landmarkDescription);
     
-    if (axTitleLength && axDescriptionLength)
-        return [axTitle stringByAppendingFormat:@", %@", axDescription];
-    else if (axTitleLength)
-        return axTitle;
-    else if (axDescriptionLength)
-        return axDescription;
-    else if ([self stringValueShouldBeUsedInLabel])
-        return m_object->stringValue();
-    
-    return nil;
+    return [result length] ? result : nil;
 }
 
 - (AccessibilityTableCell*)tableCellParent
@@ -2003,61 +2013,97 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathRootIndexObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathRootIndexObject() ? m_object->mathRootIndexObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathRadicandObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathRadicandObject() ? m_object->mathRadicandObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathNumeratorObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathNumeratorObject() ? m_object->mathNumeratorObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathDenominatorObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathDenominatorObject() ? m_object->mathDenominatorObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathBaseObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathBaseObject() ? m_object->mathBaseObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathSubscriptObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathSubscriptObject() ? m_object->mathSubscriptObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathSuperscriptObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathSuperscriptObject() ? m_object->mathSuperscriptObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathUnderObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathUnderObject() ? m_object->mathUnderObject()->wrapper() : 0;
 }
 
 - (WebAccessibilityObjectWrapper *)accessibilityMathOverObject
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathOverObject() ? m_object->mathOverObject()->wrapper() : 0;
 }
 
 - (NSString *)accessibilityMathFencedOpenString
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathFencedOpenString();
 }
 
 - (NSString *)accessibilityMathFencedCloseString
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     return m_object->mathFencedCloseString();
 }
 
 - (BOOL)accessibilityIsMathTopObject
 {
+    if (![self _prepareAccessibilityCall])
+        return NO;
+
     return m_object->roleValue() == DocumentMathRole;
 }
 
@@ -2071,6 +2117,9 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 
 - (NSString *)accessibilityMathType
 {
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
     if (m_object->roleValue() == MathElementRole) {
         if (m_object->isMathFraction())
             return @"AXMathFraction";

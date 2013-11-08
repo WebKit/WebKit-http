@@ -30,7 +30,6 @@
 
 [
     Conditional=FILE_SYSTEM,
-    Callback
-] interface MetadataCallback {
-    boolean handleEvent(in Metadata metadata);
+] callback interface MetadataCallback {
+    boolean handleEvent(Metadata metadata);
 };

@@ -27,7 +27,8 @@
  */
 
 [
-    JSGenerateIsReachable=ImplFrame,
+    NoInterfaceObject,
+    GenerateIsReachable=ImplFrame,
     OmitConstructor
 ] interface BarInfo {
     readonly attribute boolean visible;

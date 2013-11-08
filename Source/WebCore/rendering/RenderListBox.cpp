@@ -59,6 +59,7 @@
 #include "SpatialNavigation.h"
 #include "StyleResolver.h"
 #include <math.h>
+#include <wtf/StackStats.h>
 
 using namespace std;
 
@@ -130,7 +131,7 @@ void RenderListBox::updateFromElement()
                 FontDescription d = itemFont.fontDescription();
                 d.setWeight(d.bolderWeight());
                 itemFont = Font(d, itemFont.letterSpacing(), itemFont.wordSpacing());
-                itemFont.update(document()->styleResolver()->fontSelector());
+                itemFont.update(document()->ensureStyleResolver()->fontSelector());
             }
 
             if (!text.isEmpty()) {
@@ -430,7 +431,7 @@ void RenderListBox::paintItemForeground(PaintInfo& paintInfo, const LayoutPoint&
         FontDescription d = itemFont.fontDescription();
         d.setWeight(d.bolderWeight());
         itemFont = Font(d, itemFont.letterSpacing(), itemFont.wordSpacing());
-        itemFont.update(document()->styleResolver()->fontSelector());
+        itemFont.update(document()->ensureStyleResolver()->fontSelector());
     }
 
     // Draw the item text
@@ -562,6 +563,9 @@ void RenderListBox::autoscroll(const IntPoint&)
     IntPoint pos = frame()->view()->windowToContents(frame()->eventHandler()->lastKnownMousePosition());
 
     int endIndex = scrollToward(pos);
+    if (selectElement()->isDisabledFormControl())
+        return;
+
     if (endIndex >= 0) {
         HTMLSelectElement* select = selectElement();
         m_inAutoscroll = true;
@@ -577,6 +581,9 @@ void RenderListBox::autoscroll(const IntPoint&)
 
 void RenderListBox::stopAutoscroll()
 {
+    if (selectElement()->isDisabledFormControl())
+        return;
+
     selectElement()->listBoxOnChange();
 }
 
@@ -814,6 +821,14 @@ IntPoint RenderListBox::lastKnownMousePosition() const
     return view->frameView()->lastKnownMousePosition();
 }
 
+bool RenderListBox::isHandlingWheelEvent() const
+{
+    RenderView* view = this->view();
+    if (!view)
+        return false;
+    return view->frameView()->isHandlingWheelEvent();
+}
+
 bool RenderListBox::shouldSuspendScrollAnimations() const
 {
     RenderView* view = this->view();
@@ -849,7 +864,7 @@ PassRefPtr<Scrollbar> RenderListBox::createScrollbar()
         widget = RenderScrollbar::createCustomScrollbar(this, VerticalScrollbar, this->node());
     else {
         widget = Scrollbar::createNativeScrollbar(this, VerticalScrollbar, theme()->scrollbarControlSizeForPart(ListboxPart));
-        didAddVerticalScrollbar(widget.get());
+        didAddScrollbar(widget.get(), VerticalScrollbar);
     }
     document()->view()->addChild(widget.get());        
     return widget.release();
@@ -861,7 +876,7 @@ void RenderListBox::destroyScrollbar()
         return;
 
     if (!m_vBar->isCustomScrollbar())
-        ScrollableArea::willRemoveVerticalScrollbar(m_vBar.get());
+        ScrollableArea::willRemoveScrollbar(m_vBar.get(), VerticalScrollbar);
     m_vBar->removeFromParent();
     m_vBar->disconnectFromScrollableArea();
     m_vBar = 0;

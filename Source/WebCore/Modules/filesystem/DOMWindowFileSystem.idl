@@ -26,14 +26,13 @@
 
 [
     Conditional=FILE_SYSTEM,
-    Supplemental=DOMWindow
-] interface DOMWindowFileSystem {
+] partial interface DOMWindow {
     const unsigned short TEMPORARY = 0;
     const unsigned short PERSISTENT = 1;
 
-    void webkitRequestFileSystem(in unsigned short type, in long long size,
-            in [Callback] FileSystemCallback successCallback, in [Callback, Optional] ErrorCallback errorCallback);
-    void webkitResolveLocalFileSystemURL(in DOMString url,
-            in [Callback] EntryCallback successCallback, in [Callback, Optional] ErrorCallback errorCallback);
+    void webkitRequestFileSystem(unsigned short type, long long size,
+            FileSystemCallback successCallback, optional ErrorCallback errorCallback);
+    void webkitResolveLocalFileSystemURL(DOMString url,
+            EntryCallback successCallback, optional ErrorCallback errorCallback);
 };
 

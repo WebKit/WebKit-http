@@ -37,7 +37,6 @@
 #include "Logging.h"
 #include "MemoryCache.h"
 #include "ResourceBuffer.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -100,15 +99,6 @@ void SubresourceLoader::cancelIfNotFinishing()
     ResourceLoader::cancel();
 }
 
-void SubresourceLoader::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Loader);
-    ResourceLoader::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_resource, "resource");
-    info.addMember(m_documentLoader, "documentLoader");
-    info.addMember(m_requestCountTracker, "requestCountTracker");
-}
-
 bool SubresourceLoader::init(const ResourceRequest& request)
 {
     if (!ResourceLoader::init(request))
@@ -133,6 +123,15 @@ void SubresourceLoader::willSendRequest(ResourceRequest& newRequest, const Resou
 
     ASSERT(!newRequest.isNull());
     if (!redirectResponse.isNull()) {
+        // CachedResources are keyed off their original request URL.
+        // Requesting the same original URL a second time can redirect to a unique second resource.
+        // Therefore, if a redirect to a different destination URL occurs, we should no longer consider this a revalidation of the first resource.
+        // Doing so would have us reusing the resource from the first request if the second request's revalidation succeeds.
+        if (newRequest.isConditional() && m_resource->resourceToRevalidate() && newRequest.url() != m_resource->resourceToRevalidate()->response().url()) {
+            newRequest.makeUnconditional();
+            memoryCache()->revalidationFailed(m_resource);
+        }
+        
         if (!m_documentLoader->cachedResourceLoader()->canRequest(m_resource->type(), newRequest.url())) {
             cancel();
             return;

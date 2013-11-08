@@ -34,6 +34,8 @@ typedef const struct OpaqueJSContext* JSContextRef;
 typedef struct OpaqueJSValue* JSObjectRef;
 typedef const struct OpaqueJSValue* JSValueRef;
 
+OBJC_CLASS NSData;
+
 namespace WebCore {
 struct PluginInfo;
 }
@@ -71,7 +73,7 @@ protected:
 
     const String& suggestedFilename() { return m_suggestedFilename; }
     
-    NSData *liveData() const;
+    virtual NSData *liveData() const;
     NSData *rawData() const { return (NSData *)m_data.get(); }
 
     bool pdfDocumentWasMutated() const { return m_pdfDocumentWasMutated; }

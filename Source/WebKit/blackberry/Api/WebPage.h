@@ -88,15 +88,11 @@ public:
 
     WebPageClient* client() const;
 
-    void load(const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& networkToken, bool isInitial = false, bool needReferer = false, bool forceDownload = false);
+    void loadFile(const BlackBerry::Platform::String& path, const BlackBerry::Platform::String& overrideContentType = BlackBerry::Platform::String::emptyString());
 
-    void loadExtended(const char* url, const char* networkToken, const char* method, Platform::NetworkRequest::CachePolicy = Platform::NetworkRequest::UseProtocolCachePolicy, const char* data = 0, size_t dataLength = 0, const char* const* headers = 0, size_t headersLength = 0, bool mustHandleInternally = false);
+    void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& contentType = BlackBerry::Platform::String::fromAscii("text/html"), const BlackBerry::Platform::String& failingURL = BlackBerry::Platform::String::emptyString());
 
-    void loadFile(const BlackBerry::Platform::String& path, const BlackBerry::Platform::String& overrideContentType = "");
-
-    void loadString(const BlackBerry::Platform::String&, const BlackBerry::Platform::String& baseURL, const BlackBerry::Platform::String& contentType = "text/html", const BlackBerry::Platform::String& failingURL = BlackBerry::Platform::String::emptyString());
-
-    void download(const Platform::NetworkRequest&);
+    void load(const Platform::NetworkRequest&, bool needReferer = false);
 
     bool executeJavaScript(const BlackBerry::Platform::String& script, JavaScriptDataType& returnType, BlackBerry::Platform::String& returnValue);
 
@@ -228,6 +224,7 @@ public:
     void clearCredentials();
     void clearAutofillData();
     void clearNeverRememberSites();
+    void clearWebFileSystem();
 
     void runLayoutTests();
 
@@ -258,7 +255,6 @@ public:
 
     void setSpellCheckingEnabled(bool);
     void spellCheckingRequestProcessed(int32_t transactionId, spannable_string_t*);
-    void spellCheckingRequestCancelled(int32_t transactionId);
 
     bool isInputMode() const;
     void setDocumentSelection(const Platform::IntPoint& documentStartPoint, const Platform::IntPoint& documentEndPoint);
@@ -267,6 +263,7 @@ public:
     void expandSelection(bool isScrollStarted);
     void setOverlayExpansionPixelHeight(int);
     void setParagraphExpansionPixelScrollMargin(const Platform::IntSize&);
+    void setSelectionDocumentViewportSize(const Platform::IntSize&);
     void selectionCancelled();
     bool selectionContainsDocumentPoint(const Platform::IntPoint&);
 
@@ -331,6 +328,7 @@ public:
     void inspectCurrentContextElement();
 
     Platform::IntPoint adjustDocumentScrollPosition(const Platform::IntPoint& documentScrollPosition, const Platform::IntRect& documentPaddingRect);
+    Platform::IntSize fixedElementSizeDelta();
 
     // FIXME: Needs API review on this header. See PR #120402.
     void notifyPagePause();

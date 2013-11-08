@@ -112,8 +112,9 @@ CFDataRef SharedBuffer::createCFData()
         return m_cfData.get();
     }
     
-    return (CFDataRef)RetainPtr<WebCoreSharedBufferData>(AdoptNS, [[WebCoreSharedBufferData alloc] initWithSharedBuffer:this]).leakRef();
+    return (CFDataRef)adoptNS([[WebCoreSharedBufferData alloc] initWithSharedBuffer:this]).leakRef();
 }
+
 #if !(PLATFORM(QT) && USE(QTKIT))
 PassRefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& filePath)
 {
@@ -123,5 +124,5 @@ PassRefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& fi
     return 0;
 }
 #endif
-}
 
+}

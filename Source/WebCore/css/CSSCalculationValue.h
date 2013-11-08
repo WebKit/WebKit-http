@@ -67,16 +67,15 @@ public:
 
     virtual ~CSSCalcExpressionNode() = 0;
     virtual bool isZero() const = 0;
-    virtual PassOwnPtr<CalcExpressionNode> toCalcValue(RenderStyle*, RenderStyle* rootStyle, double zoom = 1.0) const = 0;    
+    virtual PassOwnPtr<CalcExpressionNode> toCalcValue(const RenderStyle*, const RenderStyle* rootStyle, double zoom = 1.0) const = 0;    
     virtual double doubleValue() const = 0;
-    virtual double computeLengthPx(RenderStyle* currentStyle, RenderStyle* rootStyle, double multiplier = 1.0, bool computingFontSize = false) const = 0;
+    virtual double computeLengthPx(const RenderStyle* currentStyle, const RenderStyle* rootStyle, double multiplier = 1.0, bool computingFontSize = false) const = 0;
     virtual String customCssText() const = 0;
 #if ENABLE(CSS_VARIABLES)
     virtual String serializeResolvingVariables(const HashMap<AtomicString, String>&) const = 0;
     virtual bool hasVariableReference() const = 0;
 #endif
     virtual bool equals(const CSSCalcExpressionNode& other) const { return m_category == other.m_category && m_isInteger == other.m_isInteger; }
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const = 0;
     virtual Type type() const = 0;
 
     CalculationCategory category() const { return m_category; }    
@@ -98,7 +97,7 @@ public:
     static PassRefPtr<CSSCalcValue> create(CSSParserString name, CSSParserValueList*, CalculationPermittedValueRange);
     static PassRefPtr<CSSCalcValue> create(CalculationValue*);
 
-    PassRefPtr<CalculationValue> toCalcValue(RenderStyle* style, RenderStyle* rootStyle, double zoom = 1.0) const
+    PassRefPtr<CalculationValue> toCalcValue(const RenderStyle* style, const RenderStyle* rootStyle, double zoom = 1.0) const
     {
         return CalculationValue::create(m_expression->toCalcValue(style, rootStyle, zoom), m_nonNegative ? CalculationRangeNonNegative : CalculationRangeAll);
     }
@@ -106,7 +105,7 @@ public:
     bool isInt() const { return m_expression->isInteger(); }    
     double doubleValue() const;
     bool isNegative() const { return m_expression->doubleValue() < 0; }
-    double computeLengthPx(RenderStyle* currentStyle, RenderStyle* rootStyle, double multiplier = 1.0, bool computingFontSize = false) const;
+    double computeLengthPx(const RenderStyle* currentStyle, const RenderStyle* rootStyle, double multiplier = 1.0, bool computingFontSize = false) const;
         
     String customCssText() const;
     bool equals(const CSSCalcValue&) const;
@@ -114,8 +113,6 @@ public:
     String customSerializeResolvingVariables(const HashMap<AtomicString, String>&) const;
     bool hasVariableReference() const;
 #endif
-
-    void reportDescendantMemoryUsage(MemoryObjectInfo*) const;
     
 private:    
     CSSCalcValue(PassRefPtr<CSSCalcExpressionNode> expression, CalculationPermittedValueRange range)

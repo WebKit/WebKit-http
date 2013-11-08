@@ -40,20 +40,9 @@ typedef CGPatternRef PlatformPatternPtr;
 #elif USE(CAIRO)
 #include <cairo.h>
 typedef cairo_pattern_t* PlatformPatternPtr;
-#elif USE(SKIA)
-class SkShader;
-typedef SkShader* PlatformPatternPtr;
 #elif PLATFORM(QT)
 #include <QBrush>
 typedef QBrush PlatformPatternPtr;
-#elif PLATFORM(WX)
-#if USE(WXGC)
-class wxGraphicsBrush;
-typedef wxGraphicsBrush* PlatformPatternPtr;
-#else
-class wxBrush;
-typedef wxBrush* PlatformPatternPtr;
-#endif // USE(WXGC)
 #elif PLATFORM(HAIKU)
 #include <interface/GraphicsDefs.h>
 typedef pattern* PlatformPatternPtr;
@@ -76,9 +65,7 @@ public:
     void platformDestroy();
 
     // Pattern space is an abstract space that maps to the default user space by the transformation 'userSpaceTransformation' 
-#if USE(SKIA)
-    PlatformPatternPtr platformPattern(const AffineTransform& userSpaceTransformation);
-#elif PLATFORM(QT)
+#if PLATFORM(QT)
     // Qt ignores user space transformation and uses pattern's instead
     PlatformPatternPtr createPlatformPattern() const;
 #else
@@ -99,9 +86,6 @@ private:
     bool m_repeatY;
     AffineTransform m_patternSpaceTransformation;
     PlatformPatternPtr m_pattern;
-#if USE(SKIA)
-    int m_externalMemoryAllocated;
-#endif
 };
 
 } //namespace

@@ -36,9 +36,9 @@ from webkitpy.common.system.executive import ScriptError
 from webkitpy.layout_tests.controllers.test_result_writer import TestResultWriter
 from webkitpy.layout_tests.models import test_failures
 from webkitpy.layout_tests.models.test_expectations import TestExpectations, BASELINE_SUFFIX_LIST
-from webkitpy.layout_tests.port import builders
-from webkitpy.layout_tests.port import factory
-from webkitpy.tool.multicommandtool import AbstractDeclarativeCommand
+from webkitpy.port import builders
+from webkitpy.port import factory
+from webkitpy.tool.multicommandtool import Command
 
 
 _log = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def _baseline_name(fs, test_name, suffix):
     return fs.splitext(test_name)[0] + TestResultWriter.FILENAME_SUFFIX_EXPECTED + "." + suffix
 
 
-class AbstractRebaseliningCommand(AbstractDeclarativeCommand):
+class AbstractRebaseliningCommand(Command):
     # not overriding execute() - pylint: disable=W0223
 
     move_overwritten_baselines_option = optparse.make_option("--move-overwritten-baselines", action="store_true", default=False,
@@ -88,7 +88,7 @@ class RebaselineTest(AbstractRebaseliningCommand):
         self._scm_changes = {'add': []}
 
     def _results_url(self, builder_name):
-        return self._tool.buildbot_for_builder_name(builder_name).builder_with_name(builder_name).latest_layout_test_results_url()
+        return self._tool.buildbot.builder_with_name(builder_name).latest_layout_test_results_url()
 
     def _baseline_directory(self, builder_name):
         port = self._tool.port_factory.get_from_builder_name(builder_name)
@@ -454,22 +454,18 @@ class Rebaseline(AbstractParallelRebaselineCommand):
             ])
 
     def _builders_to_pull_from(self):
-        chromium_buildbot_builder_names = []
         webkit_buildbot_builder_names = []
         for name in builders.all_builder_names():
-            if self._tool.port_factory.get_from_builder_name(name).is_chromium():
-                chromium_buildbot_builder_names.append(name)
-            else:
-                webkit_buildbot_builder_names.append(name)
+            webkit_buildbot_builder_names.append(name)
 
-        titles = ["build.webkit.org bots", "build.chromium.org bots"]
-        lists = [webkit_buildbot_builder_names, chromium_buildbot_builder_names]
+        titles = ["build.webkit.org bots"]
+        lists = [webkit_buildbot_builder_names]
 
         chosen_names = self._tool.user.prompt_with_multiple_lists("Which builder to pull results from:", titles, lists, can_choose_multiple=True)
         return [self._builder_with_name(name) for name in chosen_names]
 
     def _builder_with_name(self, name):
-        return self._tool.buildbot_for_builder_name(name).builder_with_name(name)
+        return self._tool.buildbot.builder_with_name(name)
 
     def _tests_to_update(self, builder):
         failing_tests = builder.latest_layout_test_results().tests_matching_failure_types([test_failures.FailureTextMismatch])

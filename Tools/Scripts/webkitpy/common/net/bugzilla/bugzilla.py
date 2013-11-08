@@ -531,7 +531,7 @@ class Bugzilla(object):
     # FIXME: Use enum instead of two booleans
     def _commit_queue_flag(self, mark_for_landing, mark_for_commit_queue):
         if mark_for_landing:
-            user = self.committers.account_by_email(self.username)
+            user = self.committers.contributor_by_email(self.username)
             mark_for_commit_queue = True
             if not user:
                 _log.warning("Your Bugzilla login is not listed in committers.py. Uploading with cq? instead of cq+")
@@ -629,7 +629,7 @@ class Bugzilla(object):
 
     # FIXME: There has to be a more concise way to write this method.
     def _check_create_bug_response(self, response_html):
-        match = re.search("<title>Bug (?P<bug_id>\d+) Submitted</title>",
+        match = re.search("<title>Bug (?P<bug_id>\d+) Submitted[^<]*</title>",
                           response_html)
         if match:
             return match.group('bug_id')

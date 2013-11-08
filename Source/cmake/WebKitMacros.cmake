@@ -36,10 +36,14 @@ endmacro()
 #   _supplemental_dependency_file is a value of --supplementalDependencyFile. (optional)
 macro(GENERATE_BINDINGS _output_source _input_files _base_dir _idl_includes _features _destination _prefix _generator _idl_attributes_file)
     set(BINDING_GENERATOR ${WEBCORE_DIR}/bindings/scripts/generate-bindings.pl)
-
-    set(_supplemental_dependency_file ${ARGN})
-    if (_supplemental_dependency_file)
-        set(_supplemental_dependency --supplementalDependencyFile ${_supplemental_dependency_file})
+    set(_args ${ARGN})
+    list(LENGTH _args _argCount)
+    if (_argCount EQUAL 2)
+        list(GET _args 0 _supplemental_dependency_file)
+        if (_supplemental_dependency_file)
+            set(_supplemental_dependency --supplementalDependencyFile ${_supplemental_dependency_file})
+        endif ()
+        list(GET _args 1 _window_constructors_file)
     endif ()
 
     foreach (_file ${_input_files})
@@ -48,7 +52,7 @@ macro(GENERATE_BINDINGS _output_source _input_files _base_dir _idl_includes _fea
         add_custom_command(
             OUTPUT ${_destination}/${_prefix}${_name}.cpp ${_destination}/${_prefix}${_name}.h
             MAIN_DEPENDENCY ${_file}
-            DEPENDS ${BINDING_GENERATOR} ${SCRIPTS_BINDINGS} ${_supplemental_dependency_file} ${_idl_attributes_file}
+            DEPENDS ${BINDING_GENERATOR} ${SCRIPTS_BINDINGS} ${_supplemental_dependency_file} ${_idl_attributes_file} ${_window_constructors_file}
             COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${BINDING_GENERATOR} --defines "${_features}" --generator ${_generator} ${_idl_includes} --outputDir "${_destination}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --idlAttributesFile ${_idl_attributes_file} ${_supplemental_dependency} ${_file}
             WORKING_DIRECTORY ${_base_dir}
             VERBATIM)
@@ -136,26 +140,6 @@ macro(GENERATE_DOM_NAMES _namespace _attrs)
         OUTPUT  ${_outputfiles}
         DEPENDS ${NAMES_GENERATOR} ${SCRIPTS_BINDINGS} ${_attrs} ${_tags}
         COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${NAMES_GENERATOR} --preprocessor "${CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS}" --outputDir ${DERIVED_SOURCES_WEBCORE_DIR} ${_arguments} ${_additionArguments}
-        VERBATIM)
-endmacro()
-
-
-# - Create hash table *.lut.h
-# GENERATE_HASH_LUT(input_file output_file)
-macro(GENERATE_HASH_LUT _input _output)
-    set(HASH_LUT_GENERATOR "${JAVASCRIPTCORE_DIR}/create_hash_table")
-
-    foreach (_tmp ${ARGN})
-        if (${_tmp} STREQUAL "MAIN_DEPENDENCY")
-            set(_main_dependency ${_input})
-        endif ()
-    endforeach ()
-
-    add_custom_command(
-        OUTPUT ${_output}
-        MAIN_DEPENDENCY ${_main_dependency}
-        DEPENDS ${_input} ${HASH_LUT_GENERATOR}
-        COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${_input} -i > ${_output}
         VERBATIM)
 endmacro()
 

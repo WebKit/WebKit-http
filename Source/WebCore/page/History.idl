@@ -26,20 +26,19 @@
 [
     JSCustomGetOwnPropertySlotAndDescriptor,
     CustomNamedSetter,
-    JSGenerateIsReachable=ImplFrame,
+    GenerateIsReachable=ImplFrame,
     CustomDeleteProperty,
     CustomEnumerateProperty,
-    OmitConstructor
 ] interface History {
     readonly attribute unsigned long length;
     [CachedAttribute, Custom] readonly attribute SerializedScriptValue state;
 
     [DoNotCheckSecurity, CallWith=ScriptExecutionContext] void back();
     [DoNotCheckSecurity, CallWith=ScriptExecutionContext] void forward();
-    [DoNotCheckSecurity, CallWith=ScriptExecutionContext] void go(in [Optional=DefaultIsUndefined] long distance);
+    [DoNotCheckSecurity, CallWith=ScriptExecutionContext] void go([Default=Undefined] optional long distance);
 
-    [Custom] void pushState(in any data, in DOMString title, in [Optional] DOMString url)
+    [Custom] void pushState(any data, DOMString title, optional DOMString url)
         raises(DOMException);
-    [Custom] void replaceState(in any data, in DOMString title, in [Optional] DOMString url)
+    [Custom] void replaceState(any data, DOMString title, optional DOMString url)
         raises(DOMException);
 };

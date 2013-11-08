@@ -25,7 +25,6 @@
 #include "config.h"
 #include "RenderTableRow.h"
 
-#include "CachedImage.h"
 #include "Document.h"
 #include "HTMLNames.h"
 #include "HitTestResult.h"
@@ -33,7 +32,7 @@
 #include "RenderTableCell.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
-#include "WebCoreMemoryInstrumentation.h"
+#include <wtf/StackStats.h>
 
 namespace WebCore {
 
@@ -160,7 +159,7 @@ void RenderTableRow::layout()
     ASSERT(needsLayout());
 
     // Table rows do not add translation.
-    LayoutStateMaintainer statePusher(view(), this, LayoutSize(), style()->isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(view(), this, LayoutSize(), hasTransform() || hasReflection() || style()->isFlippedBlocksWritingMode());
 
     bool paginated = view()->layoutState()->isPaginated();
                 
@@ -278,13 +277,6 @@ RenderTableRow* RenderTableRow::createAnonymousWithParentRenderer(const RenderOb
     RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(parent->style(), TABLE_ROW);
     newRow->setStyle(newStyle.release());
     return newRow;
-}
-
-void RenderTableRow::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, PlatformMemoryTypes::Rendering);
-    RenderBox::reportMemoryUsage(memoryObjectInfo);
-    info.addMember(m_children, "children");
 }
 
 } // namespace WebCore

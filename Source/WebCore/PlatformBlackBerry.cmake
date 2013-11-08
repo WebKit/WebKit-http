@@ -35,9 +35,6 @@ list(APPEND WebCore_SOURCES
     platform/posix/FileSystemPOSIX.cpp
     platform/posix/SharedBufferPOSIX.cpp
     platform/text/LocaleNone.cpp
-    platform/text/TextBreakIteratorICU.cpp
-    platform/text/TextCodecICU.cpp
-    platform/text/TextEncodingDetectorICU.cpp
     platform/text/blackberry/TextBreakIteratorInternalICUBlackBerry.cpp
 )
 
@@ -226,6 +223,12 @@ else ()
     )
 endif ()
 
+if (ENABLE_TEXT_AUTOSIZING)
+    list(APPEND WebCore_SOURCES
+        ${WEBCORE_DIR}/rendering/TextAutosizer.cpp
+    )
+endif ()
+
 # To speed up linking when working on accel comp, you can move this whole chunk
 # to Source/WebKit/blackberry/CMakeListsBlackBerry.txt.
 # Append to WebKit_SOURCES instead of WebCore_SOURCES.
@@ -242,11 +245,11 @@ if (WTF_USE_ACCELERATED_COMPOSITING)
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerFilterRenderer.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerRenderer.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerRendererSurface.cpp
+        ${WEBCORE_DIR}/platform/graphics/blackberry/LayerTexture.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerTile.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerTiler.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/LayerWebKitThread.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/PluginLayerWebKitThread.cpp
-        ${WEBCORE_DIR}/platform/graphics/blackberry/Texture.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/TextureCacheCompositingThread.cpp
         ${WEBCORE_DIR}/platform/graphics/blackberry/WebGLLayerWebKitThread.cpp
         ${WEBCORE_DIR}/rendering/RenderLayerBacking.cpp
@@ -304,9 +307,9 @@ endforeach ()
 file(WRITE ${IDL_FILES_TMP} ${IDL_FILES_LIST})
 
 add_custom_command(
-    OUTPUT ${SUPPLEMENTAL_DEPENDENCY_FILE}
+    OUTPUT ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WINDOW_CONSTRUCTORS_FILE}
     DEPENDS ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl ${SCRIPTS_RESOLVE_SUPPLEMENTAL} ${WebCore_CPP_IDL_FILES} ${IDL_ATTRIBUTES_FILE}
-    COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --idlFilesList ${IDL_FILES_TMP} --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} --idlAttributesFile ${IDL_ATTRIBUTES_FILE}
+    COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --idlFilesList ${IDL_FILES_TMP} --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} --idlAttributesFile ${IDL_ATTRIBUTES_FILE} --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE}
     VERBATIM)
 
 GENERATE_BINDINGS(WebCore_SOURCES
@@ -315,7 +318,8 @@ GENERATE_BINDINGS(WebCore_SOURCES
     "${IDL_INCLUDES}"
     "${FEATURE_DEFINES_WEBCORE}"
     ${DERIVED_SOURCES_WEBCORE_DIR} WebDOM CPP
-    ${SUPPLEMENTAL_DEPENDENCY_FILE})
+    ${SUPPLEMENTAL_DEPENDENCY_FILE}
+    ${WINDOW_CONSTRUCTORS_FILE})
 
 # Generate contents for PopupPicker.cpp
 set(WebCore_POPUP_CSS_AND_JS

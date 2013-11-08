@@ -100,7 +100,8 @@ private:
         case BitXor:
         case BitRShift:
         case BitLShift:
-        case BitURShift: {
+        case BitURShift:
+        case ArithIMul: {
             fixIntEdge(node->child1());
             fixIntEdge(node->child2());
             break;
@@ -305,6 +306,11 @@ private:
             }
             if (node->op() != CompareEq)
                 break;
+            if (Node::shouldSpeculateBoolean(node->child1().node(), node->child2().node())) {
+                setUseKindAndUnboxIfProfitable<BooleanUse>(node->child1());
+                setUseKindAndUnboxIfProfitable<BooleanUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateString() && node->child2()->shouldSpeculateString() && GPRInfo::numberOfRegisters >= 7) {
                 setUseKindAndUnboxIfProfitable<StringUse>(node->child1());
                 setUseKindAndUnboxIfProfitable<StringUse>(node->child2());
@@ -333,6 +339,11 @@ private:
         }
             
         case CompareStrictEq: {
+            if (Node::shouldSpeculateBoolean(node->child1().node(), node->child2().node())) {
+                setUseKindAndUnboxIfProfitable<BooleanUse>(node->child1());
+                setUseKindAndUnboxIfProfitable<BooleanUse>(node->child2());
+                break;
+            }
             if (Node::shouldSpeculateInteger(node->child1().node(), node->child2().node())) {
                 setUseKindAndUnboxIfProfitable<Int32Use>(node->child1());
                 setUseKindAndUnboxIfProfitable<Int32Use>(node->child2());
@@ -675,7 +686,7 @@ private:
             setUseKindAndUnboxIfProfitable<CellUse>(node->child1());
             if (!isInt32Speculation(node->prediction()))
                 break;
-            if (codeBlock()->identifier(node->identifierNumber()) != globalData().propertyNames->length)
+            if (codeBlock()->identifier(node->identifierNumber()) != vm().propertyNames->length)
                 break;
             ArrayProfile* arrayProfile = 
                 m_graph.baselineCodeBlockFor(node->codeOrigin)->getArrayProfile(
@@ -781,9 +792,22 @@ private:
             setUseKindAndUnboxIfProfitable<CellUse>(node->child2());
             break;
         }
-            
+
+        case Phantom:
+        case Identity: {
+            switch (node->child1().useKind()) {
+            case NumberUse:
+                if (node->child1()->shouldSpeculateIntegerForArithmetic())
+                    node->child1().setUseKind(Int32Use);
+                break;
+            default:
+                break;
+            }
+            observeUseKindOnEdge(node->child1());
+            break;
+        }
+
         case GetArrayLength:
-        case Identity:
         case Nop:
         case Phi:
         case ForwardInt32ToDouble:
@@ -799,7 +823,6 @@ private:
 #if !ASSERT_DISABLED    
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
-        case Phantom:
         case JSConstant:
         case WeakJSConstant:
         case GetLocal:
@@ -849,6 +872,7 @@ private:
         case GarbageValue:
         case CountExecution:
         case ForceOSRExit:
+        case CheckWatchdogTimer:
             break;
 #else
         default:
@@ -1046,7 +1070,7 @@ private:
         unsigned attributesUnused;
         JSCell* specificValue;
         PropertyOffset offset = stringPrototypeStructure->get(
-            globalData(), ident, attributesUnused, specificValue);
+            vm(), ident, attributesUnused, specificValue);
         if (!isValidOffset(offset))
             return false;
         
@@ -1085,9 +1109,9 @@ private:
         // (that would call toString()). We don't want the DFG to have to distinguish
         // between the two, just because that seems like it would get confusing. So we
         // just require both methods to be sane.
-        if (!isStringPrototypeMethodSane(stringPrototypeStructure, globalData().propertyNames->valueOf))
+        if (!isStringPrototypeMethodSane(stringPrototypeStructure, vm().propertyNames->valueOf))
             return false;
-        if (!isStringPrototypeMethodSane(stringPrototypeStructure, globalData().propertyNames->toString))
+        if (!isStringPrototypeMethodSane(stringPrototypeStructure, vm().propertyNames->toString))
             return false;
         
         return true;
@@ -1234,9 +1258,19 @@ private:
         return true;
 #endif
     }
-    
+
     template<UseKind useKind>
     void observeUseKindOnNode(Node* node)
+    {
+        observeUseKindOnNode(node, useKind);
+    }
+
+    void observeUseKindOnEdge(Edge edge)
+    {
+        observeUseKindOnNode(edge.node(), edge.useKind());
+    }
+
+    void observeUseKindOnNode(Node* node, UseKind useKind)
     {
         if (node->op() != GetLocal)
             return;

@@ -61,7 +61,7 @@ public:
     virtual void setMenubarVisible(bool);
     virtual bool menubarVisible();
     virtual void setResizable(bool);
-    virtual void addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, const String& sourceID);
+    virtual void addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID);
     virtual bool canRunBeforeUnloadConfirmPanel();
     virtual bool runBeforeUnloadConfirmPanel(const String&, Frame*);
     virtual void closeWindowSoon();
@@ -81,7 +81,7 @@ public:
     virtual IntRect rootViewToScreen(const IntRect&) const;
     virtual void contentsSizeChanged(Frame*, const IntSize&) const;
     virtual void scrollRectIntoView(const IntRect&, const ScrollView*) const;
-    virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned int);
+    virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned);
     virtual void setToolTip(const String&, TextDirection);
 #if ENABLE(EVENT_MODE_METATAGS)
     virtual void didReceiveCursorEventMode(Frame*, CursorEventMode) const;

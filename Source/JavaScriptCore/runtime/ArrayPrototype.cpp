@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2007, 2008, 2009, 2011, 2013 Apple Inc. All rights reserved.
  *  Copyright (C) 2003 Peter Kelly (pmk@post.com)
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  *
@@ -124,16 +124,16 @@ ArrayPrototype* ArrayPrototype::create(ExecState* exec, JSGlobalObject* globalOb
 
 // ECMA 15.4.4
 ArrayPrototype::ArrayPrototype(JSGlobalObject* globalObject, Structure* structure)
-    : JSArray(globalObject->globalData(), structure, 0)
+    : JSArray(globalObject->vm(), structure, 0)
 {
 }
 
 void ArrayPrototype::finishCreation(JSGlobalObject* globalObject)
 {
-    JSGlobalData& globalData = globalObject->globalData();
-    Base::finishCreation(globalData);
+    VM& vm = globalObject->vm();
+    Base::finishCreation(vm);
     ASSERT(inherits(&s_info));
-    globalData.prototypeMap.addPrototype(this);
+    vm.prototypeMap.addPrototype(this);
 }
 
 bool ArrayPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -304,64 +304,27 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState* exec)
     if (JSValue earlyReturnValue = checker.earlyReturnValue())
         return JSValue::encode(earlyReturnValue);
 
-    unsigned totalSize = length ? length - 1 : 0;
-    Vector<RefPtr<StringImpl>, 256> strBuffer(length);
-    bool allStrings8Bit = true;
-
+    String separator(",", String::ConstructFromLiteral);
+    JSStringJoiner stringJoiner(separator, length);
     for (unsigned k = 0; k < length; k++) {
         JSValue element;
         if (thisObj->canGetIndexQuickly(k))
             element = thisObj->getIndexQuickly(k);
-        else
+        else {
             element = thisObj->get(exec, k);
-        
+            if (exec->hadException())
+                return JSValue::encode(jsUndefined());
+        }
+
         if (element.isUndefinedOrNull())
-            continue;
-        
-        String str = element.toWTFString(exec);
-        strBuffer[k] = str.impl();
-        totalSize += str.length();
-        allStrings8Bit = allStrings8Bit && str.is8Bit();
-        
-        if (!strBuffer.data()) {
-            throwOutOfMemoryError(exec);
-        }
-        
+            stringJoiner.append(String());
+        else
+            stringJoiner.append(element.toWTFString(exec));
+
         if (exec->hadException())
-            break;
+            return JSValue::encode(jsUndefined());
     }
-    if (!totalSize)
-        return JSValue::encode(jsEmptyString(exec));
-
-    if (allStrings8Bit) {
-        Vector<LChar> buffer;
-        buffer.reserveCapacity(totalSize);
-        if (!buffer.data())
-            return JSValue::encode(throwOutOfMemoryError(exec));
-        
-        for (unsigned i = 0; i < length; i++) {
-            if (i)
-                buffer.append(',');
-            if (RefPtr<StringImpl> rep = strBuffer[i])
-                buffer.append(rep->characters8(), rep->length());
-        }
-        ASSERT(buffer.size() == totalSize);
-        return JSValue::encode(jsString(exec, String::adopt(buffer)));
-    }
-
-    Vector<UChar> buffer;
-    buffer.reserveCapacity(totalSize);
-    if (!buffer.data())
-        return JSValue::encode(throwOutOfMemoryError(exec));
-        
-    for (unsigned i = 0; i < length; i++) {
-        if (i)
-            buffer.append(',');
-        if (RefPtr<StringImpl> rep = strBuffer[i])
-            buffer.append(rep->characters(), rep->length());
-    }
-    ASSERT(buffer.size() == totalSize);
-    return JSValue::encode(jsString(exec, String::adopt(buffer)));
+    return JSValue::encode(stringJoiner.join(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncToLocaleString(ExecState* exec)
@@ -404,7 +367,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncToLocaleString(ExecState* exec)
         }
     }
 
-    return JSValue::encode(stringJoiner.build(exec));
+    return JSValue::encode(stringJoiner.join(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncJoin(ExecState* exec)
@@ -450,7 +413,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncJoin(ExecState* exec)
             stringJoiner.append(String());
     }
 
-    return JSValue::encode(stringJoiner.build(exec));
+    return JSValue::encode(stringJoiner.join(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncConcat(ExecState* exec)
@@ -739,7 +702,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSort(ExecState* exec)
         return performSlowSort(exec, thisObj, length, function, callData, callType) ? JSValue::encode(thisObj) : JSValue::encode(jsUndefined());
     
     JSGlobalObject* globalObject = JSGlobalObject::create(
-        exec->globalData(), JSGlobalObject::createStructure(exec->globalData(), jsNull()));
+        exec->vm(), JSGlobalObject::createStructure(exec->vm(), jsNull()));
     JSArray* flatArray = constructEmptyArray(globalObject->globalExec(), 0);
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
@@ -818,17 +781,17 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
             deleteCount = static_cast<unsigned>(deleteDouble);
     }
 
-    JSArray* resObj = JSArray::tryCreateUninitialized(exec->globalData(), exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), deleteCount);
+    JSArray* resObj = JSArray::tryCreateUninitialized(exec->vm(), exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), deleteCount);
     if (!resObj)
         return JSValue::encode(throwOutOfMemoryError(exec));
 
     JSValue result = resObj;
-    JSGlobalData& globalData = exec->globalData();
+    VM& vm = exec->vm();
     for (unsigned k = 0; k < deleteCount; k++) {
         JSValue v = getProperty(exec, thisObj, k + begin);
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
-        resObj->initializeIndex(globalData, k, v);
+        resObj->initializeIndex(vm, k, v);
     }
 
     unsigned additionalArgs = std::max<int>(exec->argumentCount() - 2, 0);

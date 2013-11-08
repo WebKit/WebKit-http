@@ -30,7 +30,6 @@
 #include "ContentDistributor.h"
 #include "ExceptionCode.h"
 #include "ShadowRoot.h"
-#include <wtf/DoublyLinkedList.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PassOwnPtr.h>
 #include <wtf/PassRefPtr.h>
@@ -48,12 +47,11 @@ public:
 
     ~ElementShadow()
     {
-        removeAllShadowRoots();
+        removeShadowRoot();
     }
 
     Element* host() const;
-    ShadowRoot* youngestShadowRoot() const { return m_shadowRoots.head(); }
-    ShadowRoot* oldestShadowRoot() const { return m_shadowRoots.tail(); }
+    ShadowRoot* shadowRoot() const { return m_shadowRoot.get(); }
     ElementShadow* containingShadow() const;
 
     ShadowRoot* addShadowRoot(Element* shadowHost, ShadowRoot::ShadowRootType);
@@ -67,35 +65,31 @@ public:
     void removeAllEventListeners();
 
     void invalidateDistribution() { m_distributor.invalidateDistribution(host()); }
-    void didAffectSelector(AffectedSelectorMask mask) { m_distributor.didAffectSelector(host(), mask); }
-    void willAffectSelector() { m_distributor.willAffectSelector(host()); }
 
     ContentDistributor& distributor() { return m_distributor; }
     const ContentDistributor& distributor() const { return m_distributor; }
 
-    void reportMemoryUsage(MemoryObjectInfo*) const;
-
 private:
     ElementShadow() { }
 
-    void removeAllShadowRoots();
+    void removeShadowRoot();
 
-    DoublyLinkedList<ShadowRoot> m_shadowRoots;
+    RefPtr<ShadowRoot> m_shadowRoot;
     ContentDistributor m_distributor;
 };
 
 inline Element* ElementShadow::host() const
 {
-    ASSERT(!m_shadowRoots.isEmpty());
-    return youngestShadowRoot()->host();
+    ASSERT(m_shadowRoot);
+    return m_shadowRoot->host();
 }
 
-inline ShadowRoot* Node::youngestShadowRoot() const
+inline ShadowRoot* Node::shadowRoot() const
 {
     if (!this->isElementNode())
         return 0;
     if (ElementShadow* shadow = toElement(this)->shadow())
-        return shadow->youngestShadowRoot();
+        return shadow->shadowRoot();
     return 0;
 }
 
@@ -105,15 +99,6 @@ inline ElementShadow* ElementShadow::containingShadow() const
         return parentRoot->owner();
     return 0;
 }
-
-class ShadowRootVector : public Vector<RefPtr<ShadowRoot> > {
-public:
-    explicit ShadowRootVector(ElementShadow* tree)
-    {
-        for (ShadowRoot* root = tree->youngestShadowRoot(); root; root = root->olderShadowRoot())
-            append(root);
-    }
-};
 
 inline ElementShadow* shadowOfParent(const Node* node)
 {

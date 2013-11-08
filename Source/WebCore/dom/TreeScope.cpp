@@ -58,7 +58,7 @@ namespace WebCore {
 
 struct SameSizeAsTreeScope {
     virtual ~SameSizeAsTreeScope();
-    void* pointers[8];
+    void* pointers[9];
     int ints[1];
 };
 
@@ -163,6 +163,29 @@ void TreeScope::removeElementById(const AtomicString& elementId, Element* elemen
         return;
     m_elementsById->remove(elementId.impl(), element);
     m_idTargetObserverRegistry->notifyObservers(elementId);
+}
+
+Element* TreeScope::getElementByName(const AtomicString& name) const
+{
+    if (name.isEmpty())
+        return 0;
+    if (!m_elementsByName)
+        return 0;
+    return m_elementsByName->getElementByName(name.impl(), this);
+}
+
+void TreeScope::addElementByName(const AtomicString& name, Element* element)
+{
+    if (!m_elementsByName)
+        m_elementsByName = adoptPtr(new DocumentOrderedMap);
+    m_elementsByName->add(name.impl(), element);
+}
+
+void TreeScope::removeElementByName(const AtomicString& name, Element* element)
+{
+    if (!m_elementsByName)
+        return;
+    m_elementsByName->remove(name.impl(), element);
 }
 
 Node* TreeScope::ancestorInThisScope(Node* node) const
@@ -382,20 +405,6 @@ Node* TreeScope::focusedNode()
         }
     }
     return 0;
-}
-
-void TreeScope::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
-{
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
-    info.addMember(m_rootNode, "rootNode");
-    info.addMember(m_parentTreeScope, "parentTreeScope");
-    info.addMember(m_elementsById, "elementsById");
-    info.addMember(m_imageMapsByName, "imageMapsByName");
-    info.addMember(m_labelsByForAttribute, "labelsByForAttribute");
-    info.addMember(m_idTargetObserverRegistry, "idTargetObserverRegistry");
-    info.addMember(m_selection, "selection");
-    info.addMember(m_documentScope, "documentScope");
-
 }
 
 static void listTreeScopes(Node* node, Vector<TreeScope*, 5>& treeScopes)

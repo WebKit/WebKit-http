@@ -187,6 +187,8 @@ Programs_DumpRenderTree_CFLAGS = \
 Programs_DumpRenderTree_LDADD = \
 	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
 	libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	libPlatform.la \
+	libPlatformGtk.la \
 	libWebCorePlatform.la \
 	libWebCoreModules.la \
 	libWebCoreInternals.la \
@@ -280,7 +282,7 @@ TestNetscapePlugin_libtestnetscapeplugin_la_SOURCES = \
 	Tools/DumpRenderTree/TestNetscapePlugIn/Tests/PassDifferentNPPStruct.cpp \
 	Tools/DumpRenderTree/TestNetscapePlugIn/Tests/PluginScriptableNPObjectInvokeDefault.cpp \
 	Tools/DumpRenderTree/TestNetscapePlugIn/Tests/PrivateBrowsing.cpp \
-	Tools/DumpRenderTree/TestNetscapePlugIn/Tests/ToStringAndValueOfObject.cpp \	
+	Tools/DumpRenderTree/TestNetscapePlugIn/Tests/ToStringAndValueOfObject.cpp \
 	Tools/DumpRenderTree/TestNetscapePlugIn/Tests/x11/CallInvalidateRectWithNullNPPArgument.cpp \
 	Tools/DumpRenderTree/TestNetscapePlugIn/PluginTest.cpp \
 	Tools/DumpRenderTree/TestNetscapePlugIn/PluginTest.h \

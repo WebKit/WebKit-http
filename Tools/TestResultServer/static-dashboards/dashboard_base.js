@@ -73,45 +73,10 @@ var TESTS_KEY = 'tests';
 var ONE_DAY_SECONDS = 60 * 60 * 24;
 var ONE_WEEK_SECONDS = ONE_DAY_SECONDS * 7;
 
-// These should match the testtype uploaded to test-results.appspot.com.
-// See http://test-results.appspot.com/testfile.
+// These should match the testtype uploaded to webkit-test-results.appspot.com.
+// See http://webkit-test-results.appspot.com/testfile.
 var TEST_TYPES = [
-    'base_unittests',
-    'browser_tests',
-    'cacheinvalidation_unittests',
-    'compositor_unittests',
-    'content_browsertests',
-    'content_unittests',
-    'courgette_unittests',
-    'crypto_unittests',
-    'googleurl_unittests',
-    'gfx_unittests',
-    'gl_tests',
-    'gpu_tests',
-    'gpu_unittests',
-    'installer_util_unittests',
-    'interactive_ui_tests',
-    'ipc_tests',
-    'jingle_unittests',
-    'layout-tests',
-    'media_unittests',
-    'mini_installer_test',
-    'net_unittests',
-    'printing_unittests',
-    'remoting_unittests',
-    'safe_browsing_tests',
-    'sql_unittests',
-    'sync_unit_tests',
-    'sync_integration_tests',
-    'test_shell_tests',
-    'ui_tests',
-    'unit_tests',
-    'views_unittests',
-    'webkit_unit_tests',
-    'androidwebview_instrumentation_tests',
-    'chromiumtestshell_instrumentation_tests',
-    'contentshell_instrumentation_tests',
-    'cc_unittests'
+    'layout-tests'
 ];
 
 
@@ -135,24 +100,7 @@ function $(id)
 
 function currentBuilderGroupCategory()
 {
-    switch (g_history.crossDashboardState.testType) {
-    case 'gl_tests':
-    case 'gpu_tests':
-        return CHROMIUM_GPU_TESTS_BUILDER_GROUPS;
-    case 'layout-tests':
-        return LAYOUT_TESTS_BUILDER_GROUPS;
-    case 'test_shell_tests':
-    case 'webkit_unit_tests':
-        return TEST_SHELL_TESTS_BUILDER_GROUPS;
-    case 'androidwebview_instrumentation_tests':
-    case 'chromiumtestshell_instrumentation_tests':
-    case 'contentshell_instrumentation_tests':
-        return CHROMIUM_INSTRUMENTATION_TESTS_BUILDER_GROUPS;
-    case 'cc_unittests':
-        return CC_UNITTEST_BUILDER_GROUPS;
-    default:
-        return CHROMIUM_GTESTS_BUILDER_GROUPS;
-    }
+    return LAYOUT_TESTS_BUILDER_GROUPS;
 }
 
 function currentBuilderGroupName()
@@ -172,7 +120,7 @@ function currentBuilders()
 
 function isTipOfTreeWebKitBuilder()
 {
-    return currentBuilderGroup().isToTWebKit;
+    return true;
 }
 
 var g_resultsByBuilder = {};

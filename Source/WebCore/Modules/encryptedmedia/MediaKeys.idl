@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
  
-interface [
+[
     Conditional=ENCRYPTED_MEDIA_V2,
-    V8EnabledAtRuntime=encryptedMedia,
-    Constructor(in DOMString keySystem),
+    Constructor(DOMString keySystem),
     ConstructorRaisesException,
-] MediaKeys {
-    [CallWith=ScriptExecutionContext] MediaKeySession createSession(in [Optional=DefaultIsUndefined] DOMString type, in [Optional=DefaultIsUndefined] Uint8Array initData)
+] interface MediaKeys {
+    [CallWith=ScriptExecutionContext] MediaKeySession createSession([Default=Undefined] optional DOMString type, [Default=Undefined] optional Uint8Array initData)
         raises(DOMException);
 
     readonly attribute DOMString keySystem;

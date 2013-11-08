@@ -36,6 +36,7 @@
 #include "WebKitURISchemeRequestPrivate.h"
 #include "WebKitWebContextPrivate.h"
 #include "WebKitWebViewBasePrivate.h"
+#include "WebKitWebViewGroupPrivate.h"
 #include "WebResourceCacheManagerProxy.h"
 #include <WebCore/FileSystem.h>
 #include <WebCore/IconDatabase.h>
@@ -143,6 +144,7 @@ struct _WebKitWebContextPrivate {
     WebKitTLSErrorsPolicy tlsErrorsPolicy;
 
     HashMap<uint64_t, WebKitWebView*> webViews;
+    GRefPtr<WebKitWebViewGroup> defaultWebViewGroup;
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -566,8 +568,9 @@ GList* webkit_web_context_get_plugins_finish(WebKitWebContext* context, GAsyncRe
  * #WebKitWebContext, the #WebKitURISchemeRequestCallback registered will be called with a
  * #WebKitURISchemeRequest.
  * It is possible to handle URI scheme requests asynchronously, by calling g_object_ref() on the
- * #WebKitURISchemeRequest and calling webkit_uri_scheme_request_finish() later when the data of
- * the request is available.
+ * #WebKitURISchemeRequest and calling webkit_uri_scheme_request_finish() later
+ * when the data of the request is available or
+ * webkit_uri_scheme_request_finish_error() in case of error.
  *
  * <informalexample><programlisting>
  * static void
@@ -585,12 +588,19 @@ GList* webkit_web_context_get_plugins_finish(WebKitWebContext* context, GAsyncRe
  *         /<!-- -->* Create a GInputStream with the contents of memory about page, and set its length to stream_length *<!-- -->/
  *     } else if (!g_strcmp0 (path, "applications")) {
  *         /<!-- -->* Create a GInputStream with the contents of applications about page, and set its length to stream_length *<!-- -->/
- *     } else {
+ *     } else if (!g_strcmp0 (path, "example")) {
  *         gchar *contents;
  *
- *         contents = g_strdup_printf ("&lt;html&gt;&lt;body&gt;&lt;p&gt;Invalid about:%s page&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;", path);
+ *         contents = g_strdup_printf ("&lt;html&gt;&lt;body&gt;&lt;p&gt;Example about page&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;");
  *         stream_length = strlen (contents);
  *         stream = g_memory_input_stream_new_from_data (contents, stream_length, g_free);
+ *     } else {
+ *         GError *error;
+ *
+ *         error = g_error_new (ABOUT_HANDLER_ERROR, ABOUT_HANDLER_ERROR_INVALID, "Invalid about:%s page.", path);
+ *         webkit_uri_scheme_request_finish_error (request, error);
+ *         g_error_free (error);
+ *         return;
  *     }
  *     webkit_uri_scheme_request_finish (request, stream, stream_length, "text/html");
  *     g_object_unref (stream);
@@ -773,6 +783,23 @@ void webkit_web_context_set_web_extensions_directory(WebKitWebContext* context, 
 }
 
 /**
+ * webkit_web_context_set_disk_cache_directory:
+ * @context: a #WebKitWebContext
+ * @directory: the directory to set
+ *
+ * Set the directory where disk cache files will be stored
+ * This method must be called before loading anything in this context, otherwise
+ * it will not have any effect.
+ */
+void webkit_web_context_set_disk_cache_directory(WebKitWebContext* context, const char* directory)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+    g_return_if_fail(directory);
+
+    context->priv->context->setDiskCacheDirectory(WebCore::filenameToString(directory));
+}
+
+/**
  * webkit_web_context_prefetch_dns:
  * @context: a #WebKitWebContext
  * @hostname: a hostname to be resolved
@@ -857,12 +884,17 @@ void webkitWebContextDidFinishURIRequest(WebKitWebContext* context, uint64_t req
     context->priv->uriSchemeRequests.remove(requestID);
 }
 
-void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebView* webView)
+void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebView* webView, WebKitWebViewGroup* webViewGroup)
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
-    webkitWebViewBaseCreateWebPage(webViewBase, context->priv->context.get(), 0);
+    WebPageGroup* pageGroup = webViewGroup ? webkitWebViewGroupGetPageGroup(webViewGroup) : 0;
+    webkitWebViewBaseCreateWebPage(webViewBase, context->priv->context.get(), pageGroup);
+
     WebPageProxy* page = webkitWebViewBaseGetPage(webViewBase);
     context->priv->webViews.set(page->pageID(), webView);
+
+    if (!pageGroup && !context->priv->defaultWebViewGroup)
+        context->priv->defaultWebViewGroup = adoptGRef(webkitWebViewGroupCreate(page->pageGroup()));
 }
 
 void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* webView)
@@ -874,4 +906,9 @@ void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* 
 WebKitWebView* webkitWebContextGetWebViewForPage(WebKitWebContext* context, WebPageProxy* page)
 {
     return page ? context->priv->webViews.get(page->pageID()) : 0;
+}
+
+WebKitWebViewGroup* webkitWebContextGetDefaultWebViewGroup(WebKitWebContext* context)
+{
+    return context->priv->defaultWebViewGroup.get();
 }

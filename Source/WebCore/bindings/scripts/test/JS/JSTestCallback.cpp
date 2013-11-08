@@ -24,12 +24,11 @@
 
 #include "JSTestCallback.h"
 
-#include "JSClass1.h"
-#include "JSClass2.h"
-#include "JSClass8.h"
 #include "JSDOMStringList.h"
-#include "JSThisClass.h"
+#include "JSFloat32Array.h"
+#include "JSTestNode.h"
 #include "ScriptExecutionContext.h"
+#include "SerializedScriptValue.h"
 #include <runtime/JSLock.h>
 
 using namespace JSC;
@@ -65,7 +64,7 @@ bool JSTestCallback::callbackWithNoParam()
 
     RefPtr<JSTestCallback> protect(this);
 
-    JSLockHolder lock(m_data->globalObject()->globalData());
+    JSLockHolder lock(m_data->globalObject()->vm());
 
     MarkedArgumentBuffer args;
 
@@ -74,36 +73,36 @@ bool JSTestCallback::callbackWithNoParam()
     return !raisedException;
 }
 
-bool JSTestCallback::callbackWithClass1Param(Class1* class1Param)
+bool JSTestCallback::callbackWithArrayParam(Float32Array* arrayParam)
 {
     if (!canInvokeCallback())
         return true;
 
     RefPtr<JSTestCallback> protect(this);
 
-    JSLockHolder lock(m_data->globalObject()->globalData());
+    JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(exec, m_data->globalObject(), class1Param));
+    args.append(toJS(exec, m_data->globalObject(), arrayParam));
 
     bool raisedException = false;
     m_data->invokeCallback(args, &raisedException);
     return !raisedException;
 }
 
-bool JSTestCallback::callbackWithClass2Param(Class2* class2Param, const String& strArg)
+bool JSTestCallback::callbackWithSerializedScriptValueParam(PassRefPtr<SerializedScriptValue> srzParam, const String& strArg)
 {
     if (!canInvokeCallback())
         return true;
 
     RefPtr<JSTestCallback> protect(this);
 
-    JSLockHolder lock(m_data->globalObject()->globalData());
+    JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(exec, m_data->globalObject(), class2Param));
+    args.append(srzParam ? srzParam->deserialize(exec, m_data->globalObject(), 0) : jsNull());
     args.append(jsStringWithCache(exec, strArg));
 
     bool raisedException = false;
@@ -118,7 +117,7 @@ bool JSTestCallback::callbackWithStringList(PassRefPtr<DOMStringList> listParam)
 
     RefPtr<JSTestCallback> protect(this);
 
-    JSLockHolder lock(m_data->globalObject()->globalData());
+    JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
@@ -136,7 +135,7 @@ bool JSTestCallback::callbackWithBoolean(bool boolParam)
 
     RefPtr<JSTestCallback> protect(this);
 
-    JSLockHolder lock(m_data->globalObject()->globalData());
+    JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
@@ -147,25 +146,25 @@ bool JSTestCallback::callbackWithBoolean(bool boolParam)
     return !raisedException;
 }
 
-bool JSTestCallback::callbackRequiresThisToPass(Class8* class8Param, ThisClass* thisClassParam)
+bool JSTestCallback::callbackRequiresThisToPass(int longParam, TestNode* testNodeParam)
 {
-    ASSERT(thisClassParam);
+    ASSERT(testNodeParam);
 
     if (!canInvokeCallback())
         return true;
 
     RefPtr<JSTestCallback> protect(this);
 
-    JSLockHolder lock(m_data->globalObject()->globalData());
+    JSLockHolder lock(m_data->globalObject()->vm());
 
     ExecState* exec = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
-    args.append(toJS(exec, m_data->globalObject(), class8Param));
-    args.append(toJS(exec, m_data->globalObject(), thisClassParam));
+    args.append(toJS(exec, m_data->globalObject(), longParam));
+    args.append(toJS(exec, m_data->globalObject(), testNodeParam));
 
     bool raisedException = false;
-    JSValue jsthisClassParam = toJS(exec, m_data->globalObject(), thisClassParam);
-    m_data->invokeCallback(jsthisClassParam, args, &raisedException);
+    JSValue jstestNodeParam = toJS(exec, m_data->globalObject(), testNodeParam);
+    m_data->invokeCallback(jstestNodeParam, args, &raisedException);
 
     return !raisedException;
 }

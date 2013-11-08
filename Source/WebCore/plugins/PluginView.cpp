@@ -60,6 +60,7 @@
 #include "ProxyServer.h"
 #include "RenderBox.h"
 #include "RenderObject.h"
+#include "ScriptController.h"
 #include "ScriptValue.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
@@ -245,7 +246,7 @@ bool PluginView::start()
     NPError npErr;
     {
         PluginView::setCurrentPluginView(this);
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
         setCallingPlugin(true);
         npErr = m_plugin->pluginFuncs()->newp((NPMIMEType)m_mimeType.utf8().data(), m_instance, m_mode, m_paramCount, m_paramNames, m_paramValues, NULL);
         setCallingPlugin(false);
@@ -302,8 +303,6 @@ PluginView::~PluginView()
 
     stop();
 
-    deleteAllValues(m_requests);
-
     freeStringArray(m_paramNames, m_paramCount);
     freeStringArray(m_paramValues, m_paramCount);
 
@@ -333,7 +332,7 @@ void PluginView::stop()
 
     m_isStarted = false;
 
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 #if defined(XP_WIN) && !PLATFORM(GTK)
@@ -450,7 +449,7 @@ void PluginView::performRequest(PluginRequest* request)
             // FIXME: <rdar://problem/4807469> This should be sent when the document has finished loading
             if (request->sendNotification()) {
                 PluginView::setCurrentPluginView(this);
-                JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+                JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
                 setCallingPlugin(true);
                 m_plugin->pluginFuncs()->urlnotify(m_instance, requestURL.string().utf8().data(), NPRES_DONE, request->notifyData());
                 setCallingPlugin(false);
@@ -485,22 +484,21 @@ void PluginView::performRequest(PluginRequest* request)
 void PluginView::requestTimerFired(Timer<PluginView>* timer)
 {
     ASSERT_UNUSED(timer, timer == &m_requestTimer);
-    ASSERT(m_requests.size() > 0);
+    ASSERT(!m_requests.isEmpty());
     ASSERT(!m_isJavaScriptPaused);
 
-    PluginRequest* request = m_requests[0];
+    OwnPtr<PluginRequest> request = m_requests[0].release();
     m_requests.remove(0);
     
     // Schedule a new request before calling performRequest since the call to
     // performRequest can cause the plugin view to be deleted.
-    if (m_requests.size() > 0)
+    if (!m_requests.isEmpty())
         m_requestTimer.startOneShot(0);
 
-    performRequest(request);
-    delete request;
+    performRequest(request.get());
 }
 
-void PluginView::scheduleRequest(PluginRequest* request)
+void PluginView::scheduleRequest(PassOwnPtr<PluginRequest> request)
 {
     m_requests.append(request);
 
@@ -536,8 +534,7 @@ NPError PluginView::load(const FrameLoadRequest& frameLoadRequest, bool sendNoti
     } else if (!m_parentFrame->document()->securityOrigin()->canDisplay(url))
         return NPERR_GENERIC_ERROR;
 
-    PluginRequest* request = new PluginRequest(frameLoadRequest, sendNotification, notifyData, arePopupsAllowed());
-    scheduleRequest(request);
+    scheduleRequest(adoptPtr(new PluginRequest(frameLoadRequest, sendNotification, notifyData, arePopupsAllowed())));
 
     return NPERR_NO_ERROR;
 }
@@ -734,7 +731,7 @@ NPObject* PluginView::npObject()
     NPError npErr;
     {
         PluginView::setCurrentPluginView(this);
-        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
         setCallingPlugin(true);
         npErr = m_plugin->pluginFuncs()->getvalue(m_instance, NPPVpluginScriptableNPObject, &object);
         setCallingPlugin(false);
@@ -1506,7 +1503,7 @@ void PluginView::privateBrowsingStateChanged(bool privateBrowsingEnabled)
         return;
 
     PluginView::setCurrentPluginView(this);
-    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
     setCallingPlugin(true);
     NPBool value = privateBrowsingEnabled;
     setValue(m_instance, NPNVprivateModeBool, &value);

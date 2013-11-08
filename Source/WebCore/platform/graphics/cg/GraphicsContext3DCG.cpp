@@ -328,7 +328,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
         decoder.setData(m_image->data(), true);
         if (!decoder.frameCount())
             return false;
-        m_decodedImage.adoptCF(decoder.createFrameAtIndex(0));
+        m_decodedImage = adoptCF(decoder.createFrameAtIndex(0));
         m_cgImage = m_decodedImage.get();
     } else
         m_cgImage = m_image->nativeImageForCurrentFrame();
@@ -352,9 +352,8 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
         // the color table, which would allow us to avoid premultiplying the
         // alpha channel. Creation of a bitmap context with an alpha channel
         // doesn't seem to work unless it's premultiplied.
-        bitmapContext.adoptCF(CGBitmapContextCreate(0, m_imageWidth, m_imageHeight, 8, m_imageWidth * 4,
-                                                    deviceRGBColorSpaceRef(),
-                                                    kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host));
+        bitmapContext = adoptCF(CGBitmapContextCreate(0, m_imageWidth, m_imageHeight, 8, m_imageWidth * 4,
+            deviceRGBColorSpaceRef(), kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host));
         if (!bitmapContext)
             return false;
 
@@ -363,7 +362,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
         CGContextDrawImage(bitmapContext.get(), CGRectMake(0, 0, m_imageWidth, m_imageHeight), m_cgImage);
 
         // Now discard the original CG image and replace it with a copy from the bitmap context.
-        m_decodedImage.adoptCF(CGBitmapContextCreateImage(bitmapContext.get()));
+        m_decodedImage = adoptCF(CGBitmapContextCreateImage(bitmapContext.get()));
         m_cgImage = m_decodedImage.get();
     }
 
@@ -457,7 +456,7 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     if (m_imageSourceFormat == DataFormatNumFormats)
         return false;
 
-    m_pixelData.adoptCF(CGDataProviderCopyData(CGImageGetDataProvider(m_cgImage)));
+    m_pixelData = adoptCF(CGDataProviderCopyData(CGImageGetDataProvider(m_cgImage)));
     if (!m_pixelData)
         return false;
 

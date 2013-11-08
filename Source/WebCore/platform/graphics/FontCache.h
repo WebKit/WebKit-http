@@ -55,7 +55,7 @@ class OpenTypeVerticalData;
 class SimpleFontData;
 
 #if PLATFORM(WIN)
-#if !OS(WINCE) || defined(IMLANG_FONT_LINK) && (IMLANG_FONT_LINK == 2)
+#if USE(IMLANG_FONT_LINK2)
 typedef IMLangFontLink2 IMLangFontLinkType;
 #else
 typedef IMLangFontLink IMLangFontLinkType;
@@ -82,11 +82,9 @@ public:
 
 #if PLATFORM(WIN)
     IMLangFontLinkType* getFontLinkInterface();
-#if OS(WINCE)
     static void comInitialize();
     static void comUninitialize();
     static IMultiLanguage* getMultiLanguageInterface();
-#endif
 #endif
 
     void getTraitsInFamily(const AtomicString&, Vector<unsigned>&);
@@ -110,11 +108,7 @@ public:
 #endif
 
 #if ENABLE(OPENTYPE_VERTICAL)
-#if USE(SKIA)
-    typedef uint32_t FontFileKey;
-#else
     typedef AtomicString FontFileKey;
-#endif
     PassRefPtr<OpenTypeVerticalData> getVerticalData(const FontFileKey&, const FontPlatformData&);
 #endif
 

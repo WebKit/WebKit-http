@@ -111,7 +111,7 @@ class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
     friend class Settings;
 public:
-    static void scheduleForcedStyleRecalcForAllPages();
+    static void updateStyleForAllPagesAfterGlobalChangeInEnvironment();
 
     // It is up to the platform to ensure that non-null clients are provided where required.
     struct PageClients {
@@ -352,7 +352,8 @@ public:
     PlatformDisplayID displayID() const { return m_displayID; }
 
     void addLayoutMilestones(LayoutMilestones);
-    LayoutMilestones layoutMilestones() const { return m_layoutMilestones; }
+    void removeLayoutMilestones(LayoutMilestones);
+    LayoutMilestones requestedLayoutMilestones() const { return m_requestedLayoutMilestones; }
 
     bool isCountingRelevantRepaintedObjects() const;
     void startCountingRelevantRepaintedObjects();
@@ -387,8 +388,6 @@ public:
 #if ENABLE(PAGE_VISIBILITY_API)
     void hiddenPageCSSAnimationSuspensionStateChanged();
 #endif
-
-    void reportMemoryUsage(MemoryObjectInfo*) const;
 
 #if ENABLE(VIDEO_TRACK)
     void captionPreferencesChanged();
@@ -501,7 +500,7 @@ private:
 #endif
     PlatformDisplayID m_displayID;
 
-    LayoutMilestones m_layoutMilestones;
+    LayoutMilestones m_requestedLayoutMilestones;
 
     HashSet<RenderObject*> m_relevantUnpaintedRenderObjects;
     Region m_topRelevantPaintedRegion;

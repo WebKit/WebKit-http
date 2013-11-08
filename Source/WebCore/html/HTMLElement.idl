@@ -46,14 +46,14 @@
              [TreatNullAs=NullString] attribute DOMString outerText
                  setter raises(DOMException);
 
-    Element insertAdjacentElement(in [Optional=DefaultIsUndefined] DOMString where,
-                                  in [Optional=DefaultIsUndefined] Element element)
+    Element insertAdjacentElement([Default=Undefined] optional DOMString where,
+                                  [Default=Undefined] optional Element element)
         raises(DOMException);
-    void insertAdjacentHTML(in [Optional=DefaultIsUndefined] DOMString where,
-                            in [Optional=DefaultIsUndefined] DOMString html)
+    void insertAdjacentHTML([Default=Undefined] optional DOMString where,
+                            [Default=Undefined] optional DOMString html)
         raises(DOMException);
-    void insertAdjacentText(in [Optional=DefaultIsUndefined] DOMString where,
-                            in [Optional=DefaultIsUndefined] DOMString text)
+    void insertAdjacentText([Default=Undefined] optional DOMString where,
+                            [Default=Undefined] optional DOMString text)
         raises(DOMException);
 
     readonly attribute HTMLCollection children;
@@ -72,9 +72,7 @@
     [Conditional=MICRODATA] readonly attribute DOMSettableTokenList itemRef;
     [Conditional=MICRODATA] readonly attribute DOMSettableTokenList itemProp;
 
-#if defined(ENABLE_MICRODATA) && ENABLE_MICRODATA
     [Conditional=MICRODATA] readonly attribute HTMLPropertiesCollection properties;
-#endif
 #endif
 
 #if !defined(LANGUAGE_CPP) || !LANGUAGE_CPP

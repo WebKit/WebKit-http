@@ -2,8 +2,8 @@
 if errorlevel 1 set PATH=%SystemDrive%\cygwin\bin;%PATH%
 cmd /c
 
-set GeneratorDirectory=%CONFIGURATIONBUILDDIR%/obj/WebKitExportGenerator
+set GeneratorDirectory=%CONFIGURATIONBUILDDIR%/obj32/WebKitExportGenerator
 
 echo Generating export definitions
 del /F /Q "%GeneratorDirectory%/DerivedSources/WebKitExportGenerator.cpp"
-bash -c "${WEBKIT_SOURCE}/WebCore/make-export-file-generator ./WebKitExports.def.in '%GeneratorDirectory%/DerivedSources/WebKitExportGenerator.cpp'"
+bash -c "./make-export-file-generator ./WebKitExports.def.in '%GeneratorDirectory%/DerivedSources/WebKitExportGenerator.cpp'"

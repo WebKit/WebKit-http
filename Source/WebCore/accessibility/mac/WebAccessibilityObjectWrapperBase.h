@@ -29,6 +29,8 @@
 #ifndef WebAccessibilityObjectWrapperBase_h
 #define WebAccessibilityObjectWrapperBase_h
 
+#include <CoreGraphics/CoreGraphics.h>
+
 namespace WebCore {
 class AccessibilityObject;
 class IntRect;
@@ -49,6 +51,8 @@ class VisiblePosition;
 - (NSString *)accessibilityTitle;
 - (NSString *)accessibilityDescription;
 - (NSString *)accessibilityHelpText;
+
+- (NSString *)ariaLandmarkRoleDescription;
 
 - (id)attachmentView;
 // Used to inform an element when a notification is posted for it. Used by DRT.

@@ -456,7 +456,7 @@ void RenderQueue::visibleContentChanged(const Platform::IntRect& visibleContent)
     ASSERT(!isEmpty());
 }
 
-void RenderQueue::backingStoreRectChanging(const Platform::IntRect& oldRect, const Platform::IntRect& newRect)
+void RenderQueue::backingStoreRectChanging(const Platform::IntRect&, const Platform::IntRect&)
 {
     // We could empty them here instead of in BackingStorePrivate::setBackingStoreRect(),
     // but it seems cleaner to do it there and still avoid code to manually move them.

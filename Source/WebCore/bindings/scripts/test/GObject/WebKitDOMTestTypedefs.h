@@ -61,20 +61,6 @@ WEBKIT_API void
 webkit_dom_test_typedefs_func(WebKitDOMTestTypedefs* self, WebKitDOMlong[]* x);
 
 /**
- * webkit_dom_test_typedefs_multi_transfer_list:
- * @self: A #WebKitDOMTestTypedefs
- * @first: A #WebKitDOMSerializedScriptValue
- * @tx: A #WebKitDOMArray
- * @second: A #WebKitDOMSerializedScriptValue
- * @txx: A #WebKitDOMArray
- *
- * Returns:
- *
-**/
-WEBKIT_API void
-webkit_dom_test_typedefs_multi_transfer_list(WebKitDOMTestTypedefs* self, WebKitDOMSerializedScriptValue* first, WebKitDOMArray* tx, WebKitDOMSerializedScriptValue* second, WebKitDOMArray* txx);
-
-/**
  * webkit_dom_test_typedefs_set_shadow:
  * @self: A #WebKitDOMTestTypedefs
  * @width: A #gfloat

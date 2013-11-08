@@ -90,14 +90,14 @@ public:
     virtual int getInstanceId() const = 0;
 
     virtual void notifyLoadStarted() = 0;
-    virtual void notifyLoadCommitted(const unsigned short* originalUrl, unsigned int originalUrlLength, const unsigned short* finalUrl, unsigned int finalUrlLength, const unsigned short* networkToken, unsigned int networkTokenLength) = 0;
-    virtual void notifyLoadFailedBeforeCommit(const unsigned short* originalUrl, unsigned int originalUrlLength, const unsigned short* finalUrl, unsigned int finalUrlLength, const unsigned short* networkToken, unsigned int networkTokenLength) = 0;
-    virtual void notifyLoadToAnchor(const unsigned short* url, unsigned int urlLength, const unsigned short* networkToken, unsigned int networkTokenLength) = 0;
+    virtual void notifyLoadCommitted(const unsigned short* originalUrl, unsigned originalUrlLength, const unsigned short* finalUrl, unsigned finalUrlLength, const unsigned short* networkToken, unsigned networkTokenLength) = 0;
+    virtual void notifyLoadFailedBeforeCommit(const unsigned short* originalUrl, unsigned originalUrlLength, const unsigned short* finalUrl, unsigned finalUrlLength, const unsigned short* networkToken, unsigned networkTokenLength) = 0;
+    virtual void notifyLoadToAnchor(const unsigned short* url, unsigned urlLength, const unsigned short* networkToken, unsigned networkTokenLength) = 0;
     virtual void notifyLoadProgress(int percentage) = 0;
     virtual void notifyLoadReadyToRender(bool pageIsVisuallyNonEmpty) = 0;
     virtual void notifyFirstVisuallyNonEmptyLayout() = 0;
     virtual void notifyLoadFinished(int status) = 0;
-    virtual void notifyClientRedirect(const unsigned short* originalUrl, unsigned int originalUrlLength, const unsigned short* finalUrl, unsigned int finalUrlLength) = 0;
+    virtual void notifyClientRedirect(const unsigned short* originalUrl, unsigned originalUrlLength, const unsigned short* finalUrl, unsigned finalUrlLength) = 0;
 
     virtual void notifyFrameDetached(const WebFrame) = 0;
 
@@ -109,7 +109,7 @@ public:
 
     virtual void notifyWindowObjectCleared() = 0;
 
-    virtual void addMessageToConsole(const unsigned short* message, unsigned messageLength, const unsigned short* source, unsigned sourceLength, unsigned lineNumber) = 0;
+    virtual void addMessageToConsole(const unsigned short* message, unsigned messageLength, const unsigned short* source, unsigned sourceLength, unsigned lineNumber, unsigned columnNumber) = 0;
     virtual int showAlertDialog(AlertType) = 0;
 
     virtual BlackBerry::Platform::String serializePageCacheState() const = 0;
@@ -171,7 +171,7 @@ public:
     virtual void openPopupList(bool multiple, int size, const ScopeArray<BlackBerry::Platform::String>& labels, const bool* enableds, const int* itemType, const bool* selecteds) = 0;
     virtual bool chooseFilenames(bool allowMultiple, const SharedArray<BlackBerry::Platform::String>& acceptTypes, const SharedArray<BlackBerry::Platform::String>& initialFiles, const BlackBerry::Platform::String& capture, SharedArray<BlackBerry::Platform::String>& chosenFiles) = 0;
 
-    virtual WebPage* createWindow(int x, int y, int width, int height, unsigned flags, const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& windowName) = 0;
+    virtual WebPage* createWindow(int x, int y, int width, int height, unsigned flags, const BlackBerry::Platform::String& url, const BlackBerry::Platform::String& windowName, bool userGesture) = 0;
 
     virtual void scheduleCloseWindow() = 0;
 

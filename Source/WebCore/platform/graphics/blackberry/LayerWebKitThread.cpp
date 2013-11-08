@@ -341,7 +341,7 @@ void LayerWebKitThread::removeSublayerOrOverlay(LayerWebKitThread* sublayer)
 
 void LayerWebKitThread::remove(Vector<RefPtr<LayerWebKitThread> >& vector, LayerWebKitThread* sublayer)
 {
-    int foundIndex = vector.find(sublayer);
+    size_t foundIndex = vector.find(sublayer);
     if (foundIndex == notFound)
         return;
 
@@ -359,7 +359,7 @@ void LayerWebKitThread::replaceSublayer(LayerWebKitThread* reference, PassRefPtr
     if (reference == newLayer)
         return;
 
-    int referenceIndex = m_sublayers.find(reference);
+    size_t referenceIndex = m_sublayers.find(reference);
     if (referenceIndex == notFound) {
         ASSERT_NOT_REACHED();
         return;
@@ -393,7 +393,7 @@ void LayerWebKitThread::setBounds(const IntSize& size)
 void LayerWebKitThread::setFrame(const FloatRect& rect)
 {
     if (rect == m_frame)
-      return;
+        return;
 
     m_frame = rect;
     setNeedsDisplay();

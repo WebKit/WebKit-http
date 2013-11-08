@@ -36,6 +36,7 @@ public:
     ~TouchEventHandler();
 
     void doFatFingers(const Platform::TouchPoint&);
+    void handleTouchHold();
     void handleTouchPoint(const Platform::TouchPoint&, unsigned modifiers);
     void sendClickAtFatFingersPoint(unsigned modifiers = 0);
 
@@ -45,6 +46,9 @@ public:
     void playSoundIfAnchorIsTarget() const;
 
     void drawTapHighlight();
+
+    // This value should reset to false on MouseReleased
+    bool m_userTriggeredTouchPressOnTextInput;
 
 private:
     void handleFatFingerPressed(bool shiftActive = false, bool altActive = false, bool ctrlActive = false);

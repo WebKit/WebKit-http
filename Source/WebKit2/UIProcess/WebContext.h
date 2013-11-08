@@ -58,6 +58,11 @@
 #include "NetworkProcessProxy.h"
 #endif
 
+#if PLATFORM(MAC)
+OBJC_CLASS NSObject;
+OBJC_CLASS NSString;
+#endif
+
 namespace WebKit {
 
 class DownloadProxy;
@@ -70,9 +75,6 @@ struct WebProcessCreationParameters;
     
 typedef GenericCallback<WKDictionaryRef> DictionaryCallback;
 
-#if ENABLE(BATTERY_STATUS)
-class WebBatteryManagerProxy;
-#endif
 #if ENABLE(NETWORK_INFO)
 class WebNetworkInfoManagerProxy;
 #endif
@@ -99,7 +101,7 @@ public:
     template <typename T>
     T* supplement()
     {
-        return static_cast<T*>(m_supplements.get(T::supplementName()).get());
+        return static_cast<T*>(m_supplements.get(T::supplementName()));
     }
 
     template <typename T>
@@ -208,15 +210,7 @@ public:
     WebHistoryClient& historyClient() { return m_historyClient; }
     WebContextClient& client() { return m_client; }
 
-    static HashSet<String, CaseFoldingHash> pdfAndPostScriptMIMETypes();
-
-#if ENABLE(BATTERY_STATUS)
-    WebBatteryManagerProxy* batteryManagerProxy() const { return m_batteryManagerProxy.get(); }
-#endif
     WebIconDatabase* iconDatabase() const { return m_iconDatabase.get(); }
-#if ENABLE(NETWORK_INFO)
-    WebNetworkInfoManagerProxy* networkInfoManagerProxy() const { return m_networkInfoManagerProxy.get(); }
-#endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     WebPluginSiteDataManager* pluginSiteDataManager() const { return m_pluginSiteDataManager.get(); }
 #endif
@@ -231,7 +225,7 @@ public:
     void setDatabaseDirectory(const String& dir) { m_overrideDatabaseDirectory = dir; }
     void setIconDatabasePath(const String&);
     String iconDatabasePath() const;
-    void setLocalStorageDirectory(const String& dir) { m_overrideLocalStorageDirectory = dir; }
+    void setLocalStorageDirectory(const String&);
     void setDiskCacheDirectory(const String& dir) { m_overrideDiskCacheDirectory = dir; }
     void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
@@ -387,7 +381,7 @@ private:
     ProcessModel m_processModel;
     unsigned m_webProcessCountLimit; // The limit has no effect when process model is ProcessModelSharedSecondaryProcess.
     
-    Vector<RefPtr<WebProcessProxy> > m_processes;
+    Vector<RefPtr<WebProcessProxy>> m_processes;
     bool m_haveInitialEmptyProcess;
 
     RefPtr<WebPageGroup> m_defaultPageGroup;
@@ -424,27 +418,21 @@ private:
 
     // Messages that were posted before any pages were created.
     // The client should use initialization messages instead, so that a restarted process would get the same state.
-    Vector<pair<String, RefPtr<APIObject> > > m_messagesToInjectedBundlePostedToEmptyContext;
+    Vector<pair<String, RefPtr<APIObject>>> m_messagesToInjectedBundlePostedToEmptyContext;
 
     CacheModel m_cacheModel;
 
     bool m_memorySamplerEnabled;
     double m_memorySamplerInterval;
 
-#if ENABLE(BATTERY_STATUS)
-    RefPtr<WebBatteryManagerProxy> m_batteryManagerProxy;
-#endif
     RefPtr<WebIconDatabase> m_iconDatabase;
-#if ENABLE(NETWORK_INFO)
-    RefPtr<WebNetworkInfoManagerProxy> m_networkInfoManagerProxy;
-#endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     RefPtr<WebPluginSiteDataManager> m_pluginSiteDataManager;
 #endif
 
     RefPtr<StorageManager> m_storageManager;
 
-    typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*> > WebContextSupplementMap;
+    typedef HashMap<const char*, RefPtr<WebContextSupplement>, PtrHash<const char*>> WebContextSupplementMap;
     WebContextSupplementMap m_supplements;
 
 #if USE(SOUP)
@@ -452,9 +440,16 @@ private:
 #endif
 
 #if PLATFORM(MAC)
-    RetainPtr<CFTypeRef> m_enhancedAccessibilityObserver;
-    RetainPtr<CFTypeRef> m_customSchemeRegisteredObserver;
-    RetainPtr<CFTypeRef> m_customSchemeUnregisteredObserver;
+    RetainPtr<NSObject> m_enhancedAccessibilityObserver;
+    RetainPtr<NSObject> m_customSchemeRegisteredObserver;
+    RetainPtr<NSObject> m_customSchemeUnregisteredObserver;
+
+    RetainPtr<NSObject> m_automaticTextReplacementNotificationObserver;
+    RetainPtr<NSObject> m_automaticSpellingCorrectionNotificationObserver;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    RetainPtr<NSObject> m_automaticQuoteSubstitutionNotificationObserver;
+    RetainPtr<NSObject> m_automaticDashSubstitutionNotificationObserver;
+#endif
 #endif
 
     String m_overrideDatabaseDirectory;
@@ -470,8 +465,8 @@ private:
     RefPtr<NetworkProcessProxy> m_networkProcess;
 #endif
     
-    HashMap<uint64_t, RefPtr<DictionaryCallback> > m_dictionaryCallbacks;
-    HashMap<uint64_t, RefPtr<StatisticsRequest> > m_statisticsRequests;
+    HashMap<uint64_t, RefPtr<DictionaryCallback>> m_dictionaryCallbacks;
+    HashMap<uint64_t, RefPtr<StatisticsRequest>> m_statisticsRequests;
 
 #if PLATFORM(MAC)
     bool m_processSuppressionEnabled;

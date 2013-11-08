@@ -50,10 +50,9 @@ namespace WebCore {
         bool mimeTypeAllowedByNosniff() const;
 #endif
 
-        virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
-
     private:
         virtual PurgePriority purgePriority() const { return PurgeLast; }
+        virtual bool mayTryReplaceEncodedData() const OVERRIDE { return true; }
 
         String m_script;
         RefPtr<TextResourceDecoder> m_decoder;

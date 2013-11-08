@@ -80,13 +80,13 @@ PASS: del
       AXRoleDescription: 
       
 PASS: dfn
-      AXRole: 
-      AXSubrole: 
-      AXRoleDescription: 
+      AXRole: AXGroup
+      AXSubrole: AXDefinition
+      AXRoleDescription: definition
       
 PASS: dl
       AXRole: AXList
-      AXSubrole: AXDescriptionList
+      AXSubrole: AXDefinitionList
       AXRoleDescription: description list
       
 PASS: dt
@@ -330,9 +330,9 @@ PASS: math
       AXRoleDescription: 
       
 PASS: meter
-      AXRole: 
+      AXRole: AXProgressIndicator
       AXSubrole: 
-      AXRoleDescription: 
+      AXRoleDescription: progress indicator
       
 PASS: nav
       AXRole: AXGroup

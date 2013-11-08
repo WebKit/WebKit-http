@@ -41,6 +41,7 @@
 #include "StepRange.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
+#include <wtf/StackStats.h>
 
 using std::min;
 
@@ -113,7 +114,7 @@ void RenderSlider::layout()
     if (thumbBox && thumbBox->isSliderThumb())
         static_cast<RenderSliderThumb*>(thumbBox)->updateAppearance(style());
 
-    RenderBlock::layout();
+    RenderFlexibleBox::layout();
 }
 
 bool RenderSlider::inDragMode() const

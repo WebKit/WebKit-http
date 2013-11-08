@@ -86,10 +86,12 @@
 #include <wtf/text/StringHash.h>
 
 #if ENABLE(NETWORK_INFO)
+#include "WebNetworkInfoManager.h"
 #include "WebNetworkInfoManagerMessages.h"
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
+#include "CookieStorageShim.h"
 #include "NetworkProcessConnection.h"
 #endif
 
@@ -111,6 +113,10 @@
 
 #if ENABLE(SQL_DATABASE)
 #include "WebDatabaseManager.h"
+#endif
+
+#if ENABLE(BATTERY_STATUS)
+#include "WebBatteryManager.h"
 #endif
 
 #if ENABLE(NETWORK_PROCESS)
@@ -159,12 +165,6 @@ WebProcess::WebProcess()
     , m_networkAccessManager(0)
 #endif
     , m_textCheckerState()
-#if ENABLE(BATTERY_STATUS)
-    , m_batteryManager(this)
-#endif
-#if ENABLE(NETWORK_INFO)
-    , m_networkInfoManager(this)
-#endif
     , m_iconDatabaseProxy(new WebIconDatabaseProxy(this))
 #if ENABLE(NETWORK_PROCESS)
     , m_usesNetworkProcess(false)
@@ -206,6 +206,12 @@ WebProcess::WebProcess()
 #if ENABLE(CUSTOM_PROTOCOLS)
     addSupplement<CustomProtocolManager>();
 #endif
+#if ENABLE(BATTERY_STATUS)
+    addSupplement<WebBatteryManager>();
+#endif
+#if ENABLE(NETWORK_INFO)
+    addSupplement<WebNetworkInfoManager>();
+#endif
 }
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
@@ -228,8 +234,19 @@ void WebProcess::initializeConnection(CoreIPC::Connection* connection)
 #if USE(SECURITY_FRAMEWORK)
     SecItemShim::shared().initializeConnection(connection);
 #endif
+    
+    WebProcessSupplementMap::const_iterator it = m_supplements.begin();
+    WebProcessSupplementMap::const_iterator end = m_supplements.end();
+    for (; it != end; ++it)
+        it->value->initializeConnection(connection);
 
     m_webConnection = WebConnectionToUIProcess::create(this);
+
+    // In order to ensure that the asynchronous messages that are used for notifying the UI process
+    // about when WebFrame objects come and go are always delivered before the synchronous policy messages,
+    // use this flag to force synchronous messages to be treated as asynchronous messages in the UI process
+    // unless when doing so would lead to a deadlock.
+    connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
 }
 
 void WebProcess::didCreateDownload()
@@ -333,6 +350,9 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
 #if ENABLE(NETWORK_PROCESS)
     m_usesNetworkProcess = parameters.usesNetworkProcess;
     ensureNetworkProcessConnection();
+
+    if (usesNetworkProcess())
+        CookieStorageShim::shared().initialize();
 #endif
     setTerminationTimeout(parameters.terminationTimeout);
 
@@ -478,8 +498,8 @@ void WebProcess::visitedLinkStateChanged(const Vector<WebCore::LinkHash>& linkHa
 {
     // FIXME: We may want to track visited links per WebPageGroup rather than per WebContext.
     for (size_t i = 0; i < linkHashes.size(); ++i) {
-        HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator it = m_pageGroupMap.begin();
-        HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator end = m_pageGroupMap.end();
+        HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::const_iterator it = m_pageGroupMap.begin();
+        HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::const_iterator end = m_pageGroupMap.end();
         for (; it != end; ++it)
             Page::visitedStateChanged(PageGroup::pageGroup(it->value->identifier()), linkHashes[i]);
     }
@@ -490,8 +510,8 @@ void WebProcess::visitedLinkStateChanged(const Vector<WebCore::LinkHash>& linkHa
 void WebProcess::allVisitedLinkStateChanged()
 {
     // FIXME: We may want to track visited links per WebPageGroup rather than per WebContext.
-    HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator it = m_pageGroupMap.begin();
-    HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::const_iterator end = m_pageGroupMap.end();
+    HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::const_iterator it = m_pageGroupMap.begin();
+    HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::const_iterator end = m_pageGroupMap.end();
     for (; it != end; ++it)
         Page::allVisitedStateChanged(PageGroup::pageGroup(it->value->identifier()));
 
@@ -523,8 +543,8 @@ void WebProcess::setCacheModel(uint32_t cm)
 
 WebPage* WebProcess::focusedWebPage() const
 {    
-    HashMap<uint64_t, RefPtr<WebPage> >::const_iterator end = m_pageMap.end();
-    for (HashMap<uint64_t, RefPtr<WebPage> >::const_iterator it = m_pageMap.begin(); it != end; ++it) {
+    HashMap<uint64_t, RefPtr<WebPage>>::const_iterator end = m_pageMap.end();
+    for (HashMap<uint64_t, RefPtr<WebPage>>::const_iterator it = m_pageMap.begin(); it != end; ++it) {
         WebPage* page = (*it).value.get();
         if (page->windowAndWebPageAreFocused())
             return page;
@@ -534,14 +554,14 @@ WebPage* WebProcess::focusedWebPage() const
     
 WebPage* WebProcess::webPage(uint64_t pageID) const
 {
-    return m_pageMap.get(pageID).get();
+    return m_pageMap.get(pageID);
 }
 
 void WebProcess::createWebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 {
     // It is necessary to check for page existence here since during a window.open() (or targeted
     // link) the WebPage gets created both in the synchronous handler and through the normal way. 
-    HashMap<uint64_t, RefPtr<WebPage> >::AddResult result = m_pageMap.add(pageID, 0);
+    HashMap<uint64_t, RefPtr<WebPage>>::AddResult result = m_pageMap.add(pageID, 0);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = WebPage::create(pageID, parameters);
@@ -630,7 +650,7 @@ void WebProcess::didClose(CoreIPC::Connection*)
     m_inDidClose = true;
 
     // Close all the live pages.
-    Vector<RefPtr<WebPage> > pages;
+    Vector<RefPtr<WebPage>> pages;
     copyValuesToVector(m_pageMap, pages);
     for (size_t i = 0; i < pages.size(); ++i)
         pages[i]->close();
@@ -673,14 +693,24 @@ void WebProcess::removeWebFrame(uint64_t frameID)
     parentProcessConnection()->send(Messages::WebProcessProxy::DidDestroyFrame(frameID), 0);
 }
 
+WebPageGroupProxy* WebProcess::webPageGroup(PageGroup* pageGroup)
+{
+    for (HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::const_iterator it = m_pageGroupMap.begin(), end = m_pageGroupMap.end(); it != end; ++it) {
+        if (it->value->corePageGroup() == pageGroup)
+            return it->value.get();
+    }
+
+    return 0;
+}
+
 WebPageGroupProxy* WebProcess::webPageGroup(uint64_t pageGroupID)
 {
-    return m_pageGroupMap.get(pageGroupID).get();
+    return m_pageGroupMap.get(pageGroupID);
 }
 
 WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupData)
 {
-    HashMap<uint64_t, RefPtr<WebPageGroupProxy> >::AddResult result = m_pageGroupMap.add(pageGroupData.pageGroupID, 0);
+    HashMap<uint64_t, RefPtr<WebPageGroupProxy>>::AddResult result = m_pageGroupMap.add(pageGroupData.pageGroupID, 0);
     if (result.isNewEntry) {
         ASSERT(!result.iterator->value);
         result.iterator->value = WebPageGroupProxy::create(pageGroupData);
@@ -769,8 +799,8 @@ static inline void addCaseFoldedCharacters(StringHasher& hasher, const String& s
     if (string.isEmpty())
         return;
     if (string.is8Bit())
-        return hasher.addCharacters<LChar, CaseFoldingHash::foldCase<LChar> >(string.characters8(), string.length());
-    return hasher.addCharacters<UChar, CaseFoldingHash::foldCase<UChar> >(string.characters16(), string.length());
+        return hasher.addCharacters<LChar, CaseFoldingHash::foldCase<LChar>>(string.characters8(), string.length());
+    return hasher.addCharacters<UChar, CaseFoldingHash::foldCase<UChar>>(string.characters16(), string.length());
 }
 
 static unsigned hashForPlugInOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
@@ -846,8 +876,12 @@ void WebProcess::resetPlugInAutoStartOriginHashes(const HashMap<unsigned, double
     m_plugInAutoStartOriginHashes.swap(const_cast<HashMap<unsigned, double>&>(hashes));
 }
 
-void WebProcess::plugInDidReceiveUserInteraction(unsigned plugInOriginHash)
+void WebProcess::plugInDidReceiveUserInteraction(const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
 {
+    if (pageOrigin.isEmpty())
+        return;
+
+    unsigned plugInOriginHash = hashForPlugInOrigin(pageOrigin, pluginOrigin, mimeType);
     if (!plugInOriginHash)
         return;
 
@@ -867,12 +901,12 @@ static void fromCountedSetToHashMap(TypeCountSet* countedSet, HashMap<String, ui
         map.set(it->key, it->value);
 }
 
-static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t> >& result)
+static void getWebCoreMemoryCacheStatistics(Vector<HashMap<String, uint64_t>>& result)
 {
-    DEFINE_STATIC_LOCAL(String, imagesString, (ASCIILiteral("Images")));
-    DEFINE_STATIC_LOCAL(String, cssString, (ASCIILiteral("CSS")));
-    DEFINE_STATIC_LOCAL(String, xslString, (ASCIILiteral("XSL")));
-    DEFINE_STATIC_LOCAL(String, javaScriptString, (ASCIILiteral("JavaScript")));
+    String imagesString(ASCIILiteral("Images"));
+    String cssString(ASCIILiteral("CSS"));
+    String xslString(ASCIILiteral("XSL"));
+    String javaScriptString(ASCIILiteral("JavaScript"));
     
     MemoryCache::Statistics memoryCacheStatistics = memoryCache()->getStatistics();
     
@@ -925,40 +959,40 @@ void WebProcess::getWebCoreStatistics(uint64_t callbackID)
     
     // Gather JavaScript statistics.
     {
-        JSLockHolder lock(JSDOMWindow::commonJSGlobalData());
-        data.statisticsNumbers.set("JavaScriptObjectsCount", JSDOMWindow::commonJSGlobalData()->heap.objectCount());
-        data.statisticsNumbers.set("JavaScriptGlobalObjectsCount", JSDOMWindow::commonJSGlobalData()->heap.globalObjectCount());
-        data.statisticsNumbers.set("JavaScriptProtectedObjectsCount", JSDOMWindow::commonJSGlobalData()->heap.protectedObjectCount());
-        data.statisticsNumbers.set("JavaScriptProtectedGlobalObjectsCount", JSDOMWindow::commonJSGlobalData()->heap.protectedGlobalObjectCount());
+        JSLockHolder lock(JSDOMWindow::commonVM());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptObjectsCount"), JSDOMWindow::commonVM()->heap.objectCount());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptGlobalObjectsCount"), JSDOMWindow::commonVM()->heap.globalObjectCount());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptProtectedObjectsCount"), JSDOMWindow::commonVM()->heap.protectedObjectCount());
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptProtectedGlobalObjectsCount"), JSDOMWindow::commonVM()->heap.protectedGlobalObjectCount());
         
-        OwnPtr<TypeCountSet> protectedObjectTypeCounts(JSDOMWindow::commonJSGlobalData()->heap.protectedObjectTypeCounts());
+        OwnPtr<TypeCountSet> protectedObjectTypeCounts(JSDOMWindow::commonVM()->heap.protectedObjectTypeCounts());
         fromCountedSetToHashMap(protectedObjectTypeCounts.get(), data.javaScriptProtectedObjectTypeCounts);
         
-        OwnPtr<TypeCountSet> objectTypeCounts(JSDOMWindow::commonJSGlobalData()->heap.objectTypeCounts());
+        OwnPtr<TypeCountSet> objectTypeCounts(JSDOMWindow::commonVM()->heap.objectTypeCounts());
         fromCountedSetToHashMap(objectTypeCounts.get(), data.javaScriptObjectTypeCounts);
         
-        uint64_t javaScriptHeapSize = JSDOMWindow::commonJSGlobalData()->heap.size();
-        data.statisticsNumbers.set("JavaScriptHeapSize", javaScriptHeapSize);
-        data.statisticsNumbers.set("JavaScriptFreeSize", JSDOMWindow::commonJSGlobalData()->heap.capacity() - javaScriptHeapSize);
+        uint64_t javaScriptHeapSize = JSDOMWindow::commonVM()->heap.size();
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptHeapSize"), javaScriptHeapSize);
+        data.statisticsNumbers.set(ASCIILiteral("JavaScriptFreeSize"), JSDOMWindow::commonVM()->heap.capacity() - javaScriptHeapSize);
     }
 
     WTF::FastMallocStatistics fastMallocStatistics = WTF::fastMallocStatistics();
-    data.statisticsNumbers.set("FastMallocReservedVMBytes", fastMallocStatistics.reservedVMBytes);
-    data.statisticsNumbers.set("FastMallocCommittedVMBytes", fastMallocStatistics.committedVMBytes);
-    data.statisticsNumbers.set("FastMallocFreeListBytes", fastMallocStatistics.freeListBytes);
+    data.statisticsNumbers.set(ASCIILiteral("FastMallocReservedVMBytes"), fastMallocStatistics.reservedVMBytes);
+    data.statisticsNumbers.set(ASCIILiteral("FastMallocCommittedVMBytes"), fastMallocStatistics.committedVMBytes);
+    data.statisticsNumbers.set(ASCIILiteral("FastMallocFreeListBytes"), fastMallocStatistics.freeListBytes);
     
     // Gather icon statistics.
-    data.statisticsNumbers.set("IconPageURLMappingCount", iconDatabase().pageURLMappingCount());
-    data.statisticsNumbers.set("IconRetainedPageURLCount", iconDatabase().retainedPageURLCount());
-    data.statisticsNumbers.set("IconRecordCount", iconDatabase().iconRecordCount());
-    data.statisticsNumbers.set("IconsWithDataCount", iconDatabase().iconRecordCountWithData());
+    data.statisticsNumbers.set(ASCIILiteral("IconPageURLMappingCount"), iconDatabase().pageURLMappingCount());
+    data.statisticsNumbers.set(ASCIILiteral("IconRetainedPageURLCount"), iconDatabase().retainedPageURLCount());
+    data.statisticsNumbers.set(ASCIILiteral("IconRecordCount"), iconDatabase().iconRecordCount());
+    data.statisticsNumbers.set(ASCIILiteral("IconsWithDataCount"), iconDatabase().iconRecordCountWithData());
     
     // Gather font statistics.
-    data.statisticsNumbers.set("CachedFontDataCount", fontCache()->fontDataCount());
-    data.statisticsNumbers.set("CachedFontDataInactiveCount", fontCache()->inactiveFontDataCount());
+    data.statisticsNumbers.set(ASCIILiteral("CachedFontDataCount"), fontCache()->fontDataCount());
+    data.statisticsNumbers.set(ASCIILiteral("CachedFontDataInactiveCount"), fontCache()->inactiveFontDataCount());
     
     // Gather glyph page statistics.
-    data.statisticsNumbers.set("GlyphPageCount", GlyphPageTreeNode::treeGlyphPageCount());
+    data.statisticsNumbers.set(ASCIILiteral("GlyphPageCount"), GlyphPageTreeNode::treeGlyphPageCount());
     
     // Get WebCore memory cache statistics
     getWebCoreMemoryCacheStatistics(data.webCoreCacheStatistics);
@@ -1014,8 +1048,6 @@ NetworkProcessConnection* WebProcess::networkConnection()
 
 void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connection)
 {
-    // FIXME (NetworkProcess): How do we handle not having the connection when the WebProcess needs it?
-    // If the NetworkProcess crashed, for example.  Do we respawn it?
     ASSERT(m_networkProcessConnection);
     ASSERT(m_networkProcessConnection == connection);
 
@@ -1082,8 +1114,8 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
     if (!continuousSpellCheckingTurnedOff && !grammarCheckingTurnedOff)
         return;
 
-    HashMap<uint64_t, RefPtr<WebPage> >::iterator end = m_pageMap.end();
-    for (HashMap<uint64_t, RefPtr<WebPage> >::iterator it = m_pageMap.begin(); it != end; ++it) {
+    HashMap<uint64_t, RefPtr<WebPage>>::iterator end = m_pageMap.end();
+    for (HashMap<uint64_t, RefPtr<WebPage>>::iterator it = m_pageMap.begin(); it != end; ++it) {
         WebPage* page = (*it).value.get();
         if (continuousSpellCheckingTurnedOff)
             page->unmarkAllMisspellings();
@@ -1104,6 +1136,11 @@ void WebProcess::initializeSandbox(const ChildProcessInitializationParameters&, 
 void WebProcess::platformInitializeProcess(const ChildProcessInitializationParameters&)
 {
 }
+
+void WebProcess::updateActivePages()
+{
+}
+
 #endif
     
 void WebProcess::pageDidEnterWindow(WebPage*)

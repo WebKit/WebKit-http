@@ -30,6 +30,7 @@
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
 #import "WKFullKeyboardAccessWatcher.h"
+#import "WebFrame.h"
 #import "WebInspector.h"
 #import "WebPage.h"
 #import "WebProcessCreationParameters.h"
@@ -39,6 +40,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/PageCache.h>
+#import <WebCore/WebCoreNSURLExtras.h>
 #import <WebKitSystemInterface.h>
 #import <algorithm>
 #import <dispatch/dispatch.h>
@@ -53,7 +55,8 @@
 #endif
 
 using namespace WebCore;
-using namespace std;
+
+const CFStringRef kLSActivePageUserVisibleOriginsKey = CFSTR("LSActivePageUserVisibleOriginsKey");
 
 namespace WebKit {
 
@@ -83,7 +86,7 @@ static uint64_t volumeFreeSize(NSString *path)
 
 void WebProcess::platformSetCacheModel(CacheModel cacheModel)
 {
-    RetainPtr<NSString> nsurlCacheDirectory(AdoptNS, (NSString *)WKCopyFoundationCacheDirectory());
+    RetainPtr<NSString> nsurlCacheDirectory = adoptNS((NSString *)WKCopyFoundationCacheDirectory());
     if (!nsurlCacheDirectory)
         nsurlCacheDirectory = NSHomeDirectory();
 
@@ -189,10 +192,8 @@ void WebProcess::platformInitializeWebProcess(const WebProcessCreationParameters
 
 void WebProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
 {
-    if (!parameters.uiProcessName.isNull()) {
-        NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
-        WKSetVisibleApplicationName((CFStringRef)applicationName);
-    }
+    NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ Web Content", "Visible name of the web process. The argument is the application name."), (NSString *)parameters.uiProcessName];
+    WKSetVisibleApplicationName((CFStringRef)applicationName);
 }
 
 void WebProcess::platformInitializeProcess(const ChildProcessInitializationParameters&)
@@ -220,6 +221,27 @@ void WebProcess::initializeSandbox(const ChildProcessInitializationParameters& p
     sandboxParameters.setOverrideSandboxProfilePath([webkit2Bundle pathForResource:@"com.apple.WebProcess" ofType:@"sb"]);
 
     ChildProcess::initializeSandbox(parameters, sandboxParameters);
+}
+
+void WebProcess::updateActivePages()
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    RetainPtr<CFMutableArrayRef> activePageURLs = adoptCF(CFArrayCreateMutable(0, 0, &kCFTypeArrayCallBacks));
+    for (const auto& iter: m_pageMap) {
+        WebPage* page = iter.value.get();
+        WebFrame* mainFrame = page->mainWebFrame();
+        if (!mainFrame)
+            continue;
+        String mainFrameOriginString;
+        RefPtr<SecurityOrigin> mainFrameOrigin = SecurityOrigin::createFromString(mainFrame->url());
+        if (!mainFrameOrigin->isUnique())
+            mainFrameOriginString = mainFrameOrigin->toRawString();
+        else
+            mainFrameOriginString = KURL(KURL(), mainFrame->url()).protocol() + ':'; // toRawString() is not supposed to work with unique origins, and would just return "://".
+        CFArrayAppendValue(activePageURLs.get(), userVisibleString([NSURL URLWithString:mainFrameOriginString]));
+    }
+    WKSetApplicationInformationItem(kLSActivePageUserVisibleOriginsKey, activePageURLs.get());
+#endif
 }
 
 } // namespace WebKit

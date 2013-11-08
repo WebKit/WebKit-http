@@ -26,13 +26,13 @@
 #include "config.h"
 #include "ScrollingStateNode.h"
 
+#if ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)
+
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingStateTree.h"
 #include "TextStream.h"
 
 #include <wtf/text/WTFString.h>
-
-#if ENABLE(THREADED_SCROLLING)
 
 namespace WebCore {
 
@@ -148,4 +148,4 @@ String ScrollingStateNode::scrollingStateTreeAsText() const
 
 } // namespace WebCore
 
-#endif // ENABLE(THREADED_SCROLLING)
+#endif // ENABLE(THREADED_SCROLLING) || USE(COORDINATED_GRAPHICS)

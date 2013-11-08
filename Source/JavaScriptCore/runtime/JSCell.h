@@ -65,7 +65,7 @@ public:
     JSCell(CreatingEarlyCellTag);
 
 protected:
-    JSCell(JSGlobalData&, Structure*);
+    JSCell(VM&, Structure*);
     JS_EXPORT_PRIVATE static void destroy(JSCell*);
 
 public:
@@ -78,7 +78,7 @@ public:
     bool isAPIValueWrapper() const;
 
     Structure* structure() const;
-    void setStructure(JSGlobalData&, Structure*);
+    void setStructure(VM&, Structure*);
     void clearStructure() { m_structure.clear(); }
 
     const char* className();
@@ -96,6 +96,7 @@ public:
     JS_EXPORT_PRIVATE JSValue toPrimitive(ExecState*, PreferredPrimitiveType) const;
     bool getPrimitiveNumber(ExecState*, double& number, JSValue&) const;
     bool toBoolean(ExecState*) const;
+    TriState pureToBoolean() const;
     JS_EXPORT_PRIVATE double toNumber(ExecState*) const;
     JS_EXPORT_PRIVATE JSObject* toObject(ExecState*, JSGlobalObject*) const;
 
@@ -141,8 +142,8 @@ public:
     static const TypedArrayType TypedArrayStorageType = TypedArrayNone;
 protected:
 
-    void finishCreation(JSGlobalData&);
-    void finishCreation(JSGlobalData&, Structure*, CreatingEarlyCellTag);
+    void finishCreation(VM&);
+    void finishCreation(VM&, Structure*, CreatingEarlyCellTag);
 
     // Base implementation; for non-object classes implements getPropertySlot.
     static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);

@@ -36,12 +36,15 @@ class WorkQueue;
 namespace WebKit {
 
 struct SecurityOriginData;
+class LocalStorageDatabaseTracker;
 class WebProcessProxy;
 
 class StorageManager : public CoreIPC::Connection::WorkQueueMessageReceiver {
 public:
     static PassRefPtr<StorageManager> create();
     ~StorageManager();
+
+    void setLocalStorageDirectory(const String&);
 
     void createSessionStorageNamespace(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
     void destroySessionStorageNamespace(uint64_t storageNamespaceID);
@@ -59,25 +62,36 @@ private:
     virtual void didReceiveSyncMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>& replyEncoder) OVERRIDE;
 
     // Message handlers.
-    void createStorageArea(CoreIPC::Connection*, uint64_t storageAreaID, uint64_t storageNamespaceID, const SecurityOriginData&);
-    void destroyStorageArea(CoreIPC::Connection*, uint64_t storageAreaID);
-    void getValues(CoreIPC::Connection*, uint64_t storageAreaID, HashMap<String, String>& values);
-    void setItem(CoreIPC::Connection*, uint64_t storageAreaID, const String& key, const String& value, const String& urlString);
+    void createLocalStorageMap(CoreIPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData&);
+    void createSessionStorageMap(CoreIPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData&);
+    void destroyStorageMap(CoreIPC::Connection*, uint64_t storageMapID);
+    void getValues(CoreIPC::Connection*, uint64_t storageMapID, HashMap<String, String>& values);
+    void setItem(CoreIPC::Connection*, uint64_t storageAreaID, uint64_t sourceStorageAreaID, const String& key, const String& value, const String& urlString);
+    void removeItem(CoreIPC::Connection*, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& key, const String& urlString);
+    void clear(CoreIPC::Connection*, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& urlString);
 
     void createSessionStorageNamespaceInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
     void destroySessionStorageNamespaceInternal(uint64_t storageNamespaceID);
     void setAllowedSessionStorageNamespaceConnectionInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection);
     void cloneSessionStorageNamespaceInternal(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID);
 
+    void invalidateConnectionInternal(CoreIPC::Connection*);
+
     class StorageArea;
     StorageArea* findStorageArea(CoreIPC::Connection*, uint64_t) const;
 
+    class LocalStorageNamespace;
+    LocalStorageNamespace* getOrCreateLocalStorageNamespace(uint64_t storageNamespaceID);
+
     RefPtr<WorkQueue> m_queue;
 
-    class SessionStorageNamespace;
-    HashMap<uint64_t, RefPtr<SessionStorageNamespace> > m_sessionStorageNamespaces;
+    RefPtr<LocalStorageDatabaseTracker> m_localStorageDatabaseTracker;
+    HashMap<uint64_t, RefPtr<LocalStorageNamespace>> m_localStorageNamespaces;
 
-    HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea> > m_storageAreas;
+    class SessionStorageNamespace;
+    HashMap<uint64_t, RefPtr<SessionStorageNamespace>> m_sessionStorageNamespaces;
+
+    HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea>> m_storageAreasByConnection;
 };
 
 } // namespace WebKit

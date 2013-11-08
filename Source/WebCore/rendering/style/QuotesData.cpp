@@ -24,53 +24,63 @@
 
 namespace WebCore {
 
-PassRefPtr<QuotesData> QuotesData::create(String open, String close)
+static size_t sizeForQuotesDataWithQuoteCount(unsigned count)
 {
-    RefPtr<QuotesData> data = QuotesData::create();
-    data->addPair(std::make_pair(open, close));
-    return data;
+    return sizeof(QuotesData) + sizeof(std::pair<String, String>) * count;
 }
 
-PassRefPtr<QuotesData> QuotesData::create(String open1, String close1, String open2, String close2)
+PassRefPtr<QuotesData> QuotesData::create(const Vector<std::pair<String, String> >& quotes)
 {
-    RefPtr<QuotesData> data = QuotesData::create();
-    data->addPair(std::make_pair(open1, close1));
-    data->addPair(std::make_pair(open2, close2));
-    return data;
+    void* slot = fastMalloc(sizeForQuotesDataWithQuoteCount(quotes.size()));
+    return adoptRef(new (NotNull, slot) QuotesData(quotes));
 }
 
-void QuotesData::addPair(std::pair<String, String> quotePair)
+QuotesData::QuotesData(const Vector<std::pair<String, String> >& quotes)
+    : m_quoteCount(quotes.size())
 {
-    m_quotePairs.append(quotePair);
+    for (unsigned i = 0; i < m_quoteCount; ++i)
+        new (NotNull, &m_quotePairs[i]) std::pair<String, String>(quotes[i]);
 }
 
-const String QuotesData::getOpenQuote(int index) const
+QuotesData::~QuotesData()
 {
-    ASSERT(index >= 0);
-    if (!m_quotePairs.size() || index < 0)
+    for (unsigned i = 0; i < m_quoteCount; ++i)
+        m_quotePairs[i].~pair<String, String>();
+}
+
+const String& QuotesData::openQuote(unsigned index) const
+{
+    if (!m_quoteCount)
         return emptyString();
-    if ((size_t)index >= m_quotePairs.size())
-        return m_quotePairs.last().first;
-    return m_quotePairs.at(index).first;
+
+    if (index >= m_quoteCount)
+        return m_quotePairs[m_quoteCount - 1].first;
+
+    return m_quotePairs[index].first;
 }
 
-const String QuotesData::getCloseQuote(int index) const
+const String& QuotesData::closeQuote(unsigned index) const
 {
-    ASSERT(index >= -1);
-    if (!m_quotePairs.size() || index < 0)
+    if (!m_quoteCount)
         return emptyString();
-    if ((size_t)index >= m_quotePairs.size())
-        return m_quotePairs.last().second;
-    return m_quotePairs.at(index).second;
+
+    if (index >= m_quoteCount)
+        return m_quotePairs[m_quoteCount - 1].second;
+
+    return m_quotePairs[index].second;
 }
 
-bool QuotesData::equals(const QuotesData* a, const QuotesData* b)
+bool operator==(const QuotesData& a, const QuotesData& b)
 {
-    if (a == b)
-        return true;
-    if (!a || !b)
+    if (a.m_quoteCount != b.m_quoteCount)
         return false;
-    return a->m_quotePairs == b->m_quotePairs;
+
+    for (unsigned i = 0; i < a.m_quoteCount; ++i) {
+        if (a.m_quotePairs[i] != b.m_quotePairs[i])
+            return false;
+    }
+
+    return true;
 }
 
 } // namespace WebCore

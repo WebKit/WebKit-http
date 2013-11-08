@@ -56,9 +56,9 @@ CookieParser::CookieParser(const KURL& defaultCookieURL)
 {
     m_defaultCookieHost = defaultCookieURL.host();
     m_defaultDomainIsIPAddress = false;
-    string hostDomainCanonical = BlackBerry::Platform::getCanonicalIPFormat(m_defaultCookieHost.utf8().data()).c_str();
+    BlackBerry::Platform::String hostDomainCanonical = BlackBerry::Platform::getCanonicalIPFormat(m_defaultCookieHost);
     if (!hostDomainCanonical.empty()) {
-        m_defaultCookieHost = String(hostDomainCanonical.c_str());
+        m_defaultCookieHost = hostDomainCanonical;
         m_defaultDomainIsIPAddress = true;
     } else
         m_defaultCookieHost = m_defaultCookieHost.startsWith(".") ? m_defaultCookieHost : "." + m_defaultCookieHost;
@@ -142,8 +142,7 @@ PassRefPtr<ParsedCookie> CookieParser::parseOneCookie(const String& cookie, unsi
 
     unsigned tokenStart = start;
 
-    bool hasName = false; // This is a hack to avoid changing too much in this
-                          // brutally brittle code.
+    bool hasName = false; // This is a hack to avoid changing too much in this brutally brittle code.
     if (tokenEnd != start) {
         // There is a '=' so parse the NAME
         unsigned nameEnd = tokenEnd;
@@ -232,8 +231,8 @@ PassRefPtr<ParsedCookie> CookieParser::parseOneCookie(const String& cookie, unsi
             length = pairEnd - tokenStart;
         }
 
-       // Detect which "cookie-av" is parsed
-       // Look at the first char then parse the whole for performance issue
+        // Detect which "cookie-av" is parsed
+        // Look at the first char then parse the whole for performance issue
         switch (cookie[tokenStartSvg]) {
         case 'P':
         case 'p' : {
@@ -278,7 +277,7 @@ PassRefPtr<ParsedCookie> CookieParser::parseOneCookie(const String& cookie, unsi
                 // If it is an IP Address, we should treat it only if it matches the host exactly
                 // We determine the canonical IP format before comparing because IPv6 could be represented in multiple formats
                 if (m_defaultDomainIsIPAddress) {
-                    String realDomainCanonical = String(BlackBerry::Platform::getCanonicalIPFormat(realDomain.utf8().data()).c_str());
+                    String realDomainCanonical = BlackBerry::Platform::getCanonicalIPFormat(realDomain);
                     if (realDomainCanonical.isEmpty() || realDomainCanonical != m_defaultCookieHost)
                         LOG_ERROR_AND_RETURN("Invalid cookie attribute %s (domain): domain is IP but does not match host's IP", cookie.ascii().data());
                     realDomain = realDomainCanonical;
@@ -298,7 +297,7 @@ PassRefPtr<ParsedCookie> CookieParser::parseOneCookie(const String& cookie, unsi
 
                     // Check whether the domain is a top level domain, if it is throw it out
                     // http://publicsuffix.org/list/
-                    if (BlackBerry::Platform::isTopLevelDomain(realDomain.utf8().data()))
+                    if (BlackBerry::Platform::isTopLevelDomain(realDomain))
                         LOG_ERROR_AND_RETURN("Invalid cookie attribute %s (domain): it did not pass the top level domain check", cookie.ascii().data());
                 }
                 res->setDomain(realDomain, isIPAddress);
@@ -425,7 +424,7 @@ PassRefPtr<ParsedCookie> CookieParser::parseOneCookie(const String& cookie, unsi
         // so we must remove the escape sequences.
         res->setPath(decodeURLEscapeSequences(path));
     }
- 
+
     return res;
 }
 

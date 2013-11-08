@@ -57,6 +57,7 @@ MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* play
     , m_preload(MediaPlayer::Auto)
     , m_cachedMaxTimeLoaded(0)
     , m_cachedMaxTimeSeekable(0)
+    , m_cachedMinTimeSeekable(0)
     , m_cachedDuration(MediaPlayer::invalidTime())
     , m_reportedDuration(MediaPlayer::invalidTime())
     , m_maxTimeLoadedAtLastDidLoadingProgress(MediaPlayer::invalidTime())
@@ -74,7 +75,7 @@ MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation(MediaPlayer* play
     , m_ignoreLoadStateChanges(false)
     , m_haveReportedFirstVideoFrame(false)
     , m_playWhenFramesAvailable(false)
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
     , m_inbandTrackConfigurationPending(false)
 #endif
 {
@@ -266,12 +267,9 @@ void MediaPlayerPrivateAVFoundation::seek(float time)
     if (currentTime() == time)
         return;
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
-    // Forget any partially accumulated cue data as the seek could be to a time outside of the cue's
-    // range, which will mean that the next cue delivered will result in the current cue getting the
-    // incorrect duration.
+#if !PLATFORM(WIN)
     if (currentTrack())
-        currentTrack()->resetCueValues();
+        currentTrack()->beginSeeking();
 #endif
     
     LOG(Media, "MediaPlayerPrivateAVFoundation::seek(%p) - seeking to %f", this, time);
@@ -361,7 +359,7 @@ PassRefPtr<TimeRanges> MediaPlayerPrivateAVFoundation::buffered() const
     return m_cachedLoadedTimeRanges->copy();
 }
 
-float MediaPlayerPrivateAVFoundation::maxTimeSeekable() const
+double MediaPlayerPrivateAVFoundation::maxTimeSeekableDouble() const
 {
     if (!metaDataAvailable())
         return 0;
@@ -371,6 +369,18 @@ float MediaPlayerPrivateAVFoundation::maxTimeSeekable() const
 
     LOG(Media, "MediaPlayerPrivateAVFoundation::maxTimeSeekable(%p) - returning %f", this, m_cachedMaxTimeSeekable);
     return m_cachedMaxTimeSeekable;   
+}
+
+double MediaPlayerPrivateAVFoundation::minTimeSeekable() const
+{
+    if (!metaDataAvailable())
+        return 0;
+
+    if (!m_cachedMinTimeSeekable)
+        m_cachedMinTimeSeekable = platformMinTimeSeekable();
+
+    LOG(Media, "MediaPlayerPrivateAVFoundation::minTimeSeekable(%p) - returning %f", this, m_cachedMinTimeSeekable);
+    return m_cachedMinTimeSeekable;
 }
 
 float MediaPlayerPrivateAVFoundation::maxTimeLoaded() const
@@ -391,7 +401,7 @@ bool MediaPlayerPrivateAVFoundation::didLoadingProgress() const
     float currentMaxTimeLoaded = maxTimeLoaded();
     bool didLoadingProgress = currentMaxTimeLoaded != m_maxTimeLoadedAtLastDidLoadingProgress;
     m_maxTimeLoadedAtLastDidLoadingProgress = currentMaxTimeLoaded;
-    LOG(Media, "MediaPlayerPrivateAVFoundation::didLoadingProgress(%p) - returning %d", this, didLoadingProgress);
+
     return didLoadingProgress;
 }
 
@@ -432,9 +442,6 @@ void MediaPlayerPrivateAVFoundation::updateStates()
 
     MediaPlayer::NetworkState oldNetworkState = m_networkState;
     MediaPlayer::ReadyState oldReadyState = m_readyState;
-
-    LOG(Media, "MediaPlayerPrivateAVFoundation::updateStates(%p) - entering with networkState = %i, readyState = %i", 
-        this, static_cast<int>(m_networkState), static_cast<int>(m_readyState));
 
     if (m_loadingMetadata)
         m_networkState = MediaPlayer::Loading;
@@ -522,8 +529,12 @@ void MediaPlayerPrivateAVFoundation::updateStates()
         platformPlay();
     }
 
-    LOG(Media, "MediaPlayerPrivateAVFoundation::updateStates(%p) - exiting with networkState = %i, readyState = %i", 
-        this, static_cast<int>(m_networkState), static_cast<int>(m_readyState));
+#if !LOG_DISABLED
+    if (m_networkState != oldNetworkState || oldReadyState != m_readyState) {
+        LOG(Media, "MediaPlayerPrivateAVFoundation::updateStates(%p) - entered with networkState = %i, readyState = %i,  exiting with networkState = %i, readyState = %i",
+            this, static_cast<int>(oldNetworkState), static_cast<int>(oldReadyState), static_cast<int>(m_networkState), static_cast<int>(m_readyState));
+    }
+#endif
 }
 
 void MediaPlayerPrivateAVFoundation::setSize(const IntSize&) 
@@ -569,6 +580,7 @@ void MediaPlayerPrivateAVFoundation::loadedTimeRangesChanged()
 void MediaPlayerPrivateAVFoundation::seekableTimeRangesChanged()
 {
     m_cachedMaxTimeSeekable = 0;
+    m_cachedMinTimeSeekable = 0;
 }
 
 void MediaPlayerPrivateAVFoundation::timeChanged(double time)
@@ -582,9 +594,9 @@ void MediaPlayerPrivateAVFoundation::seekCompleted(bool finished)
     LOG(Media, "MediaPlayerPrivateAVFoundation::seekCompleted(%p) - finished = %d", this, finished);
     UNUSED_PARAM(finished);
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
     if (currentTrack())
-        currentTrack()->resetCueValues();
+        currentTrack()->endSeeking();
 #endif
 
     m_seekTo = MediaPlayer::invalidTime();
@@ -816,7 +828,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
         contentsNeedsDisplay();
         break;
     case Notification::InbandTracksNeedConfiguration:
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
         m_inbandTrackConfigurationPending = false;
         configureInbandTracks();
 #endif
@@ -828,7 +840,7 @@ void MediaPlayerPrivateAVFoundation::dispatchNotification()
     }
 }
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if !PLATFORM(WIN)
 void MediaPlayerPrivateAVFoundation::configureInbandTracks()
 {
     RefPtr<InbandTextTrackPrivateAVF> trackToEnable;

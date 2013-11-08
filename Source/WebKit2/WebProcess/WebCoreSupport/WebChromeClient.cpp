@@ -84,7 +84,7 @@ static WebFrame* findLargestFrameInFrameSet(WebPage* page)
     // Approximate what a user could consider a default target frame for application menu operations.
 
     WebFrame* mainFrame = page->mainWebFrame();
-    if (!mainFrame->isFrameSet())
+    if (!mainFrame || !mainFrame->isFrameSet())
         return 0;
 
     WebFrame* largestSoFar = 0;
@@ -114,7 +114,7 @@ FloatRect WebChromeClient::windowRect()
 {
 #if PLATFORM(MAC)
     if (m_page->hasCachedWindowFrame())
-        return m_page->windowFrameInScreenCoordinates();
+        return m_page->windowFrameInUnflippedScreenCoordinates();
 #endif
 
     FloatRect newWindowFrame;
@@ -282,7 +282,7 @@ void WebChromeClient::setResizable(bool resizable)
     m_page->send(Messages::WebPageProxy::SetIsResizable(resizable));
 }
 
-void WebChromeClient::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, const String& /*sourceID*/)
+void WebChromeClient::addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned /*columnNumber*/, const String& /*sourceID*/)
 {
     // Notify the bundle client.
     m_page->injectedBundleUIClient().willAddMessageToConsole(m_page, message, lineNumber);
@@ -824,19 +824,24 @@ void WebChromeClient::logDiagnosticMessage(const String& message, const String& 
     m_page->injectedBundleDiagnosticLoggingClient().logDiagnosticMessage(m_page, message, description, success);
 }
 
-String WebChromeClient::plugInStartLabelTitle() const
+String WebChromeClient::plugInStartLabelTitle(const String& mimeType) const
 {
-    return m_page->injectedBundleUIClient().plugInStartLabelTitle();
+    return m_page->injectedBundleUIClient().plugInStartLabelTitle(mimeType);
 }
 
-String WebChromeClient::plugInStartLabelSubtitle() const
+String WebChromeClient::plugInStartLabelSubtitle(const String& mimeType) const
 {
-    return m_page->injectedBundleUIClient().plugInStartLabelSubtitle();
+    return m_page->injectedBundleUIClient().plugInStartLabelSubtitle(mimeType);
 }
 
 String WebChromeClient::plugInExtraStyleSheet() const
 {
     return m_page->injectedBundleUIClient().plugInExtraStyleSheet();
+}
+
+String WebChromeClient::plugInExtraScript() const
+{
+    return m_page->injectedBundleUIClient().plugInExtraScript();
 }
 
 } // namespace WebKit

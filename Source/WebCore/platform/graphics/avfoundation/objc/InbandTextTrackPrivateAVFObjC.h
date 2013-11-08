@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,21 +26,18 @@
 #ifndef InbandTextTrackPrivateAVFObjC_h
 #define InbandTextTrackPrivateAVFObjC_h
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if ENABLE(VIDEO) && USE(AVFOUNDATION) && HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 
 #include "InbandTextTrackPrivateAVF.h"
 #include <wtf/RetainPtr.h>
 
-OBJC_CLASS AVPlayerItem;
 OBJC_CLASS AVMediaSelectionOption;
 
 namespace WebCore {
 
-class MediaPlayerPrivateAVFoundationObjC;
-
 class InbandTextTrackPrivateAVFObjC : public InbandTextTrackPrivateAVF {
 public:
-    static PassRefPtr<InbandTextTrackPrivateAVFObjC> create(MediaPlayerPrivateAVFoundationObjC* player,  AVMediaSelectionOption* selection)
+    static PassRefPtr<InbandTextTrackPrivateAVFObjC> create(AVFInbandTrackParent* player,  AVMediaSelectionOption *selection)
     {
         return adoptRef(new InbandTextTrackPrivateAVFObjC(player, selection));
     }
@@ -58,12 +55,13 @@ public:
 
     virtual void disconnect() OVERRIDE;
 
+    virtual bool isLegacyClosedCaptionsTrack() const OVERRIDE { return false; }
+
     AVMediaSelectionOption *mediaSelectionOption() const { return m_mediaSelectionOption.get(); }
 
 protected:
-    InbandTextTrackPrivateAVFObjC(MediaPlayerPrivateAVFoundationObjC*, AVMediaSelectionOption*);
+    InbandTextTrackPrivateAVFObjC(AVFInbandTrackParent*, AVMediaSelectionOption *);
     
-    RetainPtr<AVPlayerItem> m_avPlayerItem;
     RetainPtr<AVMediaSelectionOption> m_mediaSelectionOption;
 };
 

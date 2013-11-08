@@ -54,6 +54,11 @@ public:
     virtual bool paintSliderTrack(RenderObject*, const PaintInfo&, const IntRect&);
     virtual bool paintSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
 
+#if ENABLE(DATALIST_ELEMENT)
+    virtual IntSize sliderTickSize() const OVERRIDE;
+    virtual int sliderTickOffsetFromTrackCenter() const OVERRIDE;
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
     virtual Color platformTapHighlightColor() const;
 #endif
@@ -86,6 +91,7 @@ public:
     virtual bool paintMediaPlayButton(RenderObject*, const PaintInfo&, const IntRect&);
     virtual bool paintMediaMuteButton(RenderObject*, const PaintInfo&, const IntRect&);
     virtual bool paintMediaRewindButton(RenderObject*, const PaintInfo&, const IntRect&);
+    virtual bool paintProgressBar(RenderObject*, const PaintInfo&, const IntRect&);
     virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
     virtual double animationDurationForProgressBar(RenderProgress*) const;
 
@@ -111,6 +117,8 @@ private:
     bool paintTextFieldOrTextAreaOrSearchField(RenderObject*, const PaintInfo&, const IntRect&);
 
     bool paintSliderTrackRect(RenderObject*, const PaintInfo&, const IntRect&, Image*);
+
+    bool paintProgressTrackRect(const PaintInfo&, const IntRect&, Image*);
 
     IntRect convertToPaintingRect(RenderObject* inputRenderer, const RenderObject* partRenderer, LayoutRect partRect, const IntRect& localOffset) const;
 

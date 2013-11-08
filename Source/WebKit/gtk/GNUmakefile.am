@@ -47,6 +47,7 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPPF
 	-I$(GENSOURCES_WEBKITDOM) \
 	-ISource/WebKit/gtk/webkit \
 	$(global_cppflags) \
+	$(platform_webcore_cppflags) \
 	$(platformgtk_cppflags) \
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
@@ -80,6 +81,7 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LDFL
 
 libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBADD := \
 	-lpthread \
+	libPlatform.la \
 	libPlatformGtk.la \
 	libWebCore.la \
 	libWebCorePlatform.la \
@@ -230,6 +232,8 @@ webkitgtk_sources += \
 	Source/WebKit/gtk/WebCoreSupport/WebViewInputMethodFilter.cpp \
 	Source/WebKit/gtk/WebCoreSupport/WebViewInputMethodFilter.h \
 	Source/WebKit/gtk/webkit/webkitapplicationcache.cpp \
+	Source/WebKit/gtk/webkit/webkitauthenticationdialog.cpp \
+	Source/WebKit/gtk/webkit/webkitauthenticationdialog.h \
 	Source/WebKit/gtk/webkit/webkitdownload.cpp \
 	Source/WebKit/gtk/webkit/webkitdownloadprivate.h \
 	Source/WebKit/gtk/webkit/webkiterror.cpp \
@@ -291,22 +295,19 @@ if ENABLE_WEBKIT1
 pkgconfig_DATA += Source/WebKit/gtk/@WEBKITGTK_PC_NAME@-@WEBKITGTK_API_VERSION@.pc
 
 if ENABLE_INTROSPECTION
-
-JSCore-@WEBKITGTK_API_VERSION@.gir: $(top_builddir)/Source/WebKit/gtk/JSCore-@WEBKITGTK_API_VERSION@.gir
-	$(AM_V_GEN)cp $(top_builddir)/Source/WebKit/gtk/JSCore-@WEBKITGTK_API_VERSION@.gir $(top_builddir)/
-
-JSCORE_GIRSOURCES += JSCore-@WEBKITGTK_API_VERSION@.gir
-WEBKIT_GIRSOURCES += WebKit-@WEBKITGTK_API_VERSION@.gir
-
-$(WEBKIT_GIRSOURCES): $(G_IR_SCANNER) $(JSCORE_GIRSOURCES) libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
-	$(AM_V_GEN)$(G_IR_SCANNER) -v --warn-all \
+WebKit-@WEBKITGTK_API_VERSION@.gir: $(G_IR_SCANNER) JavaScriptCore-@WEBKITGTK_API_VERSION@.gir libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
+	$(AM_V_GEN) \
+	     CFLAGS="$(CFLAGS) -Wno-deprecated-declarations" \
+	     $(G_IR_SCANNER) \
+	     --quiet \
+	     --warn-all \
 	     --symbol-prefix=webkit \
 	     --identifier-prefix=WebKit \
 	     --namespace=WebKit \
 	     --nsversion=@WEBKITGTK_API_VERSION@ \
 	     --include=GObject-2.0 \
 	     --include=Gtk-@GTK_API_VERSION@ \
-	     --include=JSCore-@WEBKITGTK_API_VERSION@ \
+	     --include=JavaScriptCore-@WEBKITGTK_API_VERSION@ \
 	     --include=Soup-2.4 \
 	     --library=webkitgtk-@WEBKITGTK_API_VERSION@ \
 	     --library=javascriptcoregtk-@WEBKITGTK_API_VERSION@ \
@@ -333,24 +334,14 @@ $(WEBKIT_GIRSOURCES): $(G_IR_SCANNER) $(JSCORE_GIRSOURCES) libwebkitgtk-@WEBKITG
 	     $(webkitgtk_gdom_built_h_api) \
 	     $(WebKit)/webkit/*.cpp
 
-girdir = $(datadir)/gir-1.0
-gir_DATA = $(WEBKIT_GIRSOURCES) $(JSCORE_GIRSOURCES)
-
-typelibsdir += $(libdir)/girepository-1.0
-typelibs_DATA += $(JSCORE_GIRSOURCES:.gir=.typelib) $(WEBKIT_GIRSOURCES:.gir=.typelib)
-
 WebKit-@WEBKITGTK_API_VERSION@.typelib: WebKit-@WEBKITGTK_API_VERSION@.gir $(G_IR_COMPILER)
 	$(AM_V_GEN)$(G_IR_COMPILER) --includedir $(WebKit) --includedir $(top_builddir) $< -o $@
 
-JSCore-@WEBKITGTK_API_VERSION@.typelib: JSCore-@WEBKITGTK_API_VERSION@.gir $(G_IR_COMPILER)
-	$(AM_V_GEN)$(G_IR_COMPILER) --includedir $(WebKit) --includedir $(top_builddir) $< -o $@
-
-CLEANFILES += $(JSCORE_GIRSOURCES) $(WEBKIT_GIRSOURCES) $(typelibs_DATA)
-
+gir_DATA += WebKit-@WEBKITGTK_API_VERSION@.gir
+typelibs_DATA += WebKit-@WEBKITGTK_API_VERSION@.typelib
+CLEANFILES += WebKit-@WEBKITGTK_API_VERSION@.gir WebKit-@WEBKITGTK_API_VERSION@.typelib
 endif
 endif
-
-EXTRA_DIST += $(top_builddir)/Source/WebKit/gtk/JSCore-@WEBKITGTK_API_VERSION@.gir
 
 WEBKIT_MARSHAL_LIST = $(WebKit)/webkitmarshal.list
 $(GENSOURCES_WEBKIT)/webkitmarshal.cpp: stamp-webkitmarshal.cpp

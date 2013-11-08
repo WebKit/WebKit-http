@@ -93,11 +93,13 @@ function installDependenciesWithApt {
     apt-get install \
         gobject-introspection \
         icon-naming-utils \
+        libegl1-mesa-dev \
         libgcrypt11-dev \
         libgpg-error-dev \
         libp11-kit-dev \
         libtiff4-dev \
-        libcroco3-dev
+        libcroco3-dev \
+        ragel
 }
 
 function installDependenciesWithYum {
@@ -114,7 +116,7 @@ function installDependenciesWithYum {
         freetype-devel \
         gcc-c++ \
         geoclue-devel \
-        gettext \
+        gettext-devel \
         gobject-introspection-devel \
         gperf \
         gstreamer1-devel \
@@ -131,13 +133,15 @@ function installDependenciesWithYum {
         libwebp-devel \
         libxslt-devel \
         libXt-devel \
+        libXtst-devel \
         libgudev1-devel \
         mesa-libGL-devel \
         pcre-devel \
         ruby \
         sqlite-devel \
         perl-Switch \
-        perl-version
+        perl-version \
+        python-devel
 
     # These are dependencies necessary for running tests.
     yum install \
@@ -158,7 +162,9 @@ function installDependenciesWithYum {
         libgpg-error-devel \
         libp11-devel \
         libtiff-devel \
-        libcroco-devel
+        libcroco-devel \
+        mesa-libEGL-devel \
+        ragel
 }
 
 checkInstaller

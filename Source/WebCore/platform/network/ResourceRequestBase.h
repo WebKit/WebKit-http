@@ -111,6 +111,7 @@ namespace WebCore {
         void setHTTPAccept(const String& httpAccept) { setHTTPHeaderField("Accept", httpAccept); }
         void clearHTTPAccept();
 
+        const Vector<String>& responseContentDispositionEncodingFallbackArray() const { return m_responseContentDispositionEncodingFallbackArray; }
         void setResponseContentDispositionEncodingFallbackArray(const String& encoding1, const String& encoding2 = String(), const String& encoding3 = String());
 
         FormData* httpBody() const;
@@ -123,6 +124,7 @@ namespace WebCore {
         void setPriority(ResourceLoadPriority);
 
         bool isConditional() const;
+        void makeUnconditional();
 
         // Whether the associated ResourceHandleClient needs to be notified of
         // upload progress made for that resource.
@@ -175,8 +177,6 @@ namespace WebCore {
 
         void updatePlatformRequest(HTTPBodyUpdatePolicy = DoNotUpdateHTTPBody) const;
         void updateResourceRequest(HTTPBodyUpdatePolicy = DoNotUpdateHTTPBody) const;
-
-        void reportMemoryUsageBase(MemoryObjectInfo*) const;
 
         // The ResourceRequest subclass may "shadow" this method to compare platform specific fields
         static bool platformCompare(const ResourceRequest&, const ResourceRequest&) { return true; }

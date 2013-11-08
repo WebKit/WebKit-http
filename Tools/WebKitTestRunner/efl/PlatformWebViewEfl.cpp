@@ -27,6 +27,7 @@
 #include <Ecore_Evas.h>
 #include <WebCore/RefPtrCairo.h>
 #include <WebKit2/WKImageCairo.h>
+#include <WebKit2/WKViewEfl.h>
 #include <cairo.h>
 
 using namespace WebKit;
@@ -53,7 +54,7 @@ static Ecore_Evas* initEcoreEvas()
     return ecoreEvas;
 }
 
-PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKDictionaryRef options)
+PlatformWebView::PlatformWebView(WKContextRef context, WKPageGroupRef pageGroup, WKPageRef /* relatedPage */, WKDictionaryRef options)
     : m_options(options)
 {
     WKRetainPtr<WKStringRef> useFixedLayoutKey(AdoptWK, WKStringCreateWithUTF8CString("UseFixedLayout"));

@@ -62,10 +62,6 @@ QT_END_NAMESPACE
 class BPoint;
 #endif
 
-#if USE(SKIA)
-struct SkPoint;
-#endif
-
 namespace WebCore {
 
 class AffineTransform;
@@ -177,11 +173,6 @@ public:
 #if PLATFORM(HAIKU)
     FloatPoint(const BPoint&);
     operator BPoint() const;
-#endif
-
-#if USE(SKIA)
-    operator SkPoint() const;
-    FloatPoint(const SkPoint&);
 #endif
 
     FloatPoint matrixTransform(const TransformationMatrix&) const;

@@ -23,6 +23,7 @@
 #include "ContentSecurityPolicy.h"
 #include "Frame.h"
 #include "JSNode.h"
+#include "ScriptController.h"
 #include <runtime/FunctionConstructor.h>
 #include <runtime/JSFunction.h>
 #include <runtime/JSLock.h>
@@ -117,12 +118,12 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
             // Ensure that 'node' has a JavaScript wrapper to mark the event listener we're creating.
             JSLockHolder lock(exec);
             // FIXME: Should pass the global object associated with the node
-            setWrapper(exec->globalData(), asObject(toJS(exec, globalObject, m_originalNode)));
+            setWrapper(exec->vm(), asObject(toJS(exec, globalObject, m_originalNode)));
         }
 
         // Add the event's home element to the scope
         // (and the document, and the form - see JSHTMLElement::eventHandlerScope)
-        listenerAsFunction->setScope(exec->globalData(), jsCast<JSNode*>(wrapper())->pushEventHandlerScope(exec, listenerAsFunction->scope()));
+        listenerAsFunction->setScope(exec->vm(), jsCast<JSNode*>(wrapper())->pushEventHandlerScope(exec, listenerAsFunction->scope()));
     }
     return jsFunction;
 }

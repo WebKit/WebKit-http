@@ -22,31 +22,32 @@
 [
     JSCustomHeader,
     JSCustomMarkFunction,
-    JSGenerateIsReachable,
+    GenerateIsReachable,
     JSCustomGetOwnPropertySlotAndDescriptor,
     CustomNamedSetter,
     IndexedGetter,
     CustomEnumerateProperty,
+    SkipVTableValidation
 ] interface CSSStyleDeclaration {
              [TreatReturnedNullStringAs=Null, TreatNullAs=NullString] attribute DOMString        cssText
                  setter raises(DOMException);
 
-    [TreatReturnedNullStringAs=Null] DOMString          getPropertyValue(in [Optional=DefaultIsUndefined] DOMString propertyName);
-    [JSCustom] CSSValue           getPropertyCSSValue(in [Optional=DefaultIsUndefined] DOMString propertyName);
-    [TreatReturnedNullStringAs=Null] DOMString          removeProperty(in [Optional=DefaultIsUndefined] DOMString propertyName)
+    [TreatReturnedNullStringAs=Null] DOMString          getPropertyValue([Default=Undefined] optional DOMString propertyName);
+    [Custom] CSSValue           getPropertyCSSValue([Default=Undefined] optional DOMString propertyName);
+    [TreatReturnedNullStringAs=Null] DOMString          removeProperty([Default=Undefined] optional DOMString propertyName)
         raises(DOMException);
-    [TreatReturnedNullStringAs=Null] DOMString          getPropertyPriority(in [Optional=DefaultIsUndefined] DOMString propertyName);
-    [ObjCLegacyUnnamedParameters] void setProperty(in [Optional=DefaultIsUndefined] DOMString propertyName, 
-                                    in [TreatNullAs=NullString,Optional=DefaultIsUndefined] DOMString value, 
-                                    in [Optional=DefaultIsUndefined] DOMString priority)
+    [TreatReturnedNullStringAs=Null] DOMString          getPropertyPriority([Default=Undefined] optional DOMString propertyName);
+    [ObjCLegacyUnnamedParameters] void setProperty([Default=Undefined] optional DOMString propertyName, 
+                                    [TreatNullAs=NullString, Default=Undefined] optional DOMString value, 
+                                    [Default=Undefined] optional DOMString priority)
         raises(DOMException);
 
     readonly attribute unsigned long    length;
-    DOMString          item(in [Optional=DefaultIsUndefined] unsigned long index);
+    DOMString          item([Default=Undefined] optional unsigned long index);
     readonly attribute CSSRule          parentRule;
 
     // Extensions
-    [TreatReturnedNullStringAs=Null] DOMString          getPropertyShorthand(in [Optional=DefaultIsUndefined] DOMString propertyName);
-    boolean            isPropertyImplicit(in [Optional=DefaultIsUndefined] DOMString propertyName);
+    [TreatReturnedNullStringAs=Null] DOMString          getPropertyShorthand([Default=Undefined] optional DOMString propertyName);
+    boolean            isPropertyImplicit([Default=Undefined] optional DOMString propertyName);
 };
 

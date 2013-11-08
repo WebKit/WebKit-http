@@ -29,6 +29,7 @@
 #include "GraphicsContext.h"
 #include "PlatformMouseEvent.h"
 #include "ScrollAnimator.h"
+#include "ScrollView.h"
 #include "ScrollableArea.h"
 #include "ScrollbarTheme.h"
 #include <algorithm>
@@ -36,14 +37,6 @@
 #if ENABLE(GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
 #endif
-
-// FIXME: The following #includes are a layering violation and should be removed.
-#include "AXObjectCache.h"
-#include "AccessibilityScrollbar.h"
-#include "Document.h"
-#include "EventHandler.h"
-#include "Frame.h"
-#include "FrameView.h"
 
 using namespace std;
 
@@ -110,9 +103,6 @@ Scrollbar::Scrollbar(ScrollableArea* scrollableArea, ScrollbarOrientation orient
 
 Scrollbar::~Scrollbar()
 {
-    if (AXObjectCache* cache = existingAXObjectCache())
-        cache->remove(this);
-    
     stopTimerIfNeeded();
     
     m_theme->unregisterScrollbar(this);
@@ -136,7 +126,7 @@ bool Scrollbar::isScrollableAreaActive() const
 
 bool Scrollbar::isScrollViewScrollbar() const
 {
-    return parent() && parent()->isFrameView() && toFrameView(parent())->isScrollViewScrollbar(this);
+    return parent() && parent()->isScrollViewScrollbar(this);
 }
 
 void Scrollbar::offsetDidChange()
@@ -464,9 +454,6 @@ bool Scrollbar::mouseUp(const PlatformMouseEvent& mouseEvent)
             m_scrollableArea->mouseExitedScrollbar(this);
     }
 
-    if (parent() && parent()->isFrameView())
-        toFrameView(parent())->frame()->eventHandler()->setMousePressed(false);
-
     return true;
 }
 
@@ -565,14 +552,6 @@ bool Scrollbar::shouldParticipateInHitTesting()
 bool Scrollbar::isWindowActive() const
 {
     return m_scrollableArea && m_scrollableArea->isActive();
-}
-
-AXObjectCache* Scrollbar::existingAXObjectCache() const
-{
-    if (!parent())
-        return 0;
-    
-    return parent()->axObjectCache();
 }
 
 void Scrollbar::invalidateRect(const IntRect& rect)

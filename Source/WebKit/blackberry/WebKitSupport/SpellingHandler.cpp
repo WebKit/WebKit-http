@@ -6,6 +6,7 @@
 #include "SpellingHandler.h"
 
 #include "DOMSupport.h"
+#include "Frame.h"
 #include "InputHandler.h"
 #include "Range.h"
 #include "SpellChecker.h"
@@ -13,6 +14,7 @@
 
 #include <BlackBerryPlatformIMF.h>
 #include <BlackBerryPlatformLog.h>
+#include <BlackBerryPlatformStopWatch.h>
 
 #define ENABLE_SPELLING_LOG 0
 
@@ -32,7 +34,7 @@ namespace WebKit {
 
 SpellingHandler::SpellingHandler(InputHandler* inputHandler)
     : m_inputHandler(inputHandler)
-    , m_timer(this, &SpellingHandler::parseBlockForSpellChecking)
+    , m_iterationDelayTimer(this, &SpellingHandler::parseBlockForSpellChecking)
     , m_isSpellCheckActive(false)
 {
 }
@@ -41,8 +43,21 @@ SpellingHandler::~SpellingHandler()
 {
 }
 
-void SpellingHandler::spellCheckTextBlock(const WebCore::VisibleSelection& visibleSelection, WebCore::TextCheckingProcessType textCheckingProcessType)
+void SpellingHandler::spellCheckTextBlock(const WebCore::Element* element, WebCore::TextCheckingProcessType textCheckingProcessType)
 {
+    SpellingLog(Platform::LogLevelInfo, "SpellingHandler::spellCheckTextBlock received request of type %s",
+        textCheckingProcessType == TextCheckingProcessBatch ? "Batch" : "Incremental");
+
+    if (!(element->document() && element->document()->frame() && element->document()->frame()->selection()))
+        return;
+
+    VisiblePosition caretPosition = element->document()->frame()->selection()->start();
+    // Expand the range to include the previous line. This should handle cases when the user hits enter to finish composing a word and create a new line.
+    // Account for word wrapping by jumping to the start of the previous line, then moving to the start of any word which might be there.
+    VisibleSelection visibleSelection = VisibleSelection(
+        startOfWord(startOfLine(previousLinePosition(caretPosition, caretPosition.lineDirectionPointForBlockDirectionNavigation()))),
+        endOfWord(endOfLine(caretPosition)));
+
     // Check if this request can be sent off in one message, or if it needs to be broken down.
     RefPtr<Range> rangeForSpellChecking = visibleSelection.toNormalizedRange();
     if (!rangeForSpellChecking || !rangeForSpellChecking->text() || !rangeForSpellChecking->text().length())
@@ -54,8 +69,8 @@ void SpellingHandler::spellCheckTextBlock(const WebCore::VisibleSelection& visib
     // from a previously focused element.
     if (m_textCheckingProcessType == TextCheckingProcessBatch) {
         // If a previous request is being processed, stop it before continueing.
-        if (m_timer.isActive())
-            m_timer.stop();
+        if (m_iterationDelayTimer.isActive())
+            m_iterationDelayTimer.stop();
     }
 
     m_isSpellCheckActive = true;
@@ -64,6 +79,7 @@ void SpellingHandler::spellCheckTextBlock(const WebCore::VisibleSelection& visib
     if (m_textCheckingProcessType == TextCheckingProcessBatch) {
         // If total block text is under the limited amount, send the entire chunk.
         if (rangeForSpellChecking->text().length() < MaxSpellCheckingStringLength) {
+            SpellingLog(Platform::LogLevelInfo, "SpellingHandler::spellCheckTextBlock creating single batch request");
             createSpellCheckRequest(rangeForSpellChecking);
             return;
         }
@@ -76,7 +92,8 @@ void SpellingHandler::spellCheckTextBlock(const WebCore::VisibleSelection& visib
     m_endOfRange = visibleSelection.visibleEnd();
     m_cachedEndPosition = m_endOfRange;
 
-    m_timer.startOneShot(0);
+    SpellingLog(Platform::LogLevelInfo, "SpellingHandler::spellCheckTextBlock starting first iteration");
+    m_iterationDelayTimer.startOneShot(0);
 }
 
 void SpellingHandler::createSpellCheckRequest(const PassRefPtr<WebCore::Range> rangeForSpellCheckingPtr)
@@ -96,6 +113,10 @@ void SpellingHandler::createSpellCheckRequest(const PassRefPtr<WebCore::Range> r
 
 void SpellingHandler::parseBlockForSpellChecking(WebCore::Timer<SpellingHandler>*)
 {
+#if ENABLE_SPELLING_LOG
+    BlackBerry::Platform::StopWatch timer;
+    timer.start();
+#endif
     SpellingLog(Platform::LogLevelInfo, "SpellingHandler::parseBlockForSpellChecking m_startPosition = %d, m_endPosition = %d, m_cachedEndPosition = %d, m_endOfRange = %d"
         , DOMSupport::offsetFromStartOfBlock(m_startPosition)
         , DOMSupport::offsetFromStartOfBlock(m_endPosition)
@@ -119,7 +140,10 @@ void SpellingHandler::parseBlockForSpellChecking(WebCore::Timer<SpellingHandler>
         }
 
         incrementSentinels(false /* shouldIncrementStartPosition */);
-        m_timer.startOneShot(s_timeout);
+#if ENABLE_SPELLING_LOG
+        SpellingLog(Platform::LogLevelInfo, "SpellingHandler::parseBlockForSpellChecking spellcheck iteration took %lf seconds", timer.elapsed());
+#endif
+        m_iterationDelayTimer.startOneShot(s_timeout);
         return;
     }
 
@@ -127,8 +151,12 @@ void SpellingHandler::parseBlockForSpellChecking(WebCore::Timer<SpellingHandler>
     if (rangeForSpellChecking = handleOversizedRange())
         createSpellCheckRequest(rangeForSpellChecking);
 
-    if (isSpellCheckActive())
-        m_timer.startOneShot(s_timeout);
+    if (isSpellCheckActive()) {
+#if ENABLE_SPELLING_LOG
+        SpellingLog(Platform::LogLevelInfo, "SpellingHandler::parseBlockForSpellChecking spellcheck iteration took %lf seconds", timer.elapsed());
+#endif
+        m_iterationDelayTimer.startOneShot(s_timeout);
+    }
 }
 
 PassRefPtr<Range> SpellingHandler::handleOversizedRange()

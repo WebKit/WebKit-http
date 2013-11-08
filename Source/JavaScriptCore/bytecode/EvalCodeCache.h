@@ -38,6 +38,7 @@
 
 namespace JSC {
 
+    class CodeCache;
     class SlotVisitor;
 
     class EvalCodeCache {
@@ -49,25 +50,25 @@ namespace JSC {
             return 0;
         }
         
-        EvalExecutable* getSlow(ExecState* exec, ScriptExecutable* owner, bool inStrictContext, const String& evalSource, JSScope* scope, JSValue& exceptionValue)
+        EvalExecutable* getSlow(ExecState* exec, CodeCache* codeCache, ScriptExecutable* owner, bool inStrictContext, const String& evalSource, JSScope* scope, JSValue& exceptionValue)
         {
-            EvalExecutable* evalExecutable = EvalExecutable::create(exec, makeSource(evalSource), inStrictContext);
+            EvalExecutable* evalExecutable = EvalExecutable::create(exec, codeCache, makeSource(evalSource), inStrictContext);
             exceptionValue = evalExecutable->compile(exec, scope);
             if (exceptionValue)
                 return 0;
             
             if (!inStrictContext && evalSource.length() < maxCacheableSourceLength && scope->begin()->isVariableObject() && m_cacheMap.size() < maxCacheEntries)
-                m_cacheMap.set(evalSource.impl(), WriteBarrier<EvalExecutable>(exec->globalData(), owner, evalExecutable));
+                m_cacheMap.set(evalSource.impl(), WriteBarrier<EvalExecutable>(exec->vm(), owner, evalExecutable));
             
             return evalExecutable;
         }
 
-        EvalExecutable* get(ExecState* exec, ScriptExecutable* owner, bool inStrictContext, const String& evalSource, JSScope* scope, JSValue& exceptionValue)
+        EvalExecutable* get(ExecState* exec, CodeCache* codeCache, ScriptExecutable* owner, bool inStrictContext, const String& evalSource, JSScope* scope, JSValue& exceptionValue)
         {
             EvalExecutable* evalExecutable = tryGet(inStrictContext, evalSource, scope);
 
             if (!evalExecutable)
-                evalExecutable = getSlow(exec, owner, inStrictContext, evalSource, scope, exceptionValue);
+                evalExecutable = getSlow(exec, codeCache, owner, inStrictContext, evalSource, scope, exceptionValue);
 
             return evalExecutable;
         }

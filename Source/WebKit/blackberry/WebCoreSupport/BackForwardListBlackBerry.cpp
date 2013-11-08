@@ -103,13 +103,29 @@ void BackForwardListBlackBerry::close()
 
 void BackForwardListBlackBerry::clear()
 {
-    while (!m_impl->entries().isEmpty())
-        m_impl->removeItem(m_impl->entries().last().get());
+    int capacity = m_impl->capacity();
+    m_impl->setCapacity(0);
+    m_impl->setCapacity(capacity);
 }
 
 HistoryItemVector& BackForwardListBlackBerry::entries()
 {
     return m_impl->entries();
+}
+
+void BackForwardListBlackBerry::backListWithLimit(int limit, HistoryItemVector& list)
+{
+    m_impl->backListWithLimit(limit, list);
+}
+
+void BackForwardListBlackBerry::forwardListWithLimit(int limit, HistoryItemVector& list)
+{
+    m_impl->forwardListWithLimit(limit, list);
+}
+
+int BackForwardListBlackBerry::capacity()
+{
+    return m_impl->capacity();
 }
 
 HistoryItem* BackForwardListBlackBerry::currentItem()

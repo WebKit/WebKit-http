@@ -536,7 +536,7 @@ var CODE_REVIEW_UNITTEST;
   }
 
   window.addEventListener('message', function(e) {
-    if (e.origin != 'https://webkit-commit-queue.appspot.com')
+    if (e.origin != 'https://webkit-queues.appspot.com')
       return;
 
     if (e.data.height) {
@@ -546,7 +546,7 @@ var CODE_REVIEW_UNITTEST;
   }, false);
 
   function handleStatusBubbleLoad(e) {
-    e.target.contentWindow.postMessage('containerMetrics', 'https://webkit-commit-queue.appspot.com');
+    e.target.contentWindow.postMessage('containerMetrics', 'https://webkit-queues.appspot.com');
   }
 
   function fetchHistory() {
@@ -573,9 +573,9 @@ var CODE_REVIEW_UNITTEST;
       var details = $(data);
       addFlagsForAttachment(details);
 
-      var statusBubble = document.createElement('iframe');
+      statusBubble = document.createElement('iframe');
       statusBubble.className = 'statusBubble';
-      statusBubble.src  = 'https://webkit-commit-queue.appspot.com/status-bubble/' + attachment_id;
+      statusBubble.src  = 'https://webkit-queues.appspot.com/status-bubble/' + attachment_id;
       statusBubble.scrolling = 'no';
       // Can't append the HTML because we need to set the onload handler before appending the iframe to the DOM.
       statusBubble.onload = handleStatusBubbleLoad;

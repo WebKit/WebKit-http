@@ -35,7 +35,6 @@
 #include "MemoryCache.h"
 #include "ResourceBuffer.h"
 #include "TextResourceDecoder.h"
-#include "WebCoreMemoryInstrumentation.h"
 #include <wtf/Vector.h>
 
 #if ENABLE(SVG_FONTS)
@@ -53,6 +52,7 @@ CachedFont::CachedFont(const ResourceRequest& resourceRequest)
     : CachedResource(resourceRequest, FontResource)
     , m_fontData(0)
     , m_loadInitiated(false)
+    , m_hasCreatedFontData(false)
 {
 }
 
@@ -98,7 +98,9 @@ bool CachedFont::ensureCustomFontData()
 {
     if (!m_fontData && !errorOccurred() && !isLoading() && m_data) {
         m_fontData = createFontCustomPlatformData(m_data.get()->sharedBuffer());
-        if (!m_fontData)
+        if (m_fontData)
+            m_hasCreatedFontData = true;
+        else
             setStatus(DecodeError);
     }
     return m_fontData;
@@ -181,14 +183,13 @@ void CachedFont::checkNotify()
          c->fontLoaded(this);
 }
 
-void CachedFont::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+bool CachedFont::mayTryReplaceEncodedData() const
 {
-    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CachedResourceFont);
-    CachedResource::reportMemoryUsage(memoryObjectInfo);
-#if ENABLE(SVG_FONTS)
-    info.addMember(m_externalSVGDocument, "externalSVGDocument");
-#endif
-    info.addMember(m_fontData, "fontData");
+    // If the FontCustomPlatformData has ever been constructed then it still might be in use somewhere.
+    // That platform font object might directly reference the encoded data buffer behind this CachedFont,
+    // so replacing it is unsafe.
+
+    return !m_hasCreatedFontData;
 }
 
 }

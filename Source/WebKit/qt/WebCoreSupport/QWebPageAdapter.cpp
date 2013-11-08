@@ -44,9 +44,12 @@
 #include "DragController.h"
 #include "DragData.h"
 #include "DragSession.h"
+#include "Editor.h"
 #include "EditorClientQt.h"
+#include "EventHandler.h"
 #include "FocusController.h"
 #include "FrameLoadRequest.h"
+#include "FrameSelection.h"
 #include "FrameView.h"
 #if ENABLE(GEOLOCATION)
 #include "GeolocationClientMock.h"
@@ -72,6 +75,7 @@
 #include "PageGroup.h"
 #include "Pasteboard.h"
 #include "PlatformKeyboardEvent.h"
+#include "PlatformMouseEvent.h"
 #include "PlatformTouchEvent.h"
 #include "PlatformWheelEvent.h"
 #include "PluginDatabase.h"
@@ -1247,10 +1251,10 @@ bool QWebPageAdapter::handleScrolling(QKeyEvent *ev)
     WebCore::ScrollGranularity granularity;
 
 #ifndef QT_NO_SHORTCUT
-    if (ev == QKeySequence::MoveToNextPage || (ev->key() == Qt::Key_Space && !(ev->modifiers() & Qt::ShiftModifier))) {
+    if (ev == QKeySequence::MoveToNextPage) {
         granularity = WebCore::ScrollByPage;
         direction = WebCore::ScrollDown;
-    } else if (ev == QKeySequence::MoveToPreviousPage || ((ev->key() == Qt::Key_Space) && (ev->modifiers() & Qt::ShiftModifier))) {
+    } else if (ev == QKeySequence::MoveToPreviousPage) {
         granularity = WebCore::ScrollByPage;
         direction = WebCore::ScrollUp;
     } else

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,14 +31,19 @@
 #include "MediaPlayerPrivateAVFoundation.h"
 #include <wtf/HashMap.h>
 
-OBJC_CLASS AVURLAsset;
+OBJC_CLASS AVAssetImageGenerator;
+OBJC_CLASS AVMediaSelectionGroup;
 OBJC_CLASS AVPlayer;
 OBJC_CLASS AVPlayerItem;
 OBJC_CLASS AVPlayerItemLegibleOutput;
+OBJC_CLASS AVPlayerItemTrack;
 OBJC_CLASS AVPlayerItemVideoOutput;
 OBJC_CLASS AVPlayerLayer;
-OBJC_CLASS AVAssetImageGenerator;
+OBJC_CLASS AVURLAsset;
+OBJC_CLASS NSArray;
 OBJC_CLASS WebCoreAVFMovieObserver;
+
+typedef struct objc_object* id;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
 OBJC_CLASS WebCoreAVFLoaderDelegate;
@@ -63,7 +68,7 @@ public:
     void setAsset(id);
     virtual void tracksChanged();
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
     RetainPtr<AVPlayerItem> playerItem() const { return m_avPlayerItem; }
     void processCue(NSArray *, double);
 #endif
@@ -119,10 +124,11 @@ private:
     virtual void checkPlayability();
     virtual void updateRate();
     virtual float rate() const;
-    virtual void seekToTime(float time);
+    virtual void seekToTime(double time);
     virtual unsigned totalBytes() const;
     virtual PassRefPtr<TimeRanges> platformBufferedTimeRanges() const;
-    virtual float platformMaxTimeSeekable() const;
+    virtual double platformMinTimeSeekable() const;
+    virtual double platformMaxTimeSeekable() const;
     virtual float platformDuration() const;
     virtual float platformMaxTimeLoaded() const;
     virtual void beginLoadingMetadata();
@@ -161,11 +167,18 @@ private:
 
     virtual String languageOfPrimaryAudioTrack() const OVERRIDE;
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
+    void processMediaSelectionOptions();
+    AVMediaSelectionGroup* safeMediaSelectionGroupForLegibleMedia();
+#endif
+
     virtual void setCurrentTrack(InbandTextTrackPrivateAVF*) OVERRIDE;
-    virtual InbandTextTrackPrivateAVF* currentTrack() OVERRIDE;
-    void processTextTracks();
+    virtual InbandTextTrackPrivateAVF* currentTrack() const OVERRIDE { return m_currentTrack; }
+    void processNewAndRemovedTextTracks(const Vector<RefPtr<InbandTextTrackPrivateAVF> >&);
     void clearTextTracks();
+
+#if !HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
+    void processLegacyClosedCaptionsTracks();
 #endif
 
     RetainPtr<AVURLAsset> m_avAsset;
@@ -195,10 +208,11 @@ private:
     HashMap<String, RetainPtr<AVAssetResourceLoadingRequest> > m_sessionIDToRequestMap;
 #endif
 
-#if HAVE(AVFOUNDATION_TEXT_TRACK_SUPPORT)
+#if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP) && HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT)
     RetainPtr<AVPlayerItemLegibleOutput> m_legibleOutput;
-    InbandTextTrackPrivateAVFObjC* m_currentTrack;
 #endif
+    
+    InbandTextTrackPrivateAVF* m_currentTrack;
 };
 
 }

@@ -63,6 +63,12 @@ http/tests/xmlhttprequest/remember-bad-password.html
 webkit.org/b/103847 compositing [ Skip ]
 webkit.org/b/103847 transforms/3d [ Skip ]
 
+# EFL WK1 doesn't support pasteboard functionality yet.
+Bug(EFL) editing/pasteboard/can-read-in-copy-and-cut-events.html [ Skip ]
+Bug(EFL) editing/pasteboard/can-read-in-dragstart-event.html [ Skip ]
+Bug(EFL) editing/pasteboard/copy-paste-content-starting-and-ending-canvas.html [ Skip ]
+Bug(EFL) editing/pasteboard/pasting-into-p-should-not-nest-p.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +359,7 @@ Bug(EFL) http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Fa
 Bug(EFL) http/tests/websocket/tests/hybi/workers/close-in-onmessage-crash.html [ Timeout ]
 Bug(EFL) http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html [ Timeout Pass ]
 
-# DRT does not implement setAudioData
+# DRT does not implement setAudioResult
 webkit.org/b/105881 webaudio/audiobuffersource-loop-points.html [ Skip ]
 webkit.org/b/105881 webaudio/audiobuffersource-multi-channels.html [ Skip ]
 webkit.org/b/105881 webaudio/audiobuffersource-playbackrate.html [ Skip ]
@@ -455,3 +461,7 @@ webkit.org/b/109081 webgl/conformance/uniforms/uniform-samplers-test.html [ Skip
 
 webkit.org/b/84333 storage/indexeddb/structured-clone.html [ Failure ]
 webkit.org/b/84333 storage/indexeddb/noblobs.html [ Failure ]
+
+# css3 device adaptation does not work for EFL WK1 properly.
+webkit.org/b/114948 css3/device-adapt/viewport-width-check-window-innerwidth-correct.html [ Failure ]
+webkit.org/b/114948 css3/device-adapt/viewport-width-not-affecting-next-page.html [ Failure ]

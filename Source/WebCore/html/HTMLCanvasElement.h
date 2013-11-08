@@ -124,8 +124,6 @@ public:
     void setOriginTainted() { m_originClean = false; }
     bool originClean() const { return m_originClean; }
 
-    StyleResolver* styleResolver();
-
     AffineTransform baseTransform() const;
 
 #if ENABLE(WEBGL)    
@@ -140,8 +138,6 @@ public:
     float deviceScaleFactor() const { return m_deviceScaleFactor; }
 
     virtual bool canContainRangeEndPoint() const { return false; }
-
-    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
 
 private:
     HTMLCanvasElement(const QualifiedName&, Document*);
