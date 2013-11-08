@@ -45,6 +45,10 @@ class FloatSize;
 }
 #endif
 
+#if PLATFORM(HAIKU)
+class BSize;
+#endif
+
 #if USE(CG)
 typedef struct CGSize CGSize;
 #endif
@@ -128,6 +132,11 @@ public:
 #if PLATFORM(BLACKBERRY)
     FloatSize(const BlackBerry::Platform::FloatSize&);
     operator BlackBerry::Platform::FloatSize() const;
+#endif
+
+#if PLATFORM(HAIKU)
+    FloatSize(const BSize&);
+    operator BSize() const;
 #endif
 
 #if USE(CG)

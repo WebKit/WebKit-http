@@ -26,10 +26,9 @@
 #define AuthenticationChallenge_h
 
 #include "AuthenticationChallengeBase.h"
+#include "AuthenticationClient.h"
 
 namespace WebCore {
-
-class AuthenticationClient;
 
 class AuthenticationChallenge : public AuthenticationChallengeBase {
 public:

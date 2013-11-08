@@ -306,12 +306,6 @@ PassNativeImagePtr IconDatabase::synchronousNativeIconForPageURL(const String& p
         return 0;
 
     MutexLocker locker(m_urlAndIconLock);
-#if PLATFORM(HAIKU)
-    if (icon->isBitmapImage()) {
-        WebCore::BitmapImage* bitmapImage = static_cast<WebCore::BitmapImage*>(icon);
-        return bitmapImage->getFirstBBitmapOfSize(size);
-    }
-#endif
     return icon->nativeImageForCurrentFrame();
 }
 

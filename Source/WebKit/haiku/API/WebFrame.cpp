@@ -31,6 +31,7 @@
 
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "Editor.h"
 #include "EditorClientHaiku.h"
 #include "Element.h"
 #include "Frame.h"

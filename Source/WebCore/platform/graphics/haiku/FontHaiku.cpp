@@ -75,7 +75,7 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     for (int i = 0; i < numGlyphs; i++) {
         offsets[i].x = offset;
         offsets[i].y = point.y();
-        offset += glyphBuffer.advanceAt(from + i);
+        offset += glyphBuffer.advanceAt(from + i).width();
     }
 
     view->DrawString(converted.data(), converted.length(), offsets, numGlyphs);

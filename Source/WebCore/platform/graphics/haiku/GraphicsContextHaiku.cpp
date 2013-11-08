@@ -377,50 +377,6 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float width)
     m_data->view()->SetPenSize(oldSize);
 }
 
-void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSpan)
-{
-    if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
-        return;
-
-    // TODO: The code below will only make round-corner boxen look nice. For an utterly shocking
-    // implementation of round corner drawing, see RenderBoxModelObject::paintBorder(). It tries
-    // to use one (or two) alpha mask(s) per box corner to cut off a thicker stroke and doubles
-    // the stroke with. All this to align the arc with the box sides...
-
-    m_data->view()->PushState();
-    float penSize = strokeThickness() / 2.0f;
-    m_data->view()->SetPenSize(penSize);
-    BRect bRect(rect.x(), rect.y(), rect.maxX(), rect.maxY());
-    if (startAngle >= 0 && startAngle < 90) {
-		bRect.left += penSize / 2 - 0.5;
-        bRect.top += penSize / 2 - 0.5;
-        bRect.right -= penSize / 2 + 0.5;
-        bRect.bottom -= penSize / 2 - 0.5;
-    } else if (startAngle >= 90 && startAngle < 180) {
-        bRect.left += penSize / 2 - 0.5;
-        bRect.top += penSize / 2 - 0.5;
-        bRect.right -= penSize / 2 - 0.5;
-        bRect.bottom -= penSize / 2 - 0.5;
-    } else if (startAngle >= 180 && startAngle < 270) {
-        bRect.left += penSize / 2 - 0.5;
-        bRect.top += penSize / 2 - 0.5;
-        bRect.right -= penSize / 2 - 0.5;
-        bRect.bottom -= penSize / 2 + 0.5;
-    } else if (startAngle >= 270 && startAngle < 360) {
-        bRect.left += penSize / 2 - 0.5;
-        bRect.top += penSize / 2 - 0.5;
-        bRect.right -= penSize / 2 + 0.5;
-        bRect.bottom -= penSize / 2 + 0.5;
-    }
-    uint32 flags = m_data->view()->Flags();
-    m_data->view()->SetFlags(flags | B_SUBPIXEL_PRECISE);
-    m_data->view()->SetDrawingMode(B_OP_ALPHA);
-    m_data->view()->StrokeArc(bRect, startAngle, angleSpan, getHaikuStrokeStyle());
-    m_data->view()->SetFlags(flags);
-
-    m_data->view()->PopState();
-}
-
 void GraphicsContext::strokePath(const Path& path)
 {
     if (paintingDisabled())

@@ -1,7 +1,3 @@
-LIST(APPEND WebCore_LINK_FLAGS
-    libbnetapi be bsd network textencoding translation
-)
-
 LIST(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"
@@ -53,6 +49,7 @@ LIST(APPEND WebCore_SOURCES
   platform/graphics/haiku/FontPlatformDataHaiku.cpp
   platform/graphics/haiku/FloatPointHaiku.cpp
   platform/graphics/haiku/FloatRectHaiku.cpp
+  platform/graphics/haiku/FloatSizeHaiku.cpp
   platform/graphics/haiku/FontHaiku.cpp
   platform/graphics/haiku/GlyphPageTreeNodeHaiku.cpp
   platform/graphics/haiku/GradientHaiku.cpp
@@ -68,11 +65,9 @@ LIST(APPEND WebCore_SOURCES
   editing/haiku/EditorHaiku.cpp
   platform/graphics/haiku/ImageBufferHaiku.cpp
   platform/graphics/haiku/FontPlatformDataHaiku.cpp
-  platform/graphics/ImageSource.cpp
   
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 
-  platform/image-decoders/ImageDecoder.cpp
   platform/image-decoders/bmp/BMPImageDecoder.cpp
   platform/image-decoders/bmp/BMPImageReader.cpp
   platform/image-decoders/gif/GIFImageDecoder.cpp
@@ -91,36 +86,25 @@ LIST(APPEND WebCore_SOURCES
   platform/network/curl/SocketStreamHandleCurl.cpp # not implemented
   platform/network/NetworkStorageSessionStub.cpp
   
-  platform/PlatformStrategies.cpp
-
   platform/posix/FileSystemPOSIX.cpp
 
   platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
   platform/text/haiku/StringHaiku.cpp
   platform/text/LocaleICU.cpp
+
+  # This is going to move away somewhere between r149878 and r151722.
+  # It will be added to the common files instead. Remove from here when that's
+  # done.
   platform/text/TextBreakIteratorICU.cpp
   platform/text/TextCodecICU.cpp
   platform/text/TextEncodingDetectorICU.cpp
+
+  platform/PlatformStrategies.cpp
+
+  # Remove after r149899
+  plugins/PluginViewNone.cpp
+  plugins/PluginPackageNone.cpp
 )
-
-IF (ENABLE_NETSCAPE_PLUGIN_API)
-  LIST(APPEND WebCore_SOURCES
-    plugins/PluginDatabase.cpp
-    plugins/PluginDebug.cpp
-    plugins/PluginPackage.cpp
-    plugins/PluginStream.cpp
-    plugins/PluginView.cpp
-
-    plugins/PluginPackageNone.cpp
-    plugins/PluginViewNone.cpp
-  )
-ELSE ()
-  LIST(APPEND WebCore_SOURCES
-#   plugins/PluginDataNone.cpp
-    plugins/PluginPackageNone.cpp
-    plugins/PluginViewNone.cpp
-  )
-ENDIF ()
 
 if (WTF_USE_TEXTURE_MAPPER)
     list(APPEND WebCore_SOURCES
@@ -146,7 +130,6 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
   ${SQLITE_INCLUDE_DIR}
   ${Glib_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
-  /boot/develop/headers/os/interface
 )
 
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
@@ -243,8 +226,6 @@ if (WTF_USE_3D_GRAPHICS)
         )
     endif ()
 endif ()
-
-add_definitions(-DDATA_DIR="${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DIR}")
 
 if (ENABLE_WEB_AUDIO)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
