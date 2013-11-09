@@ -105,7 +105,7 @@ void SelectionHandler::cancelSelection()
 
 BlackBerry::Platform::String SelectionHandler::selectedText() const
 {
-    return m_webPage->focusedOrMainFrame()->editor()->selectedText();
+    return m_webPage->focusedOrMainFrame()->editor().selectedText();
 }
 
 WebCore::IntRect SelectionHandler::clippingRectForVisibleContent() const
@@ -246,7 +246,7 @@ bool SelectionHandler::shouldUpdateSelectionOrCaretForPoint(const WebCore::IntPo
 
 void SelectionHandler::setCaretPosition(const WebCore::IntPoint& position)
 {
-    if (!m_webPage->m_inputHandler->isInputMode() || !m_webPage->focusedOrMainFrame()->document()->focusedNode())
+    if (!m_webPage->m_inputHandler->isInputMode() || !m_webPage->focusedOrMainFrame()->document()->focusedElement())
         return;
 
     m_caretActive = true;
@@ -369,14 +369,14 @@ static bool pointIsOutsideOfBoundingBoxInDirection(unsigned direction, const Web
 unsigned SelectionHandler::extendSelectionToFieldBoundary(bool isStartHandle, const WebCore::IntPoint& selectionPoint, VisibleSelection& newSelection)
 {
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
-    if (!focusedFrame->document()->focusedNode() || !focusedFrame->document()->focusedNode()->renderer())
+    if (!focusedFrame->document()->focusedElement() || !focusedFrame->document()->focusedElement()->renderer())
         return 0;
 
     VisibleSelection activeSelection = focusedFrame->selection()->selection();
 
     WebCore::IntRect caretRect = isStartHandle ? activeSelection.visibleStart().absoluteCaretBounds() : activeSelection.visibleEnd().absoluteCaretBounds();
 
-    WebCore::IntRect nodeBoundingBox = focusedFrame->document()->focusedNode()->renderer()->absoluteBoundingBoxRect();
+    WebCore::IntRect nodeBoundingBox = focusedFrame->document()->focusedElement()->renderer()->absoluteBoundingBoxRect();
     nodeBoundingBox.inflate(-1);
 
     // Start handle is outside of the field. Treat it as the changed handle and move
@@ -414,7 +414,7 @@ bool SelectionHandler::updateOrHandleInputSelection(VisibleSelection& newSelecti
     ASSERT(m_webPage->m_inputHandler->isInputMode());
 
     Frame* focusedFrame = m_webPage->focusedOrMainFrame();
-    Node* focusedNode = focusedFrame->document()->focusedNode();
+    Node* focusedNode = focusedFrame->document()->focusedElement();
     if (!focusedNode || !focusedNode->renderer())
         return false;
 
@@ -891,8 +891,11 @@ void SelectionHandler::selectObject(const WebCore::IntPoint& location, TextGranu
     VisibleSelection selection = VisibleSelection(pointLocation, pointLocation);
 
     // Move focus to the new node if we're not selecting in old input field.
-    if (!m_webPage->m_inputHandler->boundingBoxForInputField().contains(relativePoint))
-        m_webPage->m_page->focusController()->setFocusedNode(selection.start().anchorNode(), focusedFrame);
+    if (!m_webPage->m_inputHandler->boundingBoxForInputField().contains(relativePoint)) {
+        Node* anchorNode = selection.start().anchorNode();
+        if (!anchorNode || anchorNode->isElementNode())
+            m_webPage->m_page->focusController()->setFocusedElement(toElement(anchorNode), focusedFrame);
+    }
 
     m_selectionActive = expandSelectionToGranularity(focusedFrame, selection, granularity, m_webPage->m_inputHandler->isInputMode());
 }
@@ -1061,9 +1064,9 @@ WebCore::IntPoint SelectionHandler::clipPointToVisibleContainer(const WebCore::I
     WebCore::IntPoint clippedPoint = DOMSupport::convertPointToFrame(m_webPage->mainFrame(), frame, point, true /* clampToTargetFrame */);
 
     if (m_webPage->m_inputHandler->isInputMode()
-        && frame->document()->focusedNode()
-        && frame->document()->focusedNode()->renderer()) {
-            WebCore::IntRect boundingBox(frame->document()->focusedNode()->renderer()->absoluteBoundingBoxRect());
+        && frame->document()->focusedElement()
+        && frame->document()->focusedElement()->renderer()) {
+            WebCore::IntRect boundingBox(frame->document()->focusedElement()->renderer()->absoluteBoundingBoxRect());
             boundingBox.inflate(-1);
             clippedPoint = WebCore::IntPoint(clamp(boundingBox.x(), clippedPoint.x(), boundingBox.maxX()), clamp(boundingBox.y(), clippedPoint.y(), boundingBox.maxY()));
     }
@@ -1105,7 +1108,7 @@ bool SelectionHandler::inputNodeOverridesTouch() const
     if (!m_webPage->m_inputHandler->isInputMode())
         return false;
 
-    Node* focusedNode = m_webPage->focusedOrMainFrame()->document()->focusedNode();
+    Node* focusedNode = m_webPage->focusedOrMainFrame()->document()->focusedElement();
     if (!focusedNode || !focusedNode->isElementNode())
         return false;
 
@@ -1163,7 +1166,7 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
     else if (!m_selectionActive)
         return;
 
-    if (Node* focusedNode = frame->document()->focusedNode()) {
+    if (Node* focusedNode = frame->document()->focusedElement()) {
         if (focusedNode->hasTagName(HTMLNames::selectTag) || (focusedNode->isElementNode() && DOMSupport::isPopupInputField(toElement(focusedNode)))) {
             SelectionLog(Platform::LogLevelInfo, "SelectionHandler::selectionPositionChanged selection is on a popup control, skipping rendering.");
             return;
@@ -1303,7 +1306,7 @@ void SelectionHandler::caretPositionChanged(bool userTouchTriggeredOnTextField)
         "SelectionHandler::caretPositionChanged caret Rect %s",
         Platform::IntRect(caretLocation).toString().c_str());
 
-    bool isSingleLineInput = !m_webPage->m_inputHandler->isMultilineInputMode();
+    bool isSingleLineInput = m_caretActive && !m_webPage->m_inputHandler->isMultilineInputMode();
     WebCore::IntRect nodeBoundingBox = isSingleLineInput ? m_webPage->m_inputHandler->boundingBoxForInputField() : WebCore::IntRect();
 
     if (!nodeBoundingBox.isEmpty()) {

@@ -30,13 +30,11 @@
 #include "config.h"
 #include "CryptographicallyRandomNumber.h"
 
+#include "NeverDestroyed.h"
 #include "OSRandomSource.h"
-#include "StdLibExtras.h"
 #include "ThreadingPrimitives.h"
 
 namespace WTF {
-
-#if USE(OS_RANDOMNESS)
 
 namespace {
 
@@ -160,7 +158,8 @@ void ARC4RandomNumberGenerator::randomValues(void* buffer, size_t length)
 
 ARC4RandomNumberGenerator& sharedRandomNumberGenerator()
 {
-    DEFINE_STATIC_LOCAL(ARC4RandomNumberGenerator, randomNumberGenerator, ());
+    static NeverDestroyed<ARC4RandomNumberGenerator> randomNumberGenerator;
+
     return randomNumberGenerator;
 }
 
@@ -175,7 +174,5 @@ void cryptographicallyRandomValues(void* buffer, size_t length)
 {
     sharedRandomNumberGenerator().randomValues(buffer, length);
 }
-
-#endif
 
 }

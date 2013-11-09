@@ -24,6 +24,7 @@
 #include "BackForwardController.h"
 #include "BackingStoreClient.h"
 #include "BackingStore_p.h"
+#include "BlobStream.h"
 #include "CredentialManager.h"
 #include "CredentialTransformData.h"
 #include "DumpRenderTreeClient.h"
@@ -43,9 +44,9 @@
 #include "Image.h"
 #include "InputHandler.h"
 #include "MIMETypeRegistry.h"
-#include "NativeImageSkia.h"
 #include "NetworkManager.h"
 #include "NodeList.h"
+#include "PNGImageEncoder.h"
 #include "Page.h"
 #include "PluginDatabase.h"
 #include "PluginView.h"
@@ -56,9 +57,6 @@
 #include "Settings.h"
 #endif
 #include "SharedBuffer.h"
-#include "SkData.h"
-#include "SkImageEncoder.h"
-#include "SkStream.h"
 #include "TextEncoding.h"
 #include "TouchEventHandler.h"
 #if ENABLE(WEBDOM)
@@ -72,6 +70,7 @@
 #include <BlackBerryPlatformScreen.h>
 #include <BlackBerryPlatformStringBuilder.h>
 #include <JavaScriptCore/APICast.h>
+#include <TiledImage.h>
 #include <network/DataStream.h>
 #include <network/FilterStream.h>
 #include <network/NetworkRequest.h>
@@ -290,10 +289,8 @@ void FrameLoaderClientBlackBerry::committedLoad(DocumentLoader* loader, const ch
     // Thereafter, all data will be re-directed to the PluginView; i.e., no additional data will go
     // to receivedData.
 
-    if (!m_pluginView) {
-        const String& textEncoding = loader->response().textEncodingName();
-        receivedData(data, length, textEncoding);
-    }
+    if (!m_pluginView)
+        receivedData(loader, data, length);
 
     if (m_pluginView) {
         if (!m_hasSentResponseToPlugin) {
@@ -348,7 +345,7 @@ void FrameLoaderClientBlackBerry::redirectDataToPlugin(Widget* pluginWidget)
         m_hasSentResponseToPlugin = false;
 }
 
-void FrameLoaderClientBlackBerry::receivedData(const char* data, int length, const String& textEncoding)
+void FrameLoaderClientBlackBerry::receivedData(DocumentLoader* loader, const char* data, int length)
 {
     if (!m_frame)
         return;
@@ -360,13 +357,8 @@ void FrameLoaderClientBlackBerry::receivedData(const char* data, int length, con
         return;
     }
 
-    // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
-    String encoding = m_frame->loader()->documentLoader()->overrideEncoding();
-    bool userChosen = !encoding.isNull();
-    if (encoding.isNull())
-        encoding = textEncoding;
-    m_frame->loader()->documentLoader()->writer()->setEncoding(encoding, userChosen);
-    m_frame->loader()->documentLoader()->writer()->addData(data, length);
+    // The encoder now checks the override encoding and sets everything on our behalf.
+    loader->commitData(data, length);
 }
 
 void FrameLoaderClientBlackBerry::finishedLoading(DocumentLoader*)
@@ -943,7 +935,7 @@ bool FrameLoaderClientBlackBerry::shouldStopLoadingForHistoryItem(HistoryItem*) 
 
 Frame* FrameLoaderClientBlackBerry::dispatchCreatePage(const NavigationAction& navigation)
 {
-    WebPage* webPage = m_webPagePrivate->m_client->createWindow(0, 0, -1, -1, WebPageClient::FlagWindowDefault, navigation.url().string(), BlackBerry::Platform::String::emptyString(), ScriptController::processingUserGesture());
+    WebPage* webPage = m_webPagePrivate->m_client->createWindow(0, 0, -1, -1, WebPageClient::FlagWindowDefault, navigation.url().string(), BlackBerry::Platform::String::emptyString(), m_frame->document()->url().string(), ScriptController::processingUserGesture());
     if (!webPage)
         return 0;
 
@@ -973,8 +965,8 @@ void FrameLoaderClientBlackBerry::dispatchWillSendRequest(DocumentLoader* docLoa
     bool isMainResourceLoad = docLoader && docLoader == docLoader->frameLoader()->provisionalDocumentLoader();
 
     // TargetType for subresource loads should have been set in CachedResource::load().
-    if (isMainResourceLoad && request.targetType() == ResourceRequest::TargetIsUnspecified)
-        request.setTargetType(isMainFrame() ? ResourceRequest::TargetIsMainFrame : ResourceRequest::TargetIsSubframe);
+    if (isMainResourceLoad)
+        request.setTargetType(docLoader->frameLoader()->isLoadingMainFrame() ? ResourceRequest::TargetIsMainFrame : ResourceRequest::TargetIsSubframe);
 
     // Any processing which is done for all loads (both main and subresource) should go here.
     NetworkRequest platformRequest;
@@ -1202,6 +1194,9 @@ void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(DocumentLoad
 {
     ASSERT(documentLoader);
     ResourceBuffer* buff = documentLoader->mainResourceData().get();
+    BlackBerry::Platform::String filename = response.suggestedFilename();
+    if (filename.empty())
+        filename = request.suggestedSaveName();
 
     if (!buff) {
         // If no cached, like policyDownload resource which don't go render at all, just direct to downloadStream.
@@ -1212,14 +1207,12 @@ void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(DocumentLoad
         // associated with a ResourceHandle. For instance, Blob objects
         // have their own ResourceHandle class which won't call startJob
         // to do the proper setup. Do it here.
-        if (!stream) {
-            int playerId = static_cast<FrameLoaderClientBlackBerry*>(m_frame->loader()->client())->playerId();
-            NetworkManager::instance()->startJob(playerId, handle, request, m_frame, false);
-            stream = NetworkManager::instance()->streamForHandle(handle);
-        }
+        if (!stream)
+            stream = new BlobStream(response, handle);
+
         ASSERT(stream);
 
-        m_webPagePrivate->m_client->downloadRequested(stream, response.suggestedFilename());
+        m_webPagePrivate->m_client->downloadRequested(stream, filename);
         return;
     }
 
@@ -1231,33 +1224,43 @@ void FrameLoaderClientBlackBerry::convertMainResourceLoadToDownload(DocumentLoad
     STATIC_LOCAL_STRING(s_base64, ";base64,");
     url.append(s_base64);
     url.append(BlackBerry::Platform::String::fromUtf8(base64Encode(CString(buff->data(), buff->size())).utf8().data()));
-    NetworkRequest req;
-    req.setRequestUrl(url.string(), BlackBerry::Platform::String::fromAscii("GET"));
-    BlackBerry::Platform::DataStream *stream = new BlackBerry::Platform::DataStream(req);
-    m_webPagePrivate->m_client->downloadRequested(stream, response.suggestedFilename());
+    NetworkRequest netRequest;
+    netRequest.setRequestUrl(url.string());
+    BlackBerry::Platform::DataStream *stream = new BlackBerry::Platform::DataStream(netRequest);
+    m_webPagePrivate->m_client->downloadRequested(stream, filename);
     stream->streamOpen();
 }
 
 void FrameLoaderClientBlackBerry::dispatchDidReceiveIcon()
 {
     String url = m_frame->document()->url().string();
-    NativeImageSkia* bitmap = iconDatabase().synchronousNativeIconForPageURL(url, IntSize(10, 10));
-    if (!bitmap || bitmap->bitmap().empty())
+    NativeImagePtr bitmap = iconDatabase().synchronousNativeIconForPageURL(url, IntSize(10, 10));
+    if (!bitmap || bitmap->isNull())
         return;
 
-    SkAutoLockPixels locker(bitmap->bitmap());
-    SkDynamicMemoryWStream writer;
-    if (!SkImageEncoder::EncodeStream(&writer, bitmap->bitmap(), SkImageEncoder::kPNG_Type, 100)) {
-        BlackBerry::Platform::logAlways(BlackBerry::Platform::LogLevelInfo, "Failed to convert the icon to PNG format.");
+    int dataSize = bitmap->width() * bitmap->height();
+    Vector<unsigned> data;
+    data.reserveCapacity(dataSize);
+    if (!bitmap->readPixels(data.data(), dataSize))
         return;
+
+    // Convert BGRA to RGBA.
+    unsigned char* pixels = reinterpret_cast<unsigned char*>(data.data());
+    for (int i = 0; i < bitmap->height(); ++i) {
+        unsigned char* bgra = pixels + i * bitmap->width() * 4;
+        for (int j = 0; j < bitmap->width(); ++j, bgra += 4)
+            std::swap(bgra[0], bgra[2]);
     }
-    SkData* data = writer.copyToData();
+
+    Vector<char> pngData;
+    if (!compressRGBABigEndianToPNG(pixels, bitmap->size(), pngData))
+        return;
+
     Vector<char> out;
-    base64Encode(static_cast<const char*>(data->data()), data->size(), out);
-    out.append('\0'); // Make it null-terminated.
+    base64Encode(pngData, out);
+
     String iconUrl = iconDatabase().synchronousIconURLForPageURL(url);
     m_webPagePrivate->m_client->setFavicon(BlackBerry::Platform::String::fromAscii(out.data(), out.size()), iconUrl);
-    data->unref();
 }
 
 bool FrameLoaderClientBlackBerry::canCachePage() const
@@ -1297,8 +1300,7 @@ void FrameLoaderClientBlackBerry::provisionalLoadStarted()
 // We don't need to provide the error message string, that will be handled in BrowserErrorPage according to the error code.
 ResourceError FrameLoaderClientBlackBerry::cannotShowURLError(const ResourceRequest& request)
 {
-    // FIXME: Why are we not passing the domain to the ResourceError? See PR #119789.
-    return ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
+    return ResourceError("WebKitErrorDomain", WebKitErrorCannotShowURL, request.url().string(), String());
 }
 
 void FrameLoaderClientBlackBerry::didRestoreFromPageCache()

@@ -725,11 +725,7 @@ void ContainerNode::suspendPostAttachCallbacks()
                 s_shouldReEnableMemoryCacheCallsAfterAttach = true;
             }
         }
-#if USE(PLATFORM_STRATEGIES)
         platformStrategies()->loaderStrategy()->resourceLoadScheduler()->suspendPendingRequests();
-#else
-        resourceLoadScheduler()->suspendPendingRequests();
-#endif
     }
     ++s_attachDepth;
 }
@@ -746,11 +742,7 @@ void ContainerNode::resumePostAttachCallbacks()
             if (Page* page = document()->page())
                 page->setMemoryCacheClientCallsEnabled(true);
         }
-#if USE(PLATFORM_STRATEGIES)
         platformStrategies()->loaderStrategy()->resourceLoadScheduler()->resumePendingRequests();
-#else
-        resourceLoadScheduler()->resumePendingRequests();
-#endif
     }
     --s_attachDepth;
 }
@@ -841,7 +833,7 @@ void ContainerNode::cloneChildNodes(ContainerNode *clone)
 #if ENABLE(DELETION_UI)
     HTMLElement* deleteButtonContainerElement = 0;
     if (Frame* frame = document()->frame())
-        deleteButtonContainerElement = frame->editor()->deleteButtonController()->containerElement();
+        deleteButtonContainerElement = frame->editor().deleteButtonController()->containerElement();
     cloneChildNodesAvoidingDeleteButton(this, clone, deleteButtonContainerElement);
 #else
     cloneChildNodesAvoidingDeleteButton(this, clone, 0);
@@ -974,83 +966,6 @@ LayoutRect ContainerNode::boundingBox() const
     } 
 
     return enclosingLayoutRect(FloatRect(upperLeft, lowerRight.expandedTo(upperLeft) - upperLeft));
-}
-
-void ContainerNode::setFocus(bool received)
-{
-    if (focused() == received)
-        return;
-
-    Node::setFocus(received);
-
-    // note that we need to recalc the style
-    setNeedsStyleRecalc();
-}
-
-void ContainerNode::setActive(bool down, bool pause)
-{
-    if (down == active()) return;
-
-    Node::setActive(down);
-
-    // note that we need to recalc the style
-    // FIXME: Move to Element
-    if (renderer()) {
-        bool reactsToPress = renderStyle()->affectedByActive() || (isElementNode() && toElement(this)->childrenAffectedByActive());
-        if (reactsToPress)
-            setNeedsStyleRecalc();
-        if (renderStyle()->hasAppearance()) {
-            if (renderer()->theme()->stateChanged(renderer(), PressedState))
-                reactsToPress = true;
-        }
-
-        // The rest of this function implements a feature that only works if the
-        // platform supports immediate invalidations on the ChromeClient, so bail if
-        // that isn't supported.
-        if (!document()->page()->chrome()->client()->supportsImmediateInvalidation())
-            return;
-
-        if (reactsToPress && pause) {
-            // The delay here is subtle.  It relies on an assumption, namely that the amount of time it takes
-            // to repaint the "down" state of the control is about the same time as it would take to repaint the
-            // "up" state.  Once you assume this, you can just delay for 100ms - that time (assuming that after you
-            // leave this method, it will be about that long before the flush of the up state happens again).
-#ifdef HAVE_FUNC_USLEEP
-            double startTime = currentTime();
-#endif
-
-            // Ensure there are no pending changes
-            Document::updateStyleForAllDocuments();
-            // Do an immediate repaint.
-            if (renderer())
-                renderer()->repaint(true);
-
-            // FIXME: Find a substitute for usleep for Win32.
-            // Better yet, come up with a way of doing this that doesn't use this sort of thing at all.
-#ifdef HAVE_FUNC_USLEEP
-            // Now pause for a small amount of time (1/10th of a second from before we repainted in the pressed state)
-            double remainingTime = 0.1 - (currentTime() - startTime);
-            if (remainingTime > 0)
-                usleep(static_cast<useconds_t>(remainingTime * 1000000.0));
-#endif
-        }
-    }
-}
-
-void ContainerNode::setHovered(bool over)
-{
-    if (over == hovered()) return;
-
-    Node::setHovered(over);
-
-    // note that we need to recalc the style
-    // FIXME: Move to Element
-    if (renderer()) {
-        if (renderStyle()->affectedByHover() || (isElementNode() && toElement(this)->childrenAffectedByHover()))
-            setNeedsStyleRecalc();
-        if (renderer() && renderer()->style()->hasAppearance())
-            renderer()->theme()->stateChanged(renderer(), HoverState);
-    }
 }
 
 unsigned ContainerNode::childNodeCount() const

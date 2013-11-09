@@ -26,7 +26,6 @@ wtf_sources += \
     Source/WTF/wtf/CheckedBoolean.h \
     Source/WTF/wtf/CommaPrinter.h \
     Source/WTF/wtf/Compiler.h \
-    Source/WTF/wtf/Complex.h \
     Source/WTF/wtf/CryptographicallyRandomNumber.cpp \
     Source/WTF/wtf/CryptographicallyRandomNumber.h \
     Source/WTF/wtf/CurrentTime.cpp \
@@ -83,7 +82,6 @@ wtf_sources += \
     Source/WTF/wtf/MD5.h \
     Source/WTF/wtf/MainThread.cpp \
     Source/WTF/wtf/MainThread.h \
-    Source/WTF/wtf/MallocZoneSupport.h \
     Source/WTF/wtf/MathExtras.h \
     Source/WTF/wtf/MediaTime.h \
     Source/WTF/wtf/MediaTime.cpp \
@@ -91,6 +89,7 @@ wtf_sources += \
     Source/WTF/wtf/MetaAllocator.cpp \
     Source/WTF/wtf/MetaAllocator.h \
     Source/WTF/wtf/MetaAllocatorHandle.h \
+    Source/WTF/wtf/NeverDestroyed.h \
     Source/WTF/wtf/NonCopyingSort.h \
     Source/WTF/wtf/Noncopyable.h \
     Source/WTF/wtf/NotFound.h \
@@ -186,7 +185,6 @@ wtf_sources += \
     Source/WTF/wtf/Uint8Array.h \
     Source/WTF/wtf/Uint8ClampedArray.h \
     Source/WTF/wtf/UnionFind.h \
-    Source/WTF/wtf/UnusedParam.h \
     Source/WTF/wtf/VMTags.h \
     Source/WTF/wtf/ValueCheck.h \
     Source/WTF/wtf/Vector.h \

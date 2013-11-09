@@ -65,7 +65,6 @@
 #define WTF_COMPILER_SUPPORTS_HAS_TRIVIAL_DESTRUCTOR __has_extension(has_trivial_destructor)
 #define WTF_COMPILER_SUPPORTS_CXX_STRONG_ENUMS __has_extension(cxx_strong_enums)
 #define WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS __has_extension(cxx_reference_qualified_functions)
-
 #endif
 
 #ifndef CLANG_PRAGMA
@@ -73,13 +72,10 @@
 #endif
 
 /* COMPILER(MSVC) - Microsoft Visual C++ */
-/* COMPILER(MSVC7_OR_LOWER) - Microsoft Visual C++ 2003 or lower*/
 /* COMPILER(MSVC9_OR_LOWER) - Microsoft Visual C++ 2008 or lower*/
 #if defined(_MSC_VER)
 #define WTF_COMPILER_MSVC 1
-#if _MSC_VER < 1400
-#define WTF_COMPILER_MSVC7_OR_LOWER 1
-#elif _MSC_VER < 1600
+#if _MSC_VER < 1600
 #define WTF_COMPILER_MSVC9_OR_LOWER 1
 #endif
 
@@ -175,8 +171,12 @@
 #define WTF_COMPILER_SUNCC 1
 #endif
 
-/* ==== Compiler features ==== */
+/* ABI */
+#if defined(__ARM_EABI__) || defined(__EABI__)
+#define WTF_COMPILER_SUPPORTS_EABI 1
+#endif
 
+/* ==== Compiler features ==== */
 
 /* ALWAYS_INLINE */
 
@@ -275,6 +275,12 @@
 #define FINAL
 #endif
 
+#if COMPILER_SUPPORTS(CXX_DELETED_FUNCTIONS)
+#define WTF_DELETED_FUNCTION = delete
+#else
+#define WTF_DELETED_FUNCTION
+#endif
+
 /* REFERENCED_FROM_ASM */
 
 #ifndef REFERENCED_FROM_ASM
@@ -295,9 +301,30 @@
 #endif
 #endif
 
-/* ABI */
-#if defined(__ARM_EABI__) || defined(__EABI__)
-#define WTF_COMPILER_SUPPORTS_EABI 1
+/* UNUSED_PARAM */
+
+#if COMPILER(INTEL) && !(defined(WIN32) || defined(_WIN32)) || COMPILER(RVCT)
+template<typename T>
+inline void unusedParam(T& x) { (void)x; }
+#define UNUSED_PARAM(variable) unusedParam(variable)
+#elif COMPILER(MSVC)
+#define UNUSED_PARAM(variable) (void)&variable
+#else
+#define UNUSED_PARAM(variable) (void)variable
 #endif
+
+/* UNUSED_LABEL */
+
+/* This is to keep the compiler from complaining when for local labels are
+ declared but not referenced. For example, this can happen with code that
+ works with auto-generated code.
+ */
+#if COMPILER(MSVC)
+#define UNUSED_LABEL(label) if (false) goto label
+#else
+#define UNUSED_LABEL(label) UNUSED_PARAM(&& label)
+#endif
+
+
 
 #endif /* WTF_Compiler_h */

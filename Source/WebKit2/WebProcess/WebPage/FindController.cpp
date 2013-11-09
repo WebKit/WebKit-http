@@ -86,7 +86,7 @@ void FindController::countStringMatches(const String& string, FindOptions option
     if (pluginView)
         matchCount = pluginView->countFindMatches(string, core(options), maxMatchCount + 1);
     else {
-        matchCount = m_webPage->corePage()->markAllMatchesForText(string, core(options), false, maxMatchCount + 1);
+        matchCount = m_webPage->corePage()->countFindMatches(string, core(options), maxMatchCount + 1);
         m_webPage->corePage()->unmarkAllTextMatches();
     }
 
@@ -250,6 +250,9 @@ void FindController::getImageForFindMatch(uint32_t matchIndex)
     getFindIndicatorBitmapAndRect(frame, handle, selectionRect);
 
     frame->selection()->setSelection(oldSelection);
+
+    if (handle.isNull())
+        return;
 
     m_webPage->send(Messages::WebPageProxy::DidGetImageForFindMatch(handle, matchIndex));
 }

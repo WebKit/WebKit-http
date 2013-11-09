@@ -85,7 +85,6 @@ HEADERS += \
     ListHashSet.h \
     Locker.h \
     MainThread.h \
-    MallocZoneSupport.h \
     MathExtras.h \
     MD5.h \
     MediaTime.h \
@@ -174,7 +173,6 @@ HEADERS += \
     unicode/Unicode.h \
     unicode/UnicodeMacrosFromICU.h \
     unicode/UTF8.h \
-    UnusedParam.h \
     ValueCheck.h \
     Vector.h \
     VectorTraits.h \

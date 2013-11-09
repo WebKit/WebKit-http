@@ -42,7 +42,6 @@
 #include "WebFrameNetworkingContext.h"
 #include "WebGeolocationManager.h"
 #include "WebIconDatabaseProxy.h"
-#include "WebKeyValueStorageManager.h"
 #include "WebMediaCacheManager.h"
 #include "WebMemorySampler.h"
 #include "WebPage.h"
@@ -131,6 +130,10 @@
 #include "SecItemShim.h"
 #endif
 
+#if USE(SOUP)
+#include "WebSoupRequestManager.h"
+#endif
+
 using namespace JSC;
 using namespace WebCore;
 
@@ -173,23 +176,15 @@ WebProcess::WebProcess()
 #if ENABLE(PLUGIN_PROCESS)
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
 #endif
-#if USE(SOUP)
-    , m_soupRequestManager(this)
-#endif
     , m_inWindowPageCount(0)
     , m_nonVisibleProcessCleanupTimer(this, &WebProcess::nonVisibleProcessCleanupTimerFired)
 {
-#if USE(PLATFORM_STRATEGIES)
     // Initialize our platform strategies.
     WebPlatformStrategies::initialize();
-#endif // USE(PLATFORM_STRATEGIES)
-
 
     // FIXME: This should moved to where WebProcess::initialize is called,
     // so that ports have a chance to customize, and ifdefs in this file are
     // limited.
-    addSupplement<WebKeyValueStorageManager>();
-
     addSupplement<WebGeolocationManager>();
     addSupplement<WebApplicationCacheManager>();
     addSupplement<WebResourceCacheManager>();
@@ -211,6 +206,9 @@ WebProcess::WebProcess()
 #endif
 #if ENABLE(NETWORK_INFO)
     addSupplement<WebNetworkInfoManager>();
+#endif
+#if USE(SOUP)
+    addSupplement<WebSoupRequestManager>();
 #endif
 }
 
@@ -372,7 +370,7 @@ void WebProcess::ensureNetworkProcessConnection()
 
     CoreIPC::Attachment encodedConnectionIdentifier;
 
-    if (!connection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(),
+    if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(),
         Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0))
         return;
 
@@ -552,6 +550,19 @@ WebPage* WebProcess::focusedWebPage() const
     return 0;
 }
     
+#if PLATFORM(MAC)
+void WebProcess::setProcessSuppressionEnabled(bool processSuppressionEnabled)
+{
+    HashMap<uint64_t, RefPtr<WebPage> >::const_iterator end = m_pageMap.end();
+    for (HashMap<uint64_t, RefPtr<WebPage> >::const_iterator it = m_pageMap.begin(); it != end; ++it) {
+        WebPage* page = (*it).value.get();
+        page->setThrottled(processSuppressionEnabled);
+    }
+    
+    ChildProcess::setProcessSuppressionEnabled(processSuppressionEnabled);
+}
+#endif
+
 WebPage* WebProcess::webPage(uint64_t pageID) const
 {
     return m_pageMap.get(pageID);
@@ -594,7 +605,7 @@ bool WebProcess::shouldTerminate()
 
     // FIXME: the ShouldTerminate message should also send termination parameters, such as any session cookies that need to be preserved.
     bool shouldTerminate = false;
-    if (connection()->sendSync(Messages::WebProcessProxy::ShouldTerminate(), Messages::WebProcessProxy::ShouldTerminate::Reply(shouldTerminate), 0)
+    if (parentProcessConnection()->sendSync(Messages::WebProcessProxy::ShouldTerminate(), Messages::WebProcessProxy::ShouldTerminate::Reply(shouldTerminate), 0)
         && !shouldTerminate)
         return false;
 
@@ -1122,6 +1133,13 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
         if (grammarCheckingTurnedOff)
             page->unmarkAllBadGrammar();
     }
+}
+
+void WebProcess::releasePageCache()
+{
+    int savedPageCacheCapacity = pageCache()->capacity();
+    pageCache()->setCapacity(0);
+    pageCache()->setCapacity(savedPageCacheCapacity);
 }
 
 #if !PLATFORM(MAC)

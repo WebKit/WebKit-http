@@ -252,7 +252,7 @@ static unsigned getMediaUIPartStateFlags(Node* node)
 
     if (isDisabledFormControl(node))
         flags |= MediaUIPartDisabledFlag;
-    else if (node->active())
+    else if (node->isElementNode() && toElement(node)->active())
         flags |= MediaUIPartPressedFlag;
     return flags;
 }
@@ -651,7 +651,7 @@ void RenderThemeMac::systemFont(int cssValueId, FontDescription& fontDescription
         NSFontManager *fontManager = [NSFontManager sharedFontManager];
         cachedDesc->setIsAbsoluteSize(true);
         cachedDesc->setGenericFamily(FontDescription::NoFamily);
-        cachedDesc->firstFamily().setFamily([font webCoreFamilyName]);
+        cachedDesc->setOneFamily([font webCoreFamilyName]);
         cachedDesc->setSpecifiedSize([font pointSize]);
         cachedDesc->setWeight(toFontWeight([fontManager weightOfFont:font]));
         cachedDesc->setItalic([fontManager traitsOfFont:font] & NSItalicFontMask);
@@ -975,7 +975,7 @@ void RenderThemeMac::updateFocusedState(NSCell* cell, const RenderObject* o)
 void RenderThemeMac::updatePressedState(NSCell* cell, const RenderObject* o)
 {
     bool oldPressed = [cell isHighlighted];
-    bool pressed = (o->node() && o->node()->active());
+    bool pressed = o->node() && o->node()->isElementNode() && toElement(o->node())->active();
     if (pressed != oldPressed)
         [cell setHighlighted:pressed];
 }
@@ -1058,7 +1058,7 @@ void RenderThemeMac::setFontFromControlSize(StyleResolver*, RenderStyle* style, 
     fontDescription.setGenericFamily(FontDescription::SerifFamily);
 
     NSFont* font = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSize]];
-    fontDescription.firstFamily().setFamily([font webCoreFamilyName]);
+    fontDescription.setOneFamily([font webCoreFamilyName]);
     fontDescription.setComputedSize([font pointSize] * style->effectiveZoom());
     fontDescription.setSpecifiedSize([font pointSize] * style->effectiveZoom());
 
@@ -1762,7 +1762,8 @@ bool RenderThemeMac::paintSliderThumb(RenderObject* o, const PaintInfo& paintInf
     // Update the various states we respond to.
     updateActiveState(sliderThumbCell, o);
     updateEnabledState(sliderThumbCell, o);
-    updateFocusedState(sliderThumbCell, (o->node() && o->node()->focusDelegate()->renderer()) ? o->node()->focusDelegate()->renderer() : o);
+    Element* focusDelegate = (o->node() && o->node()->isElementNode()) ? toElement(o->node())->focusDelegate() : 0;
+    updateFocusedState(sliderThumbCell, focusDelegate ? focusDelegate->renderer() : 0);
 
     // Update the pressed state using the NSCell tracking methods, since that's how NSSliderCell keeps track of it.
     bool oldPressed;

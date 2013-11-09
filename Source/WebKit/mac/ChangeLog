@@ -1,3 +1,613 @@
+2013-05-28  Andreas Kling  <akling@apple.com>
+
+        Document::setFocusedNode() should be setFocusedElement().
+        <http://webkit.org/b/116857>
+
+        Reviewed by Antti Koivisto.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView clearFocus]):
+        (-[WebHTMLView becomeFirstResponder]):
+
+2013-05-25  Andreas Kling  <akling@apple.com>
+
+        Remove Document::getFocusableNodes().
+        <http://webkit.org/b/116773>
+
+        Reviewed by Joseph Pecoraro.
+
+        Remove the private _focusableNodes API on DOMDocument, it has no clients.
+
+        * DOM/WebDOMOperations.mm:
+        * DOM/WebDOMOperationsPrivate.h:
+
+2013-05-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Unprefix Page Visibility API
+        https://bugs.webkit.org/show_bug.cgi?id=102340
+
+        Reviewed by Tim Horton.
+
+        Renaming of the "preview" state to "unloaded".
+
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+
+2013-05-25  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/13924889> -webView:didPerformClientRedirectFromURL:toURL:inFrame: should be given the redirecting URL as the “from” URL
+        https://bugs.webkit.org/show_bug.cgi?id=116733
+
+        Reviewed by Adele Peterson.
+
+        By the time the history controller calls updateGlobalHistoryRedirectLinks(), the document
+        loader already reflects the destination URL. In order to be able to provide the immediate
+        source URL to the delegate, we make WebFrame track a URL and provisional URL, updating them
+        in response to FrameLoader callbacks in exactly the same way WebFrameProxy maintains its
+        m_url and m_provisionalURL member variables.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad): Update
+        provisionalURL.
+        (WebFrameLoaderClient::dispatchDidChangeLocationWithinPage): Update url.
+        (WebFrameLoaderClient::dispatchDidPushStateWithinPage): Ditto.
+        (WebFrameLoaderClient::dispatchDidReplaceStateWithinPage): Ditto.
+        (WebFrameLoaderClient::dispatchDidPopStateWithinPage): Ditto.
+        (WebFrameLoaderClient::dispatchDidStartProvisionalLoad): Update provisionalURL.
+        (WebFrameLoaderClient::dispatchDidCommitLoad): Update URL and provisionalURL.
+        (WebFrameLoaderClient::dispatchDidFailProvisionalLoad): Clear provisionalURL.
+        (WebFrameLoaderClient::dispatchDidFailLoad): Added an assertion.
+        (WebFrameLoaderClient::dispatchDidFinishLoad): Ditto.
+        (WebFrameLoaderClient::updateGlobalHistoryRedirectLinks): Pass the last committed URL as the
+        source, rather than clientRedirectSourceForHistory().
+        * WebView/WebFrameInternal.h: Added url and provisionalURL ivars to WebFramePrivate.
+
+2013-05-24  Anders Carlsson  <andersca@apple.com>
+
+        Remove using namespace std from Mac WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=116747
+
+        Reviewed by Sam Weinig.
+
+        Use explicit std:: qualifiers instead.
+
+        * History/BinaryPropertyList.cpp:
+        (IntegerArray::deletedValueSize):
+        (BinaryPropertyListPlan::invalidObjectReference):
+        (bytesNeeded):
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate orderedLastVisitedDays]):
+        (WebHistoryWriter::WebHistoryWriter):
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        (WebKit::NetscapePluginHostManager::instantiatePlugin):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject):
+        (WebKit::NetscapePluginInstanceProxy::wheelEvent):
+        (WebKit::NetscapePluginInstanceProxy::print):
+        (WebKit::NetscapePluginInstanceProxy::snapshot):
+        (WebKit::NetscapePluginInstanceProxy::loadURL):
+        (WebKit::NetscapePluginInstanceProxy::createBindingsInstance):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::invoke):
+        (WebKit::ProxyInstance::supportsInvokeDefaultMethod):
+        (WebKit::ProxyInstance::supportsConstruct):
+        (WebKit::ProxyInstance::getPropertyNames):
+        (WebKit::ProxyInstance::methodNamed):
+        (WebKit::ProxyInstance::fieldNamed):
+        (WebKit::ProxyInstance::fieldValue):
+        (WebKit::ProxyInstance::setFieldValue):
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage supportsExtension:]):
+        (-[WebBasePluginPackage MIMETypeForExtension:]):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::deliverData):
+        * Plugins/WebNetscapePluginView.mm:
+        (PluginTimer::start):
+        (-[WebNetscapePluginView _postURL:target:len:buf:file:notifyData:sendNotification:allowHeaders:]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebFrame.mm:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _adjustedBottomOfPageWithTop:bottom:limit:]):
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _placePopupWindow:]):
+
+2013-05-24  Anders Carlsson  <andersca@apple.com>
+
+        Move history property list writer to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116746
+
+        Reviewed by Tim Horton.
+
+        Move WebCore history files to WebKit since they're only used by WebKit now.
+
+        * History/BinaryPropertyList.cpp: Renamed from Source/WebCore/platform/cf/BinaryPropertyList.cpp.
+        * History/BinaryPropertyList.h: Renamed from Source/WebCore/platform/cf/BinaryPropertyList.h.
+        * History/HistoryPropertyList.cpp: Renamed from Source/WebCore/history/cf/HistoryPropertyList.cpp.
+        * History/HistoryPropertyList.h: Renamed from Source/WebCore/history/cf/HistoryPropertyList.h.
+        * History/WebHistory.mm:
+
+2013-05-24  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Remove custom code for webkitAudioContext global constructor getter
+        https://bugs.webkit.org/show_bug.cgi?id=116530
+
+        Reviewed by Geoffrey Garen.
+
+        Use RuntimeEnabledFeatures instead of Settings to toggle Web Audio support.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2013-05-23  Anders Carlsson  <andersca@apple.com>
+
+        Crash in convertMainResourceLoadToDownload when downloading file by option-return
+        https://bugs.webkit.org/show_bug.cgi?id=116451
+
+        Reviewed by Andreas Kling.
+
+        If the main resource loader is null, create a new download instead since there's no existing loader to convert.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+
+2013-05-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix issues with focus rings on search fields
+        https://bugs.webkit.org/show_bug.cgi?id=116591
+
+        Reviewed by Darin Adler.
+        
+        In WebKit1, focus rings didn't render correctly on some OSes until
+        some other control drew a focus ring, which changes internal AppKit state
+        on the focused view. Fix by overriding an internal AppKit method to always
+        disable AppKit's "automatic" focus ring drawing.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _automaticFocusRingDisabled]):
+
+2013-05-20  David Kilzer  <ddkilzer@apple.com>
+
+        Synchronize FeatureDefines.xcconfig
+
+        * Configurations/FeatureDefines.xcconfig: Add a newline to the
+        end of the file.
+
+2013-05-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove link prerendering code
+        https://bugs.webkit.org/show_bug.cgi?id=116415
+
+        Reviewed by Darin Adler.
+
+        This code was only used by Chromium and is dead now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-05-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove ChromeClient::webView()
+        https://bugs.webkit.org/show_bug.cgi?id=116054
+
+        Reviewed by Darin Adler.
+
+        This blatantly horrible layer violation was only used to know if a ChromeClient is an empty
+        client or not. We already have a (slightly less horrible) way to do that.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2013-05-17  Anders Carlsson  <andersca@apple.com>
+
+        Accessing null function pointers is bad.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2013-05-17  Anders Carlsson  <andersca@apple.com>
+
+        Make kit(Frame*) more robust
+        https://bugs.webkit.org/show_bug.cgi?id=116324
+
+        Reviewed by Darin Adler.
+
+        Check that the frame loader's client isn't the EmptyFrameLoaderClient (or a subclass thereof)
+        before casting to WebFrameLoaderClient.
+
+        * WebView/WebFrame.mm:
+        (kit):
+
+2013-05-17  Anders Carlsson  <andersca@apple.com>
+
+        Move the policy function to WebFramePolicyListener
+        https://bugs.webkit.org/show_bug.cgi?id=116323
+
+        Reviewed by Darin Adler.
+
+        There's no need for the WebFrameLoaaderClient to hold on to the policy function,
+        so move it to WebFramePolicyListener. This gets rid of another WebFrameLoaderClient cast.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::setUpPolicyListener):
+        Pass the policy function when creating the WebFramePolicyListener object.
+
+2013-05-17  Anders Carlsson  <andersca@apple.com>
+
+        WebFramePolicyListener should keep its Frame in a RefPtr
+        https://bugs.webkit.org/show_bug.cgi?id=116322
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener initWithWebCoreFrame:]):
+        No need to ref the frame, the RefPtr does that for us.
+
+        (-[WebFramePolicyListener invalidate]):
+        Just set the frame to null.
+
+        (-[WebFramePolicyListener dealloc]):
+        Remove call to deref, that's done automatically now.
+
+        (-[WebFramePolicyListener finalize]):
+        Remove this method. (We could have kept it just for the assertion but I didn't think that was necessary).
+
+        (-[WebFramePolicyListener receivedPolicyDecision:):
+        Use release() to transfer ownership.
+
+2013-05-17  Anders Carlsson  <andersca@apple.com>
+
+        Reduce number of WebFrameLoaderClient static casts in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116320
+
+        Reviewed by Antti Koivisto.
+
+        We already have a function to return a WebFrame from a WebCore::Frame, use it.
+
+        * DOM/WebDOMOperations.mm:
+        (WebFrameFilter::shouldIncludeSubframe):
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource webFrame]):
+
+2013-05-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r150034.
+        http://trac.webkit.org/changeset/150034
+        https://bugs.webkit.org/show_bug.cgi?id=116257
+
+        This work around doesn't work due to another bug NSUndoManager
+        has (Requested by rniwa on #webkit).
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::registerUndoOrRedoStep):
+
+2013-05-16  Tim Horton  <timothy_horton@apple.com>
+
+        PDFPlugins don't load when plugins are disabled, but they should
+        https://bugs.webkit.org/show_bug.cgi?id=75790
+        <rdar://problem/11650197>
+
+        Reviewed by Anders Carlsson.
+
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        * Plugins/WebNetscapePluginPackage.mm:
+        (-[WebNetscapePluginPackage getPluginInfoFromResources]):
+        Nothing loaded via WebBasePluginPackage or WebNetscapePluginPackage
+        is an application plugin.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _canProvideDocumentSource]):
+        Previously, this caller depended on pluginData() returning null if
+        plug-ins were disabled. Since that is no longer the case, we have to
+        check if we can use plug-ins, and otherwise ignore non-application-plug-ins.
+
+2013-05-16  Andreas Kling  <akling@apple.com>
+
+        Page::chrome() should return a reference.
+        <http://webkit.org/b/116185>
+
+        Reviewed by Anders Carlsson.
+
+2013-05-16  Dan Bernstein  <mitz@apple.com>
+
+        -webView:updateHistoryTitle:forURL: does not pass a frame to the delegate
+        https://bugs.webkit.org/show_bug.cgi?id=116243
+
+        Reviewed by Anders Carlsson.
+
+        Added a WebFrame parameter to the delegate method.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::setTitle): Pass the frame to the delegate. Maintain
+        compatibility with clients that implement the old delegate method that
+        doesn’t take a frame.
+        * WebView/WebDelegateImplementationCaching.h:
+        (WebHistoryDelegateImplementationCache): Added a field to cache the
+        implementation of the old delegate method.
+        * WebView/WebHistoryDelegate.h: Changed the signature of the delegate method.
+        * WebView/WebView.mm:
+        (-[WebView _cacheHistoryDelegateImplementations]): Cache the implementation
+        of the new delegate method, but also check for the old one.
+
+2013-05-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Re-land r150168 with some OS version guards.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView drawRect:]):
+        (-[WebFrameView wantsUpdateLayer]):
+        (-[WebFrameView updateLayer]):
+
+2013-05-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r150168.
+        http://trac.webkit.org/changeset/150168
+        https://bugs.webkit.org/show_bug.cgi?id=116214
+
+        broke the world on Mountain Lion (Requested by thorton on
+        #webkit).
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView drawRect:]):
+
+2013-05-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid backing store for the WebFrameView's layer when the WebView is layer-backed
+        https://bugs.webkit.org/show_bug.cgi?id=116172
+
+        Reviewed by Tim Horton.
+
+        When the WebView is layer-backed, AppKit will create a layer with backing store for
+        the WebFrameView because it implements drawRect:. However, this method only paints
+        when there is no documentView, so this layer’s backing store is wasteful.
+
+        We can avoid allocation of this backing store by implementing -wantsUpdateLayer
+        and -updateLayer, and setting the view’s backgroundColor.
+
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView wantsUpdateLayer]):
+        (-[WebFrameView updateLayer]):
+
+2013-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Frame::editor() should return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=116037
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _selectedString]):
+        (-[WebFrame _firstRectForDOMRange:]):
+        (-[WebFrame _markDOMRange]):
+        (-[WebFrame _insertParagraphSeparatorInQuotedContent]):
+        (-[WebFrame _setTypingStyle:withUndoAction:]):
+        (-[WebFrame _replaceSelectionWithFragment:selectReplacement:smartReplace:matchStyle:]):
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation finishedLoadingWithDataSource:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _pasteWithPasteboard:allowPlainText:]):
+        (-[WebHTMLView _shouldDeleteRange:]):
+        (-[WebHTMLView _canEdit]):
+        (-[WebHTMLView _canEditRichly]):
+        (-[WebHTMLView _insertOrderedList]):
+        (-[WebHTMLView _insertUnorderedList]):
+        (-[WebHTMLView _canIncreaseSelectionListLevel]):
+        (-[WebHTMLView _canDecreaseSelectionListLevel]):
+        (-[WebHTMLView _increaseSelectionListLevel]):
+        (-[WebHTMLView _increaseSelectionListLevelOrdered]):
+        (-[WebHTMLView _increaseSelectionListLevelUnordered]):
+        (-[WebHTMLView _decreaseSelectionListLevel]):
+        (-[WebHTMLView Editor::coreCommandBySelector:]):
+        (-[WebHTMLView Editor::coreCommandByName:]):
+        (-[WebHTMLView validateUserInterfaceItemWithoutDelegate:]):
+        (-[WebHTMLView becomeFirstResponder]):
+        (-[WebHTMLView _selectionStartFontAttributesAsRTF]):
+        (-[WebHTMLView _applyStyleToSelection:withUndoAction:]):
+        (-[WebHTMLView _changeCSSColorUsingSelector:inRange:]):
+        (-[WebHTMLView checkSpelling:]):
+        (-[WebHTMLView showGuessPanel:]):
+        (-[WebHTMLView toggleBaseWritingDirection:]):
+        (-[WebHTMLView changeBaseWritingDirection:]):
+        (-[WebHTMLView _changeBaseWritingDirectionTo:]):
+        (-[WebHTMLView _updateFontPanel]):
+        (-[WebHTMLView markedRange]):
+        (-[WebHTMLView hasMarkedText]):
+        (-[WebHTMLView unmarkText]):
+        (-[WebHTMLView setMarkedText:selectedRange:]):
+        (-[WebHTMLView doCommandBySelector:]):
+        (-[WebHTMLView insertText:]):
+        (-[WebHTMLView _updateSelectionForInputManager]):
+        (-[WebHTMLView countMatchesForText:inDOMRange:options:limit:markMatches:]):
+        (-[WebHTMLView setMarkedTextMatchesAreHighlighted:]):
+        (-[WebHTMLView markedTextMatchesAreHighlighted]):
+        (-[WebHTMLView _findString:options:]):
+        * WebView/WebView.mm:
+        (-[WebView _executeCoreCommandByName:value:]):
+        (-[WebView editableDOMRangeForPoint:]):
+        (-[WebView setEditable:]):
+        (-[WebView deleteSelection]):
+        (-[WebView applyStyle:]):
+        (-[WebView typingAttributes]):
+        (-[WebView _simplifyMarkup:endNode:]):
+        (-[WebView handleAcceptedAlternativeText:]):
+
+2013-05-15  Darin Adler  <darin@apple.com>
+
+        [Mac] Remove the ClipboardMac class and header file
+        https://bugs.webkit.org/show_bug.cgi?id=116165
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebDragClient.mm: Import Clipboard.h instead of ClipboardMac.h.
+
+2013-05-15  Darin Adler  <darin@apple.com>
+
+        [Mac] Thin out the ClipboardMac class and header file to prepare for deleting them
+        https://bugs.webkit.org/show_bug.cgi?id=116159
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::willPerformDragSourceAction): Changed to get the pasteboard name
+        without going through the ClipboardMac class.
+        (WebDragClient::startDrag): Ditto.
+
+2013-05-14  Beth Dakin  <bdakin@apple.com>
+
+        Printing in 1Password app is broken with screen fonts disabled
+        https://bugs.webkit.org/show_bug.cgi?id=116133
+        -and corresponding-
+        <rdar://problem/13162981>
+
+        Reviewed by Anders Carlsson.
+
+        Return YES from [WebPreferences screenFontSubstitutionEnabled] for versions of the 
+        1Password app that were linked on or before MountainLion.
+
+        * WebView/WebPreferences.mm:
+        (needsScreenFontsEnabledQuirk):
+        (-[WebPreferences screenFontSubstitutionEnabled]):
+
+2013-05-13  Dan Bernstein  <mitz@apple.com>
+
+        Make -[WebNavigationData url] the destination of the navigation
+        https://bugs.webkit.org/show_bug.cgi?id=114904
+
+        Reviewed by Dave Kilzer.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::updateGlobalHistory): Initialize the WebNavigationData with the
+        current URL, not the original request URL.
+
+2013-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Remove ChromeClient::willPopupMenu
+        https://bugs.webkit.org/show_bug.cgi?id=116063
+
+        Reviewed by Andreas Kling.
+
+        ChromeClient::willPopupMenu is only called in one place from WebKit, so just move the function to the call site.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+
+2013-05-12  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for updating the Web Inspector toolbar height.
+
+        https://bugs.webkit.org/show_bug.cgi?id=115996
+
+        Reviewed by Joseph Pecoraro and Benjamin Poulain.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::setToolbarHeight):
+
+2013-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sometimes NSUndoManager can get into an inconsistent state
+        https://bugs.webkit.org/show_bug.cgi?id=116050
+
+        Reviewed by Enrica Casucci.
+
+        Always group undo items to work around a bug in NSUndoManager that manifests
+        when we call removeAllActionsWithTarget.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::registerUndoOrRedoStep):
+
+2013-05-13  Zalan Bujtas  <zalan@apple.com>
+
+        WebProcess consuming very high CPU on linkedin.com
+        https://bugs.webkit.org/show_bug.cgi?id=115601
+
+        Reviewed by Andreas Kling.
+
+        Disable WEB_TIMING_MINIMAL.
+        Turn off window.performance and performance.now(). Some JS frameworks expect
+        additional Web Timing APIs, when performance.now() is available.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-05-13  Darin Adler  <darin@apple.com>
+
+        [Mac] Layer-backed WebViews draw their background color even when setDrawsBackground:NO was called
+        https://bugs.webkit.org/show_bug.cgi?id=116014
+        <rdar://problem/12781227>
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _updateBackgroundAndUpdatesWhileOffscreen]): Remove calls to setBackgroundColor: and
+        setDrawsBackground: on the document view. These were added to support a hypothetical document view
+        that wanted to draw its background like WebHTMLView does, but this was never communicated as a
+        document view protocol, formal or informal, and it's unlikely that it was ever used. The bug was
+        caused because there is an -[NSView setDrawsBackground:] method, probably an internal one, and we
+        were calling it unintentionally on a WebHTMLView.
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Stop including UnusedParam.h
+        https://bugs.webkit.org/show_bug.cgi?id=116003
+
+        Reviewed by Sam Weinig.
+
+        UnusedParam.h is empty now so there's no need to include it anymore.
+
+        * Plugins/WebNetscapePluginEventHandlerCocoa.mm:
+        * WebView/WebDashboardRegion.mm:
+        * WebView/WebFullScreenController.mm:
+
+2013-05-12  Andreas Kling  <akling@apple.com>
+
+        Unload event listeners should prevent Safari from insta-killing the web process on last tab close.
+        <http://webkit.org/b/115988>
+        <rdar://problem/13870943>
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::enableSuddenTermination):
+        (WebChromeClient::disableSuddenTermination):
+
+2013-05-10  Brian J. Burg  <burg@cs.washington.edu>
+
+        Web Inspector: Implement WK2 version of WebInspectorFrontendClient::save
+        https://bugs.webkit.org/show_bug.cgi?id=115564
+
+        Reviewed by Benjamin Poulain.
+
+        Clean up save() and append() implementations.
+
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (WebInspectorFrontendClient::append):
+
+2013-05-10  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove Mac OS X Leopard (10.5) support
+        https://bugs.webkit.org/show_bug.cgi?id=107964
+
+        Reviewed by Ryosuke Niwa.
+
+        Removed the code for 10.5 and removed if-def for 10.6.
+
+        * DefaultDelegates/WebDefaultContextMenuDelegate.mm:
+        * Misc/WebKitErrors.m:
+        (-[NSError _initWithPluginErrorCode:contentURL:pluginPageURL:pluginName:MIMEType:]):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebView/WebClipView.mm:
+        (-[WebClipView _immediateScrollToPoint:]):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView initWithFrame:]):
+        * WebView/WebView.mm:
+
 2013-05-07  Mark Rowe  <mrowe@apple.com>
 
         <rdar://problem/13633007> WebKit and others fail to build headers due to build root dependency

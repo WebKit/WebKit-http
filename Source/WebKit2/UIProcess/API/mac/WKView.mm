@@ -235,7 +235,7 @@ struct WKViewInterpretKeyEventsParameters {
     WKContentAnchor _contentAnchor;
     
     NSSize _intrinsicContentSize;
-    BOOL _expandsToFitContentViaAutoLayout;
+    BOOL _clipsToVisibleRect;
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
     BOOL _isWindowOccluded;
@@ -357,8 +357,11 @@ struct WKViewInterpretKeyEventsParameters {
 
     if (_data->_page->editorState().hasComposition && !_data->_page->editorState().shouldIgnoreCompositionSelectionChange)
         _data->_page->cancelComposition();
-    [self _resetTextInputState];
-    
+
+    [self _notifyInputContextAboutDiscardedComposition];
+
+    [self _resetSecureInputState];
+
     if (!_data->_page->maintainsInactiveSelection())
         _data->_page->clearSelection();
     
@@ -423,7 +426,7 @@ struct WKViewInterpretKeyEventsParameters {
     [super setFrameSize:size];
 
     if (frameSizeUpdatesEnabled) {
-        if (_data->_expandsToFitContentViaAutoLayout)
+        if (_data->_clipsToVisibleRect)
             _data->_page->viewExposedRectChanged([self visibleRect]);
         [self _setDrawingAreaSize:size];
     }
@@ -435,7 +438,7 @@ struct WKViewInterpretKeyEventsParameters {
     NSPoint accessibilityPosition = [[self accessibilityAttributeValue:NSAccessibilityPositionAttribute] pointValue];
     
     _data->_page->windowAndViewFramesChanged(viewFrameInWindowCoordinates, accessibilityPosition);
-    if (_data->_expandsToFitContentViaAutoLayout)
+    if (_data->_clipsToVisibleRect)
         _data->_page->viewExposedRectChanged([self visibleRect]);
 }
 
@@ -1459,18 +1462,6 @@ static const short kIOHIDEventTypeScroll = 6;
     parameters->executingSavedKeypressCommands = false;
 
     LOG(TextInput, "...done executing saved keypress commands.");
-}
-
-- (void)_notifyInputContextAboutDiscardedComposition
-{
-    // <rdar://problem/9359055>: -discardMarkedText can only be called for active contexts.
-    // FIXME: We fail to ever notify the input context if something (e.g. a navigation) happens while the window is not key.
-    // This is not a problem when the window is key, because we discard marked text on resigning first responder.
-    if (![[self window] isKeyWindow] || self != [[self window] firstResponder])
-        return;
-
-    LOG(TextInput, "-> discardMarkedText");
-    [[super inputContext] discardMarkedText]; // Inform the input method that we won't have an inline input area despite having been asked to.
 }
 
 - (NSTextInputContext *)inputContext
@@ -2909,31 +2900,24 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_inSecureInputState = isInPasswordField;
 }
 
-- (void)_updateTextInputStateIncludingSecureInputState:(BOOL)updateSecureInputState
+- (void)_resetSecureInputState
 {
-    const EditorState& editorState = _data->_page->editorState();
-    if (updateSecureInputState) {
-        // This is a temporary state when editing. Flipping secure input state too quickly can expose race conditions.
-        if (!editorState.selectionIsNone)
-            [self _updateSecureInputState];
-    }
-
-    if (!editorState.hasComposition || editorState.shouldIgnoreCompositionSelectionChange)
-        return;
-
-    _data->_page->cancelComposition();
-
-    [self _notifyInputContextAboutDiscardedComposition];
-}
-
-- (void)_resetTextInputState
-{
-    [self _notifyInputContextAboutDiscardedComposition];
-
     if (_data->_inSecureInputState) {
         DisableSecureEventInput();
         _data->_inSecureInputState = NO;
     }
+}
+
+- (void)_notifyInputContextAboutDiscardedComposition
+{
+    // <rdar://problem/9359055>: -discardMarkedText can only be called for active contexts.
+    // FIXME: We fail to ever notify the input context if something (e.g. a navigation) happens while the window is not key.
+    // This is not a problem when the window is key, because we discard marked text on resigning first responder.
+    if (![[self window] isKeyWindow] || self != [[self window] firstResponder])
+        return;
+
+    LOG(TextInput, "-> discardMarkedText");
+    [[super inputContext] discardMarkedText]; // Inform the input method that we won't have an inline input area despite having been asked to.
 }
 
 #if ENABLE(FULLSCREEN_API)
@@ -3082,7 +3066,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 #endif
     _data->_mouseDownEvent = nil;
     _data->_ignoringMouseDraggedEvents = NO;
-    _data->_expandsToFitContentViaAutoLayout = NO;
+    _data->_clipsToVisibleRect = NO;
 
     _data->_intrinsicContentSize = NSMakeSize(NSViewNoInstrinsicMetric, NSViewNoInstrinsicMetric);
 
@@ -3187,7 +3171,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         return;
     
     if (!(--_data->_frameSizeUpdatesDisabledCount)) {
-        if (_data->_expandsToFitContentViaAutoLayout)
+        if (_data->_clipsToVisibleRect)
             _data->_page->viewExposedRectChanged([self visibleRect]);
         [self _setDrawingAreaSize:[self frame].size];
     }
@@ -3245,13 +3229,24 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 {
     BOOL expandsToFit = minimumLayoutWidth > 0;
 
-    _data->_expandsToFitContentViaAutoLayout = expandsToFit;
     _data->_page->setMinimumLayoutWidth(minimumLayoutWidth);
 
-    if (expandsToFit)
+    [self setShouldClipToVisibleRect:expandsToFit];
+}
+
+- (BOOL)shouldClipToVisibleRect
+{
+    return _data->_clipsToVisibleRect;
+}
+
+- (void)setShouldClipToVisibleRect:(BOOL)clipsToVisibleRect
+{
+    _data->_clipsToVisibleRect = clipsToVisibleRect;
+
+    if (clipsToVisibleRect)
         _data->_page->viewExposedRectChanged([self visibleRect]);
 
-    _data->_page->setMainFrameIsScrollable(!expandsToFit);
+    _data->_page->setMainFrameIsScrollable(!clipsToVisibleRect);
 }
 
 - (NSColor *)underlayColor
@@ -3369,7 +3364,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 // frame according to the current contentAnchor.
 - (void)forceAsyncDrawingAreaSizeUpdate:(NSSize)size
 {
-    if (_data->_expandsToFitContentViaAutoLayout)
+    if (_data->_clipsToVisibleRect)
         _data->_page->viewExposedRectChanged([self visibleRect]);
     [self _setDrawingAreaSize:size];
 
@@ -3394,7 +3389,12 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 - (NSWindow*)createFullScreenWindow
 {
 #if ENABLE(FULLSCREEN_API)
-    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:[[NSScreen mainScreen] frame] styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO] autorelease];
+#if __MAC_OS_X_VERSION_MIN_REQUIRED <= 1080
+    NSRect contentRect = NSZeroRect;
+#else
+    NSRect contentRect = [[NSScreen mainScreen] frame];
+#endif
+    return [[[WebCoreFullScreenWindow alloc] initWithContentRect:contentRect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO] autorelease];
 #else
     return nil;
 #endif

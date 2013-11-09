@@ -1,3 +1,579 @@
+2013-05-27  Patrick Gansterer  <paroga@webkit.org>
+
+        Use correct stack size on Solaris and OpenBSD
+        https://bugs.webkit.org/show_bug.cgi?id=114978
+
+        Recommit after wrong rollout in r150621.
+
+        * wtf/StackBounds.cpp:
+        (WTF):
+        (WTF::StackBounds::initialize):
+
+2013-05-27  Patrick Gansterer  <paroga@webkit.org>
+
+        Use ICU_INCLUDE_DIRS in BlackBerry CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=116210
+
+        Reviewed by Rob Buis.
+
+        Set and use the ICU_INCLUDE_DIRS variable to avoid
+        duplicated adding of the ICU include directory.
+
+        * wtf/PlatformBlackBerry.cmake:
+
+2013-05-27  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Enable parallel GC. Probably it has been fixed in r131791.
+        https://bugs.webkit.org/show_bug.cgi?id=90957
+
+        Reviewed by Csaba Osztrogonác.
+
+        * wtf/Platform.h:
+
+2013-05-26  Patrick Gansterer  <paroga@webkit.org>
+
+        [WINCE] Add wtf_bsearch()
+        https://bugs.webkit.org/show_bug.cgi?id=116528
+
+        Reviewed by Darin Adler.
+
+        r149833 introduced usage of ::bsearch(), which does not exist on Windwos CE.
+        Add our own implementation of this function as wtf_bsearch and define
+        bsearch as wtf_bsearch to fix compilation on Windwos CE.
+
+        * wtf/StdLibExtras.h:
+        (wtf_bsearch):
+
+2013-05-26  Kent Tamura  <tkent@chromium.org>
+
+        Remove ENABLE_CALENDAR_PICKER
+        https://bugs.webkit.org/show_bug.cgi?id=116795
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2013-05-24  Benjamin Poulain  <bpoulain@apple.com>
+
+        Inline TCMalloc_Central_FreeList's RemoveRange and FetchFromSpansSafe
+        https://bugs.webkit.org/show_bug.cgi?id=116700
+
+        Reviewed by Darin Adler.
+
+        The two functions only have one call site each.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::TCMalloc_Central_FreeList::RemoveRange):
+        (WTF::TCMalloc_Central_FreeList::FetchFromSpansSafe):
+
+2013-05-24  Filip Pizlo  <fpizlo@apple.com>
+
+        We broke !(0/0)
+        https://bugs.webkit.org/show_bug.cgi?id=116736
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/MathExtras.h:
+        (isNotZeroAndOrdered):
+        (isZeroOrUnordered):
+
+2013-05-24  Anders Carlsson  <andersca@apple.com>
+
+        Remove PagePopup code
+        https://bugs.webkit.org/show_bug.cgi?id=116732
+
+        Reviewed by Andreas Kling.
+
+        Remove ENABLE_PAGE_POPUP.
+
+        * wtf/FeatureDefines.h:
+
+2013-05-25  Jer Noble  <jer.noble@apple.com>
+
+        Mac: Set the default audio buffer size to a large value for <video> elements.
+        https://bugs.webkit.org/show_bug.cgi?id=116342
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h: Add a WTF_USE_AUDIO_SESSION setting.
+
+2013-05-23  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Rolling back r150600 as it breaks the VS2010 builds.
+
+        * wtf/StackBounds.cpp: Rollback.
+
+2013-05-23 Patrick Gansterer <paroga@webkit.org>
+
+        Use correct stack size on Solaris and OpenBSD
+        https://bugs.webkit.org/show_bug.cgi?id=114978
+
+        Reviewed by Oliver Hunt.
+
+        Original patch by David Hill <david@wmol.com>.
+
+        Use stack_t.ss_size for getting the size of the stack.
+
+        * wtf/Platform.h:
+        * wtf/StackBounds.cpp:
+        (WTF):
+        (WTF::StackBounds::initialize):
+
+2013-05-23  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Implement correct detection of stack size
+        https://bugs.webkit.org/show_bug.cgi?id=116661
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/StackBounds.cpp:
+        (WTF):
+        (WTF::StackBounds::initialize):
+
+2013-05-22  Dean Jackson  <dino@apple.com>
+
+        Rolling out r150555. It borked about 30 media tests.
+
+        * wtf/Platform.h:
+
+2013-05-21  Anders Carlsson  <andersca@apple.com>
+
+        Build fix.
+
+        * wtf/NeverDestroyed.h:
+        (NeverDestroyed):
+
+2013-05-20  Anders Carlsson  <andersca@apple.com>
+
+        Add WTF::NeverDestroyed and start using it in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=116472
+
+        Reviewed by Benjamin Poulain.
+
+        NeverDestroyed is a class template that can be used for singletons and other objects that we never
+        want to destroy. It's intended as a replacement for WTF_STATIC_LOCAL with the advantage that it doesn't
+        fragment the heap.
+
+        * GNUmakefile.list.am:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        Add NeverDestroyed.h
+
+        * wtf/Compiler.h:
+        Add a helper macro, WTF_DELETED_FUNCTION.
+
+        * wtf/CryptographicallyRandomNumber.cpp:
+        Use NeverDestroyed.
+
+        * wtf/NeverDestroyed.h: Added.
+
+        * wtf/Noncopyable.h:
+        Use WTF_DELETED_FUNCTION.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::emptyString):
+        Use 
+
+2013-05-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        Use '__typeof__' keyword to avoid problems when compiling in C++11 standard compliance
+        https://bugs.webkit.org/show_bug.cgi?id=116447
+
+        Reviewed by Darin Adler.
+
+        The 'typeof' keyword is a GNU C extension which becomes unavailable when compiling in ANSI or specific standard mode
+        (such as -std=c++11). The '__typeof__' keyword should be used instead as it's available in all modes both under GCC and Clang.
+
+        * wtf/FastMalloc.cpp:
+        (WTF): Replace the 'typeof' keyword with '__typeof__'.
+
+2013-05-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove link prerendering code
+        https://bugs.webkit.org/show_bug.cgi?id=116415
+
+        Reviewed by Darin Adler.
+
+        This code was only used by Chromium and is dead now.
+
+        * wtf/FeatureDefines.h:
+
+2013-05-18  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Replace *_LIBRARY_NAME with *_OUTPUT_NAME
+        https://bugs.webkit.org/show_bug.cgi?id=114554
+
+        Reviewed by Gyuyoung Kim.
+
+        Using variables as target names is very uncommon in CMake.
+        The usual way to specify the name of the resulting binary
+        is to set the OUTPUT_NAME target property.
+
+        * wtf/CMakeLists.txt:
+
+2013-05-17  Andreas Kling  <akling@apple.com>
+
+        Re-align the OS(AIX) macro...
+        ...in the hopes that the resulting world rebuild will fix failures after r150294.
+
+        * wtf/Platform.h:
+
+2013-05-17  Anders Carlsson  <andersca@apple.com>
+
+        WKKeyValueStorageManagerGetKeyValueStorageOrigins should get origins from the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=116346
+        <rdar://problem/13852829>
+
+        Reviewed by Andreas Kling.
+
+        Add forward declaration for Function.
+
+        * wtf/Forward.h:
+
+2013-05-17  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Remove invalid include paths
+        https://bugs.webkit.org/show_bug.cgi?id=116213
+
+        Reviewed by Gyuyoung Kim.
+
+        Since "${JAVASCRIPTCORE_DIR}/wtf" does not exist, it is safe
+        to remove them from the list of include directories.
+
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+
+2013-05-16  Benjamin Poulain  <bpoulain@apple.com>
+
+        Add the symbol WTFInvokeCrashHook back for binary compatibility.
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2013-05-16  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        [CMAKE] Need to set WTF_LIBRARIES in wtf/CMakeLists.txt
+        https://bugs.webkit.org/show_bug.cgi?id=116209
+
+        Reviewed by Gyuyoung Kim.
+
+        * wtf/CMakeLists.txt: Replace list with set.
+
+2013-05-16  Benjamin Poulain  <benjamin@webkit.org>
+
+        Crash properly on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=115782
+
+        Reviewed by Darin Adler.
+
+        Improve crash handling. <rdar://problem/13842771>
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2013-05-15  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        Unreviewed build fix after r150123
+
+        * wtf/CMakeLists.txt: 
+
+2013-05-15  Oliver Hunt  <oliver@apple.com>
+
+        RefCountedArray needs to use vector initialisers for its backing store
+        https://bugs.webkit.org/show_bug.cgi?id=116194
+
+        Reviewed by Gavin Barraclough.
+
+        Use VectorOperations to operate on the backing store
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        (WTF::RefCountedArray::operator=):
+        (WTF::RefCountedArray::~RefCountedArray):
+
+2013-05-15  Nico Weber  <thakis@chromium.org>
+
+        WebKit doesn't support MSVS2003 any more, remove preprocessor checks for older versions.
+        https://bugs.webkit.org/show_bug.cgi?id=116157
+
+        Reviewed by Anders Carlsson.
+
+        Also remove a gcc3.2 workaround.
+
+        Merges parts of these two commits by the talented Nico Weber:
+        https://chromium.googlesource.com/chromium/blink/+/3677e2f47348daeff405a40b6f90fbdf0654c2f5
+        https://chromium.googlesource.com/chromium/blink/+/0fcd96c448dc30be1416dcc15713c53710c1a312
+
+        * wtf/Alignment.h:
+        (WTF):
+        * wtf/Assertions.h:
+        * wtf/Atomics.h:
+        (WTF):
+        * wtf/Compiler.h:
+        * wtf/DateMath.cpp:
+        (WTF::getLocalTime):
+        * wtf/MathExtras.h:
+        * wtf/RefCountedLeakCounter.h:
+        (RefCountedLeakCounter):
+        * wtf/StaticConstructors.h:
+
+2013-05-15  Patrick Gansterer  <paroga@webkit.org>
+
+        Consolidate lists in WTF CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=116142
+
+        Reviewed by Martin Robinson.
+
+        Move common files into the CMakeLists.txt to avoid duplicating the list of files.
+        Also rebase the recently added GTK files to match the other CMake ports, since
+        the submitted patch was based on an older version of the source tree.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformBlackBerry.cmake:
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformWinCE.cmake:
+
+2013-05-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove WTF_USE_PLATFORM_STRATEGIES
+        https://bugs.webkit.org/show_bug.cgi?id=114431
+
+        Reviewed by Darin Adler.
+
+        * wtf/Platform.h:
+
+2013-05-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Use requestAnimationFrame for animations
+        https://bugs.webkit.org/show_bug.cgi?id=115896
+
+        Reviewed by Rob Buis.
+
+        * wtf/Platform.h: Disable REQUEST_ANIMATION_FRAME_TIMER and
+        WTF_USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR for BlackBerry
+        port.
+
+2013-05-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Implement platform strategies
+        https://bugs.webkit.org/show_bug.cgi?id=112162
+
+        Reviewed by Rob Buis.
+
+        * wtf/Platform.h: Add BlackBerry platform to the list of platforms
+        using platform strategies.
+
+2013-05-13  Benjamin Poulain  <benjamin@webkit.org>
+
+        Improve stringProtoFuncLastIndexOf for the prefix case
+        https://bugs.webkit.org/show_bug.cgi?id=115952
+
+        Reviewed by Geoffrey Garen.
+
+        Add an optimized version of StringImpl::startsWith() for JavaScriptCore.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::startsWith):
+        * wtf/text/StringImpl.h:
+        (StringImpl):
+        (WTF::StringImpl::startsWith):
+        * wtf/text/WTFString.h:
+        (WTF::String::startsWith):
+
+2013-05-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix Qt Linux MIPS32R2 build after r149879.
+
+        Bring back GLIB_CHECK_VERSION for GBytes since Qt Linux MIPS32R2
+        depends on glib 2.24.2.
+
+        * wtf/gobject/GRefPtr.cpp:
+        (_GBytes):
+        (WTF::refGPtr):
+        (WTF::derefGPtr):
+
+2013-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Remove UnusedParam.h
+        https://bugs.webkit.org/show_bug.cgi?id=116029
+
+        Reviewed by Andreas Kling.
+
+        Remove UnusedParam.h, it's empty now.
+
+        * GNUmakefile.list.am:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/UnusedParam.h: Removed.
+
+2013-05-13  Zalan Bujtas  <zalan@apple.com>
+
+        WebProcess consuming very high CPU on linkedin.com
+        https://bugs.webkit.org/show_bug.cgi?id=115601
+
+        Reviewed by Andreas Kling.
+
+        Disable WEB_TIMING_MINIMAL.
+        Turn off window.performance and performance.now(). Some JS frameworks expect
+        additional Web Timing APIs, when performance.now() is available.
+
+        * wtf/FeatureDefines.h:
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Stop including UnusedParam.h
+        https://bugs.webkit.org/show_bug.cgi?id=116003
+
+        Reviewed by Sam Weinig.
+
+        UnusedParam.h is empty now so there's no need to include it anymore.
+
+        * wtf/Atomics.h:
+        * wtf/BoundsCheckedPointer.h:
+        * wtf/DateMath.h:
+        * wtf/FastMalloc.cpp:
+        * wtf/NumberOfCores.cpp:
+        * wtf/OSAllocator.h:
+        * wtf/OSAllocatorPosix.cpp:
+        * wtf/PageAllocation.h:
+        * wtf/RefCounted.h:
+        * wtf/TCSystemAlloc.cpp:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/Vector.h:
+        * wtf/dtoa/cached-powers.cc:
+        * wtf/dtoa/fixed-dtoa.cc:
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Move UNUSED_PARAM and UNUSED_LABEL macros to Compiler.h
+        https://bugs.webkit.org/show_bug.cgi?id=115997
+
+        Reviewed by Benjamin Poulain.
+
+        UnusedParam.h predates Compiler.h and the macros defined there should just go into Compiler.h
+
+        * wtf/Compiler.h:
+        (unusedParam):
+        * wtf/UnusedParam.h:
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Remove Complex.h from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=115989
+
+        Reviewed by Beth Dakin.
+
+        Complex.h contains a typedef and a single function (that already has an equivalent in the STL).
+        The header is used by three files in WebCore, so just use std::complex<double> and std::polar directly.
+
+        * GNUmakefile.list.am:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Complex.h: Removed.
+
+2013-05-11  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add a basic cmake build for WTF and JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=115967
+
+        Reviewed by Laszlo Gombos.
+
+        * wtf/PlatformGTK.cmake: Added.
+
+2013-05-11  Martin Robinson  <mrobinson@igalia.com>
+
+        Move defines to platform
+
+        [GTK] Move defines that will never be configured to Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=115965
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Platform.h: Add new defines that were previously in the autoconf header.
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Simplify AutodrainedPool
+        https://bugs.webkit.org/show_bug.cgi?id=115986
+
+        Reviewed by Andreas Kling.
+
+        Remove the ability to cycle an AutodrainedPool, as well as the iteration count.
+        Creating and draining pools is fast enough now that we don't need to try to be clever about it.
+
+        * wtf/AutodrainedPool.h:
+        (AutodrainedPool):
+        (WTF::AutodrainedPool::AutodrainedPool):
+        * wtf/AutodrainedPoolMac.mm:
+        (WTF::AutodrainedPool::AutodrainedPool):
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Move RemoteMemoryReader into FastMalloc.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=115985
+
+        Reviewed by Andreas Kling.
+
+        RemoteMemoryReader is only used in FastMalloc.cpp, and even had one of its member functions
+        implemented there, so move the entire class template there and remove MallocZoneSupport.h.
+
+        * GNUmakefile.list.am:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastMalloc.cpp:
+        (WTF):
+        (PageHeapAllocator):
+        (WTF::TCMalloc_ThreadCache::CreateCacheIfNecessary):
+        * wtf/MallocZoneSupport.h: Removed.
+
+2013-05-10  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove USE(OS_RANDOMNESS)
+        https://bugs.webkit.org/show_bug.cgi?id=108095
+
+        Reviewed by Darin Adler.
+
+        Remove the USE(OS_RANDOMNESS) guard as it is turned on for all
+        ports.
+
+        * wtf/CryptographicallyRandomNumber.cpp:
+        (WTF::cryptographicallyRandomValues):
+        * wtf/CryptographicallyRandomNumber.h:
+        * wtf/OSRandomSource.cpp:
+        (WTF::cryptographicallyRandomValuesFromOS):
+        * wtf/OSRandomSource.h:
+        * wtf/Platform.h:
+        * wtf/RandomNumber.cpp:
+        (WTF::randomNumber):
+        * wtf/RandomNumber.h:
+        * wtf/RandomNumberSeed.h:
+        (WTF::initializeRandomNumberGenerator):
+
+2013-05-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove unnecessary GLIB_CHECK_VERSION #ifdefs
+        https://bugs.webkit.org/show_bug.cgi?id=115904
+
+        Reviewed by Martin Robinson.
+
+        * wtf/gobject/GRefPtr.cpp:
+
 2013-05-09  Darin Adler  <darin@apple.com>
 
         RenderQuote has giant function for language to quotes map

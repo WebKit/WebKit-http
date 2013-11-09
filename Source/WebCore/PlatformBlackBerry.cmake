@@ -1,6 +1,5 @@
 list(INSERT WebCore_INCLUDE_DIRECTORIES 0
     "${BLACKBERRY_THIRD_PARTY_DIR}" # For <unicode.h>, which is included from <sys/keycodes.h>.
-    "${BLACKBERRY_THIRD_PARTY_DIR}/icu"
 )
 
 list(REMOVE_ITEM WebCore_SOURCES
@@ -44,6 +43,8 @@ list(APPEND WebCore_SOURCES
     platform/network/NetworkStorageSessionStub.cpp
     platform/network/ProxyServer.cpp
     platform/network/blackberry/AutofillBackingStore.cpp
+    platform/network/blackberry/BlobStream.cpp
+    platform/network/blackberry/CookieJarBlackBerry.cpp
     platform/network/blackberry/DNSBlackBerry.cpp
     platform/network/blackberry/DeferredData.cpp
     platform/network/blackberry/NetworkJob.cpp
@@ -91,15 +92,12 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 
 # BlackBerry sources
 list(APPEND WebCore_SOURCES
-    editing/blackberry/EditorBlackBerry.cpp
     editing/blackberry/SmartReplaceBlackBerry.cpp
     html/shadow/MediaControlsBlackBerry.cpp
-    loader/blackberry/CookieJarBlackBerry.cpp
     page/blackberry/AccessibilityObjectBlackBerry.cpp
     page/blackberry/DragControllerBlackBerry.cpp
     page/blackberry/EventHandlerBlackBerry.cpp
     page/blackberry/SettingsBlackBerry.cpp
-    platform/blackberry/ClipboardBlackBerry.cpp
     platform/blackberry/ContextMenuBlackBerry.cpp
     platform/blackberry/ContextMenuItemBlackBerry.cpp
     platform/blackberry/CursorBlackBerry.cpp
@@ -123,7 +121,6 @@ list(APPEND WebCore_SOURCES
     platform/blackberry/SearchPopupMenuBlackBerry.cpp
     platform/blackberry/SharedTimerBlackBerry.cpp
     platform/blackberry/SoundBlackBerry.cpp
-    platform/blackberry/SystemTimeBlackBerry.cpp
     platform/blackberry/TemporaryLinkStubs.cpp
     platform/blackberry/WidgetBlackBerry.cpp
     platform/graphics/blackberry/FloatPointBlackBerry.cpp
@@ -203,11 +200,7 @@ endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
     list(APPEND WebCore_SOURCES
-        plugins/PluginDatabase.cpp
-        plugins/PluginPackage.cpp
-        plugins/PluginView.cpp
         plugins/blackberry/NPCallbacksBlackBerry.cpp
-        plugins/blackberry/PluginDataBlackBerry.cpp
         plugins/blackberry/PluginPackageBlackBerry.cpp
         plugins/blackberry/PluginViewBlackBerry.cpp
         plugins/blackberry/PluginViewPrivateBlackBerry.cpp
@@ -215,11 +208,6 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
 else ()
     list(APPEND WebCore_SOURCES
         plugins/PluginDataNone.cpp
-        plugins/PluginDatabase.cpp
-        plugins/PluginPackage.cpp
-        plugins/PluginPackageNone.cpp
-        plugins/PluginView.cpp
-        plugins/PluginViewNone.cpp
     )
 endif ()
 

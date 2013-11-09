@@ -208,7 +208,7 @@ void RenderText::styleDidChange(StyleDifference diff, const RenderStyle* oldStyl
     if (!oldStyle) {
         updateNeedsTranscoding();
         needsResetText = m_needsTranscoding;
-    } else if (oldStyle->font().needsTranscoding() != newStyle->font().needsTranscoding() || (newStyle->font().needsTranscoding() && oldStyle->font().family().family() != newStyle->font().family().family())) {
+    } else if (oldStyle->font().needsTranscoding() != newStyle->font().needsTranscoding() || (newStyle->font().needsTranscoding() && oldStyle->font().firstFamily() != newStyle->font().firstFamily())) {
         updateNeedsTranscoding();
         needsResetText = true;
     }
@@ -1180,7 +1180,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Si
     setPreferredLogicalWidthsDirty(false);
 }
 
-bool RenderText::isAllCollapsibleWhitespace()
+bool RenderText::isAllCollapsibleWhitespace() const
 {
     unsigned length = textLength();
     if (is8Bit()) {

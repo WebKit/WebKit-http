@@ -26,6 +26,8 @@
 #ifndef RenderLayerCompositor_h
 #define RenderLayerCompositor_h
 
+#if USE(ACCELERATED_COMPOSITING)
+
 #include "ChromeClient.h"
 #include "Frame.h"
 #include "GraphicsLayerClient.h"
@@ -179,11 +181,16 @@ public:
     void repaintCompositedLayers(const IntRect* = 0);
 
     // Returns true if the given layer needs it own backing store.
-    bool requiresOwnBackingStore(const RenderLayer*, const RenderLayer* compositingAncestorLayer) const;
+    bool requiresOwnBackingStore(const RenderLayer*, const RenderLayer* compositingAncestorLayer, const IntRect& layerCompositedBoundsInAncestor, const IntRect& ancestorCompositedBounds) const;
 
     RenderLayer* rootRenderLayer() const;
     GraphicsLayer* rootGraphicsLayer() const;
     GraphicsLayer* scrollLayer() const;
+
+#if ENABLE(RUBBER_BANDING)
+    GraphicsLayer* headerLayer() const;
+    GraphicsLayer* footerLayer() const;
+#endif
 
     enum RootLayerAttachment {
         RootLayerUnattached,
@@ -465,5 +472,7 @@ private:
 
 
 } // namespace WebCore
+
+#endif // USE(ACCELERATED_COMPOSITING)
 
 #endif // RenderLayerCompositor_h

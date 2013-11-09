@@ -409,8 +409,6 @@ public:
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* setWantsLayerForTopOverHangArea(bool) const;
     GraphicsLayer* setWantsLayerForBottomOverHangArea(bool) const;
-    GraphicsLayer* setWantsLayerForHeader(bool) const;
-    GraphicsLayer* setWantsLayerForFooter(bool) const;
 #endif
 
     virtual int headerHeight() const OVERRIDE { return m_headerHeight; }
@@ -421,9 +419,18 @@ public:
     virtual void willStartLiveResize() OVERRIDE;
     virtual void willEndLiveResize() OVERRIDE;
 
+#if USE(ACCELERATED_COMPOSITING)
+    virtual bool scrollbarAnimationsAreSuppressed() const OVERRIDE;
+#endif
+
     void addPaintPendingMilestones(LayoutMilestones);
     void firePaintRelatedMilestones();
     LayoutMilestones milestonesPendingPaint() const { return m_milestonesPendingPaint; }
+
+    bool visualUpdatesAllowedByClient() const { return m_visualUpdatesAllowedByClient; }
+    void setVisualUpdatesAllowedByClient(bool);
+
+    void resumeAnimatingImages();
 
 protected:
     virtual bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
@@ -495,7 +502,7 @@ private:
     virtual void didAddScrollbar(Scrollbar*, ScrollbarOrientation) OVERRIDE;
     virtual void willRemoveScrollbar(Scrollbar*, ScrollbarOrientation) OVERRIDE;
 
-    void dispatchResizeEvent();
+    void sendResizeEventIfNeeded();
 
     void updateScrollableAreaSet();
 
@@ -640,6 +647,8 @@ private:
     // the viewport given by the window or viewing area of the UA.
     IntSize m_initialViewportSize;
 #endif
+
+    bool m_visualUpdatesAllowedByClient;
 };
 
 inline void FrameView::incrementVisuallyNonEmptyCharacterCount(unsigned count)

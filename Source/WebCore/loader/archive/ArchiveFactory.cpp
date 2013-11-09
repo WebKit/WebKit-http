@@ -31,7 +31,7 @@
 
 #include "MIMETypeRegistry.h"
 
-#if USE(CF) && !PLATFORM(QT) && ENABLE(WEB_ARCHIVE)
+#if ENABLE(WEB_ARCHIVE) && USE(CF)
 #include "LegacyWebArchive.h"
 #endif
 #if ENABLE(MHTML)
@@ -68,11 +68,7 @@ static ArchiveMIMETypesMap& archiveMIMETypes()
 #endif
 #if ENABLE(MHTML)
     mimeTypes.set("multipart/related", archiveFactoryCreate<MHTMLArchive>);
-#if PLATFORM(GTK)
-    mimeTypes.set("message/rfc822", archiveFactoryCreate<MHTMLArchive>);
-#elif PLATFORM(QT) || PLATFORM(EFL)
     mimeTypes.set("application/x-mimearchive", archiveFactoryCreate<MHTMLArchive>);
-#endif
 #endif
 
     initialized = true;

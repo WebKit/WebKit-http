@@ -303,7 +303,7 @@ static void PopupMenuPositionFunc(GtkMenu* menu, gint *x, gint *y, gboolean *pus
 static Node* getFocusedNode(Frame* frame)
 {
     if (Document* doc = frame->document())
-        return doc->focusedNode();
+        return doc->focusedElement();
     return 0;
 }
 
@@ -442,7 +442,7 @@ static IntPoint getLocationForKeyboardGeneratedContextMenu(Frame* frame)
     // selection->selection().firstRange can return 0 here, but if that was the case
     // selection->selection().isNonOrphanedCaretOrRange() would have returned false
     // above, so we do not have to check it.
-    IntRect firstRect = frame->editor()->firstRectForRange(selection->selection().firstRange().get());
+    IntRect firstRect = frame->editor().firstRectForRange(selection->selection().firstRange().get());
     return IntPoint(firstRect.x(), firstRect.maxY());
 }
 
@@ -471,7 +471,7 @@ static void setHorizontalAdjustment(WebKitWebView* webView, GtkAdjustment* adjus
     // This may be called after the page has been destroyed, in which case we do nothing.
     Page* page = core(webView);
     if (page)
-        static_cast<WebKit::ChromeClient*>(page->chrome()->client())->adjustmentWatcher()->setHorizontalAdjustment(adjustment);
+        static_cast<WebKit::ChromeClient*>(page->chrome().client())->adjustmentWatcher()->setHorizontalAdjustment(adjustment);
 }
 
 static void setVerticalAdjustment(WebKitWebView* webView, GtkAdjustment* adjustment)
@@ -479,7 +479,7 @@ static void setVerticalAdjustment(WebKitWebView* webView, GtkAdjustment* adjustm
     // This may be called after the page has been destroyed, in which case we do nothing.
     Page* page = core(webView);
     if (page)
-        static_cast<WebKit::ChromeClient*>(page->chrome()->client())->adjustmentWatcher()->setVerticalAdjustment(adjustment);
+        static_cast<WebKit::ChromeClient*>(page->chrome().client())->adjustmentWatcher()->setVerticalAdjustment(adjustment);
 }
 
 #ifndef GTK_API_VERSION_2
@@ -487,7 +487,7 @@ static GtkAdjustment* getHorizontalAdjustment(WebKitWebView* webView)
 {
     Page* page = core(webView);
     if (page)
-        return static_cast<WebKit::ChromeClient*>(page->chrome()->client())->adjustmentWatcher()->horizontalAdjustment();
+        return static_cast<WebKit::ChromeClient*>(page->chrome().client())->adjustmentWatcher()->horizontalAdjustment();
     return 0;
 }
 
@@ -495,7 +495,7 @@ static GtkAdjustment* getVerticalAdjustment(WebKitWebView* webView)
 {
     Page* page = core(webView);
     if (page)
-        return static_cast<WebKit::ChromeClient*>(page->chrome()->client())->adjustmentWatcher()->verticalAdjustment();
+        return static_cast<WebKit::ChromeClient*>(page->chrome().client())->adjustmentWatcher()->verticalAdjustment();
     return 0;
 }
 
@@ -868,7 +868,7 @@ static void resizeWebViewFromAllocation(WebKitWebView* webView, GtkAllocation* a
     if (!sizeChanged)
         return;
 
-    WebKit::ChromeClient* chromeClient = static_cast<WebKit::ChromeClient*>(page->chrome()->client());
+    WebKit::ChromeClient* chromeClient = static_cast<WebKit::ChromeClient*>(page->chrome().client());
     chromeClient->widgetSizeChanged(oldSize, IntSize(allocation->width, allocation->height));
     chromeClient->adjustmentWatcher()->updateAdjustmentsFromScrollbars();
 }
@@ -938,7 +938,7 @@ static gboolean webkit_web_view_focus_in_event(GtkWidget* widget, GdkEventFocus*
     else
         focusController->setFocusedFrame(core(webView)->mainFrame());
 
-    if (focusController->focusedFrame()->editor()->canEdit())
+    if (focusController->focusedFrame()->editor().canEdit())
         webView->priv->imFilter.notifyFocusedIn();
     return GTK_WIDGET_CLASS(webkit_web_view_parent_class)->focus_in_event(widget, event);
 }
@@ -963,11 +963,7 @@ static void webkit_web_view_realize(GtkWidget* widget)
     gtk_widget_set_realized(widget, TRUE);
 
     GtkAllocation allocation;
-#if GTK_CHECK_VERSION(2, 18, 0)
     gtk_widget_get_allocation(widget, &allocation);
-#else
-    allocation = widget->allocation;
-#endif
 
     GdkWindowAttr attributes;
     attributes.window_type = GDK_WINDOW_CHILD;
@@ -1006,11 +1002,7 @@ static void webkit_web_view_realize(GtkWidget* widget)
     gdk_window_set_user_data(window, widget);
 
 #ifdef GTK_API_VERSION_2
-#if GTK_CHECK_VERSION(2, 20, 0)
     gtk_widget_style_attach(widget);
-#else
-    widget->style = gtk_style_attach(gtk_widget_get_style(widget), window);
-#endif
     gtk_style_set_background(gtk_widget_get_style(widget), window, GTK_STATE_NORMAL);
 #else
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
@@ -1189,31 +1181,31 @@ static gboolean webkit_web_view_real_console_message(WebKitWebView* webView, con
 static void webkit_web_view_real_select_all(WebKitWebView* webView)
 {
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->command("SelectAll").execute();
+    frame->editor().command("SelectAll").execute();
 }
 
 static void webkit_web_view_real_cut_clipboard(WebKitWebView* webView)
 {
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->command("Cut").execute();
+    frame->editor().command("Cut").execute();
 }
 
 static void webkit_web_view_real_copy_clipboard(WebKitWebView* webView)
 {
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->command("Copy").execute();
+    frame->editor().command("Copy").execute();
 }
 
 static void webkit_web_view_real_undo(WebKitWebView* webView)
 {
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->command("Undo").execute();
+    frame->editor().command("Undo").execute();
 }
 
 static void webkit_web_view_real_redo(WebKitWebView* webView)
 {
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->command("Redo").execute();
+    frame->editor().command("Redo").execute();
 }
 
 static gboolean webkit_web_view_real_move_cursor (WebKitWebView* webView, GtkMovementStep step, gint count)
@@ -1272,7 +1264,7 @@ static gboolean webkit_web_view_real_move_cursor (WebKitWebView* webView, GtkMov
 static void webkit_web_view_real_paste_clipboard(WebKitWebView* webView)
 {
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->command("Paste").execute();
+    frame->editor().command("Paste").execute();
 }
 
 static gboolean webkit_web_view_real_should_allow_editing_action(WebKitWebView*)
@@ -1587,7 +1579,6 @@ static gboolean webkit_web_view_drag_drop(GtkWidget* widget, GdkDragContext* con
 }
 #endif // ENABLE(DRAG_SUPPORT)
 
-#if GTK_CHECK_VERSION(2, 12, 0)
 static gboolean webkit_web_view_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode, GtkTooltip *tooltip)
 {
     WebKitWebViewPrivate* priv = WEBKIT_WEB_VIEW(widget)->priv;
@@ -1644,7 +1635,6 @@ static gboolean webkit_web_view_show_help(GtkWidget* widget, GtkWidgetHelpType h
 
     return GTK_WIDGET_CLASS(webkit_web_view_parent_class)->show_help(widget, help_type);
 }
-#endif
 
 static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
 {
@@ -3117,10 +3107,8 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
     widgetClass->drag_drop = NULL;
     widgetClass->drag_data_received = NULL;
 #endif
-#if GTK_CHECK_VERSION(2, 12, 0)
     widgetClass->query_tooltip = webkit_web_view_query_tooltip;
     widgetClass->show_help = webkit_web_view_show_help;
-#endif
     widgetClass->map = webkitWebViewMap;
 
     GtkContainerClass* containerClass = GTK_CONTAINER_CLASS(webViewClass);
@@ -3584,7 +3572,7 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
 #endif
 
 #if ENABLE(WEB_AUDIO)
-    coreSettings->setWebAudioEnabled(settingsPrivate->enableWebAudio);
+    WebCore::RuntimeEnabledFeatures::setWebAudioEnabled(settingsPrivate->enableWebAudio);
 #endif
 
 #if ENABLE(SMOOTH_SCROLLING)
@@ -3730,7 +3718,7 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
 
 #if ENABLE(WEB_AUDIO)
     else if (name == g_intern_string("enable-webaudio"))
-        settings->setWebAudioEnabled(g_value_get_boolean(&value));
+        RuntimeEnabledFeatures::setWebAudioEnabled(g_value_get_boolean(&value));
 #endif
 
 #if ENABLE(SMOOTH_SCROLLING)
@@ -4401,7 +4389,7 @@ void webkit_web_view_set_highlight_text_matches(WebKitWebView* webView, gboolean
 
     Frame *frame = core(webView)->mainFrame();
     do {
-        frame->editor()->setMarkedTextMatchesAreHighlighted(shouldHighlight);
+        frame->editor().setMarkedTextMatchesAreHighlighted(shouldHighlight);
         frame = frame->tree()->traverseNextWithWrap(false);
     } while (frame);
 }
@@ -4471,7 +4459,7 @@ gboolean webkit_web_view_can_cut_clipboard(WebKitWebView* webView)
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    return frame->editor()->canCut() || frame->editor()->canDHTMLCut();
+    return frame->editor().canCut() || frame->editor().canDHTMLCut();
 }
 
 /**
@@ -4487,7 +4475,7 @@ gboolean webkit_web_view_can_copy_clipboard(WebKitWebView* webView)
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    return frame->editor()->canCopy() || frame->editor()->canDHTMLCopy();
+    return frame->editor().canCopy() || frame->editor().canDHTMLCopy();
 }
 
 /**
@@ -4503,7 +4491,7 @@ gboolean webkit_web_view_can_paste_clipboard(WebKitWebView* webView)
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    return frame->editor()->canPaste() || frame->editor()->canDHTMLPaste();
+    return frame->editor().canPaste() || frame->editor().canDHTMLPaste();
 }
 
 /**
@@ -4559,7 +4547,7 @@ void webkit_web_view_delete_selection(WebKitWebView* webView)
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
 
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    frame->editor()->performDelete();
+    frame->editor().performDelete();
 }
 
 /**
@@ -4641,7 +4629,7 @@ void webkit_web_view_set_editable(WebKitWebView* webView, gboolean flag)
     g_return_if_fail(frame);
 
     if (flag) {
-        frame->editor()->applyEditingStyleToBodyElement();
+        frame->editor().applyEditingStyleToBodyElement();
         // TODO: If the WebKitWebView is made editable and the selection is empty, set it to something.
         //if (!webkit_web_view_get_selected_dom_range(webView))
         //    mainFrame->setSelectionFromNone();
@@ -5102,7 +5090,7 @@ gboolean webkit_web_view_can_undo(WebKitWebView* webView)
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    return frame->editor()->canUndo();
+    return frame->editor().canUndo();
 }
 
 /**
@@ -5137,7 +5125,7 @@ gboolean webkit_web_view_can_redo(WebKitWebView* webView)
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), FALSE);
 
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
-    return frame->editor()->canRedo();
+    return frame->editor().canRedo();
 }
 
 /**
@@ -5291,7 +5279,6 @@ static IntPoint documentPointForWindowPoint(Frame* frame, const IntPoint& window
 
 void webkit_web_view_set_tooltip_text(WebKitWebView* webView, const char* tooltip)
 {
-#if GTK_CHECK_VERSION(2, 12, 0)
     WebKitWebViewPrivate* priv = webView->priv;
     if (tooltip && *tooltip != '\0') {
         priv->tooltipText = tooltip;
@@ -5302,11 +5289,6 @@ void webkit_web_view_set_tooltip_text(WebKitWebView* webView, const char* toolti
     }
 
     gtk_widget_trigger_tooltip_query(GTK_WIDGET(webView));
-#else
-    // TODO: Support older GTK+ versions
-    // See http://bugs.webkit.org/show_bug.cgi?id=15793
-    notImplemented();
-#endif
 }
 
 /**
@@ -5519,19 +5501,19 @@ void webkitWebViewDirectionChanged(WebKitWebView* webView, GtkTextDirection prev
     if (!focusedFrame)
         return;
 
-    Editor* editor = focusedFrame->editor();
-    if (!editor || !editor->canEdit())
+    Editor& editor = focusedFrame->editor();
+    if (!editor.canEdit())
         return;
 
     switch (direction) {
     case GTK_TEXT_DIR_NONE:
-        editor->setBaseWritingDirection(NaturalWritingDirection);
+        editor.setBaseWritingDirection(NaturalWritingDirection);
         break;
     case GTK_TEXT_DIR_LTR:
-        editor->setBaseWritingDirection(LeftToRightWritingDirection);
+        editor.setBaseWritingDirection(LeftToRightWritingDirection);
         break;
     case GTK_TEXT_DIR_RTL:
-        editor->setBaseWritingDirection(RightToLeftWritingDirection);
+        editor.setBaseWritingDirection(RightToLeftWritingDirection);
         break;
     default:
         g_assert_not_reached();
@@ -5555,9 +5537,11 @@ WebKitWebView* kit(WebCore::Page* corePage)
     if (!corePage)
         return 0;
 
-    ASSERT(corePage->chrome());
-    WebKit::ChromeClient* client = static_cast<WebKit::ChromeClient*>(corePage->chrome()->client());
-    return client ? static_cast<WebKitWebView*>(client->webView()) : 0;
+    WebCore::ChromeClient* chromeClient = corePage->chrome().client();
+    if (chromeClient->isEmptyChromeClient())
+        return 0;
+
+    return static_cast<WebKit::ChromeClient*>(chromeClient)->webView();
 }
 
 }

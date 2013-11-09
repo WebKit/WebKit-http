@@ -35,6 +35,7 @@
 #include "WorkQueue.h"
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/StorageMap.h>
+#include <WebCore/TextEncoding.h>
 
 using namespace WebCore;
 
@@ -57,17 +58,19 @@ public:
     void clear(CoreIPC::Connection* sourceConnection, uint64_t sourceStorageAreaID, const String& urlString);
 
     const HashMap<String, String>& items();
+    void clear();
 
 private:
     explicit StorageArea(LocalStorageNamespace*, PassRefPtr<SecurityOrigin>, unsigned quotaInBytes);
 
-    void importItemsFromDatabase();
+    void openDatabaseAndImportItemsIfNeeded();
 
     void dispatchEvents(CoreIPC::Connection* sourceConnection, uint64_t sourceStorageAreaID, const String& key, const String& oldValue, const String& newValue, const String& urlString) const;
 
     // Will be null if the storage area belongs to a session storage namespace.
     LocalStorageNamespace* m_localStorageNamespace;
     RefPtr<LocalStorageDatabase> m_localStorageDatabase;
+    bool m_didImportItemsFromDatabase;
 
     RefPtr<SecurityOrigin> m_securityOrigin;
     unsigned m_quotaInBytes;
@@ -85,6 +88,9 @@ public:
 
     PassRefPtr<StorageArea> getOrCreateStorageArea(PassRefPtr<SecurityOrigin>);
     void didDestroyStorageArea(StorageArea*);
+
+    void clearStorageAreasMatchingOrigin(SecurityOrigin*);
+    void clearAllStorageAreas();
 
 private:
     explicit LocalStorageNamespace(StorageManager*, uint64_t storageManagerID);
@@ -104,12 +110,11 @@ PassRefPtr<StorageManager::StorageArea> StorageManager::StorageArea::create(Loca
 
 StorageManager::StorageArea::StorageArea(LocalStorageNamespace* localStorageNamespace, PassRefPtr<SecurityOrigin> securityOrigin, unsigned quotaInBytes)
     : m_localStorageNamespace(localStorageNamespace)
+    , m_didImportItemsFromDatabase(false)
     , m_securityOrigin(securityOrigin)
     , m_quotaInBytes(quotaInBytes)
     , m_storageMap(StorageMap::create(m_quotaInBytes))
 {
-    if (m_localStorageNamespace)
-        m_localStorageDatabase = LocalStorageDatabase::create(m_localStorageNamespace->storageManager()->m_queue, m_localStorageNamespace->storageManager()->m_localStorageDatabaseTracker, m_securityOrigin.get());
 }
 
 StorageManager::StorageArea::~StorageArea()
@@ -147,7 +152,7 @@ PassRefPtr<StorageManager::StorageArea> StorageManager::StorageArea::clone() con
 
 void StorageManager::StorageArea::setItem(CoreIPC::Connection* sourceConnection, uint64_t sourceStorageAreaID, const String& key, const String& value, const String& urlString, bool& quotaException)
 {
-    importItemsFromDatabase();
+    openDatabaseAndImportItemsIfNeeded();
 
     String oldValue;
 
@@ -166,7 +171,7 @@ void StorageManager::StorageArea::setItem(CoreIPC::Connection* sourceConnection,
 
 void StorageManager::StorageArea::removeItem(CoreIPC::Connection* sourceConnection, uint64_t sourceStorageAreaID, const String& key, const String& urlString)
 {
-    importItemsFromDatabase();
+    openDatabaseAndImportItemsIfNeeded();
 
     String oldValue;
     RefPtr<StorageMap> newStorageMap = m_storageMap->removeItem(key, oldValue);
@@ -184,7 +189,7 @@ void StorageManager::StorageArea::removeItem(CoreIPC::Connection* sourceConnecti
 
 void StorageManager::StorageArea::clear(CoreIPC::Connection* sourceConnection, uint64_t sourceStorageAreaID, const String& urlString)
 {
-    importItemsFromDatabase();
+    openDatabaseAndImportItemsIfNeeded();
 
     if (!m_storageMap->length())
         return;
@@ -199,17 +204,38 @@ void StorageManager::StorageArea::clear(CoreIPC::Connection* sourceConnection, u
 
 const HashMap<String, String>& StorageManager::StorageArea::items()
 {
-    importItemsFromDatabase();
+    openDatabaseAndImportItemsIfNeeded();
 
     return m_storageMap->items();
 }
 
-void StorageManager::StorageArea::importItemsFromDatabase()
+void StorageManager::StorageArea::clear()
 {
+    m_storageMap = StorageMap::create(m_quotaInBytes);
+
+    if (m_localStorageDatabase) {
+        m_localStorageDatabase->close();
+        m_localStorageDatabase = nullptr;
+    }
+
+    for (auto it = m_eventListeners.begin(), end = m_eventListeners.end(); it != end; ++it)
+        it->first->send(Messages::StorageAreaMap::ClearCache(), it->second);
+}
+
+void StorageManager::StorageArea::openDatabaseAndImportItemsIfNeeded()
+{
+    if (!m_localStorageNamespace)
+        return;
+
+    // We open the database here even if we've already imported our items to ensure that the database is open if we need to write to it.
     if (!m_localStorageDatabase)
+        m_localStorageDatabase = LocalStorageDatabase::create(m_localStorageNamespace->storageManager()->m_queue, m_localStorageNamespace->storageManager()->m_localStorageDatabaseTracker, m_securityOrigin.get());
+
+    if (m_didImportItemsFromDatabase)
         return;
 
     m_localStorageDatabase->importItems(*m_storageMap);
+    m_didImportItemsFromDatabase = true;
 }
 
 void StorageManager::StorageArea::dispatchEvents(CoreIPC::Connection* sourceConnection, uint64_t sourceStorageAreaID, const String& key, const String& oldValue, const String& newValue, const String& urlString) const
@@ -262,6 +288,20 @@ void StorageManager::LocalStorageNamespace::didDestroyStorageArea(StorageArea* s
 
     ASSERT(m_storageManager->m_localStorageNamespaces.contains(m_storageNamespaceID));
     m_storageManager->m_localStorageNamespaces.remove(m_storageNamespaceID);
+}
+
+void StorageManager::LocalStorageNamespace::clearStorageAreasMatchingOrigin(SecurityOrigin* securityOrigin)
+{
+    for (auto it = m_storageAreaMap.begin(), end = m_storageAreaMap.end(); it != end; ++it) {
+        if (it->key->equal(securityOrigin))
+            it->value->clear();
+    }
+}
+
+void StorageManager::LocalStorageNamespace::clearAllStorageAreas()
+{
+    for (auto it = m_storageAreaMap.begin(), end = m_storageAreaMap.end(); it != end; ++it)
+        it->value->clear();
 }
 
 class StorageManager::SessionStorageNamespace : public ThreadSafeRefCounted<SessionStorageNamespace> {
@@ -335,6 +375,8 @@ StorageManager::StorageManager()
     : m_queue(WorkQueue::create("com.apple.WebKit.StorageManager"))
     , m_localStorageDatabaseTracker(LocalStorageDatabaseTracker::create(m_queue))
 {
+    // Make sure the encoding is initialized before we start dispatching things to the queue.
+    UTF8Encoding();
 }
 
 StorageManager::~StorageManager()
@@ -378,6 +420,21 @@ void StorageManager::processWillCloseConnection(WebProcessProxy* webProcessProxy
     m_queue->dispatch(bind(&StorageManager::invalidateConnectionInternal, this, RefPtr<CoreIPC::Connection>(webProcessProxy->connection())));
 }
 
+void StorageManager::getOrigins(FunctionDispatcher* callbackDispatcher, void* context, void (*callback)(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins, void* context))
+{
+    m_queue->dispatch(bind(&StorageManager::getOriginsInternal, this, RefPtr<FunctionDispatcher>(callbackDispatcher), context, callback));
+}
+
+void StorageManager::deleteEntriesForOrigin(SecurityOrigin* securityOrigin)
+{
+    m_queue->dispatch(bind(&StorageManager::deleteEntriesForOriginInternal, this, RefPtr<SecurityOrigin>(securityOrigin)));
+}
+
+void StorageManager::deleteAllEntries()
+{
+    m_queue->dispatch(bind(&StorageManager::deleteAllEntriesInternal, this));
+}
+
 void StorageManager::createLocalStorageMap(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData& securityOriginData)
 {
     std::pair<RefPtr<CoreIPC::Connection>, uint64_t> connectionAndStorageMapIDPair(connection, storageMapID);
@@ -416,9 +473,13 @@ void StorageManager::createSessionStorageMap(CoreIPC::Connection* connection, ui
 
     ASSERT((HashMap<uint64_t, RefPtr<SessionStorageNamespace>>::isValidKey(storageNamespaceID)));
     SessionStorageNamespace* sessionStorageNamespace = m_sessionStorageNamespaces.get(storageNamespaceID);
+    if (!sessionStorageNamespace) {
+        // We're getting an incoming message from the web process that's for session storage for a web page
+        // that has already been closed, just ignore it.
+        return;
+    }
 
-    // FIXME: These should be message checks.
-    ASSERT(sessionStorageNamespace);
+    // FIXME: This should be a message check.
     ASSERT(connection == sessionStorageNamespace->allowedConnection());
 
     RefPtr<StorageArea> storageArea = sessionStorageNamespace->getOrCreateStorageArea(securityOriginData.securityOrigin());
@@ -435,58 +496,62 @@ void StorageManager::destroyStorageMap(CoreIPC::Connection* connection, uint64_t
     ASSERT((HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea>>::isValidKey(connectionAndStorageMapIDPair)));
 
     HashMap<std::pair<RefPtr<CoreIPC::Connection>, uint64_t>, RefPtr<StorageArea>>::iterator it = m_storageAreasByConnection.find(connectionAndStorageMapIDPair);
-
-    // FIXME: This should be a message check.
-    ASSERT(it != m_storageAreasByConnection.end());
+    if (it == m_storageAreasByConnection.end()) {
+        // The connection has been removed because the last page was closed.
+        return;
+    }
 
     it->value->removeListener(connection, storageMapID);
     m_storageAreasByConnection.remove(connectionAndStorageMapIDPair);
 }
 
-void StorageManager::getValues(CoreIPC::Connection* connection, uint64_t storageMapID, HashMap<String, String>& values)
+void StorageManager::getValues(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t storageMapSeed, HashMap<String, String>& values)
 {
     StorageArea* storageArea = findStorageArea(connection, storageMapID);
-
-    // FIXME: This should be a message check.
-    ASSERT(storageArea);
+    if (!storageArea) {
+        // This is a session storage area for a page that has already been closed. Ignore it.
+        return;
+    }
 
     values = storageArea->items();
-
-    connection->send(Messages::StorageAreaMap::DidGetValues(), storageMapID);
+    connection->send(Messages::StorageAreaMap::DidGetValues(storageMapSeed), storageMapID);
 }
 
-void StorageManager::setItem(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& key, const String& value, const String& urlString)
+void StorageManager::setItem(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& value, const String& urlString)
 {
     StorageArea* storageArea = findStorageArea(connection, storageMapID);
-
-    // FIXME: This should be a message check.
-    ASSERT(storageArea);
+    if (!storageArea) {
+        // This is a session storage area for a page that has already been closed. Ignore it.
+        return;
+    }
 
     bool quotaError;
     storageArea->setItem(connection, sourceStorageAreaID, key, value, urlString, quotaError);
-    connection->send(Messages::StorageAreaMap::DidSetItem(key, quotaError), storageMapID);
+    connection->send(Messages::StorageAreaMap::DidSetItem(storageMapSeed, key, quotaError), storageMapID);
 }
 
-void StorageManager::removeItem(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& key, const String& urlString)
+void StorageManager::removeItem(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& urlString)
 {
     StorageArea* storageArea = findStorageArea(connection, storageMapID);
-
-    // FIXME: This should be a message check.
-    ASSERT(storageArea);
+    if (!storageArea) {
+        // This is a session storage area for a page that has already been closed. Ignore it.
+        return;
+    }
 
     storageArea->removeItem(connection, sourceStorageAreaID, key, urlString);
-    connection->send(Messages::StorageAreaMap::DidRemoveItem(key), storageMapID);
+    connection->send(Messages::StorageAreaMap::DidRemoveItem(storageMapSeed, key), storageMapID);
 }
 
-void StorageManager::clear(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& urlString)
+void StorageManager::clear(CoreIPC::Connection* connection, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& urlString)
 {
     StorageArea* storageArea = findStorageArea(connection, storageMapID);
-
-    // FIXME: This should be a message check.
-    ASSERT(storageArea);
+    if (!storageArea) {
+        // This is a session storage area for a page that has already been closed. Ignore it.
+        return;
+    }
 
     storageArea->clear(connection, sourceStorageAreaID, urlString);
-    connection->send(Messages::StorageAreaMap::DidClear(), storageMapID);
+    connection->send(Messages::StorageAreaMap::DidClear(storageMapSeed), storageMapID);
 }
 
 void StorageManager::createSessionStorageNamespaceInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes)
@@ -499,7 +564,6 @@ void StorageManager::createSessionStorageNamespaceInternal(uint64_t storageNames
 void StorageManager::destroySessionStorageNamespaceInternal(uint64_t storageNamespaceID)
 {
     ASSERT(m_sessionStorageNamespaces.contains(storageNamespaceID));
-
     m_sessionStorageNamespaces.remove(storageNamespaceID);
 }
 
@@ -557,5 +621,34 @@ StorageManager::LocalStorageNamespace* StorageManager::getOrCreateLocalStorageNa
 
     return result.iterator->value.get();
 }
+
+static void callCallbackFunction(void* context, void (*callbackFunction)(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins, void* context), Vector<RefPtr<WebCore::SecurityOrigin>>* securityOriginsPtr)
+{
+    OwnPtr<Vector<RefPtr<WebCore::SecurityOrigin>>> securityOrigins = adoptPtr(securityOriginsPtr);
+    callbackFunction(*securityOrigins, context);
+}
+
+void StorageManager::getOriginsInternal(FunctionDispatcher* dispatcher, void* context, void (*callbackFunction)(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins, void* context))
+{
+    OwnPtr<Vector<RefPtr<WebCore::SecurityOrigin>>> securityOrigins = adoptPtr(new Vector<RefPtr<WebCore::SecurityOrigin>>(m_localStorageDatabaseTracker->origins()));
+    dispatcher->dispatch(bind(callCallbackFunction, context, callbackFunction, securityOrigins.leakPtr()));
+}
+
+void StorageManager::deleteEntriesForOriginInternal(SecurityOrigin* securityOrigin)
+{
+    for (auto it = m_localStorageNamespaces.begin(), end = m_localStorageNamespaces.end(); it != end; ++it)
+        it->value->clearStorageAreasMatchingOrigin(securityOrigin);
+
+    m_localStorageDatabaseTracker->deleteDatabaseWithOrigin(securityOrigin);
+}
+
+void StorageManager::deleteAllEntriesInternal()
+{
+    for (auto it = m_localStorageNamespaces.begin(), end = m_localStorageNamespaces.end(); it != end; ++it)
+        it->value->clearAllStorageAreas();
+
+    m_localStorageDatabaseTracker->deleteAllDatabases();
+}
+
 
 } // namespace WebKit

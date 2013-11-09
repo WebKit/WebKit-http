@@ -220,6 +220,9 @@ messages -> WebPageProxy {
     # Notification messages
     RequestNotificationPermission(uint64_t requestID, WTF::String originIdentifier)
     ShowNotification(WTF::String title, WTF::String body, WTF::String iconURL, WTF::String tag, WTF::String lang, WTF::String dir, WTF::String originIdentifier, uint64_t notificationID)
+    CancelNotification(uint64_t notificationID)
+    ClearNotifications(Vector<uint64_t> notificationIDs)
+    DidDestroyNotification(uint64_t notificationID)
 
     # Spelling and grammar messages
 #if USE(UNIFIED_TEXT_CHECKING)  
@@ -315,8 +318,10 @@ messages -> WebPageProxy {
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    FindPlugin(WTF::String mimeType, WTF::String urlString, WTF::String frameURLString, WTF::String pageURLString) -> (WTF::String pluginPath, WTF::String newMIMEType, uint32_t pluginLoadPolicy)
+    FindPlugin(WTF::String mimeType, uint32_t processType, WTF::String urlString, WTF::String frameURLString, WTF::String pageURLString, bool allowOnlyApplicationPlugins) -> (uint64_t pluginProcessToken, WTF::String newMIMEType, uint32_t pluginLoadPolicy)
 #endif
 
     DidUpdateInWindowState()
+    
+    DidSaveToPageCache()
 }

@@ -26,6 +26,8 @@
 #ifndef AudioSession_h
 #define AudioSession_h
 
+#if USE(AUDIO_SESSION)
+
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 
@@ -62,8 +64,8 @@ public:
 
     void setActive(bool);
 
-    float preferredBufferDuration() const;
-    void setPreferredBufferDuration(float seconds);
+    size_t preferredBufferSize() const;
+    void setPreferredBufferSize(size_t);
 
     void beganAudioInterruption();
     void endedAudioInterruption();
@@ -77,5 +79,7 @@ private:
 };
 
 }
+
+#endif // USE(AUDIO_SESSION)
 
 #endif // AudioSession_h

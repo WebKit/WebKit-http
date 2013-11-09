@@ -69,8 +69,6 @@
 #include "JSDOMWindowBase.cpp"
 #include "JSDOMWindowCustom.cpp"
 #include "JSDOMWindowShell.cpp"
-#include "JSDOMWindowWebAudioCustom.cpp"
-#include "JSDOMWindowWebSocketCustom.cpp"
 #include "JSDOMWrapper.cpp"
 #include "JSDataViewCustom.cpp"
 #include "JSDedicatedWorkerContextCustom.cpp"

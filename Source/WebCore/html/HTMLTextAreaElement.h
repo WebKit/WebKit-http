@@ -31,7 +31,7 @@ namespace WebCore {
 class BeforeTextInsertedEvent;
 class VisibleSelection;
 
-class HTMLTextAreaElement : public HTMLTextFormControlElement {
+class HTMLTextAreaElement FINAL : public HTMLTextFormControlElement {
 public:
     static PassRefPtr<HTMLTextAreaElement> create(const QualifiedName&, Document*, HTMLFormElement*);
 
@@ -104,8 +104,8 @@ private:
     virtual bool appendFormData(FormDataList&, bool);
     virtual void reset();
     virtual bool hasCustomFocusLogic() const OVERRIDE;
-    virtual bool isMouseFocusable() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
+    virtual bool isMouseFocusable() const OVERRIDE;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
     virtual void updateFocusAppearance(bool restorePreviousSelection);
 
     virtual void accessKeyAction(bool sendMouseEvents);

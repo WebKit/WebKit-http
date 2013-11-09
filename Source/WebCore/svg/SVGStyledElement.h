@@ -38,7 +38,7 @@ class CSSStyleDeclaration;
 // FIXME(webkit.org/b/107386): SVGStyledElement should be merged into SVGElement as specified by SVG2.
 class SVGStyledElement : public SVGElement {
 public:
-    virtual String title() const;
+    virtual String title() const OVERRIDE;
 
     bool hasRelativeLengths() const { return !m_elementsWithRelativeLengths.isEmpty(); }
 
@@ -56,7 +56,6 @@ public:
 
     virtual AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const;
 
-    virtual CSSStyleDeclaration* style() { return StyledElement::style(); }
     virtual bool needsPendingResourceHandling() const { return true; }
 
 protected: 
@@ -79,10 +78,10 @@ protected:
     virtual bool selfHasRelativeLengths() const { return false; }
 
 private:
-    virtual bool isSVGStyledElement() const OVERRIDE { return true; }
+    virtual bool isSVGStyledElement() const OVERRIDE FINAL { return true; }
 
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
-    virtual bool isMouseFocusable() const;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
 
     void buildPendingResourcesIfNeeded();
 

@@ -672,28 +672,28 @@ static void AXAttributeStringSetStyle(NSMutableAttributedString* attrString, Ren
     
     // set underline and strikethrough
     int decor = style->textDecorationsInEffect();
-    if ((decor & UNDERLINE) == 0) {
+    if ((decor & TextDecorationUnderline) == 0) {
         [attrString removeAttribute:NSAccessibilityUnderlineTextAttribute range:range];
         [attrString removeAttribute:NSAccessibilityUnderlineColorTextAttribute range:range];
     }
     
-    if ((decor & LINE_THROUGH) == 0) {
+    if ((decor & TextDecorationLineThrough) == 0) {
         [attrString removeAttribute:NSAccessibilityStrikethroughTextAttribute range:range];
         [attrString removeAttribute:NSAccessibilityStrikethroughColorTextAttribute range:range];
     }
     
-    if ((decor & (UNDERLINE | LINE_THROUGH)) != 0) {
+    if ((decor & (TextDecorationUnderline | TextDecorationLineThrough)) != 0) {
         // find colors using quirk mode approach (strict mode would use current
         // color for all but the root line box, which would use getTextDecorationColors)
         Color underline, overline, linethrough;
         renderer->getTextDecorationColors(decor, underline, overline, linethrough);
         
-        if ((decor & UNDERLINE) != 0) {
+        if ((decor & TextDecorationUnderline) != 0) {
             AXAttributeStringSetNumber(attrString, NSAccessibilityUnderlineTextAttribute, [NSNumber numberWithBool:YES], range);
             AXAttributeStringSetColor(attrString, NSAccessibilityUnderlineColorTextAttribute, nsColor(underline), range);
         }
         
-        if ((decor & LINE_THROUGH) != 0) {
+        if ((decor & TextDecorationLineThrough) != 0) {
             AXAttributeStringSetNumber(attrString, NSAccessibilityStrikethroughTextAttribute, [NSNumber numberWithBool:YES], range);
             AXAttributeStringSetColor(attrString, NSAccessibilityStrikethroughColorTextAttribute, nsColor(linethrough), range);
         }
@@ -724,7 +724,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
 {
     if (unifiedTextCheckerEnabled(node->document()->frame())) {
         // Check the spelling directly since document->markersForNode() does not store the misspelled marking when the cursor is in a word.
-        TextCheckerClient* checker = node->document()->frame()->editor()->textChecker();
+        TextCheckerClient* checker = node->document()->frame()->editor().textChecker();
         
         // checkTextOfParagraph is the only spelling/grammar checker implemented in WK1 and WK2
         Vector<TextCheckingResult> results;
@@ -742,7 +742,7 @@ static void AXAttributeStringSetSpelling(NSMutableAttributedString* attrString, 
     int currentPosition = 0;
     while (charLength > 0) {
         const UChar* charData = chars + currentPosition;
-        TextCheckerClient* checker = node->document()->frame()->editor()->textChecker();
+        TextCheckerClient* checker = node->document()->frame()->editor().textChecker();
         
         int misspellingLocation = -1;
         int misspellingLength = 0;
@@ -1522,12 +1522,12 @@ static NSMutableArray* convertToNSArray(const AccessibilityObject::Accessibility
         
         // If we have an empty chrome client (like SVG) then we should use the page
         // of the scroll view parent to help us get to the screen rect.
-        if (parent && page && page->chrome()->client()->isEmptyChromeClient())
+        if (parent && page && page->chrome().client()->isEmptyChromeClient())
             page = parent->page();
         
         if (page) {
             IntRect rect = IntRect(intPoint, IntSize(0, 0));            
-            intPoint = page->chrome()->rootViewToScreen(rect).location();
+            intPoint = page->chrome().rootViewToScreen(rect).location();
         }
         
         return intPoint;

@@ -45,7 +45,7 @@
 #include "WebDatabaseManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebIconDatabase.h"
-#include "WebKeyValueStorageManagerProxy.h"
+#include "WebKeyValueStorageManager.h"
 #include "WebMediaCacheManagerProxy.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPluginSiteDataManager.h"
@@ -125,6 +125,7 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
     : m_processModel(processModel)
     , m_webProcessCountLimit(UINT_MAX)
     , m_haveInitialEmptyProcess(false)
+    , m_processWithPageCache(0)
     , m_defaultPageGroup(WebPageGroup::create())
     , m_injectedBundlePath(injectedBundlePath)
     , m_visitedLinkProvider(this)
@@ -163,7 +164,7 @@ WebContext::WebContext(ProcessModel processModel, const String& injectedBundlePa
     addSupplement<WebApplicationCacheManagerProxy>();
     addSupplement<WebCookieManagerProxy>();
     addSupplement<WebGeolocationManagerProxy>();
-    addSupplement<WebKeyValueStorageManagerProxy>();
+    addSupplement<WebKeyValueStorageManager>();
     addSupplement<WebMediaCacheManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
     addSupplement<WebResourceCacheManagerProxy>();
@@ -372,6 +373,11 @@ void WebContext::ensureNetworkProcess()
     if (!parameters.diskCacheDirectory.isEmpty())
         SandboxExtension::createHandleForReadWriteDirectory(parameters.diskCacheDirectory, parameters.diskCacheDirectoryExtensionHandle);
 
+    // FIXME: We don't account for private browsing mode being enabled due to a persistent preference in any of active page groups.
+    // This means that clients must re-enable private browsing mode through API on each launch, not relying on preferences.
+    // If the client does not re-enable private browsing on next launch, NetworkProcess will crash.
+    parameters.privateBrowsingEnabled = m_privateBrowsingEnterCount;
+
     parameters.cacheModel = m_cacheModel;
 
     // Add any platform specific parameters
@@ -459,6 +465,13 @@ void WebContext::didReceiveInvalidMessage(const CoreIPC::StringReference& messag
     messageNameStringBuilder.append(messageName.data(), messageName.size());
 
     s_invalidMessageCallback(toAPI(WebString::create(messageNameStringBuilder.toString()).get()));
+}
+
+void WebContext::processDidCachePage(WebProcessProxy* process)
+{
+    if (m_processWithPageCache && m_processWithPageCache != process)
+        m_processWithPageCache->releasePageCache();
+    m_processWithPageCache = process;
 }
 
 WebProcessProxy* WebContext::ensureSharedWebProcess()
@@ -657,6 +670,8 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
     // Clearing everything causes assertion failures, so it's less trouble to skip that for now.
     if (m_processModel != ProcessModelSharedSecondaryProcess) {
         RefPtr<WebProcessProxy> protect(process);
+        if (m_processWithPageCache == process)
+            m_processWithPageCache = 0;
         m_processes.remove(m_processes.find(process));
         return;
     }
@@ -676,6 +691,8 @@ void WebContext::disconnectProcess(WebProcessProxy* process)
     // Since vector elements are destroyed in place, we would recurse into WebProcessProxy destructor
     // if it were invoked from Vector::remove(). RefPtr delays destruction until it's safe.
     RefPtr<WebProcessProxy> protect(process);
+    if (m_processWithPageCache == process)
+        m_processWithPageCache = 0;
     m_processes.remove(m_processes.find(process));
 }
 

@@ -60,20 +60,6 @@ namespace DOMStorageAgentState {
 static const char domStorageAgentEnabled[] = "domStorageAgentEnabled";
 };
 
-static bool hadException(ExceptionCode ec, ErrorString* errorString)
-{
-    switch (ec) {
-    case 0:
-        return false;
-    case SECURITY_ERR:
-        *errorString = "Security error";
-        return true;
-    default:
-        *errorString = "Unknown DOM storage error";
-        return true;
-    }
-}
-
 InspectorDOMStorageAgent::InspectorDOMStorageAgent(InstrumentingAgents* instrumentingAgents, InspectorPageAgent* pageAgent, InspectorCompositeState* state)
     : InspectorBaseAgent<InspectorDOMStorageAgent>("DOMStorage", instrumentingAgents, state)
     , m_pageAgent(pageAgent)
@@ -126,29 +112,17 @@ void InspectorDOMStorageAgent::getDOMStorageItems(ErrorString* errorString, cons
 
     RefPtr<TypeBuilder::Array<TypeBuilder::Array<String> > > storageItems = TypeBuilder::Array<TypeBuilder::Array<String> >::create();
 
-    ExceptionCode ec = 0;
-    for (unsigned i = 0; i < storageArea->length(ec, frame); ++i) {
-        String name(storageArea->key(i, ec, frame));
-        if (hadException(ec, errorString))
-            return;
-        String value(storageArea->getItem(name, ec, frame));
-        if (hadException(ec, errorString))
-            return;
-        RefPtr<TypeBuilder::Array<String> > entry = TypeBuilder::Array<String>::create();
-        entry->addItem(name);
-        entry->addItem(value);
-        storageItems->addItem(entry);
-    }
-    items = storageItems.release();
-}
+    for (unsigned i = 0; i < storageArea->length(); ++i) {
+        String key = storageArea->key(i);
+        String value = storageArea->item(key);
 
-static String toErrorString(const ExceptionCode& ec)
-{
-    if (ec) {
-        ExceptionCodeDescription description(ec);
-        return description.name;
+        RefPtr<TypeBuilder::Array<String> > entry = TypeBuilder::Array<String>::create();
+        entry->addItem(key);
+        entry->addItem(value);
+        storageItems->addItem(entry.release());
     }
-    return "";
+
+    items = storageItems.release();
 }
 
 void InspectorDOMStorageAgent::setDOMStorageItem(ErrorString* errorString, const RefPtr<InspectorObject>& storageId, const String& key, const String& value)
@@ -160,9 +134,10 @@ void InspectorDOMStorageAgent::setDOMStorageItem(ErrorString* errorString, const
         return;
     }
 
-    ExceptionCode exception = 0;
-    storageArea->setItem(key, value, exception, frame);
-    *errorString = toErrorString(exception);
+    bool quotaException = false;
+    storageArea->setItem(frame, key, value, quotaException);
+    if (quotaException)
+        *errorString = ExceptionCodeDescription(QUOTA_EXCEEDED_ERR).name;
 }
 
 void InspectorDOMStorageAgent::removeDOMStorageItem(ErrorString* errorString, const RefPtr<InspectorObject>& storageId, const String& key)
@@ -174,9 +149,7 @@ void InspectorDOMStorageAgent::removeDOMStorageItem(ErrorString* errorString, co
         return;
     }
 
-    ExceptionCode exception = 0;
-    storageArea->removeItem(key, exception, frame);
-    *errorString = toErrorString(exception);
+    storageArea->removeItem(frame, key);
 }
 
 String InspectorDOMStorageAgent::storageId(Storage* storage)
@@ -225,21 +198,21 @@ PassRefPtr<StorageArea> InspectorDOMStorageAgent::findStorageArea(ErrorString* e
     if (!success) {
         if (errorString)
             *errorString = "Invalid storageId format";
+        targetFrame = 0;
         return 0;
     }
 
-    Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
-    if (!frame) {
+    targetFrame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
+    if (!targetFrame) {
         if (errorString)
             *errorString = "Frame not found for the given security origin";
         return 0;
     }
-    targetFrame = frame;
 
     Page* page = m_pageAgent->page();
     if (isLocalStorage)
-        return page->group().localStorage()->storageArea(frame->document()->securityOrigin());
-    return page->sessionStorage()->storageArea(frame->document()->securityOrigin());
+        return page->group().localStorage()->storageArea(targetFrame->document()->securityOrigin());
+    return page->sessionStorage()->storageArea(targetFrame->document()->securityOrigin());
 }
 
 } // namespace WebCore

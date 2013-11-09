@@ -214,7 +214,7 @@ static bool canRunModalIfDuringPageDismissal(Page* page, ChromeClient::DialogTyp
     for (Frame* frame = page->mainFrame(); frame; frame = frame->tree()->traverseNext()) {
         FrameLoader::PageDismissalType dismissal = frame->loader()->pageDismissalEventBeingDispatched();
         if (dismissal != FrameLoader::NoDismissal)
-            return page->chrome()->client()->shouldRunModalDialogDuringPageDismissal(dialog, message, dismissal);
+            return page->chrome().client()->shouldRunModalDialogDuringPageDismissal(dialog, message, dismissal);
     }
     return true;
 }
@@ -459,6 +459,16 @@ void Chrome::print(Frame* frame)
 {
     // FIXME: This should have PageGroupLoadDeferrer, like runModal() or runJavaScriptAlert(), becasue it's no different from those.
     m_client->print(frame);
+}
+
+void Chrome::enableSuddenTermination()
+{
+    m_client->enableSuddenTermination();
+}
+
+void Chrome::disableSuddenTermination()
+{
+    m_client->disableSuddenTermination();
 }
 
 #if ENABLE(DIRECTORY_UPLOAD)

@@ -218,11 +218,17 @@ static const char* fontFamiliesWithInvalidCharWidth[] = {
 // all platforms.
 bool RenderTextControl::hasValidAvgCharWidth(AtomicString family)
 {
-    static HashSet<AtomicString>* fontFamiliesWithInvalidCharWidthMap = 0;
-
     if (family.isEmpty())
         return false;
 
+    // Internal fonts on OS X also have an invalid entry in the table for avgCharWidth.
+    // They are hidden by having a name that begins with a period, so simply search
+    // for that here rather than try to keep the list up to date.
+    if (family.startsWith('.'))
+        return false;
+
+    static HashSet<AtomicString>* fontFamiliesWithInvalidCharWidthMap = 0;
+    
     if (!fontFamiliesWithInvalidCharWidthMap) {
         fontFamiliesWithInvalidCharWidthMap = new HashSet<AtomicString>;
 
@@ -256,7 +262,7 @@ float RenderTextControl::scaleEmToUnits(int x) const
 void RenderTextControl::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const
 {
     // Use average character width. Matches IE.
-    AtomicString family = style()->font().family().family();
+    const AtomicString& family = style()->font().firstFamily();
     maxLogicalWidth = preferredContentLogicalWidth(const_cast<RenderTextControl*>(this)->getAvgCharWidth(family));
     if (RenderBox* innerTextRenderBox = innerTextElement()->renderBox())
         maxLogicalWidth += innerTextRenderBox->paddingStart() + innerTextRenderBox->paddingEnd();

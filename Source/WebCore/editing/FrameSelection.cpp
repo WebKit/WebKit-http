@@ -102,7 +102,7 @@ bool DragCaretController::isContentRichlyEditable() const
 
 static inline bool shouldAlwaysUseDirectionalSelection(Frame* frame)
 {
-    return !frame || frame->editor()->behavior().shouldConsiderSelectionAsDirectional();
+    return !frame || frame->editor().behavior().shouldConsiderSelectionAsDirectional();
 }
 
 FrameSelection::FrameSelection(Frame* frame)
@@ -311,7 +311,7 @@ void FrameSelection::setSelection(const VisibleSelection& newSelection, SetSelec
     setCaretRectNeedsUpdate();
     
     if (!s.isNone() && !(options & DoNotSetFocus))
-        setFocusedNodeIfNeeded();
+        setFocusedElementIfNeeded();
 
     if (!(options & DoNotUpdateAppearance)) {
 #if ENABLE(TEXT_CARET)
@@ -327,11 +327,11 @@ void FrameSelection::setSelection(const VisibleSelection& newSelection, SetSelec
     m_xPosForVerticalArrowNavigation = NoXPosForVerticalArrowNavigation();
     selectFrameElementInParentIfFullySelected();
     notifyRendererOfSelectionChange(userTriggered);
-    m_frame->editor()->respondToChangedSelection(oldSelection, options);
+    m_frame->editor().respondToChangedSelection(oldSelection, options);
     if (userTriggered == UserTriggered) {
         ScrollAlignment alignment;
 
-        if (m_frame->editor()->behavior().shouldCenterAlignWhenSelectionIsRevealed())
+        if (m_frame->editor().behavior().shouldCenterAlignWhenSelectionIsRevealed())
             alignment = (align == AlignCursorOnScrollAlways) ? ScrollAlignment::alignCenterAlways : ScrollAlignment::alignCenterIfNeeded;
         else
             alignment = (align == AlignCursorOnScrollAlways) ? ScrollAlignment::alignTopAlways : ScrollAlignment::alignToEdgeIfNeeded;
@@ -586,7 +586,7 @@ VisiblePosition FrameSelection::nextWordPositionForPlatform(const VisiblePositio
 {
     VisiblePosition positionAfterCurrentWord = nextWordPosition(originalPosition);
 
-    if (m_frame && m_frame->editor()->behavior().shouldSkipSpaceWhenMovingRight()) {
+    if (m_frame && m_frame->editor().behavior().shouldSkipSpaceWhenMovingRight()) {
         // In order to skip spaces when moving right, we advance one
         // word further and then move one word back. Given the
         // semantics of previousWordPosition() this will put us at the
@@ -713,7 +713,7 @@ VisiblePosition FrameSelection::modifyMovingRight(TextGranularity granularity)
 #if USE(ICU_UNICODE)
         // Visual word movement relies on isWordTextBreak which is not implemented in WinCE and QT.
         // https://bugs.webkit.org/show_bug.cgi?id=81136.
-        bool skipsSpaceWhenMovingRight = m_frame && m_frame->editor()->behavior().shouldSkipSpaceWhenMovingRight();
+        bool skipsSpaceWhenMovingRight = m_frame && m_frame->editor().behavior().shouldSkipSpaceWhenMovingRight();
         pos = rightWordPosition(VisiblePosition(m_selection.extent(), m_selection.affinity()), skipsSpaceWhenMovingRight);
         break;
 #endif
@@ -887,7 +887,7 @@ VisiblePosition FrameSelection::modifyMovingLeft(TextGranularity granularity)
         break;
     case WordGranularity: {
 #if USE(ICU_UNICODE)
-        bool skipsSpaceWhenMovingRight = m_frame && m_frame->editor()->behavior().shouldSkipSpaceWhenMovingRight();
+        bool skipsSpaceWhenMovingRight = m_frame && m_frame->editor().behavior().shouldSkipSpaceWhenMovingRight();
         pos = leftWordPosition(VisiblePosition(m_selection.extent(), m_selection.affinity()), skipsSpaceWhenMovingRight);
         break;
 #endif
@@ -1024,7 +1024,7 @@ bool FrameSelection::modify(EAlteration alter, SelectionDirection direction, Tex
 
         if (!m_selection.isCaret()
             && (granularity == WordGranularity || granularity == ParagraphGranularity || granularity == LineGranularity)
-            && m_frame && !m_frame->editor()->behavior().shouldExtendSelectionByWordOrLineAcrossCaret()) {
+            && m_frame && !m_frame->editor().behavior().shouldExtendSelectionByWordOrLineAcrossCaret()) {
             // Don't let the selection go across the base position directly. Needed to match mac
             // behavior when, for instance, word-selecting backwards starting with the caret in
             // the middle of a word and then word-selecting forward, leaving the caret in the
@@ -1037,7 +1037,7 @@ bool FrameSelection::modify(EAlteration alter, SelectionDirection direction, Tex
 
         // Standard Mac behavior when extending to a boundary is grow the selection rather than leaving the
         // base in place and moving the extent. Matches NSTextView.
-        if (!m_frame || !m_frame->editor()->behavior().shouldAlwaysGrowSelectionWhenExtendingToBoundary() || m_selection.isCaret() || !isBoundary(granularity))
+        if (!m_frame || !m_frame->editor().behavior().shouldAlwaysGrowSelectionWhenExtendingToBoundary() || m_selection.isCaret() || !isBoundary(granularity))
             setExtent(position, userTriggered);
         else {
             TextDirection textDirection = directionOfEnclosingBlock();
@@ -1394,12 +1394,14 @@ bool FrameSelection::recomputeCaretRect()
 
 #if ENABLE(TEXT_CARET)
     if (RenderView* view = m_frame->document()->renderView()) {
-        Node* node = m_selection.start().deprecatedNode();
-        if (m_previousCaretNode)
-            repaintCaretForLocalRect(m_previousCaretNode.get(), oldRect);
-        m_previousCaretNode = node;
-        if (shouldRepaintCaret(view, isContentEditable()))
+        bool previousOrNewCaretNodeIsContentEditable = isContentEditable() || (m_previousCaretNode && m_previousCaretNode->isContentEditable());
+        if (shouldRepaintCaret(view, previousOrNewCaretNodeIsContentEditable)) {
+            Node* node = m_selection.start().deprecatedNode();
+            if (m_previousCaretNode)
+                repaintCaretForLocalRect(m_previousCaretNode.get(), oldRect);
+            m_previousCaretNode = node;
             repaintCaretForLocalRect(node, newRect);
+        }
     }
 #endif
     return true;
@@ -1631,8 +1633,8 @@ void FrameSelection::selectAll()
 {
     Document* document = m_frame->document();
 
-    if (document->focusedNode() && document->focusedNode()->hasTagName(selectTag)) {
-        HTMLSelectElement* selectElement = toHTMLSelectElement(document->focusedNode());
+    if (document->focusedElement() && document->focusedElement()->hasTagName(selectTag)) {
+        HTMLSelectElement* selectElement = toHTMLSelectElement(document->focusedElement());
         if (selectElement->canSelectAll()) {
             selectElement->selectAll();
             return;
@@ -1720,9 +1722,9 @@ void FrameSelection::focusedOrActiveStateChanged()
     // Because StyleResolver::checkOneSelector() and
     // RenderTheme::isFocused() check if the frame is active, we have to
     // update style and theme state that depended on those.
-    if (Node* node = m_frame->document()->focusedNode()) {
-        node->setNeedsStyleRecalc();
-        if (RenderObject* renderer = node->renderer())
+    if (Element* element = m_frame->document()->focusedElement()) {
+        element->setNeedsStyleRecalc();
+        if (RenderObject* renderer = element->renderer())
             if (renderer && renderer->style()->hasAppearance())
                 renderer->theme()->stateChanged(renderer, FocusState);
     }
@@ -1749,7 +1751,7 @@ bool FrameSelection::isFocusedAndActive() const
 
 inline static bool shouldStopBlinkingDueToTypingCommand(Frame* frame)
 {
-    return frame->editor()->lastEditCommand() && frame->editor()->lastEditCommand()->shouldStopCaretBlinking();
+    return frame->editor().lastEditCommand() && frame->editor().lastEditCommand()->shouldStopCaretBlinking();
 }
 
 void FrameSelection::updateAppearance()
@@ -1874,36 +1876,36 @@ static bool isFrameElement(const Node* n)
     return widget && widget->isFrameView();
 }
 
-void FrameSelection::setFocusedNodeIfNeeded()
+void FrameSelection::setFocusedElementIfNeeded()
 {
     if (isNone() || !isFocused())
         return;
 
     bool caretBrowsing = m_frame->settings() && m_frame->settings()->caretBrowsingEnabled();
     if (caretBrowsing) {
-        if (Node* anchor = enclosingAnchorElement(base())) {
-            m_frame->page()->focusController()->setFocusedNode(anchor, m_frame);
+        if (Element* anchor = enclosingAnchorElement(base())) {
+            m_frame->page()->focusController()->setFocusedElement(anchor, m_frame);
             return;
         }
     }
 
-    if (Node* target = rootEditableElement()) {
-        // Walk up the DOM tree to search for a node to focus. 
+    if (Element* target = rootEditableElement()) {
+        // Walk up the DOM tree to search for an element to focus.
         while (target) {
             // We don't want to set focus on a subframe when selecting in a parent frame,
             // so add the !isFrameElement check here. There's probably a better way to make this
             // work in the long term, but this is the safest fix at this time.
             if (target->isMouseFocusable() && !isFrameElement(target)) {
-                m_frame->page()->focusController()->setFocusedNode(target, m_frame);
+                m_frame->page()->focusController()->setFocusedElement(target, m_frame);
                 return;
             }
-            target = target->parentOrShadowHostNode();
+            target = target->parentOrShadowHostElement();
         }
-        m_frame->document()->setFocusedNode(0);
+        m_frame->document()->setFocusedElement(0);
     }
 
     if (caretBrowsing)
-        m_frame->page()->focusController()->setFocusedNode(0, m_frame);
+        m_frame->page()->focusController()->setFocusedElement(0, m_frame);
 }
 
 void DragCaretController::paintDragCaret(Frame* frame, GraphicsContext* p, const LayoutPoint& paintOffset, const LayoutRect& clipRect) const
@@ -1928,7 +1930,7 @@ PassRefPtr<MutableStylePropertySet> FrameSelection::copyTypingStyle() const
 
 bool FrameSelection::shouldDeleteSelection(const VisibleSelection& selection) const
 {
-    return m_frame->editor()->client()->shouldDeleteRange(selection.toNormalizedRange().get());
+    return m_frame->editor().client()->shouldDeleteRange(selection.toNormalizedRange().get());
 }
 
 FloatRect FrameSelection::bounds(bool clipToVisibleContent) const
@@ -1985,7 +1987,7 @@ static HTMLFormElement* scanForForm(Node* start)
 HTMLFormElement* FrameSelection::currentForm() const
 {
     // Start looking either at the active (first responder) node, or where the selection is.
-    Node* start = m_frame->document()->focusedNode();
+    Node* start = m_frame->document()->focusedElement();
     if (!start)
         start = this->start().deprecatedNode();
 
@@ -2047,7 +2049,7 @@ void FrameSelection::setSelectionFromNone()
 
 bool FrameSelection::shouldChangeSelection(const VisibleSelection& newSelection) const
 {
-    return m_frame->editor()->shouldChangeSelection(selection(), newSelection, newSelection.affinity(), false);
+    return m_frame->editor().shouldChangeSelection(selection(), newSelection, newSelection.affinity(), false);
 }
 
 bool FrameSelection::dispatchSelectStart()

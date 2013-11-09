@@ -121,7 +121,7 @@ namespace WebCore {
     macro(updateready) \
     macro(upgradeneeded) \
     macro(versionchange) \
-    macro(webkitvisibilitychange) \
+    macro(visibilitychange) \
     macro(write) \
     macro(writeend) \
     macro(writestart) \
@@ -251,11 +251,6 @@ namespace WebCore {
     macro(webkitresourcetimingbufferfull) \
     \
     macro(webkitdeviceproximity) \
-    \
-    macro(webkitprerenderstart) \
-    macro(webkitprerenderstop) \
-    macro(webkitprerenderload) \
-    macro(webkitprerenderdomcontentloaded) \
     \
     macro(securitypolicyviolation) \
     \

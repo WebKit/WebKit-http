@@ -65,9 +65,68 @@ void LocalStorageDatabaseTracker::didOpenDatabaseWithOrigin(SecurityOrigin* secu
     addDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier(), databasePath(securityOrigin));
 }
 
-void LocalStorageDatabaseTracker::deleteEmptyDatabaseWithOrigin(SecurityOrigin* securityOrigin)
+void LocalStorageDatabaseTracker::deleteDatabaseWithOrigin(SecurityOrigin* securityOrigin)
 {
     removeDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier());
+}
+
+void LocalStorageDatabaseTracker::deleteAllDatabases()
+{
+    m_origins.clear();
+
+    openTrackerDatabase(SkipIfNonExistent);
+    if (!m_database.isOpen())
+        return;
+
+    SQLiteStatement statement(m_database, "SELECT origin, path FROM Origins");
+    if (statement.prepare() != SQLResultOk) {
+        LOG_ERROR("Failed to prepare statement.");
+        return;
+    }
+
+    int result;
+    while ((result = statement.step()) == SQLResultRow) {
+        deleteFile(statement.getColumnText(1));
+
+        // FIXME: Call out to the client.
+    }
+
+    if (result != SQLResultDone)
+        LOG_ERROR("Failed to read in all origins from the database.");
+
+    if (m_database.isOpen())
+        m_database.close();
+
+    if (!deleteFile(trackerDatabasePath())) {
+        // In the case where it is not possible to delete the database file (e.g some other program
+        // like a virus scanner is accessing it), make sure to remove all entries.
+        openTrackerDatabase(SkipIfNonExistent);
+        if (!m_database.isOpen())
+            return;
+
+        SQLiteStatement deleteStatement(m_database, "DELETE FROM Origins");
+        if (deleteStatement.prepare() != SQLResultOk) {
+            LOG_ERROR("Unable to prepare deletion of all origins");
+            return;
+        }
+        if (!deleteStatement.executeCommand()) {
+            LOG_ERROR("Unable to execute deletion of all origins");
+            return;
+        }
+    }
+
+    deleteEmptyDirectory(m_localStorageDirectory);
+}
+
+Vector<RefPtr<WebCore::SecurityOrigin>> LocalStorageDatabaseTracker::origins() const
+{
+    Vector<RefPtr<SecurityOrigin>> origins;
+    origins.reserveInitialCapacity(m_origins.size());
+
+    for (HashSet<String>::const_iterator it = m_origins.begin(), end = m_origins.end(); it != end; ++it)
+        origins.uncheckedAppend(SecurityOrigin::createFromDatabaseIdentifier(*it));
+
+    return origins;
 }
 
 void LocalStorageDatabaseTracker::setLocalStorageDirectoryInternal(const String& localStorageDirectory)

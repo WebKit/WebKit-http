@@ -67,7 +67,10 @@ public:
     
     Color backgroundColor() const { return m_backgroundColor; }
     void setBackgroundColor(RGBA32 color) { m_backgroundColor.setRGB(color); }
-
+    
+    Color highlightColor() const { return m_highlightColor; }
+    void setHighlightColor(RGBA32 color) { m_highlightColor.setRGB(color); }
+    
     virtual void setFontSize(int, const IntSize&, bool important) OVERRIDE;
 
     virtual bool isEqual(const TextTrackCue&, CueMatchRules) const OVERRIDE;
@@ -75,10 +78,13 @@ public:
     virtual TextTrackCue::CueType cueType() const OVERRIDE { return TextTrackCue::Generic; }
 
 private:
+    virtual bool isOrderedBefore(const TextTrackCue*) const OVERRIDE;
+
     TextTrackCueGeneric(ScriptExecutionContext*, double start, double end, const String&);
     
     Color m_foregroundColor;
     Color m_backgroundColor;
+    Color m_highlightColor;
     double m_baseFontSizeRelativeToVideoHeight;
     double m_fontSizeMultiplier;
     String m_fontName;

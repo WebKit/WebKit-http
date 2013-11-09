@@ -37,19 +37,19 @@ namespace WebCore {
 HTMLFormControlElementWithState::HTMLFormControlElementWithState(const QualifiedName& tagName, Document* doc, HTMLFormElement* f)
     : HTMLFormControlElement(tagName, doc, f)
 {
-    document()->formController()->registerFormElementWithState(this);
+    document()->formController().registerFormElementWithState(this);
 }
 
 HTMLFormControlElementWithState::~HTMLFormControlElementWithState()
 {
-    document()->formController()->unregisterFormElementWithState(this);
+    document()->formController().unregisterFormElementWithState(this);
 }
 
 void HTMLFormControlElementWithState::didMoveToNewDocument(Document* oldDocument)
 {
     if (oldDocument)
-        oldDocument->formController()->unregisterFormElementWithState(this);
-    document()->formController()->registerFormElementWithState(this);
+        oldDocument->formController().unregisterFormElementWithState(this);
+    document()->formController().registerFormElementWithState(this);
     HTMLFormControlElement::didMoveToNewDocument(oldDocument);
 }
 
@@ -67,7 +67,7 @@ void HTMLFormControlElementWithState::notifyFormStateChanged()
         return;
 
     if (Page* page = frame->page())
-        page->chrome()->client()->formStateDidChange(this);
+        page->chrome().client()->formStateDidChange(this);
 }
 
 bool HTMLFormControlElementWithState::shouldSaveAndRestoreFormControlState() const
@@ -84,7 +84,7 @@ FormControlState HTMLFormControlElementWithState::saveFormControlState() const
 void HTMLFormControlElementWithState::finishParsingChildren()
 {
     HTMLFormControlElement::finishParsingChildren();
-    document()->formController()->restoreControlStateFor(*this);
+    document()->formController().restoreControlStateFor(*this);
 }
 
 bool HTMLFormControlElementWithState::isFormControlElementWithState() const

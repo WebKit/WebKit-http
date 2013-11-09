@@ -141,13 +141,13 @@ void FontCache::getFontFamilyForCharacters(const UChar* characters, size_t numCh
     FcFontSetDestroy(fontSet);
 }
 
-PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font, const UChar* characters, int length)
+PassRefPtr<SimpleFontData> FontCache::systemFallbackForCharacters(const FontDescription& fontDescription, const SimpleFontData*, bool, const UChar* characters, int length)
 {
     icu::Locale locale = icu::Locale::getDefault();
     FontCache::SimpleFontFamily family;
-    FontCache::getFontFamilyForCharacters(characters, length, locale.getLanguage(), font.fontDescription(), &family);
+    FontCache::getFontFamilyForCharacters(characters, length, locale.getLanguage(), fontDescription, &family);
     if (family.name.isEmpty())
-        return nullptr;
+        return 0;
 
     AtomicString atomicFamily(family.name);
     // Changes weight and/or italic of given FontDescription depends on
@@ -155,7 +155,7 @@ PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font,
     // of the given characters. See http://crbug.com/32109 for details.
     bool shouldSetFakeBold = false;
     bool shouldSetFakeItalic = false;
-    FontDescription description(font.fontDescription());
+    FontDescription description(fontDescription);
     if (family.isBold && description.weight() < FontWeightBold)
         description.setWeight(FontWeightBold);
     if (!family.isBold && description.weight() >= FontWeightBold) {
@@ -171,16 +171,11 @@ PassRefPtr<SimpleFontData> FontCache::getFontDataForCharacters(const Font& font,
 
     FontPlatformData* substitutePlatformData = getCachedFontPlatformData(description, atomicFamily, DoNotRetain);
     if (!substitutePlatformData)
-        return nullptr;
+        return 0;
     FontPlatformData platformData = FontPlatformData(*substitutePlatformData);
     platformData.setFakeBold(shouldSetFakeBold);
     platformData.setFakeItalic(shouldSetFakeItalic);
     return getCachedFontData(&platformData, DoNotRetain);
-}
-
-PassRefPtr<SimpleFontData> FontCache::getSimilarFontPlatformData(const Font&)
-{
-    return 0;
 }
 
 PassRefPtr<SimpleFontData> FontCache::getLastResortFallbackFont(const FontDescription& description, ShouldRetain)

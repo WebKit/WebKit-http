@@ -32,8 +32,8 @@
 
 #if ENABLE(SQL_DATABASE)
 
-#include "CFDictionaryPropertyBag.h"
 #include "COMEnumVariant.h"
+#include "COMPropertyBag.h"
 #include "MarshallingHelpers.h"
 #include "WebNotificationCenter.h"
 #include "WebSecurityOrigin.h"
@@ -46,6 +46,8 @@
 #include <wtf/MainThread.h>
 
 using namespace WebCore;
+
+static CFStringRef WebDatabaseDirectoryDefaultsKey = CFSTR("WebDatabaseDirectory");
 
 static inline bool isEqual(LPCWSTR s1, LPCWSTR s2)
 {
@@ -398,15 +400,22 @@ void WebDatabaseManager::dispatchDidModifyDatabase(SecurityOrigin* origin, const
 
     COMPtr<WebSecurityOrigin> securityOrigin(AdoptCOM, WebSecurityOrigin::createInstance(origin));
 
-    RetainPtr<CFMutableDictionaryRef> userInfo = adoptCF(CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-
-    static CFStringRef databaseNameKey = MarshallingHelpers::LPCOLESTRToCFStringRef(WebDatabaseNameKey);
-    CFDictionarySetValue(userInfo.get(), databaseNameKey, databaseName.createCFString().get());
-
-    COMPtr<CFDictionaryPropertyBag> userInfoBag = CFDictionaryPropertyBag::createInstance();
-    userInfoBag->setDictionary(userInfo.get());
+    HashMap<String, String> userInfo;
+    userInfo.set(WebDatabaseNameKey, databaseName);
+    COMPtr<IPropertyBag> userInfoBag(AdoptCOM, COMPropertyBag<String>::adopt(userInfo));
 
     notifyCenter->postNotificationName(databaseDidModifyOriginName, securityOrigin.get(), userInfoBag.get());
+}
+
+static WTF::String databasesDirectory()
+{
+#if USE(CF)
+    RetainPtr<CFPropertyListRef> directoryPref = adoptCF(CFPreferencesCopyAppValue(WebDatabaseDirectoryDefaultsKey, kCFPreferencesCurrentApplication));
+    if (directoryPref && (CFStringGetTypeID() == CFGetTypeID(directoryPref.get())))
+        return static_cast<CFStringRef>(directoryPref.get());
+#endif
+
+    return WebCore::pathByAppendingComponent(WebCore::localUserSpecificStorageDirectory(), "Databases");
 }
 
 void WebKitInitializeWebDatabasesIfNecessary()
@@ -415,8 +424,7 @@ void WebKitInitializeWebDatabasesIfNecessary()
     if (initialized)
         return;
 
-    WTF::String databasesDirectory = WebCore::pathByAppendingComponent(WebCore::localUserSpecificStorageDirectory(), "Databases");
-    WebCore::DatabaseManager::manager().initialize(databasesDirectory);
+    WebCore::DatabaseManager::manager().initialize(databasesDirectory());
 
     initialized = true;
 }

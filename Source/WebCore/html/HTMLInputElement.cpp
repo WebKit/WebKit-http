@@ -174,7 +174,7 @@ HTMLInputElement::~HTMLInputElement()
     // setForm(0) may register this to a document-level radio button group.
     // We should unregister it to avoid accessing a deleted object.
     if (isRadioButton())
-        document()->formController()->checkedRadioButtons().removeButton(this);
+        document()->formController().checkedRadioButtons().removeButton(this);
 #if ENABLE(TOUCH_EVENTS)
     if (m_hasTouchEventHandler)
         document()->didRemoveEventTargetNode(this);
@@ -430,7 +430,7 @@ void HTMLInputElement::endEditing()
         return;
 
     if (Frame* frame = document()->frame())
-        frame->editor()->textFieldDidEndEditing(this);
+        frame->editor().textFieldDidEndEditing(this);
 }
 
 bool HTMLInputElement::shouldUseInputMethod()
@@ -537,7 +537,7 @@ void HTMLInputElement::updateType()
 
     if (wasAttached) {
         attach();
-        if (document()->focusedNode() == this)
+        if (document()->focusedElement() == this)
             updateFocusAppearance(true);
     }
 
@@ -813,7 +813,7 @@ void HTMLInputElement::attach()
 
     m_inputType->attach();
 
-    if (document()->focusedNode() == this)
+    if (document()->focusedElement() == this)
         document()->updateFocusAppearanceSoon(true /* restore selection */);
 }
 
@@ -1536,7 +1536,7 @@ void HTMLInputElement::didMoveToNewDocument(Document* oldDocument)
         if (needsSuspensionCallback)
             oldDocument->unregisterForPageCacheSuspensionCallbacks(this);
         if (isRadioButton())
-            oldDocument->formController()->checkedRadioButtons().removeButton(this);
+            oldDocument->formController().checkedRadioButtons().removeButton(this);
 #if ENABLE(TOUCH_EVENTS)
         if (m_hasTouchEventHandler)
             oldDocument->didRemoveEventTargetNode(this);
@@ -1850,7 +1850,7 @@ CheckedRadioButtons* HTMLInputElement::checkedRadioButtons() const
     if (HTMLFormElement* formElement = form())
         return &formElement->checkedRadioButtons();
     if (inDocument())
-        return &document()->formController()->checkedRadioButtons();
+        return &document()->formController().checkedRadioButtons();
     return 0;
 }
 

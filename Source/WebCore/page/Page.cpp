@@ -65,6 +65,7 @@
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
 #include "RenderArena.h"
+#include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
@@ -175,6 +176,8 @@ Page::Page(PageClients& pageClients)
 #endif
     , m_displayID(0)
     , m_requestedLayoutMilestones(0)
+    , m_headerHeight(0)
+    , m_footerHeight(0)
     , m_isCountingRelevantRepaintedObjects(false)
 #ifndef NDEBUG
     , m_isPainting(false)
@@ -513,8 +516,6 @@ void Page::refreshPlugins(bool reload)
 
 PluginData* Page::pluginData() const
 {
-    if (!mainFrame()->loader()->subframeLoader()->allowPlugins(NotAboutToInstantiatePlugin))
-        return 0;
     if (!m_pluginData)
         m_pluginData = PluginData::create(this);
     return m_pluginData.get();
@@ -565,7 +566,7 @@ bool Page::findString(const String& target, FindOptions options)
     Frame* frame = focusController()->focusedOrMainFrame();
     Frame* startFrame = frame;
     do {
-        if (frame->editor()->findString(target, (options & ~WrapAround) | StartInSelection)) {
+        if (frame->editor().findString(target, (options & ~WrapAround) | StartInSelection)) {
             if (frame != startFrame)
                 startFrame->selection()->clear();
             focusController()->setFocusedFrame(frame);
@@ -577,7 +578,7 @@ bool Page::findString(const String& target, FindOptions options)
     // Search contents of startFrame, on the other side of the selection that we did earlier.
     // We cheat a bit and just research with wrap on
     if (shouldWrap && !startFrame->selection()->isNone()) {
-        bool found = startFrame->editor()->findString(target, options | WrapAround | StartInSelection);
+        bool found = startFrame->editor().findString(target, options | WrapAround | StartInSelection);
         focusController()->setFocusedFrame(frame);
         return found;
     }
@@ -594,7 +595,7 @@ void Page::findStringMatchingRanges(const String& target, FindOptions options, i
     Frame* frame = mainFrame();
     Frame* frameWithSelection = 0;
     do {
-        frame->editor()->countMatchesForText(target, 0, options, limit ? (limit - matchRanges->size()) : 0, true, matchRanges);
+        frame->editor().countMatchesForText(target, 0, options, limit ? (limit - matchRanges->size()) : 0, true, matchRanges);
         if (frame->selection()->isRange())
             frameWithSelection = frame;
         frame = incrementFrame(frame, true, false);
@@ -627,7 +628,7 @@ PassRefPtr<Range> Page::rangeOfString(const String& target, Range* referenceRang
     Frame* frame = referenceRange ? referenceRange->ownerDocument()->frame() : mainFrame();
     Frame* startFrame = frame;
     do {
-        if (RefPtr<Range> resultRange = frame->editor()->rangeOfString(target, frame == startFrame ? referenceRange : 0, options & ~WrapAround))
+        if (RefPtr<Range> resultRange = frame->editor().rangeOfString(target, frame == startFrame ? referenceRange : 0, options & ~WrapAround))
             return resultRange.release();
 
         frame = incrementFrame(frame, !(options & Backwards), shouldWrap);
@@ -636,33 +637,39 @@ PassRefPtr<Range> Page::rangeOfString(const String& target, Range* referenceRang
     // Search contents of startFrame, on the other side of the reference range that we did earlier.
     // We cheat a bit and just search again with wrap on.
     if (shouldWrap && referenceRange) {
-        if (RefPtr<Range> resultRange = startFrame->editor()->rangeOfString(target, referenceRange, options | WrapAround | StartInSelection))
+        if (RefPtr<Range> resultRange = startFrame->editor().rangeOfString(target, referenceRange, options | WrapAround | StartInSelection))
             return resultRange.release();
     }
 
     return 0;
 }
 
-unsigned int Page::markAllMatchesForText(const String& target, TextCaseSensitivity caseSensitivity, bool shouldHighlight, unsigned limit)
-{
-    return markAllMatchesForText(target, caseSensitivity == TextCaseInsensitive ? CaseInsensitive : 0, shouldHighlight, limit);
-}
-
-unsigned int Page::markAllMatchesForText(const String& target, FindOptions options, bool shouldHighlight, unsigned limit)
+unsigned Page::findMatchesForText(const String& target, FindOptions options, unsigned maxMatchCount, bool shouldHighlight, bool markMatches)
 {
     if (target.isEmpty() || !mainFrame())
         return 0;
 
-    unsigned matches = 0;
+    unsigned matchCount = 0;
 
     Frame* frame = mainFrame();
     do {
-        frame->editor()->setMarkedTextMatchesAreHighlighted(shouldHighlight);
-        matches += frame->editor()->countMatchesForText(target, 0, options, limit ? (limit - matches) : 0, true, 0);
+        if (markMatches)
+            frame->editor().setMarkedTextMatchesAreHighlighted(shouldHighlight);
+        matchCount += frame->editor().countMatchesForText(target, 0, options, maxMatchCount ? (maxMatchCount - matchCount) : 0, markMatches, 0);
         frame = incrementFrame(frame, true, false);
     } while (frame);
 
-    return matches;
+    return matchCount;
+}
+
+unsigned Page::markAllMatchesForText(const String& target, FindOptions options, bool shouldHighlight, unsigned maxMatchCount)
+{
+    return findMatchesForText(target, options, shouldHighlight, maxMatchCount, /*markMatches*/ true);
+}
+
+unsigned Page::countFindMatches(const String& target, FindOptions options, unsigned maxMatchCount)
+{
+    return findMatchesForText(target, options, /*shouldHighlight*/ false, maxMatchCount, /*markMatches*/ false);
 }
 
 void Page::unmarkAllTextMatches()
@@ -788,7 +795,7 @@ void Page::setDeviceScaleFactor(float scaleFactor)
 #endif
 
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext())
-        frame->editor()->deviceScaleFactorChanged();
+        frame->editor().deviceScaleFactorChanged();
 
     pageCache()->markPagesForFullStyleRecalc(this);
 }
@@ -947,6 +954,14 @@ void Page::resumeScriptedAnimations()
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext()) {
         if (frame->document())
             frame->document()->resumeScriptedAnimationControllerCallbacks();
+    }
+}
+
+void Page::setThrottled(bool isThrottled)
+{
+    for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+        if (frame->document())
+            frame->document()->scriptedAnimationControllerSetThrottled(isThrottled);
     }
 }
 
@@ -1237,6 +1252,8 @@ void Page::checkSubframeCountConsistency() const
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
 void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitialState)
 {
+    // FIXME: the visibility state needs to be stored on the top-level document
+    // https://bugs.webkit.org/show_bug.cgi?id=116769
 #if ENABLE(PAGE_VISIBILITY_API)
     if (m_visibilityState == visibilityState)
         return;
@@ -1271,6 +1288,40 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
 PageVisibilityState Page::visibilityState() const
 {
     return m_visibilityState;
+}
+#endif
+
+#if ENABLE(RUBBER_BANDING)
+void Page::addHeaderWithHeight(int headerHeight)
+{
+    m_headerHeight = headerHeight;
+
+    FrameView* frameView = mainFrame() ? mainFrame()->view() : 0;
+    if (!frameView)
+        return;
+
+    RenderView* renderView = frameView->renderView();
+    if (!renderView)
+        return;
+
+    frameView->setHeaderHeight(m_headerHeight);
+    renderView->compositor()->updateLayerForHeader(m_headerHeight);
+}
+
+void Page::addFooterWithHeight(int footerHeight)
+{
+    m_footerHeight = footerHeight;
+
+    FrameView* frameView = mainFrame() ? mainFrame()->view() : 0;
+    if (!frameView)
+        return;
+
+    RenderView* renderView = frameView->renderView();
+    if (!renderView)
+        return;
+
+    frameView->setFooterHeight(m_footerHeight);
+    renderView->compositor()->updateLayerForFooter(m_footerHeight);
 }
 #endif
 

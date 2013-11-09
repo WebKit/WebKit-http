@@ -49,6 +49,7 @@ WebView::WebView(WebContext* context, WebPageGroup* pageGroup)
     , m_focused(false)
     , m_visible(false)
     , m_contentScaleFactor(1.0)
+    , m_opacity(1.0)
 {
     m_page->pageGroup()->preferences()->setAcceleratedCompositingEnabled(true);
     m_page->pageGroup()->preferences()->setForceCompositingMode(true);
@@ -76,6 +77,9 @@ void WebView::initialize()
 
 void WebView::setSize(const WebCore::IntSize& size)
 {
+    if (m_size == size)
+        return;
+
     m_size = size;
 
     updateViewportSize();
@@ -119,12 +123,7 @@ void WebView::paintToCurrentGLContext()
     scene->setDrawsBackground(m_page->drawsBackground());
     const FloatRect& viewport = m_userViewportTransform.mapRect(IntRect(IntPoint(), m_size));
 
-    scene->paintToCurrentGLContext(transformToScene().toTransformationMatrix(), /* opacity */ 1, viewport);
-}
-
-void WebView::setThemePath(const String& theme)
-{
-    m_page->setThemePath(theme);
+    scene->paintToCurrentGLContext(transformToScene().toTransformationMatrix(), m_opacity, viewport);
 }
 
 void WebView::setDrawsBackground(bool drawsBackground)
@@ -187,6 +186,7 @@ void WebView::initializeClient(const WKViewClient* client)
 
 void WebView::didChangeContentsSize(const WebCore::IntSize& size)
 {
+    m_contentsSize = size;
     m_client.didChangeContentsSize(this, size);
 }
 
@@ -225,7 +225,9 @@ void WebView::updateViewportSize()
     if (DrawingAreaProxy* drawingArea = page()->drawingArea()) {
         // Web Process expects sizes in UI units, and not raw device units.
         drawingArea->setSize(roundedIntSize(dipSize()), IntSize(), IntSize());
-        drawingArea->setVisibleContentsRect(FloatRect(contentPosition(), dipSize()), FloatPoint());
+        FloatRect visibleContentsRect(contentPosition(), visibleContentsSize());
+        visibleContentsRect.intersect(FloatRect(FloatPoint(), contentsSize()));
+        drawingArea->setVisibleContentsRect(visibleContentsRect, FloatPoint());
     }
 }
 
@@ -235,6 +237,14 @@ inline WebCore::FloatSize WebView::dipSize() const
     dipSize.scale(1 / m_page->deviceScaleFactor());
 
     return dipSize;
+}
+
+WebCore::FloatSize WebView::visibleContentsSize() const
+{
+    FloatSize visibleContentsSize(dipSize());
+    visibleContentsSize.scale(1 / m_contentScaleFactor);
+
+    return visibleContentsSize;
 }
 
 // Page Client

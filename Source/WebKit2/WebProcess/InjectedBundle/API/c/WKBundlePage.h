@@ -111,6 +111,8 @@ typedef void (*WKBundlePageWillDestroyGlobalObjectForDOMWindowExtensionCallback)
 typedef bool (*WKBundlePageShouldForceUniversalAccessFromLocalURLCallback)(WKBundlePageRef, WKStringRef url, const void* clientInfo);
 typedef void (*WKBundlePageDidLayoutCallback)(WKBundlePageRef page, WKLayoutMilestones milestones, WKTypeRef* userData, const void *clientInfo);
 typedef void (*WKBundlePageFeaturesUsedInPageCallback)(WKBundlePageRef page, WKArrayRef featureStrings, const void *clientInfo);
+typedef void (*WKBundlePageWillLoadURLRequestCallback)(WKBundlePageRef page, WKURLRequestRef request, WKTypeRef userData, const void *clientInfo);
+typedef void (*WKBundlePageWillLoadDataRequestCallback)(WKBundlePageRef page, WKURLRequestRef request, WKDataRef data, WKStringRef MIMEType, WKStringRef encodingName, WKURLRef unreachableURL, WKTypeRef userData, const void *clientInfo);
 
 struct WKBundlePageLoaderClient {
     int                                                                     version;
@@ -159,10 +161,14 @@ struct WKBundlePageLoaderClient {
 
     // Version 5
     WKBundlePageFeaturesUsedInPageCallback                                  featuresUsedInPage;
+    
+    // Version 6
+    WKBundlePageWillLoadURLRequestCallback                                  willLoadURLRequest;
+    WKBundlePageWillLoadDataRequestCallback                                 willLoadDataRequest;
 };
 typedef struct WKBundlePageLoaderClient WKBundlePageLoaderClient;
 
-enum { kWKBundlePageLoaderClientCurrentVersion = 5 };
+enum { kWKBundlePageLoaderClientCurrentVersion = 6 };
 
 enum {
     WKBundlePagePolicyActionPassThrough,
@@ -332,6 +338,8 @@ typedef bool (*WKBundlePageShouldPerformActionInTextFieldCallback)(WKBundlePageR
 typedef void (*WKBundlePageWillSubmitFormCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlFormElementHandle, WKBundleFrameRef frame, WKBundleFrameRef sourceFrame, WKDictionaryRef values, WKTypeRef* userData, const void* clientInfo);
 typedef void (*WKBundlePageWillSendSubmitEventCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlFormElementHandle, WKBundleFrameRef frame, WKBundleFrameRef sourceFrame, WKDictionaryRef values, const void* clientInfo);
 typedef void (*WKBundlePageDidFocusTextFieldCallback)(WKBundlePageRef page, WKBundleNodeHandleRef htmlInputElementHandle, WKBundleFrameRef frame, const void* clientInfo);
+typedef bool (*WKBundlePageShouldNotifyOnFormChangesCallback)(WKBundlePageRef page, const void* clientInfo);
+typedef void (*WKBundlePageDidAssociateFormControlsCallback)(WKBundlePageRef page, WKArrayRef elementHandles, const void* clientInfo);
 
 struct WKBundlePageFormClient {
     int                                                                 version;
@@ -350,6 +358,8 @@ struct WKBundlePageFormClient {
 
     // version 2.
     WKBundlePageDidFocusTextFieldCallback                               didFocusTextField;
+    WKBundlePageShouldNotifyOnFormChangesCallback                       shouldNotifyOnFormChanges;
+    WKBundlePageDidAssociateFormControlsCallback                        didAssociateFormControls;
 };
 typedef struct WKBundlePageFormClient WKBundlePageFormClient;
 

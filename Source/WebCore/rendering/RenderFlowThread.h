@@ -35,7 +35,6 @@
 #include <wtf/HashCountedSet.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/UnusedParam.h>
 
 namespace WebCore {
 
@@ -78,8 +77,9 @@ public:
     virtual void updateLogicalWidth() OVERRIDE;
     virtual void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const OVERRIDE;
 
-    void paintFlowThreadPortionInRegion(PaintInfo&, RenderRegion*, LayoutRect flowThreadPortionRect, LayoutRect flowThreadPortionOverflowRect, const LayoutPoint&) const;
-    bool hitTestFlowThreadPortionInRegion(RenderRegion*, LayoutRect flowThreadPortionRect, LayoutRect flowThreadPortionOverflowRect, const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) const;
+    void paintFlowThreadPortionInRegion(PaintInfo&, RenderRegion*, const LayoutRect& flowThreadPortionRect, const LayoutRect& flowThreadPortionOverflowRect, const LayoutPoint&) const;
+    bool hitTestFlowThreadPortionInRegion(RenderRegion*, const LayoutRect& flowThreadPortionRect, const LayoutRect& flowThreadPortionOverflowRect, const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) const;
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) OVERRIDE;
 
     bool hasRegions() const { return m_regionList.size(); }
     // Check if the content is flown into at least a region with region styling rules.
@@ -95,6 +95,8 @@ public:
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
     void repaintRectangleInRegions(const LayoutRect&, bool immediate) const;
+    
+    LayoutPoint adjustedPositionRelativeToOffsetParent(const RenderBoxModelObject&, const LayoutPoint&);
 
     LayoutUnit pageLogicalTopForOffset(LayoutUnit);
     LayoutUnit pageLogicalWidthForOffset(LayoutUnit);
@@ -113,7 +115,7 @@ public:
     RenderRegion* mapFromFlowToRegion(TransformState&) const;
 
     void removeRenderBoxRegionInfo(RenderBox*);
-    bool logicalWidthChangedInRegions(const RenderBlock*, LayoutUnit offsetFromLogicalTopOfFirstPage);
+    bool logicalWidthChangedInRegionsForBlock(const RenderBlock*);
 
     LayoutUnit contentLogicalWidthOfFirstRegion() const;
     LayoutUnit contentLogicalHeightOfFirstRegion() const;
@@ -160,6 +162,10 @@ public:
     bool needsTwoPhasesLayout() const { return m_needsTwoPhasesLayout; }
     void clearNeedsTwoPhasesLayout() { m_needsTwoPhasesLayout = false; }
 
+    void pushFlowThreadLayoutState(const RenderObject*);
+    void popFlowThreadLayoutState();
+    LayoutUnit offsetFromLogicalTopOfFirstRegion(const RenderBlock*) const;
+
 protected:
     virtual const char* renderName() const = 0;
 
@@ -182,6 +188,13 @@ protected:
     void initializeRegionsOverrideLogicalContentHeight(RenderRegion* = 0);
 
     virtual void autoGenerateRegionsToBlockOffset(LayoutUnit) { };
+
+    inline bool hasCachedOffsetFromLogicalTopOfFirstRegion(const RenderBox*) const;
+    inline LayoutUnit cachedOffsetFromLogicalTopOfFirstRegion(const RenderBox*) const;
+    inline void setOffsetFromLogicalTopOfFirstRegion(const RenderBox*, LayoutUnit);
+    inline void clearOffsetFromLogicalTopOfFirstRegion(const RenderBox*);
+
+    inline const RenderBox* currentActiveRenderBox() const;
 
     RenderRegionList m_regionList;
 
@@ -240,6 +253,11 @@ protected:
     typedef HashMap<RenderObject*, RenderRegion*> RenderObjectToRegionMap;
     RenderObjectToRegionMap m_breakBeforeToRegionMap;
     RenderObjectToRegionMap m_breakAfterToRegionMap;
+
+    typedef ListHashSet<const RenderObject*> RenderObjectStack;
+    RenderObjectStack m_activeObjectsStack;
+    typedef HashMap<const RenderBox*, LayoutUnit> RenderBoxToOffsetMap;
+    RenderBoxToOffsetMap m_boxesToOffsetMap;
 
     unsigned m_autoLogicalHeightRegionsCount;
 

@@ -101,7 +101,7 @@ void RenderSnapshottedPlugIn::paint(PaintInfo& paintInfo, const LayoutPoint& pai
 
     PaintInfo paintInfoForChild(paintInfo);
     paintInfoForChild.phase = newPhase;
-    paintInfoForChild.updatePaintingRootForChildren(this);
+    paintInfoForChild.updateSubtreePaintRootForChildren(this);
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         LayoutPoint childPoint = flipForWritingModeForChild(child, paintOffset);
@@ -175,7 +175,6 @@ void RenderSnapshottedPlugIn::handleEvent(Event* event)
     if (event->type() == eventNames().clickEvent || (m_isPotentialMouseActivation && event->type() == eventNames().mouseupEvent)) {
         m_isPotentialMouseActivation = false;
         bool clickWasOnOverlay = plugInImageElement()->partOfSnapshotOverlay(event->target()->toNode());
-        plugInImageElement()->setDisplayState(clickWasOnOverlay ? HTMLPlugInElement::Restarting : HTMLPlugInElement::RestartingWithPendingMouseClick);
         plugInImageElement()->userDidClickSnapshot(mouseEvent, !clickWasOnOverlay);
         event->setDefaultHandled();
     } else if (event->type() == eventNames().mousedownEvent) {

@@ -2,12 +2,9 @@ list(APPEND WTF_SOURCES
     efl/MainThreadEfl.cpp
     efl/OwnPtrEfl.cpp
     efl/RefPtrEfl.cpp
+
     gobject/GOwnPtr.cpp
     gobject/GRefPtr.cpp
-
-    OSAllocatorPosix.cpp
-    ThreadIdentifierDataPthreads.cpp
-    ThreadingPthreads.cpp
 )
 
 list(APPEND WTF_LIBRARIES
@@ -21,7 +18,6 @@ list(APPEND WTF_LIBRARIES
     ${EINA_LIBRARIES}
     ${EO_LIBRARIES}
     ${EVAS_LIBRARIES}
-    ${CMAKE_DL_LIBS}
 )
 
 list(APPEND WTF_INCLUDE_DIRECTORIES
@@ -32,7 +28,4 @@ list(APPEND WTF_INCLUDE_DIRECTORIES
     ${EO_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
-    ${JAVASCRIPTCORE_DIR}/wtf/gobject
-    ${JAVASCRIPTCORE_DIR}/wtf/unicode
-    ${JAVASCRIPTCORE_DIR}/wtf/efl
 )

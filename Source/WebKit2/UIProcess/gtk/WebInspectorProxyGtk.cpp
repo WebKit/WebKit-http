@@ -234,6 +234,21 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned)
     notImplemented();
 }
 
+void WebInspectorProxy::platformSetToolbarHeight(unsigned)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformSave(const String&, const String&, bool)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformAppend(const String&, const String&)
+{
+    notImplemented();
+}
+
 void WebInspectorProxy::platformAttachAvailabilityChanged(bool)
 {
     notImplemented();

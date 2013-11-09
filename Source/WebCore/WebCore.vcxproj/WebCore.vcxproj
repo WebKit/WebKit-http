@@ -192,7 +192,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarInfo.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarProp.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
@@ -3710,8 +3710,6 @@
     <ClCompile Include="..\Modules\websockets\WebSocketExtensionParser.cpp" />
     <ClCompile Include="..\Modules\websockets\WebSocketFrame.cpp" />
     <ClCompile Include="..\Modules\websockets\WebSocketHandshake.cpp" />
-    <ClCompile Include="..\Modules\websockets\WebSocketHandshakeRequest.cpp" />
-    <ClCompile Include="..\Modules\websockets\WebSocketHandshakeResponse.cpp" />
     <ClCompile Include="..\Modules\websockets\WorkerThreadableWebSocketChannel.cpp" />
     <ClCompile Include="..\Modules\speech\DOMWindowSpeechSynthesis.cpp" />
     <ClCompile Include="..\Modules\speech\SpeechSynthesis.cpp" />
@@ -3897,7 +3895,7 @@
     <ClCompile Include="..\page\animation\AnimationBase.cpp" />
     <ClCompile Include="..\page\animation\AnimationController.cpp" />
     <ClCompile Include="..\page\AutoscrollController.cpp" />
-    <ClCompile Include="..\page\BarInfo.cpp" />
+    <ClCompile Include="..\page\BarProp.cpp" />
     <ClCompile Include="..\page\CaptionUserPreferences.cpp" />
     <ClCompile Include="..\page\Chrome.cpp" />
     <ClCompile Include="..\page\animation\CompositeAnimation.cpp" />
@@ -3998,8 +3996,6 @@
     <ClCompile Include="..\loader\PlaceholderDocument.cpp" />
     <ClCompile Include="..\loader\PolicyCallback.cpp" />
     <ClCompile Include="..\loader\PolicyChecker.cpp" />
-    <ClCompile Include="..\loader\Prerenderer.cpp" />
-    <ClCompile Include="..\loader\PrerendererClient.cpp" />
     <ClCompile Include="..\loader\ProgressTracker.cpp" />
     <ClCompile Include="..\loader\ResourceBuffer.cpp" />
     <ClCompile Include="..\loader\ResourceLoader.cpp" />
@@ -4089,7 +4085,6 @@
     <ClCompile Include="..\platform\Decimal.cpp" />
     <ClCompile Include="..\platform\DragData.cpp" />
     <ClCompile Include="..\platform\DragImage.cpp" />
-    <ClCompile Include="..\platform\EventTracer.cpp" />
     <ClCompile Include="..\platform\FileChooser.cpp" />
     <ClCompile Include="..\platform\FileIconLoader.cpp" />
     <ClCompile Include="..\platform\FileStream.cpp" />
@@ -4109,7 +4104,6 @@
     <ClCompile Include="..\platform\LocalizedStrings.cpp" />
     <ClCompile Include="..\platform\Logging.cpp" />
     <ClCompile Include="..\platform\MemoryPressureHandler.cpp" />
-    <ClCompile Include="..\platform\MemoryUsageSupport.cpp" />
     <ClCompile Include="..\platform\MIMETypeRegistry.cpp" />
     <ClCompile Include="..\platform\NotImplemented.cpp" />
     <ClCompile Include="..\platform\PlatformEvent.cpp" />
@@ -4178,7 +4172,6 @@
     <ClCompile Include="..\platform\win\SharedTimerWin.cpp" />
     <ClCompile Include="..\platform\win\SoundWin.cpp" />
     <ClCompile Include="..\platform\win\SystemInfo.cpp" />
-    <ClCompile Include="..\platform\win\SystemTimeWin.cpp" />
     <ClCompile Include="..\platform\win\TemporaryLinkStubs.cpp" />
     <ClCompile Include="..\platform\win\WCDataObject.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -4229,7 +4222,6 @@
     <ClCompile Include="..\platform\win\WheelEventWin.cpp" />
     <ClCompile Include="..\platform\win\WidgetWin.cpp" />
     <ClCompile Include="..\platform\win\WindowMessageBroadcaster.cpp" />
-    <ClCompile Include="..\platform\cf\BinaryPropertyList.cpp" />
     <ClCompile Include="..\platform\cf\FileSystemCF.cpp" />
     <ClCompile Include="..\platform\cf\KURLCFNet.cpp" />
     <ClCompile Include="..\platform\cf\SharedBufferCF.cpp" />
@@ -4247,7 +4239,6 @@
     <ClCompile Include="..\platform\graphics\FontData.cpp" />
     <ClCompile Include="..\platform\graphics\FontDescription.cpp" />
     <ClCompile Include="..\platform\graphics\FontFallbackList.cpp" />
-    <ClCompile Include="..\platform\graphics\FontFamily.cpp" />
     <ClCompile Include="..\platform\graphics\FontFastPath.cpp" />
     <ClCompile Include="..\platform\graphics\FontFeatureSettings.cpp" />
     <ClCompile Include="..\platform\graphics\FontPlatformData.cpp" />
@@ -4619,7 +4610,6 @@
     <ClCompile Include="..\platform\network\FormDataBuilder.cpp" />
     <ClCompile Include="..\platform\network\HTTPHeaderMap.cpp" />
     <ClCompile Include="..\platform\network\HTTPParsers.cpp" />
-    <ClCompile Include="..\platform\network\HTTPRequest.cpp" />
     <ClCompile Include="..\platform\network\MIMEHeader.cpp" />
     <ClCompile Include="..\platform\network\NetworkStateNotifier.cpp" />
     <ClCompile Include="..\platform\network\NetworkStorageSessionStub.cpp">
@@ -9435,22 +9425,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDOMWindowWebAudioCustom.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDOMWindowWebSocketCustom.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release_WinCairo|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Production|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSDOMWrapper.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug_WinCairo|Win32'">true</ExcludedFromBuild>
@@ -10266,7 +10240,6 @@
     <ClCompile Include="..\history\CachedPage.cpp" />
     <ClCompile Include="..\history\HistoryItem.cpp" />
     <ClCompile Include="..\history\PageCache.cpp" />
-    <ClCompile Include="..\history\cf\HistoryPropertyList.cpp" />
     <ClCompile Include="..\storage\Storage.cpp" />
     <ClCompile Include="..\storage\StorageAreaImpl.cpp" />
     <ClCompile Include="..\storage\StorageAreaSync.cpp" />
@@ -10649,7 +10622,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\InspectorTypeBuilder.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\WebCore\DerivedSources\JSAbstractWorker.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSAttr.h" />
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarInfo.h" />
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarProp.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBeforeLoadEvent.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBlob.h" />
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSCanvasGradient.h" />
@@ -11310,8 +11283,6 @@
     <ClInclude Include="..\Modules\websockets\WebSocketExtensionProcessor.h" />
     <ClInclude Include="..\Modules\websockets\WebSocketFrame.h" />
     <ClInclude Include="..\Modules\websockets\WebSocketHandshake.h" />
-    <ClInclude Include="..\Modules\websockets\WebSocketHandshakeRequest.h" />
-    <ClInclude Include="..\Modules\websockets\WebSocketHandshakeResponse.h" />
     <ClInclude Include="..\Modules\websockets\WorkerThreadableWebSocketChannel.h" />
     <ClInclude Include="..\Modules\speech\DOMWindowSpeechSynthesis.h" />
     <ClInclude Include="..\Modules\speech\SpeechSynthesis.h" />
@@ -11351,7 +11322,7 @@
     <ClInclude Include="..\page\animation\AnimationController.h" />
     <ClInclude Include="..\page\animation\AnimationControllerPrivate.h" />
     <ClInclude Include="..\page\AutoscrollController.h" />
-    <ClInclude Include="..\page\BarInfo.h" />
+    <ClInclude Include="..\page\BarProp.h" />
     <ClInclude Include="..\page\Chrome.h" />
     <ClInclude Include="..\page\ChromeClient.h" />
     <ClInclude Include="..\page\animation\CompositeAnimation.h" />
@@ -11459,8 +11430,6 @@
     <ClInclude Include="..\loader\PlaceholderDocument.h" />
     <ClInclude Include="..\loader\PolicyCallback.h" />
     <ClInclude Include="..\loader\PolicyChecker.h" />
-    <ClInclude Include="..\loader\Prerenderer.h" />
-    <ClInclude Include="..\loader\PrerendererClient.h" />
     <ClInclude Include="..\loader\ProgressTracker.h" />
     <ClInclude Include="..\loader\ResourceBuffer.h" />
     <ClInclude Include="..\loader\ResourceLoader.h" />
@@ -11537,7 +11506,6 @@
     <ClInclude Include="..\platform\DragData.h" />
     <ClInclude Include="..\platform\DragImage.h" />
     <ClInclude Include="..\platform\EventLoop.h" />
-    <ClInclude Include="..\platform\EventTracer.h" />
     <ClInclude Include="..\platform\FileChooser.h" />
     <ClInclude Include="..\platform\FileIconLoader.h" />
     <ClInclude Include="..\platform\FileMetadata.h" />
@@ -11565,7 +11533,6 @@
     <ClInclude Include="..\platform\LocalizedStrings.h" />
     <ClInclude Include="..\platform\Logging.h" />
     <ClInclude Include="..\platform\MemoryPressureHandler.h" />
-    <ClInclude Include="..\platform\MemoryUsageSupport.h" />
     <ClInclude Include="..\platform\MainThreadTask.h" />
     <ClInclude Include="..\platform\MIMETypeRegistry.h" />
     <ClInclude Include="..\platform\NotImplemented.h" />
@@ -11581,8 +11548,6 @@
     <ClInclude Include="..\platform\PopupMenu.h" />
     <ClInclude Include="..\platform\PopupMenuClient.h" />
     <ClInclude Include="..\platform\PopupMenuStyle.h" />
-    <ClInclude Include="..\platform\PrerenderClient.h" />
-    <ClInclude Include="..\platform\PrerenderHandle.h" />
     <ClInclude Include="..\platform\PurgeableBuffer.h" />
     <ClInclude Include="..\platform\ReferrerPolicy.h" />
     <ClInclude Include="..\platform\RunLoop.h" />
@@ -11604,8 +11569,6 @@
     <ClInclude Include="..\platform\Sound.h" />
     <ClInclude Include="..\platform\SSLKeyGenerator.h" />
     <ClInclude Include="..\platform\SuddenTermination.h" />
-    <ClInclude Include="..\platform\SystemTime.h" />
-    <ClInclude Include="..\platform\Theme.h" />
     <ClInclude Include="..\platform\ThemeTypes.h" />
     <ClInclude Include="..\platform\ThreadGlobalData.h" />
     <ClInclude Include="..\platform\ThreadTimers.h" />
@@ -11646,7 +11609,6 @@
     <ClInclude Include="..\platform\win\WindowMessageBroadcaster.h" />
     <ClInclude Include="..\platform\win\WindowMessageListener.h" />
     <ClInclude Include="..\platform\win\WindowsTouch.h" />
-    <ClInclude Include="..\platform\cf\BinaryPropertyList.h" />
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h" />
     <ClInclude Include="..\platform\graphics\BitmapImage.h" />
     <ClInclude Include="..\platform\graphics\Color.h" />
@@ -11661,7 +11623,6 @@
     <ClInclude Include="..\platform\graphics\FontData.h" />
     <ClInclude Include="..\platform\graphics\FontDescription.h" />
     <ClInclude Include="..\platform\graphics\FontFallbackList.h" />
-    <ClInclude Include="..\platform\graphics\FontFamily.h" />
     <ClInclude Include="..\platform\graphics\FontFeatureSettings.h" />
     <ClInclude Include="..\platform\graphics\FontMetrics.h" />
     <ClInclude Include="..\platform\graphics\FontPlatformData.h" />
@@ -11670,7 +11631,6 @@
     <ClInclude Include="..\platform\graphics\FontSmoothingMode.h" />
     <ClInclude Include="..\platform\graphics\FontTraitsMask.h" />
     <ClInclude Include="..\platform\graphics\GeneratedImage.h" />
-    <ClInclude Include="..\platform\graphics\Generator.h" />
     <ClInclude Include="..\platform\graphics\Glyph.h" />
     <ClInclude Include="..\platform\graphics\GlyphBuffer.h" />
     <ClInclude Include="..\platform\graphics\GlyphMetricsMap.h" />
@@ -13200,7 +13160,6 @@
     <ClInclude Include="..\history\CachedPage.h" />
     <ClInclude Include="..\history\HistoryItem.h" />
     <ClInclude Include="..\history\PageCache.h" />
-    <ClInclude Include="..\history\cf\HistoryPropertyList.h" />
     <ClInclude Include="..\storage\Storage.h" />
     <ClInclude Include="..\storage\StorageArea.h" />
     <ClInclude Include="..\storage\StorageAreaImpl.h" />
@@ -13454,8 +13413,6 @@
     <None Include="..\inspector\front-end\MetricsSidebarPane.js" />
     <None Include="..\inspector\front-end\NativeBreakpointsSidebarPane.js" />
     <None Include="..\inspector\front-end\NativeHeapGraph.js" />
-    <None Include="..\inspector\front-end\nativeMemoryProfiler.css" />
-    <None Include="..\inspector\front-end\NativeMemorySnapshotView.js" />
     <None Include="..\inspector\front-end\NavigatorOverlayController.js" />
     <None Include="..\inspector\front-end\navigatorView.css" />
     <None Include="..\inspector\front-end\NavigatorView.js" />

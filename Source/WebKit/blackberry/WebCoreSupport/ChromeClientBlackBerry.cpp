@@ -47,8 +47,6 @@
 #include "Page.h"
 #include "PageGroup.h"
 #include "PageGroupLoadDeferrer.h"
-#include "PagePopupBlackBerry.h"
-#include "PagePopupClient.h"
 #include "PopupMenuBlackBerry.h"
 #include "RenderView.h"
 #include "SVGZoomAndPan.h"
@@ -150,8 +148,6 @@ bool ChromeClientBlackBerry::runJavaScriptPrompt(Frame* frame, const String& mes
 
 void ChromeClientBlackBerry::chromeDestroyed()
 {
-    // Destroy popup if we have.
-    closePagePopup(0);
     delete this;
 }
 
@@ -260,7 +256,7 @@ Page* ChromeClientBlackBerry::createWindow(Frame* frame, const FrameLoadRequest&
     if (features.dialog)
         flags |= WebPageClient::FlagWindowIsDialog;
 
-    WebPage* webPage = m_webPagePrivate->m_client->createWindow(x, y, width, height, flags, url.string(), request.frameName(), ScriptController::processingUserGesture());
+    WebPage* webPage = m_webPagePrivate->m_client->createWindow(x, y, width, height, flags, url.string(), request.frameName(), frame->document()->url().string(), ScriptController::processingUserGesture());
     if (!webPage)
         return 0;
 
@@ -300,7 +296,7 @@ bool ChromeClientBlackBerry::selectItemAlignmentFollowsMenuWritingDirection()
 
 bool ChromeClientBlackBerry::hasOpenedPopup() const
 {
-    return m_webPagePrivate->m_webPage->hasOpenedPopup();
+    return m_webPagePrivate->hasOpenedPopup();
 }
 
 PassRefPtr<PopupMenu> ChromeClientBlackBerry::createPopupMenu(PopupMenuClient* client) const
@@ -311,29 +307,6 @@ PassRefPtr<PopupMenu> ChromeClientBlackBerry::createPopupMenu(PopupMenuClient* c
 PassRefPtr<SearchPopupMenu> ChromeClientBlackBerry::createSearchPopupMenu(PopupMenuClient* client) const
 {
     return adoptRef(new SearchPopupMenuBlackBerry(client));
-}
-
-PagePopup* ChromeClientBlackBerry::openPagePopup(PagePopupClient* client, const IntRect& originBoundsInRootView)
-{
-    closePagePopup(0);
-
-    PagePopupBlackBerry* webPopup = new PagePopupBlackBerry(m_webPagePrivate, client, rootViewToScreen(originBoundsInRootView));
-    m_webPagePrivate->m_webPage->popupOpened(webPopup);
-    if (webPopup->sendCreatePopupWebViewRequest())
-        return webPopup;
-
-    closePagePopup(0);
-    return 0;
-}
-
-void ChromeClientBlackBerry::closePagePopup(PagePopup*)
-{
-    if (!hasOpenedPopup())
-        return;
-
-    PagePopupBlackBerry* webPopup = m_webPagePrivate->m_webPage->popup();
-    webPopup->closePopup();
-    delete webPopup;
 }
 
 void ChromeClientBlackBerry::setToolbarsVisible(bool)
@@ -823,5 +796,12 @@ PassOwnPtr<ColorChooser> ChromeClientBlackBerry::createColorChooser(ColorChooser
 {
     return nullptr;
 }
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+void ChromeClientBlackBerry::scheduleAnimation()
+{
+    m_webPagePrivate->scheduleAnimation();
+}
+#endif
 
 } // namespace WebCore

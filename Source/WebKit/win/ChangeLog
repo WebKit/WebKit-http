@@ -1,3 +1,262 @@
+2013-05-28  Andreas Kling  <akling@apple.com>
+
+        Document::setFocusedNode() should be setFocusedElement().
+        <http://webkit.org/b/116857>
+
+        Reviewed by Antti Koivisto.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::isFocused):
+        * WebView.cpp:
+        (WebView::setInitialFocus):
+
+2013-05-27  Xueqing Huang  <huangxueqing@baidu.com>
+
+        Move Windows port off legacy clipboard.
+        https://bugs.webkit.org/show_bug.cgi?id=116258
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (WebDragClient::willPerformDragSourceAction): Get IDataObject from Pasteboard instead of Clipboard.
+        (WebDragClient::startDrag): Ditto.
+
+2013-05-26  Antti Koivisto  <antti@apple.com>
+
+        Another build fix.
+        
+        Not reviewed.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::font):
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::draw):
+
+2013-05-26  Antti Koivisto  <antti@apple.com>
+
+        Build fix
+        
+        Not reviewed.
+
+        * WebKitGraphics.cpp:
+        (makeFont):
+
+2013-05-26  Andreas Kling  <akling@apple.com>
+
+        FocusController::setFocusedNode() should be setFocusedElement().
+        <http://webkit.org/b/116780>
+
+        Reviewed by Antti Koivisto.
+
+        * WebView.cpp:
+        (WebView::clearFocusNode):
+
+2013-05-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Expose database storage and cache locations via preferences.
+        https://bugs.webkit.org/show_bug.cgi?id=116729
+
+        Reviewed by Tim Horton.
+
+        * WebDatabaseManager.cpp: Update to check preferences for the
+        desired location of the database store.
+        (databasesDirectory): Added.
+        (WebKitInitializeWebDatabasesIfNecessary): Use new databasesDirectory
+        method to determine what system path to use for file storage.
+        * WebKit.vcproj/WebKitExports.def.in: Export three symbols
+        needed to implement the feature.
+        * WebView.cpp: Update to check preferences for the desired location
+        of the various caches used by WebKit.
+        (WebView::setCacheModel): Update to check preferences for URL cache
+        storage.
+        (WebKitSetApplicationCachePathIfNecessary): Update to check
+        preferences for ccache storage.
+
+2013-05-24  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Remove custom code for webkitAudioContext global constructor getter
+        https://bugs.webkit.org/show_bug.cgi?id=116530
+
+        Reviewed by Geoffrey Garen.
+
+        Use RuntimeEnabledFeatures instead of Settings to toggle Web Audio support.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2013-05-24  Anders Carlsson  <andersca@apple.com>
+
+        Remove unused code to read/write history
+        https://bugs.webkit.org/show_bug.cgi?id=116738
+
+        Reviewed by Brent Fulgham.
+
+        * Interfaces/IWebHistory.idl:
+        Replace loadFromURL and saveToURL with unused1/unused2.
+
+        * Interfaces/IWebHistoryPrivate.idl:
+        Replace data with unused1.
+
+        * WebHistory.cpp:
+        Remove history loading/saving code.
+
+        (WebHistory::unused1):
+        (WebHistory::unused2):
+        Add implementations.
+
+        * WebHistory.h:
+        (WebHistory):
+
+2013-05-21  Mark Salisbury  <mark.salisbury@hp.com>
+
+        [Windows, curl] WebDownloadCurl.cpp should not include SystemTime.h
+        https://bugs.webkit.org/show_bug.cgi?id=116584
+
+        Reviewed by Brent Fulgham.
+
+        SystemTime header and implementation are no longer used and were removed
+        recently - http://trac.webkit.org/changeset/150216.
+
+        * WebDownloadCurl.cpp:
+
+2013-05-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove ChromeClient::webView()
+        https://bugs.webkit.org/show_bug.cgi?id=116054
+
+        Reviewed by Darin Adler.
+
+        This blatantly horrible layer violation was only used to know if a ChromeClient is an empty
+        client or not. We already have a (slightly less horrible) way to do that.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2013-05-16  Tim Horton  <timothy_horton@apple.com>
+
+        PDFPlugins don't load when plugins are disabled, but they should
+        https://bugs.webkit.org/show_bug.cgi?id=75790
+        <rdar://problem/11650197>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView.cpp:
+        (WebView::canShowMIMEType):
+        Previously, this caller depended on pluginData() returning null if
+        plug-ins were disabled. Since that is no longer the case, we have to
+        check if we can use plug-ins, and otherwise ignore non-application-plug-ins.
+
+2013-05-16  Andreas Kling  <akling@apple.com>
+
+        Page::chrome() should return a reference.
+        <http://webkit.org/b/116185>
+
+        Reviewed by Anders Carlsson.
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert the previous commit.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r150160.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r150156.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-05-13  Anders Carlsson  <andersca@apple.com>
+
+        Frame::editor() should return a reference
+        https://bugs.webkit.org/show_bug.cgi?id=116037
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle):
+        * WebFrame.cpp:
+        (WebFrame::hasSpellingMarker):
+        (WebFrame::setTextDirection):
+        (WebFrame::selectedString):
+        (WebFrame::selectAll):
+        * WebView.cpp:
+        (WebView::execCommand):
+        (WebView::handleEditingKeyboardEvent):
+        (WebView::executeCoreCommandByName):
+        (WebView::selectedText):
+        (WebView::deleteEnabled):
+        (WebView::editingEnabled):
+        (WebView::replaceSelectionWithText):
+        (WebView::copy):
+        (WebView::cut):
+        (WebView::paste):
+        (WebView::copyURL):
+        (WebView::delete_):
+        (WebView::checkSpelling):
+        (WebView::showGuessPanel):
+        (WebView::clearUndoRedoOperations):
+        (WebView::prepareCandidateWindow):
+        (WebView::resetIME):
+        (WebView::updateSelectionForIME):
+        (WebView::onIMEComposition):
+        (WebView::onIMEEndComposition):
+        (WebView::onIMERequestCharPosition):
+        (WebView::onIMERequest):
+        (WebView::setCompositionForTesting):
+        (WebView::hasCompositionForTesting):
+        (WebView::confirmCompositionForTesting):
+        (WebView::compositionRangeForTesting):
+        (WebView::firstRectForCharacterRangeForTesting):
+        (WebView::selectedRangeForTesting):
+
+2013-05-15  Patrick Gansterer  <paroga@webkit.org>
+
+        Remove unnecessary dependecy on CoreFoundation from WebDatabaseManager
+        https://bugs.webkit.org/show_bug.cgi?id=115993
+
+        Reviewed by Anders Carlsson.
+
+        Using COMPropertyBag instead of CFDictionaryPropertyBag also reduces
+        the total lines of code needed for the same functionality.
+
+        * WebDatabaseManager.cpp:
+        (WebDatabaseManager::dispatchDidModifyDatabase):
+
+2013-05-12  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for updating the Web Inspector toolbar height.
+
+        https://bugs.webkit.org/show_bug.cgi?id=115996
+
+        Reviewed by Joseph Pecoraro and Benjamin Poulain.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::setToolbarHeight):
+        * WebCoreSupport/WebInspectorClient.h:
+
+2013-05-13  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. AppleWin VS2005 build fix.
+
+        * WebKit.vcproj/WebKitExports.def.in:
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Stop including UnusedParam.h
+        https://bugs.webkit.org/show_bug.cgi?id=116003
+
+        Reviewed by Sam Weinig.
+
+        UnusedParam.h is empty now so there's no need to include it anymore.
+
+        * WebSecurityOrigin.cpp:
+
 2013-05-09  Max Feil  <mfeil@rim.com>
 
         shouldUsePluginDocument() needs to be respected when a document is created

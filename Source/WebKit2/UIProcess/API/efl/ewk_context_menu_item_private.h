@@ -30,7 +30,10 @@
 #include "WKEinaSharedString.h"
 #include "ewk_context_menu.h"
 #include "ewk_context_menu_item.h"
+#include "ewk_context_menu_private.h"
 #include <wtf/PassOwnPtr.h>
+#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 
 /**
  * \struct  Ewk_Context_Menu_Item
@@ -38,12 +41,12 @@
  */
 class EwkContextMenuItem {
 public:
-    static PassOwnPtr<EwkContextMenuItem> create(WKContextMenuItemRef item, EwkContextMenu* parentMenu = 0)
+    static PassOwnPtr<EwkContextMenuItem> create(WKContextMenuItemRef item, EwkContextMenu* parentMenu)
     {
         return adoptPtr(new EwkContextMenuItem(item, parentMenu));
     }
 
-    static PassOwnPtr<EwkContextMenuItem> create(Ewk_Context_Menu_Item_Type type, Ewk_Context_Menu_Item_Action action, const char* title, Eina_Bool checked, Eina_Bool enabled, EwkContextMenu* subMenu, EwkContextMenu* parentMenu = 0)
+    static PassOwnPtr<EwkContextMenuItem> create(Ewk_Context_Menu_Item_Type type, Ewk_Context_Menu_Item_Action action, const char* title, Eina_Bool checked, Eina_Bool enabled, PassRefPtr<EwkContextMenu> subMenu = 0, EwkContextMenu* parentMenu = 0)
     {
         return adoptPtr(new EwkContextMenuItem(type, action, title, checked, enabled, subMenu, parentMenu));
     }
@@ -66,9 +69,11 @@ public:
     EwkContextMenu* parentMenu() const { return m_parentMenu; }
     void setParentMenu(EwkContextMenu* parentMenu) { m_parentMenu = parentMenu; }
 
+    EwkContextMenu* subMenu() const { return m_subMenu.get(); }
+
 private:
     EwkContextMenuItem(WKContextMenuItemRef, EwkContextMenu* parentMenu);
-    EwkContextMenuItem(Ewk_Context_Menu_Item_Type type, Ewk_Context_Menu_Item_Action action, const char* title, Eina_Bool checked, Eina_Bool enabled, EwkContextMenu* subMenu, EwkContextMenu* parentMenu);
+    EwkContextMenuItem(Ewk_Context_Menu_Item_Type type, Ewk_Context_Menu_Item_Action action, const char* title, Eina_Bool checked, Eina_Bool enabled, PassRefPtr<EwkContextMenu> subMenu, EwkContextMenu* parentMenu);
 
     Ewk_Context_Menu_Item_Type m_type;
     Ewk_Context_Menu_Item_Action m_action;
@@ -78,8 +83,8 @@ private:
     bool m_isChecked;
     bool m_isEnabled;
 
-    Ewk_Context_Menu* m_parentMenu;
-    Ewk_Context_Menu* m_subMenu;
+    EwkContextMenu* m_parentMenu;
+    RefPtr<EwkContextMenu> m_subMenu;
 };
 
 #endif // ewk_context_menu_item_private_h

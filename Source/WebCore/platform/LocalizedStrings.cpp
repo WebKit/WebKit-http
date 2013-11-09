@@ -31,7 +31,6 @@
 #include "NotImplemented.h"
 #include "TextBreakIterator.h"
 #include <wtf/MathExtras.h>
-#include <wtf/UnusedParam.h>
 #include <wtf/unicode/CharacterNames.h>
 
 #if USE(CF)
@@ -254,7 +253,7 @@ String contextMenuItemTagSearchWeb()
 
 String contextMenuItemTagLookUpInDictionary(const String& selectedString)
 {
-#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 1060
+#if PLATFORM(MAC) && !PLATFORM(IOS) && __MAC_OS_X_VERSION_MIN_REQUIRED == 1060
     UNUSED_PARAM(selectedString);
     return WEB_UI_STRING("Look Up in Dictionary", "Look Up in Dictionary context menu item");
 #else

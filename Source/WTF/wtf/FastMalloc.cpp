@@ -88,7 +88,10 @@
 #endif
 #include <string.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/UnusedParam.h>
+
+#if OS(DARWIN)
+#include <malloc/malloc.h>
+#endif
 
 #ifndef NO_TCMALLOC_SAMPLES
 #ifdef WTF_CHANGES
@@ -231,9 +234,7 @@ TryMallocReturnValue tryFastZeroedMalloc(size_t n)
 
 #if FORCE_SYSTEM_MALLOC
 
-#if OS(DARWIN)
-#include <malloc/malloc.h>
-#elif OS(WINDOWS)
+#if OS(WINDOWS)
 #include <malloc.h>
 #endif
 
@@ -452,7 +453,6 @@ extern "C" WTF_EXPORT_PRIVATE const int jscore_fastmalloc_introspection = 0;
 #ifdef WTF_CHANGES
 
 #if OS(DARWIN)
-#include "MallocZoneSupport.h"
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 #endif
@@ -555,7 +555,7 @@ static ALWAYS_INLINE uintptr_t internalEntropyValue()
 
 #define HARDENING_ENTROPY internalEntropyValue()
 #define ROTATE_VALUE(value, amount) (((value) >> (amount)) | ((value) << (sizeof(value) * 8 - (amount))))
-#define XOR_MASK_PTR_WITH_KEY(ptr, key, entropy) (reinterpret_cast<typeof(ptr)>(reinterpret_cast<uintptr_t>(ptr)^(ROTATE_VALUE(reinterpret_cast<uintptr_t>(key), MaskKeyShift)^entropy)))
+#define XOR_MASK_PTR_WITH_KEY(ptr, key, entropy) (reinterpret_cast<__typeof__(ptr)>(reinterpret_cast<uintptr_t>(ptr)^(ROTATE_VALUE(reinterpret_cast<uintptr_t>(key), MaskKeyShift)^entropy)))
 
 
 static ALWAYS_INLINE uint32_t freedObjectStartPoison()
@@ -1059,6 +1059,10 @@ static void* MetaDataAlloc(size_t bytes) {
   return result;
 }
 
+#if defined(WTF_CHANGES) && OS(DARWIN)
+class RemoteMemoryReader;
+#endif
+
 template <class T>
 class PageHeapAllocator {
  private:
@@ -1131,12 +1135,8 @@ class PageHeapAllocator {
   int inuse() const { return inuse_; }
 
 #if defined(WTF_CHANGES) && OS(DARWIN)
-  template <class Recorder>
-  void recordAdministrativeRegions(Recorder& recorder, const RemoteMemoryReader& reader)
-  {
-      for (HardenedSLL adminAllocation = allocated_regions_; adminAllocation; adminAllocation.setValue(reader.nextEntryInHardenedLinkedList(reinterpret_cast<void**>(adminAllocation.value()), entropy_)))
-          recorder.recordRegion(reinterpret_cast<vm_address_t>(adminAllocation.value()), kAllocIncrement);
-  }
+  template <typename Recorder>
+  void recordAdministrativeRegions(Recorder&, const RemoteMemoryReader&);
 #endif
 };
 
@@ -3051,7 +3051,7 @@ void TCMalloc_Central_FreeList::InsertRange(HardenedSLL start, HardenedSLL end, 
   ReleaseListToSpans(start);
 }
 
-void TCMalloc_Central_FreeList::RemoveRange(HardenedSLL* start, HardenedSLL* end, int *N) {
+ALWAYS_INLINE void TCMalloc_Central_FreeList::RemoveRange(HardenedSLL* start, HardenedSLL* end, int *N) {
   int num = *N;
   ASSERT(num > 0);
 
@@ -3089,7 +3089,7 @@ void TCMalloc_Central_FreeList::RemoveRange(HardenedSLL* start, HardenedSLL* end
 }
 
 
-HardenedSLL TCMalloc_Central_FreeList::FetchFromSpansSafe() {
+ALWAYS_INLINE HardenedSLL TCMalloc_Central_FreeList::FetchFromSpansSafe() {
   HardenedSLL t = FetchFromSpans();
   if (!t) {
     Populate();
@@ -4681,17 +4681,50 @@ size_t fastMallocSize(const void* ptr)
 }
 
 #if OS(DARWIN)
+class RemoteMemoryReader {
+    task_t m_task;
+    memory_reader_t* m_reader;
+
+public:
+    RemoteMemoryReader(task_t task, memory_reader_t* reader)
+        : m_task(task)
+        , m_reader(reader)
+    { }
+
+    void* operator()(vm_address_t address, size_t size) const
+    {
+        void* output;
+        kern_return_t err = (*m_reader)(m_task, address, size, static_cast<void**>(&output));
+        if (err)
+            output = 0;
+        return output;
+    }
+
+    template <typename T>
+    T* operator()(T* address, size_t size = sizeof(T)) const
+    {
+        return static_cast<T*>((*this)(reinterpret_cast<vm_address_t>(address), size));
+    }
+
+    template <typename T>
+    T* nextEntryInHardenedLinkedList(T** remoteAddress, uintptr_t entropy) const
+    {
+        T** localAddress = (*this)(remoteAddress);
+        if (!localAddress)
+            return 0;
+        T* hardenedNext = *localAddress;
+        if (!hardenedNext || hardenedNext == (void*)entropy)
+            return 0;
+        return XOR_MASK_PTR_WITH_KEY(hardenedNext, remoteAddress, entropy);
+    }
+};
 
 template <typename T>
-T* RemoteMemoryReader::nextEntryInHardenedLinkedList(T** remoteAddress, uintptr_t entropy) const
+template <typename Recorder>
+void PageHeapAllocator<T>::recordAdministrativeRegions(Recorder& recorder, const RemoteMemoryReader& reader)
 {
-    T** localAddress = (*this)(remoteAddress);
-    if (!localAddress)
-        return 0;
-    T* hardenedNext = *localAddress;
-    if (!hardenedNext || hardenedNext == (void*)entropy)
-        return 0;
-    return XOR_MASK_PTR_WITH_KEY(hardenedNext, remoteAddress, entropy);
+    for (HardenedSLL adminAllocation = allocated_regions_; adminAllocation; adminAllocation.setValue(reader.nextEntryInHardenedLinkedList(reinterpret_cast<void**>(adminAllocation.value()), entropy_)))
+        recorder.recordRegion(reinterpret_cast<vm_address_t>(adminAllocation.value()), kAllocIncrement);
 }
 
 class FreeObjectFinder {

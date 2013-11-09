@@ -138,7 +138,6 @@
 using namespace WebCore;
 using namespace HTMLNames;
 using namespace WTF;
-using namespace std;
 
 @interface WebMenuTarget : NSObject {
     WebCore::ContextMenuController* _menuController;
@@ -864,7 +863,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
     if (fragment && [self _shouldInsertFragment:fragment replacingDOMRange:range givenAction:WebViewInsertActionPasted])
-        coreFrame->editor()->pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
+        coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
 #else
     // Mail is ignoring the frament passed to the delegate and creates a new one.
     // We want to avoid creating the fragment twice.
@@ -872,12 +871,12 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
         if ([self _shouldInsertFragment:nil replacingDOMRange:range givenAction:WebViewInsertActionPasted]) {
             DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
             if (fragment)
-                coreFrame->editor()->pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
+                coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
         }        
     } else {
         DOMDocumentFragment *fragment = [self _documentFragmentFromPasteboard:pasteboard inContext:range allowPlainText:allowPlainText];
         if (fragment && [self _shouldInsertFragment:fragment replacingDOMRange:range givenAction:WebViewInsertActionPasted])
-            coreFrame->editor()->pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
+            coreFrame->editor().pasteAsFragment(core(fragment), [self _canSmartReplaceWithPasteboard:pasteboard], false);
     }
 #endif
     [webView _setInsertionPasteboard:nil];
@@ -983,7 +982,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 - (BOOL)_shouldDeleteRange:(DOMRange *)range
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->shouldDeleteRange(core(range));
+    return coreFrame && coreFrame->editor().shouldDeleteRange(core(range));
 }
 
 - (NSView *)_hitViewForEvent:(NSEvent *)event
@@ -1758,13 +1757,13 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 - (BOOL)_canEdit
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->canEdit();
+    return coreFrame && coreFrame->editor().canEdit();
 }
 
 - (BOOL)_canEditRichly
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->canEditRichly();
+    return coreFrame && coreFrame->editor().canEditRichly();
 }
 
 - (BOOL)_canAlterCurrentSelection
@@ -1824,50 +1823,50 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 - (DOMNode *)_insertOrderedList
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame ? kit(coreFrame->editor()->insertOrderedList().get()) : nil;
+    return coreFrame ? kit(coreFrame->editor().insertOrderedList().get()) : nil;
 }
 
 - (DOMNode *)_insertUnorderedList
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame ? kit(coreFrame->editor()->insertUnorderedList().get()) : nil;
+    return coreFrame ? kit(coreFrame->editor().insertUnorderedList().get()) : nil;
 }
 
 - (BOOL)_canIncreaseSelectionListLevel
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->canIncreaseSelectionListLevel();
+    return coreFrame && coreFrame->editor().canIncreaseSelectionListLevel();
 }
 
 - (BOOL)_canDecreaseSelectionListLevel
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->canDecreaseSelectionListLevel();
+    return coreFrame && coreFrame->editor().canDecreaseSelectionListLevel();
 }
 
 - (DOMNode *)_increaseSelectionListLevel
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame ? kit(coreFrame->editor()->increaseSelectionListLevel().get()) : nil;
+    return coreFrame ? kit(coreFrame->editor().increaseSelectionListLevel().get()) : nil;
 }
 
 - (DOMNode *)_increaseSelectionListLevelOrdered
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame ? kit(coreFrame->editor()->increaseSelectionListLevelOrdered().get()) : nil;
+    return coreFrame ? kit(coreFrame->editor().increaseSelectionListLevelOrdered().get()) : nil;
 }
 
 - (DOMNode *)_increaseSelectionListLevelUnordered
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame ? kit(coreFrame->editor()->increaseSelectionListLevelUnordered().get()) : nil;
+    return coreFrame ? kit(coreFrame->editor().increaseSelectionListLevelUnordered().get()) : nil;
 }
 
 - (void)_decreaseSelectionListLevel
 {
     Frame* coreFrame = core([self _frame]);
     if (coreFrame)
-        coreFrame->editor()->decreaseSelectionListLevel();
+        coreFrame->editor().decreaseSelectionListLevel();
 }
 
 - (void)_setHighlighter:(id<WebHTMLHighlighter>)highlighter ofType:(NSString*)type
@@ -2215,7 +2214,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 #ifdef __LP64__
     // If the new bottom is equal to the old bottom (when both are treated as floats), we just return the original
     // bottom. This prevents rounding errors that can occur when converting newBottom to a double.
-    if (fabs(static_cast<float>(bottom) - newBottom) <= numeric_limits<float>::epsilon()) 
+    if (fabs(static_cast<float>(bottom) - newBottom) <= std::numeric_limits<float>::epsilon()) 
         return bottom;
     else
 #endif
@@ -2359,7 +2358,7 @@ static String commandNameForSelector(SEL selector)
     Frame* coreFrame = core([self _frame]);
     if (!coreFrame)
         return Editor::Command();
-    return coreFrame->editor()->command(commandNameForSelector(selector));
+    return coreFrame->editor().command(commandNameForSelector(selector));
 }
 
 - (Editor::Command)coreCommandByName:(const char*)name
@@ -2367,7 +2366,7 @@ static String commandNameForSelector(SEL selector)
     Frame* coreFrame = core([self _frame]);
     if (!coreFrame)
         return Editor::Command();
-    return coreFrame->editor()->command(name);
+    return coreFrame->editor().command(name);
 }
 
 - (void)executeCoreCommandBySelector:(SEL)selector
@@ -2593,7 +2592,7 @@ WEBCORE_COMMAND(yankAndSelect)
         NSMenuItem *menuItem = (NSMenuItem *)item;
         if ([menuItem isKindOfClass:[NSMenuItem class]]) {
             String direction = writingDirection == NSWritingDirectionLeftToRight ? "ltr" : "rtl";
-            [menuItem setState:frame->editor()->selectionHasStyle(CSSPropertyDirection, direction)];
+            [menuItem setState:frame->editor().selectionHasStyle(CSSPropertyDirection, direction)];
         }
         return [self _canEdit];
     }
@@ -2610,7 +2609,7 @@ WEBCORE_COMMAND(yankAndSelect)
         if ([menuItem isKindOfClass:[NSMenuItem class]]) {
             // Take control of the title of the menu item instead of just checking/unchecking it because
             // a check would be ambiguous.
-            [menuItem setTitle:frame->editor()->selectionHasStyle(CSSPropertyDirection, "rtl")
+            [menuItem setTitle:frame->editor().selectionHasStyle(CSSPropertyDirection, "rtl")
                 ? UI_STRING_INTERNAL("Left to Right", "Left to Right context menu item")
                 : UI_STRING_INTERNAL("Right to Left", "Right to Left context menu item")];
         }
@@ -2641,11 +2640,11 @@ WEBCORE_COMMAND(yankAndSelect)
         return [self _hasSelection];
     
     if (action == @selector(paste:) || action == @selector(pasteAsPlainText:))
-        return frame && (frame->editor()->canDHTMLPaste() || frame->editor()->canPaste());
+        return frame && (frame->editor().canDHTMLPaste() || frame->editor().canPaste());
     
     if (action == @selector(pasteAsRichText:))
-        return frame && (frame->editor()->canDHTMLPaste()
-            || (frame->editor()->canPaste() && frame->selection()->isContentRichlyEditable()));
+        return frame && (frame->editor().canDHTMLPaste()
+            || (frame->editor().canPaste() && frame->selection()->isContentRichlyEditable()));
     
     if (action == @selector(performFindPanelAction:))
         return NO;
@@ -3098,7 +3097,7 @@ static void setMenuTargets(NSMenu* menu)
     _private->handlingMouseDownEvent = YES;
     page->contextMenuController()->clearContextMenu();
     coreFrame->eventHandler()->mouseDown(event);
-    BOOL handledEvent = coreFrame->eventHandler()->sendContextMenuEvent(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome()->platformPageClient()));
+    BOOL handledEvent = coreFrame->eventHandler()->sendContextMenuEvent(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
     _private->handlingMouseDownEvent = NO;
 
     if (!handledEvent)
@@ -3145,7 +3144,7 @@ static void setMenuTargets(NSMenu* menu)
     if (!document)
         return;
     
-    document->setFocusedNode(0);
+    document->setFocusedElement(0);
 }
 
 - (BOOL)isOpaque
@@ -3494,7 +3493,7 @@ static void setMenuTargets(NSMenu* menu)
             if ([hitHTMLView _isSelectionEvent:event]) {
 #if ENABLE(DRAG_SUPPORT)
                 if (Page* page = coreFrame->page())
-                    result = coreFrame->eventHandler()->eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome()->platformPageClient()));
+                    result = coreFrame->eventHandler()->eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
 #endif
             } else if ([hitHTMLView _isScrollBarEvent:event])
                 result = true;
@@ -3521,7 +3520,7 @@ static void setMenuTargets(NSMenu* menu)
 #if ENABLE(DRAG_SUPPORT)
             if (Frame* coreFrame = core([hitHTMLView _frame])) {
                 if (Page* page = coreFrame->page())
-                    result = coreFrame->eventHandler()->eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome()->platformPageClient()));
+                    result = coreFrame->eventHandler()->eventMayStartDrag(PlatformEventFactory::createPlatformMouseEvent(event, page->chrome().platformPageClient()));
             }
 #endif
             [hitHTMLView _setMouseDownEvent:nil];
@@ -3803,7 +3802,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     _private->_forceUpdateSecureInputState = NO;
 
     // FIXME: Kill ring handling is mostly in WebCore, so this call should also be moved there.
-    frame->editor()->setStartNewKillRingSequence(true);
+    frame->editor().setStartNewKillRingSequence(true);
 
     Page* page = frame->page();
     if (!page)
@@ -3818,7 +3817,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
         return YES;
 
     if (Document* document = frame->document())
-        document->setFocusedNode(0);
+        document->setFocusedElement(0);
     page->focusController()->setInitialFocus(direction == NSSelectingNext ? FocusDirectionForward : FocusDirectionBackward,
                                              currentKeyboardEvent(frame).get());
     return YES;
@@ -4231,7 +4230,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 {
     Frame* coreFrame = core([self _frame]);
     NSAttributedString *string = [[NSAttributedString alloc] initWithString:@"x"
-        attributes:coreFrame ? coreFrame->editor()->fontAttributesForSelectionStart() : nil];
+        attributes:coreFrame ? coreFrame->editor().fontAttributesForSelectionStart() : nil];
     NSData *data = [string RTFFromRange:NSMakeRange(0, [string length]) documentAttributes:nil];
     [string release];
     return data;
@@ -4359,7 +4358,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 {
     if (Frame* coreFrame = core([self _frame])) {
         // FIXME: We shouldn't have to make a copy here. We want callers of this function to work directly with StylePropertySet eventually.
-        coreFrame->editor()->applyStyleToSelection(core(style)->copyProperties().get(), undoAction);
+        coreFrame->editor().applyStyleToSelection(core(style)->copyProperties().get(), undoAction);
     }
 }
 
@@ -4661,7 +4660,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     if ([[webView _editingDelegateForwarder] webView:webView shouldApplyStyle:style toElementsInDOMRange:range]) {
         if (Frame* coreFrame = core([self _frame])) {
             // FIXME: We shouldn't have to make a copy here.
-            coreFrame->editor()->applyStyle(core(style)->copyProperties().get(), [self _undoActionFromColorPanelWithSelector:selector]);
+            coreFrame->editor().applyStyle(core(style)->copyProperties().get(), [self _undoActionFromColorPanelWithSelector:selector]);
         }
     }
 
@@ -4748,7 +4747,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     COMMAND_PROLOGUE
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor()->advanceToNextMisspelling();
+        coreFrame->editor().advanceToNextMisspelling();
 }
 
 - (void)showGuessPanel:(id)sender
@@ -4768,7 +4767,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     }
     
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor()->advanceToNextMisspelling(true);
+        coreFrame->editor().advanceToNextMisspelling(true);
     [spellingPanel orderFront:sender];
 }
 
@@ -4836,7 +4835,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
         return;
 
     WritingDirection direction = RightToLeftWritingDirection;
-    switch (coreFrame->editor()->baseWritingDirectionForSelectionStart()) {
+    switch (coreFrame->editor().baseWritingDirectionForSelectionStart()) {
         case LeftToRightWritingDirection:
             break;
         case RightToLeftWritingDirection:
@@ -4850,7 +4849,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     }
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor()->setBaseWritingDirection(direction);
+        coreFrame->editor().setBaseWritingDirection(direction);
 }
 
 - (void)changeBaseWritingDirection:(id)sender
@@ -4867,7 +4866,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     ASSERT(writingDirection != NSWritingDirectionNatural);
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor()->setBaseWritingDirection(writingDirection == NSWritingDirectionLeftToRight ? LeftToRightWritingDirection : RightToLeftWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(writingDirection == NSWritingDirectionLeftToRight ? LeftToRightWritingDirection : RightToLeftWritingDirection);
 }
 
 static BOOL writingDirectionKeyBindingsEnabled()
@@ -4888,7 +4887,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     }
 
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor()->setBaseWritingDirection(direction == NSWritingDirectionLeftToRight ? LeftToRightWritingDirection : RightToLeftWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(direction == NSWritingDirectionLeftToRight ? LeftToRightWritingDirection : RightToLeftWritingDirection);
 }
 
 - (void)makeBaseWritingDirectionLeftToRight:(id)sender
@@ -4947,6 +4946,15 @@ static BOOL writingDirectionKeyBindingsEnabled()
     return haveWebCoreFrame;
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+- (BOOL)_automaticFocusRingDisabled
+{
+    // The default state for _automaticFocusRingDisabled is NO, which prevents focus rings
+    // from being painted for search fields. Calling NSSetFocusRingStyle has the side effect
+    // of changing this to YES, so just return YES all the time. <rdar://problem/13780122>,
+    return YES;
+}
+#endif
 
 - (void)_updateControlTints
 {
@@ -5023,7 +5031,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     bool multipleFonts = false;
     NSFont *font = nil;
     if (Frame* coreFrame = core([self _frame])) {
-        if (const SimpleFontData* fd = coreFrame->editor()->fontForSelection(multipleFonts))
+        if (const SimpleFontData* fd = coreFrame->editor().fontForSelection(multipleFonts))
             font = fd->getNSFont();
     }
 
@@ -5563,7 +5571,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     Frame* coreFrame = core(webFrame);
     if (!coreFrame)
         return NSMakeRange(0, 0);
-    NSRange result = [webFrame _convertToNSRange:coreFrame->editor()->compositionRange().get()];
+    NSRange result = [webFrame _convertToNSRange:coreFrame->editor().compositionRange().get()];
 
     LOG(TextInput, "markedRange -> (%u, %u)", result.location, result.length);
     return result;
@@ -5607,12 +5615,12 @@ static BOOL writingDirectionKeyBindingsEnabled()
 - (BOOL)hasMarkedText
 {
     Frame* coreFrame = core([self _frame]);
-    BOOL result = coreFrame && coreFrame->editor()->hasComposition();
+    BOOL result = coreFrame && coreFrame->editor().hasComposition();
 
     if (result) {
         // A saved command can confirm a composition, but it cannot start a new one.
         [self _executeSavedKeypressCommands];
-        result = coreFrame->editor()->hasComposition();
+        result = coreFrame->editor().hasComposition();
     }
 
     LOG(TextInput, "hasMarkedText -> %u", result);
@@ -5634,7 +5642,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
     }
     
     if (Frame* coreFrame = core([self _frame]))
-        coreFrame->editor()->confirmComposition();
+        coreFrame->editor().confirmComposition();
 }
 
 static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnderline>& result)
@@ -5702,7 +5710,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     if (replacementRange.location != NSNotFound)
         [[self _frame] _selectNSRange:replacementRange];
 
-    coreFrame->editor()->setComposition(text, underlines, newSelRange.location, NSMaxRange(newSelRange));
+    coreFrame->editor().setComposition(text, underlines, newSelRange.location, NSMaxRange(newSelRange));
 }
 
 - (void)doCommandBySelector:(SEL)selector
@@ -5720,7 +5728,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     // As in insertText:, we assume that the call comes from an input method if there is marked text.
     RefPtr<Frame> coreFrame = core([self _frame]);
-    bool isFromInputMethod = coreFrame && coreFrame->editor()->hasComposition();
+    bool isFromInputMethod = coreFrame && coreFrame->editor().hasComposition();
 
     if (event && shouldSaveCommand && !isFromInputMethod)
         event->keypressCommands().append(KeypressCommand(NSStringFromSelector(selector)));
@@ -5774,7 +5782,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     RefPtr<Frame> coreFrame = core([self _frame]);
     NSString *text;
     NSRange replacementRange = { NSNotFound, 0 };
-    bool isFromInputMethod = coreFrame && coreFrame->editor()->hasComposition();
+    bool isFromInputMethod = coreFrame && coreFrame->editor().hasComposition();
 
     Vector<DictationAlternative> dictationAlternativeLocations;
     if (isAttributedString) {
@@ -5810,7 +5818,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         return;
     }
 
-    if (!coreFrame || !coreFrame->editor()->canEdit())
+    if (!coreFrame || !coreFrame->editor().canEdit())
         return;
 
     if (replacementRange.location != NSNotFound)
@@ -5819,17 +5827,17 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     bool eventHandled = false;
     String eventText = text;
     eventText.replace(NSBackTabCharacter, NSTabCharacter); // same thing is done in KeyEventMac.mm in WebCore
-    if (!coreFrame->editor()->hasComposition()) {
+    if (!coreFrame->editor().hasComposition()) {
         // An insertText: might be handled by other responders in the chain if we don't handle it.
         // One example is space bar that results in scrolling down the page.
 
         if (!dictationAlternativeLocations.isEmpty())
-            eventHandled = coreFrame->editor()->insertDictatedText(eventText, dictationAlternativeLocations, event);
+            eventHandled = coreFrame->editor().insertDictatedText(eventText, dictationAlternativeLocations, event);
         else
-            eventHandled = coreFrame->editor()->insertText(eventText, event);
+            eventHandled = coreFrame->editor().insertText(eventText, event);
     } else {
         eventHandled = true;
-        coreFrame->editor()->confirmComposition(eventText);
+        coreFrame->editor().confirmComposition(eventText);
     }
     
     if (parameters)
@@ -5884,15 +5892,15 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
     [self _updateSecureInputState];
 
-    if (!coreFrame->editor()->hasComposition() || coreFrame->editor()->ignoreCompositionSelectionChange())
+    if (!coreFrame->editor().hasComposition() || coreFrame->editor().ignoreCompositionSelectionChange())
         return;
 
     unsigned start;
     unsigned end;
-    if (coreFrame->editor()->getCompositionSelection(start, end))
+    if (coreFrame->editor().getCompositionSelection(start, end))
         [[NSInputManager currentInputManager] markedTextSelectionChanged:NSMakeRange(start, end - start) client:self];
     else {
-        coreFrame->editor()->cancelComposition();
+        coreFrame->editor().cancelComposition();
         [[NSInputManager currentInputManager] markedTextAbandoned:self];
     }
 }
@@ -6060,7 +6068,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     if (!coreFrame)
         return 0;
 
-    return coreFrame->editor()->countMatchesForText(string, core(range), coreOptions(options), limit, markMatches, 0);
+    return coreFrame->editor().countMatchesForText(string, core(range), coreOptions(options), limit, markMatches, 0);
 }
 
 - (void)setMarkedTextMatchesAreHighlighted:(BOOL)newValue
@@ -6068,13 +6076,13 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     Frame* coreFrame = core([self _frame]);
     if (!coreFrame)
         return;
-    coreFrame->editor()->setMarkedTextMatchesAreHighlighted(newValue);
+    coreFrame->editor().setMarkedTextMatchesAreHighlighted(newValue);
 }
 
 - (BOOL)markedTextMatchesAreHighlighted
 {
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->markedTextMatchesAreHighlighted();
+    return coreFrame && coreFrame->editor().markedTextMatchesAreHighlighted();
 }
 
 - (void)unmarkAllTextMatches
@@ -6110,7 +6118,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     if (![string length])
         return NO;
     Frame* coreFrame = core([self _frame]);
-    return coreFrame && coreFrame->editor()->findString(string, coreOptions(options));
+    return coreFrame && coreFrame->editor().findString(string, coreOptions(options));
 }
 
 @end

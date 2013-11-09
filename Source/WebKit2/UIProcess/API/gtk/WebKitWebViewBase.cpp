@@ -42,7 +42,6 @@
 #include "WebKitWebViewBasePrivate.h"
 #include "WebPageProxy.h"
 #include "WebViewBaseInputMethodFilter.h"
-#include <WebCore/ClipboardGtk.h>
 #include <WebCore/ClipboardUtilitiesGtk.h>
 #include <WebCore/DataObjectGtk.h>
 #include <WebCore/DragData.h>
@@ -245,9 +244,7 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
         | GDK_BUTTON_PRESS_MASK
         | GDK_BUTTON_RELEASE_MASK
         | GDK_SCROLL_MASK
-#if GTK_CHECK_VERSION(3, 3, 18)
         | GDK_SMOOTH_SCROLL_MASK
-#endif
         | GDK_POINTER_MOTION_MASK
         | GDK_KEY_PRESS_MASK
         | GDK_KEY_RELEASE_MASK
@@ -437,6 +434,8 @@ static gboolean webkitWebViewBaseDraw(GtkWidget* widget, cairo_t* cr)
         cairo_set_source_rgba(cr, 0, 0, 0, 0.5);
         cairo_paint(cr);
     }
+
+    GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->draw(widget, cr);
 
     return FALSE;
 }

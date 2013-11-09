@@ -195,11 +195,20 @@ using JSC::JSLock;
 static HMODULE accessibilityLib;
 static HashSet<WebView*> pendingDeleteBackingStoreSet;
 
+static CFStringRef WebKitLocalCacheDefaultsKey = CFSTR("WebKitLocalCache");
+
 static String webKitVersionString();
 
 WebView* kit(Page* page)
 {
-    return page ? static_cast<WebView*>(static_cast<WebChromeClient*>(page->chrome()->client())->webView()) : 0;
+    if (!page)
+        return 0;
+    
+    ChromeClient* chromeClient = page->chrome().client();
+    if (chromeClient->isEmptyChromeClient())
+        return 0;
+    
+    return static_cast<WebChromeClient*>(chromeClient)->webView();
 }
 
 static inline AtomicString toAtomicString(BSTR bstr)
@@ -471,8 +480,13 @@ void WebView::setCacheModel(WebCacheModel cacheModel)
 
     RetainPtr<CFURLCacheRef> cfurlCache = adoptCF(CFURLCacheCopySharedURLCache());
     RetainPtr<CFStringRef> cfurlCacheDirectory = adoptCF(wkCopyFoundationCacheDirectory(0));
-    if (!cfurlCacheDirectory)
-        cfurlCacheDirectory = WebCore::localUserSpecificStorageDirectory().createCFString();
+    if (!cfurlCacheDirectory) {
+        RetainPtr<CFPropertyListRef> preference = adoptCF(CFPreferencesCopyAppValue(WebKitLocalCacheDefaultsKey, kCFPreferencesCurrentApplication));
+        if (preference && (CFStringGetTypeID() == CFGetTypeID(preference.get())))
+            cfurlCacheDirectory = adoptCF(static_cast<CFStringRef>(preference.leakRef()));
+        else
+            cfurlCacheDirectory = WebCore::localUserSpecificStorageDirectory().createCFString();
+    }
 
     // As a fudge factor, use 1000 instead of 1024, in case the reported byte 
     // count doesn't align exactly to a megabyte boundary.
@@ -1812,11 +1826,11 @@ bool WebView::execCommand(WPARAM wParam, LPARAM /*lParam*/)
     Frame* frame = m_page->focusController()->focusedOrMainFrame();
     switch (LOWORD(wParam)) {
         case SelectAll:
-            return frame->editor()->command("SelectAll").execute();
+            return frame->editor().command("SelectAll").execute();
         case Undo:
-            return frame->editor()->command("Undo").execute();
+            return frame->editor().command("Undo").execute();
         case Redo:
-            return frame->editor()->command("Redo").execute();
+            return frame->editor().command("Redo").execute();
     }
     return false;
 }
@@ -1963,7 +1977,7 @@ bool WebView::handleEditingKeyboardEvent(KeyboardEvent* evt)
     if (!keyEvent || keyEvent->isSystemKey())  // do not treat this as text input if it's a system key event
         return false;
 
-    Editor::Command command = frame->editor()->command(interpretKeyEvent(evt));
+    Editor::Command command = frame->editor().command(interpretKeyEvent(evt));
 
     if (keyEvent->type() == PlatformEvent::RawKeyDown) {
         // WebKit doesn't have enough information about mode to decide how commands that just insert text if executed via Editor should be treated,
@@ -1979,7 +1993,7 @@ bool WebView::handleEditingKeyboardEvent(KeyboardEvent* evt)
     if (evt->charCode() < ' ')
         return false;
 
-    return frame->editor()->insertText(evt->keyEvent()->text(), evt);
+    return frame->editor().insertText(evt->keyEvent()->text(), evt);
 }
 
 bool WebView::keyDown(WPARAM virtualKeyCode, LPARAM keyData, bool systemKeyDown)
@@ -2526,11 +2540,20 @@ HRESULT STDMETHODCALLTYPE WebView::canShowMIMEType(
     if (!canShow)
         return E_POINTER;
 
-    *canShow = MIMETypeRegistry::isSupportedImageMIMEType(mimeTypeStr) ||
-        MIMETypeRegistry::isSupportedNonImageMIMEType(mimeTypeStr) ||
-        (m_page && m_page->pluginData() && m_page->pluginData()->supportsMimeType(mimeTypeStr)) ||
-        shouldUseEmbeddedView(mimeTypeStr);
-    
+    Frame* coreFrame = core(m_mainFrame);
+    bool allowPlugins = coreFrame && coreFrame->loader()->subframeLoader()->allowPlugins(NotAboutToInstantiatePlugin);
+
+    *canShow = MIMETypeRegistry::isSupportedImageMIMEType(mimeTypeStr)
+        || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeTypeStr);
+
+    if (!*canShow && m_page && m_page->pluginData()) {
+        *canShow = (m_page->pluginData()->supportsMimeType(mimeTypeStr, PluginData::AllPlugins) && allowPlugins)
+            || m_page->pluginData()->supportsMimeType(mimeTypeStr, PluginData::OnlyApplicationPlugins);
+    }
+
+    if (!*canShow)
+        *canShow = shouldUseEmbeddedView(mimeTypeStr);
+
     return S_OK;
 }
 
@@ -2581,6 +2604,13 @@ static void WebKitSetApplicationCachePathIfNecessary()
         return;
 
     String path = localUserSpecificStorageDirectory();
+
+#if USE(CF)
+    RetainPtr<CFPropertyListRef> cacheDirectoryPreference = adoptCF(CFPreferencesCopyAppValue(WebKitLocalCacheDefaultsKey, kCFPreferencesCurrentApplication));
+    if (cacheDirectoryPreference && (CFStringGetTypeID() == CFGetTypeID(cacheDirectoryPreference.get())))
+        path = static_cast<CFStringRef>(cacheDirectoryPreference.get());
+#endif
+
     if (!path.isNull())
         cacheStorage().setCacheDirectory(path);
 
@@ -3429,7 +3459,7 @@ HRESULT STDMETHODCALLTYPE WebView::updateFocusedAndActiveState()
 
 HRESULT STDMETHODCALLTYPE WebView::executeCoreCommandByName(BSTR name, BSTR value)
 {
-    m_page->focusController()->focusedOrMainFrame()->editor()->command(toString(name)).execute(toString(value));
+    m_page->focusController()->focusedOrMainFrame()->editor().command(toString(name)).execute(toString(value));
 
     return S_OK;
 }
@@ -3656,7 +3686,7 @@ HRESULT STDMETHODCALLTYPE WebView::selectedText(
     if (!focusedFrame)
         return E_FAIL;
 
-    String frameSelectedText = focusedFrame->editor()->selectedText();
+    String frameSelectedText = focusedFrame->editor().selectedText();
     *text = SysAllocStringLen(frameSelectedText.characters(), frameSelectedText.length());
     if (!*text && frameSelectedText.length())
         return E_OUTOFMEMORY;
@@ -4241,38 +4271,38 @@ HRESULT STDMETHODCALLTYPE WebView::hasSelectedRange(
 HRESULT STDMETHODCALLTYPE WebView::cutEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    Editor* editor = m_page->focusController()->focusedOrMainFrame()->editor();
-    *enabled = editor->canCut() || editor->canDHTMLCut();
+    Editor& editor = m_page->focusController()->focusedOrMainFrame()->editor();
+    *enabled = editor.canCut() || editor.canDHTMLCut();
     return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::copyEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    Editor* editor = m_page->focusController()->focusedOrMainFrame()->editor();
-    *enabled = editor->canCopy() || editor->canDHTMLCopy();
+    Editor& editor = m_page->focusController()->focusedOrMainFrame()->editor();
+    *enabled = editor.canCopy() || editor.canDHTMLCopy();
     return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::pasteEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    Editor* editor = m_page->focusController()->focusedOrMainFrame()->editor();
-    *enabled = editor->canPaste() || editor->canDHTMLPaste();
+    Editor& editor = m_page->focusController()->focusedOrMainFrame()->editor();
+    *enabled = editor.canPaste() || editor.canDHTMLPaste();
     return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::deleteEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    *enabled = m_page->focusController()->focusedOrMainFrame()->editor()->canDelete();
+    *enabled = m_page->focusController()->focusedOrMainFrame()->editor().canDelete();
     return S_OK;
 }
     
 HRESULT STDMETHODCALLTYPE WebView::editingEnabled( 
         /* [retval][out] */ BOOL* enabled)
 {
-    *enabled = m_page->focusController()->focusedOrMainFrame()->editor()->canEdit();
+    *enabled = m_page->focusController()->focusedOrMainFrame()->editor().canEdit();
     return S_OK;
 }
 
@@ -4324,7 +4354,7 @@ HRESULT STDMETHODCALLTYPE WebView::replaceSelectionWithText(
         /* [in] */ BSTR text)
 {
     Position start = m_page->mainFrame()->selection()->selection().start();
-    m_page->focusController()->focusedOrMainFrame()->editor()->insertText(toString(text), 0);
+    m_page->focusController()->focusedOrMainFrame()->editor().insertText(toString(text), 0);
     m_page->mainFrame()->selection()->setBase(start);
     return S_OK;
 }
@@ -4345,8 +4375,8 @@ HRESULT STDMETHODCALLTYPE WebView::replaceSelectionWithArchive(
     
 HRESULT STDMETHODCALLTYPE WebView::deleteSelection( void)
 {
-    Editor* editor = m_page->focusController()->focusedOrMainFrame()->editor();
-    editor->deleteSelectionWithSmartDelete(editor->canSmartCopyOrDelete());
+    Editor& editor = m_page->focusController()->focusedOrMainFrame()->editor();
+    editor.deleteSelectionWithSmartDelete(editor.canSmartCopyOrDelete());
     return S_OK;
 }
 
@@ -4368,28 +4398,28 @@ HRESULT STDMETHODCALLTYPE WebView::applyStyle(
 HRESULT STDMETHODCALLTYPE WebView::copy( 
         /* [in] */ IUnknown* /*sender*/)
 {
-    m_page->focusController()->focusedOrMainFrame()->editor()->command("Copy").execute();
+    m_page->focusController()->focusedOrMainFrame()->editor().command("Copy").execute();
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::cut( 
         /* [in] */ IUnknown* /*sender*/)
 {
-    m_page->focusController()->focusedOrMainFrame()->editor()->command("Cut").execute();
+    m_page->focusController()->focusedOrMainFrame()->editor().command("Cut").execute();
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::paste( 
         /* [in] */ IUnknown* /*sender*/)
 {
-    m_page->focusController()->focusedOrMainFrame()->editor()->command("Paste").execute();
+    m_page->focusController()->focusedOrMainFrame()->editor().command("Paste").execute();
     return S_OK;
 }
 
 HRESULT STDMETHODCALLTYPE WebView::copyURL( 
         /* [in] */ BSTR url)
 {
-    m_page->focusController()->focusedOrMainFrame()->editor()->copyURL(MarshallingHelpers::BSTRToKURL(url), "");
+    m_page->focusController()->focusedOrMainFrame()->editor().copyURL(MarshallingHelpers::BSTRToKURL(url), "");
     return S_OK;
 }
 
@@ -4411,7 +4441,7 @@ HRESULT STDMETHODCALLTYPE WebView::pasteFont(
 HRESULT STDMETHODCALLTYPE WebView::delete_( 
         /* [in] */ IUnknown* /*sender*/)
 {
-    m_page->focusController()->focusedOrMainFrame()->editor()->command("Delete").execute();
+    m_page->focusController()->focusedOrMainFrame()->editor().command("Delete").execute();
     return S_OK;
 }
     
@@ -4493,7 +4523,7 @@ HRESULT STDMETHODCALLTYPE WebView::checkSpelling(
         return E_FAIL;
     }
     
-    core(m_mainFrame)->editor()->advanceToNextMisspelling();
+    core(m_mainFrame)->editor().advanceToNextMisspelling();
     return S_OK;
 }
     
@@ -4512,7 +4542,7 @@ HRESULT STDMETHODCALLTYPE WebView::showGuessPanel(
         m_editingDelegate->showSpellingUI(FALSE);
     }
     
-    core(m_mainFrame)->editor()->advanceToNextMisspelling(true);
+    core(m_mainFrame)->editor().advanceToNextMisspelling(true);
     m_editingDelegate->showSpellingUI(TRUE);
     return S_OK;
 }
@@ -4893,7 +4923,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings->setShowRepaintCounter(enabled);
 
 #if ENABLE(WEB_AUDIO)
-    settings->setWebAudioEnabled(true);
+    RuntimeEnabledFeatures::setWebAudioEnabled(true);
 #endif // ENABLE(WEB_AUDIO)
 
 #if ENABLE(WEBGL)
@@ -5244,7 +5274,7 @@ HRESULT STDMETHODCALLTYPE WebView::standardUserAgentWithApplicationName(
 HRESULT STDMETHODCALLTYPE WebView::clearFocusNode()
 {
     if (m_page && m_page->focusController())
-        m_page->focusController()->setFocusedNode(0, 0);
+        m_page->focusController()->setFocusedElement(0, 0);
     return S_OK;
 }
 
@@ -5253,7 +5283,7 @@ HRESULT STDMETHODCALLTYPE WebView::setInitialFocus(
 {
     if (m_page && m_page->focusController()) {
         Frame* frame = m_page->focusController()->focusedOrMainFrame();
-        frame->document()->setFocusedNode(0);
+        frame->document()->setFocusedElement(0);
         m_page->focusController()->setInitialFocus(forward ? FocusDirectionForward : FocusDirectionBackward, 0);
     }
     return S_OK;
@@ -5339,7 +5369,7 @@ HRESULT STDMETHODCALLTYPE WebView::loadBackForwardListFromOtherView(
 HRESULT STDMETHODCALLTYPE WebView::clearUndoRedoOperations()
 {
     if (Frame* frame = m_page->focusController()->focusedOrMainFrame())
-        frame->editor()->clearUndoRedoOperations();
+        frame->editor().clearUndoRedoOperations();
     return S_OK;
 }
 
@@ -5454,7 +5484,7 @@ void WebView::prepareCandidateWindow(Frame* targetFrame, HIMC hInputContext)
     if (RefPtr<Range> range = targetFrame->selection()->selection().toNormalizedRange()) {
         ExceptionCode ec = 0;
         RefPtr<Range> tempRange = range->cloneRange(ec);
-        caret = targetFrame->editor()->firstRectForRange(tempRange.get());
+        caret = targetFrame->editor().firstRectForRange(tempRange.get());
     }
     caret = targetFrame->view()->contentsToWindow(caret);
     CANDIDATEFORM form;
@@ -5472,7 +5502,7 @@ void WebView::prepareCandidateWindow(Frame* targetFrame, HIMC hInputContext)
 void WebView::resetIME(Frame* targetFrame)
 {
     if (targetFrame)
-        targetFrame->editor()->cancelComposition();
+        targetFrame->editor().cancelComposition();
 
     if (HIMC hInputContext = getIMMContext()) {
         IMMDict::dict().notifyIME(hInputContext, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
@@ -5487,7 +5517,7 @@ void WebView::updateSelectionForIME()
     if (!targetFrame)
         return;
 
-    if (!targetFrame->editor()->cancelCompositionIfSelectionIsInvalid())
+    if (!targetFrame->editor().cancelCompositionIfSelectionIsInvalid())
         resetIME(targetFrame);
 }
 
@@ -5643,7 +5673,7 @@ bool WebView::onIMEComposition(LPARAM lparam)
         return true;
 
     Frame* targetFrame = m_page->focusController()->focusedOrMainFrame();
-    if (!targetFrame || !targetFrame->editor()->canEdit())
+    if (!targetFrame || !targetFrame->editor().canEdit())
         return true;
 
     prepareCandidateWindow(targetFrame, hInputContext);
@@ -5653,7 +5683,7 @@ bool WebView::onIMEComposition(LPARAM lparam)
         if (!getCompositionString(hInputContext, GCS_RESULTSTR, compositionString) && lparam)
             return true;
         
-        targetFrame->editor()->confirmComposition(compositionString);
+        targetFrame->editor().confirmComposition(compositionString);
     } else {
         String compositionString;
         if (!getCompositionString(hInputContext, GCS_COMPSTR, compositionString))
@@ -5674,7 +5704,7 @@ bool WebView::onIMEComposition(LPARAM lparam)
 
         int cursorPosition = LOWORD(IMMDict::dict().getCompositionString(hInputContext, GCS_CURSORPOS, 0, 0));
 
-        targetFrame->editor()->setComposition(compositionString, underlines, cursorPosition, 0);
+        targetFrame->editor().setComposition(compositionString, underlines, cursorPosition, 0);
     }
 
     return true;
@@ -5686,8 +5716,8 @@ bool WebView::onIMEEndComposition()
     // If the composition hasn't been confirmed yet, it needs to be cancelled.
     // This happens after deleting the last character from inline input hole.
     Frame* targetFrame = m_page->focusController()->focusedOrMainFrame();
-    if (targetFrame && targetFrame->editor()->hasComposition())
-        targetFrame->editor()->confirmComposition(String());
+    if (targetFrame && targetFrame->editor().hasComposition())
+        targetFrame->editor().confirmComposition(String());
 
     if (m_inIMEComposition)
         m_inIMEComposition--;
@@ -5712,14 +5742,14 @@ bool WebView::onIMENotify(WPARAM wparam, LPARAM, LRESULT*)
 
 LRESULT WebView::onIMERequestCharPosition(Frame* targetFrame, IMECHARPOSITION* charPos)
 {
-    if (charPos->dwCharPos && !targetFrame->editor()->hasComposition())
+    if (charPos->dwCharPos && !targetFrame->editor().hasComposition())
         return 0;
     IntRect caret;
-    if (RefPtr<Range> range = targetFrame->editor()->hasComposition() ? targetFrame->editor()->compositionRange() : targetFrame->selection()->selection().toNormalizedRange()) {
+    if (RefPtr<Range> range = targetFrame->editor().hasComposition() ? targetFrame->editor().compositionRange() : targetFrame->selection()->selection().toNormalizedRange()) {
         ExceptionCode ec = 0;
         RefPtr<Range> tempRange = range->cloneRange(ec);
         tempRange->setStart(tempRange->startContainer(ec), tempRange->startOffset(ec) + charPos->dwCharPos, ec);
-        caret = targetFrame->editor()->firstRectForRange(tempRange.get());
+        caret = targetFrame->editor().firstRectForRange(tempRange.get());
     }
     caret = targetFrame->view()->contentsToWindow(caret);
     charPos->pt.x = caret.x();
@@ -5752,7 +5782,7 @@ LRESULT WebView::onIMERequest(WPARAM request, LPARAM data)
 {
     LOG(TextInput, "onIMERequest %s", imeRequestName(request).latin1().data());
     Frame* targetFrame = m_page->focusController()->focusedOrMainFrame();
-    if (!targetFrame || !targetFrame->editor()->canEdit())
+    if (!targetFrame || !targetFrame->editor().canEdit())
         return 0;
 
     switch (request) {
@@ -6883,14 +6913,14 @@ HRESULT STDMETHODCALLTYPE WebView::setCompositionForTesting(
         return E_FAIL;
 
     Frame* frame = m_page->focusController()->focusedOrMainFrame();
-    if (!frame || !frame->editor()->canEdit())
+    if (!frame || !frame->editor().canEdit())
         return E_FAIL;
 
     String compositionStr = toString(composition);
 
     Vector<CompositionUnderline> underlines;
     underlines.append(CompositionUnderline(0, compositionStr.length(), Color(Color::black), false));
-    frame->editor()->setComposition(compositionStr, underlines, from, from + length);
+    frame->editor().setComposition(compositionStr, underlines, from, from + length);
 
     return S_OK;
 }
@@ -6904,7 +6934,7 @@ HRESULT STDMETHODCALLTYPE WebView::hasCompositionForTesting(/* [out, retval] */ 
      if (!frame)
         return E_FAIL;
 
-    *result = frame && frame->editor()->hasComposition();
+    *result = frame && frame->editor().hasComposition();
 
     return S_OK;
 }
@@ -6915,15 +6945,15 @@ HRESULT STDMETHODCALLTYPE WebView::confirmCompositionForTesting(/* [in] */ BSTR 
         return E_FAIL;
 
     Frame* frame = m_page->focusController()->focusedOrMainFrame();
-    if (!frame || !frame->editor()->canEdit())
+    if (!frame || !frame->editor().canEdit())
         return E_FAIL;
 
     String compositionStr = toString(composition);
 
     if (compositionStr.isNull())
-        frame->editor()->confirmComposition();
+        frame->editor().confirmComposition();
 
-    frame->editor()->confirmComposition(compositionStr);
+    frame->editor().confirmComposition(compositionStr);
 
     return S_OK;
 }
@@ -6934,10 +6964,10 @@ HRESULT STDMETHODCALLTYPE WebView::compositionRangeForTesting(/* [out] */ UINT* 
         return E_FAIL;
 
     Frame* frame = m_page->focusController()->focusedOrMainFrame();
-    if (!frame || !frame->editor()->canEdit())
+    if (!frame || !frame->editor().canEdit())
         return E_FAIL;
 
-    RefPtr<Range> range = frame->editor()->compositionRange();
+    RefPtr<Range> range = frame->editor().compositionRange();
 
     if (!range)
         return E_FAIL;
@@ -6978,7 +7008,7 @@ HRESULT STDMETHODCALLTYPE WebView::firstRectForCharacterRangeForTesting(
     ASSERT(range->startContainer());
     ASSERT(range->endContainer());
      
-    IntRect rect = frame->editor()->firstRectForRange(range.get());
+    IntRect rect = frame->editor().firstRectForRange(range.get());
     resultIntRect = frame->view()->contentsToWindow(rect);
 
     resultRect->left = resultIntRect.x();
@@ -6998,7 +7028,7 @@ HRESULT STDMETHODCALLTYPE WebView::selectedRangeForTesting(/* [out] */ UINT* loc
     if (!frame)
         return E_FAIL;
 
-    RefPtr<Range> range = frame->editor()->selectedRange();
+    RefPtr<Range> range = frame->editor().selectedRange();
 
     size_t locationSize;
     size_t lengthSize;

@@ -375,7 +375,7 @@ void WebFrameLoaderClient::dispatchWillClose()
 
 void WebFrameLoaderClient::dispatchDidReceiveIcon()
 {
-    WebProcess::shared().connection()->send(Messages::WebIconDatabase::DidReceiveIconForPageURL(m_frame->url()), 0);
+    WebProcess::shared().parentProcessConnection()->send(Messages::WebIconDatabase::DidReceiveIconForPageURL(m_frame->url()), 0);
 }
 
 void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
@@ -596,7 +596,7 @@ Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction& navigati
         return 0;
 
     // Just call through to the chrome client.
-    Page* newPage = webPage->corePage()->chrome()->createWindow(m_frame->coreFrame(), FrameLoadRequest(m_frame->coreFrame()->document()->securityOrigin()), WindowFeatures(), navigationAction);
+    Page* newPage = webPage->corePage()->chrome().createWindow(m_frame->coreFrame(), FrameLoadRequest(m_frame->coreFrame()->document()->securityOrigin()), WindowFeatures(), navigationAction);
     if (!newPage)
         return 0;
     
@@ -735,7 +735,10 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prp
 
     RefPtr<FormState> formState = prpFormState;
     HTMLFormElement* form = formState->form();
-    WebFrame* sourceFrame = static_cast<WebFrameLoaderClient*>(formState->sourceDocument()->frame()->loader()->client())->webFrame();
+
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(formState->sourceDocument()->frame()->loader()->client());
+    WebFrame* sourceFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    ASSERT(sourceFrame);
 
     webPage->injectedBundleFormClient().willSendSubmitEvent(webPage, form, m_frame, sourceFrame, formState->textFieldValues());
 }
@@ -750,7 +753,11 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, 
     RefPtr<FormState> formState = prpFormState;
     
     HTMLFormElement* form = formState->form();
-    WebFrame* sourceFrame = static_cast<WebFrameLoaderClient*>(formState->sourceDocument()->frame()->loader()->client())->webFrame();
+
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(formState->sourceDocument()->frame()->loader()->client());
+    WebFrame* sourceFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    ASSERT(sourceFrame);
+
     const Vector<std::pair<String, String>>& values = formState->textFieldValues();
 
     RefPtr<APIObject> userData;
@@ -913,7 +920,7 @@ void WebFrameLoaderClient::updateGlobalHistory()
     data.title = loader->title().string();
     data.originalRequest = loader->originalRequestCopy();
 
-    WebProcess::shared().connection()->send(Messages::WebProcessProxy::DidNavigateWithNavigationData(webPage->pageID(), data, m_frame->frameID()), 0);
+    WebProcess::shared().parentProcessConnection()->send(Messages::WebProcessProxy::DidNavigateWithNavigationData(webPage->pageID(), data, m_frame->frameID()), 0);
 }
 
 void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
@@ -927,13 +934,13 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
 
     // Client redirect
     if (!loader->clientRedirectSourceForHistory().isNull()) {
-        WebProcess::shared().connection()->send(Messages::WebProcessProxy::DidPerformClientRedirect(webPage->pageID(),
+        WebProcess::shared().parentProcessConnection()->send(Messages::WebProcessProxy::DidPerformClientRedirect(webPage->pageID(),
             loader->clientRedirectSourceForHistory(), loader->clientRedirectDestinationForHistory(), m_frame->frameID()), 0);
     }
 
     // Server redirect
     if (!loader->serverRedirectSourceForHistory().isNull()) {
-        WebProcess::shared().connection()->send(Messages::WebProcessProxy::DidPerformServerRedirect(webPage->pageID(),
+        WebProcess::shared().parentProcessConnection()->send(Messages::WebProcessProxy::DidPerformServerRedirect(webPage->pageID(),
             loader->serverRedirectSourceForHistory(), loader->serverRedirectDestinationForHistory(), m_frame->frameID()), 0);
     }
 }
@@ -1168,7 +1175,7 @@ void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const KURL
         return;
 
     // FIXME: use direction of title.
-    WebProcess::shared().connection()->send(Messages::WebProcessProxy::DidUpdateHistoryTitle(webPage->pageID(),
+    WebProcess::shared().parentProcessConnection()->send(Messages::WebProcessProxy::DidUpdateHistoryTitle(webPage->pageID(),
         title.string(), url.string(), m_frame->frameID()), 0);
 }
 
@@ -1223,6 +1230,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
         m_frame->coreFrame()->view()->enableAutoSizeMode(true, IntSize(minimumLayoutWidth, 1), IntSize(maximumSize, maximumSize));
 
     m_frame->coreFrame()->view()->setProhibitsScrolling(shouldDisableScrolling);
+    m_frame->coreFrame()->view()->setVisualUpdatesAllowedByClient(!webPage->shouldExtendIncrementalRenderingSuppression());
 
 #if USE(TILED_BACKING_STORE)
     if (shouldUseFixedLayout) {
@@ -1235,6 +1243,11 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
 void WebFrameLoaderClient::didSaveToPageCache()
 {
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    webPage->send(Messages::WebPageProxy::DidSaveToPageCache());
 }
 
 void WebFrameLoaderClient::didRestoreFromPageCache()
@@ -1425,7 +1438,9 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const KURL& url, const
     bool plugInSupportsMIMEType = false;
     if (WebPage* webPage = m_frame->page()) {
         if (PluginData* pluginData = webPage->corePage()->pluginData()) {
-            if (pluginData->supportsMimeType(mimeType))
+            if (pluginData->supportsMimeType(mimeType, PluginData::AllPlugins) && webFrame()->coreFrame()->loader()->subframeLoader()->allowPlugins(NotAboutToInstantiatePlugin))
+                plugInSupportsMIMEType = true;
+            else if (pluginData->supportsMimeType(mimeType, PluginData::OnlyApplicationPlugins))
                 plugInSupportsMIMEType = true;
         }
     }

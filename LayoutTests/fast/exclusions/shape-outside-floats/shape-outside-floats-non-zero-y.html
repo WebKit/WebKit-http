@@ -1,70 +1,59 @@
 <!DOCTYPE html>
 <html>
 <head>
-<script src="../resources/subpixel-utils.js"></script>
-<script src="../resources/rounded-rectangle.js"></script>
 <script>
-    window.onload = function () {
-        var stylesheet = document.getElementById("stylesheet");
-        generateShapeOutsideOnFloat(
-            "float-left", stylesheet.sheet,
-            {
-                'shapeX': 25, 'shapeY': 50,
-                'shapeWidth': 75, 'shapeHeight': 100,
-                'shapeRadiusX': 20, 'shapeRadiusY': 20
-            },
-            'left',
-            10
-        );
-        generateShapeOutsideOnFloat(
-            "float-right", stylesheet.sheet,
-            {
-                'shapeCenterX': 25, 'shapeCenterY': 50,
-                'shapeRadiusX': 50, 'shapeRadiusY': 100
-            },
-            'right',
-            10
-        );
-    }
+    if (window.internals)
+        window.internals.settings.setCSSExclusionsEnabled(true);
 </script>
-<style id="stylesheet">
+<style>
 .container {
-    font: 10px/1 Ahem, sans-serif;
-    width: 200px;
-    text-align: justify;
+    font: 20px/1 Ahem, sans-serif;
+    width: 500px;
+    height: 200px; 
     border: 1px solid black;
 }
+
+.rounded-rect {
+    position: relative;
+    -webkit-shape-outside: rectangle(25px, 50px, 150px, 100px, 40px, 40px); /* x,y,width,height,rx,ry */
+}
+
+.rounded-rect-outline {
+    position: absolute;
+    top: 50px;
+    left: 25px;
+    width: 150px;
+    height: 100px;
+    border: 1px solid blue;
+    border-radius: 40px;
+}
+
 </style>
-</head>
-<body>
-  <h1><a href="https://bugs.webkit.org/show_bug.cgi?id=98676">Bug 112587</a> - [CSS Exclusions] [CSS Exclusions] shape outside segments not properly calculated for ellipses</h1>
-  <h2>The vertical black lines in the following box should wrap around the rounded rectangle on the left and the ellipse on the right</h2>
+
+<h2><a href="https://bugs.webkit.org/show_bug.cgi?id=112587">Bug 112587</a> - [CSS Exclusions] shape outside segments not properly calculated for ellipses</h2>
+<p>The black squares should trace the right side of the rounded rectangle's blue outline.</p>
 <div class="container">
-    <div id="float-left">
+    <div style="float: left" class="rounded-rect">
+      <div class="rounded-rect-outline"></div>
     </div>
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    <div id="float-right">
-    </div>.
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X X X X
-    X X X X X X X
-  </div>
+X<br/>
+X<br/>
+X<br/>
+X<br/>
+X
+</div>
+
+<p>The black squares should trace the left side of the rounded rectangle's blue outline.</p>
+<div class="container" style="text-align: right">
+    <div style="float: right" class="rounded-rect">
+      <div class="rounded-rect-outline"></div>
+    </div>
+X<br/>
+X<br/>
+X<br/>
+X<br/>
+X
+</div>
+
 </body>
 </html>
-

@@ -45,7 +45,6 @@
 #include "ScriptableDocumentParser.h"
 #include "Settings.h"
 #include <stdio.h>
-#include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -172,7 +171,7 @@ void PageConsole::addMessage(MessageSource source, MessageLevel level, const Str
     if (page->settings()->privateBrowsingEnabled())
         return;
 
-    page->chrome()->client()->addMessageToConsole(source, level, message, lineNumber, columnNumber, url);
+    page->chrome().client()->addMessageToConsole(source, level, message, lineNumber, columnNumber, url);
 
     if (!page->settings()->logsPageMessagesToSystemConsoleEnabled() && !shouldPrintExceptions())
         return;

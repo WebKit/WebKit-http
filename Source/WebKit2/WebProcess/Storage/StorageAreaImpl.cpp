@@ -59,119 +59,51 @@ StorageAreaImpl::~StorageAreaImpl()
 {
 }
 
-StorageType StorageAreaImpl::storageType() const
+unsigned StorageAreaImpl::length()
 {
-    return m_storageAreaMap->storageType();
-}
-
-unsigned StorageAreaImpl::length(ExceptionCode& ec, Frame* sourceFrame)
-{
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return 0;
-    }
-
-    if (disabledByPrivateBrowsingInFrame(sourceFrame))
-        return 0;
-
     return m_storageAreaMap->length();
 }
 
-String StorageAreaImpl::key(unsigned index, ExceptionCode& ec, Frame* sourceFrame)
+String StorageAreaImpl::key(unsigned index)
 {
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return String();
-    }
-
-    if (disabledByPrivateBrowsingInFrame(sourceFrame))
-        return String();
-
     return m_storageAreaMap->key(index);
 }
 
-String StorageAreaImpl::getItem(const String& key, ExceptionCode& ec, Frame* sourceFrame)
+String StorageAreaImpl::item(const String& key)
 {
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return String();
-    }
-
-    if (disabledByPrivateBrowsingInFrame(sourceFrame))
-        return String();
-
     return m_storageAreaMap->item(key);
 }
 
-void StorageAreaImpl::setItem(const String& key, const String& value, ExceptionCode& ec, Frame* sourceFrame)
+void StorageAreaImpl::setItem(Frame* sourceFrame, const String& key, const String& value, bool& quotaException)
 {
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return;
-    }
-
     ASSERT(!value.isNull());
 
-    if (disabledByPrivateBrowsingInFrame(sourceFrame)) {
-        ec = QUOTA_EXCEEDED_ERR;
-        return;
-    }
-
-    bool quotaException;
     m_storageAreaMap->setItem(sourceFrame, this, key, value, quotaException);
-
-    if (quotaException)
-        ec = QUOTA_EXCEEDED_ERR;
 }
 
-void StorageAreaImpl::removeItem(const String& key, ExceptionCode& ec, Frame* sourceFrame)
+void StorageAreaImpl::removeItem(Frame* sourceFrame, const String& key)
 {
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return;
-    }
-
-    if (disabledByPrivateBrowsingInFrame(sourceFrame))
-        return;
-
     m_storageAreaMap->removeItem(sourceFrame, this, key);
 }
 
-void StorageAreaImpl::clear(ExceptionCode& ec, Frame* sourceFrame)
+void StorageAreaImpl::clear(Frame* sourceFrame)
 {
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return;
-    }
-
-    if (disabledByPrivateBrowsingInFrame(sourceFrame))
-        return;
-
     m_storageAreaMap->clear(sourceFrame, this);
 }
 
-bool StorageAreaImpl::contains(const String& key, ExceptionCode& ec, Frame* sourceFrame)
+bool StorageAreaImpl::contains(const String& key)
 {
-    ec = 0;
-    if (!canAccessStorage(sourceFrame)) {
-        ec = SECURITY_ERR;
-        return false;
-    }
-    if (disabledByPrivateBrowsingInFrame(sourceFrame))
-        return false;
-
     return m_storageAreaMap->contains(key);
 }
 
 bool StorageAreaImpl::canAccessStorage(Frame* frame)
 {
     return frame && frame->page();
+}
+
+StorageType StorageAreaImpl::storageType() const
+{
+    return m_storageAreaMap->storageType();
 }
 
 size_t StorageAreaImpl::memoryBytesUsedByCache()
@@ -193,17 +125,6 @@ void StorageAreaImpl::closeDatabaseIfIdle()
 {
     // FIXME: Implement this.
     ASSERT_NOT_REACHED();
-}
-
-bool StorageAreaImpl::disabledByPrivateBrowsingInFrame(const Frame* sourceFrame) const
-{
-    if (!sourceFrame->page()->settings()->privateBrowsingEnabled())
-        return false;
-
-    if (storageType() != LocalStorage)
-        return true;
-
-    return !SchemeRegistry::allowsLocalStorageAccessInPrivateBrowsing(sourceFrame->document()->securityOrigin()->protocol());
 }
 
 } // namespace WebKit

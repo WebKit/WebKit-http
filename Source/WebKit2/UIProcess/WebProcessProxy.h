@@ -109,11 +109,17 @@ public:
     void pageVisibilityChanged(WebPageProxy*);
     void pagePreferencesChanged(WebPageProxy*);
 
+    void didSaveToPageCache();
+    void releasePageCache();
+
 #if PLATFORM(MAC)
     bool allPagesAreProcessSuppressible() const;
     static bool pageIsProcessSuppressible(WebPageProxy*);
     void updateProcessSuppressionState();
 #endif
+
+    void enableSuddenTermination();
+    void disableSuddenTermination();
 
     void requestTermination();
 
@@ -141,7 +147,7 @@ private:
     void getPlugins(bool refresh, Vector<WebCore::PluginInfo>& plugins);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 #if ENABLE(PLUGIN_PROCESS)
-    void getPluginProcessConnection(const String& pluginPath, uint32_t processType, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>);
+    void getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>);
 #elif ENABLE(NETSCAPE_PLUGIN_API)
     void didGetSitesWithPluginData(const Vector<String>& sites, uint64_t callbackID);
     void didClearPluginSiteData(uint64_t callbackID);
@@ -177,6 +183,8 @@ private:
     // Implemented in generated WebProcessProxyMessageReceiver.cpp
     void didReceiveWebProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&);
     void didReceiveSyncWebProcessProxyMessage(CoreIPC::Connection*, CoreIPC::MessageDecoder&, OwnPtr<CoreIPC::MessageEncoder>&);
+
+    bool canTerminateChildProcess();
 
     ResponsivenessTimer m_responsivenessTimer;
     

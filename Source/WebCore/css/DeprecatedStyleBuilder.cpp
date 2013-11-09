@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +46,6 @@
 #include "Settings.h"
 #include "StyleResolver.h"
 #include <wtf/StdLibExtras.h>
-#include <wtf/UnusedParam.h>
 
 #if ENABLE(CSS_EXCLUSIONS)
 #include "ExclusionShapeValue.h"
@@ -665,7 +665,7 @@ public:
         FontDescription parentFontDescription = styleResolver->parentStyle()->fontDescription();
         
         fontDescription.setGenericFamily(parentFontDescription.genericFamily());
-        fontDescription.setFamily(parentFontDescription.firstFamily());
+        fontDescription.setFamilies(parentFontDescription.families());
         fontDescription.setIsSpecifiedFont(parentFontDescription.isSpecifiedFont());
         styleResolver->setFontDescription(fontDescription);
         return;
@@ -680,8 +680,8 @@ public:
         if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize())
             styleResolver->setFontSize(fontDescription, styleResolver->fontSizeForKeyword(styleResolver->document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, false));
         fontDescription.setGenericFamily(initialDesc.genericFamily());
-        if (!initialDesc.firstFamily().familyIsEmpty())
-            fontDescription.setFamily(initialDesc.firstFamily());
+        if (!initialDesc.firstFamily().isEmpty())
+            fontDescription.setFamilies(initialDesc.families());
 
         styleResolver->setFontDescription(fontDescription);
         return;
@@ -693,23 +693,20 @@ public:
             return;
 
         FontDescription fontDescription = styleResolver->style()->fontDescription();
-        FontFamily& firstFamily = fontDescription.firstFamily();
-        FontFamily* currFamily = 0;
-
         // Before mapping in a new font-family property, we should reset the generic family.
         bool oldFamilyUsedFixedDefaultSize = fontDescription.useFixedDefaultSize();
         fontDescription.setGenericFamily(FontDescription::NoFamily);
 
+        Vector<AtomicString, 1> families;
         for (CSSValueListIterator i = value; i.hasMore(); i.advance()) {
             CSSValue* item = i.value();
             if (!item->isPrimitiveValue())
                 continue;
             CSSPrimitiveValue* contentValue = static_cast<CSSPrimitiveValue*>(item);
             AtomicString face;
-            Settings* settings = styleResolver->document()->settings();
             if (contentValue->isString())
                 face = contentValue->getStringValue();
-            else if (settings) {
+            else if (Settings* settings = styleResolver->document()->settings()) {
                 switch (contentValue->getIdent()) {
                 case CSSValueWebkitBody:
                     face = settings->standardFontFamily();
@@ -741,31 +738,21 @@ public:
                 }
             }
 
-            if (!face.isEmpty()) {
-                if (!currFamily) {
-                    // Filling in the first family.
-                    firstFamily.setFamily(face);
-                    firstFamily.appendFamily(0); // Remove any inherited family-fallback list.
-                    currFamily = &firstFamily;
-                    fontDescription.setIsSpecifiedFont(fontDescription.genericFamily() == FontDescription::NoFamily);
-                } else {
-                    RefPtr<SharedFontFamily> newFamily = SharedFontFamily::create();
-                    newFamily->setFamily(face);
-                    currFamily->appendFamily(newFamily);
-                    currFamily = newFamily.get();
-                }
-            }
+            if (face.isEmpty())
+                continue;
+            if (families.isEmpty())
+                fontDescription.setIsSpecifiedFont(fontDescription.genericFamily() == FontDescription::NoFamily);
+            families.append(face);
         }
 
-        // We can't call useFixedDefaultSize() until all new font families have been added
-        // If currFamily is non-zero then we set at least one family on this description.
-        if (currFamily) {
-            if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
-                styleResolver->setFontSize(fontDescription, styleResolver->fontSizeForKeyword(styleResolver->document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize));
+        if (families.isEmpty())
+            return;
+        fontDescription.adoptFamilies(families);
 
-            styleResolver->setFontDescription(fontDescription);
-        }
-        return;
+        if (fontDescription.keywordSize() && fontDescription.useFixedDefaultSize() != oldFamilyUsedFixedDefaultSize)
+            styleResolver->setFontSize(fontDescription, styleResolver->fontSizeForKeyword(styleResolver->document(), CSSValueXxSmall + fontDescription.keywordSize() - 1, !oldFamilyUsedFixedDefaultSize));
+
+        styleResolver->setFontDescription(fontDescription);
     }
 
     static PropertyHandler createHandler() { return PropertyHandler(&applyInheritValue, &applyInitialValue, &applyValue); }
@@ -1252,7 +1239,7 @@ class ApplyPropertyTextDecoration {
 public:
     static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
     {
-        ETextDecoration t = RenderStyle::initialTextDecoration();
+        TextDecoration t = RenderStyle::initialTextDecoration();
         for (CSSValueListIterator i(value); i.hasMore(); i.advance()) {
             CSSValue* item = i.value();
             ASSERT_WITH_SECURITY_IMPLICATION(item->isPrimitiveValue());
@@ -1262,7 +1249,7 @@ public:
     }
     static PropertyHandler createHandler()
     {
-        PropertyHandler handler = ApplyPropertyDefaultBase<ETextDecoration, &RenderStyle::textDecoration, ETextDecoration, &RenderStyle::setTextDecoration, ETextDecoration, &RenderStyle::initialTextDecoration>::createHandler();
+        PropertyHandler handler = ApplyPropertyDefaultBase<TextDecoration, &RenderStyle::textDecoration, TextDecoration, &RenderStyle::setTextDecoration, TextDecoration, &RenderStyle::initialTextDecoration>::createHandler();
         return PropertyHandler(handler.inheritFunction(), handler.initialFunction(), &applyValue);
     }
 };
@@ -1950,7 +1937,7 @@ template <ExclusionShapeValue* (RenderStyle::*getterFunction)() const, void (Ren
 class ApplyPropertyExclusionShape {
 public:
     static void setValue(RenderStyle* style, PassRefPtr<ExclusionShapeValue> value) { (style->*setterFunction)(value); }
-    static void applyValue(CSSPropertyID, StyleResolver* styleResolver, CSSValue* value)
+    static void applyValue(CSSPropertyID property, StyleResolver* styleResolver, CSSValue* value)
     {
         if (value->isPrimitiveValue()) {
             CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
@@ -1963,7 +1950,11 @@ public:
                 RefPtr<ExclusionShapeValue> shape = ExclusionShapeValue::createShapeValue(basicShapeForValue(styleResolver->style(), styleResolver->rootElementStyle(), primitiveValue->getShapeValue()));
                 setValue(styleResolver->style(), shape.release());
             }
+        } else if (value->isImageValue()) {
+            RefPtr<ExclusionShapeValue> shape = ExclusionShapeValue::createImageValue(styleResolver->styleImage(property, value));
+            setValue(styleResolver->style(), shape.release());
         }
+
     }
     static PropertyHandler createHandler()
     {

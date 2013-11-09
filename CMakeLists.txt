@@ -39,7 +39,7 @@ include(WebKitFeatures)
 # -----------------------------------------------------------------------------
 # Determine which port will be built
 # -----------------------------------------------------------------------------
-set(ALL_PORTS Efl WinCE BlackBerry Haiku)
+set(ALL_PORTS Efl WinCE BlackBerry Haiku GTK)
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")
 
 list(FIND ALL_PORTS ${PORT} RET)
@@ -97,17 +97,6 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "QNX")
 else ()
     message(FATAL_ERROR "Unknown OS '${CMAKE_SYSTEM_NAME}'")
 endif ()
-
-# -----------------------------------------------------------------------------
-# Default target names (can be overrriden in Options${PORT}.cmake file)
-# -----------------------------------------------------------------------------
-set(JSC_EXECUTABLE_NAME JSC)
-set(WTF_LIBRARY_NAME WTF)
-set(JavaScriptCore_LIBRARY_NAME JavaScriptCore)
-set(WebCore_LIBRARY_NAME WebCore)
-set(WebKit_LIBRARY_NAME WebKit)
-set(WebKit2_LIBRARY_NAME WebKit2)
-set(WebCoreTestSupport_LIBRARY_NAME WebCoreTestSupport)
 
 # -----------------------------------------------------------------------------
 # Default library types

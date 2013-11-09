@@ -38,17 +38,13 @@
 #include "WebCoreKeyboardUIMode.h"
 #include <wtf/Forward.h>
 #include <wtf/PassOwnPtr.h>
-#include <wtf/UnusedParam.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(SQL_DATABASE)
 #include "DatabaseDetails.h"
 #endif
 
-#ifndef __OBJC__
-class NSMenu;
-class NSResponder;
-#endif
+OBJC_CLASS NSResponder;
 
 namespace WebCore {
 
@@ -72,9 +68,6 @@ class IntRect;
 class NavigationAction;
 class Node;
 class Page;
-class PagePopup;
-class PagePopupClient;
-class PagePopupDriver;
 class PopupMenuClient;
 class SecurityOrigin;
 class Widget;
@@ -147,8 +140,6 @@ public:
     virtual void setStatusbarText(const String&) = 0;
     virtual bool shouldInterruptJavaScript() = 0;
     virtual KeyboardUIMode keyboardUIMode() = 0;
-
-    virtual void* webView() const = 0;
 
     virtual IntRect windowResizerRect() const = 0;
 
@@ -232,8 +223,6 @@ public:
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
     // This function is used for:
     //  - Mandatory date/time choosers if !ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    //  - Date/time choosers for types for which RenderTheme::supportsCalendarPicker
-    //    returns true, if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     //  - <datalist> UI for date/time input types regardless of
     //    ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     virtual PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) = 0;
@@ -314,8 +303,10 @@ public:
     virtual void makeFirstResponder(NSResponder *) { }
     // Focuses on the containing view associated with this page.
     virtual void makeFirstResponder() { }
-    virtual void willPopUpMenu(NSMenu *) { }
 #endif
+
+    virtual void enableSuddenTermination() { }
+    virtual void disableSuddenTermination() { }
 
 #if PLATFORM(WIN)
     virtual void setLastSetCursorToCurrentCursor() = 0;
@@ -331,15 +322,7 @@ public:
     virtual bool hasOpenedPopup() const = 0;
     virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const = 0;
     virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const = 0;
-#if ENABLE(PAGE_POPUP)
-    // Creates a PagePopup object, and shows it beside originBoundsInRootView.
-    // The return value can be 0.
-    virtual PagePopup* openPagePopup(PagePopupClient*, const IntRect& originBoundsInRootView) = 0;
-    virtual void closePagePopup(PagePopup*) = 0;
-    // For testing.
-    virtual void setPagePopupDriver(PagePopupDriver*) = 0;
-    virtual void resetPagePopupDriver() = 0;
-#endif
+
     virtual void postAccessibilityNotification(AccessibilityObject*, AXObjectCache::AXNotification) { }
 
     virtual void notifyScrollerThumbIsVisibleInRect(const IntRect&) { }
@@ -379,6 +362,9 @@ public:
 
     virtual void didAssociateFormControls(const Vector<RefPtr<Element> >&) { };
     virtual bool shouldNotifyOnFormChanges() { return false; };
+
+    virtual void didAddHeaderLayer(GraphicsLayer*) { }
+    virtual void didAddFooterLayer(GraphicsLayer*) { }
 
 protected:
     virtual ~ChromeClient() { }

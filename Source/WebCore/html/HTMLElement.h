@@ -48,9 +48,9 @@ public:
 
     PassRefPtr<HTMLCollection> children();
 
-    virtual String title() const;
+    virtual String title() const OVERRIDE FINAL;
 
-    virtual short tabIndex() const;
+    virtual short tabIndex() const OVERRIDE;
     void setTabIndex(int);
 
     String innerHTML() const;
@@ -65,7 +65,7 @@ public:
     void insertAdjacentText(const String& where, const String& text, ExceptionCode&);
 
     virtual bool hasCustomFocusLogic() const;
-    virtual bool supportsFocus() const;
+    virtual bool supportsFocus() const OVERRIDE;
 
     String contentEditable() const;
     void setContentEditable(const String&, ExceptionCode&);
@@ -126,7 +126,7 @@ protected:
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
 private:
-    virtual String nodeName() const;
+    virtual String nodeName() const OVERRIDE FINAL;
 
     void mapLanguageAttributeToLocale(const AtomicString&, MutableStylePropertySet*);
 

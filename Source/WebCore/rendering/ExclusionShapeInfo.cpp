@@ -46,23 +46,13 @@ const ExclusionShape* ExclusionShapeInfo<RenderType, shapeGetter, intervalGetter
         return exclusionShape;
 
     ExclusionShapeValue* shapeValue = (m_renderer->style()->*shapeGetter)();
-    BasicShape* shape = (shapeValue && shapeValue->type() == ExclusionShapeValue::SHAPE) ? shapeValue->shape() : 0;
+    BasicShape* shape = (shapeValue && shapeValue->type() == ExclusionShapeValue::Shape) ? shapeValue->shape() : 0;
 
     ASSERT(shape);
 
     m_shape = ExclusionShape::createExclusionShape(shape, LayoutSize(m_shapeLogicalWidth, m_shapeLogicalHeight), m_renderer->style()->writingMode(), m_renderer->style()->shapeMargin(), m_renderer->style()->shapePadding());
     ASSERT(m_shape);
     return m_shape.get();
-}
-
-template<class RenderType, ExclusionShapeValue* (RenderStyle::*shapeGetter)() const, void (ExclusionShape::*intervalGetter)(LayoutUnit, LayoutUnit, SegmentList&) const>
-LayoutUnit ExclusionShapeInfo<RenderType, shapeGetter, intervalGetter>::logicalTopOffset() const
-{
-    LayoutUnit logicalTopOffset = m_renderer->style()->boxSizing() == CONTENT_BOX ? m_renderer->borderBefore() + m_renderer->paddingBefore() : LayoutUnit();
-    // Content in a flow thread is relative to the beginning of the thread, but the shape calculation should be relative to the current region.
-    if (m_renderer->isRenderRegion())
-        logicalTopOffset += toRenderRegion(m_renderer)->logicalTopForFlowThreadContent();
-    return logicalTopOffset;
 }
 
 template<class RenderType, ExclusionShapeValue* (RenderStyle::*shapeGetter)() const, void (ExclusionShape::*intervalGetter)(LayoutUnit, LayoutUnit, SegmentList&) const>

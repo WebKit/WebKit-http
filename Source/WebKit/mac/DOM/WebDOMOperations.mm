@@ -99,9 +99,8 @@ bool WebFrameFilter::shouldIncludeSubframe(Frame* frame) const
 {
     if (!m_filterBlock)
         return true;
-        
-    WebFrame* webFrame = static_cast<WebFrameLoaderClient*>(frame->loader()->client())->webFrame();
-    return m_filterBlock(webFrame);
+
+    return m_filterBlock(kit(frame));
 }
 
 @implementation DOMNode (WebDOMNodeOperations)
@@ -180,20 +179,6 @@ bool WebFrameFilter::shouldIncludeSubframe(Frame* frame) const
         [range selectNode:documentElement];
 
     return range;
-}
-
-@end
-
-@implementation DOMDocument (WebDOMDocumentOperationsPrivate)
-
-- (NSArray *)_focusableNodes
-{
-    Vector<RefPtr<Node> > nodes;
-    core(self)->getFocusableNodes(nodes);
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:nodes.size()];
-    for (unsigned i = 0; i < nodes.size(); ++i)
-        [array addObject:kit(nodes[i].get())];
-    return array;
 }
 
 @end

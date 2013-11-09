@@ -24,10 +24,8 @@
 #include "config.h"
 #include "PluginData.h"
 
-#if USE(PLATFORM_STRATEGIES)
 #include "PlatformStrategies.h"
 #include "PluginStrategy.h"
-#endif
 
 namespace WebCore {
 
@@ -44,11 +42,12 @@ PluginData::PluginData(const Page* page)
     }
 }
 
-bool PluginData::supportsMimeType(const String& mimeType) const
+bool PluginData::supportsMimeType(const String& mimeType, const AllowedPluginTypes allowedPluginTypes) const
 {
-    for (unsigned i = 0; i < m_mimes.size(); ++i)
-        if (m_mimes[i].type == mimeType)
+    for (unsigned i = 0; i < m_mimes.size(); ++i) {
+        if (m_mimes[i].type == mimeType && (allowedPluginTypes == AllPlugins || m_plugins[m_mimePluginIndices[i]].isApplicationPlugin))
             return true;
+    }
     return false;
 }
 
@@ -78,7 +77,6 @@ String PluginData::pluginFileForMimeType(const String& mimeType) const
     return String();
 }
 
-#if USE(PLATFORM_STRATEGIES)
 void PluginData::refresh()
 {
     platformStrategies()->pluginStrategy()->refreshPlugins();
@@ -90,6 +88,5 @@ void PluginData::initPlugins(const Page* page)
     
     platformStrategies()->pluginStrategy()->getPluginInfo(page, m_plugins);
 }
-#endif
 
 }

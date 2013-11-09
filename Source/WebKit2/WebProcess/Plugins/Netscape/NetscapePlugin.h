@@ -44,6 +44,8 @@ namespace WebCore {
     class SharedBuffer;
 }
 
+OBJC_CLASS WKNPAPIPlugInContainer;
+
 namespace WebKit {
 
 class NetscapePluginStream;
@@ -70,9 +72,12 @@ public:
     bool hasHandledAKeyDownEvent() const { return m_hasHandledAKeyDownEvent; }
 
     mach_port_t compositingRenderServerPort();
+    void openPluginPreferencePane();
 
     // Computes an affine transform from the given coordinate space to the screen coordinate space.
     bool getScreenTransform(NPCoordinateSpace sourceSpace, WebCore::AffineTransform&);
+
+    WKNPAPIPlugInContainer* plugInContainer();
 
 #ifndef NP_NO_CARBON
     WindowRef windowRef() const;
@@ -240,7 +245,7 @@ private:
     virtual WebCore::Scrollbar* horizontalScrollbar();
     virtual WebCore::Scrollbar* verticalScrollbar();
 
-    bool supportsSnapshotting() const;
+    virtual bool supportsSnapshotting() const;
 
     // Convert the given point from plug-in coordinates to root view coordinates.
     virtual WebCore::IntPoint convertToRootView(const WebCore::IntPoint&) const OVERRIDE;
@@ -366,6 +371,8 @@ private:
 
     WebCore::IntRect m_windowFrameInScreenCoordinates;
     WebCore::IntRect m_viewFrameInWindowCoordinates;
+
+    RetainPtr<WKNPAPIPlugInContainer> m_plugInContainer;
 
 #ifndef NP_NO_CARBON
     void nullEventTimerFired();

@@ -480,6 +480,13 @@ bool InlineFlowBox::requiresIdeographicBaseline(const GlyphOverflowAndFallbackFo
     return false;
 }
 
+static bool verticalAlignApplies(RenderObject* curr)
+{
+    // http://www.w3.org/TR/CSS2/visudet.html#propdef-vertical-align - vertical-align
+    // only applies to inline level and table-cell elements
+    return !curr->isText() || curr->parent()->isInline() || curr->parent()->isTableCell();
+}
+
 void InlineFlowBox::adjustMaxAscentAndDescent(int& maxAscent, int& maxDescent, int maxPositionTop, int maxPositionBottom)
 {
     for (InlineBox* curr = firstChild(); curr; curr = curr->nextOnLine()) {
@@ -487,7 +494,8 @@ void InlineFlowBox::adjustMaxAscentAndDescent(int& maxAscent, int& maxDescent, i
         // positioned elements
         if (curr->renderer()->isOutOfFlowPositioned())
             continue; // Positioned placeholders don't affect calculations.
-        if (curr->verticalAlign() == TOP || curr->verticalAlign() == BOTTOM) {
+
+        if ((curr->verticalAlign() == TOP || curr->verticalAlign() == BOTTOM) && verticalAlignApplies(curr->renderer())) {
             int lineHeight = curr->lineHeight();
             if (curr->verticalAlign() == TOP) {
                 if (maxAscent + maxDescent < lineHeight)
@@ -570,10 +578,10 @@ void InlineFlowBox::computeLogicalBoxHeights(RootInlineBox* rootBox, LayoutUnit&
         rootBox->ascentAndDescentForBox(curr, textBoxDataMap, ascent, descent, affectsAscent, affectsDescent);
 
         LayoutUnit boxHeight = ascent + descent;
-        if (curr->verticalAlign() == TOP) {
+        if (curr->verticalAlign() == TOP && verticalAlignApplies(curr->renderer())) {
             if (maxPositionTop < boxHeight)
                 maxPositionTop = boxHeight;
-        } else if (curr->verticalAlign() == BOTTOM) {
+        } else if (curr->verticalAlign() == BOTTOM && verticalAlignApplies(curr->renderer())) {
             if (maxPositionBottom < boxHeight)
                 maxPositionBottom = boxHeight;
         } else if (!inlineFlowBox || strictMode || inlineFlowBox->hasTextChildren() || (inlineFlowBox->descendantsHaveSameLineHeightAndBaseline() && inlineFlowBox->hasTextDescendants())
@@ -633,9 +641,10 @@ void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHei
 
         InlineFlowBox* inlineFlowBox = curr->isInlineFlowBox() ? toInlineFlowBox(curr) : 0;
         bool childAffectsTopBottomPos = true;
-        if (curr->verticalAlign() == TOP)
+
+        if (curr->verticalAlign() == TOP && verticalAlignApplies(curr->renderer()))
             curr->setLogicalTop(top);
-        else if (curr->verticalAlign() == BOTTOM)
+        else if (curr->verticalAlign() == BOTTOM && verticalAlignApplies(curr->renderer()))
             curr->setLogicalTop(top + maxHeight - curr->lineHeight());
         else {
             if (!strictMode && inlineFlowBox && !inlineFlowBox->hasTextChildren() && !curr->boxModelObject()->hasInlineDirectionBordersOrPadding()
@@ -738,7 +747,7 @@ void InlineFlowBox::placeBoxesInBlockDirection(LayoutUnit top, LayoutUnit maxHei
 }
 
 #if ENABLE(CSS3_TEXT)
-void InlineFlowBox::computeMaxLogicalTop(float& maxLogicalTop)
+void InlineFlowBox::computeMaxLogicalTop(float& maxLogicalTop) const
 {
     for (InlineBox* curr = firstChild(); curr; curr = curr->nextOnLine()) {
         if (curr->renderer()->isOutOfFlowPositioned())
@@ -1132,7 +1141,7 @@ void InlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
     PaintPhase paintPhase = paintInfo.phase == PaintPhaseChildOutlines ? PaintPhaseOutline : paintInfo.phase;
     PaintInfo childInfo(paintInfo);
     childInfo.phase = paintPhase;
-    childInfo.updatePaintingRootForChildren(renderer());
+    childInfo.updateSubtreePaintRootForChildren(renderer());
     
     // Paint our children.
     if (paintPhase != PaintPhaseSelfOutline) {

@@ -26,12 +26,12 @@
 #ifndef SharedWorkerStrategy_h
 #define SharedWorkerStrategy_h
 
-#if USE(PLATFORM_STRATEGIES)
-
 namespace WebCore {
     
 class SharedWorkerStrategy {
 public:
+    virtual bool isAvailable() const { return true; }
+
 protected:
     virtual ~SharedWorkerStrategy()
     {
@@ -39,6 +39,5 @@ protected:
 };
 
 }
-#endif // USE(PLATFORM_STRATEGIES)
 
 #endif // SharedWorkerStrategy_h

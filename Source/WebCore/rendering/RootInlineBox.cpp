@@ -43,6 +43,13 @@ using namespace std;
 
 namespace WebCore {
     
+struct SameSizeAsRootInlineBox : public InlineFlowBox {
+    unsigned variables[5];
+    void* pointers[4];
+};
+
+COMPILE_ASSERT(sizeof(RootInlineBox) == sizeof(SameSizeAsRootInlineBox), RootInlineBox_should_stay_small);
+
 typedef WTF::HashMap<const RootInlineBox*, EllipsisBox*> EllipsisBoxMap;
 static EllipsisBoxMap* gEllipsisBoxMap = 0;
 
@@ -54,9 +61,6 @@ RootInlineBox::RootInlineBox(RenderBlock* block)
     , m_lineBottom(0)
     , m_lineTopWithLeading(0)
     , m_lineBottomWithLeading(0)
-#if ENABLE(CSS3_TEXT)
-    , m_maxLogicalTop(0)
-#endif // CSS3_TEXT
 {
     setIsHorizontal(block->isHorizontalWritingMode());
 }
@@ -184,7 +188,7 @@ void RootInlineBox::addHighlightOverflow()
 
     // Highlight acts as a selection inflation.
     FloatRect rootRect(0, selectionTop(), logicalWidth(), selectionHeight());
-    IntRect inflatedRect = enclosingIntRect(page->chrome()->client()->customHighlightRect(renderer()->node(), renderer()->style()->highlight(), rootRect));
+    IntRect inflatedRect = enclosingIntRect(page->chrome().client()->customHighlightRect(renderer()->node(), renderer()->style()->highlight(), rootRect));
     setOverflowFromLogicalRects(inflatedRect, inflatedRect, lineTop(), lineBottom());
 }
 
@@ -202,9 +206,9 @@ void RootInlineBox::paintCustomHighlight(PaintInfo& paintInfo, const LayoutPoint
 
     // Get the inflated rect so that we can properly hit test.
     FloatRect rootRect(paintOffset.x() + x(), paintOffset.y() + selectionTop(), logicalWidth(), selectionHeight());
-    FloatRect inflatedRect = page->chrome()->client()->customHighlightRect(renderer()->node(), highlightType, rootRect);
+    FloatRect inflatedRect = page->chrome().client()->customHighlightRect(renderer()->node(), highlightType, rootRect);
     if (inflatedRect.intersects(paintInfo.rect))
-        page->chrome()->client()->paintCustomHighlight(renderer()->node(), highlightType, rootRect, rootRect, false, true);
+        page->chrome().client()->paintCustomHighlight(renderer()->node(), highlightType, rootRect, rootRect, false, true);
 }
 
 #endif
@@ -283,8 +287,6 @@ LayoutUnit RootInlineBox::alignBoxesInBlockDirection(LayoutUnit heightOfBlock, G
     // SVG will handle vertical alignment on its own.
     if (isSVGRootInlineBox())
         return 0;
-
-    // FIXME: figure out how to call computeMaxLogicalTop() when SVG is enabled.
 #endif
 
     LayoutUnit maxPositionTop = 0;
@@ -337,13 +339,17 @@ LayoutUnit RootInlineBox::alignBoxesInBlockDirection(LayoutUnit heightOfBlock, G
         heightOfBlock += gridSnapAdjustment;
     }
 
-#if ENABLE(CSS3_TEXT)
-    m_maxLogicalTop = 0;
-    computeMaxLogicalTop(m_maxLogicalTop);
-#endif // CSS3_TEXT
-
     return heightOfBlock + maxHeight;
 }
+
+#if ENABLE(CSS3_TEXT)
+float RootInlineBox::maxLogicalTop() const
+{
+    float maxLogicalTop = 0;
+    computeMaxLogicalTop(maxLogicalTop);
+    return maxLogicalTop;
+}
+#endif // CSS3_TEXT
 
 LayoutUnit RootInlineBox::beforeAnnotationsAdjustment() const
 {

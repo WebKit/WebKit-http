@@ -43,6 +43,7 @@ using namespace std;
 
 // Allow a little more than 60fps to make sure we can at least hit that frame rate.
 #define MinimumAnimationInterval 0.015
+#define MinimumThrottledAnimationInterval 10
 #endif
 
 namespace WebCore {
@@ -55,7 +56,8 @@ ScriptedAnimationController::ScriptedAnimationController(Document* document, Pla
     , m_animationTimer(this, &ScriptedAnimationController::animationTimerFired)
     , m_lastAnimationFrameTimeMonotonic(0)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_useTimer(false)
+    , m_isUsingTimer(false)
+    , m_isThrottled(false)
 #endif
 #endif
 {
@@ -80,6 +82,20 @@ void ScriptedAnimationController::resume()
 
     if (!m_suspendCount && m_callbacks.size())
         scheduleAnimation();
+}
+
+void ScriptedAnimationController::setThrottled(bool isThrottled)
+{
+#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    if (m_isThrottled == isThrottled)
+        return;
+
+    m_isThrottled = isThrottled;
+    if (m_animationTimer.isActive()) {
+        m_animationTimer.stop();
+        scheduleAnimation();
+    }
+#endif
 }
 
 ScriptedAnimationController::CallbackId ScriptedAnimationController::registerCallback(PassRefPtr<RequestAnimationFrameCallback> callback)
@@ -167,17 +183,23 @@ void ScriptedAnimationController::scheduleAnimation()
 
 #if USE(REQUEST_ANIMATION_FRAME_TIMER)
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    if (!m_useTimer) {
+    if (!m_isUsingTimer && !m_isThrottled) {
         if (DisplayRefreshMonitorManager::sharedManager()->scheduleAnimation(this))
             return;
 
-        m_useTimer = true;
+        m_isUsingTimer = true;
     }
 #endif
     if (m_animationTimer.isActive())
         return;
 
-    double scheduleDelay = max<double>(MinimumAnimationInterval - (monotonicallyIncreasingTime() - m_lastAnimationFrameTimeMonotonic), 0);
+    double animationInterval = MinimumAnimationInterval;
+#if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    if (m_isThrottled)
+        animationInterval = MinimumThrottledAnimationInterval;
+#endif
+
+    double scheduleDelay = max<double>(animationInterval - (monotonicallyIncreasingTime() - m_lastAnimationFrameTimeMonotonic), 0);
     m_animationTimer.startOneShot(scheduleDelay);
 #else
     if (FrameView* frameView = m_document->view())

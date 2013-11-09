@@ -5,7 +5,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/CSSPropertyNames.cpp \
 	DerivedSources/WebCore/CSSValueKeywords.h \
 	DerivedSources/WebCore/CSSValueKeywords.cpp \
-	DerivedSources/WebCore/ColorData.cpp \
 	DerivedSources/WebCore/EventFactory.cpp \
 	DerivedSources/WebCore/EventHeaders.h \
 	DerivedSources/WebCore/EventInterfaces.h \
@@ -69,8 +68,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSAudioTrack.h \
 	DerivedSources/WebCore/JSAudioTrackList.cpp \
 	DerivedSources/WebCore/JSAudioTrackList.h \
-	DerivedSources/WebCore/JSBarInfo.cpp \
-	DerivedSources/WebCore/JSBarInfo.h \
+	DerivedSources/WebCore/JSBarProp.cpp \
+	DerivedSources/WebCore/JSBarProp.h \
 	DerivedSources/WebCore/JSBatteryManager.cpp \
 	DerivedSources/WebCore/JSBatteryManager.h \
 	DerivedSources/WebCore/JSBeforeLoadEvent.cpp \
@@ -898,8 +897,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/SettingsMacros.h \
 	DerivedSources/WebCore/UserAgentStyleSheetsData.cpp \
 	DerivedSources/WebCore/UserAgentStyleSheets.h \
-	DerivedSources/WebCore/WebKitFontFamilyNames.cpp \
-	DerivedSources/WebCore/WebKitFontFamilyNames.h \
 	DerivedSources/WebCore/XLinkNames.cpp \
 	DerivedSources/WebCore/XMLNames.cpp \
 	DerivedSources/WebCore/XMLNames.h \
@@ -909,6 +906,11 @@ webcore_built_sources += \
 	DerivedSources/WebCore/XMLViewerJS.h \
 	DerivedSources/WebCore/XPathGrammar.cpp \
 	DerivedSources/WebCore/XPathGrammar.h
+
+platform_built_sources += \
+	DerivedSources/Platform/ColorData.cpp \
+	DerivedSources/Platform/WebKitFontFamilyNames.cpp \
+	DerivedSources/Platform/WebKitFontFamilyNames.h
 
 # These files need to be part of WebCore otherwise they cause undefined
 # symbols havoc
@@ -1615,7 +1617,7 @@ dom_binding_idls += \
 	$(WebCore)/inspector/ScriptProfile.idl \
 	$(WebCore)/inspector/ScriptProfileNode.idl \
 	$(WebCore)/loader/appcache/DOMApplicationCache.idl \
-	$(WebCore)/page/BarInfo.idl \
+	$(WebCore)/page/BarProp.idl \
 	$(WebCore)/page/Console.idl \
 	$(WebCore)/page/Crypto.idl \
 	$(WebCore)/page/DOMSecurityPolicy.idl \
@@ -2257,10 +2259,6 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/websockets/WebSocketFrame.h \
 	Source/WebCore/Modules/websockets/WebSocketHandshake.cpp \
 	Source/WebCore/Modules/websockets/WebSocketHandshake.h \
-	Source/WebCore/Modules/websockets/WebSocketHandshakeRequest.cpp \
-	Source/WebCore/Modules/websockets/WebSocketHandshakeRequest.h \
-	Source/WebCore/Modules/websockets/WebSocketHandshakeResponse.cpp \
-	Source/WebCore/Modules/websockets/WebSocketHandshakeResponse.h \
 	Source/WebCore/Modules/websockets/WorkerThreadableWebSocketChannel.cpp \
 	Source/WebCore/Modules/websockets/WorkerThreadableWebSocketChannel.h
 
@@ -2395,8 +2393,6 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSDOMWindowCustom.h \
 	Source/WebCore/bindings/js/JSDOMWindowShell.cpp \
 	Source/WebCore/bindings/js/JSDOMWindowShell.h \
-	Source/WebCore/bindings/js/JSDOMWindowWebAudioCustom.cpp \
-	Source/WebCore/bindings/js/JSDOMWindowWebSocketCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMWrapper.cpp \
 	Source/WebCore/bindings/js/JSDOMWrapper.h \
 	Source/WebCore/bindings/js/JSDataViewCustom.cpp \
@@ -4135,10 +4131,6 @@ webcore_sources += \
 	Source/WebCore/loader/PolicyCallback.h \
 	Source/WebCore/loader/PolicyChecker.cpp \
 	Source/WebCore/loader/PolicyChecker.h \
-	Source/WebCore/loader/Prerenderer.cpp \
-	Source/WebCore/loader/Prerenderer.h \
-	Source/WebCore/loader/PrerendererClient.cpp \
-	Source/WebCore/loader/PrerendererClient.h \
 	Source/WebCore/loader/ProgressTracker.cpp \
 	Source/WebCore/loader/ProgressTracker.h \
 	Source/WebCore/loader/NavigationScheduler.cpp \
@@ -4194,8 +4186,8 @@ webcore_sources += \
 	Source/WebCore/page/AlternativeTextClient.h \
 	Source/WebCore/page/AutoscrollController.cpp \
 	Source/WebCore/page/AutoscrollController.h \
-	Source/WebCore/page/BarInfo.cpp \
-	Source/WebCore/page/BarInfo.h \
+	Source/WebCore/page/BarProp.cpp \
+	Source/WebCore/page/BarProp.h \
 	Source/WebCore/page/CaptionUserPreferences.cpp \
 	Source/WebCore/page/CaptionUserPreferences.h \
 	Source/WebCore/page/Chrome.cpp \
@@ -4283,9 +4275,6 @@ webcore_sources += \
 	Source/WebCore/page/PageGroup.h \
 	Source/WebCore/page/PageGroupLoadDeferrer.cpp \
 	Source/WebCore/page/PageGroupLoadDeferrer.h \
-	Source/WebCore/page/PagePopup.h \
-	Source/WebCore/page/PagePopupClient.h \
-	Source/WebCore/page/PagePopupDriver.h \
 	Source/WebCore/page/PageSerializer.cpp \
 	Source/WebCore/page/PageSerializer.h \
 	Source/WebCore/page/PageVisibilityState.cpp \
@@ -5502,8 +5491,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/DragImage.cpp \
 	Source/WebCore/platform/DragImage.h \
 	Source/WebCore/platform/EventLoop.h \
-	Source/WebCore/platform/EventTracer.cpp \
-	Source/WebCore/platform/EventTracer.h \
 	Source/WebCore/platform/PlatformInstrumentation.cpp \
 	Source/WebCore/platform/PlatformInstrumentation.h \
 	Source/WebCore/platform/FileChooser.cpp \
@@ -5659,8 +5646,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/graphics/FontDescription.h \
 	Source/WebCore/platform/graphics/FontFallbackList.cpp \
 	Source/WebCore/platform/graphics/FontFallbackList.h \
-	Source/WebCore/platform/graphics/FontFamily.cpp \
-	Source/WebCore/platform/graphics/FontFamily.h \
 	Source/WebCore/platform/graphics/FontFastPath.cpp \
 	Source/WebCore/platform/graphics/FontFeatureSettings.cpp \
 	Source/WebCore/platform/graphics/FontFeatureSettings.h \
@@ -5681,7 +5666,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/graphics/LayoutSize.h \
 	Source/WebCore/platform/graphics/GeneratedImage.cpp \
 	Source/WebCore/platform/graphics/GeneratedImage.h \
-	Source/WebCore/platform/graphics/Generator.h \
 	Source/WebCore/platform/graphics/GeneratorGeneratedImage.cpp \
 	Source/WebCore/platform/graphics/GeneratorGeneratedImage.h \
 	Source/WebCore/platform/graphics/Glyph.h \
@@ -5885,8 +5869,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/network/HTTPHeaderMap.h \
 	Source/WebCore/platform/network/HTTPParsers.cpp \
 	Source/WebCore/platform/network/HTTPParsers.h \
-	Source/WebCore/platform/network/HTTPRequest.cpp \
-	Source/WebCore/platform/network/HTTPRequest.h \
 	Source/WebCore/platform/network/MIMEHeader.cpp \
 	Source/WebCore/platform/network/MIMEHeader.h \
 	Source/WebCore/platform/network/NetworkingContext.h \
@@ -5961,8 +5943,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/PopupMenuClient.h \
 	Source/WebCore/platform/PopupMenu.h \
 	Source/WebCore/platform/PopupMenuStyle.h \
-	Source/WebCore/platform/PrerenderClient.h \
-	Source/WebCore/platform/PrerenderHandle.h \
 	Source/WebCore/platform/PublicSuffix.h \
 	Source/WebCore/platform/PurgeableBuffer.h \
 	Source/WebCore/platform/PurgePriority.h \
@@ -6007,7 +5987,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/SSLKeyGenerator.h \
 	Source/WebCore/platform/SuddenTermination.h \
 	Source/WebCore/platform/Supplementable.h \
-	Source/WebCore/platform/SystemTime.h \
 	Source/WebCore/platform/text/enchant/TextCheckerEnchant.h \
 	Source/WebCore/platform/text/enchant/TextCheckerEnchant.cpp \
 	Source/WebCore/platform/text/BidiContext.cpp \
@@ -6144,8 +6123,6 @@ platform_sources += \
 	Source/WebCore/platform/Logging.h \
 	Source/WebCore/platform/MemoryPressureHandler.cpp \
 	Source/WebCore/platform/MemoryPressureHandler.h \
-	Source/WebCore/platform/MemoryUsageSupport.cpp \
-	Source/WebCore/platform/MemoryUsageSupport.h \
 	Source/WebCore/platform/NotImplemented.cpp \
 	Source/WebCore/platform/NotImplemented.h \
 	Source/WebCore/platform/RunLoop.cpp \
@@ -6216,7 +6193,6 @@ webcoregtk_sources += \
 	Source/WebCore/platform/gtk/AsyncFileSystemGtk.cpp \
 	Source/WebCore/platform/gtk/AsyncFileSystemGtk.h \
 	Source/WebCore/platform/gtk/ClipboardGtk.cpp \
-	Source/WebCore/platform/gtk/ClipboardGtk.h \
 	Source/WebCore/platform/gtk/ClipboardUtilitiesGtk.cpp \
 	Source/WebCore/platform/gtk/ClipboardUtilitiesGtk.h \
 	Source/WebCore/platform/gtk/DataObjectGtk.cpp \

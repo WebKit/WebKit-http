@@ -38,7 +38,6 @@
 #include "TextTrackCueGeneric.h"
 #include "TextTrackCueList.h"
 #include <math.h>
-#include <wtf/UnusedParam.h>
 
 namespace WebCore {
 
@@ -204,6 +203,8 @@ void InbandTextTrack::updateCueFromCueData(TextTrackCueGeneric* cue, GenericCueD
         cue->setBackgroundColor(cueData->backgroundColor().rgb());
     if (cueData->foregroundColor().isValid())
         cue->setForegroundColor(cueData->foregroundColor().rgb());
+    if (cueData->highlightColor().isValid())
+        cue->setHighlightColor(cueData->highlightColor().rgb());
 
     if (cueData->align() == GenericCueData::Start)
         cue->setAlign(ASCIILiteral("start"), IGNORE_EXCEPTION);

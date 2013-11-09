@@ -66,7 +66,9 @@ NSRect focusRingClipRect;
         return [self visibleRect];
 
     NSRect rect = focusRingClipRect;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 1090
     rect.origin.y = [self bounds].size.height - NSMaxY(rect);
+#endif
 
     return rect;
 }
@@ -605,7 +607,7 @@ FontDescription ThemeMac::controlFont(ControlPart part, const Font& font, float 
             fontDescription.setGenericFamily(FontDescription::SerifFamily);
 
             NSFont* nsFont = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSizeForFont(font)]];
-            fontDescription.firstFamily().setFamily([nsFont webCoreFamilyName]);
+            fontDescription.setOneFamily([nsFont webCoreFamilyName]);
             fontDescription.setComputedSize([nsFont pointSize] * zoomFactor);
             fontDescription.setSpecifiedSize([nsFont pointSize] * zoomFactor);
             return fontDescription;

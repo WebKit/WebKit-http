@@ -30,7 +30,7 @@ namespace WebCore {
 
 class Document;
 
-class HTMLBodyElement : public HTMLElement {
+class HTMLBodyElement FINAL : public HTMLElement {
 public:
     static PassRefPtr<HTMLBodyElement> create(Document*);
     static PassRefPtr<HTMLBodyElement> create(const QualifiedName&, Document*);
@@ -79,7 +79,7 @@ private:
     
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     
-    virtual bool supportsFocus() const;
+    virtual bool supportsFocus() const OVERRIDE;
 
     virtual int scrollLeft();
     virtual void setScrollLeft(int scrollLeft);

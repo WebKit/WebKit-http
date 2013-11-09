@@ -35,6 +35,7 @@
 namespace WebCore {
 
 struct FocusCandidate;
+class ContainerNode;
 class Document;
 class Element;
 class Frame;
@@ -47,7 +48,7 @@ class TreeScope;
 
 class FocusNavigationScope {
 public:
-    Node* rootNode() const;
+    ContainerNode* rootNode() const;
     Element* owner() const;
     static FocusNavigationScope focusNavigationScopeOf(Node*);
     static FocusNavigationScope focusNavigationScopeOwnedByShadowHost(Node*);
@@ -69,8 +70,8 @@ public:
 
     bool setInitialFocus(FocusDirection, KeyboardEvent*);
     bool advanceFocus(FocusDirection, KeyboardEvent*, bool initialFocus = false);
-        
-    bool setFocusedNode(Node*, PassRefPtr<Frame>, FocusDirection = FocusDirectionNone);
+
+    bool setFocusedElement(Element*, PassRefPtr<Frame>, FocusDirection = FocusDirectionNone);
 
     void setActive(bool);
     bool isActive() const { return m_isActive; }
@@ -105,7 +106,7 @@ private:
     Node* nextFocusableNode(FocusNavigationScope, Node* start, KeyboardEvent*);
     Node* previousFocusableNode(FocusNavigationScope, Node* start, KeyboardEvent*);
 
-    Node* findNodeWithExactTabIndex(Node* start, int tabIndex, KeyboardEvent*, FocusDirection);
+    Element* findElementWithExactTabIndex(Node* start, int tabIndex, KeyboardEvent*, FocusDirection);
 
     bool advanceFocusDirectionallyInContainer(Node* container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent*);
     void findFocusCandidateInContainer(Node* container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent*, FocusCandidate& closest);

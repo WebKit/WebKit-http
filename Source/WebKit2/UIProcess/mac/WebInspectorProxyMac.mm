@@ -31,7 +31,13 @@
 #import "WKAPICast.h"
 #import "WebContext.h"
 #import "WKInspectorPrivateMac.h"
+#import "WKMutableArray.h"
+#import "WKOpenPanelParameters.h"
+#import "WKOpenPanelResultListener.h"
+#import "WKRetainPtr.h"
+#import "WKURLCF.h"
 #import "WKViewPrivate.h"
+#import "WebInspectorMessages.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
 #import "WebPreferences.h"
@@ -221,6 +227,37 @@ static unsigned long long exceededDatabaseQuota(WKPageRef, WKFrameRef, WKSecurit
     return std::max<unsigned long long>(expectedUsage, currentDatabaseUsage * 1.25);
 }
 
+static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParametersRef parameters, WKOpenPanelResultListenerRef listener, const void* clientInfo)
+{
+    WebInspectorProxy* webInspectorProxy = static_cast<WebInspectorProxy*>(const_cast<void*>(clientInfo));
+    ASSERT(webInspectorProxy);
+
+    NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+    [openPanel setAllowsMultipleSelection:WKOpenPanelParametersGetAllowsMultipleFiles(parameters)];
+
+    WKRetain(listener);
+
+    // If the inspector is detached, then openPanel will be window-modal; otherwise, openPanel is opened in a new window.
+    [openPanel beginSheetModalForWindow:webInspectorProxy->inspectorWindow() completionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelOKButton) {
+            WKMutableArrayRef fileURLs = WKMutableArrayCreate();
+
+            for (NSURL* nsURL in [openPanel URLs]) {
+                WKURLRef wkURL = WKURLCreateWithCFURL(reinterpret_cast<CFURLRef>(nsURL));
+                WKArrayAppendItem(fileURLs, wkURL);
+                WKRelease(wkURL);
+            }
+
+            WKOpenPanelResultListenerChooseFiles(listener, fileURLs);
+
+            WKRelease(fileURLs);
+        } else
+            WKOpenPanelResultListenerCancel(listener);
+        
+        WKRelease(listener);
+    }];
+}
+
 void WebInspectorProxy::setInspectorWindowFrame(WKRect& frame)
 {
     if (m_isAttached)
@@ -408,7 +445,7 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
         0, // didDraw
         0, // pageDidScroll
         exceededDatabaseQuota,
-        0, // runOpenPanel
+        runOpenPanel,
         0, // decidePolicyForGeolocationPermissionRequest
         0, // headerHeight
         0, // footerHeight
@@ -505,6 +542,67 @@ void WebInspectorProxy::platformInspectedURLChanged(const String& urlString)
     updateInspectorWindowTitle();
 }
 
+void WebInspectorProxy::platformSave(const String& suggestedURL, const String& content, bool forceSaveDialog)
+{
+    ASSERT(!suggestedURL.isEmpty());
+    
+    NSURL *platformURL = m_suggestedToActualURLMap.get(suggestedURL).get();
+    if (!platformURL) {
+        platformURL = [NSURL URLWithString:suggestedURL];
+        // The user must confirm new filenames before we can save to them.
+        forceSaveDialog = true;
+    }
+    
+    ASSERT(platformURL);
+    if (!platformURL)
+        return;
+
+    // Necessary for the block below.
+    String suggestedURLCopy = suggestedURL;
+    String contentCopy = content;
+
+    auto saveToURL = ^(NSURL *actualURL) {
+        ASSERT(actualURL);
+        
+        m_suggestedToActualURLMap.set(suggestedURLCopy, actualURL);
+        [contentCopy writeToURL:actualURL atomically:YES encoding:NSUTF8StringEncoding error:NULL];
+        m_page->process()->send(Messages::WebInspector::DidSave([actualURL absoluteString]), m_page->pageID());
+    };
+
+    if (!forceSaveDialog) {
+        saveToURL(platformURL);
+        return;
+    }
+
+    NSSavePanel *panel = [NSSavePanel savePanel];
+    panel.nameFieldStringValue = platformURL.lastPathComponent;
+    panel.directoryURL = [platformURL URLByDeletingLastPathComponent];
+
+    [panel beginSheetModalForWindow:m_inspectorWindow.get() completionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelCancelButton)
+            return;
+        ASSERT(result == NSFileHandlingPanelOKButton);
+        saveToURL(panel.URL);
+    }];
+}
+
+void WebInspectorProxy::platformAppend(const String& suggestedURL, const String& content)
+{
+    ASSERT(!suggestedURL.isEmpty());
+    
+    RetainPtr<NSURL> actualURL = m_suggestedToActualURLMap.get(suggestedURL);
+    // Do not append unless the user has already confirmed this filename in save().
+    if (!actualURL)
+        return;
+
+    NSFileHandle *handle = [NSFileHandle fileHandleForWritingToURL:actualURL.get() error:NULL];
+    [handle seekToEndOfFile];
+    [handle writeData:[content dataUsingEncoding:NSUTF8StringEncoding]];
+    [handle closeFile];
+
+    m_page->process()->send(Messages::WebInspector::DidAppend([actualURL absoluteString]), m_page->pageID());
+}
+
 void WebInspectorProxy::windowFrameDidChange()
 {
     ASSERT(!m_isAttached);
@@ -527,6 +625,7 @@ void WebInspectorProxy::inspectedViewFrameDidChange(CGFloat currentDimension)
     NSRect inspectedViewFrame = [inspectedView frame];
     NSRect inspectorFrame = NSZeroRect;
     NSRect parentBounds = [[inspectedView superview] bounds];
+    CGFloat inspectedViewTop = NSMaxY(inspectedViewFrame);
 
     switch (m_attachmentSide) {
         case AttachmentSideBottom: {
@@ -536,7 +635,8 @@ void WebInspectorProxy::inspectedViewFrameDidChange(CGFloat currentDimension)
             CGFloat parentHeight = NSHeight(parentBounds);
             CGFloat inspectorHeight = InspectorFrontendClientLocal::constrainedAttachedWindowHeight(currentDimension, parentHeight);
 
-            inspectedViewFrame = NSMakeRect(0, inspectorHeight, NSWidth(parentBounds), parentHeight - inspectorHeight);
+            // Preserve the top position of the inspected view so banners in Safari still work.
+            inspectedViewFrame = NSMakeRect(0, inspectorHeight, NSWidth(parentBounds), inspectedViewTop - inspectorHeight);
             inspectorFrame = NSMakeRect(0, 0, NSWidth(inspectedViewFrame), inspectorHeight);
             break;
         }
@@ -548,8 +648,10 @@ void WebInspectorProxy::inspectedViewFrameDidChange(CGFloat currentDimension)
             CGFloat parentWidth = NSWidth(parentBounds);
             CGFloat inspectorWidth = InspectorFrontendClientLocal::constrainedAttachedWindowWidth(currentDimension, parentWidth);
 
-            inspectedViewFrame = NSMakeRect(0, 0, parentWidth - inspectorWidth, NSHeight(parentBounds));
-            inspectorFrame = NSMakeRect(parentWidth - inspectorWidth, 0, inspectorWidth, NSHeight(inspectedViewFrame));
+            // Preserve the top position of the inspected view so banners in Safari still work. But don't use that
+            // top position for the inspector view since the banners only stretch as wide as the the inspected view.
+            inspectedViewFrame = NSMakeRect(0, 0, parentWidth - inspectorWidth, inspectedViewTop);
+            inspectorFrame = NSMakeRect(parentWidth - inspectorWidth, 0, inspectorWidth, NSHeight(parentBounds));
             break;
         }
     }
@@ -616,9 +718,9 @@ void WebInspectorProxy::platformDetach()
     [m_inspectorView.get() removeFromSuperview];
 
     // Make sure that we size the inspected view's frame after detaching so that it takes up the space that the
-    // attached inspector used to.
+    // attached inspector used to. Preserve the top position of the inspected view so banners in Safari still work.
 
-    [inspectedView setFrame:[[inspectedView superview] bounds]];
+    inspectedView.frame = NSMakeRect(0, 0, NSWidth(inspectedView.superview.bounds), NSMaxY(inspectedView.frame));
 
     // Return early if we are not visible. This means the inspector was closed while attached
     // and we should not create and show the inspector window.
@@ -644,6 +746,11 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned width)
         return;
 
     inspectedViewFrameDidChange(width);
+}
+
+void WebInspectorProxy::platformSetToolbarHeight(unsigned height)
+{
+    [m_inspectorWindow setContentBorderThickness:height forEdge:NSMaxYEdge];
 }
 
 String WebInspectorProxy::inspectorPageURL() const

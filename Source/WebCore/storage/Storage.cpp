@@ -26,9 +26,13 @@
 #include "config.h"
 #include "Storage.h"
 
+#include "Document.h"
+#include "ExceptionCode.h"
 #include "Frame.h"
 #include "Page.h"
+#include "SchemeRegistry.h"
 #include "Settings.h"
+#include "StorageArea.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -45,14 +49,124 @@ Storage::Storage(Frame* frame, PassRefPtr<StorageArea> storageArea)
 {
     ASSERT(m_frame);
     ASSERT(m_storageArea);
-    if (m_storageArea)
-        m_storageArea->incrementAccessCount();
+
+    m_storageArea->incrementAccessCount();
 }
 
 Storage::~Storage()
 {
-    if (m_storageArea)
-        m_storageArea->decrementAccessCount();
+    m_storageArea->decrementAccessCount();
 }
 
+unsigned Storage::length(ExceptionCode& ec) const
+{
+    ec = 0;
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return 0;
+    }
+
+    if (isDisabledByPrivateBrowsing())
+        return 0;
+
+    return m_storageArea->length();
 }
+
+String Storage::key(unsigned index, ExceptionCode& ec) const
+{
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return String();
+    }
+
+    if (isDisabledByPrivateBrowsing())
+        return String();
+
+    return m_storageArea->key(index);
+}
+
+String Storage::getItem(const String& key, ExceptionCode& ec) const
+{
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return String();
+    }
+
+    if (isDisabledByPrivateBrowsing())
+        return String();
+
+    return m_storageArea->item(key);
+}
+
+void Storage::setItem(const String& key, const String& value, ExceptionCode& ec)
+{
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return;
+    }
+
+    if (isDisabledByPrivateBrowsing()) {
+        ec = QUOTA_EXCEEDED_ERR;
+        return;
+    }
+
+    bool quotaException = false;
+    m_storageArea->setItem(m_frame, key, value, quotaException);
+
+    if (quotaException)
+        ec = QUOTA_EXCEEDED_ERR;
+}
+
+void Storage::removeItem(const String& key, ExceptionCode& ec)
+{
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return;
+    }
+
+    if (isDisabledByPrivateBrowsing())
+        return;
+
+    m_storageArea->removeItem(m_frame, key);
+}
+
+void Storage::clear(ExceptionCode& ec)
+{
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return;
+    }
+
+    if (isDisabledByPrivateBrowsing())
+        return;
+
+    m_storageArea->clear(m_frame);
+}
+
+bool Storage::contains(const String& key, ExceptionCode& ec) const
+{
+    if (!m_storageArea->canAccessStorage(m_frame)) {
+        ec = SECURITY_ERR;
+        return false;
+    }
+
+    if (isDisabledByPrivateBrowsing())
+        return false;
+
+    return m_storageArea->contains(key);
+}
+
+bool Storage::isDisabledByPrivateBrowsing() const
+{
+    if (!m_frame->page()->settings()->privateBrowsingEnabled())
+        return false;
+
+    if (m_storageArea->storageType() == LocalStorage) {
+        if (SchemeRegistry::allowsLocalStorageAccessInPrivateBrowsing(m_frame->document()->securityOrigin()->protocol()))
+            return false;
+    }
+
+    return true;
+}
+
+} // namespace WebCore

@@ -34,12 +34,6 @@
 
    For non-debug builds, everything is disabled by default.
    Defining any of the symbols explicitly prevents this from having any effect.
-   
-   MSVC7 note: variadic macro support was added in MSVC8, so for now we disable
-   those macros in MSVC7. For more info, see the MSDN document on variadic 
-   macros here:
-   
-   http://msdn2.microsoft.com/en-us/library/ms177415(VS.80).aspx
 */
 
 #include <wtf/Platform.h>
@@ -57,12 +51,6 @@
 #define ASSERTIONS_DISABLED_DEFAULT 0
 #endif
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define HAVE_VARIADIC_MACRO 0
-#else
-#define HAVE_VARIADIC_MACRO 1
-#endif
-
 #ifndef BACKTRACE_DISABLED
 #define BACKTRACE_DISABLED ASSERTIONS_DISABLED_DEFAULT
 #endif
@@ -72,11 +60,7 @@
 #endif
 
 #ifndef ASSERT_MSG_DISABLED
-#if HAVE(VARIADIC_MACRO)
 #define ASSERT_MSG_DISABLED ASSERTIONS_DISABLED_DEFAULT
-#else
-#define ASSERT_MSG_DISABLED 1
-#endif
 #endif
 
 #ifndef ASSERT_ARG_DISABLED
@@ -84,27 +68,15 @@
 #endif
 
 #ifndef FATAL_DISABLED
-#if HAVE(VARIADIC_MACRO)
 #define FATAL_DISABLED ASSERTIONS_DISABLED_DEFAULT
-#else
-#define FATAL_DISABLED 1
-#endif
 #endif
 
 #ifndef ERROR_DISABLED
-#if HAVE(VARIADIC_MACRO)
 #define ERROR_DISABLED ASSERTIONS_DISABLED_DEFAULT
-#else
-#define ERROR_DISABLED 1
-#endif
 #endif
 
 #ifndef LOG_DISABLED
-#if HAVE(VARIADIC_MACRO)
 #define LOG_DISABLED ASSERTIONS_DISABLED_DEFAULT
-#else
-#define LOG_DISABLED 1
-#endif
 #endif
 
 #if COMPILER(GCC)
@@ -151,9 +123,10 @@ WTF_EXPORT_PRIVATE void WTFPrintBacktrace(void** stack, int size);
 
 typedef void (*WTFCrashHookFunction)();
 WTF_EXPORT_PRIVATE void WTFSetCrashHook(WTFCrashHookFunction);
-WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
 WTF_EXPORT_PRIVATE void WTFInstallReportBacktraceOnCrashHook();
 
+// Exist for binary compatibility with older Safari. Do not use.
+WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
 #ifdef __cplusplus
 }
 #endif
@@ -166,29 +139,23 @@ WTF_EXPORT_PRIVATE void WTFInstallReportBacktraceOnCrashHook();
 
    Signals are ignored by the crash reporter on OS X so we must do better.
 */
-#ifndef CRASH
-#if COMPILER(CLANG)
-#define CRASH() \
-    (WTFReportBacktrace(), \
-     WTFInvokeCrashHook(), \
-     (*(int *)(uintptr_t)0xbbadbeef = 0), \
-     __builtin_trap())
-#else
-#define CRASH() \
-    (WTFReportBacktrace(), \
-     WTFInvokeCrashHook(), \
-     (*(int *)(uintptr_t)0xbbadbeef = 0), \
-     ((void(*)())0)() /* More reliable, but doesn't say BBADBEEF */ \
-    )
-#endif
-#endif
-
 #if COMPILER(CLANG)
 #define NO_RETURN_DUE_TO_CRASH NO_RETURN
 #else
 #define NO_RETURN_DUE_TO_CRASH
 #endif
 
+#ifndef CRASH
+#define CRASH() WTFCrash()
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+WTF_EXPORT_PRIVATE void WTFCrash() NO_RETURN_DUE_TO_CRASH;
+#ifdef __cplusplus
+}
+#endif
 
 /* BACKTRACE
 
@@ -290,9 +257,7 @@ inline void assertUnused(T& x) { (void)x; }
 
 /* ASSERT_WITH_MESSAGE */
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define ASSERT_WITH_MESSAGE(assertion) ((void)0)
-#elif ASSERT_MSG_DISABLED
+#if ASSERT_MSG_DISABLED
 #define ASSERT_WITH_MESSAGE(assertion, ...) ((void)0)
 #else
 #define ASSERT_WITH_MESSAGE(assertion, ...) do \
@@ -305,9 +270,7 @@ while (0)
 
 /* ASSERT_WITH_MESSAGE_UNUSED */
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define ASSERT_WITH_MESSAGE_UNUSED(variable, assertion) ((void)0)
-#elif ASSERT_MSG_DISABLED
+#if ASSERT_MSG_DISABLED
 #if COMPILER(INTEL) && !OS(WINDOWS) || COMPILER(RVCT)
 template<typename T>
 inline void assertWithMessageUnused(T& x) { (void)x; }
@@ -356,9 +319,7 @@ while (0)
 
 /* FATAL */
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define FATAL() ((void)0)
-#elif FATAL_DISABLED
+#if FATAL_DISABLED
 #define FATAL(...) ((void)0)
 #else
 #define FATAL(...) do { \
@@ -369,9 +330,7 @@ while (0)
 
 /* LOG_ERROR */
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define LOG_ERROR() ((void)0)
-#elif ERROR_DISABLED
+#if ERROR_DISABLED
 #define LOG_ERROR(...) ((void)0)
 #else
 #define LOG_ERROR(...) WTFReportError(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, __VA_ARGS__)
@@ -379,9 +338,7 @@ while (0)
 
 /* LOG */
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define LOG() ((void)0)
-#elif LOG_DISABLED
+#if LOG_DISABLED
 #define LOG(channel, ...) ((void)0)
 #else
 #define LOG(channel, ...) WTFLog(&JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, channel), __VA_ARGS__)
@@ -391,9 +348,7 @@ while (0)
 
 /* LOG_VERBOSE */
 
-#if COMPILER(MSVC7_OR_LOWER)
-#define LOG_VERBOSE(channel) ((void)0)
-#elif LOG_DISABLED
+#if LOG_DISABLED
 #define LOG_VERBOSE(channel, ...) ((void)0)
 #else
 #define LOG_VERBOSE(channel, ...) WTFLogVerbose(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, &JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, channel), __VA_ARGS__)

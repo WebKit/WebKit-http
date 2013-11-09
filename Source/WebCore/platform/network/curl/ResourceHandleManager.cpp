@@ -280,10 +280,8 @@ static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
     if (d->m_cancelled)
         return 0;
 
-#if LIBCURL_VERSION_NUM > 0x071200
     // We should never be called when deferred loading is activated.
     ASSERT(!d->m_defersLoading);
-#endif
 
     size_t totalSize = size * nmemb;
 
@@ -324,10 +322,8 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
     if (d->m_cancelled)
         return 0;
 
-#if LIBCURL_VERSION_NUM > 0x071200
     // We should never be called when deferred loading is activated.
     ASSERT(!d->m_defersLoading);
-#endif
 
     size_t totalSize = size * nmemb;
     ResourceHandleClient* client = d->client();
@@ -363,7 +359,7 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
         d->m_response.setURL(KURL(ParsedURLString, hdr));
 
         d->m_response.setHTTPStatusCode(httpCode);
-        d->m_response.setMimeType(extractMIMETypeFromMediaType(d->m_response.httpHeaderField("Content-Type")));
+        d->m_response.setMimeType(extractMIMETypeFromMediaType(d->m_response.httpHeaderField("Content-Type")).lower());
         d->m_response.setTextEncodingName(extractCharsetFromMediaType(d->m_response.httpHeaderField("Content-Type")));
         d->m_response.setSuggestedFilename(filenameFromHTTPContentDisposition(d->m_response.httpHeaderField("Content-Disposition")));
 
@@ -416,10 +412,8 @@ size_t readCallback(void* ptr, size_t size, size_t nmemb, void* data)
     if (d->m_cancelled)
         return 0;
 
-#if LIBCURL_VERSION_NUM > 0x071200
     // We should never be called when deferred loading is activated.
     ASSERT(!d->m_defersLoading);
-#endif
 
     if (!size || !nmemb)
         return 0;
@@ -731,12 +725,10 @@ void ResourceHandleManager::dispatchSynchronousJob(ResourceHandle* job)
 
     ResourceHandleInternal* handle = job->getInternal();
 
-#if LIBCURL_VERSION_NUM > 0x071200
     // If defersLoading is true and we call curl_easy_perform
     // on a paused handle, libcURL would do the transfert anyway
     // and we would assert so force defersLoading to be false.
     handle->m_defersLoading = false;
-#endif
 
     initializeHandle(job);
 
@@ -799,14 +791,12 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
 
     d->m_handle = curl_easy_init();
 
-#if LIBCURL_VERSION_NUM > 0x071200
     if (d->m_defersLoading) {
         CURLcode error = curl_easy_pause(d->m_handle, CURLPAUSE_ALL);
         // If we did not pause the handle, we would ASSERT in the
         // header callback. So just assert here.
         ASSERT_UNUSED(error, error == CURLE_OK);
     }
-#endif
 #ifndef NDEBUG
     if (getenv("DEBUG_CURL"))
         curl_easy_setopt(d->m_handle, CURLOPT_VERBOSE, 1);

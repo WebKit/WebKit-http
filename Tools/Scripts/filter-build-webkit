@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright (C) 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2011, 2012, 2013 Apple Inc. All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -66,17 +66,21 @@ HTMLFOOTER
 sub printLine($$);
 sub setLogfileOption($$);
 sub setOutputFormatOption($$);
+sub shouldIgnoreLine($$);
 sub usageAndExit();
 
 # Defined in VCSUtils.
 sub possiblyColored($$);
 
-my $showHelp;
+# Global variables used only in global scope.
 my $outputPath = "&STDOUT";
-my $outputFormat = "text";
-my $useColor = -t STDOUT;
-my $unfilteredOutputPath = "build.log";
-my $logUnfilteredOutput;
+my $showHelp;
+
+# Global variables used in global and subroutine scope.
+our $logUnfilteredOutput;
+our $outputFormat = "text";
+our $unfilteredOutputPath = "build.log";
+our $useColor = -t STDOUT;
 
 sub usageAndExit()
 {
@@ -119,28 +123,12 @@ print OUTPUT_HANDLE HTML_HEADER if ($outputFormat eq "html");
 
 my $buildFinished;
 my $buildFailed = 0;
-while (my $line = <>) {
+for (my $previousLine = "", my $line = <>; $line; $previousLine = $line, $line = <>) {
     print UNFILTERED_OUTPUT_HANDLE $line if $logUnfilteredOutput;
 
     chomp($line);
 
-    next if $line =~ /^\s*$/;
-    next if $line =~ /^Build settings from command line:/;
-    next if $line =~ /make: Nothing to be done for `all'\./;
-    next if $line =~ /^JavaScriptCore\/create_hash_table/;
-    next if $line =~ /JavaScriptCore.framework\/PrivateHeaders\/create_hash_table/;
-    next if $line =~ /^JavaScriptCore\/pcre\/dftables/;
-    next if $line =~ /^Creating hashtable for /;
-    next if $line =~ /^Wrote output to /;
-    next if $line =~ /^(touch|perl|cat|rm -f|bison|flex|python|\/usr\/bin\/g\+\+|gperf|echo|sed|if \[ \-f|WebCore\/generate-export-file) /;
-    next if $line =~ /^UNDOCUMENTED: /;
-    next if $line =~ /libtool.*has no symbols/;
-    next if $line =~ /^# Lower case all the values, as CSS values are case-insensitive$/;
-    next if $line =~ /^if sort /;
-    next if $line =~ /^    /;
-    next if $line =~ /^printf /;
-    next if $line =~ /^offlineasm: Nothing changed/;
-    next if $line =~ /^Showing first/;
+    next if shouldIgnoreLine($previousLine, $line);
 
     if ($line =~ /^={10}/) {
         printLine($line, STYLE_SUCCESS);
@@ -221,4 +209,29 @@ sub setOutputFormatOption($$)
         die "The $opt option must be either \"html\" or \"text\"";
     }
     $outputFormat = $value;
+}
+
+sub shouldIgnoreLine($$)
+{
+    my ($previousLine, $line) = @_;
+
+    return 1 if $line =~ /^\s*$/;
+    return 1 if $line =~ /^Build settings from command line:/;
+    return 1 if $line =~ /make: Nothing to be done for `all'\./;
+    return 1 if $line =~ /^JavaScriptCore\/create_hash_table/;
+    return 1 if $line =~ /JavaScriptCore.framework\/PrivateHeaders\/create_hash_table/;
+    return 1 if $line =~ /^JavaScriptCore\/pcre\/dftables/;
+    return 1 if $line =~ /^Creating hashtable for /;
+    return 1 if $line =~ /^Wrote output to /;
+    return 1 if $line =~ /^(touch|perl|cat|rm -f|bison|flex|python|\/usr\/bin\/g\+\+|gperf|echo|sed|if \[ \-f|WebCore\/generate-export-file) /;
+    return 1 if $line =~ /^UNDOCUMENTED: /;
+    return 1 if $line =~ /libtool.*has no symbols/;
+    return 1 if $line =~ /^# Lower case all the values, as CSS values are case-insensitive$/;
+    return 1 if $line =~ /^if sort /;
+    return 1 if $line =~ /^    / && $previousLine !~ /referenced from:$/;
+    return 1 if $line =~ /^printf /;
+    return 1 if $line =~ /^offlineasm: Nothing changed/;
+    return 1 if $line =~ /^Showing first/;
+
+    return 0;
 }

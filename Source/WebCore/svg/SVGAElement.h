@@ -32,11 +32,11 @@
 
 namespace WebCore {
 
-class SVGAElement : public SVGStyledTransformableElement,
-                    public SVGURIReference,
-                    public SVGTests,
-                    public SVGLangSpace,
-                    public SVGExternalResourcesRequired {
+class SVGAElement FINAL : public SVGStyledTransformableElement,
+                          public SVGURIReference,
+                          public SVGTests,
+                          public SVGLangSpace,
+                          public SVGExternalResourcesRequired {
 public:
     static PassRefPtr<SVGAElement> create(const QualifiedName&, Document*);
 
@@ -56,10 +56,10 @@ private:
 
     virtual void defaultEventHandler(Event*);
     
-    virtual bool supportsFocus() const;
-    virtual bool isMouseFocusable() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
-    virtual bool isFocusable() const;
+    virtual bool supportsFocus() const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
+    virtual bool isFocusable() const OVERRIDE;
     virtual bool isURLAttribute(const Attribute&) const;
 
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const;

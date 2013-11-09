@@ -283,7 +283,7 @@ void HTMLTextAreaElement::subtreeHasChanged()
         return;
 
     if (Frame* frame = document()->frame())
-        frame->editor()->textDidChangeInTextArea(this);
+        frame->editor().textDidChangeInTextArea(this);
     // When typing in a textarea, childrenChanged is not called, so we need to force the directionality check.
     calculateAndAdjustDirectionality();
 }
@@ -389,7 +389,7 @@ void HTMLTextAreaElement::setValueCommon(const String& newValue)
     setFormControlValueMatchesRenderer(true);
 
     // Set the caret to the end of the text value.
-    if (document()->focusedNode() == this) {
+    if (document()->focusedElement() == this) {
         unsigned endOfString = m_value.length();
         setSelectionRange(endOfString, endOfString);
     }

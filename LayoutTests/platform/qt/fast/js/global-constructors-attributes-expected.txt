@@ -23,6 +23,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'Audio').hasOwnProperty('get') is f
 PASS Object.getOwnPropertyDescriptor(global, 'Audio').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'Audio').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'Audio').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'BarProp').value is BarProp
+PASS Object.getOwnPropertyDescriptor(global, 'BarProp').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'BarProp').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'BarProp').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'BarProp').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'BeforeLoadEvent').value is BeforeLoadEvent
 PASS Object.getOwnPropertyDescriptor(global, 'BeforeLoadEvent').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'BeforeLoadEvent').hasOwnProperty('set') is false
@@ -1883,11 +1888,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'XSLTProcessor').hasOwnProperty('ge
 PASS Object.getOwnPropertyDescriptor(global, 'XSLTProcessor').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'XSLTProcessor').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'XSLTProcessor').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'constructor').value is constructor
-PASS Object.getOwnPropertyDescriptor(global, 'constructor').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'constructor').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'constructor').enumerable is false
-FAIL Object.getOwnPropertyDescriptor(global, 'constructor').configurable should be true. Was false.
 PASS Object.getOwnPropertyDescriptor(global, 'webkitURL').value is webkitURL
 PASS Object.getOwnPropertyDescriptor(global, 'webkitURL').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'webkitURL').hasOwnProperty('set') is false

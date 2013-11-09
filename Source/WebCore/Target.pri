@@ -113,8 +113,6 @@ SOURCES += \
      bindings/js/JSDOMWindowBase.cpp \
      bindings/js/JSDOMWindowCustom.cpp \
      bindings/js/JSDOMWindowShell.cpp \
-     bindings/js/JSDOMWindowWebAudioCustom.cpp \
-     bindings/js/JSDOMWindowWebSocketCustom.cpp \
      bindings/js/JSDOMWrapper.cpp \
      bindings/js/JSDataViewCustom.cpp \
      bindings/js/JSDeviceMotionEventCustom.cpp \
@@ -888,8 +886,6 @@ SOURCES += \
     loader/PolicyCallback.cpp \
     loader/PolicyChecker.cpp \
     loader/ProgressTracker.cpp \
-    loader/Prerenderer.cpp \
-    loader/PrerendererClient.cpp \
     loader/NavigationScheduler.cpp \
     loader/ResourceBuffer.cpp \
     loader/ResourceLoader.cpp \
@@ -907,7 +903,7 @@ SOURCES += \
     page/animation/ImplicitAnimation.cpp \
     page/animation/KeyframeAnimation.cpp \
     page/AutoscrollController.cpp \
-    page/BarInfo.cpp \
+    page/BarProp.cpp \
     page/CaptionUserPreferences.cpp \
     page/Chrome.cpp \
     page/Console.cpp \
@@ -990,7 +986,6 @@ SOURCES += \
     platform/Decimal.cpp \
     platform/DragData.cpp \
     platform/DragImage.cpp \
-    platform/EventTracer.cpp \
     platform/FileChooser.cpp \
     platform/FileIconLoader.cpp \
     platform/FileStream.cpp \
@@ -998,7 +993,6 @@ SOURCES += \
     platform/HistogramSupport.cpp \
     platform/graphics/FontDescription.cpp \
     platform/graphics/FontFallbackList.cpp \
-    platform/graphics/FontFamily.cpp \
     platform/graphics/FontFeatureSettings.cpp \
     platform/graphics/BitmapImage.cpp \
     platform/graphics/Color.cpp \
@@ -1075,7 +1069,6 @@ SOURCES += \
     platform/LinkHash.cpp \
     platform/Logging.cpp \
     platform/MemoryPressureHandler.cpp \
-    platform/qt/MemoryUsageSupportQt.cpp \
     platform/MIMETypeRegistry.cpp \
     platform/mock/DeviceMotionClientMock.cpp \
     platform/mock/DeviceOrientationClientMock.cpp \
@@ -1093,7 +1086,6 @@ SOURCES += \
     platform/network/FormDataBuilder.cpp \
     platform/network/HTTPHeaderMap.cpp \
     platform/network/HTTPParsers.cpp \
-    platform/network/HTTPRequest.cpp \
     platform/network/MIMEHeader.cpp \
     platform/network/NetworkStateNotifier.cpp \
     platform/network/NetworkStorageSessionStub.cpp \
@@ -2059,8 +2051,6 @@ HEADERS += \
     loader/NavigationAction.h \
     loader/NetscapePlugInStreamLoader.h \
     loader/PlaceholderDocument.h \
-    loader/Prerenderer.h \
-    loader/PrerendererClient.h \
     loader/ProgressTracker.h \
     loader/ResourceBuffer.h \
     loader/ResourceLoader.h \
@@ -2081,7 +2071,7 @@ HEADERS += \
     page/animation/KeyframeAnimation.h \
     page/AdjustViewSizeOrNot.h \
     page/AutoscrollController.h \
-    page/BarInfo.h \
+    page/BarProp.h \
     page/CaptionUserPreferences.h \
     page/Chrome.h \
     page/Console.h \
@@ -2150,7 +2140,6 @@ HEADERS += \
     platform/Decimal.h \
     platform/DragData.h \
     platform/DragImage.h \
-    platform/EventTracer.h \
     platform/FileChooser.h \
     platform/FileStream.h \
     platform/FileStreamClient.h \
@@ -2221,7 +2210,6 @@ HEADERS += \
     platform/graphics/FloatSize.h \
     platform/graphics/FontData.h \
     platform/graphics/FontDescription.h \
-    platform/graphics/FontFamily.h \
     platform/graphics/FontFeatureSettings.h \
     platform/graphics/FontMetrics.h \
     platform/graphics/Font.h \
@@ -2314,7 +2302,6 @@ HEADERS += \
     platform/Logging.h \
     platform/Language.h \
     platform/MemoryPressureHandler.h \
-    platform/MemoryUsageSupport.h \
     platform/MainThreadTask.h \
     platform/MIMETypeRegistry.h \
     platform/network/AuthenticationChallengeBase.h \
@@ -2332,7 +2319,6 @@ HEADERS += \
     platform/network/FormData.h \
     platform/network/HTTPHeaderMap.h \
     platform/network/HTTPParsers.h \
-    platform/network/HTTPRequest.h \
     platform/network/HTTPStatusCodes.h \
     platform/network/MIMESniffing.h \
     platform/network/NetworkStorageSession.h \
@@ -2404,8 +2390,6 @@ HEADERS += \
     platform/Timer.h \
     platform/Widget.h \
     platform/PlatformStrategies.h \
-    platform/PrerenderClient.h \
-    platform/PrerenderHandle.h \
     platform/LocalizedStrings.h \
     plugins/DOMMimeTypeArray.h \
     plugins/DOMMimeType.h \
@@ -2925,8 +2909,8 @@ SOURCES += \
     platform/ContextMenu.cpp \
     platform/ContextMenuItem.cpp \
     platform/qt/ClipboardQt.cpp \
-    platform/qt/ContextMenuItemQt.cpp \
-    platform/qt/ContextMenuQt.cpp \
+    platform/ContextMenuItemNone.cpp \
+    platform/ContextMenuNone.cpp \
     platform/qt/CursorQt.cpp \
     platform/qt/DragDataQt.cpp \
     platform/qt/DragImageQt.cpp \
@@ -2980,7 +2964,6 @@ win32-*|wince* {
     HEADERS += platform/win/SystemInfo.h
     SOURCES += \
         platform/win/SystemInfo.cpp \
-        platform/win/SystemTimeWin.cpp \
         platform/graphics/win/TransformationMatrixWin.cpp
 }
 
@@ -3494,7 +3477,6 @@ enable?(WEB_AUDIO) {
         bindings/js/JSAudioBufferSourceNodeCustom.cpp \
         bindings/js/JSAudioContextCustom.cpp \
         bindings/js/JSBiquadFilterNodeCustom.cpp \
-        bindings/js/JSDOMWindowWebAudioCustom.cpp \
         bindings/js/JSOscillatorNodeCustom.cpp \
         bindings/js/JSPannerNodeCustom.cpp \
         Modules/webaudio/AsyncAudioDecoder.cpp \
@@ -4028,8 +4010,6 @@ enable?(WEB_SOCKETS) {
         Modules/websockets/WebSocketExtensionProcessor.h \
         Modules/websockets/WebSocketFrame.h \
         Modules/websockets/WebSocketHandshake.h \
-        Modules/websockets/WebSocketHandshakeRequest.h \
-        Modules/websockets/WebSocketHandshakeResponse.h \
         Modules/websockets/WorkerThreadableWebSocketChannel.h \
         platform/network/qt/SocketStreamHandlePrivate.h
 
@@ -4042,8 +4022,6 @@ enable?(WEB_SOCKETS) {
         Modules/websockets/WebSocketExtensionParser.cpp \
         Modules/websockets/WebSocketFrame.cpp \
         Modules/websockets/WebSocketHandshake.cpp \
-        Modules/websockets/WebSocketHandshakeRequest.cpp \
-        Modules/websockets/WebSocketHandshakeResponse.cpp \
         Modules/websockets/WorkerThreadableWebSocketChannel.cpp \
         Modules/websockets/ThreadableWebSocketChannel.cpp \
         Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp \

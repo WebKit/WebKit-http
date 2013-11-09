@@ -143,10 +143,7 @@ DocumentLoader::~DocumentLoader()
         m_iconDataCallback->invalidate();
     m_cachedResourceLoader->clearDocumentLoader();
     
-    if (m_mainResource) {
-        m_mainResource->removeClient(this);
-        m_mainResource = 0;
-    }
+    clearMainResource();
 }
 
 PassRefPtr<ResourceBuffer> DocumentLoader::mainResourceData() const
@@ -546,10 +543,7 @@ void DocumentLoader::continueAfterNavigationPolicy(const ResourceRequest&, bool 
         RefPtr<ResourceLoader> resourceLoader = mainResourceLoader();
         ASSERT(resourceLoader->shouldSendResourceLoadCallbacks());
         resourceLoader->setSendCallbackPolicy(DoNotSendCallbacks);
-        if (m_mainResource) {
-            m_mainResource->removeClient(this);
-            m_mainResource = 0;
-        }
+        clearMainResource();
         resourceLoader->setSendCallbackPolicy(SendCallbacks);
         handleSubstituteDataLoadSoon();
     }
@@ -674,7 +668,9 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
             mainReceivedError(frameLoader()->client()->cannotShowURLError(m_request));
             return;
         }
-        InspectorInstrumentation::continueWithPolicyDownload(m_frame, this, mainResourceLoader()->identifier(), m_response);
+
+        if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
+            InspectorInstrumentation::continueWithPolicyDownload(m_frame, this, mainResourceLoader->identifier(), m_response);
 
         // When starting the request, we didn't know that it would result in download and not navigation. Now we know that main document URL didn't change.
         // Download may use this knowledge for purposes unrelated to cookies, notably for setting file quarantine data.
@@ -687,7 +683,8 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         return;
     }
     case PolicyIgnore:
-        InspectorInstrumentation::continueWithPolicyIgnore(m_frame, this, mainResourceLoader()->identifier(), m_response);
+        if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
+            InspectorInstrumentation::continueWithPolicyIgnore(m_frame, this, mainResourceLoader->identifier(), m_response);
         stopLoadingForPolicyChange();
         return;
     
@@ -899,6 +896,8 @@ void DocumentLoader::detachFromFrame()
     // It never makes sense to have a document loader that is detached from its
     // frame have any loads active, so go ahead and kill all the loads.
     stopLoading();
+    if (m_mainResource && m_mainResource->hasClient(this))
+        m_mainResource->removeClient(this);
 
     m_applicationCacheHost->setDOMApplicationCache(0);
     InspectorInstrumentation::loaderDetachedFromFrame(m_frame, this);
@@ -1409,7 +1408,17 @@ void DocumentLoader::cancelMainResourceLoad(const ResourceError& resourceError)
     if (mainResourceLoader())
         mainResourceLoader()->cancel(error);
 
+    clearMainResource();
+
     mainReceivedError(error);
+}
+
+void DocumentLoader::clearMainResource()
+{
+    if (m_mainResource && m_mainResource->hasClient(this))
+        m_mainResource->removeClient(this);
+
+    m_mainResource = 0;
 }
 
 void DocumentLoader::subresourceLoaderFinishedLoadingOnePart(ResourceLoader* loader)

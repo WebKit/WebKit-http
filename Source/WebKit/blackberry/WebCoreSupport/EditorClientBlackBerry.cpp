@@ -96,7 +96,7 @@ bool EditorClientBlackBerry::shouldSpellCheckFocusedField()
     if (!frame || !frame->document() || !frame->editor())
         return false;
 
-    const Node* node = frame->document()->focusedNode();
+    const Node* node = frame->document()->focusedElement();
     // NOTE: This logic is taken from EditorClientImpl::shouldSpellcheckByDefault
     // If |node| is null, we default to allowing spellchecking. This is done in
     // order to mitigate the issue when the user clicks outside the textbox, as a
@@ -115,7 +115,7 @@ bool EditorClientBlackBerry::shouldSpellCheckFocusedField()
     }
 
     // Check if the node disables spell checking directly.
-    return frame->editor()->isSpellCheckingEnabledInFocusedNode();
+    return frame->editor().isSpellCheckingEnabledInFocusedNode();
 }
 
 bool EditorClientBlackBerry::isContinuousSpellCheckingEnabled()
@@ -190,10 +190,10 @@ bool EditorClientBlackBerry::shouldChangeSelectedRange(Range* fromRange, Range* 
 
     Frame* frame = m_webPagePrivate->focusedOrMainFrame();
     if (frame && frame->document()) {
-        if (Node* focusedNode = frame->document()->focusedNode()) {
-            if (focusedNode->hasTagName(HTMLNames::selectTag))
+        if (Element* focusedElement = frame->document()->focusedElement()) {
+            if (focusedElement->hasTagName(HTMLNames::selectTag))
                 return false;
-            if (focusedNode->isElementNode() && DOMSupport::isPopupInputField(toElement(focusedNode)))
+            if (DOMSupport::isPopupInputField(focusedElement))
                 return false;
         }
 
@@ -469,19 +469,19 @@ void EditorClientBlackBerry::handleKeyboardEvent(KeyboardEvent* event)
     String commandName = interpretKeyEvent(event);
 
     // Check to see we are not trying to insert text on key down.
-    ASSERT(!(event->type() == eventNames().keydownEvent && frame->editor()->command(commandName).isTextInsertion()));
+    ASSERT(!(event->type() == eventNames().keydownEvent && frame->editor().command(commandName).isTextInsertion()));
 
     if (!commandName.isEmpty()) {
         // Hot key handling. Cancel processing mode.
         if (commandName != "DeleteBackward")
             m_webPagePrivate->m_inputHandler->setProcessingChange(false);
 
-        if (frame->editor()->command(commandName).execute())
+        if (frame->editor().command(commandName).execute())
             event->setDefaultHandled();
         return;
     }
 
-    if (!frame->editor()->canEdit())
+    if (!frame->editor().canEdit())
         return;
 
     // Text insertion commands should only be triggered from keypressEvent.
@@ -501,7 +501,7 @@ void EditorClientBlackBerry::handleKeyboardEvent(KeyboardEvent* event)
         return;
 
     if (!platformEvent->text().isEmpty()) {
-        if (frame->editor()->insertText(platformEvent->text(), event))
+        if (frame->editor().insertText(platformEvent->text(), event))
             event->setDefaultHandled();
     }
 }

@@ -32,9 +32,9 @@ set(MiniBrowser_INCLUDE_DIRECTORIES
 )
 
 set(MiniBrowser_LIBRARIES
-    ${JavaScriptCore_LIBRARY_NAME}
-    ${WebCore_LIBRARY_NAME}
-    ${WebKit2_LIBRARY_NAME}
+    JavaScriptCore
+    WebCore
+    WebKit2
     ${CAIRO_LIBRARIES}
     ${ECORE_LIBRARIES}
     ${ECORE_EVAS_LIBRARIES}
@@ -49,7 +49,7 @@ set(MiniBrowser_LIBRARIES
     ${GLIB_GTHREAD_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
-    ${LIBXSLT_LIBRARIES}
+    ${LIBXSLT_LIBRARIES} -lm
     ${OPENGL_LIBRARIES}
     ${SQLITE_LIBRARIES}
 )

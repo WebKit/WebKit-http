@@ -61,6 +61,21 @@ void WebInspectorFrontendClient::closeWindow()
     m_page->inspector()->didClose();
 }
 
+bool WebInspectorFrontendClient::canSave()
+{
+    return m_page->inspector()->canSave();
+}
+
+void WebInspectorFrontendClient::save(const String& filename, const String& content, bool forceSaveAs)
+{
+    m_page->inspector()->save(filename, content, forceSaveAs);
+}
+
+void WebInspectorFrontendClient::append(const String& filename, const String& content)
+{
+    m_page->inspector()->append(filename, content);
+}
+
 void WebInspectorFrontendClient::attachWindow(DockSide dockSide)
 {
     switch (dockSide) {
@@ -89,6 +104,11 @@ void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned height)
 void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned width)
 {
     m_page->inspector()->setAttachedWindowWidth(width);
+}
+
+void WebInspectorFrontendClient::setToolbarHeight(unsigned height)
+{
+    m_page->inspector()->setToolbarHeight(height);
 }
 
 void WebInspectorFrontendClient::inspectedURLChanged(const String& urlString)

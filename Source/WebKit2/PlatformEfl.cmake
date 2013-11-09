@@ -41,6 +41,7 @@ list(APPEND WebKit2_SOURCES
     Shared/soup/WebCoreArgumentCodersSoup.cpp
 
     UIProcess/DefaultUndoController.cpp
+    UIProcess/PageViewportController.cpp
 
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
 
@@ -177,12 +178,10 @@ list(APPEND WebKit2_MESSAGES_IN_FILES
 )
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${JAVASCRIPTCORE_DIR}/llint"
     "${WEBCORE_DIR}/platform/efl"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/enchant"
-    "${WEBCORE_DIR}/svg/graphics"
     "${WEBKIT2_DIR}/Shared/API/c/efl"
     "${WEBKIT2_DIR}/Shared/Downloads/soup"
     "${WEBKIT2_DIR}/Shared/efl"
@@ -221,13 +220,6 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     ${LIBSOUP_INCLUDE_DIRS}
     ${WTF_DIR}
 )
-
-if (WTF_USE_3D_GRAPHICS)
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
-        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
-    )
-endif ()
 
 list(APPEND WebKit2_LIBRARIES
     ${CAIRO_LIBRARIES}
@@ -295,12 +287,15 @@ add_custom_target(forwarding-headerEfl
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include efl
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include CoordinatedGraphics
 )
-set(ForwardingHeaders_NAME forwarding-headerEfl)
 
 add_custom_target(forwarding-headerSoup
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl ${WEBKIT2_DIR} ${DERIVED_SOURCES_WEBKIT2_DIR}/include soup
 )
-set(ForwardingNetworkHeaders_NAME forwarding-headerSoup)
+
+set(WEBKIT2_EXTRA_DEPENDENCIES
+     forwarding-headerEfl
+     forwarding-headerSoup
+)
 
 configure_file(efl/ewebkit2.pc.in ${CMAKE_BINARY_DIR}/WebKit2/efl/ewebkit2.pc @ONLY)
 set(EWebKit2_HEADERS
@@ -340,12 +335,11 @@ set(EWebKit2_HEADERS
 )
 
 install(FILES ${CMAKE_BINARY_DIR}/WebKit2/efl/ewebkit2.pc DESTINATION lib/pkgconfig)
-install(FILES ${EWebKit2_HEADERS} DESTINATION include/${WebKit2_LIBRARY_NAME}-${PROJECT_VERSION_MAJOR})
+install(FILES ${EWebKit2_HEADERS} DESTINATION include/${WebKit2_OUTPUT_NAME}-${PROJECT_VERSION_MAJOR})
 
 if (ENABLE_PLUGIN_PROCESS)
     add_definitions(-DENABLE_PLUGIN_PROCESS=1)
 
-    set(PluginProcess_EXECUTABLE_NAME PluginProcess)
     list(APPEND PluginProcess_INCLUDE_DIRECTORIES
         "${WEBKIT2_DIR}/PluginProcess/unix"
     )
@@ -357,21 +351,21 @@ if (ENABLE_PLUGIN_PROCESS)
     )
 
     set(PluginProcess_LIBRARIES
-        ${WebKit2_LIBRARY_NAME}
+        WebKit2
     )
 
-    add_executable(${PluginProcess_EXECUTABLE_NAME} ${PluginProcess_SOURCES})
-    target_link_libraries(${PluginProcess_EXECUTABLE_NAME} ${PluginProcess_LIBRARIES})
-    install(TARGETS ${PluginProcess_EXECUTABLE_NAME} DESTINATION "${EXEC_INSTALL_DIR}")
+    add_executable(PluginProcess ${PluginProcess_SOURCES})
+    target_link_libraries(PluginProcess ${PluginProcess_LIBRARIES})
+    install(TARGETS PluginProcess DESTINATION "${EXEC_INSTALL_DIR}")
 endif () # ENABLE_PLUGIN_PROCESS
 
 include_directories(${THIRDPARTY_DIR}/gtest/include)
 
 set(EWK2UnitTests_LIBRARIES
-    ${WTF_LIBRARY_NAME}
-    ${JavaScriptCore_LIBRARY_NAME}
-    ${WebCore_LIBRARY_NAME}
-    ${WebKit2_LIBRARY_NAME}
+    WTF
+    JavaScriptCore
+    WebCore
+    WebKit2
     ${CAIRO_LIBRARIES}
     ${ECORE_LIBRARIES}
     ${ECORE_EVAS_LIBRARIES}
@@ -392,8 +386,8 @@ add_definitions(-DTEST_RESOURCES_DIR=\"${TEST_RESOURCES_DIR}\"
     -DTEST_LIB_DIR=\"${CMAKE_LIBRARY_OUTPUT_DIRECTORY}\"
     -DGTEST_LINKED_AS_SHARED_LIBRARY=1
     -DLIBEXECDIR=\"${CMAKE_INSTALL_PREFIX}/${EXEC_INSTALL_DIR}\"
-    -DWEBPROCESSNAME=\"${WebProcess_EXECUTABLE_NAME}\"
-    -DPLUGINPROCESSNAME=\"${PluginProcess_EXECUTABLE_NAME}\"
+    -DWEBPROCESSNAME=\"WebProcess\"
+    -DPLUGINPROCESSNAME=\"PluginProcess\"
 )
 
 add_library(ewk2UnitTestUtils
@@ -445,7 +439,7 @@ if (ENABLE_API_TESTS)
     endforeach ()
 
     add_library(ewk2UnitTestInjectedBundleSample SHARED ${TEST_INJECTED_BUNDLE_DIR}/injected_bundle_sample.cpp)
-    target_link_libraries(ewk2UnitTestInjectedBundleSample ${WebKit2_LIBRARY_NAME})
+    target_link_libraries(ewk2UnitTestInjectedBundleSample WebKit2)
 endif ()
 
 if (ENABLE_SPELLCHECK)

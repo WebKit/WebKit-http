@@ -327,6 +327,8 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
         0, // registerIntentServiceForFrame
         0, // didLayout
         0, // featuresUsedInPage
+        0, // willLoadURLRequest
+        0, // willLoadDataRequest
     };
     WKBundlePageSetPageLoaderClient(m_page, &loaderClient);
 
@@ -874,8 +876,10 @@ void InjectedBundlePage::dump()
 
     switch (InjectedBundle::shared().testRunner()->whatToDump()) {
     case TestRunner::RenderTree: {
-        WKRetainPtr<WKStringRef> text(AdoptWK, WKBundlePageCopyRenderTreeExternalRepresentation(m_page));
-        stringBuilder.append(toWTFString(text));
+        if (InjectedBundle::shared().testRunner()->isPrinting())
+            stringBuilder.append(toWTFString(adoptWK(WKBundlePageCopyRenderTreeExternalRepresentationForPrinting(m_page)).get()));
+        else
+            stringBuilder.append(toWTFString(adoptWK(WKBundlePageCopyRenderTreeExternalRepresentation(m_page)).get()));
         break;
     }
     case TestRunner::MainFrameText:

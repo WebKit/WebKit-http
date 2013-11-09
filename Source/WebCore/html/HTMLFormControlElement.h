@@ -58,22 +58,22 @@ public:
     virtual bool formControlValueMatchesRenderer() const { return m_valueMatchesRenderer; }
     virtual void setFormControlValueMatchesRenderer(bool b) { m_valueMatchesRenderer = b; }
 
-    virtual bool wasChangedSinceLastFormControlChangeEvent() const;
-    virtual void setChangedSinceLastFormControlChangeEvent(bool);
+    bool wasChangedSinceLastFormControlChangeEvent() const { return m_wasChangedSinceLastFormControlChangeEvent; }
+    void setChangedSinceLastFormControlChangeEvent(bool);
 
     virtual void dispatchFormControlChangeEvent();
-    virtual void dispatchFormControlInputEvent();
+    void dispatchFormControlInputEvent();
 
     virtual bool isDisabledFormControl() const OVERRIDE;
 
-    virtual bool isFocusable() const;
+    virtual bool isFocusable() const OVERRIDE;
     virtual bool isEnumeratable() const { return false; }
 
     bool isRequired() const;
 
     const AtomicString& type() const { return formControlType(); }
 
-    virtual const AtomicString& formControlType() const OVERRIDE = 0;
+    virtual const AtomicString& formControlType() const = 0;
 
     virtual bool canTriggerImplicitSubmission() const { return false; }
 
@@ -115,9 +115,9 @@ protected:
     virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
-    virtual bool supportsFocus() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
-    virtual bool isMouseFocusable() const;
+    virtual bool supportsFocus() const OVERRIDE;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
 
     virtual void didRecalcStyle(StyleChange) OVERRIDE;
 
@@ -136,7 +136,7 @@ private:
     virtual bool isFormControlElement() const { return true; }
     virtual bool alwaysCreateUserAgentShadowRoot() const OVERRIDE { return true; }
 
-    virtual short tabIndex() const;
+    virtual short tabIndex() const OVERRIDE FINAL;
 
     virtual HTMLFormElement* virtualForm() const;
     virtual bool isDefaultButtonForForm() const;
@@ -168,6 +168,20 @@ private:
 
     bool m_hasAutofocused : 1;
 };
+
+inline bool isHTMLFormControlElement(const Node* node)
+{
+    return node->isElementNode() && toElement(node)->isFormControlElement();
+}
+
+inline HTMLFormControlElement* toHTMLFormControlElement(Node* node)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(!node || isHTMLFormControlElement(node));
+    return static_cast<HTMLFormControlElement*>(node);
+}
+
+// This will catch anyone doing an unnecessary cast.
+void toHTMLFormControlElement(const HTMLFormControlElement*);
 
 } // namespace
 

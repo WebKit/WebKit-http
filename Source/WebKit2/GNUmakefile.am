@@ -35,7 +35,6 @@ libWebKit2Platform_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
 	$(global_cppflags) \
 	-fno-strict-aliasing \
-	-std=c++11 \
 	-I$(srcdir)/Source \
 	-I$(srcdir)/Source/WTF \
 	-I$(srcdir)/Source/WebKit2/Platform \
@@ -69,7 +68,6 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_SOU
 libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPPFLAGS = \
 	-fno-strict-aliasing \
 	-DPACKAGE_LOCALE_DIR=\"$(localedir)\" \
-	-std=c++11 \
 	$(global_cppflags) \
 	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
 	-I$(srcdir)/Source/WebKit/gtk \
@@ -159,6 +157,7 @@ libwebkit2gtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_CPP
 	-DBUILDING_WEBKIT \
 	-DWEBKIT2_COMPILATION \
 	-DENABLE_PLUGIN_PROCESS=1 \
+	$(platform_cppflags) \
 	$(platformgtk_cppflags) \
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
@@ -385,21 +384,7 @@ $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2/WebKitEnumTypes.h: stamp-webkit2enumtyp
 
 stamp-webkit2enumtypes: $(libwebkit2gtkinclude_HEADERS) $(WebKit2)/GNUmakefile.am
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2 \
-	&& glib-mkenums \
-			--fhead "#if !defined(__WEBKIT2_H_INSIDE__) && !defined(WEBKIT2_COMPILATION)\n" \
-			--fhead "#error \"Only <webkit2/webkit2.h> can be included directly.\"\n" \
-			--fhead "#endif\n\n" \
-			--fhead "#ifndef WEBKIT_ENUM_TYPES_H\n" \
-			--fhead "#define WEBKIT_ENUM_TYPES_H\n\n" \
-			--fhead "#include <glib-object.h>\n\n" \
-			--fhead "#include <webkit2/WebKitDefines.h>\n\n" \
-			--fhead "G_BEGIN_DECLS\n\n" \
-			--ftail "G_END_DECLS\n\n" \
-			--ftail "#endif\n" \
-			--fprod "#include <webkit2/@basename@>\n\n" \
-			--eprod "#define WEBKIT_TYPE_@ENUMSHORT@ @enum_name@_get_type()\n\n" \
-			--eprod "WEBKIT_API GType\n@enum_name@_get_type(void);\n\n" \
-		$(libwebkit2gtkinclude_HEADERS) | \
+	&& glib-mkenums --template $(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.h.template $(libwebkit2gtkinclude_HEADERS) | \
 		sed 's,web_kit,webkit,' | \
 		sed 's,WEBKIT_TYPE_KIT,WEBKIT_TYPE,' \
 		> wk2-xgen-gth \
@@ -409,22 +394,7 @@ stamp-webkit2enumtypes: $(libwebkit2gtkinclude_HEADERS) $(WebKit2)/GNUmakefile.a
 
 $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2/WebKitEnumTypes.cpp: $(libwebkit2gtkinclude_HEADERS) $(WebKit2)/GNUmakefile.am
 	$(AM_V_GEN)mkdir -p $(GENSOURCES_WEBKIT2)/webkit2gtk/webkit2 \
-	&& glib-mkenums \
-			--fhead "#include <config.h>\n" \
-			--fhead "#include <glib-object.h>\n" \
-			--fhead "#include \"$(webkit2gtk_built_headers_dir)/WebKitEnumTypes.h\"\n\n" \
-			--fhead "extern \"C\" {\n\n" \
-			--fprod "\n/* Enumerations from \"@filename@\". */" \
-			--vhead "static const G@Type@Value _@enum_name@_values[] = {" \
-			--vprod "    { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
-			--vtail "    { 0, NULL, NULL }\n};\n\n" \
-			--vtail "GType @enum_name@_get_type(void)\n{\n" \
-			--vtail "    static GType type = 0;\n\n" \
-			--vtail "    if (!type)\n" \
-			--vtail "        type = g_@type@_register_static(\"@EnumName@\", _@enum_name@_values);\n\n" \
-			--vtail "    return type;\n}\n\n" \
-			--ftail "}\n" \
-		$(libwebkit2gtkinclude_HEADERS) | \
+	&& glib-mkenums --template $(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.cpp.template $(libwebkit2gtkinclude_HEADERS) | \
 		sed 's,web_kit,webkit,' \
 		> wk2-xgen-gtc \
 	&& cp wk2-xgen-gtc $@ \
@@ -469,7 +439,6 @@ Programs_WebKitWebProcess_CPPFLAGS = \
 	-I$(top_builddir)/DerivedSources/WebKit2 \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
 	-I$(top_builddir)/DerivedSources/WebKit2/include/WebCore \
-	-std=c++11 \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags)
 
@@ -510,6 +479,7 @@ libWebCoreGtk2_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
 	-DGTK_API_VERSION_2=1 \
 	$(global_cppflags) \
+	$(platform_cppflags) \
 	$(platformgtk_cppflags) \
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
@@ -546,6 +516,7 @@ libPlatformGtk2_la_CPPFLAGS = \
 	-DBUILDING_WEBKIT \
 	-DGTK_API_VERSION_2=1 \
 	$(global_cppflags) \
+	$(platform_cppflags) \
 	$(platformgtk_cppflags) \
 	$(platform_webcore_cppflags) \
 	$(javascriptcore_cppflags) \
@@ -578,7 +549,6 @@ libwebkit2gtkinjectedbundle_la_CPPFLAGS = \
 	-I$(srcdir)/Source/WebKit2/WebProcess/InjectedBundle/API/c \
 	-I$(top_builddir)/DerivedSources/InjectedBundle \
 	-I$(top_builddir)/DerivedSources/WebKit2/include \
-	-std=c++11 \
 	$(global_cppflags) \
 	$(javascriptcore_cppflags) \
 	$(GLIB_CFLAGS)
@@ -591,6 +561,32 @@ plugin_process_for_dep_list += \
 	libwebkitgtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
 endif
 $(plugin_process_for_dep): $(plugin_process_for_dep_list)
+
+webcore_layer_gtk2_deps = \
+	libPlatform.la \
+	libPlatformGtk2.la \
+	libWebCorePlatform.la \
+	libWebCoreGtk2.la \
+	libWebCore.la \
+	libWebCoreModules.la
+if ENABLE_SVG
+webcore_layer_gtk2_deps += \
+	libWebCoreSVG.la
+endif
+if ENABLE_INDEXED_DATABASE
+webcore_layer_gtk2_deps += \
+	libLevelDB.la
+endif
+if USE_OPENGL
+webcore_layer_gtk2_deps += \
+	libANGLE.la
+endif
+
+webcore_layer_gtk2_archives = $(foreach lib, $(webcore_layer_gtk2_deps), $(shell echo $(lib) | sed "s/\(.*\)\.la/.libs\/\1.a/"))
+
+WebCoreLayerGtk2.a: $(webcore_layer_gtk2_deps)
+	$(AM_V_GEN)
+	$(AM_V_at)$(foreach archive, $(webcore_layer_gtk2_archives), $(shell ar t $(archive) | xargs -n50 ar cruT $@))
 
 Programs_WebKitPluginProcess_CPPFLAGS = \
 	-include $(srcdir)/Source/WebKit2/WebKit2Prefix.h \
@@ -616,8 +612,8 @@ Programs_WebKitPluginProcess_CPPFLAGS = \
 	-DGTK_API_VERSION_2=1 \
 	-DENABLE_PLUGIN_PROCESS=1 \
 	-DLIBEXECDIR=\""$(libexecdir)"\" \
-	-std=c++11 \
 	$(global_cppflags) \
+	$(platform_cppflags) \
 	$(platformgtk_cppflags) \
 	$(webcore_cppflags) \
 	$(webcoregtk_cppflags) \
@@ -649,59 +645,9 @@ Programs_WebKitPluginProcess_SOURCES = \
 
 Programs_WebKitPluginProcess_LDADD = \
 	-lpthread \
-	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la
-
-# FIXME: Due to layer violations and circular dependencies all these libraries have to be specified multiple times
-# when invoking the linker. This ensures any undefined symbols are resolved when linking. See wkb.ug/114901 for more detail.
-# First time around these libraries are simply listed by their file name that's later resolved to the path of the *.a archive
-# (i.e. .libs/libPlatformGtk2.a) by libtool.
-Programs_WebKitPluginProcess_LDADD += \
-	libPlatformGtk2.la \
-	libWebCoreGtk2.la \
-	libPlatform.la \
-	libWebCorePlatform.la \
-	libWebCore.la \
-	libWebCoreModules.la \
-	libWebKit2Platform.la
-if ENABLE_INDEXED_DATABASE
-Programs_WebKitPluginProcess_LDADD += \
-	libLevelDB.la
-endif
-if USE_OPENGL
-Programs_WebKitPluginProcess_LDADD += \
-	libANGLE.la
-endif
-if ENABLE_SVG
-Programs_WebKitPluginProcess_LDADD += \
-	libWebCoreSVG.la
-endif
-
-# FIXME: Second time around all the libraries are relisted, this time in the -lNAME form. Listed items are resolved into the
-# absolute paths to the *.a archive (i.e. $(abs_builddir)/.libs.libPlatformGtk2.a) by libtool.
-Programs_WebKitPluginProcess_LDADD += \
-	-lPlatformGtk2 -lWebCoreGtk2 -lPlatform -lWebCorePlatform -lWebCore -lWebCoreModules
-if ENABLE_INDEXED_DATABASE
-Programs_WebKitPluginProcess_LDADD += \
-	-lLevelDB
-endif
-if USE_OPENGL
-Programs_WebKitPluginProcess_LDADD += \
-	-lANGLE
-endif
-if ENABLE_SVG
-Programs_WebKitPluginProcess_LDADD += \
-	-lWebCoreSVG
-endif
-
-# FIXME: To make the matter worse, these four libraries are again required to be listed for linking. This time they're added by
-# specifying the symbolic link that points back to the ./lib*.la libtool archives which are again resolved into paths to the
-# *.a archives (i.e. .libs/libPlatformGtk2.la) by libtool. Phony targets are added for these files to prevent Automake to try
-# to build them as these symlinks are just a byproduct of libtool.
-.PHONY : .libs/libPlatformGtk2.la .libs/libWebCoreGtk2.la .libs/libPlatform.la .libs/libWebCorePlatform.la
-Programs_WebKitPluginProcess_LDADD += \
-	.libs/libPlatformGtk2.la .libs/libWebCoreGtk2.la .libs/libPlatform.la .libs/libWebCorePlatform.la
-
-Programs_WebKitPluginProcess_LDADD += \
+	libjavascriptcoregtk-@WEBKITGTK_API_MAJOR_VERSION@.@WEBKITGTK_API_MINOR_VERSION@.la \
+	WebCoreLayerGtk2.a \
+	libWebKit2Platform.la \
 	$(CAIRO_LIBS) \
 	$(COVERAGE_LDFLAGS) \
 	$(FREETYPE_LIBS) \
@@ -744,6 +690,8 @@ EXTRA_DIST += \
 	$(WebKit2)/Scripts/webkit2/model.py \
 	$(WebKit2)/Scripts/webkit2/parser.py \
 	$(WebKit2)/UIProcess/API/gtk/webkit2marshal.list \
+	$(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.h.template \
+	$(WebKit2)/UIProcess/API/gtk/WebKitEnumTypes.cpp.template \
 	$(WebKit2)/UIProcess/InspectorServer/front-end/inspectorPageIndex.html \
 	$(WebKit2)/Scripts/generate-forwarding-headers.pl \
 	$(shell ls $(WebKit2)/PluginProcess/*.in) \

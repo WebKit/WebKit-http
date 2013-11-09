@@ -29,6 +29,7 @@
 
 #if ENABLE(PLUGIN_PROCESS)
 
+#import "ArgumentCoders.h"
 #import "NetscapePlugin.h"
 #import "PluginProcessCreationParameters.h"
 #import "PluginProcessProxyMessages.h"
@@ -249,8 +250,30 @@ static void initializeShim()
 }
 #endif
 
+static IMP NSConcreteTask_launch;
+
+static void replacedNSConcreteTask_launch(NSTask *self, SEL _cmd)
+{
+    String launchPath = self.launchPath;
+
+    Vector<String> arguments;
+    arguments.reserveInitialCapacity(self.arguments.count);
+    for (NSString *argument in self.arguments)
+        arguments.uncheckedAppend(argument);
+
+    if (PluginProcess::shared().launchProcess(launchPath, arguments))
+        return;
+
+    NSConcreteTask_launch(self, _cmd);
+}
+
 static void initializeCocoaOverrides()
 {
+    // Override -[NSConcreteTask launch:]
+    Method launchMethod = class_getInstanceMethod(objc_getClass("NSConcreteTask"), @selector(launch));
+
+    NSConcreteTask_launch = method_setImplementation(launchMethod, reinterpret_cast<IMP>(replacedNSConcreteTask_launch));
+
     // Override -[NSApplication runModalForWindow:]
     Method runModalForWindowMethod = class_getInstanceMethod(objc_getClass("NSApplication"), @selector(runModalForWindow:));
     NSApplication_RunModalForWindow = method_setImplementation(runModalForWindowMethod, reinterpret_cast<IMP>(replacedRunModalForWindow));
@@ -283,6 +306,15 @@ void PluginProcess::setFullscreenWindowIsShowing(bool fullscreenWindowIsShowing)
     parentProcessConnection()->send(Messages::PluginProcessProxy::SetFullscreenWindowIsShowing(fullscreenWindowIsShowing), 0);
 }
 
+bool PluginProcess::launchProcess(const String& launchPath, const Vector<String>& arguments)
+{
+    bool result;
+    if (!parentProcessConnection()->sendSync(Messages::PluginProcessProxy::LaunchProcess(launchPath, arguments), Messages::PluginProcessProxy::LaunchProcess::Reply(result), 0))
+        return false;
+
+    return result;
+}
+
 static void muteAudio(void)
 {
     AudioObjectPropertyAddress propertyAddress = { kAudioHardwarePropertyProcessIsAudible, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
@@ -294,7 +326,7 @@ static void muteAudio(void)
 void PluginProcess::platformInitializePluginProcess(const PluginProcessCreationParameters& parameters)
 {
     m_compositingRenderServerPort = parameters.acceleratedCompositingPort.port();
-    if (parameters.processType == TypeSnapshotProcess)
+    if (parameters.processType == PluginProcessTypeSnapshot)
         muteAudio();
 }
 
@@ -341,6 +373,9 @@ void PluginProcess::initializeProcessName(const ChildProcessInitializationParame
 
 void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
 {
+    if (parameters.extraInitializationData.get("disable-sandbox") == "1")
+        return;
+
     String sandboxProfile = pluginSandboxProfile(m_pluginBundleIdentifier);
     if (sandboxProfile.isEmpty())
         return;

@@ -63,6 +63,7 @@ class ImmutableArray;
 class ImmutableDictionary;
 class MutableArray;
 class MutableDictionary;
+class ObjCObjectGraph;
 class WebArchive;
 class WebArchiveResource;
 class WebCertificateInfo;
@@ -116,6 +117,7 @@ WK_ADD_API_MAPPING(WKUserContentURLPatternRef, WebUserContentURLPattern)
 #if PLATFORM(MAC)
 WK_ADD_API_MAPPING(WKWebArchiveRef, WebArchive)
 WK_ADD_API_MAPPING(WKWebArchiveResourceRef, WebArchiveResource)
+WK_ADD_API_MAPPING(WKObjCTypeWrapperRef, ObjCObjectGraph)
 #endif
 
 template<typename ImplType, typename APIType = typename ImplTypeInfo<ImplType*>::APIType>
@@ -839,8 +841,8 @@ inline WebCore::PageVisibilityState toPageVisibilityState(WKPageVisibilityState 
         return WebCore::PageVisibilityStateHidden;
     case kWKPageVisibilityStatePrerender:
         return WebCore::PageVisibilityStatePrerender;
-    case kWKPageVisibilityStatePreview:
-        return WebCore::PageVisibilityStatePreview;
+    case kWKPageVisibilityStateUnloaded:
+        return WebCore::PageVisibilityStateUnloaded;
     }
 
     ASSERT_NOT_REACHED();

@@ -42,12 +42,12 @@ class SVGViewSpec;
 class SVGViewElement;
 class SMILTimeContainer;
 
-class SVGSVGElement : public SVGStyledTransformableElement,
-                      public SVGTests,
-                      public SVGLangSpace,
-                      public SVGExternalResourcesRequired,
-                      public SVGFitToViewBox,
-                      public SVGZoomAndPan {
+class SVGSVGElement FINAL : public SVGStyledTransformableElement,
+                            public SVGTests,
+                            public SVGLangSpace,
+                            public SVGExternalResourcesRequired,
+                            public SVGFitToViewBox,
+                            public SVGZoomAndPan {
 public:
     static PassRefPtr<SVGSVGElement> create(const QualifiedName&, Document*);
 
@@ -55,7 +55,7 @@ public:
     using SVGStyledTransformableElement::deref;
 
     virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool supportsFocus() const { return true; }
+    virtual bool supportsFocus() const OVERRIDE { return true; }
 
     // 'SVGSVGElement' functions
     const AtomicString& contentScriptType() const;

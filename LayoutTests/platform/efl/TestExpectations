@@ -374,8 +374,6 @@ Bug(EFL) fast/dom/HTMLTemplateElement/cycles-in-shadow.html [ WontFix ]
 Bug(EFL) inspector/elements/update-shadowdom.html [ WontFix ]
 
 # Rounding issues when running on 32-bits machines.
-webkit.org/b/43568 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.16_sin/S15.8.2.16_A7.html
-webkit.org/b/43568 sputnik/Conformance/15_Native_Objects/15.8_Math/15.8.2/15.8.2.18_tan/S15.8.2.18_A7.html
 svg/css/stars-with-shadow.html
 svg/W3C-SVG-1.1/paths-data-03-f.svg
 
@@ -488,12 +486,10 @@ editing/selection/caret-rtl-2-left.html [ Missing ]
 editing/selection/caret-rtl-right.html [ Missing ]
 editing/selection/contains-boundaries.html [ Missing ]
 editing/selection/designmode-no-caret.html [ Missing ]
-editing/selection/doubleclick-crash.html [ Missing ]
 editing/selection/drag-select-1.html [ Missing ]
 editing/selection/extend-by-character-002.html [ Missing ]
 editing/selection/extend-by-character-003.html [ Missing ]
 editing/selection/extend-by-word-002.html [ Missing ]
-editing/selection/extend-inside-transforms-backward.html [ Missing ]
 editing/selection/mixed-editability-6.html [ Missing ]
 editing/selection/mixed-editability-7.html [ Missing ]
 editing/selection/node-removal-2.html [ Missing ]
@@ -513,7 +509,6 @@ editing/selection/select-all-006.html [ Missing ]
 editing/selection/select-box.html [ Missing ]
 editing/selection/select-element-paragraph-boundary.html [ Missing ]
 editing/selection/select-from-textfield-outwards.html [ Missing ]
-editing/selection/select-missing-image.html [ Missing ]
 editing/selection/selection-actions.html [ Missing ]
 editing/selection/selection-background.html [ Missing ]
 editing/selection/selection-button-text.html [ Missing ]
@@ -611,6 +606,9 @@ webkit.org/b/100519 fast/images/paletted-png-with-color-profile.html [ Skip ]
 webkit.org/b/105542 fast/canvas/canvas-blend-image.html [ Skip ]
 webkit.org/b/105542 fast/canvas/canvas-blend-solid.html [ Skip ]
 
+# No concept of secure text input
+editing/secure-input [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -642,6 +640,13 @@ webkit.org/b/110546 fast/parser/document-write-partial-entity-before-load.html [
 webkit.org/b/110546 fast/parser/document-write-fighting-eof.html [ Crash ]
 
 webkit.org/b/111521 editing/selection/selection-invalid-offset.html [ Crash Pass ]
+
+# ASSERTION FAILED: static_cast<unsigned>(m_start + length) <= string.length().
+webkit.org/b/116024 fast/table/crash-section-logical-height-changed-needsCellRecalc.html [ Crash ]
+webkit.org/b/116024 fast/table/crash-split-table-section-no-cell-recalc.html [ Crash Pass ]
+
+# Sometimes crashes in PlatformContextCairo::drawSurfaceToContext().
+webkit.org/b/116025 compositing/video/video-background-color.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
@@ -676,7 +681,6 @@ webkit.org/b/108340 fast/layers/no-clipping-overflow-hidden-added-after-transiti
 
 # Flaky websocket tests.
 Bug(EFL) http/tests/websocket/tests/hybi/invalid-subprotocol-characters.html [ Failure Pass ]
-Bug(EFL) http/tests/websocket/tests/hybi/close-on-navigate-new-location.html [ Failure Pass ]
 
 # Flaky inspector tests
 webkit.org/b/78869 http/tests/inspector/inspect-element.html [ Failure Pass ]
@@ -810,8 +814,6 @@ webkit.org/b/84338 fast/forms/plaintext-mode-2.html [ Pass ]
 webkit.org/b/102367 fast/forms/zoomed-controls.html [ Pass ]
 
 # Crashing IndexedDB tests
-webkit.org/b/112578 storage/indexeddb/transaction-coordination-across-databases.html [ Crash ]
-webkit.org/b/107194 storage/indexeddb/pending-activity.html [ Crash ]
 webkit.org/b/107194 [ Release ] storage/indexeddb/cursor-advance.html [ Crash ]
 
 # Flaky IndexedDB tests
@@ -1022,7 +1024,7 @@ webkit.org/b/84338 editing/pasteboard/preserve-line-break-at-end-of-pasted-conte
 # EFL port needs Pasteboard implementation, needs baselines.
 webkit.org/b/84338 editing/execCommand/find-after-replace.html [ Failure Missing ]
 webkit.org/b/84338 editing/execCommand/paste-1.html [ Failure Missing ]
-webkit.org/b/84338 editing/execCommand/paste-2.html [ Failure Missing ]
+webkit.org/b/84338 editing/pasteboard/paste-2.html [ Failure Missing ]
 webkit.org/b/84338 editing/pasteboard/3976872.html [ Missing ]
 webkit.org/b/84338 editing/pasteboard/4076267-2.html [ Missing ]
 webkit.org/b/84338 editing/pasteboard/4076267-3.html [ Missing ]
@@ -1270,8 +1272,8 @@ webkit.org/b/85594 fast/dom/navigator-detached-no-crash.html [ Failure ]
 webkit.org/b/85689 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
 # EFL's DumpRenderTree should support LayoutTestController's dumpEditingCallbacks()
-webkit.org/b/84835 editing/execCommand/4128080-2.html [ Failure ]
-webkit.org/b/84835 editing/execCommand/copy-without-selection.html [ Failure ]
+webkit.org/b/84835 editing/pasteboard/copy-inside-h1-preserves-h1.html [ Failure ]
+webkit.org/b/84835 editing/pasteboard/copy-without-selection.html [ Failure ]
 webkit.org/b/84835 editing/execCommand/findString-diacriticals.html [ Failure ]
 
 # DRT doesn't check for isPrinting().
@@ -1356,6 +1358,7 @@ webkit.org/b/83704 media/event-attributes.html [ Failure ]
 
 # EFL's LayoutTestController does not implement setAutomaticLinkDetectionEnabled
 webkit.org/b/85463 editing/inserting/typing-space-to-trigger-smart-link.html
+webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 
 # Tests failing due to rounding problems in colors inside pixman
 webkit.org/b/49964 fast/canvas/canvas-fillPath-shadow.html [ Failure ]
@@ -1483,6 +1486,12 @@ webkit.org/b/96881 java [ Skip ]
 # Ref test added in r130592 that is failing on both EFL and GTK ports
 webkit.org/b/98613 css3/masking/clip-path-reference.html [ ImageOnlyFailure ]
 
+# Ref test whose output looks exactly the same but fails of EFL port.
+Bug(EFL) fast/multicol/newmulticol/float-multicol.html [ ImageOnlyFailure Pass ]
+
+# Ref test that is failing on EFL port due to blurry rect borders.
+webkit.org/b/116023 svg/as-image/svg-as-image-canvas.html [ ImageOnlyFailure ]
+
 # EFL does not yet support global selection
 webkit.org/b/88238 editing/pasteboard/paste-global-selection.html [ Skip ]
 
@@ -1607,6 +1616,7 @@ webkit.org/b/101670 media/video-controls-captions-trackmenu.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-sorted.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-localized.html [ Skip ]
 webkit.org/b/101670 media/video-controls-captions-trackmenu-hide-on-click.html [ Skip ]
+webkit.org/b/101670 media/video-controls-captions-trackmenu-hide-on-click-outside.html [ Skip ]
 webkit.org/b/101670 media/track/track-user-preferences.html [ Skip ]
 
 # Fails until we enable the Resource Timing API.
@@ -1618,6 +1628,7 @@ Bug(EFL) media/track/track-in-band-cues-added-once.html [ Skip ]
 Bug(EFL) media/track/track-in-band-style.html [ Skip ]
 Bug(EFL) media/track/track-in-band-legacy-api.html [ Skip ]
 Bug(EFL) media/track/track-forced-subtitles-in-band.html [ Skip ]
+Bug(EFL) media/track/track-in-band-mode.html [ Skip ]
 
 # All debug bots timeout (crash) on this one
 webkit.org/b/56496 [ Debug ] fast/js/array-sort-modifying-tostring.html [ Crash Pass ]
@@ -1790,6 +1801,10 @@ webkit.org/b/111860 fast/forms/number/number-validation-message.html [ Failure ]
 # Snapshotted plugins not enabled
 webkit.org/b/98696 plugins/snapshotting [ Skip ]
 
+# HTTP tests that time out of EFL port.
+webkit.org/b/116021 http/tests/navigation/redirect-to-random-url-versus-memory-cache.html [ Skip ]
+webkit.org/b/116022 http/tests/security/contentSecurityPolicy/media-src-allowed.html [ Skip ]
+
 # Failing after r133834
 webkit.org/b/101400 svg/css/shadow-changes.svg [ Failure ]
 webkit.org/b/101400 svg/css/composite-shadow-text.svg [ Failure ]
@@ -1845,6 +1860,9 @@ webkit.org/b/114877 accessibility/link-inside-button-accessible-text.html [ Fail
 
 webkit.org/b/114612 editing/style/block-style-005.html [ Failure ]
 
+# Regression(r150025).
+webkit.org/b/115919 fast/css/variables/var-inside-shape.html [ ImageOnlyFailure ]
+
 # Unidentified failing media tests
 webkit.org/b/115419 http/tests/media/reload-after-dialog.html [ Failure ]
 webkit.org/b/115419 http/tests/media/remove-while-loading.html [ Failure ]
@@ -1864,5 +1882,10 @@ webkit.org/b/115419 media/track/track-text-track-cue-list.html [ Crash Failure ]
 webkit.org/b/115439 fast/text/complex-initial-advance.html [ ImageOnlyFailure ]
 webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure ]
 
-webkit.org/b/115783 fast/regions/webkit-flow-float-pushed-to-last-region.html [ ImageOnlyFailure ]
-webkit.org/b/115783 fast/regions/webkit-flow-float-unable-to-push.html [ ImageOnlyFailure ]
+webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
+
+# EFL specific error : (_ecore_main_fd_handlers_bads_rem() No bad fd found).
+webkit.org/b/116587 http/tests/websocket/tests/hybi/close.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/close-on-navigate-new-location.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/multiple-subprotocols.html [ Skip ]
+webkit.org/b/116587 http/tests/websocket/tests/hybi/reload-crash.html [ Skip ]

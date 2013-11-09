@@ -114,7 +114,25 @@ platform/mac/editing/pasteboard/drag-selections-to-contenteditable.html
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html
 
 # [WK2] [Mac] Spellcheck tests don't seem to work
+webkit.org/b/105616 editing/inserting/inserting-slash-inside-url-with-smart-link.html
 webkit.org/b/105616 editing/spelling/spelling-changed-text.html
+webkit.org/b/105616 editing/spelling/spelling-backspace-between-lines.html
+webkit.org/b/105616 editing/spelling/design-mode-spellcheck-off.html
+webkit.org/b/105616 editing/spelling/spellcheck-attribute.html
+webkit.org/b/105616 editing/spelling/spelling-attribute-at-child.html
+webkit.org/b/105616 editing/spelling/spelling-attribute-change.html
+webkit.org/b/105616 editing/spelling/spelling-double-clicked-word.html
+webkit.org/b/105616 editing/spelling/spelling-exactly-selected-multiple-words.html
+webkit.org/b/105616 editing/spelling/spelling-exactly-selected-word.html
+webkit.org/b/105616 editing/spelling/spelling-hasspellingmarker.html
+webkit.org/b/105616 editing/spelling/spelling-linebreak.html
+webkit.org/b/105616 editing/spelling/spelling-multiword-selection.html
+webkit.org/b/105616 editing/spelling/spelling-should-select-multiple-words.html
+webkit.org/b/105616 editing/spelling/spelling-subword-selection.html
+webkit.org/b/105616 editing/spelling/spelling-with-punctuation-selection.html
+webkit.org/b/105616 editing/spelling/spelling-with-whitespace-selection.html
+webkit.org/b/105616 editing/spelling/spellcheck-input-search-crash.html
+webkit.org/b/105616 editing/spelling/grammar.html
 webkit.org/b/105616 platform/mac/editing/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
 webkit.org/b/105616 platform/mac/editing/spelling/click-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-to-beginning-of-autocorrected-word.html
@@ -122,6 +140,11 @@ webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-to-autocorrected-w
 webkit.org/b/105616 platform/mac/editing/spelling/delete-into-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/forward-delete-into-autocorrected-word.html
 webkit.org/b/105616 platform/mac/editing/spelling/autocorrection-with-multi-line-text.html
+webkit.org/b/105616 platform/mac/editing/spelling/delete-into-misspelled-word.html
+webkit.org/b/105616 platform/mac/editing/spelling/editing-multiple-words-with-markers.html
+webkit.org/b/105616 platform/mac/editing/spelling/editing-word-with-marker-1.html
+webkit.org/b/105616 platform/mac/editing/spelling/editing-word-with-marker-2.html
+webkit.org/b/105616 platform/mac/editing/spelling/move-cursor-around-misspelled-word.html
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -264,12 +287,27 @@ webkit.org/b/104954 [ Debug ] http/tests/canvas/canvas-slow-font-loading.html [ 
 # Flaky everywhere.
 webkit.org/b/114302 platform/mac-wk2/plugins/mouse-events-scaled-iframe.html [ Pass Failure ]
 
-webkit.org/b/114571 [ Debug ] fast/regions/fixed-pos-elem-in-region.html [ Pass Failure ImageOnlyFailure ]
-
 webkit.org/b/114572 platform/mac-wk2/plugins/mouse-events-scaled.html [ Pass Failure ]
 
 webkit.org/b/114573 fast/repaint/selection-gap-fixed-child.html [ Failure ]
 webkit.org/b/114573 fast/repaint/selection-gap-flipped-fixed-child.html [ Failure ]
+
+webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
+
+webkit.org/b/116478 storage/websql/open-database-creation-callback-isolated-world.html [ Pass Failure ]
+webkit.org/b/116478 storage/websql/statement-error-callback-isolated-world.html [ Pass Failure ]
+webkit.org/b/116478 storage/websql/transaction-success-callback-isolated-world.html [ Pass Failure ]
+
+webkit.org/b/81604 media/video-loop.html [ Failure ]
+
+webkit.org/b/82554 compositing/rtl/rtl-fixed-overflow-scrolled.html [ Failure ]
+
+webkit.org/b/116649 http/tests/security/cross-frame-access-put.html [ Failure ]
+
+webkit.org/b/116684 [ Lion ] compositing/overflow/overflow-compositing-descendant.html [ Timeout Failure ]
+
+# Only fails on WK1
+webkit.org/b/82805 [ Lion Debug ] fast/canvas/webgl/object-deletion-behaviour.html [ Pass ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -314,6 +352,12 @@ fast/workers/worker-cloneport.html
 sputnik/Unicode/Unicode_218/S7.6_A2.4.html
 sputnik/Unicode/Unicode_218/S7.6_A5.2_T1.html
 
+# Unclear yet why this test fails.
+editing/secure-input/password-input-focusing-to-different-frame.html [ Failure ]
+
+# textInputController.hasMarkedText is implemented, but gives a wrong result for some reason.
+platform/mac/editing/input/unconfirmed-text-navigation-with-page-cache.html
+
 ### END OF (3) Unclassified failures
 ########################################
 
@@ -330,6 +374,9 @@ sputnik/Unicode/Unicode_218/S7.6_A5.2_T1.html
 # Snapshotted plugins not enabled on WK1 but are on WK2
 # Temporarily disabled while working out compositing failures
 plugins/snapshotting [ Skip ]
+
+# This test fails with WebKit1 only.
+editing/secure-input/reset-state-on-navigation.html [ Pass ]
 
 ### END OF (5) Features that are not supported in WebKit1, so skipped in mac/TestExpectations then re-enabled here
 ########################################

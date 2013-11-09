@@ -674,15 +674,16 @@ Node* enclosingTableCell(const Position& p)
     return toElement(enclosingNodeOfType(p, isTableCell));
 }
 
-Node* enclosingAnchorElement(const Position& p)
+Element* enclosingAnchorElement(const Position& p)
 {
     if (p.isNull())
         return 0;
-    
-    Node* node = p.deprecatedNode();
-    while (node && !(node->isElementNode() && node->isLink()))
-        node = node->parentNode();
-    return node;
+
+    for (Node* node = p.deprecatedNode(); node; node = node->parentNode()) {
+        if (node->isElementNode() && node->isLink())
+            return toElement(node);
+    }
+    return 0;
 }
 
 HTMLElement* enclosingList(Node* node)
@@ -855,7 +856,7 @@ bool isEmptyTableCell(const Node* node)
 
 PassRefPtr<HTMLElement> createDefaultParagraphElement(Document* document)
 {
-    switch (document->frame()->editor()->defaultParagraphSeparator()) {
+    switch (document->frame()->editor().defaultParagraphSeparator()) {
     case EditorParagraphSeparatorIsDiv:
         return HTMLDivElement::create(document);
     case EditorParagraphSeparatorIsP:
@@ -1205,6 +1206,28 @@ Position adjustedSelectionStartForStyleComputation(const VisibleSelection& selec
     // otherwise, make sure to be at the start of the first selected node,
     // instead of possibly at the end of the last node before the selection
     return visiblePosition.deepEquivalent().downstream();
+}
+
+// FIXME: Should this be deprecated like deprecatedEnclosingBlockFlowElement is?
+bool isBlockFlowElement(const Node* node)
+{
+    if (!node->isElementNode())
+        return false;
+    RenderObject* renderer = node->renderer();
+    return renderer && renderer->isBlockFlow();
+}
+
+Element* deprecatedEnclosingBlockFlowElement(Node* node)
+{
+    if (!node)
+        return 0;
+    if (isBlockFlowElement(node))
+        return toElement(node);
+    while ((node = node->parentNode())) {
+        if (isBlockFlowElement(node) || node->hasTagName(bodyTag))
+            return toElement(node);
+    }
+    return 0;
 }
 
 } // namespace WebCore

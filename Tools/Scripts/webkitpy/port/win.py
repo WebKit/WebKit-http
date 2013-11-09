@@ -32,7 +32,7 @@ import sys
 
 from webkitpy.common.system.systemhost import SystemHost
 from webkitpy.common.system.executive import ScriptError, Executive
-from webkitpy.common.system.path import abspath_to_uri
+from webkitpy.common.system.path import abspath_to_uri, cygpath
 from webkitpy.port.apple import ApplePort
 
 
@@ -42,7 +42,7 @@ _log = logging.getLogger(__name__)
 class WinPort(ApplePort):
     port_name = "win"
 
-    VERSION_FALLBACK_ORDER = ["win-xp", "win-vista", "win-7sp0", "win-win7"]
+    VERSION_FALLBACK_ORDER = ["win-xp", "win-vista", "win-7sp0", "win"]
 
     ARCHITECTURES = ['x86']
 
@@ -98,3 +98,23 @@ class WinPort(ApplePort):
         if not match_object:
             return None
         return match_object.group('features_string').split(' ')
+
+    # Note: These are based on the stock Cygwin locations for these files.
+    def _uses_apache(self):
+        return False
+
+    def _path_to_lighttpd(self):
+        return "/usr/sbin/lighttpd"
+
+    def _path_to_lighttpd_modules(self):
+        return "/usr/lib/lighttpd"
+
+    def _path_to_lighttpd_php(self):
+        return "/usr/bin/php-cgi"
+
+    # Remove this implementation when we are confident that DumpRenderTree on Windows works properly in parallel.
+    def default_child_processes(self):
+        return 1
+
+    def _driver_tempdir_for_environment(self):
+        return cygpath(self._driver_tempdir())

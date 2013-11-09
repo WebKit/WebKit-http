@@ -28,7 +28,6 @@ Clamp
 Conditional=*
 Constructor
 ConstructorConditional=*
-ConstructorParameters=*
 ConstructorRaisesException
 ConstructorTemplate=Event|TypedArray
 Custom
@@ -52,6 +51,7 @@ DoNotCheckConstants
 DoNotCheckSecurity
 DoNotCheckSecurityOnGetter
 DoNotCheckSecurityOnSetter
+EnabledAtRuntime=*
 EnforceRange
 EventTarget
 ExtendsDOMGlobalObject

@@ -76,6 +76,7 @@ public:
     bool sendComplexTextInput(uint64_t pluginComplexTextInputIdentifier, const String& textInput);
     void setLayerHostingMode(LayerHostingMode);
     RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return m_plugin->pdfDocumentForPrinting(); }
+    NSObject *accessibilityObject() const;
 #endif
 
     WebCore::HTMLPlugInElement* pluginElement() const { return m_pluginElement.get(); }
@@ -191,6 +192,7 @@ private:
     virtual void pluginFocusOrWindowFocusChanged(bool pluginHasFocusAndWindowHasFocus);
     virtual void setComplexTextInputState(PluginComplexTextInputState);
     virtual mach_port_t compositingRenderServerPort();
+    virtual void openPluginPreferencePane() OVERRIDE;
 #endif
     virtual float contentsScaleFactor();
     virtual String proxiesForURL(const String&);

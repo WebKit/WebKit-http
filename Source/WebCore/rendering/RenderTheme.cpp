@@ -794,30 +794,31 @@ bool RenderTheme::isEnabled(const RenderObject* o) const
 bool RenderTheme::isFocused(const RenderObject* o) const
 {
     Node* node = o->node();
-    if (!node)
+    if (!node || !node->isElementNode())
         return false;
 
-    node = node->focusDelegate();
-    Document* document = node->document();
+    Element* focusDelegate = toElement(node)->focusDelegate();
+    Document* document = focusDelegate->document();
     Frame* frame = document->frame();
-    return node == document->focusedNode() && frame && frame->selection()->isFocusedAndActive();
+    return focusDelegate == document->focusedElement() && frame && frame->selection()->isFocusedAndActive();
 }
 
 bool RenderTheme::isPressed(const RenderObject* o) const
 {
-    if (!o->node())
+    if (!o->node() || !o->node()->isElementNode())
         return false;
-    return o->node()->active();
+    return toElement(o->node())->active();
 }
 
 bool RenderTheme::isSpinUpButtonPartPressed(const RenderObject* o) const
 {
     Node* node = o->node();
-    if (!node || !node->active() || !node->isElementNode()
-        || !toElement(node)->isSpinButtonElement())
+    if (!node || !node->isElementNode())
         return false;
-    SpinButtonElement* element = static_cast<SpinButtonElement*>(node);
-    return element->upDownState() == SpinButtonElement::Up;
+    Element* element = toElement(node);
+    if (!element->active() || !element->isSpinButtonElement())
+        return false;
+    return static_cast<SpinButtonElement*>(element)->upDownState() == SpinButtonElement::Up;
 }
 
 bool RenderTheme::isReadOnlyControl(const RenderObject* o) const
@@ -831,10 +832,10 @@ bool RenderTheme::isReadOnlyControl(const RenderObject* o) const
 bool RenderTheme::isHovered(const RenderObject* o) const
 {
     Node* node = o->node();
-    if (!node)
+    if (!node || !node->isElementNode())
         return false;
-    if (!node->isElementNode() || !toElement(node)->isSpinButtonElement())
-        return node->hovered();
+    if (!toElement(node)->isSpinButtonElement())
+        return toElement(node)->hovered();
     SpinButtonElement* element = static_cast<SpinButtonElement*>(node);
     return element->hovered() && element->upDownState() != SpinButtonElement::Indeterminate;
 }

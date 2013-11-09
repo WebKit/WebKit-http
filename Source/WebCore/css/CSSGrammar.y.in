@@ -215,7 +215,6 @@ static inline bool isCSSTokenAString(int yytype)
 %token <string> CUEFUNCTION
 #endif
 %token <string> NOTFUNCTION
-%token <string> DISTRIBUTEDFUNCTION
 %token <string> CALCFUNCTION
 %token <string> MINFUNCTION
 %token <string> MAXFUNCTION
@@ -1208,25 +1207,15 @@ selector:
         $$ = $2;
         if (!$1)
             $$ = 0;
-        else if ($$) {
-            CSSParserSelector* end = $$;
-            while (end->tagHistory())
-                end = end->tagHistory();
-            end->setRelation(CSSSelector::Descendant);
-            end->setTagHistory(parser->sinkFloatingSelector($1));
-        }
+        else if ($$)
+            $$->appendTagHistory(CSSSelector::Descendant, parser->sinkFloatingSelector($1));
     }
     | selector combinator simple_selector {
         $$ = $3;
         if (!$1)
             $$ = 0;
-        else if ($$) {
-            CSSParserSelector* end = $$;
-            while (end->tagHistory())
-                end = end->tagHistory();
-            end->setRelation($2);
-            end->setTagHistory(parser->sinkFloatingSelector($1));
-        }
+        else if ($$)
+            $$->appendTagHistory($2, parser->sinkFloatingSelector($1));
     }
     | selector error {
         $$ = 0;
@@ -1456,19 +1445,6 @@ pseudo:
             $$ = 0;
     }
 #endif
-#if ENABLE_SHADOW_DOM
-    | ':' ':' DISTRIBUTEDFUNCTION maybe_space selector maybe_space ')' {
-        if (!$5)
-            $$ = 0;
-        else {
-            $$ = parser->createFloatingSelector();
-            $$->setMatch(CSSSelector::PseudoElement);
-            $$->setFunctionArgumentSelector($5);
-            $3.lower();
-            $$->setValue($3);
-        }
-    }
-#endif
     // use by :-webkit-any.
     // FIXME: should we support generic selectors here or just simple_selectors?
     // Use simple_selector_list for now to match -moz-any.
@@ -1556,20 +1532,10 @@ declaration_list:
     | decl_list {
         $$ = $1;
     }
-    | errors invalid_block_list error {
-        parser->syntaxError($1, CSSParser::PropertyDeclarationError);
+    | decl_list_recovery {
         $$ = false;
     }
-    | errors {
-        parser->syntaxError($1, CSSParser::PropertyDeclarationError);
-        $$ = false;
-    }
-    | decl_list errors {
-        parser->syntaxError($2, CSSParser::PropertyDeclarationError);
-        $$ = $1;
-    }
-    | decl_list error_location invalid_block_list {
-        parser->syntaxError($2, CSSParser::PropertyDeclarationError);
+    | decl_list decl_list_recovery {
         $$ = $1;
     }
     ;
@@ -1587,13 +1553,8 @@ decl_list:
         parser->syntaxError($2);
         $$ = false;
     }
-    | errors ';' maybe_space {
-        parser->syntaxError($1, CSSParser::PropertyDeclarationError);
+    | decl_list_recovery ';' maybe_space {
         parser->markPropertyStart();
-        $$ = false;
-    }
-    | errors invalid_block_list error ';' maybe_space {
-        parser->syntaxError($1, CSSParser::PropertyDeclarationError);
         $$ = false;
     }
     | decl_list declaration ';' maybe_space {
@@ -1602,16 +1563,18 @@ decl_list:
         if ($2)
             $$ = $2;
     }
-    | decl_list errors ';' maybe_space {
-        parser->syntaxError($2, CSSParser::PropertyDeclarationError);
+    | decl_list decl_list_recovery ';' maybe_space {
         parser->markPropertyStart();
         $$ = $1;
     }
-    | decl_list errors invalid_block_list error ';' maybe_space {
+    ;
+
+decl_list_recovery:
+    error error_location {
         parser->syntaxError($2, CSSParser::PropertyDeclarationError);
-        parser->markPropertyStart();
-        $$ = $1;
     }
+    | decl_list_recovery invalid_block
+    | decl_list_recovery error
     ;
 
 declaration:

@@ -38,9 +38,11 @@
 
 #if PLATFORM(MAC)
 #include "WKGeometry.h"
+#include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS NSButton;
+OBJC_CLASS NSURL;
 OBJC_CLASS NSWindow;
 OBJC_CLASS WKWebInspectorProxyObjCAdapter;
 OBJC_CLASS WKWebInspectorWKView;
@@ -96,6 +98,7 @@ public:
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
     void windowFrameDidChange();
+    NSWindow* inspectorWindow() const { return m_inspectorWindow.get(); }
 
     void setInspectorWindowFrame(WKRect&);
     WKRect inspectorWindowFrame();
@@ -118,6 +121,7 @@ public:
 
     void setAttachedWindowHeight(unsigned);
     void setAttachedWindowWidth(unsigned);
+    void setToolbarHeight(unsigned height) { platformSetToolbarHeight(height); }
 
     bool isDebuggingJavaScript() const { return m_isDebuggingJavaScript; }
     void toggleJavaScriptDebugging();
@@ -163,6 +167,9 @@ private:
     void platformDetach();
     void platformSetAttachedWindowHeight(unsigned);
     void platformSetAttachedWindowWidth(unsigned);
+    void platformSetToolbarHeight(unsigned);
+    void platformSave(const String& filename, const String& content, bool forceSaveAs);
+    void platformAppend(const String& filename, const String& content);
 
     // Called by WebInspectorProxy messages
     void createInspectorPage(uint64_t& inspectorPageID, WebPageCreationParameters&);
@@ -170,6 +177,9 @@ private:
     void bringToFront();
     void attachAvailabilityChanged(bool);
     void inspectedURLChanged(const String&);
+
+    void save(const String& filename, const String& content, bool forceSaveAs);
+    void append(const String& filename, const String& content);
 
 #if ENABLE(INSPECTOR_SERVER)
     void sendMessageToRemoteFrontend(const String& message);
@@ -216,6 +226,7 @@ private:
     RetainPtr<NSButton> m_dockRightButton;
     RetainPtr<WKWebInspectorProxyObjCAdapter> m_inspectorProxyObjCAdapter;
     String m_urlString;
+    HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
 #elif PLATFORM(GTK)
     WebInspectorClientGtk m_client;
     GtkWidget* m_inspectorView;

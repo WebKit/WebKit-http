@@ -136,11 +136,6 @@ bool WKViewGetDrawsTransparentBackground(WKViewRef viewRef)
     return toImpl(viewRef)->drawsTransparentBackground();
 }
 
-void WKViewSetThemePath(WKViewRef viewRef, WKStringRef theme)
-{
-    toImpl(viewRef)->setThemePath(toImpl(theme)->string());
-}
-
 void WKViewSuspendActiveDOMObjectsAndAnimations(WKViewRef viewRef)
 {
     toImpl(viewRef)->suspendActiveDOMObjectsAndAnimations();
@@ -169,6 +164,16 @@ bool WKViewExitFullScreen(WKViewRef viewRef)
     UNUSED_PARAM(viewRef);
     return false;
 #endif
+}
+
+void WKViewSetOpacity(WKViewRef view, double opacity)
+{
+    toImpl(view)->setOpacity(opacity);
+}
+
+double WKViewOpacity(WKViewRef view)
+{
+    return toImpl(view)->opacity();
 }
 
 #endif // USE(COORDINATED_GRAPHICS)

@@ -43,7 +43,6 @@
 #include <wtf/MathExtras.h>
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/RetainPtr.h>
-#include <wtf/UnusedParam.h>
 
 #if PLATFORM(MAC)
 #include "WebCoreSystemInterface.h"
@@ -51,20 +50,6 @@
 
 #if PLATFORM(WIN)
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
-#endif
-
-#if PLATFORM(MAC)
-
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MAX_ALLOWED >= 1060
-// Building on 10.6 or later: kCGInterpolationMedium is defined in the CGInterpolationQuality enum.
-#define HAVE_CG_INTERPOLATION_MEDIUM 1
-#endif
-
-#if PLATFORM(IOS) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
-// Targeting 10.6 or later: use kCGInterpolationMedium.
-#define WTF_USE_CG_INTERPOLATION_MEDIUM 1
-#endif
-
 #endif
 
 extern "C" {
@@ -1304,7 +1289,7 @@ void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
     if (paintingDisabled())
         return;
 
-    RetainPtr<CFURLRef> urlRef = adoptCF(link.createCFURL());
+    RetainPtr<CFURLRef> urlRef = link.createCFURL();
     if (!urlRef)
         return;
 
@@ -1337,13 +1322,9 @@ void GraphicsContext::setImageInterpolationQuality(InterpolationQuality mode)
     case InterpolationLow:
         quality = kCGInterpolationLow;
         break;
-
-    // Fall through to InterpolationHigh if kCGInterpolationMedium is not usable.
     case InterpolationMedium:
-#if USE(CG_INTERPOLATION_MEDIUM)
         quality = kCGInterpolationMedium;
         break;
-#endif
     case InterpolationHigh:
         quality = kCGInterpolationHigh;
         break;
@@ -1364,16 +1345,8 @@ InterpolationQuality GraphicsContext::imageInterpolationQuality() const
         return InterpolationNone;
     case kCGInterpolationLow:
         return InterpolationLow;
-#if HAVE(CG_INTERPOLATION_MEDIUM)
-    // kCGInterpolationMedium is known to be present in the CGInterpolationQuality enum.
     case kCGInterpolationMedium:
-#if USE(CG_INTERPOLATION_MEDIUM)
-        // Only map to InterpolationMedium if targeting a system that understands it.
         return InterpolationMedium;
-#else
-        return InterpolationDefault;
-#endif  // USE(CG_INTERPOLATION_MEDIUM)
-#endif  // HAVE(CG_INTERPOLATION_MEDIUM)
     case kCGInterpolationHigh:
         return InterpolationHigh;
     }

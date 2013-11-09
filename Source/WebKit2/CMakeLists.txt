@@ -1,4 +1,5 @@
 set(WebKit2_INCLUDE_DIRECTORIES
+    "${JAVASCRIPTCORE_DIR}/llint"
     "${WEBKIT2_DIR}"
     "${WEBKIT2_DIR}/Platform"
     "${WEBKIT2_DIR}/Platform/CoreIPC"
@@ -95,6 +96,7 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/rendering/style"
     "${WEBCORE_DIR}/storage"
     "${WEBCORE_DIR}/svg"
+    "${WEBCORE_DIR}/svg/graphics"
     "${WEBCORE_DIR}/svg/properties"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
@@ -120,6 +122,13 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source"
 )
 
+if (WTF_USE_3D_GRAPHICS)
+    list(APPEND WebKit2_INCLUDE_DIRECTORIES
+        "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+        "${THIRDPARTY_DIR}/ANGLE/include/GLSLANG"
+    )
+endif ()
+
 set(WebKit2_SOURCES
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -134,6 +143,7 @@ set(WebKit2_SOURCES
     Platform/CoreIPC/MessageDecoder.cpp
     Platform/CoreIPC/MessageEncoder.cpp
     Platform/CoreIPC/MessageReceiverMap.cpp
+    Platform/CoreIPC/MessageSender.cpp
     Platform/CoreIPC/StringReference.cpp
 
     PluginProcess/PluginControllerProxy.cpp
@@ -210,6 +220,7 @@ set(WebKit2_SOURCES
     Shared/API/c/WKMutableArray.cpp
     Shared/API/c/WKMutableDictionary.cpp
     Shared/API/c/WKNumber.cpp
+    Shared/API/c/WKPluginInformation.cpp
     Shared/API/c/WKRenderLayer.cpp
     Shared/API/c/WKRenderObject.cpp
     Shared/API/c/WKSecurityOrigin.cpp
@@ -235,6 +246,7 @@ set(WebKit2_SOURCES
 
     Shared/Plugins/Netscape/NetscapePluginModule.cpp
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp
+    Shared/Plugins/Netscape/PluginInformation.cpp
 
     UIProcess/BackingStore.cpp
     UIProcess/DrawingAreaProxy.cpp
@@ -243,7 +255,6 @@ set(WebKit2_SOURCES
     UIProcess/GeolocationPermissionRequestManagerProxy.cpp
     UIProcess/GeolocationPermissionRequestProxy.cpp
 
-    UIProcess/PageViewportController.cpp
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/StatisticsRequest.cpp
     UIProcess/TextCheckerCompletion.cpp
@@ -280,7 +291,7 @@ set(WebKit2_SOURCES
     UIProcess/WebIconDatabase.cpp
     UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
-    UIProcess/WebKeyValueStorageManagerProxy.cpp
+    UIProcess/WebKeyValueStorageManager.cpp
 
     UIProcess/WebLoaderClient.cpp
     UIProcess/WebMediaCacheManagerProxy.cpp
@@ -357,6 +368,7 @@ set(WebKit2_SOURCES
     UIProcess/Downloads/DownloadProxy.cpp
     UIProcess/Downloads/DownloadProxyMap.cpp
 
+    UIProcess/InspectorServer/HTTPRequest.cpp
     UIProcess/InspectorServer/WebInspectorServer.cpp
     UIProcess/InspectorServer/WebSocketServer.cpp
     UIProcess/InspectorServer/WebSocketServerConnection.cpp
@@ -464,7 +476,6 @@ set(WebKit2_SOURCES
     WebProcess/Storage/StorageAreaImpl.cpp
     WebProcess/Storage/StorageAreaMap.cpp
     WebProcess/Storage/StorageNamespaceImpl.cpp
-    WebProcess/Storage/WebKeyValueStorageManager.cpp
 
     WebProcess/WebCoreSupport/WebBatteryClient.cpp
     WebProcess/WebCoreSupport/WebChromeClient.cpp
@@ -528,7 +539,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/WebGeolocationManagerProxy.messages.in
     UIProcess/WebIconDatabase.messages.in
     UIProcess/WebInspectorProxy.messages.in
-    UIProcess/WebKeyValueStorageManagerProxy.messages.in
     UIProcess/WebMediaCacheManagerProxy.messages.in
     UIProcess/WebNetworkInfoManagerProxy.messages.in
     UIProcess/WebPageProxy.messages.in
@@ -540,8 +550,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.messages.in
 
     UIProcess/Downloads/DownloadProxy.messages.in
-
-    UIProcess/Notifications/WebNotificationManagerProxy.messages.in
 
     UIProcess/Plugins/PluginProcessProxy.messages.in
 
@@ -574,7 +582,6 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/ResourceCache/WebResourceCacheManager.messages.in
 
     WebProcess/Storage/StorageAreaMap.messages.in
-    WebProcess/Storage/WebKeyValueStorageManager.messages.in
 
     WebProcess/WebCoreSupport/WebDatabaseManager.messages.in
 
@@ -587,17 +594,15 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.messages.in
 )
 
-set(WebProcess_EXECUTABLE_NAME WebProcess)
-
 set(WebProcess_LIBRARIES
-    ${JavaScriptCore_LIBRARY_NAME}
-    ${WebCore_LIBRARY_NAME}
-    ${WebKit2_LIBRARY_NAME}
+    JavaScriptCore
+    WebCore
+    WebKit2
 )
 
 set(WebKit2_LIBRARIES
-    ${WTF_LIBRARY_NAME}
-    ${WebCore_LIBRARY_NAME}
+    WTF
+    WebCore
 )
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
@@ -622,20 +627,23 @@ endforeach ()
 
 add_definitions(-DBUILDING_WEBKIT)
 include_directories(${WebKit2_INCLUDE_DIRECTORIES})
-add_library(${WebKit2_LIBRARY_NAME} ${WebKit2_LIBRARY_TYPE} ${WebKit2_SOURCES})
+add_library(WebKit2 ${WebKit2_LIBRARY_TYPE} ${WebKit2_SOURCES})
 
-add_dependencies(${WebKit2_LIBRARY_NAME} ${WebCore_LIBRARY_NAME})
-add_dependencies(${WebKit2_LIBRARY_NAME} ${ForwardingHeaders_NAME})
-add_dependencies(${WebKit2_LIBRARY_NAME} ${ForwardingNetworkHeaders_NAME})
-target_link_libraries(${WebKit2_LIBRARY_NAME} ${WebKit2_LIBRARIES})
-set_target_properties(${WebKit2_LIBRARY_NAME} PROPERTIES FOLDER "WebKit")
-set_target_properties(${WebKit2_LIBRARY_NAME} PROPERTIES LINK_INTERFACE_LIBRARIES "")
+add_dependencies(WebKit2 WebCore)
+add_dependencies(WebKit2 ${WEBKIT2_EXTRA_DEPENDENCIES})
+target_link_libraries(WebKit2 ${WebKit2_LIBRARIES})
+set_target_properties(WebKit2 PROPERTIES FOLDER "WebKit")
+set_target_properties(WebKit2 PROPERTIES LINK_INTERFACE_LIBRARIES "")
 
-add_executable(${WebProcess_EXECUTABLE_NAME} ${WebProcess_SOURCES})
-target_link_libraries(${WebProcess_EXECUTABLE_NAME} ${WebProcess_LIBRARIES})
-set_target_properties(${WebProcess_EXECUTABLE_NAME} PROPERTIES FOLDER "WebKit")
+if (WebKit2_OUTPUT_NAME)
+    set_target_properties(WebKit2 PROPERTIES OUTPUT_NAME ${WebKit2_OUTPUT_NAME})
+endif ()
 
-set_target_properties(${WebKit2_LIBRARY_NAME} PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+add_executable(WebProcess ${WebProcess_SOURCES})
+target_link_libraries(WebProcess ${WebProcess_LIBRARIES})
+set_target_properties(WebProcess PROPERTIES FOLDER "WebKit")
 
-install(TARGETS ${WebKit2_LIBRARY_NAME} DESTINATION "${LIB_INSTALL_DIR}")
-install(TARGETS ${WebProcess_EXECUTABLE_NAME} DESTINATION "${EXEC_INSTALL_DIR}")
+set_target_properties(WebKit2 PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+
+install(TARGETS WebKit2 DESTINATION "${LIB_INSTALL_DIR}")
+install(TARGETS WebProcess DESTINATION "${EXEC_INSTALL_DIR}")

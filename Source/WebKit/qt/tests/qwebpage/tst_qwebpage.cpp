@@ -38,6 +38,7 @@
 #include <qgraphicsview.h>
 #include <qgraphicswebview.h>
 #include <qnetworkcookiejar.h>
+#include <qnetworkreply.h>
 #include <qnetworkrequest.h>
 #include <qpa/qplatforminputcontext.h>
 #include <qwebdatabase.h>
@@ -173,6 +174,8 @@ private Q_SLOTS:
 #endif
 
     void originatingObjectInNetworkRequests();
+    void networkReplyParentDidntChange();
+    void destroyQNAMBeforeAbortDoesntCrash();
     void testJSPrompt();
     void showModalDialog();
     void testStopScheduledPageRefresh();
@@ -2844,6 +2847,32 @@ void tst_QWebPage::originatingObjectInNetworkRequests()
 
     for (int i = 0; i < 2; ++i)
         QVERIFY(qobject_cast<QWebFrame*>(networkManager->requests.at(i).originatingObject()) == childFrames.at(i));
+}
+
+void tst_QWebPage::networkReplyParentDidntChange()
+{
+    TestNetworkManager* networkManager = new TestNetworkManager(m_page);
+    m_page->setNetworkAccessManager(networkManager);
+    networkManager->requests.clear();
+
+    // Trigger a load and check that pending QNetworkReplies haven't been reparented before returning to the event loop.
+    m_view->load(QUrl("qrc:///resources/content.html"));
+
+    QVERIFY(networkManager->requests.count() > 0);
+    QVERIFY(networkManager->findChildren<QNetworkReply*>().size() > 0);
+}
+
+void tst_QWebPage::destroyQNAMBeforeAbortDoesntCrash()
+{
+    QNetworkAccessManager* networkManager = new QNetworkAccessManager;
+    m_page->setNetworkAccessManager(networkManager);
+
+    m_view->load(QUrl("qrc:///resources/content.html"));
+    delete networkManager;
+    // This simulates what PingLoader does with its QNetworkReply when it times out.
+    // PingLoader isn't attached to a QWebPage and can be kept alive
+    // for 60000 seconds (~16.7 hours) to then cancel its ResourceHandle.
+    m_view->stop();
 }
 
 /**

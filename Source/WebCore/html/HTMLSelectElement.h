@@ -111,8 +111,8 @@ protected:
 private:
     virtual const AtomicString& formControlType() const;
     
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
-    virtual bool isMouseFocusable() const;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
 
     virtual void dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode, FocusDirection) OVERRIDE;
     virtual void dispatchBlurEvent(PassRefPtr<Node> newFocusedNode);

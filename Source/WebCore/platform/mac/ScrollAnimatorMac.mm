@@ -41,7 +41,6 @@
 #include "ScrollbarThemeMac.h"
 #include "WebCoreSystemInterface.h"
 #include <wtf/PassOwnPtr.h>
-#include <wtf/UnusedParam.h>
 
 using namespace WebCore;
 using namespace std;
@@ -502,6 +501,12 @@ enum FeatureToAnimate {
     ASSERT(scrollerImp == scrollbarPainterForScrollbar(_scrollbar));
 
     ScrollbarPainter scrollerPainter = (ScrollbarPainter)scrollerImp;
+    if (_scrollbar->scrollableArea()->scrollbarAnimationsAreSuppressed()) {
+        [scrollerImp setKnobAlpha:0];
+        _scrollbar->invalidate();
+        return;
+    }
+
     [self setUpAlphaAnimation:_knobAlphaAnimation scrollerPainter:scrollerPainter part:WebCore::ThumbPart animateAlphaTo:newKnobAlpha duration:duration];
 }
 
@@ -881,9 +886,10 @@ void ScrollAnimatorMac::mayBeginScrollGesture() const
 
 void ScrollAnimatorMac::finishCurrentScrollAnimations()
 {
-    if (isScrollbarOverlayAPIAvailable()) {
+    cancelAnimations();
+
+    if (isScrollbarOverlayAPIAvailable())
         [m_scrollbarPainterController.get() hideOverlayScrollers];
-    }
 }
 
 void ScrollAnimatorMac::didAddVerticalScrollbar(Scrollbar* scrollbar)

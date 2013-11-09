@@ -42,14 +42,21 @@ static const AtomicString& summaryQuerySelector()
     return selector;
 };
 
-class DetailsContentElement : public HTMLContentElement {
+class DetailsContentElement : public InsertionPoint {
 public:
     static PassRefPtr<DetailsContentElement> create(Document*);
 
 private:
     DetailsContentElement(Document* document)
-        : HTMLContentElement(HTMLNames::webkitShadowContentTag, document)
+        : InsertionPoint(HTMLNames::webkitShadowContentTag, document)
     {
+    }
+
+    virtual MatchType matchTypeFor(Node* node) const OVERRIDE
+    {
+        if (node->isElementNode() && node == node->parentNode()->querySelector(summaryQuerySelector(), ASSERT_NO_EXCEPTION))
+            return NeverMatches;
+        return AlwaysMatches;
     }
 };
 
@@ -58,7 +65,7 @@ PassRefPtr<DetailsContentElement> DetailsContentElement::create(Document* docume
     return adoptRef(new DetailsContentElement(document));
 }
 
-class DetailsSummaryElement : public HTMLContentElement {
+class DetailsSummaryElement : public InsertionPoint {
 public:
     static PassRefPtr<DetailsSummaryElement> create(Document*);
 
@@ -70,10 +77,10 @@ public:
 
 private:
     DetailsSummaryElement(Document* document)
-        : HTMLContentElement(HTMLNames::webkitShadowContentTag, document)
+        : InsertionPoint(HTMLNames::webkitShadowContentTag, document)
     { }
 
-    virtual MatchType matchTypeFor(Node* node) OVERRIDE
+    virtual MatchType matchTypeFor(Node* node) const OVERRIDE
     {
         if (node->isElementNode() && node == node->parentNode()->querySelector(summaryQuerySelector(), ASSERT_NO_EXCEPTION))
             return AlwaysMatches;

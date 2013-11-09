@@ -253,7 +253,8 @@ static inline WebPage* webPage(HTMLPlugInElement* pluginElement)
     Frame* frame = pluginElement->document()->frame();
     ASSERT(frame);
 
-    WebPage* webPage = static_cast<WebFrameLoaderClient*>(frame->loader()->client())->webFrame()->page();
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebPage* webPage = webFrameLoaderClient ? webFrameLoaderClient->webFrame()->page() : 0;
     ASSERT(webPage);
 
     return webPage;
@@ -518,7 +519,14 @@ void PluginView::setLayerHostingMode(LayerHostingMode layerHostingMode)
 
     m_plugin->setLayerHostingMode(layerHostingMode);
 }
-
+    
+NSObject *PluginView::accessibilityObject() const
+{
+    if (!m_isInitialized || !m_plugin)
+        return 0;
+    
+    return m_plugin->accessibilityObject();
+}
 #endif
 
 void PluginView::initializePlugin()
@@ -574,17 +582,19 @@ void PluginView::didInitializePlugin()
 
 #if PLATFORM(MAC)
     if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting) {
+        if (m_plugin->pluginLayer() && frame()) {
+            frame()->view()->enterCompositingMode();
+            m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
+        }
         if (frame() && !frame()->settings()->maximumPlugInSnapshotAttempts()) {
             m_pluginElement->setDisplayState(HTMLPlugInElement::DisplayingSnapshot);
             return;
         }
         m_pluginSnapshotTimer.restart();
     } else {
-        if (m_plugin->pluginLayer()) {
-            if (frame()) {
-                frame()->view()->enterCompositingMode();
-                m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
-            }
+        if (m_plugin->pluginLayer() && frame()) {
+            frame()->view()->enterCompositingMode();
+            m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
         }
         if (m_pluginElement->displayState() == HTMLPlugInElement::RestartingWithPendingMouseClick)
             m_pluginElement->dispatchPendingMouseClick();
@@ -1029,9 +1039,9 @@ void PluginView::focusPluginElement()
     ASSERT(frame());
     
     if (Page* page = frame()->page())
-       page->focusController()->setFocusedNode(m_pluginElement.get(), frame());
+        page->focusController()->setFocusedElement(m_pluginElement.get(), frame());
     else
-       frame()->document()->setFocusedNode(m_pluginElement);
+        frame()->document()->setFocusedElement(m_pluginElement);
 }
 
 void PluginView::pendingURLRequestsTimerFired()
@@ -1103,7 +1113,10 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     // Now ask the frame to load the request.
     targetFrame->loader()->load(FrameLoadRequest(targetFrame, request->request()));
 
-    WebFrame* targetWebFrame = static_cast<WebFrameLoaderClient*>(targetFrame->loader()->client())->webFrame();
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(targetFrame->loader()->client());
+    WebFrame* targetWebFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    ASSERT(targetWebFrame);
+
     if (WebFrame::LoadListener* loadListener = targetWebFrame->loadListener()) {
         // Check if another plug-in view or even this view is waiting for the frame to load.
         // If it is, tell it that the load was cancelled because it will be anyway.
@@ -1367,7 +1380,7 @@ void PluginView::setStatusbarText(const String& statusbarText)
     if (!page)
         return;
 
-    page->chrome()->setStatusbarText(frame(), statusbarText);
+    page->chrome().setStatusbarText(frame(), statusbarText);
 }
 
 bool PluginView::isAcceleratedCompositingEnabled()
@@ -1379,8 +1392,6 @@ bool PluginView::isAcceleratedCompositingEnabled()
     if (!settings)
         return false;
 
-    if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting)
-        return false;
     return settings->acceleratedCompositingEnabled();
 }
 
@@ -1424,6 +1435,12 @@ mach_port_t PluginView::compositingRenderServerPort()
 {
     return WebProcess::shared().compositingRenderServerPort();
 }
+
+void PluginView::openPluginPreferencePane()
+{
+    ASSERT_NOT_REACHED();
+}
+
 #endif
 
 float PluginView::contentsScaleFactor()
@@ -1623,6 +1640,11 @@ static bool isAlmostSolidColor(BitmapImage* bitmap)
 void PluginView::pluginSnapshotTimerFired(DeferrableOneShotTimer<PluginView>*)
 {
     ASSERT(m_plugin);
+
+    if (m_pluginElement->isPlugInImageElement() && !m_plugin->supportsSnapshotting()) {
+        toHTMLPlugInImageElement(m_pluginElement.get())->restartSnapshottedPlugIn();
+        return;
+    }
 
     // Snapshot might be 0 if plugin size is 0x0.
     RefPtr<ShareableBitmap> snapshot = m_plugin->snapshot();

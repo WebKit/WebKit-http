@@ -394,14 +394,18 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
     if (unloadEventPolicy != UnloadEventPolicyNone) {
         if (m_frame->document()) {
             if (m_didCallImplicitClose && !m_wasUnloadEventEmitted) {
-                Node* currentFocusedNode = m_frame->document()->focusedNode();
-                if (currentFocusedNode && currentFocusedNode->toInputElement())
-                    currentFocusedNode->toInputElement()->endEditing();
+                Element* currentFocusedElement = m_frame->document()->focusedElement();
+                if (currentFocusedElement && currentFocusedElement->toInputElement())
+                    currentFocusedElement->toInputElement()->endEditing();
                 if (m_pageDismissalEventBeingDispatched == NoDismissal) {
                     if (unloadEventPolicy == UnloadEventPolicyUnloadAndPageHide) {
                         m_pageDismissalEventBeingDispatched = PageHideDismissal;
                         m_frame->document()->domWindow()->dispatchEvent(PageTransitionEvent::create(eventNames().pagehideEvent, m_frame->document()->inPageCache()), m_frame->document());
                     }
+
+                    // FIXME: update Page Visibility state here.
+                    // https://bugs.webkit.org/show_bug.cgi?id=116770
+
                     if (!m_frame->document()->inPageCache()) {
                         RefPtr<Event> unloadEvent(Event::create(eventNames().unloadEvent, false, false));
                         // The DocumentLoader (and thus its DocumentLoadTiming) might get destroyed
@@ -474,6 +478,18 @@ void FrameLoader::stop()
     icon()->stopLoader();
 }
 
+void FrameLoader::willTransitionToCommitted()
+{
+    // This function is called when a frame is still fully in place (not cached, not detached), but will be replaced.
+
+    if (m_frame->editor().hasComposition()) {
+        // The text was already present in DOM, so it's better to confirm than to cancel the composition.
+        m_frame->editor().confirmComposition();
+        if (EditorClient* editorClient = m_frame->editor().client())
+            editorClient->respondToChangedSelection(m_frame);
+    }
+}
+
 bool FrameLoader::closeURL()
 {
     history()->saveDocumentState();
@@ -482,7 +498,7 @@ bool FrameLoader::closeURL()
     Document* currentDocument = m_frame->document();
     stopLoading(currentDocument && !currentDocument->inPageCache() ? UnloadEventPolicyUnloadAndPageHide : UnloadEventPolicyUnloadOnly);
     
-    m_frame->editor()->clearUndoRedoOperations();
+    m_frame->editor().clearUndoRedoOperations();
     return true;
 }
 
@@ -495,7 +511,7 @@ bool FrameLoader::didOpenURL()
     }
 
     m_frame->navigationScheduler()->cancel();
-    m_frame->editor()->clearLastEditCommand();
+    m_frame->editor().clearLastEditCommand();
 
     m_isComplete = false;
     m_didCallImplicitClose = false;
@@ -544,7 +560,7 @@ void FrameLoader::cancelAndClear()
 
 void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool clearScriptObjects, bool clearFrameView)
 {
-    m_frame->editor()->clear();
+    m_frame->editor().clear();
 
     if (!m_needsClear)
         return;
@@ -1167,7 +1183,7 @@ void FrameLoader::loadFrameRequest(const FrameLoadRequest& request, bool lockHis
     Frame* targetFrame = sourceFrame->loader()->findFrameForNavigation(request.frameName());
     if (targetFrame && targetFrame != sourceFrame) {
         if (Page* page = targetFrame->page())
-            page->chrome()->focus();
+            page->chrome().focus();
     }
 }
 
@@ -1681,6 +1697,8 @@ void FrameLoader::commitProvisionalLoad()
         m_frame->document() ? m_frame->document()->url().elidedString().utf8().data() : "",
         pdl ? pdl->url().elidedString().utf8().data() : "<no provisional DocumentLoader>");
 
+    willTransitionToCommitted();
+
     // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
     // We are doing this here because we know for sure that a new page is about to be loaded.
     HistoryItem* item = history()->currentItem();
@@ -1804,7 +1822,7 @@ void FrameLoader::transitionToCommitted(PassRefPtr<CachedPage> cachedPage)
 
 #if ENABLE(TOUCH_EVENTS)
     if (isLoadingMainFrame())
-        m_frame->page()->chrome()->client()->needTouchEvents(false);
+        m_frame->page()->chrome().client()->needTouchEvents(false);
 #endif
 
     // Handle adding the URL to the back/forward list.
@@ -2578,11 +2596,7 @@ unsigned long FrameLoader::loadResourceSynchronously(const ResourceRequest& requ
         ASSERT(!newRequest.isNull());
         
         if (!documentLoader()->applicationCacheHost()->maybeLoadSynchronously(newRequest, error, response, data)) {
-#if USE(PLATFORM_STRATEGIES)
             platformStrategies()->loaderStrategy()->loadResourceSynchronously(networkingContext(), identifier, newRequest, storedCredentials, clientCredentialPolicy, error, response, data);
-#else
-            ResourceHandle::loadResourceSynchronously(networkingContext(), newRequest, storedCredentials, error, response, data);
-#endif
             documentLoader()->applicationCacheHost()->maybeLoadFallbackSynchronously(newRequest, error, response, data);
         }
     }
@@ -2700,8 +2714,9 @@ void FrameLoader::callContinueLoadAfterNavigationPolicy(void* argument,
 bool FrameLoader::shouldClose()
 {
     Page* page = m_frame->page();
-    Chrome* chrome = page ? page->chrome() : 0;
-    if (!chrome || !chrome->canRunBeforeUnloadConfirmPanel())
+    if (!page)
+        return true;
+    if (!page->chrome().canRunBeforeUnloadConfirmPanel())
         return true;
 
     // Store all references to each subframe in advance since beforeunload's event handler may modify frame
@@ -2718,7 +2733,7 @@ bool FrameLoader::shouldClose()
         for (i = 0; i < targetFrames.size(); i++) {
             if (!targetFrames[i]->tree()->isDescendantOf(m_frame))
                 continue;
-            if (!targetFrames[i]->loader()->fireBeforeUnloadEvent(chrome))
+            if (!targetFrames[i]->loader()->fireBeforeUnloadEvent(page->chrome()))
                 break;
         }
 
@@ -2732,7 +2747,7 @@ bool FrameLoader::shouldClose()
     return shouldClose;
 }
 
-bool FrameLoader::fireBeforeUnloadEvent(Chrome* chrome)
+bool FrameLoader::fireBeforeUnloadEvent(Chrome& chrome)
 {
     DOMWindow* domWindow = m_frame->document()->domWindow();
     if (!domWindow)
@@ -2753,7 +2768,7 @@ bool FrameLoader::fireBeforeUnloadEvent(Chrome* chrome)
         return true;
 
     String text = document->displayStringModifiedByEncoding(beforeUnloadEvent->result());
-    return chrome->runBeforeUnloadConfirmPanel(text, m_frame);
+    return chrome.runBeforeUnloadConfirmPanel(text, m_frame);
 }
 
 void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest&, PassRefPtr<FormState> formState, bool shouldContinue)
@@ -3335,8 +3350,10 @@ PassRefPtr<Frame> createWindow(Frame* openerFrame, Frame* lookupFrame, const Fra
 
     if (!request.frameName().isEmpty() && request.frameName() != "_blank") {
         if (Frame* frame = lookupFrame->loader()->findFrameForNavigation(request.frameName(), openerFrame->document())) {
-            if (Page* page = frame->page())
-                page->chrome()->focus();
+            if (request.frameName() != "_self") {
+                if (Page* page = frame->page())
+                    page->chrome().focus();
+            }
             created = false;
             return frame;
         }
@@ -3366,7 +3383,7 @@ PassRefPtr<Frame> createWindow(Frame* openerFrame, Frame* lookupFrame, const Fra
         return 0;
 
     NavigationAction action(requestWithReferrer.resourceRequest());
-    Page* page = oldPage->chrome()->createWindow(openerFrame, requestWithReferrer, features, action);
+    Page* page = oldPage->chrome().createWindow(openerFrame, requestWithReferrer, features, action);
     if (!page)
         return 0;
 
@@ -3377,18 +3394,18 @@ PassRefPtr<Frame> createWindow(Frame* openerFrame, Frame* lookupFrame, const Fra
     if (request.frameName() != "_blank")
         frame->tree()->setName(request.frameName());
 
-    page->chrome()->setToolbarsVisible(features.toolBarVisible || features.locationBarVisible);
-    page->chrome()->setStatusbarVisible(features.statusBarVisible);
-    page->chrome()->setScrollbarsVisible(features.scrollbarsVisible);
-    page->chrome()->setMenubarVisible(features.menuBarVisible);
-    page->chrome()->setResizable(features.resizable);
+    page->chrome().setToolbarsVisible(features.toolBarVisible || features.locationBarVisible);
+    page->chrome().setStatusbarVisible(features.statusBarVisible);
+    page->chrome().setScrollbarsVisible(features.scrollbarsVisible);
+    page->chrome().setMenubarVisible(features.menuBarVisible);
+    page->chrome().setResizable(features.resizable);
 
     // 'x' and 'y' specify the location of the window, while 'width' and 'height'
     // specify the size of the viewport. We can only resize the window, so adjust
     // for the difference between the window size and the viewport size.
 
-    FloatRect windowRect = page->chrome()->windowRect();
-    FloatSize viewportSize = page->chrome()->pageRect().size();
+    FloatRect windowRect = page->chrome().windowRect();
+    FloatSize viewportSize = page->chrome().pageRect().size();
 
     if (features.xSet)
         windowRect.setX(features.x);
@@ -3402,8 +3419,8 @@ PassRefPtr<Frame> createWindow(Frame* openerFrame, Frame* lookupFrame, const Fra
     // Ensure non-NaN values, minimum size as well as being within valid screen area.
     FloatRect newWindowRect = DOMWindow::adjustWindowRect(page, windowRect);
 
-    page->chrome()->setWindowRect(newWindowRect);
-    page->chrome()->show();
+    page->chrome().setWindowRect(newWindowRect);
+    page->chrome().show();
 
     created = true;
     return frame;

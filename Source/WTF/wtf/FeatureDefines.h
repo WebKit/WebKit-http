@@ -302,10 +302,6 @@
 #define ENABLE_BLOB 0
 #endif
 
-#if !defined(ENABLE_CALENDAR_PICKER)
-#define ENABLE_CALENDAR_PICKER 0
-#endif
-
 #if !defined(ENABLE_CANVAS_PATH)
 #define ENABLE_CANVAS_PATH 1
 #endif
@@ -572,10 +568,6 @@
 #define ENABLE_LINK_PREFETCH 0
 #endif
 
-#if !defined(ENABLE_LINK_PRERENDER)
-#define ENABLE_LINK_PRERENDER 0
-#endif
-
 #if !defined(ENABLE_MATHML)
 #define ENABLE_MATHML 1
 #endif
@@ -646,10 +638,6 @@
 
 #if !defined(ENABLE_ORIENTATION_EVENTS)
 #define ENABLE_ORIENTATION_EVENTS 0
-#endif
-
-#if !defined(ENABLE_PAGE_POPUP)
-#define ENABLE_PAGE_POPUP 0
 #endif
 
 #if !defined(ENABLE_PAGE_VISIBILITY_API)
@@ -820,10 +808,6 @@
 #define ENABLE_WEB_TIMING 0
 #endif
 
-#if !defined(ENABLE_WEB_TIMING_MINIMAL)
-#define ENABLE_WEB_TIMING_MINIMAL 0
-#endif
-
 #if !defined(ENABLE_WORKERS)
 #define ENABLE_WORKERS 0
 #endif
@@ -848,10 +832,6 @@
 
 #if ENABLE(VIDEO_TRACK) && !ENABLE(VIDEO)
 #error "ENABLE(VIDEO_TRACK) requires ENABLE(VIDEO)"
-#endif
-
-#if ENABLE(WEB_TIMING) && ENABLE(WEB_TIMING_MINIMAL)
-#error "ENABLE(WEB_TIMING) and ENABLE(WEB_TIMING_MINIMAL) are mutually exclusive."
 #endif
 
 #endif /* WTF_FeatureDefines_h */

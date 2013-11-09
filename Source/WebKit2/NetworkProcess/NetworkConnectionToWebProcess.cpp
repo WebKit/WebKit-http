@@ -156,7 +156,15 @@ void NetworkConnectionToWebProcess::setSerialLoadingEnabled(bool enabled)
 
 static NetworkStorageSession& storageSession(bool privateBrowsingEnabled)
 {
-    return privateBrowsingEnabled ? RemoteNetworkingContext::privateBrowsingSession() : NetworkStorageSession::defaultStorageSession();
+    if (privateBrowsingEnabled) {
+        NetworkStorageSession* privateSession = RemoteNetworkingContext::privateBrowsingSession();
+        if (privateSession)
+            return *privateSession;
+        // Some requests with private browsing mode requested may still be coming shortly after NetworkProcess was told to destroy its session.
+        // FIXME: Find a way to track private browsing sessions more rigorously.
+        LOG_ERROR("Private browsing was requested, but there was no session for it. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");
+    }
+    return NetworkStorageSession::defaultStorageSession();
 }
 
 void NetworkConnectionToWebProcess::startDownload(bool privateBrowsingEnabled, uint64_t downloadID, const ResourceRequest& request)
@@ -167,6 +175,11 @@ void NetworkConnectionToWebProcess::startDownload(bool privateBrowsingEnabled, u
 
 void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(uint64_t mainResourceLoadIdentifier, uint64_t downloadID, const ResourceRequest& request, const ResourceResponse& response)
 {
+    if (!mainResourceLoadIdentifier) {
+        NetworkProcess::shared().downloadManager().startDownload(downloadID, request);
+        return;
+    }
+
     NetworkResourceLoader* loader = m_networkResourceLoaders.get(mainResourceLoadIdentifier);
     NetworkProcess::shared().downloadManager().convertHandleToDownload(downloadID, loader->handle(), request, response);
 
@@ -208,8 +221,6 @@ void NetworkConnectionToWebProcess::deleteCookie(bool privateBrowsingEnabled, co
 
 void NetworkConnectionToWebProcess::registerBlobURL(const KURL& url, const BlobRegistrationData& data)
 {
-    // FIXME: unregister all URLs when process connection closes.
-
     Vector<RefPtr<SandboxExtension>> extensions;
     for (size_t i = 0, count = data.sandboxExtensions().size(); i < count; ++i) {
         if (RefPtr<SandboxExtension> extension = SandboxExtension::create(data.sandboxExtensions()[i]))

@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-    class BarInfo;
+    class BarProp;
     class CSSRuleList;
     class CSSStyleDeclaration;
     class Console;
@@ -134,12 +134,12 @@ namespace WebCore {
         Screen* screen() const;
         History* history() const;
         Crypto* crypto() const;
-        BarInfo* locationbar() const;
-        BarInfo* menubar() const;
-        BarInfo* personalbar() const;
-        BarInfo* scrollbars() const;
-        BarInfo* statusbar() const;
-        BarInfo* toolbar() const;
+        BarProp* locationbar() const;
+        BarProp* menubar() const;
+        BarProp* personalbar() const;
+        BarProp* scrollbars() const;
+        BarProp* statusbar() const;
+        BarProp* toolbar() const;
         Navigator* navigator() const;
         Navigator* clientInformation() const { return navigator(); }
 
@@ -399,7 +399,7 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(touchcancel);
 #endif
 
-#if ENABLE(WEB_TIMING) || ENABLE(WEB_TIMING_MINIMAL)
+#if ENABLE(WEB_TIMING)
         Performance* performance() const;
 #endif
 
@@ -411,6 +411,9 @@ namespace WebCore {
 
         void willDetachDocumentFromFrame();
         void willDestroyCachedFrame();
+
+        void enableSuddenTermination();
+        void disableSuddenTermination();
 
     private:
         explicit DOMWindow(Document*);
@@ -444,12 +447,12 @@ namespace WebCore {
         mutable RefPtr<Screen> m_screen;
         mutable RefPtr<History> m_history;
         mutable RefPtr<Crypto>  m_crypto;
-        mutable RefPtr<BarInfo> m_locationbar;
-        mutable RefPtr<BarInfo> m_menubar;
-        mutable RefPtr<BarInfo> m_personalbar;
-        mutable RefPtr<BarInfo> m_scrollbars;
-        mutable RefPtr<BarInfo> m_statusbar;
-        mutable RefPtr<BarInfo> m_toolbar;
+        mutable RefPtr<BarProp> m_locationbar;
+        mutable RefPtr<BarProp> m_menubar;
+        mutable RefPtr<BarProp> m_personalbar;
+        mutable RefPtr<BarProp> m_scrollbars;
+        mutable RefPtr<BarProp> m_statusbar;
+        mutable RefPtr<BarProp> m_toolbar;
         mutable RefPtr<Console> m_console;
         mutable RefPtr<Navigator> m_navigator;
         mutable RefPtr<Location> m_location;
@@ -464,7 +467,7 @@ namespace WebCore {
         mutable RefPtr<Storage> m_localStorage;
         mutable RefPtr<DOMApplicationCache> m_applicationCache;
 
-#if ENABLE(WEB_TIMING) || ENABLE(WEB_TIMING_MINIMAL)
+#if ENABLE(WEB_TIMING)
         mutable RefPtr<Performance> m_performance;
 #endif
 

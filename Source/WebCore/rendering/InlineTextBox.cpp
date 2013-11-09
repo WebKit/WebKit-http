@@ -53,6 +53,14 @@ using namespace std;
 
 namespace WebCore {
 
+struct SameSizeAsInlineTextBox : public InlineBox {
+    unsigned variables[1];
+    unsigned short variables2[2];
+    void* pointers[2];
+};
+
+COMPILE_ASSERT(sizeof(InlineTextBox) == sizeof(SameSizeAsInlineTextBox), InlineTextBox_should_stay_small);
+
 typedef WTF::HashMap<const InlineTextBox*, LayoutRect> InlineTextBoxOverflowMap;
 static InlineTextBoxOverflowMap* gTextBoxesWithOverflow;
 
@@ -289,7 +297,7 @@ float InlineTextBox::placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, flo
             // and the ellipsis edge.
             m_truncation = cFullTruncation;
             truncatedWidth += ellipsisWidth;
-            return min(ellipsisX, x());
+            return flowIsLTR ? min(ellipsisX, x()) : max(ellipsisX, right() - ellipsisWidth);
         }
 
         // Set the truncation index on the text run.
@@ -548,8 +556,8 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
         context->concatCTM(rotation(boxRect, Clockwise));
 
     // Determine whether or not we have composition underlines to draw.
-    bool containsComposition = renderer()->node() && renderer()->frame()->editor()->compositionNode() == renderer()->node();
-    bool useCustomUnderlines = containsComposition && renderer()->frame()->editor()->compositionUsesCustomUnderlines();
+    bool containsComposition = renderer()->node() && renderer()->frame()->editor().compositionNode() == renderer()->node();
+    bool useCustomUnderlines = containsComposition && renderer()->frame()->editor().compositionUsesCustomUnderlines();
 
     // Determine the text colors and selection colors.
     Color textFillColor;
@@ -657,8 +665,8 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
 
         if (containsComposition && !useCustomUnderlines)
             paintCompositionBackground(context, boxOrigin, styleToUse, font,
-                renderer()->frame()->editor()->compositionStart(),
-                renderer()->frame()->editor()->compositionEnd());
+                renderer()->frame()->editor().compositionStart(),
+                renderer()->frame()->editor().compositionEnd());
 
         paintDocumentMarkers(context, boxOrigin, styleToUse, font, true);
 
@@ -771,8 +779,8 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
     }
 
     // Paint decorations
-    ETextDecoration textDecorations = styleToUse->textDecorationsInEffect();
-    if (textDecorations != TDNONE && paintInfo.phase != PaintPhaseSelection) {
+    TextDecoration textDecorations = styleToUse->textDecorationsInEffect();
+    if (textDecorations != TextDecorationNone && paintInfo.phase != PaintPhaseSelection) {
         updateGraphicsContext(context, textFillColor, textStrokeColor, textStrokeWidth, styleToUse->colorSpace());
         if (combinedText)
             context->concatCTM(rotation(boxRect, Clockwise));
@@ -785,7 +793,7 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
         paintDocumentMarkers(context, boxOrigin, styleToUse, font, false);
 
         if (useCustomUnderlines) {
-            const Vector<CompositionUnderline>& underlines = renderer()->frame()->editor()->customCompositionUnderlines();
+            const Vector<CompositionUnderline>& underlines = renderer()->frame()->editor().customCompositionUnderlines();
             size_t numUnderlines = underlines.size();
 
             for (size_t index = 0; index < numUnderlines; ++index) {
@@ -929,7 +937,7 @@ void InlineTextBox::paintCustomHighlight(const LayoutPoint& paintOffset, const A
     FloatRect rootRect(paintOffset.x() + r->x(), paintOffset.y() + selectionTop(), r->logicalWidth(), selectionHeight());
     FloatRect textRect(paintOffset.x() + x(), rootRect.y(), logicalWidth(), rootRect.height());
 
-    page->chrome()->client()->paintCustomHighlight(renderer()->node(), type, textRect, rootRect, true, false);
+    page->chrome().client()->paintCustomHighlight(renderer()->node(), type, textRect, rootRect, true, false);
 }
 
 #endif
@@ -1111,7 +1119,7 @@ static void strokeWavyTextDecoration(GraphicsContext* context, FloatPoint& p1, F
 }
 #endif // CSS3_TEXT
 
-void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& boxOrigin, ETextDecoration deco, TextDecorationStyle decorationStyle, const ShadowData* shadow)
+void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& boxOrigin, TextDecoration deco, TextDecorationStyle decorationStyle, const ShadowData* shadow)
 {
     // FIXME: We should improve this rule and not always just assume 1.
     const float textDecorationThickness = 1.f;
@@ -1138,7 +1146,7 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
     bool isPrinting = textRenderer()->document()->printing();
     context->setStrokeThickness(textDecorationThickness);
 
-    bool linesAreOpaque = !isPrinting && (!(deco & UNDERLINE) || underline.alpha() == 255) && (!(deco & OVERLINE) || overline.alpha() == 255) && (!(deco & LINE_THROUGH) || linethrough.alpha() == 255);
+    bool linesAreOpaque = !isPrinting && (!(deco & TextDecorationUnderline) || underline.alpha() == 255) && (!(deco & TextDecorationOverline) || overline.alpha() == 255) && (!(deco & TextDecorationLineThrough) || linethrough.alpha() == 255);
 
     RenderStyle* styleToUse = renderer()->style(isFirstLineStyle());
     int baseline = styleToUse->fontMetrics().ascent();
@@ -1186,7 +1194,7 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
         float doubleOffset = textDecorationThickness + 1.f;
 #endif // CSS3_TEXT
         context->setStrokeStyle(textDecorationStyleToStrokeStyle(decorationStyle));
-        if (deco & UNDERLINE) {
+        if (deco & TextDecorationUnderline) {
             context->setStrokeColor(underline, colorSpace);
 #if ENABLE(CSS3_TEXT)
             TextUnderlinePosition underlinePosition = styleToUse->textUnderlinePosition();
@@ -1210,7 +1218,7 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
             context->drawLineForText(FloatPoint(localOrigin.x(), localOrigin.y() + baseline + 1), width, isPrinting);
 #endif // CSS3_TEXT
         }
-        if (deco & OVERLINE) {
+        if (deco & TextDecorationOverline) {
             context->setStrokeColor(overline, colorSpace);
 #if ENABLE(CSS3_TEXT)
             switch (decorationStyle) {
@@ -1229,7 +1237,7 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, const FloatPoint& 
             }
 #endif // CSS3_TEXT
         }
-        if (deco & LINE_THROUGH) {
+        if (deco & TextDecorationLineThrough) {
             context->setStrokeColor(linethrough, colorSpace);
 #if ENABLE(CSS3_TEXT)
             switch (decorationStyle) {
@@ -1359,7 +1367,7 @@ void InlineTextBox::paintTextMatchMarker(GraphicsContext* pt, const FloatPoint& 
     toRenderedDocumentMarker(marker)->setRenderedRect(markerRect);
     
     // Optionally highlight the text
-    if (renderer()->frame()->editor()->markedTextMatchesAreHighlighted()) {
+    if (renderer()->frame()->editor().markedTextMatchesAreHighlighted()) {
         Color color = marker->activeMatch() ?
             renderer()->theme()->platformActiveTextSearchHighlightColor() :
             renderer()->theme()->platformInactiveTextSearchHighlightColor();

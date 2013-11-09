@@ -28,7 +28,7 @@
 
 #if ENABLE(PLUGIN_PROCESS)
 
-#include "PluginProcess.h"
+#include "PluginProcessAttributes.h"
 
 #if PLATFORM(MAC)
 #include "MachPort.h"
@@ -47,7 +47,7 @@ struct PluginProcessCreationParameters {
     void encode(CoreIPC::ArgumentEncoder&) const;
     static bool decode(CoreIPC::ArgumentDecoder&, PluginProcessCreationParameters&);
 
-    PluginProcess::Type processType;
+    PluginProcessType processType;
     bool supportsAsynchronousPluginInitialization;
 
     double minimumLifetime;

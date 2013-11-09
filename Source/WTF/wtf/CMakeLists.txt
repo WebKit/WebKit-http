@@ -11,7 +11,6 @@ set(WTF_HEADERS
     BumpPointerAllocator.h
     ByteOrder.h
     Compiler.h
-    Complex.h
     CryptographicallyRandomNumber.h
     CurrentTime.h
     DateMath.h
@@ -45,7 +44,6 @@ set(WTF_HEADERS
     Locker.h
     MD5.h
     MainThread.h
-    MallocZoneSupport.h
     MathExtras.h
     MediaTime.h
     MessageQueue.h
@@ -107,7 +105,6 @@ set(WTF_HEADERS
     Threading.h
     ThreadingPrimitives.h
     TypeTraits.h
-    UnusedParam.h
     VMTags.h
     ValueCheck.h
     Vector.h
@@ -217,6 +214,10 @@ set(WTF_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
 )
 
+set(WTF_LIBRARIES
+    ${CMAKE_DL_LIBS}
+)
+
 if (WTF_USE_ICU_UNICODE)
     list(APPEND WTF_HEADERS
         unicode/icu/UnicodeIcu.h
@@ -241,11 +242,34 @@ elseif (WTF_USE_WCHAR_UNICODE)
     )
 endif ()
 
+if (WIN32)
+    list(APPEND WTF_SOURCES
+        OSAllocatorWin.cpp
+        ThreadSpecificWin.cpp
+        ThreadingWin.cpp
+
+        win/OwnPtrWin.cpp
+    )
+else ()
+    list(APPEND WTF_HEADERS
+        ThreadIdentifierDataPthreads.h
+    )
+    list(APPEND WTF_SOURCES
+        OSAllocatorPosix.cpp
+        ThreadIdentifierDataPthreads.cpp
+        ThreadingPthreads.cpp
+    )
+endif ()
+
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_WRAP_SOURCELIST(${WTF_SOURCES})
 include_directories(${WTF_INCLUDE_DIRECTORIES})
 add_definitions(-DBUILDING_WTF)
-add_library(${WTF_LIBRARY_NAME} STATIC ${WTF_HEADERS} ${WTF_SOURCES})
-target_link_libraries(${WTF_LIBRARY_NAME} ${WTF_LIBRARIES})
-set_target_properties(${WTF_LIBRARY_NAME} PROPERTIES FOLDER "JavaScriptCore")
+add_library(WTF STATIC ${WTF_HEADERS} ${WTF_SOURCES})
+target_link_libraries(WTF ${WTF_LIBRARIES})
+set_target_properties(WTF PROPERTIES FOLDER "JavaScriptCore")
+
+if (WTF_OUTPUT_NAME)
+    set_target_properties(WTF PROPERTIES OUTPUT_NAME ${WTF_OUTPUT_NAME})
+endif ()

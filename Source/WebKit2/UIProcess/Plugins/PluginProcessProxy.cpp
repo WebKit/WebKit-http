@@ -53,21 +53,21 @@ static const double snapshottingMinimumLifetime = 30;
 static const double shutdownTimeout = 1 * 60;
 static const double snapshottingShutdownTimeout = 15;
 
-PassRefPtr<PluginProcessProxy> PluginProcessProxy::create(PluginProcessManager* PluginProcessManager, const PluginModuleInfo& pluginInfo, PluginProcess::Type processType)
+PassRefPtr<PluginProcessProxy> PluginProcessProxy::create(PluginProcessManager* PluginProcessManager, const PluginProcessAttributes& pluginProcessAttributes, uint64_t pluginProcessToken)
 {
-    return adoptRef(new PluginProcessProxy(PluginProcessManager, pluginInfo, processType));
+    return adoptRef(new PluginProcessProxy(PluginProcessManager, pluginProcessAttributes, pluginProcessToken));
 }
 
-PluginProcessProxy::PluginProcessProxy(PluginProcessManager* PluginProcessManager, const PluginModuleInfo& pluginInfo, PluginProcess::Type processType)
+PluginProcessProxy::PluginProcessProxy(PluginProcessManager* PluginProcessManager, const PluginProcessAttributes& pluginProcessAttributes, uint64_t pluginProcessToken)
     : m_pluginProcessManager(PluginProcessManager)
-    , m_pluginInfo(pluginInfo)
+    , m_pluginProcessAttributes(pluginProcessAttributes)
+    , m_pluginProcessToken(pluginProcessToken)
     , m_numPendingConnectionRequests(0)
 #if PLATFORM(MAC)
     , m_modalWindowIsShowing(false)
     , m_fullscreenWindowIsShowing(false)
     , m_preFullscreenAppPresentationOptions(0)
 #endif
-    , m_processType(processType)
 {
     connect();
 }
@@ -79,7 +79,7 @@ PluginProcessProxy::~PluginProcessProxy()
 void PluginProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
     launchOptions.processType = ProcessLauncher::PluginProcess;
-    platformGetLaunchOptions(launchOptions, m_pluginInfo);
+    platformGetLaunchOptions(launchOptions, m_pluginProcessAttributes);
 }
 
 // Asks the plug-in process to create a new connection to a web process. The connection identifier will be 
@@ -156,11 +156,6 @@ void PluginProcessProxy::pluginProcessCrashedOrFailedToLaunch()
     m_pluginProcessManager->removePluginProcessProxy(this);
 }
 
-void PluginProcessProxy::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::MessageDecoder& decoder)
-{
-    didReceivePluginProcessProxyMessage(connection, decoder);
-}
-
 void PluginProcessProxy::didClose(CoreIPC::Connection*)
 {
 #if PLATFORM(MAC)
@@ -173,7 +168,7 @@ void PluginProcessProxy::didClose(CoreIPC::Connection*)
 
     const Vector<WebContext*>& contexts = WebContext::allContexts();
     for (size_t i = 0; i < contexts.size(); ++i)
-        contexts[i]->sendToAllProcesses(Messages::PluginProcessConnectionManager::PluginProcessCrashed(m_pluginInfo.path, m_processType));
+        contexts[i]->sendToAllProcesses(Messages::PluginProcessConnectionManager::PluginProcessCrashed(m_pluginProcessToken));
 
     // This will cause us to be deleted.
     pluginProcessCrashedOrFailedToLaunch();
@@ -202,8 +197,8 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, CoreIPC::Connectio
     m_connection->open();
     
     PluginProcessCreationParameters parameters;
-    parameters.processType = m_processType;
-    if (m_processType == PluginProcess::TypeSnapshotProcess) {
+    parameters.processType = m_pluginProcessAttributes.processType;
+    if (parameters.processType == PluginProcessTypeSnapshot) {
         parameters.minimumLifetime = snapshottingMinimumLifetime;
         parameters.terminationTimeout = snapshottingShutdownTimeout;
     } else {

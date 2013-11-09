@@ -94,7 +94,9 @@ struct CSSParserString {
     operator String() const { return is8Bit() ? String(m_data.characters8, m_length) : String(m_data.characters16, m_length); }
     operator AtomicString() const { return is8Bit() ? AtomicString(m_data.characters8, m_length) : AtomicString(m_data.characters16, m_length); }
 
-    AtomicString lowerSubstring(unsigned position, unsigned length) const;
+#if ENABLE(CSS_VARIABLES)
+    AtomicString substring(unsigned position, unsigned length) const;
+#endif
 
     union {
         LChar* characters8;
@@ -186,13 +188,6 @@ public:
 
     void adoptSelectorVector(Vector<OwnPtr<CSSParserSelector> >& selectorVector);
 
-#if ENABLE(SHADOW_DOM)
-    CSSParserSelector* functionArgumentSelector() const { return m_functionArgumentSelector; }
-    void setFunctionArgumentSelector(CSSParserSelector* selector) { m_functionArgumentSelector = selector; }
-    bool isDistributedPseudoElement() const { return m_selector->isDistributedPseudoElement(); }
-    CSSParserSelector* findDistributedPseudoElementSelector() const;
-#endif
-
     CSSSelector::PseudoType pseudoType() const { return m_selector->pseudoType(); }
     bool isCustomPseudoElement() const { return m_selector->isCustomPseudoElement(); }
 
@@ -209,9 +204,6 @@ public:
 private:
     OwnPtr<CSSSelector> m_selector;
     OwnPtr<CSSParserSelector> m_tagHistory;
-#if ENABLE(SHADOW_DOM)
-    CSSParserSelector* m_functionArgumentSelector;
-#endif
 };
 
 inline bool CSSParserSelector::hasShadowDescendant() const

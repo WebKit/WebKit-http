@@ -10,11 +10,11 @@
             var article = document.createElement("div");
             document.body.appendChild(article);
             article.style.webkitFlowInto = "flow";
-            shouldBeNull("article.offsetParent");
+            shouldBe("article.offsetParent", "document.body");
 
             var chapter = document.createElement("div");
             article.appendChild(chapter);
-            shouldBeNull("chapter.offsetParent");
+            shouldBe("chapter.offsetParent", "document.body");
 
             article.style.position = "relative";
             shouldBe("chapter.offsetParent", "article");
@@ -30,7 +30,9 @@
             shouldBe("tdChild.offsetParent", "td");
 
             tdChild.style.webkitFlowInto = "flow";
-            shouldBeNull("tdChild.offsetParent");
+            shouldBe("tdChild.offsetParent", "document.body");
+
+            shouldBeNull("document.body.offsetParent");
         </script>
         <script src="../js/resources/js-test-post.js"></script>
     </body>

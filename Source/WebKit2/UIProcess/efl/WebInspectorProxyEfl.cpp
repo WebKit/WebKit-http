@@ -41,6 +41,7 @@
 #include <WebKit2/WKPageGroup.h>
 #include <WebKit2/WKPreferencesPrivate.h>
 #include <WebKit2/WKString.h>
+#include <WebKit2/WKViewEfl.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -209,6 +210,21 @@ void WebInspectorProxy::platformSetAttachedWindowHeight(unsigned)
 }
 
 void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformSetToolbarHeight(unsigned)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformSave(const String&, const String&, bool)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformAppend(const String&, const String&)
 {
     notImplemented();
 }

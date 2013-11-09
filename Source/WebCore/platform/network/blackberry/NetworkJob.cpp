@@ -115,7 +115,7 @@ NetworkJob::~NetworkJob()
         AuthenticationChallengeManager::instance()->cancelAuthenticationChallenge(this);
 }
 
-bool NetworkJob::initialize(int playerId,
+void NetworkJob::initialize(int playerId,
     const String& pageGroupName,
     const KURL& url,
     const BlackBerry::Platform::NetworkRequest& request,
@@ -164,8 +164,7 @@ bool NetworkJob::initialize(int playerId,
         m_contentDisposition = "filename=" + String(request.getSuggestedSaveName());
 
     BlackBerry::Platform::FilterStream* wrappedStream = m_streamFactory->createNetworkStream(request, m_playerId);
-    if (!wrappedStream)
-        return false;
+    ASSERT(wrappedStream);
 
     BlackBerry::Platform::NetworkRequest::TargetType targetType = request.getTargetType();
     if ((targetType == BlackBerry::Platform::NetworkRequest::TargetIsMainFrame
@@ -177,8 +176,6 @@ bool NetworkJob::initialize(int playerId,
     }
 
     setWrappedStream(wrappedStream);
-
-    return true;
 }
 
 int NetworkJob::cancelJob()
@@ -604,7 +601,7 @@ bool NetworkJob::shouldReleaseClientResource()
 
 bool NetworkJob::shouldNotifyClientFailed() const
 {
-    return m_extendedStatusCode < 0 || (isError(m_extendedStatusCode) && !m_dataReceived && !m_isHeadMethod);
+    return m_extendedStatusCode < 0 || (isError(m_extendedStatusCode) && !m_dataReceived && !m_isHeadMethod && m_handle->firstRequest().targetType() != ResourceRequest::TargetIsXHR);
 }
 
 bool NetworkJob::retryAsFTPDirectory()
@@ -645,7 +642,7 @@ bool NetworkJob::startNewJobWithRequest(ResourceRequest& newRequest, bool increa
     RefPtr<ResourceHandle> handle = m_handle;
     cancelJob();
 
-    NetworkManager::instance()->startJob(m_playerId,
+    int status = NetworkManager::instance()->startJob(m_playerId,
         m_pageGroupName,
         handle,
         newRequest,
@@ -654,7 +651,7 @@ bool NetworkJob::startNewJobWithRequest(ResourceRequest& newRequest, bool increa
         m_deferLoadingCount,
         increaseRedirectCount ? m_redirectCount + 1 : m_redirectCount,
         rereadCookies);
-    return true;
+    return status == BlackBerry::Platform::FilterStream::StatusSuccess;
 }
 
 bool NetworkJob::handleRedirect()
@@ -865,6 +862,7 @@ NetworkJob::SendRequestResult NetworkJob::sendRequestWithCredentials(ProtectionS
         challenge.setStored(true);
         updateCurrentWebChallenge(challenge);
     } else {
+        ASSERT(credential.isEmpty());
         if (m_handle->firstRequest().targetType() == ResourceRequest::TargetIsFavicon) {
             // The favicon loading is triggerred after the main resource has been loaded
             // and parsed, so if we cancel the authentication challenge when loading the main
@@ -900,7 +898,7 @@ NetworkJob::SendRequestResult NetworkJob::sendRequestWithCredentials(ProtectionS
             updateDeferLoadingCount(1);
 
             AuthenticationChallengeManager::instance()->authenticationChallenge(newURL, protectionSpace,
-                Credential(), this, m_frame->page()->chrome()->client()->platformPageClient());
+                Credential(), this, m_frame->page()->chrome().client()->platformPageClient());
             return SendRequestWaiting;
         }
 
@@ -956,7 +954,7 @@ void NetworkJob::storeCredentials(AuthenticationChallenge& challenge)
 
         BlackBerry::Platform::Settings::instance()->storeProxyCredentials(proxyInfo);
         if (m_frame && m_frame->page())
-            m_frame->page()->chrome()->client()->platformPageClient()->syncProxyCredential(challenge.proposedCredential());
+            m_frame->page()->chrome().client()->platformPageClient()->syncProxyCredential(challenge.proposedCredential());
     }
 }
 
@@ -967,6 +965,10 @@ void NetworkJob::purgeCredentials()
 
     purgeCredentials(m_handle->getInternal()->m_hostWebChallenge);
     purgeCredentials(m_handle->getInternal()->m_proxyWebChallenge);
+
+    m_handle->getInternal()->m_currentWebChallenge.nullify();
+    m_handle->getInternal()->m_proxyWebChallenge.nullify();
+    m_handle->getInternal()->m_hostWebChallenge.nullify();
 }
 
 void NetworkJob::purgeCredentials(AuthenticationChallenge& challenge)
@@ -993,11 +995,17 @@ void NetworkJob::purgeCredentials(AuthenticationChallenge& challenge)
         m_handle->getInternal()->m_pass = "";
     }
 
-    CredentialStorage::remove(challenge.protectionSpace());
-    challenge.setStored(false);
+    // Do not compare credential objects with == here, since we don't care about the persistence.
+
+    const Credential& storedCredential = CredentialStorage::get(challenge.protectionSpace());
+    if (storedCredential.user() == purgeUsername && storedCredential.password() == purgePassword) {
+        CredentialStorage::remove(challenge.protectionSpace());
+        challenge.setStored(false);
+    }
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-    if (challenge.proposedCredential() == credentialBackingStore().getLogin(challenge.protectionSpace()))
-        credentialBackingStore().removeLogin(challenge.protectionSpace(), challenge.proposedCredential().user());
+    const Credential& persistedCredential = credentialBackingStore().getLogin(challenge.protectionSpace());
+    if (persistedCredential.user() == purgeUsername && persistedCredential.password() == purgePassword)
+        credentialBackingStore().removeLogin(challenge.protectionSpace(), purgeUsername);
 #endif
 }
 

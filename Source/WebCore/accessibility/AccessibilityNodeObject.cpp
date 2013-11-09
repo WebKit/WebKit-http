@@ -315,7 +315,7 @@ AccessibilityRole AccessibilityNodeObject::determineAccessibilityRole()
         return ParagraphRole;
     if (node()->hasTagName(labelTag))
         return LabelRole;
-    if (node()->isFocusable())
+    if (node()->isElementNode() && toElement(node())->isFocusable())
         return GroupRole;
     
     return UnknownRole;
@@ -634,7 +634,9 @@ bool AccessibilityNodeObject::isPressed() const
         return false;
     }
 
-    return node->active();
+    if (!node->isElementNode())
+        return false;
+    return toElement(node)->active();
 }
 
 bool AccessibilityNodeObject::isChecked() const
@@ -672,7 +674,7 @@ bool AccessibilityNodeObject::isHovered() const
     if (!node)
         return false;
 
-    return node->hovered();
+    return node->isElementNode() && toElement(node)->hovered();
 }
 
 bool AccessibilityNodeObject::isMultiSelectable() const
@@ -1779,16 +1781,21 @@ bool AccessibilityNodeObject::canSetFocusAttribute() const
     if (isWebArea())
         return true;
     
-    // NOTE: It would be more accurate to ask the document whether setFocusedNode() would
-    // do anything. For example, setFocusedNode() will do nothing if the current focused
+    // NOTE: It would be more accurate to ask the document whether setFocusedElement() would
+    // do anything. For example, setFocusedElement() will do nothing if the current focused
     // node will not relinquish the focus.
     if (!node)
         return false;
 
-    if (isDisabledFormControl(node))
+    if (!node->isElementNode())
         return false;
 
-    return node->supportsFocus();
+    Element* element = toElement(node);
+
+    if (element->isDisabledFormControl())
+        return false;
+
+    return element->supportsFocus();
 }
 
 AccessibilityRole AccessibilityNodeObject::determineAriaRoleAttribute() const

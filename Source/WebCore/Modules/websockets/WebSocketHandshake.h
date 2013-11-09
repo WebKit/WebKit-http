@@ -34,15 +34,15 @@
 #if ENABLE(WEB_SOCKETS)
 
 #include "KURL.h"
+#include "ResourceResponse.h"
 #include "WebSocketExtensionDispatcher.h"
 #include "WebSocketExtensionProcessor.h"
-#include "WebSocketHandshakeRequest.h"
-#include "WebSocketHandshakeResponse.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class ResourceRequest;
 class ScriptExecutionContext;
 
 class WebSocketHandshake {
@@ -67,7 +67,7 @@ public:
     String clientLocation() const;
 
     CString clientHandshakeMessage() const;
-    PassRefPtr<WebSocketHandshakeRequest> clientHandshakeRequest() const;
+    ResourceRequest clientHandshakeRequest() const;
 
     void reset();
     void clearScriptExecutionContext();
@@ -84,7 +84,7 @@ public:
     String serverWebSocketAccept() const;
     String acceptedExtensions() const;
 
-    const WebSocketHandshakeResponse& serverHandshakeResponse() const;
+    const ResourceResponse& serverHandshakeResponse() const;
 
     void addExtensionProcessor(PassOwnPtr<WebSocketExtensionProcessor>);
 
@@ -107,7 +107,7 @@ private:
 
     Mode m_mode;
 
-    WebSocketHandshakeResponse m_response;
+    ResourceResponse m_serverHandshakeResponse;
 
     String m_failureReason;
 

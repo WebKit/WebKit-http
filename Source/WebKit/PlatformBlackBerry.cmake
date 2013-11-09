@@ -1,6 +1,5 @@
 list(INSERT WebKit_INCLUDE_DIRECTORIES 0
     "${BLACKBERRY_THIRD_PARTY_DIR}" # For <unicode.h>, which is included from <sys/keycodes.h>.
-    "${BLACKBERRY_THIRD_PARTY_DIR}/icu"
 )
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
@@ -101,18 +100,17 @@ list(APPEND WebKit_SOURCES
     blackberry/WebCoreSupport/InspectorClientBlackBerry.cpp
     blackberry/WebCoreSupport/NetworkInfoClientBlackBerry.cpp
     blackberry/WebCoreSupport/NotificationClientBlackBerry.cpp
-    blackberry/WebCoreSupport/PagePopupBlackBerry.cpp
+    blackberry/WebCoreSupport/PlatformStrategiesBlackBerry.cpp
     blackberry/WebCoreSupport/NavigatorContentUtilsClientBlackBerry.cpp
-    blackberry/WebCoreSupport/SelectPopupClient.cpp
     blackberry/WebCoreSupport/SuggestionBoxHandler.cpp
     blackberry/WebCoreSupport/SuggestionBoxElement.cpp
     blackberry/WebCoreSupport/VibrationClientBlackBerry.cpp
-    blackberry/WebCoreSupport/DatePickerClient.cpp
-    blackberry/WebCoreSupport/ColorPickerClient.cpp
     blackberry/WebKitSupport/AboutData.cpp
     blackberry/WebKitSupport/BackingStoreTile.cpp
     blackberry/WebKitSupport/BackingStoreClient.cpp
     blackberry/WebKitSupport/BackingStoreVisualizationViewportAccessor.cpp
+    blackberry/WebKitSupport/ColorPickerClient.cpp
+    blackberry/WebKitSupport/DatePickerClient.cpp
     blackberry/WebKitSupport/DefaultTapHighlight.cpp
     blackberry/WebKitSupport/DOMSupport.cpp
     blackberry/WebKitSupport/FrameLayers.cpp
@@ -121,8 +119,11 @@ list(APPEND WebKit_SOURCES
     blackberry/WebKitSupport/InRegionScrollableArea.cpp
     blackberry/WebKitSupport/InspectorOverlayBlackBerry.cpp
     blackberry/WebKitSupport/NotificationManager.cpp
+    blackberry/WebKitSupport/PagePopup.cpp
+    blackberry/WebKitSupport/PagePopupClient.cpp
     blackberry/WebKitSupport/ProximityDetector.cpp
     blackberry/WebKitSupport/RenderQueue.cpp
+    blackberry/WebKitSupport/SelectPopupClient.cpp
     blackberry/WebKitSupport/SelectionHandler.cpp
     blackberry/WebKitSupport/SelectionOverlay.cpp
     blackberry/WebKitSupport/SpellingHandler.cpp
@@ -180,7 +181,7 @@ list(APPEND WebKit_LIBRARIES
     ${INTL_LIBRARY}
     ${ITYPE_LIBRARY}
     ${JPEG_LIBRARY}
-    ${JavaScriptCore_LIBRARY_NAME}
+    JavaScriptCore
     ${LEVELDB_LIBRARY}
     ${MMR_LIBRARY}
     ${M_LIBRARY}
@@ -264,7 +265,7 @@ endif ()
 add_custom_target(
     inspector ALL
     command cp ${WEBCORE_DIR}/inspector/front-end/inspector.html ${DERIVED_SOURCES_WEBCORE_DIR}/inspectorBB.html && echo '<script src="inspectorBB.js"></script>'  >> ${DERIVED_SOURCES_WEBCORE_DIR}/inspectorBB.html
-    DEPENDS ${WebCore_LIBRARY_NAME}
+    DEPENDS WebCore
     COMMENT "Web Inspector resources building..."
 )
 

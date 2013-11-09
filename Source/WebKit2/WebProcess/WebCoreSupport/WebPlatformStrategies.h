@@ -26,8 +26,6 @@
 #ifndef WebPlatformStrategies_h
 #define WebPlatformStrategies_h
 
-#if USE(PLATFORM_STRATEGIES)
-
 #include <WebCore/CookiesStrategy.h>
 #include <WebCore/DatabaseStrategy.h>
 #include <WebCore/LoaderStrategy.h>
@@ -83,6 +81,9 @@ private:
     virtual void refreshPlugins() OVERRIDE;
     virtual void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) OVERRIDE;
 
+    // WebCore::SharedWorkerStrategy.
+    virtual bool isAvailable() const OVERRIDE;
+
     // WebCore::StorageStrategy.
     virtual PassRefPtr<WebCore::StorageNamespace> localStorageNamespace(WebCore::PageGroup*) OVERRIDE;
     virtual PassRefPtr<WebCore::StorageNamespace> transientLocalStorageNamespace(WebCore::PageGroup*, WebCore::SecurityOrigin*) OVERRIDE;
@@ -125,7 +126,5 @@ void handleDidGetPlugins(uint64_t requestID, const Vector<WebCore::PluginInfo>&)
 #endif // ENABLE(PLUGIN_PROCESS)
 
 } // namespace WebKit
-
-#endif // USE(PLATFORM_STRATEGIES)
 
 #endif // WebPlatformStrategies_h

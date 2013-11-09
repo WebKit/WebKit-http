@@ -57,6 +57,9 @@ public:
     void show();
     void close();
 
+    void didSave(const String& url);
+    void didAppend(const String& url);
+
     void attachedBottom();
     void attachedRight();
     void detached();
@@ -94,12 +97,17 @@ private:
     void bringToFront();
     void inspectedURLChanged(const String&);
 
+    bool canSave() const;
+    void save(const String& filename, const String& content, bool forceSaveAs);
+    void append(const String& filename, const String& content);
+
     void attachBottom();
     void attachRight();
     void detach();
 
     void setAttachedWindowHeight(unsigned);
     void setAttachedWindowWidth(unsigned);
+    void setToolbarHeight(unsigned);
 
     // Implemented in platform WebInspector file
     String localizedStringsURL() const;

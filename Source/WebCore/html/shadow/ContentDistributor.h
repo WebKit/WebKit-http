@@ -44,62 +44,6 @@ class InsertionPoint;
 class Node;
 class ShadowRoot;
 
-class ContentDistribution {
-public:
-    PassRefPtr<Node> first() const { return m_nodes.first(); }
-    PassRefPtr<Node> last() const { return m_nodes.last(); }
-    PassRefPtr<Node> at(size_t index) const { return m_nodes.at(index); }
-
-    size_t size() const { return m_nodes.size(); }
-    bool isEmpty() const { return m_nodes.isEmpty(); }
-
-    void append(PassRefPtr<Node>);
-    void clear() { m_nodes.clear(); m_indices.clear(); }
-
-    bool contains(const Node* node) const { return m_indices.contains(node); }
-    size_t find(const Node*) const;
-    Node* nextTo(const Node*) const;
-    Node* previousTo(const Node*) const;
-
-    void swap(ContentDistribution& other);
-
-    const Vector<RefPtr<Node> >& nodes() const { return m_nodes; }
-
-private:
-    Vector<RefPtr<Node> > m_nodes;
-    HashMap<const Node*, size_t> m_indices;
-};
-
-class ScopeContentDistribution {
-public:
-    ScopeContentDistribution();
-
-    void registerInsertionPoint(InsertionPoint*);
-    void unregisterInsertionPoint(InsertionPoint*);
-    bool hasContentElementChildren() const { return m_numberOfContentElementChildren > 0; }
-
-    void registerElementShadow() { ++m_numberOfElementShadowChildren; }
-    void unregisterElementShadow() { ASSERT(m_numberOfElementShadowChildren > 0); --m_numberOfElementShadowChildren; }
-    unsigned numberOfElementShadowChildren() const { return m_numberOfElementShadowChildren; }
-    bool hasElementShadowChildren() const { return m_numberOfElementShadowChildren > 0; }
-
-    void invalidateInsertionPointList();
-    const Vector<RefPtr<InsertionPoint> >& ensureInsertionPointList(ShadowRoot*);
-
-    bool isUsedForRendering() const;
-
-    static bool hasContentElement(const ShadowRoot*);
-    static bool hasInsertionPoint(const ShadowRoot*);
-    static bool hasElementShadow(const ShadowRoot* holder) { return countElementShadow(holder); }
-    static unsigned countElementShadow(const ShadowRoot*);
-
-private:
-    unsigned m_numberOfContentElementChildren;
-    unsigned m_numberOfElementShadowChildren;
-    bool m_insertionPointListIsValid;
-    Vector<RefPtr<InsertionPoint> > m_insertionPointList;
-};
-
 class ContentDistributor {
     WTF_MAKE_NONCOPYABLE(ContentDistributor);
 public:
@@ -113,10 +57,11 @@ public:
     ContentDistributor();
     ~ContentDistributor();
 
+    void invalidateInsertionPointList();
+    
     InsertionPoint* findInsertionPointFor(const Node* key) const;
 
-    void distributeSelectionsTo(InsertionPoint*, const ContentDistribution& pool, Vector<bool>& distributed);
-    void distributeNodeChildrenTo(InsertionPoint*, ContainerNode*);
+    void distributeSelectionsTo(InsertionPoint*, Element* host);
 
     void invalidateDistribution(Element* host);
     void didShadowBoundaryChange(Element* host);
@@ -124,16 +69,19 @@ public:
     static void ensureDistribution(ShadowRoot*);
 
 private:
+    const Vector<RefPtr<InsertionPoint> >& ensureInsertionPointList(ShadowRoot*);
+
     void distribute(Element* host);
     bool invalidate(Element* host);
-    void populate(Node*, ContentDistribution&);
 
     void setValidity(Validity validity) { m_validity = validity; }
     bool isValid() const { return m_validity == Valid; }
     bool needsDistribution() const;
     bool needsInvalidation() const { return m_validity != Invalidated; }
 
+    Vector<RefPtr<InsertionPoint> > m_insertionPointList;
     HashMap<const Node*, RefPtr<InsertionPoint> > m_nodeToInsertionPoint;
+    bool m_insertionPointListIsValid;
     unsigned m_validity : 2;
 };
 

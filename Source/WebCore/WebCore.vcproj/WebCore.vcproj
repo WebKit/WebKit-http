@@ -739,7 +739,7 @@
 				>
 			</File>
 			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSBarInfo.cpp"
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSBarProp.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
@@ -791,7 +791,7 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSBarInfo.h"
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\JSBarProp.h"
 				>
 			</File>
 			<File
@@ -25910,22 +25910,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\Modules\websockets\WebSocketHandshakeRequest.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\Modules\websockets\WebSocketHandshakeRequest.h"
-					>
-				</File>
-				<File
-					RelativePath="..\Modules\websockets\WebSocketHandshakeResponse.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\Modules\websockets\WebSocketHandshakeResponse.h"
-					>
-				</File>
-				<File
 					RelativePath="..\Modules\websockets\WorkerThreadableWebSocketChannel.cpp"
 					>
 				</File>
@@ -27259,11 +27243,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\page\BarInfo.cpp"
+				RelativePath="..\page\BarProp.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\page\BarInfo.h"
+				RelativePath="..\page\BarProp.h"
 				>
 			</File>
 			<File
@@ -28135,22 +28119,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\loader\Prerenderer.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\loader\Prerenderer.h"
-				>
-			</File>
-			<File
-				RelativePath="..\loader\PrerendererClient.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\loader\PrerendererClient.h"
-				>
-			</File>
-			<File
 				RelativePath="..\loader\ProgressTracker.cpp"
 				>
 			</File>
@@ -28879,14 +28847,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\platform\EventTracer.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\platform\EventTracer.h"
-				>
-			</File>
-			<File
 				RelativePath="..\platform\FileChooser.cpp"
 				>
 			</File>
@@ -29031,14 +28991,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\platform\MemoryUsageSupport.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\platform\MemoryUsageSupport.h"
-				>
-			</File>
-			<File
 				RelativePath="..\platform\MainThreadTask.h"
 				>
 			</File>
@@ -29116,14 +29068,6 @@
 			</File>
 			<File
 				RelativePath="..\platform\PopupMenuStyle.h"
-				>
-			</File>
-			<File
-				RelativePath="..\platform\PrerenderClient.h"
-				>
-			</File>
-			<File
-				RelativePath="..\platform\PrerenderHandle.h"
 				>
 			</File>
 			<File
@@ -29260,10 +29204,6 @@
 			</File>
 			<File
 				RelativePath="..\platform\SuddenTermination.h"
-				>
-			</File>
-			<File
-				RelativePath="..\platform\SystemTime.h"
 				>
 			</File>
 			<File
@@ -29614,10 +29554,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\platform\win\SystemTimeWin.cpp"
-					>
-				</File>
-				<File
 					RelativePath="..\platform\win\TemporaryLinkStubs.cpp"
 					>
 				</File>
@@ -29794,14 +29730,6 @@
 				Name="cf"
 				>
 				<File
-					RelativePath="..\platform\cf\BinaryPropertyList.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\cf\BinaryPropertyList.h"
-					>
-				</File>
-				<File
 					RelativePath="..\platform\cf\FileSystemCF.cpp"
 					>
 				</File>
@@ -29954,14 +29882,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\platform\graphics\FontFamily.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\graphics\FontFamily.h"
-					>
-				</File>
-				<File
 					RelativePath="..\platform\graphics\FontFastPath.cpp"
 					>
 				</File>
@@ -30007,10 +29927,6 @@
 				</File>
 				<File
 					RelativePath="..\platform\graphics\GeneratedImage.h"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\graphics\Generator.h"
 					>
 				</File>
 				<File
@@ -33019,14 +32935,6 @@
 				</File>
 				<File
 					RelativePath="..\platform\network\HTTPParsers.h"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\network\HTTPRequest.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\platform\network\HTTPRequest.h"
 					>
 				</File>
 				<File
@@ -68294,110 +68202,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\bindings\js\JSDOMWindowWebAudioCustom.cpp"
-					>
-					<FileConfiguration
-						Name="Debug|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Release|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug_Cairo_CFLite|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Release_Cairo_CFLite|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug_All|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Production|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
-					RelativePath="..\bindings\js\JSDOMWindowWebSocketCustom.cpp"
-					>
-					<FileConfiguration
-						Name="Debug|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Release|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug_Cairo_CFLite|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Release_Cairo_CFLite|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug_All|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Production|Win32"
-						ExcludedFromBuild="true"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-						/>
-					</FileConfiguration>
-				</File>
-				<File
 					RelativePath="..\bindings\js\JSDOMWrapper.cpp"
 					>
 					<FileConfiguration
@@ -75190,18 +74994,6 @@
 				RelativePath="..\history\PageCache.h"
 				>
 			</File>
-			<Filter
-				Name="cf"
-				>
-				<File
-					RelativePath="..\history\cf\HistoryPropertyList.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\history\cf\HistoryPropertyList.h"
-					>
-				</File>
-			</Filter>
 		</Filter>
 		<Filter
 			Name="storage"
@@ -77519,14 +77311,6 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\NativeMemoryGraph.js"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\nativeMemoryProfiler.css"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\NativeMemorySnapshotView.js"
 					>
 				</File>
 				<File

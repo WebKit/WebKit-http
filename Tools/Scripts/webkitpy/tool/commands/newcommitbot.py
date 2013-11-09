@@ -37,6 +37,7 @@ from webkitpy.tool.bot.irc_command import Help
 from webkitpy.tool.bot.irc_command import Hi
 from webkitpy.tool.bot.irc_command import PingPong
 from webkitpy.tool.bot.irc_command import Restart
+from webkitpy.tool.bot.irc_command import YouThere
 from webkitpy.tool.bot.ircbot import IRCBot
 from webkitpy.tool.commands.queues import AbstractQueue
 from webkitpy.tool.commands.stepsequence import StepSequenceErrorHandler
@@ -44,14 +45,24 @@ from webkitpy.tool.commands.stepsequence import StepSequenceErrorHandler
 _log = logging.getLogger(__name__)
 
 
+class Agent(object):
+    def __init__(self, tool, newcommitbot):
+        self._tool = tool
+        self._newcommitbot = newcommitbot
+
+    def name(self):
+        return 'WKR'
+
+
 class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
-    name = "new-commit-bot"
+    name = "WKR"
     watchers = AbstractQueue.watchers + ["rniwa@webkit.org"]
 
     _commands = {
         "hi": Hi,
         "ping": PingPong,
         "restart": Restart,
+        "yt?": YouThere,
     }
 
     _maximum_number_of_revisions_to_avoid_spamming_irc = 10
@@ -61,7 +72,7 @@ class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
     def begin_work_queue(self):
         AbstractQueue.begin_work_queue(self)
         self._last_svn_revision = int(self._tool.scm().head_svn_revision())
-        self._irc_bot = IRCBot('WKR', self._tool, None, self._commands)
+        self._irc_bot = IRCBot(self.name, self._tool, Agent(self._tool, self), self._commands)
         self._tool.ensure_irc_connected(self._irc_bot.irc_delegate())
 
     def work_item_log_path(self, failure_map):
@@ -80,9 +91,6 @@ class NewCommitBot(AbstractQueue, StepSequenceErrorHandler):
                     self._tool.scm().strip_r_from_svn_revision(new_revision)])
             except ScriptError:
                 break
-
-            if commit_log.find('No such revision') >= 0:
-                continue
 
             self._last_svn_revision = new_revision
             if self._is_empty_log(commit_log):

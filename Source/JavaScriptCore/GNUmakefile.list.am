@@ -76,7 +76,6 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/assembler/MacroAssemblerARMv7.h \
 	Source/JavaScriptCore/assembler/MacroAssemblerCodeRef.h \
 	Source/JavaScriptCore/assembler/MacroAssemblerMIPS.h \
-	Source/JavaScriptCore/assembler/MacroAssemblerSH4.cpp \
 	Source/JavaScriptCore/assembler/MacroAssemblerSH4.h \
 	Source/JavaScriptCore/assembler/MacroAssemblerX86.h \
 	Source/JavaScriptCore/assembler/MacroAssemblerX86Common.h \
@@ -270,8 +269,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT.cpp \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT.h \
 	Source/JavaScriptCore/dfg/DFGStructureAbstractValue.h \
-	Source/JavaScriptCore/dfg/DFGStructureCheckHoistingPhase.cpp \
-	Source/JavaScriptCore/dfg/DFGStructureCheckHoistingPhase.h \
+	Source/JavaScriptCore/dfg/DFGTypeCheckHoistingPhase.cpp \
+	Source/JavaScriptCore/dfg/DFGTypeCheckHoistingPhase.h \
 	Source/JavaScriptCore/dfg/DFGThunks.cpp \
 	Source/JavaScriptCore/dfg/DFGThunks.h \
 	Source/JavaScriptCore/dfg/DFGUnificationPhase.cpp \

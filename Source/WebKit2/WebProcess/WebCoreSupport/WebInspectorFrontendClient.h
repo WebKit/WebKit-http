@@ -44,11 +44,16 @@ private:
     virtual void bringToFront() OVERRIDE;
     virtual void closeWindow() OVERRIDE;
 
+    virtual bool canSave() OVERRIDE;
+    virtual void save(const String&, const String&, bool) OVERRIDE;
+    virtual void append(const String&, const String&) OVERRIDE;
+
     virtual void attachWindow(DockSide) OVERRIDE;
     virtual void detachWindow() OVERRIDE;
 
     virtual void setAttachedWindowHeight(unsigned) OVERRIDE;
     virtual void setAttachedWindowWidth(unsigned) OVERRIDE;
+    virtual void setToolbarHeight(unsigned) OVERRIDE;
 
     virtual void inspectedURLChanged(const String&) OVERRIDE;
 

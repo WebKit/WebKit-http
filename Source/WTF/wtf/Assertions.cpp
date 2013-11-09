@@ -328,8 +328,21 @@ void WTFSetCrashHook(WTFCrashHookFunction function)
 
 void WTFInvokeCrashHook()
 {
+}
+
+void WTFCrash()
+{
     if (globalHook)
         globalHook();
+
+    WTFReportBacktrace();
+    *(int *)(uintptr_t)0xbbadbeef = 0;
+    // More reliable, but doesn't say BBADBEEF.
+#if COMPILER(CLANG)
+    __builtin_trap();
+#else
+    ((void(*)())0)();
+#endif
 }
 
 #if HAVE(SIGNAL_H)

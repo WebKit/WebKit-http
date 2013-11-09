@@ -187,6 +187,11 @@ JSValue JSTestNamedConstructor::getConstructor(ExecState* exec, JSGlobalObject* 
     return getDOMConstructor<JSTestNamedConstructorConstructor>(exec, jsCast<JSDOMGlobalObject*>(globalObject));
 }
 
+JSValue JSTestNamedConstructor::getNamedConstructor(ExecState* exec, JSGlobalObject* globalObject)
+{
+    return getDOMConstructor<JSTestNamedConstructorNamedConstructor>(exec, jsCast<JSDOMGlobalObject*>(globalObject));
+}
+
 static inline bool isObservable(JSTestNamedConstructor* jsTestNamedConstructor)
 {
     if (jsTestNamedConstructor->hasCustomProperties())
@@ -225,7 +230,8 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestNam
 {
     if (!impl)
         return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestNamedConstructor>(exec, impl)) return result;
+    if (JSValue result = getExistingWrapper<JSTestNamedConstructor>(exec, impl))
+        return result;
 
 #if ENABLE(BINDING_INTEGRITY)
     void* actualVTablePointer = *(reinterpret_cast<void**>(impl));

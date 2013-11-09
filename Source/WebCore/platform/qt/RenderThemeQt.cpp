@@ -539,7 +539,7 @@ String RenderThemeQt::extraMediaControlsStyleSheet()
 {
     String result = String(mediaControlsQtUserAgentStyleSheet, sizeof(mediaControlsQtUserAgentStyleSheet));
 
-    if (m_page && m_page->chrome()->requiresFullscreenForVideoPlayback())
+    if (m_page && m_page->chrome().requiresFullscreenForVideoPlayback())
         result.append(String(mediaControlsQtFullscreenUserAgentStyleSheet, sizeof(mediaControlsQtFullscreenUserAgentStyleSheet)));
 
     return result;
@@ -594,7 +594,7 @@ QColor RenderThemeQt::getMediaControlForegroundColor(RenderObject* o) const
     if (!o)
         return fgColor;
 
-    if (o->node()->active())
+    if (o->node() && o->node()->isElementNode() && toElement(o->node())->active())
         fgColor = fgColor.lighter();
 
     if (!mediaElementCanPlay(o))

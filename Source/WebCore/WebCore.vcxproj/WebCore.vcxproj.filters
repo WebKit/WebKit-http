@@ -259,9 +259,6 @@
     <Filter Include="history">
       <UniqueIdentifier>{6f39dedf-2d3a-414e-83fe-7bf64f911cfb}</UniqueIdentifier>
     </Filter>
-    <Filter Include="history\cf">
-      <UniqueIdentifier>{99868b4c-8965-4d92-bddf-31bd5cf62812}</UniqueIdentifier>
-    </Filter>
     <Filter Include="storage">
       <UniqueIdentifier>{e5121f0f-9548-4aa4-b23c-23d197118a0d}</UniqueIdentifier>
     </Filter>
@@ -586,12 +583,6 @@
       <Filter>Modules\websockets</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\websockets\WebSocketHandshake.cpp">
-      <Filter>Modules\websockets</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\websockets\WebSocketHandshakeRequest.cpp">
-      <Filter>Modules\websockets</Filter>
-    </ClCompile>
-    <ClCompile Include="..\Modules\websockets\WebSocketHandshakeResponse.cpp">
       <Filter>Modules\websockets</Filter>
     </ClCompile>
     <ClCompile Include="..\Modules\websockets\WorkerThreadableWebSocketChannel.cpp">
@@ -924,12 +915,6 @@
     <ClCompile Include="..\loader\PolicyChecker.cpp">
       <Filter>loader</Filter>
     </ClCompile>
-    <ClCompile Include="..\loader\Prerenderer.cpp">
-      <Filter>loader</Filter>
-    </ClCompile>
-    <ClCompile Include="..\loader\PrerendererClient.cpp">
-      <Filter>loader</Filter>
-    </ClCompile>
     <ClCompile Include="..\loader\ProgressTracker.cpp">
       <Filter>loader</Filter>
     </ClCompile>
@@ -1116,9 +1101,6 @@
     <ClCompile Include="..\platform\DragImage.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\EventTracer.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="..\platform\FileChooser.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -1159,9 +1141,6 @@
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\MemoryPressureHandler.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\MemoryUsageSupport.cpp">
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\MIMETypeRegistry.cpp">
@@ -1342,9 +1321,6 @@
       <Filter>platform\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\win\SystemInfo.cpp">
-      <Filter>platform\win</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\win\SystemTimeWin.cpp">
       <Filter>platform\win</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\win\TemporaryLinkStubs.cpp">
@@ -1879,9 +1855,6 @@
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\HTTPParsers.cpp">
-      <Filter>platform\network</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\network\HTTPRequest.cpp">
       <Filter>platform\network</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\network\MIMEHeader.cpp">
@@ -4914,9 +4887,6 @@
     <ClCompile Include="..\history\PageCache.cpp">
       <Filter>history</Filter>
     </ClCompile>
-    <ClCompile Include="..\history\cf\HistoryPropertyList.cpp">
-      <Filter>history\cf</Filter>
-    </ClCompile>
     <ClCompile Include="..\storage\Storage.cpp">
       <Filter>storage</Filter>
     </ClCompile>
@@ -5199,16 +5169,13 @@
     <ClCompile Include="..\page\AutoscrollController.cpp">
       <Filter>page</Filter>
     </ClCompile>
-    <ClCompile Include="..\page\BarInfo.cpp">
+    <ClCompile Include="..\page\BarProp.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\Chrome.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\cf\SharedBufferCF.cpp">
-      <Filter>platform\cf</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\cf\BinaryPropertyList.cpp">
       <Filter>platform\cf</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\cf\FileSystemCF.cpp">
@@ -5361,12 +5328,6 @@
     <ClCompile Include="..\bindings\js\JSDOMWindowShell.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDOMWindowWebAudioCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
-    <ClCompile Include="..\bindings\js\JSDOMWindowWebSocketCustom.cpp">
-      <Filter>bindings\js</Filter>
-    </ClCompile>
     <ClCompile Include="..\bindings\js\JSDOMWrapper.cpp">
       <Filter>bindings\js</Filter>
     </ClCompile>
@@ -5503,7 +5464,7 @@
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSAttr.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
-    <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarInfo.cpp">
+    <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarProp.cpp">
       <Filter>DerivedSources</Filter>
     </ClCompile>
     <ClCompile Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBeforeLoadEvent.cpp">
@@ -7290,12 +7251,6 @@
     <ClInclude Include="..\Modules\websockets\WebSocketHandshake.h">
       <Filter>Modules\websockets</Filter>
     </ClInclude>
-    <ClInclude Include="..\Modules\websockets\WebSocketHandshakeRequest.h">
-      <Filter>Modules\websockets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Modules\websockets\WebSocketHandshakeResponse.h">
-      <Filter>Modules\websockets</Filter>
-    </ClInclude>
     <ClInclude Include="..\Modules\websockets\WorkerThreadableWebSocketChannel.h">
       <Filter>Modules\websockets</Filter>
     </ClInclude>
@@ -7671,12 +7626,6 @@
     <ClInclude Include="..\loader\PolicyChecker.h">
       <Filter>loader</Filter>
     </ClInclude>
-    <ClInclude Include="..\loader\Prerenderer.h">
-      <Filter>loader</Filter>
-    </ClInclude>
-    <ClInclude Include="..\loader\PrerendererClient.h">
-      <Filter>loader</Filter>
-    </ClInclude>
     <ClInclude Include="..\loader\ProgressTracker.h">
       <Filter>loader</Filter>
     </ClInclude>
@@ -7893,9 +7842,6 @@
     <ClInclude Include="..\platform\EventLoop.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\EventTracer.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\FileChooser.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -7959,9 +7905,6 @@
     <ClInclude Include="..\platform\MemoryPressureHandler.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\MemoryUsageSupport.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\MainThreadTask.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8005,12 +7948,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\PopupMenuStyle.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\PrerenderClient.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\PrerenderHandle.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\PurgeableBuffer.h">
@@ -8074,9 +8011,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\SuddenTermination.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\SystemTime.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\Theme.h">
@@ -8203,9 +8137,6 @@
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\GeneratedImage.h">
-      <Filter>platform\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\graphics\Generator.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\Glyph.h">
@@ -12198,9 +12129,6 @@
     <ClInclude Include="..\history\PageCache.h">
       <Filter>history</Filter>
     </ClInclude>
-    <ClInclude Include="..\history\cf\HistoryPropertyList.h">
-      <Filter>history\cf</Filter>
-    </ClInclude>
     <ClInclude Include="..\storage\Storage.h">
       <Filter>storage</Filter>
     </ClInclude>
@@ -12679,7 +12607,7 @@
     <ClInclude Include="..\page\AutoscrollController.h">
       <Filter>page</Filter>
     </ClInclude>
-    <ClInclude Include="..\page\BarInfo.h">
+    <ClInclude Include="..\page\BarProp.h">
       <Filter>page</Filter>
     </ClInclude>
     <ClInclude Include="..\page\Chrome.h">
@@ -12750,9 +12678,6 @@
     </ClInclude>
     <ClInclude Include="..\svg\SVGAnimatedTypeAnimator.h">
       <Filter>rendering\svg</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\cf\BinaryPropertyList.h">
-      <Filter>platform\cf</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h">
       <Filter>platform\cf\win</Filter>
@@ -13019,7 +12944,7 @@
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSAttr.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
-    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarInfo.h">
+    <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBarProp.h">
       <Filter>DerivedSources</Filter>
     </ClInclude>
     <ClInclude Include="$(ConfigurationBuildDir)\obj32\$(ProjectName)\DerivedSources\JSBeforeLoadEvent.h">
@@ -14789,12 +14714,6 @@
       <Filter>inspector\front-end</Filter>
     </None>
     <None Include="..\inspector\front-end\NativeHeapGraph.js">
-      <Filter>inspector\front-end</Filter>
-    </None>
-    <None Include="..\inspector\front-end\nativeMemoryProfiler.css">
-      <Filter>inspector\front-end</Filter>
-    </None>
-    <None Include="..\inspector\front-end\NativeMemorySnapshotView.js">
       <Filter>inspector\front-end</Filter>
     </None>
     <None Include="..\inspector\front-end\NavigatorOverlayController.js">

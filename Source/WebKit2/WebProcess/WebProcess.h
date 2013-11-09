@@ -43,10 +43,6 @@
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
-#if USE(SOUP)
-#include "WebSoupRequestManager.h"
-#endif
-
 #if PLATFORM(QT)
 QT_BEGIN_NAMESPACE
 class QNetworkAccessManager;
@@ -136,6 +132,8 @@ public:
 #if PLATFORM(MAC)
     pid_t presenterApplicationPid() const { return m_presenterApplicationPid; }
     bool shouldForceScreenFontSubstitution() const { return m_shouldForceScreenFontSubstitution; }
+
+    void setProcessSuppressionEnabled(bool);
 #endif
     
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
@@ -143,9 +141,6 @@ public:
 
 #if PLATFORM(QT)
     QNetworkAccessManager* networkAccessManager() { return m_networkAccessManager; }
-#endif
-#if USE(SOUP)
-    WebSoupRequestManager& soupRequestManager() { return m_soupRequestManager; }
 #endif
 
     void clearResourceCaches(ResourceCachesToClear = AllResourceCaches);
@@ -235,6 +230,8 @@ private:
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
+    void releasePageCache();
+
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
 #endif
@@ -316,10 +313,6 @@ private:
     RefPtr<PluginProcessConnectionManager> m_pluginProcessConnectionManager;
 #endif
 
-#if USE(SOUP)
-    WebSoupRequestManager m_soupRequestManager;
-#endif
-    
     int m_inWindowPageCount;
     WebCore::Timer<WebProcess> m_nonVisibleProcessCleanupTimer;
 };

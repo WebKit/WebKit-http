@@ -37,9 +37,8 @@
 namespace WebCore {
 
 class ElementShadow;
-class ScopeContentDistribution;
 
-class ShadowRoot : public DocumentFragment, public TreeScope {
+class ShadowRoot FINAL : public DocumentFragment, public TreeScope {
 public:
     // FIXME: We will support multiple shadow subtrees, however current implementation does not work well
     // if a shadow root is dynamically created. So we prohibit multiple shadow subtrees
@@ -74,15 +73,8 @@ public:
 
     virtual void attach();
 
-    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
-    virtual void removedFrom(ContainerNode*) OVERRIDE;
-
     virtual void registerScopedHTMLStyleChild() OVERRIDE;
     virtual void unregisterScopedHTMLStyleChild() OVERRIDE;
-
-    ScopeContentDistribution* scopeDistribution() { return m_scopeDistribution.get(); }
-    const ScopeContentDistribution* scopeDistribution() const { return m_scopeDistribution.get(); }
-    ScopeContentDistribution* ensureScopeDistribution();
 
     ShadowRootType type() const { return static_cast<ShadowRootType>(m_type); }
 
@@ -101,19 +93,15 @@ private:
     // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
     bool isOrphan() const { return !host(); }
 
-    OwnPtr<ScopeContentDistribution> m_scopeDistribution;
     unsigned m_numberOfStyles : 28;
     unsigned m_applyAuthorStyles : 1;
     unsigned m_resetStyleInheritance : 1;
     unsigned m_type : 1;
-    unsigned m_registeredWithParentShadowRoot : 1;
 };
 
 inline Element* ShadowRoot::activeElement() const
 {
-    if (Node* node = treeScope()->focusedNode())
-        return node->isElementNode() ? toElement(node) : 0;
-    return 0;
+    return treeScope()->focusedElement();
 }
 
 inline const ShadowRoot* toShadowRoot(const Node* node)

@@ -323,8 +323,8 @@ private:
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
     virtual bool hasCustomFocusLogic() const OVERRIDE;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
-    virtual bool isMouseFocusable() const;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
     virtual bool isEnumeratable() const;
     virtual bool supportLabels() const OVERRIDE;
     virtual void updateFocusAppearance(bool restorePreviousSelection);

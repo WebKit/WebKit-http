@@ -33,18 +33,6 @@
 #////////////////////////////////////////////////////////////////////////////////////////
 # PASSING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
-editing/spelling/design-mode-spellcheck-off.html [ Pass ]
-editing/spelling/spellcheck-api-crash.html [ Pass ]
-editing/spelling/spellcheck-attribute.html [ Pass ]
-editing/spelling/spellcheck-input-search-crash.html [ Pass ]
-editing/spelling/spelling-attribute-at-child.html [ Pass ]
-editing/spelling/spelling-attribute-change.html [ Pass ]
-editing/spelling/spelling-backspace-between-lines.html [ Pass ]
-editing/spelling/spelling-exactly-selected-word.html [ Pass ]
-editing/spelling/spelling-hasspellingmarker.html [ Pass ]
-editing/spelling/spelling-linebreak.html [ Pass ]
-editing/spelling/spelling-with-punctuation-selection.html [ Pass ]
-editing/spelling/spelling-with-whitespace-selection.html [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # TESTS EXPECTED TO FAIL
@@ -234,8 +222,6 @@ webkit.org/b/108355 storage/websql/sql-error-codes.html [ Crash Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Missing EFL's accessibility functions
-webkit.org/b/112025 accessibility/accessibility-node-memory-management.html [ Failure ]
-webkit.org/b/112026 accessibility/accessibility-node-reparent.html [ Failure ]
 webkit.org/b/112027 accessibility/aria-describedby-on-input.html [ Failure ]
 webkit.org/b/112028 accessibility/aria-help.html [ Failure ]
 webkit.org/b/111984 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
@@ -250,7 +236,6 @@ webkit.org/b/111996 accessibility/canvas-fallback-content-2.html [ Failure ]
 webkit.org/b/111999 accessibility/disabled-controls-not-focusable.html [ Failure ]
 webkit.org/b/112000 accessibility/heading-level.html [ Failure ]
 webkit.org/b/112002 accessibility/inline-continuations.html [ Failure ]
-webkit.org/b/112029 accessibility/label-for-control-hittest.html [ Failure ]
 webkit.org/b/112003 accessibility/loading-iframe-sends-notification.html [ Failure ]
 webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
 webkit.org/b/112031 accessibility/placeholder.html [ Failure ]
@@ -300,6 +285,7 @@ webkit.org/b/93470 fast/dom/title-directionality.html [ Failure ]
 Bug(EFL) fast/events/touch/basic-single-touch-events.html [ Failure ]
 
 # Needs grammar checking
+Bug(EFL) editing/spelling/grammar.html [ Failure ]
 Bug(EFL) editing/spelling/grammar-edit-word.html [ Failure ]
 Bug(EFL) editing/spelling/grammar-markers.html [ Failure ]
 Bug(EFL) editing/spelling/grammar-markers-hidpi.html [ Failure ]
@@ -308,6 +294,12 @@ Bug(EFL) editing/spelling/markers.html [ Failure ]
 
 # EFL's text checker doesn't support the text replacement feature.
 Bug(EFL) editing/spelling/spelling-marker-description.html [ Failure ]
+
+# WK2's contextClick() returns array of objects instead of strings.
+editing/spelling/spelling-exactly-selected-multiple-words.html [ Failure ]
+editing/spelling/spelling-multiword-selection.html [ Failure ]
+editing/spelling/spelling-should-select-multiple-words.html [ Failure ]
+editing/spelling/spelling-subword-selection.html [ Failure ]
 
 # Fails because MutationObservers are not notified at end-of-task.
 webkit.org/b/78290 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure ]
@@ -341,7 +333,7 @@ webkit.org/b/103127 css3/device-adapt/opera/constrain-022.xhtml [ Failure ]
 webkit.org/b/103130 css3/device-adapt/opera/orientation-001.xhtml [ Failure ]
 
 # Text input controller needs selectedRange implementation
-webkit.org/b/99438 editing/selection/mixed-editability-10.html [ Failure ]
+webkit.org/b/99438 editing/selection/mixed-editability-10.html [ Missing Failure ]
 
 # NPN_ReloadPlugins is not implemented.
 webkit.org/b/98744 plugins/reloadplugins-and-pages.html [ Failure ]
@@ -472,6 +464,9 @@ webkit.org/b/107286 fast/css/sticky/replaced-sticky.html [ ImageOnlyFailure ]
 # New ruby selection test (in r140613) fails to render correctly, not generating an expected result
 webkit.org/b/108315 fast/ruby/select-ruby.html [ Missing ]
 
+# Regression(r150015)
+webkit.org/b/116055 fast/animation/request-animation-frame-too-rapid.html [ Failure ]
+
 # failing after r149292
 compositing/absolute-inside-out-of-view-fixed.html [ Failure ]
 compositing/backing/no-backing-for-clip-overlap.html [ Failure ]
@@ -580,3 +575,6 @@ compositing/iframes/invisible-nested-iframe-show.html [ Missing ]
 compositing/tiling/huge-layer-add-remove-child.html [ Missing ]
 compositing/tiling/rotated-tiled-clamped.html [ Missing ]
 compositing/tiling/rotated-tiled-preserve3d-clamped.html [ Missing ]
+
+# Crashing IndexedDB tests
+webkit.org/b/107194 storage/indexeddb/pending-activity.html [ Crash ]

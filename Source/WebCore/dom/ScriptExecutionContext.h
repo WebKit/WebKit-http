@@ -92,7 +92,7 @@ public:
     // Active objects can be asked to suspend even if canSuspendActiveDOMObjects() returns 'false' -
     // step-by-step JS debugging is one example.
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension);
-    virtual void resumeActiveDOMObjects();
+    virtual void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension);
     virtual void stopActiveDOMObjects();
 
     bool activeDOMObjectsAreSuspended() const { return m_activeDOMObjectsAreSuspended; }
@@ -110,9 +110,6 @@ public:
 
     void didCreateDestructionObserver(ContextDestructionObserver*);
     void willDestroyDestructionObserver(ContextDestructionObserver*);
-
-    virtual void suspendScriptedAnimationControllerCallbacks() { }
-    virtual void resumeScriptedAnimationControllerCallbacks() { }
 
     // MessagePort is conceptually a kind of ActiveDOMObject, but it needs to be tracked separately for message dispatch.
     void processMessagePortMessagesSoon();
@@ -178,6 +175,8 @@ protected:
         MessageLevel m_level;
         String m_message;
     };
+
+    ActiveDOMObject::ReasonForSuspension reasonForSuspendingActiveDOMObjects() const { return m_reasonForSuspendingActiveDOMObjects; }
 
 private:
     virtual const KURL& virtualURL() const = 0;

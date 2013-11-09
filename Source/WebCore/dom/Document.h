@@ -180,10 +180,6 @@ class ScriptedAnimationController;
 class MicroDataItemList;
 #endif
 
-#if ENABLE(LINK_PRERENDER)
-class Prerenderer;
-#endif
-
 #if ENABLE(TEXT_AUTOSIZING)
 class TextAutosizer;
 #endif
@@ -321,7 +317,7 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitpointerlockerror);
 #endif
 #if ENABLE(PAGE_VISIBILITY_API)
-    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitvisibilitychange);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(visibilitychange);
 #endif
 #if ENABLE(CSP_NEXT)
     DEFINE_ATTRIBUTE_EVENT_LISTENER(securitypolicyviolation);
@@ -358,7 +354,7 @@ public:
     PassRefPtr<EntityReference> createEntityReference(const String& name, ExceptionCode&);
     PassRefPtr<Node> importNode(Node* importedNode, ExceptionCode& ec) { return importNode(importedNode, true, ec); }
     PassRefPtr<Node> importNode(Node* importedNode, bool deep, ExceptionCode&);
-    virtual PassRefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
+    PassRefPtr<Element> createElementNS(const String& namespaceURI, const String& qualifiedName, ExceptionCode&);
     PassRefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
 
     bool cssStickyPositionEnabled() const;
@@ -414,8 +410,8 @@ public:
     virtual KURL baseURI() const;
 
 #if ENABLE(PAGE_VISIBILITY_API)
-    String webkitVisibilityState() const;
-    bool webkitHidden() const;
+    String visibilityState() const;
+    bool hidden() const;
     void dispatchVisibilityStateChangeEvent();
 #endif
 
@@ -495,8 +491,7 @@ public:
 
     void evaluateMediaQueryList();
 
-    // Never returns 0.
-    FormController* formController();
+    FormController& formController();
     Vector<String> formElementsState() const;
     void setStateForNewFormElements(const Vector<String>&);
 
@@ -543,7 +538,7 @@ public:
 
     // Override ScriptExecutionContext methods to do additional work
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) OVERRIDE;
-    virtual void resumeActiveDOMObjects() OVERRIDE;
+    virtual void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) OVERRIDE;
 
     RenderArena* renderArena() { return m_renderArena.get(); }
 
@@ -675,28 +670,23 @@ public:
     String selectedStylesheetSet() const;
     void setSelectedStylesheetSet(const String&);
 
-    bool setFocusedNode(PassRefPtr<Node>, FocusDirection = FocusDirectionNone);
-    Node* focusedNode() const { return m_focusedNode.get(); }
+    bool setFocusedElement(PassRefPtr<Element>, FocusDirection = FocusDirectionNone);
+    Element* focusedElement() const { return m_focusedElement.get(); }
     UserActionElementSet& userActionElements()  { return m_userActionElements; }
     const UserActionElementSet& userActionElements() const { return m_userActionElements; }
 
-    void getFocusableNodes(Vector<RefPtr<Node> >&);
-    
     // The m_ignoreAutofocus flag specifies whether or not the document has been changed by the user enough 
     // for WebCore to ignore the autofocus attribute on any form controls
     bool ignoreAutofocus() const { return m_ignoreAutofocus; };
     void setIgnoreAutofocus(bool shouldIgnore = true) { m_ignoreAutofocus = shouldIgnore; };
-
-    void setHoverNode(PassRefPtr<Node>);
-    Node* hoverNode() const { return m_hoverNode.get(); }
 
     void setActiveElement(PassRefPtr<Element>);
     Element* activeElement() const { return m_activeElement.get(); }
 
     void focusedNodeRemoved();
     void removeFocusedNodeOfSubtree(Node*, bool amongChildrenOnly = false);
-    void hoveredNodeDetached(Node*);
-    void activeChainNodeDetached(Node*);
+    void hoveredElementDidDetach(Element*);
+    void elementInActiveChainDidDetach(Element*);
 
     void updateHoverActiveState(const HitTestRequest&, Element*, const PlatformMouseEvent* = 0);
 
@@ -945,12 +935,13 @@ public:
 
     virtual void postTask(PassOwnPtr<Task>); // Executes the task on context's thread asynchronously.
 
-    virtual void suspendScriptedAnimationControllerCallbacks();
-    virtual void resumeScriptedAnimationControllerCallbacks();
+    void suspendScriptedAnimationControllerCallbacks();
+    void resumeScriptedAnimationControllerCallbacks();
+    virtual void scriptedAnimationControllerSetThrottled(bool);
     
     void windowScreenDidChange(PlatformDisplayID);
 
-    virtual void finishedParsing();
+    void finishedParsing();
 
     bool inPageCache() const { return m_inPageCache; }
     void setInPageCache(bool flag);
@@ -1144,16 +1135,12 @@ public:
     bool isInDocumentWrite() { return m_writeRecursionDepth > 0; }
 
     void suspendScheduledTasks(ActiveDOMObject::ReasonForSuspension);
-    void resumeScheduledTasks();
+    void resumeScheduledTasks(ActiveDOMObject::ReasonForSuspension);
 
     IntSize viewportSize() const;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     IntSize initialViewportSize() const;
-#endif
-
-#if ENABLE(LINK_PRERENDER)
-    Prerenderer* prerenderer() { return m_prerenderer.get(); }
 #endif
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -1217,6 +1204,8 @@ public:
 
     void ensurePlugInsInjectedScript(DOMWrapperWorld*);
 
+    void setVisualUpdatesAllowedByClient(bool);
+
 protected:
     Document(Frame*, const KURL&, unsigned = DefaultDocumentClass);
 
@@ -1274,7 +1263,7 @@ private:
     void displayBufferModifiedByEncodingInternal(CharacterType*, unsigned) const;
 
 #if ENABLE(PAGE_VISIBILITY_API)
-    PageVisibilityState visibilityState() const;
+    PageVisibilityState pageVisibilityState() const;
 #endif
 
     PassRefPtr<HTMLCollection> ensureCachedCollection(CollectionType);
@@ -1295,9 +1284,8 @@ private:
 
     void didAssociateFormControlsTimerFired(Timer<Document>*);
 
-    void styleResolverThrowawayTimerFired(Timer<Document>*);
-    Timer<Document> m_styleResolverThrowawayTimer;
-    double m_lastStyleResolverAccessTime;
+    void styleResolverThrowawayTimerFired(DeferrableOneShotTimer<Document>*);
+    DeferrableOneShotTimer<Document> m_styleResolverThrowawayTimer;
 
     OwnPtr<StyleResolver> m_styleResolver;
     bool m_didCalculateStyleResolver;
@@ -1357,8 +1345,8 @@ private:
 
     Color m_textColor;
 
-    RefPtr<Node> m_focusedNode;
-    RefPtr<Node> m_hoverNode;
+    RefPtr<Element> m_focusedElement;
+    RefPtr<Element> m_hoveredElement;
     RefPtr<Element> m_activeElement;
     RefPtr<Element> m_documentElement;
     UserActionElementSet m_userActionElements;
@@ -1544,10 +1532,6 @@ private:
 
     Timer<Document> m_pendingTasksTimer;
     Vector<OwnPtr<Task> > m_pendingTasks;
-
-#if ENABLE(LINK_PRERENDER)
-    OwnPtr<Prerenderer> m_prerenderer;
-#endif
 
 #if ENABLE(TEXT_AUTOSIZING)
     OwnPtr<TextAutosizer> m_textAutosizer;

@@ -276,7 +276,7 @@ void RenderTextControlSingleLine::capsLockStateMayHaveChanged()
     if (Frame* frame = document()->frame())
         shouldDrawCapsLockIndicator = inputElement()->isPasswordField()
                                       && frame->selection()->isFocusedAndActive()
-                                      && document()->focusedNode() == node()
+                                      && document()->focusedElement() == node()
                                       && PlatformKeyboardEvent::currentCapsLockState();
 
     if (shouldDrawCapsLockIndicator != m_shouldDrawCapsLockIndicator) {
@@ -323,7 +323,7 @@ LayoutUnit RenderTextControlSingleLine::preferredContentLogicalWidth(float charW
     LayoutUnit result = static_cast<LayoutUnit>(ceiledLayoutUnit(charWidth * factor));
 
     float maxCharWidth = 0.f;
-    AtomicString family = style()->font().family().family();
+    const AtomicString& family = style()->font().firstFamily();
     // Since Lucida Grande is the default font, we want this to match the width
     // of MS Shell Dlg, the default font for textareas in Firefox, Safari Win and
     // IE for some encodings (in IE, the default font is encoding specific).
@@ -403,7 +403,7 @@ PassRefPtr<RenderStyle> RenderTextControlSingleLine::createInnerBlockStyle(const
 
 bool RenderTextControlSingleLine::textShouldBeTruncated() const
 {
-    return document()->focusedNode() != node()
+    return document()->focusedElement() != node()
         && style()->textOverflow() == TextOverflowEllipsis;
 }
 

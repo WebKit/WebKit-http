@@ -48,9 +48,9 @@
 #define ICON_NAME_SUFFIX
 #endif
 
-#define PLAY_ICON_NAME "media-playback-start"ICON_NAME_SUFFIX
-#define PAUSE_ICON_NAME "media-playback-pause"ICON_NAME_SUFFIX
-#define EXIT_FULLSCREEN_ICON_NAME "view-restore"ICON_NAME_SUFFIX
+#define PLAY_ICON_NAME "media-playback-start" ICON_NAME_SUFFIX
+#define PAUSE_ICON_NAME "media-playback-pause" ICON_NAME_SUFFIX
+#define EXIT_FULLSCREEN_ICON_NAME "view-restore" ICON_NAME_SUFFIX
 
 namespace WebCore {
 
@@ -197,8 +197,8 @@ void FullscreenVideoControllerGtk::hideHud()
     }
 
     GdkWindow* window = gtk_widget_get_window(m_window);
-    GdkCursor* cursor = blankCursor();
-    gdk_window_set_cursor(window, cursor);
+    GRefPtr<GdkCursor> cursor = adoptGRef(gdk_cursor_new(GDK_BLANK_CURSOR));
+    gdk_window_set_cursor(window, cursor.get());
 
     gtk_widget_hide(m_hudWindow);
 
@@ -255,7 +255,7 @@ void FullscreenVideoControllerGtk::initializeWindow()
     gtk_widget_show_all(m_window);
 
     GdkWindow* window = gtk_widget_get_window(m_window);
-    GRefPtr<GdkCursor> cursor(adoptGRef(blankCursor()));
+    GRefPtr<GdkCursor> cursor = adoptGRef(gdk_cursor_new(GDK_BLANK_CURSOR));
     gdk_window_set_cursor(window, cursor.get());
 
     m_motionNotifySignalId = g_signal_connect(m_window, "motion-notify-event", G_CALLBACK(onFullscreenGtkMotionNotifyEvent), this);

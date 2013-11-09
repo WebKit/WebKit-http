@@ -23,7 +23,6 @@
 #include "UnitTestUtils/EWK2UnitTestServer.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
-#include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -134,7 +133,7 @@ TEST_F(EWK2UnitTestBase, ewk_view_navigation)
     ASSERT_FALSE(ewk_view_forward_possible(webView()));
 }
 
-TEST_F(EWK2UnitTestBase, DISABLED_ewk_view_setting_encoding_custom)
+TEST_F(EWK2UnitTestBase, ewk_view_custom_encoding)
 {
     ASSERT_FALSE(ewk_view_custom_encoding_get(webView()));
     ASSERT_TRUE(ewk_view_custom_encoding_set(webView(), "UTF-8"));

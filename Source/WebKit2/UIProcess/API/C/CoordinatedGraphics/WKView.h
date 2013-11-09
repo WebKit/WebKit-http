@@ -84,8 +84,6 @@ WK_EXPORT void WKViewPaintToCurrentGLContext(WKViewRef);
 
 WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
 
-WK_EXPORT void WKViewSetThemePath(WKViewRef, WKStringRef);
-
 WK_EXPORT void WKViewSetDrawsBackground(WKViewRef, bool);
 WK_EXPORT bool WKViewGetDrawsBackground(WKViewRef);
 
@@ -99,6 +97,9 @@ WK_EXPORT void WKViewSetShowsAsSource(WKViewRef, bool);
 WK_EXPORT bool WKViewGetShowsAsSource(WKViewRef);
 
 WK_EXPORT bool WKViewExitFullScreen(WKViewRef);
+
+WK_EXPORT void WKViewSetOpacity(WKViewRef view, double opacity);
+WK_EXPORT double WKViewOpacity(WKViewRef view);
 
 #ifdef __cplusplus
 }

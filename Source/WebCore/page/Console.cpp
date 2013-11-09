@@ -52,7 +52,6 @@
 #include "ScriptableDocumentParser.h"
 #include "Settings.h"
 #include <stdio.h>
-#include <wtf/UnusedParam.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -89,7 +88,7 @@ static void internalAddMessage(Page* page, MessageType type, MessageLevel level,
         return;
 
     if (gotMessage)
-        page->chrome()->client()->addMessageToConsole(ConsoleAPIMessageSource, type, level, message, lastCaller.lineNumber(), lastCaller.columnNumber(), lastCaller.sourceURL());
+        page->chrome().client()->addMessageToConsole(ConsoleAPIMessageSource, type, level, message, lastCaller.lineNumber(), lastCaller.columnNumber(), lastCaller.sourceURL());
 
     if (!page->settings()->logsPageMessagesToSystemConsoleEnabled() && !PageConsole::shouldPrintExceptions())
         return;

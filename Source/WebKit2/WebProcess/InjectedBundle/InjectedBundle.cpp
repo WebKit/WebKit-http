@@ -112,7 +112,7 @@ void InjectedBundle::postMessage(const String& messageName, APIObject* messageBo
     encoder->encode(messageName);
     encoder->encode(InjectedBundleUserMessageEncoder(messageBody));
 
-    WebProcess::shared().connection()->sendMessage(encoder.release());
+    WebProcess::shared().parentProcessConnection()->sendMessage(encoder.release());
 }
 
 void InjectedBundle::postSynchronousMessage(const String& messageName, APIObject* messageBody, RefPtr<APIObject>& returnData)
@@ -120,11 +120,11 @@ void InjectedBundle::postSynchronousMessage(const String& messageName, APIObject
     InjectedBundleUserMessageDecoder messageDecoder(returnData);
 
     uint64_t syncRequestID;
-    OwnPtr<CoreIPC::MessageEncoder> encoder = WebProcess::shared().connection()->createSyncMessageEncoder(WebContextLegacyMessages::messageReceiverName(), WebContextLegacyMessages::postSynchronousMessageMessageName(), 0, syncRequestID);
+    OwnPtr<CoreIPC::MessageEncoder> encoder = WebProcess::shared().parentProcessConnection()->createSyncMessageEncoder(WebContextLegacyMessages::messageReceiverName(), WebContextLegacyMessages::postSynchronousMessageMessageName(), 0, syncRequestID);
     encoder->encode(messageName);
     encoder->encode(InjectedBundleUserMessageEncoder(messageBody));
 
-    OwnPtr<CoreIPC::MessageDecoder> replyDecoder = WebProcess::shared().connection()->sendSyncMessage(syncRequestID, encoder.release(), CoreIPC::Connection::NoTimeout);
+    OwnPtr<CoreIPC::MessageDecoder> replyDecoder = WebProcess::shared().parentProcessConnection()->sendSyncMessage(syncRequestID, encoder.release(), CoreIPC::Connection::NoTimeout);
     if (!replyDecoder || !replyDecoder->decode(messageDecoder)) {
         returnData = nullptr;
         return;
@@ -161,34 +161,38 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
 
     if (preference == "WebKitTabToLinksPreferenceKey") {
-       WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::tabsToLinksKey(), enabled);
-       for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
-            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
-            webPage->setTabToLinksEnabled(enabled);
+        WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::tabsToLinksKey(), enabled);
+        for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
+            WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient((*i)->mainFrame()->loader()->client());
+            ASSERT(webFrameLoaderClient);
+            webFrameLoaderClient->webFrame()->page()->setTabToLinksEnabled(enabled);
         }
     }
 
     if (preference == "WebKit2AsynchronousPluginInitializationEnabled") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledKey(), enabled);
         for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
-            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
-            webPage->setAsynchronousPluginInitializationEnabled(enabled);
+            WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient((*i)->mainFrame()->loader()->client());
+            ASSERT(webFrameLoaderClient);
+            webFrameLoaderClient->webFrame()->page()->setAsynchronousPluginInitializationEnabled(enabled);
         }
     }
 
     if (preference == "WebKit2AsynchronousPluginInitializationEnabledForAllPlugins") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::asynchronousPluginInitializationEnabledForAllPluginsKey(), enabled);
         for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
-            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
-            webPage->setAsynchronousPluginInitializationEnabledForAllPlugins(enabled);
+            WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient((*i)->mainFrame()->loader()->client());
+            ASSERT(webFrameLoaderClient);
+            webFrameLoaderClient->webFrame()->page()->setAsynchronousPluginInitializationEnabledForAllPlugins(enabled);
         }
     }
 
     if (preference == "WebKit2ArtificialPluginInitializationDelayEnabled") {
         WebPreferencesStore::overrideBoolValueForKey(WebPreferencesKey::artificialPluginInitializationDelayEnabledKey(), enabled);
         for (HashSet<Page*>::iterator i = pages.begin(); i != pages.end(); ++i) {
-            WebPage* webPage = static_cast<WebFrameLoaderClient*>((*i)->mainFrame()->loader()->client())->webFrame()->page();
-            webPage->setArtificialPluginInitializationDelayEnabled(enabled);
+            WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient((*i)->mainFrame()->loader()->client());
+            ASSERT(webFrameLoaderClient);
+            webFrameLoaderClient->webFrame()->page()->setArtificialPluginInitializationDelayEnabled(enabled);
         }
     }
 
@@ -200,6 +204,11 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #if ENABLE(CSS_COMPOSITING)
     if (preference == "WebKitCSSCompositingEnabled")
         RuntimeEnabledFeatures::setCSSCompositingEnabled(enabled);
+#endif
+
+#if ENABLE(WEB_AUDIO)
+    if (preference == "WebKitWebAudioEnabled")
+        RuntimeEnabledFeatures::setWebAudioEnabled(enabled);
 #endif
 
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
@@ -216,7 +225,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitPageCacheSupportsPluginsPreferenceKey, PageCacheSupportsPlugins, pageCacheSupportsPlugins) \
     macro(WebKitPluginsEnabled, PluginsEnabled, pluginsEnabled) \
     macro(WebKitUsesPageCachePreferenceKey, UsesPageCache, usesPageCache) \
-    macro(WebKitWebAudioEnabled, WebAudioEnabled, webAudioEnabled) \
     macro(WebKitWebGLEnabled, WebGLEnabled, webGLEnabled) \
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
     macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
@@ -299,6 +307,7 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
 
 void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
 {
+    // FIXME (NetworkProcess): This test-only function doesn't work with NetworkProcess, <https://bugs.webkit.org/show_bug.cgi?id=115274>.
 #if PLATFORM(MAC) || USE(CFNETWORK)
     if (enabled)
         WebFrameNetworkingContext::ensurePrivateBrowsingSession();

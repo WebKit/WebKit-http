@@ -1,3 +1,98 @@
+2013-05-27  Patrick Gansterer  <paroga@webkit.org>
+
+        Use ICU_INCLUDE_DIRS in BlackBerry CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=116210
+
+        Reviewed by Rob Buis.
+
+        Set and use the ICU_INCLUDE_DIRS variable to avoid
+        duplicated adding of the ICU include directory.
+
+        * PlatformBlackBerry.cmake:
+
+2013-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Move PagePopup implementation to WebKitSupport
+        https://bugs.webkit.org/show_bug.cgi?id=116824
+
+        Reviewed by Rob Buis.
+
+        * PlatformBlackBerry.cmake: Update new file paths and names.
+
+2013-05-24  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Expose database storage and cache locations via preferences.
+        https://bugs.webkit.org/show_bug.cgi?id=116729
+
+        Reviewed by Tim Horton.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Export
+        three symbols needed to implement the feature.
+
+2013-05-24  Anders Carlsson  <andersca@apple.com>
+
+        Move history property list writer to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116746
+
+        Reviewed by Tim Horton.
+
+        Add files to the Xcode project.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2013-05-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Make PagePopup implementation independent from WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=116448
+
+        Reviewed by Anders Carlsson.
+
+        * PlatformBlackBerry.cmake: Add
+        blackberry/WebCoreSupport/PagePopupBlackBerryClient.cpp to
+        compilation.
+
+2013-05-18  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Replace *_LIBRARY_NAME with *_OUTPUT_NAME
+        https://bugs.webkit.org/show_bug.cgi?id=114554
+
+        Reviewed by Gyuyoung Kim.
+
+        Using variables as target names is very uncommon in CMake.
+        The usual way to specify the name of the resulting binary
+        is to set the OUTPUT_NAME target property.
+
+        * CMakeLists.txt:
+        * PlatformBlackBerry.cmake:
+        * PlatformEfl.cmake:
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Revert the previous commit.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r150160.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Windows build fix attempt after r150156.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-05-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Implement platform strategies
+        https://bugs.webkit.org/show_bug.cgi?id=112162
+
+        Reviewed by Rob Buis.
+
+        * PlatformBlackBerry.cmake: Add new files to compilation.
+
 2013-05-06  Roger Fong  <roger_fong@apple.com>
 
         Unreviewed. AppleWin VS2010 build fix.

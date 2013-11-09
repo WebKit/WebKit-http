@@ -661,7 +661,7 @@ void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
     else if (equals(key, "WebKitCSSRegionsEnabled"))
         DumpRenderTreeSupportEfl::setCSSRegionsEnabled(browser->mainView(), toBool(value));
     else if (equals(key, "WebKitWebAudioEnabled"))
-        ewk_view_setting_web_audio_set(browser->mainView(), toBool(value));
+        DumpRenderTreeSupportEfl::setWebAudioEnabled(toBool(value));
     else if (equals(key, "WebKitDisplayImagesKey"))
         ewk_view_setting_auto_load_images_set(browser->mainView(), toBool(value));
     else
@@ -824,8 +824,8 @@ void TestRunner::setPageVisibility(const char* visibility)
         ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_HIDDEN, false);
     else if (newVisibility == "prerender")
         ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_PRERENDER, false);
-    else if (newVisibility == "preview")
-        ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_PREVIEW, false);
+    else if (newVisibility == "unloaded")
+        ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_UNLOADED, false);
 }
 
 void TestRunner::setAutomaticLinkDetectionEnabled(bool)

@@ -35,7 +35,7 @@ namespace WebCore {
 
 class SpeechInput;
 
-class TextControlInnerContainer : public HTMLDivElement {
+class TextControlInnerContainer FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<TextControlInnerContainer> create(Document*);
 protected:
@@ -43,7 +43,7 @@ protected:
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
 };
 
-class TextControlInnerElement : public HTMLDivElement {
+class TextControlInnerElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<TextControlInnerElement> create(Document*);
 
@@ -52,10 +52,10 @@ protected:
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
 
 private:
-    virtual bool isMouseFocusable() const { return false; }
+    virtual bool isMouseFocusable() const OVERRIDE { return false; }
 };
 
-class TextControlInnerTextElement : public HTMLDivElement {
+class TextControlInnerTextElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<TextControlInnerTextElement> create(Document*);
 
@@ -65,10 +65,10 @@ private:
     TextControlInnerTextElement(Document*);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual PassRefPtr<RenderStyle> customStyleForRenderer() OVERRIDE;
-    virtual bool isMouseFocusable() const { return false; }
+    virtual bool isMouseFocusable() const OVERRIDE { return false; }
 };
 
-class SearchFieldResultsButtonElement : public HTMLDivElement {
+class SearchFieldResultsButtonElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<SearchFieldResultsButtonElement> create(Document*);
 
@@ -78,10 +78,10 @@ public:
 private:
     SearchFieldResultsButtonElement(Document*);
     virtual const AtomicString& shadowPseudoId() const;
-    virtual bool isMouseFocusable() const { return false; }
+    virtual bool isMouseFocusable() const OVERRIDE { return false; }
 };
 
-class SearchFieldCancelButtonElement : public HTMLDivElement {
+class SearchFieldCancelButtonElement FINAL : public HTMLDivElement {
 public:
     static PassRefPtr<SearchFieldCancelButtonElement> create(Document*);
 
@@ -92,14 +92,14 @@ private:
     SearchFieldCancelButtonElement(Document*);
     virtual const AtomicString& shadowPseudoId() const;
     virtual void detach();
-    virtual bool isMouseFocusable() const { return false; }
+    virtual bool isMouseFocusable() const OVERRIDE { return false; }
 
     bool m_capturing;
 };
 
 #if ENABLE(INPUT_SPEECH)
 
-class InputFieldSpeechButtonElement
+class InputFieldSpeechButtonElement FINAL
     : public HTMLDivElement,
       public SpeechInputListener {
 public:
@@ -130,7 +130,7 @@ private:
     SpeechInput* speechInput();
     void setState(SpeechInputState state);
     virtual const AtomicString& shadowPseudoId() const;
-    virtual bool isMouseFocusable() const { return false; }
+    virtual bool isMouseFocusable() const OVERRIDE { return false; }
     virtual void attach();
 
     bool m_capturing;

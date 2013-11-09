@@ -56,6 +56,7 @@ HEADERS += \
     Shared/API/c/WKNumber.h \
     Shared/API/c/WKPageLoadTypes.h \
     Shared/API/c/WKPageVisibilityTypes.h \
+    Shared/API/c/WKPluginInformation.h \
     Shared/API/c/WKRenderLayer.h \
     Shared/API/c/WKRenderObject.h \
     Shared/API/c/WKSecurityOrigin.h \
@@ -136,6 +137,7 @@ HEADERS += \
     Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.h \
     Shared/CoordinatedGraphics/WebCoordinatedSurface.h \
     Shared/Plugins/Netscape/NetscapePluginModule.h \
+    Shared/Plugins/Netscape/PluginInformation.h \
     Shared/Plugins/NPRemoteObjectMap.h \
     Shared/Plugins/NPIdentifierData.h \
     Shared/Plugins/NPObjectMessageReceiver.h \
@@ -268,7 +270,7 @@ HEADERS += \
     UIProcess/WebIconDatabase.h \
     UIProcess/WebIconDatabaseClient.h \
     UIProcess/WebInspectorProxy.h \
-    UIProcess/WebKeyValueStorageManagerProxy.h \
+    UIProcess/WebKeyValueStorageManager.h \
     UIProcess/WebLoaderClient.h \
     UIProcess/WebMediaCacheManagerProxy.h \
     UIProcess/WebNavigationData.h \
@@ -335,7 +337,6 @@ HEADERS += \
     WebProcess/Plugins/PluginProxy.h \
     WebProcess/Plugins/PluginProcessConnection.h \
     WebProcess/Plugins/PluginProcessConnectionManager.h \
-    WebProcess/Storage/WebKeyValueStorageManager.h \
     WebProcess/WebCoreSupport/WebBatteryClient.h \
     WebProcess/WebCoreSupport/WebChromeClient.h \
     WebProcess/WebCoreSupport/WebColorChooser.h \
@@ -389,6 +390,7 @@ SOURCES += \
     Platform/CoreIPC/MessageDecoder.cpp \
     Platform/CoreIPC/MessageEncoder.cpp \
     Platform/CoreIPC/MessageReceiverMap.cpp \
+    Platform/CoreIPC/MessageSender.cpp \
     Platform/CoreIPC/StringReference.cpp \
     Platform/Logging.cpp \
     Platform/Module.cpp \
@@ -415,6 +417,7 @@ SOURCES += \
     Shared/API/c/WKMutableArray.cpp \
     Shared/API/c/WKMutableDictionary.cpp \
     Shared/API/c/WKNumber.cpp \
+    Shared/API/c/WKPluginInformation.cpp \
     Shared/API/c/WKRenderLayer.cpp \
     Shared/API/c/WKRenderObject.cpp \
     Shared/API/c/WKSecurityOrigin.cpp \
@@ -429,6 +432,7 @@ SOURCES += \
     Shared/APIClientTraits.cpp \
     Shared/APIObject.cpp \
     Shared/Authentication/AuthenticationManager.cpp \
+    Shared/Plugins/Netscape/PluginInformation.cpp \
     Shared/Plugins/Netscape/NetscapePluginModule.cpp \
     Shared/Plugins/Netscape/NetscapePluginModuleNone.cpp \
     Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp \
@@ -620,7 +624,7 @@ SOURCES += \
     UIProcess/WebIconDatabase.cpp \
     UIProcess/WebIconDatabaseClient.cpp \
     UIProcess/WebInspectorProxy.cpp \
-    UIProcess/WebKeyValueStorageManagerProxy.cpp \
+    UIProcess/WebKeyValueStorageManager.cpp \
     UIProcess/WebLoaderClient.cpp \
     UIProcess/WebMediaCacheManagerProxy.cpp \
     UIProcess/WebNavigationData.cpp \
@@ -711,7 +715,6 @@ SOURCES += \
     WebProcess/Storage/StorageAreaImpl.cpp \
     WebProcess/Storage/StorageAreaMap.cpp \
     WebProcess/Storage/StorageNamespaceImpl.cpp \
-    WebProcess/Storage/WebKeyValueStorageManager.cpp \
     WebProcess/WebCoreSupport/WebBatteryClient.cpp \
     WebProcess/WebCoreSupport/WebChromeClient.cpp \
     WebProcess/WebCoreSupport/WebColorChooser.cpp \
@@ -911,6 +914,7 @@ enable?(SECCOMP_FILTERS) {
 
 enable?(INSPECTOR_SERVER) {
     HEADERS += \
+        UIProcess/InspectorServer/HTTPRequest.h \
         UIProcess/InspectorServer/WebInspectorServer.h \
         UIProcess/InspectorServer/WebSocketServer.h \
         UIProcess/InspectorServer/WebSocketServerClient.h \
@@ -918,6 +922,7 @@ enable?(INSPECTOR_SERVER) {
         UIProcess/InspectorServer/qt/WebSocketServerQt.h
 
     SOURCES += \
+        UIProcess/InspectorServer/HTTPRequest.cpp \
         UIProcess/InspectorServer/WebInspectorServer.cpp \
         UIProcess/InspectorServer/WebSocketServer.cpp \
         UIProcess/InspectorServer/WebSocketServerConnection.cpp \

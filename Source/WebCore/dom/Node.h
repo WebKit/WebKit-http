@@ -213,9 +213,9 @@ public:
     void remove(ExceptionCode&);
     bool hasChildNodes() const { return firstChild(); }
     virtual PassRefPtr<Node> cloneNode(bool deep) = 0;
-    const AtomicString& localName() const { return virtualLocalName(); }
-    const AtomicString& namespaceURI() const { return virtualNamespaceURI(); }
-    const AtomicString& prefix() const { return virtualPrefix(); }
+    virtual const AtomicString& localName() const;
+    virtual const AtomicString& namespaceURI() const;
+    virtual const AtomicString& prefix() const;
     virtual void setPrefix(const AtomicString&, ExceptionCode&);
     void normalize();
 
@@ -258,7 +258,7 @@ public:
     virtual bool isInsertionPointNode() const { return false; }
 
     bool isDocumentNode() const;
-    bool isTreeScope() const { return treeScope()->rootNode() == this; }
+    bool isTreeScope() const;
     bool isDocumentFragment() const { return getFlag(IsDocumentFragmentFlag); }
     bool isShadowRoot() const { return isDocumentFragment() && isTreeScope(); }
     bool isInsertionPoint() const { return getFlag(NeedsShadowTreeWalkerFlag) && isInsertionPointNode(); }
@@ -304,8 +304,6 @@ public:
     // Returns the enclosing event parent node (or self) that, when clicked, would trigger a navigation.
     Node* enclosingLinkEventParentOrSelf();
 
-    bool isBlockFlowElement() const;
-
     // These low-level calls give the caller responsibility for maintaining the integrity of the tree.
     void setPreviousSibling(Node* previous) { m_previous = previous; }
     void setNextSibling(Node* next) { m_next = next; }
@@ -328,14 +326,9 @@ public:
     // out of the Node class into an editing-specific source file.
     Node* previousLeafNode() const;
 
-    // enclosingBlockFlowElement() is deprecated. Use enclosingBlock instead.
-    Element* enclosingBlockFlowElement() const;
-
     bool isRootEditableElement() const;
     Element* rootEditableElement() const;
     Element* rootEditableElement(EditableType) const;
-
-    bool inSameContainingBlockFlowElement(Node*);
 
     // Called by the parser when this element's close tag is reached,
     // signaling that all child tags have been parsed and added.
@@ -357,11 +350,6 @@ public:
 
     bool isUserActionElement() const { return getFlag(IsUserActionElement); }
     void setUserActionElement(bool flag) { setFlag(flag, IsUserActionElement); }
-
-    bool active() const { return isUserActionElement() && isUserActionElementActive(); }
-    bool inActiveChain() const { return isUserActionElement() && isUserActionElementInActiveChain(); }
-    bool hovered() const { return isUserActionElement() && isUserActionElementHovered(); }
-    bool focused() const { return isUserActionElement() && isUserActionElementFocused(); }
 
     bool attached() const { return getFlag(IsAttachedFlag); }
     void setAttached() { setFlag(IsAttachedFlag); }
@@ -398,21 +386,6 @@ public:
     };
     void lazyAttach(ShouldSetAttached = SetAttached);
     void lazyReattach(ShouldSetAttached = SetAttached);
-
-    virtual void setFocus(bool flag);
-    virtual void setActive(bool flag = true, bool pause = false);
-    virtual void setHovered(bool flag = true);
-
-    virtual short tabIndex() const;
-
-    // Whether this kind of node can receive focus by default. Most nodes are
-    // not focusable but some elements, such as form controls and links, are.
-    virtual bool supportsFocus() const;
-    // Whether the node can actually be focused.
-    virtual bool isFocusable() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
-    virtual bool isMouseFocusable() const;
-    virtual Node* focusDelegate();
 
     enum UserSelectAllTreatment {
         UserSelectAllDoesNotAffectEditability,
@@ -452,11 +425,6 @@ public:
     IntRect pixelSnappedBoundingBox() const { return pixelSnappedIntRect(boundingBox()); }
     LayoutRect renderRect(bool* isReplaced);
     IntRect pixelSnappedRenderRect(bool* isReplaced) { return pixelSnappedIntRect(renderRect(isReplaced)); }
-
-    // Returns true if the node has a non-empty bounding box in layout.
-    // This does not 100% guarantee the user can see it, but is pretty close.
-    // Note: This method only works properly after layout has occurred.
-    bool hasNonEmptyBoundingBox() const;
 
     unsigned nodeIndex() const;
 
@@ -648,7 +616,6 @@ public:
     bool dispatchTouchEvent(PassRefPtr<TouchEvent>);
 #endif
 
-    void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
     virtual void dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode, FocusDirection);
@@ -789,11 +756,6 @@ private:
     bool rendererIsEditable(EditableLevel, UserSelectAllTreatment = UserSelectAllIsAlwaysNonEditable) const;
     bool isEditableToAccessibility(EditableLevel) const;
 
-    bool isUserActionElementActive() const;
-    bool isUserActionElementInActiveChain() const;
-    bool isUserActionElementHovered() const;
-    bool isUserActionElementFocused() const;
-
     void setStyleChange(StyleChangeType);
 
     // Used to share code between lazyAttach and setNeedsStyleRecalc.
@@ -803,10 +765,6 @@ private:
     virtual void derefEventTarget();
 
     virtual RenderStyle* nonRendererStyle() const { return 0; }
-
-    virtual const AtomicString& virtualPrefix() const;
-    virtual const AtomicString& virtualLocalName() const;
-    virtual const AtomicString& virtualNamespaceURI() const;
     virtual RenderStyle* virtualComputedStyle(PseudoId = NOPSEUDO);
 
     Element* ancestorElement() const;

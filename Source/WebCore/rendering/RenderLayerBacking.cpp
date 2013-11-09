@@ -176,7 +176,7 @@ PassOwnPtr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const String& 
 {
     GraphicsLayerFactory* graphicsLayerFactory = 0;
     if (Page* page = renderer()->frame()->page())
-        graphicsLayerFactory = page->chrome()->client()->graphicsLayerFactory();
+        graphicsLayerFactory = page->chrome().client()->graphicsLayerFactory();
 
     OwnPtr<GraphicsLayer> graphicsLayer = GraphicsLayer::create(graphicsLayerFactory, this);
 
@@ -858,7 +858,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
     }
 
     // If this layer was created just for clipping or to apply perspective, it doesn't need its own backing store.
-    setRequiresOwnBackingStore(compositor()->requiresOwnBackingStore(m_owningLayer, compAncestor));
+    setRequiresOwnBackingStore(compositor()->requiresOwnBackingStore(m_owningLayer, compAncestor, relativeCompositingBounds, ancestorCompositingBounds));
 
     bool didUpdateContentsRect = false;
     updateDirectlyCompositedContents(isSimpleContainer, didUpdateContentsRect);
@@ -872,8 +872,13 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
 
 void RenderLayerBacking::updateDirectlyCompositedContents(bool isSimpleContainer, bool& didUpdateContentsRect)
 {
-    updateDirectlyCompositedBackgroundImage(isSimpleContainer, didUpdateContentsRect);
+    if (!m_owningLayer->hasVisibleContent())
+        return;
+
+    // The order of operations here matters, since the last valid type of contents needs
+    // to also update the contentsRect.
     updateDirectlyCompositedBackgroundColor(isSimpleContainer, didUpdateContentsRect);
+    updateDirectlyCompositedBackgroundImage(isSimpleContainer, didUpdateContentsRect);
 }
 
 void RenderLayerBacking::registerScrollingLayers()
@@ -1165,8 +1170,10 @@ bool RenderLayerBacking::updateForegroundLayer(bool needsForegroundLayer)
         layerChanged = true;
     }
 
-    if (layerChanged)
+    if (layerChanged) {
+        m_graphicsLayer->setNeedsDisplay();
         m_graphicsLayer->setPaintingPhase(paintingPhaseForPrimaryLayer());
+    }
 
     return layerChanged;
 }
@@ -1214,6 +1221,7 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
     }
     
     if (layerChanged) {
+        m_graphicsLayer->setNeedsDisplay();
         // This assumes that the background layer is only used for fixed backgrounds, which is currently a correct assumption.
         if (renderer()->view())
             compositor()->fixedRootBackgroundLayerChanged();
@@ -1455,6 +1463,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(bool isSimpleCo
     IntRect destRect = backgroundBox();
     IntPoint phase;
     IntSize tileSize;
+
     RefPtr<Image> image = style->backgroundLayers()->image()->cachedImage()->image();
     toRenderBox(renderer())->getGeometryForBackgroundImage(destRect, phase, tileSize);
     m_graphicsLayer->setContentsTileSize(tileSize);
@@ -1520,7 +1529,7 @@ bool RenderLayerBacking::paintsChildren() const
 {
     if (m_owningLayer->hasVisibleContent() && m_owningLayer->hasNonEmptyChildRenderers())
         return true;
-        
+
     if (hasVisibleNonCompositingDescendantLayers())
         return true;
 
@@ -1672,7 +1681,7 @@ bool RenderLayerBacking::containsPaintedContent() const
 bool RenderLayerBacking::isDirectlyCompositedImage() const
 {
     RenderObject* renderObject = renderer();
-    
+
     if (!renderObject->isImage() || m_owningLayer->hasBoxDecorationsOrBackground() || renderObject->hasClip())
         return false;
 
@@ -1959,7 +1968,7 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
 
     if (graphicsLayer == m_backgroundLayer)
         paintFlags |= (RenderLayer::PaintLayerPaintingRootBackgroundOnly | RenderLayer::PaintLayerPaintingCompositingForegroundPhase); // Need PaintLayerPaintingCompositingForegroundPhase to walk child layers.
-    else if (m_backgroundLayer)
+    else if (compositor()->fixedRootBackgroundLayer())
         paintFlags |= RenderLayer::PaintLayerPaintingSkipRootBackground;
     
     // FIXME: GraphicsLayers need a way to split for RenderRegions.
@@ -2334,20 +2343,6 @@ double RenderLayerBacking::backingStoreMemoryEstimate() const
     
     return backingMemory;
 }
-
-#if PLATFORM(BLACKBERRY)
-bool RenderLayerBacking::contentsVisible(const GraphicsLayer*, const IntRect& localContentRect) const
-{
-    Frame* frame = renderer()->frame();
-    FrameView* view = frame ? frame->view() : 0;
-    if (!view)
-        return false;
-
-    IntRect visibleContentRect(view->visibleContentRect());
-    FloatQuad absoluteContentQuad = renderer()->localToAbsoluteQuad(FloatRect(localContentRect));
-    return absoluteContentQuad.enclosingBoundingBox().intersects(visibleContentRect);
-}
-#endif
 
 } // namespace WebCore
 

@@ -599,7 +599,7 @@ void ChromeClient::paint(WebCore::Timer<ChromeClient>*)
     // synced with cursor movement. For instance, a text field can move without
     // the selection changing.
     Frame* focusedFrame = core(m_webView)->focusController()->focusedOrMainFrame();
-    if (focusedFrame && focusedFrame->editor()->canEdit())
+    if (focusedFrame && focusedFrame->editor().canEdit())
         m_webView->priv->imFilter.setCursorRect(frame->selection()->absoluteCaretBounds());
 }
 
@@ -720,11 +720,7 @@ void ChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) const
     // otherwise we get into an infinite loop!
     GtkWidget* widget = GTK_WIDGET(m_webView);
     GtkRequisition requisition;
-#if GTK_CHECK_VERSION(2, 20, 0)
     gtk_widget_get_requisition(widget, &requisition);
-#else
-    requisition = widget->requisition;
-#endif
     if (gtk_widget_get_realized(widget)
         && (requisition.height != size.height())
         || (requisition.width != size.width()))

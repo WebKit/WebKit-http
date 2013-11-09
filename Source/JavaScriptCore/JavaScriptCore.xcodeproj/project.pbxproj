@@ -154,8 +154,8 @@
 		0F620177143FCD3F0068B77C /* DFGAbstractValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F62016F143FCD2F0068B77C /* DFGAbstractValue.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F620178143FCD440068B77C /* DFGAbstractState.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F62016E143FCD2F0068B77C /* DFGAbstractState.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F620179143FCD480068B77C /* DFGAbstractState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F62016D143FCD2F0068B77C /* DFGAbstractState.cpp */; };
-		0F63943F15C75F19006A597C /* DFGStructureCheckHoistingPhase.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F63943D15C75F14006A597C /* DFGStructureCheckHoistingPhase.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		0F63944015C75F1D006A597C /* DFGStructureCheckHoistingPhase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F63943C15C75F14006A597C /* DFGStructureCheckHoistingPhase.cpp */; };
+		0F63943F15C75F19006A597C /* DFGTypeCheckHoistingPhase.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F63943D15C75F14006A597C /* DFGTypeCheckHoistingPhase.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		0F63944015C75F1D006A597C /* DFGTypeCheckHoistingPhase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F63943C15C75F14006A597C /* DFGTypeCheckHoistingPhase.cpp */; };
 		0F63945415D07055006A597C /* ArrayProfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F63945115D07051006A597C /* ArrayProfile.cpp */; };
 		0F63945515D07057006A597C /* ArrayProfile.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F63945215D07051006A597C /* ArrayProfile.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F63947815DCE34B006A597C /* DFGStructureAbstractValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F63947615DCE347006A597C /* DFGStructureAbstractValue.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -564,7 +564,6 @@
 		86A90ED00EE7D51F00AB350D /* JITArithmetic.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 86A90ECF0EE7D51F00AB350D /* JITArithmetic.cpp */; };
 		86ADD1450FDDEA980006EEC2 /* ARMv7Assembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 86ADD1430FDDEA980006EEC2 /* ARMv7Assembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86ADD1460FDDEA980006EEC2 /* MacroAssemblerARMv7.h in Headers */ = {isa = PBXBuildFile; fileRef = 86ADD1440FDDEA980006EEC2 /* MacroAssemblerARMv7.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		86AE64A8135E5E1C00963012 /* MacroAssemblerSH4.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 86AE64A5135E5E1C00963012 /* MacroAssemblerSH4.cpp */; };
 		86AE64A9135E5E1C00963012 /* MacroAssemblerSH4.h in Headers */ = {isa = PBXBuildFile; fileRef = 86AE64A6135E5E1C00963012 /* MacroAssemblerSH4.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86AE64AA135E5E1C00963012 /* SH4Assembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 86AE64A7135E5E1C00963012 /* SH4Assembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86AE6C4D136A11E400963012 /* DFGFPRInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = 86AE6C4B136A11E400963012 /* DFGFPRInfo.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1066,8 +1065,8 @@
 		0F62016F143FCD2F0068B77C /* DFGAbstractValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGAbstractValue.h; path = dfg/DFGAbstractValue.h; sourceTree = "<group>"; };
 		0F620170143FCD2F0068B77C /* DFGBasicBlock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGBasicBlock.h; path = dfg/DFGBasicBlock.h; sourceTree = "<group>"; };
 		0F620172143FCD2F0068B77C /* DFGVariableAccessData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGVariableAccessData.h; path = dfg/DFGVariableAccessData.h; sourceTree = "<group>"; };
-		0F63943C15C75F14006A597C /* DFGStructureCheckHoistingPhase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGStructureCheckHoistingPhase.cpp; path = dfg/DFGStructureCheckHoistingPhase.cpp; sourceTree = "<group>"; };
-		0F63943D15C75F14006A597C /* DFGStructureCheckHoistingPhase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGStructureCheckHoistingPhase.h; path = dfg/DFGStructureCheckHoistingPhase.h; sourceTree = "<group>"; };
+		0F63943C15C75F14006A597C /* DFGTypeCheckHoistingPhase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGTypeCheckHoistingPhase.cpp; path = dfg/DFGTypeCheckHoistingPhase.cpp; sourceTree = "<group>"; };
+		0F63943D15C75F14006A597C /* DFGTypeCheckHoistingPhase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGTypeCheckHoistingPhase.h; path = dfg/DFGTypeCheckHoistingPhase.h; sourceTree = "<group>"; };
 		0F63945115D07051006A597C /* ArrayProfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ArrayProfile.cpp; sourceTree = "<group>"; };
 		0F63945215D07051006A597C /* ArrayProfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ArrayProfile.h; sourceTree = "<group>"; };
 		0F63947615DCE347006A597C /* DFGStructureAbstractValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGStructureAbstractValue.h; path = dfg/DFGStructureAbstractValue.h; sourceTree = "<group>"; };
@@ -1467,7 +1466,6 @@
 		86A90ECF0EE7D51F00AB350D /* JITArithmetic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JITArithmetic.cpp; sourceTree = "<group>"; };
 		86ADD1430FDDEA980006EEC2 /* ARMv7Assembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARMv7Assembler.h; sourceTree = "<group>"; };
 		86ADD1440FDDEA980006EEC2 /* MacroAssemblerARMv7.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssemblerARMv7.h; sourceTree = "<group>"; };
-		86AE64A5135E5E1C00963012 /* MacroAssemblerSH4.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MacroAssemblerSH4.cpp; sourceTree = "<group>"; };
 		86AE64A6135E5E1C00963012 /* MacroAssemblerSH4.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssemblerSH4.h; sourceTree = "<group>"; };
 		86AE64A7135E5E1C00963012 /* SH4Assembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SH4Assembler.h; sourceTree = "<group>"; };
 		86AE6C4B136A11E400963012 /* DFGFPRInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGFPRInfo.h; path = dfg/DFGFPRInfo.h; sourceTree = "<group>"; };
@@ -1983,7 +1981,7 @@
 		};
 		0FF4272E158EBCCE004CB9FF /* disassembler */ = {
 			isa = PBXGroup;
-			children = (			
+			children = (
 				65C028591717966800351E35 /* ARMv7 */,
 				0FF42733158EBD64004CB9FF /* udis86 */,
 				65C0284F171795E200351E35 /* ARMv7Disassembler.cpp */,
@@ -2767,8 +2765,8 @@
 				86880F1B14328BB900B08D42 /* DFGSpeculativeJIT32_64.cpp */,
 				86880F4C14353B2100B08D42 /* DFGSpeculativeJIT64.cpp */,
 				0F63947615DCE347006A597C /* DFGStructureAbstractValue.h */,
-				0F63943C15C75F14006A597C /* DFGStructureCheckHoistingPhase.cpp */,
-				0F63943D15C75F14006A597C /* DFGStructureCheckHoistingPhase.h */,
+				0F63943C15C75F14006A597C /* DFGTypeCheckHoistingPhase.cpp */,
+				0F63943D15C75F14006A597C /* DFGTypeCheckHoistingPhase.h */,
 				0FC0979F146B28C700CF2442 /* DFGThunks.cpp */,
 				0FC097A0146B28C700CF2442 /* DFGThunks.h */,
 				0FBE0F6F16C1DB010082C5E8 /* DFGUnificationPhase.cpp */,
@@ -2866,7 +2864,6 @@
 				86ADD1440FDDEA980006EEC2 /* MacroAssemblerARMv7.h */,
 				863B23DF0FC60E6200703AA4 /* MacroAssemblerCodeRef.h */,
 				86C568DE11A213EE0007F7F0 /* MacroAssemblerMIPS.h */,
-				86AE64A5135E5E1C00963012 /* MacroAssemblerSH4.cpp */,
 				86AE64A6135E5E1C00963012 /* MacroAssemblerSH4.h */,
 				860161E00F3A83C100F84710 /* MacroAssemblerX86.h */,
 				860161E10F3A83C100F84710 /* MacroAssemblerX86_64.h */,
@@ -3114,7 +3111,7 @@
 				0F1E3A67153A21E2000F9456 /* DFGSilentRegisterSavePlan.h in Headers */,
 				86EC9DD31328DF82002B2AD7 /* DFGSpeculativeJIT.h in Headers */,
 				0F63947815DCE34B006A597C /* DFGStructureAbstractValue.h in Headers */,
-				0F63943F15C75F19006A597C /* DFGStructureCheckHoistingPhase.h in Headers */,
+				0F63943F15C75F19006A597C /* DFGTypeCheckHoistingPhase.h in Headers */,
 				0FC097A2146B28CC00CF2442 /* DFGThunks.h in Headers */,
 				0F3B3A2C15475002003ED0FF /* DFGValidate.h in Headers */,
 				0F2BDC471522802500CD8910 /* DFGValueRecoveryOverride.h in Headers */,
@@ -3878,7 +3875,7 @@
 				86EC9DD21328DF82002B2AD7 /* DFGSpeculativeJIT.cpp in Sources */,
 				86880F1F14328BB900B08D42 /* DFGSpeculativeJIT32_64.cpp in Sources */,
 				86880F4D14353B2100B08D42 /* DFGSpeculativeJIT64.cpp in Sources */,
-				0F63944015C75F1D006A597C /* DFGStructureCheckHoistingPhase.cpp in Sources */,
+				0F63944015C75F1D006A597C /* DFGTypeCheckHoistingPhase.cpp in Sources */,
 				0FC097A1146B28CA00CF2442 /* DFGThunks.cpp in Sources */,
 				0F3B3A2B15475000003ED0FF /* DFGValidate.cpp in Sources */,
 				0F2BDC4F15228BF300CD8910 /* DFGValueSource.cpp in Sources */,
@@ -3998,7 +3995,6 @@
 				14B723B212D7DA46003BD5ED /* MachineStackMarker.cpp in Sources */,
 				0FEB3ECF16237F6C00AB67AD /* MacroAssembler.cpp in Sources */,
 				86C568E011A213EE0007F7F0 /* MacroAssemblerARM.cpp in Sources */,
-				86AE64A8135E5E1C00963012 /* MacroAssemblerSH4.cpp in Sources */,
 				C2B916C514DA040C00CBAC86 /* MarkedAllocator.cpp in Sources */,
 				142D6F0813539A2800B02E86 /* MarkedBlock.cpp in Sources */,
 				14D2F3DA139F4BE200491031 /* MarkedSpace.cpp in Sources */,

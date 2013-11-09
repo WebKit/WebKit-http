@@ -50,7 +50,6 @@
 #include <WebKitQuartzCoreAdditions/WKCACFTypes.h>
 #include <wtf/HashMap.h>
 #include <wtf/Threading.h>
-#include <wtf/UnusedParam.h>
 
 // The softlink header files must be included after the AVCF and CoreMedia header files.
 #include "AVFoundationCFSoftLinking.h"
@@ -983,7 +982,7 @@ void AVFWrapper::createAssetForURL(const String& url)
 {
     ASSERT(!avAsset());
 
-    RetainPtr<CFURLRef> urlRef = adoptCF(KURL(ParsedURLString, url).createCFURL());
+    RetainPtr<CFURLRef> urlRef = KURL(ParsedURLString, url).createCFURL();
 
     AVCFURLAssetRef assetRef = AVCFURLAssetCreateWithURLAndOptions(kCFAllocatorDefault, urlRef.get(), 0, m_notificationQueue);
     m_avAsset = adoptCF(assetRef);
@@ -1302,7 +1301,7 @@ void LayerClient::platformCALayerLayoutSublayersOfLayer(PlatformCALayer* wrapper
 #else
 // AVFoundation should always be enabled for Apple production builds.
 #if __PRODUCTION__ && !USE(AVFOUNDATION)
-#error AVFoundation is not enabled!
+// #error AVFoundation is not enabled!
 #endif // __PRODUCTION__ && !USE(AVFOUNDATION)
 #endif // USE(AVFOUNDATION)
 #endif // PLATFORM(WIN) && ENABLE(VIDEO)

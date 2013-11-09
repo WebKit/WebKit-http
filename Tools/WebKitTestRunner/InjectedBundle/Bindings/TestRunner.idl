@@ -73,6 +73,7 @@ interface TestRunner {
     void dispatchPendingLoadRequests();
     void setCacheModel(int model);
     void setAsynchronousSpellCheckingEnabled(boolean value);
+    void setPrinting();
 
     // Special DOM functions.
     void clearBackForwardList();
@@ -186,5 +187,8 @@ interface TestRunner {
     void setHandlesAuthenticationChallenges(boolean value);
     void setAuthenticationUsername(DOMString username);
     void setAuthenticationPassword(DOMString password);
+
+    // Secure text input mode (Mac only)
+    readonly attribute boolean secureEventInputIsEnabled;
 };
 

@@ -34,7 +34,6 @@
 #include <wtf/MainThread.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/UnusedParam.h>
 
 using namespace WTF;
 using namespace Unicode;
@@ -73,7 +72,6 @@ TypesettingFeatures Font::s_defaultTypesettingFeatures = 0;
 Font::Font()
     : m_letterSpacing(0)
     , m_wordSpacing(0)
-    , m_isPlatformFont(false)
     , m_needsTranscoding(false)
     , m_typesettingFeatures(0)
 {
@@ -83,31 +81,27 @@ Font::Font(const FontDescription& fd, short letterSpacing, short wordSpacing)
     : m_fontDescription(fd)
     , m_letterSpacing(letterSpacing)
     , m_wordSpacing(wordSpacing)
-    , m_isPlatformFont(false)
     , m_needsTranscoding(fontTranscoder().needsTranscoding(fd))
     , m_typesettingFeatures(computeTypesettingFeatures())
 {
 }
 
 Font::Font(const FontPlatformData& fontData, bool isPrinterFont, FontSmoothingMode fontSmoothingMode)
-    : m_fontFallbackList(FontFallbackList::create())
+    : m_glyphs(FontGlyphs::createForPlatformFont(fontData))
     , m_letterSpacing(0)
     , m_wordSpacing(0)
-    , m_isPlatformFont(true)
     , m_typesettingFeatures(computeTypesettingFeatures())
 {
     m_fontDescription.setUsePrinterFont(isPrinterFont);
     m_fontDescription.setFontSmoothing(fontSmoothingMode);
     m_needsTranscoding = fontTranscoder().needsTranscoding(fontDescription());
-    m_fontFallbackList->setPlatformFont(fontData);
 }
 
 Font::Font(const Font& other)
     : m_fontDescription(other.m_fontDescription)
-    , m_fontFallbackList(other.m_fontFallbackList)
+    , m_glyphs(other.m_glyphs)
     , m_letterSpacing(other.m_letterSpacing)
     , m_wordSpacing(other.m_wordSpacing)
-    , m_isPlatformFont(other.m_isPlatformFont)
     , m_needsTranscoding(other.m_needsTranscoding)
     , m_typesettingFeatures(computeTypesettingFeatures())
 {
@@ -116,10 +110,9 @@ Font::Font(const Font& other)
 Font& Font::operator=(const Font& other)
 {
     m_fontDescription = other.m_fontDescription;
-    m_fontFallbackList = other.m_fontFallbackList;
+    m_glyphs = other.m_glyphs;
     m_letterSpacing = other.m_letterSpacing;
     m_wordSpacing = other.m_wordSpacing;
-    m_isPlatformFont = other.m_isPlatformFont;
     m_needsTranscoding = other.m_needsTranscoding;
     m_typesettingFeatures = other.m_typesettingFeatures;
     return *this;
@@ -131,16 +124,21 @@ bool Font::operator==(const Font& other) const
     // FIXME: This does not work if the font was made with the FontPlatformData constructor.
     if (loadingCustomFonts() || other.loadingCustomFonts())
         return false;
-    
-    FontSelector* first = m_fontFallbackList ? m_fontFallbackList->fontSelector() : 0;
-    FontSelector* second = other.m_fontFallbackList ? other.m_fontFallbackList->fontSelector() : 0;
 
-    return first == second
-        && m_fontDescription == other.m_fontDescription
-        && m_letterSpacing == other.m_letterSpacing
-        && m_wordSpacing == other.m_wordSpacing
-        && (m_fontFallbackList ? m_fontFallbackList->fontSelectorVersion() : 0) == (other.m_fontFallbackList ? other.m_fontFallbackList->fontSelectorVersion() : 0)
-        && (m_fontFallbackList ? m_fontFallbackList->generation() : 0) == (other.m_fontFallbackList ? other.m_fontFallbackList->generation() : 0);
+    if (m_fontDescription != other.m_fontDescription || m_letterSpacing != other.m_letterSpacing || m_wordSpacing != other.m_wordSpacing)
+        return false;
+    if (m_glyphs == other.m_glyphs)
+        return true;
+    if (!m_glyphs || !other.m_glyphs)
+        return false;
+    if (m_glyphs->fontSelector() != other.m_glyphs->fontSelector())
+        return false;
+    // Can these cases actually somehow occur? All fonts should get wiped out by full style recalc.
+    if (m_glyphs->fontSelectorVersion() != other.m_glyphs->fontSelectorVersion())
+        return false;
+    if (m_glyphs->generation() != other.m_glyphs->generation())
+        return false;
+    return true;
 }
 
 void Font::update(PassRefPtr<FontSelector> fontSelector) const
@@ -150,9 +148,9 @@ void Font::update(PassRefPtr<FontSelector> fontSelector) const
     // style anyway. Other copies are transient, e.g., the state in the GraphicsContext, and
     // won't stick around long enough to get you in trouble). Still, this is pretty disgusting,
     // and could eventually be rectified by using RefPtrs for Fonts themselves.
-    if (!m_fontFallbackList)
-        m_fontFallbackList = FontFallbackList::create();
-    m_fontFallbackList->invalidate(fontSelector);
+    if (!m_glyphs)
+        m_glyphs = FontGlyphs::create();
+    m_glyphs->invalidate(fontSelector);
     m_typesettingFeatures = computeTypesettingFeatures();
 }
 
@@ -210,7 +208,7 @@ float Font::width(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFo
 
     bool hasKerningOrLigatures = typesettingFeatures() & (Kerning | Ligatures);
     bool hasWordSpacingOrLetterSpacing = wordSpacing() | letterSpacing();
-    float* cacheEntry = m_fontFallbackList->widthCache().add(run, std::numeric_limits<float>::quiet_NaN(), hasKerningOrLigatures, hasWordSpacingOrLetterSpacing, glyphOverflow);
+    float* cacheEntry = m_glyphs->widthCache().add(run, std::numeric_limits<float>::quiet_NaN(), hasKerningOrLigatures, hasWordSpacingOrLetterSpacing, glyphOverflow);
     if (cacheEntry && !std::isnan(*cacheEntry))
         return *cacheEntry;
 

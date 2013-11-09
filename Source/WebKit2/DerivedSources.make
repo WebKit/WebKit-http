@@ -102,11 +102,8 @@ MESSAGE_RECEIVERS = \
     WebIconDatabaseProxy \
     WebInspector \
     WebInspectorProxy \
-    WebKeyValueStorageManager \
-    WebKeyValueStorageManagerProxy \
     WebMediaCacheManager \
     WebMediaCacheManagerProxy \
-    WebNotificationManagerProxy \
     WebNotificationManager \
     WebPage \
     WebPageGroupProxy \

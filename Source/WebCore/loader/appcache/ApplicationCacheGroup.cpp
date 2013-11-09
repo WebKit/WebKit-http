@@ -49,7 +49,6 @@
 #include "Settings.h"
 #include <wtf/HashMap.h>
 #include <wtf/MainThread.h>
-#include <wtf/UnusedParam.h>
 
 #if ENABLE(INSPECTOR)
 #include "ProgressTracker.h"
@@ -822,7 +821,7 @@ void ApplicationCacheGroup::didReachMaxAppCacheSize()
 {
     ASSERT(m_frame);
     ASSERT(m_cacheBeingUpdated);
-    m_frame->page()->chrome()->client()->reachedMaxAppCacheSize(cacheStorage().spaceNeeded(m_cacheBeingUpdated->estimatedSizeInStorage()));
+    m_frame->page()->chrome().client()->reachedMaxAppCacheSize(cacheStorage().spaceNeeded(m_cacheBeingUpdated->estimatedSizeInStorage()));
     m_calledReachedMaxAppCacheSize = true;
     checkIfLoadIsComplete();
 }
@@ -831,7 +830,7 @@ void ApplicationCacheGroup::didReachOriginQuota(int64_t totalSpaceNeeded)
 {
     // Inform the client the origin quota has been reached, they may decide to increase the quota.
     // We expect quota to be increased synchronously while waiting for the call to return.
-    m_frame->page()->chrome()->client()->reachedApplicationCacheOriginQuota(m_origin.get(), totalSpaceNeeded);
+    m_frame->page()->chrome().client()->reachedApplicationCacheOriginQuota(m_origin.get(), totalSpaceNeeded);
 }
 
 void ApplicationCacheGroup::cacheUpdateFailed()

@@ -177,6 +177,7 @@ PluginInfo SimplePDFPlugin::pluginInfo()
 {
     PluginInfo info;
     info.name = builtInPDFPluginName();
+    info.isApplicationPlugin = true;
 
     MimeClassInfo pdfMimeClassInfo;
     pdfMimeClassInfo.type = "application/pdf";
@@ -324,7 +325,7 @@ JSValueRef SimplePDFPlugin::jsPDFDocPrint(JSContextRef ctx, JSObjectRef function
     if (!page)
         return JSValueMakeUndefined(ctx);
     
-    page->chrome()->print(coreFrame);
+    page->chrome().print(coreFrame);
     
     return JSValueMakeUndefined(ctx);
 }

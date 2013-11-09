@@ -324,6 +324,7 @@ CSSParser::CSSParser(const CSSParserContext& context)
     , m_hasFontFaceOnlyValues(false)
     , m_hadSyntacticallyValidCSSRule(false)
     , m_logErrors(false)
+    , m_ignoreErrorsInDeclaration(false)
 #if ENABLE(CSS_SHADERS)
     , m_inFilterRule(false)
 #endif
@@ -350,7 +351,6 @@ CSSParser::CSSParser(const CSSParserContext& context)
     cssyydebug = 1;
 #endif
     m_tokenStart.ptr8 = 0;
-    CSSPropertySourceData::init();
 }
 
 CSSParser::~CSSParser()
@@ -391,24 +391,16 @@ void CSSParserString::lower()
     makeLower(characters16(), characters16(), length());
 }
 
-AtomicString CSSParserString::lowerSubstring(unsigned position, unsigned length) const
+#if ENABLE(CSS_VARIABLES)
+AtomicString CSSParserString::substring(unsigned position, unsigned length) const
 {
     ASSERT(m_length >= position + length);
 
-    RefPtr<StringImpl> result;
-
-    if (is8Bit()) {
-        LChar* buffer;
-        result = StringImpl::createUninitialized(length, buffer);
-        makeLower(characters8() + position, buffer, length);
-    } else {
-        UChar* buffer = 0;
-        result = StringImpl::createUninitialized(length, buffer);
-        makeLower(characters16() + position, buffer, length);
-    }
-
-    return AtomicString(result);
+    if (is8Bit())
+        return AtomicString(characters8() + position, length);
+    return AtomicString(characters16() + position, length);
 }
+#endif
 
 void CSSParser::setupParser(const char* prefix, unsigned prefixLength, const String& string, const char* suffix, unsigned suffixLength)
 {
@@ -469,6 +461,7 @@ void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, int 
     m_ruleSourceDataResult = ruleSourceDataResult;
 
     m_logErrors = logErrors && sheet->singleOwnerDocument() && !sheet->baseURL().isEmpty() && sheet->singleOwnerDocument()->page();
+    m_ignoreErrorsInDeclaration = false;
     m_lineNumber = startLineNumber;
     setupParser("", string, "");
     cssyyparse(this);
@@ -476,6 +469,7 @@ void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, int 
     m_currentRuleDataStack.clear();
     m_ruleSourceDataResult = 0;
     m_rule = 0;
+    m_ignoreErrorsInDeclaration = false;
     m_logErrors = false;
 }
 
@@ -1758,8 +1752,7 @@ inline PassRefPtr<CSSPrimitiveValue> CSSParser::createPrimitiveStringValue(CSSPa
 inline PassRefPtr<CSSPrimitiveValue> CSSParser::createPrimitiveVariableNameValue(CSSParserValue* value)
 {
     ASSERT(value->unit == CSSPrimitiveValue::CSS_VARIABLE_NAME);
-    AtomicString variableName = String(value->string).lower();
-    return CSSPrimitiveValue::create(variableName, CSSPrimitiveValue::CSS_VARIABLE_NAME);
+    return CSSPrimitiveValue::create(value->string, CSSPrimitiveValue::CSS_VARIABLE_NAME);
 }
 #endif
 
@@ -2318,14 +2311,13 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 
     case CSSPropertyTextDecoration:
     case CSSPropertyWebkitTextDecorationsInEffect:
+#if ENABLE(CSS3_TEXT)
+    case CSSPropertyWebkitTextDecorationLine:
+#endif // CSS3_TEXT
         // none | [ underline || overline || line-through || blink ] | inherit
         return parseTextDecoration(propId, important);
 
 #if ENABLE(CSS3_TEXT)
-    case CSSPropertyWebkitTextDecorationLine:
-        // none | [ underline || overline || line-through ] | inherit
-        return parseTextDecoration(propId, important);
-
     case CSSPropertyWebkitTextDecorationStyle:
         // solid | double | dotted | dashed | wavy
         if (id == CSSValueSolid || id == CSSValueDouble || id == CSSValueDotted || id == CSSValueDashed || id == CSSValueWavy)
@@ -2906,11 +2898,11 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         return false;
     case CSSPropertyPage:
         return parsePage(propId, important);
-    case CSSPropertyFontStretch:
 #if ENABLE(CSS_SHADERS)
     case CSSPropertyGeometry:
         return m_inFilterRule ? parseGeometry(propId, value, important) : false;
 #endif
+    case CSSPropertyFontStretch:
     case CSSPropertyTextLineThrough:
     case CSSPropertyTextOverline:
     case CSSPropertyTextUnderline:
@@ -2971,6 +2963,10 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
             validPrimitive = true;
         else if (value->unit == CSSParserValue::Function)
             return parseBasicShape(propId, important);
+        else if (value->unit == CSSPrimitiveValue::CSS_URI) {
+            parsedValue = CSSImageValue::create(completeURL(value->string));
+            m_valueList->next();
+        }
         break;
     case CSSPropertyWebkitShapeMargin:
     case CSSPropertyWebkitShapePadding:
@@ -2984,10 +2980,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
 #endif
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     case CSSPropertyImageResolution:
-        parsedValue = parseImageResolution(m_valueList.get());
-        if (!parsedValue)
-            return false;
-        m_valueList->next();
+        parsedValue = parseImageResolution();
         break;
 #endif
     case CSSPropertyBorderBottomStyle:
@@ -3331,7 +3324,7 @@ void CSSParser::storeVariableDeclaration(const CSSParserString& name, PassOwnPtr
     static const unsigned prefixLength = sizeof("-webkit-var-") - 1;
     
     ASSERT(name.length() > prefixLength);
-    AtomicString variableName = name.lowerSubstring(prefixLength, name.length() - prefixLength);
+    AtomicString variableName = name.substring(prefixLength, name.length() - prefixLength);
 
     StringBuilder builder;
     for (unsigned i = 0, size = value->size(); i < size; i++) {
@@ -6683,14 +6676,14 @@ bool CSSParser::parseBorderImage(CSSPropertyID propId, RefPtr<CSSValue>& result,
             else if (isGeneratedImageValue(val)) {
                 RefPtr<CSSValue> value;
                 if (parseGeneratedImage(m_valueList.get(), value))
-                    context.commitImage(value);
+                    context.commitImage(value.release());
                 else
                     return false;
 #if ENABLE(CSS_IMAGE_SET)
             } else if (val->unit == CSSParserValue::Function && equalIgnoringCase(val->function->name, "-webkit-image-set(")) {
                 RefPtr<CSSValue> value = parseImageSet(m_valueList.get());
                 if (value)
-                    context.commitImage(value);
+                    context.commitImage(value.release());
                 else
                     return false;
 #endif
@@ -6707,7 +6700,7 @@ bool CSSParser::parseBorderImage(CSSPropertyID propId, RefPtr<CSSValue>& result,
         if (!context.canAdvance() && context.allowRepeat()) {
             RefPtr<CSSValue> repeat;
             if (parseBorderImageRepeat(repeat))
-                context.commitRepeat(repeat);
+                context.commitRepeat(repeat.release());
         }
 
         if (!context.canAdvance() && context.requireWidth()) {
@@ -7942,14 +7935,14 @@ bool CSSParser::parseCanvas(CSSParserValueList* valueList, RefPtr<CSSValue>& can
 }
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
-PassRefPtr<CSSValue> CSSParser::parseImageResolution(CSSParserValueList* valueList)
+PassRefPtr<CSSValue> CSSParser::parseImageResolution()
 {
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     bool haveResolution = false;
     bool haveFromImage = false;
     bool haveSnap = false;
 
-    CSSParserValue* value = valueList->current();
+    CSSParserValue* value = m_valueList->current();
     while (value) {
         if (!haveFromImage && value->id == CSSValueFromImage) {
             list->append(cssValuePool().createIdentifierValue(value->id));
@@ -9359,16 +9352,9 @@ bool CSSParser::parseTextDecoration(CSSPropertyID propId, bool important)
     while (isValid && value) {
         switch (value->id) {
         case CSSValueBlink:
-#if ENABLE(CSS3_TEXT)
-            // Blink value is not accepted by -webkit-text-decoration-line.
-            isValid = propId != CSSPropertyWebkitTextDecorationLine;
-            if (isValid)
-                list->append(cssValuePool().createIdentifierValue(value->id));
-            break;
-#endif // CSS3_TEXT
-        case CSSValueUnderline:
-        case CSSValueOverline:
         case CSSValueLineThrough:
+        case CSSValueOverline:
+        case CSSValueUnderline:
             list->append(cssValuePool().createIdentifierValue(value->id));
             break;
         default:
@@ -9872,6 +9858,16 @@ static inline bool isEqualToCSSIdentifier(CharacterType* cssString, const char* 
         ASSERT((*constantString >= 'a' && *constantString <= 'z') || *constantString == '-');
         ASSERT(*constantString != '-' || isCSSLetter(*cssString));
         if (toASCIILowerUnchecked(*cssString++) != (*constantString++))
+            return false;
+    } while (*constantString);
+    return true;
+}
+
+template <typename CharacterType>
+static inline bool isEqualToCSSCaseSensitiveIdentifier(CharacterType* string, const char* constantString)
+{
+    do {
+        if (*string++ != *constantString++)
             return false;
     } while (*constantString);
     return true;
@@ -10993,7 +10989,7 @@ restartAfterComment:
             m_token = IDENT;
 
 #if ENABLE(CSS_VARIABLES)
-            if (cssVariablesEnabled() && isEqualToCSSIdentifier(tokenStart<SrcCharacterType>() + 1, "webkit-var") && tokenStart<SrcCharacterType>()[11] == '-' && isIdentifierStartAfterDash(tokenStart<SrcCharacterType>() + 12))
+            if (cssVariablesEnabled() && isEqualToCSSCaseSensitiveIdentifier(tokenStart<SrcCharacterType>() + 1, "webkit-var") && tokenStart<SrcCharacterType>()[11] == '-' && isIdentifierStartAfterDash(tokenStart<SrcCharacterType>() + 12))
                 m_token = VAR_DEFINITION;
             else
 #endif
@@ -11505,12 +11501,13 @@ void CSSParser::syntaxError(const Location& location, SyntaxErrorType error)
         builder.append(location.token.characters16(), location.token.length());
 
     logError(builder.toString(), location.lineNumber);
+
+    m_ignoreErrorsInDeclaration = true;
 }
 
 bool CSSParser::isLoggingErrors()
 {
-    // FIXME: return logging back (https://bugs.webkit.org/show_bug.cgi?id=113401).
-    return false;
+    return m_logErrors && !m_ignoreErrorsInDeclaration;
 }
 
 void CSSParser::logError(const String& message, int lineNumber)
@@ -11618,12 +11615,6 @@ CSSParserSelector* CSSParser::rewriteSpecifiersWithNamespaceIfNeeded(CSSParserSe
 {
     if (m_defaultNamespace != starAtom || specifiers->isCustomPseudoElement())
         return rewriteSpecifiersWithElementName(nullAtom, starAtom, specifiers, /*tagIsForNamespaceRule*/true);
-#if ENABLE(SHADOW_DOM)
-    if (CSSParserSelector* distributedPseudoElementSelector = specifiers->findDistributedPseudoElementSelector()) {
-        specifiers->prependTagSelector(QualifiedName(nullAtom, starAtom, m_defaultNamespace), /*tagIsForNamespaceRule*/true);
-        return rewriteSpecifiersForShadowDistributed(specifiers, distributedPseudoElementSelector);
-    }
-#endif
     return specifiers;
 }
 
@@ -11631,13 +11622,6 @@ CSSParserSelector* CSSParser::rewriteSpecifiersWithElementName(const AtomicStrin
 {
     AtomicString determinedNamespace = namespacePrefix != nullAtom && m_styleSheet ? m_styleSheet->determineNamespace(namespacePrefix) : m_defaultNamespace;
     QualifiedName tag(namespacePrefix, elementName, determinedNamespace);
-
-#if ENABLE(SHADOW_DOM)
-    if (CSSParserSelector* distributedPseudoElementSelector = specifiers->findDistributedPseudoElementSelector()) {
-        specifiers->prependTagSelector(tag, tagIsForNamespaceRule);
-        return rewriteSpecifiersForShadowDistributed(specifiers, distributedPseudoElementSelector);
-    }
-#endif
 
     if (!specifiers->isCustomPseudoElement()) {
         if (tag == anyQName())
@@ -11670,27 +11654,6 @@ CSSParserSelector* CSSParser::rewriteSpecifiersWithElementName(const AtomicStrin
     lastShadowDescendant->setRelation(CSSSelector::ShadowDescendant);
     return specifiers;
 }
-
-#if ENABLE(SHADOW_DOM)
-CSSParserSelector* CSSParser::rewriteSpecifiersForShadowDistributed(CSSParserSelector* specifiers, CSSParserSelector* distributedPseudoElementSelector)
-{
-    CSSParserSelector* argumentSelector = distributedPseudoElementSelector->functionArgumentSelector();
-    ASSERT(argumentSelector);
-    ASSERT(!specifiers->isDistributedPseudoElement());
-    for (CSSParserSelector* end = specifiers; end->tagHistory(); end = end->tagHistory()) {
-        if (end->tagHistory()->isDistributedPseudoElement()) {
-            end->clearTagHistory();
-            break;
-        }
-    }
-    CSSParserSelector* end = argumentSelector;
-    while (end->tagHistory())
-        end = end->tagHistory();
-    end->setTagHistory(sinkFloatingSelector(specifiers));
-    end->setRelation(CSSSelector::ShadowDistributed);
-    return argumentSelector;
-}
-#endif
 
 CSSParserSelector* CSSParser::rewriteSpecifiers(CSSParserSelector* specifiers, CSSParserSelector* newSpecifier)
 {
@@ -11990,6 +11953,7 @@ void CSSParser::markRuleBodyEnd()
 
 void CSSParser::markPropertyStart()
 {
+    m_ignoreErrorsInDeclaration = false;
     if (!isExtractingSourceData())
         return;
     if (m_currentRuleDataStack->isEmpty() || !m_currentRuleDataStack->last()->styleSourceData)

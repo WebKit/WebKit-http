@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2008-2009 Torch Mobile, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -86,7 +86,7 @@ namespace WebCore {
 
     class AffineTransform;
     class DrawingBuffer;
-    class Generator;
+    class Gradient;
     class GraphicsContextPlatformPrivate;
     class ImageBuffer;
     class IntRect;
@@ -274,7 +274,7 @@ namespace WebCore {
 
         void fillRect(const FloatRect&);
         void fillRect(const FloatRect&, const Color&, ColorSpace);
-        void fillRect(const FloatRect&, Generator&);
+        void fillRect(const FloatRect&, Gradient&);
         void fillRect(const FloatRect&, const Color&, ColorSpace, CompositeOperator, BlendMode = BlendModeNormal);
         void fillRoundedRect(const IntRect&, const IntSize& topLeft, const IntSize& topRight, const IntSize& bottomLeft, const IntSize& bottomRight, const Color&, ColorSpace);
         void fillRoundedRect(const RoundedRect&, const Color&, ColorSpace, BlendMode = BlendModeNormal);
@@ -511,7 +511,6 @@ namespace WebCore {
         void restorePlatformState();
 
         void setPlatformTextDrawingMode(TextDrawingModeFlags);
-        void setPlatformFont(const Font& font);
 
         void setPlatformStrokeColor(const Color&, ColorSpace);
         void setPlatformStrokeStyle(StrokeStyle);

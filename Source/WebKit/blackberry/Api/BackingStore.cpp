@@ -45,6 +45,7 @@
 #include <BlackBerryPlatformLog.h>
 #include <BlackBerryPlatformMessage.h>
 #include <BlackBerryPlatformMessageClient.h>
+#include <BlackBerryPlatformPerformanceMonitor.h>
 #include <BlackBerryPlatformScreen.h>
 #include <BlackBerryPlatformSettings.h>
 #include <BlackBerryPlatformViewportAccessor.h>
@@ -390,7 +391,7 @@ void BackingStorePrivate::resumeScreenUpdates(BackingStore::ResumeUpdateOperatio
 #if USE(ACCELERATED_COMPOSITING)
     // It needs layout and render before committing root layer if we set OSDS
     if (m_webPage->d->needsOneShotDrawingSynchronization())
-        m_webPage->d->requestLayoutIfNeeded();
+        m_webPage->d->updateLayoutAndStyleIfNeededRecursive();
 
     // This will also blit since we set the OSDS flag above.
     m_webPage->d->commitRootLayerIfNeeded();
@@ -409,6 +410,7 @@ void BackingStorePrivate::updateSuspendScreenUpdateState(bool* hasSyncedToUserIn
         && (m_suspendBackingStoreUpdates || !m_renderQueue->hasCurrentVisibleZoomJob()); // Backingstore is not usable while we're waiting for an ("atomic") zoom job to finish.
 
     bool shouldSuspend = m_suspendScreenUpdateCounterWebKitThread
+        || !buffer()
         || !m_webPage->isVisible()
         || (!isBackingStoreUsable && !m_webPage->d->compositorDrawsRootLayer());
 
@@ -848,8 +850,8 @@ void BackingStorePrivate::updateTilesAfterBackingStoreRectChange()
                     tileNotRenderedRegion.extents().toString().c_str());
 #endif
             } else {
-                if (!tileBuffer || !tileBuffer->isRendered(tileVisibleContentsRect(index, geometry), geometry->scale())
-                    && !isCurrentVisibleJob(index, geometry))
+                if (!tileBuffer || (!tileBuffer->isRendered(tileVisibleContentsRect(index, geometry), geometry->scale())
+                    && !isCurrentVisibleJob(index, geometry)))
                     updateTile(tileOrigin, false /*immediate*/);
             }
         } else if (rect.intersects(expandedContentsRect()))
@@ -1105,7 +1107,7 @@ TileIndexList BackingStorePrivate::render(const TileIndexList& tileIndexList)
 
 void BackingStorePrivate::requestLayoutIfNeeded() const
 {
-    m_webPage->d->requestLayoutIfNeeded();
+    m_webPage->d->updateLayoutAndStyleIfNeededRecursive();
 }
 
 void BackingStorePrivate::renderAndBlitVisibleContentsImmediately()
@@ -1159,6 +1161,8 @@ void BackingStorePrivate::blitVisibleContents(bool force)
     const Platform::IntRect dstRect = viewportAccessor->destinationSurfaceRect();
     if (dstRect.isEmpty())
         return;
+
+    BlackBerry::Platform::PerformanceMonitor::instance()->reportFrameRenderBegin();
 
     const Platform::IntRect pixelViewportRect = viewportAccessor->pixelViewportRect();
     const Platform::FloatRect documentViewportRect = viewportAccessor->documentFromPixelContents(pixelViewportRect);
@@ -1351,6 +1355,8 @@ void BackingStorePrivate::blitVisibleContents(bool force)
 #endif
 
     m_webPage->client()->postToSurface(dstRect);
+
+    BlackBerry::Platform::PerformanceMonitor::instance()->reportFrameRenderEnd(true /*didRender*/);
 }
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -1693,9 +1699,9 @@ void BackingStorePrivate::createSurfaces()
         return;
     }
 
-    // Don't try to blit to screen unless we have a buffer.
-    if (!buffer())
-        suspendScreenUpdates();
+    // Initialize (initially, probably suspend) screen updates based on various
+    // conditions, including whether or not we have a drawing target buffer.
+    updateSuspendScreenUpdateState();
 
     SurfacePool* surfacePool = SurfacePool::globalSurfacePool();
     surfacePool->initialize(tileSize());

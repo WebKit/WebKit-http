@@ -32,7 +32,7 @@ namespace WebCore {
 class FormAssociatedElement;
 class HTMLCollection;
 
-class HTMLFieldSetElement : public HTMLFormControlElement {
+class HTMLFieldSetElement FINAL : public HTMLFormControlElement {
 public:
     static PassRefPtr<HTMLFieldSetElement> create(const QualifiedName&, Document*, HTMLFormElement*);
     HTMLLegendElement* legend() const;
@@ -49,7 +49,7 @@ private:
     HTMLFieldSetElement(const QualifiedName&, Document*, HTMLFormElement*);
 
     virtual bool isEnumeratable() const { return true; }
-    virtual bool supportsFocus() const;
+    virtual bool supportsFocus() const OVERRIDE;
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual const AtomicString& formControlType() const;
     virtual bool recalcWillValidate() const { return false; }

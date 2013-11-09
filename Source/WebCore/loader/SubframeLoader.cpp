@@ -147,7 +147,6 @@ bool SubframeLoader::pluginIsLoadable(HTMLPlugInImageElement* pluginElement, con
 
 bool SubframeLoader::requestPlugin(HTMLPlugInImageElement* ownerElement, const KURL& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback)
 {
-
     // Application plug-ins are plug-ins implemented by the user agent, for example Qt plug-ins,
     // as opposed to third-party code such as Flash. The user agent decides whether or not they are
     // permitted, rather than WebKit.
@@ -204,7 +203,7 @@ static void logPluginRequest(Page* page, const String& mimeType, const String& u
     String pluginFile = pluginData ? pluginData->pluginFileForMimeType(newMIMEType) : String();
     String description = !pluginFile ? newMIMEType : pluginFile;
 
-    ChromeClient* client = page->chrome()->client();
+    ChromeClient* client = page->chrome().client();
     client->logDiagnosticMessage(success ? DiagnosticLoggingKeys::pluginLoadedKey() : DiagnosticLoggingKeys::pluginLoadingFailedKey(), description, DiagnosticLoggingKeys::noopKey());
 
     if (!page->hasSeenAnyPlugin())

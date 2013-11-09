@@ -1,3 +1,497 @@
+2013-05-27  Patrick Gansterer  <paroga@webkit.org>
+
+        Use ICU_INCLUDE_DIRS in BlackBerry CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=116210
+
+        Reviewed by Rob Buis.
+
+        Set and use the ICU_INCLUDE_DIRS variable to avoid
+        duplicated adding of the ICU include directory.
+
+        * PlatformBlackBerry.cmake:
+
+2013-05-27  Gabor Rapcsanyi  <rgabor@webkit.org>
+
+        MacroAssemblerARM should use xor to swap registers instead of move
+        https://bugs.webkit.org/show_bug.cgi?id=116306
+
+        Reviewed by Zoltan Herczeg.
+
+        Change register swapping to xor from move and this way we don't need
+        temporary register anymore.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::swap):
+
+2013-05-25  Filip Pizlo  <fpizlo@apple.com>
+
+        We broke (-2^31/-1)|0 in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=116767
+
+        Reviewed by Andreas Kling.
+        
+        The bug is that we were assuming that in the -2^31 case, we already had -2^31
+        in the result register. This was a wrong assumption.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIntegerArithDivForX86):
+
+2013-05-24  Filip Pizlo  <fpizlo@apple.com>
+
+        We broke !(0/0)
+        https://bugs.webkit.org/show_bug.cgi?id=116736
+
+        Reviewed by Gavin Barraclough.
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createLogicalNot):
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::pureToBoolean):
+
+2013-05-24  Julien Brianceau  <jbrianceau@nds.com>
+
+        [sh4] Optimize LLINT generated code and fix few bugs in baseline JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=116716
+
+        Reviewed by Geoffrey Garen.
+
+        * assembler/MacroAssemblerSH4.h:
+        (JSC::MacroAssemblerSH4::mul32): Cosmetic changes.
+        (JSC::MacroAssemblerSH4::convertInt32ToDouble): Absolute address was not dereferenced.
+        (JSC::MacroAssemblerSH4::branch32): Absolute address was not dereferenced.
+        (JSC::MacroAssemblerSH4::revertJumpReplacementToBranchPtrWithPatch): Use all 32 bits of pointer for revertJump call.
+        * assembler/SH4Assembler.h:
+        (JSC::SH4Assembler::revertJump): Use changePCrelativeAddress to patch the whole pointer.
+        (JSC::SH4Assembler::linkJump): Cosmetic change.
+        * offlineasm/sh4.rb: Optimize LLINT generated code.
+
+2013-05-23  Peter Wang  <peter.wang@torchmobile.com.cn>
+
+        CLoop llint backend should not use the d8 register as scratch register
+        https://bugs.webkit.org/show_bug.cgi?id=116019
+
+        Reviewed by Csaba Osztrogonác.
+
+        * offlineasm/cloop.rb:
+
+2013-05-22  Peter Wang  <peter.wang@torchmobile.com.cn>
+
+        Use uninitialized register in "JIT::emit_op_neq_null" and "emit_op_eq_null"
+        https://bugs.webkit.org/show_bug.cgi?id=116593
+
+        Reviewed by Filip Pizlo.
+
+        Generated instructions using uninitialized register. It's caused by a mistake of r126494.
+
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_eq_null):
+        (JSC::JIT::emit_op_neq_null):
+
+2013-05-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix indentation of CodeBlock.h
+
+        Rubber stampted by Mark Hahnenberg.
+
+        * bytecode/CodeBlock.h:
+
+2013-05-22  Julien Brianceau  <jbrianceau@nds.com>
+
+        [sh4] Remove MacroAssemblerSH4.cpp file.
+        https://bugs.webkit.org/show_bug.cgi?id=116596.
+
+        Reviewed by Geoffrey Garen.
+
+        Move linkCall and repatchCall implementations from MacroAssemblerSH4.cpp
+        to MacroAssemblerSH4.h and remove MacroAssemblerSH4.cpp, as it is done
+        for other architectures.
+
+        * GNUmakefile.list.am:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Target.pri:
+        * assembler/MacroAssemblerSH4.cpp: Removed.
+        * assembler/MacroAssemblerSH4.h:
+        (JSC::MacroAssemblerSH4::linkCall):
+        (MacroAssemblerSH4):
+        (JSC::MacroAssemblerSH4::repatchCall):
+
+2013-05-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed speculative fix for test-bots.
+
+        Add export declaration for WTFInvokeCrashHook to avoid runtime
+        load error on test bots.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreExports.def:
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExports.def.in:
+
+2013-05-21  Mark Lam  <mark.lam@apple.com>
+
+        Added missing assert condition for PositiveOrZero in ARM branch32().
+        https://bugs.webkit.org/show_bug.cgi?id=116538.
+
+        Reviewed by Geoffrey Garen.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::branchAdd32):
+
+2013-05-20  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Disable SuperRegion
+        https://bugs.webkit.org/show_bug.cgi?id=116362
+
+        Rubber stamped by Geoff Garen.
+
+        * heap/Region.h:
+
+2013-05-20  Oliver Hunt  <oliver@apple.com>
+
+        Make C API more robust against null contexts
+        https://bugs.webkit.org/show_bug.cgi?id=116462
+
+        Reviewed by Anders Carlsson.
+
+        Handle null contexts in a non-crashy way.  It's a bug to ever call the
+        API with a null context, and the absence of a context means we can't
+        produce a meaningful result, so we still assert in debug builds.
+
+        Now where possible we detect and early return, returning null for any
+        pointer type, NaN for doubles, and false for any boolean result.
+
+        * API/JSBase.cpp:
+        (JSEvaluateScript):
+        (JSCheckScriptSyntax):
+        (JSReportExtraMemoryCost):
+        * API/JSContextRef.cpp:
+        (JSContextGetGlobalObject):
+        (JSContextGetGroup):
+        (JSContextGetGlobalContext):
+        (JSContextCreateBacktrace):
+        * API/JSObjectRef.cpp:
+        (JSObjectMake):
+        (JSObjectMakeFunctionWithCallback):
+        (JSObjectMakeConstructor):
+        (JSObjectMakeFunction):
+        (JSObjectMakeArray):
+        (JSObjectMakeDate):
+        (JSObjectMakeError):
+        (JSObjectMakeRegExp):
+        (JSObjectGetPrototype):
+        (JSObjectSetPrototype):
+        (JSObjectHasProperty):
+        (JSObjectGetProperty):
+        (JSObjectSetProperty):
+        (JSObjectGetPropertyAtIndex):
+        (JSObjectSetPropertyAtIndex):
+        (JSObjectDeleteProperty):
+        (JSObjectCopyPropertyNames):
+        * API/JSValueRef.cpp:
+        (JSValueGetType):
+        (JSValueIsUndefined):
+        (JSValueIsNull):
+        (JSValueIsBoolean):
+        (JSValueIsNumber):
+        (JSValueIsString):
+        (JSValueIsObject):
+        (JSValueIsObjectOfClass):
+        (JSValueIsEqual):
+        (JSValueIsStrictEqual):
+        (JSValueIsInstanceOfConstructor):
+        (JSValueMakeUndefined):
+        (JSValueMakeNull):
+        (JSValueMakeBoolean):
+        (JSValueMakeNumber):
+        (JSValueMakeString):
+        (JSValueMakeFromJSONString):
+        (JSValueCreateJSONString):
+        (JSValueToBoolean):
+        (JSValueToNumber):
+        (JSValueToStringCopy):
+        (JSValueToObject):
+        (JSValueProtect):
+        * API/JSWeakObjectMapRefPrivate.cpp:
+
+2013-05-20  David Kilzer  <ddkilzer@apple.com>
+
+        Synchronize FeatureDefines.xcconfig
+
+        * Configurations/FeatureDefines.xcconfig: Remove
+        ENABLE_LINK_PRERENDER.  This was missed in r150356.
+
+2013-05-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove link prerendering code
+        https://bugs.webkit.org/show_bug.cgi?id=116415
+
+        Reviewed by Darin Adler.
+
+        This code was only used by Chromium and is dead now.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-05-18  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Replace *_LIBRARY_NAME with *_OUTPUT_NAME
+        https://bugs.webkit.org/show_bug.cgi?id=114554
+
+        Reviewed by Gyuyoung Kim.
+
+        Using variables as target names is very uncommon in CMake.
+        The usual way to specify the name of the resulting binary
+        is to set the OUTPUT_NAME target property.
+
+        * CMakeLists.txt:
+        * shell/CMakeLists.txt:
+
+2013-05-17  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Remove invalid include paths
+        https://bugs.webkit.org/show_bug.cgi?id=116213
+
+        Reviewed by Gyuyoung Kim.
+
+        Since "${JAVASCRIPTCORE_DIR}/wtf" does not exist, it is safe
+        to remove them from the list of include directories.
+
+        * PlatformEfl.cmake: Removed.
+        * PlatformGTK.cmake: Removed.
+
+2013-05-16  Patrick Gansterer  <paroga@webkit.org>
+
+        Consolidate lists in JavaScriptCore CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=115992
+
+        Reviewed by Gyuyoung Kim.
+
+        Move common files into the CMakeLists.txt to avoid duplicating the list of files.
+        Also rebase the recently added GTK files to match the other CMake ports, since
+        the submitted patch was based on an older version of the source tree.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * shell/CMakeLists.txt:
+        * shell/PlatformEfl.cmake:
+        * shell/PlatformGTK.cmake:
+
+2013-05-16  Geoffrey Garen  <ggaren@apple.com>
+
+        JSValue shouldn't protect/unprotect its context
+        https://bugs.webkit.org/show_bug.cgi?id=116234
+
+        Reviewed by Mark Hahnenberg.
+
+        Our retain on _context is sufficient.
+
+        * API/JSValue.mm:
+        (-[JSValue initWithValue:inContext:]):
+        (-[JSValue dealloc]):
+
+2013-05-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another Windows build fix attempt after r150160.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreExports.def:
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExports.def.in:
+
+2013-05-15  Oliver Hunt  <oliver@apple.com>
+
+        RefCountedArray needs to use vector initialisers for its backing store
+        https://bugs.webkit.org/show_bug.cgi?id=116194
+
+        Reviewed by Gavin Barraclough.
+
+        Use an out of line function to clear the exception stack to avoid
+        needing to include otherwise unnecessary headers all over the place.
+
+        Everything else is just being updated to use that.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::clearSupplementaryExceptionInfo):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::addStackTraceIfNecessary):
+        (JSC::Interpreter::throwException):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::DynamicGlobalObjectScope::DynamicGlobalObjectScope):
+        * runtime/VM.cpp:
+        (JSC):
+        (JSC::VM::clearExceptionStack):
+        * runtime/VM.h:
+        (VM):
+        (JSC::VM::exceptionStack):
+
+2013-05-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r150051.
+        http://trac.webkit.org/changeset/150051
+        https://bugs.webkit.org/show_bug.cgi?id=116186
+
+        Broke all JSC tests on Mac and the author is unresponsive
+        (Requested by rniwa on #webkit).
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2013-05-15  Julien Brianceau  <jbrianceau@nds.com>
+
+        Remove savedTimeoutReg from JITStackFrame for sh4 base JIT.
+        https://bugs.webkit.org/show_bug.cgi?id=116143
+
+        Reviewed by Geoffrey Garen.
+
+        Since r148119, timeoutCheckRegister is removed from baseline JIT.
+        So we don't need to save r8 register in JITStackFrame anymore for sh4.
+
+        * jit/JITStubs.cpp:
+        * jit/JITStubs.h:
+        (JITStackFrame):
+
+2013-05-15  Nico Weber  <thakis@chromium.org>
+
+        WebKit doesn't support MSVS2003 any more, remove preprocessor checks for older versions.
+        https://bugs.webkit.org/show_bug.cgi?id=116157
+
+        Reviewed by Anders Carlsson.
+
+        Also remove a gcc3.2 workaround.
+
+        Merges parts of these two commits by the talented Nico Weber:
+        https://chromium.googlesource.com/chromium/blink/+/3677e2f47348daeff405a40b6f90fbdf0654c2f5
+        https://chromium.googlesource.com/chromium/blink/+/0fcd96c448dc30be1416dcc15713c53710c1a312
+
+        * os-win32/inttypes.h:
+
+2013-05-13  Alvaro Lopez Ortega  <alvaro@alobbs.com>
+
+        Nightly build's jsc doesn't work without DYLD_FRAMEWORK...
+        https://bugs.webkit.org/show_bug.cgi?id=79065
+
+        Reviewed by Darin Adler.
+
+        Fixes the build process so the depencencies of the jsc binary are
+        modified before its copied to its target directory. In this way
+        jsc should always use relative reference to the JavaScriptCore
+        libraries.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Fixes the commands in
+        the "Copy Into Framework" target.
+
+2013-05-13  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Objective-C API: scanExternalObjectGraph should not create new JSVirtualMachine wrappers
+        https://bugs.webkit.org/show_bug.cgi?id=116074
+
+        If scanExternalObjectGraph creates a new JSVirtualMachine wrapper during collection, when the 
+        scanExternalObjectGraph call finishes and the autorelease pool is drained we will dealloc the 
+        JSVirtualMachine which will cause us to try to take the API lock for the corresponding VM. 
+        If this happens on a GC thread other than the "main" thread, we will deadlock. The solution 
+        is to just check the VM cache, and if there is no JSVirtualMachine wrapper, return early.
+
+        Reviewed by Darin Adler.
+
+        * API/JSVirtualMachine.mm:
+        (scanExternalObjectGraph):
+
+2013-05-13  Benjamin Poulain  <benjamin@webkit.org>
+
+        Improve stringProtoFuncLastIndexOf for the prefix case
+        https://bugs.webkit.org/show_bug.cgi?id=115952
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncLastIndexOf):
+        Use the optimized string search when possible.
+
+        On Joseph Pecoraro's tests, this gives a ~30% speed improvement.
+
+2013-05-13  Zalan Bujtas  <zalan@apple.com>
+
+        WebProcess consuming very high CPU on linkedin.com
+        https://bugs.webkit.org/show_bug.cgi?id=115601
+
+        Reviewed by Andreas Kling.
+
+        Disable WEB_TIMING_MINIMAL.
+        Turn off window.performance and performance.now(). Some JS frameworks expect
+        additional Web Timing APIs, when performance.now() is available.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-05-12  Anders Carlsson  <andersca@apple.com>
+
+        Stop including UnusedParam.h
+        https://bugs.webkit.org/show_bug.cgi?id=116003
+
+        Reviewed by Sam Weinig.
+
+        UnusedParam.h is empty now so there's no need to include it anymore.
+
+        * API/APICast.h:
+        * API/tests/JSNode.c:
+        * API/tests/JSNodeList.c:
+        * API/tests/minidom.c:
+        * API/tests/testapi.c:
+        * assembler/AbstractMacroAssembler.h:
+        * assembler/MacroAssemblerCodeRef.h:
+        * bytecode/CodeBlock.cpp:
+        * heap/HandleStack.h:
+        * interpreter/JSStackInlines.h:
+        * jit/CompactJITCodeMap.h:
+        * jit/ExecutableAllocator.h:
+        * parser/SourceProvider.h:
+        * runtime/DatePrototype.cpp:
+        * runtime/JSNotAnObject.cpp:
+        * runtime/JSSegmentedVariableObject.h:
+        * runtime/JSVariableObject.h:
+        * runtime/Options.cpp:
+        * runtime/PropertyOffset.h:
+
+2013-05-11  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add a basic cmake build for WTF and JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=115967
+
+        Reviewed by Laszlo Gombos.
+
+        * PlatformGTK.cmake: Added.
+        * shell/PlatformGTK.cmake: Added.
+
+2013-05-10  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove USE(OS_RANDOMNESS)
+        https://bugs.webkit.org/show_bug.cgi?id=108095
+
+        Reviewed by Darin Adler.
+
+        Remove the USE(OS_RANDOMNESS) guard as it is turned on for all
+        ports.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::JIT):
+
+2013-05-10  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        Rename StructureCheckHoistingPhase to TypeCheckHoistingPhase
+        https://bugs.webkit.org/show_bug.cgi?id=115938
+
+        We're going to add some more types of check hoisting soon, so let's have the right name here.
+
+        Rubber stamped by Filip Pizlo.
+        
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Target.pri:
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compile):
+        * dfg/DFGStructureCheckHoistingPhase.cpp: Removed.
+        * dfg/DFGStructureCheckHoistingPhase.h: Removed.
+        * dfg/DFGTypeCheckHoistingPhase.cpp: Copied from Source/JavaScriptCore/dfg/DFGStructureCheckHoistingPhase.cpp.
+        (JSC::DFG::TypeCheckHoistingPhase::TypeCheckHoistingPhase):
+        (JSC::DFG::performTypeCheckHoisting):
+        * dfg/DFGTypeCheckHoistingPhase.h: Copied from Source/JavaScriptCore/dfg/DFGStructureCheckHoistingPhase.h.
+
 2013-05-09  Christophe Dumez  <ch.dumez@sisa.samsung.com>
 
         Unreviewed build fix after r149836.

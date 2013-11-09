@@ -539,9 +539,9 @@ public:
 
     void swap(RegisterID reg1, RegisterID reg2)
     {
-        move(reg1, ARMRegisters::S0);
-        move(reg2, reg1);
-        move(ARMRegisters::S0, reg2);
+        xor32(reg1, reg2);
+        xor32(reg2, reg1);
+        xor32(reg1, reg2);
     }
 
     void signExtend32ToPtr(RegisterID src, RegisterID dest)
@@ -687,35 +687,40 @@ public:
 
     Jump branchAdd32(ResultCondition cond, RegisterID src, RegisterID dest)
     {
-        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero)
+            || (cond == NonZero) || (cond == PositiveOrZero));
         add32(src, dest);
         return Jump(m_assembler.jmp(ARMCondition(cond)));
     }
 
     Jump branchAdd32(ResultCondition cond, RegisterID op1, RegisterID op2, RegisterID dest)
     {
-        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero)
+            || (cond == NonZero) || (cond == PositiveOrZero));
         add32(op1, op2, dest);
         return Jump(m_assembler.jmp(ARMCondition(cond)));
     }
 
     Jump branchAdd32(ResultCondition cond, TrustedImm32 imm, RegisterID dest)
     {
-        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero)
+            || (cond == NonZero) || (cond == PositiveOrZero));
         add32(imm, dest);
         return Jump(m_assembler.jmp(ARMCondition(cond)));
     }
 
     Jump branchAdd32(ResultCondition cond, RegisterID src, TrustedImm32 imm, RegisterID dest)
     {
-        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero)
+            || (cond == NonZero) || (cond == PositiveOrZero));
         add32(src, imm, dest);
         return Jump(m_assembler.jmp(ARMCondition(cond)));
     }
 
     Jump branchAdd32(ResultCondition cond, TrustedImm32 imm, AbsoluteAddress dest)
     {
-        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
+        ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero)
+            || (cond == NonZero) || (cond == PositiveOrZero));
         add32(imm, dest);
         return Jump(m_assembler.jmp(ARMCondition(cond)));
     }

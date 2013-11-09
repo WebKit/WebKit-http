@@ -2,7 +2,7 @@
  * Copyright (C) 2001 Peter Kelly (pmk@post.com)
  * Copyright (C) 2001 Tobias Anton (anton@stud.fbi.fh-darmstadt.de)
  * Copyright (C) 2006 Samuel Weinig (sam.weinig@gmail.com)
- * Copyright (C) 2003, 2004, 2005, 2006, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2004, 2005, 2006, 2008, 2013 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -31,13 +31,32 @@
 #include "IntPoint.h"
 #include "Node.h"
 
+// This DOM object now works by calling through to classes in the platform layer.
+// Specifically, the class currently named Pasteboard. The legacy style instead
+// uses this as an abstract base class.
+#define WTF_USE_LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS (PLATFORM(IOS) || PLATFORM(QT))
+
+#if USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
+#define LEGACY_VIRTUAL virtual
+#else
+#define LEGACY_VIRTUAL
+#endif
+
+#if USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
+#define LEGACY_PURE = 0
+#else
+#define LEGACY_PURE
+#endif
+
 namespace WebCore {
 
     class CachedImage;
     class DataTransferItemList;
     class DragData;
+    class DragImageLoader;
     class FileList;
     class Frame;
+    class Pasteboard;
 
     // State available during IE's events for drag and drop and copy/paste
     class Clipboard : public RefCounted<Clipboard> {
@@ -50,7 +69,7 @@ namespace WebCore {
         
         static PassRefPtr<Clipboard> create(ClipboardAccessPolicy, DragData*, Frame*);
 
-        virtual ~Clipboard() { }
+        LEGACY_VIRTUAL ~Clipboard();
 
         bool isForCopyAndPaste() const { return m_clipboardType == CopyAndPaste; }
         bool isForDragAndDrop() const { return m_clipboardType == DragAndDrop; }
@@ -61,31 +80,30 @@ namespace WebCore {
         String effectAllowed() const { return m_effectAllowed; }
         void setEffectAllowed(const String&);
     
-        virtual void clearData(const String& type) = 0;
-        virtual void clearAllData() = 0;
-        virtual String getData(const String& type) const = 0;
-        virtual bool setData(const String& type, const String& data) = 0;
+        LEGACY_VIRTUAL void clearData(const String& type) LEGACY_PURE;
+        LEGACY_VIRTUAL void clearData() LEGACY_PURE;
+        LEGACY_VIRTUAL String getData(const String& type) const LEGACY_PURE;
+        LEGACY_VIRTUAL bool setData(const String& type, const String& data) LEGACY_PURE;
     
-        // extensions beyond IE's API
-        virtual ListHashSet<String> types() const = 0;
-        virtual PassRefPtr<FileList> files() const = 0;
+        LEGACY_VIRTUAL ListHashSet<String> types() const LEGACY_PURE;
+        LEGACY_VIRTUAL PassRefPtr<FileList> files() const LEGACY_PURE;
 
         IntPoint dragLocation() const { return m_dragLoc; }
         CachedImage* dragImage() const { return m_dragImage.get(); }
-        virtual void setDragImage(CachedImage*, const IntPoint&) = 0;
+        LEGACY_VIRTUAL void setDragImage(CachedImage*, const IntPoint&) LEGACY_PURE;
         Node* dragImageElement() const { return m_dragImageElement.get(); }
-        virtual void setDragImageElement(Node*, const IntPoint&) = 0;
+        LEGACY_VIRTUAL void setDragImageElement(Node*, const IntPoint&) LEGACY_PURE;
         
-        virtual DragImageRef createDragImage(IntPoint& dragLocation) const = 0;
+        LEGACY_VIRTUAL DragImageRef createDragImage(IntPoint& dragLocation) const LEGACY_PURE;
 #if ENABLE(DRAG_SUPPORT)
-        virtual void declareAndWriteDragImage(Element*, const KURL&, const String& title, Frame*) = 0;
+        LEGACY_VIRTUAL void declareAndWriteDragImage(Element*, const KURL&, const String& title, Frame*) LEGACY_PURE;
 #endif
-        virtual void writeURL(const KURL&, const String&, Frame*) = 0;
-        virtual void writeRange(Range*, Frame*) = 0;
-        virtual void writePlainText(const String&) = 0;
+        LEGACY_VIRTUAL void writeURL(const KURL&, const String&, Frame*) LEGACY_PURE;
+        LEGACY_VIRTUAL void writeRange(Range*, Frame*) LEGACY_PURE;
+        LEGACY_VIRTUAL void writePlainText(const String&) LEGACY_PURE;
 
-        virtual bool hasData() = 0;
-        
+        LEGACY_VIRTUAL bool hasData() LEGACY_PURE;
+
         void setAccessPolicy(ClipboardAccessPolicy);
         bool canReadTypes() const;
         bool canReadData() const;
@@ -106,11 +124,27 @@ namespace WebCore {
         void setDragHasStarted() { m_dragStarted = true; }
 
 #if ENABLE(DATA_TRANSFER_ITEMS)
-        virtual PassRefPtr<DataTransferItemList> items() = 0;
+        LEGACY_VIRTUAL PassRefPtr<DataTransferItemList> items() = 0;
 #endif
         
+#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
+        static PassRefPtr<Clipboard> createForCopyAndPaste(ClipboardAccessPolicy);
+
+        const Pasteboard& pasteboard() { return *m_pasteboard; }
+#endif
+
+#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS) && ENABLE(DRAG_SUPPORT)
+        static PassRefPtr<Clipboard> createForDragAndDrop();
+
+        void updateDragImage();
+#endif
+
     protected:
+#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
+        Clipboard(ClipboardAccessPolicy, ClipboardType, PassOwnPtr<Pasteboard>, bool forFileDrag = false);
+#else
         Clipboard(ClipboardAccessPolicy, ClipboardType);
+#endif
 
         bool dragStarted() const { return m_dragStarted; }
         
@@ -129,11 +163,23 @@ namespace WebCore {
         IntPoint m_dragLoc;
         CachedResourceHandle<CachedImage> m_dragImage;
         RefPtr<Node> m_dragImageElement;
+
+#if !USE(LEGACY_STYLE_ABSTRACT_CLIPBOARD_CLASS)
+    private:
+        OwnPtr<Pasteboard> m_pasteboard;
+        bool m_forFileDrag;
+#if ENABLE(DRAG_SUPPORT)
+        OwnPtr<DragImageLoader> m_dragImageLoader;
+#endif
+#endif
     };
 
     DragOperation convertDropZoneOperationToDragOperation(const String& dragOperation);
     String convertDragOperationToDropZoneOperation(DragOperation);
-    
+
+#undef LEGACY_VIRTUAL
+#undef LEGACY_PURE
+
 } // namespace WebCore
 
 #endif // Clipboard_h

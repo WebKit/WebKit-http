@@ -43,7 +43,7 @@ class KURL;
 template<typename T> class EventSender;
 typedef EventSender<HTMLLinkElement> LinkEventSender;
 
-class HTMLLinkElement : public HTMLElement, public CachedStyleSheetClient, public LinkLoaderClient {
+class HTMLLinkElement FINAL : public HTMLElement, public CachedStyleSheetClient, public LinkLoaderClient {
 public:
     static PassRefPtr<HTMLLinkElement> create(const QualifiedName&, Document*, bool createdByParser);
     virtual ~HTMLLinkElement();
@@ -91,12 +91,6 @@ private:
 
     virtual void linkLoaded() OVERRIDE;
     virtual void linkLoadingErrored() OVERRIDE;
-#if ENABLE(LINK_PRERENDER) 
-    virtual void didStartLinkPrerender() OVERRIDE;
-    virtual void didStopLinkPrerender() OVERRIDE;
-    virtual void didSendLoadForLinkPrerender() OVERRIDE;
-    virtual void didSendDOMContentLoadedForLinkPrerender() OVERRIDE;
-#endif
 
     bool isAlternate() const { return m_disabledState == Unset && m_relAttribute.m_isAlternate; }
     

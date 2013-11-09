@@ -201,6 +201,12 @@ void InspectorFrontendHost::setAttachedWindowWidth(unsigned width)
         m_client->changeAttachedWindowWidth(width);
 }
 
+void InspectorFrontendHost::setToolbarHeight(unsigned height)
+{
+    if (m_client)
+        m_client->setToolbarHeight(height);
+}
+
 void InspectorFrontendHost::moveWindowBy(float x, float y) const
 {
     if (m_client)
@@ -287,7 +293,7 @@ String InspectorFrontendHost::loadResourceSynchronously(const String& url)
     ResourceError error;
     ResourceResponse response;
     m_frontendPage->mainFrame()->loader()->loadResourceSynchronously(request, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
-    return String(data.data(), data.size());
+    return String::fromUTF8(data.data(), data.size());
 }
 
 bool InspectorFrontendHost::supportsFileSystems()

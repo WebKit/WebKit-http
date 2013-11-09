@@ -284,6 +284,9 @@ class Driver(object):
         environment['DYLD_LIBRARY_PATH'] = self._port._build_path()
         environment['DYLD_FRAMEWORK_PATH'] = self._port._build_path()
         # FIXME: We're assuming that WebKitTestRunner checks this DumpRenderTree-named environment variable.
+        # FIXME: Commented out for now to avoid tests breaking. Re-enable after
+        # we cut over to NRWT
+        #environment['DUMPRENDERTREE_TEMP'] = str(self._port._driver_tempdir_for_environment())
         environment['DUMPRENDERTREE_TEMP'] = str(self._driver_tempdir)
         environment['LOCAL_RESOURCE_ROOT'] = self._port.layout_tests_dir()
         if 'WEBKITOUTPUTDIR' in os.environ:
@@ -294,7 +297,7 @@ class Driver(object):
 
     def _start(self, pixel_tests, per_test_args):
         self.stop()
-        self._driver_tempdir = self._port._filesystem.mkdtemp(prefix='%s-' % self._port.driver_name())
+        self._driver_tempdir = self._port._driver_tempdir()
         server_name = self._port.driver_name()
         environment = self._port.setup_environ_for_server(server_name)
         environment = self._setup_environ_for_driver(environment)
@@ -511,8 +514,7 @@ class DriverProxy(object):
 
         # FIXME: We shouldn't need to create a driver until we actually run a test.
         self._driver = self._make_driver(pixel_tests)
-        self._running_drivers = {}
-        self._running_drivers[self._cmd_line_as_key(pixel_tests, [])] = self._driver
+        self._driver_cmd_line = None
 
     def _make_driver(self, pixel_tests):
         return self._driver_instance_constructor(self._port, self._worker_number, pixel_tests, self._no_timeout)
@@ -539,17 +541,18 @@ class DriverProxy(object):
 
         pixel_tests_needed = driver_input.should_run_pixel_test
         cmd_line_key = self._cmd_line_as_key(pixel_tests_needed, driver_input.args)
-        if not cmd_line_key in self._running_drivers:
-            self._running_drivers[cmd_line_key] = self._make_driver(pixel_tests_needed)
+        if cmd_line_key != self._driver_cmd_line:
+            self._driver.stop()
+            self._driver = self._make_driver(pixel_tests_needed)
+            self._driver_cmd_line = cmd_line_key
 
-        return self._running_drivers[cmd_line_key].run_test(driver_input, stop_when_done)
+        return self._driver.run_test(driver_input, stop_when_done)
 
     def has_crashed(self):
-        return any(driver.has_crashed() for driver in self._running_drivers.values())
+        return self._driver.has_crashed()
 
     def stop(self):
-        for driver in self._running_drivers.values():
-            driver.stop()
+        self._driver.stop()
 
     # FIXME: this should be a @classmethod (or implemented on Port instead).
     def cmd_line(self, pixel_tests=None, per_test_args=None):

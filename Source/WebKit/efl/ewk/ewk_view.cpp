@@ -87,7 +87,6 @@
 #include <limits>
 #include <math.h>
 #include <sys/time.h>
-#include <wtf/UnusedParam.h>
 
 #if ENABLE(DEVICE_ORIENTATION)
 #include "DeviceMotionClientEfl.h"
@@ -343,9 +342,6 @@ struct _Ewk_View_Private_Data {
         bool offlineAppCache : 1;
         bool pageCache : 1;
         bool enableXSSAuditor : 1;
-#if ENABLE(WEB_AUDIO)
-        bool webAudio : 1;
-#endif
         bool webGLEnabled : 1;
         bool tabsToLinks : 1;
         struct {
@@ -656,6 +652,12 @@ static Eina_Bool _ewk_view_smart_run_javascript_confirm(Ewk_View_Smart_Data*, Ev
     return true;
 }
 
+static Eina_Bool _ewk_view_smart_run_before_unload_confirm(Ewk_View_Smart_Data*, Evas_Object* /*frame*/, const char* message)
+{
+    INFO("before unload confirm: %s", message);
+    return true;
+}
+
 static Eina_Bool _ewk_view_smart_should_interrupt_javascript(Ewk_View_Smart_Data*)
 {
     INFO("should interrupt javascript?\n"
@@ -839,7 +841,7 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->pageSettings->setUsesPageCache(true);
     priv->pageSettings->setUsesEncodingDetector(false);
 #if ENABLE(WEB_AUDIO)
-    priv->pageSettings->setWebAudioEnabled(false);
+    WebCore::RuntimeEnabledFeatures::setWebAudioEnabled(false);
 #endif
     priv->pageSettings->setWebGLEnabled(true);
     priv->pageSettings->setXSSAuditorEnabled(true);
@@ -915,9 +917,6 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
     priv->settings.tabsToLinks = true;
 
     priv->settings.userAgent = ewk_settings_default_user_agent_get();
-#if ENABLE(WEB_AUDIO)
-    priv->settings.webAudio = priv->pageSettings->webAudioEnabled();
-#endif
 
     // Since there's no scale separated from zooming in webkit-efl, this functionality of
     // viewport meta tag is implemented using zoom. When scale zoom is supported by webkit-efl,
@@ -1328,8 +1327,8 @@ static WebCore::ViewportAttributes _ewk_view_viewport_attributes_compute(Ewk_Vie
     int deviceDPI = WebCore::getDPI();
     priv->settings.devicePixelRatio = deviceDPI / WebCore::ViewportArguments::deprecatedTargetDPI;
 
-    WebCore::IntRect availableRect = enclosingIntRect(priv->page->chrome()->client()->pageRect());
-    WebCore::IntRect deviceRect = enclosingIntRect(priv->page->chrome()->client()->windowRect());
+    WebCore::IntRect availableRect = enclosingIntRect(priv->page->chrome().client()->pageRect());
+    WebCore::IntRect deviceRect = enclosingIntRect(priv->page->chrome().client()->windowRect());
 
     WebCore::ViewportAttributes attributes = WebCore::computeViewportAttributes(priv->viewportArguments, desktopWidth, deviceRect.width(), deviceRect.height(), priv->settings.devicePixelRatio, availableRect.size());
     WebCore::restrictMinimumScaleFactorToViewportSize(attributes, availableRect.size(), priv->settings.devicePixelRatio);
@@ -1409,6 +1408,7 @@ Eina_Bool ewk_view_base_smart_set(Ewk_View_Smart_Class* api)
     api->add_console_message = _ewk_view_smart_add_console_message;
     api->run_javascript_alert = _ewk_view_smart_run_javascript_alert;
     api->run_javascript_confirm = _ewk_view_smart_run_javascript_confirm;
+    api->run_before_unload_confirm = _ewk_view_smart_run_before_unload_confirm;
     api->run_javascript_prompt = _ewk_view_smart_run_javascript_prompt;
     api->should_interrupt_javascript = _ewk_view_smart_should_interrupt_javascript;
 
@@ -1669,7 +1669,7 @@ const char* ewk_view_selection_get(const Evas_Object* ewkView)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
-    CString selectedString = priv->page->focusController()->focusedOrMainFrame()->editor()->selectedText().utf8();
+    CString selectedString = priv->page->focusController()->focusedOrMainFrame()->editor().selectedText().utf8();
     if (selectedString.isNull())
         return 0;
     return eina_stringshare_add(selectedString.data());
@@ -1684,7 +1684,7 @@ Eina_Bool ewk_view_editor_command_execute(const Evas_Object* ewkView, const Ewk_
     if (!commandString)
         return false;
 
-    return priv->page->focusController()->focusedOrMainFrame()->editor()->command(commandString).execute(WTF::String::fromUTF8(value));
+    return priv->page->focusController()->focusedOrMainFrame()->editor().command(commandString).execute(WTF::String::fromUTF8(value));
 }
 
 Eina_Bool ewk_view_context_menu_forward_event(Evas_Object* ewkView, const Evas_Event_Mouse_Down* downEvent)
@@ -3061,11 +3061,11 @@ void ewk_view_input_method_state_set(Evas_Object* ewkView, bool active)
     priv->imh = 0;
     if (focusedFrame
         && focusedFrame->document()
-        && focusedFrame->document()->focusedNode()
-        && focusedFrame->document()->focusedNode()->hasTagName(WebCore::HTMLNames::inputTag)) {
+        && focusedFrame->document()->focusedElement()
+        && focusedFrame->document()->focusedElement()->hasTagName(WebCore::HTMLNames::inputTag)) {
         WebCore::HTMLInputElement* inputElement;
 
-        inputElement = static_cast<WebCore::HTMLInputElement*>(focusedFrame->document()->focusedNode());
+        inputElement = static_cast<WebCore::HTMLInputElement*>(focusedFrame->document()->focusedElement());
         if (inputElement) {
             // for password fields, active == false
             if (!active) {
@@ -3611,6 +3611,18 @@ bool ewk_view_run_javascript_confirm(Evas_Object* ewkView, Evas_Object* frame, c
     return smartData->api->run_javascript_confirm(smartData, frame, message);
 }
 
+bool ewk_view_run_before_unload_confirm(Evas_Object* ewkView, Evas_Object* frame, const char* message)
+{
+    DBG("ewkView=%p frame=%p message=%s", ewkView, frame, message);
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EINA_SAFETY_ON_NULL_RETURN_VAL(smartData->api, false);
+
+    if (!smartData->api->run_before_unload_confirm)
+        return false;
+
+    return smartData->api->run_before_unload_confirm(smartData, frame, message);
+}
+
 bool ewk_view_run_javascript_prompt(Evas_Object* ewkView, Evas_Object* frame, const char* message, const char* defaultValue, const char** value)
 {
     DBG("ewkView=%p frame=%p message=%s", ewkView, frame, message);
@@ -4103,11 +4115,11 @@ void ewk_view_text_direction_set(Evas_Object* ewkView, Ewk_Text_Direction direct
     if (!focusedFrame)
         return;
 
-    WebCore::Editor* editor = focusedFrame->editor();
-    if (!editor->canEdit())
+    WebCore::Editor& editor = focusedFrame->editor();
+    if (!editor.canEdit())
         return;
 
-    editor->setBaseWritingDirection(static_cast<WritingDirection>(direction));
+    editor.setBaseWritingDirection(static_cast<WritingDirection>(direction));
 }
 
 void ewk_view_did_first_visually_nonempty_layout(Evas_Object* ewkView)
@@ -4590,7 +4602,7 @@ void _ewk_view_accelerated_compositing_context_create_if_needed(Evas_Object* ewk
     EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
 
     if (!priv->acceleratedCompositingContext)
-        priv->acceleratedCompositingContext = WebCore::AcceleratedCompositingContext::create(priv->page->chrome());
+        priv->acceleratedCompositingContext = WebCore::AcceleratedCompositingContext::create(&priv->page->chrome());
 }
 
 bool ewk_view_accelerated_compositing_object_create(Evas_Object* ewkView, Evas_Native_Surface* nativeSurface, const WebCore::IntRect& rect)
@@ -4662,35 +4674,6 @@ void ewk_view_mark_for_sync(Evas_Object* ewkView)
     evas_object_image_pixels_dirty_set(priv->compositingObject.get(), true);
 }
 #endif
-
-Eina_Bool ewk_view_setting_web_audio_get(const Evas_Object* ewkView)
-{
-#if ENABLE(WEB_AUDIO)
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
-    return priv->settings.webAudio;
-#else
-    UNUSED_PARAM(ewkView);
-    return false;
-#endif
-}
-
-Eina_Bool ewk_view_setting_web_audio_set(Evas_Object* ewkView, Eina_Bool enable)
-{
-#if ENABLE(WEB_AUDIO)
-    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
-    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
-    if (priv->settings.webAudio != enable) {
-        priv->pageSettings->setWebAudioEnabled(enable);
-        priv->settings.webAudio = enable;
-    }
-    return true;
-#else
-    UNUSED_PARAM(ewkView);
-    UNUSED_PARAM(enable);
-    return false;
-#endif
-}
 
 void ewk_view_cursor_set(Evas_Object* ewkView, const WebCore::Cursor& cursor)
 {

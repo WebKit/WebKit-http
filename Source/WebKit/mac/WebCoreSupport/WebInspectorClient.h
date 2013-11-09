@@ -110,6 +110,7 @@ public:
 
     virtual void setAttachedWindowHeight(unsigned height);
     virtual void setAttachedWindowWidth(unsigned height);
+    virtual void setToolbarHeight(unsigned) OVERRIDE;
 
     virtual void inspectedURLChanged(const String& newURL);
 
@@ -123,5 +124,5 @@ private:
     WebView* m_inspectedWebView;
     RetainPtr<WebInspectorWindowController> m_windowController;
     String m_inspectedURL;
-    HashMap<String, RetainPtr<NSURL>> m_saveURLs;
+    HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
 };

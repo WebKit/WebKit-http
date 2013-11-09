@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,7 +30,6 @@
 
 #include "Document.h"
 #include "Element.h"
-#include "Node.h"
 
 namespace WebCore {
 
@@ -41,10 +41,10 @@ UserActionElementSet::~UserActionElementSet()
 {
 }
 
-void UserActionElementSet::didDetach(Node* node)
+void UserActionElementSet::didDetach(Element* element)
 {
-    ASSERT(node->isUserActionElement());
-    clearFlags(toElement(node), IsActiveFlag | InActiveChainFlag | IsHoveredFlag);
+    ASSERT(element->isUserActionElement());
+    clearFlags(element, IsActiveFlag | InActiveChainFlag | IsHoveredFlag);
 }
 
 void UserActionElementSet::documentDidRemoveLastRef()
@@ -52,27 +52,7 @@ void UserActionElementSet::documentDidRemoveLastRef()
     m_elements.clear();
 }
 
-bool UserActionElementSet::hasFlags(const Node* node, unsigned flags) const
-{
-    ASSERT(node->isUserActionElement() && node->isElementNode());
-    return hasFlags(toElement(node), flags);
-}
-
-void UserActionElementSet::setFlags(Node* node, unsigned flags)
-{
-    if (!node->isElementNode())
-        return;
-    return setFlags(toElement(node), flags);
-}
-
-void UserActionElementSet::clearFlags(Node* node, unsigned flags)
-{
-    if (!node->isElementNode())
-        return;
-    return clearFlags(toElement(node), flags);
-}
-
-inline bool UserActionElementSet::hasFlags(const Element* element, unsigned flags) const
+bool UserActionElementSet::hasFlags(const Element* element, unsigned flags) const
 {
     ASSERT(element->isUserActionElement());
     ElementFlagMap::const_iterator found = m_elements.find(const_cast<Element*>(element));
@@ -81,7 +61,7 @@ inline bool UserActionElementSet::hasFlags(const Element* element, unsigned flag
     return found->value & flags;
 }
 
-inline void UserActionElementSet::clearFlags(Element* element, unsigned flags)
+void UserActionElementSet::clearFlags(Element* element, unsigned flags)
 {
     if (!element->isUserActionElement()) {
         ASSERT(m_elements.end() == m_elements.find(element));
@@ -104,7 +84,7 @@ inline void UserActionElementSet::clearFlags(Element* element, unsigned flags)
     found->value = updated;
 }
 
-inline void UserActionElementSet::setFlags(Element* element, unsigned flags)
+void UserActionElementSet::setFlags(Element* element, unsigned flags)
 {
     ElementFlagMap::iterator result = m_elements.find(element);
     if (result != m_elements.end()) {

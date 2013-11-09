@@ -127,9 +127,6 @@ webkit.org/b/98525 plugins/reentrant-update-widget-positions.html
 webkit.org/b/98525 plugins/update-widgets-crash.html
 webkit.org/b/98525 plugins/window-open.html
 
-# [Qt] Unidentified pixel failures
-webkit.org/b/109179 compositing/transitions/transform-on-large-layer.html [ ImageOnlyFailure ]
-
 # TestRunner::overridePreference() does not support the 'WebKitSupportsMultipleWindows' preference
 fast/dom/HTMLAnchorElement/anchor-no-multiple-windows.html
 fast/dom/Window/window-open-no-multiple-windows.html
@@ -166,3 +163,6 @@ webkit.org/b/113569 fast/events/event-attribute.html [ Skip ]
 
 # [Qt][WK1] REGRESSION(r148310): http/tests/ssl/ping-with-unsafe-redirect.html causes http/tests/ssl/referer-301.html to crash
 webkit.org/b/114619 http/tests/ssl/ping-with-unsafe-redirect.html [ Skip ]
+
+# [Qt] REGRESSION(r150688,r150693): http/tests/globalhistory/history-delegate-basic-refresh-redirect.html fails
+webkit.org/b/116809 http/tests/globalhistory/history-delegate-basic-refresh-redirect.html [ Skip ]

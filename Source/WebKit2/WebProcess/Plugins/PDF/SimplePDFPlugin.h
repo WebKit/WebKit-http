@@ -56,13 +56,14 @@ public:
     virtual bool isBeingAsynchronouslyInitialized() const { return false; }
 
     void didMutatePDFDocument() { m_pdfDocumentWasMutated = true; }
+    
+    WebCore::IntSize size() const { return m_size; }
 
 protected:
     explicit SimplePDFPlugin(WebFrame*);
 
     WebFrame* webFrame() const { return m_frame; }
 
-    WebCore::IntSize size() const { return m_size; }
     void setSize(WebCore::IntSize size) { m_size = size; }
 
     RetainPtr<PDFDocument> pdfDocument() const { return m_pdfDocument; }
@@ -100,6 +101,7 @@ protected:
     virtual void destroy();
     virtual void paint(WebCore::GraphicsContext*, const WebCore::IntRect& dirtyRectInWindowCoordinates);
     virtual void updateControlTints(WebCore::GraphicsContext*);
+    virtual bool supportsSnapshotting() const { return false; }
     virtual PassRefPtr<ShareableBitmap> snapshot();
 #if PLATFORM(MAC)
     virtual PlatformLayer* pluginLayer();

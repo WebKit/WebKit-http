@@ -41,6 +41,7 @@
 #include "WebProcessMessages.h"
 #include "WebProcessProxyMessages.h"
 #include <WebCore/KURL.h>
+#include <WebCore/SuddenTermination.h>
 #include <stdio.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
@@ -198,6 +199,13 @@ void WebProcessProxy::removeWebPage(uint64_t pageID)
     m_processSuppressiblePages.remove(pageID);
     updateProcessSuppressionState();
 #endif
+
+    // If this was the last WebPage open in that web process, and we have no other reason to keep it alive, let it go.
+    // We only allow this when using a network process, as otherwise the WebProcess needs to preserve its session state.
+    if (m_context->usesNetworkProcess() && canTerminateChildProcess()) {
+        abortProcessLaunchIfNeeded();
+        disconnect();
+    }
 }
 
 Vector<WebPageProxy*> WebProcessProxy::pages() const
@@ -323,9 +331,9 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins)
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(PLUGIN_PROCESS)
-void WebProcessProxy::getPluginProcessConnection(const String& pluginPath, uint32_t processType, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
 {
-    PluginProcessManager::shared().getPluginProcessConnection(m_context->pluginInfoStore(), pluginPath, static_cast<PluginProcess::Type>(processType), reply);
+    PluginProcessManager::shared().getPluginProcessConnection(pluginProcessToken, reply);
 }
 
 #elif ENABLE(NETSCAPE_PLUGIN_API)
@@ -505,17 +513,27 @@ size_t WebProcessProxy::frameCountInPage(WebPageProxy* page) const
     return result;
 }
 
+bool WebProcessProxy::canTerminateChildProcess()
+{
+    if (!m_pageMap.isEmpty())
+        return false;
+
+    if (m_downloadProxyMap && !m_downloadProxyMap->isEmpty())
+        return false;
+
+    if (!m_context->shouldTerminate(this))
+        return false;
+
+    return true;
+}
+
 void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
 {
-    if (!m_pageMap.isEmpty() || (m_downloadProxyMap && !m_downloadProxyMap->isEmpty()) || !m_context->shouldTerminate(this)) {
-        shouldTerminate = false;
-        return;
+    shouldTerminate = canTerminateChildProcess();
+    if (shouldTerminate) {
+        // We know that the web process is going to terminate so disconnect it from the context.
+        disconnect();
     }
-
-    shouldTerminate = true;
-
-    // We know that the web process is going to terminate so disconnect it from the context.
-    disconnect();
 }
 
 void WebProcessProxy::updateTextCheckerState()
@@ -625,11 +643,46 @@ void WebProcessProxy::pagePreferencesChanged(WebKit::WebPageProxy *page)
 #endif
 }
 
+void WebProcessProxy::didSaveToPageCache()
+{
+    m_context->processDidCachePage(this);
+}
+
+void WebProcessProxy::releasePageCache()
+{
+    if (canSendMessage())
+        send(Messages::WebProcess::ReleasePageCache(), 0);
+}
+
+
 void WebProcessProxy::requestTermination()
 {
+    if (!isValid())
+        return;
+
     ChildProcessProxy::terminate();
-    webConnection()->didClose();
+
+    if (webConnection())
+        webConnection()->didClose();
+
     disconnect();
+}
+
+
+void WebProcessProxy::enableSuddenTermination()
+{
+    if (!isValid())
+        return;
+
+    WebCore::enableSuddenTermination();
+}
+
+void WebProcessProxy::disableSuddenTermination()
+{
+    if (!isValid())
+        return;
+
+    WebCore::disableSuddenTermination();
 }
 
 } // namespace WebKit

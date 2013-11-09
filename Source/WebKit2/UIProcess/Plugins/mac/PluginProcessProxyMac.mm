@@ -134,11 +134,15 @@ static bool shouldUseXPC()
 }
 #endif
 
-void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginModuleInfo& pluginInfo)
+void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
-    launchOptions.architecture = pluginInfo.pluginArchitecture;
-    launchOptions.executableHeap = PluginProcessProxy::pluginNeedsExecutableHeap(pluginInfo);
-    launchOptions.extraInitializationData.add("plugin-path", pluginInfo.path);
+    launchOptions.architecture = pluginProcessAttributes.moduleInfo.pluginArchitecture;
+    launchOptions.executableHeap = PluginProcessProxy::pluginNeedsExecutableHeap(pluginProcessAttributes.moduleInfo);
+    launchOptions.extraInitializationData.add("plugin-path", pluginProcessAttributes.moduleInfo.path);
+
+    // FIXME: Don't allow this if the UI process is sandboxed.
+    if (pluginProcessAttributes.sandboxPolicy == PluginProcessSandboxPolicyUnsandboxed)
+        launchOptions.extraInitializationData.add("disable-sandbox", "1");
 
 #if HAVE(XPC)
     launchOptions.useXPC = shouldUseXPC();
@@ -148,7 +152,7 @@ void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions
 void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationParameters& parameters)
 {
     // For now only Flash is known to behave with asynchronous plug-in initialization.
-    parameters.supportsAsynchronousPluginInitialization = m_pluginInfo.bundleIdentifier == "com.macromedia.Flash Player.plugin";
+    parameters.supportsAsynchronousPluginInitialization = m_pluginProcessAttributes.moduleInfo.bundleIdentifier == "com.macromedia.Flash Player.plugin";
 
 #if USE(ACCELERATED_COMPOSITING) && HAVE(HOSTED_CORE_ANIMATION)
     mach_port_t renderServerPort = [[CARemoteLayerServer sharedServer] serverPort];
@@ -327,6 +331,69 @@ void PluginProcessProxy::setProcessSuppressionEnabled(bool processSuppressionEna
         return;
 
     m_connection->send(Messages::PluginProcess::SetProcessSuppressionEnabled(processSuppressionEnabled), 0);
+}
+
+void PluginProcessProxy::openPluginPreferencePane()
+{
+    if (!m_pluginProcessAttributes.moduleInfo.preferencePanePath)
+        return;
+
+    NSURL *preferenceURL = [NSURL fileURLWithPath:m_pluginProcessAttributes.moduleInfo.preferencePanePath];
+    if (!preferenceURL) {
+        LOG_ERROR("Creating URL for preference pane path \"%@\" failed.", (NSString *)m_pluginProcessAttributes.moduleInfo.preferencePanePath);
+        return;
+    }
+
+    NSArray *preferenceURLs = [NSArray arrayWithObject:preferenceURL];
+
+    LSLaunchURLSpec prefSpec;
+    prefSpec.appURL = 0;
+    prefSpec.itemURLs = reinterpret_cast<CFArrayRef>(preferenceURLs);
+    prefSpec.passThruParams = 0;
+    prefSpec.launchFlags = kLSLaunchAsync | kLSLaunchDontAddToRecents;
+    prefSpec.asyncRefCon = 0;
+
+    OSStatus error = LSOpenFromURLSpec(&prefSpec, 0);
+    if (error != noErr)
+        LOG_ERROR("LSOpenFromURLSpec to open \"%@\" failed with error %d.", (NSString *)m_pluginProcessAttributes.moduleInfo.preferencePanePath, error);
+}
+
+static bool isFlashUpdater(const String& launchPath, const Vector<String>& arguments)
+{
+    if (launchPath != "/Applications/Utilities/Adobe Flash Player Install Manager.app/Contents/MacOS/Adobe Flash Player Install Manager")
+        return false;
+
+    if (arguments.size() != 1)
+        return false;
+
+    if (arguments[0] != "-update")
+        return false;
+
+    return true;
+}
+
+static bool shouldLaunchProcess(const PluginProcessAttributes& pluginProcessAttributes, const String& launchPath, const Vector<String>& arguments)
+{
+    if (pluginProcessAttributes.moduleInfo.bundleIdentifier == "com.macromedia.Flash Player.plugin")
+        return isFlashUpdater(launchPath, arguments);
+
+    return false;
+}
+
+void PluginProcessProxy::launchProcess(const String& launchPath, const Vector<String>& arguments, bool& result)
+{
+    if (!shouldLaunchProcess(m_pluginProcessAttributes, launchPath, arguments)) {
+        result = false;
+        return;
+    }
+
+    result = true;
+
+    RetainPtr<NSMutableArray> argumentsArray = adoptNS([[NSMutableArray alloc] initWithCapacity:arguments.size()]);
+    for (size_t i = 0; i < arguments.size(); ++i)
+        [argumentsArray addObject:(NSString *)arguments[i]];
+
+    [NSTask launchedTaskWithLaunchPath:launchPath arguments:argumentsArray.get()];
 }
 
 } // namespace WebKit

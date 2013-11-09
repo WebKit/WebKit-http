@@ -53,7 +53,6 @@
 #include <WebCore/KURL.h>
 #include <WebCore/Page.h>
 #include <wtf/OwnArrayPtr.h>
-#include <wtf/UnusedParam.h>
 
 using namespace WebKit;
 
@@ -249,6 +248,11 @@ void WKBundlePageSetDefersLoading(WKBundlePageRef pageRef, bool defersLoading)
 WKStringRef WKBundlePageCopyRenderTreeExternalRepresentation(WKBundlePageRef pageRef)
 {
     return toCopiedAPI(toImpl(pageRef)->renderTreeExternalRepresentation());
+}
+
+WKStringRef WKBundlePageCopyRenderTreeExternalRepresentationForPrinting(WKBundlePageRef pageRef)
+{
+    return toCopiedAPI(toImpl(pageRef)->renderTreeExternalRepresentationForPrinting());
 }
 
 void WKBundlePageExecuteEditingCommand(WKBundlePageRef pageRef, WKStringRef name, WKStringRef argument)
@@ -501,4 +505,14 @@ void WKBundlePageConfirmCompositionWithText(WKBundlePageRef pageRef, WKStringRef
 bool WKBundlePageCanShowMIMEType(WKBundlePageRef pageRef, WKStringRef mimeTypeRef)
 {
     return toImpl(pageRef)->canShowMIMEType(toWTFString(mimeTypeRef));
+}
+
+WKRenderingSuppressionToken WKBundlePageExtendIncrementalRenderingSuppression(WKBundlePageRef pageRef)
+{
+    return toImpl(pageRef)->extendIncrementalRenderingSuppression();
+}
+
+void WKBundlePageStopExtendingIncrementalRenderingSuppression(WKBundlePageRef pageRef, WKRenderingSuppressionToken token)
+{
+    toImpl(pageRef)->stopExtendingIncrementalRenderingSuppression(token);
 }

@@ -256,12 +256,28 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     uint64_t policyDownloadID = m_policyDownloadID;
     m_policyDownloadID = 0;
 
+    ResourceLoader* mainResourceLoader = documentLoader->mainResourceLoader();
+
 #if ENABLE(NETWORK_PROCESS)
     if (WebProcess::shared().usesNetworkProcess()) {
-        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(documentLoader->mainResourceLoader()->identifier(), policyDownloadID, request, response), 0);
+        // Use 0 to indicate that there is no main resource loader.
+        // This can happen if the main resource is in the WebCore memory cache.
+        uint64_t mainResourceLoadIdentifier;
+        if (mainResourceLoader)
+            mainResourceLoadIdentifier = mainResourceLoader->identifier();
+        else
+            mainResourceLoadIdentifier = 0;
+
+        WebProcess::shared().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
         return;
     }
 #endif
+
+    if (!mainResourceLoader) {
+        // The main resource has already been loaded. Start a new download instead.
+        WebProcess::shared().downloadManager().startDownload(policyDownloadID, request);
+        return;
+    }
 
     WebProcess::shared().downloadManager().convertHandleToDownload(policyDownloadID, documentLoader->mainResourceLoader()->handle(), request, response);
 }
@@ -295,7 +311,12 @@ String WebFrame::contentsAsString() const
         for (Frame* child = m_coreFrame->tree()->firstChild(); child; child = child->tree()->nextSibling()) {
             if (!builder.isEmpty())
                 builder.append(' ');
-            builder.append(static_cast<WebFrameLoaderClient*>(child->loader()->client())->webFrame()->contentsAsString());
+
+            WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(child->loader()->client());
+            WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+            ASSERT(webFrame);
+
+            builder.append(webFrame->contentsAsString());
         }
         // FIXME: It may make sense to use toStringPreserveCapacity() here.
         return builder.toString();
@@ -324,7 +345,7 @@ String WebFrame::selectionAsString() const
     if (!m_coreFrame)
         return String();
 
-    return m_coreFrame->displayStringModifiedByEncoding(m_coreFrame->editor()->selectedText());
+    return m_coreFrame->displayStringModifiedByEncoding(m_coreFrame->editor().selectedText());
 }
 
 IntSize WebFrame::size() const
@@ -394,7 +415,8 @@ WebFrame* WebFrame::parentFrame() const
     if (!m_coreFrame || !m_coreFrame->ownerElement() || !m_coreFrame->ownerElement()->document())
         return 0;
 
-    return static_cast<WebFrameLoaderClient*>(m_coreFrame->ownerElement()->document()->frame()->loader()->client())->webFrame();
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(m_coreFrame->ownerElement()->document()->frame()->loader()->client());
+    return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 
 PassRefPtr<ImmutableArray> WebFrame::childFrames()
@@ -410,7 +432,9 @@ PassRefPtr<ImmutableArray> WebFrame::childFrames()
     vector.reserveInitialCapacity(size);
 
     for (Frame* child = m_coreFrame->tree()->firstChild(); child; child = child->tree()->nextSibling()) {
-        WebFrame* webFrame = static_cast<WebFrameLoaderClient*>(child->loader()->client())->webFrame();
+        WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(child->loader()->client());
+        WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+        ASSERT(webFrame);
         vector.uncheckedAppend(webFrame);
     }
 
@@ -613,7 +637,9 @@ WebFrame* WebFrame::frameForContext(JSContextRef context)
         return 0;
 
     Frame* coreFrame = static_cast<JSDOMWindowShell*>(globalObjectObj)->window()->impl()->frame();
-    return static_cast<WebFrameLoaderClient*>(coreFrame->loader()->client())->webFrame();
+
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(coreFrame->loader()->client());
+    return webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
 }
 
 JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleNodeHandle* nodeHandle, InjectedBundleScriptWorld* world)
@@ -700,15 +726,15 @@ String WebFrame::mimeTypeForResourceWithURL(const KURL& url) const
 
 void WebFrame::setTextDirection(const String& direction)
 {
-    if (!m_coreFrame || !m_coreFrame->editor())
+    if (!m_coreFrame)
         return;
 
     if (direction == "auto")
-        m_coreFrame->editor()->setBaseWritingDirection(NaturalWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(NaturalWritingDirection);
     else if (direction == "ltr")
-        m_coreFrame->editor()->setBaseWritingDirection(LeftToRightWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
     else if (direction == "rtl")
-        m_coreFrame->editor()->setBaseWritingDirection(RightToLeftWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
 }
 
 #if PLATFORM(MAC)
@@ -736,8 +762,11 @@ bool WebFrameFilter::shouldIncludeSubframe(Frame* frame) const
 {
     if (!m_callback)
         return true;
-        
-    WebFrame* webFrame = static_cast<WebFrameLoaderClient*>(frame->loader()->client())->webFrame();
+
+    WebFrameLoaderClient* webFrameLoaderClient = toWebFrameLoaderClient(frame->loader()->client());
+    WebFrame* webFrame = webFrameLoaderClient ? webFrameLoaderClient->webFrame() : 0;
+    ASSERT(webFrame);
+
     return m_callback(toAPI(m_topLevelWebFrame), toAPI(webFrame), m_context);
 }
 

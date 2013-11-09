@@ -115,9 +115,6 @@ class PortTestCase(unittest.TestCase):
         self.assertTrue('--foo=bar' in cmd_line)
         self.assertTrue('--foo=baz' in cmd_line)
 
-    def test_uses_apache(self):
-        self.assertTrue(self.make_port()._uses_apache())
-
     def assert_servers_are_down(self, host, ports):
         for port in ports:
             try:
@@ -554,6 +551,10 @@ MOCK output of child process
         port._filesystem = MockFileSystem({'/etc/debian_version': ''})
         self.assertFalse(port._is_redhat_based())
         self.assertTrue(port._is_debian_based())
+
+        port._filesystem = MockFileSystem({'/etc/arch-release': ''})
+        self.assertFalse(port._is_redhat_based())
+        self.assertTrue(port._is_arch_based())
 
     def test_apache_config_file_name_for_platform(self):
         port = TestWebKitPort()

@@ -66,7 +66,6 @@ public:
     virtual ~EmptyChromeClient() { }
     virtual void chromeDestroyed() { }
 
-    virtual void* webView() const { return 0; }
     virtual void setWindowRect(const FloatRect&) { }
     virtual FloatRect windowRect() { return FloatRect(); }
 
@@ -118,12 +117,6 @@ public:
     virtual bool hasOpenedPopup() const OVERRIDE { return false; }
     virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const OVERRIDE;
     virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const OVERRIDE;
-#if ENABLE(PAGE_POPUP)
-    virtual PagePopup* openPagePopup(PagePopupClient*, const IntRect&) OVERRIDE { return 0; }
-    virtual void closePagePopup(PagePopup*) OVERRIDE { }
-    virtual void setPagePopupDriver(PagePopupDriver*) OVERRIDE { }
-    virtual void resetPagePopupDriver() OVERRIDE { }
-#endif
 
     virtual void setStatusbarText(const String&) { }
 
@@ -208,6 +201,8 @@ public:
     virtual void didAssociateFormControls(const Vector<RefPtr<Element> >&) { }
     virtual bool shouldNotifyOnFormChanges() { return false; }
 };
+
+// FIXME (bug 116233): Get rid of EmptyFrameLoaderClient. It is a travesty.
 
 class EmptyFrameLoaderClient : public FrameLoaderClient {
     WTF_MAKE_NONCOPYABLE(EmptyFrameLoaderClient); WTF_MAKE_FAST_ALLOCATED;
@@ -373,6 +368,8 @@ public:
 #endif
 
     virtual PassRefPtr<FrameNetworkingContext> createNetworkingContext() OVERRIDE;
+
+    virtual bool isEmptyFrameLoaderClient() OVERRIDE { return true; }
 };
 
 class EmptyTextCheckerClient : public TextCheckerClient {

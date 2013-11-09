@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012 Apple Computer, Inc.  All rights reserved.
+ * Copyright (C) 2008, 2012, 2013 Apple Computer, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,47 +27,36 @@
 #define GeneratorGeneratedImage_h
 
 #include "GeneratedImage.h"
-#include "Generator.h"
+#include "Gradient.h"
 #include "Image.h"
 #include "ImageBuffer.h"
 #include "IntSize.h"
-#include "Timer.h"
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-static const int generatedImageCacheClearDelay = 1;
-
 class GeneratorGeneratedImage : public GeneratedImage {
 public:
-    static PassRefPtr<GeneratorGeneratedImage> create(PassRefPtr<Generator> generator, const IntSize& size)
+    static PassRefPtr<GeneratorGeneratedImage> create(PassRefPtr<Gradient> generator, const IntSize& size)
     {
         return adoptRef(new GeneratorGeneratedImage(generator, size));
     }
 
-    virtual ~GeneratorGeneratedImage()
-    {
-        m_cacheTimer.stop();
-    }
+    virtual ~GeneratorGeneratedImage() { }
 
 protected:
     virtual void draw(GraphicsContext*, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace styleColorSpace, CompositeOperator, BlendMode);
     virtual void drawPattern(GraphicsContext*, const FloatRect& srcRect, const AffineTransform& patternTransform,
         const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator, const FloatRect& destRect, BlendMode);
 
-    void invalidateCacheTimerFired(DeferrableOneShotTimer<GeneratorGeneratedImage>*);
-
-    GeneratorGeneratedImage(PassRefPtr<Generator> generator, const IntSize& size)
-        : m_generator(generator)
-        , m_cacheTimer(this, &GeneratorGeneratedImage::invalidateCacheTimerFired, generatedImageCacheClearDelay)
+    GeneratorGeneratedImage(PassRefPtr<Gradient> generator, const IntSize& size)
+        : m_gradient(generator)
     {
         m_size = size;
     }
 
-    RefPtr<Generator> m_generator;
-
+    RefPtr<Gradient> m_gradient;
     OwnPtr<ImageBuffer> m_cachedImageBuffer;
-    DeferrableOneShotTimer<GeneratorGeneratedImage> m_cacheTimer;
     IntSize m_cachedAdjustedSize;
     unsigned m_cachedGeneratorHash;
 };

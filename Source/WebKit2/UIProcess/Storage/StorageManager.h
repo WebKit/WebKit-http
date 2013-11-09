@@ -27,11 +27,16 @@
 #define StorageManager_h
 
 #include "Connection.h"
+#include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/StringHash.h>
 
 class WorkQueue;
+
+namespace WebCore {
+class SecurityOrigin;
+}
 
 namespace WebKit {
 
@@ -54,6 +59,12 @@ public:
     void processWillOpenConnection(WebProcessProxy*);
     void processWillCloseConnection(WebProcessProxy*);
 
+    // FIXME: Instead of a context + C function, this should take a WTF::Function, but we currently don't
+    // support arguments in functions.
+    void getOrigins(FunctionDispatcher* callbackDispatcher, void* context, void (*callback)(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins, void* context));
+    void deleteEntriesForOrigin(WebCore::SecurityOrigin*);
+    void deleteAllEntries();
+
 private:
     StorageManager();
 
@@ -65,10 +76,11 @@ private:
     void createLocalStorageMap(CoreIPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData&);
     void createSessionStorageMap(CoreIPC::Connection*, uint64_t storageMapID, uint64_t storageNamespaceID, const SecurityOriginData&);
     void destroyStorageMap(CoreIPC::Connection*, uint64_t storageMapID);
-    void getValues(CoreIPC::Connection*, uint64_t storageMapID, HashMap<String, String>& values);
-    void setItem(CoreIPC::Connection*, uint64_t storageAreaID, uint64_t sourceStorageAreaID, const String& key, const String& value, const String& urlString);
-    void removeItem(CoreIPC::Connection*, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& key, const String& urlString);
-    void clear(CoreIPC::Connection*, uint64_t storageMapID, uint64_t sourceStorageAreaID, const String& urlString);
+
+    void getValues(CoreIPC::Connection*, uint64_t storageMapID, uint64_t storageMapSeed, HashMap<String, String>& values);
+    void setItem(CoreIPC::Connection*, uint64_t storageAreaID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& value, const String& urlString);
+    void removeItem(CoreIPC::Connection*, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& urlString);
+    void clear(CoreIPC::Connection*, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& urlString);
 
     void createSessionStorageNamespaceInternal(uint64_t storageNamespaceID, CoreIPC::Connection* allowedConnection, unsigned quotaInBytes);
     void destroySessionStorageNamespaceInternal(uint64_t storageNamespaceID);
@@ -82,6 +94,10 @@ private:
 
     class LocalStorageNamespace;
     LocalStorageNamespace* getOrCreateLocalStorageNamespace(uint64_t storageNamespaceID);
+
+    void getOriginsInternal(FunctionDispatcher* callbackDispatcher, void* context, void (*callback)(const Vector<RefPtr<WebCore::SecurityOrigin>>& securityOrigins, void* context));
+    void deleteEntriesForOriginInternal(WebCore::SecurityOrigin*);
+    void deleteAllEntriesInternal();
 
     RefPtr<WorkQueue> m_queue;
 

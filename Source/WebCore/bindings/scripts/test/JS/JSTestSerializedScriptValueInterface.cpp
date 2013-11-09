@@ -179,7 +179,7 @@ JSValue jsTestSerializedScriptValueInterfacePorts(ExecState* exec, JSValue slotB
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     UNUSED_PARAM(exec);
     TestSerializedScriptValueInterface* impl = static_cast<TestSerializedScriptValueInterface*>(castedThis->impl());
-    JSValue result = jsArray(exec, castedThis->globalObject(), *impl->ports());
+    JSValue result = jsArray(exec, castedThis->globalObject(), impl->ports());
     return result;
 }
 
@@ -286,7 +286,8 @@ JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, TestSer
 {
     if (!impl)
         return jsNull();
-    if (JSValue result = getExistingWrapper<JSTestSerializedScriptValueInterface>(exec, impl)) return result;
+    if (JSValue result = getExistingWrapper<JSTestSerializedScriptValueInterface>(exec, impl))
+        return result;
 
 #if ENABLE(BINDING_INTEGRITY)
     void* actualVTablePointer = *(reinterpret_cast<void**>(impl));

@@ -111,7 +111,6 @@
     <ClInclude Include="..\wtf\CheckedArithmetic.h" />
     <ClInclude Include="..\wtf\CheckedBoolean.h" />
     <ClInclude Include="..\wtf\Compiler.h" />
-    <ClInclude Include="..\wtf\Complex.h" />
     <ClInclude Include="..\wtf\CryptographicallyRandomNumber.h" />
     <ClInclude Include="..\wtf\CurrentTime.h" />
     <ClInclude Include="..\wtf\DataLog.h" />
@@ -161,14 +160,13 @@
     <ClInclude Include="..\wtf\ListHashSet.h" />
     <ClInclude Include="..\wtf\Locker.h" />
     <ClInclude Include="..\wtf\MainThread.h" />
-    <ClInclude Include="..\wtf\MallocZoneSupport.h" />
     <ClInclude Include="..\wtf\MathExtras.h" />
     <ClInclude Include="..\wtf\MD5.h" />
     <ClInclude Include="..\wtf\MediaTime.h" />
     <ClInclude Include="..\wtf\MessageQueue.h" />
     <ClInclude Include="..\wtf\MetaAllocator.h" />
     <ClInclude Include="..\wtf\MetaAllocatorHandle.h" />
-    <ClInclude Include="..\wtf\Noncopyable.h" />
+    <ClInclude Include="..\wtf\NeverDestroyed.h" />    <ClInclude Include="..\wtf\Noncopyable.h" />
     <ClInclude Include="..\wtf\NonCopyingSort.h" />
     <ClInclude Include="..\wtf\NotFound.h" />
     <ClInclude Include="..\wtf\NullPtr.h" />
@@ -249,7 +247,6 @@
     <ClInclude Include="..\wtf\unicode\Unicode.h" />
     <ClInclude Include="..\wtf\unicode\UnicodeMacrosFromICU.h" />
     <ClInclude Include="..\wtf\unicode\UTF8.h" />
-    <ClInclude Include="..\wtf\UnusedParam.h" />
     <ClInclude Include="..\wtf\ValueCheck.h" />
     <ClInclude Include="..\wtf\Vector.h" />
     <ClInclude Include="..\wtf\VMTags.h" />

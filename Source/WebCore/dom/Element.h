@@ -42,6 +42,7 @@ class DOMTokenList;
 class Element;
 class ElementRareData;
 class ElementShadow;
+class HTMLDocument;
 class ShareableElementData;
 class IntSize;
 class Locale;
@@ -78,6 +79,7 @@ public:
     const Attribute* getAttributeItem(const QualifiedName&) const;
     unsigned getAttributeItemIndex(const QualifiedName&) const;
     unsigned getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const;
+    unsigned getAttributeItemIndexForAttributeNode(const Attr*) const;
 
     bool hasID() const { return !m_idForStyleResolution.isNull(); }
     bool hasClass() const { return !m_classNames.isNull(); }
@@ -356,11 +358,11 @@ public:
     bool hasLocalName(const AtomicString& other) const { return m_tagName.localName() == other; }
     bool hasLocalName(const QualifiedName& other) const { return m_tagName.localName() == other.localName(); }
 
-    const AtomicString& localName() const { return m_tagName.localName(); }
-    const AtomicString& prefix() const { return m_tagName.prefix(); }
-    const AtomicString& namespaceURI() const { return m_tagName.namespaceURI(); }
+    virtual const AtomicString& localName() const OVERRIDE FINAL { return m_tagName.localName(); }
+    virtual const AtomicString& prefix() const OVERRIDE FINAL { return m_tagName.prefix(); }
+    virtual const AtomicString& namespaceURI() const OVERRIDE FINAL { return m_tagName.namespaceURI(); }
 
-    virtual KURL baseURI() const;
+    virtual KURL baseURI() const OVERRIDE FINAL;
 
     virtual String nodeName() const;
 
@@ -423,6 +425,23 @@ public:
     ShadowRoot* ensureUserAgentShadowRoot();
 
     virtual const AtomicString& shadowPseudoId() const;
+
+    bool inActiveChain() const { return isUserActionElement() && isUserActionElementInActiveChain(); }
+    bool active() const { return isUserActionElement() && isUserActionElementActive(); }
+    bool hovered() const { return isUserActionElement() && isUserActionElementHovered(); }
+    bool focused() const { return isUserActionElement() && isUserActionElementFocused(); }
+
+    virtual void setActive(bool flag = true, bool pause = false);
+    virtual void setHovered(bool flag = true);
+    virtual void setFocus(bool flag);
+
+    virtual bool supportsFocus() const;
+    virtual bool isFocusable() const;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
+    virtual bool isMouseFocusable() const;
+
+    virtual short tabIndex() const;
+    virtual Element* focusDelegate();
 
     RenderStyle* computedStyle(PseudoId = NOPSEUDO);
 
@@ -503,7 +522,7 @@ public:
 
     bool isFinishedParsingChildren() const { return isParsingChildrenFinished(); }
     virtual void finishParsingChildren();
-    virtual void beginParsingChildren();
+    virtual void beginParsingChildren() OVERRIDE FINAL;
 
     bool hasPseudoElements() const;
     PseudoElement* pseudoElement(PseudoId) const;
@@ -557,12 +576,6 @@ public:
     virtual bool isFrameElementBase() const { return false; }
 
     virtual bool canContainRangeEndPoint() const { return true; }
-
-    virtual const AtomicString& formControlType() const { return nullAtom; }
-
-    virtual bool wasChangedSinceLastFormControlChangeEvent() const;
-    virtual void setChangedSinceLastFormControlChangeEvent(bool);
-    virtual void dispatchFormControlChangeEvent() { }
 
     // Used for disabled form elements; if true, prevents mouse events from being dispatched
     // to event listeners, and prevents DOMActivate events from being sent at all.
@@ -622,6 +635,8 @@ public:
     IntSize savedLayerScrollOffset() const;
     void setSavedLayerScrollOffset(const IntSize&);
 
+    void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
+
 protected:
     Element(const QualifiedName& tagName, Document* document, ConstructionType type)
         : ContainerNode(document, type)
@@ -631,8 +646,8 @@ protected:
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
-    virtual void removeAllEventListeners() OVERRIDE;
+    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0) OVERRIDE;
+    virtual void removeAllEventListeners() OVERRIDE FINAL;
 
     virtual bool willRecalcStyle(StyleChange);
     virtual void didRecalcStyle(StyleChange);
@@ -640,8 +655,6 @@ protected:
 
     void clearTabIndexExplicitlyIfNeeded();    
     void setTabIndexExplicitly(short);
-    virtual bool supportsFocus() const OVERRIDE;
-    virtual short tabIndex() const OVERRIDE;
 
     PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
     HTMLCollection* cachedHTMLCollection(CollectionType);
@@ -652,6 +665,13 @@ protected:
     void classAttributeChanged(const AtomicString& newClassString);
 
 private:
+    bool isTextNode() const;
+
+    bool isUserActionElementInActiveChain() const;
+    bool isUserActionElementActive() const;
+    bool isUserActionElementFocused() const;
+    bool isUserActionElementHovered() const;
+
     void updatePseudoElement(PseudoId, StyleChange = NoChange);
     PassRefPtr<PseudoElement> createPseudoElementIfNeeded(PseudoId);
     void setPseudoElement(PseudoId, PassRefPtr<PseudoElement>);
@@ -673,17 +693,20 @@ private:
     void synchronizeAttribute(const QualifiedName&) const;
     void synchronizeAttribute(const AtomicString& localName) const;
 
-    void updateId(const AtomicString& oldId, const AtomicString& newId);
-    void updateId(TreeScope*, const AtomicString& oldId, const AtomicString& newId);
     void updateName(const AtomicString& oldName, const AtomicString& newName);
-    void updateName(TreeScope*, const AtomicString& oldName, const AtomicString& newName);
+    void updateNameForTreeScope(TreeScope*, const AtomicString& oldName, const AtomicString& newName);
+    void updateNameForDocument(HTMLDocument*, const AtomicString& oldName, const AtomicString& newName);
+    void updateId(const AtomicString& oldId, const AtomicString& newId);
+    void updateIdForTreeScope(TreeScope*, const AtomicString& oldId, const AtomicString& newId);
+    enum HTMLDocumentNamedItemMapsUpdatingCondition { AlwaysUpdateHTMLDocumentNamedItemMaps, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute };
+    void updateIdForDocument(HTMLDocument*, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition);
     void updateLabel(TreeScope*, const AtomicString& oldForAttributeValue, const AtomicString& newForAttributeValue);
 
     void scrollByUnits(int units, ScrollGranularity);
 
-    virtual void setPrefix(const AtomicString&, ExceptionCode&);
-    virtual NodeType nodeType() const;
-    virtual bool childTypeAllowed(NodeType) const;
+    virtual void setPrefix(const AtomicString&, ExceptionCode&) OVERRIDE FINAL;
+    virtual NodeType nodeType() const OVERRIDE FINAL;
+    virtual bool childTypeAllowed(NodeType) const OVERRIDE FINAL;
 
     void setAttributeInternal(unsigned index, const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
     void addAttributeInternal(const QualifiedName&, const AtomicString& value, SynchronizationOfLazyAttribute);
@@ -698,9 +721,6 @@ private:
 
     void cancelFocusAppearanceUpdate();
 
-    virtual const AtomicString& virtualPrefix() const { return prefix(); }
-    virtual const AtomicString& virtualLocalName() const { return localName(); }
-    virtual const AtomicString& virtualNamespaceURI() const { return namespaceURI(); }
     virtual RenderStyle* virtualComputedStyle(PseudoId pseudoElementSpecifier = NOPSEUDO) { return computedStyle(pseudoElementSpecifier); }
     
     // cloneNode is private so that non-virtual cloneElementWithChildren and cloneElementWithoutChildren

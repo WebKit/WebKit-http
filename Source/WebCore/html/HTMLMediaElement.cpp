@@ -136,6 +136,10 @@
 #include "PlatformTextTrack.h"
 #endif
 
+#if USE(AUDIO_SESSION)
+#include "AudioSessionManager.h"
+#endif
+
 using namespace std;
 
 namespace WebCore {
@@ -315,6 +319,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document* docum
 #endif
 #if ENABLE(WEB_AUDIO)
     , m_audioSourceNode(0)
+#endif
+#if USE(AUDIO_SESSION)
+    , m_audioSessionManagerToken(AudioSessionManagerToken::create(tagName == videoTag ? AudioSessionManager::Video : AudioSessionManager::Audio))
 #endif
 {
     LOG(Media, "HTMLMediaElement::HTMLMediaElement");
@@ -578,19 +585,25 @@ bool HTMLMediaElement::childShouldCreateRenderer(const NodeRenderingContext& chi
 Node::InsertionNotificationRequest HTMLMediaElement::insertedInto(ContainerNode* insertionPoint)
 {
     LOG(Media, "HTMLMediaElement::insertedInto");
+
     HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint->inDocument() && !getAttribute(srcAttr).isEmpty() && m_networkState == NETWORK_EMPTY)
-        scheduleDelayedAction(LoadMediaResource);
+    if (insertionPoint->inDocument()) {
+        m_inActiveDocument = true;
+
+        if (m_networkState == NETWORK_EMPTY && !getAttribute(srcAttr).isEmpty())
+            scheduleDelayedAction(LoadMediaResource);
+    }
+
     configureMediaControls();
     return InsertionDone;
 }
 
 void HTMLMediaElement::removedFrom(ContainerNode* insertionPoint)
 {
-    m_inActiveDocument = false;
+    LOG(Media, "HTMLMediaElement::removedFrom");
 
+    m_inActiveDocument = false;
     if (insertionPoint->inDocument()) {
-        LOG(Media, "HTMLMediaElement::removedFrom");
         configureMediaControls();
         if (m_networkState > NETWORK_EMPTY)
             pause();
@@ -1110,6 +1123,11 @@ static bool eventTimeCueCompare(const std::pair<double, TextTrackCue*>& a,
     return a.second->cueIndex() - b.second->cueIndex() < 0;
 }
 
+static bool compareCueInterval(const CueInterval& one, const CueInterval& two)
+{
+    return one.data()->isOrderedBefore(two.data());
+};
+
 
 void HTMLMediaElement::updateActiveTextTrackCues(double movieTime)
 {
@@ -1132,8 +1150,10 @@ void HTMLMediaElement::updateActiveTextTrackCues(double movieTime)
 
     // The user agent must synchronously unset [the text track cue active] flag
     // whenever ... the media element's readyState is changed back to HAVE_NOTHING.
-    if (m_readyState != HAVE_NOTHING && m_player)
+    if (m_readyState != HAVE_NOTHING && m_player) {
         currentCues = m_cueTree.allOverlaps(m_cueTree.createInterval(movieTime, movieTime));
+        std::sort(currentCues.begin(), currentCues.end(), &compareCueInterval);
+    }
 
     CueList previousCues;
     CueList missedCues;
@@ -1388,33 +1408,31 @@ void HTMLMediaElement::audioTrackEnabledChanged(AudioTrack*)
 
 void HTMLMediaElement::textTrackModeChanged(TextTrack* track)
 {
+    bool trackIsLoaded = true;
     if (track->trackType() == TextTrack::TrackElement) {
-        // 4.8.10.12.3 Sourcing out-of-band text tracks
-        // ... when a text track corresponding to a track element is created with text track
-        // mode set to disabled and subsequently changes its text track mode to hidden, showing,
-        // or showing by default for the first time, the user agent must immediately and synchronously
-        // run the following algorithm ...
-
+        trackIsLoaded = false;
         for (Node* node = firstChild(); node; node = node->nextSibling()) {
             if (!node->hasTagName(trackTag))
                 continue;
-            HTMLTrackElement* trackElement = static_cast<HTMLTrackElement*>(node);
-            if (trackElement->track() != track)
-                continue;
-            
-            // Mark this track as "configured" so configureTextTracks won't change the mode again.
-            track->setHasBeenConfigured(true);
-            if (track->mode() != TextTrack::disabledKeyword()) {
-                if (trackElement->readyState() == HTMLTrackElement::LOADED)
-                    textTrackAddCues(track, track->cues());
 
-                // If this is the first added track, create the list of text tracks.
-                if (!m_textTracks)
-                  m_textTracks = TextTrackList::create(this, ActiveDOMObject::scriptExecutionContext());
+            HTMLTrackElement* trackElement = static_cast<HTMLTrackElement*>(node);
+            if (trackElement->track() == track) {
+                if (trackElement->readyState() == HTMLTrackElement::LOADING || trackElement->readyState() == HTMLTrackElement::LOADED)
+                    trackIsLoaded = true;
+                break;
             }
-            break;
         }
     }
+
+    // If this is the first added track, create the list of text tracks.
+    if (!m_textTracks)
+        m_textTracks = TextTrackList::create(this, ActiveDOMObject::scriptExecutionContext());
+    
+    // Mark this track as "configured" so configureTextTracks won't change the mode again.
+    track->setHasBeenConfigured(true);
+    
+    if (track->mode() != TextTrack::disabledKeyword() && trackIsLoaded)
+        textTrackAddCues(track, track->cues());
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     if (platformTextTrackMenu())
@@ -1652,7 +1670,7 @@ static void logMediaLoadRequest(Page* page, const String& mediaEngine, const Str
     if (!page || !page->settings()->diagnosticLoggingEnabled())
         return;
 
-    ChromeClient* client = page->chrome()->client();
+    ChromeClient* client = page->chrome().client();
 
     if (!succeeded) {
         client->logDiagnosticMessage(DiagnosticLoggingKeys::mediaLoadingFailedKey(), errorMessage, DiagnosticLoggingKeys::failKey());
@@ -2652,7 +2670,7 @@ bool HTMLMediaElement::controls() const
         return true;
 
     // always show controls for video when fullscreen playback is required.
-    if (isVideo() && document()->page() && document()->page()->chrome()->requiresFullscreenForVideoPlayback())
+    if (isVideo() && document()->page() && document()->page()->chrome().requiresFullscreenForVideoPlayback())
         return true;
 
     // Always show controls when in full screen mode.
@@ -3786,7 +3804,7 @@ GraphicsDeviceAdapter* HTMLMediaElement::mediaPlayerGraphicsDeviceAdapter(const 
     if (!document() || !document()->page())
         return 0;
 
-    return document()->page()->chrome()->client()->graphicsDeviceAdapter();
+    return document()->page()->chrome().client()->graphicsDeviceAdapter();
 }
 #endif
 
@@ -3975,7 +3993,7 @@ void HTMLMediaElement::updatePlayState()
         invalidateCachedTime();
 
         if (playerPaused) {
-            if (!m_isFullscreen && isVideo() && document() && document()->page() && document()->page()->chrome()->requiresFullscreenForVideoPlayback())
+            if (!m_isFullscreen && isVideo() && document() && document()->page() && document()->page()->chrome().requiresFullscreenForVideoPlayback())
                 enterFullscreen();
 
             // Set rate, muted before calling play in case they were set before the media engine was setup.
@@ -4353,7 +4371,7 @@ void HTMLMediaElement::enterFullscreen()
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
     if (document() && document()->page()) {
-        document()->page()->chrome()->client()->enterFullscreenForNode(this);
+        document()->page()->chrome().client()->enterFullscreenForNode(this);
         scheduleEvent(eventNames().webkitbeginfullscreenEvent);
     }
 }
@@ -4374,9 +4392,9 @@ void HTMLMediaElement::exitFullscreen()
     if (hasMediaControls())
         mediaControls()->exitedFullscreen();
     if (document() && document()->page()) {
-        if (document()->page()->chrome()->requiresFullscreenForVideoPlayback())
+        if (document()->page()->chrome().requiresFullscreenForVideoPlayback())
             pauseInternal();
-        document()->page()->chrome()->client()->exitFullscreenForNode(this);
+        document()->page()->chrome().client()->exitFullscreenForNode(this);
         scheduleEvent(eventNames().webkitendfullscreenEvent);
     }
 }
@@ -4613,11 +4631,11 @@ void HTMLMediaElement::configureMediaControls()
 
     mediaControls()->show();
 #else
-    if (!hasMediaControls())
-        createMediaControls();
-
     if (m_player)
         m_player->setControls(controls());
+
+    if (!hasMediaControls() && inDocument())
+        createMediaControls();
 #endif
 }
 

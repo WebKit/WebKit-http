@@ -1,3 +1,210 @@
+2013-05-26  Jon Lee  <jonlee@apple.com>
+
+        [WK2] Notifications clobber each other with multiple processes
+        https://bugs.webkit.org/show_bug.cgi?id=116428
+        <rdar://problem/13935191>
+
+        Reviewed by Darin Adler.
+
+        * ManualTests/notification-in-multiple-windows.html: Added.
+
+2013-05-27  Patrick Gansterer  <paroga@webkit.org>
+
+        Use ICU_INCLUDE_DIRS in BlackBerry CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=116210
+
+        Reviewed by Rob Buis.
+
+        Set and use the ICU_INCLUDE_DIRS variable to avoid
+        duplicated adding of the ICU include directory.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2013-05-24  Anders Carlsson  <andersca@apple.com>
+
+        Remove PagePopup code
+        https://bugs.webkit.org/show_bug.cgi?id=116732
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmakeconfig.h.cmake:
+        Remove ENABLE_PAGE_POPUP.
+
+2013-05-21  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Add support for building WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=116372
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/cmake/FindWebP.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Turn on WebKit2 and the plugin process and also look
+        for WebP. These missing symbols were hidden up until now. ENABLE_TEXTURE_MAPPER was
+        also incorrect specified.
+
+2013-05-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Compile everything in C++11 mode
+        https://bugs.webkit.org/show_bug.cgi?id=116452
+
+        Reviewed by Anders Carlsson.
+
+        * Source/autotools/SetupCompilerFlags.m4: Use the C++11 standard by default when compiling C++ source code.
+        Perform some minor cleanup around the comments and the order of specifying additional CXXFLAGS entries.
+
+2013-05-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [BlackBerry] Make PagePopup implementation independent from WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=116448
+
+        Reviewed by Anders Carlsson.
+
+        * Source/cmake/OptionsBlackBerry.cmake: Do not enable PAGE_POPUP
+        feature.
+
+2013-05-20  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        [EFL] Reenabled INDEXED_DATABASE after r150344
+        https://bugs.webkit.org/show_bug.cgi?id=116430
+
+        Reviewed by Gyuyoung Kim.
+
+        Reenable INDEXED_DATABASE flag for EFL port now that WebKit2
+        build was fixed in r150344.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2013-05-19  Anders Carlsson  <andersca@apple.com>
+
+        Remove link prerendering code
+        https://bugs.webkit.org/show_bug.cgi?id=116415
+
+        Reviewed by Darin Adler.
+
+        This code was only used by Chromium and is dead now.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2013-05-18  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Replace *_LIBRARY_NAME with *_OUTPUT_NAME
+        https://bugs.webkit.org/show_bug.cgi?id=114554
+
+        Reviewed by Gyuyoung Kim.
+
+        Using variables as target names is very uncommon in CMake.
+        The usual way to specify the name of the resulting binary
+        is to set the OUTPUT_NAME target property.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/PlatformEfl.cmake:
+        * Source/PlatformGTK.cmake:
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+        * Source/cmake/gtest/CMakeLists.txt:
+
+2013-05-18  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Unreviewed EFL build fix.
+
+        Temporarily disabled INDEXED_DATABASE at compile-time as it breaks
+        WK2 build after r150305.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2013-05-18  Alberto Garcia  <agarcia@igalia.com>
+
+        [GTK] Parallel build fails if gtk-doc is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=116227
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am:
+        Define an empty noinst_DATA variable where other automake files
+        can add additional objects to be built.
+
+2013-05-16  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] [CMake] Disable the shadow DOM
+        https://bugs.webkit.org/show_bug.cgi?id=116237
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/cmake/OptionsGTK.cmake: Disable shadow DOM by default.
+
+2013-05-14  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add support for building WebCore to the cmake build
+        https://bugs.webkit.org/show_bug.cgi?id=116128
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * Source/PlatformGTK.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Added more logic and variables to support WebCore and properly
+        defined some existing variables.
+
+2013-05-15  Alexey Proskuryakov  <ap@apple.com>
+
+        More fixing after WebProcessShim renaming in r149074.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source (target WebProcess).xcscheme:
+        Updated to insert the right shim.
+
+2013-05-15  Patrick Gansterer  <paroga@webkit.org>
+
+        Consolidate lists in WTF CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=116142
+
+        Reviewed by Martin Robinson.
+
+        Move common files into the CMakeLists.txt to avoid duplicating the list of files.
+        Also rebase the recently added GTK files to match the other CMake ports, since
+        the submitted patch was based on an older version of the source tree.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2013-05-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move generated ColorData.cpp, WebKitFontFamilyNames.(cpp|h) build targets into libPlatform
+        https://bugs.webkit.org/show_bug.cgi?id=115921
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * GNUmakefile.am: Add GENSOURCES_PLATFORM, platform_built_sources variables.
+
+2013-05-11  Martin Robinson  <mrobinson@igalia.com>
+
+        [GTK] Add a basic cmake build for WTF and JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=115967
+
+        Reviewed by Laszlo Gombos.
+
+        * CMakeLists.txt: Add GTK+ to the list of ports.
+        * Source/CMakeLists.txt: We do not try to build WebCoreTestSupport when WebCore is disabled.
+        * Source/cmake/FindGAIL3.cmake: Added.
+        * Source/cmake/FindGDK3.cmake: Added.
+        * Source/cmake/FindGStreamer.cmake: Use the passed in minimum version.
+        * Source/cmake/FindGTK3.cmake: Added.
+        * Source/cmake/FindXt.cmake: Added.
+        * Source/cmake/OptionsEfl.cmake: Pass in the minimum version.
+        * Source/cmake/OptionsGTK.cmake: Added.
+
+2013-05-11  Martin Robinson  <mrobinson@igalia.com>
+
+        Move defines to platform
+
+        [GTK] Move defines that will never be configured to Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=115965
+
+        Reviewed by Andreas Kling.
+
+        * Source/autotools/SetupAutoconfHeader.m4: Move some unchanging defines to Platform.h.
+
 2013-05-09  Christophe Dumez  <ch.dumez@sisa.samsung.com>
 
         Add support for [NoInterfaceObject] Web IDL extended attribute

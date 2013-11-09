@@ -73,13 +73,13 @@ typedef float (*DistanceFunction)(const IntPoint&, const IntRect&, const Subtarg
 // Takes non-const Node* because isContentEditable is a non-const function.
 bool nodeRespondsToTapGesture(Node* node)
 {
-    if (node->isMouseFocusable())
-        return true;
     if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents())
         return true;
     // Accept nodes that has a CSS effect when touched.
     if (node->isElementNode()) {
         Element* element = toElement(node);
+        if (element->isMouseFocusable())
+            return true;
         if (element->childrenAffectedByActive() || element->childrenAffectedByHover())
             return true;
     }
@@ -116,7 +116,7 @@ bool providesContextMenuItems(Node* node)
         return true;
     if (node->renderer()->canBeSelectionLeaf()) {
         // If the context menu gesture will trigger a selection all selectable nodes are valid targets.
-        if (node->renderer()->frame()->editor()->behavior().shouldSelectOnContextualMenuClick())
+        if (node->renderer()->frame()->editor().behavior().shouldSelectOnContextualMenuClick())
             return true;
         // Only the selected part of the renderer is a valid target, but this will be corrected in
         // appendContextSubtargetsForNode.
@@ -157,7 +157,7 @@ static inline void appendContextSubtargetsForNode(Node* node, SubtargetGeometryL
     Text* textNode = static_cast<WebCore::Text*>(node);
     RenderText* textRenderer = static_cast<RenderText*>(textNode->renderer());
 
-    if (textRenderer->frame()->editor()->behavior().shouldSelectOnContextualMenuClick()) {
+    if (textRenderer->frame()->editor().behavior().shouldSelectOnContextualMenuClick()) {
         // Make subtargets out of every word.
         String textValue = textNode->data();
         TextBreakIterator* wordIterator = wordBreakIterator(textValue.characters(), textValue.length());

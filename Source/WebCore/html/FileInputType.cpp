@@ -86,15 +86,24 @@ const AtomicString& UploadButtonElement::shadowPseudoId() const
     return pseudoId;
 }
 
-inline FileInputType::FileInputType(HTMLInputElement* element)
+PassOwnPtr<InputType> FileInputType::create(HTMLInputElement* element)
+{
+    return adoptPtr(new FileInputType(element));
+}
+
+FileInputType::FileInputType(HTMLInputElement* element)
     : BaseClickableWithKeyInputType(element)
     , m_fileList(FileList::create())
 {
 }
 
-PassOwnPtr<InputType> FileInputType::create(HTMLInputElement* element)
+FileInputType::~FileInputType()
 {
-    return adoptPtr(new FileInputType(element));
+    if (m_fileChooser)
+        m_fileChooser->invalidate();
+
+    if (m_fileIconLoader)
+        m_fileIconLoader->invalidate();
 }
 
 Vector<FileChooserFileInfo> FileInputType::filesFromFormControlState(const FormControlState& state)
@@ -196,8 +205,11 @@ void FileInputType::handleDOMActivateEvent(Event* event)
 #if ENABLE(MEDIA_CAPTURE)
         settings.capture = input->capture();
 #endif
-        chrome->runOpenPanel(input->document()->frame(), newFileChooser(settings));
+
+        applyFileChooserSettings(settings);
+        chrome->runOpenPanel(input->document()->frame(), m_fileChooser);
     }
+
     event->setDefaultHandled();
 }
 
@@ -326,8 +338,24 @@ void FileInputType::requestIcon(const Vector<String>& paths)
     if (!paths.size())
         return;
 
-    if (Chrome* chrome = this->chrome())
-        chrome->loadIconForFiles(paths, newFileIconLoader());
+    Chrome* chrome = this->chrome();
+    if (!chrome)
+        return;
+
+    if (m_fileIconLoader)
+        m_fileIconLoader->invalidate();
+
+    m_fileIconLoader = FileIconLoader::create(this);
+
+    chrome->loadIconForFiles(paths, m_fileIconLoader.get());
+}
+
+void FileInputType::applyFileChooserSettings(const FileChooserSettings& settings)
+{
+    if (m_fileChooser)
+        m_fileChooser->invalidate();
+
+    m_fileChooser = FileChooser::create(this, settings);
 }
 
 void FileInputType::setFiles(PassRefPtr<FileList> files)
@@ -379,16 +407,20 @@ void FileInputType::filesChosen(const Vector<FileChooserFileInfo>& files)
 #if ENABLE(DIRECTORY_UPLOAD)
 void FileInputType::receiveDropForDirectoryUpload(const Vector<String>& paths)
 {
-    if (Chrome* chrome = this->chrome()) {
-        FileChooserSettings settings;
-        HTMLInputElement* input = element();
-        settings.allowsDirectoryUpload = true;
-        settings.allowsMultipleFiles = true;
-        settings.selectedFiles.append(paths[0]);
-        settings.acceptMIMETypes = input->acceptMIMETypes();
-        settings.acceptFileExtensions = input->acceptFileExtensions();
-        chrome->enumerateChosenDirectory(newFileChooser(settings));
-    }
+    Chrome* chrome = this->chrome();
+    if (!chrome)
+        return;
+
+    FileChooserSettings settings;
+    HTMLInputElement* input = element();
+    settings.allowsDirectoryUpload = true;
+    settings.allowsMultipleFiles = true;
+    settings.selectedFiles.append(paths[0]);
+    settings.acceptMIMETypes = input->acceptMIMETypes();
+    settings.acceptFileExtensions = input->acceptFileExtensions();
+
+    applyFileChooserSettings(settings);
+    chrome->enumerateChosenDirectory(m_fileChooser);
 }
 #endif
 
@@ -465,5 +497,6 @@ String FileInputType::defaultToolTip() const
     }
     return names.toString();
 }
+
 
 } // namespace WebCore

@@ -427,7 +427,7 @@ void InputHandler::focusedNodeChanged()
     if (!frame || !frame->document())
         return;
 
-    Node* node = frame->document()->focusedNode();
+    Node* node = frame->document()->focusedElement();
 
     if (isActiveTextEdit() && m_currentFocusElement == node) {
         notifyClientOfKeyboardVisibilityChange(true);
@@ -947,33 +947,102 @@ void InputHandler::updateFormState()
     if (formElementCount < 2)
         return;
 
-    InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState form has %d fields", formElementCount);
-
     m_hasSubmitButton = true;
+
+    // Walk all elements in the form to determine next/prev elements.
+    // For each element in the form we need to do the following:
+    // If it's the focus node, use render order to try to find the next/prev directly.
+    // For all other nodes:
+    // 1) If the focused node has a specific tab index, compare the elements tab
+    //    index with the current prev/next looking for the best match.
+    // 2) If the focused node does not have a tab index, update the maximum
+    //    tab index value, required for prev navigation.
+    int focusTabIndex = static_cast<Node*>(m_currentFocusElement.get())->tabIndex();
+    int prevTabIndex = -1;
+    int nextTabIndex = std::numeric_limits<short>::max() + 1;
+    InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState form has %d fields and tabIndex %d", formElementCount, focusTabIndex);
+
+    Element* firstInFieldWithoutTabIndex = 0;
+    Element* highestTabIndexElement = 0;
     for (int focusElementId = 0; focusElementId < formElementCount; focusElementId++) {
-        if (toHTMLElement(formElementList[focusElementId]) != m_currentFocusElement)
-            continue;
+        // Check for the focused element, and if we don't have any target nodes, use the form order next
+        // and previous as placeholders. In a form without provided tab indices, this will determine the
+        // control fields.
+        Element* element = const_cast<HTMLElement*>(toHTMLElement(formElementList[focusElementId]));
+        if (element == m_currentFocusElement) {
+            InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found focused element.");
 
-        // Found the focused element, get the next and previous elements if they exist.
+            // If the focus tab index is set for the node, don't use the logical ordering.
+            // Jump from last tab index to un-ordered is done separately.
+            if (focusTabIndex)
+                continue;
 
-        // Previous
-        for (int previousElementId = focusElementId - 1; previousElementId >= 0; previousElementId--) {
-            Element* element = const_cast<HTMLElement*>(toHTMLElement(formElementList[previousElementId]));
+            // Get the next/prev element if we don't already have a tab index based item.
+            // Previous
+            if (!m_previousFocusableTextElement) {
+                for (int previousElementId = focusElementId - 1; previousElementId >= 0; previousElementId--) {
+                    Element* prevElement = const_cast<HTMLElement*>(toHTMLElement(formElementList[previousElementId]));
+                    if (DOMSupport::isTextBasedContentEditableElement(prevElement) && !DOMSupport::isElementReadOnly(prevElement) && !static_cast<Node*>(prevElement)->tabIndex()) {
+                        m_previousFocusableTextElement = prevElement;
+                        InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found previous element");
+                        break;
+                    }
+                }
+            }
+
+            // Next
+            if (!m_nextFocusableTextElement) {
+                for (int nextElementId = focusElementId + 1; nextElementId < formElementCount; nextElementId++) {
+                    Element* nextElement = const_cast<HTMLElement*>(toHTMLElement(formElementList[nextElementId]));
+                    if (DOMSupport::isTextBasedContentEditableElement(nextElement) && !DOMSupport::isElementReadOnly(nextElement) && !static_cast<Node*>(nextElement)->tabIndex()) {
+                        m_nextFocusableTextElement = nextElement;
+                        InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found next element");
+                        break;
+                    }
+                }
+            }
+        } else if (focusTabIndex) {
+            InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState processing element");
             if (DOMSupport::isTextBasedContentEditableElement(element) && !DOMSupport::isElementReadOnly(element)) {
-                m_previousFocusableTextElement = element;
-                InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found previous element");
-                break;
+                InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState processing element valid");
+                if (int tabIndex = static_cast<Node*>(element)->tabIndex()) {
+                    InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState processing element with tab index %d", tabIndex);
+                    // Compare for the before and after form positions based on the tab index, and/or form position
+                    // if tab indexes are equal form position should be used.
+                    if (tabIndex && tabIndex < focusTabIndex && tabIndex > prevTabIndex) {
+                        m_previousFocusableTextElement = element;
+                        prevTabIndex = tabIndex;
+                        InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found previous element with tabIndex %d", tabIndex);
+                    } else if (tabIndex > focusTabIndex && tabIndex < nextTabIndex) {
+                        m_nextFocusableTextElement = element;
+                        nextTabIndex = tabIndex;
+                        InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found next element with tabIndex %d", tabIndex);
+                    }
+                } else if (!firstInFieldWithoutTabIndex) {
+                    // Store the first field in the form without a tab index if we have a form with some tab indexes the "next" one from
+                    // the highest tab index is the first field without a tab index.
+                    firstInFieldWithoutTabIndex = element;
+                }
+            }
+        } else {
+            // The field has no tab index, if it's the first node we'll need the highest tab index field
+            // when navigating backwards.
+            if (int tabIndex = static_cast<Node*>(element)->tabIndex()) {
+                if (!highestTabIndexElement || (tabIndex > static_cast<Node*>(highestTabIndexElement)->tabIndex()))
+                    highestTabIndexElement = element;
             }
         }
-        // Next
-        for (int nextElementId = focusElementId + 1; nextElementId < formElementCount; nextElementId++) {
-            Element* element = const_cast<HTMLElement*>(toHTMLElement(formElementList[nextElementId]));
-            if (DOMSupport::isTextBasedContentEditableElement(element) && !DOMSupport::isElementReadOnly(element)) {
-                m_nextFocusableTextElement = element;
-                InputLog(Platform::LogLevelInfo, "InputHandler::updateFormState found next element");
-                break;
-            }
-        }
+    }
+
+    if (!m_nextFocusableTextElement && firstInFieldWithoutTabIndex) {
+        // No next focusable field was found, but a first one without a tabindex was found, use it as the next field.
+        m_nextFocusableTextElement = firstInFieldWithoutTabIndex;
+    }
+
+    if (!m_previousFocusableTextElement && highestTabIndexElement) {
+        // No prev focusable field was found, use the highest tab index as previous since this field must not have
+        // a tabindex, otheriwse highestTabIndexElement would be null.
+        m_previousFocusableTextElement = highestTabIndexElement;
     }
 
     if (!m_nextFocusableTextElement && !m_previousFocusableTextElement) {
@@ -1008,15 +1077,18 @@ void InputHandler::submitForm()
         return;
 
     InputLog(Platform::LogLevelInfo, "InputHandler::submitForm triggered");
-    if (elementType(m_currentFocusElement.get()) == InputTypeTextArea)
-        formElement->submit();
-    else {
+
+    if (elementType(m_currentFocusElement.get()) != InputTypeTextArea) {
         handleKeyboardInput(Platform::KeyboardEvent(KEYCODE_RETURN, Platform::KeyboardEvent::KeyChar, 0), false /* changeIsPartOfComposition */);
 
-        // Confirm that implicit submission was accepted.
-        if (isActiveTextEdit())
-            formElement->submit();
+        // Did this clear the focus? If so, form was submitted or invalid.
+        if (!isActiveTextEdit())
+            return;
     }
+
+    // Validate form data and if valid, submit.
+    if (formElement->checkValidity())
+        formElement->submit();
 }
 
 static void addInputStyleMaskForKeyboardType(int64_t& inputMask, VirtualKeyboardType keyboardType)
@@ -1212,15 +1284,13 @@ bool InputHandler::openDatePopup(HTMLInputElement* element, BlackBerryInputType 
         // Date input have button appearance, we hide caret when they get clicked.
         element->document()->frame()->selection()->setCaretVisible(false);
 
-        // Check if popup already exists, close it if does.
-        m_webPage->m_page->chrome()->client()->closePagePopup(0);
         WTF::String value = element->value();
         WTF::String min = element->getAttribute(HTMLNames::minAttr).string();
         WTF::String max = element->getAttribute(HTMLNames::maxAttr).string();
         double step = element->getAttribute(HTMLNames::stepAttr).toDouble();
 
         DatePickerClient* client = new DatePickerClient(type, value, min, max, step,  m_webPage, element);
-        return m_webPage->m_page->chrome()->client()->openPagePopup(client,  WebCore::IntRect());
+        return m_webPage->openPagePopup(client,  WebCore::IntRect());
         }
     default: // Other types not supported
         return false;
@@ -1238,11 +1308,8 @@ bool InputHandler::openColorPopup(HTMLInputElement* element)
     m_currentFocusElement = element;
     m_currentFocusElementType = TextPopup;
 
-    // Check if popup already exists, close it if does.
-    m_webPage->m_page->chrome()->client()->closePagePopup(0);
-
     ColorPickerClient* client = new ColorPickerClient(element->value(), m_webPage, element);
-    return m_webPage->m_page->chrome()->client()->openPagePopup(client,  WebCore::IntRect());
+    return m_webPage->openPagePopup(client, WebCore::IntRect());
 }
 
 void InputHandler::setInputValue(const WTF::String& value)
@@ -1636,8 +1703,10 @@ void InputHandler::selectionChanged()
     if (!isActiveTextEdit())
         return;
 
-    if (processingChange())
+    if (processingChange()) {
+        m_webPage->m_client->suppressCaretChangeNotification(true /*shouldClearState*/);
         return;
+    }
 
     // Scroll the field if necessary. This must be done even if we are processing
     // a change as the text change may have moved the caret. IMF doesn't require
@@ -1731,7 +1800,7 @@ bool InputHandler::isNavigationKey(unsigned character) const
 bool InputHandler::handleKeyboardInput(const Platform::KeyboardEvent& keyboardEvent, bool changeIsPartOfComposition)
 {
     InputLog(Platform::LogLevelInfo,
-        "InputHandler::handleKeyboardInput received character='%lc', type=%d",
+        "InputHandler::handleKeyboardInput received character='%c', type=%d",
         keyboardEvent.character(), keyboardEvent.type());
 
     // Clearing the m_shouldNotifyWebView state on any KeyboardEvent.
@@ -1971,9 +2040,6 @@ bool InputHandler::openSelectPopup(HTMLSelectElement* select)
     ScopeArray<BlackBerry::Platform::String> labels;
     labels.reset(new BlackBerry::Platform::String[size]);
 
-    // Check if popup already exists, close it if does.
-    m_webPage->m_page->chrome()->client()->closePagePopup(0);
-
     bool* enableds = 0;
     int* itemTypes = 0;
     bool* selecteds = 0;
@@ -2006,7 +2072,7 @@ bool InputHandler::openSelectPopup(HTMLSelectElement* select)
     SelectPopupClient* selectClient = new SelectPopupClient(multiple, size, labels, enableds, itemTypes, selecteds, m_webPage, select);
     WebCore::IntRect elementRectInRootView = select->document()->view()->contentsToRootView(enclosingIntRect(select->getRect()));
     // Fail to create HTML popup, use the old path
-    if (!m_webPage->m_page->chrome()->client()->openPagePopup(selectClient, elementRectInRootView))
+    if (!m_webPage->openPagePopup(selectClient, elementRectInRootView))
         m_webPage->m_client->openPopupList(multiple, size, labels, enableds, itemTypes, selecteds);
     delete[] enableds;
     delete[] itemTypes;

@@ -920,8 +920,7 @@ PassRefPtr<RenderStyle> StyleResolver::styleForDocument(Document* document, CSSF
         const AtomicString& standardFont = settings->standardFontFamily(fontDescription.script());
         if (!standardFont.isEmpty()) {
             fontDescription.setGenericFamily(FontDescription::StandardFamily);
-            fontDescription.firstFamily().setFamily(standardFont);
-            fontDescription.firstFamily().appendFamily(0);
+            fontDescription.setOneFamily(standardFont);
         }
         fontDescription.setKeywordSize(CSSValueMedium - CSSValueXxSmall + 1);
         int size = StyleResolver::fontSizeForKeyword(document, CSSValueMedium, false);
@@ -3271,10 +3270,8 @@ void StyleResolver::initializeFontStyle(Settings* settings)
     fontDescription.setRenderingMode(settings->fontRenderingMode());
     fontDescription.setUsePrinterFont(document()->printing() || !settings->screenFontSubstitutionEnabled());
     const AtomicString& standardFontFamily = documentSettings()->standardFontFamily();
-    if (!standardFontFamily.isEmpty()) {
-        fontDescription.firstFamily().setFamily(standardFontFamily);
-        fontDescription.firstFamily().appendFamily(0);
-    }
+    if (!standardFontFamily.isEmpty())
+        fontDescription.setOneFamily(standardFontFamily);
     fontDescription.setKeywordSize(CSSValueMedium - CSSValueXxSmall + 1);
     setFontSize(fontDescription, fontSizeForKeyword(document(), CSSValueMedium, false));
     m_state.style()->setLineHeight(RenderStyle::initialLineHeight());
@@ -4174,6 +4171,16 @@ void StyleResolver::loadPendingImages()
             }
             break;
         }
+#if ENABLE(CSS_EXCLUSIONS)
+        case CSSPropertyWebkitShapeInside:
+            if (m_state.style()->shapeInside() && m_state.style()->shapeInside()->image() && m_state.style()->shapeInside()->image()->isPendingImage())
+                m_state.style()->shapeInside()->setImage(loadPendingImage(static_cast<StylePendingImage*>(m_state.style()->shapeInside()->image())));
+            break;
+        case CSSPropertyWebkitShapeOutside:
+            if (m_state.style()->shapeOutside() && m_state.style()->shapeOutside()->image() && m_state.style()->shapeOutside()->image()->isPendingImage())
+                m_state.style()->shapeOutside()->setImage(loadPendingImage(static_cast<StylePendingImage*>(m_state.style()->shapeOutside()->image())));
+            break;
+#endif
         default:
             ASSERT_NOT_REACHED();
         }

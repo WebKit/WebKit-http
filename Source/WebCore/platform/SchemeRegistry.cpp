@@ -320,4 +320,13 @@ bool SchemeRegistry::schemeShouldBypassContentSecurityPolicy(const String& schem
     return ContentSecurityPolicyBypassingSchemes().contains(scheme);
 }
 
+bool SchemeRegistry::shouldCacheResponsesFromURLSchemeIndefinitely(const String& scheme)
+{
+#if PLATFORM(MAC)
+    if (equalIgnoringCase(scheme, "applewebdata"))
+        return true;
+#endif
+    return equalIgnoringCase(scheme, "data");
+}
+
 } // namespace WebCore

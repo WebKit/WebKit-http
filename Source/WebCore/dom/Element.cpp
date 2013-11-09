@@ -30,6 +30,8 @@
 #include "Attr.h"
 #include "CSSParser.h"
 #include "CSSSelectorList.h"
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "ClassList.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
@@ -40,6 +42,7 @@
 #include "DocumentFragment.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementRareData.h"
+#include "EventDispatcher.h"
 #include "ExceptionCode.h"
 #include "FlowThreadController.h"
 #include "FocusController.h"
@@ -70,6 +73,7 @@
 #include "PointerLockController.h"
 #include "PseudoElement.h"
 #include "RenderRegion.h"
+#include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "SelectorQuery.h"
@@ -84,6 +88,7 @@
 #include "XMLNames.h"
 #include "htmlediting.h"
 #include <wtf/BitVector.h>
+#include <wtf/CurrentTime.h>
 #include <wtf/text/CString.h>
 
 #if ENABLE(SVG)
@@ -243,9 +248,29 @@ bool Element::supportsFocus() const
     return hasRareData() && elementRareData()->tabIndexSetExplicitly();
 }
 
+Element* Element::focusDelegate()
+{
+    return this;
+}
+
 short Element::tabIndex() const
 {
     return hasRareData() ? elementRareData()->tabIndex() : 0;
+}
+
+bool Element::isKeyboardFocusable(KeyboardEvent*) const
+{
+    return isFocusable() && tabIndex() >= 0;
+}
+
+bool Element::isMouseFocusable() const
+{
+    return isFocusable();
+}
+
+void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
+{
+    EventDispatcher::dispatchSimulatedClick(this, underlyingEvent, eventOptions, visualOptions);
 }
 
 DEFINE_VIRTUAL_ATTRIBUTE_EVENT_LISTENER(Element, blur);
@@ -399,6 +424,138 @@ const AtomicString& Element::getAttribute(const QualifiedName& name) const
     if (const Attribute* attribute = getAttributeItem(name))
         return attribute->value();
     return nullAtom;
+}
+
+bool Element::isFocusable() const
+{
+    if (!inDocument() || !supportsFocus())
+        return false;
+
+    // Elements in canvas fallback content are not rendered, but they are allowed to be
+    // focusable as long as their canvas is displayed and visible.
+    if (isInCanvasSubtree()) {
+        const Element* e = this;
+        while (e && !e->hasLocalName(canvasTag))
+            e = e->parentElement();
+        ASSERT(e);
+        return e->renderer() && e->renderer()->style()->visibility() == VISIBLE;
+    }
+
+    if (renderer())
+        ASSERT(!renderer()->needsLayout());
+    else {
+        // If the node is in a display:none tree it might say it needs style recalc but
+        // the whole document is actually up to date.
+        ASSERT(!document()->childNeedsStyleRecalc());
+    }
+
+    // FIXME: Even if we are not visible, we might have a child that is visible.
+    // Hyatt wants to fix that some day with a "has visible content" flag or the like.
+    if (!renderer() || renderer()->style()->visibility() != VISIBLE)
+        return false;
+
+    return true;
+}
+
+bool Element::isUserActionElementInActiveChain() const
+{
+    ASSERT(isUserActionElement());
+    return document()->userActionElements().isInActiveChain(this);
+}
+
+bool Element::isUserActionElementActive() const
+{
+    ASSERT(isUserActionElement());
+    return document()->userActionElements().isActive(this);
+}
+
+bool Element::isUserActionElementFocused() const
+{
+    ASSERT(isUserActionElement());
+    return document()->userActionElements().isFocused(this);
+}
+
+bool Element::isUserActionElementHovered() const
+{
+    ASSERT(isUserActionElement());
+    return document()->userActionElements().isHovered(this);
+}
+
+void Element::setActive(bool flag, bool pause)
+{
+    if (flag == active())
+        return;
+
+    if (Document* document = this->document())
+        document->userActionElements().setActive(this, flag);
+
+    if (!renderer())
+        return;
+
+    bool reactsToPress = renderStyle()->affectedByActive() || childrenAffectedByActive();
+    if (reactsToPress)
+        setNeedsStyleRecalc();
+
+    if (renderer()->style()->hasAppearance() && renderer()->theme()->stateChanged(renderer(), PressedState))
+        reactsToPress = true;
+
+    // The rest of this function implements a feature that only works if the
+    // platform supports immediate invalidations on the ChromeClient, so bail if
+    // that isn't supported.
+    if (!document()->page()->chrome().client()->supportsImmediateInvalidation())
+        return;
+
+    if (reactsToPress && pause) {
+        // The delay here is subtle. It relies on an assumption, namely that the amount of time it takes
+        // to repaint the "down" state of the control is about the same time as it would take to repaint the
+        // "up" state. Once you assume this, you can just delay for 100ms - that time (assuming that after you
+        // leave this method, it will be about that long before the flush of the up state happens again).
+#ifdef HAVE_FUNC_USLEEP
+        double startTime = currentTime();
+#endif
+
+        Document::updateStyleForAllDocuments();
+        // Do an immediate repaint.
+        if (renderer())
+            renderer()->repaint(true);
+
+        // FIXME: Come up with a less ridiculous way of doing this.
+#ifdef HAVE_FUNC_USLEEP
+        // Now pause for a small amount of time (1/10th of a second from before we repainted in the pressed state)
+        double remainingTime = 0.1 - (currentTime() - startTime);
+        if (remainingTime > 0)
+            usleep(static_cast<useconds_t>(remainingTime * 1000000.0));
+#endif
+    }
+}
+
+void Element::setFocus(bool flag)
+{
+    if (flag == focused())
+        return;
+
+    if (Document* document = this->document())
+        document->userActionElements().setFocused(this, flag);
+
+    setNeedsStyleRecalc();
+}
+
+void Element::setHovered(bool flag)
+{
+    if (flag == hovered())
+        return;
+
+    if (Document* document = this->document())
+        document->userActionElements().setHovered(this, flag);
+
+    if (!renderer())
+        return;
+
+    if (renderer()->style()->affectedByHover() || childrenAffectedByHover())
+        setNeedsStyleRecalc();
+
+    if (renderer()->style()->hasAppearance())
+        renderer()->theme()->stateChanged(renderer(), HoverState);
 }
 
 void Element::scrollIntoView(bool alignToTop) 
@@ -1120,15 +1277,6 @@ bool Element::isDateTimeFieldElement() const
 }
 #endif
 
-bool Element::wasChangedSinceLastFormControlChangeEvent() const
-{
-    return false;
-}
-
-void Element::setChangedSinceLastFormControlChangeEvent(bool)
-{
-}
-
 bool Element::isDisabledFormControl() const
 {
 #if ENABLE(DIALOG_ELEMENT)
@@ -1150,9 +1298,11 @@ bool Element::isInert() const
 
 Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertionPoint)
 {
+    bool wasInDocument = inDocument();
     // need to do superclass processing first so inDocument() is true
     // by the time we reach updateId
     ContainerNode::insertedInto(insertionPoint);
+    ASSERT(!wasInDocument || inDocument());
 
 #if ENABLE(FULLSCREEN_API)
     if (containsFullScreenElement() && parentElement() && !parentElement()->containsFullScreenElement())
@@ -1171,21 +1321,30 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode* insertio
     if (hasRareData())
         elementRareData()->clearClassListValueForQuirksMode();
 
-    TreeScope* scope = insertionPoint->treeScope();
-    if (scope != treeScope())
-        return InsertionDone;
+    TreeScope* newScope = insertionPoint->treeScope();
+    HTMLDocument* newDocument = !wasInDocument && inDocument() && newScope->documentScope()->isHTMLDocument() ? toHTMLDocument(newScope->documentScope()) : 0;
+    if (newScope != treeScope())
+        newScope = 0;
 
     const AtomicString& idValue = getIdAttribute();
-    if (!idValue.isNull())
-        updateId(scope, nullAtom, idValue);
+    if (!idValue.isNull()) {
+        if (newScope)
+            updateIdForTreeScope(newScope, nullAtom, idValue);
+        if (newDocument)
+            updateIdForDocument(newDocument, nullAtom, idValue, AlwaysUpdateHTMLDocumentNamedItemMaps);
+    }
 
     const AtomicString& nameValue = getNameAttribute();
-    if (!nameValue.isNull())
-        updateName(scope, nullAtom, nameValue);
+    if (!nameValue.isNull()) {
+        if (newScope)
+            updateNameForTreeScope(newScope, nullAtom, nameValue);
+        if (newDocument)
+            updateNameForDocument(newDocument, nullAtom, nameValue);
+    }
 
-    if (hasTagName(labelTag)) {
-        if (scope->shouldCacheLabelsByForAttribute())
-            updateLabel(scope, nullAtom, fastGetAttribute(forAttr));
+    if (newScope && hasTagName(labelTag)) {
+        if (newScope->shouldCacheLabelsByForAttribute())
+            updateLabel(newScope, nullAtom, fastGetAttribute(forAttr));
     }
 
     return InsertionDone;
@@ -1217,19 +1376,31 @@ void Element::removedFrom(ContainerNode* insertionPoint)
 
     setSavedLayerScrollOffset(IntSize());
 
-    if (insertionPoint->isInTreeScope() && treeScope() == document()) {
+    if (insertionPoint->isInTreeScope()) {
+        TreeScope* oldScope = insertionPoint->treeScope();
+        HTMLDocument* oldDocument = inDocument() && oldScope->documentScope()->isHTMLDocument() ? toHTMLDocument(oldScope->documentScope()) : 0;
+        if (oldScope != treeScope())
+            oldScope = 0;
+
         const AtomicString& idValue = getIdAttribute();
-        if (!idValue.isNull())
-            updateId(insertionPoint->treeScope(), idValue, nullAtom);
+        if (!idValue.isNull()) {
+            if (oldScope)
+                updateIdForTreeScope(oldScope, idValue, nullAtom);
+            if (oldDocument)
+                updateIdForDocument(oldDocument, idValue, nullAtom, AlwaysUpdateHTMLDocumentNamedItemMaps);
+        }
 
         const AtomicString& nameValue = getNameAttribute();
-        if (!nameValue.isNull())
-            updateName(insertionPoint->treeScope(), nameValue, nullAtom);
+        if (!nameValue.isNull()) {
+            if (oldScope)
+                updateNameForTreeScope(oldScope, nameValue, nullAtom);
+            if (oldDocument)
+                updateNameForDocument(oldDocument, nameValue, nullAtom);
+        }
 
-        if (hasTagName(labelTag)) {
-            TreeScope* treeScope = insertionPoint->treeScope();
-            if (treeScope->shouldCacheLabelsByForAttribute())
-                updateLabel(treeScope, fastGetAttribute(forAttr), nullAtom);
+        if (oldScope && hasTagName(labelTag)) {
+            if (oldScope->shouldCacheLabelsByForAttribute())
+                updateLabel(oldScope, fastGetAttribute(forAttr), nullAtom);
         }
     }
 
@@ -1272,7 +1443,7 @@ void Element::attach()
     if (hasRareData()) {   
         ElementRareData* data = elementRareData();
         if (data->needsFocusAppearanceUpdateSoonAfterAttach()) {
-            if (isFocusable() && document()->focusedNode() == this)
+            if (isFocusable() && document()->focusedElement() == this)
                 document()->updateFocusAppearanceSoon(false /* don't restore selection */);
             data->setNeedsFocusAppearanceUpdateSoonAfterAttach(false);
         }
@@ -1303,6 +1474,15 @@ void Element::detach()
         detachChildrenIfNeeded();
         shadow->detach();
     }
+
+    if (isUserActionElement()) {
+        if (hovered())
+            document()->hoveredElementDidDetach(this);
+        if (inActiveChain())
+            document()->elementInActiveChainDidDetach(this);
+        document()->userActionElements().didDetach(this);
+    }
+
     ContainerNode::detach();
 }
 
@@ -1729,7 +1909,7 @@ PassRefPtr<Attr> Element::setAttributeNode(Attr* attrNode, ExceptionCode& ec)
     synchronizeAllAttributes();
     UniqueElementData* elementData = ensureUniqueElementData();
 
-    unsigned index = elementData->getAttributeItemIndex(attrNode->qualifiedName());
+    unsigned index = elementData->getAttributeItemIndexForAttributeNode(attrNode);
     if (index != ElementData::attributeNotFound) {
         if (oldAttrNode)
             detachAttrNodeFromElementWithValue(oldAttrNode.get(), elementData->attributeItem(index)->value());
@@ -1765,13 +1945,16 @@ PassRefPtr<Attr> Element::removeAttributeNode(Attr* attr, ExceptionCode& ec)
 
     synchronizeAttribute(attr->qualifiedName());
 
-    unsigned index = elementData()->getAttributeItemIndex(attr->qualifiedName());
+    unsigned index = elementData()->getAttributeItemIndexForAttributeNode(attr);
     if (index == ElementData::attributeNotFound) {
         ec = NOT_FOUND_ERR;
         return 0;
     }
 
-    return detachAttribute(index);
+    RefPtr<Attr> attrNode = attr;
+    detachAttrNodeFromElementWithValue(attr, elementData()->attributeItem(index)->value());
+    removeAttributeInternal(index, NotInSynchronizationOfLazyAttribute);
+    return attrNode.release();
 }
 
 bool Element::parseAttributeName(QualifiedName& out, const AtomicString& namespaceURI, const AtomicString& qualifiedName, ExceptionCode& ec)
@@ -1904,7 +2087,7 @@ void Element::focus(bool restorePreviousSelection, FocusDirection direction)
         return;
 
     Document* doc = document();
-    if (doc->focusedNode() == this)
+    if (doc->focusedElement() == this)
         return;
 
     // If the stylesheets have already been loaded we can reliably check isFocusable.
@@ -1925,7 +2108,7 @@ void Element::focus(bool restorePreviousSelection, FocusDirection direction)
         // If a focus event handler changes the focus to a different node it
         // does not make sense to continue and update appearence.
         protect = this;
-        if (!page->focusController()->setFocusedNode(this, doc->frame(), direction))
+        if (!page->focusController()->setFocusedElement(this, doc->frame(), direction))
             return;
     }
 
@@ -1967,11 +2150,11 @@ void Element::blur()
 {
     cancelFocusAppearanceUpdate();
     Document* doc = document();
-    if (treeScope()->focusedNode() == this) {
+    if (treeScope()->focusedElement() == this) {
         if (doc->frame())
-            doc->frame()->page()->focusController()->setFocusedNode(0, doc->frame());
+            doc->frame()->page()->focusController()->setFocusedElement(0, doc->frame());
         else
-            doc->setFocusedNode(0);
+            doc->setFocusedElement(0);
     }
 }
 
@@ -2224,7 +2407,7 @@ void Element::cancelFocusAppearanceUpdate()
 {
     if (hasRareData())
         elementRareData()->setNeedsFocusAppearanceUpdateSoonAfterAttach(false);
-    if (document()->focusedNode() == this)
+    if (document()->focusedElement() == this)
         document()->cancelFocusAppearanceUpdate();
 }
 
@@ -2627,10 +2810,17 @@ inline void Element::updateName(const AtomicString& oldName, const AtomicString&
     if (oldName == newName)
         return;
 
-    updateName(treeScope(), oldName, newName);
+    updateNameForTreeScope(treeScope(), oldName, newName);
+
+    if (!inDocument())
+        return;
+    Document* htmlDocument = document();
+    if (!htmlDocument->isHTMLDocument())
+        return;
+    updateNameForDocument(toHTMLDocument(htmlDocument), oldName, newName);
 }
 
-void Element::updateName(TreeScope* scope, const AtomicString& oldName, const AtomicString& newName)
+void Element::updateNameForTreeScope(TreeScope* scope, const AtomicString& oldName, const AtomicString& newName)
 {
     ASSERT(isInTreeScope());
     ASSERT(oldName != newName);
@@ -2639,26 +2829,27 @@ void Element::updateName(TreeScope* scope, const AtomicString& oldName, const At
         scope->removeElementByName(oldName, this);
     if (!newName.isEmpty())
         scope->addElementByName(newName, this);
+}
 
-    if (!inDocument())
-        return;
-    
-    Document* ownerDocument = document();
-    if (!ownerDocument->isHTMLDocument())
-        return;
+void Element::updateNameForDocument(HTMLDocument* document, const AtomicString& oldName, const AtomicString& newName)
+{
+    ASSERT(inDocument());
+    ASSERT(oldName != newName);
 
     if (WindowNameCollection::nodeMatchesIfNameAttributeMatch(this)) {
-        if (!oldName.isEmpty())
-            toHTMLDocument(ownerDocument)->windowNamedItemMap().remove(oldName.impl(), this);
-        if (!newName.isEmpty())
-            toHTMLDocument(ownerDocument)->windowNamedItemMap().add(newName.impl(), this);
+        const AtomicString& id = WindowNameCollection::nodeMatchesIfIdAttributeMatch(this) ? getIdAttribute() : nullAtom;
+        if (!oldName.isEmpty() && oldName != id)
+            document->windowNamedItemMap().remove(oldName.impl(), this);
+        if (!newName.isEmpty() && newName != id)
+            document->windowNamedItemMap().add(newName.impl(), this);
     }
 
     if (DocumentNameCollection::nodeMatchesIfNameAttributeMatch(this)) {
-        if (!oldName.isEmpty())
-            toHTMLDocument(ownerDocument)->documentNamedItemMap().remove(oldName.impl(), this);
-        if (!newName.isEmpty())
-            toHTMLDocument(ownerDocument)->documentNamedItemMap().add(newName.impl(), this);
+        const AtomicString& id = DocumentNameCollection::nodeMatchesIfIdAttributeMatch(this) ? getIdAttribute() : nullAtom;
+        if (!oldName.isEmpty() && oldName != id)
+            document->documentNamedItemMap().remove(oldName.impl(), this);
+        if (!newName.isEmpty() && newName != id)
+            document->documentNamedItemMap().add(newName.impl(), this);
     }
 }
 
@@ -2670,10 +2861,17 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
     if (oldId == newId)
         return;
 
-    updateId(treeScope(), oldId, newId);
+    updateIdForTreeScope(treeScope(), oldId, newId);
+
+    if (!inDocument())
+        return;
+    Document* htmlDocument = document();
+    if (!htmlDocument->isHTMLDocument())
+        return;
+    updateIdForDocument(toHTMLDocument(htmlDocument), oldId, newId, UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute);
 }
 
-void Element::updateId(TreeScope* scope, const AtomicString& oldId, const AtomicString& newId)
+void Element::updateIdForTreeScope(TreeScope* scope, const AtomicString& oldId, const AtomicString& newId)
 {
     ASSERT(isInTreeScope());
     ASSERT(oldId != newId);
@@ -2682,26 +2880,27 @@ void Element::updateId(TreeScope* scope, const AtomicString& oldId, const Atomic
         scope->removeElementById(oldId, this);
     if (!newId.isEmpty())
         scope->addElementById(newId, this);
+}
 
-    if (!inDocument())
-        return;
-
-    Document* ownerDocument = document();
-    if (!ownerDocument->isHTMLDocument())
-        return;
+void Element::updateIdForDocument(HTMLDocument* document, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition condition)
+{
+    ASSERT(inDocument());
+    ASSERT(oldId != newId);
 
     if (WindowNameCollection::nodeMatchesIfIdAttributeMatch(this)) {
-        if (!oldId.isEmpty())
-            toHTMLDocument(ownerDocument)->windowNamedItemMap().remove(oldId.impl(), this);
-        if (!newId.isEmpty())
-            toHTMLDocument(ownerDocument)->windowNamedItemMap().add(newId.impl(), this);
+        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::nodeMatchesIfNameAttributeMatch(this) ? getNameAttribute() : nullAtom;
+        if (!oldId.isEmpty() && oldId != name)
+            document->windowNamedItemMap().remove(oldId.impl(), this);
+        if (!newId.isEmpty() && newId != name)
+            document->windowNamedItemMap().add(newId.impl(), this);
     }
 
     if (DocumentNameCollection::nodeMatchesIfIdAttributeMatch(this)) {
-        if (!oldId.isEmpty())
-            toHTMLDocument(ownerDocument)->documentNamedItemMap().remove(oldId.impl(), this);
-        if (!newId.isEmpty())
-            toHTMLDocument(ownerDocument)->documentNamedItemMap().add(newId.impl(), this);
+        const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && DocumentNameCollection::nodeMatchesIfNameAttributeMatch(this) ? getNameAttribute() : nullAtom;
+        if (!oldId.isEmpty() && oldId != name)
+            document->documentNamedItemMap().remove(oldId.impl(), this);
+        if (!newId.isEmpty() && newId != name)
+            document->documentNamedItemMap().add(newId.impl(), this);
     }
 }
 
@@ -2885,6 +3084,10 @@ void Element::cloneAttributesFromElement(const Element& other)
         m_elementData.clear();
         return;
     }
+
+    // We can't update window and document's named item maps since the presence of image and object elements depend on other attributes and children.
+    // Fortunately, those named item maps are only updated when this element is in the document, which should never be the case.
+    ASSERT(!inDocument());
 
     const AtomicString& oldID = getIdAttribute();
     const AtomicString& newID = other.getIdAttribute();
@@ -3132,9 +3335,22 @@ unsigned ElementData::getAttributeItemIndexSlowCase(const AtomicString& name, bo
     return attributeNotFound;
 }
 
+unsigned ElementData::getAttributeItemIndexForAttributeNode(const Attr* attr) const
+{
+    ASSERT(attr);
+    const Attribute* attributes = attributeBase();
+    unsigned count = length();
+    for (unsigned i = 0; i < count; ++i) {
+        if (attributes[i].name() == attr->qualifiedName())
+            return i;
+    }
+    return attributeNotFound;
+}
+
 Attribute* UniqueElementData::getAttributeItem(const QualifiedName& name)
 {
-    for (unsigned i = 0; i < length(); ++i) {
+    unsigned count = length();
+    for (unsigned i = 0; i < count; ++i) {
         if (m_attributeVector.at(i).name().matches(name))
             return &m_attributeVector.at(i);
     }

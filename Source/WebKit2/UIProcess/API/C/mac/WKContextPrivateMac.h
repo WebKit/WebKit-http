@@ -37,6 +37,13 @@ WK_EXPORT void WKContextSetProcessSuppressionEnabled(WKContextRef context, bool 
 
 WK_EXPORT bool WKContextIsPlugInUpdateAvailable(WKContextRef context, WKStringRef plugInBundleIdentifier);
 
+WK_EXPORT WKDictionaryRef WKContextCopyPlugInInfoForBundleIdentifier(WKContextRef context, WKStringRef plugInBundleIdentifier);
+
+typedef void (^WKContextGetInfoForInstalledPlugInsBlock)(WKArrayRef, WKErrorRef);
+WK_EXPORT void WKContextGetInfoForInstalledPlugIns(WKContextRef context, WKContextGetInfoForInstalledPlugInsBlock block);
+
+
+/* DEPRECATED -  Please use constants from WKPluginInformation instead. */
 
 /* Value type: WKStringRef */
 WK_EXPORT WKStringRef WKPlugInInfoPathKey();
@@ -55,11 +62,6 @@ WK_EXPORT WKStringRef WKPlugInInfoUpdatePastLastBlockedVersionIsKnownAvailableKe
 
 /* Value type: WKBooleanRef */
 WK_EXPORT WKStringRef WKPlugInInfoIsSandboxedKey();
-
-WK_EXPORT WKDictionaryRef WKContextCopyPlugInInfoForBundleIdentifier(WKContextRef context, WKStringRef plugInBundleIdentifier);
-
-typedef void (^WKContextGetInfoForInstalledPlugInsBlock)(WKArrayRef, WKErrorRef);
-WK_EXPORT void WKContextGetInfoForInstalledPlugIns(WKContextRef context, WKContextGetInfoForInstalledPlugInsBlock block);
 
 #ifdef __cplusplus
 }

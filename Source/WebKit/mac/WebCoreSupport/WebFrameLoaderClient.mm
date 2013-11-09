@@ -140,7 +140,6 @@
 
 using namespace WebCore;
 using namespace HTMLNames;
-using namespace std;
 
 // For backwards compatibility with older WebKit plug-ins.
 NSString *WebPluginBaseURLKey = @"WebPluginBaseURL";
@@ -148,10 +147,13 @@ NSString *WebPluginAttributesKey = @"WebPluginAttributes";
 NSString *WebPluginContainerKey = @"WebPluginContainer";
 
 @interface WebFramePolicyListener : NSObject <WebPolicyDecisionListener, WebFormSubmissionListener> {
-    Frame* m_frame;
+    RefPtr<Frame> _frame;
+    FramePolicyFunction _policyFunction;
 }
-- (id)initWithWebCoreFrame:(Frame*)frame;
+
+- (id)initWithFrame:(Frame*)frame policyFunction:(FramePolicyFunction)policyFunction;
 - (void)invalidate;
+
 @end
 
 static inline WebDataSource *dataSource(DocumentLoader* loader)
@@ -203,7 +205,6 @@ static inline void applyAppleDictionaryApplicationQuirk(WebFrameLoaderClient* cl
 
 WebFrameLoaderClient::WebFrameLoaderClient(WebFrame *webFrame)
     : m_webFrame(webFrame)
-    , m_policyFunction(0)
 {
 }
 
@@ -276,11 +277,19 @@ void WebFrameLoaderClient::detachedFromParent3()
 
 void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, const ResourceRequest& request, const ResourceResponse& response)
 {
+    WebView *webView = getWebView(m_webFrame.get());
+
+    if (!documentLoader->mainResourceLoader()) {
+        // The resource has already been cached, start a new download.
+        WebDownload *webDownload = [[WebDownload alloc] initWithRequest:request.nsURLRequest(UpdateHTTPBody) delegate:[webView downloadDelegate]];
+        [webDownload autorelease];
+        return;
+    }
+
     ResourceHandle* handle = documentLoader->mainResourceLoader()->handle();
 
 #if USE(CFNETWORK)
     ASSERT([WebDownload respondsToSelector:@selector(_downloadWithLoadingCFURLConnection:request:response:delegate:proxy:)]);
-    WebView *webView = getWebView(m_webFrame.get());
     CFURLConnectionRef connection = handle->connection();
     [WebDownload _downloadWithLoadingCFURLConnection:connection
                                                                      request:request.cfURLRequest(UpdateHTTPBody)
@@ -292,7 +301,6 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* doc
     handle->releaseConnectionForDownload();
     CFRelease(connection);
 #else
-    WebView *webView = getWebView(m_webFrame.get());
     [WebDownload _downloadWithLoadingConnection:handle->connection()
                                                                 request:request.nsURLRequest(UpdateHTTPBody)
                                                                response:response.nsURLResponse()
@@ -506,6 +514,8 @@ void WebFrameLoaderClient::dispatchDidHandleOnloadEvents()
 
 void WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad()
 {
+    m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader()->provisionalDocumentLoader()->url().string();
+
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didReceiveServerRedirectForProvisionalLoadForFrameFunc)
@@ -532,6 +542,8 @@ void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const KURL& url, do
 
 void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
 {
+    m_webFrame->_private->url = core(m_webFrame.get())->document()->url().string();
+
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didChangeLocationWithinPageForFrameFunc)
@@ -540,6 +552,8 @@ void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
 
 void WebFrameLoaderClient::dispatchDidPushStateWithinPage()
 {
+    m_webFrame->_private->url = core(m_webFrame.get())->document()->url().string();
+
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didPushStateWithinPageForFrameFunc)
@@ -548,6 +562,8 @@ void WebFrameLoaderClient::dispatchDidPushStateWithinPage()
 
 void WebFrameLoaderClient::dispatchDidReplaceStateWithinPage()
 {
+    m_webFrame->_private->url = core(m_webFrame.get())->document()->url().string();
+
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didReplaceStateWithinPageForFrameFunc)
@@ -556,6 +572,8 @@ void WebFrameLoaderClient::dispatchDidReplaceStateWithinPage()
 
 void WebFrameLoaderClient::dispatchDidPopStateWithinPage()
 {
+    m_webFrame->_private->url = core(m_webFrame.get())->document()->url().string();
+
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didPopStateWithinPageForFrameFunc)
@@ -581,7 +599,10 @@ void WebFrameLoaderClient::dispatchDidReceiveIcon()
 
 void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 {
-    WebView *webView = getWebView(m_webFrame.get());   
+    ASSERT(!m_webFrame->_private->provisionalURL);
+    m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader()->provisionalDocumentLoader()->url().string();
+
+    WebView *webView = getWebView(m_webFrame.get());
     [webView _didStartProvisionalLoadForFrame:m_webFrame.get()];
 
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -611,6 +632,9 @@ void WebFrameLoaderClient::dispatchDidCommitLoad()
     WebView *webView = getWebView(m_webFrame.get());   
     [webView _didCommitLoadForFrame:m_webFrame.get()];
 
+    m_webFrame->_private->url = m_webFrame->_private->provisionalURL;
+    m_webFrame->_private->provisionalURL = nullptr;
+
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didCommitLoadForFrameFunc)
         CallFrameLoadDelegate(implementations->didCommitLoadForFrameFunc, webView, @selector(webView:didCommitLoadForFrame:), m_webFrame.get());
@@ -618,7 +642,9 @@ void WebFrameLoaderClient::dispatchDidCommitLoad()
 
 void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
 {
-    WebView *webView = getWebView(m_webFrame.get());   
+    m_webFrame->_private->provisionalURL = nullptr;
+
+    WebView *webView = getWebView(m_webFrame.get());
     [webView _didFailProvisionalLoadWithError:error forFrame:m_webFrame.get()];
 
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -630,7 +656,9 @@ void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& e
 
 void WebFrameLoaderClient::dispatchDidFailLoad(const ResourceError& error)
 {
-    WebView *webView = getWebView(m_webFrame.get());   
+    ASSERT(!m_webFrame->_private->provisionalURL);
+
+    WebView *webView = getWebView(m_webFrame.get());
     [webView _didFailLoadWithError:error forFrame:m_webFrame.get()];
 
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -650,7 +678,9 @@ void WebFrameLoaderClient::dispatchDidFinishDocumentLoad()
 
 void WebFrameLoaderClient::dispatchDidFinishLoad()
 {
-    WebView *webView = getWebView(m_webFrame.get());   
+    ASSERT(!m_webFrame->_private->provisionalURL);
+
+    WebView *webView = getWebView(m_webFrame.get());
     [webView _didFinishLoadForFrame:m_webFrame.get()];
 
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -751,9 +781,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(FramePolicyFu
 
 void WebFrameLoaderClient::cancelPolicyCheck()
 {
-    [m_policyListener.get() invalidate];
-    m_policyListener = nil;
-    m_policyFunction = 0;
+    [m_policyListener invalidate];
+    m_policyListener = nullptr;
 }
 
 void WebFrameLoaderClient::dispatchUnableToImplementPolicy(const ResourceError& error)
@@ -881,7 +910,7 @@ void WebFrameLoaderClient::updateGlobalHistory()
     if ([view historyDelegate]) {
         WebHistoryDelegateImplementationCache* implementations = WebViewGetHistoryDelegateImplementations(view);
         if (implementations->navigatedFunc) {
-            WebNavigationData *data = [[WebNavigationData alloc] initWithURLString:loader->urlForHistory()
+            WebNavigationData *data = [[WebNavigationData alloc] initWithURLString:loader->url()
                                                                              title:nilOrNSString(loader->title().string())
                                                                    originalRequest:loader->originalRequestCopy().nsURLRequest(UpdateHTTPBody)
                                                                           response:loader->response().nsURLResponse()
@@ -914,7 +943,7 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
         if (implementations) {
             if (implementations->clientRedirectFunc) {
                 CallHistoryDelegate(implementations->clientRedirectFunc, view, @selector(webView:didPerformClientRedirectFromURL:toURL:inFrame:), 
-                    loader->clientRedirectSourceForHistory(), loader->clientRedirectDestinationForHistory(), m_webFrame.get());
+                    m_webFrame->_private->url.get(), loader->clientRedirectDestinationForHistory(), m_webFrame.get());
             }
         } else if (WebHistoryItem *item = [[WebHistory optionalSharedHistory] _itemForURLString:loader->clientRedirectSourceForHistory()])
             core(item)->addRedirectURL(loader->clientRedirectDestinationForHistory());
@@ -1173,11 +1202,12 @@ void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const KURL
     
     if ([view historyDelegate]) {
         WebHistoryDelegateImplementationCache* implementations = WebViewGetHistoryDelegateImplementations(view);
-        if (!implementations->setTitleFunc)
-            return;
-            
         // FIXME: use direction of title.
-        CallHistoryDelegate(implementations->setTitleFunc, view, @selector(webView:updateHistoryTitle:forURL:), (NSString *)title.string(), (NSString *)url);
+        if (implementations->setTitleFunc)
+            CallHistoryDelegate(implementations->setTitleFunc, view, @selector(webView:updateHistoryTitle:forURL:inFrame:), (NSString *)title.string(), (NSString *)url, m_webFrame.get());
+        else if (implementations->deprecatedSetTitleFunc)
+            CallHistoryDelegate(implementations->deprecatedSetTitleFunc, view, @selector(webView:updateHistoryTitle:forURL:), (NSString *)title.string(), (NSString *)url);
+
         return;
     }
     
@@ -1287,28 +1317,11 @@ void WebFrameLoaderClient::dispatchDidBecomeFrameset(bool)
 RetainPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(FramePolicyFunction function)
 {
     // FIXME: <rdar://5634381> We need to support multiple active policy listeners.
+    [m_policyListener invalidate];
 
-    [m_policyListener.get() invalidate];
+    m_policyListener = adoptNS([[WebFramePolicyListener alloc] initWithFrame:core(m_webFrame.get()) policyFunction:function]);
 
-    WebFramePolicyListener *listener = [[WebFramePolicyListener alloc] initWithWebCoreFrame:core(m_webFrame.get())];
-    m_policyListener = listener;
-    [listener release];
-    m_policyFunction = function;
-
-    return listener;
-}
-
-void WebFrameLoaderClient::receivedPolicyDecison(PolicyAction action)
-{
-    ASSERT(m_policyListener);
-    ASSERT(m_policyFunction);
-
-    FramePolicyFunction function = m_policyFunction;
-
-    m_policyListener = nil;
-    m_policyFunction = 0;
-
-    (core(m_webFrame.get())->loader()->policyChecker()->*function)(action);
+    return m_policyListener;
 }
 
 String WebFrameLoaderClient::userAgent(const KURL& url)
@@ -2012,6 +2025,7 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
 }
 
 @implementation WebFramePolicyListener
+
 + (void)initialize
 {
     JSC::initializeThreading();
@@ -2020,22 +2034,21 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
     WebCoreObjCFinalizeOnMainThread(self);
 }
 
-- (id)initWithWebCoreFrame:(Frame*)frame
+- (id)initWithFrame:(Frame*)frame policyFunction:(FramePolicyFunction)policyFunction
 {
     self = [self init];
     if (!self)
         return nil;
-    frame->ref();
-    m_frame = frame;
+
+    _frame = frame;
+    _policyFunction = policyFunction;
+
     return self;
 }
 
 - (void)invalidate
 {
-    if (m_frame) {
-        m_frame->deref();
-        m_frame = 0;
-    }
+    _frame = nullptr;
 }
 
 - (void)dealloc
@@ -2043,25 +2056,20 @@ PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext
     if (WebCoreObjCScheduleDeallocateOnMainThread([WebFramePolicyListener class], self))
         return;
 
-    if (m_frame)
-        m_frame->deref();
     [super dealloc];
-}
-
-- (void)finalize
-{
-    ASSERT_MAIN_THREAD();
-    if (m_frame)
-        m_frame->deref();
-    [super finalize];
 }
 
 - (void)receivedPolicyDecision:(PolicyAction)action
 {
-    RefPtr<Frame> frame = adoptRef(m_frame);
-    m_frame = 0;
-    if (frame)
-        static_cast<WebFrameLoaderClient*>(frame->loader()->client())->receivedPolicyDecison(action);
+    RefPtr<Frame> frame = _frame.release();
+    if (!frame)
+        return;
+
+    FramePolicyFunction policyFunction = _policyFunction;
+    _policyFunction = nullptr;
+
+    ASSERT(policyFunction);
+    (frame->loader()->policyChecker()->*policyFunction)(action);
 }
 
 - (void)ignore

@@ -24,8 +24,8 @@
  */
 #import "SecItemShimLibrary.h"
 
-#import "DyldInterpose.h"
 #import <Security/SecItem.h>
+#import <WebCore/DynamicLinkerInterposing.h>
 #import <wtf/Platform.h>
 
 namespace WebKit {

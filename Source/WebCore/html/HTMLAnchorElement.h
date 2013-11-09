@@ -108,16 +108,16 @@ protected:
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
 private:
-    virtual bool supportsFocus() const;
-    virtual bool isMouseFocusable() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
+    virtual bool supportsFocus() const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const OVERRIDE;
     virtual void defaultEventHandler(Event*);
-    virtual void setActive(bool active = true, bool pause = false);
+    virtual void setActive(bool active = true, bool pause = false) OVERRIDE FINAL;
     virtual void accessKeyAction(bool sendMouseEvents);
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual bool canStartSelection() const;
     virtual String target() const;
-    virtual short tabIndex() const;
+    virtual short tabIndex() const OVERRIDE FINAL;
     virtual bool draggable() const;
 
     void sendPings(const KURL& destinationURL);

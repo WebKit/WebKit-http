@@ -49,6 +49,9 @@
 
 namespace WebCore {
 
+#if USE(AUDIO_SESSION)
+class AudioSessionManagerToken;
+#endif
 #if ENABLE(WEB_AUDIO)
 class AudioSourceProvider;
 class MediaElementAudioSourceNode;
@@ -427,8 +430,8 @@ private:
     virtual bool areAuthorShadowsAllowed() const OVERRIDE { return false; }
 
     virtual bool hasCustomFocusLogic() const OVERRIDE;
-    virtual bool supportsFocus() const;
-    virtual bool isMouseFocusable() const;
+    virtual bool supportsFocus() const OVERRIDE;
+    virtual bool isMouseFocusable() const OVERRIDE;
     virtual bool rendererIsNeeded(const NodeRenderingContext&);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual bool childShouldCreateRenderer(const NodeRenderingContext&) const OVERRIDE;
@@ -764,6 +767,10 @@ private:
 
 #if USE(PLATFORM_TEXT_TRACK_MENU)
     RefPtr<PlatformTextTrackMenuInterface> m_platformMenu;
+#endif
+
+#if USE(AUDIO_SESSION)
+    OwnPtr<AudioSessionManagerToken> m_audioSessionManagerToken;
 #endif
 };
 

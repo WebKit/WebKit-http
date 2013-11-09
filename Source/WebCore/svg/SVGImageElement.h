@@ -34,11 +34,11 @@
 
 namespace WebCore {
 
-class SVGImageElement : public SVGStyledTransformableElement,
-                        public SVGTests,
-                        public SVGLangSpace,
-                        public SVGExternalResourcesRequired,
-                        public SVGURIReference {
+class SVGImageElement FINAL : public SVGStyledTransformableElement,
+                              public SVGTests,
+                              public SVGLangSpace,
+                              public SVGExternalResourcesRequired,
+                              public SVGURIReference {
 public:
     static PassRefPtr<SVGImageElement> create(const QualifiedName&, Document*);
 
@@ -46,7 +46,7 @@ private:
     SVGImageElement(const QualifiedName&, Document*);
     
     virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool supportsFocus() const { return true; }
+    virtual bool supportsFocus() const OVERRIDE { return true; }
 
     bool isSupportedAttribute(const QualifiedName&);
     virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;

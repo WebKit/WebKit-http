@@ -36,7 +36,6 @@ namespace WebCore {
 class ChromeClientBlackBerry;
 class Frame;
 class FrameLoaderClientBlackBerry;
-class PagePopupBlackBerry;
 }
 
 class WebDOMDocument;
@@ -62,6 +61,7 @@ class BackingStore;
 class BackingStoreClient;
 class BackingStorePrivate;
 class InRegionScroller;
+class PagePopup;
 class RenderQueue;
 class WebCookieJar;
 class WebOverlay;
@@ -230,7 +230,7 @@ public:
 
     // Find the next utf8 string in the given direction.
     // Case sensitivity, wrapping, and highlighting all matches are also toggleable.
-    bool findNextString(const char*, bool forward, bool caseSensitive, bool wrap, bool highlightAllMatches);
+    bool findNextString(const char*, bool forward, bool caseSensitive, bool wrap, bool highlightAllMatches, bool selectActiveMatchOnClear);
 
     JSGlobalContextRef globalContext() const;
 
@@ -368,10 +368,6 @@ public:
 
     // Popup client
     void initPopupWebView(BlackBerry::WebKit::WebPage*);
-    void popupOpened(WebCore::PagePopupBlackBerry* webPopup);
-    void popupClosed();
-    bool hasOpenedPopup() const;
-    WebCore::PagePopupBlackBerry* popup();
 
     void autofillTextField(const BlackBerry::Platform::String&);
 
@@ -393,13 +389,13 @@ private:
     friend class WebKit::BackingStore;
     friend class WebKit::BackingStoreClient;
     friend class WebKit::BackingStorePrivate;
+    friend class WebKit::PagePopup;
     friend class WebKit::RenderQueue;
     friend class WebKit::WebPageCompositor;
     friend class WebKit::WebPageGroupLoadDeferrer;
     friend class WebKit::WebPagePrivate;
     friend class WebCore::ChromeClientBlackBerry;
     friend class WebCore::FrameLoaderClientBlackBerry;
-    friend class WebCore::PagePopupBlackBerry;
     WebPagePrivate* d;
 };
 }

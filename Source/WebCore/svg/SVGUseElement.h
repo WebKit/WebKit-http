@@ -37,12 +37,12 @@ namespace WebCore {
 class CachedSVGDocument;
 class SVGElementInstance;
 
-class SVGUseElement : public SVGStyledTransformableElement,
-                      public SVGTests,
-                      public SVGLangSpace,
-                      public SVGExternalResourcesRequired,
-                      public SVGURIReference,
-                      public CachedSVGDocumentClient {
+class SVGUseElement FINAL : public SVGStyledTransformableElement,
+                            public SVGTests,
+                            public SVGLangSpace,
+                            public SVGExternalResourcesRequired,
+                            public SVGURIReference,
+                            public CachedSVGDocumentClient {
 public:
     static PassRefPtr<SVGUseElement> create(const QualifiedName&, Document*, bool wasInsertedByParser);
     virtual ~SVGUseElement();
@@ -59,7 +59,7 @@ private:
     SVGUseElement(const QualifiedName&, Document*, bool wasInsertedByParser);
 
     virtual bool isValid() const { return SVGTests::isValid(); }
-    virtual bool supportsFocus() const { return true; }
+    virtual bool supportsFocus() const OVERRIDE { return true; }
 
     virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void removedFrom(ContainerNode*) OVERRIDE;

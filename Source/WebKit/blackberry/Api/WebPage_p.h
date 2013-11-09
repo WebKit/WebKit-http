@@ -68,7 +68,6 @@ class RenderLayer;
 class RenderObject;
 class ScrollView;
 class TransformationMatrix;
-class PagePopupBlackBerry;
 template<typename T> class Timer;
 }
 
@@ -80,6 +79,8 @@ class BackingStoreClient;
 class DumpRenderTreeClient;
 class InPageSearchManager;
 class InputHandler;
+class PagePopup;
+class PagePopupClient;
 class SelectionHandler;
 class TouchEventHandler;
 class WebCookieJar;
@@ -99,6 +100,9 @@ class WebPagePrivate : public PageClientBlackBerry
     , public WebSettingsDelegate
 #if USE(ACCELERATED_COMPOSITING)
     , public WebCore::GraphicsLayerClient
+#endif
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    , public BlackBerry::Platform::AnimationFrameRateClient
 #endif
     , public Platform::GuardedPointerBase {
 public:
@@ -150,7 +154,8 @@ public:
     void zoomAnimationFinished(double finalScale, const WebCore::FloatPoint& finalDocumentScrollPosition, bool shouldConstrainScrollingToContentEdge);
 
     // Called by the backing store as well as the method below.
-    void requestLayoutIfNeeded() const;
+    void updateLayoutAndStyleIfNeededRecursive() const;
+    void layoutIfNeeded() const;
     void setNeedsLayout();
 
     WebCore::IntPoint scrollPosition() const;
@@ -408,7 +413,9 @@ public:
 
     BackingStoreClient* backingStoreClient() const;
 
-    void setParentPopup(WebCore::PagePopupBlackBerry* webPopup);
+    bool openPagePopup(PagePopupClient*, const WebCore::IntRect& originBoundsInRootView);
+    void closePagePopup();
+    bool hasOpenedPopup() const;
 
     // Clean up any document related data we might be holding.
     void clearDocumentData(const WebCore::Document*);
@@ -452,6 +459,16 @@ public:
 
     void updateBackgroundColor(const WebCore::Color& backgroundColor);
     WebCore::Color documentBackgroundColor() const;
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    // BlackBerry::Platform::AnimationFrameRateClient.
+    virtual void animationFrameChanged();
+    void scheduleAnimation();
+    void startRefreshAnimationClient();
+    void stopRefreshAnimationClient();
+    void serviceAnimations();
+    static void handleServiceScriptedAnimationsOnMainThread(void*);
+#endif
 
     WebPage* m_webPage;
     WebPageClient* m_client;
@@ -622,7 +639,7 @@ public:
     WebCore::Timer<WebPagePrivate> m_deferredTasksTimer;
 
     // The popup that opened in this webpage
-    WebCore::PagePopupBlackBerry* m_selectPopup;
+    RefPtr<PagePopup> m_pagePopup;
 
     RefPtr<WebCore::AutofillManager> m_autofillManager;
 
@@ -632,12 +649,23 @@ public:
     WebCore::IntPoint m_cachedHitTestContentPos;
     WebCore::HitTestResult m_cachedHitTestResult;
 
+    typedef HashMap<RefPtr<WebCore::Document>, ListHashSet<RefPtr<WebCore::Node> > > CachedRectHitTestResults;
+    CachedRectHitTestResults m_cachedRectHitTestResults;
+
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     NotificationManager m_notificationManager;
 #endif
 
     bool m_didStartAnimations;
     double m_animationStartTime;
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    Mutex m_animationMutex;
+    bool m_isRunningRefreshAnimationClient;
+    bool m_animationScheduled;
+    bool m_previousFrameDone;
+    double m_monotonicAnimationStartTime;
+#endif
 
 protected:
     virtual ~WebPagePrivate();

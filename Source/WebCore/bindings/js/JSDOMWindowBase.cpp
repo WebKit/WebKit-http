@@ -38,7 +38,6 @@
 #include "Settings.h"
 #include "WebCoreJSClientData.h"
 #include <wtf/MainThread.h>
-#include <wtf/UnusedParam.h>
 
 using namespace JSC;
 
@@ -152,7 +151,7 @@ bool JSDOMWindowBase::shouldInterruptScript(const JSGlobalObject* object)
     if (!page)
         return true;
 
-    return page->chrome()->shouldInterruptJavaScript();
+    return page->chrome().shouldInterruptJavaScript();
 }
 
 bool JSDOMWindowBase::javaScriptExperimentsEnabled(const JSGlobalObject* object)

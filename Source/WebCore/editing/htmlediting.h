@@ -61,10 +61,11 @@ Node* highestEnclosingNodeOfType(const Position&, bool (*nodeIsOfType)(const Nod
 Node* highestNodeToRemoveInPruning(Node*);
 Node* lowestEditableAncestor(Node*);
 
+Element* deprecatedEnclosingBlockFlowElement(Node*); // Use enclosingBlock instead.
 Element* enclosingBlock(Node*, EditingBoundaryCrossingRule = CannotCrossEditingBoundary);
 Node* enclosingTableCell(const Position&);
 Node* enclosingEmptyListItem(const VisiblePosition&);
-Node* enclosingAnchorElement(const Position&);
+Element* enclosingAnchorElement(const Position&);
 Node* enclosingNodeWithTag(const Position&, const QualifiedName&);
 Node* enclosingNodeOfType(const Position&, bool (*nodeIsOfType)(const Node*), EditingBoundaryCrossingRule = CannotCrossEditingBoundary);
 
@@ -97,6 +98,7 @@ inline bool canHaveChildrenForEditing(const Node* node)
 
 bool isAtomicNode(const Node*);
 bool isBlock(const Node*);
+bool isBlockFlowElement(const Node*);
 bool isInline(const Node*);
 bool isSpecialElement(const Node*);
 bool isTabSpanNode(const Node*);
@@ -113,6 +115,7 @@ bool isNodeVisiblyContainedWithin(Node*, const Range*);
 bool isRenderedAsNonInlineTableImageOrHR(const Node*);
 bool areIdenticalElements(const Node*, const Node*);
 bool isNonTableCellHTMLBlockElement(const Node*);
+
 TextDirection directionOfEnclosingBlock(const Position&);
 
 // -------------------------------------------------------------------------

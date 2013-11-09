@@ -100,7 +100,8 @@
 #include "Page.h"
 #include "PageCache.h"
 #include "PageGroup.h"
-#include "PagePopupBlackBerry.h"
+#include "PagePopup.h"
+#include "PagePopupClient.h"
 #include "PlatformTouchEvent.h"
 #include "PlatformWheelEvent.h"
 #include "PluginDatabase.h"
@@ -182,11 +183,6 @@
 
 #ifndef USER_PROCESSES
 #include <memalloc.h>
-#endif
-
-#if ENABLE(ACCELERATED_2D_CANVAS)
-#include "GrContext.h"
-#include "SharedGraphicsContext3D.h"
 #endif
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
@@ -420,7 +416,7 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_hasInRegionScrollableAreas(false)
     , m_updateDelegatedOverlaysDispatched(false)
     , m_deferredTasksTimer(this, &WebPagePrivate::deferredTasksTimerFired)
-    , m_selectPopup(0)
+    , m_pagePopup(0)
     , m_autofillManager(AutofillManager::create(this))
     , m_documentStyleRecalcPostponed(false)
     , m_documentChildNeedsStyleRecalc(false)
@@ -429,6 +425,12 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
 #endif
     , m_didStartAnimations(false)
     , m_animationStartTime(0)
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    , m_isRunningRefreshAnimationClient(false)
+    , m_animationScheduled(false)
+    , m_previousFrameDone(true)
+    , m_monotonicAnimationStartTime(0)
+#endif
 {
     static bool isInitialized = false;
     if (!isInitialized) {
@@ -454,6 +456,13 @@ WebPagePrivate::~WebPagePrivate()
     m_webPage->setVisible(false);
     if (BackingStorePrivate::currentBackingStoreOwner() == m_webPage)
         BackingStorePrivate::setCurrentBackingStoreOwner(0);
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+    stopRefreshAnimationClient();
+    cancelCallOnMainThread(handleServiceScriptedAnimationsOnMainThread, this);
+#endif
+
+    closePagePopup();
 
     delete m_webSettings;
     m_webSettings = 0;
@@ -1052,16 +1061,6 @@ void WebPagePrivate::setLoadState(LoadState state)
         break;
     case Committed:
         {
-#if ENABLE(ACCELERATED_2D_CANVAS)
-            if (m_page->settings()->canvasUsesAcceleratedDrawing()) {
-                // Free GPU resources as we're on a new page.
-                // This will help us to free memory pressure.
-                SharedGraphicsContext3D::get()->makeContextCurrent();
-                GrContext* grContext = Platform::Graphics::getGrContext();
-                grContext->freeGpuResources();
-            }
-#endif
-
 #if USE(ACCELERATED_COMPOSITING)
             releaseLayerResources();
 #endif
@@ -1246,8 +1245,8 @@ bool WebPagePrivate::zoomAboutPoint(double unclampedScale, const FloatPoint& anc
 
     if (m_webPage->settings()->textReflowMode() == WebSettings::TextReflowEnabled) {
         // This is a hack for email which has reflow always turned on.
-        m_mainFrame->view()->setNeedsLayout();
-        requestLayoutIfNeeded();
+        setNeedsLayout();
+        layoutIfNeeded();
         if (m_currentPinchZoomNode)
             newScrollPosition = calculateReflowedScrollPosition(anchorOffset, scale == minimumScale() ? 1 : inverseScale);
         m_currentPinchZoomNode = 0;
@@ -1314,12 +1313,20 @@ void WebPagePrivate::setNeedsLayout()
     view->setNeedsLayout();
 }
 
-void WebPagePrivate::requestLayoutIfNeeded() const
+void WebPagePrivate::updateLayoutAndStyleIfNeededRecursive() const
 {
     FrameView* view = m_mainFrame->view();
     ASSERT(view);
     view->updateLayoutAndStyleIfNeededRecursive();
     ASSERT(!view->needsLayout());
+}
+
+void WebPagePrivate::layoutIfNeeded() const
+{
+    FrameView* view = m_mainFrame->view();
+    ASSERT(view);
+    if (view->needsLayout())
+        view->layout();
 }
 
 IntPoint WebPagePrivate::scrollPosition() const
@@ -1543,7 +1550,7 @@ void WebPagePrivate::overflowExceedsContentsSize()
     if (absoluteVisibleOverflowSize().width() < DEFAULT_MAX_LAYOUT_WIDTH && !hasVirtualViewport()) {
         if (setViewMode(viewMode())) {
             setNeedsLayout();
-            requestLayoutIfNeeded();
+            layoutIfNeeded();
         }
     }
 }
@@ -1644,7 +1651,7 @@ void WebPagePrivate::zoomToInitialScaleOnLoad()
 #if DEBUG_WEBPAGE_LOAD
         Platform::logAlways(Platform::LogLevelInfo, "WebPagePrivate::zoomToInitialScaleOnLoad content is empty!");
 #endif
-        requestLayoutIfNeeded();
+        layoutIfNeeded();
         notifyTransformedContentsSizeChanged();
         return;
     }
@@ -1670,7 +1677,7 @@ void WebPagePrivate::zoomToInitialScaleOnLoad()
     }
 
     // zoomAboutPoint above can also toggle setNeedsLayout and cause recursive layout...
-    requestLayoutIfNeeded();
+    layoutIfNeeded();
 
     if (!performedZoom) {
         // We only notify if we didn't perform zoom, because zoom will notify on
@@ -2138,12 +2145,13 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
         return context;
     }
 
-    requestLayoutIfNeeded();
+    layoutIfNeeded();
 
     bool nodeAllowSelectionOverride = false;
+    bool nodeIsImage = node->isHTMLElement() && node->hasTagName(HTMLNames::imgTag);
     Node* linkNode = node->enclosingLinkEventParentOrSelf();
     // Set link url only when the node is linked image, or text inside anchor. Prevent CCM popup when long press non-link element(eg. button) inside an anchor.
-    if ((node == linkNode) || (node->isTextNode() && linkNode)) {
+    if (linkNode && (node == linkNode || node->isTextNode() || nodeIsImage)) {
         KURL href;
         if (linkNode->isLink() && linkNode->hasAttributes()) {
             if (const Attribute* attribute = toElement(linkNode)->getAttributeItem(HTMLNames::hrefAttr))
@@ -2548,8 +2556,8 @@ Platform::IntRect WebPagePrivate::focusNodeRect()
 
     const Platform::ViewportAccessor* viewportAccessor = m_webkitThreadViewportAccessor;
 
-    IntRect focusRect = rectForNode(doc->focusedNode());
-    focusRect = adjustRectOffsetForFrameOffset(focusRect, doc->focusedNode());
+    IntRect focusRect = rectForNode(doc->focusedElement());
+    focusRect = adjustRectOffsetForFrameOffset(focusRect, doc->focusedElement());
     focusRect = viewportAccessor->roundToPixelFromDocumentContents(WebCore::FloatRect(focusRect));
     focusRect.intersect(viewportAccessor->pixelContentsRect());
     return focusRect;
@@ -2564,7 +2572,7 @@ PassRefPtr<Node> WebPagePrivate::contextNode(TargetDetectionStrategy strategy)
     // Check if we're using LinkToLink and the user is not touching the screen.
     if (m_webSettings->doesGetFocusNodeContext() && !isTouching) {
         RefPtr<Node> node;
-        node = m_page->focusController()->focusedOrMainFrame()->document()->focusedNode();
+        node = m_page->focusController()->focusedOrMainFrame()->document()->focusedElement();
         if (node) {
             IntRect visibleRect = IntRect(IntPoint(), actualVisibleSize());
             if (!visibleRect.intersects(getNodeWindowRect(node.get())))
@@ -2815,7 +2823,7 @@ IntRect WebPagePrivate::adjustRectOffsetForFrameOffset(const IntRect& rect, cons
             } while (iFrameRect.isEmpty() && ownerNode);
         } else
             break;
-    } while (tnode = tnode->parentNode());
+    } while ((tnode = tnode->parentNode()));
 
     return adjustedRect;
 }
@@ -2837,7 +2845,7 @@ IntRect WebPagePrivate::blockZoomRectForNode(Node* node)
     double blockExpansionRatio = 5.0 * blockToPageRatio * blockToPageRatio;
 
     if (!tnode->hasTagName(HTMLNames::imgTag) && !tnode->hasTagName(HTMLNames::inputTag) && !tnode->hasTagName(HTMLNames::textareaTag)) {
-        while (tnode = tnode->parentNode()) {
+        while ((tnode = tnode->parentNode())) {
             ASSERT(tnode);
             IntRect tRect = rectForNode(tnode);
             int tempBlockArea = tRect.width() * tRect.height();
@@ -2903,7 +2911,7 @@ void WebPagePrivate::zoomAnimationFinished(double finalAnimationScale, const Web
     }
 
 #if ENABLE(VIEWPORT_REFLOW)
-    requestLayoutIfNeeded();
+    layoutIfNeeded();
     if (willUseTextReflow && m_shouldReflowBlock) {
         Platform::IntPoint roundedReflowOffset(
             std::floorf(m_finalAnimationDocumentScrollPositionReflowOffset.x()),
@@ -3132,8 +3140,7 @@ void WebPagePrivate::setVisible(bool visible)
             if (!m_page->scriptedAnimationsSuspended())
                 m_page->suspendScriptedAnimations();
 
-            if (m_webPage->hasOpenedPopup())
-                m_page->chrome()->client()->closePagePopup(0);
+            closePagePopup();
         }
 
         m_visible = visible;
@@ -3648,7 +3655,7 @@ bool WebPagePrivate::setViewportSize(const IntSize& transformedActualVisibleSize
     bool stillNeedsLayout = needsLayout;
     while (stillNeedsLayout) {
         setNeedsLayout();
-        requestLayoutIfNeeded();
+        layoutIfNeeded();
         stillNeedsLayout = false;
 
         // Emulate the zoomToFitWidthOnLoad algorithm if we're rotating.
@@ -3676,7 +3683,7 @@ bool WebPagePrivate::setViewportSize(const IntSize& transformedActualVisibleSize
         IntRect actualVisibleRect = enclosingIntRect(rotationMatrix.inverse().mapRect(FloatRect(viewportRect)));
         m_mainFrame->view()->setFixedReportedSize(actualVisibleRect.size());
         m_mainFrame->view()->repaintFixedElementsAfterScrolling();
-        requestLayoutIfNeeded();
+        layoutIfNeeded();
         m_mainFrame->view()->updateFixedElementsAfterScrolling();
     }
 
@@ -3821,7 +3828,7 @@ void WebPage::setDefaultLayoutSize(const Platform::IntSize& platformSize)
     if (needsLayout) {
         d->setNeedsLayout();
         if (!d->isLoading())
-            d->requestLayoutIfNeeded();
+            d->layoutIfNeeded();
     }
 }
 
@@ -3945,10 +3952,6 @@ bool WebPagePrivate::handleMouseEvent(PlatformMouseEvent& mouseEvent)
             // because we use a pop up dialog to handle the actual selections. This prevents options from
             // being selected prior to displaying the pop up dialog. The contents of the listbox are for
             // display only.
-            //
-            // FIXME: We explicitly do not forward this event to WebCore so as to preserve symmetry with
-            // the MouseEventReleased handling (below). This has the side-effect that mousedown events
-            // are not fired for human generated mouse press events. See RIM Bug #1579.
 
             // We do focus <select>/<option> on mouse down so that a Focus event is fired and have the
             // element painted in its focus state on repaint.
@@ -3960,9 +3963,8 @@ bool WebPagePrivate::handleMouseEvent(PlatformMouseEvent& mouseEvent)
         } else
             eventHandler->handleMousePressEvent(mouseEvent);
     } else if (mouseEvent.type() == WebCore::PlatformEvent::MouseReleased) {
-        // FIXME: For <select> and <options> elements, we explicitly do not forward this event to WebCore so
-        // as to preserve symmetry with the MouseEventPressed handling (above). This has the side-effect that
-        // mouseup events are not fired on such elements for human generated mouse release events. See RIM Bug #1579.
+        // Do not send the mouse event if this is a popup field as the mouse down has been
+        // suppressed and symmetry should be maintained.
         if (!m_inputHandler->didNodeOpenPopup(node))
             eventHandler->handleMouseReleaseEvent(mouseEvent);
     }
@@ -4166,8 +4168,8 @@ void WebPagePrivate::clearFocusNode()
         return;
     ASSERT(frame->document());
 
-    if (frame->document()->focusedNode())
-        frame->page()->focusController()->setFocusedNode(0, frame);
+    if (frame->document()->focusedElement())
+        frame->page()->focusController()->setFocusedElement(0, frame);
 }
 
 BlackBerry::Platform::String WebPage::textEncoding()
@@ -4706,7 +4708,7 @@ void WebPage::setFocused(bool focused)
     focusController->setFocused(focused);
 }
 
-bool WebPage::findNextString(const char* text, bool forward, bool caseSensitive, bool wrap, bool highlightAllMatches)
+bool WebPage::findNextString(const char* text, bool forward, bool caseSensitive, bool wrap, bool highlightAllMatches, bool selectActiveMatchOnClear)
 {
     WebCore::FindOptions findOptions = WebCore::StartInSelection;
     if (!forward)
@@ -4717,7 +4719,7 @@ bool WebPage::findNextString(const char* text, bool forward, bool caseSensitive,
     // The WebCore::FindOptions::WrapAround boolean actually wraps the search
     // within the current frame as opposed to the entire Document, so we have to
     // provide our own wrapping code to wrap at the whole Document level.
-    return d->m_inPageSearchManager->findNextString(String::fromUTF8(text), findOptions, wrap, highlightAllMatches);
+    return d->m_inPageSearchManager->findNextString(String::fromUTF8(text), findOptions, wrap, highlightAllMatches, selectActiveMatchOnClear);
 }
 
 void WebPage::runLayoutTests()
@@ -4907,12 +4909,12 @@ bool WebPage::setNodeFocus(const WebDOMNode& node, bool on)
         if (Page* page = doc->page()) {
             // Modify if focusing on node or turning off focused node.
             if (on) {
-                page->focusController()->setFocusedNode(nodeImpl, doc->frame());
+                page->focusController()->setFocusedElement(toElement(nodeImpl), doc->frame());
                 if (nodeImpl->isElementNode())
                     toElement(nodeImpl)->updateFocusAppearance(true);
                 d->m_inputHandler->didNodeOpenPopup(nodeImpl);
-            } else if (doc->focusedNode() == nodeImpl) // && !on
-                page->focusController()->setFocusedNode(0, doc->frame());
+            } else if (doc->focusedElement() == nodeImpl) // && !on
+                page->focusController()->setFocusedElement(0, doc->frame());
 
             return true;
         }
@@ -4941,7 +4943,7 @@ bool WebPage::nodeHasHover(const WebDOMNode& node)
 
 void WebPage::initPopupWebView(BlackBerry::WebKit::WebPage* webPage)
 {
-    d->m_selectPopup->init(webPage);
+    d->m_pagePopup->initialize(webPage);
 }
 
 String WebPagePrivate::findPatternStringForUrl(const KURL& url) const
@@ -5008,6 +5010,13 @@ void WebPage::notifyDeviceIdleStateChange(bool enterIdle)
 void WebPagePrivate::notifyAppActivationStateChange(ActivationStateType activationState)
 {
     m_activationState = activationState;
+
+#if USE(ACCELERATED_COMPOSITING)
+    if (activationState == ActivationActive)
+        resumeRootLayerCommit();
+    else
+        suspendRootLayerCommit();
+#endif
 
 #if ENABLE(PAGE_VISIBILITY_API)
     setPageVisibilityState();
@@ -5332,15 +5341,13 @@ void WebPagePrivate::setCompositor(PassRefPtr<WebPageCompositorPrivate> composit
     // That seems extremely likely to be the case, but let's assert just to make sure.
     ASSERT(webKitThreadMessageClient()->isCurrentThread());
 
-    if (m_compositor || m_client->window())
-        m_backingStore->d->suspendScreenUpdates();
+    m_backingStore->d->suspendScreenUpdates();
 
     // The m_compositor member has to be modified during a sync call for thread
     // safe access to m_compositor and its refcount.
     userInterfaceThreadMessageClient()->dispatchSyncMessage(createMethodCallMessage(&WebPagePrivate::setCompositorHelper, this, compositor));
 
-    if (m_compositor || m_client->window()) // the new compositor, if one was set
-        m_backingStore->d->resumeScreenUpdates(BackingStore::RenderAndBlit);
+    m_backingStore->d->resumeScreenUpdates(BackingStore::RenderAndBlit);
 }
 
 void WebPagePrivate::setCompositorHelper(PassRefPtr<WebPageCompositorPrivate> compositor)
@@ -5518,7 +5525,7 @@ void WebPagePrivate::rootLayerCommitTimerFired(Timer<WebPagePrivate>*)
     // to texture.
     // The layout can also turn of compositing altogether, so we need to be prepared
     // to handle a one shot drawing synchronization after the layout.
-    requestLayoutIfNeeded();
+    updateLayoutAndStyleIfNeededRecursive();
 
     // If we transitioned to drawing the root layer using compositor instead of
     // backing store, doing a one shot drawing synchronization with the
@@ -5658,6 +5665,9 @@ void WebPagePrivate::resumeRootLayerCommit()
 
     m_suspendRootLayerCommit = false;
     m_needsCommit = true;
+    // PR 330917, explicitly start root layer commit timer, so that there's a commit
+    // even if BackingStore got disabled/removed.
+    scheduleRootLayerCommit();
 }
 
 bool WebPagePrivate::needsOneShotDrawingSynchronization()
@@ -6054,26 +6064,34 @@ void WebPage::removeCompositingThreadOverlay(WebOverlay* overlay)
 #endif
 }
 
-void WebPage::popupOpened(PagePopupBlackBerry* webPopup)
+bool WebPagePrivate::openPagePopup(PagePopupClient* popupClient, const WebCore::IntRect& originBoundsInRootView)
 {
-    ASSERT(!d->m_selectPopup);
-    d->m_selectPopup = webPopup;
+    closePagePopup();
+    m_pagePopup = PagePopup::create(this, popupClient);
+
+    WebCore::IntRect popupRect = m_page->chrome().client()->rootViewToScreen(originBoundsInRootView);
+    popupRect.setSize(popupClient->contentSize());
+    if (!m_client->createPopupWebView(popupRect)) {
+        closePagePopup();
+        return false;
+    }
+
+    return true;
 }
 
-void WebPage::popupClosed()
+void WebPagePrivate::closePagePopup()
 {
-    ASSERT(d->m_selectPopup);
-    d->m_selectPopup = 0;
+    if (!m_pagePopup)
+        return;
+
+    m_pagePopup->close();
+    m_client->closePopupWebView();
+    m_pagePopup = 0;
 }
 
-bool WebPage::hasOpenedPopup() const
+bool WebPagePrivate::hasOpenedPopup() const
 {
-    return d->m_selectPopup;
-}
-
-PagePopupBlackBerry* WebPage::popup()
-{
-    return d->m_selectPopup;
+    return m_pagePopup;
 }
 
 void WebPagePrivate::setInspectorOverlayClient(InspectorOverlay::InspectorOverlayClient* inspectorOverlayClient)
@@ -6181,6 +6199,7 @@ const HitTestResult& WebPagePrivate::hitTestResult(const IntPoint& contentPos)
 {
     if (m_cachedHitTestContentPos != contentPos) {
         m_cachedHitTestContentPos = contentPos;
+        m_cachedRectHitTestResults.clear();
         m_cachedHitTestResult = m_mainFrame->eventHandler()->hitTestResultAtPoint(m_cachedHitTestContentPos, HitTestRequest::ReadOnly | HitTestRequest::Active);
     }
 
@@ -6298,6 +6317,78 @@ bool WebPage::isProcessingUserGesture() const
 {
     return ScriptController::processingUserGesture();
 }
+
+#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+void WebPagePrivate::animationFrameChanged()
+{
+    if (!m_animationMutex.tryLock())
+        return;
+
+    if (!m_previousFrameDone) {
+        m_animationMutex.unlock();
+        return;
+    }
+
+    if (!m_animationScheduled) {
+        stopRefreshAnimationClient();
+        m_animationMutex.unlock();
+        return;
+    }
+
+    m_previousFrameDone = false;
+
+    m_monotonicAnimationStartTime = monotonicallyIncreasingTime();
+    callOnMainThread(handleServiceScriptedAnimationsOnMainThread, this);
+    m_animationMutex.unlock();
+}
+
+void WebPagePrivate::scheduleAnimation()
+{
+    if (m_animationScheduled)
+        return;
+    MutexLocker lock(m_animationMutex);
+    m_animationScheduled = true;
+    startRefreshAnimationClient();
+}
+
+void WebPagePrivate::startRefreshAnimationClient()
+{
+    if (m_isRunningRefreshAnimationClient)
+        return;
+    m_isRunningRefreshAnimationClient = true;
+    BlackBerry::Platform::AnimationFrameRateController::instance()->addClient(this);
+}
+
+void WebPagePrivate::stopRefreshAnimationClient()
+{
+    if (!m_isRunningRefreshAnimationClient)
+        return;
+    m_isRunningRefreshAnimationClient = false;
+    BlackBerry::Platform::AnimationFrameRateController::instance()->removeClient(this);
+}
+
+void WebPagePrivate::serviceAnimations()
+{
+    double monotonicAnimationStartTime;
+    {
+        MutexLocker lock(m_animationMutex);
+        m_animationScheduled = false;
+        monotonicAnimationStartTime = m_monotonicAnimationStartTime;
+    }
+
+    m_mainFrame->view()->serviceScriptedAnimations(monotonicAnimationStartTime);
+
+    {
+        MutexLocker lock(m_animationMutex);
+        m_previousFrameDone = true;
+    }
+}
+
+void WebPagePrivate::handleServiceScriptedAnimationsOnMainThread(void* data)
+{
+    static_cast<WebPagePrivate*>(data)->serviceAnimations();
+}
+#endif
 
 }
 }
