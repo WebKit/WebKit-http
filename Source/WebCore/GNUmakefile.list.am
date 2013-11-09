@@ -62,8 +62,6 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSAudioParam.h \
 	DerivedSources/WebCore/JSAudioProcessingEvent.cpp \
 	DerivedSources/WebCore/JSAudioProcessingEvent.h \
-	DerivedSources/WebCore/JSAudioSourceNode.cpp \
-	DerivedSources/WebCore/JSAudioSourceNode.h \
 	DerivedSources/WebCore/JSAudioTrack.cpp \
 	DerivedSources/WebCore/JSAudioTrack.h \
 	DerivedSources/WebCore/JSAudioTrackList.cpp \
@@ -1321,7 +1319,6 @@ dom_binding_idls += \
 	$(WebCore)/Modules/webaudio/PannerNode.idl \
 	$(WebCore)/Modules/webaudio/AudioParam.idl \
 	$(WebCore)/Modules/webaudio/AudioProcessingEvent.idl \
-	$(WebCore)/Modules/webaudio/AudioSourceNode.idl \
 	$(WebCore)/Modules/webaudio/BiquadFilterNode.idl \
 	$(WebCore)/Modules/webaudio/ConvolverNode.idl \
 	$(WebCore)/Modules/webaudio/DelayNode.idl \
@@ -2110,7 +2107,6 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/webaudio/AudioScheduledSourceNode.h \
 	Source/WebCore/Modules/webaudio/AudioSummingJunction.cpp \
 	Source/WebCore/Modules/webaudio/AudioSummingJunction.h \
-	Source/WebCore/Modules/webaudio/AudioSourceNode.h \
 	Source/WebCore/Modules/webaudio/BiquadDSPKernel.cpp \
 	Source/WebCore/Modules/webaudio/BiquadDSPKernel.h \
 	Source/WebCore/Modules/webaudio/BiquadFilterNode.cpp \
@@ -3317,8 +3313,6 @@ webcore_sources += \
 	Source/WebCore/html/BaseClickableWithKeyInputType.h \
 	Source/WebCore/html/BaseDateAndTimeInputType.cpp \
 	Source/WebCore/html/BaseDateAndTimeInputType.h \
-	Source/WebCore/html/BaseMultipleFieldsDateAndTimeInputType.cpp \
-	Source/WebCore/html/BaseMultipleFieldsDateAndTimeInputType.h \
 	Source/WebCore/html/BaseTextInputType.cpp \
 	Source/WebCore/html/BaseTextInputType.h \
 	Source/WebCore/html/ButtonInputType.cpp \
@@ -3408,6 +3402,8 @@ webcore_sources += \
 	Source/WebCore/html/canvas/WebGLVertexArrayObjectOES.h \
 	Source/WebCore/html/canvas/WebGLExtension.cpp \
 	Source/WebCore/html/canvas/WebGLExtension.h \
+	Source/WebCore/html/forms/FileIconLoader.cpp \
+	Source/WebCore/html/forms/FileIconLoader.h \
 	Source/WebCore/html/DOMSettableTokenList.cpp \
 	Source/WebCore/html/DOMSettableTokenList.h \
 	Source/WebCore/html/DOMTokenList.cpp \
@@ -3721,22 +3717,8 @@ webcore_sources += \
 	Source/WebCore/html/parser/XSSAuditor.h \
 	Source/WebCore/html/parser/XSSAuditorDelegate.cpp \
 	Source/WebCore/html/parser/XSSAuditorDelegate.h \
-	Source/WebCore/html/shadow/PickerIndicatorElement.cpp \
-	Source/WebCore/html/shadow/PickerIndicatorElement.h \
-	Source/WebCore/html/shadow/ClearButtonElement.cpp \
-	Source/WebCore/html/shadow/ClearButtonElement.h \
 	Source/WebCore/html/shadow/ContentDistributor.cpp \
 	Source/WebCore/html/shadow/ContentDistributor.h \
-	Source/WebCore/html/shadow/DateTimeEditElement.cpp \
-	Source/WebCore/html/shadow/DateTimeEditElement.h \
-	Source/WebCore/html/shadow/DateTimeFieldElement.cpp \
-	Source/WebCore/html/shadow/DateTimeFieldElement.h \
-	Source/WebCore/html/shadow/DateTimeFieldElements.cpp \
-	Source/WebCore/html/shadow/DateTimeFieldElements.h \
-	Source/WebCore/html/shadow/DateTimeNumericFieldElement.cpp \
-	Source/WebCore/html/shadow/DateTimeNumericFieldElement.h \
-	Source/WebCore/html/shadow/DateTimeSymbolicFieldElement.cpp \
-	Source/WebCore/html/shadow/DateTimeSymbolicFieldElement.h \
 	Source/WebCore/html/shadow/DetailsMarkerControl.cpp \
 	Source/WebCore/html/shadow/DetailsMarkerControl.h \
 	Source/WebCore/html/shadow/HTMLContentElement.cpp \
@@ -4269,6 +4251,8 @@ webcore_sources += \
 	Source/WebCore/page/OriginAccessEntry.h \
 	Source/WebCore/page/Page.cpp \
 	Source/WebCore/page/Page.h \
+	Source/WebCore/page/PageActivityAssertionToken.h \
+	Source/WebCore/page/PageActivityAssertionToken.cpp \
 	Source/WebCore/page/PageConsole.cpp \
 	Source/WebCore/page/PageConsole.h \
 	Source/WebCore/page/PageGroup.cpp \
@@ -4277,6 +4261,8 @@ webcore_sources += \
 	Source/WebCore/page/PageGroupLoadDeferrer.h \
 	Source/WebCore/page/PageSerializer.cpp \
 	Source/WebCore/page/PageSerializer.h \
+	Source/WebCore/page/PageThrottler.cpp \
+	Source/WebCore/page/PageThrottler.h \
 	Source/WebCore/page/PageVisibilityState.cpp \
 	Source/WebCore/page/PageVisibilityState.h \
 	Source/WebCore/page/Performance.cpp \
@@ -5495,8 +5481,6 @@ webcore_platform_sources += \
 	Source/WebCore/platform/PlatformInstrumentation.h \
 	Source/WebCore/platform/FileChooser.cpp \
 	Source/WebCore/platform/FileChooser.h \
-	Source/WebCore/platform/FileIconLoader.cpp \
-	Source/WebCore/platform/FileIconLoader.h \
 	Source/WebCore/platform/FileMetadata.h \
 	Source/WebCore/platform/FileStreamClient.h \
 	Source/WebCore/platform/FileStream.cpp \
@@ -5644,8 +5628,10 @@ webcore_platform_sources += \
 	Source/WebCore/platform/graphics/FontData.h \
 	Source/WebCore/platform/graphics/FontDescription.cpp \
 	Source/WebCore/platform/graphics/FontDescription.h \
-	Source/WebCore/platform/graphics/FontFallbackList.cpp \
-	Source/WebCore/platform/graphics/FontFallbackList.h \
+	Source/WebCore/platform/graphics/FontGenericFamilies.cpp \
+	Source/WebCore/platform/graphics/FontGenericFamilies.h \
+	Source/WebCore/platform/graphics/FontGlyphs.cpp \
+	Source/WebCore/platform/graphics/FontGlyphs.h \
 	Source/WebCore/platform/graphics/FontFastPath.cpp \
 	Source/WebCore/platform/graphics/FontFeatureSettings.cpp \
 	Source/WebCore/platform/graphics/FontFeatureSettings.h \

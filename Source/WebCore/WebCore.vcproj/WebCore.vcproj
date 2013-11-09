@@ -27578,7 +27578,15 @@
 				RelativePath="..\page\Page.cpp"
 				>
 			</File>
-                        <File
+			<File
+				RelativePath="..\page\PageActivityAssertionToken.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\page\PageActivityAssertionToken.h"
+				>
+			</File>
+             <File
 				RelativePath="..\page\PageConsole.cpp"
 				>
 			</File>
@@ -27608,6 +27616,14 @@
 			</File>
 			<File
 				RelativePath="..\page\PageSerializer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\page\PageThrottler.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\page\PageThrottler.h"
 				>
 			</File>
 			<File
@@ -28855,14 +28871,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\platform\FileIconLoader.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\platform\FileIconLoader.h"
-				>
-			</File>
-			<File
 				RelativePath="..\platform\FileMetadata.h"
 				>
 			</File>
@@ -29730,6 +29738,14 @@
 				Name="cf"
 				>
 				<File
+					RelativePath="..\platform\cf\CFURLExtras.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\platform\cf\CFURLExtras.h"
+					>
+				</File>
+				<File
 					RelativePath="..\platform\cf\FileSystemCF.cpp"
 					>
 				</File>
@@ -29873,12 +29889,20 @@
 					RelativePath="..\platform\graphics\FontDescription.h"
 					>
 				</File>
-				<File
-					RelativePath="..\platform\graphics\FontFallbackList.cpp"
+                <File
+					RelativePath="..\platform\graphics\FontGenericFamilies.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\platform\graphics\FontFallbackList.h"
+					RelativePath="..\platform\graphics\FontGenericFamilies.h"
+					>
+				</File>
+				<File
+					RelativePath="..\platform\graphics\FontGlyphs.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\platform\graphics\FontGlyphs.h"
 					>
 				</File>
 				<File
@@ -60135,14 +60159,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\html\BaseMultipleFieldsDateAndTimeInputType.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\html\BaseMultipleFieldsDateAndTimeInputType.h"
-				>
-			</File>
-			<File
 				RelativePath="..\html\BaseTextInputType.cpp"
 				>
 			</File>
@@ -65067,6 +65083,18 @@
 				>
 			</File>
 			<Filter
+				Name="forms"
+				>
+				<File
+					RelativePath="..\html\forms\FileIconLoader.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\html\forms\FileIconLoader.h"
+					>
+				</File>
+			</Filter>
+			<Filter
 				Name="parser"
 				>
 				<File
@@ -65326,59 +65354,11 @@
 				Name="shadow"
 				>
 				<File
-					RelativePath="..\html\shadow\ClearButtonElement.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\ClearButtonElement.h"
-					>
-				</File>
-				<File
 					RelativePath="..\html\shadow\ContentDistributor.cpp"
 					>
 				</File>
 				<File
 					RelativePath="..\html\shadow\ContentDistributor.h"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeEditElement.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeEditElement.h"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeFieldElement.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeFieldElement.h"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeFieldElements.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeFieldElements.h"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeNumericFieldElement.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeNumericFieldElement.h"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeSymbolicFieldElement.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\html\shadow\DateTimeSymbolicFieldElement.h"
 					>
 				</File>
 				<File

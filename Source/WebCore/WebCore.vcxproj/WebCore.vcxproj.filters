@@ -202,6 +202,9 @@
     <Filter Include="html">
       <UniqueIdentifier>{7f307654-5fd9-4fc8-9b64-d4afbdaf0e8c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="html\forms">
+      <UniqueIdentifier>{76631c4f-10d3-4e45-b289-088cd8314a98}</UniqueIdentifier>
+    </Filter>
     <Filter Include="html\parser">
       <UniqueIdentifier>{5208479d-ffff-4f5b-a98f-d87083ec9221}</UniqueIdentifier>
     </Filter>
@@ -1102,9 +1105,6 @@
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\FileChooser.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
-    <ClCompile Include="..\platform\FileIconLoader.cpp">
       <Filter>platform</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\FileStream.cpp">
@@ -3759,9 +3759,6 @@
     <ClCompile Include="..\html\BaseDateAndTimeInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\BaseMultipleFieldsDateAndTimeInputType.cpp">
-      <Filter>html</Filter>
-    </ClCompile>
     <ClCompile Include="..\html\BaseTextInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
@@ -4221,6 +4218,9 @@
     <ClCompile Include="..\html\WeekInputType.cpp">
       <Filter>html</Filter>
     </ClCompile>
+    <ClCompile Include="..\html\forms\FileIconLoader.cpp">
+      <Filter>html\forms</Filter>
+    </ClCompile>
     <ClCompile Include="..\html\parser\BackgroundHTMLInputStream.cpp">
       <Filter>html\parser</Filter>
     </ClCompile>
@@ -4296,25 +4296,7 @@
     <ClCompile Include="..\html\parser\XSSAuditorDelegate.cpp">
       <Filter>html\parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\html\shadow\ClearButtonElement.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
     <ClCompile Include="..\html\shadow\ContentDistributor.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\shadow\DateTimeEditElement.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\shadow\DateTimeFieldElement.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\shadow\DateTimeFieldElements.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\shadow\DateTimeNumericFieldElement.cpp">
-      <Filter>html\shadow</Filter>
-    </ClCompile>
-    <ClCompile Include="..\html\shadow\DateTimeSymbolicFieldElement.cpp">
       <Filter>html\shadow</Filter>
     </ClCompile>
     <ClCompile Include="..\html\shadow\DetailsMarkerControl.cpp">
@@ -5175,6 +5157,9 @@
     <ClCompile Include="..\page\Chrome.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\platform\cf\CFURLExtras.cpp">
+      <Filter>platform\cf</Filter>
+    </ClCompile>
     <ClCompile Include="..\platform\cf\SharedBufferCF.cpp">
       <Filter>platform\cf</Filter>
     </ClCompile>
@@ -5208,10 +5193,10 @@
     <ClCompile Include="..\platform\graphics\FontDescription.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\FontFallbackList.cpp">
-      <Filter>platform\graphics</Filter>
+    <ClCompile Include="..\platform\graphics\FontGenericFamilies.cpp">
+        <Filter>platform\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\platform\graphics\FontFamily.cpp">
+    <ClCompile Include="..\platform\graphics\FontGlyphs.cpp">
       <Filter>platform\graphics</Filter>
     </ClCompile>
     <ClCompile Include="..\platform\graphics\FontFastPath.cpp">
@@ -5238,6 +5223,9 @@
     <ClCompile Include="..\page\Page.cpp">
       <Filter>page</Filter>
     </ClCompile>
+    <ClCompile Include="..\page\PageActivityAssertionToken.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
     <ClCompile Include="..\page\PageConsole.cpp">
       <Filter>page</Filter>
     </ClCompile>
@@ -5248,6 +5236,9 @@
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\PageSerializer.cpp">
+      <Filter>page</Filter>
+    </ClCompile>
+    <ClCompile Include="..\page\PageThrottler.cpp">
       <Filter>page</Filter>
     </ClCompile>
     <ClCompile Include="..\page\PageVisibilityState.cpp">
@@ -7845,9 +7836,6 @@
     <ClInclude Include="..\platform\FileChooser.h">
       <Filter>platform</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\FileIconLoader.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="..\platform\FileMetadata.h">
       <Filter>platform</Filter>
     </ClInclude>
@@ -8011,9 +7999,6 @@
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\SuddenTermination.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\platform\Theme.h">
       <Filter>platform</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\ThemeTypes.h">
@@ -10623,9 +10608,6 @@
     <ClInclude Include="..\html\BaseDateAndTimeInputType.h">
       <Filter>html</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\BaseMultipleFieldsDateAndTimeInputType.h">
-      <Filter>html</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\BaseTextInputType.h">
       <Filter>html</Filter>
     </ClInclude>
@@ -11097,6 +11079,9 @@
     <ClInclude Include="..\html\WeekInputType.h">
       <Filter>html</Filter>
     </ClInclude>
+    <ClInclude Include="..\html\forms\FileIconLoader.h">
+      <Filter>html\forms</Filter>
+    </ClInclude>
     <ClInclude Include="..\html\parser\AtomicHTMLToken.h">
       <Filter>html\parser</Filter>
     </ClInclude>
@@ -11190,25 +11175,7 @@
     <ClInclude Include="..\html\parser\XSSAuditorDelegate.h">
       <Filter>html\parser</Filter>
     </ClInclude>
-    <ClInclude Include="..\html\shadow\ClearButtonElement.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
     <ClInclude Include="..\html\shadow\ContentDistributor.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\shadow\DateTimeEditElement.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\shadow\DateTimeFieldElement.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\shadow\DateTimeFieldElements.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\shadow\DateTimeNumericFieldElement.h">
-      <Filter>html\shadow</Filter>
-    </ClInclude>
-    <ClInclude Include="..\html\shadow\DateTimeSymbolicFieldElement.h">
       <Filter>html\shadow</Filter>
     </ClInclude>
     <ClInclude Include="..\html\shadow\DetailsMarkerControl.h">
@@ -12679,6 +12646,9 @@
     <ClInclude Include="..\svg\SVGAnimatedTypeAnimator.h">
       <Filter>rendering\svg</Filter>
     </ClInclude>
+    <ClInclude Include="..\platform\cf\CFURLExtras.h">
+      <Filter>platform\cf</Filter>
+    </ClInclude>
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h">
       <Filter>platform\cf\win</Filter>
     </ClInclude>
@@ -12703,10 +12673,10 @@
     <ClInclude Include="..\platform\graphics\FontDescription.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\FontFallbackList.h">
-      <Filter>platform\graphics</Filter>
+    <ClInclude Include="..\platform\graphics\FontGenericFamilies.h">
+        <Filter>platform\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\platform\graphics\FontFamily.h">
+    <ClInclude Include="..\platform\graphics\FontGlyphs.h">
       <Filter>platform\graphics</Filter>
     </ClInclude>
     <ClInclude Include="..\platform\graphics\FontFeatureSettings.h">

@@ -58,6 +58,14 @@
             "ademar"
          ]
       },
+      "Adenilson Cavalcanti" : {
+         "emails" : [
+            "cavalcantii@gmail.com"
+         ],
+         "nicks" : [
+            "Savago"
+         ]
+      },
       "Albert J. Wong" : {
          "emails" : [
             "ajwong@chromium.org"
@@ -175,6 +183,16 @@
             "andreip"
          ]
       },
+      "Andrew Lo" : {
+         "emails" : [
+            "anlo@blackberry.com",
+            "anlo@rim.com",
+            "andrewlo@gmail.com"
+         ],
+         "nicks" : [
+            "andrewlo"
+         ]
+      },
       "Andrew Scherkus" : {
          "emails" : [
             "scherkus@chromium.org"
@@ -273,6 +291,14 @@
          ],
          "nicks" : [
             "arkos"
+         ]
+      },
+      "Arpita Bahuguna" : {
+         "emails" : [
+            "a.bah@samsung.com"
+         ],
+         "nicks" : [
+            "arpitab"
          ]
       },
       "Arvid Nilsson" : {
@@ -616,6 +642,17 @@
          "expertise" : "WebKit EFL, Cairo HarfBuzz Support, GraphicsContextCairo",
          "nicks" : [
             "drott"
+         ]
+      },
+      "Dongseong Hwang" : {
+         "emails" : [
+            "dongseong.hwang@intel.com",
+            "luxtella@gmail.com",
+            "luxtella@company100.net"
+         ],
+         "expertise" : "Accelerated Compositing, Canvas, CSS Shaders",
+         "nicks" : [
+            "dshwang"
          ]
       },
       "Dongwoo Joshua Im" : {
@@ -1211,6 +1248,14 @@
             "kareng"
          ]
       },
+      "Kalyan Kondapally" : {
+         "emails" : [
+            "kalyan.kondapally@intel.com"
+         ],
+         "nicks" : [
+            "kalyank"
+         ]
+      },
       "Kaustubh Atrawalkar" : {
          "emails" : [
             "kaustubh@motorola.com"
@@ -1477,7 +1522,7 @@
       },
       "Mary Wu" : {
          "emails" : [
-            "mary.wu@torchmobile.com.cn",
+            "mawu@blackberry.com",
             "wwendy2007@gmail.com"
          ],
          "nicks" : [
@@ -2484,14 +2529,6 @@
          ],
          "nicks" : [
             "reveman"
-         ]
-      },
-      "Dongsung Huang" : {
-         "emails" : [
-            "luxtella@company100.net"
-         ],
-         "nicks" : [
-            "Huang"
          ]
       },
       "Douglas Davidson" : {
@@ -4061,11 +4098,10 @@
       },
       "Yong Li" : {
          "emails" : [
-            "yong.li.webkit@outlook.com",
-            "yoli@rim.com"
+            "yong.li.webkit@outlook.com"
          ],
          "nicks" : [
-            "yoli"
+            "yong"
          ]
       },
       "Yury Semikhatsky" : {

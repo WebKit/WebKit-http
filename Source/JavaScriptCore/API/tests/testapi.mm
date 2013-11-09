@@ -802,6 +802,23 @@ void testObjectiveCAPI()
 
         [TinyDOMNode clearSharedVirtualMachine];
     }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *o = [JSValue valueWithNewObjectInContext:context];
+        o[@"foo"] = @"foo";
+        JSSynchronousGarbageCollectForDebugging([context JSGlobalContextRef]);
+
+        checkResult(@"JSValue correctly protected its internal value", [[o[@"foo"] toString] isEqualToString:@"foo"]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        TestObject *testObject = TestObject.testObject;
+        context[@"testObject"] = testObject;
+        [context evaluateScript:@"testObject.__lookupGetter__('variable').call({})"];
+        checkResult(@"Make sure we throw an exception when calling getter on incorrect |this|", context.exception);
+    }
 }
 
 #else

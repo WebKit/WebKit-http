@@ -55,6 +55,15 @@ typedef BView PlatformGraphicsContext;
 struct pattern;
 #elif OS(WINCE)
 typedef struct HDC__ PlatformGraphicsContext;
+#elif PLATFORM(BLACKBERRY)
+namespace BlackBerry {
+namespace Platform {
+namespace Graphics {
+class PlatformGraphicsContext;
+}
+}
+}
+using BlackBerry::Platform::Graphics::PlatformGraphicsContext;
 #else
 typedef void PlatformGraphicsContext;
 #endif

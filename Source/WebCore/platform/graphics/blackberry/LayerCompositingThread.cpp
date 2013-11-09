@@ -53,8 +53,6 @@
 #include <BlackBerryPlatformLog.h>
 #include <wtf/Assertions.h>
 
-#define DEBUG_VIDEO_CLIPPING 0
-
 using BlackBerry::Platform::Graphics::GLES2Program;
 
 namespace WebCore {
@@ -133,87 +131,25 @@ void LayerCompositingThread::setDrawTransform(double scale, const Transformation
 {
     m_drawTransform = matrix;
 
-    float bx = m_bounds.width() / 2.0;
-    float by = m_bounds.height() / 2.0;
+    FloatRect boundsRect(-origin(), bounds());
 
-    if (sizeIsScaleInvariant()) {
-        bx /= scale;
-        by /= scale;
-    }
+    if (sizeIsScaleInvariant())
+        boundsRect.scale(1 / scale);
 
-    m_transformedBounds.setP1(matrix.mapPoint(FloatPoint(-bx, -by)));
-    m_transformedBounds.setP2(matrix.mapPoint(FloatPoint(-bx, by)));
-    m_transformedBounds.setP3(matrix.mapPoint(FloatPoint(bx, by)));
-    m_transformedBounds.setP4(matrix.mapPoint(FloatPoint(bx, -by)));
-
-    m_drawRect = m_transformedBounds.boundingBox();
+    m_transformedBounds = matrix.mapQuad(boundsRect);
+    m_boundingBox = m_transformedBounds.boundingBox();
 }
 
-static FloatQuad getTransformedRect(const IntSize& bounds, const IntRect& rect, const TransformationMatrix& drawTransform)
+FloatQuad LayerCompositingThread::transformedHolePunchRect() const
 {
-    float x = -bounds.width() / 2.0 + rect.x();
-    float y = -bounds.height() / 2.0 + rect.y();
-    float w = rect.width();
-    float h = rect.height();
-    FloatQuad result;
-    result.setP1(drawTransform.mapPoint(FloatPoint(x, y)));
-    result.setP2(drawTransform.mapPoint(FloatPoint(x, y + h)));
-    result.setP3(drawTransform.mapPoint(FloatPoint(x + w, y + h)));
-    result.setP4(drawTransform.mapPoint(FloatPoint(x + w, y)));
-
-    return result;
-}
-
-
-FloatQuad LayerCompositingThread::getTransformedHolePunchRect() const
-{
-    // FIXME: the following line disables clipping a video in an iframe i.e. the fix associated with PR 99638.
-    // Some revised test case (e.g. video-iframe.html) show that the original fix works correctly when scrolling
-    // the contents of the frame, but fails to clip correctly if the page (main frame) is scrolled.
-    static bool enableVideoClipping = false;
-
-    if (!mediaPlayer() || !enableVideoClipping) {
-        // m_holePunchClipRect is valid only when there's a media player.
-        return getTransformedRect(m_bounds, m_holePunchRect, m_drawTransform);
-    }
-
-    // The hole punch rectangle may need to be clipped,
-    // e.g. if the <video> is on a layer that's included and clipped by an <iframe>.
-
-    // In order to clip we need to determine the current position of this layer, which
-    // is encoded in the m_drawTransform value, which was used to initialize m_drawRect.
-    IntRect drawRect = m_layerRenderer->toDocumentViewportCoordinates(m_drawRect);
-
-    // Assert that in this case, where the hole punch rectangle equals the size of the layer,
-    // the drawRect has the same size as the hole punch.
-    // ASSERT(drawRect.size() == m_holePunchRect.size());
-    // Don't assert it programtically though because there may be off-by-one error due to rounding when there's zooming.
-
-    // The difference between drawRect and m_holePunchRect is that drawRect has an accurate position
-    // in WebKit document coordinates, whereas the m_holePunchRect location is (0,0) i.e. it's relative to this layer.
-
-    // Clip the drawRect.
-    // Both drawRect and m_holePunchClipRect already have correct locations, in WebKit document coordinates.
-    IntPoint location = drawRect.location();
-    drawRect.intersect(m_holePunchClipRect);
-
-    // Shift the clipped drawRect to have the same kind of located-at-zero position as the original holePunchRect.
-    drawRect.move(-location.x(), -location.y());
-
-#if DEBUG_VIDEO_CLIPPING
-    IntRect drawRectInWebKitDocumentCoordination = m_layerRenderer->toWebKitDocumentCoordinates(m_drawRect);
-    BBLOG(BlackBerry::Platform::LogLevelInfo, "LayerCompositingThread::getTransformedHolePunchRect() - drawRect=(x=%d,y=%d,width=%d,height=%d) clipRect=(x=%d,y=%d,width=%d,height=%d) clippedRect=(x=%d,y=%d,width=%d,height=%d).",
-        drawRectInWebKitDocumentCoordination.x(), drawRectInWebKitDocumentCoordination.y(), drawRectInWebKitDocumentCoordination.width(), drawRectInWebKitDocumentCoordination.height(),
-        m_holePunchClipRect.x(), m_holePunchClipRect.y(), m_holePunchClipRect.width(), m_holePunchClipRect.height(),
-        drawRect.x(), drawRect.y(), drawRect.width(), drawRect.height());
-#endif
-
-    return getTransformedRect(m_bounds, drawRect, m_drawTransform);
+    FloatRect holePunchRect(m_holePunchRect);
+    holePunchRect.moveBy(-origin());
+    return m_drawTransform.mapQuad(holePunchRect);
 }
 
 void LayerCompositingThread::drawTextures(double scale, const GLES2Program& program, const FloatRect& visibleRect)
 {
-    static float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
+    static float texcoords[4 * 2] = { 0, 0,  1, 0,  1, 1,  0, 1 };
 
     if (m_pluginView) {
         if (m_isVisible) {
@@ -253,7 +189,7 @@ void LayerCompositingThread::drawTextures(double scale, const GLES2Program& prog
                     -m_transformedBounds.p1().y() * vrh2 + vrh2 + visibleRect.y());
                 paintRect = IntRect(roundedIntPoint(p), m_bounds);
             } else
-                paintRect = m_layerRenderer->toWindowCoordinates(m_drawRect);
+                paintRect = m_layerRenderer->toWindowCoordinates(m_boundingBox);
 
             m_mediaPlayer->paint(0, paintRect);
             MediaPlayerPrivate* mpp = static_cast<MediaPlayerPrivate*>(m_mediaPlayer->platformMedia().media.qnxMediaPlayer);
@@ -299,11 +235,11 @@ void LayerCompositingThread::drawSurface(const TransformationMatrix& drawTransfo
         glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBindTexture(GL_TEXTURE_2D, surfaceTexID);
 
-        FloatQuad surfaceQuad = getTransformedRect(m_bounds, IntRect(IntPoint::zero(), m_bounds), drawTransform);
+        FloatQuad surfaceQuad = drawTransform.mapQuad(FloatRect(-origin(), bounds()));
         glUniform1f(program.opacityLocation(), layerRendererSurface()->drawOpacity());
         glVertexAttribPointer(program.positionLocation(), 2, GL_FLOAT, GL_FALSE, 0, &surfaceQuad);
 
-        static float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
+        static float texcoords[4 * 2] = { 0, 0,  1, 0,  1, 1,  0, 1 };
         glVertexAttribPointer(program.texCoordLocation(), 2, GL_FLOAT, GL_FALSE, 0, texcoords);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }

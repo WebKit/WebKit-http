@@ -107,7 +107,7 @@ public:
 
     const String& string() const { return m_string; }
 
-    String elidedString() const;
+    String stringCenterEllipsizedToLength(unsigned length = 1024) const;
 
     String protocol() const;
     String host() const;

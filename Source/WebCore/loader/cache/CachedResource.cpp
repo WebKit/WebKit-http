@@ -380,6 +380,16 @@ void CachedResource::error(CachedResource::Status status)
     setLoading(false);
     checkNotify();
 }
+    
+void CachedResource::cancelLoad()
+{
+    if (!isLoading())
+        return;
+
+    setStatus(LoadError);
+    setLoading(false);
+    checkNotify();
+}
 
 void CachedResource::finish()
 {
@@ -415,12 +425,15 @@ double CachedResource::currentAge() const
 
 double CachedResource::freshnessLifetime() const
 {
-    if (SchemeRegistry::shouldCacheResponsesFromURLSchemeIndefinitely(m_response.url().protocol()))
-        return std::numeric_limits<double>::max();
+    if (!m_response.url().protocolIsInHTTPFamily()) {
+        // Don't cache non-HTTP main resources since we can't check for freshness.
+        // FIXME: We should not cache subresources either, but when we tried this
+        // it caused performance and flakiness issues in our test infrastructure.
+        if (m_type == MainResource && !SchemeRegistry::shouldCacheResponsesFromURLSchemeIndefinitely(m_response.url().protocol()))
+            return 0;
 
-    // Don't cache other non-HTTP resources since we can't check for freshness.
-    if (!m_response.url().protocolIsInHTTPFamily())
-        return 0;
+        return std::numeric_limits<double>::max();
+    }
 
     // RFC2616 13.2.4
     double maxAgeValue = m_response.cacheControlMaxAge();
@@ -447,21 +460,10 @@ void CachedResource::responseReceived(const ResourceResponse& response)
         setEncoding(encoding);
 }
 
-void CachedResource::stopLoading()
+void CachedResource::clearLoader()
 {
-    ASSERT(m_loader);            
+    ASSERT(m_loader);
     m_loader = 0;
-
-    CachedResourceHandle<CachedResource> protect(this);
-
-    // All loads finish with data(allDataReceived = true) or error(), except for
-    // canceled loads, which silently set our request to 0. Be sure to notify our
-    // client in that case, so we don't seem to continue loading forever.
-    if (isLoading()) {
-        setLoading(false);
-        setStatus(LoadError);
-        checkNotify();
-    }
 }
 
 void CachedResource::addClient(CachedResourceClient* client)

@@ -167,17 +167,11 @@ webkit.org/b/98935 fast/forms/color [ Skip ]
 
 # ENABLE_INPUT_TYPE_* are not enabled.
 webkit.org/b/98936 fast/forms/date [ Skip ]
-webkit.org/b/98936 fast/forms/date-multiple-fields [ Skip ]
 webkit.org/b/98936 fast/forms/datetime [ Skip ]
-webkit.org/b/98936 fast/forms/datetime-multiple-fields [ Skip ]
 webkit.org/b/98936 fast/forms/datetimelocal [ Skip ]
-webkit.org/b/98936 fast/forms/datetimelocal-multiple-fields [ Skip ]
 webkit.org/b/98936 fast/forms/month [ Skip ]
-webkit.org/b/98936 fast/forms/month-multiple-fields [ Skip ]
 webkit.org/b/98936 fast/forms/time [ Skip ]
-webkit.org/b/98936 fast/forms/time-multiple-fields [ Skip ]
 webkit.org/b/98936 fast/forms/week [ Skip ]
-webkit.org/b/98936 fast/forms/week-multiple-fields [ Skip ]
 
 # ENABLE_GAMEPAD not enabled.
 webkit.org/b/98937 gamepad [ Skip ]
@@ -550,7 +544,6 @@ webkit.org/b/89650 svg/W3C-SVG-1.1/struct-dom-06-b.svg [ Failure Pass ]
 
 webkit.org/b/80158 plugins/netscape-plugin-page-cache-works.html [ Failure Pass ]
 
-webkit.org/b/83704 media/event-attributes.html [ Failure Pass ]
 webkit.org/b/89811 media/media-blocked-by-beforeload.html [ Failure Pass ]
 webkit.org/b/84856 media/media-controller-playback.html [ Failure Pass ]
 
@@ -640,7 +633,16 @@ webkit.org/b/114735 fast/dynamic/window-resize-scrollbars-test.html [ Failure Pa
 webkit.org/b/114735 svg/filters/filter-hidden-content.svg [ Failure Pass ]
 webkit.org/b/114735 fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Failure Pass ]
 
-webkit.org/b/115630  fast/images/support-broken-image-delegate.html [ Failure Pass ]
+webkit.org/b/115630 fast/images/support-broken-image-delegate.html [ Failure Pass ]
+
+webkit.org/b/116960 perf/adding-radio-buttons.html [ Failure Pass ]
+webkit.org/b/116961 perf/show-hide-table-rows.html [ Failure Pass ]
+
+webkit.org/b/116975 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Failure Pass ]
+
+webkit.org/b/116976 media/video-played-collapse.html [ Failure Pass ]
+
+webkit.org/b/116977 media/event-attributes.html [ Failure Timeout Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -756,6 +758,16 @@ webkit.org/b/107194 storage/indexeddb/transaction-complete-workers.html [ Timeou
 webkit.org/b/108925 http/tests/media/video-play-stall.html [ Timeout Failure ]
 
 webkit.org/b/114789 fast/events/page-visibility-transition-test.html [ Timeout ]
+
+webkit.org/b/116956 fast/events/event-view-toString.html [ Timeout ]
+
+webkit.org/b/116957 media/track/track-automatic-subtitles.html [ Timeout ]
+
+webkit.org/b/116958 http/tests/navigation/redirect-to-random-url-versus-memory-cache.html [ Timeout ]
+webkit.org/b/116958 http/tests/navigation/slowmetaredirect-basic.html [ Timeout ]
+webkit.org/b/116958 http/tests/navigation/slowtimerredirect-basic.html [ Timeout ]
+webkit.org/b/116958 http/tests/navigation/scrollstate-after-http-equiv-refresh.html [ Timeout ]
+webkit.org/b/116958 http/tests/navigation/scrollstate-after-location-reload.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -1026,7 +1038,7 @@ webkit.org/b/44316 platform/gtk/accessibility/title-and-alt.html [ Failure ]
 # not get user gesture in frameload callbacks.
 # The related bugs are https://bugs.webkit.org/show_bug.cgi?id=47849/47817.
 Bug(GTK) fast/frames/location-redirect-user-gesture.html [ Failure ]
-Bug(GTK) fast/frames/meta-refresh-user-gesture.html [ Failure ]
+Bug(GTK) fast/frames/meta-refresh-user-gesture.html [ Failure Timeout ]
 
 # Rounding color problems inside pixman
 webkit.org/b/49964 fast/canvas/canvas-fillPath-shadow.html [ Failure ]

@@ -1,3 +1,299 @@
+2013-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r151022.
+        http://trac.webkit.org/changeset/151022
+        https://bugs.webkit.org/show_bug.cgi?id=117084
+
+        Also breaks build by introducing duplicate symbols (Requested
+        by bfulgham on #webkit).
+
+        * TestWebKitAPI/Configurations/TestWebKitAPICommon.vsprops:
+
+2013-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix to NRWT
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.create_debugger_command_file): Use proper argument for _filesystem.write_text_file.
+
+2013-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r151012
+
+        * TestWebKitAPI/Configurations/TestWebKitAPICommon.vsprops: Add dependency on
+        WTF library to support SHA tests
+
+2013-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r151012
+
+        * TestWebKitAPI/Tests/WTF/MD5.cpp: Include <wtf/StringExtras.h> to provide
+        snprintf definition for Windows.
+
+2013-05-31  Zan Dobersek  <zdobersek@igalia.com>
+
+        Move MD5, SHA1 unit tests from WTF to TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=116445
+
+        Reviewed by Benjamin Poulain.
+
+        Add the MD5 and SHA1 unit tests that were previously located inside WTF.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/GNUmakefile.am:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPI.vcxproj.filters:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/MD5.cpp: Added.
+        (TestWebKitAPI):
+        (TestWebKitAPI::expectMD5):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/SHA1.cpp: Added.
+        (TestWebKitAPI):
+        (TestWebKitAPI::expectSHA1):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WTF.pro:
+        * TestWebKitAPI/win/TestWebKitAPI.vcproj:
+
+2013-05-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build correction.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.create_debugger_command_file): The directory needs to be
+        a string, not a temporary directory object.
+
+2013-05-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] NRWT doesn't save crash logs on Apple's Windows port.
+        https://bugs.webkit.org/show_bug.cgi?id=76935
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend the WinPort class with commands to set and clean up various registry
+        values needed to invoke the correct debugger to get crash files.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort): Added global caches for registry keys and settings
+        (WinPort._ntsd_location): Added
+        (WinPort.create_debugger_command_file): Added
+        (WinPort.read_registry_string): Added
+        (WinPort.write_registry_string): Added
+        (WinPort.setup_crash_log_saving): Added
+        (WinPort.restore_crash_log_saving): Added
+        (WinPort.setup_test_run): Added overload to add registry settings.
+        (WinPort.clean_up_test_run): Added overload to clean up registry settings.
+
+2013-05-30  Roger Fong  <roger_fong@apple.com>
+
+        Get rid of JavaScript exports file on AppleWin port.
+        https://bugs.webkit.org/show_bug.cgi?id=117050.
+
+        Reviewed by Darin Adler.
+
+        Start linking in WTF.lib now that it's a shared library.
+
+        * DumpRenderTree/DumpRenderTree.vcxproj/DumpRenderTree/DumpRenderTreeCommon.props:
+        * DumpRenderTree/DumpRenderTree.vcxproj/ImageDiff/ImageDiffCommon.props:
+        * TestWebKitAPI/TestWebKitAPI.vcxproj/TestWebKitAPICommon.props:
+
+2013-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Web Inspector: tests in PerformanceTests/inspector/ are timing out
+        https://bugs.webkit.org/show_bug.cgi?id=77024
+
+        Reviewed by Andreas Kling.
+
+        Remove inspector performance tests since they have been disabled for ages,
+        and they don't use the standard parser-style performance output.
+
+        It's adding a lot of code complexity to our infrastructure.
+
+        * Scripts/webkitpy/performance_tests/perftest.py:
+        (SingleProcessPerfTest.__init__):
+        (PerfTestFactory):
+        * Scripts/webkitpy/performance_tests/perftest_unittest.py:
+        (TestPerfTestFactory.test_regular_test):
+        * Scripts/webkitpy/performance_tests/perftestsrunner_integrationtest.py:
+        (TestDriver.run_test):
+        (MainTest.run_test):
+        (MainTest._tests_for_runner):
+        (MainTest.test_run_test_set_kills_drt_per_run):
+        (MainTest._test_run_with_json_output):
+        (MainTest):
+        (MainTest.test_run_with_upload_json_should_generate_perf_webkit_json):
+
+2013-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove requires_http_server as Chromium Android was the only port that needed this
+        https://bugs.webkit.org/show_bug.cgi?id=117018
+
+        Reviewed by Benjamin Poulain.
+
+        Removed the unused code that existed for Chromium Android port.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.run_tests):
+        (LayoutTestRunner._handle_finished_test_list):
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager._run_tests):
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner._collect_tests):
+        (PerfTestsRunner.run):
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.start_helper):
+        * Scripts/webkitpy/port/base_unittest.py:
+        (PortTest.test_build_path):
+
+2013-05-29  Ruth Fong  <ruth_fong@apple.com>
+
+        prepare-Changelog should not be generating namespace-only or class-name-only lines like "(WebCore):"
+        https://bugs.webkit.org/show_bug.cgi?id=113221
+
+        Reviewed by Ryosuke Niwa.
+
+        Teach prepare-Changelog to not list the names of modified namespaces, 
+        classes, or structs in C++ files. Thus, if a change is made 
+        within a namespace/class/struct yet outside a function, it will 
+        not be reflected in the ChangeLog entry. 
+        See https://bugs.webkit.org/show_bug.cgi?id=113221#c8 
+        for more details on how ChangeLog entries are affected.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp): 
+        (delete_namespaces_from_ranges_for_cpp): Added.
+        (is_function_in_namespace): Added.
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/cpp_unittests-expected.txt: Updated
+        to reflect revised definition of a function (i.e. excludes namespaces, classes, structs)
+
+2013-05-29  Praveen R Jadhav  <praveen.j@samsung.com>
+
+        Cleanup AudioSourceNode.idl from WebKit build.
+        https://bugs.webkit.org/show_bug.cgi?id=116905.
+
+        Reviewed by Darin Adler.
+
+        AudioSourceNode.idl is not part of WebAudio Specifications anymore.
+        AudioNode is inherited directly in all the audio source nodes.
+
+        * Scripts/webkitperl/filter-build-webkit_unittest/shouldIgnoreLine_unittests.pl:
+
+2013-05-29  Andrew Lo  <anlo@rim.com>
+
+        Add Andrew Lo to contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=116981
+
+        Reviewed by Rob Buis.
+
+        Adding Andrew Lo to contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-29  Adenilson Cavalcanti  <cavalcantii@gmail.com>
+
+        Unreviewed. Adding myself as a committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-29  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        [WK2][CoordinatedGraphics][EFL] WKViewUserViewportToContents() function doesn't do what it says
+        https://bugs.webkit.org/show_bug.cgi?id=116683
+
+        Reviewed by Noam Rosenthal.
+
+        A coordinates conversion test for WKViewUserViewportToContents was
+        added to WebKit2 API tests.
+
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/Tests/WebKit2/CoordinatedGraphics/WKViewUserViewportToContents.cpp: Added.
+        (TestWebKitAPI):
+        (TestWebKitAPI::TEST):
+
+2013-05-29  Yong Li  <yong.li.webkit@outlook.com>
+
+        Unreviewed. Update my info.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-29  Dongseong Hwang  <dongseong.hwang@intel.com>
+
+        Unreviewed. Add myself as committer in contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck.
+
+        * TestWebKitAPI/GNUmakefile.am: Add WebCoreLayer.a to
+        DISTCLEANFILES.
+
+2013-05-29  Mary Wu  <mawu@blackberry.com>
+
+        Unreviewed: update my email address in contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-29  Kalyan Kondapally  <kalyan.kondapally@intel.com>
+
+        Unreviewed: Adding myself to committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-28  Arpita Bahuguna  <a.bah@samsung.com>
+
+        Unreviewed: Adding myself to committers list.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2013-05-28  Brent Fulgham  <bfulgham@webkit.org>
+
+        [Windows] Many CSS2.1 tests fail under NRWT.
+        https://bugs.webkit.org/show_bug.cgi?id=75707
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (findFontFallback): Added
+        (addFontFallbackIfPresent): Added
+        (removeFontFallbackIfPresent): Added
+        (runTest): Set up/remove font fallbacks when needed.
+
+2013-05-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] NRWT reports failure for 'mac' test cases.
+        https://bugs.webkit.org/show_bug.cgi?id=116698
+
+        Reviewed by Ryosuke Niwa.
+
+        The Windows port falls back to the Mac port for many test results,
+        and so adds the mac and mac-wk2 to its set of fallbacks.
+        Unfortunately, NRWT thinks that this means that tests in these
+        folders should be executed, resulting in many failures on
+        Windows.
+
+        This change overloads the '_tests_for_other_platforms' method
+        to return a subset of the result fallback list so that we do
+        not attempt to execute Mac tests on Windows.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.test_search_path): Added. Defaults to just calling the
+        baseline_search_path method, which is how most ports behave.
+        (Port._test_for_other_platforms): Modified to call the new
+        test_search_path method.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.test_search_path): Added custom overload. Strips
+        out mac-specific test paths.
+
+2013-05-28  Martin Robinson  <mrobinson@igalia.com>
+
+        Fix GTK+ CMake build
+
+        * MiniBrowser/gtk/CMakeLists.txt: After r150336, the name of the WebKit2
+        library target is simply "WebKit2."
+
 2013-05-28  Zan Dobersek  <zdobersek@igalia.com>
 
         [webkitpy] Explicitly specify the reference file extensions

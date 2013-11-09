@@ -69,6 +69,7 @@
 #include "MIMETypeRegistry.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
+#include "PageActivityAssertionToken.h"
 #include "PageGroup.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
@@ -344,6 +345,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document* docum
 HTMLMediaElement::~HTMLMediaElement()
 {
     LOG(Media, "HTMLMediaElement::~HTMLMediaElement");
+
     if (m_isWaitingUntilMediaCanStart)
         document()->removeMediaCanStartListener(this);
     setShouldDelayLoadEvent(false);
@@ -742,7 +744,7 @@ String HTMLMediaElement::canPlayType(const String& mimeType, const String& keySy
             break;
     }
     
-    LOG(Media, "HTMLMediaElement::canPlayType(%s, %s, %s) -> %s", mimeType.utf8().data(), keySystem.utf8().data(), url.elidedString().utf8().data(), canPlay.utf8().data());
+    LOG(Media, "HTMLMediaElement::canPlayType(%s, %s, %s) -> %s", mimeType.utf8().data(), keySystem.utf8().data(), url.stringCenterEllipsizedToLength().utf8().data(), canPlay.utf8().data());
 
     return canPlay;
 }
@@ -1524,7 +1526,7 @@ bool HTMLMediaElement::isSafeToLoadURL(const KURL& url, InvalidURLAction actionI
     Frame* frame = document()->frame();
     if (!frame || !document()->securityOrigin()->canDisplay(url)) {
         if (actionIfInvalid == Complain)
-            FrameLoader::reportLocalLoadFailed(frame, url.elidedString());
+            FrameLoader::reportLocalLoadFailed(frame, url.stringCenterEllipsizedToLength());
         LOG(Media, "HTMLMediaElement::isSafeToLoadURL(%s) -> FALSE rejected by SecurityOrigin", urlForLoggingMedia(url).utf8().data());
         return false;
     }
@@ -2502,7 +2504,6 @@ void HTMLMediaElement::playInternal()
             scheduleEvent(eventNames().playingEvent);
     }
     m_autoplaying = false;
-
     updatePlayState();
     updateMediaController();
 }
@@ -2802,7 +2803,7 @@ void HTMLMediaElement::playbackProgressTimerFired(Timer<HTMLMediaElement>*)
 
     if (!m_paused && hasMediaControls())
         mediaControls()->playbackProgressed();
-    
+
 #if ENABLE(VIDEO_TRACK)
     if (RuntimeEnabledFeatures::webkitVideoTrackEnabled())
         updateActiveTextTrackCues(currentTime());
@@ -3979,6 +3980,7 @@ void HTMLMediaElement::updatePlayState()
         m_playbackProgressTimer.stop();
         if (hasMediaControls())
             mediaControls()->playbackStopped();
+        m_activityToken = nullptr;
         return;
     }
     
@@ -4006,6 +4008,9 @@ void HTMLMediaElement::updatePlayState()
 
         if (hasMediaControls())
             mediaControls()->playbackStarted();
+        if (document()->page())
+            m_activityToken = document()->page()->createActivityToken();
+
         startPlaybackProgressTimer();
         m_playing = true;
 
@@ -4025,6 +4030,7 @@ void HTMLMediaElement::updatePlayState()
 
         if (hasMediaControls())
             mediaControls()->playbackStopped();
+        m_activityToken = nullptr;
     }
 
     updateMediaController();

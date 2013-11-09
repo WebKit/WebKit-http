@@ -3933,10 +3933,12 @@
     <ClCompile Include="..\page\NavigatorBase.cpp" />
     <ClCompile Include="..\page\OriginAccessEntry.cpp" />
     <ClCompile Include="..\page\Page.cpp" />
+    <ClCompile Include="..\page\PageActivityAssertionToken.cpp" />
     <ClCompile Include="..\page\PageConsole.cpp" />
     <ClCompile Include="..\page\PageGroup.cpp" />
     <ClCompile Include="..\page\PageGroupLoadDeferrer.cpp" />
     <ClCompile Include="..\page\PageSerializer.cpp" />
+    <ClCompile Include="..\page\PageThrottler.cpp" />
     <ClCompile Include="..\page\PageVisibilityState.cpp" />
     <ClCompile Include="..\page\Performance.cpp" />
     <ClCompile Include="..\page\PerformanceEntry.cpp" />
@@ -4086,7 +4088,6 @@
     <ClCompile Include="..\platform\DragData.cpp" />
     <ClCompile Include="..\platform\DragImage.cpp" />
     <ClCompile Include="..\platform\FileChooser.cpp" />
-    <ClCompile Include="..\platform\FileIconLoader.cpp" />
     <ClCompile Include="..\platform\FileStream.cpp" />
     <ClCompile Include="..\platform\FileSystem.cpp" />
     <ClCompile Include="..\platform\graphics\ca\win\PlatformCAFiltersWin.cpp" />
@@ -4222,6 +4223,7 @@
     <ClCompile Include="..\platform\win\WheelEventWin.cpp" />
     <ClCompile Include="..\platform\win\WidgetWin.cpp" />
     <ClCompile Include="..\platform\win\WindowMessageBroadcaster.cpp" />
+    <ClCompile Include="..\platform\cf\CFURLExtras.cpp" />
     <ClCompile Include="..\platform\cf\FileSystemCF.cpp" />
     <ClCompile Include="..\platform\cf\KURLCFNet.cpp" />
     <ClCompile Include="..\platform\cf\SharedBufferCF.cpp" />
@@ -4238,7 +4240,8 @@
     <ClCompile Include="..\platform\graphics\FontCache.cpp" />
     <ClCompile Include="..\platform\graphics\FontData.cpp" />
     <ClCompile Include="..\platform\graphics\FontDescription.cpp" />
-    <ClCompile Include="..\platform\graphics\FontFallbackList.cpp" />
+    <ClCompile Include="..\platform\graphics\FontGenericFamilies.cpp" />
+    <ClCompile Include="..\platform\graphics\FontGlyphs.cpp" />
     <ClCompile Include="..\platform\graphics\FontFastPath.cpp" />
     <ClCompile Include="..\platform\graphics\FontFeatureSettings.cpp" />
     <ClCompile Include="..\platform\graphics\FontPlatformData.cpp" />
@@ -8306,7 +8309,6 @@
     <ClCompile Include="..\html\BaseCheckableInputType.cpp" />
     <ClCompile Include="..\html\BaseClickableWithKeyInputType.cpp" />
     <ClCompile Include="..\html\BaseDateAndTimeInputType.cpp" />
-    <ClCompile Include="..\html\BaseMultipleFieldsDateAndTimeInputType.cpp" />
     <ClCompile Include="..\html\BaseTextInputType.cpp" />
     <ClCompile Include="..\fileapi\Blob.cpp" />
     <ClCompile Include="..\fileapi\BlobURL.cpp" />
@@ -8998,6 +9000,7 @@
     <ClCompile Include="..\html\ValidationMessage.cpp" />
     <ClCompile Include="..\html\ValidityState.cpp" />
     <ClCompile Include="..\html\WeekInputType.cpp" />
+    <ClCompile Include="..\html\forms\FileIconLoader.cpp" />
     <ClCompile Include="..\html\parser\BackgroundHTMLInputStream.cpp" />
     <ClCompile Include="..\html\parser\BackgroundHTMLParser.cpp" />
     <ClCompile Include="..\html\parser\CompactHTMLToken.cpp" />
@@ -9024,13 +9027,7 @@
     <ClCompile Include="..\html\parser\TextViewSourceParser.cpp" />
     <ClCompile Include="..\html\parser\XSSAuditor.cpp" />
     <ClCompile Include="..\html\parser\XSSAuditorDelegate.cpp" />
-    <ClCompile Include="..\html\shadow\ClearButtonElement.cpp" />
     <ClCompile Include="..\html\shadow\ContentDistributor.cpp" />
-    <ClCompile Include="..\html\shadow\DateTimeEditElement.cpp" />
-    <ClCompile Include="..\html\shadow\DateTimeFieldElement.cpp" />
-    <ClCompile Include="..\html\shadow\DateTimeFieldElements.cpp" />
-    <ClCompile Include="..\html\shadow\DateTimeNumericFieldElement.cpp" />
-    <ClCompile Include="..\html\shadow\DateTimeSymbolicFieldElement.cpp" />
     <ClCompile Include="..\html\shadow\DetailsMarkerControl.cpp" />
     <ClCompile Include="..\html\shadow\HTMLContentElement.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -11507,7 +11504,6 @@
     <ClInclude Include="..\platform\DragImage.h" />
     <ClInclude Include="..\platform\EventLoop.h" />
     <ClInclude Include="..\platform\FileChooser.h" />
-    <ClInclude Include="..\platform\FileIconLoader.h" />
     <ClInclude Include="..\platform\FileMetadata.h" />
     <ClInclude Include="..\platform\FileStream.h" />
     <ClInclude Include="..\platform\FileStreamClient.h" />
@@ -11609,6 +11605,7 @@
     <ClInclude Include="..\platform\win\WindowMessageBroadcaster.h" />
     <ClInclude Include="..\platform\win\WindowMessageListener.h" />
     <ClInclude Include="..\platform\win\WindowsTouch.h" />
+    <ClInclude Include="..\platform\cf\CFURLExtras.h" />
     <ClInclude Include="..\platform\cf\win\CertificateCFWin.h" />
     <ClInclude Include="..\platform\graphics\BitmapImage.h" />
     <ClInclude Include="..\platform\graphics\Color.h" />
@@ -11622,7 +11619,8 @@
     <ClInclude Include="..\platform\graphics\FontCache.h" />
     <ClInclude Include="..\platform\graphics\FontData.h" />
     <ClInclude Include="..\platform\graphics\FontDescription.h" />
-    <ClInclude Include="..\platform\graphics\FontFallbackList.h" />
+    <ClInclude Include="..\platform\graphics\FontGenericFamilies.h" />
+    <ClInclude Include="..\platform\graphics\FontGlyphs.h" />
     <ClInclude Include="..\platform\graphics\FontFeatureSettings.h" />
     <ClInclude Include="..\platform\graphics\FontMetrics.h" />
     <ClInclude Include="..\platform\graphics\FontPlatformData.h" />
@@ -12621,7 +12619,6 @@
     <ClInclude Include="..\html\BaseCheckableInputType.h" />
     <ClInclude Include="..\html\BaseClickableWithKeyInputType.h" />
     <ClInclude Include="..\html\BaseDateAndTimeInputType.h" />
-    <ClInclude Include="..\html\BaseMultipleFieldsDateAndTimeInputType.h" />
     <ClInclude Include="..\html\BaseTextInputType.h" />
     <ClInclude Include="..\fileapi\Blob.h" />
     <ClInclude Include="..\fileapi\BlobURL.h" />
@@ -12785,6 +12782,7 @@
     <ClInclude Include="..\html\ValidityState.h" />
     <ClInclude Include="..\html\VoidCallback.h" />
     <ClInclude Include="..\html\WeekInputType.h" />
+    <ClInclude Include="..\html\forms\FileIconLoader.h" />
     <ClInclude Include="..\html\parser\AtomicHTMLToken.h" />
     <ClInclude Include="..\html\parser\BackgroundHTMLParser.h" />
     <ClInclude Include="..\html\parser\CompactHTMLToken.h" />
@@ -12817,13 +12815,7 @@
     <ClInclude Include="..\html\parser\TextViewSourceParser.h" />
     <ClInclude Include="..\html\parser\XSSAuditor.h" />
     <ClInclude Include="..\html\parser\XSSAuditorDelegate.h" />
-    <ClInclude Include="..\html\shadow\ClearButtonElement.h" />
     <ClInclude Include="..\html\shadow\ContentDistributor.h" />
-    <ClInclude Include="..\html\shadow\DateTimeEditElement.h" />
-    <ClInclude Include="..\html\shadow\DateTimeFieldElement.h" />
-    <ClInclude Include="..\html\shadow\DateTimeFieldElements.h" />
-    <ClInclude Include="..\html\shadow\DateTimeNumericFieldElement.h" />
-    <ClInclude Include="..\html\shadow\DateTimeSymbolicFieldElement.h" />
     <ClInclude Include="..\html\shadow\DetailsMarkerControl.h" />
     <ClInclude Include="..\html\shadow\HTMLContentElement.h" />
     <ClInclude Include="..\html\shadow\InsertionPoint.h" />

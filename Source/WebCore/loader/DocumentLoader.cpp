@@ -572,7 +572,7 @@ void DocumentLoader::responseReceived(CachedResource* resource, const ResourceRe
         ASSERT(identifier);
         if (frameLoader()->shouldInterruptLoadForXFrameOptions(content, response.url(), identifier)) {
             InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, this, identifier, response);
-            String message = "Refused to display '" + response.url().elidedString() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
+            String message = "Refused to display '" + response.url().stringCenterEllipsizedToLength() + "' in a frame because it set 'X-Frame-Options' to '" + content + "'.";
             frame()->document()->addConsoleMessage(SecurityMessageSource, ErrorMessageLevel, message, identifier);
             frame()->document()->enforceSandboxFlags(SandboxOrigin);
             if (HTMLFrameOwnerElement* ownerElement = frame()->ownerElement())
@@ -1287,9 +1287,10 @@ void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
 
 void DocumentLoader::removeSubresourceLoader(ResourceLoader* loader)
 {
-    if (!m_subresourceLoaders.contains(loader))
+    ResourceLoaderSet::iterator it = m_subresourceLoaders.find(loader);
+    if (it == m_subresourceLoaders.end())
         return;
-    m_subresourceLoaders.remove(loader);
+    m_subresourceLoaders.remove(it);
     checkLoadComplete();
     if (Frame* frame = m_frame)
         frame->loader()->checkLoadComplete();

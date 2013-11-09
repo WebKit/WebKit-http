@@ -585,7 +585,6 @@ SOURCES += \
     html/BaseChooserOnlyDateAndTimeInputType.cpp \
     html/BaseClickableWithKeyInputType.cpp \
     html/BaseDateAndTimeInputType.cpp \
-    html/BaseMultipleFieldsDateAndTimeInputType.cpp \
     html/BaseTextInputType.cpp \
     html/ButtonInputType.cpp \
     html/CheckboxInputType.cpp \
@@ -729,6 +728,7 @@ SOURCES += \
     html/canvas/CanvasRenderingContext2D.cpp \
     html/canvas/CanvasStyle.cpp \
     html/canvas/DataView.cpp \
+    html/forms/FileIconLoader.cpp \
     html/parser/BackgroundHTMLInputStream.cpp \
     html/parser/BackgroundHTMLParser.cpp \
     html/parser/CSSPreloadScanner.cpp \
@@ -757,13 +757,7 @@ SOURCES += \
     html/parser/TextViewSourceParser.cpp \
     html/parser/XSSAuditor.cpp \
     html/parser/XSSAuditorDelegate.cpp \
-    html/shadow/ClearButtonElement.cpp \
     html/shadow/ContentDistributor.cpp \
-    html/shadow/DateTimeEditElement.cpp \
-    html/shadow/DateTimeFieldElement.cpp \
-    html/shadow/DateTimeFieldElements.cpp \
-    html/shadow/DateTimeNumericFieldElement.cpp \
-    html/shadow/DateTimeSymbolicFieldElement.cpp \
     html/shadow/DetailsMarkerControl.cpp \
     html/shadow/HTMLContentElement.cpp \
     html/shadow/InsertionPoint.cpp \
@@ -937,9 +931,11 @@ SOURCES += \
     page/NavigatorBase.cpp \
     page/OriginAccessEntry.cpp \
     page/Page.cpp \
+    page/PageActivityAssertionToken.cpp \
     page/PageConsole.cpp \
     page/PageGroup.cpp \
     page/PageGroupLoadDeferrer.cpp \
+    page/PageThrottler.cpp \
     page/PageVisibilityState.cpp \
     page/Performance.cpp \
     page/PerformanceEntry.cpp \
@@ -987,12 +983,12 @@ SOURCES += \
     platform/DragData.cpp \
     platform/DragImage.cpp \
     platform/FileChooser.cpp \
-    platform/FileIconLoader.cpp \
     platform/FileStream.cpp \
     platform/FileSystem.cpp \
     platform/HistogramSupport.cpp \
     platform/graphics/FontDescription.cpp \
-    platform/graphics/FontFallbackList.cpp \
+    platform/graphics/FontGenericFamilies.cpp \
+    platform/graphics/FontGlyphs.cpp \
     platform/graphics/FontFeatureSettings.cpp \
     platform/graphics/BitmapImage.cpp \
     platform/graphics/Color.cpp \
@@ -2105,7 +2101,9 @@ HEADERS += \
     page/PageGroup.h \
     page/PageGroupLoadDeferrer.h \
     page/Page.h \
+    page/PageActivityAssertionToken.h \
     page/PageConsole.h \
+    page/PageThrottler.h \
     page/PageVisibilityState.h \
     page/PlugInClient.h \
     page/PopupOpeningObserver.h \
@@ -3318,7 +3316,8 @@ enable?(VIDEO) {
     use?(QTKIT) {
         INCLUDEPATH += \
             $$SOURCE_DIR/../WebKitLibraries/ \
-            $$PWD/platform/mac
+            $$PWD/platform/mac \
+            $$PWD/platform/cf
 
 
         HEADERS += \
@@ -3329,13 +3328,15 @@ enable?(VIDEO) {
             platform/mac/WebCoreObjCExtras.h \
             platform/mac/WebVideoFullscreenController.h \
             platform/mac/WebVideoFullscreenHUDWindowController.h \
-            platform/mac/WebWindowAnimation.h
+            platform/mac/WebWindowAnimation.h \
+            platform/cf/CFURLExtras.h
 
         SOURCES += \
             platform/mac/DisplaySleepDisabler.cpp \
             platform/graphics/cg/IntRectCG.cpp \
             platform/graphics/cg/FloatSizeCG.cpp \
-            platform/cf/KURLCFNet.cpp
+            platform/cf/KURLCFNet.cpp \
+            platform/cf/CFURLExtras.cpp
 
          OBJECTIVE_SOURCES += \
             platform/qt/WebCoreSystemInterface.mm \
@@ -3407,7 +3408,6 @@ enable?(WEB_AUDIO) {
         Modules/webaudio/AudioParamTimeline.h \
         Modules/webaudio/AudioProcessingEvent.h \
         Modules/webaudio/AudioScheduledSourceNode.h \
-        Modules/webaudio/AudioSourceNode.h \
         Modules/webaudio/AudioSummingJunction.h \
         Modules/webaudio/BiquadDSPKernel.h \
         Modules/webaudio/BiquadFilterNode.h \

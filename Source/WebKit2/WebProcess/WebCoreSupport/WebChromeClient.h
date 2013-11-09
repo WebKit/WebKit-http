@@ -194,6 +194,8 @@ private:
             CanvasTrigger |
             AnimationTrigger);
     }
+
+    virtual bool layerTreeStateIsFrozen() const OVERRIDE;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -232,6 +234,9 @@ private:
 
     virtual void didAddHeaderLayer(WebCore::GraphicsLayer*) OVERRIDE;
     virtual void didAddFooterLayer(WebCore::GraphicsLayer*) OVERRIDE;
+
+    virtual void incrementActivePageCount() OVERRIDE;
+    virtual void decrementActivePageCount() OVERRIDE;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

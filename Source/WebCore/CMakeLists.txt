@@ -25,6 +25,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"
     "${WEBCORE_DIR}/html/canvas"
+    "${WEBCORE_DIR}/html/forms"
     "${WEBCORE_DIR}/html/parser"
     "${WEBCORE_DIR}/html/shadow"
     "${WEBCORE_DIR}/html/track"
@@ -260,7 +261,6 @@ set(WebCore_IDL_FILES
     Modules/webaudio/PannerNode.idl
     Modules/webaudio/AudioParam.idl
     Modules/webaudio/AudioProcessingEvent.idl
-    Modules/webaudio/AudioSourceNode.idl
     Modules/webaudio/BiquadFilterNode.idl
     Modules/webaudio/ConvolverNode.idl
     Modules/webaudio/DelayNode.idl
@@ -1344,7 +1344,6 @@ set(WebCore_SOURCES
     html/BaseChooserOnlyDateAndTimeInputType.cpp
     html/BaseClickableWithKeyInputType.cpp
     html/BaseDateAndTimeInputType.cpp
-    html/BaseMultipleFieldsDateAndTimeInputType.cpp
     html/BaseTextInputType.cpp
     html/ButtonInputType.cpp
     html/CheckboxInputType.cpp
@@ -1531,6 +1530,8 @@ set(WebCore_SOURCES
     html/canvas/WebGLUniformLocation.cpp
     html/canvas/WebGLVertexArrayObjectOES.cpp
 
+    html/forms/FileIconLoader.cpp
+
     html/parser/BackgroundHTMLInputStream.cpp
     html/parser/BackgroundHTMLParser.cpp
     html/parser/CSSPreloadScanner.cpp
@@ -1560,13 +1561,7 @@ set(WebCore_SOURCES
     html/parser/XSSAuditor.cpp
     html/parser/XSSAuditorDelegate.cpp
 
-    html/shadow/ClearButtonElement.cpp
     html/shadow/ContentDistributor.cpp
-    html/shadow/DateTimeEditElement.cpp
-    html/shadow/DateTimeFieldElement.cpp
-    html/shadow/DateTimeFieldElements.cpp
-    html/shadow/DateTimeNumericFieldElement.cpp
-    html/shadow/DateTimeSymbolicFieldElement.cpp
     html/shadow/DetailsMarkerControl.cpp
     html/shadow/HTMLContentElement.cpp
     html/shadow/InsertionPoint.cpp
@@ -1761,10 +1756,12 @@ set(WebCore_SOURCES
     page/NavigatorBase.cpp
     page/OriginAccessEntry.cpp
     page/Page.cpp
+    page/PageActivityAssertionToken.cpp
     page/PageConsole.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
     page/PageSerializer.cpp
+    page/PageThrottler.cpp
     page/PageVisibilityState.cpp
     page/Performance.cpp
     page/PerformanceEntry.cpp
@@ -1816,7 +1813,6 @@ set(WebCore_SOURCES
     platform/DragData.cpp
     platform/DragImage.cpp
     platform/FileChooser.cpp
-    platform/FileIconLoader.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
     platform/ClockGeneric.cpp
@@ -1900,7 +1896,8 @@ set(WebCore_SOURCES
     platform/graphics/FontCache.cpp
     platform/graphics/FontData.cpp
     platform/graphics/FontDescription.cpp
-    platform/graphics/FontFallbackList.cpp
+    platform/graphics/FontGenericFamilies.cpp
+    platform/graphics/FontGlyphs.cpp
     platform/graphics/FontFastPath.cpp
     platform/graphics/FontFeatureSettings.cpp
     platform/graphics/LayoutBoxExtent.cpp
@@ -2548,8 +2545,8 @@ set(WebCore_SOURCES
 if (CMAKE_COMPILER_IS_GNUCXX) # Can restrict based on the version.
     string(TOUPPER "CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}" _CXXFLAGS_VARNAME)
 
-    string(FIND ${_CXXFLAGS_VARNAME} "-O3" _CXXFLAGS_HAS_O3)
-    if (_CXXFLAGS_HAS_O3)
+    string(FIND ${_CXXFLAGS_VARNAME} "-O3" _CXXFLAGS_O3_INDEX)
+    if (_CXXFLAGS_O3_INDEX GREATER -1)
         string(REPLACE "-O3" "-O2" _CXXFLAGS ${${_CXXFLAGS_VARNAME}})
         set_source_files_properties(Modules/websockets/WebSocketDeflater.cpp
                                     PROPERTIES COMPILE_FLAGS "${_CXXFLAGS}")

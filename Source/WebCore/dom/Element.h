@@ -559,9 +559,6 @@ public:
 #if ENABLE(INPUT_SPEECH)
     virtual bool isInputFieldSpeechButtonElement() const { return false; }
 #endif
-#if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    virtual bool isDateTimeFieldElement() const;
-#endif
 
     virtual bool isFormControlElement() const { return false; }
     virtual bool isSpinButtonElement() const { return false; }
@@ -636,6 +633,10 @@ public:
     void setSavedLayerScrollOffset(const IntSize&);
 
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
+    void dispatchFocusInEvent(const AtomicString& eventType, PassRefPtr<Element> oldFocusedElement);
+    void dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Element> newFocusedElement);
+    virtual void dispatchFocusEvent(PassRefPtr<Element> oldFocusedElement, FocusDirection);
+    virtual void dispatchBlurEvent(PassRefPtr<Element> newFocusedElement);
 
 protected:
     Element(const QualifiedName& tagName, Document* document, ConstructionType type)

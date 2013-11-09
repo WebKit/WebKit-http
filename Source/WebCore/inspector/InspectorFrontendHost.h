@@ -42,9 +42,7 @@ class ContextMenuItem;
 class DOMFileSystem;
 class Event;
 class FrontendMenuProvider;
-class InspectorClient;
 class InspectorFrontendClient;
-class Node;
 class Page;
 
 class InspectorFrontendHost : public RefCounted<InspectorFrontendHost> {
@@ -98,13 +96,12 @@ public:
 
     bool canInspectWorkers();
     bool canSaveAs();
-    String hiddenPanels();
 
 private:
 #if ENABLE(CONTEXT_MENUS)
     friend class FrontendMenuProvider;
 #endif
-    InspectorFrontendHost(InspectorFrontendClient* client, Page* frontendPage);
+    InspectorFrontendHost(InspectorFrontendClient*, Page* frontendPage);
 
     InspectorFrontendClient* m_client;
     Page* m_frontendPage;

@@ -677,14 +677,6 @@ webkit.org/b/90725 media/media-blocked-by-beforeload.html [ Pass Failure ]
 # This test depends on subpixel layout.
 webkit.org/b/92352 css3/flexbox/flex-rounding.html
 
-# ENABLE(INPUT_MULTIPLE_FIELDS_UI) is disabled
-fast/forms/date-multiple-fields
-fast/forms/datetime-multiple-fields
-fast/forms/datetimelocal-multiple-fields
-fast/forms/month-multiple-fields
-fast/forms/time-multiple-fields
-fast/forms/week-multiple-fields
-
 # <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
 fast/events/show-modal-dialog-onblur-onfocus.html
 platform/mac/fast/forms/listbox-scrollbar-hit-test.html
@@ -1120,9 +1112,6 @@ webkit.org/b/27684 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 webkit.org/b/94458 fast/events/message-port-constructor-for-deleted-document.html
 
 webkit.org/b/95501 http/tests/security/inactive-document-with-empty-security-origin.html [ Skip ]
-
-# Paints black behind the test image instead of the expected green.
-webkit.org/b/95707 http/tests/images/png-partial-load-no-alpha.html [ ImageOnlyFailure ]
 
 # Rendering/Layout issue of CJK vertical text with some font.
 webkit.org/b/98560 fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ ImageOnlyFailure ]

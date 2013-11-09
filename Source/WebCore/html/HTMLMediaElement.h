@@ -59,10 +59,11 @@ class MediaElementAudioSourceNode;
 class Event;
 class HTMLSourceElement;
 class HTMLTrackElement;
+class KURL;
 class MediaController;
 class MediaControls;
 class MediaError;
-class KURL;
+class PageActivityAssertionToken;
 class TimeRanges;
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 class Widget;
@@ -772,6 +773,8 @@ private:
 #if USE(AUDIO_SESSION)
     OwnPtr<AudioSessionManagerToken> m_audioSessionManagerToken;
 #endif
+
+    OwnPtr<PageActivityAssertionToken> m_activityToken;
 };
 
 #if ENABLE(VIDEO_TRACK)

@@ -1,3 +1,347 @@
+2013-05-31  Dean Jackson  <dino@apple.com>
+
+        Don't create an accelerated compositing layer unless we have to for snapshotting plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=117076
+        <rdar://problem/14030364>
+
+        Reviewed by Beth Dakin and Anders Carlsson.
+
+        If a plug-in can support software snapshotting, then don't create an
+        accelerated compositing layer for it while in snapshot mode. This is a
+        better user experience -- otherwise the page/plug-in looks like it broke.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::isAcceleratedCompositingEnabled): If we are in snapshotting mode
+        and we are a Flash plugin (the only one that supports software snapshots at the moment)
+        then do not create an accelerated compositing layer.
+
+2013-05-30  Tim Horton  <timothy_horton@apple.com>
+
+        It's easy to hit ASSERT_NOT_REACHED in WKDOMNodeClass
+        https://bugs.webkit.org/show_bug.cgi?id=117051
+
+        Reviewed by Anders Carlsson.
+
+        Re-add the ASSERT_NOT_REACHED, and return [WKDOMNode class] in the case
+        where we don't have a specific subclass.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        (WebKit::WKDOMNodeClass):
+
+2013-05-30  Tim Horton  <timothy_horton@apple.com>
+
+        Remove ASSERT_NOT_REACHED from WKDOMNodeClass
+        https://bugs.webkit.org/show_bug.cgi?id=117051
+
+        Reviewed by Anders Carlsson.
+
+        It's easy to fail this assertion in seemingly-legitimate cases.
+
+        * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
+        (WebKit::WKDOMNodeClass):
+
+2013-05-29  Jeffrey Pfau  <jpfau@apple.com>
+
+        [Mac] Enable cache partitioning and the public suffix list on 10.8
+        <rdar://problem/13679019>
+
+        Rubber-stamped by David Kilzer.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-05-30  Andreas Kling  <akling@apple.com>
+
+        Fix double hash lookup in WebPage::determinePrimarySnapshottedPlugIn() loop.
+        <http://webkit.org/b/117032>
+
+        Reviewed by Anders Carlsson.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::determinePrimarySnapshottedPlugIn):
+
+2013-05-29  Tim Horton  <timothy_horton@apple.com>
+
+        Expose incrementalRenderingSuppressionTimeout via WK2
+        https://bugs.webkit.org/show_bug.cgi?id=117015
+        <rdar://problem/13992853>
+
+        Reviewed by Darin Adler.
+
+        * Shared/WebPreferencesStore.h:
+        * UIProcess/API/C/WKPreferencesPrivate.h:
+        Add IncrementalRenderingSuppressionTimeout preference.
+
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetIncrementalRenderingSuppressionTimeout): Added.
+        (WKPreferencesGetIncrementalRenderingSuppressionTimeout): Added.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        (WebKit::WebFrameLoaderClient::forcePageTransitionIfNeeded): Added.
+        Call didCompletePageTransition, which un-freezes the layer tree.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didCompletePageTransition):
+        Fix some indentation.
+
+        (WebKit::WebPage::updatePreferences):
+        Forward the timeout value through to WebCore.
+
+2013-05-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix paint-related milestones to not fire when the layer tree is frozen
+        https://bugs.webkit.org/show_bug.cgi?id=117012
+
+        Reviewed by Tim Horton.
+        
+        Implement ChromeClient::layerTreeStateIsFrozen() to return
+        the frozen state of the drawing area.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::layerTreeStateIsFrozen):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2013-05-29  Anders Carlsson  <andersca@apple.com>
+
+        WebKit should expose HSTS APIs to determine whether a host is in the HSTS cache and to reset HSTS policies
+        https://bugs.webkit.org/show_bug.cgi?id=117010
+        <rdar://problem/13689666>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/C/mac/WKContextPrivateMac.h:
+        * UIProcess/API/C/mac/WKContextPrivateMac.mm:
+        * UIProcess/API/C/mac/WKPagePrivateMac.cpp:
+        * UIProcess/API/C/mac/WKPagePrivateMac.h:
+        * UIProcess/WebContext.h:
+        (WebContext):
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit):
+        (WebKit::privateBrowsingSession):
+        (WebKit::WebContext::isURLKnownHSTSHost):
+        (WebKit::WebContext::resetHSTSHosts):
+
+2013-05-29  Tim Horton  <timothy_horton@apple.com>
+
+        WKViews using shouldClipToVisibleRect=YES should respect prepareContentInRect: if called
+        https://bugs.webkit.org/show_bug.cgi?id=116989
+        <rdar://problem/14007440>
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView prepareContentInRect:]):
+        If prepareContentInRect: is called, save the rect and set a flag so we know we should use it.
+
+        (-[WKView _updateViewExposedRect]):
+        Give the WebPage (and later the DrawingArea) the union of the rect handed to prepareContentInRect:
+        and the WKView's visibleRect, if we're in that mode, so that applications that do their own scrolling
+        can cause tiles to be created in currently offscreen views (for overdraw).
+
+        (-[WKView setFrameSize:]):
+        (-[WKView _updateWindowAndViewFrames]):
+        (-[WKView initWithFrame:contextRef:pageGroupRef:relatedToPage:]):
+        (-[WKView enableFrameSizeUpdates]):
+        (-[WKView setShouldClipToVisibleRect:]):
+        (-[WKView forceAsyncDrawingAreaSizeUpdate:]):
+        Use [_updateViewExposedRect].
+
+2013-05-28  Oliver Hunt  <oliver@apple.com>
+
+        Add more accurate activity state tracking
+        https://bugs.webkit.org/show_bug.cgi?id=116893
+
+        Reviewed by Gavin Barraclough.
+
+        This extends the logic in WebCore from a Page to Process
+        granularity, so we will avoid lowering the child process
+        priority if there is active content.  This also plumbs in
+        the logic to allow plugins to report that they have done
+        something "interesting".  Currently this is somewhat conservative
+        but even this is sufficient to fix some stuttering issues
+        that we've seen.
+
+        * Shared/ChildProcess.cpp:
+        (WebKit::ChildProcess::ChildProcess):
+        * Shared/ChildProcess.h:
+        (ChildProcess):
+        (WebKit::ChildProcess::processSuppressionEnabled):
+        (WebKit::ChildProcess::incrementActiveTaskCount):
+        (WebKit::ChildProcess::decrementActiveTaskCount):
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit):
+        (WebKit::ChildProcess::setProcessSuppressionEnabledInternal):
+        (WebKit::ChildProcess::setProcessSuppressionEnabled):
+        (WebKit::ChildProcess::incrementActiveTaskCount):
+        (WebKit::ChildProcess::decrementActiveTaskCount):
+        (WebKit::ChildProcess::suspensionHysteresisTimerFired):
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::NPRuntimeObjectMap):
+        (WebKit::NPRuntimeObjectMap::evaluate):
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.h:
+        (WebCore):
+        (NPRuntimeObjectMap):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::PluginView):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::incrementActivePageCount):
+        (WebKit):
+        (WebKit::WebChromeClient::decrementActivePageCount):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2013-05-29  Anders Carlsson  <andersca@apple.com>
+
+        Return earlier if there's no session storage namespace
+        https://bugs.webkit.org/show_bug.cgi?id=116984
+        <rdar://problem/13976781>
+
+        Reviewed by Tim Horton.
+
+        If we can't find a session storage namespace, return before creating an entry in the m_storageAreasByConnection
+        hash map since then we'll crash trying to remove it later.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::createSessionStorageMap):
+
+2013-05-29  Martin Robinson  <mrobinson@igalia.com>
+
+        Fix more CMake GTK+ build issues after r150336
+
+        * CMakeLists.txt: We need to allow for setting the WebProcess output name, since
+        WebKitGTK+ expects it to be called WebKitWebProcess.
+        * PlatformGTK.cmake: No longer set WebProcess_EXECUTABLE_NAME as it's been replaced
+        by WebKit2_WebProcess_OUTPUT_NAME.
+
+2013-05-29  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        [WK2][CoordinatedGraphics][EFL] WKViewUserViewportToContents() function doesn't do what it says
+        https://bugs.webkit.org/show_bug.cgi?id=116683
+
+        Reviewed by Noam Rosenthal.
+
+        WKViewUserViewportToContents now converts WebView coordinates to
+        page contents coordinates, taking into account factors as content
+        scale and scroll, and also device scale.
+
+        The function WKViewUserViewportToScene was added to convert WebView
+        coordinates to the coordinates of the canvas/scene where the view
+        is drawn, and EwkView was fixed to use it, instead of
+        WKViewUserViewportToContents.
+
+        * UIProcess/API/C/CoordinatedGraphics/WKView.cpp:
+        (WKViewUserViewportToScene):
+        * UIProcess/API/C/CoordinatedGraphics/WKView.h:
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::createGLSurface):
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::userViewportToContents):
+        (WebKit):
+        (WebKit::WebView::userViewportToScene):
+        (WebKit::WebView::transformToScene):
+        * UIProcess/CoordinatedGraphics/WebView.h:
+        (WebView):
+
+2013-05-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck.
+
+        * GNUmakefile.am: Add WebCoreLayerGtk2.a to DISTCLEANFILES.
+
+2013-05-29  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        [GTK] Clean up WebKit2 GNUmakefile.am
+        https://bugs.webkit.org/show_bug.cgi?id=116907
+
+        Reviewed by Martin Robinson.
+
+        Removed WebNotificationManagerProxy.messages.in after r150785.
+
+        * GNUmakefile.am:
+
+2013-05-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Freeze when loading a particular page on washingtonpost.com with NetworkProcess enabled
+        https://bugs.webkit.org/show_bug.cgi?id=116887
+        <rdar://problem/12965959>
+
+        Reviewed by Darin Adler.
+
+        * Shared/cf/ArgumentCodersCF.cpp:
+        (CoreIPC::encode):
+        (CoreIPC::decode):
+        Fix for the bug: use good shared WebCore code to manipulate CFURLs. Also, added
+        a FIXME about empty URLs.
+
+        * Shared/API/c/cf/WKURLCF.cpp: (WKURLCreateWithCFURL): Fixed to not use
+        CFURLGetString, as that could prevent loading certain resources, like ones with
+        curly braces in resource specifiers. We want KURL normalization, not CFURL one.
+
+2013-05-28  Tim Horton  <timothy_horton@apple.com>
+
+        Rendering suppression extension tokens shouldn't be 0, should handle overflow
+        https://bugs.webkit.org/show_bug.cgi?id=116886
+        <rdar://problem/14004474>
+
+        Reviewed by Darin Adler.
+
+        Don't use invalid HashSet values as tokens, and ensure that
+        we're not already using a token before returning it.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::extendIncrementalRenderingSuppression):
+
+2013-05-28  Lauro Neto <lauro.neto@openbossa.org>
+
+        [GTK] Connection issues in repeated WebProcess crash/reloads.
+        https://bugs.webkit.org/show_bug.cgi?id=115880
+
+        Reviewed by Anders Carlsson.
+
+        When stressing the WebProcess creation/destruction, WebKitGTK can
+        often run into socket issues like bad file descriptor errors or
+        polling a socket indefinitely.
+
+        Currently WebKitGTK has three places where a socket can be
+        closed.
+
+        - childFinishedFunction (in ProcessLauncherGtk.cpp)
+        - Connection::platformInvalidate (in ConnectionUnix.cpp)
+        - WorkQueue EventSource destruction (in WorkQueueGtk.cpp)
+
+        To avoid these race conditions, socket closing will be handled
+        by the event source callback in WorkQueueGtk.cpp.
+
+        * Platform/CoreIPC/unix/ConnectionUnix.cpp:
+        (CoreIPC::Connection::platformInvalidate): Do not close the socket
+        when the connection is invalidated, the socket event source is
+        unregistered in this method and the socket is closed when the
+        GSocket associated to the event source is destroyed.
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        (WebKit::ProcessLauncher::launchProcess): Do not monitor child
+        process to close the connection on termination. This was needed in
+        the past when we used DGRAM sockets, we currently use always
+        connection oriented sockets, so that when the other end closes
+        the connection we are notified and the connection is invalidated.
+
+2013-05-28  Martin Robinson  <mrobinson@igalia.com>
+
+        Fix GTK+ CMake build
+
+        * PlatformGTK.cmake: After r150336, the name of the WebKit2
+        library target is simply "WebKit2."
+
+2013-05-28  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        [WK2][CoordinatedGraphics] DrawingArea's visible content area must be updated when contents size changes
+        https://bugs.webkit.org/show_bug.cgi?id=116845
+
+        Reviewed by Noam Rosenthal.
+
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::didChangeContentsSize):
+
 2013-05-28  Noam Rosenthal  <noam@webkit.org>
 
         [Qt] REGRESSION(r149292): broke scrolling in Qt WK2 desktop mode

@@ -110,6 +110,11 @@ void WebView::setUserViewportTranslation(double tx, double ty)
 
 IntPoint WebView::userViewportToContents(const IntPoint& point) const
 {
+    return transformFromScene().mapPoint(point);
+}
+
+IntPoint WebView::userViewportToScene(const WebCore::IntPoint& point) const
+{
     return m_userViewportTransform.mapPoint(point);
 }
 
@@ -186,8 +191,13 @@ void WebView::initializeClient(const WKViewClient* client)
 
 void WebView::didChangeContentsSize(const WebCore::IntSize& size)
 {
+    if (m_contentsSize == size)
+        return;
+
     m_contentsSize = size;
     m_client.didChangeContentsSize(this, size);
+
+    updateViewportSize();
 }
 
 AffineTransform WebView::transformFromScene() const
@@ -197,12 +207,13 @@ AffineTransform WebView::transformFromScene() const
 
 AffineTransform WebView::transformToScene() const
 {
-    TransformationMatrix transform = m_userViewportTransform;
+    FloatPoint position = -m_contentPosition;
+    float effectiveScale = m_contentScaleFactor * m_page->deviceScaleFactor();
+    position.scale(effectiveScale, effectiveScale);
 
-    const FloatPoint& position = contentPosition();
-    transform.scale(m_page->deviceScaleFactor());
-    transform.translate(-position.x(), -position.y());
-    transform.scale(contentScaleFactor());
+    TransformationMatrix transform = m_userViewportTransform;
+    transform.translate(position.x(), position.y());
+    transform.scale(effectiveScale);
 
     return transform.toAffineTransform();
 }

@@ -87,11 +87,6 @@ public:
         return adoptRef(new EditingStyle(style));
     }
 
-    static PassRefPtr<EditingStyle> create(const CSSStyleDeclaration* style)
-    {
-        return adoptRef(new EditingStyle(style));
-    }
-
     static PassRefPtr<EditingStyle> create(CSSPropertyID propertyID, const String& value)
     {
         return adoptRef(new EditingStyle(propertyID, value));
@@ -152,14 +147,13 @@ private:
     EditingStyle(Node*, PropertiesToInclude);
     EditingStyle(const Position&, PropertiesToInclude);
     explicit EditingStyle(const StylePropertySet*);
-    explicit EditingStyle(const CSSStyleDeclaration*);
     EditingStyle(CSSPropertyID, const String& value);
     void init(Node*, PropertiesToInclude);
     void removeTextFillAndStrokeColorsIfNeeded(RenderStyle*);
     void setProperty(CSSPropertyID, const String& value, bool important = false);
-    void replaceFontSizeByKeywordIfPossible(RenderStyle*, CSSComputedStyleDeclaration*);
     void extractFontSizeDelta();
-    TriState triStateOfStyle(CSSStyleDeclaration* styleToCompare, ShouldIgnoreTextOnlyProperties) const;
+    template<typename T>
+    TriState triStateOfStyle(T* styleToCompare, ShouldIgnoreTextOnlyProperties) const;
     bool conflictsWithInlineStyleOfElement(StyledElement*, EditingStyle* extractedStyle, Vector<CSSPropertyID>* conflictingProperties) const;
     void mergeInlineAndImplicitStyleOfElement(StyledElement*, CSSPropertyOverrideMode, PropertiesToInclude);
     void mergeStyle(const StylePropertySet*, CSSPropertyOverrideMode);
@@ -231,10 +225,6 @@ private:
     String m_applyFontFace;
     String m_applyFontSize;
 };
-
-// FIXME: Remove these functions or make them non-global to discourage using CSSStyleDeclaration directly.
-int getIdentifierValue(CSSStyleDeclaration*, CSSPropertyID);
-int getIdentifierValue(StylePropertySet*, CSSPropertyID);
 
 } // namespace WebCore
 

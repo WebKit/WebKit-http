@@ -1695,7 +1695,7 @@ bool KURL::isHierarchical() const
     return m_string[m_schemeEnd + 1] == '/';
 }
 
-void KURL::copyToBuffer(CharBuffer& buffer) const
+void KURL::copyToBuffer(Vector<char, 512>& buffer) const
 {
     // FIXME: This throws away the high bytes of all the characters in the string!
     // That's fine for a valid URL, which is all ASCII, but not for invalid URLs.
@@ -1924,12 +1924,12 @@ bool KURL::isSafeToSendToAnotherThread() const
     return m_string.isSafeToSendToAnotherThread();
 }
 
-String KURL::elidedString() const
+String KURL::stringCenterEllipsizedToLength(unsigned length) const
 {
-    if (string().length() <= 1024)
+    if (string().length() <= length)
         return string();
 
-    return string().left(511) + "..." + string().right(510);
+    return string().left(length / 2 - 1) + "..." + string().right(length / 2 - 2);
 }
 
 }

@@ -614,7 +614,6 @@ editing/secure-input [ Failure ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Sometimes hit !m_isolatedWorld->isNormal() || m_wrapper || !m_jsFunction assertion.
-webkit.org/b/105299 webaudio/javascriptaudionode.html [ Crash Failure ]
 webkit.org/b/105299 webaudio/javascriptaudionode-upmix2-8channel-input.html [ Pass Crash ]
 
 # Sometimes hit !m_finishedNodes.size() assertion in AudioContext destructor.
@@ -883,7 +882,6 @@ webkit.org/b/84333 fast/files/apply-blob-url-to-xhr.html [ Failure ]
 webkit.org/b/84333 fast/files/file-list-test.html [ Failure ]
 webkit.org/b/84333 fast/files/file-reader-abort.html [ Failure ]
 webkit.org/b/84333 fast/files/file-reader-directory-crash.html [ Failure ]
-webkit.org/b/84333 fast/files/file-reader-event-listener.html [ Failure ]
 webkit.org/b/84333 fast/files/null-origin-string.html [ Failure ]
 webkit.org/b/84333 fast/files/read-blob-async.html [ Failure ]
 webkit.org/b/84333 fast/files/read-file-async.html [ Failure ]
@@ -1278,11 +1276,6 @@ webkit.org/b/84835 editing/execCommand/findString-diacriticals.html [ Failure ]
 
 # DRT doesn't check for isPrinting().
 webkit.org/b/87226 printing/iframe-print.html [ Failure ]
-webkit.org/b/87226 printing/media-queries-print.html [ Missing ]
-webkit.org/b/87226 printing/setPrinting.html [ Missing ]
-webkit.org/b/87226 printing/simultaneous-position-float-change.html [ Missing ]
-webkit.org/b/87226 printing/single-line-must-not-be-split-into-two-pages.html [ Missing ]
-webkit.org/b/87226 printing/width-overflow.html [ Missing ]
 
 webkit.org/b/108507 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
 webkit.org/b/108507 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
@@ -1431,14 +1424,6 @@ webkit.org/b/50485 inspector/profiler/heap-snapshot-summary-sorting-fields.html 
 webkit.org/b/50485 inspector/profiler/heap-snapshot-summary-sorting.html [ Skip ]
 webkit.org/b/50485 inspector/profiler/heap-snapshot-summary-sorting-instances.html [ Skip ]
 webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
-
-# ENABLE(INPUT_MULTIPLE_FIELDS_UI) is disabled
-fast/forms/date-multiple-fields
-fast/forms/datetime-multiple-fields
-fast/forms/datetimelocal-multiple-fields
-webkit.org/b/97299 fast/forms/month-multiple-fields
-webkit.org/b/94186 fast/forms/time-multiple-fields
-fast/forms/week-multiple-fields
 
 webkit.org/b/93976 fast/css-generated-content/quotes-lang.html [ ImageOnlyFailure ]
 
@@ -1667,8 +1652,6 @@ webkit.org/b/105294 webaudio/codec-tests/mp3/128kbps-44khz.html [ Missing Failur
 webkit.org/b/105294 webaudio/codec-tests/vorbis/vbr-128kbps-44khz.html [ Failure ]
 webkit.org/b/105294 webaudio/codec-tests/vorbis/vbr-96kbps-44khz.html [ Failure ]
 webkit.org/b/105294 webaudio/codec-tests/vorbis/vbr-70kbps-44khz.html [ Failure ]
-webkit.org/b/105296 webaudio/delaynode-scheduling.html [ Failure ]
-webkit.org/b/105296 webaudio/delaynode-max-nondefault-delay.html [ Failure ]
 webkit.org/b/105535 inspector-protocol/nmi-webaudio.html [ Failure ]
 webkit.org/b/105535 inspector-protocol/nmi-webaudio-leak-test.html [ Failure ]
 

@@ -300,14 +300,6 @@ fast/events/touch/gesture/context-menu-on-long-tap.html
 # ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING) is disabled
 fast/dom/timer-throttling-hidden-page.html
 
-# ENABLE(INPUT_MULTIPLE_FIELDS_UI) is disabled
-fast/forms/date-multiple-fields
-fast/forms/datetime-multiple-fields
-fast/forms/datetimelocal-multiple-fields
-fast/forms/month-multiple-fields
-fast/forms/time-multiple-fields
-fast/forms/week-multiple-fields
-
 # ENABLE(DRAGGABLE_REGION) is disabled
 fast/css/draggable-region-parser.html
 
@@ -2681,3 +2673,6 @@ webkit.org/b/114800 fast/sub-pixel/float-wrap-zoom.html [ ImageOnlyFailure ]
 webkit.org/b/116649 http/tests/security/cross-frame-access-put.html [ Skip ]
 
 webkit.org/b/116259 http/tests/cache/willsendrequest-returns-null-for-memory-cache-load.html [ Failure ]
+
+# [Qt] Newly added test http/tests/uri/curly-braces-escaping.html fails
+webkit.org/b/117036 http/tests/uri/curly-braces-escaping.html [ Skip ]

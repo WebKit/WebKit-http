@@ -221,10 +221,6 @@ public:
 #endif
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
-    // This function is used for:
-    //  - Mandatory date/time choosers if !ENABLE(INPUT_MULTIPLE_FIELDS_UI)
-    //  - <datalist> UI for date/time input types regardless of
-    //    ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     virtual PassRefPtr<DateTimeChooser> openDateTimeChooser(DateTimeChooserClient*, const DateTimeChooserParameters&) = 0;
 #endif
 
@@ -275,6 +271,9 @@ public:
 
     // Returns a bitfield indicating conditions that can trigger the compositor.
     virtual CompositingTriggerFlags allowedCompositingTriggers() const { return static_cast<CompositingTriggerFlags>(AllTriggers); }
+    
+    // Returns true if layer tree updates are disabled.
+    virtual bool layerTreeStateIsFrozen() const { return false; }
 #endif
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
@@ -365,6 +364,12 @@ public:
 
     virtual void didAddHeaderLayer(GraphicsLayer*) { }
     virtual void didAddFooterLayer(GraphicsLayer*) { }
+
+    // These methods are used to report pages that are performing
+    // some task that we consider to be "active", and so the user
+    // would likely want the page to remain running uninterrupted.
+    virtual void incrementActivePageCount() { }
+    virtual void decrementActivePageCount() { }
 
 protected:
     virtual ~ChromeClient() { }

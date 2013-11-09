@@ -43,38 +43,9 @@ namespace WebCore {
 // destructors.
 
 class PODArena : public RefCounted<PODArena> {
-public:
-    // Creates a new PODArena configured with a FastMallocAllocator.
-    static PassRefPtr<PODArena> create()
-    {
-        return adoptRef(new PODArena);
-    }
-
-    // Allocates an object from the arena.
-    template<class T> T* allocateObject()
-    {
-        return new (allocateBase<T>()) T();
-    }
-
-    // Allocates an object from the arena, calling a single-argument constructor.
-    template<class T, class Argument1Type> T* allocateObject(const Argument1Type& argument1)
-    {
-        return new (allocateBase<T>()) T(argument1);
-    }
-
-    // The initial size of allocated chunks; increases as necessary to
-    // satisfy large allocations. Mainly public for unit tests.
-    enum {
-        DefaultChunkSize = 16384
-    };
-
 protected:
     virtual ~PODArena() { }
     friend class WTF::RefCounted<PODArena>;
-
-    PODArena()
-        : m_current(0)
-        , m_currentChunkSize(DefaultChunkSize) { }
 
     // Returns the alignment requirement for classes and structs on the
     // current platform.
@@ -83,75 +54,12 @@ protected:
         return WTF_ALIGN_OF(T);
     }
 
-    template<class T> void* allocateBase()
-    {
-        void* ptr = 0;
-        size_t roundedSize = roundUp(sizeof(T), minAlignment<T>());
-        if (m_current)
-            ptr = m_current->allocate(roundedSize);
-
-        if (!ptr) {
-            if (roundedSize > m_currentChunkSize)
-                m_currentChunkSize = roundedSize;
-            m_chunks.append(adoptPtr(new Chunk(m_currentChunkSize)));
-            m_current = m_chunks.last().get();
-            ptr = m_current->allocate(roundedSize);
-        }
-        return ptr;
-    }
-
     // Rounds up the given allocation size to the specified alignment.
     size_t roundUp(size_t size, size_t alignment)
     {
         ASSERT(!(alignment % 2));
         return (size + alignment - 1) & ~(alignment - 1);
     }
-
-    // Manages a chunk of memory and individual allocations out of it.
-    class Chunk {
-        WTF_MAKE_NONCOPYABLE(Chunk);
-    public:
-        // Allocates a block of memory of the given size from the passed
-        // Allocator.
-        Chunk(size_t size)
-            : m_size(size)
-            , m_currentOffset(0)
-        {
-            m_base = static_cast<uint8_t*>(fastMalloc(size));
-        }
-
-        // Frees the memory allocated from the Allocator in the
-        // constructor.
-        virtual ~Chunk()
-        {
-            fastFree(m_base);
-        }
-
-        // Returns a pointer to "size" bytes of storage, or 0 if this
-        // Chunk could not satisfy the allocation.
-        void* allocate(size_t size)
-        {
-            // Check for overflow
-            if (m_currentOffset + size < m_currentOffset)
-                return 0;
-
-            if (m_currentOffset + size > m_size)
-                return 0;
-
-            void* result = m_base + m_currentOffset;
-            m_currentOffset += size;
-            return result;
-        }
-
-    protected:
-        uint8_t* m_base;
-        size_t m_size;
-        size_t m_currentOffset;
-    };
-
-    Chunk* m_current;
-    size_t m_currentChunkSize;
-    Vector<OwnPtr<Chunk> > m_chunks;
 };
 
 } // namespace WebCore

@@ -5137,6 +5137,60 @@ PassRefPtr<CSSBasicShape> CSSParser::parseBasicShapeRectangle(CSSParserValueList
     return shape;
 }
 
+PassRefPtr<CSSBasicShape> CSSParser::parseBasicShapeInsetRectangle(CSSParserValueList* args)
+{
+    ASSERT(args);
+
+    // inset-rectangle(top, right, bottom, left, [[rx], ry])
+    if (args->size() != 7 && args->size() != 9 && args->size() != 11)
+        return 0;
+
+    RefPtr<CSSBasicShapeInsetRectangle> shape = CSSBasicShapeInsetRectangle::create();
+
+    unsigned argumentNumber = 0;
+    CSSParserValue* argument = args->current();
+    while (argument) {
+        Units unitFlags = FLength | FPercent | FNonNeg;
+        if (!validUnit(argument, unitFlags))
+            return 0;
+
+        RefPtr<CSSPrimitiveValue> length = createPrimitiveNumericValue(argument);
+        ASSERT(argumentNumber < 6);
+        switch (argumentNumber) {
+        case 0:
+            shape->setTop(length);
+            break;
+        case 1:
+            shape->setRight(length);
+            break;
+        case 2:
+            shape->setBottom(length);
+            break;
+        case 3:
+            shape->setLeft(length);
+            break;
+        case 4:
+            shape->setRadiusX(length);
+            break;
+        case 5:
+            shape->setRadiusY(length);
+            break;
+        }
+        argument = args->next();
+        if (argument) {
+            if (!isComma(argument))
+                return 0;
+
+            argument = args->next();
+        }
+        argumentNumber++;
+    }
+
+    if (argumentNumber < 4)
+        return 0;
+    return shape;
+}
+
 PassRefPtr<CSSBasicShape> CSSParser::parseBasicShapeCircle(CSSParserValueList* args)
 {
     ASSERT(args);
@@ -5307,6 +5361,8 @@ bool CSSParser::parseBasicShape(CSSPropertyID propId, bool important)
         shape = parseBasicShapeEllipse(args);
     else if (equalIgnoringCase(value->function->name, "polygon("))
         shape = parseBasicShapePolygon(args);
+    else if (equalIgnoringCase(value->function->name, "inset-rectangle("))
+        shape = parseBasicShapeInsetRectangle(args);
 
     if (!shape)
         return false;
@@ -10956,19 +11012,14 @@ restartAfterComment:
             result = currentCharacter<SrcCharacterType>();
 
             parseIdentifier(result, resultString, hasEscape);
-            if (*currentCharacter<SrcCharacterType>() == '+') {
-                // Any identifier followed by a '+' sign is an invalid dimension.
-                ++currentCharacter<SrcCharacterType>();
-                m_token = INVALIDDIMEN;
-            } else {
-                m_token = DIMEN;
-                if (!hasEscape)
-                    detectNumberToken(type, currentCharacter<SrcCharacterType>() - type);
 
-                if (m_token == DIMEN) {
-                    // The decoded number is overwritten, but this is intentional.
-                    yylval->string.init(tokenStart<SrcCharacterType>(), currentCharacter<SrcCharacterType>() - tokenStart<SrcCharacterType>());
-                }
+            m_token = DIMEN;
+            if (!hasEscape)
+                detectNumberToken(type, currentCharacter<SrcCharacterType>() - type);
+
+            if (m_token == DIMEN) {
+                // The decoded number is overwritten, but this is intentional.
+                yylval->string.init(tokenStart<SrcCharacterType>(), currentCharacter<SrcCharacterType>() - tokenStart<SrcCharacterType>());
             }
         } else if (*currentCharacter<SrcCharacterType>() == '%') {
             // Although the CSS grammar says {num}% we follow

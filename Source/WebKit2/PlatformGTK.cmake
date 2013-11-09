@@ -1,4 +1,3 @@
-set(WebProcess_EXECUTABLE_NAME WebKitWebProcess)
 set(DERIVED_SOURCES_WEBKIT2GTK_DIR ${DERIVED_SOURCES_DIR}/webkit2gtk)
 set(WEBKIT2_BUILT_API_DIR ${DERIVED_SOURCES_WEBKIT2GTK_DIR}/webkit2)
 set(WEBKIT2_FORWARDING_HEADERS_DIR ${DERIVED_SOURCES_DIR}/ForwardingHeaders/webkit2gtk)
@@ -402,7 +401,9 @@ if (ENABLE_PLUGIN_PROCESS)
         ${WEBKIT2_DIR}/unix/PluginMainUnix.cpp
     )
 
-    set(PluginProcess_LIBRARIES ${WebKit2_LIBRARY_NAME})
+    set(PluginProcess_LIBRARIES
+        WebKit2
+    )
 
     add_executable(${PluginProcess_EXECUTABLE_NAME} ${PluginProcess_SOURCES})
     target_link_libraries(${PluginProcess_EXECUTABLE_NAME} ${PluginProcess_LIBRARIES})

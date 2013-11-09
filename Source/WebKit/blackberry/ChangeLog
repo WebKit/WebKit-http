@@ -1,3 +1,118 @@
+2013-05-29  Otto Derek Cheung  <otcheung@rim.com>
+
+        [BlackBerry] Add more cellular technologies into the NetworkInfo enum
+        https://bugs.webkit.org/show_bug.cgi?id=116982
+
+        PR 340189
+        Reviewed by Rob Buis.
+
+        Provide more specific bandwidth speeds on different network
+        services our devices provide.
+
+        * WebCoreSupport/NetworkInfoClientBlackBerry.cpp:
+        (WebCore):
+        (WebCore::NetworkInfoClientBlackBerry::bandwidth):
+
+2013-05-29  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] about:memory should use malloc_stats instead of mallinfo
+        https://bugs.webkit.org/show_bug.cgi?id=96420
+
+        Reviewed by Rob Buis.
+
+        PR 206297
+        Use mallopt to get malloc_stats.
+
+        * WebKitSupport/AboutData.cpp:
+        (BlackBerry::WebKit::mallocStats):
+        (BlackBerry::WebKit::memoryPage):
+        (BlackBerry::WebKit::MemoryTracker::updateMemoryPeaks):
+
+2013-05-29  Nima Ghanavatian  <nghanavatian@blackberry.com>
+
+        [BlackBerry] Notify client of selection deletion
+        https://bugs.webkit.org/show_bug.cgi?id=116843
+
+        Reviewed by Rob Buis.
+
+        Internally reviewed by Mike Fenton.
+
+        PR342106
+        Our change guard was preventing caret change notification to be sent to IMF.
+        This put us out of state when a selection was deleted because it is not a simple
+        single character deletion. Ensure that selection deletions always send a caret
+        update.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::deleteSelection):
+        (BlackBerry::WebKit::InputHandler::deleteTextRelativeToCursor):
+        (BlackBerry::WebKit::InputHandler::deleteText):
+
+2013-05-29  Rob Buis  <rbuis@rim.com>
+
+        [BlackBerry] Use StringBuilder instead of + operator to build strings in AboutData
+        https://bugs.webkit.org/show_bug.cgi?id=116954
+
+        Reviewed by Carlos Garcia Campos.
+
+        PR 206152
+        Internally reviewed by Konrad Piascik
+
+        * WebKitSupport/AboutData.cpp:
+        (BlackBerry::WebKit::configPage):
+        (BlackBerry::WebKit::dumpJSCTypeCountSetToTableHTML):
+        (BlackBerry::WebKit::mallocStats):
+        (BlackBerry::WebKit::memoryPage):
+        (BlackBerry::WebKit::memoryPeaksToHtmlTable):
+        (BlackBerry::WebKit::memoryLivePage):
+
+2013-05-29  Jakob Petsovits  <jpetsovits@blackberry.com>
+
+        [BlackBerry] Use lazily-backed backingstore tiles
+        https://bugs.webkit.org/show_bug.cgi?id=116879
+        Internal PR 344523
+
+        Reviewed by Carlos Garcia Campos.
+        Informally reviewed by Arvid Nilsson and Mike Lattanzio.
+
+        As a consequence, also don't use fixed-size
+        shared pixmap buffers for these tiles anymore.
+
+        * WebKitSupport/AboutData.cpp:
+        (BlackBerry::WebKit::configPage):
+        * WebKitSupport/BackingStoreTile.cpp:
+        (BlackBerry::WebKit::TileBuffer::nativeBuffer):
+        * WebKitSupport/SurfacePool.cpp:
+        (BlackBerry::WebKit::SurfacePool::initialize):
+        * WebKitSupport/SurfacePool.h:
+        (SurfacePool):
+
+2013-05-29  Kent Tamura  <tkent@chromium.org>
+
+        Remove ENABLE_INPUT_MULTIPLE_FIELDS_UI.
+        https://bugs.webkit.org/show_bug.cgi?id=116796
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/AboutDataEnableFeatures.in:
+
+2013-05-28  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] Fix style issues in BlackBerry accelerated compositing backend
+        https://bugs.webkit.org/show_bug.cgi?id=116604
+
+        Reviewed by Carlos Garcia Campos.
+
+        Adapt to the removal of "get" prefix from getters in the WebKit- and
+        compositing-thread layer classes.
+
+        * Api/WebOverlay.cpp:
+        (BlackBerry::WebKit::WebOverlayPrivateCompositingThread::pixelViewportRect):
+        * Api/WebPageCompositor.cpp:
+        (BlackBerry::WebKit::WebPageCompositorPrivate::attachOverlays):
+        (BlackBerry::WebKit::WebPageCompositorPrivate::removeOverlay):
+        (BlackBerry::WebKit::WebPageCompositorPrivate::findFixedElementRect):
+
 2013-05-28  Andreas Kling  <akling@apple.com>
 
         Document::setFocusedNode() should be setFocusedElement().

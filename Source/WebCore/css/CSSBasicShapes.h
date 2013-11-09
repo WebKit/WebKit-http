@@ -41,10 +41,11 @@ namespace WebCore {
 class CSSBasicShape : public RefCounted<CSSBasicShape> {
 public:
     enum Type {
-        CSS_BASIC_SHAPE_RECTANGLE = 1,
-        CSS_BASIC_SHAPE_CIRCLE = 2,
-        CSS_BASIC_SHAPE_ELLIPSE = 3,
-        CSS_BASIC_SHAPE_POLYGON = 4
+        CSSBasicShapeRectangleType = 1,
+        CSSBasicShapeCircleType = 2,
+        CSSBasicShapeEllipseType = 3,
+        CSSBasicShapePolygonType = 4,
+        CSSBasicShapeInsetRectangleType = 5
     };
 
     virtual Type type() const = 0;
@@ -81,7 +82,7 @@ public:
     void setRadiusX(PassRefPtr<CSSPrimitiveValue> radiusX) { m_radiusX = radiusX; }
     void setRadiusY(PassRefPtr<CSSPrimitiveValue> radiusY) { m_radiusY = radiusY; }
 
-    virtual Type type() const { return CSS_BASIC_SHAPE_RECTANGLE; }
+    virtual Type type() const { return CSSBasicShapeRectangleType; }
     virtual String cssText() const;
     virtual bool equals(const CSSBasicShape&) const;
 
@@ -101,6 +102,44 @@ private:
     RefPtr<CSSPrimitiveValue> m_radiusY;
 };
 
+class CSSBasicShapeInsetRectangle : public CSSBasicShape {
+public:
+    static PassRefPtr<CSSBasicShapeInsetRectangle> create() { return adoptRef(new CSSBasicShapeInsetRectangle); }
+
+    CSSPrimitiveValue* top() const { return m_top.get(); }
+    CSSPrimitiveValue* right() const { return m_right.get(); }
+    CSSPrimitiveValue* bottom() const { return m_bottom.get(); }
+    CSSPrimitiveValue* left() const { return m_left.get(); }
+    CSSPrimitiveValue* radiusX() const { return m_radiusX.get(); }
+    CSSPrimitiveValue* radiusY() const { return m_radiusY.get(); }
+
+    void setTop(PassRefPtr<CSSPrimitiveValue> top) { m_top = top; }
+    void setRight(PassRefPtr<CSSPrimitiveValue> right) { m_right = right; }
+    void setBottom(PassRefPtr<CSSPrimitiveValue> bottom) { m_bottom = bottom; }
+    void setLeft(PassRefPtr<CSSPrimitiveValue> left) { m_left = left; }
+    void setRadiusX(PassRefPtr<CSSPrimitiveValue> radiusX) { m_radiusX = radiusX; }
+    void setRadiusY(PassRefPtr<CSSPrimitiveValue> radiusY) { m_radiusY = radiusY; }
+
+    virtual Type type() const { return CSSBasicShapeInsetRectangleType; }
+    virtual String cssText() const;
+    virtual bool equals(const CSSBasicShape&) const;
+
+#if ENABLE(CSS_VARIABLES)
+    virtual String serializeResolvingVariables(const HashMap<AtomicString, String>&) const;
+    virtual bool hasVariableReference() const;
+#endif
+
+private:
+    CSSBasicShapeInsetRectangle() { }
+
+    RefPtr<CSSPrimitiveValue> m_right;
+    RefPtr<CSSPrimitiveValue> m_top;
+    RefPtr<CSSPrimitiveValue> m_bottom;
+    RefPtr<CSSPrimitiveValue> m_left;
+    RefPtr<CSSPrimitiveValue> m_radiusX;
+    RefPtr<CSSPrimitiveValue> m_radiusY;
+};
+
 class CSSBasicShapeCircle : public CSSBasicShape {
 public:
     static PassRefPtr<CSSBasicShapeCircle> create() { return adoptRef(new CSSBasicShapeCircle); }
@@ -113,7 +152,7 @@ public:
     void setCenterY(PassRefPtr<CSSPrimitiveValue> centerY) { m_centerY = centerY; }
     void setRadius(PassRefPtr<CSSPrimitiveValue> radius) { m_radius = radius; }
 
-    virtual Type type() const { return CSS_BASIC_SHAPE_CIRCLE; }
+    virtual Type type() const { return CSSBasicShapeCircleType; }
     virtual String cssText() const;
     virtual bool equals(const CSSBasicShape&) const;
 
@@ -144,7 +183,7 @@ public:
     void setRadiusX(PassRefPtr<CSSPrimitiveValue> radiusX) { m_radiusX = radiusX; }
     void setRadiusY(PassRefPtr<CSSPrimitiveValue> radiusY) { m_radiusY = radiusY; }
 
-    virtual Type type() const { return CSS_BASIC_SHAPE_ELLIPSE; }
+    virtual Type type() const { return CSSBasicShapeEllipseType; }
     virtual String cssText() const;
     virtual bool equals(const CSSBasicShape&) const;
 
@@ -179,7 +218,7 @@ public:
     void setWindRule(WindRule w) { m_windRule = w; }
     WindRule windRule() const { return m_windRule; }
 
-    virtual Type type() const { return CSS_BASIC_SHAPE_POLYGON; }
+    virtual Type type() const { return CSSBasicShapePolygonType; }
     virtual String cssText() const;
     virtual bool equals(const CSSBasicShape&) const;
 #if ENABLE(CSS_VARIABLES)

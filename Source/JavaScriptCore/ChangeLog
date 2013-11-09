@@ -1,3 +1,182 @@
+2013-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix for VS2005 builders.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreExports.def: Add
+        missing export for WTF::SHA1::computeHexDigest
+
+2013-05-30  David Farler  <dfarler@apple.com>
+
+        Fix jscore-test when not using --sdk option with jsDriver.pl
+        https://bugs.webkit.org/show_bug.cgi?id=116339
+
+        Reviewed by Joe Pecoraro.
+
+        * tests/mozilla/jsDriver.pl:
+        (execute_tests):
+        With each test, the shell_command needs to be started from scratch.
+
+        This fix will clear the shell_command and start over as before with
+        the opt_arch option when not using --sdk with jsDriver.pl.
+
+2013-05-30  Roger Fong  <roger_fong@apple.com>
+
+        Get rid of JavaScript exports file on AppleWin port.
+        https://bugs.webkit.org/show_bug.cgi?id=117050.
+
+        Reviewed by Darin Adler.
+
+        Delete the JavaScriptCoreExportGenerator folder and remove dependencies.
+        Start linking in WTF.lib now that it's a shared library.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.submit.sln:
+        * JavaScriptCore.vcxproj/JavaScriptCore.vcxproj.filters:
+        * JavaScriptCore.vcxproj/JavaScriptCoreCommon.props:
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGenerator.vcxproj: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGenerator.vcxproj.filters: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorBuildCmd.cmd: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorCommon.props: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorDebug.props: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorPostBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorPreBuild.cmd: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorProduction.props: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExportGeneratorRelease.props: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExports.def.in: Removed.
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/make-export-file-generator: Removed.
+        * JavaScriptCore.vcxproj/jsc/jscCommon.props:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExp.vcxproj:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExp.vcxproj.filters:
+        * JavaScriptCore.vcxproj/testRegExp/testRegExpCommon.props:
+        * JavaScriptCore.vcxproj/testapi/testapiCommon.props:
+
+2013-05-22  David Farler  <dfarler@apple.com>
+
+        Add --sdk option to jsDriver.pl to run with iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=116339
+
+        Reviewed by David Kilzer.
+
+        * tests/mozilla/jsDriver.pl:
+        (execute_tests):
+        Prefix shell command with the path to the "sim" tool.
+        (parse_args):
+        Add -d / --sdk option.
+        (usage):
+        Help message for -d / --sdk option.
+
+2013-05-30  Julien Brianceau  <jbrianceau@nds.com>
+
+        [sh4] Optimize NaN checks in LLINT for floating point comparisons.
+        https://bugs.webkit.org/show_bug.cgi?id=117049
+
+        Reviewed by Oliver Hunt.
+
+        Use the fcmp/eq opcode in sh4 LLINT to test if a double is NaN.
+        This is more efficient, doesn't require two tmp registers and requires
+        less code than current implementation (which converts double to float,
+        then checks 'E = Emax + 1' and 'f != 0').
+
+        * offlineasm/sh4.rb:
+
+2013-05-30  Oliver Hunt  <oliver@apple.com>
+
+        JSCallbackObject does not correctly initialise the PropertySlot for getOwnPropertyDescriptor
+        https://bugs.webkit.org/show_bug.cgi?id=117053
+
+        Reviewed by Mark Hahnenberg.
+
+        Set appropriate thisValue on the PropertySlot
+
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::::getOwnPropertyDescriptor):
+        * API/tests/testapi.mm:
+
+2013-05-29  Jeffrey Pfau  <jpfau@apple.com>
+
+        [Mac] Enable cache partitioning and the public suffix list on 10.8
+        <rdar://problem/13679019>
+
+        Rubber-stamped by David Kilzer.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-05-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Put correct byteCompile symbol in file. Previous version
+        had an extra 'i' appended to the end.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreExports.def:
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExports.def.in:
+
+2013-05-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix.  Remove ?byteCompile symbol that
+        is no longer accessible during link.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreExports.def:
+        * JavaScriptCore.vcxproj/JavaScriptCoreExportGenerator/JavaScriptCoreExports.def.in:
+
+2013-05-28  Gavin Barraclough  <barraclough@apple.com>
+
+        String(new Date(2010,10,1)) is wrong in KRAT, YAKT
+        https://bugs.webkit.org/show_bug.cgi?id=106750
+
+        Reviewed by Darin Adler.
+
+        * runtime/JSDateMath.cpp:
+        (JSC::msToGregorianDateTime):
+            - Additional review comment fix.
+
+2013-05-28  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build fix after r150833
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreExports.def:
+        A CR/LF combination was lost in the file, combining two symbols.
+
+2013-05-27  Gavin Barraclough  <barraclough@apple.com>
+
+        String(new Date(2010,10,1)) is wrong in KRAT, YAKT
+        https://bugs.webkit.org/show_bug.cgi?id=106750
+
+        Reviewed by Darin Adler.
+
+        First part of a fix, simplfy date handling code, instead of operating separately
+        on the UTC-standard and standard-DST offsets, just generate a combined UTC-local
+        offset (this is what we actually need, and what the OS gives us).
+
+        * runtime/JSDateMath.cpp:
+        (JSC::getLocalTimeOffset):
+            - removed getUTCOffset, converted getDSTOffset -> getLocalTimeOffset
+        (JSC::gregorianDateTimeToMS):
+        (JSC::msToGregorianDateTime):
+        (JSC::parseDateFromNullTerminatedCharacters):
+            - call getLocalTimeOffset instead of getUTCOffset/getDSTOffset
+        * runtime/VM.cpp:
+        (JSC::VM::resetDateCache):
+            - removed cachedUTCOffset, converted DSTOffsetCache -> LocalTimeOffsetCache
+        * runtime/VM.h:
+        (JSC::LocalTimeOffsetCache::LocalTimeOffsetCache):
+        (JSC::LocalTimeOffsetCache::reset):
+        (LocalTimeOffsetCache):
+            - removed cachedUTCOffset, converted DSTOffsetCache -> LocalTimeOffsetCache
+
+2013-05-28  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        r150199 is very wrong
+        https://bugs.webkit.org/show_bug.cgi?id=116876
+
+        JSValue needs to protect its internal JSValueRef.
+
+        Reviewed by Darin Adler.
+
+        * API/JSValue.mm:
+        (-[JSValue initWithValue:inContext:]):
+        (-[JSValue dealloc]):
+        * API/tests/testapi.mm: Added a simple test to make sure that we protect the
+        underlying JavaScript value across garbage collections.
+
 2013-05-27  Patrick Gansterer  <paroga@webkit.org>
 
         Use ICU_INCLUDE_DIRS in BlackBerry CMake files

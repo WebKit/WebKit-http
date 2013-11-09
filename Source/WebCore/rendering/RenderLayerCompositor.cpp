@@ -59,14 +59,11 @@
 #include "Settings.h"
 #include "TiledBacking.h"
 #include "TransformState.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 #include "HTMLMediaElement.h"
-#endif
-
-#if !LOG_DISABLED
-#include <wtf/CurrentTime.h>
 #endif
 
 #ifndef NDEBUG
@@ -373,9 +370,6 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
     ASSERT(m_flushingLayers);
     m_flushingLayers = false;
 
-    if (!m_paintRelatedMilestonesTimer.isActive() && frameView->hasEverPainted())
-        m_paintRelatedMilestonesTimer.startOneShot(0);
-
     if (!m_viewportConstrainedLayersNeedingUpdate.isEmpty()) {
         HashSet<RenderLayer*>::const_iterator end = m_viewportConstrainedLayersNeedingUpdate.end();
         for (HashSet<RenderLayer*>::const_iterator it = m_viewportConstrainedLayersNeedingUpdate.begin(); it != end; ++it)
@@ -394,6 +388,16 @@ void RenderLayerCompositor::didFlushChangesForLayer(RenderLayer* layer, const Gr
     RenderLayerBacking* backing = layer->backing();
     if (backing->backgroundLayerPaintsFixedRootBackground() && graphicsLayer == backing->backgroundLayer())
         fixedRootBackgroundLayerChanged();
+}
+
+void RenderLayerCompositor::didPaintBacking(RenderLayerBacking*)
+{
+    FrameView* frameView = m_renderView->frameView();
+    
+    frameView->setLastPaintTime(currentTime());
+    
+    if (frameView->milestonesPendingPaint() && !m_paintRelatedMilestonesTimer.isActive())
+        m_paintRelatedMilestonesTimer.startOneShot(0);
 }
 
 void RenderLayerCompositor::didChangeVisibleRect()
@@ -3248,8 +3252,19 @@ void RenderLayerCompositor::layerFlushTimerFired(Timer<RenderLayerCompositor>*)
 void RenderLayerCompositor::paintRelatedMilestonesTimerFired(Timer<RenderLayerCompositor>*)
 {
     FrameView* frameView = m_renderView ? m_renderView->frameView() : 0;
-    if (frameView)
-        frameView->firePaintRelatedMilestones();
+    if (!frameView)
+        return;
+
+    Frame* frame = frameView->frame();
+    Page* page = frame ? frame->page() : 0;
+    if (!page)
+        return;
+
+    // If the layer tree is frozen, we'll paint when it's unfrozen and schedule the timer again.
+    if (page->chrome().client()->layerTreeStateIsFrozen())
+        return;
+
+    frameView->firePaintRelatedMilestones();
 }
 
 } // namespace WebCore

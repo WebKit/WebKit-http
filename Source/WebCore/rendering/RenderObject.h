@@ -329,7 +329,7 @@ public:
 #endif
     virtual bool isQuote() const { return false; }
 
-#if ENABLE(DETAILS_ELEMENT) || ENABLE(INPUT_MULTIPLE_FIELDS_UI)
+#if ENABLE(DETAILS_ELEMENT)
     virtual bool isDetailsMarker() const { return false; }
 #endif
     virtual bool isEmbeddedObject() const { return false; }
@@ -658,7 +658,7 @@ public:
     // is true if the renderer returned is an ancestor of repaintContainer.
     RenderObject* container(const RenderLayerModelObject* repaintContainer = 0, bool* repaintContainerSkipped = 0) const;
 
-    virtual RenderObject* hoverAncestor() const { return parent(); }
+    virtual RenderObject* hoverAncestor() const;
 
     RenderBoxModelObject* offsetParent() const;
 

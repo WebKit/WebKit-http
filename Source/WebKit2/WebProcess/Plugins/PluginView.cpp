@@ -56,6 +56,7 @@
 #include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/Page.h>
+#include <WebCore/PageThrottler.h>
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/ProxyServer.h>
@@ -277,7 +278,7 @@ PluginView::PluginView(PassRefPtr<HTMLPlugInElement> pluginElement, PassRefPtr<P
     , m_isBeingDestroyed(false)
     , m_pendingURLRequestsTimer(RunLoop::main(), this, &PluginView::pendingURLRequestsTimerFired)
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    , m_npRuntimeObjectMap(this)
+    , m_npRuntimeObjectMap(this, m_webPage->corePage()->pageThrottler())
 #endif
     , m_manualStreamState(StreamStateInitial)
     , m_pluginSnapshotTimer(this, &PluginView::pluginSnapshotTimerFired, pluginSnapshotTimerDelay)
@@ -1390,6 +1391,13 @@ bool PluginView::isAcceleratedCompositingEnabled()
     
     Settings* settings = frame()->settings();
     if (!settings)
+        return false;
+
+    // We know that some plug-ins can support snapshotting without needing
+    // accelerated compositing. Since we're trying to snapshot them anyway,
+    // put them into normal compositing mode. A side benefit is that this might
+    // allow the entire page to stay in that mode.
+    if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting && m_parameters.mimeType == "application/x-shockwave-flash")
         return false;
 
     return settings->acceleratedCompositingEnabled();

@@ -56,9 +56,11 @@
 #include "MediaCanStartListener.h"
 #include "Navigator.h"
 #include "NetworkStateNotifier.h"
+#include "PageActivityAssertionToken.h"
 #include "PageCache.h"
 #include "PageConsole.h"
 #include "PageGroup.h"
+#include "PageThrottler.h"
 #include "PlugInClient.h"
 #include "PluginData.h"
 #include "PluginView.h"
@@ -184,6 +186,7 @@ Page::Page(PageClients& pageClients)
 #endif
     , m_alternativeTextClient(pageClients.alternativeTextClient)
     , m_scriptedAnimationsSuspended(false)
+    , m_pageThrottler(PageThrottler::create(this))
     , m_console(PageConsole::create(this))
 {
     ASSERT(m_editorClient);
@@ -231,6 +234,7 @@ Page::~Page()
 #ifndef NDEBUG
     pageCounter.decrement();
 #endif
+    m_pageThrottler->clearPage();
 
 }
 
@@ -957,12 +961,9 @@ void Page::resumeScriptedAnimations()
     }
 }
 
-void Page::setThrottled(bool isThrottled)
+void Page::setThrottled(bool throttled)
 {
-    for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-        if (frame->document())
-            frame->document()->scriptedAnimationControllerSetThrottled(isThrottled);
-    }
+    m_pageThrottler->setThrottled(throttled);
 }
 
 void Page::userStyleSheetLocationChanged()
@@ -1512,6 +1513,11 @@ void Page::sawMediaEngine(const String& engineDescription)
 void Page::resetSeenMediaEngines()
 {
     m_seenMediaEngines.clear();
+}
+
+PassOwnPtr<PageActivityAssertionToken> Page::createActivityToken()
+{
+    return adoptPtr(new PageActivityAssertionToken(m_pageThrottler.get()));
 }
 
 #if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)

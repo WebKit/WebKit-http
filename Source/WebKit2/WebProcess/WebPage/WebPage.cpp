@@ -2143,7 +2143,8 @@ void WebPage::didCompletePageTransition()
         send(Messages::WebPageProxy::PageTransitionViewportReady());
     else
 #endif
-        m_drawingArea->setLayerTreeStateIsFrozen(false);
+        
+    m_drawingArea->setLayerTreeStateIsFrozen(false);
 }
 
 void WebPage::show()
@@ -2513,6 +2514,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
     settings->setApplicationChromeMode(store.getBoolValueForKey(WebPreferencesKey::applicationChromeModeKey()));
     settings->setSuppressesIncrementalRendering(store.getBoolValueForKey(WebPreferencesKey::suppressesIncrementalRenderingKey()));
+    settings->setIncrementalRenderingSuppressionTimeoutInSeconds(store.getDoubleValueForKey(WebPreferencesKey::incrementalRenderingSuppressionTimeoutKey()));
     settings->setBackspaceKeyNavigationEnabled(store.getBoolValueForKey(WebPreferencesKey::backspaceKeyNavigationEnabledKey()));
     settings->setWantsBalancedSetDefersLoadingBehavior(store.getBoolValueForKey(WebPreferencesKey::wantsBalancedSetDefersLoadingBehaviorKey()));
     settings->setCaretBrowsingEnabled(store.getBoolValueForKey(WebPreferencesKey::caretBrowsingEnabledKey()));
@@ -4119,9 +4121,8 @@ void WebPage::determinePrimarySnapshottedPlugIn()
 
             RenderBox* renderBox = toRenderBox(renderer);
 
-            if (seenRenderers.contains(renderer))
+            if (!seenRenderers.add(renderer).isNewEntry)
                 continue;
-            seenRenderers.add(renderer);
 
             if (!element->isPluginElement())
                 continue;
@@ -4195,10 +4196,14 @@ void WebPage::reportUsedFeatures()
 
 unsigned WebPage::extendIncrementalRenderingSuppression()
 {
-    unsigned token = m_maximumRenderingSuppressionToken++;
+    unsigned token = m_maximumRenderingSuppressionToken + 1;
+    while (!HashSet<unsigned>::isValidValue(token) || m_activeRenderingSuppressionTokens.contains(token))
+        token++;
 
     m_activeRenderingSuppressionTokens.add(token);
     m_page->mainFrame()->view()->setVisualUpdatesAllowedByClient(false);
+
+    m_maximumRenderingSuppressionToken = token;
 
     return token;
 }
