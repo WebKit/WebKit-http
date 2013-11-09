@@ -1212,12 +1212,12 @@ void BWebPage::handleSendEditingCapabilities(BMessage*)
     bool canPaste = false;
 
     WebCore::Frame* frame = fPage->focusController()->focusedOrMainFrame();
-    if (frame && frame->editor()) {
-        WebCore::Editor* editor = frame->editor();
+    if (frame) {
+        WebCore::Editor& editor = frame->editor();
 
-        canCut = editor->canCut() || editor->canDHTMLCut();
-        canCopy = editor->canCopy() || editor->canDHTMLCopy();
-        canPaste = editor->canPaste() || editor->canDHTMLPaste();
+        canCut = editor.canCut() || editor.canDHTMLCut();
+        canCopy = editor.canCopy() || editor.canDHTMLCopy();
+        canPaste = editor.canPaste() || editor.canDHTMLPaste();
     }
 
     BMessage message(B_EDITING_CAPABILITIES_RESULT);

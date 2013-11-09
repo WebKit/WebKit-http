@@ -80,7 +80,7 @@ void ContextMenuClientHaiku::downloadURL(const KURL& url)
 
 void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
 {
-    String searchString = frame->editor()->selectedText();
+    String searchString = frame->editor().selectedText();
     searchString.stripWhiteSpace();
     String encoded = encodeWithURLEscapeSequences(searchString);
     encoded.replace("%20", "+");

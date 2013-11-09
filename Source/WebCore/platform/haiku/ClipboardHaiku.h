@@ -48,7 +48,7 @@ public:
     virtual ~ClipboardHaiku() {};
 
     virtual void clearData(const String& type);
-    virtual void clearAllData();
+    virtual void clearData();
     virtual String getData(const String& type) const;
     virtual bool setData(const String& type, const String& data);
 

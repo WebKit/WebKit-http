@@ -153,7 +153,7 @@ BString BWebFrame::RequestedURL() const
 bool BWebFrame::CanCopy() const
 {
     if (fData->frame && fData->frame->view())
-        return fData->frame->editor()->canCopy() || fData->frame->editor()->canDHTMLCopy();
+        return fData->frame->editor().canCopy() || fData->frame->editor().canDHTMLCopy();
 
     return false;
 }
@@ -161,7 +161,7 @@ bool BWebFrame::CanCopy() const
 bool BWebFrame::CanCut() const
 {
     if (fData->frame && fData->frame->view())
-        return fData->frame->editor()->canCut() || fData->frame->editor()->canDHTMLCut();
+        return fData->frame->editor().canCut() || fData->frame->editor().canDHTMLCut();
 
     return false;
 }
@@ -169,7 +169,7 @@ bool BWebFrame::CanCut() const
 bool BWebFrame::CanPaste() const
 {
     if (fData->frame && fData->frame->view())
-        return fData->frame->editor()->canPaste() || fData->frame->editor()->canDHTMLPaste();
+        return fData->frame->editor().canPaste() || fData->frame->editor().canDHTMLPaste();
 
     return false;
 }
@@ -177,33 +177,33 @@ bool BWebFrame::CanPaste() const
 void BWebFrame::Copy()
 {
     if (CanCopy())
-        fData->frame->editor()->copy();
+        fData->frame->editor().copy();
 }
 
 void BWebFrame::Cut()
 {
     if (CanCut())
-        fData->frame->editor()->cut();
+        fData->frame->editor().cut();
 }
 
 void BWebFrame::Paste()
 {
     if (CanPaste())
-        fData->frame->editor()->paste();
+        fData->frame->editor().paste();
 }
 
 bool BWebFrame::CanUndo() const
 {
-    if (fData->frame && fData->frame->editor())
-        return fData->frame->editor()->canUndo();
+    if (fData->frame)
+        return fData->frame->editor().canUndo();
 
     return false;
 }
 
 bool BWebFrame::CanRedo() const
 {
-    if (fData->frame && fData->frame->editor())
-        return fData->frame->editor()->canRedo();
+    if (fData->frame)
+        return fData->frame->editor().canRedo();
 
     return false;
 }
@@ -211,13 +211,13 @@ bool BWebFrame::CanRedo() const
 void BWebFrame::Undo()
 {
     if (CanUndo())
-        return fData->frame->editor()->undo();
+        return fData->frame->editor().undo();
 }
 
 void BWebFrame::Redo()
 {
     if (CanRedo())
-        return fData->frame->editor()->redo();
+        return fData->frame->editor().redo();
 }
 
 bool BWebFrame::AllowsScrolling() const

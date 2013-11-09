@@ -863,11 +863,6 @@ void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
     notImplemented();
 }
 
-void GraphicsContext::setPlatformFont(const Font& font)
-{
-    m_data->view()->SetFont(font.primaryFont()->platformData().font());
-}
-
 void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colorSpace)
 {
     if (paintingDisabled())

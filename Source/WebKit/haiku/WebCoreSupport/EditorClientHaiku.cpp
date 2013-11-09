@@ -176,9 +176,9 @@ void EditorClientHaiku::respondToChangedContents()
 
 void EditorClientHaiku::respondToChangedSelection(Frame* frame)
 {
-    if (!frame->editor()->ignoreCompositionSelectionChange()) {
+    if (!frame->editor().ignoreCompositionSelectionChange()) {
         // FIXME:
-        // notify "micro focus shanged" event
+        // notify "micro focus changed" event
     }
 
     notImplemented();
@@ -419,17 +419,17 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
 #if 0
 // Handled in upper layer
 		    case VK_HOME:
-		        frame->editor()->command("MoveToBeginningOfDocument").execute();
+		        frame->editor().command("MoveToBeginningOfDocument").execute();
 		        break;
 		    case VK_END:
-                frame->editor()->command("MoveToEndOfDocument").execute();
+                frame->editor().command("MoveToEndOfDocument").execute();
 		        break;
 #endif
 		    case VK_A:
-	            frame->editor()->command("SelectAll").execute();
+	            frame->editor().command("SelectAll").execute();
 		        break;
 		    case VK_C: case VK_X:
-	            frame->editor()->command("Copy").execute();
+	            frame->editor().command("Copy").execute();
 		        break;
         	}
         } else
@@ -633,7 +633,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     const PlatformKeyboardEvent* platformEvent)
 {
     Frame* frame = m_page->page()->focusController()->focusedOrMainFrame();
-    if (!frame || !frame->document()->focusedNode())
+    if (!frame || !frame->document())
         return false;
 
     Node* start = frame->selection()->start().anchorNode();
@@ -642,12 +642,12 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
 
     switch (platformEvent->windowsVirtualKeyCode()) {
     case VK_BACK:
-        frame->editor()->deleteWithDirection(DirectionBackward,
+        frame->editor().deleteWithDirection(DirectionBackward,
                                              platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                              false, true);
         break;
     case VK_DELETE:
-        frame->editor()->deleteWithDirection(DirectionForward,
+        frame->editor().deleteWithDirection(DirectionForward,
                                              platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                              false, true);
         break;
@@ -677,41 +677,41 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
         break;
     case VK_HOME:
         if (platformEvent->shiftKey() && platformEvent->ctrlKey())
-            frame->editor()->command("MoveToBeginningOfDocumentAndModifySelection").execute();
+            frame->editor().command("MoveToBeginningOfDocumentAndModifySelection").execute();
         else if (platformEvent->shiftKey())
-            frame->editor()->command("MoveToBeginningOfLineAndModifySelection").execute();
+            frame->editor().command("MoveToBeginningOfLineAndModifySelection").execute();
         else if (platformEvent->ctrlKey())
-            frame->editor()->command("MoveToBeginningOfDocument").execute();
+            frame->editor().command("MoveToBeginningOfDocument").execute();
         else
-            frame->editor()->command("MoveToBeginningOfLine").execute();
+            frame->editor().command("MoveToBeginningOfLine").execute();
         break;
     case VK_END:
         if (platformEvent->shiftKey() && platformEvent->ctrlKey())
-            frame->editor()->command("MoveToEndOfDocumentAndModifySelection").execute();
+            frame->editor().command("MoveToEndOfDocumentAndModifySelection").execute();
         else if (platformEvent->shiftKey())
-            frame->editor()->command("MoveToEndOfLineAndModifySelection").execute();
+            frame->editor().command("MoveToEndOfLineAndModifySelection").execute();
         else if (platformEvent->ctrlKey())
-            frame->editor()->command("MoveToEndOfDocument").execute();
+            frame->editor().command("MoveToEndOfDocument").execute();
         else
-            frame->editor()->command("MoveToEndOfLine").execute();
+            frame->editor().command("MoveToEndOfLine").execute();
         break;
     case VK_PRIOR:  // PageUp
         if (platformEvent->shiftKey())
-            frame->editor()->command("MovePageUpAndModifySelection").execute();
+            frame->editor().command("MovePageUpAndModifySelection").execute();
         else
-            frame->editor()->command("MovePageUp").execute();
+            frame->editor().command("MovePageUp").execute();
         break;
     case VK_NEXT:  // PageDown
         if (platformEvent->shiftKey())
-            frame->editor()->command("MovePageDownAndModifySelection").execute();
+            frame->editor().command("MovePageDownAndModifySelection").execute();
         else
-            frame->editor()->command("MovePageDown").execute();
+            frame->editor().command("MovePageDown").execute();
         break;
     case VK_RETURN:
         if (platformEvent->shiftKey())
-            frame->editor()->command("InsertLineBreak").execute();
+            frame->editor().command("InsertLineBreak").execute();
         else
-            frame->editor()->command("InsertNewline").execute();
+            frame->editor().command("InsertNewline").execute();
         break;
     case VK_TAB:
         return false;
@@ -723,27 +723,27 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
                 if (ch < ' ')
                     break;
             }
-            frame->editor()->insertText(platformEvent->text(), event);
+            frame->editor().insertText(platformEvent->text(), event);
         } else if (platformEvent->ctrlKey()) {
             switch (platformEvent->windowsVirtualKeyCode()) {
             case VK_B:
-                frame->editor()->command("ToggleBold").execute();
+                frame->editor().command("ToggleBold").execute();
                 break;
             case VK_I:
-                frame->editor()->command("ToggleItalic").execute();
+                frame->editor().command("ToggleItalic").execute();
                 break;
             case VK_V:
-                frame->editor()->command("Paste").execute();
+                frame->editor().command("Paste").execute();
                 break;
             case VK_X:
-                frame->editor()->command("Cut").execute();
+                frame->editor().command("Cut").execute();
                 break;
             case VK_Y:
             case VK_Z:
                 if (platformEvent->shiftKey())
-                    frame->editor()->command("Redo").execute();
+                    frame->editor().command("Redo").execute();
                 else
-                    frame->editor()->command("Undo").execute();
+                    frame->editor().command("Undo").execute();
                 break;
             default:
                 return false;

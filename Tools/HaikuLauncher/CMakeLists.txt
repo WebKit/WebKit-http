@@ -4,9 +4,9 @@ SET(HaikuLauncher_SOURCES
 )
 
 SET(HaikuLauncher_LIBRARIES
-    ${JavaScriptCore_LIBRARY_NAME}
-    ${WebCore_LIBRARY_NAME}
-    ${WebKit_LIBRARY_NAME}
+    JavaScriptCore
+    WebCore
+    WebKit
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
     ${SQLITE_LIBRARIES}

@@ -72,7 +72,7 @@ void ClipboardHaiku::clearData(const String& type)
     }
 }
 
-void ClipboardHaiku::clearAllData()
+void ClipboardHaiku::clearData()
 {
     if (be_clipboard->Lock()) {
         be_clipboard->Clear();

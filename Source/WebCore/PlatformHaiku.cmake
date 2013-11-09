@@ -91,19 +91,6 @@ LIST(APPEND WebCore_SOURCES
   platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
   platform/text/haiku/StringHaiku.cpp
   platform/text/LocaleICU.cpp
-
-  # This is going to move away somewhere between r149878 and r151722.
-  # It will be added to the common files instead. Remove from here when that's
-  # done.
-  platform/text/TextBreakIteratorICU.cpp
-  platform/text/TextCodecICU.cpp
-  platform/text/TextEncodingDetectorICU.cpp
-
-  platform/PlatformStrategies.cpp
-
-  # Remove after r149899
-  plugins/PluginViewNone.cpp
-  plugins/PluginPackageNone.cpp
 )
 
 if (WTF_USE_TEXTURE_MAPPER)
