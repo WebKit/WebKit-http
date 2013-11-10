@@ -70,7 +70,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/plugins"
     "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/mathml"
-    "${WEBCORE_DIR}/rendering/shapes"
     "${WEBCORE_DIR}/rendering/style"
     "${WEBCORE_DIR}/rendering/svg"
     "${WEBCORE_DIR}/storage"
@@ -111,6 +110,7 @@ SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/fileapi"
     "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform"
+    "${WEBCORE_DIR}/rendering/shapes"
     "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/parser"
 )

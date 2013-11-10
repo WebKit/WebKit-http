@@ -104,6 +104,16 @@ String contextMenuItemTagDownloadImageToDisk()
     return "Download image to disk";
 }
 
+String contextMenuItemTagDownloadVideoToDisk()
+{
+    return String::fromUTF8("Download Video");
+}
+
+String contextMenuItemTagDownloadAudioToDisk()
+{
+    return String::fromUTF8("Download Audio");
+}
+
 String contextMenuItemTagCopyImageToClipboard()
 {
     return "Copy image to clipboard";
