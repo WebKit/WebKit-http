@@ -141,7 +141,7 @@ interface AccessibilityUIElement {
     DOMString stringForRange(unsigned long location, unsigned long length);
     DOMString attributedStringForRange(unsigned long location, unsigned long length);
     boolean attributedStringRangeIsMisspelled(unsigned long location, unsigned long length);
-    [PassContext] AccessibilityUIElement uiElementForSearchPredicate(AccessibilityUIElement startElement, boolean isDirectionNext, object searchKey, DOMString searchText);
+    [PassContext] AccessibilityUIElement uiElementForSearchPredicate(AccessibilityUIElement startElement, boolean isDirectionNext, object searchKey, DOMString searchText, boolean visibleOnly);
     void setSelectedTextRange(unsigned long location, unsigned long length);
 
     // Scroll area attributes.
@@ -168,6 +168,8 @@ interface AccessibilityUIElement {
 
     // Returns an ordered list of supported actions for an element.
     readonly attribute DOMString supportedActions;
+    readonly attribute DOMString mathPostscriptsDescription;
+    readonly attribute DOMString mathPrescriptsDescription;
 
     readonly attribute DOMString pathDescription;
     

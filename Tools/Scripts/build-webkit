@@ -335,6 +335,7 @@ for my $dir (@projects) {
     }
 
     my $project = basename($dir);
+    my $baseProductDir = baseProductDir();
     if (isGtk()) {
         $result = buildGtkProject($project, $clean, $prefixPath, $makeArgs, $noWebKit1, $noWebKit2, @features);
     } elsif (isAppleMacWebKit()) {
@@ -347,10 +348,14 @@ for my $dir (@projects) {
     } elsif (isAppleWinWebKit()) {
         if ($project eq "WebKit") {
             my $webkitSolutionPath = "WebKit.vcxproj/WebKit.sln";
-            if (visualStudioVersion() eq "8") {
-                $webkitSolutionPath = "win/WebKit.vcproj/WebKit.sln";
-            }
             $result = buildVisualStudioProject($webkitSolutionPath, $clean);
+            my $vsConfiguration = configurationForVisualStudio();
+            if (usingVisualStudioExpress()) {
+                # Visual Studio Express is so lame it can't stdout build failures.
+                # So we find its logs and dump them to the console ourselves.
+                open(my $OUTPUT_HANDLE, '<', "$baseProductDir/$vsConfiguration/BuildOutput.htm") or die "Could not open build log file at $baseProductDir/$vsConfiguration/BuildOutput.htm";
+                print while (<$OUTPUT_HANDLE>);
+            }
         }
     }
     # Various build* calls above may change the CWD.
@@ -358,15 +363,9 @@ for my $dir (@projects) {
 
     if (exitStatus($result)) {
         my $scriptDir = relativeScriptsDir();
-        if (usingVisualStudioExpress()) {
-            # Visual Studio Express is so lame it can't stdout build failures.
-            # So we find its logs and dump them to the console ourselves.
-            system(File::Spec->catfile($scriptDir, "print-vse-failure-logs"));
-        }
         if (isAppleWinWebKit()) {
             print "\n\n===== BUILD FAILED ======\n\n";
             print "Please ensure you have run $scriptDir/update-webkit to install dependencies.\n\n";
-            my $baseProductDir = baseProductDir();
             print "You can view build errors by checking the BuildLog.htm files located at:\n$baseProductDir/obj/<project>/<config>.\n";
         }
         exit exitStatus($result);

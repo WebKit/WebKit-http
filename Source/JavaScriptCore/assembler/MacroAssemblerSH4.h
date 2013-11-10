@@ -946,7 +946,7 @@ public:
     static bool supportsFloatingPoint() { return true; }
     static bool supportsFloatingPointTruncate() { return true; }
     static bool supportsFloatingPointSqrt() { return true; }
-    static bool supportsFloatingPointAbs() { return false; }
+    static bool supportsFloatingPointAbs() { return true; }
 
     void moveDoubleToInts(FPRegisterID src, RegisterID dest1, RegisterID dest2)
     {
@@ -963,6 +963,14 @@ public:
         m_assembler.fstsfpul((FPRegisterID)(dest + 1));
         m_assembler.ldsrmfpul(src2);
         m_assembler.fstsfpul(dest);
+    }
+
+    void moveDouble(FPRegisterID src, FPRegisterID dest)
+    {
+        if (src != dest) {
+            m_assembler.fmovsRegReg((FPRegisterID)(src + 1), (FPRegisterID)(dest + 1));
+            m_assembler.fmovsRegReg(src, dest);
+        }
     }
 
     void loadFloat(BaseIndex address, FPRegisterID dest)
@@ -1065,10 +1073,10 @@ public:
     void addDouble(FPRegisterID op1, FPRegisterID op2, FPRegisterID dest)
     {
         if (op1 == dest)
-            m_assembler.daddRegReg(op2, dest);
+            addDouble(op2, dest);
         else {
-            m_assembler.dmovRegReg(op1, dest);
-            m_assembler.daddRegReg(op2, dest);
+            moveDouble(op2, dest);
+            addDouble(op1, dest);
         }
     }
 
@@ -1242,20 +1250,13 @@ public:
         }
 
         if (cond == DoubleNotEqual) {
-            RegisterID scr = claimScratch();
             JumpList end;
-            m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-            m_assembler.dcnvds(right);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
+            m_assembler.dcmppeq(left, left);
             m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-            m_assembler.dcnvds(left);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
+            end.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
+            m_assembler.dcmppeq(right, right);
+            end.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
             m_assembler.dcmppeq(right, left);
-            releaseScratch(scr);
             Jump m_jump = branchFalse();
             end.link(this);
             return m_jump;
@@ -1267,8 +1268,16 @@ public:
         }
 
         if (cond == DoubleGreaterThanOrEqual) {
+            JumpList end;
+            m_assembler.dcmppeq(left, left);
+            m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
+            end.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
+            m_assembler.dcmppeq(right, right);
+            end.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
             m_assembler.dcmppgt(left, right);
-            return branchFalse();
+            Jump m_jump = branchFalse();
+            end.link(this);
+            return m_jump;
         }
 
         if (cond == DoubleLessThan) {
@@ -1277,134 +1286,73 @@ public:
         }
 
         if (cond == DoubleLessThanOrEqual) {
+            JumpList end;
+            m_assembler.dcmppeq(left, left);
+            m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
+            end.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
+            m_assembler.dcmppeq(right, right);
+            end.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
             m_assembler.dcmppgt(right, left);
-            return branchFalse();
+            Jump m_jump = branchFalse();
+            end.link(this);
+            return m_jump;
         }
 
         if (cond == DoubleEqualOrUnordered) {
-            RegisterID scr = claimScratch();
-            JumpList end;
-            m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-            m_assembler.dcnvds(right);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
+            JumpList takeBranch;
+            m_assembler.dcmppeq(left, left);
             m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-            m_assembler.dcnvds(left);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
+            takeBranch.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
+            m_assembler.dcmppeq(right, right);
+            takeBranch.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
             m_assembler.dcmppeq(left, right);
             Jump m_jump = Jump(m_assembler.je());
-            end.link(this);
-            m_assembler.extraInstrForBranch(scr);
-            releaseScratch(scr);
+            takeBranch.link(this);
+            m_assembler.extraInstrForBranch(scratchReg3);
             return m_jump;
         }
 
         if (cond == DoubleGreaterThanOrUnordered) {
-            RegisterID scr = claimScratch();
-            JumpList end;
-            m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-            m_assembler.dcnvds(right);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
+            JumpList takeBranch;
+            m_assembler.dcmppeq(left, left);
             m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-            m_assembler.dcnvds(left);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
+            takeBranch.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
+            m_assembler.dcmppeq(right, right);
+            takeBranch.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
             m_assembler.dcmppgt(right, left);
             Jump m_jump = Jump(m_assembler.je());
-            end.link(this);
-            m_assembler.extraInstrForBranch(scr);
-            releaseScratch(scr);
+            takeBranch.link(this);
+            m_assembler.extraInstrForBranch(scratchReg3);
             return m_jump;
         }
 
         if (cond == DoubleGreaterThanOrEqualOrUnordered) {
-            RegisterID scr = claimScratch();
-            JumpList end;
-            m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-            m_assembler.dcnvds(right);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-            m_assembler.dcnvds(left);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
             m_assembler.dcmppgt(left, right);
-            Jump m_jump = Jump(m_assembler.jne());
-            end.link(this);
-            m_assembler.extraInstrForBranch(scr);
-            releaseScratch(scr);
-            return m_jump;
+            return branchFalse();
         }
 
         if (cond == DoubleLessThanOrUnordered) {
-            RegisterID scr = claimScratch();
-            JumpList end;
-            m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-            m_assembler.dcnvds(right);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
+            JumpList takeBranch;
+            m_assembler.dcmppeq(left, left);
             m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-            m_assembler.dcnvds(left);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
+            takeBranch.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
+            m_assembler.dcmppeq(right, right);
+            takeBranch.append(Jump(m_assembler.jne(), SH4Assembler::JumpNear));
             m_assembler.dcmppgt(left, right);
             Jump m_jump = Jump(m_assembler.je());
-            end.link(this);
-            m_assembler.extraInstrForBranch(scr);
-            releaseScratch(scr);
+            takeBranch.link(this);
+            m_assembler.extraInstrForBranch(scratchReg3);
             return m_jump;
         }
 
         if (cond == DoubleLessThanOrEqualOrUnordered) {
-            RegisterID scr = claimScratch();
-            JumpList end;
-            m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-            m_assembler.dcnvds(right);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-            m_assembler.dcnvds(left);
-            m_assembler.stsfpulReg(scr);
-            m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-            end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
             m_assembler.dcmppgt(right, left);
-            Jump m_jump = Jump(m_assembler.jne());
-            end.link(this);
-            m_assembler.extraInstrForBranch(scr);
-            releaseScratch(scr);
-            return m_jump;
+            return branchFalse();
         }
 
         ASSERT(cond == DoubleNotEqualOrUnordered);
-        RegisterID scr = claimScratch();
-        JumpList end;
-        m_assembler.loadConstant(0x7fbfffff, scratchReg3);
-        m_assembler.dcnvds(right);
-        m_assembler.stsfpulReg(scr);
-        m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-        m_assembler.ensureSpace(m_assembler.maxInstructionSize + 22, sizeof(uint32_t));
-        end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
-        m_assembler.dcnvds(left);
-        m_assembler.stsfpulReg(scr);
-        m_assembler.cmplRegReg(scratchReg3, scr, SH4Condition(Equal));
-        end.append(Jump(m_assembler.je(), SH4Assembler::JumpNear));
         m_assembler.dcmppeq(right, left);
-        Jump m_jump = Jump(m_assembler.jne());
-        end.link(this);
-        m_assembler.extraInstrForBranch(scr);
-        releaseScratch(scr);
-        return m_jump;
+        return branchFalse();
     }
 
     Jump branchTrue()
@@ -1440,14 +1388,14 @@ public:
 
     void sqrtDouble(FPRegisterID src, FPRegisterID dest)
     {
-        if (dest != src)
-            m_assembler.dmovRegReg(src, dest);
+        moveDouble(src, dest);
         m_assembler.dsqrt(dest);
     }
     
-    void absDouble(FPRegisterID, FPRegisterID)
+    void absDouble(FPRegisterID src, FPRegisterID dest)
     {
-        RELEASE_ASSERT_NOT_REACHED();
+        moveDouble(src, dest);
+        m_assembler.dabs(dest);
     }
 
     Jump branchTest8(ResultCondition cond, Address address, TrustedImm32 mask = TrustedImm32(-1))
@@ -1498,12 +1446,12 @@ public:
         m_assembler.ftrcdrmfpul(src);
         m_assembler.stsfpulReg(dest);
         m_assembler.loadConstant(0x7fffffff, scratchReg3);
-        m_assembler.cmplRegReg(dest, scratchReg3, SH4Condition(branchType == BranchIfTruncateFailed ? Equal : NotEqual));
+        m_assembler.cmplRegReg(dest, scratchReg3, SH4Condition(Equal));
         m_assembler.ensureSpace(m_assembler.maxInstructionSize + 14, sizeof(uint32_t));
         m_assembler.branch(BT_OPCODE, 2);
         m_assembler.addlImm8r(1, scratchReg3);
-        m_assembler.cmplRegReg(dest, scratchReg3, SH4Condition(branchType == BranchIfTruncateFailed ? Equal : NotEqual));
-        return branchTrue();
+        m_assembler.cmplRegReg(dest, scratchReg3, SH4Condition(Equal));
+        return (branchType == BranchIfTruncateFailed) ? branchTrue() : branchFalse();
     }
 
     // Stack manipulation operations
@@ -1901,17 +1849,17 @@ public:
         ASSERT((cond == Overflow) || (cond == Signed) || (cond == Zero) || (cond == NonZero));
 
         if (cond == Overflow) {
-            RegisterID scr1 = claimScratch();
-            RegisterID scr = claimScratch();
-            m_assembler.dmullRegReg(src, dest);
+            RegisterID scrsign = claimScratch();
+            RegisterID msbres = claimScratch();
+            m_assembler.dmulslRegReg(src, dest);
             m_assembler.stsmacl(dest);
-            m_assembler.movImm8(-31, scr);
-            m_assembler.movlRegReg(dest, scr1);
-            m_assembler.shadRegReg(scr1, scr);
-            m_assembler.stsmach(scr);
-            m_assembler.cmplRegReg(scr, scr1, SH4Condition(Equal));
-            releaseScratch(scr1);
-            releaseScratch(scr);
+            m_assembler.cmppz(dest);
+            m_assembler.movt(scrsign);
+            m_assembler.addlImm8r(-1, scrsign);
+            m_assembler.stsmach(msbres);
+            m_assembler.cmplRegReg(msbres, scrsign, SH4Condition(Equal));
+            releaseScratch(msbres);
+            releaseScratch(scrsign);
             return branchFalse();
         }
 

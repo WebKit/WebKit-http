@@ -63,7 +63,6 @@ webkit.org/b/109417 webgl/conformance/misc/type-conversion-test.html [ Crash ]
 webkit.org/b/109941 webgl/conformance/textures/origin-clean-conformance.html [ Crash ]
 webkit.org/b/109945 webgl/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
 webkit.org/b/109945 webgl/conformance/glsl/misc/shader-with-non-reserved-words.html [ Crash Failure ]
-webkit.org/b/109945 webgl/conformance/reading/read-pixels-test.html [ Crash Failure ]
 webkit.org/b/109945 webgl/conformance/uniforms/gl-uniform-arrays.html [ Crash Failure ]
 webkit.org/b/109945 webgl/conformance/uniforms/uniform-default-values.html [ Crash ]
 
@@ -238,7 +237,6 @@ webkit.org/b/112000 accessibility/heading-level.html [ Failure ]
 webkit.org/b/112002 accessibility/inline-continuations.html [ Failure ]
 webkit.org/b/112003 accessibility/loading-iframe-sends-notification.html [ Failure ]
 webkit.org/b/112005 accessibility/onclick-handlers.html [ Failure ]
-webkit.org/b/112031 accessibility/placeholder.html [ Failure ]
 webkit.org/b/112006 accessibility/secure-textfield-title-ui.html [ Failure ]
 webkit.org/b/112007 accessibility/selection-states.html [ Failure ]
 webkit.org/b/112008 accessibility/spinbutton-value.html [ Failure ]
@@ -251,6 +249,12 @@ webkit.org/b/112017 accessibility/textbox-role-reports-selection.html [ Failure 
 webkit.org/b/112018 accessibility/th-as-title-ui.html [ Failure ]
 webkit.org/b/112020 accessibility/transformed-element.html [ Failure ]
 webkit.org/b/112021 accessibility/visible-elements.html [ Failure ]
+
+# New accessibility test added in r149858 that is failing for EFL.
+webkit.org/b/115901 accessibility/poorly-formed-aria-table.html [ Failure ]
+
+# New accessibility test added in r151079 that is failing for EFL.
+webkit.org/b/117182 accessibility/text-role-with-aria-hidden-inside.html [ Failure ]
 
 webkit.org/b/112019 accessibility/title-ui-element-correctness.html [ Crash ]
 
@@ -394,21 +398,17 @@ webkit.org/b/109431 compositing/iframes/iframe-composited-scrolling.html [ Failu
 webkit.org/b/110054 compositing/geometry/limit-layer-bounds-fixed.html [ Failure ]
 
 # Several new Khronos WebGL conformance tests are failing on WK2 EFL.
-webkit.org/b/109435 webgl/conformance/context/context-attributes-alpha-depth-stencil-antialias.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/context/premultiplyalpha-test.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/extensions/oes-element-index-uint.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/extensions/oes-texture-float-with-video.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/extensions/oes-texture-float.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/renderbuffers/framebuffer-state-restoration.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/textures/texture-size-cube-maps.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/canvas/drawingbuffer-test.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/context/context-creation-and-destruction.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/functions/glsl-function-sin.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/functions/glsl-function-smoothstep-float.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/literals/float_literal.vert.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/misc/shader-with-global-variable-precision-mismatch.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/glsl/misc/shaders-with-varyings.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/more/functions/bufferDataBadArgs.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/more/functions/readPixelsBadArgs.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/more/functions/texImage2DHTML.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/more/functions/texSubImage2DHTML.html [ Failure Crash ]
@@ -416,7 +416,6 @@ webkit.org/b/109435 webgl/conformance/more/functions/uniformfArrayLen1.html [ Fa
 webkit.org/b/109435 webgl/conformance/programs/gl-bind-attrib-location-long-names-test.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/programs/program-test.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/renderbuffers/framebuffer-object-attachment.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/rendering/gl-scissor-test.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/rendering/multisample-corruption.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/rendering/point-size.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/textures/copy-tex-image-2d-formats.html [ Failure Crash ]
@@ -424,8 +423,6 @@ webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-v
 webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Failure Crash ]
 webkit.org/b/109435 webgl/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/textures/texture-mips.html [ Failure Crash ]
-webkit.org/b/109435 webgl/conformance/textures/texture-size-limit.html [ Failure Crash ]
 
 # Failing media query test.
 webkit.org/b/114916 fast/media/mq-resolution.html [ Failure ]
@@ -578,3 +575,6 @@ compositing/tiling/rotated-tiled-preserve3d-clamped.html [ Missing ]
 
 # Crashing IndexedDB tests
 webkit.org/b/107194 storage/indexeddb/pending-activity.html [ Crash ]
+
+# Failing after r142758.
+webkit.org/b/109948 fast/dom/Window/mozilla-focus-blur.html [ Failure ]

@@ -1,3 +1,53 @@
+2013-06-03  Andrew Lo  <anlo@rim.com>
+
+        [BlackBerry] Expose show debug borders setting through BlackBerry::WebKit::WebPage
+        https://bugs.webkit.org/show_bug.cgi?id=117167
+
+        Reviewed by Rob Buis.
+        Internally reviewed by Arvid Nilsson.
+
+        Add WebKit::WebPage API for setting whether to show accelerated compositing
+        debug borders.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPage::setShowDebugBorders):
+        (WebKit):
+        * Api/WebPage.h:
+
+2013-06-03  Mike Fenton  <mifenton@rim.com>
+
+        [BlackBerry] Selection handles are not cleared when displaying error pages.
+        https://bugs.webkit.org/show_bug.cgi?id=117158
+
+        Reviewed by Carlos Garcia Campos.
+
+        PR 342159.
+
+        Add explicit cancel of selection state when loading an error page
+        as it is not always cleared.
+
+        Internally Reviewed by Nima Ghanavatian.
+
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::dispatchDidFailProvisionalLoad):
+
+2013-06-03  Mike Fenton  <mifenton@rim.com>
+
+        [BlackBerry] ROI details are not always cleared when using back navigation.
+        https://bugs.webkit.org/show_bug.cgi?id=117159
+
+        Reviewed by Carlos Garcia Campos.
+
+        PR 328557.
+
+        Secondary change to ensure when restoreViewState is triggered
+        ROI is reset.
+
+        Internally Reviewed by Nima Ghanavatian.
+
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::restoreViewState):
+
 2013-05-29  Otto Derek Cheung  <otcheung@rim.com>
 
         [BlackBerry] Add more cellular technologies into the NetworkInfo enum

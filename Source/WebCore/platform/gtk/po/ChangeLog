@@ -1,3 +1,39 @@
+2013-06-04  Rajesh Ranjan  <rajeshkajha@yahoo.com>
+
+        [GTK] Updated WebKit Translation in Hindi [hi] language
+        https://bugs.webkit.org/show_bug.cgi?id=115508
+
+        Reviewed by Gustavo Noronha Silva (kov).
+
+        * hi.po: Updated.
+
+2013-06-04  Krishnababu Krothapalli  <kkrothap@redhat.com>
+
+        Updated Telugu [te] Translations for WebKitGTK+ HEAD
+        https://bugs.webkit.org/show_bug.cgi?id=115856
+
+        Reviewed by Gustavo Noronha Silva (kov).
+
+        * te.po: Updated.
+
+2013-06-04  Manoj Kumar Giri  <mgiri@redhat.com>
+
+        Updated WebKitGTK+ Translation for Odia [or] language.
+        https://bugs.webkit.org/show_bug.cgi?id=116825
+
+        Reviewed by Gustavo Noronha Silva (kov).
+
+        * or.po: Updated.
+
+2013-06-04  Shankar Prasad  <svenkate@redhat.com>
+
+        [kn] Kannada Translation for webkit - Updated
+        https://bugs.webkit.org/show_bug.cgi?id=116941
+
+        Reviewed by Gustavo Noronha Silva (kov).
+
+        * kn.po: Updated.
+
 2013-05-30  Nilamdyuti Goswami  <ngoswami@redhat.com>
 
         [GTK] Updated as-IN translations

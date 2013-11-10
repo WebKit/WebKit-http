@@ -922,11 +922,13 @@ bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned location
     return false;
 }
 
-PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText)
+PassRefPtr<AccessibilityUIElement> AccessibilityUIElement::uiElementForSearchPredicate(JSContextRef context, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly)
 {
     BEGIN_AX_OBJC_EXCEPTIONS
     NSMutableDictionary* parameter = [NSMutableDictionary dictionary];
     [parameter setObject:(isDirectionNext) ? @"AXDirectionNext" : @"AXDirectionPrevious" forKey:@"AXDirection"];
+    if (visibleOnly)
+        [parameter setObject:[NSNumber numberWithBool:YES] forKey:@"AXVisibleOnly"];
     [parameter setObject:[NSNumber numberWithInt:1] forKey:@"AXResultsLimit"];
     if (startElement && startElement->platformUIElement())
         [parameter setObject:(id)startElement->platformUIElement() forKey:@"AXStartElement"];
@@ -1487,6 +1489,37 @@ PassRefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForIndex(i
     return 0;                                                                          
 }
 
+static NSString *_convertMathMultiscriptPairsToString(NSArray *pairs)
+{
+    __block NSMutableString *result = [NSMutableString string];
+    [pairs enumerateObjectsUsingBlock:^(id pair, NSUInteger index, BOOL *stop) {
+        for (NSString *key in pair)
+            [result appendFormat:@"\t%lu. %@ = %@\n", (unsigned long)index, key, [[pair objectForKey:key] accessibilityAttributeValue:NSAccessibilitySubroleAttribute]];
+    }];
+    
+    return result;
+}
+    
+JSRetainPtr<JSStringRef> AccessibilityUIElement::mathPostscriptsDescription() const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSArray *pairs = [m_element accessibilityAttributeValue:@"AXMathPostscripts"];
+    return [_convertMathMultiscriptPairsToString(pairs) createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
+    return 0;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::mathPrescriptsDescription() const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    NSArray *pairs = [m_element accessibilityAttributeValue:@"AXMathPrescripts"];
+    return [_convertMathMultiscriptPairsToString(pairs) createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+    
+    return 0;
+}
+    
 JSRetainPtr<JSStringRef> AccessibilityUIElement::pathDescription() const
 {
     BEGIN_AX_OBJC_EXCEPTIONS

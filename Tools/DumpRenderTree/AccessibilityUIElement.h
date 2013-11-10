@@ -200,7 +200,7 @@ public:
     JSStringRef stringForRange(unsigned location, unsigned length);
     JSStringRef attributedStringForRange(unsigned location, unsigned length);
     bool attributedStringRangeIsMisspelled(unsigned location, unsigned length);
-    AccessibilityUIElement uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText);
+    AccessibilityUIElement uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly);
 #if PLATFORM(IOS)
     void elementsForRange(unsigned location, unsigned length, Vector<AccessibilityUIElement>& elements);
     JSStringRef stringForSelection();
@@ -259,6 +259,10 @@ public:
 #if PLATFORM(MAC) && !PLATFORM(IOS)
     // Returns an ordered list of supported actions for an element.
     JSStringRef supportedActions();
+    
+    // A general description of the elements making up multiscript pre/post objects.
+    JSStringRef mathPostscriptsDescription() const;
+    JSStringRef mathPrescriptsDescription() const;
 #endif
     
 private:

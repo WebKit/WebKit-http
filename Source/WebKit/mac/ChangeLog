@@ -1,3 +1,34 @@
+2013-06-01  Andreas Kling  <akling@apple.com>
+
+        Remove unnused WebDOMNodeOperationsInternal category.
+        <http://webkit.org/b/117105>
+
+        Reviewed by Ryosuke Niwa.
+
+        _subresourceURLs had no clients.
+
+        * DOM/WebDOMOperations.mm:
+
+2013-06-01  Andreas Kling  <akling@apple.com>
+
+        Move Node::hasID() and hasClass() to Element.
+        <http://webkit.org/b/117104>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebRenderLayer.mm:
+        (+[WebRenderLayer nameForLayer:]):
+
+2013-05-31  Stephanie Lewis  <slewis@apple.com>
+
+        Update low memory handler to use new memory pressure notifications on new OS versions.
+        <rdar://problem/14027095> 
+
+        Reviewed by Mark Rowe.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
 2013-05-29  Jeffrey Pfau  <jpfau@apple.com>
 
         [Mac] Enable cache partitioning and the public suffix list on 10.8

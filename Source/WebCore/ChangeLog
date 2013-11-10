@@ -1,3 +1,347 @@
+2013-06-04  Peter Gal  <galpeter@inf.u-szeged.hu>
+
+        [curl] Headers should be parsed as utf8 if possible
+        https://bugs.webkit.org/show_bug.cgi?id=117196
+
+        Reviewed by Brent Fulgham.
+
+        Testcase already present: http/tests/download/literal-utf-8.html
+
+        * platform/network/curl/ResourceHandleManager.cpp:
+        (WebCore::headerCallback): Parse the header as an utf8 string if possible.
+
+2013-06-04  Oliver Hunt  <oliver@apple.com>
+
+        Prevent throttling while resources are being loaded
+        https://bugs.webkit.org/show_bug.cgi?id=117218
+
+        Reviewed by Gavin Barraclough.
+
+        Make use of the page activity assertion infrastructure to delay
+        throttling while we are waiting on resource loads.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::completed):
+        (WebCore::FrameLoader::started):
+        * loader/FrameLoader.h:
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::init):
+        (WebCore::SubresourceLoader::checkForHTTPStatusCodeError):
+        (WebCore::SubresourceLoader::didFinishLoading):
+        (WebCore::SubresourceLoader::didFail):
+        (WebCore::SubresourceLoader::willCancel):
+        * loader/SubresourceLoader.h:
+
+2013-06-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Remove [NoInterfaceObject] from XPathExpression and NodeIterator
+        https://bugs.webkit.org/show_bug.cgi?id=117204
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove [NoInterfaceObject] from XPathExpression and NodeIterator to match
+        their respective specifications:
+        - http://www.w3.org/TR/DOM-Level-3-XPath/xpath.html#XPathExpression
+        - http://www.w3.org/TR/DOM-Level-2-Traversal-Range/traversal.html#Traversal-NodeIterator
+
+        No new tests, already covered by:
+        fast/js/global-constructors-attributes.html
+
+        * dom/NodeIterator.idl:
+        * xml/XPathExpression.idl:
+
+2013-06-04  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: MathML multiscripts not exposed in Accessibility
+        https://bugs.webkit.org/show_bug.cgi?id=115069
+
+        Unreviewed, build fix.
+
+        Remove an accessibility iOS method that was erroneously added.
+
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+
+2013-06-04  Greg Hughes  <ghughes@apple.com>
+
+        Add "VisibleOnly" key to search predicate
+        https://bugs.webkit.org/show_bug.cgi?id=115491
+
+        Reviewed by Chris Fleizach.
+
+        Added support for accessibility clients to use the search predicate to find only visible elements
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::isAccessibilityObjectSearchMatch):
+        (WebCore::AccessibilityObject::isOnscreen):
+        (WebCore):
+        * accessibility/AccessibilityObject.h:
+        (AccessibilitySearchCriteria):
+        (WebCore::AccessibilitySearchCriteria::AccessibilitySearchCriteria):
+        (AccessibilityObject):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:forParameter:]):
+
+2013-06-04  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Rollout of r151146. Broke some tests.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::forceLayoutForPagination):
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::finishDelayUpdateScrollInfo):
+        (WebCore::RenderBlock::updateScrollInfoAfterLayout):
+        (WebCore::RenderBlock::layout):
+        * rendering/RenderBlock.h:
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::clearLayoutOverflow):
+        * rendering/RenderBox.h:
+        * rendering/RenderDeprecatedFlexibleBox.cpp:
+        (WebCore::RenderDeprecatedFlexibleBox::layoutBlock):
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::layoutBlock):
+
+2013-06-04  Noam Rosenthal  <noam@webkit.org>
+
+        Refactor the code that decides whether to enable WebGL from settings to helper functions
+        https://bugs.webkit.org/show_bug.cgi?id=117181
+
+        This removes some #ifdef crud out of the getContext() function.
+
+        Reviewed by Benjamin Poulain.
+
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::requiresAcceleratedCompositingForWebGL):
+        (WebCore::shouldEnableWebGL):
+        (WebCore::HTMLCanvasElement::getContext):
+
+2013-06-04  Thiago Santos  <thiago.sousa.santos@collabora.com>
+
+        Prevent race when pad caps is set on gstreamer player
+        https://bugs.webkit.org/show_bug.cgi?id=115355
+
+        Reviewed by Philippe Normand.
+
+        Prevent race when pad caps is set on gstreamer player and
+        Also protect internal paint buffer with a mutex.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase):
+        (WebCore::MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase):
+        (WebCore::MediaPlayerPrivateGStreamerBase::naturalSize):
+        (WebCore::MediaPlayerPrivateGStreamerBase::triggerRepaint):
+        (WebCore::MediaPlayerPrivateGStreamerBase::paint):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        (MediaPlayerPrivateGStreamerBase):
+
+2013-06-04  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix a crash in QtPixmapRuntime.
+        https://bugs.webkit.org/show_bug.cgi?id=117193
+        https://bugreports.qt-project.org/browse/QTBUG-30736
+
+        Reviewed by Allan Sandfeld Jensen.
+
+        The crash could only be reproduced in release builds on Windows.
+        JSClassCreate calculates the size of JSClassDefinition.staticValues
+        and staticFunctions by iterating until an entry with a null name is found.
+
+        * bridge/qt/qt_pixmapruntime.cpp:
+        (JSC::Bindings::QtPixmapRuntime::getClassRef):
+
+2013-06-04  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Automatically generate WorkerContext constructor attributes
+        https://bugs.webkit.org/show_bug.cgi?id=117183
+
+        Reviewed by Kentaro Hara.
+
+        Add [GlobalContext=WindowOnly|WorkerOnly|WindowAndWorker] IDL extended attribute
+        to indicate to the bindings generator on which global context the constructor
+        attribute should be generated for interfaces without [NoInterfaceObject]:
+        - WindowOnly: only on the global Window object (default if ommitted)
+        - WorkerOnly: only on the worker context
+        - WindowAndWorker: On both the global Window object and the worker context
+
+        This covers all the current use cases.
+
+        The JSC bindings generator now automatically generates the Constructor attributes
+        on the WorkerContext for non-callback interfaces which do not have the
+        [NoInterfaceObject] extended attribute but have [GlobalContext=WorkerOnly|WindowAndWorker]
+        extended attribute.
+
+        No new tests, already covered by:
+        fast/js/global-constructors-attributes.html
+        fast/js/global-constructors-attributes-worker.html
+
+        * CMakeLists.txt:
+        * DerivedSources.make: Pass new --workerContextConstructorsFile argument to preprocess-idls.pl.
+        * DerivedSources.pri: Ditto.
+        * GNUmakefile.am: Ditto.
+        * PlatformBlackBerry.cmake: Ditto.
+        * UseJSC.cmake: Ditto.
+        * bindings/scripts/IDLAttributes.txt: Add [GlobalContext=WindowOnly|WorkerOnly|WindowAndWorker]
+        IDL extended attribute.
+        * bindings/scripts/preprocess-idls.pl: Add support for [GlobalContext] extended attribute and
+        generate a partial interface for WorkerContext global constructors that are automatically
+        generated.
+        * dom/MessageEvent.idl: Add [GlobalContext=WindowAndWorker].
+        * fileapi/Blob.idl: Add [GlobalContext=WindowAndWorker].
+        * fileapi/FileReader.idl: Add [GlobalContext=WindowAndWorker].
+        * fileapi/FileReaderSync.idl: Add [GlobalContext=WorkerOnly] and remove [NoInterfaceObject]
+        as the interface should only be visible in worker environment as per the spec.
+        * html/DOMURL.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/ArrayBuffer.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/DataView.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Float32Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Float64Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Int16Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Int32Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Int8Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Uint16Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Uint32Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Uint8Array.idl: Add [GlobalContext=WindowAndWorker].
+        * html/canvas/Uint8ClampedArray.idl: Add [GlobalContext=WindowAndWorker].
+        * workers/WorkerContext.idl: Remove several Constructor attributes which are now automatically
+        generated.
+        * workers/WorkerLocation.idl: Add [GlobalContext=WorkerOnly] and remove [NoInterfaceObject]
+        as the interface should only be visible in worker environment as per the spec.
+
+2013-06-04  Kangil Han  <kangil.han@samsung.com>
+
+        Use ASSERT_DISABLED option for assertion purpose code in InlineBox
+        https://bugs.webkit.org/show_bug.cgi?id=117146
+
+        Reviewed by Alexey Proskuryakov.
+
+        We can distinguish assertion code with debug purpose by using ASSERT_DISABLED option.
+
+        * rendering/InlineBox.cpp:
+        (WebCore::InlineBox::~InlineBox):
+        (WebCore::InlineBox::destroy):
+        (WebCore::InlineBox::operator delete):
+        * rendering/InlineBox.h:
+        (WebCore::InlineBox::InlineBox):
+
+2013-06-04  Kent Tamura  <tkent@chromium.org>
+
+        Fix an assertion failure in Range::textNodeSplit by Text::splitText
+        https://bugs.webkit.org/show_bug.cgi?id=116509
+
+        Reviewed by Ryosuke Niwa.
+
+        Range::textNodeSplit is called in Text::splitText, and it assumes the
+        next sibling node is still a Text node. A DOM mutation event handler can
+        break this assumption.
+
+        We had better postpone DOM mutation events dispatched in Node::insertBefore
+        until exiting splitText to avoid inconsistent Range state.
+
+        This imports http://src.chromium.org/viewvc/blink?view=revision&revision=150493 .
+
+        Test: fast/dom/Range/split-text-in-range.html
+
+        * dom/Text.cpp:
+        (WebCore::Text::splitText): Add EventQueueScope.
+
+2013-06-03  Kangil Han  <kangil.han@samsung.com>
+
+        Remove unused arithmetic operation in RenderListItem
+        https://bugs.webkit.org/show_bug.cgi?id=117175
+
+        Reviewed by Brent Fulgham.
+
+        Variable 'markerLogicalLeft' is reassigned a value before the old one has been used.
+
+        * rendering/RenderListItem.cpp:
+        (WebCore::RenderListItem::positionListMarker):
+
+2013-06-03  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Some AppleWin VS2010 house cleaning.
+
+        * WebCore.vcxproj/build-generated-files.sh:
+
+2013-06-03  Roger Fong  <roger_fong@apple.com>
+
+        clearLayoutOverflow should never be called before calling layer()->updateScrollInfoAfterLayout().
+        https://bugs.webkit.org/show_bug.cgi?id=116689.
+
+        Reviewed by Ojan Vafai.
+
+        Make sure that clearLayoutOverflow only gets called after layer()->updateScrollInfoAfterLayout().
+        Also move clearLayoutOverflow to RenderBlock so we can keep all the delayed scroll update logic together.
+
+        Test: fast/flexbox/clear-overflow-before-scroll-update.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::layout): Remove call to clearLayoutOverflow.
+        (WebCore::RenderBlock::finishDelayUpdateScrollInfo): Add call to clearLayoutOverflow.
+        (WebCore::RenderBlock::updateScrollInfoAfterLayout): Ditto.
+        (WebCore::RenderBlock::clearLayoutOverflow): ASSERT(!gDelayUpdateScrollInfo) and move from RenderBox to RenderBlock to keep delayed scroll update logic together.
+        * rendering/RenderBlock.h:
+        (RenderBlock):
+        * rendering/RenderBox.cpp:
+        * rendering/RenderBox.h:
+        (WebCore::RenderBox::layoutOverflowRect): Remove from layoutOverflowRect.
+        (RenderBox): 
+        * rendering/RenderDeprecatedFlexibleBox.cpp:
+        (WebCore::RenderDeprecatedFlexibleBox::layoutBlock): This should call updateScrollInfoAfterLayout() intead of directly calling layer()->updateScrollInfoAfterLayout().
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::layoutBlock): Ditto.
+
+2013-05-31  Anders Carlsson  <andersca@apple.com>
+
+        Take the normal NSView code path when drawing into an inclusive layer
+        https://bugs.webkit.org/show_bug.cgi?id=117094
+        <rdar://problem/13812355>
+
+        Reviewed by Sam Weinig.
+
+        For now, take the normal code path when drawing into an inclusive layer.
+
+        * platform/mac/WidgetMac.mm:
+        (WebCore::Widget::paint):
+
+2013-05-31  Tiancheng Jiang  <tijiang@rim.com>
+
+        [BlackBerry] Update Button UX.
+        https://bugs.webkit.org/show_bug.cgi?id=116992
+
+        Reviewed by Rob Buis.
+
+        BlackBerry PR 342298.
+        Internally Review by Jeff Rogers.
+
+        * css/themeBlackBerry.css:
+
+2013-05-31  David Kilzer  <ddkilzer@apple.com>
+
+        DerivedSources.make: any rules that use $(FEATURE_DEFINES) should be rebuilt when FeatureDefines.xcconfig changes
+        <http://webkit.org/b/117081>
+
+        Reviewed by Mark Rowe.
+
+        * DerivedSources.make: Add $(PLATFORM_FEATURE_DEFINES)
+        dependency for all rules that use $(FEATURE_DEFINES) to generate
+        files.
+        (PLATFORM_FEATURE_DEFINES): Set this variable to
+        Configurations/FeatureDefines.xcconfig if not already set on
+        Mac OS X.
+
+2013-05-31  Tiancheng Jiang  <tijiang@rim.com>
+
+        Text Field UX updates.
+        https://bugs.webkit.org/show_bug.cgi?id=116996
+
+        Reviewed by Rob Buis.
+
+        BlackBerry PR 342333.
+        Internally Reviewed by Jeff Rogers.
+
+        Update disabled text field font color.
+
+        * css/themeBlackBerry.css:
+
 2013-05-31  Dean Jackson  <dino@apple.com>
 
         Update CheckedInt.h to latest version from Mozilla
@@ -160,6 +504,21 @@
 
         * rendering/RenderTableSection.cpp:
         (WebCore::RenderTableSection::paintObject):
+
+2013-05-31  Stephanie Lewis  <slewis@apple.com>
+
+        Update low memory handler to use new memory pressure notifications on new OS versions.
+        <rdar://problem/14027095>
+
+        Reviewed by Mark Rowe.
+
+        No change in functionality.
+
+        * WebCore.exp.in:
+        * platform/mac/MemoryPressureHandlerMac.mm:
+        (WebCore::MemoryPressureHandler::install): Call new API
+        * platform/mac/WebCoreSystemInterface.h: 
+        * platform/mac/WebCoreSystemInterface.mm:
 
 2013-05-30  Rafael Brandao  <rafael.lobo@openbossa.org>
 

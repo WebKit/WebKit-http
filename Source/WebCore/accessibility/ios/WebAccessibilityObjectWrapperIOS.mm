@@ -2093,6 +2093,32 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return m_object->mathOverObject() ? m_object->mathOverObject()->wrapper() : 0;
 }
 
+- (NSString *)accessibilityPlatformMathSubscriptKey
+{
+    return @"AXMSubscriptObject";
+}
+
+- (NSString *)accessibilityPlatformMathSuperscriptKey
+{
+    return @"AXMSuperscriptObject";
+}
+
+- (NSArray *)accessibilityMathPostscripts
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    return [self accessibilityMathPostscriptPairs];
+}
+
+- (NSArray *)accessibilityMathPrescripts
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    return [self accessibilityMathPrescriptPairs];
+}
+
 - (NSString *)accessibilityMathFencedOpenString
 {
     if (![self _prepareAccessibilityCall])
@@ -2163,6 +2189,8 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
             return @"AXMathSeparatorOperator";
         if (m_object->isMathOperator())
             return @"AXMathOperator";
+        if (m_object->isMathMultiscript())
+            return @"AXMathMultiscript";
     }
     
     return nil;

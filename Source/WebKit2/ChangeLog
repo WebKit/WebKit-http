@@ -1,3 +1,415 @@
+2013-06-04  Simon Cooper  <scooper@apple.com>
+
+        Tighten plugin sandbox profiles against symlink attacks
+        https://bugs.webkit.org/show_bug.cgi?id=117219
+        <rdar://problem/13044569>
+
+        Reviewed by Sam Weinig.
+
+        This inserts deny rules for creating symbolic links. The rules are
+        inserted at the end of sandbox profile compilation by overriding the
+        finalizer.  The initial value of %finalize must be the last function
+        called.
+
+        * Resources/PlugInSandboxProfiles/com.apple.WebKit.plugin-common.sb:
+
+2013-06-04  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WK2: accessibility position is calculated every time window frame is updated
+        https://bugs.webkit.org/show_bug.cgi?id=117201
+
+        Reviewed by Tim Horton.
+
+        Only calculate the AX position if AX has already been enabled when updating the
+        WKView's window and frame.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _updateWindowAndViewFrames]):
+        (-[WKView _accessibilityRegisterUIProcessTokens]):
+            Don't call accessibilityAttributeValue: here because it could enable accessibility prematurely.
+        (-[WKView enableAccessibilityIfNecessary]):
+            After enabling AX for the first time, also update the frame so that the AX position is correct.
+        (-[WKView accessibilityFocusedUIElement]):
+        (-[WKView accessibilityHitTest:]):
+        (-[WKView accessibilityAttributeValue:]):
+            Tell the AXObjectCache that AX is now enabled.
+
+2013-06-04  Mark Rowe  <mrowe@apple.com>
+
+        REGRESSION (r151043): Frequent crashes inside WebPageProxy::getPlugInInformation
+        <http://webkit.org/b/117180>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::getPlugInInformation): Return early when plugInProcessProxy is null
+        since there's nothing we can do.
+
+2013-06-04  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFl][WK2] Sub menu items should be of EWK_SUBMENU_TYPE and not checkable
+        https://bugs.webkit.org/show_bug.cgi?id=116959
+
+        Reviewed by Gyuyoung Kim.
+
+        Currently using ewk API it is possible to create a sub menu item which is not an EWK_SUBMENU_TYPE
+        or set checkable flag for it, while it is not possible for items created by WebKit. 
+        This patch changes ewk context menu API to match WebKit2 behaviour, by creating sub menus with
+        proper type and checkable flags.
+
+        * UIProcess/API/efl/ewk_context_menu_item.cpp:
+        (ewk_context_menu_item_new_with_submenu):
+        * UIProcess/API/efl/ewk_context_menu_item.h:
+        * UIProcess/API/efl/tests/test_ewk2_context_menu.cpp:
+        (showContextMenu):
+
+2013-06-04  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL][WK2] Custom context menu items cannot be selected
+        https://bugs.webkit.org/show_bug.cgi?id=116830
+
+        Reviewed by Gyuyoung Kim.
+
+        Custom item added using ewk_context_menu_item_append had no
+        pointer to parent menu, and custom submenu added using with the
+        the same function had no pointer to EwkView. Both issues
+        prevented items to be selected.
+
+        * UIProcess/API/efl/ewk_context_menu.cpp:
+        (EwkContextMenu::appendItem):
+        (EwkContextMenu::contextMenuItemSelected):
+        (ewk_context_menu_item_append):
+        (ewk_context_menu_item_select):
+        * UIProcess/API/efl/ewk_context_menu_private.h:
+        (EwkContextMenu):
+        (EwkContextMenu::setEwkView):
+
+2013-06-03  Simon Cooper  <scooper@apple.com>
+
+        Unable to play videos in Safari using QuickTime plug-in until I've played those videos in Chrome first
+        https://bugs.webkit.org/show_bug.cgi?id=117174
+        <rdar://problem/13711687>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Pull in fixes that allow https connections within the plugin
+        environment.
+
+        * Resources/PlugInSandboxProfiles/com.apple.WebKit.plugin-common.sb:
+
+2013-06-03  Marcelo Lira  <marcelo.lira@openbossa.org>
+
+        [WK2] REGRESSION(r150798): scrolling coordinator is not being enabled when WebPage is set to use fixed layout
+        https://bugs.webkit.org/show_bug.cgi?id=117163
+
+        Reviewed by Darin Adler.
+
+        Moved call to WebPage::settings()->setScrollingCoordinatorEnabled()
+        from CoordinatedLayerTreeHost constructor to WebPage::setUseFixedLayout().
+        The scrolling coordinator must be enabled or disabled following the
+        WebPage's use of fixed layout.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::CoordinatedLayerTreeHost):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setUseFixedLayout):
+
+2013-06-03  Anders Carlsson  <andersca@apple.com>
+
+        Send mouse events to the banner for as long as the mouse button is down
+        https://bugs.webkit.org/show_bug.cgi?id=117161
+        <rdar://problem/13821220>
+
+        Reviewed by Beth Dakin.
+
+        Keep track of whether the mouse was pressed in a banner and keep sending mouse events to it,
+        even if they are outside the banner's bounds for as long as the mouse is down.
+
+        * WebProcess/WebPage/PageBanner.h:
+        * WebProcess/WebPage/mac/PageBannerMac.mm:
+        (WebKit::PageBanner::PageBanner):
+        (WebKit::PageBanner::mouseEvent):
+
+2013-06-03  Sergio Correia  <sergio.correia@openbossa.org>
+
+        [EFL][WK2] Process launcher uses system() for wrapping the WebProcess when using WEB_PROCESS_CMD_PREFIX
+        https://bugs.webkit.org/show_bug.cgi?id=105156
+
+        Reviewed by Christophe Dumez.
+
+        When using WEB_PROCESS_CMD_PREFIX - which allows us for instance to analyze
+        WebProcess under tools like valgrind or gdb -, the ProcessLauncher would
+        spawn the new process using system(), which would, among other things, keep
+        an extra UIProcess waiting and executing the shell.
+
+        This patch handles the normal case and the case where we have something to
+        prefix WebProcess (i.e., by using WEB_PROCESS_CMD_PREFIX in a debug build)
+        the same way, through a call to execvp().
+
+        To achieve this a function was introduced to create an array with the given
+        arguments to the full command to be executed, to be used by execvp(). We use
+        a Vector<OwnArrayPtr<char>>, so that we can take advantage of the destructor
+        of OwnArrayPtr to handle the memory deallocation when it goes out of scope.
+
+        * UIProcess/Launcher/efl/ProcessLauncherEfl.cpp:
+        (WebKit::createArgsArray):  This function creates the array to be used by
+        execvp(), out of the Strings given as arguments.
+        (WebKit::ProcessLauncher::launchProcess): Rework the logic to accomodate
+        both the cases with and without WEB_PROCESS_CMD_PREFIX. The execl() call
+        was replaced with an execvp() call, since now we should deal with having
+        a variable number of arguments (WEB_PROCESS_CMD_PREFIX) as well.
+
+2013-06-02  Arunprasad Rajkumar  <arurajku@cisco.com>
+
+        [Qt] Move Qt port off legacy clipboard
+        https://bugs.webkit.org/show_bug.cgi?id=116416
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebCoreSupport/qt/WebDragClientQt.cpp:
+        (WebKit::WebDragClient::startDrag):
+
+2013-06-02  Sergio Correia  <sergio.correia@openbossa.org>
+
+        [WK2][CoordinatedGraphics]: Use a properly initialized WebPage when creating a PageClient
+        https://bugs.webkit.org/show_bug.cgi?id=117116
+
+        Reviewed by Tim Horton.
+
+        Valgrind reported a "conditional jump or move depends on uninitialised value"
+        at WebPageProxy constructor, when checking the m_isVisible variable inside
+        the ENABLE(PAGE_VISIBILITY_API) guard.
+
+        The issue was tracked down to the WebView constructor, which was creating a
+        WebKit::PageClient* making use of `this' before having initialized all of its
+        attributes.
+
+        The solution was to move the initialization of the `page' member to inside the
+        constructor itself - out of the initialization list -, where we can guarantee
+        all the relevant stuff has already been properly initialized.
+
+        Here's the relevant valgrind trace for reference:
+
+        Conditional jump or move depends on uninitialised value(s)
+            at 0x65A35A4: WebKit::WebPageProxy::WebPageProxy(WebKit::PageClient*,
+                          WTF::PassRefPtr<WebKit::WebProcessProxy>,
+                          WebKit::WebPageGroup*, unsigned long) (WebPageProxy.cpp:322)
+            by 0x65A2BA2: WebKit::WebPageProxy::create(WebKit::PageClient*,
+                          WTF::PassRefPtr<WebKit::WebProcessProxy>,
+                          WebKit::WebPageGroup*, unsigned long) (WebPageProxy.cpp:233)
+            by 0x65E94BB: WebKit::WebProcessProxy::createWebPage(WebKit::PageClient*,
+                          WebKit::WebContext*, WebKit::WebPageGroup*)
+                          (WebProcessProxy.cpp:172)
+            by 0x6570957: WebKit::WebContext::createWebPage(WebKit::PageClient*,
+                          WebKit::WebPageGroup*, WebKit::WebPageProxy*)
+                          (WebContext.cpp:735)
+            by 0x67673E3: WebKit::WebView::WebView(WebKit::WebContext*,
+                          WebKit::WebPageGroup*) (WebView.cpp:52)
+            by 0x6775F18: WebKit::WebViewEfl::WebViewEfl(WebKit::WebContext*,
+                          WebKit::WebPageGroup*) (WebViewEfl.cpp:54)
+            by 0x6775EB4: WebKit::WebView::create(WebKit::WebContext*,
+                          WebKit::WebPageGroup*) (WebViewEfl.cpp:49)
+            by 0x673E13D: WKViewCreate (WKView.cpp:33)
+            by 0x6763ECE: EWKViewCreate (ewk_view.cpp:92)
+
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::WebView):
+
+2013-05-31  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL][WK2] Add a null checking condition to in hide() of EwkContextMenu
+        https://bugs.webkit.org/show_bug.cgi?id=117014
+
+        Reviewed by Christophe Dumez.
+
+        m_viewImpl is able to be null. So, we need to protect this function against such case.
+
+        * UIProcess/API/efl/ewk_context_menu.cpp:
+        (EwkContextMenu::hide):
+        (ewk_context_menu_hide):
+        * UIProcess/API/efl/ewk_context_menu_private.h:
+        (EwkContextMenu):
+
+2013-05-31  Oliver Hunt  <oliver@apple.com>
+
+        Fix bug in active page tracking that lead to plugins hanging during destruction
+        https://bugs.webkit.org/show_bug.cgi?id=117099
+
+        Reviewed by Anders Carlsson.
+
+        NPRuntimeObjectMap no longer keeps its own reference to the
+        throttler, and no longer reports activity during destruction.
+
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::NPRuntimeObjectMap):
+        (WebKit::NPRuntimeObjectMap::evaluate):
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.h:
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::PluginView):
+
+2013-05-31  Tim Horton  <timothy_horton@apple.com>
+
+        [wk2] All intrinsic content size changes should go through the 0-delay timer
+        https://bugs.webkit.org/show_bug.cgi?id=117058
+        <rdar://problem/13935042>
+
+        Reviewed by Anders Carlsson.
+
+        In r146913, I added a 0-delay timer so that we'd coalesce intrinsic
+        content size changes. However, didUpdateGeometry was still immediately
+        invalidating the intrinsic content size without coalescing.
+
+        Move that update to the WebProcess to share the timer.
+
+        * UIProcess/DrawingAreaProxy.h:
+        (WebKit::DrawingAreaProxy::didUpdateGeometry):
+        * UIProcess/DrawingAreaProxy.messages.in:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.h:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm:
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::didUpdateGeometry):
+        Remove the newIntrinsicContentSize argument, and don't invalidate intrinsic
+        content size inside didUpdateGeometry.
+
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::updateGeometry):
+        Start the intrinsic content size update timer when we finish updateGeometry.
+
+2013-05-31  Alexey Proskuryakov  <ap@apple.com>
+
+        Sandbox violations when trying to access fonts in non-standard locations
+        https://bugs.webkit.org/show_bug.cgi?id=117097
+        <rdar://problem/9264746>
+
+        Reviewed by Anders Carlsson.
+
+        The issue was that lack of a main xib was resulting in font machinery being
+        initialized too early, before we entered sandbox.
+
+        * Resources/WebContentProcess.xib: Added.
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/EntryPoint/mac/LegacyProcess/Info.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info.plist:
+
+2013-05-31  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/14036464> Sandbox violation when using Web SpeechSynthesis
+
+        Reviewed by Anders Carlsson
+
+        * WebProcess/com.apple.WebProcess.sb.in: Allow com.apple.speech.synthesis.console.
+
+2013-05-31  Jessie Berlin  <jberlin@apple.com>
+
+        Need the ability to get the information for a plug-in with a particular process id that may
+        be running on a page
+        https://bugs.webkit.org/show_bug.cgi?id=117090
+
+        Rubber-stamped by Anders Carlsson.
+
+        Follow-up to r151043 incorprating some feedback I got from Darin after I had already
+        committed the patch.
+
+        * UIProcess/API/C/mac/WKPagePrivateMac.cpp:
+        (callGetPlugInInformationBlockAndDispose):
+        Renamed to be less wordy.
+        (WKPageGetPlugInInformation):
+        Ditto.
+        * UIProcess/API/C/mac/WKPagePrivateMac.h:
+        Ditto.
+
+        * UIProcess/Plugins/PluginProcessManager.h:
+        * UIProcess/Plugins/mac/PluginProcessManagerMac.mm:
+        (WebKit::PluginProcessManager::findPlugInProcessByID):
+        Renamed to not use "Cocoa method style" in non-Cocoa functions.
+        (WebKit::PluginProcessManager::findPlugInProcessByToken):
+        Ditto.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::getPlugInInformation):
+        Reduce ref count churn and fix a variable name.
+        Updated for the change to findPlugInProcessByID.
+        (WebKit::WebPageProxy::containsPlugInCallback):
+        Updated for the change to findPlugInProcessByToken.
+
+        * WebProcess/Plugins/PDF/SimplePDFPlugin.h:
+        Move the override of a virtual function to the private section.
+
+2013-05-31  Jessie Berlin  <jberlin@apple.com>
+
+        Need the ability to get the information for a plug-in with a particular process id that may
+        be running on a page
+        https://bugs.webkit.org/show_bug.cgi?id=117090
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/API/C/mac/WKPagePrivateMac.cpp:
+        (callGetInformationForPlugInWithProcessIDBlockAndDispose):
+        Get the block from the context, invoke it with the result, and dispose of it.
+        (WKPageGetInformationForPlugInWithProcessID):
+        Ask the WebPageProxy and provide it with a dictionary callback that uses the
+        above function to invoke the passed in block.
+        * UIProcess/API/C/mac/WKPagePrivateMac.h:
+        Add WKPageGetInformationForPlugInWithProcessID and a typedef for the callback block.
+
+        * UIProcess/Plugins/PluginProcessManager.h:
+        Add ways to get the PluginProcessProxy associated with a process id or process token.
+        * UIProcess/Plugins/mac/PluginProcessManagerMac.mm:
+        (WebKit::PluginProcessManager::plugInProcessWithProcessID):
+        Return the first PluginProcessProxy with the passed in process ID.
+        (WebKit::PluginProcessManager::plugInProcessWithToken):
+        Return the first PluginProcessProxy with the passed in process token.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::close):
+        Invalidate any outstanding requests for plug-in information.
+        * UIProcess/WebPageProxy.h:
+        Keep track of the callbacks for the requests for plug-in information.
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::getInformationForPlugInWithProcessID):
+        If there are no known plug-ins with the provided process ID, invoke the callback with a null
+        dictionary of plug-in information.
+        Otherwise, keep track of the callback and send a message to the web process asking for the
+        information.
+        (WebKit::WebPageProxy::containsPlugInCallback):
+        If the page did not contain the plug-in, invoke the callback with a null dictionary of
+        plug-in information.
+        Invoke the callback with a dictionary containing the PlugInModuleInfo.
+
+        * WebProcess/Plugins/Netscape/NetscapePlugin.h:
+        Return 0 for the plugInProcessToken.
+        * WebProcess/Plugins/PDF/SimplePDFPlugin.h:
+        Ditto.
+        * WebProcess/Plugins/Plugin.h:
+        Add a pure virtual method for plugInProcessToken so it can be accessed from from the Plugin
+        on the PluginView.
+        * WebProcess/Plugins/PluginProxy.h:
+        Return the actual plug-in process token.
+
+        * WebProcess/Plugins/PluginView.h:
+        (WebKit::PluginView::plugIn):
+        Make it possible to get at the plug-in process token through the Plugin.
+
+        * WebProcess/WebPage/WebPageMac.mm:
+        (WebKit::WebPage::containsPluginViewsWithPluginProcessToken):
+        If there is an instance of the plug-in with that token, send a confirmation to the ui
+        process.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2013-05-31  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION (r141445): MPEG-4 videos do not play on certain hardware configurations
+        https://bugs.webkit.org/show_bug.cgi?id=117089
+        <rdar://problem/13839717>
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/WebContentProcess.xcconfig: Statically link to a framework that
+        uses an XPC service to work around a libxpc limitation on Lion.
+
 2013-05-31  Dean Jackson  <dino@apple.com>
 
         Don't create an accelerated compositing layer unless we have to for snapshotting plug-ins
@@ -27,6 +439,16 @@
 
         * WebProcess/InjectedBundle/API/mac/WKDOMInternals.mm:
         (WebKit::WKDOMNodeClass):
+
+2013-05-31  Stephanie Lewis  <slewis@apple.com>
+
+        Update low memory handler to use new memory pressure notifications on new OS versions.
+        <rdar://problem/14027095>
+
+        Reviewed by Mark Rowe.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
 
 2013-05-30  Tim Horton  <timothy_horton@apple.com>
 
