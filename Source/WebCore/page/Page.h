@@ -246,8 +246,8 @@ public:
     // Upon return, indexForSelection will be one of the following:
     // 0 if there is no user selection
     // the index of the first range after the user selection
-    // NoMatchBeforeUserSelection if there is no matching text after the user selection.
-    enum { NoMatchBeforeUserSelection = -1 };
+    // NoMatchAfterUserSelection if there is no matching text after the user selection.
+    enum { NoMatchAfterUserSelection = -1 };
     void findStringMatchingRanges(const String&, FindOptions, int maxCount, Vector<RefPtr<Range> >*, int& indexForSelection);
 #if PLATFORM(MAC)
     void addSchedulePair(PassRefPtr<SchedulePair>);
@@ -419,7 +419,10 @@ private:
     void checkSubframeCountConsistency() const;
 #endif
 
-    unsigned findMatchesForText(const String&, FindOptions, unsigned maxMatchCount, bool shouldHighlight, bool markMatches);
+    enum ShouldHighlightMatches { DoNotHighlightMatches, HighlightMatches };
+    enum ShouldMarkMatches { DoNotMarkMatches, MarkMatches };
+
+    unsigned findMatchesForText(const String&, FindOptions, unsigned maxMatchCount, ShouldHighlightMatches, ShouldMarkMatches);
 
     MediaCanStartListener* takeAnyMediaCanStartListener();
 
@@ -430,6 +433,9 @@ private:
     double timerAlignmentInterval() const;
 
     void collectPluginViews(Vector<RefPtr<PluginViewBase>, 32>& pluginViewBases);
+
+    void throttleTimers();
+    void unthrottleTimers();
 
     const OwnPtr<Chrome> m_chrome;
     OwnPtr<DragCaretController> m_dragCaretController;

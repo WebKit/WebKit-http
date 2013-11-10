@@ -155,6 +155,7 @@ namespace WebCore {
         ContextMenuItemTagChangeBack,
 #endif
         ContextMenuItemTagOpenMediaInNewWindow,
+        ContextMenuItemTagDownloadMediaToDisk,
         ContextMenuItemTagCopyMediaLinkToClipboard,
         ContextMenuItemTagToggleMediaControls,
         ContextMenuItemTagToggleMediaLoop,
@@ -163,6 +164,7 @@ namespace WebCore {
         ContextMenuItemTagMediaMute,
         ContextMenuItemTagDictationAlternative,
         ContextMenuItemTagOpenLinkInThisWindow,
+        ContextMenuItemTagToggleVideoFullscreen,
         ContextMenuItemBaseCustomTag = 5000,
         ContextMenuItemCustomTagNoAction = 5998,
         ContextMenuItemLastCustomTag = 5999,

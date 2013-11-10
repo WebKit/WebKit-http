@@ -74,6 +74,16 @@ WKURLRef WKBundleHitTestResultCopyAbsoluteMediaURL(WKBundleHitTestResultRef hitT
     return toCopiedURLAPI(toImpl(hitTestResultRef)->absoluteMediaURL());
 }
 
+bool WKBundleHitTestResultMediaIsInFullscreen(WKBundleHitTestResultRef hitTestResultRef)
+{
+    return toImpl(hitTestResultRef)->mediaIsInFullscreen();
+}
+
+WKBundleHitTestResultMediaType WKBundleHitTestResultGetMediaType(WKBundleHitTestResultRef hitTestResultRef)
+{
+    return toAPI(toImpl(hitTestResultRef)->getMediaType());
+}
+
 WKRect WKBundleHitTestResultGetImageRect(WKBundleHitTestResultRef hitTestResultRef)
 {
     return toAPI(toImpl(hitTestResultRef)->imageRect());

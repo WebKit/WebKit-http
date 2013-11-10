@@ -74,6 +74,7 @@
 #include "RenderListBox.h"
 #include "RenderListMarker.h"
 #include "RenderMathMLBlock.h"
+#include "RenderMathMLFraction.h"
 #include "RenderMathMLOperator.h"
 #include "RenderMenuList.h"
 #include "RenderSVGShape.h"
@@ -2150,9 +2151,14 @@ AccessibilityObject* AccessibilityRenderObject::accessibilityImageMapHitTest(HTM
 {
     if (!area)
         return 0;
-    
-    HTMLMapElement* map = static_cast<HTMLMapElement*>(area->parentNode());
-    AccessibilityObject* parent = accessibilityParentForImageMap(map);
+
+    AccessibilityObject* parent = 0;
+    for (Element* mapParent = area->parentElement(); mapParent; mapParent = mapParent->parentElement()) {
+        if (mapParent->hasTagName(mapTag)) {
+            parent = accessibilityParentForImageMap(static_cast<HTMLMapElement*>(mapParent));
+            break;
+        }
+    }
     if (!parent)
         return 0;
     
@@ -2431,7 +2437,7 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
             return ImageMapRole;
         return WebCoreLinkRole;
     }
-    if (cssBox && cssBox->isListItem())
+    if ((cssBox && cssBox->isListItem()) || (node && node->hasTagName(liTag)))
         return ListItemRole;
     if (m_renderer->isListMarker())
         return ListMarkerRole;
@@ -3787,7 +3793,10 @@ void AccessibilityRenderObject::mathPostscripts(AccessibilityMathMultiscriptPair
 
 int AccessibilityRenderObject::mathLineThickness() const
 {
-    return getAttribute(MathMLNames::linethicknessAttr).toInt();
+    if (!isMathFraction())
+        return -1;
+    
+    return toRenderMathMLFraction(m_renderer)->lineThickness();
 }
 
 #endif

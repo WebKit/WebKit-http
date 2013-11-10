@@ -74,6 +74,7 @@ HEADERS += \
     Shared/Authentication/AuthenticationManager.h \
     Shared/ShareableBitmap.h \
     Shared/CacheModel.h \
+    Shared/ActivityAssertion.h \
     Shared/ChildProcess.h \
     Shared/ChildProcessProxy.h \
     Shared/ConnectionStack.h \
@@ -309,6 +310,7 @@ HEADERS += \
     WebProcess/InjectedBundle/InjectedBundleClient.h \
     WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.h \
     WebProcess/InjectedBundle/InjectedBundleHitTestResult.h \
+    WebProcess/InjectedBundle/InjectedBundleHitTestResultMediaType.h \
     WebProcess/InjectedBundle/InjectedBundleNavigationAction.h \
     WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.h \
     WebProcess/InjectedBundle/InjectedBundlePageDiagnosticLoggingClient.h \
@@ -431,6 +433,7 @@ SOURCES += \
     Shared/API/c/qt/WKImageQt.cpp \
     Shared/APIClientTraits.cpp \
     Shared/APIObject.cpp \
+    Shared/ActivityAssertion.cpp \
     Shared/Authentication/AuthenticationManager.cpp \
     Shared/Plugins/Netscape/PluginInformation.cpp \
     Shared/Plugins/Netscape/NetscapePluginModule.cpp \
@@ -849,18 +852,6 @@ have?(QTQUICK) {
 }
 
 mac: {
-    use?(QTKIT) {
-        DEFINES += NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
-        isEqual(QT_ARCH, "i386") {
-            DEFINES+=NS_BUILD_32_LIKE_64
-        }
-        INCLUDEPATH += \
-            $$PWD/../../WebKitLibraries/
-        HEADERS += \
-            WebProcess/WebCoreSupport/qt/WebSystemInterface.h
-        OBJECTIVE_SOURCES += \
-            WebProcess/WebCoreSupport/qt/WebSystemInterface.mm
-    }
     INCLUDEPATH += \
         Platform/mac \
         Platform/CoreIPC/mac

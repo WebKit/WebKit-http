@@ -324,6 +324,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document* docum
 #if USE(AUDIO_SESSION)
     , m_audioSessionManagerToken(AudioSessionManagerToken::create(tagName == videoTag ? AudioSessionManager::Video : AudioSessionManager::Audio))
 #endif
+    , m_reportedExtraMemoryCost(0)
 {
     LOG(Media, "HTMLMediaElement::HTMLMediaElement");
     document->registerForMediaVolumeCallbacks(this);
@@ -345,6 +346,8 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document* docum
 HTMLMediaElement::~HTMLMediaElement()
 {
     LOG(Media, "HTMLMediaElement::~HTMLMediaElement");
+
+    m_asyncEventQueue->close();
 
     if (m_isWaitingUntilMediaCanStart)
         document()->removeMediaCanStartListener(this);
@@ -611,12 +614,24 @@ void HTMLMediaElement::removedFrom(ContainerNode* insertionPoint)
             pause();
         if (m_isFullscreen)
             exitFullscreen();
+
+        if (m_player) {
+            JSC::VM* vm = JSDOMWindowBase::commonVM();
+            JSC::JSLockHolder lock(vm);
+
+            size_t extraMemoryCost = m_player->extraMemoryCost();
+            size_t extraMemoryCostDelta = extraMemoryCost - m_reportedExtraMemoryCost;
+            m_reportedExtraMemoryCost = extraMemoryCost;
+
+            if (extraMemoryCostDelta > 0)
+                vm->heap.reportExtraMemoryCost(extraMemoryCostDelta);
+        }
     }
 
     HTMLElement::removedFrom(insertionPoint);
 }
 
-void HTMLMediaElement::attach()
+void HTMLMediaElement::attach(const AttachContext& context)
 {
     ASSERT(!attached());
 
@@ -624,7 +639,7 @@ void HTMLMediaElement::attach()
     m_needWidgetUpdate = true;
 #endif
 
-    HTMLElement::attach();
+    HTMLElement::attach(context);
 
     if (renderer())
         renderer()->updateFromElement();
@@ -681,7 +696,9 @@ void HTMLMediaElement::scheduleEvent(const AtomicString& eventName)
     LOG(Media, "HTMLMediaElement::scheduleEvent - scheduling '%s'", eventName.string().ascii().data());
 #endif
     RefPtr<Event> event = Event::create(eventName, false, true);
-    event->setTarget(this);
+    
+    // Don't set the event target, the event queue will set it in GenericEventQueue::timerFired and setting it here
+    // will trigger an ASSERT if this element has been marked for deletion.
 
     m_asyncEventQueue->enqueueEvent(event.release());
 }
@@ -846,7 +863,8 @@ void HTMLMediaElement::prepareForLoad()
     // The spec doesn't say to block the load event until we actually run the asynchronous section
     // algorithm, but do it now because we won't start that until after the timer fires and the 
     // event may have already fired by then.
-    setShouldDelayLoadEvent(true);
+    if (m_preload != MediaPlayer::None)
+        setShouldDelayLoadEvent(true);
 
     configureMediaControls();
 }
@@ -4155,6 +4173,8 @@ void HTMLMediaElement::stop()
     
     stopPeriodicTimers();
     cancelPendingEventsAndCallbacks();
+
+    m_asyncEventQueue->close();
 }
 
 void HTMLMediaElement::suspend(ReasonForSuspension why)
@@ -4360,6 +4380,16 @@ bool HTMLMediaElement::isFullscreen() const
 #endif
     
     return false;
+}
+
+void HTMLMediaElement::toggleFullscreenState()
+{
+    LOG(Media, "HTMLMediaElement::toggleFullscreenState - isFullscreen() is %s", boolString(isFullscreen()));
+    
+    if (isFullscreen())
+        exitFullscreen();
+    else
+        enterFullscreen();
 }
 
 void HTMLMediaElement::enterFullscreen()

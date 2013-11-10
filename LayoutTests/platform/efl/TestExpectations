@@ -463,60 +463,14 @@ webkit.org/b/102486 editing/pasteboard/line-feed-between-br-and-b-should-not-reo
 webkit.org/b/102486 editing/pasteboard/paste-table-cells.html [ Failure ]
 
 # Needs baselines
-editing/deleting/smart-delete-003.html [ Missing ]
-editing/deleting/smart-delete-004.html [ Missing ]
 editing/inserting/before-after-input-element.html [ Missing ]
 editing/inserting/break-blockquote-after-delete.html [ Missing ]
-editing/selection/3690703-2.html [ Missing ]
-editing/selection/3690703.html [ Missing ]
-editing/selection/3690719.html [ Missing ]
-editing/selection/4397952.html [ Missing ]
-editing/selection/4895428-3.html [ Missing ]
-editing/selection/4975120.html [ Missing ]
-editing/selection/5007143-2.html [ Missing ]
-editing/selection/5007143.html [ Missing ]
-editing/selection/5057506.html [ Missing ]
-editing/selection/5195166-1.html [ Missing ]
-editing/selection/7152-2.html [ Missing ]
-editing/selection/caret-and-focus-ring.html [ Missing ]
-editing/selection/caret-before-select.html [ Missing ]
-editing/selection/caret-ltr-right.html [ Missing ]
-editing/selection/caret-rtl-2-left.html [ Missing ]
-editing/selection/caret-rtl-right.html [ Missing ]
 editing/selection/contains-boundaries.html [ Missing ]
 editing/selection/designmode-no-caret.html [ Missing ]
-editing/selection/drag-select-1.html [ Missing ]
-editing/selection/extend-by-character-002.html [ Missing ]
-editing/selection/extend-by-character-003.html [ Missing ]
-editing/selection/extend-by-word-002.html [ Missing ]
-editing/selection/mixed-editability-6.html [ Missing ]
-editing/selection/mixed-editability-7.html [ Missing ]
-editing/selection/node-removal-2.html [ Missing ]
 editing/selection/paragraph-granularity.html [ Missing ]
-editing/selection/range-between-block-and-inline.html [ Missing ]
 editing/selection/replaced-boundaries-3.html [ Missing ]
-editing/selection/select-across-readonly-input-1.html [ Missing ]
-editing/selection/select-across-readonly-input-2.html [ Missing ]
-editing/selection/select-across-readonly-input-3.html [ Missing ]
-editing/selection/select-across-readonly-input-4.html [ Missing ]
-editing/selection/select-across-readonly-input-5.html [ Missing ]
-editing/selection/select-all-002.html [ Missing ]
-editing/selection/select-all-003.html [ Missing ]
-editing/selection/select-all-004.html [ Missing ]
-editing/selection/select-all-005.html [ Missing ]
-editing/selection/select-all-006.html [ Missing ]
-editing/selection/select-box.html [ Missing ]
-editing/selection/select-element-paragraph-boundary.html [ Missing ]
-editing/selection/select-from-textfield-outwards.html [ Missing ]
-editing/selection/selection-actions.html [ Missing ]
 editing/selection/selection-background.html [ Missing ]
-editing/selection/selection-button-text.html [ Missing ]
-editing/selection/vertical-lr-ltr-extend-line-backward-br.html [ Missing ]
-editing/style/5017613-1.html [ Missing ]
-editing/style/5046875-1.html [ Missing ]
 editing/style/5065910.html [ Missing ]
-editing/style/5228141.html [ Missing ]
-editing/style/5279521.html [ Missing ]
 editing/style/font-family-with-space.html [ Missing ]
 editing/style/smoosh-styles-001.html [ Missing ]
 editing/style/style-boundary-005.html [ Missing ]
@@ -632,10 +586,6 @@ webkit.org/b/104809 media/video-src-blob.html [ Crash Failure ]
 webkit.org/b/104809 media/video-src-change.html [ Crash Pass ]
 webkit.org/b/104809 media/remove-from-document.html [ Crash Pass ]
 webkit.org/b/104809 media/video-timeupdate-during-playback.html [ Crash Pass ]
-
-# ASSERTION FAILED: m_tokenizer->state() == HTMLTokenizer::DataState.
-webkit.org/b/110546 fast/parser/document-write-partial-entity-before-load.html [ Crash ]
-webkit.org/b/110546 fast/parser/document-write-fighting-eof.html [ Crash ]
 
 webkit.org/b/111521 editing/selection/selection-invalid-offset.html [ Crash Pass ]
 
@@ -1607,16 +1557,11 @@ Bug(EFL) media/track/track-in-band-mode.html [ Skip ]
 webkit.org/b/56496 [ Debug ] fast/js/array-sort-modifying-tostring.html [ Crash Pass ]
 
 # Rendering failure, also missing expected results:
-webkit.org/b/105093 compositing/webgl/webgl-background-color.html [ Skip ]
 webkit.org/b/105093 compositing/webgl/webgl-nonpremultiplied-blend.html [ Skip ]
 
 # WebProcess timeouts
 webkit.org/b/102464 [ Debug ] fast/images/webgl-teximage2d.html [ Pass Timeout ]
-webkit.org/b/105092 fast/canvas/webgl/read-pixels-test.html [ Failure Timeout Crash ]
 webkit.org/b/106547 fast/canvas/webgl/type-conversion-test.html [ Crash ]
-
-# pixel differences, need to investigate.
-webkit.org/b/105090 fast/canvas/webgl/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
 
 # shader errors, fails to render.
 webkit.org/b/105031 fast/canvas/webgl/drawingbuffer-test.html [ Failure ]
@@ -1797,26 +1742,6 @@ webkit.org/b/114739 compositing/patterns/direct-pattern-compositing-size.html [ 
 # New accessibility test added in r149155 is failing.
 webkit.org/b/115659 accessibility/meter-element.html [ Failure ]
 
-# Regression(r149292): Missing repaint rects.
-webkit.org/b/114611 fast/box-shadow/shadow-repaint.html [ Failure ]
-webkit.org/b/114611 fast/css-grid-layout/grid-element-change-columns-repaint.html [ Failure ]
-webkit.org/b/114611 fast/css-grid-layout/grid-element-change-rows-repaint.html [ Failure ]
-webkit.org/b/114611 fast/css-grid-layout/grid-item-change-column-repaint.html [ Failure ]
-webkit.org/b/114611 fast/css-grid-layout/grid-item-change-row-repaint.html [ Failure ]
-webkit.org/b/114611 fast/images/repaint-subrect-grid.html [ Failure ]
-webkit.org/b/114611 fast/repaint/background-shorthand-with-gradient-and-height-changes.html [ Failure ]
-webkit.org/b/114611 fast/repaint/layer-full-repaint.html [ Failure ]
-webkit.org/b/114611 fast/repaint/overflow-flipped-writing-mode-table.html [ Failure ]
-webkit.org/b/114611 fast/repaint/reflection-table-layout.html [ Failure ]
-webkit.org/b/114611 fast/repaint/selection-gap-absolute-child.html [ Failure ]
-webkit.org/b/114611 fast/repaint/selection-gap-fixed-child.html [ Failure ]
-webkit.org/b/114611 fast/repaint/selection-gap-flipped-absolute-child.html [ Failure ]
-webkit.org/b/114611 fast/repaint/selection-gap-flipped-fixed-child.html [ Failure ]
-webkit.org/b/114611 fast/repaint/selection-gap-transformed-absolute-child.html [ Failure ]
-webkit.org/b/114611 fast/repaint/selection-gap-transformed-fixed-child.html [ Failure ]
-webkit.org/b/114611 fast/repaint/transform-table-layout.html [ Failure ]
-webkit.org/b/114611 svg/repaint/repaint-webkit-svg-shadow-container.html [ Failure ]
-
 # Newly added test in r148131 is failing.
 webkit.org/b/114876 media/click-volume-bar-not-pausing.html [ Failure ]
 
@@ -1824,9 +1749,6 @@ webkit.org/b/114876 media/click-volume-bar-not-pausing.html [ Failure ]
 webkit.org/b/114877 accessibility/link-inside-button-accessible-text.html [ Failure ]
 
 webkit.org/b/114612 editing/style/block-style-005.html [ Failure ]
-
-# Regression(r150025).
-webkit.org/b/115919 fast/css/variables/var-inside-shape.html [ ImageOnlyFailure ]
 
 # Unidentified failing media tests
 webkit.org/b/115419 http/tests/media/reload-after-dialog.html [ Failure ]
@@ -1854,3 +1776,8 @@ webkit.org/b/116587 http/tests/websocket/tests/hybi/close.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/close-on-navigate-new-location.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/multiple-subprotocols.html [ Skip ]
 webkit.org/b/116587 http/tests/websocket/tests/hybi/reload-crash.html [ Skip ]
+
+webkit.org/b/117706 accessibility/box-styled-lists.html [ Failure ]
+
+# Synthesized italics not supported
+fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]

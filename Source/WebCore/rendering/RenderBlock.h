@@ -34,9 +34,9 @@
 #include <wtf/OwnPtr.h>
 #include <wtf/ListHashSet.h>
 
-#if ENABLE(CSS_EXCLUSIONS)
-#include "ExclusionShapeInsideInfo.h"
-#include "ExclusionShapeValue.h"
+#if ENABLE(CSS_SHAPES)
+#include "ShapeInsideInfo.h"
+#include "ShapeValue.h"
 #endif
 
 namespace WebCore {
@@ -54,7 +54,7 @@ struct BidiRun;
 struct PaintInfo;
 class LineInfo;
 class RenderRubyRun;
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
 class BasicShape;
 #endif
 class TextLayout;
@@ -445,29 +445,29 @@ public:
     void showLineTreeAndMark(const InlineBox* = 0, const char* = 0, const InlineBox* = 0, const char* = 0, const RenderObject* = 0) const;
 #endif
 
-#if ENABLE(CSS_EXCLUSIONS)
-    ExclusionShapeInsideInfo* ensureExclusionShapeInsideInfo()
+#if ENABLE(CSS_SHAPES)
+    ShapeInsideInfo* ensureShapeInsideInfo()
     {
         if (!m_rareData || !m_rareData->m_shapeInsideInfo)
-            setExclusionShapeInsideInfo(ExclusionShapeInsideInfo::createInfo(this));
+            setShapeInsideInfo(ShapeInsideInfo::createInfo(this));
         return m_rareData->m_shapeInsideInfo.get();
     }
 
-    enum ExclusionShapeStatus { ShapePresent, ShapePresentOrRemoved };
-    ExclusionShapeInsideInfo* exclusionShapeInsideInfo(ExclusionShapeStatus exclusionShapeStatus = ShapePresent) const
+    ShapeInsideInfo* shapeInsideInfo() const
     {
         if (!m_rareData || !m_rareData->m_shapeInsideInfo)
             return 0;
-        return ExclusionShapeInsideInfo::isEnabledFor(this) || (exclusionShapeStatus == ShapePresentOrRemoved) ? m_rareData->m_shapeInsideInfo.get() : 0;
+        return ShapeInsideInfo::isEnabledFor(this) ? m_rareData->m_shapeInsideInfo.get() : 0;
     }
-    void setExclusionShapeInsideInfo(PassOwnPtr<ExclusionShapeInsideInfo> value)
+    void setShapeInsideInfo(PassOwnPtr<ShapeInsideInfo> value)
     {
         if (!m_rareData)
             m_rareData = adoptPtr(new RenderBlockRareData(this));
         m_rareData->m_shapeInsideInfo = value;
     }
-    ExclusionShapeInsideInfo* layoutExclusionShapeInsideInfo(ExclusionShapeStatus = ShapePresent) const;
-    bool allowsExclusionShapeInsideInfoSharing() const { return !isInline() && !isFloating(); }
+    void markShapeInsideDescendantsForLayout();
+    ShapeInsideInfo* layoutShapeInsideInfo() const;
+    bool allowsShapeInsideInfoSharing() const { return !isInline() && !isFloating(); }
 #endif
 
 protected:
@@ -554,6 +554,7 @@ protected:
 
 public:
     void computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats = false);
+    void clearLayoutOverflow();
 protected:
     virtual void addOverflowFromChildren();
     void addOverflowFromFloats();
@@ -584,9 +585,9 @@ protected:
     virtual void checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight);
 
 private:
-#if ENABLE(CSS_EXCLUSIONS)
-    void computeExclusionShapeSize();
-    void updateExclusionShapeInsideInfoAfterStyleChange(const ExclusionShapeValue*, const ExclusionShapeValue* oldExclusionShape);
+#if ENABLE(CSS_SHAPES)
+    void computeShapeSize();
+    void updateShapeInsideInfoAfterStyleChange(const ShapeValue*, const ShapeValue* oldShape);
 #endif
     virtual RenderObjectChildList* virtualChildren() { return children(); }
     virtual const RenderObjectChildList* virtualChildren() const { return children(); }
@@ -788,8 +789,8 @@ private:
 
     LayoutUnit xPositionForFloatIncludingMargin(const FloatingObject* child) const
     {
-#if ENABLE(CSS_EXCLUSIONS)
-        ExclusionShapeOutsideInfo *shapeOutside = child->renderer()->exclusionShapeOutsideInfo();
+#if ENABLE(CSS_SHAPES)
+        ShapeOutsideInfo *shapeOutside = child->renderer()->shapeOutsideInfo();
         if (shapeOutside)
             return child->x();
 #endif
@@ -802,8 +803,8 @@ private:
         
     LayoutUnit yPositionForFloatIncludingMargin(const FloatingObject* child) const
     {
-#if ENABLE(CSS_EXCLUSIONS)
-        ExclusionShapeOutsideInfo *shapeOutside = child->renderer()->exclusionShapeOutsideInfo();
+#if ENABLE(CSS_SHAPES)
+        ShapeOutsideInfo *shapeOutside = child->renderer()->shapeOutsideInfo();
         if (shapeOutside)
             return child->y();
 #endif
@@ -1083,9 +1084,10 @@ private:
     RootInlineBox* createLineBoxesFromBidiRuns(BidiRunList<BidiRun>&, const InlineIterator& end, LineInfo&, VerticalPositionCache&, BidiRun* trailingSpaceRun, WordMeasurements&);
     void layoutRunsAndFloats(LineLayoutState&, bool hasInlineChild);
     void layoutRunsAndFloatsInRange(LineLayoutState&, InlineBidiResolver&, const InlineIterator& cleanLineStart, const BidiStatus& cleanLineBidiStatus, unsigned consecutiveHyphenatedLines);
-#if ENABLE(CSS_EXCLUSIONS)
-    void updateLineBoundariesForExclusions(ExclusionShapeInsideInfo*, LayoutUnit&, LineLayoutState&, bool&);
-    bool adjustLogicalLineTopAndLogicalHeightIfNeeded(ExclusionShapeInsideInfo*, LayoutUnit, LineLayoutState&, InlineBidiResolver&, FloatingObject*, InlineIterator&, WordMeasurements&);
+#if ENABLE(CSS_SHAPES)
+    void updateShapeAndSegmentsForCurrentLine(ShapeInsideInfo*&, LayoutUnit&, LineLayoutState&);
+    void updateShapeAndSegmentsForCurrentLineInFlowThread(ShapeInsideInfo*&, LineLayoutState&);
+    bool adjustLogicalLineTopAndLogicalHeightIfNeeded(ShapeInsideInfo*, LayoutUnit, LineLayoutState&, InlineBidiResolver&, FloatingObject*, InlineIterator&, WordMeasurements&);
 #endif
     const InlineIterator& restartLayoutRunsAndFloatsInRange(LayoutUnit oldLogicalHeight, LayoutUnit newLogicalHeight,  FloatingObject* lastFloatFromPreviousLine, InlineBidiResolver&,  const InlineIterator&);
     void linkToEndLineIfNeeded(LineLayoutState&);
@@ -1118,6 +1120,14 @@ public:
     
 protected:
     bool pushToNextPageWithMinimumLogicalHeight(LayoutUnit& adjustment, LayoutUnit logicalOffset, LayoutUnit minimumLogicalHeight) const;
+
+    // A page break is required at some offset due to space shortage in the current fragmentainer.
+    void setPageBreak(LayoutUnit offset, LayoutUnit spaceShortage);
+
+    // Update minimum page height required to avoid fragmentation where it shouldn't occur (inside
+    // unbreakable content, between orphans and widows, etc.). This will be used as a hint to the
+    // column balancer to help set a good minimum column height.
+    void updateMinimumPageHeight(LayoutUnit offset, LayoutUnit minHeight);
 
     LayoutUnit adjustForUnsplittableChild(RenderBox* child, LayoutUnit logicalOffset, bool includeMargins = false); // If the child is unsplittable and can't fit on the current page, return the top of the next page/column.
     void adjustLinePositionForPagination(RootInlineBox*, LayoutUnit& deltaOffset, RenderFlowThread*); // Computes a deltaOffset value that put a line at the top of the next page if it doesn't fit on the current page.
@@ -1171,7 +1181,7 @@ protected:
             , m_highValue(highValue)
             , m_offset(offset)
             , m_heightRemaining(heightRemaining)
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
             , m_last(0)
 #endif
         {
@@ -1181,7 +1191,7 @@ protected:
         inline int highValue() const { return m_highValue; }
         void collectIfNeeded(const IntervalType&) const;
 
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
         // When computing the offset caused by the floats on a given line, if
         // the outermost float on that line has a shape-outside, the inline
         // content that butts up against that float must be positioned using
@@ -1197,7 +1207,7 @@ protected:
         int m_highValue;
         LayoutUnit& m_offset;
         LayoutUnit* m_heightRemaining;
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
         // This member variable is mutable because the collectIfNeeded method
         // is declared as const, even though it doesn't actually respect that
         // contract. It modifies other member variables via loopholes in the
@@ -1291,8 +1301,8 @@ public:
         RootInlineBox* m_lineGridBox;
 
         RootInlineBox* m_lineBreakToAvoidWidow;
-#if ENABLE(CSS_EXCLUSIONS)
-        OwnPtr<ExclusionShapeInsideInfo> m_shapeInsideInfo;
+#if ENABLE(CSS_SHAPES)
+        OwnPtr<ShapeInsideInfo> m_shapeInsideInfo;
 #endif
         bool m_shouldBreakAtLineToAvoidWidow : 1;
         bool m_discardMarginBefore : 1;

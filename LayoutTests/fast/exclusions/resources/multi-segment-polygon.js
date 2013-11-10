@@ -1,6 +1,6 @@
 function generatePolygon(width, height, fontSize, points, content, elementId) {
     if (window.internals)
-        window.internals.settings.setCSSExclusionsEnabled(true);
+        window.internals.settings.setCSSShapesEnabled(true);
     var div = createOrInsert(elementId);
     var polygon = points.map(function(elem, index, array) {
         return elem.toString() + 'px' + (index < array.length - 1 && index % 2 == 1 ? ',' : '');
@@ -34,7 +34,7 @@ function createOrInsert(elementId) {
 
     var div = document.createElement('div');
     if (document.body.childNodes.length)
-        docuemnt.body.insertBefore(div, document.body.childNodes[0]);
+        document.body.insertBefore(div, document.body.childNodes[0]);
     else
         document.body.appendChild(div);
     return div;

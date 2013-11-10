@@ -57,7 +57,7 @@
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+#if PLATFORM(MAC)
 #include "MediaPlayerPrivateQTKit.h"
 #if USE(AVFOUNDATION)
 #include "MediaPlayerPrivateAVFoundationObjC.h"
@@ -223,7 +223,7 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines(RequeryEngineOptions r
         }
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+#if PLATFORM(MAC)
         if (Settings::isQTKitEnabled())
             MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
 #endif
@@ -1196,6 +1196,15 @@ String MediaPlayer::languageOfPrimaryAudioTrack() const
     
     return m_private->languageOfPrimaryAudioTrack();
 }
+
+size_t MediaPlayer::extraMemoryCost() const
+{
+    if (!m_private)
+        return 0;
+
+    return m_private->extraMemoryCost();
+}
+
 }
 
 #endif

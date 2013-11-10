@@ -384,6 +384,8 @@ public:
     void setFooterPageBanner(PassRefPtr<PageBanner>);
     PageBanner* footerPageBanner();
 
+    void hidePageBanners();
+    void showPageBanners();
 
     WebCore::IntPoint screenToWindow(const WebCore::IntPoint&);
     WebCore::IntRect windowToScreen(const WebCore::IntRect&);
@@ -639,8 +641,8 @@ public:
 
     bool mainFrameIsScrollable() const { return m_mainFrameIsScrollable; }
 
-    void setMinimumLayoutWidth(double);
-    double minimumLayoutWidth() const { return m_minimumLayoutWidth; }
+    void setMinimumLayoutSize(const WebCore::IntSize&);
+    WebCore::IntSize minimumLayoutSize() const { return m_minimumLayoutSize; }
 
     bool canShowMIMEType(const String& MIMEType) const;
 
@@ -1002,7 +1004,7 @@ private:
 
     unsigned m_cachedPageCount;
 
-    double m_minimumLayoutWidth;
+    WebCore::IntSize m_minimumLayoutSize;
 
 #if ENABLE(CONTEXT_MENUS)
     bool m_isShowingContextMenu;

@@ -30,7 +30,6 @@
 #include "ApplicationCacheStorage.h"
 #include "WKSharedAPICast.h"
 #include "WebProcessCreationParameters.h"
-#include "WebSystemInterface.h"
 #include <QProcess>
 
 #if ENABLE(GEOLOCATION)
@@ -40,7 +39,7 @@
 
 namespace WebKit {
 
-String WebContext::applicationCacheDirectory()
+String WebContext::platformDefaultApplicationCacheDirectory() const
 {
     const String cacheDirectory = WebCore::cacheStorage().cacheDirectory();
 
@@ -56,9 +55,6 @@ void WebContext::platformInitializeWebProcess(WebProcessCreationParameters& para
 #if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
     static WebGeolocationProviderQt* location = WebGeolocationProviderQt::create(toAPI(supplement<WebGeolocationManagerProxy>()));
     WKGeolocationManagerSetProvider(toAPI(supplement<WebGeolocationManagerProxy>()), WebGeolocationProviderQt::provider(location));
-#endif
-#if USE(QTKIT)
-    InitWebCoreSystemInterfaceForWK2();
 #endif
 }
 

@@ -397,7 +397,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             || rareNonInheritedData->textOverflow != other->rareNonInheritedData->textOverflow)
             return true;
 
-        if (rareNonInheritedData->m_regionOverflow != other->rareNonInheritedData->m_regionOverflow)
+        if (rareNonInheritedData->m_regionFragment != other->rareNonInheritedData->m_regionFragment)
             return true;
 
         if (rareNonInheritedData->m_wrapFlow != other->rareNonInheritedData->m_wrapFlow
@@ -462,7 +462,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle* other, unsigned& chang
             return true;
 #endif
 
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
         if (rareNonInheritedData->m_shapeInside != other->rareNonInheritedData->m_shapeInside)
             return true;
 #endif
@@ -767,8 +767,6 @@ StyleDifference RenderStyle::diff(const RenderStyle* other, unsigned& changedCon
         return svgChange;
 #endif
 
-    // FIXME: we need to also check for repaint changes after a PositionedMovementOnly change
-    // on a composited layer: https://bugs.webkit.org/show_bug.cgi?id=116319
     if (changeRequiresPositionedLayoutOnly(other, changedContextSensitiveProperties))
         return StyleDifferenceLayoutPositionedMovementOnly;
 
@@ -792,6 +790,12 @@ StyleDifference RenderStyle::diff(const RenderStyle* other, unsigned& changedCon
     // Animations don't need to be checked either.  We always set the new style on the RenderObject, so we will get a chance to fire off
     // the resulting transition properly.
     return StyleDifferenceEqual;
+}
+
+bool RenderStyle::diffRequiresRepaint(const RenderStyle* style) const
+{
+    unsigned changedContextSensitiveProperties = 0;
+    return changeRequiresRepaint(style, changedContextSensitiveProperties);
 }
 
 void RenderStyle::setClip(Length top, Length right, Length bottom, Length left)
@@ -1733,9 +1737,9 @@ void RenderStyle::setBorderImageOutset(LengthBox outset)
     surround.access()->border.m_image.setOutset(outset);
 }
 
-ExclusionShapeValue* RenderStyle::initialShapeInside()
+ShapeValue* RenderStyle::initialShapeInside()
 {
-    DEFINE_STATIC_LOCAL(RefPtr<ExclusionShapeValue>, sOutsideValue, (ExclusionShapeValue::createOutsideValue()));
+    DEFINE_STATIC_LOCAL(RefPtr<ShapeValue>, sOutsideValue, (ShapeValue::createOutsideValue()));
     return sOutsideValue.get();
 }
 

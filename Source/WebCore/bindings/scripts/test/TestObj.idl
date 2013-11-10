@@ -44,6 +44,8 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     static attribute DOMString         staticStringAttr;
     static readonly attribute TestSubObjConstructor TestSubObj;
     attribute TestEnumType             enumAttr;
+    attribute byte                     byteAttr;
+    attribute octet                    octetAttr;
     attribute short                    shortAttr;
     attribute unsigned short           unsignedShortAttr;
     attribute long                     longAttr;
@@ -73,6 +75,10 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     // Methods
     void    voidMethod();
     void    voidMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
+    byte    byteMethod();
+    byte    byteMethodWithArgs(byte byteArg, DOMString strArg, TestObj objArg);
+    octet   octetMethod();
+    octet   octetMethodWithArgs(octet octetArg, DOMString strArg, TestObj objArg);
     long    longMethod();
     long    longMethodWithArgs(long longArg, DOMString strArg, TestObj objArg);
     TestObj objMethod();
@@ -82,18 +88,17 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     sequence<ScriptProfile> methodReturningSequence(long longArg);
 
     void methodWithEnumArg(TestEnumType enumArg);
-    TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg)
-        raises(DOMException);
+    [RaisesException] TestObj methodThatRequiresAllArgsAndThrows(DOMString strArg, TestObj objArg);
 
     void serializedValue(SerializedScriptValue serializedArg);
     void optionsObject(Dictionary oo, optional Dictionary ooo);
 
     // Exceptions
-    void methodWithException() raises(DOMException);
-    attribute long attrWithGetterException getter raises(DOMException);
-    attribute long attrWithSetterException setter raises(DOMException);
-    attribute DOMString stringAttrWithGetterException getter raises(DOMException);
-    attribute DOMString stringAttrWithSetterException setter raises(DOMException);
+    [RaisesException] void methodWithException();
+    [GetterRaisesException] attribute long attrWithGetterException;
+    [SetterRaisesException] attribute long attrWithSetterException;
+    [GetterRaisesException] attribute DOMString stringAttrWithGetterException;
+    [SetterRaisesException] attribute DOMString stringAttrWithSetterException;
 
     // 'Custom' extended attribute
     [Custom] attribute long            customAttr;
@@ -110,26 +115,20 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     // 'CallWith' extended attribute
     [CallWith=ScriptState] void withScriptStateVoid();
     [CallWith=ScriptState] TestObj withScriptStateObj();
-    [CallWith=ScriptState] void withScriptStateVoidException()
-        raises(DOMException);
-    [CallWith=ScriptState] TestObj withScriptStateObjException()
-        raises(DOMException);
+    [CallWith=ScriptState, RaisesException] void withScriptStateVoidException();
+    [CallWith=ScriptState, RaisesException] TestObj withScriptStateObjException();
     [CallWith=ScriptExecutionContext] void withScriptExecutionContext();
     [CallWith=ScriptExecutionContext|ScriptState] void withScriptExecutionContextAndScriptState();
-    [CallWith=ScriptExecutionContext|ScriptState] TestObj withScriptExecutionContextAndScriptStateObjException()
-        raises(DOMException);
+    [CallWith=ScriptExecutionContext|ScriptState, RaisesException] TestObj withScriptExecutionContextAndScriptStateObjException();
     [CallWith=  ScriptExecutionContext  |  ScriptState  ] TestObj withScriptExecutionContextAndScriptStateWithSpaces();
     [CallWith=ScriptArguments|CallStack] void withScriptArgumentsAndCallStack();
 
     [CallWith=ScriptState] attribute long withScriptStateAttribute;
     [CallWith=ScriptExecutionContext] attribute TestObj withScriptExecutionContextAttribute;
-    [CallWith=ScriptState] attribute TestObj withScriptStateAttributeRaises
-        getter raises(DOMException);
-    [CallWith=ScriptExecutionContext] attribute TestObj withScriptExecutionContextAttributeRaises
-        getter raises(DOMException);
+    [CallWith=ScriptState, GetterRaisesException] attribute TestObj withScriptStateAttributeRaises;
+    [CallWith=ScriptExecutionContext, GetterRaisesException] attribute TestObj withScriptExecutionContextAttributeRaises;
     [CallWith=ScriptExecutionContext|ScriptState] attribute TestObj withScriptExecutionContextAndScriptStateAttribute;
-    [CallWith=ScriptExecutionContext|ScriptState] attribute TestObj withScriptExecutionContextAndScriptStateAttributeRaises
-        getter raises(DOMException);
+    [CallWith=ScriptExecutionContext|ScriptState,GetterRaisesException] attribute TestObj withScriptExecutionContextAndScriptStateAttributeRaises;
     [CallWith=  ScriptExecutionContext  |  ScriptState  ] attribute TestObj withScriptExecutionContextAndScriptStateWithSpacesAttribute;
     [CallWith=ScriptArguments|CallStack] attribute TestObj withScriptArgumentsAndCallStackAttribute;
 
@@ -202,13 +201,12 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
 
 #if defined(TESTING_JS)
     void methodWithUnsignedLongSequence(sequence<unsigned long> unsignedLongSequence);
-    DOMString[] stringArrayFunction(DOMString[] values) raises(DOMException);
-    DOMStringList domStringListFunction(DOMStringList values) raises(DOMException);
+    [RaisesException] DOMString[] stringArrayFunction(DOMString[] values);
+    [RaisesException] DOMStringList domStringListFunction(DOMStringList values);
 #endif
 
     [CheckSecurityForNode] readonly attribute Document contentDocument;
-    [CheckSecurityForNode] SVGDocument getSVGDocument()
-        raises(DOMException);
+    [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
 
     void convert1([TreatReturnedNullStringAs=Null] TestNode value);
     void convert2([TreatReturnedNullStringAs=Undefined] TestNode value);
@@ -224,8 +222,7 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
     [ImplementedAs=blueberry] attribute long strawberry;
 
     [StrictTypeChecking] attribute float strictFloat;
-    [StrictTypeChecking] bool strictFunction(DOMString str, float a, long b)
-        raises(DOMException);
+    [StrictTypeChecking, RaisesException] bool strictFunction(DOMString str, float a, long b);
 
     // ObjectiveC reserved words.
     readonly attribute long      description;
@@ -260,6 +257,5 @@ enum TestEnumType { "", "EnumValue1", "EnumValue2", "EnumValue3" };
 
     attribute long? nullableLongSettableAttribute;
 
-    attribute long? nullableStringValue
-        getter raises(DOMException);
+    [GetterRaisesException] attribute long? nullableStringValue;
 };

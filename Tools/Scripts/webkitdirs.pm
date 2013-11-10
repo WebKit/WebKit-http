@@ -184,7 +184,12 @@ sub determineBaseProductDir
     determineSourceDir();
 
     my $setSharedPrecompsDir;
+
+    # FIXME: See https://bugs.webkit.org/show_bug.cgi?id=117249.
+    #        Once all ports have migrated to WEBKIT_OUTPUTDIR, we can stop
+    #        reading the WEBKITOUTPUTDIR environment variable.
     $baseProductDir = $ENV{"WEBKIT_OUTPUTDIR"};
+    $baseProductDir = $ENV{"WEBKITOUTPUTDIR"} if not $baseProductDir;
 
     if (!defined($baseProductDir) and isAppleMacWebKit()) {
         # Silently remove ~/Library/Preferences/xcodebuild.plist which can
@@ -278,8 +283,8 @@ sub determineConfiguration
     }
 
     if ($configuration && isWinCairo()) {
-        unless ($configuration =~ /_Cairo_CFLite$/) {
-            $configuration .= "_Cairo_CFLite";
+        unless ($configuration =~ /_WinCairo$/) {
+            $configuration .= "_WinCairo";
         }
     }
 }
@@ -600,9 +605,6 @@ sub XcodeCoverageSupportOptions()
     my @coverageSupportOptions = ();
     push @coverageSupportOptions, "GCC_GENERATE_TEST_COVERAGE_FILES=YES";
     push @coverageSupportOptions, "GCC_INSTRUMENT_PROGRAM_FLOW_ARCS=YES";
-    push @coverageSupportOptions, "EXTRA_LINK= \$(EXTRA_LINK) -ftest-coverage -fprofile-arcs";
-    push @coverageSupportOptions, "OTHER_CFLAGS= \$(OTHER_CFLAGS) -DCOVERAGE -MD";
-    push @coverageSupportOptions, "OTHER_LDFLAGS=\$(OTHER_LDFLAGS) -ftest-coverage -fprofile-arcs -lgcov";
     return @coverageSupportOptions;
 }
 
@@ -618,19 +620,19 @@ sub determinePassedConfiguration
         if ($opt =~ /^--debug$/i) {
             splice(@ARGV, $i, 1);
             $passedConfiguration = "Debug";
-            $passedConfiguration .= "_Cairo_CFLite" if (isWinCairo() && isCygwin());
+            $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
             return;
         }
         if ($opt =~ /^--release$/i) {
             splice(@ARGV, $i, 1);
             $passedConfiguration = "Release";
-            $passedConfiguration .= "_Cairo_CFLite" if (isWinCairo() && isCygwin());
+            $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
             return;
         }
         if ($opt =~ /^--profil(e|ing)$/i) {
             splice(@ARGV, $i, 1);
             $passedConfiguration = "Profiling";
-            $passedConfiguration .= "_Cairo_CFLite" if (isWinCairo() && isCygwin());
+            $passedConfiguration .= "_WinCairo" if (isWinCairo() && isCygwin());
             return;
         }
     }

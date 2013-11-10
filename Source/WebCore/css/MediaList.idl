@@ -27,19 +27,15 @@
 [
     JSCustomHeader,
     GenerateIsReachable,
-    IndexedGetter,
     ImplementationLacksVTable
 ] interface MediaList {
 
-             [TreatNullAs=NullString, TreatReturnedNullStringAs=Null] attribute DOMString mediaText
-                 setter raises(DOMException);
+    [TreatNullAs=NullString, TreatReturnedNullStringAs=Null, SetterRaisesException] attribute DOMString mediaText;
     readonly attribute unsigned long length;
 
-    [TreatReturnedNullStringAs=Null] DOMString item([Default=Undefined] optional unsigned long index);
-    void deleteMedium([Default=Undefined] optional DOMString oldMedium)
-        raises(DOMException);
-    void appendMedium([Default=Undefined] optional DOMString newMedium)
-        raises(DOMException);
+    [TreatReturnedNullStringAs=Null] getter DOMString item([Default=Undefined] optional unsigned long index);
+    [RaisesException] void deleteMedium([Default=Undefined] optional DOMString oldMedium);
+    [RaisesException] void appendMedium([Default=Undefined] optional DOMString newMedium);
 
 };
 

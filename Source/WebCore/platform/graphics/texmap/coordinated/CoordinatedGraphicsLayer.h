@@ -52,7 +52,7 @@ public:
     virtual FloatRect visibleContentsRect() const = 0;
     virtual PassRefPtr<CoordinatedImageBacking> createImageBackingIfNeeded(Image*) = 0;
     virtual void detachLayer(CoordinatedGraphicsLayer*) = 0;
-    virtual PassOwnPtr<GraphicsContext> beginContentUpdate(const IntSize&, CoordinatedSurface::Flags, uint32_t& atlasID, IntPoint&) = 0;
+    virtual bool paintToSurface(const IntSize&, CoordinatedSurface::Flags, uint32_t& atlasID, IntPoint&, CoordinatedSurface::Client*) = 0;
 
     virtual void syncLayerState(CoordinatedLayerID, CoordinatedGraphicsLayerState&) = 0;
 };
@@ -111,6 +111,9 @@ public:
     virtual void suspendAnimations(double time) OVERRIDE;
     virtual void resumeAnimations() OVERRIDE;
 
+    void syncPendingStateChangesIncludingSubLayers();
+    void updateContentBuffersIncludingSubLayers();
+
     FloatPoint computePositionRelativeToBase();
     void computePixelAlignment(FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset);
 
@@ -139,7 +142,7 @@ public:
     virtual void createTile(uint32_t tileID, const SurfaceUpdateInfo&, const IntRect&) OVERRIDE;
     virtual void updateTile(uint32_t tileID, const SurfaceUpdateInfo&, const IntRect&) OVERRIDE;
     virtual void removeTile(uint32_t tileID) OVERRIDE;
-    virtual PassOwnPtr<GraphicsContext> beginContentUpdate(const IntSize&, uint32_t& atlasID, IntPoint&) OVERRIDE;
+    virtual bool paintToSurface(const IntSize&, uint32_t& /* atlasID */, IntPoint&, CoordinatedSurface::Client*) OVERRIDE;
 
     void setCoordinator(CoordinatedGraphicsLayerClient*);
 

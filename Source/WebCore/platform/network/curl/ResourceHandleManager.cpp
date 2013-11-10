@@ -7,7 +7,7 @@
  * Copyright (C) 2008 Nuanti Ltd.
  * Copyright (C) 2009 Appcelerator Inc.
  * Copyright (C) 2009 Brent Fulgham <bfulgham@webkit.org>
- * Copyright (C) 2010 Michael Lotz <mmlr@mlotz.ch>
+ * Copyright (C) 2013 Peter Gal <galpeter@inf.u-szeged.hu>, University of Szeged
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -306,6 +306,48 @@ static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
     return totalSize;
 }
 
+static bool isAppendableHeader(const String &key)
+{
+    static const char* appendableHeaders[] = {
+        "access-control-allow-headers",
+        "access-control-allow-methods",
+        "access-control-allow-origin",
+        "access-control-expose-headers",
+        "allow",
+        "cache-control",
+        "connection",
+        "content-encoding",
+        "content-language",
+        "if-match",
+        "if-none-match",
+        "keep-alive",
+        "pragma",
+        "proxy-authenticate",
+        "public",
+        "server",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade",
+        "user-agent",
+        "vary",
+        "via",
+        "warning",
+        "www-authenticate",
+        0
+    };
+
+    // Custom headers start with 'X-', and need no further checking.
+    if (key.startsWith("x-", /* caseSensitive */ false))
+        return true;
+
+    for (unsigned i = 0; appendableHeaders[i]; ++i)
+        if (equalIgnoringCase(key, appendableHeaders[i]))
+            return true;
+
+    return false;
+}
+
 /*
  * This is being called for each HTTP header in the response. This includes '\r\n'
  * for the last line of the header.
@@ -393,8 +435,34 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
 
     } else {
         int splitPos = header.find(":");
-        if (splitPos != -1)
-            d->m_response.setHTTPHeaderField(header.left(splitPos), header.substring(splitPos+1).stripWhiteSpace());
+        if (splitPos != -1) {
+            String key = header.left(splitPos).stripWhiteSpace();
+            String value = header.substring(splitPos + 1).stripWhiteSpace();
+
+            if (isAppendableHeader(key))
+                d->m_response.addHTTPHeaderField(key, value);
+            else
+                d->m_response.setHTTPHeaderField(key, value);
+        } else if (header.startsWith("HTTP", false)) {
+            // This is the first line of the response.
+            // Extract the http status text from this.
+            //
+            // If the FOLLOWLOCATION option is enabled for the curl handle then
+            // curl will follow the redirections internally. Thus this header callback
+            // will be called more than one time with the line starting "HTTP" for one job.
+            long httpCode = 0;
+            curl_easy_getinfo(d->m_handle, CURLINFO_RESPONSE_CODE, &httpCode);
+
+            String httpCodeString = String::number(httpCode);
+            int statusCodePos = header.find(httpCodeString);
+
+            if (statusCodePos != -1) {
+                // The status text is after the status code.
+                String status = header.substring(statusCodePos + httpCodeString.length());
+                d->m_response.setHTTPStatusText(status.stripWhiteSpace());
+            }
+
+        }
     }
 
     return totalSize;
@@ -589,42 +657,30 @@ void ResourceHandleManager::removeFromCurl(ResourceHandle* job)
     job->deref();
 }
 
-void ResourceHandleManager::setupPUT(ResourceHandle*, struct curl_slist**)
+static inline size_t getFormElementsCount(ResourceHandle* job)
 {
-    notImplemented();
+    RefPtr<FormData> formData = job->firstRequest().httpBody();
+
+    if (!formData)
+        return 0;
+
+#if ENABLE(BLOB)
+    // Resolve the blob elements so the formData can correctly report it's size.
+    formData = formData->resolveBlobReferences();
+    job->firstRequest().setHTTPBody(formData);
+#endif
+
+    return formData->elements().size();
 }
 
-/* Calculate the length of the POST.
-   Force chunked data transfer if size of files can't be obtained.
- */
-void ResourceHandleManager::setupPOST(ResourceHandle* job, struct curl_slist** headers)
+static void setupFormData(ResourceHandle* job, CURLoption sizeOption, struct curl_slist** headers)
 {
     ResourceHandleInternal* d = job->getInternal();
-    curl_easy_setopt(d->m_handle, CURLOPT_POST, TRUE);
-    curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDSIZE, 0);
-
-    if (!job->firstRequest().httpBody())
-        return;
-
     Vector<FormDataElement> elements = job->firstRequest().httpBody()->elements();
     size_t numElements = elements.size();
-    if (!numElements)
-        return;
 
-    // Do not stream for simple POST data
-    if (numElements == 1) {
-        job->firstRequest().httpBody()->flatten(d->m_postBytes);
-        if (d->m_postBytes.size() != 0) {
-            curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDSIZE, d->m_postBytes.size());
-            curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDS, d->m_postBytes.data());
-        }
-        return;
-    }
-
-    // Obtain the total size of the POST
     // The size of a curl_off_t could be different in WebKit and in cURL depending on
-    // compilation flags of both. For CURLOPT_POSTFIELDSIZE_LARGE we have to pass the
-    // right size or random data will be used as the size.
+    // compilation flags of both.
     static int expectedSizeOfCurlOffT = 0;
     if (!expectedSizeOfCurlOffT) {
         curl_version_info_data *infoData = curl_version_info(CURLVERSION_NOW);
@@ -640,6 +696,7 @@ void ResourceHandleManager::setupPOST(ResourceHandle* job, struct curl_slist** h
 #pragma warning(disable: 4307)
 #endif
     static const long long maxCurlOffT = (1LL << (expectedSizeOfCurlOffT * 8 - 1)) - 1;
+    // Obtain the total size of the form data
     curl_off_t size = 0;
     bool chunkedTransfer = false;
     for (size_t i = 0; i < numElements; i++) {
@@ -666,15 +723,54 @@ void ResourceHandleManager::setupPOST(ResourceHandle* job, struct curl_slist** h
         *headers = curl_slist_append(*headers, "Transfer-Encoding: chunked");
     else {
         if (sizeof(long long) == expectedSizeOfCurlOffT)
-          curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDSIZE_LARGE, (long long)size);
+            curl_easy_setopt(d->m_handle, sizeOption, (long long)size);
         else
-          curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDSIZE_LARGE, (int)size);
+            curl_easy_setopt(d->m_handle, sizeOption, (int)size);
     }
 
     curl_easy_setopt(d->m_handle, CURLOPT_READFUNCTION, readCallback);
     curl_easy_setopt(d->m_handle, CURLOPT_READDATA, job);
     curl_easy_setopt(d->m_handle, CURLOPT_SEEKFUNCTION, seekCallback);
     curl_easy_setopt(d->m_handle, CURLOPT_SEEKDATA, job);
+}
+
+void ResourceHandleManager::setupPUT(ResourceHandle* job, struct curl_slist** headers)
+{
+    ResourceHandleInternal* d = job->getInternal();
+    curl_easy_setopt(d->m_handle, CURLOPT_UPLOAD, TRUE);
+    curl_easy_setopt(d->m_handle, CURLOPT_INFILESIZE, 0);
+
+    // Disable the Expect: 100 continue header
+    *headers = curl_slist_append(*headers, "Expect:");
+
+    size_t numElements = getFormElementsCount(job);
+    if (!numElements)
+        return;
+
+    setupFormData(job, CURLOPT_INFILESIZE_LARGE, headers);
+}
+
+void ResourceHandleManager::setupPOST(ResourceHandle* job, struct curl_slist** headers)
+{
+    ResourceHandleInternal* d = job->getInternal();
+    curl_easy_setopt(d->m_handle, CURLOPT_POST, TRUE);
+    curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDSIZE, 0);
+
+    size_t numElements = getFormElementsCount(job);
+    if (!numElements)
+        return;
+
+    // Do not stream for simple POST data
+    if (numElements == 1) {
+        job->firstRequest().httpBody()->flatten(d->m_postBytes);
+        if (d->m_postBytes.size()) {
+            curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDSIZE, d->m_postBytes.size());
+            curl_easy_setopt(d->m_handle, CURLOPT_POSTFIELDS, d->m_postBytes.data());
+        }
+        return;
+    }
+
+    setupFormData(job, CURLOPT_POSTFIELDSIZE_LARGE, headers);
 }
 
 void ResourceHandleManager::add(ResourceHandle* job)
@@ -769,6 +865,7 @@ void ResourceHandleManager::startJob(ResourceHandle* job)
 
 void ResourceHandleManager::initializeHandle(ResourceHandle* job)
 {
+    static const int allowedProtocols = CURLPROTO_FILE | CURLPROTO_FTP | CURLPROTO_FTPS | CURLPROTO_HTTP | CURLPROTO_HTTPS;
     KURL kurl = job->firstRequest().url();
 
     // Remove any fragment part, otherwise curl will send it as part of the request.
@@ -812,6 +909,8 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     curl_easy_setopt(d->m_handle, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
     curl_easy_setopt(d->m_handle, CURLOPT_SHARE, m_curlShareHandle);
     curl_easy_setopt(d->m_handle, CURLOPT_DNS_CACHE_TIMEOUT, 60 * 5); // 5 minutes
+    curl_easy_setopt(d->m_handle, CURLOPT_PROTOCOLS, allowedProtocols);
+    curl_easy_setopt(d->m_handle, CURLOPT_REDIR_PROTOCOLS, allowedProtocols);
     // FIXME: Enable SSL verification when we have a way of shipping certs
     // and/or reporting SSL errors to the user.
 #if PLATFORM(HAIKU)
@@ -853,21 +952,31 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
             String key = it->key;
             String value = it->value;
             String headerString(key);
-            headerString.append(": ");
-            headerString.append(value);
+            if (value.isEmpty())
+                // Insert the ; to tell curl that this header has an empty value.
+                headerString.append(";");
+            else {
+                headerString.append(": ");
+                headerString.append(value);
+            }
             CString headerLatin1 = headerString.latin1();
             headers = curl_slist_append(headers, headerLatin1.data());
         }
     }
 
-    if ("GET" == job->firstRequest().httpMethod())
+    String method = job->firstRequest().httpMethod();
+    if ("GET" == method)
         curl_easy_setopt(d->m_handle, CURLOPT_HTTPGET, TRUE);
-    else if ("POST" == job->firstRequest().httpMethod())
+    else if ("POST" == method)
         setupPOST(job, &headers);
-    else if ("PUT" == job->firstRequest().httpMethod())
+    else if ("PUT" == method)
         setupPUT(job, &headers);
-    else if ("HEAD" == job->firstRequest().httpMethod())
+    else if ("HEAD" == method)
         curl_easy_setopt(d->m_handle, CURLOPT_NOBODY, TRUE);
+    else {
+        curl_easy_setopt(d->m_handle, CURLOPT_CUSTOMREQUEST, method.latin1().data());
+        setupPUT(job, &headers);
+    }
 
     if (headers) {
         curl_easy_setopt(d->m_handle, CURLOPT_HTTPHEADER, headers);

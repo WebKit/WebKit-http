@@ -51,6 +51,10 @@
 #include <gst/interfaces/streamvolume.h>
 #endif
 
+#if GST_CHECK_VERSION(1, 1, 0) && USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL)
+#include "TextureMapperGL.h"
+#endif
+
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
 
@@ -115,14 +119,24 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_texture(0)
 #endif
 {
-    g_mutex_init(&m_bufferMutex);
+#if GLIB_CHECK_VERSION(2, 31, 0)
+    m_bufferMutex = WTF::fastNew<GMutex>();
+    g_mutex_init(m_bufferMutex);
+#else
+    m_bufferMutex = g_mutex_new();
+#endif
 }
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
     g_signal_handler_disconnect(m_webkitVideoSink.get(), m_repaintHandler);
 
-    g_mutex_clear(&m_bufferMutex);
+#if GLIB_CHECK_VERSION(2, 31, 0)
+    g_mutex_clear(m_bufferMutex);
+    WTF::fastDelete(m_bufferMutex);
+#else
+    g_mutex_free(m_bufferMutex);
+#endif
 
     if (m_buffer)
         gst_buffer_unref(m_buffer);
@@ -168,9 +182,9 @@ IntSize MediaPlayerPrivateGStreamerBase::naturalSize() const
      */
     GRefPtr<GstCaps> caps = webkitGstGetPadCaps(m_videoSinkPad.get());
 #else
-    g_mutex_lock(&m_bufferMutex);
+    g_mutex_lock(m_bufferMutex);
     GRefPtr<GstCaps> caps = m_buffer ? GST_BUFFER_CAPS(m_buffer) : 0;
-    g_mutex_unlock(&m_bufferMutex);
+    g_mutex_unlock(m_bufferMutex);
 #endif
     if (!caps)
         return IntSize();
@@ -329,6 +343,21 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(GstBuffer* buffer)
     if (m_texture->size() != size)
         m_texture->reset(size);
 
+#if GST_CHECK_VERSION(1, 1, 0)
+    GstVideoGLTextureUploadMeta* meta;
+    if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
+        if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
+            const BitmapTextureGL* textureGL = static_cast<const BitmapTextureGL*>(m_texture.get());
+            guint ids[4] = { textureGL->id(), 0, 0, 0 };
+
+            if (gst_video_gl_texture_upload_meta_upload(meta, ids)) {
+                client()->setPlatformLayerNeedsDisplay();
+                return;
+            }
+        }
+    }
+#endif
+
 #ifdef GST_API_VERSION_1
     GstMapInfo srcInfo;
     gst_buffer_map(buffer, &srcInfo, GST_MAP_READ);
@@ -337,7 +366,6 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(GstBuffer* buffer)
     srcData = GST_BUFFER_DATA(buffer);
 #endif
 
-    // @TODO: support cropping
     m_texture->updateContents(srcData, WebCore::IntRect(WebCore::IntPoint(0, 0), size), WebCore::IntPoint(0, 0), size.width() * 4, BitmapTexture::UpdateCannotModifyOriginalImageData);
 
 #ifdef GST_API_VERSION_1
@@ -358,9 +386,9 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstBuffer* buffer)
     else
 #endif
     {
-        g_mutex_lock(&m_bufferMutex);
+        g_mutex_lock(m_bufferMutex);
         gst_buffer_replace(&m_buffer, buffer);
-        g_mutex_unlock(&m_bufferMutex);
+        g_mutex_unlock(m_bufferMutex);
         m_player->repaint();
     }
 }
@@ -383,9 +411,9 @@ void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext* context, const IntR
     if (!m_player->visible())
         return;
 
-    g_mutex_lock(&m_bufferMutex);
+    g_mutex_lock(m_bufferMutex);
     if (!m_buffer) {
-        g_mutex_unlock(&m_bufferMutex);
+        g_mutex_unlock(m_bufferMutex);
         return;
     }
 
@@ -399,19 +427,19 @@ void MediaPlayerPrivateGStreamerBase::paint(GraphicsContext* context, const IntR
     GRefPtr<GstCaps> caps = GST_BUFFER_CAPS(m_buffer);
 #endif
     if (!caps) {
-        g_mutex_unlock(&m_bufferMutex);
+        g_mutex_unlock(m_bufferMutex);
         return;
     }
 
     RefPtr<ImageGStreamer> gstImage = ImageGStreamer::createImage(m_buffer, caps.get());
     if (!gstImage) {
-        g_mutex_unlock(&m_bufferMutex);
+        g_mutex_unlock(m_bufferMutex);
         return;
     }
 
     context->drawImage(reinterpret_cast<Image*>(gstImage->image().get()), ColorSpaceSRGB,
         rect, gstImage->rect(), CompositeCopy, DoNotRespectImageOrientation, false);
-    g_mutex_unlock(&m_bufferMutex);
+    g_mutex_unlock(m_bufferMutex);
 }
 
 #if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)

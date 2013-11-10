@@ -413,6 +413,9 @@ webkit.org/b/115374 fast/dom/shadow [ Skip ]
 # No concept of secure text input
 Bug(GTK) editing/secure-input [ Failure ]
 
+# Synthesized italics not supported
+fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -644,6 +647,10 @@ webkit.org/b/116976 media/video-played-collapse.html [ Failure Pass ]
 
 webkit.org/b/116977 media/event-attributes.html [ Failure Timeout Pass ]
 
+webkit.org/b/117583 http/tests/media/video-load-twice.html [ Failure Pass ]
+
+webkit.org/b/105191 media/video-playing-and-pause.html [ Failure Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -674,6 +681,7 @@ Bug(GTK) css3/flexbox/multiline-justify-content.html [ Pass Slow ]
 Bug(GTK) [ Debug ] editing/selection/move-by-word-visually-crash-test-5.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/css/visited-link-hang.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/js/array-sort-modifying-tostring.html [ Pass Slow ]
+Bug(GTK) fast/js/create-lots-of-workers.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/js/dfg-double-vote-fuzz.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/js/dfg-float32array.html [ Pass Slow ]
 Bug(GTK) [ Debug ] fast/js/dfg-float64array.html [ Pass Slow ]
@@ -717,6 +725,8 @@ webkit.org/b/73003 editing/spelling/spellcheck-async-mutation.html [ Failure Slo
 webkit.org/b/73003 editing/spelling/spellcheck-paste.html [ Pass Slow ]
 webkit.org/b/73003 editing/spelling/spellcheck-sequencenum.html [ Failure Slow ]
 webkit.org/b/50740 editing/spelling/spellcheck-queue.html [ Failure Slow ]
+
+Bug(GTK) http/tests/media/video-preload.html [ Pass Slow ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of slow tests
@@ -1389,8 +1399,6 @@ webkit.org/b/115441 media/video-poster-background.html [ ImageOnlyFailure ]
 
 webkit.org/b/115633 accessibility/meter-element.html [ Failure ]
 
-webkit.org/b/116059 fast/css/variables/var-inside-shape.html [ ImageOnlyFailure ]
-
 webkit.org/b/116153 fast/css/text-overflow-ellipsis-full-truncate-rtl.html [ ImageOnlyFailure ]
 
 webkit.org/b/90589 fast/css/user-drag-none.html [ Failure ]
@@ -1398,6 +1406,18 @@ webkit.org/b/90589 fast/css/user-drag-none.html [ Failure ]
 webkit.org/b/116806 fast/css/text-overflow-ellipsis-behind-floats.html [ ImageOnlyFailure ]
 
 webkit.org/b/116808 fast/regions/offsetLeft-offsetTop-in-multiple-regions.html [ Failure ]
+
+webkit.org/b/117580 media/video-seek-multiple.html [ Failure ]
+
+webkit.org/b/117581 accessibility/text-role-with-aria-hidden-inside.html [ Failure ]
+
+webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Failure ]
+
+webkit.org/b/113168 fast/dom/Window/window-postmessage-clone-deep-array.html [ Failure ]
+webkit.org/b/113168 fast/js/large-expressions.html [ Failure ]
+webkit.org/b/113168 fast/js/toString-stack-overflow.html [ Failure ]
+
+webkit.org/b/117706 accessibility/box-styled-lists.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests failing

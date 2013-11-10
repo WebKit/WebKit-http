@@ -1145,13 +1145,6 @@ SOURCES += \
     rendering/BidiRun.cpp \
     rendering/CounterNode.cpp \
     rendering/EllipsisBox.cpp \
-    rendering/ExclusionInterval.cpp \
-    rendering/ExclusionPolygon.cpp \
-    rendering/ExclusionRectangle.cpp \
-    rendering/ExclusionShape.cpp \
-    rendering/ExclusionShapeInfo.cpp \
-    rendering/ExclusionShapeInsideInfo.cpp \
-    rendering/ExclusionShapeOutsideInfo.cpp \
     rendering/FilterEffectRenderer.cpp \
     rendering/FixedTableLayout.cpp \
     rendering/FlowThreadController.cpp \
@@ -1245,6 +1238,13 @@ SOURCES += \
     rendering/RenderWordBreak.cpp \
     rendering/RootInlineBox.cpp \
     rendering/ScrollBehavior.cpp \
+    rendering/shapes/PolygonShape.cpp \
+    rendering/shapes/RectangleShape.cpp \
+    rendering/shapes/Shape.cpp \
+    rendering/shapes/ShapeInfo.cpp \
+    rendering/shapes/ShapeInsideInfo.cpp \
+    rendering/shapes/ShapeInterval.cpp \
+    rendering/shapes/ShapeOutsideInfo.cpp \
     rendering/style/BasicShapes.cpp \
     rendering/style/ContentData.cpp \
     rendering/style/CounterDirectives.cpp \
@@ -2403,13 +2403,6 @@ HEADERS += \
     rendering/break_lines.h \
     rendering/CounterNode.h \
     rendering/EllipsisBox.h \
-    rendering/ExclusionInterval.h \
-    rendering/ExclusionPolygon.h \
-    rendering/ExclusionRectangle.h \
-    rendering/ExclusionShape.h \
-    rendering/ExclusionShapeInfo.h \
-    rendering/ExclusionShapeInsideInfo.h \
-    rendering/ExclusionShapeOutsideInfo.h \
     rendering/FilterEffectRenderer.h \
     rendering/FixedTableLayout.h \
     rendering/HitTestingTransformState.h \
@@ -2513,18 +2506,25 @@ HEADERS += \
     rendering/RenderWordBreak.h \
     rendering/RootInlineBox.h \
     rendering/ScrollBehavior.h \
+    rendering/shapes/PolygonShape.h \
+    rendering/shapes/RectangleShape.h \
+    rendering/shapes/Shape.h \
+    rendering/shapes/ShapeInfo.h \
+    rendering/shapes/ShapeInsideInfo.h \
+    rendering/shapes/ShapeInterval.h \
+    rendering/shapes/ShapeOutsideInfo.h \
     rendering/style/BasicShapes.h \
     rendering/style/ContentData.h \
     rendering/style/CounterDirectives.h \
     rendering/style/CursorData.h \
     rendering/style/CursorList.h \
-    rendering/style/ExclusionShapeValue.h \
     rendering/style/FillLayer.h \
     rendering/style/KeyframeList.h \
     rendering/style/NinePieceImage.h \
     rendering/style/QuotesData.h \
     rendering/style/RenderStyle.h \
     rendering/style/ShadowData.h \
+    rendering/style/ShapeValue.h \
     rendering/style/StyleBackgroundData.h \
     rendering/style/StyleBoxData.h \
     rendering/style/StyleCachedImage.h \
@@ -3310,52 +3310,7 @@ enable?(VIDEO) {
         rendering/RenderMediaControls.cpp \
         rendering/RenderMediaControlElements.cpp
 
-    use?(QTKIT) {
-        INCLUDEPATH += \
-            $$SOURCE_DIR/../WebKitLibraries/ \
-            $$PWD/platform/mac \
-            $$PWD/platform/cf
-
-
-        HEADERS += \
-            platform/graphics/mac/MediaPlayerPrivateQTKit.h \
-            platform/mac/WebCoreObjCExtras.h \
-            platform/qt/WebCoreSystemInterface.h \
-            platform/mac/BlockExceptions.h \
-            platform/mac/WebCoreObjCExtras.h \
-            platform/mac/WebVideoFullscreenController.h \
-            platform/mac/WebVideoFullscreenHUDWindowController.h \
-            platform/mac/WebWindowAnimation.h \
-            platform/cf/CFURLExtras.h
-
-        SOURCES += \
-            platform/mac/DisplaySleepDisabler.cpp \
-            platform/graphics/cg/IntRectCG.cpp \
-            platform/graphics/cg/FloatSizeCG.cpp \
-            platform/cf/KURLCFNet.cpp \
-            platform/cf/CFURLExtras.cpp
-
-         OBJECTIVE_SOURCES += \
-            platform/qt/WebCoreSystemInterface.mm \
-            platform/mac/BlockExceptions.mm \
-            platform/mac/WebCoreObjCExtras.mm \
-            platform/graphics/mac/MediaPlayerPrivateQTKit.mm \
-            platform/mac/SharedBufferMac.mm \
-            platform/mac/KURLMac.mm \
-            platform/text/mac/StringMac.mm \
-            platform/text/mac/StringImplMac.mm \
-            platform/graphics/mac/FloatSizeMac.mm \
-            platform/graphics/mac/IntRectMac.mm \
-            platform/mac/WebVideoFullscreenController.mm \
-            platform/mac/WebVideoFullscreenHUDWindowController.mm \
-            platform/mac/WebWindowAnimation.mm
-
-        DEFINES+=NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
-        isEqual(QT_ARCH, "i386") {
-            DEFINES+=NS_BUILD_32_LIKE_64
-        }
-
-    } else: use?(GSTREAMER) {
+    use?(GSTREAMER) {
         HEADERS += \
             platform/graphics/gstreamer/GStreamerGWorld.h \
             platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h \

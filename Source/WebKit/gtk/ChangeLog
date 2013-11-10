@@ -1,3 +1,108 @@
+2013-06-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.2 release.
+
+        * NEWS: Added release notes for 2.1.2.
+
+2013-06-17  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Unreviewed, rolling out r151632.
+        http://trac.webkit.org/changeset/151632
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Debug build error ASSERT(WTF_USE_GRAMMAR_CHECKING) for non MAC
+        platforms
+
+        * webkit/webkitglobals.cpp:
+        (webkit_context_menu_item_get_action):
+
+2013-06-14  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Context menu grammar checking items are available when GRAMMAR_CHECKING macro is off
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Reviewed by Anders Carlsson.
+
+        Add GRAMMAR_CHECKING guard to the context menu grammar items.
+
+        * webkit/webkitglobals.cpp:
+        (webkit_context_menu_item_get_action):
+
+2013-06-12  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Parameter 'pseudoElement' from function 'webkit_dom_dom_window_get_computed_style' should be allowed to be NULL
+        https://bugs.webkit.org/show_bug.cgi?id=117332
+
+        Reviewed by Xan Lopez.
+
+        Add test for function 'webkit_dom_dom_window_get_computed_style'.
+
+        * tests/testdomdomwindow.c:
+        (dom_dom_window_fixture_setup): Test setup for function
+        'dom_dom_window_get_computed_style'.
+        (dom_dom_window_fixture_teardown): Test teardown for function
+        'dom_dom_window_get_computed_style'.
+        (loadedCallback):
+        (test_dom_dom_window_get_computed_style): Checks function
+        'dom_dom_window_get_computed_style'.
+        (main):
+
+2013-06-10  Iago Toral Quiroga  <itoral@igalia.com>
+
+        Use Cairo implementation of the WidgetBackingStore instead of X11 when running on Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=116717
+
+        Reviewed by Martin Robinson.
+
+        Decide which implementation of WidgetBackingStore to use (X11 or Cairo)
+        depending on whether we are running on X11 or not. Select Cairo
+        implementation when not running in X11.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::createBackingStore):
+        (WebKit):
+        (WebKit::ChromeClient::widgetSizeChanged):
+        (WebKit::ChromeClient::attachRootGraphicsLayer):
+
+2013-06-06  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Parameter 'refChild' from function 'webkit_dom_node_insert_before' should be allowed to be NULL
+        https://bugs.webkit.org/show_bug.cgi?id=117303
+
+        Reviewed by Xan Lopez.
+
+        Add test for function 'webkit_dom_node_insert_before'.
+
+        * tests/testdomnode.c: Checks function dom_document_node_insert_before
+        (test_dom_node_insertion):
+
+2013-06-06  Diego Pino Garcia  <dpino@igalia.com>
+
+        [GTK] Parameters 'inResult' and 'resolver' from function 'webkit_dom_document_evaluate' should be allowed to be NULL
+        https://bugs.webkit.org/show_bug.cgi?id=117129
+
+        Reviewed by Xan Lopez.
+
+        Add test for function 'webkit_dom_document_evaluate'.
+
+        * tests/testdomdocument.c:
+        (test_dom_document_evaluate): Checks function dom_document_evaluate,
+        executes an XPath expression on a HTML document.
+        (main): 
+
+2013-06-05  Alberto Garcia  <agarcia@igalia.com>
+
+        [GTK] AcceleratedCompositingContext: fix layerFlushTimerFiredCallback condition
+        https://bugs.webkit.org/show_bug.cgi?id=117258
+
+        Reviewed by Martin Robinson.
+
+        The expressions were incorrectly grouped, a timeout handler can
+        only be added only if there's none running already.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::renderLayersToWindow):
+
 2013-06-04  Alberto Garcia  <agarcia@igalia.com>
 
         [GTK] Make precedence of logical operators explicit

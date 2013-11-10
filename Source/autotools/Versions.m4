@@ -1,19 +1,19 @@
 m4_define([webkit_major_version], [2])
 m4_define([webkit_minor_version], [1])
-m4_define([webkit_micro_version], [1])
+m4_define([webkit_micro_version], [2])
 
 # This is the version we'll be using as part of our User-Agent string,
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
 #
 # Sourced from Source/WebCore/Configurations/Version.xcconfig
 m4_define([webkit_user_agent_major_version], [537])
-m4_define([webkit_user_agent_minor_version], [44])
+m4_define([webkit_user_agent_minor_version], [46])
 
 # Libtool library version, not to confuse with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-m4_define([libwebkitgtk_version], [19:0:19])
-m4_define([libjavascriptcoregtk_version], [14:0:14])
-m4_define([libwebkit2gtk_version], [26:0:1])
+m4_define([libwebkitgtk_version], [19:1:19])
+m4_define([libjavascriptcoregtk_version], [14:1:14])
+m4_define([libwebkit2gtk_version], [26:1:1])
 
 m4_define([gtk2_required_version], [2.24.10])
 m4_define([gail2_required_version], [1.8])
@@ -26,7 +26,7 @@ m4_define([enchant_required_version], [0.22])
 m4_define([fontconfig_required_version], [2.5])
 m4_define([freetype2_required_version], [9.0])
 m4_define([glib_required_version], [2.36.0])
-m4_define([gobject_introspection_required], [1.32.0])
+m4_define([gobject_introspection_required_version], [1.32.0])
 m4_define([gstreamer_plugins_base_required_version], [1.0.3])
 m4_define([gstreamer_required_version], [1.0.3])
 m4_define([harfbuzz_required_version], [0.9.7])

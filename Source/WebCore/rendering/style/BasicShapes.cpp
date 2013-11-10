@@ -54,15 +54,16 @@ bool BasicShape::canBlend(const BasicShape* other) const
 void BasicShapeRectangle::path(Path& path, const FloatRect& boundingBox)
 {
     ASSERT(path.isEmpty());
-    path.addRoundedRect(FloatRect(floatValueForLength(
-        m_x,
-        boundingBox.width()) + boundingBox.x(),
-        floatValueForLength(m_y, boundingBox.height()) + boundingBox.y(),
-        floatValueForLength(m_width, boundingBox.width()),
-        floatValueForLength(m_height, boundingBox.height())),
+    path.addRoundedRect(
+        FloatRect(
+            floatValueForLength(m_x, boundingBox.width()) + boundingBox.x(),
+            floatValueForLength(m_y, boundingBox.height()) + boundingBox.y(),
+            floatValueForLength(m_width, boundingBox.width()),
+            floatValueForLength(m_height, boundingBox.height())
+        ),
         FloatSize(
-            m_cornerRadiusX.isUndefined() ? 0 : floatValueForLength(m_cornerRadiusX, boundingBox.width()),
-            m_cornerRadiusY.isUndefined() ? 0 : floatValueForLength(m_cornerRadiusY, boundingBox.height())
+            floatValueForLength(m_cornerRadiusX, boundingBox.width()),
+            floatValueForLength(m_cornerRadiusY, boundingBox.height())
         )
     );
 }
@@ -77,10 +78,8 @@ PassRefPtr<BasicShape> BasicShapeRectangle::blend(const BasicShape* other, doubl
     result->setY(m_y.blend(o->y(), progress));
     result->setWidth(m_width.blend(o->width(), progress));
     result->setHeight(m_height.blend(o->height(), progress));
-    if (!m_cornerRadiusX.isUndefined() && !o->cornerRadiusX().isUndefined())
-        result->setCornerRadiusX(m_cornerRadiusX.blend(o->cornerRadiusX(), progress));
-    if (!m_cornerRadiusY.isUndefined() && !o->cornerRadiusY().isUndefined())
-        result->setCornerRadiusY(m_cornerRadiusY.blend(o->cornerRadiusY(), progress));
+    result->setCornerRadiusX(m_cornerRadiusX.blend(o->cornerRadiusX(), progress));
+    result->setCornerRadiusY(m_cornerRadiusY.blend(o->cornerRadiusY(), progress));
     return result.release();
 }
 
@@ -185,14 +184,16 @@ void BasicShapeInsetRectangle::path(Path& path, const FloatRect& boundingBox)
     ASSERT(path.isEmpty());
     float left = floatValueForLength(m_left, boundingBox.width());
     float top = floatValueForLength(m_top, boundingBox.height());
-    path.addRoundedRect(FloatRect(
-        left + boundingBox.x(),
-        top + boundingBox.y(),
-        std::max<float>(boundingBox.width() - left - floatValueForLength(m_right, boundingBox.width()), 0),
-        std::max<float>(boundingBox.height() - top - floatValueForLength(m_bottom, boundingBox.height()), 0)),
+    path.addRoundedRect(
+        FloatRect(
+            left + boundingBox.x(),
+            top + boundingBox.y(),
+            std::max<float>(boundingBox.width() - left - floatValueForLength(m_right, boundingBox.width()), 0),
+            std::max<float>(boundingBox.height() - top - floatValueForLength(m_bottom, boundingBox.height()), 0)
+        ),
         FloatSize(
-            m_cornerRadiusX.isUndefined() ? 0 : floatValueForLength(m_cornerRadiusX, boundingBox.width()),
-            m_cornerRadiusY.isUndefined() ? 0 : floatValueForLength(m_cornerRadiusY, boundingBox.height())
+            floatValueForLength(m_cornerRadiusX, boundingBox.width()),
+            floatValueForLength(m_cornerRadiusY, boundingBox.height())
         )
     );
 }
@@ -207,10 +208,8 @@ PassRefPtr<BasicShape> BasicShapeInsetRectangle::blend(const BasicShape* other, 
     result->setRight(m_right.blend(o->right(), progress));
     result->setBottom(m_bottom.blend(o->bottom(), progress));
     result->setLeft(m_left.blend(o->left(), progress));
-    if (!m_cornerRadiusX.isUndefined() && !o->cornerRadiusX().isUndefined())
-        result->setCornerRadiusX(m_cornerRadiusX.blend(o->cornerRadiusX(), progress));
-    if (!m_cornerRadiusY.isUndefined() && !o->cornerRadiusY().isUndefined())
-        result->setCornerRadiusY(m_cornerRadiusY.blend(o->cornerRadiusY(), progress));
+    result->setCornerRadiusX(m_cornerRadiusX.blend(o->cornerRadiusX(), progress));
+    result->setCornerRadiusY(m_cornerRadiusY.blend(o->cornerRadiusY(), progress));
     return result.release();
 }
 }

@@ -278,7 +278,6 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_canShortCircuitHorizontalWheelEvents(false)
     , m_numWheelEventHandlers(0)
     , m_cachedPageCount(0)
-    , m_minimumLayoutWidth(0)
 #if ENABLE(CONTEXT_MENUS)
     , m_isShowingContextMenu(false)
 #endif
@@ -375,11 +374,11 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     if (!parameters.isInWindow)
         m_page->setIsInWindow(false);
     else
-        WebProcess::shared().pageDidEnterWindow(this);
+        WebProcess::shared().pageDidEnterWindow(m_pageID);
 
     setIsInWindow(parameters.isInWindow);
 
-    setMinimumLayoutWidth(parameters.minimumLayoutWidth);
+    setMinimumLayoutSize(parameters.minimumLayoutSize);
 
     m_userAgent = parameters.userAgent;
 
@@ -554,11 +553,6 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* plu
             toRenderEmbeddedObject(pluginElement->renderer())->setPluginUnavailabilityReason(RenderEmbeddedObject::InsecurePluginVersion);
 
         send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string(), frameURLString, pageURLString));
-        return 0;
-
-    case PluginModuleInactive:
-        if (pluginElement->renderer()->isEmbeddedObject())
-            toRenderEmbeddedObject(pluginElement->renderer())->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginInactive);
         return 0;
     }
 
@@ -1492,6 +1486,22 @@ PageBanner* WebPage::footerPageBanner()
     return m_footerBanner.get();
 }
 
+void WebPage::hidePageBanners()
+{
+    if (m_headerBanner)
+        m_headerBanner->hide();
+    if (m_footerBanner)
+        m_footerBanner->hide();
+}
+
+void WebPage::showPageBanners()
+{
+    if (m_headerBanner)
+        m_headerBanner->showIfHidden();
+    if (m_footerBanner)
+        m_footerBanner->showIfHidden();
+}
+
 PassRefPtr<WebImage> WebPage::scaledSnapshotWithOptions(const IntRect& rect, double scaleFactor, SnapshotOptions options)
 {
     FrameView* frameView = m_mainFrame->coreFrame()->view();
@@ -2105,7 +2115,7 @@ void WebPage::setIsInWindow(bool isInWindow)
         m_page->willMoveOffscreen();
         
         if (pageWasInWindow)
-            WebProcess::shared().pageWillLeaveWindow(this);
+            WebProcess::shared().pageWillLeaveWindow(m_pageID);
     } else {
         // Defer the call to Page::setCanStartMedia() since it ends up sending a synchronous message to the UI process
         // in order to get plug-in connections, and the UI process will be waiting for the Web process to update the backing
@@ -2116,7 +2126,7 @@ void WebPage::setIsInWindow(bool isInWindow)
         m_page->didMoveOnscreen();
         
         if (!pageWasInWindow)
-            WebProcess::shared().pageDidEnterWindow(this);
+            WebProcess::shared().pageDidEnterWindow(m_pageID);
     }
 
     m_page->setIsInWindow(isInWindow);
@@ -2505,7 +2515,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setAVFoundationEnabled(store.getBoolValueForKey(WebPreferencesKey::isAVFoundationEnabledKey()));
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+#if PLATFORM(MAC)
     settings->setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
 
@@ -3943,19 +3953,23 @@ void WebPage::setMainFrameInViewSourceMode(bool inViewSourceMode)
     m_mainFrame->coreFrame()->setInViewSourceMode(inViewSourceMode);
 }
 
-void WebPage::setMinimumLayoutWidth(double minimumLayoutWidth)
+void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
 {
-    if (m_minimumLayoutWidth == minimumLayoutWidth)
+    if (m_minimumLayoutSize == minimumLayoutSize)
         return;
 
-    m_minimumLayoutWidth = minimumLayoutWidth;
+    m_minimumLayoutSize = minimumLayoutSize;
+    if (minimumLayoutSize.width() <= 0) {
+        corePage()->mainFrame()->view()->enableAutoSizeMode(false, IntSize(), IntSize());
+        return;
+    }
+
+    int minimumLayoutWidth = minimumLayoutSize.width();
+    int minimumLayoutHeight = std::max(minimumLayoutSize.height(), 1);
 
     int maximumSize = std::numeric_limits<int>::max();
 
-    if (minimumLayoutWidth > 0)
-        corePage()->mainFrame()->view()->enableAutoSizeMode(true, IntSize(minimumLayoutWidth, 1), IntSize(maximumSize, maximumSize));
-    else
-        corePage()->mainFrame()->view()->enableAutoSizeMode(false, IntSize(), IntSize());
+    corePage()->mainFrame()->view()->enableAutoSizeMode(true, IntSize(minimumLayoutWidth, minimumLayoutHeight), IntSize(maximumSize, maximumSize));
 }
 
 bool WebPage::isSmartInsertDeleteEnabled()

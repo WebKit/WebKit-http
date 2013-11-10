@@ -33,7 +33,7 @@
 typedef struct CGRect CGRect;
 #endif
 
-#if PLATFORM(MAC) || (PLATFORM(QT) && USE(QTKIT))
+#if PLATFORM(MAC)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGRect NSRect;
 #else
@@ -96,17 +96,6 @@ public:
     int maxY() const { return y() + height(); }
     int width() const { return m_size.width(); }
     int height() const { return m_size.height(); }
-
-    // FIXME: These methods are here only to ease the transition to sub-pixel layout. They should
-    // be removed when we close http://webkit.org/b/60318
-    int pixelSnappedX() const { return m_location.x(); }
-    int pixelSnappedY() const { return m_location.y(); }
-    int pixelSnappedMaxX() const { return x() + width(); }
-    int pixelSnappedMaxY() const { return y() + height(); }
-    int pixelSnappedWidth() const { return m_size.width(); }
-    int pixelSnappedHeight() const { return m_size.height(); }
-    IntPoint pixelSnappedLocation() const { return location(); }
-    IntSize pixelSnappedSize() const { return size(); }
 
     void setX(int x) { m_location.setX(x); }
     void setY(int y) { m_location.setY(y); }
@@ -215,7 +204,7 @@ public:
     operator CGRect() const;
 #endif
 
-#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)) || (PLATFORM(QT) && USE(QTKIT))
+#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
     operator NSRect() const;
 #endif
 
@@ -255,18 +244,11 @@ inline bool operator!=(const IntRect& a, const IntRect& b)
     return a.location() != b.location() || a.size() != b.size();
 }
 
-// FIXME: This method is here only to ease the transition to sub-pixel layout. It should
-// be removed when we close http://webkit.org/b/60318
-inline IntRect enclosingIntRect(const IntRect& rect)
-{
-    return rect;
-}
-
 #if USE(CG)
 IntRect enclosingIntRect(const CGRect&);
 #endif
 
-#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)) || (PLATFORM(QT) && USE(QTKIT))
+#if (PLATFORM(MAC) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES))
 IntRect enclosingIntRect(const NSRect&);
 #endif
 

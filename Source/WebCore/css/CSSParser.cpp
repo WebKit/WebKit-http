@@ -584,11 +584,11 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
     case CSSPropertyWebkitPaddingStart:
         acceptsNegativeNumbers = false;
         return true;
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeMargin:
     case CSSPropertyWebkitShapePadding:
         acceptsNegativeNumbers = false;
-        return RuntimeEnabledFeatures::cssExclusionsEnabled();
+        return RuntimeEnabledFeatures::cssShapesEnabled();
 #endif
     case CSSPropertyBottom:
     case CSSPropertyLeft:
@@ -963,7 +963,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (parserContext.isCSSRegionsEnabled && (valueID == CSSValueAuto || valueID == CSSValueAvoid))
             return true;
         break;
-    case CSSPropertyWebkitRegionOverflow:
+    case CSSPropertyWebkitRegionFragment:
         if (parserContext.isCSSRegionsEnabled && (valueID == CSSValueAuto || valueID == CSSValueBreak))
             return true;
         break;
@@ -1146,7 +1146,7 @@ static inline bool isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitRegionBreakAfter:
     case CSSPropertyWebkitRegionBreakBefore:
     case CSSPropertyWebkitRegionBreakInside:
-    case CSSPropertyWebkitRegionOverflow:
+    case CSSPropertyWebkitRegionFragment:
 #endif
     case CSSPropertyWebkitRtlOrdering:
     case CSSPropertyWebkitRubyPosition:
@@ -2032,7 +2032,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                     image = CSSImageValue::create(completeURL(uri));
 #if ENABLE(CSS_IMAGE_SET) && ENABLE(MOUSE_CURSOR_SCALE)
             } else if (value->unit == CSSParserValue::Function && equalIgnoringCase(value->function->name, "-webkit-image-set(")) {
-                image = parseImageSet(m_valueList.get());
+                image = parseImageSet();
                 if (!image)
                     break;
 #endif
@@ -2164,7 +2164,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         }
 #if ENABLE(CSS_IMAGE_SET)
         else if (value->unit == CSSParserValue::Function && equalIgnoringCase(value->function->name, "-webkit-image-set(")) {
-            parsedValue = parseImageSet(m_valueList.get());
+            parsedValue = parseImageSet();
             if (!parsedValue)
                 return false;
             m_valueList->next();
@@ -2952,10 +2952,10 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         }
 #endif
         break;
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeInside:
     case CSSPropertyWebkitShapeOutside:
-        if (!RuntimeEnabledFeatures::cssExclusionsEnabled())
+        if (!RuntimeEnabledFeatures::cssShapesEnabled())
             return false;
         if (id == CSSValueAuto)
             validPrimitive = true;
@@ -2970,7 +2970,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
         break;
     case CSSPropertyWebkitShapeMargin:
     case CSSPropertyWebkitShapePadding:
-        validPrimitive = (RuntimeEnabledFeatures::cssExclusionsEnabled() && !id && validUnit(value, FLength | FNonNeg));
+        validPrimitive = (RuntimeEnabledFeatures::cssShapesEnabled() && !id && validUnit(value, FLength | FNonNeg));
         break;
 #endif
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -3072,7 +3072,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitRegionBreakAfter:
     case CSSPropertyWebkitRegionBreakBefore:
     case CSSPropertyWebkitRegionBreakInside:
-    case CSSPropertyWebkitRegionOverflow:
+    case CSSPropertyWebkitRegionFragment:
 #endif
     case CSSPropertyWebkitRtlOrdering:
     case CSSPropertyWebkitRubyPosition:
@@ -3737,7 +3737,7 @@ bool CSSParser::parseContent(CSSPropertyID propId, bool important)
                     return false;
 #if ENABLE(CSS_IMAGE_SET)
             } else if (equalIgnoringCase(val->function->name, "-webkit-image-set(")) {
-                parsedValue = parseImageSet(m_valueList.get());
+                parsedValue = parseImageSet();
                 if (!parsedValue)
                     return false;
 #endif
@@ -3830,7 +3830,7 @@ bool CSSParser::parseFillImage(CSSParserValueList* valueList, RefPtr<CSSValue>& 
     
 #if ENABLE(CSS_IMAGE_SET)
     if (valueList->current()->unit == CSSParserValue::Function && equalIgnoringCase(valueList->current()->function->name, "-webkit-image-set(")) {
-        value = parseImageSet(m_valueList.get());
+        value = parseImageSet();
         if (value)
             return true;
     }
@@ -6737,7 +6737,7 @@ bool CSSParser::parseBorderImage(CSSPropertyID propId, RefPtr<CSSValue>& result,
                     return false;
 #if ENABLE(CSS_IMAGE_SET)
             } else if (val->unit == CSSParserValue::Function && equalIgnoringCase(val->function->name, "-webkit-image-set(")) {
-                RefPtr<CSSValue> value = parseImageSet(m_valueList.get());
+                RefPtr<CSSValue> value = parseImageSet();
                 if (value)
                     context.commitImage(value.release());
                 else
@@ -8022,27 +8022,22 @@ PassRefPtr<CSSValue> CSSParser::parseImageResolution()
 #endif
 
 #if ENABLE(CSS_IMAGE_SET)
-PassRefPtr<CSSValue> CSSParser::parseImageSet(CSSParserValueList* valueList)
+PassRefPtr<CSSValue> CSSParser::parseImageSet()
 {
-    CSSParserValue* function = valueList->current();
+    CSSParserValue* value = m_valueList->current();
+    ASSERT(value->unit == CSSParserValue::Function);
 
-    if (function->unit != CSSParserValue::Function)
-        return 0;
-
-    CSSParserValueList* functionArgs = valueList->current()->function->args.get();
+    CSSParserValueList* functionArgs = value->function->args.get();
     if (!functionArgs || !functionArgs->size() || !functionArgs->current())
         return 0;
 
     RefPtr<CSSImageSetValue> imageSet = CSSImageSetValue::create();
-
     CSSParserValue* arg = functionArgs->current();
     while (arg) {
         if (arg->unit != CSSPrimitiveValue::CSS_URI)
             return 0;
 
-        RefPtr<CSSImageValue> image = CSSImageValue::create(completeURL(arg->string));
-        imageSet->append(image);
-    
+        imageSet->append(CSSImageValue::create(completeURL(arg->string)));
         arg = functionArgs->next();
         if (!arg || arg->unit != CSSPrimitiveValue::CSS_DIMENSION)
             return 0;

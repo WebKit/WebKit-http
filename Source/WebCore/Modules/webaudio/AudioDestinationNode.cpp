@@ -64,6 +64,16 @@ void AudioDestinationNode::render(AudioBus* sourceBus, AudioBus* destinationBus,
         return;
     }
 
+    if (context()->userGestureRequiredForAudioStart()) {
+        destinationBus->zero();
+        return;
+    }
+
+    if (context()->pageConsentRequiredForAudioStart()) {
+        destinationBus->zero();
+        return;
+    }
+
     // Let the context take care of any business at the start of each render quantum.
     context()->handlePreRenderTasks();
 

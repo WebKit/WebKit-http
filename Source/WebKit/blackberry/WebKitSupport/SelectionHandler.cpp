@@ -668,8 +668,11 @@ void SelectionHandler::selectAtPoint(const WebCore::IntPoint& location, Selectio
     FatFingersResult fatFingersResult = m_webPage->m_touchEventHandler->lastFatFingersResult();
     if (selectNodeIfFatFingersResultIsLink(fatFingersResult))
         return;
-    if (!fatFingersResult.resultMatches(location, FatFingers::Text) || !fatFingersResult.positionWasAdjusted() || !fatFingersResult.nodeAsElementIfApplicable())
+    if (!fatFingersResult.resultMatches(location, FatFingers::Text) || !fatFingersResult.positionWasAdjusted() || !fatFingersResult.nodeAsElementIfApplicable()) {
+        // Cache text result for later use.
         fatFingersResult = FatFingers(m_webPage, location, FatFingers::Text).findBestPoint();
+        m_webPage->m_touchEventHandler->cacheTextResult(fatFingersResult);
+    }
 
     if (!fatFingersResult.positionWasAdjusted()) {
         if (isSelectionActive())
@@ -1235,13 +1238,6 @@ void SelectionHandler::selectionPositionChanged(bool forceUpdateWithoutChange)
             // Find the top corner and bottom corner.
             adjustCaretRects(startCaret, shouldClipStartCaret, endCaret, shouldClipEndCaret, visibleSelectionRegion.rects(), startCaretReferencePoint, endCaretReferencePoint, isRTL);
         }
-    }
-
-    if (!frame->selection()->selection().isBaseFirst()) {
-        // End handle comes before start, invert the caret reference points.
-        WebCore::IntRect tmpCaret(startCaret);
-        startCaret = endCaret;
-        endCaret = tmpCaret;
     }
 
     SelectionLog(Platform::LogLevelInfo,

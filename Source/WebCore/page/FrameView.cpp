@@ -172,7 +172,6 @@ Pagination::Mode paginationModeForRenderStyle(RenderStyle* style)
 FrameView::FrameView(Frame* frame)
     : m_frame(frame)
     , m_canHaveScrollbars(true)
-    , m_slowRepaintObjectCount(0)
     , m_layoutTimer(this, &FrameView::layoutTimerFired)
     , m_layoutRoot(0)
     , m_inSynchronousPostLayout(false)
@@ -430,8 +429,8 @@ bool FrameView::didFirstLayout() const
 void FrameView::invalidateRect(const IntRect& rect)
 {
     if (!parent()) {
-        if (hostWindow())
-            hostWindow()->invalidateContentsAndRootView(rect, false /*immediate*/);
+        if (HostWindow* window = hostWindow())
+            window->invalidateContentsAndRootView(rect, false /*immediate*/);
         return;
     }
 
@@ -476,12 +475,16 @@ void FrameView::setFrameRect(const IntRect& newRect)
     }
 #endif
 
-    Document* document = m_frame ? m_frame->document() : 0;
-
     // Viewport-dependent media queries may cause us to need completely different style information.
-    if (document && document->styleResolverIfExists() && document->styleResolverIfExists()->affectedByViewportChange()) {
-        document->styleResolverChanged(DeferRecalcStyle);
-        InspectorInstrumentation::mediaQueryResultChanged(document);
+    if (m_frame) {
+        if (Document* document = m_frame->document()) {
+            if (StyleResolver* resolver = document->styleResolverIfExists()) {
+                if (resolver->affectedByViewportChange()) {
+                    document->styleResolverChanged(DeferRecalcStyle);
+                    InspectorInstrumentation::mediaQueryResultChanged(document);
+                }
+            }
+        }
     }
 
     sendResizeEventIfNeeded();
@@ -1482,7 +1485,7 @@ void FrameView::adjustMediaTypeForPrinting(bool printing)
 
 bool FrameView::useSlowRepaints(bool considerOverlap) const
 {
-    bool mustBeSlow = m_slowRepaintObjectCount > 0 || (platformWidget() && hasViewportConstrainedObjects());
+    bool mustBeSlow = hasSlowRepaintObjects() || (platformWidget() && hasViewportConstrainedObjects());
 
     // FIXME: WidgetMac.mm makes the assumption that useSlowRepaints ==
     // m_contentIsOpaque, so don't take the fast path for composited layers
@@ -1534,9 +1537,16 @@ void FrameView::setCannotBlitToWindow()
     updateCanBlitOnScrollRecursively();
 }
 
-void FrameView::addSlowRepaintObject()
+void FrameView::addSlowRepaintObject(RenderObject* o)
 {
-    if (!m_slowRepaintObjectCount++) {
+    bool hadSlowRepaintObjects = hasSlowRepaintObjects();
+
+    if (!m_slowRepaintObjects)
+        m_slowRepaintObjects = adoptPtr(new RenderObjectSet);
+
+    m_slowRepaintObjects->add(o);
+
+    if (!hadSlowRepaintObjects) {
         updateCanBlitOnScrollRecursively();
 
         if (Page* page = m_frame->page()) {
@@ -1546,11 +1556,14 @@ void FrameView::addSlowRepaintObject()
     }
 }
 
-void FrameView::removeSlowRepaintObject()
+void FrameView::removeSlowRepaintObject(RenderObject* o)
 {
-    ASSERT(m_slowRepaintObjectCount > 0);
-    m_slowRepaintObjectCount--;
-    if (!m_slowRepaintObjectCount) {
+    ASSERT(m_slowRepaintObjects);
+    ASSERT(m_slowRepaintObjects->contains(o));
+
+    m_slowRepaintObjects->remove(o);
+    if (m_slowRepaintObjects->isEmpty()) {
+        m_slowRepaintObjects = nullptr;
         updateCanBlitOnScrollRecursively();
 
         if (Page* page = m_frame->page()) {
@@ -1734,6 +1747,9 @@ void FrameView::scrollContentsSlowPath(const IntRect& updateRect)
         ASSERT(renderView());
         renderView()->layer()->setBackingNeedsRepaintInRect(updateRect);
     }
+
+    repaintSlowRepaintObjects();
+
     if (RenderPart* frameRenderer = m_frame->ownerRenderer()) {
         if (isEnclosedInCompositingLayer()) {
             LayoutRect rect(frameRenderer->borderLeft() + frameRenderer->paddingLeft(),
@@ -1746,6 +1762,20 @@ void FrameView::scrollContentsSlowPath(const IntRect& updateRect)
 #endif
 
     ScrollView::scrollContentsSlowPath(updateRect);
+}
+
+void FrameView::repaintSlowRepaintObjects()
+{
+    if (!m_slowRepaintObjects)
+        return;
+
+    // Renderers with fixed backgrounds may be in compositing layers, so we need to explicitly
+    // repaint them after scrolling.
+    RenderObjectSet::const_iterator end = m_slowRepaintObjects->end();
+    for (RenderObjectSet::const_iterator it = m_slowRepaintObjects->begin(); it != end; ++it) {
+        RenderObject* renderer = *it;
+        renderer->repaint();
+    }
 }
 
 // Note that this gets called at painting time.
@@ -1901,16 +1931,7 @@ void FrameView::setScrollPosition(const IntPoint& scrollPoint)
 {
     TemporaryChange<bool> changeInProgrammaticScroll(m_inProgrammaticScroll, true);
     m_maintainScrollPositionAnchor = 0;
-
-    IntPoint newScrollPosition = adjustScrollPositionWithinRange(scrollPoint);
-
-    if (newScrollPosition == scrollPosition())
-        return;
-
-    if (requestScrollPositionUpdate(newScrollPosition))
-        return;
-
-    ScrollView::setScrollPosition(newScrollPosition);
+    ScrollView::setScrollPosition(scrollPoint);
 }
 
 void FrameView::delegatesScrollingDidChange()
@@ -1960,11 +1981,11 @@ void FrameView::setViewportConstrainedObjectsNeedLayout()
     }
 }
 
-
 void FrameView::scrollPositionChangedViaPlatformWidget()
 {
     repaintFixedElementsAfterScrolling();
     updateFixedElementsAfterScrolling();
+    repaintSlowRepaintObjects();
     scrollPositionChanged();
 }
 
@@ -1981,6 +2002,7 @@ void FrameView::scrollPositionChanged()
 #endif
 }
 
+// FIXME: this function is misnamed; its primary purpose is to update RenderLayer positions.
 void FrameView::repaintFixedElementsAfterScrolling()
 {
     // For fixed position elements, update widget positions and compositing layers after scrolling,
@@ -2748,6 +2770,9 @@ void FrameView::performPostLayoutTasks()
     if (RenderView* renderView = this->renderView())
         renderView->updateWidgetPositions();
     
+    // layout() protects FrameView, but it still can get destroyed when updateWidgets()
+    // is called through the post layout timer.
+    RefPtr<FrameView> protector(this);
     for (unsigned i = 0; i < maxUpdateWidgetsIterations; i++) {
         if (updateWidgets())
             break;
@@ -3510,7 +3535,8 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
     if (needsLayout())
         return;
 
-    InspectorInstrumentation::willPaint(renderView);
+    if (!p->paintingDisabled())
+        InspectorInstrumentation::willPaint(renderView);
 
     bool isTopLevelPainter = !sCurrentPaintTimeStamp;
     if (isTopLevelPainter)
@@ -3574,8 +3600,11 @@ void FrameView::paintContents(GraphicsContext* p, const IntRect& rect)
     if (isTopLevelPainter)
         sCurrentPaintTimeStamp = 0;
 
-    InspectorInstrumentation::didPaint(renderView, p, rect);
-    firePaintRelatedMilestones();
+    if (!p->paintingDisabled()) {
+        InspectorInstrumentation::didPaint(renderView, p, rect);
+        // FIXME: should probably not fire milestones for snapshot painting. https://bugs.webkit.org/show_bug.cgi?id=117623
+        firePaintRelatedMilestones();
+    }
 }
 
 void FrameView::setPaintBehavior(PaintBehavior behavior)

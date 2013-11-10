@@ -330,7 +330,6 @@ webkit.org/b/82886 inspector/styles/override-screen-size.html [ Skip ]
 
 # LayoutTestController::setAutomaticLinkDetectionEnabled isn't implemented
 webkit.org/b/85463 editing/inserting/typing-space-to-trigger-smart-link.html
-webkit.org/b/85463 editing/inserting/smart-link-when-caret-is-moved-before-URL.html
 
 # gestureTwoFingerTap not implemented by this platform (introduced in r132406)
 touchadjustment/touch-links-two-finger-tap.html
@@ -345,7 +344,6 @@ webkit.org/b/98696 plugins/snapshotting [ Skip ]
 fast/css/variables/border-width.html
 fast/css/variables/build-supports-variables.html
 fast/css/variables/calc.html
-fast/css/variables/case-insensitive.html
 fast/css/variables/colors-test.html
 fast/css/variables/computed-style.html
 fast/css/variables/inherited-values.html
@@ -916,9 +914,6 @@ fast/forms/menulist-width-change.html
 # https://bugs.webkit.org/show_bug.cgi?id=63518
 http/tests/misc/link-rel-icon-beforeload.html
 
-# https://bugs.webkit.org/show_bug.cgi?id=64002
-fast/selectors/unqualified-hover-strict.html
-
 # http/tests/websocket/tests/hybi/workers/close.html is flaky
 # https://bugs.webkit.org/show_bug.cgi?id=89153
 http/tests/websocket/tests/hybi/workers/close.html
@@ -986,7 +981,6 @@ media/controls-without-preload.html
 # and https://bugs.webkit.org/show_bug.cgi?id=45021
 media/context-menu-actions.html
 
-media/audio-controls-rendering.html
 media/video-currentTime.html
 media/audio-data-url.html
 media/audio-delete-while-slider-thumb-clicked.html
@@ -994,10 +988,8 @@ media/audio-delete-while-step-button-clicked.html
 media/audio-mpeg-supported.html
 media/audio-mpeg4-supported.html
 media/audio-no-installed-engines.html
-media/controls-after-reload.html
 media/controls-drag-timebar.html
 media/controls-right-click-on-timebar.html
-media/controls-strict.html
 media/controls-styling.html
 media/event-attributes.html
 media/media-captions.html
@@ -1010,13 +1002,11 @@ media/video-autoplay.html
 media/video-canvas-source.html
 media/video-canvas-alpha.html
 media/video-click-dblckick-standalone.html
-media/video-controls-rendering.html
 media/video-controls-transformed.html
 media/video-controls-visible-audio-only.html
 media/video-controls-zoomed.html
 media/video-currentTime-set.html
 media/video-display-aspect-ratio.html
-media/video-display-toggle.html
 media/video-document-types.html
 media/video-duration-known-after-eos.html
 media/video-element-other-namespace-crash.html
@@ -1088,6 +1078,15 @@ media/media-document-audio-repaint.html
 # [Qt] media/video-playbackrate.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=57476
 media/video-playbackrate.html
+
+# [Qt] media tests are flaky
+webkit.org/b/57983 media/audio-controls-rendering.html [ Skip ]
+webkit.org/b/57983 media/controls-after-reload.html [ Skip ]
+webkit.org/b/57983 media/controls-strict.html [ Skip ]
+webkit.org/b/57983 media/controls-styling-strict.html [ Skip ]
+webkit.org/b/57983 media/video-controls-rendering.html [ Skip ]
+webkit.org/b/57983 media/video-display-toggle.html [ Skip ]
+webkit.org/b/57983 media/video-playing-and-pause.html [ Skip ]
 
 # ============================================================================= #
 # Crashing tests due to re-enabled Phonon support in Buildbot's Qt              #
@@ -1348,7 +1347,6 @@ webkit.org/b/104054 svg/custom/use-href-update-crash.svg [ Failure Pass ]
 
 # [Qt] svg/animations/animate-path-nested-transforms.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=48987
-svg/animations/animate-path-nested-transforms.html
 svg/animations/animate-text-nested-transforms.html
 
 # [Qt] fontCache related assertion revealed by r105143
@@ -1378,7 +1376,6 @@ svg/custom/use-on-symbol-inside-pattern.svg
 svg/batik/text/longTextOnPath.svg
 svg/carto.net/tabgroup.svg
 webkit.org/b/112680 jquery/manipulation.html [ Skip ]
-webkit.org/b/112106 fast/js/regress/string-repeat-arith.html [ Skip ]
 
 # [Qt] New inspector/console/console-filter-test.html fails on 32bit since r141269.
 # https://bugs.webkit.org/show_bug.cgi?id=108481
@@ -1468,6 +1465,11 @@ css3/filters/effect-reference-hw.html
 # ============================================================================= #
 # failing fast tests
 # ============================================================================= #
+
+# [Qt] Two new test in fast/regions/ flaky after r151282
+# https://bugs.webkit.org/show_bug.cgi?id=117338
+fast/regions/hover-display-block-none.html
+fast/regions/hover-single-flow-into-other.html
 
 # New test flakey on Qt Linux Release introduced in r113086
 # https://bugs.webkit.org/show_bug.cgi?id=83057
@@ -1886,8 +1888,6 @@ webkit.org/b/109224 fast/forms/number/number-l10n-input.html [ Skip ]
 # [Qt] New fast/flexbox/line-clamp-link-after-ellipsis.html layout test is failing since r142335.
 webkit.org/b/109353 fast/flexbox/line-clamp-link-after-ellipsis.html [ Skip ]
 
-webkit.org/b/110090 fast/events/clientXY-in-zoom-and-scroll.html [ Skip ]
-
 webkit.org/b/108508 fast/canvas/canvas-currentPath.html [ Skip ]
 
 webkit.org/b/111290 fast/regions/seamless-iframe-flowed-into-regions.html [ Skip ]
@@ -1906,6 +1906,12 @@ webkit.org/b/113931 fast/forms/select/popup-closes-on-blur.html [ Skip ]
 webkit.org/b/116711 fast/frames/detach-frame-during-focus.html [ Skip ]
 
 webkit.org/b/116608 fast/css/text-overflow-ellipsis-full-truncate-rtl.html [ Skip ]
+
+# [Qt] fast/selectors/unqualified-hover-strict.html fails
+webkit.org/b/10890 fast/selectors/unqualified-hover-strict.html [ Skip ]
+
+# [GTK][Qt] fast/flexbox/clear-overflow-before-scroll-update.html is failing
+webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Skip ]
 
 # ============================================================================= #
 # failing security tests
@@ -2355,11 +2361,6 @@ webkit.org/b/104696 fast/block/float/floats-wrap-inside-inline-007.html
 # https://bugs.webkit.org/show_bug.cgi?id=90165
 css3/filters/huge-region-composited.html
 
-# [Qt] REGRESSION(r122768, r122771): They broke jquery/data.html and inspector/elements/edit-dom-actions.html
-# https://bugs.webkit.org/show_bug.cgi?id=91476
-inspector/elements/edit-dom-actions.html
-jquery/data.html
-
 # [Qt] svg/zoom/{page,text}/zoom-hixie-mixed-009.xml fails
 # https://bugs.webkit.org/show_bug.cgi?id=92018
 svg/zoom/text/zoom-hixie-mixed-009.xml
@@ -2398,10 +2399,6 @@ http/tests/inspector/network/network-xhr-replay.html
 # [Qt] REGRESSION(r128910): inspector/extensions/extensions-panel.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=97084
 inspector/extensions/extensions-panel.html
-
-# [Qt] fast/regions/overflow-size-change-with-stacking-context.html fails
-# https://bugs.webkit.org/show_bug.cgi?id=97199
-fast/regions/overflow-size-change-with-stacking-context.html
 
 # [Qt] fast/profiler/apply.html fails with LLInt on 32 bit
 # https://bugs.webkit.org/show_bug.cgi?id=97791
@@ -2461,9 +2458,6 @@ webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailur
 # failing new tests
 webkit.org/b/86441 fast/borders/border-antialiasing.html [ Skip ]
 
-# Paletted PNG with ICC color profiles not working.
-webkit.org/b/86722 fast/images/paletted-png-with-color-profile.html
-
 # Disable webaudio codec tests, including proprietary codecs.
 webkit.org/b/88794 webaudio/codec-tests
 
@@ -2472,8 +2466,6 @@ webkit.org/b/90951 fast/text/shaping
 
 # Flaky tests
 webkit.org/b/91376 http/tests/security/sandboxed-iframe-modify-self.html [ Failure Pass ]
-webkit.org/b/91379 http/tests/security/contentSecurityPolicy/policy-does-not-affect-child.html [ Failure Pass ]
-webkit.org/b/91379 http/tests/security/contentSecurityPolicy/object-src-none-allowed.html [ Failure Pass ]
 
 # This has always failed on Qt - exposed by bug 89826
 webkit.org/b/94004 css2.1/20110323/c541-word-sp-000.htm [ ImageOnlyFailure ]
@@ -2584,13 +2576,9 @@ webkit.org/b/106016 fast/workers/worker-document-leak.html
 # [Qt] New fast/regions/full-screen-video-from-region.html times out
 webkit.org/b/106095 fast/regions/full-screen-video-from-region.html
 
-# [Qt][EFL] New fast/events/drag-and-drop-autoscroll.html fails
-webkit.org/b/106318 fast/events/drag-and-drop-autoscroll.html
-
 # REGRESSION(r139145): A couple of fast/workers tests fail
 # https://bugs.webkit.org/show_bug.cgi?id=106415
 fast/workers/worker-close-more.html
-fast/workers/worker-document-leak.html
 fast/workers/worker-lifecycle.html
 fast/workers/storage/interrupt-database.html
 
@@ -2609,16 +2597,6 @@ inspector/editor/text-editor-smart-braces.html
 
 # [Qt] different result from other platforms
 webkit.org/b/108676 svg/custom/svg-fonts-in-text-controls.html [ Skip ]
-
-# Need rebaseline after https://bugs.webkit.org/show_bug.cgi?id=109775
-webkit.org/b/109775 media/audio-controls-rendering.html [ Failure ]
-webkit.org/b/109775 media/controls-after-reload.html [ Failure ]
-webkit.org/b/109775 media/controls-strict.html [ Failure ]
-webkit.org/b/109775 media/controls-styling-strict.html [ Failure ]
-webkit.org/b/109775 media/controls-without-preload.html [ Failure ]
-webkit.org/b/109775 media/video-controls-rendering.html [ Failure ]
-webkit.org/b/109775 media/video-display-toggle.html [ Failure ]
-webkit.org/b/109775 media/video-playing-and-pause.html [ Failure ]
 
 webkit.org/b/110090 fast/events/clientXY-in-zoom-and-scroll.html [ Failure ]
 
@@ -2680,7 +2658,9 @@ webkit.org/b/117036 http/tests/uri/curly-braces-escaping.html [ Skip ]
 # [Qt] REGRESSION(r151020): fast/js/custom-constructors.html makes next test crashing
 webkit.org/b/117141 fast/js/custom-constructors.html [ Skip ]
 
-
-
 # REGRESSION(r151146) fast/forms/control-clip-overflow.html fails
 webkit.org/b/117185 fast/forms/control-clip-overflow.html [ Skip ]
+
+# Synthesized italics not supported
+fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
+

@@ -1,0 +1,84 @@
+2013-06-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Infrequent uncaught exception with debugger popovers breaks inspector
+        https://bugs.webkit.org/show_bug.cgi?id=117755
+
+        Create the ZERO_SIZE and ZERO_RECT objects after we've setup the Size
+        and Rect prototypes, so they get the expected methods. We then need to
+        handle the ZERO_RECT case better, and not attempt to draw a background
+        in a canvas with a 0 size, which would produce an exception.
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Geometry.js:
+        * UserInterface/Popover.js:
+        (WebInspector.Popover.prototype._update):
+
+2013-06-18  Timothy Hatcher  <timothy@apple.com>
+
+        If the tree outline is processing a selection currently, then don't change the selection.
+
+        This is needed to allow breakpoints tree elements to be selected without jumping back to
+        selecting the resource tree element.
+
+        https://bugs.webkit.org/show_bug.cgi?id=117746
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.js:
+        (WebInspector._revealAndSelectRepresentedObjectInNavigationSidebar):
+        * UserInterface/TreeOutline.js:
+        (TreeElement.prototype.select):
+
+2013-06-18  Timothy Hatcher  <timothy@apple.com>
+
+        Update breakpoints to match Xcode 5.
+
+        This updates the breakpoint images, line colors, and moves breakpoints toggle button
+        to the Debugger sidebar navigation bar.
+
+        https://bugs.webkit.org/show_bug.cgi?id=117723
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js: Updated.
+        * UserInterface/DebuggerSidebarPanel.css: Removed custom toggle button rules.
+        * UserInterface/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointsToggleButtonClicked):
+        * UserInterface/Images/Breakpoint.png: Updated.
+        * UserInterface/Images/Breakpoints.pdf: Added.
+        * UserInterface/Images/Breakpoint@2x.png: Updated.
+        * UserInterface/Images/BreakpointButton.pdf: Updated.
+        * UserInterface/Images/BreakpointInactive.png: Updated.
+        * UserInterface/Images/BreakpointInactive@2x.png: Updated.
+        * UserInterface/Images/BreakpointInactiveButton.pdf: Updated.
+        * UserInterface/Images/InstructionPointer.png: Updated.
+        * UserInterface/Images/InstructionPointer@2x.png: Updated.
+        * UserInterface/SourceCodeTextEditor.css:
+        (.source-code.text-editor > .CodeMirror .error): Updated background-color and removed box-shadow.
+        (.source-code.text-editor > .CodeMirror .warning): Ditto.
+        * UserInterface/TextEditor.css:
+        (.text-editor > .CodeMirror .has-breakpoint .CodeMirror-linenumber::before): Changed left position to 0.
+        (.text-editor > .CodeMirror .execution-line .CodeMirror-linenumber::after): Updated position.
+        (.text-editor > .CodeMirror .execution-line): Updated background-color and removed box-shadow.
+
+2013-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        <http://webkit.org/b/117615> Web Inspector: JS PrettyPrinting Should have space between "do" and "{"
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/CodeMirrorFormatters.js:
+
+2013-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        <http://webkit.org/b/117612> Web Inspector: "Search Resource Content" should cancel when I remove all text search text
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._searchFieldInput):
+
+== Rolled over to ChangeLog-2013-06-11 ==

@@ -432,7 +432,7 @@ transitions/change-values-during-transition.html
 fast/workers/storage/use-same-database-in-page-and-workers.html
 
 webkit.org/b/106415 fast/workers/worker-close-more.html [ Pass Failure ]
-webkit.org/b/106415 fast/workers/worker-document-leak.html [ Pass Failure ]
+webkit.org/b/117326 fast/workers/worker-document-leak.html [ Crash ]
 webkit.org/b/106415 fast/workers/worker-lifecycle.html [ Pass Failure ]
 
 # Times out on apple-windows-3 http://webkit.org/b/48750
@@ -901,7 +901,7 @@ http/tests/local/blob/send-sliced-data-blob.html
 http/tests/local/blob/send-data-blob.html
 
 # CSS Device Adaptation is not enabled.
-webkit.org/b/95959 css3/device-adapt [ Skip ]
+webkit.org/b/95959 css3/device-adapt
 
 # <https://bugs.webkit.org/show_bug.cgi?id=29289>
 plugins/destroy-during-npp-new.html
@@ -1314,7 +1314,7 @@ inspector/profiler/heap-snapshot-summary-show-ranges.html
 inspector/profiler/heap-snapshot-summary-sorting-fields.html
 inspector/profiler/heap-snapshot-summary-sorting.html
 inspector/profiler/heap-snapshot-summary-sorting-instances.html
-webkit.org/b/50485 inspector-protocol/heap-profiler [ Skip ]
+webkit.org/b/50485 inspector-protocol/heap-profiler
 
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-has-uninstrumented-canvases.html
 webkit.org/b/73936 inspector/profiler/canvas2d/canvas-stack-trace.html
@@ -1594,33 +1594,33 @@ fast/dom/MicroData
 fast/css/draggable-region-parser.html
 
 # Opera-submitted tests to W3C for <track>, a lot of failures still.
-webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/onremovetrack.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/12345_timestamps.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timestamps.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html [ Skip ]
+webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html
+webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html
+webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html
+webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html
+webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html
+webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html
+webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/onremovetrack.html
+webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html
+webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html
+webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/12345_timestamps.html
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/timestamps.html
+webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tree-building.html
+webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/cue_font_size_transition.html
+webkit.org/b/103926 media/track/opera/track/webvtt/rendering/adhoc/voice_with_evil_timestamp.html
 
 # Tests for MediaSource API. Feature is not yet functional.
 # https://bugs.webkit.org/show_bug.cgi?id=64731
@@ -1778,8 +1778,6 @@ fast/dom/HTMLTableElement/createCaption.html
 fast/repaint/table-section-repaint.html
 
 # Need rebaselining after bug 69210.
-fast/encoding/utf-16-big-endian.html
-fast/encoding/utf-16-little-endian.html
 fast/inline/continuation-outlines-with-layers-2.html
 fast/repaint/transform-absolute-in-positioned-container.html
 
@@ -1940,7 +1938,7 @@ compositing/rtl/rtl-fixed-overflow.html
 compositing/rtl/rtl-fixed.html
 
 # LAYER_TREE_INCLUDES_VISIBLE_RECTS option to layerTreeAsText is only applicable to Mac.
-compositing/visible-rect [ Skip ]
+compositing/visible-rect
 
 # Asserts in RenderLayerBacking::paintIntoLayer
 # https://bugs.webkit.org/show_bug.cgi?id=88149
@@ -2219,7 +2217,6 @@ platform/win/accessibility/single-select-children.html
 # Require rebaseline after https://bugs.webkit.org/show_bug.cgi?id=80394
 fast/block/float/024.html
 fast/block/margin-collapse/empty-clear-blocks.html
-fast/block/margin-collapse/025.html
 fast/block/margin-collapse/block-inside-inline/025.html
 
 # referrer tests failing, problems connecting to address provided to iframe
@@ -2393,18 +2390,6 @@ http/tests/security/sandboxed-iframe-form-top.html
 #https://bugs.webkit.org/show_bug.cgi?id=95530
 http/tests/security/inactive-document-with-empty-security-origin.html
 
-webkit.org/b/98666 webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/forms/input-appearance-height.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/input-appearance-range.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/range-thumb-height-percentage.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/slider-padding.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/slider-thumb-shared-style.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/slider-thumb-stylability.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/multicol/client-rects.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/repaint/slider-thumb-drag-release.html [ Failure ]
-webkit.org/b/98666 webkit.org/b/102993 fast/repaint/slider-thumb-float.html [ Failure ]
-
 #https://bugs.webkit.org/show_bug.cgi?id=98079
 http/tests/security/cross-origin-local-storage-wk1.html
 
@@ -2425,13 +2410,10 @@ css3/supports-cssom.html
 css3/supports-dom-api.html
 
 # MHTML is not yet enabled
-mhtml [ Skip ]
+mhtml
 
 # https://bugs.webkit.org/show_bug.cgi?id=98169
 http/tests/inspector/stacktraces
-
-# Requires rebaselining after https://bugs.webkit.org/show_bug.cgi?id=11645
-webkit.org/b/11645 fast/table/025.html [ Failure ]
 
 # HIDDEN_PAGE_DOM_TIMER_THROTTLING is disabled
 fast/dom/timer-throttling-hidden-page.html
@@ -2481,22 +2463,14 @@ compositing/tiling/tile-cache-zoomed.html
 # Test added in r132901 is for chromium only
 fast/images/exif-orientation-image-document.html
 
-webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html [ Skip ]
-webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Skip ]
+webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html
+webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=100117
 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
 
 # CSS3_TEXT is disabled on Windows
 fast/css3-text
-
-# Needs rebaseline.
-webkit.org/b/94198 fast/dom/HTMLImageElement/image-alt-text.html [ Failure ]
-webkit.org/b/94198 fast/dom/HTMLInputElement/input-image-alt-text.html [ Failure ]
-webkit.org/b/94198 fast/encoding/utf-16-big-endian.html [ Failure ]
-webkit.org/b/94198 fast/encoding/utf-16-little-endian.html [ Failure ]
-webkit.org/b/94198 fast/forms/input-value.html [ Failure ]
-webkit.org/b/94198 tables/mozilla/collapsing_borders/bug41262-3.html [ Failure ]
 
 # ACCELERATED_OVERFLOW_SCROLLING is disabled on Windows
 compositing/overflow/scrolling-without-painting.html
@@ -2514,12 +2488,12 @@ editing/execCommand/switch-list-type-with-orphaned-li.html
 fast/js/kde/Array.html
 
 # No support for exposing in-band text tracks
-webkit.org/b/103770 media/track/track-in-band.html [ Skip ]
-webkit.org/b/103770 media/track/track-in-band-cues-added-once.html [ Skip ]
-webkit.org/b/103770 media/track/track-in-band-style.html [ Skip ]
-webkit.org/b/103770 media/track/track-in-band-legacy-api.html [ Skip ]
-webkit.org/b/103770 media/track/track-forced-subtitles-in-band.html [ Skip ]
-webkit.org/b/103770 media/track/track-in-band-mode.html [ Skip ]
+webkit.org/b/103770 media/track/track-in-band.html
+webkit.org/b/103770 media/track/track-in-band-cues-added-once.html
+webkit.org/b/103770 media/track/track-in-band-style.html
+webkit.org/b/103770 media/track/track-in-band-legacy-api.html
+webkit.org/b/103770 media/track/track-forced-subtitles-in-band.html
+webkit.org/b/103770 media/track/track-in-band-mode.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=97026
 fast/events/keydown-leftright-keys.html
@@ -2557,11 +2531,7 @@ media/video-controls-visible-exiting-fullscreen.html
 svg/dom/SVGViewSpec-invalid-ref-crash.html
 
 # Enable when support drag-and-drop autoscrolling
-webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
-
-# Needs rebaseline after https://bugs.webkit.org/show_bug.cgi?id=9221
-webkit.org/b/9221 fast/css/resize-corner-tracking.html [ Failure ]
-webkit.org/b/9221 fast/css/resize-corner-tracking-transformed-iframe.html [ Missing ]
+webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html
 
 # Temporarily skip inspector tests which are now failing on the bots due to some configuration problem
 inspector
@@ -2625,26 +2595,18 @@ jquery/attributes.html
 media/W3C/video/events/event_canplaythrough.html
 
 # Spellchecker behavior tests.
-webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-subword-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spellcheck-async-mutation.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spellcheck-async.html [ Skip ]
-webkit.org/b/108370 editing/spelling/spellcheck-sequencenum.html [ Skip ]
-webkit.org/b/108370 editing/style/iframe-onload-crash-mac.html [ Skip ]
-
-# Need rebaseline for https://bugs.webkit.org/show_bug.cgi?id=109994
-webkit.org/b/109994 css2.1/20110323/replaced-elements-001.htm [ Failure ]
-webkit.org/b/109994 svg/custom/foreign-object-skew.svg [ Failure ]
-webkit.org/b/109994 tables/mozilla/bugs/bug92647-2.html [ Failure ]
-
-# New test
-webkit.org/b/110654 css3/flexbox/button.html [ Failure ]
+webkit.org/b/108370 editing/spelling/spelling-double-clicked-word.html
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-multiple-words.html
+webkit.org/b/108370 editing/spelling/spelling-exactly-selected-word.html
+webkit.org/b/108370 editing/spelling/spelling-multiword-selection.html
+webkit.org/b/108370 editing/spelling/spelling-should-select-multiple-words.html
+webkit.org/b/108370 editing/spelling/spelling-subword-selection.html
+webkit.org/b/108370 editing/spelling/spelling-with-punctuation-selection.html
+webkit.org/b/108370 editing/spelling/spelling-with-whitespace-selection.html
+webkit.org/b/108370 editing/spelling/spellcheck-async-mutation.html
+webkit.org/b/108370 editing/spelling/spellcheck-async.html
+webkit.org/b/108370 editing/spelling/spellcheck-sequencenum.html
+webkit.org/b/108370 editing/style/iframe-onload-crash-mac.html
 
 # Disable document.register tests, ENABLE_CUSTOM_ELEMENT disabled
 fast/dom/custom
@@ -2710,7 +2672,7 @@ webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failu
 webkit.org/b/112766 media/media-higher-prio-audio-stream.html [ Failure ]
 
 # Snapshotted plugins not enabled on WK1
-webkit.org/b/98696 plugins/snapshotting [ Skip ]
+webkit.org/b/98696 plugins/snapshotting
 
 # dumpCreateView method not implemented on Windows
 fast/loader/url-selected-user-gesture.html
@@ -2737,6 +2699,7 @@ webkit.org/b/116562 fast/js/large-expressions.html
 webkit.org/b/116562 fast/js/string-replace-exception-crash.html
 webkit.org/b/116562 fast/text/custom-font-data-crash.html
 webkit.org/b/116562 loader/go-back-cached-main-resource.html
+webkit.org/b/116562 media/video-beforeload-remove-source.html
 webkit.org/b/116562 svg/filters/feMorphology-crash.html
 
 # Test failures being investigated under https://bugs.webkit.org/show_bug.cgi?id=116564
@@ -2769,4 +2732,62 @@ webkit.org/b/116564 transitions/svg-text-shadow-transition.html
 
 # Enable storage tests, but exclude the websql tests (see https://webkit.org/b/116559).
 webkit.org/b/116559 storage/websql
+
+# Exclude mathml, which does not work properly under windows
+webkit.org/b/117200 mathml
+
+# After switching to NRWT, we find that some of the new image tests do not pass.
+webkit.org/b/117322 css2.1/20110323/word-spacing-remove-space-003.htm [ ImageOnlyFailure ]
+webkit.org/b/117322 css2.1/20110323/word-spacing-remove-space-006.htm [ ImageOnlyFailure ]
+webkit.org/b/117322 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/text-indent-first-line-006.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/border-width.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/calc.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/colors-test.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/computed-style.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/inherited-values.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/inline-styles.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/redefinition.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/shorthand.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/transform-test.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/use-before-defined.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/var-inside-box-reflect.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/var-inside-pair.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/var-inside-quad.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/var-inside-shorthand.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/variables/variable-chain.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/css/word-spacing-characters-complex-text.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/selectors/selection-window-inactive.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/text/hyphen-min-preferred-width.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ ImageOnlyFailure ]
+webkit.org/b/117322 media/video-poster-background.html [ ImageOnlyFailure ]
+webkit.org/b/117322 printing/quirks-percentage-height-body.html [ ImageOnlyFailure ]
+webkit.org/b/117322 printing/quirks-percentage-height.html [ ImageOnlyFailure ]
+webkit.org/b/117322 printing/standards-percentage-heights.html [ ImageOnlyFailure ]
+webkit.org/b/117322 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
+webkit.org/b/117322 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
+
+# Text Test Failures
+webkit.org/b/117323 animations/animation-delay-changed.html
+webkit.org/b/117323 editing/inserting/insert-3907422-fix.html
+webkit.org/b/117323 fast/css/lang-mapped-to-webkit-locale-dynamic.xhtml
+webkit.org/b/117323 fast/frames/sandboxed-iframe-about-blank.html
+webkit.org/b/117323 fast/frames/sandboxed-iframe-navigation-allowed.html
+webkit.org/b/117323 fast/frames/sandboxed-iframe-plugins.html
+webkit.org/b/117323 fast/replaced/invalid-object-with-fallback.html
+webkit.org/b/117323 fast/replaced/no-focus-ring-embed.html
+webkit.org/b/117323 fast/replaced/no-focus-ring-object.html
+webkit.org/b/117323 fast/replaced/object-with-embed-url-param.html
+webkit.org/b/117323 platform/win/plugins/call-javascript-that-destroys-plugin.html
+webkit.org/b/117323 platform/win/plugins/windowless-paint-rect-coordinates.html
+
+# Crashes
+webkit.org/b/117324 fast/css/fontloader-download-error.html
+webkit.org/b/117325 svg/as-image/svg-nested.html
+webkit.org/b/117325 svg/css/font-face-crash.html
+
+# Synthesized italics not supported
+fast/text/international/synthesized-italic-vertical-latin.html [ Skip ]
 

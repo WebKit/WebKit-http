@@ -72,6 +72,7 @@ public:
     void setUserViewportTranslation(double tx, double ty);
     WebCore::IntPoint userViewportToContents(const WebCore::IntPoint&) const;
     WebCore::IntPoint userViewportToScene(const WebCore::IntPoint&) const;
+    WebCore::IntPoint contentsToUserViewport(const WebCore::IntPoint&) const;
 
     void paintToCurrentGLContext();
 
@@ -134,6 +135,8 @@ protected:
     virtual void processDidCrash() OVERRIDE;
     virtual void didRelaunchProcess() OVERRIDE;
     virtual void pageClosed() OVERRIDE;
+
+    virtual void preferencesDidChange() OVERRIDE;
 
     virtual void toolTipChanged(const String&, const String&) OVERRIDE;
 

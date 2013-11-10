@@ -609,12 +609,21 @@ void Page::findStringMatchingRanges(const String& target, FindOptions options, i
         return;
 
     if (frameWithSelection) {
-        indexForSelection = NoMatchBeforeUserSelection;
+        indexForSelection = NoMatchAfterUserSelection;
         RefPtr<Range> selectedRange = frameWithSelection->selection()->selection().firstRange();
-        for (size_t i = 0; i < matchRanges->size(); ++i) {
-            if (selectedRange->compareBoundaryPoints(Range::START_TO_END, matchRanges->at(i).get(), IGNORE_EXCEPTION) < 0) {
-                indexForSelection = i;
-                break;
+        if (options & Backwards) {
+            for (size_t i = matchRanges->size(); i > 0; --i) {
+                if (selectedRange->compareBoundaryPoints(Range::START_TO_END, matchRanges->at(i - 1).get(), IGNORE_EXCEPTION) > 0) {
+                    indexForSelection = i - 1;
+                    break;
+                }
+            }
+        } else {
+            for (size_t i = 0; i < matchRanges->size(); ++i) {
+                if (selectedRange->compareBoundaryPoints(Range::START_TO_END, matchRanges->at(i).get(), IGNORE_EXCEPTION) < 0) {
+                    indexForSelection = i;
+                    break;
+                }
             }
         }
     }
@@ -648,7 +657,7 @@ PassRefPtr<Range> Page::rangeOfString(const String& target, Range* referenceRang
     return 0;
 }
 
-unsigned Page::findMatchesForText(const String& target, FindOptions options, unsigned maxMatchCount, bool shouldHighlight, bool markMatches)
+unsigned Page::findMatchesForText(const String& target, FindOptions options, unsigned maxMatchCount, ShouldHighlightMatches shouldHighlightMatches, ShouldMarkMatches shouldMarkMatches)
 {
     if (target.isEmpty() || !mainFrame())
         return 0;
@@ -657,9 +666,9 @@ unsigned Page::findMatchesForText(const String& target, FindOptions options, uns
 
     Frame* frame = mainFrame();
     do {
-        if (markMatches)
-            frame->editor().setMarkedTextMatchesAreHighlighted(shouldHighlight);
-        matchCount += frame->editor().countMatchesForText(target, 0, options, maxMatchCount ? (maxMatchCount - matchCount) : 0, markMatches, 0);
+        if (shouldMarkMatches == MarkMatches)
+            frame->editor().setMarkedTextMatchesAreHighlighted(shouldHighlightMatches == HighlightMatches);
+        matchCount += frame->editor().countMatchesForText(target, 0, options, maxMatchCount ? (maxMatchCount - matchCount) : 0, shouldMarkMatches == MarkMatches, 0);
         frame = incrementFrame(frame, true, false);
     } while (frame);
 
@@ -668,12 +677,12 @@ unsigned Page::findMatchesForText(const String& target, FindOptions options, uns
 
 unsigned Page::markAllMatchesForText(const String& target, FindOptions options, bool shouldHighlight, unsigned maxMatchCount)
 {
-    return findMatchesForText(target, options, shouldHighlight, maxMatchCount, /*markMatches*/ true);
+    return findMatchesForText(target, options, maxMatchCount, shouldHighlight ? HighlightMatches : DoNotHighlightMatches, MarkMatches);
 }
 
 unsigned Page::countFindMatches(const String& target, FindOptions options, unsigned maxMatchCount)
 {
-    return findMatchesForText(target, options, /*shouldHighlight*/ false, maxMatchCount, /*markMatches*/ false);
+    return findMatchesForText(target, options, maxMatchCount, DoNotHighlightMatches, DoNotMarkMatches);
 }
 
 void Page::unmarkAllTextMatches()
@@ -1250,6 +1259,22 @@ void Page::checkSubframeCountConsistency() const
 }
 #endif
 
+void Page::throttleTimers()
+{
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    if (m_settings->hiddenPageDOMTimerThrottlingEnabled())
+        setTimerAlignmentInterval(Settings::hiddenPageDOMTimerAlignmentInterval());
+#endif
+}
+
+void Page::unthrottleTimers()
+{
+#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
+    if (m_settings->hiddenPageDOMTimerThrottlingEnabled())
+        setTimerAlignmentInterval(Settings::defaultDOMTimerAlignmentInterval());
+#endif
+}
+
 #if ENABLE(PAGE_VISIBILITY_API) || ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
 void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitialState)
 {
@@ -1265,17 +1290,12 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
 #endif
 
     if (visibilityState == WebCore::PageVisibilityStateHidden) {
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-        if (m_settings->hiddenPageDOMTimerThrottlingEnabled())
-            setTimerAlignmentInterval(Settings::hiddenPageDOMTimerAlignmentInterval());
-#endif
+        if (m_pageThrottler->shouldThrottleTimers())
+            throttleTimers();
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame()->animation()->suspendAnimations();
     } else {
-#if ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING)
-        if (m_settings->hiddenPageDOMTimerThrottlingEnabled())
-            setTimerAlignmentInterval(Settings::defaultDOMTimerAlignmentInterval());
-#endif
+        unthrottleTimers();
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame()->animation()->resumeAnimations();
     }
@@ -1525,7 +1545,7 @@ void Page::hiddenPageDOMTimerThrottlingStateChanged()
 {
     if (m_settings->hiddenPageDOMTimerThrottlingEnabled()) {
 #if ENABLE(PAGE_VISIBILITY_API)
-        if (m_visibilityState == WebCore::PageVisibilityStateHidden)
+        if (m_pageThrottler->shouldThrottleTimers())
             setTimerAlignmentInterval(Settings::hiddenPageDOMTimerAlignmentInterval());
 #endif
     } else

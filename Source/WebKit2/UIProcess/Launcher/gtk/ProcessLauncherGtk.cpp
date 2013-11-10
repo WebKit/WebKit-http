@@ -35,6 +35,7 @@
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/RunLoop.h>
 #include <errno.h>
+#include <glib.h>
 #include <locale.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -105,11 +106,17 @@ void ProcessLauncher::launchProcess()
 }
 
 void ProcessLauncher::terminateProcess()
-{   
+{
+    if (m_isLaunching) {
+        invalidate();
+        return;
+    }
+
     if (!m_processIdentifier)
         return;
 
     kill(m_processIdentifier, SIGKILL);
+    m_processIdentifier = 0;
 }
 
 void ProcessLauncher::platformInvalidate()

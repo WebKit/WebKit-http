@@ -45,7 +45,7 @@ typedef WebCore::CairoPath PlatformPath;
 #elif PLATFORM(HAIKU)
 class BShape;
 typedef BShape PlatformPath;
-#elif OS(WINCE)
+#elif USE(WINGDI)
 namespace WebCore {
     class PlatformPath;
 }

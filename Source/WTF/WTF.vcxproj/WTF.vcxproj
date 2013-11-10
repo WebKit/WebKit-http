@@ -72,6 +72,7 @@
     <ClCompile Include="..\wtf\StringPrintStream.cpp" />
     <ClCompile Include="..\wtf\TCSystemAlloc.cpp" />
     <ClCompile Include="..\wtf\text\AtomicString.cpp" />
+    <ClCompile Include="..\wtf\text\AtomicStringTable.cpp" />
     <ClCompile Include="..\wtf\text\Base64.cpp" />
     <ClCompile Include="..\wtf\text\CString.cpp" />
     <ClCompile Include="..\wtf\text\StringBuilder.cpp" />
@@ -137,6 +138,7 @@
     <ClInclude Include="..\wtf\FastAllocBase.h" />
     <ClInclude Include="..\wtf\FastBitVector.h" />
     <ClInclude Include="..\wtf\FastMalloc.h" />
+    <ClInclude Include="..\wtf\FeatureDefines.h" />
     <ClInclude Include="..\wtf\FilePrintStream.h" />
     <ClInclude Include="..\wtf\FixedArray.h" />
     <ClInclude Include="..\wtf\Float32Array.h" />
@@ -222,6 +224,7 @@
     <ClInclude Include="..\wtf\text\AtomicString.h" />
     <ClInclude Include="..\wtf\text\AtomicStringHash.h" />
     <ClInclude Include="..\wtf\text\AtomicStringImpl.h" />
+    <ClInclude Include="..\wtf\text\AtomicStringTable.h" />
     <ClInclude Include="..\wtf\text\Base64.h" />
     <ClInclude Include="..\wtf\text\CString.h" />
     <ClInclude Include="..\wtf\text\IntegerToStringConversion.h" />
@@ -313,7 +316,7 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugSuffix|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="WTFDebug.props" />
-    <Import Project="$(WebKit_Libraries)\tools32\vsprops\debugsuffix.props" />
+    <Import Project="$(WebKit_Libraries)\tools\vsprops\debugsuffix.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />

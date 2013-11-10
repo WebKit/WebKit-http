@@ -33,10 +33,8 @@
 #include "Attr.h"
 #include "Attribute.h"
 #include "CDATASection.h"
-#include "CSSParser.h"
 #include "CSSStyleDeclaration.h"
 #include "CSSStyleSheet.h"
-#include "CSSValueKeywords.h"
 #include "CachedCSSStyleSheet.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
@@ -49,7 +47,6 @@
 #include "CustomElementRegistry.h"
 #include "DOMImplementation.h"
 #include "DOMNamedFlowCollection.h"
-#include "DOMSelection.h"
 #include "DOMWindow.h"
 #include "DateComponents.h"
 #include "Dictionary.h"
@@ -70,24 +67,17 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
-#include "ExceptionCodePlaceholder.h"
-#include "FlowThreadController.h"
-#include "FocusController.h"
 #include "FontLoader.h"
 #include "FormController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
-#include "FrameSelection.h"
-#include "FrameTree.h"
 #include "FrameView.h"
-#include "GeolocationController.h"
 #include "HashChangeEvent.h"
 #include "HistogramSupport.h"
 #include "History.h"
 #include "HTMLAllCollection.h"
 #include "HTMLAnchorElement.h"
-#include "HTMLBodyElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
@@ -97,7 +87,6 @@
 #include "HTMLHeadElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLLinkElement.h"
-#include "HTMLMapElement.h"
 #include "HTMLNameCollection.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
@@ -129,7 +118,6 @@
 #include "PageConsole.h"
 #include "PageGroup.h"
 #include "PageTransitionEvent.h"
-#include "PlatformKeyboardEvent.h"
 #include "PlatformLocale.h"
 #include "PlugInsResources.h"
 #include "PluginDocument.h"
@@ -137,10 +125,7 @@
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
 #include "QualifiedName.h"
-#include "RegisteredEventListener.h"
 #include "RenderArena.h"
-#include "RenderNamedFlowThread.h"
-#include "RenderTextControl.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "ResourceLoader.h"
@@ -149,8 +134,6 @@
 #include "ScopedEventQueue.h"
 #include "ScriptCallStack.h"
 #include "ScriptController.h"
-#include "ScriptElement.h"
-#include "ScriptEventListener.h"
 #include "ScriptRunner.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
@@ -169,12 +152,8 @@
 #include "Timer.h"
 #include "TransformSource.h"
 #include "TreeWalker.h"
-#include "UserActionElementSet.h"
-#include "UserContentURLPattern.h"
 #include "VisitedLinkState.h"
-#include "WebKitNamedFlow.h"
 #include "XMLDocumentParser.h"
-#include "XMLHttpRequest.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include "XPathEvaluator.h"
@@ -183,10 +162,8 @@
 #include "XPathResult.h"
 #include "htmlediting.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/HashFunctions.h>
 #include <wtf/MainThread.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuffer.h>
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -206,7 +183,6 @@
 #include "SVGElementFactory.h"
 #include "SVGNames.h"
 #include "SVGSVGElement.h"
-#include "SVGStyleElement.h"
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -417,28 +393,47 @@ Document::Document(Frame* frame, const KURL& url, unsigned documentClasses)
     : ContainerNode(0, CreateDocument)
     , TreeScope(this)
     , m_styleResolverThrowawayTimer(this, &Document::styleResolverThrowawayTimerFired, timeBeforeThrowingAwayStyleResolverAfterLastUseInSeconds)
+    , m_didCalculateStyleResolver(false)
+    , m_hasNodesWithPlaceholderStyle(false)
+    , m_needsNotifyRemoveAllPendingStylesheet(false)
+    , m_ignorePendingStylesheets(false)
+    , m_pendingSheetLayout(NoLayoutWithPendingSheets)
+    , m_frame(frame)
     , m_activeParserCount(0)
     , m_contextFeatures(ContextFeatures::defaultSwitch())
+    , m_wellFormed(false)
+    , m_printing(false)
+    , m_paginatedForScreen(false)
+    , m_ignoreAutofocus(false)
     , m_compatibilityMode(NoQuirksMode)
     , m_compatibilityModeLocked(false)
+    , m_textColor(Color::black)
     , m_domTreeVersion(++s_globalTreeVersion)
+    , m_listenerTypes(0)
     , m_mutationObserverTypes(0)
     , m_styleSheetCollection(DocumentStyleSheetCollection::create(this))
     , m_visitedLinkState(VisitedLinkState::create(this))
+    , m_visuallyOrdered(false)
     , m_readyState(Complete)
+    , m_bParsing(false)
     , m_styleRecalcTimer(this, &Document::styleRecalcTimerFired)
     , m_pendingStyleRecalcShouldForce(false)
+    , m_inStyleRecalc(false)
+    , m_closeAfterStyleRecalc(false)
+    , m_gotoAnchorNeededAfterStylesheetsLoad(false)
     , m_frameElementsShouldIgnoreScrolling(false)
     , m_containsValidityStyleRules(false)
     , m_updateFocusAppearanceRestoresSelection(false)
     , m_ignoreDestructiveWriteCount(0)
     , m_titleSetExplicitly(false)
     , m_updateFocusAppearanceTimer(this, &Document::updateFocusAppearanceTimerFired)
+    , m_cssTarget(0)
+    , m_processingLoadEvent(false)
     , m_loadEventFinished(false)
     , m_startTime(currentTime())
     , m_overMinimumLayoutThreshold(false)
     , m_scriptRunner(ScriptRunner::create(this))
-    , m_xmlVersion("1.0")
+    , m_xmlVersion(ASCIILiteral("1.0"))
     , m_xmlStandalone(StandaloneUnspecified)
     , m_hasXMLDeclaration(0)
     , m_savedRenderer(0)
@@ -490,12 +485,6 @@ Document::Document(Frame* frame, const KURL& url, unsigned documentClasses)
     , m_didAssociateFormControlsTimer(this, &Document::didAssociateFormControlsTimerFired)
     , m_hasInjectedPlugInsScript(false)
 {
-    m_printing = false;
-    m_paginatedForScreen = false;
-
-    m_ignoreAutofocus = false;
-
-    m_frame = frame;
     if (m_frame)
         provideContextFeaturesToDocumentFrom(this, m_frame->page());
 
@@ -518,36 +507,13 @@ Document::Document(Frame* frame, const KURL& url, unsigned documentClasses)
 #if ENABLE(TEXT_AUTOSIZING)
     m_textAutosizer = TextAutosizer::create(this);
 #endif
-    m_visuallyOrdered = false;
-    m_bParsing = false;
-    m_wellFormed = false;
-
-    m_textColor = Color::black;
-    m_listenerTypes = 0;
-    m_inStyleRecalc = false;
-    m_closeAfterStyleRecalc = false;
-
-    m_gotoAnchorNeededAfterStylesheetsLoad = false;
-
-    m_didCalculateStyleResolver = false;
-    m_ignorePendingStylesheets = false;
-    m_needsNotifyRemoveAllPendingStylesheet = false;
-    m_hasNodesWithPlaceholderStyle = false;
-    m_pendingSheetLayout = NoLayoutWithPendingSheets;
-
-    m_cssTarget = 0;
 
     resetLinkColor();
     resetVisitedLinkColor();
     resetActiveLinkColor();
 
-    m_processingLoadEvent = false;
-    
     initSecurityContext();
     initDNSPrefetch();
-
-    static int docID = 0;
-    m_docID = docID++;
 
     for (unsigned i = 0; i < WTF_ARRAY_LENGTH(m_nodeListCounts); i++)
         m_nodeListCounts[i] = 0;
@@ -2038,7 +2004,7 @@ void Document::clearStyleResolver()
     m_styleResolver.clear();
 }
 
-void Document::attach()
+void Document::attach(const AttachContext& context)
 {
     ASSERT(!attached());
     ASSERT(!m_inPageCache);
@@ -2058,12 +2024,12 @@ void Document::attach()
     RenderObject* render = renderer();
     setRenderer(0);
 
-    ContainerNode::attach();
+    ContainerNode::attach(context);
 
     setRenderer(render);
 }
 
-void Document::detach()
+void Document::detach(const AttachContext& context)
 {
     ASSERT(attached());
     ASSERT(!m_inPageCache);
@@ -2114,7 +2080,7 @@ void Document::detach()
     m_focusedElement = 0;
     m_activeElement = 0;
 
-    ContainerNode::detach();
+    ContainerNode::detach(context);
 
     unscheduleStyleRecalc();
 
@@ -5892,6 +5858,14 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
     }
 
     if (oldHoverObj != newHoverObj) {
+        // If the old hovered element is not nil but it's renderer is, it was probably detached as part of the :hover style
+        // (for instance by setting display:none in the :hover pseudo-class). In this case, the old hovered element
+        // must be updated, to ensure it's normal style is re-applied.
+        if (oldHoveredElement && !oldHoverObj) {
+            if (!mustBeInActiveChain || (oldHoveredElement->isElementNode() && oldHoveredElement->inActiveChain()))
+                nodesToRemoveFromChain.append(oldHoveredElement);
+        }
+
         // The old hover path only needs to be cleared up to (and not including) the common ancestor;
         for (RenderObject* curr = oldHoverObj; curr && curr != ancestor; curr = curr->hoverAncestor()) {
             if (!curr->node() || curr->isText())

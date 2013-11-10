@@ -34,7 +34,6 @@
     IsWorkerContext,
     JSLegacyParent=JSWorkerContextBase,
     JSNoStaticTables,
-    OmitConstructor,
 ] interface WorkerContext {
 
     // WorkerGlobalScope
@@ -63,16 +62,9 @@
     void removeEventListener(DOMString type, 
                              EventListener listener, 
                              optional boolean useCapture);
-    boolean dispatchEvent(Event evt)
-        raises(EventException);
+    [RaisesException] boolean dispatchEvent(Event evt);
 
-#if !defined(LANGUAGE_CPP) || !LANGUAGE_CPP
-    // Constructors
-    [Conditional=CHANNEL_MESSAGING, CustomGetter] attribute MessageChannelConstructor MessageChannel;
-    [CustomGetter] attribute EventSourceConstructor EventSource;
-    [CustomGetter] attribute XMLHttpRequestConstructor XMLHttpRequest;
-#endif
-
+    // Additional constructors
     [Conditional=BLOB] attribute DOMURLConstructor webkitURL; // FIXME: deprecate this.
 };
 

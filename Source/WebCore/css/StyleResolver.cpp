@@ -3089,7 +3089,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitRegionBreakAfter:
     case CSSPropertyWebkitRegionBreakBefore:
     case CSSPropertyWebkitRegionBreakInside:
-    case CSSPropertyWebkitRegionOverflow:
+    case CSSPropertyWebkitRegionFragment:
 #endif
     case CSSPropertyWebkitRtlOrdering:
     case CSSPropertyWebkitRubyPosition:
@@ -3120,13 +3120,15 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitUserModify:
     case CSSPropertyWebkitUserSelect:
     case CSSPropertyWebkitClipPath:
-#if ENABLE(CSS_EXCLUSIONS)
-    case CSSPropertyWebkitWrapFlow:
+#if ENABLE(CSS_SHAPES)
     case CSSPropertyWebkitShapeMargin:
     case CSSPropertyWebkitShapePadding:
-    case CSSPropertyWebkitWrapThrough:
     case CSSPropertyWebkitShapeInside:
     case CSSPropertyWebkitShapeOutside:
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
+    case CSSPropertyWebkitWrapFlow:
+    case CSSPropertyWebkitWrapThrough:
 #endif
 #if ENABLE(CSS_SHADERS)
     case CSSPropertyMix:
@@ -3620,7 +3622,9 @@ PassRefPtr<CustomFilterProgram> StyleResolver::lookupCustomFilterProgram(WebKitC
 
 void StyleResolver::loadPendingShaders()
 {
-    if (!m_state.style()->hasFilter() || !m_state.hasPendingShaders())
+    // FIXME: We shouldn't have to check that style is non-null. This is a speculative fix for:
+    // https://bugs.webkit.org/show_bug.cgi?id=117665
+    if (!m_state.hasPendingShaders() || !m_state.style() || !m_state.style()->hasFilter())
         return;
 
     CachedResourceLoader* cachedResourceLoader = m_state.document()->cachedResourceLoader();
@@ -4171,7 +4175,7 @@ void StyleResolver::loadPendingImages()
             }
             break;
         }
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
         case CSSPropertyWebkitShapeInside:
             if (m_state.style()->shapeInside() && m_state.style()->shapeInside()->image() && m_state.style()->shapeInside()->image()->isPendingImage())
                 m_state.style()->shapeInside()->setImage(loadPendingImage(static_cast<StylePendingImage*>(m_state.style()->shapeInside()->image())));

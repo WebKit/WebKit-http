@@ -114,6 +114,7 @@ struct Ewk_View_Smart_Class {
     Evas_Smart_Class sc; /**< all but 'data' is free to be changed. */
     unsigned long version;
 
+    Eina_Bool (*custom_item_selected)(Ewk_View_Smart_Data *sd, Ewk_Context_Menu_Item *item);
     Eina_Bool (*context_menu_show)(Ewk_View_Smart_Data *sd, Evas_Coord x, Evas_Coord y, Ewk_Context_Menu *menu);
     Eina_Bool (*context_menu_hide)(Ewk_View_Smart_Data *sd);
 
@@ -173,7 +174,7 @@ struct Ewk_View_Smart_Class {
  * @see EWK_VIEW_SMART_CLASS_INIT_VERSION
  * @see EWK_VIEW_SMART_CLASS_INIT_NAME_VERSION
  */
-#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /**
  * Initializer to zero a whole Ewk_View_Smart_Class structure.
@@ -487,6 +488,16 @@ EAPI Eina_Bool    ewk_view_forward_possible(Evas_Object *o);
  * @return the back-forward list instance handle associated with this view
  */
 EAPI Ewk_Back_Forward_List *ewk_view_back_forward_list_get(const Evas_Object *o);
+
+/**
+ * Navigates to specified back-forward list item.
+ *
+ * @param o view object to navigate in the history
+ * @param item the back-forward list item
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_navigate_to(Evas_Object *o, const Ewk_Back_Forward_List_Item *item);
 
 /**
  * Gets the current title of the main frame.

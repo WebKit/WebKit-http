@@ -177,6 +177,8 @@ void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize
     imageBufferSize.scale(imageBufferScale.width(), imageBufferScale.height());
 
     OwnPtr<ImageBuffer> buffer = ImageBuffer::create(expandedIntSize(imageBufferSize.size()), 1);
+    if (!buffer) // Failed to allocate buffer.
+        return;
     drawForContainer(buffer->context(), containerSize, zoom, imageBufferSize, zoomedContainerRect, ColorSpaceDeviceRGB, CompositeSourceOver, BlendModeNormal);
     RefPtr<Image> image = buffer->copyImage(DontCopyBackingStore, Unscaled);
 
@@ -189,7 +191,7 @@ void SVGImage::drawPatternForContainer(GraphicsContext* context, const FloatSize
     image->drawPattern(context, scaledSrcRect, unscaledPatternTransform, phase, colorSpace, compositeOp, dstRect);
 }
 
-void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace, CompositeOperator compositeOp, BlendMode)
+void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const FloatRect& srcRect, ColorSpace, CompositeOperator compositeOp, BlendMode blendMode)
 {
     if (!m_page)
         return;
@@ -197,7 +199,7 @@ void SVGImage::draw(GraphicsContext* context, const FloatRect& dstRect, const Fl
     FrameView* view = frameView();
 
     GraphicsContextStateSaver stateSaver(*context);
-    context->setCompositeOperation(compositeOp);
+    context->setCompositeOperation(compositeOp, blendMode);
     context->clip(enclosingIntRect(dstRect));
     if (compositeOp != CompositeSourceOver)
         context->beginTransparencyLayer(1);

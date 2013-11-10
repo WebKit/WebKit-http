@@ -1,3 +1,241 @@
+2013-06-17  Tiancheng Jiang  <tijiang@rim.com>
+
+        Cache FatFinger Text Result.
+        https://bugs.webkit.org/show_bug.cgi?id=107403.
+
+        Reviewed by Rob Buis.
+
+        Internally Reviewed by Genevieve Mak.
+        Cache the FatFinger text result for later use in TouchEventHandler.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::contextNode):
+        * WebKitSupport/SelectionHandler.cpp:
+        (BlackBerry::WebKit::SelectionHandler::selectAtPoint):
+        * WebKitSupport/TouchEventHandler.h:
+        (BlackBerry::WebKit::TouchEventHandler::cacheTextResult):
+        (TouchEventHandler):
+
+2013-06-14  Alberto Garcia  <agarcia@igalia.com>
+
+        [BlackBerry] Remove implementation of ContextMenu classes
+        https://bugs.webkit.org/show_bug.cgi?id=114860
+
+        Reviewed by Rob Buis.
+
+        This code is not being used so we can safely remove it.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::init):
+        * WebCoreSupport/ContextMenuClientBlackBerry.cpp: Removed.
+        * WebCoreSupport/ContextMenuClientBlackBerry.h: Removed.
+
+2013-06-14  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] LayerTiler fails to tile really big layers
+        https://bugs.webkit.org/show_bug.cgi?id=117211
+
+        Reviewed by Carlos Garcia Campos.
+
+        PR 273550
+
+        Adapt to changes in LayerCompositingThreadClient interface.
+
+        * Api/WebOverlay.cpp:
+        (BlackBerry::WebKit::WebOverlayLayerCompositingThreadClient::drawTextures):
+        * Api/WebOverlay_p.h:
+        (WebOverlayLayerCompositingThreadClient):
+
+2013-06-12  Leo Yang  <leoyang@rim.com>
+
+        [BlackBerry] Use RefPtr for HTMLInputElement inside CredentialTransformData
+        https://bugs.webkit.org/show_bug.cgi?id=117553
+
+        Reviewed by Carlos Garcia Campos.
+
+        In CredentialTransformData we should use RefPtr for
+        m_userNameElement, m_passwordElement and m_oldPasswordElement
+        because otherwise the elements could go away when the form
+        elements get destroyed.
+
+        Also add *const* for the parameter of CredentialTransformData::findPasswordFormFields().
+
+        No functionalities changed no new tests.
+
+        * WebCoreSupport/CredentialTransformData.cpp:
+        (WebCore::CredentialTransformData::findPasswordFormFields):
+        (WebCore::CredentialTransformData::locateSpecificPasswords):
+        * WebCoreSupport/CredentialTransformData.h:
+
+2013-06-12  Alberto Garcia  <agarcia@igalia.com>
+
+        [BlackBerry] Remove dead WebDOM code
+        https://bugs.webkit.org/show_bug.cgi?id=113370
+
+        Reviewed by Anders Carlsson.
+
+        BlackBerry PR 347565
+        Internally reviewed by Charles Wei.
+
+        * Api/WebPage.cpp:
+        * Api/WebPage.h:
+        * WebCoreSupport/AboutDataEnableFeatures.in:
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+
+2013-06-12  Jakob Petsovits  <jpetsovits@blackberry.com>
+
+        [BlackBerry] Smarter algorithm to determine the backingstore rect
+        https://bugs.webkit.org/show_bug.cgi?id=117451
+
+        JIRA115644
+        https://jira.bbqnx.net/browse/BRWSR-7028
+
+        Reviewed by Rob Buis.
+
+        So far, the backingstore tile geometry allocation was
+        pretty straightforward: We would start off from the
+        current viewport and append all available tiles into
+        the current scrolling direction from there.
+
+        This will usually work well enough, but has the downside
+        of discarding all the tiles in the opposite direction.
+        Also, tiles very close to the viewport will often get
+        discarded even if the user only scrolls very slowly.
+
+        This patch completely revamps the algorithm for
+        determining where the backingstore should be positioned.
+
+        The general idea is that we construct a "desired rect"
+        based on the viewport and inflate it into all four
+        directions according to the current scroll momentum.
+        This rectangle will be similarly large as a backingstore
+        tile geometry rectangle might be, by using the
+        approximate number of pixels that are available in the
+        given number of tiles.
+
+        The proportions for extending the rectangle from the
+        viewport are influenced by different factors, including
+        scroll momentum, viewport ratio, available space in the
+        overall contents rectangle, and natural bias for the
+        "down" direction.
+
+        In practice, this results in a backingstore that is
+        roughly evenly distributed around the viewport when no
+        movement is happening, and will gradually narrow down
+        and extend into the scroll direction at a higher momentum.
+
+        The final tile geometry is constructed by trying fit
+        the tiles into the desired rect in a way that maximizes
+        the area of its intersection. There are a few parameters
+        that can be tweaked, the ones in this patch seem to
+        handle most cases well enough to minimize checkerboarding.
+
+        As an additional bonus, a rectangle-based tiling strategy
+        can more easily be adopted for accelerated compositing,
+        which currently operates on a simpler algorithm that also
+        inflates the viewport but does not take scrolling into
+        account.
+
+        * Api/BackingStore.cpp:
+        (BlackBerry::WebKit::BackingStorePrivate::BackingStorePrivate):
+        (BlackBerry::WebKit::BackingStorePrivate::expandedContentsSize):
+        (WebKit):
+        (BlackBerry::WebKit::BackingStorePrivate::nonOverscrolled):
+        (BlackBerry::WebKit::BackingStorePrivate::enclosingTileRect):
+        (BlackBerry::WebKit::BackingStorePrivate::desiredBackingStoreRect):
+        (BlackBerry::WebKit::BackingStorePrivate::mergeDesiredBackingStoreRect):
+        (BlackBerry::WebKit::BackingStorePrivate::largestTileRectForDesiredRect):
+        (BlackBerry::WebKit::BackingStorePrivate::scrollBackingStore):
+        (BlackBerry::WebKit::BackingStorePrivate::createSurfaces):
+        * Api/BackingStore_p.h:
+        (BackingStorePrivate):
+
+2013-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove memoryInfoEnabled, quantizedMemoryInfoEnabled settings
+        https://bugs.webkit.org/show_bug.cgi?id=117512
+
+        Reviewed by Darin Adler.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::init): Remove the call to Settings::setMemoryInfoEnabled, the setting is being removed.
+
+2013-06-06  Genevieve Mak  <gmak@rim.com>
+
+        [BlackBerry] Crash in InRegionScrollerPrivate::clearDocumentData
+        https://bugs.webkit.org/show_bug.cgi?id=117317
+
+        Reviewed by Rob Buis.
+
+        PR #348994
+        Need to check the scrollableArea instead of asserting because in this case for the
+        selection subframe it is allowed to be null.
+
+        * Api/InRegionScroller.cpp:
+        (BlackBerry::WebKit::InRegionScrollerPrivate::clearDocumentData):
+
+2013-06-05  Bear Travis  <betravis@adobe.com>
+
+        [CSS Exclusions][CSS Shapes] Split CSS Exclusions & Shapes compile & runtime flags
+        https://bugs.webkit.org/show_bug.cgi?id=117172
+
+        Reviewed by Alexandru Chiculita.
+
+        Adding the CSS_SHAPES compile flag.
+
+        * WebCoreSupport/AboutDataEnableFeatures.in:
+
+2013-06-05  Genevieve Mak  <gmak@rim.com>
+
+        [BlackBerry] Deleting the pendingSelectionCandidate on the wrong thread causes an assert.
+        https://bugs.webkit.org/show_bug.cgi?id=117276
+
+        Reviewed by Rob Buis.
+
+        Reviewed Internally by Nima Ghanavatian.
+        PR #342399
+        Store and delete the selectionScrollView in webkit which is what we already do for
+        scrolling subframes.
+
+        * Api/InRegionScroller.cpp:
+        (BlackBerry::WebKit::InRegionScrollerPrivate::InRegionScrollerPrivate):
+        (BlackBerry::WebKit::InRegionScrollerPrivate::resetSelectionScrollView):
+        (WebKit):
+        (BlackBerry::WebKit::InRegionScrollerPrivate::clearDocumentData):
+        (BlackBerry::WebKit::InRegionScrollerPrivate::calculateInRegionScrollableAreasForPoint):
+        (BlackBerry::WebKit::InRegionScrollerPrivate::updateSelectionScrollView):
+        (BlackBerry::WebKit::InRegionScrollerPrivate::firstScrollableInRegionForNode):
+        * Api/InRegionScroller_p.h:
+        (InRegionScrollerPrivate):
+
+2013-06-05  Tiancheng Jiang  <tijiang@rim.com>
+
+        [BlackBerry] Make image clickable when it has anchor as parent node.
+        https://bugs.webkit.org/show_bug.cgi?id=117271
+
+        Reviewed by Rob Buis.
+
+        BlackBerry PR 345995
+        Internally Reviewed by Genevieve Mak.
+        * WebKitSupport/FatFingers.cpp:
+        (BlackBerry::WebKit::FatFingers::isElementClickable):
+
+2013-06-05  Mike Fenton  <mifenton@rim.com>
+
+        [BlackBerry] Selection handles are inverted on directional selections
+        https://bugs.webkit.org/show_bug.cgi?id=117269
+
+        Reviewed by Rob Buis.
+
+        PR 336178
+
+        Don't invert the handles leave them in the visual order.
+
+        Internally Reviewed by Nima Ghanavatian.
+
+        * WebKitSupport/SelectionHandler.cpp:
+        (BlackBerry::WebKit::SelectionHandler::selectionPositionChanged):
+
 2013-06-03  Andrew Lo  <anlo@rim.com>
 
         [BlackBerry] Expose show debug borders setting through BlackBerry::WebKit::WebPage

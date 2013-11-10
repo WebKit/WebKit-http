@@ -1,3 +1,252 @@
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Replace tools32 folder with tools and update WebKit Windows solution accordingly.
+        <rdar://problem/14118143>.
+
+        Rubberstamped by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTFDebug.props:
+        * WTF.vcxproj/WTFDebugWinCairo.props:
+        * WTF.vcxproj/WTFGenerated.vcxproj:
+        * WTF.vcxproj/WTFGeneratedDebug.props:
+        * WTF.vcxproj/WTFGeneratedProduction.props:
+        * WTF.vcxproj/WTFGeneratedRelease.props:
+        * WTF.vcxproj/WTFProduction.props:
+        * WTF.vcxproj/WTFRelease.props:
+        * WTF.vcxproj/WTFReleaseWinCairo.props:
+        * WTF.vcxproj/work-around-vs-dependency-tracking-bugs.py:
+        (react_to_vsprops_changes):
+
+2013-06-18  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        PackedIntVector: check template arguments at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=117737
+
+        Use 'COMPILE_ASSERT' instead of 'ASSERT' in PackedIntVector class
+        constructor.
+
+        Reviewed by Sam Weinig.
+
+        * wtf/PackedIntVector.h:
+        (WTF::PackedIntVector::PackedIntVector):
+
+2013-06-17  Andy Estes  <aestes@apple.com>
+
+        A static_assert() in RetainPtr.h sometimes causes the build to fail.
+
+        Wrap the first argument to a static_assert() in parentheses since it
+        contains a comma, which sometimes tricks the preprocessor into thinking
+        the macro is being passed three arguments rather than two.
+
+        Reviewed by Brian Weinstein.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::RetainPtr):
+
+2013-06-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION (r149184): Build errors in RefPtr.h when building with Clang, C++98 standard
+        https://bugs.webkit.org/show_bug.cgi?id=116352
+
+        Reviewed by Anders Carlsson.
+
+        Use the __has_feature macro instead of the __has_extension one when detecting what features the Clang compiler
+        that's being used is capable to provide. With the project moving onto using C++11 throughout its components,
+        there currently exist cases where C++11-specific functionality (for instance std::move) is used despite being
+        guarded by compiler-specific feature guards that still get enabled even when compiling in C++98 with Clang.
+        The problematic features are enabled because they're available as C++98 language extensions by Clang.
+
+        Using __has_feature instead enables the feature guard only if the tested feature is actually standardized in
+        the currently used language standard.
+
+        * wtf/Compiler.h:
+
+2013-06-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Initialize AtomicStringTable in WTFThreadData's constructor
+        https://bugs.webkit.org/show_bug.cgi?id=117671
+
+        Reviewed by Geoffrey Garen.
+
+        Extracted AtomicStringTable from AtomicString.cpp into AtomicStringTable.h/cpp
+        and made WTFThreadDada::WTFThreadData create the atomic string table for the thread.
+
+        This eliminates a branch from stringTable() in AtomicString.cpp.
+
+        * GNUmakefile.list.am:
+        * WTF.pro:
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTF.vcxproj.filters:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/text/AtomicString.cpp:
+        (WTF::stringTable):
+        * wtf/text/AtomicStringTable.cpp: Added.
+        (WTF::AtomicStringTable::create):
+        (WTF::AtomicStringTable::destroy):
+        * wtf/text/AtomicStringTable.h: Added.
+        (WTF::AtomicStringTable::table):
+
+2013-06-17  Roger Fong  <roger_fong@apple.com>
+
+        Modify Windows makefiles to copy some bin output into Program Files.
+        https://bugs.webkit.org/show_bug.cgi?id=117714.
+        <rdar://problem/14179054>
+
+        Reviewed by Brent Fulgham.
+
+        * WTF.vcxproj/WTF.make:
+
+2013-06-17  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Unreviewed, rolling out r151632.
+        http://trac.webkit.org/changeset/151632
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Debug build error ASSERT(WTF_USE_GRAMMAR_CHECKING) for non MAC
+        platforms
+
+        * wtf/Platform.h:
+
+2013-06-14  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Context menu grammar checking items are available when GRAMMAR_CHECKING macro is off
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Reviewed by Anders Carlsson.
+
+        Enable GRAMMAR_CHECKING for WebKit ports that use/implement it.
+
+        * wtf/Platform.h:
+
+2013-06-14  Patrick Gansterer  <paroga@webkit.org>
+
+        Introduce USE(WINGDI) for the Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=116138
+
+        Reviewed by Ryosuke Niwa.
+
+        Using USE(WINGDI) instead of OS(WINCE) will allow us to
+        compile the GDI based Windows port on WinNT too.
+
+        * wtf/Platform.h:
+
+2013-06-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove LiteralIdentifierTable
+        https://bugs.webkit.org/show_bug.cgi?id=117613
+
+        Reviewed by Geoffrey Garen.
+
+        Removed LiteralIdentifierTable since it doesn't seem to have any perf. impact now.
+
+        * wtf/WTFThreadData.h:
+
+2013-06-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [WinCairo] Correct FeatureDefines.h Default for ENABLE_VIEW_MODE_CSS_MEDIA
+        https://bugs.webkit.org/show_bug.cgi?id=114396
+
+        Reviewed by Dean Jackson.
+
+        * wtf/FeatureDefines.h: The WinCairo port does not (currently) support Media elements,
+        so make sure we do not enable this feature by default for that port.
+
+2013-06-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed gardening.
+
+        * WTF.vcxproj/WTF.vcxproj: Add FeatureDefines.h to visible files.
+        * WTF.vcxproj/WTF.vcxproj.filters: Ditto.
+
+2013-06-13  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Optimize String::fromUTF8 for ASCII
+        https://bugs.webkit.org/show_bug.cgi?id=117586
+
+        Reviewed by Brent Fulgham.
+
+        From Blink r152243 by <abarth@chromium.org>
+
+        Current String::fromUTF8() implementation converts 8 bit ASCII character into 16 bit.
+        Instead of always trying to convert into a 16 bit buffer, we can add a call to charactersAreAllASCII.
+        In the common case when characters are ASCII, we directly copy it into an 8 bit string buffer.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::fromUTF8):
+
+2013-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Activate supported C++11 Features for VS2010
+        https://bugs.webkit.org/show_bug.cgi?id=117569
+
+        Reviewed by Anders Carlsson.
+
+        * wtf/Compiler.h: Turn on rvalue references and static_assert
+        when compiling with VS2010 (or newer)
+
+2013-06-07  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Makefile fix. Copy WTF.dll over as well.
+
+        * WTF.vcxproj/WTF.make:
+
+2013-06-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r151318.
+        http://trac.webkit.org/changeset/151318
+        https://bugs.webkit.org/show_bug.cgi?id=117356
+
+        Broke Windows Release Build (Requested by bfulgham on
+        #webkit).
+
+        * WTF.vcxproj/WTF.vcxproj:
+        * WTF.vcxproj/WTFCommon.props:
+        * WTF.vcxproj/WTFCoreFoundation.props: Removed.
+        * WTF.vcxproj/WTFDebug.props:
+        * WTF.vcxproj/WTFRelease.props:
+
+2013-06-07  peavo@outlook.com  <peavo@outlook.com>
+
+        [WinCairo] WTF.dll is linking with CoreFoundation.lib in VS2010.
+        https://bugs.webkit.org/show_bug.cgi?id=117294
+
+        Reviewed by Darin Adler.
+
+        WinCairo build should not use CoreFoundation.
+
+        * WTF.vcxproj/WTF.vcxproj: Exclude unneeded file from WinCairo build.
+        * WTF.vcxproj/WTFCommon.props: Removed CoreFoundation.lib from common props.
+        * WTF.vcxproj/WTFCoreFoundation.props: Added.
+        * WTF.vcxproj/WTFDebug.props: Inherit from WTFCoreFoundations.props.
+        * WTF.vcxproj/WTFRelease.props: Inherit from WTFCoreFoundations.props.
+
+2013-06-06  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Fix typo with winmm linker input.
+
+        * WTF.vcxproj/WTFCommon.props:
+
+2013-06-05  Benjamin Poulain  <bpoulain@apple.com>
+
+        WebSQL forces 16-bit strings
+        https://bugs.webkit.org/show_bug.cgi?id=116935
+
+        Reviewed by Darin Adler.
+
+        Merge chromium 49c9632ac135f6f06e623a7a81d9da1f6bb7196f.
+        https://chromium.googlesource.com/chromium/blink/+/49c9632ac135f6f06e623a7a81d9da1f6bb7196f
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::create8BitIfPossible):
+        * wtf/text/StringImpl.h:
+        (WTF::lengthOfNullTerminatedString):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::String):
+
 2013-06-03  Roger Fong  <roger_fong@apple.com>
 
         Nuke VS2005 files from the tree.

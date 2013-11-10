@@ -53,7 +53,7 @@ typedef QPainter PlatformGraphicsContext;
 class BView;
 typedef BView PlatformGraphicsContext;
 struct pattern;
-#elif OS(WINCE)
+#elif USE(WINGDI)
 typedef struct HDC__ PlatformGraphicsContext;
 #elif PLATFORM(BLACKBERRY)
 namespace BlackBerry {
@@ -83,7 +83,7 @@ typedef unsigned char UInt8;
 
 namespace WebCore {
 
-#if OS(WINCE) && !PLATFORM(QT)
+#if USE(WINGDI)
     class SharedBitmap;
     class SimpleFontData;
     class GlyphBuffer;
@@ -200,9 +200,7 @@ namespace WebCore {
         GraphicsContext(PlatformGraphicsContext*);
         ~GraphicsContext();
 
-#if !OS(WINCE) || PLATFORM(QT)
         PlatformGraphicsContext* platformContext() const;
-#endif
 
         float strokeThickness() const;
         void setStrokeThickness(float);
@@ -429,7 +427,7 @@ namespace WebCore {
         HDC getWindowsContext(const IntRect&, bool supportAlphaBlend, bool mayCreateBitmap); // The passed in rect is used to create a bitmap for compositing inside transparency layers.
         void releaseWindowsContext(HDC, const IntRect&, bool supportAlphaBlend, bool mayCreateBitmap); // The passed in HDC should be the one handed back by getWindowsContext.
 #if PLATFORM(WIN)
-#if OS(WINCE)
+#if USE(WINGDI)
         void setBitmap(PassRefPtr<SharedBitmap>);
         const AffineTransform& affineTransform() const;
         AffineTransform& affineTransform();
@@ -512,7 +510,7 @@ namespace WebCore {
         void platformInit(PlatformGraphicsContext*);
         void platformDestroy();
 
-#if PLATFORM(WIN) && !OS(WINCE)
+#if PLATFORM(WIN) && !USE(WINGDI)
         void platformInit(HDC, bool hasAlpha = false);
 #endif
 

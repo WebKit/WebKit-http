@@ -307,7 +307,6 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_renderTreeSize(0)
     , m_shouldSendEventsSynchronously(false)
     , m_suppressVisibilityUpdates(false)
-    , m_minimumLayoutWidth(0)
     , m_mediaVolume(1)
     , m_mayStartMediaWhenInWindow(true)
     , m_waitingForDidUpdateInWindowState(false)
@@ -1104,6 +1103,9 @@ void WebPageProxy::waitForDidUpdateInWindowState()
     if (m_waitingForDidUpdateInWindowState)
         return;
 
+    if (!isValid())
+        return;
+
     m_waitingForDidUpdateInWindowState = true;
 
     if (!m_process->isLaunching()) {
@@ -1436,7 +1438,6 @@ void WebPageProxy::findPlugin(const String& mimeType, uint32_t processType, cons
         break;
 
     case PluginModuleBlocked:
-    case PluginModuleInactive:
         pluginProcessToken = 0;
         return;
     }
@@ -2142,6 +2143,8 @@ void WebPageProxy::preferencesDidChange()
 
     m_process->pagePreferencesChanged(this);
 
+    m_pageClient->preferencesDidChange();
+
     // FIXME: It probably makes more sense to send individual preference changes.
     // However, WebKitTestRunner depends on getting a preference change notification
     // even if nothing changed in UI process, so that overrides get removed.
@@ -2756,17 +2759,6 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
     case RenderEmbeddedObject::PluginCrashed:
         pluginUnavailabilityReason = kWKPluginUnavailabilityReasonPluginCrashed;
         break;
-
-    case RenderEmbeddedObject::PluginInactive: {
-#if ENABLE(NETSCAPE_PLUGIN_API)
-        if (!plugin.path.isEmpty() && PluginInfoStore::reactivateInactivePlugin(plugin)) {
-            // The plug-in has been reactivated now; reload the page so it'll be instantiated.
-            reload(false);
-        }
-        return;
-#endif
-    }
-
     case RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy:
         ASSERT_NOT_REACHED();
     }
@@ -3351,6 +3343,10 @@ void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
         m_process->context()->download(this, KURL(KURL(), m_activeContextMenuHitTestResultData.absoluteLinkURL));
         return;
     }
+    if (item.action() == ContextMenuItemTagDownloadMediaToDisk) {
+        m_process->context()->download(this, KURL(KURL(), m_activeContextMenuHitTestResultData.absoluteMediaURL));
+        return;
+    }
     if (item.action() == ContextMenuItemTagCheckSpellingWhileTyping) {
         TextChecker::setContinuousSpellCheckingEnabled(!TextChecker::state().isContinuousSpellCheckingEnabled);
         m_process->updateTextCheckerState();
@@ -3847,6 +3843,7 @@ void WebPageProxy::resetStateAfterProcessExited()
 
     m_isValid = false;
     m_isPageSuspended = false;
+    m_waitingForDidUpdateInWindowState = false;
 
     if (m_mainFrame) {
         m_urlAtProcessExit = m_mainFrame->url();
@@ -3992,7 +3989,7 @@ WebPageCreationParameters WebPageProxy::creationParameters() const
     parameters.deviceScaleFactor = deviceScaleFactor();
     parameters.mediaVolume = m_mediaVolume;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
-    parameters.minimumLayoutWidth = m_minimumLayoutWidth;
+    parameters.minimumLayoutSize = m_minimumLayoutSize;
 
 #if PLATFORM(MAC)
     parameters.layerHostingMode = m_layerHostingMode;
@@ -4372,21 +4369,21 @@ void WebPageProxy::linkClicked(const String& url, const WebMouseEvent& event)
     m_process->send(Messages::WebPage::LinkClicked(url, event), m_pageID, 0);
 }
 
-void WebPageProxy::setMinimumLayoutWidth(double minimumLayoutWidth)
+void WebPageProxy::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
 {
-    if (m_minimumLayoutWidth == minimumLayoutWidth)
+    if (m_minimumLayoutSize == minimumLayoutSize)
         return;
 
-    m_minimumLayoutWidth = minimumLayoutWidth;
+    m_minimumLayoutSize = minimumLayoutSize;
 
     if (!isValid())
         return;
 
-    m_process->send(Messages::WebPage::SetMinimumLayoutWidth(minimumLayoutWidth), m_pageID, 0);
-    m_drawingArea->minimumLayoutWidthDidChange();
+    m_process->send(Messages::WebPage::SetMinimumLayoutSize(minimumLayoutSize), m_pageID, 0);
+    m_drawingArea->minimumLayoutSizeDidChange();
 
 #if PLATFORM(MAC)
-    if (m_minimumLayoutWidth <= 0)
+    if (m_minimumLayoutSize.width() <= 0)
         intrinsicContentSizeDidChange(IntSize(-1, -1));
 #endif
 }

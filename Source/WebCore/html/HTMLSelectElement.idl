@@ -19,15 +19,14 @@
  */
 
 [
-    IndexedGetter,
     CustomIndexedSetter,
 ] interface HTMLSelectElement : HTMLElement {
-    attribute [Reflect] boolean autofocus;
-    attribute [Reflect] boolean disabled;
+    [Reflect] attribute boolean autofocus;
+    [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
     attribute boolean multiple;
-    attribute [Reflect] DOMString name;
-    attribute [Reflect] boolean required;
+    [Reflect] attribute DOMString name;
+    [Reflect] attribute boolean required;
     attribute long size;
 
     readonly attribute DOMString type;
@@ -38,12 +37,12 @@
     // for compatibility we keep DOM Level 1 definition.
     readonly attribute long length;
 #else
-    attribute unsigned long length setter raises (DOMException);
+    [SetterRaisesException] attribute unsigned long length;
 #endif
-    Node item([IsIndex,Default=Undefined] optional unsigned long index);
+    getter Node item([IsIndex,Default=Undefined] optional unsigned long index);
     Node namedItem([Default=Undefined] optional DOMString name);
-    [ObjCLegacyUnnamedParameters] void add([Default=Undefined] optional HTMLElement element,
-                            [Default=Undefined] optional HTMLElement before) raises(DOMException);
+    [ObjCLegacyUnnamedParameters, RaisesException] void add([Default=Undefined] optional HTMLElement element,
+                            [Default=Undefined] optional HTMLElement before);
 #if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     // In JavaScript, we support both option index and option object parameters.
     // As of this writing this cannot be auto-generated.

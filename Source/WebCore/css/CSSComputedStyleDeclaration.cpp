@@ -65,8 +65,8 @@
 #include "WebKitFontFamilyNames.h"
 #include <wtf/text/StringBuilder.h>
 
-#if ENABLE(CSS_EXCLUSIONS)
-#include "ExclusionShapeValue.h"
+#if ENABLE(CSS_SHAPES)
+#include "ShapeValue.h"
 #endif
 
 #if ENABLE(CSS_SHADERS)
@@ -338,7 +338,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitPerspectiveOrigin,
     CSSPropertyWebkitPrintColorAdjust,
     CSSPropertyWebkitRtlOrdering,
-#if ENABLE(CSS_EXCLUSIONS)
+#if ENABLE(CSS_SHAPES)
     CSSPropertyWebkitShapeInside,
     CSSPropertyWebkitShapeOutside,
 #endif
@@ -369,19 +369,21 @@ static const CSSPropertyID computedProperties[] = {
 #if ENABLE(CSS_REGIONS)
     CSSPropertyWebkitFlowInto,
     CSSPropertyWebkitFlowFrom,
-    CSSPropertyWebkitRegionOverflow,
     CSSPropertyWebkitRegionBreakAfter,
     CSSPropertyWebkitRegionBreakBefore,
     CSSPropertyWebkitRegionBreakInside,
+    CSSPropertyWebkitRegionFragment,
 #endif
 #if ENABLE(DRAGGABLE_REGION)
     CSSPropertyWebkitAppRegion,
 #endif
 #if ENABLE(CSS_EXCLUSIONS)
     CSSPropertyWebkitWrapFlow,
+    CSSPropertyWebkitWrapThrough,
+#endif
+#if ENABLE(CSS_SHAPES)
     CSSPropertyWebkitShapeMargin,
     CSSPropertyWebkitShapePadding,
-    CSSPropertyWebkitWrapThrough,
 #endif
 #if ENABLE(SVG)
     CSSPropertyBufferedRendering,
@@ -2680,12 +2682,16 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
             if (style->regionThread().isNull())
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             return cssValuePool().createValue(style->regionThread(), CSSPrimitiveValue::CSS_STRING);
-        case CSSPropertyWebkitRegionOverflow:
-            return cssValuePool().createValue(style->regionOverflow());
+        case CSSPropertyWebkitRegionFragment:
+            return cssValuePool().createValue(style->regionFragment());
 #endif
 #if ENABLE(CSS_EXCLUSIONS)
         case CSSPropertyWebkitWrapFlow:
             return cssValuePool().createValue(style->wrapFlow());
+        case CSSPropertyWebkitWrapThrough:
+            return cssValuePool().createValue(style->wrapThrough());
+#endif
+#if ENABLE(CSS_SHAPES)
         case CSSPropertyWebkitShapeMargin:
             return cssValuePool().createValue(style->shapeMargin());
         case CSSPropertyWebkitShapePadding:
@@ -2693,27 +2699,25 @@ PassRefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propert
         case CSSPropertyWebkitShapeInside:
             if (!style->shapeInside())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
-            if (style->shapeInside()->type() == ExclusionShapeValue::Outside)
+            if (style->shapeInside()->type() == ShapeValue::Outside)
                 return cssValuePool().createIdentifierValue(CSSValueOutsideShape);
-            if (style->shapeInside()->type() == ExclusionShapeValue::Image) {
+            if (style->shapeInside()->type() == ShapeValue::Image) {
                 if (style->shapeInside()->image())
                     return style->shapeInside()->image()->cssValue();
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             }
-            ASSERT(style->shapeInside()->type() == ExclusionShapeValue::Shape);
+            ASSERT(style->shapeInside()->type() == ShapeValue::Shape);
             return valueForBasicShape(style->shapeInside()->shape());
         case CSSPropertyWebkitShapeOutside:
             if (!style->shapeOutside())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
-            if (style->shapeOutside()->type() == ExclusionShapeValue::Image) {
+            if (style->shapeOutside()->type() == ShapeValue::Image) {
                 if (style->shapeOutside()->image())
                     return style->shapeOutside()->image()->cssValue();
                 return cssValuePool().createIdentifierValue(CSSValueNone);
             }
-            ASSERT(style->shapeOutside()->type() == ExclusionShapeValue::Shape);
+            ASSERT(style->shapeOutside()->type() == ShapeValue::Shape);
             return valueForBasicShape(style->shapeOutside()->shape());
-        case CSSPropertyWebkitWrapThrough:
-            return cssValuePool().createValue(style->wrapThrough());
 #endif
 #if ENABLE(CSS_FILTERS)
         case CSSPropertyWebkitFilter:

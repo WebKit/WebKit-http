@@ -1,3 +1,152 @@
+2013-06-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r147602): Search text field doesn't render selection when it has some :focus rules
+        https://bugs.webkit.org/show_bug.cgi?id=117747
+
+        Reviewed by Kent Tamura.
+
+        * ManualTests/search-select-all-with-focus-style.html: Added.
+
+2013-06-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and Versions.m4 for 2.1.2 release.
+
+        * Source/autotools/Versions.m4: Bump version numbers.
+
+2013-06-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK][GStreamer] Fullscreen option in video element context menu not working
+        https://bugs.webkit.org/show_bug.cgi?id=105191
+
+        Fullscreen with native controls is outdated and even broken in
+        [GTK][WK2], so they are deactivated for now.
+
+        Reviewed by Philippe Normand.
+
+        * Source/autotools/SetupAutoconfHeader.m4: Removed the use of
+        fullscreen native media controls.
+
+2013-06-17  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Remove Qt specific QTKIT flagged code.
+        https://bugs.webkit.org/show_bug.cgi?id=117635
+
+        Reviewed by Simon Hausmann.
+
+        Due to disabling QTKIT for Qt in r151546, the
+        code the flags that are not taken into account
+        anymore and the code that has been rendered
+        unreachable by this are removed.
+
+        * Source/widgetsapi.pri:
+
+2013-06-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Rename gobject_introspection_required variable.
+
+        As gobject_introspection_required_version for consistency with all
+        other required_version variables.
+
+        * Source/autotools/FindDependencies.m4:
+        * Source/autotools/Versions.m4:
+
+2013-06-14  Patrick Gansterer  <paroga@webkit.org>
+
+        Introduce USE(WINGDI) for the Windows port
+        https://bugs.webkit.org/show_bug.cgi?id=116138
+
+        Reviewed by Ryosuke Niwa.
+
+        Using USE(WINGDI) instead of OS(WINCE) will allow us to
+        compile the GDI based Windows port on WinNT too.
+
+        * Source/cmake/OptionsWinCE.cmake:
+
+2013-06-14  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK][WK1] Missing symbols
+        https://bugs.webkit.org/show_bug.cgi?id=117629
+
+        Unreviewed GTK+ build fix.
+
+        * Source/autotools/symbols.filter: Added missing symbols needed when
+        compiling WK1.
+
+2013-06-13  Max Vujovic  <mvujovic@adobe.com>
+
+        [CSS Regions] Selection dragged from a region paints its background
+        https://bugs.webkit.org/show_bug.cgi?id=117607
+
+        Reviewed by Alexandru Chiculita.
+
+        Add a manual test for the painting of a dragged selection from a region. We don't have an
+        automated way to test this yet. This test is similar to the other manual selection dragging
+        tests (e.g. ManualTests/drag-image.html).
+
+        * ManualTests/regions/drag-selection-painting.html: Added.
+
+2013-06-13  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] [WK2] Found missing symbol when running some tests
+        https://bugs.webkit.org/show_bug.cgi?id=117598
+
+        Reviewed by Martin Robinson.
+
+        * Source/autotools/symbols.filter: Added missing
+        _ZN7WebCore28notImplementedLoggingChannelEv.
+
+2013-06-12  Alberto Garcia  <agarcia@igalia.com>
+
+        [BlackBerry] Remove dead WebDOM code
+        https://bugs.webkit.org/show_bug.cgi?id=113370
+
+        Reviewed by Anders Carlsson.
+
+        BlackBerry PR 347565
+        Internally reviewed by Charles Wei.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2013-06-06  Timothy Hatcher  <timothy@apple.com>
+
+        Add WebInspectorUI to the Makefile.
+
+        Reviewed by Mark Rowe.
+
+        * Source/Makefile:
+
+2013-06-11  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Remove leftover wxWebkit code
+        https://bugs.webkit.org/show_bug.cgi?id=117471
+
+        Reviewed by Andreas Kling.
+
+        * Source/cmake/WebKitPackaging.cmake:
+
+2013-06-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [regression] build failure WebKitFontFamilyNames.h missing
+        https://bugs.webkit.org/show_bug.cgi?id=117178
+
+        Reviewed by Sam Weinig.
+
+        * GNUmakefile.am: List platform_sources under the BUILT_SOURCES list.
+
+2013-06-05  Bear Travis  <betravis@adobe.com>
+
+        [CSS Exclusions][CSS Shapes] Split CSS Exclusions & Shapes compile & runtime flags
+        https://bugs.webkit.org/show_bug.cgi?id=117172
+
+        Reviewed by Alexandru Chiculita.
+
+        Adding the CSS_SHAPES compile flag.
+
+        * Source/autotools/SetupWebKitFeatures.m4:
+        * Source/autotools/symbols.filter:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
 2013-06-05  Zan Dobersek  <zdobersek@igalia.com>
 
         Move MemoryInfo under window.internals

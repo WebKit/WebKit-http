@@ -46,7 +46,7 @@ typedef QBrush PlatformPatternPtr;
 #elif PLATFORM(HAIKU)
 #include <interface/GraphicsDefs.h>
 typedef pattern* PlatformPatternPtr;
-#elif OS(WINCE)
+#elif USE(WINGDI)
 typedef void* PlatformPatternPtr;
 #endif
 

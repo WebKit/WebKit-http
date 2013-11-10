@@ -462,12 +462,16 @@ inline WKContextMenuItemTag toAPI(WebCore::ContextMenuAction action)
         return kWKContextMenuItemTagTextDirectionRightToLeft;
     case WebCore::ContextMenuItemTagOpenMediaInNewWindow:
         return kWKContextMenuItemTagOpenMediaInNewWindow;
+    case WebCore::ContextMenuItemTagDownloadMediaToDisk:
+        return kWKContextMenuItemTagDownloadMediaToDisk;
     case WebCore::ContextMenuItemTagCopyMediaLinkToClipboard:
         return kWKContextMenuItemTagCopyMediaLinkToClipboard;
     case WebCore::ContextMenuItemTagToggleMediaControls:
         return kWKContextMenuItemTagToggleMediaControls;
     case WebCore::ContextMenuItemTagToggleMediaLoop:
         return kWKContextMenuItemTagToggleMediaLoop;
+    case WebCore::ContextMenuItemTagToggleVideoFullscreen:
+        return kWKContextMenuItemTagToggleVideoFullscreen;
     case WebCore::ContextMenuItemTagEnterVideoFullscreen:
         return kWKContextMenuItemTagEnterVideoFullscreen;
     case WebCore::ContextMenuItemTagMediaPlayPause:
@@ -652,12 +656,16 @@ inline WebCore::ContextMenuAction toImpl(WKContextMenuItemTag tag)
         return WebCore::ContextMenuItemTagTextDirectionRightToLeft;
     case kWKContextMenuItemTagOpenMediaInNewWindow:
         return WebCore::ContextMenuItemTagOpenMediaInNewWindow;
+    case kWKContextMenuItemTagDownloadMediaToDisk:
+        return WebCore::ContextMenuItemTagDownloadMediaToDisk;
     case kWKContextMenuItemTagCopyMediaLinkToClipboard:
         return WebCore::ContextMenuItemTagCopyMediaLinkToClipboard;
     case kWKContextMenuItemTagToggleMediaControls:
         return WebCore::ContextMenuItemTagToggleMediaControls;
     case kWKContextMenuItemTagToggleMediaLoop:
         return WebCore::ContextMenuItemTagToggleMediaLoop;
+    case kWKContextMenuItemTagToggleVideoFullscreen:
+        return WebCore::ContextMenuItemTagToggleVideoFullscreen;
     case kWKContextMenuItemTagEnterVideoFullscreen:
         return WebCore::ContextMenuItemTagEnterVideoFullscreen;
     case kWKContextMenuItemTagMediaPlayPause:

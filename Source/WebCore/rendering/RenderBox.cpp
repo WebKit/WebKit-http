@@ -35,7 +35,6 @@
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
-#include "ImageBuffer.h"
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "Page.h"
@@ -47,12 +46,10 @@
 #include "RenderGeometryMap.h"
 #include "RenderInline.h"
 #include "RenderLayer.h"
-#include "RenderPart.h"
 #include "RenderRegion.h"
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
-#include "ScrollbarTheme.h"
 #include "TransformState.h"
 #include <algorithm>
 #include <math.h>
@@ -162,8 +159,8 @@ void RenderBox::willBeDestroyed()
 
     RenderBlock::removePercentHeightDescendantIfNeeded(this);
 
-#if ENABLE(CSS_EXCLUSIONS)
-    ExclusionShapeOutsideInfo::removeInfo(this);
+#if ENABLE(CSS_SHAPES)
+    ShapeOutsideInfo::removeInfo(this);
 #endif
 
     RenderBoxModelObject::willBeDestroyed();
@@ -314,23 +311,23 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
         frame()->view()->recalculateScrollbarOverlayStyle();
     }
 
-#if ENABLE(CSS_EXCLUSIONS)
-    updateExclusionShapeOutsideInfoAfterStyleChange(style()->shapeOutside(), oldStyle ? oldStyle->shapeOutside() : 0);
+#if ENABLE(CSS_SHAPES)
+    updateShapeOutsideInfoAfterStyleChange(style()->shapeOutside(), oldStyle ? oldStyle->shapeOutside() : 0);
 #endif
 }
 
-#if ENABLE(CSS_EXCLUSIONS)
-void RenderBox::updateExclusionShapeOutsideInfoAfterStyleChange(const ExclusionShapeValue* shapeOutside, const ExclusionShapeValue* oldShapeOutside)
+#if ENABLE(CSS_SHAPES)
+void RenderBox::updateShapeOutsideInfoAfterStyleChange(const ShapeValue* shapeOutside, const ShapeValue* oldShapeOutside)
 {
     // FIXME: A future optimization would do a deep comparison for equality. (bug 100811)
     if (shapeOutside == oldShapeOutside)
         return;
 
     if (shapeOutside) {
-        ExclusionShapeOutsideInfo* exclusionShapeOutsideInfo = ExclusionShapeOutsideInfo::ensureInfo(this);
-        exclusionShapeOutsideInfo->dirtyShapeSize();
+        ShapeOutsideInfo* shapeOutsideInfo = ShapeOutsideInfo::ensureInfo(this);
+        shapeOutsideInfo->dirtyShapeSize();
     } else
-        ExclusionShapeOutsideInfo::removeInfo(this);
+        ShapeOutsideInfo::removeInfo(this);
 }
 #endif
 
@@ -1143,19 +1140,26 @@ void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& pa
     paintFillLayers(paintInfo, style()->visitedDependentColor(CSSPropertyBackgroundColor), style()->backgroundLayers(), paintRect, bleedAvoidance);
 }
 
-LayoutRect RenderBox::backgroundPaintedExtent() const
+bool RenderBox::getBackgroundPaintedExtent(LayoutRect& paintedExtent) const
 {
     ASSERT(hasBackground());
     LayoutRect backgroundRect = pixelSnappedIntRect(borderBoxRect());
 
     Color backgroundColor = style()->visitedDependentColor(CSSPropertyBackgroundColor);
-    if (backgroundColor.isValid() && backgroundColor.alpha())
-        return backgroundRect;
-    if (!style()->backgroundLayers()->image() || style()->backgroundLayers()->next())
-        return backgroundRect;
+    if (backgroundColor.isValid() && backgroundColor.alpha()) {
+        paintedExtent = backgroundRect;
+        return true;
+    }
+
+    if (!style()->backgroundLayers()->image() || style()->backgroundLayers()->next()) {
+        paintedExtent =  backgroundRect;
+        return true;
+    }
+
     BackgroundImageGeometry geometry;
-    const_cast<RenderBox*>(this)->calculateBackgroundImageGeometry(style()->backgroundLayers(), backgroundRect, geometry);
-    return geometry.destRect();
+    calculateBackgroundImageGeometry(0, style()->backgroundLayers(), backgroundRect, geometry);
+    paintedExtent = geometry.destRect();
+    return !geometry.hasNonLocalGeometry();
 }
 
 bool RenderBox::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect) const
@@ -1262,7 +1266,9 @@ bool RenderBox::computeBackgroundIsKnownToBeObscured()
     if (isTable() || isRoot())
         return false;
 
-    LayoutRect backgroundRect = backgroundPaintedExtent();
+    LayoutRect backgroundRect;
+    if (!getBackgroundPaintedExtent(backgroundRect))
+        return false;
     return foregroundIsKnownToBeOpaqueInRect(backgroundRect, backgroundObscurationTestMaxDepth);
 }
 
@@ -1350,7 +1356,8 @@ LayoutRect RenderBox::maskClipRect()
     for (const FillLayer* maskLayer = style()->maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
         if (maskLayer->image()) {
             BackgroundImageGeometry geometry;
-            calculateBackgroundImageGeometry(maskLayer, borderBox, geometry);
+            // Masks should never have fixed attachment, so it's OK for paintContainer to be null.
+            calculateBackgroundImageGeometry(0, maskLayer, borderBox, geometry);
             result.unite(geometry.destRect());
         }
     }
@@ -1377,7 +1384,7 @@ void RenderBox::paintFillLayers(const PaintInfo& paintInfo, const Color& c, cons
             shouldDrawBackgroundInSeparateBuffer = true;
 
         // The clipOccludesNextLayers condition must be evaluated first to avoid short-circuiting.
-        if (curLayer->clipOccludesNextLayers(curLayer == fillLayer) && curLayer->hasOpaqueImage(this) && curLayer->image()->canRender(this, style()->effectiveZoom()) && curLayer->hasRepeatXY())
+        if (curLayer->clipOccludesNextLayers(curLayer == fillLayer) && curLayer->hasOpaqueImage(this) && curLayer->image()->canRender(this, style()->effectiveZoom()) && curLayer->hasRepeatXY() && curLayer->blendMode() == BlendModeNormal)
             break;
         curLayer = curLayer->next();
     }
@@ -1448,8 +1455,7 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
 
     for (const FillLayer* curLayer = layers; curLayer; curLayer = curLayer->next()) {
         if (curLayer->image() && image == curLayer->image()->data() && curLayer->image()->canRender(this, style()->effectiveZoom())) {
-            // Now that we know this image is being used, compute the renderer and the rect
-            // if we haven't already
+            // Now that we know this image is being used, compute the renderer and the rect if we haven't already.
             if (!layerRenderer) {
                 bool drawingRootBackground = drawingBackground && (isRoot() || (isBody() && !document()->documentElement()->renderer()->hasBackground()));
                 if (drawingRootBackground) {
@@ -1476,7 +1482,14 @@ bool RenderBox::repaintLayerRectsForImage(WrappedImagePtr image, const FillLayer
             }
 
             BackgroundImageGeometry geometry;
-            layerRenderer->calculateBackgroundImageGeometry(curLayer, rendererRect, geometry);
+            layerRenderer->calculateBackgroundImageGeometry(0, curLayer, rendererRect, geometry);
+            if (geometry.hasNonLocalGeometry()) {
+                // Rather than incur the costs of computing the paintContainer for renderers with fixed backgrounds
+                // in order to get the right destRect, just repaint the entire renderer.
+                layerRenderer->repaint();
+                return true;
+            }
+            
             layerRenderer->repaintRectangle(geometry.destRect());
             if (geometry.destRect() == rendererRect)
                 return true;
@@ -1759,13 +1772,6 @@ void RenderBox::mapLocalToContainer(const RenderLayerModelObject* repaintContain
     }
 
     mode &= ~ApplyContainerFlip;
-    if (o->isRenderFlowThread()) {
-        // Transform from render flow coordinates into region coordinates.
-        RenderRegion* region = toRenderFlowThread(o)->mapFromFlowToRegion(transformState);
-        if (region)
-            region->mapLocalToContainer(region->containerForRepaint(), transformState, mode, wasFixed);
-        return;
-    }
 
     o->mapLocalToContainer(repaintContainer, transformState, mode, wasFixed);
 }
@@ -1792,9 +1798,6 @@ const RenderObject* RenderBox::pushMappingToContainer(const RenderLayerModelObje
     bool offsetDependsOnPoint = false;
     LayoutSize containerOffset = offsetFromContainer(container, LayoutPoint(), &offsetDependsOnPoint);
 
-    if (container->isRenderFlowThread())
-        offsetDependsOnPoint = true;
-    
     bool preserve3D = container->style()->preserves3D() || style()->preserves3D();
     if (shouldUseTransformFromContainer(container)) {
         TransformationMatrix t;
@@ -1855,6 +1858,9 @@ LayoutSize RenderBox::offsetFromContainer(RenderObject* o, const LayoutPoint& po
 
     if (style()->position() == AbsolutePosition && o->isInFlowPositioned() && o->isRenderInline())
         offset += toRenderInline(o)->offsetForInFlowPositionedInline(this);
+
+    if (offsetDependsOnPoint)
+        *offsetDependsOnPoint |= o->isRenderFlowThread();
 
     return offset;
 }
@@ -3044,9 +3050,15 @@ static void computeInlineStaticDistance(Length& logicalLeft, Length& logicalRigh
     }
 }
 
+static bool isReplacedElement(const RenderBox* child)
+{
+    // FIXME: Bug 117267, we should make form control elements isReplaced too so that we can just check for that.
+    return child->isReplaced() || (child->node() && child->node()->isElementNode() && toElement(child->node())->isFormControlElement() && !child->isFieldset());
+}
+
 void RenderBox::computePositionedLogicalWidth(LogicalExtentComputedValues& computedValues, RenderRegion* region) const
 {
-    if (isReplaced()) {
+    if (isReplacedElement(this)) {
         // FIXME: Positioned replaced elements inside a flow thread are not working properly
         // with variable width regions (see https://bugs.webkit.org/show_bug.cgi?id=69896 ).
         computePositionedLogicalWidthReplaced(computedValues);
@@ -3388,7 +3400,7 @@ static void computeBlockStaticDistance(Length& logicalTop, Length& logicalBottom
 
 void RenderBox::computePositionedLogicalHeight(LogicalExtentComputedValues& computedValues) const
 {
-    if (isReplaced()) {
+    if (isReplacedElement(this)) {
         computePositionedLogicalHeightReplaced(computedValues);
         return;
     }
@@ -4223,19 +4235,6 @@ void RenderBox::addVisualOverflow(const LayoutRect& rect)
         m_overflow = adoptPtr(new RenderOverflow(clientBoxRect(), borderBox));
     
     m_overflow->addVisualOverflow(rect);
-}
-
-void RenderBox::clearLayoutOverflow()
-{
-    if (!m_overflow)
-        return;
-    
-    if (visualOverflowRect() == borderBoxRect()) {
-        m_overflow.clear();
-        return;
-    }
-    
-    m_overflow->setLayoutOverflow(borderBoxRect());
 }
 
 inline static bool percentageLogicalHeightIsResolvable(const RenderBox* box)

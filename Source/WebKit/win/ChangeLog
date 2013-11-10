@@ -1,3 +1,136 @@
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Build fix for Apple Windows.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext::create):
+        (WebFrameNetworkingContext::WebFrameNetworkingContext):
+        (WebFrameNetworkingContext::userAgent):
+
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Re-implement WebFrameNetworkingContext.
+        <rdar://problem/13174821>.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp: Added.
+        (WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        (WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase):
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        (WebFrameNetworkingContext::blockedError):
+        (WebFrameNetworkingContext::referrer):
+        (WebFrameNetworkingContext::storageSession):
+        * WebCoreSupport/WebFrameNetworkingContext.h: Added.
+        (WebFrameNetworkingContext::create):
+        (WebFrameNetworkingContext::WebFrameNetworkingContext):
+
+2013-06-18  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/13174821> Remove files with an incorrect license.
+
+        Rubber-stamped by Maciej Stachowiak.
+
+        This will break the build, stay tuned for a fix coming soon.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp: Removed.
+        * WebCoreSupport/WebFrameNetworkingContext.h: Removed.
+
+2013-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Implement Accessibility2 APIs in Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=117561
+
+        Reviewed by Anders Carlsson.
+
+        * AccessibleBase.cpp: Add stubs for IAccessible2 interface, replace attributeValue
+        method with get_attribute from IAccessible2 API.
+        * AccessibleBase.h: Ditto.
+        * AccessibleDocument.cpp: Revise signatures for IAccessible2.
+        * AccessibleDocument.h: Ditto.
+        * AccessibleImage.cpp: Revise signatures for IAccessible2.
+        * AccessibleImage.h: Ditto.
+        * Interfaces/Accessible2: Added.
+        * Interfaces/Accessible2/Accessible2.idl: Added.
+        * Interfaces/Accessible2/Accessible2_2.idl: Added.
+        * Interfaces/Accessible2/AccessibleApplication.idl: Added.
+        * Interfaces/Accessible2/AccessibleRelation.idl: Added.
+        * Interfaces/Accessible2/AccessibleStates.idl: Added.
+        * Interfaces/Accessible2/IA2CommonTypes.idl: Added.
+        * Interfaces/AccessibleComparable.idl:
+        * Interfaces/WebKit.idl: Reference IAccessible2 types.
+        * WebFrame.cpp: 
+        (WebFrame::accessible): Pass window handle to IAccessible types.
+
+2013-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Support Title UI Element Accessibility Attribute
+        https://bugs.webkit.org/show_bug.cgi?id=117530
+
+        Reviewed by Anders Carlsson.
+
+        * AccessibleBase.cpp:
+        (AccessibleBase::attributeValue): Extend to handle Title UI Element.
+        * AccessibleBase.h: Revise signature to use a variant argument.
+        * Interfaces/AccessibleComparable.idl:  Revise interface to use variant
+
+2013-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove memoryInfoEnabled, quantizedMemoryInfoEnabled settings
+        https://bugs.webkit.org/show_bug.cgi?id=117512
+
+        Reviewed by Darin Adler.
+
+        * Interfaces/IWebPreferencesPrivate.idl: Remove memoryInfoEnabled, setMemoryInfoEnabled entries.
+        * WebPreferenceKeysPrivate.h: Remove the WebKitMemoryInfoEnabledPreferenceKey definition.
+        * WebPreferences.cpp: Remove the memoryInfo, setMemoryInfoEnabled methods.
+        (WebPreferences::initializeDefaultSettings): Remove the WebKitMemoryInfoEnabledPreferenceKey entry initialization.
+        * WebPreferences.h: Remove the memoryInfo, setMemoryInfoEnabled method declarations.
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged): Remove the Settings::setMemoryInfoEnabled call, the method is being removed.
+
+2013-06-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Unreviewed build correction after r151440.
+
+        * AccessibleBase.cpp:
+        (MSAARole): Switch back to emiting ROLE_SYSTEM_LISTITEM for
+        ListItemRole Web role to avoid breaking existing test.
+
+2013-06-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Implement 'attributeValue' accessor to support testing.
+        https://bugs.webkit.org/show_bug.cgi?id=117513
+
+        Reviewed by Anders Carlsson.
+
+        * AccessibleBase.cpp:
+        (AccessibleBase::attributeValue): Added.
+        * AccessibleBase.h: Added method declaration.
+        * Interfaces/AccessibleComparable.idl: New accessor interface.
+
+2013-06-09  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Provide MSAA mappings for more WebCore roles.
+        https://bugs.webkit.org/show_bug.cgi?id=117389
+
+        Reviewed by Chris Fleizach.
+
+        * AccessibleBase.cpp:
+        (MSAARole): Add additional mappings between WebCore roles and MSAA roles.
+
+2013-06-07  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Get rid of outdated raises() from Web IDL
+        https://bugs.webkit.org/show_bug.cgi?id=117350
+
+        Reviewed by Darin Adler.
+
+        Replace raises() by [RaisesException].
+
+        * Interfaces/DOMEvents.idl:
+
 2013-06-03  Roger Fong  <roger_fong@apple.com>
 
         Nuke VS2005 files from the tree.

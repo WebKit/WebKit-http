@@ -81,7 +81,7 @@ void InsertParagraphSeparatorCommand::calculateStyleBeforeInsertion(const Positi
         return;
 
     ASSERT(pos.isNotNull());
-    m_style = EditingStyle::create(pos);
+    m_style = EditingStyle::create(pos, EditingStyle::EditingPropertiesInEffect);
     m_style->mergeTypingStyle(pos.anchorNode()->document());
 }
 
@@ -316,6 +316,15 @@ void InsertParagraphSeparatorCommand::doApply()
     // all of the correct nodes when building the ancestor list.  So this needs to be the deepest representation of the position
     // before we walk the DOM tree.
     insertionPosition = positionOutsideTabSpan(VisiblePosition(insertionPosition).deepEquivalent());
+
+    // If the returned position lies either at the end or at the start of an element that is ignored by editing
+    // we should move to its upstream or downstream position.
+    if (editingIgnoresContent(insertionPosition.deprecatedNode())) {
+        if (insertionPosition.atLastEditingPositionForNode())
+            insertionPosition = insertionPosition.downstream();
+        else if (insertionPosition.atFirstEditingPositionForNode())
+            insertionPosition = insertionPosition.upstream();
+    }
 
     // Make sure we do not cause a rendered space to become unrendered.
     // FIXME: We need the affinity for pos, but pos.downstream() does not give it

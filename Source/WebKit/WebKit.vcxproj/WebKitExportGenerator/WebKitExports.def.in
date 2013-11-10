@@ -116,6 +116,10 @@ EXPORTS
         ??1HitTestResult@WebCore@@QAE@XZ
         ??1Mutex@WTF@@QAE@XZ
         ??1ThreadCondition@WTF@@QAE@XZ
+#if USE(CAIRO)
+        ??$derefIfNotNull@U_cairo_surface@@@WTF@@YAXPAU_cairo_surface@@@Z
+        ??$refIfNotNull@U_cairo_surface@@@WTF@@YAXPAU_cairo_surface@@@Z
+#endif
         ?addTextMatchMarker@DocumentMarkerController@WebCore@@QAEXPBVRange@2@_N@Z
         ?broadcast@ThreadCondition@WTF@@QAEXXZ
         ?callOnMainThread@WTF@@YAXP6AXPAX@Z0@Z
@@ -378,6 +382,8 @@ EXPORTS
         ?getCGImageRef@BitmapImage@WebCore@@UAEPAUCGImage@@XZ
         ?getFirstCGImageRefOfSize@BitmapImage@WebCore@@UAEPAUCGImage@@ABVIntSize@2@@Z
         ?getCGImageArray@BitmapImage@WebCore@@UAE?AV?$RetainPtr@PBU__CFArray@@@WTF@@XZ
+#elif USE(CAIRO)
+        ?nativeImageForCurrentFrame@BitmapImage@WebCore@@UAE?AV?$PassRefPtr@U_cairo_surface@@@WTF@@XZ
 #endif
         ?getHBITMAP@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@@Z
         ?getHBITMAPOfSize@BitmapImage@WebCore@@UAE_NPAUHBITMAP__@@PAUtagSIZE@@@Z
@@ -435,10 +441,13 @@ EXPORTS
         ?captionPreferences@PageGroup@WebCore@@QAEPAVCaptionUserPreferences@2@XZ
 #endif
         ?initGroup@Page@WebCore@@AAEXXZ
+        ?toInt8@WebCore@@YACPAVExecState@JSC@@VJSValue@3@W4IntegerConversionConfiguration@1@@Z
+        ?toUInt8@WebCore@@YAEPAVExecState@JSC@@VJSValue@3@W4IntegerConversionConfiguration@1@@Z
         ?toInt32EnforceRange@WebCore@@YAHPAVExecState@JSC@@VJSValue@3@@Z
         ?toInt64@WebCore@@YA_JPAVExecState@JSC@@VJSValue@3@W4IntegerConversionConfiguration@1@@Z
         ?toUInt32EnforceRange@WebCore@@YAIPAVExecState@JSC@@VJSValue@3@@Z
         ?toUInt64@WebCore@@YA_KPAVExecState@JSC@@VJSValue@3@W4IntegerConversionConfiguration@1@@Z
+        ?getHeapSize@ScriptGCEvent@WebCore@@SAXAAUHeapInfo@2@@Z
 
 #if ENABLE(WORKERS)
         ?workerThreadCount@WorkerThread@WebCore@@SAIXZ

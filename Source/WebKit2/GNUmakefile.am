@@ -520,6 +520,8 @@ libPlatformGtk2_la_CPPFLAGS = \
 	$(platform_webcore_cppflags) \
 	$(javascriptcore_cppflags) \
 	-fno-strict-aliasing \
+	$(FREETYPE_CFLAGS) \
+	$(GSTREAMER_CFLAGS) \
 	$(GTK2_CFLAGS) \
 	$(LIBSECRET_CFLAGS) \
 	$(LIBSOUP_CFLAGS)
@@ -585,6 +587,7 @@ webcore_layer_gtk2_archives = $(foreach lib, $(webcore_layer_gtk2_deps), $(shell
 
 WebCoreLayerGtk2.a: $(webcore_layer_gtk2_deps)
 	$(AM_V_GEN)
+	$(AM_V_at)$(shell rm -f $@)
 	$(AM_V_at)$(foreach archive, $(webcore_layer_gtk2_archives), $(shell ar t $(archive) | xargs -n50 ar cruT $@))
 
 DISTCLEANFILES += \

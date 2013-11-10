@@ -70,6 +70,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/plugins"
     "${WEBCORE_DIR}/rendering"
     "${WEBCORE_DIR}/rendering/mathml"
+    "${WEBCORE_DIR}/rendering/shapes"
     "${WEBCORE_DIR}/rendering/style"
     "${WEBCORE_DIR}/rendering/svg"
     "${WEBCORE_DIR}/storage"
@@ -293,7 +294,6 @@ set(WebCore_IDL_FILES
 
     Modules/websockets/CloseEvent.idl
     Modules/websockets/WebSocket.idl
-    Modules/websockets/WorkerContextWebSocket.idl
 
     css/Counter.idl
     css/CSSCharsetRule.idl
@@ -2097,13 +2097,6 @@ set(WebCore_SOURCES
     rendering/BidiRun.cpp
     rendering/CounterNode.cpp
     rendering/EllipsisBox.cpp
-    rendering/ExclusionInterval.cpp
-    rendering/ExclusionPolygon.cpp
-    rendering/ExclusionRectangle.cpp
-    rendering/ExclusionShape.cpp
-    rendering/ExclusionShapeInfo.cpp
-    rendering/ExclusionShapeInsideInfo.cpp
-    rendering/ExclusionShapeOutsideInfo.cpp
     rendering/FilterEffectRenderer.cpp
     rendering/FixedTableLayout.cpp
     rendering/FlowThreadController.cpp
@@ -2217,6 +2210,14 @@ set(WebCore_SOURCES
     rendering/mathml/RenderMathMLSquareRoot.cpp
     rendering/mathml/RenderMathMLSubSup.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
+
+    rendering/shapes/PolygonShape.cpp
+    rendering/shapes/RectangleShape.cpp
+    rendering/shapes/Shape.cpp
+    rendering/shapes/ShapeInfo.cpp
+    rendering/shapes/ShapeInsideInfo.cpp
+    rendering/shapes/ShapeInterval.cpp
+    rendering/shapes/ShapeOutsideInfo.cpp
 
     rendering/style/BasicShapes.cpp
     rendering/style/ContentData.cpp

@@ -29,11 +29,8 @@
 
 #include "AXObjectCache.h"
 #include "AnimationController.h"
-#include "Chrome.h"
 #include "ContentData.h"
 #include "CursorList.h"
-#include "DashArray.h"
-#include "EditingBoundary.h"
 #include "EventHandler.h"
 #include "FloatQuad.h"
 #include "FlowThreadController.h"
@@ -75,7 +72,6 @@
 #include "TransformState.h"
 #include "htmlediting.h"
 #include <algorithm>
-#include <stdio.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StackStats.h>
 
@@ -1344,10 +1340,7 @@ void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintCo
         ASSERT(repaintContainer == v);
         bool viewHasCompositedLayer = v->hasLayer() && v->layer()->isComposited();
         if (!viewHasCompositedLayer || v->layer()->backing()->paintsIntoWindow()) {
-            LayoutRect repaintRectangle = r;
-            if (viewHasCompositedLayer &&  v->layer()->transform())
-                repaintRectangle = enclosingIntRect(v->layer()->transform()->mapRect(r));
-            v->repaintViewRectangle(repaintRectangle, immediate);
+            v->repaintViewRectangle(viewHasCompositedLayer && v->layer()->transform() ? v->layer()->transform()->mapRect(r) : r, immediate);
             return;
         }
     }
@@ -1632,13 +1625,15 @@ Color RenderObject::selectionBackgroundColor() const
 {
     Color color;
     if (style()->userSelect() != SELECT_NONE) {
-        RefPtr<RenderStyle> pseudoStyle = getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
-        if (pseudoStyle && pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).isValid())
-            color = pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).blendWithWhite();
-        else
-            color = frame()->selection()->isFocusedAndActive() ?
-                    theme()->activeSelectionBackgroundColor() :
-                    theme()->inactiveSelectionBackgroundColor();
+        if (frame()->selection()->shouldShowBlockCursor() && frame()->selection()->isCaret())
+            color = style()->visitedDependentColor(CSSPropertyColor).blendWithWhite();
+        else {
+            RefPtr<RenderStyle> pseudoStyle = getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
+            if (pseudoStyle && pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).isValid())
+                color = pseudoStyle->visitedDependentColor(CSSPropertyBackgroundColor).blendWithWhite();
+            else
+                color = frame()->selection()->isFocusedAndActive() ? theme()->activeSelectionBackgroundColor() : theme()->inactiveSelectionBackgroundColor();
+        }
     }
 
     return color;
@@ -1873,9 +1868,9 @@ void RenderObject::setStyle(PassRefPtr<RenderStyle> style)
         if (updatedDiff == StyleDifferenceLayout)
             setNeedsLayoutAndPrefWidthsRecalc();
         else if (updatedDiff == StyleDifferenceLayoutPositionedMovementOnly)
-            setNeedsPositionedMovementLayout();
+            setNeedsPositionedMovementLayout(oldStyle.get());
         else if (updatedDiff == StyleDifferenceSimplifiedLayoutAndPositionedMovement) {
-            setNeedsPositionedMovementLayout();
+            setNeedsPositionedMovementLayout(oldStyle.get());
             setNeedsSimplifiedNormalFlowLayout();
         } else if (updatedDiff == StyleDifferenceSimplifiedLayout)
             setNeedsSimplifiedNormalFlowLayout();
@@ -1978,10 +1973,10 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
 #endif
         if (oldStyleSlowScroll != newStyleSlowScroll) {
             if (oldStyleSlowScroll)
-                frameView->removeSlowRepaintObject();
+                frameView->removeSlowRepaintObject(this);
 
             if (newStyleSlowScroll)
-                frameView->addSlowRepaintObject();
+                frameView->addSlowRepaintObject(this);
         }
     }
 }
@@ -2027,10 +2022,10 @@ void RenderObject::styleDidChange(StyleDifference diff, const RenderStyle* oldSt
         else
             setNeedsSimplifiedNormalFlowLayout();
     } else if (diff == StyleDifferenceSimplifiedLayoutAndPositionedMovement) {
-        setNeedsPositionedMovementLayout();
+        setNeedsPositionedMovementLayout(oldStyle);
         setNeedsSimplifiedNormalFlowLayout();
     } else if (diff == StyleDifferenceLayoutPositionedMovementOnly)
-        setNeedsPositionedMovementLayout();
+        setNeedsPositionedMovementLayout(oldStyle);
 
     // Don't check for repaint here; we need to wait until the layer has been
     // updated by subclasses before we know if we have to repaint (in setStyle()).
@@ -2258,7 +2253,7 @@ LayoutSize RenderObject::offsetFromContainer(RenderObject* o, const LayoutPoint&
         offset -= toRenderBox(o)->scrolledContentOffset();
 
     if (offsetDependsOnPoint)
-        *offsetDependsOnPoint = hasColumns();
+        *offsetDependsOnPoint = hasColumns() || o->isRenderFlowThread();
 
     return offset;
 }
@@ -2455,6 +2450,8 @@ void RenderObject::willBeDestroyed()
 
     remove();
 
+    ASSERT(documentBeingDestroyed() || !frame()->view()->hasSlowRepaintObject(this));
+
     // The remove() call above may invoke axObjectCache()->childrenChanged() on the parent, which may require the AX render
     // object for this renderer. So we remove the AX render object now, after the renderer is removed.
     if (AXObjectCache* cache = document()->existingAXObjectCache())
@@ -2528,7 +2525,7 @@ void RenderObject::willBeRemovedFromTree()
         if (FrameView* frameView = view()->frameView()) {
             bool repaintFixedBackgroundsOnScroll = shouldRepaintFixedBackgroundsOnScroll(frameView);
             if (repaintFixedBackgroundsOnScroll && m_style && m_style->hasFixedBackgroundImage())
-                frameView->removeSlowRepaintObject();
+                frameView->removeSlowRepaintObject(this);
         }
     }
 

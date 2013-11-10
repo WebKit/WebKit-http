@@ -27,6 +27,7 @@
 #define InjectedBundleHitTestResult_h
 
 #include "APIObject.h"
+#include "InjectedBundleHitTestResultMediaType.h"
 #include <WebCore/HitTestResult.h>
 #include <wtf/Forward.h>
 #include <wtf/PassRefPtr.h>
@@ -51,6 +52,8 @@ public:
     String absolutePDFURL() const;
     String absoluteLinkURL() const;
     String absoluteMediaURL() const;
+    bool mediaIsInFullscreen() const;
+    BundleHitTestResultMediaType getMediaType() const;
 
     String linkLabel() const;
     String linkTitle() const;

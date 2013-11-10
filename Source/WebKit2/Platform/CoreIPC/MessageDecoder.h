@@ -32,6 +32,7 @@
 namespace CoreIPC {
 
 class DataReference;
+class ImportanceAssertion;
 
 class MessageDecoder : public ArgumentDecoder {
 public:
@@ -45,12 +46,20 @@ public:
     bool isSyncMessage() const;
     bool shouldDispatchMessageWhenWaitingForSyncReply() const;
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    void setImportanceAssertion(PassOwnPtr<ImportanceAssertion>);
+#endif
+
 private:
     MessageDecoder(const DataReference& buffer, Vector<Attachment>&);
 
     uint8_t m_messageFlags;
     StringReference m_messageReceiverName;
     StringReference m_messageName;
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    OwnPtr<ImportanceAssertion> m_importanceAssertion;
+#endif
 };
 
 } // namespace CoreIPC

@@ -1,43 +1,91 @@
 /*
-    Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
-    Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Library General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Library General Public License for more details.
-
-    You should have received a copy of the GNU Library General Public License
-    along with this library; see the file COPYING.LIB.  If not, write to
-    the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
-    Boston, MA 02110-1301, USA.
-*/
-
-#import "config.h"
-#import "WebFrameNetworkingContext.h"
-
-#import <WebCore/FrameLoader.h>
-#import <WebCore/FrameLoaderClient.h>
-#import <WebCore/Page.h>
-#import <WebCore/ResourceError.h>
-#import <WebCore/Settings.h>
-#import <WebKitSystemInterface.h>
+#include "config.h"
+#include "WebCookieManager.h"
+#include "WebFrameNetworkingContext.h"
+#include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
+#include <WebCore/FrameLoaderClient.h>
+#include <WebCore/NetworkStorageSession.h>
+#include <WebCore/Page.h>
+#include <WebCore/ResourceError.h>
+#include <WebCore/Settings.h>
+#include <WebKitSystemInterface.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-static OwnPtr<NetworkStorageSession>& privateBrowsingStorageSession()
+static NetworkStorageSession* privateSession;
+static String* identifierBase;
+    
+void WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase(const String& base)
 {
-    DEFINE_STATIC_LOCAL(OwnPtr<NetworkStorageSession>, session, ());
-    return session;
+    ASSERT(isMainThread());
+
+    delete identifierBase;
+
+    identifierBase = new String(base);
 }
 
+void WebFrameNetworkingContext::ensurePrivateBrowsingSession()
+{
+    ASSERT(isMainThread());
+
+    if (privateSession)
+        return;
+
+    String base;
+    if (!identifierBase)
+        base = [[NSBundle mainBundle] bundleIdentifier];
+    else
+        base = *identifierBase;
+
+    privateSession = NetworkStorageSession::createPrivateBrowsingSession(base).leakPtr();
+}
+
+void WebFrameNetworkingContext::destroyPrivateBrowsingSession()
+{
+    ASSERT(isMainThread());
+
+    delete privateSession;
+    privateSession = 0;
+}
+
+void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
+{
+    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:static_cast<NSHTTPCookieAcceptPolicy>(policy)];
+
+    if (RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage())
+        WKSetHTTPCookieAcceptPolicy(cookieStorage.get(), policy);
+
+    if (privateSession)
+        WKSetHTTPCookieAcceptPolicy(privateSession->cookieStorage().get(), policy);
+}
+    
 bool WebFrameNetworkingContext::needsSiteSpecificQuirks() const
 {
     return frame() && frame()->settings() && frame()->settings()->needsSiteSpecificQuirks();
@@ -50,12 +98,14 @@ bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
 
 SchedulePairHashSet* WebFrameNetworkingContext::scheduledRunLoopPairs() const
 {
-    return frame() && frame()->page() ? frame()->page()->scheduledRunLoopPairs() : 0;
+    if (!frame() || !frame()->page())
+        return 0;
+    return frame()->page()->scheduledRunLoopPairs();
 }
 
 RetainPtr<CFDataRef> WebFrameNetworkingContext::sourceApplicationAuditData() const
 {
-    return nil;
+    return RetainPtr<CFDataRef>();
 }
 
 ResourceError WebFrameNetworkingContext::blockedError(const ResourceRequest& request) const
@@ -63,59 +113,14 @@ ResourceError WebFrameNetworkingContext::blockedError(const ResourceRequest& req
     return frame()->loader()->client()->blockedError(request);
 }
 
-static String& privateBrowsingStorageSessionIdentifierBase()
-{
-    ASSERT(isMainThread());
-    DEFINE_STATIC_LOCAL(String, base, ());
-    return base;
-}
-
-void WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase(const String& identifier)
-{
-    privateBrowsingStorageSessionIdentifierBase() = identifier;
-}
-
-void WebFrameNetworkingContext::ensurePrivateBrowsingSession()
-{
-    // FIXME (NetworkProcess): Don't create an unnecessary session when using network process.
-
-    ASSERT(isMainThread());
-    if (privateBrowsingStorageSession())
-        return;
-
-    String identifierBase = privateBrowsingStorageSessionIdentifierBase().isNull() ? String([[NSBundle mainBundle] bundleIdentifier]) : privateBrowsingStorageSessionIdentifierBase();
-
-    privateBrowsingStorageSession() = NetworkStorageSession::createPrivateBrowsingSession(identifierBase);
-}
-
-void WebFrameNetworkingContext::destroyPrivateBrowsingSession()
-{
-    if (!privateBrowsingStorageSession)
-        return;
-
-    privateBrowsingStorageSession() = nullptr;
-}
-
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
-    bool inPrivateBrowsingMode = frame() && frame()->settings() && frame()->settings()->privateBrowsingEnabled();
-    if (inPrivateBrowsingMode) {
-        ASSERT(privateBrowsingStorageSession());
-        return *privateBrowsingStorageSession();
-    }
+    ASSERT(isMainThread());
+
+    if (frame() && frame()->settings() && frame()->settings()->privateBrowsingEnabled())
+        return *privateSession;
+
     return NetworkStorageSession::defaultStorageSession();
 }
-
-void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
-{
-    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:static_cast<NSHTTPCookieAcceptPolicy>(policy)];
-
-    if (RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage())
-        WKSetHTTPCookieAcceptPolicy(cookieStorage.get(), policy);
-
-    if (privateBrowsingStorageSession()) {
-        WKSetHTTPCookieAcceptPolicy(privateBrowsingStorageSession()->cookieStorage().get(), policy);
-    }
-}
-
+    
 }

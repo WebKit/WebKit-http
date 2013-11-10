@@ -31,7 +31,7 @@
 #include "ImageBufferDataHaiku.h"
 #elif PLATFORM(QT)
 #include "ImageBufferDataQt.h"
-#elif OS(WINCE)
+#elif USE(WINGDI)
 #include "ImageBufferDataWince.h"
 #elif PLATFORM(BLACKBERRY)
 #include "ImageBufferDataBlackBerry.h"

@@ -106,8 +106,8 @@ LayoutRect RenderRegion::overflowRectForFlowThreadPortion(const LayoutRect& flow
     // folded into RenderBlock, switch to hasOverflowClip().
     bool clipX = style()->overflowX() != OVISIBLE;
     bool clipY = style()->overflowY() != OVISIBLE;
-    bool isLastRegionWithRegionOverflowBreak = (isLastPortion && (style()->regionOverflow() == BreakRegionOverflow));
-    if ((clipX && clipY) || isLastRegionWithRegionOverflowBreak)
+    bool isLastRegionWithRegionFragmentBreak = (isLastPortion && (style()->regionFragment() == BreakRegionFragment));
+    if ((clipX && clipY) || isLastRegionWithRegionFragmentBreak)
         return flowThreadPortionRect;
 
     LayoutRect flowThreadOverflow = m_flowThread->visualOverflowRect();
@@ -151,6 +151,14 @@ bool RenderRegion::isLastRegion() const
     return m_flowThread->lastRegion() == this;
 }
 
+static bool shouldPaintRegionContentsInPhase(PaintPhase phase)
+{
+    return phase == PaintPhaseBlockBackground
+        || phase == PaintPhaseChildBlockBackground
+        || phase == PaintPhaseSelection
+        || phase == PaintPhaseTextClip;
+}
+
 void RenderRegion::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     if (style()->visibility() != VISIBLE)
@@ -158,13 +166,17 @@ void RenderRegion::paintObject(PaintInfo& paintInfo, const LayoutPoint& paintOff
 
     RenderBlock::paintObject(paintInfo, paintOffset);
 
-    // Delegate painting of content in region to RenderFlowThread.
-    // RenderFlowThread is a self painting layer (being a positioned object) who is painting its children, the collected objects.
-    // Since we do not want to paint the flow thread content multiple times (for each painting phase of the region object),
-    // we allow the flow thread painting only for the selection and the foreground phase.
-    if (!isValid() || (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection))
+    if (!isValid())
         return;
 
+    // We do not want to paint a region's contents multiple times (for each paint phase of the region object).
+    // Thus, we only paint the region's contents in certain phases.
+    if (!shouldPaintRegionContentsInPhase(paintInfo.phase))
+        return;
+
+    // Delegate the painting of a region's contents to RenderFlowThread.
+    // RenderFlowThread is a self painting layer because it's a positioned object.
+    // RenderFlowThread paints its children, the collected objects.
     setRegionObjectsRegionStyle();
     m_flowThread->paintFlowThreadPortionInRegion(paintInfo, this, flowThreadPortionRect(), flowThreadPortionOverflowRect(), LayoutPoint(paintOffset.x() + borderLeft() + paddingLeft(), paintOffset.y() + borderTop() + paddingTop()));
     restoreRegionObjectsOriginalStyle();
@@ -663,8 +675,12 @@ void RenderRegion::updateLogicalHeight()
 
     LayoutUnit newLogicalHeight = overrideLogicalContentHeight() + borderAndPaddingLogicalHeight();
     ASSERT(newLogicalHeight < LayoutUnit::max() / 2);
-    if (newLogicalHeight > logicalHeight())
+    if (newLogicalHeight > logicalHeight()) {
         setLogicalHeight(newLogicalHeight);
+        // Recalculate position of the render block after new logical height is set.
+        // (needed in absolute positioning case with bottom alignment for example)
+        RenderBlock::updateLogicalHeight();
+    }
 }
 
 } // namespace WebCore

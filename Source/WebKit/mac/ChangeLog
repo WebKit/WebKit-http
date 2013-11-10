@@ -1,3 +1,147 @@
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Build fix for Mac.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        (WebFrameNetworkingContext::create):
+        (WebFrameNetworkingContext::WebFrameNetworkingContext):
+
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Re-implement WebFrameNetworkingContext.
+        <rdar://problem/13174821>.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h: Added.
+        (WebFrameNetworkingContext::create):
+        (WebFrameNetworkingContext::WebFrameNetworkingContext):
+        (WebFrameNetworkingContext::userAgent):
+        * WebCoreSupport/WebFrameNetworkingContext.mm: Added.
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        (WebFrameNetworkingContext::needsSiteSpecificQuirks):
+        (WebFrameNetworkingContext::localFileContentSniffingEnabled):
+        (WebFrameNetworkingContext::scheduledRunLoopPairs):
+        (WebFrameNetworkingContext::sourceApplicationAuditData):
+        (WebFrameNetworkingContext::blockedError):
+        (WebFrameNetworkingContext::storageSession):
+
+2013-06-18  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/13174821> Remove files with an incorrect license.
+
+        Rubber-stamped by Maciej Stachowiak.
+
+        This will break the build, stay tuned for a fix coming soon.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h: Removed.
+        * WebCoreSupport/WebFrameNetworkingContext.mm: Removed.
+
+2013-06-17  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Remove Qt specific QTKIT flagged code.
+        https://bugs.webkit.org/show_bug.cgi?id=117635
+
+        Reviewed by Simon Hausmann.
+
+        Due to disabling QTKIT for Qt in r151546, the
+        code the flags that are not taken into account
+        anymore and the code that has been rendered
+        unreachable by this are removed.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2013-06-17  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Unreviewed, rolling out r151632.
+        http://trac.webkit.org/changeset/151632
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Debug build error ASSERT(WTF_USE_GRAMMAR_CHECKING) for non MAC
+        platforms
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (fixMenusReceivedFromOldClients):
+
+2013-06-14  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Context menu grammar checking items are available when GRAMMAR_CHECKING macro is off
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Reviewed by Anders Carlsson.
+
+        Add GRAMMAR_CHECKING guard to the context menu grammar items.
+
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (fixMenusReceivedFromOldClients):
+
+2013-06-13  Jer Noble  <jer.noble@apple.com>
+
+        Add support for AVFoundation-backed HTMLMediaElements in the WebVideoFullScreenController.
+        https://bugs.webkit.org/show_bug.cgi?id=117597
+
+        Reviewed by Eric Carlson.
+
+        Allow AVFoundation to be enabled even when the FullScreen API is disabled.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): 
+
+2013-06-12  Anders Carlsson  <andersca@apple.com>
+
+        Remove the notion of inactive plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=117570
+        <rdar://problem/13484213>
+
+        Reviewed by Tim Horton.
+
+        Remove code that deals with inactive plug-ins.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::shouldUnavailablePluginMessageBeButton):
+        (WebChromeClient::unavailablePluginButtonClicked):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::createPlugin):
+
+2013-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove memoryInfoEnabled, quantizedMemoryInfoEnabled settings
+        https://bugs.webkit.org/show_bug.cgi?id=117512
+
+        Reviewed by Darin Adler.
+
+        * WebKit.order: Remove the memoryInfoEnabled entry.
+        * WebView/WebPreferenceKeysPrivate.h: Remove WebKitMemoryInfoEnabledPreferenceKey.
+        * WebView/WebPreferences.mm: Remove memoryInfoEnabled, setMemoryInfoEnabled methods.
+        (+[WebPreferences initialize]): Don't set the default value for the WebKitMemoryInfoEnabledPreferenceKey, the preference is being removed.
+        * WebView/WebPreferencesPrivate.h: Remove memoryInfoEnabled, setMemoryInfoEnabled method declarations.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Remove the call to Settings::setMemoryInfoEnabled, the setting is being removed.
+
+2013-06-06  Timothy Hatcher  <timothy@apple.com>
+
+        Update the framework bundle identifier for the Web Inspector.
+
+        Reviewed by Mark Rowe.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (useWebKitWebInspector):
+        (WebInspectorFrontendClient::localizedStringsURL):
+        (-[WebInspectorWindowController inspectorPagePath]):
+
+2013-06-05  Bear Travis  <betravis@adobe.com>
+
+        [CSS Exclusions][CSS Shapes] Split CSS Exclusions & Shapes compile & runtime flags
+        https://bugs.webkit.org/show_bug.cgi?id=117172
+
+        Reviewed by Alexandru Chiculita.
+
+        Adding the CSS_SHAPES compile flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2013-06-01  Andreas Kling  <akling@apple.com>
 
         Remove unnused WebDOMNodeOperationsInternal category.

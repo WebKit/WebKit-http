@@ -30,6 +30,7 @@
 #include "WebFrame.h"
 #include "WebFrameLoaderClient.h"
 #include <WebCore/Document.h>
+#include <WebCore/Element.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
@@ -96,6 +97,23 @@ String InjectedBundleHitTestResult::absoluteLinkURL() const
 String InjectedBundleHitTestResult::absoluteMediaURL() const
 {
     return m_hitTestResult.absoluteMediaURL().string();
+}
+
+bool InjectedBundleHitTestResult::mediaIsInFullscreen() const
+{
+    return m_hitTestResult.mediaIsInFullscreen();
+}
+
+BundleHitTestResultMediaType InjectedBundleHitTestResult::getMediaType() const
+{
+    WebCore::Node* node = m_hitTestResult.innerNonSharedNode();
+    if (!node->isElementNode())
+        return BundleHitTestResultMediaTypeNone;
+    
+    if (!toElement(node)->isMediaElement())
+        return BundleHitTestResultMediaTypeNone;
+    
+    return m_hitTestResult.mediaIsVideo() ? BundleHitTestResultMediaTypeVideo : BundleHitTestResultMediaTypeAudio;    
 }
 
 String InjectedBundleHitTestResult::linkLabel() const

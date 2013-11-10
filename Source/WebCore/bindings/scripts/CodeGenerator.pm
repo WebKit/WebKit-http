@@ -48,7 +48,8 @@ my $verbose = 0;
 my %numericTypeHash = ("int" => 1, "short" => 1, "long" => 1, "long long" => 1,
                        "unsigned int" => 1, "unsigned short" => 1,
                        "unsigned long" => 1, "unsigned long long" => 1,
-                       "float" => 1, "double" => 1);
+                       "float" => 1, "double" => 1, "byte" => 1,
+                       "octet" => 1);
 
 my %primitiveTypeHash = ( "boolean" => 1, "void" => 1, "Date" => 1);
 
@@ -332,9 +333,7 @@ sub SkipIncludeHeader
     my $object = shift;
     my $type = shift;
 
-    return 1 if $primitiveTypeHash{$type};
-    return 1 if $numericTypeHash{$type};
-    return 1 if $type eq "String";
+    return 1 if $object->IsPrimitiveType($type);
 
     # Special case: SVGPoint.h / SVGNumber.h do not exist.
     return 1 if $type eq "SVGPoint" or $type eq "SVGNumber";
@@ -348,6 +347,15 @@ sub IsConstructorTemplate
     my $template = shift;
 
     return $interface->extendedAttributes->{"ConstructorTemplate"} && $interface->extendedAttributes->{"ConstructorTemplate"} eq $template;
+}
+
+sub IsNumericType
+{
+    my $object = shift;
+    my $type = shift;
+
+    return 1 if $numericTypeHash{$type};
+    return 0;
 }
 
 sub IsPrimitiveType

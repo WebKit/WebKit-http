@@ -72,7 +72,7 @@ enum EFragmentType { EmptyFragment, SingleTextNodeFragment, TreeFragment };
 class ReplacementFragment {
     WTF_MAKE_NONCOPYABLE(ReplacementFragment);
 public:
-    ReplacementFragment(Document*, DocumentFragment*, bool matchStyle, const VisibleSelection&);
+    ReplacementFragment(Document*, DocumentFragment*, const VisibleSelection&);
 
     Node* firstChild() const;
     Node* lastChild() const;
@@ -139,7 +139,7 @@ static Position positionAvoidingPrecedingNodes(Position pos)
     return pos;
 }
 
-ReplacementFragment::ReplacementFragment(Document* document, DocumentFragment* fragment, bool, const VisibleSelection& selection)
+ReplacementFragment::ReplacementFragment(Document* document, DocumentFragment* fragment, const VisibleSelection& selection)
     : m_document(document),
       m_fragment(fragment),
       m_hasInterchangeNewlineAtStart(false), 
@@ -676,10 +676,9 @@ void ReplaceSelectionCommand::removeUnrenderedTextNodesAtEnds(InsertedNodes& ins
         removeNode(lastLeafInserted);
     }
 
-    // We don't have to make sure that firstNodeInserted isn't inside a select or script element, because
-    // it is a top level node in the fragment and the user can't insert into those elements.
+    // We don't have to make sure that firstNodeInserted isn't inside a select or script element
+    // because it is a top level node in the fragment and the user can't insert into those elements.
     Node* firstNodeInserted = insertedNodes.firstNodeInserted();
-    lastLeafInserted = insertedNodes.lastLeafInserted();
     if (firstNodeInserted && firstNodeInserted->isTextNode() && !nodeHasVisibleRenderText(toText(firstNodeInserted))) {
         insertedNodes.willRemoveNode(firstNodeInserted);
         removeNode(firstNodeInserted);
@@ -892,7 +891,7 @@ void ReplaceSelectionCommand::doApply()
     if (!selection.rootEditableElement())
         return;
 
-    ReplacementFragment fragment(document(), m_documentFragment.get(), m_matchStyle, selection);
+    ReplacementFragment fragment(document(), m_documentFragment.get(), selection);
     if (performTrivialReplace(fragment))
         return;
     

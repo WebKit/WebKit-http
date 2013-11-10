@@ -33,7 +33,6 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClientBlackBerry.h"
-#include "ContextMenuClientBlackBerry.h"
 #include "CookieManager.h"
 #include "CredentialManager.h"
 #include "CredentialStorage.h"
@@ -139,9 +138,6 @@
 #endif
 #include "VisiblePosition.h"
 #include "WebCookieJar.h"
-#if ENABLE(WEBDOM)
-#include "WebDOMDocument.h"
-#endif
 #include "WebKitThreadViewportAccessor.h"
 #include "WebKitVersion.h"
 #include "WebOverlay.h"
@@ -523,10 +519,6 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
     m_webSettings->setUserAgentString(defaultUserAgent());
 
     ChromeClientBlackBerry* chromeClient = new ChromeClientBlackBerry(this);
-#if ENABLE(CONTEXT_MENUS)
-    ContextMenuClientBlackBerry* contextMenuClient = 0;
-    contextMenuClient = new ContextMenuClientBlackBerry();
-#endif
     EditorClientBlackBerry* editorClient = new EditorClientBlackBerry(this);
     DragClientBlackBerry* dragClient = 0;
 #if ENABLE(DRAG_SUPPORT)
@@ -540,9 +532,6 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
 
     Page::PageClients pageClients;
     pageClients.chromeClient = chromeClient;
-#if ENABLE(CONTEXT_MENUS)
-    pageClients.contextMenuClient = contextMenuClient;
-#endif
     pageClients.editorClient = editorClient;
     pageClients.dragClient = dragClient;
     pageClients.inspectorClient = m_inspectorClient;
@@ -643,10 +632,6 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     m_page->windowScreenDidChange((PlatformDisplayID)0);
-#endif
-
-#if ENABLE(WEB_TIMING)
-    m_page->settings()->setMemoryInfoEnabled(true);
 #endif
 
 #if ENABLE(FILE_SYSTEM)
@@ -2587,6 +2572,8 @@ PassRefPtr<Node> WebPagePrivate::contextNode(TargetDetectionStrategy strategy)
 
     if (strategy == RectBased) {
         FatFingersResult result = FatFingers(this, lastFatFingersResult.adjustedPosition(), FatFingers::Text).findBestPoint();
+        // Cache text result for later use.
+        m_touchEventHandler->cacheTextResult(result);
         return result.node(FatFingersResult::ShadowContentNotAllowed);
     }
     if (strategy == FocusBased)
@@ -4873,73 +4860,6 @@ void WebPage::addVisitedLink(const unsigned short* url, unsigned length)
     ASSERT(d->m_page);
     d->m_page->group().addVisitedLink(url, length);
 }
-
-#if ENABLE(WEBDOM)
-WebDOMDocument WebPage::document() const
-{
-    if (!d->m_mainFrame)
-        return WebDOMDocument();
-    return WebDOMDocument(d->m_mainFrame->document());
-}
-
-WebDOMNode WebPage::nodeAtDocumentPoint(const Platform::IntPoint& documentPoint)
-{
-    HitTestResult result = d->m_mainFrame->eventHandler()->hitTestResultAtPoint(WebCore::IntPoint(documentPoint));
-    Node* node = result.innerNonSharedNode();
-    return WebDOMNode(node);
-}
-
-bool WebPage::getNodeRect(const WebDOMNode& node, Platform::IntRect& result)
-{
-    Node* nodeImpl = node.impl();
-    if (nodeImpl && nodeImpl->renderer()) {
-        result = nodeImpl->getRect();
-        return true;
-    }
-
-    return false;
-}
-
-bool WebPage::setNodeFocus(const WebDOMNode& node, bool on)
-{
-    Node* nodeImpl = node.impl();
-
-    if (nodeImpl && nodeImpl->isFocusable()) {
-        Document* doc = nodeImpl->document();
-        if (Page* page = doc->page()) {
-            // Modify if focusing on node or turning off focused node.
-            if (on) {
-                page->focusController()->setFocusedElement(toElement(nodeImpl), doc->frame());
-                if (nodeImpl->isElementNode())
-                    toElement(nodeImpl)->updateFocusAppearance(true);
-                d->m_inputHandler->didNodeOpenPopup(nodeImpl);
-            } else if (doc->focusedElement() == nodeImpl) // && !on
-                page->focusController()->setFocusedElement(0, doc->frame());
-
-            return true;
-        }
-    }
-    return false;
-}
-
-bool WebPage::setNodeHovered(const WebDOMNode& node, bool on)
-{
-    if (Node* nodeImpl = node.impl()) {
-        nodeImpl->setHovered(on);
-        return true;
-    }
-    return false;
-}
-
-bool WebPage::nodeHasHover(const WebDOMNode& node)
-{
-    if (Node* nodeImpl = node.impl()) {
-        if (RenderStyle* style = nodeImpl->renderStyle())
-            return style->affectedByHoverRules();
-    }
-    return false;
-}
-#endif
 
 void WebPage::initPopupWebView(BlackBerry::WebKit::WebPage* webPage)
 {

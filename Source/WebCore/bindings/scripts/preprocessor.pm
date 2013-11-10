@@ -51,6 +51,8 @@ sub applyPreprocessor
             $preprocessor = "/usr/sfw/bin/gcc";
         } elsif (($Config::Config{'osname'}) =~ /haiku/i) {
             $preprocessor = "/bin/env gcc";
+        } elsif (-x "/usr/bin/clang") {
+            $preprocessor = "/usr/bin/clang";
         } else {
             $preprocessor = "/usr/bin/gcc";
         }

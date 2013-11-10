@@ -31,22 +31,22 @@ namespace WebCore {
 class GraphicsContext;
 class IntPoint;
 
-class UpdateAtlasClient {
-public:
-    virtual bool createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface>) = 0;
-    virtual void removeUpdateAtlas(uint32_t atlasID) = 0;
-};
-
 class UpdateAtlas {
     WTF_MAKE_NONCOPYABLE(UpdateAtlas);
 public:
-    UpdateAtlas(UpdateAtlasClient*, int dimension, CoordinatedSurface::Flags);
+    class Client {
+    public:
+        virtual void createUpdateAtlas(uint32_t /* id */, PassRefPtr<CoordinatedSurface>) = 0;
+        virtual void removeUpdateAtlas(uint32_t /* id */) = 0;
+    };
+
+    UpdateAtlas(Client*, int dimension, CoordinatedSurface::Flags);
     ~UpdateAtlas();
 
     inline IntSize size() const { return m_surface->size(); }
 
-    // Returns a null pointer of there is no available buffer.
-    PassOwnPtr<GraphicsContext> beginPaintingOnAvailableBuffer(uint32_t& atlasID, const IntSize&, IntPoint& offset);
+    // Returns false if there is no available buffer.
+    bool paintOnAvailableBuffer(const IntSize&, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client*);
     void didSwapBuffers();
     bool supportsAlpha() const { return m_surface->supportsAlpha(); }
 
@@ -66,7 +66,7 @@ private:
     void buildLayoutIfNeeded();
 
 private:
-    UpdateAtlasClient* m_client;
+    Client* m_client;
     OwnPtr<GeneralAreaAllocator> m_areaAllocator;
     RefPtr<CoordinatedSurface> m_surface;
     double m_inactivityInSeconds;

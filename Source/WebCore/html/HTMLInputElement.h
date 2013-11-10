@@ -188,7 +188,7 @@ public:
 
     virtual bool rendererIsNeeded(const NodeRenderingContext&);
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
-    virtual void detach();
+    virtual void detach(const AttachContext& = AttachContext()) OVERRIDE;
 
     // FIXME: For isActivatedSubmit and setActivatedSubmit, we should use the NVI-idiom here by making
     // it private virtual in all classes and expose a public method in HTMLFormControlElement to call
@@ -328,7 +328,7 @@ private:
     virtual bool isEnumeratable() const;
     virtual bool supportLabels() const OVERRIDE;
     virtual void updateFocusAppearance(bool restorePreviousSelection);
-    virtual bool shouldUseInputMethod();
+    virtual bool shouldUseInputMethod() OVERRIDE FINAL;
 
     virtual bool isTextFormControl() const { return isTextField(); }
 
@@ -351,7 +351,7 @@ private:
 
     virtual void copyNonAttributePropertiesFromElement(const Element&);
 
-    virtual void attach();
+    virtual void attach(const AttachContext& = AttachContext()) OVERRIDE;
 
     virtual bool appendFormData(FormDataList&, bool);
 

@@ -62,7 +62,9 @@
 #import "WebEventFactory.h"
 #import "WebFullScreenManagerProxy.h"
 #import "WebPage.h"
+#import "WebPageGroup.h"
 #import "WebPageProxy.h"
+#import "WebPreferences.h"
 #import "WebProcessProxy.h"
 #import "WebSystemInterface.h"
 #import <QuartzCore/QuartzCore.h>
@@ -215,6 +217,9 @@ struct WKViewInterpretKeyEventsParameters {
     BOOL _shouldDeferViewInWindowChanges;
 
     BOOL _viewInWindowChangeWasDeferred;
+
+    BOOL _needsViewFrameInWindowCoordinates;
+    BOOL _didScheduleWindowAndViewFrameUpdate;
 
     // Whether the containing window of the WKView has a valid backing store.
     // The window server invalidates the backing store whenever the window is resized or minimized.
@@ -455,14 +460,31 @@ struct WKViewInterpretKeyEventsParameters {
 
 - (void)_updateWindowAndViewFrames
 {
-    NSRect viewFrameInWindowCoordinates = [self convertRect:[self frame] toView:nil];
-    NSPoint accessibilityPosition = NSMakePoint(0, 0);
-    if (WebCore::AXObjectCache::accessibilityEnabled())
-        accessibilityPosition = [[self accessibilityAttributeValue:NSAccessibilityPositionAttribute] pointValue];
-    
-    _data->_page->windowAndViewFramesChanged(viewFrameInWindowCoordinates, accessibilityPosition);
     if (_data->_clipsToVisibleRect)
         [self _updateViewExposedRect];
+
+    if (_data->_didScheduleWindowAndViewFrameUpdate)
+        return;
+
+    _data->_didScheduleWindowAndViewFrameUpdate = YES;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        _data->_didScheduleWindowAndViewFrameUpdate = NO;
+
+        if (!_data->_needsViewFrameInWindowCoordinates && !WebCore::AXObjectCache::accessibilityEnabled())
+            return;
+
+        NSRect viewFrameInWindowCoordinates = NSZeroRect;
+        NSPoint accessibilityPosition = NSZeroPoint;
+
+        if (_data->_needsViewFrameInWindowCoordinates)
+            viewFrameInWindowCoordinates = [self convertRect:self.frame toView:nil];
+
+        if (WebCore::AXObjectCache::accessibilityEnabled())
+            accessibilityPosition = [[self accessibilityAttributeValue:NSAccessibilityPositionAttribute] pointValue];
+
+        _data->_page->windowAndViewFramesChanged(viewFrameInWindowCoordinates, accessibilityPosition);
+    });
 }
 
 - (void)renewGState
@@ -2095,7 +2117,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     if (!_data->_windowOcclusionDetectionEnabled)
         return;
 
-    [self _setIsWindowOccluded:[self.window occlusionState] != NSWindowOcclusionStateVisible];
+    [self _setIsWindowOccluded:([self.window occlusionState] & NSWindowOcclusionStateVisible) != NSWindowOcclusionStateVisible];
 }
 #endif
 
@@ -2411,6 +2433,18 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
 - (void)_didRelaunchProcess
 {
     [self _accessibilityRegisterUIProcessTokens];
+}
+
+- (void)_preferencesDidChange
+{
+    BOOL needsViewFrameInWindowCoordinates = _data->_page->pageGroup()->preferences()->pluginsEnabled();
+
+    if (!!needsViewFrameInWindowCoordinates == !!_data->_needsViewFrameInWindowCoordinates)
+        return;
+
+    _data->_needsViewFrameInWindowCoordinates = needsViewFrameInWindowCoordinates;
+    if ([self window])
+        [self _updateWindowAndViewFrames];
 }
 
 - (void)_setCursor:(NSCursor *)cursor
@@ -3001,7 +3035,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     // so that autolayout will know to provide space for us.
 
     NSSize intrinsicContentSizeAcknowledgingFlexibleWidth = intrinsicContentSize;
-    if (intrinsicContentSize.width < _data->_page->minimumLayoutWidth())
+    if (intrinsicContentSize.width < _data->_page->minimumLayoutSize().width())
         intrinsicContentSizeAcknowledgingFlexibleWidth.width = NSViewNoInstrinsicMetric;
 
     _data->_intrinsicContentSize = intrinsicContentSizeAcknowledgingFlexibleWidth;
@@ -3116,6 +3150,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     _data->_windowOcclusionDetectionEnabled = YES;
 #endif
 
+    _data->_needsViewFrameInWindowCoordinates = _data->_page->pageGroup()->preferences()->pluginsEnabled();
     _data->_frameOrigin = NSZeroPoint;
     _data->_contentAnchor = WKContentAnchorTopLeft;
     
@@ -3242,11 +3277,11 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     static BOOL loggedDeprecationWarning = NO;
 
     if (!loggedDeprecationWarning) {
-        NSLog(@"Please use minimumWidthForAutoLayout instead of minimumLayoutWidth.");
+        NSLog(@"Please use minimumSizeForAutoLayout instead of minimumLayoutWidth.");
         loggedDeprecationWarning = YES;
     }
 
-    return _data->_page->minimumLayoutWidth();
+    return self.minimumSizeForAutoLayout.width;
 }
 
 - (void)setMinimumLayoutWidth:(CGFloat)minimumLayoutWidth
@@ -3254,7 +3289,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
     static BOOL loggedDeprecationWarning = NO;
 
     if (!loggedDeprecationWarning) {
-        NSLog(@"Please use minimumWidthForAutoLayout instead of minimumLayoutWidth.");
+        NSLog(@"Please use setMinimumSizeForAutoLayout: instead of setMinimumLayoutWidth:.");
         loggedDeprecationWarning = YES;
     }
 
@@ -3263,14 +3298,38 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
 - (CGFloat)minimumWidthForAutoLayout
 {
-    return _data->_page->minimumLayoutWidth();
+    static BOOL loggedDeprecationWarning = NO;
+
+    if (!loggedDeprecationWarning) {
+        NSLog(@"Please use minimumSizeForAutoLayout instead of minimumWidthForAutoLayout.");
+        loggedDeprecationWarning = YES;
+    }
+
+    return self.minimumSizeForAutoLayout.width;
 }
 
 - (void)setMinimumWidthForAutoLayout:(CGFloat)minimumLayoutWidth
 {
-    BOOL expandsToFit = minimumLayoutWidth > 0;
+    static BOOL loggedDeprecationWarning = NO;
 
-    _data->_page->setMinimumLayoutWidth(minimumLayoutWidth);
+    if (!loggedDeprecationWarning) {
+        NSLog(@"Please use setMinimumSizeForAutoLayout: instead of setMinimumWidthForAutoLayout:");
+        loggedDeprecationWarning = YES;
+    }
+
+    self.minimumSizeForAutoLayout = NSMakeSize(minimumLayoutWidth, self.minimumSizeForAutoLayout.height);
+}
+
+- (NSSize)minimumSizeForAutoLayout
+{
+    return _data->_page->minimumLayoutSize();
+}
+
+- (void)setMinimumSizeForAutoLayout:(NSSize)minimumSizeForAutoLayout
+{
+    BOOL expandsToFit = minimumSizeForAutoLayout.width > 0;
+
+    _data->_page->setMinimumLayoutSize(IntSize(minimumSizeForAutoLayout.width, minimumSizeForAutoLayout.height));
 
     [self setShouldClipToVisibleRect:expandsToFit];
 }
@@ -3380,7 +3439,7 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
         // When enabling window occlusion detection, update the view's current occluded state
         // immediately, as the notification only fires when it changes.
         if (self.window)
-            [self _setIsWindowOccluded:[self.window occlusionState] != NSWindowOcclusionStateVisible];
+            [self _setIsWindowOccluded:([self.window occlusionState] & NSWindowOcclusionStateVisible) != NSWindowOcclusionStateVisible];
     } else {
         // When disabling window occlusion detection, force the view to think it is not occluded,
         // as it may already be occluded at the time of calling.

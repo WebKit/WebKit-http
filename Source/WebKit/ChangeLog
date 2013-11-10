@@ -1,3 +1,134 @@
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Replace tools32 folder with tools and update WebKit Windows solution accordingly.
+        <rdar://problem/14118143>.
+
+        Rubberstamped by Brent Fulgham.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj:
+        * WebKit.vcxproj/Interfaces/InterfacesDebug.props:
+        * WebKit.vcxproj/Interfaces/InterfacesDebugWinCairo.props:
+        * WebKit.vcxproj/Interfaces/InterfacesPreBuild.cmd:
+        * WebKit.vcxproj/Interfaces/InterfacesProduction.props:
+        * WebKit.vcxproj/Interfaces/InterfacesRelease.props:
+        * WebKit.vcxproj/Interfaces/InterfacesReleaseWinCairo.props:
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj:
+        * WebKit.vcxproj/WebKit/WebKitDebug.props:
+        * WebKit.vcxproj/WebKit/WebKitDebugWinCairo.props:
+        * WebKit.vcxproj/WebKit/WebKitPreBuild.cmd:
+        * WebKit.vcxproj/WebKit/WebKitProduction.props:
+        * WebKit.vcxproj/WebKit/WebKitRelease.props:
+        * WebKit.vcxproj/WebKit/WebKitReleaseWinCairo.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGenerator.vcxproj:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorDebug.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorDebugWinCairo.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorProduction.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorRelease.props:
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorReleaseWinCairo.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebug.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDDebugWinCairo.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDProduction.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDRelease.props:
+        * WebKit.vcxproj/WebKitGUID/WebKitGUIDReleaseWinCairo.props:
+
+2013-06-17  Roger Fong  <roger_fong@apple.com>
+
+        Modify Windows makefiles to copy some bin output into Program Files.
+        https://bugs.webkit.org/show_bug.cgi?id=117714.
+        <rdar://problem/14179054>
+
+        Reviewed by Brent Fulgham.
+
+        * WebKit.vcxproj/WebKit.make:
+
+2013-06-17  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Remove Qt specific QTKIT flagged code.
+        https://bugs.webkit.org/show_bug.cgi?id=117635
+
+        Reviewed by Simon Hausmann.
+
+        Due to disabling QTKIT for Qt in r151546, the
+        code the flags that are not taken into account
+        anymore and the code that has been rendered
+        unreachable by this are removed.
+
+        * WebKit1.pro:
+
+2013-06-14  Alberto Garcia  <agarcia@igalia.com>
+
+        [BlackBerry] Remove implementation of ContextMenu classes
+        https://bugs.webkit.org/show_bug.cgi?id=114860
+
+        Reviewed by Rob Buis.
+
+        This code is not being used so we can safely remove it.
+
+        * PlatformBlackBerry.cmake:
+
+2013-06-13  Christophe Dumez  <ch.dumez@sisa.samsung.com>
+
+        Unreviewed build fix after rr151563.
+
+        Export needed symbols for Windows.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in:
+
+2013-06-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Revise WebKit project to show generated export definition file.
+        https://bugs.webkit.org/show_bug.cgi?id=109629
+
+        Reviewed by Mark Rowe.
+
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj: Add generated file.
+        * WebKit.vcxproj/WebKit/WebKit.vcxproj.filters: Ditto
+
+2013-06-13  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build correction.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Add
+        missing symbols needed by TestWebKitAPI on WinCairo build.
+
+2013-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Windows] Implement Accessibility2 APIs in Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=117561
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj: Add new IAccessible2 IDL files.
+        * WebKit.vcxproj/Interfaces/Interfaces.vcxproj.filters: Ditto.
+        * WebKit.vcxproj/Interfaces/InterfacesCommon.props: Reference new Accessible2 folder.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj: Build IAccessible2 symbols.
+        * WebKit.vcxproj/WebKitGUID/WebKitGUID.vcxproj.filters: Ditto.
+
+2013-06-10  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes][CSS Exclusions] Split CSS Exclusions and CSS Shapes code
+        https://bugs.webkit.org/show_bug.cgi?id=117162
+
+        Reviewed by Alexandru Chiculita.
+
+        Adding the WebCore/rendering/shapes directory to the include list.
+
+        * CMakeLists.txt:
+
+2013-06-06  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Build configuration fix. WebKitExportGenerator's include path should fall back to 
+        $(WebKit_Libraries)\include\WebCore if $(ConfigurationBuildDir)\include\WebCore doesn't exist.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExportGeneratorCommon.props:
+
+2013-06-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Attempting a build fix for the AppleWin port after r151199.
+
+        * WebKit.vcxproj/WebKitExportGenerator/WebKitExports.def.in: Export the required symbol.
+
 2013-06-03  Roger Fong  <roger_fong@apple.com>
 
         Unreviewed. Some AppleWin VS2010 house cleaning.

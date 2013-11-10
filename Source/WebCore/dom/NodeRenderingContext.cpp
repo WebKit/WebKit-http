@@ -68,6 +68,14 @@ NodeRenderingContext::NodeRenderingContext(Node* node, RenderStyle* style)
 {
 }
 
+NodeRenderingContext::NodeRenderingContext(Node* node, const Node::AttachContext& context)
+    : m_node(node)
+    , m_style(context.resolvedStyle)
+    , m_parentFlowRenderer(0)
+{
+    m_renderingParent = NodeRenderingTraversal::parent(node, &m_parentDetails);
+}
+
 NodeRenderingContext::~NodeRenderingContext()
 {
 }
@@ -186,7 +194,8 @@ bool NodeRenderingContext::shouldCreateRenderer()
     RenderObject* parentRenderer = this->parentRenderer();
     if (!parentRenderer)
         return false;
-    if (!parentRenderer->canHaveChildren()) {
+    if (!parentRenderer->canHaveChildren()
+        && !(m_node->isPseudoElement() && parentRenderer->isRenderRegion())) {
         if (parentRenderer->canDOMChildrenHaveRenderParent()) {
             // In a region, only the children that need to be in a flow thread should have a renderer.
             bool shouldBeInNamedFlow = m_node->isElementNode() && toElement(m_node)->moveToFlowThreadIsNeeded(m_style);

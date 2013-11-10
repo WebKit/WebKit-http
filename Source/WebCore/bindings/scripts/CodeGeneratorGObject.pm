@@ -45,6 +45,13 @@ my %baseTypeHash = ("Object" => 1, "Node" => 1, "NodeList" => 1, "NamedNodeMap" 
                     "NodeIterator" => 1, "TreeWalker" => 1, "AbstractView" => 1, "Blob" => 1, "DOMTokenList" => 1,
                     "HTMLCollection" => 1);
 
+# List of function parameters that are allowed to be NULL
+my $canBeNullParams = {
+    'webkit_dom_document_evaluate' => ['inResult', 'resolver'],
+    'webkit_dom_node_insert_before' => ['refChild'],
+    'webkit_dom_dom_window_get_computed_style' => ['pseudoElement']
+};
+
 # Default constructor
 sub new {
     my $object = shift;
@@ -321,6 +328,8 @@ sub GetGValueTypeName {
                  "char", "char",
                  "long", "long",
                  "long long", "int64",
+                 "byte", "int8",
+                 "octet", "uint8",
                  "short", "int",
                  "uchar", "uchar",
                  "unsigned", "uint",
@@ -347,6 +356,8 @@ sub GetGlibTypeName {
                  "char", "gchar",
                  "long", "glong",
                  "long long", "gint64",
+                 "byte", "gint8",
+                 "octet", "guint8",
                  "short", "gshort",
                  "uchar", "guchar",
                  "unsigned", "guint",
@@ -389,8 +400,9 @@ sub GetWriteableProperties {
         my $gtype = GetGValueTypeName($property->signature->type);
         my $hasGtypeSignature = ($gtype eq "boolean" || $gtype eq "float" || $gtype eq "double" ||
                                  $gtype eq "uint64" || $gtype eq "ulong" || $gtype eq "long" || 
-                                 $gtype eq "uint" || $gtype eq "ushort" || $gtype eq "uchar" ||
-                                 $gtype eq "char" || $gtype eq "string");
+                                 $gtype eq "uint" || $gtype eq "ushort" || $gtype eq "int8" ||
+                                 $gtype eq "uint8" || $gtype eq "uchar" || $gtype eq "char" ||
+                                 $gtype eq "string");
         # FIXME: We are not generating setters for 'Replaceable'
         # attributes now, but we should somehow.
         my $replaceable = $property->signature->extendedAttributes->{"Replaceable"};
@@ -446,6 +458,8 @@ sub GenerateProperty {
     my $camelPropName = $attribute->signature->name;
     my $setPropNameFunction = $codeGenerator->WK_ucfirst($camelPropName);
     my $getPropNameFunction = $codeGenerator->WK_lcfirst($camelPropName);
+    my $hasGetterException = $attribute->signature->extendedAttributes->{"GetterRaisesException"};
+    my $hasSetterException = $attribute->signature->extendedAttributes->{"SetterRaisesException"};
 
     my $propName = decamelize($camelPropName);
     my $propNameCaps = uc($propName);
@@ -497,14 +511,14 @@ sub GenerateProperty {
         $setterFunctionName = "coreSelf->$setterFunctionName";
     }
     push(@getterArguments, "isNull") if $attribute->signature->isNullable;
-    push(@getterArguments, "ec") if @{$attribute->getterExceptions};
-    push(@setterArguments, "ec") if @{$attribute->setterExceptions};
+    push(@getterArguments, "ec") if $hasGetterException;
+    push(@setterArguments, "ec") if $hasSetterException;
 
     if (grep {$_ eq $attribute} @writeableProperties) {
         push(@txtSetProps, "    case ${propEnum}: {\n");
         push(@txtSetProps, "#if ${parentConditionalString}\n") if $parentConditionalString;
         push(@txtSetProps, "#if ${conditionalString}\n") if $conditionalString;
-        push(@txtSetProps, "        WebCore::ExceptionCode ec = 0;\n") if @{$attribute->setterExceptions};
+        push(@txtSetProps, "        WebCore::ExceptionCode ec = 0;\n") if $hasSetterException;
         push(@txtSetProps, "        ${setterFunctionName}(" . join(", ", @setterArguments) . ");\n");
         push(@txtSetProps, "#else\n") if $conditionalString;
         push(@txtSetProps, @conditionalWarn) if scalar(@conditionalWarn);
@@ -519,7 +533,7 @@ sub GenerateProperty {
     push(@txtGetProps, "#if ${parentConditionalString}\n") if $parentConditionalString;
     push(@txtGetProps, "#if ${conditionalString}\n") if $conditionalString;
     push(@txtGetProps, "        bool isNull = false;\n") if $attribute->signature->isNullable;
-    push(@txtGetProps, "        WebCore::ExceptionCode ec = 0;\n") if @{$attribute->getterExceptions};
+    push(@txtGetProps, "        WebCore::ExceptionCode ec = 0;\n") if $hasGetterException;
 
     # FIXME: Should we return a default value when isNull == true?
 
@@ -559,6 +573,7 @@ sub GenerateProperty {
     push(@txtGetProps, "        break;\n    }\n");
 
     my %param_spec_options = ("int", "G_MININT, /* min */\nG_MAXINT, /* max */\n0, /* default */",
+                              "int8", "G_MININT8, /* min */\nG_MAXINT8, /* max */\n0, /* default */",
                               "boolean", "FALSE, /* default */",
                               "float", "-G_MAXFLOAT, /* min */\nG_MAXFLOAT, /* max */\n0.0, /* default */",
                               "double", "-G_MAXDOUBLE, /* min */\nG_MAXDOUBLE, /* max */\n0.0, /* default */",
@@ -567,6 +582,7 @@ sub GenerateProperty {
                               "int64", "G_MININT64, /* min */\nG_MAXINT64, /* max */\n0, /* default */",
                               "ulong", "0, /* min */\nG_MAXULONG, /* max */\n0, /* default */",
                               "uint", "0, /* min */\nG_MAXUINT, /* max */\n0, /* default */",
+                              "uint8", "0, /* min */\nG_MAXUINT8, /* max */\n0, /* default */",
                               "ushort", "0, /* min */\nG_MAXUINT16, /* max */\n0, /* default */",
                               "uchar", "G_MININT8, /* min */\nG_MAXINT8, /* max */\n0, /* default */",
                               "char", "0, /* min */\nG_MAXUINT8, /* max */\n0, /* default */",
@@ -845,7 +861,7 @@ EOF
 }
 
 sub GetGReturnMacro {
-    my ($paramName, $paramIDLType, $returnType) = @_;
+    my ($paramName, $paramIDLType, $returnType, $functionName) = @_;
 
     my $condition;
     if ($paramIDLType eq "GError") {
@@ -853,7 +869,13 @@ sub GetGReturnMacro {
     } elsif (IsGDOMClassType($paramIDLType)) {
         my $paramTypeCaps = uc(FixUpDecamelizedName(decamelize($paramIDLType)));
         $condition = "WEBKIT_DOM_IS_${paramTypeCaps}($paramName)";
+        if (ParamCanBeNull($functionName, $paramName)) {
+            $condition = "!$paramName || $condition";
+        }
     } else {
+        if (ParamCanBeNull($functionName, $paramName)) {
+            return;
+        }
         $condition = "$paramName";
     }
 
@@ -866,6 +888,15 @@ sub GetGReturnMacro {
     }
 
     return $macro;
+}
+
+sub ParamCanBeNull {
+    my($functionName, $paramName) = @_;
+
+    if (defined($functionName)) {
+        return scalar(grep(/$paramName/, @{$canBeNullParams->{$functionName}}));
+    }
+    return 0;
 }
 
 sub GenerateFunction {
@@ -887,6 +918,7 @@ sub GenerateFunction {
     my $functionName = "webkit_dom_" . $decamelize . "_" . $prefix . decamelize($function->signature->name);
     my $returnType = GetGlibTypeName($functionSigType);
     my $returnValueIsGDOMType = IsGDOMClassType($functionSigType);
+    my $raisesException = $function->signature->extendedAttributes->{"RaisesException"};
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($function->signature);
     my $parentConditionalString = $codeGenerator->GenerateConditionalString($parentNode);
@@ -926,9 +958,7 @@ sub GenerateFunction {
         $implIncludes{"WebKitDOM${functionSigType}Private.h"} = 1;
     }
 
-    if (@{$function->raisesExceptions}) {
-        $functionSig .= ", GError** error";
-    }
+    $functionSig .= ", GError** error" if $raisesException;
 
     # Insert introspection annotations
     push(@hBody, "/**\n");
@@ -942,9 +972,7 @@ sub GenerateFunction {
         my $paramName = $param->name;
         push(@hBody, " * \@${paramName}: A #${paramType}\n");
     }
-    if(@{$function->raisesExceptions}) {
-        push(@hBody, " * \@error: #GError\n");
-    }
+    push(@hBody, " * \@error: #GError\n") if $raisesException;
     push(@hBody, " *\n");
     if (IsGDOMClassType($function->signature->type)) {
         push(@hBody, " * Returns: (transfer none):\n");
@@ -973,16 +1001,12 @@ sub GenerateFunction {
         my $paramTypeIsPrimitive = $codeGenerator->IsPrimitiveType($paramIDLType);
         my $paramIsGDOMType = IsGDOMClassType($paramIDLType);
         if (!$paramTypeIsPrimitive) {
-            # FIXME: Temporary hack for generating a proper implementation
-            #        of the webkit_dom_document_evaluate function (Bug-ID: 42115)
-            if (!(($functionName eq "webkit_dom_document_evaluate") && ($paramIDLType eq "XPathResult"))) {
-                $gReturnMacro = GetGReturnMacro($paramName, $paramIDLType, $returnType);
-                push(@cBody, $gReturnMacro);
-            }
+            $gReturnMacro = GetGReturnMacro($paramName, $paramIDLType, $returnType, $functionName);
+            push(@cBody, $gReturnMacro);
         }
     }
 
-    if (@{$function->raisesExceptions}) {
+    if ($raisesException) {
         $gReturnMacro = GetGReturnMacro("error", "GError", $returnType);
         push(@cBody, $gReturnMacro);
     }
@@ -1035,7 +1059,7 @@ sub GenerateFunction {
         push(@callImplParams, "isNull");
     }
 
-    if (@{$function->raisesExceptions}) {
+    if ($raisesException) {
         push(@cBody, "    WebCore::ExceptionCode ec = 0;\n");
         push(@callImplParams, "ec");
     }
@@ -1050,7 +1074,7 @@ sub GenerateFunction {
 EOF
         push(@cBody, $customNodeAppendChild);
     
-        if(@{$function->raisesExceptions}) {
+        if($raisesException) {
             my $exceptionHandling = << "EOF";
 
     WebCore::ExceptionCodeDescription ecdesc(ec);
@@ -1127,7 +1151,7 @@ EOF
         }
         push(@cBody, "    ${contentHead}");
         
-        if(@{$function->raisesExceptions}) {
+        if($raisesException) {
             my $exceptionHandling = << "EOF";
     if (ec) {
         WebCore::ExceptionCodeDescription ecdesc(ec);
@@ -1227,7 +1251,10 @@ sub GenerateFunctions {
         # "get_foo" which calls a DOM class method named foo().
         my $function = new domFunction();
         $function->signature($attribute->signature);
-        $function->raisesExceptions($attribute->getterExceptions);
+        $function->signature->extendedAttributes({%{$attribute->signature->extendedAttributes}});
+        if ($attribute->signature->extendedAttributes->{"GetterRaisesException"}) {
+            $function->signature->extendedAttributes->{"RaisesException"} = "VALUE_IS_MISSING";
+        }
         $object->GenerateFunction($interfaceName, $function, "get_", $interface);
 
         # FIXME: We are not generating setters for 'Replaceable'
@@ -1243,7 +1270,7 @@ sub GenerateFunctions {
         $function->signature(new domSignature());
         $function->signature->name($attribute->signature->name);
         $function->signature->type($attribute->signature->type);
-        $function->signature->extendedAttributes($attribute->signature->extendedAttributes);
+        $function->signature->extendedAttributes({%{$attribute->signature->extendedAttributes}});
         
         my $param = new domSignature();
         $param->name("value");
@@ -1253,7 +1280,11 @@ sub GenerateFunctions {
         my $arrayRef = $function->parameters;
         push(@$arrayRef, $param);
         
-        $function->raisesExceptions($attribute->setterExceptions);
+        if ($attribute->signature->extendedAttributes->{"SetterRaisesException"}) {
+            $function->signature->extendedAttributes->{"RaisesException"} = "VALUE_IS_MISSING";
+        } else {
+            delete $function->signature->extendedAttributes->{"RaisesException"};
+        }
         
         $object->GenerateFunction($interfaceName, $function, "set_", $interface);
     }
@@ -1351,9 +1382,7 @@ sub GenerateEndHeader {
 sub IsPolymorphic {
     my $type = shift;
 
-    # FIXME: should we use ObjCPolymorphic attribute? or is it specific to ObjC bindings?
-    return 1 if $type eq "Node" or $type eq "Event" or $type eq "HTMLCollection" or $type eq "StyleSheet" or $type eq "Blob";
-    return 0;
+    return scalar(grep {$_ eq $type} qw(Blob Event HTMLCollection Node StyleSheet));
 }
 
 sub GenerateEventTargetIface {

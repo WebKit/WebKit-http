@@ -1,3 +1,1183 @@
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Unreviewed. Fix a typo that may be causing some test failures.
+
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        (WebKit::WebFrameNetworkingContext::scheduledRunLoopPairs):
+
+2013-06-18  Anders Carlsson  <andersca@apple.com>
+
+        Make it possible to set a minimum height for auto-layout
+        https://bugs.webkit.org/show_bug.cgi?id=117758
+        <rdar://problem/12849080>
+
+        Reviewed by Tim Horton.
+
+        Change a bunch of minimumLayoutWidth declarations to minimumLayoutSize and add a new minimumLayoutSize property.
+        If minimumLayoutSize.height is greater than zero, use it to set the minimum layout size on the frame view.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode):
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPageCreationParameters.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _setIntrinsicContentSize:]):
+        (-[WKView minimumLayoutWidth]):
+        (-[WKView setMinimumLayoutWidth:]):
+        (-[WKView minimumWidthForAutoLayout]):
+        (-[WKView setMinimumWidthForAutoLayout:]):
+        (-[WKView minimumSizeForAutoLayout]):
+        (-[WKView setMinimumSizeForAutoLayout:]):
+        * UIProcess/API/mac/WKViewPrivate.h:
+        * UIProcess/DrawingAreaProxy.h:
+        (WebKit::DrawingAreaProxy::minimumLayoutSizeDidChange):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::creationParameters):
+        (WebKit::WebPageProxy::setMinimumLayoutSize):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::minimumLayoutSize):
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.h:
+        * UIProcess/mac/TiledCoreAnimationDrawingAreaProxy.mm:
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::TiledCoreAnimationDrawingAreaProxy):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::minimumLayoutSizeDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::didUpdateGeometry):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::intrinsicContentSizeDidChange):
+        (WebKit::TiledCoreAnimationDrawingAreaProxy::sendUpdateGeometry):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::transitionToCommittedForNewPage):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::setMinimumLayoutSize):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::minimumLayoutSize):
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        (WebKit::TiledCoreAnimationDrawingArea::mainFrameContentSizeChanged):
+        (WebKit::TiledCoreAnimationDrawingArea::updateGeometry):
+
+2013-06-18  Simon Cooper  <scooper@apple.com>
+
+        sandbox violation when Flash runs for the first time
+        https://bugs.webkit.org/show_bug.cgi?id=117753
+        <rdar://problem/14165466>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Allow flash to try and change the ownership of directories it has just created.
+
+        * Resources/PlugInSandboxProfiles/com.macromedia.Flash Player.plugin.sb:
+
+2013-06-18  Ruth Fong  <ruth_fong@apple.com>
+
+        Expose a getMediaType method in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=117667
+
+        Reviewed by Brady Eidson.
+
+        * GNUmakefile.list.am:
+        * Target.pri:
+        Updated to include the added header file InjectedBundleHitTestResultMediaType.h
+        
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toBundleHitTestResultMediaType):
+        (WebKit::toAPI):
+        Added methods to convert between BundleHitTestResultMediaType
+        and WKBundleHitTestResultMediaType.
+
+        * WebKit2.xcodeproj/project.pbxproj: Updated to include
+        InjectedBundleHitTestResultMediaType.h in the WebKit2 project.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp:
+        (WKBundleHitTestResultGetMediaType): Exposes the method getMediaType and
+        hooks into InjectedBundleHitTestResult::getMediaType.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.h:
+
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::getMediaType): Added to return 
+        what type, if any, a media element is.
+
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.h:
+
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResultMediaType.h: Added
+        to contain new BundleHitTestResultMediaType enums.
+
+2013-06-18  Roger Fong  <roger_fong@apple.com>
+
+        Re-implement WebFrameNetworkingContext.
+        <rdar://problem/13174821>.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.h: Added.
+        (WebKit::WebFrameNetworkingContext::create):
+        (WebKit::WebFrameNetworkingContext::WebFrameNetworkingContext):
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm: Added.
+        (WebKit::WebFrameNetworkingContext::setPrivateBrowsingStorageSessionIdentifierBase):
+        (WebKit::WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebKit::WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        (WebKit::WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        (WebKit::WebFrameNetworkingContext::needsSiteSpecificQuirks):
+        (WebKit::WebFrameNetworkingContext::localFileContentSniffingEnabled):
+        (WebKit::WebFrameNetworkingContext::scheduledRunLoopPairs):
+        (WebKit::WebFrameNetworkingContext::sourceApplicationAuditData):
+        (WebKit::WebFrameNetworkingContext::blockedError):
+        (WebKit::WebFrameNetworkingContext::storageSession):
+
+2013-06-18  Alexey Proskuryakov  <ap@apple.com>
+
+        <rdar://problem/13174821> Remove files with an incorrect license.
+
+        Rubber-stamped by Maciej Stachowiak.
+
+        This will break the build, stay tuned for a fix coming soon.
+
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.h: Removed.
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm: Removed.
+
+2013-06-17  Santosh Mahto  <santosh.ma@samsung.com>
+
+        Extra whitespace in blank line in PlatformPopupMenuData.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=117627
+
+        Reviewed by Brent Fulgham.
+
+        * Shared/PlatformPopupMenuData.cpp:
+        (WebKit::PlatformPopupMenuData::decode):
+        Removing extra space
+
+2013-06-17  Beth Dakin  <bdakin@apple.com>
+
+        PageBanners appear over HTML5 video when media element is in full screen mode
+        https://bugs.webkit.org/show_bug.cgi?id=117721
+        -and corresponding-
+        <rdar://problem/13686998>
+
+        Reviewed by Sam Weinig.
+
+        When an element enters fullscreen, hide the banners. Show them again when the 
+        element exits fullscreen.
+        * WebProcess/FullScreen/WebFullScreenManager.cpp:
+        (WebKit::WebFullScreenManager::willEnterFullScreen):
+        (WebKit::WebFullScreenManager::willExitFullScreen):
+
+        Handle hiding and showing by removing or re-creating a parent layer for m_layer.
+        * WebProcess/WebPage/PageBanner.cpp:
+        (WebKit::PageBanner::hide):
+        (WebKit::PageBanner::showIfHidden):
+        * WebProcess/WebPage/PageBanner.h:
+        * WebProcess/WebPage/mac/PageBannerMac.mm:
+        (WebKit::PageBanner::PageBanner):
+        (WebKit::PageBanner::hide):
+        (WebKit::PageBanner::showIfHidden):
+        (WebKit::PageBanner::mouseEvent):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::hidePageBanners):
+        (WebKit::WebPage::showPageBanners):
+        * WebProcess/WebPage/WebPage.h:
+
+2013-06-17  Ruth Fong  <ruth_fong@apple.com>
+
+        REGRESSION: Important controls are missing from <video> element UI, when compared to QuickTime
+        https://bugs.webkit.org/show_bug.cgi?id=20599
+
+        Add a "Download Video"/"Download Audio" context menu item to download media
+        elements.
+
+        Reviewed by Beth Dakin.
+
+        * Shared/API/c/WKContextMenuItemTypes.h: Updated to include
+        an enum type for the "Download Video/Audio" context menu item.
+
+        * Shared/API/c/WKSharedAPICast.h: Updated to associate
+        the enums in WebKit and WebCore that handle the "Download Video/Audio"
+        context menu item.
+
+        * UIProcess/API/efl/ewk_context_menu.cpp:
+        * UIProcess/API/efl/ewk_context_menu_item.cpp:
+        * UIProcess/API/efl/ewk_context_menu_item.h:
+        Updated to include new EWK enum type for "Download Video/Audio" context menu item.
+
+        * UIProcess/WebPageProxy.cpp: Updated to 
+        handle the "Download Video/Audio" context menu item mouse click
+        and download the media item in the UI process.
+
+2013-06-17  Ralph Thomas  <ralpht@gmail.com>
+
+        [CoordinatedGraphics][CSS Shaders] Use forwarding header for TextureMapperPlatformCompiledProgram.h
+        https://bugs.webkit.org/show_bug.cgi?id=117712
+
+        Reviewed by Noam Rosenthal.
+
+        * Shared/CoordinatedGraphics/WebCustomFilterProgramProxy.h:
+
+2013-06-17  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/13145014> Allow CoreIPC messages to transmit importance boosts
+
+        Transmitting the importance boost from the UI process to the web process is particularly
+        important when disabling process suppression on a web process, as it will minimize the
+        delays that can occur before the message instructing process suppression to be disabled
+        is processed by the web process.
+
+        We keep the importance boost alive for the duration of the CoreIPC message handler. We
+        achieve this by having an ImportanceAssertion object that owns the assertion, and whose
+        lifetime is tied to that of the MessageDecoder.
+
+        Reviewed by Anders Carlsson.
+
+        * Platform/CoreIPC/MessageDecoder.cpp:
+        (CoreIPC::MessageDecoder::setImportanceAssertion): Associate an importance assertion
+        with this message.
+        * Platform/CoreIPC/MessageDecoder.h:
+        * Platform/CoreIPC/mac/ConnectionMac.cpp:
+        (CoreIPC::Connection::open): Mark our receive port as allowing importance boosts to be received.
+        (CoreIPC::Connection::receiveSourceEventHandler):
+        * Platform/CoreIPC/mac/ImportanceAssertion.h:
+        (CoreIPC::ImportanceAssertion::create):
+        (CoreIPC::ImportanceAssertion::~ImportanceAssertion): Release the assertion.
+        (CoreIPC::ImportanceAssertion::ImportanceAssertion): Take an assertion if a boost was present in
+        the Mach message.
+
+2013-06-17  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/14051357> Web processes sometimes remain in a suppressed
+        state after their window is unoccluded.
+
+        The code in WKView that responds to occlusion notifications was incorrectly
+        treating the window's occlusion state as being an enum rather than the set of
+        flags that it is.
+
+        Reviewed by Oliver Hunt.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _windowDidChangeOcclusionState:]): Test only the visibility state.
+        (-[WKView setWindowOcclusionDetectionEnabled:]): Ditto.
+
+2013-06-17  Michael Brüning  <michael.bruning@digia.com>
+
+        [Qt] Remove Qt specific QTKIT flagged code.
+        https://bugs.webkit.org/show_bug.cgi?id=117635
+
+        Reviewed by Simon Hausmann.
+
+        Due to disabling QTKIT for Qt in r151546, the
+        code the flags that are not taken into account
+        anymore and the code that has been rendered
+        unreachable by this are removed.
+
+        * Target.pri:
+        * UIProcess/qt/WebContextQt.cpp:
+        (WebKit::WebContext::platformInitializeWebProcess):
+        * WebProcess/WebCoreSupport/qt/WebSystemInterface.h: Removed.
+        * WebProcess/WebCoreSupport/qt/WebSystemInterface.mm: Removed.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        * WebProcess/qt/WebProcessMainQt.cpp:
+        (WebKit::WebProcessMainQt):
+
+2013-06-17  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Unreviewed, rolling out r151632.
+        http://trac.webkit.org/changeset/151632
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Debug build error ASSERT(WTF_USE_GRAMMAR_CHECKING) for non MAC
+        platforms
+
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toAPI):
+        (WebKit::toImpl):
+        * UIProcess/API/efl/ewk_context_menu_item.cpp:
+        (getEwkActionFromWKTag):
+        * UIProcess/API/efl/tests/test_ewk2_text_checker.cpp:
+        (onContextMenuShow):
+        (TEST_F):
+        * UIProcess/API/gtk/WebKitContextMenuActions.cpp:
+        (webkitContextMenuActionGetActionTag):
+        (webkitContextMenuActionGetForContextMenuItem):
+        (webkitContextMenuActionGetLabel):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::contextMenuItemSelected):
+
+2013-06-14  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        Context menu grammar checking items are available when GRAMMAR_CHECKING macro is off
+        https://bugs.webkit.org/show_bug.cgi?id=117585
+
+        Reviewed by Anders Carlsson.
+
+        Add GRAMMAR_CHECKING guard to the context menu grammar items.
+
+        * Shared/API/c/WKSharedAPICast.h:
+        (WebKit::toAPI):
+        (WebKit::toImpl):
+        * UIProcess/API/efl/ewk_context_menu_item.cpp:
+        (getEwkActionFromWKTag):
+        * UIProcess/API/efl/tests/test_ewk2_text_checker.cpp:
+        (checkSpellingItemsAvailability):
+        Change callback name, to be consistent with a newly added.
+
+        (checkSpellingAndGrammarSubmenuAvailability):
+        (checkGrammarWithSpellingItemAvailability):
+        Add two unit tests for EFL to check whether context menu grammar items are
+        available only when GRAMMAR_CHECKING macro is enabled.
+
+        * UIProcess/API/gtk/WebKitContextMenuActions.cpp:
+        (webkitContextMenuActionGetActionTag):
+        (webkitContextMenuActionGetForContextMenuItem):
+        (webkitContextMenuActionGetLabel):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::contextMenuItemSelected):
+
+2013-06-14  Dean Jackson  <dino@apple.com>
+
+        Crash in supportsSnapshotting
+        https://bugs.webkit.org/show_bug.cgi?id=117670
+        <rdar://problem/14059711>
+
+        Reviewed by Darin Adler.
+
+        Speculative fix for deferencing a null RefPtr in supportsSnapshotting.
+        It seems like it was possible to get in a state where the plugin machinery
+        would fire up and attempt to get a screenshot before there was an active
+        connection to the plugin process (usually under periods of high load, such
+        as opening a lot of tabs at once). In this case we're now returning false
+        from supportsSnapshotting, which will trigger the plugin to restart, but
+        that's better than requesting a snapshot on something that doesn't yet exist.
+
+        * WebProcess/Plugins/PluginProxy.cpp:
+        (WebKit::PluginProxy::supportsSnapshotting): Guard for an empty connection object.
+
+2013-06-14  Enrica Casucci  <enrica@apple.com>
+
+        WKPageFindStringMatches ignores the kWKFindOptionsBackwards option.
+        https://bugs.webkit.org/show_bug.cgi?id=117647
+        <rdar://problem/13881024>
+
+        Reviewed by Darin Adler.
+        
+        The API returns the matched ranges in the DOM order regardless of the
+        find direction, but the index of the first match after the user selection
+        should take the find direction into account.
+
+        Extended existing test in TestWebKitAPI.
+
+        * Shared/API/c/WKFindOptions.h: Added enum for the case where there are
+        no matches after the user selection in the direction of the find.
+
+2013-06-14  Andres Gomez  <agomez@igalia.com>
+
+        [GTK] Compilation problems - hb.h not found
+        https://bugs.webkit.org/show_bug.cgi?id=117636
+
+        Unreviewed GTK+ build fix.
+
+        * GNUmakefile.am: Added freetype cflags for WebKit2 GTK+ Platform
+        library.
+
+2013-06-13  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL][WK2] Wrong context menu and popup menu positions when scroll is applied
+        https://bugs.webkit.org/show_bug.cgi?id=116610
+
+        Reviewed by Noam Rosenthal.
+
+        WebKit2 EFL uses fixed layout - because of this ScrollView::contentsToWindow, does
+        not take scroll into account, as it is meant to be handled by UI application.
+        When popup and context menu are created, after calling contentsToWindow their position
+        are not adjusted to page scroll.
+        Added two functions to EwkView and WKView, converting contents position to user viewport
+        coordinates, to adjust popup and context menu positions.
+
+        * UIProcess/API/C/CoordinatedGraphics/WKView.cpp:
+        (WKViewContentsToUserViewport):
+        * UIProcess/API/C/CoordinatedGraphics/WKView.h:
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::showContextMenu):
+        (EwkView::requestPopupMenu):
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::contentsToUserViewport):
+        * UIProcess/CoordinatedGraphics/WebView.h:
+
+2013-06-12  Anders Carlsson  <andersca@apple.com>
+
+        Remove the notion of inactive plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=117570
+        <rdar://problem/13484213>
+
+        Reviewed by Tim Horton.
+
+        Remove code that deals with inactive plug-ins. We still keep around the kWKPluginLoadPolicyInactive API enum for now.
+
+        * Shared/Plugins/PluginModuleInfo.h:
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toWKPluginLoadPolicy):
+        (WebKit::toPluginModuleLoadPolicy):
+        * UIProcess/Plugins/PluginInfoStore.cpp:
+        * UIProcess/Plugins/PluginInfoStore.h:
+        * UIProcess/Plugins/mac/PluginInfoStoreMac.mm:
+        (WebKit::PluginInfoStore::shouldUsePlugin):
+        (WebKit::PluginInfoStore::defaultLoadPolicyForPlugin):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::findPlugin):
+        (WebKit::WebPageProxy::unavailablePluginButtonClicked):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::shouldUnavailablePluginMessageBeButton):
+        (WebKit::WebChromeClient::unavailablePluginButtonClicked):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::createPlugin):
+
+2013-06-12  Hugo Parente Lima  <hugo.lima@openbossa.org>
+
+        [GTK] Explicit include glib.h to avoid compilation errors if libsoup isn't used.
+        https://bugs.webkit.org/show_bug.cgi?id=117564
+
+        Reviewed by Martin Robinson.
+
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+
+2013-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Move more build targets for source code that's free of layer violations into libPlatform
+        https://bugs.webkit.org/show_bug.cgi?id=115936
+
+        Reviewed by Martin Robinson.
+
+        * GNUmakefile.am: Add GStreamer dependency's CFLAGS to the list of libPlatformGtk2 CPPFLAGS.
+
+2013-06-12  Ruth Fong  <ruth_fong@apple.com>
+
+        "Open Video in New Window" doesn't make sense in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=117556
+
+        Reviewed by Beth Dakin.
+
+        Adds method mediaIsInFullscreen() that checks if a media element is in
+        fullscreen mode, which is needed to decide when to display the
+        "Open Video in New Window" context menu item.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp:
+        (WKBundleHitTestResultMediaIsInFullscreen): Added.
+        Hooks into new InjectedBundleHitTestResult::mediaIsInFullscreen() method.
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.h:
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::mediaIsInFullscreen): Added.
+        Checks if media element is in fullscreen.
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.h:
+
+2013-06-12  Ruth Fong  <ruth_fong@apple.com>
+
+        Allow for toggling fullscreen on <video> elements
+        https://bugs.webkit.org/show_bug.cgi?id=117220
+
+        Reviewed by Dean Jackson.
+
+        * Shared/API/c/WKContextMenuItemTypes.h:
+        * Shared/API/c/WKSharedAPICast.h:
+        Added variables to support the toggle-ability of the fullscreen
+        video context menu item.
+
+2013-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Invalidate the ProcessLauncher when the process is terminated before it has finished launching
+        https://bugs.webkit.org/show_bug.cgi?id=117412
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        (WebKit::ProcessLauncher::terminateProcess): If process is still
+        launching just invalidate the launcher. Reset the process
+        identifier after killing the process.
+
+2013-06-12  Jae Hyun Park  <jae.park@company100.net>
+
+        [Coordinated Graphics] Remove unused headers in CoordinatedLayerTreeHostProxy
+        https://bugs.webkit.org/show_bug.cgi?id=117539
+
+        Reviewed by Noam Rosenthal.
+
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp:
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.h:
+
+2013-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Remove the WebCoreLayer(Gtk2).a archives before regenerating them
+        https://bugs.webkit.org/show_bug.cgi?id=116723
+
+        Reviewed by Carlos Garcia Campos.
+
+        * GNUmakefile.am: When generating the WebCoreLayerGtk2.a archive from all the dependency archives, remove the
+        current archive (if any). Updating an existent archive in an incremental build is not bulletproof and can lead
+        to corrupt archives and subsequent build failures. On the other hand, the archive generation is not expensive
+        and produces a working archive without problems even on incremental builds.
+
+2013-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK build fix.
+
+        * GNUmakefile.list.am: Adding missing build targets to the plugin process after r151480.
+
+2013-06-11  Gavin Barraclough  <barraclough@apple.com>
+
+        Add NSSupportsAppNap keys to WebProcess, PluginProcess
+        https://bugs.webkit.org/show_bug.cgi?id=117528
+
+        Reviewed by Mark Rowe.
+
+        * PluginProcess/EntryPoint/mac/LegacyProcess/Info.plist:
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64.Info.plist:
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.Development/Info.plist:
+        * WebProcess/EntryPoint/mac/LegacyProcess/Info.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService.Development/Info.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info.plist:
+            - add NSSupportsAppNap key.
+
+2013-06-11  Oliver Hunt  <oliver@apple.com>
+
+        Make sure we aren't throttling plugin timers during initialisation and destruction
+        https://bugs.webkit.org/show_bug.cgi?id=117522
+
+        Reviewed by Darin Adler.
+
+        Add a new ActivityAssertion RAII class to handle allowing/disallowing
+        timer throttling.  Then make use of it during plugin initialisation
+        and destruction, as well as any synchronous messages (on the basis
+        that if another process is waiting for the plugin we shouldn't be
+        throttling timers).
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * PluginProcess/WebProcessConnection.cpp:
+        (WebKit::WebProcessConnection::didReceiveSyncMessage):
+        (WebKit::WebProcessConnection::destroyPlugin):
+        (WebKit::WebProcessConnection::createPlugin):
+        * Shared/ActivityAssertion.cpp: Added.
+        (WebKit::ActivityAssertion::ActivityAssertion):
+        (WebKit::ActivityAssertion::~ActivityAssertion):
+        * Shared/ActivityAssertion.h: Added.
+        * Target.pri:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2013-06-06  Timothy Hatcher  <timothy@apple.com>
+
+        Update the framework bundle identifier for the Web Inspector.
+
+        Reviewed by Mark Rowe.
+
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        (WebKit::inspectorReallyUsesWebKitUserInterface):
+        (WebKit::WebInspectorProxy::inspectorPageURL):
+        (WebKit::WebInspectorProxy::inspectorBaseURL):
+        * WebProcess/WebPage/mac/WebInspectorMac.mm:
+        (WebKit::inspectorReallyUsesWebKitUserInterface):
+        (WebKit::WebInspector::localizedStringsURL):
+
+2013-06-11  Jer Noble  <jer.noble@apple.com>
+
+        Do not filter cookies requested through the CookieStorageShim.
+        https://bugs.webkit.org/show_bug.cgi?id=117511
+        <rdar://problem/13603433>
+
+        Reviewed by Beth Dakin.
+
+        Since the shim function is called when the underlying media engine is
+        creating an HTTPRequest, use CookieRequestHeaderFieldValue (which does
+        not filter out HTTP-only cookies) rather than CookiesForDOM (which does).
+
+        * Shared/mac/CookieStorageShim.cpp:
+        (WebKit::webKitCookieStorageCopyRequestHeaderFieldsForURL):
+
+2013-06-11  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        Remove leftover wxWebkit code
+        https://bugs.webkit.org/show_bug.cgi?id=117471
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/generate-forwarding-headers.pl:
+
+2013-06-11  Changhyup Jwa  <ch.jwa@samsung.com>
+
+        [EFL][WK2] Add fallback for EWK2UnitTestBase if opengl is not available.
+        https://bugs.webkit.org/show_bug.cgi?id=117504
+
+        Reviewed by Christophe Dumez.
+
+        There're many fails on efl webkit2 unit test if opengl is not available.
+        So, add fallback to non-opengl evas engine.
+
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.cpp:
+        (EWK2UnitTest::EWK2UnitTestBase::SetUp):
+
+2013-06-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Make WTR use its own temporary directory for application cache
+        https://bugs.webkit.org/show_bug.cgi?id=117143
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextSetApplicationCacheDirectory):
+        * UIProcess/API/C/WKContextPrivate.h:
+        * UIProcess/WebContext.cpp:
+        (WebKit::WebContext::applicationCacheDirectory):
+        * UIProcess/WebContext.h:
+        (WebKit::WebContext::setApplicationCacheDirectory):
+        * UIProcess/efl/WebContextEfl.cpp:
+        (WebKit::WebContext::platformDefaultApplicationCacheDirectory):
+        * UIProcess/gtk/WebContextGtk.cpp:
+        (WebKit::WebContext::platformDefaultApplicationCacheDirectory):
+        * UIProcess/mac/WebContextMac.mm:
+        (WebKit::WebContext::platformDefaultApplicationCacheDirectory):
+        * UIProcess/qt/WebContextQt.cpp:
+        (WebKit::WebContext::platformDefaultApplicationCacheDirectory):
+
+2013-06-11  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL][WK2] Fix test_ewk2_context_menu
+        https://bugs.webkit.org/show_bug.cgi?id=116601
+
+        Reviewed by Gyuyoung Kim.
+
+        test_ewk2_context_menu is always passing, it does not test any context menu feature
+        as it ends before context menu is called.
+        One single test was divided into two tests: testing WebKit2 created context menu and
+        testing menus and items created by application.
+
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.cpp:
+        (EWK2UnitTest::EWK2UnitTestBase::waitUntilTrue): added function introducing internal loop until boolean value is changed to true
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.h:
+        * UIProcess/API/efl/tests/test_ewk2_context_menu.cpp:
+        (customItemSelected):
+        (showContextMenu):
+        (showContextMenuForRemoveAndAppend):
+        (showContextMenuForSubmenu):
+        (hideContextMenu):
+        (TEST_F):
+
+2013-06-11  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Add ewk_view_navigate API
+        https://bugs.webkit.org/show_bug.cgi?id=117467
+
+        Reviewed by Christophe Dumez.
+
+        The applications will use this API to navigate history more than one step.
+
+        * UIProcess/API/efl/ewk_back_forward_list_item_private.h:
+        (EwkBackForwardListItem::wkItem): Return WKBackForwardListItemRef for page to navigate.
+        * UIProcess/API/efl/ewk_view.cpp:
+        (ewk_view_navigate_to): Added new API.
+        * UIProcess/API/efl/ewk_view.h:
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp:
+        (TEST_F): Added more test case for navigation.
+
+2013-06-10  Jae Hyun Park  <jae.park@company100.net>
+
+        [CoordinatedGraphics] Typos in custom shader support
+        https://bugs.webkit.org/show_bug.cgi?id=117413
+
+        Reviewed by Noam Rosenthal.
+
+        Wrong keyframe is passed when assigning filterValue.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::prepareCustomFilterProxiesIfNeeded):
+
+2013-06-10  Seokju Kwon  <seokju.kwon@gmail.com>
+
+        [Qt][GTK] Build fix after r151403
+        https://bugs.webkit.org/show_bug.cgi?id=117452
+
+        Reviewed by Csaba Osztrogonác.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::preferencesDidChange):
+        * UIProcess/API/gtk/PageClientImpl.h:
+        * UIProcess/API/qt/raw/qrawwebview_p_p.h:
+        (QRawWebViewPrivate::preferencesDidChange):
+        * UIProcess/qt/QtPageClient.h:
+        (WebKit::QtPageClient::preferencesDidChange):
+
+2013-06-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r151411.
+        http://trac.webkit.org/changeset/151411
+        https://bugs.webkit.org/show_bug.cgi?id=117453
+
+        because it is duplicated with Bug 117441 (Requested by
+        gyuyoung_ on #webkit).
+
+        * UIProcess/efl/WebViewEfl.cpp:
+        * UIProcess/efl/WebViewEfl.h:
+
+2013-06-10  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        Fix build error and warning
+        https://bugs.webkit.org/show_bug.cgi?id=117441
+
+        Reviewed by Anders Carlsson.
+
+        * UIProcess/CoordinatedGraphics/WebView.cpp:
+        (WebKit::WebView::preferencesDidChange): Added.
+        (WebKit::WebView::createPopupMenuProxy): Remove 'page'.
+        * UIProcess/CoordinatedGraphics/WebView.h:
+
+2013-06-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Unreviewed, EFL Build fix after r151403.
+
+        Added preferencesDidChange to WebViewEfl.
+
+        * UIProcess/efl/WebViewEfl.cpp:
+        (WebKit::WebViewEfl::preferencesDidChange):
+        * UIProcess/efl/WebViewEfl.h:
+
+2013-06-10  Anders Carlsson  <andersca@apple.com>
+
+        Crash in StorageAreaMap::applyChange when clearing local storage in another web process
+        https://bugs.webkit.org/show_bug.cgi?id=117440
+        <rdar://problem/13961548>
+
+        Reviewed by Tim Horton.
+
+        Add an early return so we won't try to look up a null key in the m_pendingValueChanges map.
+        Also, fix an assertion - it's fine for m_storageMap to be null in applyChange.
+
+        * WebProcess/Storage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::applyChange):
+
+2013-06-10  Sergio Correia  <sergio.correia@openbossa.org>
+
+        [WK2][CoordinatedGraphics] Add default case to switches to fix strict build
+        https://bugs.webkit.org/show_bug.cgi?id=117416
+
+        Reviewed by Noam Rosenthal.
+
+        This patch fixes a strict build by asserting on the default case of two
+        switch statements where gcc was previously complaining of unhandled cases.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (CoreIPC::::encode):
+        (CoreIPC::::decode):
+
+2013-06-10  Anders Carlsson  <andersca@apple.com>
+
+        -[WKView _updateWindowAndViewFrames] should avoid updating the view frame in window coordinates if we don't have plugins
+        https://bugs.webkit.org/show_bug.cgi?id=117420
+        <rdar://problem/14073034>
+
+        Reviewed by Tim Horton.
+
+        If plug-ins are disabled there's no need for the web process to know about the view frame in window coordinates so only
+        send it when plug-ins are enabled. In addition, if accessibility is disabled we don't need to send a message at all.
+
+        * UIProcess/API/mac/PageClientImpl.h:
+        * UIProcess/API/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::preferencesDidChange):
+        Call through to -[WKView _preferencesDidChange].
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _updateWindowAndViewFrames]):
+        Don't compute viewFrameInWindowCoordinates or accessibilityPosition unless they're required. If neither are required,
+        don't even send a message to the web process.
+
+        (-[WKView _preferencesDidChange]):
+        Update _needsViewFrameInWindowCoordinates and call -[WKView _updateWindowAndViewFrames] if needed.
+
+        (-[WKView initWithFrame:contextRef:pageGroupRef:relatedToPage:]):
+        Set _needsViewFrameInWindowCoordinates based on whether plug-ins are enabled or not.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::preferencesDidChange):
+        Call the page client.
+
+2013-06-10  Bear Travis  <betravis@adobe.com>
+
+        [CSS Shapes][CSS Exclusions] Split CSS Exclusions and CSS Shapes code
+        https://bugs.webkit.org/show_bug.cgi?id=117162
+
+        Reviewed by Alexandru Chiculita.
+
+        Adding the WebCore/rendering/shapes directory to the include list.
+
+        * CMakeLists.txt:
+
+2013-06-10  Iago Toral Quiroga  <itoral@igalia.com>
+
+        Use Cairo implementation of the WidgetBackingStore instead of X11 when running on Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=116717
+
+        Reviewed by Martin Robinson.
+
+        Decide which implementation of WidgetBackingStore to use (X11 or Cairo)
+        depending on whether we are running on X11 or not. Select Cairo
+        implementation when not running in X11.
+
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit):
+        (WebKit::createBackingStoreForGTK):
+        (WebKit::BackingStore::incorporateUpdate):
+
+2013-06-09  Jae Hyun Park  <jae.park@company100.net>
+
+        [CoordinatedGraphics] Typo in argument decoder for CoordinatedGraphicsState
+        https://bugs.webkit.org/show_bug.cgi?id=117384
+
+        Reviewed by Noam Rosenthal.
+
+        For CSS Shaders, it must decode state.customFiltersToRemove instead of
+        state.updateAtlasesToRemove.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (CoreIPC::::decode):
+
+2013-06-08  Jae Hyun Park  <jae.park@company100.net>
+
+        [Coordinated Graphics] Pass the ownership of GraphicsSurface explicitly
+        https://bugs.webkit.org/show_bug.cgi?id=117379
+
+        Reviewed by Noam Rosenthal.
+
+        When creating WebCoordinatedSurface with GraphicsSurface, it is clearer
+        to pass the ownership of the created GraphicsSurface explicitly.
+
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::create):
+
+2013-06-07  Anders Carlsson  <andersca@apple.com>
+
+        Coalesce multiple calls to WebPageProxy::windowAndViewFramesChanged
+        https://bugs.webkit.org/show_bug.cgi?id=117364
+        <rdar://problem/14042099>
+
+        Reviewed by Geoffrey Garen.
+
+        -[WKView _updateWindowAndViewFrames] can be called many times per run loop iteration so coalesce calls
+        to WebPageProxy::windowAndViewFrames using dispatch_async.
+
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView _updateWindowAndViewFrames]):
+
+2013-06-07  Thomas Deniau  <deniau@apple.com>
+
+        Reproducible crash with triple-finger-tap "define word" gesture on a Netflix video
+        https://bugs.webkit.org/show_bug.cgi?id=117020
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::performDictionaryLookupAtLocation):
+        Don't invoke the Dictionary lookup when we failed to extract the range of the token
+        surrounding the tapped position.
+
+2013-06-07  Enrique Ocana Gonzalez  <eocanha@igalia.com>
+
+        [GTK] Weird behaviour and no clues to the user when the shared memory file can't be opened
+        https://bugs.webkit.org/show_bug.cgi?id=117063
+
+        Reviewed by Anders Carlsson.
+
+        Log error message when the shared memory file can't be opened in
+        Unix platform using a release build
+
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::SharedMemory::create):
+
+2013-06-07  Grzegorz Czajkowski  <g.czajkowski@samsung.com>
+
+        [EFL][WK2] Context menu spellchecking items are not available when "Check Spelling While Typing" is off
+        https://bugs.webkit.org/show_bug.cgi?id=117190
+
+        Reviewed by Christophe Dumez.
+
+        Context menu items (suggestions, learn and ignore word) are not available
+        due to missing dictionary. To get the suggestions for the misspelled word,
+        the dictionary has to be loaded first.
+
+        WebKit loads the default dictionary when check spelling while typing is being enabled.
+        However, context menu spellchecking items should be present even if this setting is off.
+
+        * UIProcess/API/efl/ewk_context.cpp:
+        (EwkContext::EwkContext):
+        Load the user's default dictionary to ensure context menu spellchecking items.
+        The dictionary is loaded asynchronously so it shouldn't delay application.
+
+        * UIProcess/API/efl/ewk_text_checker.h:
+        Update doc. Spelling suggestions, learn and ignore word should be available
+        independently of checking spelling while typing setting.
+
+        * UIProcess/API/efl/tests/test_ewk2_text_checker.cpp:
+        (onContextMenuShow):
+        (TEST_F):
+        Add two unit tests to check whether the default dictionary is loaded and
+        whether the context menu spelling items are available.
+
+        * UIProcess/efl/TextCheckerEfl.cpp:
+        (WebKit::TextChecker::setContinuousSpellCheckingEnabled):
+        (WebKit::TextChecker::continuousSpellCheckingEnabledStateChanged):
+        Not set the default dictionary while enabling the setting, it's already loaded.
+
+2013-06-07  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL][WK2] Implement customContextMenuItemSelected
+        https://bugs.webkit.org/show_bug.cgi?id=117298
+
+        Reviewed by Christophe Dumez.
+
+        When custom context menu item is selected using ewk API, the feedback is not
+        sent back to application, as customContextMenuItemSelected was unimplemented in
+        contextMenuClientEfl.
+
+        * UIProcess/API/efl/EwkView.cpp:
+        (EwkView::customContextMenuItemSelected):
+        * UIProcess/API/efl/EwkView.h:
+        * UIProcess/API/efl/ewk_view.h: added custom_item_selected callback.
+        * UIProcess/efl/ContextMenuClientEfl.cpp:
+        (customContextMenuItemSelected):
+        (ContextMenuClientEfl::ContextMenuClientEfl):
+
+2013-06-06  Oliver Hunt  <oliver@apple.com>
+
+        Completely initialize ChildProcess state on launch
+        https://bugs.webkit.org/show_bug.cgi?id=117328
+
+        Reviewed by Sam Weinig.
+
+        Use setProcessSuppressionEnabledInternal to avoid setProcessSuppressionEnabled
+        "optimizing" our initialization away.
+
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::platformInitialize):
+
+2013-06-06  Rafael Brandao  <rafael.lobo@openbossa.org>
+
+        [Gtk] Connection is leaking when WebProcess is terminated
+        https://bugs.webkit.org/show_bug.cgi?id=117293
+
+        Reviewed by Martin Robinson.
+
+        Connection is leaking because WorkQueue::SocketEventSource inherits from
+        WorkQueue::EventSource but when it is destroyed, the actual destructor running
+        is the one from base class; however, subclass contains a function binded from
+        Connection (m_closeFunction) and we need to do this extra cleanup, otherwise
+        WorkQueue will keep Connection alive. A better explanation of this fix is provided
+        on http://stackoverflow.com/questions/461203/when-to-use-virtual-destructors
+
+        A quick way to see the leak is to change WK2 test "ReloadPageAfterCrash" to terminate
+        WebProcess N times and add a printf on Connection destructor.
+
+        * Platform/gtk/WorkQueueGtk.cpp:
+        (WorkQueue::EventSource::~EventSource): Adds a virtual destructor to enable
+        the subclass to do its own cleanup.
+
+2013-06-06  Jae Hyun Park  <jae.park@company100.net>
+
+        Coordinated Graphics : Refactor CoordinatedSurface to manage the lifecycle of GraphicsContext
+        https://bugs.webkit.org/show_bug.cgi?id=108899
+
+        Reviewed by Noam Rosenthal.
+
+        This is a preparation patch for Threaded Coordinated Graphics.
+
+        This patch changes CoordinatedSurface to be responsible for the
+        lifecycle of GraphicsContext used in Coordinated Graphics System.
+        CoordinatedImageBacking and UpdateAtlas do not ask for the ownership
+        of GraphicsContext anymore. Instead, those classes use client pattern to
+        ask the CoordiantedSurface to paint to the GraphicsContext.
+
+        This refactoring is needed to implement CoordinatedSurface for Threaded
+        Coordinated Graphics.
+
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::paintToSurface):
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::paintToSurface):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+
+2013-06-05  Kangil Han  <kangil.han@samsung.com>
+
+        [EFL][WK2] Fix test_ewk2_view unit test timed out issue
+        https://bugs.webkit.org/show_bug.cgi?id=117251
+
+        Reviewed by Christophe Dumez.
+
+        'ewk_view_contents_size_changed' unit test case has been timed out since r150802 because
+        same size is filtered by WebView class. So create one different test html string that has
+        different size to continue unit tests.
+
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp:
+        (onContentsSizeChangedPortrait):
+        (onContentsSizeChangedLandscape):
+        (TEST_F):
+
+2013-06-05  Bear Travis  <betravis@adobe.com>
+
+        [CSS Exclusions][CSS Shapes] Split CSS Exclusions & Shapes compile & runtime flags
+        https://bugs.webkit.org/show_bug.cgi?id=117172
+
+        Reviewed by Alexandru Chiculita.
+
+        Adding the CSS_SHAPES compile flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2013-06-05  Anders Carlsson  <andersca@apple.com>
+
+        Crash if an IPC connection is invalidated before it's completely set up
+        https://bugs.webkit.org/show_bug.cgi?id=117274
+        <rdar://problem/13319035>
+
+        Reviewed by Andreas Kling.
+
+        Resume our dispatch sources on the connection queue so we won't get invalidation callbacks before
+        all sources have been set up.
+
+        * Platform/CoreIPC/mac/ConnectionMac.cpp:
+        (CoreIPC::Connection::open):
+        (CoreIPC::Connection::sendOutgoingMessage):
+        (CoreIPC::Connection::initializeDeadNameSource):
+        (CoreIPC::Connection::receiveSourceEventHandler):
+
+2013-06-05  Tim Horton  <timothy_horton@apple.com>
+
+        [wk2] WebProcess' page-in-window count can be wrong
+        https://bugs.webkit.org/show_bug.cgi?id=117106
+        <rdar://problem/14040991>
+
+        Reviewed by Anders Carlsson.
+
+        If we're using a single WebProcess and a window is closed, we were
+        not decrementing the page-in-window count (because we apparently don't
+        setIsInWindow(false) a WebPage in a closing window before tearing it down).
+
+        Turn the page-in-window count into a HashSet of pageIDs instead.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage):
+        (WebKit::WebPage::setIsInWindow):
+        Send the pageID instead (this change is just so that I don't need to
+        fetch the WebPage in WebProcess::removeWebPage).
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess):
+        Remove m_inWindowPageCount.
+
+        (WebKit::WebProcess::removeWebPage):
+        Ensure that WebPages being torn-down are removed from the in-window WebPage set.
+
+        (WebKit::WebProcess::pageDidEnterWindow):
+        (WebKit::WebProcess::pageWillLeaveWindow):
+        Use our new HashSet instead of a count.
+
+        (WebKit::WebProcess::nonVisibleProcessCleanupTimerFired):
+        Make sure that we don't have any visible pages before doing cleanup.
+
+        * WebProcess/WebProcess.h:
+        Remove m_inWindowPageCount.
+        Add m_inWindowPageSet.
+        Make pageDidEnterWindow/pageWillLeaveWindow take pageID instead of WebPage.
+
+2013-06-05  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r148713): Crash under waitForDidUpdateInWindowState
+        https://bugs.webkit.org/show_bug.cgi?id=117268
+        <rdar://problem/13822353>
+
+        Reviewed by Anders Carlsson.
+
+        Check if the WebProcess is valid before waiting for a message from it.
+        Reset the bool that tells us that we have an outstanding didUpdateInWindowState message if the WebProcess quits.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::waitForDidUpdateInWindowState):
+        (WebKit::WebPageProxy::resetStateAfterProcessExited):
+
+2013-06-05  Gwang Yoon Hwang  <ryumiel@company100.net>
+
+        [Coordinated Graphics] Prevent a recursive painting in CoordinatedGraphicsLayer
+        https://bugs.webkit.org/show_bug.cgi?id=117222
+
+        Reviewed by Noam Rosenthal.
+
+        CoordinatedGraphicsLayer::flushCompositingState() will cross frame
+        boundaries if the GraphicsLayers are connected. In this case,
+        updateContentBuffers will invoke a painting of a sub-frame that causes
+        flushCompositingState recursively.
+
+        To prevent this behavior this patch extracts updateContentBuffers from
+        flushCompositingState, and places it in
+        updateContentBuffersIncludeSublayers, which traverses the tree
+        separately from flushing the state for painting.
+
+        No new tests, covered by existing tests.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::flushPendingLayerChanges):
+
+2013-06-05  Gwang Yoon Hwang  <ryumiel@company100.net>
+
+        [Coordinated Graphics] Rename client classes for CoordinatedImageBacking and UpdateAtlas.
+        https://bugs.webkit.org/show_bug.cgi?id=111948
+
+        Reviewed by Noam Rosenthal.
+
+        This patch renames CoordinatedImageBacking::Coordinator to
+        CoordinatedImageBacking::Client, and UpdateAtlasClient to
+        UpdateAtlas::Client for naming consistency and clarification.
+
+        No new tests, covered by existing tests.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+
+2013-06-05  Gwang Yoon Hwang  <ryumiel@company100.net>
+
+        [Coordinated Graphics] Unify messages related object's lifecycles into CoordinatedGraphicsState.
+        https://bugs.webkit.org/show_bug.cgi?id=111919
+
+        Reviewed by Noam Rosenthal.
+
+        CoordinatedLayerTreeHostProxy has several methods, which simply passes
+        these calls to CoordinatedGraphicsScene.
+
+        This patch removes methods in CoordinatedLayerTreeHostProxy just for
+        message chaining. Instead of that, messages for creation/deletion of objects
+        (Layers, CustomFilters, UpdateAtlas, and ImageBacking) are unified into
+        CommitCoordinatedGraphicsState.
+
+        And this patch also removes codes for WebCoordinatedSurface in
+        CoordinatedLayerTreeHost, except for a factory method.
+        CoordinatedGraphicsArgumentCoders [en|de]codes CoordinatedSurface itself
+        using WebCoordinatedSurface.
+
+        No new tests, covered by existing tests.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        (CoreIPC::encodeCoordinatedSurface):
+        (CoreIPC::decodeCoordinatedSurface):
+        (CoreIPC::::encode):
+        (CoreIPC::::decode):
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp:
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.h:
+        * UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.messages.in:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::flushPendingLayerChanges):
+        (WebKit::CoordinatedLayerTreeHost::clearPendingStateChanges):
+        (WebKit::CoordinatedLayerTreeHost::checkCustomFilterProgramProxies):
+        (WebKit::CoordinatedLayerTreeHost::removeCustomFilterProgramProxy):
+        (WebKit::CoordinatedLayerTreeHost::detachLayer):
+        (WebKit::CoordinatedLayerTreeHost::createImageBacking):
+        (WebKit::CoordinatedLayerTreeHost::updateImageBacking):
+        (WebKit::CoordinatedLayerTreeHost::clearImageBackingContents):
+        (WebKit::CoordinatedLayerTreeHost::removeImageBacking):
+        (WebKit::CoordinatedLayerTreeHost::createGraphicsLayer):
+        (WebKit::CoordinatedLayerTreeHost::createUpdateAtlas):
+        (WebKit::CoordinatedLayerTreeHost::removeUpdateAtlas):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+
 2013-06-04  Simon Cooper  <scooper@apple.com>
 
         Tighten plugin sandbox profiles against symlink attacks

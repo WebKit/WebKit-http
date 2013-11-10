@@ -27,6 +27,7 @@
 #include "Connection.h"
 
 #include "DataReference.h"
+#include "ImportanceAssertion.h"
 #include "MachPort.h"
 #include "MachUtilities.h"
 #include <WebCore/RunLoop.h>
@@ -96,6 +97,10 @@ void Connection::platformInitialize(Identifier identifier)
         m_sendPort = identifier.port;
     }
 
+    m_deadNameSource = nullptr;
+    m_receivePortDataAvailableSource = nullptr;
+    m_exceptionPortDataAvailableSource = nullptr;
+
 #if HAVE(XPC)
     m_xpcConnection = identifier.xpcConnection;
     // FIXME: Instead of explicitly retaining the connection here, Identifier::xpcConnection
@@ -129,6 +134,10 @@ bool Connection::open()
         // Create the receive port.
         mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &m_receivePort);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+        mach_port_set_attributes(mach_task_self(), m_receivePort, MACH_PORT_IMPORTANCE_RECEIVER, (mach_port_info_t)0, 0);
+#endif
+
         m_isConnected = true;
         
         // Send the initialize message, which contains a send right for the server to use.
@@ -137,7 +146,6 @@ bool Connection::open()
 
         sendMessage(encoder.release());
 
-        // Set the dead name handler for our send port.
         initializeDeadNameSource();
     }
 
@@ -146,18 +154,28 @@ bool Connection::open()
 
     // Register the data available handler.
     m_receivePortDataAvailableSource = createDataAvailableSource(m_receivePort, m_connectionQueue.get(), bind(&Connection::receiveSourceEventHandler, this));
-    dispatch_resume(m_receivePortDataAvailableSource);
 
     // If we have an exception port, register the data available handler and send over the port to the other end.
     if (m_exceptionPort) {
         m_exceptionPortDataAvailableSource = createDataAvailableSource(m_exceptionPort, m_connectionQueue.get(), bind(&Connection::exceptionSourceEventHandler, this));
-        dispatch_resume(m_exceptionPortDataAvailableSource);
 
         OwnPtr<MessageEncoder> encoder = MessageEncoder::create("IPC", "SetExceptionPort", 0);
         encoder->encode(MachPort(m_exceptionPort, MACH_MSG_TYPE_MAKE_SEND));
 
         sendMessage(encoder.release());
     }
+
+    ref();
+    dispatch_async(m_connectionQueue->dispatchQueue(), ^{
+        dispatch_resume(m_receivePortDataAvailableSource);
+
+        if (m_deadNameSource)
+            dispatch_resume(m_deadNameSource);
+        if (m_exceptionPortDataAvailableSource)
+            dispatch_resume(m_exceptionPortDataAvailableSource);
+
+        deref();
+    });
 
     return true;
 }
@@ -259,7 +277,7 @@ bool Connection::sendOutgoingMessage(PassOwnPtr<MessageEncoder> encoder)
         memcpy(messageData, encoder->buffer(), encoder->bufferSize());
 
     ASSERT(m_sendPort);
-    
+
     // Send the message.
     kern_return_t kr = mach_msg(header, MACH_SEND_MSG, messageSize, 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
     if (kr != KERN_SUCCESS) {
@@ -279,8 +297,6 @@ void Connection::initializeDeadNameSource()
         // Release our send right.
         mach_port_deallocate(mach_task_self(), sendPort);
     });
-
-    dispatch_resume(m_deadNameSource);
 }
 
 static PassOwnPtr<MessageDecoder> createMessageDecoder(mach_msg_header_t* header)
@@ -394,6 +410,10 @@ void Connection::receiveSourceEventHandler()
     OwnPtr<MessageDecoder> decoder = createMessageDecoder(header);
     ASSERT(decoder);
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1090
+    decoder->setImportanceAssertion(ImportanceAssertion::create(header));
+#endif
+
     if (decoder->messageReceiverName() == "IPC" && decoder->messageName() == "InitializeConnection") {
         ASSERT(m_isServer);
         ASSERT(!m_isConnected);
@@ -407,10 +427,11 @@ void Connection::receiveSourceEventHandler()
 
         m_sendPort = port.port();
         
-        // Set the dead name source if needed.
-        if (m_sendPort)
+        if (m_sendPort) {
             initializeDeadNameSource();
-        
+            dispatch_resume(m_deadNameSource);
+        }
+
         m_isConnected = true;
 
         // Send any pending outgoing messages.

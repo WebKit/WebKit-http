@@ -303,7 +303,13 @@ void RenderFlowThread::paintFlowThreadPortionInRegion(PaintInfo& paintInfo, Rend
         context->translate(adjustedPaintOffset.x(), adjustedPaintOffset.y());
         info.rect.moveBy(-adjustedPaintOffset);
         
-        layer()->paint(context, info.rect, 0, 0, region, RenderLayer::PaintLayerTemporaryClipRects);
+        PaintBehavior paintBehavior = 0;
+        if (info.phase == PaintPhaseTextClip)
+            paintBehavior |= PaintBehaviorForceBlackText;
+        else if (info.phase == PaintPhaseSelection)
+            paintBehavior |= PaintBehaviorSelectionOnly;
+
+        layer()->paint(context, info.rect, paintBehavior, 0, region, RenderLayer::PaintLayerTemporaryClipRects);
 
         context->restore();
     }
@@ -1146,6 +1152,16 @@ void RenderFlowThread::RegionSearchAdapter::collectIfNeeded(const RegionInterval
         return;
     if (interval.low() <= m_offset && interval.high() > m_offset)
         m_result = interval.data();
+}
+
+void RenderFlowThread::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, MapCoordinatesFlags mode, bool* wasFixed) const
+{
+    if (this == repaintContainer)
+        return;
+
+    if (RenderRegion* region = mapFromFlowToRegion(transformState))
+        // FIXME: The cast below is probably not the best solution, we may need to find a better way.
+        static_cast<const RenderObject*>(region)->mapLocalToContainer(region->containerForRepaint(), transformState, mode, wasFixed);
 }
 
 CurrentRenderFlowThreadMaintainer::CurrentRenderFlowThreadMaintainer(RenderFlowThread* renderFlowThread)

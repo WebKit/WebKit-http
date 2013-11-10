@@ -469,6 +469,16 @@ String contextMenuItemTagOpenAudioInNewWindow()
     return WEB_UI_STRING("Open Audio in New Window", "Open Audio in New Window context menu item");
 }
 
+String contextMenuItemTagDownloadVideoToDisk()
+{
+    return WEB_UI_STRING("Download Video", "Download Video To Disk context menu item");
+}
+
+String contextMenuItemTagDownloadAudioToDisk()
+{
+    return WEB_UI_STRING("Download Audio", "Download Audio To Disk context menu item");
+}
+
 String contextMenuItemTagCopyVideoLinkToClipboard()
 {
     return WEB_UI_STRING("Copy Video Address", "Copy Video Address Location context menu item");
@@ -492,6 +502,11 @@ String contextMenuItemTagToggleMediaLoop()
 String contextMenuItemTagEnterVideoFullscreen()
 {
     return WEB_UI_STRING("Enter Fullscreen", "Video Enter Fullscreen context menu item");
+}
+
+String contextMenuItemTagExitVideoFullscreen()
+{
+    return WEB_UI_STRING("Exit Fullscreen", "Video Exit Fullscreen context menu item");
 }
 
 String contextMenuItemTagMediaPlay()
@@ -697,11 +712,6 @@ String blockedPluginByContentSecurityPolicyText()
 String insecurePluginVersionText()
 {
     return WEB_UI_STRING_KEY("Blocked Plug-in", "Blocked Plug-In (Insecure plug-in)", "Label text to be used when an insecure plug-in version was blocked from loading");
-}
-
-String inactivePluginText()
-{
-    return WEB_UI_STRING("Inactive Plug-in", "Label text to be used when a plugin has not been loaded for some time");
 }
 
 String multipleFileUploadText(unsigned numberOfFiles)
@@ -1026,9 +1036,9 @@ String textTrackOffMenuItemText()
     return WEB_UI_STRING("Off", "Menu item label for the track that represents disabling closed captions");
 }
 
-String textTrackAutomaticMenuItemText(const String& language)
+String textTrackAutomaticMenuItemText()
 {
-    return formatLocalizedString(WEB_UI_STRING("Automatic (%@)", "Menu item label for automatic track selection behavior in the form of 'Automatic (SystemLanguage)'"), language.createCFString().get());
+    return formatLocalizedString(WEB_UI_STRING("Auto (Recommended)", "Menu item label for automatic track selection behavior"));
 }
 
 String textTrackNoLabelText()

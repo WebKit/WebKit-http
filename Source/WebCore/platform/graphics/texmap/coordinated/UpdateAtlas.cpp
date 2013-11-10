@@ -23,13 +23,40 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
+#include "CoordinatedGraphicsState.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
 #include <wtf/MathExtras.h>
 
 namespace WebCore {
 
-UpdateAtlas::UpdateAtlas(UpdateAtlasClient* client, int dimension, CoordinatedSurface::Flags flags)
+class UpdateAtlasSurfaceClient : public CoordinatedSurface::Client {
+public:
+    UpdateAtlasSurfaceClient(CoordinatedSurface::Client* client, const IntSize& size, bool supportsAlpha)
+        : m_client(client)
+        , m_size(size)
+        , m_supportsAlpha(supportsAlpha)
+    {
+    }
+
+    virtual void paintToSurfaceContext(GraphicsContext* context) OVERRIDE
+    {
+        if (m_supportsAlpha) {
+            context->setCompositeOperation(CompositeCopy);
+            context->fillRect(IntRect(IntPoint::zero(), m_size), Color::transparent, ColorSpaceDeviceRGB);
+            context->setCompositeOperation(CompositeSourceOver);
+        }
+
+        m_client->paintToSurfaceContext(context);
+    }
+
+private:
+    CoordinatedSurface::Client* m_client;
+    IntSize m_size;
+    bool m_supportsAlpha;
+};
+
+UpdateAtlas::UpdateAtlas(Client* client, int dimension, CoordinatedSurface::Flags flags)
     : m_client(client)
     , m_inactivityInSeconds(0)
 {
@@ -38,9 +65,7 @@ UpdateAtlas::UpdateAtlas(UpdateAtlasClient* client, int dimension, CoordinatedSu
     IntSize size = nextPowerOfTwo(IntSize(dimension, dimension));
     m_surface = CoordinatedSurface::create(size, flags);
 
-    // FIXME: Currently, if sending the message fails, UpdateAtlas gives up drawing anything implicitly.
-    if (!m_client->createUpdateAtlas(m_ID, m_surface))
-        m_surface.clear();
+    m_client->createUpdateAtlas(m_ID, m_surface);
 }
 
 UpdateAtlas::~UpdateAtlas()
@@ -62,32 +87,29 @@ void UpdateAtlas::didSwapBuffers()
     m_areaAllocator.clear();
 }
 
-PassOwnPtr<GraphicsContext> UpdateAtlas::beginPaintingOnAvailableBuffer(uint32_t& atlasID, const IntSize& size, IntPoint& offset)
+
+bool UpdateAtlas::paintOnAvailableBuffer(const IntSize& size, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client* client)
 {
     m_inactivityInSeconds = 0;
     buildLayoutIfNeeded();
     IntRect rect = m_areaAllocator->allocate(size);
 
-    // No available buffer was found, returning null.
+    // No available buffer was found.
     if (rect.isEmpty())
-        return PassOwnPtr<GraphicsContext>();
+        return false;
 
     if (!m_surface)
-        return PassOwnPtr<GraphicsContext>();
+        return false;
 
     atlasID = m_ID;
 
     // FIXME: Use tri-state buffers, to allow faster updates.
     offset = rect.location();
-    OwnPtr<GraphicsContext> graphicsContext = m_surface->createGraphicsContext(rect);
 
-    if (supportsAlpha()) {
-        graphicsContext->setCompositeOperation(CompositeCopy);
-        graphicsContext->fillRect(IntRect(IntPoint::zero(), size), Color::transparent, ColorSpaceDeviceRGB);
-        graphicsContext->setCompositeOperation(CompositeSourceOver);
-    }
+    UpdateAtlasSurfaceClient surfaceClient(client, size, supportsAlpha());
+    m_surface->paintToSurface(rect, &surfaceClient);
 
-    return graphicsContext.release();
+    return true;
 }
 
 } // namespace WebCore

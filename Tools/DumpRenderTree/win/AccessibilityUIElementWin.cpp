@@ -30,6 +30,7 @@
 #include "DumpRenderTree.h"
 #include "FrameLoadDelegate.h"
 #include <JavaScriptCore/JSStringRef.h>
+#include <comutil.h>
 #include <tchar.h>
 #include <string>
 
@@ -164,7 +165,39 @@ JSStringRef AccessibilityUIElement::attributesOfDocumentLinks()
 
 AccessibilityUIElement AccessibilityUIElement::titleUIElement()
 {
-    return 0;
+    COMPtr<IAccessible> platformElement = platformUIElement();
+
+    COMPtr<IAccessibleComparable> comparable = comparableObject(platformElement.get());
+    if (!comparable)
+        return 0;
+
+    VARIANT value;
+    ::VariantInit(&value);
+
+    _bstr_t titleUIElementAttributeKey(L"AXTitleUIElementAttribute");
+    if (FAILED(comparable->get_attribute(titleUIElementAttributeKey, &value))) {
+        ::VariantClear(&value);
+        return 0;
+    }
+
+    if (V_VT(&value) == VT_EMPTY) {
+        ::VariantClear(&value);
+        return 0;
+    }
+
+    ASSERT(V_VT(&value) == VT_UNKNOWN);
+
+    if (V_VT(&value) != VT_UNKNOWN) {
+        ::VariantClear(&value);
+        return 0;
+    }
+
+    COMPtr<IAccessible> titleElement(Query, value.punkVal);
+    if (value.punkVal)
+        value.punkVal->Release();
+    ::VariantClear(&value);
+
+    return titleElement;
 }
 
 AccessibilityUIElement AccessibilityUIElement::parentElement()
@@ -201,6 +234,9 @@ static VARIANT& self()
 
 JSStringRef AccessibilityUIElement::role()
 {
+    if (!m_element)
+        return JSStringCreateWithCharacters(0, 0);
+
     VARIANT vRole;
     if (FAILED(m_element->get_accRole(self(), &vRole)))
         return JSStringCreateWithCharacters(0, 0);

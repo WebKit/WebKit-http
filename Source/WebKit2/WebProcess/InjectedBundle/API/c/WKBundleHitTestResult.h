@@ -33,6 +33,13 @@
 extern "C" {
 #endif
 
+enum {
+    kWKBundleHitTestResultMediaTypeNone,
+    kWKBundleHitTestResultMediaTypeAudio,
+    kWKBundleHitTestResultMediaTypeVideo
+};
+typedef uint32_t WKBundleHitTestResultMediaType;
+
 WK_EXPORT WKTypeID WKBundleHitTestResultGetTypeID();
 
 WK_EXPORT WKBundleNodeHandleRef WKBundleHitTestResultCopyNodeHandle(WKBundleHitTestResultRef hitTestResult);
@@ -44,6 +51,8 @@ WK_EXPORT WKURLRef WKBundleHitTestResultCopyAbsoluteImageURL(WKBundleHitTestResu
 WK_EXPORT WKURLRef WKBundleHitTestResultCopyAbsolutePDFURL(WKBundleHitTestResultRef hitTestResult);
 WK_EXPORT WKURLRef WKBundleHitTestResultCopyAbsoluteLinkURL(WKBundleHitTestResultRef hitTestResult);
 WK_EXPORT WKURLRef WKBundleHitTestResultCopyAbsoluteMediaURL(WKBundleHitTestResultRef hitTestResult);
+WK_EXPORT bool WKBundleHitTestResultMediaIsInFullscreen(WKBundleHitTestResultRef hitTestResult);
+WK_EXPORT WKBundleHitTestResultMediaType WKBundleHitTestResultGetMediaType(WKBundleHitTestResultRef hitTestResult);
 
 WK_EXPORT WKRect WKBundleHitTestResultGetImageRect(WKBundleHitTestResultRef hitTestResult);
 WK_EXPORT bool WKBundleHitTestResultGetIsSelected(WKBundleHitTestResultRef hitTestResult);

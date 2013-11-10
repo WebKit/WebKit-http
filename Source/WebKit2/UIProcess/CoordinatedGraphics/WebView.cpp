@@ -120,6 +120,11 @@ IntPoint WebView::userViewportToScene(const WebCore::IntPoint& point) const
     return m_userViewportTransform.mapPoint(point);
 }
 
+IntPoint WebView::contentsToUserViewport(const IntPoint& point) const
+{
+    return transformToScene().mapPoint(point);
+}
+
 void WebView::paintToCurrentGLContext()
 {
     CoordinatedGraphicsScene* scene = coordinatedGraphicsScene();
@@ -325,6 +330,11 @@ void WebView::pageClosed()
     notImplemented();
 }
 
+void WebView::preferencesDidChange()
+{
+    notImplemented();
+}
+
 void WebView::toolTipChanged(const String&, const String& newToolTip)
 {
     m_client.didChangeTooltip(this, newToolTip);
@@ -384,7 +394,7 @@ void WebView::doneWithTouchEvent(const NativeWebTouchEvent&, bool /*wasEventHand
 }
 #endif
 
-PassRefPtr<WebPopupMenuProxy> WebView::createPopupMenuProxy(WebPageProxy* page)
+PassRefPtr<WebPopupMenuProxy> WebView::createPopupMenuProxy(WebPageProxy*)
 {
     notImplemented();
     return 0;

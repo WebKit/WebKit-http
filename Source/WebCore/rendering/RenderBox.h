@@ -26,8 +26,8 @@
 #include "RenderBoxModelObject.h"
 #include "RenderOverflow.h"
 #include "ScrollTypes.h"
-#if ENABLE(CSS_EXCLUSIONS)
-#include "ExclusionShapeOutsideInfo.h"
+#if ENABLE(CSS_SHAPES)
+#include "ShapeOutsideInfo.h"
 #endif
 
 namespace WebCore {
@@ -191,7 +191,6 @@ public:
     void addVisualEffectOverflow();
     void addOverflowFromChild(RenderBox* child) { addOverflowFromChild(child, child->locationOffset()); }
     void addOverflowFromChild(RenderBox* child, const LayoutSize& delta);
-    void clearLayoutOverflow();
     
     void updateLayerTransform();
 
@@ -400,7 +399,6 @@ public:
         return document()->inQuirksMode() && style()->logicalHeight().isAuto() && !isFloatingOrOutOfFlowPositioned() && (isRoot() || isBody()) && !document()->shouldDisplaySeamlesslyWithParent() && !isInline();
     }
 
-    virtual LayoutSize intrinsicSize() const { return LayoutSize(); }
     LayoutUnit intrinsicLogicalWidth() const { return style()->isHorizontalWritingMode() ? intrinsicSize().width() : intrinsicSize().height(); }
     LayoutUnit intrinsicLogicalHeight() const { return style()->isHorizontalWritingMode() ? intrinsicSize().height() : intrinsicSize().width(); }
 
@@ -576,10 +574,10 @@ public:
 
     bool hasSameDirectionAs(const RenderBox* object) const { return style()->direction() == object->style()->direction(); }
 
-#if ENABLE(CSS_EXCLUSIONS)
-    ExclusionShapeOutsideInfo* exclusionShapeOutsideInfo() const
+#if ENABLE(CSS_SHAPES)
+    ShapeOutsideInfo* shapeOutsideInfo() const
     {
-        return isFloatingWithShapeOutside() && ExclusionShapeOutsideInfo::isEnabledFor(this) ? ExclusionShapeOutsideInfo::info(this) : 0;
+        return isFloatingWithShapeOutside() && ShapeOutsideInfo::isEnabledFor(this) ? ShapeOutsideInfo::info(this) : 0;
     }
 #endif
 
@@ -590,7 +588,8 @@ protected:
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
     virtual void updateFromStyle() OVERRIDE;
 
-    LayoutRect backgroundPaintedExtent() const;
+    // Returns false if it could not cheaply compute the extent (e.g. fixed background), in which case the returned rect may be incorrect.
+    bool getBackgroundPaintedExtent(LayoutRect&) const;
     virtual bool foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect, unsigned maxDepthToTest) const;
     virtual bool computeBackgroundIsKnownToBeObscured() OVERRIDE;
 
@@ -623,8 +622,8 @@ protected:
     RenderObject* splitAnonymousBoxesAroundChild(RenderObject* beforeChild);
  
 private:
-#if ENABLE(CSS_EXCLUSIONS)
-    void updateExclusionShapeOutsideInfoAfterStyleChange(const ExclusionShapeValue* shapeOutside, const ExclusionShapeValue* oldShapeOutside);
+#if ENABLE(CSS_SHAPES)
+    void updateShapeOutsideInfoAfterStyleChange(const ShapeValue* shapeOutside, const ShapeValue* oldShapeOutside);
 #endif
 
     bool fixedElementLaysOutRelativeToFrame(Frame*, FrameView*) const;
@@ -642,6 +641,7 @@ private:
 
     LayoutUnit viewLogicalHeightForPercentages() const;
 
+    virtual LayoutSize intrinsicSize() const { return LayoutSize(); }
     void computePositionedLogicalHeight(LogicalExtentComputedValues&) const;
     void computePositionedLogicalWidthUsing(Length logicalWidth, const RenderBoxModelObject* containerBlock, TextDirection containerDirection,
                                             LayoutUnit containerLogicalWidth, LayoutUnit bordersPlusPadding,

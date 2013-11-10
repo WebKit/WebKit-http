@@ -228,7 +228,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         openNewWindow(m_hitTestResult.absoluteLinkURL(), frame);
         break;
     case ContextMenuItemTagDownloadLinkToDisk:
-        // FIXME: Some day we should be able to do this from within WebCore.
+        // FIXME: Some day we should be able to do this from within WebCore. (Bug 117709)
         m_client->downloadURL(m_hitTestResult.absoluteLinkURL());
         break;
     case ContextMenuItemTagCopyLinkToClipboard:
@@ -238,7 +238,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         openNewWindow(m_hitTestResult.absoluteImageURL(), frame);
         break;
     case ContextMenuItemTagDownloadImageToDisk:
-        // FIXME: Some day we should be able to do this from within WebCore.
+        // FIXME: Some day we should be able to do this from within WebCore. (Bug 117709)
         m_client->downloadURL(m_hitTestResult.absoluteImageURL());
         break;
     case ContextMenuItemTagCopyImageToClipboard:
@@ -254,6 +254,10 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
     case ContextMenuItemTagOpenMediaInNewWindow:
         openNewWindow(m_hitTestResult.absoluteMediaURL(), frame);
         break;
+    case ContextMenuItemTagDownloadMediaToDisk:
+        // FIXME: Some day we should be able to do this from within WebCore. (Bug 117709)
+        m_client->downloadURL(m_hitTestResult.absoluteMediaURL());
+        break;
     case ContextMenuItemTagCopyMediaLinkToClipboard:
         frame->editor().copyURL(m_hitTestResult.absoluteMediaURL(), m_hitTestResult.textContent());
         break;
@@ -262,6 +266,9 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuItem* item)
         break;
     case ContextMenuItemTagToggleMediaLoop:
         m_hitTestResult.toggleMediaLoopPlayback();
+        break;
+    case ContextMenuItemTagToggleVideoFullscreen:
+        m_hitTestResult.toggleMediaFullscreenState();
         break;
     case ContextMenuItemTagEnterVideoFullscreen:
         m_hitTestResult.enterFullscreenForVideo();
@@ -732,6 +739,12 @@ static bool selectionContainsPossibleWord(Frame* frame)
 #endif
 #endif
 
+#if PLATFORM(MAC)
+#define SUPPORTS_TOGGLE_VIDEO_FULLSCREEN 1
+#else
+#define SUPPORTS_TOGGLE_VIDEO_FULLSCREEN 0
+#endif
+
 void ContextMenuController::populate()
 {
     ContextMenuItem OpenLinkItem(ActionType, ContextMenuItemTagOpenLink, contextMenuItemTagOpenLink());
@@ -752,8 +765,8 @@ void ContextMenuController::populate()
         contextMenuItemTagCopyImageUrlToClipboard());
 #endif
     ContextMenuItem OpenMediaInNewWindowItem(ActionType, ContextMenuItemTagOpenMediaInNewWindow, String());
-    ContextMenuItem CopyMediaLinkItem(ActionType, ContextMenuItemTagCopyMediaLinkToClipboard, 
-        String());
+    ContextMenuItem DownloadMediaItem(ActionType, ContextMenuItemTagDownloadMediaToDisk, String());
+    ContextMenuItem CopyMediaLinkItem(ActionType, ContextMenuItemTagCopyMediaLinkToClipboard, String());
     ContextMenuItem MediaPlayPause(ActionType, ContextMenuItemTagMediaPlayPause, 
         contextMenuItemTagMediaPlay());
     ContextMenuItem MediaMute(ActionType, ContextMenuItemTagMediaMute, 
@@ -762,7 +775,9 @@ void ContextMenuController::populate()
         contextMenuItemTagToggleMediaControls());
     ContextMenuItem ToggleMediaLoop(CheckableActionType, ContextMenuItemTagToggleMediaLoop, 
         contextMenuItemTagToggleMediaLoop());
-    ContextMenuItem EnterVideoFullscreen(ActionType, ContextMenuItemTagEnterVideoFullscreen, 
+    ContextMenuItem EnterVideoFullscreen(ActionType, ContextMenuItemTagEnterVideoFullscreen,
+        contextMenuItemTagEnterVideoFullscreen());
+    ContextMenuItem ToggleVideoFullscreen(ActionType, ContextMenuItemTagToggleVideoFullscreen,
         contextMenuItemTagEnterVideoFullscreen());
 #if PLATFORM(MAC)
     ContextMenuItem SearchSpotlightItem(ActionType, ContextMenuItemTagSearchInSpotlight, 
@@ -845,11 +860,16 @@ void ContextMenuController::populate()
             appendItem(MediaMute, m_contextMenu.get());
             appendItem(ToggleMediaControls, m_contextMenu.get());
             appendItem(ToggleMediaLoop, m_contextMenu.get());
+#if SUPPORTS_TOGGLE_VIDEO_FULLSCREEN
+            appendItem(ToggleVideoFullscreen, m_contextMenu.get());
+#else
             appendItem(EnterVideoFullscreen, m_contextMenu.get());
-
+#endif
             appendItem(*separatorItem(), m_contextMenu.get());
             appendItem(CopyMediaLinkItem, m_contextMenu.get());
             appendItem(OpenMediaInNewWindowItem, m_contextMenu.get());
+            if (loader->client()->canHandleRequest(ResourceRequest(mediaURL)))
+                appendItem(DownloadMediaItem, m_contextMenu.get());
         }
 
         if (imageURL.isEmpty() && linkURL.isEmpty() && mediaURL.isEmpty()) {
@@ -1330,6 +1350,12 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
             else
                 item.setTitle(contextMenuItemTagOpenAudioInNewWindow());
             break;
+        case ContextMenuItemTagDownloadMediaToDisk:
+            if (m_hitTestResult.mediaIsVideo())
+                item.setTitle(contextMenuItemTagDownloadVideoToDisk());
+            else
+                item.setTitle(contextMenuItemTagDownloadAudioToDisk());
+            break;
         case ContextMenuItemTagCopyMediaLinkToClipboard:
             if (m_hitTestResult.mediaIsVideo())
                 item.setTitle(contextMenuItemTagCopyVideoLinkToClipboard());
@@ -1342,6 +1368,11 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
         case ContextMenuItemTagToggleMediaLoop:
             shouldCheck = m_hitTestResult.mediaLoopEnabled();
             break;
+        case ContextMenuItemTagToggleVideoFullscreen:
+#if SUPPORTS_TOGGLE_VIDEO_FULLSCREEN
+            item.setTitle(m_hitTestResult.mediaIsInFullscreen() ? contextMenuItemTagExitVideoFullscreen() : contextMenuItemTagEnterVideoFullscreen());
+            break;
+#endif
         case ContextMenuItemTagEnterVideoFullscreen:
             shouldEnable = m_hitTestResult.mediaSupportsFullscreen();
             break;

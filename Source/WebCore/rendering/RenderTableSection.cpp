@@ -336,7 +336,7 @@ int RenderTableSection::calcRowLogicalHeight()
                 // Find out the baseline. The baseline is set on the first row in a rowspan.
                 if (cell->isBaselineAligned()) {
                     LayoutUnit baselinePosition = cell->cellBaselinePosition();
-                    if (baselinePosition > cell->borderBefore() + cell->paddingBefore()) {
+                    if (baselinePosition > cell->borderAndPaddingBefore()) {
                         m_grid[cellStartRow].baseline = max(m_grid[cellStartRow].baseline, baselinePosition);
                         // The descent of a cell that spans multiple rows does not affect the height of the first row it spans, so don't let it
                         // become the baseline descent applied to the rest of the row. Also we don't account for the baseline descent of
@@ -603,7 +603,7 @@ void RenderTableSection::layoutRows()
                 // If the baseline moved, we may have to update the data for our row. Find out the new baseline.
                 if (cell->isBaselineAligned()) {
                     LayoutUnit baseline = cell->cellBaselinePosition();
-                    if (baseline > cell->borderBefore() + cell->paddingBefore())
+                    if (baseline > cell->borderAndPaddingBefore())
                         m_grid[r].baseline = max(m_grid[r].baseline, baseline);
                 }
             }
@@ -917,7 +917,7 @@ int RenderTableSection::firstLineBoxBaseline() const
         const RenderTableCell* cell = cs.primaryCell();
         // Only cells with content have a baseline
         if (cell && cell->contentLogicalHeight())
-            firstLineBaseline = max<int>(firstLineBaseline, cell->logicalTop() + cell->paddingBefore() + cell->borderBefore() + cell->contentLogicalHeight());
+            firstLineBaseline = max<int>(firstLineBaseline, cell->logicalTop() + cell->borderAndPaddingBefore() + cell->contentLogicalHeight());
     }
 
     return firstLineBaseline;
@@ -1118,8 +1118,10 @@ void RenderTableSection::paintObject(PaintInfo& paintInfo, const LayoutPoint& pa
         if (!m_hasMultipleCellLevels && !m_overflowingCells.size()) {
             if (paintInfo.phase == PaintPhaseCollapsedTableBorders) {
                 // Collapsed borders are painted from the bottom right to the top left so that precedence
-                // due to cell position is respected.
-                for (unsigned r = dirtiedRows.end(); r > dirtiedRows.start(); r--) {
+                // due to cell position is respected. We need to paint one row beyond the topmost dirtied
+                // row to calculate its collapsed border value.
+                unsigned startRow = dirtiedRows.start() ? dirtiedRows.start() - 1 : 0;
+                for (unsigned r = dirtiedRows.end(); r > startRow; r--) {
                     unsigned row = r - 1;
                     for (unsigned c = dirtiedColumns.end(); c > dirtiedColumns.start(); c--) {
                         unsigned col = c - 1;

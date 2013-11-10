@@ -51,6 +51,7 @@
 #include "WebPreferences.h"
 #include "ewk_back_forward_list_private.h"
 #include "ewk_color_picker_private.h"
+#include "ewk_context_menu_item_private.h"
 #include "ewk_context_menu_private.h"
 #include "ewk_context_private.h"
 #include "ewk_favicon_database_private.h"
@@ -826,6 +827,19 @@ void EwkView::dismissColorPicker()
 COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_RIGHT_TO_LEFT, RTL);
 COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_LEFT_TO_RIGHT, LTR);
 
+void EwkView::customContextMenuItemSelected(WKContextMenuItemRef contextMenuItem)
+{
+    Ewk_View_Smart_Data* sd = smartData();
+    ASSERT(sd->api);
+
+    if (!sd->api->custom_item_selected)
+        return;
+
+    OwnPtr<EwkContextMenuItem> item = EwkContextMenuItem::create(contextMenuItem, 0);
+
+    sd->api->custom_item_selected(sd, item.get());
+}
+
 void EwkView::showContextMenu(WKPoint position, WKArrayRef items)
 {
     Ewk_View_Smart_Data* sd = smartData();
@@ -838,6 +852,8 @@ void EwkView::showContextMenu(WKPoint position, WKArrayRef items)
         hideContextMenu();
 
     m_contextMenu = EwkContextMenu::create(this, items);
+
+    position = WKViewContentsToUserViewport(wkView(), position);
 
     sd->api->context_menu_show(sd, position.x, position.y, m_contextMenu.get());
 }
@@ -874,8 +890,10 @@ void EwkView::requestPopupMenu(WKPopupMenuListenerRef popupMenuListener, const W
 
     m_popupMenu = EwkPopupMenu::create(this, popupMenuListener, items, selectedIndex);
 
+    WKPoint popupMenuPosition = WKViewContentsToUserViewport(wkView(), rect.origin);
+
     Eina_Rectangle einaRect;
-    EINA_RECTANGLE_SET(&einaRect, rect.origin.x, rect.origin.y, rect.size.width, rect.size.height);
+    EINA_RECTANGLE_SET(&einaRect, popupMenuPosition.x, popupMenuPosition.y, rect.size.width, rect.size.height);
 
     sd->api->popup_menu_show(sd, einaRect, static_cast<Ewk_Text_Direction>(textDirection), pageScaleFactor, m_popupMenu.get());
 }

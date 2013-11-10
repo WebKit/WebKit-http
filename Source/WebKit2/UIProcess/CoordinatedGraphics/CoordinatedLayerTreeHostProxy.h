@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies)
+    Copyright (C) 2013 Company 100, Inc.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -22,31 +23,19 @@
 
 #if USE(COORDINATED_GRAPHICS)
 
-#include "BackingStore.h"
 #include "CoordinatedGraphicsArgumentCoders.h"
-#include "DrawingAreaProxy.h"
-#include "Region.h"
-#include "WebCoordinatedSurface.h"
+#include "MessageReceiver.h"
 #include <WebCore/CoordinatedGraphicsScene.h>
-#include <WebCore/GraphicsContext.h>
-#include <WebCore/GraphicsLayer.h>
-#include <WebCore/GraphicsLayerAnimation.h>
-#include <WebCore/GraphicsSurfaceToken.h>
-#include <WebCore/IntRect.h>
-#include <WebCore/IntSize.h>
-#include <WebCore/RunLoop.h>
-#include <WebCore/Timer.h>
 #include <wtf/Functional.h>
-#include <wtf/HashSet.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
-struct CoordinatedGraphicsLayerState;
 class CoordinatedGraphicsState;
-class SurfaceUpdateInfo;
+class IntSize;
 }
 
 namespace WebKit {
+
+class DrawingAreaProxy;
 
 class CoordinatedLayerTreeHostProxy : public WebCore::CoordinatedGraphicsSceneClient, public CoreIPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(CoordinatedLayerTreeHostProxy);
@@ -55,22 +44,7 @@ public:
     explicit CoordinatedLayerTreeHostProxy(DrawingAreaProxy*);
     virtual ~CoordinatedLayerTreeHostProxy();
 
-    // Messages From CoordinatedLayerTreeHost
-    void createCompositingLayers(const Vector<WebCore::CoordinatedLayerID>&);
-    void deleteCompositingLayers(const Vector<WebCore::CoordinatedLayerID>&);
-#if ENABLE(CSS_SHADERS)
-    void createCustomFilterProgram(int id, const WebCore::CustomFilterProgramInfo&);
-    void removeCustomFilterProgram(int id);
-#endif
-    void createUpdateAtlas(uint32_t atlasID, const WebCoordinatedSurface::Handle&);
-    void removeUpdateAtlas(uint32_t atlasID);
-    void createImageBacking(WebCore::CoordinatedImageBackingID);
-    void updateImageBacking(WebCore::CoordinatedImageBackingID, const WebCoordinatedSurface::Handle&);
-    void clearImageBackingContents(WebCore::CoordinatedImageBackingID);
-    void removeImageBacking(WebCore::CoordinatedImageBackingID);
-
     void commitCoordinatedGraphicsState(const WebCore::CoordinatedGraphicsState&);
-    void setAnimationsLocked(bool);
     void setBackgroundColor(const WebCore::Color&);
 
     void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint& trajectoryVector);
