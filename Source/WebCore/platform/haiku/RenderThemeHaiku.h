@@ -54,7 +54,7 @@ public:
     virtual Color platformTextSearchHighlightColor() const;
 
     // System fonts.
-    virtual void systemFont(int propId, FontDescription&) const;
+    virtual void systemFont(CSSValueID propId, FontDescription&) const;
 
 protected:
     virtual bool paintCheckbox(RenderObject*, const PaintInfo&, const IntRect&);

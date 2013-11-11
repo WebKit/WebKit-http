@@ -104,7 +104,7 @@ Color RenderThemeHaiku::platformTextSearchHighlightColor() const
     return Color(255, 80, 40, 200);
 }
 
-void RenderThemeHaiku::systemFont(int propId, FontDescription&) const
+void RenderThemeHaiku::systemFont(CSSValueID propId, FontDescription&) const
 {
     notImplemented();
 }
